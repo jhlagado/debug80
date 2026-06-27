@@ -109,7 +109,7 @@ Config block key: `tec1g`
 
 ### `tec1g.romArtifacts`
 
-`romArtifacts` is validated only for TEC-1G launches. The current schema allows one active monitor artifact and one active expansion artifact. Active entries must be source-backed and are assembled before runtime creation. A TEC-1G expansion artifact may either be a single source-backed 16K window or a multibank artifact with explicit per-bank sources. That build path forces AZM `registerContracts` off, suppresses register-report output, pads generated bank binaries to their configured size, packs multibank expansion images when requested, and keeps the configured `tec1g.entry` authoritative whenever an active monitor artifact owns the launch.
+`romArtifacts` is validated only for TEC-1G launches. The current schema allows one active monitor artifact and one active expansion artifact. Active entries must be source-backed and are assembled before runtime creation. A TEC-1G expansion artifact may either be a single source-backed 16K window or a multibank artifact with explicit per-bank sources. That build path forces AZM `registerContracts` off, suppresses register-report output, pads generated bank binaries to their configured size, writes configurable multibank output recipes when requested, and keeps the configured `tec1g.entry` authoritative whenever an active monitor artifact owns the launch.
 
 | Field            | Type      | Required | Description                                                                  |
 | ---------------- | --------- | -------- | ---------------------------------------------------------------------------- |
@@ -130,10 +130,11 @@ Config block key: `tec1g`
 | `bankCount`      | `number`  | expansion| Must equal `imageSize / bankSize`; valid range is 1-9                         |
 | `bankSelect`     | `object`  | no       | Bank-selection metadata. Current shape supports `{ kind: 'tec1g-standard' }` |
 | `banks`          | `object[]`| expansion| Multibank source declarations keyed by physical expansion bank                |
+| `outputs`        | `object[]`| no       | Optional multibank output recipes derived from the built bank images         |
 
 Multibank expansion entries omit top-level `sourceFile` and `outputDebugMap`.
-The top-level `outputBin` is the packed runtime image. Each `banks[]` entry
-declares:
+The top-level `outputBin` is the Debug80 runtime image loaded through
+`tec1g.expansionRomHex`. Each `banks[]` entry declares:
 
 | Field            | Type      | Required | Description                                                                  |
 | ---------------- | --------- | -------- | ---------------------------------------------------------------------------- |
@@ -141,6 +142,22 @@ declares:
 | `sourceFile`     | `string`  | yes      | Bank source assembled at the visible `0x8000-0xBFFF` window                  |
 | `outputBin`      | `string`  | yes      | Per-bank 16K binary output path. Must use `.bin`                             |
 | `outputDebugMap` | `string`  | no       | Optional D8 path. Must match the bank `outputBin` artifact base              |
+
+When `outputs` is omitted, Debug80 writes the top-level `outputBin` as a
+physical-layout image, preserving the existing multibank behavior. When
+`outputs` is present, each recipe consumes the already-built bank images:
+
+| Field       | Type       | Required | Description                                                                    |
+| ----------- | ---------- | -------- | ------------------------------------------------------------------------------ |
+| `id`        | `string`   | yes      | Stable output identifier used in diagnostics                                   |
+| `kind`      | `string`   | yes      | `'packed'` or `'perBank'`                                                      |
+| `banks`     | `number[]` | yes      | Declared physical banks to include, with no duplicates                         |
+| `layout`    | `string`   | no       | Packed output layout. Defaults to `'contiguous'`; `'physical'` writes banks at physical offsets |
+| `outputBin` | `string`   | packed   | Packed binary output path. Must use `.bin`                                     |
+| `outputDir` | `string`   | perBank  | Directory that receives `bank0.bin`, `bank1.bin`, etc.                         |
+
+If no packed recipe writes the top-level `outputBin`, Debug80 still creates it
+as the physical runtime image so launch behavior remains stable.
 
 ---
 

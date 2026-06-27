@@ -247,6 +247,159 @@ describe('TEC-1G ROM artifact builds', () => {
     expect(args.sourceRoots).toEqual(['roms/tec1g/tecm8/expansion', 'src']);
   });
 
+  it('builds configurable multibank expansion output recipes', async () => {
+    const root = makeTempRoot();
+    const backend = fakeBackend();
+    backend.assembleBin.mockImplementation((options: AssembleBinOptions) => {
+      const bankName = path.basename(options.asmPath, '.asm');
+      const bankNumber = Number.parseInt(bankName.replace('bank', ''), 10);
+      writeBinary(replaceExtension(options.hexPath, '.bin'), Buffer.from([bankNumber + 1]));
+      return { success: true };
+    });
+    const args: LaunchRequestArguments = {
+      tec1g: {
+        romArtifacts: [
+          {
+            id: 'tecm8-expansion',
+            role: 'expansion',
+            outputBin: 'build/roms/tec1g/tecm8/expansion/debug80-runtime.bin',
+            windowAddress: 0x8000,
+            windowSize: 0x4000,
+            imageSize: 0x24000,
+            bankSize: 0x4000,
+            bankCount: 9,
+            banks: [
+              {
+                physicalBank: 0,
+                sourceFile: 'roms/tec1g/tecm8/expansion/bank0.asm',
+                outputBin: 'build/roms/tec1g/tecm8/expansion/bank0.bin',
+              },
+              {
+                physicalBank: 1,
+                sourceFile: 'roms/tec1g/tecm8/expansion/bank1.asm',
+                outputBin: 'build/roms/tec1g/tecm8/expansion/bank1.bin',
+              },
+              {
+                physicalBank: 8,
+                sourceFile: 'roms/tec1g/tecm8/expansion/bank8.asm',
+                outputBin: 'build/roms/tec1g/tecm8/expansion/bank8.bin',
+              },
+            ],
+            outputs: [
+              {
+                id: 'debug80-runtime',
+                kind: 'packed',
+                layout: 'physical',
+                outputBin: 'build/roms/tec1g/tecm8/expansion/debug80-runtime.bin',
+                banks: [0, 1, 8],
+              },
+              {
+                id: 'legacy-expansion-32k',
+                kind: 'packed',
+                layout: 'contiguous',
+                outputBin: 'build/roms/tec1g/tecm8/expansion/legacy-expansion-32k.bin',
+                banks: [0, 1],
+              },
+              {
+                id: 'per-bank-reference',
+                kind: 'perBank',
+                outputDir: 'build/roms/tec1g/tecm8/expansion/banks',
+                banks: [0, 8],
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    const result = await buildTec1gRomArtifactsIfRequested({
+      baseDir: root,
+      args,
+      backendFactory: () => backend,
+      sendEvent: () => undefined,
+    });
+
+    const runtime = fs.readFileSync(
+      path.join(root, 'build/roms/tec1g/tecm8/expansion/debug80-runtime.bin')
+    );
+    const legacy32k = fs.readFileSync(
+      path.join(root, 'build/roms/tec1g/tecm8/expansion/legacy-expansion-32k.bin')
+    );
+    const copiedBank0 = fs.readFileSync(
+      path.join(root, 'build/roms/tec1g/tecm8/expansion/banks/bank0.bin')
+    );
+    const copiedBank8 = fs.readFileSync(
+      path.join(root, 'build/roms/tec1g/tecm8/expansion/banks/bank8.bin')
+    );
+
+    expect(runtime).toHaveLength(0x24000);
+    expect(runtime[0x00000]).toBe(0x01);
+    expect(runtime[0x04000]).toBe(0x02);
+    expect(runtime[0x20000]).toBe(0x09);
+    expect(legacy32k).toHaveLength(0x8000);
+    expect(legacy32k[0x00000]).toBe(0x01);
+    expect(legacy32k[0x04000]).toBe(0x02);
+    expect(copiedBank0).toHaveLength(0x4000);
+    expect(copiedBank0[0]).toBe(0x01);
+    expect(copiedBank8).toHaveLength(0x4000);
+    expect(copiedBank8[0]).toBe(0x09);
+    expect(result[0]?.outputBin).toBe(
+      path.join(root, 'build/roms/tec1g/tecm8/expansion/debug80-runtime.bin')
+    );
+  });
+
+  it('rejects contiguous output recipes that write the runtime image path', async () => {
+    const root = makeTempRoot();
+    const backend = fakeBackend();
+    const args: LaunchRequestArguments = {
+      tec1g: {
+        romArtifacts: [
+          {
+            id: 'bad-expansion',
+            role: 'expansion',
+            outputBin: 'build/debug80-runtime.bin',
+            windowAddress: 0x8000,
+            windowSize: 0x4000,
+            imageSize: 0x24000,
+            bankSize: 0x4000,
+            bankCount: 9,
+            banks: [
+              {
+                physicalBank: 0,
+                sourceFile: 'roms/bank0.asm',
+                outputBin: 'build/bank0.bin',
+              },
+              {
+                physicalBank: 8,
+                sourceFile: 'roms/bank8.asm',
+                outputBin: 'build/bank8.bin',
+              },
+            ],
+            outputs: [
+              {
+                id: 'bad-runtime',
+                kind: 'packed',
+                outputBin: 'build/debug80-runtime.bin',
+                banks: [0, 8],
+              },
+            ],
+          },
+        ],
+      },
+    };
+
+    await expect(
+      buildTec1gRomArtifactsIfRequested({
+        baseDir: root,
+        args,
+        backendFactory: () => backend,
+        sendEvent: () => undefined,
+      })
+    ).rejects.toThrow('ROM artifact bad-expansion output bad-runtime writes the runtime outputBin and must use physical layout');
+    expect(backend.assemble).not.toHaveBeenCalled();
+    expect(backend.assembleBin).not.toHaveBeenCalled();
+  });
+
   it('rejects invalid physical banks before building multibank expansion artifacts', async () => {
     const root = makeTempRoot();
     const backend = fakeBackend();

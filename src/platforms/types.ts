@@ -108,6 +108,27 @@ export interface Tec1gExpansionRomArtifactBankConfig {
   outputDebugMap?: string;
 }
 
+export type Tec1gExpansionRomArtifactPackedOutputLayout = 'contiguous' | 'physical';
+
+export interface Tec1gExpansionRomArtifactPackedOutputConfig {
+  id: string;
+  kind: 'packed';
+  outputBin: string;
+  banks: number[];
+  layout?: Tec1gExpansionRomArtifactPackedOutputLayout;
+}
+
+export interface Tec1gExpansionRomArtifactPerBankOutputConfig {
+  id: string;
+  kind: 'perBank';
+  outputDir: string;
+  banks: number[];
+}
+
+export type Tec1gExpansionRomArtifactOutputConfig =
+  | Tec1gExpansionRomArtifactPackedOutputConfig
+  | Tec1gExpansionRomArtifactPerBankOutputConfig;
+
 interface Tec1gRomArtifactBaseConfig {
   id: string;
   role: Tec1gRomArtifactRole;
@@ -128,6 +149,7 @@ export interface Tec1gSourceRomArtifactConfig extends Tec1gRomArtifactBaseConfig
   outputBin: string;
   outputDebugMap?: string;
   banks?: never;
+  outputs?: never;
   binary?: never;
   debugMap?: never;
 }
@@ -136,6 +158,7 @@ export interface Tec1gMultibankExpansionRomArtifactConfig extends Tec1gRomArtifa
   role: 'expansion';
   outputBin: string;
   banks: Tec1gExpansionRomArtifactBankConfig[];
+  outputs?: Tec1gExpansionRomArtifactOutputConfig[];
   sourceFile?: never;
   outputDebugMap?: never;
   binary?: never;
@@ -150,6 +173,7 @@ export interface Tec1gInactiveBinaryRomArtifactConfig extends Tec1gRomArtifactBa
   outputBin?: never;
   outputDebugMap?: never;
   banks?: never;
+  outputs?: never;
 }
 
 export type Tec1gRomArtifactConfig =

@@ -416,6 +416,216 @@ describe('config-validation', () => {
       expect(result).toMatchObject({ valid: true, errors: [] });
     });
 
+    it('should accept configurable multibank expansion artifact outputs', () => {
+      const result = validateTec1gConfig({
+        expansionRomHex: 'build/roms/tec1g/tecm8/expansion/debug80-runtime.bin',
+        romArtifacts: [
+          {
+            id: 'tecm8-expansion',
+            role: 'expansion',
+            outputBin: 'build/roms/tec1g/tecm8/expansion/debug80-runtime.bin',
+            windowAddress: 0x8000,
+            windowSize: 0x4000,
+            imageSize: 0x24000,
+            bankSize: 0x4000,
+            bankCount: 9,
+            banks: [
+              {
+                physicalBank: 0,
+                sourceFile: 'roms/tec1g/tecm8/expansion/bank0.asm',
+                outputBin: 'build/roms/tec1g/tecm8/expansion/bank0.bin',
+              },
+              {
+                physicalBank: 1,
+                sourceFile: 'roms/tec1g/tecm8/expansion/bank1.asm',
+                outputBin: 'build/roms/tec1g/tecm8/expansion/bank1.bin',
+              },
+              {
+                physicalBank: 8,
+                sourceFile: 'roms/tec1g/tecm8/expansion/bank8.asm',
+                outputBin: 'build/roms/tec1g/tecm8/expansion/bank8.bin',
+              },
+            ],
+            outputs: [
+              {
+                id: 'debug80-runtime',
+                kind: 'packed',
+                layout: 'physical',
+                outputBin: 'build/roms/tec1g/tecm8/expansion/debug80-runtime.bin',
+                banks: [0, 1, 8],
+              },
+              {
+                id: 'legacy-expansion-32k',
+                kind: 'packed',
+                layout: 'contiguous',
+                outputBin: 'build/roms/tec1g/tecm8/expansion/legacy-expansion-32k.bin',
+                banks: [0, 1],
+              },
+              {
+                id: 'per-bank-reference',
+                kind: 'perBank',
+                outputDir: 'build/roms/tec1g/tecm8/expansion/banks',
+                banks: [0, 1, 8],
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result).toMatchObject({ valid: true, errors: [] });
+    });
+
+    it('should reject invalid multibank expansion artifact outputs', () => {
+      const result = validateTec1gConfig({
+        romArtifacts: [
+          {
+            id: 'bad-expansion',
+            role: 'expansion',
+            outputBin: 'build/expansion.bin',
+            windowAddress: 0x8000,
+            windowSize: 0x4000,
+            imageSize: 0x24000,
+            bankSize: 0x4000,
+            bankCount: 9,
+            banks: [
+              {
+                physicalBank: 0,
+                sourceFile: 'roms/bank0.asm',
+                outputBin: 'build/bank0.bin',
+              },
+            ],
+            outputs: [
+              {
+                id: 'bad-layout',
+                kind: 'packed',
+                layout: 'interleaved',
+                outputBin: 'build/bad-layout.bin',
+                banks: [0],
+              },
+              {
+                id: 'missing-bank',
+                kind: 'packed',
+                outputBin: 'build/missing-bank.bin',
+                banks: [1],
+              },
+              {
+                id: 'duplicate-bank',
+                kind: 'perBank',
+                outputDir: 'build/banks',
+                banks: [0, 0],
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result).toMatchObject({
+        valid: false,
+        errors: [
+          'tec1g.romArtifacts[0].outputs[0].layout must be "contiguous" or "physical", got interleaved',
+          'tec1g.romArtifacts[0].outputs[1].banks[0] references undeclared bank 1',
+          'tec1g.romArtifacts[0].outputs[2].banks[1] duplicates bank 0',
+        ],
+      });
+    });
+
+    it('should reject a non-physical multibank output at the runtime output path', () => {
+      const result = validateTec1gConfig({
+        romArtifacts: [
+          {
+            id: 'bad-expansion',
+            role: 'expansion',
+            outputBin: 'build/debug80-runtime.bin',
+            windowAddress: 0x8000,
+            windowSize: 0x4000,
+            imageSize: 0x24000,
+            bankSize: 0x4000,
+            bankCount: 9,
+            banks: [
+              {
+                physicalBank: 0,
+                sourceFile: 'roms/bank0.asm',
+                outputBin: 'build/bank0.bin',
+              },
+              {
+                physicalBank: 8,
+                sourceFile: 'roms/bank8.asm',
+                outputBin: 'build/bank8.bin',
+              },
+            ],
+            outputs: [
+              {
+                id: 'bad-runtime',
+                kind: 'packed',
+                outputBin: 'build/debug80-runtime.bin',
+                banks: [0, 8],
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result).toMatchObject({
+        valid: false,
+        errors: [
+          'tec1g.romArtifacts[0].outputs[0] writes the runtime outputBin and must use layout "physical"',
+        ],
+      });
+    });
+
+    it('should reject outputs on non-multibank ROM artifacts', () => {
+      const result = validateTec1gConfig({
+        romArtifacts: [
+          {
+            id: 'single-expansion',
+            role: 'expansion',
+            sourceFile: 'roms/expansion.asm',
+            outputBin: 'build/expansion.bin',
+            windowAddress: 0x8000,
+            windowSize: 0x4000,
+            imageSize: 0x24000,
+            bankSize: 0x4000,
+            bankCount: 9,
+            outputs: [
+              {
+                id: 'ignored',
+                kind: 'packed',
+                outputBin: 'build/ignored.bin',
+                banks: [0],
+              },
+            ],
+          },
+          {
+            id: 'inactive-binary',
+            role: 'expansion',
+            active: false,
+            binary: 'roms/expansion.bin',
+            windowAddress: 0x8000,
+            windowSize: 0x4000,
+            imageSize: 0x24000,
+            bankSize: 0x4000,
+            bankCount: 9,
+            outputs: [
+              {
+                id: 'ignored',
+                kind: 'packed',
+                outputBin: 'build/ignored.bin',
+                banks: [0],
+              },
+            ],
+          },
+        ],
+      });
+
+      expect(result).toMatchObject({
+        valid: false,
+        errors: [
+          'tec1g.romArtifacts[0].outputs is only supported for multibank expansion artifacts',
+          'tec1g.romArtifacts[1].outputs is only supported for multibank expansion artifacts',
+        ],
+      });
+    });
+
     it('should reject invalid TEC-1G multibank expansion bank declarations', () => {
       const result = validateTec1gConfig({
         romArtifacts: [

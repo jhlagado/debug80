@@ -10,6 +10,9 @@ import { emitConsoleOutput, type EventSender } from '../session/adapter-ui';
 import type { LaunchRequestArguments } from '../session/types';
 import type {
   Tec1gExpansionRomArtifactBankConfig,
+  Tec1gExpansionRomArtifactOutputConfig,
+  Tec1gExpansionRomArtifactPackedOutputConfig,
+  Tec1gExpansionRomArtifactPerBankOutputConfig,
   Tec1gMultibankExpansionRomArtifactConfig,
   Tec1gRomArtifactConfig,
   Tec1gSourceRomArtifactConfig,
@@ -25,6 +28,12 @@ export interface Tec1gBuiltRomArtifact {
   sourceRoot: string;
   debugMaps?: string[];
   sourceRoots?: string[];
+}
+
+interface BuiltExpansionArtifactBank {
+  physicalBank: number;
+  bytes: Buffer;
+  outputDebugMap: string;
 }
 
 export async function buildTec1gRomArtifactsIfRequested(options: {
@@ -181,7 +190,8 @@ async function buildMultibankExpansionArtifact(options: {
   const bankCount = artifact.bankCount ?? Math.floor(imageSize / bankSize);
   assertMultibankExpansionArtifactGeometry(artifact, imageSize, bankSize, bankCount);
   assertMultibankExpansionArtifactBanks(artifact, bankCount);
-  const packed = Buffer.alloc(imageSize);
+  assertMultibankExpansionArtifactOutputs(artifact, options.baseDir, bankCount);
+  const builtBanks = new Map<number, BuiltExpansionArtifactBank>();
   const debugMaps: string[] = [];
   const sourceRoots: string[] = [];
 
@@ -194,13 +204,31 @@ async function buildMultibankExpansionArtifact(options: {
       sendEvent: options.sendEvent,
       ...(options.backendFactory !== undefined ? { backendFactory: options.backendFactory } : {}),
     });
-    builtBank.bytes.copy(packed, bank.physicalBank * bankSize);
+    builtBanks.set(bank.physicalBank, {
+      physicalBank: bank.physicalBank,
+      ...builtBank,
+    });
     debugMaps.push(builtBank.outputDebugMap);
     sourceRoots.push(path.dirname(bank.sourceFile));
   }
 
-  fs.mkdirSync(path.dirname(outputBin), { recursive: true });
-  fs.writeFileSync(outputBin, packed);
+  const runtimeOutputWritten = writeMultibankExpansionOutputs({
+    artifact,
+    baseDir: options.baseDir,
+    runtimeOutputBin: outputBin,
+    builtBanks,
+    imageSize,
+    bankSize,
+  });
+  if (!runtimeOutputWritten) {
+    writePhysicalPackedExpansionOutput({
+      outputBin,
+      banks: artifact.banks.map((bank) => bank.physicalBank),
+      builtBanks,
+      imageSize,
+      bankSize,
+    });
+  }
 
   return {
     id: artifact.id,
@@ -304,6 +332,109 @@ async function buildExpansionArtifactBank(options: {
   }
 
   return { bytes: padded, outputDebugMap };
+}
+
+function writeMultibankExpansionOutputs(options: {
+  artifact: Tec1gMultibankExpansionRomArtifactConfig;
+  baseDir: string;
+  runtimeOutputBin: string;
+  builtBanks: Map<number, BuiltExpansionArtifactBank>;
+  imageSize: number;
+  bankSize: number;
+}): boolean {
+  let runtimeOutputWritten = false;
+
+  for (const output of options.artifact.outputs ?? []) {
+    if (output.kind === 'packed') {
+      const outputBin = resolveWorkspacePath(options.baseDir, output.outputBin);
+      if (output.layout === 'physical') {
+        writePhysicalPackedExpansionOutput({
+          outputBin,
+          banks: output.banks,
+          builtBanks: options.builtBanks,
+          imageSize: options.imageSize,
+          bankSize: options.bankSize,
+        });
+      } else {
+        writeContiguousPackedExpansionOutput({
+          outputBin,
+          banks: output.banks,
+          builtBanks: options.builtBanks,
+          bankSize: options.bankSize,
+        });
+      }
+      runtimeOutputWritten ||= pathsEqual(outputBin, options.runtimeOutputBin);
+    } else {
+      writePerBankExpansionOutput({
+        output,
+        baseDir: options.baseDir,
+        builtBanks: options.builtBanks,
+      });
+    }
+  }
+
+  return runtimeOutputWritten;
+}
+
+function writePhysicalPackedExpansionOutput(options: {
+  outputBin: string;
+  banks: number[];
+  builtBanks: Map<number, BuiltExpansionArtifactBank>;
+  imageSize: number;
+  bankSize: number;
+}): void {
+  const packed = Buffer.alloc(options.imageSize);
+  for (const physicalBank of options.banks) {
+    const bank = requireBuiltExpansionBank(options.builtBanks, physicalBank);
+    bank.bytes.copy(packed, physicalBank * options.bankSize);
+  }
+  writeBinaryFile(options.outputBin, packed);
+}
+
+function writeContiguousPackedExpansionOutput(options: {
+  outputBin: string;
+  banks: number[];
+  builtBanks: Map<number, BuiltExpansionArtifactBank>;
+  bankSize: number;
+}): void {
+  const packed = Buffer.alloc(options.banks.length * options.bankSize);
+  options.banks.forEach((physicalBank, index) => {
+    const bank = requireBuiltExpansionBank(options.builtBanks, physicalBank);
+    bank.bytes.copy(packed, index * options.bankSize);
+  });
+  writeBinaryFile(options.outputBin, packed);
+}
+
+function writePerBankExpansionOutput(options: {
+  output: Tec1gExpansionRomArtifactPerBankOutputConfig;
+  baseDir: string;
+  builtBanks: Map<number, BuiltExpansionArtifactBank>;
+}): void {
+  const outputDir = resolveWorkspacePath(options.baseDir, options.output.outputDir);
+  fs.mkdirSync(outputDir, { recursive: true });
+  for (const physicalBank of options.output.banks) {
+    const bank = requireBuiltExpansionBank(options.builtBanks, physicalBank);
+    fs.writeFileSync(path.join(outputDir, `bank${physicalBank}.bin`), bank.bytes);
+  }
+}
+
+function writeBinaryFile(outputBin: string, bytes: Buffer): void {
+  fs.mkdirSync(path.dirname(outputBin), { recursive: true });
+  fs.writeFileSync(outputBin, bytes);
+}
+
+function requireBuiltExpansionBank(
+  builtBanks: Map<number, BuiltExpansionArtifactBank>,
+  physicalBank: number
+): BuiltExpansionArtifactBank {
+  const bank = builtBanks.get(physicalBank);
+  if (bank === undefined) {
+    throw new AssembleFailureError({
+      success: false,
+      error: `ROM artifact output references unbuilt bank ${physicalBank}`,
+    });
+  }
+  return bank;
 }
 
 export function applyTec1gRomArtifactsToLaunchArgs(
@@ -473,6 +604,108 @@ function assertMultibankExpansionArtifactBanks(
   }
 }
 
+function assertMultibankExpansionArtifactOutputs(
+  artifact: Tec1gMultibankExpansionRomArtifactConfig,
+  baseDir: string,
+  bankCount: number
+): void {
+  if (artifact.outputs === undefined) {
+    return;
+  }
+  if (!Array.isArray(artifact.outputs)) {
+    throw new AssembleFailureError({
+      success: false,
+      error: `ROM artifact ${artifact.id} outputs must be an array`,
+    });
+  }
+
+  const declaredBanks = new Set(artifact.banks.map((bank) => bank.physicalBank));
+  for (const output of artifact.outputs) {
+    if (output.kind === 'packed') {
+      assertPackedExpansionOutput(artifact.id, output, baseDir);
+      const runtimeOutputBin = resolveWorkspacePath(baseDir, artifact.outputBin);
+      const recipeOutputBin = resolveWorkspacePath(baseDir, output.outputBin);
+      if (pathsEqual(runtimeOutputBin, recipeOutputBin) && output.layout !== 'physical') {
+        throw new AssembleFailureError({
+          success: false,
+          error: `ROM artifact ${artifact.id} output ${output.id} writes the runtime outputBin and must use physical layout`,
+        });
+      }
+    } else if (output.kind === 'perBank') {
+      if (typeof output.outputDir !== 'string' || output.outputDir === '') {
+        throw new AssembleFailureError({
+          success: false,
+          error: `ROM artifact ${artifact.id} output ${output.id} outputDir is required`,
+        });
+      }
+    } else {
+      throw new AssembleFailureError({
+        success: false,
+        error: `ROM artifact ${artifact.id} output ${String((output as { kind?: unknown }).kind)} is not supported`,
+      });
+    }
+
+    assertMultibankExpansionOutputBanks(artifact, output, declaredBanks, bankCount);
+  }
+}
+
+function assertPackedExpansionOutput(
+  artifactId: string,
+  output: Tec1gExpansionRomArtifactPackedOutputConfig,
+  baseDir: string
+): void {
+  if (output.layout !== undefined && output.layout !== 'contiguous' && output.layout !== 'physical') {
+    throw new AssembleFailureError({
+      success: false,
+      error: `ROM artifact ${artifactId} output ${output.id} layout must be contiguous or physical`,
+    });
+  }
+  if (typeof output.outputBin !== 'string' || output.outputBin === '') {
+    throw new AssembleFailureError({
+      success: false,
+      error: `ROM artifact ${artifactId} output ${output.id} outputBin is required`,
+    });
+  }
+  assertBinOutputPath(`${artifactId} output ${output.id}`, resolveWorkspacePath(baseDir, output.outputBin));
+}
+
+function assertMultibankExpansionOutputBanks(
+  artifact: Tec1gMultibankExpansionRomArtifactConfig,
+  output: Tec1gExpansionRomArtifactOutputConfig,
+  declaredBanks: Set<number>,
+  bankCount: number
+): void {
+  if (!Array.isArray(output.banks) || output.banks.length === 0) {
+    throw new AssembleFailureError({
+      success: false,
+      error: `ROM artifact ${artifact.id} output ${output.id} must declare at least one bank`,
+    });
+  }
+
+  const seen = new Set<number>();
+  for (const physicalBank of output.banks) {
+    if (!Number.isInteger(physicalBank) || physicalBank < 0 || physicalBank >= bankCount) {
+      throw new AssembleFailureError({
+        success: false,
+        error: `ROM artifact ${artifact.id} output ${output.id} bank ${physicalBank} is outside bankCount ${bankCount}`,
+      });
+    }
+    if (!declaredBanks.has(physicalBank)) {
+      throw new AssembleFailureError({
+        success: false,
+        error: `ROM artifact ${artifact.id} output ${output.id} references undeclared bank ${physicalBank}`,
+      });
+    }
+    if (seen.has(physicalBank)) {
+      throw new AssembleFailureError({
+        success: false,
+        error: `ROM artifact ${artifact.id} output ${output.id} declares bank ${physicalBank} more than once`,
+      });
+    }
+    seen.add(physicalBank);
+  }
+}
+
 function assertMultibankExpansionArtifactGeometry(
   artifact: Tec1gMultibankExpansionRomArtifactConfig,
   imageSize: number,
@@ -506,6 +739,10 @@ function assertBinOutputPath(artifactId: string, outputBin: string): void {
       error: `ROM artifact ${artifactId} outputBin must use .bin so AZM writes the configured binary`,
     });
   }
+}
+
+function pathsEqual(left: string, right: string): boolean {
+  return path.normalize(left) === path.normalize(right);
 }
 
 function artifactDebugMaps(artifact: Tec1gBuiltRomArtifact): string[] {

@@ -456,6 +456,14 @@ function validateTec1gRomArtifactShape(
     results.push(
       ...validateTec1gExpansionArtifactBanks(artifact.banks, `${fieldName}.banks`, artifact.bankCount)
     );
+    results.push(
+      ...validateTec1gExpansionArtifactOutputs(
+        artifact.outputs,
+        `${fieldName}.outputs`,
+        artifact.banks,
+        artifact.outputBin
+      )
+    );
     if (artifact.role !== 'expansion') {
       results.push(invalidResult(`${fieldName}.banks is only supported for expansion artifacts`));
     }
@@ -479,6 +487,11 @@ function validateTec1gRomArtifactShape(
     if (artifact.debugMap !== undefined) {
       results.push(invalidResult(`${fieldName} source-backed artifacts must not specify debugMap`));
     }
+    if (artifact.outputs !== undefined) {
+      results.push(
+        invalidResult(`${fieldName}.outputs is only supported for multibank expansion artifacts`)
+      );
+    }
   } else if (binaryOnly) {
     results.push(validatePath(artifact.binary, `${fieldName}.binary`, true));
     results.push(validatePath(artifact.debugMap, `${fieldName}.debugMap`));
@@ -490,9 +503,85 @@ function validateTec1gRomArtifactShape(
         invalidResult(`${fieldName} binary-only artifacts must not specify sourceFile or outputBin`)
       );
     }
+    if (artifact.outputs !== undefined) {
+      results.push(
+        invalidResult(`${fieldName}.outputs is only supported for multibank expansion artifacts`)
+      );
+    }
   } else {
     results.push(invalidResult(`${fieldName} must specify sourceFile/outputBin or binary`));
   }
+
+  return results;
+}
+
+function validateTec1gExpansionArtifactOutputs(
+  value: unknown,
+  fieldName: string,
+  bankDeclarations: unknown,
+  runtimeOutputBin: unknown
+): ValidationResult[] {
+  if (value === undefined || value === null) {
+    return [];
+  }
+
+  if (!Array.isArray(value)) {
+    return [invalidResult(`${fieldName} must be an array`)];
+  }
+
+  const declaredBanks = declaredPhysicalBanks(bankDeclarations);
+  const results: ValidationResult[] = [];
+  value.forEach((output, index) => {
+    const outputField = `${fieldName}[${index}]`;
+    const objectResult = validateOptionalObject<Record<string, unknown>>(output, outputField);
+    if (objectResult.result !== undefined) {
+      results.push(objectResult.result);
+      return;
+    }
+
+    const config = objectResult.value;
+    results.push(validateRequiredString(config.id, `${outputField}.id`));
+    if (config.kind !== 'packed' && config.kind !== 'perBank') {
+      results.push(
+        invalidResult(`${outputField}.kind must be "packed" or "perBank", got ${String(config.kind)}`)
+      );
+    }
+
+    if (config.kind === 'packed') {
+      results.push(validatePath(config.outputBin, `${outputField}.outputBin`, true));
+      if (
+        config.layout !== undefined &&
+        config.layout !== 'contiguous' &&
+        config.layout !== 'physical'
+      ) {
+        results.push(
+          invalidResult(
+            `${outputField}.layout must be "contiguous" or "physical", got ${String(config.layout)}`
+          )
+        );
+      }
+      if (
+        typeof config.outputBin === 'string' &&
+        typeof runtimeOutputBin === 'string' &&
+        pathsEquivalent(config.outputBin, runtimeOutputBin) &&
+        config.layout !== 'physical'
+      ) {
+        results.push(
+          invalidResult(`${outputField} writes the runtime outputBin and must use layout "physical"`)
+        );
+      }
+    } else if (config.kind === 'perBank') {
+      results.push(validatePath(config.outputDir, `${outputField}.outputDir`, true));
+    }
+
+    results.push(
+      ...validateTec1gExpansionArtifactOutputBanks(
+        config.banks,
+        `${outputField}.banks`,
+        declaredBanks
+      )
+    );
+  });
 
   return results;
 }
@@ -558,6 +647,70 @@ function validateTec1gExpansionArtifactBanks(
   });
 
   return results;
+}
+
+function validateTec1gExpansionArtifactOutputBanks(
+  value: unknown,
+  fieldName: string,
+  declaredBanks: Set<number>
+): ValidationResult[] {
+  if (!Array.isArray(value)) {
+    return [invalidResult(`${fieldName} must be an array`)];
+  }
+
+  const results: ValidationResult[] = [];
+  if (value.length === 0) {
+    results.push(invalidResult(`${fieldName} must contain at least one bank`));
+  }
+
+  const seen = new Set<number>();
+  value.forEach((bank, index) => {
+    const bankField = `${fieldName}[${index}]`;
+    results.push(validateOptionalInteger(bank, bankField));
+    if (typeof bank !== 'number' || !Number.isInteger(bank)) {
+      return;
+    }
+    if (bank < 0 || bank >= TEC1G_EXPAND_BANK_COUNT) {
+      results.push(
+        invalidResult(`${bankField} must be between 0 and ${TEC1G_EXPAND_BANK_COUNT - 1}`)
+      );
+    }
+    if (!declaredBanks.has(bank)) {
+      results.push(invalidResult(`${bankField} references undeclared bank ${bank}`));
+    }
+    if (seen.has(bank)) {
+      results.push(invalidResult(`${bankField} duplicates bank ${bank}`));
+    }
+    seen.add(bank);
+  });
+
+  return results;
+}
+
+function declaredPhysicalBanks(bankDeclarations: unknown): Set<number> {
+  const declaredBanks = new Set<number>();
+  if (!Array.isArray(bankDeclarations)) {
+    return declaredBanks;
+  }
+
+  for (const bank of bankDeclarations) {
+    const physicalBank =
+      typeof bank === 'object' && bank !== null
+        ? (bank as Record<string, unknown>).physicalBank
+        : undefined;
+    if (
+      typeof physicalBank === 'number' &&
+      Number.isInteger(physicalBank)
+    ) {
+      declaredBanks.add(physicalBank);
+    }
+  }
+
+  return declaredBanks;
+}
+
+function pathsEquivalent(left: string, right: string): boolean {
+  return left.split(/[\\/]+/).join('/') === right.split(/[\\/]+/).join('/');
 }
 
 function validateTec1gRomArtifactRole(value: unknown, fieldName: string): ValidationResult {

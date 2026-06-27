@@ -92,9 +92,10 @@ bankSize      = 0x4000
 ```
 
 The source output is limited to `0x8000-0xBFFF`. For a multibank expansion
-artifact, each bank is assembled independently, padded to 16K, and then packed
-into the configured runtime image. The packed image is a loading/programming
-container; the per-bank D8 maps remain the source-debug identity.
+artifact, each bank is assembled independently and padded to 16K. Output
+recipes then decide how those bank images are packaged: the Debug80 runtime
+image, a legacy 32K expansion image, a monolithic programming image, or copied
+per-bank binaries. The per-bank D8 maps remain the source-debug identity.
 
 This prevents a source file from pretending that banked code is a single linear
 address range. TECM8 multibank source work should declare banks explicitly, with
@@ -119,9 +120,36 @@ Example shape:
       "outputBin": "build/roms/tec1g/tecm8/expansion/bank0.bin",
       "outputDebugMap": "build/roms/tec1g/tecm8/expansion/bank0.d8.json"
     }
+  ],
+  "outputs": [
+    {
+      "id": "debug80-runtime",
+      "kind": "packed",
+      "layout": "physical",
+      "outputBin": "build/roms/tec1g/tecm8/expansion/expansion-144k.bin",
+      "banks": [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    },
+    {
+      "id": "legacy-expansion-32k",
+      "kind": "packed",
+      "layout": "contiguous",
+      "outputBin": "build/roms/tec1g/tecm8/expansion/legacy-expansion-32k.bin",
+      "banks": [0, 1]
+    },
+    {
+      "id": "per-bank-reference",
+      "kind": "perBank",
+      "outputDir": "build/roms/tec1g/tecm8/expansion/banks",
+      "banks": [0, 1, 2, 3, 4, 5, 6, 7, 8]
+    }
   ]
 }
 ```
+
+If `outputs` is omitted, Debug80 keeps the legacy behavior and writes the
+top-level `outputBin` as a physical-layout runtime image. If `outputs` is
+present but no packed output writes the top-level `outputBin`, Debug80 still
+creates that runtime image so launch behavior remains stable.
 
 ## Debug State Fields
 
