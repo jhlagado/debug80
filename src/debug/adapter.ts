@@ -56,6 +56,7 @@ import {
 import { Logger, NullLogger } from '../util/logger';
 import { AdapterRequestController } from './requests/adapter-request-controller';
 import { handleWarmRebuildRequest } from './requests/rebuild-request';
+import { getTec1gExpansionAddressSpace } from './mapping/debug-addressing';
 
 /** DAP thread identifier (single-threaded Z80) */
 const THREAD_ID = 1;
@@ -80,6 +81,13 @@ export class Z80DebugSession extends DebugSession {
       activePlatform: () => this.platformState.active,
       isBreakpointAddress: (address: number | null): boolean =>
         this.requestController.shouldStopAtBreakpoint(address),
+      getAddressSpace: (address: number) =>
+        getTec1gExpansionAddressSpace(address, {
+          activePlatform: this.platformState.active,
+          tec1gRuntime: this.sessionState.tec1gRuntime,
+        }),
+      getBreakpointAddressSpace: (address: number) =>
+        this.requestController.getBreakpointAddressSpace(address),
       handleHaltStop: (): void => this.requestController.handleHaltStop(),
       sendEvent: (event: unknown): void => {
         this.sendEvent(event as DebugProtocol.Event);

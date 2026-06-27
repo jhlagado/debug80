@@ -2,7 +2,12 @@
  * @fileoverview Symbol index helpers for debug session symbol lookup.
  */
 
-import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from '../../mapping/types';
+import {
+  MappingParseResult,
+  SourceAddressSpace,
+  SourceMapAnchor,
+  SourceMapSegment,
+} from '../../mapping/types';
 
 export interface SymbolIndex {
   anchors: SourceMapAnchor[];
@@ -37,23 +42,39 @@ export function buildSymbolIndex(options: {
 
 export function findNearestSymbol(
   address: number,
-  index: Pick<SymbolIndex, 'anchors' | 'lookupAnchors'>
+  index: Pick<SymbolIndex, 'anchors' | 'lookupAnchors'>,
+  addressSpace?: SourceAddressSpace
 ): { name: string; address: number } | null {
   const anchors = index.lookupAnchors.length > 0 ? index.lookupAnchors : index.anchors;
   if (anchors.length === 0) {
     return null;
   }
   let candidate: SourceMapAnchor | undefined;
+  let fallback: SourceMapAnchor | undefined;
   for (const anchor of anchors) {
     if (anchor.address > address) {
       break;
     }
-    candidate = anchor;
+    if (addressSpace === undefined) {
+      candidate = anchor;
+    } else if (addressSpacesEqual(anchor.addressSpace, addressSpace)) {
+      candidate = anchor;
+    } else if (anchor.addressSpace === undefined) {
+      fallback = anchor;
+    }
   }
-  if (!candidate) {
+  const selected = candidate ?? fallback;
+  if (!selected) {
     return null;
   }
-  return { name: candidate.symbol, address: candidate.address };
+  return { name: selected.symbol, address: selected.address };
+}
+
+function addressSpacesEqual(
+  actual: SourceAddressSpace | undefined,
+  expected: SourceAddressSpace
+): boolean {
+  return actual?.kind === expected.kind && actual.physicalBank === expected.physicalBank;
 }
 
 function buildSymbolList(anchors: SourceMapAnchor[]): Array<{ name: string; address: number }> {

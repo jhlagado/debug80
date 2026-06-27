@@ -3,6 +3,7 @@ import type { DebugProtocol } from '@vscode/debugprotocol';
 import type { StopReason } from './session-state';
 import type { RuntimeControlContext } from './runtime-control';
 import { emitDebugSessionStatus } from './session-status';
+import type { SourceAddressSpace } from '../../mapping/types';
 
 export function emitRuntimeRunning(context: RuntimeControlContext): void {
   emitDebugSessionStatus(context.sendEvent, 'running');
@@ -11,12 +12,14 @@ export function emitRuntimeRunning(context: RuntimeControlContext): void {
 export function markRuntimeStopped(
   context: RuntimeControlContext,
   reason: StopReason,
-  breakpointAddress: number | null
+  breakpointAddress: number | null,
+  breakpointAddressSpace?: SourceAddressSpace
 ): void {
   context.setHaltNotified(false);
   context.setRunning(false);
   context.setLastStopReason(reason);
   context.setLastBreakpointAddress(breakpointAddress);
+  context.setLastBreakpointAddressSpace(breakpointAddressSpace);
 }
 
 export function emitRuntimeStopped(context: RuntimeControlContext, reason: string): void {
@@ -28,9 +31,10 @@ export function stopRuntimeAndEmit(
   context: RuntimeControlContext,
   stateReason: StopReason,
   eventReason: string,
-  breakpointAddress: number | null
+  breakpointAddress: number | null,
+  breakpointAddressSpace?: SourceAddressSpace
 ): void {
-  markRuntimeStopped(context, stateReason, breakpointAddress);
+  markRuntimeStopped(context, stateReason, breakpointAddress, breakpointAddressSpace);
   emitRuntimeStopped(context, eventReason);
 }
 

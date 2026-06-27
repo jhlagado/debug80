@@ -3,7 +3,12 @@
  * Provides efficient address-to-source and source-to-address resolution.
  */
 
-import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from './types';
+import {
+  MappingParseResult,
+  SourceAddressSpace,
+  SourceMapAnchor,
+  SourceMapSegment,
+} from './types';
 import { normalizePathForKey } from '../common/path-utils';
 
 let onSegmentWarning: ((message: string) => void) | undefined;
@@ -23,6 +28,11 @@ export interface SourceMapIndex {
   /** Anchors indexed by file path */
   anchorsByFile: Map<string, SourceMapAnchor[]>;
 }
+
+export type ResolvedSourceAddress = {
+  address: number;
+  addressSpace?: SourceAddressSpace;
+};
 
 /**
  * Function type for resolving relative file paths to absolute paths.
@@ -115,52 +125,81 @@ export function buildSourceMapIndex(
  */
 export function findSegmentForAddress(
   index: SourceMapIndex,
-  address: number
+  address: number,
+  addressSpace?: SourceAddressSpace
 ): SourceMapSegment | undefined {
   let best: SourceMapSegment | undefined;
   let bestSpan = Infinity;
+  let fallback: SourceMapSegment | undefined;
+  let fallbackSpan = Infinity;
 
   for (const segment of index.segmentsByAddress) {
     if (address < segment.start) {
       break;
     }
+    const useAsFallback = addressSpace !== undefined && segment.addressSpace === undefined;
+    if (
+      addressSpace !== undefined &&
+      !useAsFallback &&
+      !addressSpacesEqual(segment.addressSpace, addressSpace)
+    ) {
+      continue;
+    }
     if (address >= segment.start && address < segment.end) {
       const span = segment.end - segment.start;
-      const hasValidLine =
-        segment.loc.line !== null && segment.loc.line !== undefined && segment.loc.line >= 1;
-
-      if (best === undefined) {
-        best = segment;
-        bestSpan = span;
-        continue;
-      }
-
-      const bestHasValidLine =
-        best.loc.line !== null && best.loc.line !== undefined && best.loc.line >= 1;
-
-      if (hasValidLine && !bestHasValidLine) {
-        best = segment;
-        bestSpan = span;
-      } else if (hasValidLine === bestHasValidLine && span < bestSpan) {
+      if (useAsFallback) {
+        if (isBetterSegment(segment, span, fallback, fallbackSpan)) {
+          fallback = segment;
+          fallbackSpan = span;
+        }
+      } else if (isBetterSegment(segment, span, best, bestSpan)) {
         best = segment;
         bestSpan = span;
       }
     }
   }
 
-  if (best !== undefined && onSegmentWarning) {
+  const selected = best ?? fallback;
+
+  if (selected !== undefined && onSegmentWarning) {
     const bestHasValidLine =
-      best.loc.line !== null && best.loc.line !== undefined && best.loc.line >= 1;
+      selected.loc.line !== null && selected.loc.line !== undefined && selected.loc.line >= 1;
     if (!bestHasValidLine) {
       onSegmentWarning(
         `findSegmentForAddress(0x${address.toString(16)}): best segment ` +
-          `[0x${best.start.toString(16)}-0x${best.end.toString(16)}] has no valid source line ` +
-          `(line=${best.loc.line ?? 'null'})`
+          `[0x${selected.start.toString(16)}-0x${selected.end.toString(16)}] has no valid source line ` +
+          `(line=${selected.loc.line ?? 'null'})`
       );
     }
   }
 
-  return best;
+  return selected;
+}
+
+function addressSpacesEqual(
+  actual: SourceAddressSpace | undefined,
+  expected: SourceAddressSpace
+): boolean {
+  return actual?.kind === expected.kind && actual.physicalBank === expected.physicalBank;
+}
+
+function isBetterSegment(
+  candidate: SourceMapSegment,
+  candidateSpan: number,
+  current: SourceMapSegment | undefined,
+  currentSpan: number
+): boolean {
+  if (current === undefined) {
+    return true;
+  }
+  const candidateHasValidLine =
+    candidate.loc.line !== null && candidate.loc.line !== undefined && candidate.loc.line >= 1;
+  const currentHasValidLine =
+    current.loc.line !== null && current.loc.line !== undefined && current.loc.line >= 1;
+  return (
+    (candidateHasValidLine && !currentHasValidLine) ||
+    (candidateHasValidLine === currentHasValidLine && candidateSpan < currentSpan)
+  );
 }
 
 /**
@@ -175,7 +214,7 @@ export function findSegmentForAddress(
  * @returns Array of memory addresses (may be empty)
  */
 export function resolveLocation(index: SourceMapIndex, filePath: string, line: number): number[] {
-  return resolveLocationInternal(index, filePath, line, false);
+  return resolveLocationTargets(index, filePath, line, false).map((target) => target.address);
 }
 
 /**
@@ -190,15 +229,23 @@ export function resolveExecutableLocation(
   filePath: string,
   line: number
 ): number[] {
-  return resolveLocationInternal(index, filePath, line, true);
+  return resolveExecutableLocationTargets(index, filePath, line).map((target) => target.address);
 }
 
-function resolveLocationInternal(
+export function resolveExecutableLocationTargets(
+  index: SourceMapIndex,
+  filePath: string,
+  line: number
+): ResolvedSourceAddress[] {
+  return resolveLocationTargets(index, filePath, line, true);
+}
+
+function resolveLocationTargets(
   index: SourceMapIndex,
   filePath: string,
   line: number,
   executableOnly: boolean
-): number[] {
+): ResolvedSourceAddress[] {
   // Normalize path for case-insensitive matching on Windows
   const key = normalizePathForKey(filePath);
   const fileMap = index.segmentsByFileLine.get(key);
@@ -213,7 +260,10 @@ function resolveLocationInternal(
       if (segments && segments.length > 0) {
         const filtered = executableOnly ? segments.filter((seg) => seg.end > seg.start) : segments;
         if (filtered.length > 0) {
-          return filtered.map((seg) => seg.start);
+          return filtered.map((seg) => ({
+            address: seg.start,
+            ...(seg.addressSpace !== undefined ? { addressSpace: seg.addressSpace } : {}),
+          }));
         }
       }
     }
@@ -234,7 +284,14 @@ function resolveLocationInternal(
     }
     candidate = anchor;
   }
-  return candidate ? [candidate.address] : [];
+  return candidate
+    ? [
+        {
+          address: candidate.address,
+          ...(candidate.addressSpace !== undefined ? { addressSpace: candidate.addressSpace } : {}),
+        },
+      ]
+    : [];
 }
 
 /**

@@ -8,12 +8,14 @@
  */
 
 import { findSegmentForAddress, type SourceMapIndex } from '../../mapping/source-map';
+import type { SourceAddressSpace } from '../../mapping/types';
 import type { Cpu } from '../../z80/types';
 
 export type StepCallResolverContext = {
   cpu: Cpu;
   memRead: (addr: number) => number;
   mappingIndex: SourceMapIndex;
+  getAddressSpace?: (address: number) => SourceAddressSpace | undefined;
 };
 
 export function getUnmappedCallReturnAddress(ctx: StepCallResolverContext): number | null {
@@ -96,7 +98,7 @@ export function getUnmappedCallReturnAddress(ctx: StepCallResolverContext): numb
     return null;
   }
 
-  const segment = findSegmentForAddress(ctx.mappingIndex, target);
+  const segment = findSegmentForAddress(ctx.mappingIndex, target, ctx.getAddressSpace?.(target));
   if (segment && segment.loc.file !== null) {
     return null;
   }

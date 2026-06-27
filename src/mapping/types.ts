@@ -20,6 +20,11 @@ export interface SourceLocation {
   line: number | null;
 }
 
+export type SourceAddressSpace = {
+  kind: 'tec1g-expansion';
+  physicalBank: number;
+};
+
 /**
  * Optional assembler context carried by AZM D8 segments.
  */
@@ -44,6 +49,8 @@ export interface SourceMapSegment {
   context: SegmentSourceText;
   /** Confidence level of the mapping */
   confidence: Confidence;
+  /** Optional address-space identity for banked memory. */
+  addressSpace?: SourceAddressSpace;
 }
 
 /**
@@ -58,6 +65,8 @@ export interface SourceMapAnchor {
   file: string;
   /** Line number in the source file */
   line: number;
+  /** Optional address-space identity for banked memory. */
+  addressSpace?: SourceAddressSpace;
 }
 
 /**

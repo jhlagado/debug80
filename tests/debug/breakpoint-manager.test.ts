@@ -193,6 +193,37 @@ describe('BreakpointManager', () => {
     expect(mgr.hasAddress(0x4104)).toBe(true);
   });
 
+  it('keeps TEC-1G expansion breakpoints scoped to their physical bank', () => {
+    const mgr = createBreakpointManager();
+    const bank0Source = path.resolve('/workspace/roms/expansion/bank0.asm');
+    const bank3Source = path.resolve('/workspace/roms/expansion/bank3.asm');
+    const index = createMockIndex(
+      new Map([
+        [bank0Source, new Map([[9, [0x8000]]])],
+        [bank3Source, new Map([[9, [0x8000]]])],
+      ])
+    );
+    const bank0Segments = index.segmentsByFileLine.get(normalizePathForKey(bank0Source))?.get(9);
+    const bank3Segments = index.segmentsByFileLine.get(normalizePathForKey(bank3Source))?.get(9);
+    bank0Segments![0]!.addressSpace = { kind: 'tec1g-expansion', physicalBank: 0 };
+    bank3Segments![0]!.addressSpace = { kind: 'tec1g-expansion', physicalBank: 3 };
+
+    mgr.setPending(bank0Source, [{ line: 9 }]);
+    mgr.rebuild(index);
+
+    expect(mgr.hasAddress(0x8000, { kind: 'tec1g-expansion', physicalBank: 0 })).toBe(true);
+    expect(mgr.hasAddress(0x8000, { kind: 'tec1g-expansion', physicalBank: 3 })).toBe(false);
+    expect(mgr.hasAddress(0x8000)).toBe(false);
+
+    mgr.setPending(bank3Source, [{ line: 9, condition: 'A = 3' }]);
+    mgr.rebuild(index);
+
+    expect(mgr.hasAddress(0x8000, { kind: 'tec1g-expansion', physicalBank: 0 })).toBe(true);
+    expect(mgr.hasAddress(0x8000, { kind: 'tec1g-expansion', physicalBank: 3 })).toBe(true);
+    expect(mgr.getCondition(0x8000, { kind: 'tec1g-expansion', physicalBank: 3 })).toBe('A = 3');
+    expect(mgr.getCondition(0x8000, { kind: 'tec1g-expansion', physicalBank: 0 })).toBeUndefined();
+  });
+
   it('handles missing mapping gracefully', () => {
     const mgr = createBreakpointManager();
     const sourcePath = path.resolve(testBaseDir, 'other.asm');

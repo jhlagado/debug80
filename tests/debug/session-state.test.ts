@@ -56,6 +56,8 @@ describe('session-state', () => {
     state.runState.stepOutMaxInstructions = 88;
     state.restartCaptureAddress = 0x4000;
     state.entryCpuState = createEntryCpuState();
+    state.runState.lastBreakpointAddressSpace = { kind: 'tec1g-expansion', physicalBank: 0 };
+    state.runState.skipBreakpointAddressSpace = { kind: 'tec1g-expansion', physicalBank: 0 };
 
     resetSessionState(state);
 
@@ -65,7 +67,9 @@ describe('session-state', () => {
     expect(state.sourceRoots.length).toBe(0);
     expect(state.baseDir).toBe(process.cwd());
     expect(state.runState.lastBreakpointAddress).toBeNull();
+    expect(state.runState.lastBreakpointAddressSpace).toBeUndefined();
     expect(state.runState.skipBreakpointOnce).toBeNull();
+    expect(state.runState.skipBreakpointAddressSpace).toBeUndefined();
     expect(state.runState.pauseRequested).toBe(false);
     expect(state.runState.stepOverMaxInstructions).toBe(0);
     expect(state.runState.stepOutMaxInstructions).toBe(0);

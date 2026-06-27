@@ -248,4 +248,72 @@ describe('source-map', () => {
     assert.equal(seg.loc.line, 7);
     assert.equal(seg.end - seg.start, 2);
   });
+
+  it('filters overlapping banked mappings by address space', () => {
+    const mapping: MappingParseResult = {
+      segments: [
+        {
+          start: 0x8000,
+          end: 0x8002,
+          loc: { file: 'bank3.asm', line: 9 },
+          context: { line: 1, text: 'bank3' },
+          confidence: 'HIGH',
+          addressSpace: { kind: 'tec1g-expansion', physicalBank: 3 },
+        },
+        {
+          start: 0x8000,
+          end: 0x8002,
+          loc: { file: 'bank0.asm', line: 9 },
+          context: { line: 1, text: 'bank0' },
+          confidence: 'HIGH',
+          addressSpace: { kind: 'tec1g-expansion', physicalBank: 0 },
+        },
+      ],
+      anchors: [],
+    };
+    const idx = buildSourceMapIndex(mapping, (file) => `/test/${file}`);
+
+    const bank0 = findSegmentForAddress(idx, 0x8000, {
+      kind: 'tec1g-expansion',
+      physicalBank: 0,
+    });
+    const bank3 = findSegmentForAddress(idx, 0x8000, {
+      kind: 'tec1g-expansion',
+      physicalBank: 3,
+    });
+
+    assert.equal(bank0?.loc.file, 'bank0.asm');
+    assert.equal(bank3?.loc.file, 'bank3.asm');
+  });
+
+  it('falls back to unbanked mappings when an address-space lookup has no matching bank', () => {
+    const mapping: MappingParseResult = {
+      segments: [
+        {
+          start: 0x8000,
+          end: 0x8002,
+          loc: { file: 'bank3.asm', line: 9 },
+          context: { line: 1, text: 'bank3' },
+          confidence: 'HIGH',
+          addressSpace: { kind: 'tec1g-expansion', physicalBank: 3 },
+        },
+        {
+          start: 0x8000,
+          end: 0x8002,
+          loc: { file: 'legacy.asm', line: 12 },
+          context: { line: 1, text: 'legacy' },
+          confidence: 'HIGH',
+        },
+      ],
+      anchors: [],
+    };
+    const idx = buildSourceMapIndex(mapping, (file) => `/test/${file}`);
+
+    const segment = findSegmentForAddress(idx, 0x8000, {
+      kind: 'tec1g-expansion',
+      physicalBank: 0,
+    });
+
+    assert.equal(segment?.loc.file, 'legacy.asm');
+  });
 });

@@ -5,19 +5,19 @@
 import { DebugProtocol } from '@vscode/debugprotocol';
 import * as path from 'path';
 import type { SourceMapIndex } from '../../mapping/source-map';
-import type { SourceMapSegment } from '../../mapping/types';
+import type { SourceAddressSpace, SourceMapSegment } from '../../mapping/types';
 import { normalizePathForKey } from './path-utils';
 
 type SourceBreakpointResolution = {
-  addresses: number[];
+  addresses: BreakpointAddress[];
   verified: boolean;
   lineDelta: number;
 };
 
 export class BreakpointManager {
   private readonly pendingBySource = new Map<string, DebugProtocol.SourceBreakpoint[]>();
-  private readonly active = new Set<number>();
-  private readonly conditions = new Map<number, string>();
+  private readonly active = new Set<string>();
+  private readonly conditions = new Map<string, string>();
 
   reset(): void {
     this.pendingBySource.clear();
@@ -56,20 +56,21 @@ export class BreakpointManager {
   rebuild(mappingIndex: SourceMapIndex | undefined): void {
     this.active.clear();
     this.conditions.clear();
-    const conditionLineDeltas = new Map<number, number>();
+    const conditionLineDeltas = new Map<string, number>();
 
     for (const [source, bps] of this.pendingBySource.entries()) {
       for (const bp of bps) {
         const line = bp.line ?? 0;
         const resolution = this.resolveBreakpointForSource(mappingIndex, source, line);
         for (const address of resolution.addresses) {
-          this.active.add(address);
+          const key = breakpointKey(address.address, address.addressSpace);
+          this.active.add(key);
           if (bp.condition !== undefined && bp.condition.trim().length > 0) {
-            const existingDelta = conditionLineDeltas.get(address) ?? Number.POSITIVE_INFINITY;
+            const existingDelta = conditionLineDeltas.get(key) ?? Number.POSITIVE_INFINITY;
             const nextDelta = Math.abs(resolution.lineDelta);
             if (nextDelta <= existingDelta) {
-              this.conditions.set(address, bp.condition.trim());
-              conditionLineDeltas.set(address, nextDelta);
+              this.conditions.set(key, bp.condition.trim());
+              conditionLineDeltas.set(key, nextDelta);
             }
           }
         }
@@ -77,12 +78,12 @@ export class BreakpointManager {
     }
   }
 
-  hasAddress(address: number): boolean {
-    return this.active.has(address);
+  hasAddress(address: number, addressSpace?: SourceAddressSpace): boolean {
+    return this.active.has(breakpointKey(address, addressSpace));
   }
 
-  getCondition(address: number): string | undefined {
-    return this.conditions.get(address);
+  getCondition(address: number, addressSpace?: SourceAddressSpace): string | undefined {
+    return this.conditions.get(breakpointKey(address, addressSpace));
   }
 
   private resolveBreakpointForSource(
@@ -105,7 +106,7 @@ export class BreakpointManager {
     mappingIndex: SourceMapIndex | undefined,
     sourcePath: string,
     line: number
-  ): { addresses: number[]; lineDelta: number } {
+  ): { addresses: BreakpointAddress[]; lineDelta: number } {
     if (!mappingIndex) {
       return { addresses: [], lineDelta: Number.POSITIVE_INFINITY };
     }
@@ -120,7 +121,7 @@ export class BreakpointManager {
     mappingIndex: SourceMapIndex,
     sourcePath: string,
     line: number
-  ): { addresses: number[]; lineDelta: number } {
+  ): { addresses: BreakpointAddress[]; lineDelta: number } {
     const key = normalizePathForKey(sourcePath);
     const fileMap = mappingIndex.segmentsByFileLine.get(key);
     return fileMap !== undefined
@@ -132,7 +133,7 @@ export class BreakpointManager {
     mappingIndex: SourceMapIndex,
     sourcePath: string,
     line: number
-  ): { addresses: number[]; lineDelta: number } {
+  ): { addresses: BreakpointAddress[]; lineDelta: number } {
     const want = path.basename(sourcePath).toLowerCase();
     for (const [fileKey, fileMap] of mappingIndex.segmentsByFileLine.entries()) {
       if (path.basename(fileKey).toLowerCase() !== want) {
@@ -147,7 +148,7 @@ export class BreakpointManager {
   }
 
   private resolveInFileLineMap(fileMap: Map<number, SourceMapSegment[]>, line: number): {
-    addresses: number[];
+    addresses: BreakpointAddress[];
     lineDelta: number;
   } {
     const lineSlop = [0, -1, 1, -2, 2, -3, 3, -4, 4];
@@ -160,11 +161,29 @@ export class BreakpointManager {
       if (segments && segments.length > 0) {
         const executable = segments.filter((seg) => seg.end > seg.start);
         if (executable.length > 0) {
-          return { addresses: executable.map((seg) => seg.start), lineDelta: delta };
+          return {
+            addresses: executable.map((seg) => ({
+              address: seg.start,
+              ...(seg.addressSpace !== undefined ? { addressSpace: seg.addressSpace } : {}),
+            })),
+            lineDelta: delta,
+          };
         }
       }
     }
     return { addresses: [], lineDelta: Number.POSITIVE_INFINITY };
   }
+}
 
+type BreakpointAddress = {
+  address: number;
+  addressSpace?: SourceAddressSpace;
+};
+
+function breakpointKey(address: number, addressSpace: SourceAddressSpace | undefined): string {
+  const masked = address & 0xffff;
+  if (addressSpace === undefined) {
+    return `addr:${masked}`;
+  }
+  return `${addressSpace.kind}:${addressSpace.physicalBank}:addr:${masked}`;
 }

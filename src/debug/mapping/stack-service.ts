@@ -4,7 +4,7 @@
 
 import * as path from 'path';
 import { StackFrame, Source } from '@vscode/debugadapter';
-import type { SourceMapAnchor } from '../../mapping/types';
+import type { SourceAddressSpace, SourceMapAnchor } from '../../mapping/types';
 import { findAnchorLine, findSegmentForAddress, SourceMapIndex } from '../../mapping/source-map';
 import { findNearestSymbol } from './symbol-service';
 import { canonicalizeDebuggerSourcePath } from './path-utils';
@@ -19,6 +19,7 @@ export interface SourceLookupOptions {
   readMemory?: (address: number) => number;
   resolveMappedPath: (filePath: string) => string | undefined;
   getAddressAliases?: (address: number) => number[];
+  getAddressSpace?: (address: number) => SourceAddressSpace | undefined;
 }
 
 export function buildStackFrames(
@@ -45,11 +46,16 @@ function resolveFrameName(pc: number, options: SourceLookupOptions): string {
 
   const addresses = options.getAddressAliases?.(pc) ?? [pc];
   for (const address of addresses) {
-    const symbol = findNearestSymbol(address & 0xffff, { anchors, lookupAnchors });
+    const masked = address & 0xffff;
+    const symbol = findNearestSymbol(
+      masked,
+      { anchors, lookupAnchors },
+      options.getAddressSpace?.(masked)
+    );
     if (symbol === null) {
       continue;
     }
-    const offset = (address & 0xffff) - symbol.address;
+    const offset = masked - symbol.address;
     return offset > 0 ? `${symbol.name}+${offset}` : symbol.name;
   }
   return 'main';
@@ -145,7 +151,7 @@ function resolveSourceForAddressInternal(
     diagLog(`  [internal] no mappingIndex`);
     return null;
   }
-  const segment = findSegmentForAddress(index, address);
+  const segment = findSegmentForAddress(index, address, options.getAddressSpace?.(address));
   if (segment === undefined) {
     diagLog(`  [internal] findSegmentForAddress → no segment`);
     return null;

@@ -4,7 +4,12 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from '../../mapping/types';
+import {
+  MappingParseResult,
+  SourceAddressSpace,
+  SourceMapAnchor,
+  SourceMapSegment,
+} from '../../mapping/types';
 import {
   propagateMisassignedIncludeSegments,
   remapMisassignedIncludeAnchors,
@@ -70,9 +75,18 @@ export function buildMappingFromDebugMap(options: {
   sourceFile?: string;
   mapArgs: { artifactBase?: string; outputDir?: string };
   auxiliaryDebugMaps?: string[];
+  debugMapAddressSpaces?: Record<string, SourceAddressSpace>;
   service: MappingServiceOptions;
 }): MappingBuildResult {
-  const { hexPath, asmPath, sourceFile, mapArgs, auxiliaryDebugMaps = [], service } = options;
+  const {
+    hexPath,
+    asmPath,
+    sourceFile,
+    mapArgs,
+    auxiliaryDebugMaps = [],
+    debugMapAddressSpaces = {},
+    service,
+  } = options;
   void sourceFile;
 
   const mapPath = service.resolveDebugMapPath(mapArgs, service.baseDir, asmPath, hexPath);
@@ -125,10 +139,13 @@ export function buildMappingFromDebugMap(options: {
     service.logger.info(
       `Debug80: Source map loaded: ${formatMapDisplayPath(auxiliaryPath, service)} (${getDebugMapGeneratorLabel(auxiliaryMap)}, platform ROM).`
     );
-    const auxiliaryMapping = buildMappingFromD8DebugMap(
+    const auxiliaryMapping = withAddressSpace(
+      buildMappingFromD8DebugMap(
       resolveAuxiliaryDebugMapFiles(auxiliaryMap, auxiliaryPath, (file) =>
         service.resolveMappedPath(file)
       )
+      ),
+      debugMapAddressSpaces[path.normalize(auxiliaryPath)]
     );
     mapping.segments.push(...auxiliaryMapping.segments);
     mapping.anchors.push(...auxiliaryMapping.anchors);
@@ -167,6 +184,19 @@ export function buildMappingFromDebugMap(options: {
   );
 
   return { mapping, index, missingSources: [] };
+}
+
+function withAddressSpace(
+  mapping: MappingParseResult,
+  addressSpace: SourceAddressSpace | undefined
+): MappingParseResult {
+  if (addressSpace === undefined) {
+    return mapping;
+  }
+  return {
+    segments: mapping.segments.map((segment) => ({ ...segment, addressSpace })),
+    anchors: mapping.anchors.map((anchor) => ({ ...anchor, addressSpace })),
+  };
 }
 
 function formatMapDisplayPath(mapPath: string, service: MappingServiceOptions): string {

@@ -62,6 +62,10 @@ function createController() {
       setSkipBreakpointOnce: (address: number | null) => {
         sessionState.runState.skipBreakpointOnce = address;
       },
+      getSkipBreakpointAddressSpace: () => sessionState.runState.skipBreakpointAddressSpace,
+      setSkipBreakpointAddressSpace: (addressSpace) => {
+        sessionState.runState.skipBreakpointAddressSpace = addressSpace;
+      },
       getHaltNotified: () => sessionState.runState.haltNotified,
       setHaltNotified: (value: boolean) => {
         sessionState.runState.haltNotified = value;
@@ -72,6 +76,11 @@ function createController() {
       setLastBreakpointAddress: (address: number | null) => {
         sessionState.runState.lastBreakpointAddress = address;
       },
+      setLastBreakpointAddressSpace: (addressSpace) => {
+        sessionState.runState.lastBreakpointAddressSpace = addressSpace;
+      },
+      getAddressSpace: () => undefined,
+      getBreakpointAddressSpace: () => undefined,
       isBreakpointAddress: () => false,
       handleHaltStop: () => undefined,
       sendEvent: () => undefined,
@@ -186,6 +195,62 @@ describe('adapter-request-controller conditional breakpoints', () => {
     expect(controller.shouldStopAtBreakpoint(0x1234)).toBe(true);
   });
 
+  it('matches TEC-1G expansion breakpoints against the active physical bank', () => {
+    const { controller, deps, sessionState } = createController();
+    deps.platformState.active = 'tec1g';
+    sessionState.tec1gRuntime = {
+      state: {
+        system: {
+          expandEnabled: true,
+          memoryExpansionPhysicalBank: 0,
+        },
+      },
+    } as never;
+    deps.breakpointManager.hasAddress.mockImplementation(
+      (_address: number, addressSpace?: { kind: string; physicalBank: number }) =>
+        addressSpace?.kind === 'tec1g-expansion' && addressSpace.physicalBank === 0
+    );
+
+    expect(controller.shouldStopAtBreakpoint(0x8000)).toBe(true);
+
+    sessionState.tec1gRuntime.state.system.memoryExpansionPhysicalBank = 3;
+
+    expect(controller.shouldStopAtBreakpoint(0x8000)).toBe(false);
+  });
+
+  it('sets breakpoint skip after continuing from a TEC-1G expansion bank breakpoint', () => {
+    const runUntilStopSpy = vi
+      .spyOn(runtimeControl, 'runUntilStopAsync')
+      .mockResolvedValue(undefined);
+    const { controller, deps, sessionState } = createController();
+    deps.platformState.active = 'tec1g';
+    sessionState.runtime = createTestRuntime();
+    sessionState.runtime.cpu.pc = 0x8000;
+    sessionState.runState.lastStopReason = 'breakpoint';
+    sessionState.runState.lastBreakpointAddress = 0x8000;
+    sessionState.runState.lastBreakpointAddressSpace = {
+      kind: 'tec1g-expansion',
+      physicalBank: 0,
+    };
+    sessionState.tec1gRuntime = {
+      state: {
+        system: {
+          expandEnabled: true,
+          memoryExpansionPhysicalBank: 0,
+        },
+      },
+    } as never;
+    deps.breakpointManager.hasAddress.mockImplementation(
+      (_address: number, addressSpace?: { kind: string; physicalBank: number }) =>
+        addressSpace?.kind === 'tec1g-expansion' && addressSpace.physicalBank === 0
+    );
+
+    controller.continueRequest({} as never, {} as never);
+
+    expect(sessionState.runState.skipBreakpointOnce).toBe(0x8000);
+    expect(runUntilStopSpy).toHaveBeenCalledTimes(1);
+  });
+
   it('evaluates breakpoint conditions with the watch expression language', () => {
     const fixture = createController();
     const { controller, deps, sessionState } = fixture;
@@ -291,7 +356,7 @@ describe('AdapterRequestController single-step flow', () => {
 
     expect(deps.sendResponse).toHaveBeenCalledTimes(1);
     expect(runUntilStopSpy).toHaveBeenCalledWith(expect.anything(), {
-      extraBreakpoints: new Set([0x3456]),
+      extraBreakpoints: [{ address: 0x3456 }],
       maxInstructions: 123,
       limitLabel: 'step over',
     });
@@ -347,6 +412,7 @@ describe('AdapterRequestController Run to Cursor flow', () => {
                   loc: { file: 'src/main.z80', line: 8 },
                   context: { line: 20, text: 'CALL TEST' },
                   confidence: 'HIGH',
+                  addressSpace: { kind: 'tec1g-expansion', physicalBank: 0 },
                 },
               ],
             ],
@@ -370,7 +436,9 @@ describe('AdapterRequestController Run to Cursor flow', () => {
 
     expect(deps.sendResponse).toHaveBeenCalledTimes(2);
     expect(runUntilStopSpy).toHaveBeenCalledWith(expect.anything(), {
-      extraBreakpoints: new Set([0x4100]),
+      extraBreakpoints: [
+        { address: 0x4100, addressSpace: { kind: 'tec1g-expansion', physicalBank: 0 } },
+      ],
       limitLabel: 'run to cursor',
     });
   });
@@ -406,7 +474,7 @@ describe('AdapterRequestController Run to Cursor flow', () => {
 
     expect(deps.sendResponse).toHaveBeenCalledTimes(1);
     expect(runUntilStopSpy).toHaveBeenCalledWith(expect.anything(), {
-      extraBreakpoints: new Set([0x4100]),
+      extraBreakpoints: [{ address: 0x4100 }],
       limitLabel: 'stack frame return',
     });
   });

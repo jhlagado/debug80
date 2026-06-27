@@ -233,7 +233,9 @@ export async function handleWarmRebuildRequest(
     deps.sessionState.runState.callDepth = 0;
     deps.sessionState.runState.haltNotified = false;
     deps.sessionState.runState.lastBreakpointAddress = null;
+    deps.sessionState.runState.lastBreakpointAddressSpace = undefined;
     deps.sessionState.runState.skipBreakpointOnce = null;
+    deps.sessionState.runState.skipBreakpointAddressSpace = undefined;
     deps.sourceState.lookupAnchors = symbolIndex.lookupAnchors;
 
     emitMainSource((event) => deps.sendEvent(event as DebugProtocol.Event), deps.sourceState.file);

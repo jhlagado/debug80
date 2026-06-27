@@ -13,6 +13,7 @@ import type {
   RuntimeControlCapabilities,
   RuntimeControlContext,
 } from '../../src/debug/session/runtime-control';
+import type { SourceAddressSpace } from '../../src/mapping/types';
 import type { StepInfo } from '../../src/z80/types';
 import type { Z80Runtime } from '../../src/z80/runtime';
 import { NullLogger } from '../../src/util/logger';
@@ -22,6 +23,8 @@ const makeContext = (options?: {
   pc?: number;
   runtimeStep?: (trace: StepInfo) => { halted: boolean; cycles?: number };
   isBreakpointAddress?: (address: number | null) => boolean;
+  getAddressSpace?: (address: number) => SourceAddressSpace | undefined;
+  getBreakpointAddressSpace?: (address: number) => SourceAddressSpace | undefined;
   runtimeCapabilities?: RuntimeControlCapabilities;
   runtimeCapabilitiesFactory?: () => RuntimeControlCapabilities | undefined;
 }): RuntimeControlContext => {
@@ -29,6 +32,7 @@ const makeContext = (options?: {
   let pauseRequested = options?.pauseRequested ?? false;
   let running = false;
   let skipBreakpointOnce: number | null = null;
+  let skipBreakpointAddressSpace: SourceAddressSpace | undefined;
   let haltNotified = false;
   const events: unknown[] = [];
   const pc = options?.pc ?? 0x1000;
@@ -64,12 +68,19 @@ const makeContext = (options?: {
     setSkipBreakpointOnce: (value) => {
       skipBreakpointOnce = value;
     },
+    getSkipBreakpointAddressSpace: () => skipBreakpointAddressSpace,
+    setSkipBreakpointAddressSpace: (value) => {
+      skipBreakpointAddressSpace = value;
+    },
     getHaltNotified: () => haltNotified,
     setHaltNotified: (value) => {
       haltNotified = value;
     },
     setLastStopReason: () => {},
     setLastBreakpointAddress: () => {},
+    setLastBreakpointAddressSpace: () => {},
+    getAddressSpace: (address) => options?.getAddressSpace?.(address),
+    getBreakpointAddressSpace: (address) => options?.getBreakpointAddressSpace?.(address),
     isBreakpointAddress: (address) => options?.isBreakpointAddress?.(address) ?? false,
     handleHaltStop: () => {
       events.push('halt');
@@ -149,6 +160,33 @@ describe('runtime-control', () => {
     context.setSkipBreakpointOnce(0x2000);
     await runUntilStopAsync(context);
     expect(context.getSkipBreakpointOnce()).toBeNull();
+  });
+
+  it('does not skip a banked breakpoint after the active bank changes', async () => {
+    const bank0 = { kind: 'tec1g-expansion' as const, physicalBank: 0 };
+    const bank3 = { kind: 'tec1g-expansion' as const, physicalBank: 3 };
+    const context = makeContext({
+      pc: 0x8000,
+      getAddressSpace: () => bank3,
+      isBreakpointAddress: () => true,
+      runtimeStep: (trace) => {
+        trace.kind = 'nop';
+        trace.taken = true;
+        return { halted: true, cycles: 2 };
+      },
+    });
+    let stopAddress: number | null | undefined;
+    context.setLastBreakpointAddress = (address) => {
+      stopAddress = address;
+    };
+    context.setSkipBreakpointOnce(0x8000);
+    context.setSkipBreakpointAddressSpace(bank0);
+
+    await runUntilStopAsync(context);
+
+    expect(context.getSkipBreakpointOnce()).toBe(0x8000);
+    expect(context.getSkipBreakpointAddressSpace()).toEqual(bank0);
+    expect(stopAddress).toBe(0x8000);
   });
 
   it('preserves step-out skip-breakpoint cycle behavior', async () => {
@@ -241,9 +279,33 @@ describe('runtime-control', () => {
     };
     const events: unknown[] = [];
     context.sendEvent = (event) => events.push(event);
-    await runUntilStopAsync(context, { extraBreakpoints: new Set([0x4000]) });
+    await runUntilStopAsync(context, { extraBreakpoints: [{ address: 0x4000 }] });
     expect(stopReason).toBe('step');
     expect(events.some((e) => e instanceof StoppedEvent)).toBe(true);
+  });
+
+  it('does not stop on a scoped extra breakpoint in a different bank', async () => {
+    let stopReason: string | undefined;
+    const context = makeContext({
+      pc: 0x8000,
+      getAddressSpace: () => ({ kind: 'tec1g-expansion', physicalBank: 3 }),
+      runtimeStep: (trace) => {
+        trace.kind = 'nop';
+        trace.taken = true;
+        return { halted: true, cycles: 1 };
+      },
+    });
+    context.setLastStopReason = (reason) => {
+      stopReason = reason;
+    };
+
+    await runUntilStopAsync(context, {
+      extraBreakpoints: [
+        { address: 0x8000, addressSpace: { kind: 'tec1g-expansion', physicalBank: 0 } },
+      ],
+    });
+
+    expect(stopReason).not.toBe('step');
   });
 
   it('stops after hitting max instructions', async () => {

@@ -3,7 +3,7 @@
  */
 
 import type { HexProgram } from '../../z80/loaders';
-import type { MappingParseResult, SourceMapAnchor } from '../../mapping/types';
+import type { MappingParseResult, SourceAddressSpace, SourceMapAnchor } from '../../mapping/types';
 import type { D8Symbol } from '../../mapping/d8-map';
 import type { SourceMapIndex } from '../../mapping/source-map';
 import type { CpuStateSnapshot, Z80Runtime } from '../../z80/runtime';
@@ -121,7 +121,9 @@ export interface RunState {
   haltNotified: boolean;
   lastStopReason: StopReason | undefined;
   lastBreakpointAddress: number | null;
+  lastBreakpointAddressSpace: SourceAddressSpace | undefined;
   skipBreakpointOnce: number | null;
+  skipBreakpointAddressSpace: SourceAddressSpace | undefined;
   callDepth: number;
   stepOverMaxInstructions: number;
   stepOutMaxInstructions: number;
@@ -174,7 +176,9 @@ export function createSessionState(): SessionStateShape {
       haltNotified: false,
       lastStopReason: undefined as StopReason | undefined,
       lastBreakpointAddress: null as number | null,
+      lastBreakpointAddressSpace: undefined as SourceAddressSpace | undefined,
       skipBreakpointOnce: null as number | null,
+      skipBreakpointAddressSpace: undefined as SourceAddressSpace | undefined,
       callDepth: 0,
       stepOverMaxInstructions: 0,
       stepOutMaxInstructions: 0,
@@ -368,7 +372,9 @@ export function resetSessionState(target: SessionStateShape): void {
   target.runState.haltNotified = next.runState.haltNotified;
   target.runState.lastStopReason = next.runState.lastStopReason;
   target.runState.lastBreakpointAddress = next.runState.lastBreakpointAddress;
+  target.runState.lastBreakpointAddressSpace = next.runState.lastBreakpointAddressSpace;
   target.runState.skipBreakpointOnce = next.runState.skipBreakpointOnce;
+  target.runState.skipBreakpointAddressSpace = next.runState.skipBreakpointAddressSpace;
   target.runState.callDepth = next.runState.callDepth;
   target.runState.stepOverMaxInstructions = next.runState.stepOverMaxInstructions;
   target.runState.stepOutMaxInstructions = next.runState.stepOutMaxInstructions;

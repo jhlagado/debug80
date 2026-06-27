@@ -66,6 +66,7 @@ export function buildLaunchSourceState(
     asmPath,
     sourceRoots: preSourceRoots,
     debugMaps: args.debugMaps ?? [],
+    debugMapAddressSpaces: args.debugMapAddressSpaces ?? {},
   }));
 
   const symbolIndex = buildSymbolIndex({

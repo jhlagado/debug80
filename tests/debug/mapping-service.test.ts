@@ -335,6 +335,30 @@ describe('mapping-service', () => {
     expect(resolveLocation(result.index, monitorSource, 2)).toEqual([0x2000]);
   });
 
+  it('annotates multibank expansion auxiliary maps with physical bank address space', () => {
+    const { dir, hexPath, asmPath, mapPath, logs } = makeBuildMapProject();
+    const bank0Source = path.join(dir, 'roms', 'expansion', 'bank0.asm');
+    const bank0MapPath = path.join(dir, 'build', 'roms', 'expansion', 'bank0.d8.json');
+
+    writeFile(bank0Source, 'BANK0:\n  NOP\n');
+    writeFile(bank0MapPath, JSON.stringify(nativeMapFor(bank0Source, 2), null, 2));
+
+    const result = buildMappingFromDebugMap({
+      hexPath,
+      asmPath,
+      sourceFile: asmPath,
+      mapArgs: {},
+      auxiliaryDebugMaps: [bank0MapPath],
+      debugMapAddressSpaces: {
+        [path.normalize(bank0MapPath)]: { kind: 'tec1g-expansion', physicalBank: 0 },
+      },
+      service: makeService(dir, mapPath, logs),
+    });
+
+    const bankSegment = result.mapping.segments.find((seg) => seg.loc.file === bank0Source);
+    expect(bankSegment?.addressSpace).toEqual({ kind: 'tec1g-expansion', physicalBank: 0 });
+  });
+
   it('ignores non-native auxiliary source maps from explicit platform ROM paths', () => {
     const { dir, hexPath, asmPath, mapPath, logs } = makeBuildMapProject();
     const auxiliaryMapPath = path.join(dir, 'bundle', 'mon3', 'mon3.d8.json');

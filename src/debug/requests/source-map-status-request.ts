@@ -4,6 +4,7 @@
 
 import * as fs from 'fs';
 import { findSegmentForAddress } from '../../mapping/source-map';
+import { getTec1gExpansionAddressSpace } from '../mapping/debug-addressing';
 import { resolveArtifacts, resolveDebugMapPath, resolveMappedPath } from '../mapping/path-resolver';
 import type { SessionStateShape } from '../session/session-state';
 
@@ -65,7 +66,14 @@ export function buildSourceMapStatus(sessionState: SessionStateShape): SourceMap
       mapsToSource: false,
     };
     if (mappingIndex !== undefined) {
-      const segment = findSegmentForAddress(mappingIndex, pc);
+      const segment = findSegmentForAddress(
+        mappingIndex,
+        pc,
+        getTec1gExpansionAddressSpace(pc, {
+          activePlatform: launchArgs?.platform ?? '',
+          tec1gRuntime: sessionState.tec1gRuntime,
+        })
+      );
       const line = segment?.loc.line;
       if (
         segment?.loc.file !== null &&

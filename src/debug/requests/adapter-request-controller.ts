@@ -7,7 +7,11 @@ import type { DebugProtocol } from '@vscode/debugprotocol';
 import type { StepInfo } from '../../z80/types';
 import type { BreakpointManager } from '../mapping/breakpoint-manager';
 import type { CommandRouter } from './command-router';
-import { getShadowAlias, isBreakpointAddress } from '../mapping/debug-addressing';
+import {
+  getShadowAlias,
+  getTec1gExpansionAddressSpace,
+  isBreakpointAddress,
+} from '../mapping/debug-addressing';
 import { buildStackFrames, flushDiagLog, isDiagnosticsEnabled } from '../mapping/stack-service';
 import type { SourceStateManager } from '../mapping/source-state-manager';
 import {
@@ -16,13 +20,19 @@ import {
   runUntilReturnAsync,
   runUntilStopAsync,
   type RuntimeControlContext,
+  type RuntimeStopTarget,
 } from '../session/runtime-control';
 import { normalizeSourcePath, resolveMappedPath } from '../mapping/path-resolver';
-import { findSegmentForAddress, resolveExecutableLocation } from '../../mapping/source-map';
+import {
+  findSegmentForAddress,
+  resolveExecutableLocationTargets,
+  type ResolvedSourceAddress,
+} from '../../mapping/source-map';
 import { getUnmappedCallReturnAddress } from '../session/step-call-resolver';
 import type { VariableService } from './variable-service';
 import type { SessionStateShape } from '../session/session-state';
 import type { PlatformRegistry } from '../session/platform-registry';
+import type { SourceAddressSpace } from '../../mapping/types';
 import { ADDR_MASK } from '../../platforms/tec-common';
 import { tryWriteRegisterByKey, writableRegisterKeyFromVariableName } from './register-request';
 import { buildEvaluateResponseBody, evaluateWatchExpressionTruthy } from './watch-expression';
@@ -62,7 +72,7 @@ function readFrameId(args: unknown): number | undefined {
  * Handles the adapter's request/control flow so the session class can stay small.
  */
 export class AdapterRequestController {
-  private readonly gotoTargets = new Map<number, number>();
+  private readonly gotoTargets = new Map<number, RuntimeStopTarget>();
   private readonly reportedInvalidBreakpointConditions = new Set<string>();
   private nextGotoTargetId = 1;
 
@@ -203,14 +213,18 @@ export class AdapterRequestController {
     }
 
     const normalized = normalizeSourcePath(sourcePath, this.deps.sessionState.baseDir);
-    const direct = resolveExecutableLocation(mappingIndex, normalized, line);
+    const direct = resolveExecutableLocationTargets(mappingIndex, normalized, line);
     const addresses = direct.length > 0 ? direct : this.resolveGotoByBasename(normalized, line);
-    const targets = addresses.map((address) => {
+    const targets = addresses.map((target) => {
       const id = this.nextGotoTargetId++;
-      this.gotoTargets.set(id, address & ADDR_MASK);
+      const address = target.address & ADDR_MASK;
+      this.gotoTargets.set(id, {
+        address,
+        ...(target.addressSpace !== undefined ? { addressSpace: target.addressSpace } : {}),
+      });
       return {
         id,
-        label: `$${(address & ADDR_MASK).toString(16).toUpperCase().padStart(4, '0')}`,
+        label: `$${address.toString(16).toUpperCase().padStart(4, '0')}`,
         line,
       };
     });
@@ -222,8 +236,8 @@ export class AdapterRequestController {
     response: DebugProtocol.GotoResponse,
     args: DebugProtocol.GotoArguments
   ): void {
-    const address = this.gotoTargets.get(args.targetId);
-    if (address === undefined) {
+    const target = this.gotoTargets.get(args.targetId);
+    if (target === undefined) {
       this.deps.sendErrorResponse(response, 1, 'Debug80: Run to Cursor target is unavailable.');
       return;
     }
@@ -235,7 +249,7 @@ export class AdapterRequestController {
     this.deps.sendResponse(response);
     this.deps.sessionState.runState.pauseRequested = false;
     this.updateBreakpointSkip();
-    this.runUntilStop(new Set([address]), undefined, 'run to cursor');
+    this.runUntilStop([target], undefined, 'run to cursor');
   }
 
   public stackTraceRequest(
@@ -275,6 +289,7 @@ export class AdapterRequestController {
         }
         return aliases;
       },
+      getAddressSpace: (address) => this.getExpansionAddressSpace(address & ADDR_MASK),
     });
 
     if (isDiagnosticsEnabled()) {
@@ -437,13 +452,14 @@ export class AdapterRequestController {
     this.deps.sendResponse(response);
     this.deps.sessionState.runState.pauseRequested = false;
     this.updateBreakpointSkip();
-    this.runUntilStop(new Set([returnAddress]), undefined, 'stack frame return');
+    this.runUntilStop([{ address: returnAddress & ADDR_MASK }], undefined, 'stack frame return');
     return true;
   }
 
   public isBreakpointAddress(address: number | null): boolean {
     return isBreakpointAddress(address, {
-      hasBreakpoint: (addr) => this.deps.breakpointManager.hasAddress(addr),
+      hasBreakpoint: (addr, addressSpace) =>
+        this.deps.breakpointManager.hasAddress(addr, addressSpace),
       activePlatform: this.deps.platformState.active,
       tec1gRuntime: this.deps.sessionState.tec1gRuntime,
     });
@@ -457,7 +473,10 @@ export class AdapterRequestController {
     if (matched === null) {
       return false;
     }
-    const condition = this.deps.breakpointManager.getCondition(matched);
+    const condition = this.deps.breakpointManager.getCondition(
+      matched.address,
+      matched.addressSpace
+    );
     if (condition === undefined) {
       return true;
     }
@@ -467,7 +486,7 @@ export class AdapterRequestController {
         symbols: this.deps.sessionState.sourceMapSymbols,
       });
     } catch (err) {
-      const reportKey = `${matched}:${condition}`;
+      const reportKey = `${matched.address}:${matched.addressSpace?.kind ?? 'addr'}:${matched.addressSpace?.physicalBank ?? ''}:${condition}`;
       if (!this.reportedInvalidBreakpointConditions.has(reportKey)) {
         this.reportedInvalidBreakpointConditions.add(reportKey);
         emitInvalidConditionalBreakpoint(this.deps.sendEvent, condition, err);
@@ -476,12 +495,20 @@ export class AdapterRequestController {
     }
   }
 
+  public getBreakpointAddressSpace(address: number | null): SourceAddressSpace | undefined {
+    if (address === null) {
+      return undefined;
+    }
+    return this.findMatchedBreakpointAddress(address)?.addressSpace;
+  }
+
   public handleHaltStop(): void {
     this.deps.sessionState.runState.isRunning = false;
     if (!this.deps.sessionState.runState.haltNotified) {
       this.deps.sessionState.runState.haltNotified = true;
       this.deps.sessionState.runState.lastStopReason = 'halt';
       this.deps.sessionState.runState.lastBreakpointAddress = null;
+      this.deps.sessionState.runState.lastBreakpointAddressSpace = undefined;
       emitHaltStopped(this.deps.sendEvent, this.deps.threadId);
       return;
     }
@@ -505,20 +532,27 @@ export class AdapterRequestController {
 
   private updateBreakpointSkip(): void {
     const rs = this.deps.sessionState.runState;
+    const matched =
+      rs.lastBreakpointAddress !== null
+        ? this.findMatchedBreakpointAddress(rs.lastBreakpointAddress)
+        : null;
     if (
       rs.lastStopReason === 'breakpoint' &&
       this.deps.sessionState.runtime?.getPC() === rs.lastBreakpointAddress &&
       rs.lastBreakpointAddress !== null &&
-      this.isBreakpointAddress(rs.lastBreakpointAddress)
+      matched !== null &&
+      addressSpacesEqual(matched.addressSpace, rs.lastBreakpointAddressSpace)
     ) {
       rs.skipBreakpointOnce = rs.lastBreakpointAddress;
+      rs.skipBreakpointAddressSpace = matched.addressSpace;
     } else {
       rs.skipBreakpointOnce = null;
+      rs.skipBreakpointAddressSpace = undefined;
     }
   }
 
   private runUntilStop(
-    extraBreakpoints?: Set<number>,
+    extraBreakpoints?: RuntimeStopTarget[],
     maxInstructions?: number,
     limitLabel = 'step'
   ): void {
@@ -530,14 +564,24 @@ export class AdapterRequestController {
     });
   }
 
-  private findMatchedBreakpointAddress(address: number): number | null {
+  private findMatchedBreakpointAddress(address: number): {
+    address: number;
+    addressSpace?: SourceAddressSpace;
+  } | null {
     const masked = address & ADDR_MASK;
+    const addressSpace = this.getExpansionAddressSpace(masked);
+    if (
+      addressSpace !== undefined &&
+      this.deps.breakpointManager.hasAddress(masked, addressSpace)
+    ) {
+      return { address: masked, ...(addressSpace !== undefined ? { addressSpace } : {}) };
+    }
     if (this.deps.breakpointManager.hasAddress(masked)) {
-      return masked;
+      return { address: masked };
     }
     const shadowAlias = this.getShadowAlias(masked);
     if (shadowAlias !== null && this.deps.breakpointManager.hasAddress(shadowAlias)) {
-      return shadowAlias;
+      return { address: shadowAlias };
     }
     return null;
   }
@@ -601,7 +645,7 @@ export class AdapterRequestController {
 
     this.markStepRunning();
     this.runUntilStop(
-      new Set([returnAddress]),
+      [{ address: returnAddress & ADDR_MASK }],
       this.deps.sessionState.runState.stepOverMaxInstructions,
       'step over'
     );
@@ -613,6 +657,7 @@ export class AdapterRequestController {
     this.deps.sessionState.runState.isRunning = true;
     this.deps.sessionState.runState.lastStopReason = 'step';
     this.deps.sessionState.runState.lastBreakpointAddress = null;
+    this.deps.sessionState.runState.lastBreakpointAddressSpace = undefined;
   }
 
   private markStepStopped(): void {
@@ -620,6 +665,7 @@ export class AdapterRequestController {
     this.deps.sessionState.runState.isRunning = false;
     this.deps.sessionState.runState.lastStopReason = 'step';
     this.deps.sessionState.runState.lastBreakpointAddress = null;
+    this.deps.sessionState.runState.lastBreakpointAddressSpace = undefined;
   }
 
   private resolveUnmappedCall(): number | null {
@@ -631,10 +677,15 @@ export class AdapterRequestController {
     const memRead =
       runtime.hardware.memRead ??
       ((addr: number): number => runtime.hardware.memory[addr & 0xffff] ?? 0);
-    return getUnmappedCallReturnAddress({ cpu, memRead, mappingIndex });
+    return getUnmappedCallReturnAddress({
+      cpu,
+      memRead,
+      mappingIndex,
+      getAddressSpace: (address) => this.getExpansionAddressSpace(address & ADDR_MASK),
+    });
   }
 
-  private resolveGotoByBasename(sourcePath: string, line: number): number[] {
+  private resolveGotoByBasename(sourcePath: string, line: number): ResolvedSourceAddress[] {
     const mappingIndex = this.deps.sessionState.mappingIndex;
     if (mappingIndex === undefined) {
       return [];
@@ -653,7 +704,10 @@ export class AdapterRequestController {
         const segments = fileMap.get(tryLine);
         const executable = segments?.filter((segment) => segment.end > segment.start) ?? [];
         if (executable.length > 0) {
-          return executable.map((segment) => segment.start);
+          return executable.map((segment) => ({
+            address: segment.start,
+            ...(segment.addressSpace !== undefined ? { addressSpace: segment.addressSpace } : {}),
+          }));
         }
       }
     }
@@ -666,4 +720,18 @@ export class AdapterRequestController {
       tec1gRuntime: this.deps.sessionState.tec1gRuntime,
     });
   }
+
+  private getExpansionAddressSpace(address: number): SourceAddressSpace | undefined {
+    return getTec1gExpansionAddressSpace(address, {
+      activePlatform: this.deps.platformState.active,
+      tec1gRuntime: this.deps.sessionState.tec1gRuntime,
+    });
+  }
+}
+
+function addressSpacesEqual(
+  actual: SourceAddressSpace | undefined,
+  expected: SourceAddressSpace | undefined
+): boolean {
+  return actual?.kind === expected?.kind && actual?.physicalBank === expected?.physicalBank;
 }

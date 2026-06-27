@@ -89,6 +89,84 @@ describe('stack-service', () => {
     expect(frames.stackFrames[0]?.line).toBe(42);
   });
 
+  it('resolves the active bank source when expansion banks share an address', () => {
+    const bank3 = makeSegment(0x8000, 0x8002, 'bank3.asm', 9);
+    bank3.addressSpace = { kind: 'tec1g-expansion', physicalBank: 3 };
+    const bank0 = makeSegment(0x8000, 0x8002, 'bank0.asm', 9);
+    bank0.addressSpace = { kind: 'tec1g-expansion', physicalBank: 0 };
+    const mapping: MappingParseResult = {
+      segments: [bank3, bank0],
+      anchors: [],
+    };
+    const index = buildSourceMapIndex(mapping, (file) => `/test/${file}`);
+
+    const result = resolveSourceForAddress(0x8000, {
+      mappingIndex: index,
+      resolveMappedPath: (file) => `/test/${file}`,
+      getAddressSpace: () => ({ kind: 'tec1g-expansion', physicalBank: 0 }),
+    });
+
+    expect(result).toEqual({ path: '/test/bank0.asm', line: 9 });
+  });
+
+  it('uses the active bank source for the current stack frame', () => {
+    const bank3 = makeSegment(0x8000, 0x8002, 'bank3.asm', 9);
+    bank3.addressSpace = { kind: 'tec1g-expansion', physicalBank: 3 };
+    const bank0 = makeSegment(0x8000, 0x8002, 'bank0.asm', 9);
+    bank0.addressSpace = { kind: 'tec1g-expansion', physicalBank: 0 };
+    const mapping: MappingParseResult = {
+      segments: [bank3, bank0],
+      anchors: [],
+    };
+    const index = buildSourceMapIndex(mapping, (file) => `/test/${file}`);
+
+    const frames = buildStackFrames(0x8000, {
+      mappingIndex: index,
+      resolveMappedPath: (file) => `/test/${file}`,
+      getAddressSpace: () => ({ kind: 'tec1g-expansion', physicalBank: 0 }),
+    });
+
+    expect(frames.stackFrames[0]?.source?.path).toBe('/test/bank0.asm');
+    expect(frames.stackFrames[0]?.line).toBe(9);
+  });
+
+  it('uses the active bank symbol for the current stack frame label', () => {
+    const bank3 = makeSegment(0x8000, 0x8002, 'bank3.asm', 9);
+    bank3.addressSpace = { kind: 'tec1g-expansion', physicalBank: 3 };
+    const bank0 = makeSegment(0x8000, 0x8002, 'bank0.asm', 9);
+    bank0.addressSpace = { kind: 'tec1g-expansion', physicalBank: 0 };
+    const mapping: MappingParseResult = {
+      segments: [bank3, bank0],
+      anchors: [
+        {
+          symbol: 'Bank0Start',
+          address: 0x8000,
+          file: 'bank0.asm',
+          line: 9,
+          addressSpace: { kind: 'tec1g-expansion', physicalBank: 0 },
+        },
+        {
+          symbol: 'Bank3Start',
+          address: 0x8000,
+          file: 'bank3.asm',
+          line: 9,
+          addressSpace: { kind: 'tec1g-expansion', physicalBank: 3 },
+        },
+      ],
+    };
+    const index = buildSourceMapIndex(mapping, (file) => `/test/${file}`);
+
+    const frames = buildStackFrames(0x8000, {
+      mappingIndex: index,
+      resolveMappedPath: (file) => `/test/${file}`,
+      symbolAnchors: mapping.anchors,
+      lookupAnchors: mapping.anchors,
+      getAddressSpace: () => ({ kind: 'tec1g-expansion', physicalBank: 0 }),
+    });
+
+    expect(frames.stackFrames[0]?.name).toBe('Bank0Start');
+  });
+
   it('uses the nearest source-map symbol as the stack frame label', () => {
     const mapping: MappingParseResult = {
       segments: [makeSegment(0x1000, 0x1006, 'main.asm', 12)],

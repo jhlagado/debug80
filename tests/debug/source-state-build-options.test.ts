@@ -7,6 +7,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import { describe, expect, it, vi } from 'vitest';
 import {
+  buildSourceStateBuildArgs,
   buildSourceIdentityArgs,
   buildSourceMapArgs,
   buildLaunchSessionSourceRoots,
@@ -95,6 +96,29 @@ describe('source-state build option helpers', () => {
         asmPath,
       })
     ).toEqual([path.resolve(baseDir, 'src'), path.resolve(baseDir)]);
+  });
+
+  it('carries launch debug maps and address spaces into source-state build args', () => {
+    const debugMaps = ['/project/build/bank0.d8.json'];
+    const debugMapAddressSpaces = {
+      [debugMaps[0]]: { kind: 'tec1g-expansion' as const, physicalBank: 0 },
+    };
+
+    const result = buildSourceStateBuildArgs({
+      args: {
+        type: 'z80',
+        request: 'launch',
+        name: 'test',
+        debugMaps,
+        debugMapAddressSpaces,
+      } as LaunchRequestArguments,
+      hexPath: '/project/build/main.hex',
+      asmPath: '/project/src/main.asm',
+      sourceRoots: ['/project'],
+    });
+
+    expect(result.debugMaps).toBe(debugMaps);
+    expect(result.debugMapAddressSpaces).toBe(debugMapAddressSpaces);
   });
 
   it('resolves mapped paths against the latest source roots', () => {

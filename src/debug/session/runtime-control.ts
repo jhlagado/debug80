@@ -16,6 +16,7 @@ import type { LaunchSequenceContext } from '../launch/launch-sequence';
 import type { LaunchSessionArtifacts } from '../launch/launch-sequence';
 import type { BreakpointManager } from '../mapping/breakpoint-manager';
 import type { CpuStateSnapshot } from '../../z80/runtime';
+import type { SourceAddressSpace } from '../../mapping/types';
 import { createRuntimePerformanceMonitor } from './performance-monitor';
 import {
   emitChangedBreakpoints,
@@ -43,15 +44,25 @@ export interface RuntimeControlContext {
   setRunning: (value: boolean) => void;
   getSkipBreakpointOnce: () => number | null;
   setSkipBreakpointOnce: (value: number | null) => void;
+  getSkipBreakpointAddressSpace: () => SourceAddressSpace | undefined;
+  setSkipBreakpointAddressSpace: (value: SourceAddressSpace | undefined) => void;
   getHaltNotified: () => boolean;
   setHaltNotified: (value: boolean) => void;
   setLastStopReason: (reason: StopReason) => void;
   setLastBreakpointAddress: (address: number | null) => void;
+  setLastBreakpointAddressSpace: (addressSpace: SourceAddressSpace | undefined) => void;
+  getAddressSpace: (address: number) => SourceAddressSpace | undefined;
+  getBreakpointAddressSpace: (address: number) => SourceAddressSpace | undefined;
   isBreakpointAddress: (address: number | null) => boolean;
   handleHaltStop: () => void;
   sendEvent: (event: unknown) => void;
   getLogger?: () => Logger;
 }
+
+export type RuntimeStopTarget = {
+  address: number;
+  addressSpace?: SourceAddressSpace;
+};
 
 export interface RuntimeControlCapabilities {
   recordCycles: (cycles: number) => void;
@@ -64,6 +75,8 @@ export interface RuntimeControlContextInput {
   sessionState: SessionStateShape;
   activePlatform: () => string;
   isBreakpointAddress: (address: number | null) => boolean;
+  getAddressSpace?: (address: number) => SourceAddressSpace | undefined;
+  getBreakpointAddressSpace?: (address: number) => SourceAddressSpace | undefined;
   handleHaltStop: () => void;
   sendEvent: (event: unknown) => void;
   logger: Logger;
@@ -115,6 +128,10 @@ export function createRuntimeControlContext(
     setSkipBreakpointOnce: (value: number | null): void => {
       runState.skipBreakpointOnce = value;
     },
+    getSkipBreakpointAddressSpace: () => runState.skipBreakpointAddressSpace,
+    setSkipBreakpointAddressSpace: (value: SourceAddressSpace | undefined): void => {
+      runState.skipBreakpointAddressSpace = value;
+    },
     getHaltNotified: () => runState.haltNotified,
     setHaltNotified: (value: boolean): void => {
       runState.haltNotified = value;
@@ -125,6 +142,13 @@ export function createRuntimeControlContext(
     setLastBreakpointAddress: (address: number | null): void => {
       runState.lastBreakpointAddress = address;
     },
+    setLastBreakpointAddressSpace: (addressSpace: SourceAddressSpace | undefined): void => {
+      runState.lastBreakpointAddressSpace = addressSpace;
+    },
+    getAddressSpace: (address: number): SourceAddressSpace | undefined =>
+      input.getAddressSpace?.(address),
+    getBreakpointAddressSpace: (address: number): SourceAddressSpace | undefined =>
+      input.getBreakpointAddressSpace?.(address),
     isBreakpointAddress: (address: number | null): boolean => input.isBreakpointAddress(address),
     handleHaltStop: (): void => input.handleHaltStop(),
     sendEvent: (event: unknown): void => input.sendEvent(event),
@@ -393,25 +417,62 @@ function handleSkipBreakpointStep(options: {
   if (skipAddress === null || options.runtime.getPC() !== skipAddress) {
     return undefined;
   }
+  const skipAddressSpace = options.context.getSkipBreakpointAddressSpace();
+  if (
+    skipAddressSpace !== undefined &&
+    !addressSpacesEqual(options.context.getAddressSpace(skipAddress), skipAddressSpace)
+  ) {
+    return undefined;
+  }
   options.context.setSkipBreakpointOnce(null);
+  options.context.setSkipBreakpointAddressSpace(undefined);
   return stepRuntimeAndTrack(options);
+}
+
+function addressSpacesEqual(
+  actual: SourceAddressSpace | undefined,
+  expected: SourceAddressSpace
+): boolean {
+  return actual?.kind === expected.kind && actual.physicalBank === expected.physicalBank;
 }
 
 function handleBreakpointStop(options: {
   context: RuntimeControlContext;
   runtime: Z80Runtime;
-  extraBreakpoints?: Set<number>;
+  extraBreakpoints?: RuntimeStopTarget[];
 }): boolean {
   const pc = options.runtime.getPC();
   if (options.context.isBreakpointAddress(pc)) {
-    stopRuntimeAndEmit(options.context, 'breakpoint', 'breakpoint', pc);
+    stopRuntimeAndEmit(
+      options.context,
+      'breakpoint',
+      'breakpoint',
+      pc,
+      options.context.getBreakpointAddressSpace(pc)
+    );
     return true;
   }
-  if (options.extraBreakpoints !== undefined && options.extraBreakpoints.has(pc)) {
+  if (matchesExtraBreakpoint(pc, options.extraBreakpoints, options.context)) {
     stopRuntimeAndEmit(options.context, 'step', 'step', null);
     return true;
   }
   return false;
+}
+
+function matchesExtraBreakpoint(
+  pc: number,
+  extraBreakpoints: RuntimeStopTarget[] | undefined,
+  context: RuntimeControlContext
+): boolean {
+  if (extraBreakpoints === undefined) {
+    return false;
+  }
+  const addressSpace = context.getAddressSpace(pc);
+  return extraBreakpoints.some(
+    (target) =>
+      target.address === pc &&
+      (target.addressSpace === undefined || addressSpacesEqual(addressSpace, target.addressSpace))
+  );
 }
 
 function stepRuntimeAndTrack(options: {
@@ -559,7 +620,7 @@ async function runRuntimeLoop(options: {
 export async function runUntilStopAsync(
   context: RuntimeControlContext,
   options?: {
-    extraBreakpoints?: Set<number>;
+    extraBreakpoints?: RuntimeStopTarget[];
     maxInstructions?: number;
     limitLabel?: string;
   }
@@ -600,7 +661,7 @@ export async function runUntilReturnAsync(
 
 function runUntilStopIteration(
   options: RuntimeLoopIterationOptions & {
-    extraBreakpoints: Set<number> | undefined;
+    extraBreakpoints: RuntimeStopTarget[] | undefined;
     maxInstructions: number | undefined;
     limitLabel: string;
   }
