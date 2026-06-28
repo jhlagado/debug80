@@ -37,7 +37,7 @@ It then parses and validates the file with `parseD8DebugMap()` and `validateD8Se
 
 The same loader also accepts explicit auxiliary platform ROM maps through `auxiliaryDebugMaps`. For those auxiliary maps, `resolveAuxiliaryDebugMapFiles()` first asks the mapping service to resolve each project-relative file key through the workspace root, then falls back to the map file's own directory. This matters for generated TEC-1G monitor maps whose `.d8.json` lives under `build/` while the source file key still points at `roms/...` under the project root.
 
-When launch args also carry `debugMapAddressSpaces`, `buildMappingFromDebugMap()` tags every imported segment and anchor from the matching auxiliary map with that address-space identity. The current user of this path is TEC-1G multibank expansion ROM support, where several D8 maps all describe code visible at the same `0x8000-0xBFFF` window.
+When launch args also carry `debugMapAddressSpaces` and `debugMapAddressTransforms`, `buildMappingFromDebugMap()` tags every imported segment and anchor from the matching auxiliary map with that address-space identity and rebases any artifact-relative addresses into the live CPU window. The current user of this path is TEC-1G multibank expansion ROM support, where several D8 maps can describe bank-local `0x0000-0x3FFF` code while the runtime still sees those banks through the shared `0x8000-0xBFFF` window.
 
 ---
 
@@ -50,6 +50,8 @@ When launch args also carry `debugMapAddressSpaces`, `buildMappingFromDebugMap()
 - D8 confidence strings map to runtime confidence values: `high` → `HIGH`, `medium` → `MEDIUM`, `low` → `LOW`.
 
 The D8 fields `lstLine`, `lstText` and `lstTextId` remain part of the D8 v1 schema. In the current architecture they are assembler-provided source context inside the native map, not evidence that Debug80 reads a project-local listing file.
+
+After conversion, auxiliary maps may still pass through a launch-time address-metadata step. `withAddressMetadata()` in `src/debug/mapping/mapping-service.ts` attaches optional `addressSpace` tags and applies any configured address rebase before the merged mapping is indexed.
 
 ---
 
@@ -118,7 +120,7 @@ Breakpoint handling calls source-to-address lookup during `setBreakpoints`. Addr
 
 Stack-frame resolution calls `findSegmentForAddress()` for the program counter. On TEC-1G, the current runtime bank is supplied so the top frame and nearest-symbol label come from the active expansion ROM bank instead of an unrelated bank that happens to share the same address. Debug80 also reads up to eight words from the current `SP` and treats mapped words as best-effort return-address frames. If mapping is missing, the stack display falls back to the raw address or marks stack words as likely data.
 
-Editor features also consume the same source map. F12 / Go to Definition, hover details, workspace symbol search, the Variables panel, Watch expressions and conditional breakpoint expressions all use symbols from the active D8 map. User-facing messages should say "source map" or "build the target" rather than exposing internal D8 details.
+Editor features also consume the same source map. F12 / Go to Definition, hover details, workspace symbol search, the Variables panel, Watch expressions and conditional breakpoint expressions all use symbols from the active D8 map. `readSourceMapSymbols()` rebases auxiliary symbol addresses through the same launch metadata used for segments and anchors, so editor features see the visible CPU address for TEC-1G expansion-bank symbols. User-facing messages should say "source map" or "build the target" rather than exposing internal D8 details.
 
 ---
 

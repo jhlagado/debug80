@@ -307,7 +307,7 @@ The function:
 
 1. **Resolves source roots** — `buildLaunchSessionSourceRoots()` walks `args.sourceRoots`, the assembly source directory, and the base directory to build the initial root list.
 2. **Instantiates `SourceManager`** — `createSourceStateManager()` creates the manager with path-resolution callbacks for the current session and injects it into the `SourceStateManager`.
-3. **Calls `sourceState.build()`** — `buildSourceStateBuildArgs()` and `buildSourceMapArgs()` package the map inputs, including any `debugMapAddressSpaces` metadata carried on the launch args, then D8 source-map discovery and `buildSourceMapIndex()` run via the manager.
+3. **Calls `sourceState.build()`** — `buildSourceStateBuildArgs()` and `buildSourceMapArgs()` package the map inputs, including any `debugMapAddressSpaces` and `debugMapAddressTransforms` metadata carried on the launch args, then D8 source-map discovery and `buildSourceMapIndex()` run via the manager.
 4. **Collects D8-backed symbol metadata** — `readSourceMapSymbols()` reads the preferred and auxiliary D8 maps, uses `resolveDebugMapFilePath()` from `src/debug/mapping/d8-source-paths.ts` to normalize file locations, and converts each D8 symbol through `d8SymbolToSourceMapSymbol()` in `src/debug/mapping/d8-symbols.ts`.
 5. **Builds the symbol index** — calls `buildSymbolIndex()` from `src/debug/mapping/symbol-service.ts` and applies the lookup anchors back to `sourceState`.
 6. **Returns** a `LaunchSourceBuildResult` containing `sourceRoots`, `mapping`, `mappingIndex`, `symbolAnchors`, `symbolList`, and D8-backed source-map symbols.
@@ -318,7 +318,7 @@ The function:
 
 1. **Resolve the main source file** — prioritizes the ASM path, then falls back to `sourceFile`.
 2. **Resolve source roots** — directories where source files live, used to map D8 relative paths to absolute paths on disk.
-3. **Build the mapping** — loads the native D8 map, merges auxiliary maps, applies optional address-space tags keyed by resolved D8-map path, and creates a `MappingParseResult` plus `SourceMapIndex`.
+3. **Build the mapping** — loads the native D8 map, merges auxiliary maps, applies optional address-space tags and address rebases keyed by resolved D8-map path, and creates a `MappingParseResult` plus `SourceMapIndex`.
 
 The result is a `SourceManagerState` containing the resolved source file, source roots, and the complete mapping index.
 
@@ -330,7 +330,7 @@ The mapping between source lines and addresses now normally comes from a native 
 
 User-facing messages should call this a "source map" and tell the user to build the target if the map is missing or stale.
 
-For TEC-1G multibank ROM artifacts, `buildTec1gRomArtifactsIfRequested()` also records `debugMapAddressSpaces` keyed by each generated auxiliary D8 path. `buildMappingFromDebugMap()` applies that metadata to every imported segment and anchor from the matching map, so later breakpoint and stack lookups can distinguish bank 0 from bank 3 even though both are visible at `0x8000-0xBFFF`.
+For TEC-1G multibank ROM artifacts, `buildTec1gRomArtifactsIfRequested()` also records `debugMapAddressSpaces` and `debugMapAddressTransforms` keyed by each generated auxiliary D8 path. `buildMappingFromDebugMap()` applies that metadata to every imported segment and anchor from the matching map, so a bank map assembled with artifact-relative addresses is rebased into the live `0x8000-0xBFFF` CPU window while later breakpoint and stack lookups can still distinguish bank 0 from bank 3.
 
 ### The symbol index
 
@@ -350,7 +350,7 @@ The index provides the classic address-oriented symbol views:
 - **`lookupAnchors`** — symbols filtered to addresses within source-mapped ranges. This prevents symbols from unmapped regions (like ROM) from appearing in user-facing lookups.
 - **`list`** — a deduplicated name-to-address list for the symbol table.
 
-`readSourceMapSymbols()` also preserves richer source-map symbols for editor and debugger UI features. It prefers the resolved primary D8 map path when that artifact exists and also reads any auxiliary maps listed in `debugMaps[]`. F12 navigation, hover details, workspace symbols, the Variables panel, Watch expressions and conditional breakpoint expressions all use these active-target symbol records where possible. Bank identity is preserved on imported mapping segments and anchors; `SourceMapDebugSymbol` records remain address-oriented symbol metadata.
+`readSourceMapSymbols()` also preserves richer source-map symbols for editor and debugger UI features. It prefers the resolved primary D8 map path when that artifact exists and also reads any auxiliary maps listed in `debugMaps[]`. F12 navigation, hover details, workspace symbols, the Variables panel, Watch expressions and conditional breakpoint expressions all use these active-target symbol records where possible. Auxiliary symbol addresses are rebased through the same launch metadata before they enter `SourceMapDebugSymbol`, while bank identity remains attached only to imported mapping segments and anchors.
 
 ### Source file notification
 

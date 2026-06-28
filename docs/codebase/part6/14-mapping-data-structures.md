@@ -60,6 +60,17 @@ Some D8 segments are zero-width where `start === end`. Those segments can still 
 
 `addressSpace` is optional and currently used for TEC-1G multibank expansion ROM maps. When several ROM banks reuse the visible `0x8000-0xBFFF` address window, the same numeric address can map to different source files in different physical banks. Bank-aware lookup prefers an exact `addressSpace` match and falls back to address-only segments only when no bank-tagged mapping exists.
 
+For auxiliary ROM maps, `buildMappingFromDebugMap()` can also apply launch-time `SourceAddressTransform` metadata before these segments are indexed. The current transform shape is:
+
+```typescript
+interface SourceAddressTransform {
+  rebase: number;
+  size: number;
+}
+```
+
+When a D8 map is assembled with artifact-relative addresses, Debug80 adds `rebase` to any segment start/end or anchor address below `size`. TEC-1G multibank expansion artifacts use this to import bank-local `0x0000-0x3FFF` map addresses as live `0x8000-0xBFFF` runtime addresses.
+
 ### Confidence
 
 | Value    | Meaning                                                                         |
@@ -90,6 +101,7 @@ Anchors give Debug80 a known file and source line for a specific address. They p
 
 Duplicate anchor addresses are allowed because labels, constants and data symbols can share an address.
 Banked TEC-1G ROM symbols can also share an address while remaining distinct by `addressSpace`.
+Launch-time rebasing is applied before anchors are indexed, so artifact-relative auxiliary symbols enter the runtime model at their visible CPU addresses.
 
 ---
 
