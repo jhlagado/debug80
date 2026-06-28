@@ -7,6 +7,7 @@ import * as path from 'path';
 import {
   MappingParseResult,
   SourceAddressSpace,
+  SourceAddressTransform,
   SourceMapAnchor,
   SourceMapSegment,
 } from '../../mapping/types';
@@ -76,6 +77,7 @@ export function buildMappingFromDebugMap(options: {
   mapArgs: { artifactBase?: string; outputDir?: string };
   auxiliaryDebugMaps?: string[];
   debugMapAddressSpaces?: Record<string, SourceAddressSpace>;
+  debugMapAddressTransforms?: Record<string, SourceAddressTransform>;
   service: MappingServiceOptions;
 }): MappingBuildResult {
   const {
@@ -85,6 +87,7 @@ export function buildMappingFromDebugMap(options: {
     mapArgs,
     auxiliaryDebugMaps = [],
     debugMapAddressSpaces = {},
+    debugMapAddressTransforms = {},
     service,
   } = options;
   void sourceFile;
@@ -139,13 +142,15 @@ export function buildMappingFromDebugMap(options: {
     service.logger.info(
       `Debug80: Source map loaded: ${formatMapDisplayPath(auxiliaryPath, service)} (${getDebugMapGeneratorLabel(auxiliaryMap)}, platform ROM).`
     );
-    const auxiliaryMapping = withAddressSpace(
+    const normalizedAuxiliaryPath = path.normalize(auxiliaryPath);
+    const auxiliaryMapping = withAddressMetadata(
       buildMappingFromD8DebugMap(
-      resolveAuxiliaryDebugMapFiles(auxiliaryMap, auxiliaryPath, (file) =>
-        service.resolveMappedPath(file)
-      )
+        resolveAuxiliaryDebugMapFiles(auxiliaryMap, auxiliaryPath, (file) =>
+          service.resolveMappedPath(file)
+        )
       ),
-      debugMapAddressSpaces[path.normalize(auxiliaryPath)]
+      debugMapAddressSpaces[normalizedAuxiliaryPath],
+      debugMapAddressTransforms[normalizedAuxiliaryPath]
     );
     mapping.segments.push(...auxiliaryMapping.segments);
     mapping.anchors.push(...auxiliaryMapping.anchors);
@@ -186,16 +191,48 @@ export function buildMappingFromDebugMap(options: {
   return { mapping, index, missingSources: [] };
 }
 
-function withAddressSpace(
+function withAddressMetadata(
   mapping: MappingParseResult,
-  addressSpace: SourceAddressSpace | undefined
+  addressSpace: SourceAddressSpace | undefined,
+  transform: SourceAddressTransform | undefined
 ): MappingParseResult {
-  if (addressSpace === undefined) {
+  if (addressSpace === undefined && transform === undefined) {
     return mapping;
   }
   return {
-    segments: mapping.segments.map((segment) => ({ ...segment, addressSpace })),
-    anchors: mapping.anchors.map((anchor) => ({ ...anchor, addressSpace })),
+    segments: mapping.segments.map((segment) => ({
+      ...segment,
+      ...transformSegmentRange(segment, transform),
+      ...(addressSpace !== undefined ? { addressSpace } : {}),
+    })),
+    anchors: mapping.anchors.map((anchor) => ({
+      ...anchor,
+      address: transformAddress(anchor.address, transform),
+      ...(addressSpace !== undefined ? { addressSpace } : {}),
+    })),
+  };
+}
+
+function transformAddress(address: number, transform: SourceAddressTransform | undefined): number {
+  if (transform === undefined) {
+    return address;
+  }
+  if (address >= 0 && address < transform.size) {
+    return address + transform.rebase;
+  }
+  return address;
+}
+
+function transformSegmentRange(
+  segment: SourceMapSegment,
+  transform: SourceAddressTransform | undefined
+): Pick<SourceMapSegment, 'start' | 'end'> {
+  if (transform === undefined || segment.start < 0 || segment.start >= transform.size) {
+    return { start: segment.start, end: segment.end };
+  }
+  return {
+    start: segment.start + transform.rebase,
+    end: segment.end + transform.rebase,
   };
 }
 

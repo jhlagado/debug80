@@ -350,7 +350,7 @@ The index provides the classic address-oriented symbol views:
 - **`lookupAnchors`** — symbols filtered to addresses within source-mapped ranges. This prevents symbols from unmapped regions (like ROM) from appearing in user-facing lookups.
 - **`list`** — a deduplicated name-to-address list for the symbol table.
 
-`readSourceMapSymbols()` also preserves richer source-map symbols for editor and debugger UI features. It prefers the resolved primary D8 map path when that artifact exists and also reads any auxiliary maps listed in `debugMaps[]`. F12 navigation, hover details, workspace symbols, the Variables panel, Watch expressions and conditional breakpoint expressions all use these active-target symbol records where possible. When an auxiliary TEC-1G ROM map carries a bank address space, the same identity is preserved on its imported runtime symbols and segments.
+`readSourceMapSymbols()` also preserves richer source-map symbols for editor and debugger UI features. It prefers the resolved primary D8 map path when that artifact exists and also reads any auxiliary maps listed in `debugMaps[]`. F12 navigation, hover details, workspace symbols, the Variables panel, Watch expressions and conditional breakpoint expressions all use these active-target symbol records where possible. Bank identity is preserved on imported mapping segments and anchors; `SourceMapDebugSymbol` records remain address-oriented symbol metadata.
 
 ### Source file notification
 

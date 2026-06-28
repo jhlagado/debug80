@@ -63,16 +63,20 @@ export function buildSourceStateBuildArgs(options: {
   sourceRoots: string[];
   debugMaps?: string[];
   debugMapAddressSpaces?: BuildSourceStateArgs['debugMapAddressSpaces'];
+  debugMapAddressTransforms?: BuildSourceStateArgs['debugMapAddressTransforms'];
 }): BuildSourceStateArgs {
   const debugMaps = options.debugMaps ?? options.args.debugMaps;
   const debugMapAddressSpaces =
     options.debugMapAddressSpaces ?? options.args.debugMapAddressSpaces;
+  const debugMapAddressTransforms =
+    options.debugMapAddressTransforms ?? options.args.debugMapAddressTransforms;
   return {
     hexPath: options.hexPath,
     ...buildSourceIdentityArgs({ args: options.args, asmPath: options.asmPath }),
     sourceRoots: options.sourceRoots,
     ...(debugMaps !== undefined ? { debugMaps } : {}),
     ...(debugMapAddressSpaces !== undefined ? { debugMapAddressSpaces } : {}),
+    ...(debugMapAddressTransforms !== undefined ? { debugMapAddressTransforms } : {}),
     mapArgs: buildSourceMapArgs(options.args),
   };
 }

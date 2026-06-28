@@ -3,6 +3,7 @@
  */
 
 import * as fs from 'fs';
+import * as path from 'path';
 import { buildSymbolIndex } from '../mapping/symbol-service';
 import type { SourceStateManager } from '../mapping/source-state-manager';
 import { resolveDebugMapPath } from '../mapping/path-resolver';
@@ -12,6 +13,7 @@ import type { PlatformKind } from './program-loader';
 import type { MappingParseResult, SourceMapAnchor } from '../../mapping/types';
 import type { SourceMapIndex } from '../../mapping/source-map';
 import type { Logger } from '../../util/logger';
+import type { SourceAddressTransform } from '../../mapping/types';
 import type { LaunchRequestArguments } from '../session/types';
 import type { SessionStateShape } from '../session/session-state';
 import type { SourceMapDebugSymbol } from '../session/session-state';
@@ -67,6 +69,7 @@ export function buildLaunchSourceState(
     sourceRoots: preSourceRoots,
     debugMaps: args.debugMaps ?? [],
     debugMapAddressSpaces: args.debugMapAddressSpaces ?? {},
+    debugMapAddressTransforms: args.debugMapAddressTransforms ?? {},
   }));
 
   const symbolIndex = buildSymbolIndex({
@@ -81,6 +84,7 @@ export function buildLaunchSourceState(
     debugMaps: args.debugMaps ?? [],
     sourceRoots: auxiliarySourceRoots,
     mapArgs: buildSourceMapArgs(args),
+    debugMapAddressTransforms: args.debugMapAddressTransforms ?? {},
     resolveDebugMapPath: (mapArgs, dir, asm, hex) => resolveDebugMapPath(mapArgs, dir, asm, hex),
     logger,
   });
@@ -115,6 +119,7 @@ function readSourceMapSymbols(options: {
   debugMaps: string[];
   sourceRoots: string[];
   mapArgs: { artifactBase?: string; outputDir?: string };
+  debugMapAddressTransforms: Record<string, SourceAddressTransform>;
   resolveDebugMapPath: (
     args: { artifactBase?: string; outputDir?: string },
     baseDir: string,
@@ -128,7 +133,14 @@ function readSourceMapSymbols(options: {
   for (const mapPath of mapPaths) {
     const map = readD8MapForSourceMapSymbols(mapPath, options.logger);
     if (map !== undefined) {
-      symbols.push(...sourceMapSymbolsFromD8Map(map, mapPath, options.sourceRoots));
+      symbols.push(
+        ...sourceMapSymbolsFromD8Map(
+          map,
+          mapPath,
+          options.sourceRoots,
+          options.debugMapAddressTransforms[path.normalize(mapPath)]
+        )
+      );
     }
   }
   return sortSourceMapSymbols(symbols);
@@ -177,10 +189,11 @@ function readD8MapForSourceMapSymbols(mapPath: string, logger: Logger): D8DebugM
 function sourceMapSymbolsFromD8Map(
   map: D8DebugMap,
   mapPath: string,
-  sourceRoots: string[]
+  sourceRoots: string[],
+  transform: SourceAddressTransform | undefined
 ): SourceMapDebugSymbol[] {
   return Object.entries(map.files).flatMap(([file, entry]) =>
-    sourceMapSymbolsFromD8File(file, entry, mapPath, sourceRoots)
+    sourceMapSymbolsFromD8File(file, entry, mapPath, sourceRoots, transform)
   );
 }
 
@@ -188,15 +201,29 @@ function sourceMapSymbolsFromD8File(
   file: string,
   entry: D8FileEntry,
   mapPath: string,
-  sourceRoots: string[]
+  sourceRoots: string[],
+  transform: SourceAddressTransform | undefined
 ): SourceMapDebugSymbol[] {
   if (file.trim() === '') {
     return [];
   }
   const resolvedFile = resolveDebugMapFilePath(file, mapPath, sourceRoots);
-  return (entry.symbols ?? []).map((symbol) =>
-    d8SymbolToSourceMapSymbol(symbol, resolvedFile)
-  );
+  return (entry.symbols ?? []).map((symbol) => {
+    const converted = d8SymbolToSourceMapSymbol(symbol, resolvedFile);
+    return converted.address !== undefined
+      ? { ...converted, address: transformSymbolAddress(converted.address, transform) }
+      : converted;
+  });
+}
+
+function transformSymbolAddress(
+  address: number,
+  transform: SourceAddressTransform | undefined
+): number {
+  if (transform === undefined || address < 0 || address >= transform.size) {
+    return address;
+  }
+  return address + transform.rebase;
 }
 
 function sortSourceMapSymbols(symbols: SourceMapDebugSymbol[]): SourceMapDebugSymbol[] {

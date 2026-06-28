@@ -8,7 +8,7 @@ import type {
   Tec1PlatformConfig,
   Tec1gPlatformConfig,
 } from '../../platforms/types';
-import type { SourceAddressSpace } from '../../mapping/types';
+import type { SourceAddressSpace, SourceAddressTransform } from '../../mapping/types';
 import type { TerminalConfig } from './terminal-types';
 
 /**
@@ -92,6 +92,8 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
   debugMaps?: string[];
   /** Internal address-space metadata keyed by resolved D8 map path. */
   debugMapAddressSpaces?: Record<string, SourceAddressSpace>;
+  /** Internal address transform metadata keyed by resolved D8 map path. */
+  debugMapAddressTransforms?: Record<string, SourceAddressTransform>;
   /** Maximum instructions to execute during step over (0 = unlimited) */
   stepOverMaxInstructions?: number;
   /** Maximum instructions to execute during step out (0 = unlimited) */

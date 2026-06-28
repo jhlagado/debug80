@@ -216,6 +216,53 @@ describe('launch-source-state', () => {
     ).toContain(localRomSourceSuffix);
   });
 
+  it('rebases auxiliary expansion source-map symbols into the CPU window', () => {
+    const fixture = createProjectFixture(
+      'debug80-launch-expansion-symbols-',
+      path.join('src', 'main.asm'),
+      'main'
+    );
+    const bank0SourcePath = path.join(fixture.projectRoot, 'roms', 'expansion', 'bank0.asm');
+    const bank0MapPath = path.join(
+      fixture.projectRoot,
+      'build',
+      'roms',
+      'expansion',
+      'bank0.d8.json'
+    );
+
+    writeTextFile(bank0SourcePath, 'BANK0:\n  NOP\n');
+    writeD8Map(fixture.buildMapPath, {
+      'src/main.asm': {
+        segments: [{ start: 0x4000, end: 0x4001, lstLine: 1, line: 2, kind: 'code' }],
+      },
+    });
+    writeD8Map(bank0MapPath, {
+      'roms/expansion/bank0.asm': {
+        segments: [{ start: 0x001f, end: 0x0021, lstLine: 2, line: 2, kind: 'code' }],
+        symbols: [{ name: 'BANK0', kind: 'label', address: 0x001f, line: 1 }],
+      },
+    });
+
+    const result = buildFixtureSourceState(
+      fixture,
+      {
+        sourceRoots: ['src', 'roms/expansion'],
+        artifactBase: 'main',
+        outputDir: 'build',
+        debugMaps: [bank0MapPath],
+        debugMapAddressTransforms: {
+          [path.normalize(bank0MapPath)]: { rebase: 0x8000, size: 0x4000 },
+        },
+      } as LaunchRequestArguments
+    );
+
+    expect(resolveExecutableLocation(result.mappingIndex, bank0SourcePath, 2)).toEqual([0x801f]);
+    expect(result.sourceMapSymbols.find((symbol) => symbol.name === 'BANK0')?.address).toBe(
+      0x801f
+    );
+  });
+
   it('logs a warning and returns no symbols when the build D8 cannot be parsed', () => {
     const fixture = createProjectFixture(
       'debug80-launch-bad-symbol-map-',

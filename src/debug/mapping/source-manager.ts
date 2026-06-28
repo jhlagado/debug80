@@ -4,7 +4,7 @@
 
 import * as path from 'path';
 import { MappingParseResult } from '../../mapping/types';
-import type { SourceAddressSpace } from '../../mapping/types';
+import type { SourceAddressSpace, SourceAddressTransform } from '../../mapping/types';
 import { SourceMapIndex } from '../../mapping/source-map';
 import { buildMappingFromDebugMap, MappingBuildResult } from './mapping-service';
 import { Logger } from '../../util/logger';
@@ -39,6 +39,7 @@ export interface BuildSourceStateArgs {
   sourceRoots: string[];
   debugMaps?: string[];
   debugMapAddressSpaces?: Record<string, SourceAddressSpace>;
+  debugMapAddressTransforms?: Record<string, SourceAddressTransform>;
   mapArgs: { artifactBase?: string; outputDir?: string };
 }
 
@@ -90,6 +91,7 @@ export class SourceManager {
       mapArgs: args.mapArgs,
       auxiliaryDebugMaps: args.debugMaps ?? [],
       debugMapAddressSpaces: args.debugMapAddressSpaces ?? {},
+      debugMapAddressTransforms: args.debugMapAddressTransforms ?? {},
     });
 
     return {
@@ -108,6 +110,7 @@ export class SourceManager {
     mapArgs: { artifactBase?: string; outputDir?: string };
     auxiliaryDebugMaps: string[];
     debugMapAddressSpaces: Record<string, SourceAddressSpace>;
+    debugMapAddressTransforms: Record<string, SourceAddressTransform>;
   }): MappingBuildResult {
     return buildMappingFromDebugMap({
       hexPath: args.hexPath,
@@ -118,6 +121,7 @@ export class SourceManager {
       mapArgs: args.mapArgs,
       auxiliaryDebugMaps: args.auxiliaryDebugMaps,
       debugMapAddressSpaces: args.debugMapAddressSpaces,
+      debugMapAddressTransforms: args.debugMapAddressTransforms,
       service: {
         platform: this.platform,
         baseDir: this.baseDir,

@@ -692,6 +692,15 @@ describe('package.json language contracts', () => {
         'farJump'
       )
     ).toBe('support.function.azm-op.z80-asm');
+    expect(getFirstGrammarCaptureScope('azm-op-invocations', '        clear_a', 'clear_a')).toBe(
+      'support.function.azm-op.z80-asm'
+    );
+    expect(getFirstGrammarCaptureScope('azm-op-invocations', '        clear_a()', 'clear_a')).toBe(
+      'support.function.azm-op.z80-asm'
+    );
+    expect(getFirstGrammarCaptureScope('azm-op-invocations', '        load8 a,b', 'load8')).toBe(
+      'support.function.azm-op.z80-asm'
+    );
 
     const invocationPattern = getGrammarPattern(
       'azm-op-invocations',
@@ -700,6 +709,9 @@ describe('package.json language contracts', () => {
     const invocationRegex = toJavaScriptRegex(invocationPattern.match);
     expect(invocationRegex.test('farCall:')).toBe(false);
     expect(invocationRegex.test('farCall :')).toBe(false);
+    expect(invocationRegex.test('buffer')).toBe(false);
+    expect(invocationRegex.test('loop 0x10')).toBe(false);
+    expect(invocationRegex.test('macro_like VALUE')).toBe(false);
   });
 
   it('Z80 assembly grammar captures AZM interface contracts outside comments', () => {

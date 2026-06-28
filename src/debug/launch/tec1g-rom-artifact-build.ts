@@ -17,7 +17,7 @@ import type {
   Tec1gRomArtifactConfig,
   Tec1gSourceRomArtifactConfig,
 } from '../../platforms/types';
-import type { SourceAddressSpace } from '../../mapping/types';
+import type { SourceAddressSpace, SourceAddressTransform } from '../../mapping/types';
 import { TEC1G_EXPAND_BANK_COUNT } from '../../platforms/tec-common';
 
 export interface Tec1gBuiltRomArtifact {
@@ -30,6 +30,7 @@ export interface Tec1gBuiltRomArtifact {
   debugMaps?: string[];
   sourceRoots?: string[];
   debugMapAddressSpaces?: Record<string, SourceAddressSpace>;
+  debugMapAddressTransforms?: Record<string, SourceAddressTransform>;
 }
 
 interface BuiltExpansionArtifactBank {
@@ -196,6 +197,7 @@ async function buildMultibankExpansionArtifact(options: {
   const builtBanks = new Map<number, BuiltExpansionArtifactBank>();
   const debugMaps: string[] = [];
   const debugMapAddressSpaces: Record<string, SourceAddressSpace> = {};
+  const debugMapAddressTransforms: Record<string, SourceAddressTransform> = {};
   const sourceRoots: string[] = [];
 
   for (const bank of artifact.banks) {
@@ -215,6 +217,10 @@ async function buildMultibankExpansionArtifact(options: {
     debugMapAddressSpaces[path.normalize(builtBank.outputDebugMap)] = {
       kind: 'tec1g-expansion',
       physicalBank: bank.physicalBank,
+    };
+    debugMapAddressTransforms[path.normalize(builtBank.outputDebugMap)] = {
+      rebase: artifact.windowAddress ?? 0x8000,
+      size: artifact.windowSize ?? bankSize,
     };
     sourceRoots.push(path.dirname(bank.sourceFile));
   }
@@ -245,6 +251,7 @@ async function buildMultibankExpansionArtifact(options: {
     sourceRoot: path.dirname(artifact.banks[0]?.sourceFile ?? ''),
     debugMaps,
     debugMapAddressSpaces,
+    debugMapAddressTransforms,
     sourceRoots,
   };
 }
@@ -456,6 +463,7 @@ export function applyTec1gRomArtifactsToLaunchArgs(
   args.tec1g = { ...(args.tec1g ?? {}) };
   const generatedDebugMaps: string[] = [];
   const generatedDebugMapAddressSpaces: Record<string, SourceAddressSpace> = {};
+  const generatedDebugMapAddressTransforms: Record<string, SourceAddressTransform> = {};
   const generatedSourceRoots: string[] = [];
   let monitorArtifactGenerated = false;
   for (const artifact of artifacts) {
@@ -468,6 +476,7 @@ export function applyTec1gRomArtifactsToLaunchArgs(
 
     generatedDebugMaps.push(...artifactDebugMaps(artifact));
     Object.assign(generatedDebugMapAddressSpaces, artifact.debugMapAddressSpaces ?? {});
+    Object.assign(generatedDebugMapAddressTransforms, artifact.debugMapAddressTransforms ?? {});
     generatedSourceRoots.push(...artifactSourceRoots(artifact));
   }
 
@@ -478,6 +487,10 @@ export function applyTec1gRomArtifactsToLaunchArgs(
   args.debugMapAddressSpaces = {
     ...(args.debugMapAddressSpaces ?? {}),
     ...generatedDebugMapAddressSpaces,
+  };
+  args.debugMapAddressTransforms = {
+    ...(args.debugMapAddressTransforms ?? {}),
+    ...generatedDebugMapAddressTransforms,
   };
   args.sourceRoots = prependUniqueGroup(args.sourceRoots ?? [], generatedSourceRoots);
 }

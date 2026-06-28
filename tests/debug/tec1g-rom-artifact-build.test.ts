@@ -244,6 +244,24 @@ describe('TEC-1G ROM artifact builds', () => {
       path.join(root, 'build/roms/tec1g/tecm8/expansion/bank1.d8.json'),
       path.join(root, 'build/roms/tec1g/tecm8/expansion/bank8.d8.json'),
     ]);
+    const bank0Map = path.join(root, 'build/roms/tec1g/tecm8/expansion/bank0.d8.json');
+    const bank8Map = path.join(root, 'build/roms/tec1g/tecm8/expansion/bank8.d8.json');
+    expect(args.debugMapAddressSpaces?.[path.normalize(bank0Map)]).toEqual({
+      kind: 'tec1g-expansion',
+      physicalBank: 0,
+    });
+    expect(args.debugMapAddressSpaces?.[path.normalize(bank8Map)]).toEqual({
+      kind: 'tec1g-expansion',
+      physicalBank: 8,
+    });
+    expect(args.debugMapAddressTransforms?.[path.normalize(bank0Map)]).toEqual({
+      rebase: 0x8000,
+      size: 0x4000,
+    });
+    expect(args.debugMapAddressTransforms?.[path.normalize(bank8Map)]).toEqual({
+      rebase: 0x8000,
+      size: 0x4000,
+    });
     expect(args.sourceRoots).toEqual(['roms/tec1g/tecm8/expansion', 'src']);
   });
 

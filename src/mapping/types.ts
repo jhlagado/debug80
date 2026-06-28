@@ -25,6 +25,13 @@ export type SourceAddressSpace = {
   physicalBank: number;
 };
 
+export type SourceAddressTransform = {
+  /** Add this base to artifact-relative addresses. */
+  rebase: number;
+  /** Only addresses below this size are considered artifact-relative. */
+  size: number;
+};
+
 /**
  * Optional assembler context carried by AZM D8 segments.
  */

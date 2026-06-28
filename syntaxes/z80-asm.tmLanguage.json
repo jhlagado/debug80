@@ -481,7 +481,7 @@
       "patterns": [
         {
           "name": "meta.op.invocation.z80-asm",
-          "match": "^\\s*([a-z][A-Za-z0-9_.$?@]*)(?![A-Za-z0-9_.$?@])(?!\\s*:)(?=\\s*(?:$|;|[^;]))",
+          "match": "^\\s*((?:[a-z][A-Za-z0-9_.$?@]*[A-Z][A-Za-z0-9_.$?@]*|[a-z][A-Za-z0-9_.$?@]*_[A-Za-z0-9_.$?@]*)(?![A-Za-z0-9_.$?@])(?=\\s*(?:$|;))|[a-z][A-Za-z0-9_.$?@]*(?![A-Za-z0-9_.$?@])(?=\\s*\\()|[a-z][A-Za-z0-9_.$?@]*(?![A-Za-z0-9_.$?@])(?=\\s+[^;]*,))",
           "captures": {
             "1": {
               "name": "support.function.azm-op.z80-asm"

@@ -359,6 +359,72 @@ describe('mapping-service', () => {
     expect(bankSegment?.addressSpace).toEqual({ kind: 'tec1g-expansion', physicalBank: 0 });
   });
 
+  it('rebases artifact-relative multibank expansion source maps into the CPU window', () => {
+    const { dir, hexPath, asmPath, mapPath } = makeBuildMapProject();
+    const bank0SourceRel = path.join('roms', 'expansion', 'bank0.asm');
+    const bank0Source = path.join(dir, bank0SourceRel);
+    const bank0MapPath = path.join(dir, 'build', 'roms', 'expansion', 'bank0.d8.json');
+
+    writeFile(bank0Source, 'BANK0:\n  NOP\n');
+    writeFile(
+      bank0MapPath,
+      JSON.stringify(
+        buildD8DebugMap(
+          {
+            segments: [
+              {
+                start: 0x001f,
+                end: 0x0021,
+                loc: { file: bank0SourceRel, line: 2 },
+                context: { line: 2, text: 'NOP' },
+                confidence: 'HIGH',
+              },
+            ],
+            anchors: [
+              {
+                symbol: 'BANK0',
+                address: 0x001f,
+                file: bank0SourceRel,
+                line: 1,
+              },
+            ],
+          },
+          {
+            arch: 'z80',
+            addressWidth: 16,
+            endianness: 'little',
+            generator: { tool: 'azm' },
+          }
+        ),
+        null,
+        2
+      )
+    );
+
+    const result = buildMappingFromDebugMap({
+      hexPath,
+      asmPath,
+      sourceFile: asmPath,
+      mapArgs: {},
+      auxiliaryDebugMaps: [bank0MapPath],
+      debugMapAddressSpaces: {
+        [path.normalize(bank0MapPath)]: { kind: 'tec1g-expansion', physicalBank: 0 },
+      },
+      debugMapAddressTransforms: {
+        [path.normalize(bank0MapPath)]: { rebase: 0x8000, size: 0x4000 },
+      },
+      service: makeService(dir, mapPath),
+    });
+
+    const bankSegment = result.mapping.segments.find((seg) => seg.loc.file === bank0Source);
+    expect(bankSegment?.start).toBe(0x801f);
+    expect(bankSegment?.end).toBe(0x8021);
+    expect(result.mapping.anchors.find((anchor) => anchor.file === bank0Source)?.address).toBe(
+      0x801f
+    );
+    expect(resolveLocation(result.index, bank0Source, 2)).toEqual([0x801f]);
+  });
+
   it('ignores non-native auxiliary source maps from explicit platform ROM paths', () => {
     const { dir, hexPath, asmPath, mapPath, logs } = makeBuildMapProject();
     const auxiliaryMapPath = path.join(dir, 'bundle', 'mon3', 'mon3.d8.json');

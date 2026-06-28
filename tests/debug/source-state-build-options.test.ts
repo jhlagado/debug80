@@ -103,6 +103,9 @@ describe('source-state build option helpers', () => {
     const debugMapAddressSpaces = {
       [debugMaps[0]]: { kind: 'tec1g-expansion' as const, physicalBank: 0 },
     };
+    const debugMapAddressTransforms = {
+      [debugMaps[0]]: { rebase: 0x8000, size: 0x4000 },
+    };
 
     const result = buildSourceStateBuildArgs({
       args: {
@@ -111,6 +114,7 @@ describe('source-state build option helpers', () => {
         name: 'test',
         debugMaps,
         debugMapAddressSpaces,
+        debugMapAddressTransforms,
       } as LaunchRequestArguments,
       hexPath: '/project/build/main.hex',
       asmPath: '/project/src/main.asm',
@@ -119,6 +123,7 @@ describe('source-state build option helpers', () => {
 
     expect(result.debugMaps).toBe(debugMaps);
     expect(result.debugMapAddressSpaces).toBe(debugMapAddressSpaces);
+    expect(result.debugMapAddressTransforms).toBe(debugMapAddressTransforms);
   });
 
   it('resolves mapped paths against the latest source roots', () => {
