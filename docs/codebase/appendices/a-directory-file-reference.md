@@ -139,11 +139,13 @@ you need to find the owner of a behaviour quickly.
 | `carriers.ts`                | Normalizes register contract carrier names and expands register pairs.                                  |
 | `controlFlow.ts`             | Successor logic for routine instruction flow.                                                           |
 | `profiles.ts`                | Built-in external routine profiles such as MON-3.                                                       |
-| `report.ts`                  | Renders `.regcontracts.txt`, `.asmi` and compact source contract blocks.                                |
+| `report.ts`                  | Renders text and JSON register-contract reports, inference exports, `.asmi` output and compact source contract blocks. |
 | `annotate.ts`                | Inserts or replaces generated contract blocks near routine labels.                                      |
 | `annotations.ts`             | Builds source annotation artifact data.                                                                 |
 | `fix.ts`                     | Finds and applies conservative expected-output fixes.                                                   |
 | `accept-output.ts`           | Parses user-accepted output candidate options.                                                          |
+| `policy.ts`                  | Resolves per-file strict, audit and off register-contract policy matches.                               |
+| `ratchet.ts`                 | Compares current JSON findings against a baseline report.                                               |
 | `tooling.ts`                 | Editor-friendly register contract diagnostics and code actions.                                         |
 | `types.ts`                   | Register contract unit, routine, effect, summary, contract and report types.                            |
 | `sourceText.ts`              | Source line splitting and joining helpers for text edits.                                               |

@@ -68,6 +68,14 @@ when artifact writing succeeds.
 artifact suppression, include paths, source-root, case-style linting, directive
 aliases and register contract options.
 
+Register-contract parsing now includes:
+
+- report format selection with `--reg-report-format text|json`
+- baseline comparison with `--reg-baseline <report.json>`
+- ratcheting with `--reg-ratchet`
+- inference export with `--reg-infer`
+- inference format selection with `--reg-infer-format json|markdown`
+
 `src/cli/write-artifacts.ts` maps parsed options into
 `CompileNextFunctionOptions` and calculates the output stem.
 `src/cli/artifact-files.ts` writes in-memory artifacts to disk. If the user
@@ -75,6 +83,13 @@ supplies `--output build/program.bin`, the primary artifact is written to that
 path and side artifacts use the same base. If the user supplies only
 `program.asm`, AZM writes outputs next to the entry source using the source
 stem.
+
+Register-contract side artifacts now use suffixes derived from the selected
+format:
+
+- `.regcontracts.txt` or `.regcontracts.json` for reports
+- `.asmi` for inferred interfaces
+- `.regcontracts.inference.json` or `.regcontracts.inference.md` for review exports
 
 ## Compile API
 
@@ -103,8 +118,14 @@ Important options include:
 | `d8mInputs`                                  | Artifact paths recorded in D8 metadata. |
 | `emitBin`, `emitHex`, `emitD8m`, `emitAsm80` | Artifact selection.                     |
 | `registerContracts`                          | Register contract mode.                 |
-| `emitRegisterReport`                         | Emit `.regcontracts.txt` artifact.      |
+| `registerContractsPolicy`                    | Per-file strict, audit and off policy.  |
+| `emitRegisterReport`                         | Emit text or JSON report artifact.      |
+| `registerContractsReportFormat`              | Report format, `text` or `json`.        |
+| `registerContractsBaseline`                  | Baseline JSON report for ratcheting.    |
+| `registerContractsRatchet`                   | Fail when findings increase.            |
 | `emitRegisterInterface`                      | Emit `.asmi` artifact.                  |
+| `emitRegisterInference`                      | Emit inference review artifact.         |
+| `registerContractsInferenceFormat`           | Inference format, `json` or `markdown`. |
 | `emitRegisterAnnotations`                    | Emit source annotation artifact.        |
 | `fixRegisterContracts`                       | Apply conservative source fixes.        |
 | `acceptRegisterOutputCandidates`             | Promote selected output candidates.     |
@@ -125,6 +146,11 @@ Diagnostics describe every warning or error observed during loading, analysis,
 register contract analysis, assembly or artifact creation. Artifacts contain the
 in-memory outputs requested by options.
 
+When analysis is enabled, `compile()` can now suppress ordinary unresolved-call
+diagnostics for files whose register-contract policy resolves to `off`. That
+keeps policy-controlled external boundaries in the register-contract report path
+rather than duplicating them as symbol failures.
+
 The older option names `registerCare`, `registerCareProfile` and
 `registerCareInterfaces` remain as deprecated aliases for package consumers.
 New callers should use the `registerContracts...` names.
@@ -138,7 +164,8 @@ helpers.
 `loadProgramNext()` returns a loaded program with source items, source texts and
 source line comments. `analyzeProgramNext()` runs semantic checks and returns
 symbols. `analyzeRegisterContractsForTools()` returns register contract
-diagnostics and code actions in a form suitable for editors.
+diagnostics, typed findings, output candidates and code actions in a form
+suitable for editors.
 
 The tooling loader now recognises both `.include` and `.import`. Both directives
 flatten source into one parse stream. `.import` also marks parsed spans with a
@@ -190,6 +217,7 @@ The output layer uses structured artifact objects from `src/outputs/types.ts`:
 - `Asm80Artifact`
 - `RegisterContractsReportArtifact`
 - `RegisterContractsInterfaceArtifact`
+- `RegisterContractsInferenceArtifact`
 - `RegisterContractsAnnotationsArtifact`
 
 Each artifact has a `kind` field. Callers can switch on `kind` to find the
@@ -252,10 +280,21 @@ supported.
 
 Register contract report, interface and annotation artifacts are created through
 `runRegisterContracts()` in `src/api-register-contracts.ts` and flow through
-the same compile result and CLI write path. The report is human-readable. The `.asmi`
-interface is metadata that can be loaded by later compile runs through
+the same compile result and CLI write path. Reports can be human-readable text
+or JSON. The `.asmi` interface is metadata that can be loaded by later compile runs through
 `--interface`. Annotation artifacts write source files when `--contracts` or
 `--fix` is used.
+
+The register-contract report artifact now carries optional structured payloads:
+`format`, `json` and the active `findings` list. JSON reports use the stable
+`azm-register-contracts-report` envelope with summaries, findings, suppressed
+findings, unknown calls and optional ratchet results.
+
+Inference artifacts carry a routine-oriented `azm-register-contracts-inference`
+model. Each routine records inferred `in`, `out`, `clobbers` and `preserves`
+carriers, an inference confidence and caller-impact counts for output
+candidates. Markdown rendering is intended for review, while JSON is suitable
+for automation and regression tooling.
 
 ## Public API Compatibility
 

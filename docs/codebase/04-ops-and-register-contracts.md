@@ -168,7 +168,10 @@ without exposing them outside the module.
 `src/register-contracts/smartComments.ts` reads AZMDoc comments from the comment maps
 captured during loading. Comment-block splitting and token parsing live in
 `smartCommentBlocks.ts` and `smartCommentParsing.ts`. External `.asmi`
-contracts are parsed in `interfaceContracts.ts`.
+contracts are parsed in `interfaceContracts.ts`. The same parser also accepts
+inline suppression comments in the form
+`;! rc-ignore-next <finding-kind>: <reason>` for the next finding at that
+location.
 
 Contracts can describe:
 
@@ -183,6 +186,11 @@ routine contract. Source comments attach to routines in the current program.
 `.asmi` entries attach to routines whose source is assembled elsewhere.
 The compact source form can place several clauses on one `;!` line, for
 example `;! in A; out A; clobbers F`.
+
+`.asmi` parsing stays strict. Files may contain `extern` or `service rst`
+boundaries, `in`, `out`, `clobbers` and `preserves` clauses, then `end`.
+Comment lines are rejected so interface files stay machine-generated and
+deterministic.
 
 ## Effects, Summaries and Liveness
 
@@ -212,10 +220,36 @@ summaries before the final pass. Strict mode uses `stackBalanced` and
 `hasUnknownStackEffect` to distinguish balanced stack use from a routine whose
 boundary may leave the stack in an unknown state.
 
+The analysis now emits typed findings rather than only free-form conflict text.
+The current finding set covers:
+
+- `definite_contract_violation`
+- `flag_lifetime_risk`
+- `missing_callee_contract`
+- `external_interface_unknown`
+- `unknown_control_flow`
+- `output_candidate`
+
+Policy and suppression handling operate on those finding kinds. Report JSON,
+tooling consumers and baseline ratchets all use the same typed finding model.
+
+`policy.ts` resolves per-file register-contract modes from `strict`, `audit`
+and `off` glob lists. Specific patterns win over broad patterns, then stricter
+matches win ties. This lets one compile run audit imported wrappers while
+keeping core files in strict mode or disabling analysis for known external
+shims. When policy disables a file, unresolved call targets in that file no
+longer surface as ordinary unknown-symbol diagnostics.
+
 ## Reports, Interfaces and Tooling
 
-`report.ts` renders human-readable `.regcontracts.txt` reports and `.asmi` interface
-metadata. It also renders generated source contracts as one compact `;!` line,
+`report.ts` renders human-readable `.regcontracts.txt` reports, JSON report
+payloads, `.asmi` interface metadata and review-oriented inference exports. The
+text and JSON reports share one model with routine summaries, findings,
+suppressed findings, unknown calls and optional ratchet results. Inference
+exports are lighter-weight routine summaries for review workflows and can be
+rendered as JSON or Markdown.
+
+`report.ts` also renders generated source contracts as one compact `;!` line,
 joining `in`, `out`, `maybe-out` and `clobbers` clauses with semicolons.
 When a routine may clobber the full flag set, the source form uses `F` as the
 compact carrier name. `annotate.ts`, `annotations.ts`, `fix.ts` and
@@ -225,7 +259,12 @@ conservative fixes.
 The CLI can request these behaviours through:
 
 - `--reg-report`
+- `--reg-report-format`
+- `--reg-baseline`
+- `--reg-ratchet`
 - `--reg-interface`
+- `--reg-infer`
+- `--reg-infer-format`
 - `--contracts`
 - `--fix`
 - `--accept-out`
@@ -235,6 +274,11 @@ actions through `analyzeRegisterContractsForTools()`. Tooling diagnostics carry
 file, line, column, message, fixability and optional text edits. An editor can
 show the same register contract information that the CLI reports while using
 normal editor actions for accepted fixes.
+
+`analyzeRegisterContractsForTools()` now also returns the structured findings
+list and output candidate list beside candidate diagnostics and code actions, so
+tooling integrations can render the same categorised analysis that the CLI
+writes to report artifacts.
 
 ## Changing Ops or Register Contracts
 
@@ -249,7 +293,8 @@ Register contract changes usually begin in one of these files:
   `instruction-operands.ts`, `instruction-predicates.ts`
 - Summary inference: `summary.ts`
 - Caller liveness: `liveness.ts`
-- Output text: `report.ts`
+- Policy selection and ratchets: `policy.ts`, `ratchet.ts`
+- Output text and structured exports: `report.ts`
 - Source edits: `annotate.ts`, `fix.ts`, `annotations.ts`
 - Tooling surface: `tooling.ts`
 

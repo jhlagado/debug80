@@ -43,7 +43,9 @@ compile(entryFile, options, deps)
     read AZMDoc and .asmi contracts
     infer summaries
     run liveness
-    build report, interface and annotation artifacts
+    apply suppressions and scoped policy
+    compare JSON findings against optional baseline
+    build report, interface, inference and annotation artifacts
   assembleProgram()
     buildAddressState()
     emitProgramImage()
@@ -85,7 +87,7 @@ analyzeProgramNext(loaded)
 
 analyzeRegisterContractsForTools(loaded)
   run register contract analysis in audit-oriented tooling mode
-  return candidate diagnostics and code actions
+  return findings, candidate diagnostics and code actions
 ```
 
 `analyzeRegisterCareForTools()` remains as a deprecated compatibility export for
@@ -98,7 +100,7 @@ tooling integrations that still use the older name.
 | Source loading     | entry path           | logical lines with ownership metadata, source texts, comments |
 | Parsing            | logical lines        | source items                          |
 | Analysis           | source items         | diagnostics, symbols, import-visibility checks |
-| Register contracts | loaded program       | summaries, conflicts, reports         |
+| Register contracts | loaded program       | summaries, findings, reports and inference artifacts |
 | Assembly           | source items         | byte map, symbols, source segments with per-item columns |
 | Outputs            | byte map and symbols | artifacts                             |
 | CLI                | artifacts            | files on disk                         |
