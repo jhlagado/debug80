@@ -44,6 +44,16 @@ want one import path.
 Use this path for build tools, Debug80 integration and scripts that need bytes
 or artifacts.
 
+Compile consumers should treat these register-contract options as public when
+they use that subsystem:
+
+- `registerContractsPolicy`
+- `registerContractsReportFormat`
+- `registerContractsBaseline`
+- `registerContractsRatchet`
+- `emitRegisterInference`
+- `registerContractsInferenceFormat`
+
 ## Tooling Exports
 
 `@jhlagado/azm/tooling` exposes:
@@ -96,6 +106,9 @@ Treat these as public contracts:
 - `D8mSymbol`
 - `LoadedProgramNext`
 - `AnalyzeProgramNextResult`
+- `RegisterContractsFinding`
+- `RegisterContractsFindingKind`
+- `RegisterContractsInferenceModel`
 - `RegisterContractsCandidateDiagnostic`
 - `RegisterContractsCodeAction`
 

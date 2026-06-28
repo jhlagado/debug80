@@ -66,6 +66,10 @@ failure modes, determinism, case-style linting and register contract switches.
 Users experience the command-line behaviour through argument parsing,
 diagnostics, output paths and exit status.
 
+The register-contract CLI suite now also covers JSON report output, inference
+artifact output, baseline loading and ratchet failures so option parsing and
+artifact suffix rules stay stable.
+
 CLI tests also protect deterministic output. `compareDiagnosticsForCli()` sorts
 diagnostics by file, line, column, severity, code and message. A CLI test can
 catch changes that leave the compiler correct but make terminal output unstable.
@@ -154,6 +158,8 @@ Ask what kind of fact the change affects:
 - Instruction-chain splitting belongs in `source/`, while inline source
   generation and op template expansion belong in `expansion/`.
 - Routine contracts and liveness belong in `register-contracts/`.
+- Register-contract policy matching, suppression parsing and ratchets also
+  belong in `register-contracts/`.
 - Artifact shape belongs in `outputs/`.
 - User commands belong in `cli/`.
 - Package consumers belong in `api-compile.ts`, `api-tooling.ts` and
@@ -188,6 +194,7 @@ This book should change when:
 - public package exports change
 - CLI option groups change
 - output artifact shapes change
+- register-contract finding kinds, policy rules or report schemas change
 - a major subsystem gains a new responsibility
 - tests or guardrails are reorganised
 
