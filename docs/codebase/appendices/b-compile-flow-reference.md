@@ -39,6 +39,7 @@ compile(entryFile, options, deps)
     lintCaseStyleNext()
   optionally runRegisterContracts()
     load .asmi interfaces
+    parse exact and ranged RST service contracts
     build program model
     read AZMDoc and .asmi contracts
     infer summaries
@@ -100,7 +101,7 @@ tooling integrations that still use the older name.
 | Source loading     | entry path           | logical lines with ownership metadata, source texts, comments |
 | Parsing            | logical lines        | source items                          |
 | Analysis           | source items         | diagnostics, symbols, import-visibility checks |
-| Register contracts | loaded program       | summaries, findings, reports and inference artifacts |
+| Register contracts | loaded program       | summaries, service-range boundaries, findings, reports and inference artifacts |
 | Assembly           | source items         | byte map, symbols, source segments with per-item columns |
 | Outputs            | byte map and symbols | artifacts                             |
 | CLI                | artifacts            | files on disk                         |
