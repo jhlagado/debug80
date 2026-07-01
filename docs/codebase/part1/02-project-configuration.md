@@ -215,6 +215,8 @@ Platform defaults          (lowest priority)
 
 Each layer is optional. Missing layers are skipped. For simple scalar fields (strings, numbers, booleans), the first non-undefined value in priority order wins. `populateFromConfig()` still drives the process, but the actual staged merge now lives in `mergeLaunchConfigStages()` in `src/debug/launch/launch-config-merge.ts`.
 
+The top-level `azm` block also uses a shallow merge across root config, target config, and explicit launch arguments. That lets a target override `emitRegisterReport` or `registerContracts` without replacing the rest of the resolved AZM options. Nested objects inside `azm` still follow normal object replacement rules because `applyAzmOptions()` uses object spread at the `azm` layer only. `registerContractsPolicy` therefore replaces the whole policy object when a target or launch argument provides one, instead of merging per mode list.
+
 ### Platform block merging
 
 Platform configuration blocks (`simple`, `tec1`, `tec1g`) receive special treatment. They are **shallow-merged**, not replaced. This means a target can override specific fields within a platform block without losing other fields defined at the root level.

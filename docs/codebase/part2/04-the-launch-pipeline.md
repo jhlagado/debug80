@@ -220,6 +220,7 @@ compile(asmPath, {
   emitAsm80: true,
   sourceRoot,
   registerContracts,
+  registerContractsPolicy,
   emitRegisterReport,
   registerContractsProfile,
   registerContractsInterfaces,
@@ -227,7 +228,7 @@ compile(asmPath, {
 })
 ```
 
-The successful path writes the HEX output, BIN output when present, a native D8 map, and any requested register-contract artifacts beside the HEX artifact. Register-contract reports are written as `.regcontracts.txt`; inferred interfaces are written as `.asmi`. Debug80 no longer writes placeholder listings or generated source-map cache files.
+The successful path writes the HEX output, BIN output when present, a native D8 map, and any requested register-contract artifacts beside the HEX artifact. Register-contract reports are written as `.regcontracts.txt`; inferred interfaces are written as `.asmi`. `registerContractsPolicy` flows through unchanged when present, so one launch can ask AZM to enforce different register-contract modes for different source-file globs. Debug80 no longer writes placeholder listings or generated source-map cache files.
 
 TEC-1G ROM-artifact assembly is a narrower path inside the same AZM backend. `buildTec1gRomArtifactsIfRequested()` assembles each active source-backed monitor or expansion artifact before platform resolution, always overrides AZM options to `registerContracts: 'off'` and `emitRegisterReport: false`, and then pads the generated `.bin` to the configured monitor `size` or expansion `imageSize`. This keeps ROM artifacts deterministic and prevents the app launch's register-contract mode from changing monitor or cartridge builds.
 
