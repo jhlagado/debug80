@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.30
+
+- Updated AZM to `0.2.15`.
+
 ## 0.1.29
 
 - Stopped adding `roms/` to generated Debug80 project `.gitignore` blocks so
