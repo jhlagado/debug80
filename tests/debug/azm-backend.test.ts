@@ -112,6 +112,11 @@ describe('azm-backend', () => {
       hexPath,
       azm: {
         registerContracts: 'audit',
+        registerContractsPolicy: {
+          strict: ['src/**/*.asm'],
+          audit: ['roms/tec1g/tecm8/monitor/**/*.asm'],
+          off: ['vendor/**/*.asm'],
+        },
         emitRegisterReport: true,
         registerContractsProfile: 'mon3',
       },
@@ -122,6 +127,11 @@ describe('azm-backend', () => {
       asmPath,
       expect.objectContaining({
         registerContracts: 'audit',
+        registerContractsPolicy: {
+          strict: ['src/**/*.asm'],
+          audit: ['roms/tec1g/tecm8/monitor/**/*.asm'],
+          off: ['vendor/**/*.asm'],
+        },
         emitRegisterReport: true,
         registerContractsProfile: 'mon3',
       }),

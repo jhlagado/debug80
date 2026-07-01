@@ -33,6 +33,10 @@ describe('launch-config-merge', () => {
       azm: {
         registerContracts: 'audit',
         emitRegisterReport: false,
+        registerContractsPolicy: {
+          strict: ['src/**/*.asm'],
+          audit: ['roms/**/*.asm'],
+        },
       },
       targets: {
         game: {
@@ -42,6 +46,9 @@ describe('launch-config-merge', () => {
           stopOnEntry: true,
           azm: {
             emitRegisterReport: true,
+            registerContractsPolicy: {
+              strict: ['roms/tec1g/tecm8/**/*.asm'],
+            },
           },
         },
       },
@@ -71,6 +78,9 @@ describe('launch-config-merge', () => {
       azm: {
         registerContracts: 'error',
         emitRegisterReport: true,
+        registerContractsPolicy: {
+          strict: ['roms/tec1g/tecm8/**/*.asm'],
+        },
       },
     });
   });

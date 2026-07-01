@@ -64,6 +64,11 @@ interface CompilerOptions {
   emitHex?: boolean;
   emitD8m?: boolean;
   registerContracts?: 'off' | 'audit' | 'warn' | 'error' | 'strict';
+  registerContractsPolicy?: {
+    strict?: string[];
+    audit?: string[];
+    off?: string[];
+  };
   emitRegisterReport?: boolean;
   emitRegisterInterface?: boolean;
   registerContractsProfile?: 'mon3';

@@ -42,9 +42,20 @@ export interface ProjectProfileConfig {
 
 export type AzmRegisterContractsMode = 'off' | 'audit' | 'warn' | 'error' | 'strict';
 
+export interface AzmRegisterContractsPolicy {
+  /** File glob patterns assembled with strict register contract enforcement. */
+  strict?: string[];
+  /** File glob patterns assembled in register contract audit mode. */
+  audit?: string[];
+  /** File glob patterns excluded from register contract analysis. */
+  off?: string[];
+}
+
 export interface AzmLaunchOptions {
   /** Register contracts analysis mode passed to AZM. */
   registerContracts?: AzmRegisterContractsMode;
+  /** File-scoped register contracts policy passed to AZM. */
+  registerContractsPolicy?: AzmRegisterContractsPolicy;
   /** Emit AZM register contracts report artifacts. */
   emitRegisterReport?: boolean;
   /** Emit inferred AZM register contracts interface artifacts. */

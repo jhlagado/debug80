@@ -483,6 +483,10 @@ describe('launch-args', () => {
       JSON.stringify({
         azm: {
           registerContracts: 'audit',
+          registerContractsPolicy: {
+            strict: ['src/**/*.asm'],
+            audit: ['roms/**/*.asm'],
+          },
           emitRegisterReport: false,
           registerContractsProfile: 'mon3',
         },
@@ -490,6 +494,9 @@ describe('launch-args', () => {
           matrix: {
             asm: 'src/matrix.asm',
             azm: {
+              registerContractsPolicy: {
+                strict: ['roms/tec1g/tecm8/**/*.asm'],
+              },
               emitRegisterReport: true,
             },
           },
@@ -510,6 +517,9 @@ describe('launch-args', () => {
 
     expect(merged.azm).toEqual({
       registerContracts: 'error',
+      registerContractsPolicy: {
+        strict: ['roms/tec1g/tecm8/**/*.asm'],
+      },
       emitRegisterReport: true,
       registerContractsProfile: 'mon3',
     });

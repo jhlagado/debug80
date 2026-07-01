@@ -485,6 +485,33 @@
                     ],
                     "default": "off"
                   },
+                  "registerContractsPolicy": {
+                    "type": "object",
+                    "description": "File-scoped AZM register contracts policy. Patterns are AZM glob patterns; more specific matches win, with stricter modes winning ties.",
+                    "properties": {
+                      "strict": {
+                        "type": "array",
+                        "description": "Source file glob patterns assembled with strict register contract enforcement",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "audit": {
+                        "type": "array",
+                        "description": "Source file glob patterns assembled in register contract audit mode",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "off": {
+                        "type": "array",
+                        "description": "Source file glob patterns excluded from register contract analysis",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
                   "emitRegisterReport": {
                     "type": "boolean",
                     "description": "Emit an AZM register contracts report artifact",

@@ -43,10 +43,30 @@ Debug80's current assembler backend is AZM. Most users should rely on defaults, 
 | Field                         | Type                                                | Default | Description                                                                      |
 | ----------------------------- | --------------------------------------------------- | ------- | -------------------------------------------------------------------------------- |
 | `registerContracts`           | `'off' \| 'audit' \| 'warn' \| 'error' \| 'strict'` | `'off'` | AZM register contract mode                                                       |
+| `registerContractsPolicy`     | `{ strict?: string[]; audit?: string[]; off?: string[] }` | —       | File-scoped register contract policy using AZM glob patterns                     |
 | `emitRegisterReport`          | `boolean`                                           | `false` | Write a `.regcontracts.txt` report artifact when register contract analysis runs |
 | `emitRegisterInterface`       | `boolean`                                           | `false` | Write an inferred `.asmi` interface artifact                                     |
 | `registerContractsProfile`    | `'mon3'`                                            | —       | Built-in AZM register contract profile                                           |
 | `registerContractsInterfaces` | `string[]`                                          | `[]`    | External `.asmi` contract files to load                                          |
+
+`registerContractsPolicy` lets one AZM compile use different register-contract modes for different source files. Use `registerContracts` as the fallback mode, then add `strict`, `audit`, and `off` glob lists for file-specific overrides:
+
+```json
+{
+  "azm": {
+    "registerContracts": "strict",
+    "registerContractsPolicy": {
+      "strict": ["src/**/*.asm", "roms/tec1g/tecm8/expansion/**/*.asm"],
+      "audit": ["roms/tec1g/tecm8/monitor/**/*.asm"],
+      "off": ["vendor/**/*.asm"]
+    },
+    "emitRegisterReport": true,
+    "registerContractsProfile": "mon3"
+  }
+}
+```
+
+AZM resolves policy entries by source-file glob. More specific patterns win over broader patterns; if matches tie, the stricter mode wins. Policy entries use only `strict`, `audit`, and `off`; compatibility modes such as `warn` and `error` remain top-level `registerContracts` modes.
 
 The TEC-1G Project accordion exposes simpler session-scoped controls: **Register Contracts** (`Enforce`, `Audit`, `Off`) and **Contract Updates** (`Ask`, `Auto`, `Never`). Those controls are not persisted directly into `debug80.json`; the extension maps them into launch-time `azm` options when the user restarts debugging. AZM's deprecated `registerCare*` API aliases are compatibility names only; new Debug80 configuration should use `registerContracts*`.
 
