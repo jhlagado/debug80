@@ -1,12 +1,23 @@
 # Changelog
 
-## 0.1.28
+## 0.1.29
 
 - Stopped adding `roms/` to generated Debug80 project `.gitignore` blocks so
   copied monitor ROM sources are tracked by default.
 - Added a `tec1g/custom` project kit with project-owned monitor and expansion
   ROM paths, and renamed the TEC-1G expansion image config to `expansionRomHex`.
-- Updated AZM to `0.2.12`.
+- Updated AZM to `0.2.13` and added register contract policy support.
+- Added TEC-1G expansion ROM bank modeling, multibank expansion artifacts, and
+  configurable expansion ROM outputs.
+- Fixed TEC-1G ROM artifact generation, padding, monitor entry selection,
+  generated map preference, expansion bank decoding, and banked ROM debug
+  mapping.
+- Added ROM development configuration documentation and refreshed the Debug80
+  engineering manual for TEC-1G ROM artifacts, bank-aware mapping, map
+  rebasing, and AZM `0.2.13`.
+
+## 0.1.28
+
 - Updated AZM to `0.2.11`.
 - Updated the Debug80 engineering manual for TEC-1G joystick focus handling.
 
