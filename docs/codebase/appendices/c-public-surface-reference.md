@@ -109,12 +109,18 @@ Treat these as public contracts:
 - `RegisterContractsFinding`
 - `RegisterContractsFindingKind`
 - `RegisterContractsInferenceModel`
+- `RegisterContractsServiceRangeContract`
 - `RegisterContractsCandidateDiagnostic`
 - `RegisterContractsCodeAction`
 
 For tooling consumers, this contract also includes the optional
 `SourceSpan.sourceUnit`, `SourceSpan.sourceRelation` and
 `SourceSpan.sourceUnitRelation` fields carried on parsed items.
+
+For register-contract consumers, `RoutineSummary.consumesStackFrame` and
+`RegisterContractsServiceRangeContract` are public data-shape details. They
+describe service-specific stack-frame consumption and lower-bound RST service
+range matching used by `.asmi` interfaces and profile summaries.
 
 When these shapes change, update package tests, TypeScript type tests, README
 examples, repo-local reference docs and this manual.
