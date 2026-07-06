@@ -1,0 +1,112 @@
+; sprite-chase.glim — design sketch (does not compile yet)
+; =========================================================
+; The TMS9918 demos (corpus/tms9918) made interactive: steer a sprite
+; with the keypad to catch a fleeing target over a tile background.
+; Small on purpose — this is the VDP counterpart of CounterToy, sized
+; to be the first real program of the TMS9918 profile.
+;
+; What it exercises that tetro.glim does not:
+;   - display tms9918: vblank-paced loop, VRAM commit phase (P1)
+;   - sprite resources and a sprite state contract (P6)
+;   - tile resources for the background (P6)
+;   - the written-to display: render effects update a shadow sprite
+;     attribute table; the commit phase streams dirty entries to VRAM
+
+program SpriteChase
+
+platform tec1g-mon3
+display tms9918 mode graphics1       ; P1: init table, vblank pacing,
+                                     ; shadow tables + VRAM commit (P8)
+
+state PlayerX  : byte = 120
+state PlayerY  : byte = 88
+state TargetX  : byte = 40
+state TargetY  : byte = 40
+state Caught   : byte = 0
+state Score    : word = 0 dirty_on_start
+
+pulse StepUp
+pulse StepDown
+pulse StepLeft
+pulse StepRight
+pulse Tick
+
+timer Pace : byte = 2 -> Tick        ; game step every 2 frames
+
+bind key KEY_PLUS  held period 1 -> StepUp
+bind key KEY_MINUS held period 1 -> StepDown
+bind key KEY_LEFT  held period 1 -> StepLeft
+bind key KEY_RIGHT held period 1 -> StepRight
+
+; Sprites are resources with a pattern and a runtime attribute record
+; (y, x, pattern, colour) that render effects write and commit flushes.
+sprite Player color white
+  "..XXXX.."
+  ".XXXXXX."
+  "XX.XX.XX"
+  "XXXXXXXX"
+  "XX....XX"
+  ".XXXXXX."
+  "..XXXX.."
+  "........"
+end
+
+sprite Target color lightred
+  "...XX..."
+  "..XXXX.."
+  ".XXXXXX."
+  "XXXXXXXX"
+  ".XXXXXX."
+  "..XXXX.."
+  "...XX..."
+  "........"
+end
+
+tile Wall color darkblue on black
+  "XXXXXXXX" \ "X......X" \ "X......X" \ "X......X"
+  "X......X" \ "X......X" \ "X......X" \ "XXXXXXXX"
+end
+
+effect MovePlayer
+    on StepUp, StepDown, StepLeft, StepRight
+    writes PlayerX, PlayerY
+begin
+    ; clamp-and-step, one pixel per pulse
+end
+
+effect FleeTarget
+    on Tick
+    writes TargetX, TargetY
+begin
+    ; step away from player with _random jitter (MON-3 API, P8)
+end
+
+effect Collide
+    on PlayerX, PlayerY, TargetX, TargetY
+    writes Caught, Score
+begin
+    ; overlap test; on catch: bump Score, respawn target via Random
+end
+
+effect PlacePlayer
+    phase render
+    on PlayerX, PlayerY
+begin
+    sprite_at Player, PlayerX, PlayerY   ; AZM op from the sprite resource;
+                                         ; writes the shadow attr entry
+end
+
+effect PlaceTarget
+    phase render
+    on TargetX, TargetY
+begin
+    sprite_at Target, TargetX, TargetY
+end
+
+effect DrawScore
+    phase render
+    on Score
+begin
+    ; write score digits into the shadow name table top row;
+    ; commit streams only dirty name-table cells to VRAM
+end

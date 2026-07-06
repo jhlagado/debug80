@@ -1,0 +1,74 @@
+; Dot — the minimal TEC-1G matrix program.
+;
+; Move a white dot around the 8x8 RGB matrix with the keypad,
+; arranged like arrows: 2 = up, 8 = down, 4 = left, 6 = right.
+; The dot stops at every edge and cannot go further.
+;
+; One press = one step (rising-edge bindings). This is deliberately the
+; barest possible input-to-pixel program: four pulses, two state cells,
+; five effects.
+
+program Dot
+
+platform tec1g-mon3
+display matrix8x8
+
+state DotX : byte = 3
+state DotY : byte = 3 dirty_on_start   ; dirty so the dot draws on frame 1
+
+pulse Up
+pulse Down
+pulse Left
+pulse Right
+
+bind key KEY_2 rising -> Up
+bind key KEY_8 rising -> Down
+bind key KEY_4 rising -> Left
+bind key KEY_6 rising -> Right
+
+effect MoveUp
+    on Up
+    writes DotY
+begin
+    ld a,(DotY) \ or a \ jr z,.stop    ; at the top: stop, go no further
+    dec a \ ld (DotY),a
+.stop:
+end
+
+effect MoveDown
+    on Down
+    writes DotY
+begin
+    ld a,(DotY) \ cp 7 \ jr nc,.stop
+    inc a \ ld (DotY),a
+.stop:
+end
+
+effect MoveLeft
+    on Left
+    writes DotX
+begin
+    ld a,(DotX) \ or a \ jr z,.stop
+    dec a \ ld (DotX),a
+.stop:
+end
+
+effect MoveRight
+    on Right
+    writes DotX
+begin
+    ld a,(DotX) \ cp 7 \ jr nc,.stop
+    inc a \ ld (DotX),a
+.stop:
+end
+
+effect DrawDot
+    phase render
+    on DotX, DotY
+begin
+    call FbClear
+    ld a,(DotX) \ ld b,a
+    ld a,(DotY) \ ld c,a
+    ld a,COLOR_WHITE
+    call FbPlot
+end

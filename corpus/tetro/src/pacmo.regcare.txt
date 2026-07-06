@@ -1,0 +1,1351 @@
+AZM Register-Care Report
+Entry: /Users/johnhardy/projects/tetro/src/pacmo/pacmo.z80
+Mode: audit
+Profile: mon3
+
+Routine: START
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: MAIN_LOOP
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: SCAN_TICK
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: ADVANCE_SCAN_STATE
+  reads: -
+  writes: A,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C
+  stack: balanced
+
+Routine: SAVE_NEXT_SCAN_PTR
+  reads: H,L
+  writes: -
+  preserves: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: INIT_STATE
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: INIT_LEVEL_STATE
+  reads: -
+  writes: IXH,IXL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: INIT_PLAYER_AND_MONSTERS
+  reads: -
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: CLEAR_FRONT_AND_BACK
+  reads: -
+  writes: A,B,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E
+  stack: balanced
+
+Routine: CLEAR_FRONT_AND_BACK_LOOP
+  reads: H,L,A,B
+  writes: B,H,L,zero,sign,parity,halfCarry
+  preserves: A,C,D,E,carry
+  stack: balanced
+
+Routine: CLEAR_EATEN_PATHS
+  reads: -
+  writes: A,B,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E
+  stack: balanced
+
+Routine: CLEAR_EATEN_PATHS_LOOP
+  reads: H,L,A,B
+  writes: B,H,L,zero,sign,parity,halfCarry
+  preserves: A,C,D,E,carry
+  stack: balanced
+
+Routine: LOGIC_TICK
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: LOGIC_SL7
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: PACMO_FRAME_DUTIES
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: PACMO_FRAME_TICK_DONE
+  reads: IXH,IXL
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: PACMO_FRAME_COLLISION_DONE
+  reads: -
+  writes: -
+  preserves: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: PACMO_RENDER_LOGIC_ROW_A
+  reads: A
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: LOGIC_SLICE_NEXT
+  reads: -
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced
+
+Routine: TICK_LEVEL_COMPLETE_GATE
+  reads: -
+  writes: A,H,L,carry,zero,sign,parity,halfCarry,B,C,D,E
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: TICK_POWER_TIMER
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: PACMO_IS_LEVEL2_PLUS
+  reads: -
+  writes: A,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+  relation: carry <= -
+
+Routine: TICK_ENEMY
+  reads: IXH,IXL
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: ENEMY_ATTACK_STEP
+  reads: IXH,IXL
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: ENEMY_TRY_CHASE_DIR
+  reads: A,L
+  writes: A,B,C,E,zero,sign,parity,halfCarry,D,H,L
+  preserves: -
+  stack: balanced, unknown effect
+  relation: carry <= -
+
+Routine: ENEMY_TRY_CHASE_BLOCKED
+  reads: A
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: ENEMY_CHASE_DIRS
+  reads: IXH,IXL
+  writes: A,B,C,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+  relation: D,E <= IXH,IXL
+
+Routine: ENEMY_GET_HORIZONTAL_CHASE
+  reads: IXH,IXL
+  writes: C,carry,zero,sign,parity,halfCarry
+  preserves: D,E,H,L
+  stack: balanced
+  relation: A,B <= IXH,IXL
+
+Routine: ENEMY_GET_HORIZONTAL_RIGHT
+  reads: C
+  writes: A,B,C,carry,zero,sign,parity,halfCarry
+  preserves: D,E,H,L
+  stack: balanced
+
+Routine: ENEMY_GET_HORIZONTAL_ALIGNED
+  reads: -
+  writes: A,B,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E,H,L
+  stack: balanced
+
+Routine: ENEMY_GET_VERTICAL_CHASE
+  reads: IXH,IXL
+  writes: C,carry,zero,sign,parity,halfCarry
+  preserves: D,E,H,L
+  stack: balanced
+  relation: A,B <= IXH,IXL
+
+Routine: ENEMY_GET_VERTICAL_UP
+  reads: C
+  writes: A,B,C,carry,zero,sign,parity,halfCarry
+  preserves: D,E,H,L
+  stack: balanced
+
+Routine: ENEMY_GET_VERTICAL_ALIGNED
+  reads: -
+  writes: A,B,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E,H,L
+  stack: balanced
+
+Routine: ENEMY_ROAM_STEP
+  reads: IXH,IXL
+  writes: A,B,C,D,E,H,carry,zero,sign,parity,halfCarry,L
+  preserves: -
+  stack: balanced
+
+Routine: ENEMY_ROAM_TRY_LOOP
+  reads: E,D,IXH,IXL
+  writes: A,B,C,carry,zero,sign,parity,halfCarry
+  preserves: D,E,H,L
+  stack: balanced, unknown effect
+
+Routine: ENEMY_ROAM_NEXT_CANDIDATE
+  reads: E
+  writes: A,E,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,H,L
+  stack: balanced
+
+Routine: ENEMY_ROAM_CANDIDATE_READY
+  reads: H,D,IXH,IXL
+  writes: A,B,C,E,H,carry,zero,sign,parity,halfCarry
+  preserves: D,L
+  stack: balanced
+
+Routine: ENEMY_OPPOSITE_DIR
+  reads: A
+  writes: carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+  relation: A <= A
+
+Routine: ENEMY_OPPOSITE_DOWN
+  reads: -
+  writes: A
+  preserves: B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: ENEMY_OPPOSITE_UP
+  reads: -
+  writes: A
+  preserves: B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: ENEMY_OPPOSITE_RIGHT
+  reads: -
+  writes: A
+  preserves: B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: ENEMY_TRY_MOVE_DIR
+  reads: IXH,IXL,A
+  writes: A,B,C,E,zero,sign,parity,halfCarry
+  preserves: D,H,L
+  stack: balanced
+  relation: carry <= -
+
+Routine: ENEMY_TRY_LEFT
+  reads: B
+  writes: A,B,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E,H,L
+  stack: balanced
+
+Routine: ENEMY_TRY_RIGHT
+  reads: B
+  writes: A,B,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E,H,L
+  stack: balanced
+
+Routine: ENEMY_TRY_UP
+  reads: C
+  writes: A,C,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: balanced
+
+Routine: ENEMY_TRY_DOWN
+  reads: C
+  writes: A,C,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: balanced
+
+Routine: ENEMY_TRY_COMMIT_IF_OPEN
+  reads: B,C,IXH,IXL,E
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: ENEMY_TRY_BLOCKED
+  reads: A
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: TICK_ENEMY_RESPAWN
+  reads: IXH,IXL
+  writes: A,zero,sign,parity,halfCarry,B,C,D,E,H,L
+  preserves: -
+  stack: balanced, unknown effect
+  relation: carry <= -
+
+Routine: TICK_ENEMY_RESPAWN_DEC_TIMER
+  reads: IXH,IXL
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: TICK_ENEMY_RESPAWN_DONE
+  reads: IXH,IXL
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: ENEMY_SELECT_RESPAWN
+  reads: IXH,IXL
+  writes: B,D,E,H,L,A,C
+  preserves: carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: ENEMY_SELECT_RESPAWN_LOOP
+  reads: H,L,IXH,IXL,B
+  writes: A,C,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E
+  stack: unbalanced, unknown effect
+
+Routine: ENEMY_SELECT_RESPAWN_NEW_BEST
+  reads: C,L,H
+  writes: B,D,E
+  preserves: A,C,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: ENEMY_SELECT_RESPAWN_KEEP_BEST
+  reads: -
+  writes: H,L
+  preserves: A,B,C,D,E,carry,zero,sign,parity,halfCarry
+  stack: unbalanced
+
+Routine: ENEMY_SELECT_RESPAWN_COMMIT
+  reads: D,IXH,IXL,E
+  writes: A
+  preserves: B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: ENEMY_RESPAWN_SCORE_LH
+  reads: L,H,IXH,IXL
+  writes: C,carry,zero,sign,parity,halfCarry,B
+  preserves: D,E,H,L
+  stack: balanced, unknown effect
+  relation: A <= -
+
+Routine: ENEMY_RESPAWN_SCORE_ZERO
+  reads: -
+  writes: A,D,E,carry,zero,sign,parity,halfCarry
+  preserves: B,C,H,L
+  stack: unbalanced
+
+Routine: ENEMY_IS_LH_IN_VIEWPORT
+  reads: L,H
+  writes: A,C,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: balanced
+  relation: carry <= -
+
+Routine: ENEMY_IS_LH_NOT_VISIBLE
+  reads: A
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: ENEMY_IS_LH_OCCUPIED_BY_OTHER_MONSTER
+  reads: L,H,IXH,IXL
+  writes: A,D,E,zero,sign,parity,halfCarry
+  preserves: B,C,H,L
+  stack: balanced, unknown effect
+  relation: carry <= -
+
+Routine: ENEMY_IS_LH_OCCUPIED_BY_MONSTER_DE
+  reads: L,H,D,E,IXH,IXL
+  writes: A,D,E,zero,sign,parity,halfCarry
+  preserves: B,C,H,L
+  stack: balanced
+  relation: carry <= -
+
+Routine: ENEMY_OCCUPIED_NO
+  reads: A
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: ENEMY_DISTANCE_LH_TO_OTHER_MONSTER
+  reads: L,H,IXH,IXL
+  writes: B,C,D,E,carry,zero,sign,parity,halfCarry
+  preserves: H,L
+  stack: balanced, unknown effect
+  relation: A <= -
+
+Routine: ENEMY_ADD_DISTANCE_TO_MONSTER_DE
+  reads: B,L,H,D,E,IXH,IXL
+  writes: A,C,D,E,carry,zero,sign,parity,halfCarry
+  preserves: H,L
+  stack: balanced, unknown effect
+  relation: B <= -
+
+Routine: ENEMY_DISTANCE_LH_TO_PLAYER
+  reads: L,H
+  writes: C,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: balanced
+  relation: A <= -
+
+Routine: ENEMY_DISTANCE_LH_TO_DE
+  reads: L,H,E,D
+  writes: C,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: balanced
+  relation: A <= -
+
+Routine: ENEMY_DISTANCE_X_PLAYER_HIGHER
+  reads: A,C
+  writes: A,C,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: balanced
+
+Routine: ENEMY_DISTANCE_Y
+  reads: H,D
+  writes: A,C,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: unbalanced
+
+Routine: ENEMY_DISTANCE_Y_PLAYER_HIGHER
+  reads: A,C
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: ENEMY_DISTANCE_SUM
+  reads: A
+  writes: A,B,C,carry,zero,sign,parity,halfCarry
+  preserves: D,E,H,L
+  stack: unbalanced
+
+Routine: PACMO_ADVANCE_LEVEL
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: PACMO_ADVANCE_LEVEL_MIN
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: POLL_INPUT_AND_UPDATE
+  reads: -
+  writes: A,C,E,carry,zero,sign,parity,halfCarry,B,D,H,L,IXH,IXL
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: POLL_INPUT_NOT_NEW_KEY
+  reads: E
+  writes: A,E,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,H,L
+  stack: balanced
+
+Routine: POLL_SPLASH_START
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: POLL_CAUGHT_RESTART
+  reads: -
+  writes: A,H,L,carry,zero,sign,parity,halfCarry,B,C,D,E,IXH,IXL
+  preserves: -
+  stack: balanced
+
+Routine: POLL_CAUGHT_RESTART_KEY
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: PACMO_RESUME_AFTER_CAUGHT
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: HANDLE_PAUSE_KEY
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: HANDLE_UNPAUSE_KEY
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: HANDLE_UNPAUSE_SHOW_RUNNING
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: HANDLE_DIRECTION_KEY
+  reads: E
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: HELD_SAME_KEY
+  reads: E
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced, unknown effect
+
+Routine: NORMALIZE_INPUT_TO_DIRECTION
+  reads: A
+  writes: A,zero,sign,parity,halfCarry
+  preserves: B,C,D,H,L
+  stack: balanced
+  relation: carry,E <= -
+
+Routine: NORMALIZE_LEFT
+  reads: -
+  writes: E,carry,halfCarry
+  preserves: A,B,C,D,H,L,zero,sign,parity
+  stack: balanced
+
+Routine: NORMALIZE_RIGHT
+  reads: -
+  writes: E,carry,halfCarry
+  preserves: A,B,C,D,H,L,zero,sign,parity
+  stack: balanced
+
+Routine: NORMALIZE_UP
+  reads: -
+  writes: E,carry,halfCarry
+  preserves: A,B,C,D,H,L,zero,sign,parity
+  stack: balanced
+
+Routine: NORMALIZE_DOWN
+  reads: -
+  writes: E,carry,halfCarry
+  preserves: A,B,C,D,H,L,zero,sign,parity
+  stack: balanced
+
+Routine: CLEAR_INPUT_REPEAT_STATE
+  reads: -
+  writes: A
+  preserves: B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: MOVE_PLAYER_LEFT
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: MOVE_PLAYER_RIGHT
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: MOVE_PLAYER_UP
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: MOVE_PLAYER_DOWN
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: TRY_MOVE_PLAYER_TO_BC
+  reads: B,C
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: PACMO_CHECK_PLAYER_CAUGHT
+  reads: IXH,IXL
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: PACMO_ENTER_CAUGHT
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: PACMO_ENTER_FINAL_GAME_OVER
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: PACMO_CONSUME_ENEMY
+  reads: IXH,IXL
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: PACMO_CONSUME_POWER_PILL_AT_BC
+  reads: B,C
+  writes: D,H,L,A,E
+  preserves: B,C,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: PACMO_CONSUME_POWER_PILL_LOOP
+  reads: H,L,B,C,D
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: PACMO_CONSUME_POWER_PILL_NEXT
+  reads: H,L,D
+  writes: D,H,L,carry,zero,sign,parity,halfCarry
+  preserves: A,B,C,E
+  stack: balanced
+
+Routine: PACMO_MARK_EATEN_AT_BC
+  reads: B,C
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: PACMO_MARK_EATEN_LOW_BYTE
+  reads: A,H,L
+  writes: A,B,C,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: D
+  stack: balanced, unknown effect
+
+Routine: PACMO_ADD_SCORE_A
+  reads: A
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: PACMO_CHECK_ROUND_COMPLETE
+  reads: -
+  writes: A,B,D,E,H,L,carry,zero,sign,parity,halfCarry,C
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: PACMO_CHECK_ROUND_ROW
+  reads: D,E,H,L,B
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: PACMO_IS_WALL_AT_BC
+  reads: B,C
+  writes: A,D,E,H,L,zero,sign,parity,halfCarry
+  preserves: B,C
+  stack: balanced
+  relation: carry <= -
+
+Routine: PACMO_WALL_SHIFT_LOOP
+  reads: E,D,A
+  writes: A,D,E,carry,zero,sign,parity,halfCarry
+  preserves: B,C,H,L
+  stack: balanced
+
+Routine: PACMO_WALL_TEST
+  reads: D
+  writes: carry,zero,sign,parity,halfCarry
+  preserves: A,B,C,D,E,H,L
+  stack: balanced
+
+Routine: PACMO_WALL_OPEN
+  reads: A
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: UPDATE_VIEWPORT_FOR_PLAYER
+  reads: -
+  writes: A,B,C,carry,zero,sign,parity,halfCarry
+  preserves: D,E,H,L
+  stack: balanced
+
+Routine: ADJUST_VIEW_AXIS
+  reads: A,B
+  writes: C,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: balanced
+  relation: A <= -
+
+Routine: ADJUST_AXIS_SHIFT_LOW
+  reads: C
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced, unknown effect
+
+Routine: ADJUST_AXIS_SHIFT_HIGH
+  reads: C
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced, unknown effect
+
+Routine: CLEAR_BACK_ALL
+  reads: -
+  writes: A,B,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E
+  stack: balanced
+
+Routine: CLEAR_BACK_ALL_LOOP
+  reads: H,L,A,B
+  writes: B,H,L,zero,sign,parity,halfCarry
+  preserves: A,C,D,E,carry
+  stack: balanced
+
+Routine: CLEAR_BACK_4
+  reads: A
+  writes: A,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C
+  stack: balanced
+
+Routine: COPY_BACK_TO_FRONT
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: COPY_BACK_4_TO_FRONT
+  reads: A
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: MATRIX_X_TO_MASK
+  reads: A
+  writes: B,C,carry,zero,sign,parity,halfCarry
+  preserves: D,E,H,L
+  stack: balanced
+  relation: A <= A
+
+Routine: MATRIX_X_TO_MASK_LOOP
+  reads: A,B
+  writes: A,B,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E,H,L
+  stack: balanced
+
+Routine: MATRIX_X_TO_MASK_DONE
+  reads: -
+  writes: -
+  preserves: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: FB_SET_CELL_COLOR
+  reads: H,L,C,A
+  writes: A,B,D,carry,zero,sign,parity,halfCarry
+  preserves: C,E
+  stack: balanced
+  relation: H,L <= -
+
+Routine: FB_SET_CELL_RED_OFF
+  reads: H,L,D
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: FB_SET_CELL_RED_STORE
+  reads: H,L,A,B,C
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced
+
+Routine: FB_SET_CELL_GREEN_OFF
+  reads: H,L,D
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: FB_SET_CELL_GREEN_STORE
+  reads: H,L,A,B,C
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced
+
+Routine: FB_SET_CELL_BLUE_OFF
+  reads: H,L,D
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: FB_SET_CELL_BLUE_STORE
+  reads: H,L,A
+  writes: -
+  preserves: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: FB_OR_ROW_COLOR_MASK
+  reads: H,L,C,A
+  writes: B,A
+  preserves: C,D,E,carry,zero,sign,parity,halfCarry
+  stack: unbalanced
+  relation: H,L <= -
+
+Routine: FB_OR_ROW_COLOR_MASK_LOOP
+  reads: A,B,C,D,E,H,L,IXH,IXL,IYH,IYL,SPH,SPL,carry,zero,sign,parity,halfCarry
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: FB_OR_ROW_COLOR_MASK_SKIP
+  reads: B,H,L
+  writes: B,H,L,zero,sign,parity,halfCarry
+  preserves: A,C,D,E,carry
+  stack: balanced
+
+Routine: FB_OR_ROW_COLOR_MASK_EXIT
+  reads: -
+  writes: B,C
+  preserves: A,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: unbalanced
+
+Routine: REBUILD_FRAMEBUFFER
+  reads: -
+  writes: IXH,IXL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: REBUILD_FRAMEBUFFER_MONSTERS_DONE
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: RENDER_GAME_OVER_TO_BACK
+  reads: -
+  writes: B,H,L,A
+  preserves: C,D,E,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: RENDER_GAME_OVER_ROW
+  reads: -
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: RENDER_GAME_OVER_RED_OFF
+  reads: H,L,A
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced
+
+Routine: RENDER_GAME_OVER_GREEN_OFF
+  reads: H,L,A
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced
+
+Routine: RENDER_GAME_OVER_BLUE_OFF
+  reads: H,L,A,B
+  writes: A,B,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E
+  stack: balanced
+
+Routine: RENDER_LEVEL_COMPLETE_TO_BACK
+  reads: -
+  writes: B,H,L,A
+  preserves: C,D,E,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: RENDER_LEVEL_COMPLETE_ROW
+  reads: -
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: RENDER_LEVEL_COMPLETE_RED_OFF
+  reads: H,L,A
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced
+
+Routine: RENDER_LEVEL_COMPLETE_GREEN_OFF
+  reads: H,L,A
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced
+
+Routine: RENDER_LEVEL_COMPLETE_BLUE_OFF
+  reads: H,L,A,B
+  writes: A,B,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E
+  stack: balanced
+
+Routine: RENDER_WORLD_TO_BACK
+  reads: -
+  writes: B,A,C,D,E,H,L
+  preserves: carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: RENDER_WORLD_TO_BACK_ROW_LOOP
+  reads: B
+  writes: A,B,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C
+  stack: balanced
+
+Routine: RENDER_WORLD_ROW_TO_BACK
+  reads: A
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: WRITE_WORLD_ROW_COLORS
+  reads: H,L,C,D
+  writes: A,B,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E
+  stack: balanced
+  relation: H,L <= -
+
+Routine: WRITE_WORLD_RED_PATH
+  reads: B,D
+  writes: A,B,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E,H,L
+  stack: balanced
+
+Routine: WRITE_WORLD_RED_STORE
+  reads: H,L,B,C
+  writes: A,B,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E
+  stack: balanced
+
+Routine: WRITE_WORLD_GREEN_PATH
+  reads: B,D
+  writes: A,B,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E,H,L
+  stack: balanced
+
+Routine: WRITE_WORLD_GREEN_STORE
+  reads: H,L,B,C
+  writes: A,B,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E
+  stack: balanced
+
+Routine: WRITE_WORLD_BLUE_PATH
+  reads: B,D
+  writes: A,B,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E,H,L
+  stack: balanced
+
+Routine: WRITE_WORLD_BLUE_STORE
+  reads: H,L,B
+  writes: H,L,zero,sign,parity,halfCarry
+  preserves: A,B,C,D,E,carry
+  stack: balanced
+
+Routine: GET_CURRENT_WALL_COLOR
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+  relation: A <= -
+
+Routine: GET_CURRENT_WALL_COLOR_CAUGHT
+  reads: -
+  writes: A
+  preserves: B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: GET_CURRENT_WALL_COLOR_COMPLETE
+  reads: -
+  writes: A
+  preserves: B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: WINDOW_BYTE_FROM_BC
+  reads: B,C,A
+  writes: D,carry,zero,sign,parity,halfCarry,B,C
+  preserves: E,H,L
+  stack: balanced
+  relation: A <= -
+
+Routine: WINDOW_SHIFT_LOOP
+  reads: C,B,D
+  writes: B,C,D,carry,zero,sign,parity,halfCarry
+  preserves: A,E,H,L
+  stack: balanced
+
+Routine: WINDOW_BYTE_DONE
+  reads: B
+  writes: A
+  preserves: B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: RENDER_POWER_PILLS_TO_BACK
+  reads: -
+  writes: D,H,L,A,B,C,E
+  preserves: carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: RENDER_POWER_PILL_LOOP
+  reads: H,L,D
+  writes: A,B,C,H,L,carry,zero,sign,parity,halfCarry
+  preserves: D,E
+  stack: balanced, unknown effect
+
+Routine: RENDER_POWER_PILL_NEXT
+  reads: D
+  writes: D,carry,zero,sign,parity,halfCarry
+  preserves: A,B,C,E,H,L
+  stack: balanced
+
+Routine: RENDER_POWER_PILLS_ROW_TO_BACK
+  reads: A
+  writes: D,E,H,L,A,B,C
+  preserves: carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: RENDER_POWER_PILL_ROW_LOOP
+  reads: H,L,D,E
+  writes: A,B,C,H,L,carry,zero,sign,parity,halfCarry
+  preserves: D,E
+  stack: balanced, unknown effect
+
+Routine: RENDER_POWER_PILL_ROW_NEXT
+  reads: D
+  writes: D,carry,zero,sign,parity,halfCarry
+  preserves: A,B,C,E,H,L
+  stack: balanced
+
+Routine: RENDER_POWER_PILL_BC
+  reads: B,C
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: RENDER_ENEMY_TO_BACK
+  reads: IXH,IXL
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: unbalanced, unknown effect
+
+Routine: RENDER_ENEMY_TIMER_FLEE
+  reads: -
+  writes: H,L
+  preserves: A,B,C,D,E,carry,zero,sign,parity,halfCarry
+  stack: unbalanced
+
+Routine: RENDER_ENEMY_TIMER_ATTACK
+  reads: C
+  writes: A,B,D,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C,E
+  stack: unbalanced
+
+Routine: RENDER_ENEMY_FLEE
+  reads: H,L,C
+  writes: A,B,D,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C,E
+  stack: balanced
+
+Routine: RENDER_MONSTERS_ROW_TO_BACK
+  reads: A
+  writes: IXH,IXL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: RENDER_ENEMY_IF_SCREEN_ROW_E
+  reads: E,IXH,IXL
+  writes: A,B,C,H,L,carry,zero,sign,parity,halfCarry,D,E
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: RENDER_PLAYER_TO_BACK
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: RENDER_PLAYER_WHITE
+  reads: H,L,C
+  writes: A,B,D,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C,E
+  stack: balanced
+
+Routine: RENDER_PLAYER_CAUGHT
+  reads: H,L,C
+  writes: A,B,D,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C,E
+  stack: balanced
+
+Routine: RENDER_PLAYER_ROW_TO_BACK
+  reads: A
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: SOUND_START
+  reads: A,C
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: SERVICE_SOUND
+  reads: -
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced, unknown effect
+
+Routine: SERVICE_SOUND_ACTIVE
+  reads: -
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced, unknown effect
+
+Routine: PACMO_SOUND_POWER
+  reads: -
+  writes: A,C,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: balanced
+
+Routine: PACMO_SOUND_EAT_ENEMY
+  reads: -
+  writes: A,C,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: balanced
+
+Routine: PACMO_SOUND_CAUGHT
+  reads: -
+  writes: A,C,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: balanced
+
+Routine: PACMO_SOUND_LEVEL_COMPLETE
+  reads: -
+  writes: A,C,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: balanced
+
+Routine: SCAN_SCORE_DIGIT
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: SCAN_SCORE_DIGIT_SAVE
+  reads: A
+  writes: -
+  preserves: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: BLANK_HUD_SCORE_DIGITS
+  reads: -
+  writes: A,B,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E
+  stack: balanced
+
+Routine: BLANK_HUD_SCORE_DIGITS_LOOP
+  reads: H,L,A,B
+  writes: B,H,L,zero,sign,parity,halfCarry
+  preserves: A,C,D,E,carry
+  stack: balanced
+
+Routine: HUD_WRITE_U16_DECIMAL
+  reads: H,L
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: HUD_WRITE_DECIMAL_DIGIT
+  reads: H,L,D,E,B,C
+  writes: A,carry,zero,sign,parity,halfCarry,D,E
+  preserves: -
+  stack: balanced
+  relation: H,L,B,C <= -
+
+Routine: HUD_WRITE_DECIMAL_DIGIT_LOOP
+  reads: H,D,L,E
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: unbalanced
+
+Routine: HUD_WRITE_DECIMAL_DIGIT_SUB
+  reads: H,L,D,E
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: unbalanced
+
+Routine: HUD_WRITE_DECIMAL_DIGIT_DONE
+  reads: B,C
+  writes: A,B,C,D,E,carry,zero,sign,parity,halfCarry
+  preserves: H,L
+  stack: unbalanced
+
+Routine: UPDATE_SCORE_DISPLAY
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: LCD_BUSY
+  reads: -
+  writes: -
+  preserves: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: unbalanced
+
+Routine: LCD_BUSY_LOOP
+  reads: A,B,C,D,E,H,L,IXH,IXL,IYH,IYL,SPH,SPL,carry,zero,sign,parity,halfCarry
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: unbalanced, unknown effect
+
+Routine: LCD_COMMAND
+  reads: B
+  writes: -
+  preserves: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced, unknown effect
+
+Routine: LCD_CLEAR_DISPLAY
+  reads: -
+  writes: B
+  preserves: A,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: LCD_STRING
+  reads: H,L
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced, unknown effect
+
+Routine: LCD_SHOW_SCRIPT
+  reads: H,L
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: unbalanced, unknown effect
+
+Routine: LCD_SCRIPT_LOOP
+  reads: D,E
+  writes: A,B,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C
+  stack: balanced, unknown effect
+
+Routine: LCD_SCRIPT_DONE
+  reads: -
+  writes: B,C,D,E,H,L
+  preserves: A,carry,zero,sign,parity,halfCarry
+  stack: unbalanced
+
+Routine: LCD_PUTC
+  reads: A
+  writes: -
+  preserves: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced, unknown effect
+
+Routine: LCD_WRITE_ROW_STRING
+  reads: B,H,L
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced, unknown effect
+
+Routine: LCD_PUTC_FROM_TABLE
+  reads: A,D,E
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced
+
+Routine: LCD_SHOW_PACMO_SPLASH
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: LCD_SHOW_PACMO_RUNNING
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: LCD_SHOW_PACMO_PAUSED
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: LCD_SHOW_PACMO_POWER
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: LCD_SHOW_PACMO_ENEMY_EATEN
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: LCD_SHOW_PACMO_CAUGHT
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: LCD_SHOW_PACMO_GAME_OVER
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: LCD_SHOW_PACMO_COMPLETE
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: LCD_REFRESH_STATUS_ROWS
+  reads: -
+  writes: A,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C
+  stack: balanced, unknown effect
+
+Routine: LCD_REFRESH_LEVEL_ROW
+  reads: -
+  writes: A,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C
+  stack: balanced, unknown effect
+
+Routine: LCD_REFRESH_LIVES_ROW
+  reads: -
+  writes: A,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C
+  stack: balanced, unknown effect
+
+Routine: RAM_START
+  reads: -
+  writes: -
+  preserves: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Conflicts:
+  none
+
+Unknown calls:
+  none
+

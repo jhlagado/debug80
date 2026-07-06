@@ -1,0 +1,268 @@
+; tetro.glim — design sketch (does not compile yet)
+; ==================================================
+; Tetro adapted to the Glimmer paradigm, from corpus/tetro.
+; Every construct beyond v0 is a numbered proposal in sketches/README.md.
+;
+; The goal reading this file: a person who knows the corpus Tetro should
+; recognise every piece of it, and see that the hand-written dispatch,
+; polling, cooldown, and dirty bookkeeping have become declarations.
+
+program Tetro
+
+platform tec1g-mon3                 ; P1: MON-3 API + port equates, org $4000
+display matrix8x8                   ; P1: scan-driven loop, framebuffer library
+
+; ----------------------------------------------------------------------
+; State — from corpus/tetro/src/tetro/ram.asm, minus everything that
+; Glimmer now owns: cooldowns (P4), scan state (P1), dirty flags,
+; HUD/sound service state (P8), and the mode flags replaced by cards (P3).
+; ----------------------------------------------------------------------
+
+state PlayerX        : byte = 0
+state PlayerY        : byte = 0
+state CurPieceIndex  : byte = 0
+state CurRotation    : byte = 0
+state CurPieceColor  : byte = 0
+state NextPieceIndex : byte = 0
+state Score          : word = 0 dirty_on_start      ; P7
+state LinesCleared   : byte = 0
+state ClearMask      : byte = 0                     ; rows being flashed
+state BoardRows      : byte[8]                      ; P2: occupancy bitmap
+state BoardRed       : byte[8]                      ; P2: colour planes
+state BoardGreen     : byte[8]
+state BoardBlue      : byte[8]
+
+; ----------------------------------------------------------------------
+; Pulses — transient commands. In corpus Tetro these are implicit in
+; the flow of PollInput and LogicTick.
+; ----------------------------------------------------------------------
+
+pulse MoveLeft
+pulse MoveRight
+pulse SoftDrop
+pulse RotateCw
+pulse RotateCcw
+pulse TogglePause
+pulse GravityFire
+pulse ClearTick
+pulse GateOpen
+pulse AnyKey
+
+; ----------------------------------------------------------------------
+; Timers — P4. Each is a per-frame countdown cell that fires its pulse
+; and reloads. Writable like any state: the difficulty curve below
+; simply writes Gravity.
+; Replaces: GravityCooldown/CurGravPeriod, ClearTimer, GOverKeyGate.
+; ----------------------------------------------------------------------
+
+timer Gravity   : byte = 32  -> GravityFire         ; GravityPeriod
+timer ClearHold : byte = 24  -> ClearTick           ; LineClearHold
+timer GOverGate : word = 384 -> GateOpen once       ; GOverGateTicks
+
+; ----------------------------------------------------------------------
+; Bindings — P4. Corpus Tetro's PollInput + HandleHeldDir (95 lines of
+; edge detection, cooldowns, and key dispatch) become declarations.
+; MON-3 _scanKeys supplies both edges (carry) and held (zero flag).
+; ----------------------------------------------------------------------
+
+bind key KEY_LEFT  held period 128 -> MoveLeft      ; MovePeriod
+bind key KEY_1     held period 128 -> MoveLeft
+bind key KEY_RIGHT held period 128 -> MoveRight
+bind key KEY_3     held period 128 -> MoveRight
+bind key KEY_GO    held period 1   -> SoftDrop      ; DropPeriod
+bind key KEY_2     held period 1   -> SoftDrop
+bind key KEY_AD    rising -> RotateCcw
+bind key KEY_C     rising -> RotateCw
+bind key KEY_6     rising -> RotateCw
+bind key KEY_0     rising -> TogglePause
+bind key any       rising -> AnyKey
+
+; ----------------------------------------------------------------------
+; Resources — P6. From corpus/tetro/src/tetro/data.asm. Shapes are
+; pixel-art rows; the generator emits the packed rotation tables.
+; Sounds generate Snd_<Name> trigger routines over the profile's
+; speaker service (P8). Text generates LCD script tables.
+; ----------------------------------------------------------------------
+
+shape PieceI color cyan
+  rot0 "....XXXX........"          ; 4x4 cells per rotation
+  rot1 "..X...X...X...X."
+end
+
+shape PieceO color white
+  rot0 ".....XX..XX....."
+end
+
+; ... PieceT magenta, PieceS green, PieceZ red, PieceJ blue, PieceL yellow
+
+sound Rotate len 24  div 2
+sound Lock   len 32  div 4
+sound Clear  len 72  div 2
+sound Over   len 232 div 8
+sound Ready  len 36  div 3
+
+text MsgPaused  "PAUSED"
+text MsgRunning "TETRO"
+text MsgOver    "GAME OVER"
+text MsgPress   "PRESS ANY KEY"
+
+; ----------------------------------------------------------------------
+; Routines — P5. Shared helpers called from many effects; bodies as in
+; corpus/tetro/src/tetro/{collision,geometry-helpers}.asm. Not effects:
+; no depends, no dispatch, just named contract-carrying fragments.
+; ----------------------------------------------------------------------
+
+routine CheckCollision
+;! in DE(x,y), B=rotation; out carry=blocked; clobbers A,HL
+begin
+    ; body as corpus collision.asm CheckCollision
+end
+
+routine LockPiece
+;! clobbers A,BC,DE,HL
+begin
+    ; blit active piece into BoardRows/Red/Green/Blue,
+    ; body as corpus board-lock.asm
+end
+
+; ----------------------------------------------------------------------
+; Cards — P3. Corpus Tetro dispatches modes with flag checks at the top
+; of LogicTick (GameOver, SplashTimer, ClearPending, Paused). Cards make
+; each mode's effects local to it, and `enter` effects replace the
+; hand-sequenced init calls.
+; A card is a SECTION, not a block: `card Playing` starts it, and it
+; runs until the next `card` line or end of file. No closing keyword.
+; A built-in CurrentCard cell and a generated Card enum exist; a card
+; switch is an ordinary write:  ld a,Card.Playing \ ld (CurrentCard),a
+; ----------------------------------------------------------------------
+
+card Splash
+
+  effect SplashTwinkle
+      phase render
+      on FrameCount               ; built-in per-frame counter
+  begin
+      ; PRNG-driven pixel twinkle, body as corpus SplashState
+  end
+
+  effect SplashExit
+      on AnyKey
+  begin
+      call InitGame                    ; routine: reset state, seed RNG
+      ld a,Card.Playing \ ld (CurrentCard),a
+  end
+
+card Playing
+
+  effect ApplyMove
+      on MoveLeft, MoveRight
+      writes PlayerX
+  begin
+      ; compute PendingX from pulses, CheckCollision, commit or refuse
+  end
+
+  effect ApplyRotate
+      on RotateCw, RotateCcw
+      writes CurRotation
+  begin
+      call CheckCollision \ jr c,.blocked
+      call Snd_Rotate                  ; P6/P8 generated trigger
+.blocked:
+  end
+
+  effect ApplyGravity
+      on GravityFire, SoftDrop
+      writes PlayerY, BoardRows, ClearMask
+  begin
+      ; descend or lock: CheckCollision below; on lock LockPiece,
+      ; Snd_Lock, detect full rows into ClearMask,
+      ; spawn next piece or:  ld a,Card.GameOver \ ld (CurrentCard),a
+  end
+
+  effect DifficultyCurve
+      phase derive
+      on Score
+      writes Gravity                   ; P4: timers are writable state
+  begin
+      ld hl,(Score)                    ; P7: word compare
+      ld de,2000
+      or a \ sbc hl,de \ jr c,.keep
+      ld a,28 \ ld (Gravity),a         ; GravPeriodStep1
+.keep:
+  end
+
+  effect ScoreRows
+      on ClearMask
+      writes Score, LinesCleared
+  begin
+      ; count rows in ClearMask, add 100/300/500/800, Snd_Clear
+  end
+
+  effect Pause
+      on TogglePause
+  begin
+      ld a,Card.Paused \ ld (CurrentCard),a
+  end
+
+  effect DrawBoard
+      phase render
+      on BoardRows, PlayerX, PlayerY, CurRotation, ClearMask
+  begin
+      ; rebuild back buffer: board planes, flash ClearMask rows white,
+      ; blit active piece — bodies as corpus render.asm, using profile
+      ; framebuffer routines FbClearAll/FbSetCell/FbOrRow (P8)
+  end
+
+  effect DrawScore
+      phase render
+      on Score
+  begin
+      ld hl,(Score)
+      call HudWriteScore               ; P8 profile service
+  end
+
+card Paused
+
+  ; Bodies are pure AZM: `lcd_row` is not Glimmer syntax, it is an AZM
+  ; `op` whose definition Glimmer emits into the generated file's
+  ; library section (see sketches/README.md, P6/P8). It expands inline:
+  ;     op lcd_row(msg imm16, row imm8)
+  ;         ld b,row \ call LcdCmd
+  ;         ld hl,msg \ call LcdString
+  ;     end
+  enter effect ShowPaused
+      phase render
+  begin
+      lcd_row MsgPaused, LcdRow1
+  end
+
+  effect Unpause
+      on AnyKey
+  begin
+      lcd_row MsgRunning, LcdRow1
+      ld a,Card.Playing \ ld (CurrentCard),a
+  end
+
+card GameOver
+
+  enter effect ShowOver
+      phase render
+  begin
+      lcd_row MsgOver, LcdRow1
+      call Snd_Over
+      ; GOverGate timer starts automatically on card entry (P3+P4)
+  end
+
+  effect OpenGate
+      on GateOpen
+  begin
+      lcd_row MsgPress, LcdRow2
+      call Snd_Ready
+  end
+
+  effect Restart
+      on AnyKey
+      after GateOpen                   ; open question: gating pulse order
+  begin
+      ld a,Card.Splash \ ld (CurrentCard),a
+  end

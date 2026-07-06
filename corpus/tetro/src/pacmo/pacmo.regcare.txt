@@ -1,0 +1,853 @@
+AZM Register-Care Report
+Entry: /Users/johnhardy/projects/tetro/src/pacmo/pacmo.z80
+Mode: strict
+
+Routine: Start
+  reads: -
+  writes: sign,parity,halfCarry,A,B,C,D,E,H,L,IXH,IXL,IYH,IYL
+  preserves: -
+  stack: balanced, unknown effect
+  relation: carry <= -
+  relation: zero <= -
+  relation: carry,zero <= -
+
+Routine: ScanTick
+  reads: -
+  writes: zero,sign,parity,halfCarry,A,B,C,D,E,H,L
+  preserves: IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+  relation: carry <= -
+
+Routine: ScanNext
+  reads: -
+  writes: zero,sign,parity,halfCarry,A,D,E,H,L
+  preserves: B,C,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: carry <= -
+
+Routine: InitState
+  reads: -
+  writes: zero,sign,parity,halfCarry,A,B,C,D,E,H,L,IXH,IXL
+  preserves: IYH,IYL
+  stack: balanced, unknown effect
+  relation: carry <= -
+
+Routine: InitLevelState
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,B,C,D,E,H,L,IXH,IXL
+  preserves: IYH,IYL
+  stack: balanced, unknown effect
+
+Routine: InitPlyMons
+  reads: -
+  writes: sign,parity,halfCarry,A
+  preserves: B,C,D,E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: carry <= -
+  relation: zero <= -
+  relation: carry,zero <= -
+
+Routine: ClearFrontBack
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,B,H,L
+  preserves: C,D,E,IXH,IXL,IYH,IYL
+  stack: balanced
+
+Routine: ClearEatenPaths
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,B,H,L
+  preserves: C,D,E,IXH,IXL,IYH,IYL
+  stack: balanced
+
+Routine: LogicTick
+  reads: -
+  writes: sign,parity,halfCarry,A,B,C,D,E,H,L,IXH,IXL,IYH,IYL
+  preserves: -
+  stack: balanced, unknown effect
+  relation: carry <= -
+  relation: zero <= -
+  relation: carry,zero <= -
+
+Routine: PacFrameDuties
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,B,C,D,E,H,L,IXH,IXL,IYH,IYL
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: PacRenderRowA
+  reads: A
+  writes: carry,zero,sign,parity,halfCarry,A,B,C,D,E,H,L,IXH,IXL
+  preserves: IYH,IYL
+  stack: balanced, unknown effect
+
+Routine: TickLvlDoneGate
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,B,C,D,E,H,L,IXH,IXL
+  preserves: IYH,IYL
+  stack: balanced, unknown effect
+
+Routine: TickPowerTimer
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,D,E,H,L
+  preserves: B,C,IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+
+Routine: PacIsLevel2Plus
+  reads: -
+  writes: sign,parity,halfCarry
+  preserves: B,C,D,E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: A <= -
+  relation: carry <= -
+  relation: zero <= -
+  relation: A,carry,zero <= -
+
+Routine: TickEnemy
+  reads: IXH,IXL
+  writes: sign,parity,halfCarry,D,E,L
+  preserves: IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+  relation: B,C <= -
+  relation: A <= -
+  relation: H <= -
+  relation: carry <= -
+  relation: zero <= -
+  relation: B,C,A,H,carry,zero <= -
+
+Routine: EnemyAttackStep
+  reads: IXH,IXL
+  writes: sign,parity,halfCarry,D,E,L
+  preserves: IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+  relation: B,C <= -
+  relation: A <= -
+  relation: H <= -
+  relation: carry <= -
+  relation: zero <= -
+  relation: B,C,A,H,carry,zero <= -
+
+Routine: EnemyTryChase
+  reads: A,L,IXH,IXL
+  writes: sign,parity,halfCarry,E
+  preserves: D,H,L,IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+  relation: B,C <= -
+  relation: A <= -
+  relation: carry <= -
+  relation: zero <= -
+  relation: B,C,A,carry,zero <= -
+
+Routine: EnemyChaseDirs
+  reads: IXH,IXL
+  writes: carry,sign,parity,halfCarry,A,B,C,H,L
+  preserves: IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+  relation: zero <= -
+  relation: D,E <= IXL,IXL
+  relation: H,L <= IXH,IXH
+  relation: D,E,zero <= -
+
+Routine: EnemyHorizChase
+  reads: IXH,IXL
+  writes: carry,zero,sign,parity,halfCarry,C
+  preserves: D,E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: A <= -
+  relation: B <= -
+  relation: A,B <= IXH,IXL
+
+Routine: EnemyVertChase
+  reads: IXH,IXL
+  writes: carry,zero,sign,parity,halfCarry,C
+  preserves: D,E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: A <= -
+  relation: B <= -
+  relation: A,B <= IXH,IXL
+
+Routine: EnemyRoamStep
+  reads: IXH,IXL
+  writes: sign,parity,halfCarry,D,E
+  preserves: L,IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+  relation: B,C <= -
+  relation: A <= -
+  relation: H <= -
+  relation: carry <= -
+  relation: zero <= -
+  relation: B,C,A,H,carry,zero <= -
+
+Routine: EnemyOpposite
+  reads: A
+  writes: zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: A <= -
+  relation: carry <= -
+  relation: A,carry <= -
+
+Routine: EnemyTryMove
+  reads: IXH,IXL,A
+  writes: sign,parity,halfCarry,E
+  preserves: D,H,L,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: B,C <= -
+  relation: A <= A
+  relation: carry <= -
+  relation: zero <= -
+  relation: B,C,A,carry,zero <= -
+
+Routine: TickEnemyResp
+  reads: IXH,IXL
+  writes: zero,sign,parity,halfCarry,A
+  preserves: B,C,D,E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+  relation: carry <= -
+
+Routine: EnemySelectResp
+  reads: IXH,IXL
+  writes: carry,zero,sign,parity,halfCarry,A,C,D,E
+  preserves: IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+  relation: H,L <= -
+  relation: B <= -
+  relation: H,L,B <= -
+
+Routine: EnemyRespScore
+  reads: H,L,IXH,IXL
+  writes: carry,zero,sign,parity,halfCarry,C
+  preserves: B,D,E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+  relation: A <= -
+
+Routine: EnemyIsInView
+  reads: H,L
+  writes: sign,parity,halfCarry,C
+  preserves: B,D,E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: A <= -
+  relation: carry <= -
+  relation: zero <= -
+  relation: A,carry,zero <= -
+
+Routine: EnemyOccOther
+  reads: IXH,IXL,H,L
+  writes: zero,sign,parity,halfCarry,D,E
+  preserves: B,C,H,L,IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+  relation: A <= -
+  relation: carry <= -
+  relation: A,carry <= -
+
+Routine: EnemyOccByDe
+  reads: IXH,IXL,D,E,H,L
+  writes: zero,sign,parity,halfCarry,D,E
+  preserves: B,C,H,L,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: A <= -
+  relation: carry <= -
+  relation: A,carry <= -
+
+Routine: EnemyDistOther
+  reads: IXH,IXL,H,L
+  writes: carry,zero,sign,parity,halfCarry,B,C,D,E
+  preserves: H,L,IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+  relation: A <= -
+
+Routine: EnemyAddDistDe
+  reads: IXH,IXL,D,E,H,L,B
+  writes: carry,zero,sign,parity,halfCarry,A,C,D,E
+  preserves: H,L,IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+  relation: B <= -
+
+Routine: EnemyDistPlayer
+  reads: H,L
+  writes: carry,zero,sign,parity,halfCarry,C
+  preserves: B,D,E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: A <= -
+
+Routine: EnemyDistDe
+  reads: D,E,H,L
+  writes: carry,zero,sign,parity,halfCarry,C
+  preserves: B,D,E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: A <= -
+
+Routine: PacAdvanceLevel
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,B,C,D,E,H,L,IXH,IXL
+  preserves: IYH,IYL
+  stack: balanced, unknown effect
+
+Routine: PollInput
+  reads: -
+  writes: carry,sign,parity,halfCarry,A,B,C,D,E,H,L,IXH,IXL,IYH,IYL
+  preserves: -
+  stack: balanced, unknown effect
+  relation: zero <= -
+
+Routine: PollSplashStart
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,B,C,D,E,H,L,IXH,IXL,IYH,IYL
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: CaughtRestart
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,H,L
+  preserves: B,C,D,E,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: A <= -
+
+Routine: ResumeCaught
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,B,C,D,E,H,L,IXH,IXL
+  preserves: IYH,IYL
+  stack: balanced, unknown effect
+
+Routine: HandlePauseKey
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,D,E,H,L
+  preserves: B,C,IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+
+Routine: HandleUnpause
+  reads: -
+  writes: zero,sign,parity,halfCarry,A,D,E,H,L
+  preserves: B,C,IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+  relation: carry <= -
+
+Routine: NormInputDir
+  reads: A
+  writes: sign,parity,halfCarry
+  preserves: B,C,D,E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: A <= A
+  relation: carry <= -
+  relation: zero <= -
+  relation: A,carry,zero <= -
+
+Routine: ClearInputRpt
+  reads: -
+  writes: A
+  preserves: B,C,D,E,H,L,IXH,IXL,IYH,IYL,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: MovePlayerLeft
+  reads: -
+  writes: carry,sign,parity,halfCarry,A,B,C,D,E,H,L,IXH,IXL
+  preserves: IYH,IYL
+  stack: balanced, unknown effect
+  relation: zero <= -
+
+Routine: MovePlyRight
+  reads: -
+  writes: carry,sign,parity,halfCarry,A,B,C,D,E,H,L,IXH,IXL
+  preserves: IYH,IYL
+  stack: balanced, unknown effect
+  relation: zero <= -
+
+Routine: MovePlayerUp
+  reads: -
+  writes: carry,sign,parity,halfCarry,A,B,C,D,E,H,L,IXH,IXL
+  preserves: IYH,IYL
+  stack: balanced, unknown effect
+  relation: zero <= -
+
+Routine: MovePlayerDown
+  reads: -
+  writes: carry,sign,parity,halfCarry,A,B,C,D,E,H,L,IXH,IXL
+  preserves: IYH,IYL
+  stack: balanced, unknown effect
+  relation: zero <= -
+
+Routine: TryMovePlyBc
+  reads: B,C
+  writes: carry,sign,parity,halfCarry,A,B,C,D,E,H,L,IXH,IXL
+  preserves: IYH,IYL
+  stack: balanced, unknown effect
+  relation: zero <= -
+
+Routine: CheckPlyCaught
+  reads: IXH,IXL
+  writes: carry,zero,sign,parity,halfCarry,A,B,C,D,E,H,L,IXH,IXL
+  preserves: IYH,IYL
+  stack: balanced, unknown effect
+
+Routine: EnterCaught
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,B,C,D,E,H,L,IXH,IXL
+  preserves: IYH,IYL
+  stack: balanced, unknown effect
+
+Routine: EatEnemy
+  reads: IXH,IXL
+  writes: carry,zero,sign,parity,halfCarry,A,D,E
+  preserves: IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+  relation: B,C <= -
+  relation: H,L <= -
+  relation: B,C,H,L <= -
+
+Routine: EatPwrPillBc
+  reads: B,C
+  writes: carry,zero,sign,parity,halfCarry,A,D,E,H,L
+  preserves: B,C,IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+
+Routine: MarkEatenBc
+  reads: B,C
+  writes: carry,zero,sign,parity,halfCarry,A,E,H,L
+  preserves: IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+  relation: B,C <= -
+  relation: D <= -
+  relation: B,C,D <= -
+
+Routine: AddScoreA
+  reads: A
+  writes: carry,zero,sign,parity,halfCarry,A,D,E
+  preserves: IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: B,C <= -
+  relation: H,L <= -
+  relation: B,C,H,L <= -
+
+Routine: CheckRoundDone
+  reads: -
+  writes: zero,sign,parity,halfCarry,A,B,C,D,E,H,L
+  preserves: IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+  relation: carry <= -
+
+Routine: IsWallAtBc
+  reads: B,C
+  writes: zero,sign,parity,halfCarry,D,H,L
+  preserves: B,C,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: A <= -
+  relation: E <= -
+  relation: carry <= -
+  relation: A,E,carry <= -
+
+Routine: UpdViewPly
+  reads: -
+  writes: carry,sign,parity,halfCarry,A,B,C
+  preserves: D,E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: zero <= -
+
+Routine: AdjustViewAxis
+  reads: B,A
+  writes: carry,sign,parity,halfCarry,C
+  preserves: A,B,D,E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: zero <= -
+
+Routine: FbClearAll
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,B,H,L
+  preserves: C,D,E,IXH,IXL,IYH,IYL
+  stack: balanced
+
+Routine: FbClearRow
+  reads: A
+  writes: zero,sign,parity,halfCarry,A,D,E,H,L
+  preserves: B,C,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: carry <= -
+  relation: carry <= A
+
+Routine: FbCopyAll
+  reads: -
+  writes: parity,halfCarry,B,C,D,E,H,L
+  preserves: A,IXH,IXL,IYH,IYL,carry,zero,sign
+  stack: balanced
+
+Routine: FbCopyRow
+  reads: A
+  writes: carry,zero,sign,parity,halfCarry,A,D,E,H,L
+  preserves: B,C,IXH,IXL,IYH,IYL
+  stack: balanced
+
+Routine: MxMask
+  reads: A
+  writes: carry,zero,sign,parity,halfCarry,A,B,C
+  preserves: D,E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced
+
+Routine: FbSetCell
+  reads: C,A,H,L
+  writes: carry,zero,sign,parity,halfCarry,A,B,D,H,L
+  preserves: C,E,IXH,IXL,IYH,IYL
+  stack: balanced
+
+Routine: FbOrRow
+  reads: A,H,L,C
+  writes: carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: H,L <= -
+  relation: A <= -
+  relation: H,L,A <= -
+
+Routine: RebuildFb
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,B,C,D,E,H,L,IXH,IXL
+  preserves: IYH,IYL
+  stack: balanced, unknown effect
+
+Routine: RendGOverBack
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,B,H,L
+  preserves: C,D,E,IXH,IXL,IYH,IYL
+  stack: balanced
+
+Routine: RendLvlDoneBack
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,B,H,L
+  preserves: C,D,E,IXH,IXL,IYH,IYL
+  stack: balanced
+
+Routine: RendWorldBack
+  reads: -
+  writes: carry,sign,parity,halfCarry,B,D,E
+  preserves: C,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: H,L <= -
+  relation: A <= -
+  relation: zero <= -
+  relation: H,L,A,zero <= -
+
+Routine: RendWorldRow
+  reads: A
+  writes: carry,zero,sign,parity,halfCarry,A,B,C,D,E
+  preserves: IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: H,L <= -
+
+Routine: WrWorldColors
+  reads: C,D,H,L
+  writes: carry,zero,sign,parity,halfCarry,A,B
+  preserves: C,D,E,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: H,L <= -
+
+Routine: GetWallColor
+  reads: -
+  writes: zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: A <= -
+  relation: carry <= -
+  relation: A,carry <= -
+
+Routine: WindowByteBc
+  reads: A,B,C
+  writes: B
+  preserves: E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: A <= -
+  relation: C <= -
+  relation: D <= -
+  relation: A,C,D,carry,zero,sign,parity,halfCarry <= -
+
+Routine: RendPwrPills
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,B,C
+  preserves: E,IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+  relation: H,L <= -
+  relation: D <= -
+  relation: H,L,D <= -
+
+Routine: RendPwrPillRow
+  reads: A
+  writes: carry,zero,sign,parity,halfCarry,A,B,C,E
+  preserves: IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+  relation: H,L <= -
+  relation: D <= -
+  relation: H,L,D <= -
+
+Routine: RendPwrPillBc
+  reads: B,C
+  writes: carry,zero,sign,parity,halfCarry,A,B,C,D,E,H,L
+  preserves: IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+
+Routine: RendEnemyBack
+  reads: IXH,IXL
+  writes: carry,zero,sign,parity,halfCarry,A,B,C,D,E,H,L
+  preserves: IXH,IXL,IYH,IYL
+  stack: unbalanced, unknown effect
+
+Routine: RendMonsRow
+  reads: A
+  writes: carry,zero,sign,parity,halfCarry,A,B,C,E,H,L,IXH,IXL
+  preserves: D,IYH,IYL
+  stack: balanced, unknown effect
+
+Routine: RendEnemyIfRow
+  reads: IXH,IXL,E
+  writes: carry,zero,sign,parity,halfCarry,A,B,C,H,L
+  preserves: D,E,IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+
+Routine: RendPlyBack
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,B,C,D,E,H,L
+  preserves: IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+
+Routine: RendPlyRow
+  reads: A
+  writes: carry,zero,sign,parity,halfCarry,A,B,C,D,E,H,L
+  preserves: IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+
+Routine: SndStart
+  reads: A,C
+  writes: sign,parity,halfCarry,A
+  preserves: B,C,D,E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: carry <= -
+  relation: zero <= -
+  relation: carry,zero <= A,C
+
+Routine: SndService
+  reads: -
+  writes: sign,parity,halfCarry,A
+  preserves: B,C,D,E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+  relation: carry <= -
+  relation: zero <= -
+  relation: carry,zero <= -
+
+Routine: PacSndPower
+  reads: -
+  writes: sign,parity,halfCarry,A,C
+  preserves: B,D,E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: carry <= -
+  relation: zero <= -
+  relation: carry,zero <= -
+
+Routine: PacSndEatEnemy
+  reads: -
+  writes: sign,parity,halfCarry,A,C
+  preserves: B,D,E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: carry <= -
+  relation: zero <= -
+  relation: carry,zero <= -
+
+Routine: PacSndCaught
+  reads: -
+  writes: sign,parity,halfCarry,A,C
+  preserves: B,D,E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: carry <= -
+  relation: zero <= -
+  relation: carry,zero <= -
+
+Routine: PacSndLvlDone
+  reads: -
+  writes: sign,parity,halfCarry,A,C
+  preserves: B,D,E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: carry <= -
+  relation: zero <= -
+  relation: carry,zero <= -
+
+Routine: HudScanDig
+  reads: -
+  writes: sign,parity,halfCarry,A,B,C,D,E,H,L
+  preserves: IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: carry <= -
+  relation: zero <= -
+  relation: carry,zero <= -
+
+Routine: HudBlankDig
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,B,H,L
+  preserves: C,D,E,IXH,IXL,IYH,IYL
+  stack: balanced
+
+Routine: HudWriteU16
+  reads: H,L
+  writes: carry,zero,sign,parity,halfCarry,A,D,E
+  preserves: IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+  relation: B,C <= -
+  relation: H,L <= -
+  relation: B,C,H,L <= -
+
+Routine: HudDecDigit
+  reads: H,L,D,E,B,C
+  writes: carry,zero,sign,parity,halfCarry,A,D,E
+  preserves: IXH,IXL,IYH,IYL
+  stack: unbalanced
+  relation: B,C <= -
+  relation: H,L <= -
+  relation: B,C,H,L <= -
+
+Routine: UpdScoreDisplay
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,D,E
+  preserves: IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: B,C <= -
+  relation: H,L <= -
+  relation: B,C,H,L <= -
+
+Routine: LcdBusy
+  reads: A
+  writes: -
+  preserves: A,B,C,D,E,H,L,IXH,IXL,IYH,IYL,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: LcdCmd
+  reads: B
+  writes: -
+  preserves: A,B,C,D,E,H,L,IXH,IXL,IYH,IYL,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: LcdClear
+  reads: -
+  writes: B
+  preserves: A,C,D,E,H,L,IXH,IXL,IYH,IYL,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: LcdString
+  reads: H,L
+  writes: zero,sign,parity,halfCarry,A
+  preserves: B,C,D,E,IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+  relation: H,L <= -
+  relation: carry <= -
+  relation: H,L,carry <= -
+
+Routine: LcdScript
+  reads: H,L
+  writes: zero,sign,parity,halfCarry,A
+  preserves: B,C,D,E,H,L,IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+  relation: carry <= -
+
+Routine: LcdPutc
+  reads: A
+  writes: -
+  preserves: A,B,C,D,E,H,L,IXH,IXL,IYH,IYL,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: LcdRowStr
+  reads: B,H,L
+  writes: zero,sign,parity,halfCarry,A
+  preserves: B,C,D,E,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: H,L <= -
+  relation: carry <= -
+  relation: H,L,carry <= B,H,L
+
+Routine: LcdPutcTbl
+  reads: A,D,E
+  writes: carry,zero,sign,parity,halfCarry,A,H,L
+  preserves: B,C,D,E,IXH,IXL,IYH,IYL
+  stack: balanced
+
+Routine: LcdShowPacSplash
+  reads: -
+  writes: zero,sign,parity,halfCarry,A,H,L
+  preserves: B,C,D,E,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: carry <= -
+
+Routine: LcdShowPacRun
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,D,E,H,L
+  preserves: B,C,IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+
+Routine: LcdShowPacPause
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,D,E,H,L
+  preserves: B,C,IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+
+Routine: LcdShowPower
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,D,E,H,L
+  preserves: B,C,IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+
+Routine: LcdShowEatEnemy
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,D,E,H,L
+  preserves: B,C,IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+
+Routine: LcdShowCaught
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,D,E,H,L
+  preserves: B,C,IXH,IXL,IYH,IYL
+  stack: balanced, unknown effect
+
+Routine: LcdShowPacOver
+  reads: -
+  writes: zero,sign,parity,halfCarry,A,H,L
+  preserves: B,C,D,E,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: carry <= -
+
+Routine: LcdShowComplete
+  reads: -
+  writes: zero,sign,parity,halfCarry,A,H,L
+  preserves: B,C,D,E,IXH,IXL,IYH,IYL
+  stack: balanced
+  relation: carry <= -
+
+Routine: LcdRefStatus
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,D,E,H,L
+  preserves: B,C,IXH,IXL,IYH,IYL
+  stack: balanced
+
+Routine: LcdRefLevel
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,D,E,H,L
+  preserves: B,C,IXH,IXL,IYH,IYL
+  stack: balanced
+
+Routine: LcdRefLives
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry,A,D,E,H,L
+  preserves: B,C,IXH,IXL,IYH,IYL
+  stack: balanced
+
+Routine: RamStart
+  reads: -
+  writes: -
+  preserves: A,B,C,D,E,H,L,IXH,IXL,IYH,IYL,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Conflicts:
+  /Users/johnhardy/projects/tetro/src/pacmo/movement.asm:469:1: MxMask: A: CALL MxMask may modify A, but the pre-call value is used later.
+  /Users/johnhardy/projects/tetro/src/pacmo/render.asm:373:1: MxMask: A: CALL MxMask may modify A, but the pre-call value is used later.
+  /Users/johnhardy/projects/tetro/src/pacmo/render.asm:414:1: MxMask: A: CALL MxMask may modify A, but the pre-call value is used later.
+  /Users/johnhardy/projects/tetro/src/pacmo/render.asm:524:1: MxMask: A: CALL MxMask may modify A, but the pre-call value is used later.
+
+Output candidates:
+  /Users/johnhardy/projects/tetro/src/pacmo/movement.asm:469:1: MxMask: A: CALL MxMask writes A and caller reads it later; generated contracts promote this to `out A` automatically.
+  /Users/johnhardy/projects/tetro/src/pacmo/render.asm:373:1: MxMask: A: CALL MxMask writes A and caller reads it later; generated contracts promote this to `out A` automatically.
+  /Users/johnhardy/projects/tetro/src/pacmo/render.asm:414:1: MxMask: A: CALL MxMask writes A and caller reads it later; generated contracts promote this to `out A` automatically.
+  /Users/johnhardy/projects/tetro/src/pacmo/render.asm:524:1: MxMask: A: CALL MxMask writes A and caller reads it later; generated contracts promote this to `out A` automatically.
+
+Unknown calls:
+  none
+
