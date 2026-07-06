@@ -248,6 +248,10 @@ function instructionExpressions(instruction: Instruction): readonly Expression[]
     case 'bit':
     case 'res':
     case 'set':
+      return [
+        ...(typeof instruction.bit === 'number' ? [] : [instruction.bit]),
+        ...('displacement' in instruction.operand ? [instruction.operand.displacement] : []),
+      ];
     case 'rlc':
     case 'rrc':
     case 'rl':

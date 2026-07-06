@@ -281,6 +281,18 @@ export function parseBitIndex(text: string): 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | und
   return isBitIndex(value) ? value : undefined;
 }
 
+export function parseBitIndexExpression(text: string): 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | Expression | undefined {
+  const expression = parseExpression(text);
+  if (!expression) {
+    return undefined;
+  }
+  const value = constantExpressionValue(expression);
+  if (value !== undefined) {
+    return isBitIndex(value) ? value : undefined;
+  }
+  return expression;
+}
+
 function isBitIndex(value: number | undefined): value is 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 {
   return BIT_INDEXES.has(value as 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7);
 }

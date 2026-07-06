@@ -1,5 +1,5 @@
 import type { Z80Instruction } from '../z80/instruction.js';
-import { formatLoweredNumber, type LoweredEvalContext } from './asm80-expressions.js';
+import { formatExpression, formatLoweredNumber, type LoweredEvalContext } from './asm80-expressions.js';
 import { formatIndexedMemory, formatLd, type LdOperand } from './asm80-ld-operands.js';
 
 export type BitInstruction = Extract<Z80Instruction, { readonly mnemonic: 'bit' | 'res' | 'set' }>;
@@ -29,7 +29,13 @@ export function formatBitOp(
   instruction: BitInstruction,
   evalContext: LoweredEvalContext,
 ): { readonly text: string } | undefined {
-  const bit = formatLoweredNumber(instruction.bit, 'byte');
+  const bit =
+    typeof instruction.bit === 'number'
+      ? formatLoweredNumber(instruction.bit, 'byte')
+      : formatExpression(instruction.bit, evalContext, 'byte');
+  if (bit === undefined) {
+    return undefined;
+  }
   const operand = formatBitOperand(instruction.operand, evalContext);
   if (operand === undefined) {
     return undefined;

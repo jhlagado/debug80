@@ -1,6 +1,8 @@
+import type { Expression } from '../model/expression.js';
 import type {
   EncodedZ80Instruction,
   Z80AluMnemonic,
+  Z80BitIndex,
   Z80BitMnemonic,
   Z80Condition,
   Z80CoreMnemonic,
@@ -431,7 +433,7 @@ function encodeStack(
 
 function encodeBitLike(
   mnemonic: Z80BitMnemonic,
-  bit: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7,
+  bit: Z80BitIndex | Expression,
   operand:
     | { readonly kind: 'reg8'; readonly register: Z80Register8 }
     | { readonly kind: 'reg-indirect'; readonly register: 'hl' }
@@ -439,10 +441,21 @@ function encodeBitLike(
   destination?: { readonly kind: 'reg8'; readonly register: Z80Register8 },
 ): EncodedZ80Instruction {
   const operandCode = destination ? register8Code(destination.register) : cbOperandCode(operand);
-  const opcode = bitLikeOpcodeBase(mnemonic) + bit * 8 + operandCode;
+  const opcode =
+    typeof bit === 'number'
+      ? bitLikeOpcodeBase(mnemonic) + bit * 8 + operandCode
+      : bitOpcodeFragment(mnemonic, bit, operandCode);
   return operand.kind === 'indexed'
     ? indexedCbInstruction(operand, opcode, mnemonic)
     : cbInstruction(opcode);
+}
+
+function bitOpcodeFragment(
+  mnemonic: Z80BitMnemonic,
+  bit: Expression,
+  operandCode: number,
+): Extract<EncodedZ80Instruction['fragments'][number], { readonly kind: 'cb-bit-opcode' }> {
+  return { kind: 'cb-bit-opcode', mnemonic, bit, operandCode };
 }
 
 function encodeRotateShift(
@@ -460,18 +473,40 @@ function encodeRotateShift(
     : cbInstruction(opcode);
 }
 
-function cbInstruction(opcode: number): EncodedZ80Instruction {
+function cbInstruction(
+  opcode: number | Extract<EncodedZ80Instruction['fragments'][number], { readonly kind: 'cb-bit-opcode' }>,
+): EncodedZ80Instruction {
+  if (typeof opcode === 'number') {
+    return {
+      size: 2,
+      fragments: [{ kind: 'bytes', bytes: [0xcb, opcode] }],
+    };
+  }
   return {
     size: 2,
-    fragments: [{ kind: 'bytes', bytes: [0xcb, opcode] }],
+    fragments: [{ kind: 'bytes', bytes: [0xcb] }, opcode],
   };
 }
 
 function indexedCbInstruction(
   operand: Extract<Z80Operand, { readonly kind: 'indexed' }>,
-  opcode: number,
+  opcode: number | Extract<EncodedZ80Instruction['fragments'][number], { readonly kind: 'cb-bit-opcode' }>,
   mnemonic: string,
 ): EncodedZ80Instruction {
+  if (typeof opcode === 'number') {
+    return {
+      size: 4,
+      fragments: [
+        { kind: 'bytes', bytes: [indexPrefix(operand.register), 0xcb] },
+        {
+          kind: 'disp8',
+          expression: operand.displacement,
+          message: `${mnemonic} (ix/iy+disp) expects disp8`,
+        },
+        { kind: 'bytes', bytes: [opcode] },
+      ],
+    };
+  }
   return {
     size: 4,
     fragments: [
@@ -481,7 +516,7 @@ function indexedCbInstruction(
         expression: operand.displacement,
         message: `${mnemonic} (ix/iy+disp) expects disp8`,
       },
-      { kind: 'bytes', bytes: [opcode] },
+      opcode,
     ],
   };
 }

@@ -58,6 +58,7 @@ export type Z80StackRegister16 = 'bc' | 'de' | 'hl' | 'af' | 'ix' | 'iy';
 export type Z80RegisterIndirect = 'bc' | 'de' | 'hl';
 export type Z80JumpIndirectRegister = 'hl' | 'ix' | 'iy';
 export type Z80RstVector = 0 | 8 | 16 | 24 | 32 | 40 | 48 | 56;
+export type Z80BitIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
 export type Z80Reg16Operand = Extract<Z80Operand, { readonly kind: 'reg16' }>;
 export type Z80Index16Operand = Extract<Z80Operand, { readonly kind: 'reg-index16' }>;
 
@@ -118,7 +119,7 @@ export type Z80Instruction =
     }
   | {
       readonly mnemonic: Z80BitMnemonic;
-      readonly bit: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
+      readonly bit: Z80BitIndex | Expression;
       readonly operand:
         | { readonly kind: 'reg8'; readonly register: Z80Register8 }
         | { readonly kind: 'reg-indirect'; readonly register: 'hl' }
@@ -175,6 +176,12 @@ export type Z80Instruction =
 
 export type EncodedZ80Fragment =
   | { readonly kind: 'bytes'; readonly bytes: readonly number[] }
+  | {
+      readonly kind: 'cb-bit-opcode';
+      readonly mnemonic: Z80BitMnemonic;
+      readonly bit: Expression;
+      readonly operandCode: number;
+    }
   | { readonly kind: 'imm8'; readonly expression: Expression; readonly failureMessage?: string }
   | { readonly kind: 'port8'; readonly expression: Expression; readonly message: string }
   | { readonly kind: 'disp8'; readonly expression: Expression; readonly message?: string }
