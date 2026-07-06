@@ -50,6 +50,7 @@ compile(entryFile, options, deps)
   assembleProgram()
     buildAddressState()
     emitProgramImage()
+      resolve deferred CB bit-opcode expressions
   emitAssemblyArtifacts()
     writeBin()
     writeHex()

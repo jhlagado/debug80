@@ -200,6 +200,12 @@ collides with an equate, enum member or case-insensitive type or enum
 declaration, assembly keeps the duplicate-symbol or duplicate-type diagnostic
 instead of replacing it with a visibility error.
 
+Instruction-operand walks now include expression-backed CB bit indexes for
+`BIT`, `RES` and `SET`. A tooling load can therefore keep an imported private
+equate visible when it appears in the bit position of those instructions,
+instead of treating only the target operand or indexed displacement as
+expression-bearing.
+
 An editor integration usually starts with:
 
 ```ts
@@ -244,6 +250,11 @@ const bin = result.artifacts.find((artifact) => artifact.kind === 'bin');
 This shape keeps the compile API independent from output paths. A caller can
 write artifacts to disk, keep them in memory, send them to another process or
 compare them in a test.
+
+ASM80 lowering also keeps CB bit indexes in expression form when they are not
+compile-time literals. `asm80-instruction-operands.ts` lowers those operands
+through the shared expression formatter, so equated bit positions round-trip
+through the ASM80 artifact path instead of being rejected before formatting.
 
 ## Byte Maps, BIN and HEX
 
