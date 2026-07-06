@@ -217,18 +217,21 @@ selects a specific opcode family from typed operands.
 ## Fixups and Relative Branches
 
 The Z80 encoder returns fragments: literal bytes, 8-bit immediates, 16-bit
-immediates and relative branch targets. `src/assembly/fixup-emission.ts`
-evaluates the expression attached to each fragment and writes the final byte or
-word.
+immediates, relative branch targets and deferred CB bit-opcode fragments for
+`BIT`, `RES` and `SET` forms whose bit index stays as an expression.
+`src/assembly/fixup-emission.ts` evaluates the expression attached to each
+fragment and writes the final byte or word.
 
 Relative branches such as `jr` and `djnz` emit an 8-bit displacement from the
 next instruction. The parser recognises `jr nz,Loop`. The encoder knows the
 opcode and that the operand is relative. Fixup emission knows the current
 address and final target address.
 
-The same principle applies to absolute branches and immediate operands. The
-encoder chooses the fragment width. Fixup emission evaluates the expression and
-checks that the value fits that width.
+The same principle applies to absolute branches, immediate operands and CB bit
+indexes. The encoder chooses the fragment width or opcode family. Fixup
+emission evaluates the expression and checks that the value fits that width or,
+for bit operations, resolves to an integer in the `0..7` range before the
+opcode byte is written.
 
 ## Source Segments
 

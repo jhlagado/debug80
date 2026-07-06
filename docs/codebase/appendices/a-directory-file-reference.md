@@ -33,7 +33,7 @@ you need to find the owner of a behaviour quickly.
 | `address-symbols.ts`  | Symbol-definition helpers for labels, equates and enums.                                                     |
 | `placement.ts`        | Tracks placement state plus origin and address movement for code and data.                                   |
 | `program-emission.ts` | Writes bytes into the emitted image and records source segments.                                             |
-| `fixup-emission.ts`   | Resolves symbolic instruction fragments such as ABS16, IMM8 and REL8.                                        |
+| `fixup-emission.ts`   | Resolves symbolic instruction fragments such as ABS16, IMM8, REL8 and deferred CB bit opcodes.              |
 
 ## `src/cli/`
 
@@ -69,7 +69,7 @@ you need to find the owner of a behaviour quickly.
 | `op-selection.ts`                 | Selects the matching op overload.                            |
 | `op-expand-selected.ts`           | Expands the selected overload.                               |
 | `op-instruction-instantiation.ts` | Substitutes operands into op body instructions.              |
-| `op-local-labels.ts`              | Rewrites expansion-local labels to unique generated labels.  |
+| `op-local-labels.ts`              | Rewrites expansion-local labels and expression-backed bit indexes to unique generated labels. |
 | `op-constant-expression.ts`       | Constant-expression support for op expansion.                |
 
 ## `src/model/`
@@ -104,7 +104,7 @@ you need to find the owner of a behaviour quickly.
 | `d8-helpers.ts`                  | D8 segment and symbol helpers.                               |
 | `asm80-expressions.ts`           | ASM80 expression lowering helpers.                           |
 | `asm80-expression-evaluation.ts` | ASM80-side constant evaluation for lowering.                 |
-| `asm80-instruction-operands.ts`  | ASM80 instruction operand lowering helpers.                  |
+| `asm80-instruction-operands.ts`  | ASM80 instruction operand lowering helpers, including expression-backed CB bit indexes. |
 | `asm80-instructions.ts`          | ASM80 instruction lowering helpers.                          |
 | `asm80-ld-operands.ts`           | ASM80 `ld` operand lowering helpers.                         |
 | `asm80-strings.ts`               | ASM80 string rendering helpers.                              |
@@ -208,7 +208,7 @@ you need to find the owner of a behaviour quickly.
 
 | File                     | Role                                                                   |
 | ------------------------ | ---------------------------------------------------------------------- |
-| `instruction.ts`         | Z80 instruction and operand type model.                                |
+| `instruction.ts`         | Z80 instruction and operand type model, including deferred bit-index opcode fragments. |
 | `parse-instruction.ts`   | Dispatches instruction parsing by instruction family.                  |
 | `parse-basic.ts`         | Parses basic one-head instruction forms.                               |
 | `parse-branch.ts`        | Parses branch and call forms.                                          |
@@ -216,7 +216,7 @@ you need to find the owner of a behaviour quickly.
 | `parse-exchange.ts`      | Parses exchange forms.                                                 |
 | `parse-io-control.ts`    | Parses I/O and control forms.                                          |
 | `parse-ld.ts`            | Parses `ld` forms.                                                     |
-| `parse-operands.ts`      | Parses and classifies instruction operands.                            |
+| `parse-operands.ts`      | Parses and classifies instruction operands, including bit-index expressions for CB bit ops. |
 | `operand-split.ts`       | Splits operands while respecting parentheses, strings and expressions. |
 | `operand-split-state.ts` | State machine helpers for operand splitting.                           |
 | `ld-support.ts`          | Shared `ld` form support.                                              |

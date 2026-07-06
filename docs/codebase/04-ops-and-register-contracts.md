@@ -98,8 +98,11 @@ the chain and becomes an ordinary label item in the expanded body.
 
 Local label rewriting lives in `op-local-labels.ts`. A local label in an op
 expansion becomes unique at the use site so each expansion receives its own
-generated label. Once the rewritten labels become source items, address planning
-defines and resolves them through the ordinary symbol path.
+generated label. The rewrite pass also walks expression-backed operands such as
+`BIT`, `RES` and `SET` bit indexes, so a local equate or label referenced in an
+op body survives substitution and later assembly. Once the rewritten labels
+become source items, address planning defines and resolves them through the
+ordinary symbol path.
 
 ## Op Diagnostics and Register Contracts
 
