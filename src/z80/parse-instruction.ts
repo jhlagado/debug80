@@ -11,7 +11,7 @@ import {
   halfIndexFamilyFromRegister,
   indexedBracketError,
   parseAluOperand,
-  parseBitIndex,
+  parseBitIndexExpression,
   parseCbOperand,
   parseIncDecOperand,
   parseIndexHalfRegister,
@@ -136,7 +136,7 @@ function parseBitLikeOperands(
   const parts = splitInstructionOperands(operandText);
   const arityError = bitLikeArityError(mnemonic, operandText, parts.length);
   if (arityError) return { error: arityError };
-  const bit = parseBitIndex(parts[0] ?? '');
+  const bit = parseBitIndexExpression(parts[0] ?? '');
   if (bit === undefined) {
     return { error: `${mnemonic} expects bit index 0..7` };
   }
@@ -145,7 +145,7 @@ function parseBitLikeOperands(
 
 function parseBitLikeTarget(
   mnemonic: Z80BitMnemonic,
-  bit: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7,
+  bit: NonNullable<ReturnType<typeof parseBitIndexExpression>>,
   parts: readonly string[],
 ): ParseZ80InstructionResult {
   const operand = parseCbOperand(parts[1] ?? '');
@@ -179,7 +179,7 @@ function bitLikeOperandCountError(mnemonic: Z80BitMnemonic): string {
 
 function parseIndexedBitDestination(
   mnemonic: Z80BitMnemonic,
-  bit: 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7,
+  bit: NonNullable<ReturnType<typeof parseBitIndexExpression>>,
   operand: NonNullable<ReturnType<typeof parseCbOperand>>,
   destinationText: string,
 ): ParseZ80InstructionResult {

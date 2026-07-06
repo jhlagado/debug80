@@ -58,8 +58,8 @@ quoted string.
 
 Label and declaration heads use `label-name`. Expression references use the
 narrower `expression-symbol` form. `$name` is not an expression symbol: `$` is
-the current-location token unless it is followed by a letter or underscore, in
-which case expression tokenization fails.
+reserved for current-location and hexadecimal syntax. Do not use `$` as a
+source-level namespace or private-label separator.
 
 Single-character quoted values are accepted as numeric byte expressions in
 expression contexts. Multi-character string fragments are accepted only where a
@@ -424,7 +424,7 @@ alu                ::= add operand "," operand
                     | or  "a" "," operand
                     | xor "a" "," operand
                     | cp  "a" "," operand
-bit-index          ::= constant 0..7
+bit-index          ::= expression resolving to integer 0..7
 bit                ::= bit bit-index "," cb-operand
                     | res bit-index "," cb-operand
                     | set bit-index "," cb-operand
@@ -442,6 +442,10 @@ im                 ::= im (0 | 1 | 2)
 
 This document does not duplicate every legal `ld`, `in`, `out` and `ex` operand
 combination. Those are maintained in the Z80 parser and encoder tests.
+
+`bit`, `res` and `set` accept either a literal bit index or a constant
+expression, including `.equ` symbols, as long as the resolved value is an
+integer from 0 to 7.
 
 ## Ops
 
@@ -539,3 +543,9 @@ The current parser deliberately rejects:
 
 Leading-dot labels such as `.loop:` are accepted by the current parser as
 ordinary globally visible labels, not as scoped local labels.
+
+Imported files provide privacy through source-unit ownership: `@Name:` labels
+are public exports, while plain labels in an imported file are private to that
+source unit. Private labels must still be globally unique in the current
+implementation. Future internal private-symbol qualification is not AZM source
+syntax.

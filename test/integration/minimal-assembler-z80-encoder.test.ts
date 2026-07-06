@@ -433,6 +433,31 @@ Target:
     ]);
   });
 
+  it('assembles equated CB bit indexes through the z80 encoder', () => {
+    const result = compileNext(`
+KEY_1_BIT .equ 0
+KEY_7_BIT .equ 7
+        BIT KEY_1_BIT,C
+        SET KEY_7_BIT,A
+        RES KEY_1_BIT,(HL)
+`);
+
+    expect(result.diagnostics).toEqual([]);
+    expect(Array.from(result.bytes)).toEqual([0xcb, 0x41, 0xcb, 0xff, 0xcb, 0x86]);
+  });
+
+  it('reports equated CB bit indexes outside 0..7 during emission', () => {
+    const result = compileNext(`
+BAD_BIT .equ 8
+        BIT BAD_BIT,C
+`);
+
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ message: 'bit expects bit index 0..7' }),
+    ]);
+    expect(Array.from(result.bytes)).toEqual([]);
+  });
+
   it('reports unsupported non-indexed CB bit/rotate/shift forms', () => {
     const result = compileNext(`
         BIT 8,A
@@ -748,4 +773,3 @@ Port    .equ $12
   });
 
 });
-

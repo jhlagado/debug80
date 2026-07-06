@@ -133,6 +133,20 @@ function emitZ80Fragment(
     case 'bytes':
       bytes.push(...fragment.bytes);
       return;
+    case 'cb-bit-opcode':
+      emitCbBitOpcode(
+        fragment.mnemonic,
+        fragment.bit,
+        fragment.operandCode,
+        span,
+        currentAddress,
+        labels,
+        equates,
+        diagnostics,
+        bytes,
+        layouts,
+      );
+      return;
     case 'imm8':
       emitImm8Expression(
         fragment.expression,
@@ -201,6 +215,34 @@ function emitZ80Fragment(
       );
       return;
   }
+}
+
+function emitCbBitOpcode(
+  mnemonic: string,
+  expression: Expression,
+  operandCode: number,
+  span: SourceSpan,
+  currentAddress: number,
+  labels: Readonly<Record<string, number>>,
+  equates: ReadonlyMap<string, EquateRecord>,
+  diagnostics: Diagnostic[],
+  bytes: number[],
+  layouts: ReadonlyMap<string, LayoutRecord> | undefined,
+): void {
+  const value = evaluateExpression(expression, labels, equates, span, diagnostics, {
+    currentLocation: currentAddress,
+    layouts,
+  });
+  if (value === undefined) {
+    return;
+  }
+  if (!Number.isInteger(value) || value < 0 || value > 7) {
+    diagnostics.push(diagnostic(span, `${mnemonic} expects bit index 0..7`));
+    bytes.push(0);
+    return;
+  }
+  const base = mnemonic === 'bit' ? 0x40 : mnemonic === 'res' ? 0x80 : 0xc0;
+  bytes.push(base + value * 8 + operandCode);
 }
 
 function emitPort8Expression(

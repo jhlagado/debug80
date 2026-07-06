@@ -67,12 +67,28 @@ export function renameInstructionExpressions(
   if (localLabelMap.size === 0) return instruction;
   if (instruction.mnemonic === 'ld') return renameLdInstruction(instruction, localLabelMap);
   if (instruction.mnemonic === 'ld-a-imm') return renameExpressionInstruction(instruction, localLabelMap);
+  if (isBitInstruction(instruction)) return renameBitInstruction(instruction, localLabelMap);
   if (instruction.mnemonic === 'in' || instruction.mnemonic === 'out') {
     return { ...instruction, port: renamePortExpression(instruction.port, localLabelMap) };
   }
   if (isAluSourceInstruction(instruction)) return renameSourceOperandInstruction(instruction, localLabelMap);
   if (isJumpExpressionInstruction(instruction)) return renameExpressionInstruction(instruction, localLabelMap);
   return instruction;
+}
+
+function isBitInstruction(
+  instruction: Z80Instruction,
+): instruction is Extract<Z80Instruction, { readonly mnemonic: 'bit' | 'res' | 'set' }> {
+  return instruction.mnemonic === 'bit' || instruction.mnemonic === 'res' || instruction.mnemonic === 'set';
+}
+
+function renameBitInstruction(
+  instruction: Extract<Z80Instruction, { readonly mnemonic: 'bit' | 'res' | 'set' }>,
+  localLabelMap: ReadonlyMap<string, string>,
+): Z80Instruction {
+  return typeof instruction.bit === 'number'
+    ? instruction
+    : { ...instruction, bit: renameExpression(instruction.bit, localLabelMap) };
 }
 
 function renameLabelItem(
