@@ -1,0 +1,13 @@
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+.DS_Store
+
+# generated build artifacts in examples
+examples/*.asm
+examples/*.hex
+examples/*.bin
+examples/*.d8.json
+.claude/
+CLAUDE.md

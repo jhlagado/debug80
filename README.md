@@ -1,0 +1,95 @@
+# Glimmer
+
+Glimmer is a preprocessor and project format for AZM. Its initial purpose is to
+help us learn how to build a practical Z80 game engine while keeping real Z80
+assembly visible.
+
+The first target is game writing for the TEC-1G. The format should also leave
+room for other Z80 systems as Debug80 expands its supported platforms.
+
+Longer term, Glimmer is expected to become a Debug80-facing format: a structured
+way to describe fragments, state records, bindings, effects, resources, and
+generated AZM glue for interactive Z80 programs.
+
+Documentation:
+
+- [Glimmer Interactive Runtime Specification](docs/glimmer.md) — the design foundation
+- [Roadmap](docs/roadmap.md) — milestones and platform findings
+- [Glim Grammar Reference](docs/reference/glim-grammar.md) — formal grammar and syntax design rules
+- [Glimmer Engineering Manual](docs/codebase/) — codebase reference, kept current with the source
+- [Glimmer Manual](docs/manual/) — user manual draft (pre-alpha, unpublished)
+
+The project is game-first because games exercise timing, input, graphics,
+sprites, state, sound, packaging, and performance. It is not intended to be
+game-only.
+
+## Status
+
+Early v0. The current vertical slice compiles a single-file `.glim`
+meta-source (program, state cells, pulses, key bindings, effects with Z80
+fragment bodies) into one generated AZM source file, which AZM assembles into
+`.hex`, `.bin`, and a `.d8.json` Debug80 map. Two examples work end to end:
+
+- `examples/counter.glim` — CounterToy from the spec (generic profile)
+- `examples/dot.glim` — a keypad-moved dot on the real TEC-1G 8x8 RGB
+  matrix (`platform tec1g-mon3` + `display matrix8x8`): MON-3 `_scanKeys`
+  input, scan-driven display loop, edge-clamped movement. The repo's
+  `debug80.json` carries a `dot` target, so after
+  `node dist/src/cli.js examples/dot.glim && npx azm examples/dot.asm`
+  it runs under Debug80.
+
+## Getting Started
+
+Glimmer requires Node.js 20 or newer.
+
+```sh
+npm ci
+npm run build
+node dist/src/cli.js examples/counter.glim   # writes examples/counter.asm
+npx azm examples/counter.asm                 # assembles hex/bin/d8 map
+```
+
+The generated AZM is deliberately readable: API equates, dirty-bit constants,
+state storage, the runtime loop, binding polling, phase dispatch, wrapped user
+fragments, and frame cleanup, in that order. Inspect
+`examples/counter.asm` after building to see the whole runtime.
+
+## The Meta-Source Format (v0)
+
+```
+program CounterToy
+
+state Count : byte = 0 dirty_on_start
+
+pulse IncPressed
+
+bind key KEY_1 rising -> IncPressed
+
+effect ApplyIncrement
+    on IncPressed
+    writes Count
+begin
+    ld hl,Count \ inc (hl)
+    ld a,(hl) \ cp 10 \ jr c,.done
+    xor a \ ld (hl),a
+.done:
+end
+```
+
+Fragment-local labels (`.done`) are namespaced per effect into ordinary
+globally unique labels in the generated output (`FX_ApplyIncrement_done`).
+Effects run when any of their `on` cells are dirty; `writes` cells are
+marked dirty after the effect runs.
+
+## Development
+
+```sh
+npm run typecheck
+npm run lint
+npm test          # includes a round trip that assembles generated AZM
+npm run format
+```
+
+## License
+
+GPL-3.0-only. See [LICENSE](LICENSE).

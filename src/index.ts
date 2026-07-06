@@ -1,0 +1,46 @@
+/**
+ * Glimmer public API.
+ *
+ * Glimmer is a preprocessor for AZM: it compiles a structured program
+ * (state cells, pulses, bindings, effects and Z80 fragments)
+ * into a single generated AZM source file.
+ */
+
+export type {
+  Binding,
+  CellType,
+  EffectDecl,
+  EffectPhase,
+  GlimmerDiagnostic,
+  GlimmerProgram,
+  KeyBinding,
+  Phase,
+  PulseDecl,
+  StateDecl,
+} from './model.js';
+export { EFFECT_PHASES, PHASES } from './model.js';
+export { parseGlimmer, type ParseResult } from './parse.js';
+export { generateAzm, type GenerateOptions, type GenerateResult } from './generate.js';
+
+import type { GlimmerDiagnostic } from './model.js';
+import { generateAzm, type GenerateOptions } from './generate.js';
+import { parseGlimmer } from './parse.js';
+
+export interface CompileResult {
+  /** Generated AZM source, or null when diagnostics contain errors. */
+  source: string | null;
+  diagnostics: GlimmerDiagnostic[];
+}
+
+/** Compile Glimmer meta-source text to AZM source text. */
+export function compileToAzm(glimSource: string, options: GenerateOptions = {}): CompileResult {
+  const parsed = parseGlimmer(glimSource);
+  if (parsed.program === null) {
+    return { source: null, diagnostics: parsed.diagnostics };
+  }
+  const generated = generateAzm(parsed.program, options);
+  if (generated.diagnostics.length > 0) {
+    return { source: null, diagnostics: generated.diagnostics };
+  }
+  return { source: generated.source, diagnostics: [] };
+}

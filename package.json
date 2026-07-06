@@ -1,0 +1,67 @@
+{
+  "name": "@jhlagado/glimmer",
+  "version": "0.0.1",
+  "description": "Glimmer preprocessor for AZM: routine cards, reactive state and generated Z80 glue",
+  "license": "GPL-3.0-only",
+  "engines": {
+    "node": ">=20"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "dist/src/index.d.ts",
+  "bin": {
+    "glimmer": "dist/src/cli.js"
+  },
+  "files": [
+    "dist/src"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jhlagado/glimmer.git"
+  },
+  "keywords": [
+    "z80",
+    "azm",
+    "preprocessor",
+    "game-engine",
+    "tec-1g",
+    "retro",
+    "8-bit"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
+    "lint:fix": "eslint \"src/**/*.ts\" \"test/**/*.ts\" --fix",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "format": "prettier -w .",
+    "format:check": "prettier -c .",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run build",
+    "glimmer": "npm run build && node dist/src/cli.js"
+  },
+  "devDependencies": {
+    "@jhlagado/azm": "^0.2.16",
+    "@types/node": "^22.13.1",
+    "@vitest/coverage-v8": "^2.1.9",
+    "eslint": "^10.1.0",
+    "globals": "^17.4.0",
+    "prettier": "^3.5.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.57.2",
+    "vitest": "^2.1.9"
+  }
+}
