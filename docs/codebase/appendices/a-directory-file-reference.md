@@ -38,7 +38,8 @@ or change purpose.
 | `slide.glim`   | v0.2 showcase: ramp-driven slide, compute, timer blink, sound, HUD |
 
 The repo root also carries `debug80.json` with a `dot` target so the
-generated `examples/dot.asm` runs under Debug80's TEC-1G platform.
+generated `examples/dot.main.asm` runs under Debug80's TEC-1G platform
+(the `.main.asm` suffix is Debug80's entry-point naming convention).
 
 ## corpus/
 

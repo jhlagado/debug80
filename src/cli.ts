@@ -5,7 +5,7 @@
  *   glimmer <entry.glim> [-o output.asm] [--org <addr>]
  *
  * Compiles Glimmer meta-source to a generated AZM source file, ready for the
- * AZM assembler: `glimmer counter.glim && azm counter.asm`.
+ * AZM assembler: `glimmer counter.glim && azm counter.main.asm`.
  */
 
 import { readFileSync, writeFileSync } from 'node:fs';
@@ -23,7 +23,7 @@ function usage(): string {
     'Usage: glimmer [options] <entry.glim>',
     '',
     'Options:',
-    '  -o, --output <file>   Output AZM path (default: entry with .asm extension)',
+    '  -o, --output <file>   Output AZM path (default: <entry>.main.asm, the Debug80 entry-point convention)',
     '  --org <addr>          Assembly origin, e.g. $4000 (default: $4000)',
     '  -V, --version         Print package version',
     '  -h, --help            Print this help',
@@ -97,8 +97,11 @@ export function main(argv: string[]): number {
     return 1;
   }
 
+  // Debug80 recognizes entry points named main.asm or <name>.main.asm;
+  // the generated file is a program entry, so it follows the convention.
   const outPath =
-    output ?? path.join(path.dirname(entry), `${path.basename(entry, path.extname(entry))}.asm`);
+    output ??
+    path.join(path.dirname(entry), `${path.basename(entry, path.extname(entry))}.main.asm`);
   writeFileSync(outPath, result.source);
   console.log(`Wrote ${outPath}`);
   return 0;
