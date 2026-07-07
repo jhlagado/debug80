@@ -118,6 +118,11 @@ Other concrete facts to build against:
 
 ## Milestones
 
+Version numbers below (v0.1, v0.2, ...) are milestone labels for
+sequencing work, not releases. npm publishing is a separate, later
+decision: nothing ships to the registry until the project reaches a
+minimum feature set and documentation level.
+
 Each milestone keeps the round-trip test green (generated AZM must
 assemble) and adds one example program that exercises the new ground.
 
