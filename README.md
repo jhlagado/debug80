@@ -380,7 +380,9 @@ The difference is visibility. In an imported file, labels written with `@` are
 public exports. Code outside `keyboard.asm` can call `ReadKey`, using the name
 without `@`. Plain labels in an imported file, such as `ScanMatrix`, are private
 to that imported file or import unit. The imported file may call its own private
-helpers, but outside references fail with a direct visibility diagnostic.
+helpers, and different imported files may reuse the same private label names.
+Duplicate private labels inside the same imported source unit still fail.
+Outside references fail with a direct visibility diagnostic.
 
 `.include` remains textual. Included text belongs to the including source unit
 and is intended for shared constants, declarations and compatibility source.

@@ -145,16 +145,70 @@ function collectSymbolEntries(
   resolvedSymbols: Readonly<Record<string, number>>,
 ): SymbolEntry[] {
   const map = new Map<string, SymbolEntry>();
+  const ambiguousImportedPrivateNames = importedPrivateNamesWithPublicOrDuplicateDisplay(items);
   for (const item of items) {
-    appendSymbolEntry(map, item, resolvedSymbols);
+    appendSymbolEntry(map, item, resolvedSymbols, ambiguousImportedPrivateNames);
   }
   return [...map.values()];
+}
+
+function importedPrivateNamesWithPublicOrDuplicateDisplay(
+  items: readonly SourceItem[],
+): ReadonlySet<string> {
+  const privateNames = new Set<string>();
+  const privateCounts = new Map<string, number>();
+  const privateLowerCounts = new Map<string, number>();
+  const publicOrNonLabelLowerNames = new Set<string>();
+  for (const item of items) {
+    if (item.kind === 'label') {
+      if (isImportedPrivateLabel(item)) {
+        privateNames.add(item.name);
+        privateCounts.set(item.name, (privateCounts.get(item.name) ?? 0) + 1);
+        const lowerName = item.name.toLowerCase();
+        privateLowerCounts.set(lowerName, (privateLowerCounts.get(lowerName) ?? 0) + 1);
+      } else {
+        publicOrNonLabelLowerNames.add(item.name.toLowerCase());
+      }
+      continue;
+    }
+    if (item.kind === 'equ') {
+      publicOrNonLabelLowerNames.add(item.name.toLowerCase());
+      continue;
+    }
+    if (item.kind === 'enum') {
+      for (const member of item.members) {
+        publicOrNonLabelLowerNames.add(`${item.name}.${member}`.toLowerCase());
+      }
+    }
+  }
+
+  const ambiguous = new Set<string>();
+  for (const name of privateNames) {
+    const lowerName = name.toLowerCase();
+    if (
+      (privateCounts.get(name) ?? 0) > 1 ||
+      (privateLowerCounts.get(lowerName) ?? 0) > 1 ||
+      publicOrNonLabelLowerNames.has(lowerName)
+    ) {
+      ambiguous.add(name);
+    }
+  }
+  return ambiguous;
+}
+
+function isImportedPrivateLabel(item: Extract<SourceItem, { readonly kind: 'label' }>): boolean {
+  return (
+    item.isEntry !== true &&
+    item.span.sourceUnitRelation === 'import' &&
+    item.span.sourceUnit !== undefined
+  );
 }
 
 function appendSymbolEntry(
   map: Map<string, SymbolEntry>,
   item: SourceItem,
   resolvedSymbols: Readonly<Record<string, number>>,
+  ambiguousImportedPrivateNames: ReadonlySet<string>,
 ): void {
   if (item.kind === 'equ') {
     const value = resolvedSymbols[item.name];
@@ -172,6 +226,9 @@ function appendSymbolEntry(
   }
 
   if (item.kind === 'label') {
+    if (isImportedPrivateLabel(item) && ambiguousImportedPrivateNames.has(item.name)) {
+      return;
+    }
     const address = resolvedSymbols[item.name];
     if (address !== undefined) {
       map.set(item.name, {

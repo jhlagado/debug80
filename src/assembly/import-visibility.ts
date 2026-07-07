@@ -29,32 +29,47 @@ export function validateImportVisibility(
 }
 
 interface SymbolVisibility {
-  readonly labels: ReadonlyMap<string, LabelVisibility>;
+  readonly labels: ReadonlyMap<string, readonly LabelVisibility[]>;
   readonly exactSymbols: ReadonlySet<string>;
+  readonly exactNonLabelSymbols: ReadonlySet<string>;
+  readonly lowerNonLabelSymbols: ReadonlySet<string>;
 }
 
 function collectSymbolVisibility(items: readonly SourceItem[]): SymbolVisibility {
-  const labels = new Map<string, LabelVisibility>();
+  const labels = new Map<string, LabelVisibility[]>();
   const exactSymbols = new Set<string>();
+  const exactNonLabelSymbols = new Set<string>();
+  const lowerNonLabelSymbols = new Set<string>();
   const importedSourceUnits = importedUnitNames(items);
   const symbolConflicts = buildSymbolConflictIndex(items);
   for (const item of items) {
     for (const name of exactSymbolNames(item)) {
       exactSymbols.add(name);
     }
+    for (const name of exactNonLabelSymbolNames(item)) {
+      exactNonLabelSymbols.add(name);
+      lowerNonLabelSymbols.add(name.toLowerCase());
+    }
   }
   for (let index = 0; index < items.length; index += 1) {
     const item = items[index]!;
     if (item.kind !== 'label') continue;
-    labels.set(item.name, {
-      name: item.name,
-      definingSourceUnit: item.span.sourceUnit,
-      definingSourceName: item.span.sourceName,
-      public: isPublicLabel(item, importedSourceUnits),
-      duplicateName: hasAddressPlanningNameConflict(item.name, symbolConflicts, items, index),
-    });
+    const importedPrivate = isImportedPrivateLabel(item);
+    const existing = labels.get(item.name) ?? [];
+    labels.set(item.name, [
+      ...existing,
+      {
+        name: item.name,
+        definingSourceUnit: item.span.sourceUnit,
+        definingSourceName: item.span.sourceName,
+        public: isPublicLabel(item, importedSourceUnits),
+        duplicateName: importedPrivate
+          ? hasSameSourceUnitLabelConflict(item, items, index)
+          : hasAddressPlanningNameConflict(item.name, symbolConflicts, items, index),
+      },
+    ]);
   }
-  return { labels, exactSymbols };
+  return { labels, exactSymbols, exactNonLabelSymbols, lowerNonLabelSymbols };
 }
 
 function buildSymbolConflictIndex(items: readonly SourceItem[]): SymbolConflictIndex {
@@ -119,6 +134,17 @@ function qualifiedEnumMemberNames(item: SourceItem): readonly string[] {
   return item.kind === 'enum' ? item.members.map((member) => `${item.name}.${member}`) : [];
 }
 
+function exactNonLabelSymbolNames(item: SourceItem): readonly string[] {
+  switch (item.kind) {
+    case 'equ':
+      return [item.name];
+    case 'enum':
+      return qualifiedEnumMemberNames(item);
+    default:
+      return [];
+  }
+}
+
 function caseInsensitiveDeclarationName(item: SourceItem): string | undefined {
   switch (item.kind) {
     case 'enum':
@@ -152,6 +178,44 @@ function isPublicLabel(
     item.span.sourceUnit === undefined ||
     !importedSourceUnits.has(item.span.sourceUnit)
   );
+}
+
+function isImportedPrivateLabel(
+  item: Extract<SourceItem, { readonly kind: 'label' }>,
+): boolean {
+  return (
+    item.isEntry !== true &&
+    item.span.sourceUnitRelation === 'import' &&
+    item.span.sourceUnit !== undefined
+  );
+}
+
+function hasSameSourceUnitLabelConflict(
+  label: Extract<SourceItem, { readonly kind: 'label' }>,
+  items: readonly SourceItem[],
+  labelIndex: number,
+): boolean {
+  const sourceUnit = label.span.sourceUnit;
+  if (sourceUnit === undefined) return false;
+  const lowerName = label.name.toLowerCase();
+  for (let index = 0; index < items.length; index += 1) {
+    if (index === labelIndex) continue;
+    const item = items[index]!;
+    if (item.span.sourceUnit !== sourceUnit) continue;
+    for (const name of exactSymbolNames(item)) {
+      if (name === label.name) return true;
+    }
+    const declarationName = caseInsensitiveDeclarationName(item);
+    if (declarationName !== undefined && declarationName.toLowerCase() === lowerName) {
+      return true;
+    }
+    if (item.kind === 'enum') {
+      for (const memberName of qualifiedEnumMemberNames(item)) {
+        if (memberName.toLowerCase() === lowerName) return true;
+      }
+    }
+  }
+  return false;
 }
 
 function validateItemReferences(
@@ -341,7 +405,7 @@ function validateSymbolReference(
   symbols: SymbolVisibility,
   diagnostics: Diagnostic[],
 ): void {
-  const label = lookupLabel(symbols, name);
+  const label = lookupLabel(symbols, name, referenceSpan);
   if (!label || label.duplicateName || label.public) return;
   if (referenceSpan.sourceUnit === label.definingSourceUnit) return;
   diagnostics.push(
@@ -355,13 +419,28 @@ function validateSymbolReference(
 function lookupLabel(
   symbols: SymbolVisibility,
   name: string,
+  referenceSpan: SourceSpan,
 ): LabelVisibility | undefined {
-  const direct = symbols.labels.get(name);
-  if (direct) return direct;
-  if (symbols.exactSymbols.has(name)) return undefined;
+  if (symbols.exactNonLabelSymbols.has(name)) return undefined;
   const lowerName = name.toLowerCase();
-  for (const [key, label] of symbols.labels) {
-    if (key.toLowerCase() === lowerName) return label;
+  if (symbols.lowerNonLabelSymbols.has(lowerName)) return undefined;
+  const candidates = [...(symbols.labels.get(name) ?? [])];
+  for (const [key, labels] of symbols.labels) {
+    if (key !== name && key.toLowerCase() === lowerName) {
+      candidates.push(...labels);
+    }
   }
-  return undefined;
+  return preferredLabel(candidates, referenceSpan);
+}
+
+function preferredLabel(
+  labels: readonly LabelVisibility[] | undefined,
+  referenceSpan: SourceSpan,
+): LabelVisibility | undefined {
+  if (labels === undefined || labels.length === 0) return undefined;
+  return (
+    labels.find((label) => label.definingSourceUnit === referenceSpan.sourceUnit) ??
+    labels.find((label) => label.public) ??
+    labels[0]
+  );
 }
