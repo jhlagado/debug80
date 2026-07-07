@@ -18,6 +18,7 @@ The central files are:
 
 - `src/assembly/address-planning.ts`
 - `src/assembly/address-symbols.ts`
+- `src/assembly/private-label-qualification.ts`
 - `src/assembly/placement.ts`
 - `src/assembly/program-emission.ts`
 - `src/assembly/fixup-emission.ts`
@@ -41,6 +42,13 @@ export function assembleProgram(items: readonly SourceItem[]): AssembleProgramRe
 It builds the address state, emits the program image and returns diagnostics,
 symbols, byte maps and source segments. The function is intentionally small.
 Detailed decisions live in the modules below it.
+
+Before address planning starts, the assembly path validates imported-private
+references against source-unit visibility rules, then rewrites imported private
+labels to source-unit-qualified internal names. Address planning, symbol
+resolution and byte emission use those internal names so same-name private
+labels from different imported units stay distinct. The returned symbol table
+maps back to display names and drops ambiguous imported private names.
 
 ## Address Planning
 
@@ -76,6 +84,14 @@ Labels define addresses. `.equ` declarations define assembler-time values.
 Enums define qualified constants. `src/assembly/address-symbols.ts` contains
 the symbol helpers that define labels, equates and enum members, enforce
 duplicate rules and record spans for diagnostics and output metadata.
+
+`src/assembly/private-label-qualification.ts` owns the imported-private label
+rewrite. It qualifies private labels with a source-unit key before address
+planning, rewrites same-unit references to those internal names and leaves
+public labels, equates, enum members, types and type aliases on their display
+names. This keeps entry-file symbols and public exports visible ahead of
+same-name imported private labels while preserving internal references inside
+each imported unit.
 
 Record and union declarations become layout records. A record field advances the
 offset by its byte size. A union field starts at offset zero and the union size

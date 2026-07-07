@@ -195,10 +195,16 @@ metadata.
 Visibility checks walk instruction operands, data expressions, equates,
 alignment and bin-range expressions and bare `.ds` size expressions. Imported
 private labels remain visible inside their own source unit, including op
-generated references and text included into that same unit. When a name already
-collides with an equate, enum member or case-insensitive type or enum
-declaration, assembly keeps the duplicate-symbol or duplicate-type diagnostic
-instead of replacing it with a visibility error.
+generated references and text included into that same unit. Reference lookup
+prefers same-unit imported private labels first, then public labels, and treats
+entry or public equates and enum members as stronger matches than imported
+private fallbacks. Imported private labels only report duplicate-symbol
+conflicts against declarations from the same imported source unit, so entry-file
+equates and enum members can share the same display name without blocking that
+unit's internal references. Public labels and declarations inside the imported
+unit still own the display name and continue to report duplicate-symbol or
+duplicate-type diagnostics when they collide with a private label from that
+same unit.
 
 Instruction-operand walks now include expression-backed CB bit indexes for
 `BIT`, `RES` and `SET`. A tooling load can therefore keep an imported private
@@ -288,6 +294,14 @@ the whole line to one column.
 The D8 map distinguishes addressable symbols from constants. Labels and
 addressable data carry addresses. Constants carry values. Debug80 can then use
 addressable symbols for breakpoints and display constants as metadata.
+
+Assembly now keeps imported private labels on internal source-unit-qualified
+names while it resolves addresses and emits bytes. BIN, HEX, D8 and compile API
+symbol outputs map those names back to display symbols before they leave the
+assembler. When multiple imported private labels would share one display name,
+or a public symbol already owns that display name, the artifact symbol lists
+omit the ambiguous imported private entry instead of leaking the internal
+qualified name.
 
 ## Lowered ASM80 and Register Contract Artifacts
 
