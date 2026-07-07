@@ -77,6 +77,12 @@ records whether the physical file edge was `entry`, `include` or `import`, and
 `sourceUnitRelation` records whether the owning unit entered the load through
 `entry` or `import`.
 
+Tooling and compile consumers should also treat returned symbol tables and D8
+symbol lists as display-oriented contracts. Imported private labels can take
+source-unit-qualified internal names during assembly, but those internal names
+are not part of the public surface and must not leak through the returned
+symbol data.
+
 ## CLI Export
 
 `@jhlagado/azm/cli` exposes the compiled CLI module and backs the `azm` binary.

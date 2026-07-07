@@ -19,7 +19,7 @@ you need to find the owner of a behaviour quickly.
 | ------------------------------- | ------------------------------------------------------------------------------------------------------------------------ |
 | `src/index.ts`                  | Main package export surface. Re-exports compile, tooling, diagnostics, register contract and D8 map types.               |
 | `src/api-compile.ts`            | File-backed public compile API. Coordinates loading, analysis, register contracts, assembly and artifact writers.        |
-| `src/api-artifacts.ts`          | Assembly artifact helper for the compile API. Builds BIN, HEX, D8 and lowered ASM80 artifacts from assembled output.     |
+| `src/api-artifacts.ts`          | Assembly artifact helper for the compile API. Builds BIN, HEX, D8 and lowered ASM80 artifacts from assembled output, including imported-private symbol filtering for display artifacts. |
 | `src/api-register-contracts.ts` | Register contract helper for the compile API. Loads `.asmi` interfaces, runs analysis and converts results to artifacts. |
 | `src/api-tooling.ts`            | Public tooling API re-export layer. Keeps editor-facing imports stable.                                                  |
 | `src/cli.ts`                    | CLI executable entry. Calls `runCli()` and sets process exit code.                                                       |
@@ -30,7 +30,8 @@ you need to find the owner of a behaviour quickly.
 | --------------------- | ------------------------------------------------------------------------------------------------------------ |
 | `assemble-program.ts` | Assembly coordinator. Builds address state, emits program image and returns assembled result data.           |
 | `address-planning.ts` | Defines labels, equates, enum members, layouts and type aliases; calculates directive and instruction sizes. |
-| `address-symbols.ts`  | Symbol-definition helpers for labels, equates and enums.                                                     |
+| `address-symbols.ts`  | Symbol-definition helpers for labels, equates and enums, including duplicate-symbol diagnostics that use display names for qualified private labels. |
+| `private-label-qualification.ts` | Rewrites imported private labels to source-unit-qualified internal names, rewrites same-unit references and maps internal symbols back to public display names. |
 | `placement.ts`        | Tracks placement state plus origin and address movement for code and data.                                   |
 | `program-emission.ts` | Writes bytes into the emitted image and records source segments.                                             |
 | `fixup-emission.ts`   | Resolves symbolic instruction fragments such as ABS16, IMM8, REL8 and deferred CB bit opcodes.              |

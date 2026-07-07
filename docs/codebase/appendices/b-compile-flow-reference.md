@@ -48,7 +48,11 @@ compile(entryFile, options, deps)
     compare JSON findings against optional baseline
     build report, interface, inference and annotation artifacts
   assembleProgram()
+    validateImportVisibility()
+    qualifyImportedPrivateLabels()
     buildAddressState()
+    resolve internal symbols
+    map display symbols
     emitProgramImage()
       resolve deferred CB bit-opcode expressions
   emitAssemblyArtifacts()
@@ -101,8 +105,8 @@ tooling integrations that still use the older name.
 | ------------------ | -------------------- | ------------------------------------- |
 | Source loading     | entry path           | logical lines with ownership metadata, source texts, comments |
 | Parsing            | logical lines        | source items                          |
-| Analysis           | source items         | diagnostics, symbols, import-visibility checks |
+| Analysis           | source items         | diagnostics, display-symbol environment, import-visibility checks |
 | Register contracts | loaded program       | summaries, service-range boundaries, findings, reports and inference artifacts |
-| Assembly           | source items         | byte map, symbols, source segments with per-item columns |
+| Assembly           | source items         | byte map, display symbols, source segments with per-item columns |
 | Outputs            | byte map and symbols | artifacts                             |
 | CLI                | artifacts            | files on disk                         |
