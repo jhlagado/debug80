@@ -541,11 +541,13 @@ The current parser deliberately rejects:
 - Uppercase conditional directives such as `.IF`.
 - Text macros.
 
-Leading-dot labels such as `.loop:` are accepted by the current parser as
-ordinary globally visible labels, not as scoped local labels.
+Leading-dot labels such as `.loop:` are not AZM local-label syntax. AZM uses a
+leading dot for directives, so scoped private labels are expressed through
+`.import` source-unit ownership rather than dot-prefixed label spelling.
 
 Imported files provide privacy through source-unit ownership: `@Name:` labels
 are public exports, while plain labels in an imported file are private to that
-source unit. Private labels must still be globally unique in the current
-implementation. Future internal private-symbol qualification is not AZM source
-syntax.
+source unit. Duplicate private labels are allowed across different imported
+source units; duplicates inside the same imported source unit are still
+rejected. The internal private-symbol qualification used to implement this is
+not AZM source syntax.

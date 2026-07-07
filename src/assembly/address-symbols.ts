@@ -9,6 +9,7 @@ import {
   type EquateRecord,
   type LayoutRecord,
 } from '../semantics/expression-evaluation.js';
+import { displaySymbolName } from './private-label-qualification.js';
 
 export function defineLayout(
   layouts: Map<string, LayoutRecord>,
@@ -85,7 +86,7 @@ export function defineLabel(
     hasCaseInsensitiveMapKey(layouts, name.toLowerCase()) ||
     enumNamesLower.has(name.toLowerCase())
   ) {
-    diagnostics.push(diagnostic(span, `duplicate symbol: ${name}`));
+    diagnostics.push(diagnostic(span, `duplicate symbol: ${displaySymbolName(name)}`));
     return;
   }
   labels[name] = address;

@@ -60,8 +60,8 @@ These decisions are now fixed for the first implementation pass:
 - `.include` remains purely textual and compatibility-focused.
 - private labels in imported files are hidden from code outside that imported
   file or import unit.
-- private labels remain globally unique in the first release; local private
-  label uniqueness is deferred.
+- private labels are unique within their imported source unit; duplicate
+  private label names are allowed across different imported source units.
 - first-release privacy applies to labels only, not `.equ`, `.enum`, `.type`,
   type aliases, ops or directive aliases.
 - entry/root source files keep current flat program behavior for non-`@`
@@ -165,7 +165,7 @@ Evidence:
 - No `Module.Symbol` reference syntax.
 - No re-export syntax.
 - No package/library system.
-- No duplicate private labels across imported files in the first slice.
+- No routine-scoped local label syntax, and no leading-dot local labels.
 - No automatic label rewriting in user-visible source.
 - No change to `.include` behavior.
 - No attempt to make all assembler symbols private by default outside import
@@ -179,6 +179,8 @@ The fully worked out feature should support:
 - imported files are compiled into the same output image.
 - public `@` labels in an imported file are visible to the importing program.
 - non-`@` labels in an imported file are private to that file or import unit.
+- duplicate private label names are allowed across different imported source
+  units, while same-unit duplicates still fail.
 - references inside an imported file can use that file's private labels.
 - references outside an imported file cannot use that file's private labels.
 - register contracts still analyze imported `@` routines as known internal
@@ -187,8 +189,9 @@ The fully worked out feature should support:
 - output maps identify source files normally.
 - `.include` remains purely textual.
 
-The first release can retain global uniqueness for private labels while still
-enforcing visibility. Later work can make private labels locally unique.
+Private-label uniqueness is now scoped to the imported source unit. Later work
+can add explicit namespace aliases or a larger module/package system, but that
+is separate from private label qualification.
 
 ## Phased Delivery Plan
 
@@ -581,9 +584,10 @@ Exit criteria:
 
 ### Local Private Label Uniqueness
 
-Allow duplicate private labels in different imported files by internally
-qualifying private labels with their import unit. This needs a careful resolver
-change so output symbols, diagnostics and D8 maps remain readable.
+Implemented for imported source units: duplicate private labels in different
+imported files are internally qualified by import unit, same-unit duplicate
+checks still report the source label name, and public symbol output keeps
+readable names where unambiguous.
 
 ### Namespaced Imports
 
@@ -635,6 +639,8 @@ The feature is complete when:
 - public `@` labels from imported files are callable from outside.
 - imported private labels are rejected from outside with direct diagnostics.
 - imported private labels work inside their own file.
+- imported private labels may reuse the same plain name in different imported
+  source units.
 - register contracts strict mode works across imported public routines.
 - output artifacts and tooling APIs keep correct source provenance.
 - README, changelog and engineering manual are updated.

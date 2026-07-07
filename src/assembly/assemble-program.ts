@@ -3,6 +3,10 @@ import type { SourceItem } from '../model/source-item.js';
 import type { EmittedSourceSegment } from '../outputs/types.js';
 import { buildAddressState, resolveSymbols } from './address-planning.js';
 import { validateImportVisibility } from './import-visibility.js';
+import {
+  displaySymbolsForProgram,
+  qualifyImportedPrivateLabels,
+} from './private-label-qualification.js';
 import { emitProgramImage } from './program-emission.js';
 
 export interface AssemblyResult {
@@ -37,22 +41,25 @@ export function assembleProgram(items: readonly SourceItem[]): AssemblyResult {
     return emptyAssemblyResult(diagnostics);
   }
 
-  const addressState = buildAddressState(items, diagnostics);
+  const assemblyItems = qualifyImportedPrivateLabels(items);
+
+  const addressState = buildAddressState(assemblyItems, diagnostics);
   if (diagnostics.length > 0) {
     return emptyAssemblyResult(diagnostics, { origin: addressState.origin });
   }
 
-  const symbols = resolveSymbols(
+  const internalSymbols = resolveSymbols(
     addressState.labels,
     addressState.equates,
     addressState.layouts,
     diagnostics,
   );
+  const symbols = displaySymbolsForProgram(items, assemblyItems, internalSymbols);
   if (diagnostics.length > 0) {
     return emptyAssemblyResult(diagnostics, { symbols, origin: addressState.origin });
   }
 
-  const emitted = emitProgramImage(items, addressState, symbols, diagnostics);
+  const emitted = emitProgramImage(assemblyItems, addressState, internalSymbols, diagnostics);
   return {
     diagnostics,
     symbols,
