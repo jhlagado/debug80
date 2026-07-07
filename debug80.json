@@ -45,8 +45,8 @@
         "appStart": 16384,
         "entry": 0
       },
-      "sourceFile": "examples/dot.asm",
-      "asm": "examples/dot.asm",
+      "sourceFile": "examples/dot.main.asm",
+      "asm": "examples/dot.main.asm",
       "artifactBase": "dot",
       "sourceRoots": ["examples"]
     },
@@ -75,8 +75,8 @@
         "appStart": 16384,
         "entry": 0
       },
-      "sourceFile": "examples/slide.asm",
-      "asm": "examples/slide.asm",
+      "sourceFile": "examples/slide.main.asm",
+      "asm": "examples/slide.main.asm",
       "artifactBase": "slide",
       "sourceRoots": ["examples"]
     }

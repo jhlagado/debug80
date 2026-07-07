@@ -40,7 +40,7 @@ block bodies) into one generated AZM source file, which AZM assembles into
   through the speaker service and bumps a seven-segment counter.
 
 The repo's `debug80.json` carries `dot` and `slide` targets, so after
-`node dist/src/cli.js examples/<name>.glim && npx azm examples/<name>.asm`
+`node dist/src/cli.js examples/<name>.glim && npx azm examples/<name>.main.asm`
 they run under Debug80.
 
 ## Getting Started
@@ -50,14 +50,14 @@ Glimmer requires Node.js 20 or newer.
 ```sh
 npm ci
 npm run build
-node dist/src/cli.js examples/counter.glim   # writes examples/counter.asm
-npx azm examples/counter.asm                 # assembles hex/bin/d8 map
+node dist/src/cli.js examples/counter.glim   # writes examples/counter.main.asm
+npx azm examples/counter.main.asm            # assembles hex/bin/d8 map
 ```
 
 The generated AZM is readable: API equates, change-flag constants,
 state storage, the runtime loop, binding polling, phase dispatch, wrapped user
 blocks, and frame cleanup, in that order. Inspect
-`examples/counter.asm` after building to see the whole runtime.
+`examples/counter.main.asm` after building to see the whole runtime.
 
 ## The Meta-Source Format (v0)
 

@@ -19,11 +19,12 @@ npm run build
 node dist/src/cli.js examples/counter.glim
 ```
 
-This compiles the CounterToy example to `examples/counter.asm` — a single,
+This compiles the CounterToy example to `examples/counter.main.asm` — a
+single,
 readable AZM source file. Assemble it with AZM:
 
 ```sh
-npx azm examples/counter.asm
+npx azm examples/counter.main.asm
 ```
 
 which produces Intel HEX, a flat binary, and a `.d8.json` Debug80 map, so
@@ -42,7 +43,7 @@ updates
 state, a render effect redraws what changed — is the whole programming
 model in miniature.
 
-Open the generated `counter.asm` and read it. Glimmer's promise is that
+Open the generated `counter.main.asm` and read it. Glimmer's promise is that
 the generated assembly is never hidden: every equate, dispatch routine,
 and wrapped block is ordinary AZM you can inspect, step through, and
 learn from.

@@ -18,7 +18,8 @@ compileToAzm(text)          src/index.ts
 ```
 
 The CLI (`src/cli.ts`) wraps `compileToAzm`, prints diagnostics as
-`file:line: message`, and writes the output next to the entry file unless
+`file:line: message`, and writes the output next to the entry file as
+`<name>.main.asm` — Debug80's entry-point naming convention — unless
 `-o` overrides it.
 
 ## The program model

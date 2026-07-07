@@ -605,8 +605,8 @@ and includes the framebuffer library the render block calls. Build and
 run:
 
 ```sh
-glimmer examples/dot.glim     ; writes examples/dot.asm
-azm examples/dot.asm          ; writes hex, bin, and .d8.json
+glimmer examples/dot.glim     ; writes examples/dot.main.asm
+azm examples/dot.main.asm     ; writes hex, bin, and .d8.json
 ```
 
 Open the folder in VS Code and press F5: Debug80 loads the MON-3 ROM,

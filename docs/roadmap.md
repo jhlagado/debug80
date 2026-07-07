@@ -13,7 +13,7 @@ Glimmer's essential contract is:
 
 Everything else — assembling, debug maps, emulation — belongs to AZM and
 Debug80. Glimmer does not need to invoke AZM to be useful: the user (or a
-build task, or Debug80 itself) runs `azm counter.asm` and gets `.hex`,
+build task, or Debug80 itself) runs `azm counter.main.asm` and gets `.hex`,
 `.bin`, and a `.d8.json` Debug80 map. Keeping the generated AZM as the
 canonical interface also serves the transparency principle: the user can
 always read what Glimmer wrote.
@@ -287,7 +287,7 @@ confidence}` — and `files` is a _dictionary of source files_, because
 that contributed them. Debug80 resolves breakpoints and stepping through
 that dictionary. So glim-level debugging does not need a new format:
 it needs address segments attributed to `counter.glim` lines instead of
-(or alongside) generated `counter.asm` lines.
+(or alongside) generated `counter.main.asm` lines.
 
 **3. Producing glim-attributed maps — three options.**
 
