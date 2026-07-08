@@ -619,7 +619,8 @@ function emitPollBindings(
 
 /**
  * Per-frame timing widgets. Runs in the input segment, before any phase,
- * so every raise lands in Changed0 and is seen by all phases this frame.
+ * so every raise lands in its target cell's ChangedN bank and is seen by
+ * all phases this frame.
  */
 function emitTickTimers(
   program: GlimmerProgram,

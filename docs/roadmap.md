@@ -58,12 +58,13 @@ P5 in v0.4, P3 in v0.5.
 
 A single-file `.glim` program compiles to one AZM file:
 
-- `program`, `state` (byte/word, initial value, `changed`), `pulse`
+- `program`, `state` (byte/word scalars, byte arrays, initial value,
+  `changed`), `pulse`
 - `bind key <KEY> rising -> <Pulse>`
 - blocks — `compute` (derive), `effect` (logic), `render` — with `on`
   triggers, `updates`, and a verbatim Z80 body with block-local `_label`
   namespacing
-- one change-flag byte (max 8 cells), generated polling/dispatch/cleanup glue
+- four change-flag banks (max 32 cells), generated polling/dispatch/cleanup glue
 - placeholder `API_*` equates; CounterToy assembles end to end
 
 The compiler pipeline shape (parse → validate → generate, diagnostics with
@@ -350,5 +351,5 @@ deliberately shaped so Debug80 can call it the same way it calls AZM.
 - Where does the boundary sit between generated glue and a static runtime
   include shipped with the profile (ScanTick, FbSetCell, sound service are
   library-shaped, not generated-shaped)?
-- When do CurrentDirty/NextDirty split (spec §9.6)? Probably when `held`
-  bindings and timers land in v0.2.
+- How far should Glimmer go with generated runtime glue before moving
+  stable profile services into AZM `.import` libraries?
