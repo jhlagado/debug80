@@ -140,7 +140,7 @@ Notable constraints the generator honours:
   behaves as one state cell for `on`, `updates`, and change flags.
 - **Flag banks**: more than eight flag-carrying cells allocate
   `Changed1`/`Raised1`/`Next1` and so on, capped at four banks. Dispatch
-  emits bank-specific masks (`GlimDep_Name_1`, etc.) and tests only the
+  emits bank-specific masks (`GlimDep_Name__B1`, etc.) and tests only the
   banks a block's triggers occupy.
 
 ## Profiles

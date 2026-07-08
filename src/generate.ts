@@ -124,7 +124,7 @@ export function generateAzm(
   const flagInfo = (name: string): ChangeFlagInfo => chgInfo.get(name) as ChangeFlagInfo;
   const bankLabel = (kind: 'Changed' | 'Raised' | 'Next', bank: number): string => `${kind}${bank}`;
   const depMaskName = (effect: EffectDecl, bank: number): string =>
-    bank === 0 ? `GlimDep_${effect.name}` : `GlimDep_${effect.name}_${bank}`;
+    `GlimDep_${effect.name}__B${bank}`;
   const groupMasksByBank = (names: string[]): BankedMasks => {
     const grouped: BankedMasks = new Map();
     for (const name of names) {

@@ -48,9 +48,9 @@ it('emits multiple change-flag banks', () => {
   expect(source).toContain('Changed1:         .db %00000000');
   expect(source).toContain('Raised1:          .db 0');
   expect(source).toContain('Next1:            .db 0');
-  expect(source).toContain('GlimDep_DrawHigh_1 .equ CHG_S8');
+  expect(source).toContain('GlimDep_DrawHigh__B1 .equ CHG_S8');
   expect(source).toContain('ld      a,(Changed1)');
-  expect(source).toContain('and     GlimDep_DrawHigh_1');
+  expect(source).toContain('and     GlimDep_DrawHigh__B1');
   expect(source).toContain('ld      a,(Raised1)');
   expect(source).toContain('or      CHG_S8');
   expect(source).toContain('ld      (Raised1),a');

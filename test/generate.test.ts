@@ -82,12 +82,12 @@ describe('generateAzm', () => {
     expect(source).toContain('Changed1:         .db %00000001');
     expect(source).toContain('Raised1:          .db 0');
     expect(source).toContain('Next1:            .db 0');
-    expect(source).toContain('GlimDep_TouchHigh .equ CHG_S0');
-    expect(source).toContain('GlimDep_TouchHigh_1 .equ CHG_S8');
-    expect(source).toContain('GlimDep_DrawHigh_1 .equ CHG_S8');
+    expect(source).toContain('GlimDep_TouchHigh__B0 .equ CHG_S0');
+    expect(source).toContain('GlimDep_TouchHigh__B1 .equ CHG_S8');
+    expect(source).toContain('GlimDep_DrawHigh__B1 .equ CHG_S8');
     expect(source).toContain('jr      nz,GlimRun_TouchHigh');
     expect(source).toContain('ld      a,(Changed1)');
-    expect(source).toContain('and     GlimDep_DrawHigh_1');
+    expect(source).toContain('and     GlimDep_DrawHigh__B1');
     expect(source).toContain('ld      a,(Changed1)');
     expect(source).toContain('or      CHG_TICK');
     expect(source).toContain('ld      (Changed1),a');
@@ -118,6 +118,35 @@ describe('generateAzm', () => {
     const { source, diagnostics } = generateAzm(program!);
     expect(source).toBe('');
     expect(diagnostics[0]?.message).toContain('Change flags are full');
+  });
+
+  it('uses collision-free dependency mask names across banks', async () => {
+    const states = Array.from({ length: 9 }, (_, i) => `state S${i} : byte`).join('\n');
+    const sourceText = [
+      'program P',
+      states,
+      'effect Foo',
+      'on S8',
+      'begin',
+      'end',
+      'effect Foo_1',
+      'on S0',
+      'begin',
+      'end',
+    ].join('\n');
+    const { program, diagnostics: parseDiags } = parseGlimmer(sourceText);
+    expect(parseDiags).toEqual([]);
+    const { source, diagnostics } = generateAzm(program!);
+    expect(diagnostics).toEqual([]);
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-bank-names-'));
+    const entry = path.join(dir, 'bank-names.asm');
+    writeFileSync(entry, source);
+    const assembled = await compile(entry, {
+      emitBin: true,
+      emitHex: false,
+      emitD8m: false,
+    });
+    expect(assembled.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   });
 
   it('emits byte array storage as one flag-carrying cell', () => {
