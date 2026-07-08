@@ -149,6 +149,28 @@ describe('generateAzm', () => {
     expect(assembled.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
   });
 
+  it('deduplicates repeated dependency and update masks', () => {
+    const sourceText = [
+      'program P',
+      'state A : byte',
+      'state B : byte',
+      'effect Repeat',
+      'on A, A',
+      'updates B, B',
+      'begin',
+      '    ld a,1',
+      '    ld (B),a',
+      'end',
+    ].join('\n');
+    const { program, diagnostics: parseDiags } = parseGlimmer(sourceText);
+    expect(parseDiags).toEqual([]);
+    const { source, diagnostics } = generateAzm(program!);
+    expect(diagnostics).toEqual([]);
+    expect(source).toContain('GlimDep_Repeat__B0 .equ CHG_A');
+    expect(source).not.toContain('CHG_A + CHG_A');
+    expect(source).not.toContain('CHG_B + CHG_B');
+  });
+
   it('emits byte array storage as one flag-carrying cell', () => {
     const sourceText = [
       'program P',

@@ -351,7 +351,7 @@ dispatcher tests only the banks the effect depends on:
 
 ```asm
     ld a,(Changed0)
-    and GlimDep_DrawCount
+    and GlimDep_DrawCount__B0
     jr z,GlimSkip_DrawCount
     call Glim_DrawCount
 GlimSkip_DrawCount:
@@ -530,9 +530,9 @@ CHG_COUNT         .equ %00000001
 CHG_INCPRESSED    .equ %00000010
 CHG_DECPRESSED    .equ %00000100
 
-GlimDep_ApplyIncrement .equ CHG_INCPRESSED
-GlimDep_ApplyDecrement .equ CHG_DECPRESSED
-GlimDep_DrawCount   .equ CHG_COUNT
+GlimDep_ApplyIncrement__B0 .equ CHG_INCPRESSED
+GlimDep_ApplyDecrement__B0 .equ CHG_DECPRESSED
+GlimDep_DrawCount__B0 .equ CHG_COUNT
 
 Count:            .db 0
 IncPressed:       .db 0
