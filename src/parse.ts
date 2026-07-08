@@ -694,7 +694,9 @@ function validateReferences(
 
 /** Symbols the generated runtime and profiles own; user names must avoid them. */
 const RESERVED_NAMES = new Set([
-  'Changed0',
+  ...Array.from({ length: 4 }, (_, bank) => `Changed${bank}`),
+  ...Array.from({ length: 4 }, (_, bank) => `Raised${bank}`),
+  ...Array.from({ length: 4 }, (_, bank) => `Next${bank}`),
   'MainLoop',
   'Framebuffer',
   'PrevKeys',

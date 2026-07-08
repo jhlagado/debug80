@@ -334,7 +334,8 @@ matrix blank while effects run.
 Change tracking is a flag bit per cell — the mechanism known
 traditionally as dirty bits. Glimmer allocates up to four change-flag
 bytes, so a program declares up to 32 flag-carrying cells: states,
-pulses, ramps, and `FrameCount` when used. Declaration order fills
+pulses, ramps, and `FrameCount` when used. Bank assignment is by category:
+all states first, then pulses, then ramps, then `FrameCount`, filling
 `Changed0`, then `Changed1`, up to `Changed3`.
 
 ```asm
@@ -650,9 +651,10 @@ corpus games:
 - **Held bindings and timers** — autorepeat movement and countdown pulses,
   the two input patterns every action game uses.
 - **Resources and arrays** — sound cues, curve tables, matrix shape
-  tables, and byte array state are implemented. Next are multiple flag
-  banks and richer data tables.
-- **Scale** — multiple change-flag bytes and word-cell change semantics.
+  tables, and byte array state are implemented. Next are richer data
+  tables.
+- **Scale** — four change-flag banks are implemented; word-cell change
+  semantics remain future work.
 - **Cards** — screens and modes as first-class sections, with `enter`
   effects and generated card dispatch.
 - **Project structure** — blocks and resources as separately editable

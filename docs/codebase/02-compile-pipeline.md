@@ -80,9 +80,9 @@ curve tables, generated sound cue wrappers, and any profile library.
 
 Notable constraints the generator honours:
 
-- **One change-flag byte in v0.2.** States, pulses, ramps, and
-  `FrameCount` when used are assigned in declaration order, at most
-  8 flag-carrying cells; exceeding it is a diagnostic, not a truncation.
+- **Change-flag banks.** States, then pulses, then ramps, then
+  `FrameCount` when used are assigned into up to four 8-bit banks, at most
+  32 flag-carrying cells; exceeding it is a diagnostic, not a truncation.
 - **Block-local labels.** `_done` style labels are rewritten to
   globally unique labels (`Glim_ApplyIncrement_done`) by
   `namespaceLocalLabels`, which only rewrites names actually defined in
@@ -106,7 +106,8 @@ Notable constraints the generator honours:
 ## The runtime
 
 - **Rollover** (`ChangedN`/`RaisedN`/`NextN`): flag-carrying cells are
-  allocated in declaration order into up to four banks. Block updates
+  allocated by category order (states, pulses, ramps, FrameCount) into up
+  to four banks. Block updates
   raise into the target cell's `RaisedN` when every consumer is in a later
   phase (merged into `ChangedN` at phase boundaries by `__MergeRaised`) or
   into `NextN` when any consumer's phase already ran (rolled into
