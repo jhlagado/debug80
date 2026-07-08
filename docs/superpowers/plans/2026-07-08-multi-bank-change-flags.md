@@ -91,7 +91,7 @@ Emit `Changed0..ChangedN`, `Raised0..RaisedN`, and `Next0..NextN`. Initial `chan
 
 - [x] **Step 3: Emit per-bank trigger masks and dispatch**
 
-For bank 0, keep `GlimDep_<Effect>` as the mask name for compatibility. For higher banks, emit `GlimDep_<Effect>_<bank>`. Single-bank blocks use the old dispatch shape; multi-bank blocks test each bank and call the block if any mask matches.
+Emit `GlimDep_<Effect>__B<bank>` for every dependency bank, including bank 0, so generated names cannot collide with user effect names. Single-bank blocks use one dispatch test; multi-bank blocks test each dependency bank and call the block if any mask matches.
 
 - [x] **Step 4: Route all raises into the owning bank**
 

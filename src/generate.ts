@@ -125,14 +125,20 @@ export function generateAzm(
   const bankLabel = (kind: 'Changed' | 'Raised' | 'Next', bank: number): string => `${kind}${bank}`;
   const depMaskName = (effect: EffectDecl, bank: number): string =>
     `GlimDep_${effect.name}__B${bank}`;
+  const addBankMask = (banked: BankedMasks, bank: number, mask: string): void => {
+    const masks = banked.get(bank);
+    if (masks === undefined) {
+      banked.set(bank, [mask]);
+      return;
+    }
+    if (!masks.includes(mask)) masks.push(mask);
+  };
   const groupMasksByBank = (names: string[]): BankedMasks => {
     const grouped: BankedMasks = new Map();
     for (const name of names) {
       const info = chgInfo.get(name);
       if (info === undefined) continue;
-      const masks = grouped.get(info.bank) ?? [];
-      masks.push(chgConst(name));
-      grouped.set(info.bank, masks);
+      addBankMask(grouped, info.bank, chgConst(name));
     }
     return grouped;
   };
@@ -176,9 +182,7 @@ export function generateAzm(
       if (info === undefined) continue; // timer period cells carry no flag
       const consumer = minConsumerPhase.get(target);
       const masks = consumer !== undefined && consumer <= p ? next : now;
-      const bankMasks = masks.get(info.bank) ?? [];
-      bankMasks.push(chgConst(target));
-      masks.set(info.bank, bankMasks);
+      addBankMask(masks, info.bank, chgConst(target));
     }
     return { now, next };
   };
