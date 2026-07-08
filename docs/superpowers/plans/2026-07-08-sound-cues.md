@@ -13,6 +13,7 @@
 ### Task 1: Parser And Model
 
 **Files:**
+
 - Modify: `src/model.ts`
 - Modify: `src/parse.ts`
 - Test: `test/parse.test.ts`
@@ -72,6 +73,7 @@ Run the same Vitest command. Expected: parser tests pass.
 ### Task 2: Generator
 
 **Files:**
+
 - Modify: `src/generate.ts`
 - Modify: `src/index.ts`
 - Test: `test/generate.test.ts`
@@ -120,6 +122,7 @@ Run the same Vitest command. Expected: generator tests pass.
 ### Task 3: Example And Docs
 
 **Files:**
+
 - Modify: `examples/slide.glim`
 - Modify: `docs/manual/02-glim-format.md`
 - Modify: `docs/reference/glim-grammar.md`
@@ -176,6 +179,7 @@ git commit -m "feat: add matrix sound cue resources"
 ### Task 4: High-Effort Review Loop
 
 **Files:**
+
 - No direct ownership; reviewer inspects the committed diff.
 
 - [ ] **Step 1: Request high-effort subagent review**
