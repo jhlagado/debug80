@@ -6,7 +6,7 @@
  *   program <Name>
  *   platform <name>          (optional; currently tec1g-mon3)
  *   display <name>           (optional; currently matrix8x8, needs platform)
- *   state <Name> : <byte|word> [= <value>] [changed]
+ *   state <Name> : <byte|word|byte[N]> [= <value>] [changed]
  *   pulse <Name>
  *   timer <Name> : <byte|word> = <N> -> <PulseName> [once]
  *   ramp <Name> : byte steps <N> -> <PulseName>
@@ -50,7 +50,7 @@ export interface ParseResult {
 
 const IDENT = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const STATE_RE =
-  /^state\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(byte|word)(?:\s*=\s*(\S+))?(\s+changed)?$/;
+  /^state\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*((?:byte|word)(?:\[\S+\])?)(?:\s*=\s*(\S+))?(\s+changed)?$/;
 const BIND_KEY_RE =
   /^bind\s+key\s+([A-Za-z_][A-Za-z0-9_]*)\s+(rising|held\s+period\s+\S+)\s*->\s*([A-Za-z_][A-Za-z0-9_]*)$/;
 const TIMER_RE =
@@ -178,6 +178,26 @@ export function parseGlimmer(source: string): ParseResult {
         continue;
       }
       const [, name, type, initialText, changedFlag] = match;
+      const arrayMatch = /^(byte|word)\[(\S+)\]$/.exec(type as string);
+      let stateType = type as StateDecl['type'];
+      let length: number | undefined;
+      if (arrayMatch) {
+        stateType = arrayMatch[1] as StateDecl['type'];
+        if (stateType !== 'byte') {
+          error(lineNo, `State ${name}: only byte arrays are supported.`);
+          continue;
+        }
+        if (initialText !== undefined) {
+          error(lineNo, `State ${name}: array initializers are not supported.`);
+          continue;
+        }
+        const parsedLength = parseNumber(arrayMatch[2] as string);
+        if (parsedLength === null || parsedLength < 1 || parsedLength > 256) {
+          error(lineNo, `State ${name}: array length must be between 1 and 256.`);
+          continue;
+        }
+        length = parsedLength;
+      }
       let initial = 0;
       if (initialText !== undefined) {
         const parsed = parseNumber(initialText);
@@ -187,13 +207,15 @@ export function parseGlimmer(source: string): ParseResult {
         }
         initial = parsed;
       }
-      states.push({
+      const state: StateDecl = {
         name: name as string,
-        type: type as StateDecl['type'],
+        type: stateType,
         initial,
         changedOnStart: changedFlag !== undefined,
         line: lineNo,
-      });
+      };
+      if (length !== undefined) state.length = length;
+      states.push(state);
       continue;
     }
 

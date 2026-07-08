@@ -51,12 +51,28 @@ moved with keys 2/4/6/8, stopping at every edge.
 ```
 state Count : byte = 0 changed
 state Score : word = 0
+state Trail : byte[8] changed
 ```
 
 Declares a state cell managed by the runtime. Types are `byte` and `word`.
 The initial value is optional and defaults to 0. The `changed` modifier marks the cell
 as already changed at startup so dependent effects run on the first
 frame.
+
+`byte[N]` declares byte array state. The generator emits `.ds N`, the
+whole array has one change flag, and the array name is legal in `on` and
+`updates`. Indexing is ordinary Z80 inside blocks:
+
+```asm
+ld hl,Trail
+ld a,(DotY)
+ld e,a
+ld d,0
+add hl,de
+ld (hl),%10000000
+```
+
+Array initializers and word arrays are not implemented yet.
 
 ## pulse
 
@@ -273,6 +289,6 @@ blocks in never affects behaviour.
 This is an early alpha. The present version supports at most 8 state and
 pulse/ramp/FrameCount flag cells per program (one change-flag byte), a
 small TEC-1G matrix sound-cue backend rather than music, byte-valued curve
-tables, 1..8 by 1..8 matrix shape resources, and placeholder system API
-addresses in the generic profile. See the [roadmap](../roadmap.md) for what
-comes next.
+tables, 1..8 by 1..8 matrix shape resources, byte arrays up to 256
+entries, and placeholder system API addresses in the generic profile. See
+the [roadmap](../roadmap.md) for what comes next.

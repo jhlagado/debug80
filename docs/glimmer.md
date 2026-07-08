@@ -642,11 +642,10 @@ corpus games:
 
 - **Held bindings and timers** — autorepeat movement and countdown pulses,
   the two input patterns every action game uses.
-- **Resources** — sound cues, curve tables, and matrix shape tables are
-  implemented. Next are arrays, multiple flag banks, and richer data
-  tables.
-- **Scale** — multiple change-flag bytes, word-cell change semantics, array
-  state.
+- **Resources and arrays** — sound cues, curve tables, matrix shape
+  tables, and byte array state are implemented. Next are multiple flag
+  banks and richer data tables.
+- **Scale** — multiple change-flag bytes and word-cell change semantics.
 - **Cards** — screens and modes as first-class sections, with `enter`
   effects and generated card dispatch.
 - **Project structure** — blocks and resources as separately editable

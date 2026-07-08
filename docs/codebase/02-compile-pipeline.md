@@ -29,7 +29,8 @@ packaged AZM CLI with contract inference enabled and writes AZM's inferred
 `src/model.ts` defines the model the parser produces and the generator
 consumes:
 
-- `StateDecl` — named byte/word cell with initial value and
+- `StateDecl` — named byte/word scalar state, or byte array state with
+  `length`; scalars carry an initial value, all state can set
   `changedOnStart`
 - `PulseDecl` — one-frame transient cell, cleared by frame cleanup
 - `TimerDecl` — oscillator or one-shot countdown that fires a pulse
@@ -59,12 +60,14 @@ opens the body, which runs until a line containing only `end`.
 After the statement pass, `validateReferences` checks duplicate declared
 names, reserved runtime/profile symbols, binding targets (must be declared
 pulses), timer/ramp targets, sound cue profile constraints, curve preset
-and byte-range constraints, `on` triggers, and `updates` targets. `on`
-accepts flag-carrying cells: states, pulses, ramps, and the built-in
-`FrameCount`. `updates` accepts writable runtime cells: states, timers,
-and ramps. Timer cells carry no change flag, so blocks trigger on the
-timer's pulse rather than the timer cell. Parsing returns a program only
-when there are no diagnostics.
+and byte-range constraints, byte-array length constraints, `on` triggers,
+and `updates` targets. `on` accepts flag-carrying cells: states, pulses,
+ramps, and the built-in `FrameCount`. `updates` accepts writable runtime
+cells: states, timers, and ramps. Timer cells carry no change flag, so
+blocks trigger on the timer's pulse rather than the timer cell. Byte arrays
+are whole-state cells: one change flag for the array name, ordinary Z80
+indexing in the body. Parsing returns a program only when there are no
+diagnostics.
 
 ## Generation
 
@@ -131,6 +134,8 @@ Notable constraints the generator honours:
   matrix profile. Rows are 1..8 by 1..8 quoted bitmaps using `X` and `.`;
   `ShapeDraw` is generated when any shape exists and draws the table from
   HL at B,C with no clipping.
+- **Arrays**: `state Name : byte[N]` emits `.ds N` storage and otherwise
+  behaves as one state cell for `on`, `updates`, and change flags.
 
 ## Profiles
 
