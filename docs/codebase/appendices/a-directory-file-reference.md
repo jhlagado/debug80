@@ -54,7 +54,7 @@ convention).
 
 | File                | Purpose                                                          |
 | ------------------- | ---------------------------------------------------------------- |
-| `README.md`         | Format proposals P1–P8 raised by the sketches                    |
+| `README.md`         | Format proposals P1–P9 raised by the sketches                    |
 | `tetro.glim`        | Aspirational Tetro in Glimmer; the headline-goal design artifact |
 | `sprite-chase.glim` | Aspirational interactive TMS9918 program; first VDP-profile item |
 
