@@ -27,6 +27,7 @@ state NextPieceIndex : byte = 0
 state Score          : word = 0 changed      ; P7
 state LinesCleared   : byte = 0
 state ClearMask      : byte = 0                     ; rows being flashed
+state Dead           : byte = 0                     ; set on blocked spawn
 state BoardRows      : byte[8]                      ; P2: occupancy bitmap
 state BoardRed       : byte[8]                      ; P2: colour planes
 state BoardGreen     : byte[8]
@@ -132,8 +133,10 @@ end
 ; hand-sequenced init calls.
 ; A card is a SECTION, not a block: `card Playing` starts it, and it
 ; runs until the next `card` line or end of file. No closing keyword.
-; A built-in CurrentCard cell and a generated Card enum exist; a card
-; switch is an ordinary write: load Card.Playing into CurrentCard
+; Navigation is a block-header consequence, not inline assembly:
+; `goto Playing` sits beside `on` and `updates` and means "if this
+; block runs, switch cards after its body". Header-only routing blocks
+; may omit begin/end entirely and close with a bare `end`.
 ; ----------------------------------------------------------------------
 
 card Splash
@@ -146,10 +149,9 @@ card Splash
 
   effect SplashExit
       on AnyKey
+      goto Playing
   begin
       call InitGame                    ; routine: reset state, seed RNG
-      ld a,Card.Playing
-      ld (CurrentCard),a
   end
 
 card Playing
@@ -173,11 +175,19 @@ _blocked:
 
   effect ApplyGravity
       on GravityFire, SoftDrop
-      updates PlayerY, BoardRows, ClearMask
+      updates PlayerY, BoardRows, ClearMask, Dead
   begin
       ; descend or lock: CheckCollision below; on lock LockPiece,
       ; Snd_Lock, detect full rows into ClearMask,
-      ; spawn next piece or switch to Card.GameOver
+      ; spawn next piece — or set Dead to 1 on a blocked spawn
+  end
+
+  ; Conditional navigation: goto is unconditional once a block runs,
+  ; so the decision lives in state and a header-only routing block
+  ; carries the transition.
+  effect EnterGameOver
+      on Dead
+      goto GameOver
   end
 
   compute DifficultyCurve
@@ -203,9 +213,7 @@ _keep:
 
   effect Pause
       on TogglePause
-  begin
-      ld a,Card.Paused
-      ld (CurrentCard),a
+      goto Paused
   end
 
   render DrawBoard
@@ -241,10 +249,9 @@ card Paused
 
   effect Unpause
       on AnyKey
+      goto Playing
   begin
       lcd_row MsgRunning, LcdRow1
-      ld a,Card.Playing
-      ld (CurrentCard),a
   end
 
 card GameOver
@@ -266,7 +273,5 @@ card GameOver
   effect Restart
       on AnyKey
       after GateOpen                   ; open question: gating pulse order
-  begin
-      ld a,Card.Splash
-      ld (CurrentCard),a
+      goto Splash
   end
