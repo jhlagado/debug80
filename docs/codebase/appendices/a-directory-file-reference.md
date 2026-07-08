@@ -37,9 +37,10 @@ or change purpose.
 | `dot.glim`     | Minimal tec1g-mon3/matrix8x8 program: held-key dot, edge-clamped   |
 | `slide.glim`   | v0.2 showcase: ramp-driven slide, compute, timer blink, sound, HUD |
 
-The repo root also carries `debug80.json` with a `dot` target so the
-generated `examples/dot.main.asm` runs under Debug80's TEC-1G platform
-(the `.main.asm` suffix is Debug80's entry-point naming convention).
+The repo root also carries `debug80.json` with `dot` and `slide` targets so
+the generated `examples/*.main.asm` programs run under Debug80's TEC-1G
+platform (the `.main.asm` suffix is Debug80's entry-point naming
+convention).
 
 ## corpus/
 

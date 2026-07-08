@@ -10,9 +10,9 @@ nav_order: 1
 # Chapter 1 - Orientation and Repository Layout
 
 Glimmer is a preprocessor and project format for AZM. It compiles a
-structured program — state cells, pulses, input bindings, and effects whose
-bodies are plain Z80 blocks — into one generated AZM source
-file. The design rationale lives in the
+structured program — state cells, pulses, timers, ramps, input bindings,
+and compute/effect/render blocks whose bodies are plain Z80 — into one
+generated AZM source file. The design rationale lives in the
 [Glimmer Interactive Runtime Specification](../glimmer.md).
 
 The essential contract is:
@@ -21,11 +21,12 @@ The essential contract is:
 .glim file in  →  generated .asm (AZM) file out
 ```
 
-Glimmer does not assemble. The generated AZM is the canonical interface:
-AZM assembles it into Intel HEX, flat binary, and `.d8.json` Debug80 maps,
-and Debug80 debugs it at source level. Keeping the boundary there serves
-the project's transparency principle — the user can always read what
-Glimmer wrote.
+The generated AZM is the canonical interface: AZM assembles it into Intel
+HEX, flat binary, and `.d8.json` Debug80 maps, and Debug80 debugs it at
+source level. The CLI also runs AZM in contract-injection mode by default
+as a convenience, so the written file carries AZM's inferred `;!` register
+contracts. Keeping generated AZM readable serves the project's
+transparency principle — the user can always inspect what Glimmer wrote.
 
 ## Ecosystem
 

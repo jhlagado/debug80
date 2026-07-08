@@ -269,7 +269,11 @@ symbols.
   library of visible helper routines.
 - **Resource** — a declared non-code asset (sprites, tiles, sounds, text)
   compiled to data tables. Planned; the design is in the sketches.
-- **Timer** — a countdown cell that fires a pulse and reloads. Planned.
+- **Timer** — a countdown cell that fires a pulse. Implemented in
+  oscillator form (reloads from a writable period cell) and one-shot
+  form.
+- **Ramp** — a byte progress counter that advances once per frame, marks
+  itself changed while moving, and fires a pulse on arrival.
 
 ## 5. The Generated Runtime
 
@@ -282,16 +286,22 @@ Every generated program is one loop. The generic profile's shape:
     call API_InitDisplay
 MainLoop:
     call __PollBindings
+    call __TickTimers
+    call __RunDeriveEffects
     call __RunLogicEffects
+    call __MergeRaised
     call __RunRenderEffects
     call API_FlushDisplay
-    call __ClearFrameState
+    call __EndFrame
     jp MainLoop
 ```
 
-A phase dispatcher is generated only when the program declares effects in
-that phase. The frame reads top to bottom: poll, run what changed,
-show it, clean up, repeat.
+A helper is generated only when the program needs it. A program with no
+timers, ramps, or `FrameCount` gets no `__TickTimers`; a program with no
+compute blocks gets no derive dispatcher; `__MergeRaised` appears only
+when same-frame propagation across later phases is possible. The frame
+reads top to bottom: poll, tick runtime widgets, run what changed, show it,
+roll frame state forward, repeat.
 
 Display profiles specialize the shape. On the TEC-1G matrix profile the
 CPU is also the display controller, so the loop leads with the scanout:
@@ -300,9 +310,12 @@ CPU is also the display controller, so the loop leads with the scanout:
 MainLoop:
     call ScanFrame            ; show one full frame, then blank
     call __PollBindings       ; game work runs in the blank window
+    call __TickTimers
+    call __RunDeriveEffects
     call __RunLogicEffects
+    call __MergeRaised
     call __RunRenderEffects
-    call __ClearFrameState
+    call __EndFrame
     jp MainLoop
 ```
 
@@ -314,8 +327,9 @@ matrix blank while effects run.
 
 Change tracking is a flag bit per cell — the mechanism known
 traditionally as dirty bits. The v0 implementation uses one change-flag
-byte, so a program declares up to eight state and pulse cells; multiple
-flag bytes are a planned scale-up.
+byte, so a program declares up to eight flag-carrying cells: states,
+pulses, ramps, and `FrameCount` when used. Multiple flag bytes are a
+planned scale-up.
 
 ```asm
 CHG_COUNT      .equ %00000001
@@ -338,7 +352,7 @@ GlimSkip_DrawCount:
 
 ### 5.3 Update Propagation
 
-`updates` compiles to the change-marking in the block's wrapper:
+`updates` compiles to change propagation in the block's wrapper:
 
 ```asm
 Glim_ApplyIncrement:
@@ -347,24 +361,27 @@ Glim_ApplyIncrement:
     inc (hl)
 
     ; generated: updates Count
-    ld a,(Changed0)
+    ld a,(Raised0)          ; deliver to later phases this frame
     or CHG_COUNT
-    ld (Changed0),a
+    ld (Raised0),a
 
     ret
 ```
 
-The v0 rule is direct: a cell listed in `updates` is marked changed after
-the effect runs. Comparing old and new values, and split current/next
-flag masks for cross-frame changes, are planned refinements — the
-roadmap tracks when they earn their complexity.
+The v0.2 rule is exactly-once delivery. If every consumer of an updated
+cell is in a later phase, the wrapper raises into `Raised0` and
+`__MergeRaised` makes it visible this frame. If any consumer already ran
+or is in the same phase, the wrapper raises into `Next0`; `__EndFrame`
+then makes it visible next frame. Declaration order inside a phase is
+never semantic. Comparing old and new values remains a future
+optimization.
 
 ### 5.4 Frame Cleanup
 
-The generated `__ClearFrameState` clears every pulse and the change
-flags.
+The generated `__EndFrame` clears pulse storage, drops consumed
+same-frame raises, rolls `Next0` into `Changed0`, and clears `Next0`.
 A pulse lives for exactly one frame; a change triggers its dependents
-exactly once.
+exactly once, either later in the current frame or in the next frame.
 
 ## 6. Platform: The TEC-1G
 
@@ -392,7 +409,7 @@ Two displays matter to Glimmer:
 Debug80 is the development environment for both: it assembles through
 AZM, runs the TEC-1G platform emulation, and gives source-level
 breakpoints and stepping through the `.d8.json` map. The repository's
-`debug80.json` carries a ready target for the Dot example.
+`debug80.json` carries ready targets for the Dot and Slide examples.
 
 Reference material for the platform lives in this repository:
 `corpus/tetro` (two complete matrix games, Tetro and Pacmo) and
@@ -408,14 +425,15 @@ beside it. The generated file has a fixed, readable order:
 1. Header comment and `.org`.
 2. Platform equates (ports, API calls, key codes) or generic
    placeholders.
-3. Change-flag constants and per-effect dependency masks.
-4. State storage: cells, pulses, runtime bytes, framebuffer.
+3. Change-flag constants and per-block trigger masks.
+4. State storage: cells, pulses, timers, ramps, runtime bytes, framebuffer.
 5. The runtime loop.
 6. Input polling.
-7. Phase dispatchers.
-8. The wrapped blocks.
-9. Frame cleanup.
-10. The profile library.
+7. Timer/ramp/frame-count ticking when needed.
+8. Phase dispatchers and phase-boundary merge helpers.
+9. The wrapped blocks.
+10. Frame rollover.
+11. The profile library.
 
 The long-term source model grows into structured project records —
 manifest, declarations, blocks, and resources as separately editable
@@ -528,21 +546,25 @@ Glim_ApplyIncrement:
     ld (hl),a
 Glim_ApplyIncrement_done:
 
-    ld a,(Changed0)
+    ld a,(Raised0)
     or CHG_COUNT
-    ld (Changed0),a
+    ld (Raised0),a
 
     ret
 ```
 
-And the frame cleanup:
+And the frame rollover:
 
 ```asm
-__ClearFrameState:
+__EndFrame:
     xor a
     ld (IncPressed),a
     ld (DecPressed),a
+    ld (Raised0),a
+    ld a,(Next0)
     ld (Changed0),a
+    xor a
+    ld (Next0),a
     ret
 ```
 
@@ -566,10 +588,10 @@ pulse Down
 pulse Left
 pulse Right
 
-bind key KEY_2 rising -> Up
-bind key KEY_8 rising -> Down
-bind key KEY_4 rising -> Left
-bind key KEY_6 rising -> Right
+bind key KEY_2 held period 8 -> Up
+bind key KEY_8 held period 8 -> Down
+bind key KEY_4 held period 8 -> Left
+bind key KEY_6 held period 8 -> Right
 
 effect MoveUp
     on Up
@@ -601,12 +623,12 @@ end
 The effect syntax is the same as CounterToy; the profile changes the
 runtime around it. The generated file polls the keypad through MON-3
 `_scanKeys`, scans the framebuffer to the matrix ports with fixed dwell,
-and includes the framebuffer library the render block calls. Build and
-run:
+and includes the framebuffer library the render block calls. Build it, then
+run AZM when you want the HEX, binary, and Debug80 map artifacts:
 
 ```sh
-glimmer examples/dot.glim     ; writes examples/dot.main.asm
-azm examples/dot.main.asm     ; writes hex, bin, and .d8.json
+glimmer examples/dot.glim     ; writes examples/dot.main.asm and injects contracts
+azm examples/dot.main.asm     ; writes .hex, .bin, and .d8.json
 ```
 
 Open the folder in VS Code and press F5: Debug80 loads the MON-3 ROM,
