@@ -372,6 +372,10 @@ export function generateAzm(
   op('ret');
 
   if (isTec1g) {
+    if (program.sounds.length > 0) {
+      emit();
+      emitSoundCues(program, emit, op);
+    }
     emit();
     emitMatrixLibrary(emit, op);
   }
@@ -608,6 +612,24 @@ function emitBlockWrapper(
   }
   op('ret');
   emit();
+}
+
+function emitSoundCues(
+  program: GlimmerProgram,
+  emit: (line?: string) => void,
+  op: (text: string) => void,
+): void {
+  if (program.sounds.length === 0) return;
+  emit('; --- sound cues ---');
+  emit('; Non-blocking matrix-profile cues. len is row ticks; div is the');
+  emit('; speaker divider. Starting a cue replaces the currently active cue.');
+  for (const sound of program.sounds) {
+    emit(`@Snd_${sound.name}:`);
+    op(`ld      a,${sound.len}`);
+    op(`ld      c,${sound.div}`);
+    op('jp      SndStart');
+    emit();
+  }
 }
 
 /**

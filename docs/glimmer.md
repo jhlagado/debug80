@@ -642,9 +642,9 @@ corpus games:
 
 - **Held bindings and timers** — autorepeat movement and countdown pulses,
   the two input patterns every action game uses.
-- **Resources** — sprites, shapes, sounds, and text declared as data and
-  compiled to AZM tables, with callable conveniences emitted as visible
-  AZM ops.
+- **Resources** — sound cues are implemented as non-blocking matrix-profile
+  `Snd_<Name>` wrappers. Next are curves, shapes, arrays, and richer data
+  tables.
 - **Scale** — multiple change-flag bytes, word-cell change semantics, array
   state.
 - **Cards** — screens and modes as first-class sections, with `enter`

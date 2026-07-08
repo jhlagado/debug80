@@ -2,7 +2,7 @@
  * Glimmer public API.
  *
  * Glimmer is a preprocessor for AZM: it compiles a structured program
- * (state cells, pulses, bindings, effects and Z80 blocks)
+ * (state cells, pulses, timing widgets, resources, bindings and Z80 blocks)
  * into a single generated AZM source file.
  */
 
@@ -16,7 +16,10 @@ export type {
   KeyBinding,
   Phase,
   PulseDecl,
+  RampDecl,
+  SoundDecl,
   StateDecl,
+  TimerDecl,
 } from './model.js';
 export { EFFECT_PHASES, PHASES } from './model.js';
 export { parseGlimmer, type ParseResult } from './parse.js';

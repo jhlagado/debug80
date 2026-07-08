@@ -122,6 +122,23 @@ describe('tec1g-mon3 matrix8x8 profile', () => {
 describe('v0.2 runtime (slide example)', () => {
   const slide = readFileSync(path.join(import.meta.dirname, '../examples/slide.glim'), 'utf8');
 
+  it('emits non-blocking sound cue wrappers for the matrix profile', () => {
+    const sourceText = [
+      'program P',
+      'platform tec1g-mon3',
+      'display matrix8x8',
+      'sound Arrive len 24 div 3',
+    ].join('\n');
+    const { program, diagnostics: parseDiags } = parseGlimmer(sourceText);
+    expect(parseDiags).toEqual([]);
+    const { source, diagnostics } = generateAzm(program!);
+    expect(diagnostics).toEqual([]);
+    expect(source).toContain('@Snd_Arrive:');
+    expect(source).toContain('ld      a,24');
+    expect(source).toContain('ld      c,3');
+    expect(source).toContain('jp      SndStart');
+  });
+
   it('generates rollover, timer, ramp, and service machinery', () => {
     const { program, diagnostics: parseDiags } = parseGlimmer(slide);
     expect(parseDiags).toEqual([]);
@@ -146,6 +163,8 @@ describe('v0.2 runtime (slide example)', () => {
     expect(source).toContain('ld      (Arrived),a');
 
     // Sound + HUD serviced per scan row; library present.
+    expect(source).toContain('@Snd_Arrive:');
+    expect(source).toContain('call Snd_Arrive');
     expect(source).toContain('call    SndService');
     expect(source).toContain('call    HudScanDig');
     expect(source).toContain('@SndStart:');

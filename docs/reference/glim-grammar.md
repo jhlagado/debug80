@@ -84,6 +84,9 @@ statement       ::= program-decl
                   | display-decl
                   | state-decl
                   | pulse-decl
+                  | timer-decl
+                  | ramp-decl
+                  | sound-decl
                   | bind-decl
                   | block-decl
 
@@ -114,6 +117,10 @@ ramp-decl       ::= "ramp" identifier ":" "byte" "steps" number
                   ; its cell changed each step, fires the pulse at
                   ; steps-1, idles there; retriggered by writing the cell.
 
+sound-decl      ::= "sound" identifier "len" number "div" number
+                  ; non-blocking low-frequency matrix-profile cue.
+                  ; len is row ticks; div is the speaker divider.
+
 block-decl      ::= block-kind identifier
                     block-header*
                     "begin" newline
@@ -134,13 +141,14 @@ Semantic constraints enforced after parsing:
 
 - exactly one `program`; `platform` and `display` at most once, and only
   together
-- all declared names — states, pulses, effects — share one namespace and
-  must be unique (every name projects into one flat AZM symbol space)
+- all declared names — states, pulses, timers, ramps, sounds, and blocks —
+  share one namespace and must be unique (every name projects into one flat
+  AZM symbol space)
 - names may not collide with generated or profile symbols: the `Glim`,
-  `CHG_`, and `__` prefixes and the runtime/profile names (`Changed0`,
-  `MainLoop`, `Framebuffer`, the library routines) are reserved, so the
-  diagnostic lands on the `.glim` line; AZM's global-uniqueness check
-  remains the backstop
+  `Snd_`, `CHG_`, and `__` prefixes and the runtime/profile names
+  (`Changed0`, `MainLoop`, `Framebuffer`, the library routines) are
+  reserved, so the diagnostic lands on the `.glim` line; AZM's
+  global-uniqueness check remains the backstop
 - `bind` targets must be declared pulses
 - `on` names must be declared cells; `updates` names must be states
 - every block needs at least one `on` trigger
@@ -148,6 +156,8 @@ Semantic constraints enforced after parsing:
 - timer and ramp targets must be declared pulses; timer cells carry no
   change flag (trigger on the pulse), so they may appear in `updates`
   but not `on`; ramp cells may appear in both
+- sound cues require `platform tec1g-mon3` with `display matrix8x8`;
+  `len` and `div` are byte values from 1 to 255
 - the built-in `FrameCount` may appear in `on`; it increments every
   frame and occupies a flag bit only when used
 - `end` terminates a body when it is the only word on the line
@@ -202,7 +212,6 @@ enter-effect    ::= "enter" effect-decl
 
 shape-decl      ::= "shape" identifier "color" color-name
                     rotation-row* "end"
-sound-decl      ::= "sound" identifier "len" number "div" number
 text-decl       ::= "text" identifier string
 sprite-decl     ::= "sprite" identifier "color" color-name
                     pixel-row* "end"

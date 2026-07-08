@@ -16,7 +16,7 @@ or change purpose.
 
 | File          | Purpose                                                                             |
 | ------------- | ----------------------------------------------------------------------------------- |
-| `model.ts`    | Program model types: states, pulses, bindings, effects, phases, diagnostics         |
+| `model.ts`    | Program model types: states, pulses, timers, ramps, sounds, blocks, diagnostics     |
 | `parse.ts`    | Line-oriented `.glim` parser and reference validation                               |
 | `generate.ts` | AZM generator: equates, storage, runtime loop, polling, dispatch, wrappers, cleanup |
 | `index.ts`    | Public API: re-exports plus `compileToAzm`                                          |

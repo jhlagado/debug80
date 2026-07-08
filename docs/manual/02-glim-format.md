@@ -73,8 +73,9 @@ bind key KEY_1 rising -> IncPressed
 ```
 
 Declares an input binding. In the current version the only form is a
-rising-edge key binding onto a pulse: the pulse fires on the frame the key
-is first pressed, not while it is held.
+rising-edge key binding onto a pulse for the generic profile: the pulse
+fires on the frame the key is first pressed, not while it is held. The
+TEC-1G matrix profile also supports held bindings, described below.
 
 ## timer and ramp
 
@@ -101,6 +102,26 @@ cells do, because the journey is the point.
 
 The built-in `FrameCount` cell increments every frame and may be used
 in `on` for blocks that run continuously.
+
+## sound
+
+```
+sound Arrive len 24 div 3
+sound Click len 2 div 10
+```
+
+Declares a non-blocking sound cue for the `tec1g-mon3` + `matrix8x8`
+profile. Glimmer generates a callable routine for each cue:
+
+```asm
+call Snd_Arrive
+```
+
+The cue uses the matrix scan service, so `len` is measured in row ticks
+(8 ticks is about one matrix frame with the current fixed dwell), and
+`div` is the speaker divider: smaller values are higher pitch. This is
+for low-frequency beeps and clicks, not music. Only one cue is active at
+a time; starting a new cue replaces the current one.
 
 ## bind ... held
 
@@ -167,10 +188,13 @@ wrapper appends the change-flag bookkeeping and the `ret`.
 
 On the matrix profile, the generated scan loop services a speaker and
 the six-digit seven-segment display once per scanned row (8 ticks per
-frame). Blocks drive them through library routines:
+frame). Blocks normally start sound through generated `Snd_<Name>` cue
+routines, and may drive the HUD through library routines:
 
-- `SndStart` — A = duration in row ticks, C = divider (smaller is
-  higher pitch); the tone plays out in the background.
+- `Snd_<Name>` — generated from `sound <Name> len <N> div <N>`; starts a
+  low-frequency, non-blocking cue over the scan service.
+- `SndStart` — lower-level helper used by generated sound cues; A =
+  duration in row ticks, C = divider.
 - `HudWriteU16` — HL = value, shown as five decimal digits.
 - `HudBlankDig` — clear the display.
 
@@ -185,6 +209,7 @@ blocks in never affects behaviour.
 ## Current limits
 
 This is an early alpha. The present version supports at most 8 state and
-pulse cells per program (one change-flag byte), one binding kind, and
-placeholder system API addresses. See the
+pulse/ramp/FrameCount flag cells per program (one change-flag byte), a
+small TEC-1G matrix sound-cue backend rather than music, and placeholder
+system API addresses in the generic profile. See the
 [roadmap](../roadmap.md) for what comes next.
