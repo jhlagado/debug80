@@ -20,14 +20,18 @@ node dist/src/cli.js examples/counter.glim
 ```
 
 This compiles the CounterToy example to `examples/counter.main.asm` — a
-single,
-readable AZM source file. Assemble it with AZM:
+single, readable AZM source file. By default, the CLI also runs AZM in register
+contract mode and injects AZM's inferred `;!` contracts into that file.
+Skip that with `--no-check` when you only want generation.
+
+Assemble the generated file with AZM when you want HEX, binary, and a
+Debug80 map:
 
 ```sh
 npx azm examples/counter.main.asm
 ```
 
-which produces Intel HEX, a flat binary, and a `.d8.json` Debug80 map, so
+This produces Intel HEX, a flat binary, and a `.d8.json` Debug80 map, so
 the program can run and be debugged source-level in Debug80.
 
 The `;!` comments above each routine are register contracts — each
@@ -35,7 +39,7 @@ routine's true register effects, inferred and injected by AZM as part
 of the Glimmer build (the same checking Debug80 applies). Contract
 errors in your blocks fail the build with the offending call site
 named. Full `--rc strict` checking uses AZM's monitor profile, because
-the program calls MON-3 through `RST $10`:
+the TEC-1G examples call MON-3 through `RST $10`:
 `azm --rc strict --reg-profile mon3 <file>`.
 
 ## Your first program

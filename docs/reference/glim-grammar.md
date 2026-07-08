@@ -256,14 +256,7 @@ tile-decl       ::= "tile" identifier "color" color-name
 
 Open syntax questions to settle before implementing:
 
-- **The block keyword is the phase (2026-07-07):** `compute X`
-  (derive), `effect Y` (logic), `render Z`. The first word carries both
-  what a declaration is and when it runs, and each keyword enforces its
-  constraints (render cannot update; compute must). "Block" is the
-  umbrella term in prose. Lineage acknowledged: this is Vue's shape —
-  state=data, compute=computed, effect=watch, render=template. This
-  replaced phase modifiers on the effect line, which had replaced the
-  `phase` header line.- **`->` vs a word.** `bind key KEY_2 rising fires Up` reads aloud
+- **`->` vs a word.** `bind key KEY_2 rising fires Up` reads aloud
   better; `->` is more scannable and matches the dataflow diagrams.
   Current position: keep `->`, precisely because it has exactly one
   meaning. Revisit if user testing shows confusion.

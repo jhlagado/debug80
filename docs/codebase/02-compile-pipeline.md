@@ -20,7 +20,9 @@ compileToAzm(text)          src/index.ts
 The CLI (`src/cli.ts`) wraps `compileToAzm`, prints diagnostics as
 `file:line: message`, and writes the output next to the entry file as
 `<name>.main.asm` — Debug80's entry-point naming convention — unless
-`-o` overrides it.
+`-o` overrides it. Unless `--no-check` is passed, the CLI then runs the
+packaged AZM CLI with contract inference enabled and writes AZM's inferred
+`;!` register contracts back into that file.
 
 ## The program model
 
@@ -30,9 +32,13 @@ consumes:
 - `StateDecl` — named byte/word cell with initial value and
   `changedOnStart`
 - `PulseDecl` — one-frame transient cell, cleared by frame cleanup
-- `KeyBinding` — `bind key <KEY> rising -> <Pulse>` (the only binding
-  kind in v0)
-- `EffectDecl` — name, phase (`derive` | `logic` | `render`), `on`
+- `TimerDecl` — oscillator or one-shot countdown that fires a pulse
+- `RampDecl` — byte progress counter that marks itself changed and fires
+  a pulse at the terminal step
+- `KeyBinding` — `bind key <KEY> rising -> <Pulse>` or, on TEC-1G,
+  `bind key <KEY> held period <N> -> <Pulse>`
+- `EffectDecl` — the shared model for `compute`, `effect`, and `render`
+  blocks: name, phase (`derive` | `logic` | `render`), `on`
   trigger cells (stored as `depends`), `updates` cells, and a verbatim
   Z80 body captured between `begin` and `end`
 - `GlimmerDiagnostic` — `{ line, message }`, line 0 for file-level issues
@@ -46,23 +52,29 @@ kind constraints (`render` takes no `updates`; `compute` requires it).
 Header lines accumulate `on` and `updates` until a line reading `begin`
 opens the body, which runs until a line containing only `end`.
 
-After the statement pass, `validateReferences` checks duplicate cell and
-effect names, binding targets (must be declared pulses), `on` triggers (any
-declared cell), and `updates` (declared states only). Parsing returns a
-program only when there are no diagnostics.
+After the statement pass, `validateReferences` checks duplicate declared
+names, reserved runtime/profile symbols, binding targets (must be declared
+pulses), timer/ramp targets, `on` triggers, and `updates` targets. `on`
+accepts flag-carrying cells: states, pulses, ramps, and the built-in
+`FrameCount`. `updates` accepts writable runtime cells: states, timers,
+and ramps. Timer cells carry no change flag, so blocks trigger on the
+timer's pulse rather than the timer cell. Parsing returns a program only
+when there are no diagnostics.
 
 ## Generation
 
 `generateAzm` emits one AZM file in a fixed order: header, `.org`,
-placeholder API equates, key-bit equates, change-flag constants, per-effect
-dependency masks, state storage, the runtime loop, `__PollBindings`,
-per-phase dispatch routines, wrapped user blocks, and
-`__ClearFrameState`.
+profile/API equates, key constants, change-flag constants, per-block
+trigger masks, state/timer/ramp storage, the runtime loop,
+`__PollBindings`, optional `__TickTimers`, per-phase dispatch routines,
+optional `__MergeRaised`, wrapped user blocks, `__EndFrame`, and any
+profile library.
 
 Notable constraints the generator honours:
 
-- **One change-flag byte in v0.** States then pulses, declaration order, at most
-  8 cells; exceeding it is a diagnostic, not a truncation.
+- **One change-flag byte in v0.2.** States, pulses, ramps, and
+  `FrameCount` when used are assigned in declaration order, at most
+  8 flag-carrying cells; exceeding it is a diagnostic, not a truncation.
 - **Block-local labels.** `_done` style labels are rewritten to
   globally unique labels (`Glim_ApplyIncrement_done`) by
   `namespaceLocalLabels`, which only rewrites names actually defined in

@@ -87,8 +87,8 @@ end
 
 Block-local labels (`_done`) are namespaced per effect into ordinary
 globally unique labels in the generated output (`Glim_ApplyIncrement_done`).
-Effects run when any of their `on` cells changed; `updates` cells are
-marked changed after the effect runs.
+Blocks run when any of their `on` cells changed; `updates` cells are
+marked changed after the block runs.
 
 ## Development
 
