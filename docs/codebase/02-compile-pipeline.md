@@ -103,17 +103,18 @@ Notable constraints the generator honours:
   holds. Generated output passes `--rc strict --reg-profile mon3`;
   round-trip tests enforce this.
 
-## The v0.2 runtime
+## The runtime
 
-- **Rollover** (`Changed0`/`Raised0`/`Next0`): block updates raise into
-  `Raised0` when every consumer is in a later phase (merged into
-  `Changed0` at phase boundaries by `__MergeRaised`) or into `Next0`
-  when any consumer's phase already ran (rolled into `Changed0` by
-  `__EndFrame`). The now/next split is computed per block at compile
-  time from the `on`/`updates` graph — exactly-once delivery,
+- **Rollover** (`ChangedN`/`RaisedN`/`NextN`): flag-carrying cells are
+  allocated in declaration order into up to four banks. Block updates
+  raise into the target cell's `RaisedN` when every consumer is in a later
+  phase (merged into `ChangedN` at phase boundaries by `__MergeRaised`) or
+  into `NextN` when any consumer's phase already ran (rolled into
+  `ChangedN` by `__EndFrame`). The now/next split is computed per block
+  at compile time from the `on`/`updates` graph — exactly-once delivery,
   declaration order never semantic.
 - **Timing widgets** tick in `__TickTimers` before any phase, raising
-  directly into `Changed0`: oscillator timers (writable period cell +
+  directly into the target cell's `ChangedN`: oscillator timers (writable period cell +
   hidden `Glim_<name>_cnt` countdown), `once` timers (the cell is the
   countdown), ramps (step, flag the cell, fire at terminal), and
   `FrameCount` when used.
@@ -136,6 +137,10 @@ Notable constraints the generator honours:
   HL at B,C with no clipping.
 - **Arrays**: `state Name : byte[N]` emits `.ds N, 0` storage and otherwise
   behaves as one state cell for `on`, `updates`, and change flags.
+- **Flag banks**: more than eight flag-carrying cells allocate
+  `Changed1`/`Raised1`/`Next1` and so on, capped at four banks. Dispatch
+  emits bank-specific masks (`GlimDep_Name_1`, etc.) and tests only the
+  banks a block's triggers occupy.
 
 ## Profiles
 

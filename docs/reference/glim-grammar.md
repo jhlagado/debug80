@@ -192,6 +192,9 @@ Semantic constraints enforced after parsing:
   or `white`
 - the built-in `FrameCount` may appear in `on`; it increments every
   frame and occupies a flag bit only when used
+- flag-carrying cells are allocated in declaration order into up to four
+  banks: `Changed0`/`Raised0`/`Next0` through
+  `Changed3`/`Raised3`/`Next3`; the current cap is 32 cells
 - `end` terminates a body when it is the only word on the line
 
 ## The dataflow, in one paragraph

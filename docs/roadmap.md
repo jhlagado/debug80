@@ -189,11 +189,13 @@ matrix profile: `shape Name color green` emits row-bitmaps and
 `ShapeDraw` renders them at B,C with no clipping. Byte array state has
 also landed: `state Trail : byte[8]` emits `.ds 8, 0` and carries one
 change flag for the whole array, demonstrated by `examples/trail.glim`.
-Remaining scale work: multiple change-flag bytes, later tunes/LCD
-text/scripts, and richer sprite/tile resources for non-matrix profiles.
-Multiple change-flag bytes so programs can exceed 8 cells. Word-state
-change semantics. Target example: CounterToy on real hardware ports plus
-a sprite-mover with sound and an eased slide-into-place.
+Multiple change-flag bytes are now in place too: declaration order fills
+up to four banks (`Changed0`..`Changed3` plus matching `Raised` and
+`Next` banks), for 32 flag-carrying cells. Remaining scale work: later
+tunes/LCD text/scripts, richer sprite/tile resources for non-matrix
+profiles, and word-state change semantics. Target example: CounterToy
+on real hardware ports plus a sprite-mover with sound and an eased
+slide-into-place.
 
 **v0.4 — Project structure.** Multi-file programs with merge semantics,
 not textual inclusion: the entry file declares program/platform/display
