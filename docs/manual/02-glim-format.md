@@ -40,7 +40,8 @@ MON-3 key codes (`KEY_0`..`KEY_F`, `KEY_PLUS`, `KEY_MINUS`, `KEY_GO`,
 scans the whole 8x8 RGB matrix from a framebuffer with fixed row dwell,
 then runs your effects while the matrix is blank. The generated file also
 contains a small profile library your blocks can call: `FbClear`,
-`FbPlot` (B = x, C = y, A = colour bits), and `MxMask`.
+`FbPlot` (B = x, C = y, A = colour bits), `ShapeDraw` when shapes are
+declared, and `MxMask`.
 
 See `examples/dot.glim` for the complete minimal program: a white dot
 moved with keys 2/4/6/8, stopping at every edge.
@@ -153,6 +154,35 @@ Presets are `linear`, `ease_in`, `ease_out`, `ease_in_out`, `sine`,
 `overshoot`, and `anticipation`. `from` and `to` are byte values; when
 omitted they default to `0` and `steps - 1`.
 
+## shape
+
+```
+shape Dot color green
+  "XX"
+  "XX"
+end
+```
+
+Declares a small pixel-art resource for the `tec1g-mon3` + `matrix8x8`
+profile. Rows are quoted strings using `X` for a lit pixel and `.` for
+an empty pixel. The current matrix form is rectangular, 1 to 8 pixels
+wide and 1 to 8 rows high.
+
+Glimmer emits a table named `Shape_<Name>` and includes `ShapeDraw` when
+at least one shape exists:
+
+```asm
+ld hl,Shape_Dot
+ld b,3           ; x
+ld c,2           ; y
+call ShapeDraw
+```
+
+Colours are `red`, `green`, `blue`, `yellow`, `cyan`, `magenta`, and
+`white`, mapped to the profile `COLOR_*` constants. `ShapeDraw` ORs
+the shape into the framebuffer and does no clipping; keep the whole
+shape inside the 8x8 matrix.
+
 ## bind ... held
 
 ```
@@ -225,6 +255,8 @@ routines, and may drive the HUD through library routines:
   low-frequency, non-blocking cue over the scan service.
 - `SndStart` — lower-level helper used by generated sound cues; A =
   duration in row ticks, C = divider.
+- `ShapeDraw` — generated when shapes exist; HL = `Shape_<Name>`, B =
+  x, C = y. It draws into the framebuffer with no clipping.
 - `HudWriteU16` — HL = value, shown as five decimal digits.
 - `HudBlankDig` — clear the display.
 
@@ -241,5 +273,6 @@ blocks in never affects behaviour.
 This is an early alpha. The present version supports at most 8 state and
 pulse/ramp/FrameCount flag cells per program (one change-flag byte), a
 small TEC-1G matrix sound-cue backend rather than music, byte-valued curve
-tables, and placeholder system API addresses in the generic profile. See the
-[roadmap](../roadmap.md) for what comes next.
+tables, 1..8 by 1..8 matrix shape resources, and placeholder system API
+addresses in the generic profile. See the [roadmap](../roadmap.md) for what
+comes next.

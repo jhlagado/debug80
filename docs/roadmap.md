@@ -184,9 +184,11 @@ tables. Sound cues landed first: `sound Name len N div N` emits a
 non-blocking `Snd_<Name>` wrapper over the matrix scan service for
 low-frequency beeps and clicks. Curves landed next: `curve Name ease_out
 steps N from A to B` emits page-aligned byte tables computed at build
-time and driven by v0.2 ramps. Remaining resource work: shapes/sprites
-(row bitmaps + colour), later tunes/LCD text/scripts, envelopes as
-chained ramps or longer tables.
+time and driven by v0.2 ramps. Shapes are now implemented for the
+matrix profile: `shape Name color green` emits row-bitmaps and
+`ShapeDraw` renders them at B,C with no clipping. Remaining scale work:
+array state, multiple change-flag bytes, later tunes/LCD text/scripts,
+and richer sprite/tile resources for non-matrix profiles.
 Multiple change-flag bytes so programs can exceed 8 cells. Word-state
 change semantics. Target example: CounterToy on real hardware ports plus
 a sprite-mover with sound and an eased slide-into-place.

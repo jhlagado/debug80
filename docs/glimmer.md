@@ -398,7 +398,7 @@ Two displays matter to Glimmer:
   effects in the blanking window. The profile emits the port equates,
   MON-3 key codes, a 32-byte framebuffer (8 rows of red, green, blue, and
   an aux byte), and a small visible library: `ScanFrame`, `FbClear`,
-  `FbPlot`, `MxMask`.
+  `FbPlot`, optional `ShapeDraw`, and `MxMask`.
 - **The TMS9918 VDP** — a video display adapter for the TEC-1G (the
   TEC-Deck card, data port `$BE`, control port `$BF`), and the next
   display profile. The VDP is a written-to display with its own VRAM,
@@ -642,8 +642,9 @@ corpus games:
 
 - **Held bindings and timers** — autorepeat movement and countdown pulses,
   the two input patterns every action game uses.
-- **Resources** — sound cues and curve tables are implemented. Next are
-  shapes, arrays, and richer data tables.
+- **Resources** — sound cues, curve tables, and matrix shape tables are
+  implemented. Next are arrays, multiple flag banks, and richer data
+  tables.
 - **Scale** — multiple change-flag bytes, word-cell change semantics, array
   state.
 - **Cards** — screens and modes as first-class sections, with `enter`

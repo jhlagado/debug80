@@ -32,6 +32,8 @@ import type {
   GlimmerProgram,
   PulseDecl,
   RampDecl,
+  ShapeColor,
+  ShapeDecl,
   SoundDecl,
   StateDecl,
   TimerDecl,
@@ -56,8 +58,19 @@ const TIMER_RE =
 const RAMP_RE =
   /^ramp\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*byte\s+steps\s+(\S+)\s*->\s*([A-Za-z_][A-Za-z0-9_]*)$/;
 const SOUND_RE = /^sound\s+([A-Za-z_][A-Za-z0-9_]*)\s+len\s+(\S+)\s+div\s+(\S+)$/;
+const SHAPE_RE = /^shape\s+([A-Za-z_][A-Za-z0-9_]*)\s+color\s+([A-Za-z_][A-Za-z0-9_]*)$/;
+const SHAPE_ROW_RE = /^"([.X]+)"$/;
 const CURVE_RE =
   /^curve\s+([A-Za-z_][A-Za-z0-9_]*)\s+([A-Za-z_][A-Za-z0-9_]*)\s+steps\s+(\S+)(?:\s+from\s+(\S+)\s+to\s+(\S+))?$/;
+const SHAPE_COLORS: readonly ShapeColor[] = [
+  'red',
+  'green',
+  'blue',
+  'yellow',
+  'cyan',
+  'magenta',
+  'white',
+];
 const CURVE_PRESETS: readonly CurvePreset[] = [
   'linear',
   'ease_in',
@@ -111,6 +124,7 @@ export function parseGlimmer(source: string): ParseResult {
   const ramps: RampDecl[] = [];
   const sounds: SoundDecl[] = [];
   const curves: CurveDecl[] = [];
+  const shapes: ShapeDecl[] = [];
   const bindings: Binding[] = [];
   const effects: EffectDecl[] = [];
 
@@ -294,6 +308,67 @@ export function parseGlimmer(source: string): ParseResult {
       continue;
     }
 
+    if (text.startsWith('shape ')) {
+      const match = SHAPE_RE.exec(text);
+      const rows: string[] = [];
+      let sawEnd = false;
+
+      while (i < lines.length) {
+        const raw = lines[i] ?? '';
+        i += 1;
+        if (raw.trim() === 'end') {
+          sawEnd = true;
+          break;
+        }
+        const rowText = stripComment(raw).trim();
+        if (rowText === '') continue;
+        const rowMatch = SHAPE_ROW_RE.exec(rowText);
+        if (!rowMatch) {
+          error(i, `Invalid shape row: "${rowText}". Expected a quoted row using only . and X.`);
+          continue;
+        }
+        rows.push(rowMatch[1] as string);
+      }
+
+      if (!match) {
+        error(lineNo, `Invalid shape declaration: "${text}". Expected: shape <Name> color <Color>.`);
+        continue;
+      }
+      const name = match[1] as string;
+      const color = match[2] as string;
+      if (!sawEnd) {
+        error(lineNo, `Shape ${name}: missing end.`);
+        continue;
+      }
+      if (!SHAPE_COLORS.includes(color as ShapeColor)) {
+        error(lineNo, `Shape ${name}: unknown color "${color}".`);
+        continue;
+      }
+      if (rows.length === 0) {
+        error(lineNo, `Shape ${name}: must contain at least one row.`);
+        continue;
+      }
+      const width = rows[0]?.length ?? 0;
+      const badRow = rows.find((row) => row.length !== width);
+      if (badRow !== undefined) {
+        error(lineNo, `Shape ${name}: all rows must have width ${width}.`);
+        continue;
+      }
+      if (width < 1 || width > 8 || rows.length < 1 || rows.length > 8) {
+        error(lineNo, `Shape ${name}: width and height must be between 1 and 8.`);
+        continue;
+      }
+      shapes.push({
+        name,
+        color: color as ShapeColor,
+        rows,
+        width,
+        height: rows.length,
+        line: lineNo,
+      });
+      continue;
+    }
+
     if (text.startsWith('bind ')) {
       const match = BIND_KEY_RE.exec(text);
       if (!match) {
@@ -453,9 +528,14 @@ export function parseGlimmer(source: string): ParseResult {
       error(sound.line, 'Sound cues require platform tec1g-mon3 with display matrix8x8.');
     }
   }
+  if (shapes.length > 0 && !(platform === 'tec1g-mon3' && display === 'matrix8x8')) {
+    for (const shape of shapes) {
+      error(shape.line, 'Shape resources require platform tec1g-mon3 with display matrix8x8.');
+    }
+  }
 
   validateReferences(
-    { states, pulses, timers, ramps, sounds, curves, bindings, effects },
+    { states, pulses, timers, ramps, sounds, curves, shapes, bindings, effects },
     diagnostics,
   );
 
@@ -473,6 +553,7 @@ export function parseGlimmer(source: string): ParseResult {
       ramps,
       sounds,
       curves,
+      shapes,
       bindings,
       effects,
     },
@@ -496,6 +577,7 @@ function validateReferences(
     | 'ramps'
     | 'sounds'
     | 'curves'
+    | 'shapes'
     | 'bindings'
     | 'effects'
   >,
@@ -516,10 +598,10 @@ function validateReferences(
       error(line, `Duplicate name "${name}": all declared names share one namespace.`);
     }
     declaredNames.add(name);
-    if (/^(Glim|Snd_|Curve_|CHG_|__)/.test(name) || RESERVED_NAMES.has(name)) {
+    if (/^(Glim|Snd_|Curve_|Shape_|CHG_|__)/.test(name) || RESERVED_NAMES.has(name)) {
       error(
         line,
-        `Reserved name "${name}": it belongs to the generated runtime (${kind}s cannot use Glim*/Snd_*/Curve_*/CHG_*/__* or runtime symbols).`,
+        `Reserved name "${name}": it belongs to the generated runtime (${kind}s cannot use Glim*/Snd_*/Curve_*/Shape_*/CHG_*/__* or runtime symbols).`,
       );
     }
   };
@@ -530,6 +612,7 @@ function validateReferences(
   for (const ramp of parts.ramps) declare(ramp.name, ramp.line, 'ramp');
   for (const sound of parts.sounds) declare(sound.name, sound.line, 'sound');
   for (const curve of parts.curves) declare(curve.name, curve.line, 'curve');
+  for (const shape of parts.shapes) declare(shape.name, shape.line, 'shape');
   for (const effect of parts.effects) declare(effect.name, effect.line, 'effect');
 
   // `on` accepts anything with a change flag: states, pulses, ramps, and
@@ -606,6 +689,9 @@ const RESERVED_NAMES = new Set([
   'COLOR_RED',
   'COLOR_GREEN',
   'COLOR_BLUE',
+  'COLOR_YELLOW',
+  'COLOR_CYAN',
+  'COLOR_MAGENTA',
   'COLOR_WHITE',
   'API_ReadKeys',
   'API_DrawChar',
@@ -629,4 +715,18 @@ const RESERVED_NAMES = new Set([
   'HudScanIndex',
   'HudMaskTbl',
   'HudGlyphTbl',
+  'ShapeDraw',
+  'ShapePtr',
+  'ShapeBaseX',
+  'ShapeBaseY',
+  'ShapeWidth',
+  'ShapeHeight',
+  'ShapeColor',
+  'ShapeRowMask',
+  'ShapeRowIndex',
+  'ShapeColIndex',
+  'ShapeDrawRow',
+  'ShapeDrawCol',
+  'ShapeDrawSkipPixel',
+  'ShapeDrawNextRow',
 ]);

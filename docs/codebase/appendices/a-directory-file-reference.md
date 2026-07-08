@@ -16,7 +16,7 @@ or change purpose.
 
 | File          | Purpose                                                                             |
 | ------------- | ----------------------------------------------------------------------------------- |
-| `model.ts`    | Program model types: states, pulses, timers, ramps, sounds, blocks, diagnostics     |
+| `model.ts`    | Program model types: states, pulses, timers, ramps, resources, blocks, diagnostics  |
 | `parse.ts`    | Line-oriented `.glim` parser and reference validation                               |
 | `generate.ts` | AZM generator: equates, storage, runtime loop, polling, dispatch, wrappers, cleanup |
 | `index.ts`    | Public API: re-exports plus `compileToAzm`                                          |
@@ -35,7 +35,7 @@ or change purpose.
 | -------------- | ------------------------------------------------------------------ |
 | `counter.glim` | CounterToy from the specification, section 10 (generic profile)    |
 | `dot.glim`     | Minimal tec1g-mon3/matrix8x8 program: held-key dot, edge-clamped   |
-| `slide.glim`   | v0.2 showcase: ramp-driven slide, compute, timer blink, sound, HUD |
+| `slide.glim`   | v0.2/v0.3 showcase: ramp slide, curve, shape, sound, timer blink, HUD |
 
 The repo root also carries `debug80.json` with `dot` and `slide` targets so
 the generated `examples/*.main.asm` programs run under Debug80's TEC-1G

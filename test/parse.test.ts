@@ -252,6 +252,82 @@ describe('parseGlimmer', () => {
     ]);
   });
 
+  it('parses matrix shape resources', () => {
+    const source = [
+      'program P',
+      'platform tec1g-mon3',
+      'display matrix8x8',
+      'shape Dot color green',
+      '  "XX"',
+      '  ".X"',
+      'end',
+    ].join('\n');
+    const { program, diagnostics } = parseGlimmer(source);
+    expect(diagnostics).toEqual([]);
+    expect(program?.shapes).toEqual([
+      {
+        name: 'Dot',
+        color: 'green',
+        rows: ['XX', '.X'],
+        width: 2,
+        height: 2,
+        line: 4,
+      },
+    ]);
+  });
+
+  it('validates shape resource semantics', () => {
+    const genericShape = ['program P', 'shape Dot color green', '  "X"', 'end'].join('\n');
+    expect(
+      parseGlimmer(genericShape)
+        .diagnostics.map((d) => d.message)
+        .join('\n'),
+    ).toContain('Shape resources require platform tec1g-mon3 with display matrix8x8');
+
+    const badColor = [
+      'program P',
+      'platform tec1g-mon3',
+      'display matrix8x8',
+      'shape Dot color orange',
+      '  "X"',
+      'end',
+    ].join('\n');
+    expect(
+      parseGlimmer(badColor)
+        .diagnostics.map((d) => d.message)
+        .join('\n'),
+    ).toContain('Shape Dot: unknown color "orange"');
+
+    const ragged = [
+      'program P',
+      'platform tec1g-mon3',
+      'display matrix8x8',
+      'shape Dot color green',
+      '  "XX"',
+      '  "X"',
+      'end',
+    ].join('\n');
+    expect(
+      parseGlimmer(ragged)
+        .diagnostics.map((d) => d.message)
+        .join('\n'),
+    ).toContain('Shape Dot: all rows must have width 2');
+
+    const wide = [
+      'program P',
+      'platform tec1g-mon3',
+      'display matrix8x8',
+      'shape Dot color green',
+      '  "XXXXXXXXX"',
+      'end',
+    ].join('\n');
+    expect(
+      parseGlimmer(wide)
+        .diagnostics.map((d) => d.message)
+        .join('\n'),
+    ).toContain('Shape Dot: width and height must be between 1 and 8');
+  });
+
   it('validates curve resource semantics', () => {
     const unknownPreset = ['program P', 'curve Move elastic steps 8 from 0 to 7'].join('\n');
     expect(
@@ -357,6 +433,9 @@ describe('parseGlimmer', () => {
       'pulse GlimTick',
       'sound Snd_Beep len 24 div 3',
       'curve Curve_Move linear steps 8',
+      'shape Shape_Dot color green',
+      '  "X"',
+      'end',
     ].join('\n');
     const { diagnostics } = parseGlimmer(source);
     const messages = diagnostics.map((d) => d.message).join('\n');
@@ -364,5 +443,6 @@ describe('parseGlimmer', () => {
     expect(messages).toContain('Reserved name "GlimTick"');
     expect(messages).toContain('Reserved name "Snd_Beep"');
     expect(messages).toContain('Reserved name "Curve_Move"');
+    expect(messages).toContain('Reserved name "Shape_Dot"');
   });
 });

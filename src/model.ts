@@ -76,6 +76,18 @@ export interface SoundDecl {
   line: number;
 }
 
+export type ShapeColor = 'red' | 'green' | 'blue' | 'yellow' | 'cyan' | 'magenta' | 'white';
+
+/** Matrix-profile pixel art. Rows use X for set pixels and . for empty pixels. */
+export interface ShapeDecl {
+  name: string;
+  color: ShapeColor;
+  rows: string[];
+  width: number;
+  height: number;
+  line: number;
+}
+
 export type CurvePreset =
   | 'linear'
   | 'ease_in'
@@ -131,6 +143,7 @@ export interface GlimmerProgram {
   ramps: RampDecl[];
   sounds: SoundDecl[];
   curves: CurveDecl[];
+  shapes: ShapeDecl[];
   bindings: Binding[];
   effects: EffectDecl[];
 }
