@@ -33,28 +33,14 @@ preprocessor. See "Debug80 integration and source mapping" below.
 ## The corpus
 
 `corpus/` holds real TEC-1G programs copied into this repo as reference
-source and as adaptation material: `corpus/tetro/` (the Tetro + Pacmo game
-suite) and `corpus/tms9918/` (the three VDP demos). The central experiment
-is rewriting them in the Glimmer paradigm to shake out the format's
-shortcomings. The headline acceptance test:
+source and adaptation material: `corpus/tetro/` (Tetro + Pacmo) and
+`corpus/tms9918/` (three VDP demos). They are pressure tests, not first
+publish blockers.
 
-**`tetro.glim` generates an AZM file that assembles into a playable
-Tetro.**
-
-Every feature milestone below should be checked against the corpus: if the
-games do something Glimmer cannot express, that is a format bug.
-
-The first pass of that experiment exists: `sketches/` contains
-aspirational `.glim` drafts of Tetro (`sketches/tetro.glim`) and an
-interactive TMS9918 program (`sketches/sprite-chase.glim`). They do not
-compile; they define the target. The format proposals they raised —
-P1 platform/display declarations, P2 array state, P3 cards, P4 held
-bindings + timers, P5 routines, P6 resources, P7 word semantics,
-P8 profile services, P9 curves and ramps — are catalogued in
-`sketches/README.md` and map onto the milestones: P1/P8 land in
-v0.1–v0.2, P4 in v0.2, P2/P6/P9 in v0.3, P5 in v0.4, structured
-AZM-backed data in v0.5, P3 in v0.6, and P7 remains future word-cell
-semantics work.
+The first pass of that experiment exists in `sketches/`: aspirational
+`.glim` drafts of Tetro (`sketches/tetro.glim`) and an interactive TMS9918
+program (`sketches/sprite-chase.glim`). They define future shape. First
+publish only needs the smaller proof already in `examples/`.
 
 ## What v0 does today
 
@@ -119,17 +105,23 @@ Other concrete facts to build against:
 - **Memory layout**: user code at 0x4000 under MON-3; debug80.json targets
   with tec1g platform, bundled MON-3 ROM, appStart 16384.
 
-## Milestones
+## First publish line
 
-Version numbers below (v0.1, v0.2, ...) are milestone labels for
-sequencing work, not releases. npm publishing is a separate, later
-decision: nothing ships to the registry until the project reaches a
-minimum feature set and documentation level.
+First publish means Glimmer is useful as a small, Debug80-friendly Z80
+game framework. It does not mean Glimmer can express every future game or
+every platform profile. The line is:
 
-Each milestone keeps the round-trip test green (generated AZM must
-assemble) and adds one example program that exercises the new ground.
+- the CLI is stable enough to generate AZM from `.glim`
+- generated AZM assembles and passes the AZM register-contract workflow
+- examples are small, readable, and Debug80-ready
+- documentation explains the implemented language, not the whole dream
+- the package builds cleanly and can be installed
 
-**v0.1 — TEC-1G platform profile. ✅ Landed 2026-07-06 (first slice).**
+Anything that does not serve that line moves after first publish.
+
+## Delivered core
+
+**TEC-1G platform profile. ✅ Landed 2026-07-06.**
 `platform tec1g-mon3` + `display matrix8x8` generate MON-3/port equates,
 `_scanKeys` rising-edge polling, a scan-driven loop (whole frame with
 fixed dwell, effects in the blank window), a 32-byte framebuffer, and a
@@ -138,8 +130,7 @@ debug80.json carries a `dot` target. Example: `examples/dot.glim` — the
 deliberately bare-bones input-to-pixel program (keypad-moved dot,
 edge-clamped). The generic profile remains the default.
 
-**Change-flag rollover. ✅ Fixed in v0.2 (the design note below was the
-defect report).**
+**Change-flag rollover. ✅ Landed 2026-07-07.**
 v0 clears all change flags at frame end, so a backward dependency —
 logic updating a cell that a derive effect (or an earlier-declared
 effect in the same phase) triggers on — is dropped, not deferred: the
@@ -152,10 +143,7 @@ become bounded cross-frame feedback (one step per frame) rather than
 lost updates. Stability guarantees that hold either way: every effect
 runs at most once per frame; the frame is a single forward pass; frame
 cost is bounded by effect count — no within-frame circularity is
-possible by construction. Also: since `on`/`updates` declare the whole
-dataflow graph, potential cycles are statically detectable — add a
-compile-time cycle report (informational, not an error: cross-frame
-feedback is legitimate).
+possible by construction.
 
 **Lint backlog.** A plain (non-underscore) label defined inside a block
 passes through verbatim and is global — two blocks defining `Loop:`
@@ -163,7 +151,7 @@ collide at assembly with an error pointing at generated code. Add a
 Glimmer diagnostic suggesting `_loop`. Likewise the planned
 "body updates a declared cell not listed in `updates`" warning.
 
-**v0.2 — Matrix runtime, second slice. ✅ Landed 2026-07-07.**
+**Matrix runtime. ✅ Landed 2026-07-07.**
 `held period N` bindings (first press fires, then autorepeats;
 tec1g-mon3); the timing widget family — `timer` (oscillator: writable
 period cell + hidden countdown), `timer ... once` (one-shot countdown,
@@ -179,10 +167,10 @@ routines. Example: `examples/slide.glim` — press GO, a dot slides
 across over 64 frames driven by a ramp through a compute block, a timer
 blinks it, arrival beeps and bumps a HUD counter; `examples/dot.glim`
 movement is now held-autorepeat. Both pass `--rc strict
---reg-profile mon3`. Remaining growth path: trail-drawing mode, then
-snake.
+--reg-profile mon3`.
 
-**v0.3 — Resources and scale.** (Work plan: [plans/v0.3.md](plans/v0.3.md).) Declarative resources compiled to data
+**Resources and scale. ✅ Landed 2026-07-08.** (Work plan:
+[plans/v0.3.md](plans/v0.3.md).) Declarative resources compiled to data
 tables. Sound cues landed first: `sound Name len N div N` emits a
 non-blocking `Snd_<Name>` wrapper over the matrix scan service for
 low-frequency beeps and clicks. Curves landed next: `curve Name ease_out
@@ -195,12 +183,10 @@ change flag for the whole array, demonstrated by `examples/trail.glim`.
 Multiple change-flag bytes are now in place too: category order (states,
 pulses, ramps, then `FrameCount`) fills up to four banks
 (`Changed0`..`Changed3` plus matching `Raised` and `Next` banks), for 32
-flag-carrying cells. Remaining scale work: later tunes/LCD text/scripts,
-richer sprite/tile resources for non-matrix profiles, and word-state
-change semantics. Landed examples are `counter.glim`, `dot.glim`,
+flag-carrying cells. Landed examples are `counter.glim`, `dot.glim`,
 `slide.glim`, and `trail.glim`.
 
-**v0.4 — Project structure. ✅ First slice landed 2026-07-08**
+**Project structure, first slice. ✅ Landed 2026-07-08**
 (plan: [plans/v0.4.md](plans/v0.4.md)): `part "file.glim"` merges
 declarations into one program/namespace with file-tagged diagnostics
 (`examples/trail.glim` + `trail-blocks.glim`); `import "module.asm"`
@@ -209,7 +195,7 @@ brings AZM modules in, emitted outside every execution path;
 within the milestone: generated output as `.import` modules (file-layout
 decision pending), per-block assemble/check, `.glim` libraries.
 
-**Snake — the growth path's capstone — landed 2026-07-08:**
+**Snake. ✅ Landed 2026-07-08, not a publish blocker.**
 `examples/snake.glim` + `snake-rules.glim` (a part) + `snake-lib.asm`
 (an imported hand-written module) is the first complete game in
 Glimmer: ring-buffer body in array state, wrap-around movement, food,
@@ -233,53 +219,52 @@ next milestones:
   read-after-RST liveness issue above. The checked build earns its
   keep.
 
-Original scope: multi-file programs with merge semantics,
-not textual inclusion: the entry file declares program/platform/display
-and names its parts (`part "input.glim"`), and every part contributes
-declarations to one program with one shared namespace — the compilation
-unit is the project, files are storage. Alongside `part`, a Glimmer
-`import "keyboard.asm"` statement brings an AZM module into the
-generated program: AZM's `.import` is name-wise order-independent
-(exports callable from any block, forward references resolve
-program-wide; `@` labels public, plain labels private to the unit;
-repeats idempotent) but emits the module's bytes at the import point —
-so Glimmer places the directive in a dedicated section of the generated
-file where bytes land safely, never inside a block's execution path.
-`.include` remains available verbatim inside bodies for data tables,
-where bytes at that exact spot are the intent. Also in this milestone:
-per-block assemble/check, dependency listing (writers/readers of each
-cell) as CLI output, and generated output moving to `.import` + `@`
-exports so block privacy is real rather than naming-convention-deep.
-Deferred beyond v0.4: `.glim` libraries (reusable pulse/effect/resource
-kits) — they need a namespace story that `part` deliberately avoids.
+## Remaining before first publish
 
-**v0.5 — Structured data.** Byte arrays stay deliberately simple:
-`state Trail : byte[8]` is still just one flag-carrying storage block,
-emitted as initialized AZM storage. The next data step is structured
-state backed by AZM Book 0 layout types: Glimmer records/aliases should
-generate ordinary AZM `.type`, `.typealias`, typed `.ds`, `sizeof`, and
-`offset` forms rather than inventing a parallel layout system. Candidate
-syntax is intentionally deferred, but the target use cases are clear:
-actor/entity arrays, sprite attribute tables, board cells, and packed
-profile resources that Debug80 can inspect through AZM's existing symbol
-and source-map artifacts. Runtime indexing remains explicit Z80 address
-arithmetic; AZM layouts provide sizes, offsets, storage declarations, and
-debuggable structure, not hidden runtime code. This should land before
-large Tetro/Pacmo rewrites so game code does not grow a pile of manual
-offset constants.
+These are the items that still matter before drawing the line:
 
-**v0.6 — Game profile.** Hooks and phases shaped by Tetro/Pacmo: actor
-update, collision, mode/card dispatch (splash/running/paused/game-over as
-first-class screens). Cards are optional sections for modal screens; only
-one card is active at a time. Navigation is a block-header consequence,
-not inline assembly: `goto Playing` sits beside `on` and `updates`, and
-means "if this block runs, switch cards after its body." Because
-`begin` marks the start of verbatim AZM, the AZM body is optional:
-header-only routing blocks close with `end` and do not need an empty
-`begin`/`end` pair. Blocks that both prepare state and navigate still use
-`begin`/`end` for the Z80 setup body, and the declared `goto` remains
-unconditional once the block runs. At this point rebuilding a recognizable
-slice of Tetro in Glimmer is the acceptance test.
+1. **Clean build and package.** `npm run build`, `npm run typecheck`,
+   `npm run lint`, and the test suite pass; package metadata and exported
+   files are correct.
+2. **Debug80-ready workflow.** Generated `<name>.main.asm`, `.hex`, `.bin`,
+   and `.d8.json` examples are current. `debug80.json` points at useful
+   targets. The first-publish docs explain how to build and run through
+   Debug80.
+3. **D8/Glim source mapping, first cut.** Keep this small: either
+   document the current generated-AZM stepping workflow clearly, or add a
+   minimal `glimmer build`/map rewrite if it is genuinely quick. Do not
+   block publication on perfect source-level `.glim` stepping.
+4. **Docs winnow.** The manual and roadmap describe the shipped core.
+   TMS9918, Tetro/Pacmo, cards, structured data, libraries, and richer
+   resources move to post-publish tracks.
+5. **Known-quality cleanup.** Fix lint, remove accidental generated or
+   local files from the working tree, and keep only intentional examples.
+
+## After first publish
+
+These are important, but they are no longer blockers:
+
+- **Cards and header-level navigation.** Cards are optional modal
+  sections for screens/modes. `goto Playing` belongs in the block header,
+  beside `on` and `updates`, and is unconditional once the block runs.
+  `begin` opens an optional verbatim AZM body, so header-only routing
+  blocks may close directly with `end`.
+- **Structured data via AZM layouts.** Byte arrays stay simple. Future
+  structured state should use AZM Book 0 layout types: `.type`,
+  `.typealias`, typed `.ds`, `sizeof`, and `offset`.
+- **Better `.glim` debug maps.** `glimmer build` can invoke AZM's compile
+  API and rewrite `.d8.json` segments so user block lines step in the
+  `.glim` file while generated glue remains visible in generated AZM.
+- **Generated-output module splitting.** Move stable generated sections
+  toward AZM `.import` modules when file layout and debugging tradeoffs
+  are clear.
+- **Per-block assemble/check and dataflow diagnostics.** Useful editor
+  features, not first-publish requirements.
+- **`.glim` libraries.** Reusable pulse/effect/resource kits need a
+  namespace story beyond `part`.
+- **TMS9918 profile and larger games.** The VDP profile, richer sprite
+  and tile resources, and Tetro/Pacmo-scale game profiles are
+  post-publish expansion work.
 
 **Register contracts.** AZM formalizes register interfaces (`;!` in/
 out/clobbers/preserves on `@` routine boundaries) and proves callers
@@ -296,11 +281,7 @@ ship `.asmi` interfaces for monitor APIs. The payoff for Glimmer users:
 blocks call library and monitor routines constantly, and contracts turn
 register collisions — the classic Z80 bug — into build-time errors.
 
-**Later.** `glimmer build` convenience (invoke AZM's compile API);
-glim-level debug maps for Debug80 stepping; TMS9918 profile; editor/browser
-tooling; register contracts on generated wrappers.
-
-## The TMS9918 profile (second display target)
+## Post-publish platform note: TMS9918
 
 The TEC-Deck video card puts a TMS9918A on the TEC-1G at data port $BE /
 control port $BF, and Debug80 emulates it fully
@@ -336,7 +317,7 @@ profile-parameterized loop in the open questions below.
 
 ## Debug80 integration and source mapping
 
-The goal: set a breakpoint in `tetro.glim`, press F5, and step through
+The goal: set a breakpoint in a `.glim` file, press F5, and step through
 Glimmer source. Three pieces make that work, in increasing order of
 coupling.
 

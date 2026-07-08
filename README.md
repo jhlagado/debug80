@@ -17,7 +17,7 @@ Documentation:
 - [Roadmap](docs/roadmap.md) — milestones and platform findings
 - [Glim Grammar Reference](docs/reference/glim-grammar.md) — formal grammar and syntax design rules
 - [Glimmer Engineering Manual](docs/codebase/) — codebase reference, kept current with the source
-- [Glimmer Manual](docs/manual/) — user manual draft (pre-alpha, unpublished)
+- [Glimmer Manual](docs/manual/) — user manual for the first publishable line
 
 The project is game-first because games exercise timing, input, graphics,
 sprites, state, sound, packaging, and performance. It is not intended to be
@@ -25,11 +25,13 @@ game-only.
 
 ## Status
 
-Early v0. The current vertical slice compiles a single-file `.glim`
-meta-source (program, scalar and byte-array state, pulses, timing widgets,
-key bindings, effects with Z80 block bodies, and small resources) into one
-generated AZM source file, which AZM assembles into `.hex`, `.bin`, and a
-`.d8.json` Debug80 map. Four examples work end to end:
+Version 0.1.0 is the first publishable Glimmer line: a small,
+Debug80-friendly Z80 game framework that generates readable AZM. The
+current vertical slice compiles `.glim` meta-source (program, scalar and
+byte-array state, pulses, timing widgets, key bindings, effects with Z80
+block bodies, small resources, parts, and imports) into generated AZM
+source, which AZM assembles into `.hex`, `.bin`, and a `.d8.json`
+Debug80 map. The core examples work end to end:
 
 - `examples/counter.glim` — CounterToy from the spec (generic profile)
 - `examples/dot.glim` — a keypad-moved dot on the real TEC-1G 8x8 RGB
@@ -42,7 +44,8 @@ generated AZM source file, which AZM assembles into `.hex`, `.bin`, and a
 - `examples/trail.glim` — byte array state as an 8-row trail buffer on
   the TEC-1G matrix profile.
 
-- `examples/snake.glim` — the first complete game: a multi-file program
+`examples/snake.glim` is included as a larger proof, not as the minimum
+learning path: it is the first complete game, a multi-file program
   (`part`) with a hand-written imported AZM module, ring-buffer body in
   array state, food, growth, speedup, sounds, and a HUD score.
 

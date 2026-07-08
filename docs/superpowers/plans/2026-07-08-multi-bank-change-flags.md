@@ -13,6 +13,7 @@
 ### Task 1: Tests
 
 **Files:**
+
 - Modify: `test/generate.test.ts`
 
 - [x] **Step 1: Replace the old 8-cell rejection test with multi-bank tests**
@@ -78,6 +79,7 @@ Expected: fail because the generator still rejects the ninth tracked cell.
 ### Task 2: Generator
 
 **Files:**
+
 - Modify: `src/generate.ts`
 - Test: `test/generate.test.ts`
 
@@ -116,6 +118,7 @@ Expected: generator tests pass.
 ### Task 3: Docs
 
 **Files:**
+
 - Modify: `docs/manual/02-glim-format.md`
 - Modify: `docs/reference/glim-grammar.md`
 - Modify: `docs/plans/v0.3.md`
@@ -152,6 +155,7 @@ git commit -m "feat: add multi-bank change flags"
 ### Task 4: Review Loop
 
 **Files:**
+
 - Inspect committed diff for the multi-bank flag commit.
 
 - [ ] **Step 1: Dispatch high-effort code review**

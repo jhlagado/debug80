@@ -13,6 +13,7 @@
 ### Task 1: Parser And Model
 
 **Files:**
+
 - Modify: `src/model.ts`
 - Modify: `src/parse.ts`
 - Test: `test/parse.test.ts`
@@ -41,9 +42,11 @@ it('parses matrix shape resources', () => {
 
 it('validates shape resource semantics', () => {
   const genericShape = ['program P', 'shape Dot color green', '  "X"', 'end'].join('\n');
-  expect(parseGlimmer(genericShape).diagnostics.map((d) => d.message).join('\n')).toContain(
-    'Shape resources require platform tec1g-mon3 with display matrix8x8.',
-  );
+  expect(
+    parseGlimmer(genericShape)
+      .diagnostics.map((d) => d.message)
+      .join('\n'),
+  ).toContain('Shape resources require platform tec1g-mon3 with display matrix8x8.');
 
   const badColor = [
     'program P',
@@ -53,9 +56,11 @@ it('validates shape resource semantics', () => {
     '  "X"',
     'end',
   ].join('\n');
-  expect(parseGlimmer(badColor).diagnostics.map((d) => d.message).join('\n')).toContain(
-    'Shape Dot: unknown color "orange".',
-  );
+  expect(
+    parseGlimmer(badColor)
+      .diagnostics.map((d) => d.message)
+      .join('\n'),
+  ).toContain('Shape Dot: unknown color "orange".');
 
   const ragged = [
     'program P',
@@ -66,9 +71,11 @@ it('validates shape resource semantics', () => {
     '  "X"',
     'end',
   ].join('\n');
-  expect(parseGlimmer(ragged).diagnostics.map((d) => d.message).join('\n')).toContain(
-    'Shape Dot: all rows must have width 2.',
-  );
+  expect(
+    parseGlimmer(ragged)
+      .diagnostics.map((d) => d.message)
+      .join('\n'),
+  ).toContain('Shape Dot: all rows must have width 2.');
 });
 ```
 
@@ -108,6 +115,7 @@ Run the same Vitest command. Expected: parser tests pass.
 ### Task 2: Generator And ShapeDraw
 
 **Files:**
+
 - Modify: `src/generate.ts`
 - Test: `test/generate.test.ts`
 
@@ -186,6 +194,7 @@ Run the same generator Vitest command. Expected: generator tests pass.
 ### Task 3: Example And Docs
 
 **Files:**
+
 - Modify: `examples/slide.glim`
 - Modify: `docs/manual/02-glim-format.md`
 - Modify: `docs/reference/glim-grammar.md`
@@ -237,6 +246,7 @@ git commit -m "feat: add matrix shape resources"
 ### Task 4: Review Loop
 
 **Files:**
+
 - Inspect committed diff for the shape-resource commit.
 
 - [ ] **Step 1: Dispatch high-effort code review**

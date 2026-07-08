@@ -1,6 +1,6 @@
 {
   "name": "@jhlagado/glimmer",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "Glimmer preprocessor for AZM: routine cards, reactive state and generated Z80 glue",
   "license": "GPL-3.0-only",
   "engines": {

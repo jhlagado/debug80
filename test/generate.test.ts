@@ -272,7 +272,6 @@ describe('tec1g-mon3 matrix8x8 profile', () => {
 
 describe('v0.2 runtime (slide example)', () => {
   const slide = readFileSync(path.join(import.meta.dirname, '../examples/slide.glim'), 'utf8');
-  const trail = readFileSync(path.join(import.meta.dirname, '../examples/trail.glim'), 'utf8');
 
   it('emits non-blocking sound cue wrappers for the matrix profile', () => {
     const sourceText = [

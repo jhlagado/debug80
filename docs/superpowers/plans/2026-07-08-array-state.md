@@ -13,6 +13,7 @@
 ### Task 1: Parser And Model
 
 **Files:**
+
 - Modify: `src/model.ts`
 - Modify: `src/parse.ts`
 - Modify: `src/index.ts`
@@ -89,6 +90,7 @@ Run the same parser Vitest command. Expected: parser tests pass.
 ### Task 2: Generator And Change Flags
 
 **Files:**
+
 - Modify: `src/generate.ts`
 - Test: `test/generate.test.ts`
 
@@ -149,6 +151,7 @@ Run the same generator Vitest command. Expected: generator tests pass.
 ### Task 3: Trail Example And Docs
 
 **Files:**
+
 - Create: `examples/trail.glim`
 - Modify: `test/generate.test.ts`
 - Modify: `docs/manual/02-glim-format.md`
@@ -196,6 +199,7 @@ git commit -m "feat: add byte array state"
 ### Task 4: Review Loop
 
 **Files:**
+
 - Inspect committed diff for the array-state commit.
 
 - [ ] **Step 1: Dispatch high-effort code review**
