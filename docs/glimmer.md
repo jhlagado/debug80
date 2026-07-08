@@ -176,8 +176,9 @@ generated runtime; on the TEC-1G profile that code reads the keypad
 through MON-3's `_scanKeys` API, whose flags distinguish a new press from
 a held key directly.
 
-Planned binding forms extend the same shape: `held period N` for
-autorepeat movement, plus joystick and timer sources. See the roadmap.
+The TEC-1G profile also supports `held period N` bindings for
+autorepeat movement. Future input sources, such as joystick bindings,
+will extend the same shape.
 
 ### 3.5 Blocks: Compute, Effect, Render
 
@@ -443,7 +444,8 @@ beside it. The generated file has a fixed, readable order:
 8. Phase dispatchers and phase-boundary merge helpers.
 9. The wrapped blocks.
 10. Frame rollover.
-11. The profile library.
+11. Generated curve tables, shape tables, and sound cue wrappers.
+12. The profile library.
 
 The long-term source model grows into structured project records —
 manifest, declarations, blocks, and resources as separately editable
