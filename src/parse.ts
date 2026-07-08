@@ -316,11 +316,11 @@ export function parseGlimmer(source: string): ParseResult {
       while (i < lines.length) {
         const raw = lines[i] ?? '';
         i += 1;
-        if (raw.trim() === 'end') {
+        const rowText = stripComment(raw).trim();
+        if (rowText === 'end') {
           sawEnd = true;
           break;
         }
-        const rowText = stripComment(raw).trim();
         if (rowText === '') continue;
         const rowMatch = SHAPE_ROW_RE.exec(rowText);
         if (!rowMatch) {
