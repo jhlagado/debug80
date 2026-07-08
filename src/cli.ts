@@ -8,12 +8,13 @@
  * AZM assembler: `glimmer counter.glim && azm counter.main.asm`.
  */
 
+import { spawnSync } from 'node:child_process';
 import { readFileSync, writeFileSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import path from 'node:path';
 import process from 'node:process';
 
-import { compileToAzm } from './index.js';
+import { compileToAzm, parseGlimmer } from './index.js';
 import { parseNumber } from './parse.js';
 
 const require = createRequire(import.meta.url);
@@ -25,15 +26,35 @@ function usage(): string {
     'Options:',
     '  -o, --output <file>   Output AZM path (default: <entry>.main.asm, the Debug80 entry-point convention)',
     '  --org <addr>          Assembly origin, e.g. $4000 (default: $4000)',
+    '  --no-check            Skip the AZM contract-inject/check step',
     '  -V, --version         Print package version',
     '  -h, --help            Print this help',
   ].join('\n');
+}
+
+/**
+ * Run AZM over the generated file with the same parameters Debug80 uses
+ * (--contracts --rc error, plus the mon3 profile for MON-3 programs).
+ * AZM infers register contracts for every @ routine and injects them
+ * into the file as ;! comments — Glimmer emits the boundaries, AZM
+ * supplies the truth. Returns AZM's exit code.
+ */
+function annotateAndCheck(outPath: string, isTec1g: boolean): number {
+  const azmCli = require.resolve('@jhlagado/azm/cli');
+  const args = [azmCli, '--contracts', '--rc', 'error'];
+  if (isTec1g) args.push('--reg-profile', 'mon3');
+  args.push(outPath);
+  const run = spawnSync(process.execPath, args, { encoding: 'utf8' });
+  if (run.stdout) process.stdout.write(run.stdout);
+  if (run.stderr) process.stderr.write(run.stderr);
+  return run.status ?? 1;
 }
 
 export function main(argv: string[]): number {
   let entry: string | null = null;
   let output: string | null = null;
   let org: number | undefined;
+  let check = true;
 
   for (let i = 0; i < argv.length; i += 1) {
     const arg = argv[i] as string;
@@ -52,6 +73,10 @@ export function main(argv: string[]): number {
         console.error('Missing value for --output.');
         return 1;
       }
+      continue;
+    }
+    if (arg === '--no-check') {
+      check = false;
       continue;
     }
     if (arg === '--org') {
@@ -103,6 +128,17 @@ export function main(argv: string[]): number {
     output ??
     path.join(path.dirname(entry), `${path.basename(entry, path.extname(entry))}.main.asm`);
   writeFileSync(outPath, result.source);
+
+  if (check) {
+    const isTec1g = parseGlimmer(source).program?.platform === 'tec1g-mon3';
+    const status = annotateAndCheck(outPath, isTec1g);
+    if (status !== 0) {
+      console.error(`AZM contract check failed for ${outPath}.`);
+      return status;
+    }
+    console.log(`Wrote ${outPath} (register contracts injected by AZM)`);
+    return 0;
+  }
   console.log(`Wrote ${outPath}`);
   return 0;
 }

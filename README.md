@@ -97,9 +97,10 @@ npm run typecheck
 npm run lint
 npm test          # includes a round trip that assembles generated AZM
 
-# Contract-checking generated output: audit/warn/error need no flags;
-# full strict checking needs the MON-3 profile (the generated file says so
-# in its header):
+# The CLI runs AZM automatically after generating (--contracts --rc
+# error, with the mon3 profile for MON-3 programs): AZM infers register
+# contracts for every routine and injects them into the file. Skip with
+# --no-check. Full strict checking:
 npx azm --rc strict --reg-profile mon3 examples/dot.main.asm
 npm run format
 ```
