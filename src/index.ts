@@ -19,6 +19,8 @@ export type {
   Phase,
   PulseDecl,
   RampDecl,
+  ShapeColor,
+  ShapeDecl,
   SoundDecl,
   StateDecl,
   TimerDecl,

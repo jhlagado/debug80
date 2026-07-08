@@ -260,7 +260,7 @@ describe('parseGlimmer', () => {
       'shape Dot color green',
       '  "XX"',
       '  ".X"',
-      'end',
+      'end ; comment allowed on resource terminators',
     ].join('\n');
     const { program, diagnostics } = parseGlimmer(source);
     expect(diagnostics).toEqual([]);
