@@ -127,6 +127,10 @@ Notable constraints the generator honours:
 - **Curves**: `curve Name preset steps N from A to B` emits a page-aligned
   `Curve_Name` byte table. The compiler computes easing at build time;
   blocks index the table with ordinary Z80.
+- **Shapes**: `shape Name color green` emits a `Shape_Name` table for the
+  matrix profile. Rows are 1..8 by 1..8 quoted bitmaps using `X` and `.`;
+  `ShapeDraw` is generated when any shape exists and draws the table from
+  HL at B,C with no clipping.
 
 ## Profiles
 
@@ -141,9 +145,10 @@ Notable constraints the generator honours:
   may destroy DE), a scan-driven loop (`ScanFrame` shows one full frame
   with fixed row dwell, then effects run while the matrix is blank), a
   32-byte `Framebuffer` (8 rows x R,G,B,aux), and an emitted profile
-  library: `ScanFrame`, `MxMask`, `FbPlot`, `FbClear` — modeled on the
-  corpus Tetro/Pacmo shared layer. Binding keys are validated against the
-  MON-3 key-code table in `model.ts` (`TEC1G_KEY_CODES`).
+  library: `ScanFrame`, `MxMask`, `FbPlot`, optional `ShapeDraw`, and
+  `FbClear` — modeled on the corpus Tetro/Pacmo shared layer. Binding
+  keys are validated against the MON-3 key-code table in `model.ts`
+  (`TEC1G_KEY_CODES`).
 
 ## Verification
 

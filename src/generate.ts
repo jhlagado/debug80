@@ -13,7 +13,15 @@
  * exactly once and declaration order is never semantic.
  */
 
-import type { CurveDecl, CurvePreset, EffectDecl, GlimmerDiagnostic, GlimmerProgram } from './model.js';
+import type {
+  CurveDecl,
+  CurvePreset,
+  EffectDecl,
+  GlimmerDiagnostic,
+  GlimmerProgram,
+  ShapeColor,
+  ShapeDecl,
+} from './model.js';
 import { EFFECT_PHASES, FRAME_COUNT, TEC1G_KEY_CODES } from './model.js';
 
 export interface GenerateOptions {
@@ -187,6 +195,9 @@ export function generateAzm(
     emit(`${'COLOR_RED'.padEnd(17)} .equ $01`);
     emit(`${'COLOR_GREEN'.padEnd(17)} .equ $02`);
     emit(`${'COLOR_BLUE'.padEnd(17)} .equ $04`);
+    emit(`${'COLOR_YELLOW'.padEnd(17)} .equ COLOR_RED + COLOR_GREEN`);
+    emit(`${'COLOR_CYAN'.padEnd(17)} .equ COLOR_GREEN + COLOR_BLUE`);
+    emit(`${'COLOR_MAGENTA'.padEnd(17)} .equ COLOR_RED + COLOR_BLUE`);
     emit(`${'COLOR_WHITE'.padEnd(17)} .equ $07`);
     emit();
     const usedKeys = [...new Set(program.bindings.map((b) => b.key))];
@@ -273,6 +284,17 @@ export function generateAzm(
     emit(`${'SndDivCount:'.padEnd(17)} .db 0`);
     emit(`${'HudScanIndex:'.padEnd(17)} .db 0`);
     emit(`${'HudSegBuffer:'.padEnd(17)} .ds 6`);
+    if (program.shapes.length > 0) {
+      emit(`${'ShapePtr:'.padEnd(17)} .dw 0`);
+      emit(`${'ShapeBaseX:'.padEnd(17)} .db 0`);
+      emit(`${'ShapeBaseY:'.padEnd(17)} .db 0`);
+      emit(`${'ShapeWidth:'.padEnd(17)} .db 0`);
+      emit(`${'ShapeHeight:'.padEnd(17)} .db 0`);
+      emit(`${'ShapeColor:'.padEnd(17)} .db 0`);
+      emit(`${'ShapeRowMask:'.padEnd(17)} .db 0`);
+      emit(`${'ShapeRowIndex:'.padEnd(17)} .db 0`);
+      emit(`${'ShapeColIndex:'.padEnd(17)} .db 0`);
+    }
   }
   emit();
 
@@ -377,12 +399,16 @@ export function generateAzm(
   }
 
   if (isTec1g) {
+    if (program.shapes.length > 0) {
+      emit();
+      emitShapeResources(program.shapes, emit, op);
+    }
     if (program.sounds.length > 0) {
       emit();
       emitSoundCues(program, emit, op);
     }
     emit();
-    emitMatrixLibrary(emit, op);
+    emitMatrixLibrary(program.shapes.length > 0, emit, op);
   }
 
   return { source: `${out.join('\n')}\n`, diagnostics };
@@ -636,6 +662,35 @@ function emitCurveResources(
   }
 }
 
+function emitShapeResources(
+  shapes: ShapeDecl[],
+  emit: (line?: string) => void,
+  op: (text: string) => void,
+): void {
+  emit('; --- shape resources ---');
+  emit('; Table format: width, height, colour, then left-aligned row masks.');
+  for (const shape of shapes) {
+    emit(`Shape_${shape.name}:`);
+    op(`.db     ${shape.width}, ${shape.height}, ${shapeColorSymbol(shape.color)}`);
+    for (const row of shape.rows) {
+      op(`.db     ${bin8(shapeRowMask(row))}`);
+    }
+    emit();
+  }
+}
+
+function shapeColorSymbol(color: ShapeColor): string {
+  return `COLOR_${color.toUpperCase()}`;
+}
+
+function shapeRowMask(row: string): number {
+  let mask = 0;
+  for (let i = 0; i < row.length; i += 1) {
+    if (row[i] === 'X') mask |= 0x80 >> i;
+  }
+  return mask;
+}
+
 function buildCurveValues(curve: CurveDecl): number[] {
   return Array.from({ length: curve.steps }, (_, index) => {
     const t = curve.steps === 1 ? 1 : index / (curve.steps - 1);
@@ -697,7 +752,11 @@ function emitSoundCues(
  * speaker divider state machine, and HUD formatting. Modeled on the
  * corpus Tetro/Pacmo shared layer (0BSD).
  */
-function emitMatrixLibrary(emit: (line?: string) => void, op: (text: string) => void): void {
+function emitMatrixLibrary(
+  hasShapes: boolean,
+  emit: (line?: string) => void,
+  op: (text: string) => void,
+): void {
   emit('; --- matrix8x8 profile library ---');
   emit();
   emit('; Scan all 8 rows with fixed dwell, then blank the matrix so');
@@ -789,6 +848,77 @@ function emitMatrixLibrary(emit: (line?: string) => void, op: (text: string) => 
   op('ld      (hl),a');
   op('ret');
   emit();
+  if (hasShapes) {
+    emit('; Draw a shape resource. HL = Shape_<Name>, B = x, C = y.');
+    emit('; No clipping: keep the whole shape inside the 8x8 matrix.');
+    emit(';! in B,C,HL; clobbers A,BC,DE,HL');
+    emit('@ShapeDraw:');
+    op('ld      (ShapePtr),hl');
+    op('ld      a,b');
+    op('ld      (ShapeBaseX),a');
+    op('ld      a,c');
+    op('ld      (ShapeBaseY),a');
+    op('ld      a,(hl)');
+    op('ld      (ShapeWidth),a');
+    op('inc     hl');
+    op('ld      a,(hl)');
+    op('ld      (ShapeHeight),a');
+    op('inc     hl');
+    op('ld      a,(hl)');
+    op('ld      (ShapeColor),a');
+    op('inc     hl');
+    op('ld      (ShapePtr),hl');
+    op('xor     a');
+    op('ld      (ShapeRowIndex),a');
+    emit('ShapeDrawRow:');
+    op('ld      a,(ShapeRowIndex)');
+    op('ld      b,a');
+    op('ld      a,(ShapeHeight)');
+    op('cp      b');
+    op('ret     z');
+    op('ld      hl,(ShapePtr)');
+    op('ld      a,(hl)');
+    op('ld      (ShapeRowMask),a');
+    op('inc     hl');
+    op('ld      (ShapePtr),hl');
+    op('xor     a');
+    op('ld      (ShapeColIndex),a');
+    emit('ShapeDrawCol:');
+    op('ld      a,(ShapeColIndex)');
+    op('ld      b,a');
+    op('ld      a,(ShapeWidth)');
+    op('cp      b');
+    op('jr      z,ShapeDrawNextRow');
+    op('ld      a,(ShapeRowMask)');
+    op('bit     7,a');
+    op('jr      z,ShapeDrawSkipPixel');
+    op('ld      a,(ShapeBaseX)');
+    op('ld      b,a');
+    op('ld      a,(ShapeColIndex)');
+    op('add     a,b');
+    op('ld      b,a');
+    op('ld      a,(ShapeBaseY)');
+    op('ld      c,a');
+    op('ld      a,(ShapeRowIndex)');
+    op('add     a,c');
+    op('ld      c,a');
+    op('ld      a,(ShapeColor)');
+    op('call    FbPlot');
+    emit('ShapeDrawSkipPixel:');
+    op('ld      a,(ShapeRowMask)');
+    op('add     a,a');
+    op('ld      (ShapeRowMask),a');
+    op('ld      a,(ShapeColIndex)');
+    op('inc     a');
+    op('ld      (ShapeColIndex),a');
+    op('jr      ShapeDrawCol');
+    emit('ShapeDrawNextRow:');
+    op('ld      a,(ShapeRowIndex)');
+    op('inc     a');
+    op('ld      (ShapeRowIndex),a');
+    op('jr      ShapeDrawRow');
+    emit();
+  }
   emit('; Clear the whole framebuffer.');
   emit(';! clobbers  A,B,HL');
   emit('@FbClear:');

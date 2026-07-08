@@ -157,6 +157,30 @@ describe('v0.2 runtime (slide example)', () => {
     expect(source).toContain('.db     0, 2, 3, 5, 6, 6, 7, 7');
   });
 
+  it('emits matrix shape resources and ShapeDraw support', () => {
+    const sourceText = [
+      'program P',
+      'platform tec1g-mon3',
+      'display matrix8x8',
+      'shape Dot color green',
+      '  "XX"',
+      '  ".X"',
+      'end',
+    ].join('\n');
+    const { program, diagnostics: parseDiags } = parseGlimmer(sourceText);
+    expect(parseDiags).toEqual([]);
+    const { source, diagnostics } = generateAzm(program!);
+    expect(diagnostics).toEqual([]);
+    expect(source).toContain('; --- shape resources ---');
+    expect(source).toContain('Shape_Dot:');
+    expect(source).toContain('.db     2, 2, COLOR_GREEN');
+    expect(source).toContain('.db     %11000000');
+    expect(source).toContain('.db     %01000000');
+    expect(source).toContain('ShapePtr:');
+    expect(source).toContain('@ShapeDraw:');
+    expect(source).toContain('call    FbPlot');
+  });
+
   it('generates rollover, timer, ramp, and service machinery', () => {
     const { program, diagnostics: parseDiags } = parseGlimmer(slide);
     expect(parseDiags).toEqual([]);
@@ -182,6 +206,10 @@ describe('v0.2 runtime (slide example)', () => {
     // Curve: Travel maps through an ease-out table.
     expect(source).toContain('Curve_SlideX:');
     expect(source).toContain('ld hl,Curve_SlideX');
+    // Shape: DrawDot uses a generated 2x2 resource.
+    expect(source).toContain('Shape_Dot:');
+    expect(source).toContain('ld hl,Shape_Dot');
+    expect(source).toContain('call ShapeDraw');
 
     // Sound + HUD serviced per scan row; library present.
     expect(source).toContain('@Snd_Arrive:');

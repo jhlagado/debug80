@@ -88,6 +88,7 @@ statement       ::= program-decl
                   | ramp-decl
                   | sound-decl
                   | curve-decl
+                  | shape-decl
                   | bind-decl
                   | block-decl
 
@@ -129,6 +130,16 @@ curve-decl      ::= "curve" identifier preset "steps" number
                   ; anticipation.
 preset          ::= identifier
 
+shape-decl      ::= "shape" identifier "color" color-name
+                    shape-row+
+                    "end"
+                  ; matrix-profile bitmap resource. Rows are rectangular
+                  ; quoted strings, 1..8 wide by 1..8 high, using X for a
+                  ; lit pixel and . for an empty pixel.
+shape-row       ::= string
+color-name      ::= "red" | "green" | "blue" | "yellow" | "cyan"
+                  | "magenta" | "white"
+
 block-decl      ::= block-kind identifier
                     block-header*
                     "begin" newline
@@ -149,13 +160,13 @@ Semantic constraints enforced after parsing:
 
 - exactly one `program`; `platform` and `display` at most once, and only
   together
-- all declared names — states, pulses, timers, ramps, sounds, curves, and
-  blocks — share one namespace and must be unique (every name projects into
-  one flat AZM symbol space)
+- all declared names — states, pulses, timers, ramps, sounds, curves,
+  shapes, and blocks — share one namespace and must be unique (every name
+  projects into one flat AZM symbol space)
 - names may not collide with generated or profile symbols: the `Glim`,
-  `Snd_`, `Curve_`, `CHG_`, and `__` prefixes and the runtime/profile names
-  (`Changed0`, `MainLoop`, `Framebuffer`, the library routines) are
-  reserved, so the diagnostic lands on the `.glim` line; AZM's
+  `Snd_`, `Curve_`, `Shape_`, `CHG_`, and `__` prefixes and the
+  runtime/profile names (`Changed0`, `MainLoop`, `Framebuffer`, the
+  library routines) are reserved, so the diagnostic lands on the `.glim` line; AZM's
   global-uniqueness check remains the backstop
 - `bind` targets must be declared pulses
 - `on` names must be flag-carrying cells; `updates` names must be
@@ -169,6 +180,10 @@ Semantic constraints enforced after parsing:
   `len` and `div` are byte values from 1 to 255
 - curve resources have `steps` from 2 to 256; `from` and `to` are byte
   values from 0 to 255 and default to `0` and `steps - 1`
+- shape resources require `platform tec1g-mon3` with `display matrix8x8`;
+  they are rectangular 1..8 by 1..8 bitmaps using `X` and `.`, and their
+  colour is one of `red`, `green`, `blue`, `yellow`, `cyan`, `magenta`,
+  or `white`
 - the built-in `FrameCount` may appear in `on`; it increments every
   frame and occupies a flag bit only when used
 - `end` terminates a body when it is the only word on the line
@@ -214,8 +229,9 @@ card-decl       ::= "card" identifier
                   ; card-decl or end of file.
 enter-effect    ::= "enter" effect-decl
 
-shape-decl      ::= "shape" identifier "color" color-name
+rotation-decl   ::= "shape" identifier "rotations"
                     rotation-row* "end"
+                  ; later extension to implemented matrix shape resources.
 text-decl       ::= "text" identifier string
 sprite-decl     ::= "sprite" identifier "color" color-name
                     pixel-row* "end"

@@ -1,15 +1,15 @@
 ; Slide — motion that is not one-keypress-one-step.
 ;
-; Press GO: a green dot slides across the row over 64 frames, a beep
+; Press GO: a green 2x2 dot slides across the row over 64 frames, a beep
 ; marks its arrival, and the seven-segment display counts completed
 ; slides. A timer blinks the dot while it travels.
 ;
-; This program exercises the v0.2 runtime plus the first v0.3 resource:
+; This program exercises the v0.2 runtime plus the first v0.3 resources:
 ; a ramp drives per-frame motion, a compute block maps progress to
 ; position through an ease-out curve (and receives a deferred change flag
 ; when StartSlide rewinds the ramp from the logic phase), a timer
-; provides the blink, sound is a generated non-blocking cue, and the HUD
-; service is called directly.
+; provides the blink, sound is a generated non-blocking cue, the dot is a
+; generated shape, and the HUD service is called directly.
 
 program Slide
 
@@ -27,7 +27,12 @@ pulse BlinkTick
 ramp Travel : byte steps 64 -> Arrived
 timer Blink : byte = 12 -> BlinkTick
 sound Arrive len 24 div 3
-curve SlideX ease_out steps 64 from 0 to 7
+curve SlideX ease_out steps 64 from 0 to 6
+
+shape Dot color green
+  "XX"
+  "XX"
+end
 
 bind key KEY_GO rising -> Go
 
@@ -81,8 +86,8 @@ begin
     ld a,(DotX)
     ld b,a
     ld c,3
-    ld a,COLOR_GREEN
-    call FbPlot
+    ld hl,Shape_Dot
+    call ShapeDraw
 _hidden:
 end
 
