@@ -137,6 +137,7 @@ the generated structure on its own.
 ```text
 state Count : byte = 0 changed
 state Score : word = 0
+state Trail : byte[8] changed
 ```
 
 A state cell is a named variable managed by the runtime. Types are `byte`
@@ -144,6 +145,11 @@ and `word`. The initial value defaults to 0. The `changed` modifier
 marks the cell as already changed when the program starts, so effects
 that depend on it run on the first frame — the standard way to get an
 initial draw.
+
+`byte[N]` declares byte array state. It emits initialized storage
+(`.ds N, 0`), has one change flag for the whole array name, and is legal
+in both `on` and `updates`. Glimmer does not add indexing syntax:
+blocks index arrays with ordinary Z80.
 
 ### 3.3 Pulses
 

@@ -242,7 +242,7 @@ export function generateAzm(
   emit('; --- state storage ---');
   for (const state of program.states) {
     if (state.length !== undefined) {
-      emit(`${`${state.name}:`.padEnd(17)} .ds ${state.length}   ; byte array`);
+      emit(`${`${state.name}:`.padEnd(17)} .ds ${state.length}, 0   ; byte array`);
       continue;
     }
     const directive = state.type === 'word' ? '.dw' : '.db';

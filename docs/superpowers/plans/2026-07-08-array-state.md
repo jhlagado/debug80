@@ -4,7 +4,7 @@
 
 **Goal:** Add v0.3 byte array state so programs can keep small row-mask buffers such as trails and boards.
 
-**Architecture:** `state Board : byte[8]` is parsed as a `StateDecl` with `type: 'byte'` and `length: 8`. The whole array is one flag-carrying state cell, so it participates in `on`, `updates`, `Changed0`, rollover, and namespace validation exactly like scalar state; indexing is ordinary Z80 in user blocks. The generator emits `.ds N` storage for arrays and does not add per-element flags or initialization lists in this step.
+**Architecture:** `state Board : byte[8]` is parsed as a `StateDecl` with `type: 'byte'` and `length: 8`. The whole array is one flag-carrying state cell, so it participates in `on`, `updates`, `Changed0`, rollover, and namespace validation exactly like scalar state; indexing is ordinary Z80 in user blocks. The generator emits `.ds N, 0` storage for arrays and does not add per-element flags or initialization lists in this step.
 
 **Tech Stack:** TypeScript, Vitest, AZM strict register-contract assembly checks, Glimmer `.glim` examples and Markdown docs.
 
@@ -116,7 +116,7 @@ it('emits byte array storage as one flag-carrying cell', () => {
   expect(diagnostics).toEqual([]);
   expect(source).toContain('CHG_BOARD_BIT');
   expect(source).toContain('CHG_BOARD        .equ %00000001');
-  expect(source).toContain('Board:           .ds 8   ; byte array');
+  expect(source).toContain('Board:           .ds 8, 0   ; byte array');
   expect(source).toContain('Changed0:         .db %00000001');
   expect(source).toContain('or      CHG_BOARD');
 });
@@ -137,7 +137,7 @@ Expected: fail because array storage is not emitted.
 In the state-storage section, emit arrays as:
 
 ```asm
-Board:           .ds 8   ; byte array
+Board:           .ds 8, 0   ; byte array
 ```
 
 Scalar state remains unchanged. No dispatch change is needed because arrays are already a state entry in `trackedCells`, `onNames`, and `updateNames`.

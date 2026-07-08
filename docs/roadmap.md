@@ -187,7 +187,7 @@ steps N from A to B` emits page-aligned byte tables computed at build
 time and driven by v0.2 ramps. Shapes are now implemented for the
 matrix profile: `shape Name color green` emits row-bitmaps and
 `ShapeDraw` renders them at B,C with no clipping. Byte array state has
-also landed: `state Trail : byte[8]` emits `.ds 8` and carries one
+also landed: `state Trail : byte[8]` emits `.ds 8, 0` and carries one
 change flag for the whole array, demonstrated by `examples/trail.glim`.
 Remaining scale work: multiple change-flag bytes, later tunes/LCD
 text/scripts, and richer sprite/tile resources for non-matrix profiles.

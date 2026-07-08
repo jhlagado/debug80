@@ -26,9 +26,10 @@ game-only.
 ## Status
 
 Early v0. The current vertical slice compiles a single-file `.glim`
-meta-source (program, state cells, pulses, key bindings, effects with Z80
-block bodies) into one generated AZM source file, which AZM assembles into
-`.hex`, `.bin`, and a `.d8.json` Debug80 map. Three examples work end to end:
+meta-source (program, scalar and byte-array state, pulses, timing widgets,
+key bindings, effects with Z80 block bodies, and small resources) into one
+generated AZM source file, which AZM assembles into `.hex`, `.bin`, and a
+`.d8.json` Debug80 map. Four examples work end to end:
 
 - `examples/counter.glim` — CounterToy from the spec (generic profile)
 - `examples/dot.glim` — a keypad-moved dot on the real TEC-1G 8x8 RGB
@@ -36,8 +37,10 @@ block bodies) into one generated AZM source file, which AZM assembles into
   input with held-key autorepeat, scan-driven display loop, edge-clamped
   movement.
 - `examples/slide.glim` — ramp-driven motion mapped through an ease-out
-  curve table, timer blink, generated arrival sound cue, and
+  curve table, a generated 2x2 shape, timer blink, arrival sound cue, and
   seven-segment counter.
+- `examples/trail.glim` — byte array state as an 8-row trail buffer on
+  the TEC-1G matrix profile.
 
 The repo's `debug80.json` carries `dot` and `slide` targets, so after
 `node dist/src/cli.js examples/<name>.glim && npx azm examples/<name>.main.asm`

@@ -134,7 +134,7 @@ Notable constraints the generator honours:
   matrix profile. Rows are 1..8 by 1..8 quoted bitmaps using `X` and `.`;
   `ShapeDraw` is generated when any shape exists and draws the table from
   HL at B,C with no clipping.
-- **Arrays**: `state Name : byte[N]` emits `.ds N` storage and otherwise
+- **Arrays**: `state Name : byte[N]` emits `.ds N, 0` storage and otherwise
   behaves as one state cell for `on`, `updates`, and change flags.
 
 ## Profiles
