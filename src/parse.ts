@@ -30,6 +30,7 @@ import type {
   GlimmerProgram,
   PulseDecl,
   RampDecl,
+  SoundDecl,
   StateDecl,
   TimerDecl,
 } from './model.js';
@@ -52,6 +53,7 @@ const TIMER_RE =
   /^timer\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*(byte|word)\s*=\s*(\S+)\s*->\s*([A-Za-z_][A-Za-z0-9_]*)(\s+once)?$/;
 const RAMP_RE =
   /^ramp\s+([A-Za-z_][A-Za-z0-9_]*)\s*:\s*byte\s+steps\s+(\S+)\s*->\s*([A-Za-z_][A-Za-z0-9_]*)$/;
+const SOUND_RE = /^sound\s+([A-Za-z_][A-Za-z0-9_]*)\s+len\s+(\S+)\s+div\s+(\S+)$/;
 
 function stripComment(line: string): string {
   const semi = line.indexOf(';');
@@ -88,6 +90,7 @@ export function parseGlimmer(source: string): ParseResult {
   const pulses: PulseDecl[] = [];
   const timers: TimerDecl[] = [];
   const ramps: RampDecl[] = [];
+  const sounds: SoundDecl[] = [];
   const bindings: Binding[] = [];
   const effects: EffectDecl[] = [];
 
@@ -215,6 +218,29 @@ export function parseGlimmer(source: string): ParseResult {
         target: match[3] as string,
         line: lineNo,
       });
+      continue;
+    }
+
+    if (text.startsWith('sound ')) {
+      const match = SOUND_RE.exec(text);
+      if (!match) {
+        error(
+          lineNo,
+          `Invalid sound declaration: "${text}". Expected: sound <Name> len <N> div <N>.`,
+        );
+        continue;
+      }
+      const len = parseNumber(match[2] as string);
+      if (len === null || len < 1 || len > 255) {
+        error(lineNo, `Sound ${match[1]}: len must be between 1 and 255 row ticks.`);
+        continue;
+      }
+      const div = parseNumber(match[3] as string);
+      if (div === null || div < 1 || div > 255) {
+        error(lineNo, `Sound ${match[1]}: div must be between 1 and 255.`);
+        continue;
+      }
+      sounds.push({ name: match[1] as string, len, div, line: lineNo });
       continue;
     }
 
@@ -372,8 +398,13 @@ export function parseGlimmer(source: string): ParseResult {
       }
     }
   }
+  if (sounds.length > 0 && !(platform === 'tec1g-mon3' && display === 'matrix8x8')) {
+    for (const sound of sounds) {
+      error(sound.line, 'Sound cues require platform tec1g-mon3 with display matrix8x8.');
+    }
+  }
 
-  validateReferences({ states, pulses, timers, ramps, bindings, effects }, diagnostics);
+  validateReferences({ states, pulses, timers, ramps, sounds, bindings, effects }, diagnostics);
 
   if (diagnostics.length > 0 || programName === null) {
     return { program: null, diagnostics };
@@ -387,6 +418,7 @@ export function parseGlimmer(source: string): ParseResult {
       pulses,
       timers,
       ramps,
+      sounds,
       bindings,
       effects,
     },
@@ -402,7 +434,10 @@ function splitNames(text: string): string[] {
 }
 
 function validateReferences(
-  parts: Pick<GlimmerProgram, 'states' | 'pulses' | 'timers' | 'ramps' | 'bindings' | 'effects'>,
+  parts: Pick<
+    GlimmerProgram,
+    'states' | 'pulses' | 'timers' | 'ramps' | 'sounds' | 'bindings' | 'effects'
+  >,
   diagnostics: GlimmerDiagnostic[],
 ): void {
   const error = (line: number, message: string): void => {
@@ -420,10 +455,10 @@ function validateReferences(
       error(line, `Duplicate name "${name}": all declared names share one namespace.`);
     }
     declaredNames.add(name);
-    if (/^(Glim|CHG_|__)/.test(name) || RESERVED_NAMES.has(name)) {
+    if (/^(Glim|Snd_|CHG_|__)/.test(name) || RESERVED_NAMES.has(name)) {
       error(
         line,
-        `Reserved name "${name}": it belongs to the generated runtime (${kind}s cannot use Glim*/CHG_*/__* or runtime symbols).`,
+        `Reserved name "${name}": it belongs to the generated runtime (${kind}s cannot use Glim*/Snd_*/CHG_*/__* or runtime symbols).`,
       );
     }
   };
@@ -432,6 +467,7 @@ function validateReferences(
   for (const pulse of parts.pulses) declare(pulse.name, pulse.line, 'pulse');
   for (const timer of parts.timers) declare(timer.name, timer.line, 'timer');
   for (const ramp of parts.ramps) declare(ramp.name, ramp.line, 'ramp');
+  for (const sound of parts.sounds) declare(sound.name, sound.line, 'sound');
   for (const effect of parts.effects) declare(effect.name, effect.line, 'effect');
 
   // `on` accepts anything with a change flag: states, pulses, ramps, and

@@ -2,8 +2,8 @@
  * Glimmer program model.
  *
  * A Glimmer program is the structured source that the generator turns into
- * AZM: state cells, pulses, input bindings, and effects whose bodies are
- * plain Z80 fragments (snippets of real assembly, one per effect).
+ * AZM: state cells, pulses, timing widgets, input bindings, resources,
+ * and blocks whose bodies are plain Z80 fragments.
  *
  * See docs/glimmer.md for the full design rationale.
  */
@@ -68,6 +68,14 @@ export interface RampDecl {
   line: number;
 }
 
+/** Non-blocking matrix-profile sound cue: row-tick duration + pitch divider. */
+export interface SoundDecl {
+  name: string;
+  len: number;
+  div: number;
+  line: number;
+}
+
 /** Built-in cell: increments every frame; usable in `on` when needed. */
 export const FRAME_COUNT = 'FrameCount';
 
@@ -102,6 +110,7 @@ export interface GlimmerProgram {
   pulses: PulseDecl[];
   timers: TimerDecl[];
   ramps: RampDecl[];
+  sounds: SoundDecl[];
   bindings: Binding[];
   effects: EffectDecl[];
 }

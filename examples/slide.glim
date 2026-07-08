@@ -25,6 +25,7 @@ pulse BlinkTick
 
 ramp Travel : byte steps 64 -> Arrived
 timer Blink : byte = 12 -> BlinkTick
+sound Arrive len 24 div 3
 
 bind key KEY_GO rising -> Go
 
@@ -54,9 +55,7 @@ begin
     ld hl,(Slides)
     inc hl
     ld (Slides),hl
-    ld a,24             ; arrival beep: 24 row ticks
-    ld c,3
-    call SndStart
+    call Snd_Arrive
 end
 
 effect Twinkle

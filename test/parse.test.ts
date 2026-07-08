@@ -210,11 +210,79 @@ describe('parseGlimmer', () => {
     expect(parseGlimmer(frameCount).diagnostics).toEqual([]);
   });
 
+  it('parses matrix sound cue resources', () => {
+    const source = [
+      'program P',
+      'platform tec1g-mon3',
+      'display matrix8x8',
+      'sound Arrive len 24 div 3',
+      'sound Click len 2 div 10',
+    ].join('\n');
+    const { program, diagnostics } = parseGlimmer(source);
+    expect(diagnostics).toEqual([]);
+    expect(program?.sounds).toEqual([
+      expect.objectContaining({ name: 'Arrive', len: 24, div: 3 }),
+      expect.objectContaining({ name: 'Click', len: 2, div: 10 }),
+    ]);
+  });
+
+  it('validates sound cue semantics', () => {
+    const genericSound = ['program P', 'sound Beep len 24 div 3'].join('\n');
+    expect(
+      parseGlimmer(genericSound)
+        .diagnostics.map((d) => d.message)
+        .join('\n'),
+    ).toContain('Sound cues require platform tec1g-mon3 with display matrix8x8');
+
+    const badLen = [
+      'program P',
+      'platform tec1g-mon3',
+      'display matrix8x8',
+      'sound Beep len 0 div 3',
+    ].join('\n');
+    expect(
+      parseGlimmer(badLen)
+        .diagnostics.map((d) => d.message)
+        .join('\n'),
+    ).toContain('Sound Beep: len must be between 1 and 255 row ticks');
+
+    const badDiv = [
+      'program P',
+      'platform tec1g-mon3',
+      'display matrix8x8',
+      'sound Beep len 24 div 0',
+    ].join('\n');
+    expect(
+      parseGlimmer(badDiv)
+        .diagnostics.map((d) => d.message)
+        .join('\n'),
+    ).toContain('Sound Beep: div must be between 1 and 255');
+
+    const duplicate = [
+      'program P',
+      'platform tec1g-mon3',
+      'display matrix8x8',
+      'pulse Beep',
+      'sound Beep len 24 div 3',
+    ].join('\n');
+    expect(parseGlimmer(duplicate).diagnostics).toContainEqual(
+      expect.objectContaining({ message: expect.stringContaining('Duplicate name "Beep"') }),
+    );
+  });
+
   it('rejects reserved names', () => {
-    const source = ['program P', 'state Framebuffer : byte', 'pulse GlimTick'].join('\n');
+    const source = [
+      'program P',
+      'platform tec1g-mon3',
+      'display matrix8x8',
+      'state Framebuffer : byte',
+      'pulse GlimTick',
+      'sound Snd_Beep len 24 div 3',
+    ].join('\n');
     const { diagnostics } = parseGlimmer(source);
     const messages = diagnostics.map((d) => d.message).join('\n');
     expect(messages).toContain('Reserved name "Framebuffer"');
     expect(messages).toContain('Reserved name "GlimTick"');
+    expect(messages).toContain('Reserved name "Snd_Beep"');
   });
 });

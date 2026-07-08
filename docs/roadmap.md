@@ -180,8 +180,11 @@ movement is now held-autorepeat. Both pass `--rc strict
 snake.
 
 **v0.3 — Resources and scale.** (Work plan: [plans/v0.3.md](plans/v0.3.md).) Declarative resources compiled to data
-tables: shapes/sprites (row bitmaps + colour), tunes, LCD text/scripts,
-and curves (P9): easing tables computed at build time in destination
+tables. Sound cues landed first: `sound Name len N div N` emits a
+non-blocking `Snd_<Name>` wrapper over the matrix scan service for
+low-frequency beeps and clicks. Remaining resource work: shapes/sprites
+(row bitmaps + colour), later tunes/LCD text/scripts, and curves (P9):
+easing tables computed at build time in destination
 space, driven by v0.2's ramps — Tom-and-Jerry motion (ease-in/out,
 overshoot, anticipation) for the cost of one indexed load; envelopes as
 chained ramps or longer tables.
