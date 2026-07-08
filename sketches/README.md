@@ -62,8 +62,8 @@ to 7`: the compiler does the floating-point easing at build time and
   emits a ROM table precomputed in destination space (actual pixel
   positions) — runtime cost is one indexed load (three instructions
   with a page-aligned table via `.align`). Presets: linear, ease_in,
-  ease_out, ease_in_out, sine, overshoot, anticipation; explicit value
-  lists also allowed. `ramp Slide : byte steps 16 -> SlideDone`: a
+  ease_out, ease_in_out, sine, overshoot, anticipation. Hand-tuned
+  value lists remain a later extension. `ramp Slide : byte steps 16 -> SlideDone`: a
   monostable progress counter that steps each frame, marks its cell
   changed each step, then stops and fires its pulse — retriggered by
   an ordinary write to its cell (no new trigger syntax). A derive
