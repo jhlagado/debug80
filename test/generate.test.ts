@@ -100,9 +100,10 @@ describe('tec1g-mon3 matrix8x8 profile', () => {
     const result = compileToAzm(dot);
     expect(result.diagnostics).toEqual([]);
     expect(result.source).toContain('@Glim_DrawDot:');
-    // The generated file documents its own strict-contracts invocation.
-    expect(result.source).toContain('--rc strict --reg-profile mon3');
-    expect(result.source).toContain(';! clobbers A,BC,DE,HL,IX,IY');
+    // Contracts are AZM's job: the generator emits bare @ boundaries and
+    // the header says who injects the ;! comments.
+    expect(result.source).toContain('--contracts --rc error --reg-profile mon3');
+    expect(result.source).not.toContain(';! clobbers A,BC,DE,HL,IX,IY');
     const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-dot-'));
     const entry = path.join(dir, 'dot.asm');
     writeFileSync(entry, result.source!);
@@ -175,6 +176,21 @@ describe('v0.2 runtime (slide example)', () => {
     });
     expect(assembled.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
     expect(assembled.artifacts.find((a) => a.kind === 'bin')).toBeDefined();
+  });
+});
+
+describe('CLI pipeline (generate + AZM contract injection)', () => {
+  it('injects inferred contracts into the written file', async () => {
+    const { main } = await import('../src/cli.js');
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-cli-'));
+    const entry = path.join(dir, 'dot.glim');
+    writeFileSync(entry, readFileSync(path.join(import.meta.dirname, '../examples/dot.glim')));
+    const status = main([entry]);
+    expect(status).toBe(0);
+    const out = readFileSync(path.join(dir, 'dot.main.asm'), 'utf8');
+    // AZM inferred a tight contract for a movement block — far tighter
+    // than any guess Glimmer could safely make.
+    expect(out).toMatch(/;![^\n]*clobbers[^\n]*\n@Glim_MoveUp:/);
   });
 });
 

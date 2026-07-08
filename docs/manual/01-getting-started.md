@@ -30,11 +30,13 @@ npx azm examples/counter.main.asm
 which produces Intel HEX, a flat binary, and a `.d8.json` Debug80 map, so
 the program can run and be debugged source-level in Debug80.
 
-To check register contracts on the generated program, `--rc audit`,
-`--rc warn`, and `--rc error` work as-is. Full `--rc strict` checking
-needs AZM's monitor profile, because the program calls MON-3 through
-`RST $10`: `azm --rc strict --reg-profile mon3 <file>` — the generated
-file's header carries this reminder.
+The `;!` comments above each routine are register contracts — each
+routine's true register effects, inferred and injected by AZM as part
+of the Glimmer build (the same checking Debug80 applies). Contract
+errors in your blocks fail the build with the offending call site
+named. Full `--rc strict` checking uses AZM's monitor profile, because
+the program calls MON-3 through `RST $10`:
+`azm --rc strict --reg-profile mon3 <file>`.
 
 ## Your first program
 

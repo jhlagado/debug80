@@ -217,12 +217,14 @@ Tetro in Glimmer is the acceptance test.
 **Register contracts.** AZM formalizes register interfaces (`;!` in/
 out/clobbers/preserves on `@` routine boundaries) and proves callers
 against them — catching clobbered-loop-counter bugs at assemble time.
-Glimmer now leans on this: every generated routine is an `@` boundary
-with a generated contract, and output passes `--rc strict
---reg-profile mon3` (test-enforced). Next steps: pass `;!` contracts on
-`routine` blocks through from `.glim` source (the Tetro sketch already
-writes them); run `--rc audit` inside `glimmer build` and map
-diagnostics to `.glim` lines via label-anchored mapping; let profiles
+Glimmer now leans on this: every generated routine is a bare `@`
+boundary, and the CLI drives AZM with Debug80's parameters
+(`--contracts --rc error --reg-profile mon3`) so AZM infers and injects
+each routine's true contract into the generated file — Glimmer supplies
+boundaries, AZM supplies truth. Output passes `--rc strict
+--reg-profile mon3` (test-enforced). Next steps: map contract
+diagnostics to `.glim` lines via label-anchored mapping; pass `;!`
+contracts on `routine` blocks through from `.glim` source; let profiles
 ship `.asmi` interfaces for monitor APIs. The payoff for Glimmer users:
 blocks call library and monitor routines constantly, and contracts turn
 register collisions — the classic Z80 bug — into build-time errors.

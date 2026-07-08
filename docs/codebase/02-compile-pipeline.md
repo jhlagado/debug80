@@ -70,12 +70,18 @@ Notable constraints the generator honours:
   current-address operator and hex prefix, not label syntax.
 - **Fall-through bodies.** Block bodies must not `ret`; the generated
   wrapper appends `updates` change-marking and the final `ret`.
-- **Register-contract boundaries.** Every generated routine — effect
-  wrappers (`@Glim_<Effect>:`), pollers, dispatchers, cleanup — is an
-  `@` entry carrying a generated `;!` contract, so the whole output is
-  analyzable by AZM register contracts. Generated output passes
-  `--rc strict --reg-profile mon3`; the Dot round-trip test enforces
-  this.
+- **Register contracts are AZM's job.** Every generated routine is a
+  bare `@` boundary; only the profile library carries curated `;!`
+  interface seeds. After writing the file, the CLI drives the packaged
+  `azm` with Debug80's parameters (`--contracts --rc error`, plus
+  `--reg-profile mon3` for MON-3 programs): AZM infers each routine's
+  real contract and injects it into the file. `--no-check` skips the
+  step. Inferred contracts are far tighter than any safe guess (a
+  movement block is `clobbers A,F`, not "clobbers everything").
+  Annotation only inserts/updates `;!` lines adjacent to `@` labels, so
+  the label-anchored mapping contract (label -> body line offsets)
+  holds. Generated output passes `--rc strict --reg-profile mon3`;
+  round-trip tests enforce this.
 
 ## The v0.2 runtime
 

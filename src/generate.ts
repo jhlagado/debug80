@@ -165,9 +165,9 @@ export function generateAzm(
   emit('; Do not edit: regenerate from the Glimmer source.');
   if (isTec1g) {
     emit(';');
-    emit('; This program calls MON-3 through RST $10. Plain assembly and');
-    emit('; --rc audit/warn/error need no extra flags; full strict checking');
-    emit('; needs the monitor profile:  azm --rc strict --reg-profile mon3');
+    emit('; Register contracts (the ;! comments) are inferred and injected');
+    emit('; by AZM during the Glimmer build, using the same parameters');
+    emit('; Debug80 uses: --contracts --rc error --reg-profile mon3.');
   }
   emit();
   op(`.org    ${hex(org, 4)}`);
@@ -328,7 +328,6 @@ export function generateAzm(
     const effects = effectsByPhase.get(phase) ?? [];
     if (effects.length === 0) continue;
     emit(`; --- ${phase} phase dispatch ---`);
-    emit(';! clobbers A,BC,DE,HL,IX,IY');
     emit(`@__Run${capitalize(phase)}Effects:`);
     for (const effect of effects) {
       op('ld      a,(Changed0)');
@@ -343,7 +342,6 @@ export function generateAzm(
 
   if (anySameFrameRaise && (hasPhase('logic') || hasPhase('render'))) {
     emit('; --- phase boundary: deliver same-frame raises ---');
-    emit(';! clobbers A,B');
     emit('@__MergeRaised:');
     op('ld      a,(Changed0)');
     op('ld      b,a');
@@ -361,7 +359,6 @@ export function generateAzm(
   }
 
   emit('; --- frame rollover ---');
-  emit(';! clobbers A');
   emit('@__EndFrame:');
   op('xor     a');
   for (const pulse of program.pulses) {
@@ -401,7 +398,6 @@ function emitTec1gPollBindings(
   raise: (mask: string, target: string) => void,
 ): void {
   emit('; --- input polling (MON-3 _scanKeys) ---');
-  emit(';! clobbers A,BC,DE');
   emit('@__PollBindings:');
   if (program.bindings.length === 0) {
     op('ret');
@@ -474,7 +470,6 @@ function emitPollBindings(
   op: (text: string) => void,
 ): void {
   emit('; --- input polling ---');
-  emit(';! clobbers A,BC');
   emit('@__PollBindings:');
   if (program.bindings.length === 0) {
     op('ret');
@@ -518,7 +513,6 @@ function emitTickTimers(
   raise: (mask: string, target: string) => void,
 ): void {
   emit('; --- timers, ramps, frame counter ---');
-  emit(';! clobbers A,HL');
   emit('@__TickTimers:');
   if (frameCountUsed) {
     op(`ld      a,(${FRAME_COUNT})`);
@@ -598,7 +592,6 @@ function emitBlockWrapper(
   op: (text: string) => void,
 ): void {
   emit(`; --- ${effect.phase} block ${effect.name} ---`);
-  emit(';! clobbers A,BC,DE,HL,IX,IY');
   emit(`@Glim_${effect.name}:`);
   for (const line of namespaceLocalLabels(effect.body, effect.name)) {
     emit(line);
