@@ -286,9 +286,9 @@ blocks in never affects behaviour.
 
 ## Current limits
 
-This is an early alpha. The present version supports at most 8 state and
-pulse/ramp/FrameCount flag cells per program (one change-flag byte), a
-small TEC-1G matrix sound-cue backend rather than music, byte-valued curve
-tables, 1..8 by 1..8 matrix shape resources, byte arrays up to 256
-entries, and placeholder system API addresses in the generic profile. See
-the [roadmap](../roadmap.md) for what comes next.
+This is an early alpha. The present version supports at most 32 state,
+pulse, ramp, and FrameCount flag cells per program (four change-flag
+banks), a small TEC-1G matrix sound-cue backend rather than music,
+byte-valued curve tables, 1..8 by 1..8 matrix shape resources, byte
+arrays up to 256 entries, and placeholder system API addresses in the
+generic profile. See the [roadmap](../roadmap.md) for what comes next.

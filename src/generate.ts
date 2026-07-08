@@ -6,8 +6,8 @@
  * binding polling, timer/ramp ticking, phase dispatch, wrapped user
  * blocks, frame rollover, and the profile library.
  *
- * Change-flag rollover: raises go to Raised0 (visible to later phases
- * this frame, merged at phase boundaries) or Next0 (deferred to next
+ * Change-flag rollover: raises go to RaisedN (visible to later phases
+ * this frame, merged at phase boundaries) or NextN (deferred to next
  * frame) depending on whether any consumer's phase has already run —
  * computed per block at compile time, so every raise is delivered
  * exactly once and declaration order is never semantic.
@@ -38,11 +38,20 @@ export interface GenerateResult {
 
 const DEFAULT_ORG = 0x4000;
 const DEFAULT_API_BASE = 0x8000;
+const MAX_CHANGE_FLAG_BANKS = 4;
+const CHANGE_FLAGS_PER_BANK = 8;
 
 /** Placeholder system API entries for the generic profile. */
 const API_NAMES = ['API_ReadKeys', 'API_DrawChar', 'API_FlushDisplay', 'API_InitDisplay'];
 
 const PHASE_NUM: Record<string, number> = { derive: 0, logic: 1, render: 2 };
+
+interface ChangeFlagInfo {
+  bank: number;
+  bit: number;
+}
+
+type BankedMasks = Map<number, string[]>;
 
 function hex(value: number, digits: number): string {
   return `$${value.toString(16).toUpperCase().padStart(digits, '0')}`;
@@ -88,7 +97,7 @@ export function generateAzm(
   const isTec1g = program.platform === 'tec1g-mon3';
 
   // Flag-carrying cells: states, pulses, ramps, then FrameCount if any
-  // block triggers on it. One change-flag byte in v0.2: at most 8.
+  // block triggers on it. v0.3 allocates up to four 8-bit banks.
   const frameCountUsed = program.effects.some((e) => e.depends.includes(FRAME_COUNT));
   const trackedCells = [
     ...program.states.map((s) => s.name),
@@ -96,14 +105,39 @@ export function generateAzm(
     ...program.ramps.map((r) => r.name),
     ...(frameCountUsed ? [FRAME_COUNT] : []),
   ];
-  if (trackedCells.length > 8) {
+  const maxTrackedCells = MAX_CHANGE_FLAG_BANKS * CHANGE_FLAGS_PER_BANK;
+  if (trackedCells.length > maxTrackedCells) {
     diagnostics.push({
       line: 0,
-      message: `Changed0 is full: ${trackedCells.length} flag-carrying cells declared (states, pulses, ramps${frameCountUsed ? ', FrameCount' : ''}), v0 supports at most 8.`,
+      message: `Change flags are full: ${trackedCells.length} flag-carrying cells declared (states, pulses, ramps${frameCountUsed ? ', FrameCount' : ''}), v0.3 supports at most ${maxTrackedCells}.`,
     });
     return { source: '', diagnostics };
   }
-  const chgBit = new Map(trackedCells.map((name, index) => [name, index]));
+  const bankCount = Math.max(1, Math.ceil(trackedCells.length / CHANGE_FLAGS_PER_BANK));
+  const bankIndexes = Array.from({ length: bankCount }, (_, bank) => bank);
+  const chgInfo = new Map(
+    trackedCells.map((name, index): [string, ChangeFlagInfo] => [
+      name,
+      { bank: Math.floor(index / CHANGE_FLAGS_PER_BANK), bit: index % CHANGE_FLAGS_PER_BANK },
+    ]),
+  );
+  const flagInfo = (name: string): ChangeFlagInfo => chgInfo.get(name) as ChangeFlagInfo;
+  const bankLabel = (kind: 'Changed' | 'Raised' | 'Next', bank: number): string => `${kind}${bank}`;
+  const depMaskName = (effect: EffectDecl, bank: number): string =>
+    bank === 0 ? `GlimDep_${effect.name}` : `GlimDep_${effect.name}_${bank}`;
+  const groupMasksByBank = (names: string[]): BankedMasks => {
+    const grouped: BankedMasks = new Map();
+    for (const name of names) {
+      const info = chgInfo.get(name);
+      if (info === undefined) continue;
+      const masks = grouped.get(info.bank) ?? [];
+      masks.push(chgConst(name));
+      grouped.set(info.bank, masks);
+    }
+    return grouped;
+  };
+  const sortedMaskEntries = (masks: BankedMasks): Array<[number, string[]]> =>
+    [...masks.entries()].sort(([a], [b]) => a - b);
 
   // Generic profile: key bits are assigned in order of first appearance.
   const keyBit = new Map<string, number>();
@@ -133,19 +167,22 @@ export function generateAzm(
       if (prev === undefined || p < prev) minConsumerPhase.set(dep, p);
     }
   }
-  const raiseMasks = (effect: EffectDecl): { now: string[]; next: string[] } => {
+  const raiseMasks = (effect: EffectDecl): { now: BankedMasks; next: BankedMasks } => {
     const p = PHASE_NUM[effect.phase] as number;
-    const now: string[] = [];
-    const next: string[] = [];
+    const now: BankedMasks = new Map();
+    const next: BankedMasks = new Map();
     for (const target of effect.updates) {
-      if (!chgBit.has(target)) continue; // timer period cells carry no flag
+      const info = chgInfo.get(target);
+      if (info === undefined) continue; // timer period cells carry no flag
       const consumer = minConsumerPhase.get(target);
-      if (consumer !== undefined && consumer <= p) next.push(chgConst(target));
-      else now.push(chgConst(target));
+      const masks = consumer !== undefined && consumer <= p ? next : now;
+      const bankMasks = masks.get(info.bank) ?? [];
+      bankMasks.push(chgConst(target));
+      masks.set(info.bank, bankMasks);
     }
     return { now, next };
   };
-  const anySameFrameRaise = program.effects.some((e) => raiseMasks(e).now.length > 0);
+  const anySameFrameRaise = program.effects.some((e) => raiseMasks(e).now.size > 0);
 
   const effectsByPhase = new Map(
     EFFECT_PHASES.map((phase) => [phase, program.effects.filter((e) => e.phase === phase)]),
@@ -167,6 +204,10 @@ export function generateAzm(
     op(`ld      a,(${target})`);
     op(`or      ${mask}`);
     op(`ld      (${target}),a`);
+  };
+  const raiseChanged = (cellName: string): void => {
+    const info = flagInfo(cellName);
+    raise(chgConst(cellName), bankLabel('Changed', info.bank));
   };
 
   emit(`; Generated by Glimmer from program ${program.name}.`);
@@ -224,18 +265,19 @@ export function generateAzm(
   }
 
   emit('; --- change flags ---');
-  for (const [name, bit] of chgBit) {
-    emit(`${`${chgConst(name)}_BIT`.padEnd(17)} .equ ${bit}`);
+  for (const [name, info] of chgInfo) {
+    emit(`${`${chgConst(name)}_BIT`.padEnd(17)} .equ ${info.bit}`);
   }
-  for (const [name, bit] of chgBit) {
-    emit(`${chgConst(name).padEnd(17)} .equ ${bin8(1 << bit)}`);
+  for (const [name, info] of chgInfo) {
+    emit(`${chgConst(name).padEnd(17)} .equ ${bin8(1 << info.bit)}`);
   }
   emit();
 
   emit('; --- block trigger masks ---');
   for (const effect of program.effects) {
-    const mask = effect.depends.map(chgConst).join(' + ');
-    emit(`${`GlimDep_${effect.name}`.padEnd(17)} .equ ${mask}`);
+    for (const [bank, masks] of sortedMaskEntries(groupMasksByBank(effect.depends))) {
+      emit(`${depMaskName(effect, bank).padEnd(17)} .equ ${masks.join(' + ')}`);
+    }
   }
   emit();
 
@@ -273,13 +315,25 @@ export function generateAzm(
     emit(`${'Glim_HeldKey:'.padEnd(17)} .db $FF`);
     emit(`${'Glim_HeldCount:'.padEnd(17)} .db 0`);
   }
-  const initialChanged = program.states
-    .filter((state) => state.changedOnStart)
-    .map((state) => 1 << (chgBit.get(state.name) as number))
-    .reduce((acc, mask) => acc | mask, 0);
-  emit(`${'Changed0:'.padEnd(17)} .db ${bin8(initialChanged)}   ; flags dispatch tests`);
-  emit(`${'Raised0:'.padEnd(17)} .db 0   ; raises for later phases this frame`);
-  emit(`${'Next0:'.padEnd(17)} .db 0   ; raises deferred to next frame`);
+  const initialChanged = Array.from({ length: bankCount }, () => 0);
+  for (const state of program.states) {
+    if (!state.changedOnStart) continue;
+    const info = flagInfo(state.name);
+    initialChanged[info.bank] = (initialChanged[info.bank] ?? 0) | (1 << info.bit);
+  }
+  for (const bank of bankIndexes) {
+    emit(
+      `${`${bankLabel('Changed', bank)}:`.padEnd(17)} .db ${bin8(initialChanged[bank] ?? 0)}   ; flags dispatch tests`,
+    );
+  }
+  for (const bank of bankIndexes) {
+    emit(
+      `${`${bankLabel('Raised', bank)}:`.padEnd(17)} .db 0   ; raises for later phases this frame`,
+    );
+  }
+  for (const bank of bankIndexes) {
+    emit(`${`${bankLabel('Next', bank)}:`.padEnd(17)} .db 0   ; raises deferred to next frame`);
+  }
   if (isTec1g) {
     emit(`${'Framebuffer:'.padEnd(17)} .ds 32           ; 8 rows x R,G,B,aux`);
     emit(`${'SpeakerPort:'.padEnd(17)} .db 0`);
@@ -341,13 +395,13 @@ export function generateAzm(
   emit();
 
   if (isTec1g) {
-    emitTec1gPollBindings(program, heldBindings.length > 0, emit, op, raise);
+    emitTec1gPollBindings(program, heldBindings.length > 0, emit, op, raiseChanged);
   } else {
-    emitPollBindings(program, emit, op);
+    emitPollBindings(program, emit, op, raiseChanged);
   }
 
   if (hasTick) {
-    emitTickTimers(program, frameCountUsed, emit, op, raise);
+    emitTickTimers(program, frameCountUsed, emit, op, raiseChanged);
   }
 
   for (const phase of EFFECT_PHASES) {
@@ -356,9 +410,23 @@ export function generateAzm(
     emit(`; --- ${phase} phase dispatch ---`);
     emit(`@__Run${capitalize(phase)}Effects:`);
     for (const effect of effects) {
-      op('ld      a,(Changed0)');
-      op(`and     GlimDep_${effect.name}`);
-      op(`jr      z,GlimSkip_${effect.name}`);
+      const depMasks = sortedMaskEntries(groupMasksByBank(effect.depends));
+      if (depMasks.length === 1) {
+        const [bank] = depMasks[0] as [number, string[]];
+        op(`ld      a,(${bankLabel('Changed', bank)})`);
+        op(`and     ${depMaskName(effect, bank)}`);
+        op(`jr      z,GlimSkip_${effect.name}`);
+        op(`call    Glim_${effect.name}`);
+        emit(`GlimSkip_${effect.name}:`);
+        continue;
+      }
+      for (const [bank] of depMasks) {
+        op(`ld      a,(${bankLabel('Changed', bank)})`);
+        op(`and     ${depMaskName(effect, bank)}`);
+        op(`jr      nz,GlimRun_${effect.name}`);
+      }
+      op(`jr      GlimSkip_${effect.name}`);
+      emit(`GlimRun_${effect.name}:`);
       op(`call    Glim_${effect.name}`);
       emit(`GlimSkip_${effect.name}:`);
     }
@@ -369,13 +437,17 @@ export function generateAzm(
   if (anySameFrameRaise && (hasPhase('logic') || hasPhase('render'))) {
     emit('; --- phase boundary: deliver same-frame raises ---');
     emit('@__MergeRaised:');
-    op('ld      a,(Changed0)');
-    op('ld      b,a');
-    op('ld      a,(Raised0)');
-    op('or      b');
-    op('ld      (Changed0),a');
+    for (const bank of bankIndexes) {
+      op(`ld      a,(${bankLabel('Changed', bank)})`);
+      op('ld      b,a');
+      op(`ld      a,(${bankLabel('Raised', bank)})`);
+      op('or      b');
+      op(`ld      (${bankLabel('Changed', bank)}),a`);
+    }
     op('xor     a');
-    op('ld      (Raised0),a');
+    for (const bank of bankIndexes) {
+      op(`ld      (${bankLabel('Raised', bank)}),a`);
+    }
     op('ret');
     emit();
   }
@@ -390,11 +462,17 @@ export function generateAzm(
   for (const pulse of program.pulses) {
     op(`ld      (${pulse.name}),a`);
   }
-  op('ld      (Raised0),a');
-  op('ld      a,(Next0)            ; deferred raises become next frame');
-  op('ld      (Changed0),a');
+  for (const bank of bankIndexes) {
+    op(`ld      (${bankLabel('Raised', bank)}),a`);
+  }
+  for (const bank of bankIndexes) {
+    op(`ld      a,(${bankLabel('Next', bank)})            ; deferred raises become next frame`);
+    op(`ld      (${bankLabel('Changed', bank)}),a`);
+  }
   op('xor     a');
-  op('ld      (Next0),a');
+  for (const bank of bankIndexes) {
+    op(`ld      (${bankLabel('Next', bank)}),a`);
+  }
   op('ret');
 
   if (program.curves.length > 0) {
@@ -434,7 +512,7 @@ function emitTec1gPollBindings(
   hasHeld: boolean,
   emit: (line?: string) => void,
   op: (text: string) => void,
-  raise: (mask: string, target: string) => void,
+  raiseChanged: (cellName: string) => void,
 ): void {
   emit('; --- input polling (MON-3 _scanKeys) ---');
   emit('@__PollBindings:');
@@ -470,7 +548,7 @@ function emitTec1gPollBindings(
       op('ld      (Glim_HeldCount),a');
       op('ld      a,1');
       op(`ld      (${binding.target}),a`);
-      raise(chgConst(binding.target), 'Changed0');
+      raiseChanged(binding.target);
       op('ret');
       emit(`__HeldNext_${tag}:`);
     }
@@ -494,7 +572,7 @@ function emitTec1gPollBindings(
     }
     op('ld      a,1');
     op(`ld      (${binding.target}),a`);
-    raise(chgConst(binding.target), 'Changed0');
+    raiseChanged(binding.target);
     op('ret');
     emit(`__NewNext_${tag}:`);
   }
@@ -507,6 +585,7 @@ function emitPollBindings(
   program: GlimmerProgram,
   emit: (line?: string) => void,
   op: (text: string) => void,
+  raiseChanged: (cellName: string) => void,
 ): void {
   emit('; --- input polling ---');
   emit('@__PollBindings:');
@@ -531,9 +610,7 @@ function emitPollBindings(
     op(`jr      z,__NoPulse_${binding.target}_${binding.key}`);
     op('ld      a,1');
     op(`ld      (${binding.target}),a`);
-    op('ld      a,(Changed0)');
-    op(`or      ${chgConst(binding.target)}`);
-    op('ld      (Changed0),a');
+    raiseChanged(binding.target);
     emit(`__NoPulse_${binding.target}_${binding.key}:`);
   }
   op('ret');
@@ -549,7 +626,7 @@ function emitTickTimers(
   frameCountUsed: boolean,
   emit: (line?: string) => void,
   op: (text: string) => void,
-  raise: (mask: string, target: string) => void,
+  raiseChanged: (cellName: string) => void,
 ): void {
   emit('; --- timers, ramps, frame counter ---');
   emit('@__TickTimers:');
@@ -557,7 +634,7 @@ function emitTickTimers(
     op(`ld      a,(${FRAME_COUNT})`);
     op('inc     a');
     op(`ld      (${FRAME_COUNT}),a`);
-    raise(chgConst(FRAME_COUNT), 'Changed0');
+    raiseChanged(FRAME_COUNT);
   }
   for (const timer of program.timers) {
     const skip = `__TimerNext_${timer.name}`;
@@ -601,7 +678,7 @@ function emitTickTimers(
     }
     op('ld      a,1');
     op(`ld      (${timer.target}),a`);
-    raise(chgConst(timer.target), 'Changed0');
+    raiseChanged(timer.target);
     emit(`${skip}:`);
   }
   for (const ramp of program.ramps) {
@@ -611,13 +688,13 @@ function emitTickTimers(
     op(`jr      nc,${skip}           ; idle at terminal`);
     op('inc     a');
     op(`ld      (${ramp.name}),a`);
-    raise(chgConst(ramp.name), 'Changed0');
+    raiseChanged(ramp.name);
     op(`ld      a,(${ramp.name})`);
     op(`cp      ${ramp.steps - 1}`);
     op(`jr      nz,${skip}`);
     op('ld      a,1                  ; arrived: fire completion');
     op(`ld      (${ramp.target}),a`);
-    raise(chgConst(ramp.target), 'Changed0');
+    raiseChanged(ramp.target);
     emit(`${skip}:`);
   }
   op('ret');
@@ -626,7 +703,7 @@ function emitTickTimers(
 
 function emitBlockWrapper(
   effect: EffectDecl,
-  masks: { now: string[]; next: string[] },
+  masks: { now: BankedMasks; next: BankedMasks },
   emit: (line?: string) => void,
   op: (text: string) => void,
 ): void {
@@ -635,15 +712,15 @@ function emitBlockWrapper(
   for (const line of namespaceLocalLabels(effect.body, effect.name)) {
     emit(line);
   }
-  if (masks.now.length > 0) {
-    op('ld      a,(Raised0)          ; deliver to later phases this frame');
-    op(`or      ${masks.now.join(' + ')}`);
-    op('ld      (Raised0),a');
+  for (const [bank, bankMasks] of [...masks.now.entries()].sort(([a], [b]) => a - b)) {
+    op(`ld      a,(Raised${bank})          ; deliver to later phases this frame`);
+    op(`or      ${bankMasks.join(' + ')}`);
+    op(`ld      (Raised${bank}),a`);
   }
-  if (masks.next.length > 0) {
-    op('ld      a,(Next0)            ; a consumer already ran: defer to next frame');
-    op(`or      ${masks.next.join(' + ')}`);
-    op('ld      (Next0),a');
+  for (const [bank, bankMasks] of [...masks.next.entries()].sort(([a], [b]) => a - b)) {
+    op(`ld      a,(Next${bank})            ; a consumer already ran: defer to next frame`);
+    op(`or      ${bankMasks.join(' + ')}`);
+    op(`ld      (Next${bank}),a`);
   }
   op('ret');
   emit();

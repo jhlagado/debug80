@@ -39,12 +39,58 @@ describe('generateAzm', () => {
     expect(source).toContain('or      CHG_COUNT');
   });
 
-  it('rejects more than 8 tracked cells in v0', () => {
-    const decls = Array.from({ length: 9 }, (_, i) => `state S${i} : byte`).join('\n');
+  it('emits multiple change-flag banks', async () => {
+    const states = Array.from({ length: 9 }, (_, i) =>
+      i === 0 ? `state S${i} : byte changed` : `state S${i} : byte`,
+    ).join('\n');
+    const sourceText = [
+      'program Big',
+      states,
+      'effect TouchHigh',
+      'on S0',
+      'updates S8',
+      'begin',
+      '    ld a,1',
+      '    ld (S8),a',
+      'end',
+      'render DrawHigh',
+      'on S8',
+      'begin',
+      'end',
+    ].join('\n');
+    const { program, diagnostics: parseDiags } = parseGlimmer(sourceText);
+    expect(parseDiags).toEqual([]);
+    const { source, diagnostics } = generateAzm(program!);
+    expect(diagnostics).toEqual([]);
+    expect(source).toContain('CHG_S8_BIT        .equ 0');
+    expect(source).toContain('Changed0:         .db %00000001');
+    expect(source).toContain('Changed1:         .db %00000000');
+    expect(source).toContain('Raised1:          .db 0');
+    expect(source).toContain('Next1:            .db 0');
+    expect(source).toContain('GlimDep_DrawHigh_1 .equ CHG_S8');
+    expect(source).toContain('ld      a,(Changed1)');
+    expect(source).toContain('and     GlimDep_DrawHigh_1');
+    expect(source).toContain('ld      a,(Raised1)');
+    expect(source).toContain('or      CHG_S8');
+    expect(source).toContain('ld      (Raised1),a');
+
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-banks-'));
+    const entry = path.join(dir, 'banks.asm');
+    writeFileSync(entry, source);
+    const assembled = await compile(entry, {
+      emitBin: true,
+      emitHex: false,
+      emitD8m: false,
+    });
+    expect(assembled.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+  });
+
+  it('rejects more than 32 tracked cells', () => {
+    const decls = Array.from({ length: 33 }, (_, i) => `state S${i} : byte`).join('\n');
     const { program } = parseGlimmer(`program Big\n${decls}\n`);
     const { source, diagnostics } = generateAzm(program!);
     expect(source).toBe('');
-    expect(diagnostics[0]?.message).toContain('Changed0 is full');
+    expect(diagnostics[0]?.message).toContain('Change flags are full');
   });
 
   it('emits byte array storage as one flag-carrying cell', () => {

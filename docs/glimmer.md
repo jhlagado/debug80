@@ -332,10 +332,10 @@ matrix blank while effects run.
 ### 5.2 Change Flags
 
 Change tracking is a flag bit per cell — the mechanism known
-traditionally as dirty bits. The v0 implementation uses one change-flag
-byte, so a program declares up to eight flag-carrying cells: states,
-pulses, ramps, and `FrameCount` when used. Multiple flag bytes are a
-planned scale-up.
+traditionally as dirty bits. Glimmer allocates up to four change-flag
+bytes, so a program declares up to 32 flag-carrying cells: states,
+pulses, ramps, and `FrameCount` when used. Declaration order fills
+`Changed0`, then `Changed1`, up to `Changed3`.
 
 ```asm
 CHG_COUNT      .equ %00000001
@@ -345,8 +345,8 @@ CHG_DECPRESSED .equ %00000100
 Changed0:      .db CHG_COUNT  ; cells marked changed begin set
 ```
 
-Each effect gets a dependency mask built from its `on` list, and the phase
-dispatcher tests it:
+Each effect gets dependency masks built from its `on` list, and the phase
+dispatcher tests only the banks the effect depends on:
 
 ```asm
     ld a,(Changed0)
@@ -375,17 +375,18 @@ Glim_ApplyIncrement:
 ```
 
 The v0.2 rule is exactly-once delivery. If every consumer of an updated
-cell is in a later phase, the wrapper raises into `Raised0` and
-`__MergeRaised` makes it visible this frame. If any consumer already ran
-or is in the same phase, the wrapper raises into `Next0`; `__EndFrame`
-then makes it visible next frame. Declaration order inside a phase is
-never semantic. Comparing old and new values remains a future
-optimization.
+cell is in a later phase, the wrapper raises into that cell's `RaisedN`
+bank and `__MergeRaised` makes it visible this frame. If any consumer
+already ran or is in the same phase, the wrapper raises into that cell's
+`NextN` bank; `__EndFrame` then makes it visible next frame. Declaration
+order inside a phase is never semantic. Comparing old and new values
+remains a future optimization.
 
 ### 5.4 Frame Cleanup
 
 The generated `__EndFrame` clears pulse storage, drops consumed
-same-frame raises, rolls `Next0` into `Changed0`, and clears `Next0`.
+same-frame raises, rolls each `NextN` into its matching `ChangedN`, and
+clears `NextN`.
 A pulse lives for exactly one frame; a change triggers its dependents
 exactly once, either later in the current frame or in the next frame.
 
