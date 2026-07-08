@@ -461,6 +461,9 @@ describe('parseGlimmer', () => {
       'platform tec1g-mon3',
       'display matrix8x8',
       'state Framebuffer : byte',
+      'state Changed1 : byte',
+      'state Raised2 : byte',
+      'state Next3 : byte',
       'pulse GlimTick',
       'sound Snd_Beep len 24 div 3',
       'curve Curve_Move linear steps 8',
@@ -471,6 +474,9 @@ describe('parseGlimmer', () => {
     const { diagnostics } = parseGlimmer(source);
     const messages = diagnostics.map((d) => d.message).join('\n');
     expect(messages).toContain('Reserved name "Framebuffer"');
+    expect(messages).toContain('Reserved name "Changed1"');
+    expect(messages).toContain('Reserved name "Raised2"');
+    expect(messages).toContain('Reserved name "Next3"');
     expect(messages).toContain('Reserved name "GlimTick"');
     expect(messages).toContain('Reserved name "Snd_Beep"');
     expect(messages).toContain('Reserved name "Curve_Move"');

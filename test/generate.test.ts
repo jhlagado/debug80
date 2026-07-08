@@ -41,17 +41,29 @@ describe('generateAzm', () => {
 
   it('emits multiple change-flag banks', async () => {
     const states = Array.from({ length: 9 }, (_, i) =>
-      i === 0 ? `state S${i} : byte changed` : `state S${i} : byte`,
+      i === 8 ? `state S${i} : byte changed` : `state S${i} : byte`,
     ).join('\n');
     const sourceText = [
       'program Big',
       states,
+      'pulse Tick',
+      'pulse Late',
+      'timer Beat : byte = 2 -> Late',
+      'ramp Travel : byte steps 4 -> Late',
+      'bind key KEY_1 rising -> Tick',
       'effect TouchHigh',
-      'on S0',
+      'on S0, S8',
       'updates S8',
       'begin',
       '    ld a,1',
       '    ld (S8),a',
+      'end',
+      'compute FollowHigh',
+      'on S8',
+      'updates S0',
+      'begin',
+      '    xor a',
+      '    ld (S0),a',
       'end',
       'render DrawHigh',
       'on S8',
@@ -63,16 +75,31 @@ describe('generateAzm', () => {
     const { source, diagnostics } = generateAzm(program!);
     expect(diagnostics).toEqual([]);
     expect(source).toContain('CHG_S8_BIT        .equ 0');
-    expect(source).toContain('Changed0:         .db %00000001');
-    expect(source).toContain('Changed1:         .db %00000000');
+    expect(source).toContain('CHG_TICK_BIT      .equ 1');
+    expect(source).toContain('CHG_LATE_BIT      .equ 2');
+    expect(source).toContain('CHG_TRAVEL_BIT    .equ 3');
+    expect(source).toContain('Changed0:         .db %00000000');
+    expect(source).toContain('Changed1:         .db %00000001');
     expect(source).toContain('Raised1:          .db 0');
     expect(source).toContain('Next1:            .db 0');
+    expect(source).toContain('GlimDep_TouchHigh .equ CHG_S0');
+    expect(source).toContain('GlimDep_TouchHigh_1 .equ CHG_S8');
     expect(source).toContain('GlimDep_DrawHigh_1 .equ CHG_S8');
+    expect(source).toContain('jr      nz,GlimRun_TouchHigh');
     expect(source).toContain('ld      a,(Changed1)');
     expect(source).toContain('and     GlimDep_DrawHigh_1');
+    expect(source).toContain('ld      a,(Changed1)');
+    expect(source).toContain('or      CHG_TICK');
+    expect(source).toContain('ld      (Changed1),a');
+    expect(source).toContain('or      CHG_TRAVEL');
     expect(source).toContain('ld      a,(Raised1)');
     expect(source).toContain('or      CHG_S8');
     expect(source).toContain('ld      (Raised1),a');
+    expect(source).toContain('ld      a,(Next1)            ; a consumer already ran: defer to next frame');
+    expect(source).toContain('or      CHG_S8');
+    expect(source).toContain('ld      (Next1),a');
+    expect(source).toContain('ld      a,(Next1)            ; deferred raises become next frame');
+    expect(source).toContain('ld      (Changed1),a');
 
     const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-banks-'));
     const entry = path.join(dir, 'banks.asm');
