@@ -46,6 +46,30 @@ describe('generateAzm', () => {
     expect(source).toBe('');
     expect(diagnostics[0]?.message).toContain('Changed0 is full');
   });
+
+  it('emits byte array storage as one flag-carrying cell', () => {
+    const sourceText = [
+      'program P',
+      'state Board : byte[8] changed',
+      'pulse Tick',
+      'effect TouchBoard',
+      'on Tick',
+      'updates Board',
+      'begin',
+      '    ld hl,Board',
+      '    inc (hl)',
+      'end',
+    ].join('\n');
+    const { program, diagnostics: parseDiags } = parseGlimmer(sourceText);
+    expect(parseDiags).toEqual([]);
+    const { source, diagnostics } = generateAzm(program!);
+    expect(diagnostics).toEqual([]);
+    expect(source).toContain('CHG_BOARD_BIT     .equ 0');
+    expect(source).toContain('CHG_BOARD         .equ %00000001');
+    expect(source).toContain('Board:            .ds 8   ; byte array');
+    expect(source).toContain('Changed0:         .db %00000001');
+    expect(source).toContain('or      CHG_BOARD');
+  });
 });
 
 describe('namespaceLocalLabels', () => {
@@ -121,6 +145,7 @@ describe('tec1g-mon3 matrix8x8 profile', () => {
 
 describe('v0.2 runtime (slide example)', () => {
   const slide = readFileSync(path.join(import.meta.dirname, '../examples/slide.glim'), 'utf8');
+  const trail = readFileSync(path.join(import.meta.dirname, '../examples/trail.glim'), 'utf8');
 
   it('emits non-blocking sound cue wrappers for the matrix profile', () => {
     const sourceText = [
@@ -234,6 +259,24 @@ describe('v0.2 runtime (slide example)', () => {
     expect(result.diagnostics).toEqual([]);
     const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-slide-'));
     const entry = path.join(dir, 'slide.asm');
+    writeFileSync(entry, result.source!);
+    const assembled = await compile(entry, {
+      emitBin: true,
+      emitHex: false,
+      emitD8m: false,
+      registerContracts: 'strict',
+      registerContractsProfile: 'mon3',
+    });
+    expect(assembled.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expect(assembled.artifacts.find((a) => a.kind === 'bin')).toBeDefined();
+  });
+
+  it('generated Trail source assembles and passes strict register contracts', async () => {
+    const result = compileToAzm(trail);
+    expect(result.diagnostics).toEqual([]);
+    expect(result.source).toContain('Trail:            .ds 8   ; byte array');
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-trail-'));
+    const entry = path.join(dir, 'trail.asm');
     writeFileSync(entry, result.source!);
     const assembled = await compile(entry, {
       emitBin: true,

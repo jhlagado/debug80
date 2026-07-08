@@ -13,6 +13,8 @@ export type CellType = 'byte' | 'word';
 export interface StateDecl {
   name: string;
   type: CellType;
+  /** Present for byte arrays declared as state Name : byte[N]. */
+  length?: number;
   initial: number;
   changedOnStart: boolean;
   line: number;

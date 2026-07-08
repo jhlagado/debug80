@@ -36,6 +36,7 @@ or change purpose.
 | `counter.glim` | CounterToy from the specification, section 10 (generic profile)    |
 | `dot.glim`     | Minimal tec1g-mon3/matrix8x8 program: held-key dot, edge-clamped   |
 | `slide.glim`   | v0.2/v0.3 showcase: ramp slide, curve, shape, sound, timer blink, HUD |
+| `trail.glim`   | v0.3 byte array example: moving dot stamps an 8-row trail buffer    |
 
 The repo root also carries `debug80.json` with `dot` and `slide` targets so
 the generated `examples/*.main.asm` programs run under Debug80's TEC-1G

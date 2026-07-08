@@ -98,7 +98,10 @@ display-decl    ::= "display" display-name          ; "matrix8x8"
 
 state-decl      ::= "state" identifier ":" cell-type
                     ( "=" number )? ( "changed" )?
+                  | "state" identifier ":" array-type ( "changed" )?
 cell-type       ::= "byte" | "word"
+array-type      ::= "byte" "[" number "]"
+                  ; one change flag for the whole array; no initializer.
 
 pulse-decl      ::= "pulse" identifier
 
@@ -170,12 +173,15 @@ Semantic constraints enforced after parsing:
   global-uniqueness check remains the backstop
 - `bind` targets must be declared pulses
 - `on` names must be flag-carrying cells; `updates` names must be
-  writable runtime cells
+  writable runtime cells; a byte array is one flag-carrying cell
 - every block needs at least one `on` trigger
 - `render` blocks take no `updates`; `compute` blocks require `updates`
 - timer and ramp targets must be declared pulses; timer cells carry no
   change flag (trigger on the pulse), so they may appear in `updates`
   but not `on`; ramp cells may appear in both
+- byte array state uses `byte[N]`, where `N` is 1 to 256; arrays have no
+  initializer, word arrays are not implemented, and indexing is ordinary
+  Z80 in block bodies
 - sound cues require `platform tec1g-mon3` with `display matrix8x8`;
   `len` and `div` are byte values from 1 to 255
 - curve resources have `steps` from 2 to 256; `from` and `to` are byte

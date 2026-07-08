@@ -111,6 +111,37 @@ describe('parseGlimmer', () => {
     ).toContain('compute C must declare updates');
   });
 
+  it('parses byte array state', () => {
+    const source = ['program P', 'state Board : byte[8] changed'].join('\n');
+    const { program, diagnostics } = parseGlimmer(source);
+    expect(diagnostics).toEqual([]);
+    expect(program?.states).toEqual([
+      {
+        name: 'Board',
+        type: 'byte',
+        length: 8,
+        initial: 0,
+        changedOnStart: true,
+        line: 2,
+      },
+    ]);
+  });
+
+  it('validates byte array state semantics', () => {
+    expect(parseGlimmer('program P\nstate Board : byte[0]').diagnostics[0]?.message).toContain(
+      'State Board: array length must be between 1 and 256',
+    );
+    expect(parseGlimmer('program P\nstate Board : byte[$1G]').diagnostics[0]?.message).toContain(
+      'State Board: array length must be between 1 and 256',
+    );
+    expect(parseGlimmer('program P\nstate Words : word[4]').diagnostics[0]?.message).toContain(
+      'State Words: only byte arrays are supported',
+    );
+    expect(parseGlimmer('program P\nstate Board : byte[8] = 1').diagnostics[0]?.message).toContain(
+      'State Board: array initializers are not supported',
+    );
+  });
+
   it('reports an undeclared dependency', () => {
     const source = ['program P', 'effect E', 'phase logic', 'on Ghost', 'begin', 'ret', 'end'].join(
       '\n',
