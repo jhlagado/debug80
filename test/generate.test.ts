@@ -66,7 +66,7 @@ describe('generateAzm', () => {
     expect(diagnostics).toEqual([]);
     expect(source).toContain('CHG_BOARD_BIT     .equ 0');
     expect(source).toContain('CHG_BOARD         .equ %00000001');
-    expect(source).toContain('Board:            .ds 8   ; byte array');
+    expect(source).toContain('Board:            .ds 8, 0   ; byte array');
     expect(source).toContain('Changed0:         .db %00000001');
     expect(source).toContain('or      CHG_BOARD');
   });
@@ -274,7 +274,7 @@ describe('v0.2 runtime (slide example)', () => {
   it('generated Trail source assembles and passes strict register contracts', async () => {
     const result = compileToAzm(trail);
     expect(result.diagnostics).toEqual([]);
-    expect(result.source).toContain('Trail:            .ds 8   ; byte array');
+    expect(result.source).toContain('Trail:            .ds 8, 0   ; byte array');
     const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-trail-'));
     const entry = path.join(dir, 'trail.asm');
     writeFileSync(entry, result.source!);

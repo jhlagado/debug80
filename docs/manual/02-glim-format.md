@@ -59,7 +59,7 @@ The initial value is optional and defaults to 0. The `changed` modifier marks th
 as already changed at startup so dependent effects run on the first
 frame.
 
-`byte[N]` declares byte array state. The generator emits `.ds N`, the
+`byte[N]` declares byte array state. The generator emits `.ds N, 0`, the
 whole array has one change flag, and the array name is legal in `on` and
 `updates`. Indexing is ordinary Z80 inside blocks:
 
