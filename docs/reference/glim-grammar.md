@@ -237,6 +237,13 @@ card-decl       ::= "card" identifier
                   ; a section header with no closing keyword: the card
                   ; contains every following declaration until the next
                   ; card-decl or end of file.
+goto-clause     ::= "goto" identifier
+                  ; block header line: if this block runs, switch cards
+                  ; after its body. Unconditional once the block runs —
+                  ; conditional navigation is a state flag plus a
+                  ; header-only routing block.
+                  ; With goto (or any header-only block), the AZM body
+                  ; is optional: routing blocks close with a bare "end".
 enter-effect    ::= "enter" effect-decl
 
 rotation-decl   ::= "shape" identifier "rotations"

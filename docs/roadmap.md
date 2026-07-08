@@ -52,8 +52,9 @@ P1 platform/display declarations, P2 array state, P3 cards, P4 held
 bindings + timers, P5 routines, P6 resources, P7 word semantics,
 P8 profile services, P9 curves and ramps — are catalogued in
 `sketches/README.md` and map onto the milestones: P1/P8 land in
-v0.1–v0.2, P4 in v0.2, P2/P6/P9 in v0.3, P5 in v0.4, P3 in v0.5, and
-P7 remains future word-cell semantics work.
+v0.1–v0.2, P4 in v0.2, P2/P6/P9 in v0.3, P5 in v0.4, structured
+AZM-backed data in v0.5, P3 in v0.6, and P7 remains future word-cell
+semantics work.
 
 ## What v0 does today
 
@@ -219,10 +220,33 @@ exports so block privacy is real rather than naming-convention-deep.
 Deferred beyond v0.4: `.glim` libraries (reusable pulse/effect/resource
 kits) — they need a namespace story that `part` deliberately avoids.
 
-**v0.5 — Game profile.** Hooks and phases shaped by Tetro/Pacmo: actor
+**v0.5 — Structured data.** Byte arrays stay deliberately simple:
+`state Trail : byte[8]` is still just one flag-carrying storage block,
+emitted as initialized AZM storage. The next data step is structured
+state backed by AZM Book 0 layout types: Glimmer records/aliases should
+generate ordinary AZM `.type`, `.typealias`, typed `.ds`, `sizeof`, and
+`offset` forms rather than inventing a parallel layout system. Candidate
+syntax is intentionally deferred, but the target use cases are clear:
+actor/entity arrays, sprite attribute tables, board cells, and packed
+profile resources that Debug80 can inspect through AZM's existing symbol
+and source-map artifacts. Runtime indexing remains explicit Z80 address
+arithmetic; AZM layouts provide sizes, offsets, storage declarations, and
+debuggable structure, not hidden runtime code. This should land before
+large Tetro/Pacmo rewrites so game code does not grow a pile of manual
+offset constants.
+
+**v0.6 — Game profile.** Hooks and phases shaped by Tetro/Pacmo: actor
 update, collision, mode/card dispatch (splash/running/paused/game-over as
-first-class screens). At this point rebuilding a recognizable slice of
-Tetro in Glimmer is the acceptance test.
+first-class screens). Cards are optional sections for modal screens; only
+one card is active at a time. Navigation is a block-header consequence,
+not inline assembly: `goto Playing` sits beside `on` and `updates`, and
+means "if this block runs, switch cards after its body." Because
+`begin` marks the start of verbatim AZM, the AZM body is optional:
+header-only routing blocks close with `end` and do not need an empty
+`begin`/`end` pair. Blocks that both prepare state and navigate still use
+`begin`/`end` for the Z80 setup body, and the declared `goto` remains
+unconditional once the block runs. At this point rebuilding a recognizable
+slice of Tetro in Glimmer is the acceptance test.
 
 **Register contracts.** AZM formalizes register interfaces (`;!` in/
 out/clobbers/preserves on `@` routine boundaries) and proves callers
