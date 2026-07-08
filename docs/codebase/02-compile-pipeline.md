@@ -40,6 +40,8 @@ consumes:
   a generated `Snd_<Name>` wrapper over `SndStart`
 - `CurveDecl` — build-time byte lookup table emitted as a page-aligned
   `Curve_<Name>` data table
+- `ShapeDecl` — matrix-profile bitmap resource emitted as a `Shape_<Name>`
+  row table and drawn through `ShapeDraw`
 - `KeyBinding` — `bind key <KEY> rising -> <Pulse>` or, on TEC-1G,
   `bind key <KEY> held period <N> -> <Pulse>`
 - `EffectDecl` — the shared model for `compute`, `effect`, and `render`
@@ -76,7 +78,8 @@ profile/API equates, key constants, change-flag constants, per-block
 trigger masks, state/timer/ramp storage, the runtime loop,
 `__PollBindings`, optional `__TickTimers`, per-phase dispatch routines,
 optional `__MergeRaised`, wrapped user blocks, `__EndFrame`, generated
-curve tables, generated sound cue wrappers, and any profile library.
+curve tables, generated shape tables, generated sound cue wrappers, and
+any profile library.
 
 Notable constraints the generator honours:
 
