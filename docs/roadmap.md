@@ -195,8 +195,8 @@ pulses, ramps, then `FrameCount`) fills up to four banks
 (`Changed0`..`Changed3` plus matching `Raised` and `Next` banks), for 32
 flag-carrying cells. Remaining scale work: later tunes/LCD text/scripts,
 richer sprite/tile resources for non-matrix profiles, and word-state
-change semantics. Target example: CounterToy on real hardware ports plus
-a sprite-mover with sound and an eased slide-into-place.
+change semantics. Landed examples are `counter.glim`, `dot.glim`,
+`slide.glim`, and `trail.glim`.
 
 **v0.4 — Project structure.** Multi-file programs with merge semantics,
 not textual inclusion: the entry file declares program/platform/display
