@@ -391,8 +391,16 @@ starts simple: a debug80.json target's `sourceFile` points at the
 generated `.asm`, and Glimmer runs as a pre-build step or watch task.
 Native `.glim` targets in debug80.json — where Debug80 invokes Glimmer
 itself, as it already invokes its bundled AZM — is the eventual form of
-"Glimmer as a Debug80-native type", and Option A's `glimmer build` is
-deliberately shaped so Debug80 can call it the same way it calls AZM.
+"Glimmer as a Debug80-native type". The API for that exists (2026-07-10):
+`buildGlimmerProgram(entryPath, options)` on the `@jhlagado/glimmer/build`
+subpath runs the whole chain in process with AZM-shaped diagnostics and
+returns artifact paths — the exact mirror of the `@jhlagado/azm/compile`
+API Debug80's AzmBackend already consumes, so a GlimmerBackend is a
+sibling implementation selected by the `.glim` extension. Debug80-side
+prerequisites: bump its bundled AZM (0.2.15) to ^0.2.17 — new Glimmer
+output needs bit-index equates and routine-scoped labels to assemble —
+and add a `glim` language contribution (grammar + the `breakpoints`
+list, or breakpoints cannot be set in `.glim` files at all).
 
 ## Open questions
 

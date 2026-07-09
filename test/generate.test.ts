@@ -448,7 +448,7 @@ describe('CLI pipeline (generate + AZM contract injection)', () => {
     const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-cli-'));
     const entry = path.join(dir, 'dot.glim');
     writeFileSync(entry, readFileSync(path.join(import.meta.dirname, '../examples/dot.glim')));
-    const status = main([entry]);
+    const status = await main([entry]);
     expect(status).toBe(0);
     const out = readFileSync(path.join(dir, 'dot.main.asm'), 'utf8');
     // AZM inferred a tight contract for a movement block — far tighter

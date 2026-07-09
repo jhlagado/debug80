@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
@@ -26,7 +26,7 @@ describe('glimmer build (d8 map rewrite)', () => {
     const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-build-'));
     const entry = copyExample(dir, 'dot.glim');
 
-    const status = main(['build', entry]);
+    const status = await main(['build', entry]);
     expect(status).toBe(0);
 
     const map = readMap(dir, 'dot.main.d8.json');
@@ -57,7 +57,7 @@ describe('glimmer build (d8 map rewrite)', () => {
     copyExample(dir, 'snake-rules.glim');
     copyExample(dir, 'snake-lib.asm');
 
-    const status = main(['build', entry]);
+    const status = await main(['build', entry]);
     expect(status).toBe(0);
 
     const map = readMap(dir, 'snake.main.d8.json');
@@ -77,6 +77,61 @@ describe('glimmer build (d8 map rewrite)', () => {
     const { main } = await import('../src/cli.js');
     const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-build-nocheck-'));
     const entry = copyExample(dir, 'dot.glim');
-    expect(main(['build', '--no-check', entry])).toBe(1);
+    expect(await main(['build', '--no-check', entry])).toBe(1);
+  });
+});
+
+describe('buildGlimmerProgram (programmatic API)', () => {
+  it('builds in process and returns artifact paths, no printing needed', async () => {
+    const { buildGlimmerProgram } = await import('../src/build.js');
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-api-'));
+    const entry = copyExample(dir, 'dot.glim');
+
+    const result = await buildGlimmerProgram(entry);
+    expect(result.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+    expect(result.warnings).toEqual([]);
+    expect(result.artifacts).toBeDefined();
+    expect(result.artifacts!.asm).toBe(path.join(dir, 'dot.main.asm'));
+    expect(result.artifacts!.hex).toBe(path.join(dir, 'dot.main.hex'));
+    expect(result.artifacts!.bin).toBe(path.join(dir, 'dot.main.bin'));
+    expect(result.artifacts!.d8).toBe(path.join(dir, 'dot.main.d8.json'));
+    expect(result.mappedSegments).toBeGreaterThan(0);
+
+    // The annotated asm has injected contracts; the map matches it.
+    const asm = readFileSync(result.artifacts!.asm, 'utf8');
+    expect(asm).toContain(';!');
+    const map = readMap(dir, 'dot.main.d8.json');
+    expect(map.fileList).toContain('dot.glim');
+  });
+
+  it('stops at generation for stage generate', async () => {
+    const { buildGlimmerProgram } = await import('../src/build.js');
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-api-gen-'));
+    const entry = copyExample(dir, 'dot.glim');
+
+    const result = await buildGlimmerProgram(entry, { stage: 'generate' });
+    expect(result.artifacts).toEqual({ asm: path.join(dir, 'dot.main.asm') });
+    // AZM never ran: user blocks carry no injected contracts (the
+    // profile library's curated ;! seeds are emitted by the generator
+    // itself and are expected), and no assembly artifacts exist.
+    const asm = readFileSync(path.join(dir, 'dot.main.asm'), 'utf8');
+    expect(asm).not.toMatch(/;![^\n]*\n@Glim_/);
+    expect(existsSync(path.join(dir, 'dot.main.hex'))).toBe(false);
+    expect(existsSync(path.join(dir, 'dot.main.d8.json'))).toBe(false);
+  });
+
+  it('reports parse failures as AZM-shaped diagnostics', async () => {
+    const { buildGlimmerProgram } = await import('../src/build.js');
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-api-diag-'));
+    const entry = path.join(dir, 'bad.glim');
+    writeFileSync(entry, 'program Bad\nstate X : nonsense\n');
+
+    const result = await buildGlimmerProgram(entry);
+    expect(result.artifacts).toBeUndefined();
+    expect(result.diagnostics.length).toBeGreaterThan(0);
+    const diagnostic = result.diagnostics[0]!;
+    expect(diagnostic.severity).toBe('error');
+    expect(path.isAbsolute(diagnostic.sourceName)).toBe(true);
+    expect(diagnostic.line).toBeGreaterThan(0);
   });
 });
