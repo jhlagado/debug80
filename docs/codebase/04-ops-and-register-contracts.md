@@ -232,6 +232,11 @@ entries `AF`, `DE` and `HL`, returns `A` and carry from the banked target, and
 leaves the caller stack balanced. This is not a blanket relaxation for `RST`;
 the behavior is selected by the proven `C` service value.
 
+The same profile also models `RST $10` with `C=49` (`MON_RANDOM`) as a
+service-specific boundary that returns `A`, clobbers `B` and flags, and
+preserves the remaining general registers. That lets liveness treat the monitor
+random service as an output-producing call instead of an unknown `RST`.
+
 Project-specific service ranges are not hardwired into AZM profiles. A project
 that owns `C >= $60` expansion services should declare that range in a local
 `.asmi` interface file. For TECM8-style expansion services, the conservative
