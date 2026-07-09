@@ -13,7 +13,7 @@ It explains the repository structure, the compile pipeline, the public APIs, the
 source parser, the assembly model, the Z80 encoder, register contract analysis,
 artifact writing and the verification lanes that support the implementation.
 
-This manual is updated against the AZM codebase state through **2026-06-04**.
+This manual is updated against the AZM codebase state through **2026-07-09**.
 Use it as the map when planning changes. Use the TypeScript source and tests as
 the final authority when a detail has changed.
 

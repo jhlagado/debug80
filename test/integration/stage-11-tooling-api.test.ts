@@ -190,7 +190,7 @@ describe('stage 11 tooling API', () => {
       const module = join(dir, 'keyboard.asm');
       const fragment = join(dir, 'keyboard-private.inc');
       await writeFile(entry, '.import "keyboard.asm"\nmain:\n  call ScanMatrix\n', 'utf8');
-      await writeFile(module, '@ReadKey:\n.include "keyboard-private.inc"\n  ret\n', 'utf8');
+      await writeFile(module, '.include "keyboard-private.inc"\n@ReadKey:\n  ret\n', 'utf8');
       await writeFile(fragment, 'ScanMatrix:\n  xor a\n', 'utf8');
 
       const result = await loadProgramNext({ entryFile: entry });
@@ -448,7 +448,7 @@ describe('stage 11 tooling API', () => {
         '.org $6000\n.import "keyboard.asm"\nmain:\n  call ScanMatrix\n',
         'utf8',
       );
-      await writeFile(module, '@ReadKey:\n  ret\nScanMatrix:\n  ret\n', 'utf8');
+      await writeFile(module, 'ScanMatrix:\n  ret\n@ReadKey:\n  ret\n', 'utf8');
 
       const result = await loadProgramNext({ entryFile: entry });
       expect(result.diagnostics).toEqual([]);
@@ -476,7 +476,7 @@ describe('stage 11 tooling API', () => {
         '.org $6200\n.import "flow.asm"\nmain:\n  jp PrivateTarget\n',
         'utf8',
       );
-      await writeFile(module, '@PublicTarget:\n  ret\nPrivateTarget:\n  ret\n', 'utf8');
+      await writeFile(module, 'PrivateTarget:\n  ret\n@PublicTarget:\n  ret\n', 'utf8');
 
       const result = await loadProgramNext({ entryFile: entry });
       expect(result.diagnostics).toEqual([]);
@@ -851,8 +851,8 @@ describe('stage 11 tooling API', () => {
       const first = join(dir, 'first.asm');
       const second = join(dir, 'second.asm');
       await writeFile(entry, '.import "first.asm"\n.import "second.asm"\nmain:\n  jp Hidden\n', 'utf8');
-      await writeFile(first, '@First:\nHidden:\n  ret\n', 'utf8');
-      await writeFile(second, '@Second:\nhidden:\n  ret\n', 'utf8');
+      await writeFile(first, 'Hidden:\n  ret\n@First:\n  ret\n', 'utf8');
+      await writeFile(second, 'hidden:\n  ret\n@Second:\n  ret\n', 'utf8');
 
       const result = await loadProgramNext({ entryFile: entry });
       expect(result.diagnostics).toEqual([]);
@@ -900,7 +900,7 @@ describe('stage 11 tooling API', () => {
         '.import "module.asm"\nhidden .type\n.endtype\nmain:\n  jp Hidden\n',
         'utf8',
       );
-      await writeFile(module, '@Public:\nHidden:\n  ret\n', 'utf8');
+      await writeFile(module, 'Hidden:\n  ret\n@Public:\n  ret\n', 'utf8');
 
       const result = await loadProgramNext({ entryFile: entry });
       expect(result.diagnostics).toEqual([]);
@@ -928,7 +928,7 @@ describe('stage 11 tooling API', () => {
         '.import "module.asm"\nhidden .enum Value\nmain:\n  jp Hidden\n',
         'utf8',
       );
-      await writeFile(module, '@Public:\nHidden:\n  ret\n', 'utf8');
+      await writeFile(module, 'Hidden:\n  ret\n@Public:\n  ret\n', 'utf8');
 
       const result = await loadProgramNext({ entryFile: entry });
       expect(result.diagnostics).toEqual([]);
@@ -1014,7 +1014,7 @@ describe('stage 11 tooling API', () => {
       const entry = join(dir, 'main.asm');
       const module = join(dir, 'module.asm');
       await writeFile(entry, '.import "module.asm"\nmain:\n  .ds Hidden\n', 'utf8');
-      await writeFile(module, '@Public:\n  nop\nHidden:\n  ret\n', 'utf8');
+      await writeFile(module, 'Hidden:\n  ret\n@Public:\n  nop\n', 'utf8');
 
       const result = await loadProgramNext({ entryFile: entry });
       expect(result.diagnostics).toEqual([]);
@@ -1164,7 +1164,7 @@ describe('stage 11 tooling API', () => {
         '.import "module.asm"\nVALUE .equ Hidden\nmain:\n  .dw Hidden\n',
         'utf8',
       );
-      await writeFile(module, '@Public:\n  ret\nHidden:\n  ret\n', 'utf8');
+      await writeFile(module, 'Hidden:\n  ret\n@Public:\n  ret\n', 'utf8');
 
       const result = await loadProgramNext({ entryFile: entry });
       expect(result.diagnostics).toEqual([]);

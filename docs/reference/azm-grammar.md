@@ -543,11 +543,29 @@ The current parser deliberately rejects:
 
 Leading-dot labels such as `.loop:` are not AZM local-label syntax. AZM uses a
 leading dot for directives, so scoped private labels are expressed through
-`.import` source-unit ownership rather than dot-prefixed label spelling.
+`@` routine ownership and `.import` source-unit ownership rather than
+dot-prefixed label spelling.
 
-Imported files provide privacy through source-unit ownership: `@Name:` labels
-are public exports, while plain labels in an imported file are private to that
-source unit. Duplicate private labels are allowed across different imported
-source units; duplicates inside the same imported source unit are still
-rejected. The internal private-symbol qualification used to implement this is
-not AZM source syntax.
+Label visibility follows the `@` prefix consistently:
+
+- An `@Name:` label is a public entry: globally visible, and the boundary the
+  register-contract machinery proves interfaces on.
+- A plain label defined **after** an `@` label is local to that routine — it
+  is visible up to the next `@` label in the same source unit and invisible
+  everywhere else. Two routines may therefore each define `Loop:` without
+  colliding. A reference to another routine's local label is rejected with a
+  diagnostic suggesting `@`-exporting the label or moving it above the first
+  `@` label.
+- A plain label defined **before** a unit's first `@` label is file-level: in
+  the entry file (and its `.include`s) it is global, exactly as in programs
+  that never use `@` labels; in an `.import`ed file it is private to that
+  source unit.
+
+Duplicate routine-local labels are allowed across different routines and
+duplicate file-private labels across different imported source units;
+duplicates inside one routine or one unit's file level are still rejected.
+Shared data that several routines use belongs above the first `@` label (or
+behind an `@` export). Equates, enums, types and type aliases are not
+routine-scoped. The internal private-symbol qualification used to implement
+all of this is not AZM source syntax; ambiguous local names appear in symbol
+listings as `Routine.label`.

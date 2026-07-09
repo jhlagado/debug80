@@ -229,6 +229,16 @@ export function getRegisterContractsProfile(
     stackBalanced: true,
     hasUnknownStackEffect: false,
   };
+  const random: RoutineSummary = {
+    name: mon3ApiTargetName(49, 'RANDOM'),
+    mayRead: [],
+    mayWrite: ['A', 'B', ...FLAG_UNITS],
+    mayOutput: ['A'],
+    preserved: ['C', 'D', 'E', 'H', 'L'],
+    valueRelations: [{ out: ['A'], from: [] }],
+    stackBalanced: true,
+    hasUnknownStackEffect: false,
+  };
   const bankCall: RoutineSummary = {
     name: mon3ApiTargetName(0x53, 'BANK_CALL'),
     mayRead: ['B', 'C', 'H', 'L'],
@@ -284,6 +294,7 @@ export function getRegisterContractsProfile(
               [15, commandToLcd],
               [16, scanKeys],
               [18, matrixScan],
+              [49, random],
               [54, parseMatrixScan],
               [0x53, bankCall],
             ]),

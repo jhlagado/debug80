@@ -31,7 +31,9 @@ you need to find the owner of a behaviour quickly.
 | `assemble-program.ts` | Assembly coordinator. Builds address state, emits program image and returns assembled result data.           |
 | `address-planning.ts` | Defines labels, equates, enum members, layouts and type aliases; calculates directive and instruction sizes. |
 | `address-symbols.ts`  | Symbol-definition helpers for labels, equates and enums, including duplicate-symbol diagnostics that use display names for qualified private labels. |
-| `private-label-qualification.ts` | Rewrites imported private labels to source-unit-qualified internal names, rewrites same-unit references and maps internal symbols back to public display names. |
+| `routine-label-scopes.ts` | Routine-scope model: assigns items to privacy units and enclosing `@` routines, and computes which plain labels are routine-local. |
+| `import-visibility.ts` | Pre-assembly visibility validation: diagnostics for references to routine-local labels from outside their routine and to imported file-private labels from outside their unit. |
+| `private-label-qualification.ts` | Rewrites routine-local and imported file-private labels to scope-qualified internal names, rewrites in-scope references and maps internal symbols back to display names (`Routine.label` when ambiguous). |
 | `placement.ts`        | Tracks placement state plus origin and address movement for code and data.                                   |
 | `program-emission.ts` | Writes bytes into the emitted image and records source segments.                                             |
 | `fixup-emission.ts`   | Resolves symbolic instruction fragments such as ABS16, IMM8, REL8 and deferred CB bit opcodes.              |

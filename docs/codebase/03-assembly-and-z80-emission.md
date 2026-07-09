@@ -85,13 +85,28 @@ Enums define qualified constants. `src/assembly/address-symbols.ts` contains
 the symbol helpers that define labels, equates and enum members, enforce
 duplicate rules and record spans for diagnostics and output metadata.
 
-`src/assembly/private-label-qualification.ts` owns the imported-private label
-rewrite. It qualifies private labels with a source-unit key before address
-planning, rewrites same-unit references to those internal names and leaves
-public labels, equates, enum members, types and type aliases on their display
-names. This keeps entry-file symbols and public exports visible ahead of
-same-name imported private labels while preserving internal references inside
-each imported unit.
+`src/assembly/routine-label-scopes.ts` owns the routine-scope model shared by
+qualification and visibility validation. It assigns every source item to a
+privacy unit (an `.import`ed unit, or the root file plus its `.include`s) and
+to the enclosing `@` routine within that unit, then computes which plain
+labels are routine-local. A candidate stays unqualified — so ordinary
+duplicate-symbol diagnostics surface — when its name repeats inside one
+routine or collides with a declaration elsewhere in its own privacy unit;
+cross-unit name reuse shadows instead.
+
+`src/assembly/private-label-qualification.ts` owns both label rewrites, run in
+sequence by `assemble-program.ts`. `qualifyRoutineLocalLabels` renames
+routine-local labels with a `(unit, @routine)` key and rewrites references in
+the defining routine (exact match first, then a case-insensitive fallback that
+never captures a name resolvable outside the routine).
+`qualifyImportedPrivateLabels` then qualifies the remaining file-level labels
+of imported units with a source-unit key, rewrites same-unit references and
+leaves public labels, equates, enum members, types and type aliases on their
+display names. This keeps entry-file symbols and public exports visible ahead
+of same-name private labels while preserving internal references.
+`displaySymbolsForProgram` maps internal names back for output: unambiguous
+private labels display under their plain names, ambiguous routine-local names
+display as `Routine.label`.
 
 Record and union declarations become layout records. A record field advances the
 offset by its byte size. A union field starts at offset zero and the union size
