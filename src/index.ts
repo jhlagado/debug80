@@ -36,11 +36,16 @@ export {
 export { loadGlimmerProgram, type LoadOptions } from './load.js';
 export { generateAzm, type GenerateOptions, type GenerateResult } from './generate.js';
 export {
+  buildGlimmerProgram,
   computeBlockMappings,
   rewriteD8Map,
   type BlockLineMapping,
   type BlockMappingsResult,
+  type BuildDiagnostic,
   type D8Map,
+  type GlimmerBuildArtifacts,
+  type GlimmerBuildOptions,
+  type GlimmerBuildResult,
 } from './build.js';
 
 import type { GlimmerDiagnostic } from './model.js';

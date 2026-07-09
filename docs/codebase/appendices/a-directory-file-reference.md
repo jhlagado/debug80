@@ -21,8 +21,8 @@ or change purpose.
 | `parse.ts`    | Line-oriented `.glim` parser and reference validation                               |
 | `generate.ts` | AZM generator: equates, storage, runtime loop, polling, dispatch, wrappers, cleanup |
 | `index.ts`    | Public API: re-exports plus `compileToAzm`                                          |
-| `build.ts`    | `glimmer build` debug-map rewrite: anchors block bodies at `@Glim_*` labels, re-attributes `.d8.json` segments to `.glim` source |
-| `cli.ts`      | `glimmer <entry.glim> [-o out.asm] [--org <addr>]`; `glimmer build` adds AZM assembly + the map rewrite |
+| `build.ts`    | Programmatic build API (`@jhlagado/glimmer/build`): generate → in-process AZM contract injection/check → assemble → debug-map rewrite anchored at `@Glim_*` labels; AZM-shaped diagnostics |
+| `cli.ts`      | Thin shell over the build API: `glimmer <entry.glim>` (stage check), `glimmer build` (full artifacts + map rewrite), `--no-check` (generate only) |
 
 ## test/
 

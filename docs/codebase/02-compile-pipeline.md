@@ -17,24 +17,36 @@ compileToAzm(text)          src/index.ts
   generateAzm(program)      src/generate.ts -> AZM source | diagnostics
 ```
 
-The CLI (`src/cli.ts`) wraps `compileToAzm`, prints diagnostics as
-`file:line: message`, and writes the output next to the entry file as
-`<name>.main.asm` — Debug80's entry-point naming convention — unless
-`-o` overrides it. Unless `--no-check` is passed, the CLI then runs the
-packaged AZM CLI with contract inference enabled and writes AZM's inferred
-`;!` register contracts back into that file.
+The programmatic entry point is `buildGlimmerProgram(entryPath, options)`
+in `src/build.ts`, exported as `@jhlagado/glimmer/build`. It runs the
+whole chain in process — no child processes, no printing; artifacts are
+written to disk and everything else comes back as values, mirroring how
+Debug80 consumes AZM's `@jhlagado/azm/compile` API. Its `stage` option
+selects depth: `'generate'` writes the AZM source only; `'check'` also
+drives AZM's compile API with `fixRegisterContracts` (contract inference
+at `--rc error` strength, mon3 profile for MON-3 programs) and writes the
+returned annotated source back over the file; `'build'` (default) then
+assembles the annotated file in a second AZM pass into `.hex`, `.bin`,
+and `.d8.json` (the second pass matters — injection edits the file, so a
+map from the first pass would be offset by the injected `;!` lines) and
+rewrites the map. Diagnostics come back AZM-shaped (`severity`, absolute
+`sourceName`, `line`/`column`, `code`), Glimmer parse errors included, so
+a host reports both through one path.
 
-`glimmer build <entry.glim>` continues past generation: a second AZM pass
-assembles the annotated file into `.hex`, `.bin`, and `.d8.json` (the
-second pass matters — contract injection edits the file, so a map from
-the first pass would be offset by the injected `;!` lines), and
-`src/build.ts` then rewrites the map. `computeBlockMappings` anchors each
-block at its `@Glim_<Name>:` label in the final asm text and verifies the
-body is byte-for-byte verbatim; `rewriteD8Map` moves the matching
-segments onto the `.glim` file (entry or part, from `EffectDecl.file` and
-`bodyLine`) so Debug80 steps block bodies in Glimmer source while
-generated glue stays on the generated asm. Blocks that fail verification
-are skipped with a warning, never mapped wrongly.
+For the map rewrite, `computeBlockMappings` anchors each block at its
+`@Glim_<Name>:` label in the final asm text and verifies the body is
+byte-for-byte verbatim; `rewriteD8Map` moves the matching segments onto
+the `.glim` file (entry or part, from `EffectDecl.file` and `bodyLine`)
+so Debug80 steps block bodies in Glimmer source while generated glue
+stays on the generated asm. Blocks that fail verification are skipped
+with a warning, never mapped wrongly.
+
+The CLI (`src/cli.ts`) is a thin shell over this API: the default
+command is stage `'check'` (`--no-check` drops to `'generate'`), and
+`glimmer build` is stage `'build'`. It prints diagnostics as
+`file:line:col: [code] severity: message` and writes the output next to
+the entry file as `<name>.main.asm` — Debug80's entry-point naming
+convention — unless `-o` overrides it.
 
 ## The program model
 

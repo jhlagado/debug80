@@ -11,7 +11,14 @@
  * generated AZM for glue.
  */
 
-import type { EffectDecl } from './model.js';
+import { readFileSync, writeFileSync } from 'node:fs';
+import path from 'node:path';
+
+import { compile } from '@jhlagado/azm/compile';
+
+import type { EffectDecl, GlimmerDiagnostic, GlimmerProgram } from './model.js';
+import { generateAzm } from './generate.js';
+import { loadGlimmerProgram } from './load.js';
 
 /** One block body's position in the final (annotated) generated asm. */
 export interface BlockLineMapping {
@@ -147,4 +154,209 @@ export function rewriteD8Map(
     }
   }
   return { moved };
+}
+
+/**
+ * Diagnostic shape shared with AZM (severity, absolute sourceName,
+ * line/column) so a host like Debug80 can report Glimmer and AZM
+ * problems through one path.
+ */
+export interface BuildDiagnostic {
+  severity: 'error' | 'warning';
+  message: string;
+  /** Absolute path of the file the diagnostic points at. */
+  sourceName: string;
+  line?: number;
+  column?: number;
+  code?: string;
+}
+
+export interface GlimmerBuildOptions {
+  /** Output AZM path (default: `<entry>.main.asm` beside the entry). */
+  outputPath?: string;
+  /** Assembly origin (default $4000). */
+  org?: number;
+  /**
+   * How far to take the build:
+   * - 'generate' — write the AZM source only;
+   * - 'check' — also run AZM contract inference/checking and inject
+   *   the `;!` contracts (the plain CLI command);
+   * - 'build' (default) — also assemble `.hex`/`.bin`/`.d8.json` and
+   *   rewrite the debug map to step block bodies in `.glim` source.
+   */
+  stage?: 'generate' | 'check' | 'build';
+}
+
+export interface GlimmerBuildArtifacts {
+  asm: string;
+  hex?: string;
+  bin?: string;
+  d8?: string;
+}
+
+export interface GlimmerBuildResult {
+  diagnostics: BuildDiagnostic[];
+  /** Absolute paths of the files written; absent when the build failed. */
+  artifacts?: GlimmerBuildArtifacts;
+  /** Debug-map segments re-attributed to `.glim` source. */
+  mappedSegments?: number;
+  /** Non-fatal notes (e.g. blocks the map rewrite skipped). */
+  warnings: string[];
+}
+
+function hasErrors(diagnostics: readonly BuildDiagnostic[]): boolean {
+  return diagnostics.some((diagnostic) => diagnostic.severity === 'error');
+}
+
+function fromGlimmerDiagnostics(
+  diagnostics: readonly GlimmerDiagnostic[],
+  entryPath: string,
+): BuildDiagnostic[] {
+  const entryDir = path.dirname(entryPath);
+  return diagnostics.map((diagnostic) => ({
+    severity: 'error',
+    message: diagnostic.message,
+    sourceName:
+      diagnostic.file === undefined
+        ? path.resolve(entryPath)
+        : path.resolve(entryDir, diagnostic.file),
+    ...(diagnostic.line > 0 ? { line: diagnostic.line } : {}),
+    code: 'GLIM',
+  }));
+}
+
+interface AzmDiagnosticLike {
+  severity?: string;
+  message?: string;
+  sourceName?: string;
+  line?: number;
+  column?: number;
+  code?: string;
+}
+
+function fromAzmDiagnostics(diagnostics: readonly AzmDiagnosticLike[]): BuildDiagnostic[] {
+  return diagnostics.map((diagnostic) => ({
+    severity: diagnostic.severity === 'warning' ? 'warning' : 'error',
+    message: diagnostic.message ?? 'unknown AZM diagnostic',
+    sourceName: diagnostic.sourceName ?? '',
+    ...(diagnostic.line !== undefined ? { line: diagnostic.line } : {}),
+    ...(diagnostic.column !== undefined ? { column: diagnostic.column } : {}),
+    ...(diagnostic.code !== undefined ? { code: diagnostic.code } : {}),
+  }));
+}
+
+/**
+ * Compile a `.glim` program end to end, in process: generate AZM, have
+ * AZM infer and inject register contracts (checked at `--rc error`
+ * strength, mon3 profile for MON-3 programs), assemble the annotated
+ * file to `.hex`/`.bin`/`.d8.json`, and rewrite the debug map so block
+ * bodies step in `.glim` source.
+ *
+ * This is the API a host (the CLI, Debug80) calls — it writes the
+ * artifact files but never prints; all reporting comes back as values.
+ */
+export async function buildGlimmerProgram(
+  entryPath: string,
+  options: GlimmerBuildOptions = {},
+): Promise<GlimmerBuildResult> {
+  const warnings: string[] = [];
+
+  const loaded = loadGlimmerProgram(entryPath);
+  if (loaded.program === null) {
+    return { diagnostics: fromGlimmerDiagnostics(loaded.diagnostics, entryPath), warnings };
+  }
+  const program: GlimmerProgram = loaded.program;
+
+  const generated = generateAzm(program, options.org === undefined ? {} : { org: options.org });
+  if (generated.diagnostics.length > 0) {
+    return { diagnostics: fromGlimmerDiagnostics(generated.diagnostics, entryPath), warnings };
+  }
+
+  const asmPath = path.resolve(
+    options.outputPath ??
+      path.join(
+        path.dirname(entryPath),
+        `${path.basename(entryPath, path.extname(entryPath))}.main.asm`,
+      ),
+  );
+  writeFileSync(asmPath, generated.source);
+  const stage = options.stage ?? 'build';
+  if (stage === 'generate') {
+    return { diagnostics: [], artifacts: { asm: asmPath }, warnings };
+  }
+
+  // Pass 1: contract inference + checking; AZM returns the annotated
+  // source as an artifact and we write it back over the generated file.
+  const isTec1g = program.platform === 'tec1g-mon3';
+  const checked = await compile(asmPath, {
+    registerContracts: 'error',
+    fixRegisterContracts: true,
+    ...(isTec1g ? { registerContractsProfile: 'mon3' } : {}),
+    skipAssembly: true,
+  });
+  const checkDiagnostics = fromAzmDiagnostics(checked.diagnostics);
+  if (hasErrors(checkDiagnostics)) {
+    return { diagnostics: checkDiagnostics, warnings };
+  }
+  for (const artifact of checked.artifacts) {
+    if (artifact.kind === 'register-contracts-annotations') {
+      for (const file of artifact.files) {
+        writeFileSync(file.path, file.text);
+      }
+    }
+  }
+  if (stage === 'check') {
+    return { diagnostics: checkDiagnostics, artifacts: { asm: asmPath }, warnings };
+  }
+
+  // Pass 2: assemble the annotated file. A separate pass matters —
+  // injection changed the file, and the map's line numbers must agree
+  // with the file as it now stands on disk.
+  const base = asmPath.replace(/\.asm$/, '');
+  const hexPath = `${base}.hex`;
+  const binPath = `${base}.bin`;
+  const d8Path = `${base}.d8.json`;
+  const assembled = await compile(asmPath, {
+    outputType: 'hex',
+    emitHex: true,
+    emitBin: true,
+    emitD8m: true,
+    d8mInputs: { hex: path.basename(hexPath), bin: path.basename(binPath) },
+  });
+  const diagnostics = [...checkDiagnostics, ...fromAzmDiagnostics(assembled.diagnostics)];
+  if (hasErrors(diagnostics)) {
+    return { diagnostics, warnings };
+  }
+
+  // Rewrite the map against the annotated asm, then write everything.
+  const asmText = readFileSync(asmPath, 'utf8');
+  const entryDir = path.dirname(entryPath);
+  const outDir = path.dirname(asmPath);
+  const entryBase = path.basename(entryPath);
+  const mappingsResult = computeBlockMappings(
+    asmText,
+    program.effects,
+    entryBase,
+    (declared) => path.relative(outDir, path.resolve(entryDir, declared ?? entryBase)) || entryBase,
+  );
+  warnings.push(...mappingsResult.warnings);
+
+  let mappedSegments = 0;
+  const artifacts: GlimmerBuildArtifacts = { asm: asmPath };
+  for (const artifact of assembled.artifacts) {
+    if (artifact.kind === 'hex') {
+      writeFileSync(hexPath, artifact.text);
+      artifacts.hex = hexPath;
+    } else if (artifact.kind === 'bin') {
+      writeFileSync(binPath, artifact.bytes);
+      artifacts.bin = binPath;
+    } else if (artifact.kind === 'd8m') {
+      const map = artifact.json as unknown as D8Map;
+      mappedSegments = rewriteD8Map(map, path.basename(asmPath), mappingsResult.mappings).moved;
+      writeFileSync(d8Path, `${JSON.stringify(map, null, 2)}\n`);
+      artifacts.d8 = d8Path;
+    }
+  }
+
+  return { diagnostics, artifacts, mappedSegments, warnings };
 }

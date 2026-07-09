@@ -12,6 +12,14 @@
       "types": "./dist/src/index.d.ts",
       "import": "./dist/src/index.js"
     },
+    "./build": {
+      "types": "./dist/src/build.d.ts",
+      "import": "./dist/src/build.js"
+    },
+    "./cli": {
+      "types": "./dist/src/cli.d.ts",
+      "import": "./dist/src/cli.js"
+    },
     "./package.json": "./package.json"
   },
   "types": "dist/src/index.d.ts",
