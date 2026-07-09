@@ -49,6 +49,7 @@ compile(entryFile, options, deps)
     build report, interface, inference and annotation artifacts
   assembleProgram()
     validateImportVisibility()
+    qualifyRoutineLocalLabels()
     qualifyImportedPrivateLabels()
     buildAddressState()
     resolve internal symbols
