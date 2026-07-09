@@ -4,6 +4,32 @@
 
 - None.
 
+## 0.2.17 - 2026-07-09
+
+- Made label privacy routine-scoped, consistently across the whole program:
+  a plain label defined after an `@` entry label is now local to that routine
+  (visible until the next `@` label in the same privacy unit), so two
+  routines may each define the same local label without colliding. Labels
+  before a unit's first `@` label stay file-level — global in the entry file
+  and its `.include`s, private to their source unit in `.import`ed files.
+  Programs that never use `@` labels keep the classic fully-global
+  behaviour.
+- Added a visibility diagnostic for references to another routine's local
+  label, suggesting `@`-exporting the label or moving it above the first `@`
+  label.
+- Ambiguous routine-local names now appear in symbol tables and Debug80 maps
+  as `Routine.label`; unambiguous locals keep their plain display names.
+- Added the MON-3 `_random` API (RST $10, C=49) to the mon3
+  register-contract profile: outputs A, clobbers B and flags, preserves the
+  remaining registers.
+
+## 0.2.16 - 2026-07-06
+
+- Accepted `.equ` constants (0..7) as bit indices in `bit`/`set`/`res`.
+- Scoped imported private labels by source unit internally, so duplicate
+  private labels in different imported source units assemble without
+  colliding.
+
 ## 0.2.15 - 2026-07-02
 
 - Made `RST` selector range contracts project-configured through `.asmi`

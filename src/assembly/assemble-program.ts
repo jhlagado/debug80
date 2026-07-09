@@ -6,6 +6,7 @@ import { validateImportVisibility } from './import-visibility.js';
 import {
   displaySymbolsForProgram,
   qualifyImportedPrivateLabels,
+  qualifyRoutineLocalLabels,
 } from './private-label-qualification.js';
 import { emitProgramImage } from './program-emission.js';
 
@@ -41,7 +42,7 @@ export function assembleProgram(items: readonly SourceItem[]): AssemblyResult {
     return emptyAssemblyResult(diagnostics);
   }
 
-  const assemblyItems = qualifyImportedPrivateLabels(items);
+  const assemblyItems = qualifyImportedPrivateLabels(qualifyRoutineLocalLabels(items));
 
   const addressState = buildAddressState(assemblyItems, diagnostics);
   if (diagnostics.length > 0) {

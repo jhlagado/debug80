@@ -454,7 +454,7 @@ describe('register-contracts integration', () => {
       ['.import "keyboard.asm"', '@START:', '    call ScanMatrix', '    ret', '.end'].join('\n'),
       'utf8',
     );
-    writeFileSync(module, ['@ReadKey:', '    ret', 'ScanMatrix:', '    ret'].join('\n'), 'utf8');
+    writeFileSync(module, ['ScanMatrix:', '    ret', '@ReadKey:', '    ret'].join('\n'), 'utf8');
 
     const res = await compileRegisterContracts(entry, {
       registerContracts: 'strict',
@@ -1697,6 +1697,63 @@ describe('register-contracts integration', () => {
     });
 
     expectNoErrorDiagnostics(res);
+  });
+
+  it('uses the MON-3 API_RANDOM RST service as an output boundary', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'azm-regcontracts-mon3-random-'));
+    const entry = join(dir, 'main.asm');
+    writeFileSync(
+      entry,
+      [
+        'API_RANDOM .equ 49',
+        'START:',
+        '    ld c,API_RANDOM',
+        '    rst $10',
+        '    ld e,a',
+        '    ret',
+        '.end',
+      ].join('\n'),
+      'utf8',
+    );
+
+    const res = await compileRegisterContracts(entry, {
+      registerContracts: 'error',
+      registerContractsProfile: 'mon3',
+    });
+
+    expectNoErrorDiagnostics(res);
+  });
+
+  it('treats B as clobbered by the MON-3 API_RANDOM RST service', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'azm-regcontracts-mon3-random-clobber-'));
+    const entry = join(dir, 'main.asm');
+    writeFileSync(
+      entry,
+      [
+        'START:',
+        '    ld b,7',
+        '    ld c,49',
+        '    rst $10',
+        '    push bc',
+        '    pop de',
+        '    ret',
+        '.end',
+      ].join('\n'),
+      'utf8',
+    );
+
+    const res = await compileRegisterContracts(entry, {
+      registerContracts: 'error',
+      registerContractsProfile: 'mon3',
+    });
+
+    expect(res.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: 'AZMN_REGISTER_CONTRACTS',
+        severity: 'error',
+        message: expect.stringContaining('may modify B, but the pre-call value is used later'),
+      }),
+    );
   });
 
   it('matches MON-3 API_SCANKEYS service names without requiring underscore spelling', async () => {

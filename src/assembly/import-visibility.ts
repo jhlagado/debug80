@@ -4,11 +4,20 @@ import type { DataValue, Instruction, SourceItem } from '../model/source-item.js
 import type { SourceSpan } from '../source/source-span.js';
 import type { Z80Operand } from '../z80/instruction.js';
 import { diagnostic } from '../semantics/diagnostics.js';
+import {
+  buildRoutineLocalLabelModel,
+  routineScopeKey,
+  type RoutineLocalLabelModel,
+  type RoutineScope,
+} from './routine-label-scopes.js';
 
 interface LabelVisibility {
   readonly name: string;
   readonly definingSourceUnit: string | undefined;
   readonly definingSourceName: string;
+  readonly unitKey: string;
+  /** Enclosing `@` routine when the label is routine-local. */
+  readonly routine: string | undefined;
   readonly public: boolean;
   readonly duplicateName: boolean;
 }
@@ -22,9 +31,10 @@ export function validateImportVisibility(
   items: readonly SourceItem[],
   diagnostics: Diagnostic[],
 ): void {
-  const symbols = collectSymbolVisibility(items);
-  for (const item of items) {
-    validateItemReferences(item, symbols, diagnostics);
+  const model = buildRoutineLocalLabelModel(items);
+  const symbols = collectSymbolVisibility(items, model);
+  for (let index = 0; index < items.length; index += 1) {
+    validateItemReferences(items[index]!, model.scopes[index]!, symbols, diagnostics);
   }
 }
 
@@ -35,7 +45,10 @@ interface SymbolVisibility {
   readonly lowerNonLabelSymbols: ReadonlySet<string>;
 }
 
-function collectSymbolVisibility(items: readonly SourceItem[]): SymbolVisibility {
+function collectSymbolVisibility(
+  items: readonly SourceItem[],
+  model: RoutineLocalLabelModel,
+): SymbolVisibility {
   const labels = new Map<string, LabelVisibility[]>();
   const exactSymbols = new Set<string>();
   const exactNonLabelSymbols = new Set<string>();
@@ -54,6 +67,8 @@ function collectSymbolVisibility(items: readonly SourceItem[]): SymbolVisibility
   for (let index = 0; index < items.length; index += 1) {
     const item = items[index]!;
     if (item.kind !== 'label') continue;
+    const scope = model.scopes[index]!;
+    const routine = item.isEntry === true ? undefined : scope.routine;
     const importedPrivate = isImportedPrivateLabel(item);
     const existing = labels.get(item.name) ?? [];
     labels.set(item.name, [
@@ -62,10 +77,15 @@ function collectSymbolVisibility(items: readonly SourceItem[]): SymbolVisibility
         name: item.name,
         definingSourceUnit: item.span.sourceUnit,
         definingSourceName: item.span.sourceName,
-        public: isPublicLabel(item, importedSourceUnits),
-        duplicateName: importedPrivate
-          ? hasSameSourceUnitLabelConflict(item, items, index)
-          : hasAddressPlanningNameConflict(item.name, symbolConflicts, items, index),
+        unitKey: scope.unitKey,
+        routine,
+        public: routine === undefined && isPublicLabel(item, importedSourceUnits),
+        duplicateName:
+          routine !== undefined
+            ? !(model.localsByScope.get(routineScopeKey(scope))?.has(item.name) ?? false)
+            : importedPrivate
+              ? hasSameSourceUnitLabelConflict(item, items, index)
+              : hasAddressPlanningNameConflict(item.name, symbolConflicts, items, index),
       },
     ]);
   }
@@ -220,41 +240,42 @@ function hasSameSourceUnitLabelConflict(
 
 function validateItemReferences(
   item: SourceItem,
+  scope: RoutineScope,
   symbols: SymbolVisibility,
   diagnostics: Diagnostic[],
 ): void {
   switch (item.kind) {
     case 'org':
-      validateExpression(item.expression, item.span, symbols, diagnostics);
+      validateExpression(item.expression, item.span, scope, symbols, diagnostics);
       return;
     case 'equ':
-      validateExpression(item.expression, item.span, symbols, diagnostics);
+      validateExpression(item.expression, item.span, scope, symbols, diagnostics);
       return;
     case 'db':
       for (const value of item.values) {
-        validateDataValue(value, item.span, symbols, diagnostics);
+        validateDataValue(value, item.span, scope, symbols, diagnostics);
       }
       return;
     case 'dw':
       for (const value of item.values) {
-        validateExpression(value, item.span, symbols, diagnostics);
+        validateExpression(value, item.span, scope, symbols, diagnostics);
       }
       return;
     case 'ds':
-      validateExpression(item.size, item.span, symbols, diagnostics);
+      validateExpression(item.size, item.span, scope, symbols, diagnostics);
       if (item.fill !== undefined) {
-        validateExpression(item.fill, item.span, symbols, diagnostics);
+        validateExpression(item.fill, item.span, scope, symbols, diagnostics);
       }
       return;
     case 'align':
-      validateExpression(item.alignment, item.span, symbols, diagnostics);
+      validateExpression(item.alignment, item.span, scope, symbols, diagnostics);
       return;
     case 'binfrom':
     case 'binto':
-      validateExpression(item.expression, item.span, symbols, diagnostics);
+      validateExpression(item.expression, item.span, scope, symbols, diagnostics);
       return;
     case 'instruction':
-      validateInstruction(item.instruction, item.span, symbols, diagnostics);
+      validateInstruction(item.instruction, item.span, scope, symbols, diagnostics);
       return;
     case 'label':
     case 'comment':
@@ -270,21 +291,23 @@ function validateItemReferences(
 function validateDataValue(
   value: DataValue,
   span: SourceSpan,
+  scope: RoutineScope,
   symbols: SymbolVisibility,
   diagnostics: Diagnostic[],
 ): void {
   if ('kind' in value && value.kind === 'string-fragment') return;
-  validateExpression(value, span, symbols, diagnostics);
+  validateExpression(value, span, scope, symbols, diagnostics);
 }
 
 function validateInstruction(
   instruction: Instruction,
   span: SourceSpan,
+  scope: RoutineScope,
   symbols: SymbolVisibility,
   diagnostics: Diagnostic[],
 ): void {
   for (const expression of instructionExpressions(instruction)) {
-    validateExpression(expression, span, symbols, diagnostics);
+    validateExpression(expression, span, scope, symbols, diagnostics);
   }
 }
 
@@ -363,26 +386,27 @@ function operandExpressions(operand: Z80Operand): readonly Expression[] {
 function validateExpression(
   expression: Expression,
   span: SourceSpan,
+  scope: RoutineScope,
   symbols: SymbolVisibility,
   diagnostics: Diagnostic[],
 ): void {
   switch (expression.kind) {
     case 'symbol':
-      validateSymbolReference(expression.name, span, symbols, diagnostics);
+      validateSymbolReference(expression.name, span, scope, symbols, diagnostics);
       return;
     case 'byte-function':
     case 'unary':
-      validateExpression(expression.expression, span, symbols, diagnostics);
+      validateExpression(expression.expression, span, scope, symbols, diagnostics);
       return;
     case 'binary':
-      validateExpression(expression.left, span, symbols, diagnostics);
-      validateExpression(expression.right, span, symbols, diagnostics);
+      validateExpression(expression.left, span, scope, symbols, diagnostics);
+      validateExpression(expression.right, span, scope, symbols, diagnostics);
       return;
     case 'layout-cast':
-      validateExpression(expression.base, span, symbols, diagnostics);
+      validateExpression(expression.base, span, scope, symbols, diagnostics);
       for (const part of expression.path) {
         if (part.kind === 'index') {
-          validateExpression(part.expression, span, symbols, diagnostics);
+          validateExpression(part.expression, span, scope, symbols, diagnostics);
         }
       }
       return;
@@ -393,7 +417,7 @@ function validateExpression(
       return;
     case 'type-size':
       if (expression.typeExpr.length === undefined) {
-        validateSymbolReference(expression.typeExpr.name, span, symbols, diagnostics);
+        validateSymbolReference(expression.typeExpr.name, span, scope, symbols, diagnostics);
       }
       return;
   }
@@ -402,11 +426,25 @@ function validateExpression(
 function validateSymbolReference(
   name: string,
   referenceSpan: SourceSpan,
+  referenceScope: RoutineScope,
   symbols: SymbolVisibility,
   diagnostics: Diagnostic[],
 ): void {
-  const label = lookupLabel(symbols, name, referenceSpan);
-  if (!label || label.duplicateName || label.public) return;
+  const label = lookupLabel(symbols, name, referenceSpan, referenceScope);
+  if (!label || label.duplicateName) return;
+  if (label.routine !== undefined) {
+    if (label.unitKey === referenceScope.unitKey && label.routine === referenceScope.routine) {
+      return;
+    }
+    diagnostics.push(
+      diagnostic(
+        referenceSpan,
+        `label "${name}" is local to routine @${label.routine} in ${label.definingSourceName}; export it with @${label.name} or move it above the first @ label`,
+      ),
+    );
+    return;
+  }
+  if (label.public) return;
   if (referenceSpan.sourceUnit === label.definingSourceUnit) return;
   diagnostics.push(
     diagnostic(
@@ -420,6 +458,7 @@ function lookupLabel(
   symbols: SymbolVisibility,
   name: string,
   referenceSpan: SourceSpan,
+  referenceScope: RoutineScope,
 ): LabelVisibility | undefined {
   if (symbols.exactNonLabelSymbols.has(name)) return undefined;
   const lowerName = name.toLowerCase();
@@ -430,16 +469,26 @@ function lookupLabel(
       candidates.push(...labels);
     }
   }
-  return preferredLabel(candidates, referenceSpan);
+  return preferredLabel(candidates, referenceSpan, referenceScope);
 }
 
 function preferredLabel(
   labels: readonly LabelVisibility[] | undefined,
   referenceSpan: SourceSpan,
+  referenceScope: RoutineScope,
 ): LabelVisibility | undefined {
   if (labels === undefined || labels.length === 0) return undefined;
   return (
-    labels.find((label) => label.definingSourceUnit === referenceSpan.sourceUnit) ??
+    labels.find(
+      (label) =>
+        label.routine !== undefined &&
+        label.unitKey === referenceScope.unitKey &&
+        label.routine === referenceScope.routine,
+    ) ??
+    labels.find(
+      (label) =>
+        label.routine === undefined && label.definingSourceUnit === referenceSpan.sourceUnit,
+    ) ??
     labels.find((label) => label.public) ??
     labels[0]
   );
