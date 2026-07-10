@@ -52,6 +52,87 @@ bind key KEY_AD rising -> RotateP
 bind key KEY_0  rising -> PauseP
 bind key KEY_GO rising -> StartP
 
+; --- pieces (corpus data.asm bitmaps, as rotational shape resources) ---
+; Declaration order is the piece index: ShapeId_PieceI = 0 .. PieceL = 6.
+
+shape PieceI color cyan
+  rot0 "..."
+       "XXX"
+  rot1 "X"
+       "X"
+       "X"
+end
+
+shape PieceO color white
+  rot0 "XX"
+       "XX"
+end
+
+shape PieceT color magenta
+  rot0 "XXX"
+       ".X."
+  rot1 "X."
+       "XX"
+       "X."
+  rot2 ".X."
+       "XXX"
+  rot3 ".X"
+       "XX"
+       ".X"
+end
+
+shape PieceS color green
+  rot0 "XX."
+       ".XX"
+  rot1 ".X"
+       "XX"
+       "X."
+  rot2 "..."
+       "XX."
+       ".XX"
+  rot3 = rot1
+end
+
+shape PieceZ color red
+  rot0 ".XX"
+       "XX."
+  rot1 "X."
+       "XX"
+       ".X"
+  rot2 "..."
+       ".XX"
+       "XX."
+  rot3 = rot1
+end
+
+shape PieceJ color blue
+  rot0 "..X"
+       "XXX"
+  rot1 "X."
+       "X."
+       "XX"
+  rot2 "..."
+       "XXX"
+       "X.."
+  rot3 "XX"
+       ".X"
+       ".X"
+end
+
+shape PieceL color yellow
+  rot0 "X.."
+       "XXX"
+  rot1 "XX"
+       "X."
+       "X."
+  rot2 "..."
+       "XXX"
+       "..X"
+  rot3 ".X"
+       ".X"
+       "XX"
+end
+
 ; --- sounds (corpus sound.asm cues) ---
 
 sound Rotate len 24  div 2

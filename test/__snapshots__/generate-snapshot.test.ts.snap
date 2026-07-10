@@ -3115,6 +3115,147 @@ SndDivCount:      .db 0
 HudScanIndex:     .db 0
 HudSegBuffer:     .ds 6
 
+; --- rotational shape resources ---
+; Table layout matches the corpus piece engine: index a shape by
+; ShapeId_<Name>, a rotation entry by id*4 + rotation.
+ShapeRot_PieceI_0:
+        .db     %00000000
+        .db     %11100000
+        .db     %00000000
+        .db     %00000000
+ShapeRot_PieceI_1:
+        .db     %10000000
+        .db     %10000000
+        .db     %10000000
+        .db     %00000000
+ShapeRot_PieceO_0:
+        .db     %11000000
+        .db     %11000000
+        .db     %00000000
+        .db     %00000000
+ShapeRot_PieceT_0:
+        .db     %11100000
+        .db     %01000000
+        .db     %00000000
+        .db     %00000000
+ShapeRot_PieceT_1:
+        .db     %10000000
+        .db     %11000000
+        .db     %10000000
+        .db     %00000000
+ShapeRot_PieceT_2:
+        .db     %01000000
+        .db     %11100000
+        .db     %00000000
+        .db     %00000000
+ShapeRot_PieceT_3:
+        .db     %01000000
+        .db     %11000000
+        .db     %01000000
+        .db     %00000000
+ShapeRot_PieceS_0:
+        .db     %11000000
+        .db     %01100000
+        .db     %00000000
+        .db     %00000000
+ShapeRot_PieceS_1:
+        .db     %01000000
+        .db     %11000000
+        .db     %10000000
+        .db     %00000000
+ShapeRot_PieceS_2:
+        .db     %00000000
+        .db     %11000000
+        .db     %01100000
+        .db     %00000000
+ShapeRot_PieceZ_0:
+        .db     %01100000
+        .db     %11000000
+        .db     %00000000
+        .db     %00000000
+ShapeRot_PieceZ_1:
+        .db     %10000000
+        .db     %11000000
+        .db     %01000000
+        .db     %00000000
+ShapeRot_PieceZ_2:
+        .db     %00000000
+        .db     %01100000
+        .db     %11000000
+        .db     %00000000
+ShapeRot_PieceJ_0:
+        .db     %00100000
+        .db     %11100000
+        .db     %00000000
+        .db     %00000000
+ShapeRot_PieceJ_1:
+        .db     %10000000
+        .db     %10000000
+        .db     %11000000
+        .db     %00000000
+ShapeRot_PieceJ_2:
+        .db     %00000000
+        .db     %11100000
+        .db     %10000000
+        .db     %00000000
+ShapeRot_PieceJ_3:
+        .db     %11000000
+        .db     %01000000
+        .db     %01000000
+        .db     %00000000
+ShapeRot_PieceL_0:
+        .db     %10000000
+        .db     %11100000
+        .db     %00000000
+        .db     %00000000
+ShapeRot_PieceL_1:
+        .db     %11000000
+        .db     %10000000
+        .db     %10000000
+        .db     %00000000
+ShapeRot_PieceL_2:
+        .db     %00000000
+        .db     %11100000
+        .db     %00100000
+        .db     %00000000
+ShapeRot_PieceL_3:
+        .db     %01000000
+        .db     %01000000
+        .db     %11000000
+        .db     %00000000
+ShapeRotPtrTable:
+        .dw     ShapeRot_PieceI_0, ShapeRot_PieceI_1, ShapeRot_PieceI_0, ShapeRot_PieceI_1
+        .dw     ShapeRot_PieceO_0, ShapeRot_PieceO_0, ShapeRot_PieceO_0, ShapeRot_PieceO_0
+        .dw     ShapeRot_PieceT_0, ShapeRot_PieceT_1, ShapeRot_PieceT_2, ShapeRot_PieceT_3
+        .dw     ShapeRot_PieceS_0, ShapeRot_PieceS_1, ShapeRot_PieceS_2, ShapeRot_PieceS_1
+        .dw     ShapeRot_PieceZ_0, ShapeRot_PieceZ_1, ShapeRot_PieceZ_2, ShapeRot_PieceZ_1
+        .dw     ShapeRot_PieceJ_0, ShapeRot_PieceJ_1, ShapeRot_PieceJ_2, ShapeRot_PieceJ_3
+        .dw     ShapeRot_PieceL_0, ShapeRot_PieceL_1, ShapeRot_PieceL_2, ShapeRot_PieceL_3
+ShapeRotRightTbl:
+        .db     2,0,2,0
+        .db     1,1,1,1
+        .db     2,1,2,1
+        .db     2,1,2,1
+        .db     2,1,2,1
+        .db     2,1,2,1
+        .db     2,1,2,1
+ShapeRotColorTbl:
+        .db     COLOR_CYAN
+        .db     COLOR_WHITE
+        .db     COLOR_MAGENTA
+        .db     COLOR_GREEN
+        .db     COLOR_RED
+        .db     COLOR_BLUE
+        .db     COLOR_YELLOW
+ShapeId_PieceI    .equ 0
+ShapeId_PieceO    .equ 1
+ShapeId_PieceT    .equ 2
+ShapeId_PieceS    .equ 3
+ShapeId_PieceZ    .equ 4
+ShapeId_PieceJ    .equ 5
+ShapeId_PieceL    .equ 6
+ShapeRotCount     .equ 7
+
 ; --- HUD data tables ---
 HudMaskTbl:
         .db     $20, $10, $08, $04, $02, $01

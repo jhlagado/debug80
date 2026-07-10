@@ -50,7 +50,7 @@ the Glimmer side is a small pass-through (header `;!` lines emitted
 above the `@` label; the sketch syntax) and lands in the next Glimmer
 release. Until then this item is parked, not dropped.
 
-## 2. Multi-rotation shapes (matrix)
+## 2. Multi-rotation shapes (matrix) — ✅ landed 2026-07-11
 
 The sketch syntax: `shape PieceT color magenta` with `rot0`..`rot3`
 row groups generates the row bitmaps, the pointer/rotation table, the
@@ -59,7 +59,12 @@ seven declarations and tetro-lib.asm loses its data section — the
 collision/lock/clear engine is what legitimately remains. Rotation
 aliases (I has two distinct rotations, O has one) come from repeating
 a `rotN` group or omitting it (omitted = same as rot0's cycle;
-settle the exact rule when writing the grammar entry).
+settle the exact rule when writing the grammar entry). As landed:
+rotations declare in order, `rotN = rotM` aliases an earlier distinct
+one, and undeclared rotations cycle (r mod declared count) — the
+generated tables reproduce the corpus piece data byte-for-byte, and
+tetro-lib.asm's data section is gone (SetCurPiece reads the generated
+ShapeRot* tables).
 
 ## 3. Sprite and tile resources (VDP)
 

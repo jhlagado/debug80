@@ -284,6 +284,33 @@ The cue uses the matrix scan service, so `len` is measured in row ticks
 for low-frequency beeps and clicks, not music. Only one cue is active at
 a time; starting a new cue replaces the current one.
 
+## shape (rotational form)
+
+```
+shape PieceS color green
+  rot0 "XX."
+       ".XX"
+  rot1 ".X"
+       "XX"
+       "X."
+  rot2 "..."
+       "XX."
+       ".XX"
+  rot3 = rot1
+end
+```
+
+`rot0`..`rot3` groups turn a shape into piece-engine data: 4-row
+bitmaps per distinct rotation, plus generated `ShapeRotPtrTable`,
+`ShapeRotRightTbl` (rightmost occupied column per rotation, for X
+bounds), `ShapeRotColorTbl`, and a `ShapeId_<Name>` equate per shape in
+declaration order — index a rotation entry by `id*4 + rotation`.
+Rotations must be declared in order; `rotN = rotM` aliases an earlier
+distinct rotation, and rotations beyond those declared cycle (the I
+piece declares two, O one). Tetro's seven pieces are the worked
+example: the tables its collision engine consumes are generated from
+these declarations, byte-for-byte the corpus data.
+
 ## curve
 
 ```
