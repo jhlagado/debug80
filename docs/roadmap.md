@@ -257,6 +257,19 @@ the remaining language milestones below (structured data, cards,
 routines), validated by `tetro.glim` as the acceptance test. Work plan:
 [plans/release-0.2.md](plans/release-0.2.md).
 
+**The second display. ✅ Landed 2026-07-10 (release 0.3 phases A-C).**
+The profile seam is extracted (src/profiles/: equates, input and
+display-service storage, data tables, loop skeleton, polling, library
+tail), gated by byte-identical output snapshots for every example.
+`display tms9918` generates the written-to loop — vblank pacing, a real
+commit phase flushing name-table (per-row dirty) and sprite-attribute
+shadows — over a VDP library built from the corpus demo idioms; MON-3
+keypad input is a module shared by both TEC-1G profiles.
+`examples/sprite-chase.glim` graduates from the sketch as the
+acceptance test. Rider: AZM diagnostics inside block/routine bodies are
+re-attributed to `.glim` lines in the build API and CLI — errors now
+land where breakpoints do.
+
 **Tetro. ✅ Landed 2026-07-10, first cut.** `examples/tetro.glim` +
 `tetro-rules.glim` (cards) + `tetro-lib.asm` (piece tables and the
 collision/lock/clear engine, adapted from corpus): pieces fall, move,
@@ -460,13 +473,21 @@ output needs bit-index equates and routine-scoped labels to assemble —
 and add a `glim` language contribution (grammar + the `breakpoints`
 list, or breakpoints cannot be set in `.glim` files at all).
 
-## Open questions
+## Open questions — answered by the second display (2026-07-10)
 
-- How does a profile parameterize the generated loop — template per
-  profile, or one loop skeleton with profile-supplied phases? (Tetro and
-  Pacmo suggest per-profile ScanFrame policies with shared primitives.)
-- Where does the boundary sit between generated glue and a static runtime
-  include shipped with the profile (ScanTick, FbSetCell, sound service are
-  library-shaped, not generated-shaped)?
-- How far should Glimmer go with generated runtime glue before moving
-  stable profile services into AZM `.import` libraries?
+- *How does a profile parameterize the generated loop?* One loop
+  skeleton with profile-supplied hooks, settled by building both
+  displays on it: the core emits `@Start`/`MainLoop`/phase calls/
+  `__EndFrame`, and the profile supplies init, the frame start (pacing
+  policy + commit + the poll call), and the frame end. The matrix's
+  scan-then-work and the VDP's wait-commit-poll both fit without
+  special cases; `commit` exists only where the profile emits it.
+- *Where is the glue/library boundary?* Settled in practice: generated
+  glue is everything derived from the program (dispatch, wrappers,
+  flags, `__Commit`'s dirty loop); the profile library is everything a
+  program merely calls (`ScanFrame`, `FbPlot`, `VdpWriteBlock`,
+  `SpriteSet`). Both are emitted into the one visible file today.
+- *When do profile services move into AZM `.import` libraries?* Still
+  open, deliberately — the emitted-library approach keeps the single
+  readable file, and module splitting stays a post-0.3 item to be
+  decided with real editor/debugging experience.

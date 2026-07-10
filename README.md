@@ -45,10 +45,18 @@ for block bodies while generated glue stays in readable AZM. The same
 pipeline is a programmatic API (`@jhlagado/glimmer/build`) shaped like
 AZM's compile API, ready for native Debug80 integration.
 
+Version 0.3.0 adds the second display: `display tms9918` (the
+TEC-Deck VDP) generates a vblank-paced loop with a commit phase that
+flushes shadow tables to VRAM — proving the profile architecture on two
+opposite display models (the matrix the CPU *is*, the VDP the CPU
+*writes to*) — and build errors inside block bodies are now reported at
+the `.glim` line, the same way breakpoints resolve there.
+
 Examples, smallest first: `counter.glim` (generic profile),
 `dot.glim`, `slide.glim`, `trail.glim` (TEC-1G matrix profile
-features), then the games — `snake.glim` and `tetro.glim`. The repo's
-`debug80.json` carries a target for each matrix example.
+features), then the games — `snake.glim`, `tetro.glim`, and
+`sprite-chase.glim` (TMS9918). The repo's `debug80.json` carries a
+target for each.
 
 ## Getting Started
 
