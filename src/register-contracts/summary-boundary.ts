@@ -51,7 +51,7 @@ function jumpBoundarySummary(
     : undefined;
 }
 
-function isExternalTailJump(
+export function isExternalTailJump(
   routine: RegisterContractsRoutine,
   item: RegisterContractsInstruction,
   effect: InstructionEffect,
@@ -60,7 +60,7 @@ function isExternalTailJump(
 } {
   return (
     effect.control.kind === 'jump' &&
-    (instructionHead(item) === 'jp' || instructionHead(item) === 'jp-cc') &&
+    ['jp', 'jp-cc', 'jr', 'jr-cc'].includes(instructionHead(item)) &&
     effect.control.target !== undefined &&
     !effect.control.target.startsWith('.') &&
     !effect.control.target.startsWith('_') &&

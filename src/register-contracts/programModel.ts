@@ -8,8 +8,11 @@ export function buildRegisterContractsProgramModel(
   items: readonly SourceItem[],
 ): RegisterContractsProgramModel {
   const constants = collectConstants(items);
-  const { routines, directCalls } = buildRoutinesAndDirectCalls(items, constants);
-  const directTailJumps = collectDirectTailJumps(items, routines);
+  const { routines, directCalls, ownedInstructionItems } = buildRoutinesAndDirectCalls(
+    items,
+    constants,
+  );
+  const directTailJumps = collectDirectTailJumps(items, routines, ownedInstructionItems);
 
   return {
     routines,

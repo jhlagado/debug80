@@ -147,6 +147,22 @@ describe('register-contracts liveness conflicts', () => {
     expectSingleConflict(conflicts, 'CLOBBER_DE', ['D', 'E']);
   });
 
+  it.each(['jp z,TAIL', 'jr z,TAIL'])(
+    'propagates conditional tail inputs through %s without comparing tail writes to fallthrough',
+    (tailJump) => {
+      const conflicts = findRegisterContractsConflicts(
+        caller(['call CLOBBER_B', tailJump, 'inc de', 'ret']),
+        new Map([
+          ['CLOBBER_B', summary('CLOBBER_B', { mayWrite: ['B'] })],
+          ['TAIL', summary('TAIL', { mayRead: ['B'], mayWrite: ['D', 'E'] })],
+        ]),
+        [],
+      );
+
+      expectSingleConflict(conflicts, 'CLOBBER_B', ['B']);
+    },
+  );
+
   it('does not treat unconditional JR as a tail-call boundary', () => {
     const conflicts = findRegisterContractsConflicts(
       caller(['ld de,$1000', 'jr HELPER', 'inc de', 'ret']),

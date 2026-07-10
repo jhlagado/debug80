@@ -19,36 +19,41 @@ export function instructionCallTarget(item: SourceItem): string | undefined {
 }
 
 function instructionTailJumpTarget(
-  item: SourceItem,
+  instruction: RegisterContractsRoutine['instructions'][number],
+  caller: RegisterContractsRoutine,
   routines: readonly RegisterContractsRoutine[],
   items: readonly SourceItem[],
-): string | undefined {
-  if (item.kind !== 'instruction') return undefined;
-  if (!isTailJumpInstruction(item.instruction)) return undefined;
-  const target = routineNameFromExpression(item.instruction.expression);
+): { target: string; targetIdentity?: string } | undefined {
+  if (!isTailJumpInstruction(instruction.instruction)) return undefined;
+  const target = routineNameFromExpression(instruction.instruction.expression);
   if (!isEligibleTailJumpTarget(target)) return undefined;
-  const span = effectiveInstructionSpan(item);
-  const routineIdentity = resolveRoutineIdentity(target, span.sourceUnit, routines);
-  if (item.instruction.mnemonic === 'jp-cc') {
-    return routineIdentity === undefined ? undefined : target;
+  const routineIdentity = resolveRoutineIdentity(target, instruction.sourceUnit, routines);
+  if (routineIdentity !== undefined && routineIdentity === caller.identity) return undefined;
+  if (
+    instruction.instruction.mnemonic === 'jp-cc' ||
+    instruction.instruction.mnemonic === 'jr-cc'
+  ) {
+    return routineIdentity === undefined ? undefined : { target, targetIdentity: routineIdentity };
   }
-  return routineIdentity !== undefined || !hasVisibleOrdinaryLabel(target, span, items, routines)
-    ? target
-    : undefined;
+  if (routineIdentity !== undefined) return { target, targetIdentity: routineIdentity };
+  return hasVisibleOrdinaryLabel(target, instruction.sourceUnit, instruction.file, items, routines)
+    ? undefined
+    : { target };
 }
 
 function hasVisibleOrdinaryLabel(
   target: string,
-  callerSpan: InstructionItem['span'],
+  callerSourceUnit: string | undefined,
+  callerFile: string,
   items: readonly SourceItem[],
   routines: readonly RegisterContractsRoutine[],
 ): boolean {
   const routineLabels = new Set(routines.flatMap((routine) => routine.entryLabels));
-  const callerUnit = callerSpan.sourceUnit ?? callerSpan.sourceName;
+  const callerUnit = callerSourceUnit ?? callerFile;
   return items.some((candidate) => {
     if (candidate.kind !== 'label' || candidate.name !== target) return false;
     if (routineLabels.has(candidate.name)) {
-      const resolved = resolveRoutineIdentity(target, callerSpan.sourceUnit, routines);
+      const resolved = resolveRoutineIdentity(target, callerSourceUnit, routines);
       if (resolved !== undefined) return false;
     }
     const candidateUnit = candidate.span.sourceUnit ?? candidate.span.sourceName;
@@ -62,9 +67,14 @@ function isTailJumpInstruction(
   instruction: Extract<SourceItem, { readonly kind: 'instruction' }>['instruction'],
 ): instruction is Extract<
   Extract<SourceItem, { readonly kind: 'instruction' }>['instruction'],
-  { readonly mnemonic: 'jp' | 'jp-cc' }
+  { readonly mnemonic: 'jp' | 'jp-cc' | 'jr' | 'jr-cc' }
 > {
-  return instruction.mnemonic === 'jp' || instruction.mnemonic === 'jp-cc';
+  return (
+    instruction.mnemonic === 'jp' ||
+    instruction.mnemonic === 'jp-cc' ||
+    instruction.mnemonic === 'jr' ||
+    instruction.mnemonic === 'jr-cc'
+  );
 }
 
 function isEligibleTailJumpTarget(target: string | undefined): target is string {
@@ -91,25 +101,66 @@ export function pushDirectBoundary(
   });
 }
 
-function effectiveInstructionSpan(item: InstructionItem): InstructionItem['span'] {
-  return item.emittedSource?.span ?? item.span;
-}
-
 export function collectDirectTailJumps(
   items: readonly SourceItem[],
   routines: readonly RegisterContractsRoutine[],
+  ownedInstructionItems: ReadonlySet<InstructionItem>,
 ): RegisterContractsDirectCall[] {
   const directTailJumps: RegisterContractsDirectCall[] = [];
 
-  for (const item of items) {
-    if (item.kind !== 'instruction') continue;
-    const target = instructionTailJumpTarget(item, routines, items);
-    if (target === undefined) continue;
-    pushDirectBoundary(directTailJumps, target, `JP ${target}`, effectiveInstructionSpan(item));
+  for (const routine of routines) {
+    for (const instruction of routine.instructions) {
+      const target = instructionTailJumpTarget(instruction, routine, routines, items);
+      if (target === undefined) continue;
+      directTailJumps.push({
+        target: target.target,
+        ...(target.targetIdentity !== undefined ? { targetIdentity: target.targetIdentity } : {}),
+        subject: `${instruction.instruction.mnemonic.startsWith('jr') ? 'JR' : 'JP'} ${target.target}`,
+        file: instruction.file,
+        line: instruction.line,
+        column: instruction.column,
+        ...(instruction.sourceUnit !== undefined ? { sourceUnit: instruction.sourceUnit } : {}),
+        ...(instruction.sourceRelation !== undefined
+          ? { sourceRelation: instruction.sourceRelation }
+          : {}),
+        ...(instruction.sourceUnitRelation !== undefined
+          ? { sourceUnitRelation: instruction.sourceUnitRelation }
+          : {}),
+      });
+    }
   }
 
-  return directTailJumps.map((boundary) => {
-    const identity = resolveRoutineIdentity(boundary.target, boundary.sourceUnit, routines);
-    return identity === undefined ? boundary : { ...boundary, targetIdentity: identity };
-  });
+  for (const item of items) {
+    if (item.kind !== 'instruction' || ownedInstructionItems.has(item)) continue;
+    if (!isTailJumpInstruction(item.instruction)) continue;
+    const target = routineNameFromExpression(item.instruction.expression);
+    if (!isEligibleTailJumpTarget(target)) continue;
+    const span = effectiveInstructionSpan(item);
+    const targetIdentity = resolveRoutineIdentity(target, span.sourceUnit, routines);
+    const conditional = item.instruction.mnemonic === 'jp-cc' || item.instruction.mnemonic === 'jr-cc';
+    if (conditional && targetIdentity === undefined) continue;
+    if (
+      targetIdentity === undefined &&
+      hasVisibleOrdinaryLabel(target, span.sourceUnit, span.sourceName, items, routines)
+    ) {
+      continue;
+    }
+    pushDirectBoundary(
+      directTailJumps,
+      target,
+      `${item.instruction.mnemonic.startsWith('jr') ? 'JR' : 'JP'} ${target}`,
+      span,
+    );
+    if (targetIdentity !== undefined) {
+      directTailJumps[directTailJumps.length - 1] = {
+        ...directTailJumps[directTailJumps.length - 1]!,
+        targetIdentity,
+      };
+    }
+  }
+  return directTailJumps;
+}
+
+function effectiveInstructionSpan(item: InstructionItem): InstructionItem['span'] {
+  return item.emittedSource?.span ?? item.span;
 }

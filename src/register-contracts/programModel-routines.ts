@@ -38,6 +38,7 @@ interface UnitRoutineState {
 export interface RoutineBuildResult {
   routines: RegisterContractsRoutine[];
   directCalls: RegisterContractsDirectCall[];
+  ownedInstructionItems: ReadonlySet<InstructionItem>;
 }
 
 function toInstruction(
@@ -194,6 +195,7 @@ export function buildRoutinesAndDirectCalls(
 ): RoutineBuildResult {
   const routines: RegisterContractsRoutine[] = [];
   const directCalls: RegisterContractsDirectCall[] = [];
+  const ownedInstructionItems = new Set<InstructionItem>();
   const states = new Map<string, UnitRoutineState>();
   let currentUnitKey: string | undefined;
 
@@ -217,16 +219,18 @@ export function buildRoutinesAndDirectCalls(
     currentUnitKey = unitKey;
     appendDirectCall(directCalls, item);
     if (state.active === undefined) continue;
+    ownedInstructionItems.add(item);
     state.active.instructions.push(toInstruction(item, state.active.labels, constants));
   }
 
   for (const state of states.values()) flushRoutine(routines, state, constants);
-  return resolveRoutineTargets(routines, directCalls);
+  return resolveRoutineTargets(routines, directCalls, ownedInstructionItems);
 }
 
 function resolveRoutineTargets(
   routines: RegisterContractsRoutine[],
   directCalls: RegisterContractsDirectCall[],
+  ownedInstructionItems: ReadonlySet<InstructionItem>,
 ): RoutineBuildResult {
   const resolvedRoutines = routines.map((routine) => ({
     ...routine,
@@ -236,21 +240,33 @@ function resolveRoutineTargets(
         target === undefined
           ? undefined
           : resolveRoutineIdentity(target, instruction.sourceUnit, routines);
-      return identity === undefined ? instruction : { ...instruction, resolvedTarget: identity };
+      const mnemonic = instruction.instruction.mnemonic;
+      const isJump =
+        mnemonic === 'jp' || mnemonic === 'jp-cc' || mnemonic === 'jr' || mnemonic === 'jr-cc';
+      return identity === undefined || (isJump && identity === routine.identity)
+        ? instruction
+        : { ...instruction, resolvedTarget: identity };
     }),
   }));
   const resolvedCalls = directCalls.map((call) => {
     const identity = resolveRoutineIdentity(call.target, call.sourceUnit, routines);
     return identity === undefined ? call : { ...call, targetIdentity: identity };
   });
-  return { routines: resolvedRoutines, directCalls: resolvedCalls };
+  return { routines: resolvedRoutines, directCalls: resolvedCalls, ownedInstructionItems };
 }
 
 function instructionCallTargetFromInstruction(
   instruction: RegisterContractsInstruction,
 ): string | undefined {
   const mnemonic = instruction.instruction.mnemonic;
-  if (mnemonic !== 'call' && mnemonic !== 'call-cc' && mnemonic !== 'jp' && mnemonic !== 'jp-cc') {
+  if (
+    mnemonic !== 'call' &&
+    mnemonic !== 'call-cc' &&
+    mnemonic !== 'jp' &&
+    mnemonic !== 'jp-cc' &&
+    mnemonic !== 'jr' &&
+    mnemonic !== 'jr-cc'
+  ) {
     return undefined;
   }
   return instruction.instruction.expression.kind === 'symbol'

@@ -21,6 +21,7 @@ import type {
 type BoundaryTarget = {
   targets: string[];
   conditional: boolean;
+  returnsToContinuation: boolean;
   subject: string;
   displayTarget?: string;
 };
@@ -46,7 +47,7 @@ function boundaryTarget(
   const item = routine.instructions[index];
   return (
     callBoundaryTarget(item, effect) ??
-    tailJumpBoundaryTarget(item, effect) ??
+    tailJumpBoundaryTarget(routine, item, effect) ??
     rstBoundaryTarget(routine, index, effect, serviceRanges)
   );
 }
@@ -59,6 +60,7 @@ function callBoundaryTarget(
     ? {
         targets: [item?.resolvedTarget ?? effect.control.target],
         conditional: effect.control.conditional,
+        returnsToContinuation: true,
         subject: `CALL ${effect.control.target}`,
         displayTarget: effect.control.target,
       }
@@ -66,19 +68,22 @@ function callBoundaryTarget(
 }
 
 function tailJumpBoundaryTarget(
+  routine: RegisterContractsRoutine,
   item: RegisterContractsInstruction | undefined,
   effect: InstructionEffect,
 ): BoundaryTarget | undefined {
-  if (!isTailJumpBoundary(item, effect)) return undefined;
+  if (!isTailJumpBoundary(routine, item, effect)) return undefined;
   return {
     targets: [item?.resolvedTarget ?? effect.control.target],
-    conditional: false,
-    subject: `JP ${effect.control.target}`,
+    conditional: effect.control.conditional,
+    returnsToContinuation: false,
+    subject: `${item?.instruction.mnemonic === 'jr' ? 'JR' : 'JP'} ${effect.control.target}`,
     displayTarget: effect.control.target,
   };
 }
 
 function isTailJumpBoundary(
+  routine: RegisterContractsRoutine,
   item: RegisterContractsInstruction | undefined,
   effect: InstructionEffect,
 ): effect is InstructionEffect & {
@@ -86,10 +91,14 @@ function isTailJumpBoundary(
 } {
   return (
     effect.control.kind === 'jump' &&
-    item?.instruction.mnemonic === 'jp' &&
-    !effect.control.conditional &&
+    (item?.instruction.mnemonic === 'jp' ||
+      item?.instruction.mnemonic === 'jp-cc' ||
+      item?.instruction.mnemonic === 'jr' ||
+      item?.instruction.mnemonic === 'jr-cc') &&
     effect.control.target !== undefined &&
-    !effect.control.target.startsWith('.')
+    !effect.control.target.startsWith('.') &&
+    !effect.control.target.startsWith('_') &&
+    !routine.labels.includes(effect.control.target)
   );
 }
 
@@ -105,6 +114,7 @@ function rstBoundaryTarget(
   return {
     targets: rstBoundaryTargets(routine, index, effect.control.vector, target, serviceRanges),
     conditional: false,
+    returnsToContinuation: true,
     subject: target,
   };
 }
@@ -357,9 +367,9 @@ export function findRegisterContractsConflicts(
     for (const unit of hintUnitsForLine(hints, item.file, item.line, item.column))
       accepted.add(unit);
     for (const unit of outputUnits(summary)) accepted.add(unit);
-    const carriers = unique(
-      summary.mayWrite.filter((unit) => liveOut[index]!.has(unit) && !accepted.has(unit)),
-    );
+    const carriers = boundary.returnsToContinuation
+      ? unique(summary.mayWrite.filter((unit) => liveOut[index]!.has(unit) && !accepted.has(unit)))
+      : [];
 
     if (carriers.length > 0) {
       conflicts.push({
@@ -431,6 +441,7 @@ function callerOutputCandidate(
   summary: RoutineSummary,
   liveAfter: ReadonlySet<RegisterContractsUnit>,
 ): RegisterContractsOutputCandidate | undefined {
+  if (!boundary.returnsToContinuation) return undefined;
   const carriers = callerOutputCandidateCarriers(summary, liveAfter);
   return carriers.length > 0
     ? {
