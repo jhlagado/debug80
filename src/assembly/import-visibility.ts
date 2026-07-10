@@ -22,6 +22,13 @@ interface LabelVisibility {
   readonly duplicateName: boolean;
 }
 
+interface DeclarationVisibility {
+  readonly name: string;
+  readonly definingSourceUnit: string | undefined;
+  readonly definingSourceName: string;
+  readonly public: boolean;
+}
+
 interface SymbolConflictIndex {
   readonly exact: ReadonlyMap<string, number>;
   readonly declarationLower: ReadonlyMap<string, number>;
@@ -40,6 +47,7 @@ export function validateImportVisibility(
 
 interface SymbolVisibility {
   readonly labels: ReadonlyMap<string, readonly LabelVisibility[]>;
+  readonly declarations: ReadonlyMap<string, readonly DeclarationVisibility[]>;
   readonly exactSymbols: ReadonlySet<string>;
   readonly exactNonLabelSymbols: ReadonlySet<string>;
   readonly lowerNonLabelSymbols: ReadonlySet<string>;
@@ -50,6 +58,7 @@ function collectSymbolVisibility(
   model: RoutineLocalLabelModel,
 ): SymbolVisibility {
   const labels = new Map<string, LabelVisibility[]>();
+  const declarations = new Map<string, DeclarationVisibility[]>();
   const exactSymbols = new Set<string>();
   const exactNonLabelSymbols = new Set<string>();
   const lowerNonLabelSymbols = new Set<string>();
@@ -68,7 +77,7 @@ function collectSymbolVisibility(
     const item = items[index]!;
     if (item.kind !== 'label') continue;
     const scope = model.scopes[index]!;
-    const routine = item.isEntry === true ? undefined : scope.routine;
+    const routine = item.name.startsWith('_') ? scope.routine : undefined;
     const importedPrivate = isImportedPrivateLabel(item);
     const existing = labels.get(item.name) ?? [];
     labels.set(item.name, [
@@ -89,7 +98,50 @@ function collectSymbolVisibility(
       },
     ]);
   }
-  return { labels, exactSymbols, exactNonLabelSymbols, lowerNonLabelSymbols };
+  for (const item of items) {
+    for (const name of declarationReferenceNames(item)) {
+      const existing = declarations.get(name) ?? [];
+      declarations.set(name, [
+        ...existing,
+        {
+          name,
+          definingSourceUnit: item.span.sourceUnit,
+          definingSourceName: item.span.sourceName,
+          public: isPublicDeclaration(item, importedSourceUnits),
+        },
+      ]);
+    }
+  }
+  return { labels, declarations, exactSymbols, exactNonLabelSymbols, lowerNonLabelSymbols };
+}
+
+function declarationReferenceNames(item: SourceItem): readonly string[] {
+  switch (item.kind) {
+    case 'equ':
+    case 'type':
+    case 'type-alias':
+      return [item.name];
+    case 'enum':
+      return [item.name, ...item.members.map((member) => `${item.name}.${member}`)];
+    default:
+      return [];
+  }
+}
+
+function isPublicDeclaration(item: SourceItem, importedSourceUnits: ReadonlySet<string>): boolean {
+  if (
+    item.kind !== 'equ' &&
+    item.kind !== 'enum' &&
+    item.kind !== 'type' &&
+    item.kind !== 'type-alias'
+  ) {
+    return false;
+  }
+  return (
+    item.isExported === true ||
+    item.span.sourceUnit === undefined ||
+    !importedSourceUnits.has(item.span.sourceUnit)
+  );
 }
 
 function buildSymbolConflictIndex(items: readonly SourceItem[]): SymbolConflictIndex {
@@ -179,10 +231,7 @@ function caseInsensitiveDeclarationName(item: SourceItem): string | undefined {
 function importedUnitNames(items: readonly SourceItem[]): ReadonlySet<string> {
   const units = new Set<string>();
   for (const item of items) {
-    if (
-      item.span.sourceUnitRelation === 'import' &&
-      item.span.sourceUnit !== undefined
-    ) {
+    if (item.span.sourceUnitRelation === 'import' && item.span.sourceUnit !== undefined) {
       units.add(item.span.sourceUnit);
     }
   }
@@ -194,17 +243,15 @@ function isPublicLabel(
   importedSourceUnits: ReadonlySet<string>,
 ): boolean {
   return (
-    item.isEntry === true ||
+    item.isExported === true ||
     item.span.sourceUnit === undefined ||
     !importedSourceUnits.has(item.span.sourceUnit)
   );
 }
 
-function isImportedPrivateLabel(
-  item: Extract<SourceItem, { readonly kind: 'label' }>,
-): boolean {
+function isImportedPrivateLabel(item: Extract<SourceItem, { readonly kind: 'label' }>): boolean {
   return (
-    item.isEntry !== true &&
+    item.isExported !== true &&
     item.span.sourceUnitRelation === 'import' &&
     item.span.sourceUnit !== undefined
   );
@@ -278,6 +325,10 @@ function validateItemReferences(
       validateInstruction(item.instruction, item.span, scope, symbols, diagnostics);
       return;
     case 'label':
+    case 'routine':
+    case 'contracts-policy':
+    case 'rc-ignore':
+    case 'expect-out':
     case 'comment':
     case 'end':
     case 'enum':
@@ -403,6 +454,7 @@ function validateExpression(
       validateExpression(expression.right, span, scope, symbols, diagnostics);
       return;
     case 'layout-cast':
+      validateTypeReference(expression.typeExpr, span, symbols, diagnostics);
       validateExpression(expression.base, span, scope, symbols, diagnostics);
       for (const part of expression.path) {
         if (part.kind === 'index') {
@@ -412,8 +464,10 @@ function validateExpression(
       return;
     case 'number':
     case 'current-location':
+      return;
     case 'sizeof':
     case 'offset':
+      validateTypeReference(expression.typeExpr, span, symbols, diagnostics);
       return;
     case 'type-size':
       if (expression.typeExpr.length === undefined) {
@@ -421,6 +475,20 @@ function validateExpression(
       }
       return;
   }
+}
+
+function validateTypeReference(
+  typeExpr: import('../model/expression.js').TypeExpr,
+  span: SourceSpan,
+  symbols: SymbolVisibility,
+  diagnostics: Diagnostic[],
+): void {
+  if (isBuiltinTypeName(typeExpr.name)) return;
+  validateDeclarationReference(typeExpr.name, span, symbols, diagnostics);
+}
+
+function isBuiltinTypeName(name: string): boolean {
+  return /^(?:byte|word|addr)$/iu.test(name);
 }
 
 function validateSymbolReference(
@@ -431,7 +499,11 @@ function validateSymbolReference(
   diagnostics: Diagnostic[],
 ): void {
   const label = lookupLabel(symbols, name, referenceSpan, referenceScope);
-  if (!label || label.duplicateName) return;
+  if (!label) {
+    validateDeclarationReference(name, referenceSpan, symbols, diagnostics);
+    return;
+  }
+  if (label.duplicateName) return;
   if (label.routine !== undefined) {
     if (label.unitKey === referenceScope.unitKey && label.routine === referenceScope.routine) {
       return;
@@ -439,7 +511,7 @@ function validateSymbolReference(
     diagnostics.push(
       diagnostic(
         referenceSpan,
-        `label "${name}" is local to routine @${label.routine} in ${label.definingSourceName}; export it with @${label.name} or move it above the first @ label`,
+        `local symbol "${name}" belongs to ${label.routine} in ${label.definingSourceName}`,
       ),
     );
     return;
@@ -454,6 +526,24 @@ function validateSymbolReference(
   );
 }
 
+function validateDeclarationReference(
+  name: string,
+  referenceSpan: SourceSpan,
+  symbols: SymbolVisibility,
+  diagnostics: Diagnostic[],
+): void {
+  const candidates = symbols.declarations.get(name);
+  if (candidates === undefined || candidates.length !== 1) return;
+  const declaration = candidates[0]!;
+  if (declaration.public || referenceSpan.sourceUnit === declaration.definingSourceUnit) return;
+  diagnostics.push(
+    diagnostic(
+      referenceSpan,
+      `symbol "${name}" is private to ${declaration.definingSourceName}; export it with @${declaration.name} or keep the reference inside that source unit`,
+    ),
+  );
+}
+
 function lookupLabel(
   symbols: SymbolVisibility,
   name: string,
@@ -461,14 +551,7 @@ function lookupLabel(
   referenceScope: RoutineScope,
 ): LabelVisibility | undefined {
   if (symbols.exactNonLabelSymbols.has(name)) return undefined;
-  const lowerName = name.toLowerCase();
-  if (symbols.lowerNonLabelSymbols.has(lowerName)) return undefined;
   const candidates = [...(symbols.labels.get(name) ?? [])];
-  for (const [key, labels] of symbols.labels) {
-    if (key !== name && key.toLowerCase() === lowerName) {
-      candidates.push(...labels);
-    }
-  }
   return preferredLabel(candidates, referenceSpan, referenceScope);
 }
 

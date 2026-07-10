@@ -6,9 +6,10 @@ import type {
 } from './types.js';
 import { applyRoutineContract, inferRoutineSummary } from './summary.js';
 
-function emptyRoutineSummary(name: string): RoutineSummary {
+function emptyRoutineSummary(name: string, identity = name): RoutineSummary {
   return {
     name,
+    identity,
     mayRead: [],
     mayWrite: [],
     preserved: [],
@@ -34,6 +35,8 @@ function contractForRoutine(
   routine: RegisterContractsRoutine,
   contracts: Map<string, RoutineContract>,
 ): RoutineContract | undefined {
+  const direct = contracts.get(routine.identity ?? routine.name);
+  if (direct !== undefined) return direct;
   return boundaryLabels(routine)
     .map((label) => contracts.get(label))
     .find((contract) => contract !== undefined);
@@ -60,12 +63,17 @@ function buildBoundarySummaryMap(
 ): Map<string, RoutineSummary> {
   const boundarySummaryMap = new Map(profileSummaries.map((summary) => [summary.name, summary]));
   for (const summary of summaries) {
-    boundarySummaryMap.set(summary.name, summary);
+    boundarySummaryMap.set(summary.identity ?? summary.name, summary);
+    if (summary.identity === undefined || summary.identity === summary.name) {
+      boundarySummaryMap.set(summary.name, summary);
+    }
   }
   for (const { routine, summary } of routineSummaries) {
-    for (const label of boundaryLabels(routine)) {
-      boundarySummaryMap.set(label, summary);
+    boundarySummaryMap.set(routine.identity ?? routine.name, summary);
+    if (routine.span.sourceUnitRelation !== 'import') {
+      for (const label of boundaryLabels(routine)) boundarySummaryMap.set(label, summary);
     }
+    for (const label of routine.exportedEntryLabels ?? []) boundarySummaryMap.set(label, summary);
   }
   return boundarySummaryMap;
 }
@@ -75,10 +83,12 @@ function buildOptimisticInternalBoundarySummaryMap(
 ): Map<string, RoutineSummary> {
   const out = new Map<string, RoutineSummary>();
   for (const routine of routines) {
-    const summary = emptyRoutineSummary(routine.name);
-    for (const label of boundaryLabels(routine)) {
-      out.set(label, summary);
+    const summary = emptyRoutineSummary(routine.name, routine.identity ?? routine.name);
+    out.set(routine.identity ?? routine.name, summary);
+    if (routine.span.sourceUnitRelation !== 'import') {
+      for (const label of boundaryLabels(routine)) out.set(label, summary);
     }
+    for (const label of routine.exportedEntryLabels ?? []) out.set(label, summary);
   }
   return out;
 }
@@ -106,6 +116,7 @@ function summaryFingerprint(summary: RoutineSummary): string {
     .sort();
   return JSON.stringify({
     name: summary.name,
+    identity: summary.identity,
     mayRead: sortedUnique(summary.mayRead),
     mayWrite: sortedUnique(summary.mayWrite),
     preserved: sortedUnique(summary.preserved),

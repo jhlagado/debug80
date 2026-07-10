@@ -3,16 +3,16 @@ export const LABEL_NAME_PATTERN = '[A-Za-z_.$?][A-Za-z0-9_.$?]*';
 
 const IDENTIFIER_RE = new RegExp(`^${IDENTIFIER_PATTERN}$`);
 const LABEL_NAME_RE = new RegExp(`^${LABEL_NAME_PATTERN}$`);
-const ENTRY_LABEL_RE = new RegExp(`^@?${LABEL_NAME_PATTERN}$`);
+const DECLARED_NAME_RE = new RegExp(`^@?${LABEL_NAME_PATTERN}$`);
 const LEADING_LABEL_RE = new RegExp(`^(@?${LABEL_NAME_PATTERN}):\\s*(.*)$`);
 
-export interface ParsedEntryLabel {
+export interface ParsedDeclaredName {
   readonly rawLabel: string;
   readonly name: string;
-  readonly isEntry: boolean;
+  readonly isExported: boolean;
 }
 
-export interface ParsedLeadingLabel extends ParsedEntryLabel {
+export interface ParsedLeadingLabel extends ParsedDeclaredName {
   readonly labelColumn: number;
   readonly statementText: string;
   readonly statementColumn: number;
@@ -26,16 +26,16 @@ export function isLabelName(text: string): boolean {
   return LABEL_NAME_RE.test(text);
 }
 
-export function parseEntryLabel(text: string): ParsedEntryLabel | undefined {
-  if (!ENTRY_LABEL_RE.test(text)) return undefined;
+export function parseDeclaredName(text: string): ParsedDeclaredName | undefined {
+  if (!DECLARED_NAME_RE.test(text)) return undefined;
   return {
     rawLabel: text,
-    name: normalizeEntryLabelName(text),
-    isEntry: text.startsWith('@'),
+    name: normalizeExportedName(text),
+    isExported: text.startsWith('@'),
   };
 }
 
-export function normalizeEntryLabelName(raw: string): string {
+export function normalizeExportedName(raw: string): string {
   return raw.startsWith('@') ? raw.slice(1) : raw;
 }
 
@@ -47,7 +47,7 @@ export function parseLeadingLabel(text: string, column: number): ParsedLeadingLa
   const match = LEADING_LABEL_RE.exec(text);
   if (!match) return undefined;
   const rawLabel = match[1] ?? '';
-  const parsed = parseEntryLabel(rawLabel);
+  const parsed = parseDeclaredName(rawLabel);
   if (!parsed) return undefined;
   const statementText = match[2] ?? '';
   const statementOffset = text.indexOf(statementText, rawLabel.length + 1);

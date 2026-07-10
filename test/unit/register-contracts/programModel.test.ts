@@ -20,6 +20,18 @@ function directCallTargets(model: RegisterContractsProgramModel): string[] {
 function sourceOwnedProgramItems(): SourceItem[] {
   return [
     {
+      kind: 'routine',
+      contract: { in: [], out: [], maybeOut: [], clobbers: [], preserves: [] },
+      span: {
+        sourceName: '/tmp/include.asm',
+        line: 1,
+        column: 1,
+        sourceUnit: '/tmp/main.asm',
+        sourceRelation: 'include',
+        sourceUnitRelation: 'entry',
+      },
+    },
+    {
       kind: 'label',
       name: 'START',
       span: {
@@ -65,9 +77,17 @@ describe('register-contracts program model', () => {
   it('collects labels, instructions, and direct call targets', () => {
     const items = parseRegisterContractsItems(
       '/tmp/main.z80',
-      ['START:', '    call HELPER', '    ret', 'HELPER:', '    ld a,1', '    ret', '.end'].join(
-        '\n',
-      ),
+      [
+        '.routine',
+        'START:',
+        '    call HELPER',
+        '    ret',
+        '.routine',
+        'HELPER:',
+        '    ld a,1',
+        '    ret',
+        '.end',
+      ].join('\n'),
     );
 
     const model = buildRegisterContractsProgramModel(items);
@@ -109,9 +129,21 @@ describe('register-contracts program model', () => {
   it('preserves source ownership metadata on tail-jump direct boundaries', () => {
     const items: SourceItem[] = [
       {
+        kind: 'routine',
+        contract: { in: [], out: [], maybeOut: [], clobbers: [], preserves: [] },
+        span: {
+          sourceName: '/tmp/imported.asm',
+          line: 1,
+          column: 1,
+          sourceUnit: '/tmp/imported.asm',
+          sourceRelation: 'import',
+          sourceUnitRelation: 'import',
+        },
+      },
+      {
         kind: 'label',
         name: 'START',
-        isEntry: true,
+        isExported: true,
         span: {
           sourceName: '/tmp/imported.asm',
           line: 1,
@@ -137,9 +169,21 @@ describe('register-contracts program model', () => {
         },
       },
       {
+        kind: 'routine',
+        contract: { in: [], out: [], maybeOut: [], clobbers: [], preserves: [] },
+        span: {
+          sourceName: '/tmp/imported.asm',
+          line: 3,
+          column: 1,
+          sourceUnit: '/tmp/imported.asm',
+          sourceRelation: 'import',
+          sourceUnitRelation: 'import',
+        },
+      },
+      {
         kind: 'label',
         name: 'HELPER',
-        isEntry: true,
+        isExported: true,
         span: {
           sourceName: '/tmp/imported.asm',
           line: 3,
@@ -177,12 +221,14 @@ describe('register-contracts program model', () => {
     const items = parseRegisterContractsItems(
       '/tmp/main.z80',
       [
+        '.routine',
         'START:',
         '    call LOOP_ROUTINE',
         '    ret',
+        '.routine',
         'LOOP_ROUTINE:',
-        '.loop:',
-        '    djnz .loop',
+        '_loop:',
+        '    djnz _loop',
         '    ret',
         '.end',
       ].join('\n'),
@@ -191,7 +237,7 @@ describe('register-contracts program model', () => {
     const model = buildRegisterContractsProgramModel(items);
 
     const routine = model.routines.find((r) => r.name === 'LOOP_ROUTINE');
-    expect(routine?.labels).toContain('.loop');
+    expect(routine?.labels).toContain('_loop');
     expect(routine?.instructions.map(instructionHead)).toEqual(['djnz', 'ret']);
   });
 
@@ -199,10 +245,12 @@ describe('register-contracts program model', () => {
     const items = parseRegisterContractsItems(
       '/tmp/main.z80',
       [
+        '.routine',
         'ALIAS:',
         'HELPER:',
         '    ld de,$2000',
         '    ret',
+        '.routine',
         'START:',
         '    call ALIAS',
         '    inc de',
@@ -219,21 +267,23 @@ describe('register-contracts program model', () => {
     expect(alias?.instructions.map(instructionHead)).toEqual(['ld', 'ret']);
   });
 
-  it('uses at-prefixed labels as routine entries when present', () => {
+  it('keeps export markers independent from explicit routine declarations', () => {
     const items = parseRegisterContractsItems(
       '/tmp/main.z80',
       [
+        '.routine',
         '@CheckCollAtDe:',
         '    push bc',
         '    ld b,4',
-        'CheckCollRow:',
-        '    djnz CheckCollRow',
-        'CollExitOk:',
+        '_checkCollRow:',
+        '    djnz _checkCollRow',
+        '_collExitOk:',
         '    pop bc',
         '    ret',
+        '.routine',
         '@RotateTestDone:',
         '    call CheckCollAtDe',
-        'RotateAccept:',
+        '_rotateAccept:',
         '    ret',
         '.end',
       ].join('\n'),
@@ -247,8 +297,8 @@ describe('register-contracts program model', () => {
     ]);
     expect(model.routines.find((routine) => routine.name === 'CheckCollAtDe')?.labels).toEqual([
       'CheckCollAtDe',
-      'CheckCollRow',
-      'CollExitOk',
+      '_checkCollRow',
+      '_collExitOk',
     ]);
     expect(
       model.routines
@@ -257,15 +307,17 @@ describe('register-contracts program model', () => {
     ).toEqual(['push', 'ld', 'djnz', 'pop', 'ret']);
   });
 
-  it('treats jumps to at-prefixed labels as tail-call boundaries in entry mode', () => {
+  it('treats jumps to declared routines as tail-call boundaries', () => {
     const items = parseRegisterContractsItems(
       '/tmp/main.z80',
       [
+        '.routine',
         '@START:',
-        '    jp Internal',
+        '    jp _internal',
         '    jp nz,HELPER',
-        'Internal:',
+        '_internal:',
         '    jp HELPER',
+        '.routine',
         '@HELPER:',
         '    ret',
         '.end',
@@ -280,12 +332,14 @@ describe('register-contracts program model', () => {
     ]);
   });
 
-  it('keeps at-entry mode local to each source file during migration', () => {
-    const sharedText = ['@LcdScript:', '    ret', '.end'].join('\n');
+  it('keeps explicit routine declarations local to each source file', () => {
+    const sharedText = ['.routine', '@LcdScript:', '    ret', '.end'].join('\n');
     const pacmoText = [
+      '.routine',
       'LcdShowPacSplash:',
       '    ld hl,ScriptPacSplash',
       '    jp LcdScript',
+      '.routine',
       'LcdShowPacOver:',
       '    ret',
       '.end',
@@ -308,7 +362,16 @@ describe('register-contracts program model', () => {
   it('includes conditional direct call targets', () => {
     const items = parseRegisterContractsItems(
       '/tmp/main.z80',
-      ['START:', '    call nz,HELPER', '    ret', 'HELPER:', '    ret', '.end'].join('\n'),
+      [
+        '.routine',
+        'START:',
+        '    call nz,HELPER',
+        '    ret',
+        '.routine',
+        'HELPER:',
+        '    ret',
+        '.end',
+      ].join('\n'),
     );
 
     const model = buildRegisterContractsProgramModel(items);
@@ -321,12 +384,15 @@ describe('register-contracts program model', () => {
     const items = parseRegisterContractsItems(
       '/tmp/main.z80',
       [
+        '.routine',
         'START:',
         '    call ZED',
         '    call ALPHA',
         '    ret',
+        '.routine',
         'ZED:',
         '    ret',
+        '.routine',
         'ALPHA:',
         '    ret',
         '.end',
@@ -343,11 +409,13 @@ describe('register-contracts program model', () => {
     const items = parseRegisterContractsItems(
       '/tmp/main.z80',
       [
+        '.routine',
         'START:',
         '    call LOOP_ROUTINE',
+        '.routine',
         'LOOP_ROUTINE:',
-        '.loop:',
-        '    djnz .loop',
+        '_loop:',
+        '    djnz _loop',
         '    ret',
       ].join('\n'),
     );
@@ -355,23 +423,25 @@ describe('register-contracts program model', () => {
     const model = buildRegisterContractsProgramModel(items);
 
     const routine = model.routines.find((r) => r.name === 'LOOP_ROUTINE');
-    expect(routine?.labels).toEqual(['LOOP_ROUTINE', '.loop']);
+    expect(routine?.labels).toEqual(['LOOP_ROUTINE', '_loop']);
     const djnz = routine?.instructions[0]?.instruction;
     expect(djnz?.mnemonic).toBe('djnz');
     if (djnz?.mnemonic === 'djnz') {
-      expect(djnz.expression).toMatchObject({ kind: 'symbol', name: '.loop' });
+      expect(djnz.expression).toMatchObject({ kind: 'symbol', name: '_loop' });
     }
   });
 
-  it('models the first global label as an entry routine without a synthetic caller', () => {
+  it('models an explicitly declared entry routine without a synthetic caller', () => {
     const items = parseRegisterContractsItems(
       '/tmp/main.z80',
       [
+        '.routine',
         'START:',
         '    ld de,$1000',
         '    call HELPER',
         '    inc de',
         '    ret',
+        '.routine',
         'HELPER:',
         '    ret',
         '.end',
@@ -390,9 +460,11 @@ describe('register-contracts program model', () => {
     const items = parseRegisterContractsItems(
       '/tmp/main.z80',
       [
+        '.routine',
         'START:',
         '    call HELPER',
         '    ret',
+        '.routine',
         'HELPER:',
         '    ret z',
         '    ld de,$2000',
@@ -438,7 +510,7 @@ describe('register-contracts program model', () => {
   it('collects routines and call targets from labels', () => {
     const items = parseRegisterContractsItems(
       '/tmp/main.asm',
-      ['typed_call:', '  call HELPER', ''].join('\n'),
+      ['.routine', 'typed_call:', '  call HELPER', ''].join('\n'),
     );
 
     const model = buildRegisterContractsProgramModel(items);

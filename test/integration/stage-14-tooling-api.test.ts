@@ -18,11 +18,13 @@ describe('stage 14 register-contracts tooling API slice', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'START:',
         '    ld de,$1000',
         '    call COPY',
         '    inc de',
         '    ret',
+        '.routine',
         'COPY:',
         '    ld hl,Source',
         '    ld de,Dest',
@@ -55,7 +57,7 @@ describe('stage 14 register-contracts tooling API slice', () => {
           expect.objectContaining({
             kind: 'definite_contract_violation',
             file: entry,
-            line: 3,
+            line: 4,
             column: 5,
             callTarget: 'COPY',
             carriers: ['D', 'E'],
@@ -63,7 +65,7 @@ describe('stage 14 register-contracts tooling API slice', () => {
           expect.objectContaining({
             kind: 'output_candidate',
             file: entry,
-            line: 3,
+            line: 4,
             column: 5,
             routine: 'COPY',
             carriers: ['D', 'E'],
@@ -74,7 +76,7 @@ describe('stage 14 register-contracts tooling API slice', () => {
       expect(result.outputCandidates).toEqual([
         expect.objectContaining({
           file: entry,
-          line: 3,
+          line: 4,
           column: 5,
           routine: 'COPY',
           carriers: ['D', 'E'],
@@ -86,7 +88,7 @@ describe('stage 14 register-contracts tooling API slice', () => {
           kind: 'register-contracts-output-candidate',
           severity: 'info',
           file: entry,
-          line: 3,
+          line: 4,
           column: 5,
           routine: 'COPY',
           carriers: ['D', 'E'],
@@ -96,9 +98,9 @@ describe('stage 14 register-contracts tooling API slice', () => {
             kind: 'quickfix',
             edit: {
               file: entry,
-              line: 3,
+              line: 4,
               column: 1,
-              text: '; expects out DE\n',
+              text: '.expectout DE\n',
             },
           },
         }),
@@ -109,9 +111,9 @@ describe('stage 14 register-contracts tooling API slice', () => {
           kind: 'quickfix',
           edit: {
             file: entry,
-            line: 3,
+            line: 4,
             column: 1,
-            text: '; expects out DE\n',
+            text: '.expectout DE\n',
           },
         },
       ]);
@@ -126,10 +128,12 @@ describe('stage 14 register-contracts tooling API slice', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'START:',
         '    ld a,3',
         '    call MASK',
         '    ret',
+        '.routine',
         'MASK:',
         '    ld c,a',
         '    ld a,$80',
@@ -162,11 +166,13 @@ describe('stage 14 register-contracts tooling API slice', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'START:',
         '    ld a,3',
         '    call nz,MASK',
         '    ld d,a',
         '    ret',
+        '.routine',
         'MASK:',
         '    ld a,$80',
         '    ret',
@@ -189,7 +195,7 @@ describe('stage 14 register-contracts tooling API slice', () => {
       expect(result.outputCandidates).toEqual([
         expect.objectContaining({
           file: entry,
-          line: 3,
+          line: 4,
           column: 5,
           routine: 'MASK',
           carriers: ['A'],
@@ -201,7 +207,7 @@ describe('stage 14 register-contracts tooling API slice', () => {
           kind: 'register-contracts-output-candidate',
           severity: 'info',
           file: entry,
-          line: 3,
+          line: 4,
           column: 5,
           routine: 'MASK',
           carriers: ['A'],

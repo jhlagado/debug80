@@ -34,7 +34,8 @@ npm run azm -- examples/hello.asm
 ```asm
         .org $0100
 
-@Start:
+.routine
+Start:
         ld      a,42
         ret
 ```
@@ -46,13 +47,13 @@ azm start.asm
 ```
 
 `.org` means origin. It sets the assembly address for the bytes that follow.
-`@Start:` is an address label and also a public routine entry for register contracts
-analysis. The Z80 instructions assemble at `$0100`.
+`Start:` is an address label. `.routine` marks it as a register-contract routine.
+The Z80 instructions assemble at `$0100`.
 
 ## Source Style
 
 AZM source is built from labels, declarations, directives, Z80 instructions,
-data definitions, layout declarations, register contract comments and optional
+data definitions, layout declarations, register-contract directives and optional
 inline `op` definitions.
 
 Canonical AZM directives are lowercase and dotted:
@@ -117,27 +118,27 @@ Buffer:
         .ds      32
 ```
 
-Use `@Name:` for callable routine entries. The `@` marks a register contracts
-routine boundary; call sites still write the symbol name without `@`:
+Use `.routine` immediately before a callable routine entry. Put the complete
+register contract on that one line; call sites use the label normally:
 
 ```asm
-;! in A; out A; clobbers BC
-@MxMask:
+.routine in A out A clobbers BC
+MxMask:
         LD      C,A
         OR      A
         LD      A,0x80
-        JR      Z,MxMaskDone
-MxMaskLp:
+        JR      Z,_done
+_loop:
         SRL     A
-        DJNZ    MxMaskLp
-MxMaskDone:
+        DJNZ    _loop
+_done:
         RET
 ```
 
-Use plain labels for data and internal branch targets. Plain labels are global,
-so give branch labels names that stay unique across the whole include tree.
-Prefer descriptive labels such as `MxMaskLoop`, `MxMaskDone`, `SpawnFailed` and
-`HeldDirRateSet` rather than generic names such as `Loop` or `Done`.
+Plain labels are global within their source unit. Prefix an internal branch or
+data label with `_` to make it local to the nearest preceding non-local label.
+Local names may be reused under different owners. Use `@Name` only when a
+declaration in an imported source unit must be exported.
 
 Use uppercase with underscores for constants, following the usual C-style
 convention. Group related constants with clear prefixes:
@@ -355,17 +356,20 @@ the same assembly.
 ; main.asm
         .import "keyboard.asm"
 
-@Start:
+.routine
+Start:
         call    ReadKey
         ret
 ```
 
 ```asm
 ; keyboard.asm
+.routine
 @ReadKey:
         call    ScanMatrix
         ret
 
+.routine
 ScanMatrix:
         xor     a
         ret
@@ -394,10 +398,10 @@ loads and emits the module, later imports of that same file are skipped.
 Repeated includes are still textual and repeat every time. Recursive includes or
 imports are rejected with source diagnostics.
 
-Register contracts use the same `@` routine boundaries across imported files.
-Imported public routines are analyzed as internal routines under `--rc strict`,
-and private helpers called inside an imported public routine are summarized as
-part of the same program analysis.
+Register contracts use `.routine` boundaries across imported files, independently
+of `@` export markers. Imported public routines are analyzed as internal routines
+under `--rc strict`, and private helpers called inside an imported public routine
+are summarized as part of the same program analysis.
 
 ASM80-compatible lowered `.z80` output does not yet support imported source
 units. If `--asm80` is requested for a program that uses `.import`, AZM reports
@@ -412,34 +416,32 @@ of assembly bugs.
 
 The benefit is practical: AZM can stop a plausible-looking routine at compile
 time when it reads a register after calling code that may clobber it. In larger
-Z80 projects this encourages smaller routines, clearer `@` boundaries, explicit
+Z80 projects this encourages smaller routines, clearer `.routine` boundaries, explicit
 helper outputs, and proof or test harnesses that stay honest under
 `--rc strict`. The friction is intentional: strict contracts make hidden
 register and stack assumptions visible before they become debugger sessions.
 
-Routine entry labels start with `@`:
+Routine declarations use `.routine`; export visibility remains a separate choice:
 
 ```asm
-;! in A,HL; out carry; clobbers B
-@CheckTile:
+.routine in A,HL out carry clobbers B
+CheckTile:
         ld      b,(hl)
         cp      b
         ret
 ```
 
-The label is written as `@CheckTile:` at the routine entry. Calls use the public
-name:
+Calls use the label name:
 
 ```asm
         call    CheckTile
 ```
 
-AZMDoc register contract comments use `;!` and may record inputs, outputs,
-clobbered registers and preserved registers. Separate clauses on the same line
-with semicolons. Older one-clause-per-line comments are still accepted, but AZM
-generated annotations use the compact single-line form. `clobbers B` means the
-routine may change `B`. `preserves B` means the value that enters in `B` is
-still present when the routine returns.
+The one-line `.routine` directive may declare `in`, `out`, `maybe-out`,
+`clobbers` and `preserves` clauses. `clobbers B` means the routine may change
+`B`. `preserves B` means the value that enters in `B` is still present when the
+routine returns. Legacy semantic `;!` comments are rejected with migration
+diagnostics in AZM 0.3.
 
 Run the analysis with:
 
@@ -457,8 +459,8 @@ on any register contracts issue AZM cannot prove safe, including unknown call
 boundaries and unbalanced or unknown stack effects.
 
 The normal register contracts interface is compiler diagnostics plus source
-contracts. Use `--contracts` or `--fix` when you want AZM to update compact
-AZMDoc contract comments in source. Use `.asmi` files for externally assembled
+contracts. Use `--contracts` or `--fix` when you want AZM to update `.routine`
+contracts in source. Use `.asmi` files for externally assembled
 routines or monitor/system APIs. Text report files are available with
 `--reg-report`, but they are an explicit debug/export option and are not part of
 the normal workflow.
@@ -468,11 +470,11 @@ the normal workflow.
 `op` definitions name short inline instruction idioms:
 
 ```asm
-op clear_a()
+op clearA()
         xor     a
 end
 
-        clear_a
+        clearA
 ```
 
 The operation expands inline at the use site.
@@ -493,6 +495,20 @@ azm [options] <entry.asm|entry.z80>
 The entry file is the final argument. Source entries use `.asm` or `.z80`.
 External register contract interfaces use `.asmi` and are loaded with
 `--interface`.
+
+For an AZM 0.2 source tree, preview the mechanical 0.3 routine and contract
+migration from an AZM checkout:
+
+```sh
+node scripts/dev/migrate-azm-0.3.mjs path/to/src
+node scripts/dev/migrate-azm-0.3.mjs --write path/to/src
+```
+
+The utility preserves old `@` markers as exports by default. Use
+`--strip-exports` only when every processed file belongs to a root/include
+source unit. Compile every target before and after migration and compare emitted
+bytes; owner-local renames and genuine export decisions still require project
+review.
 
 Basic use writes the default artifact set next to the source file:
 
@@ -564,7 +580,7 @@ The main switches are:
 | `--rc, --register-contracts <mode>`           | Register contracts mode: `off`, `audit`, `warn`, `error`, `strict`. |
 | `--reg-report, --emit-register-report`        | Opt-in debug report: write `.regcontracts.txt`.                     |
 | `--reg-interface, --emit-register-interface`  | Write inferred `.asmi` interface metadata.                          |
-| `--contracts, --annotate-register-contracts`  | Update AZMDoc contract comments in source.                          |
+| `--contracts, --annotate-register-contracts`  | Update `.routine` contracts in source.                              |
 | `--fix`                                       | Apply conservative register contract source fixes.                  |
 | `--accept-out <routine:carrier>`              | Promote an inferred output candidate while annotating.              |
 | `--interface <file>`                          | Load external register contracts from `.asmi`.                      |

@@ -4,7 +4,7 @@ import type { LogicalLine } from '../source/logical-lines.js';
 import type { SourceSpan } from '../source/source-span.js';
 import { extractLineComment, stripLineComment } from '../source/strip-line-comment.js';
 import { normalizeDirectiveAlias, type DirectiveAliasPolicy } from './directive-aliases.js';
-import { LABEL_NAME_PATTERN, parseEntryLabel } from './names.js';
+import { LABEL_NAME_PATTERN, parseDeclaredName } from './names.js';
 import { firstNonWhitespaceColumn, parseLineError } from './parse-diagnostics.js';
 import { parseColonDeclaration, parseDirectiveStatement } from './parse-directive-statement.js';
 import { parseZ80Instruction } from '../z80/parse-instruction.js';
@@ -34,17 +34,28 @@ export function parseLogicalLine(
   const labelWithStatement = new RegExp(`^(@?${LABEL_NAME_PATTERN}):\\s*(.+)$`).exec(text);
   if (labelWithStatement) {
     const rawLabel = labelWithStatement[1] ?? '';
-    const label = parseEntryLabel(rawLabel);
+    const label = parseDeclaredName(rawLabel);
     if (!label) return withLineComment(line, parseCanonicalStatement(line, text, span));
     const statementText = labelWithStatement[2] ?? '';
-    const declaration = parseColonDeclaration(line, label.name, statementText, span);
+    const declaration = parseColonDeclaration(
+      line,
+      label.name,
+      label.isExported,
+      statementText,
+      span,
+    );
     if (declaration) {
       return withLineComment(line, declaration);
     }
     const parsedStatement = parseCanonicalStatement(line, statementText, span);
     return withLineComment(line, {
       items: [
-        { kind: 'label', name: label.name, ...(label.isEntry ? { isEntry: true } : {}), span },
+        {
+          kind: 'label',
+          name: label.name,
+          ...(label.isExported ? { isExported: true } : {}),
+          span,
+        },
         ...parsedStatement.items,
       ],
       diagnostics: parsedStatement.diagnostics,
@@ -54,14 +65,14 @@ export function parseLogicalLine(
   const labelOnly = new RegExp(`^(@?${LABEL_NAME_PATTERN}):$`).exec(text);
   if (labelOnly) {
     const rawLabel = labelOnly[1] ?? '';
-    const label = parseEntryLabel(rawLabel);
+    const label = parseDeclaredName(rawLabel);
     if (!label) return withLineComment(line, parseCanonicalStatement(line, text, span));
     return withLineComment(line, {
       items: [
         {
           kind: 'label',
           name: label.name,
-          ...(label.isEntry ? { isEntry: true } : {}),
+          ...(label.isExported ? { isExported: true } : {}),
           span,
         },
       ],
@@ -95,7 +106,7 @@ function commentOnlyLine(line: LogicalLine): ParseLineResult {
         },
       },
     ],
-    diagnostics: [],
+    diagnostics: legacyContractCommentDiagnostics(line, comment),
   };
 }
 
@@ -120,8 +131,36 @@ function withLineComment(line: LogicalLine, result: ParseLineResult): ParseLineR
         },
       },
     ],
-    diagnostics: result.diagnostics,
+    diagnostics: [...result.diagnostics, ...legacyContractCommentDiagnostics(line, comment)],
   };
+}
+
+function legacyContractCommentDiagnostics(
+  line: LogicalLine,
+  comment: string,
+): readonly Diagnostic[] {
+  const trimmed = comment.trim();
+  if (
+    /^!\s*(?:in|out|maybe-out|clobbers|preserves|contracts|rc-ignore-next|extern|end)\b/iu.test(
+      trimmed,
+    )
+  ) {
+    return [
+      parseLineError(
+        line,
+        'legacy ;! register-contract comments are not supported; use .routine, .rcignore, or an .asmi interface',
+      ),
+    ];
+  }
+  if (/^expects\s+out\b/iu.test(trimmed)) {
+    return [
+      parseLineError(
+        line,
+        'legacy ; expects out comments are not supported; use .expectout before the call',
+      ),
+    ];
+  }
+  return [];
 }
 
 function parseCanonicalStatement(
@@ -163,6 +202,8 @@ function spanForLine(line: LogicalLine): SourceSpan {
     column: firstNonWhitespaceColumn(line.text),
     ...(line.sourceUnit !== undefined ? { sourceUnit: line.sourceUnit } : {}),
     ...(line.sourceRelation !== undefined ? { sourceRelation: line.sourceRelation } : {}),
-    ...(line.sourceUnitRelation !== undefined ? { sourceUnitRelation: line.sourceUnitRelation } : {}),
+    ...(line.sourceUnitRelation !== undefined
+      ? { sourceUnitRelation: line.sourceUnitRelation }
+      : {}),
   };
 }

@@ -21,10 +21,10 @@ export function buildAnnotations(
   },
 ): readonly RegisterContractsAnnotationFile[] {
   const routines = programRoutines
-    .filter((routine) => summariesByName.has(routine.name))
+    .filter((routine) => summariesByName.has(routine.identity ?? routine.name))
     .map((routine) => ({
       routine,
-      summary: summariesByName.get(routine.name)!,
+      summary: summariesByName.get(routine.identity ?? routine.name)!,
     }));
 
   const annotated = annotateRegisterContractsContracts(loaded.sourceTexts, routines);

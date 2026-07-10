@@ -93,11 +93,13 @@ describe('stage 14 register-contracts compile API slice', () => {
       await writeFile(
         entry,
         [
+          '.routine',
           'START:',
           '    call MASK',
           '    ret',
           '',
           '; Helper prose.',
+          '.routine',
           'MASK:',
           '    ld a, $80',
           '    ret',
@@ -133,14 +135,14 @@ describe('stage 14 register-contracts compile API slice', () => {
       expect(annotationArtifact.files).toHaveLength(1);
       expect(annotationArtifact.files[0]!.path).toBe(entry);
       expect(annotationArtifact.files[0]!.text).toContain(
-        ['; Helper prose.', ';! out A'].join('\n'),
+        ['; Helper prose.', '.routine out A'].join('\n'),
       );
-      expect(annotationArtifact.files[0]!.text).toContain(';! out A');
+      expect(annotationArtifact.files[0]!.text).toContain('.routine out A');
       expect(annotationArtifact.files[0]!.text).toContain('MASK:');
 
       const onDisk = await readFile(entry, 'utf8');
       expect(onDisk).toContain('MASK:');
-      expect(onDisk).not.toContain(';! out A');
+      expect(onDisk).not.toContain('.routine out A');
     });
   });
 
@@ -150,6 +152,7 @@ describe('stage 14 register-contracts compile API slice', () => {
       await writeFile(
         entry,
         [
+          '.routine',
           'START:',
           '    ld a,3',
           '    ld hl,$2000',
@@ -157,6 +160,7 @@ describe('stage 14 register-contracts compile API slice', () => {
           '    ld d,a',
           '',
           '; Helper prose.',
+          '.routine',
           'MASK:',
           '    ld a,$80',
           '    ld (hl),a',
@@ -185,10 +189,10 @@ describe('stage 14 register-contracts compile API slice', () => {
       );
       expect(annotations).toBeDefined();
       const text = annotations!.files[0]!.text;
-      expect(text).toContain('; expects out A');
+      expect(text).toContain('.expectout A');
       expect(text).toContain('    call MASK');
       expect(text).toContain('; Helper prose.');
-      expect(text).toContain(';! in HL; maybe-out A; clobbers A');
+      expect(text).toContain('.routine in HL maybe-out A clobbers A');
     });
   });
 
@@ -198,6 +202,7 @@ describe('stage 14 register-contracts compile API slice', () => {
       await writeFile(
         entry,
         [
+          '.routine',
           'START:',
           '    ld hl,$2000',
           '    call MASK',
@@ -205,6 +210,7 @@ describe('stage 14 register-contracts compile API slice', () => {
           '    ld d,a',
           '',
           '; Helper prose.',
+          '.routine',
           'MASK:',
           '    ld a,$80',
           '    ld (hl),a',
@@ -233,7 +239,7 @@ describe('stage 14 register-contracts compile API slice', () => {
       );
       expect(annotations).toBeDefined();
       const text = annotations!.files[0]!.text;
-      expect(text).toContain('; expects out A');
+      expect(text).toContain('.expectout A');
       expect(text).toContain('    call MASK');
       expect(text).toContain('; Helper prose.');
     });
@@ -245,11 +251,13 @@ describe('stage 14 register-contracts compile API slice', () => {
       await writeFile(
         entry,
         [
+          '.routine',
           'START:',
           '    call MASK',
           '    ret',
           '',
           '; Helper prose.',
+          '.routine',
           'MASK:',
           '    ld a, $80',
           '    ret',
@@ -278,7 +286,7 @@ describe('stage 14 register-contracts compile API slice', () => {
       expect(annotations).toBeDefined();
       const annotationArtifact = annotations!;
       expect(annotationArtifact.files).toHaveLength(1);
-      expect(annotationArtifact.files[0]!.text).toContain(';! out A');
+      expect(annotationArtifact.files[0]!.text).toContain('.routine out A');
     });
   });
 
@@ -288,12 +296,14 @@ describe('stage 14 register-contracts compile API slice', () => {
       await writeFile(
         entry,
         [
+          '.routine',
           'START:',
           '    ld de,$1000',
           '    call HELPER',
           '    inc de',
           '    ret',
           '',
+          '.routine',
           'HELPER:',
           '    ld de,$2000',
           '    ld (de),a',
@@ -330,12 +340,14 @@ describe('stage 14 register-contracts compile API slice', () => {
       await writeFile(
         entry,
         [
+          '.routine',
           'START:',
           '    ld de,$1000',
           '    call HELPER',
           '    inc de',
           '    ret',
           '',
+          '.routine',
           'HELPER:',
           '    ld de,$2000',
           '    ld (de),a',
@@ -371,7 +383,7 @@ describe('stage 14 register-contracts compile API slice', () => {
       const entry = join(dir, 'main.asm');
       await writeFile(
         entry,
-        ['START:', '    call MISSING_HELPER', '    ret', '.end'].join('\n'),
+        ['.routine', 'START:', '    call MISSING_HELPER', '    ret', '.end'].join('\n'),
         'utf8',
       );
 
@@ -410,9 +422,15 @@ describe('stage 14 register-contracts compile API slice', () => {
       await writeFile(iface, ['extern HELPER', 'clobbers DE', 'end'].join('\n'), 'utf8');
       await writeFile(
         entry,
-        ['START:', '    ld de,$1000', '    call HELPER', '    inc de', '    ret', '.end'].join(
-          '\n',
-        ),
+        [
+          '.routine',
+          'START:',
+          '    ld de,$1000',
+          '    call HELPER',
+          '    inc de',
+          '    ret',
+          '.end',
+        ].join('\n'),
         'utf8',
       );
 
@@ -452,6 +470,7 @@ describe('stage 14 register-contracts compile API slice', () => {
         entry,
         [
           'API_SCANKEYS:',
+          '.routine',
           'START:',
           '  ld a, $12',
           '  ld c, API_SCANKEYS',
@@ -490,6 +509,7 @@ describe('stage 14 register-contracts compile API slice', () => {
       await writeFile(
         entry,
         [
+          '.routine',
           'START:',
           '  ld c,18',
           '  rst $10',
@@ -531,6 +551,7 @@ describe('stage 14 register-contracts compile API slice', () => {
           'API_BASE .equ 0',
           'API_MATRIX_SCAN .equ API_BASE + 18',
           'API_PARSE_MATRIX_SCAN .equ API_BASE + 54',
+          '.routine',
           'START:',
           '  ld c,API_MATRIX_SCAN',
           '  rst $10',
@@ -572,9 +593,11 @@ describe('stage 14 register-contracts compile API slice', () => {
         [
           'API_COMMAND_TO_LCD .equ 15',
           'API_CHAR_TO_LCD .equ 14',
+          '.routine',
           'START:',
           '  cp 13',
           '  jr z,ShowReturn',
+          '.routine',
           'ShowAscii:',
           '  ld b,1',
           '  ld c,API_COMMAND_TO_LCD',
@@ -582,6 +605,7 @@ describe('stage 14 register-contracts compile API slice', () => {
           '  ld c,API_CHAR_TO_LCD',
           '  rst $10',
           '  ret',
+          '.routine',
           'ShowReturn:',
           "  ld a,'R'",
           '  jr ShowAscii',
@@ -617,30 +641,31 @@ describe('stage 14 register-contracts compile API slice', () => {
           'API_CHAR_TO_LCD .equ 14',
           'ASCII_CR .equ 13',
           'ASCII_ESC .equ 27',
+          '.routine',
           'START:',
-          'PollMatrix:',
+          '_pollMatrix:',
           '  ld c,API_MATRIX_SCAN',
           '  rst $10',
           '  ld c,API_PARSE_MATRIX_SCAN',
           '  rst $10',
-          '  jr nc,PollMatrix',
+          '  jr nc,_pollMatrix',
           '  cp ASCII_CR',
-          '  jr z,ShowReturn',
+          '  jr z,_showReturn',
           '  cp ASCII_ESC',
-          '  jr z,ShowEscape',
-          'ShowAscii:',
+          '  jr z,_showEscape',
+          '_showAscii:',
           '  ld b,1',
           '  ld c,API_COMMAND_TO_LCD',
           '  rst $10',
           '  ld c,API_CHAR_TO_LCD',
           '  rst $10',
-          '  jr PollMatrix',
-          'ShowReturn:',
+          '  jr _pollMatrix',
+          '_showReturn:',
           "  ld a,'R'",
-          '  jr ShowAscii',
-          'ShowEscape:',
+          '  jr _showAscii',
+          '_showEscape:',
           "  ld a,'E'",
-          '  jr ShowAscii',
+          '  jr _showAscii',
           '.end',
         ].join('\n'),
         'utf8',
@@ -666,7 +691,7 @@ describe('stage 14 register-contracts compile API slice', () => {
       const entry = join(dir, 'main.asm');
       await writeFile(
         entry,
-        ['START:', '  ld a, $12', '  rst $10', '  inc a', '.end'].join('\n'),
+        ['.routine', 'START:', '  ld a, $12', '  rst $10', '  inc a', '.end'].join('\n'),
         'utf8',
       );
 
@@ -697,7 +722,7 @@ describe('stage 14 register-contracts compile API slice', () => {
       const entry = join(dir, 'main.asm');
       await writeFile(
         entry,
-        ['START:', '  ld a,$12', '  ld c,a', '  rst $10', '  inc a', '.end'].join('\n'),
+        ['.routine', 'START:', '  ld a,$12', '  ld c,a', '  rst $10', '  inc a', '.end'].join('\n'),
         'utf8',
       );
 

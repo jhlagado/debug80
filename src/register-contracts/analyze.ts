@@ -18,7 +18,26 @@ import type {
 } from './types.js';
 import { buildRegisterContractsProgramModel } from './programModel.js';
 import { registerContractsPolicyModeForFile } from './policy.js';
-import { buildRoutineContracts, parseSmartComments } from './smartComments.js';
+import {
+  effectiveFilePolicies,
+  filterBaselineForAnalyzedFiles,
+  registerContractsArtifactFallbackMode,
+} from './analysis-policy.js';
+import {
+  publicRoutineIdentity,
+  withPublicCandidateIdentity,
+  withPublicRoutineIdentity,
+  withPublicSummaryIdentity,
+} from './public-routine-identity.js';
+import {
+  applyRegisterContractsSuppressions,
+  findingKey,
+  matchOutputCandidateSuppressions,
+  registerContractsDirectiveComments,
+  registerContractsDirectiveSuppressions,
+  staleSuppressionDiagnostics,
+} from './analysis-suppressions.js';
+import { buildDeclaredRoutineContracts } from './smartComments.js';
 import {
   renderRegisterContractsInterface,
   buildRegisterContractsJsonReport,
@@ -85,15 +104,54 @@ export function analyzeRegisterContracts(
 ): AnalyzeRegisterContractsResult {
   const file = loaded.program.files[0];
   const items = file?.items ?? [];
-  const program = buildRegisterContractsProgramModel(items);
-  const smartComments = parseSmartComments(loaded.sourceLineComments);
-  const suppressionSyntaxDiagnostics = malformedSuppressionDiagnostics(
-    loaded.sourceLineComments,
-    options.mode,
-    options.policy,
+  const sourcePolicy = registerContractsSourcePolicy(items);
+  const analysisFallbackMode = registerContractsArtifactFallbackMode(options);
+  const filePolicies = effectiveFilePolicies(
+    loaded.sourceTexts.keys(),
+    options,
+    sourcePolicy,
+    analysisFallbackMode,
   );
-  const suppressions = registerContractsSuppressions(smartComments);
-  const contractMap = buildRoutineContracts(smartComments, program.routines, loaded.sourceTexts);
+  const isAnalyzedFile = (sourceName: string): boolean =>
+    (filePolicies.get(sourceName) ??
+      policyModeForFile(sourceName, options.policy ?? {}, options.mode, sourcePolicy)) !== 'off';
+  const program = buildRegisterContractsProgramModel(items);
+  const artifactRoutines = program.routines.filter((routine) => isAnalyzedFile(routine.span.file));
+  const allRoutineIdentities = new Set(
+    program.routines.map((routine) => routine.identity ?? routine.name),
+  );
+  const artifactRoutineIdentities = new Set(
+    artifactRoutines.map((routine) => routine.identity ?? routine.name),
+  );
+  const publicRoutineIdentities = new Map(
+    program.routines.map((routine) => [
+      routine.identity ?? routine.name,
+      publicRoutineIdentity(loaded.program.entryFile, routine),
+    ]),
+  );
+  const interfaceRoutineIdentities = new Set(
+    artifactRoutines
+      .filter(
+        (routine) => routine.span.sourceUnitRelation !== 'import' || routine.isExported === true,
+      )
+      .map((routine) => routine.identity ?? routine.name),
+  );
+  const isArtifactSummary = (summary: RoutineSummary): boolean => {
+    const identity = summary.identity ?? summary.name;
+    return !allRoutineIdentities.has(identity) || artifactRoutineIdentities.has(identity);
+  };
+  const isInterfaceSummary = (summary: RoutineSummary): boolean => {
+    const identity = summary.identity ?? summary.name;
+    return !allRoutineIdentities.has(identity) || interfaceRoutineIdentities.has(identity);
+  };
+  const artifactBoundaries = program.directBoundaries.filter((boundary) =>
+    isAnalyzedFile(boundary.file),
+  );
+  const smartComments = registerContractsDirectiveComments(items);
+  const suppressions = registerContractsDirectiveSuppressions(items).filter((suppression) =>
+    isAnalyzedFile(suppression.file),
+  );
+  const contractMap = buildDeclaredRoutineContracts(program.routines);
   if (options.interfaceContracts !== undefined) {
     for (const contract of options.interfaceContracts) {
       contractMap.set(contract.name, contract);
@@ -121,23 +179,21 @@ export function analyzeRegisterContracts(
     options.policy !== undefined ||
     options.emitAnnotations === true ||
     options.fixRegisterContracts === true ||
-    options.emitInference === true;
+    options.emitInference === true ||
+    sourcePolicy.size > 0;
 
   const outputCandidates = shouldBuildOutputCandidates
-    ? findCallerOutputCandidateObservations(program.routines, summariesByName)
+    ? findCallerOutputCandidateObservations(program.routines, summariesByName).filter((candidate) =>
+        isAnalyzedFile(candidate.file),
+      )
     : [];
-  const suppressedOutputCandidateKeys = new Set(
-    outputCandidates
-      .filter((candidate) => isSuppressedFinding(candidate, 'output_candidate', suppressions))
-      .map((candidate) =>
-        findingKey({
-          kind: 'output_candidate',
-          file: candidate.file,
-          line: candidate.line,
-          column: candidate.column,
-        }),
-      ),
+  const consumedSuppressions = new Set<RegisterContractsSuppression>();
+  const outputCandidateSuppressions = matchOutputCandidateSuppressions(
+    outputCandidates,
+    suppressions,
+    consumedSuppressions,
   );
+  const suppressedOutputCandidateKeys = new Set(outputCandidateSuppressions.keys());
   const outputCandidatesForPromotion = outputCandidates.filter(
     (candidate) =>
       !suppressedOutputCandidateKeys.has(
@@ -159,23 +215,25 @@ export function analyzeRegisterContracts(
     summariesByName = buildSummaryByName(program.routines, summaries, profileSummaries);
   }
   const conflicts = shouldBuildOutputCandidates
-    ? program.routines.flatMap((routine) =>
-        findRegisterContractsConflicts(
-          routine,
-          summariesByName,
-          smartComments,
-          interfaceServiceRanges,
-        ),
-      )
+    ? program.routines
+        .flatMap((routine) =>
+          findRegisterContractsConflicts(
+            routine,
+            summariesByName,
+            smartComments,
+            interfaceServiceRanges,
+          ),
+        )
+        .filter((conflict) => isAnalyzedFile(conflict.file))
     : [];
   const { outputCandidates: outputCandidatesWithAutoFixability, outputCandidateFixability } =
     outputCandidatesWithFixability(program.routines, outputCandidatesForPromotion);
   const { outputCandidates: allOutputCandidatesWithAutoFixability } =
     outputCandidatesWithFixability(program.routines, outputCandidates);
-  const diagnostics = [...suppressionSyntaxDiagnostics];
+  const diagnostics: Diagnostic[] = [];
 
-  const unknownFindings = unknownBoundaryFindings(program.directBoundaries, knownRoutines);
-  const stackFindings = strictStackFindings(program.routines, summaries);
+  const unknownFindings = unknownBoundaryFindings(artifactBoundaries, knownRoutines);
+  const stackFindings = strictStackFindings(artifactRoutines, summaries);
   const scopedBoundaryFindings = scopedBoundaryContractFindings({
     directBoundaries: program.directBoundaries,
     routines: program.routines,
@@ -183,10 +241,11 @@ export function analyzeRegisterContracts(
     summariesByName,
     profileSummaryNames: new Set(profileSummaries.map((summary) => summary.name)),
     policy: options.policy,
+    sourcePolicy,
     mode: options.mode,
   });
   const findings: RegisterContractsFinding[] =
-    options.mode === 'off' && options.policy === undefined
+    options.mode === 'off' && options.policy === undefined && sourcePolicy.size === 0
       ? []
       : [
           ...conflicts.map((conflict) => ({
@@ -203,6 +262,9 @@ export function analyzeRegisterContracts(
               ? { sourceUnitRelation: conflict.sourceUnitRelation }
               : {}),
             ...(conflict.routine !== undefined ? { routine: conflict.routine } : {}),
+            ...(conflict.routineIdentity !== undefined
+              ? { routineIdentity: conflict.routineIdentity }
+              : {}),
             carriers: conflict.carriers,
             message: conflict.message,
           })),
@@ -212,6 +274,9 @@ export function analyzeRegisterContracts(
             return {
               kind: 'output_candidate',
               routine: candidate.routine,
+              ...(candidate.routineIdentity !== undefined
+                ? { routineIdentity: candidate.routineIdentity }
+                : {}),
               file: candidate.file,
               line: candidate.line,
               column: candidate.column,
@@ -224,15 +289,15 @@ export function analyzeRegisterContracts(
                 : {}),
               carriers: candidate.carriers,
               message: candidate.message,
-              ...(candidate.autoFixable !== undefined ? { autoFixable: candidate.autoFixable } : {}),
+              ...(candidate.autoFixable !== undefined
+                ? { autoFixable: candidate.autoFixable }
+                : {}),
             };
           }),
           ...scopedBoundaryFindings,
-        ];
-  const { activeFindings, suppressedFindings: directlySuppressedFindings } = applyRegisterContractsSuppressions(
-    findings,
-    suppressions,
-  );
+        ].filter((finding) => isAnalyzedFile(finding.file));
+  const { activeFindings, suppressedFindings: directlySuppressedFindings } =
+    applyRegisterContractsSuppressions(findings, suppressions, consumedSuppressions);
   const suppressedOutputCandidateFindings = allOutputCandidatesWithAutoFixability
     .filter((candidate) =>
       suppressedOutputCandidateKeys.has(
@@ -240,11 +305,8 @@ export function analyzeRegisterContracts(
       ),
     )
     .map((candidate): RegisterContractsSuppressedFinding | undefined => {
-      const suppression = suppressions.find(
-        (item) =>
-          item.file === candidate.file &&
-          item.line === candidate.line &&
-          item.findingKind === 'output_candidate',
+      const suppression = outputCandidateSuppressions.get(
+        findingKey({ ...candidate, kind: 'output_candidate' as const }),
       );
       if (suppression === undefined) return undefined;
       return {
@@ -252,11 +314,16 @@ export function analyzeRegisterContracts(
         finding: {
           kind: 'output_candidate',
           routine: candidate.routine,
+          ...(candidate.routineIdentity !== undefined
+            ? { routineIdentity: candidate.routineIdentity }
+            : {}),
           file: candidate.file,
           line: candidate.line,
           column: candidate.column,
           ...(candidate.sourceUnit !== undefined ? { sourceUnit: candidate.sourceUnit } : {}),
-          ...(candidate.sourceRelation !== undefined ? { sourceRelation: candidate.sourceRelation } : {}),
+          ...(candidate.sourceRelation !== undefined
+            ? { sourceRelation: candidate.sourceRelation }
+            : {}),
           ...(candidate.sourceUnitRelation !== undefined
             ? { sourceUnitRelation: candidate.sourceUnitRelation }
             : {}),
@@ -267,10 +334,14 @@ export function analyzeRegisterContracts(
       };
     })
     .filter((item): item is RegisterContractsSuppressedFinding => item !== undefined);
-  const suppressedFindings = [
-    ...directlySuppressedFindings,
-    ...suppressedOutputCandidateFindings,
-  ];
+  const suppressedFindings = [...directlySuppressedFindings, ...suppressedOutputCandidateFindings];
+  diagnostics.push(
+    ...staleSuppressionDiagnostics(
+      suppressions.filter((suppression) => !consumedSuppressions.has(suppression)),
+      options,
+      sourcePolicy,
+    ),
+  );
   const activeOutputCandidates = outputCandidatesWithAutoFixability.filter(
     (candidate) =>
       !suppressedOutputCandidateKeys.has(
@@ -281,9 +352,33 @@ export function analyzeRegisterContracts(
     (finding) =>
       finding.kind === 'definite_contract_violation' || finding.kind === 'flag_lifetime_risk',
   );
+  const publicActiveFindings = activeFindings.map((finding) =>
+    withPublicRoutineIdentity(finding, publicRoutineIdentities),
+  );
+  const publicSuppressedFindings = suppressedFindings.map((item) => ({
+    ...item,
+    finding: withPublicRoutineIdentity(item.finding, publicRoutineIdentities),
+  }));
+  const publicOutputCandidates = activeOutputCandidates.map((candidate) =>
+    withPublicCandidateIdentity(candidate, publicRoutineIdentities),
+  );
+  const publicSummaries = summaries
+    .filter(isArtifactSummary)
+    .map((summary) => withPublicSummaryIdentity(summary, publicRoutineIdentities));
+  const publicProfileSummaries = profileSummaries.map((summary) => ({
+    ...summary,
+    identity: `profile:${summary.name}`,
+  }));
 
-  if (options.policy !== undefined) {
-    diagnostics.push(...diagnosticsForScopedPolicy(activeFindings, options.policy, options.mode));
+  if (options.policy !== undefined || sourcePolicy.size > 0) {
+    diagnostics.push(
+      ...diagnosticsForScopedPolicy(
+        activeFindings,
+        options.policy ?? {},
+        options.mode,
+        sourcePolicy,
+      ),
+    );
   } else if (options.mode === 'strict') {
     diagnostics.push(...diagnosticsForFindings(activeConflictFindings, options.mode));
     diagnostics.push(
@@ -302,30 +397,36 @@ export function analyzeRegisterContracts(
   const reportModel: RegisterContractsReportModel = buildRegisterContractsReportModel({
     entryFile: loaded.program.entryFile,
     mode: options.mode,
-    summaries,
-    profileSummaries,
-    findings: activeFindings,
-    ...(suppressedFindings.length > 0 ? { suppressedFindings } : {}),
-    conflicts: conflicts.filter((conflict) =>
-      activeConflictFindings.some(
-        (finding) =>
-          finding.file === conflict.file &&
-          finding.line === conflict.line &&
-          finding.column === conflict.column &&
-          'callTarget' in finding &&
-          finding.callTarget === conflict.callTarget,
-      ),
-    ),
-    outputCandidates: activeOutputCandidates,
+    summaries: publicSummaries,
+    profileSummaries: publicProfileSummaries,
+    filePolicies: Object.fromEntries([...filePolicies.entries()]),
+    findings: publicActiveFindings,
+    ...(publicSuppressedFindings.length > 0
+      ? { suppressedFindings: publicSuppressedFindings }
+      : {}),
+    conflicts: conflicts
+      .filter((conflict) =>
+        activeConflictFindings.some(
+          (finding) =>
+            finding.file === conflict.file &&
+            finding.line === conflict.line &&
+            finding.column === conflict.column &&
+            'callTarget' in finding &&
+            finding.callTarget === conflict.callTarget,
+        ),
+      )
+      .map((conflict) => withPublicRoutineIdentity(conflict, publicRoutineIdentities)),
+    outputCandidates: publicOutputCandidates,
     profile: options.registerContractsProfile,
-    directBoundaries: program.directBoundaries,
+    directBoundaries: artifactBoundaries,
     knownRoutines,
   });
   if (options.baselineReport !== undefined) {
     const currentJson = buildRegisterContractsJsonReport(reportModel);
+    const baselineReport = filterBaselineForAnalyzedFiles(options.baselineReport, isAnalyzedFile);
     const ratchet = compareRegisterContractsBaseline(
       currentJson,
-      options.baselineReport,
+      baselineReport,
       options.baselineFile,
     );
     reportModel.ratchet = ratchet;
@@ -361,7 +462,7 @@ export function analyzeRegisterContracts(
   const annotations = options.emitAnnotations
     ? buildAnnotations(
         loaded,
-        program.routines,
+        artifactRoutines,
         summariesForAnnotationsByName,
         activeOutputCandidates,
         {
@@ -375,16 +476,12 @@ export function analyzeRegisterContracts(
     options.emitReport && (options.reportFormat ?? 'text') === 'json'
       ? renderRegisterContractsJsonReport(reportModel)
       : undefined;
-  const canonicalSummariesByName = new Map(summaries.map((summary) => [summary.name, summary]));
-  const activeOutputCandidatesForInference = activeOutputCandidates.map((candidate) => {
-    const canonicalName = summariesByName.get(candidate.routine)?.name;
-    return canonicalName === undefined || canonicalName === candidate.routine
-      ? candidate
-      : { ...candidate, routine: canonicalName };
-  });
+  const canonicalSummariesByName = new Map(
+    publicSummaries.map((summary) => [summary.identity ?? summary.name, summary]),
+  );
   const summariesForInference = summariesForAnnotations(
     canonicalSummariesByName,
-    activeOutputCandidatesForInference,
+    publicOutputCandidates,
   );
   const inferenceModel = options.emitInference
     ? buildRegisterContractsInference([...summariesForInference.values()])
@@ -393,8 +490,8 @@ export function analyzeRegisterContracts(
 
   return {
     diagnostics,
-    ...(activeFindings.length > 0 ? { findings: activeFindings } : {}),
-    outputCandidates: activeOutputCandidates,
+    ...(publicActiveFindings.length > 0 ? { findings: publicActiveFindings } : {}),
+    outputCandidates: publicOutputCandidates,
     ...(options.emitReport
       ? renderedJsonReport !== undefined
         ? {
@@ -405,7 +502,13 @@ export function analyzeRegisterContracts(
         : { reportText: renderRegisterContractsReport(reportModel), reportFormat: 'text' as const }
       : {}),
     ...(options.emitInterface
-      ? { interfaceText: renderRegisterContractsInterface(summaries) }
+      ? {
+          interfaceText: renderRegisterContractsInterface(
+            summaries
+              .filter(isInterfaceSummary)
+              .map((summary) => withPublicSummaryIdentity(summary, publicRoutineIdentities)),
+          ),
+        }
       : {}),
     ...(inferenceModel !== undefined
       ? inferenceFormat === 'markdown'
@@ -425,105 +528,6 @@ export function analyzeRegisterContracts(
   };
 }
 
-function isSuppressedFinding(
-  finding: { file: string; line: number; kind?: string },
-  kind: string,
-  suppressions: readonly RegisterContractsSuppression[],
-): boolean {
-  return suppressions.some(
-    (item) =>
-      item.file === finding.file &&
-      item.line === finding.line &&
-      item.findingKind === kind,
-  );
-}
-
-function registerContractsSuppressions(
-  comments: ReturnType<typeof parseSmartComments>,
-): RegisterContractsSuppression[] {
-  return comments
-    .filter((item) => item.comment.kind === 'rcIgnoreNext')
-    .map((item) => {
-      if (item.comment.kind !== 'rcIgnoreNext') {
-        throw new Error('unreachable');
-      }
-      return {
-        file: item.file,
-        line: item.line + 1,
-        column: 1,
-        findingKind: item.comment.findingKind,
-        reason: item.comment.reason,
-      };
-    });
-}
-
-function applyRegisterContractsSuppressions(
-  findings: readonly RegisterContractsFinding[],
-  suppressions: readonly RegisterContractsSuppression[],
-): {
-  activeFindings: RegisterContractsFinding[];
-  suppressedFindings: RegisterContractsSuppressedFinding[];
-} {
-  const suppressedFindings: RegisterContractsSuppressedFinding[] = [];
-  const activeFindings: RegisterContractsFinding[] = [];
-  for (const finding of findings) {
-    const suppression = suppressions.find(
-      (item) =>
-        item.file === finding.file &&
-        item.line === finding.line &&
-        item.findingKind === finding.kind,
-    );
-    if (suppression === undefined) {
-      activeFindings.push(finding);
-    } else {
-      suppressedFindings.push({ finding, suppression });
-    }
-  }
-  return { activeFindings, suppressedFindings };
-}
-
-function malformedSuppressionDiagnostics(
-  sourceLineComments: ReadonlyMap<string, ReadonlyMap<number, string>>,
-  mode: AnalyzeRegisterContractsOptions['mode'],
-  policy: RegisterContractsPolicy | undefined,
-): Diagnostic[] {
-  const diagnostics: Diagnostic[] = [];
-  for (const [file, comments] of sourceLineComments) {
-    for (const [line, text] of comments) {
-      const commentText = `;${text}`;
-      if (!/^;?\s*!\s*rc-ignore-next\b/iu.test(commentText)) continue;
-      if (!isStrictSuppressionContext(file, mode, policy)) continue;
-      const parsed = parseSmartComments(new Map([[file, new Map([[line, text]])]]));
-      if (parsed.some((item) => item.comment.kind === 'rcIgnoreNext')) continue;
-      diagnostics.push({
-        severity: 'error',
-        code: 'AZMN_REGISTER_CONTRACTS',
-        sourceName: file,
-        line,
-        column: 1,
-        message:
-          'Malformed register-contract suppression; use `;! rc-ignore-next <finding-kind>: <reason>`.',
-      });
-    }
-  }
-  return diagnostics;
-}
-
-function isStrictSuppressionContext(
-  file: string,
-  mode: AnalyzeRegisterContractsOptions['mode'],
-  policy: RegisterContractsPolicy | undefined,
-): boolean {
-  if (policy !== undefined) {
-    return registerContractsPolicyModeForFile(file, policy, mode) === 'strict';
-  }
-  return mode === 'strict' || mode === 'error';
-}
-
-function findingKey(finding: { file: string; line: number; column: number; kind?: string }): string {
-  return `${finding.kind ?? ''}:${finding.file}:${finding.line}:${finding.column}`;
-}
-
 function scopedBoundaryContractFindings(input: {
   directBoundaries: readonly RegisterContractsDirectCall[];
   routines: readonly RegisterContractsRoutine[];
@@ -531,21 +535,33 @@ function scopedBoundaryContractFindings(input: {
   summariesByName: ReadonlyMap<string, RoutineSummary>;
   profileSummaryNames: ReadonlySet<string>;
   policy: RegisterContractsPolicy | undefined;
+  sourcePolicy: ReadonlyMap<string, RegisterContractsPolicyMode>;
   mode: AnalyzeRegisterContractsOptions['mode'];
 }): RegisterContractsFinding[] {
-  if (input.policy === undefined) return [];
+  if (input.policy === undefined && input.sourcePolicy.size === 0) return [];
   const routinesByLabel = routinesByBoundaryLabel(input.routines);
   const out: RegisterContractsFinding[] = [];
   for (const boundary of input.directBoundaries) {
-    const callerMode = policyModeForFile(boundary.file, input.policy, input.mode);
+    const targetIdentity = boundary.targetIdentity ?? boundary.target;
+    const callerMode = policyModeForFile(
+      boundary.file,
+      input.policy ?? {},
+      input.mode,
+      input.sourcePolicy,
+    );
     if (callerMode !== 'strict') continue;
-    const targetRoutine = routinesByLabel.get(boundary.target);
+    const targetRoutine = routinesByLabel.get(targetIdentity);
     if (targetRoutine === undefined) continue;
-    const targetMode = policyModeForFile(targetRoutine.span.file, input.policy, input.mode);
+    const targetMode = policyModeForFile(
+      targetRoutine.span.file,
+      input.policy ?? {},
+      input.mode,
+      input.sourcePolicy,
+    );
     if (targetMode === 'strict') continue;
     if (
       hasExplicitBoundaryContract(
-        boundary.target,
+        targetIdentity,
         input.contractMap,
         input.summariesByName,
         input.profileSummaryNames,
@@ -553,7 +569,7 @@ function scopedBoundaryContractFindings(input: {
     ) {
       continue;
     }
-    const routine = routineNameForBoundary(boundary.file, boundary.line, input.routines);
+    const routine = routineForBoundary(boundary.file, boundary.line, input.routines);
     const targetDescription = registerContractsPolicyModeDescription(targetMode);
     out.push({
       kind: 'external_interface_unknown',
@@ -567,7 +583,12 @@ function scopedBoundaryContractFindings(input: {
       ...(boundary.sourceUnitRelation !== undefined
         ? { sourceUnitRelation: boundary.sourceUnitRelation }
         : {}),
-      ...(routine !== undefined ? { routine } : {}),
+      ...(routine !== undefined
+        ? {
+            routine: routine.name,
+            routineIdentity: routine.identity ?? routine.name,
+          }
+        : {}),
       message: `strict register-contract source calls ${targetDescription} ${boundary.target}; add an explicit source, .asmi, or profile contract at the boundary.`,
     });
   }
@@ -579,24 +600,26 @@ function routinesByBoundaryLabel(
 ): ReadonlyMap<string, RegisterContractsRoutine> {
   const out = new Map<string, RegisterContractsRoutine>();
   for (const routine of routines) {
-    for (const label of routine.labels) out.set(label, routine);
-    for (const label of routine.entryLabels) out.set(label, routine);
-    out.set(routine.name, routine);
+    out.set(routine.identity ?? routine.name, routine);
+    if (routine.span.sourceUnitRelation !== 'import') {
+      for (const label of routine.entryLabels) out.set(label, routine);
+    }
+    for (const label of routine.exportedEntryLabels ?? []) out.set(label, routine);
   }
   return out;
 }
 
-function routineNameForBoundary(
+function routineForBoundary(
   file: string,
   line: number,
   routines: readonly RegisterContractsRoutine[],
-): string | undefined {
+): RegisterContractsRoutine | undefined {
   return routines.find(
     (routine) =>
       routine.span.file === file &&
       routine.span.start.line <= line &&
       routine.span.end.line >= line,
-  )?.name;
+  );
 }
 
 function hasExplicitBoundaryContract(
@@ -608,16 +631,23 @@ function hasExplicitBoundaryContract(
   if (contractMap.has(target)) return true;
   const summary = summariesByName.get(target);
   if (summary === undefined) return false;
-  return contractMap.has(summary.name) || profileSummaryNames.has(target) || profileSummaryNames.has(summary.name);
+  return (
+    contractMap.has(summary.name) ||
+    profileSummaryNames.has(target) ||
+    profileSummaryNames.has(summary.name)
+  );
 }
 
 function diagnosticsForScopedPolicy(
   findings: readonly RegisterContractsFinding[],
   policy: RegisterContractsPolicy,
   fallbackMode: AnalyzeRegisterContractsOptions['mode'],
+  sourcePolicy: ReadonlyMap<string, RegisterContractsPolicyMode>,
 ): Diagnostic[] {
   return findings
-    .filter((finding) => policyModeForFile(finding.file, policy, fallbackMode) === 'strict')
+    .filter(
+      (finding) => policyModeForFile(finding.file, policy, fallbackMode, sourcePolicy) === 'strict',
+    )
     .filter((finding) => finding.kind !== 'output_candidate')
     .map((finding) => ({
       severity: 'error',
@@ -633,8 +663,19 @@ function policyModeForFile(
   file: string,
   policy: RegisterContractsPolicy,
   fallbackMode: AnalyzeRegisterContractsOptions['mode'],
+  sourcePolicy: ReadonlyMap<string, RegisterContractsPolicyMode> = new Map(),
 ): RegisterContractsPolicyMode {
-  return registerContractsPolicyModeForFile(file, policy, fallbackMode);
+  return registerContractsPolicyModeForFile(file, policy, fallbackMode, sourcePolicy.get(file));
+}
+
+function registerContractsSourcePolicy(
+  items: readonly SourceItem[],
+): ReadonlyMap<string, RegisterContractsPolicyMode> {
+  const out = new Map<string, RegisterContractsPolicyMode>();
+  for (const item of items) {
+    if (item.kind === 'contracts-policy') out.set(item.span.sourceName, item.mode);
+  }
+  return out;
 }
 
 function registerContractsPolicyModeDescription(mode: RegisterContractsPolicyMode): string {

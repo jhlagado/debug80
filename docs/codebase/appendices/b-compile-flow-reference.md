@@ -41,7 +41,7 @@ compile(entryFile, options, deps)
     load .asmi interfaces
     parse exact and ranged RST service contracts
     build program model
-    read AZMDoc and .asmi contracts
+    read .routine declarations and .asmi contracts
     infer summaries
     run liveness
     apply suppressions and scoped policy
@@ -102,12 +102,12 @@ tooling integrations that still use the older name.
 
 ## Data Handoffs
 
-| Stage              | Input                | Output                                |
-| ------------------ | -------------------- | ------------------------------------- |
-| Source loading     | entry path           | logical lines with ownership metadata, source texts, comments |
-| Parsing            | logical lines        | source items                          |
-| Analysis           | source items         | diagnostics, display-symbol environment, import-visibility checks |
+| Stage              | Input                | Output                                                                         |
+| ------------------ | -------------------- | ------------------------------------------------------------------------------ |
+| Source loading     | entry path           | logical lines with ownership metadata, source texts, comments                  |
+| Parsing            | logical lines        | source items                                                                   |
+| Analysis           | source items         | diagnostics, display-symbol environment, import-visibility checks              |
 | Register contracts | loaded program       | summaries, service-range boundaries, findings, reports and inference artifacts |
-| Assembly           | source items         | byte map, display symbols, source segments with per-item columns |
-| Outputs            | byte map and symbols | artifacts                             |
-| CLI                | artifacts            | files on disk                         |
+| Assembly           | source items         | byte map, display symbols, source segments with per-item columns               |
+| Outputs            | byte map and symbols | artifacts                                                                      |
+| CLI                | artifacts            | files on disk                                                                  |

@@ -9,6 +9,7 @@ import type {
   RegisterContractsUnit,
   RoutineSummary,
 } from './types.js';
+import type { RoutineContractDeclaration } from '../model/register-contract.js';
 
 function list(units: RegisterContractsUnit[]): string {
   return units.length === 0 ? '-' : units.join(',');
@@ -67,7 +68,7 @@ function sourceContractCarrierList(units: RegisterContractsUnit[]): string {
 }
 
 type ContractEntry = {
-  keyword: 'in' | 'out' | 'maybe-out' | 'clobbers';
+  keyword: 'in' | 'out' | 'maybe-out' | 'clobbers' | 'preserves';
   carriers: string;
 };
 
@@ -89,20 +90,41 @@ function contractEntries(summary: RoutineSummary): ContractEntry[] {
   return out;
 }
 
-function sourceContractEntries(summary: RoutineSummary): ContractEntry[] {
+function uniqueUnits(units: readonly RegisterContractsUnit[]): RegisterContractsUnit[] {
+  return [...new Set(units)];
+}
+
+function sourceContractEntries(
+  summary: RoutineSummary,
+  declared?: RoutineContractDeclaration,
+): ContractEntry[] {
   const out: ContractEntry[] = [];
-  if (summary.mayRead.length > 0)
-    out.push({ keyword: 'in', carriers: contractCarrierList(summary.mayRead) });
+  const inputs = uniqueUnits([...summary.mayRead, ...(declared?.in ?? [])]);
+  if (inputs.length > 0) out.push({ keyword: 'in', carriers: contractCarrierList(inputs) });
   const relationOut = relationOutUnits(summary);
-  const candidates = (summary.outputCandidates ?? []).filter((unit) => !relationOut.has(unit));
-  if (candidates.length > 0)
-    out.push({ keyword: 'maybe-out', carriers: contractCarrierList(candidates) });
-  const outputUnits = relationOutputUnits(summary.valueRelations);
+  const outputUnits = uniqueUnits([
+    ...relationOutputUnits(summary.valueRelations),
+    ...(declared?.out ?? []),
+  ]);
   if (outputUnits.length > 0)
     out.push({ keyword: 'out', carriers: contractCarrierList(outputUnits) });
-  const clobbers = summary.mayWrite.filter((unit) => !relationOut.has(unit));
+  const outputSet = new Set(outputUnits);
+  const candidates = uniqueUnits([
+    ...(summary.outputCandidates ?? []),
+    ...(declared?.maybeOut ?? []),
+  ]).filter((unit) => !relationOut.has(unit) && !outputSet.has(unit));
+  if (candidates.length > 0)
+    out.push({ keyword: 'maybe-out', carriers: contractCarrierList(candidates) });
+  const preserves = uniqueUnits(declared?.preserves ?? []);
+  const preserveSet = new Set(preserves);
+  const clobbers = uniqueUnits([
+    ...summary.mayWrite.filter((unit) => !relationOut.has(unit)),
+    ...(declared?.clobbers ?? []),
+  ]).filter((unit) => !outputSet.has(unit) && !preserveSet.has(unit));
   if (clobbers.length > 0)
     out.push({ keyword: 'clobbers', carriers: sourceContractCarrierList(clobbers) });
+  if (preserves.length > 0)
+    out.push({ keyword: 'preserves', carriers: contractCarrierList(preserves) });
   return out;
 }
 
@@ -122,6 +144,14 @@ export function renderRegisterContractsReport(model: RegisterContractsReportMode
     `Mode: ${model.mode}`,
   ];
   if (model.profile) lines.push(`Profile: ${model.profile}`);
+  if (model.filePolicies !== undefined) {
+    lines.push('Effective file policy:');
+    for (const [file, mode] of Object.entries(model.filePolicies).sort(([a], [b]) =>
+      a.localeCompare(b),
+    )) {
+      lines.push(`  ${file}: ${mode}`);
+    }
+  }
   lines.push('');
 
   appendRoutineSummaries(lines, model);
@@ -142,6 +172,7 @@ export function buildRegisterContractsJsonReport(
     version: 1,
     entryFile: model.entryFile,
     mode: model.mode,
+    ...(model.filePolicies !== undefined ? { filePolicies: model.filePolicies } : {}),
     ...(model.profile !== undefined ? { profile: model.profile } : {}),
     summaries: model.summaries,
     findings: (model.findings ?? []).map(jsonFinding),
@@ -158,9 +189,10 @@ export function buildRegisterContractsJsonReport(
   };
 }
 
-export function renderRegisterContractsJsonReport(
-  model: RegisterContractsReportModel,
-): { json: RegisterContractsJsonReportModel; text: string } {
+export function renderRegisterContractsJsonReport(model: RegisterContractsReportModel): {
+  json: RegisterContractsJsonReportModel;
+  text: string;
+} {
   const json = buildRegisterContractsJsonReport(model);
   return { json, text: `${JSON.stringify(json, null, 2)}\n` };
 }
@@ -171,6 +203,7 @@ function jsonFinding(finding: RegisterContractsFinding): RegisterContractsJsonFi
     location: jsonLocation(finding),
     message: finding.message,
     ...('routine' in finding && finding.routine !== undefined ? { routine: finding.routine } : {}),
+    ...(finding.routineIdentity !== undefined ? { routineIdentity: finding.routineIdentity } : {}),
     ...('callTarget' in finding ? { callTarget: finding.callTarget } : {}),
     ...('subject' in finding ? { subject: finding.subject } : {}),
     ...(finding.carriers !== undefined ? { carriers: finding.carriers } : {}),
@@ -211,7 +244,7 @@ function remediationForFinding(
     case 'unknown_control_flow':
       return {
         category: 'review_control_flow',
-        hint: 'Keep stack-changing paths inside one @ routine boundary or split the flow into explicit routines.',
+        hint: 'Keep stack-changing paths inside one .routine boundary or split the flow into explicit routines.',
       };
     case 'output_candidate':
       return {
@@ -375,6 +408,7 @@ export function buildRegisterContractsInference(
       const outputCandidateCarriers = summary.outputCandidates ?? [];
       return {
         name: summary.name,
+        identity: summary.identity ?? summary.name,
         in: summary.mayRead,
         out,
         clobbers: summary.mayWrite.filter((unit) => !out.includes(unit)),
@@ -417,7 +451,14 @@ export function renderRegisterContractsInferenceMarkdown(
 }
 
 export function renderRegisterContractsSourceBlock(summary: RoutineSummary): string[] {
-  const entries = sourceContractEntries(summary);
-  if (entries.length === 0) return [];
-  return [`;! ${entries.map((entry) => `${entry.keyword} ${entry.carriers}`).join('; ')}`];
+  return [renderRegisterContractsRoutineDirective(summary)];
+}
+
+export function renderRegisterContractsRoutineDirective(
+  summary: RoutineSummary,
+  declared?: RoutineContractDeclaration,
+): string {
+  const entries = sourceContractEntries(summary, declared);
+  if (entries.length === 0) return '.routine';
+  return `.routine ${entries.map((entry) => `${entry.keyword} ${entry.carriers}`).join(' ')}`;
 }

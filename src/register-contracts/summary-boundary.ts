@@ -1,7 +1,11 @@
 import { getZ80InstructionEffect } from '../z80/effects.js';
 import { precedingCServiceName, precedingRegisterImmediateValue } from './boundaryHints.js';
 import { instructionHead } from './instruction-head.js';
-import { rstDispatcherServiceTargetNames, rstServiceTargetName, rstTargetName } from './profiles.js';
+import {
+  rstDispatcherServiceTargetNames,
+  rstServiceTargetName,
+  rstTargetName,
+} from './profiles.js';
 import type {
   InstructionEffect,
   RegisterContractsInstruction,
@@ -20,18 +24,19 @@ export function boundarySummary(
   if (!item) return undefined;
   const effect = getZ80InstructionEffect(item.instruction);
   return (
-    callBoundarySummary(effect, summaries) ??
+    callBoundarySummary(item, effect, summaries) ??
     jumpBoundarySummary(routine, item, effect, summaries) ??
     rstBoundarySummary(routine, index, effect, summaries, serviceRanges)
   );
 }
 
 function callBoundarySummary(
+  item: RegisterContractsInstruction,
   effect: InstructionEffect,
   summaries: ReadonlyMap<string, RoutineSummary>,
 ): RoutineSummary | undefined {
   return effect.control.kind === 'call' && effect.control.target
-    ? summaries.get(effect.control.target)
+    ? summaries.get(item.resolvedTarget ?? effect.control.target)
     : undefined;
 }
 
@@ -42,7 +47,7 @@ function jumpBoundarySummary(
   summaries: ReadonlyMap<string, RoutineSummary>,
 ): RoutineSummary | undefined {
   return isExternalTailJump(routine, item, effect)
-    ? summaries.get(effect.control.target)
+    ? summaries.get(item.resolvedTarget ?? effect.control.target)
     : undefined;
 }
 
@@ -58,6 +63,7 @@ function isExternalTailJump(
     (instructionHead(item) === 'jp' || instructionHead(item) === 'jp-cc') &&
     effect.control.target !== undefined &&
     !effect.control.target.startsWith('.') &&
+    !effect.control.target.startsWith('_') &&
     !routine.labels.includes(effect.control.target)
   );
 }

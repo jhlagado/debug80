@@ -126,11 +126,13 @@ describe('stage 14 register-contracts CLI facade', () => {
       await writeFile(
         entry,
         [
+          '.routine',
           'START:',
           '    call MASK',
           '    ret',
           '',
           '; Helper prose.',
+          '.routine',
           'MASK:',
           '    ld a, $80',
           '    ret',
@@ -160,7 +162,7 @@ describe('stage 14 register-contracts CLI facade', () => {
       expect(res.stdout.trim()).toBe(entry);
 
       const rewritten = await readFile(entry, 'utf8');
-      expect(rewritten).toContain(';! out A');
+      expect(rewritten).toContain('.routine out A');
     });
   });
 
@@ -193,11 +195,13 @@ describe('stage 14 register-contracts CLI facade', () => {
       await writeFile(
         entry,
         [
+          '.routine',
           'START:',
           '    ld de,$1000',
           '    call HELPER',
           '    inc de',
           '    ret',
+          '.routine',
           'HELPER:',
           '    ld de,$2000',
           '    ld (de),a',
@@ -219,11 +223,13 @@ describe('stage 14 register-contracts CLI facade', () => {
       await writeFile(
         entry,
         [
+          '.routine',
           'START:',
           '    ld de,$1000',
           '    call HELPER',
           '    inc de',
           '    ret',
+          '.routine',
           'HELPER:',
           '    ld de,$2000',
           '    ld (de),a',
@@ -247,7 +253,7 @@ describe('stage 14 register-contracts CLI facade', () => {
       const entry = join(dir, 'main.asm');
       await writeFile(
         entry,
-        ['START:', '    call MISSING_HELPER', '    ret', '.end'].join('\n'),
+        ['.routine', 'START:', '    call MISSING_HELPER', '    ret', '.end'].join('\n'),
         'utf8',
       );
 
@@ -262,7 +268,7 @@ describe('stage 14 register-contracts CLI facade', () => {
       const entry = join(dir, 'main.asm');
       await writeFile(
         entry,
-        ['START:', '    call MISSING_HELPER', '    ret', '.end'].join('\n'),
+        ['.routine', 'START:', '    call MISSING_HELPER', '    ret', '.end'].join('\n'),
         'utf8',
       );
 
@@ -284,6 +290,7 @@ describe('stage 14 register-contracts CLI facade', () => {
       await writeFile(
         entry,
         [
+          '.routine',
           'START:',
           '    ld a,3',
           '    ld hl,$2000',
@@ -291,6 +298,7 @@ describe('stage 14 register-contracts CLI facade', () => {
           '    ld d,a',
           '',
           '; Helper prose.',
+          '.routine',
           'MASK:',
           '    ld a,$80',
           '    ld (hl),a',
@@ -305,7 +313,7 @@ describe('stage 14 register-contracts CLI facade', () => {
       expect(res.stdout.trim()).toBe(entry);
 
       const rewritten = await readFile(entry, 'utf8');
-      expect(rewritten).toContain('; expects out A');
+      expect(rewritten).toContain('.expectout A');
     });
   });
 
@@ -315,12 +323,14 @@ describe('stage 14 register-contracts CLI facade', () => {
       await writeFile(
         entry,
         [
+          '.routine',
           'START:',
           '    ld hl,$2000',
           '    call MASK',
           '    inc b',
           '    ld d,a',
           '; Helper prose.',
+          '.routine',
           'MASK:',
           '    ld a,$80',
           '    ld (hl),a',
@@ -335,7 +345,7 @@ describe('stage 14 register-contracts CLI facade', () => {
       expect(res.stdout.trim()).toBe(entry);
 
       const rewritten = await readFile(entry, 'utf8');
-      expect(rewritten).toContain('; expects out A');
+      expect(rewritten).toContain('.expectout A');
     });
   });
 
@@ -346,9 +356,15 @@ describe('stage 14 register-contracts CLI facade', () => {
       await writeFile(iface, ['extern HELPER', 'clobbers DE', 'end'].join('\n'), 'utf8');
       await writeFile(
         entry,
-        ['START:', '    ld de,$1000', '    call HELPER', '    inc de', '    ret', '.end'].join(
-          '\n',
-        ),
+        [
+          '.routine',
+          'START:',
+          '    ld de,$1000',
+          '    call HELPER',
+          '    inc de',
+          '    ret',
+          '.end',
+        ].join('\n'),
         'utf8',
       );
 
@@ -370,6 +386,7 @@ describe('stage 14 register-contracts CLI facade', () => {
         entry,
         [
           'API_SCANKEYS:',
+          '.routine',
           'START:',
           '  ld a, $12',
           '  ld c, API_SCANKEYS',

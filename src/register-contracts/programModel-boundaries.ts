@@ -1,6 +1,7 @@
 import type { Expression } from '../model/expression.js';
 import type { SourceItem } from '../model/source-item.js';
-import type { RegisterContractsDirectCall } from './types.js';
+import type { RegisterContractsDirectCall, RegisterContractsRoutine } from './types.js';
+import { resolveRoutineIdentity } from './routine-identity.js';
 
 type InstructionItem = Extract<SourceItem, { readonly kind: 'instruction' }>;
 
@@ -19,32 +20,55 @@ export function instructionCallTarget(item: SourceItem): string | undefined {
 
 function instructionTailJumpTarget(
   item: SourceItem,
-  entryNames?: ReadonlySet<string>,
+  routines: readonly RegisterContractsRoutine[],
+  items: readonly SourceItem[],
 ): string | undefined {
   if (item.kind !== 'instruction') return undefined;
-  if (!isTailJumpInstruction(item.instruction, entryNames)) return undefined;
+  if (!isTailJumpInstruction(item.instruction)) return undefined;
   const target = routineNameFromExpression(item.instruction.expression);
-  return isEligibleTailJumpTarget(target, entryNames) ? target : undefined;
+  if (!isEligibleTailJumpTarget(target)) return undefined;
+  const span = effectiveInstructionSpan(item);
+  const routineIdentity = resolveRoutineIdentity(target, span.sourceUnit, routines);
+  if (item.instruction.mnemonic === 'jp-cc') {
+    return routineIdentity === undefined ? undefined : target;
+  }
+  return routineIdentity !== undefined || !hasVisibleOrdinaryLabel(target, span, items, routines)
+    ? target
+    : undefined;
+}
+
+function hasVisibleOrdinaryLabel(
+  target: string,
+  callerSpan: InstructionItem['span'],
+  items: readonly SourceItem[],
+  routines: readonly RegisterContractsRoutine[],
+): boolean {
+  const routineLabels = new Set(routines.flatMap((routine) => routine.entryLabels));
+  const callerUnit = callerSpan.sourceUnit ?? callerSpan.sourceName;
+  return items.some((candidate) => {
+    if (candidate.kind !== 'label' || candidate.name !== target) return false;
+    if (routineLabels.has(candidate.name)) {
+      const resolved = resolveRoutineIdentity(target, callerSpan.sourceUnit, routines);
+      if (resolved !== undefined) return false;
+    }
+    const candidateUnit = candidate.span.sourceUnit ?? candidate.span.sourceName;
+    if (candidateUnit === callerUnit) return true;
+    if (candidate.span.sourceUnitRelation !== 'import') return true;
+    return candidate.isExported === true;
+  });
 }
 
 function isTailJumpInstruction(
   instruction: Extract<SourceItem, { readonly kind: 'instruction' }>['instruction'],
-  entryNames: ReadonlySet<string> | undefined,
 ): instruction is Extract<
   Extract<SourceItem, { readonly kind: 'instruction' }>['instruction'],
   { readonly mnemonic: 'jp' | 'jp-cc' }
 > {
-  return (
-    instruction.mnemonic === 'jp' || (instruction.mnemonic === 'jp-cc' && entryNames !== undefined)
-  );
+  return instruction.mnemonic === 'jp' || instruction.mnemonic === 'jp-cc';
 }
 
-function isEligibleTailJumpTarget(
-  target: string | undefined,
-  entryNames: ReadonlySet<string> | undefined,
-): target is string {
-  if (target === undefined || target.startsWith('.')) return false;
-  return entryNames === undefined || entryNames.has(target);
+function isEligibleTailJumpTarget(target: string | undefined): target is string {
+  return target !== undefined && !target.startsWith('.') && !target.startsWith('_');
 }
 
 export function pushDirectBoundary(
@@ -71,48 +95,21 @@ function effectiveInstructionSpan(item: InstructionItem): InstructionItem['span'
   return item.emittedSource?.span ?? item.span;
 }
 
-export function collectFilesWithEntryLabels(items: readonly SourceItem[]): Set<string> {
-  return new Set(
-    items
-      .filter((item): item is Extract<SourceItem, { kind: 'label' }> => item.kind === 'label')
-      .filter((item) => item.isEntry === true)
-      .map((item) => item.span.sourceName),
-  );
-}
-
-function entryNamesByFile(items: readonly SourceItem[]): Map<string, Set<string>> {
-  const namesByFile = new Map<string, Set<string>>();
-  for (const item of items) {
-    if (item.kind !== 'label' || item.isEntry !== true) continue;
-    const names = namesByFile.get(item.span.sourceName) ?? new Set<string>();
-    names.add(item.name);
-    namesByFile.set(item.span.sourceName, names);
-  }
-  return namesByFile;
-}
-
 export function collectDirectTailJumps(
   items: readonly SourceItem[],
-  filesWithEntryLabels: ReadonlySet<string>,
+  routines: readonly RegisterContractsRoutine[],
 ): RegisterContractsDirectCall[] {
-  const entriesByFile = entryNamesByFile(items);
   const directTailJumps: RegisterContractsDirectCall[] = [];
 
   for (const item of items) {
     if (item.kind !== 'instruction') continue;
-    const span = effectiveInstructionSpan(item);
-    const entryNames = filesWithEntryLabels.has(span.sourceName)
-      ? entriesByFile.get(span.sourceName)
-      : undefined;
-    const target = instructionTailJumpTarget(item, entryNames);
+    const target = instructionTailJumpTarget(item, routines, items);
     if (target === undefined) continue;
-    pushDirectBoundary(
-      directTailJumps,
-      target,
-      `JP ${target}`,
-      effectiveInstructionSpan(item),
-    );
+    pushDirectBoundary(directTailJumps, target, `JP ${target}`, effectiveInstructionSpan(item));
   }
 
-  return directTailJumps;
+  return directTailJumps.map((boundary) => {
+    const identity = resolveRoutineIdentity(boundary.target, boundary.sourceUnit, routines);
+    return identity === undefined ? boundary : { ...boundary, targetIdentity: identity };
+  });
 }

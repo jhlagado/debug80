@@ -131,14 +131,15 @@ logical-line       ::= blank-line
                      | statement-line
                      | chained-instruction-line
 
-label-only-line    ::= entry-label ":"
-label-statement-line ::= entry-label ":" statement
+label-only-line    ::= declared-label ":"
+label-statement-line ::= declared-label ":" statement
 statement-line     ::= statement
+declared-label     ::= ["@"] identifier
 ```
 
 `@Name:` and `Name:` both define address labels. The `@` prefix is not part of
-the symbol name stored by the assembler; it marks an entry/public label and a
-register-contract boundary.
+the symbol name stored by the assembler; it marks an exported declaration only.
+Register-contract routines are declared independently with `.routine`.
 
 ## Chained Instruction Lines
 
@@ -151,7 +152,7 @@ chained-instruction-line ::= first-chain-segment chain-separator chain-segment
                              (chain-separator chain-segment)* comment?
 
 chain-separator          ::= space+ "\\" space+
-first-chain-segment      ::= entry-label ":" instruction-or-op
+first-chain-segment      ::= declared-label ":" instruction-or-op
                            | instruction-or-op
 chain-segment            ::= instruction-or-op
 instruction-or-op        ::= z80-instruction | op-invocation
@@ -161,7 +162,7 @@ Examples:
 
 ```asm
 Loop:   ld      a,(hl) \ inc hl \ djnz Loop
-        clear_a \ ret
+        clearA \ ret
 ```
 
 Rules:
@@ -514,21 +515,25 @@ keywords.
 Aliases normalize only directive heads. They do not rename labels, constants,
 instruction mnemonics, op names or expression functions.
 
-## Register Contract Comments
+## Register Contract Directives
 
-Register contract lines are comments at the assembler grammar level. They are
-recognized later by the register-contract subsystem.
+Register contracts are one-line declarations attached to the next non-local
+label in the same physical file.
 
 ```text
-contract-line      ::= ";!" contract-clause (";" contract-clause)*
+routine-line       ::= ".routine" (contract-clause)*
 contract-clause    ::= contract-key register-list
-contract-key       ::= "in" | "out" | "clobbers" | "preserves"
+contract-key       ::= "in" | "out" | "maybe-out" | "clobbers" | "preserves"
+contracts-line     ::= ".contracts" ("strict" | "audit" | "off")
+expectout-line     ::= ".expectout" register-list
+rcignore-line      ::= ".rcignore" finding-kind quoted-reason
 ```
 
-The multiline historical form is still read, but generated contracts use the
-compact semicolon-separated form. Generated `;! maybe-out ...` lines are
-recognized separately as preceding routine hints; `maybe-out` is not a normal
-compact source contract clause.
+The `.routine` directive and every contract clause occupy one physical line.
+`.expectout` and `.rcignore` attach to the next instruction in the same file,
+across blank lines and ordinary comments. Recognized legacy `;!` contract forms
+and `; expects out` produce migration diagnostics; arbitrary comments beginning
+with `!` remain ordinary comments.
 
 ## Unsupported or Deliberately Rejected Forms
 
@@ -541,31 +546,24 @@ The current parser deliberately rejects:
 - Uppercase conditional directives such as `.IF`.
 - Text macros.
 
-Leading-dot labels such as `.loop:` are not AZM local-label syntax. AZM uses a
-leading dot for directives, so scoped private labels are expressed through
-`@` routine ownership and `.import` source-unit ownership rather than
-dot-prefixed label spelling.
+Leading-dot labels such as `.loop:` are not AZM local-label syntax because a
+leading dot is reserved for directives. A leading underscore declares a label
+local to the nearest preceding non-local label in the same source unit:
 
-Label visibility follows the `@` prefix consistently:
+```asm
+DrawSprite:
+_loop:
+        djnz _loop
+```
 
-- An `@Name:` label is a public entry: globally visible, and the boundary the
-  register-contract machinery proves interfaces on.
-- A plain label defined **after** an `@` label is local to that routine — it
-  is visible up to the next `@` label in the same source unit and invisible
-  everywhere else. Two routines may therefore each define `Loop:` without
-  colliding. A reference to another routine's local label is rejected with a
-  diagnostic suggesting `@`-exporting the label or moving it above the first
-  `@` label.
-- A plain label defined **before** a unit's first `@` label is file-level: in
-  the entry file (and its `.include`s) it is global, exactly as in programs
-  that never use `@` labels; in an `.import`ed file it is private to that
-  source unit.
+The same `_loop` spelling may be reused under another owner. A local label
+before any non-local owner is invalid, and `@_name` is always invalid. Leading
+underscore local syntax is supported only for labels, not equates, enums,
+types, type aliases or ops.
 
-Duplicate routine-local labels are allowed across different routines and
-duplicate file-private labels across different imported source units;
-duplicates inside one routine or one unit's file level are still rejected.
-Shared data that several routines use belongs above the first `@` label (or
-behind an `@` export). Equates, enums, types and type aliases are not
-routine-scoped. The internal private-symbol qualification used to implement
-all of this is not AZM source syntax; ambiguous local names appear in symbol
-listings as `Routine.label`.
+Plain non-local declarations are source-unit global. In an imported unit they
+remain private unless prefixed with `@`; `@` changes export visibility only and
+does not create a routine. `.routine` changes register-contract classification
+only and does not export its following label. Local debug-map names use
+`Owner._local`; colliding private declarations also carry source-unit-qualified
+display names and stable declaration identities.

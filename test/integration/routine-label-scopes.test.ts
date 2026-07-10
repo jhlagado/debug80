@@ -15,17 +15,17 @@ async function withTempDir<T>(prefix: string, callback: (dir: string) => Promise
   }
 }
 
-describe('routine-scoped label privacy', () => {
-  it('lets two routines define the same plain label without colliding', () => {
+describe('owner-scoped local label privacy', () => {
+  it('lets two owners define the same underscore-prefixed label without colliding', () => {
     const result = compileSource(`
         .org 0100H
 @First:
-Loop:
-        djnz Loop
+_loop:
+        djnz _loop
         ret
 @Second:
-Loop:
-        djnz Loop
+_loop:
+        djnz _loop
         ret
 `);
 
@@ -36,69 +36,67 @@ Loop:
     expect(result.symbols).toMatchObject({
       First: 0x0100,
       Second: 0x0103,
-      'First.Loop': 0x0100,
-      'Second.Loop': 0x0103,
+      'First._loop': 0x0100,
+      'Second._loop': 0x0103,
     });
-    expect(result.symbols['Loop']).toBeUndefined();
+    expect(result.symbols['_loop']).toBeUndefined();
   });
 
-  it('displays an unambiguous routine-local label under its plain name', () => {
+  it('displays an unambiguous local label under its plain name', () => {
     const result = compileSource(`
         .org 0100H
 @Main:
-        jr Skip
+        jr _skip
         nop
-Skip:
+_skip:
         ret
 `);
 
     expect(result.diagnostics).toEqual([]);
-    expect(result.symbols).toMatchObject({ Main: 0x0100, Skip: 0x0103 });
+    expect(result.symbols).toMatchObject({ Main: 0x0100, _skip: 0x0103 });
   });
 
-  it('rejects a cross-routine reference to a routine-local label', () => {
+  it('rejects a cross-owner reference to a local label', () => {
     const result = compileSource(`
         .org 0100H
 @First:
-Helper:
+_helper:
         ret
 @Second:
-        call Helper
+        call _helper
         ret
 `);
 
     expect(result.diagnostics).toEqual([
       expect.objectContaining({
         severity: 'error',
-        message:
-          'label "Helper" is local to routine @First in <memory>; export it with @Helper or move it above the first @ label',
+        message: 'local symbol "_helper" belongs to First in <memory>',
         line: 7,
       }),
     ]);
   });
 
-  it('rejects a file-level reference to a routine-local label', () => {
+  it('rejects a reference from another owner to a local label', () => {
     const result = compileSource(`
         .org 0100H
 Start:
-        call Helper
+        call _helper
         ret
 @Routine:
-Helper:
+_helper:
         ret
 `);
 
     expect(result.diagnostics).toEqual([
       expect.objectContaining({
         severity: 'error',
-        message:
-          'label "Helper" is local to routine @Routine in <memory>; export it with @Helper or move it above the first @ label',
+        message: 'local symbol "_helper" belongs to Routine in <memory>',
         line: 4,
       }),
     ]);
   });
 
-  it('keeps labels above the first @ label file-visible from inside routines', () => {
+  it('keeps ordinary labels visible from all owners', () => {
     const result = compileSource(`
         .org 0100H
 Buffer:
@@ -115,30 +113,29 @@ Buffer:
     expect(result.symbols).toMatchObject({ Buffer: 0x0100 });
   });
 
-  it('treats data labels between routines as local to the preceding routine', () => {
+  it('keeps underscore-prefixed data labels local to the preceding owner', () => {
     const result = compileSource(`
         .org 0100H
 @First:
-        ld hl,Stash
+        ld hl,_stash
         ret
-Stash:
+_stash:
         .ds 1
 @Second:
-        ld hl,Stash
+        ld hl,_stash
         ret
 `);
 
     expect(result.diagnostics).toEqual([
       expect.objectContaining({
         severity: 'error',
-        message:
-          'label "Stash" is local to routine @First in <memory>; export it with @Stash or move it above the first @ label',
+        message: 'local symbol "_stash" belongs to First in <memory>',
         line: 9,
       }),
     ]);
   });
 
-  it('keeps programs without @ labels fully global', () => {
+  it('keeps unprefixed labels source-unit global', () => {
     const result = compileSource(`
         .org 0100H
 main:
@@ -152,53 +149,58 @@ helper:
     expect(result.symbols).toMatchObject({ main: 0x0100, helper: 0x0104 });
   });
 
-  it('resolves routine-local references case-insensitively within the routine', () => {
+  it('resolves local references case-sensitively within their owner', () => {
     const result = compileSource(`
         .org 0100H
 @Main:
-MyLoop:
-        djnz myloop
+_myLoop:
+        djnz _MYLOOP
+        ret
+`);
+
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        severity: 'error',
+        message: expect.stringContaining('_MYLOOP'),
+      }),
+    ]);
+  });
+
+  it('reports a duplicate when the same local label repeats under one owner', () => {
+    const result = compileSource(`
+        .org 0100H
+@Main:
+_loop:
+        nop
+_loop:
+        ret
+`);
+
+    expect(result.diagnostics).not.toEqual([]);
+    expect(result.diagnostics[0]?.message ?? '').toContain('_loop');
+  });
+
+  it('allows a local label to differ from a source-unit global by its prefix', () => {
+    const result = compileSource(`
+        .org 0100H
+Value:
+        .ds 1
+@Main:
+_value:
         ret
 `);
 
     expect(result.diagnostics).toEqual([]);
   });
 
-  it('reports a duplicate when the same plain label repeats inside one routine', () => {
-    const result = compileSource(`
-        .org 0100H
-@Main:
-Loop:
-        nop
-Loop:
-        ret
-`);
-
-    expect(result.diagnostics).not.toEqual([]);
-    expect(result.diagnostics[0]?.message ?? '').toContain('Loop');
-  });
-
-  it('reports a duplicate when a routine-local label collides with a file-level label', () => {
-    const result = compileSource(`
-        .org 0100H
-Value:
-        .ds 1
-@Main:
-Value:
-        ret
-`);
-
-    expect(result.diagnostics).not.toEqual([]);
-  });
-
-  it('scopes routine-local labels inside imported units to their routine', async () => {
+  it('scopes local labels inside imported units to their owner', async () => {
     await withTempDir('azm-routine-scope-import-', async (dir) => {
       const entry = join(dir, 'main.asm');
       const module = join(dir, 'lib.asm');
       await writeFile(entry, '.import "lib.asm"\nmain:\n  call ReadKey\n', 'utf8');
       await writeFile(
         module,
-        '@ReadKey:\n  jr Done\nDone:\n  ret\n@Other:\n  jr Done\n  ret\n',
+        '@ReadKey:\n  jr _done\n_done:\n  ret\n@Other:\n  jr _done\n  ret\n',
         'utf8',
       );
 
@@ -209,7 +211,7 @@ Value:
       expect(analysis.diagnostics).toEqual([
         expect.objectContaining({
           severity: 'error',
-          message: `label "Done" is local to routine @ReadKey in ${module}; export it with @Done or move it above the first @ label`,
+          message: `local symbol "_done" belongs to ReadKey in ${module}`,
           sourceName: module,
           line: 6,
         }),
@@ -223,10 +225,10 @@ Value:
       const module = join(dir, 'lib.asm');
       await writeFile(
         entry,
-        '.import "lib.asm"\n.org $4000\n@Main:\nLoop:\n  call Work\n  jr Loop\n',
+        '.import "lib.asm"\n.org $4000\n@Main:\n_loop:\n  call Work\n  jr _loop\n',
         'utf8',
       );
-      await writeFile(module, '@Work:\nLoop:\n  djnz Loop\n  ret\n', 'utf8');
+      await writeFile(module, '@Work:\n_loop:\n  djnz _loop\n  ret\n', 'utf8');
 
       const result = await loadProgramNext({ entryFile: entry });
       expect(result.diagnostics).toEqual([]);

@@ -159,10 +159,11 @@ Diagnostics describe every warning or error observed during loading, analysis,
 register contract analysis, assembly or artifact creation. Artifacts contain the
 in-memory outputs requested by options.
 
-When analysis is enabled, `compile()` can now suppress ordinary unresolved-call
-diagnostics for files whose register-contract policy resolves to `off`. That
-keeps policy-controlled external boundaries in the register-contract report path
-rather than duplicating them as symbol failures.
+When analysis is enabled, `compile()` suppresses an ordinary unresolved-call
+diagnostic only when register-contract analysis is active for that file and can
+report the unknown boundary itself. Files whose effective policy is `off` retain
+ordinary symbol diagnostics because register-contract analysis does not own
+those calls.
 
 The older option names `registerCare`, `registerCareProfile` and
 `registerCareInterfaces` remain as deprecated aliases for package consumers.
@@ -196,9 +197,9 @@ Visibility checks walk instruction operands, data expressions, equates,
 alignment and bin-range expressions and bare `.ds` size expressions. Imported
 private labels remain visible inside their own source unit, including op
 generated references and text included into that same unit. Reference lookup
-prefers same-unit imported private labels first, then public labels, and treats
-entry or public equates and enum members as stronger matches than imported
-private fallbacks. Imported private labels only report duplicate-symbol
+uses exact-case declaration names and then applies owner and source-unit
+visibility; it never falls back to case-insensitive symbol matching. Imported
+private labels only report duplicate-symbol
 conflicts against declarations from the same imported source unit, so entry-file
 equates and enum members can share the same display name without blocking that
 unit's internal references. Public labels and declarations inside the imported
@@ -295,13 +296,13 @@ The D8 map distinguishes addressable symbols from constants. Labels and
 addressable data carry addresses. Constants carry values. Debug80 can then use
 addressable symbols for breakpoints and display constants as metadata.
 
-Assembly now keeps imported private labels on internal source-unit-qualified
-names while it resolves addresses and emits bytes. BIN, HEX, D8 and compile API
-symbol outputs map those names back to display symbols before they leave the
-assembler. When multiple imported private labels would share one display name,
-or a public symbol already owns that display name, the artifact symbol lists
-omit the ambiguous imported private entry instead of leaking the internal
-qualified name.
+Assembly keeps owner-local labels and imported private declarations on internal
+identity-qualified names while it resolves addresses and emits bytes. Ordinary
+compile symbol tables remain display-oriented. D8 symbols additionally carry a
+stable declaration `identity`, `visibility` (`exported`, `source` or `local`)
+and normalized `sourceUnit`. When private display names collide, D8 retains all
+declarations and prefixes the private display name with its source unit instead
+of omitting it. Internal NUL-qualified assembler names never appear in D8.
 
 ## Lowered ASM80 and Register Contract Artifacts
 
@@ -327,6 +328,13 @@ The register-contract report artifact now carries optional structured payloads:
 `format`, `json` and the active `findings` list. JSON reports use the stable
 `azm-register-contracts-report` envelope with summaries, findings, suppressed
 findings, unknown calls and optional ratchet results.
+
+JSON reports include the effective `filePolicies` map after project globs,
+source `.contracts` directives and the command fallback mode are resolved.
+Files resolved to `off` do not contribute findings, summaries, annotations,
+inference rows or ratchet deltas. Routine summaries, findings and inference rows
+carry normalized project-relative routine identities so same-named private
+routines remain distinct without exposing internal assembler keys.
 
 Inference artifacts carry a routine-oriented `azm-register-contracts-inference`
 model. Each routine records inferred `in`, `out`, `clobbers` and `preserves`

@@ -1,14 +1,13 @@
 import type { SourceItem } from '../model/source-item.js';
+import type { SourceSpan } from '../source/source-span.js';
 
 /**
- * Routine-scoped label privacy.
+ * Explicit local-label ownership.
  *
- * An `@Name:` entry label opens a routine scope; every plain (non-`@`)
- * label defined after it — until the next `@` label in the same privacy
- * unit — is local to that routine. Labels defined before a unit's first
- * `@` label are file-level (global in the root program, unit-private in
- * imported files, exactly as before). Programs that never use `@` labels
- * keep the classic fully-global behaviour.
+ * Every non-local label establishes an owner. A label beginning with `_`
+ * belongs to the nearest preceding non-local label in the same privacy unit.
+ * `@` export syntax has already been normalized away by this stage and has no
+ * effect on local ownership.
  *
  * The privacy unit is the imported source unit for `.import`ed items;
  * the root file and everything textually `.include`d into it share one
@@ -20,7 +19,7 @@ const ROOT_UNIT_KEY = '\0<root>';
 export interface RoutineScope {
   /** Privacy unit the item belongs to (import unit, or the shared root unit). */
   readonly unitKey: string;
-  /** Enclosing `@` routine name, or undefined at file level. */
+  /** Owning non-local symbol name, or undefined before the first owner. */
   readonly routine: string | undefined;
 }
 
@@ -40,10 +39,14 @@ export interface RoutineLocalLabelModel {
   readonly outerLowerNames: ReadonlySet<string>;
 }
 
-export function privacyUnitKey(item: SourceItem): string {
-  return item.span.sourceUnitRelation === 'import' && item.span.sourceUnit !== undefined
-    ? item.span.sourceUnit
+export function privacyUnitKeyFromSpan(span: SourceSpan): string {
+  return span.sourceUnitRelation === 'import' && span.sourceUnit !== undefined
+    ? span.sourceUnit
     : ROOT_UNIT_KEY;
+}
+
+export function privacyUnitKey(item: SourceItem): string {
+  return privacyUnitKeyFromSpan(item.span);
 }
 
 export function routineScopeKey(scope: RoutineScope): string {
@@ -51,14 +54,14 @@ export function routineScopeKey(scope: RoutineScope): string {
 }
 
 export function assignRoutineScopes(items: readonly SourceItem[]): readonly RoutineScope[] {
-  const currentRoutineByUnit = new Map<string, string>();
+  const currentOwnerByUnit = new Map<string, string>();
   return items.map((item) => {
     const unitKey = privacyUnitKey(item);
-    if (item.kind === 'label' && item.isEntry === true) {
-      currentRoutineByUnit.set(unitKey, item.name);
+    if (item.kind === 'label' && !item.name.startsWith('_')) {
+      currentOwnerByUnit.set(unitKey, item.name);
       return { unitKey, routine: item.name };
     }
-    return { unitKey, routine: currentRoutineByUnit.get(unitKey) };
+    return { unitKey, routine: currentOwnerByUnit.get(unitKey) };
   });
 }
 
@@ -66,12 +69,15 @@ export function isRoutineLocalCandidate(
   item: SourceItem,
   scope: RoutineScope,
 ): item is Extract<SourceItem, { readonly kind: 'label' }> {
-  return item.kind === 'label' && item.isEntry !== true && scope.routine !== undefined;
+  return (
+    item.kind === 'label' &&
+    item.origin !== 'generated' &&
+    item.name.startsWith('_') &&
+    scope.routine !== undefined
+  );
 }
 
-export function buildRoutineLocalLabelModel(
-  items: readonly SourceItem[],
-): RoutineLocalLabelModel {
+export function buildRoutineLocalLabelModel(items: readonly SourceItem[]): RoutineLocalLabelModel {
   const scopes = assignRoutineScopes(items);
 
   const candidateCounts = new Map<string, number>();

@@ -24,13 +24,16 @@ interface EmitAssemblyArtifactsOptions {
   readonly sourceSegments: EmittedByteMap['sourceSegments'];
   readonly initializedAddresses: readonly number[];
   readonly symbols: Readonly<Record<string, number>>;
+  readonly internalSymbols: Readonly<Record<string, number>>;
+  readonly assemblyItems: readonly SourceItem[];
 }
 
 let cachedPackageVersion: string | undefined;
 
-export async function emitAssemblyArtifacts(
-  input: EmitAssemblyArtifactsOptions,
-): Promise<{ readonly artifacts: readonly Artifact[]; readonly diagnostics: readonly Diagnostic[] }> {
+export async function emitAssemblyArtifacts(input: EmitAssemblyArtifactsOptions): Promise<{
+  readonly artifacts: readonly Artifact[];
+  readonly diagnostics: readonly Diagnostic[];
+}> {
   const artifacts: Artifact[] = [];
   const diagnostics: Diagnostic[] = [];
   const map = assembledImageToMap(input.bytes, input.origin, input.sourceSegments);
@@ -45,7 +48,7 @@ export async function emitAssemblyArtifacts(
     input.initializedAddresses,
     input.sourceSegments,
   );
-  const symbols = collectSymbolEntries(input.program, input.symbols);
+  const symbols = collectSymbolEntries(input.program, input.assemblyItems, input.internalSymbols);
   const emit = compileArtifactDefaults(input.options);
   const d8Root = input.options.sourceRoot ?? dirname(input.entryFile);
 
@@ -141,124 +144,144 @@ function assembledInitializedImageToMap(
 }
 
 function collectSymbolEntries(
-  items: readonly SourceItem[],
+  originalItems: readonly SourceItem[],
+  qualifiedItems: readonly SourceItem[],
   resolvedSymbols: Readonly<Record<string, number>>,
 ): SymbolEntry[] {
   const map = new Map<string, SymbolEntry>();
-  const ambiguousImportedPrivateNames = importedPrivateNamesWithPublicOrDuplicateDisplay(items);
-  for (const item of items) {
-    appendSymbolEntry(map, item, resolvedSymbols, ambiguousImportedPrivateNames);
+  const pairs = originalItems.flatMap((original, index) => {
+    const qualified = qualifiedItems[index];
+    return qualified === undefined ? [] : [{ original, qualified }];
+  });
+  const displayCounts = new Map<string, number>();
+  for (const pair of pairs) {
+    for (const name of declarationDisplayNames(pair.original, pair.qualified)) {
+      displayCounts.set(name, (displayCounts.get(name) ?? 0) + 1);
+    }
+  }
+  for (const pair of pairs) {
+    appendSymbolEntry(map, pair.original, pair.qualified, resolvedSymbols, displayCounts);
   }
   return [...map.values()];
 }
 
-function importedPrivateNamesWithPublicOrDuplicateDisplay(
-  items: readonly SourceItem[],
-): ReadonlySet<string> {
-  const privateNames = new Set<string>();
-  const privateCounts = new Map<string, number>();
-  const privateLowerCounts = new Map<string, number>();
-  const publicOrNonLabelLowerNames = new Set<string>();
-  for (const item of items) {
-    if (item.kind === 'label') {
-      if (isImportedPrivateLabel(item)) {
-        privateNames.add(item.name);
-        privateCounts.set(item.name, (privateCounts.get(item.name) ?? 0) + 1);
-        const lowerName = item.name.toLowerCase();
-        privateLowerCounts.set(lowerName, (privateLowerCounts.get(lowerName) ?? 0) + 1);
-      } else {
-        publicOrNonLabelLowerNames.add(item.name.toLowerCase());
-      }
-      continue;
-    }
-    if (item.kind === 'equ') {
-      publicOrNonLabelLowerNames.add(item.name.toLowerCase());
-      continue;
-    }
-    if (item.kind === 'enum') {
-      for (const member of item.members) {
-        publicOrNonLabelLowerNames.add(`${item.name}.${member}`.toLowerCase());
-      }
-    }
+function declarationDisplayNames(original: SourceItem, qualified: SourceItem): readonly string[] {
+  if (original.kind === 'label' && qualified.kind === 'label') {
+    return [baseLabelDisplayName(original.name, qualified.name)];
   }
-
-  const ambiguous = new Set<string>();
-  for (const name of privateNames) {
-    const lowerName = name.toLowerCase();
-    if (
-      (privateCounts.get(name) ?? 0) > 1 ||
-      (privateLowerCounts.get(lowerName) ?? 0) > 1 ||
-      publicOrNonLabelLowerNames.has(lowerName)
-    ) {
-      ambiguous.add(name);
-    }
+  if (original.kind === 'equ' && qualified.kind === 'equ') return [original.name];
+  if (original.kind === 'enum' && qualified.kind === 'enum') {
+    return original.members.map((member) => `${original.name}.${member}`);
   }
-  return ambiguous;
-}
-
-function isImportedPrivateLabel(item: Extract<SourceItem, { readonly kind: 'label' }>): boolean {
-  return (
-    item.isEntry !== true &&
-    item.span.sourceUnitRelation === 'import' &&
-    item.span.sourceUnit !== undefined
-  );
+  return [];
 }
 
 function appendSymbolEntry(
   map: Map<string, SymbolEntry>,
-  item: SourceItem,
+  original: SourceItem,
+  qualified: SourceItem,
   resolvedSymbols: Readonly<Record<string, number>>,
-  ambiguousImportedPrivateNames: ReadonlySet<string>,
+  displayCounts: ReadonlyMap<string, number>,
 ): void {
-  if (item.kind === 'equ') {
-    const value = resolvedSymbols[item.name];
+  if (original.kind === 'equ' && qualified.kind === 'equ') {
+    const value = resolvedSymbols[qualified.name];
     if (value !== undefined) {
-      map.set(item.name, {
+      const identity = declarationIdentity(original, original.name, 'constant');
+      map.set(identity, {
         kind: 'constant',
-        name: item.name,
+        name: original.name,
+        identity,
         value,
-        file: item.span.sourceName,
-        line: item.span.line,
-        scope: 'global',
+        file: original.span.sourceName,
+        line: original.span.line,
+        scope: declarationScope(original),
+        visibility: declarationVisibility(original),
+        sourceUnit: original.span.sourceUnit ?? original.span.sourceName,
+        ...(needsSourceQualifier(original.name, original, displayCounts)
+          ? { needsSourceQualifier: true }
+          : {}),
       });
     }
     return;
   }
 
-  if (item.kind === 'label') {
-    if (isImportedPrivateLabel(item) && ambiguousImportedPrivateNames.has(item.name)) {
-      return;
-    }
-    const address = resolvedSymbols[item.name];
+  if (original.kind === 'label' && qualified.kind === 'label') {
+    const address = resolvedSymbols[qualified.name];
     if (address !== undefined) {
-      map.set(item.name, {
+      const baseName = baseLabelDisplayName(original.name, qualified.name);
+      const identity = declarationIdentity(original, baseName, 'label');
+      map.set(identity, {
         kind: 'label',
-        name: item.name,
+        name: baseName,
+        identity,
         address,
-        file: item.span.sourceName,
-        line: item.span.line,
-        scope: 'global',
+        file: original.span.sourceName,
+        line: original.span.line,
+        scope: declarationScope(original),
+        visibility: declarationVisibility(original),
+        sourceUnit: original.span.sourceUnit ?? original.span.sourceName,
+        ...(needsSourceQualifier(baseName, original, displayCounts)
+          ? { needsSourceQualifier: true }
+          : {}),
       });
     }
     return;
   }
 
-  if (item.kind === 'enum') {
-    for (const member of item.members) {
-      const fullName = `${item.name}.${member}`;
-      const value = resolvedSymbols[fullName];
+  if (original.kind === 'enum' && qualified.kind === 'enum') {
+    for (const member of original.members) {
+      const fullName = `${original.name}.${member}`;
+      const qualifiedName = `${qualified.name}.${member}`;
+      const value = resolvedSymbols[qualifiedName];
       if (value !== undefined) {
-        map.set(fullName, {
+        const identity = declarationIdentity(original, fullName, 'constant');
+        map.set(identity, {
           kind: 'constant',
           name: fullName,
+          identity,
           value,
-          file: item.span.sourceName,
-          line: item.span.line,
-          scope: 'global',
+          file: original.span.sourceName,
+          line: original.span.line,
+          scope: declarationScope(original),
+          visibility: declarationVisibility(original),
+          sourceUnit: original.span.sourceUnit ?? original.span.sourceName,
+          ...(needsSourceQualifier(fullName, original, displayCounts)
+            ? { needsSourceQualifier: true }
+            : {}),
         });
       }
     }
   }
+}
+
+function baseLabelDisplayName(originalName: string, qualifiedName: string): string {
+  const parts = qualifiedName.split('\0');
+  const owner = parts.find((part) => part.startsWith('@'));
+  return originalName.startsWith('_') && owner !== undefined
+    ? `${owner.slice(1)}.${originalName}`
+    : originalName;
+}
+
+function needsSourceQualifier(
+  baseName: string,
+  item: SourceItem,
+  displayCounts: ReadonlyMap<string, number>,
+): boolean {
+  return (displayCounts.get(baseName) ?? 0) > 1 && declarationVisibility(item) !== 'exported';
+}
+
+function declarationIdentity(item: SourceItem, qualifiedName: string, kind: string): string {
+  return `${item.span.sourceName}:${item.span.line}:${item.span.column}:${kind}:${qualifiedName.replaceAll('\0', '|')}`;
+}
+
+function declarationVisibility(item: SourceItem): 'exported' | 'source' | 'local' {
+  if (item.kind === 'label' && item.name.startsWith('_')) return 'local';
+  if ('isExported' in item && item.isExported === true) return 'exported';
+  return 'source';
+}
+
+function declarationScope(item: SourceItem): 'global' | 'local' {
+  return declarationVisibility(item) === 'local' ? 'local' : 'global';
 }
 
 async function buildD8mOptions(
@@ -279,7 +302,9 @@ async function buildD8mOptions(
       ...(options.d8mInputs?.bin !== undefined ? { bin: options.d8mInputs.bin } : {}),
     },
     ...(main !== undefined ? { entrySymbol: main.name } : {}),
-    ...(main !== undefined ? { entryAddress: main.kind === 'constant' ? main.value : main.address } : {}),
+    ...(main !== undefined
+      ? { entryAddress: main.kind === 'constant' ? main.value : main.address }
+      : {}),
   };
 }
 

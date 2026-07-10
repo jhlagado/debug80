@@ -29,6 +29,7 @@ import type {
   RegisterContractsDirectCall,
   RegisterContractsMode,
   RegisterContractsPolicy,
+  RegisterContractsPolicyMode,
   RegisterContractsReportFormat,
 } from './register-contracts/types.js';
 
@@ -42,6 +43,7 @@ function isSuppressedUnknownSymbolInRegisterContractsMode(
   directCalls: readonly RegisterContractsDirectCall[] | undefined,
   policy: RegisterContractsPolicy | undefined,
   fallbackMode: RegisterContractsMode | undefined,
+  sourcePolicy: ReadonlyMap<string, RegisterContractsPolicyMode>,
 ): boolean {
   if (directCalls === undefined || directCalls.length === 0) {
     return false;
@@ -62,7 +64,7 @@ function isSuppressedUnknownSymbolInRegisterContractsMode(
       call.file === diagnostic.sourceName &&
       call.line === diagnostic.line &&
       call.column === diagnostic.column &&
-      !isRegisterContractsPolicyOffForFile(call.file, policy, fallbackMode),
+      !isRegisterContractsPolicyOffForFile(call.file, policy, fallbackMode, sourcePolicy),
   );
 }
 
@@ -70,8 +72,12 @@ function isRegisterContractsPolicyOffForFile(
   file: string,
   policy: RegisterContractsPolicy | undefined,
   fallbackMode: RegisterContractsMode | undefined,
+  sourcePolicy: ReadonlyMap<string, RegisterContractsPolicyMode>,
 ): boolean {
-  return policy !== undefined && registerContractsPolicyModeForFile(file, policy, fallbackMode) === 'off';
+  return (
+    registerContractsPolicyModeForFile(file, policy ?? {}, fallbackMode, sourcePolicy.get(file)) ===
+    'off'
+  );
 }
 
 export { writeHex, defaultFormatWriters };
@@ -169,7 +175,20 @@ export async function compile(
   const analysis = analyzeProgramNext(loaded.loadedProgram, {
     ...(options.caseStyle !== undefined ? { caseStyle: options.caseStyle } : {}),
   });
-  const analyzeRegisterContractsNow = shouldAnalyzeRegisterContracts(options);
+  const sourceRequestsRegisterContracts =
+    loaded.loadedProgram.program.files[0]?.items.some(
+      (item) => item.kind === 'contracts-policy' && item.mode !== 'off',
+    ) === true;
+  const analyzeRegisterContractsNow =
+    shouldAnalyzeRegisterContracts(options) || sourceRequestsRegisterContracts;
+  const sourcePolicy = new Map(
+    (loaded.loadedProgram.program.files[0]?.items ?? [])
+      .filter(
+        (item): item is Extract<typeof item, { readonly kind: 'contracts-policy' }> =>
+          item.kind === 'contracts-policy',
+      )
+      .map((item) => [item.span.sourceName, item.mode]),
+  );
 
   const directCalls = analyzeRegisterContractsNow
     ? buildRegisterContractsProgramModel(loaded.loadedProgram.program.files[0]?.items ?? [])
@@ -184,6 +203,7 @@ export async function compile(
             directCalls,
             options.registerContractsPolicy,
             options.registerContracts ?? options.registerCare,
+            sourcePolicy,
           )
         : true,
     ),
@@ -221,6 +241,7 @@ export async function compile(
             directCalls,
             options.registerContractsPolicy,
             options.registerContracts ?? options.registerCare,
+            sourcePolicy,
           )
         : true,
     ),
@@ -241,6 +262,8 @@ export async function compile(
     sourceSegments: assembled.sourceSegments,
     initializedAddresses: assembled.initializedAddresses,
     symbols: assembled.symbols,
+    internalSymbols: assembled.internalSymbols,
+    assemblyItems: assembled.assemblyItems,
   });
   artifacts.push(...emittedArtifacts.artifacts);
   diagnostics.push(...emittedArtifacts.diagnostics);

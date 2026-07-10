@@ -28,6 +28,7 @@ const clearAOpSource = [
   '  xor a',
   'end',
   '',
+  '.routine',
   'main:',
   '  clear_a',
   '  ret',
@@ -91,7 +92,9 @@ describe('op expansion and register-contracts', () => {
       expect(heads).toContain('xor');
       expect(heads).not.toContain('clear_a');
       expect(heads).not.toContain('call');
-      expect(main!.instructions.find((instruction) => instructionHead(instruction) === 'xor')).toMatchObject({
+      expect(
+        main!.instructions.find((instruction) => instructionHead(instruction) === 'xor'),
+      ).toMatchObject({
         file: entry,
         sourceUnit: entry,
         sourceRelation: 'entry',
@@ -104,10 +107,10 @@ describe('op expansion and register-contracts', () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-op-regcontracts-imported-'));
     const entry = join(dir, 'main.asm');
     const ops = join(dir, 'ops.asm');
-    writeFileSync(ops, ['op clear_a()', '  xor a', 'end', ''].join('\n'), 'utf8');
+    writeFileSync(ops, ['op @clear_a()', '  xor a', 'end', ''].join('\n'), 'utf8');
     writeFileSync(
       entry,
-      ['.import "ops.asm"', '', 'main:', '  clear_a', '  ret', ''].join('\n'),
+      ['.import "ops.asm"', '', '.routine', 'main:', '  clear_a', '  ret', ''].join('\n'),
       'utf8',
     );
 
@@ -132,10 +135,19 @@ describe('op expansion and register-contracts', () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-op-regcontracts-imported-jp-'));
     const entry = join(dir, 'main.asm');
     const ops = join(dir, 'ops.asm');
-    writeFileSync(ops, ['op jump_target()', '  jp TARGET', 'end', ''].join('\n'), 'utf8');
+    writeFileSync(ops, ['op @jump_target()', '  jp TARGET', 'end', ''].join('\n'), 'utf8');
     writeFileSync(
       entry,
-      ['.import "ops.asm"', '', '@START:', '  jump_target', 'TARGET:', '  ret', ''].join('\n'),
+      [
+        '.import "ops.asm"',
+        '',
+        '.routine',
+        '@START:',
+        '  jump_target',
+        'TARGET:',
+        '  ret',
+        '',
+      ].join('\n'),
       'utf8',
     );
 
@@ -152,10 +164,10 @@ describe('op expansion and register-contracts', () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-op-regcontracts-imported-label-'));
     const entry = join(dir, 'main.asm');
     const ops = join(dir, 'ops.asm');
-    writeFileSync(ops, ['op skip_a()', 'loop:', '  xor a', 'end', ''].join('\n'), 'utf8');
+    writeFileSync(ops, ['op @skip_a()', 'loop:', '  xor a', 'end', ''].join('\n'), 'utf8');
     writeFileSync(
       entry,
-      ['.import "ops.asm"', '', 'main:', '  skip_a', '  ret', ''].join('\n'),
+      ['.import "ops.asm"', '', '.routine', 'main:', '  skip_a', '  ret', ''].join('\n'),
       'utf8',
     );
 
@@ -180,8 +192,12 @@ describe('op expansion and register-contracts', () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-op-regcontracts-imported-label-after-'));
     const entry = join(dir, 'main.asm');
     const ops = join(dir, 'ops.asm');
-    writeFileSync(ops, ['op foo()', '  xor a', 'loop:', '  inc a', 'end', ''].join('\n'), 'utf8');
-    writeFileSync(entry, ['.import "ops.asm"', '', 'main:', '  foo', '  ret', ''].join('\n'), 'utf8');
+    writeFileSync(ops, ['op @foo()', '  xor a', 'loop:', '  inc a', 'end', ''].join('\n'), 'utf8');
+    writeFileSync(
+      entry,
+      ['.import "ops.asm"', '', '.routine', 'main:', '  foo', '  ret', ''].join('\n'),
+      'utf8',
+    );
 
     const loaded = await loadProgram({ entryFile: entry });
     expectNoErrorDiagnostics(loaded.diagnostics);
@@ -198,8 +214,12 @@ describe('op expansion and register-contracts', () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-op-regcontracts-d8-label-'));
     const entry = join(dir, 'main.asm');
     const ops = join(dir, 'ops.asm');
-    writeFileSync(ops, ['op skip_a()', 'loop:', '  jr loop', 'end', ''].join('\n'), 'utf8');
-    writeFileSync(entry, ['.import "ops.asm"', '.org $8000', 'main:', '  skip_a', '  ret', ''].join('\n'), 'utf8');
+    writeFileSync(ops, ['op @skip_a()', 'loop:', '  jr loop', 'end', ''].join('\n'), 'utf8');
+    writeFileSync(
+      entry,
+      ['.import "ops.asm"', '.org $8000', 'main:', '  skip_a', '  ret', ''].join('\n'),
+      'utf8',
+    );
 
     const res = await compile(
       entry,
@@ -208,7 +228,9 @@ describe('op expansion and register-contracts', () => {
     );
     expectNoErrorDiagnostics(res.diagnostics);
     const d8 = res.artifacts.find((artifact): artifact is D8mArtifact => artifact.kind === 'd8m');
-    const opLabel = d8?.json.symbols.find((symbol) => symbol.name.startsWith('__azm_op_skip_a_loop_'));
+    const opLabel = d8?.json.symbols.find((symbol) =>
+      symbol.name.startsWith('__azm_op_skip_a_loop_'),
+    );
 
     expect(opLabel).toMatchObject({
       file: 'ops.asm',
@@ -238,6 +260,7 @@ describe('op expansion and register-contracts', () => {
       '  ld b,a',
       'end',
       '',
+      '.routine',
       'main:',
       '  ld a,7',
       '  copy_a_to_b',
@@ -285,9 +308,17 @@ describe('op expansion and register-contracts', () => {
   });
 
   it('summarizes stack effects from .asm op expansion', async () => {
-    const source = ['op save_hl()', '  push hl', 'end', '', 'main:', '  save_hl', '  ret', ''].join(
-      '\n',
-    );
+    const source = [
+      'op save_hl()',
+      '  push hl',
+      'end',
+      '',
+      '.routine',
+      'main:',
+      '  save_hl',
+      '  ret',
+      '',
+    ].join('\n');
     await withOpFixture(source, async (entry, diagnostics) => {
       const loaded = await loadOpFixture(entry, diagnostics);
       const items = loaded.program.files[0]?.items ?? [];

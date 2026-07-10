@@ -6,6 +6,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const scriptDir = dirname(fileURLToPath(import.meta.url));
 const repoRoot = resolve(scriptDir, '../..');
 const encodeSourcePath = resolve(repoRoot, 'src/z80/encode.ts');
+const instructionSourcePath = resolve(repoRoot, 'src/z80/instruction.ts');
 
 const REGISTER_NAMES = new Set([
   'A',
@@ -45,6 +46,10 @@ const DIRECTIVE_NAMES = new Set([
   '.istr',
   '.org',
   '.pstr',
+  '.routine',
+  '.contracts',
+  '.expectout',
+  '.rcignore',
 ]);
 const SAMPLE_IMMEDIATE_BY_HEAD = new Map([
   ['djnz', 0],
@@ -245,7 +250,8 @@ function parseRegisterOperand(text, span) {
 }
 
 function parseParenthesizedOperand(inner, head, operandIndex, span) {
-  if (isPortOperandPosition(head, operandIndex)) return parsePortOperand(inner, head, operandIndex, span);
+  if (isPortOperandPosition(head, operandIndex))
+    return parsePortOperand(inner, head, operandIndex, span);
   const innerUpper = inner.toUpperCase();
   if (MEMORY_REGISTER_NAMES.has(innerUpper)) return memName(span, innerUpper);
   return parseIndexedOperand(inner, head, operandIndex, span) ?? memImmediate(span);
@@ -317,8 +323,23 @@ function normalizeIndexedOperand(inner) {
 
 function parseKnownHeads() {
   const src = readFileSync(encodeSourcePath, 'utf8');
+  const instructionSrc = readFileSync(instructionSourcePath, 'utf8');
   const heads = new Set();
-  for (const match of src.matchAll(/case '([a-z][a-z0-9-]*)':/g)) {
+  for (const block of instructionSrc.matchAll(/export type Z80\w*Mnemonic\s*=\s*([\s\S]*?);/g)) {
+    for (const value of (block[1] ?? '').matchAll(/'([a-z][a-z0-9-]*)'/g)) {
+      heads.add(value[1].split('-')[0]);
+    }
+  }
+  for (const declaration of instructionSrc.matchAll(/mnemonic:\s*([^;\n}]+)/g)) {
+    for (const value of (declaration[1] ?? '').matchAll(/'([a-z][a-z0-9-]*)'/g)) {
+      heads.add(value[1].split('-')[0]);
+    }
+  }
+  const mnemonics = [
+    ...src.matchAll(/case '([a-z][a-z0-9-]*)':/g),
+    ...instructionSrc.matchAll(/mnemonic:\s*'([a-z][a-z0-9-]*)'/g),
+  ];
+  for (const match of mnemonics) {
     const mnemonic = match[1];
     if (mnemonic === 'ld-a-imm') {
       heads.add('ld');
@@ -438,7 +459,8 @@ function scanInstruction(parsed, absFile, line, state) {
   increment(state.instructionHeadCounts, parsed.head);
   const operands = splitOperands(parsed.operandText);
   const form = normalizedInstructionForm(parsed.head, operands);
-  const record = state.forms.get(form) ?? makeInstructionFormRecord(form, parsed, operands, absFile, line);
+  const record =
+    state.forms.get(form) ?? makeInstructionFormRecord(form, parsed, operands, absFile, line);
   record.count += 1;
   state.forms.set(form, record);
 }

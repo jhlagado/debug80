@@ -58,7 +58,12 @@ type AddressItemHandler = (
 
 const ADDRESS_ITEM_HANDLERS: Record<SourceItem['kind'], AddressItemHandler> = {
   org: (context, item, items, itemIndex) =>
-    applyAddressOrg(context, items, itemIndex, item as Extract<SourceItem, { readonly kind: 'org' }>),
+    applyAddressOrg(
+      context,
+      items,
+      itemIndex,
+      item as Extract<SourceItem, { readonly kind: 'org' }>,
+    ),
   type: (context, item) =>
     defineAddressLayout(context, item as Extract<SourceItem, { readonly kind: 'type' }>),
   'type-alias': (context, item) =>
@@ -68,6 +73,10 @@ const ADDRESS_ITEM_HANDLERS: Record<SourceItem['kind'], AddressItemHandler> = {
   enum: (context, item) =>
     defineAddressEnum(context, item as Extract<SourceItem, { readonly kind: 'enum' }>),
   comment: () => undefined,
+  routine: () => undefined,
+  'contracts-policy': () => undefined,
+  'rc-ignore': () => undefined,
+  'expect-out': () => undefined,
   label: (context, item) =>
     defineAddressLabel(context, item as Extract<SourceItem, { readonly kind: 'label' }>),
   db: (context, item) =>
@@ -388,10 +397,7 @@ function toByte(value: number): number {
   return value & 0xff;
 }
 
-function dataValueSize(
-  value: DataValue,
-  equates: ReadonlyMap<string, EquateRecord>,
-): number {
+function dataValueSize(value: DataValue, equates: ReadonlyMap<string, EquateRecord>): number {
   if (value.kind === 'string-fragment') {
     return [...value.value].length;
   }

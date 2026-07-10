@@ -69,14 +69,17 @@ function inferenceArtifact(result: CompileResult): RegisterContractsInferenceArt
 
 function writeConflictFixture(prefix: string): string {
   return writeSourceFixture(prefix, [
+    '.routine',
     'BOOT:',
     '    call START',
     '    ret',
+    '.routine',
     'START:',
     '    ld de,$1000',
     '    call HELPER',
     '    inc de',
     '    ret',
+    '.routine',
     'HELPER:',
     '    ld de,$2000',
     '    ld (de),a',
@@ -87,11 +90,13 @@ function writeConflictFixture(prefix: string): string {
 
 function writeEntryConflictFixture(prefix: string): string {
   return writeSourceFixture(prefix, [
+    '.routine',
     'START:',
     '    ld de,$1000',
     '    call HELPER',
     '    inc de',
     '    ret',
+    '.routine',
     'HELPER:',
     '    ld de,$2000',
     '    ld (de),a',
@@ -100,7 +105,10 @@ function writeEntryConflictFixture(prefix: string): string {
   ]);
 }
 
-function writeScopedPolicyFixture(prefix: string, legacyLines: string[] = []): {
+function writeScopedPolicyFixture(
+  prefix: string,
+  legacyLines: string[] = [],
+): {
   dir: string;
   entry: string;
   strictFile: string;
@@ -113,12 +121,18 @@ function writeScopedPolicyFixture(prefix: string, legacyLines: string[] = []): {
   writeFileSync(entry, ['.import "strict.asm"', '.import "legacy.asm"', '.end'].join('\n'), 'utf8');
   writeFileSync(
     strictFile,
-    ['@START:', '    call LEGACY', '    ret'].join('\n'),
+    ['.routine', '@START:', '    call LEGACY', '    ret'].join('\n'),
     'utf8',
   );
   writeFileSync(
     legacyFile,
-    [...legacyLines, '@LEGACY:', '    ld de,$2000', '    ret'].join('\n'),
+    [
+      ...legacyLines,
+      ...(legacyLines.some((line) => line.startsWith('.routine')) ? [] : ['.routine']),
+      '@LEGACY:',
+      '    ld de,$2000',
+      '    ret',
+    ].join('\n'),
     'utf8',
   );
   return { dir, entry, strictFile, legacyFile };
@@ -128,7 +142,7 @@ describe('register-contracts integration', () => {
   it('emits a register-contracts report artifact in audit mode', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-regcontracts-'));
     const entry = join(dir, 'main.asm');
-    writeFileSync(entry, ['START:', '    nop', '    ret', '.end'].join('\n'), 'utf8');
+    writeFileSync(entry, ['.routine', 'START:', '    nop', '    ret', '.end'].join('\n'), 'utf8');
 
     const res = await compileRegisterContracts(entry, {
       registerContracts: 'audit',
@@ -141,15 +155,16 @@ describe('register-contracts integration', () => {
     expect(report?.text).toContain('Mode: audit');
   });
 
-  it('uses semicolon-separated source contracts during strict analysis', async () => {
+  it('uses single-line routine contracts during strict analysis', async () => {
     const entry = writeSourceFixture('azm-regcontracts-compact-source-contract-', [
+      '.routine',
       'START:',
       '    ld a,1',
       '    call HELPER',
       '    ld e,a',
       '    ret',
       '',
-      ';! in A; out A; clobbers F',
+      '.routine in A out A clobbers F',
       'HELPER:',
       '    or a',
       '    ret',
@@ -170,11 +185,13 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         '@START:',
         '    ld de,$1000',
         '    call MON_CLOBBER_DE',
         '    inc de',
         '    ret',
+        '.routine',
         'MON_CLOBBER_DE:',
         '    ret',
         '.end',
@@ -205,6 +222,7 @@ describe('register-contracts integration', () => {
       entry,
       [
         'TARGET .equ $9000',
+        '.routine',
         '@START:',
         '    ld de,$1000',
         '    ld c,16',
@@ -240,7 +258,11 @@ describe('register-contracts integration', () => {
   it('uses the MON-3 profile for RST boundaries in register reports', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-regcontracts-mon3-'));
     const entry = join(dir, 'main.asm');
-    writeFileSync(entry, ['START:', '    rst $10', '    ret', '.end'].join('\n'), 'utf8');
+    writeFileSync(
+      entry,
+      ['.routine', 'START:', '    rst $10', '    ret', '.end'].join('\n'),
+      'utf8',
+    );
 
     const res = await compileRegisterContracts(entry, {
       registerContracts: 'audit',
@@ -257,9 +279,17 @@ describe('register-contracts integration', () => {
     const entry = join(dir, 'main.asm');
     writeFileSync(
       entry,
-      ['START:', '    call HELPER', '    ret', 'HELPER:', '    ld a,1', '    ret', '.end'].join(
-        '\n',
-      ),
+      [
+        '.routine',
+        'START:',
+        '    call HELPER',
+        '    ret',
+        '.routine',
+        'HELPER:',
+        '    ld a,1',
+        '    ret',
+        '.end',
+      ].join('\n'),
       'utf8',
     );
 
@@ -311,10 +341,12 @@ describe('register-contracts integration', () => {
 
   it('emits caller-impact evidence when inference runs without audit mode', async () => {
     const entry = writeSourceFixture('azm-regcontracts-inference-candidates-', [
+      '.routine',
       'START:',
       '    call HELPER',
       '    ld c,a',
       '    ret',
+      '.routine',
       'HELPER:',
       '    ld a,1',
       '    ret',
@@ -336,10 +368,12 @@ describe('register-contracts integration', () => {
 
   it('emits one inference row for coalesced routine aliases', async () => {
     const entry = writeSourceFixture('azm-regcontracts-inference-alias-', [
+      '.routine',
       'ALIAS:',
       'HELPER:',
       '    ld a,1',
       '    ret',
+      '.routine',
       'START:',
       '    call HELPER',
       '    ld c,a',
@@ -364,12 +398,15 @@ describe('register-contracts integration', () => {
 
   it('proves strict stack discipline through known internal direct calls', async () => {
     const entry = writeSourceFixture('azm-regcontracts-strict-internal-call-', [
+      '.routine',
       '@START:',
       '    call WRAPPER',
       '    ret',
+      '.routine',
       '@WRAPPER:',
       '    call HELPER',
       '    ret',
+      '.routine',
       '@HELPER:',
       '    cp 0',
       '    ret z',
@@ -397,10 +434,12 @@ describe('register-contracts integration', () => {
     const module = join(dir, 'keyboard.asm');
     writeFileSync(
       entry,
-      ['.import "keyboard.asm"', '@START:', '    call ReadKey', '    ret', '.end'].join('\n'),
+      ['.import "keyboard.asm"', '.routine', '@START:', '    call ReadKey', '    ret', '.end'].join(
+        '\n',
+      ),
       'utf8',
     );
-    writeFileSync(module, ['@ReadKey:', '    xor a', '    ret'].join('\n'), 'utf8');
+    writeFileSync(module, ['.routine', '@ReadKey:', '    xor a', '    ret'].join('\n'), 'utf8');
 
     const res = await compileRegisterContracts(entry, {
       registerContracts: 'strict',
@@ -421,14 +460,23 @@ describe('register-contracts integration', () => {
     const module = join(dir, 'keyboard.asm');
     writeFileSync(
       entry,
-      ['.import "keyboard.asm"', '@START:', '    call ReadKey', '    ret', '.end'].join('\n'),
+      ['.import "keyboard.asm"', '.routine', '@START:', '    call ReadKey', '    ret', '.end'].join(
+        '\n',
+      ),
       'utf8',
     );
     writeFileSync(
       module,
-      ['@ReadKey:', '    call ScanMatrix', '    ret', 'ScanMatrix:', '    xor a', '    ret'].join(
-        '\n',
-      ),
+      [
+        '.routine',
+        '@ReadKey:',
+        '    call ScanMatrix',
+        '    ret',
+        '.routine',
+        'ScanMatrix:',
+        '    xor a',
+        '    ret',
+      ].join('\n'),
       'utf8',
     );
 
@@ -451,10 +499,21 @@ describe('register-contracts integration', () => {
     const module = join(dir, 'keyboard.asm');
     writeFileSync(
       entry,
-      ['.import "keyboard.asm"', '@START:', '    call ScanMatrix', '    ret', '.end'].join('\n'),
+      [
+        '.import "keyboard.asm"',
+        '.routine',
+        '@START:',
+        '    call ScanMatrix',
+        '    ret',
+        '.end',
+      ].join('\n'),
       'utf8',
     );
-    writeFileSync(module, ['ScanMatrix:', '    ret', '@ReadKey:', '    ret'].join('\n'), 'utf8');
+    writeFileSync(
+      module,
+      ['.routine', 'ScanMatrix:', '    ret', '.routine', '@ReadKey:', '    ret'].join('\n'),
+      'utf8',
+    );
 
     const res = await compileRegisterContracts(entry, {
       registerContracts: 'strict',
@@ -466,7 +525,7 @@ describe('register-contracts integration', () => {
         code: 'AZMN_SYMBOL',
         message: `symbol "ScanMatrix" is private to ${module}; export it with @ScanMatrix or keep the reference inside that file`,
         sourceName: entry,
-        line: 3,
+        line: 4,
         column: 5,
       }),
     ]);
@@ -478,10 +537,12 @@ describe('register-contracts integration', () => {
     const module = join(dir, 'keyboard.asm');
     writeFileSync(
       entry,
-      ['.import "keyboard.asm"', '@START:', '    call ReadKey', '    ret', '.end'].join('\n'),
+      ['.import "keyboard.asm"', '.routine', '@START:', '    call ReadKey', '    ret', '.end'].join(
+        '\n',
+      ),
       'utf8',
     );
-    writeFileSync(module, ['@ReadKey:', '    push bc', '    ret'].join('\n'), 'utf8');
+    writeFileSync(module, ['.routine', '@ReadKey:', '    push bc', '    ret'].join('\n'), 'utf8');
 
     const res = await compileRegisterContracts(entry, {
       registerContracts: 'strict',
@@ -505,11 +566,13 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'START:',
         '    call HELPER',
         '    ret',
         '',
         '; Helper prose.',
+        '.routine',
         'HELPER:',
         '    ld hl,$1000',
         '    ret',
@@ -528,7 +591,7 @@ describe('register-contracts integration', () => {
     expect(annotations?.files).toHaveLength(1);
     expect(annotations?.files[0]?.path).toBe(entry);
     expect(annotations?.files[0]?.text).toContain(
-      ['; Helper prose.', ';! out HL', 'HELPER:'].join('\n'),
+      ['; Helper prose.', '.routine out HL', 'HELPER:'].join('\n'),
     );
   });
 
@@ -538,10 +601,12 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         '@START:',
         '    call HELPER',
         '    ret',
         '',
+        '.routine',
         '@HELPER:',
         '    ld hl,$1000',
         '    ret',
@@ -557,7 +622,7 @@ describe('register-contracts integration', () => {
 
     expectNoErrorDiagnostics(res);
     const annotations = annotationsArtifact(res);
-    expect(annotations?.files[0]?.text).toContain([';! out HL', '@HELPER:'].join('\n'));
+    expect(annotations?.files[0]?.text).toContain(['.routine out HL', '@HELPER:'].join('\n'));
   });
 
   it('applies conditional jumps to at-prefixed entries as boundary summaries', async () => {
@@ -566,10 +631,12 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         '@START:',
         '    jp z,HELPER',
         '    ret',
         '',
+        '.routine',
         '@HELPER:',
         '    ld hl,$1000',
         '    ret',
@@ -603,6 +670,7 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'START:',
         '    ld a,3',
         '    ld hl,$2000',
@@ -611,9 +679,7 @@ describe('register-contracts integration', () => {
         '    ret',
         '',
         '; Mask prose.',
-        ';!      in        A',
-        ';!      maybe-out A',
-        ';!      clobbers  A,C',
+        '.routine in A maybe-out A clobbers A,C',
         'MASK:',
         '    ld a,$80',
         '    ld (hl),a',
@@ -631,9 +697,9 @@ describe('register-contracts integration', () => {
     expectNoErrorDiagnostics(res);
     const annotations = annotationsArtifact(res);
     expect(annotations?.files[0]?.text).toContain(
-      ['; Mask prose.', ';! in A; out A; clobbers C', 'MASK:'].join('\n'),
+      ['; Mask prose.', '.routine in A out A clobbers C', 'MASK:'].join('\n'),
     );
-    expect(annotations?.files[0]?.text).not.toContain(';!      maybe-out A');
+    expect(annotations?.files[0]?.text).not.toContain('maybe-out A');
   });
 
   it('does not promote suppressed maybe-out output candidates', async () => {
@@ -642,18 +708,17 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'START:',
         '    ld a,3',
         '    ld hl,$2000',
-        ';! rc-ignore-next output_candidate: reviewed legacy return',
+        '.rcignore output_candidate "reviewed legacy return"',
         '    call MASK',
         '    ld d,a',
         '    ret',
         '',
         '; Mask prose.',
-        ';!      in        A',
-        ';!      maybe-out A',
-        ';!      clobbers  A,C',
+        '.routine in A maybe-out A clobbers A,C',
         'MASK:',
         '    ld a,$80',
         '    ld (hl),a',
@@ -671,7 +736,10 @@ describe('register-contracts integration', () => {
     });
 
     expectNoErrorDiagnostics(res);
-    expect(annotationsArtifact(res)?.files[0]?.text).not.toContain('out A');
+    expect(annotationsArtifact(res)?.files[0]?.text).toContain(
+      '.routine in A maybe-out A clobbers A,C',
+    );
+    expect(annotationsArtifact(res)?.files[0]?.text).not.toContain('.routine in A out A');
     expect(reportArtifact(res)?.json?.summaries).toEqual(
       expect.arrayContaining([
         expect.objectContaining({
@@ -699,12 +767,14 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'START:',
         '    ld a,3',
         '    ld hl,$2000',
         '    call MASK',
         '    ld d,a',
         '    ret',
+        '.routine',
         'MASK:',
         '    ld a,$80',
         '    ld (hl),a',
@@ -733,6 +803,7 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'START:',
         '    ld a,3',
         '    call MASK',
@@ -740,9 +811,7 @@ describe('register-contracts integration', () => {
         '    ret',
         '',
         '; Mask prose.',
-        ';!      in        A',
-        ';!      maybe-out A',
-        ';!      clobbers  A,C',
+        '.routine in A maybe-out A clobbers A,C',
         'MASK:',
         '    ld c,a',
         '    rst 0',
@@ -760,9 +829,8 @@ describe('register-contracts integration', () => {
     expectNoErrorDiagnostics(res);
     const annotations = annotationsArtifact(res);
     expect(annotations?.files[0]?.text).toContain('; Mask prose.');
-    expect(annotations?.files[0]?.text).toContain(';! in A; out A; clobbers C,F');
-    expect(annotations?.files[0]?.text).not.toContain(';!      maybe-out A');
-    expect(annotations?.files[0]?.text).not.toContain(';!      clobbers  A');
+    expect(annotations?.files[0]?.text).toContain('.routine in A out A clobbers BC,DE,HL,IX,IY,F');
+    expect(annotations?.files[0]?.text).not.toContain('maybe-out A');
   });
 
   it('does not treat OR A as a data-output use when value-derived flags are dead', async () => {
@@ -771,6 +839,7 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'START:',
         '    ld a,3',
         '    call MASK',
@@ -778,9 +847,7 @@ describe('register-contracts integration', () => {
         '    ret',
         '',
         '; Mask prose.',
-        ';!      in        A',
-        ';!      maybe-out A',
-        ';!      clobbers  A,C',
+        '.routine in A maybe-out A clobbers A,C',
         'MASK:',
         '    ld c,a',
         '    rst 0',
@@ -797,7 +864,7 @@ describe('register-contracts integration', () => {
 
     expectNoErrorDiagnostics(res);
     const annotations = annotationsArtifact(res);
-    expect(annotations?.files[0]?.text).not.toContain(';!      out       A');
+    expect(annotations?.files[0]?.text).not.toContain('.routine in A out A');
   });
 
   it('promotes accepted output candidates in source annotations', async () => {
@@ -806,6 +873,7 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'START:',
         '    ld a,3',
         '    ld hl,$2000',
@@ -814,6 +882,7 @@ describe('register-contracts integration', () => {
         '    ret',
         '',
         '; Mask prose.',
+        '.routine',
         'MASK:',
         '    ld a,$80',
         '    ld (hl),a',
@@ -832,9 +901,9 @@ describe('register-contracts integration', () => {
     expectNoErrorDiagnostics(res);
     const annotations = annotationsArtifact(res);
     expect(annotations?.files[0]?.text).toContain(
-      ['; Mask prose.', ';! in HL; out A', 'MASK:'].join('\n'),
+      ['; Mask prose.', '.routine in HL out A', 'MASK:'].join('\n'),
     );
-    expect(annotations?.files[0]?.text).not.toContain(';!      maybe-out A');
+    expect(annotations?.files[0]?.text).not.toContain('maybe-out A');
   });
 
   it('includes inferred called routine summaries in the report', async () => {
@@ -842,9 +911,17 @@ describe('register-contracts integration', () => {
     const entry = join(dir, 'main.asm');
     writeFileSync(
       entry,
-      ['START:', '    call HELPER', '    ret', 'HELPER:', '    ld a,1', '    ret', '.end'].join(
-        '\n',
-      ),
+      [
+        '.routine',
+        'START:',
+        '    call HELPER',
+        '    ret',
+        '.routine',
+        'HELPER:',
+        '    ld a,1',
+        '    ret',
+        '.end',
+      ].join('\n'),
       'utf8',
     );
 
@@ -911,11 +988,13 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'ALIAS:',
         'HELPER:',
         '    ld de,$2000',
         '    ld (de),a',
         '    ret',
+        '.routine',
         'START:',
         '    ld de,$1000',
         '    call ALIAS',
@@ -945,11 +1024,13 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'START:',
         '    ld a,1',
         '    ld ($2000),a',
         '.entry:',
         '    ret',
+        '.routine',
         'CALLER:',
         '    ld a,2',
         '    call .entry',
@@ -991,7 +1072,7 @@ describe('register-contracts integration', () => {
         expect.objectContaining({
           kind: 'definite_contract_violation',
           file: entry,
-          line: 6,
+          line: 8,
           column: 5,
           callTarget: 'HELPER',
           carriers: ['D', 'E'],
@@ -1009,11 +1090,13 @@ describe('register-contracts integration', () => {
     writeFileSync(
       imported,
       [
+        '.routine',
         '@START:',
         '    ld de,$1000',
         '    call HELPER',
         '    inc de',
         '    ret',
+        '.routine',
         'HELPER:',
         '    ld de,$2000',
         '    ld (de),a',
@@ -1067,7 +1150,7 @@ describe('register-contracts integration', () => {
           routine: 'START',
           location: expect.objectContaining({
             file: entry,
-            line: 6,
+            line: 8,
             column: 5,
           }),
           callTarget: 'HELPER',
@@ -1199,6 +1282,7 @@ describe('register-contracts integration', () => {
 
   it('reports duplicate-key register-contract findings as new when baseline has fewer', async () => {
     const entry = writeSourceFixture('azm-regcontracts-ratchet-duplicate-', [
+      '.routine',
       'START:',
       '    ld de,$1000',
       '    call HELPER',
@@ -1207,6 +1291,7 @@ describe('register-contracts integration', () => {
       '    call HELPER',
       '    inc de',
       '    ret',
+      '.routine',
       'HELPER:',
       '    ld de,$2000',
       '    ld (de),a',
@@ -1219,7 +1304,9 @@ describe('register-contracts integration', () => {
       registerContractsReportFormat: 'json',
     });
     const report = reportArtifact(current)?.json;
-    expect(report?.findings.filter((finding) => finding.callTarget === 'HELPER').length).toBeGreaterThan(1);
+    expect(
+      report?.findings.filter((finding) => finding.callTarget === 'HELPER').length,
+    ).toBeGreaterThan(1);
     const baselinePath = join(dirname(entry), 'baseline-duplicate.regcontracts.json');
     writeFileSync(
       baselinePath,
@@ -1276,17 +1363,18 @@ describe('register-contracts integration', () => {
   it('reports audited source findings without failing scoped strict builds', async () => {
     const { dir, entry, strictFile, legacyFile } = writeScopedPolicyFixture(
       'azm-regcontracts-policy-audit-report-',
-      [';! clobbers DE'],
+      ['.routine clobbers DE'],
     );
     writeFileSync(
       legacyFile,
       [
-        ';! clobbers DE',
+        '.routine clobbers DE',
         '@LEGACY:',
         '    ld de,$1000',
         '    call HELPER',
         '    inc de',
         '    ret',
+        '.routine',
         '@HELPER:',
         '    ld de,$2000',
         '    ld (de),a',
@@ -1323,7 +1411,11 @@ describe('register-contracts integration', () => {
     const entry = join(dir, 'main.asm');
     const offFile = join(dir, 'legacy.asm');
     writeFileSync(entry, ['.import "legacy.asm"', '.end'].join('\n'), 'utf8');
-    writeFileSync(offFile, ['@LEGACY:', '    call MISSING', '    ret'].join('\n'), 'utf8');
+    writeFileSync(
+      offFile,
+      ['.routine', '@LEGACY:', '    call MISSING', '    ret'].join('\n'),
+      'utf8',
+    );
 
     const res = await compileRegisterContracts(entry, {
       registerContracts: 'strict',
@@ -1347,7 +1439,7 @@ describe('register-contracts integration', () => {
   it('accepts explicit contracts at strict-to-audit register-contract boundaries', async () => {
     const { entry, strictFile, legacyFile } = writeScopedPolicyFixture(
       'azm-regcontracts-policy-contract-',
-      [';! clobbers DE'],
+      ['.routine clobbers DE'],
     );
 
     const res = await compileRegisterContracts(entry, {
@@ -1409,12 +1501,14 @@ describe('register-contracts integration', () => {
 
   it('suppresses the next local register-contract finding with an auditable reason', async () => {
     const entry = writeSourceFixture('azm-regcontracts-suppress-next-', [
+      '.routine',
       'START:',
       '    ld de,$1000',
-      ';! rc-ignore-next definite_contract_violation: legacy monitor wrapper',
+      '.rcignore definite_contract_violation "legacy monitor wrapper"',
       '    call HELPER',
       '    inc de',
       '    ret',
+      '.routine',
       'HELPER:',
       '    ld de,$2000',
       '    ld (de),a',
@@ -1432,7 +1526,7 @@ describe('register-contracts integration', () => {
     expect(reportArtifact(res)?.json?.findings).toEqual([
       expect.objectContaining({
         kind: 'output_candidate',
-        location: expect.objectContaining({ line: 4 }),
+        location: expect.objectContaining({ line: 5 }),
       }),
     ]);
     expect(reportArtifact(res)?.json?.suppressedFindings).toEqual([
@@ -1444,7 +1538,7 @@ describe('register-contracts integration', () => {
         finding: expect.objectContaining({
           kind: 'definite_contract_violation',
           callTarget: 'HELPER',
-          location: expect.objectContaining({ line: 4 }),
+          location: expect.objectContaining({ line: 5 }),
         }),
       }),
     ]);
@@ -1452,12 +1546,14 @@ describe('register-contracts integration', () => {
 
   it('rejects malformed local register-contract suppressions in strict mode', async () => {
     const entry = writeSourceFixture('azm-regcontracts-bad-suppress-next-', [
+      '.routine',
       'START:',
       '    ld de,$1000',
-      ';! rc-ignore-next definite_contract_violation',
+      '.rcignore definite_contract_violation',
       '    call HELPER',
       '    inc de',
       '    ret',
+      '.routine',
       'HELPER:',
       '    ld de,$2000',
       '    ld (de),a',
@@ -1472,21 +1568,23 @@ describe('register-contracts integration', () => {
     expect(res.diagnostics).toContainEqual(
       expect.objectContaining({
         severity: 'error',
-        code: 'AZMN_REGISTER_CONTRACTS',
-        line: 3,
-        message: expect.stringContaining('Malformed register-contract suppression'),
+        code: 'AZMN_PARSE',
+        line: 4,
+        message: expect.stringContaining('.rcignore'),
       }),
     );
   });
 
   it('rejects malformed local suppressions in scoped strict source', async () => {
     const entry = writeSourceFixture('azm-regcontracts-bad-scoped-suppress-next-', [
+      '.routine',
       'START:',
       '    ld de,$1000',
-      ';! rc-ignore-next definite_contract_violation',
+      '.rcignore definite_contract_violation',
       '    call HELPER',
       '    inc de',
       '    ret',
+      '.routine',
       'HELPER:',
       '    ld de,$2000',
       '    ld (de),a',
@@ -1504,21 +1602,23 @@ describe('register-contracts integration', () => {
     expect(res.diagnostics).toContainEqual(
       expect.objectContaining({
         severity: 'error',
-        code: 'AZMN_REGISTER_CONTRACTS',
-        line: 3,
-        message: expect.stringContaining('Malformed register-contract suppression'),
+        code: 'AZMN_PARSE',
+        line: 4,
+        message: expect.stringContaining('.rcignore'),
       }),
     );
   });
 
   it('keeps suppressed output candidates out of active report sections', async () => {
     const entry = writeSourceFixture('azm-regcontracts-suppress-output-candidate-', [
+      '.routine',
       'START:',
       '    ld de,$1000',
-      ';! rc-ignore-next output_candidate: reviewed legacy return',
+      '.rcignore output_candidate "reviewed legacy return"',
       '    call HELPER',
       '    inc de',
       '    ret',
+      '.routine',
       'HELPER:',
       '    ld de,$2000',
       '    ld (de),a',
@@ -1558,9 +1658,14 @@ describe('register-contracts integration', () => {
     const entry = join(dir, 'main.asm');
     writeFileSync(
       entry,
-      ['MISSING_HELPER .equ $1234', 'START:', '    call MISSING_HELPER', '    ret', '.end'].join(
-        '\n',
-      ),
+      [
+        'MISSING_HELPER .equ $1234',
+        '.routine',
+        'START:',
+        '    call MISSING_HELPER',
+        '    ret',
+        '.end',
+      ].join('\n'),
       'utf8',
     );
 
@@ -1580,9 +1685,14 @@ describe('register-contracts integration', () => {
     const entry = join(dir, 'main.asm');
     writeFileSync(
       entry,
-      ['MISSING_HELPER .equ $1234', 'START:', '    call MISSING_HELPER', '    ret', '.end'].join(
-        '\n',
-      ),
+      [
+        'MISSING_HELPER .equ $1234',
+        '.routine',
+        'START:',
+        '    call MISSING_HELPER',
+        '    ret',
+        '.end',
+      ].join('\n'),
       'utf8',
     );
 
@@ -1602,7 +1712,11 @@ describe('register-contracts integration', () => {
   it('emits strict errors for unbalanced routine stack discipline', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-regcontracts-strict-stack-'));
     const entry = join(dir, 'main.asm');
-    writeFileSync(entry, ['@START:', '    push bc', '    ret', '.end'].join('\n'), 'utf8');
+    writeFileSync(
+      entry,
+      ['.routine', '@START:', '    push bc', '    ret', '.end'].join('\n'),
+      'utf8',
+    );
 
     const res = await compileRegisterContracts(entry, {
       registerContracts: 'strict',
@@ -1621,9 +1735,11 @@ describe('register-contracts integration', () => {
 
   it('emits strict errors for conditional returns before stack restoration', async () => {
     const entry = writeSourceFixture('azm-regcontracts-strict-early-ret-stack-', [
+      '.routine',
       '@START:',
       '    call HELPER',
       '    ret',
+      '.routine',
       '@HELPER:',
       '    push bc',
       '    ret z',
@@ -1650,9 +1766,16 @@ describe('register-contracts integration', () => {
     const entry = join(dir, 'main.asm');
     writeFileSync(
       entry,
-      ['START:', '    ld a,1', '    rst $10', '    push af', '    pop bc', '    ret', '.end'].join(
-        '\n',
-      ),
+      [
+        '.routine',
+        'START:',
+        '    ld a,1',
+        '    rst $10',
+        '    push af',
+        '    pop bc',
+        '    ret',
+        '.end',
+      ].join('\n'),
       'utf8',
     );
 
@@ -1677,6 +1800,7 @@ describe('register-contracts integration', () => {
       entry,
       [
         'API_SCANKEYS .equ 16',
+        '.routine',
         'START:',
         '    ld c,API_SCANKEYS',
         '    rst $10',
@@ -1684,6 +1808,7 @@ describe('register-contracts integration', () => {
         '    ld e,a',
         '    jr nc,DONE',
         '    inc e',
+        '.routine',
         'DONE:',
         '    ret',
         '.end',
@@ -1706,6 +1831,7 @@ describe('register-contracts integration', () => {
       entry,
       [
         'API_RANDOM .equ 49',
+        '.routine',
         'START:',
         '    ld c,API_RANDOM',
         '    rst $10',
@@ -1730,6 +1856,7 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'START:',
         '    ld b,7',
         '    ld c,49',
@@ -1763,6 +1890,7 @@ describe('register-contracts integration', () => {
       entry,
       [
         'ApiScanKeys .equ 16',
+        '.routine',
         'START:',
         '    ld c,ApiScanKeys',
         '    rst $10',
@@ -1770,6 +1898,7 @@ describe('register-contracts integration', () => {
         '    ld e,a',
         '    jr nc,DONE',
         '    inc e',
+        '.routine',
         'DONE:',
         '    ret',
         '.end',
@@ -1792,6 +1921,7 @@ describe('register-contracts integration', () => {
       entry,
       [
         'ApiScanKeys .equ 16',
+        '.routine',
         'START:',
         '    ld c,ApiScanKeys',
         '    rst $10',
@@ -1823,12 +1953,14 @@ describe('register-contracts integration', () => {
       entry,
       [
         'API_SCANKEYS .equ 16',
+        '.routine',
         'START:',
         '    ld c,API_SCANKEYS',
         '    nop',
         '    rst $10',
         '    jr nz,DONE',
         '    ld e,a',
+        '.routine',
         'DONE:',
         '    ret',
         '.end',
@@ -1857,6 +1989,7 @@ describe('register-contracts integration', () => {
       entry,
       [
         'MON_BANK_CALL .equ $53',
+        '.routine',
         'START:',
         '    ld a,$12',
         '    push hl',
@@ -1868,8 +2001,10 @@ describe('register-contracts integration', () => {
         '    rst $10',
         '    jr c,DONE',
         '    ld e,a',
+        '.routine',
         'DONE:',
         '    ret',
+        '.routine',
         'TARGET:',
         '    ret',
         '.end',
@@ -1896,6 +2031,7 @@ describe('register-contracts integration', () => {
       entry,
       [
         'MON_BANK_CALL .equ $53',
+        '.routine',
         'START:',
         '    push bc',
         '    push de',
@@ -1905,6 +2041,7 @@ describe('register-contracts integration', () => {
         '    ld c,MON_BANK_CALL',
         '    rst $10',
         '    ret',
+        '.routine',
         'TARGET:',
         '    ret',
         '.end',
@@ -1934,11 +2071,13 @@ describe('register-contracts integration', () => {
       entry,
       [
         'SVC_BASE .equ $60',
+        '.routine',
         'START:',
         '    ld c,SVC_BASE',
         '    rst $10',
         '    jr c,DONE',
         '    ld e,a',
+        '.routine',
         'DONE:',
         '    ret',
         '.end',
@@ -1976,6 +2115,7 @@ describe('register-contracts integration', () => {
       entry,
       [
         'SVC_BASE .equ $60',
+        '.routine',
         'START:',
         '    ld hl,$1234',
         '    ld c,SVC_BASE',
@@ -2019,17 +2159,18 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         '@START:',
         '    push hl',
         '    push de',
         '    push af',
         '    cp 1',
-        '    jp z,ARM_ONE',
+        '    jp z,_armOne',
         '    pop af',
         '    pop de',
         '    pop hl',
         '    ret',
-        'ARM_ONE:',
+        '_armOne:',
         '    pop af',
         '    pop de',
         '    pop hl',
@@ -2055,13 +2196,14 @@ describe('register-contracts integration', () => {
       entry,
       [
         'TARGET .equ $9000',
+        '.routine',
         '@START:',
         '    push af',
         '    cp 1',
-        '    jr z,PROBE',
+        '    jr z,_probe',
         '    pop af',
         '    jp TARGET',
-        'PROBE:',
+        '_probe:',
         '    pop af',
         '    jp TARGET',
         '.end',
@@ -2088,11 +2230,12 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         '@START:',
         '    push af',
-        '    jr z,SKIP_RESTORE',
+        '    jr z,_skipRestore',
         '    pop af',
-        'SKIP_RESTORE:',
+        '_skipRestore:',
         '    ret',
         '.end',
       ].join('\n'),
@@ -2120,11 +2263,13 @@ describe('register-contracts integration', () => {
       entry,
       [
         'SVC_BASE .equ $60',
+        '.routine',
         '@START:',
         '    ld h,$12',
         '    call CALL_SERVICE',
         '    ld a,h',
         '    ret',
+        '.routine',
         'CALL_SERVICE:',
         '    ld c,SVC_BASE',
         '    rst $10',
@@ -2164,19 +2309,22 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'START:',
         '    ld a,1',
         '    call WRAPPER',
-        '    jr nz,DONE',
-        'DONE:',
+        '    jr nz,_done',
+        '_done:',
         '    ret',
+        '.routine',
         'WRAPPER:',
         '    ld a,2',
         '    jp FLAG_CALLEE',
+        '.routine',
         'FLAG_CALLEE:',
         '    xor a',
-        '    jr z,FLAG_DONE',
-        'FLAG_DONE:',
+        '    jr z,_flagDone',
+        '_flagDone:',
         '    ret',
         '.end',
       ].join('\n'),
@@ -2202,20 +2350,24 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'START:',
         '    ld a,1',
         '    call WRAPPER_A',
-        '    jr nz,DONE',
-        'DONE:',
+        '    jr nz,_done',
+        '_done:',
         '    ret',
+        '.routine',
         'WRAPPER_A:',
         '    jp WRAPPER_B',
+        '.routine',
         'WRAPPER_B:',
         '    jp FLAG_CALLEE',
+        '.routine',
         'FLAG_CALLEE:',
         '    xor a',
-        '    jr z,FLAG_DONE',
-        'FLAG_DONE:',
+        '    jr z,_flagDone',
+        '_flagDone:',
         '    ret',
         '.end',
       ].join('\n'),
@@ -2240,7 +2392,7 @@ describe('register-contracts integration', () => {
     const entry = join(dir, 'main.asm');
     writeFileSync(
       entry,
-      ['MISSING_TAIL .equ $1234', 'START:', '    jp MISSING_TAIL', '.end'].join('\n'),
+      ['MISSING_TAIL .equ $1234', '.routine', 'START:', '    jp MISSING_TAIL', '.end'].join('\n'),
       'utf8',
     );
 
@@ -2263,6 +2415,7 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'START:',
         '    ld de,0x1234',
         '    ld hl,TEXT',
@@ -2270,14 +2423,17 @@ describe('register-contracts integration', () => {
         '    ld a,d',
         '    ret',
         '; Keeps A,carry,zero,sign,parity,halfCarry,BC,DE,HL,IX,IY stable for the caller.',
+        '.routine',
         'LCD_BUSY:',
         '    push af',
+        '.routine',
         'LCD_BUSY_LOOP:',
         '    in a,(1)',
         '    rlca',
         '    jr c,LCD_BUSY_LOOP',
         '    pop af',
         '    ret',
+        '.routine',
         'LCD_STRING:',
         '    ld a,(hl)',
         '    inc hl',
@@ -2285,6 +2441,7 @@ describe('register-contracts integration', () => {
         '    ret z',
         '    call LCD_BUSY',
         '    jr LCD_STRING',
+        '.routine',
         'TEXT:',
         '    .db 0',
         '.end',
@@ -2310,11 +2467,13 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'START:',
         '    ld de,0x1234',
         '    call LOCAL_BRANCH',
         '    inc de',
         '    ret',
+        '.routine',
         'LOCAL_BRANCH:',
         '    jp .done',
         '.done:',
@@ -2342,17 +2501,17 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'BOOT:',
         '    call START',
         '    ret',
+        '.routine',
         'START:',
         '    ld de,$1000',
         '    call NORMALISE',
         '    inc de',
         '    ret',
-        ';!      in        DE',
-        ';!      out       DE',
-        ';!      clobbers  A',
+        '.routine in DE out DE clobbers A',
         'NORMALISE:',
         '    ld de,$2000',
         '    ret',
@@ -2374,15 +2533,18 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'BOOT:',
         '    call START',
         '    ret',
+        '.routine',
         'START:',
         '    ld de,$1000',
-        '    ; expects out DE',
+        '    .expectout DE',
         '    call HELPER',
         '    inc de',
         '    ret',
+        '.routine',
         'HELPER:',
         '    ld de,$2000',
         '    ret',
@@ -2398,20 +2560,22 @@ describe('register-contracts integration', () => {
     expectNoErrorDiagnostics(res);
   });
 
-  it('promotes source-level expects-out comments into generated callee contracts', async () => {
+  it('promotes source-level expect-out directives into generated callee contracts', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-regcontracts-expects-out-promote-'));
     const entry = join(dir, 'main.asm');
     writeFileSync(
       entry,
       [
+        '.routine',
         'START:',
         '    ld a,3',
-        '    ; expects out A',
+        '    .expectout A',
         '    call MASK',
         '    ld d,a',
         '    ret',
         '',
         '; Mask prose.',
+        '.routine',
         'MASK:',
         '    ld c,a',
         '    ld a,$80',
@@ -2429,7 +2593,7 @@ describe('register-contracts integration', () => {
     expectNoErrorDiagnostics(res);
     const annotations = annotationsArtifact(res);
     expect(annotations?.files[0]?.text).toContain(
-      ['; Mask prose.', ';! out A; clobbers C', 'MASK:'].join('\n'),
+      ['; Mask prose.', '.routine out A clobbers C', 'MASK:'].join('\n'),
     );
   });
 
@@ -2439,12 +2603,14 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'START:',
         '    ld de,$1000',
-        ';! rc-ignore-next output_candidate: reviewed legacy return',
+        '.rcignore output_candidate "reviewed legacy return"',
         '    call HELPER',
         '    inc de',
         '    ret',
+        '.routine',
         'HELPER:',
         '    ld de,$2000',
         '    ld (de),a',
@@ -2461,7 +2627,9 @@ describe('register-contracts integration', () => {
     });
 
     expectNoErrorDiagnostics(res);
-    expect(annotationsArtifact(res)).toBeUndefined();
+    const annotations = annotationsArtifact(res);
+    expect(annotations?.files[0]?.text).not.toContain('.expectout');
+    expect(annotations?.files[0]?.text).toContain('.routine in A clobbers DE\nHELPER:');
   });
 
   it('uses extern contracts for calls without routine bodies', async () => {
@@ -2473,9 +2641,11 @@ describe('register-contracts integration', () => {
       entry,
       [
         'MON_PRINT .equ 0x10',
+        '.routine',
         'BOOT:',
         '    call START',
         '    ret',
+        '.routine',
         'START:',
         '    ld de,$1000',
         '    call MON_PRINT',
@@ -2506,14 +2676,16 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'BOOT:',
         '    call START',
         '    ret',
+        '.routine',
         'START:',
         '    call MAKE_PTR',
         '    inc hl',
         '    ret',
-        ';!      out       HL',
+        '.routine out HL',
         'MAKE_PTR:',
         '    ld hl,$2000',
         '    ret',
@@ -2538,14 +2710,17 @@ describe('register-contracts integration', () => {
       entry,
       [
         'MAKE_PTR .equ 0x20',
+        '.routine',
         'BOOT:',
         '    call START',
         '    ret',
+        '.routine',
         'START:',
         '    call CLOBBER_HL',
         '    call MAKE_PTR',
         '    inc hl',
         '    ret',
+        '.routine',
         'CLOBBER_HL:',
         '    ld hl,$3000',
         '    ret',
@@ -2568,20 +2743,22 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'BOOT:',
         '    call START',
         '    ret',
+        '.routine',
         'START:',
         '    call CLOBBER_DE',
         '    call MAKE_PTR',
         '    inc hl',
         '    ret',
-        ';!      in        DE',
-        ';!      out       HL',
+        '.routine in DE out HL',
         'MAKE_PTR:',
         '    ld h,d',
         '    ld l,e',
         '    ret',
+        '.routine',
         'CLOBBER_DE:',
         '    ld de,$3000',
         '    ld (de),a',
@@ -2615,17 +2792,20 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'BOOT:',
         '    call START',
         '    ret',
+        '.routine',
         'START:',
         '    call MAKE_CARRY',
         '    call c,TARGET',
         '    ret',
-        ';!      out       carry',
+        '.routine out carry',
         'MAKE_CARRY:',
         '    or a',
         '    ret',
+        '.routine',
         'TARGET:',
         '    ret',
         '.end',
@@ -2646,15 +2826,17 @@ describe('register-contracts integration', () => {
     writeFileSync(
       entry,
       [
+        '.routine',
         'START:',
         '    ld de,$1000',
         '    call MAKER',
         '    inc de',
         '    ret',
-        ';!      out       A',
+        '.routine out A',
         'GET_A:',
         '    ld a,1',
         '    ret',
+        '.routine',
         'MAKER:',
         '    call GET_A',
         '    ld b,a',

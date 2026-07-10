@@ -34,7 +34,7 @@ function boundaryLabels(routine: RegisterContractsRoutine): string[] {
 }
 
 function routineNameSet(routines: readonly RegisterContractsRoutine[]): Set<string> {
-  return new Set(routines.flatMap((routine) => boundaryLabels(routine)));
+  return new Set(routines.map((routine) => routine.identity ?? routine.name));
 }
 
 export function buildProfileSummaries(
@@ -78,7 +78,11 @@ export function buildProfileSummaryLookup(
 }
 
 export function routineNames(routines: readonly RegisterContractsRoutine[]): string[] {
-  return routines.flatMap((routine) => boundaryLabels(routine));
+  return routines.flatMap((routine) => [
+    routine.identity ?? routine.name,
+    ...(routine.span.sourceUnitRelation !== 'import' ? boundaryLabels(routine) : []),
+    ...(routine.exportedEntryLabels ?? []),
+  ]);
 }
 
 export function buildSummaries(
@@ -107,18 +111,22 @@ export function buildSummaryByName(
   const out = new Map<string, RoutineSummary>();
   const byRoutine = new Map<string, RoutineSummary>();
   for (const summary of summaries) {
-    byRoutine.set(summary.name, summary);
-    out.set(summary.name, summary);
+    byRoutine.set(summary.identity ?? summary.name, summary);
+    out.set(summary.identity ?? summary.name, summary);
+    if (summary.identity === undefined || summary.identity === summary.name) {
+      out.set(summary.name, summary);
+    }
   }
   for (const summary of profileSummaries) {
     out.set(summary.name, summary);
   }
   for (const routine of routines) {
-    const routineSummary = byRoutine.get(routine.name);
+    const routineSummary = byRoutine.get(routine.identity ?? routine.name);
     if (routineSummary === undefined) continue;
-    for (const alias of boundaryLabels(routine)) {
-      out.set(alias, routineSummary);
+    if (routine.span.sourceUnitRelation !== 'import') {
+      for (const alias of boundaryLabels(routine)) out.set(alias, routineSummary);
     }
+    for (const alias of routine.exportedEntryLabels ?? []) out.set(alias, routineSummary);
   }
   return out;
 }
@@ -131,7 +139,9 @@ export function withAcceptedOutputs(
     return [...summaries];
   }
   return summaries.map((summary) => {
-    const accepted = acceptedOutputCandidates.get(summary.name);
+    const accepted =
+      acceptedOutputCandidates.get(summary.identity ?? summary.name) ??
+      acceptedOutputCandidates.get(summary.name);
     if (!accepted || accepted.length === 0) {
       return summary;
     }
@@ -156,7 +166,7 @@ export function unknownBoundaryDiagnostics(
   severity: Diagnostic['severity'] = 'warning',
 ): Diagnostic[] {
   return directBoundaries
-    .filter((boundary) => !knownRoutines.has(boundary.target))
+    .filter((boundary) => !knownRoutines.has(boundary.targetIdentity ?? boundary.target))
     .map((boundary) => ({
       severity,
       code: 'AZMN_REGISTER_CONTRACTS',
@@ -173,7 +183,7 @@ export function unknownCallList(
 ): string[] {
   return unique(
     directBoundaries
-      .filter((boundary) => !knownRoutines.has(boundary.target))
+      .filter((boundary) => !knownRoutines.has(boundary.targetIdentity ?? boundary.target))
       .map((boundary) => boundary.target),
   ).sort();
 }

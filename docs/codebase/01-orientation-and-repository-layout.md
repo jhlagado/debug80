@@ -21,7 +21,7 @@ instructions, assembler-time facts are collected, instructions and data emit
 bytes, symbolic fixups are resolved and output writers serialize the result.
 
 AZM's extensions are assembler-time features. Layout types, enums, type
-aliases, AZMDoc comments and register contracts help the assembler
+aliases and register-contract directives help the assembler
 calculate addresses, check contracts and produce metadata. Runtime behaviour
 still comes from the Z80 instructions and bytes that AZM emits.
 
@@ -42,10 +42,11 @@ tile   .field byte
 flags  .field byte
        .endtype
 
-@Start:
+.routine
+Start:
         ld      b,LIMIT
-Loop:
-        djnz    Loop
+_loop:
+        djnz    _loop
 
 Sprites:
         .ds SpriteArray
@@ -54,9 +55,9 @@ Sprites:
 The loader reads the entry file and expands includes. The logical-line scanner
 records each line with source provenance. The parser emits source items for
 `.org`, `.equ`, `.typealias`, the `Sprite` layout, labels, instructions and
-`.ds`. Address planning assigns `$0100` to `@Start`, assigns the following
-addresses to `Loop` and `Sprites`, records `LIMIT = 8` and records the size of
-`SpriteArray`. The encoder turns `ld b,LIMIT` and `djnz Loop` into fragments.
+`.ds`. Address planning assigns `$0100` to `Start`, assigns the following
+addresses to `_loop` and `Sprites`, records `LIMIT = 8` and records the size of
+`SpriteArray`. The encoder turns `ld b,LIMIT` and `djnz _loop` into fragments.
 Fixup emission resolves `LIMIT` and the relative branch displacement. The
 output writers produce the selected artifacts.
 
@@ -154,7 +155,7 @@ docs/
 ```
 
 `docs/codebase/` is the maintained engineering manual for the source tree,
-compile flow, user-facing CLI, package-facing APIs, AZMDoc/register contract
+compile flow, user-facing CLI, package-facing APIs, register-contract
 metadata and verification lanes. Avoid reintroducing parallel reference,
 planning or design trees unless there is a concrete active need.
 

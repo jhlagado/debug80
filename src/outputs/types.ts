@@ -37,19 +37,29 @@ export type SymbolEntry =
   | {
       kind: 'label' | 'data';
       name: string;
+      identity?: string;
       address: number;
       file?: string;
       line?: number;
       size?: number;
       scope?: 'global' | 'local';
+      visibility?: 'exported' | 'source' | 'local';
+      sourceUnit?: string;
+      /** Internal writer hint used to disambiguate source-private display names. */
+      needsSourceQualifier?: boolean;
     }
   | {
       kind: 'constant';
       name: string;
+      identity?: string;
       value: number;
       file?: string;
       line?: number;
       scope?: 'global' | 'local';
+      visibility?: 'exported' | 'source' | 'local';
+      sourceUnit?: string;
+      /** Internal writer hint used to disambiguate source-private display names. */
+      needsSourceQualifier?: boolean;
     };
 
 /** BIN artifact. */
@@ -120,12 +130,15 @@ export interface Asm80Artifact {
 
 export interface D8mSymbol {
   name: string;
+  identity?: string;
   kind: 'constant' | 'label' | 'data' | 'unknown';
   value?: number;
   address?: number;
   file?: string;
   line?: number;
   scope?: 'global' | 'local';
+  visibility?: 'exported' | 'source' | 'local';
+  sourceUnit?: string;
   size?: number;
 }
 
@@ -144,11 +157,14 @@ export interface D8mSegment {
 
 export interface D8mFileSymbol {
   name: string;
+  identity?: string;
   kind: 'constant' | 'label' | 'data' | 'unknown';
   value?: number;
   address?: number;
   line?: number;
   scope?: 'global' | 'local';
+  visibility?: 'exported' | 'source' | 'local';
+  sourceUnit?: string;
   size?: number;
 }
 

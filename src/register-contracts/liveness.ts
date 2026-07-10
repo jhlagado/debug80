@@ -22,6 +22,7 @@ type BoundaryTarget = {
   targets: string[];
   conditional: boolean;
   subject: string;
+  displayTarget?: string;
 };
 
 type ResolvedBoundary = {
@@ -44,18 +45,22 @@ function boundaryTarget(
 ): BoundaryTarget | undefined {
   const item = routine.instructions[index];
   return (
-    callBoundaryTarget(effect) ??
+    callBoundaryTarget(item, effect) ??
     tailJumpBoundaryTarget(item, effect) ??
     rstBoundaryTarget(routine, index, effect, serviceRanges)
   );
 }
 
-function callBoundaryTarget(effect: InstructionEffect): BoundaryTarget | undefined {
+function callBoundaryTarget(
+  item: RegisterContractsInstruction | undefined,
+  effect: InstructionEffect,
+): BoundaryTarget | undefined {
   return effect.control.kind === 'call' && effect.control.target
     ? {
-        targets: [effect.control.target],
+        targets: [item?.resolvedTarget ?? effect.control.target],
         conditional: effect.control.conditional,
         subject: `CALL ${effect.control.target}`,
+        displayTarget: effect.control.target,
       }
     : undefined;
 }
@@ -66,9 +71,10 @@ function tailJumpBoundaryTarget(
 ): BoundaryTarget | undefined {
   if (!isTailJumpBoundary(item, effect)) return undefined;
   return {
-    targets: [effect.control.target],
+    targets: [item?.resolvedTarget ?? effect.control.target],
     conditional: false,
     subject: `JP ${effect.control.target}`,
+    displayTarget: effect.control.target,
   };
 }
 
@@ -140,9 +146,14 @@ function hintUnitsForLine(
   hints: LocatedSmartComment[],
   file: string,
   callLine: number,
+  callColumn: number,
 ): RegisterContractsUnit[] {
   const prior = hints.find(
-    (hint) => hint.file === file && hint.line === callLine - 1 && hint.comment.kind === 'expectOut',
+    (hint) =>
+      hint.file === file &&
+      (hint.targetLine ?? hint.line + 1) === callLine &&
+      (hint.targetColumn === undefined || hint.targetColumn === callColumn) &&
+      hint.comment.kind === 'expectOut',
   );
   return prior?.comment.kind === 'expectOut' ? unique(prior.comment.carriers) : [];
 }
@@ -213,7 +224,10 @@ function acceptedOutputUnits(
   summary: RoutineSummary,
   hints: LocatedSmartComment[],
 ): Set<RegisterContractsUnit> {
-  return new Set([...hintUnitsForLine(hints, item.file, item.line), ...outputUnits(summary)]);
+  return new Set([
+    ...hintUnitsForLine(hints, item.file, item.line, item.column),
+    ...outputUnits(summary),
+  ]);
 }
 
 function removeInstructionWrites(
@@ -340,7 +354,8 @@ export function findRegisterContractsConflicts(
     serviceRanges,
   )) {
     const accepted = new Set<RegisterContractsUnit>();
-    for (const unit of hintUnitsForLine(hints, item.file, item.line)) accepted.add(unit);
+    for (const unit of hintUnitsForLine(hints, item.file, item.line, item.column))
+      accepted.add(unit);
     for (const unit of outputUnits(summary)) accepted.add(unit);
     const carriers = unique(
       summary.mayWrite.filter((unit) => liveOut[index]!.has(unit) && !accepted.has(unit)),
@@ -360,7 +375,8 @@ export function findRegisterContractsConflicts(
           ? { sourceUnitRelation: item.sourceUnitRelation }
           : {}),
         routine: routine.name,
-        callTarget: target,
+        ...(routine.identity !== undefined ? { routineIdentity: routine.identity } : {}),
+        callTarget: boundary.displayTarget ?? target,
         carriers,
         message: `${boundary.subject} may modify ${carriers.join(
           ',',
@@ -385,7 +401,7 @@ function isFlagUnit(unit: RegisterContractsUnit): boolean {
 function candidateMessage(boundary: BoundaryTarget, units: RegisterContractsUnit[]): string {
   const carriers = units.join(',');
   const expectation = units.length === 1 ? units[0] : `{${carriers}}`;
-  return `${boundary.subject} writes ${carriers} and caller reads it later; review the call site and add \`; expects out ${expectation}\` above the call if this is intentional.`;
+  return `${boundary.subject} writes ${carriers} and caller reads it later; review the call site and add \`.expectout ${expectation}\` above the call if this is intentional.`;
 }
 
 export function findCallerOutputCandidateObservations(
@@ -426,7 +442,8 @@ function callerOutputCandidate(
         ...(item.sourceUnitRelation !== undefined
           ? { sourceUnitRelation: item.sourceUnitRelation }
           : {}),
-        routine: target,
+        routine: summary.name,
+        ...(summary.identity !== undefined ? { routineIdentity: summary.identity } : {}),
         carriers,
         message: candidateMessage(boundary, carriers),
       }

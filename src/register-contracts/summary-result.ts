@@ -179,6 +179,7 @@ export function buildRoutineSummary(
 
   return {
     name: routine.name,
+    ...(routine.identity !== undefined ? { identity: routine.identity } : {}),
     mayRead: unique(mayRead),
     mayWrite: unique(mayWrite),
     preserved: unique(preserved),

@@ -1,7 +1,7 @@
 import type { Diagnostic } from '../model/diagnostic.js';
 import type { SourceItem } from '../model/source-item.js';
 import { stripLineComment } from '../source/strip-line-comment.js';
-import { IDENTIFIER_PATTERN } from '../syntax/names.js';
+import { IDENTIFIER_PATTERN, normalizeExportedName } from '../syntax/names.js';
 import {
   parseInstructionChain,
   type ParseChainStatementResult,
@@ -9,12 +9,7 @@ import {
 import { parseLogicalLine, type ParseLogicalLineOptions } from '../syntax/parse-line.js';
 import { expandSelectedOp } from './op-expand-selected.js';
 import { splitOperands } from './op-operand-splitting.js';
-import {
-  parseOpMatcher,
-  parseOpOperand,
-  type OpMatcher,
-  type OpOperand,
-} from './op-operands.js';
+import { parseOpMatcher, parseOpOperand, type OpMatcher, type OpOperand } from './op-operands.js';
 
 export type LogicalLineLike = {
   readonly sourceName: string;
@@ -30,8 +25,16 @@ interface OpParam {
   readonly matcher: OpMatcher;
 }
 
-type OpHeader = { readonly name: string; readonly params: readonly OpParam[] };
-type CollectedOpBody = { readonly body: readonly OpTemplateItem[]; readonly terminated: boolean; readonly endIndex: number };
+type OpHeader = {
+  readonly name: string;
+  readonly isExported: boolean;
+  readonly params: readonly OpParam[];
+};
+type CollectedOpBody = {
+  readonly body: readonly OpTemplateItem[];
+  readonly terminated: boolean;
+  readonly endIndex: number;
+};
 
 export type { OpOperand } from './op-operands.js';
 
@@ -50,10 +53,33 @@ export type OpTemplateItem =
 
 export interface OpDecl {
   readonly name: string;
+  readonly isExported?: boolean;
   readonly params: readonly OpParam[];
   readonly body: readonly OpTemplateItem[];
   readonly sourceName: string;
   readonly line: number;
+  readonly sourceUnit?: string;
+  readonly sourceUnitRelation?: 'entry' | 'include' | 'import';
+}
+
+type OpVisibilityContext = Pick<
+  LogicalLineLike,
+  'sourceName' | 'sourceUnit' | 'sourceUnitRelation'
+>;
+
+export function opOverloadsVisibleFrom(
+  overloads: readonly OpDecl[],
+  context: OpVisibilityContext,
+): readonly OpDecl[] {
+  const contextUnit = context.sourceUnit ?? context.sourceName;
+  return overloads.filter((op) => {
+    const declarationUnit = op.sourceUnit ?? op.sourceName;
+    return (
+      op.isExported === true ||
+      op.sourceUnitRelation !== 'import' ||
+      declarationUnit === contextUnit
+    );
+  });
 }
 
 export function collectOps(
@@ -74,7 +100,14 @@ export function collectOps(
     if (!header) continue;
 
     opLineIndexes.add(index);
-    const collected = collectOpBody(lines, index + 1, header.params, diagnostics, parseOptions, opLineIndexes);
+    const collected = collectOpBody(
+      lines,
+      index + 1,
+      header.params,
+      diagnostics,
+      parseOptions,
+      opLineIndexes,
+    );
     index = collected.endIndex;
     recordCollectedOp(ops, header, collected, line, diagnostics);
   }
@@ -83,11 +116,33 @@ export function collectOps(
 }
 
 function parseOpHeader(line: LogicalLineLike, diagnostics: Diagnostic[]): OpHeader | undefined {
-  const opHeader = new RegExp(`^op\\s+(${IDENTIFIER_PATTERN})\\s*\\((.*)\\)\\s*$`, 'i').exec(
+  const opHeader = new RegExp(`^op\\s+(@?${IDENTIFIER_PATTERN})\\s*\\((.*)\\)\\s*$`, 'i').exec(
     stripLineComment(line.text).trim(),
   );
   if (!opHeader) return undefined;
-  return { name: opHeader[1] ?? '', params: parseOpParams(opHeader[2] ?? '', line, diagnostics) };
+  const rawName = opHeader[1] ?? '';
+  const name = normalizeExportedName(rawName);
+  if (name.startsWith('__')) {
+    diagnostics.push(parseDiagnostic(line, `op "${name}" uses the reserved "__" prefix`));
+  }
+  if (name.startsWith('_') && !rawName.startsWith('@')) {
+    diagnostics.push(
+      parseDiagnostic(
+        line,
+        `leading "_" local syntax is supported only for labels; rename op "${name}"`,
+      ),
+    );
+  }
+  if (rawName.startsWith('@_')) {
+    diagnostics.push(
+      parseDiagnostic(line, `exported op "${rawName}" cannot use the local "_" prefix`),
+    );
+  }
+  return {
+    name,
+    isExported: rawName.startsWith('@'),
+    params: parseOpParams(opHeader[2] ?? '', line, diagnostics),
+  };
 }
 
 function collectOpBody(
@@ -126,11 +181,16 @@ function recordCollectedOp(
   ops.set(header.name, [
     ...(ops.get(header.name) ?? []),
     {
-    name: header.name,
-    params: header.params,
-    body: collected.body,
-    sourceName: line.sourceName,
-    line: line.line,
+      name: header.name,
+      ...(header.isExported ? { isExported: true } : {}),
+      params: header.params,
+      body: collected.body,
+      sourceName: line.sourceName,
+      line: line.line,
+      ...(line.sourceUnit !== undefined ? { sourceUnit: line.sourceUnit } : {}),
+      ...(line.sourceUnitRelation !== undefined
+        ? { sourceUnitRelation: line.sourceUnitRelation }
+        : {}),
     },
   ]);
 }
@@ -216,7 +276,12 @@ function parseOpBodyTemplate(
     return template;
   }
 
-  const parsedSource = parseOpBodySourceItems(line, diagnostics, parseOptions, template !== undefined);
+  const parsedSource = parseOpBodySourceItems(
+    line,
+    diagnostics,
+    parseOptions,
+    template !== undefined,
+  );
   if (parsedSource) return parsedSource;
   return template;
 }
@@ -242,7 +307,7 @@ function parseOpBodyTemplates(
         {
           kind: 'label' as const,
           name: label.name,
-          ...(label.isEntry ? { isEntry: true } : {}),
+          ...(label.isExported ? { isExported: true } : {}),
           span: {
             sourceName: segmentLine.sourceName,
             line: segmentLine.line,
@@ -293,9 +358,7 @@ function parseTemplateInstructionCandidate(
   const instruction = new RegExp(`^(${IDENTIFIER_PATTERN})(?:\\s+(.+))?$`).exec(text);
   if (!instruction) return undefined;
   const operands = parseTemplateOperands(instruction[2] ?? '', paramNames);
-  return operands
-    ? { kind: 'instruction', mnemonic: (instruction[1] ?? '').toLowerCase(), operands }
-    : undefined;
+  return operands ? { kind: 'instruction', mnemonic: instruction[1] ?? '', operands } : undefined;
 }
 
 function parseTemplateOperands(
@@ -314,7 +377,9 @@ function parseTemplateOperands(
 function templateContainsParam(
   template: Extract<OpTemplateItem, { readonly kind: 'instruction' }>,
 ): boolean {
-  return template.operands.some((operand) => operand.kind === 'param' || operand.kind === 'port-param');
+  return template.operands.some(
+    (operand) => operand.kind === 'param' || operand.kind === 'port-param',
+  );
 }
 
 function parseOpBodySourceItems(
