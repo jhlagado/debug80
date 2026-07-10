@@ -279,6 +279,44 @@ function fromAzmDiagnostics(diagnostics: readonly AzmDiagnosticLike[]): BuildDia
 }
 
 /**
+ * Point AZM diagnostics at the `.glim` source when they fall inside a
+ * block or routine body — the debug-map rewrite pointed the other way.
+ * Verbatim bodies make the line arithmetic exact and columns carry
+ * over unchanged; generated-glue diagnostics stay on the generated asm
+ * (the same transparency split as stepping).
+ */
+function reattributeDiagnostics(
+  diagnostics: BuildDiagnostic[],
+  asmText: string,
+  asmPath: string,
+  program: GlimmerProgram,
+  entryPath: string,
+): BuildDiagnostic[] {
+  const entryDir = path.dirname(entryPath);
+  const entryBase = path.basename(entryPath);
+  const { mappings } = computeBlockMappings(
+    asmText,
+    mappableBlocks(program.effects, program.routines),
+    entryBase,
+    (declared) => path.resolve(entryDir, declared ?? entryBase),
+  );
+  if (mappings.length === 0) return diagnostics;
+  const asmResolved = path.resolve(asmPath);
+  return diagnostics.map((diagnostic) => {
+    if (diagnostic.line === undefined) return diagnostic;
+    if (path.resolve(diagnostic.sourceName) !== asmResolved) return diagnostic;
+    const line = diagnostic.line;
+    const mapping = mappings.find((m) => line >= m.asmLine && line < m.asmLine + m.lineCount);
+    if (mapping === undefined) return diagnostic;
+    return {
+      ...diagnostic,
+      sourceName: mapping.glimFile,
+      line: mapping.glimLine + (line - mapping.asmLine),
+    };
+  });
+}
+
+/**
  * Compile a `.glim` program end to end, in process: generate AZM, have
  * AZM infer and inject register contracts (checked at `--rc error`
  * strength, mon3 profile for MON-3 programs), assemble the annotated
@@ -328,7 +366,16 @@ export async function buildGlimmerProgram(
     ...(isTec1g ? { registerContractsProfile: 'mon3' } : {}),
     skipAssembly: true,
   });
-  const checkDiagnostics = [...loadDiagnostics, ...fromAzmDiagnostics(checked.diagnostics)];
+  const checkDiagnostics = [
+    ...loadDiagnostics,
+    ...reattributeDiagnostics(
+      fromAzmDiagnostics(checked.diagnostics),
+      generated.source,
+      asmPath,
+      program,
+      entryPath,
+    ),
+  ];
   if (hasErrors(checkDiagnostics)) {
     return { diagnostics: checkDiagnostics, warnings };
   }
@@ -357,13 +404,23 @@ export async function buildGlimmerProgram(
     emitD8m: true,
     d8mInputs: { hex: path.basename(hexPath), bin: path.basename(binPath) },
   });
-  const diagnostics = [...checkDiagnostics, ...fromAzmDiagnostics(assembled.diagnostics)];
+  const annotatedText = readFileSync(asmPath, 'utf8');
+  const diagnostics = [
+    ...checkDiagnostics,
+    ...reattributeDiagnostics(
+      fromAzmDiagnostics(assembled.diagnostics),
+      annotatedText,
+      asmPath,
+      program,
+      entryPath,
+    ),
+  ];
   if (hasErrors(diagnostics)) {
     return { diagnostics, warnings };
   }
 
   // Rewrite the map against the annotated asm, then write everything.
-  const asmText = readFileSync(asmPath, 'utf8');
+  const asmText = annotatedText;
   const entryDir = path.dirname(entryPath);
   const outDir = path.dirname(asmPath);
   const entryBase = path.basename(entryPath);

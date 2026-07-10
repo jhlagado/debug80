@@ -535,17 +535,39 @@ Two displays matter to Glimmer:
   MON-3 key codes, a 32-byte framebuffer (8 rows of red, green, blue, and
   an aux byte), and a small visible library: `ScanFrame`, `FbClear`,
   `FbPlot`, optional `ShapeDraw`, and `MxMask`.
-- **The TMS9918 VDP** — a video display adapter for the TEC-1G (the
-  TEC-Deck card, data port `$BE`, control port `$BF`), and the next
-  display profile. The VDP is a written-to display with its own VRAM,
-  tiles, and sprites, so its generated loop takes the conventional
-  poll/logic/render/commit shape, paced by the vertical-blank status
-  flag. Debug80 emulates the chip fully.
+- **The TMS9918 VDP** — implemented as `display tms9918` (the TEC-Deck
+  card, data port `$BE`, control port `$BF`). The VDP is a written-to
+  display: it renders autonomously from its own 16 KiB of VRAM, so the
+  generated loop takes the conventional commit shape, paced by the
+  vertical-blank status flag — wait for vblank, **commit** (flush dirty
+  shadows to VRAM in the blank window), poll, then the effect phases.
+  Render blocks never touch VDP timing: they write ordinary memory —
+  the name-table shadow (32x24, per-row dirty tracking) and the
+  sprite-attribute shadow — through `NamePut`, `SpriteSet`, and
+  `SpriteInit`, and `__Commit` streams what changed. The profile
+  library carries the VDP access primitives (`VdpSetAddrWrite`,
+  `VdpWriteBlock`, `VdpFill`, `VdpWaitVBlank`) for one-time uploads of
+  patterns and colours (call them from an enter block, tables in an
+  imported module). Sprites use contiguous slots from 0 (`VdpInit`
+  hides all 32 with Y=$D1, which also terminates sprite processing at
+  the first unused slot). Debug80 emulates the chip fully.
+
+The two displays are architectural opposites — the matrix is a display
+the CPU *is*, the VDP a display the CPU *writes to* — and both compile
+from the same language: a profile owns the loop skeleton, pacing, the
+render target, its library, and its resource meanings, while the
+reactive core (state, flags, dispatch, rollover) is profile-independent.
+
+One consequence of card gating worth knowing on any profile: a
+card-gated block never sees change flags raised while its card was
+inactive (the frame consumes them). When a card's renders depend on
+cells that changed earlier, re-raise them on entry with an `enter`
+block's `updates` list.
 
 Debug80 is the development environment for both: it assembles through
 AZM, runs the TEC-1G platform emulation, and gives source-level
 breakpoints and stepping through the `.d8.json` map. The repository's
-`debug80.json` carries ready targets for the Dot and Slide examples.
+`debug80.json` carries ready targets for every matrix and VDP example.
 
 Reference material for the platform lives in this repository:
 `corpus/tetro` (two complete matrix games, Tetro and Pacmo) and

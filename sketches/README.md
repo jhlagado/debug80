@@ -9,14 +9,13 @@ that is a numbered format proposal, catalogued below and folded into the
 - `tetro.glim` — the headline goal, adapted from `corpus/tetro`. The full
   workout: cards, held bindings, timers, array state, resources, sounds,
   routines.
-- `sprite-chase.glim` — the TMS9918 demos made interactive: a
-  player-steered sprite chasing a target over a tile background. The VDP
-  demos are displays, not games; this adds the missing dynamics and
-  exercises the second display profile.
+- `sprite-chase.glim` — graduated to `examples/` 2026-07-10 (first cut:
+  no sprite/tile resource syntax yet — patterns in an imported module;
+  the sketch's `sprite`/`tile` declarations remain the open P6 design).
 
 ## Format proposals raised by the sketches
 
-- **P1 — Platform and display declarations.** `platform tec1g-mon3` and
+- **P1 — Platform and display declarations** (landed: matrix8x8 2026-07-06, tms9918 2026-07-10)**.** `platform tec1g-mon3` and
   `display matrix8x8` / `display tms9918 mode graphics1` select the
   profile: real port/API equates, the loop skeleton (scan-driven vs
   vblank-paced), and the profile library (framebuffer or VRAM helpers).

@@ -111,7 +111,7 @@ import-decl     ::= "import" string
                   ; execution path, because import bytes land at the
                   ; directive.
 platform-decl   ::= "platform" platform-name        ; "tec1g-mon3"
-display-decl    ::= "display" display-name          ; "matrix8x8"
+display-decl    ::= "display" display-name          ; "matrix8x8" | "tms9918"
 
 type-decl       ::= "type" identifier newline
                     type-field*

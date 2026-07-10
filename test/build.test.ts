@@ -120,6 +120,45 @@ describe('buildGlimmerProgram (programmatic API)', () => {
     expect(existsSync(path.join(dir, 'dot.main.d8.json'))).toBe(false);
   });
 
+  it('reports contract violations at the .glim line that caused them', async () => {
+    const { buildGlimmerProgram } = await import('../src/build.js');
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-diag-glim-'));
+    const entry = path.join(dir, 'clobber.glim');
+    // B is destroyed by _random; reading it after the RST is the classic
+    // register-collision bug the contract check exists to catch.
+    writeFileSync(
+      entry,
+      [
+        'program Clobber',
+        'platform tec1g-mon3',
+        'display matrix8x8',
+        'state X : byte',
+        'pulse Go',
+        'bind key KEY_1 rising -> Go',
+        'effect Bad',
+        '    on Go',
+        '    updates X',
+        'begin',
+        '    ld b,5',
+        '    ld c,ApiRandom',
+        '    rst $10',
+        '    ld a,b',
+        '    ld (X),a',
+        'end',
+      ].join('\n'),
+    );
+
+    const result = await buildGlimmerProgram(entry);
+    const errors = result.diagnostics.filter((d) => d.severity === 'error');
+    expect(errors.length).toBeGreaterThan(0);
+    const mapped = errors.find((d) => d.sourceName.endsWith('.glim'));
+    expect(mapped).toBeDefined();
+    // The body spans clobber.glim lines 11..15.
+    expect(mapped!.sourceName).toBe(entry);
+    expect(mapped!.line).toBeGreaterThanOrEqual(11);
+    expect(mapped!.line).toBeLessThanOrEqual(15);
+  });
+
   it('reports parse failures as AZM-shaped diagnostics', async () => {
     const { buildGlimmerProgram } = await import('../src/build.js');
     const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-api-diag-'));

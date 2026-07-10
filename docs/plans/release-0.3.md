@@ -120,3 +120,19 @@ library + commit loop) → Phase C (sprite-chase) → Phase D (diagnostics
 rider + docs). A first: the refactor gate keeps the risk contained —
 if the seam is wrong, we find out while outputs must not change, not
 while a new platform is half-built on top of it.
+
+## Status — 2026-07-10: complete, pending playtest
+
+All phases landed the same day. Phase A: profile seam extracted behind
+the snapshot gate (zero bytes changed); MON-3 input became a module
+shared by both TEC-1G profiles. Phase B: the tms9918 profile with
+vblank pacing, the first real commit phase, shadow tables with per-row
+dirty tracking, and the VDP library. Phase C: sprite-chase graduated
+from the sketch (first cut: imported pattern module, score pips,
+deterministic flee). Phase D: diagnostics re-attributed to `.glim`
+lines, test-proven on a real contract violation. Findings recorded:
+card-gated blocks never see flags raised while inactive (re-raise via
+an enter block's updates — documented); sprite/tile resource syntax is
+confirmed as the sharpest 0.4 need. Remaining before John calls the
+release: play sprite-chase under Debug80's VDP emulation, and the
+editorial docs pass.

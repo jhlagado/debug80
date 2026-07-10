@@ -3,7 +3,7 @@
 ; profile library (VdpSetAddrWrite, VdpWriteBlock) does the streaming.
 
 ; Sprite patterns: 0 = player (diamond), 1 = target (ring).
-;! out HL,A; clobbers BC,F
+;! out HL,A
 PlayerPat:
         .db     %00011000
         .db     %00111100

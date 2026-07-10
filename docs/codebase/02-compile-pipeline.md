@@ -116,6 +116,21 @@ optional `__MergeRaised`, wrapped user blocks, `__EndFrame`, generated
 curve tables, generated shape tables, generated sound cue wrappers, and
 any profile library.
 
+Everything platform/display-specific sits behind the Profile seam
+(`src/profiles/`): a profile supplies the equates, input and
+display-service storage, file-level data tables, the loop skeleton
+(init; frame start = pacing policy + optional commit + the poll call;
+frame end), the `__PollBindings` implementation, and the resource
+wrappers + library tail. Three instances exist — `generic`,
+`tec1g-mon3/matrix8x8` (scan-driven: the CPU is the display), and
+`tec1g-mon3/tms9918` (vblank-paced with a commit phase flushing
+name-table and sprite shadows to VRAM) — with MON-3 keypad input shared
+by both TEC-1G profiles (`mon3-input.ts`). The reactive core (flags,
+timers, dispatch, wrappers, rollover) is profile-independent. A
+snapshot suite pins the generated output for every example byte-for-
+byte, so seam refactors are provably behaviour-free and deliberate
+generator changes carry their output diff in the same commit.
+
 Notable constraints the generator honours:
 
 - **Change-flag banks.** States, then pulses, then ramps, then

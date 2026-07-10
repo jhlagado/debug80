@@ -1,5 +1,35 @@
 # Changelog
 
+## 0.3.0 - unreleased
+
+The second-display line: the profile architecture derisked while it is
+cheap to change, validated by `examples/sprite-chase.glim` on the
+TEC-Deck TMS9918.
+
+- Extracted the profile seam (`src/profiles/`): a profile owns equates,
+  input/display storage, data tables, the loop skeleton, polling, and
+  the library tail; the reactive core is profile-independent. Gated by
+  a byte-identical output snapshot suite — the extraction changed zero
+  bytes of generated output.
+- Added `display tms9918` (TEC-Deck): a vblank-paced loop with a real
+  commit phase — render blocks write name-table and sprite-attribute
+  shadows through `NamePut`/`SpriteSet`/`SpriteInit`, and `__Commit`
+  streams dirty rows and the sprite table to VRAM in the blank window.
+  Profile library: `VdpInit` (register table, colour/pattern/name
+  clears, sprites hidden), `VdpSetAddrWrite`, `VdpWriteBlock`,
+  `VdpFill`, `VdpWaitVBlank`; `VC_*` colour equates. MON-3 keypad input
+  is shared by both TEC-1G profiles.
+- Added `examples/sprite-chase.glim` + `chase-lib.asm`: corner a
+  fleeing target, score pips on the top tile row; one-time VRAM upload
+  from a Boot card's enter block.
+- AZM diagnostics that fall inside block or routine bodies are now
+  re-attributed to the `.glim` file and line (build API and CLI) —
+  errors land where breakpoints do; generated-glue diagnostics stay on
+  the generated asm.
+- Documented: card-gated blocks never see change flags raised while
+  their card was inactive; re-raise on entry with an enter block's
+  `updates`.
+
 ## 0.2.0 - unreleased
 
 The language-complete line: everything Tetro needs, validated by

@@ -238,6 +238,30 @@ cells do, because the journey is the point.
 The built-in `FrameCount` cell increments every frame and may be used
 in `on` for blocks that run continuously.
 
+## display tms9918
+
+```
+platform tec1g-mon3
+display tms9918
+```
+
+Selects the TEC-Deck VDP profile: a written-to display. The generated
+loop waits for vertical blank, flushes dirty shadows to VRAM (the
+commit phase), polls, then runs the effect phases. Render blocks write
+ordinary memory through the profile library — `NamePut` (tile A at
+column D, row E of the name-table shadow), `SpriteSet` (slot A to D=x,
+E=y), `SpriteInit` (slot A's pattern D and colour E) — and never touch
+VDP timing. One-time uploads (sprite patterns, tiles, colours) use
+`VdpSetAddrWrite`/`VdpWriteBlock`/`VdpFill` from an enter block, with
+the tables in an imported AZM module; `VC_*` equates name the fifteen
+VDP colours. Sprites use contiguous slots from 0. Sound cues, shapes,
+and the seven-segment HUD service are matrix-profile features.
+
+Note for cards on any profile: a card-gated block never sees flags
+raised while its card was inactive — re-raise the cells a card's
+renders need with an `enter` block's `updates` on entry (see
+sprite-chase's `StartPlaying`).
+
 ## sound
 
 ```
