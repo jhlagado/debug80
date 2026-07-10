@@ -247,9 +247,21 @@ These are the items that still matter before drawing the line:
 5. **Known-quality cleanup.** Fix lint, remove accidental generated or
    local files from the working tree, and keep only intentional examples.
 
-## After first publish
+## The 0.2 release line (2026-07-10)
 
-These are important, but they are no longer blockers:
+The publish decision moved: the 0.1 line is complete but stays
+unpublished. Package 0.2.0 is the release worth integrating into
+Debug80 and documenting fully — the language-complete line. It absorbs
+the remaining language milestones below (structured data, cards,
+routines), validated by `tetro.glim` as the acceptance test. Work plan:
+[plans/release-0.2.md](plans/release-0.2.md).
+
+Versioning note: package versions and roadmap milestones are separate
+namespaces now. Milestones go by feature names, not version-shaped
+labels (the old "v0.5"/"v0.6" names are retired); package releases stay
+sequential.
+
+## Remaining language milestones (in the 0.2 release)
 
 - **Cards and header-level navigation.** Cards are optional modal
   sections for screens/modes. `goto Playing` belongs in the block header,
@@ -259,6 +271,14 @@ These are important, but they are no longer blockers:
 - **Structured data via AZM layouts.** Byte arrays stay simple. Future
   structured state should use AZM Book 0 layout types: `.type`,
   `.typealias`, typed `.ds`, `sizeof`, and `offset`.
+- **Routines (sketch P5).** `routine Name` callable helper blocks — no
+  triggers, no dispatch; snake's hand-written imported module is the
+  workaround this removes.
+
+## After the 0.2 release
+
+These are important, but they are not blockers:
+
 - **Better `.glim` debug maps.** The first cut landed with
   `glimmer build` (see above). Remaining depth: a `.glim` TextMate
   grammar in Debug80, native `.glim` targets in debug80.json, and the
