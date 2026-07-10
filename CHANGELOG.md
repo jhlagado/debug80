@@ -4,6 +4,16 @@
 
 - None.
 
+## 0.3.1 - 2026-07-11
+
+- Made register-contract analysis treat direct cross-routine `JR`/`JR cc`
+  transfers as tail calls alongside `JP`/`JP cc`, including declared routines
+  and explicit interface contracts.
+- Made tail-call summary, liveness, stack, and direct-boundary analysis follow
+  control-flow paths without dropping conditional fallthroughs, dead-code
+  boundaries, repeated include occurrences, recursive calls, or unowned source
+  instructions.
+
 ## 0.3.0 - 2026-07-11
 
 - Breaking AZM 0.3 source model: `.routine` now declares register-contract
