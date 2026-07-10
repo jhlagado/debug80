@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- None.
+
+## 0.3.0 - 2026-07-11
+
 - Breaking AZM 0.3 source model: `.routine` now declares register-contract
   routines, `@` marks exports only, and leading-underscore labels are local to
   their nearest non-local owner. Labels, equates and ops are case-sensitive;
