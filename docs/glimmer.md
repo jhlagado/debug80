@@ -346,6 +346,15 @@ marked changed so the first card's `enter` blocks run on frame one.
 Blocks in a card's section dispatch only while that card is active —
 this is the flag-dispatch boilerplate cards absorb.
 
+Card transitions land at frame boundaries, never mid-frame:
+`CurrentCard` is the writable *next card* register, and every dispatch
+gate tests a frame-latched copy (`GlimActiveCard`, latched once at the
+top of the loop). A `goto` earlier in a frame therefore cannot leak
+that frame's triggers into the destination card's blocks — the old
+card's blocks finish their frame, and the destination activates at the
+next frame start, with its `enter` blocks (delivered by the deferred
+`CurrentCard` flag) running first.
+
 `enter` blocks run once on card entry, and entry is edge-triggered:
 the runtime keeps a previous-card shadow (`GlimPrevCard`) and an enter
 block runs only when `CurrentCard`'s flag is delivered *and* the card

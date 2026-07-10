@@ -29,6 +29,11 @@ TEC-Deck TMS9918 (assembles strict-clean; Debug80 playtest pending).
 - Documented: card-gated blocks never see change flags raised while
   their card was inactive; re-raise on entry with an enter block's
   `updates`.
+- Fixed: a `goto` (or conditional `CurrentCard` write) could leak the
+  same frame's triggers into the destination card's blocks. Dispatch
+  gates now test `GlimActiveCard`, latched once per frame; card
+  transitions land at frame boundaries only, with the destination's
+  enter blocks running first.
 
 ## 0.2.0 - unreleased
 

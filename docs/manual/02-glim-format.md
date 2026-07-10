@@ -180,9 +180,11 @@ when the card actually changed to its card, so marking `CurrentCard`
 changed without switching cannot re-run it. `goto Playing` in a block
 header switches card after the block runs; with `goto`, `begin` is
 optional, so a header-only routing block closes directly with `end`.
-The switch lands next frame when the router runs in the same phase as
-the card's blocks — the ordinary one-frame deferral of the change-flag
-machinery.
+Card switches always land at the next frame start: `CurrentCard` is
+the writable next-card register, and dispatch gates test a copy latched
+once per frame, so a `goto` never lets the same frame's triggers run
+blocks in the destination card. The destination's `enter` blocks run
+first on the frame it activates.
 
 When a transition depends on a runtime test, write `CurrentCard`
 directly under `updates CurrentCard` — `goto` is the unconditional

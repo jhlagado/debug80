@@ -288,7 +288,12 @@ export function generateAzm(
   }
   if (hasCards) {
     const first = program.cards[0]?.name as string;
-    emit(`${`${CURRENT_CARD}:`.padEnd(17)} .db Card.${first}   ; active card, starts changed`);
+    emit(
+      `${`${CURRENT_CARD}:`.padEnd(17)} .db Card.${first}   ; writable next card, starts changed`,
+    );
+    emit(
+      `${'GlimActiveCard:'.padEnd(17)} .db Card.${first}   ; frame-latched card all gates test`,
+    );
     emit(`${'GlimPrevCard:'.padEnd(17)} .db $FF          ; enter edge detector ($FF = before any card)`);
   }
   if (frameCountUsed) {
@@ -336,6 +341,10 @@ export function generateAzm(
   profile.emitLoopInit(ctx);
   emit('MainLoop:');
   profile.emitFrameStart(ctx);
+  if (hasCards) {
+    op(`ld      a,(${CURRENT_CARD})    ; latch: card transitions land at`);
+    op('ld      (GlimActiveCard),a  ; frame start, never mid-frame');
+  }
   if (hasTick) {
     op('call    __TickTimers');
   }
@@ -375,13 +384,15 @@ export function generateAzm(
       if (pendingPrevSync && effect.enter !== true) {
         // All enters for this phase have dispatched: remember the card
         // they saw, so only genuine transitions re-run them.
-        op(`ld      a,(${CURRENT_CARD})`);
+        op('ld      a,(GlimActiveCard)');
         op('ld      (GlimPrevCard),a');
         pendingPrevSync = false;
       }
       if (effect.card !== undefined) {
-        // Card gate: the block only dispatches while its card is active.
-        op(`ld      a,(${CURRENT_CARD})`);
+        // Card gate against the frame-latched card: a goto (or a
+        // conditional CurrentCard write) earlier in this frame must not
+        // let the destination card's blocks run before its enters.
+        op('ld      a,(GlimActiveCard)');
         op(`cp      Card.${effect.card}`);
         op(`jr      nz,GlimSkip_${effect.name}`);
       }
@@ -414,7 +425,7 @@ export function generateAzm(
       emit(`GlimSkip_${effect.name}:`);
     }
     if (pendingPrevSync) {
-      op(`ld      a,(${CURRENT_CARD})`);
+      op('ld      a,(GlimActiveCard)');
       op('ld      (GlimPrevCard),a');
     }
     op('ret');
