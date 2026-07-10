@@ -298,7 +298,20 @@ sequential.
   `@Name:` boundaries with AZM-inferred contracts; bodies verbatim and
   debug-mapped to `.glim` source like block bodies.
 
-## After the 0.2 release
+## The 0.3 release line (planned 2026-07-10)
+
+0.3 is the developer-experience line, shaped to run alongside the
+Debug80 integration phase without changing the language surface:
+AZM diagnostics re-attributed to `.glim` lines (the debug-map rewrite
+pointed the other way), `;!` contract seeds passed through from block
+and routine headers, multi-rotation shapes and text resources (the P6
+remainder — tetro-lib's tables become declarations, and the first
+Glimmer-emitted AZM `op` appears), `bind key any`, Tetro to corpus
+parity (flash, preview, messages, key gate), and P7 word semantics
+documented and closed. TMS9918 is deliberately 0.4. Work plan:
+[plans/release-0.3.md](plans/release-0.3.md).
+
+## After the 0.3 release
 
 These are important, but they are not blockers:
 
