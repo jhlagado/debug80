@@ -16,7 +16,7 @@ import path from 'node:path';
 
 import { compile } from '@jhlagado/azm/compile';
 
-import type { EffectDecl, GlimmerDiagnostic, GlimmerProgram } from './model.js';
+import type { EffectDecl, GlimmerDiagnostic, GlimmerProgram, RoutineDecl } from './model.js';
 import { generateAzm } from './generate.js';
 import { loadGlimmerProgram } from './load.js';
 
@@ -40,6 +40,39 @@ export interface BlockMappingsResult {
   warnings: string[];
 }
 
+/** Anything with a verbatim body anchored at a generated @ label. */
+export interface MappableBlock {
+  /** The @-label line that anchors the body, without the colon. */
+  label: string;
+  name: string;
+  body: readonly string[];
+  bodyLine: number;
+  file?: string;
+}
+
+/** Effects anchor at @Glim_<Name>, routines at their own @<Name>. */
+export function mappableBlocks(
+  effects: readonly EffectDecl[],
+  routines: readonly RoutineDecl[] = [],
+): MappableBlock[] {
+  return [
+    ...effects.map((effect) => ({
+      label: `@Glim_${effect.name}`,
+      name: effect.name,
+      body: effect.body,
+      bodyLine: effect.bodyLine,
+      ...(effect.file !== undefined ? { file: effect.file } : {}),
+    })),
+    ...routines.map((routine) => ({
+      label: `@${routine.name}`,
+      name: routine.name,
+      body: routine.body,
+      bodyLine: routine.bodyLine,
+      ...(routine.file !== undefined ? { file: routine.file } : {}),
+    })),
+  ];
+}
+
 /**
  * Locate every block body in the final generated asm text. The asm is
  * scanned as written to disk — after AZM contract injection — so line
@@ -49,7 +82,7 @@ export interface BlockMappingsResult {
  */
 export function computeBlockMappings(
   asmText: string,
-  effects: readonly EffectDecl[],
+  blocks: readonly MappableBlock[],
   entryGlimFile: string,
   glimFileKey: (declaredFile: string | undefined) => string = (file): string =>
     file ?? entryGlimFile,
@@ -58,11 +91,11 @@ export function computeBlockMappings(
   const mappings: BlockLineMapping[] = [];
   const warnings: string[] = [];
 
-  for (const effect of effects) {
-    const label = `@Glim_${effect.name}:`;
+  for (const block of blocks) {
+    const label = `${block.label}:`;
     const labelIndex = lines.findIndex((line) => line.trimEnd() === label);
     if (labelIndex === -1) {
-      warnings.push(`block ${effect.name}: label ${label} not found in generated asm.`);
+      warnings.push(`block ${block.name}: label ${label} not found in generated asm.`);
       continue;
     }
     // Contract comments are injected adjacent to @ labels; skip any that
@@ -70,18 +103,18 @@ export function computeBlockMappings(
     let start = labelIndex + 1;
     while (start < lines.length && (lines[start] ?? '').startsWith(';!')) start += 1;
 
-    const matches = effect.body.every((bodyLine, k) => lines[start + k] === bodyLine);
+    const matches = block.body.every((bodyLine, k) => lines[start + k] === bodyLine);
     if (!matches) {
-      warnings.push(`block ${effect.name}: body is not verbatim at ${label}; not mapped.`);
+      warnings.push(`block ${block.name}: body is not verbatim at ${label}; not mapped.`);
       continue;
     }
-    if (effect.body.length === 0) continue;
+    if (block.body.length === 0) continue;
     mappings.push({
-      name: effect.name,
+      name: block.name,
       asmLine: start + 1,
-      lineCount: effect.body.length,
-      glimFile: glimFileKey(effect.file),
-      glimLine: effect.bodyLine,
+      lineCount: block.body.length,
+      glimFile: glimFileKey(block.file),
+      glimLine: block.bodyLine,
     });
   }
 
@@ -335,7 +368,7 @@ export async function buildGlimmerProgram(
   const entryBase = path.basename(entryPath);
   const mappingsResult = computeBlockMappings(
     asmText,
-    program.effects,
+    mappableBlocks(program.effects, program.routines),
     entryBase,
     (declared) => path.relative(outDir, path.resolve(entryDir, declared ?? entryBase)) || entryBase,
   );

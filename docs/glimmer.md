@@ -288,6 +288,24 @@ Style: one instruction per line. AZM's backslash stacking
 (`ld a,(hl) \ inc hl`) remains available for dense passages, and single
 instructions read better in examples and teaching material.
 
+### 3.7 Routines
+
+```text
+routine ClampX
+begin
+    cp 8
+    ret c
+    ld a,7
+end
+```
+
+A routine is a callable helper: a named piece of Z80 with no triggers
+and no dispatch. Blocks call it with ordinary `call ClampX`. It compiles
+to a public `@ClampX:` boundary — AZM infers and injects its register
+contract like any other routine, and its plain labels are local to it.
+The body falls through like a block body; the generator appends the
+`ret` (conditional early returns like `ret c` are fine).
+
 ## 4. Terminology
 
 One word, one meaning — the vocabulary follows the same discipline as the

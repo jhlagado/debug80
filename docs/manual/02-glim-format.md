@@ -130,6 +130,23 @@ rising-edge key binding onto a pulse for the generic profile: the pulse
 fires on the frame the key is first pressed, not while it is held. The
 TEC-1G matrix profile also supports held bindings, described below.
 
+## routine
+
+```
+routine ClampX
+begin
+    cp 8
+    ret c
+    ld a,7
+end
+```
+
+A callable helper with no triggers and no dispatch: blocks call it with
+ordinary `call ClampX`. It becomes a public `@ClampX:` routine in the
+generated file, with its register contract inferred and injected by AZM.
+Like block bodies, the body falls through — the generator appends the
+final `ret` — and conditional early returns are fine.
+
 ## part and import
 
 ```

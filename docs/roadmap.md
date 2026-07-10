@@ -275,9 +275,10 @@ sequential.
   change flag per cell, byte-array style. `sizeof`/`offset`/layout casts
   work in bodies as ordinary AZM. Recursive layouts and unknown type
   references are parse-time diagnostics.
-- **Routines (sketch P5).** `routine Name` callable helper blocks — no
-  triggers, no dispatch; snake's hand-written imported module is the
-  workaround this removes.
+- **Routines (sketch P5). ✅ Landed 2026-07-10.** `routine Name`
+  callable helper blocks — no triggers, no dispatch — emitted as public
+  `@Name:` boundaries with AZM-inferred contracts; bodies verbatim and
+  debug-mapped to `.glim` source like block bodies.
 
 ## After the 0.2 release
 

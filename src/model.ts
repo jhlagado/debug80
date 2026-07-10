@@ -162,6 +162,23 @@ export interface EffectDecl {
   file?: string;
 }
 
+/**
+ * A callable helper block (sketch proposal P5): no triggers, no
+ * dispatch — a named routine that effects call with ordinary `call`.
+ * Emitted as a public `@Name:` boundary; AZM infers its register
+ * contract like any other routine.
+ */
+export interface RoutineDecl {
+  name: string;
+  /** Raw Z80 body lines, verbatim between begin/end. */
+  body: string[];
+  line: number;
+  /** 1-based source line of the first body line (the line after `begin`). */
+  bodyLine: number;
+  /** Source file the routine was declared in (set when units are merged). */
+  file?: string;
+}
+
 export interface GlimmerProgram {
   name: string;
   /** Platform profile, e.g. 'tec1g-mon3'. Null = generic v0 profile. */
@@ -178,6 +195,7 @@ export interface GlimmerProgram {
   shapes: ShapeDecl[];
   bindings: Binding[];
   effects: EffectDecl[];
+  routines: RoutineDecl[];
   imports: ImportDecl[];
 }
 
