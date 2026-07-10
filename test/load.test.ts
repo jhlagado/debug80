@@ -182,6 +182,41 @@ describe('tetro (the acceptance test)', () => {
   });
 });
 
+describe('sprite-chase (the tms9918 acceptance test)', () => {
+  it('loads, uses the vdp profile loop and commit phase, assembles strict-clean', async () => {
+    const entry = path.join(import.meta.dirname, '../examples/sprite-chase.glim');
+    const { program, diagnostics } = loadGlimmerProgram(entry);
+    expect(diagnostics).toEqual([]);
+    expect(program?.display).toBe('tms9918');
+
+    const generated = generateAzm(program!);
+    expect(generated.diagnostics).toEqual([]);
+    // The written-to display: vblank pacing, then commit, then poll.
+    expect(generated.source).toContain('call    VdpWaitVBlank');
+    expect(generated.source).toMatch(
+      /call {4}VdpWaitVBlank.*\n.*call {4}__Commit.*\n.*call {4}__PollBindings/,
+    );
+    expect(generated.source).toContain('@__Commit:');
+    expect(generated.source).toContain('NameShadow:');
+    expect(generated.source).toContain('SpriteShadow:');
+
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-chase-'));
+    writeFileSync(path.join(dir, 'sprite-chase.main.asm'), generated.source);
+    writeFileSync(
+      path.join(dir, 'chase-lib.asm'),
+      readFileSync(path.join(import.meta.dirname, '../examples/chase-lib.asm')),
+    );
+    const assembled = await compile(path.join(dir, 'sprite-chase.main.asm'), {
+      emitBin: true,
+      emitHex: false,
+      emitD8m: false,
+      registerContracts: 'strict',
+      registerContractsProfile: 'mon3',
+    });
+    expect(assembled.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+  });
+});
+
 describe('snake (first complete game)', () => {
   it('loads multi-file with import, uses two flag banks, assembles strict-clean', async () => {
     const entry = path.join(import.meta.dirname, '../examples/snake.glim');

@@ -46,7 +46,7 @@ import type { ImportDecl } from './model.js';
 import { CURRENT_CARD, FRAME_COUNT, TEC1G_KEY_CODES } from './model.js';
 
 const PLATFORMS = ['tec1g-mon3'];
-const DISPLAYS = ['matrix8x8'];
+const DISPLAYS = ['matrix8x8', 'tms9918'];
 
 export interface ParseResult {
   program: GlimmerProgram | null;

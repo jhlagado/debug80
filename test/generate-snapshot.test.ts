@@ -11,7 +11,7 @@ import { loadGlimmerProgram } from '../src/load.js';
  * single byte; a deliberate generator change updates the snapshots in
  * the same commit, making the output diff part of the review.
  */
-const EXAMPLES = ['counter', 'dot', 'slide', 'trail', 'snake', 'tetro'];
+const EXAMPLES = ['counter', 'dot', 'slide', 'trail', 'snake', 'tetro', 'sprite-chase'];
 
 describe('generated output snapshots', () => {
   for (const name of EXAMPLES) {

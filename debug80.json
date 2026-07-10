@@ -169,6 +169,36 @@
       "asm": "examples/tetro.main.asm",
       "artifactBase": "tetro",
       "sourceRoots": ["examples"]
+    },
+    "sprite-chase": {
+      "outputDir": "build",
+      "platform": "tec1g",
+      "profile": "mon3",
+      "tec1g": {
+        "regions": [
+          {
+            "start": 0,
+            "end": 2047,
+            "kind": "rom"
+          },
+          {
+            "start": 2048,
+            "end": 32767,
+            "kind": "ram"
+          },
+          {
+            "start": 49152,
+            "end": 65535,
+            "kind": "rom"
+          }
+        ],
+        "appStart": 16384,
+        "entry": 0
+      },
+      "sourceFile": "examples/sprite-chase.main.asm",
+      "asm": "examples/sprite-chase.main.asm",
+      "artifactBase": "sprite-chase",
+      "sourceRoots": ["examples"]
     }
   }
 }
