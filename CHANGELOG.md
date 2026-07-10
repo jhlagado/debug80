@@ -4,6 +4,13 @@
 
 - None.
 
+## 0.3.2 - 2026-07-11
+
+- Kept repeated nonreturning control-flow cycles separate from returning exits
+  during register-contract inference. Cycle inputs remain visible alongside
+  returning paths, and wholly nonreturning routines retain their cycle writes
+  without producing false stack or output contracts.
+
 ## 0.3.1 - 2026-07-11
 
 - Made register-contract analysis treat direct cross-routine `JR`/`JR cc`
