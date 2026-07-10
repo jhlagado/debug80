@@ -13,6 +13,7 @@ import { parseLayoutDeclarationAt } from '../syntax/parse-layout-declarations.js
 import {
   collectOps,
   expandOpInvocation,
+  opOverloadsVisibleFrom,
   parseOpInvocation,
   type OpDecl,
 } from '../expansion/op-expansion.js';
@@ -64,7 +65,11 @@ export function parseNextSourceItems(
     options.directiveAliasPolicy === undefined
       ? {}
       : { directiveAliasPolicy: options.directiveAliasPolicy };
-  const conditional = applyConditionalAssembly(lines, diagnostics, parseOptions.directiveAliasPolicy);
+  const conditional = applyConditionalAssembly(
+    lines,
+    diagnostics,
+    parseOptions.directiveAliasPolicy,
+  );
   const pendingLines = [...conditional.lines];
   const { ops, opLineIndexes } = collectOps(pendingLines, diagnostics, parseOptions);
   const context: ParseNextContext = {
@@ -116,7 +121,9 @@ function shouldSkipPendingLine(
   line: LogicalLine,
   afterTopLevelEnd: boolean,
 ): boolean {
-  return context.opLineIndexes.has(index) || (afterTopLevelEnd && !isPostEndParseAllowed(line.text));
+  return (
+    context.opLineIndexes.has(index) || (afterTopLevelEnd && !isPostEndParseAllowed(line.text))
+  );
 }
 
 function parseLayoutLine(
@@ -137,8 +144,19 @@ function parseExpandedOpLine(context: ParseNextContext, line: LogicalLine): bool
   const opCall = parseOpInvocation(line);
   if (!opCall || isTopLevelEnd(line.text)) return false;
 
-  const overloads = context.ops.get(opCall.name);
-  if (!overloads) return false;
+  const allOverloads = context.ops.get(opCall.name);
+  if (!allOverloads) return false;
+  const overloads = opOverloadsVisibleFrom(allOverloads, line);
+  if (overloads.length === 0) {
+    context.diagnostics.push(
+      chainDiagnostic(
+        line,
+        firstColumn(line.text),
+        `op "${opCall.name}" is private to another source unit`,
+      ),
+    );
+    return true;
+  }
 
   const expanded = expandOpInvocation(
     context.ops,
@@ -174,7 +192,7 @@ function parseInstructionChainLine(context: ParseNextContext, line: LogicalLine)
     makeLabelItem: (label, segmentLine) => ({
       kind: 'label',
       name: label.name,
-      ...(label.isEntry ? { isEntry: true } : {}),
+      ...(label.isExported ? { isExported: true } : {}),
       span: spanAt(segmentLine, label.labelColumn),
     }),
     makeDiagnostic: chainDiagnostic,
@@ -194,17 +212,24 @@ function parseChainStatement(
 ): ParseNextSourceItemsResult {
   const segmentLine = paddedSegmentLine(line, statementText, statementColumn);
   const opCall = parseOpInvocation(segmentLine);
-  const overloads = opCall ? context.ops.get(opCall.name) : undefined;
-  if (opCall && overloads) {
+  const allOverloads = opCall ? context.ops.get(opCall.name) : undefined;
+  const overloads = allOverloads ? opOverloadsVisibleFrom(allOverloads, segmentLine) : undefined;
+  if (opCall && allOverloads && overloads?.length === 0) {
+    return {
+      items: [],
+      diagnostics: [
+        chainDiagnostic(
+          line,
+          statementColumn,
+          `op "${opCall.name}" is private to another source unit`,
+        ),
+      ],
+    };
+  }
+  if (opCall && overloads && overloads.length > 0) {
     const diagnostics: Diagnostic[] = [];
     return {
-      items: expandOpInvocation(
-        context.ops,
-        overloads,
-        opCall.operands,
-        segmentLine,
-        diagnostics,
-      ),
+      items: expandOpInvocation(context.ops, overloads, opCall.operands, segmentLine, diagnostics),
       diagnostics,
     };
   }
@@ -219,7 +244,9 @@ function parseChainInstruction(
   const instruction = parseZ80Instruction(text);
   if (instruction?.instruction) {
     return {
-      items: [{ kind: 'instruction', instruction: instruction.instruction, span: spanAt(line, column) }],
+      items: [
+        { kind: 'instruction', instruction: instruction.instruction, span: spanAt(line, column) },
+      ],
       diagnostics: [],
     };
   }
@@ -260,7 +287,9 @@ function spanAt(line: LogicalLine, column: number): SourceSpan {
     column,
     ...(line.sourceUnit !== undefined ? { sourceUnit: line.sourceUnit } : {}),
     ...(line.sourceRelation !== undefined ? { sourceRelation: line.sourceRelation } : {}),
-    ...(line.sourceUnitRelation !== undefined ? { sourceUnitRelation: line.sourceUnitRelation } : {}),
+    ...(line.sourceUnitRelation !== undefined
+      ? { sourceUnitRelation: line.sourceUnitRelation }
+      : {}),
   };
 }
 

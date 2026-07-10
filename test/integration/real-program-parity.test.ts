@@ -22,9 +22,7 @@ describe('real-program parity regressions', () => {
         ret
 `);
     expect(result.diagnostics).toEqual([]);
-    expect(Array.from(result.bytes)).toEqual([
-      0x21, 0x00, 0x02, 0x36, 0x2a, 0x46, 0xc9,
-    ]);
+    expect(Array.from(result.bytes)).toEqual([0x21, 0x00, 0x02, 0x36, 0x2a, 0x46, 0xc9]);
   });
 
   it('expands multi-character string equates in .db', () => {
@@ -65,7 +63,7 @@ FLAG:.equ 5
     expect(result.symbols).toMatchObject({ FLAG: 5 });
   });
 
-  it('resolves symbols case-insensitively for fixups', () => {
+  it('requires exact symbol case for fixups', () => {
     const result = compileNext(`
         .org 0100H
 target:
@@ -74,8 +72,12 @@ APIok:
         jr c,APIOk
         ret
 `);
-    expect(result.diagnostics).toEqual([]);
-    expect(Array.from(result.bytes)).toEqual([0x18, 0xfe, 0x38, 0xfe, 0xc9]);
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        severity: 'error',
+        message: expect.stringContaining('APIOk'),
+      }),
+    ]);
   });
 
   it('encodes signed 16-bit immediates for ld rr,imm', () => {
@@ -86,8 +88,6 @@ APIok:
         ret
 `);
     expect(result.diagnostics).toEqual([]);
-    expect(Array.from(result.bytes)).toEqual([
-      0x11, 0xf0, 0xff, 0x21, 0xa0, 0xff, 0xc9,
-    ]);
+    expect(Array.from(result.bytes)).toEqual([0x11, 0xf0, 0xff, 0x21, 0xa0, 0xff, 0xc9]);
   });
 });

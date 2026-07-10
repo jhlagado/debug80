@@ -38,7 +38,8 @@ function isOpaqueBoundary(item: RegisterContractsInstruction, effect: Instructio
     (instructionHead(item) === 'jp' || instructionHead(item) === 'jp-cc') &&
     !effect.control.conditional &&
     Boolean(effect.control.target) &&
-    !effect.control.target?.startsWith('.')
+    !effect.control.target?.startsWith('.') &&
+    !effect.control.target?.startsWith('_')
   );
 }
 

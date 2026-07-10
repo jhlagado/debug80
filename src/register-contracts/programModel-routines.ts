@@ -1,6 +1,8 @@
 import type { SourceItem } from '../model/source-item.js';
 import type { SourceSpan } from '../source/source-span.js';
+import { privacyUnitKey, privacyUnitKeyFromSpan } from '../assembly/routine-label-scopes.js';
 import { instructionCallTarget, pushDirectBoundary } from './programModel-boundaries.js';
+import { resolveRoutineIdentity } from './routine-identity.js';
 import type {
   RegisterContractsDirectCall,
   RegisterContractsInstruction,
@@ -8,46 +10,34 @@ import type {
 } from './types.js';
 
 type LabelItem = Extract<SourceItem, { kind: 'label' }>;
+type RoutineItem = Extract<SourceItem, { kind: 'routine' }>;
 type InstructionItem = Extract<SourceItem, { kind: 'instruction' }>;
 
 interface RoutineBuildState {
-  routineName?: string;
+  routineName: string;
+  identity: string;
+  isExported: boolean;
+  exportedEntryLabels: string[];
   entryLabels: string[];
   labels: string[];
-  sourceName?: string;
+  sourceName: string;
   sourceUnit?: string;
   sourceRelation?: SourceSpan['sourceRelation'];
   sourceUnitRelation?: SourceSpan['sourceUnitRelation'];
-  routineStartLine?: number;
-  routineStartColumn?: number;
+  routineStartLine: number;
+  routineStartColumn: number;
+  directive: RoutineItem;
   instructions: RegisterContractsInstruction[];
 }
 
-interface RoutineBuildContext {
-  readonly constants: ReadonlyMap<string, number>;
-  readonly filesWithEntryLabels: ReadonlySet<string>;
-  readonly directCallTargets: ReadonlySet<string>;
+interface UnitRoutineState {
+  pending?: RoutineItem;
+  active?: RoutineBuildState;
 }
 
 export interface RoutineBuildResult {
   routines: RegisterContractsRoutine[];
   directCalls: RegisterContractsDirectCall[];
-}
-
-function isGlobalLabel(name: string): boolean {
-  return !name.startsWith('.');
-}
-
-function isGeneratedOpLabel(name: string): boolean {
-  return name.startsWith('__azm_op_');
-}
-
-function emptyState(): RoutineBuildState {
-  return {
-    entryLabels: [],
-    labels: [],
-    instructions: [],
-  };
 }
 
 function toInstruction(
@@ -75,68 +65,74 @@ function effectiveInstructionSpan(item: InstructionItem): SourceSpan {
   return item.emittedSource?.span ?? item.span;
 }
 
-function startRoutine(state: RoutineBuildState, item: LabelItem): void {
-  state.sourceName = item.span.sourceName;
-  if (item.span.sourceUnit !== undefined) state.sourceUnit = item.span.sourceUnit;
-  else delete state.sourceUnit;
-  if (item.span.sourceRelation !== undefined) state.sourceRelation = item.span.sourceRelation;
-  else delete state.sourceRelation;
-  if (item.span.sourceUnitRelation !== undefined) {
-    state.sourceUnitRelation = item.span.sourceUnitRelation;
-  } else {
-    delete state.sourceUnitRelation;
-  }
-  state.routineName = item.name;
-  state.entryLabels = item.isEntry === true ? [item.name] : [];
-  state.labels = [item.name];
-  state.routineStartLine = item.span.line;
-  state.routineStartColumn = item.span.column;
-  state.instructions = [];
+function startRoutine(item: LabelItem, directive: RoutineItem): RoutineBuildState {
+  return {
+    routineName: item.name,
+    identity: routineIdentity(item),
+    isExported: item.isExported === true,
+    exportedEntryLabels: item.isExported === true ? [item.name] : [],
+    entryLabels: [item.name],
+    labels: [item.name],
+    sourceName: item.span.sourceName,
+    ...(item.span.sourceUnit !== undefined ? { sourceUnit: item.span.sourceUnit } : {}),
+    ...(item.span.sourceRelation !== undefined ? { sourceRelation: item.span.sourceRelation } : {}),
+    ...(item.span.sourceUnitRelation !== undefined
+      ? { sourceUnitRelation: item.span.sourceUnitRelation }
+      : {}),
+    routineStartLine: item.span.line,
+    routineStartColumn: item.span.column,
+    directive,
+    instructions: [],
+  };
 }
 
-function routineSpan(
-  state: RoutineBuildState,
-  end?: RegisterContractsInstruction,
-): RegisterContractsRoutine['span'] {
-  const line = state.routineStartLine ?? 1;
+function routineIdentity(item: LabelItem): string {
+  const sourceUnit = item.span.sourceUnit ?? item.span.sourceName;
+  return item.span.sourceUnitRelation === 'import'
+    ? `\0azm-routine\0${sourceUnit}\0${item.name}`
+    : item.name;
+}
+
+function routineSpan(state: RoutineBuildState): RegisterContractsRoutine['span'] {
+  const end = state.instructions[state.instructions.length - 1];
   return {
-    file: state.sourceName ?? '',
+    file: state.sourceName,
     ...(state.sourceUnit !== undefined ? { sourceUnit: state.sourceUnit } : {}),
     ...(state.sourceRelation !== undefined ? { sourceRelation: state.sourceRelation } : {}),
     ...(state.sourceUnitRelation !== undefined
       ? { sourceUnitRelation: state.sourceUnitRelation }
       : {}),
-    start: { line, column: state.routineStartColumn ?? 1 },
-    end: { line: end?.line ?? line, column: end?.column ?? state.routineStartColumn ?? 1 },
+    start: { line: state.routineStartLine, column: state.routineStartColumn },
+    end: {
+      line: end?.line ?? state.routineStartLine,
+      column: end?.column ?? state.routineStartColumn,
+    },
   };
 }
 
 function flushRoutine(
   routines: RegisterContractsRoutine[],
-  state: RoutineBuildState,
+  state: UnitRoutineState,
   constants: ReadonlyMap<string, number>,
 ): void {
-  if (state.routineName === undefined || state.routineStartLine === undefined) return;
-  const end = state.instructions[state.instructions.length - 1];
+  const active = state.active;
+  if (active === undefined) return;
   routines.push({
-    name: state.routineName,
-    labels: [...state.labels],
-    entryLabels: [...state.entryLabels],
-    instructions: [...state.instructions],
+    name: active.routineName,
+    identity: active.identity,
+    ...(active.isExported ? { isExported: true } : {}),
+    ...(active.exportedEntryLabels.length > 0
+      ? { exportedEntryLabels: [...active.exportedEntryLabels] }
+      : {}),
+    labels: [...active.labels],
+    entryLabels: [...active.entryLabels],
+    declaredContract: active.directive.contract,
+    directiveSpan: active.directive.span,
+    instructions: [...active.instructions],
     constants,
-    span: routineSpan(state, end),
+    span: routineSpan(active),
   });
-}
-
-function resetAndStart(
-  routines: RegisterContractsRoutine[],
-  state: RoutineBuildState,
-  context: RoutineBuildContext,
-  item: LabelItem,
-): void {
-  flushRoutine(routines, state, context.constants);
-  Object.assign(state, emptyState());
-  startRoutine(state, item);
+  delete state.active;
 }
 
 function appendDirectCall(directCalls: RegisterContractsDirectCall[], item: InstructionItem): void {
@@ -150,112 +146,114 @@ function appendDirectCall(directCalls: RegisterContractsDirectCall[], item: Inst
   );
 }
 
-function handleInstruction(
-  state: RoutineBuildState,
-  directCalls: RegisterContractsDirectCall[],
-  item: InstructionItem,
-  context: RoutineBuildContext,
-): void {
-  if (state.routineName === undefined || state.sourceName === undefined) return;
-  if (effectiveInstructionSpan(item).sourceName !== state.sourceName) return;
-  state.instructions.push(toInstruction(item, state.labels, context.constants));
-  appendDirectCall(directCalls, item);
-}
-
-function handleGlobalLabel(
-  routines: RegisterContractsRoutine[],
-  state: RoutineBuildState,
-  item: LabelItem,
-  context: RoutineBuildContext,
-): void {
-  if (state.routineName === undefined) {
-    if (shouldIgnoreNonEntryLabel(item, context)) return;
-    startRoutine(state, item);
-    return;
+function modelUnitKey(item: SourceItem, currentUnitKey: string | undefined): string {
+  if (item.kind === 'instruction') {
+    return privacyUnitKeyFromSpan(effectiveInstructionSpan(item));
   }
-
-  if (isDifferentRoutineSource(state, item)) {
-    resetAndStart(routines, state, context, item);
-    return;
+  if (item.kind === 'label' && item.origin === 'generated' && currentUnitKey !== undefined) {
+    return currentUnitKey;
   }
-
-  if (state.instructions.length > 0) {
-    if (shouldKeepPostInstructionAlias(item, context)) {
-      appendRoutineLabel(state, item);
-      return;
-    }
-    resetAndStart(routines, state, context, item);
-    return;
-  }
-
-  appendRoutineLabel(state, item);
-}
-
-function shouldIgnoreNonEntryLabel(item: LabelItem, context: RoutineBuildContext): boolean {
-  return (
-    context.filesWithEntryLabels.has(item.span.sourceName) &&
-    item.isEntry !== true &&
-    !context.directCallTargets.has(item.name)
-  );
-}
-
-function isDifferentRoutineSource(state: RoutineBuildState, item: LabelItem): boolean {
-  return state.sourceName === undefined || state.sourceName !== item.span.sourceName;
-}
-
-function shouldKeepPostInstructionAlias(item: LabelItem, context: RoutineBuildContext): boolean {
-  return shouldIgnoreNonEntryLabel(item, context);
-}
-
-function appendRoutineLabel(state: RoutineBuildState, item: LabelItem): void {
-  state.labels.push(item.name);
-  if (item.isEntry === true) state.entryLabels.push(item.name);
+  return privacyUnitKey(item);
 }
 
 function handleLabel(
-  routines: RegisterContractsRoutine[],
-  state: RoutineBuildState,
   item: LabelItem,
-  context: RoutineBuildContext,
+  state: UnitRoutineState,
+  routines: RegisterContractsRoutine[],
+  constants: ReadonlyMap<string, number>,
 ): void {
-  if (!isGlobalLabel(item.name) || isGeneratedOpLabel(item.name)) {
-    if (state.routineName !== undefined) state.labels.push(item.name);
+  if (item.name.startsWith('_')) {
+    if (state.active !== undefined) state.active.labels.push(item.name);
     return;
   }
-  handleGlobalLabel(routines, state, item, context);
+
+  if (
+    state.active !== undefined &&
+    state.active.instructions.length === 0 &&
+    state.pending === undefined
+  ) {
+    state.active.labels.push(item.name);
+    state.active.entryLabels.push(item.name);
+    if (item.isExported === true) {
+      state.active.isExported = true;
+      state.active.exportedEntryLabels.push(item.name);
+    }
+    return;
+  }
+
+  flushRoutine(routines, state, constants);
+  if (state.pending !== undefined) {
+    state.active = startRoutine(item, state.pending);
+    delete state.pending;
+  }
 }
 
 export function buildRoutinesAndDirectCalls(
   items: readonly SourceItem[],
   constants: ReadonlyMap<string, number>,
-  filesWithEntryLabels: ReadonlySet<string>,
 ): RoutineBuildResult {
   const routines: RegisterContractsRoutine[] = [];
   const directCalls: RegisterContractsDirectCall[] = [];
-  const context: RoutineBuildContext = {
-    constants,
-    filesWithEntryLabels,
-    directCallTargets: collectDirectCallTargets(items),
-  };
-  const state = emptyState();
+  const states = new Map<string, UnitRoutineState>();
+  let currentUnitKey: string | undefined;
 
   for (const item of items) {
-    if (item.kind === 'instruction') {
-      handleInstruction(state, directCalls, item, context);
-    } else if (item.kind === 'label') {
-      handleLabel(routines, state, item, context);
+    const unitKey = modelUnitKey(item, currentUnitKey);
+    const state = states.get(unitKey) ?? {};
+    states.set(unitKey, state);
+
+    if (item.kind === 'routine') {
+      currentUnitKey = unitKey;
+      flushRoutine(routines, state, constants);
+      state.pending = item;
+      continue;
     }
+    if (item.kind === 'label') {
+      if (item.origin !== 'generated') currentUnitKey = unitKey;
+      handleLabel(item, state, routines, constants);
+      continue;
+    }
+    if (item.kind !== 'instruction') continue;
+    currentUnitKey = unitKey;
+    appendDirectCall(directCalls, item);
+    if (state.active === undefined) continue;
+    state.active.instructions.push(toInstruction(item, state.active.labels, constants));
   }
 
-  flushRoutine(routines, state, constants);
-  return { routines, directCalls };
+  for (const state of states.values()) flushRoutine(routines, state, constants);
+  return resolveRoutineTargets(routines, directCalls);
 }
 
-function collectDirectCallTargets(items: readonly SourceItem[]): ReadonlySet<string> {
-  const targets = new Set<string>();
-  for (const item of items) {
-    const target = instructionCallTarget(item);
-    if (target !== undefined) targets.add(target);
+function resolveRoutineTargets(
+  routines: RegisterContractsRoutine[],
+  directCalls: RegisterContractsDirectCall[],
+): RoutineBuildResult {
+  const resolvedRoutines = routines.map((routine) => ({
+    ...routine,
+    instructions: routine.instructions.map((instruction) => {
+      const target = instructionCallTargetFromInstruction(instruction);
+      const identity =
+        target === undefined
+          ? undefined
+          : resolveRoutineIdentity(target, instruction.sourceUnit, routines);
+      return identity === undefined ? instruction : { ...instruction, resolvedTarget: identity };
+    }),
+  }));
+  const resolvedCalls = directCalls.map((call) => {
+    const identity = resolveRoutineIdentity(call.target, call.sourceUnit, routines);
+    return identity === undefined ? call : { ...call, targetIdentity: identity };
+  });
+  return { routines: resolvedRoutines, directCalls: resolvedCalls };
+}
+
+function instructionCallTargetFromInstruction(
+  instruction: RegisterContractsInstruction,
+): string | undefined {
+  const mnemonic = instruction.instruction.mnemonic;
+  if (mnemonic !== 'call' && mnemonic !== 'call-cc' && mnemonic !== 'jp' && mnemonic !== 'jp-cc') {
+    return undefined;
   }
-  return targets;
+  return instruction.instruction.expression.kind === 'symbol'
+    ? instruction.instruction.expression.name
+    : undefined;
 }

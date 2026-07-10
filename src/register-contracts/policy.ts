@@ -19,6 +19,7 @@ export function registerContractsPolicyModeForFile(
   file: string,
   policy: RegisterContractsPolicy,
   fallbackMode: RegisterContractsMode | undefined,
+  sourceMode?: RegisterContractsPolicyMode,
 ): RegisterContractsPolicyMode {
   const normalized = normalizePolicyPath(file);
   const matches = [
@@ -27,7 +28,7 @@ export function registerContractsPolicyModeForFile(
     ...policyMatchesForMode(normalized, policy.off, 'off'),
   ].sort(comparePolicyMatches);
 
-  return matches[0]?.mode ?? fallbackPolicyMode(fallbackMode);
+  return matches[0]?.mode ?? sourceMode ?? fallbackPolicyMode(fallbackMode);
 }
 
 function policyMatchesForMode(

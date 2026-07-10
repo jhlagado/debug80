@@ -1,4 +1,9 @@
 import type { Z80Instruction } from '../z80/instruction.js';
+import type { RegisterContractsUnit } from '../model/register-contract.js';
+import type { RoutineContractDeclaration } from '../model/register-contract.js';
+import type { SourceSpan } from '../source/source-span.js';
+
+export type { RegisterContractsUnit } from '../model/register-contract.js';
 
 export type RegisterContractsMode = 'off' | 'audit' | 'warn' | 'error' | 'strict';
 export type RegisterContractsReportFormat = 'text' | 'json';
@@ -14,26 +19,6 @@ export interface RegisterContractsPolicy {
 
 /** @deprecated Use RegisterContractsMode. */
 export type RegisterCareMode = RegisterContractsMode;
-
-export type RegisterContractsUnit =
-  | 'A'
-  | 'B'
-  | 'C'
-  | 'D'
-  | 'E'
-  | 'H'
-  | 'L'
-  | 'IXH'
-  | 'IXL'
-  | 'IYH'
-  | 'IYL'
-  | 'SPH'
-  | 'SPL'
-  | 'carry'
-  | 'zero'
-  | 'sign'
-  | 'parity'
-  | 'halfCarry';
 
 export type RegisterContractsStackFrameUnit = 'AF' | 'BC' | 'DE' | 'HL' | 'IX' | 'IY';
 
@@ -53,6 +38,8 @@ export type SmartComment =
 export interface LocatedSmartComment {
   file: string;
   line: number;
+  targetLine?: number;
+  targetColumn?: number;
   comment: SmartComment;
 }
 
@@ -82,6 +69,7 @@ export interface RegisterContractsInstruction {
   sourceRelation?: 'entry' | 'include' | 'import';
   sourceUnitRelation?: 'entry' | 'include' | 'import';
   labels: string[];
+  resolvedTarget?: string;
   constants?: ReadonlyMap<string, number>;
 }
 
@@ -90,8 +78,13 @@ export type RegisterCareInstruction = RegisterContractsInstruction;
 
 export interface RegisterContractsRoutine {
   name: string;
+  identity?: string;
+  isExported?: boolean;
+  exportedEntryLabels?: string[];
   labels: string[];
   entryLabels: string[];
+  declaredContract?: RoutineContractDeclaration;
+  directiveSpan?: SourceSpan;
   instructions: RegisterContractsInstruction[];
   constants?: ReadonlyMap<string, number>;
   span: {
@@ -115,6 +108,7 @@ export type RegisterCareRoutine = RegisterContractsRoutine;
 
 export interface RegisterContractsDirectCall {
   target: string;
+  targetIdentity?: string;
   subject: string;
   file: string;
   line: number;
@@ -165,6 +159,7 @@ export interface ValueRelation {
 
 export interface RoutineSummary {
   name: string;
+  identity?: string;
   mayRead: RegisterContractsUnit[];
   mayWrite: RegisterContractsUnit[];
   mayOutput?: RegisterContractsUnit[];
@@ -185,6 +180,7 @@ export interface RegisterContractsOutputCandidate {
   sourceRelation?: 'entry' | 'include' | 'import';
   sourceUnitRelation?: 'entry' | 'include' | 'import';
   routine: string;
+  routineIdentity?: string;
   carriers: RegisterContractsUnit[];
   autoFixable?: boolean;
   message: string;
@@ -202,6 +198,7 @@ export interface RegisterContractsConflict {
   sourceRelation?: 'entry' | 'include' | 'import';
   sourceUnitRelation?: 'entry' | 'include' | 'import';
   routine?: string;
+  routineIdentity?: string;
   callTarget: string;
   carriers: RegisterContractsUnit[];
   message: string;
@@ -228,6 +225,7 @@ interface RegisterContractsFindingBase {
   sourceUnitRelation?: 'entry' | 'include' | 'import';
   message: string;
   routine?: string;
+  routineIdentity?: string;
   carriers?: RegisterContractsUnit[];
 }
 
@@ -264,6 +262,7 @@ export type RegisterContractsFinding =
 export interface RegisterContractsReportModel {
   entryFile: string;
   mode: RegisterContractsMode;
+  filePolicies?: Readonly<Record<string, RegisterContractsPolicyMode>>;
   profile?: string;
   summaries: RoutineSummary[];
   findings?: RegisterContractsFinding[];
@@ -297,6 +296,7 @@ export interface RegisterContractsJsonFinding {
   location: RegisterContractsJsonLocation;
   message: string;
   routine?: string;
+  routineIdentity?: string;
   callTarget?: string;
   subject?: string;
   carriers?: RegisterContractsUnit[];
@@ -312,6 +312,8 @@ export interface RegisterContractsSuppression {
   column: number;
   findingKind: RegisterContractsFindingKind;
   reason: string;
+  directiveLine?: number;
+  directiveColumn?: number;
 }
 
 export interface RegisterContractsSuppressedFinding {
@@ -324,6 +326,7 @@ export interface RegisterContractsJsonReportModel {
   version: 1;
   entryFile: string;
   mode: RegisterContractsMode;
+  filePolicies?: Readonly<Record<string, RegisterContractsPolicyMode>>;
   profile?: string;
   summaries: RoutineSummary[];
   findings: RegisterContractsJsonFinding[];
@@ -337,6 +340,7 @@ export interface RegisterContractsJsonReportModel {
 
 export interface RegisterContractsInferenceRoutine {
   name: string;
+  identity: string;
   in: RegisterContractsUnit[];
   out: RegisterContractsUnit[];
   clobbers: RegisterContractsUnit[];

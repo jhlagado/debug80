@@ -5,6 +5,11 @@ AZM Engineering Manual in `docs/codebase/`, which describes the current
 codebase. When a roadmap item lands, move only durable implementation knowledge
 into the engineering manual.
 
+> Historical note: roadmap items below record the syntax used when they were
+> proposed. AZM 0.3 supersedes the old overloaded `@`/`;!` model: `@` now marks
+> exports only, `.routine` marks register-contract routines, and `_name` labels
+> are owner-local. The maintained grammar and engineering manual are normative.
+
 ## Roadmap Item 1: File Imports and Public `@` Exports
 
 ### Goal
@@ -931,7 +936,7 @@ design target is:
 AZM already has global register-contract modes:
 
 ```ts
-off | audit | warn | error | strict
+off | audit | warn | error | strict;
 ```
 
 The current global `audit` behavior is intentionally non-blocking for

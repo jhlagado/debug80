@@ -2,7 +2,19 @@
 
 ## Unreleased
 
-- None.
+- Breaking AZM 0.3 source model: `.routine` now declares register-contract
+  routines, `@` marks exports only, and leading-underscore labels are local to
+  their nearest non-local owner. Labels, equates and ops are case-sensitive;
+  native Z80 mnemonics remain case-insensitive.
+- Replaced semantic `;!` and `; expects out` comments with `.routine`,
+  `.contracts`, `.rcignore` and `.expectout` directives. Added a dry-run-first
+  AZM 0.2 migration utility at `scripts/dev/migrate-azm-0.3.mjs`.
+- Made source and project register-contract policies effective across
+  diagnostics, reports, inference, annotations and ratchets, with normalized
+  public routine identities for same-named private routines.
+- Extended D8 symbols with declaration identity, visibility and source-unit
+  metadata so owner-local and imported private symbols remain distinguishable
+  without exposing assembler-internal names.
 
 ## 0.2.17 - 2026-07-09
 

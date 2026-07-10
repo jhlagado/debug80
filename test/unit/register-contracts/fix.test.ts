@@ -94,7 +94,7 @@ describe('register-contracts expect-out fixes', () => {
     ]);
 
     expect(rewritten).toBe(
-      ['START:', '    ; expects out A', '    call MASK', '    ld d,a', ''].join('\r\n'),
+      ['START:', '    .expectout A', '    call MASK', '    ld d,a', ''].join('\r\n'),
     );
   });
 });

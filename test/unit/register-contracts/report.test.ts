@@ -131,7 +131,7 @@ describe('register-contracts reports', () => {
           routine: 'MASK',
           carriers: ['A'],
           message:
-            'CALL MASK writes A and caller reads it later; manual review required before adding `; expects out A` because the later read is not a simple direct continuation.',
+            'CALL MASK writes A and caller reads it later; manual review required before adding `.expectout A` because the later read is not a simple direct continuation.',
         },
       ],
       outputCandidates: [
@@ -143,7 +143,7 @@ describe('register-contracts reports', () => {
           routine: 'MASK',
           carriers: ['A'],
           message:
-            'CALL MASK writes A and caller reads it later; manual review required before adding `; expects out A` because the later read is not a simple direct continuation.',
+            'CALL MASK writes A and caller reads it later; manual review required before adding `.expectout A` because the later read is not a simple direct continuation.',
         },
       ],
       unknownCalls: [],
@@ -152,7 +152,7 @@ describe('register-contracts reports', () => {
     expect(text).toContain('Output candidates:');
     expect(text).toContain('/tmp/main.z80:12:5: output_candidate: A: CALL MASK writes A');
     expect(text).toContain(
-      '/tmp/main.z80:12:5: MASK: A: CALL MASK writes A and caller reads it later; manual review required before adding `; expects out A` because the later read is not a simple direct continuation.',
+      '/tmp/main.z80:12:5: MASK: A: CALL MASK writes A and caller reads it later; manual review required before adding `.expectout A` because the later read is not a simple direct continuation.',
     );
   });
 
@@ -238,7 +238,7 @@ describe('register-contracts reports', () => {
     expect(text).not.toContain('clobbers A,carry');
   });
 
-  it('renders source contracts as semicolon-separated clauses on one line', () => {
+  it('renders source contracts as a one-line routine directive', () => {
     const lines = renderRegisterContractsSourceBlock({
       ...helperSummary,
       mayRead: ['A'],
@@ -246,8 +246,7 @@ describe('register-contracts reports', () => {
       valueRelations: [{ out: ['A'], from: ['A'] }],
     });
 
-    expect(lines).toEqual([';! in A; out A; clobbers F']);
-    expect(lines).not.toContain(';!      in        A');
+    expect(lines).toEqual(['.routine in A out A clobbers F']);
   });
 
   it('renders source outputs compactly on one line', () => {

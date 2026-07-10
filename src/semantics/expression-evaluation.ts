@@ -34,24 +34,11 @@ export interface EvaluateExpressionOptions {
   readonly reportUnknown?: boolean;
 }
 
-function canonicalSymbolKey(name: string): string {
-  return name.toLowerCase();
-}
-
 function lookupLabelValue(
   labels: Readonly<Record<string, number>>,
   name: string,
 ): number | undefined {
-  if (labels[name] !== undefined) {
-    return labels[name];
-  }
-  const lower = canonicalSymbolKey(name);
-  for (const [key, value] of Object.entries(labels)) {
-    if (key.toLowerCase() === lower) {
-      return value;
-    }
-  }
-  return undefined;
+  return labels[name];
 }
 
 export function lookupEquateRecord(
@@ -59,16 +46,7 @@ export function lookupEquateRecord(
   name: string,
 ): { readonly key: string; readonly record: EquateRecord } | undefined {
   const direct = equates.get(name);
-  if (direct !== undefined) {
-    return { key: name, record: direct };
-  }
-  const lower = canonicalSymbolKey(name);
-  for (const [key, record] of equates) {
-    if (key.toLowerCase() === lower) {
-      return { key, record };
-    }
-  }
-  return undefined;
+  return direct === undefined ? undefined : { key: name, record: direct };
 }
 
 export function lookupSymbolValue(
@@ -106,7 +84,15 @@ export function evaluateExpression(
         diagnostics,
       );
     case 'layout-cast':
-      return evaluateLayoutCast(expression, labels, equates, span, diagnostics, options, evaluateExpression);
+      return evaluateLayoutCast(
+        expression,
+        labels,
+        equates,
+        span,
+        diagnostics,
+        options,
+        evaluateExpression,
+      );
     case 'symbol':
       return evaluateSymbol(expression.name, labels, equates, span, diagnostics, options);
     case 'unary':
@@ -124,7 +110,14 @@ function evaluateByteFunction(
   diagnostics: Diagnostic[],
   options: EvaluateExpressionOptions,
 ): number | undefined {
-  const value = evaluateExpression(expression.expression, labels, equates, span, diagnostics, options);
+  const value = evaluateExpression(
+    expression.expression,
+    labels,
+    equates,
+    span,
+    diagnostics,
+    options,
+  );
   if (value === undefined) {
     return undefined;
   }
@@ -183,12 +176,19 @@ function evaluateSymbol(
       diagnostics.push(diagnostic(span, `recursive symbol: ${name}`));
       return undefined;
     }
-    return evaluateExpression(equate.record.expression, labels, equates, equate.record.span, diagnostics, {
-      currentLocation: equate.record.currentLocation,
-      visiting: new Set([...(options.visiting ?? []), equate.key]),
-      layouts: options.layouts,
-      ...(options.reportUnknown !== undefined ? { reportUnknown: options.reportUnknown } : {}),
-    });
+    return evaluateExpression(
+      equate.record.expression,
+      labels,
+      equates,
+      equate.record.span,
+      diagnostics,
+      {
+        currentLocation: equate.record.currentLocation,
+        visiting: new Set([...(options.visiting ?? []), equate.key]),
+        layouts: options.layouts,
+        ...(options.reportUnknown !== undefined ? { reportUnknown: options.reportUnknown } : {}),
+      },
+    );
   }
 
   if (hasUnqualifiedEnumMember(name, equates)) {

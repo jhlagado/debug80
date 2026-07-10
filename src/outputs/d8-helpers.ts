@@ -25,26 +25,48 @@ function toHexFilePath(path: string, rootDir?: string): string {
 }
 
 export function toD8mSymbol(symbol: SymbolEntry, rootDir?: string): D8mSymbol {
+  const sourceUnit =
+    symbol.sourceUnit !== undefined ? toHexFilePath(symbol.sourceUnit, rootDir) : undefined;
+  const identity = normalizeSymbolIdentity(symbol, rootDir);
+  const name =
+    symbol.needsSourceQualifier === true && sourceUnit !== undefined
+      ? `${sourceUnit}::${symbol.name}`
+      : symbol.name;
   if (symbol.kind === 'constant') {
     return {
-      name: symbol.name,
+      name,
+      ...(identity !== undefined ? { identity } : {}),
       kind: symbol.kind,
       value: symbol.value,
       ...(symbol.file !== undefined ? { file: toHexFilePath(symbol.file, rootDir) } : {}),
       ...(symbol.line !== undefined ? { line: symbol.line } : {}),
       ...(symbol.scope !== undefined ? { scope: symbol.scope } : {}),
+      ...(symbol.visibility !== undefined ? { visibility: symbol.visibility } : {}),
+      ...(sourceUnit !== undefined ? { sourceUnit } : {}),
     } as D8mSymbol;
   }
 
   return {
-    name: symbol.name,
+    name,
+    ...(identity !== undefined ? { identity } : {}),
     kind: symbol.kind,
     address: symbol.address,
     ...(symbol.file !== undefined ? { file: toHexFilePath(symbol.file, rootDir) } : {}),
     ...(symbol.line !== undefined ? { line: symbol.line } : {}),
     ...(symbol.scope !== undefined ? { scope: symbol.scope } : {}),
+    ...(symbol.visibility !== undefined ? { visibility: symbol.visibility } : {}),
+    ...(sourceUnit !== undefined ? { sourceUnit } : {}),
     ...(symbol.size !== undefined ? { size: symbol.size } : {}),
   } as D8mSymbol;
+}
+
+function normalizeSymbolIdentity(symbol: SymbolEntry, rootDir?: string): string | undefined {
+  if (symbol.identity === undefined) return undefined;
+  const identitySource = symbol.file ?? symbol.sourceUnit;
+  if (identitySource === undefined || !symbol.identity.startsWith(identitySource)) {
+    return symbol.identity;
+  }
+  return `${toHexFilePath(identitySource, rootDir)}${symbol.identity.slice(identitySource.length)}`;
 }
 
 export function compareSymbol(a: D8mSymbol, b: D8mSymbol): number {
@@ -68,9 +90,7 @@ function symbolClass(symbol: D8mSymbol): number {
 }
 
 function symbolAddress(symbol: D8mSymbol): number {
-  return symbol.kind === 'constant'
-    ? (symbol.value ?? 0) & 0xffff
-    : (symbol.address ?? 0) & 0xffff;
+  return symbol.kind === 'constant' ? (symbol.value ?? 0) & 0xffff : (symbol.address ?? 0) & 0xffff;
 }
 
 function symbolTieBreaker(a: D8mSymbol, b: D8mSymbol): number {
@@ -107,9 +127,7 @@ export function normalizeInputs(
   rootDir?: string,
 ): { entry?: string; hex?: string; bin?: string } | undefined {
   const out: { entry?: string; hex?: string; bin?: string } = {};
-  for (const [key, value] of Object.entries(inputs) as Array<
-    ['entry' | 'hex' | 'bin', string]
-  >) {
+  for (const [key, value] of Object.entries(inputs) as Array<['entry' | 'hex' | 'bin', string]>) {
     if (value !== undefined && value.length > 0) {
       out[key] = toHexFilePath(value, rootDir);
     }

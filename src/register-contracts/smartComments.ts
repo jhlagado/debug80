@@ -4,7 +4,6 @@ import type {
   RoutineContract,
   SmartComment,
 } from './types.js';
-import { collectPrecedingCommentBlock } from './smartCommentBlocks.js';
 import { parseSmartCommentLine, parseSmartCommentLines } from './smartCommentParsing.js';
 
 export { parseSmartCommentLine, parseSmartCommentLines };
@@ -39,43 +38,27 @@ function applyContractComment(contract: RoutineContract, comment: SmartComment):
   if (comment.kind === 'preserves') appendUnique(contract.preserves, comment.carriers);
 }
 
-function hasContractContent(contract: RoutineContract): boolean {
-  return (
-    contract.in.length > 0 ||
-    contract.out.length > 0 ||
-    contract.clobbers.length > 0 ||
-    contract.preserves.length > 0
-  );
-}
-
-function buildImplicitRoutineContracts(
-  routines: RegisterContractsRoutine[],
-  sourceTexts: ReadonlyMap<string, string>,
+export function buildDeclaredRoutineContracts(
+  routines: readonly RegisterContractsRoutine[],
 ): Map<string, RoutineContract> {
   const contracts = new Map<string, RoutineContract>();
   for (const routine of routines) {
-    const docBlock = collectPrecedingCommentBlock(routine, sourceTexts);
+    const declared = routine.declaredContract;
     if (
-      docBlock.comments.some(
-        (item) => item.comment.kind === 'extern' || item.comment.kind === 'end',
-      )
+      declared !== undefined &&
+      (declared.in.length > 0 ||
+        declared.out.length > 0 ||
+        declared.clobbers.length > 0 ||
+        declared.preserves.length > 0)
     ) {
-      continue;
-    }
-
-    const contract: RoutineContract = {
-      name: routine.name,
-      in: [],
-      out: [],
-      clobbers: [],
-      preserves: [],
-      ...(docBlock.complete ? { complete: true } : {}),
-    };
-    for (const item of docBlock.comments) {
-      applyContractComment(contract, item.comment);
-    }
-    if (hasContractContent(contract)) {
-      contracts.set(routine.name, contract);
+      const identity = routine.identity ?? routine.name;
+      contracts.set(identity, {
+        name: identity,
+        in: [...declared.in],
+        out: [...declared.out],
+        clobbers: [...declared.clobbers],
+        preserves: [...declared.preserves],
+      });
     }
   }
 
@@ -84,8 +67,6 @@ function buildImplicitRoutineContracts(
 
 export function buildRoutineContracts(
   comments: LocatedSmartComment[],
-  routines: RegisterContractsRoutine[] = [],
-  sourceTexts: ReadonlyMap<string, string> = new Map(),
 ): Map<string, RoutineContract> {
   const contracts = new Map<string, RoutineContract>();
   let current: RoutineContract | undefined;
@@ -108,12 +89,6 @@ export function buildRoutineContracts(
     }
     if (current !== undefined) {
       applyContractComment(current, item.comment);
-    }
-  }
-
-  for (const [name, contract] of buildImplicitRoutineContracts(routines, sourceTexts)) {
-    if (!contracts.has(name)) {
-      contracts.set(name, contract);
     }
   }
 

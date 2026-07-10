@@ -116,8 +116,8 @@ belong to the caller.
 
 ## Register Contract Analysis
 
-Register contract analysis checks how routines use Z80 registers. It reads routine
-boundaries, instruction effects and AZMDoc contract comments, then reports
+Register contract analysis checks how routines use Z80 registers. It reads
+`.routine` declarations, instruction effects and external interface contracts, then reports
 conflicts where a caller still needs a register value that a callee may change.
 
 The implementation lives in `src/register-contracts/`. The public analysis entry
@@ -133,15 +133,16 @@ summaries that can change those values.
 This source shape captures the problem:
 
 ```asm
-@Caller:
+.routine
+Caller:
         ld      b,8
-Loop:
+_loop:
         call    Worker
-        djnz    Loop
+        djnz    _loop
         ret
 
-;! clobbers B
-@Worker:
+.routine clobbers B
+Worker:
         ld      b,0
         ret
 ```
@@ -161,20 +162,18 @@ caller crosses the boundary.
 `src/register-contracts/programModel.ts` builds the program model from parsed source
 items. Routine-specific extraction is split into
 `programModel-boundaries.ts` and `programModel-routines.ts`. Together they find
-routine boundaries, direct calls, labels and instructions. Routine entry labels
-use `@` in source and become callable public routine names after the marker is
-removed. When an imported public routine calls private labels inside the same
+routine boundaries, direct calls, labels and instructions. `.routine` marks the
+next non-local label as a routine independently of whether that label is
+exported with `@`. When an imported public routine calls private routines inside the same
 import unit, the routine builder keeps those direct call targets in the
 internal routine set so strict analysis can follow imported helper routines
 without exposing them outside the module.
 
-`src/register-contracts/smartComments.ts` reads AZMDoc comments from the comment maps
-captured during loading. Comment-block splitting and token parsing live in
-`smartCommentBlocks.ts` and `smartCommentParsing.ts`. External `.asmi`
-contracts are parsed in `interfaceContracts.ts`. The same parser also accepts
-inline suppression comments in the form
-`;! rc-ignore-next <finding-kind>: <reason>` for the next finding at that
-location.
+Parsed `.routine` source items carry their declared contract directly. External
+`.asmi` contracts are parsed in `interfaceContracts.ts`; legacy smart-comment
+helpers remain for interface compatibility rather than AZM 0.3 source syntax.
+Inline suppressions use `.rcignore <finding-kind> "reason"` and attach to the
+next instruction in the same physical file.
 
 Contracts can describe:
 
@@ -184,11 +183,11 @@ Contracts can describe:
 - preserved registers
 - expected outputs at call sites
 
-Source comments and external interfaces describe the same kind of fact: a
-routine contract. Source comments attach to routines in the current program.
+Source directives and external interfaces describe the same kind of fact: a
+routine contract. `.routine` attaches to the next non-local label in the same file.
 `.asmi` entries attach to routines whose source is assembled elsewhere.
-The compact source form can place several clauses on one `;!` line, for
-example `;! in A; out A; clobbers F`.
+The canonical source form places every clause on one directive line, for
+example `.routine in A out A clobbers F`.
 
 `.asmi` parsing stays strict. Files may contain `extern` or `service rst`
 boundaries, `in`, `out`, `clobbers` and `preserves` clauses, then `end`.
@@ -266,8 +265,8 @@ tooling consumers and baseline ratchets all use the same typed finding model.
 and `off` glob lists. Specific patterns win over broad patterns, then stricter
 matches win ties. This lets one compile run audit imported wrappers while
 keeping core files in strict mode or disabling analysis for known external
-shims. When policy disables a file, unresolved call targets in that file no
-longer surface as ordinary unknown-symbol diagnostics.
+shims. Policy `off` removes that file from register-contract artifacts and
+diagnostics; ordinary unresolved-symbol errors still apply.
 
 ## Reports, Interfaces and Tooling
 
@@ -278,11 +277,11 @@ suppressed findings, unknown calls and optional ratchet results. Inference
 exports are lighter-weight routine summaries for review workflows and can be
 rendered as JSON or Markdown.
 
-`report.ts` also renders generated source contracts as one compact `;!` line,
-joining `in`, `out`, `maybe-out` and `clobbers` clauses with semicolons.
+`report.ts` also renders generated source contracts as one `.routine` line in
+canonical `in`, `out`, `maybe-out`, `clobbers`, `preserves` order.
 When a routine may clobber the full flag set, the source form uses `F` as the
 compact carrier name. `annotate.ts`, `annotations.ts`, `fix.ts` and
-`sourceText.ts` support source updates for generated AZMDoc comments and
+`sourceText.ts` support source updates for `.routine` directives and
 conservative fixes.
 
 The CLI can request these behaviours through:
@@ -316,8 +315,8 @@ Op changes belong in `src/expansion/`, with tests under
 Register contract changes usually begin in one of these files:
 
 - Routine boundaries and calls: `programModel.ts`
-- AZMDoc parsing: `smartComments.ts`, `smartCommentBlocks.ts`,
-  `smartCommentParsing.ts`, `interfaceContracts.ts`
+- Routine declarations and external contracts: `programModel-routines.ts`,
+  `smartComments.ts`, `interfaceContracts.ts`
 - Instruction effects: `z80/effects.ts`, `instruction-head.ts`,
   `instruction-operands.ts`, `instruction-predicates.ts`
 - Summary inference: `summary.ts`

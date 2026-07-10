@@ -1,6 +1,6 @@
 import type { LogicalLine } from '../source/logical-lines.js';
 import type { SourceSpan } from '../source/source-span.js';
-import { IDENTIFIER_PATTERN, LABEL_NAME_PATTERN } from './names.js';
+import { IDENTIFIER_PATTERN, LABEL_NAME_PATTERN, normalizeExportedName } from './names.js';
 import { parseEnumItem, parseEquItem } from './parse-declaration-directives.js';
 import { firstNonWhitespaceColumn } from './parse-diagnostics.js';
 import {
@@ -10,6 +10,8 @@ import {
 } from './parse-data-directives.js';
 import { parseExpressionDirective } from './parse-location-directives.js';
 import type { ParseLineResult } from './parse-line.js';
+import { parseContractCarriers, parseRoutineDirective } from './parse-routine-directive.js';
+import { parseLineError } from './parse-diagnostics.js';
 
 type DirectiveParser = {
   readonly pattern: RegExp;
@@ -18,8 +20,60 @@ type DirectiveParser = {
 
 const DIRECTIVE_PARSERS: readonly DirectiveParser[] = [
   {
-    pattern: new RegExp(`^(${LABEL_NAME_PATTERN})\\s+\\.equ\\s+(.+)$`),
-    parse: (line, match, span) => parseEquItem(line, match[1] ?? '', match[2] ?? '', span),
+    pattern: /^\.routine(?:\s+(.*))?$/,
+    parse: (line, match, span) => parseRoutineDirective(line, match[1] ?? '', span),
+  },
+  {
+    pattern: /^\.contracts\s+(strict|audit|off)$/,
+    parse: (_line, match, span) => ({
+      items: [{ kind: 'contracts-policy', mode: match[1] as 'strict' | 'audit' | 'off', span }],
+      diagnostics: [],
+    }),
+  },
+  {
+    pattern: /^\.rcignore\s+([A-Za-z0-9_]+)\s+"([^"]+)"$/,
+    parse: (_line, match, span) => ({
+      items: [
+        {
+          kind: 'rc-ignore',
+          findingKind: match[1] ?? '',
+          reason: match[2]?.trim() ?? '',
+          span,
+        },
+      ],
+      diagnostics: [],
+    }),
+  },
+  {
+    pattern: /^\.rcignore\b.*$/,
+    parse: (line) => ({
+      items: [],
+      diagnostics: [
+        parseLineError(line, '.rcignore requires a finding kind and a quoted non-empty reason'),
+      ],
+    }),
+  },
+  {
+    pattern: /^\.expectout\s+(.+)$/,
+    parse: (line, match, span) => {
+      const carriers = parseContractCarriers(match[1] ?? '');
+      return carriers === undefined || carriers.length === 0
+        ? { items: [], diagnostics: [parseLineError(line, 'invalid .expectout carrier list')] }
+        : { items: [{ kind: 'expect-out', carriers, span }], diagnostics: [] };
+    },
+  },
+  {
+    pattern: new RegExp(`^(@?${LABEL_NAME_PATTERN})\\s+\\.equ\\s+(.+)$`),
+    parse: (line, match, span) => {
+      const rawName = match[1] ?? '';
+      return parseEquItem(
+        line,
+        normalizeExportedName(rawName),
+        match[2] ?? '',
+        span,
+        rawName.startsWith('@'),
+      );
+    },
   },
   {
     pattern: /^\.org\s+(.+)$/,
@@ -42,8 +96,17 @@ const DIRECTIVE_PARSERS: readonly DirectiveParser[] = [
     }),
   },
   {
-    pattern: new RegExp(`^(${IDENTIFIER_PATTERN})\\s+\\.enum\\s+(.+)$`),
-    parse: (line, match, span) => parseEnumItem(line, match[1] ?? '', match[2] ?? '', span),
+    pattern: new RegExp(`^(@?${IDENTIFIER_PATTERN})\\s+\\.enum\\s+(.+)$`),
+    parse: (line, match, span) => {
+      const rawName = match[1] ?? '';
+      return parseEnumItem(
+        line,
+        normalizeExportedName(rawName),
+        match[2] ?? '',
+        span,
+        rawName.startsWith('@'),
+      );
+    },
   },
   {
     pattern: /^(\.db|\.dw)\s+(.+)$/,

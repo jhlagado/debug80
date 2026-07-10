@@ -4,12 +4,7 @@ import type { Z80AluMnemonic, Z80Instruction, Z80Operand } from '../z80/instruct
 import type { OpDecl } from './op-expansion.js';
 
 const EXPRESSION_ITEM_KINDS = new Set<SourceItem['kind']>(['org', 'equ', 'binfrom', 'binto']);
-const SOURCE_OPERAND_MNEMONICS = new Set<Z80Instruction['mnemonic']>([
-  'and',
-  'or',
-  'xor',
-  'cp',
-]);
+const SOURCE_OPERAND_MNEMONICS = new Set<Z80Instruction['mnemonic']>(['and', 'or', 'xor', 'cp']);
 const JUMP_EXPRESSION_MNEMONICS = new Set<Z80Instruction['mnemonic']>([
   'jp',
   'call',
@@ -66,20 +61,27 @@ export function renameInstructionExpressions(
 ): Z80Instruction {
   if (localLabelMap.size === 0) return instruction;
   if (instruction.mnemonic === 'ld') return renameLdInstruction(instruction, localLabelMap);
-  if (instruction.mnemonic === 'ld-a-imm') return renameExpressionInstruction(instruction, localLabelMap);
+  if (instruction.mnemonic === 'ld-a-imm')
+    return renameExpressionInstruction(instruction, localLabelMap);
   if (isBitInstruction(instruction)) return renameBitInstruction(instruction, localLabelMap);
   if (instruction.mnemonic === 'in' || instruction.mnemonic === 'out') {
     return { ...instruction, port: renamePortExpression(instruction.port, localLabelMap) };
   }
-  if (isAluSourceInstruction(instruction)) return renameSourceOperandInstruction(instruction, localLabelMap);
-  if (isJumpExpressionInstruction(instruction)) return renameExpressionInstruction(instruction, localLabelMap);
+  if (isAluSourceInstruction(instruction))
+    return renameSourceOperandInstruction(instruction, localLabelMap);
+  if (isJumpExpressionInstruction(instruction))
+    return renameExpressionInstruction(instruction, localLabelMap);
   return instruction;
 }
 
 function isBitInstruction(
   instruction: Z80Instruction,
 ): instruction is Extract<Z80Instruction, { readonly mnemonic: 'bit' | 'res' | 'set' }> {
-  return instruction.mnemonic === 'bit' || instruction.mnemonic === 'res' || instruction.mnemonic === 'set';
+  return (
+    instruction.mnemonic === 'bit' ||
+    instruction.mnemonic === 'res' ||
+    instruction.mnemonic === 'set'
+  );
 }
 
 function renameBitInstruction(
@@ -95,7 +97,8 @@ function renameLabelItem(
   item: Extract<SourceItem, { readonly kind: 'label' }>,
   localLabelMap: ReadonlyMap<string, string>,
 ): SourceItem {
-  return { ...item, name: localLabelMap.get(item.name) ?? item.name };
+  const generatedName = localLabelMap.get(item.name);
+  return generatedName === undefined ? item : { ...item, name: generatedName, origin: 'generated' };
 }
 
 function isExpressionItem(
@@ -180,13 +183,21 @@ function renameExpressionInstruction(
 
 function isAluSourceInstruction(
   instruction: Z80Instruction,
-): instruction is Extract<Z80Instruction, { readonly mnemonic: Z80AluMnemonic; readonly source: Z80Operand }> {
-  return SOURCE_OPERAND_MNEMONICS.has(instruction.mnemonic) || isAccumulatorAluInstruction(instruction);
+): instruction is Extract<
+  Z80Instruction,
+  { readonly mnemonic: Z80AluMnemonic; readonly source: Z80Operand }
+> {
+  return (
+    SOURCE_OPERAND_MNEMONICS.has(instruction.mnemonic) || isAccumulatorAluInstruction(instruction)
+  );
 }
 
 function isAccumulatorAluInstruction(
   instruction: Z80Instruction,
-): instruction is Extract<Z80Instruction, { readonly mnemonic: 'add' | 'adc' | 'sub' | 'sbc'; readonly source: Z80Operand }> {
+): instruction is Extract<
+  Z80Instruction,
+  { readonly mnemonic: 'add' | 'adc' | 'sub' | 'sbc'; readonly source: Z80Operand }
+> {
   return (
     (instruction.mnemonic === 'add' ||
       instruction.mnemonic === 'adc' ||

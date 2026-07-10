@@ -15,6 +15,7 @@ export interface RegisterContractsExpectOutFix {
   line: number;
   column: number;
   routine: string;
+  routineIdentity?: string;
   carriers: RegisterContractsUnit[];
 }
 
@@ -215,7 +216,7 @@ export function autoFixableCandidateKeys(
 }
 
 function isExpectOutLine(line: string): boolean {
-  return /^\s*;\s*expects\s+out\b/i.test(line);
+  return /^\s*\.expectout\b/i.test(line);
 }
 
 function expectedCallLine(
@@ -268,7 +269,7 @@ export function applyExpectOutFixesToSource(
     if (index === undefined) continue;
     if (index > 0 && isExpectOutLine(lines[index - 1] ?? '')) continue;
     const prefix = indentation(lines[index] ?? '');
-    lines.splice(index, 0, `${prefix}; expects out ${contractCarrierList(fix.carriers)}`);
+    lines.splice(index, 0, `${prefix}.expectout ${contractCarrierList(fix.carriers)}`);
   }
 
   return joinSourceLines(sourceLines);

@@ -9,10 +9,13 @@ import {
   qualifyRoutineLocalLabels,
 } from './private-label-qualification.js';
 import { emitProgramImage } from './program-emission.js';
+import { validateDeclarationsAndRoutines } from './declaration-validation.js';
 
 export interface AssemblyResult {
   readonly diagnostics: readonly Diagnostic[];
   readonly symbols: import('../model/symbol.js').SymbolTable;
+  readonly internalSymbols: import('../model/symbol.js').SymbolTable;
+  readonly assemblyItems: readonly SourceItem[];
   readonly origin: number;
   readonly initializedAddresses: readonly number[];
   readonly reservedAddresses: readonly number[];
@@ -27,6 +30,8 @@ function emptyAssemblyResult(
   return {
     diagnostics,
     symbols: partial.symbols ?? {},
+    internalSymbols: partial.internalSymbols ?? {},
+    assemblyItems: partial.assemblyItems ?? [],
     origin: partial.origin ?? 0,
     initializedAddresses: [],
     reservedAddresses: [],
@@ -37,6 +42,7 @@ function emptyAssemblyResult(
 
 export function assembleProgram(items: readonly SourceItem[]): AssemblyResult {
   const diagnostics: Diagnostic[] = [];
+  validateDeclarationsAndRoutines(items, diagnostics);
   validateImportVisibility(items, diagnostics);
   if (diagnostics.length > 0) {
     return emptyAssemblyResult(diagnostics);
@@ -46,7 +52,7 @@ export function assembleProgram(items: readonly SourceItem[]): AssemblyResult {
 
   const addressState = buildAddressState(assemblyItems, diagnostics);
   if (diagnostics.length > 0) {
-    return emptyAssemblyResult(diagnostics, { origin: addressState.origin });
+    return emptyAssemblyResult(diagnostics, { origin: addressState.origin, assemblyItems });
   }
 
   const internalSymbols = resolveSymbols(
@@ -57,13 +63,20 @@ export function assembleProgram(items: readonly SourceItem[]): AssemblyResult {
   );
   const symbols = displaySymbolsForProgram(items, assemblyItems, internalSymbols);
   if (diagnostics.length > 0) {
-    return emptyAssemblyResult(diagnostics, { symbols, origin: addressState.origin });
+    return emptyAssemblyResult(diagnostics, {
+      symbols,
+      internalSymbols,
+      assemblyItems,
+      origin: addressState.origin,
+    });
   }
 
   const emitted = emitProgramImage(assemblyItems, addressState, internalSymbols, diagnostics);
   return {
     diagnostics,
     symbols,
+    internalSymbols,
+    assemblyItems,
     origin: emitted.origin,
     initializedAddresses: emitted.initializedAddresses,
     reservedAddresses: emitted.reservedAddresses,

@@ -8,16 +8,17 @@ import type { ParseLineResult } from './parse-line.js';
 export function parseColonDeclaration(
   line: LogicalLine,
   name: string,
+  isExported: boolean,
   statementText: string,
   span: { readonly sourceName: string; readonly line: number; readonly column: number },
 ): ParseLineResult | undefined {
   const equ = /^\.equ\s+(.+)$/.exec(statementText);
   if (equ) {
-    return parseEquItem(line, name, equ[1] ?? '', span);
+    return parseEquItem(line, name, equ[1] ?? '', span, isExported);
   }
   const enumDecl = /^\.enum\s+(.+)$/.exec(statementText);
   if (enumDecl) {
-    return parseEnumItem(line, name, enumDecl[1] ?? '', span);
+    return parseEnumItem(line, name, enumDecl[1] ?? '', span, isExported);
   }
   return undefined;
 }
@@ -27,6 +28,7 @@ export function parseEquItem(
   name: string,
   expressionText: string,
   span: { readonly sourceName: string; readonly line: number; readonly column: number },
+  isExported = false,
 ): ParseLineResult {
   const stringValue = parseWholeQuotedString(expressionText.trim());
   const expression =
@@ -44,6 +46,7 @@ export function parseEquItem(
       {
         kind: 'equ',
         name,
+        ...(isExported ? { isExported: true } : {}),
         expression,
         ...(stringValue !== undefined && stringValue.length > 1 ? { stringValue } : {}),
         span,
@@ -58,6 +61,7 @@ export function parseEnumItem(
   name: string,
   membersText: string,
   span: { readonly sourceName: string; readonly line: number; readonly column: number },
+  isExported = false,
 ): ParseLineResult {
   const rawMembers = membersText.split(',').map((member) => member.trim());
   if (membersText.trim().length === 0 || rawMembers.some((member) => member.length === 0)) {
@@ -81,7 +85,10 @@ export function parseEnumItem(
   if (diagnostics.length > 0) {
     return { items: [], diagnostics };
   }
-  return { items: [{ kind: 'enum', name, members, span }], diagnostics: [] };
+  return {
+    items: [{ kind: 'enum', name, ...(isExported ? { isExported: true } : {}), members, span }],
+    diagnostics: [],
+  };
 }
 
 export function parseWholeQuotedString(text: string): string | undefined {

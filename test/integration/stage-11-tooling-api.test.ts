@@ -102,7 +102,7 @@ describe('stage 11 tooling API', () => {
         .filter((item) => item.kind === 'label')
         .map((item) => ({
           name: item.name,
-          isEntry: item.isEntry,
+          isExported: item.isExported,
           sourceName: item.span.sourceName,
           sourceUnit: item.span.sourceUnit,
           sourceRelation: item.span.sourceRelation,
@@ -110,21 +110,21 @@ describe('stage 11 tooling API', () => {
       expect(labels).toEqual([
         {
           name: 'ReadKey',
-          isEntry: true,
+          isExported: true,
           sourceName: module,
           sourceUnit: module,
           sourceRelation: 'import',
         },
         {
           name: 'ScanMatrix',
-          isEntry: undefined,
+          isExported: undefined,
           sourceName: module,
           sourceUnit: module,
           sourceRelation: 'import',
         },
         {
           name: 'main',
-          isEntry: undefined,
+          isExported: undefined,
           sourceName: entry,
           sourceUnit: entry,
           sourceRelation: 'entry',
@@ -471,11 +471,7 @@ describe('stage 11 tooling API', () => {
     await withTempDir('azm-next-tooling-import-private-jp-', async (dir) => {
       const entry = join(dir, 'main.asm');
       const module = join(dir, 'flow.asm');
-      await writeFile(
-        entry,
-        '.org $6200\n.import "flow.asm"\nmain:\n  jp PrivateTarget\n',
-        'utf8',
-      );
+      await writeFile(entry, '.org $6200\n.import "flow.asm"\nmain:\n  jp PrivateTarget\n', 'utf8');
       await writeFile(module, 'PrivateTarget:\n  ret\n@PublicTarget:\n  ret\n', 'utf8');
 
       const result = await loadProgramNext({ entryFile: entry });
@@ -533,9 +529,7 @@ describe('stage 11 tooling API', () => {
       const assembly = assembleProgram(result.loadedProgram!.program.files[0].items);
       expect(assembly.diagnostics).toEqual([]);
       expect(Array.from(assembly.bytes)).toEqual([
-        0xcd, 0x04, 0x00, 0xc9, 0xc9,
-        0xcd, 0x09, 0x00, 0xc9, 0xc9,
-        0xc9,
+        0xcd, 0x04, 0x00, 0xc9, 0xc9, 0xcd, 0x09, 0x00, 0xc9, 0xc9, 0xc9,
       ]);
     });
   });
@@ -584,7 +578,7 @@ describe('stage 11 tooling API', () => {
     });
   });
 
-  it('resolves case-insensitive public exports before exact-case private imports', async () => {
+  it('does not resolve a case-distinct public export over an exact private declaration', async () => {
     await withTempDir('azm-next-tooling-import-public-private-case-', async (dir) => {
       const entry = join(dir, 'main.asm');
       const privateModule = join(dir, 'private.asm');
@@ -601,12 +595,13 @@ describe('stage 11 tooling API', () => {
       expect(result.diagnostics).toEqual([]);
 
       const assembly = assembleProgram(result.loadedProgram!.program.files[0].items);
-      expect(assembly.diagnostics).toEqual([]);
-      expect(Array.from(assembly.bytes)).toEqual([0xc9, 0xc9, 0xcd, 0x01, 0x00]);
+      expect(assembly.diagnostics).toEqual([
+        expect.objectContaining({ message: expect.stringMatching(/Hidden.*private/) }),
+      ]);
     });
   });
 
-  it('resolves same-unit imported private label references case-insensitively', async () => {
+  it('requires exact case for same-unit imported private label references', async () => {
     await withTempDir('azm-next-tooling-import-private-internal-case-', async (dir) => {
       const entry = join(dir, 'main.asm');
       const module = join(dir, 'module.asm');
@@ -617,8 +612,9 @@ describe('stage 11 tooling API', () => {
       expect(result.diagnostics).toEqual([]);
 
       const assembly = assembleProgram(result.loadedProgram!.program.files[0].items);
-      expect(assembly.diagnostics).toEqual([]);
-      expect(Array.from(assembly.bytes)).toEqual([0xcd, 0x04, 0x00, 0xc9, 0xc9, 0xc9]);
+      expect(assembly.diagnostics).toEqual([
+        expect.objectContaining({ message: expect.stringContaining('hidden') }),
+      ]);
     });
   });
 
@@ -627,7 +623,11 @@ describe('stage 11 tooling API', () => {
       const entry = join(dir, 'main.asm');
       const module = join(dir, 'module.asm');
       await writeFile(entry, '.import "module.asm"\nmain:\n  ret\n', 'utf8');
-      await writeFile(module, '@hidden:\n  ret\n@Caller:\n  call hidden\n  ret\nHidden:\n  ret\n', 'utf8');
+      await writeFile(
+        module,
+        '@hidden:\n  ret\n@Caller:\n  call hidden\n  ret\nHidden:\n  ret\n',
+        'utf8',
+      );
 
       const result = await loadProgramNext({ entryFile: entry });
       expect(result.diagnostics).toEqual([]);
@@ -638,19 +638,24 @@ describe('stage 11 tooling API', () => {
     });
   });
 
-  it('keeps same-unit public labels ahead of non-exact private case-insensitive fallback', async () => {
+  it('does not use non-exact public or private label fallbacks', async () => {
     await withTempDir('azm-next-tooling-import-public-lower-before-private-case-', async (dir) => {
       const entry = join(dir, 'main.asm');
       const module = join(dir, 'module.asm');
       await writeFile(entry, '.import "module.asm"\nmain:\n  ret\n', 'utf8');
-      await writeFile(module, '@hidden:\n  ret\n@Caller:\n  call HIDDEN\n  ret\nHidden:\n  ret\n', 'utf8');
+      await writeFile(
+        module,
+        '@hidden:\n  ret\n@Caller:\n  call HIDDEN\n  ret\nHidden:\n  ret\n',
+        'utf8',
+      );
 
       const result = await loadProgramNext({ entryFile: entry });
       expect(result.diagnostics).toEqual([]);
 
       const assembly = assembleProgram(result.loadedProgram!.program.files[0].items);
-      expect(assembly.diagnostics).toEqual([]);
-      expect(Array.from(assembly.bytes)).toEqual([0xc9, 0xcd, 0x00, 0x00, 0xc9, 0xc9, 0xc9]);
+      expect(assembly.diagnostics).toEqual([
+        expect.objectContaining({ message: expect.stringContaining('HIDDEN') }),
+      ]);
     });
   });
 
@@ -670,7 +675,7 @@ describe('stage 11 tooling API', () => {
     });
   });
 
-  it('resolves case-insensitive entry equates before exact-case imported private labels', async () => {
+  it('does not resolve a case-distinct equate over an exact private label', async () => {
     await withTempDir('azm-next-tooling-import-private-equate-case-', async (dir) => {
       const entry = join(dir, 'main.asm');
       const module = join(dir, 'module.asm');
@@ -681,12 +686,13 @@ describe('stage 11 tooling API', () => {
       expect(result.diagnostics).toEqual([]);
 
       const assembly = assembleProgram(result.loadedProgram!.program.files[0].items);
-      expect(assembly.diagnostics).toEqual([]);
-      expect(Array.from(assembly.bytes)).toEqual([0xc9, 0xc3, 0x01, 0x00]);
+      expect(assembly.diagnostics).toEqual([
+        expect.objectContaining({ message: expect.stringMatching(/Hidden.*private/) }),
+      ]);
     });
   });
 
-  it('does not expose case-insensitive private display names when a public export owns the name', async () => {
+  it('retains case-distinct private declarations in D8 with source visibility', async () => {
     await withTempDir('azm-next-tooling-import-private-case-symbol-leak-', async (dir) => {
       const entry = join(dir, 'main.asm');
       const publicModule = join(dir, 'public.asm');
@@ -702,11 +708,7 @@ describe('stage 11 tooling API', () => {
       expect(assembly.symbols).toMatchObject({ hidden: 0 });
       expect(assembly.symbols.Hidden).toBeUndefined();
 
-      const result = await compile(
-        entry,
-        { sourceRoot: dir },
-        { formats: defaultFormatWriters },
-      );
+      const result = await compile(entry, { sourceRoot: dir }, { formats: defaultFormatWriters });
       expect(result.diagnostics).toEqual([]);
       const d8m = result.artifacts.find((artifact) => artifact.kind === 'd8m');
       expect(d8m?.kind).toBe('d8m');
@@ -716,9 +718,15 @@ describe('stage 11 tooling API', () => {
           expect.objectContaining({ kind: 'label', name: 'hidden', file: 'public.asm' }),
         ]),
       );
-      expect(d8m.json.symbols).not.toEqual(
+      expect(d8m.json.symbols).toEqual(
         expect.arrayContaining([
-          expect.objectContaining({ kind: 'label', name: 'Hidden', file: 'private.asm' }),
+          expect.objectContaining({
+            kind: 'label',
+            name: 'Hidden',
+            file: 'private.asm',
+            visibility: 'source',
+            identity: expect.any(String),
+          }),
         ]),
       );
     });
@@ -733,11 +741,7 @@ describe('stage 11 tooling API', () => {
       await writeFile(publicModule, '@Hidden:\n  ret\n', 'utf8');
       await writeFile(privateModule, '@Private:\nHidden:\n  ret\n', 'utf8');
 
-      const result = await compile(
-        entry,
-        { sourceRoot: dir },
-        { formats: defaultFormatWriters },
-      );
+      const result = await compile(entry, { sourceRoot: dir }, { formats: defaultFormatWriters });
 
       expect(result.diagnostics).toEqual([]);
       const d8m = result.artifacts.find((artifact) => artifact.kind === 'd8m');
@@ -750,13 +754,21 @@ describe('stage 11 tooling API', () => {
             name: 'Hidden',
             address: 0,
             file: 'public.asm',
+            visibility: 'exported',
+          }),
+          expect.objectContaining({
+            kind: 'label',
+            name: 'private.asm::Hidden',
+            address: 1,
+            file: 'private.asm',
+            visibility: 'source',
           }),
         ]),
       );
     });
   });
 
-  it('does not leak qualified imported private labels through API or D8 symbols', async () => {
+  it('emits colliding imported private labels with stable public identities', async () => {
     await withTempDir('azm-next-tooling-import-private-symbol-leak-', async (dir) => {
       const entry = join(dir, 'main.asm');
       await writeFile(entry, '.import "first.asm"\n.import "second.asm"\nmain:\n  ret\n', 'utf8');
@@ -767,17 +779,48 @@ describe('stage 11 tooling API', () => {
       expect(loaded.diagnostics).toEqual([]);
       const assembly = assembleProgram(loaded.loadedProgram!.program.files[0].items);
       expect(assembly.diagnostics).toEqual([]);
-      expect(Object.keys(assembly.symbols).some((name) => name.includes('azm-private'))).toBe(false);
-
-      const result = await compile(
-        entry,
-        { sourceRoot: dir },
-        { formats: defaultFormatWriters },
+      expect(Object.keys(assembly.symbols).some((name) => name.includes('azm-private'))).toBe(
+        false,
       );
+
+      const result = await compile(entry, { sourceRoot: dir }, { formats: defaultFormatWriters });
 
       expect(result.diagnostics).toEqual([]);
       const d8m = result.artifacts.find((artifact) => artifact.kind === 'd8m');
       expect(JSON.stringify(d8m)).not.toContain('azm-private');
+      if (d8m?.kind !== 'd8m') return;
+      expect(d8m.json.symbols).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ name: 'first.asm::Hidden', visibility: 'source' }),
+          expect.objectContaining({ name: 'second.asm::Hidden', visibility: 'source' }),
+        ]),
+      );
+    });
+  });
+
+  it('keeps owner-local D8 identities distinct across textual includes', async () => {
+    await withTempDir('azm-next-tooling-include-local-identities-', async (dir) => {
+      const entry = join(dir, 'main.asm');
+      await writeFile(
+        entry,
+        ['.org $4000', '.include "a.asm"', '.include "b.asm"', '.end', ''].join('\n'),
+      );
+      await writeFile(join(dir, 'a.asm'), ['OwnerA:', '_loop:', '    nop', ''].join('\n'));
+      await writeFile(join(dir, 'b.asm'), ['OwnerB:', '_loop:', '    ret', ''].join('\n'));
+
+      const result = await compile(entry, { sourceRoot: dir }, { formats: defaultFormatWriters });
+      expect(result.diagnostics).toEqual([]);
+      const d8m = result.artifacts.find((artifact) => artifact.kind === 'd8m');
+      if (d8m?.kind !== 'd8m') throw new Error('missing D8 artifact');
+      const locals = d8m.json.symbols.filter((symbol) => symbol.visibility === 'local');
+      expect(locals.map((symbol) => symbol.name)).toEqual(['OwnerA._loop', 'OwnerB._loop']);
+      expect(new Set(locals.map((symbol) => symbol.identity)).size).toBe(2);
+      expect(locals.map((symbol) => symbol.identity)).toEqual(
+        expect.arrayContaining([
+          expect.stringContaining('a.asm:2:1:label:OwnerA._loop'),
+          expect.stringContaining('b.asm:2:1:label:OwnerB._loop'),
+        ]),
+      );
     });
   });
 
@@ -850,7 +893,11 @@ describe('stage 11 tooling API', () => {
       const entry = join(dir, 'main.asm');
       const first = join(dir, 'first.asm');
       const second = join(dir, 'second.asm');
-      await writeFile(entry, '.import "first.asm"\n.import "second.asm"\nmain:\n  jp Hidden\n', 'utf8');
+      await writeFile(
+        entry,
+        '.import "first.asm"\n.import "second.asm"\nmain:\n  jp Hidden\n',
+        'utf8',
+      );
       await writeFile(first, 'Hidden:\n  ret\n@First:\n  ret\n', 'utf8');
       await writeFile(second, 'hidden:\n  ret\n@Second:\n  ret\n', 'utf8');
 
@@ -875,11 +922,7 @@ describe('stage 11 tooling API', () => {
     await withTempDir('azm-next-tooling-import-private-equ-collision-', async (dir) => {
       const entry = join(dir, 'main.asm');
       const module = join(dir, 'module.asm');
-      await writeFile(
-        entry,
-        '.import "module.asm"\nHidden .equ 1\nmain:\n  jp Hidden\n',
-        'utf8',
-      );
+      await writeFile(entry, '.import "module.asm"\nHidden .equ 1\nmain:\n  jp Hidden\n', 'utf8');
       await writeFile(module, '@Public:\nHidden:\n  ret\n', 'utf8');
 
       const result = await loadProgramNext({ entryFile: entry });
@@ -968,26 +1011,29 @@ describe('stage 11 tooling API', () => {
   });
 
   it('allows case-distinct entry enum members alongside imported private labels', async () => {
-    await withTempDir('azm-next-tooling-import-private-enum-member-case-collision-', async (dir) => {
-      const entry = join(dir, 'main.asm');
-      const module = join(dir, 'module.asm');
-      await writeFile(
-        entry,
-        '.import "module.asm"\nHidden .enum Target\nmain:\n  jp Hidden.Target\n',
-        'utf8',
-      );
-      await writeFile(module, '@Public:\nhidden.target:\n  ret\n', 'utf8');
+    await withTempDir(
+      'azm-next-tooling-import-private-enum-member-case-collision-',
+      async (dir) => {
+        const entry = join(dir, 'main.asm');
+        const module = join(dir, 'module.asm');
+        await writeFile(
+          entry,
+          '.import "module.asm"\nHidden .enum Target\nmain:\n  jp Hidden.Target\n',
+          'utf8',
+        );
+        await writeFile(module, '@Public:\nhidden.target:\n  ret\n', 'utf8');
 
-      const result = await loadProgramNext({ entryFile: entry });
-      expect(result.diagnostics).toEqual([]);
+        const result = await loadProgramNext({ entryFile: entry });
+        expect(result.diagnostics).toEqual([]);
 
-      const analysis = analyzeProgramNext(result.loadedProgram!);
-      expect(analysis.diagnostics).toEqual([]);
-      expect(analysis.env.symbols).toMatchObject({ 'Hidden.Target': 0 });
-    });
+        const analysis = analyzeProgramNext(result.loadedProgram!);
+        expect(analysis.diagnostics).toEqual([]);
+        expect(analysis.env.symbols).toMatchObject({ 'Hidden.Target': 0 });
+      },
+    );
   });
 
-  it('resolves case-distinct enum members before imported private labels', async () => {
+  it('does not resolve case-distinct enum members over exact private labels', async () => {
     await withTempDir('azm-next-tooling-import-private-enum-member-case-visible-', async (dir) => {
       const entry = join(dir, 'main.asm');
       const enumModule = join(dir, 'enum.asm');
@@ -997,15 +1043,16 @@ describe('stage 11 tooling API', () => {
         '.import "enum.asm"\n.import "labels.asm"\nmain:\n  jp hidden.target\n',
         'utf8',
       );
-      await writeFile(enumModule, 'Hidden .enum Target\n', 'utf8');
+      await writeFile(enumModule, '@Hidden .enum Target\n', 'utf8');
       await writeFile(labelModule, '@Public:\nhidden.target:\n  ret\n', 'utf8');
 
       const result = await loadProgramNext({ entryFile: entry });
       expect(result.diagnostics).toEqual([]);
 
       const analysis = analyzeProgramNext(result.loadedProgram!);
-      expect(analysis.diagnostics).toEqual([]);
-      expect(analysis.env.symbols).toMatchObject({ 'Hidden.Target': 0 });
+      expect(analysis.diagnostics).toEqual([
+        expect.objectContaining({ message: expect.stringMatching(/hidden\.target.*private/) }),
+      ]);
     });
   });
 

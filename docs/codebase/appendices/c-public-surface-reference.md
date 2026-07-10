@@ -78,10 +78,11 @@ records whether the physical file edge was `entry`, `include` or `import`, and
 `entry` or `import`.
 
 Tooling and compile consumers should also treat returned symbol tables and D8
-symbol lists as display-oriented contracts. Imported private labels can take
-source-unit-qualified internal names during assembly, but those internal names
-are not part of the public surface and must not leak through the returned
-symbol data.
+symbol lists as display-oriented contracts. D8 symbols use `identity`,
+`visibility` and `sourceUnit` to distinguish declarations whose display names
+collide. Imported private declarations can take source-unit-qualified internal
+names during assembly, but those internal names are not part of the public
+surface and must not leak through returned symbol data.
 
 ## CLI Export
 

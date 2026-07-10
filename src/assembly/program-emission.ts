@@ -12,11 +12,7 @@ import {
   type LayoutRecord,
 } from '../semantics/expression-evaluation.js';
 import type { DataValue } from '../model/source-item.js';
-import {
-  emitAbs16Expression,
-  emitInstruction,
-  patchFixups,
-} from './fixup-emission.js';
+import { emitAbs16Expression, emitInstruction, patchFixups } from './fixup-emission.js';
 import {
   absoluteCodeAddress,
   absoluteDataAddress,
@@ -29,11 +25,7 @@ import {
   placementForOrg,
   type PlacementState,
 } from './placement.js';
-import {
-  alignmentPadding,
-  stringDirectiveBytes,
-  type AddressState,
-} from './address-planning.js';
+import { alignmentPadding, stringDirectiveBytes, type AddressState } from './address-planning.js';
 
 export interface EmittedProgram {
   readonly origin: number;
@@ -69,6 +61,10 @@ const EMIT_ITEM_HANDLERS: Record<SourceItem['kind'], EmitItemHandler> = {
   org: (context, item, items, itemIndex) =>
     emitOrg(context, items, itemIndex, item as Extract<SourceItem, { readonly kind: 'org' }>),
   comment: () => undefined,
+  routine: () => undefined,
+  'contracts-policy': () => undefined,
+  'rc-ignore': () => undefined,
+  'expect-out': () => undefined,
   equ: () => undefined,
   label: () => undefined,
   enum: () => undefined,
@@ -315,7 +311,12 @@ function emitOrg(
   item: Extract<SourceItem, { readonly kind: 'org' }>,
 ): void {
   context.placement.activePlacement = placementForOrg(items, itemIndex);
-  const value = evaluateEmitExpression(context, item.expression, item.span, placementAddress(context.placement));
+  const value = evaluateEmitExpression(
+    context,
+    item.expression,
+    item.span,
+    placementAddress(context.placement),
+  );
   if (value !== undefined) {
     applyOrg(context.placement, value);
   }
@@ -388,7 +389,10 @@ function emitDs(context: EmitContext, item: Extract<SourceItem, { readonly kind:
   advancePlacement(context.placement, size);
 }
 
-function emitAlign(context: EmitContext, item: Extract<SourceItem, { readonly kind: 'align' }>): void {
+function emitAlign(
+  context: EmitContext,
+  item: Extract<SourceItem, { readonly kind: 'align' }>,
+): void {
   const emitAddress = activePlacementAddress(context.placement);
   const alignment = evaluateEmitExpression(context, item.alignment, item.span, emitAddress);
   if (alignment === undefined) {
@@ -403,14 +407,25 @@ function emitAlign(context: EmitContext, item: Extract<SourceItem, { readonly ki
     writeImageByte(context.image, context.initializedAddresses, emitAddress + index, 0);
   }
   advancePlacement(context.placement, padding);
-  addSourceSegment(context.sourceSegments, item.span, emitAddress, emitAddress + padding, 'directive');
+  addSourceSegment(
+    context.sourceSegments,
+    item.span,
+    emitAddress,
+    emitAddress + padding,
+    'directive',
+  );
 }
 
 function emitBinRangeControl(
   context: EmitContext,
   item: Extract<SourceItem, { readonly kind: 'binfrom' | 'binto' }>,
 ): void {
-  const value = evaluateEmitExpression(context, item.expression, item.span, placementAddress(context.placement));
+  const value = evaluateEmitExpression(
+    context,
+    item.expression,
+    item.span,
+    placementAddress(context.placement),
+  );
   if (value === undefined) {
     return;
   }
@@ -474,8 +489,15 @@ function evaluateEmitExpression(
   span: Parameters<typeof evaluateExpression>[3],
   currentLocation: number,
 ): number | undefined {
-  return evaluateExpression(expression, context.labels, context.equates, span, context.diagnostics, {
-    currentLocation,
-    layouts: context.layouts,
-  });
+  return evaluateExpression(
+    expression,
+    context.labels,
+    context.equates,
+    span,
+    context.diagnostics,
+    {
+      currentLocation,
+      layouts: context.layouts,
+    },
+  );
 }

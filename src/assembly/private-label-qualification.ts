@@ -2,10 +2,7 @@ import type { Expression } from '../model/expression.js';
 import type { DataValue, SourceItem } from '../model/source-item.js';
 import type { SymbolTable } from '../model/symbol.js';
 import type { Z80Instruction, Z80Operand } from '../z80/instruction.js';
-import {
-  buildRoutineLocalLabelModel,
-  routineScopeKey,
-} from './routine-label-scopes.js';
+import { buildRoutineLocalLabelModel, routineScopeKey } from './routine-label-scopes.js';
 
 const PRIVATE_LABEL_PREFIX = '\0azm-private\0';
 
@@ -26,14 +23,11 @@ export function displaySymbolName(name: string): string {
 }
 
 /**
- * Qualify labels that are local to an `@` routine scope: plain labels
- * defined between an `@Name:` entry label and the next one in the same
- * privacy unit. Runs before {@link qualifyImportedPrivateLabels}; the
- * remaining (file-level) labels of imported units are handled there.
+ * Qualify `_name` labels beneath their nearest preceding non-local owner.
+ * Runs before {@link qualifyImportedPrivateLabels}; remaining source-unit
+ * private labels of imported units are handled there.
  */
-export function qualifyRoutineLocalLabels(
-  items: readonly SourceItem[],
-): readonly SourceItem[] {
+export function qualifyRoutineLocalLabels(items: readonly SourceItem[]): readonly SourceItem[] {
   const model = buildRoutineLocalLabelModel(items);
   if (model.localsByScope.size === 0) return items;
   const scopeCache = new Map<string, PrivateLabelScope>();
@@ -56,16 +50,14 @@ export function qualifyRoutineLocalLabels(
       };
       scopeCache.set(scopeKey, privateScope);
     }
-    return item.kind === 'label' && item.isEntry === true
+    return item.kind === 'label' && item.isExported === true
       ? item
       : qualifySourceItemWithScope(item, privateScope);
   });
 }
 
-export function qualifyImportedPrivateLabels(
-  items: readonly SourceItem[],
-): readonly SourceItem[] {
-  const labelsByUnit = importedPrivateLabelsByUnit(items);
+export function qualifyImportedPrivateLabels(items: readonly SourceItem[]): readonly SourceItem[] {
+  const labelsByUnit = importedPrivateNamesByUnit(items);
   const exactNonPrivateNamesByUnit = importedExactNonPrivateNamesByUnit(items);
   const lowerNonPrivateNamesByUnit = lowerNamesByUnit(exactNonPrivateNamesByUnit);
   if (labelsByUnit.size === 0) return items;
@@ -104,16 +96,13 @@ export function displaySymbolsForProgram(
     const lower = pair.originalName.toLowerCase();
     privateLowerCounts.set(lower, (privateLowerCounts.get(lower) ?? 0) + 1);
   }
-  const publicLowerNames = new Set(
-    Object.keys(displaySymbols).map((name) => name.toLowerCase()),
-  );
+  const publicLowerNames = new Set(Object.keys(displaySymbols).map((name) => name.toLowerCase()));
 
   for (const pair of pairs) {
     const value = symbols[pair.qualifiedName];
     if (value === undefined) continue;
     const lower = pair.originalName.toLowerCase();
-    const ambiguous =
-      (privateLowerCounts.get(lower) ?? 0) > 1 || publicLowerNames.has(lower);
+    const ambiguous = (privateLowerCounts.get(lower) ?? 0) > 1 || publicLowerNames.has(lower);
     if (!ambiguous) {
       if (displaySymbols[pair.originalName] === undefined) {
         displaySymbols[pair.originalName] = value;
@@ -131,11 +120,7 @@ export function displaySymbolsForProgram(
   return displaySymbols;
 }
 
-function qualifyRoutineLocalLabelName(
-  unitKey: string,
-  routine: string,
-  name: string,
-): string {
+function qualifyRoutineLocalLabelName(unitKey: string, routine: string, name: string): string {
   return `${PRIVATE_LABEL_PREFIX}${unitKey}\0@${routine}\0${name}`;
 }
 
@@ -147,21 +132,37 @@ function routineOfQualifiedLabelName(name: string): string | undefined {
     : undefined;
 }
 
-function importedPrivateLabelsByUnit(
+function importedPrivateNamesByUnit(
   items: readonly SourceItem[],
-): ReadonlyMap<string, ReadonlySet<string>> {
-  const labels = new Map<string, Set<string>>();
+): ReadonlyMap<string, ReadonlyMap<string, string>> {
+  const namesByUnit = new Map<string, Map<string, string>>();
   for (let index = 0; index < items.length; index += 1) {
     const item = items[index]!;
-    if (!isImportedPrivateLabel(item)) continue;
-    if (hasSameSourceUnitDeclarationConflict(item, items, index)) continue;
+    if (!isImportedPrivateDeclaration(item)) continue;
+    if (item.kind === 'label' && hasSameSourceUnitDeclarationConflict(item, items, index)) continue;
     const unit = item.span.sourceUnit;
     if (unit === undefined) continue;
-    const unitLabels = labels.get(unit) ?? new Set<string>();
-    unitLabels.add(item.name);
-    labels.set(unit, unitLabels);
+    const unitNames = namesByUnit.get(unit) ?? new Map<string, string>();
+    for (const name of privateDeclarationNames(item)) {
+      unitNames.set(name, qualifyPrivateLabelName(unit, name));
+    }
+    namesByUnit.set(unit, unitNames);
   }
-  return labels;
+  return namesByUnit;
+}
+
+function privateDeclarationNames(item: SourceItem): readonly string[] {
+  switch (item.kind) {
+    case 'label':
+    case 'equ':
+    case 'type':
+    case 'type-alias':
+      return [item.name];
+    case 'enum':
+      return [item.name, ...item.members.map((member) => `${item.name}.${member}`)];
+    default:
+      return [];
+  }
 }
 
 function importedExactNonPrivateNamesByUnit(
@@ -191,13 +192,10 @@ function lowerNamesByUnit(
 }
 
 function exactNonPrivateNames(item: SourceItem): readonly string[] {
+  if (isImportedPrivateDeclaration(item)) return [];
   switch (item.kind) {
     case 'label':
-      return item.isEntry !== true &&
-        item.span.sourceUnitRelation === 'import' &&
-        item.span.sourceUnit !== undefined
-        ? []
-        : [item.name];
+      return [item.name];
     case 'equ':
       return [item.name];
     case 'enum':
@@ -240,12 +238,14 @@ function hasSameSourceUnitDeclarationConflict(
   return false;
 }
 
-function isImportedPrivateLabel(
-  item: SourceItem,
-): item is Extract<SourceItem, { readonly kind: 'label' }> {
+function isImportedPrivateDeclaration(item: SourceItem): boolean {
   return (
-    item.kind === 'label' &&
-    item.isEntry !== true &&
+    (item.kind === 'label' ||
+      item.kind === 'equ' ||
+      item.kind === 'enum' ||
+      item.kind === 'type' ||
+      item.kind === 'type-alias') &&
+    item.isExported !== true &&
     !isQualifiedPrivateLabelName(item.name) &&
     item.span.sourceUnitRelation === 'import' &&
     item.span.sourceUnit !== undefined
@@ -258,18 +258,14 @@ function qualifyPrivateLabelName(sourceUnit: string, name: string): string {
 
 function privateLabelsForItem(
   item: SourceItem,
-  labelsByUnit: ReadonlyMap<string, ReadonlySet<string>>,
+  labelsByUnit: ReadonlyMap<string, ReadonlyMap<string, string>>,
   exactNonPrivateNamesByUnit: ReadonlyMap<string, ReadonlySet<string>>,
   lowerNonPrivateNamesByUnit: ReadonlyMap<string, ReadonlySet<string>>,
 ): PrivateLabelScope | undefined {
   const sourceUnit = item.span.sourceUnit;
   if (item.span.sourceUnitRelation !== 'import' || sourceUnit === undefined) return undefined;
-  const labels = labelsByUnit.get(sourceUnit);
-  if (labels === undefined || labels.size === 0) return undefined;
-  const map = new Map<string, string>();
-  for (const name of labels) {
-    map.set(name, qualifyPrivateLabelName(sourceUnit, name));
-  }
+  const map = labelsByUnit.get(sourceUnit);
+  if (map === undefined || map.size === 0) return undefined;
   return {
     labels: map,
     exactNonPrivateNames: exactNonPrivateNamesByUnit.get(sourceUnit) ?? new Set<string>(),
@@ -279,7 +275,7 @@ function privateLabelsForItem(
 
 function qualifySourceItem(
   item: SourceItem,
-  labelsByUnit: ReadonlyMap<string, ReadonlySet<string>>,
+  labelsByUnit: ReadonlyMap<string, ReadonlyMap<string, string>>,
   exactNonPrivateNamesByUnit: ReadonlyMap<string, ReadonlySet<string>>,
   lowerNonPrivateNamesByUnit: ReadonlyMap<string, ReadonlySet<string>>,
 ): SourceItem {
@@ -293,29 +289,32 @@ function qualifySourceItem(
   return qualifySourceItemWithScope(item, privateScope);
 }
 
-function qualifySourceItemWithScope(
-  item: SourceItem,
-  privateScope: PrivateLabelScope,
-): SourceItem {
+function qualifySourceItemWithScope(item: SourceItem, privateScope: PrivateLabelScope): SourceItem {
   switch (item.kind) {
     case 'label':
       return { ...item, name: privateScope.labels.get(item.name) ?? item.name };
-    case 'org':
     case 'equ':
+      return {
+        ...item,
+        name: privateScope.labels.get(item.name) ?? item.name,
+        expression: qualifyExpression(item.expression, privateScope),
+      };
+    case 'org':
     case 'binfrom':
     case 'binto':
       return { ...item, expression: qualifyExpression(item.expression, privateScope) };
     case 'db':
       return { ...item, values: item.values.map((value) => qualifyDataValue(value, privateScope)) };
     case 'dw':
-      return { ...item, values: item.values.map((value) => qualifyExpression(value, privateScope)) };
+      return {
+        ...item,
+        values: item.values.map((value) => qualifyExpression(value, privateScope)),
+      };
     case 'ds':
       return {
         ...item,
         size: qualifyExpression(item.size, privateScope),
-        ...(item.fill !== undefined
-          ? { fill: qualifyExpression(item.fill, privateScope) }
-          : {}),
+        ...(item.fill !== undefined ? { fill: qualifyExpression(item.fill, privateScope) } : {}),
       };
     case 'align':
       return { ...item, alignment: qualifyExpression(item.alignment, privateScope) };
@@ -324,20 +323,46 @@ function qualifySourceItemWithScope(
         ...item,
         instruction: qualifyInstruction(item.instruction, privateScope),
       };
-    case 'comment':
-    case 'end':
     case 'enum':
+      return { ...item, name: privateScope.labels.get(item.name) ?? item.name };
     case 'type':
+      return {
+        ...item,
+        name: privateScope.labels.get(item.name) ?? item.name,
+        fields: item.fields.map((field) =>
+          field.typeExpr === undefined
+            ? field
+            : { ...field, typeExpr: qualifyTypeExpr(field.typeExpr, privateScope) },
+        ),
+      };
     case 'type-alias':
+      return {
+        ...item,
+        name: privateScope.labels.get(item.name) ?? item.name,
+        typeExpr: qualifyTypeExpr(item.typeExpr, privateScope),
+      };
+    case 'comment':
+    case 'routine':
+    case 'contracts-policy':
+    case 'rc-ignore':
+    case 'expect-out':
+    case 'end':
     case 'string-data':
       return item;
   }
 }
 
-function qualifyDataValue(
-  value: DataValue,
+function qualifyTypeExpr(
+  typeExpr: import('../model/expression.js').TypeExpr,
   privateScope: PrivateLabelScope,
-): DataValue {
+): import('../model/expression.js').TypeExpr {
+  return {
+    ...typeExpr,
+    name: privateScope.labels.get(typeExpr.name) ?? typeExpr.name,
+  };
+}
+
+function qualifyDataValue(value: DataValue, privateScope: PrivateLabelScope): DataValue {
   return value.kind === 'string-fragment' ? value : qualifyExpression(value, privateScope);
 }
 
@@ -354,7 +379,10 @@ function qualifyInstruction(
     case 'jp-cc':
     case 'call-cc':
     case 'jr-cc':
-      return { ...instruction, expression: qualifyExpression(instruction.expression, privateScope) };
+      return {
+        ...instruction,
+        expression: qualifyExpression(instruction.expression, privateScope),
+      };
     case 'ld':
       return {
         ...instruction,
@@ -414,7 +442,7 @@ function qualifyInstruction(
             ...instruction,
             operand: {
               ...instruction.operand,
-                displacement: qualifyExpression(instruction.operand.displacement, privateScope),
+              displacement: qualifyExpression(instruction.operand.displacement, privateScope),
             },
           }
         : instruction;
@@ -438,10 +466,7 @@ function qualifyInstruction(
   }
 }
 
-function qualifyOperand(
-  operand: Z80Operand,
-  privateScope: PrivateLabelScope,
-): Z80Operand {
+function qualifyOperand(operand: Z80Operand, privateScope: PrivateLabelScope): Z80Operand {
   switch (operand.kind) {
     case 'mem-abs':
     case 'imm':
@@ -453,13 +478,13 @@ function qualifyOperand(
   }
 }
 
-function qualifyExpression(
-  expression: Expression,
-  privateScope: PrivateLabelScope,
-): Expression {
+function qualifyExpression(expression: Expression, privateScope: PrivateLabelScope): Expression {
   switch (expression.kind) {
     case 'symbol':
-      return { ...expression, name: lookupPrivateLabel(privateScope, expression.name) ?? expression.name };
+      return {
+        ...expression,
+        name: lookupPrivateLabel(privateScope, expression.name) ?? expression.name,
+      };
     case 'byte-function':
     case 'unary':
       return { ...expression, expression: qualifyExpression(expression.expression, privateScope) };
@@ -472,6 +497,7 @@ function qualifyExpression(
     case 'layout-cast':
       return {
         ...expression,
+        typeExpr: qualifyTypeExpr(expression.typeExpr, privateScope),
         base: qualifyExpression(expression.base, privateScope),
         path: expression.path.map((part) =>
           part.kind === 'index'
@@ -481,32 +507,16 @@ function qualifyExpression(
       };
     case 'number':
     case 'current-location':
-    case 'sizeof':
-    case 'offset':
       return expression;
-    case 'type-size': {
-      const privateLabel = lookupPrivateLabel(privateScope, expression.typeExpr.name);
-      return expression.typeExpr.length === undefined && privateLabel !== undefined
-        ? { kind: 'symbol', name: privateLabel }
-        : expression;
-    }
+    case 'sizeof':
+    case 'type-size':
+      return { ...expression, typeExpr: qualifyTypeExpr(expression.typeExpr, privateScope) };
+    case 'offset':
+      return { ...expression, typeExpr: qualifyTypeExpr(expression.typeExpr, privateScope) };
   }
 }
 
-function lookupPrivateLabel(
-  privateScope: PrivateLabelScope,
-  name: string,
-): string | undefined {
+function lookupPrivateLabel(privateScope: PrivateLabelScope, name: string): string | undefined {
   const exact = privateScope.labels.get(name);
-  if (exact !== undefined) return exact;
-  if (privateScope.exactNonPrivateNames.has(name)) return undefined;
-  const lowerName = name.toLowerCase();
-  if (privateScope.lowerNonPrivateNames.has(lowerName)) return undefined;
-  let match: string | undefined;
-  for (const [labelName, qualifiedName] of privateScope.labels) {
-    if (labelName.toLowerCase() !== lowerName) continue;
-    if (match !== undefined) return undefined;
-    match = qualifiedName;
-  }
-  return match;
+  return exact;
 }

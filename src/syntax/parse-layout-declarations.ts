@@ -3,7 +3,7 @@ import type { LayoutField, SourceItem } from '../model/source-item.js';
 import type { LogicalLine } from '../source/logical-lines.js';
 import type { SourceSpan } from '../source/source-span.js';
 import { stripLineComment } from '../source/strip-line-comment.js';
-import { IDENTIFIER_PATTERN } from './names.js';
+import { IDENTIFIER_PATTERN, normalizeExportedName } from './names.js';
 import { firstNonWhitespaceColumn, parseLineError } from './parse-diagnostics.js';
 import { parseTypeExpr } from './parse-expression.js';
 
@@ -26,7 +26,9 @@ export function parseLayoutDeclarationAt(
     return { consumedUntilIndex: index, ...typeAlias };
   }
 
-  const prefixLayoutHeader = new RegExp(`^\\.(type|union)\\s+(${IDENTIFIER_PATTERN})\\s*$`).exec(text);
+  const prefixLayoutHeader = new RegExp(`^\\.(type|union)\\s+(${IDENTIFIER_PATTERN})\\s*$`).exec(
+    text,
+  );
   if (prefixLayoutHeader) {
     const directive = prefixLayoutHeader[1] ?? 'type';
     return {
@@ -50,7 +52,7 @@ function parseTypeAlias(
   text: string,
 ): { readonly item?: SourceItem; readonly diagnostics: readonly Diagnostic[] } | undefined {
   const nameLeftTypeAlias = new RegExp(
-    `^(${IDENTIFIER_PATTERN})(?::\\s*|\\s+)\\.typealias\\s+(.+)$`,
+    `^(@?${IDENTIFIER_PATTERN})(?::\\s*|\\s+)\\.typealias\\s+(.+)$`,
   ).exec(text);
   if (nameLeftTypeAlias) {
     const typeExprText = nameLeftTypeAlias[2] ?? '';
@@ -61,7 +63,8 @@ function parseTypeAlias(
     return {
       item: {
         kind: 'type-alias',
-        name: nameLeftTypeAlias[1] ?? '',
+        name: normalizeExportedName(nameLeftTypeAlias[1] ?? ''),
+        ...((nameLeftTypeAlias[1] ?? '').startsWith('@') ? { isExported: true } : {}),
         typeExpr,
         span: spanForLine(line),
       },
@@ -83,12 +86,15 @@ function parseTypeAlias(
 
 function parseNameLeftLayoutHeader(
   text: string,
-): { readonly directive: string; readonly name: string } | undefined {
-  const match = new RegExp(`^(${IDENTIFIER_PATTERN})(?::\\s*|\\s+)\\.(type|union)\\s*$`).exec(text);
+): { readonly directive: string; readonly name: string; readonly isExported: boolean } | undefined {
+  const match = new RegExp(`^(@?${IDENTIFIER_PATTERN})(?::\\s*|\\s+)\\.(type|union)\\s*$`).exec(
+    text,
+  );
   return match
     ? {
         directive: match[2] ?? '',
-        name: match[1] ?? '',
+        name: normalizeExportedName(match[1] ?? ''),
+        isExported: (match[1] ?? '').startsWith('@'),
       }
     : undefined;
 }
@@ -96,7 +102,7 @@ function parseNameLeftLayoutHeader(
 function parseLayoutBlock(
   lines: readonly LogicalLine[],
   index: number,
-  header: { readonly directive: string; readonly name: string },
+  header: { readonly directive: string; readonly name: string; readonly isExported: boolean },
 ): LayoutDeclarationParseResult {
   const line = lines[index]!;
   const layoutKind = header.directive === 'union' ? 'union' : 'record';
@@ -139,6 +145,7 @@ function parseLayoutBlock(
     item: {
       kind: 'type',
       name: header.name,
+      ...(header.isExported ? { isExported: true } : {}),
       layoutKind,
       fields,
       span: spanForLine(line),
@@ -153,7 +160,9 @@ function spanForLine(line: LogicalLine): SourceSpan {
     column: firstNonWhitespaceColumn(line.text),
     ...(line.sourceUnit !== undefined ? { sourceUnit: line.sourceUnit } : {}),
     ...(line.sourceRelation !== undefined ? { sourceRelation: line.sourceRelation } : {}),
-    ...(line.sourceUnitRelation !== undefined ? { sourceUnitRelation: line.sourceUnitRelation } : {}),
+    ...(line.sourceUnitRelation !== undefined
+      ? { sourceUnitRelation: line.sourceUnitRelation }
+      : {}),
   };
 }
 

@@ -8,15 +8,13 @@ import {
   renameInstructionExpressions,
   renameSourceItems,
 } from './op-local-labels.js';
-import type {
-  LogicalLineLike,
-  OpDecl,
-  OpTemplateItem,
-} from './op-expansion.js';
 import {
-  formatOpOperand,
-  type OpOperand,
-} from './op-operands.js';
+  opOverloadsVisibleFrom,
+  type LogicalLineLike,
+  type OpDecl,
+  type OpTemplateItem,
+} from './op-expansion.js';
+import { formatOpOperand, type OpOperand } from './op-operands.js';
 import { formatOpSelectionDiagnostic, selectOpOverload } from './op-selection.js';
 
 type EmittedOpSource = NonNullable<Extract<SourceItem, { kind: 'instruction' }>['emittedSource']>;
@@ -32,13 +30,17 @@ export function expandSelectedOp(
   const name = overloads[0]?.name ?? '<unknown>';
   const cycleStart = stack.findIndex((entry) => entry.name.toLowerCase() === name.toLowerCase());
   if (cycleStart !== -1) {
-    diagnostics.push(parseDiagnostic(line, formatCycleDiagnostic(name, stack, cycleStart, overloads)));
+    diagnostics.push(
+      parseDiagnostic(line, formatCycleDiagnostic(name, stack, cycleStart, overloads)),
+    );
     return [];
   }
 
   const selection = selectOpOverload(overloads, operands);
   if (selection.kind !== 'selected') {
-    diagnostics.push(parseDiagnostic(line, formatOpSelectionDiagnostic(selection, overloads, operands)));
+    diagnostics.push(
+      parseDiagnostic(line, formatOpSelectionDiagnostic(selection, overloads, operands)),
+    );
     return [];
   }
 
@@ -65,7 +67,10 @@ export function expandSelectedOp(
   return expanded;
 }
 
-function bindOpOperands(overload: OpDecl, operands: readonly OpOperand[]): ReadonlyMap<string, OpOperand> {
+function bindOpOperands(
+  overload: OpDecl,
+  operands: readonly OpOperand[],
+): ReadonlyMap<string, OpOperand> {
   const bindings = new Map<string, OpOperand>();
   overload.params.forEach((param, index) => {
     bindings.set(param.name, operands[index]!);
@@ -96,19 +101,35 @@ function expandTemplateItem(
   }
   const nested = ops.get(item.mnemonic);
   if (nested) {
-    return expandSelectedOp(ops, nested, concreteOperands, line, diagnostics, expansionStack);
+    const visibleNested = opOverloadsVisibleFrom(nested, overload);
+    if (visibleNested.length === 0) {
+      diagnostics.push(
+        parseDiagnostic(line, `op "${item.mnemonic}" is private to another source unit`),
+      );
+      return [];
+    }
+    return expandSelectedOp(
+      ops,
+      visibleNested,
+      concreteOperands,
+      line,
+      diagnostics,
+      expansionStack,
+    );
   }
   const instruction = instantiateTemplateInstruction(item.mnemonic, concreteOperands);
   if (!instruction || encodeZ80Instruction(instruction).size === 0) {
     reportInvalidOpExpansion(line, diagnostics, overload, expansionStack, item, concreteOperands);
     return [];
   }
-  return [{
-    kind: 'instruction',
-    instruction: renameInstructionExpressions(instruction, localLabelMap),
-    span: emittedSource.span,
-    emittedSource,
-  }];
+  return [
+    {
+      kind: 'instruction',
+      instruction: renameInstructionExpressions(instruction, localLabelMap),
+      span: emittedSource.span,
+      emittedSource,
+    },
+  ];
 }
 
 function opEmittedSource(line: LogicalLineLike): EmittedOpSource {
@@ -119,7 +140,9 @@ function opEmittedSource(line: LogicalLineLike): EmittedOpSource {
       column: firstColumn(line.text),
       ...(line.sourceUnit !== undefined ? { sourceUnit: line.sourceUnit } : {}),
       ...(line.sourceRelation !== undefined ? { sourceRelation: line.sourceRelation } : {}),
-      ...(line.sourceUnitRelation !== undefined ? { sourceUnitRelation: line.sourceUnitRelation } : {}),
+      ...(line.sourceUnitRelation !== undefined
+        ? { sourceUnitRelation: line.sourceUnitRelation }
+        : {}),
     },
     kind: 'macro',
   };

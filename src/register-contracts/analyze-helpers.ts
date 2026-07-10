@@ -27,7 +27,7 @@ export function candidateMessageWithFixability(
   const base = `CALL ${candidate.routine} writes ${carriers} and caller reads it later`;
   return autoFixable
     ? `${base}; generated contracts promote this to \`out ${expectation}\` automatically.`
-    : `${base}; manual review required before adding \`; expects out ${expectation}\` because the later read is not a simple direct continuation.`;
+    : `${base}; manual review required before adding \`.expectout ${expectation}\` because the later read is not a simple direct continuation.`;
 }
 
 export function knownRoutineNames(
@@ -89,11 +89,13 @@ export function strictStackDiagnostics(
   routines: readonly RegisterContractsRoutine[],
   summaries: readonly RoutineSummary[],
 ): Diagnostic[] {
-  const routinesByName = new Map(routines.map((routine) => [routine.name, routine]));
+  const routinesByName = new Map(
+    routines.map((routine) => [routine.identity ?? routine.name, routine]),
+  );
   const diagnostics: Diagnostic[] = [];
 
   for (const summary of summaries) {
-    const routine = routinesByName.get(summary.name);
+    const routine = routinesByName.get(summary.identity ?? summary.name);
     if (routine === undefined) continue;
     const stackIssues = strictStackIssueText(summary);
     if (stackIssues === undefined) continue;
@@ -103,7 +105,7 @@ export function strictStackDiagnostics(
       sourceName: routine.span.file,
       line: routine.span.start.line,
       column: routine.span.start.column,
-      message: `Register contracts cannot prove stack discipline for ${summary.name}: ${stackIssues}. Keep PUSH/POP pairs and stack-changing exits inside one @ routine boundary, or split the code into explicit callable routines.`,
+      message: `Register contracts cannot prove stack discipline for ${summary.name}: ${stackIssues}. Keep PUSH/POP pairs and stack-changing exits inside one .routine boundary, or split the code into explicit callable routines.`,
     });
   }
 
@@ -114,17 +116,20 @@ export function strictStackFindings(
   routines: readonly RegisterContractsRoutine[],
   summaries: readonly RoutineSummary[],
 ): RegisterContractsFinding[] {
-  const routinesByName = new Map(routines.map((routine) => [routine.name, routine]));
+  const routinesByName = new Map(
+    routines.map((routine) => [routine.identity ?? routine.name, routine]),
+  );
   const findings: RegisterContractsFinding[] = [];
 
   for (const summary of summaries) {
-    const routine = routinesByName.get(summary.name);
+    const routine = routinesByName.get(summary.identity ?? summary.name);
     if (routine === undefined) continue;
     const stackIssues = strictStackIssueText(summary);
     if (stackIssues === undefined) continue;
     findings.push({
       kind: 'unknown_control_flow',
       routine: summary.name,
+      ...(summary.identity !== undefined ? { routineIdentity: summary.identity } : {}),
       stackBalanced: summary.stackBalanced,
       ...(summary.hasUnknownStackEffect !== undefined
         ? { hasUnknownStackEffect: summary.hasUnknownStackEffect }
@@ -139,7 +144,7 @@ export function strictStackFindings(
       ...(routine.span.sourceUnitRelation !== undefined
         ? { sourceUnitRelation: routine.span.sourceUnitRelation }
         : {}),
-      message: `Register contracts cannot prove stack discipline for ${summary.name}: ${stackIssues}. Keep PUSH/POP pairs and stack-changing exits inside one @ routine boundary, or split the code into explicit callable routines.`,
+      message: `Register contracts cannot prove stack discipline for ${summary.name}: ${stackIssues}. Keep PUSH/POP pairs and stack-changing exits inside one .routine boundary, or split the code into explicit callable routines.`,
     });
   }
 
@@ -151,7 +156,7 @@ export function unknownBoundaryFindings(
   knownRoutines: ReadonlySet<string>,
 ): RegisterContractsFinding[] {
   return directBoundaries
-    .filter((boundary) => !knownRoutines.has(boundary.target))
+    .filter((boundary) => !knownRoutines.has(boundary.targetIdentity ?? boundary.target))
     .map((boundary) => ({
       kind: 'missing_callee_contract',
       callTarget: boundary.target,
@@ -210,11 +215,12 @@ function outputCandidateUnitsByRoutine(
 ): Map<string, RegisterContractsUnit[]> {
   const out = new Map<string, RegisterContractsUnit[]>();
   for (const candidate of outputCandidates) {
-    const existing = out.get(candidate.routine) ?? [];
+    const key = candidate.routineIdentity ?? candidate.routine;
+    const existing = out.get(key) ?? [];
     for (const unit of candidate.carriers) {
       if (!existing.includes(unit)) existing.push(unit);
     }
-    out.set(candidate.routine, existing);
+    out.set(key, existing);
   }
   return out;
 }
@@ -222,6 +228,7 @@ function outputCandidateUnitsByRoutine(
 export function buildRegisterContractsReportModel(input: {
   entryFile: string;
   mode: AnalyzeRegisterContractsOptions['mode'];
+  filePolicies?: Readonly<Record<string, import('./types.js').RegisterContractsPolicyMode>>;
   summaries: readonly RoutineSummary[];
   profileSummaries: readonly RoutineSummary[];
   findings: readonly RegisterContractsFinding[];
@@ -235,6 +242,7 @@ export function buildRegisterContractsReportModel(input: {
   return {
     entryFile: input.entryFile,
     mode: input.mode,
+    ...(input.filePolicies !== undefined ? { filePolicies: input.filePolicies } : {}),
     summaries: [...input.summaries, ...input.profileSummaries],
     findings: [...input.findings],
     ...(input.suppressedFindings !== undefined && input.suppressedFindings.length > 0
@@ -243,8 +251,7 @@ export function buildRegisterContractsReportModel(input: {
     conflicts: [...input.conflicts],
     outputCandidates: [...input.outputCandidates],
     ...(input.profile !== undefined ? { profile: input.profile } : {}),
-    unknownCalls:
-      input.mode === 'off' ? [] : unknownCallList(input.directBoundaries, input.knownRoutines),
+    unknownCalls: unknownCallList(input.directBoundaries, input.knownRoutines),
   };
 }
 
@@ -256,14 +263,15 @@ export function autoAcceptedOutputCandidateMap(
   const out = new Map<string, RegisterContractsUnit[]>();
   const sourceMaybeOut = sourceMaybeOutByRoutine(routines, sourceTexts);
   for (const fix of findExpectOutFixesForCandidates([...routines], [...outputCandidates])) {
-    const declaredMaybeOut = sourceMaybeOut.get(fix.routine) ?? [];
+    const key = fix.routineIdentity ?? fix.routine;
+    const declaredMaybeOut = sourceMaybeOut.get(key) ?? [];
     const eligibleCarriers = fix.carriers.filter((carrier) => declaredMaybeOut.includes(carrier));
     if (eligibleCarriers.length === 0) continue;
-    const carriers = out.get(fix.routine) ?? [];
+    const carriers = out.get(key) ?? [];
     for (const carrier of eligibleCarriers) {
       if (!carriers.includes(carrier)) carriers.push(carrier);
     }
-    out.set(fix.routine, carriers);
+    out.set(key, carriers);
   }
   return out;
 }
@@ -276,9 +284,11 @@ function sourceMaybeOutByRoutine(
   for (const routine of routines) {
     const maybeOutUnits = sourceMaybeOutUnits(routine, sourceTexts);
     if (maybeOutUnits.length === 0) continue;
-    out.set(routine.name, maybeOutUnits);
-    for (const label of routine.labels) out.set(label, maybeOutUnits);
-    for (const label of routine.entryLabels) out.set(label, maybeOutUnits);
+    out.set(routine.identity ?? routine.name, maybeOutUnits);
+    if (routine.span.sourceUnitRelation !== 'import') {
+      for (const label of routine.entryLabels) out.set(label, maybeOutUnits);
+    }
+    for (const label of routine.exportedEntryLabels ?? []) out.set(label, maybeOutUnits);
   }
   return out;
 }
@@ -287,23 +297,9 @@ function sourceMaybeOutUnits(
   routine: RegisterContractsRoutine,
   sourceTexts: ReadonlyMap<string, string>,
 ): RegisterContractsUnit[] {
-  const source = sourceTexts.get(routine.span.file);
-  if (source === undefined) return [];
-  const lines = source.split(/\r?\n/);
-  const units: RegisterContractsUnit[] = [];
-  for (let index = routine.span.start.line - 2; index >= 0; index -= 1) {
-    const text = lines[index] ?? '';
-    if (!/^\s*;/.test(text)) break;
-    const match = /^\s*;\s*!\s*maybe-out\s+(.+)$/i.exec(text);
-    if (!match) continue;
-    addUnits(units, match[1]!);
+  if (routine.declaredContract !== undefined) {
+    return [...routine.declaredContract.maybeOut];
   }
-  return units;
-}
-
-function addUnits(out: RegisterContractsUnit[], text: string): void {
-  for (const token of text.split(',')) {
-    const unit = token.trim() as RegisterContractsUnit;
-    if (unit.length > 0 && !out.includes(unit)) out.push(unit);
-  }
+  void sourceTexts;
+  return [];
 }

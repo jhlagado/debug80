@@ -99,9 +99,10 @@ export interface ExpandedNextSource {
 ```
 
 `lines` is the flattened source stream for parsing. `sourceTexts` keeps the
-original file text. `sourceLineComments` keeps comments indexed by file and line
-so register contract analysis can reconstruct AZMDoc contract blocks after routines have
-been identified.
+original file text. `sourceLineComments` keeps ordinary comments indexed by file
+and line for tooling and source-preserving rewrites. AZM 0.3 register contracts
+are parsed `.routine`, `.contracts`, `.rcignore` and `.expectout` source items,
+not semantic comments.
 
 ## Logical Lines and Comments
 
@@ -135,7 +136,7 @@ each stage from inventing a slightly different rule for semicolons inside
 strings and character literals.
 
 `src/source/instruction-chain.ts` uses the same quoted-text rules to find
-readable ` \ ` separators without splitting byte and string operands. It
+readable `\` separators without splitting byte and string operands. It
 reports trimmed segment text plus the original 1-based column for each segment,
 so later stages can keep diagnostics and source maps aligned to the exact
 instruction inside a physical line. `src/syntax/parse-instruction-chain.ts`

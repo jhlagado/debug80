@@ -45,7 +45,8 @@ const FORBIDDEN_RULES = [
   {
     id: 'removed-local-arg-decl',
     pattern: /^\s*(?:local|arg|argument)\s+[A-Za-z_][A-Za-z0-9_]*\b/i,
-    message: 'Local/argument declarations are forbidden; use explicit registers, stack, and labels.',
+    message:
+      'Local/argument declarations are forbidden; use explicit registers, stack, and labels.',
   },
   {
     id: 'removed-extern-func',
@@ -70,7 +71,8 @@ const FORBIDDEN_RULES = [
   {
     id: 'operand-address-of',
     pattern: /(?:^|[,\s(])@[A-Za-z_][A-Za-z0-9_]*(?!\s*:)(?:\b|\[)/,
-    message: 'Operand-level @address syntax is forbidden; use labels, .equ constants, or layout casts.',
+    message:
+      'Operand-level @address syntax is forbidden; use labels, .equ constants, or layout casts.',
   },
 ];
 
@@ -78,12 +80,14 @@ const SOURCE_COMMENT_RULES = [
   {
     id: 'removed-register-contracts-at-comment',
     pattern: /^\s*;\s*!\s*@/,
-    message: 'Removed register-contracts @ comments are forbidden; use compact `;!      in/out/clobbers` lines.',
+    message:
+      'Removed register-contracts @ comments are forbidden; use a one-line `.routine` contract.',
   },
   {
     id: 'removed-register-contracts-divider-block',
     pattern: /^\s*;\s*=+\s+AZM\s*$/i,
-    message: 'Removed AZM divider contract blocks are forbidden; use compact `;!      in/out/clobbers` lines.',
+    message:
+      'Removed AZM divider contract blocks are forbidden; use a one-line `.routine` contract.',
   },
 ];
 
@@ -169,16 +173,26 @@ function enqueueDirectoryEntries(queue, dirPath) {
 
 function isScannedSourceFile(path) {
   const lower = path.toLowerCase();
-  return lower.endsWith('.asm') || lower.endsWith('.z80') || lower.endsWith('.asmi') || lower.endsWith('.md');
+  return (
+    lower.endsWith('.asm') ||
+    lower.endsWith('.z80') ||
+    lower.endsWith('.asmi') ||
+    lower.endsWith('.md')
+  );
 }
 
 function isIgnoredPath(path) {
   const normalized = normalizePath(path);
-  return normalized.endsWith('/package-lock.json') || IGNORED_PATH_PATTERNS.some((pattern) => matchesIgnoredPath(normalized, pattern));
+  return (
+    normalized.endsWith('/package-lock.json') ||
+    IGNORED_PATH_PATTERNS.some((pattern) => matchesIgnoredPath(normalized, pattern))
+  );
 }
 
 function matchesIgnoredPath(path, pattern) {
-  return path === pattern.exact || path.startsWith(pattern.prefix) || path.includes(pattern.contains);
+  return (
+    path === pattern.exact || path.startsWith(pattern.prefix) || path.includes(pattern.contains)
+  );
 }
 
 function collectForbiddenExtensionFiles(repoRoot, roots) {
@@ -265,7 +279,9 @@ function removedExtensionViolations(repoRoot, roots) {
 function fileSyntaxViolations(repoRoot, file) {
   const reportedFile = reportedPath(repoRoot, file);
   const text = readFileSync(file, 'utf8');
-  return scannedLines(file, text).flatMap((lineEntry) => lineViolations(reportedFile, file, lineEntry));
+  return scannedLines(file, text).flatMap((lineEntry) =>
+    lineViolations(reportedFile, file, lineEntry),
+  );
 }
 
 function reportedPath(repoRoot, file) {
@@ -282,7 +298,11 @@ function scannedLines(file, text) {
 function lineViolations(reportedFile, file, lineEntry) {
   return [
     ...lineRuleViolations(reportedFile, lineEntry, rawLineRules(file)),
-    ...lineRuleViolations(reportedFile, { ...lineEntry, text: stripLineComment(lineEntry.text) }, FORBIDDEN_RULES),
+    ...lineRuleViolations(
+      reportedFile,
+      { ...lineEntry, text: stripLineComment(lineEntry.text) },
+      FORBIDDEN_RULES,
+    ),
   ];
 }
 
@@ -297,13 +317,15 @@ function lineRuleViolations(reportedFile, lineEntry, rules) {
 function violationForRule(reportedFile, lineEntry, rule) {
   const match = lineEntry.text.match(rule.pattern);
   return match
-    ? [{
-        file: reportedFile,
-        line: lineEntry.line,
-        column: (match.index ?? 0) + 1,
-        ruleId: rule.id,
-        message: rule.message,
-      }]
+    ? [
+        {
+          file: reportedFile,
+          line: lineEntry.line,
+          column: (match.index ?? 0) + 1,
+          ruleId: rule.id,
+          message: rule.message,
+        },
+      ]
     : [];
 }
 

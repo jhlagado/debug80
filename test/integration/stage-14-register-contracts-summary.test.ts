@@ -32,10 +32,12 @@ describe('stage-14 register-contracts report summaries', () => {
       await writeFile(
         entry,
         [
+          '.routine',
           'START:',
           '    call HELPER',
           '    ld a,3',
           '    ret',
+          '.routine',
           'HELPER:',
           '    ld de,$1000',
           '    ret',
@@ -67,7 +69,16 @@ describe('stage-14 register-contracts report summaries', () => {
       const iface = join(dir, 'mon3.asmi');
       await writeFile(
         entry,
-        ['START:', '    call MASK', '    ret', 'MASK:', '    ret', '.end'].join('\n'),
+        [
+          '.routine',
+          'START:',
+          '    call MASK',
+          '    ret',
+          '.routine',
+          'MASK:',
+          '    ret',
+          '.end',
+        ].join('\n'),
         'utf8',
       );
       await writeFile(iface, ['extern MASK', 'clobbers DE', 'out D', 'end'].join('\n'), 'utf8');

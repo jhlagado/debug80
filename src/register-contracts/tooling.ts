@@ -73,7 +73,7 @@ export interface AnalyzeRegisterContractsForToolsResult {
 export type AnalyzeRegisterCareForToolsResult = AnalyzeRegisterContractsForToolsResult;
 
 function expectOutText(carriers: RegisterContractsUnit[]): string {
-  return `; expects out ${contractCarrierList(carriers)}\n`;
+  return `.expectout ${contractCarrierList(carriers)}\n`;
 }
 
 export function codeActionForOutputCandidate(

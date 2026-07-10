@@ -4,8 +4,8 @@ import {
   hasLeadingLabel,
   isIdentifier,
   isLabelName,
-  normalizeEntryLabelName,
-  parseEntryLabel,
+  normalizeExportedName,
+  parseDeclaredName,
   parseLeadingLabel,
 } from '../../../src/syntax/names.js';
 
@@ -22,20 +22,20 @@ describe('syntax name and label primitives', () => {
     expect(isLabelName('1Name')).toBe(false);
   });
 
-  it('parses entry labels and normalizes @ outside the stored symbol name', () => {
-    expect(parseEntryLabel('@Start')).toEqual({
+  it('parses exported labels and normalizes @ outside the stored symbol name', () => {
+    expect(parseDeclaredName('@Start')).toEqual({
       rawLabel: '@Start',
       name: 'Start',
-      isEntry: true,
+      isExported: true,
     });
-    expect(parseEntryLabel('Loop')).toEqual({
+    expect(parseDeclaredName('Loop')).toEqual({
       rawLabel: 'Loop',
       name: 'Loop',
-      isEntry: false,
+      isExported: false,
     });
-    expect(parseEntryLabel('@1Bad')).toBeUndefined();
-    expect(normalizeEntryLabelName('@Public')).toBe('Public');
-    expect(normalizeEntryLabelName('Private')).toBe('Private');
+    expect(parseDeclaredName('@1Bad')).toBeUndefined();
+    expect(normalizeExportedName('@Public')).toBe('Public');
+    expect(normalizeExportedName('Private')).toBe('Private');
   });
 
   it('parses leading labels while preserving statement text and columns', () => {
@@ -45,7 +45,7 @@ describe('syntax name and label primitives', () => {
     expect(parseLeadingLabel('@Start:   ld a,1', 5)).toEqual({
       rawLabel: '@Start',
       name: 'Start',
-      isEntry: true,
+      isExported: true,
       labelColumn: 5,
       statementText: 'ld a,1',
       statementColumn: 15,
@@ -53,7 +53,7 @@ describe('syntax name and label primitives', () => {
     expect(parseLeadingLabel('Loop:', 1)).toEqual({
       rawLabel: 'Loop',
       name: 'Loop',
-      isEntry: false,
+      isExported: false,
       labelColumn: 1,
       statementText: '',
       statementColumn: 6,
