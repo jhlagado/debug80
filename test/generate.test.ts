@@ -597,16 +597,35 @@ describe('cards', () => {
     expect(diagnostics).toEqual([]);
     // Enum and the built-in cell, starting in the first card, changed.
     expect(source).toContain('Card              .enum Splash, Playing');
-    expect(source).toContain('CurrentCard:      .db Card.Splash   ; active card, starts changed');
+    expect(source).toContain('CurrentCard:      .db Card.Splash   ; writable next card, starts changed');
+    expect(source).toContain('GlimActiveCard:   .db Card.Splash');
     expect(source).toContain('CHG_CURRENTCARD');
     // Card gates in dispatch.
     expect(source).toContain('cp      Card.Splash');
     expect(source).toContain('cp      Card.Playing');
-    expect(source).toMatch(/cp {6}Card\.Splash\n {8}jr {6}nz,GlimSkip_Launch/);
+    expect(source).toMatch(/ld {6}a,\(GlimActiveCard\)\n {8}cp {6}Card\.Splash\n {8}jr {6}nz,GlimSkip_Launch/);
     // goto: transition after the (empty) body.
     expect(source).toMatch(/@Glim_Launch:\n {8}ld {6}a,Card\.Playing {6}; goto Playing\n {8}ld {6}\(CurrentCard\),a/);
     // Enter block gated on its card, triggered by CurrentCard's flag.
     expect(source).toContain('; --- enter block SetupPlaying ---');
+  });
+
+  it('never leaks same-frame triggers into a goto destination card', () => {
+    // Splash's Launch fires on Go and gotos Playing; Playing's Advance
+    // also fires on Go. Advance must not run in the same frame: gates
+    // test GlimActiveCard, latched once at frame start, while the goto
+    // writes CurrentCard (the next-card register).
+    const { source } = compileToAzm(cardProgram);
+    // The latch sits in the main loop, before any dispatch.
+    const loop = source!.indexOf('MainLoop:');
+    const latch = source!.indexOf('ld      (GlimActiveCard),a', loop);
+    const firstDispatch = source!.indexOf('@__Run', loop);
+    expect(latch).toBeGreaterThan(loop);
+    expect(latch).toBeLessThan(firstDispatch);
+    // No dispatch gate reads the live CurrentCard cell.
+    const dispatchRegion = source!.slice(firstDispatch, source!.indexOf('@Glim_'));
+    expect(dispatchRegion).not.toContain('ld      a,(CurrentCard)');
+    expect(dispatchRegion).toContain('ld      a,(GlimActiveCard)');
   });
 
   it('dispatches enter blocks before other effects in their phase', () => {

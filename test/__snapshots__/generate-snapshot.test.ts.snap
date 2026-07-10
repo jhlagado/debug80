@@ -2221,7 +2221,8 @@ RightP:           .db 0
 Tick:             .db 0
 Pace:             .db 2   ; period (writable)
 Glim_Pace_cnt:    .db 2
-CurrentCard:      .db Card.Boot   ; active card, starts changed
+CurrentCard:      .db Card.Boot   ; writable next card, starts changed
+GlimActiveCard:   .db Card.Boot   ; frame-latched card all gates test
 GlimPrevCard:     .db $FF          ; enter edge detector ($FF = before any card)
 Glim_HeldKey:     .db $FF
 Glim_HeldCount:   .db 0
@@ -2250,6 +2251,8 @@ MainLoop:
         call    VdpWaitVBlank        ; pace on the status-register flag
         call    __Commit             ; flush shadows in the blank window
         call    __PollBindings
+        ld      a,(CurrentCard)    ; latch: card transitions land at
+        ld      (GlimActiveCard),a  ; frame start, never mid-frame
         call    __TickTimers
         call    __RunLogicEffects
         call    __MergeRaised
@@ -2401,7 +2404,7 @@ __TimerNext_Pace:
 
 ; --- logic phase dispatch ---
 @__RunLogicEffects:
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         cp      Card.Boot
         jr      nz,GlimSkip_LoadVram
         ld      a,(GlimPrevCard)
@@ -2412,7 +2415,7 @@ __TimerNext_Pace:
         jr      z,GlimSkip_LoadVram
         call    Glim_LoadVram
 GlimSkip_LoadVram:
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         cp      Card.Playing
         jr      nz,GlimSkip_StartPlaying
         ld      a,(GlimPrevCard)
@@ -2423,9 +2426,9 @@ GlimSkip_LoadVram:
         jr      z,GlimSkip_StartPlaying
         call    Glim_StartPlaying
 GlimSkip_StartPlaying:
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         ld      (GlimPrevCard),a
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         cp      Card.Playing
         jr      nz,GlimSkip_MovePlayer
         ld      a,(Changed0)
@@ -2438,7 +2441,7 @@ GlimSkip_StartPlaying:
 GlimRun_MovePlayer:
         call    Glim_MovePlayer
 GlimSkip_MovePlayer:
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         cp      Card.Playing
         jr      nz,GlimSkip_FleeTarget
         ld      a,(Changed1)
@@ -2446,7 +2449,7 @@ GlimSkip_MovePlayer:
         jr      z,GlimSkip_FleeTarget
         call    Glim_FleeTarget
 GlimSkip_FleeTarget:
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         cp      Card.Playing
         jr      nz,GlimSkip_Collide
         ld      a,(Changed0)
@@ -2458,7 +2461,7 @@ GlimSkip_Collide:
 
 ; --- render phase dispatch ---
 @__RunRenderEffects:
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         cp      Card.Playing
         jr      nz,GlimSkip_PlacePlayer
         ld      a,(Changed0)
@@ -2466,7 +2469,7 @@ GlimSkip_Collide:
         jr      z,GlimSkip_PlacePlayer
         call    Glim_PlacePlayer
 GlimSkip_PlacePlayer:
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         cp      Card.Playing
         jr      nz,GlimSkip_PlaceTarget
         ld      a,(Changed0)
@@ -2474,7 +2477,7 @@ GlimSkip_PlacePlayer:
         jr      z,GlimSkip_PlaceTarget
         call    Glim_PlaceTarget
 GlimSkip_PlaceTarget:
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         cp      Card.Playing
         jr      nz,GlimSkip_DrawScore
         ld      a,(Changed0)
@@ -3089,7 +3092,8 @@ StartP:           .db 0
 GravityFire:      .db 0
 Gravity:          .db 32   ; period (writable)
 Glim_Gravity_cnt: .db 32
-CurrentCard:      .db Card.Splash   ; active card, starts changed
+CurrentCard:      .db Card.Splash   ; writable next card, starts changed
+GlimActiveCard:   .db Card.Splash   ; frame-latched card all gates test
 GlimPrevCard:     .db $FF          ; enter edge detector ($FF = before any card)
 FrameCount:       .db 0
 Glim_HeldKey:     .db $FF
@@ -3125,6 +3129,8 @@ HudGlyphTbl:
 MainLoop:
         call    ScanFrame            ; show one full frame, then blank
         call    __PollBindings       ; game work runs in the blank window
+        ld      a,(CurrentCard)    ; latch: card transitions land at
+        ld      (GlimActiveCard),a  ; frame start, never mid-frame
         call    __TickTimers
         call    __RunDeriveEffects
         call    __MergeRaised
@@ -3298,7 +3304,7 @@ __TimerNext_Gravity:
 
 ; --- derive phase dispatch ---
 @__RunDeriveEffects:
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         cp      Card.Playing
         jr      nz,GlimSkip_DifficultyCurve
         ld      a,(Changed0)
@@ -3310,7 +3316,7 @@ GlimSkip_DifficultyCurve:
 
 ; --- logic phase dispatch ---
 @__RunLogicEffects:
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         cp      Card.Splash
         jr      nz,GlimSkip_SplashShow
         ld      a,(GlimPrevCard)
@@ -3321,7 +3327,7 @@ GlimSkip_DifficultyCurve:
         jr      z,GlimSkip_SplashShow
         call    Glim_SplashShow
 GlimSkip_SplashShow:
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         cp      Card.Playing
         jr      nz,GlimSkip_StartRound
         ld      a,(GlimPrevCard)
@@ -3332,9 +3338,9 @@ GlimSkip_SplashShow:
         jr      z,GlimSkip_StartRound
         call    Glim_StartRound
 GlimSkip_StartRound:
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         ld      (GlimPrevCard),a
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         cp      Card.Splash
         jr      nz,GlimSkip_SplashExit
         ld      a,(Changed2)
@@ -3342,7 +3348,7 @@ GlimSkip_StartRound:
         jr      z,GlimSkip_SplashExit
         call    Glim_SplashExit
 GlimSkip_SplashExit:
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         cp      Card.Playing
         jr      nz,GlimSkip_ApplyMove
         ld      a,(Changed1)
@@ -3350,7 +3356,7 @@ GlimSkip_SplashExit:
         jr      z,GlimSkip_ApplyMove
         call    Glim_ApplyMove
 GlimSkip_ApplyMove:
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         cp      Card.Playing
         jr      nz,GlimSkip_ApplyRotate
         ld      a,(Changed1)
@@ -3358,7 +3364,7 @@ GlimSkip_ApplyMove:
         jr      z,GlimSkip_ApplyRotate
         call    Glim_ApplyRotate
 GlimSkip_ApplyRotate:
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         cp      Card.Playing
         jr      nz,GlimSkip_ApplyGravity
         ld      a,(Changed1)
@@ -3371,7 +3377,7 @@ GlimSkip_ApplyRotate:
 GlimRun_ApplyGravity:
         call    Glim_ApplyGravity
 GlimSkip_ApplyGravity:
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         cp      Card.Playing
         jr      nz,GlimSkip_Pause
         ld      a,(Changed1)
@@ -3379,7 +3385,7 @@ GlimSkip_ApplyGravity:
         jr      z,GlimSkip_Pause
         call    Glim_Pause
 GlimSkip_Pause:
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         cp      Card.Paused
         jr      nz,GlimSkip_Unpause
         ld      a,(Changed1)
@@ -3387,7 +3393,7 @@ GlimSkip_Pause:
         jr      z,GlimSkip_Unpause
         call    Glim_Unpause
 GlimSkip_Unpause:
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         cp      Card.GameOver
         jr      nz,GlimSkip_Restart
         ld      a,(Changed2)
@@ -3399,7 +3405,7 @@ GlimSkip_Restart:
 
 ; --- render phase dispatch ---
 @__RunRenderEffects:
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         cp      Card.Splash
         jr      nz,GlimSkip_SplashTwinkle
         ld      a,(Changed2)
@@ -3407,7 +3413,7 @@ GlimSkip_Restart:
         jr      z,GlimSkip_SplashTwinkle
         call    Glim_SplashTwinkle
 GlimSkip_SplashTwinkle:
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         cp      Card.Playing
         jr      nz,GlimSkip_DrawBoard
         ld      a,(Changed0)
@@ -3415,7 +3421,7 @@ GlimSkip_SplashTwinkle:
         jr      z,GlimSkip_DrawBoard
         call    Glim_DrawBoard
 GlimSkip_DrawBoard:
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         cp      Card.Playing
         jr      nz,GlimSkip_DrawScore
         ld      a,(Changed0)
@@ -3423,7 +3429,7 @@ GlimSkip_DrawBoard:
         jr      z,GlimSkip_DrawScore
         call    Glim_DrawScore
 GlimSkip_DrawScore:
-        ld      a,(CurrentCard)
+        ld      a,(GlimActiveCard)
         cp      Card.GameOver
         jr      nz,GlimSkip_GameOverPulse
         ld      a,(Changed2)

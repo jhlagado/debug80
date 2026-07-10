@@ -82,10 +82,11 @@ the commit phase flushes what changed. The name table is 32x24 — the
 dirty-region idea from the roadmap can start coarse (dirty row-ranges
 or a whole-table flag) and refine later.
 
-Resources: `shape` on tms9918 compiles to sprite patterns; tile
-patterns/colour tables can start as hand-written imported modules
-(snake-lib precedent) rather than blocking the slice on new resource
-syntax.
+Resources: none in this slice — `shape` (and `sound`) stay
+matrix-gated, exactly as implemented; sprite and tile patterns are
+hand-written imported modules (snake-lib precedent). Dedicated
+sprite/tile resource syntax is the 0.4 design (the sketch's `sprite`/
+`tile` declarations).
 
 ## Phase C — sprite-chase.glim, the acceptance test
 
@@ -133,6 +134,10 @@ deterministic flee). Phase D: diagnostics re-attributed to `.glim`
 lines, test-proven on a real contract violation. Findings recorded:
 card-gated blocks never see flags raised while inactive (re-raise via
 an enter block's updates — documented); sprite/tile resource syntax is
-confirmed as the sharpest 0.4 need. Remaining before John calls the
-release: play sprite-chase under Debug80's VDP emulation, and the
-editorial docs pass.
+confirmed as the sharpest 0.4 need. Post-review fix (2026-07-11): goto
+could leak same-frame triggers into the destination card — dispatch
+gates now test a frame-latched GlimActiveCard while CurrentCard is the
+writable next-card register, so transitions land at frame boundaries
+only (regression-tested). Remaining before John calls the release:
+play sprite-chase under Debug80's VDP emulation, and the editorial
+docs pass.
