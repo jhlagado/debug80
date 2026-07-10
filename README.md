@@ -47,11 +47,19 @@ for block bodies while generated glue stays in readable AZM. The same
 pipeline is a programmatic API (`@jhlagado/glimmer/build`) shaped like
 AZM's compile API, ready for native Debug80 integration.
 
-Version 0.3.0 adds the second display: `display tms9918` (the
+Version 0.4.0 completes the data story: pieces, sprites, tiles, and
+LCD messages are declarations — `shape` rotation groups generate the
+corpus piece-engine tables, `sprite`/`tile` resources generate patterns,
+colour groups, and the VRAM upload, `text` brings the LCD slice — and
+the generated `sprite_at`/`tile_at`/`lcd_row` AZM ops keep every piece
+of sugar visible in the generated file. Tetro and sprite-chase play the
+corpus feature set with only irreducible engine code hand-written.
+
+Version 0.3.0 added the second display: `display tms9918` (the
 TEC-Deck VDP) generates a vblank-paced loop with a commit phase that
 flushes shadow tables to VRAM — proving the profile architecture on two
-opposite display models (the matrix the CPU *is*, the VDP the CPU
-*writes to*) — and build errors inside block bodies are now reported at
+opposite display models (the matrix the CPU _is_, the VDP the CPU
+_writes to_) — and build errors inside block bodies are now reported at
 the `.glim` line, the same way breakpoints resolve there.
 
 Examples, smallest first: `counter.glim` (generic profile),

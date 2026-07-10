@@ -543,6 +543,12 @@ describe('parseGlimmer', () => {
     expect(messages).toContain('Reserved name "VdpInit"');
     expect(messages).toContain('Reserved name "NameShadow"');
     expect(messages).toContain('Reserved name "KEY_1"');
+    const lib = parseGlimmer(
+      ['program P', 'routine LoadResourcesVram', 'begin', 'end'].join(String.fromCharCode(10)),
+    );
+    expect(lib.diagnostics.map((d) => d.message).join(' ')).toContain(
+      'Reserved name "LoadResourcesVram"',
+    );
   });
 
   it('parses routines and rejects triggers on them', () => {
@@ -563,9 +569,7 @@ describe('parseGlimmer', () => {
     const messages = diagnostics.map((d) => d.message).join('\n');
     expect(messages).toContain('Routine Bad takes no "on"');
     expect(program).toBeNull();
-    const ok = parseGlimmer(
-      ['program P', 'routine Clamp', 'begin', '    cp 8', 'end'].join('\n'),
-    );
+    const ok = parseGlimmer(['program P', 'routine Clamp', 'begin', '    cp 8', 'end'].join('\n'));
     expect(ok.diagnostics).toEqual([]);
     expect(ok.program?.routines[0]).toMatchObject({ name: 'Clamp', bodyLine: 4 });
   });
@@ -674,10 +678,10 @@ describe('parseGlimmer', () => {
     expect(diagnostics).toEqual([]);
     const s = program!.shapes[0]!;
     expect(s.rotations?.distinct).toHaveLength(3);
-    expect(s.rotations?.map).toEqual([0, 1, 2, 1]);   // rot3 = rot1
+    expect(s.rotations?.map).toEqual([0, 1, 2, 1]); // rot3 = rot1
     expect(s.rotations?.distinct[0]?.right).toBe(2);
     const i = program!.shapes[1]!;
-    expect(i.rotations?.map).toEqual([0, 1, 0, 1]);   // two declared, cycled
+    expect(i.rotations?.map).toEqual([0, 1, 0, 1]); // two declared, cycled
   });
 
   it('rejects malformed rotational shapes', () => {
@@ -689,9 +693,9 @@ describe('parseGlimmer', () => {
     expect(bad(['shape B color red', '  rot0 "X"', '  rot1 = rot2', 'end'])).toContain(
       'earlier distinct one',
     );
-    expect(bad(['shape C color red', '  rot0 "X"', '  "X"', '  rot1 "X"', '  "..."', 'end'])).toContain(
-      'same width',
-    );
+    expect(
+      bad(['shape C color red', '  rot0 "X"', '  "X"', '  rot1 "X"', '  "..."', 'end']),
+    ).toContain('same width');
     expect(bad(['shape D color red', '  "X"', '  rot1 "X"', 'end'])).toContain('declared in order');
   });
 
@@ -723,7 +727,9 @@ describe('parseGlimmer', () => {
         'bind key any rising -> A',
         'bind key any held period 2 -> A',
       ].join('\n'),
-    ).diagnostics.map((d) => d.message).join('\n');
+    )
+      .diagnostics.map((d) => d.message)
+      .join('\n');
     expect(bad).toContain('Text resources require platform tec1g-mon3');
     expect(bad).toContain('bind key any requires platform tec1g-mon3');
   });

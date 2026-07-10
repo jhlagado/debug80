@@ -597,15 +597,21 @@ describe('cards', () => {
     expect(diagnostics).toEqual([]);
     // Enum and the built-in cell, starting in the first card, changed.
     expect(source).toContain('Card              .enum Splash, Playing');
-    expect(source).toContain('CurrentCard:      .db Card.Splash   ; writable next card, starts changed');
+    expect(source).toContain(
+      'CurrentCard:      .db Card.Splash   ; writable next card, starts changed',
+    );
     expect(source).toContain('GlimActiveCard:   .db Card.Splash');
     expect(source).toContain('CHG_CURRENTCARD');
     // Card gates in dispatch.
     expect(source).toContain('cp      Card.Splash');
     expect(source).toContain('cp      Card.Playing');
-    expect(source).toMatch(/ld {6}a,\(GlimActiveCard\)\n {8}cp {6}Card\.Splash\n {8}jr {6}nz,GlimSkip_Launch/);
+    expect(source).toMatch(
+      /ld {6}a,\(GlimActiveCard\)\n {8}cp {6}Card\.Splash\n {8}jr {6}nz,GlimSkip_Launch/,
+    );
     // goto: transition after the (empty) body.
-    expect(source).toMatch(/@Glim_Launch:\n {8}ld {6}a,Card\.Playing {6}; goto Playing\n {8}ld {6}\(CurrentCard\),a/);
+    expect(source).toMatch(
+      /@Glim_Launch:\n {8}ld {6}a,Card\.Playing {6}; goto Playing\n {8}ld {6}\(CurrentCard\),a/,
+    );
     // Enter block gated on its card, triggered by CurrentCard's flag.
     expect(source).toContain('; --- enter block SetupPlaying ---');
   });
@@ -701,6 +707,79 @@ describe('text resources, lcd_row, and any-key', () => {
       registerContractsProfile: 'mon3',
     });
     expect(assembled.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+  });
+});
+
+describe('0.4 review regressions', () => {
+  it('rejects more than 32 tile colour groups instead of corrupting VRAM', () => {
+    const rows = Array.from({ length: 8 }, () => '  "XXXXXXXX"');
+    const colours = [
+      'transparent',
+      'black',
+      'medgreen',
+      'lightgreen',
+      'darkblue',
+      'lightblue',
+      'darkred',
+      'cyan',
+      'medred',
+      'lightred',
+      'darkyellow',
+      'lightyellow',
+      'darkgreen',
+      'magenta',
+      'gray',
+      'white',
+    ];
+    // 33 distinct (fg, bg) pairs -> 33 colour groups -> tile index 256.
+    const tiles: string[] = [];
+    let n = 0;
+    for (const fg of colours) {
+      for (const bg of colours) {
+        if (fg === bg || n >= 33) continue;
+        tiles.push(`tile T${n} color ${fg} on ${bg}`, ...rows, 'end');
+        n += 1;
+      }
+    }
+    const sourceText = ['program P', 'platform tec1g-mon3', 'display tms9918', ...tiles].join(
+      String.fromCharCode(10),
+    );
+    const { program, diagnostics: parseDiags } = parseGlimmer(sourceText);
+    expect(parseDiags).toEqual([]);
+    const { diagnostics } = generateAzm(program!);
+    expect(diagnostics.map((d) => d.message).join(' ')).toContain('Too many tile colour pairs');
+  });
+
+  it('does not emit a key equate for the any pseudo-key', () => {
+    const { source, diagnostics } = compileToAzm(
+      [
+        'program P',
+        'platform tec1g-mon3',
+        'display matrix8x8',
+        'pulse A',
+        'bind key any rising -> A',
+        'effect E',
+        '    on A',
+        'begin',
+        '    nop',
+        'end',
+      ].join(String.fromCharCode(10)),
+    );
+    expect(diagnostics).toEqual([]);
+    expect(source).not.toMatch(/^any\s+\.equ/m);
+  });
+
+  it('keeps semicolons inside text strings', () => {
+    const { program, diagnostics } = parseGlimmer(
+      [
+        'program P',
+        'platform tec1g-mon3',
+        'display matrix8x8',
+        'text Msg "READY; GO"  ; trailing note',
+      ].join(String.fromCharCode(10)),
+    );
+    expect(diagnostics).toEqual([]);
+    expect(program?.texts[0]?.value).toBe('READY; GO');
   });
 });
 

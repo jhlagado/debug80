@@ -37,7 +37,6 @@ import type {
   ShapeColor,
   ShapeDecl,
   ShapeRotation,
-  ShapeRotationSet,
   SoundDecl,
   SpriteDecl,
   StateDecl,
@@ -88,14 +87,27 @@ const SHAPE_COLORS: readonly ShapeColor[] = [
   'magenta',
   'white',
 ];
-const TEXT_RE = /^text\s+([A-Za-z_][A-Za-z0-9_]*)\s+"([^"]*)"$/;
+const TEXT_RE = /^text\s+([A-Za-z_][A-Za-z0-9_]*)\s+"([^"]*)"\s*(?:;.*)?$/;
 const SPRITE_RE = /^sprite\s+([A-Za-z_][A-Za-z0-9_]*)\s+color\s+([A-Za-z_][A-Za-z0-9_]*)$/;
 const TILE_RE =
   /^tile\s+([A-Za-z_][A-Za-z0-9_]*)\s+color\s+([A-Za-z_][A-Za-z0-9_]*)\s+on\s+([A-Za-z_][A-Za-z0-9_]*)$/;
 const VDP_COLORS: readonly VdpColor[] = [
-  'transparent', 'black', 'medgreen', 'lightgreen', 'darkblue', 'lightblue',
-  'darkred', 'cyan', 'medred', 'lightred', 'darkyellow', 'lightyellow',
-  'darkgreen', 'magenta', 'gray', 'white',
+  'transparent',
+  'black',
+  'medgreen',
+  'lightgreen',
+  'darkblue',
+  'lightblue',
+  'darkred',
+  'cyan',
+  'medred',
+  'lightred',
+  'darkyellow',
+  'lightyellow',
+  'darkgreen',
+  'magenta',
+  'gray',
+  'white',
 ];
 
 const CURVE_PRESETS: readonly CurvePreset[] = [
@@ -354,7 +366,10 @@ export function parseUnit(
         continue;
       }
       if (!IDENT.test(rest)) {
-        error(lineNo, `Invalid type declaration: "${text}". Expected: type <Name> or type <Name> = <TypeExpr>.`);
+        error(
+          lineNo,
+          `Invalid type declaration: "${text}". Expected: type <Name> or type <Name> = <TypeExpr>.`,
+        );
         continue;
       }
       // Field lines (name : fieldtype) until a line containing only "end".
@@ -528,9 +543,12 @@ export function parseUnit(
     }
 
     if (text.startsWith('text ')) {
-      const match = TEXT_RE.exec(text);
+      // Match against the raw line: the string may contain semicolons,
+      // so comment stripping only applies after the closing quote.
+      const raw = (lines[i - 1] ?? '').trim();
+      const match = TEXT_RE.exec(raw);
       if (!match) {
-        error(lineNo, `Invalid text declaration: "${text}". Expected: text <Name> "STRING".`);
+        error(lineNo, `Invalid text declaration: "${raw}". Expected: text <Name> "STRING".`);
         continue;
       }
       texts.push({ name: match[1] as string, value: match[2] as string, line: lineNo });
@@ -553,7 +571,10 @@ export function parseUnit(
         if (rowText === '') continue;
         const rowMatch = SHAPE_ROW_RE.exec(rowText);
         if (!rowMatch) {
-          error(i, `Invalid ${isSprite ? 'sprite' : 'tile'} row: "${rowText}". Expected a quoted row using only . and X.`);
+          error(
+            i,
+            `Invalid ${isSprite ? 'sprite' : 'tile'} row: "${rowText}". Expected a quoted row using only . and X.`,
+          );
           continue;
         }
         rows.push(rowMatch[1] as string);
@@ -637,7 +658,10 @@ export function parseUnit(
         if (rotMatch) {
           const n = Number(rotMatch[1]);
           if (n !== rotCount) {
-            error(i, `Shape rotations must be declared in order: expected rot${rotCount}, got rot${n}.`);
+            error(
+              i,
+              `Shape rotations must be declared in order: expected rot${rotCount}, got rot${n}.`,
+            );
             rotError = true;
           }
           rotCount += 1;
@@ -663,7 +687,10 @@ export function parseUnit(
         if (currentRot !== null) {
           currentRot.push(rowMatch[1] as string);
         } else if (rotCount > 0) {
-          error(i, `Shape row outside a rotation group (rot0..rot3 shapes take rows inside groups).`);
+          error(
+            i,
+            `Shape row outside a rotation group (rot0..rot3 shapes take rows inside groups).`,
+          );
           rotError = true;
         } else {
           rows.push(rowMatch[1] as string);
@@ -693,7 +720,15 @@ export function parseUnit(
           error(lineNo, `Shape ${name}: mixes plain rows with rotation groups.`);
           continue;
         }
-        const shape = buildRotationalShape(name, color as ShapeColor, rotGroups, rotAliases, rotCount, lineNo, error);
+        const shape = buildRotationalShape(
+          name,
+          color as ShapeColor,
+          rotGroups,
+          rotAliases,
+          rotCount,
+          lineNo,
+          error,
+        );
         if (shape !== null) shapes.push(shape);
         continue;
       }
@@ -1083,7 +1118,10 @@ export function assembleProgram(units: ParsedUnit[]): ParseResult {
     for (const binding of merged.bindings) {
       if (binding.key === 'any') {
         if (binding.edge === 'held') {
-          error(binding, 'bind key any supports rising only: "any" has no single key to autorepeat.');
+          error(
+            binding,
+            'bind key any supports rising only: "any" has no single key to autorepeat.',
+          );
         }
         continue;
       }
@@ -1128,7 +1166,10 @@ export function assembleProgram(units: ParsedUnit[]): ParseResult {
     }
   }
   if (merged.sprites.length > 31) {
-    error(merged.sprites[31] as SpriteDecl, 'At most 31 sprites (slot 31 stays the hidden terminator).');
+    error(
+      merged.sprites[31] as SpriteDecl,
+      'At most 31 sprites (slot 31 stays the hidden terminator).',
+    );
   }
 
   validateReferences(merged, diagnostics, (owner) => fileOf.get(owner));
@@ -1220,7 +1261,10 @@ function validateReferences(
       error(owner, `Duplicate name "${name}": all declared names share one namespace.`);
     }
     declaredNames.add(name);
-    if (/^(Glim|Snd_|Curve_|Shape_|ShapeRot_|ShapeId_|CHG_|__|KEY_|API_|VC_|VDP_|VRAM_)/.test(name) || RESERVED_NAMES.has(name)) {
+    if (
+      /^(Glim|Snd_|Curve_|Shape_|ShapeRot_|ShapeId_|CHG_|__|KEY_|API_|VC_|VDP_|VRAM_)/.test(name) ||
+      RESERVED_NAMES.has(name)
+    ) {
       error(
         owner,
         `Reserved name "${name}": it belongs to the generated runtime (${kind}s cannot use Glim*/Snd_*/Curve_*/Shape_*/CHG_*/__* or runtime symbols).`,
@@ -1553,6 +1597,7 @@ const RESERVED_NAMES = new Set([
   'NameShadow',
   'NameDirtyRows',
   'CommitNameRow',
+  'LoadResourcesVram',
   'ShapeRowMask',
   'ShapeRowIndex',
   'ShapeColIndex',

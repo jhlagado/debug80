@@ -3052,7 +3052,6 @@ KEY_2             .equ $02
 KEY_5             .equ $05
 KEY_AD            .equ $13
 KEY_0             .equ $00
-any               .equ $00
 
 ; --- change flags ---
 CHG_PLAYERX_BIT   .equ 0

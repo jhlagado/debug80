@@ -18,7 +18,7 @@ export function emitMon3KeyCodeEquates(
   program: GlimmerProgram,
   emit: (line?: string) => void,
 ): void {
-  const usedKeys = [...new Set(program.bindings.map((b) => b.key))];
+  const usedKeys = [...new Set(program.bindings.map((b) => b.key))].filter((k) => k !== 'any');
   if (usedKeys.length > 0) {
     emit('; --- MON-3 key codes ---');
     for (const key of usedKeys) {
@@ -75,10 +75,7 @@ export function emitMon3LcdOps(
   emit('end');
 }
 
-export function emitMon3HeldStorage(
-  emit: (line?: string) => void,
-  heldBindings: Binding[],
-): void {
+export function emitMon3HeldStorage(emit: (line?: string) => void, heldBindings: Binding[]): void {
   if (heldBindings.length > 0) {
     emit(`${'Glim_HeldKey:'.padEnd(17)} .db $FF`);
     emit(`${'Glim_HeldCount:'.padEnd(17)} .db 0`);
