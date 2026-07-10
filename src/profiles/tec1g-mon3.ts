@@ -417,7 +417,8 @@ function emitRotationalShapeResources(
     shape.rotations?.distinct.forEach((rotation, index) => {
       emit(`ShapeRot_${shape.name}_${index}:`);
       for (let row = 0; row < 4; row += 1) {
-        const mask = rotation.rows[row] === undefined ? 0 : shapeRowMask(rotation.rows[row] as string);
+        const mask =
+          rotation.rows[row] === undefined ? 0 : shapeRowMask(rotation.rows[row] as string);
         op(`.db     ${bin8(mask)}`);
       }
     });

@@ -1,6 +1,8 @@
 # Changelog
 
-## 0.4.0 - unreleased
+Versions are tagged in git; nothing is published to npm yet.
+
+## 0.4.0 - 2026-07-11
 
 The resources-and-parity line: the sketches' data declarations are
 real on both profiles, the first Glimmer-emitted AZM ops appear, and
@@ -38,7 +40,7 @@ playtests pending).
   them against the body, and annotation overwrites them — proposal
   recorded in the 0.4 plan).
 
-## 0.3.0 - unreleased
+## 0.3.0 - 2026-07-11
 
 The second-display line: the profile architecture derisked while it is
 cheap to change, exercised by `examples/sprite-chase.glim` on the
@@ -73,7 +75,7 @@ TEC-Deck TMS9918 (assembles strict-clean; Debug80 playtest pending).
   transitions land at frame boundaries only, with the destination's
   enter blocks running first.
 
-## 0.2.0 - unreleased
+## 0.2.0 - 2026-07-10
 
 The language-complete line: everything Tetro needs, exercised by
 `examples/tetro.glim` written on shipped constructs only (assembles
@@ -109,7 +111,7 @@ strict-clean; Debug80 playtest pending).
   Debug80 map so block and routine bodies step in `.glim` source while
   generated glue stays on the generated asm.
 - Added the programmatic build API: `buildGlimmerProgram(entry,
-  {stage, outputPath, org})` on the `@jhlagado/glimmer/build` subpath —
+{stage, outputPath, org})` on the `@jhlagado/glimmer/build` subpath —
   in-process, no printing, AZM-shaped diagnostics ({severity, absolute
   sourceName, line, column, code}) — mirroring the
   `@jhlagado/azm/compile` API Debug80 consumes. The CLI is a thin shell

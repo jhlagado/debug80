@@ -281,7 +281,7 @@ next-piece preview, no game-over key gate. The adaptation immediately
 paid for itself as a pressure test: it exposed that unconditional
 `updates` marking made conditional card transitions and enter blocks
 interact wrongly — fixed by making enter blocks **edge-triggered**
-(GlimPrevCard shadow), which in turn made *conditional navigation*
+(GlimPrevCard shadow), which in turn made _conditional navigation_
 (body writes `CurrentCard` under `updates CurrentCard`) a supported
 pattern, answering the sketch's open question about gating pulses.
 
@@ -297,7 +297,7 @@ sequential.
   (first card = start card, changed on frame one); card-gated dispatch;
   `enter` blocks run once on entry, before the card's other blocks;
   `goto` in block headers (body optional) folds into `updates
-  CurrentCard`, so rollover and the dependency report see the real
+CurrentCard`, so rollover and the dependency report see the real
   dataflow.
 - **Structured data via AZM layouts. ✅ Landed 2026-07-10.** `type`
   declarations compile to AZM Book 0 `.type` records (`type Name = Expr`
@@ -486,19 +486,19 @@ list, or breakpoints cannot be set in `.glim` files at all).
 
 ## Open questions — answered by the second display (2026-07-10)
 
-- *How does a profile parameterize the generated loop?* One loop
+- _How does a profile parameterize the generated loop?_ One loop
   skeleton with profile-supplied hooks, settled by building both
   displays on it: the core emits `@Start`/`MainLoop`/phase calls/
   `__EndFrame`, and the profile supplies init, the frame start (pacing
   policy + commit + the poll call), and the frame end. The matrix's
   scan-then-work and the VDP's wait-commit-poll both fit without
   special cases; `commit` exists only where the profile emits it.
-- *Where is the glue/library boundary?* Settled in practice: generated
+- _Where is the glue/library boundary?_ Settled in practice: generated
   glue is everything derived from the program (dispatch, wrappers,
   flags, `__Commit`'s dirty loop); the profile library is everything a
   program merely calls (`ScanFrame`, `FbPlot`, `VdpWriteBlock`,
   `SpriteSet`). Both are emitted into the one visible file today.
-- *When do profile services move into AZM `.import` libraries?* Still
+- _When do profile services move into AZM `.import` libraries?_ Still
   open, deliberately — the emitted-library approach keeps the single
   readable file, and module splitting stays a post-0.3 item to be
   decided with real editor/debugging experience.

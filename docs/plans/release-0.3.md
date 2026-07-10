@@ -18,11 +18,11 @@ architecture work, and immediately useful while playtesting.
 
 The two displays are opposites, which is exactly their value:
 
-- **matrix8x8** is a display you *are*: the CPU is the display
+- **matrix8x8** is a display you _are_: the CPU is the display
   controller, `ScanFrame` burns the frame budget scanning rows, and all
   game work runs in the blank window. Render blocks write a
   framebuffer the scanner reads continuously. There is no commit phase.
-- **TMS9918** is a display you *write to*: the VDP renders
+- **TMS9918** is a display you _write to_: the VDP renders
   autonomously; the program paces itself on vblank (status register
   $BF, or frame-timed delay), and display changes are VRAM writes that
   should land in the blank window. The spec's original

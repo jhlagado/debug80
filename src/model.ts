@@ -146,9 +146,21 @@ export interface ShapeRotationSet {
 
 /** TMS9918 colour names for sprite/tile declarations (VC_* equates). */
 export type VdpColor =
-  | 'transparent' | 'black' | 'medgreen' | 'lightgreen' | 'darkblue'
-  | 'lightblue' | 'darkred' | 'cyan' | 'medred' | 'lightred'
-  | 'darkyellow' | 'lightyellow' | 'darkgreen' | 'magenta' | 'gray'
+  | 'transparent'
+  | 'black'
+  | 'medgreen'
+  | 'lightgreen'
+  | 'darkblue'
+  | 'lightblue'
+  | 'darkred'
+  | 'cyan'
+  | 'medred'
+  | 'lightred'
+  | 'darkyellow'
+  | 'lightyellow'
+  | 'darkgreen'
+  | 'magenta'
+  | 'gray'
   | 'white';
 
 /**

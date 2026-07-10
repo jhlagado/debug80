@@ -81,6 +81,41 @@ describe('glimmer build (d8 map rewrite)', () => {
   });
 });
 
+describe('computeBlockMappings (annotation tolerance)', () => {
+  it('maps every body line exactly around ;! and ; expects injections', async () => {
+    const { computeBlockMappings } = await import('../src/build.js');
+    const body = ['    ld a,1', '    call Helper', '    ld (X),a', '_done:', '    nop'];
+    const asm = [
+      '; header',
+      ';! clobbers A,F',
+      '@Glim_E:',
+      ';! in A',
+      '    ld a,1',
+      '    ; expects out A',
+      '    call Helper',
+      '    ld (X),a',
+      '_done:',
+      '    ; expects out HL',
+      '    nop',
+      '        ret',
+    ].join(String.fromCharCode(10));
+    const { mappings, warnings } = computeBlockMappings(
+      asm,
+      [{ label: '@Glim_E', name: 'E', body, bodyLine: 10 }],
+      'prog.glim',
+    );
+    expect(warnings).toEqual([]);
+    // Every body line maps, at its exact post-injection asm line.
+    expect(mappings.map((m) => [m.asmLine, m.glimLine])).toEqual([
+      [5, 10],
+      [7, 11],
+      [8, 12],
+      [9, 13],
+      [11, 14],
+    ]);
+  });
+});
+
 describe('buildGlimmerProgram (programmatic API)', () => {
   it('builds in process and returns artifact paths, no printing needed', async () => {
     const { buildGlimmerProgram } = await import('../src/build.js');

@@ -28,7 +28,7 @@ Investigated 2026-07-11; pass-through alone would be worse than
 nothing. Empirically (AZM 0.2.17):
 
 - A deliberately **wrong** declared contract (`preserves B` on a body
-  that destroys B) passes `--rc error` *and* `--rc strict` silently:
+  that destroys B) passes `--rc error` _and_ `--rc strict` silently:
   declared contracts replace inference in `buildSummaries` and are
   trusted — callers are proven against them, but a routine's body is
   never verified against its own declaration.

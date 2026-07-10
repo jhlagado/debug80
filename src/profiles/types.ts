@@ -18,6 +18,8 @@ export interface ProfileContext {
   emit: (line?: string) => void;
   op: (text: string) => void;
   raiseChanged: (cellName: string) => void;
+  /** Report a generation error at a .glim line (fails the build). */
+  diagnostic: (line: number, message: string) => void;
   heldBindings: Binding[];
   /** Generic profile: key name -> input-byte bit. Empty elsewhere. */
   keyBit: Map<string, number>;

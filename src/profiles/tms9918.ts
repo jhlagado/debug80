@@ -58,9 +58,10 @@ function rowMask(row: string): number {
  * screen background for empty cells. A pair whose group is full spills
  * into a new group.
  */
-export function assignTileIndexes(
-  tiles: readonly TileDecl[],
-): { indexes: Map<string, number>; groups: Array<{ fg: VdpColor; bg: VdpColor }> } {
+export function assignTileIndexes(tiles: readonly TileDecl[]): {
+  indexes: Map<string, number>;
+  groups: Array<{ fg: VdpColor; bg: VdpColor }>;
+} {
   const indexes = new Map<string, number>();
   const groups: Array<{ fg: VdpColor; bg: VdpColor }> = [];
   const groupFill: number[] = [];
@@ -68,7 +69,11 @@ export function assignTileIndexes(
     let group = -1;
     for (let g = 0; g < groups.length; g += 1) {
       const capacity = g === 0 ? 7 : 8; // group 0 loses index 0 to blank
-      if (groups[g]?.fg === tile.fg && groups[g]?.bg === tile.bg && (groupFill[g] ?? 0) < capacity) {
+      if (
+        groups[g]?.fg === tile.fg &&
+        groups[g]?.bg === tile.bg &&
+        (groupFill[g] ?? 0) < capacity
+      ) {
         group = g;
         break;
       }
@@ -154,8 +159,20 @@ export const tec1gTms9918Profile: Profile = {
     emit(`${'SpriteShadow:'.padEnd(17)} .ds 128, 0       ; 32 x (y, x, pattern, colour)`);
     emit(`${'SpriteDirty:'.padEnd(17)} .db 0`);
   },
-  emitDataTables({ program, emit, op }: ProfileContext): void {
+  emitDataTables(ctx: ProfileContext): void {
+    const { program, emit, op } = ctx;
     emitMon3TextData(program, emit, op);
+    if (program.tiles.length > 0) {
+      const { groups } = assignTileIndexes(program.tiles);
+      if (groups.length > 32) {
+        const over = program.tiles[program.tiles.length - 1];
+        ctx.diagnostic(
+          over?.line ?? 0,
+          `Too many tile colour pairs: ${groups.length} groups of 8 patterns, the Graphics I colour table holds 32. Reuse (fg, bg) pairs.`,
+        );
+        return;
+      }
+    }
     emitVdpResourceTables(program, emit, op);
     emit('; --- VDP register init (value, then index|$80, via the control port) ---');
     emit('VdpRegInitTbl:');

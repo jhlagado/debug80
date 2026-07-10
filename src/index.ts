@@ -22,11 +22,17 @@ export type {
   RoutineDecl,
   ShapeColor,
   ShapeDecl,
+  ShapeRotation,
+  ShapeRotationSet,
   SoundDecl,
+  SpriteDecl,
   StateDecl,
+  TextDecl,
+  TileDecl,
   TimerDecl,
   TypeDecl,
   TypeFieldDecl,
+  VdpColor,
 } from './model.js';
 export { EFFECT_PHASES, PHASES } from './model.js';
 export {
