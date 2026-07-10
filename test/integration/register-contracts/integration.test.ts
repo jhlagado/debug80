@@ -656,10 +656,9 @@ describe('register-contracts integration', () => {
       [
         'Routine: START',
         '  reads: zero',
-        '  writes: -',
+        '  writes: H,L',
         '  preserves: A,B,C,D,E,IXH,IXL,IYH,IYL,carry,zero,sign,parity,halfCarry',
         '  stack: balanced',
-        '  relation: H,L <= -',
       ].join('\n'),
     );
   });
@@ -2387,12 +2386,258 @@ describe('register-contracts integration', () => {
     );
   });
 
-  it('emits strict errors for unknown direct-JP tail-call boundaries', async () => {
-    const dir = mkdtempSync(join(tmpdir(), 'azm-regcontracts-unknown-tail-jp-'));
+  it('propagates known unconditional JR tail-call summaries', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'azm-regcontracts-tail-jr-'));
     const entry = join(dir, 'main.asm');
     writeFileSync(
       entry,
-      ['MISSING_TAIL .equ $1234', '.routine', 'START:', '    jp MISSING_TAIL', '.end'].join('\n'),
+      [
+        '.routine',
+        'START:',
+        '    ld a,1',
+        '    call WRAPPER',
+        '    jr nz,_done',
+        '_done:',
+        '    ret',
+        '.routine',
+        'WRAPPER:',
+        '    ld a,2',
+        '    jr FLAG_CALLEE',
+        '.routine',
+        'FLAG_CALLEE:',
+        '    xor a',
+        '    jr z,_flagDone',
+        '_flagDone:',
+        '    ret',
+        '.end',
+      ].join('\n'),
+      'utf8',
+    );
+
+    const res = await compileRegisterContracts(entry, {
+      registerContracts: 'error',
+    });
+
+    expect(res.diagnostics).toContainEqual(
+      expect.objectContaining({
+        code: 'AZMN_REGISTER_CONTRACTS',
+        severity: 'error',
+        message: expect.stringContaining('CALL WRAPPER may modify zero'),
+      }),
+    );
+  });
+
+  it.each(['jp', 'jr'])(
+    'does not infer unreachable writes after an unconditional %s tail',
+    async (tailMnemonic) => {
+      const entry = writeSourceFixture('azm-regcontracts-tail-dead-code-', [
+        '.routine',
+        'WRAPPER:',
+        `    ${tailMnemonic} CALLEE`,
+        '_dead:',
+        '    ld b,1',
+        '    ret',
+        '.routine',
+        'CALLEE:',
+        '    ret',
+        '.end',
+      ]);
+
+      const res = await compileRegisterContracts(entry, {
+        registerContracts: 'audit',
+        emitRegisterReport: true,
+        registerContractsReportFormat: 'json',
+      });
+
+      expectNoErrorDiagnostics(res);
+      expect(reportArtifact(res)?.json?.summaries).toContainEqual(
+        expect.objectContaining({
+          name: 'WRAPPER',
+          mayWrite: expect.not.arrayContaining(['B']),
+          valueRelations: expect.not.arrayContaining([
+            expect.objectContaining({ out: expect.arrayContaining(['B']) }),
+          ]),
+        }),
+      );
+    },
+  );
+
+  it.each(['jp', 'jr'])(
+    'retains the local fallback path that bypasses an unconditional %s tail',
+    async (tailMnemonic) => {
+      const entry = writeSourceFixture('azm-regcontracts-tail-bypass-', [
+        '.routine',
+        'WRAPPER:',
+        '    jr z,_fallback',
+        `    ${tailMnemonic} CALLEE`,
+        '_fallback:',
+        '    ld b,1',
+        '    ret',
+        '.routine',
+        'CALLEE:',
+        '    ret',
+        '.end',
+      ]);
+
+      const res = await compileRegisterContracts(entry, {
+        registerContracts: 'audit',
+        emitRegisterReport: true,
+        registerContractsReportFormat: 'json',
+      });
+
+      expectNoErrorDiagnostics(res);
+      expect(reportArtifact(res)?.json?.summaries).toContainEqual(
+        expect.objectContaining({
+          name: 'WRAPPER',
+          mayWrite: expect.arrayContaining(['B']),
+          preserved: expect.not.arrayContaining(['B']),
+        }),
+      );
+    },
+  );
+
+  it.each(['jp', 'jr'])(
+    'uses explicit extern contracts for conditional %s tails',
+    async (tailMnemonic) => {
+      const dir = mkdtempSync(join(tmpdir(), `azm-regcontracts-extern-${tailMnemonic}-tail-`));
+      const entry = join(dir, 'main.asm');
+      const iface = join(dir, 'extern.asmi');
+      writeFileSync(
+        entry,
+        [
+          'TARGET .equ $0008',
+          '.routine',
+          'WRAPPER:',
+          `    ${tailMnemonic} z,TARGET`,
+          '    ret',
+          '.end',
+        ].join('\n'),
+        'utf8',
+      );
+      writeFileSync(iface, ['extern TARGET', 'in C', 'clobbers B', 'end'].join('\n'), 'utf8');
+
+      const res = await compileRegisterContracts(entry, {
+        registerContracts: 'strict',
+        registerContractsInterfaces: [iface],
+        emitRegisterReport: true,
+        registerContractsReportFormat: 'json',
+      });
+
+      expectNoErrorDiagnostics(res);
+      expect(reportArtifact(res)?.json?.summaries).toContainEqual(
+        expect.objectContaining({
+          name: 'WRAPPER',
+          mayRead: expect.arrayContaining(['C', 'zero']),
+          mayWrite: expect.arrayContaining(['B']),
+        }),
+      );
+    },
+  );
+
+  it('merges conditional JP and JR tail exits with their fallthrough paths', async () => {
+    const entry = writeSourceFixture('azm-regcontracts-conditional-tail-merge-', [
+      '.routine',
+      'CALL_JR:',
+      '    ld b,1',
+      '    call WRAP_JR',
+      '    inc b',
+      '    ret',
+      '.routine',
+      'CALL_JP:',
+      '    ld b,1',
+      '    call WRAP_JP',
+      '    inc b',
+      '    ret',
+      '.routine',
+      'WRAP_JR:',
+      '    jr z,CALLEE',
+      '    ret',
+      '.routine',
+      'WRAP_JP:',
+      '    jp z,CALLEE',
+      '    ret',
+      '.routine',
+      'CALLEE:',
+      '    ld b,2',
+      '    ret',
+      '.end',
+    ]);
+
+    const res = await compileRegisterContracts(entry, {
+      registerContracts: 'error',
+      emitRegisterReport: true,
+      registerContractsReportFormat: 'json',
+    });
+
+    for (const name of ['WRAP_JR', 'WRAP_JP']) {
+      expect(res.diagnostics).toContainEqual(
+        expect.objectContaining({
+          code: 'AZMN_REGISTER_CONTRACTS',
+          severity: 'error',
+          message: expect.stringContaining(`CALL ${name} may modify B`),
+        }),
+      );
+      expect(reportArtifact(res)?.json?.summaries).toContainEqual(
+        expect.objectContaining({
+          name,
+          mayRead: expect.arrayContaining(['zero']),
+          mayWrite: expect.arrayContaining(['B']),
+          preserved: expect.not.arrayContaining(['B']),
+          valueRelations: expect.not.arrayContaining([
+            expect.objectContaining({ out: expect.arrayContaining(['B']) }),
+          ]),
+        }),
+      );
+    }
+  });
+
+  it('propagates stack proof status through conditional tail exits', async () => {
+    const entry = writeSourceFixture('azm-regcontracts-conditional-tail-stack-', [
+      '.routine',
+      'WRAP_BAD:',
+      '    jr z,BAD_STACK',
+      '    ret',
+      '.routine',
+      'WRAP_UNKNOWN:',
+      '    jp z,UNKNOWN_STACK',
+      '    ret',
+      '.routine',
+      'BAD_STACK:',
+      '    push af',
+      '    ret',
+      '.routine',
+      'UNKNOWN_STACK:',
+      '    ex (sp),hl',
+      '    ret',
+      '.end',
+    ]);
+
+    const res = await compileRegisterContracts(entry, {
+      registerContracts: 'audit',
+      emitRegisterReport: true,
+      registerContractsReportFormat: 'json',
+    });
+
+    expectNoErrorDiagnostics(res);
+    expect(reportArtifact(res)?.json?.summaries).toContainEqual(
+      expect.objectContaining({ name: 'WRAP_BAD', stackBalanced: false }),
+    );
+    expect(reportArtifact(res)?.json?.summaries).toContainEqual(
+      expect.objectContaining({
+        name: 'WRAP_UNKNOWN',
+        hasUnknownStackEffect: true,
+      }),
+    );
+  });
+
+  it.each(['jp', 'jr'])('emits strict errors for unknown direct-%s tail boundaries', async (jump) => {
+    const dir = mkdtempSync(join(tmpdir(), `azm-regcontracts-unknown-tail-${jump}-`));
+    const entry = join(dir, 'main.asm');
+    writeFileSync(
+      entry,
+      ['MISSING_TAIL .equ $0004', '.routine', 'START:', `    ${jump} MISSING_TAIL`, '.end'].join(
+        '\n',
+      ),
       'utf8',
     );
 
@@ -2404,12 +2649,12 @@ describe('register-contracts integration', () => {
       expect.objectContaining({
         code: 'AZMN_REGISTER_CONTRACTS',
         severity: 'error',
-        message: expect.stringContaining('JP MISSING_TAIL'),
+        message: expect.stringContaining(`${jump.toUpperCase()} MISSING_TAIL`),
       }),
     );
   });
 
-  it('does not treat unconditional JR loops as tail-call summary boundaries', async () => {
+  it('does not treat routine-local JR loops as tail-call summary boundaries', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-regcontracts-jr-loop-'));
     const entry = join(dir, 'main.asm');
     writeFileSync(
@@ -2426,11 +2671,10 @@ describe('register-contracts integration', () => {
         '.routine',
         'LCD_BUSY:',
         '    push af',
-        '.routine',
-        'LCD_BUSY_LOOP:',
+        '_LCD_BUSY_LOOP:',
         '    in a,(1)',
         '    rlca',
-        '    jr c,LCD_BUSY_LOOP',
+        '    jr c,_LCD_BUSY_LOOP',
         '    pop af',
         '    ret',
         '.routine',

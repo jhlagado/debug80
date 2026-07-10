@@ -195,10 +195,25 @@ describe('register-contracts program model', () => {
       },
       {
         kind: 'instruction',
-        instruction: { mnemonic: 'ret' },
+        instruction: {
+          mnemonic: 'call',
+          expression: { kind: 'symbol', name: 'HELPER' },
+        },
         span: {
           sourceName: '/tmp/imported.asm',
           line: 4,
+          column: 5,
+          sourceUnit: '/tmp/imported.asm',
+          sourceRelation: 'import',
+          sourceUnitRelation: 'import',
+        },
+      },
+      {
+        kind: 'instruction',
+        instruction: { mnemonic: 'ret' },
+        span: {
+          sourceName: '/tmp/imported.asm',
+          line: 5,
           column: 5,
           sourceUnit: '/tmp/imported.asm',
           sourceRelation: 'import',
@@ -209,12 +224,17 @@ describe('register-contracts program model', () => {
 
     const model = buildRegisterContractsProgramModel(items);
 
-    expect(model.directBoundaries[0]).toMatchObject({
+    const tailBoundary = model.directBoundaries.find(
+      (boundary) => boundary.subject === 'JP HELPER',
+    );
+    expect(tailBoundary).toMatchObject({
       subject: 'JP HELPER',
       sourceUnit: '/tmp/imported.asm',
       sourceRelation: 'import',
       sourceUnitRelation: 'import',
     });
+    const helper = model.routines.find((routine) => routine.name === 'HELPER');
+    expect(helper?.instructions[0]?.resolvedTarget).toBe(helper?.identity);
   });
 
   it('keeps internal labels inside a routine body', () => {
@@ -315,8 +335,10 @@ describe('register-contracts program model', () => {
         '@START:',
         '    jp _internal',
         '    jp nz,HELPER',
+        '    jr nz,HELPER',
         '_internal:',
         '    jp HELPER',
+        '    jr HELPER',
         '.routine',
         '@HELPER:',
         '    ret',
@@ -328,7 +350,118 @@ describe('register-contracts program model', () => {
 
     expect(model.directBoundaries.map((boundary) => boundary.subject)).toEqual([
       'JP HELPER',
+      'JR HELPER',
       'JP HELPER',
+      'JR HELPER',
+    ]);
+  });
+
+  it('does not expose self JP or JR jumps as direct routine boundaries', () => {
+    const items = parseRegisterContractsItems(
+      '/tmp/main.z80',
+      [
+        '.routine',
+        'SELF:',
+        '    jp nz,SELF',
+        '    jr nz,SELF',
+        '    jp SELF',
+        '    jr SELF',
+        '.end',
+      ].join('\n'),
+    );
+
+    const model = buildRegisterContractsProgramModel(items);
+
+    expect(model.directBoundaries).toEqual([]);
+    expect(
+      model.routines[0]?.instructions.every((instruction) => !instruction.resolvedTarget),
+    ).toBe(true);
+  });
+
+  it('uses owned routine occurrences for repeated include tail jumps', () => {
+    const includedSpan = {
+      sourceName: '/tmp/repeated.asm',
+      line: 1,
+      column: 5,
+      sourceUnit: '/tmp/main.asm',
+      sourceRelation: 'include' as const,
+      sourceUnitRelation: 'entry' as const,
+    };
+    const routine = (line: number): SourceItem => ({
+      kind: 'routine',
+      contract: { in: [], out: [], maybeOut: [], clobbers: [], preserves: [] },
+      span: { sourceName: '/tmp/main.asm', line, column: 1, sourceUnit: '/tmp/main.asm' },
+    });
+    const label = (name: string, line: number): SourceItem => ({
+      kind: 'label',
+      name,
+      span: { sourceName: '/tmp/main.asm', line, column: 1, sourceUnit: '/tmp/main.asm' },
+    });
+    const jump = (): SourceItem => ({
+      kind: 'instruction',
+      instruction: { mnemonic: 'jr', expression: { kind: 'symbol', name: 'First' } },
+      span: includedSpan,
+    });
+    const model = buildRegisterContractsProgramModel([
+      routine(1),
+      label('First', 2),
+      jump(),
+      routine(3),
+      label('Second', 4),
+      jump(),
+    ]);
+
+    expect(model.directBoundaries).toEqual([
+      expect.objectContaining({ subject: 'JR First', targetIdentity: 'First' }),
+    ]);
+  });
+
+  it('collects JP and JR tail boundaries outside routine regions', () => {
+    const items = parseRegisterContractsItems(
+      '/tmp/main.z80',
+      [
+        '    jp HELPER',
+        '    jr nz,HELPER',
+        '.routine',
+        'FIRST:',
+        '    ret',
+        'OUTSIDE:',
+        '    jp HELPER',
+        '    jr z,HELPER',
+        '.routine',
+        'HELPER:',
+        '    ret',
+        '.end',
+      ].join('\n'),
+    );
+
+    const model = buildRegisterContractsProgramModel(items);
+
+    expect(model.directBoundaries).toEqual([
+      expect.objectContaining({ subject: 'JP HELPER', targetIdentity: 'HELPER', line: 1 }),
+      expect.objectContaining({ subject: 'JR HELPER', targetIdentity: 'HELPER', line: 2 }),
+      expect.objectContaining({ subject: 'JP HELPER', targetIdentity: 'HELPER', line: 7 }),
+      expect.objectContaining({ subject: 'JR HELPER', targetIdentity: 'HELPER', line: 8 }),
+    ]);
+  });
+
+  it('collects unresolved unconditional tails outside routines without guessing conditional tails', () => {
+    const items = parseRegisterContractsItems(
+      '/tmp/main.z80',
+      [
+        '    jp UNKNOWN_JP',
+        '    jr UNKNOWN_JR',
+        '    jp nz,UNKNOWN_CONDITIONAL_JP',
+        '    jr nz,UNKNOWN_CONDITIONAL_JR',
+        '.end',
+      ].join('\n'),
+    );
+
+    const model = buildRegisterContractsProgramModel(items);
+
+    expect(model.directBoundaries.map((boundary) => boundary.subject)).toEqual([
+      'JP UNKNOWN_JP',
+      'JR UNKNOWN_JR',
     ]);
   });
 

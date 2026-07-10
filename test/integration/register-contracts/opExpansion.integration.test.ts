@@ -160,6 +160,46 @@ describe('op expansion and register-contracts', () => {
     expect(model.directBoundaries).toEqual([]);
   });
 
+  it('attributes an imported op-expanded JR tail boundary to its call site', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'azm-op-regcontracts-imported-jr-boundary-'));
+    const entry = join(dir, 'main.asm');
+    const ops = join(dir, 'ops.asm');
+    writeFileSync(ops, ['op @jump_target()', '  jr TARGET', 'end', ''].join('\n'), 'utf8');
+    writeFileSync(
+      entry,
+      [
+        '.import "ops.asm"',
+        '',
+        '.routine',
+        '@START:',
+        '  jump_target',
+        '.routine',
+        'TARGET:',
+        '  ret',
+        '',
+      ].join('\n'),
+      'utf8',
+    );
+
+    const loaded = await loadProgram({ entryFile: entry });
+    expectNoErrorDiagnostics(loaded.diagnostics);
+    expect(loaded.loadedProgram).toBeDefined();
+    const items = loaded.loadedProgram!.program.files[0]?.items ?? [];
+    const model = buildRegisterContractsProgramModel(items);
+
+    expect(model.directBoundaries).toContainEqual(
+      expect.objectContaining({
+        subject: 'JR TARGET',
+        targetIdentity: 'TARGET',
+        file: entry,
+        line: 5,
+        sourceUnit: entry,
+        sourceRelation: 'entry',
+        sourceUnitRelation: 'entry',
+      }),
+    );
+  });
+
   it('keeps imported op-expanded labels inside the call-site routine', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-op-regcontracts-imported-label-'));
     const entry = join(dir, 'main.asm');

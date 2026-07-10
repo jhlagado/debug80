@@ -194,9 +194,12 @@ An exported routine combines independent syntax:
 `.routine` has no export effect, and `@` has no register-contract effect.
 
 Direct calls and executable tail jumps resolve to declaration identities before
-contract lookup. A tail jump is a direct `jp` whose resolved target is a
-declared routine; conditional jumps use the same rule. Expressions that do not
-resolve to one declared routine are not inferred as tail calls.
+contract lookup. A tail jump is a direct `jp`, `jp cc`, `jr`, or `jr cc` whose
+resolved target is a declared routine. Unconditional jumps to unresolved
+non-local symbols remain direct boundaries so strict analysis can report the
+missing contract. Conditional jumps must resolve to a declared routine or a
+target with an explicit interface/profile contract because otherwise they
+cannot be distinguished from ordinary conditional control flow.
 
 ## Register-Contract Directives
 

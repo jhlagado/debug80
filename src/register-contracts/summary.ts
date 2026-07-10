@@ -7,7 +7,7 @@ import {
   isPureTokenTransferInstruction,
   isRegisterOperand,
 } from './instruction-predicates.js';
-import { boundarySummary } from './summary-boundary.js';
+import { boundarySummary, isExternalTailJump } from './summary-boundary.js';
 import {
   CONTRACT_FLAG_UNITS,
   STACK_POINTER_UNITS,
@@ -31,16 +31,13 @@ import type {
   RoutineSummary,
 } from './types.js';
 
-function isOpaqueBoundary(item: RegisterContractsInstruction, effect: InstructionEffect): boolean {
+function isOpaqueBoundary(
+  routine: RegisterContractsRoutine,
+  item: RegisterContractsInstruction,
+  effect: InstructionEffect,
+): boolean {
   if (effect.control.kind === 'call' || effect.control.kind === 'rst') return true;
-  return (
-    effect.control.kind === 'jump' &&
-    (instructionHead(item) === 'jp' || instructionHead(item) === 'jp-cc') &&
-    !effect.control.conditional &&
-    Boolean(effect.control.target) &&
-    !effect.control.target?.startsWith('.') &&
-    !effect.control.target?.startsWith('_')
-  );
+  return isExternalTailJump(routine, item, effect) && !effect.control.conditional;
 }
 
 function isRoutineReturn(effect: InstructionEffect): boolean {
@@ -230,6 +227,10 @@ function applyStackEffect(
   }
 
   consumeKnownBoundaryStackFrame(stack, state, knownBoundary);
+  if (knownBoundary !== undefined) {
+    if (!knownBoundary.stackBalanced) state.stackBalanced = false;
+    if (knownBoundary.hasUnknownStackEffect === true) state.hasUnknownStackEffect = true;
+  }
 
   if (expectedTerminalReturn && stack.length !== 0) {
     state.stackBalanced = false;
@@ -264,13 +265,14 @@ function boundaryFallsThrough(effect: InstructionEffect): boolean {
 }
 
 function isTerminalExit(
+  routine: RegisterContractsRoutine,
   item: RegisterContractsInstruction,
   effect: InstructionEffect,
   successors: readonly number[],
 ): boolean {
   if (successors.length > 0) return false;
   if (effect.control.kind === 'return' && !effect.control.conditional) return true;
-  return isOpaqueBoundary(item, effect) || effect.control.kind === 'fallthrough';
+  return isOpaqueBoundary(routine, item, effect) || effect.control.kind === 'fallthrough';
 }
 
 function proveStackDiscipline(
@@ -302,21 +304,38 @@ function proveStackDiscipline(
 
     const effect = getZ80InstructionEffect(item.instruction);
     const stack = cloneStack(current.stack);
-    applyStackEffect(
-      new Map(),
-      new Set(),
-      new Set(),
-      stack,
-      state,
-      effect,
-      isRoutineReturn(effect),
-      boundarySummary(routine, current.index, boundarySummaries, serviceRanges),
-    );
+    const knownBoundary = boundarySummary(routine, current.index, boundarySummaries, serviceRanges);
+    if (effect.control.kind === 'jump' && effect.control.conditional && knownBoundary) {
+      const branchStack = cloneStack(stack);
+      applyStackEffect(
+        new Map(),
+        new Set(),
+        new Set(),
+        branchStack,
+        state,
+        effect,
+        false,
+        knownBoundary,
+      );
+      if (branchStack.length !== 0) state.stackBalanced = false;
+      applyStackEffect(new Map(), new Set(), new Set(), stack, state, effect, false, undefined);
+    } else {
+      applyStackEffect(
+        new Map(),
+        new Set(),
+        new Set(),
+        stack,
+        state,
+        effect,
+        isRoutineReturn(effect),
+        knownBoundary,
+      );
+    }
 
     const successors = instructionSuccessors(routine, current.index, effect, labels, {
       boundaryFallthrough: boundaryFallsThrough(effect),
     });
-    if (isTerminalExit(item, effect, successors) && stack.length !== 0) {
+    if (isTerminalExit(routine, item, effect, successors) && stack.length !== 0) {
       state.stackBalanced = false;
     }
     for (const successor of successors) {
@@ -462,6 +481,19 @@ interface InstructionInferenceContext {
   readonly effectWrites: ReadonlySet<RegisterContractsUnit>;
   readonly instructionIntentOutputs: readonly RegisterContractsUnit[];
   readonly semanticReads: readonly RegisterContractsUnit[];
+  readonly opaqueBoundary: boolean;
+}
+
+function cloneInferenceState(state: InferenceState): InferenceState {
+  return {
+    tokens: new Map(state.tokens),
+    stack: cloneStack(state.stack),
+    mayRead: [...state.mayRead],
+    directMayWrite: [...state.directMayWrite],
+    consumedProduced: new Set(state.consumedProduced),
+    intendedProduced: new Set(state.intendedProduced),
+    stackState: { ...state.stackState },
+  };
 }
 
 function createInferenceState(): InferenceState {
@@ -502,6 +534,7 @@ function instructionInferenceContext(
     semanticReads: carryClearBeforeSbcHl
       ? effect.reads.filter((unit) => unit !== 'A')
       : effect.reads,
+    opaqueBoundary: isOpaqueBoundary(routine, item, effect),
   };
 }
 
@@ -517,13 +550,92 @@ function applyBoundaryOrOpaqueWrites(
       state.directMayWrite,
       context.knownBoundary,
     );
-  } else if (isOpaqueBoundary(context.item, context.effect)) {
+  } else if (context.opaqueBoundary) {
     for (const unit of TRACKED_UNITS) {
       state.tokens.set(unit, { origin: 'unknown' });
       state.consumedProduced.delete(unit);
       state.intendedProduced.delete(unit);
     }
   }
+}
+
+function isConditionalTailBoundary(context: InstructionInferenceContext): boolean {
+  return (
+    context.knownBoundary !== undefined &&
+    context.effect.control.kind === 'jump' &&
+    context.effect.control.conditional
+  );
+}
+
+function isUnconditionalExternalTail(
+  routine: RegisterContractsRoutine,
+  context: InstructionInferenceContext,
+): boolean {
+  return (
+    isExternalTailJump(routine, context.item, context.effect) &&
+    !context.effect.control.conditional
+  );
+}
+
+function summaryFromState(
+  routine: RegisterContractsRoutine,
+  state: InferenceState,
+): RoutineSummary {
+  if (state.stack.length !== 0) state.stackState.stackBalanced = false;
+  return buildRoutineSummary(
+    routine,
+    state.tokens,
+    state.consumedProduced,
+    state.intendedProduced,
+    state.directMayWrite,
+    state.mayRead,
+    state.stackState,
+  );
+}
+
+function relationKey(relation: RoutineSummary['valueRelations'][number]): string {
+  return `${relation.out.join(',')}<-${relation.from.join(',')}`;
+}
+
+function intersection<T>(left: readonly T[], right: readonly T[]): T[] {
+  const rightSet = new Set(right);
+  return left.filter((value) => rightSet.has(value));
+}
+
+function mergeAlternativeSummaries(left: RoutineSummary, right: RoutineSummary): RoutineSummary {
+  const rightRelations = new Set(right.valueRelations.map(relationKey));
+  const valueRelations = left.valueRelations.filter((relation) =>
+    rightRelations.has(relationKey(relation)),
+  );
+  const guaranteedOutputs = new Set(valueRelations.flatMap((relation) => relation.out));
+  const alternativeWrites = [
+    ...left.mayWrite,
+    ...right.mayWrite,
+    ...left.valueRelations.flatMap((relation) => relation.out),
+    ...right.valueRelations.flatMap((relation) => relation.out),
+  ];
+  return {
+    name: left.name,
+    ...(left.identity !== undefined ? { identity: left.identity } : {}),
+    mayRead: [...new Set([...left.mayRead, ...right.mayRead])],
+    mayWrite: [...new Set(alternativeWrites)].filter((unit) => !guaranteedOutputs.has(unit)),
+    ...(left.mayOutput !== undefined || right.mayOutput !== undefined
+      ? { mayOutput: intersection(left.mayOutput ?? [], right.mayOutput ?? []) }
+      : {}),
+    preserved: intersection(left.preserved, right.preserved),
+    valueRelations,
+    stackBalanced: left.stackBalanced && right.stackBalanced,
+    hasUnknownStackEffect:
+      left.hasUnknownStackEffect === true || right.hasUnknownStackEffect === true,
+    ...(left.consumesStackFrame !== undefined || right.consumesStackFrame !== undefined
+      ? {
+          consumesStackFrame: intersection(
+            left.consumesStackFrame ?? [],
+            right.consumesStackFrame ?? [],
+          ),
+        }
+      : {}),
+  };
 }
 
 function inferInstructionSummaryStep(
@@ -579,32 +691,139 @@ function inferInstructionSummaryStep(
   );
 }
 
+function inferenceStateSignature(state: InferenceState): string {
+  const tokens = TRACKED_UNITS.map((unit) => `${unit}:${readToken(state.tokens, unit).origin}`);
+  const stack = state.stack.map((entry) =>
+    entry.units.map((unit, index) => `${unit}:${entry.tokens[index]?.origin ?? 'unknown'}`).join('+'),
+  );
+  const sorted = (values: Iterable<RegisterContractsUnit>) => [...new Set(values)].sort();
+  return JSON.stringify([
+    tokens,
+    stack,
+    sorted(state.mayRead),
+    sorted(state.directMayWrite),
+    sorted(state.consumedProduced),
+    sorted(state.intendedProduced),
+    state.stackState.stackBalanced,
+    state.stackState.hasUnknownStackEffect,
+  ]);
+}
+
+function conservativeInferenceState(state: InferenceState): InferenceState {
+  const conservative = cloneInferenceState(state);
+  for (const unit of TRACKED_UNITS) conservative.tokens.set(unit, { origin: 'unknown' });
+  conservative.mayRead.push(...TRACKED_UNITS);
+  conservative.consumedProduced.clear();
+  conservative.intendedProduced.clear();
+  conservative.stackState.hasUnknownStackEffect = true;
+  return conservative;
+}
+
+function pushSuccessorStates(
+  work: Array<{ index: number; state: InferenceState }>,
+  successors: readonly number[],
+  state: InferenceState,
+  exits: InferenceState[],
+): void {
+  if (successors.length === 0) {
+    exits.push(state);
+    return;
+  }
+  successors.forEach((index, position) => {
+    work.push({ index, state: position === 0 ? state : cloneInferenceState(state) });
+  });
+}
+
+function inferRoutineExitStates(
+  routine: RegisterContractsRoutine,
+  boundarySummaries: ReadonlyMap<string, RoutineSummary>,
+  serviceRanges: readonly RegisterContractsServiceRangeContract[],
+): InferenceState[] {
+  if (routine.instructions.length === 0) return [createInferenceState()];
+  const labels = labelIndex(routine);
+  const exits: InferenceState[] = [];
+  const work = [{ index: 0, state: createInferenceState() }];
+  const seen = new Set<string>();
+
+  while (work.length > 0) {
+    const current = work.pop()!;
+    const key = `${current.index}|${inferenceStateSignature(current.state)}`;
+    if (seen.has(key)) {
+      exits.push(current.state);
+      continue;
+    }
+    seen.add(key);
+    if (seen.size > 5000) {
+      exits.push(conservativeInferenceState(current.state));
+      break;
+    }
+
+    const context = instructionInferenceContext(
+      routine,
+      current.index,
+      boundarySummaries,
+      serviceRanges,
+    );
+    if (isConditionalTailBoundary(context)) {
+      const branchState = cloneInferenceState(current.state);
+      inferInstructionSummaryStep(branchState, context);
+      exits.push(branchState);
+      inferInstructionSummaryStep(current.state, { ...context, knownBoundary: undefined });
+      pushSuccessorStates(
+        work,
+        instructionSuccessors(routine, current.index, context.effect, labels),
+        current.state,
+        exits,
+      );
+      continue;
+    }
+    if (context.effect.control.kind === 'return' && context.effect.control.conditional) {
+      const branchState = cloneInferenceState(current.state);
+      inferInstructionSummaryStep(branchState, context);
+      exits.push(branchState);
+      inferInstructionSummaryStep(current.state, {
+        ...context,
+        effect: { ...context.effect, stack: { kind: 'none' } },
+        expectedTerminalReturn: false,
+      });
+      pushSuccessorStates(
+        work,
+        instructionSuccessors(routine, current.index, context.effect, labels),
+        current.state,
+        exits,
+      );
+      continue;
+    }
+
+    inferInstructionSummaryStep(current.state, context);
+    if (isUnconditionalExternalTail(routine, context)) {
+      exits.push(current.state);
+      continue;
+    }
+    pushSuccessorStates(
+      work,
+      instructionSuccessors(routine, current.index, context.effect, labels, {
+        boundaryFallthrough: true,
+      }),
+      current.state,
+      exits,
+    );
+  }
+
+  return exits.length > 0 ? exits : [conservativeInferenceState(createInferenceState())];
+}
+
 export function inferRoutineSummary(
   routine: RegisterContractsRoutine,
   boundarySummaries: ReadonlyMap<string, RoutineSummary> = new Map(),
   serviceRanges: readonly RegisterContractsServiceRangeContract[] = [],
 ): RoutineSummary {
-  const state = createInferenceState();
-
-  for (let index = 0; index < routine.instructions.length; index += 1) {
-    inferInstructionSummaryStep(
-      state,
-      instructionInferenceContext(routine, index, boundarySummaries, serviceRanges),
-    );
-  }
-
-  if (state.stack.length !== 0) state.stackState.stackBalanced = false;
+  const exitStates = inferRoutineExitStates(routine, boundarySummaries, serviceRanges);
   const stackProof = proveStackDiscipline(routine, boundarySummaries, serviceRanges);
-  state.stackState.stackBalanced = stackProof.stackBalanced;
-  if (stackProof.hasUnknownStackEffect) state.stackState.hasUnknownStackEffect = true;
-
-  return buildRoutineSummary(
-    routine,
-    state.tokens,
-    state.consumedProduced,
-    state.intendedProduced,
-    state.directMayWrite,
-    state.mayRead,
-    state.stackState,
-  );
+  for (const state of exitStates) {
+    state.stackState.stackBalanced = state.stackState.stackBalanced && stackProof.stackBalanced;
+    if (stackProof.hasUnknownStackEffect) state.stackState.hasUnknownStackEffect = true;
+  }
+  const [first, ...rest] = exitStates.map((state) => summaryFromState(routine, state));
+  return rest.reduce(mergeAlternativeSummaries, first!);
 }
