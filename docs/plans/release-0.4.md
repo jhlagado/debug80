@@ -22,15 +22,33 @@ exercised: one macro system, owned by AZM); Tetro matches the corpus
 game feature-for-feature; and a routine can declare its register
 interface and have AZM verify it.
 
-## 1. Contract seeds from source (small, first)
+## 1. Contract seeds from source — BLOCKED on an AZM design decision
 
-Blocks and routines accept optional `;!` contract lines in their
-headers (before `begin`), emitted adjacent to the generated `@` label.
-AZM then *verifies the declared interface* instead of only inferring
-one — the difference between documentation and a checked promise.
-Routines are the headline (`routine CheckCollision` declaring
-`;! in DE; out carry`); blocks get it for symmetry. Sketch tetro.glim
-already writes this syntax.
+Investigated 2026-07-11; pass-through alone would be worse than
+nothing. Empirically (AZM 0.2.17):
+
+- A deliberately **wrong** declared contract (`preserves B` on a body
+  that destroys B) passes `--rc error` *and* `--rc strict` silently:
+  declared contracts replace inference in `buildSummaries` and are
+  trusted — callers are proven against them, but a routine's body is
+  never verified against its own declaration.
+- The `--contracts` annotation pass (which Glimmer always runs)
+  **overwrites** the seed with the inferred contract, so a seed would
+  not even survive into the annotated file.
+- AZM's inference is usage-informed (a clobbered register a caller
+  never reads may be omitted from the annotation), so verification
+  needs the raw body-effect summary (`RoutineSummary.mayWrite` /
+  `preserved`), not the annotate text.
+
+**AZM proposal for John** (two parts): (a) verify a declared `;!`
+contract against the routine's own body-effect summary — error when
+the body may write a register the declaration preserves or omits
+(treating unmentioned-as-preserved, matching how callers already read
+declarations); (b) make annotation respect a declared contract that
+verifies, instead of overwriting it. With those in an AZM release,
+the Glimmer side is a small pass-through (header `;!` lines emitted
+above the `@` label; the sketch syntax) and lands in the next Glimmer
+release. Until then this item is parked, not dropped.
 
 ## 2. Multi-rotation shapes (matrix)
 
@@ -108,14 +126,16 @@ splitting, per-block assemble/check, further platforms/display modes
 - **Debug80**: John's integration phase (AZM bump, GlimmerBackend,
   `.glim` grammar + breakpoints contribution). Item 1's seeds surface
   there as verified interfaces in hovers/contract reports.
-- **AZM**: unchanged asks — the post-injection map/line-offset fix and
-  eventually the `.loc` source-origin directive. If op expansion
-  interacts poorly with the d8 map (ops expand inline), that becomes an
-  AZM finding from item 3.
+- **AZM**: the declared-contract verification pair from item 1 (verify
+  seeds against the body-effect summary; annotation respects verified
+  seeds) is now the top ask, ahead of the post-injection map/line-offset
+  fix and the `.loc` source-origin directive. If op expansion interacts
+  poorly with the d8 map (ops expand inline), that becomes an AZM
+  finding from item 3.
 
 ## Order
 
-Contract seeds → multi-rotation shapes → Tetro data-section shrink →
+~~Contract seeds~~ (parked on AZM) → multi-rotation shapes → Tetro data-section shrink →
 sprite/tile resources + ops → sprite-chase shrink → text/LCD + any-key
 → Tetro full parity → P7 closure → polish (CHANGELOG, version 0.4.0,
 tag). Resources before parity so the games consume declarations, not
