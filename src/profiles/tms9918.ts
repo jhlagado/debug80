@@ -20,7 +20,70 @@
  *   in an imported AZM module.
  */
 
+import type { GlimmerProgram, SpriteDecl, TileDecl, VdpColor } from '../model.js';
+import { bin8 } from '../emit.js';
 import type { Profile, ProfileContext } from './types.js';
+
+const VC_NAME: Record<VdpColor, string> = {
+  transparent: 'VC_TRANSPARENT',
+  black: 'VC_BLACK',
+  medgreen: 'VC_MEDGREEN',
+  lightgreen: 'VC_LIGHTGREEN',
+  darkblue: 'VC_DARKBLUE',
+  lightblue: 'VC_LIGHTBLUE',
+  darkred: 'VC_DARKRED',
+  cyan: 'VC_CYAN',
+  medred: 'VC_MEDRED',
+  lightred: 'VC_LIGHTRED',
+  darkyellow: 'VC_DARKYELLOW',
+  lightyellow: 'VC_LIGHTYELLOW',
+  darkgreen: 'VC_DARKGREEN',
+  magenta: 'VC_MAGENTA',
+  gray: 'VC_GRAY',
+  white: 'VC_WHITE',
+};
+
+function rowMask(row: string): number {
+  let mask = 0;
+  for (let col = 0; col < row.length; col += 1) {
+    if (row[col] === 'X') mask |= 0x80 >> col;
+  }
+  return mask;
+}
+
+/**
+ * Graphics I colours patterns in groups of eight, so tiles are grouped
+ * by their (fg, bg) pair. Tile index 0 stays the blank tile; the first
+ * pair's tiles fill group 0 from index 1, and its background is the
+ * screen background for empty cells. A pair whose group is full spills
+ * into a new group.
+ */
+export function assignTileIndexes(
+  tiles: readonly TileDecl[],
+): { indexes: Map<string, number>; groups: Array<{ fg: VdpColor; bg: VdpColor }> } {
+  const indexes = new Map<string, number>();
+  const groups: Array<{ fg: VdpColor; bg: VdpColor }> = [];
+  const groupFill: number[] = [];
+  for (const tile of tiles) {
+    let group = -1;
+    for (let g = 0; g < groups.length; g += 1) {
+      const capacity = g === 0 ? 7 : 8; // group 0 loses index 0 to blank
+      if (groups[g]?.fg === tile.fg && groups[g]?.bg === tile.bg && (groupFill[g] ?? 0) < capacity) {
+        group = g;
+        break;
+      }
+    }
+    if (group === -1) {
+      groups.push({ fg: tile.fg, bg: tile.bg });
+      groupFill.push(0);
+      group = groups.length - 1;
+    }
+    const position = (groupFill[group] ?? 0) + (group === 0 ? 1 : 0);
+    indexes.set(tile.name, group * 8 + position);
+    groupFill[group] = (groupFill[group] ?? 0) + 1;
+  }
+  return { indexes, groups };
+}
 import {
   emitMon3ApiEquates,
   emitMon3HeldStorage,
@@ -85,7 +148,8 @@ export const tec1gTms9918Profile: Profile = {
     emit(`${'SpriteShadow:'.padEnd(17)} .ds 128, 0       ; 32 x (y, x, pattern, colour)`);
     emit(`${'SpriteDirty:'.padEnd(17)} .db 0`);
   },
-  emitDataTables({ emit, op }: ProfileContext): void {
+  emitDataTables({ program, emit, op }: ProfileContext): void {
+    emitVdpResourceTables(program, emit, op);
     emit('; --- VDP register init (value, then index|$80, via the control port) ---');
     emit('VdpRegInitTbl:');
     op('.db     $00, $C0, $02, $80, $00, $36, $07, $01');
@@ -94,8 +158,11 @@ export const tec1gTms9918Profile: Profile = {
     op('; backdrop black');
     emit();
   },
-  emitLoopInit({ op }: ProfileContext): void {
+  emitLoopInit({ program, op }: ProfileContext): void {
     op('call    VdpInit');
+    if (program.sprites.length > 0 || program.tiles.length > 0) {
+      op('call    LoadResourcesVram');
+    }
   },
   emitFrameStart({ op }: ProfileContext): void {
     op('call    VdpWaitVBlank        ; pace on the status-register flag');
@@ -106,13 +173,123 @@ export const tec1gTms9918Profile: Profile = {
   emitPollBindings({ program, emit, op, raiseChanged, heldBindings }: ProfileContext): void {
     emitTec1gPollBindings(program, heldBindings.length > 0, emit, op, raiseChanged);
   },
-  emitTail({ emit, op }: ProfileContext): void {
+  emitTail({ program, emit, op }: ProfileContext): void {
     emit();
     emitCommit(emit, op);
     emit();
     emitVdpLibrary(emit, op);
+    if (program.sprites.length > 0 || program.tiles.length > 0) {
+      emit();
+      emitVdpResourceRuntime(program, emit, op);
+    }
   },
 };
+
+/** Pattern data and name equates for sprite/tile resources. */
+function emitVdpResourceTables(
+  program: GlimmerProgram,
+  emit: (line?: string) => void,
+  op: (text: string) => void,
+): void {
+  const sprites: readonly SpriteDecl[] = program.sprites;
+  const tiles: readonly TileDecl[] = program.tiles;
+  if (sprites.length === 0 && tiles.length === 0) return;
+  emit('; --- VDP resources ---');
+  emit('; A sprite name is its slot (and pattern number); a tile name is');
+  emit('; its pattern index. Patterns upload once via LoadResourcesVram.');
+  if (sprites.length > 0) {
+    emit('GlimSpritePats:');
+    for (const sprite of sprites) {
+      for (const row of sprite.rows) {
+        op(`.db     ${bin8(rowMask(row))}`);
+      }
+    }
+    sprites.forEach((sprite, slot) => {
+      emit(`${sprite.name.padEnd(17)} .equ ${slot}   ; sprite slot + pattern`);
+    });
+  }
+  if (tiles.length > 0) {
+    const { indexes } = assignTileIndexes(tiles);
+    emit('GlimTilePats:');
+    for (const tile of tiles) {
+      emit(`; tile ${tile.name} -> index ${indexes.get(tile.name)}`);
+      for (const row of tile.rows) {
+        op(`.db     ${bin8(rowMask(row))}`);
+      }
+    }
+    for (const tile of tiles) {
+      emit(`${tile.name.padEnd(17)} .equ ${indexes.get(tile.name)}   ; tile index`);
+    }
+  }
+  emit();
+}
+
+/** The one-time upload routine and the sprite_at/tile_at ops. */
+function emitVdpResourceRuntime(
+  program: GlimmerProgram,
+  emit: (line?: string) => void,
+  op: (text: string) => void,
+): void {
+  const sprites: readonly SpriteDecl[] = program.sprites;
+  const tiles: readonly TileDecl[] = program.tiles;
+  emit('; --- VDP resource runtime ---');
+  emit('; Ops are AZM op definitions (one macro system, owned by AZM):');
+  emit('; bodies invoke them as ordinary statements and they expand inline.');
+  emit('op sprite_at(slot imm8, xcell imm16, ycell imm16)');
+  op('ld      a,(xcell)');
+  op('ld      d,a');
+  op('ld      a,(ycell)');
+  op('ld      e,a');
+  op('ld      a,slot');
+  op('call    SpriteSet');
+  emit('end');
+  if (tiles.length > 0) {
+    emit();
+    emit('op tile_at(tile imm8, col imm8, row imm8)');
+    op('ld      a,tile');
+    op('ld      d,col');
+    op('ld      e,row');
+    op('call    NamePut');
+    emit('end');
+  }
+  emit();
+  emit('; Upload sprite/tile patterns and the colour groups; assign each');
+  emit("; sprite slot's pattern and colour in the shadow. Called once from");
+  emit('; the loop init, after VdpInit.');
+  emit(';! clobbers A,BC,DE,HL,F');
+  emit('@LoadResourcesVram:');
+  if (sprites.length > 0) {
+    op('ld      hl,VRAM_SPRITE_PAT');
+    op('call    VdpSetAddrWrite');
+    op('ld      hl,GlimSpritePats');
+    op(`ld      bc,${sprites.length * 8}`);
+    op('call    VdpWriteBlock');
+    sprites.forEach((sprite, slot) => {
+      op(`ld      a,${slot}                  ; ${sprite.name}`);
+      op(`ld      d,${slot}`);
+      op(`ld      e,${VC_NAME[sprite.color]}`);
+      op('call    SpriteInit');
+    });
+  }
+  if (tiles.length > 0) {
+    const { indexes, groups } = assignTileIndexes(tiles);
+    for (const tile of tiles) {
+      const index = indexes.get(tile.name) ?? 0;
+      op(`ld      hl,VRAM_PATTERN + ${index * 8}   ; ${tile.name}`);
+      op('call    VdpSetAddrWrite');
+      op(`ld      hl,GlimTilePats + ${tiles.indexOf(tile) * 8}`);
+      op('ld      bc,8');
+      op('call    VdpWriteBlock');
+    }
+    groups.forEach((group, g) => {
+      op(`ld      hl,VRAM_COLOR + ${g}`);
+      op('call    VdpSetAddrWrite');
+      op(`ld      a,${VC_NAME[group.fg]} * 16 + ${VC_NAME[group.bg]}`);
+      op('out     (VDP_DATA),a');
+    });
+  }
+  op('ret');
+}
 
 /** The commit phase: dirty shadows stream to VRAM at frame start. */
 function emitCommit(emit: (line?: string) => void, op: (text: string) => void): void {
