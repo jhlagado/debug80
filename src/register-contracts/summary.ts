@@ -593,6 +593,25 @@ function summaryFromState(
   );
 }
 
+function summaryFromNonReturningState(
+  routine: RegisterContractsRoutine,
+  state: InferenceState,
+): RoutineSummary {
+  const nonReturningState = cloneInferenceState(state);
+  nonReturningState.stack.length = 0;
+  const summary = summaryFromState(routine, nonReturningState);
+  return {
+    ...summary,
+    mayWrite: [
+      ...new Set([
+        ...summary.mayWrite,
+        ...summary.valueRelations.flatMap((relation) => relation.out),
+      ]),
+    ],
+    valueRelations: [],
+  };
+}
+
 function relationKey(relation: RoutineSummary['valueRelations'][number]): string {
   return `${relation.out.join(',')}<-${relation.from.join(',')}`;
 }
@@ -738,10 +757,13 @@ function inferRoutineExitStates(
   routine: RegisterContractsRoutine,
   boundarySummaries: ReadonlyMap<string, RoutineSummary>,
   serviceRanges: readonly RegisterContractsServiceRangeContract[],
-): InferenceState[] {
-  if (routine.instructions.length === 0) return [createInferenceState()];
+): { exits: InferenceState[]; cycles: InferenceState[] } {
+  if (routine.instructions.length === 0) {
+    return { exits: [createInferenceState()], cycles: [] };
+  }
   const labels = labelIndex(routine);
   const exits: InferenceState[] = [];
+  const cycles: InferenceState[] = [];
   const work = [{ index: 0, state: createInferenceState() }];
   const seen = new Set<string>();
 
@@ -749,7 +771,7 @@ function inferRoutineExitStates(
     const current = work.pop()!;
     const key = `${current.index}|${inferenceStateSignature(current.state)}`;
     if (seen.has(key)) {
-      exits.push(current.state);
+      cycles.push(current.state);
       continue;
     }
     seen.add(key);
@@ -810,7 +832,10 @@ function inferRoutineExitStates(
     );
   }
 
-  return exits.length > 0 ? exits : [conservativeInferenceState(createInferenceState())];
+  if (exits.length === 0 && cycles.length === 0) {
+    exits.push(conservativeInferenceState(createInferenceState()));
+  }
+  return { exits, cycles };
 }
 
 export function inferRoutineSummary(
@@ -818,12 +843,25 @@ export function inferRoutineSummary(
   boundarySummaries: ReadonlyMap<string, RoutineSummary> = new Map(),
   serviceRanges: readonly RegisterContractsServiceRangeContract[] = [],
 ): RoutineSummary {
-  const exitStates = inferRoutineExitStates(routine, boundarySummaries, serviceRanges);
+  const { exits, cycles } = inferRoutineExitStates(routine, boundarySummaries, serviceRanges);
   const stackProof = proveStackDiscipline(routine, boundarySummaries, serviceRanges);
-  for (const state of exitStates) {
+  for (const state of [...exits, ...cycles]) {
     state.stackState.stackBalanced = state.stackState.stackBalanced && stackProof.stackBalanced;
     if (stackProof.hasUnknownStackEffect) state.stackState.hasUnknownStackEffect = true;
   }
-  const [first, ...rest] = exitStates.map((state) => summaryFromState(routine, state));
-  return rest.reduce(mergeAlternativeSummaries, first!);
+  const cycleSummaries = cycles.map((state) => summaryFromNonReturningState(routine, state));
+  const summaries =
+    exits.length > 0
+      ? exits.map((state) => summaryFromState(routine, state))
+      : cycleSummaries;
+  const [first, ...rest] = summaries;
+  const merged = rest.reduce(mergeAlternativeSummaries, first!);
+  return exits.length === 0
+    ? merged
+    : {
+        ...merged,
+        mayRead: [
+          ...new Set([...merged.mayRead, ...cycleSummaries.flatMap((summary) => summary.mayRead)]),
+        ],
+      };
 }

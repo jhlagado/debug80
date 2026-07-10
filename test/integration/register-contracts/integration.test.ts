@@ -2630,6 +2630,83 @@ describe('register-contracts integration', () => {
     );
   });
 
+  it('does not treat a repeated pushed-loop state as a returning stack exit', async () => {
+    const entry = writeSourceFixture('azm-regcontracts-pushed-loop-', [
+      '.routine',
+      'WAIT_READY:',
+      '    push af',
+      '_wait:',
+      '    in a,(1)',
+      '    rlca',
+      '    jr c,_wait',
+      '    pop af',
+      '    ret',
+      '.end',
+    ]);
+
+    const res = await compileRegisterContracts(entry, {
+      registerContracts: 'strict',
+    });
+
+    expectNoErrorDiagnostics(res);
+  });
+
+  it('retains register reads from a nonreturning cycle alongside a returning arm', async () => {
+    const entry = writeSourceFixture('azm-regcontracts-cycle-input-', [
+      '.routine',
+      'LOOP_OR_RETURN:',
+      '    jr z,_return',
+      '_loop:',
+      '    inc b',
+      '    jr _loop',
+      '_return:',
+      '    ret',
+      '.end',
+    ]);
+
+    const res = await compileRegisterContracts(entry, {
+      registerContracts: 'audit',
+      emitRegisterReport: true,
+      registerContractsReportFormat: 'json',
+    });
+
+    expectNoErrorDiagnostics(res);
+    expect(reportArtifact(res)?.json?.summaries).toContainEqual(
+      expect.objectContaining({
+        name: 'LOOP_OR_RETURN',
+        mayRead: expect.arrayContaining(['B']),
+      }),
+    );
+  });
+
+  it('accepts a proven stack-neutral infinite loop in strict mode', async () => {
+    const entry = writeSourceFixture('azm-regcontracts-infinite-loop-', [
+      '.routine',
+      'LOOP_FOREVER:',
+      '    ld a,1',
+      '_loop:',
+      '    jr _loop',
+      '.end',
+    ]);
+
+    const res = await compileRegisterContracts(entry, {
+      registerContracts: 'strict',
+      emitRegisterReport: true,
+      registerContractsReportFormat: 'json',
+    });
+
+    expectNoErrorDiagnostics(res);
+    expect(reportArtifact(res)?.json?.summaries).toContainEqual(
+      expect.objectContaining({
+        name: 'LOOP_FOREVER',
+        mayWrite: expect.arrayContaining(['A']),
+        valueRelations: expect.not.arrayContaining([
+          expect.objectContaining({ out: expect.arrayContaining(['A']) }),
+        ]),
+      }),
+    );
+  });
+
   it.each(['jp', 'jr'])('emits strict errors for unknown direct-%s tail boundaries', async (jump) => {
     const dir = mkdtempSync(join(tmpdir(), `azm-regcontracts-unknown-tail-${jump}-`));
     const entry = join(dir, 'main.asm');
