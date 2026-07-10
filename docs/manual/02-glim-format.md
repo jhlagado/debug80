@@ -259,6 +259,27 @@ the tables in an imported AZM module; `VC_*` equates name the fifteen
 VDP colours. Sprites use contiguous slots from 0. Sound cues, shapes,
 and the seven-segment HUD service are matrix-profile features.
 
+Sprites and tiles are declarations on this profile:
+
+```
+sprite Player color white
+  "..XXXX.."
+  ...            ; 8 rows of 8
+end
+
+tile Pip color white on black
+  ...
+end
+```
+
+Declaration order is the sprite slot (and pattern number); the name
+compiles to its slot/index equate, and the generated `sprite_at` /
+`tile_at` AZM ops take it directly — `sprite_at Player, PlayerX,
+PlayerY` in a render body. Patterns, colours, and sprite slot setup
+upload once through the generated `LoadResourcesVram`. Graphics I
+colours patterns in groups of eight, so tiles group by their (fg, bg)
+pair; the first pair's background is the screen background.
+
 Note for cards on any profile: a card-gated block never sees flags
 raised while its card was inactive — re-raise the cells a card's
 renders need with an `enter` block's `updates` on entry (see

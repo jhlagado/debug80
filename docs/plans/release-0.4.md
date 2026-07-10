@@ -66,7 +66,7 @@ generated tables reproduce the corpus piece data byte-for-byte, and
 tetro-lib.asm's data section is gone (SetCurPiece reads the generated
 ShapeRot* tables).
 
-## 3. Sprite and tile resources (VDP)
+## 3. Sprite and tile resources (VDP) — ✅ landed 2026-07-11
 
 The sketch's `sprite Name color <vc>` and `tile Name color <fg> on
 <bg>` declarations, with 8x8 `"..XX...."` rows:
@@ -85,7 +85,11 @@ The sketch's `sprite Name color <vc>` and `tile Name color <fg> on
   (fg, bg) pair and emits the colour-table init — a declared design
   constraint to document (too many distinct colour pairs in one group
   is a diagnostic, not a silent wrong colour).
-- sprite-chase drops chase-lib.asm entirely.
+- sprite-chase drops chase-lib.asm entirely. As landed: a resource
+  name compiles to its slot/index equate (so `sprite_at Player, ...`
+  needs no extra naming), sprite slot setup happens inside
+  LoadResourcesVram, and colour groups spill to a new group when full
+  rather than erroring (31-sprite limit is a diagnostic).
 
 ## 4. Text resources and the LCD slice
 

@@ -3,11 +3,11 @@
 ; counterpart of CounterToy: vblank-paced loop, shadow tables, the
 ; commit phase streaming dirty entries to VRAM.
 ;
-; First-cut adaptations vs the sketch: no sprite/tile resource syntax
-; yet (patterns live in chase-lib.asm, uploaded once from the Boot
-; card's enter block); score shown as pips on the top tile row rather
-; than digits; the target flees deterministically — cornering it is
-; the game.
+; Sprites and the pip tile are declarations — patterns, slots, colour
+; groups, and the VRAM upload are generated (LoadResourcesVram), and
+; render bodies use the generated sprite_at op exactly as the sketch
+; wrote them. Score shows as pips on the top tile row; the target
+; flees deterministically — cornering it is the game.
 ;
 ; Keys: 2 up, 8 down, 4 left, 6 right.
 
@@ -16,7 +16,38 @@ program SpriteChase
 platform tec1g-mon3
 display tms9918
 
-import "chase-lib.asm"
+sprite Player color white
+  "..XXXX.."
+  ".XXXXXX."
+  "XX.XX.XX"
+  "XXXXXXXX"
+  "XX....XX"
+  ".XXXXXX."
+  "..XXXX.."
+  "........"
+end
+
+sprite Target color lightred
+  "...XX..."
+  "..XXXX.."
+  ".XXXXXX."
+  "XXXXXXXX"
+  ".XXXXXX."
+  "..XXXX.."
+  "...XX..."
+  "........"
+end
+
+tile Pip color white on black
+  "........"
+  "..XXXX.."
+  ".XXXXXX."
+  ".XXXXXX."
+  ".XXXXXX."
+  ".XXXXXX."
+  "..XXXX.."
+  "........"
+end
 
 state PlayerX : byte = 120
 state PlayerY : byte = 88
@@ -36,23 +67,6 @@ bind key KEY_2 held period 1 -> UpP
 bind key KEY_8 held period 1 -> DownP
 bind key KEY_4 held period 1 -> LeftP
 bind key KEY_6 held period 1 -> RightP
-
-card Boot
-
-; One-time VRAM upload and sprite slot setup, then hand over to play.
-enter LoadVram
-    goto Playing
-begin
-    call LoadChaseVram
-    xor a                ; slot 0 = player
-    ld d,0               ; pattern 0
-    ld e,VC_WHITE
-    call SpriteInit
-    ld a,1               ; slot 1 = target
-    ld d,1               ; pattern 1
-    ld e,VC_LIGHTRED
-    call SpriteInit
-end
 
 card Playing
 
@@ -191,23 +205,13 @@ end
 render PlacePlayer
     on PlayerX, PlayerY
 begin
-    ld a,(PlayerX)
-    ld d,a
-    ld a,(PlayerY)
-    ld e,a
-    xor a                ; sprite slot 0
-    call SpriteSet
+    sprite_at Player, PlayerX, PlayerY
 end
 
 render PlaceTarget
     on TargetX, TargetY
 begin
-    ld a,(TargetX)
-    ld d,a
-    ld a,(TargetY)
-    ld e,a
-    ld a,1               ; sprite slot 1
-    call SpriteSet
+    sprite_at Target, TargetX, TargetY
 end
 
 render DrawScore
@@ -220,7 +224,7 @@ begin
     and %00011111
     ld d,a               ; column = (score-1) mod 32
     ld e,0               ; top row
-    ld a,1               ; pip tile
+    ld a,Pip             ; pip tile index equate
     call NamePut
 _done:
 end

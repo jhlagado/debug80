@@ -681,7 +681,7 @@ describe('parseGlimmer', () => {
   });
 
   it('rejects malformed rotational shapes', () => {
-    const bad = (lines) =>
+    const bad = (lines: string[]): string =>
       parseGlimmer(['program P', 'platform tec1g-mon3', 'display matrix8x8', ...lines].join('\n'))
         .diagnostics.map((d) => d.message)
         .join('\n');

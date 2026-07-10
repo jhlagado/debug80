@@ -90,6 +90,8 @@ statement       ::= program-decl
                   | sound-decl
                   | curve-decl
                   | shape-decl
+                  | sprite-decl
+                  | tile-decl
                   | bind-decl
                   | block-decl
                   | routine-decl
@@ -198,6 +200,30 @@ rot-group       ::= "rot" digit shape-row* newline shape-row*
                   ; ShapeRotPtrTable / ShapeRotRightTbl /
                   ; ShapeRotColorTbl + ShapeId_<Name> equates,
                   ; indexed by id*4 + rotation.
+sprite-decl     ::= "sprite" identifier "color" vdp-color
+                    shape-row+     ; exactly 8 rows of 8
+                    "end"
+                  ; tms9918 profile. Declaration order is the sprite
+                  ; slot and pattern number; the name compiles to the
+                  ; slot equate, so the generated op takes it directly:
+                  ;   sprite_at Player, PlayerX, PlayerY
+                  ; Patterns and colours upload once (LoadResourcesVram).
+                  ; At most 31 sprites; slot 31 stays hidden.
+
+tile-decl       ::= "tile" identifier "color" vdp-color "on" vdp-color
+                    shape-row+     ; exactly 8 rows of 8
+                    "end"
+                  ; tms9918 profile. The name compiles to the tile index
+                  ; equate; tile_at <Name>, col, row places it, or use
+                  ; NamePut for computed positions. Graphics I colours
+                  ; patterns in groups of 8: tiles group by (fg, bg)
+                  ; pair; the first pair's background is the screen
+                  ; background for empty cells.
+vdp-color       ::= "transparent" | "black" | "medgreen" | "lightgreen"
+                  | "darkblue" | "lightblue" | "darkred" | "cyan"
+                  | "medred" | "lightred" | "darkyellow" | "lightyellow"
+                  | "darkgreen" | "magenta" | "gray" | "white"
+
 shape-row       ::= string
 color-name      ::= "red" | "green" | "blue" | "yellow" | "cyan"
                   | "magenta" | "white"

@@ -2193,7 +2193,6 @@ CHG_TICK          .equ %00000010
 CHG_CURRENTCARD   .equ %00000100
 
 ; --- block trigger masks ---
-GlimDep_LoadVram__B1 .equ CHG_CURRENTCARD
 GlimDep_StartPlaying__B1 .equ CHG_CURRENTCARD
 GlimDep_MovePlayer__B0 .equ CHG_UPP + CHG_DOWNP + CHG_LEFTP
 GlimDep_MovePlayer__B1 .equ CHG_RIGHTP
@@ -2206,7 +2205,7 @@ GlimDep_DrawScore__B0 .equ CHG_SCORE
 ; --- cards ---
 ; Exactly one card is active; CurrentCard holds it. Blocks in a
 ; card's section dispatch only while it is active.
-Card              .enum Boot, Playing
+Card              .enum Playing
 
 ; --- state storage ---
 PlayerX:          .db 120
@@ -2221,8 +2220,8 @@ RightP:           .db 0
 Tick:             .db 0
 Pace:             .db 2   ; period (writable)
 Glim_Pace_cnt:    .db 2
-CurrentCard:      .db Card.Boot   ; writable next card, starts changed
-GlimActiveCard:   .db Card.Boot   ; frame-latched card all gates test
+CurrentCard:      .db Card.Playing   ; writable next card, starts changed
+GlimActiveCard:   .db Card.Playing   ; frame-latched card all gates test
 GlimPrevCard:     .db $FF          ; enter edge detector ($FF = before any card)
 Glim_HeldKey:     .db $FF
 Glim_HeldCount:   .db 0
@@ -2237,6 +2236,40 @@ NameDirtyRows:    .db 0, 0, 0      ; 24 dirty-row bits
 SpriteShadow:     .ds 128, 0       ; 32 x (y, x, pattern, colour)
 SpriteDirty:      .db 0
 
+; --- VDP resources ---
+; A sprite name is its slot (and pattern number); a tile name is
+; its pattern index. Patterns upload once via LoadResourcesVram.
+GlimSpritePats:
+        .db     %00111100
+        .db     %01111110
+        .db     %11011011
+        .db     %11111111
+        .db     %11000011
+        .db     %01111110
+        .db     %00111100
+        .db     %00000000
+        .db     %00011000
+        .db     %00111100
+        .db     %01111110
+        .db     %11111111
+        .db     %01111110
+        .db     %00111100
+        .db     %00011000
+        .db     %00000000
+Player            .equ 0   ; sprite slot + pattern
+Target            .equ 1   ; sprite slot + pattern
+GlimTilePats:
+; tile Pip -> index 1
+        .db     %00000000
+        .db     %00111100
+        .db     %01111110
+        .db     %01111110
+        .db     %01111110
+        .db     %01111110
+        .db     %00111100
+        .db     %00000000
+Pip               .equ 1   ; tile index
+
 ; --- VDP register init (value, then index|$80, via the control port) ---
 VdpRegInitTbl:
         .db     $00, $C0, $02, $80, $00, $36, $07, $01
@@ -2247,6 +2280,7 @@ VdpRegInitTbl:
 ; --- runtime loop ---
 @Start:
         call    VdpInit
+        call    LoadResourcesVram
 MainLoop:
         call    VdpWaitVBlank        ; pace on the status-register flag
         call    __Commit             ; flush shadows in the blank window
@@ -2405,17 +2439,6 @@ __TimerNext_Pace:
 ; --- logic phase dispatch ---
 @__RunLogicEffects:
         ld      a,(GlimActiveCard)
-        cp      Card.Boot
-        jr      nz,GlimSkip_LoadVram
-        ld      a,(GlimPrevCard)
-        cp      Card.Boot
-        jr      z,GlimSkip_LoadVram
-        ld      a,(Changed1)
-        and     GlimDep_LoadVram__B1
-        jr      z,GlimSkip_LoadVram
-        call    Glim_LoadVram
-GlimSkip_LoadVram:
-        ld      a,(GlimActiveCard)
         cp      Card.Playing
         jr      nz,GlimSkip_StartPlaying
         ld      a,(GlimPrevCard)
@@ -2502,24 +2525,6 @@ GlimSkip_DrawScore:
         xor     a
         ld      (Raised0),a
         ld      (Raised1),a
-        ret
-
-; --- enter block LoadVram ---
-@Glim_LoadVram:
-    call LoadChaseVram
-    xor a                ; slot 0 = player
-    ld d,0               ; pattern 0
-    ld e,VC_WHITE
-    call SpriteInit
-    ld a,1               ; slot 1 = target
-    ld d,1               ; pattern 1
-    ld e,VC_LIGHTRED
-    call SpriteInit
-        ld      a,Card.Playing      ; goto Playing
-        ld      (CurrentCard),a
-        ld      a,(Next1)            ; a consumer already ran: defer to next frame
-        or      CHG_CURRENTCARD
-        ld      (Next1),a
         ret
 
 ; --- enter block StartPlaying ---
@@ -2661,22 +2666,12 @@ _done:
 
 ; --- render block PlacePlayer ---
 @Glim_PlacePlayer:
-    ld a,(PlayerX)
-    ld d,a
-    ld a,(PlayerY)
-    ld e,a
-    xor a                ; sprite slot 0
-    call SpriteSet
+    sprite_at Player, PlayerX, PlayerY
         ret
 
 ; --- render block PlaceTarget ---
 @Glim_PlaceTarget:
-    ld a,(TargetX)
-    ld d,a
-    ld a,(TargetY)
-    ld e,a
-    ld a,1               ; sprite slot 1
-    call SpriteSet
+    sprite_at Target, TargetX, TargetY
         ret
 
 ; --- render block DrawScore ---
@@ -2688,7 +2683,7 @@ _done:
     and %00011111
     ld d,a               ; column = (score-1) mod 32
     ld e,0               ; top row
-    ld a,1               ; pip tile
+    ld a,Pip             ; pip tile index equate
     call NamePut
 _done:
         ret
@@ -2711,11 +2706,6 @@ _done:
         ld      (Next0),a
         ld      (Next1),a
         ret
-
-; --- imported AZM modules ---
-; Import names resolve program-wide; bytes land here, outside
-; every execution path. @ labels are the modules' public API.
-        .import "chase-lib.asm"
 
 ; --- commit: flush dirty shadows to VRAM ---
 @__Commit:
@@ -2965,6 +2955,54 @@ _hide:
         djnz    _hide
         ld      a,1
         ld      (SpriteDirty),a      ; first commit publishes the hidden table
+        ret
+
+; --- VDP resource runtime ---
+; Ops are AZM op definitions (one macro system, owned by AZM):
+; bodies invoke them as ordinary statements and they expand inline.
+op sprite_at(slot imm8, xcell imm16, ycell imm16)
+        ld      a,(xcell)
+        ld      d,a
+        ld      a,(ycell)
+        ld      e,a
+        ld      a,slot
+        call    SpriteSet
+end
+
+op tile_at(tile imm8, col imm8, row imm8)
+        ld      a,tile
+        ld      d,col
+        ld      e,row
+        call    NamePut
+end
+
+; Upload sprite/tile patterns and the colour groups; assign each
+; sprite slot's pattern and colour in the shadow. Called once from
+; the loop init, after VdpInit.
+;! clobbers A,BC,DE,HL,F
+@LoadResourcesVram:
+        ld      hl,VRAM_SPRITE_PAT
+        call    VdpSetAddrWrite
+        ld      hl,GlimSpritePats
+        ld      bc,16
+        call    VdpWriteBlock
+        ld      a,0                  ; Player
+        ld      d,0
+        ld      e,VC_WHITE
+        call    SpriteInit
+        ld      a,1                  ; Target
+        ld      d,1
+        ld      e,VC_LIGHTRED
+        call    SpriteInit
+        ld      hl,VRAM_PATTERN + 8   ; Pip
+        call    VdpSetAddrWrite
+        ld      hl,GlimTilePats + 0
+        ld      bc,8
+        call    VdpWriteBlock
+        ld      hl,VRAM_COLOR + 0
+        call    VdpSetAddrWrite
+        ld      a,VC_WHITE * 16 + VC_BLACK
+        out     (VDP_DATA),a
         ret
 "
 `;

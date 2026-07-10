@@ -39,9 +39,12 @@ import type {
   ShapeRotation,
   ShapeRotationSet,
   SoundDecl,
+  SpriteDecl,
   StateDecl,
+  TileDecl,
   TimerDecl,
   TypeDecl,
+  VdpColor,
   TypeFieldDecl,
 } from './model.js';
 import type { ImportDecl } from './model.js';
@@ -84,6 +87,15 @@ const SHAPE_COLORS: readonly ShapeColor[] = [
   'magenta',
   'white',
 ];
+const SPRITE_RE = /^sprite\s+([A-Za-z_][A-Za-z0-9_]*)\s+color\s+([A-Za-z_][A-Za-z0-9_]*)$/;
+const TILE_RE =
+  /^tile\s+([A-Za-z_][A-Za-z0-9_]*)\s+color\s+([A-Za-z_][A-Za-z0-9_]*)\s+on\s+([A-Za-z_][A-Za-z0-9_]*)$/;
+const VDP_COLORS: readonly VdpColor[] = [
+  'transparent', 'black', 'medgreen', 'lightgreen', 'darkblue', 'lightblue',
+  'darkred', 'cyan', 'medred', 'lightred', 'darkyellow', 'lightyellow',
+  'darkgreen', 'magenta', 'gray', 'white',
+];
+
 const CURVE_PRESETS: readonly CurvePreset[] = [
   'linear',
   'ease_in',
@@ -138,6 +150,8 @@ export interface ParsedUnit {
   sounds: SoundDecl[];
   curves: CurveDecl[];
   shapes: ShapeDecl[];
+  sprites: SpriteDecl[];
+  tiles: TileDecl[];
   bindings: Binding[];
   effects: EffectDecl[];
   routines: RoutineDecl[];
@@ -176,6 +190,8 @@ export function parseUnit(
   const sounds: SoundDecl[] = [];
   const curves: CurveDecl[] = [];
   const shapes: ShapeDecl[] = [];
+  const sprites: SpriteDecl[] = [];
+  const tiles: TileDecl[] = [];
   const bindings: Binding[] = [];
   const effects: EffectDecl[] = [];
   const routines: RoutineDecl[] = [];
@@ -500,6 +516,65 @@ export function parseUnit(
         continue;
       }
       curves.push({ name, preset: preset as CurvePreset, steps, from, to, line: lineNo });
+      continue;
+    }
+
+    if (text.startsWith('sprite ') || text.startsWith('tile ')) {
+      const isSprite = text.startsWith('sprite ');
+      const match = isSprite ? SPRITE_RE.exec(text) : TILE_RE.exec(text);
+      const rows: string[] = [];
+      let sawEnd = false;
+      while (i < lines.length) {
+        const raw = lines[i] ?? '';
+        i += 1;
+        const rowText = stripComment(raw).trim();
+        if (rowText === 'end') {
+          sawEnd = true;
+          break;
+        }
+        if (rowText === '') continue;
+        const rowMatch = SHAPE_ROW_RE.exec(rowText);
+        if (!rowMatch) {
+          error(i, `Invalid ${isSprite ? 'sprite' : 'tile'} row: "${rowText}". Expected a quoted row using only . and X.`);
+          continue;
+        }
+        rows.push(rowMatch[1] as string);
+      }
+      if (!match) {
+        error(
+          lineNo,
+          isSprite
+            ? `Invalid sprite declaration: "${text}". Expected: sprite <Name> color <VdpColor>.`
+            : `Invalid tile declaration: "${text}". Expected: tile <Name> color <Fg> on <Bg>.`,
+        );
+        continue;
+      }
+      const name = match[1] as string;
+      if (!sawEnd) {
+        error(lineNo, `${isSprite ? 'Sprite' : 'Tile'} ${name}: missing end.`);
+        continue;
+      }
+      if (rows.length !== 8 || rows.some((row) => row.length !== 8)) {
+        error(lineNo, `${isSprite ? 'Sprite' : 'Tile'} ${name}: needs exactly 8 rows of 8 pixels.`);
+        continue;
+      }
+      const colors = (isSprite ? [match[2]] : [match[2], match[3]]) as string[];
+      const badColor = colors.find((c) => !VDP_COLORS.includes(c as VdpColor));
+      if (badColor !== undefined) {
+        error(lineNo, `${isSprite ? 'Sprite' : 'Tile'} ${name}: unknown colour "${badColor}".`);
+        continue;
+      }
+      if (isSprite) {
+        sprites.push({ name, color: colors[0] as VdpColor, rows, line: lineNo });
+      } else {
+        tiles.push({
+          name,
+          fg: colors[0] as VdpColor,
+          bg: colors[1] as VdpColor,
+          rows,
+          line: lineNo,
+        });
+      }
       continue;
     }
 
@@ -888,6 +963,8 @@ export function parseUnit(
     sounds,
     curves,
     shapes,
+    sprites,
+    tiles,
     bindings,
     effects,
     routines,
@@ -919,6 +996,8 @@ export function assembleProgram(units: ParsedUnit[]): ParseResult {
     sounds: [] as SoundDecl[],
     curves: [] as CurveDecl[],
     shapes: [] as ShapeDecl[],
+    sprites: [] as SpriteDecl[],
+    tiles: [] as TileDecl[],
     bindings: [] as Binding[],
     effects: [] as EffectDecl[],
     routines: [] as RoutineDecl[],
@@ -1006,6 +1085,17 @@ export function assembleProgram(units: ParsedUnit[]): ParseResult {
       error(shape, 'Shape resources require platform tec1g-mon3 with display matrix8x8.');
     }
   }
+  if (
+    (merged.sprites.length > 0 || merged.tiles.length > 0) &&
+    !(platform === 'tec1g-mon3' && display === 'tms9918')
+  ) {
+    for (const decl of [...merged.sprites, ...merged.tiles]) {
+      error(decl, 'Sprite and tile resources require platform tec1g-mon3 with display tms9918.');
+    }
+  }
+  if (merged.sprites.length > 31) {
+    error(merged.sprites[31] as SpriteDecl, 'At most 31 sprites (slot 31 stays the hidden terminator).');
+  }
 
   validateReferences(merged, diagnostics, (owner) => fileOf.get(owner));
 
@@ -1058,6 +1148,8 @@ function validateReferences(
     | 'sounds'
     | 'curves'
     | 'shapes'
+    | 'sprites'
+    | 'tiles'
     | 'bindings'
     | 'effects'
     | 'routines'
@@ -1109,6 +1201,8 @@ function validateReferences(
   for (const sound of parts.sounds) declare(sound, sound.name, 'sound');
   for (const curve of parts.curves) declare(curve, curve.name, 'curve');
   for (const shape of parts.shapes) declare(shape, shape.name, 'shape');
+  for (const sprite of parts.sprites) declare(sprite, sprite.name, 'sprite');
+  for (const tile of parts.tiles) declare(tile, tile.name, 'tile');
   for (const effect of parts.effects) declare(effect, effect.name, 'effect');
   for (const routine of parts.routines) declare(routine, routine.name, 'routine');
 

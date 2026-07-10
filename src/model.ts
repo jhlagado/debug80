@@ -144,6 +144,39 @@ export interface ShapeRotationSet {
   map: [number, number, number, number];
 }
 
+/** TMS9918 colour names for sprite/tile declarations (VC_* equates). */
+export type VdpColor =
+  | 'transparent' | 'black' | 'medgreen' | 'lightgreen' | 'darkblue'
+  | 'lightblue' | 'darkred' | 'cyan' | 'medred' | 'lightred'
+  | 'darkyellow' | 'lightyellow' | 'darkgreen' | 'magenta' | 'gray'
+  | 'white';
+
+/**
+ * VDP sprite resource: an 8x8 pattern plus a colour. The declaration
+ * order is the sprite slot and pattern number, and the name's AZM
+ * projection is the slot equate (`Player .equ 0`), so the generated
+ * `sprite_at` op takes the name directly.
+ */
+export interface SpriteDecl {
+  name: string;
+  color: VdpColor;
+  rows: string[];
+  line: number;
+}
+
+/**
+ * VDP tile resource: an 8x8 pattern plus a foreground/background pair.
+ * Tiles are grouped by colour pair (Graphics I colours patterns in
+ * groups of eight); the name's AZM projection is the tile index equate.
+ */
+export interface TileDecl {
+  name: string;
+  fg: VdpColor;
+  bg: VdpColor;
+  rows: string[];
+  line: number;
+}
+
 export type CurvePreset =
   'linear' | 'ease_in' | 'ease_out' | 'ease_in_out' | 'sine' | 'overshoot' | 'anticipation';
 
@@ -239,6 +272,8 @@ export interface GlimmerProgram {
   sounds: SoundDecl[];
   curves: CurveDecl[];
   shapes: ShapeDecl[];
+  sprites: SpriteDecl[];
+  tiles: TileDecl[];
   bindings: Binding[];
   effects: EffectDecl[];
   routines: RoutineDecl[];

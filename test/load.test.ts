@@ -207,13 +207,17 @@ describe('sprite-chase (the tms9918 acceptance test)', () => {
     expect(generated.source).toContain('@__Commit:');
     expect(generated.source).toContain('NameShadow:');
     expect(generated.source).toContain('SpriteShadow:');
+    // Resources are declarations: slot/index equates, generated upload,
+    // and the sprite_at/tile_at ops (the first Glimmer-emitted AZM ops).
+    expect(generated.source).toContain('Player            .equ 0   ; sprite slot + pattern');
+    expect(generated.source).toContain('Target            .equ 1   ; sprite slot + pattern');
+    expect(generated.source).toContain('Pip               .equ 1   ; tile index');
+    expect(generated.source).toContain('op sprite_at(slot imm8, xcell imm16, ycell imm16)');
+    expect(generated.source).toContain('@LoadResourcesVram:');
+    expect(generated.source).toContain('call    LoadResourcesVram');
 
     const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-chase-'));
     writeFileSync(path.join(dir, 'sprite-chase.main.asm'), generated.source);
-    writeFileSync(
-      path.join(dir, 'chase-lib.asm'),
-      readFileSync(path.join(import.meta.dirname, '../examples/chase-lib.asm')),
-    );
     const assembled = await compile(path.join(dir, 'sprite-chase.main.asm'), {
       emitBin: true,
       emitHex: false,
