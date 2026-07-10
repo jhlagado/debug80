@@ -1,0 +1,123 @@
+# Release 0.4 Work Plan — Resources and Parity
+
+Prepared 2026-07-11. 0.2 completed the language's control structures;
+0.3 proved the profile architecture on two opposite displays. 0.4
+finishes the **data story**: the sketches' resource declarations become
+real on both profiles, the first Glimmer-emitted AZM `op`s appear, and
+the two flagship games reach corpus parity — so that what remains
+hand-written in any example is genuinely irreducible engine code. It is
+also the developer-experience line displaced from the original 0.3
+draft: contract seeds land here.
+
+Runs alongside John's Debug80 integration phase and the pending
+playtests of Tetro (matrix) and sprite-chase (VDP); playtest findings
+fold into this release's scope as they arrive.
+
+## The line
+
+0.4 is done when: a piece, a sprite, a tile, and an LCD message are all
+declarations, not hand-written tables; `sprite_at` and `lcd_row` exist
+as visible AZM `op`s in the generated file (the P6/P8 ground rule
+exercised: one macro system, owned by AZM); Tetro matches the corpus
+game feature-for-feature; and a routine can declare its register
+interface and have AZM verify it.
+
+## 1. Contract seeds from source (small, first)
+
+Blocks and routines accept optional `;!` contract lines in their
+headers (before `begin`), emitted adjacent to the generated `@` label.
+AZM then *verifies the declared interface* instead of only inferring
+one — the difference between documentation and a checked promise.
+Routines are the headline (`routine CheckCollision` declaring
+`;! in DE; out carry`); blocks get it for symmetry. Sketch tetro.glim
+already writes this syntax.
+
+## 2. Multi-rotation shapes (matrix)
+
+The sketch syntax: `shape PieceT color magenta` with `rot0`..`rot3`
+row groups generates the row bitmaps, the pointer/rotation table, the
+right-bound table, and the colour entry. Tetro's seven pieces become
+seven declarations and tetro-lib.asm loses its data section — the
+collision/lock/clear engine is what legitimately remains. Rotation
+aliases (I has two distinct rotations, O has one) come from repeating
+a `rotN` group or omitting it (omitted = same as rot0's cycle;
+settle the exact rule when writing the grammar entry).
+
+## 3. Sprite and tile resources (VDP)
+
+The sketch's `sprite Name color <vc>` and `tile Name color <fg> on
+<bg>` declarations, with 8x8 `"..XX...."` rows:
+
+- **Patterns** compile to `.db` tables; a generated
+  `LoadResourcesVram` routine uploads them once, called from `VdpInit`
+  (no more hand-written chase-lib upload).
+- **Sprites** get slots in declaration order and a generated
+  `sprite_at <Name>, x, y` **AZM `op`** (expanding to the SpriteSet
+  call with the slot constant) plus generated `SpriteInit` calls for
+  pattern/colour at init. Slot discipline (contiguous from 0, Y=$D1
+  terminator) becomes generated truth instead of a documented contract.
+- **Tiles** get pattern indexes from 1 (0 stays blank) and a
+  `tile_at <Name>, col, row` op over NamePut. Graphics I colours groups
+  of 8 patterns: the generator assigns tiles to colour groups by their
+  (fg, bg) pair and emits the colour-table init — a declared design
+  constraint to document (too many distinct colour pairs in one group
+  is a diagnostic, not a silent wrong colour).
+- sprite-chase drops chase-lib.asm entirely.
+
+## 4. Text resources and the LCD slice
+
+`text MsgPaused "PAUSED"` emits the null-terminated `.db` string. The
+tec1g platform (both displays — the LCD is board hardware, not display
+hardware) grows an LCD service slice over the MON-3 calls the AZM
+contract profile already models (`_stringToLcd` 13, `_charToLcd` 14,
+`_commandToLcd` 15): an `lcd_row msg, row` op and LcdRow equates.
+Corpus LCD script tables stay out — ops compose in bodies.
+
+## 5. `bind key any rising -> Pulse`
+
+The corpus "press any key" pattern (splash exit, game-over restart),
+currently approximated with GO. Matrix and VDP profiles share the
+MON-3 poll, so this lands once in mon3-input.
+
+## 6. Game parity — the acceptance tests grow up
+
+- **Tetro**: line-clear flash (`ClearMask` + `ClearHold` timer),
+  next-piece preview (LCD via text resources, matching the corpus),
+  paused/running/game-over LCD messages, the game-over key gate (the
+  enter-rearms-a-once-timer pattern, documented), pieces as
+  multi-rotation shapes.
+- **sprite-chase**: sprites/tiles as declarations, `sprite_at` in the
+  render bodies as the sketch wrote them, a proper tile border.
+- Both remain strict-clean and snapshot-covered; playtest findings from
+  0.2/0.3 get fixed here.
+
+## 7. P7 word semantics — document and close
+
+Word cells store, flag, and compare correctly (Tetro's Score). 0.4
+closes P7 in the spec as deliberately narrow: no word-aware widgets
+until a real program needs one.
+
+## Explicitly out (the 0.5 horizon)
+
+`.glim` libraries and the namespace story, generated-output module
+splitting, per-block assemble/check, further platforms/display modes
+(Graphics II, NMI pacing), richer text (LCD scripts), Pacmo.
+
+## Coordination tracks (not in this package)
+
+- **Debug80**: John's integration phase (AZM bump, GlimmerBackend,
+  `.glim` grammar + breakpoints contribution). Item 1's seeds surface
+  there as verified interfaces in hovers/contract reports.
+- **AZM**: unchanged asks — the post-injection map/line-offset fix and
+  eventually the `.loc` source-origin directive. If op expansion
+  interacts poorly with the d8 map (ops expand inline), that becomes an
+  AZM finding from item 3.
+
+## Order
+
+Contract seeds → multi-rotation shapes → Tetro data-section shrink →
+sprite/tile resources + ops → sprite-chase shrink → text/LCD + any-key
+→ Tetro full parity → P7 closure → polish (CHANGELOG, version 0.4.0,
+tag). Resources before parity so the games consume declarations, not
+the other way around; seeds first because they immediately harden every
+routine the resource work touches.

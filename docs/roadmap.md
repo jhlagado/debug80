@@ -326,7 +326,18 @@ drafted for 0.3 (contract seeds, P6 resource remainder, Tetro corpus
 parity, P7 closure) move to the 0.4 horizon. Work plan:
 [plans/release-0.3.md](plans/release-0.3.md).
 
-## After the 0.3 release
+## The 0.4 release line (planned 2026-07-11)
+
+0.4 is the resources-and-parity line: the sketches' data declarations
+become real on both profiles — multi-rotation shapes (Tetro's pieces),
+sprite/tile resources with generated `sprite_at`/`tile_at` AZM ops and
+VRAM upload, text resources with the LCD slice, `bind key any` — plus
+contract seeds passed through from block/routine headers, and both
+flagship games brought to corpus parity so only irreducible engine
+code stays hand-written. P7 word semantics is documented and closed.
+Work plan: [plans/release-0.4.md](plans/release-0.4.md).
+
+## After the 0.4 release
 
 These are important, but they are not blockers:
 
