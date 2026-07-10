@@ -78,13 +78,14 @@ you need to find the owner of a behaviour quickly.
 
 ## `src/model/`
 
-| File             | Role                                                                                 |
-| ---------------- | ------------------------------------------------------------------------------------ |
-| `diagnostic.ts`  | Diagnostic severity, IDs and common diagnostic shape.                                |
-| `expression.ts`  | Expression and type-expression AST types.                                            |
-| `fixup.ts`       | Fixup fragment model for symbolic byte emission.                                     |
-| `source-item.ts` | Parsed source item model shared by parser, assembly, outputs and register contracts. |
-| `symbol.ts`      | Symbol table type.                                                                   |
+| File                   | Role                                                                                          |
+| ---------------------- | --------------------------------------------------------------------------------------------- |
+| `diagnostic.ts`        | Diagnostic severity, IDs and common diagnostic shape.                                         |
+| `expression.ts`        | Expression and type-expression AST types.                                                     |
+| `fixup.ts`             | Fixup fragment model for symbolic byte emission.                                              |
+| `register-contract.ts` | Parsed routine contract and expected-output model shared between source items and analysis.   |
+| `source-item.ts`       | Parsed source item model shared by parser, assembly, outputs and register contracts.          |
+| `symbol.ts`            | Symbol table type.                                                                            |
 
 ## `src/node/`
 
@@ -115,45 +116,49 @@ you need to find the owner of a behaviour quickly.
 
 ## `src/register-contracts/`
 
-| File                         | Role                                                                                                          |
-| ---------------------------- | ------------------------------------------------------------------------------------------------------------- |
-| `analyze.ts`                 | Main register contract analysis coordinator.                                                                  |
-| `analyze-helpers.ts`         | Shared helpers for analysis orchestration.                                                                    |
-| `programModel.ts`            | Builds routines, labels, instructions and direct call boundaries from source items.                           |
-| `programModel-boundaries.ts` | Routine-boundary detection helpers.                                                                           |
-| `programModel-routines.ts`   | Routine construction helpers.                                                                                 |
-| `smartComments.ts`           | Builds source and `.asmi` routine contracts for analysis.                                                     |
-| `smartCommentBlocks.ts`      | Groups generated and hand-written smart-comment blocks.                                                       |
-| `smartCommentParsing.ts`     | Parses smart-comment tokens into contract facts.                                                              |
-| `interfaceContracts.ts`      | Parses external `.asmi` interface contracts.                                                                  |
-| `summary.ts`                 | Infers a routine summary from instruction effects and contracts.                                              |
-| `summary-boundary.ts`        | Summary behaviour at routine boundaries.                                                                      |
-| `summary-contract.ts`        | Contract-to-summary helpers.                                                                                  |
-| `summary-result.ts`          | Summary result construction.                                                                                  |
-| `summary-state.ts`           | Mutable summary state helpers.                                                                                |
-| `summary-token-transfer.ts`  | Token transfer helpers used during summary inference.                                                         |
-| `routine-summaries.ts`       | Computes routine summaries to a fixed point and applies external contracts.                                   |
-| `summaries.ts`               | Builds summary lookup tables, profile summaries, unknown-boundary diagnostics and candidate fixability.       |
-| `liveness.ts`                | Computes live register contract units and detects caller/callee conflicts.                                    |
-| `constants.ts`               | Shared register contract constants.                                                                           |
-| `instruction-head.ts`        | Extracts instruction heads for analysis.                                                                      |
-| `instruction-operands.ts`    | Extracts operands for analysis.                                                                               |
-| `instruction-predicates.ts`  | Instruction shape predicates used by analysis.                                                                |
-| `operand-register-name.ts`   | Converts operand names into register contract register names.                                                 |
-| `carriers.ts`                | Normalizes register contract carrier names and expands register pairs.                                        |
-| `controlFlow.ts`             | Successor logic for routine instruction flow.                                                                 |
-| `profiles.ts`                | Built-in external routine profiles such as MON-3.                                                             |
+| File                         | Role                                                                                                           |
+| ---------------------------- | -------------------------------------------------------------------------------------------------------------- |
+| `analyze.ts`                 | Main register contract analysis coordinator.                                                                   |
+| `analyze-helpers.ts`         | Shared helpers for analysis orchestration.                                                                     |
+| `analysis-policy.ts`         | Resolves effective analysis mode from CLI options, source directives and file-level policy.                   |
+| `analysis-suppressions.ts`   | Applies `.rcignore` suppressions to typed findings and carries suppression metadata into reports.             |
+| `programModel.ts`            | Builds routines, labels, instructions and direct call boundaries from source items.                            |
+| `programModel-boundaries.ts` | Routine-boundary detection helpers.                                                                            |
+| `programModel-routines.ts`   | Routine construction helpers.                                                                                  |
+| `routine-identity.ts`        | Builds stable internal routine identities for same-name private routines and imported helpers.                |
+| `public-routine-identity.ts` | Converts internal routine identities into stable project-relative report and tooling identifiers.             |
+| `smartComments.ts`           | Builds source and `.asmi` routine contracts for analysis.                                                      |
+| `smartCommentBlocks.ts`      | Groups generated and hand-written smart-comment blocks.                                                        |
+| `smartCommentParsing.ts`     | Parses smart-comment tokens into contract facts.                                                               |
+| `interfaceContracts.ts`      | Parses external `.asmi` interface contracts.                                                                   |
+| `summary.ts`                 | Infers a routine summary from instruction effects and contracts.                                               |
+| `summary-boundary.ts`        | Summary behaviour at routine boundaries.                                                                       |
+| `summary-contract.ts`        | Contract-to-summary helpers.                                                                                   |
+| `summary-result.ts`          | Summary result construction.                                                                                   |
+| `summary-state.ts`           | Mutable summary state helpers.                                                                                 |
+| `summary-token-transfer.ts`  | Token transfer helpers used during summary inference.                                                          |
+| `routine-summaries.ts`       | Computes routine summaries to a fixed point and applies external contracts.                                    |
+| `summaries.ts`               | Builds summary lookup tables, profile summaries, unknown-boundary diagnostics and candidate fixability.        |
+| `liveness.ts`                | Computes live register contract units and detects caller/callee conflicts.                                     |
+| `constants.ts`               | Shared register contract constants.                                                                            |
+| `instruction-head.ts`        | Extracts instruction heads for analysis.                                                                       |
+| `instruction-operands.ts`    | Extracts operands for analysis.                                                                                |
+| `instruction-predicates.ts`  | Instruction shape predicates used by analysis.                                                                 |
+| `operand-register-name.ts`   | Converts operand names into register contract register names.                                                  |
+| `carriers.ts`                | Normalizes register contract carrier names and expands register pairs.                                         |
+| `controlFlow.ts`             | Successor logic for routine instruction flow.                                                                  |
+| `profiles.ts`                | Built-in external routine profiles such as MON-3.                                                              |
 | `report.ts`                  | Renders text and JSON register-contract reports, inference exports, `.asmi` output and `.routine` directives. |
-| `annotate.ts`                | Rewrites `.routine` directives with generated contracts.                                                      |
-| `annotations.ts`             | Builds source annotation artifact data.                                                                       |
-| `fix.ts`                     | Finds and applies conservative expected-output fixes.                                                         |
-| `accept-output.ts`           | Parses user-accepted output candidate options.                                                                |
-| `policy.ts`                  | Resolves per-file strict, audit and off register-contract policy matches.                                     |
-| `ratchet.ts`                 | Compares current JSON findings against a baseline report.                                                     |
-| `tooling.ts`                 | Editor-friendly register contract diagnostics and code actions.                                               |
-| `types.ts`                   | Register contract unit, routine, effect, summary, contract and report types.                                  |
-| `sourceText.ts`              | Source line splitting and joining helpers for text edits.                                                     |
-| `boundaryHints.ts`           | Small helpers for naming external service boundaries.                                                         |
+| `annotate.ts`                | Rewrites `.routine` directives with generated contracts.                                                       |
+| `annotations.ts`             | Builds source annotation artifact data.                                                                        |
+| `fix.ts`                     | Finds and applies conservative expected-output fixes.                                                          |
+| `accept-output.ts`           | Parses user-accepted output candidate options.                                                                 |
+| `policy.ts`                  | Resolves per-file strict, audit and off register-contract policy matches.                                      |
+| `ratchet.ts`                 | Compares current JSON findings against a baseline report.                                                      |
+| `tooling.ts`                 | Editor-friendly register contract diagnostics and code actions.                                                |
+| `types.ts`                   | Register contract unit, routine, effect, summary, contract and report types.                                   |
+| `sourceText.ts`              | Source line splitting and joining helpers for text edits.                                                      |
+| `boundaryHints.ts`           | Small helpers for naming external service boundaries.                                                          |
 
 ## `src/semantics/`
 
@@ -183,23 +188,24 @@ you need to find the owner of a behaviour quickly.
 
 ## `src/syntax/`
 
-| File                              | Role                                                          |
-| --------------------------------- | ------------------------------------------------------------- |
-| `parse-line.ts`                   | Parses single logical lines into source items.                |
-| `expression-tokenizer.ts`         | Tokenizes expression text.                                    |
-| `parse-token-expression.ts`       | Parses tokenized expressions into ASTs.                       |
-| `parse-expression.ts`             | Public expression parse wrapper.                              |
-| `names.ts`                        | Shared identifier, label and entry-label parsing primitives.  |
-| `parse-instruction-chain.ts`      | Parses spaced-backslash chained instruction segments.         |
-| `statement-classification.ts`     | Shared chained-line and op-invocation classification helpers. |
-| `parse-directive-statement.ts`    | Dispatches directive statements to focused directive parsers. |
-| `parse-data-directives.ts`        | Parses `.db`, `.dw`, `.ds`, `.cstr`, `.pstr` and `.istr`.     |
-| `parse-declaration-directives.ts` | Parses `.equ`, `.enum` and quoted declaration payloads.       |
-| `parse-location-directives.ts`    | Parses `.org`, `.align`, `.binfrom` and `.binto`.             |
-| `parse-layout-declarations.ts`    | Parses layout declaration forms.                              |
-| `parse-layout-expression.ts`      | Parses layout type expressions.                               |
-| `parse-diagnostics.ts`            | Shared parse diagnostic helpers.                              |
-| `directive-aliases.ts`            | Built-in and project directive alias policy.                  |
+| File                              | Role                                                           |
+| --------------------------------- | -------------------------------------------------------------- |
+| `parse-line.ts`                   | Parses single logical lines into source items.                 |
+| `expression-tokenizer.ts`         | Tokenizes expression text.                                     |
+| `parse-token-expression.ts`       | Parses tokenized expressions into ASTs.                        |
+| `parse-expression.ts`             | Public expression parse wrapper.                               |
+| `names.ts`                        | Shared identifier, label and entry-label parsing primitives.   |
+| `parse-instruction-chain.ts`      | Parses spaced-backslash chained instruction segments.          |
+| `statement-classification.ts`     | Shared chained-line and op-invocation classification helpers.  |
+| `parse-directive-statement.ts`    | Dispatches directive statements to focused directive parsers.  |
+| `parse-data-directives.ts`        | Parses `.db`, `.dw`, `.ds`, `.cstr`, `.pstr` and `.istr`.      |
+| `parse-declaration-directives.ts` | Parses `.equ`, `.enum` and quoted declaration payloads.        |
+| `parse-location-directives.ts`    | Parses `.org`, `.align`, `.binfrom` and `.binto`.              |
+| `parse-layout-declarations.ts`    | Parses layout declaration forms.                               |
+| `parse-layout-expression.ts`      | Parses layout type expressions.                                |
+| `parse-routine-directive.ts`      | Parses `.routine`, `.contracts`, `.rcignore` and `.expectout`. |
+| `parse-diagnostics.ts`            | Shared parse diagnostic helpers.                               |
+| `directive-aliases.ts`            | Built-in and project directive alias policy.                   |
 
 ## `src/tooling/`
 
