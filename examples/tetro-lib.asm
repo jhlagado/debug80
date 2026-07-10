@@ -1,166 +1,21 @@
 ; Tetro support module — hand-written AZM, brought into the program
-; with Glimmer's import statement. Piece tables and the collision /
-; lock / clear engine, adapted from corpus/tetro (0BSD). @ labels are
-; the module's API; the data tables and scratch above the first @ stay
-; private to this unit.
+; with Glimmer's import statement. The collision / lock / clear engine,
+; adapted from corpus/tetro (0BSD); the piece data itself is generated
+; from tetro.glim's shape declarations. @ labels are the module's API;
+; the tables and scratch above the first @ stay private to this unit.
 ;
 ; Conventions (as corpus): a piece is 4 row bytes, MSB-left (bit 7 is
 ; column 0), stored unshifted; the X position shifts rows right at
 ; probe/draw time. The board is four 8-byte planes in program state:
 ; BoardRows (occupancy) + BoardRed/BoardGreen/BoardBlue.
 
-; --- piece data (file-level: private to this module) ---
-
-PieceIR0:
-        .db     %00000000
-        .db     %11100000
-        .db     %00000000
-        .db     %00000000
-PieceIR1:
-        .db     %10000000
-        .db     %10000000
-        .db     %10000000
-        .db     %00000000
-PieceIR2        .equ PieceIR0
-PieceIR3        .equ PieceIR1
-
-PieceOR0:
-        .db     %11000000
-        .db     %11000000
-        .db     %00000000
-        .db     %00000000
-PieceOR1        .equ PieceOR0
-PieceOR2        .equ PieceOR0
-PieceOR3        .equ PieceOR0
-
-PieceTR0:
-        .db     %11100000
-        .db     %01000000
-        .db     %00000000
-        .db     %00000000
-PieceTR1:
-        .db     %10000000
-        .db     %11000000
-        .db     %10000000
-        .db     %00000000
-PieceTR2:
-        .db     %00000000
-        .db     %01000000
-        .db     %11100000
-        .db     %00000000
-PieceTR3:
-        .db     %01000000
-        .db     %11000000
-        .db     %01000000
-        .db     %00000000
-
-PieceSR0:
-        .db     %11000000
-        .db     %01100000
-        .db     %00000000
-        .db     %00000000
-PieceSR1:
-        .db     %01000000
-        .db     %11000000
-        .db     %10000000
-        .db     %00000000
-PieceSR2:
-        .db     %00000000
-        .db     %11000000
-        .db     %01100000
-        .db     %00000000
-PieceSR3        .equ PieceSR1
-
-PieceZR0:
-        .db     %01100000
-        .db     %11000000
-        .db     %00000000
-        .db     %00000000
-PieceZR1:
-        .db     %10000000
-        .db     %11000000
-        .db     %01000000
-        .db     %00000000
-PieceZR2:
-        .db     %00000000
-        .db     %01100000
-        .db     %11000000
-        .db     %00000000
-PieceZR3        .equ PieceZR1
-
-PieceJR0:
-        .db     %00100000
-        .db     %11100000
-        .db     %00000000
-        .db     %00000000
-PieceJR1:
-        .db     %10000000
-        .db     %10000000
-        .db     %11000000
-        .db     %00000000
-PieceJR2:
-        .db     %00000000
-        .db     %11100000
-        .db     %10000000
-        .db     %00000000
-PieceJR3:
-        .db     %11000000
-        .db     %01000000
-        .db     %01000000
-        .db     %00000000
-
-PieceLR0:
-        .db     %10000000
-        .db     %11100000
-        .db     %00000000
-        .db     %00000000
-PieceLR1:
-        .db     %11000000
-        .db     %10000000
-        .db     %10000000
-        .db     %00000000
-PieceLR2:
-        .db     %00000000
-        .db     %11100000
-        .db     %00100000
-        .db     %00000000
-PieceLR3:
-        .db     %01000000
-        .db     %01000000
-        .db     %11000000
-        .db     %00000000
-
-PiecePtrTable:
-        .dw     PieceIR0, PieceIR1, PieceIR2, PieceIR3
-        .dw     PieceOR0, PieceOR1, PieceOR2, PieceOR3
-        .dw     PieceTR0, PieceTR1, PieceTR2, PieceTR3
-        .dw     PieceSR0, PieceSR1, PieceSR2, PieceSR3
-        .dw     PieceZR0, PieceZR1, PieceZR2, PieceZR3
-        .dw     PieceJR0, PieceJR1, PieceJR2, PieceJR3
-        .dw     PieceLR0, PieceLR1, PieceLR2, PieceLR3
-
-; Rightmost occupied column per (piece, rotation): X may run up to
-; 7 - right. Same order as PiecePtrTable.
-PieceRightTbl:
-        .db     2,0,2,0
-        .db     1,1,1,1
-        .db     2,1,2,1
-        .db     2,1,2,1
-        .db     2,1,2,1
-        .db     2,1,2,1
-        .db     2,1,2,1
-
-; Colour plane bits per piece (COLOR_* masks from the generated file).
-PieceColorTbl:
-        .db     COLOR_CYAN                        ; I
-        .db     COLOR_WHITE                       ; O
-        .db     COLOR_MAGENTA                     ; T
-        .db     COLOR_GREEN                       ; S
-        .db     COLOR_RED                         ; Z
-        .db     COLOR_BLUE                        ; J
-        .db     COLOR_YELLOW                      ; L
+; --- game tables and scratch (file-level: private to this module) ---
+; Piece bitmaps, rotation pointers, right bounds, and colours are
+; generated from the shape declarations in tetro.glim
+; (ShapeRotPtrTable / ShapeRotRightTbl / ShapeRotColorTbl).
 
 ; Score delta per line-clear count; counts >= 4 clamp to the tetris.
+;! clobbers A,C,DE,HL,F
 ClearScoreTbl:
         .dw     0, 100, 300, 500, 800
 
@@ -194,14 +49,14 @@ ShiftCount:
         add     a,c                  ; table index
         ld      e,a
         ld      d,0
-        ld      hl,PieceRightTbl
+        ld      hl,ShapeRotRightTbl
         add     hl,de
         ld      a,(hl)
         ld      (CurPieceRight),a
         ld      a,e
         add     a,a                  ; *2: word table
         ld      e,a
-        ld      hl,PiecePtrTable
+        ld      hl,ShapeRotPtrTable
         add     hl,de
         ld      a,(hl)
         inc     hl
@@ -211,7 +66,7 @@ ShiftCount:
         ld      a,(CurPieceIndex)
         ld      e,a
         ld      d,0
-        ld      hl,PieceColorTbl
+        ld      hl,ShapeRotColorTbl
         add     hl,de
         ld      a,(hl)
         ld      (CurColorBits),a

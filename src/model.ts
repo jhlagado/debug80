@@ -119,6 +119,29 @@ export interface ShapeDecl {
   width: number;
   height: number;
   line: number;
+  /**
+   * Present for rotational shapes (rot0..rot3 groups): four entries,
+   * one per rotation, aliases resolved to indexes into the distinct
+   * rotations actually declared. Rotational shapes compile to the
+   * piece-engine tables (pointer/right-bound/colour) instead of a
+   * Shape_<Name> draw table.
+   */
+  rotations?: ShapeRotationSet;
+}
+
+export interface ShapeRotation {
+  rows: string[];
+  width: number;
+  height: number;
+  /** Rightmost occupied column (0-based) across the rotation's rows. */
+  right: number;
+}
+
+export interface ShapeRotationSet {
+  /** The distinct rotations declared, in rot0..rotN order. */
+  distinct: ShapeRotation[];
+  /** For each of rotations 0..3, the index into `distinct`. */
+  map: [number, number, number, number];
 }
 
 export type CurvePreset =

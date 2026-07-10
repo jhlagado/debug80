@@ -180,11 +180,24 @@ curve-decl      ::= "curve" identifier preset "steps" number
 preset          ::= identifier
 
 shape-decl      ::= "shape" identifier "color" color-name
-                    shape-row+
+                    ( shape-row+ | rot-group+ )
                     "end"
                   ; matrix-profile bitmap resource. Rows are rectangular
                   ; quoted strings, 1..8 wide by 1..8 high, using X for a
-                  ; lit pixel and . for an empty pixel.
+                  ; lit pixel and . for an empty pixel. Plain rows: a
+                  ; single bitmap drawn with ShapeDraw. Rotation groups:
+                  ; the piece-engine form.
+rot-group       ::= "rot" digit shape-row* newline shape-row*
+                  | "rot" digit "=" "rot" digit   ; alias of an earlier
+                                                  ; distinct rotation
+                  ; rot0..rot3, declared in order, 1..4 rows each (padded
+                  ; to a 4-row frame). Rotations beyond those declared
+                  ; cycle (r mod declared-count): I declares two, O one,
+                  ; S/Z three plus rot3 = rot1. Compiles to
+                  ; ShapeRot_<Name>_<k> bitmaps and the shared
+                  ; ShapeRotPtrTable / ShapeRotRightTbl /
+                  ; ShapeRotColorTbl + ShapeId_<Name> equates,
+                  ; indexed by id*4 + rotation.
 shape-row       ::= string
 color-name      ::= "red" | "green" | "blue" | "yellow" | "cyan"
                   | "magenta" | "white"

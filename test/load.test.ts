@@ -158,6 +158,14 @@ describe('tetro (the acceptance test)', () => {
     expect(generated.diagnostics).toEqual([]);
     expect(generated.source).toContain('Card              .enum Splash, Playing, Paused, GameOver');
     expect(generated.source).toContain('GlimPrevCard:');
+    // Pieces are shape declarations now: the corpus tables are generated.
+    expect(generated.source).toContain('ShapeRotPtrTable:');
+    expect(generated.source).toContain('.db     2,0,2,0');
+    expect(generated.source).toContain('ShapeId_PieceI    .equ 0');
+    expect(generated.source).toContain('ShapeId_PieceL    .equ 6');
+    expect(generated.source).toContain(
+      '.dw     ShapeRot_PieceS_0, ShapeRot_PieceS_1, ShapeRot_PieceS_2, ShapeRot_PieceS_1',
+    );
     // Enter edge gate: SetupPlaying (StartRound) must not re-run on the
     // conditional CurrentCard writes from ApplyGravity.
     expect(generated.source).toMatch(

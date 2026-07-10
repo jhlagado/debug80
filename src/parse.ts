@@ -36,6 +36,8 @@ import type {
   RoutineDecl,
   ShapeColor,
   ShapeDecl,
+  ShapeRotation,
+  ShapeRotationSet,
   SoundDecl,
   StateDecl,
   TimerDecl,
@@ -504,6 +506,12 @@ export function parseUnit(
     if (text.startsWith('shape ')) {
       const match = SHAPE_RE.exec(text);
       const rows: string[] = [];
+      // Rotational form: rotN groups (optionally rotN = rotM aliases).
+      const rotGroups: string[][] = [];
+      const rotAliases = new Map<number, number>();
+      let currentRot: string[] | null = null;
+      let rotCount = 0;
+      let rotError = false;
       let sawEnd = false;
 
       while (i < lines.length) {
@@ -515,12 +523,58 @@ export function parseUnit(
           break;
         }
         if (rowText === '') continue;
+        const aliasMatch = /^rot([0-3])\s*=\s*rot([0-3])$/.exec(rowText);
+        if (aliasMatch) {
+          const n = Number(aliasMatch[1]);
+          const m = Number(aliasMatch[2]);
+          if (n !== rotCount || m >= rotCount || rotAliases.has(m)) {
+            error(
+              i,
+              `Shape rotation alias must name the next rotation and an earlier distinct one: "${rowText}".`,
+            );
+            rotError = true;
+          } else {
+            rotAliases.set(n, m);
+          }
+          rotCount += 1;
+          currentRot = null;
+          continue;
+        }
+        const rotMatch = /^rot([0-3])\b\s*(.*)$/.exec(rowText);
+        if (rotMatch) {
+          const n = Number(rotMatch[1]);
+          if (n !== rotCount) {
+            error(i, `Shape rotations must be declared in order: expected rot${rotCount}, got rot${n}.`);
+            rotError = true;
+          }
+          rotCount += 1;
+          currentRot = [];
+          rotGroups.push(currentRot);
+          const rest = (rotMatch[2] ?? '').trim();
+          if (rest !== '') {
+            const restMatch = SHAPE_ROW_RE.exec(rest);
+            if (!restMatch) {
+              error(i, `Invalid shape row: "${rest}". Expected a quoted row using only . and X.`);
+              rotError = true;
+            } else {
+              currentRot.push(restMatch[1] as string);
+            }
+          }
+          continue;
+        }
         const rowMatch = SHAPE_ROW_RE.exec(rowText);
         if (!rowMatch) {
           error(i, `Invalid shape row: "${rowText}". Expected a quoted row using only . and X.`);
           continue;
         }
-        rows.push(rowMatch[1] as string);
+        if (currentRot !== null) {
+          currentRot.push(rowMatch[1] as string);
+        } else if (rotCount > 0) {
+          error(i, `Shape row outside a rotation group (rot0..rot3 shapes take rows inside groups).`);
+          rotError = true;
+        } else {
+          rows.push(rowMatch[1] as string);
+        }
       }
 
       if (!match) {
@@ -538,6 +592,16 @@ export function parseUnit(
       }
       if (!SHAPE_COLORS.includes(color as ShapeColor)) {
         error(lineNo, `Shape ${name}: unknown color "${color}".`);
+        continue;
+      }
+      if (rotCount > 0) {
+        if (rotError) continue;
+        if (rows.length > 0) {
+          error(lineNo, `Shape ${name}: mixes plain rows with rotation groups.`);
+          continue;
+        }
+        const shape = buildRotationalShape(name, color as ShapeColor, rotGroups, rotAliases, rotCount, lineNo, error);
+        if (shape !== null) shapes.push(shape);
         continue;
       }
       if (rows.length === 0) {
@@ -1029,7 +1093,7 @@ function validateReferences(
       error(owner, `Duplicate name "${name}": all declared names share one namespace.`);
     }
     declaredNames.add(name);
-    if (/^(Glim|Snd_|Curve_|Shape_|CHG_|__|KEY_|API_|VC_|VDP_|VRAM_)/.test(name) || RESERVED_NAMES.has(name)) {
+    if (/^(Glim|Snd_|Curve_|Shape_|ShapeRot_|ShapeId_|CHG_|__|KEY_|API_|VC_|VDP_|VRAM_)/.test(name) || RESERVED_NAMES.has(name)) {
       error(
         owner,
         `Reserved name "${name}": it belongs to the generated runtime (${kind}s cannot use Glim*/Snd_*/Curve_*/Shape_*/CHG_*/__* or runtime symbols).`,
@@ -1136,6 +1200,81 @@ function validateReferences(
   }
 
   validateTypeReferences(parts.types, parts.states, error);
+}
+
+/**
+ * Validate rot0..rotN groups and build the rotation set. Declared
+ * rotations (groups and aliases) fill positions 0..count-1; positions
+ * beyond that cycle through the declared ones (r mod count), which
+ * covers the corpus pieces: I declares two rotations, O one, T all
+ * four, S/Z three plus a rot3 = rot1 alias.
+ */
+function buildRotationalShape(
+  name: string,
+  color: ShapeColor,
+  rotGroups: string[][],
+  rotAliases: Map<number, number>,
+  rotCount: number,
+  lineNo: number,
+  error: (line: number, message: string) => void,
+): ShapeDecl | null {
+  const distinct: ShapeRotation[] = [];
+  for (const rows of rotGroups) {
+    if (rows.length === 0 || rows.length > 4) {
+      error(lineNo, `Shape ${name}: each rotation needs 1 to 4 rows.`);
+      return null;
+    }
+    const width = rows[0]?.length ?? 0;
+    if (rows.some((row) => row.length !== width)) {
+      error(lineNo, `Shape ${name}: all rows in a rotation must have the same width.`);
+      return null;
+    }
+    if (width < 1 || width > 8) {
+      error(lineNo, `Shape ${name}: rotation width must be between 1 and 8.`);
+      return null;
+    }
+    let right = -1;
+    for (const row of rows) {
+      for (let col = 0; col < row.length; col += 1) {
+        if (row[col] === 'X' && col > right) right = col;
+      }
+    }
+    if (right < 0) {
+      error(lineNo, `Shape ${name}: a rotation has no set pixels.`);
+      return null;
+    }
+    distinct.push({ rows: [...rows], width, height: rows.length, right });
+  }
+
+  // Resolve declared positions to distinct indexes: groups in order,
+  // aliases to their target's resolution.
+  const resolved: number[] = [];
+  let nextGroup = 0;
+  for (let r = 0; r < rotCount; r += 1) {
+    const aliasTarget = rotAliases.get(r);
+    if (aliasTarget !== undefined) {
+      resolved.push(resolved[aliasTarget] as number);
+    } else {
+      resolved.push(nextGroup);
+      nextGroup += 1;
+    }
+  }
+  const map = [0, 1, 2, 3].map((r) => resolved[r % rotCount] as number) as [
+    number,
+    number,
+    number,
+    number,
+  ];
+  const base = distinct[0] as ShapeRotation;
+  return {
+    name,
+    color,
+    rows: [...base.rows],
+    width: base.width,
+    height: base.height,
+    line: lineNo,
+    rotations: { distinct, map },
+  };
 }
 
 /** Base name of a field/alias type expression, if it names a layout type. */
@@ -1259,6 +1398,10 @@ const RESERVED_NAMES = new Set([
   'ShapeWidth',
   'ShapeHeight',
   'ShapeColor',
+  'ShapeRotPtrTable',
+  'ShapeRotRightTbl',
+  'ShapeRotColorTbl',
+  'ShapeRotCount',
   'VdpInit',
   'VdpSetAddrWrite',
   'VdpWriteBlock',

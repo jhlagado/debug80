@@ -395,6 +395,52 @@ function emitHudTables(emit: (line?: string) => void, op: (text: string) => void
   emit();
 }
 
+/**
+ * Rotational shapes compile to the corpus piece-engine tables: 4-row
+ * bitmaps per distinct rotation (padded with empty rows), a pointer
+ * table of 4 entries per shape (aliases repeat pointers), a
+ * right-bound table, a colour table, and a ShapeId_<Name> equate per
+ * shape in declaration order.
+ */
+function emitRotationalShapeResources(
+  shapes: ShapeDecl[],
+  emit: (line?: string) => void,
+  op: (text: string) => void,
+): void {
+  emit('; --- rotational shape resources ---');
+  emit('; Table layout matches the corpus piece engine: index a shape by');
+  emit('; ShapeId_<Name>, a rotation entry by id*4 + rotation.');
+  for (const shape of shapes) {
+    shape.rotations?.distinct.forEach((rotation, index) => {
+      emit(`ShapeRot_${shape.name}_${index}:`);
+      for (let row = 0; row < 4; row += 1) {
+        const mask = rotation.rows[row] === undefined ? 0 : shapeRowMask(rotation.rows[row] as string);
+        op(`.db     ${bin8(mask)}`);
+      }
+    });
+  }
+  emit('ShapeRotPtrTable:');
+  for (const shape of shapes) {
+    const map = shape.rotations?.map ?? [0, 0, 0, 0];
+    op(`.dw     ${map.map((k) => `ShapeRot_${shape.name}_${k}`).join(', ')}`);
+  }
+  emit('ShapeRotRightTbl:');
+  for (const shape of shapes) {
+    const rotations = shape.rotations;
+    if (rotations === undefined) continue;
+    op(`.db     ${rotations.map.map((k) => rotations.distinct[k]?.right ?? 0).join(',')}`);
+  }
+  emit('ShapeRotColorTbl:');
+  for (const shape of shapes) {
+    op(`.db     ${shapeColorSymbol(shape.color)}`);
+  }
+  shapes.forEach((shape, id) => {
+    emit(`${`ShapeId_${shape.name}`.padEnd(17)} .equ ${id}`);
+  });
+  emit(`${'ShapeRotCount'.padEnd(17)} .equ ${shapes.length}`);
+  emit();
+}
+
 export const tec1gMatrixProfile: Profile = {
   name: 'tec1g-mon3/matrix8x8',
   headerNote(): string[] {
@@ -430,6 +476,7 @@ export const tec1gMatrixProfile: Profile = {
     emitMon3HeldStorage(emit, heldBindings);
   },
   emitServiceStorage({ program, emit }: ProfileContext): void {
+    const plainShapes = program.shapes.filter((s) => s.rotations === undefined);
     emit(`${'Framebuffer:'.padEnd(17)} .ds 32           ; 8 rows x R,G,B,aux`);
     emit(`${'SpeakerPort:'.padEnd(17)} .db 0`);
     emit(`${'SoundTimer:'.padEnd(17)} .db 0`);
@@ -437,7 +484,7 @@ export const tec1gMatrixProfile: Profile = {
     emit(`${'SndDivCount:'.padEnd(17)} .db 0`);
     emit(`${'HudScanIndex:'.padEnd(17)} .db 0`);
     emit(`${'HudSegBuffer:'.padEnd(17)} .ds 6`);
-    if (program.shapes.length > 0) {
+    if (plainShapes.length > 0) {
       emit(`${'ShapePtr:'.padEnd(17)} .dw 0`);
       emit(`${'ShapeBaseX:'.padEnd(17)} .db 0`);
       emit(`${'ShapeBaseY:'.padEnd(17)} .db 0`);
@@ -450,8 +497,13 @@ export const tec1gMatrixProfile: Profile = {
     }
   },
   emitDataTables({ program, emit, op }: ProfileContext): void {
-    if (program.shapes.length > 0) {
-      emitShapeResources(program.shapes, emit, op);
+    const plainShapes = program.shapes.filter((s) => s.rotations === undefined);
+    const rotShapes = program.shapes.filter((s) => s.rotations !== undefined);
+    if (plainShapes.length > 0) {
+      emitShapeResources(plainShapes, emit, op);
+    }
+    if (rotShapes.length > 0) {
+      emitRotationalShapeResources(rotShapes, emit, op);
     }
     emitHudTables(emit, op);
   },
@@ -473,6 +525,10 @@ export const tec1gMatrixProfile: Profile = {
       emitSoundCues(program, emit, op);
     }
     emit();
-    emitMatrixLibrary(program.shapes.length > 0, emit, op);
+    emitMatrixLibrary(
+      program.shapes.some((s) => s.rotations === undefined),
+      emit,
+      op,
+    );
   },
 };

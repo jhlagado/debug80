@@ -646,6 +646,55 @@ describe('parseGlimmer', () => {
     expect(messages).toContain('Reserved name "CurrentCard"');
   });
 
+  it('parses rotational shapes with aliases and cycling defaults', () => {
+    const source = [
+      'program P',
+      'platform tec1g-mon3',
+      'display matrix8x8',
+      'shape PieceS color green',
+      '  rot0 "XX."',
+      '       ".XX"',
+      '  rot1 ".X"',
+      '       "XX"',
+      '       "X."',
+      '  rot2 "..."',
+      '       "XX."',
+      '       ".XX"',
+      '  rot3 = rot1',
+      'end',
+      'shape PieceI color cyan',
+      '  rot0 "..."',
+      '       "XXX"',
+      '  rot1 "X"',
+      '       "X"',
+      '       "X"',
+      'end',
+    ].join('\n');
+    const { program, diagnostics } = parseGlimmer(source);
+    expect(diagnostics).toEqual([]);
+    const s = program!.shapes[0]!;
+    expect(s.rotations?.distinct).toHaveLength(3);
+    expect(s.rotations?.map).toEqual([0, 1, 2, 1]);   // rot3 = rot1
+    expect(s.rotations?.distinct[0]?.right).toBe(2);
+    const i = program!.shapes[1]!;
+    expect(i.rotations?.map).toEqual([0, 1, 0, 1]);   // two declared, cycled
+  });
+
+  it('rejects malformed rotational shapes', () => {
+    const bad = (lines) =>
+      parseGlimmer(['program P', 'platform tec1g-mon3', 'display matrix8x8', ...lines].join('\n'))
+        .diagnostics.map((d) => d.message)
+        .join('\n');
+    expect(bad(['shape A color red', '  rot1 "X"', 'end'])).toContain('declared in order');
+    expect(bad(['shape B color red', '  rot0 "X"', '  rot1 = rot2', 'end'])).toContain(
+      'earlier distinct one',
+    );
+    expect(bad(['shape C color red', '  rot0 "X"', '  "X"', '  rot1 "X"', '  "..."', 'end'])).toContain(
+      'same width',
+    );
+    expect(bad(['shape D color red', '  "X"', '  rot1 "X"', 'end'])).toContain('declared in order');
+  });
+
   it('warns when a body writes a cell missing from updates', () => {
     const source = [
       'program P',
