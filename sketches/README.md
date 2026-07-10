@@ -39,7 +39,7 @@ that is a numbered format proposal, catalogued below and folded into the
   cell that fires a pulse and reloads; the cell is writable state, so
   difficulty curves (gravity speeding up at 2000 points) are ordinary
   `updates`.
-- **P5 — Routines.** `routine <Name>` declarations: callable helper
+- **P5 — Routines** (landed 2026-07-10)**.** `routine <Name>` declarations: callable helper
   blocks (collision checks, geometry) that are not effects — no
   triggers, no dispatch, just a named, contract-carrying routine many
   effects call.

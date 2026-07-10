@@ -518,6 +518,48 @@ describe('structured data (layout types)', () => {
   });
 });
 
+describe('routines', () => {
+  const routineProgram = [
+    'program R',
+    'state X : byte changed',
+    'routine ClampX',
+    'begin',
+    '    cp 8',
+    '    ret c',
+    '    ld a,7',
+    'end',
+    'render Draw',
+    '    on X',
+    'begin',
+    '    ld a,(X)',
+    '    call ClampX',
+    '    ld (X),a',
+    'end',
+  ].join('\n');
+
+  it('emits routines as public @ boundaries with verbatim bodies', () => {
+    const { source, diagnostics } = compileToAzm(routineProgram);
+    expect(diagnostics).toEqual([]);
+    expect(source).toContain('; --- routine ClampX ---');
+    expect(source).toMatch(/@ClampX:\n    cp 8\n    ret c\n    ld a,7\n        ret/);
+  });
+
+  it('assembles with AZM and passes contract inference', async () => {
+    const { source, diagnostics } = compileToAzm(routineProgram);
+    expect(diagnostics).toEqual([]);
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-routine-'));
+    const entry = path.join(dir, 'routine.asm');
+    writeFileSync(entry, source!);
+    const assembled = await compile(entry, {
+      emitBin: true,
+      emitHex: false,
+      emitD8m: false,
+      registerContracts: 'error',
+    });
+    expect(assembled.diagnostics.filter((d) => d.severity === 'error')).toEqual([]);
+  });
+});
+
 describe('AZM round trip', () => {
   it('generated CounterToy source assembles cleanly with AZM', async () => {
     const result = compileToAzm(counterToy);

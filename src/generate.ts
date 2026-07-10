@@ -484,6 +484,18 @@ export function generateAzm(
     emitBlockWrapper(effect, raiseMasks(effect), emit, op);
   }
 
+  for (const routine of program.routines) {
+    emit(`; --- routine ${routine.name} ---`);
+    emit(`@${routine.name}:`);
+    // Verbatim body, same contract as blocks: falls through, the
+    // wrapper appends the ret; AZM infers the register contract.
+    for (const line of routine.body) {
+      emit(line);
+    }
+    op('ret');
+    emit();
+  }
+
   emit('; --- frame rollover ---');
   emit('@__EndFrame:');
   op('xor     a');

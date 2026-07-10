@@ -524,6 +524,31 @@ describe('parseGlimmer', () => {
     expect(program?.states[1]).toMatchObject({ name: 'Bag', typeName: 'Piece', length: 7 });
   });
 
+  it('parses routines and rejects triggers on them', () => {
+    const source = [
+      'program P',
+      'routine Clamp',
+      'begin',
+      '    cp 8',
+      '    ret c',
+      '    ld a,7',
+      'end',
+      'routine Bad',
+      '    on Go',
+      'begin',
+      'end',
+    ].join('\n');
+    const { program, diagnostics } = parseGlimmer(source);
+    const messages = diagnostics.map((d) => d.message).join('\n');
+    expect(messages).toContain('Routine Bad takes no "on"');
+    expect(program).toBeNull();
+    const ok = parseGlimmer(
+      ['program P', 'routine Clamp', 'begin', '    cp 8', 'end'].join('\n'),
+    );
+    expect(ok.diagnostics).toEqual([]);
+    expect(ok.program?.routines[0]).toMatchObject({ name: 'Clamp', bodyLine: 4 });
+  });
+
   it('rejects bad type declarations and typed-state misuse', () => {
     const source = [
       'program P',

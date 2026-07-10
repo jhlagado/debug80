@@ -32,6 +32,7 @@ import type {
   GlimmerProgram,
   PulseDecl,
   RampDecl,
+  RoutineDecl,
   ShapeColor,
   ShapeDecl,
   SoundDecl,
@@ -136,6 +137,7 @@ export interface ParsedUnit {
   shapes: ShapeDecl[];
   bindings: Binding[];
   effects: EffectDecl[];
+  routines: RoutineDecl[];
   diagnostics: GlimmerDiagnostic[];
 }
 
@@ -172,6 +174,7 @@ export function parseUnit(
   const shapes: ShapeDecl[] = [];
   const bindings: Binding[] = [];
   const effects: EffectDecl[] = [];
+  const routines: RoutineDecl[] = [];
 
   let i = 0;
   while (i < lines.length) {
@@ -594,6 +597,54 @@ export function parseUnit(
       continue;
     }
 
+    if (text.startsWith('routine ')) {
+      const name = text.slice('routine '.length).trim();
+      if (!IDENT.test(name)) {
+        error(lineNo, `Invalid routine name "${name}".`);
+        continue;
+      }
+      // Routines have no triggers and no dispatch: the header is bare.
+      let sawBody = false;
+      while (i < lines.length) {
+        const headerLineNo = i + 1;
+        const header = stripComment(lines[i] ?? '').trim();
+        i += 1;
+        if (header === '') continue;
+        if (header === 'begin') {
+          sawBody = true;
+          break;
+        }
+        error(
+          headerLineNo,
+          header.startsWith('on ') || header.startsWith('updates ')
+            ? `Routine ${name} takes no "${header.split(/\s/)[0]}": routines have no triggers or dispatch — they are called from block bodies.`
+            : `Unexpected line in routine ${name}: "${header}".`,
+        );
+      }
+      if (!sawBody) {
+        error(lineNo, `routine ${name} has no begin...end body.`);
+        continue;
+      }
+      const bodyLine = i + 1;
+      const body: string[] = [];
+      let sawEnd = false;
+      while (i < lines.length) {
+        const raw = lines[i] ?? '';
+        i += 1;
+        if (raw.trim() === 'end') {
+          sawEnd = true;
+          break;
+        }
+        body.push(raw);
+      }
+      if (!sawEnd) {
+        error(lineNo, `routine ${name}: missing end.`);
+        continue;
+      }
+      routines.push({ name, body, line: lineNo, bodyLine });
+      continue;
+    }
+
     const blockMatch = /^(effect|compute|render)\s+(.*)$/.exec(text);
     if (blockMatch) {
       // Block declarations: the keyword is the phase.
@@ -707,6 +758,7 @@ export function parseUnit(
     shapes,
     bindings,
     effects,
+    routines,
     diagnostics,
   };
 }
@@ -736,6 +788,7 @@ export function assembleProgram(units: ParsedUnit[]): ParseResult {
     shapes: [] as ShapeDecl[],
     bindings: [] as Binding[],
     effects: [] as EffectDecl[],
+    routines: [] as RoutineDecl[],
     imports: [] as ImportDecl[],
   };
   for (const unit of units) {
@@ -751,6 +804,10 @@ export function assembleProgram(units: ParsedUnit[]): ParseResult {
   for (const effect of merged.effects) {
     const file = fileOf.get(effect);
     if (file !== undefined) effect.file = file;
+  }
+  for (const routine of merged.routines) {
+    const file = fileOf.get(routine);
+    if (file !== undefined) routine.file = file;
   }
   const error = (owner: { line: number } | number, message: string): void => {
     if (typeof owner === 'number') {
@@ -852,6 +909,7 @@ function validateReferences(
     | 'shapes'
     | 'bindings'
     | 'effects'
+    | 'routines'
   >,
   diagnostics: GlimmerDiagnostic[],
   fileOf: (owner: object) => string | undefined = () => undefined,
@@ -891,6 +949,7 @@ function validateReferences(
   for (const curve of parts.curves) declare(curve, curve.name, 'curve');
   for (const shape of parts.shapes) declare(shape, shape.name, 'shape');
   for (const effect of parts.effects) declare(effect, effect.name, 'effect');
+  for (const routine of parts.routines) declare(routine, routine.name, 'routine');
 
   // `on` accepts anything with a change flag: states, pulses, ramps, and
   // the built-in FrameCount. `updates` accepts what code may write:

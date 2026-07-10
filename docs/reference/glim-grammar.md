@@ -92,6 +92,7 @@ statement       ::= program-decl
                   | shape-decl
                   | bind-decl
                   | block-decl
+                  | routine-decl
 
 program-decl    ::= "program" identifier
 
@@ -151,6 +152,14 @@ ramp-decl       ::= "ramp" identifier ":" "byte" "steps" number
                   ; monostable progress counter: steps each frame, marks
                   ; its cell changed each step, fires the pulse at
                   ; steps-1, idles there; retriggered by writing the cell.
+
+routine-decl    ::= "routine" identifier newline
+                    "begin" newline
+                    z80-body
+                    "end"
+                  ; callable helper: no triggers, no dispatch. Emitted
+                  ; as a public @Name: boundary; body falls through and
+                  ; the generator appends ret.
 
 sound-decl      ::= "sound" identifier "len" number "div" number
                   ; non-blocking low-frequency matrix-profile cue.
