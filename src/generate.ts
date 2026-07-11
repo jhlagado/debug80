@@ -21,7 +21,7 @@ import type {
   GlimmerProgram,
 } from './model.js';
 import { EFFECT_PHASES, CURRENT_CARD, FRAME_COUNT } from './model.js';
-import { bin8, hex } from './emit.js';
+import { bin8, blockEntryLabel, emitRoutine, hex } from './emit.js';
 import { profileFor } from './profiles/index.js';
 import type { ProfileContext } from './profiles/types.js';
 
@@ -221,15 +221,14 @@ export function generateAzm(
   emit();
   op(`.org    ${hex(org, 4)}`);
   emit();
-  if (isTec1g) {
+  if (profile.contractPolicy === 'strict') {
     emit('; Register contracts are declared with .routine and checked at');
     emit('; strict strength over this whole generated file.');
-    op('.contracts strict');
   } else {
-    emit('; The generic profile calls placeholder API addresses with no');
-    emit('; bodies to analyse, so contracts audit instead of failing.');
-    op('.contracts audit');
+    emit('; This profile calls placeholder API addresses with no bodies');
+    emit('; to analyse, so contracts audit instead of failing.');
   }
+  op(`.contracts ${profile.contractPolicy}`);
   emit();
 
   profile.emitEquates(ctx);
@@ -399,8 +398,7 @@ export function generateAzm(
     const effects = effectsByPhase.get(phase) ?? [];
     if (effects.length === 0) continue;
     emit(`; --- ${phase} phase dispatch ---`);
-    emit('.routine');
-    emit(`GlimRun${capitalize(phase)}Effects:`);
+    emitRoutine(emit, `GlimRun${capitalize(phase)}Effects`);
     let pendingPrevSync = effects.some((e) => e.enter === true);
     for (const effect of effects) {
       if (pendingPrevSync && effect.enter !== true) {
@@ -432,7 +430,7 @@ export function generateAzm(
         op(`ld      a,(${bankLabel('Changed', bank)})`);
         op(`and     ${depMaskName(effect, bank)}`);
         op(`jr      z,_skip_${effect.name}`);
-        op(`call    Glim_${effect.name}`);
+        op(`call    ${blockEntryLabel(effect.name)}`);
         emit(`_skip_${effect.name}:`);
         continue;
       }
@@ -443,7 +441,7 @@ export function generateAzm(
       }
       op(`jr      _skip_${effect.name}`);
       emit(`_run_${effect.name}:`);
-      op(`call    Glim_${effect.name}`);
+      op(`call    ${blockEntryLabel(effect.name)}`);
       emit(`_skip_${effect.name}:`);
     }
     if (pendingPrevSync) {
@@ -456,8 +454,7 @@ export function generateAzm(
 
   if (anySameFrameRaise && (hasPhase('logic') || hasPhase('render'))) {
     emit('; --- phase boundary: deliver same-frame raises ---');
-    emit('.routine');
-    emit('GlimMergeRaised:');
+    emitRoutine(emit, 'GlimMergeRaised');
     for (const bank of bankIndexes) {
       op(`ld      a,(${bankLabel('Changed', bank)})`);
       op('ld      b,a');
@@ -479,8 +476,7 @@ export function generateAzm(
 
   for (const routine of program.routines) {
     emit(`; --- routine ${routine.name} ---`);
-    emit('.routine');
-    emit(`${routine.name}:`);
+    emitRoutine(emit, routine.name);
     // Verbatim body, same contract as blocks: falls through, the
     // wrapper appends the ret; the bare .routine has AZM infer the
     // register contract from the body.
@@ -492,8 +488,7 @@ export function generateAzm(
   }
 
   emit('; --- frame rollover ---');
-  emit('.routine');
-  emit('GlimEndFrame:');
+  emitRoutine(emit, 'GlimEndFrame');
   op('xor     a');
   for (const pulse of program.pulses) {
     op(`ld      (${pulse.name}),a`);
@@ -544,8 +539,7 @@ function emitTickTimers(
   raiseChanged: (cellName: string) => void,
 ): void {
   emit('; --- timers, ramps, frame counter ---');
-  emit('.routine');
-  emit('GlimTickTimers:');
+  emitRoutine(emit, 'GlimTickTimers');
   if (frameCountUsed) {
     op(`ld      a,(${FRAME_COUNT})`);
     op('inc     a');
@@ -624,8 +618,7 @@ function emitBlockWrapper(
   op: (text: string) => void,
 ): void {
   emit(`; --- ${effect.enter === true ? 'enter' : effect.phase} block ${effect.name} ---`);
-  emit('.routine');
-  emit(`Glim_${effect.name}:`);
+  emitRoutine(emit, blockEntryLabel(effect.name));
   // The body is emitted byte-for-byte verbatim. Under AZM 0.3, _name
   // labels are local to the block's entry label, so two blocks may
   // both define _done without colliding; plain labels in a body are

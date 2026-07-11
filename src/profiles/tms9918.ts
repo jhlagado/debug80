@@ -21,7 +21,7 @@
  */
 
 import type { GlimmerProgram, SpriteDecl, TileDecl, VdpColor } from '../model.js';
-import { bin8 } from '../emit.js';
+import { bin8, emitRoutine } from '../emit.js';
 import type { Profile, ProfileContext } from './types.js';
 
 const VC_NAME: Record<VdpColor, string> = {
@@ -91,6 +91,7 @@ export function assignTileIndexes(tiles: readonly TileDecl[]): {
 }
 import {
   emitMon3ApiEquates,
+  mon3ContractsHeaderNote,
   emitMon3HeldStorage,
   emitMon3KeyCodeEquates,
   emitMon3LcdEquates,
@@ -101,13 +102,10 @@ import {
 
 export const tec1gTms9918Profile: Profile = {
   name: 'tec1g-mon3/tms9918',
+  contractPolicy: 'strict',
+  registerContractsProfile: 'mon3',
   headerNote(): string[] {
-    return [
-      ';',
-      '; Register contracts are declared with .routine and checked by',
-      '; AZM at strict strength (mon3 register profile) during the',
-      '; Glimmer build.',
-    ];
+    return mon3ContractsHeaderNote();
   },
   emitEquates({ program, emit }: ProfileContext): void {
     emit('; --- TEC-1G / MON-3 platform ---');
@@ -281,8 +279,7 @@ function emitVdpResourceRuntime(
   emit('; Upload sprite/tile patterns and the colour groups; assign each');
   emit("; sprite slot's pattern and colour in the shadow. Called once from");
   emit('; the loop init, after VdpInit.');
-  emit('.routine clobbers A,BC,DE,HL,F');
-  emit('LoadResourcesVram:');
+  emitRoutine(emit, 'LoadResourcesVram', 'clobbers A,BC,DE,HL,F');
   if (sprites.length > 0) {
     op('ld      hl,VRAM_SPRITE_PAT');
     op('call    VdpSetAddrWrite');
@@ -319,8 +316,7 @@ function emitVdpResourceRuntime(
 /** The commit phase: dirty shadows stream to VRAM at frame start. */
 function emitCommit(emit: (line?: string) => void, op: (text: string) => void): void {
   emit('; --- commit: flush dirty shadows to VRAM ---');
-  emit('.routine clobbers A,BC,DE,HL,F');
-  emit('GlimCommit:');
+  emitRoutine(emit, 'GlimCommit', 'clobbers A,BC,DE,HL,F');
   op('ld      a,(SpriteDirty)');
   op('or      a');
   op('jr      z,_names');
@@ -332,8 +328,10 @@ function emitCommit(emit: (line?: string) => void, op: (text: string) => void): 
   op('ld      bc,128');
   op('call    VdpWriteBlock');
   emit('_names:');
-  op('ld      b,0                  ; define B: only C is live across row commits');
   op('ld      d,0                  ; D = dirty-row group 0..2');
+  op('ld      b,d                  ; B is dead here; defined only so AZM 0.3');
+  op('                             ; stale-register analysis accepts the push bc');
+  op('                             ; save/restore below (only C is live)');
   emit('_group:');
   op('ld      hl,NameDirtyRows');
   op('ld      a,l');
@@ -379,8 +377,7 @@ function emitVdpLibrary(emit: (line?: string) => void, op: (text: string) => voi
   emit('; --- tms9918 profile library ---');
   emit();
   emit('; Set the VRAM write address (low byte, then high|$40).');
-  emit('.routine in HL clobbers A');
-  emit('VdpSetAddrWrite:');
+  emitRoutine(emit, 'VdpSetAddrWrite', 'in HL clobbers A');
   op('ld      a,l');
   op('out     (VDP_CONTROL),a');
   op('ld      a,h');
@@ -389,8 +386,7 @@ function emitVdpLibrary(emit: (line?: string) => void, op: (text: string) => voi
   op('ret');
   emit();
   emit('; Stream BC bytes from HL to the data port (address already set).');
-  emit('.routine in HL,BC clobbers A,BC,HL,F');
-  emit('VdpWriteBlock:');
+  emitRoutine(emit, 'VdpWriteBlock', 'in HL,BC clobbers A,BC,HL,F');
   emit('_loop:');
   op('ld      a,(hl)');
   op('out     (VDP_DATA),a');
@@ -402,8 +398,7 @@ function emitVdpLibrary(emit: (line?: string) => void, op: (text: string) => voi
   op('ret');
   emit();
   emit('; Fill BC bytes of VRAM at HL with E.');
-  emit('.routine in HL,BC,E clobbers A,BC,F');
-  emit('VdpFill:');
+  emitRoutine(emit, 'VdpFill', 'in HL,BC,E clobbers A,BC,F');
   op('call    VdpSetAddrWrite');
   emit('_loop:');
   op('ld      a,e');
@@ -415,8 +410,7 @@ function emitVdpLibrary(emit: (line?: string) => void, op: (text: string) => voi
   op('ret');
   emit();
   emit('; Wait for the vblank flag (reading the status register clears it).');
-  emit('.routine clobbers A,F');
-  emit('VdpWaitVBlank:');
+  emitRoutine(emit, 'VdpWaitVBlank', 'clobbers A,F');
   emit('_wait:');
   op('in      a,(VDP_CONTROL)');
   op('and     $80');
@@ -424,8 +418,7 @@ function emitVdpLibrary(emit: (line?: string) => void, op: (text: string) => voi
   op('ret');
   emit();
   emit('; Position sprite slot A at D=x, E=y (shadow write; commit flushes).');
-  emit('.routine in A,D,E clobbers A,HL,F');
-  emit('SpriteSet:');
+  emitRoutine(emit, 'SpriteSet', 'in A,D,E clobbers A,HL,F');
   op('add     a,a');
   op('add     a,a                  ; slot*4');
   op('ld      l,a');
@@ -442,8 +435,7 @@ function emitVdpLibrary(emit: (line?: string) => void, op: (text: string) => voi
   op('ret');
   emit();
   emit('; Assign sprite slot A its pattern number D and colour E.');
-  emit('.routine in A,D,E clobbers A,HL,F');
-  emit('SpriteInit:');
+  emitRoutine(emit, 'SpriteInit', 'in A,D,E clobbers A,HL,F');
   op('add     a,a');
   op('add     a,a');
   op('ld      l,a');
@@ -463,8 +455,7 @@ function emitVdpLibrary(emit: (line?: string) => void, op: (text: string) => voi
   emit();
   emit('; Put tile A at column D, row E of the name-table shadow and mark');
   emit('; the row dirty.');
-  emit('.routine in A,D,E clobbers A,BC,HL,F');
-  emit('NamePut:');
+  emitRoutine(emit, 'NamePut', 'in A,D,E clobbers A,BC,HL,F');
   op('ld      c,a                  ; C = tile index');
   op('ld      l,e');
   op('ld      h,0');
@@ -510,8 +501,7 @@ function emitVdpLibrary(emit: (line?: string) => void, op: (text: string) => voi
   op('ret');
   emit();
   emit('; Flush one shadow name-table row (A = row 0..23) to VRAM.');
-  emit('.routine in A clobbers A,BC,DE,HL,F');
-  emit('CommitNameRow:');
+  emitRoutine(emit, 'CommitNameRow', 'in A clobbers A,BC,DE,HL,F');
   op('ld      l,a');
   op('ld      h,0');
   op('add     hl,hl');
@@ -534,8 +524,7 @@ function emitVdpLibrary(emit: (line?: string) => void, op: (text: string) => voi
   emit('; white-on-black, pattern and name tables cleared, all sprites');
   emit('; hidden (Y=$D1 also terminates sprite processing at the first');
   emit('; unused slot — use contiguous slots from 0).');
-  emit('.routine clobbers A,BC,DE,HL,F');
-  emit('VdpInit:');
+  emitRoutine(emit, 'VdpInit', 'clobbers A,BC,DE,HL,F');
   op('ld      hl,VdpRegInitTbl');
   op('ld      b,8');
   op('ld      c,0');

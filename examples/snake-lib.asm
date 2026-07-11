@@ -9,16 +9,16 @@
 ; Test whether a packed position is occupied by the snake body:
 ; scans Len cells backwards from HeadIdx. Preserves D so callers can
 ; carry a position across the call.
-.routine in A out carry,zero clobbers sign,parity,halfCarry
+.routine in A out carry,zero clobbers A,BC,E,HL,sign,parity,halfCarry
 @BodyContains:
         ld      e,a
         ld      a,(Len)
         or      a
-        jr      z,BodyScanNone
+        jr      z,_none
         ld      b,a
         ld      a,(HeadIdx)
         ld      c,a
-BodyScanLoop:
+_scan:
         ld      hl,Body
         ld      a,l
         add     a,c
@@ -28,21 +28,21 @@ BodyScanLoop:
         ld      h,a
         ld      a,(hl)
         cp      e
-        jr      z,BodyScanHit
+        jr      z,_hit
         ld      a,c
         dec     a
         and     %00111111
         ld      c,a
-        djnz    BodyScanLoop
-BodyScanNone:
+        djnz    _scan
+_none:
         or      a
         ret
-BodyScanHit:
+_hit:
         scf
         ret
 
 ; Plot one packed position. A = position, D = colour bits.
-.routine in A,D out D clobbers F
+.routine in A,D clobbers A,BC,DE,HL,F
 @PlotPos:
         ld      e,a
         and     %00000111
@@ -59,7 +59,7 @@ BodyScanHit:
 
 ; Draw the whole body: Len cells backwards from HeadIdx in green,
 ; then the head again in white (FbPlot ORs, so white wins).
-.routine out D clobbers F
+.routine clobbers A,BC,DE,HL,F
 @DrawBody:
         ld      a,(Len)
         or      a
@@ -67,7 +67,7 @@ BodyScanHit:
         ld      (SnakeDrawCnt),a
         ld      a,(HeadIdx)
         ld      (SnakeDrawIdx),a
-SnakeDrawLoop:
+_loop:
         ld      hl,Body
         ld      a,(SnakeDrawIdx)
         add     a,l
@@ -85,7 +85,7 @@ SnakeDrawLoop:
         ld      a,(SnakeDrawCnt)
         dec     a
         ld      (SnakeDrawCnt),a
-        jr      nz,SnakeDrawLoop
+        jr      nz,_loop
         ld      hl,Body
         ld      a,(HeadIdx)
         add     a,l

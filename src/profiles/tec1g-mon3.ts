@@ -8,9 +8,10 @@
  */
 
 import type { GlimmerProgram, ShapeColor, ShapeDecl } from '../model.js';
-import { bin8 } from '../emit.js';
+import { bin8, emitRoutine } from '../emit.js';
 import {
   emitMon3ApiEquates,
+  mon3ContractsHeaderNote,
   emitMon3HeldStorage,
   emitMon3KeyCodeEquates,
   emitMon3LcdEquates,
@@ -59,8 +60,7 @@ function emitSoundCues(
   emit('; Non-blocking matrix-profile cues. len is row ticks; div is the');
   emit('; speaker divider. Starting a cue replaces the currently active cue.');
   for (const sound of program.sounds) {
-    emit('.routine');
-    emit(`Snd_${sound.name}:`);
+    emitRoutine(emit, `Snd_${sound.name}`);
     op(`ld      a,${sound.len}`);
     op(`ld      c,${sound.div}`);
     op('jp      SndStart');
@@ -84,8 +84,7 @@ function emitMatrixLibrary(
   emit('; Scan all 8 rows with fixed dwell, then blank the matrix so');
   emit('; block work never changes visible row brightness. Sound and the');
   emit('; seven-segment HUD are serviced once per row (8 ticks per frame).');
-  emit('.routine clobbers A,BC,DE,HL');
-  emit('ScanFrame:');
+  emitRoutine(emit, 'ScanFrame', 'clobbers A,BC,DE,HL');
   op('ld      hl,Framebuffer');
   op('ld      c,%00000001          ; row select mask');
   emit('_row:');
@@ -119,8 +118,7 @@ function emitMatrixLibrary(
   op('ret');
   emit();
   emit('; Convert x (0-7, 0 = leftmost) to the matrix bit convention.');
-  emit('.routine in A out A clobbers B');
-  emit('MxMask:');
+  emitRoutine(emit, 'MxMask', 'in A out A clobbers B');
   op('or      a');
   op('ld      b,a');
   op('ld      a,%10000000');
@@ -132,8 +130,7 @@ function emitMatrixLibrary(
   emit();
   emit('; Set one pixel. B = x (0-7), C = y (0-7), A = colour bits');
   emit('; (COLOR_RED/GREEN/BLUE, OR-combined). ORs into the framebuffer.');
-  emit('.routine in A,B,C clobbers A,B,DE,HL');
-  emit('FbPlot:');
+  emitRoutine(emit, 'FbPlot', 'in A,B,C clobbers A,B,DE,HL');
   op('ld      d,a                  ; D = colour bits');
   op('ld      a,c');
   op('add     a,a');
@@ -173,8 +170,7 @@ function emitMatrixLibrary(
   if (hasShapes) {
     emit('; Draw a shape resource. HL = Shape_<Name>, B = x, C = y.');
     emit('; No clipping: keep the whole shape inside the 8x8 matrix.');
-    emit('.routine in B,C,HL clobbers A,BC,DE,HL');
-    emit('ShapeDraw:');
+    emitRoutine(emit, 'ShapeDraw', 'in B,C,HL clobbers A,BC,DE,HL');
     op('ld      (ShapePtr),hl');
     op('ld      a,b');
     op('ld      (ShapeBaseX),a');
@@ -242,8 +238,7 @@ function emitMatrixLibrary(
     emit();
   }
   emit('; Clear the whole framebuffer.');
-  emit('.routine clobbers A,B,HL');
-  emit('FbClear:');
+  emitRoutine(emit, 'FbClear', 'clobbers A,B,HL');
   op('ld      hl,Framebuffer');
   op('ld      b,32');
   op('xor     a');
@@ -255,8 +250,7 @@ function emitMatrixLibrary(
   emit();
   emit('; (Re)start a sound cue. A = duration in row ticks (8 per frame),');
   emit('; C = divider half-period; smaller is higher pitch.');
-  emit('.routine in A,C clobbers A');
-  emit('SndStart:');
+  emitRoutine(emit, 'SndStart', 'in A,C clobbers A');
   op('ld      (SoundTimer),a');
   op('ld      a,c');
   op('ld      (SndDivReload),a');
@@ -266,8 +260,7 @@ function emitMatrixLibrary(
   op('ret');
   emit();
   emit('; Tick the speaker state machine once per row scan.');
-  emit('.routine clobbers A');
-  emit('SndService:');
+  emitRoutine(emit, 'SndService', 'clobbers A');
   op('ld      a,(SoundTimer)');
   op('or      a');
   op('ret     z');
@@ -291,8 +284,7 @@ function emitMatrixLibrary(
   op('ret');
   emit();
   emit('; Strobe one seven-segment digit and advance the scan index.');
-  emit('.routine clobbers A,BC,DE,HL');
-  emit('HudScanDig:');
+  emitRoutine(emit, 'HudScanDig', 'clobbers A,BC,DE,HL');
   op('ld      a,(HudScanIndex)');
   op('ld      c,a');
   op('ld      a,(SpeakerPort)');
@@ -324,8 +316,7 @@ function emitMatrixLibrary(
   op('ret');
   emit();
   emit('; Zero all six HUD digits.');
-  emit('.routine clobbers A,B,HL');
-  emit('HudBlankDig:');
+  emitRoutine(emit, 'HudBlankDig', 'clobbers A,B,HL');
   op('ld      hl,HudSegBuffer');
   op('ld      b,6');
   op('xor     a');
@@ -337,8 +328,7 @@ function emitMatrixLibrary(
   emit();
   emit('; Encode HL as decimal into the HUD: slot 0 shows 0, slots 1-5');
   emit('; the 10000..1 digits.');
-  emit('.routine in HL out BC,HL clobbers A,DE');
-  emit('HudWriteU16:');
+  emitRoutine(emit, 'HudWriteU16', 'in HL out BC,HL clobbers A,DE');
   op('ld      a,(HudGlyphTbl)');
   op('ld      (HudSegBuffer),a');
   op('ld      bc,HudSegBuffer + 1');
@@ -355,8 +345,7 @@ function emitMatrixLibrary(
   op('ret');
   emit();
   emit('; One decimal place value: count DE out of HL, emit the glyph.');
-  emit('.routine in HL,DE,BC out BC,HL clobbers A,DE');
-  emit('HudDecDigit:');
+  emitRoutine(emit, 'HudDecDigit', 'in HL,DE,BC out BC,HL clobbers A,DE');
   op('xor     a');
   emit('_loop:');
   op('push    af');
@@ -448,13 +437,10 @@ function emitRotationalShapeResources(
 
 export const tec1gMatrixProfile: Profile = {
   name: 'tec1g-mon3/matrix8x8',
+  contractPolicy: 'strict',
+  registerContractsProfile: 'mon3',
   headerNote(): string[] {
-    return [
-      ';',
-      '; Register contracts are declared with .routine and checked by',
-      '; AZM at strict strength (mon3 register profile) during the',
-      '; Glimmer build.',
-    ];
+    return mon3ContractsHeaderNote();
   },
   emitEquates({ program, emit }: ProfileContext): void {
     emit('; --- TEC-1G / MON-3 platform ---');

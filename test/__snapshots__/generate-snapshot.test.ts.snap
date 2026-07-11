@@ -6,8 +6,8 @@ exports[`generated output snapshots > counter.glim generates byte-identical outp
 
         .org    $4000
 
-; The generic profile calls placeholder API addresses with no
-; bodies to analyse, so contracts audit instead of failing.
+; This profile calls placeholder API addresses with no bodies
+; to analyse, so contracts audit instead of failing.
         .contracts audit
 
 ; --- system API (placeholder addresses) ---
@@ -2802,8 +2802,10 @@ GlimCommit:
         ld      bc,128
         call    VdpWriteBlock
 _names:
-        ld      b,0                  ; define B: only C is live across row commits
         ld      d,0                  ; D = dirty-row group 0..2
+        ld      b,d                  ; B is dead here; defined only so AZM 0.3
+                                     ; stale-register analysis accepts the push bc
+                                     ; save/restore below (only C is live)
 _group:
         ld      hl,NameDirtyRows
         ld      a,l

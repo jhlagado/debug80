@@ -487,6 +487,21 @@ describe('parseGlimmer', () => {
     expect(messages).toContain('Reserved name "Shape_Dot"');
   });
 
+  it('rejects leading underscores on card and type-field names too', () => {
+    const source = [
+      'program P',
+      'type Vec',
+      '  _x : byte',
+      'end',
+      'state S : byte',
+      'card _Title',
+    ].join('\n');
+    const { diagnostics } = parseGlimmer(source);
+    const messages = diagnostics.map((d) => d.message).join('\n');
+    expect(messages).toContain('reserved field name "_x"');
+    expect(messages).toContain('Reserved card name "_Title"');
+  });
+
   it('parses layout types, aliases, and typed state', () => {
     const source = [
       'program P',

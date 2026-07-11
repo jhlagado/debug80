@@ -17,8 +17,10 @@ import path from 'node:path';
 import { compile } from '@jhlagado/azm/compile';
 
 import type { EffectDecl, GlimmerDiagnostic, GlimmerProgram, RoutineDecl } from './model.js';
+import { blockEntryLabel } from './emit.js';
 import { generateAzm } from './generate.js';
 import { loadGlimmerProgram } from './load.js';
+import { profileFor } from './profiles/index.js';
 
 /** One body line's position: generated-asm line -> .glim file/line. */
 export interface BlockLineMapping {
@@ -55,7 +57,7 @@ export function mappableBlocks(
 ): MappableBlock[] {
   return [
     ...effects.map((effect) => ({
-      label: `Glim_${effect.name}`,
+      label: blockEntryLabel(effect.name),
       name: effect.name,
       body: effect.body,
       bodyLine: effect.bodyLine,
@@ -217,7 +219,7 @@ export interface GlimmerBuildOptions {
    * How far to take the build:
    * - 'generate' — write the AZM source only;
    * - 'check' — also run AZM register-contract checking (the generated
-   *   file declares `.contracts strict`) without assembling;
+   *   file declares its `.contracts` policy) without assembling;
    * - 'build' (default) — also assemble `.hex`/`.bin`/`.d8.json` and
    *   rewrite the debug map to step block bodies in `.glim` source.
    */
@@ -296,6 +298,7 @@ function reattributeDiagnostics(
   program: GlimmerProgram,
   entryPath: string,
 ): BuildDiagnostic[] {
+  if (diagnostics.length === 0) return diagnostics;
   const entryDir = path.dirname(entryPath);
   const entryBase = path.basename(entryPath);
   const { mappings } = computeBlockMappings(
@@ -362,12 +365,17 @@ export async function buildGlimmerProgram(
     return { diagnostics: loadDiagnostics, artifacts: { asm: asmPath }, warnings };
   }
 
-  // The generated file carries its own `.contracts strict` directive,
-  // so contract checking rides the ordinary compile; the mon3 register
-  // profile models the RST $10 monitor calls MON-3 programs make.
-  const isTec1g = program.platform === 'tec1g-mon3';
-  const profileOptions = {
-    ...(isTec1g ? { registerContractsProfile: 'mon3' as const } : {}),
+  // Contract checking runs at the same strength in both stages: the
+  // generated file's `.contracts` directive governs it, the explicit
+  // 'error' mode covers files without a directive (imported user
+  // libraries), and the profile's register-contract profile models the
+  // platform's monitor calls (RST $10 for MON-3).
+  const profile = profileFor(program);
+  const contractOptions = {
+    registerContracts: 'error' as const,
+    ...(profile.registerContractsProfile !== undefined
+      ? { registerContractsProfile: profile.registerContractsProfile }
+      : {}),
     // User routines carry bare .routine declarations: their outputs are
     // whatever the body produces, so AZM's inferred output candidates
     // are accepted rather than held for review.
@@ -379,22 +387,20 @@ export async function buildGlimmerProgram(
         }
       : {}),
   };
+  const attributed = (azmDiagnostics: readonly AzmDiagnosticLike[]): BuildDiagnostic[] => [
+    ...loadDiagnostics,
+    ...reattributeDiagnostics(
+      fromAzmDiagnostics(azmDiagnostics),
+      generated.source,
+      asmPath,
+      program,
+      entryPath,
+    ),
+  ];
+
   if (stage === 'check') {
-    const checked = await compile(asmPath, {
-      registerContracts: 'error',
-      ...profileOptions,
-      skipAssembly: true,
-    });
-    const checkDiagnostics = [
-      ...loadDiagnostics,
-      ...reattributeDiagnostics(
-        fromAzmDiagnostics(checked.diagnostics),
-        generated.source,
-        asmPath,
-        program,
-        entryPath,
-      ),
-    ];
+    const checked = await compile(asmPath, { ...contractOptions, skipAssembly: true });
+    const checkDiagnostics = attributed(checked.diagnostics);
     return {
       diagnostics: checkDiagnostics,
       ...(hasErrors(checkDiagnostics) ? {} : { artifacts: { asm: asmPath } }),
@@ -414,19 +420,10 @@ export async function buildGlimmerProgram(
     emitHex: true,
     emitBin: true,
     emitD8m: true,
-    ...profileOptions,
+    ...contractOptions,
     d8mInputs: { hex: path.basename(hexPath), bin: path.basename(binPath) },
   });
-  const diagnostics = [
-    ...loadDiagnostics,
-    ...reattributeDiagnostics(
-      fromAzmDiagnostics(assembled.diagnostics),
-      generated.source,
-      asmPath,
-      program,
-      entryPath,
-    ),
-  ];
+  const diagnostics = attributed(assembled.diagnostics);
   if (hasErrors(diagnostics)) {
     return { diagnostics, warnings };
   }

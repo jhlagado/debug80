@@ -28,6 +28,18 @@ export interface ProfileContext {
 
 export interface Profile {
   readonly name: string;
+  /**
+   * Register-contract policy for the generated file: 'strict' fails the
+   * build on findings; 'audit' reports without failing (the generic
+   * profile's placeholder API equates have no bodies to analyse, so
+   * strict would be unprovable by construction).
+   */
+  readonly contractPolicy: 'strict' | 'audit';
+  /**
+   * AZM register-contract profile modelling the platform's monitor
+   * calls (RST vectors); undefined when the platform has none.
+   */
+  readonly registerContractsProfile?: 'mon3';
   /** Extra lines for the generated header comment (after the banner). */
   headerNote(): string[];
   /** Platform/API equates, ports, colours, key constants. */
@@ -36,15 +48,15 @@ export interface Profile {
   emitInputStorage(ctx: ProfileContext): void;
   /** Display/service state after the flag banks (framebuffer, shadows). */
   emitServiceStorage(ctx: ProfileContext): void;
-  /** File-level data tables, above the first @ label. */
+  /** File-level data tables, ahead of the code. */
   emitDataTables(ctx: ProfileContext): void;
-  /** One-time init between @Start and the MainLoop label. */
+  /** One-time init between Start and the MainLoop label. */
   emitLoopInit(ctx: ProfileContext): void;
   /** Top of every frame: display pacing/commit and the poll call. */
   emitFrameStart(ctx: ProfileContext): void;
-  /** After the render phase, before __EndFrame (e.g. a flush call). */
+  /** After the render phase, before GlimEndFrame (e.g. a flush call). */
   emitFrameEnd(ctx: ProfileContext): void;
-  /** The @__PollBindings implementation. */
+  /** The GlimPollBindings implementation. */
   emitPollBindings(ctx: ProfileContext): void;
   /** Resource wrappers and the profile library at the file tail. */
   emitTail(ctx: ProfileContext): void;
