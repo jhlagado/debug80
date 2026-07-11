@@ -55,6 +55,7 @@ import { buildAnnotations } from './annotations.js';
 import {
   autoAcceptedOutputCandidateMap,
   buildRegisterContractsReportModel,
+  declarationContractMismatchFindings,
   diagnosticsForFindings,
   knownRoutineNames,
   outputCandidatesWithFixability,
@@ -152,9 +153,11 @@ export function analyzeRegisterContracts(
     isAnalyzedFile(suppression.file),
   );
   const contractMap = buildDeclaredRoutineContracts(program.routines);
+  const interfaceContractMap = new Map<string, RoutineContract>();
   if (options.interfaceContracts !== undefined) {
     for (const contract of options.interfaceContracts) {
       contractMap.set(contract.name, contract);
+      interfaceContractMap.set(contract.name, contract);
     }
   }
 
@@ -165,6 +168,18 @@ export function analyzeRegisterContracts(
     contractMap,
     profileSummaries,
     interfaceServiceRanges,
+  );
+  // Body-vs-declaration checks must see callee body effects, not callee declarations
+  // that may incorrectly claim preserves.
+  const bodyInferredSummariesByName = buildSummaryByName(
+    program.routines,
+    buildSummaries(
+      program.routines,
+      interfaceContractMap,
+      profileSummaries,
+      interfaceServiceRanges,
+    ),
+    profileSummaries,
   );
   summaries = withAcceptedOutputs(summaries, options.acceptedOutputCandidates);
   let summariesByName = buildSummaryByName(program.routines, summaries, profileSummaries);
@@ -234,6 +249,10 @@ export function analyzeRegisterContracts(
 
   const unknownFindings = unknownBoundaryFindings(artifactBoundaries, knownRoutines);
   const stackFindings = strictStackFindings(artifactRoutines, summaries);
+  const declarationMismatchFindings = declarationContractMismatchFindings(
+    artifactRoutines,
+    bodyInferredSummariesByName,
+  );
   const scopedBoundaryFindings = scopedBoundaryContractFindings({
     directBoundaries: program.directBoundaries,
     routines: program.routines,
@@ -270,6 +289,7 @@ export function analyzeRegisterContracts(
           })),
           ...unknownFindings,
           ...stackFindings,
+          ...declarationMismatchFindings,
           ...outputCandidatesWithAutoFixability.map((candidate): RegisterContractsFinding => {
             return {
               kind: 'output_candidate',
@@ -350,7 +370,9 @@ export function analyzeRegisterContracts(
   );
   const activeConflictFindings = activeFindings.filter(
     (finding) =>
-      finding.kind === 'definite_contract_violation' || finding.kind === 'flag_lifetime_risk',
+      finding.kind === 'definite_contract_violation' ||
+      finding.kind === 'declaration_contract_mismatch' ||
+      finding.kind === 'flag_lifetime_risk',
   );
   const publicActiveFindings = activeFindings.map((finding) =>
     withPublicRoutineIdentity(finding, publicRoutineIdentities),
