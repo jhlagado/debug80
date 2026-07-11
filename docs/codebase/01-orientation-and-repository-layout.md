@@ -34,7 +34,7 @@ Glimmer sits alongside three sibling repositories:
 
 - **AZM** — the Z80 assembler Glimmer targets. Generated output uses
   canonical AZM style: lowercase dotted directives, name-left declarations,
-  `@Name:` routine entries.
+  `.routine` boundaries, ordinary entry labels, and `_name` owner-local labels.
 - **debug80** — the VS Code debugging environment. Its TEC-1G platform
   (MON-3 monitor, 8x8 RGB matrix, TMS9918 TEC-Deck card) is Glimmer's
   first hardware target.
