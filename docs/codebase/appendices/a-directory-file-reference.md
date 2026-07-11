@@ -127,9 +127,7 @@ you need to find the owner of a behaviour quickly.
 | `programModel-routines.ts`   | Routine construction helpers.                                                                                  |
 | `routine-identity.ts`        | Builds stable internal routine identities for same-name private routines and imported helpers.                |
 | `public-routine-identity.ts` | Converts internal routine identities into stable project-relative report and tooling identifiers.             |
-| `smartComments.ts`           | Builds source and `.asmi` routine contracts for analysis.                                                      |
-| `smartCommentBlocks.ts`      | Groups generated and hand-written smart-comment blocks.                                                        |
-| `smartCommentParsing.ts`     | Parses smart-comment tokens into contract facts.                                                               |
+| `smartComments.ts`           | Builds `.routine` declaration contracts and `.asmi` routine contracts for analysis.                           |
 | `interfaceContracts.ts`      | Parses external `.asmi` interface contracts.                                                                   |
 | `summary.ts`                 | Infers a routine summary from instruction effects and contracts.                                               |
 | `summary-boundary.ts`        | Summary behaviour at routine boundaries.                                                                       |

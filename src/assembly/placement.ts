@@ -1,6 +1,6 @@
 import type { SourceItem } from '../model/source-item.js';
 
-export type PlacementKind = 'code' | 'data';
+type PlacementKind = 'code' | 'data';
 
 export interface PlacementState {
   activePlacement: PlacementKind;

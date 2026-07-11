@@ -11,7 +11,7 @@ export function asmLine(text: string, line = 1, sourceName = '/asm.z80'): Logica
   return { sourceName, line, text };
 }
 
-export type Asm80LineShape =
+type Asm80LineShape =
   | { kind: 'label'; name: string }
   | { kind: 'equ'; name: string; exprText: string }
   | { kind: 'org'; exprText: string }

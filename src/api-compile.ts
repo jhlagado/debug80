@@ -84,18 +84,27 @@ export { writeHex, defaultFormatWriters };
 export type {
   AddressRange,
   Artifact,
-  D8mArtifact,
-  D8mFileEntry,
-  D8mFileSymbol,
-  D8mGenerator,
-  D8mJson,
-  D8mSegment,
-  D8mSymbol,
   EmittedByteMap,
   FormatWriters,
-  SymbolEntry,
-  WriteD8mOptions,
 };
+// fallow-ignore-next-line unused-type
+export type { D8mArtifact };
+// fallow-ignore-next-line unused-type
+export type { D8mFileEntry };
+// fallow-ignore-next-line unused-type
+export type { D8mFileSymbol };
+// fallow-ignore-next-line unused-type
+export type { D8mGenerator };
+// fallow-ignore-next-line unused-type
+export type { D8mJson };
+// fallow-ignore-next-line unused-type
+export type { D8mSegment };
+// fallow-ignore-next-line unused-type
+export type { D8mSymbol };
+// fallow-ignore-next-line unused-type
+export type { SymbolEntry };
+// fallow-ignore-next-line unused-type
+export type { WriteD8mOptions };
 
 export type CompileDependencies = CompileNextDependencies;
 export type CompileFunctionOptions = CompileNextFunctionOptions;
@@ -121,8 +130,6 @@ export interface CompileNextFunctionOptions {
   readonly emitD8m?: boolean;
   readonly emitAsm80?: boolean;
   readonly registerContracts?: RegisterContractsMode;
-  /** @deprecated Use registerContracts. */
-  readonly registerCare?: RegisterContractsMode;
   readonly registerContractsPolicy?: RegisterContractsPolicy;
   readonly emitRegisterReport?: boolean;
   readonly registerContractsReportFormat?: RegisterContractsReportFormat;
@@ -135,11 +142,7 @@ export interface CompileNextFunctionOptions {
   readonly fixRegisterContracts?: boolean;
   readonly acceptRegisterOutputCandidates?: string[];
   readonly registerContractsProfile?: 'mon3';
-  /** @deprecated Use registerContractsProfile. */
-  readonly registerCareProfile?: 'mon3';
   readonly registerContractsInterfaces?: string[];
-  /** @deprecated Use registerContractsInterfaces. */
-  readonly registerCareInterfaces?: string[];
   readonly skipAssembly?: boolean;
 }
 
@@ -202,7 +205,7 @@ export async function compile(
             diagnostic,
             directCalls,
             options.registerContractsPolicy,
-            options.registerContracts ?? options.registerCare,
+            options.registerContracts,
             sourcePolicy,
           )
         : true,
@@ -240,7 +243,7 @@ export async function compile(
             diagnostic,
             directCalls,
             options.registerContractsPolicy,
-            options.registerContracts ?? options.registerCare,
+            options.registerContracts,
             sourcePolicy,
           )
         : true,

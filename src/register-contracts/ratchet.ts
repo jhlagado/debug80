@@ -9,7 +9,7 @@ function carriersKey(finding: RegisterContractsJsonFinding): string {
   return [...(finding.carriers ?? [])].sort().join(',');
 }
 
-export function registerContractsFindingIdentity(finding: RegisterContractsJsonFinding): string {
+function registerContractsFindingIdentity(finding: RegisterContractsJsonFinding): string {
   const target = finding.callTarget ?? finding.routine ?? finding.subject ?? '';
   return [finding.kind, finding.routineIdentity ?? '', target, carriersKey(finding)].join('|');
 }

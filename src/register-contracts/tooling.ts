@@ -16,17 +16,11 @@ export interface RegisterContractsTextEdit {
   text: string;
 }
 
-/** @deprecated Use RegisterContractsTextEdit. */
-export type RegisterCareTextEdit = RegisterContractsTextEdit;
-
 export interface RegisterContractsCodeAction {
   title: string;
   kind: 'quickfix';
   edit: RegisterContractsTextEdit;
 }
-
-/** @deprecated Use RegisterContractsCodeAction. */
-export type RegisterCareCodeAction = RegisterContractsCodeAction;
 
 export interface RegisterContractsCandidateDiagnostic {
   kind: 'register-contracts-output-candidate';
@@ -41,23 +35,14 @@ export interface RegisterContractsCandidateDiagnostic {
   codeAction?: RegisterContractsCodeAction;
 }
 
-/** @deprecated Use RegisterContractsCandidateDiagnostic. */
-export type RegisterCareCandidateDiagnostic = RegisterContractsCandidateDiagnostic;
-
 export interface AnalyzeRegisterContractsForToolsOptions extends Omit<
   AnalyzeRegisterContractsOptions,
   'emitReport' | 'emitInterface' | 'emitAnnotations' | 'fixRegisterContracts'
 > {
   emitReport?: boolean;
   emitInterface?: boolean;
-  /** Back-compat alias for registerContractsProfile used by some tooling integrations. */
   profile?: AnalyzeRegisterContractsOptions['registerContractsProfile'];
-  /** @deprecated Use registerContractsProfile. */
-  registerCareProfile?: AnalyzeRegisterContractsOptions['registerContractsProfile'];
 }
-
-/** @deprecated Use AnalyzeRegisterContractsForToolsOptions. */
-export type AnalyzeRegisterCareForToolsOptions = AnalyzeRegisterContractsForToolsOptions;
 
 export interface AnalyzeRegisterContractsForToolsResult {
   diagnostics: Diagnostic[];
@@ -68,9 +53,6 @@ export interface AnalyzeRegisterContractsForToolsResult {
   reportText?: string;
   interfaceText?: string;
 }
-
-/** @deprecated Use AnalyzeRegisterContractsForToolsResult. */
-export type AnalyzeRegisterCareForToolsResult = AnalyzeRegisterContractsForToolsResult;
 
 function expectOutText(carriers: RegisterContractsUnit[]): string {
   return `.expectout ${contractCarrierList(carriers)}\n`;
@@ -117,8 +99,7 @@ export function analyzeRegisterContractsForTools(
   loaded: LoadedProgram,
   options: AnalyzeRegisterContractsForToolsOptions,
 ): AnalyzeRegisterContractsForToolsResult {
-  const profile =
-    options.registerContractsProfile ?? options.registerCareProfile ?? options.profile;
+  const profile = options.registerContractsProfile ?? options.profile;
   const baseResultOptions = {
     ...options,
     emitReport: options.emitReport === true,
@@ -149,6 +130,3 @@ export function analyzeRegisterContractsForTools(
     ...(result.interfaceText !== undefined ? { interfaceText: result.interfaceText } : {}),
   };
 }
-
-/** @deprecated Use analyzeRegisterContractsForTools. */
-export const analyzeRegisterCareForTools = analyzeRegisterContractsForTools;

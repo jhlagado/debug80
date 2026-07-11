@@ -9,7 +9,7 @@ import type {
   Z80RegisterIndirect,
 } from './instruction.js';
 
-export type Z80InstructionTarget = Extract<
+type Z80InstructionTarget = Extract<
   Z80Instruction,
   { readonly expression: unknown }
 >['expression'];

@@ -37,7 +37,7 @@ export type Z80CoreMnemonic =
   | 'otdr'
   | 'reti'
   | 'retn';
-export type Z80HlAluMnemonic = 'add' | 'adc' | 'sbc';
+type Z80HlAluMnemonic = 'add' | 'adc' | 'sbc';
 export type Z80BitMnemonic = 'bit' | 'res' | 'set';
 export type Z80RotateShiftMnemonic =
   | 'rlc'
@@ -59,8 +59,8 @@ export type Z80RegisterIndirect = 'bc' | 'de' | 'hl';
 export type Z80JumpIndirectRegister = 'hl' | 'ix' | 'iy';
 export type Z80RstVector = 0 | 8 | 16 | 24 | 32 | 40 | 48 | 56;
 export type Z80BitIndex = 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7;
-export type Z80Reg16Operand = Extract<Z80Operand, { readonly kind: 'reg16' }>;
-export type Z80Index16Operand = Extract<Z80Operand, { readonly kind: 'reg-index16' }>;
+type Z80Reg16Operand = Extract<Z80Operand, { readonly kind: 'reg16' }>;
+type Z80Index16Operand = Extract<Z80Operand, { readonly kind: 'reg-index16' }>;
 
 export type Z80Operand =
   | { readonly kind: 'reg8'; readonly register: Z80Register8 }

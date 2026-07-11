@@ -53,7 +53,7 @@ export function routineScopeKey(scope: RoutineScope): string {
   return `${scope.unitKey}\0@${scope.routine ?? ''}`;
 }
 
-export function assignRoutineScopes(items: readonly SourceItem[]): readonly RoutineScope[] {
+function assignRoutineScopes(items: readonly SourceItem[]): readonly RoutineScope[] {
   const currentOwnerByUnit = new Map<string, string>();
   return items.map((item) => {
     const unitKey = privacyUnitKey(item);
@@ -65,7 +65,7 @@ export function assignRoutineScopes(items: readonly SourceItem[]): readonly Rout
   });
 }
 
-export function isRoutineLocalCandidate(
+function isRoutineLocalCandidate(
   item: SourceItem,
   scope: RoutineScope,
 ): item is Extract<SourceItem, { readonly kind: 'label' }> {

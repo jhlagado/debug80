@@ -7,7 +7,7 @@ import { IDENTIFIER_PATTERN, normalizeExportedName } from './names.js';
 import { firstNonWhitespaceColumn, parseLineError } from './parse-diagnostics.js';
 import { parseTypeExpr } from './parse-expression.js';
 
-export interface LayoutDeclarationParseResult {
+interface LayoutDeclarationParseResult {
   readonly consumedUntilIndex: number;
   readonly item?: SourceItem;
   readonly diagnostics: readonly Diagnostic[];

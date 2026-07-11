@@ -17,13 +17,7 @@ export interface RegisterContractsPolicy {
   off?: readonly string[];
 }
 
-/** @deprecated Use RegisterContractsMode. */
-export type RegisterCareMode = RegisterContractsMode;
-
 export type RegisterContractsStackFrameUnit = 'AF' | 'BC' | 'DE' | 'HL' | 'IX' | 'IY';
-
-/** @deprecated Use RegisterContractsUnit. */
-export type RegisterCareUnit = RegisterContractsUnit;
 
 export type SmartComment =
   | { kind: 'extern'; name: string }
@@ -73,9 +67,6 @@ export interface RegisterContractsInstruction {
   constants?: ReadonlyMap<string, number>;
 }
 
-/** @deprecated Use RegisterContractsInstruction. */
-export type RegisterCareInstruction = RegisterContractsInstruction;
-
 export interface RegisterContractsRoutine {
   name: string;
   identity?: string;
@@ -103,9 +94,6 @@ export interface RegisterContractsRoutine {
   };
 }
 
-/** @deprecated Use RegisterContractsRoutine. */
-export type RegisterCareRoutine = RegisterContractsRoutine;
-
 export interface RegisterContractsDirectCall {
   target: string;
   targetIdentity?: string;
@@ -118,19 +106,13 @@ export interface RegisterContractsDirectCall {
   sourceUnitRelation?: 'entry' | 'include' | 'import';
 }
 
-/** @deprecated Use RegisterContractsDirectCall. */
-export type RegisterCareDirectCall = RegisterContractsDirectCall;
-
 export interface RegisterContractsProgramModel {
   routines: RegisterContractsRoutine[];
   directCalls: RegisterContractsDirectCall[];
   directBoundaries: RegisterContractsDirectCall[];
 }
 
-/** @deprecated Use RegisterContractsProgramModel. */
-export type RegisterCareProgramModel = RegisterContractsProgramModel;
-
-export type StackEffect =
+type StackEffect =
   | { kind: 'none' }
   | { kind: 'push'; units: RegisterContractsUnit[] }
   | { kind: 'pop'; units: RegisterContractsUnit[] }
@@ -186,9 +168,6 @@ export interface RegisterContractsOutputCandidate {
   message: string;
 }
 
-/** @deprecated Use RegisterContractsOutputCandidate. */
-export type RegisterCareOutputCandidate = RegisterContractsOutputCandidate;
-
 export interface RegisterContractsConflict {
   kind?: 'definite_contract_violation' | 'flag_lifetime_risk';
   file: string;
@@ -203,9 +182,6 @@ export interface RegisterContractsConflict {
   carriers: RegisterContractsUnit[];
   message: string;
 }
-
-/** @deprecated Use RegisterContractsConflict. */
-export type RegisterCareConflict = RegisterContractsConflict;
 
 export type RegisterContractsFindingKind =
   | 'definite_contract_violation'
@@ -229,25 +205,25 @@ interface RegisterContractsFindingBase {
   carriers?: RegisterContractsUnit[];
 }
 
-export interface RegisterContractsConflictFinding extends RegisterContractsFindingBase {
+interface RegisterContractsConflictFinding extends RegisterContractsFindingBase {
   kind: 'definite_contract_violation' | 'flag_lifetime_risk';
   callTarget: string;
 }
 
-export interface RegisterContractsUnknownBoundaryFinding extends RegisterContractsFindingBase {
+interface RegisterContractsUnknownBoundaryFinding extends RegisterContractsFindingBase {
   kind: 'missing_callee_contract' | 'external_interface_unknown';
   callTarget: string;
   subject: string;
 }
 
-export interface RegisterContractsStackFinding extends RegisterContractsFindingBase {
+interface RegisterContractsStackFinding extends RegisterContractsFindingBase {
   kind: 'unknown_control_flow';
   routine: string;
   stackBalanced: boolean;
   hasUnknownStackEffect?: boolean;
 }
 
-export interface RegisterContractsOutputCandidateFinding extends RegisterContractsFindingBase {
+interface RegisterContractsOutputCandidateFinding extends RegisterContractsFindingBase {
   kind: 'output_candidate';
   routine: string;
   autoFixable?: boolean;

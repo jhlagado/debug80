@@ -26,7 +26,7 @@ type SmartCommentCarrierList = Extract<
   { readonly kind: InterfaceContractKind }
 >['carriers'];
 
-export interface ParsedInterfaceContracts {
+interface ParsedInterfaceContracts {
   contracts: Map<string, RoutineContract>;
   serviceRanges: RegisterContractsServiceRangeContract[];
 }

@@ -1,6 +1,6 @@
 import { readFile } from 'node:fs/promises';
 
-export type DirectiveAliasProfile = {
+type DirectiveAliasProfile = {
   readonly extends?: 'azm';
   readonly directiveAliases?: Readonly<Record<string, string>>;
 };

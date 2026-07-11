@@ -1,4 +1,4 @@
-export interface OperandSplitState {
+interface OperandSplitState {
   depth: number;
   quote: string | undefined;
   escaped: boolean;

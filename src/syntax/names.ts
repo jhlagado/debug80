@@ -6,7 +6,7 @@ const LABEL_NAME_RE = new RegExp(`^${LABEL_NAME_PATTERN}$`);
 const DECLARED_NAME_RE = new RegExp(`^@?${LABEL_NAME_PATTERN}$`);
 const LEADING_LABEL_RE = new RegExp(`^(@?${LABEL_NAME_PATTERN}):\\s*(.*)$`);
 
-export interface ParsedDeclaredName {
+interface ParsedDeclaredName {
   readonly rawLabel: string;
   readonly name: string;
   readonly isExported: boolean;

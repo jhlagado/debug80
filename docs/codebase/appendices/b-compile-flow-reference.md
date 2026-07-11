@@ -97,9 +97,6 @@ analyzeRegisterContractsForTools(loaded)
   return findings, candidate diagnostics and code actions
 ```
 
-`analyzeRegisterCareForTools()` remains as a deprecated compatibility export for
-tooling integrations that still use the older name.
-
 ## Data Handoffs
 
 | Stage              | Input                | Output                                                                         |

@@ -13,7 +13,7 @@ export interface ParseChainStatementResult<TItem> {
   readonly diagnostics: readonly Diagnostic[];
 }
 
-export interface ParseInstructionChainOptions<TLine extends InstructionChainLine, TItem> {
+interface ParseInstructionChainOptions<TLine extends InstructionChainLine, TItem> {
   readonly line: TLine;
   readonly parseStatement: (
     line: TLine,
@@ -25,7 +25,7 @@ export interface ParseInstructionChainOptions<TLine extends InstructionChainLine
   readonly appendLineComment?: (items: TItem[], line: TLine) => void;
 }
 
-export interface ParseInstructionChainResult<TItem> {
+interface ParseInstructionChainResult<TItem> {
   readonly items: readonly TItem[];
   readonly diagnostics: readonly Diagnostic[];
 }
