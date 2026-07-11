@@ -23,6 +23,7 @@ import type {
   WriteD8mOptions,
 } from './outputs/types.js';
 import type { Diagnostic } from './model/diagnostic.js';
+import type { SymbolCaseMode } from './model/symbol.js';
 import { buildRegisterContractsProgramModel } from './register-contracts/programModel.js';
 import type { CaseStyleMode } from './tooling/case-style.js';
 import type {
@@ -129,6 +130,7 @@ export interface CompileNextFunctionOptions {
   readonly emitHex?: boolean;
   readonly emitD8m?: boolean;
   readonly emitAsm80?: boolean;
+  readonly symbolCase?: SymbolCaseMode;
   readonly registerContracts?: RegisterContractsMode;
   readonly registerContractsPolicy?: RegisterContractsPolicy;
   readonly emitRegisterReport?: boolean;
@@ -168,6 +170,7 @@ export async function compile(
     ...(options.directiveAliasFiles !== undefined
       ? { directiveAliasFiles: options.directiveAliasFiles }
       : {}),
+    ...(options.symbolCase !== undefined ? { symbolCase: options.symbolCase } : {}),
   });
   diagnostics.push(...loaded.diagnostics);
 
@@ -177,6 +180,7 @@ export async function compile(
 
   const analysis = analyzeProgramNext(loaded.loadedProgram, {
     ...(options.caseStyle !== undefined ? { caseStyle: options.caseStyle } : {}),
+    ...(options.symbolCase !== undefined ? { symbolCase: options.symbolCase } : {}),
   });
   const sourceRequestsRegisterContracts =
     loaded.loadedProgram.program.files[0]?.items.some(
@@ -235,7 +239,10 @@ export async function compile(
   }
 
   const program = loaded.loadedProgram.program.files[0]?.items ?? [];
-  const assembled = assembleProgram(program);
+  const assembled = assembleProgram(
+    program,
+    options.symbolCase === undefined ? {} : { symbolCase: options.symbolCase },
+  );
   diagnostics.push(
     ...assembled.diagnostics.filter((diagnostic) =>
       analyzeRegisterContractsNow

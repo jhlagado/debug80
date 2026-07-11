@@ -24,6 +24,7 @@ export function cliUsage(): string {
     '      --interface <file>  Load .asmi contract file',
     '      --reg-profile <p>  Register contracts profile (currently mon3)',
     '      --source-root <d> Normalize D8 source paths relative to this directory',
+    '      --symbol-case <m> Symbol lookup mode: strict|insensitive (default: strict)',
     '      --case-style <m>  Case-style lint mode: off|upper|lower|consistent',
     '      --aliases <file>  Load project directive alias JSON (repeatable)',
     '  -I, --include <dir>   Add include search path (repeatable)',

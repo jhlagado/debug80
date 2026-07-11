@@ -1,5 +1,6 @@
 import type { Diagnostic } from '../model/diagnostic.js';
 import type { Expression } from '../model/expression.js';
+import type { SymbolCaseMode } from '../model/symbol.js';
 import type { LogicalLine } from '../source/logical-lines.js';
 import { stripLineComment } from '../source/strip-line-comment.js';
 import { normalizeDirectiveAlias, type DirectiveAliasPolicy } from '../syntax/directive-aliases.js';
@@ -27,6 +28,7 @@ export function applyConditionalAssembly(
   lines: readonly LogicalLine[],
   diagnostics: Diagnostic[],
   directiveAliasPolicy: DirectiveAliasPolicy | undefined,
+  symbolCase: SymbolCaseMode = 'strict',
 ): { readonly lines: readonly LogicalLine[] } {
   const out: LogicalLine[] = [];
   const equates = new Map<string, EquateRecord>();
@@ -35,14 +37,17 @@ export function applyConditionalAssembly(
 
   for (const line of lines) {
     const directive = parseConditionalDirective(line);
-    if (applyConditionalDirective(
-      directive,
-      line,
-      stack,
-      equates,
-      locationDependentEquates,
-      diagnostics,
-    )) {
+    if (
+      applyConditionalDirective(
+        directive,
+        line,
+        stack,
+        equates,
+        locationDependentEquates,
+        diagnostics,
+        symbolCase,
+      )
+    ) {
       continue;
     }
 
@@ -51,7 +56,7 @@ export function applyConditionalAssembly(
     }
 
     out.push(line);
-    recordConditionalEquate(line, equates, locationDependentEquates, directiveAliasPolicy);
+    recordConditionalEquate(line, equates, locationDependentEquates, directiveAliasPolicy, symbolCase);
   }
 
   for (const frame of stack) {
@@ -77,6 +82,7 @@ function applyConditionalDirective(
   equates: ReadonlyMap<string, EquateRecord>,
   locationDependentEquates: ReadonlySet<string>,
   diagnostics: Diagnostic[],
+  symbolCase: SymbolCaseMode,
 ): boolean {
   switch (directive.kind) {
     case 'if':
@@ -87,6 +93,7 @@ function applyConditionalDirective(
         equates,
         locationDependentEquates,
         diagnostics,
+        symbolCase,
       );
       return true;
     case 'else':
@@ -107,6 +114,7 @@ function pushConditionalFrame(
   equates: ReadonlyMap<string, EquateRecord>,
   locationDependentEquates: ReadonlySet<string>,
   diagnostics: Diagnostic[],
+  symbolCase: SymbolCaseMode,
 ): void {
   const parentActive = conditionalActive(stack);
   const value = parentActive
@@ -116,6 +124,7 @@ function pushConditionalFrame(
         equates,
         locationDependentEquates,
         diagnostics,
+        symbolCase,
       )
     : undefined;
   stack.push({
@@ -167,13 +176,14 @@ function evaluateConditionalExpression(
   equates: ReadonlyMap<string, EquateRecord>,
   locationDependentEquates: ReadonlySet<string>,
   diagnostics: Diagnostic[],
+  symbolCase: SymbolCaseMode,
 ): number | undefined {
   const expression = parseExpression(expressionText);
   if (!expression) {
     diagnostics.push(parseDiagnostic(line, `invalid .if expression: ${expressionText}`));
     return undefined;
   }
-  if (expressionReferencesCurrentLocation(expression, equates, locationDependentEquates)) {
+  if (expressionReferencesCurrentLocation(expression, equates, locationDependentEquates, symbolCase)) {
     diagnostics.push(
       parseDiagnostic(
         line,
@@ -188,7 +198,7 @@ function evaluateConditionalExpression(
     equates,
     { sourceName: line.sourceName, line: line.line, column: firstColumn(line.text) },
     diagnostics,
-    { currentLocation: 0 },
+    { currentLocation: 0, symbolCase },
   );
 }
 
@@ -197,6 +207,7 @@ function recordConditionalEquate(
   equates: Map<string, EquateRecord>,
   locationDependentEquates: Set<string>,
   directiveAliasPolicy: DirectiveAliasPolicy | undefined,
+  symbolCase: SymbolCaseMode,
 ): void {
   const text = normalizeDirectiveAlias(
     stripLineComment(line.text),
@@ -213,7 +224,7 @@ function recordConditionalEquate(
   if (!expression) {
     return;
   }
-  if (expressionReferencesCurrentLocation(expression, equates, locationDependentEquates)) {
+  if (expressionReferencesCurrentLocation(expression, equates, locationDependentEquates, symbolCase)) {
     locationDependentEquates.add(canonicalConditionalSymbolKey(name));
   }
   equates.set(name, {
@@ -227,6 +238,7 @@ function expressionReferencesCurrentLocation(
   expression: Expression,
   equates: ReadonlyMap<string, EquateRecord>,
   locationDependentEquates: ReadonlySet<string>,
+  symbolCase: SymbolCaseMode,
   visiting: ReadonlySet<string> = new Set(),
 ): boolean {
   if (expression.kind === 'current-location') return true;
@@ -235,11 +247,12 @@ function expressionReferencesCurrentLocation(
       expression.name,
       equates,
       locationDependentEquates,
+      symbolCase,
       visiting,
     );
   }
   return expressionChildExpressions(expression).some((child) =>
-    expressionReferencesCurrentLocation(child, equates, locationDependentEquates, visiting),
+    expressionReferencesCurrentLocation(child, equates, locationDependentEquates, symbolCase, visiting),
   );
 }
 
@@ -270,20 +283,22 @@ function symbolReferencesCurrentLocation(
   name: string,
   equates: ReadonlyMap<string, EquateRecord>,
   locationDependentEquates: ReadonlySet<string>,
+  symbolCase: SymbolCaseMode,
   visiting: ReadonlySet<string>,
 ): boolean {
   if (locationDependentEquates.has(canonicalConditionalSymbolKey(name))) {
     return true;
   }
-  const lookup = lookupEquateRecord(equates, name);
+  const lookup = lookupEquateRecord(equates, name, symbolCase);
   if (!lookup) return false;
-  return equateReferencesCurrentLocation(lookup, equates, locationDependentEquates, visiting);
+  return equateReferencesCurrentLocation(lookup, equates, locationDependentEquates, symbolCase, visiting);
 }
 
 function equateReferencesCurrentLocation(
   lookup: { readonly key: string; readonly record: EquateRecord },
   equates: ReadonlyMap<string, EquateRecord>,
   locationDependentEquates: ReadonlySet<string>,
+  symbolCase: SymbolCaseMode,
   visiting: ReadonlySet<string>,
 ): boolean {
   const key = canonicalConditionalSymbolKey(lookup.key);
@@ -294,6 +309,7 @@ function equateReferencesCurrentLocation(
     lookup.record.expression,
     equates,
     locationDependentEquates,
+    symbolCase,
     nextVisiting,
   );
 }

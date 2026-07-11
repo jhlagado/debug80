@@ -1,5 +1,6 @@
 import type { Diagnostic } from '../model/diagnostic.js';
 import type { SourceItem } from '../model/source-item.js';
+import type { SymbolCaseMode } from '../model/symbol.js';
 import type { EmittedSourceSegment } from '../outputs/types.js';
 import { buildAddressState, resolveSymbols } from './address-planning.js';
 import { validateImportVisibility } from './import-visibility.js';
@@ -40,17 +41,20 @@ function emptyAssemblyResult(
   };
 }
 
-export function assembleProgram(items: readonly SourceItem[]): AssemblyResult {
+export function assembleProgram(
+  items: readonly SourceItem[],
+  options: { readonly symbolCase?: SymbolCaseMode } = {},
+): AssemblyResult {
   const diagnostics: Diagnostic[] = [];
   validateDeclarationsAndRoutines(items, diagnostics);
-  validateImportVisibility(items, diagnostics);
+  validateImportVisibility(items, diagnostics, options.symbolCase ?? 'strict');
   if (diagnostics.length > 0) {
     return emptyAssemblyResult(diagnostics);
   }
 
   const assemblyItems = qualifyImportedPrivateLabels(qualifyRoutineLocalLabels(items));
 
-  const addressState = buildAddressState(assemblyItems, diagnostics);
+  const addressState = buildAddressState(assemblyItems, diagnostics, options.symbolCase);
   if (diagnostics.length > 0) {
     return emptyAssemblyResult(diagnostics, { origin: addressState.origin, assemblyItems });
   }
@@ -60,6 +64,7 @@ export function assembleProgram(items: readonly SourceItem[]): AssemblyResult {
     addressState.equates,
     addressState.layouts,
     diagnostics,
+    options.symbolCase,
   );
   const symbols = displaySymbolsForProgram(items, assemblyItems, internalSymbols);
   if (diagnostics.length > 0) {
@@ -71,7 +76,13 @@ export function assembleProgram(items: readonly SourceItem[]): AssemblyResult {
     });
   }
 
-  const emitted = emitProgramImage(assemblyItems, addressState, internalSymbols, diagnostics);
+  const emitted = emitProgramImage(
+    assemblyItems,
+    addressState,
+    internalSymbols,
+    diagnostics,
+    options.symbolCase,
+  );
   return {
     diagnostics,
     symbols,

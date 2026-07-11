@@ -77,6 +77,24 @@ describe('ASM80 conditional assembly and byte extraction functions', () => {
     ).toBe('33');
   });
 
+  it('resolves .if equates case-insensitively when requested', () => {
+    const result = compileNext(
+      [
+        'Flag .equ 1',
+        '        .if flag',
+        '        .db $55',
+        '        .else',
+        '        .db $66',
+        '        .endif',
+        '',
+      ].join('\n'),
+      { symbolCase: 'insensitive' },
+    );
+
+    expect(result.diagnostics).toEqual([]);
+    expect(Buffer.from(result.bytes).toString('hex')).toBe('55');
+  });
+
   it('diagnoses unmatched and unterminated conditional directives', () => {
     const unmatchedElse = compileNext('        .else\n');
     expect(unmatchedElse.diagnostics).toEqual([

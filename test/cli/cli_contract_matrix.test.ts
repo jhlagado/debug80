@@ -33,10 +33,35 @@ describe('cli contract matrix', () => {
     expect(caseStyle.code).toBe(2);
     expect(caseStyle.stderr).toContain('--case-style expects a value');
 
+    const symbolCase = await runCli(['--symbol-case']);
+    expect(symbolCase.code).toBe(2);
+    expect(symbolCase.stderr).toContain('--symbol-case expects a value');
+
     const aliases = await runCli(['--aliases']);
     expect(aliases.code).toBe(2);
     expect(aliases.stderr).toContain('--aliases expects a value');
   });
+
+  it('accepts --symbol-case insensitive for compatibility symbol lookup', async () => {
+    const work = await makeCliWorkDir('azm-cli-symbol-case-');
+    const entry = join(work, 'main.asm');
+
+    await writeFile(
+      entry,
+      ['        .org $100', 'Target:', '        ret', '        jp target', ''].join('\n'),
+      'utf8',
+    );
+
+    const strict = await runCli(['--type', 'bin', entry]);
+    expect(strict.code).toBe(1);
+    expect(strict.stderr).toContain('Unresolved symbol "target"');
+
+    const insensitive = await runCli(['--symbol-case', 'insensitive', '--type', 'bin', entry]);
+    expect(insensitive.code).toBe(0);
+    expect(insensitive.stdout.trim()).toBe(join(work, 'main.bin'));
+
+    await removeCliWorkDir(work);
+  }, 20_000);
 
   it('loads project directive aliases from --aliases JSON files', async () => {
     const work = await makeCliWorkDir('azm-cli-aliases-');

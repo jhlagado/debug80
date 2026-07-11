@@ -1,7 +1,7 @@
 import type { Diagnostic } from '../model/diagnostic.js';
 import type { Fixup } from '../model/fixup.js';
 import type { SourceItem } from '../model/source-item.js';
-import type { SymbolTable } from '../model/symbol.js';
+import type { SymbolCaseMode, SymbolTable } from '../model/symbol.js';
 import type { SourceSpan } from '../source/source-span.js';
 import type { EmittedSourceSegment } from '../outputs/types.js';
 import {
@@ -41,6 +41,7 @@ interface EmitContext {
   readonly layouts: Map<string, LayoutRecord>;
   readonly symbols: SymbolTable;
   readonly diagnostics: Diagnostic[];
+  readonly symbolCase: SymbolCaseMode;
   readonly image: Map<number, number>;
   readonly initializedAddresses: Set<number>;
   readonly reservedAddresses: Set<number>;
@@ -185,6 +186,7 @@ function emitDbValue(
   equates: ReadonlyMap<string, EquateRecord>,
   layouts: ReadonlyMap<string, LayoutRecord> | undefined,
   diagnostics: Diagnostic[],
+  symbolCase: SymbolCaseMode,
   image: Map<number, number>,
   initializedAddresses: Set<number>,
   placement: PlacementState,
@@ -199,7 +201,7 @@ function emitDbValue(
   }
 
   if (value.kind === 'symbol') {
-    const equate = lookupEquateRecord(equates, value.name);
+    const equate = lookupEquateRecord(equates, value.name, symbolCase);
     if (equate?.record.stringValue !== undefined) {
       for (const char of equate.record.stringValue) {
         const nextAddress = activePlacementAddress(placement);
@@ -214,6 +216,7 @@ function emitDbValue(
   const evaluated = evaluateExpression(value, labels, equates, itemSpan, diagnostics, {
     currentLocation: emitAddress,
     layouts,
+    symbolCase,
   });
   if (evaluated !== undefined) {
     writeImageByte(image, initializedAddresses, nextAddress, evaluated);
@@ -226,8 +229,9 @@ export function emitProgramImage(
   addressState: AddressState,
   symbols: SymbolTable,
   diagnostics: Diagnostic[],
+  symbolCase: SymbolCaseMode = 'strict',
 ): EmittedProgram {
-  const context = createEmitContext(addressState, symbols, diagnostics);
+  const context = createEmitContext(addressState, symbols, diagnostics, symbolCase);
   let ended = false;
 
   for (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
@@ -287,6 +291,7 @@ function createEmitContext(
   addressState: AddressState,
   symbols: SymbolTable,
   diagnostics: Diagnostic[],
+  symbolCase: SymbolCaseMode,
 ): EmitContext {
   return {
     labels: addressState.labels,
@@ -294,6 +299,7 @@ function createEmitContext(
     layouts: addressState.layouts,
     symbols,
     diagnostics,
+    symbolCase,
     image: new Map<number, number>(),
     initializedAddresses: new Set<number>(),
     reservedAddresses: new Set<number>(),
@@ -332,6 +338,7 @@ function emitDb(context: EmitContext, item: Extract<SourceItem, { readonly kind:
       context.equates,
       context.layouts,
       context.diagnostics,
+      context.symbolCase,
       context.image,
       context.initializedAddresses,
       context.placement,
@@ -355,9 +362,10 @@ function emitDw(context: EmitContext, item: Extract<SourceItem, { readonly kind:
         bytes,
         fixups,
         context.layouts,
+        context.symbolCase,
       )
     ) {
-      patchFixups(fixups, context.symbols, bytes, context.diagnostics);
+      patchFixups(fixups, context.symbols, bytes, context.diagnostics, context.symbolCase);
       writeImageBytes(context.image, context.initializedAddresses, emitAddress, bytes);
       advancePlacement(context.placement, 2);
     }
@@ -465,8 +473,9 @@ function emitProgramInstruction(
     bytes,
     fixups,
     context.layouts,
+    context.symbolCase,
   );
-  patchFixups(fixups, context.symbols, bytes, context.diagnostics);
+  patchFixups(fixups, context.symbols, bytes, context.diagnostics, context.symbolCase);
   writeImageBytes(context.image, context.initializedAddresses, codeAddress, bytes);
   advanceCodePlacement(context.placement, size);
   addSourceSegment(
@@ -498,6 +507,7 @@ function evaluateEmitExpression(
     {
       currentLocation,
       layouts: context.layouts,
+      symbolCase: context.symbolCase,
     },
   );
 }

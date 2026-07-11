@@ -113,6 +113,7 @@ export function buildCompileOptions(parsed: CliOptions, base: string): CompileNe
     emitHex: parsed.emitHex,
     emitD8m: parsed.emitD8m,
     emitAsm80: parsed.emitAsm80,
+    symbolCase: parsed.symbolCase,
     caseStyle: parsed.caseStyle,
     registerContracts: parsed.registerContracts,
     emitRegisterReport: parsed.emitRegisterReport,

@@ -65,8 +65,8 @@ when artifact writing succeeds.
 
 `src/cli/parse-args.ts` parses switches and validates the command shape.
 `src/cli/usage.ts` owns help text. The parser recognises output selection,
-artifact suppression, include paths, source-root, case-style linting, directive
-aliases and register contract options.
+artifact suppression, include paths, source-root, symbol lookup mode,
+case-style linting, directive aliases and register contract options.
 
 Register-contract parsing now includes:
 
@@ -112,6 +112,7 @@ Important options include:
 | -------------------------------------------- | --------------------------------------- |
 | `includeDirs`                                | Include search paths.                   |
 | `directiveAliasFiles`                        | Project alias profile files.            |
+| `symbolCase`                                 | Symbol lookup mode.                     |
 | `caseStyle`                                  | Case-style lint mode.                   |
 | `outputType`                                 | Primary output type, `hex` or `bin`.    |
 | `sourceRoot`                                 | Root used for portable D8 map paths.    |

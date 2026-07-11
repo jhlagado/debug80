@@ -2,6 +2,7 @@ import type { Diagnostic } from '../model/diagnostic.js';
 import type { Expression } from '../model/expression.js';
 import type { Fixup, FixupTarget } from '../model/fixup.js';
 import type { Instruction } from '../model/source-item.js';
+import type { SymbolCaseMode } from '../model/symbol.js';
 import type { SourceSpan } from '../source/source-span.js';
 import {
   diagnostic,
@@ -27,6 +28,7 @@ export function emitInstruction(
   bytes: number[],
   fixups: Fixup[],
   layouts?: ReadonlyMap<string, LayoutRecord>,
+  symbolCase: SymbolCaseMode = 'strict',
 ): number {
   const encoded = encodeZ80Instruction(instruction);
   for (const fragment of encoded.fragments) {
@@ -41,6 +43,7 @@ export function emitInstruction(
       bytes,
       fixups,
       layouts,
+      symbolCase,
     );
   }
   return encoded.size;
@@ -56,6 +59,7 @@ export function emitAbs16Expression(
   bytes: number[],
   fixups: Fixup[],
   layouts?: ReadonlyMap<string, LayoutRecord>,
+  symbolCase: SymbolCaseMode = 'strict',
 ): boolean {
   const target = fixupTargetFromExpression(expression);
   if (target) {
@@ -67,6 +71,7 @@ export function emitAbs16Expression(
   const value = evaluateExpression(expression, labels, equates, span, diagnostics, {
     currentLocation: currentAddress,
     layouts,
+    symbolCase,
   });
   if (value === undefined) {
     return false;
@@ -85,9 +90,10 @@ export function patchFixups(
   symbols: Readonly<Record<string, number>>,
   bytes: number[],
   diagnostics: Diagnostic[],
+  symbolCase: SymbolCaseMode = 'strict',
 ): void {
   for (const fixup of fixups) {
-    const base = lookupSymbolValue(symbols, fixup.target.symbol);
+    const base = lookupSymbolValue(symbols, fixup.target.symbol, symbolCase);
     if (base === undefined) {
       const context = fixup.kind === 'rel8' ? `rel8 ${fixup.mnemonic} fixup` : '16-bit fixup';
       diagnostics.push(
@@ -128,6 +134,7 @@ function emitZ80Fragment(
   bytes: number[],
   fixups: Fixup[],
   layouts: ReadonlyMap<string, LayoutRecord> | undefined,
+  symbolCase: SymbolCaseMode,
 ): void {
   switch (fragment.kind) {
     case 'bytes':
@@ -145,6 +152,7 @@ function emitZ80Fragment(
         diagnostics,
         bytes,
         layouts,
+        symbolCase,
       );
       return;
     case 'imm8':
@@ -158,6 +166,7 @@ function emitZ80Fragment(
         diagnostics,
         bytes,
         layouts,
+        symbolCase,
       );
       return;
     case 'port8':
@@ -171,6 +180,7 @@ function emitZ80Fragment(
         diagnostics,
         bytes,
         layouts,
+        symbolCase,
       );
       return;
     case 'disp8':
@@ -184,6 +194,7 @@ function emitZ80Fragment(
         diagnostics,
         bytes,
         layouts,
+        symbolCase,
       );
       return;
     case 'abs16':
@@ -197,6 +208,7 @@ function emitZ80Fragment(
         bytes,
         fixups,
         layouts,
+        symbolCase,
       );
       return;
     case 'rel8':
@@ -212,6 +224,7 @@ function emitZ80Fragment(
         bytes,
         fixups,
         layouts,
+        symbolCase,
       );
       return;
   }
@@ -228,10 +241,12 @@ function emitCbBitOpcode(
   diagnostics: Diagnostic[],
   bytes: number[],
   layouts: ReadonlyMap<string, LayoutRecord> | undefined,
+  symbolCase: SymbolCaseMode,
 ): void {
   const value = evaluateExpression(expression, labels, equates, span, diagnostics, {
     currentLocation: currentAddress,
     layouts,
+    symbolCase,
   });
   if (value === undefined) {
     return;
@@ -255,10 +270,12 @@ function emitPort8Expression(
   diagnostics: Diagnostic[],
   bytes: number[],
   layouts: ReadonlyMap<string, LayoutRecord> | undefined,
+  symbolCase: SymbolCaseMode,
 ): void {
   const value = evaluateExpression(expression, labels, equates, span, diagnostics, {
     currentLocation: currentAddress,
     layouts,
+    symbolCase,
   });
   if (value === undefined) {
     return;
@@ -281,11 +298,13 @@ function emitImm8Expression(
   diagnostics: Diagnostic[],
   bytes: number[],
   layouts: ReadonlyMap<string, LayoutRecord> | undefined,
+  symbolCase: SymbolCaseMode,
 ): void {
   const value = evaluateExpression(expression, labels, equates, span, diagnostics, {
     currentLocation: currentAddress,
     layouts,
     reportUnknown: failureMessage === undefined,
+    symbolCase,
   });
   if (value === undefined) {
     if (failureMessage) {
@@ -312,10 +331,12 @@ function emitDisp8Expression(
   diagnostics: Diagnostic[],
   bytes: number[],
   layouts: ReadonlyMap<string, LayoutRecord> | undefined,
+  symbolCase: SymbolCaseMode,
 ): void {
   const value = evaluateExpression(expression, labels, equates, span, diagnostics, {
     currentLocation: currentAddress,
     layouts,
+    symbolCase,
   });
   if (value === undefined) {
     return;
@@ -342,6 +363,7 @@ function emitRel8Expression(
   bytes: number[],
   fixups: Fixup[],
   layouts: ReadonlyMap<string, LayoutRecord> | undefined,
+  symbolCase: SymbolCaseMode,
 ): void {
   const target = fixupTargetFromExpression(expression);
   if (target) {
@@ -353,6 +375,7 @@ function emitRel8Expression(
   const value = evaluateExpression(expression, labels, equates, span, diagnostics, {
     currentLocation: currentAddress,
     layouts,
+    symbolCase,
   });
   if (value !== undefined) {
     emitRel8Displacement(value, origin, mnemonic, bytes, diagnostics, span);

@@ -24,6 +24,7 @@ export type {
 } from './tooling/api.js';
 export type { CaseStyleMode } from './tooling/case-style.js';
 export type { Diagnostic, DiagnosticId, DiagnosticSeverity } from './model/diagnostic.js';
+export type { SymbolCaseMode } from './model/symbol.js';
 export type {
   RegisterContractsMode,
   RegisterContractsFinding,

@@ -6,6 +6,7 @@ import type {
   RegisterContractsMode,
   RegisterContractsReportFormat,
 } from '../register-contracts/types.js';
+import type { SymbolCaseMode } from '../model/symbol.js';
 import type { CaseStyleMode } from '../tooling/case-style.js';
 import { cliUsage } from './usage.js';
 
@@ -20,6 +21,7 @@ export type CliOptions = {
   emitHex: boolean;
   emitD8m: boolean;
   emitAsm80: boolean;
+  symbolCase: SymbolCaseMode;
   caseStyle: CaseStyleMode;
   registerContracts: RegisterContractsMode;
   emitRegisterReport: boolean;
@@ -138,6 +140,7 @@ function createDefaultCliState(): CliState {
     emitHex: true,
     emitD8m: true,
     emitAsm80: false,
+    symbolCase: 'strict',
     caseStyle: 'off',
     registerContracts: 'off',
     emitRegisterReport: false,
@@ -267,6 +270,24 @@ function parseCaseStyleArg(
     fail(`Unsupported --case-style "${value}" (expected off|upper|lower|consistent)`);
   }
   state.caseStyle = value;
+  return true;
+}
+
+function parseSymbolCaseArg(
+  arg: string,
+  argv: string[],
+  indexRef: { current: number },
+  state: CliState,
+): boolean {
+  if (arg !== '--symbol-case' && !arg.startsWith('--symbol-case=')) return false;
+  const value = arg.startsWith('--symbol-case=')
+    ? arg.slice('--symbol-case='.length)
+    : readValue(argv, indexRef, '--symbol-case');
+  if (!value) fail('--symbol-case expects a value');
+  if (value !== 'strict' && value !== 'insensitive') {
+    fail(`Unsupported --symbol-case "${value}" (expected strict|insensitive)`);
+  }
+  state.symbolCase = value;
   return true;
 }
 
@@ -464,6 +485,7 @@ function finalizeCliOptions(state: CliState): CliOptions {
     emitHex: state.emitHex,
     emitD8m: state.emitD8m,
     emitAsm80: state.emitAsm80,
+    symbolCase: state.symbolCase,
     caseStyle: state.caseStyle,
     registerContracts: state.registerContracts,
     emitRegisterReport: state.emitRegisterReport,
@@ -537,6 +559,7 @@ const VALUE_ARG_PARSERS: readonly CliArgParser[] = [
   (arg, { argv, indexRef, state }) => parseOutputPathArg(arg, argv, indexRef, state),
   (arg, { argv, indexRef, state }) => parseOutputTypeArg(arg, argv, indexRef, state),
   (arg, { argv, indexRef, state }) => parseSourceRootArg(arg, argv, indexRef, state),
+  (arg, { argv, indexRef, state }) => parseSymbolCaseArg(arg, argv, indexRef, state),
   (arg, { argv, indexRef, state }) => parseCaseStyleArg(arg, argv, indexRef, state),
   (arg, { argv, indexRef, state }) => parseDirectiveAliasFileArg(arg, argv, indexRef, state),
   (arg, { argv, indexRef, state }) => parseRegisterContractsArg(arg, argv, indexRef, state),

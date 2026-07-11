@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises';
 import { dirname, extname, join, normalize } from 'node:path';
 
 import type { Diagnostic } from '../model/diagnostic.js';
+import type { SymbolCaseMode } from '../model/symbol.js';
 import type { LogicalLine, SourceRelation } from '../source/logical-lines.js';
 import { createSourceFile } from '../source/source-file.js';
 import { scanLogicalLines } from '../source/logical-lines.js';
@@ -11,6 +12,7 @@ export interface LoadProgramNextOptions {
   readonly entryFile: string;
   readonly includeDirs?: readonly string[];
   readonly directiveAliasFiles?: readonly string[];
+  readonly symbolCase?: SymbolCaseMode;
   readonly preloadedText?: string;
   readonly signal?: AbortSignal;
 }
