@@ -1,5 +1,6 @@
 import type { Diagnostic } from '../model/diagnostic.js';
 import type { Expression, TypeExpr } from '../model/expression.js';
+import { symbolLookupKey, type SymbolCaseMode } from '../model/symbol.js';
 import type { SourceSpan } from '../source/source-span.js';
 import {
   applyBinaryOperator,
@@ -32,28 +33,42 @@ export interface EvaluateExpressionOptions {
   readonly layouts?: ReadonlyMap<string, LayoutRecord> | undefined;
   readonly visiting?: ReadonlySet<string>;
   readonly reportUnknown?: boolean;
+  readonly symbolCase?: SymbolCaseMode;
 }
 
 function lookupLabelValue(
   labels: Readonly<Record<string, number>>,
   name: string,
+  mode: SymbolCaseMode = 'strict',
 ): number | undefined {
-  return labels[name];
+  if (mode === 'strict') return labels[name];
+  const key = symbolLookupKey(name, mode);
+  const matched = Object.keys(labels).find((label) => symbolLookupKey(label, mode) === key);
+  return matched === undefined ? undefined : labels[matched];
 }
 
 export function lookupEquateRecord(
   equates: ReadonlyMap<string, EquateRecord>,
   name: string,
+  mode: SymbolCaseMode = 'strict',
 ): { readonly key: string; readonly record: EquateRecord } | undefined {
   const direct = equates.get(name);
-  return direct === undefined ? undefined : { key: name, record: direct };
+  if (direct !== undefined || mode === 'strict') {
+    return direct === undefined ? undefined : { key: name, record: direct };
+  }
+  const key = symbolLookupKey(name, mode);
+  for (const [candidate, record] of equates) {
+    if (symbolLookupKey(candidate, mode) === key) return { key: candidate, record };
+  }
+  return undefined;
 }
 
 export function lookupSymbolValue(
   symbols: Readonly<Record<string, number>>,
   name: string,
+  mode: SymbolCaseMode = 'strict',
 ): number | undefined {
-  return lookupLabelValue(symbols, name);
+  return lookupLabelValue(symbols, name, mode);
 }
 
 export function evaluateExpression(
@@ -165,12 +180,12 @@ function evaluateSymbol(
   diagnostics: Diagnostic[],
   options: EvaluateExpressionOptions,
 ): number | undefined {
-  const label = lookupLabelValue(labels, name);
+  const label = lookupLabelValue(labels, name, options.symbolCase);
   if (label !== undefined) {
     return label;
   }
 
-  const equate = lookupEquateRecord(equates, name);
+  const equate = lookupEquateRecord(equates, name, options.symbolCase);
   if (equate) {
     if (options.visiting?.has(equate.key)) {
       diagnostics.push(diagnostic(span, `recursive symbol: ${name}`));
@@ -186,6 +201,7 @@ function evaluateSymbol(
         currentLocation: equate.record.currentLocation,
         visiting: new Set([...(options.visiting ?? []), equate.key]),
         layouts: options.layouts,
+        ...(options.symbolCase !== undefined ? { symbolCase: options.symbolCase } : {}),
         ...(options.reportUnknown !== undefined ? { reportUnknown: options.reportUnknown } : {}),
       },
     );

@@ -141,6 +141,30 @@ describe('stage 11 tooling API', () => {
     });
   });
 
+  it('resolves imported public labels case-insensitively when requested', async () => {
+    await withTempDir('azm-next-tooling-import-symbol-case-', async (dir) => {
+      const entry = join(dir, 'main.asm');
+      const module = join(dir, 'keyboard.asm');
+      await writeFile(entry, '.org $4000\n.import "keyboard.asm"\nmain:\n  call readkey\n', 'utf8');
+      await writeFile(module, '@ReadKey:\n  ret\n', 'utf8');
+
+      const strict = await compile(entry, { emitBin: true, emitHex: false, emitD8m: false });
+      expect(strict.diagnostics).toEqual([
+        expect.objectContaining({ message: 'Unresolved symbol "readkey" in 16-bit fixup.' }),
+      ]);
+
+      const insensitive = await compile(entry, {
+        symbolCase: 'insensitive',
+        emitBin: true,
+        emitHex: false,
+        emitD8m: false,
+      });
+      expect(insensitive.diagnostics).toEqual([]);
+      const bin = insensitive.artifacts.find((artifact) => artifact.kind === 'bin');
+      expect(bin?.kind === 'bin' ? Array.from(bin.bytes) : []).toEqual([0xc9, 0xcd, 0x00, 0x40]);
+    });
+  });
+
   it('keeps textual includes inside the importing source ownership unit', async () => {
     await withTempDir('azm-next-tooling-import-include-', async (dir) => {
       const entry = join(dir, 'main.asm');

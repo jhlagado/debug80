@@ -13,6 +13,7 @@ export { formatDiagnostic, formatNextDiagnostic } from './diagnostics/format.js'
 export { analyzeProgram, loadProgram, analyzeProgramNext, loadProgramNext } from './tooling/api.js';
 export { DiagnosticIds } from './model/diagnostic.js';
 export type { DiagnosticId, DiagnosticSeverity, Diagnostic } from './model/diagnostic.js';
+export type { SymbolCaseMode } from './model/symbol.js';
 export {
   analyzeRegisterContractsForTools,
   type AnalyzeRegisterContractsForToolsOptions,

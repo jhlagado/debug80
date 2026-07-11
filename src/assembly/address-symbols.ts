@@ -1,7 +1,7 @@
 import type { Diagnostic } from '../model/diagnostic.js';
 import type { Expression, TypeExpr } from '../model/expression.js';
 import type { LayoutField } from '../model/source-item.js';
-import type { SymbolTable } from '../model/symbol.js';
+import { symbolLookupKey, type SymbolCaseMode, type SymbolTable } from '../model/symbol.js';
 import type { SourceSpan } from '../source/source-span.js';
 import {
   diagnostic,
@@ -21,12 +21,13 @@ export function defineLayout(
   fields: readonly LayoutField[],
   span: SourceSpan,
   diagnostics: Diagnostic[],
+  symbolCase: SymbolCaseMode = 'strict',
 ): void {
   const lowerName = name.toLowerCase();
   if (
     hasCaseInsensitiveMapKey(layouts, lowerName) ||
-    hasCaseInsensitiveKey(labels, lowerName) ||
-    hasCaseInsensitiveMapKey(equates, lowerName) ||
+    hasSymbolKey(labels, name, symbolCase) ||
+    hasMapSymbolKey(equates, name, symbolCase) ||
     enumNamesLower.has(lowerName)
   ) {
     diagnostics.push(diagnostic(span, `duplicate type name: ${name}`));
@@ -55,12 +56,13 @@ export function defineTypeAlias(
   typeExpr: TypeExpr,
   span: SourceSpan,
   diagnostics: Diagnostic[],
+  symbolCase: SymbolCaseMode = 'strict',
 ): void {
   const lowerName = name.toLowerCase();
   if (
     hasCaseInsensitiveMapKey(layouts, lowerName) ||
-    hasCaseInsensitiveKey(labels, lowerName) ||
-    hasCaseInsensitiveMapKey(equates, lowerName) ||
+    hasSymbolKey(labels, name, symbolCase) ||
+    hasMapSymbolKey(equates, name, symbolCase) ||
     enumNamesLower.has(lowerName)
   ) {
     diagnostics.push(diagnostic(span, `duplicate type name: ${name}`));
@@ -79,10 +81,11 @@ export function defineLabel(
   address: number,
   span: SourceSpan,
   diagnostics: Diagnostic[],
+  symbolCase: SymbolCaseMode = 'strict',
 ): void {
   if (
-    labels[name] !== undefined ||
-    equates.has(name) ||
+    hasSymbolKey(labels, name, symbolCase) ||
+    hasMapSymbolKey(equates, name, symbolCase) ||
     hasCaseInsensitiveMapKey(layouts, name.toLowerCase()) ||
     enumNamesLower.has(name.toLowerCase())
   ) {
@@ -104,10 +107,11 @@ export function defineEquate(
   currentLocation: number,
   diagnostics: Diagnostic[],
   stringValue?: string,
+  symbolCase: SymbolCaseMode = 'strict',
 ): void {
   if (
-    labels[name] !== undefined ||
-    equates.has(name) ||
+    hasSymbolKey(labels, name, symbolCase) ||
+    hasMapSymbolKey(equates, name, symbolCase) ||
     hasCaseInsensitiveMapKey(layouts, name.toLowerCase()) ||
     enumNames.has(name) ||
     enumNamesLower.has(name.toLowerCase())
@@ -133,11 +137,12 @@ export function defineEnumMembers(
   members: readonly string[],
   span: SourceSpan,
   diagnostics: Diagnostic[],
+  symbolCase: SymbolCaseMode = 'strict',
 ): void {
   const enumNameLower = enumName.toLowerCase();
   if (
-    hasCaseInsensitiveKey(labels, enumNameLower) ||
-    hasCaseInsensitiveMapKey(equates, enumNameLower) ||
+    hasSymbolKey(labels, enumName, symbolCase) ||
+    hasMapSymbolKey(equates, enumName, symbolCase) ||
     hasCaseInsensitiveMapKey(layouts, enumNameLower) ||
     enumNamesLower.has(enumNameLower)
   ) {
@@ -160,7 +165,7 @@ export function defineEnumMembers(
     const qualifiedName = `${enumName}.${member}`;
     if (
       hasCaseInsensitiveKey(labels, qualifiedName.toLowerCase()) ||
-      hasCaseInsensitiveMapKey(equates, qualifiedName.toLowerCase())
+      hasMapSymbolKey(equates, qualifiedName, symbolCase)
     ) {
       diagnostics.push(diagnostic(span, `duplicate symbol: ${qualifiedName}`));
       continue;
@@ -179,6 +184,7 @@ export function resolveSymbols(
   equates: ReadonlyMap<string, EquateRecord>,
   layouts: ReadonlyMap<string, LayoutRecord>,
   diagnostics: Diagnostic[],
+  symbolCase: SymbolCaseMode = 'strict',
 ): SymbolTable {
   const symbols: Record<string, number> = { ...labels };
   for (const [name, record] of equates) {
@@ -187,12 +193,36 @@ export function resolveSymbols(
       visiting: new Set([name]),
       layouts,
       reportUnknown: false,
+      symbolCase,
     });
     if (value !== undefined) {
       symbols[name] = value;
     }
   }
   return symbols;
+}
+
+function hasSymbolKey(
+  record: Readonly<Record<string, number>>,
+  name: string,
+  mode: SymbolCaseMode,
+): boolean {
+  if (mode === 'strict') return record[name] !== undefined;
+  const key = symbolLookupKey(name, mode);
+  return Object.keys(record).some((candidate) => symbolLookupKey(candidate, mode) === key);
+}
+
+function hasMapSymbolKey(
+  map: ReadonlyMap<string, unknown>,
+  name: string,
+  mode: SymbolCaseMode,
+): boolean {
+  if (mode === 'strict') return map.has(name);
+  const key = symbolLookupKey(name, mode);
+  for (const candidate of map.keys()) {
+    if (symbolLookupKey(candidate, mode) === key) return true;
+  }
+  return false;
 }
 
 function hasCaseInsensitiveKey(

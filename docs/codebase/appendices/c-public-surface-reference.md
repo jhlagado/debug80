@@ -40,6 +40,7 @@ want one import path.
 - artifact types
 - D8 map types
 - output writer types
+- symbol case mode types
 
 Use this path for build tools, Debug80 integration and scripts that need bytes
 or artifacts.
@@ -54,6 +55,12 @@ they use that subsystem:
 - `emitRegisterInference`
 - `registerContractsInferenceFormat`
 
+Compile consumers can also set `symbolCase` to `strict` or `insensitive`.
+Strict mode is the default and keeps AZM symbol lookup case-sensitive.
+Insensitive mode exists for retained or imported source with inconsistent
+symbol spelling; it resolves labels and equates case-insensitively while
+preserving original symbol spelling in outputs.
+
 ## Tooling Exports
 
 `@jhlagado/azm/tooling` exposes:
@@ -65,6 +72,7 @@ they use that subsystem:
 - `analyzeRegisterContractsForTools`
 - diagnostic types
 - case-style mode types
+- symbol case mode types
 - register contract tooling result types
 
 Use this path for editors, linters and language tooling.

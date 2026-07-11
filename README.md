@@ -77,6 +77,10 @@ Canonical AZM directives are lowercase and dotted:
 Z80 instruction mnemonics and registers are case-insensitive. Labels, constants,
 enum names, type names and AZM function names are case-sensitive.
 
+For imported or retained source with inconsistent label spelling, AZM can run
+symbol lookup in a case-insensitive compatibility mode with
+`--symbol-case insensitive`. New source should keep the default strict mode.
+
 Use a colon for address labels:
 
 ```asm
@@ -562,6 +566,7 @@ The main switches are:
 | `--nod8m`                                     | Skip `.d8.json` output.                                             |
 | `--asm80`                                     | Write lowered assembler source as `.z80`.                           |
 | `--source-root <dir>`                         | Emit project-relative source paths in `.d8.json`.                   |
+| `--symbol-case <strict\|insensitive>`         | Symbol lookup mode. Default: `strict`; `insensitive` is compatibility. |
 | `--case-style <mode>`                         | Lint mnemonic, register and op-head case style.                     |
 | `--rc, --register-contracts <mode>`           | Register contracts mode: `off`, `audit`, `warn`, `error`, `strict`. |
 | `--reg-report, --emit-register-report`        | Opt-in debug report: write `.regcontracts.txt`.                     |
@@ -689,6 +694,7 @@ Common programmatic options include:
 | `outputType`                    | Primary output type, `hex` or `bin`.                      |
 | `emitBin`, `emitHex`, `emitD8m` | Select in-memory artifact kinds.                          |
 | `emitAsm80`                     | Request lowered `.z80` artifact.                          |
+| `symbolCase`                    | Symbol lookup mode, `strict` or `insensitive`.             |
 | `registerContracts`             | Register contracts mode.                                  |
 | `registerContractsInterfaces`   | External `.asmi` contract files.                          |
 

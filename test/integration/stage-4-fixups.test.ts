@@ -141,4 +141,65 @@ far:
     ]);
     expect(Array.from(result.bytes)).toEqual([]);
   });
+
+  it('keeps symbols case-sensitive by default', () => {
+    const result = compileNext(`
+        .org 0100H
+Target:
+        RET
+        JP target
+`);
+
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        message: 'Unresolved symbol "target" in 16-bit fixup.',
+      }),
+    ]);
+  });
+
+  it('resolves label and equate fixups case-insensitively when requested', () => {
+    const result = compileNext(
+      `
+Base    .equ Target
+        JP target
+        .dw base
+Target:
+        RET
+`,
+      { symbolCase: 'insensitive' },
+    );
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.symbols).toMatchObject({ Base: 0x0005, Target: 0x0005 });
+    expect(Array.from(result.bytes)).toEqual([0xc3, 0x05, 0x00, 0x05, 0x00, 0xc9]);
+  });
+
+  it('resolves string equates case-insensitively when sizing and emitting .db', () => {
+    const result = compileNext(
+      `
+Message .equ "OK"
+        .db message
+`,
+      { symbolCase: 'insensitive' },
+    );
+
+    expect(result.diagnostics).toEqual([]);
+    expect(result.symbols).toMatchObject({ Message: 0 });
+    expect(Array.from(result.bytes)).toEqual([0x4f, 0x4b]);
+  });
+
+  it('rejects case-only duplicate symbols in case-insensitive mode', () => {
+    const result = compileNext(
+      `
+Loop:
+loop:
+        RET
+`,
+      { symbolCase: 'insensitive' },
+    );
+
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({ message: 'duplicate symbol: loop' }),
+    ]);
+  });
 });

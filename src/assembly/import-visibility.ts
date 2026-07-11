@@ -1,6 +1,7 @@
 import type { Diagnostic } from '../model/diagnostic.js';
 import type { Expression } from '../model/expression.js';
 import type { DataValue, Instruction, SourceItem } from '../model/source-item.js';
+import { symbolLookupKey, type SymbolCaseMode } from '../model/symbol.js';
 import type { SourceSpan } from '../source/source-span.js';
 import type { Z80Operand } from '../z80/instruction.js';
 import { diagnostic } from '../semantics/diagnostics.js';
@@ -37,15 +38,17 @@ interface SymbolConflictIndex {
 export function validateImportVisibility(
   items: readonly SourceItem[],
   diagnostics: Diagnostic[],
+  symbolCase: SymbolCaseMode = 'strict',
 ): void {
   const model = buildRoutineLocalLabelModel(items);
-  const symbols = collectSymbolVisibility(items, model);
+  const symbols = collectSymbolVisibility(items, model, symbolCase);
   for (let index = 0; index < items.length; index += 1) {
     validateItemReferences(items[index]!, model.scopes[index]!, symbols, diagnostics);
   }
 }
 
 interface SymbolVisibility {
+  readonly symbolCase: SymbolCaseMode;
   readonly labels: ReadonlyMap<string, readonly LabelVisibility[]>;
   readonly declarations: ReadonlyMap<string, readonly DeclarationVisibility[]>;
   readonly exactSymbols: ReadonlySet<string>;
@@ -56,6 +59,7 @@ interface SymbolVisibility {
 function collectSymbolVisibility(
   items: readonly SourceItem[],
   model: RoutineLocalLabelModel,
+  symbolCase: SymbolCaseMode,
 ): SymbolVisibility {
   const labels = new Map<string, LabelVisibility[]>();
   const declarations = new Map<string, DeclarationVisibility[]>();
@@ -66,10 +70,10 @@ function collectSymbolVisibility(
   const symbolConflicts = buildSymbolConflictIndex(items);
   for (const item of items) {
     for (const name of exactSymbolNames(item)) {
-      exactSymbols.add(name);
+      exactSymbols.add(symbolVisibilityKey(name, symbolCase));
     }
     for (const name of exactNonLabelSymbolNames(item)) {
-      exactNonLabelSymbols.add(name);
+      exactNonLabelSymbols.add(symbolVisibilityKey(name, symbolCase));
       lowerNonLabelSymbols.add(name.toLowerCase());
     }
   }
@@ -79,8 +83,9 @@ function collectSymbolVisibility(
     const scope = model.scopes[index]!;
     const routine = item.name.startsWith('_') ? scope.routine : undefined;
     const importedPrivate = isImportedPrivateLabel(item);
-    const existing = labels.get(item.name) ?? [];
-    labels.set(item.name, [
+    const key = symbolVisibilityKey(item.name, symbolCase);
+    const existing = labels.get(key) ?? [];
+    labels.set(key, [
       ...existing,
       {
         name: item.name,
@@ -100,8 +105,9 @@ function collectSymbolVisibility(
   }
   for (const item of items) {
     for (const name of declarationReferenceNames(item)) {
-      const existing = declarations.get(name) ?? [];
-      declarations.set(name, [
+      const key = symbolVisibilityKey(name, symbolCase);
+      const existing = declarations.get(key) ?? [];
+      declarations.set(key, [
         ...existing,
         {
           name,
@@ -112,7 +118,18 @@ function collectSymbolVisibility(
       ]);
     }
   }
-  return { labels, declarations, exactSymbols, exactNonLabelSymbols, lowerNonLabelSymbols };
+  return {
+    symbolCase,
+    labels,
+    declarations,
+    exactSymbols,
+    exactNonLabelSymbols,
+    lowerNonLabelSymbols,
+  };
+}
+
+function symbolVisibilityKey(name: string, symbolCase: SymbolCaseMode): string {
+  return symbolLookupKey(name, symbolCase);
 }
 
 function declarationReferenceNames(item: SourceItem): readonly string[] {
@@ -532,7 +549,7 @@ function validateDeclarationReference(
   symbols: SymbolVisibility,
   diagnostics: Diagnostic[],
 ): void {
-  const candidates = symbols.declarations.get(name);
+  const candidates = symbols.declarations.get(symbolVisibilityKey(name, symbols.symbolCase));
   if (candidates === undefined || candidates.length !== 1) return;
   const declaration = candidates[0]!;
   if (declaration.public || referenceSpan.sourceUnit === declaration.definingSourceUnit) return;
@@ -550,8 +567,9 @@ function lookupLabel(
   referenceSpan: SourceSpan,
   referenceScope: RoutineScope,
 ): LabelVisibility | undefined {
-  if (symbols.exactNonLabelSymbols.has(name)) return undefined;
-  const candidates = [...(symbols.labels.get(name) ?? [])];
+  const key = symbolVisibilityKey(name, symbols.symbolCase);
+  if (symbols.exactNonLabelSymbols.has(key)) return undefined;
+  const candidates = [...(symbols.labels.get(key) ?? [])];
   return preferredLabel(candidates, referenceSpan, referenceScope);
 }
 

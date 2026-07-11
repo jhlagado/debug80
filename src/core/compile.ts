@@ -1,6 +1,7 @@
 import type { Diagnostic } from '../model/diagnostic.js';
 import type { SourceItem } from '../model/source-item.js';
 import type { SourceSpan } from '../source/source-span.js';
+import type { SymbolCaseMode } from '../model/symbol.js';
 import { assembleProgram } from '../assembly/assemble-program.js';
 import { writeIntelHex } from '../outputs/hex.js';
 import type { LogicalLine } from '../source/logical-lines.js';
@@ -23,6 +24,7 @@ import { applyConditionalAssembly } from './conditional-assembly.js';
 
 export interface CompileNextOptions {
   readonly entryName?: string;
+  readonly symbolCase?: SymbolCaseMode;
 }
 
 export interface CompileSourceResult {
@@ -39,6 +41,7 @@ interface ParseNextSourceItemsResult {
 
 interface ParseNextSourceItemsOptions {
   readonly directiveAliasPolicy?: DirectiveAliasPolicy;
+  readonly symbolCase?: SymbolCaseMode;
 }
 
 interface ParseNextContext {
@@ -69,6 +72,7 @@ export function parseNextSourceItems(
     lines,
     diagnostics,
     parseOptions.directiveAliasPolicy,
+    options.symbolCase,
   );
   const pendingLines = [...conditional.lines];
   const { ops, opLineIndexes } = collectOps(pendingLines, diagnostics, parseOptions);
@@ -316,7 +320,9 @@ export function compileSource(
   options: CompileOptions = {},
 ): CompileSourceResult {
   const source = createSourceFile(options.entryName ?? '<memory>', sourceText);
-  const { diagnostics, items } = parseNextSourceItems(scanLogicalLines(source));
+  const { diagnostics, items } = parseNextSourceItems(scanLogicalLines(source), {
+    ...(options.symbolCase !== undefined ? { symbolCase: options.symbolCase } : {}),
+  });
 
   if (diagnostics.length > 0) {
     return {
@@ -327,7 +333,10 @@ export function compileSource(
     };
   }
 
-  const assembly = assembleProgram(items);
+  const assembly = assembleProgram(
+    items,
+    options.symbolCase === undefined ? {} : { symbolCase: options.symbolCase },
+  );
   const allDiagnostics = [...diagnostics, ...assembly.diagnostics];
   return {
     diagnostics: allDiagnostics,

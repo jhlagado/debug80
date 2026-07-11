@@ -1,5 +1,6 @@
 import type { Diagnostic } from '../model/diagnostic.js';
 import type { DataValue, SourceItem } from '../model/source-item.js';
+import type { SymbolCaseMode } from '../model/symbol.js';
 import {
   diagnostic,
   evaluateExpression,
@@ -44,6 +45,7 @@ interface AddressBuildContext {
   readonly lookupEquates: Map<string, EquateRecord>;
   readonly lookupLayouts: Map<string, LayoutRecord>;
   readonly reportUnknown: boolean;
+  readonly symbolCase: SymbolCaseMode;
   readonly placement: ReturnType<typeof createPlacementState>;
   origin: number;
   originSet: boolean;
@@ -82,7 +84,11 @@ const ADDRESS_ITEM_HANDLERS: Record<SourceItem['kind'], AddressItemHandler> = {
   db: (context, item) =>
     advancePlacement(
       context.placement,
-      dbSize(item as Extract<SourceItem, { readonly kind: 'db' }>, context.lookupEquates),
+      dbSize(
+        item as Extract<SourceItem, { readonly kind: 'db' }>,
+        context.lookupEquates,
+        context.symbolCase,
+      ),
     ),
   dw: (context, item) =>
     advancePlacement(
@@ -110,17 +116,18 @@ const ADDRESS_ITEM_HANDLERS: Record<SourceItem['kind'], AddressItemHandler> = {
 export function buildAddressState(
   items: readonly SourceItem[],
   diagnostics: Diagnostic[],
+  symbolCase: SymbolCaseMode = 'strict',
 ): {
   readonly labels: Record<string, number>;
   readonly equates: Map<string, EquateRecord>;
   readonly layouts: Map<string, LayoutRecord>;
   readonly origin: number;
 } {
-  let state = buildAddressStateOnce(items, [], undefined, false);
+  let state = buildAddressStateOnce(items, [], undefined, false, symbolCase);
   let previousSignature = '';
 
   for (let index = 0; index < Math.max(4, items.length + 1); index += 1) {
-    state = buildAddressStateOnce(items, [], state, false);
+    state = buildAddressStateOnce(items, [], state, false, symbolCase);
     const signature = addressStateSignature(state);
     if (signature === previousSignature) {
       break;
@@ -128,7 +135,7 @@ export function buildAddressState(
     previousSignature = signature;
   }
 
-  return buildAddressStateOnce(items, diagnostics, state, true);
+  return buildAddressStateOnce(items, diagnostics, state, true, symbolCase);
 }
 
 function buildAddressStateOnce(
@@ -142,13 +149,14 @@ function buildAddressStateOnce(
       }
     | undefined,
   reportUnknown: boolean,
+  symbolCase: SymbolCaseMode,
 ): {
   readonly labels: Record<string, number>;
   readonly equates: Map<string, EquateRecord>;
   readonly layouts: Map<string, LayoutRecord>;
   readonly origin: number;
 } {
-  const context = createAddressBuildContext(previous, diagnostics, reportUnknown);
+  const context = createAddressBuildContext(previous, diagnostics, reportUnknown, symbolCase);
   let ended = false;
 
   for (let itemIndex = 0; itemIndex < items.length; itemIndex += 1) {
@@ -185,6 +193,7 @@ function createAddressBuildContext(
     | undefined,
   diagnostics: Diagnostic[],
   reportUnknown: boolean,
+  symbolCase: SymbolCaseMode,
 ): AddressBuildContext {
   const labels: Record<string, number> = {};
   const equates = new Map<string, EquateRecord>();
@@ -200,6 +209,7 @@ function createAddressBuildContext(
     lookupEquates: previous?.equates ?? equates,
     lookupLayouts: previous?.layouts ?? layouts,
     reportUnknown,
+    symbolCase,
     placement: createPlacementState(),
     origin: 0,
     originSet: false,
@@ -238,6 +248,7 @@ function defineAddressLayout(
     item.fields,
     item.span,
     context.diagnostics,
+    context.symbolCase,
   );
 }
 
@@ -254,6 +265,7 @@ function defineAddressTypeAlias(
     item.typeExpr,
     item.span,
     context.diagnostics,
+    context.symbolCase,
   );
 }
 
@@ -273,6 +285,7 @@ function defineAddressEquate(
     placementAddress(context.placement),
     context.diagnostics,
     item.stringValue,
+    context.symbolCase,
   );
 }
 
@@ -290,6 +303,7 @@ function defineAddressEnum(
     item.members,
     item.span,
     context.diagnostics,
+    context.symbolCase,
   );
 }
 
@@ -306,6 +320,7 @@ function defineAddressLabel(
     placementAddress(context.placement),
     item.span,
     context.diagnostics,
+    context.symbolCase,
   );
 }
 
@@ -367,6 +382,7 @@ function evaluateAddressExpression(
       currentLocation: placementAddress(context.placement),
       layouts: context.lookupLayouts,
       reportUnknown: context.reportUnknown,
+      symbolCase: context.symbolCase,
     },
   );
 }
@@ -374,8 +390,12 @@ function evaluateAddressExpression(
 function dbSize(
   item: Extract<SourceItem, { readonly kind: 'db' }>,
   lookupEquates: ReadonlyMap<string, EquateRecord>,
+  symbolCase: SymbolCaseMode,
 ): number {
-  return item.values.reduce((size, value) => size + dataValueSize(value, lookupEquates), 0);
+  return item.values.reduce(
+    (size, value) => size + dataValueSize(value, lookupEquates, symbolCase),
+    0,
+  );
 }
 
 export function stringDirectiveBytes(
@@ -397,12 +417,16 @@ function toByte(value: number): number {
   return value & 0xff;
 }
 
-function dataValueSize(value: DataValue, equates: ReadonlyMap<string, EquateRecord>): number {
+function dataValueSize(
+  value: DataValue,
+  equates: ReadonlyMap<string, EquateRecord>,
+  symbolCase: SymbolCaseMode,
+): number {
   if (value.kind === 'string-fragment') {
     return [...value.value].length;
   }
   if (value.kind === 'symbol') {
-    const equate = lookupEquateRecord(equates, value.name);
+    const equate = lookupEquateRecord(equates, value.name, symbolCase);
     if (equate?.record.stringValue !== undefined) {
       return [...equate.record.stringValue].length;
     }

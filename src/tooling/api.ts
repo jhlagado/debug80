@@ -1,5 +1,6 @@
 import type { Diagnostic } from '../model/diagnostic.js';
 import type { SourceItem } from '../model/source-item.js';
+import type { SymbolCaseMode } from '../model/symbol.js';
 import { assembleProgram } from '../assembly/assemble-program.js';
 import { expandSourceForTooling, type LoadProgramNextOptions } from '../node/source-host.js';
 import { parseNextSourceItems } from '../core/compile.js';
@@ -41,6 +42,7 @@ export interface AnalyzeProgramNextResult {
 
 export interface AnalyzeProgramNextOptions {
   readonly caseStyle?: CaseStyleMode;
+  readonly symbolCase?: SymbolCaseMode;
 }
 
 export type LoadedProgram = LoadedProgramNext;
@@ -61,7 +63,10 @@ export async function loadProgramNext(
     (options.directiveAliasFiles ?? []).map((path) => readDirectiveAliasProfile(path)),
   );
   const directiveAliasPolicy = buildDirectiveAliasPolicy(directiveAliasProfiles);
-  const parsed = parseNextSourceItems(expanded.lines, { directiveAliasPolicy });
+  const parsed = parseNextSourceItems(expanded.lines, {
+    directiveAliasPolicy,
+    ...(options.symbolCase !== undefined ? { symbolCase: options.symbolCase } : {}),
+  });
   const diagnostics = [...loadDiagnostics, ...parsed.diagnostics];
 
   return {
@@ -83,7 +88,10 @@ export function analyzeProgramNext(
   loadedProgram: LoadedProgramNext,
   options: AnalyzeProgramNextOptions = {},
 ): AnalyzeProgramNextResult {
-  const assembly = assembleProgram(loadedProgram.program.files[0].items);
+  const assembly = assembleProgram(
+    loadedProgram.program.files[0].items,
+    options.symbolCase === undefined ? {} : { symbolCase: options.symbolCase },
+  );
   const caseStyleDiagnostics = lintCaseStyleNext({
     items: loadedProgram.program.files[0].items,
     sourceTexts: loadedProgram.sourceTexts,
