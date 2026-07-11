@@ -168,6 +168,9 @@ exported with `@`. When an imported public routine calls private routines inside
 import unit, the routine builder keeps those direct call targets in the
 internal routine set so strict analysis can follow imported helper routines
 without exposing them outside the module.
+Direct tail boundaries cover cross-routine `JP` and `JR` instructions, including
+conditional tails whose target resolves to a known routine or external
+contract. Self-jumps and ordinary local labels stay inside the routine body.
 
 Parsed `.routine` source items carry their declared contract directly. External
 `.asmi` contracts are parsed in `interfaceContracts.ts`; legacy smart-comment
@@ -211,6 +214,11 @@ contract, result, state and token-transfer logic now lives in
 `summaries.ts` combine routine summaries, external contracts and profile
 summaries into lookup tables. A summary records the observable contract of a
 routine: the units it reads, writes, preserves, clobbers and returns as outputs.
+Conditional tail boundaries now split summary inference into two exits: the
+tail-boundary path and the local fallthrough path. The merged summary keeps only
+relations and preserved units that hold on both paths while still carrying
+stack-balance and unknown-stack facts from any tail boundary that can exit the
+routine.
 
 `src/register-contracts/liveness.ts` performs the caller-side analysis. It works
 backwards through each routine. At a call, it compares the live-after set with

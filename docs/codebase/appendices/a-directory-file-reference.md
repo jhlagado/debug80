@@ -123,13 +123,13 @@ you need to find the owner of a behaviour quickly.
 | `analysis-policy.ts`         | Resolves effective analysis mode from CLI options, source directives and file-level policy.                   |
 | `analysis-suppressions.ts`   | Applies `.rcignore` suppressions to typed findings and carries suppression metadata into reports.             |
 | `programModel.ts`            | Builds routines, labels, instructions and direct call boundaries from source items.                            |
-| `programModel-boundaries.ts` | Routine-boundary detection helpers.                                                                            |
+| `programModel-boundaries.ts` | Routine-boundary detection helpers, including cross-routine `JP` and `JR` tail boundaries.                    |
 | `programModel-routines.ts`   | Routine construction helpers.                                                                                  |
 | `routine-identity.ts`        | Builds stable internal routine identities for same-name private routines and imported helpers.                |
 | `public-routine-identity.ts` | Converts internal routine identities into stable project-relative report and tooling identifiers.             |
 | `smartComments.ts`           | Builds `.routine` declaration contracts and `.asmi` routine contracts for analysis.                           |
 | `interfaceContracts.ts`      | Parses external `.asmi` interface contracts.                                                                   |
-| `summary.ts`                 | Infers a routine summary from instruction effects and contracts.                                               |
+| `summary.ts`                 | Infers a routine summary from instruction effects and contracts, then merges conditional tail exits.           |
 | `summary-boundary.ts`        | Summary behaviour at routine boundaries.                                                                       |
 | `summary-contract.ts`        | Contract-to-summary helpers.                                                                                   |
 | `summary-result.ts`          | Summary result construction.                                                                                   |
