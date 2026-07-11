@@ -1,4 +1,3 @@
-import type { Diagnostic } from '../model/diagnostic.js';
 import type {
   AnalyzeRegisterContractsOptions,
   RegisterContractsDirectCall,
@@ -158,23 +157,6 @@ export function withAcceptedOutputs(
     }
     return { ...summary, valueRelations };
   });
-}
-
-export function unknownBoundaryDiagnostics(
-  directBoundaries: readonly RegisterContractsDirectCall[],
-  knownRoutines: ReadonlySet<string>,
-  severity: Diagnostic['severity'] = 'warning',
-): Diagnostic[] {
-  return directBoundaries
-    .filter((boundary) => !knownRoutines.has(boundary.targetIdentity ?? boundary.target))
-    .map((boundary) => ({
-      severity,
-      code: 'AZMN_REGISTER_CONTRACTS',
-      message: `Register contracts cannot prove ${boundary.subject}; add a routine body or .asmi extern contract.`,
-      sourceName: boundary.file,
-      line: boundary.line,
-      column: boundary.column,
-    }));
 }
 
 export function unknownCallList(

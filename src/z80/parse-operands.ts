@@ -222,7 +222,7 @@ export function parseStackRegister(text: string): Z80StackRegister16 | undefined
     : undefined;
 }
 
-export function parseIndexedOperand(
+function parseIndexedOperand(
   text: string,
 ): Extract<Z80Operand, { readonly kind: 'indexed' }> | undefined {
   const trimmed = text.trim();
@@ -276,11 +276,6 @@ export function isRstVector(value: number | undefined): value is Z80RstVector {
 
 const RST_VECTORS = new Set<Z80RstVector>([0, 8, 16, 24, 32, 40, 48, 56]);
 
-export function parseBitIndex(text: string): 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | undefined {
-  const value = parseConstantExpression(text);
-  return isBitIndex(value) ? value : undefined;
-}
-
 export function parseBitIndexExpression(text: string): 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | Expression | undefined {
   const expression = parseExpression(text);
   if (!expression) {
@@ -299,7 +294,7 @@ function isBitIndex(value: number | undefined): value is 0 | 1 | 2 | 3 | 4 | 5 |
 
 const BIT_INDEXES = new Set<0 | 1 | 2 | 3 | 4 | 5 | 6 | 7>([0, 1, 2, 3, 4, 5, 6, 7]);
 
-export function constantExpressionValue(expression: Expression): number | undefined {
+function constantExpressionValue(expression: Expression): number | undefined {
   switch (expression.kind) {
     case 'number':
       return expression.value;

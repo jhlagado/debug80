@@ -6,7 +6,7 @@ import type {
 
 const FLAG_UNITS: RegisterContractsUnit[] = ['carry', 'zero', 'sign', 'parity', 'halfCarry'];
 
-export interface RegisterContractsProfileSummary {
+interface RegisterContractsProfileSummary {
   name: 'mon3';
   rst: Map<number, RoutineSummary>;
   rstServices: Map<string, RoutineSummary>;

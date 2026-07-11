@@ -13,7 +13,7 @@ import {
   type LogicalLineLike,
   type OpDecl,
   type OpTemplateItem,
-} from './op-expansion.js';
+} from './op-types.js';
 import { formatOpOperand, type OpOperand } from './op-operands.js';
 import { formatOpSelectionDiagnostic, selectOpOverload } from './op-selection.js';
 

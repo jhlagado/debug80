@@ -14,15 +14,9 @@ export { analyzeProgram, loadProgram, analyzeProgramNext, loadProgramNext } from
 export { DiagnosticIds } from './model/diagnostic.js';
 export type { DiagnosticId, DiagnosticSeverity, Diagnostic } from './model/diagnostic.js';
 export {
-  analyzeRegisterCareForTools,
   analyzeRegisterContractsForTools,
-  type AnalyzeRegisterCareForToolsOptions,
-  type AnalyzeRegisterCareForToolsResult,
   type AnalyzeRegisterContractsForToolsOptions,
   type AnalyzeRegisterContractsForToolsResult,
-  type RegisterCareCandidateDiagnostic,
-  type RegisterCareCodeAction,
-  type RegisterCareTextEdit,
   type RegisterContractsCandidateDiagnostic,
   type RegisterContractsCodeAction,
   type RegisterContractsTextEdit,
@@ -54,9 +48,6 @@ export type {
 } from './tooling/api.js';
 export type { CaseStyleMode } from './tooling/case-style.js';
 export type {
-  RegisterCareMode,
-  RegisterCareOutputCandidate,
-  RegisterCareUnit,
   RegisterContractsMode,
   RegisterContractsFinding,
   RegisterContractsFindingKind,

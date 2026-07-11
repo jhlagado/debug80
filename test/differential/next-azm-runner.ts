@@ -1,6 +1,5 @@
 import { compile } from '../../src/api-compile.js';
 import type { AssemblerRunResult } from './compare-results.js';
-import { compileNext } from '../../src/core/compile.js';
 
 type NextAzmFixtureResult = {
   readonly artifacts: readonly { kind: string }[];
@@ -10,31 +9,6 @@ type NextAzmFixtureResult = {
 interface RunNextAzmOptions {
   readonly emitSidecars?: boolean;
   readonly emitAsm80?: boolean;
-}
-
-export function runNextAzmSource(sourceText: string): AssemblerRunResult {
-  try {
-    const result = compileNext(sourceText);
-    const diagnosticsText = result.diagnostics
-      .map((diagnostic) => diagnostic.message)
-      .filter((message): message is string => typeof message === 'string')
-      .map((message) => message.replace(/\r\n/g, '\n'))
-      .map((message) => message.trimEnd());
-    return {
-      exitCode: result.diagnostics.some((diagnostic) => diagnostic.severity === 'error') ? 1 : 0,
-      stdout: '',
-      stderr: diagnosticsText.join('\n'),
-      hexText: result.hexText,
-      binBytes: result.bytes,
-      diagnosticsText,
-    };
-  } catch (error) {
-    return {
-      exitCode: 1,
-      stdout: '',
-      stderr: String(error instanceof Error ? error.message : error),
-    };
-  }
 }
 
 export async function runNextAzmFixture(

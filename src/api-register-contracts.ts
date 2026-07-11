@@ -16,7 +16,7 @@ import type { LoadedProgramNext } from './tooling/api.js';
 import type { CompileNextFunctionOptions } from './api-compile.js';
 
 export function shouldAnalyzeRegisterContracts(options: CompileNextFunctionOptions): boolean {
-  const registerContractsMode = options.registerContracts ?? options.registerCare ?? 'off';
+  const registerContractsMode = options.registerContracts ?? 'off';
   return (
     registerContractsMode !== 'off' ||
     options.emitRegisterReport === true ||
@@ -26,7 +26,7 @@ export function shouldAnalyzeRegisterContracts(options: CompileNextFunctionOptio
     options.fixRegisterContracts === true ||
     options.registerContractsPolicy !== undefined ||
     (options.acceptRegisterOutputCandidates?.length ?? 0) > 0 ||
-    (options.registerContractsInterfaces?.length ?? options.registerCareInterfaces?.length ?? 0) > 0 ||
+    (options.registerContractsInterfaces?.length ?? 0) > 0 ||
     options.registerContractsBaseline !== undefined
   );
 }
@@ -41,7 +41,7 @@ export async function runRegisterContracts(
   const diagnostics: Diagnostic[] = [];
   const artifacts: Artifact[] = [];
   const parsedInterfaces = await loadInterfaceContracts(
-    options.registerContractsInterfaces ?? options.registerCareInterfaces ?? [],
+    options.registerContractsInterfaces ?? [],
     diagnostics,
   );
   if (hasErrors(diagnostics)) {
@@ -53,7 +53,7 @@ export async function runRegisterContracts(
   }
 
   const registerContracts = analyzeRegisterContracts(loadedProgram, {
-    mode: options.registerContracts ?? options.registerCare ?? 'off',
+    mode: options.registerContracts ?? 'off',
     ...(options.registerContractsPolicy !== undefined
       ? { policy: options.registerContractsPolicy }
       : {}),
@@ -72,10 +72,8 @@ export async function runRegisterContracts(
     acceptedOutputCandidates: parseAcceptedOutputCandidates(
       options.acceptRegisterOutputCandidates ?? [],
     ),
-    ...(options.registerContractsProfile !== undefined || options.registerCareProfile !== undefined
-      ? {
-          registerContractsProfile: options.registerContractsProfile ?? options.registerCareProfile,
-        }
+    ...(options.registerContractsProfile !== undefined
+      ? { registerContractsProfile: options.registerContractsProfile }
       : {}),
     ...(parsedInterfaces.contracts.length > 0
       ? { interfaceContracts: parsedInterfaces.contracts }

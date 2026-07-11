@@ -35,7 +35,7 @@ interface UnitRoutineState {
   active?: RoutineBuildState;
 }
 
-export interface RoutineBuildResult {
+interface RoutineBuildResult {
   routines: RegisterContractsRoutine[];
   directCalls: RegisterContractsDirectCall[];
   ownedInstructionItems: ReadonlySet<InstructionItem>;

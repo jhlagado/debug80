@@ -86,18 +86,12 @@ export interface RegisterContractsReportArtifact {
   findings?: RegisterContractsFinding[];
 }
 
-/** @deprecated Use RegisterContractsReportArtifact. */
-export type RegisterCareReportArtifact = RegisterContractsReportArtifact;
-
 /** In-memory inferred register contracts interface artifact. */
 export interface RegisterContractsInterfaceArtifact {
   kind: 'register-contracts-interface';
   path?: string;
   text: string;
 }
-
-/** @deprecated Use RegisterContractsInterfaceArtifact. */
-export type RegisterCareInterfaceArtifact = RegisterContractsInterfaceArtifact;
 
 /** In-memory inferred register contracts review artifact. */
 export interface RegisterContractsInferenceArtifact {
@@ -117,9 +111,6 @@ export interface RegisterContractsAnnotationsArtifact {
     text: string;
   }[];
 }
-
-/** @deprecated Use RegisterContractsAnnotationsArtifact. */
-export type RegisterCareAnnotationsArtifact = RegisterContractsAnnotationsArtifact;
 
 /** Lowered .z80 artifact. */
 export interface Asm80Artifact {
@@ -142,7 +133,9 @@ export interface D8mSymbol {
   size?: number;
 }
 
+// fallow-ignore-next-line unused-type
 export type D8mSegmentKind = 'code' | 'data' | 'directive' | 'label' | 'macro' | 'unknown';
+// fallow-ignore-next-line unused-type
 export type D8mSegmentConfidence = 'high' | 'medium' | 'low';
 
 export interface D8mSegment {

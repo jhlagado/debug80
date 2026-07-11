@@ -1,6 +1,6 @@
 import { findLineCommentStart } from './line-comment-scanner.js';
 
-export interface InstructionChainSegment {
+interface InstructionChainSegment {
   readonly text: string;
   readonly column: number;
 }

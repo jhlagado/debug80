@@ -1,6 +1,6 @@
 import type { Z80Instruction, Z80RelativeCondition } from './instruction.js';
 
-export type Z80InstructionCondition = Extract<
+type Z80InstructionCondition = Extract<
   Z80Instruction,
   { readonly condition: unknown }
 >['condition'];

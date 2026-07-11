@@ -2,7 +2,7 @@ import { renderRegisterContractsRoutineDirective } from './report.js';
 import { joinSourceLines, splitSourceLines } from './sourceText.js';
 import type { RegisterContractsRoutine, RoutineSummary } from './types.js';
 
-export interface RegisterContractsAnnotatedFile {
+interface RegisterContractsAnnotatedFile {
   path: string;
   text: string;
 }

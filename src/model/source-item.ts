@@ -104,7 +104,7 @@ export interface LayoutField {
   readonly typeExpr?: TypeExpr;
 }
 
-export interface EmittedSource {
+interface EmittedSource {
   readonly span: SourceSpan;
   readonly kind: 'code' | 'macro';
 }

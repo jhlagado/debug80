@@ -27,7 +27,7 @@ import {
 } from './placement.js';
 import { alignmentPadding, stringDirectiveBytes, type AddressState } from './address-planning.js';
 
-export interface EmittedProgram {
+interface EmittedProgram {
   readonly origin: number;
   readonly initializedAddresses: readonly number[];
   readonly reservedAddresses: readonly number[];

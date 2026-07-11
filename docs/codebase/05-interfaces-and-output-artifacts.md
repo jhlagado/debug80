@@ -165,9 +165,8 @@ report the unknown boundary itself. Files whose effective policy is `off` retain
 ordinary symbol diagnostics because register-contract analysis does not own
 those calls.
 
-The older option names `registerCare`, `registerCareProfile` and
-`registerCareInterfaces` remain as deprecated aliases for package consumers.
-New callers should use the `registerContracts...` names.
+The programmatic API uses the register-contract option names only; there is no
+older-name compatibility layer.
 
 ## Tooling API
 

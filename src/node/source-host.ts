@@ -15,7 +15,7 @@ export interface LoadProgramNextOptions {
   readonly signal?: AbortSignal;
 }
 
-export interface ExpandedNextSource {
+interface ExpandedNextSource {
   readonly entryFile: string;
   readonly lines: readonly LogicalLine[];
   readonly sourceTexts: ReadonlyMap<string, string>;

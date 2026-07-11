@@ -10,7 +10,7 @@ import type {
 } from './types.js';
 import type { Z80Instruction } from '../z80/instruction.js';
 
-export interface RegisterContractsExpectOutFix {
+interface RegisterContractsExpectOutFix {
   file: string;
   line: number;
   column: number;

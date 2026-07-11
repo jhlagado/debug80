@@ -9,7 +9,7 @@ import type {
 import type { CaseStyleMode } from '../tooling/case-style.js';
 import { cliUsage } from './usage.js';
 
-export type CliExit = { code: number };
+type CliExit = { code: number };
 
 export type CliOptions = {
   entryFile: string;

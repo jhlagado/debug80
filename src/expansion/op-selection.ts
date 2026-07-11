@@ -41,7 +41,7 @@ const MATCHER_EXPECTATIONS: Record<MatcherExpectation, string> = {
   mem16: 'mem16 dereference',
 };
 
-export type OpSelection =
+type OpSelection =
   | { readonly kind: 'selected'; readonly overload: OpDecl }
   | { readonly kind: 'arity_mismatch' }
   | { readonly kind: 'no_match'; readonly candidates: readonly OpDecl[] }

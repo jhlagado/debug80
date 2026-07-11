@@ -11,7 +11,7 @@ import {
 import { emitProgramImage } from './program-emission.js';
 import { validateDeclarationsAndRoutines } from './declaration-validation.js';
 
-export interface AssemblyResult {
+interface AssemblyResult {
   readonly diagnostics: readonly Diagnostic[];
   readonly symbols: import('../model/symbol.js').SymbolTable;
   readonly internalSymbols: import('../model/symbol.js').SymbolTable;

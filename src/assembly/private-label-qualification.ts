@@ -12,7 +12,7 @@ interface PrivateLabelScope {
   readonly lowerNonPrivateNames: ReadonlySet<string>;
 }
 
-export function isQualifiedPrivateLabelName(name: string): boolean {
+function isQualifiedPrivateLabelName(name: string): boolean {
   return name.startsWith(PRIVATE_LABEL_PREFIX);
 }
 

@@ -262,37 +262,17 @@ emit semantic `; expects out ...` comments.
 
 External `.asmi` interfaces keep their existing line-oriented syntax.
 
-## Migration and Compatibility
+## Compatibility Boundary
 
 This is a breaking source-language revision and must ship as AZM 0.3. Canonical
 AZM 0.3 output never writes `;!` contracts and never interprets `@` as a routine
 boundary.
 
-The release migration procedure must:
-
-1. Convert contract comment blocks and their following routine labels into one
-   `.routine` line.
-2. Convert old `@Routine:` entries to ordinary labels unless the source unit
-   requires that routine to remain exported.
-3. Preserve `@` on public labels in imported units.
-4. Prefix proven internal branch labels with `_` and rewrite their references.
-5. Leave ordinary data, RAM and table declarations in their existing order.
-6. Convert suppression comments and file policy comments to directives.
-7. Reject `@_name` with a direct diagnostic.
-8. Verify that emitted bytes, addresses and artifact ranges are unchanged.
-
-`scripts/dev/migrate-azm-0.3.mjs` performs the mechanical comment/directive and
-routine-boundary conversion. It is dry-run by default and writes only with
-`--write`. It preserves `@` exports unless `--strip-exports` is selected. It
-does not guess which exports are unnecessary or rename owner-local labels;
-those decisions remain part of per-project migration and byte-parity review.
-
 AZM 0.3 does not provide a mixed-semantics mode. Source must be migrated before
 it is compiled with AZM 0.3, because the assembler must not guess whether an
 old `@Name` means a routine boundary or a new export. Recognized legacy `;!`
 and `; expects out` forms produce targeted migration diagnostics rather than
-becoming inert comments. Migration is a required release task and must verify
-that emitted bytes, addresses and artifact ranges are unchanged.
+becoming inert comments.
 
 ## Tooling and Debug Maps
 

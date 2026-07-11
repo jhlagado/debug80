@@ -18,7 +18,7 @@ import type {
   RoutineSummary,
 } from './types.js';
 
-export function candidateMessageWithFixability(
+function candidateMessageWithFixability(
   candidate: RegisterContractsOutputCandidate,
   autoFixable: boolean,
 ): string {
@@ -68,48 +68,6 @@ export function outputCandidatesWithFixability(
       };
     }),
   };
-}
-
-export function diagnosticsForConflicts(
-  conflicts: readonly { file: string; line: number; column: number; message: string }[],
-  mode: AnalyzeRegisterContractsOptions['mode'],
-): Diagnostic[] {
-  if (mode === 'audit') return [];
-  return conflicts.map((conflict) => ({
-    severity: mode === 'error' || mode === 'strict' ? 'error' : 'warning',
-    code: 'AZMN_REGISTER_CONTRACTS',
-    sourceName: conflict.file,
-    line: conflict.line,
-    column: conflict.column,
-    message: conflict.message,
-  }));
-}
-
-export function strictStackDiagnostics(
-  routines: readonly RegisterContractsRoutine[],
-  summaries: readonly RoutineSummary[],
-): Diagnostic[] {
-  const routinesByName = new Map(
-    routines.map((routine) => [routine.identity ?? routine.name, routine]),
-  );
-  const diagnostics: Diagnostic[] = [];
-
-  for (const summary of summaries) {
-    const routine = routinesByName.get(summary.identity ?? summary.name);
-    if (routine === undefined) continue;
-    const stackIssues = strictStackIssueText(summary);
-    if (stackIssues === undefined) continue;
-    diagnostics.push({
-      severity: 'error',
-      code: 'AZMN_REGISTER_CONTRACTS',
-      sourceName: routine.span.file,
-      line: routine.span.start.line,
-      column: routine.span.start.column,
-      message: `Register contracts cannot prove stack discipline for ${summary.name}: ${stackIssues}. Keep PUSH/POP pairs and stack-changing exits inside one .routine boundary, or split the code into explicit callable routines.`,
-    });
-  }
-
-  return diagnostics;
 }
 
 export function strictStackFindings(

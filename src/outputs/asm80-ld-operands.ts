@@ -7,7 +7,7 @@ import {
   type LoweredEvalContext,
 } from './asm80-expressions.js';
 
-export type LdOperand = Extract<Z80Instruction, { readonly mnemonic: 'ld' }>['target'];
+type LdOperand = Extract<Z80Instruction, { readonly mnemonic: 'ld' }>['target'];
 
 export function formatLd(
   target: LdOperand,

@@ -10,12 +10,6 @@ function immValue(item: RegisterContractsInstruction): number | undefined {
   return expression.kind === 'number' ? expression.value : undefined;
 }
 
-export function isUnconditionalReturnInstruction(item: RegisterContractsInstruction): boolean {
-  const head = instructionHead(item);
-  if (head === 'ret') return item.instruction.mnemonic === 'ret';
-  return head === 'retn' || head === 'reti';
-}
-
 export function isPureTokenTransferInstruction(item: RegisterContractsInstruction): boolean {
   const head = instructionHead(item);
   if (head === 'ex') return true;

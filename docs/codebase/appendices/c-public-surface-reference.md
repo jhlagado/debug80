@@ -69,8 +69,6 @@ they use that subsystem:
 
 Use this path for editors, linters and language tooling.
 
-`analyzeRegisterCareForTools` remains as a deprecated compatibility export.
-
 Tooling consumers should treat parsed item spans as provenance-bearing data.
 When present, `sourceUnit` names the owning source unit, `sourceRelation`
 records whether the physical file edge was `entry`, `include` or `import`, and

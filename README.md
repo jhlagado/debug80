@@ -496,20 +496,6 @@ The entry file is the final argument. Source entries use `.asm` or `.z80`.
 External register contract interfaces use `.asmi` and are loaded with
 `--interface`.
 
-For an AZM 0.2 source tree, preview the mechanical 0.3 routine and contract
-migration from an AZM checkout:
-
-```sh
-node scripts/dev/migrate-azm-0.3.mjs path/to/src
-node scripts/dev/migrate-azm-0.3.mjs --write path/to/src
-```
-
-The utility preserves old `@` markers as exports by default. Use
-`--strip-exports` only when every processed file belongs to a root/include
-source unit. Compile every target before and after migration and compare emitted
-bytes; owner-local renames and genuine export decisions still require project
-review.
-
 Basic use writes the default artifact set next to the source file:
 
 ```sh

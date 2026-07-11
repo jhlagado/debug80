@@ -4,24 +4,6 @@ import type {
   RoutineContract,
   SmartComment,
 } from './types.js';
-import { parseSmartCommentLine, parseSmartCommentLines } from './smartCommentParsing.js';
-
-export { parseSmartCommentLine, parseSmartCommentLines };
-
-export function parseSmartComments(
-  sourceLineComments: ReadonlyMap<string, ReadonlyMap<number, string>>,
-): LocatedSmartComment[] {
-  const out: LocatedSmartComment[] = [];
-  for (const [file, comments] of sourceLineComments) {
-    for (const [line, text] of comments) {
-      for (const parsed of parseSmartCommentLines(`;${text}`)) {
-        out.push({ file, line, comment: parsed });
-      }
-    }
-  }
-
-  return out.sort((a, b) => (a.file === b.file ? a.line - b.line : a.file.localeCompare(b.file)));
-}
 
 function appendUnique<T>(items: T[], values: readonly T[]): void {
   for (const value of values) {

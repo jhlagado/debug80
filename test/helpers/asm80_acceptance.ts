@@ -72,7 +72,7 @@ export function findAsm80Executable(): string | undefined {
  * Some environments expose an unrelated `asm80` on PATH that answers `-h` but does
  * not implement the expected CLI or two-operand ALU syntax. Skip when probe fails.
  */
-export function verifyAsm80Cli(executable: string): boolean {
+function verifyAsm80Cli(executable: string): boolean {
   const probeDir = mkdtempSync(join(tmpdir(), 'azm-asm80-probe-'));
   try {
     const probeAsm = join(probeDir, 'probe.z80');
