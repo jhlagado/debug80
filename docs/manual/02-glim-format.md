@@ -142,8 +142,8 @@ end
 ```
 
 A callable helper with no triggers and no dispatch: blocks call it with
-ordinary `call ClampX`. It becomes a public `@ClampX:` routine in the
-generated file, with its register contract inferred and injected by AZM.
+ordinary `call ClampX`. It becomes a `.routine` boundary followed by
+`ClampX:` in the generated file, with its register contract inferred by AZM.
 Like block bodies, the body falls through — the generator appends the
 final `ret` — and conditional early returns are fine.
 

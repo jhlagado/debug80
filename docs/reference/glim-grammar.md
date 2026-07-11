@@ -176,8 +176,8 @@ routine-decl    ::= "routine" identifier newline
                     z80-body
                     "end"
                   ; callable helper: no triggers, no dispatch. Emitted
-                  ; as a public @Name: boundary; body falls through and
-                  ; the generator appends ret.
+                  ; as .routine followed by Name:; body falls through
+                  ; and the generator appends ret.
 
 sound-decl      ::= "sound" identifier "len" number "div" number
                   ; non-blocking low-frequency matrix-profile cue.
