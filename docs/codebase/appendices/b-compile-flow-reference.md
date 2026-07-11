@@ -97,6 +97,9 @@ analyzeRegisterContractsForTools(loaded)
   return findings, candidate diagnostics and code actions
 ```
 
+Register contract analysis builds direct boundaries from routine calls plus
+cross-routine `JP` and `JR` tails before summary and liveness passes run.
+
 ## Data Handoffs
 
 | Stage              | Input                | Output                                                                         |
