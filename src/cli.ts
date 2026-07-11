@@ -7,9 +7,10 @@
  *   glimmer build <entry.glim> [-o output.asm] [--org <addr>]
  *
  * The default command compiles Glimmer meta-source to a generated AZM
- * source file with AZM's inferred register contracts injected. `build`
- * continues through assembly (.hex/.bin/.d8.json) and rewrites the
- * Debug80 map so block bodies step in .glim source.
+ * source file and runs AZM's register-contract check over it (the file
+ * declares its own `.contracts` policy and `.routine` boundaries).
+ * `build` continues through assembly (.hex/.bin/.d8.json) and rewrites
+ * the Debug80 map so block bodies step in .glim source.
  */
 
 import { createRequire } from 'node:module';
@@ -29,14 +30,14 @@ function usage(): string {
     '       glimmer build [options] <entry.glim>',
     '',
     'The default command compiles .glim to a generated AZM source file',
-    'with inferred register contracts injected. build also assembles it',
+    'and register-contract checks it with AZM. build also assembles it',
     'with AZM (.hex, .bin, .d8.json) and rewrites the Debug80 map so',
     'block-body lines step in the .glim source.',
     '',
     'Options:',
     '  -o, --output <file>   Output AZM path (default: <entry>.main.asm, the Debug80 entry-point convention)',
     '  --org <addr>          Assembly origin, e.g. $4000 (default: $4000)',
-    '  --no-check            Generate only; skip the AZM contract-inject/check step (not with build)',
+    '  --no-check            Generate only; skip the AZM register-contract check (not with build)',
     '  --deps                Print the dependency report (writers/readers per cell) and exit',
     '  -V, --version         Print package version',
     '  -h, --help            Print this help',
@@ -211,7 +212,7 @@ export async function main(argv: string[]): Promise<number> {
     console.log(`Wrote ${asmRelative}`);
     return 0;
   }
-  console.log(`Wrote ${asmRelative} (register contracts injected by AZM)`);
+  console.log(`Wrote ${asmRelative} (register contracts checked by AZM)`);
   if (build && result.artifacts.d8 !== undefined) {
     const moved = result.mappedSegments ?? 0;
     console.log(

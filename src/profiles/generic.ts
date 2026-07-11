@@ -4,7 +4,7 @@
  */
 
 import type { GlimmerProgram } from '../model.js';
-import { hex } from '../emit.js';
+import { emitRoutine, hex } from '../emit.js';
 import type { Profile, ProfileContext } from './types.js';
 
 /** Placeholder system API entries for the generic profile. */
@@ -18,8 +18,7 @@ function emitPollBindings(
   raiseChanged: (cellName: string) => void,
 ): void {
   emit('; --- input polling ---');
-  emit('.routine');
-  emit('GlimPollBindings:');
+  emitRoutine(emit, 'GlimPollBindings');
   if (program.bindings.length === 0) {
     op('ret');
     emit();
@@ -50,6 +49,7 @@ function emitPollBindings(
 
 export const genericProfile: Profile = {
   name: 'generic',
+  contractPolicy: 'audit',
   headerNote(): string[] {
     return [];
   },

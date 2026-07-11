@@ -406,6 +406,14 @@ export function parseUnit(
           continue;
         }
         const fieldName = fieldMatch[1] as string;
+        if (fieldName.startsWith('_')) {
+          error(
+            fieldLineNo,
+            `Type ${rest}: reserved field name "${fieldName}" — a leading "_" is AZM local-label syntax.`,
+          );
+          malformed = true;
+          continue;
+        }
         if (fieldNames.has(fieldName)) {
           error(fieldLineNo, `Type ${rest}: duplicate field "${fieldName}".`);
           malformed = true;
@@ -850,6 +858,10 @@ export function parseUnit(
       // A card line starts a section: everything after it belongs to
       // that card until the next card line or end of file. Repeating a
       // card name re-enters its section (also across parts).
+      if (name.startsWith('_')) {
+        error(lineNo, `Reserved card name "${name}": a leading "_" is AZM local-label syntax.`);
+        continue;
+      }
       if (!cards.some((card) => card.name === name)) {
         cards.push({ name, line: lineNo });
       }

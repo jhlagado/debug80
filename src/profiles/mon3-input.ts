@@ -7,7 +7,17 @@
 
 import type { Binding, GlimmerProgram } from '../model.js';
 import { TEC1G_KEY_CODES } from '../model.js';
-import { hex } from '../emit.js';
+import { emitRoutine, hex } from '../emit.js';
+
+/** Header note shared by the TEC-1G profiles (one owner for the wording). */
+export function mon3ContractsHeaderNote(): string[] {
+  return [
+    ';',
+    '; Register contracts are declared with .routine and checked by',
+    '; AZM at strict strength (mon3 register profile) during the',
+    '; Glimmer build.',
+  ];
+}
 
 export function emitMon3ApiEquates(emit: (line?: string) => void): void {
   emit(`${'ApiScanKeys'.padEnd(17)} .equ 16`);
@@ -97,8 +107,7 @@ export function emitTec1gPollBindings(
   raiseChanged: (cellName: string) => void,
 ): void {
   emit('; --- input polling (MON-3 _scanKeys) ---');
-  emit('.routine');
-  emit('GlimPollBindings:');
+  emitRoutine(emit, 'GlimPollBindings');
   if (program.bindings.length === 0) {
     op('ret');
     emit();

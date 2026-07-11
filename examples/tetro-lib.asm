@@ -73,7 +73,7 @@ ShiftCount:
 
 ; Shift a piece-row bitmask A right by ShiftCount positions (MSB-left:
 ; SRL moves the piece toward higher-numbered columns).
-.routine in A out A clobbers F
+.routine in A out A clobbers C,F
 @ShiftRowMask:
         ld      c,a
         ld      a,(ShiftCount)
@@ -89,7 +89,7 @@ _done:
 
 ; Test a candidate placement at D=x, E=y against bounds and the board.
 ; Carry set means blocked. BC, DE, HL preserved.
-.routine in DE out carry,zero clobbers sign,parity,halfCarry
+.routine in DE out carry,zero clobbers A,sign,parity,halfCarry
 @CheckCollAt:
         push    bc
         push    de
@@ -137,7 +137,7 @@ _exit:
         ret
 
 ; OR mask C into row L of the plane at DE.
-.routine in C,DE,L clobbers F
+.routine in C,DE,L clobbers A,F
 @OrPlaneRow:
         push    hl
         ld      h,0
@@ -196,7 +196,7 @@ _next:
 
 ; Collapse row E: every plane shifts rows 0..E-1 down one; row 0
 ; clears. Preserves DE.
-.routine in E clobbers F
+.routine in E clobbers A,B,HL,F
 @CollapseRow:
         push    de
         ld      b,4                  ; four planes
@@ -233,7 +233,7 @@ _top:
 
 ; Bitmask of full rows (bit r = row r is $FF), without collapsing —
 ; the flash phase shows them before FinishClear collapses.
-.routine out A clobbers F
+.routine out A clobbers BC,HL,F
 @FullRowsMask:
         ld      c,0                  ; mask
         ld      b,8
@@ -260,7 +260,7 @@ _step:
 
 ; Clear every full row, collapsing the planes down. Out: A = rows
 ; cleared (0..4).
-.routine out A,E,carry clobbers zero,sign,parity,halfCarry
+.routine out A,E clobbers C,HL,F
 @ClearFullRows:
         ld      c,0                  ; cleared count
         ld      e,7                  ; scan from the bottom row up
@@ -291,7 +291,7 @@ _done:
         ret
 
 ; Score delta for A cleared rows (clamped to 4). Out DE = delta.
-.routine in A out DE clobbers F
+.routine in A out DE clobbers A,HL,F
 @ScoreForClears:
         cp      5
         jr      c,_ok
@@ -310,7 +310,7 @@ _ok:
 ; Promote the next piece and roll a new preview; position at the
 ; spawn point. Out: carry set when the spawn placement is blocked
 ; (game over).
-.routine out carry,zero clobbers sign,parity,halfCarry
+.routine out carry,zero clobbers A,BC,DE,HL,sign,parity,halfCarry
 @SpawnPiece:
         ld      a,(NextPieceIndex)
         ld      (CurPieceIndex),a
@@ -335,7 +335,7 @@ _have:
         ret
 
 ; Zero the 8 bytes at HL.
-.routine in HL clobbers F
+.routine in HL clobbers A,B,HL,F
 @ZeroPlane:
         ld      b,8
         xor     a
@@ -346,7 +346,7 @@ _loop:
         ret
 
 ; Reset the game state for a new round.
-.routine out carry,zero clobbers sign,parity,halfCarry
+.routine out carry,zero clobbers A,B,HL,sign,parity,halfCarry
 @InitGame:
         ld      hl,BoardRows
         call    ZeroPlane
@@ -365,7 +365,7 @@ _loop:
 ; Rebuild the framebuffer from the board planes, then overlay the
 ; active piece in its colour. Row-major: each matrix row is R,G,B,aux
 ; bytes at Framebuffer + row*4, MSB-left like the planes.
-.routine out DE,A,C,zero clobbers carry,sign,parity,halfCarry
+.routine clobbers A,BC,DE,HL,F
 @DrawBoardFb:
         ld      a,(PlayerX)
         ld      (ShiftCount),a

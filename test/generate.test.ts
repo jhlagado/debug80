@@ -443,8 +443,8 @@ describe('v0.2 runtime (slide example)', () => {
   });
 });
 
-describe('CLI pipeline (generate + AZM contract injection)', () => {
-  it('injects inferred contracts into the written file', async () => {
+describe('CLI pipeline (generate + AZM contract check)', () => {
+  it('declares .routine boundaries in the written file', async () => {
     const { main } = await import('../src/cli.js');
     const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-cli-'));
     const entry = path.join(dir, 'dot.glim');

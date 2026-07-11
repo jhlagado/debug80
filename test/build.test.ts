@@ -191,6 +191,27 @@ describe('buildGlimmerProgram (programmatic API)', () => {
     expect(mapped!.line).toBeLessThanOrEqual(15);
   });
 
+  it('checks imported units at build stage, same strength as check', async () => {
+    // Regression: the single-pass build must still contract-check
+    // imported libraries (files without their own .contracts directive).
+    // Stripping a .routine declaration makes every call to that routine
+    // unprovable — both stages must report it.
+    const { buildGlimmerProgram } = await import('../src/build.js');
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-libcheck-'));
+    const entry = copyExample(dir, 'snake.glim');
+    copyExample(dir, 'snake-rules.glim');
+    const lib = copyExample(dir, 'snake-lib.asm');
+    const stripped = readFileSync(lib, 'utf8').replace(/\.routine[^\n]*\n(@BodyContains:)/, '$1');
+    expect(stripped).not.toBe(readFileSync(lib, 'utf8'));
+    writeFileSync(lib, stripped);
+
+    for (const stage of ['check', 'build'] as const) {
+      const result = await buildGlimmerProgram(entry, { stage });
+      const errors = result.diagnostics.filter((d) => d.severity === 'error');
+      expect(errors.length, `stage ${stage}`).toBeGreaterThan(0);
+    }
+  });
+
   it('reports parse failures as AZM-shaped diagnostics', async () => {
     const { buildGlimmerProgram } = await import('../src/build.js');
     const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-api-diag-'));
