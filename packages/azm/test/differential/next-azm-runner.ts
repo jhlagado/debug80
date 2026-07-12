@@ -1,0 +1,87 @@
+import { compile } from '../../src/api-compile.js';
+import type { AssemblerRunResult } from './compare-results.js';
+
+type NextAzmFixtureResult = {
+  readonly artifacts: readonly { kind: string }[];
+  readonly diagnostics: { message?: string; severity?: string }[];
+};
+
+interface RunNextAzmOptions {
+  readonly emitSidecars?: boolean;
+  readonly emitAsm80?: boolean;
+}
+
+export async function runNextAzmFixture(
+  entryFile: string,
+  includeDirs: readonly string[] = [],
+  options: RunNextAzmOptions = {},
+): Promise<AssemblerRunResult> {
+  try {
+    const result = (await compile(entryFile, {
+      emitBin: true,
+      emitHex: true,
+      emitD8m: options.emitSidecars === true,
+      emitAsm80: options.emitAsm80 === true,
+      includeDirs,
+    })) as unknown as NextAzmFixtureResult;
+    return asRunResult(result);
+  } catch (error) {
+    return {
+      exitCode: 1,
+      stdout: '',
+      stderr: String(error instanceof Error ? error.message : error),
+    };
+  }
+}
+
+function asRunResult(result: NextAzmFixtureResult): AssemblerRunResult {
+  const diagnosticsText = result.diagnostics
+    .filter(
+      (diagnostic): diagnostic is { message: string; severity?: string } =>
+        typeof diagnostic.message === 'string',
+    )
+    .map((diagnostic) => diagnostic.message)
+    .map((message) => message.replace(/\r\n/g, '\n'))
+    .map((message) => message.trimEnd());
+  const binBytes = nextBinBytes(result.artifacts);
+  const d8mJson = nextD8mJson(result.artifacts);
+  const asm80Text = nextAsm80Text(result.artifacts);
+  return {
+    exitCode: result.diagnostics.some((diagnostic) => diagnostic.severity === 'error') ? 1 : 0,
+    stdout: '',
+    stderr: diagnosticsText.join('\n'),
+    hexText: nextHexText(result.artifacts),
+    ...(d8mJson !== undefined ? { d8mJson } : {}),
+    ...(asm80Text !== undefined ? { asm80Text } : {}),
+    ...(binBytes !== undefined ? { binBytes } : {}),
+    diagnosticsText,
+  };
+}
+
+function nextHexText(artifacts: readonly { kind: string }[]): string {
+  const hex = artifacts.find(
+    (artifact): artifact is { kind: 'hex'; text: string } => artifact.kind === 'hex',
+  );
+  return hex?.text ?? '';
+}
+
+function nextBinBytes(artifacts: readonly { kind: string }[]): Uint8Array | undefined {
+  const bin = artifacts.find(
+    (artifact): artifact is { kind: 'bin'; bytes: Uint8Array } => artifact.kind === 'bin',
+  );
+  return bin?.bytes;
+}
+
+function nextD8mJson(artifacts: readonly { kind: string }[]): unknown {
+  const d8m = artifacts.find(
+    (artifact): artifact is { kind: 'd8m'; json: unknown } => artifact.kind === 'd8m',
+  );
+  return d8m?.json;
+}
+
+function nextAsm80Text(artifacts: readonly { kind: string }[]): string | undefined {
+  const asm80 = artifacts.find(
+    (artifact): artifact is { kind: 'asm80'; text: string } => artifact.kind === 'asm80',
+  );
+  return asm80?.text;
+}

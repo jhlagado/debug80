@@ -1,0 +1,194 @@
+import type {
+  AnalyzeRegisterContractsOptions,
+  RegisterContractsDirectCall,
+  RegisterContractsRoutine,
+  RegisterContractsServiceRangeContract,
+  RoutineContract,
+  RoutineSummary,
+  RegisterContractsUnit,
+  RegisterContractsOutputCandidate,
+} from './types.js';
+import { getRegisterContractsProfile } from './profiles.js';
+import {
+  inferRoutineSummariesToFixedPoint,
+  summariesWithExternalContracts,
+} from './routine-summaries.js';
+
+function unique<T>(values: T[]): T[] {
+  const out: T[] = [];
+  for (const value of values) {
+    if (!out.includes(value)) out.push(value);
+  }
+  return out;
+}
+
+function isLocalLabel(name: string): boolean {
+  return name.startsWith('.');
+}
+
+function boundaryLabels(routine: RegisterContractsRoutine): string[] {
+  return routine.entryLabels.length > 0
+    ? routine.entryLabels
+    : routine.labels.filter((label) => !isLocalLabel(label));
+}
+
+function routineNameSet(routines: readonly RegisterContractsRoutine[]): Set<string> {
+  return new Set(routines.map((routine) => routine.identity ?? routine.name));
+}
+
+export function buildProfileSummaries(
+  profileName: AnalyzeRegisterContractsOptions['registerContractsProfile'],
+): RoutineSummary[] {
+  const profile = getRegisterContractsProfile(profileName);
+  if (profile === undefined) {
+    return [];
+  }
+  return [
+    ...profile.rst.values(),
+    ...profile.rstServices.values(),
+    ...[...profile.rstDispatchers.values()].flatMap((dispatcher) => [
+      ...dispatcher.services.values(),
+      ...(dispatcher.rangeServices?.map((rangeService) => rangeService.summary) ?? []),
+    ]),
+  ];
+}
+
+export function buildProfileSummaryLookup(
+  profileName: AnalyzeRegisterContractsOptions['registerContractsProfile'],
+): Map<string, RoutineSummary> {
+  const profile = getRegisterContractsProfile(profileName);
+  const out = new Map<string, RoutineSummary>();
+  if (profile === undefined) return out;
+  for (const summary of profile.rst.values()) {
+    out.set(summary.name, summary);
+  }
+  for (const summary of profile.rstServices.values()) {
+    out.set(summary.name, summary);
+  }
+  for (const dispatcher of profile.rstDispatchers.values()) {
+    for (const summary of dispatcher.services.values()) {
+      out.set(summary.name, summary);
+    }
+    for (const rangeService of dispatcher.rangeServices ?? []) {
+      out.set(rangeService.summary.name, rangeService.summary);
+    }
+  }
+  return out;
+}
+
+export function routineNames(routines: readonly RegisterContractsRoutine[]): string[] {
+  return routines.flatMap((routine) => [
+    routine.identity ?? routine.name,
+    ...(routine.span.sourceUnitRelation !== 'import' ? boundaryLabels(routine) : []),
+    ...(routine.exportedEntryLabels ?? []),
+  ]);
+}
+
+export function buildSummaries(
+  routines: readonly RegisterContractsRoutine[],
+  contractMap: Map<string, RoutineContract>,
+  profileSummaries: readonly RoutineSummary[] = [],
+  serviceRanges: readonly RegisterContractsServiceRangeContract[] = [],
+): RoutineSummary[] {
+  const names = routineNameSet(routines);
+  const routineSummaries = inferRoutineSummariesToFixedPoint(
+    [...routines],
+    contractMap,
+    names,
+    [...profileSummaries],
+    serviceRanges,
+  );
+  const summaries = routineSummaries.map((item) => item.summary);
+  return summariesWithExternalContracts(summaries, contractMap, names);
+}
+
+export function buildSummaryByName(
+  routines: readonly RegisterContractsRoutine[],
+  summaries: readonly RoutineSummary[],
+  profileSummaries: readonly RoutineSummary[] = [],
+): Map<string, RoutineSummary> {
+  const out = new Map<string, RoutineSummary>();
+  const byRoutine = new Map<string, RoutineSummary>();
+  for (const summary of summaries) {
+    byRoutine.set(summary.identity ?? summary.name, summary);
+    out.set(summary.identity ?? summary.name, summary);
+    if (summary.identity === undefined || summary.identity === summary.name) {
+      out.set(summary.name, summary);
+    }
+  }
+  for (const summary of profileSummaries) {
+    out.set(summary.name, summary);
+  }
+  for (const routine of routines) {
+    const routineSummary = byRoutine.get(routine.identity ?? routine.name);
+    if (routineSummary === undefined) continue;
+    if (routine.span.sourceUnitRelation !== 'import') {
+      for (const alias of boundaryLabels(routine)) out.set(alias, routineSummary);
+    }
+    for (const alias of routine.exportedEntryLabels ?? []) out.set(alias, routineSummary);
+  }
+  return out;
+}
+
+export function withAcceptedOutputs(
+  summaries: readonly RoutineSummary[],
+  acceptedOutputCandidates: ReadonlyMap<string, RegisterContractsUnit[]> | undefined,
+): RoutineSummary[] {
+  if (!acceptedOutputCandidates || acceptedOutputCandidates.size === 0) {
+    return [...summaries];
+  }
+  return summaries.map((summary) => {
+    const accepted =
+      acceptedOutputCandidates.get(summary.identity ?? summary.name) ??
+      acceptedOutputCandidates.get(summary.name);
+    if (!accepted || accepted.length === 0) {
+      return summary;
+    }
+    const written = new Set(summary.mayWrite);
+    const promoted = accepted.filter((unit) => written.has(unit));
+    if (promoted.length === 0) {
+      return summary;
+    }
+    const valueRelations = [...summary.valueRelations];
+    for (const unit of promoted) {
+      if (!valueRelations.some((relation) => relation.out.includes(unit))) {
+        valueRelations.push({ out: [unit], from: [] });
+      }
+    }
+    return { ...summary, valueRelations };
+  });
+}
+
+export function unknownCallList(
+  directBoundaries: readonly RegisterContractsDirectCall[],
+  knownRoutines: ReadonlySet<string>,
+): string[] {
+  return unique(
+    directBoundaries
+      .filter((boundary) => !knownRoutines.has(boundary.targetIdentity ?? boundary.target))
+      .map((boundary) => boundary.target),
+  ).sort();
+}
+
+export function buildOutputCandidateFixability(
+  routines: readonly RegisterContractsRoutine[],
+  outputCandidates: readonly RegisterContractsOutputCandidate[],
+  autoFixableCandidateKeys: (
+    routines: RegisterContractsRoutine[],
+    outputCandidates: RegisterContractsOutputCandidate[],
+  ) => ReadonlySet<string>,
+): ReadonlyMap<string, boolean> {
+  const autoFixable = autoFixableCandidateKeys([...routines], [...outputCandidates]);
+  const out = new Map<string, boolean>();
+  for (const candidate of outputCandidates) {
+    out.set(
+      outputCandidateKey(candidate.file, candidate.line, candidate.column),
+      autoFixable.has(outputCandidateKey(candidate.file, candidate.line, candidate.column)),
+    );
+  }
+  return out;
+}
+
+export function outputCandidateKey(file: string, line: number, column: number): string {
+  return `${file}:${line}:${column}`;
+}
