@@ -1,0 +1,157 @@
+; Tetro — the headline acceptance test, adapted from corpus/tetro.
+; Declarations here; the cards and blocks live in tetro-rules.glim;
+; the piece tables and collision engine are a hand-written AZM module.
+;
+; Corpus parity (0.4): line-clear flash with a hold timer, LCD
+; messages and the next-piece preview via text resources, any-key
+; splash exit and gated restart.
+
+program Tetro
+
+platform tec1g-mon3
+display matrix8x8
+
+part "tetro-rules.glim"
+import "tetro-lib.asm"
+
+; --- state (corpus ram.asm, minus what Glimmer owns) ---
+
+state PlayerX        : byte
+state PlayerY        : byte
+state CurPieceIndex  : byte
+state CurRotation    : byte
+state NextPieceIndex : byte
+state Score          : word
+state LinesCleared   : byte
+state ClearMask      : byte         ; rows mid-flash (white); gravity pauses
+state Armed          : byte         ; game-over gate open: restart allowed
+state BoardRows      : byte[8]      ; occupancy bitmap, MSB-left
+state BoardRed       : byte[8]      ; colour planes
+state BoardGreen     : byte[8]
+state BoardBlue      : byte[8]
+
+; --- pulses ---
+
+pulse MoveLeftP
+pulse MoveRightP
+pulse SoftDropP
+pulse RotateP
+pulse PauseP
+pulse AnyKeyP
+pulse GravityFire
+pulse ClearTick
+pulse GateOpenP
+
+; --- timers ---
+
+timer Gravity   : byte = 32  -> GravityFire   ; writable: difficulty curve
+timer ClearHold : byte = 0   -> ClearTick once  ; armed by a line clear
+timer GOverGate : word = 0   -> GateOpenP once  ; armed on game over
+
+; --- input (corpus PollInput + HandleHeldDir, as declarations) ---
+
+bind key KEY_4  held period 10 -> MoveLeftP
+bind key KEY_6  held period 10 -> MoveRightP
+bind key KEY_2  held period 3  -> SoftDropP
+bind key KEY_5  rising -> RotateP
+bind key KEY_AD rising -> RotateP
+bind key KEY_0  rising -> PauseP
+bind key any    rising -> AnyKeyP
+
+; --- pieces (corpus data.asm bitmaps, as rotational shape resources) ---
+; Declaration order is the piece index: ShapeId_PieceI = 0 .. PieceL = 6.
+
+shape PieceI color cyan
+  rot0 "..."
+       "XXX"
+  rot1 "X"
+       "X"
+       "X"
+end
+
+shape PieceO color white
+  rot0 "XX"
+       "XX"
+end
+
+shape PieceT color magenta
+  rot0 "XXX"
+       ".X."
+  rot1 "X."
+       "XX"
+       "X."
+  rot2 ".X."
+       "XXX"
+  rot3 ".X"
+       "XX"
+       ".X"
+end
+
+shape PieceS color green
+  rot0 "XX."
+       ".XX"
+  rot1 ".X"
+       "XX"
+       "X."
+  rot2 "..."
+       "XX."
+       ".XX"
+  rot3 = rot1
+end
+
+shape PieceZ color red
+  rot0 ".XX"
+       "XX."
+  rot1 "X."
+       "XX"
+       ".X"
+  rot2 "..."
+       ".XX"
+       "XX."
+  rot3 = rot1
+end
+
+shape PieceJ color blue
+  rot0 "..X"
+       "XXX"
+  rot1 "X."
+       "X."
+       "XX"
+  rot2 "..."
+       "XXX"
+       "X.."
+  rot3 "XX"
+       ".X"
+       ".X"
+end
+
+shape PieceL color yellow
+  rot0 "X.."
+       "XXX"
+  rot1 "XX"
+       "X."
+       "X."
+  rot2 "..."
+       "XXX"
+       "..X"
+  rot3 ".X"
+       ".X"
+       "XX"
+end
+
+; --- LCD messages (corpus data.asm strings) ---
+
+text MsgSplash "TETRO (PRESS A KEY)"
+text MsgRun    "TETRO RUNNING"
+text MsgPause  "TETRO PAUSED"
+text MsgOver   "TETRO GAME OVER"
+text MsgPress  "PRESS ANY KEY"
+text MsgNext   "NEXT: "
+text PieceNames "IOTSZJL"          ; LCD preview letters, ShapeId order
+
+; --- sounds (corpus sound.asm cues) ---
+
+sound Rotate len 24  div 2
+sound Lock   len 32  div 4
+sound Clear  len 72  div 2
+sound Over   len 232 div 8

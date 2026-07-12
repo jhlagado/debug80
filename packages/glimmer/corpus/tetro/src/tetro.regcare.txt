@@ -1,0 +1,1182 @@
+AZM Register-Care Report
+Entry: /Users/johnhardy/projects/tetro/src/tetro/tetro.z80
+Mode: audit
+Profile: mon3
+
+Routine: START
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: MAIN_LOOP
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: LOAD_DE_FROM_PENDING
+  reads: -
+  writes: A
+  preserves: B,C,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+  relation: D,E <= -
+
+Routine: SHIFT_ROW_MASK
+  reads: A
+  writes: C,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: balanced
+  relation: A <= A
+
+Routine: SHIFT_ROW_LOOP
+  reads: C,A
+  writes: A,C,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: balanced
+
+Routine: SHIFT_ROW_DONE
+  reads: C
+  writes: A
+  preserves: B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: CHECK_COLLISION_AT_DE
+  reads: D,E
+  writes: A,B,C,D,E,H,L,zero,sign,parity,halfCarry
+  preserves: -
+  stack: unbalanced
+  relation: carry <= -
+
+Routine: CHECK_COLLISION_ROW
+  reads: D,E,L
+  writes: A,C,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: balanced
+
+Routine: COLLISION_NEXT_ROW
+  reads: D,E,H,L,B,A
+  writes: A,B,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C
+  stack: balanced
+
+Routine: COLLISION_TRUE_XBOUND
+  reads: -
+  writes: carry,halfCarry
+  preserves: A,B,C,D,E,H,L,zero,sign,parity
+  stack: balanced
+
+Routine: COLLISION_TRUE_ROW_BOTTOM
+  reads: -
+  writes: carry,halfCarry
+  preserves: A,B,C,D,E,H,L,zero,sign,parity
+  stack: balanced
+
+Routine: COLLISION_TRUE_ROW_OVERLAP
+  reads: -
+  writes: carry,halfCarry
+  preserves: A,B,C,D,E,H,L,zero,sign,parity
+  stack: balanced
+
+Routine: COLLISION_EXIT_OK
+  reads: -
+  writes: B,C,D,E,H,L
+  preserves: A,carry,zero,sign,parity,halfCarry
+  stack: unbalanced
+
+Routine: CHECK_TOP_OUT_ON_LOCK
+  reads: -
+  writes: A,B,D,E,H,L
+  preserves: C,zero,sign,parity,halfCarry
+  stack: unbalanced
+  relation: carry <= -
+
+Routine: TOP_OUT_ROW_LOOP
+  reads: D,E,L
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: TOP_OUT_NEXT_ROW
+  reads: D,E,H,L,B,A
+  writes: A,B,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C
+  stack: balanced
+
+Routine: TOP_OUT_TRUE
+  reads: -
+  writes: carry,halfCarry
+  preserves: A,B,C,D,E,H,L,zero,sign,parity
+  stack: balanced
+
+Routine: TOP_OUT_EXIT
+  reads: -
+  writes: B,C,D,E,H,L
+  preserves: A,carry,zero,sign,parity,halfCarry
+  stack: unbalanced
+
+Routine: CLEAR_BACK_ALL
+  reads: -
+  writes: A,B,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E
+  stack: balanced
+
+Routine: CLEAR_BACK_ALL_LOOP
+  reads: H,L,A,B
+  writes: B,H,L,zero,sign,parity,halfCarry
+  preserves: A,C,D,E,carry
+  stack: balanced
+
+Routine: CLEAR_BACK_4
+  reads: A
+  writes: A,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C
+  stack: balanced
+
+Routine: COPY_BACK_TO_FRONT
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: COPY_BACK_4_TO_FRONT
+  reads: A
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: MATRIX_X_TO_MASK
+  reads: A
+  writes: B,C,carry,zero,sign,parity,halfCarry
+  preserves: D,E,H,L
+  stack: balanced
+  relation: A <= A
+
+Routine: MATRIX_X_TO_MASK_LOOP
+  reads: A,B
+  writes: A,B,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E,H,L
+  stack: balanced
+
+Routine: MATRIX_X_TO_MASK_DONE
+  reads: -
+  writes: -
+  preserves: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: FB_SET_CELL_COLOR
+  reads: H,L,C,A
+  writes: A,B,D,carry,zero,sign,parity,halfCarry
+  preserves: C,E
+  stack: balanced
+  relation: H,L <= -
+
+Routine: FB_SET_CELL_RED_OFF
+  reads: H,L,D
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: FB_SET_CELL_RED_STORE
+  reads: H,L,A,B,C
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced
+
+Routine: FB_SET_CELL_GREEN_OFF
+  reads: H,L,D
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: FB_SET_CELL_GREEN_STORE
+  reads: H,L,A,B,C
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced
+
+Routine: FB_SET_CELL_BLUE_OFF
+  reads: H,L,D
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: FB_SET_CELL_BLUE_STORE
+  reads: H,L,A
+  writes: -
+  preserves: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: FB_OR_ROW_COLOR_MASK
+  reads: H,L,C,A
+  writes: B,A
+  preserves: C,D,E,carry,zero,sign,parity,halfCarry
+  stack: unbalanced
+  relation: H,L <= -
+
+Routine: FB_OR_ROW_COLOR_MASK_LOOP
+  reads: A,B,C,D,E,H,L,IXH,IXL,IYH,IYL,SPH,SPL,carry,zero,sign,parity,halfCarry
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: FB_OR_ROW_COLOR_MASK_SKIP
+  reads: B,H,L
+  writes: B,H,L,zero,sign,parity,halfCarry
+  preserves: A,C,D,E,carry
+  stack: balanced
+
+Routine: FB_OR_ROW_COLOR_MASK_EXIT
+  reads: -
+  writes: B,C
+  preserves: A,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: unbalanced
+
+Routine: REBUILD_FRAMEBUFFER
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: CLEAR_BOARD
+  reads: -
+  writes: A,B,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E
+  stack: balanced
+
+Routine: CLEAR_BOARD_LOOP
+  reads: H,L,A,B
+  writes: A,B,H,L,zero,sign,parity,halfCarry
+  preserves: C,D,E,carry
+  stack: balanced
+
+Routine: RENDER_BOARD_TO_BACK
+  reads: -
+  writes: B,C,H,L,A
+  preserves: D,E,carry,zero,sign,parity,halfCarry
+  stack: unbalanced
+
+Routine: RENDER_BOARD_ROW
+  reads: C,H,L
+  writes: A,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C
+  stack: balanced
+
+Routine: RENDER_BOARD_GAME_OVER_ROW
+  reads: D,E,H,L
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced
+
+Routine: RENDER_BOARD_ROW_EFFECTS
+  reads: C,H,L
+  writes: A,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C
+  stack: balanced
+
+Routine: RENDER_BOARD_ROW_NEXT
+  reads: C,B
+  writes: B,C,zero,sign,parity,halfCarry
+  preserves: A,D,E,H,L,carry
+  stack: balanced
+
+Routine: RENDER_BOARD_TO_BACK_EXIT
+  reads: -
+  writes: B,C,D,E,H,L
+  preserves: A,carry,zero,sign,parity,halfCarry
+  stack: unbalanced
+
+Routine: RENDER_ACTIVE_TO_BACK
+  reads: -
+  writes: A,B,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C
+  stack: unbalanced, unknown effect
+
+Routine: RENDER_SHAPE_ROW
+  reads: D,E,L
+  writes: A,B,C,carry,zero,sign,parity,halfCarry
+  preserves: D,E,H,L
+  stack: balanced, unknown effect
+
+Routine: RENDER_SHAPE_NEXT_ROW
+  reads: D,E,H,L,B
+  writes: B,D,E,H,L,zero,sign,parity,halfCarry
+  preserves: A,C,carry
+  stack: balanced
+
+Routine: RENDER_ACTIVE_TO_BACK_EXIT
+  reads: -
+  writes: B,C,D,E,H,L
+  preserves: A,carry,zero,sign,parity,halfCarry
+  stack: unbalanced
+
+Routine: HORIZONTAL_PROBE_APPLY_PENDING_X
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: HORIZONTAL_COMMIT_PLAYER_X
+  reads: -
+  writes: A
+  preserves: B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: MOVE_RIGHT
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: MOVE_LEFT
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: STEP_ACTIVE_DOWN_ONE_CELL
+  reads: -
+  writes: A,B,C,D,E,H,L,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+  relation: carry <= -
+
+Routine: APPLY_GRAVITY
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: GRAVITY_COMMIT
+  reads: -
+  writes: A
+  preserves: B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: SOFT_DROP
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: SOFT_DROP_COMMIT
+  reads: -
+  writes: A
+  preserves: B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: SANITIZE_ACTIVE_POSITION
+  reads: -
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced
+
+Routine: SANITIZE_X_DONE
+  reads: -
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: SANITIZE_Y_DONE
+  reads: -
+  writes: -
+  preserves: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: SELECT_NEXT_PIECE
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: RNG_NEXT_PIECE
+  reads: -
+  writes: B,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E,H,L
+  stack: balanced
+  relation: A <= -
+
+Routine: RNG_NEXT8
+  reads: -
+  writes: carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+  relation: A <= -
+
+Routine: RNG_NEXT8_STEP
+  reads: A
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: RNG_NEXT8_SAVE
+  reads: A
+  writes: -
+  preserves: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: LOAD_CURRENT_ROTATION_STATE
+  reads: -
+  writes: A,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B
+  stack: balanced
+
+Routine: ROTATE_FINISH_TEST
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: ROTATE_ACCEPT_COMMIT
+  reads: -
+  writes: A,C,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: balanced
+
+Routine: ROTATE_CW
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: ROTATE_LEFT
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: SPAWN_ACTIVE_PIECE
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: SPAWN_FAILED
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: LOCK_ACTIVE_PIECE
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: LOCK_ACTIVE_NO_CLEAR
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: LOCK_GAME_OVER
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: ENTER_GAME_OVER
+  reads: A
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: HANDLE_SPLASH_STATE
+  reads: -
+  writes: A,C,carry,zero,sign,parity,halfCarry,B,D,E,H,L
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: HANDLE_SPLASH_SEED_READY
+  reads: A
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: HANDLE_LINE_CLEAR_STATE
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: CHECK_FULL_ROWS
+  reads: -
+  writes: A,B,C,E,H,L,zero,sign,parity,halfCarry
+  preserves: D
+  stack: balanced
+  relation: carry <= -
+
+Routine: CHECK_FULL_ROWS_LOOP
+  reads: H,L,E,C
+  writes: A,E,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,H,L
+  stack: balanced
+
+Routine: CHECK_FULL_ROWS_NEXT
+  reads: H,L,C,B,E
+  writes: A,B,C,H,L,carry,zero,sign,parity,halfCarry
+  preserves: D,E
+  stack: balanced
+
+Routine: CHECK_FULL_ROWS_NONE
+  reads: A
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: COUNT_CLEAR_ROWS
+  reads: -
+  writes: B,C
+  preserves: D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+  relation: A <= -
+
+Routine: COUNT_CLEAR_ROWS_LOOP
+  reads: C,B
+  writes: A,B,C,carry,zero,sign,parity,halfCarry
+  preserves: D,E,H,L
+  stack: balanced
+
+Routine: COUNT_CLEAR_ROWS_DONE
+  reads: B
+  writes: A
+  preserves: B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: APPLY_CLEAR_SCORE
+  reads: -
+  writes: A,B,C,E,carry,zero,sign,parity,halfCarry,D,H,L
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: APPLY_CLEAR_LOOKUP
+  reads: A
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: UPDATE_GRAVITY_PERIOD_FROM_SCORE
+  reads: -
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced
+
+Routine: UPDATE_GP_STEP1
+  reads: -
+  writes: A
+  preserves: B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: UPDATE_GP_BASE
+  reads: -
+  writes: A
+  preserves: B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: UPDATE_GP_STORE
+  reads: A
+  writes: -
+  preserves: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: COLLAPSE_FULL_ROWS
+  reads: -
+  writes: B,D,E,A,C,H,L
+  preserves: carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: COLLAPSE_SCAN_LOOP
+  reads: D,E
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced, unknown effect
+
+Routine: COLLAPSE_ROW_DONE
+  reads: E
+  writes: E,zero,sign,parity,halfCarry
+  preserves: A,B,C,D,H,L,carry
+  stack: balanced
+
+Routine: COLLAPSE_SKIP_ROW
+  reads: D,B,E
+  writes: A,B,D,carry,zero,sign,parity,halfCarry
+  preserves: C,E,H,L
+  stack: balanced, unknown effect
+
+Routine: COLLAPSE_CLEAR_TOP_LOOP
+  reads: D,B
+  writes: A,B,D,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C,E
+  stack: balanced
+
+Routine: COPY_BOARD_ROW_DE_TO_E
+  reads: D,E
+  writes: C,H,L,A
+  preserves: B,D,E,carry,zero,sign,parity,halfCarry
+  stack: unbalanced
+
+Routine: COPY_BR_NEXT
+  reads: L,D,H
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: unbalanced
+
+Routine: COPY_BR_SRCNC
+  reads: H,L,E
+  writes: A,B,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E
+  stack: unbalanced
+
+Routine: COPY_BR_DSTNC
+  reads: H,L,B
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: unbalanced
+
+Routine: COPY_BR_ADVNC
+  reads: C
+  writes: B,C,H,L,zero,sign,parity,halfCarry
+  preserves: A,D,E,carry
+  stack: unbalanced
+
+Routine: CLEAR_BOARD_ROW_D
+  reads: D
+  writes: A,B,C,H,L,carry,zero,sign,parity,halfCarry
+  preserves: D,E
+  stack: balanced
+
+Routine: CLEAR_BR_NEXT
+  reads: L,D,H
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: unbalanced
+
+Routine: CLEAR_BR_NC
+  reads: H,L,B
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: unbalanced
+
+Routine: CLEAR_BR_ADVNC
+  reads: C
+  writes: C,zero,sign,parity,halfCarry
+  preserves: A,B,D,E,H,L,carry
+  stack: balanced
+
+Routine: RECOMPUTE_BOARD_EMPTY
+  reads: -
+  writes: B,H,L,A
+  preserves: C,D,E,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: RECOMPUTE_BOARD_EMPTY_LOOP
+  reads: H,L,B
+  writes: A,B,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E
+  stack: balanced
+
+Routine: BOARD_NOT_EMPTY
+  reads: -
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: MERGE_OR_RGB_AT_BOARD_ROW_L
+  reads: L,C
+  writes: A,B,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C
+  stack: unbalanced
+
+Routine: MERGE_OR_LOOP
+  reads: A,B,C,D,E,H,L,IXH,IXL,IYH,IYL,SPH,SPL,carry,zero,sign,parity,halfCarry
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: MERGE_OR_SKIP
+  reads: B,H,L,D,E
+  writes: B,H,L,carry,zero,sign,parity,halfCarry
+  preserves: A,C,D,E
+  stack: balanced
+
+Routine: MERGE_OR_EXIT
+  reads: -
+  writes: B,C,D,E,H,L
+  preserves: A,carry,zero,sign,parity,halfCarry
+  stack: unbalanced
+
+Routine: MERGE_ACTIVE_TO_BOARD
+  reads: -
+  writes: A,B,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C
+  stack: unbalanced
+
+Routine: MERGE_BOARD_ROW
+  reads: D,E,L
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: MERGE_BOARD_NEXT
+  reads: D,E,H,L,B
+  writes: B,D,E,H,L,zero,sign,parity,halfCarry
+  preserves: A,C,carry
+  stack: balanced
+
+Routine: MERGE_ACTIVE_TO_BOARD_EXIT
+  reads: -
+  writes: B,C,D,E,H,L
+  preserves: A,carry,zero,sign,parity,halfCarry
+  stack: unbalanced
+
+Routine: INIT_STATE
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: INIT_STATE_RESTART
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: INIT_STATE_BASE
+  reads: -
+  writes: A,B,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E
+  stack: balanced
+
+Routine: SCAN_TICK
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: ADVANCE_SCAN_STATE
+  reads: -
+  writes: A,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C
+  stack: balanced
+
+Routine: SAVE_NEXT_SCAN_PTR
+  reads: H,L
+  writes: -
+  preserves: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: SOUND_START
+  reads: A,C
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: SERVICE_SOUND
+  reads: -
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced, unknown effect
+
+Routine: SERVICE_SOUND_ACTIVE
+  reads: -
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced, unknown effect
+
+Routine: SOUND_TRIGGER_ROTATE
+  reads: -
+  writes: A,C,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: balanced
+
+Routine: SOUND_TRIGGER_LOCK
+  reads: -
+  writes: A,C,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: balanced
+
+Routine: SOUND_TRIGGER_CLEAR
+  reads: -
+  writes: A,C,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: balanced
+
+Routine: SOUND_TRIGGER_GAME_OVER
+  reads: -
+  writes: A,C,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: balanced
+
+Routine: SOUND_TRIGGER_GAME_OVER_RESTART_READY
+  reads: -
+  writes: A,C,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: balanced
+
+Routine: SCAN_SCORE_DIGIT
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: SCAN_SCORE_DIGIT_SAVE
+  reads: A
+  writes: -
+  preserves: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: BLANK_HUD_SCORE_DIGITS
+  reads: -
+  writes: A,B,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C,D,E
+  stack: balanced
+
+Routine: BLANK_HUD_SCORE_DIGITS_LOOP
+  reads: H,L,A,B
+  writes: B,H,L,zero,sign,parity,halfCarry
+  preserves: A,C,D,E,carry
+  stack: balanced
+
+Routine: HUD_WRITE_U16_DECIMAL
+  reads: H,L
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: HUD_WRITE_DECIMAL_DIGIT
+  reads: H,L,D,E,B,C
+  writes: A,carry,zero,sign,parity,halfCarry,D,E
+  preserves: -
+  stack: balanced
+  relation: H,L,B,C <= -
+
+Routine: HUD_WRITE_DECIMAL_DIGIT_LOOP
+  reads: H,D,L,E
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: unbalanced
+
+Routine: HUD_WRITE_DECIMAL_DIGIT_SUB
+  reads: H,L,D,E
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: unbalanced
+
+Routine: HUD_WRITE_DECIMAL_DIGIT_DONE
+  reads: B,C
+  writes: A,B,C,D,E,carry,zero,sign,parity,halfCarry
+  preserves: H,L
+  stack: unbalanced
+
+Routine: UPDATE_SCORE_DISPLAY
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: LCD_BUSY
+  reads: -
+  writes: -
+  preserves: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: unbalanced
+
+Routine: LCD_BUSY_LOOP
+  reads: A,B,C,D,E,H,L,IXH,IXL,IYH,IYL,SPH,SPL,carry,zero,sign,parity,halfCarry
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: unbalanced, unknown effect
+
+Routine: LCD_COMMAND
+  reads: B
+  writes: -
+  preserves: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced, unknown effect
+
+Routine: LCD_CLEAR_DISPLAY
+  reads: -
+  writes: B
+  preserves: A,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: LCD_STRING
+  reads: H,L
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced, unknown effect
+
+Routine: LCD_SHOW_SCRIPT
+  reads: H,L
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: unbalanced, unknown effect
+
+Routine: LCD_SCRIPT_LOOP
+  reads: D,E
+  writes: A,B,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: C
+  stack: balanced, unknown effect
+
+Routine: LCD_SCRIPT_DONE
+  reads: -
+  writes: B,C,D,E,H,L
+  preserves: A,carry,zero,sign,parity,halfCarry
+  stack: unbalanced
+
+Routine: LCD_PUTC
+  reads: A
+  writes: -
+  preserves: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced, unknown effect
+
+Routine: LCD_WRITE_ROW_STRING
+  reads: B,H,L
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced, unknown effect
+
+Routine: LCD_PUTC_FROM_TABLE
+  reads: A,D,E
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced
+
+Routine: LCD_SHOW_GAME_OVER
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: LCD_SHOW_PAUSED
+  reads: -
+  writes: H,L,A
+  preserves: B,C,D,E,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: LCD_SHOW_SPLASH
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: LCD_APPEND_NEXT_PREVIEW_LETTER
+  reads: -
+  writes: A,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C
+  stack: balanced
+
+Routine: LCD_REFRESH_NEXT_PREVIEW_ROW
+  reads: -
+  writes: A,D,E,carry,zero,sign,parity,halfCarry
+  preserves: B,C,H,L
+  stack: balanced, unknown effect
+
+Routine: LCD_SHOW_RUNNING
+  reads: -
+  writes: H,L,A
+  preserves: B,C,D,E,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: LCD_SHOW_HUD
+  reads: H,L
+  writes: IXH,IXL,IYH,IYL,A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced, unknown effect
+
+Routine: LOGIC_TICK
+  reads: -
+  writes: A,C,H,L,carry,zero,sign,parity,halfCarry,B,D,E
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: LOGIC_TICK_GAME_OVER_DONE
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: LOGIC_TICK_SPLASH_DONE
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: LOGIC_TICK_CLEAR_DONE
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: LOGIC_TICK_ACTIVE
+  reads: -
+  writes: A,C,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: balanced, unknown effect
+
+Routine: LOGIC_TICK_LOCKOUT_DONE
+  reads: -
+  writes: A,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C
+  stack: balanced
+
+Routine: LOGIC_SL7
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: LOGIC_SL0
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: LOGIC_SL0_NO_INPUT
+  reads: -
+  writes: A,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C
+  stack: balanced
+
+Routine: LOGIC_SL1
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: LOGIC_SL1_NO_GRAVITY
+  reads: -
+  writes: A,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C
+  stack: balanced
+
+Routine: LOGIC_SLICE_NEXT
+  reads: -
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced
+
+Routine: POLL_INPUT_AND_UPDATE
+  reads: -
+  writes: A,C,E,carry,zero,sign,parity,halfCarry,B,D,H,L
+  preserves: -
+  stack: balanced
+
+Routine: KEY_NEW_PRESS
+  reads: E
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: HANDLE_DIRECTION_KEY
+  reads: E
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: CLEAR_INPUT_REPEAT_STATE
+  reads: -
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: WAIT_GAME_OVER_KEY_GATE
+  reads: -
+  writes: A,C,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E
+  stack: balanced, unknown effect
+
+Routine: POLL_GAME_OVER_RESTART
+  reads: -
+  writes: IXH,IXL,IYH,IYL,A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: WAIT_FOR_KEY_RELEASE
+  reads: -
+  writes: A,C,carry,zero,sign,parity,halfCarry
+  preserves: B,D,E,H,L
+  stack: balanced, unknown effect
+
+Routine: HANDLE_PAUSE_KEY
+  reads: -
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced
+
+Routine: HANDLE_PAUSE_SHOW_RUNNING
+  reads: -
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced
+
+Routine: HANDLE_UNPAUSE_KEY
+  reads: -
+  writes: A,H,L,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E
+  stack: balanced
+
+Routine: HANDLE_ROTATE_PRESS
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: HANDLE_ROTATE_CCW_PRESS
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: HANDLE_KEY_RIGHT
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: HANDLE_KEY_LEFT
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced
+
+Routine: HANDLE_KEY_DROP
+  reads: -
+  writes: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  preserves: -
+  stack: balanced, unknown effect
+
+Routine: HANDLE_HELD_DIRECTION
+  reads: A
+  writes: A,E,carry,zero,sign,parity,halfCarry,B,C,D,H,L
+  preserves: -
+  stack: balanced
+
+Routine: HELD_SAME_KEY
+  reads: E
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced, unknown effect
+
+Routine: HELD_DIRECTION_NORMAL_RATE
+  reads: -
+  writes: A
+  preserves: B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Routine: HELD_DIRECTION_RATE_SET
+  reads: A,E
+  writes: A,carry,zero,sign,parity,halfCarry
+  preserves: B,C,D,E,H,L
+  stack: balanced
+
+Routine: RAM_START
+  reads: -
+  writes: -
+  preserves: A,B,C,D,E,H,L,carry,zero,sign,parity,halfCarry
+  stack: balanced
+
+Conflicts:
+  none
+
+Unknown calls:
+  none
+

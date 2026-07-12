@@ -1,0 +1,230 @@
+; Sprite Chase — the TMS9918 profile's first game, from the sketch:
+; steer a sprite with the keypad to catch a fleeing target. The VDP
+; counterpart of CounterToy: vblank-paced loop, shadow tables, the
+; commit phase streaming dirty entries to VRAM.
+;
+; Sprites and the pip tile are declarations — patterns, slots, colour
+; groups, and the VRAM upload are generated (LoadResourcesVram), and
+; render bodies use the generated sprite_at op exactly as the sketch
+; wrote them. Score shows as pips on the top tile row; the target
+; flees deterministically — cornering it is the game.
+;
+; Keys: 2 up, 8 down, 4 left, 6 right.
+
+program SpriteChase
+
+platform tec1g-mon3
+display tms9918
+
+sprite Player color white
+  "..XXXX.."
+  ".XXXXXX."
+  "XX.XX.XX"
+  "XXXXXXXX"
+  "XX....XX"
+  ".XXXXXX."
+  "..XXXX.."
+  "........"
+end
+
+sprite Target color lightred
+  "...XX..."
+  "..XXXX.."
+  ".XXXXXX."
+  "XXXXXXXX"
+  ".XXXXXX."
+  "..XXXX.."
+  "...XX..."
+  "........"
+end
+
+tile Pip color white on black
+  "........"
+  "..XXXX.."
+  ".XXXXXX."
+  ".XXXXXX."
+  ".XXXXXX."
+  ".XXXXXX."
+  "..XXXX.."
+  "........"
+end
+
+state PlayerX : byte = 120
+state PlayerY : byte = 88
+state TargetX : byte = 40
+state TargetY : byte = 40
+state Score   : byte = 0
+
+pulse UpP
+pulse DownP
+pulse LeftP
+pulse RightP
+pulse Tick
+
+timer Pace : byte = 2 -> Tick        ; the target steps every 2 frames
+
+bind key KEY_2 held period 1 -> UpP
+bind key KEY_8 held period 1 -> DownP
+bind key KEY_4 held period 1 -> LeftP
+bind key KEY_6 held period 1 -> RightP
+
+card Playing
+
+; Card-gated blocks never see flags raised while their card was
+; inactive (the frame consumes them), so entry re-raises the cells the
+; renders depend on: the sprites appear on the first Playing frame.
+enter StartPlaying
+    updates PlayerX, PlayerY, TargetX, TargetY
+begin
+end
+
+effect MovePlayer
+    on UpP, DownP, LeftP, RightP
+    updates PlayerX, PlayerY
+begin
+    ld a,(PlayerX)
+    ld d,a
+    ld a,(PlayerY)
+    ld e,a
+    ld a,(UpP)
+    or a
+    jr z,_down
+    ld a,e
+    or a
+    jr z,_horiz
+    dec e
+    jr _horiz
+_down:
+    ld a,(DownP)
+    or a
+    jr z,_horiz
+    ld a,e
+    cp 184               ; bottom clamp: 192 - sprite height
+    jr nc,_horiz
+    inc e
+_horiz:
+    ld a,(LeftP)
+    or a
+    jr z,_right
+    ld a,d
+    or a
+    jr z,_store
+    dec d
+    jr _store
+_right:
+    ld a,(RightP)
+    or a
+    jr z,_store
+    ld a,d
+    cp 248               ; right clamp: 256 - sprite width
+    jr nc,_store
+    inc d
+_store:
+    ld a,d
+    ld (PlayerX),a
+    ld a,e
+    ld (PlayerY),a
+end
+
+effect FleeTarget
+    on Tick
+    updates TargetX, TargetY
+begin
+    ld a,(PlayerX)
+    ld b,a
+    ld a,(TargetX)
+    cp b
+    jr c,_fleft          ; left of the player: flee further left
+    cp 248
+    jr nc,_vert
+    inc a
+    jr _fx
+_fleft:
+    or a
+    jr z,_vert
+    dec a
+_fx:
+    ld (TargetX),a
+_vert:
+    ld a,(PlayerY)
+    ld b,a
+    ld a,(TargetY)
+    cp b
+    jr c,_fup
+    cp 184
+    jr nc,_done
+    inc a
+    jr _fy
+_fup:
+    or a
+    jr z,_done
+    dec a
+_fy:
+    ld (TargetY),a
+_done:
+end
+
+effect Collide
+    on PlayerX, PlayerY, TargetX, TargetY
+    updates Score, TargetX, TargetY
+begin
+    ld a,(PlayerX)
+    ld b,a
+    ld a,(TargetX)
+    sub b
+    jr nc,_ax
+    neg
+_ax:
+    cp 8
+    jr nc,_done
+    ld a,(PlayerY)
+    ld b,a
+    ld a,(TargetY)
+    sub b
+    jr nc,_ay
+    neg
+_ay:
+    cp 8
+    jr nc,_done
+    ; caught: score a pip and respawn the target somewhere random
+    ld a,(Score)
+    inc a
+    ld (Score),a
+    ld c,ApiRandom
+    rst $10
+    and %11111000        ; x: 0..248
+    ld (TargetX),a
+    ld c,ApiRandom
+    rst $10
+    and %01111111
+    add a,32             ; y: 32..159
+    ld (TargetY),a
+_done:
+end
+
+render PlacePlayer
+    on PlayerX, PlayerY
+begin
+    sprite_at Player, PlayerX, PlayerY
+end
+
+render PlaceTarget
+    on TargetX, TargetY
+begin
+    sprite_at Target, TargetX, TargetY
+end
+
+render DrawScore
+    on Score
+begin
+    ld a,(Score)
+    or a
+    jr z,_done
+    dec a
+    and %00011111
+    ld d,a               ; column = (score-1) mod 32
+    ld e,0               ; top row
+    ld a,Pip             ; pip tile index equate
+    call NamePut
+_done:
+end

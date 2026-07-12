@@ -1,0 +1,27 @@
+; Trail -- byte array state as a row-mask buffer.
+;
+; Move the white dot with 2/4/6/8. Each position is stamped into
+; Trail, an 8-byte array where each byte is one matrix row's green
+; pixel mask. The whole array is one changed cell.
+
+program Trail
+
+platform tec1g-mon3
+display matrix8x8
+
+state DotX  : byte = 3 changed
+state DotY  : byte = 3 changed
+state Trail : byte[8] changed
+
+pulse Up
+pulse Down
+pulse Left
+pulse Right
+
+bind key KEY_2 held period 8 -> Up
+bind key KEY_8 held period 8 -> Down
+bind key KEY_4 held period 8 -> Left
+bind key KEY_6 held period 8 -> Right
+
+; The blocks live in a part: same program, same namespace, second file.
+part "trail-blocks.glim"
