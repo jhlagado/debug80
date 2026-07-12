@@ -46,7 +46,7 @@ launchRequest arrives
           Create Z80Runtime with platform I/O → ready to execute
 ```
 
-All seven stages happen inside `buildLaunchSession()` in `src/debug/launch/launch-sequence.ts`. The function takes the merged `LaunchRequestArguments` and a `LaunchSequenceContext` (callbacks for emitting events and sending responses) and returns a `LaunchSessionArtifacts` object.
+All seven stages happen inside `buildLaunchSession()` in `src/debug/launch/launch-sequence.ts`. The function lives in the extension package, but it now orchestrates artifacts that cross workspace boundaries: extension-side config resolution and DAP setup, plus runtime primitives loaded from `@jhlagado/debug80-runtime`. It takes the merged `LaunchRequestArguments` and a `LaunchSequenceContext` (callbacks for emitting events and sending responses) and returns a `LaunchSessionArtifacts` object.
 
 If any stage fails, the error propagates up to `handleLaunchRequest()` in the session class. Two error types receive special handling: `MissingLaunchArtifactsError` prompts the user to create a config file; `AssembleFailureError` formats the assembly diagnostic and sends it to both the Debug Console and the extension host.
 
@@ -164,7 +164,7 @@ The resolution rules:
 - If an output directory is configured, artifacts go there. Otherwise they sit next to the source.
 - All paths are resolved to absolute.
 
-The source-map artifact is the native D8 map written beside the build output, normally `program.d8.json`. The D8 path is resolved later by `resolveDebugMapPath()` from the HEX path, optional `artifactBase`, optional `outputDir`, and source path.
+The source-map artifact is the native D8 map written beside the build output, normally `program.d8.json`. The D8 path is resolved later by `resolveDebugMapPath()` from the HEX path, optional `artifactBase`, optional `outputDir`, and source path. In the monorepo this still resolves inside the active project workspace, not inside `apps/debug80-vscode` or the runtime package.
 
 The base directory (`baseDir`) is resolved from the workspace root or the project config file's parent directory. Config discovery stays in `src/debug/launch-args.ts`. The staged path normalization and bundled-asset resolution live in `src/debug/launch/launch-config-merge.ts`. Source-map path derivation for active sessions lives in `src/debug/mapping/path-resolver.ts`.
 
@@ -308,6 +308,8 @@ The overlay order matters. The user's program is applied last, so it can overwri
 Source mapping connects memory addresses to source file locations. This is what makes "set a breakpoint on line 12" work — the breakpoint manager needs to know which memory address corresponds to line 12.
 
 The source mapping stage has three parts: building the debug map, building the symbol index, and resolving source roots. `buildLaunchSourceState()` in `src/debug/launch/launch-source-state.ts` owns the top-level orchestration and delegates reusable setup helpers to `src/debug/launch/source-state-build-options.ts`. Two focused mapping helpers now carry the shared D8-specific logic: `src/debug/mapping/d8-source-paths.ts` resolves file paths and primary-source selection for D8 maps, and `src/debug/mapping/d8-symbols.ts` converts D8 symbol records into the richer source-map symbol shape used by the debugger and editor providers. `launch-sequence.ts` calls the orchestration entry point with the assembled inputs and receives a `LaunchSourceBuildResult` in return.
+
+Because the runtime package is now shared with headless verification, this stage is also the boundary where language-specific build output becomes language-neutral runtime state. Past this point the active session carries a parsed HEX image, D8-backed symbol metadata, and platform config rather than AZM- or Glimmer-specific compiler objects.
 
 ### `buildLaunchSourceState()` — `src/debug/launch/launch-source-state.ts`
 

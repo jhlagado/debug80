@@ -15,7 +15,7 @@ webview UI code, packaged runtime dependencies, and platform emulation. The test
 therefore layered: fast contract tests catch most regressions, while VS Code-hosted and packaged
 VSIX checks cover behavior that only appears in the real extension environment.
 
-The source-of-truth strategy lives in `debug80/docs/regression-test-strategy.md`.
+The source-of-truth strategy lives in `apps/debug80-vscode/docs/regression-test-strategy.md`.
 
 ---
 
@@ -24,6 +24,8 @@ The source-of-truth strategy lives in `debug80/docs/regression-test-strategy.md`
 | Layer                    | Purpose                                                                    |
 | ------------------------ | -------------------------------------------------------------------------- |
 | Unit and contract tests  | CPU, mapping, assembler backends, configuration, webview helpers           |
+| Runtime package tests    | Shared Z80, loaders, headless session, and platform-runtime invariants     |
+| Headless integration     | AZM or Glimmer build output running through the shared runtime             |
 | Adapter E2E tests        | Launch, breakpoints, stepping, restart, memory/register writes             |
 | Webview contract tests   | Project controls, message contracts, UI state invariants                   |
 | VS Code host integration | Activation, commands, views, workspace behavior through real VS Code APIs  |
@@ -38,6 +40,7 @@ The most important scenarios to keep guarded are:
 
 - AZM assembles through the packaged linked library backend, not global CLIs;
 - Glimmer assembles `.glim` sources into `.hex`, `.bin`, `.asm`, and `.d8.json` with diagnostics attributed back to authored Glimmer lines;
+- headless sessions built from `@jhlagado/debug80-runtime/headless` execute the same TEC-1G runtime semantics that the extension uses, including symbol-addressed memory inspection and matrix/video timing boundaries;
 - sparse `ORG` programs preserve address-bearing HEX/D8M behavior;
 - breakpoints verify and stop in target and included source files;
 - Windows-style and portable paths resolve consistently;
@@ -60,4 +63,6 @@ such as rebuilding decoder tables per instruction or rendering unchanged memory 
 not to fail because one CI runner is slightly slower.
 
 Manual diagnosis should continue to use runtime instrumentation such as `DEBUG80_PERF=1`, with
-severe starvation warnings visible in the Debug80 output channel.
+severe starvation warnings visible in the Debug80 output channel. For cross-package regressions, prefer
+the root `npm run check` gate before narrowing down to `npm test -w debug80`, runtime-package tests,
+or one of the headless integration workspaces.

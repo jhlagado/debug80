@@ -63,7 +63,11 @@ The chapters begin with the repository shape and project model, then follow the 
 
 ## Current Codebase Notes
 
-This manual is updated against the codebase state through **2026-07-11**. These notes give maintainers a quick view of changes that affect several chapters:
+This manual is updated against the codebase state through **2026-07-13**. These notes give maintainers a quick view of changes that affect several chapters:
+
+- **Monorepo layout:** Debug80 now lives inside the `debug80-toolchain` workspace. The VS Code extension is `apps/debug80-vscode`, the UI-independent CPU and platform runtime is `packages/debug80-runtime`, and headless verification workspaces live under `integration/`.
+- **Runtime ownership:** the debug adapter no longer owns the Z80 and platform runtime sources directly. `@jhlagado/debug80-runtime` now exports the shared CPU, loaders, platform models, and the stable `@jhlagado/debug80-runtime/headless` runner surface used by integration tests and non-UI verification.
+- **Verification pipeline:** repository-wide `npm run check` now builds, type-checks, lints, format-checks, and tests AZM, Glimmer, Debug80 Runtime, the two headless integration workspaces, and the VS Code extension. GitHub Actions runs that root check plus package smoke checks for AZM, Glimmer, Debug80 Runtime, and the packaged extension.
 
 - **Assembler backends:** Debug80 now ships two in-process build paths that both emit native `.d8.json` maps: AZM for `.asm`, `.inc`, and `.z80`, plus Glimmer for `.glim`. The old listing-derived mapping path has been removed from active project behaviour. Active targets should be expected to build a HEX plus a native D8 source map.
 - **Editor grammars:** Debug80 owns TextMate syntax highlighting for both Z80/AZM assembly and Glimmer sources. `package.json` contributes the `z80-asm` grammar for `.asm`, `.z80`, and `.asmi`, plus the `glim` grammar for `.glim`, with breakpoint registration for both language ids.
