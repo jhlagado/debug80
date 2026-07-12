@@ -10,13 +10,13 @@ nav_order: 1
 
 # Chapter 6 — The Z80 Runtime
 
-The debug adapter contains a complete Z80 emulator. It is not a library dependency — the Z80 code lives in `src/z80/` and is purpose-built for this debugger. This chapter covers the runtime interface, CPU state, the step model, the loaders, and how the emulator is wired together. Chapters 7 and 8 cover instruction decoding and the memory/I/O model in more detail.
+The debug adapter uses a complete Z80 emulator, but the emulator no longer lives only inside the extension package. The shared CPU, loaders, and platform models now live in `packages/debug80-runtime/src/` and are published as `@jhlagado/debug80-runtime`, which both the VS Code adapter and the headless verification workspaces consume. This chapter covers the runtime interface, CPU state, the step model, the loaders, and how the emulator is wired together. Chapters 7 and 8 cover instruction decoding and the memory/I/O model in more detail.
 
 ---
 
 ## The Z80Runtime interface
 
-The public contract of the emulator is the `Z80Runtime` interface in `src/z80/runtime.ts`:
+The public contract of the emulator is the `Z80Runtime` interface in `packages/debug80-runtime/src/z80/runtime.ts`:
 
 ```typescript
 interface Z80Runtime {
@@ -108,7 +108,7 @@ interface CpuStateSnapshot {
 
 ## The CPU state
 
-The `Cpu` interface in `src/z80/types.ts` is the complete Z80 register set:
+The `Cpu` interface in `packages/debug80-runtime/src/z80/types.ts` is the complete Z80 register set:
 
 ```typescript
 interface Cpu {
@@ -204,7 +204,7 @@ Three control fields manage timing and interrupt behaviour:
 
 ## The hardware context
 
-`HardwareContext` in `src/z80/types.ts` binds the CPU to its memory and I/O:
+`HardwareContext` in `packages/debug80-runtime/src/z80/types.ts` binds the CPU to its memory and I/O:
 
 ```typescript
 interface HardwareContext {
@@ -275,7 +275,9 @@ The decoder callbacks are intentionally stable for the lifetime of the runtime. 
 
 ## The loaders
 
-Two parsers in `src/z80/loaders.ts` convert files on disk into in-memory structures.
+Two parsers in `packages/debug80-runtime/src/z80/loaders.ts` convert files on disk into in-memory structures.
+
+The same package also exposes a stable headless session API from `packages/debug80-runtime/src/headless/session.ts`. That layer builds on `Z80Runtime` plus the TEC-1G runtime and D8 symbol data to support non-UI verification such as `runUntil()`, `runMatrixScans()`, symbol-addressed memory inspection, and deterministic reset. The extension does not use that API directly during ordinary debug sessions, but the shared runtime code means behavior fixes in the CPU or platform models now affect both the VS Code adapter and the headless integration workspaces.
 
 ### Intel HEX parser
 

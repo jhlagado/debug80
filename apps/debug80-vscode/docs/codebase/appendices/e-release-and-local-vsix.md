@@ -15,7 +15,7 @@ Extension Development Host is useful during development, but it does not prove t
 the compiled extension host, webview bundles, runtime dependencies, ROM resources, schemas, syntax
 files, and notices that a user receives.
 
-The source-of-truth checklist lives in `debug80/docs/release-process.md`. This appendix summarizes
+The source-of-truth checklist lives in `apps/debug80-vscode/docs/release-process.md`. This appendix summarizes
 the expected flow for contributors.
 
 ---
@@ -33,24 +33,23 @@ the expected flow for contributors.
 
 ## Local VSIX build
 
-From the `debug80` repository:
+From the toolchain repository root:
 
 ```bash
 npm ci
-npm run package:check
+npm run package:debug80
 ```
 
-`package:check` runs type checks, the test suite, VSIX packaging, and package content verification.
-The generated file is written to the repository root, for example:
+`npm run package:debug80` delegates to the extension workspace's `package:check` script. That script runs extension and webview type checks, the extension Vitest suites, VSIX packaging, and package-content verification. The generated file is written under `apps/debug80-vscode/`, for example:
 
 ```text
-debug80-<version>.vsix
+apps/debug80-vscode/debug80-<version>.vsix
 ```
 
 Install it into normal VS Code with:
 
 ```bash
-code --install-extension debug80-<version>.vsix --force
+code --install-extension apps/debug80-vscode/debug80-<version>.vsix --force
 ```
 
 Restart VS Code after installation, then open a real Debug80 project workspace.
@@ -80,7 +79,7 @@ Before calling a VSIX candidate releasable, test:
 
 ## Package contents
 
-`npm run package:verify` checks the VSIX manifest. The package must include:
+`npm run package:verify -w debug80` checks the VSIX manifest. The package must include:
 
 - `out/`
 - `resources/`
@@ -105,8 +104,10 @@ candidates for manual testing.
 
 ## CI Gate
 
-CI is part of the Definition of Done for Debug80 changes. After pushing, confirm that GitHub
-Actions has started a `CI` workflow run for the pushed commit and that it passes before treating the
+CI is part of the Definition of Done for Debug80 changes. The repository now runs one root `CI`
+workflow that executes `npm run check`, `npm run package:azm`, `npm run package:glimmer`,
+`npm run package:runtime`, and `npm run package:debug80`. After pushing, confirm that GitHub
+Actions has started that `CI` workflow for the pushed commit and that it passes before treating the
 change as complete or publishing a VSIX.
 
 ```bash

@@ -38,11 +38,11 @@ The extension host is a Node.js process managed by VS Code. This is where the ex
 
 Key files in this layer:
 
-- `src/extension/extension.ts` — the `activate()` function, where everything is wired together
-- `src/extension/commands.ts` — command handlers (start debug, select target, etc.)
-- `src/extension/platform-view-provider.ts` — creates and manages the sidebar webview
-- `src/extension/workspace-selection.ts` — tracks which workspace folder is active
-- `src/extension/debug-session-events.ts` — responds to debug session lifecycle events
+- `apps/debug80-vscode/src/extension/extension.ts` — the `activate()` function, where everything is wired together
+- `apps/debug80-vscode/src/extension/commands.ts` — command handlers (start debug, select target, etc.)
+- `apps/debug80-vscode/src/extension/platform-view-provider.ts` — creates and manages the sidebar webview
+- `apps/debug80-vscode/src/extension/workspace-selection.ts` — tracks which workspace folder is active
+- `apps/debug80-vscode/src/extension/debug-session-events.ts` — responds to debug session lifecycle events
 
 ### The debug adapter
 
@@ -52,11 +52,11 @@ The adapter is where the Z80 emulator lives. When VS Code says "continue," the a
 
 Key files:
 
-- `src/debug/adapter.ts` — the `Z80DebugSession` class, implementing DAP
-- `src/debug/requests/adapter-request-controller.ts` — delegates DAP requests to specialised handlers
-- `src/debug/session/session-state.ts` — all per-session state: the runtime, source maps, breakpoints, run state
-- `src/debug/launch/launch-sequence.ts` — the pipeline from "launch" to "Z80 is running"
-- `src/debug/session/runtime-control.ts` — execution control: run, step, pause
+- `apps/debug80-vscode/src/debug/adapter.ts` — the `Z80DebugSession` class, implementing DAP
+- `apps/debug80-vscode/src/debug/requests/adapter-request-controller.ts` — delegates DAP requests to specialised handlers
+- `apps/debug80-vscode/src/debug/session/session-state.ts` — all per-session state: the runtime, source maps, breakpoints, run state
+- `apps/debug80-vscode/src/debug/launch/launch-sequence.ts` — the pipeline from "launch" to "Z80 is running"
+- `apps/debug80-vscode/src/debug/session/runtime-control.ts` — execution control: run, step, pause
 
 ### The webview
 
@@ -66,10 +66,10 @@ The webview renders the platform-specific hardware visualisation: seven-segment 
 
 Key files:
 
-- `webview/tec1g/index.html` — the panel HTML template
-- `webview/tec1g/index.ts` — the webview entry point: message handling, tab switching, UI state
-- `webview/common/memory-panel.ts` — the CPU tab: register strip, memory dumps, inline editing
-- `webview/common/styles.css` — shared styles
+- `apps/debug80-vscode/webview/tec1g/index.html` — the panel HTML template
+- `apps/debug80-vscode/webview/tec1g/index.ts` — the webview entry point: message handling, tab switching, UI state
+- `apps/debug80-vscode/webview/common/memory-panel.ts` — the CPU tab: register strip, memory dumps, inline editing
+- `apps/debug80-vscode/webview/common/styles.css` — shared styles
 
 ### How they communicate
 
@@ -103,7 +103,7 @@ Debug80 has seven major subsystems. Each one owns a specific responsibility and 
 
 **What it does:** Executes Z80 instructions. Maintains the full CPU state — registers, flags, interrupt mode, halt state — and calls out to I/O handlers for port reads and writes.
 
-**Where it lives:** `src/z80/`
+**Where it lives:** `packages/debug80-runtime/src/z80/`
 
 **Key type:** `Cpu` — a plain object containing every register (A, B, C, D, E, H, L, F, IX, IY, SP, PC, I, R), the alternate register set, interrupt state, and a cycle counter. This is the single most important data structure in the codebase. Every inspection, every step, every breakpoint check reads from it.
 
@@ -113,17 +113,17 @@ Debug80 has seven major subsystems. Each one owns a specific responsibility and 
 
 **What they do:** Emulate the I/O peripherals of a specific hardware target. A platform runtime provides the I/O callbacks that the Z80 emulator calls on `in` and `out` instructions, and maintains the hardware state (display digits, matrix rows, LCD contents, speaker state).
 
-**Where they live:** `src/platforms/tec1/`, `src/platforms/tec1g/`, `src/platforms/simple/`
+**Where they live:** `packages/debug80-runtime/src/platforms/tec1/`, `packages/debug80-runtime/src/platforms/tec1g/`, `packages/debug80-runtime/src/platforms/simple/`
 
 **Key type:** `ResolvedPlatformProvider` — the interface every platform must implement. It defines how to build I/O handlers, load ROM assets, resolve the entry point, and register platform-specific DAP commands.
 
-**Key pattern:** Platforms are loaded lazily via dynamic `import()`. The platform registry (`src/platforms/manifest.ts`) maps platform IDs to loader functions. A new platform can be added by implementing the provider interface and registering it — no changes to the debug adapter core.
+**Key pattern:** Platforms are loaded lazily via dynamic `import()`. The extension-side platform registry (`apps/debug80-vscode/src/platforms/manifest.ts`) maps platform IDs to loader functions, while the runtime package holds the actual CPU-facing platform models. A new platform can be added by implementing the provider interface and registering it without changing the debug adapter core.
 
 ### Debug adapter
 
 **What it does:** Implements the Debug Adapter Protocol. Handles launch, breakpoints, stepping, variable inspection, and custom requests. Owns the per-session state and orchestrates the Z80 emulator and platform runtime.
 
-**Where it lives:** `src/debug/`
+**Where it lives:** `apps/debug80-vscode/src/debug/`
 
 **Key type:** `SessionStateShape` — a large structure holding everything that belongs to a single debug session: the Z80 runtime, source maps, symbol tables, breakpoints, run state flags, platform runtime references, and the loaded program image. Understanding this type is understanding what a debug session _is_.
 
@@ -131,7 +131,7 @@ Debug80 has seven major subsystems. Each one owns a specific responsibility and 
 
 **What it does:** Maps between source file lines, symbols and Z80 memory addresses. This is what makes breakpoints, "show me the current line", F12 / Go to Definition, hovers, workspace symbols, Variables, Watches and conditional breakpoints work. The current active-project source of truth is the D8 debug map emitted by the selected assembler backend.
 
-**Where it lives:** `src/mapping/`
+**Where it lives:** `apps/debug80-vscode/src/mapping/`
 
 **Key type:** `SourceMapIndex` — two maps working in opposite directions. `locationToAddresses` takes a file path and line number and returns the memory addresses that correspond to that source line. `addressToLocation` takes an address and returns the source file and line. Breakpoint resolution uses the first; stack trace display uses the second.
 
@@ -139,7 +139,7 @@ Debug80 has seven major subsystems. Each one owns a specific responsibility and 
 
 **What it does:** Assembles Z80 source files into loadable binaries. Debug80 currently ships two in-process backends: AZM through the packaged `@jhlagado/azm` library for `.asm`, `.inc`, and `.z80`, and Glimmer through `@jhlagado/glimmer` for `.glim`. Both paths emit HEX plus native D8 debug-map artifacts, and the Glimmer path also materializes the generated `.asm` beside the derived artifacts before Debug80 parses Intel HEX output into emulated memory.
 
-**Where it lives:** `src/debug/launch/assembler.ts`, `src/debug/launch/assembler-backend.ts`, `src/debug/launch/azm-backend.ts`, `src/debug/launch/glimmer-backend.ts`, `src/z80/loaders.ts`
+**Where it lives:** `apps/debug80-vscode/src/debug/launch/assembler.ts`, `apps/debug80-vscode/src/debug/launch/assembler-backend.ts`, `apps/debug80-vscode/src/debug/launch/azm-backend.ts`, `apps/debug80-vscode/src/debug/launch/glimmer-backend.ts`, `packages/debug80-runtime/src/z80/loaders.ts`
 
 **Key flow:** Source file → selected assembler backend → Intel HEX binary + native D8 debug map + optional companion artifacts → `parseIntelHex()` → byte array loaded into Z80 memory.
 
@@ -147,7 +147,7 @@ Debug80 has seven major subsystems. Each one owns a specific responsibility and 
 
 **What it does:** Wires everything together in the VS Code extension host. Registers commands, manages workspace and project selection, watches for config file changes, handles debug session lifecycle events, and owns the webview panel.
 
-**Where it lives:** `src/extension/`
+**Where it lives:** `apps/debug80-vscode/src/extension/`
 
 **Key class:** `PlatformViewProvider` — the `WebviewViewProvider` that creates the sidebar panel, renders the platform-specific HTML, and bridges messages between the webview and the debug adapter. This is the most complex class in the extension layer because it manages state for two different platform UIs (TEC-1 and TEC-1G), handles session affinity, and coordinates memory snapshot refresh cycles.
 
@@ -155,7 +155,7 @@ Debug80 has seven major subsystems. Each one owns a specific responsibility and 
 
 **What it does:** Renders the hardware emulation panel in the browser context. Draws seven-segment displays, LED matrices, LCDs, and the memory inspector. Handles user input (keypad clicks, register edits, target selection) and communicates with the extension host via message passing.
 
-**Where it lives:** `webview/`
+**Where it lives:** `apps/debug80-vscode/webview/`
 
 **Key pattern:** The webview is stateless across reloads. Every time the webview HTML is replaced (which happens on tab switches, visibility changes, and platform transitions), the extension host replays the full UI state — current display digits, matrix values, LCD contents, serial buffer — via a burst of `postMessage` calls. The `uiRevision` counter prevents stale updates from an earlier render from overwriting current state.
 
@@ -260,10 +260,12 @@ debugger. No second Node attach configuration is required.
 ### Testing
 
 ```bash
-npm test -w debug80
+npm run check
 ```
 
-This runs the full test suite via vitest. Tests cover:
+Run this from the monorepo root when you need the full repository gate. It builds and verifies AZM, Glimmer, Debug80 Runtime, the headless integration workspaces, and the VS Code extension. Extension-only checks are still available through `npm test -w debug80`.
+
+The extension test suite covers:
 
 - Z80 instruction decoding and execution (`tests/z80/`)
 - Debug adapter request handling (`tests/debug/`)
@@ -272,7 +274,13 @@ This runs the full test suite via vitest. Tests cover:
 - Extension command and provider logic (`tests/extension/`)
 - Webview message handling (`tests/webview/`)
 
-Tests use VS Code API mocks, including `tests/e2e/adapter/vscode-mock.ts`, so many paths can run without a live VS Code instance.
+Repository-level checks add:
+
+- headless runtime tests in `packages/debug80-runtime/test/`
+- AZM headless integration in `integration/azm-headless/test/`
+- Glimmer headless integration in `integration/glimmer-headless/test/`
+
+Tests use VS Code API mocks, including `apps/debug80-vscode/tests/e2e/adapter/vscode-mock.ts`, so many adapter and extension paths run without a live VS Code instance.
 
 Release and regression checks are broader than `npm test`:
 
@@ -282,22 +290,22 @@ Release and regression checks are broader than `npm test`:
 
 ### Project structure at a glance
 
-```
-debug80/
-├── src/
-│   ├── extension/       Extension host code (commands, providers, lifecycle)
-│   ├── debug/           Debug adapter (DAP, launch, execution, inspection)
-│   ├── z80/             Z80 CPU emulator (decode, execute, memory)
-│   ├── mapping/         Source mapping (D8 debug maps, symbols)
-│   ├── platforms/       Platform runtimes (simple, tec1, tec1g)
-│   └── util/            Shared utilities (logging)
-├── webview/
-│   ├── common/          Shared webview code (memory panel, styles)
-│   ├── tec1/            TEC-1 webview (HTML, entry point, renderers)
-│   └── tec1g/           TEC-1G webview (HTML, entry point, renderers)
-├── tests/               Mirrors src/ structure
-├── docs/                Design documents and this manual
-└── package.json         Extension manifest (commands, activation, DAP registration)
+```text
+debug80-toolchain/
+├── apps/
+│   └── debug80-vscode/
+│       ├── src/         Extension host, adapter, mapping, launch code
+│       ├── webview/     Browser-side panel code
+│       ├── tests/       Extension, adapter, and webview tests
+│       └── docs/        Extension docs and this manual
+├── packages/
+│   ├── azm/             Assembler and typed assembly language
+│   ├── glimmer/         Reactive game preprocessor
+│   └── debug80-runtime/ Shared Z80 and platform runtime package
+├── integration/
+│   ├── azm-headless/    AZM + runtime headless verification
+│   └── glimmer-headless/ Glimmer + runtime headless verification
+└── package.json         Workspace scripts and CI entry points
 ```
 
 ---
@@ -314,7 +322,7 @@ debug80/
 
 - The lifecycle flows from activation → webview resolution → debug launch → platform announcement → execution → breakpoint/pause → inspection → termination.
 
-- `npm run build` compiles the extension; `npm test` runs the full vitest suite; F5 in VS Code launches a development host.
+- `npm run check` is the repository gate, `npm test -w debug80` is the extension-local gate, and F5 in VS Code launches a development host.
 
 ---
 
