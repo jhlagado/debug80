@@ -1,0 +1,157 @@
+# Debug80 Regression Test Strategy
+
+Debug80 needs layered regression coverage because it spans pure TypeScript logic, a Debug Adapter
+Protocol server, VS Code extension activation, webview UI code, packaged runtime dependencies, and
+platform-specific emulation. No single test style can cover all of that reliably.
+
+## Goals
+
+- Catch source mapping, breakpoint, launch, rebuild, and packaging regressions before merge.
+- Prove the packaged VSIX contains the runtime dependencies users need.
+- Exercise the extension inside a real VS Code Extension Development Host before release.
+- Keep fast unit tests fast, and reserve slower VS Code-hosted tests for integration gates.
+
+## Test Layers
+
+| Layer                    | Tool                                         | Purpose                                                                 | Gate                    |
+| ------------------------ | -------------------------------------------- | ----------------------------------------------------------------------- | ----------------------- |
+| Unit and contract tests  | Vitest                                       | CPU, mapping, assembler backends, config, webview helpers               | Every PR                |
+| Adapter E2E              | Vitest DAP harness                           | Launch, breakpoints, stepping, restart, memory/register writes          | Every PR                |
+| Webview contract tests   | Vitest + DOM environment                     | Project controls, message contracts, UI state invariants                | Every PR                |
+| VS Code host integration | `@vscode/test-electron` / `@vscode/test-cli` | Activation, commands, views, workspace behavior in real VS Code         | PR or release gate      |
+| VSIX content check       | `vsce ls` verification script                | Published package includes runtime dependencies and excludes dev debris | Every release candidate |
+| Packaged VSIX smoke      | Installed VSIX in clean VS Code profile      | Proves installed extension works, not just source tree                  | Release gate            |
+
+## Required Regression Scenarios
+
+### Launch and Assembly
+
+- AZM target assembles in-process and writes HEX, native D8, compact BIN, and optional register contracts artifacts.
+- Sparse `ORG` programs preserve address-bearing HEX and compact raw BIN semantics.
+- Failed assembly reports structured diagnostics.
+
+### Source Mapping and Breakpoints
+
+- Breakpoint in the target source verifies and stops.
+- Breakpoint in an included source verifies and stops.
+- Native D8 maps are required; Debug80-generated or listing-derived maps are ignored.
+- Historical D8 fields such as `lstLine` remain accepted only as fields inside native D8 segments.
+- Windows-style and portable paths resolve consistently.
+
+### Runtime and Debug Requests
+
+- Launch with `stopOnEntry`.
+- Continue to breakpoint.
+- Step, step over, and step out.
+- Warm rebuild restarts the target.
+- Register writes apply to the runtime.
+- RAM writes apply; ROM writes obey protect/unprotect policy.
+
+### TEC-1G Hardware DIAG Corpus
+
+The TEC-1G hardware DIAG sources are useful as a behaviour reference corpus, but
+they should not be imported wholesale as opaque pass/fail tests. Many DIAG
+routines were written to exercise real hardware and then rely on a human to
+inspect LCD text, GLCD pixels, LEDs, sounds, or menu state. Debug80 should adopt
+those routines by reading the intended hardware behaviour, then writing focused
+assertions against emulator state.
+
+The first DIAG-derived priorities are SD SPI and DS1302 RTC, because those are
+the protocol-heavy devices where visual inspection is weakest and timing/bit
+ordering mistakes are easiest to miss.
+
+- SD coverage should mirror the TEC-1G DIAG card-info flow: 80 idle SPI clocks,
+  CMD0, CMD8, CMD55/ACMD41 retry, CID read, and CSD read. Tests should assert
+  the response bytes and the fields that DIAG displays, such as CID PNM, CSD
+  type bits, and size fields.
+- RTC coverage should mirror the DIAG DS1302 flow: clear write protect, clear
+  trickle charge, read clock/calendar registers through the TEC-1G port bit
+  layout, and preserve 12/24-hour mode values. Tests should assert protocol
+  sequencing and register values directly, rather than relying on displayed
+  strings.
+- Other DIAG routines, such as LCD, GLCD, 7-seg, 8x8, matrix keyboard, shadow,
+  protect, expand, and RAM checks, should be used selectively when they reveal
+  a hardware convention not already covered by focused platform tests.
+
+### Performance Regression Contracts
+
+Debug80 should treat performance as a regression surface, not only as manual UX feedback. The
+highest-risk pattern is accidentally rebuilding large structures or re-rendering large payloads
+inside high-frequency loops.
+
+- Z80 runtime tests should guard decoder/cache reuse and instruction throughput.
+- Source-map and symbol lookup tests should guard repeated breakpoint/memory lookups from becoming
+  linear scans over large maps.
+- Memory/register snapshot tests should guard payload generation from rebuilding avoidable state on
+  every refresh.
+- Webview tests should guard project controls, registers, memory rows, and display renderers from
+  re-rendering unchanged DOM/canvas state unnecessarily.
+- Integration smoke tests should run a representative TEC-1G target for a fixed window and record
+  instruction rate, effective emulated speed, yield lag, and UI update rate.
+- Runtime and webview instrumentation should remain available for manual diagnosis via
+  `DEBUG80_PERF=1`, while severe starvation warnings should remain visible in the Debug80 output
+  channel.
+
+These tests should use broad regression thresholds rather than fragile absolute benchmarks. The goal
+is to catch order-of-magnitude mistakes such as rebuilding decoder tables per instruction, not to
+fail CI because one runner is slightly slower.
+
+### Project and Webview State
+
+- Initialized project shows project and target selectors.
+- Uninitialized project hides the target selector and shows platform/init controls.
+- Platform selector is rendered exactly once.
+- Project selector recovers from stale `Open Folder` state when valid project state arrives.
+- Restart and stop-on-entry controls do not cause implicit target restarts unless intended.
+
+### VS Code Extension Host
+
+- Extension activates in an empty workspace without crashing.
+- Commands are registered.
+- Debug80 view contribution can be opened.
+- Workspace folder/project discovery works in a real VS Code API context.
+- Project creation works from an empty folder.
+
+### Packaging
+
+- VSIX includes `node_modules/@jhlagado/azm`.
+- VSIX includes `out`, `resources`, `roms`, `schemas`, `syntaxes`, `README.md`, `LICENSE.txt`,
+  and `THIRD_PARTY_NOTICES.md`.
+- VSIX excludes `src`, `tests`, `docs`, `coverage`, `.fallow`, `.claude`, `.cursor`, `.github`,
+  and `.vscode`.
+
+## CI Shape
+
+1. **PR matrix:** macOS, Ubuntu, Windows
+   - `npm ci`
+   - `npm run lint`
+   - `npm run build`
+   - `npm test`
+
+2. **Package gate:** Ubuntu
+   - `npm ci`
+   - `npm run package:check`
+   - VSIX content verification script
+
+3. **VS Code host smoke:** macOS and Windows first, Ubuntu later under Xvfb
+   - `npm ci`
+   - `npm run build`
+   - `npm run test:vscode`
+
+4. **Release tag gate:** all of the above
+   - Upload VSIX to GitHub Release.
+   - Marketplace publish only after protected approval.
+
+## Parallel Implementation Lanes
+
+| Lane | Ownership              | Output                                                                 |
+| ---- | ---------------------- | ---------------------------------------------------------------------- |
+| A    | Packaging gate         | VSIX content verification script and package-check wiring              |
+| B    | VS Code host harness   | Real Extension Development Host smoke tests                            |
+| C    | Adapter E2E            | Include-file breakpoint and artifact launch scenarios                  |
+| D    | Webview regressions    | Project selector/platform/target state invariants                      |
+| E    | Windows/path hardening | Path normalization and D8/source-map portability tests                 |
+| F    | Performance contracts  | Runtime/cache/webview throughput checks and starvation instrumentation |
+
+Each lane should stay isolated until review. Integration happens only after the lane-specific
+verification command passes.

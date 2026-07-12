@@ -1,0 +1,1683 @@
+import path from 'path';
+import type { registerExtensionCommands as registerExtensionCommandsType } from '../../src/extension/commands';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+
+const projectConfigPath = path.normalize('/workspace/tec1g-mon3/debug80.json');
+
+const registeredCommands = new Map<string, (...args: unknown[]) => unknown>();
+const registerCommand = vi.fn((name: string, callback: (...args: unknown[]) => unknown) => {
+  registeredCommands.set(name, callback);
+  return { dispose: vi.fn() };
+});
+const existsSync = vi.fn();
+const readFileSync = vi.fn();
+const writeFileSync = vi.fn();
+const mkdirSync = vi.fn();
+const showInformationMessage = vi.fn();
+const showErrorMessage = vi.fn();
+const createWebviewPanel = vi.fn();
+const startDebugging = vi.fn();
+const stopDebugging = vi.fn();
+const executeCommand = vi.fn();
+const scaffoldProject = vi.fn();
+const materializeBundledAsset = vi.fn();
+const materializeBundledRom = vi.fn();
+let activeStackItem: unknown;
+let workspaceFolders: Array<{ name: string; uri: { fsPath: string } }> | undefined;
+let panelMessageHandler: ((msg: unknown) => void) | undefined;
+let panelHtml = '';
+
+type TestWorkspaceFolder = { name: string; uri: { fsPath: string }; index: number };
+
+function workspaceFolder(name: string, fsPath: string, index = 0): TestWorkspaceFolder {
+  return { name, uri: { fsPath }, index };
+}
+
+function tec1gWorkspaceFolder(index = 0): TestWorkspaceFolder {
+  return workspaceFolder('tec1g-mon3', '/workspace/tec1g-mon3', index);
+}
+
+function registeredCommand(name: string): (...args: unknown[]) => unknown {
+  const command = registeredCommands.get(name);
+  expect(command).toBeTypeOf('function');
+  return command as (...args: unknown[]) => unknown;
+}
+
+class DebugStackFrame {
+  public constructor(
+    public readonly session: {
+      customRequest: (command: string, args: unknown) => Promise<unknown>;
+    },
+    public readonly threadId: number,
+    public readonly frameId: number
+  ) {}
+}
+
+vi.mock('fs', () => ({
+  existsSync,
+  mkdirSync,
+  readFileSync,
+  writeFileSync,
+}));
+
+vi.mock('vscode', () => ({
+  commands: {
+    registerCommand,
+    executeCommand,
+  },
+  debug: {
+    startDebugging,
+    stopDebugging,
+    activeDebugSession: undefined,
+    get activeStackItem() {
+      return activeStackItem;
+    },
+  },
+  DebugStackFrame,
+  window: {
+    showInformationMessage,
+    showErrorMessage,
+    showQuickPick: vi.fn(),
+    showOpenDialog: vi.fn(),
+    showInputBox: vi.fn(),
+    createWebviewPanel,
+  },
+  ViewColumn: {
+    Active: 1,
+  },
+  workspace: {
+    get workspaceFolders() {
+      return workspaceFolders;
+    },
+    getWorkspaceFolder: vi.fn(),
+    updateWorkspaceFolders: vi.fn(() => true),
+  },
+}));
+
+vi.mock('../../src/extension/project-scaffolding', () => ({
+  scaffoldProject,
+}));
+
+vi.mock('../../src/extension/bundle-materialize', () => ({
+  BUNDLED_MON1B_V1_REL: 'tec1/mon1b/v1',
+  BUNDLED_MON3_V1_REL: 'tec1g/mon3/v1',
+  materializeBundledAsset,
+  materializeBundledRom,
+}));
+
+type ExtensionCommandOptions = Parameters<typeof registerExtensionCommandsType>[0];
+type ExtensionCommandOverrides = Partial<
+  Omit<
+    ExtensionCommandOptions,
+    'context' | 'platformViewProvider' | 'workspaceSelection' | 'targetSelection'
+  >
+> & {
+  context?: Record<string, unknown>;
+  platformViewProvider?: Record<string, unknown>;
+  workspaceSelection?: Record<string, unknown>;
+  targetSelection?: Record<string, unknown>;
+};
+
+describe('registerExtensionCommands', () => {
+  const registerCommands = async (overrides: ExtensionCommandOverrides = {}) => {
+    const { registerExtensionCommands } = await import('../../src/extension/commands');
+    const { context, platformViewProvider, workspaceSelection, targetSelection, ...rest } =
+      overrides;
+
+    registerExtensionCommands({
+      ...rest,
+      context: { subscriptions: [], ...context } as never,
+      platformViewProvider: {
+        refreshIdleView: vi.fn(),
+        ...platformViewProvider,
+      } as never,
+      sourceColumns: {} as never,
+      terminalPanel: {} as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+        ...workspaceSelection,
+      } as never,
+      targetSelection: {
+        ...targetSelection,
+      } as never,
+    });
+  };
+
+  beforeEach(async () => {
+    vi.clearAllMocks();
+    registeredCommands.clear();
+    workspaceFolders = [tec1gWorkspaceFolder()];
+    existsSync.mockImplementation((candidate: string) => {
+      const n = path.normalize(candidate);
+      if (n === projectConfigPath) {
+        return true;
+      }
+      if (/\.(asm|z80)$/i.test(n)) {
+        return true;
+      }
+      return false;
+    });
+    readFileSync.mockReturnValue(
+      JSON.stringify({
+        targets: {
+          app: { sourceFile: 'src/main.asm' },
+          serial: { sourceFile: 'src/serial.asm' },
+        },
+      })
+    );
+    panelMessageHandler = undefined;
+    panelHtml = '';
+    activeStackItem = undefined;
+    const vscode = await import('vscode');
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = undefined;
+    createWebviewPanel.mockImplementation(() => {
+      const webview = {
+        cspSource: 'vscode-webview:',
+        get html() {
+          return panelHtml;
+        },
+        set html(value: string) {
+          panelHtml = value;
+        },
+        onDidReceiveMessage: vi.fn((handler: (msg: unknown) => void) => {
+          panelMessageHandler = handler;
+          return { dispose: vi.fn() };
+        }),
+      };
+      return {
+        webview,
+        onDidDispose: vi.fn((handler: () => void) => {
+          void handler;
+          return { dispose: vi.fn() };
+        }),
+      };
+    });
+  });
+
+  it('starts debugging with the current project config instead of the selected launch config', async () => {
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue(tec1gWorkspaceFolder());
+    const rememberWorkspace = vi.fn();
+    const platformViewProvider = { refreshIdleView: vi.fn() };
+
+    await registerCommands({
+      platformViewProvider: platformViewProvider as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace,
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const startDebug = registeredCommand('debug80.startDebug');
+
+    startDebugging.mockResolvedValueOnce(true);
+    const result = await startDebug?.();
+
+    expect(result).toBe(true);
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: '/workspace/tec1g-mon3' } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        name: 'Debug80: Current Project',
+        projectConfig: projectConfigPath,
+      })
+    );
+    expect(executeCommand).not.toHaveBeenCalledWith('workbench.action.debug.start');
+  }, 15000);
+
+  it('starts debugging directly from a provided rootPath', async () => {
+    const rememberWorkspace = vi.fn();
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace,
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const startDebug = registeredCommand('debug80.startDebug');
+
+    startDebugging.mockResolvedValueOnce(true);
+    const result = await startDebug?.({ rootPath: '/workspace/tec1g-mon3' });
+
+    expect(result).toBe(true);
+    expect(rememberWorkspace).toHaveBeenCalled();
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: '/workspace/tec1g-mon3' } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        name: 'Debug80: Current Project',
+        projectConfig: projectConfigPath,
+      })
+    );
+  });
+
+  it('prompts for a configured project when a provided debug root is not a project', async () => {
+    workspaceFolders = [
+      { name: 'empty-root', uri: { fsPath: '/workspace/empty-root' }, index: 0 },
+      tec1gWorkspaceFolder(1),
+    ];
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue(workspaceFolders[1]);
+    existsSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      return normalized === projectConfigPath || /\.(asm|z80)$/i.test(normalized);
+    });
+
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const startDebug = registeredCommand('debug80.startDebug');
+
+    startDebugging.mockResolvedValueOnce(true);
+    const result = await startDebug?.({ rootPath: '/workspace/empty-root' });
+
+    expect(result).toBe(true);
+    expect(resolveWorkspaceFolder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: true,
+        requireProject: true,
+        placeHolder: 'Select the Debug80 project folder to debug',
+      })
+    );
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: '/workspace/tec1g-mon3' } }),
+      expect.objectContaining({ projectConfig: projectConfigPath })
+    );
+  });
+
+  it('creates a project directly in an already-open empty workspace root', async () => {
+    workspaceFolders = [{ name: 'empty-root', uri: { fsPath: '/workspace/empty-root' }, index: 0 }];
+    const folder = {
+      name: 'empty-root',
+      uri: { fsPath: '/workspace/empty-root' },
+      index: 0,
+    };
+    const rememberWorkspace = vi.fn();
+    const refreshIdleView = vi.fn();
+    const reveal = vi.fn();
+
+    await registerCommands({
+      platformViewProvider: { refreshIdleView, reveal } as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace,
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const createProject = registeredCommand('debug80.createProject');
+
+    scaffoldProject.mockResolvedValueOnce(true);
+    const result = await createProject?.({ rootPath: folder.uri.fsPath, platform: 'tec1g' });
+
+    expect(result).toBe(true);
+    expect(rememberWorkspace).toHaveBeenCalledWith(folder);
+    expect(refreshIdleView).toHaveBeenCalled();
+    expect(reveal).toHaveBeenCalledWith(false);
+    expect(scaffoldProject).toHaveBeenCalledWith(folder, false, undefined, 'tec1g');
+  });
+
+  it('adds a folder from Debug80 and offers to initialize it', async () => {
+    const vscode = (await import('vscode')) as unknown as {
+      window: { showOpenDialog: ReturnType<typeof vi.fn> };
+      workspace: {
+        getWorkspaceFolder: ReturnType<typeof vi.fn>;
+        updateWorkspaceFolders: ReturnType<typeof vi.fn>;
+      };
+    };
+    const rootPath = '/workspace/new-debug80-project';
+    workspaceFolders = [];
+    existsSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      return (
+        normalized !== path.normalize(`${rootPath}/debug80.json`) &&
+        normalized !== path.normalize(`${rootPath}/.vscode/debug80.json`)
+      );
+    });
+    vscode.window.showOpenDialog.mockResolvedValueOnce([{ fsPath: rootPath }]);
+    vscode.workspace.getWorkspaceFolder.mockReturnValue(undefined);
+    vscode.workspace.updateWorkspaceFolders.mockReturnValue(true);
+    showInformationMessage.mockResolvedValueOnce('Initialize');
+    executeCommand.mockResolvedValueOnce(true);
+
+    const rememberWorkspace = vi.fn();
+    const refreshIdleView = vi.fn();
+    await registerCommands({
+      platformViewProvider: { refreshIdleView } as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace,
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const addFolder = registeredCommand('debug80.addWorkspaceFolder');
+
+    await addFolder?.({ platform: 'tec1g' });
+
+    expect(vscode.workspace.updateWorkspaceFolders).toHaveBeenCalledWith(0, 0, {
+      uri: { fsPath: rootPath },
+      name: 'new-debug80-project',
+    });
+    expect(rememberWorkspace).toHaveBeenCalledWith(
+      expect.objectContaining({ name: 'new-debug80-project', uri: { fsPath: rootPath } })
+    );
+    expect(showInformationMessage).toHaveBeenCalledWith(
+      'Debug80: new-debug80-project is not a Debug80 project. Initialize it now?',
+      { modal: true },
+      'Initialize',
+      'Not Now'
+    );
+    expect(executeCommand).toHaveBeenCalledWith('debug80.createProject', {
+      rootPath,
+      platform: 'tec1g',
+    });
+    expect(refreshIdleView).toHaveBeenCalled();
+  });
+
+  it('reveals the Debug80 view through the dedicated command', async () => {
+    const reveal = vi.fn();
+    await registerCommands({
+      platformViewProvider: { refreshIdleView: vi.fn(), reveal } as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const openDebug80View = registeredCommand('debug80.openDebug80View');
+
+    const result = await openDebug80View?.();
+
+    expect(result).toBe(true);
+    expect(reveal).toHaveBeenCalledWith(true);
+  });
+
+  it('resets the Debug80 panel layout through the dedicated command', async () => {
+    const resetPanelLayout = vi.fn();
+    await registerCommands({
+      platformViewProvider: { refreshIdleView: vi.fn(), resetPanelLayout } as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const resetLayout = registeredCommand('debug80.resetPanelLayout');
+
+    const result = await resetLayout?.();
+
+    expect(result).toBe(true);
+    expect(resetPanelLayout).toHaveBeenCalledWith();
+  });
+
+  it('shows source-map diagnostics for the active z80 debug session', async () => {
+    const customRequest = vi.fn().mockResolvedValue({
+      targetMap: { path: '/workspace/tec1g-mon3/build/main.d8.json', exists: true },
+      auxiliaryMaps: [
+        { path: '/debug80/resources/bundles/tec1g/mon3/v1/mon3.d8.json', exists: true },
+      ],
+      counts: { sourceFiles: 4, symbols: 30, segments: 120, anchors: 20 },
+      currentPc: {
+        address: 0,
+        mapsToSource: true,
+        source: { path: '/debug80/resources/bundles/tec1g/mon3/v1/mon3.z80', line: 171 },
+      },
+    });
+    const vscode = await import('vscode');
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
+      type: 'z80',
+      customRequest,
+    };
+
+    await registerCommands();
+    const showSourceMapStatus = registeredCommand('debug80.showSourceMapStatus');
+
+    const result = await showSourceMapStatus?.();
+
+    expect(result).toBe(true);
+    expect(customRequest).toHaveBeenCalledWith('debug80/sourceMapStatus');
+    expect(showInformationMessage).toHaveBeenCalledWith(expect.stringContaining('Source map OK'));
+    expect(showInformationMessage).toHaveBeenCalledWith(expect.stringContaining('main.d8.json'));
+    expect(showInformationMessage).toHaveBeenCalledWith(expect.stringContaining('mon3.z80:171'));
+  });
+
+  it('runs to the call stack frame supplied by the context menu', async () => {
+    await registerCommands();
+    const customRequest = vi.fn().mockResolvedValue(undefined);
+    activeStackItem = new DebugStackFrame({ customRequest }, 1, 0);
+    const contextFrame = new DebugStackFrame({ customRequest }, 1, 3);
+
+    const runToStackReturn = registeredCommand('debug80.runToSelectedStackFrame');
+
+    const result = await runToStackReturn?.(contextFrame);
+
+    expect(result).toBe(true);
+    expect(customRequest).toHaveBeenCalledWith('debug80/runToStackFrame', { frameId: 3 });
+    expect(showInformationMessage).not.toHaveBeenCalled();
+    expect(showErrorMessage).not.toHaveBeenCalled();
+  });
+
+  it('copies monitor ROM bundles into the project and creates a ROM entry source', async () => {
+    const vscode = await import('vscode');
+
+    const folder = tec1gWorkspaceFolder();
+    existsSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      if (normalized === projectConfigPath) {
+        return true;
+      }
+      if (normalized.endsWith(path.normalize('roms/tec1g/mon3/mon3.rom.asm'))) {
+        return false;
+      }
+      return false;
+    });
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue(folder);
+    const showQuickPickMock = vscode.window.showQuickPick as ReturnType<typeof vi.fn>;
+    showQuickPickMock.mockResolvedValueOnce({
+      label: 'Skip existing files',
+      value: false,
+    });
+
+    readFileSync.mockImplementationOnce(() =>
+      JSON.stringify({
+        defaultProfile: 'mon3',
+        profiles: {
+          mon3: {
+            bundledAssets: {
+              romHex: {
+                bundleId: 'tec1g/mon3/v1',
+                path: 'mon3.bin',
+                destination: 'roms/tec1g/mon3/mon3.bin',
+              },
+              debugMap: {
+                bundleId: 'tec1g/mon3/v1',
+                path: 'mon3.d8.json',
+                destination: 'roms/tec1g/mon3/mon3.d8.json',
+              },
+            },
+          },
+        },
+        targets: {
+          app: { sourceFile: 'src/main.asm', profile: 'mon3' },
+        },
+      })
+    );
+    materializeBundledRom.mockImplementation(
+      (_extensionUri: unknown, _workspaceRoot: string, _bundleId: string) => ({
+        ok: true,
+        destinationRelative: 'roms/tec1g/mon3',
+        romRelativePath: 'roms/tec1g/mon3/mon3.bin',
+        debugMapRelativePath: 'roms/tec1g/mon3/mon3.d8.json',
+      })
+    );
+
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const materializeBundledRomCommand = registeredCommand('debug80.materializeBundledRom');
+
+    const result = await materializeBundledRomCommand?.();
+
+    expect(result).toBe(true);
+    expect(materializeBundledRom).toHaveBeenCalledTimes(1);
+    expect(materializeBundledRom).toHaveBeenCalledWith(
+      undefined,
+      '/workspace/tec1g-mon3',
+      'tec1g/mon3/v1',
+      { overwrite: false }
+    );
+    const [entryPath, entrySource] = vi.mocked(writeFileSync).mock.calls[0] ?? [];
+    expect(String(entryPath).replace(/\\/g, '/')).toMatch(
+      /\/workspace\/tec1g-mon3\/roms\/tec1g\/mon3\/mon3\.rom\.asm$/
+    );
+    expect(entrySource).toEqual(expect.stringContaining('.include "mon3.z80"'));
+    expect(showInformationMessage).toHaveBeenCalledWith(
+      expect.stringContaining('Copied monitor ROM into project for profile:mon3')
+    );
+  });
+
+  it('forces a prompt when selecting the active target', async () => {
+    const vscode = await import('vscode');
+
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue(tec1gWorkspaceFolder());
+    const resolveTarget = vi.fn().mockResolvedValue('serial');
+
+    await registerCommands({
+      context: {
+        subscriptions: [],
+        workspaceState: { get: vi.fn(() => undefined), update: vi.fn() },
+      } as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {
+        resolveTarget,
+        rememberTarget: vi.fn(),
+      } as never,
+    });
+
+    const selectTarget = registeredCommand('debug80.selectTarget');
+
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = undefined;
+    await selectTarget?.();
+
+    expect(resolveTarget).toHaveBeenCalledWith(projectConfigPath, {
+      prompt: true,
+      forcePrompt: true,
+      placeHolder: 'Select the active Debug80 target',
+    });
+  });
+
+  it('selects a configured root without starting debugging', async () => {
+    const folder = tec1gWorkspaceFolder();
+    const selectWorkspaceFolder = vi.fn().mockResolvedValue(folder);
+    const rememberWorkspace = vi.fn();
+    const refreshIdleView = vi.fn();
+    const reveal = vi.fn();
+
+    await registerCommands({
+      platformViewProvider: { refreshIdleView, reveal } as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace,
+        selectWorkspaceFolder,
+      } as never,
+    });
+
+    const selectRoot = registeredCommand('debug80.selectWorkspaceFolder');
+
+    const result = await selectRoot?.();
+
+    expect(result).toEqual(folder);
+    expect(rememberWorkspace).toHaveBeenCalledWith(folder);
+    expect(refreshIdleView).toHaveBeenCalled();
+    expect(reveal).toHaveBeenCalledWith(false);
+    expect(startDebugging).not.toHaveBeenCalled();
+  });
+
+  it('uses a direct root selection without prompting', async () => {
+    const folder = tec1gWorkspaceFolder();
+
+    const refreshIdleView = vi.fn();
+    const reveal = vi.fn();
+    await registerCommands({
+      platformViewProvider: { refreshIdleView, reveal } as never,
+      workspaceState: { get: vi.fn(() => undefined), update: vi.fn() },
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const selectRoot = registeredCommand('debug80.selectWorkspaceFolder');
+
+    const result = await selectRoot?.({ rootPath: folder.uri.fsPath });
+
+    expect(result).toEqual(folder);
+    expect(refreshIdleView).toHaveBeenCalled();
+    expect(reveal).toHaveBeenCalledWith(false);
+    expect(startDebugging).not.toHaveBeenCalled();
+  });
+
+  it('offers to initialize an unconfigured root selected from the Debug80 project UI', async () => {
+    const rootPath = '/workspace/empty-root';
+    const folder = {
+      name: 'empty-root',
+      uri: { fsPath: rootPath },
+      index: 0,
+    };
+    workspaceFolders = [folder];
+    existsSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      return (
+        normalized !== path.normalize(`${rootPath}/debug80.json`) &&
+        normalized !== path.normalize(`${rootPath}/.vscode/debug80.json`)
+      );
+    });
+    showInformationMessage.mockResolvedValueOnce('Initialize');
+    executeCommand.mockResolvedValueOnce(true);
+
+    const rememberWorkspace = vi.fn();
+    const refreshIdleView = vi.fn();
+    const reveal = vi.fn();
+    await registerCommands({
+      platformViewProvider: { refreshIdleView, reveal } as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace,
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const selectRoot = registeredCommand('debug80.selectWorkspaceFolder');
+
+    const result = await selectRoot?.({ rootPath, platform: 'tec1g' });
+
+    expect(result).toEqual(folder);
+    expect(showInformationMessage).toHaveBeenCalledWith(
+      'Debug80: empty-root is not a Debug80 project. Initialize it now?',
+      { modal: true },
+      'Initialize',
+      'Not Now'
+    );
+    expect(executeCommand).toHaveBeenCalledWith('debug80.createProject', {
+      rootPath,
+      platform: 'tec1g',
+    });
+    expect(rememberWorkspace).toHaveBeenCalledWith(folder);
+    expect(refreshIdleView).toHaveBeenCalled();
+    expect(reveal).toHaveBeenCalledWith(false);
+    expect(startDebugging).not.toHaveBeenCalled();
+  });
+
+  it('keeps an unconfigured root selected when initialization is declined', async () => {
+    const rootPath = '/workspace/empty-root';
+    const folder = {
+      name: 'empty-root',
+      uri: { fsPath: rootPath },
+      index: 0,
+    };
+    workspaceFolders = [folder];
+    existsSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      return (
+        normalized !== path.normalize(`${rootPath}/debug80.json`) &&
+        normalized !== path.normalize(`${rootPath}/.vscode/debug80.json`)
+      );
+    });
+    showInformationMessage.mockResolvedValueOnce('Not Now');
+
+    const rememberWorkspace = vi.fn();
+    const refreshIdleView = vi.fn();
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace,
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      platformViewProvider: { refreshIdleView, reveal: vi.fn() } as never,
+    });
+
+    const selectRoot = registeredCommand('debug80.selectWorkspaceFolder');
+
+    const result = await selectRoot?.({ rootPath, platform: 'tec1g' });
+
+    expect(result).toEqual(folder);
+    expect(showInformationMessage).toHaveBeenCalledWith(
+      'Debug80: empty-root is not a Debug80 project. Initialize it now?',
+      { modal: true },
+      'Initialize',
+      'Not Now'
+    );
+    expect(executeCommand).not.toHaveBeenCalledWith('debug80.createProject', expect.anything());
+    expect(rememberWorkspace).toHaveBeenCalledWith(folder);
+    expect(refreshIdleView).toHaveBeenCalled();
+    expect(startDebugging).not.toHaveBeenCalled();
+  });
+
+  it('restarts active z80 session when selected root changes platform', async () => {
+    const vscode = await import('vscode');
+
+    const oldRoot = '/workspace/tec1g-mon3';
+    const newRoot = '/workspace/tec1-mon1';
+    const oldConfigPath = path.normalize(`${oldRoot}/debug80.json`);
+    const newConfigPath = path.normalize(`${newRoot}/debug80.json`);
+    workspaceFolders = [
+      { name: 'tec1g-mon3', uri: { fsPath: oldRoot }, index: 0 },
+      { name: 'tec1-mon1', uri: { fsPath: newRoot }, index: 1 },
+    ];
+    existsSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      return normalized === oldConfigPath || normalized === newConfigPath;
+    });
+    readFileSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      if (normalized === oldConfigPath) {
+        return JSON.stringify({
+          projectPlatform: 'tec1g',
+          targets: { app: { sourceFile: 'src/main.asm' } },
+        });
+      }
+      if (normalized === newConfigPath) {
+        return JSON.stringify({
+          projectPlatform: 'tec1',
+          targets: { app: { sourceFile: 'src/main.asm' } },
+        });
+      }
+      return JSON.stringify({ targets: {} });
+    });
+
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const selectRoot = registeredCommand('debug80.selectWorkspaceFolder');
+
+    stopDebugging.mockResolvedValueOnce(undefined);
+    startDebugging.mockResolvedValueOnce(true);
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
+      type: 'z80',
+      id: 'session-switch',
+      configuration: { projectConfig: oldConfigPath },
+      workspaceFolder: { uri: { fsPath: oldRoot } },
+    };
+
+    const result = await selectRoot?.({ rootPath: newRoot });
+
+    expect(result).toEqual(expect.objectContaining({ uri: { fsPath: newRoot } }));
+    expect(stopDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'z80', id: 'session-switch' })
+    );
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: newRoot } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig: newConfigPath,
+      })
+    );
+  });
+
+  it('restarts an active z80 session when selected root changes project but keeps the same platform', async () => {
+    const vscode = await import('vscode');
+
+    const rootA = '/workspace/tec1-mon1';
+    const rootB = '/workspace/tec1-mon2';
+    const configAPath = path.normalize(`${rootA}/debug80.json`);
+    const configBPath = path.normalize(`${rootB}/debug80.json`);
+    workspaceFolders = [
+      { name: 'tec1-mon1', uri: { fsPath: rootA }, index: 0 },
+      { name: 'tec1-mon2', uri: { fsPath: rootB }, index: 1 },
+    ];
+    existsSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      return normalized === configAPath || normalized === configBPath;
+    });
+    readFileSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      if (normalized === configAPath || normalized === configBPath) {
+        return JSON.stringify({
+          projectPlatform: 'tec1',
+          targets: {
+            app: { sourceFile: 'src/main.asm' },
+            serial: { sourceFile: 'src/serial.asm' },
+          },
+        });
+      }
+      return JSON.stringify({ targets: {} });
+    });
+
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const selectRoot = registeredCommand('debug80.selectWorkspaceFolder');
+
+    stopDebugging.mockResolvedValueOnce(undefined);
+    startDebugging.mockResolvedValueOnce(true);
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
+      type: 'z80',
+      id: 'session-root-change',
+      configuration: { projectConfig: configAPath },
+      workspaceFolder: { uri: { fsPath: rootA } },
+    };
+
+    const result = await selectRoot?.({ rootPath: rootB });
+
+    expect(result).toEqual(expect.objectContaining({ uri: { fsPath: rootB } }));
+    expect(stopDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'z80', id: 'session-root-change' })
+    );
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: rootB } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig: configBPath,
+      })
+    );
+  });
+
+  it('auto-starts when a selected root exposes exactly one target', async () => {
+    readFileSync.mockReturnValueOnce(
+      JSON.stringify({
+        targets: {
+          matrix: { sourceFile: 'src/matrix.asm' },
+        },
+      })
+    );
+
+    const folder = {
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    };
+    const rememberWorkspace = vi.fn();
+    const rememberTarget = vi.fn();
+
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace,
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {
+        rememberTarget,
+      } as never,
+    });
+
+    const selectRoot = registeredCommand('debug80.selectWorkspaceFolder');
+
+    startDebugging.mockResolvedValueOnce(true);
+    const result = await selectRoot?.({ rootPath: folder.uri.fsPath });
+
+    expect(result).toEqual(folder);
+    expect(rememberWorkspace).toHaveBeenCalledWith(folder);
+    expect(rememberTarget).toHaveBeenCalledWith(projectConfigPath, 'matrix');
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: '/workspace/tec1g-mon3' } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig: projectConfigPath,
+      })
+    );
+  });
+
+  it('remembers a direct root selection even when no project config exists', async () => {
+    const folder = {
+      name: 'notes',
+      uri: { fsPath: '/workspace/notes' },
+      index: 0,
+    };
+    workspaceFolders = [folder];
+    const rememberWorkspace = vi.fn();
+
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace,
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const selectRoot = registeredCommand('debug80.selectWorkspaceFolder');
+
+    const result = await selectRoot?.({ rootPath: folder.uri.fsPath });
+
+    expect(result).toEqual(folder);
+    expect(rememberWorkspace).toHaveBeenCalledWith(folder);
+    expect(startDebugging).not.toHaveBeenCalled();
+  });
+
+  it('keeps target changes pending while an active z80 session continues running', async () => {
+    const vscode = await import('vscode');
+
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    });
+    const resolveTarget = vi.fn().mockResolvedValue('glcd-maze');
+
+    await registerCommands({
+      context: {
+        subscriptions: [],
+        workspaceState: { get: vi.fn(() => 'serial'), update: vi.fn() },
+      } as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {
+        resolveTarget,
+        rememberTarget: vi.fn(),
+      } as never,
+    });
+
+    const selectTarget = registeredCommand('debug80.selectTarget');
+
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
+      type: 'z80',
+      id: 'session-2',
+    };
+
+    const result = await selectTarget?.();
+
+    expect(result).toBe('glcd-maze');
+    expect(stopDebugging).not.toHaveBeenCalled();
+    expect(startDebugging).not.toHaveBeenCalled();
+    expect(showInformationMessage).toHaveBeenCalledWith(
+      'Debug80: Selected target glcd-maze. Press Build to apply it to the current session.'
+    );
+  });
+
+  it('keeps target changes pending when no debug session is running', async () => {
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    });
+    const resolveTarget = vi.fn().mockResolvedValue('serial');
+    const rememberTarget = vi.fn();
+
+    await registerCommands({
+      context: {
+        subscriptions: [],
+        workspaceState: { get: vi.fn(() => 'app'), update: vi.fn() },
+      } as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {
+        resolveTarget,
+        rememberTarget,
+      } as never,
+    });
+
+    const selectTarget = registeredCommand('debug80.selectTarget');
+
+    const result = await selectTarget?.();
+
+    expect(result).toBe('serial');
+    expect(rememberTarget).toHaveBeenCalledWith(projectConfigPath, 'serial');
+    expect(startDebugging).not.toHaveBeenCalled();
+    expect(stopDebugging).not.toHaveBeenCalled();
+    expect(showInformationMessage).toHaveBeenCalledWith('Debug80: Selected target serial.');
+  });
+
+  it('uses a direct target selection without prompting', async () => {
+    workspaceFolders = [
+      {
+        name: 'tec1g-mon3',
+        uri: { fsPath: '/workspace/tec1g-mon3' },
+        index: 0,
+      },
+    ];
+
+    await registerCommands({
+      context: {
+        subscriptions: [],
+        workspaceState: { get: vi.fn(() => undefined), update: vi.fn() },
+      } as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {
+        resolveTarget: vi.fn(),
+        rememberTarget: vi.fn(),
+      } as never,
+    });
+
+    const selectTarget = registeredCommand('debug80.selectTarget');
+
+    const result = await selectTarget?.({
+      rootPath: '/workspace/tec1g-mon3',
+      targetName: 'serial',
+    });
+
+    expect(result).toBe('serial');
+  });
+
+  it('reports an explicit target root that is not open without prompting', async () => {
+    const resolveWorkspaceFolder = vi.fn();
+
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {
+        resolveTarget: vi.fn(),
+        rememberTarget: vi.fn(),
+      } as never,
+    });
+
+    const selectTarget = registeredCommand('debug80.selectTarget');
+
+    const result = await selectTarget?.({ rootPath: '/workspace/missing' });
+
+    expect(result).toBeUndefined();
+    expect(resolveWorkspaceFolder).not.toHaveBeenCalled();
+    expect(showInformationMessage).toHaveBeenCalledWith(
+      'Debug80: The workspace root /workspace/missing is not open in this window.'
+    );
+  });
+
+  it('configures target platform through debug80.configureProject', async () => {
+    const vscode = await import('vscode');
+
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    });
+    const resolveTarget = vi.fn().mockResolvedValue('app');
+    readFileSync.mockReturnValueOnce(
+      JSON.stringify({
+        targets: {
+          app: { sourceFile: 'src/main.asm', platform: 'simple' },
+        },
+      })
+    );
+    const showQuickPickMock = vscode.window.showQuickPick as ReturnType<typeof vi.fn>;
+    showQuickPickMock.mockResolvedValueOnce({
+      label: 'Target Platform Override',
+      value: 'targetPlatformOverride',
+    });
+    showQuickPickMock.mockResolvedValueOnce({ label: 'tec1g' });
+
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {
+        resolveTarget,
+        rememberTarget: vi.fn(),
+      } as never,
+    });
+
+    const configureProject = registeredCommand('debug80.configureProject');
+
+    const result = await configureProject?.();
+
+    expect(result).toBe('app');
+    expect(writeFileSync).toHaveBeenCalled();
+    const serialized = String(writeFileSync.mock.calls.at(-1)?.[1] ?? '');
+    expect(serialized).toContain('"projectPlatform": "tec1g"');
+    expect(serialized).toContain('"platform": "tec1g"');
+  });
+
+  it('does not overwrite projectPlatform when editing one target in multi-target config', async () => {
+    const vscode = await import('vscode');
+
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    });
+    const resolveTarget = vi.fn().mockResolvedValue('app');
+    readFileSync.mockReturnValueOnce(
+      JSON.stringify({
+        projectVersion: 1,
+        projectPlatform: 'tec1',
+        targets: {
+          app: { sourceFile: 'src/main.asm', platform: 'simple' },
+          other: { sourceFile: 'src/other.asm', platform: 'tec1g' },
+        },
+      })
+    );
+    const showQuickPickMock = vscode.window.showQuickPick as ReturnType<typeof vi.fn>;
+    showQuickPickMock.mockResolvedValueOnce({
+      label: 'Target Platform Override',
+      value: 'targetPlatformOverride',
+    });
+    showQuickPickMock.mockResolvedValueOnce({ label: 'tec1g' });
+
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {
+        resolveTarget,
+        rememberTarget: vi.fn(),
+      } as never,
+    });
+
+    const configureProject = registeredCommand('debug80.configureProject');
+
+    await configureProject?.();
+
+    expect(writeFileSync).toHaveBeenCalled();
+    const serialized = String(writeFileSync.mock.calls.at(-1)?.[1] ?? '');
+    expect(serialized).toContain('"projectPlatform": "tec1"');
+    expect(serialized).toContain('"app"');
+    expect(serialized).toContain('"platform": "tec1g"');
+  });
+
+  it('renames target and updates target alias when config.target points to old name', async () => {
+    const vscode = await import('vscode');
+
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    });
+    const resolveTarget = vi.fn().mockResolvedValue('app');
+    readFileSync.mockReturnValueOnce(
+      JSON.stringify({
+        target: 'app',
+        defaultTarget: 'app',
+        targets: {
+          app: { sourceFile: 'src/main.asm', platform: 'simple' },
+        },
+      })
+    );
+    const showQuickPickMock = vscode.window.showQuickPick as ReturnType<typeof vi.fn>;
+    showQuickPickMock.mockResolvedValueOnce({ label: 'Target Name', value: 'targetName' });
+    const showInputBoxMock = vscode.window.showInputBox as ReturnType<typeof vi.fn>;
+    showInputBoxMock.mockResolvedValueOnce('renamed');
+
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {
+        resolveTarget,
+        rememberTarget: vi.fn(),
+      } as never,
+    });
+
+    const configureProject = registeredCommand('debug80.configureProject');
+
+    const result = await configureProject?.();
+
+    expect(result).toBe('renamed');
+    expect(writeFileSync).toHaveBeenCalled();
+    const serialized = String(writeFileSync.mock.calls.at(-1)?.[1] ?? '');
+    expect(serialized).toContain('"target": "renamed"');
+    expect(serialized).toContain('"defaultTarget": "renamed"');
+    expect(serialized).toContain('"renamed"');
+  });
+
+  it('renders project config panel with manifest-selected defaults and CSP nonce', async () => {
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    });
+    readFileSync.mockReturnValueOnce(
+      JSON.stringify({
+        projectPlatform: 'tec1g',
+        defaultTarget: 'serial',
+        targets: {
+          app: { sourceFile: 'src/main.asm', platform: 'tec1g' },
+          serial: { sourceFile: 'src/serial.asm', platform: 'tec1g' },
+        },
+      })
+    );
+
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: { resolveTarget: vi.fn(), rememberTarget: vi.fn() } as never,
+    });
+
+    const openPanel = registeredCommand('debug80.openProjectConfigPanel');
+
+    await openPanel?.();
+
+    expect(createWebviewPanel).toHaveBeenCalled();
+    expect(panelHtml).toContain('Content-Security-Policy');
+    expect(panelHtml).toContain("script-src 'nonce-");
+    expect(panelHtml).toContain('<option value="tec1g" selected>');
+    expect(panelHtml).toContain('<option value="serial" selected>');
+  });
+
+  it('rejects invalid save payload in project config panel', async () => {
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    });
+
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: { resolveTarget: vi.fn(), rememberTarget: vi.fn() } as never,
+    });
+
+    const openPanel = registeredCommand('debug80.openProjectConfigPanel');
+    await openPanel?.();
+
+    panelMessageHandler?.({
+      type: 'saveProjectConfig',
+      platform: 'bad-platform',
+      defaultTarget: 'app',
+    });
+
+    expect(showErrorMessage).toHaveBeenCalledWith('Debug80: Invalid project configuration values.');
+    expect(writeFileSync).not.toHaveBeenCalled();
+  });
+
+  it('saves project config panel updates and refreshes idle view', async () => {
+    const refreshIdleView = vi.fn();
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    });
+
+    await registerCommands({
+      platformViewProvider: { refreshIdleView } as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: { resolveTarget: vi.fn(), rememberTarget: vi.fn() } as never,
+    });
+
+    const openPanel = registeredCommand('debug80.openProjectConfigPanel');
+    await openPanel?.();
+
+    panelMessageHandler?.({
+      type: 'saveProjectConfig',
+      platform: 'tec1g',
+      defaultTarget: 'serial',
+    });
+
+    expect(writeFileSync).toHaveBeenCalled();
+    const serialized = String(writeFileSync.mock.calls.at(-1)?.[1] ?? '');
+    expect(serialized).toContain('"projectPlatform": "tec1g"');
+    expect(serialized).toContain('"defaultTarget": "serial"');
+    expect(serialized).toContain('"target": "serial"');
+    expect(refreshIdleView).toHaveBeenCalled();
+  });
+
+  it('restarts the active z80 session against the current project target', async () => {
+    const vscode = await import('vscode');
+
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    });
+
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const restartDebug = registeredCommand('debug80.restartDebug');
+
+    startDebugging.mockResolvedValueOnce(true);
+    stopDebugging.mockResolvedValueOnce(undefined);
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
+      type: 'z80',
+      id: 'session-1',
+    };
+
+    const result = await restartDebug?.();
+
+    expect(result).toBe(true);
+    expect(stopDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'z80', id: 'session-1' })
+    );
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: '/workspace/tec1g-mon3' } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig: projectConfigPath,
+      })
+    );
+  });
+
+  it('restarts the active z80 session from its session project without prompting for a project', async () => {
+    const vscode = await import('vscode');
+
+    const tetroRoot = '/workspace/tetro';
+    const otherRoot = '/workspace/other';
+    const tetroConfigPath = path.normalize(`${tetroRoot}/debug80.json`);
+    workspaceFolders = [
+      { name: 'other', uri: { fsPath: otherRoot }, index: 0 },
+      { name: 'tetro', uri: { fsPath: tetroRoot }, index: 1 },
+    ];
+    existsSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      return (
+        normalized === tetroConfigPath ||
+        normalized === path.normalize(`${otherRoot}/debug80.json`) ||
+        /\.(asm|z80)$/i.test(normalized)
+      );
+    });
+    const resolveWorkspaceFolder = vi.fn();
+
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const restartDebug = registeredCommand('debug80.restartDebug');
+
+    startDebugging.mockResolvedValueOnce(true);
+    stopDebugging.mockResolvedValueOnce(undefined);
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
+      type: 'z80',
+      id: 'session-tetro',
+      configuration: { projectConfig: tetroConfigPath },
+      workspaceFolder: { uri: { fsPath: tetroRoot } },
+    };
+
+    const result = await restartDebug?.();
+
+    expect(result).toBe(true);
+    expect(resolveWorkspaceFolder).not.toHaveBeenCalled();
+    expect(stopDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ type: 'z80', id: 'session-tetro' })
+    );
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: tetroRoot } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig: tetroConfigPath,
+      })
+    );
+  });
+
+  it('recovers the restart project from open workspace folders when the active session folder is wrong', async () => {
+    const vscode = await import('vscode');
+
+    const staleRoot = '/workspace/stale';
+    const tetroRoot = '/workspace/tetro';
+    const tetroConfigPath = path.normalize(`${tetroRoot}/debug80.json`);
+    workspaceFolders = [
+      { name: 'stale', uri: { fsPath: staleRoot }, index: 0 },
+      { name: 'tetro', uri: { fsPath: tetroRoot }, index: 1 },
+    ];
+    existsSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      return (
+        normalized === tetroConfigPath ||
+        normalized === path.normalize(`${staleRoot}/debug80.json`) ||
+        /\.(asm|z80)$/i.test(normalized)
+      );
+    });
+    const resolveWorkspaceFolder = vi.fn();
+
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const restartDebug = registeredCommand('debug80.restartDebug');
+
+    startDebugging.mockResolvedValueOnce(true);
+    stopDebugging.mockResolvedValueOnce(undefined);
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
+      type: 'z80',
+      id: 'session-stale-folder',
+      configuration: { projectConfig: tetroConfigPath },
+      workspaceFolder: { uri: { fsPath: staleRoot } },
+    };
+
+    const result = await restartDebug?.();
+
+    expect(result).toBe(true);
+    expect(resolveWorkspaceFolder).not.toHaveBeenCalled();
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: tetroRoot } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig: tetroConfigPath,
+      })
+    );
+  });
+
+  it('prompts on restart when an active z80 session has no project config and its folder is not a project', async () => {
+    const vscode = await import('vscode');
+
+    const artifactRoot = '/workspace/artifacts-only';
+    const projectRoot = '/workspace/tetro';
+    const projectConfig = path.normalize(`${projectRoot}/debug80.json`);
+    workspaceFolders = [
+      { name: 'artifacts-only', uri: { fsPath: artifactRoot }, index: 0 },
+      { name: 'tetro', uri: { fsPath: projectRoot }, index: 1 },
+    ];
+    existsSync.mockImplementation(
+      (candidate: string) => path.normalize(candidate) === projectConfig
+    );
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue(workspaceFolders[1]);
+
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const restartDebug = registeredCommand('debug80.restartDebug');
+
+    startDebugging.mockResolvedValueOnce(true);
+    stopDebugging.mockResolvedValueOnce(undefined);
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
+      type: 'z80',
+      id: 'session-no-project-config',
+      configuration: { asm: 'standalone.asm' },
+      workspaceFolder: { uri: { fsPath: artifactRoot } },
+    };
+
+    const result = await restartDebug?.();
+
+    expect(result).toBe(true);
+    expect(resolveWorkspaceFolder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: true,
+        requireProject: true,
+      })
+    );
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: projectRoot } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig,
+      })
+    );
+  });
+
+  it('prompts on restart when an active z80 session folder has an invalid project config', async () => {
+    const vscode = await import('vscode');
+
+    const staleRoot = '/workspace/stale';
+    const projectRoot = '/workspace/tetro';
+    const staleConfig = path.normalize(`${staleRoot}/debug80.json`);
+    const projectConfig = path.normalize(`${projectRoot}/debug80.json`);
+    workspaceFolders = [
+      { name: 'stale', uri: { fsPath: staleRoot }, index: 0 },
+      { name: 'tetro', uri: { fsPath: projectRoot }, index: 1 },
+    ];
+    existsSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      return normalized === staleConfig || normalized === projectConfig;
+    });
+    readFileSync.mockImplementation((candidate: string) => {
+      const normalized = path.normalize(candidate);
+      if (normalized === staleConfig) {
+        return JSON.stringify({ targets: {} });
+      }
+      if (normalized === projectConfig) {
+        return JSON.stringify({ targets: { tetro: { sourceFile: 'src/tetro.asm' } } });
+      }
+      return JSON.stringify({ targets: {} });
+    });
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue(workspaceFolders[1]);
+
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const restartDebug = registeredCommand('debug80.restartDebug');
+
+    startDebugging.mockResolvedValueOnce(true);
+    stopDebugging.mockResolvedValueOnce(undefined);
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
+      type: 'z80',
+      id: 'session-invalid-config',
+      configuration: { asm: 'standalone.asm' },
+      workspaceFolder: { uri: { fsPath: staleRoot } },
+    };
+
+    const result = await restartDebug?.();
+
+    expect(result).toBe(true);
+    expect(resolveWorkspaceFolder).toHaveBeenCalledWith(
+      expect.objectContaining({
+        prompt: true,
+        requireProject: true,
+      })
+    );
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: projectRoot } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig,
+      })
+    );
+  });
+
+  it('restarts with the current stop-on-entry state', async () => {
+    const vscode = await import('vscode');
+
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    });
+
+    await registerCommands({
+      platformViewProvider: { refreshIdleView: vi.fn(), stopOnEntry: true } as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const restartDebug = registeredCommand('debug80.restartDebug');
+
+    startDebugging.mockResolvedValueOnce(true);
+    stopDebugging.mockResolvedValueOnce(undefined);
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
+      type: 'z80',
+      id: 'session-stop-on-entry',
+    };
+
+    const result = await restartDebug?.();
+
+    expect(result).toBe(true);
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: '/workspace/tec1g-mon3' } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig: projectConfigPath,
+        stopOnEntry: true,
+      })
+    );
+  });
+
+  it('restarts with the current AZM register contracts enforcement state', async () => {
+    const vscode = await import('vscode');
+
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue({
+      name: 'tec1g-mon3',
+      uri: { fsPath: '/workspace/tec1g-mon3' },
+      index: 0,
+    });
+
+    await registerCommands({
+      platformViewProvider: {
+        refreshIdleView: vi.fn(),
+        stopOnEntry: false,
+        azmRegisterContractsMode: 'enforce',
+        azmContractUpdateMode: 'ask',
+      } as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const restartDebug = registeredCommand('debug80.restartDebug');
+
+    startDebugging.mockResolvedValueOnce(true);
+    stopDebugging.mockResolvedValueOnce(undefined);
+    (vscode.debug as { activeDebugSession?: unknown }).activeDebugSession = {
+      type: 'z80',
+      id: 'session-azm-register contracts',
+    };
+
+    const result = await restartDebug?.();
+
+    expect(result).toBe(true);
+    expect(startDebugging).toHaveBeenCalledWith(
+      expect.objectContaining({ uri: { fsPath: '/workspace/tec1g-mon3' } }),
+      expect.objectContaining({
+        type: 'z80',
+        request: 'launch',
+        projectConfig: projectConfigPath,
+        azm: {
+          registerContracts: 'error',
+          emitRegisterReport: true,
+          registerContractsProfile: 'mon3',
+        },
+      })
+    );
+  });
+});

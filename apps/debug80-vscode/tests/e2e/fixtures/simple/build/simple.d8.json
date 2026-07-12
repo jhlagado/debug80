@@ -1,0 +1,56 @@
+{
+  "format": "d8-debug-map",
+  "version": 1,
+  "arch": "z80",
+  "addressWidth": 16,
+  "endianness": "little",
+  "files": {
+    "src/simple.asm": {
+      "segments": [
+        {
+          "start": 0,
+          "end": 1,
+          "line": 2,
+          "lstLine": 2,
+          "lstText": "NOP",
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 1,
+          "end": 3,
+          "line": 3,
+          "lstLine": 3,
+          "lstText": "IN A,(TERM_STATUS)",
+          "kind": "code",
+          "confidence": "high"
+        },
+        {
+          "start": 3,
+          "end": 6,
+          "line": 5,
+          "lstLine": 5,
+          "lstText": "JP START",
+          "kind": "code",
+          "confidence": "high"
+        }
+      ],
+      "symbols": [
+        {
+          "name": "START",
+          "address": 0,
+          "line": 1,
+          "kind": "label",
+          "scope": "global"
+        },
+        {
+          "name": "VALUE",
+          "address": 3,
+          "line": 4,
+          "kind": "constant",
+          "scope": "global"
+        }
+      ]
+    }
+  }
+}

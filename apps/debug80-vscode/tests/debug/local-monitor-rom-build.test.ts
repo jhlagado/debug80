@@ -1,0 +1,128 @@
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { afterEach, describe, expect, it } from 'vitest';
+import {
+  applyLocalMonitorRomToLaunchArgs,
+  buildLocalMonitorRomIfPresent,
+} from '../../src/debug/launch/local-monitor-rom-build';
+import type { LaunchRequestArguments } from '../../src/debug/session/types';
+
+type LocalRomFixture = {
+  root: string;
+  sourcePath: string;
+  hexPath: string;
+  d8Path: string;
+};
+
+describe('local monitor ROM build conventions', () => {
+  const tmpDirs: string[] = [];
+
+  afterEach(() => {
+    for (const dir of tmpDirs) {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+    tmpDirs.length = 0;
+  });
+
+  it('discovers a TEC-1G .rom.asm entry and applies conventional ROM artifacts', async () => {
+    const fixture = createTec1gLocalRomFixture();
+
+    const args: LaunchRequestArguments = {
+      assemble: false,
+      sourceRoots: ['src'],
+      debugMaps: [
+        '/extension/resources/bundles/tec1g/mon3/v1/mon3.d8.json',
+        '/workspace/project/build/app-support.d8.json',
+      ],
+    };
+    const result = await buildLocalMonitorRomIfPresent({
+      platform: 'tec1g',
+      baseDir: fixture.root,
+      args,
+      sendEvent: () => undefined,
+    });
+
+    expect(result?.built).toBe(false);
+    expect(result?.rom.sourcePath).toBe(fixture.sourcePath);
+
+    applyLocalMonitorRomToLaunchArgs(args, 'tec1g', result);
+
+    expect(args.tec1g?.romHex).toBe(fixture.hexPath);
+    expect(args.debugMaps).toEqual([
+      fixture.d8Path,
+      '/workspace/project/build/app-support.d8.json',
+    ]);
+    expect(args.sourceRoots).toEqual(['src', 'roms/tec1g/mon3']);
+  });
+
+  it('does nothing when the platform has no local ROM source convention', async () => {
+    const root = makeTempDir('debug80-no-local-rom-');
+
+    const args: LaunchRequestArguments = { assemble: false };
+    const result = await buildLocalMonitorRomIfPresent({
+      platform: 'simple',
+      baseDir: root,
+      args,
+      sendEvent: () => undefined,
+    });
+
+    applyLocalMonitorRomToLaunchArgs(args, 'simple', result);
+
+    expect(result).toBeUndefined();
+    expect(args.debugMaps).toBeUndefined();
+    expect(args.tec1).toBeUndefined();
+    expect(args.tec1g).toBeUndefined();
+  });
+
+  it('does not run the TEC-1G local monitor convention when an explicit monitor artifact is active', async () => {
+    const fixture = createTec1gLocalRomFixture();
+    const args: LaunchRequestArguments = {
+      tec1g: {
+        romArtifacts: [
+          {
+            id: 'explicit-monitor',
+            role: 'monitor',
+            sourceFile: 'roms/tec1g/custom/monitor.asm',
+            outputBin: 'build/roms/tec1g/custom/monitor.bin',
+            address: 0xc000,
+            size: 0x4000,
+          },
+        ],
+      },
+    };
+
+    const result = await buildLocalMonitorRomIfPresent({
+      platform: 'tec1g',
+      baseDir: fixture.root,
+      args,
+      sendEvent: () => undefined,
+    });
+
+    expect(result).toBeUndefined();
+  });
+
+  function makeTempDir(prefix: string): string {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), prefix));
+    tmpDirs.push(dir);
+    return dir;
+  }
+
+  function createTec1gLocalRomFixture(): LocalRomFixture {
+    const root = makeTempDir('debug80-local-rom-');
+    const sourcePath = path.join(root, 'roms', 'tec1g', 'mon3', 'mon3.rom.asm');
+    const hexPath = path.join(root, 'build', 'roms', 'tec1g', 'mon3', 'mon3.hex');
+    const d8Path = path.join(root, 'build', 'roms', 'tec1g', 'mon3', 'mon3.d8.json');
+
+    writeTextFile(sourcePath, '.include "mon3.z80"\n');
+    writeTextFile(hexPath, ':00000001FF\n');
+    writeTextFile(d8Path, '{}\n');
+
+    return { root, sourcePath, hexPath, d8Path };
+  }
+
+  function writeTextFile(filePath: string, contents: string): void {
+    fs.mkdirSync(path.dirname(filePath), { recursive: true });
+    fs.writeFileSync(filePath, contents);
+  }
+});

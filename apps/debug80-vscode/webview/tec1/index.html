@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src {{cspSource}} data:; style-src {{cspSource}}; script-src 'nonce-{{nonce}}';" />
+  <link rel="stylesheet" href="{{commonStyleUri}}" />
+  <link rel="stylesheet" href="{{styleUri}}" />
+</head>
+<body data-active-tab="{{activeTab}}">
+<div id="app" tabindex="0">
+    <div class="project-header" id="projectHeader">
+      <div class="project-control">
+        <span class="project-label">Project</span>
+        <button class="project-root-button" id="selectProject" type="button">No workspace roots available</button>
+        <button class="add-workspace-button" id="addWorkspaceFolder" type="button" title="Add folder to workspace">+</button>
+      </div>
+      <div class="project-control">
+        <span class="project-label">Target</span>
+        <select class="project-select" id="homeTargetSelect"></select>
+      </div>
+      <div class="project-control" hidden>
+        <span class="project-label">Platform</span>
+        <select class="project-select" id="platformSelect">
+          <option value="simple">Simple</option>
+          <option value="tec1">TEC-1</option>
+          <option value="tec1g">TEC-1G</option>
+        </select>
+        <button class="project-action-button" id="platformInitButton" type="button">Initialize</button>
+      </div>
+      <div class="project-control" id="platformInfoControl" hidden>
+        <span class="project-label">Platform</span>
+        <span class="project-value" id="platformValue"></span>
+      </div>
+      <label
+        class="stop-on-entry-label"
+        hidden
+        title="Pause at the program entry point when starting or restarting debugging. Kept in the Debug80 panel for this VS Code window session only; not written to debug80.json."
+      >
+        <input type="checkbox" id="stopOnEntry" />
+        Stop on entry
+      </label>
+      <label
+        class="stop-on-entry-label"
+        hidden
+        title="Recommended for new code. Turn off only for legacy AZM source with inconsistent symbol capitalization. Saved in debug80.json."
+      >
+        <input type="checkbox" id="azmSymbolCase" checked />
+        Case-sensitive symbols
+      </label>
+    </div>
+    <div class="setup-card" id="setupCard">
+      <div class="setup-card-text" id="setupCardText">Select a workspace root to get started.</div>
+      <div class="setup-card-actions">
+        <button class="project-action-button" id="setupPrimaryAction" type="button">Open Folder</button>
+      </div>
+    </div>
+    <div class="debug80-toolbar">
+      <div></div>
+      <div class="debug80-status-slot">
+        <button
+          class="project-action-button"
+          id="testCoolTerm"
+          type="button"
+          hidden
+          title="Check whether Debug80 can connect to CoolTerm's remote control socket"
+        >Test CoolTerm</button>
+        <button
+          class="project-action-button"
+          id="sendHexToBoard"
+          type="button"
+          hidden
+          title="Send the selected target HEX file to the board via CoolTerm"
+        >Send to Board</button>
+        <button
+          class="session-status"
+          id="restartDebug"
+          type="button"
+          data-status="not-running"
+          title="Build and relaunch the current project and target using the current launch options"
+          aria-label="Build and relaunch the current project and target using the current launch options"
+          aria-live="polite"
+          aria-atomic="true"
+        >Build</button>
+      </div>
+    </div>
+    <div class="hardware-status-line" id="sourceMapStatusLine" hidden></div>
+    <div class="hardware-status-line" id="hardwareStatusLine" hidden></div>
+    <div class="debug80-accordion" id="debug80Accordion">
+      <section class="debug80-accordion-section">
+        <button class="debug80-accordion-header" type="button" data-accordion-toggle="machine" aria-expanded="true">Machine</button>
+        <div class="debug80-accordion-content" id="accordion-machine">
+          <div class="panel panel-ui" id="panel-ui">
+            <div class="layout">
+        <div class="left-col">
+          <div class="display" id="display"></div>
+          <div class="status">
+            <div class="key speed" id="speed">SLOW</div>
+            <div class="key mute" id="mute">MUTED</div>
+            <div class="speaker" id="speaker">
+              <span>SPEAKER</span>
+              <span id="speakerHz"></span>
+            </div>
+          </div>
+          <div class="keypad" id="keypad"></div>
+        </div>
+        <div class="right-col">
+          <div class="lcd">
+            <div class="lcd-title">LCD (HD44780 A00)</div>
+            <canvas class="lcd-canvas" id="lcdCanvas" width="224" height="40"></canvas>
+          </div>
+          <div class="matrix">
+            <div class="matrix-title">8x8 LED MATRIX</div>
+            <div class="matrix-grid" id="matrixGrid"></div>
+          </div>
+        </div>
+            </div>
+            <div class="serial">
+              <div class="serial-header">
+                <div class="serial-title">SERIAL (BIT 6)</div>
+                <div class="serial-buttons">
+                  <div class="key key-small" id="serialSendFile">SEND FILE</div>
+                  <div class="key key-small" id="serialSave">SAVE</div>
+                  <div class="key key-small" id="serialClear">CLEAR</div>
+                </div>
+              </div>
+              <pre class="serial-body" id="serialOut"></pre>
+              <div class="serial-input">
+                <input id="serialInput" type="text" placeholder="Type and press Enter (CR)..." />
+                <div class="key" id="serialSend">SEND</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+      <section class="debug80-accordion-section">
+        <button class="debug80-accordion-header" type="button" data-accordion-toggle="registers" aria-expanded="true">Registers</button>
+        <div class="debug80-accordion-content" id="accordion-registers">
+          <div class="panel panel-registers register-panel" id="panel-registers">
+            <div class="register-strip" id="registerStrip"></div>
+          </div>
+        </div>
+      </section>
+      <section class="debug80-accordion-section">
+        <button class="debug80-accordion-header" type="button" data-accordion-toggle="memory" aria-expanded="false">Memory</button>
+        <div class="debug80-accordion-content" id="accordion-memory">
+          <div class="panel panel-memory" id="panel-memory">
+            <div class="memory-panel" id="memoryPanel">
+              <div class="shell">
+          <div class="section">
+            <div class="section-header">
+              <div class="controls">
+                <select id="view-a">
+                    <option value="pc" selected>PC</option>
+                    <option value="sp">SP</option>
+                    <option value="bc">BC</option>
+                    <option value="de">DE</option>
+                    <option value="hl">HL</option>
+                    <option value="ix">IX</option>
+                    <option value="iy">IY</option>
+                    <option value="absolute">Absolute</option>
+                </select>
+                <span class="addr" id="addr-a">0x0000</span>
+                <span class="symbol" id="sym-a"></span>
+                <input class="absolute-input" id="address-a" type="text" placeholder="0x0000" />
+              </div>
+            </div>
+            <div class="dump" id="dump-a"></div>
+          </div>
+          <div class="section">
+            <div class="section-header">
+              <div class="controls">
+                <select id="view-b">
+                    <option value="pc">PC</option>
+                    <option value="sp" selected>SP</option>
+                    <option value="bc">BC</option>
+                    <option value="de">DE</option>
+                    <option value="hl">HL</option>
+                    <option value="ix">IX</option>
+                    <option value="iy">IY</option>
+                    <option value="absolute">Absolute</option>
+                </select>
+                <span class="addr" id="addr-b">0x0000</span>
+                <span class="symbol" id="sym-b"></span>
+                <input class="absolute-input" id="address-b" type="text" placeholder="0x0000" />
+              </div>
+            </div>
+            <div class="dump" id="dump-b"></div>
+          </div>
+          <div class="section">
+            <div class="section-header">
+              <div class="controls">
+                <select id="view-c">
+                    <option value="pc">PC</option>
+                    <option value="sp">SP</option>
+                    <option value="bc">BC</option>
+                    <option value="de">DE</option>
+                    <option value="hl" selected>HL</option>
+                    <option value="ix">IX</option>
+                    <option value="iy">IY</option>
+                    <option value="absolute">Absolute</option>
+                </select>
+                <span class="addr" id="addr-c">0x0000</span>
+                <span class="symbol" id="sym-c"></span>
+                <input class="absolute-input" id="address-c" type="text" placeholder="0x0000" />
+              </div>
+            </div>
+            <div class="dump" id="dump-c"></div>
+          </div>
+          <div class="section">
+            <div class="section-header">
+              <div class="controls">
+                <select id="view-d">
+                    <option value="pc">PC</option>
+                    <option value="sp">SP</option>
+                    <option value="bc">BC</option>
+                    <option value="de" selected>DE</option>
+                    <option value="hl">HL</option>
+                    <option value="ix">IX</option>
+                    <option value="iy">IY</option>
+                    <option value="absolute">Absolute</option>
+                </select>
+                <span class="addr" id="addr-d">0x0000</span>
+                <span class="symbol" id="sym-d"></span>
+                <input class="absolute-input" id="address-d" type="text" placeholder="0x0000" />
+              </div>
+            </div>
+            <div class="dump" id="dump-d"></div>
+          </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </div>
+  <script nonce="{{nonce}}" src="{{scriptUri}}"></script>
+</body>
+</html>

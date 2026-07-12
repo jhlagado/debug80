@@ -1,0 +1,226 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Glimmer",
+  "scopeName": "source.glim",
+  "fileTypes": ["glim"],
+  "patterns": [
+    { "include": "#comment" },
+    { "include": "#body" },
+    { "include": "#card" },
+    { "include": "#block-declaration" },
+    { "include": "#resource-declaration" },
+    { "include": "#type-declaration" },
+    { "include": "#state-declaration" },
+    { "include": "#bind-declaration" },
+    { "include": "#timing-declaration" },
+    { "include": "#file-declaration" },
+    { "include": "#program-declaration" },
+    { "include": "#header-clause" },
+    { "include": "#shape-row" },
+    { "include": "#end-keyword" },
+    { "include": "#number" }
+  ],
+  "repository": {
+    "comment": {
+      "name": "comment.line.semicolon.glim",
+      "match": ";.*$"
+    },
+    "body": {
+      "comment": "Everything between begin and end is verbatim AZM.",
+      "begin": "^\\s*(begin)\\s*(?=;|$)",
+      "end": "^\\s*(end)\\s*$",
+      "beginCaptures": { "1": { "name": "keyword.control.begin.glim" } },
+      "endCaptures": { "1": { "name": "keyword.control.end.glim" } },
+      "contentName": "meta.embedded.block.z80asm.glim",
+      "patterns": [{ "include": "source.z80.asm" }]
+    },
+    "card": {
+      "match": "^\\s*(card)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(?=;|$)",
+      "captures": {
+        "1": { "name": "keyword.control.card.glim" },
+        "2": { "name": "entity.name.section.card.glim" }
+      }
+    },
+    "block-declaration": {
+      "match": "^\\s*(effect|compute|render|enter|routine)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(?=;|$)",
+      "captures": {
+        "1": { "name": "storage.type.block.glim" },
+        "2": { "name": "entity.name.function.block.glim" }
+      }
+    },
+    "resource-declaration": {
+      "patterns": [
+        {
+          "match": "^\\s*(shape|sprite)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s+(color)\\s+([a-z_]+)\\s*(?=;|$)",
+          "captures": {
+            "1": { "name": "storage.type.resource.glim" },
+            "2": { "name": "entity.name.type.resource.glim" },
+            "3": { "name": "keyword.other.color.glim" },
+            "4": { "name": "support.constant.color.glim" }
+          }
+        },
+        {
+          "match": "^\\s*(tile)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s+(color)\\s+([a-z_]+)\\s+(on)\\s+([a-z_]+)\\s*(?=;|$)",
+          "captures": {
+            "1": { "name": "storage.type.resource.glim" },
+            "2": { "name": "entity.name.type.resource.glim" },
+            "3": { "name": "keyword.other.color.glim" },
+            "4": { "name": "support.constant.color.glim" },
+            "5": { "name": "keyword.other.on.glim" },
+            "6": { "name": "support.constant.color.glim" }
+          }
+        },
+        {
+          "match": "^\\s*(text)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s+(\"[^\"]*\")",
+          "captures": {
+            "1": { "name": "storage.type.resource.glim" },
+            "2": { "name": "entity.name.type.resource.glim" },
+            "3": { "name": "string.quoted.double.glim" }
+          }
+        },
+        {
+          "match": "^\\s*(sound)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s+(len)\\s+(\\S+)\\s+(div)\\s+(\\S+)\\s*(?=;|$)",
+          "captures": {
+            "1": { "name": "storage.type.resource.glim" },
+            "2": { "name": "entity.name.type.resource.glim" },
+            "3": { "name": "keyword.other.glim" },
+            "4": { "name": "constant.numeric.glim" },
+            "5": { "name": "keyword.other.glim" },
+            "6": { "name": "constant.numeric.glim" }
+          }
+        },
+        {
+          "match": "^\\s*(curve)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s+([a-z_]+)\\s+(steps)\\s+(\\S+)(?:\\s+(from)\\s+(\\S+)\\s+(to)\\s+(\\S+))?\\s*(?=;|$)",
+          "captures": {
+            "1": { "name": "storage.type.resource.glim" },
+            "2": { "name": "entity.name.type.resource.glim" },
+            "3": { "name": "support.constant.preset.glim" },
+            "4": { "name": "keyword.other.glim" },
+            "5": { "name": "constant.numeric.glim" },
+            "6": { "name": "keyword.other.glim" },
+            "7": { "name": "constant.numeric.glim" },
+            "8": { "name": "keyword.other.glim" },
+            "9": { "name": "constant.numeric.glim" }
+          }
+        },
+        {
+          "match": "^\\s*(rot[0-3])\\b(?:\\s*(=)\\s*(rot[0-3]))?",
+          "captures": {
+            "1": { "name": "keyword.other.rotation.glim" },
+            "2": { "name": "keyword.operator.assignment.glim" },
+            "3": { "name": "keyword.other.rotation.glim" }
+          }
+        }
+      ]
+    },
+    "type-declaration": {
+      "match": "^\\s*(type)\\s+([A-Za-z_][A-Za-z0-9_]*)(?:\\s*(=)\\s*(\\S+))?\\s*(?=;|$)",
+      "captures": {
+        "1": { "name": "storage.type.type.glim" },
+        "2": { "name": "entity.name.type.glim" },
+        "3": { "name": "keyword.operator.assignment.glim" },
+        "4": { "name": "entity.name.type.glim" }
+      }
+    },
+    "state-declaration": {
+      "match": "^\\s*(state|pulse)\\s+([A-Za-z_][A-Za-z0-9_]*)(?:\\s*(:)\\s*([A-Za-z_][A-Za-z0-9_]*(?:\\[[^\\]]*\\])?))?(?:\\s*(=)\\s*(\\S+))?(?:\\s+(changed))?\\s*(?=;|$)",
+      "captures": {
+        "1": { "name": "storage.type.state.glim" },
+        "2": { "name": "variable.other.cell.glim" },
+        "3": { "name": "keyword.operator.type.glim" },
+        "4": { "name": "storage.type.primitive.glim" },
+        "5": { "name": "keyword.operator.assignment.glim" },
+        "6": { "name": "constant.numeric.glim" },
+        "7": { "name": "storage.modifier.changed.glim" }
+      }
+    },
+    "bind-declaration": {
+      "match": "^\\s*(bind)\\s+(key)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s+(rising|held)(?:\\s+(period)\\s+(\\S+))?\\s*(->)\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*(?=;|$)",
+      "captures": {
+        "1": { "name": "keyword.control.bind.glim" },
+        "2": { "name": "keyword.other.key.glim" },
+        "3": { "name": "constant.language.key.glim" },
+        "4": { "name": "keyword.other.edge.glim" },
+        "5": { "name": "keyword.other.glim" },
+        "6": { "name": "constant.numeric.glim" },
+        "7": { "name": "keyword.operator.fires.glim" },
+        "8": { "name": "variable.other.pulse.glim" }
+      }
+    },
+    "timing-declaration": {
+      "match": "^\\s*(timer|ramp)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(:)\\s*(byte|word)(?:\\s*(=)\\s*(\\S+))?(?:\\s+(steps)\\s+(\\S+))?\\s*(->)\\s*([A-Za-z_][A-Za-z0-9_]*)(?:\\s+(once))?\\s*(?=;|$)",
+      "captures": {
+        "1": { "name": "storage.type.timing.glim" },
+        "2": { "name": "variable.other.cell.glim" },
+        "3": { "name": "keyword.operator.type.glim" },
+        "4": { "name": "storage.type.primitive.glim" },
+        "5": { "name": "keyword.operator.assignment.glim" },
+        "6": { "name": "constant.numeric.glim" },
+        "7": { "name": "keyword.other.glim" },
+        "8": { "name": "constant.numeric.glim" },
+        "9": { "name": "keyword.operator.fires.glim" },
+        "10": { "name": "variable.other.pulse.glim" },
+        "11": { "name": "storage.modifier.once.glim" }
+      }
+    },
+    "file-declaration": {
+      "match": "^\\s*(part|import)\\s+(\"[^\"]*\")\\s*(?=;|$)",
+      "captures": {
+        "1": { "name": "keyword.control.import.glim" },
+        "2": { "name": "string.quoted.double.path.glim" }
+      }
+    },
+    "program-declaration": {
+      "match": "^\\s*(program|platform|display)\\s+(\\S+)\\s*(?=;|$)",
+      "captures": {
+        "1": { "name": "keyword.control.program.glim" },
+        "2": { "name": "entity.name.namespace.glim" }
+      }
+    },
+    "header-clause": {
+      "patterns": [
+        {
+          "match": "^\\s*(on|updates)\\s+(.+?)\\s*(?=;|$)",
+          "captures": {
+            "1": { "name": "keyword.control.trigger.glim" },
+            "2": {
+              "patterns": [
+                {
+                  "match": "[A-Za-z_][A-Za-z0-9_]*",
+                  "name": "variable.other.cell.glim"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "match": "^\\s*(goto)\\s+([A-Za-z_][A-Za-z0-9_]*)\\s*(?=;|$)",
+          "captures": {
+            "1": { "name": "keyword.control.goto.glim" },
+            "2": { "name": "entity.name.section.card.glim" }
+          }
+        },
+        {
+          "match": "^\\s*([A-Za-z_][A-Za-z0-9_]*)\\s*(:)\\s*(byte|word|addr|[0-9]+|[A-Za-z_][A-Za-z0-9_]*(?:\\[[0-9]+\\])?)\\s*(?=;|$)",
+          "captures": {
+            "1": { "name": "variable.other.field.glim" },
+            "2": { "name": "keyword.operator.type.glim" },
+            "3": { "name": "storage.type.primitive.glim" }
+          }
+        }
+      ]
+    },
+    "shape-row": {
+      "match": "\"[.X]+\"",
+      "name": "string.quoted.double.pixels.glim"
+    },
+    "end-keyword": {
+      "match": "^\\s*(end)\\s*(?=;|$)",
+      "captures": { "1": { "name": "keyword.control.end.glim" } }
+    },
+    "number": {
+      "match": "(\\$[0-9A-Fa-f]+|%[01]+|0x[0-9A-Fa-f]+|\\b[0-9]+\\b)",
+      "name": "constant.numeric.glim"
+    }
+  }
+}

@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Build output
+out/
+build/
+*.vsix
+
+# IDE
+.idea/
+/.vscode/
+.husky/_/
+.claude/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+npm-debug.log*
+.eslintcache
+
+# Test coverage
+coverage/
+
+# Test artifacts
+tests/**/*.js
+tests/**/*.d.ts
+tests/**/*.map
+!tests/integration-vscode/**/*.js
+
+# Temporary files
+*.tmp
+*.temp
+.debug80/
+.fallow/
+.vscode-test/
+.agent-test-cwd.txt
+
+# E2E fixtures
+!tests/e2e/fixtures/**/build/
+!tests/e2e/fixtures/**/build/*
