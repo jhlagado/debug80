@@ -1,0 +1,849 @@
+{
+  "name": "debug80",
+  "displayName": "Debug80 IDE for Z80 Development",
+  "description": "Source-level Z80 debugging environment with built-in assembler and TEC-1/TEC-1G emulation.",
+  "version": "0.1.31",
+  "publisher": "jhlagado",
+  "license": "GPL-3.0-or-later",
+  "icon": "assets/debug80-icon.png",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/jhlagado/debug80.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jhlagado/debug80/issues"
+  },
+  "homepage": "https://debug80.com/",
+  "keywords": [
+    "z80",
+    "assembly",
+    "debugger",
+    "emulator",
+    "source-level debugging",
+    "tec-1",
+    "tec-1g",
+    "retrocomputing"
+  ],
+  "galleryBanner": {
+    "color": "#000000",
+    "theme": "dark"
+  },
+  "pricing": "Free",
+  "engines": {
+    "vscode": "^1.92.0"
+  },
+  "categories": [
+    "Debuggers",
+    "Programming Languages"
+  ],
+  "activationEvents": [
+    "onView:debug80.platformView",
+    "onDebugResolve:z80",
+    "workspaceContains:**/debug80.json",
+    "workspaceContains:**/.vscode/debug80.json",
+    "onLanguage:asm",
+    "onLanguage:asm-collection",
+    "onLanguage:z80-asm",
+    "onLanguage:z80-macroasm",
+    "onLanguage:glim"
+  ],
+  "main": "./out/extension/extension.js",
+  "contributes": {
+    "views": {
+      "debug": [
+        {
+          "type": "webview",
+          "id": "debug80.platformView",
+          "name": "Debug80",
+          "visibility": "visible"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "debug80.platformView",
+        "contents": "No Debug80 project found in this workspace.\n[Create Project](command:debug80.createProject)\nCreate a debug80.json configuration file to get started.",
+        "when": "!debug80.hasProject"
+      }
+    ],
+    "configurationDefaults": {
+      "files.associations": {
+        "*.asm": "z80-asm",
+        "*.z80": "z80-asm",
+        "*.asmi": "z80-asm",
+        "*.glim": "glim"
+      },
+      "editor.tokenColorCustomizations": {
+        "textMateRules": [
+          {
+            "scope": [
+              "comment.line.semicolon.z80-asm",
+              "punctuation.definition.comment.z80-asm"
+            ],
+            "settings": {
+              "foreground": "#6A9955"
+            }
+          },
+          {
+            "scope": [
+              "comment.line.documentation.z80-asm",
+              "comment.line.documentation.z80-asm punctuation.definition.comment.z80-asm",
+              "comment.line.documentation.z80-asm storage.type.annotation.z80-asm",
+              "comment.line.documentation.z80-asm storage.type.comment-header.z80-asm",
+              "comment.line.documentation.z80-asm entity.name.function.z80-asm",
+              "comment.line.documentation.z80-asm meta.annotation.parameters.z80-asm",
+              "comment.line.documentation.z80-asm variable.language.register.z80-asm",
+              "comment.line.documentation.z80-asm variable.language.flag.z80-asm",
+              "comment.line.documentation.z80-asm punctuation.separator.key-value.z80-asm",
+              "comment.line.documentation.z80-asm meta.comment.separator.z80-asm"
+            ],
+            "settings": {
+              "foreground": "#8ED97C"
+            }
+          },
+          {
+            "scope": [
+              "entity.name.label.z80-asm",
+              "entity.name.label.local.z80-asm"
+            ],
+            "settings": {
+              "foreground": "#B77DFF"
+            }
+          },
+          {
+            "scope": [
+              "variable.other.symbol.z80-asm",
+              "variable.other.field.z80-asm",
+              "constant.language.enum.member.z80-asm"
+            ],
+            "settings": {
+              "foreground": "#FF4D6D"
+            }
+          },
+          {
+            "scope": [
+              "entity.name.constant.equ.z80-asm",
+              "entity.name.type.z80-asm",
+              "entity.name.type.enum.z80-asm",
+              "support.type.z80-asm",
+              "support.type.primitive.z80-asm"
+            ],
+            "settings": {
+              "foreground": "#4DA3FF"
+            }
+          },
+          {
+            "scope": [
+              "keyword.control.directive.z80-asm",
+              "keyword.declaration.type.z80-asm",
+              "keyword.declaration.enum.z80-asm",
+              "keyword.declaration.op.z80-asm",
+              "storage.type.field.z80-asm"
+            ],
+            "settings": {
+              "foreground": "#FF66C4"
+            }
+          },
+          {
+            "scope": [
+              "storage.type.annotation.z80-asm",
+              "storage.type.comment-header.z80-asm",
+              "keyword.control.contract.z80-asm"
+            ],
+            "settings": {
+              "foreground": "#00D1A7"
+            }
+          },
+          {
+            "scope": [
+              "keyword.instruction.z80-asm"
+            ],
+            "settings": {
+              "foreground": "#FF9D00"
+            }
+          },
+          {
+            "scope": [
+              "variable.language.register.z80-asm"
+            ],
+            "settings": {
+              "foreground": "#00C2FF"
+            }
+          },
+          {
+            "scope": [
+              "variable.language.condition.z80-asm",
+              "variable.language.flag.z80-asm"
+            ],
+            "settings": {
+              "foreground": "#3B82F6"
+            }
+          },
+          {
+            "scope": [
+              "string.quoted.double.z80-asm",
+              "string.quoted.single.z80-asm"
+            ],
+            "settings": {
+              "foreground": "#A3E635"
+            }
+          },
+          {
+            "scope": [
+              "entity.name.function.z80-asm",
+              "support.function.azm-op.z80-asm",
+              "support.function.builtin.z80-asm"
+            ],
+            "settings": {
+              "foreground": "#FDE047"
+            }
+          },
+          {
+            "scope": [
+              "keyword.operator.z80-asm",
+              "punctuation.section.parens.z80-asm",
+              "punctuation.section.brackets.z80-asm",
+              "punctuation.definition.typecast.begin.z80-asm",
+              "punctuation.definition.typecast.end.z80-asm",
+              "punctuation.separator.comma.z80-asm",
+              "punctuation.separator.key-value.z80-asm",
+              "meta.comment.separator.z80-asm",
+              "meta.annotation.parameters.z80-asm",
+              "constant.character.escape.z80-asm"
+            ],
+            "settings": {
+              "foreground": "#A0AEC0"
+            }
+          },
+          {
+            "scope": [
+              "constant.numeric.hex.z80-asm",
+              "constant.numeric.binary.z80-asm",
+              "constant.numeric.decimal.z80-asm",
+              "constant.language.current-location.z80-asm"
+            ],
+            "settings": {
+              "foreground": "#FFD166"
+            }
+          },
+          {
+            "scope": [
+              "comment.line.semicolon.z80-asm storage.type.annotation.z80-asm",
+              "comment.line.semicolon.z80-asm storage.type.comment-header.z80-asm",
+              "comment.line.semicolon.z80-asm entity.name.function.z80-asm",
+              "comment.line.semicolon.z80-asm meta.annotation.parameters.z80-asm",
+              "comment.line.semicolon.z80-asm variable.language.register.z80-asm",
+              "comment.line.semicolon.z80-asm variable.language.flag.z80-asm",
+              "comment.line.semicolon.z80-asm punctuation.separator.key-value.z80-asm",
+              "comment.line.semicolon.z80-asm meta.comment.separator.z80-asm"
+            ],
+            "settings": {
+              "foreground": "#6A9955"
+            }
+          },
+          {
+            "scope": [
+              "comment.line.semicolon.glim"
+            ],
+            "settings": {
+              "foreground": "#6A9955"
+            }
+          },
+          {
+            "scope": [
+              "keyword.control.begin.glim",
+              "keyword.control.end.glim",
+              "keyword.control.card.glim",
+              "keyword.control.bind.glim",
+              "keyword.control.import.glim",
+              "keyword.control.program.glim",
+              "keyword.control.trigger.glim",
+              "keyword.control.goto.glim",
+              "storage.type.block.glim",
+              "storage.type.resource.glim",
+              "storage.type.type.glim",
+              "storage.type.state.glim",
+              "storage.type.timing.glim"
+            ],
+            "settings": {
+              "foreground": "#FF66C4"
+            }
+          },
+          {
+            "scope": [
+              "entity.name.function.block.glim"
+            ],
+            "settings": {
+              "foreground": "#FDE047"
+            }
+          },
+          {
+            "scope": [
+              "entity.name.section.card.glim",
+              "entity.name.type.glim",
+              "entity.name.type.resource.glim",
+              "entity.name.namespace.glim"
+            ],
+            "settings": {
+              "foreground": "#B77DFF"
+            }
+          },
+          {
+            "scope": [
+              "variable.other.cell.glim",
+              "variable.other.pulse.glim",
+              "variable.other.field.glim"
+            ],
+            "settings": {
+              "foreground": "#FF4D6D"
+            }
+          },
+          {
+            "scope": [
+              "keyword.operator.type.glim",
+              "keyword.operator.assignment.glim",
+              "keyword.operator.fires.glim"
+            ],
+            "settings": {
+              "foreground": "#00D1A7"
+            }
+          },
+          {
+            "scope": [
+              "constant.numeric.glim",
+              "constant.language.key.glim",
+              "support.constant.color.glim",
+              "support.constant.preset.glim"
+            ],
+            "settings": {
+              "foreground": "#FFD166"
+            }
+          },
+          {
+            "scope": [
+              "string.quoted.double.glim",
+              "string.quoted.double.path.glim",
+              "string.quoted.double.pixels.glim"
+            ],
+            "settings": {
+              "foreground": "#A3E635"
+            }
+          }
+        ]
+      }
+    },
+    "languages": [
+      {
+        "id": "z80-asm",
+        "aliases": [
+          "Z80 Assembly"
+        ],
+        "extensions": [
+          ".asm",
+          ".z80",
+          ".asmi"
+        ],
+        "configuration": "./language-configuration/z80-asm.json"
+      },
+      {
+        "id": "glim",
+        "aliases": [
+          "Glimmer"
+        ],
+        "extensions": [
+          ".glim"
+        ],
+        "configuration": "./language-configuration/glim.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "z80-asm",
+        "scopeName": "source.z80.asm",
+        "path": "./syntaxes/z80-asm.tmLanguage.json"
+      },
+      {
+        "language": "glim",
+        "scopeName": "source.glim",
+        "path": "./syntaxes/glim.tmLanguage.json"
+      }
+    ],
+    "breakpoints": [
+      {
+        "language": "asm-collection"
+      },
+      {
+        "language": "z80-asm"
+      },
+      {
+        "language": "z80-macroasm"
+      },
+      {
+        "language": "wla-dx-asm"
+      },
+      {
+        "language": "asm"
+      },
+      {
+        "language": "z80"
+      },
+      {
+        "language": "glim"
+      }
+    ],
+    "commands": [
+      {
+        "command": "debug80.createProject",
+        "title": "Debug80: Create Project"
+      },
+      {
+        "command": "debug80.startDebug",
+        "title": "Debug80: Start Debugging"
+      },
+      {
+        "command": "debug80.terminalInput",
+        "title": "Debug80: Send Terminal Input"
+      },
+      {
+        "command": "debug80.openTerminal",
+        "title": "Debug80: Show Terminal Panel"
+      },
+      {
+        "command": "debug80.openTec1",
+        "title": "Debug80: Show Platform Panel"
+      },
+      {
+        "command": "debug80.openTec1Memory",
+        "title": "Debug80: Show Platform Memory Panel"
+      },
+      {
+        "command": "debug80.selectWorkspaceFolder",
+        "title": "Debug80: Select Workspace Folder"
+      },
+      {
+        "command": "debug80.selectTarget",
+        "title": "Debug80: Select Active Target"
+      },
+      {
+        "command": "debug80.sendHexViaCoolTerm",
+        "title": "Debug80: Send HEX to Board via CoolTerm"
+      },
+      {
+        "command": "debug80.testCoolTermConnection",
+        "title": "Debug80: Test CoolTerm Connection"
+      },
+      {
+        "command": "debug80.restartDebug",
+        "title": "Debug80: Build Current Target"
+      },
+      {
+        "command": "debug80.runToSelectedStackFrame",
+        "title": "Run to Here"
+      },
+      {
+        "command": "debug80.setEntrySource",
+        "title": "Debug80: Set Program File"
+      },
+      {
+        "command": "debug80.configureProject",
+        "title": "Debug80: Configure Project"
+      },
+      {
+        "command": "debug80.openRomSource",
+        "title": "Debug80: Open Auxiliary Source"
+      },
+      {
+        "command": "debug80.openSourceFile",
+        "title": "Debug80: Open Source File"
+      },
+      {
+        "command": "debug80.showSourceMapStatus",
+        "title": "Debug80: Show Source Map Status"
+      },
+      {
+        "command": "debug80.searchWorkspaceSymbols",
+        "title": "Debug80: Search Workspace Symbols"
+      },
+      {
+        "command": "debug80.openProjectConfigPanel",
+        "title": "Debug80: Open Project Configuration Panel"
+      },
+      {
+        "command": "debug80.openDebug80View",
+        "title": "Debug80: Open Debug80 View"
+      },
+      {
+        "command": "debug80.resetPanelLayout",
+        "title": "Debug80: Reset Panel Layout"
+      },
+      {
+        "command": "debug80.materializeBundledRom",
+        "title": "Debug80: Copy Monitor ROM into Project"
+      }
+    ],
+    "menus": {
+      "commandPalette": [
+        {
+          "command": "debug80.terminalInput",
+          "when": "false"
+        },
+        {
+          "command": "debug80.openTerminal",
+          "when": "false"
+        },
+        {
+          "command": "debug80.openTec1",
+          "when": "false"
+        },
+        {
+          "command": "debug80.openTec1Memory",
+          "when": "false"
+        },
+        {
+          "command": "debug80.runToSelectedStackFrame",
+          "when": "false"
+        },
+        {
+          "command": "debug80.setEntrySource",
+          "when": "false"
+        },
+        {
+          "command": "debug80.openProjectConfigPanel",
+          "when": "false"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "debug80.setEntrySource",
+          "when": "resourceExtname == .asm || resourceExtname == .z80 || resourceExtname == .glim",
+          "group": "navigation@9"
+        }
+      ],
+      "editor/context": [
+        {
+          "command": "debug80.setEntrySource",
+          "when": "resourceExtname == .asm || resourceExtname == .z80 || resourceExtname == .glim",
+          "group": "navigation@9"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "debug80.setEntrySource",
+          "when": "resourceExtname == .asm || resourceExtname == .z80 || resourceExtname == .glim",
+          "group": "navigation@9"
+        }
+      ],
+      "debug/callstack/context": [
+        {
+          "command": "debug80.runToSelectedStackFrame",
+          "when": "debugType == z80",
+          "group": "navigation@20"
+        }
+      ]
+    },
+    "debuggers": [
+      {
+        "type": "z80",
+        "label": "Z80 Debug",
+        "languages": [
+          "asm-collection",
+          "z80-asm",
+          "z80-macroasm",
+          "wla-dx-asm",
+          "asm",
+          "z80",
+          "glim"
+        ],
+        "configurationAttributes": {
+          "launch": {
+            "required": [],
+            "properties": {
+              "projectConfig": {
+                "type": "string",
+                "description": "Path to debug80 project config (defaults to ${workspaceFolder}/debug80.json)"
+              },
+              "target": {
+                "type": "string",
+                "description": "Target name from the project config (defaults to defaultTarget)"
+              },
+              "asm": {
+                "type": "string",
+                "description": "Root assembly source file"
+              },
+              "assembler": {
+                "type": "string",
+                "description": "Assembler backend to use (inferred from the source extension when omitted)",
+                "enum": [
+                  "azm",
+                  "glimmer"
+                ]
+              },
+              "azm": {
+                "type": "object",
+                "description": "AZM-specific assembler options",
+                "properties": {
+                  "symbolCase": {
+                    "type": "string",
+                    "description": "AZM symbol lookup mode. Strict is recommended for new code; insensitive supports legacy source with inconsistent capitalization.",
+                    "enum": [
+                      "strict",
+                      "insensitive"
+                    ],
+                    "default": "strict"
+                  },
+                  "registerContracts": {
+                    "type": "string",
+                    "description": "AZM register contracts mode",
+                    "enum": [
+                      "off",
+                      "audit",
+                      "warn",
+                      "error",
+                      "strict"
+                    ],
+                    "default": "off"
+                  },
+                  "registerContractsPolicy": {
+                    "type": "object",
+                    "description": "File-scoped AZM register contracts policy. Patterns are AZM glob patterns; more specific matches win, with stricter modes winning ties.",
+                    "properties": {
+                      "strict": {
+                        "type": "array",
+                        "description": "Source file glob patterns assembled with strict register contract enforcement",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "audit": {
+                        "type": "array",
+                        "description": "Source file glob patterns assembled in register contract audit mode",
+                        "items": {
+                          "type": "string"
+                        }
+                      },
+                      "off": {
+                        "type": "array",
+                        "description": "Source file glob patterns excluded from register contract analysis",
+                        "items": {
+                          "type": "string"
+                        }
+                      }
+                    }
+                  },
+                  "emitRegisterReport": {
+                    "type": "boolean",
+                    "description": "Emit an AZM register contracts report artifact",
+                    "default": false
+                  },
+                  "emitRegisterInterface": {
+                    "type": "boolean",
+                    "description": "Emit an inferred AZM .asmi register contracts interface artifact",
+                    "default": false
+                  },
+                  "registerContractsProfile": {
+                    "type": "string",
+                    "description": "AZM built-in register contracts profile",
+                    "enum": [
+                      "mon3"
+                    ]
+                  },
+                  "registerContractsInterfaces": {
+                    "type": "array",
+                    "description": "AZM .asmi register contracts interface files",
+                    "items": {
+                      "type": "string"
+                    }
+                  }
+                }
+              },
+              "outputDir": {
+                "type": "string",
+                "description": "Directory for generated build artifacts (defaults to asm directory)"
+              },
+              "artifactBase": {
+                "type": "string",
+                "description": "Base filename for generated build artifacts (defaults to asm basename)"
+              },
+              "hex": {
+                "type": "string",
+                "description": "Path to a Z80 Intel HEX file (optional if asm is provided)"
+              },
+              "entry": {
+                "type": "number",
+                "description": "Override entry point (defaults to start of HEX data)"
+              },
+              "stopOnEntry": {
+                "type": "boolean",
+                "description": "Stop on the first instruction",
+                "default": true
+              },
+              "openRomSourcesOnLaunch": {
+                "type": "boolean",
+                "description": "Open auxiliary source files automatically on launch",
+                "default": true
+              },
+              "openMainSourceOnLaunch": {
+                "type": "boolean",
+                "description": "Open the primary source file automatically on launch",
+                "default": true
+              },
+              "sourceColumn": {
+                "type": "number",
+                "description": "Editor column (1-9) for source files opened on launch",
+                "default": 1
+              },
+              "panelColumn": {
+                "type": "number",
+                "description": "Editor column (1-9) for Debug80 platform panels",
+                "default": 2
+              },
+              "assemble": {
+                "type": "boolean",
+                "description": "Run the assembler before launch when asm is provided",
+                "default": true
+              },
+              "sourceRoots": {
+                "type": "array",
+                "description": "Additional directories to resolve source file paths from debug maps",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "stepOverMaxInstructions": {
+                "type": "number",
+                "description": "Maximum instructions to execute during Step Over before stopping (0 disables the cap)."
+              },
+              "stepOutMaxInstructions": {
+                "type": "number",
+                "description": "Maximum instructions to execute during Step Out before stopping (0 disables the cap)."
+              },
+              "terminal": {
+                "type": "object",
+                "description": "Optional terminal device port mapping",
+                "properties": {
+                  "txPort": {
+                    "type": "number",
+                    "description": "OUT port for transmit bytes"
+                  },
+                  "rxPort": {
+                    "type": "number",
+                    "description": "IN port for receive bytes"
+                  },
+                  "statusPort": {
+                    "type": "number",
+                    "description": "IN port for status bits (bit0 RX avail, bit1 TX ready)"
+                  },
+                  "interrupt": {
+                    "type": "boolean",
+                    "description": "Future: raise interrupt on RX available",
+                    "default": false
+                  }
+                }
+              }
+            }
+          }
+        },
+        "initialConfigurations": [
+          {
+            "type": "z80",
+            "request": "launch",
+            "name": "Debug80: Current Project",
+            "stopOnEntry": true
+          }
+        ],
+        "configurationSnippets": [
+          {
+            "label": "Debug80: Current Project",
+            "description": "Launch the selected Debug80 project and target from the current workspace",
+            "body": {
+              "type": "z80",
+              "request": "launch",
+              "name": "Debug80: Current Project",
+              "stopOnEntry": true
+            }
+          }
+        ]
+      }
+    ],
+    "keybindings": [
+      {
+        "command": "debug80.startDebug",
+        "key": "f5",
+        "when": "debug80.hasProject && !inDebugMode"
+      }
+    ]
+  },
+  "scripts": {
+    "clean": "node -e \"require('fs').rmSync('out', { recursive: true, force: true })\"",
+    "build": "npm run clean && tsc && npm run build:webview",
+    "bundle:sync-mon3": "node scripts/sync-mon3-bundle.cjs",
+    "build:webview": "node scripts/build-webview.js",
+    "vscode:prepublish": "npm run build",
+    "prepare": "husky",
+    "typecheck": "tsc --noEmit",
+    "typecheck:webview": "tsc -p webview/tsconfig.json --noEmit",
+    "watch": "tsc --watch",
+    "lint": "eslint src tests webview --ext .ts",
+    "lint:fix": "eslint src tests webview --ext .ts --fix",
+    "lint:staged": "lint-staged",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\" \"webview/**/*.ts\"",
+    "format:check": "prettier --check \"src/**/*.ts\" \"tests/**/*.ts\" \"webview/**/*.ts\"",
+    "pretest": "npm run build",
+    "test": "vitest run && npm run test:webview",
+    "test:watch": "vitest",
+    "coverage": "vitest run --coverage",
+    "perf:z80": "npm run build && node scripts/perf-z80.js",
+    "package": "vsce package",
+    "package:verify": "node scripts/check-vsix-contents.cjs",
+    "package:check": "npm run typecheck && npm run typecheck:webview && npm test && npm run package && npm run package:verify",
+    "preflight": "npm run lint && npm run package:check",
+    "publish:marketplace": "vsce publish",
+    "test:webview": "vitest run -c vitest.webview.config.ts",
+    "test:e2e:adapter": "vitest run -c vitest.e2e.config.ts",
+    "test:e2e": "npm run test:e2e:adapter",
+    "test:vscode": "node tests/integration-vscode/runTest.js"
+  },
+  "lint-staged": {
+    "src/**/*.ts": [
+      "eslint --cache --fix --max-warnings=0"
+    ],
+    "tests/**/*.ts": [
+      "eslint --cache --fix --max-warnings=0"
+    ],
+    "webview/**/*.ts": [
+      "eslint --cache --fix --max-warnings=0"
+    ]
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/vscode": "^1.80.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "@vitest/coverage-v8": "^4.1.7",
+    "@vscode/test-electron": "^2.5.2",
+    "@vscode/vsce": "^2.22.0",
+    "ajv": "^8.18.0",
+    "esbuild": "^0.28.0",
+    "eslint": "^8.55.0",
+    "eslint-plugin-jsdoc": "^48.2.3",
+    "happy-dom": "^20.9.0",
+    "husky": "^9.1.7",
+    "jsdom": "^29.0.1",
+    "lint-staged": "^16.4.0",
+    "prettier": "^3.1.0",
+    "typescript": "5.3.3",
+    "vitest": "^4.1.7"
+  },
+  "dependencies": {
+    "@jhlagado/azm": "^0.3.4",
+    "@jhlagado/glimmer": "^0.5.3",
+    "@vscode/debugadapter": "^1.64.0",
+    "@vscode/debugprotocol": "^1.64.0"
+  },
+  "overrides": {
+    "minimatch": ">=9.0.7",
+    "@vscode/vsce": {
+      "minimatch": "3.1.5"
+    }
+  }
+}

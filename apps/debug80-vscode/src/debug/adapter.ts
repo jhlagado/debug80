@@ -1,0 +1,471 @@
+/**
+ * @fileoverview Z80 Debug Adapter implementation.
+ * Provides DAP (Debug Adapter Protocol) support for Z80 assembly debugging.
+ */
+
+import * as path from 'path';
+import * as vscode from 'vscode';
+import {
+  DebugSession,
+  InitializedEvent,
+  Handles,
+  Event as DapEvent,
+  TerminatedEvent,
+} from '@vscode/debugadapter';
+import { DebugProtocol } from '@vscode/debugprotocol';
+
+import {
+  createSessionState,
+  resetSessionState,
+  type SessionStateShape,
+} from './session/session-state';
+import { setDiagnosticsEnabled } from './mapping/stack-service';
+import { BreakpointManager } from './mapping/breakpoint-manager';
+import { SourceStateManager } from './mapping/source-state-manager';
+import { CommandRouter } from './requests/command-router';
+import { PlatformRegistry } from './session/platform-registry';
+import {
+  applyLaunchBreakpoints,
+  applyLaunchSessionArtifacts,
+  captureEntryCpuStateIfNeeded,
+  createLaunchSequenceContext,
+  createRuntimeControlContext,
+  RuntimeControlContext,
+} from './session/runtime-control';
+import { VariableService } from './requests/variable-service';
+import { type MatrixKeyCombo } from '../platforms/tec1g/matrix-keymap';
+
+import { LaunchRequestArguments } from './session/types';
+import { resolveBaseDir } from './mapping/path-resolver';
+import { emitAssemblyFailed, emitConsoleOutput, emitEntryStopped } from './session/adapter-ui';
+import { AssembleFailureError } from './launch/assembler';
+import { buildRomSourcesResponse } from './requests/rom-requests';
+import { buildSourceMapStatus } from './requests/source-map-status-request';
+import { handleTerminalInput, handleTerminalBreak } from './requests/terminal-request';
+import { handleMemorySnapshotRequest } from './requests/memory-request';
+import { handleMemoryWriteRequest } from './requests/memory-write';
+import { handleRegisterWriteRequest } from './requests/register-request';
+import { populateFromConfig } from './launch-args';
+import {
+  MissingLaunchArtifactsError,
+  buildLaunchSession,
+  createLaunchLogger,
+  hasLaunchInputs,
+  respondToMissingArtifacts,
+  respondToMissingLaunchInputs,
+} from './launch/launch-sequence';
+import { Logger, NullLogger } from '../util/logger';
+import { AdapterRequestController } from './requests/adapter-request-controller';
+import { handleWarmRebuildRequest } from './requests/rebuild-request';
+import { getTec1gExpansionAddressSpace } from './mapping/debug-addressing';
+
+/** DAP thread identifier (single-threaded Z80) */
+const THREAD_ID = 1;
+
+export class Z80DebugSession extends DebugSession {
+  private breakpointManager = new BreakpointManager();
+  private sourceState = new SourceStateManager();
+  private sessionState: SessionStateShape = createSessionState();
+  private variableHandles = new Handles<string>();
+  private variableService = new VariableService(this.variableHandles);
+  private matrixHeldKeys = new Map<string, MatrixKeyCombo[]>();
+  private commandRouter = new CommandRouter();
+  private platformRegistry = new PlatformRegistry();
+  private platformState = {
+    active: 'simple',
+  };
+  private logger: Logger;
+  private readonly requestController: AdapterRequestController;
+  private readonly getRuntimeControlContext = (): RuntimeControlContext =>
+    createRuntimeControlContext({
+      sessionState: this.sessionState,
+      activePlatform: () => this.platformState.active,
+      isBreakpointAddress: (address: number | null): boolean =>
+        this.requestController.shouldStopAtBreakpoint(address),
+      getAddressSpace: (address: number) =>
+        getTec1gExpansionAddressSpace(address, {
+          activePlatform: this.platformState.active,
+          tec1gRuntime: this.sessionState.tec1gRuntime,
+        }),
+      getBreakpointAddressSpace: (address: number) =>
+        this.requestController.getBreakpointAddressSpace(address),
+      handleHaltStop: (): void => this.requestController.handleHaltStop(),
+      sendEvent: (event: unknown): void => {
+        this.sendEvent(event as DebugProtocol.Event);
+      },
+      logger: this.logger,
+    });
+
+  public constructor(logger: Logger = new NullLogger()) {
+    super();
+    this.logger = logger;
+    this.requestController = new AdapterRequestController({
+      threadId: THREAD_ID,
+      breakpointManager: this.breakpointManager,
+      sourceState: this.sourceState,
+      sessionState: this.sessionState,
+      platformState: this.platformState,
+      variableService: this.variableService,
+      commandRouter: this.commandRouter,
+      platformRegistry: this.platformRegistry,
+      sendResponse: (response: DebugProtocol.Response): void => {
+        this.sendResponse(response);
+      },
+      sendErrorResponse: (response: DebugProtocol.Response, id: number, message: string): void => {
+        this.sendErrorResponse(response, id, message);
+      },
+      sendEvent: (event: unknown): void => {
+        this.sendEvent(event as DebugProtocol.Event);
+      },
+      getRuntimeControlContext: (): RuntimeControlContext => this.getRuntimeControlContext(),
+    });
+    this.setDebuggerLinesStartAt1(true);
+    this.setDebuggerColumnsStartAt1(true);
+    this.registerCommandHandlers();
+  }
+
+  private registerCommandHandlers(): void {
+    const respond = (response: DebugProtocol.Response): void => this.sendResponse(response);
+    const respondError = (response: DebugProtocol.Response, id: number, message: string): void =>
+      this.sendErrorResponse(response, id, message);
+    const terminalDeps = {
+      getTerminalState: () => this.sessionState.ui.terminalState,
+      sendResponse: respond,
+      sendErrorResponse: respondError,
+    };
+    this.commandRouter.register('debug80/terminalInput', (response, args) =>
+      handleTerminalInput(response, args, terminalDeps)
+    );
+    this.commandRouter.register('debug80/terminalBreak', (response) =>
+      handleTerminalBreak(response, terminalDeps)
+    );
+    this.commandRouter.register('debug80/runToStackFrame', (response, args) =>
+      this.requestController.runToStackFrameRequest(response, args)
+    );
+    const memoryDeps = {
+      getRuntime: () => this.sessionState.runtimeState.execution,
+      getRunning: () => this.sessionState.runState.isRunning,
+      getSymbolAnchors: () => this.sessionState.source.symbolAnchors,
+      getLookupAnchors: () => this.sourceState.lookupAnchors,
+      getSymbolList: () => this.sessionState.source.symbolList,
+      sendResponse: respond,
+      sendErrorResponse: respondError,
+    };
+    this.commandRouter.register('debug80/memorySnapshot', (response, args) =>
+      handleMemorySnapshotRequest(response, args, memoryDeps)
+    );
+    this.commandRouter.register('debug80/registerWrite', (response, args) => {
+      const error = handleRegisterWriteRequest(this.sessionState, args);
+      if (error !== null) {
+        this.sendErrorResponse(response, 1, error);
+        return true;
+      }
+      this.sendResponse(response);
+      return true;
+    });
+    this.commandRouter.register('debug80/memoryWrite', (response, args) => {
+      const error = handleMemoryWriteRequest(this.sessionState, args);
+      if (error !== null) {
+        this.sendErrorResponse(response, 1, error);
+        return true;
+      }
+      this.sendResponse(response);
+      return true;
+    });
+    this.commandRouter.register('debug80/romSources', (response) => {
+      const autoOpen = new Set(
+        this.sessionState.autoOpenRomSourcePaths.map((p) => path.normalize(p))
+      );
+      response.body = buildRomSourcesResponse(
+        this.sessionState.romSourcePaths.map((sourcePath) => ({
+          label: path.basename(sourcePath),
+          path: sourcePath,
+          kind: 'source',
+          autoOpen: autoOpen.has(path.normalize(sourcePath)),
+        }))
+      );
+      this.sendResponse(response);
+      return true;
+    });
+    this.commandRouter.register('debug80/sourceMapStatus', (response) => {
+      response.body = buildSourceMapStatus(this.sessionState);
+      this.sendResponse(response);
+      return true;
+    });
+    this.commandRouter.register('debug80/rebuildWarm', (response) => {
+      void handleWarmRebuildRequest(response, {
+        logger: this.logger,
+        sessionState: this.sessionState,
+        sourceState: this.sourceState,
+        breakpointManager: this.breakpointManager,
+        platformState: this.platformState,
+        sendEvent: (event) => this.sendEvent(event),
+        sendResponse: (resp) => this.sendResponse(resp),
+        sendErrorResponse: (resp, id, message) => this.sendErrorResponse(resp, id, message),
+      });
+      return true;
+    });
+  }
+
+  protected initializeRequest(
+    response: DebugProtocol.InitializeResponse,
+    _args: DebugProtocol.InitializeRequestArguments
+  ): void {
+    response.body = response.body ?? {};
+    response.body.supportsConfigurationDoneRequest = true;
+    response.body.supportsSingleThreadExecutionRequests = true;
+    response.body.supportsSetVariable = true;
+    response.body.supportsGotoTargetsRequest = true;
+    response.body.supportsEvaluateForHovers = true;
+    response.body.supportsConditionalBreakpoints = true;
+
+    this.sendResponse(response);
+    this.sendEvent(new InitializedEvent());
+  }
+
+  protected launchRequest(
+    response: DebugProtocol.LaunchResponse,
+    args: LaunchRequestArguments
+  ): void {
+    void this.handleLaunchRequest(response, args);
+  }
+
+  private async handleLaunchRequest(
+    response: DebugProtocol.LaunchResponse,
+    args: LaunchRequestArguments
+  ): Promise<void> {
+    resetSessionState(this.sessionState);
+    this.breakpointManager.reset();
+    const launchLogger = createLaunchLogger(this.logger, (event) => this.sendEvent(event));
+    const merged: LaunchRequestArguments = populateFromConfig(args, {
+      resolveBaseDir: (requestArgs) => resolveBaseDir(requestArgs),
+    });
+    this.sessionState.launch.launchArgs = merged;
+    this.sessionState.runState.stopOnEntry = merged.stopOnEntry === true;
+    setDiagnosticsEnabled(merged.diagnostics === true);
+
+    if (!hasLaunchInputs(merged)) {
+      await respondToMissingLaunchInputs(
+        response,
+        () => this.promptForConfigCreation(),
+        (launchResponse, id, message) => this.sendErrorResponse(launchResponse, id, message)
+      );
+      return;
+    }
+
+    try {
+      const artifacts = await buildLaunchSession(
+        merged,
+        createLaunchSequenceContext({
+          logger: launchLogger,
+          sessionState: this.sessionState,
+          sourceState: this.sourceState,
+          platformRegistry: this.platformRegistry,
+          matrixHeldKeys: this.matrixHeldKeys,
+          emitEvent: (event) => {
+            this.sendEvent(event);
+          },
+          emitDapEvent: (name, payload) => {
+            this.sendEvent(new DapEvent(name, payload));
+          },
+          sendResponse: (platformResponse) => {
+            this.sendResponse(platformResponse);
+          },
+          sendErrorResponse: (platformResponse, id, message) => {
+            this.sendErrorResponse(platformResponse, id, message);
+          },
+        })
+      );
+      applyLaunchSessionArtifacts(
+        { platformState: this.platformState, sessionState: this.sessionState },
+        artifacts
+      );
+      captureEntryCpuStateIfNeeded(this.getRuntimeControlContext());
+      applyLaunchBreakpoints(
+        this.breakpointManager,
+        { mappingIndex: this.sessionState.mappingIndex },
+        (event) => {
+          this.sendEvent(event);
+        }
+      );
+      this.requestController.markLaunchComplete();
+      this.sendResponse(response);
+      this.requestController.startConfiguredExecutionIfReady();
+      this.sendEntryStopIfNeeded();
+    } catch (err) {
+      if (err instanceof MissingLaunchArtifactsError) {
+        await respondToMissingArtifacts(
+          response,
+          err,
+          () => this.promptForConfigCreation(),
+          (launchResponse, id, message) => this.sendErrorResponse(launchResponse, id, message)
+        );
+        return;
+      }
+      if (err instanceof AssembleFailureError) {
+        const detail = err.result.error ?? 'Assembly failed';
+        emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), detail);
+        emitAssemblyFailed((event) => this.sendEvent(event as DebugProtocol.Event), {
+          ...(err.result.diagnostic !== undefined ? { diagnostic: err.result.diagnostic } : {}),
+          ...(err.result.error !== undefined ? { error: err.result.error } : {}),
+        });
+        this.sendResponse(response);
+        this.sendEvent(new TerminatedEvent());
+        return;
+      }
+      const detail = `Failed to load program: ${String(err)}`;
+      this.logger.error(detail);
+      emitConsoleOutput((event) => this.sendEvent(event as DebugProtocol.Event), detail);
+      const short = detail.toLowerCase().includes('failed')
+        ? 'Failed to load program (see Debug Console for assembler output).'
+        : detail;
+      this.sendErrorResponse(response, 1, short);
+    }
+  }
+
+  private async promptForConfigCreation(): Promise<boolean> {
+    const created = await vscode.commands.executeCommand<boolean>('debug80.createProject');
+    return Boolean(created);
+  }
+
+  private sendEntryStopIfNeeded(): void {
+    const runState = this.sessionState.runState;
+    if (
+      !runState.stopOnEntry ||
+      !runState.launchComplete ||
+      !runState.configurationDone ||
+      runState.lastStopReason === 'entry'
+    ) {
+      return;
+    }
+    runState.lastStopReason = 'entry';
+    runState.lastBreakpointAddress = null;
+    emitEntryStopped((event) => this.sendEvent(event as DebugProtocol.Event), THREAD_ID);
+  }
+
+  protected setBreakPointsRequest(
+    response: DebugProtocol.SetBreakpointsResponse,
+    args: DebugProtocol.SetBreakpointsArguments
+  ): void {
+    this.requestController.setBreakPointsRequest(response, args);
+  }
+
+  protected configurationDoneRequest(
+    response: DebugProtocol.ConfigurationDoneResponse,
+    _args: DebugProtocol.ConfigurationDoneArguments
+  ): void {
+    this.requestController.configurationDoneRequest(response, _args);
+    this.sendEntryStopIfNeeded();
+  }
+
+  protected threadsRequest(response: DebugProtocol.ThreadsResponse): void {
+    this.requestController.threadsRequest(response);
+  }
+
+  protected continueRequest(
+    response: DebugProtocol.ContinueResponse,
+    _args: DebugProtocol.ContinueArguments
+  ): void {
+    this.requestController.continueRequest(response, _args);
+  }
+
+  protected nextRequest(
+    response: DebugProtocol.NextResponse,
+    _args: DebugProtocol.NextArguments
+  ): void {
+    this.requestController.nextRequest(response, _args);
+  }
+
+  protected stepInRequest(
+    response: DebugProtocol.StepInResponse,
+    _args: DebugProtocol.StepInArguments
+  ): void {
+    this.requestController.stepInRequest(response, _args);
+  }
+
+  protected stepOutRequest(
+    response: DebugProtocol.StepOutResponse,
+    _args: DebugProtocol.StepOutArguments
+  ): void {
+    this.requestController.stepOutRequest(response, _args);
+  }
+
+  protected pauseRequest(
+    response: DebugProtocol.PauseResponse,
+    _args: DebugProtocol.PauseArguments
+  ): void {
+    this.requestController.pauseRequest(response, _args);
+  }
+
+  protected gotoTargetsRequest(
+    response: DebugProtocol.GotoTargetsResponse,
+    args: DebugProtocol.GotoTargetsArguments
+  ): void {
+    this.requestController.gotoTargetsRequest(response, args);
+  }
+
+  protected gotoRequest(
+    response: DebugProtocol.GotoResponse,
+    args: DebugProtocol.GotoArguments
+  ): void {
+    this.requestController.gotoRequest(response, args);
+  }
+
+  protected stackTraceRequest(
+    response: DebugProtocol.StackTraceResponse,
+    _args: DebugProtocol.StackTraceArguments
+  ): void {
+    this.requestController.stackTraceRequest(response, _args);
+  }
+
+  protected scopesRequest(
+    response: DebugProtocol.ScopesResponse,
+    _args: DebugProtocol.ScopesArguments
+  ): void {
+    this.requestController.scopesRequest(response, _args);
+  }
+
+  protected variablesRequest(
+    response: DebugProtocol.VariablesResponse,
+    args: DebugProtocol.VariablesArguments
+  ): void {
+    this.requestController.variablesRequest(response, args);
+  }
+
+  protected evaluateRequest(
+    response: DebugProtocol.EvaluateResponse,
+    args: DebugProtocol.EvaluateArguments
+  ): void {
+    this.requestController.evaluateRequest(response, args);
+  }
+
+  protected setVariableRequest(
+    response: DebugProtocol.SetVariableResponse,
+    args: DebugProtocol.SetVariableArguments
+  ): void {
+    this.requestController.setVariableRequest(response, args);
+  }
+
+  protected disconnectRequest(
+    response: DebugProtocol.DisconnectResponse,
+    _args: DebugProtocol.DisconnectArguments
+  ): void {
+    this.requestController.disconnectRequest(response, _args);
+  }
+
+  protected customRequest(command: string, response: DebugProtocol.Response, args: unknown): void {
+    this.requestController.customRequest(command, response, args, (cmd, resp, customArgs) =>
+      super.customRequest(cmd, resp, customArgs)
+    );
+  }
+}
+
+export class Z80DebugAdapterFactory implements vscode.DebugAdapterDescriptorFactory {
+  public constructor(private readonly logger: Logger = new NullLogger()) {}
+
+  createDebugAdapterDescriptor(
+    _session: vscode.DebugSession
+  ): vscode.ProviderResult<vscode.DebugAdapterDescriptor> {
+    return new vscode.DebugAdapterInlineImplementation(new Z80DebugSession(this.logger));
+  }
+}

@@ -1,0 +1,445 @@
+/**
+ * @fileoverview D8 Debug Map format support.
+ * Implements the D8 debug map specification for portable debug information.
+ * @see docs/codebase/appendices/g-d8-debug-map-format.md
+ */
+
+import { MappingParseResult, SourceMapAnchor, SourceMapSegment } from './types';
+import { validateD8DebugMap } from './d8-map-validate';
+
+/** Byte order for multi-byte values */
+export type D8Endianness = 'little' | 'big';
+
+/** Type of code segment */
+export type D8SegmentKind = 'code' | 'data' | 'directive' | 'label' | 'macro' | 'unknown';
+
+/** Confidence level for mapping accuracy */
+export type D8Confidence = 'high' | 'medium' | 'low';
+
+/** Type of symbol definition */
+export type D8SymbolKind = 'label' | 'constant' | 'data' | 'macro' | 'unknown';
+
+/** Visibility scope of symbol */
+export type D8SymbolScope = 'global' | 'local';
+
+/** AZM declaration visibility in the assembled source model. */
+export type D8SymbolVisibility = 'exported' | 'source' | 'local';
+
+/**
+ * Root structure of a D8 Debug Map file.
+ */
+export interface D8DebugMap {
+  /** Format identifier, always 'd8-debug-map' */
+  format: 'd8-debug-map';
+  /** Format version number */
+  version: 1;
+  /** Target architecture (e.g., 'z80') */
+  arch: string;
+  /** Address width in bits */
+  addressWidth: number;
+  /** Byte order for addresses */
+  endianness: D8Endianness;
+  /** Source files with their segments and symbols */
+  files: Record<string, D8FileEntry>;
+  /** Shared assembler source-context text table for deduplication */
+  lstText?: string[];
+  /** Default values for segment properties */
+  segmentDefaults?: D8SegmentDefaults;
+  /** Default values for symbol properties */
+  symbolDefaults?: D8SymbolDefaults;
+  /** Memory layout description */
+  memory?: D8MemoryLayout;
+  /** Information about the generating tool */
+  generator?: D8Generator;
+  /** Diagnostic information from assembly */
+  diagnostics?: D8Diagnostics;
+}
+
+/**
+ * Entry for a single source file in the debug map.
+ */
+export interface D8FileEntry {
+  /** File metadata */
+  meta?: D8FileMeta;
+  /** Code/data segments in this file */
+  segments?: D8Segment[];
+  /** Symbols defined in this file */
+  symbols?: D8Symbol[];
+}
+
+/**
+ * Metadata about a source file.
+ */
+export interface D8FileMeta {
+  /** SHA-256 hash of file contents for verification */
+  sha256?: string;
+  /** Total number of lines in the file */
+  lineCount?: number;
+}
+
+/**
+ * Default property values for segments.
+ */
+export interface D8SegmentDefaults {
+  /** Default segment kind */
+  kind?: D8SegmentKind;
+  /** Default confidence level */
+  confidence?: D8Confidence;
+}
+
+/**
+ * A code or data segment with source mapping.
+ */
+export interface D8Segment {
+  /** Start address (inclusive) */
+  start: number;
+  /** End address (exclusive) */
+  end: number;
+  /** Source line number (null if unknown) */
+  line?: number | null;
+  /** Source column number */
+  column?: number;
+  /** Segment type */
+  kind?: D8SegmentKind;
+  /** Mapping confidence */
+  confidence?: D8Confidence;
+  /** Assembler source-context line number */
+  lstLine: number;
+  /** Assembler source-context text (inline) */
+  lstText?: string;
+  /** Index into lstText table (for deduplication) */
+  lstTextId?: number;
+  /** Include chain for nested includes */
+  includeChain?: string[];
+  /** Macro expansion information */
+  macro?: { name: string; callsite: { file: string; line: number; column?: number } };
+}
+
+/**
+ * Default property values for symbols.
+ */
+export interface D8SymbolDefaults {
+  /** Default symbol kind */
+  kind?: D8SymbolKind;
+  /** Default symbol scope */
+  scope?: D8SymbolScope;
+}
+
+/**
+ * A symbol definition.
+ */
+export interface D8Symbol {
+  /** Symbol name */
+  name: string;
+  /** Stable declaration identity emitted by AZM. */
+  identity?: string;
+  /** Symbol address, for labels and addressable data */
+  address?: number;
+  /** Symbol value, for constants that do not have a source address */
+  value?: number;
+  /** Definition line number */
+  line?: number;
+  /** Symbol type */
+  kind?: D8SymbolKind;
+  /** Symbol visibility */
+  scope?: D8SymbolScope;
+  /** AZM source-model visibility. */
+  visibility?: D8SymbolVisibility;
+  /** Assembled source unit that owns the declaration. */
+  sourceUnit?: string;
+  /** Size in bytes (for data symbols) */
+  size?: number;
+}
+
+/**
+ * Memory layout description.
+ */
+export interface D8MemoryLayout {
+  /** Memory region definitions */
+  segments: Array<{
+    /** Region name */
+    name: string;
+    /** Start address */
+    start: number;
+    /** End address */
+    end: number;
+    /** Region type */
+    kind?: 'rom' | 'ram' | 'io' | 'banked' | 'unknown';
+    /** Bank number for banked memory */
+    bank?: number;
+  }>;
+}
+
+/**
+ * Information about the tool that generated the debug map.
+ */
+export interface D8Generator {
+  /** Generator display name */
+  name?: string;
+  /** Generator tool identifier */
+  tool?: string;
+  /** Generator version */
+  version?: string;
+  args?: string[];
+  createdAt?: string;
+  inputs?: Record<string, string>;
+}
+
+export interface D8Diagnostics {
+  warnings?: string[];
+  errors?: string[];
+}
+
+export interface BuildD8MapOptions {
+  arch: string;
+  addressWidth: number;
+  endianness: D8Endianness;
+  generator?: D8Generator;
+  diagnostics?: D8Diagnostics;
+}
+
+const CONFIDENCE_MAP: Record<SourceMapSegment['confidence'], D8Confidence> = {
+  HIGH: 'high',
+  MEDIUM: 'medium',
+  LOW: 'low',
+};
+const CONFIDENCE_FROM_D8: Record<D8Confidence, SourceMapSegment['confidence']> = {
+  high: 'HIGH',
+  medium: 'MEDIUM',
+  low: 'LOW',
+};
+const UNKNOWN_FILE_KEY = '';
+
+export function buildD8DebugMap(
+  mapping: MappingParseResult,
+  options: BuildD8MapOptions
+): D8DebugMap {
+  const segmentDefaults = buildSegmentDefaults(mapping);
+  const symbolDefaults: D8SymbolDefaults = { kind: 'label', scope: 'global' };
+
+  const lstText: string[] = [];
+  const lstIndex = new Map<string, number>();
+
+  const files: Record<string, D8FileEntry> = {};
+
+  const ensureFileEntry = (file: string | null | undefined): D8FileEntry => {
+    const key = toFileKey(file);
+    let entry = files[key];
+    if (!entry) {
+      entry = {};
+      files[key] = entry;
+    }
+    return entry;
+  };
+
+  for (const segment of mapping.segments) {
+    const entry = ensureFileEntry(segment.loc.file);
+    const conf = CONFIDENCE_MAP[segment.confidence];
+    const line = segment.loc.line;
+
+    const seg: D8Segment = {
+      start: segment.start,
+      end: segment.end,
+      lstLine: segment.context.line,
+    };
+
+    if (line !== null && line !== undefined) {
+      seg.line = line;
+    }
+
+    if (segmentDefaults.kind !== 'unknown') {
+      seg.kind = 'unknown';
+    }
+
+    if (conf !== segmentDefaults.confidence) {
+      seg.confidence = conf;
+    }
+
+    const text = segment.context.text;
+    let textIndex = lstIndex.get(text);
+    if (textIndex === undefined) {
+      textIndex = lstText.length;
+      lstText.push(text);
+      lstIndex.set(text, textIndex);
+    }
+    seg.lstTextId = textIndex;
+
+    if (!entry.segments) {
+      entry.segments = [];
+    }
+    entry.segments.push(seg);
+  }
+
+  for (const anchor of mapping.anchors) {
+    const entry = ensureFileEntry(anchor.file);
+    const symbol: D8Symbol = {
+      name: anchor.symbol,
+      address: anchor.address,
+    };
+    if (anchor.line !== undefined) {
+      symbol.line = anchor.line;
+    }
+
+    if (symbolDefaults.kind && symbolDefaults.kind !== 'label') {
+      symbol.kind = 'label';
+    }
+    if (symbolDefaults.scope && symbolDefaults.scope !== 'global') {
+      symbol.scope = 'global';
+    }
+
+    if (!entry.symbols) {
+      entry.symbols = [];
+    }
+    entry.symbols.push(symbol);
+  }
+
+  return {
+    format: 'd8-debug-map',
+    version: 1,
+    arch: options.arch,
+    addressWidth: options.addressWidth,
+    endianness: options.endianness,
+    files,
+    lstText,
+    segmentDefaults,
+    symbolDefaults,
+    ...(options.generator ? { generator: options.generator } : {}),
+    ...(options.diagnostics ? { diagnostics: options.diagnostics } : {}),
+  };
+}
+
+export function buildMappingFromD8DebugMap(map: D8DebugMap): MappingParseResult {
+  return buildMappingFromGroupedDebugMap(map);
+}
+
+function buildMappingFromGroupedDebugMap(map: D8DebugMap): MappingParseResult {
+  const defaultConfidence = map.segmentDefaults?.confidence ?? 'low';
+  const lstText = map.lstText ?? [];
+  const segments: SourceMapSegment[] = [];
+  const anchors: SourceMapAnchor[] = [];
+
+  const files = map.files;
+  if (files === undefined || Array.isArray(files)) {
+    return { segments: [], anchors: [] };
+  }
+  for (const [fileKey, entry] of Object.entries(files)) {
+    const file = fromFileKey(fileKey);
+    for (const segment of entry.segments ?? []) {
+      const line = resolveD8SegmentLine(segment);
+      const confidence = segment.confidence ?? defaultConfidence;
+
+      const lstLine = segment.lstLine;
+      let lstTextValue = segment.lstText ?? '';
+      if (segment.lstTextId !== undefined) {
+        lstTextValue = lstText[segment.lstTextId] ?? '';
+      }
+
+      segments.push({
+        start: segment.start,
+        end: segment.end,
+        loc: {
+          file,
+          line,
+        },
+        context: {
+          line: lstLine,
+          text: lstTextValue,
+        },
+        confidence: CONFIDENCE_FROM_D8[confidence],
+      });
+    }
+
+    if (file !== null) {
+      for (const symbol of entry.symbols ?? []) {
+        if (symbol.address === undefined || !Number.isFinite(symbol.address)) {
+          continue;
+        }
+        if (symbol.line === undefined || symbol.line === null) {
+          continue;
+        }
+        anchors.push({
+          address: symbol.address,
+          symbol: symbol.name,
+          file,
+          line: symbol.line,
+        });
+      }
+    }
+  }
+
+  return { segments, anchors };
+}
+
+function resolveD8SegmentLine(segment: D8Segment): number | null {
+  const line = segment.line ?? segment.lstLine ?? null;
+  if (line !== null && line < 1) {
+    return null;
+  }
+  return line;
+}
+
+export function parseD8DebugMap(content: string): { map?: D8DebugMap; error?: string } {
+  let data: unknown;
+  try {
+    data = JSON.parse(content);
+  } catch (err) {
+    return { error: `Invalid JSON: ${String(err)}` };
+  }
+
+  const error = validateD8DebugMap(data);
+  if (error !== undefined && error.length > 0) {
+    return { error };
+  }
+
+  return { map: data as D8DebugMap };
+}
+
+function buildSegmentDefaults(mapping: MappingParseResult): D8SegmentDefaults {
+  const confidenceCounts = new Map<D8Confidence, number>();
+
+  for (const segment of mapping.segments) {
+    const conf = CONFIDENCE_MAP[segment.confidence];
+    confidenceCounts.set(conf, (confidenceCounts.get(conf) ?? 0) + 1);
+  }
+
+  const confidenceDefault = pickMostCommon(confidenceCounts, mapping.segments.length, false);
+
+  const defaults: D8SegmentDefaults = { kind: 'unknown' };
+  if (confidenceDefault !== undefined) {
+    defaults.confidence = confidenceDefault;
+  }
+  return defaults;
+}
+
+function pickMostCommon<T>(
+  counts: Map<T, number>,
+  total: number,
+  requireMajority: boolean
+): T | undefined {
+  let best: T | undefined;
+  let bestCount = 0;
+  for (const [value, count] of counts) {
+    if (count > bestCount) {
+      best = value;
+      bestCount = count;
+    }
+  }
+  if (best === undefined) {
+    return undefined;
+  }
+  if (requireMajority && bestCount <= total / 2) {
+    return undefined;
+  }
+  return best;
+}
+
+function toFileKey(file: string | null | undefined): string {
+  if (file === null || file === undefined || file.length === 0) {
+    return UNKNOWN_FILE_KEY;
+  }
+  return file.replace(/\\/g, '/');
+}
+
+function fromFileKey(fileKey: string): string | null {
+  return fileKey === UNKNOWN_FILE_KEY ? null : fileKey;
+}

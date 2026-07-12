@@ -1,0 +1,136 @@
+/**
+ * @file Configure-project target edit helper tests.
+ */
+
+import { describe, expect, it } from 'vitest';
+import type { ProjectConfig } from '../../src/debug/session/types';
+import { applyConfigureProjectTargetEdit } from '../../src/extension/configure-project-edit';
+
+function singleTargetConfig(target = targetConfig()): ProjectConfig {
+  return {
+    targets: {
+      app: target,
+    },
+  };
+}
+
+function targetConfig(
+  overrides: NonNullable<ProjectConfig['targets']>[string] = {}
+): NonNullable<ProjectConfig['targets']>[string] {
+  return {
+    sourceFile: 'src/main.asm',
+    ...overrides,
+  };
+}
+
+describe('configure-project target edit', () => {
+  it('applies platform override and updates project platform for a single target', () => {
+    const config = singleTargetConfig(targetConfig({ platform: 'simple', simple: {} }));
+
+    const result = applyConfigureProjectTargetEdit(config, 'app', {
+      kind: 'targetPlatformOverride',
+      platform: 'tec1g',
+    });
+
+    expect(result).toEqual({ kind: 'updated', targetName: 'app' });
+    expect(config.projectVersion).toBe(2);
+    expect(config.projectPlatform).toBe('tec1g');
+    expect(config.targets?.app?.platform).toBe('tec1g');
+    expect(config.targets?.app?.simple).toBeUndefined();
+    expect(config.targets?.app?.tec1g).toBeDefined();
+  });
+
+  it('keeps project platform stable when editing one target in a multi-target config', () => {
+    const config: ProjectConfig = {
+      projectPlatform: 'tec1',
+      targets: {
+        app: targetConfig({ platform: 'simple' }),
+        other: targetConfig({ sourceFile: 'src/other.asm', platform: 'tec1' }),
+      },
+    };
+
+    applyConfigureProjectTargetEdit(config, 'app', {
+      kind: 'targetPlatformOverride',
+      platform: 'tec1g',
+    });
+
+    expect(config.projectPlatform).toBe('tec1');
+    expect(config.targets?.app?.platform).toBe('tec1g');
+  });
+
+  it('clears stale unsupported assembler ids when changing program files', () => {
+    const config = singleTargetConfig(
+      targetConfig({ sourceFile: 'src/old.asm', asm: 'src/old.asm', assembler: 'legacy' })
+    );
+
+    applyConfigureProjectTargetEdit(config, 'app', {
+      kind: 'program',
+      sourceFile: 'src/main.asm',
+    });
+    expect(config.targets?.app?.sourceFile).toBe('src/main.asm');
+    expect(config.targets?.app?.asm).toBe('src/main.asm');
+    expect(config.targets?.app?.assembler).toBeUndefined();
+
+    config.targets!.app!.assembler = 'legacy';
+    applyConfigureProjectTargetEdit(config, 'app', {
+      kind: 'program',
+      sourceFile: 'src/main.z80',
+    });
+    expect(config.targets?.app?.sourceFile).toBe('src/main.z80');
+    expect(config.targets?.app?.asm).toBe('src/main.z80');
+    expect(config.targets?.app?.assembler).toBeUndefined();
+  });
+
+  it('preserves the Glimmer assembler when changing program files', () => {
+    const config = singleTargetConfig(
+      targetConfig({ sourceFile: 'src/old.glim', assembler: 'glimmer' })
+    );
+
+    applyConfigureProjectTargetEdit(config, 'app', {
+      kind: 'program',
+      sourceFile: 'src/game.glim',
+    });
+
+    expect(config.targets?.app?.assembler).toBe('glimmer');
+    expect(config.targets?.app?.sourceFile).toBe('src/game.glim');
+  });
+
+  it('renames targets and updates target aliases', () => {
+    const config: ProjectConfig = {
+      target: 'app',
+      defaultTarget: 'app',
+      targets: {
+        app: targetConfig(),
+      },
+    };
+
+    const result = applyConfigureProjectTargetEdit(config, 'app', {
+      kind: 'targetName',
+      targetName: 'renamed',
+    });
+
+    expect(result).toEqual({ kind: 'updated', targetName: 'renamed' });
+    expect(config.target).toBe('renamed');
+    expect(config.defaultTarget).toBe('renamed');
+    expect(config.targets?.app).toBeUndefined();
+    expect(config.targets?.renamed?.sourceFile).toBe('src/main.asm');
+  });
+
+  it('reports missing and unchanged targets without mutating', () => {
+    const config = singleTargetConfig();
+
+    expect(
+      applyConfigureProjectTargetEdit(config, 'missing', {
+        kind: 'assembler',
+        assembler: 'azm',
+      })
+    ).toEqual({ kind: 'missingTarget' });
+    expect(
+      applyConfigureProjectTargetEdit(config, 'app', {
+        kind: 'targetName',
+        targetName: 'app',
+      })
+    ).toEqual({ kind: 'noChange' });
+    expect(config.targets).toEqual({ app: { sourceFile: 'src/main.asm' } });
+  });
+});

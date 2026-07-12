@@ -1,0 +1,7 @@
+/* TEC-1 — layout breakpoints only. Keypad keycaps: ../common/styles.css */
+
+@container (min-width: 440px) {
+      .layout {
+        grid-template-columns: auto 260px;
+      }
+    }

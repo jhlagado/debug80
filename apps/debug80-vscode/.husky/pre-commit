@@ -1,0 +1,7 @@
+#!/usr/bin/env sh
+
+if git diff --cached --name-only --diff-filter=ACMR | grep -Eq '^src/.*\.ts$'; then
+  npm run typecheck
+fi
+
+npm run lint:staged

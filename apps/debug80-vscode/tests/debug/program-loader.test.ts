@@ -1,0 +1,188 @@
+/**
+ * @file Program loader tests.
+ */
+
+import { afterEach, describe, it, expect } from 'vitest';
+import * as fs from 'fs';
+import * as os from 'os';
+import * as path from 'path';
+import { loadProgramArtifacts } from '../../src/debug/launch/program-loader';
+import { TEC1_ROM_LOAD_ADDR } from '../../src/platforms/tec-common';
+import type { Logger } from '../../src/util/logger';
+import type { PlatformId } from '../../src/debug/session/types';
+
+type ProgramLoaderFixture = {
+  dir: string;
+  hexPath: string;
+};
+
+type LoadFixtureOptions = {
+  platform?: PlatformId;
+  logs?: string[];
+  tec1Config?: Parameters<typeof loadProgramArtifacts>[0]['tec1Config'];
+  tec1gConfig?: Parameters<typeof loadProgramArtifacts>[0]['tec1gConfig'];
+};
+
+const writeFile = (filePath: string, content: string): void => {
+  fs.mkdirSync(path.dirname(filePath), { recursive: true });
+  fs.writeFileSync(filePath, content);
+};
+
+const writeHexFile = (filePath: string, address: number, value: number): void => {
+  const addr = address.toString(16).padStart(4, '0').toUpperCase();
+  const byte = value.toString(16).padStart(2, '0').toUpperCase();
+  const line = `:01${addr}00${byte}00`;
+  writeFile(filePath, `${line}\n:00000001FF\n`);
+};
+
+const createLogger = (logs: string[]): Logger => ({
+  debug: (message: string, ...args: unknown[]) =>
+    logs.push([message, ...args].map(String).join(' ')),
+  info: (message: string, ...args: unknown[]) =>
+    logs.push([message, ...args].map(String).join(' ')),
+  warn: (message: string, ...args: unknown[]) =>
+    logs.push([message, ...args].map(String).join(' ')),
+  error: (message: string, ...args: unknown[]) =>
+    logs.push([message, ...args].map(String).join(' ')),
+});
+
+describe('program-loader', () => {
+  const tmpDirs: string[] = [];
+
+  afterEach(() => {
+    for (const dir of tmpDirs) {
+      fs.rmSync(dir, { recursive: true, force: true });
+    }
+    tmpDirs.length = 0;
+  });
+
+  it('loads TEC-1 overlays and applies program hex', () => {
+    const fixture = createProgramFixture(0x1000, 0xaa);
+    const { dir } = fixture;
+    const romPath = path.join(dir, 'rom.hex');
+    const ramPath = path.join(dir, 'ram.hex');
+
+    writeHexFile(romPath, 0x0000, 0x55);
+    writeHexFile(ramPath, 0x2000, 0x66);
+
+    const logs: string[] = [];
+    const result = loadFixture(fixture, {
+      platform: 'tec1',
+      logs,
+      tec1Config: { romHex: romPath, ramInitHex: ramPath },
+    });
+
+    expect(result.program.memory[0x0000]).toBe(0x55);
+    expect(result.program.memory[0x2000]).toBe(0x66);
+    expect(result.program.memory[0x1000]).toBe(0xaa);
+    expect(logs.length).toBe(0);
+  });
+
+  it('loads TEC-1G ROM binary at C000 and applies program hex', () => {
+    const fixture = createProgramFixture(0x3000, 0x99);
+    const { dir } = fixture;
+    const romPath = path.join(dir, 'rom.bin');
+    const ramPath = path.join(dir, 'ram.hex');
+
+    fs.writeFileSync(romPath, Buffer.from([0x11, 0x22]));
+    writeHexFile(ramPath, 0x4000, 0x77);
+
+    const logs: string[] = [];
+    const result = loadFixture(fixture, {
+      platform: 'tec1g',
+      logs,
+      tec1gConfig: { romHex: romPath, ramInitHex: ramPath },
+    });
+
+    expect(result.program.memory[TEC1_ROM_LOAD_ADDR]).toBe(0x11);
+    expect(result.program.memory[TEC1_ROM_LOAD_ADDR + 1]).toBe(0x22);
+    expect(result.program.memory[0x4000]).toBe(0x77);
+    expect(result.program.memory[0x3000]).toBe(0x99);
+    expect(logs.length).toBe(0);
+  });
+
+  it('logs warning when TEC-1 ROM is missing', () => {
+    const fixture = createProgramFixture(0x1000, 0xbb);
+
+    const logs: string[] = [];
+    const result = loadFixture(fixture, {
+      platform: 'tec1',
+      logs,
+      tec1Config: { romHex: 'nonexistent.hex' },
+    });
+
+    expect(result.program.memory[0x1000]).toBe(0xbb);
+    expect(logs.some((l) => l.includes('ROM not found'))).toBe(true);
+  });
+
+  it('logs warning when TEC-1G ROM is missing', () => {
+    const fixture = createProgramFixture(0x2000, 0xcc);
+
+    const logs: string[] = [];
+    const result = loadFixture(fixture, {
+      platform: 'tec1g',
+      logs,
+      tec1gConfig: { romHex: 'nonexistent.bin' },
+    });
+
+    expect(result.program.memory[0x2000]).toBe(0xcc);
+    expect(logs.some((l) => l.includes('ROM not found'))).toBe(true);
+  });
+
+  it('logs warning when RAM init file is missing', () => {
+    const fixture = createProgramFixture(0x1000, 0xdd);
+
+    const logs: string[] = [];
+    const result = loadFixture(fixture, {
+      platform: 'tec1',
+      logs,
+      tec1Config: { ramInitHex: 'nonexistent-ram.hex' },
+    });
+
+    expect(result.program.memory[0x1000]).toBe(0xdd);
+    expect(logs.some((l) => l.includes('RAM init not found'))).toBe(true);
+  });
+
+  it('loads simple platform without overlays', () => {
+    const fixture = createProgramFixture(0x0100, 0xee);
+
+    const logs: string[] = [];
+    const result = loadFixture(fixture, {
+      platform: 'simple',
+      logs,
+    });
+
+    expect(result.program.memory[0x0100]).toBe(0xee);
+    expect(logs.length).toBe(0);
+  });
+
+  function makeTempDir(): string {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-'));
+    tmpDirs.push(dir);
+    return dir;
+  }
+
+  function createProgramFixture(address: number, value: number): ProgramLoaderFixture {
+    const dir = makeTempDir();
+    const hexPath = path.join(dir, 'program.hex');
+    writeHexFile(hexPath, address, value);
+    return { dir, hexPath };
+  }
+
+  function loadFixture(
+    fixture: ProgramLoaderFixture,
+    options: LoadFixtureOptions = {}
+  ): ReturnType<typeof loadProgramArtifacts> {
+    const logs = options.logs ?? [];
+    return loadProgramArtifacts({
+      platform: options.platform ?? 'tec1',
+      baseDir: fixture.dir,
+      hexPath: fixture.hexPath,
+      resolveRelative: (p, base) => path.resolve(base, p),
+      resolveBundledTec1Rom: () => undefined,
+      logger: createLogger(logs),
+      tec1Config: options.tec1Config,
+      tec1gConfig: options.tec1gConfig,
+    });
+  }
+});

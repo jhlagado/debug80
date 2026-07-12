@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'nonce-{{nonce}}';" />
+  <style>
+    :root {
+      color-scheme: dark;
+    }
+
+    body {
+      margin: 0;
+      padding: 8px;
+      font-family: var(--vscode-editor-font-family, monospace);
+      color: var(--vscode-editor-foreground, #eaeaea);
+      background: var(--vscode-editor-background, #1e1e1e);
+    }
+
+    #out {
+      margin: 0;
+      white-space: pre-wrap;
+      word-break: break-word;
+      min-height: 10rem;
+    }
+
+    .controls {
+      margin-top: 8px;
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    #input {
+      flex: 1 1 auto;
+      min-width: 0;
+      color: inherit;
+      background: transparent;
+      border: 1px solid var(--vscode-panel-border, #444);
+      padding: 4px 6px;
+    }
+
+    button {
+      color: inherit;
+      background: var(--vscode-button-background, #0e639c);
+      border: 0;
+      padding: 5px 10px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <pre id="out">{{initialOutput}}</pre>
+  <div class="controls">
+    <input id="input" type="text" placeholder="Type and press Enter" />
+    <button id="send">Send</button>
+  </div>
+  <script nonce="{{nonce}}">
+    (function () {
+      const vscode = acquireVsCodeApi();
+      const out = document.getElementById('out');
+      const input = document.getElementById('input');
+      const send = document.getElementById('send');
+
+      window.addEventListener('message', event => {
+        const msg = event.data;
+        if (msg.type === 'clear') {
+          out.textContent = '';
+          return;
+        }
+        if (msg.type === 'output' && typeof msg.text === 'string') {
+          out.textContent += msg.text;
+          window.scrollTo(0, document.body.scrollHeight);
+        }
+      });
+
+      function sendInput() {
+        const text = input.value;
+        const payload = text + '\\n';
+        out.textContent += payload;
+        window.scrollTo(0, document.body.scrollHeight);
+        vscode.postMessage({ type: 'input', text: payload });
+        input.value = '';
+        input.focus();
+      }
+
+      send.addEventListener('click', sendInput);
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          sendInput();
+          return;
+        }
+        if (e.key === 'c' && e.ctrlKey) {
+          vscode.postMessage({ type: 'break' });
+        }
+      });
+
+      input.focus();
+    }());
+  </script>
+</body>
+</html>

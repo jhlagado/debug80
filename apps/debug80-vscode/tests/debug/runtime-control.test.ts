@@ -1,0 +1,641 @@
+/**
+ * @file Runtime control helpers tests.
+ */
+
+import { describe, it, expect, vi } from 'vitest';
+import { Event as DapEvent, OutputEvent, StoppedEvent } from '@vscode/debugadapter';
+import {
+  applyStepInfo,
+  runUntilReturnAsync,
+  runUntilStopAsync,
+} from '../../src/debug/session/runtime-control';
+import type {
+  RuntimeControlCapabilities,
+  RuntimeControlContext,
+} from '../../src/debug/session/runtime-control';
+import type { SourceAddressSpace } from '../../src/mapping/types';
+import type { StepInfo } from '../../src/z80/types';
+import type { Z80Runtime } from '../../src/z80/runtime';
+import { NullLogger } from '../../src/util/logger';
+
+const makeContext = (options?: {
+  pauseRequested?: boolean;
+  pc?: number;
+  runtimeStep?: (trace: StepInfo) => { halted: boolean; cycles?: number };
+  isBreakpointAddress?: (address: number | null) => boolean;
+  getAddressSpace?: (address: number) => SourceAddressSpace | undefined;
+  getBreakpointAddressSpace?: (address: number) => SourceAddressSpace | undefined;
+  runtimeCapabilities?: RuntimeControlCapabilities;
+  runtimeCapabilitiesFactory?: () => RuntimeControlCapabilities | undefined;
+}): RuntimeControlContext => {
+  let callDepth = 0;
+  let pauseRequested = options?.pauseRequested ?? false;
+  let running = false;
+  let skipBreakpointOnce: number | null = null;
+  let skipBreakpointAddressSpace: SourceAddressSpace | undefined;
+  let haltNotified = false;
+  const events: unknown[] = [];
+  const pc = options?.pc ?? 0x1000;
+  const runtime = {
+    getPC: () => pc,
+    step({ trace }: { trace: StepInfo }) {
+      if (options?.runtimeStep) {
+        return options.runtimeStep(trace);
+      }
+      trace.kind = 'ret';
+      trace.taken = true;
+      return { halted: true, cycles: 1 };
+    },
+  } as unknown as Z80Runtime;
+  return {
+    getRuntime: () => runtime,
+    getRuntimeCapabilities: () =>
+      options?.runtimeCapabilitiesFactory?.() ?? options?.runtimeCapabilities,
+    getActivePlatform: () => 'simple',
+    getCallDepth: () => callDepth,
+    setCallDepth: (value) => {
+      callDepth = value;
+    },
+    getPauseRequested: () => pauseRequested,
+    setPauseRequested: (value) => {
+      pauseRequested = value;
+    },
+    getRunning: () => running,
+    setRunning: (value) => {
+      running = value;
+    },
+    getSkipBreakpointOnce: () => skipBreakpointOnce,
+    setSkipBreakpointOnce: (value) => {
+      skipBreakpointOnce = value;
+    },
+    getSkipBreakpointAddressSpace: () => skipBreakpointAddressSpace,
+    setSkipBreakpointAddressSpace: (value) => {
+      skipBreakpointAddressSpace = value;
+    },
+    getHaltNotified: () => haltNotified,
+    setHaltNotified: (value) => {
+      haltNotified = value;
+    },
+    setLastStopReason: () => {},
+    setLastBreakpointAddress: () => {},
+    setLastBreakpointAddressSpace: () => {},
+    getAddressSpace: (address) => options?.getAddressSpace?.(address),
+    getBreakpointAddressSpace: (address) => options?.getBreakpointAddressSpace?.(address),
+    isBreakpointAddress: (address) => options?.isBreakpointAddress?.(address) ?? false,
+    handleHaltStop: () => {
+      events.push('halt');
+    },
+    sendEvent: (event) => {
+      events.push(event);
+    },
+    getLogger: () => new NullLogger(),
+  };
+};
+
+describe('runtime-control', () => {
+  it('updates call depth for call/ret traces', () => {
+    const context = makeContext();
+    const callTrace: StepInfo = { taken: true, kind: 'call' };
+    applyStepInfo(context, callTrace);
+    expect(context.getCallDepth()).toBe(1);
+    const retTrace: StepInfo = { taken: true, kind: 'ret' };
+    applyStepInfo(context, retTrace);
+    expect(context.getCallDepth()).toBe(0);
+    const ignoredTrace: StepInfo = { taken: false, kind: 'call' };
+    applyStepInfo(context, ignoredTrace);
+    expect(context.getCallDepth()).toBe(0);
+  });
+
+  it('stops on pause request', async () => {
+    const context = makeContext({ pauseRequested: true });
+    await runUntilStopAsync(context);
+    expect(context.getPauseRequested()).toBe(false);
+  });
+
+  it('records cycles through the runtime capability', async () => {
+    const recordCycles = vi.fn();
+    const context = makeContext({
+      runtimeStep: () => ({ halted: true, cycles: 3 }),
+      runtimeCapabilities: {
+        recordCycles,
+        silenceSpeaker: vi.fn(),
+        getClockHz: () => 0,
+        getYieldMs: () => 0,
+      },
+    });
+    await runUntilStopAsync(context);
+    expect(recordCycles).toHaveBeenCalledWith(3);
+  });
+
+  it('silences the runtime capability when paused', async () => {
+    const silenceSpeaker = vi.fn();
+    const context = makeContext({
+      pauseRequested: true,
+      runtimeCapabilities: {
+        recordCycles: vi.fn(),
+        silenceSpeaker,
+        getClockHz: () => 0,
+        getYieldMs: () => 0,
+      },
+    });
+    await runUntilStopAsync(context);
+    expect(silenceSpeaker).toHaveBeenCalledTimes(1);
+  });
+
+  it('returns after a ret when stepping out', async () => {
+    const context = makeContext();
+    await runUntilReturnAsync(context, 0, 0);
+    expect(context.getCallDepth()).toBe(0);
+  });
+
+  it('skips one breakpoint address and halts', async () => {
+    const context = makeContext({
+      pc: 0x2000,
+      runtimeStep: (trace) => {
+        trace.kind = 'nop';
+        trace.taken = true;
+        return { halted: true, cycles: 2 };
+      },
+    });
+    context.setSkipBreakpointOnce(0x2000);
+    await runUntilStopAsync(context);
+    expect(context.getSkipBreakpointOnce()).toBeNull();
+  });
+
+  it('does not skip a banked breakpoint after the active bank changes', async () => {
+    const bank0 = { kind: 'tec1g-expansion' as const, physicalBank: 0 };
+    const bank3 = { kind: 'tec1g-expansion' as const, physicalBank: 3 };
+    const context = makeContext({
+      pc: 0x8000,
+      getAddressSpace: () => bank3,
+      isBreakpointAddress: () => true,
+      runtimeStep: (trace) => {
+        trace.kind = 'nop';
+        trace.taken = true;
+        return { halted: true, cycles: 2 };
+      },
+    });
+    let stopAddress: number | null | undefined;
+    context.setLastBreakpointAddress = (address) => {
+      stopAddress = address;
+    };
+    context.setSkipBreakpointOnce(0x8000);
+    context.setSkipBreakpointAddressSpace(bank0);
+
+    await runUntilStopAsync(context);
+
+    expect(context.getSkipBreakpointOnce()).toBe(0x8000);
+    expect(context.getSkipBreakpointAddressSpace()).toEqual(bank0);
+    expect(stopAddress).toBe(0x8000);
+  });
+
+  it('preserves step-out skip-breakpoint cycle behavior', async () => {
+    const recordCycles = vi.fn();
+    const context = makeContext({
+      pc: 0x2000,
+      runtimeStep: (trace) => {
+        trace.kind = 'ret';
+        trace.taken = true;
+        return { halted: false, cycles: 2 };
+      },
+      runtimeCapabilities: {
+        recordCycles,
+        silenceSpeaker: vi.fn(),
+        getClockHz: () => 0,
+        getYieldMs: () => 0,
+      },
+    });
+    context.setSkipBreakpointOnce(0x2000);
+
+    await runUntilReturnAsync(context, 0, 0);
+
+    expect(context.getSkipBreakpointOnce()).toBeNull();
+    expect(recordCycles).not.toHaveBeenCalled();
+  });
+
+  it('stops on breakpoint address', async () => {
+    let stopReason: string | undefined;
+    let stopAddress: number | null | undefined;
+    const context = makeContext({
+      pc: 0x1234,
+      isBreakpointAddress: () => true,
+      runtimeStep: (trace) => {
+        trace.kind = 'nop';
+        trace.taken = true;
+        return { halted: false, cycles: 1 };
+      },
+    });
+    context.setLastStopReason = (reason) => {
+      stopReason = reason;
+    };
+    context.setLastBreakpointAddress = (address) => {
+      stopAddress = address;
+    };
+    const events: unknown[] = [];
+    context.sendEvent = (event) => events.push(event);
+    await runUntilStopAsync(context);
+    expect(stopReason).toBe('breakpoint');
+    expect(stopAddress).toBe(0x1234);
+    expect(events.some((e) => e instanceof StoppedEvent)).toBe(true);
+  });
+
+  it('emits running and paused session status events during the stop loop', async () => {
+    const context = makeContext({
+      pauseRequested: true,
+      runtimeCapabilities: {
+        recordCycles: vi.fn(),
+        silenceSpeaker: vi.fn(),
+        getClockHz: () => 0,
+        getYieldMs: () => 0,
+      },
+    });
+    const events: unknown[] = [];
+    context.sendEvent = (event) => events.push(event);
+
+    await runUntilStopAsync(context);
+
+    const statusEvents = events.filter(
+      (event): event is DapEvent =>
+        event instanceof DapEvent && event.event === 'debug80/sessionStatus'
+    );
+    expect(statusEvents).toHaveLength(2);
+    expect(statusEvents[0]?.body).toEqual({ status: 'running' });
+    expect(statusEvents[1]?.body).toEqual({ status: 'paused' });
+    expect(events.some((e) => e instanceof StoppedEvent)).toBe(true);
+  });
+
+  it('stops on extra breakpoint', async () => {
+    let stopReason: string | undefined;
+    const context = makeContext({
+      pc: 0x4000,
+      runtimeStep: (trace) => {
+        trace.kind = 'nop';
+        trace.taken = true;
+        return { halted: false, cycles: 1 };
+      },
+    });
+    context.setLastStopReason = (reason) => {
+      stopReason = reason;
+    };
+    const events: unknown[] = [];
+    context.sendEvent = (event) => events.push(event);
+    await runUntilStopAsync(context, { extraBreakpoints: [{ address: 0x4000 }] });
+    expect(stopReason).toBe('step');
+    expect(events.some((e) => e instanceof StoppedEvent)).toBe(true);
+  });
+
+  it('does not stop on a scoped extra breakpoint in a different bank', async () => {
+    let stopReason: string | undefined;
+    const context = makeContext({
+      pc: 0x8000,
+      getAddressSpace: () => ({ kind: 'tec1g-expansion', physicalBank: 3 }),
+      runtimeStep: (trace) => {
+        trace.kind = 'nop';
+        trace.taken = true;
+        return { halted: true, cycles: 1 };
+      },
+    });
+    context.setLastStopReason = (reason) => {
+      stopReason = reason;
+    };
+
+    await runUntilStopAsync(context, {
+      extraBreakpoints: [
+        { address: 0x8000, addressSpace: { kind: 'tec1g-expansion', physicalBank: 0 } },
+      ],
+    });
+
+    expect(stopReason).not.toBe('step');
+  });
+
+  it('stops after hitting max instructions', async () => {
+    const context = makeContext({
+      pc: 0x5000,
+      runtimeStep: (trace) => {
+        trace.kind = 'nop';
+        trace.taken = true;
+        return { halted: false, cycles: 1 };
+      },
+    });
+    const events: unknown[] = [];
+    context.sendEvent = (event) => events.push(event);
+    await runUntilStopAsync(context, { maxInstructions: 1, limitLabel: 'step over' });
+    expect(events.some((e) => e instanceof OutputEvent)).toBe(true);
+    expect(events.some((e) => e instanceof StoppedEvent)).toBe(true);
+  });
+
+  it('stops step-out on instruction limit', async () => {
+    const context = makeContext({
+      pc: 0x6000,
+      runtimeStep: (trace) => {
+        trace.kind = 'call';
+        trace.taken = true;
+        return { halted: false, cycles: 1 };
+      },
+    });
+    const events: unknown[] = [];
+    context.sendEvent = (event) => events.push(event);
+    await runUntilReturnAsync(context, 1, 1);
+    expect(events.some((e) => e instanceof OutputEvent)).toBe(true);
+    expect(events.some((e) => e instanceof StoppedEvent)).toBe(true);
+  });
+
+  it('pauses during step-out', async () => {
+    const context = makeContext({
+      pauseRequested: true,
+      runtimeStep: (trace) => {
+        trace.kind = 'nop';
+        trace.taken = true;
+        return { halted: false, cycles: 1 };
+      },
+    });
+    await runUntilReturnAsync(context, 0, 0);
+    expect(context.getPauseRequested()).toBe(false);
+  });
+
+  it('stops on breakpoint during step-out', async () => {
+    let stopReason: string | undefined;
+    const context = makeContext({
+      pc: 0x7000,
+      isBreakpointAddress: () => true,
+      runtimeStep: (trace) => {
+        trace.kind = 'nop';
+        trace.taken = true;
+        return { halted: false, cycles: 1 };
+      },
+    });
+    context.setLastStopReason = (reason) => {
+      stopReason = reason;
+    };
+    await runUntilReturnAsync(context, 0, 0);
+    expect(stopReason).toBe('breakpoint');
+  });
+
+  it('stops on ret when call depth drops below baseline', async () => {
+    const context = makeContext({
+      runtimeStep: (trace) => {
+        trace.kind = 'ret';
+        trace.taken = true;
+        return { halted: false, cycles: 1 };
+      },
+    });
+    context.setCallDepth(0);
+    await runUntilReturnAsync(context, 1, 0);
+    expect(context.getCallDepth()).toBe(0);
+  });
+
+  it('throttles when the runtime capability provides clockHz', async () => {
+    vi.useFakeTimers();
+    let runtimeCalls = 0;
+    const runtime = {
+      getPC: () => 0x8000,
+      step({ trace }: { trace: StepInfo }) {
+        trace.kind = 'nop';
+        trace.taken = true;
+        return { halted: false, cycles: 1 };
+      },
+    } as unknown as Z80Runtime;
+    const ctx: RuntimeControlContext = {
+      getRuntime: () => {
+        runtimeCalls += 1;
+        return runtimeCalls <= 1000 ? runtime : undefined;
+      },
+      getRuntimeCapabilities: () => ({
+        recordCycles: () => undefined,
+        silenceSpeaker: () => undefined,
+        getClockHz: () => 1000,
+        getYieldMs: () => 0,
+      }),
+      getActivePlatform: () => 'tec1g',
+      getCallDepth: () => 0,
+      setCallDepth: () => undefined,
+      getPauseRequested: () => false,
+      setPauseRequested: () => undefined,
+      getRunning: () => false,
+      setRunning: () => undefined,
+      getSkipBreakpointOnce: () => null,
+      setSkipBreakpointOnce: () => undefined,
+      getHaltNotified: () => false,
+      setHaltNotified: () => undefined,
+      setLastStopReason: () => undefined,
+      setLastBreakpointAddress: () => undefined,
+      isBreakpointAddress: () => false,
+      handleHaltStop: () => undefined,
+      sendEvent: () => undefined,
+    };
+    const promise = runUntilStopAsync(ctx);
+    await vi.advanceTimersByTimeAsync(1000);
+    await promise;
+    vi.useRealTimers();
+  });
+
+  it('re-reads clockHz from the runtime capability during throttling', async () => {
+    let runtimeCalls = 0;
+    let capabilityCalls = 0;
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout').mockImplementation(((
+      handler: Parameters<typeof setTimeout>[0]
+    ) => {
+      if (typeof handler === 'function') {
+        handler();
+      }
+      return 0 as ReturnType<typeof setTimeout>;
+    }) as typeof setTimeout);
+    const setImmediateSpy = vi.spyOn(globalThis, 'setImmediate').mockImplementation(((
+      handler: Parameters<typeof setImmediate>[0]
+    ) => {
+      if (typeof handler === 'function') {
+        handler();
+      }
+      return 0 as ReturnType<typeof setImmediate>;
+    }) as typeof setImmediate);
+    const runtime = {
+      getPC: () => 0x8000,
+      step({ trace }: { trace: StepInfo }) {
+        trace.kind = 'nop';
+        trace.taken = true;
+        return { halted: false, cycles: 1 };
+      },
+    } as unknown as Z80Runtime;
+    const ctx: RuntimeControlContext = {
+      getRuntime: () => {
+        runtimeCalls += 1;
+        return runtimeCalls <= 1001 ? runtime : undefined;
+      },
+      getRuntimeCapabilities: () => {
+        capabilityCalls += 1;
+        return capabilityCalls <= 1000
+          ? {
+              recordCycles: () => undefined,
+              silenceSpeaker: () => undefined,
+              getClockHz: () => 0,
+              getYieldMs: () => 0,
+            }
+          : {
+              recordCycles: () => undefined,
+              silenceSpeaker: () => undefined,
+              getClockHz: () => 1000,
+              getYieldMs: () => 0,
+            };
+      },
+      getActivePlatform: () => 'tec1g',
+      getCallDepth: () => 0,
+      setCallDepth: () => undefined,
+      getPauseRequested: () => false,
+      setPauseRequested: () => undefined,
+      getRunning: () => false,
+      setRunning: () => undefined,
+      getSkipBreakpointOnce: () => null,
+      setSkipBreakpointOnce: () => undefined,
+      getHaltNotified: () => false,
+      setHaltNotified: () => undefined,
+      setLastStopReason: () => undefined,
+      setLastBreakpointAddress: () => undefined,
+      isBreakpointAddress: () => false,
+      handleHaltStop: () => undefined,
+      sendEvent: () => undefined,
+    };
+    await runUntilStopAsync(ctx);
+    expect(setTimeoutSpy).toHaveBeenCalled();
+    expect(setImmediateSpy).not.toHaveBeenCalled();
+  });
+
+  it('yields when running with capability yieldMs', async () => {
+    vi.useFakeTimers();
+    let runtimeCalls = 0;
+    const runtime = {
+      getPC: () => 0x8000,
+      step({ trace }: { trace: StepInfo }) {
+        trace.kind = 'nop';
+        trace.taken = true;
+        return { halted: false, cycles: 1 };
+      },
+    } as unknown as Z80Runtime;
+    const ctx: RuntimeControlContext = {
+      getRuntime: () => {
+        runtimeCalls += 1;
+        return runtimeCalls <= 1000 ? runtime : undefined;
+      },
+      getRuntimeCapabilities: () => ({
+        recordCycles: () => undefined,
+        silenceSpeaker: () => undefined,
+        getClockHz: () => 0,
+        getYieldMs: () => 1,
+      }),
+      getActivePlatform: () => 'tec1',
+      getCallDepth: () => 0,
+      setCallDepth: () => undefined,
+      getPauseRequested: () => false,
+      setPauseRequested: () => undefined,
+      getRunning: () => false,
+      setRunning: () => undefined,
+      getSkipBreakpointOnce: () => null,
+      setSkipBreakpointOnce: () => undefined,
+      getHaltNotified: () => false,
+      setHaltNotified: () => undefined,
+      setLastStopReason: () => undefined,
+      setLastBreakpointAddress: () => undefined,
+      isBreakpointAddress: () => false,
+      handleHaltStop: () => undefined,
+      sendEvent: () => undefined,
+    };
+    const promise = runUntilStopAsync(ctx);
+    await vi.advanceTimersByTimeAsync(1);
+    await promise;
+    vi.useRealTimers();
+  });
+
+  it('re-reads yieldMs from the runtime capability during yielding', async () => {
+    let runtimeCalls = 0;
+    let capabilityCalls = 0;
+    const setTimeoutSpy = vi.spyOn(globalThis, 'setTimeout').mockImplementation(((
+      handler: Parameters<typeof setTimeout>[0]
+    ) => {
+      if (typeof handler === 'function') {
+        handler();
+      }
+      return 0 as ReturnType<typeof setTimeout>;
+    }) as typeof setTimeout);
+    const setImmediateSpy = vi.spyOn(globalThis, 'setImmediate').mockImplementation(((
+      handler: Parameters<typeof setImmediate>[0]
+    ) => {
+      if (typeof handler === 'function') {
+        handler();
+      }
+      return 0 as ReturnType<typeof setImmediate>;
+    }) as typeof setImmediate);
+    const runtime = {
+      getPC: () => 0x8000,
+      step({ trace }: { trace: StepInfo }) {
+        trace.kind = 'nop';
+        trace.taken = true;
+        return { halted: false, cycles: 1 };
+      },
+    } as unknown as Z80Runtime;
+    const ctx: RuntimeControlContext = {
+      getRuntime: () => {
+        runtimeCalls += 1;
+        return runtimeCalls <= 1001 ? runtime : undefined;
+      },
+      getRuntimeCapabilities: () => {
+        capabilityCalls += 1;
+        return capabilityCalls <= 1000
+          ? {
+              recordCycles: () => undefined,
+              silenceSpeaker: () => undefined,
+              getClockHz: () => 0,
+              getYieldMs: () => 0,
+            }
+          : {
+              recordCycles: () => undefined,
+              silenceSpeaker: () => undefined,
+              getClockHz: () => 0,
+              getYieldMs: () => 1,
+            };
+      },
+      getActivePlatform: () => 'tec1',
+      getCallDepth: () => 0,
+      setCallDepth: () => undefined,
+      getPauseRequested: () => false,
+      setPauseRequested: () => undefined,
+      getRunning: () => false,
+      setRunning: () => undefined,
+      getSkipBreakpointOnce: () => null,
+      setSkipBreakpointOnce: () => undefined,
+      getHaltNotified: () => false,
+      setHaltNotified: () => undefined,
+      setLastStopReason: () => undefined,
+      setLastBreakpointAddress: () => undefined,
+      isBreakpointAddress: () => false,
+      handleHaltStop: () => undefined,
+      sendEvent: () => undefined,
+    };
+    await runUntilStopAsync(ctx);
+    expect(setTimeoutSpy).toHaveBeenCalledWith(expect.any(Function), 1);
+    expect(setImmediateSpy).not.toHaveBeenCalled();
+  });
+
+  it('returns early when runtime is unavailable', async () => {
+    const ctx: RuntimeControlContext = {
+      getRuntime: () => undefined,
+      getRuntimeCapabilities: () => undefined,
+      getActivePlatform: () => 'simple',
+      getCallDepth: () => 0,
+      setCallDepth: () => undefined,
+      getPauseRequested: () => false,
+      setPauseRequested: () => undefined,
+      getRunning: () => false,
+      setRunning: () => undefined,
+      getSkipBreakpointOnce: () => null,
+      setSkipBreakpointOnce: () => undefined,
+      getHaltNotified: () => false,
+      setHaltNotified: () => undefined,
+      setLastStopReason: () => undefined,
+      setLastBreakpointAddress: () => undefined,
+      isBreakpointAddress: () => false,
+      handleHaltStop: () => undefined,
+      sendEvent: () => undefined,
+    };
+    await runUntilStopAsync(ctx);
+    await runUntilReturnAsync(ctx, 0, 0);
+  });
+});

@@ -1,0 +1,319 @@
+import assert from 'node:assert/strict';
+import { describe, it } from 'vitest';
+import * as path from 'path';
+import type { MappingParseResult } from '../../src/mapping/types';
+import {
+  buildSourceMapIndex,
+  findAnchorLine,
+  findSegmentForAddress,
+  resolveExecutableLocation,
+  resolveLocation,
+} from '../../src/mapping/source-map';
+
+const fixtureDir = path.join(process.cwd(), 'tests', 'fixtures');
+const asmPath = path.join(fixtureDir, 'simple.asm');
+
+const mapping: MappingParseResult = {
+  segments: [
+    {
+      start: 0x0000,
+      end: 0x0001,
+      loc: { file: 'simple.asm', line: 1 },
+      context: { line: 1, text: 'START:' },
+      confidence: 'HIGH',
+    },
+    {
+      start: 0x0001,
+      end: 0x0002,
+      loc: { file: 'simple.asm', line: 2 },
+      context: { line: 3, text: 'NOP' },
+      confidence: 'HIGH',
+    },
+    {
+      start: 0x0003,
+      end: 0x0004,
+      loc: { file: 'simple.asm', line: 4 },
+      context: { line: 4, text: 'DUP: EQU $0003' },
+      confidence: 'MEDIUM',
+    },
+    {
+      start: 0x0003,
+      end: 0x0005,
+      loc: { file: 'simple.asm', line: 5 },
+      context: { line: 5, text: 'TARGET:' },
+      confidence: 'HIGH',
+    },
+  ],
+  anchors: [
+    { address: 0x0000, symbol: 'START', file: 'simple.asm', line: 1 },
+    { address: 0x0003, symbol: 'DUP', file: 'simple.asm', line: 4 },
+    { address: 0x0003, symbol: 'TARGET', file: 'simple.asm', line: 5 },
+  ],
+};
+const resolvePath = (file: string): string | undefined =>
+  file === 'simple.asm' ? asmPath : undefined;
+const index = buildSourceMapIndex(mapping, resolvePath);
+
+describe('source-map', () => {
+  it('resolves locations to addresses', () => {
+    assert.deepEqual(resolveLocation(index, asmPath, 1), [0x0000]);
+    assert.deepEqual(resolveLocation(index, asmPath, 4), [0x0003]);
+    assert.deepEqual(resolveLocation(index, asmPath, 5), [0x0003]);
+  });
+
+  it('returns empty for unknown files', () => {
+    assert.deepEqual(resolveLocation(index, path.join(fixtureDir, 'missing.asm'), 1), []);
+  });
+
+  it('matches Windows source paths case-insensitively on any host OS', () => {
+    const mapping: MappingParseResult = {
+      segments: [
+        {
+          start: 0x2000,
+          end: 0x2001,
+          loc: { file: 'src\\Main.asm', line: 7 },
+          context: { line: 12, text: 'NOP' },
+          confidence: 'HIGH',
+        },
+      ],
+      anchors: [{ address: 0x2000, symbol: 'START', file: 'src\\Main.asm', line: 7 }],
+    };
+    const windowsPath = 'C:\\Users\\Ada Lovelace\\Debug80 Project\\src\\Main.asm';
+    const idx = buildSourceMapIndex(mapping, (file) =>
+      file.toLowerCase() === 'src\\main.asm' ? windowsPath : undefined
+    );
+
+    assert.deepEqual(
+      resolveLocation(idx, 'c:/users/ada lovelace/debug80 project/SRC/main.asm', 7),
+      [0x2000]
+    );
+    assert.equal(
+      findAnchorLine(idx, 'c:/users/ada lovelace/debug80 project/SRC/main.asm', 0x2000),
+      7
+    );
+  });
+
+  it('finds a segment by address', () => {
+    const segment = findSegmentForAddress(index, 0x0001);
+    assert.ok(segment);
+    assert.equal(segment?.context.line, 3);
+  });
+
+  it('falls back to anchors when no segment matches the line', () => {
+    const address = resolveLocation(index, asmPath, 99);
+    assert.deepEqual(address, [0x0003]);
+  });
+
+  it('does not resolve constants or labels as executable breakpoint locations', () => {
+    const mapping: MappingParseResult = {
+      segments: [
+        {
+          start: 0x4000,
+          end: 0x4000,
+          loc: { file: 'constants.asm', line: 39 },
+          context: { line: 69, text: 'GRAVITY_PACE_DELTA: EQU 12' },
+          confidence: 'HIGH',
+        },
+        {
+          start: 0x4000,
+          end: 0x4003,
+          loc: { file: 'tetro.asm', line: 39 },
+          context: { line: 97, text: 'CALL INIT_STATE' },
+          confidence: 'HIGH',
+        },
+      ],
+      anchors: [{ address: 0x4000, symbol: 'START', file: 'tetro.asm', line: 38 }],
+    };
+    const constants = path.join(fixtureDir, 'constants.asm');
+    const tetro = path.join(fixtureDir, 'tetro.asm');
+    const idx = buildSourceMapIndex(mapping, (file) => {
+      if (file === 'constants.asm') {
+        return constants;
+      }
+      if (file === 'tetro.asm') {
+        return tetro;
+      }
+      return undefined;
+    });
+
+    assert.deepEqual(resolveLocation(idx, constants, 39), [0x4000]);
+    assert.deepEqual(resolveExecutableLocation(idx, constants, 39), []);
+    assert.deepEqual(resolveExecutableLocation(idx, tetro, 39), [0x4000]);
+  });
+
+  it('skips unresolved files and null locations', () => {
+    const mapping: MappingParseResult = {
+      segments: [
+        {
+          start: 0,
+          end: 1,
+          loc: { file: null, line: null },
+          context: { line: 1, text: 'NOP' },
+          confidence: 'LOW',
+        },
+        {
+          start: 2,
+          end: 3,
+          loc: { file: 'missing.asm', line: 1 },
+          context: { line: 2, text: 'NOP' },
+          confidence: 'LOW',
+        },
+      ],
+      anchors: [{ address: 0x2000, symbol: 'HERE', file: 'missing.asm', line: 1 }],
+    };
+    const resolveNone = (_file: string): string | undefined => undefined;
+    const custom = buildSourceMapIndex(mapping, resolveNone);
+    const seg = findSegmentForAddress(custom, 0);
+    assert.ok(seg);
+    assert.equal(seg?.start, 0);
+    assert.equal(findAnchorLine(custom, 'missing.asm', 0x2000), null);
+  });
+
+  it('finds anchor lines for addresses', () => {
+    assert.equal(findAnchorLine(index, asmPath, 0x0000), 1);
+    assert.equal(findAnchorLine(index, asmPath, 0x0002), 1);
+    assert.equal(findAnchorLine(index, asmPath, 0xffff), 5);
+  });
+
+  it('prefers narrow segment with valid line over wide segment with line=0', () => {
+    const mapping: MappingParseResult = {
+      segments: [
+        {
+          start: 0x4000,
+          end: 0x4033,
+          loc: { file: 'matrix.asm', line: 0 },
+          context: { line: 0, text: '' },
+          confidence: 'HIGH',
+        },
+        {
+          start: 0x4000,
+          end: 0x4002,
+          loc: { file: 'matrix.asm', line: 10 },
+          context: { line: 1, text: 'LD C, 1' },
+          confidence: 'HIGH',
+        },
+        {
+          start: 0x4002,
+          end: 0x4004,
+          loc: { file: 'matrix.asm', line: 11 },
+          context: { line: 2, text: 'LD E, 8' },
+          confidence: 'HIGH',
+        },
+      ],
+      anchors: [],
+    };
+    const resolveAll = () => '/test/matrix.asm';
+    const idx = buildSourceMapIndex(mapping, resolveAll);
+
+    const seg1 = findSegmentForAddress(idx, 0x4000);
+    assert.ok(seg1);
+    assert.equal(seg1.loc.line, 10);
+    assert.equal(seg1.end - seg1.start, 2);
+
+    const seg2 = findSegmentForAddress(idx, 0x4002);
+    assert.ok(seg2);
+    assert.equal(seg2.loc.line, 11);
+    assert.equal(seg2.end - seg2.start, 2);
+
+    const seg3 = findSegmentForAddress(idx, 0x4010);
+    assert.ok(seg3);
+    assert.equal(seg3.loc.line, 0);
+  });
+
+  it('prefers narrower segment when both have valid lines', () => {
+    const mapping: MappingParseResult = {
+      segments: [
+        {
+          start: 0x1000,
+          end: 0x1010,
+          loc: { file: 'main.asm', line: 5 },
+          context: { line: 1, text: 'wide' },
+          confidence: 'HIGH',
+        },
+        {
+          start: 0x1000,
+          end: 0x1002,
+          loc: { file: 'main.asm', line: 7 },
+          context: { line: 2, text: 'narrow' },
+          confidence: 'HIGH',
+        },
+      ],
+      anchors: [],
+    };
+    const resolveAll = () => '/test/main.asm';
+    const idx = buildSourceMapIndex(mapping, resolveAll);
+
+    const seg = findSegmentForAddress(idx, 0x1000);
+    assert.ok(seg);
+    assert.equal(seg.loc.line, 7);
+    assert.equal(seg.end - seg.start, 2);
+  });
+
+  it('filters overlapping banked mappings by address space', () => {
+    const mapping: MappingParseResult = {
+      segments: [
+        {
+          start: 0x8000,
+          end: 0x8002,
+          loc: { file: 'bank3.asm', line: 9 },
+          context: { line: 1, text: 'bank3' },
+          confidence: 'HIGH',
+          addressSpace: { kind: 'tec1g-expansion', physicalBank: 3 },
+        },
+        {
+          start: 0x8000,
+          end: 0x8002,
+          loc: { file: 'bank0.asm', line: 9 },
+          context: { line: 1, text: 'bank0' },
+          confidence: 'HIGH',
+          addressSpace: { kind: 'tec1g-expansion', physicalBank: 0 },
+        },
+      ],
+      anchors: [],
+    };
+    const idx = buildSourceMapIndex(mapping, (file) => `/test/${file}`);
+
+    const bank0 = findSegmentForAddress(idx, 0x8000, {
+      kind: 'tec1g-expansion',
+      physicalBank: 0,
+    });
+    const bank3 = findSegmentForAddress(idx, 0x8000, {
+      kind: 'tec1g-expansion',
+      physicalBank: 3,
+    });
+
+    assert.equal(bank0?.loc.file, 'bank0.asm');
+    assert.equal(bank3?.loc.file, 'bank3.asm');
+  });
+
+  it('falls back to unbanked mappings when an address-space lookup has no matching bank', () => {
+    const mapping: MappingParseResult = {
+      segments: [
+        {
+          start: 0x8000,
+          end: 0x8002,
+          loc: { file: 'bank3.asm', line: 9 },
+          context: { line: 1, text: 'bank3' },
+          confidence: 'HIGH',
+          addressSpace: { kind: 'tec1g-expansion', physicalBank: 3 },
+        },
+        {
+          start: 0x8000,
+          end: 0x8002,
+          loc: { file: 'legacy.asm', line: 12 },
+          context: { line: 1, text: 'legacy' },
+          confidence: 'HIGH',
+        },
+      ],
+      anchors: [],
+    };
+    const idx = buildSourceMapIndex(mapping, (file) => `/test/${file}`);
+
+    const segment = findSegmentForAddress(idx, 0x8000, {
+      kind: 'tec1g-expansion',
+      physicalBank: 0,
+    });
+
+    assert.equal(segment?.loc.file, 'legacy.asm');
+  });
+});
