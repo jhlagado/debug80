@@ -1,0 +1,1373 @@
+import { describe, expect, it } from 'vitest';
+
+import { encodeZ80Instruction } from '../../../src/z80/encode.js';
+import { parseZ80Instruction } from '../../../src/z80/parse-instruction.js';
+
+describe('Stage 5 z80 parser and encoder foundation', () => {
+  it('parses the first evidence-backed instruction slice case-insensitively', () => {
+    expect(parseZ80Instruction('nOp')).toEqual({ instruction: { mnemonic: 'nop' } });
+    expect(parseZ80Instruction('rEt')).toEqual({ instruction: { mnemonic: 'ret' } });
+    expect(parseZ80Instruction('lD A,Value')).toEqual({
+      instruction: {
+        mnemonic: 'ld',
+        target: { kind: 'reg8', register: 'a' },
+        source: { kind: 'imm', expression: { kind: 'symbol', name: 'Value' } },
+      },
+    });
+    expect(parseZ80Instruction('jR nC,target + 1')).toEqual({
+      instruction: {
+        mnemonic: 'jr-cc',
+        condition: 'nc',
+        expression: {
+          kind: 'binary',
+          operator: '+',
+          left: { kind: 'symbol', name: 'target' },
+          right: { kind: 'number', value: 1 },
+        },
+      },
+    });
+  });
+
+  it('parses the first LD evidence slice', () => {
+    expect(parseZ80Instruction('LD B,2')).toEqual({
+      instruction: {
+        mnemonic: 'ld',
+        target: { kind: 'reg8', register: 'b' },
+        source: { kind: 'imm', expression: { kind: 'number', value: 2 } },
+      },
+    });
+    expect(parseZ80Instruction("LD A,','")).toEqual({
+      instruction: {
+        mnemonic: 'ld',
+        target: { kind: 'reg8', register: 'a' },
+        source: { kind: 'imm', expression: { kind: 'number', value: 44 } },
+      },
+    });
+    expect(parseZ80Instruction('ld c,a')).toEqual({
+      instruction: {
+        mnemonic: 'ld',
+        target: { kind: 'reg8', register: 'c' },
+        source: { kind: 'reg8', register: 'a' },
+      },
+    });
+    expect(parseZ80Instruction('ld a,(de)')).toEqual({
+      instruction: {
+        mnemonic: 'ld',
+        target: { kind: 'reg8', register: 'a' },
+        source: { kind: 'reg-indirect', register: 'de' },
+      },
+    });
+    expect(parseZ80Instruction('ld (bc),a')).toEqual({
+      instruction: {
+        mnemonic: 'ld',
+        target: { kind: 'reg-indirect', register: 'bc' },
+        source: { kind: 'reg8', register: 'a' },
+      },
+    });
+    expect(parseZ80Instruction('ld (bc),(de)')).toEqual({
+      error: 'ld does not support memory-to-memory transfers',
+    });
+    expect(parseZ80Instruction('ld a,(4000H)')).toEqual({
+      instruction: {
+        mnemonic: 'ld',
+        target: { kind: 'reg8', register: 'a' },
+        source: { kind: 'mem-abs', expression: { kind: 'number', value: 0x4000 } },
+      },
+    });
+    expect(parseZ80Instruction('ld a,b,')).toEqual({ error: 'ld expects two operands' });
+    expect(parseZ80Instruction('ld a,,b')).toEqual({ error: 'ld expects two operands' });
+  });
+
+  it('emits byte-template fragments without resolving assembler symbols', () => {
+    expect(encodeZ80Instruction({ mnemonic: 'nop' })).toEqual({
+      size: 1,
+      fragments: [{ kind: 'bytes', bytes: [0x00] }],
+    });
+    expect(encodeZ80Instruction({ mnemonic: 'ret' })).toEqual({
+      size: 1,
+      fragments: [{ kind: 'bytes', bytes: [0xc9] }],
+    });
+    expect(
+      encodeZ80Instruction({
+        mnemonic: 'ld',
+        target: { kind: 'reg8', register: 'a' },
+        source: { kind: 'imm', expression: { kind: 'number', value: 0x2a } },
+      }),
+    ).toEqual({
+      size: 2,
+      fragments: [
+        { kind: 'bytes', bytes: [0x3e] },
+        {
+          kind: 'imm8',
+          expression: { kind: 'number', value: 0x2a },
+          failureMessage: 'ld expects a supported register/memory/immediate transfer form',
+        },
+      ],
+    });
+  });
+
+  it('emits LD register, immediate, and register-indirect forms from current evidence', () => {
+    expect(
+      encodeZ80Instruction({
+        mnemonic: 'ld',
+        target: { kind: 'reg8', register: 'b' },
+        source: { kind: 'imm', expression: { kind: 'number', value: 2 } },
+      }),
+    ).toEqual({
+      size: 2,
+      fragments: [
+        { kind: 'bytes', bytes: [0x06] },
+        {
+          kind: 'imm8',
+          expression: { kind: 'number', value: 2 },
+          failureMessage: 'ld expects a supported register/memory/immediate transfer form',
+        },
+      ],
+    });
+    expect(
+      encodeZ80Instruction({
+        mnemonic: 'ld',
+        target: { kind: 'reg8', register: 'c' },
+        source: { kind: 'reg8', register: 'a' },
+      }),
+    ).toEqual({ size: 1, fragments: [{ kind: 'bytes', bytes: [0x4f] }] });
+    expect(
+      encodeZ80Instruction({
+        mnemonic: 'ld',
+        target: { kind: 'reg16', register: 'bc' },
+        source: { kind: 'imm', expression: { kind: 'number', value: 0x1234 } },
+      }),
+    ).toEqual({
+      size: 3,
+      fragments: [
+        { kind: 'bytes', bytes: [0x01] },
+        { kind: 'abs16', expression: { kind: 'number', value: 0x1234 } },
+      ],
+    });
+    expect(
+      encodeZ80Instruction({
+        mnemonic: 'ld',
+        target: { kind: 'reg8', register: 'a' },
+        source: { kind: 'reg-indirect', register: 'hl' },
+      }),
+    ).toEqual({ size: 1, fragments: [{ kind: 'bytes', bytes: [0x7e] }] });
+    expect(
+      encodeZ80Instruction({
+        mnemonic: 'ld',
+        target: { kind: 'reg-indirect', register: 'de' },
+        source: { kind: 'reg8', register: 'a' },
+      }),
+    ).toEqual({ size: 1, fragments: [{ kind: 'bytes', bytes: [0x12] }] });
+  });
+
+  it('parses the first ALU evidence slice', () => {
+    expect(parseZ80Instruction('sub A,B')).toEqual({
+      instruction: { mnemonic: 'sub', source: { kind: 'reg8', register: 'b' } },
+    });
+    expect(parseZ80Instruction('and $F0')).toEqual({
+      instruction: {
+        mnemonic: 'and',
+        source: { kind: 'imm', expression: { kind: 'number', value: 0xf0 } },
+      },
+    });
+    expect(parseZ80Instruction('or a')).toEqual({
+      instruction: { mnemonic: 'or', source: { kind: 'reg8', register: 'a' } },
+    });
+    expect(parseZ80Instruction('xor A,$55')).toEqual({
+      instruction: {
+        mnemonic: 'xor',
+        source: { kind: 'imm', expression: { kind: 'number', value: 0x55 } },
+      },
+    });
+    expect(parseZ80Instruction('cp (hl)')).toEqual({
+      instruction: { mnemonic: 'cp', source: { kind: 'reg-indirect', register: 'hl' } },
+    });
+    expect(parseZ80Instruction('cp (4000H)')).toEqual({
+      error: 'invalid CP operand: (4000H)',
+    });
+    expect(parseZ80Instruction('and b,c')).toEqual({
+      error: 'and two-operand form requires destination A',
+    });
+  });
+
+  it('emits ALU register, immediate, and (HL) forms from current evidence', () => {
+    const cases = [
+      ['sub b', [0x90]],
+      ['sub 1', [0xd6, 'imm8']],
+      ['sub (hl)', [0x96]],
+      ['and h', [0xa4]],
+      ['and $F0', [0xe6, 'imm8']],
+      ['and (hl)', [0xa6]],
+      ['or l', [0xb5]],
+      ['or $0F', [0xf6, 'imm8']],
+      ['or (hl)', [0xb6]],
+      ['xor a', [0xaf]],
+      ['xor $55', [0xee, 'imm8']],
+      ['xor (hl)', [0xae]],
+      ['cp b', [0xb8]],
+      ['cp $10', [0xfe, 'imm8']],
+      ['cp (hl)', [0xbe]],
+    ] as const;
+
+    for (const [source, expected] of cases) {
+      const parsed = parseZ80Instruction(source);
+      expect(parsed).toHaveProperty('instruction');
+      expect(encodeZ80Instruction(parsed?.instruction as never)).toMatchObject({
+        fragments:
+          expected[1] === 'imm8'
+            ? [{ kind: 'bytes', bytes: [expected[0]] }, { kind: 'imm8' }]
+            : [{ kind: 'bytes', bytes: [expected[0]] }],
+      });
+    }
+  });
+
+  it('parses and emits the ADD/ADC/SBC accumulator evidence slice', () => {
+    const cases = [
+      ['add a,b', [0x80]],
+      ['add a,$7F', [0xc6, 'imm8']],
+      ['add a,(hl)', [0x86]],
+      ['adc a,c', [0x89]],
+      ['adc a,$01', [0xce, 'imm8']],
+      ['adc a,(hl)', [0x8e]],
+      ['sbc a,e', [0x9b]],
+      ['sbc a,$03', [0xde, 'imm8']],
+      ['sbc a,(hl)', [0x9e]],
+    ] as const;
+
+    for (const [source, expected] of cases) {
+      const parsed = parseZ80Instruction(source);
+      expect(parsed).toHaveProperty('instruction');
+      expect(encodeZ80Instruction(parsed?.instruction as never)).toMatchObject({
+        fragments:
+          expected[1] === 'imm8'
+            ? [{ kind: 'bytes', bytes: [expected[0]] }, { kind: 'imm8' }]
+            : [{ kind: 'bytes', bytes: [expected[0]] }],
+      });
+    }
+
+    expect(parseZ80Instruction('add b,c')).toEqual({
+      error: 'add expects destination A, HL, IX, or IY',
+    });
+  });
+
+  it('parses and emits the 16-bit HL arithmetic evidence slice', () => {
+    const cases = [
+      ['add hl,bc', [0x09]],
+      ['add hl,de', [0x19]],
+      ['add hl,hl', [0x29]],
+      ['add hl,sp', [0x39]],
+      ['adc hl,bc', [0xed, 0x4a]],
+      ['adc hl,de', [0xed, 0x5a]],
+      ['adc hl,hl', [0xed, 0x6a]],
+      ['adc hl,sp', [0xed, 0x7a]],
+      ['sbc hl,bc', [0xed, 0x42]],
+      ['sbc hl,de', [0xed, 0x52]],
+      ['sbc hl,hl', [0xed, 0x62]],
+      ['sbc hl,sp', [0xed, 0x72]],
+    ] as const;
+
+    for (const [source, expected] of cases) {
+      const parsed = parseZ80Instruction(source);
+      expect(parsed).toHaveProperty('instruction');
+      expect(encodeZ80Instruction(parsed?.instruction as never)).toEqual({
+        size: expected.length,
+        fragments: [{ kind: 'bytes', bytes: expected }],
+      });
+    }
+
+    expect(parseZ80Instruction('adc hl,af')).toEqual({
+      error: 'adc HL, rr expects BC/DE/HL/SP',
+    });
+    expect(parseZ80Instruction('add sp,bc')).toEqual({
+      error: 'add expects destination A, HL, IX, or IY',
+    });
+  });
+
+  it('parses and emits the first core-ops evidence slice', () => {
+    const cases = [
+      ['di', [0xf3]],
+      ['ei', [0xfb]],
+      ['scf', [0x37]],
+      ['ccf', [0x3f]],
+      ['cpl', [0x2f]],
+      ['ex de,hl', [0xeb]],
+      ['ex (sp),hl', [0xe3]],
+      ['exx', [0xd9]],
+      ['halt', [0x76]],
+    ] as const;
+
+    for (const [source, expected] of cases) {
+      const parsed = parseZ80Instruction(source);
+      expect(parsed).toHaveProperty('instruction');
+      expect(encodeZ80Instruction(parsed?.instruction as never)).toEqual({
+        size: expected.length,
+        fragments: [{ kind: 'bytes', bytes: expected }],
+      });
+    }
+
+    expect(parseZ80Instruction('halt a')).toEqual({ error: 'halt expects no operands' });
+    expect(parseZ80Instruction('ex de')).toEqual({ error: 'ex expects two operands' });
+    expect(parseZ80Instruction('ex bc,de')).toEqual({
+      error: 'ex supports "AF, AF\'", "DE, HL", "(SP), HL", "(SP), IX", and "(SP), IY" only',
+    });
+  });
+
+  it('parses and emits the IM/RST interrupt-state evidence slice', () => {
+    const cases = [
+      ['im 0', [0xed, 0x46]],
+      ['im 1', [0xed, 0x56]],
+      ['im 2', [0xed, 0x5e]],
+      ['rst 0', [0xc7]],
+      ['rst 8', [0xcf]],
+      ['rst 16', [0xd7]],
+      ['rst 24', [0xdf]],
+      ['rst 32', [0xe7]],
+      ['rst 40', [0xef]],
+      ['rst 48', [0xf7]],
+      ['rst 56', [0xff]],
+      ['rst $38', [0xff]],
+      ['reti', [0xed, 0x4d]],
+      ['retn', [0xed, 0x45]],
+    ] as const;
+
+    for (const [source, expected] of cases) {
+      const parsed = parseZ80Instruction(source);
+      expect(parsed).toHaveProperty('instruction');
+      expect(encodeZ80Instruction(parsed?.instruction as never)).toEqual({
+        size: expected.length,
+        fragments: [{ kind: 'bytes', bytes: expected }],
+      });
+    }
+
+    expect(parseZ80Instruction('im')).toEqual({ error: 'im expects one operand' });
+    expect(parseZ80Instruction('im 3')).toEqual({ error: 'im expects 0, 1, or 2' });
+    expect(parseZ80Instruction('rst')).toEqual({ error: 'rst expects one operand' });
+    expect(parseZ80Instruction('rst 7')).toEqual({
+      error: 'rst expects an imm8 multiple of 8 (0..56)',
+    });
+    expect(() => encodeZ80Instruction({ mnemonic: 'rst', vector: 7 } as never)).toThrow(
+      'invalid RST vector: 7',
+    );
+    expect(parseZ80Instruction('reti a')).toEqual({ error: 'reti expects no operands' });
+    expect(parseZ80Instruction('retn 1')).toEqual({ error: 'retn expects no operands' });
+  });
+
+  it('emits ABS16 and REL8 template fragments for control flow', () => {
+    expect(
+      encodeZ80Instruction({
+        mnemonic: 'call',
+        expression: { kind: 'symbol', name: 'target' },
+      }),
+    ).toEqual({
+      size: 3,
+      fragments: [
+        { kind: 'bytes', bytes: [0xcd] },
+        { kind: 'abs16', expression: { kind: 'symbol', name: 'target' } },
+      ],
+    });
+    expect(
+      encodeZ80Instruction({
+        mnemonic: 'jr-cc',
+        condition: 'z',
+        expression: { kind: 'symbol', name: 'target' },
+      }),
+    ).toEqual({
+      size: 2,
+      fragments: [
+        { kind: 'bytes', bytes: [0x28] },
+        { kind: 'rel8', expression: { kind: 'symbol', name: 'target' }, mnemonic: 'jr z' },
+      ],
+    });
+    expect(
+      encodeZ80Instruction({
+        mnemonic: 'djnz',
+        expression: { kind: 'symbol', name: 'loop' },
+      }),
+    ).toEqual({
+      size: 2,
+      fragments: [
+        { kind: 'bytes', bytes: [0x10] },
+        { kind: 'rel8', expression: { kind: 'symbol', name: 'loop' }, mnemonic: 'djnz' },
+      ],
+    });
+  });
+
+  it('parses and emits the conditional control-flow and indirect JP evidence slice', () => {
+    const conditionalCases = [
+      ['ret nz', [0xc0]],
+      ['ret z', [0xc8]],
+      ['ret nc', [0xd0]],
+      ['ret c', [0xd8]],
+      ['ret po', [0xe0]],
+      ['ret pe', [0xe8]],
+      ['ret p', [0xf0]],
+      ['ret m', [0xf8]],
+      ['jp nz,target', [0xc2, 'abs16']],
+      ['jp z,target', [0xca, 'abs16']],
+      ['jp nc,target', [0xd2, 'abs16']],
+      ['jp c,target', [0xda, 'abs16']],
+      ['jp po,target', [0xe2, 'abs16']],
+      ['jp pe,target', [0xea, 'abs16']],
+      ['jp p,target', [0xf2, 'abs16']],
+      ['jp m,target', [0xfa, 'abs16']],
+      ['call nz,target', [0xc4, 'abs16']],
+      ['call z,target', [0xcc, 'abs16']],
+      ['call nc,target', [0xd4, 'abs16']],
+      ['call c,target', [0xdc, 'abs16']],
+      ['call po,target', [0xe4, 'abs16']],
+      ['call pe,target', [0xec, 'abs16']],
+      ['call p,target', [0xf4, 'abs16']],
+      ['call m,target', [0xfc, 'abs16']],
+    ] as const;
+
+    for (const [source, expected] of conditionalCases) {
+      const parsed = parseZ80Instruction(source);
+      expect(parsed).toHaveProperty('instruction');
+      expect(encodeZ80Instruction(parsed?.instruction as never)).toMatchObject({
+        size: expected[1] === 'abs16' ? 3 : 1,
+        fragments:
+          expected[1] === 'abs16'
+            ? [{ kind: 'bytes', bytes: [expected[0]] }, { kind: 'abs16' }]
+            : [{ kind: 'bytes', bytes: [expected[0]] }],
+      });
+    }
+
+    expect(parseZ80Instruction('jp (hl)')).toEqual({
+      instruction: { mnemonic: 'jp-indirect', register: 'hl' },
+    });
+    expect(parseZ80Instruction('jp (ix)')).toEqual({
+      instruction: { mnemonic: 'jp-indirect', register: 'ix' },
+    });
+    expect(parseZ80Instruction('jp (iy)')).toEqual({
+      instruction: { mnemonic: 'jp-indirect', register: 'iy' },
+    });
+    expect(encodeZ80Instruction({ mnemonic: 'jp-indirect', register: 'hl' })).toEqual({
+      size: 1,
+      fragments: [{ kind: 'bytes', bytes: [0xe9] }],
+    });
+    expect(encodeZ80Instruction({ mnemonic: 'jp-indirect', register: 'ix' })).toEqual({
+      size: 2,
+      fragments: [{ kind: 'bytes', bytes: [0xdd, 0xe9] }],
+    });
+    expect(encodeZ80Instruction({ mnemonic: 'jp-indirect', register: 'iy' })).toEqual({
+      size: 2,
+      fragments: [{ kind: 'bytes', bytes: [0xfd, 0xe9] }],
+    });
+
+    expect(parseZ80Instruction('ret q')).toEqual({
+      error: 'ret cc expects a valid condition code',
+    });
+    expect(parseZ80Instruction('ret nz,c')).toEqual({
+      error: 'ret expects no operands or one condition code',
+    });
+    expect(parseZ80Instruction('jp q,1')).toEqual({
+      error: 'jp cc expects valid condition code NZ/Z/NC/C/PO/PE/P/M',
+    });
+    expect(parseZ80Instruction('jp nz,(hl)')).toEqual({
+      error: 'jp cc, nn does not support indirect targets',
+    });
+    expect(parseZ80Instruction('jp nz,a')).toEqual({ error: 'jp cc, nn expects imm16' });
+    expect(parseZ80Instruction('jp (bc)')).toEqual({
+      error: 'jp indirect form supports (hl), (ix), or (iy) only',
+    });
+    expect(parseZ80Instruction('jp hl')).toEqual({
+      error: 'jp indirect form requires parentheses; use (hl), (ix), or (iy)',
+    });
+    expect(parseZ80Instruction('call q,1')).toEqual({
+      error: 'call cc expects valid condition code NZ/Z/NC/C/PO/PE/P/M',
+    });
+    expect(parseZ80Instruction('call nz,(hl)')).toEqual({
+      error: 'call cc, nn does not support indirect targets',
+    });
+    expect(parseZ80Instruction('call nz,a')).toEqual({ error: 'call cc, nn expects imm16' });
+    expect(parseZ80Instruction('call (hl)')).toEqual({
+      error: 'call does not support indirect targets; use imm16',
+    });
+  });
+
+  it('parses and emits the INC/DEC/PUSH/POP core-ops evidence slice', () => {
+    const cases = [
+      ['inc b', [0x04]],
+      ['inc c', [0x0c]],
+      ['inc d', [0x14]],
+      ['inc e', [0x1c]],
+      ['inc h', [0x24]],
+      ['inc l', [0x2c]],
+      ['inc a', [0x3c]],
+      ['inc bc', [0x03]],
+      ['inc de', [0x13]],
+      ['inc hl', [0x23]],
+      ['inc sp', [0x33]],
+      ['inc ix', [0xdd, 0x23]],
+      ['inc iy', [0xfd, 0x23]],
+      ['inc (hl)', [0x34]],
+      ['inc ixh', [0xdd, 0x24]],
+      ['inc ixl', [0xdd, 0x2c]],
+      ['inc iyh', [0xfd, 0x24]],
+      ['inc iyl', [0xfd, 0x2c]],
+      ['dec b', [0x05]],
+      ['dec c', [0x0d]],
+      ['dec d', [0x15]],
+      ['dec e', [0x1d]],
+      ['dec h', [0x25]],
+      ['dec l', [0x2d]],
+      ['dec a', [0x3d]],
+      ['dec bc', [0x0b]],
+      ['dec de', [0x1b]],
+      ['dec hl', [0x2b]],
+      ['dec sp', [0x3b]],
+      ['dec ix', [0xdd, 0x2b]],
+      ['dec iy', [0xfd, 0x2b]],
+      ['dec (hl)', [0x35]],
+      ['dec ixh', [0xdd, 0x25]],
+      ['dec ixl', [0xdd, 0x2d]],
+      ['dec iyh', [0xfd, 0x25]],
+      ['dec iyl', [0xfd, 0x2d]],
+      ['push bc', [0xc5]],
+      ['push de', [0xd5]],
+      ['push hl', [0xe5]],
+      ['push af', [0xf5]],
+      ['push ix', [0xdd, 0xe5]],
+      ['push iy', [0xfd, 0xe5]],
+      ['pop bc', [0xc1]],
+      ['pop de', [0xd1]],
+      ['pop hl', [0xe1]],
+      ['pop af', [0xf1]],
+      ['pop ix', [0xdd, 0xe1]],
+      ['pop iy', [0xfd, 0xe1]],
+    ] as const;
+
+    for (const [source, expected] of cases) {
+      const parsed = parseZ80Instruction(source);
+      expect(parsed).toHaveProperty('instruction');
+      expect(encodeZ80Instruction(parsed?.instruction as never)).toEqual({
+        size: expected.length,
+        fragments: [{ kind: 'bytes', bytes: expected }],
+      });
+    }
+
+    expect(parseZ80Instruction('inc a,b')).toEqual({ error: 'inc expects one operand' });
+    expect(parseZ80Instruction('dec')).toEqual({ error: 'dec expects one operand' });
+    expect(parseZ80Instruction('inc 1')).toEqual({ error: 'inc expects r8/rr/(hl) operand' });
+    expect(parseZ80Instruction('dec (bc)')).toEqual({ error: 'dec expects r8/rr/(hl) operand' });
+    expect(parseZ80Instruction('push')).toEqual({ error: 'push expects one operand' });
+    expect(parseZ80Instruction('pop a,b')).toEqual({ error: 'pop expects one operand' });
+    expect(parseZ80Instruction('push a')).toEqual({
+      error: 'push supports BC/DE/HL/AF/IX/IY only',
+    });
+    expect(parseZ80Instruction('pop ixh')).toEqual({
+      error: 'pop supports BC/DE/HL/AF/IX/IY only',
+    });
+  });
+
+  it('parses and emits the indexed addressing foundation evidence slice', () => {
+    expect(parseZ80Instruction('ld a,(ix+5)')).toEqual({
+      instruction: {
+        mnemonic: 'ld',
+        target: { kind: 'reg8', register: 'a' },
+        source: { kind: 'indexed', register: 'ix', displacement: { kind: 'number', value: 5 } },
+      },
+    });
+    expect(parseZ80Instruction('ld (iy-2),b')).toEqual({
+      instruction: {
+        mnemonic: 'ld',
+        target: {
+          kind: 'indexed',
+          register: 'iy',
+          displacement: { kind: 'unary', operator: '-', expression: { kind: 'number', value: 2 } },
+        },
+        source: { kind: 'reg8', register: 'b' },
+      },
+    });
+    expect(parseZ80Instruction('ld a,(ix-2+1)')).toEqual({
+      instruction: {
+        mnemonic: 'ld',
+        target: { kind: 'reg8', register: 'a' },
+        source: {
+          kind: 'indexed',
+          register: 'ix',
+          displacement: {
+            kind: 'binary',
+            operator: '+',
+            left: { kind: 'unary', operator: '-', expression: { kind: 'number', value: 2 } },
+            right: { kind: 'number', value: 1 },
+          },
+        },
+      },
+    });
+
+    const cases = [
+      ['ld a,(ix+5)', [0xdd, 0x7e, 'disp8']],
+      ['ld c,(iy-2)', [0xfd, 0x4e, 'disp8']],
+      ['ld (ix+0),a', [0xdd, 0x77, 'disp8']],
+      ['ld (iy+127),l', [0xfd, 0x75, 'disp8']],
+      ['ld (ix+3),$44', [0xdd, 0x36, 'disp8', 'imm8']],
+      ['add a,(ix+1)', [0xdd, 0x86, 'disp8']],
+      ['adc a,(iy+2)', [0xfd, 0x8e, 'disp8']],
+      ['sbc a,(ix-3)', [0xdd, 0x9e, 'disp8']],
+      ['sub (iy+4)', [0xfd, 0x96, 'disp8']],
+      ['and (ix+5)', [0xdd, 0xa6, 'disp8']],
+      ['or (iy+6)', [0xfd, 0xb6, 'disp8']],
+      ['xor (ix+7)', [0xdd, 0xae, 'disp8']],
+      ['cp (iy+8)', [0xfd, 0xbe, 'disp8']],
+      ['inc (ix+9)', [0xdd, 0x34, 'disp8']],
+      ['dec (iy-10)', [0xfd, 0x35, 'disp8']],
+    ] as const;
+
+    for (const [source, expected] of cases) {
+      const parsed = parseZ80Instruction(source);
+      expect(parsed).toHaveProperty('instruction');
+      const encoded = encodeZ80Instruction(parsed?.instruction as never);
+      const signature: Array<number | string> = [];
+      for (const fragment of encoded.fragments) {
+        if (fragment.kind === 'bytes') {
+          signature.push(...fragment.bytes);
+        } else {
+          signature.push(fragment.kind);
+        }
+      }
+      expect(encoded.size).toBe(expected.length);
+      expect(signature).toEqual(expected);
+    }
+
+    expect(parseZ80Instruction('ld a,(ix[1])')).toEqual({
+      error: 'Indexed memory operands use (ix+disp)/(iy+disp), not ix[1].',
+    });
+    expect(parseZ80Instruction('ld (ix+1),(iy+2)')).toEqual({
+      error: 'ld does not support memory-to-memory transfers',
+    });
+    expect(parseZ80Instruction('inc (bc+1)')).toEqual({
+      error: 'inc expects r8/rr/(hl) operand',
+    });
+  });
+
+  it('parses and emits the indexed LD half-register evidence slice', () => {
+    expect(parseZ80Instruction('ld ixh,a')).toEqual({
+      instruction: {
+        mnemonic: 'ld',
+        target: { kind: 'reg-half-index', register: 'ixh' },
+        source: { kind: 'reg8', register: 'a' },
+      },
+    });
+    expect(parseZ80Instruction('ld b,iyl')).toEqual({
+      instruction: {
+        mnemonic: 'ld',
+        target: { kind: 'reg8', register: 'b' },
+        source: { kind: 'reg-half-index', register: 'iyl' },
+      },
+    });
+    expect(parseZ80Instruction('ld ix,$1234')).toEqual({
+      instruction: {
+        mnemonic: 'ld',
+        target: { kind: 'reg-index16', register: 'ix' },
+        source: { kind: 'imm', expression: { kind: 'number', value: 0x1234 } },
+      },
+    });
+
+    const cases = [
+      ['ld ixh,a', [0xdd, 0x67]],
+      ['ld ixl,e', [0xdd, 0x6b]],
+      ['ld a,ixh', [0xdd, 0x7c]],
+      ['ld b,ixl', [0xdd, 0x45]],
+      ['ld ixh,ixl', [0xdd, 0x65]],
+      ['ld iyh,a', [0xfd, 0x67]],
+      ['ld iyl,e', [0xfd, 0x6b]],
+      ['ld a,iyh', [0xfd, 0x7c]],
+      ['ld b,iyl', [0xfd, 0x45]],
+      ['ld iyh,iyl', [0xfd, 0x65]],
+      ['ld ix,$1234', [0xdd, 0x21, 'abs16']],
+      ['ld iy,$2345', [0xfd, 0x21, 'abs16']],
+      ['ld sp,hl', [0xf9]],
+      ['ld sp,ix', [0xdd, 0xf9]],
+      ['ld sp,iy', [0xfd, 0xf9]],
+    ] as const;
+
+    for (const [source, expected] of cases) {
+      const parsed = parseZ80Instruction(source);
+      expect(parsed).toHaveProperty('instruction');
+      const encoded = encodeZ80Instruction(parsed?.instruction as never);
+      const signature: Array<number | string> = [];
+      for (const fragment of encoded.fragments) {
+        if (fragment.kind === 'bytes') {
+          signature.push(...fragment.bytes);
+        } else {
+          signature.push(fragment.kind);
+        }
+      }
+      const expectedSize = expected.reduce(
+        (size, item) => size + (String(item) === 'abs16' ? 2 : 1),
+        0,
+      );
+      expect(encoded.size).toBe(expectedSize);
+      expect(signature).toEqual(expected);
+    }
+
+    expect(parseZ80Instruction('ld h,ixh')).toEqual({
+      error: 'ld with IX*/IY* does not support plain H/L counterpart operands',
+    });
+    expect(parseZ80Instruction('ld ixh,iyh')).toEqual({
+      error: 'ld between IX* and IY* byte registers is not supported',
+    });
+    expect(parseZ80Instruction('ld sp,bc')).toEqual({
+      error: 'ld rr, rr supports SP <- HL/IX/IY only',
+    });
+    expect(
+      encodeZ80Instruction({
+        mnemonic: 'ld',
+        target: { kind: 'reg16', register: 'sp' },
+        source: { kind: 'reg16', register: 'bc' },
+      }),
+    ).toEqual({ size: 0, fragments: [] });
+    expect(
+      encodeZ80Instruction({
+        mnemonic: 'ld',
+        target: { kind: 'reg8', register: 'h' },
+        source: { kind: 'reg-half-index', register: 'ixh' },
+      }),
+    ).toEqual({ size: 0, fragments: [] });
+    expect(
+      encodeZ80Instruction({
+        mnemonic: 'ld',
+        target: { kind: 'reg-half-index', register: 'ixh' },
+        source: { kind: 'reg-half-index', register: 'iyh' },
+      }),
+    ).toEqual({ size: 0, fragments: [] });
+  });
+
+  it('parses and emits the absolute LD and I/R transfer evidence slice', () => {
+    expect(parseZ80Instruction('ld (Slot+1),ix')).toEqual({
+      instruction: {
+        mnemonic: 'ld',
+        target: {
+          kind: 'mem-abs',
+          expression: {
+            kind: 'binary',
+            operator: '+',
+            left: { kind: 'symbol', name: 'Slot' },
+            right: { kind: 'number', value: 1 },
+          },
+        },
+        source: { kind: 'reg-index16', register: 'ix' },
+      },
+    });
+    expect(parseZ80Instruction('ld a,i')).toEqual({
+      instruction: {
+        mnemonic: 'ld',
+        target: { kind: 'reg8', register: 'a' },
+        source: { kind: 'special8', register: 'i' },
+      },
+    });
+
+    const cases = [
+      ['ld a,(Slot)', [0x3a, 'abs16']],
+      ['ld (Slot),a', [0x32, 'abs16']],
+      ['ld hl,(Slot)', [0x2a, 'abs16']],
+      ['ld (Slot),hl', [0x22, 'abs16']],
+      ['ld bc,(Slot)', [0xed, 0x4b, 'abs16']],
+      ['ld (Slot),bc', [0xed, 0x43, 'abs16']],
+      ['ld de,(Slot)', [0xed, 0x5b, 'abs16']],
+      ['ld (Slot),de', [0xed, 0x53, 'abs16']],
+      ['ld sp,(Slot)', [0xed, 0x7b, 'abs16']],
+      ['ld (Slot),sp', [0xed, 0x73, 'abs16']],
+      ['ld ix,(Slot)', [0xdd, 0x2a, 'abs16']],
+      ['ld (Slot),ix', [0xdd, 0x22, 'abs16']],
+      ['ld iy,(Slot)', [0xfd, 0x2a, 'abs16']],
+      ['ld (Slot),iy', [0xfd, 0x22, 'abs16']],
+      ['ld i,a', [0xed, 0x47]],
+      ['ld a,i', [0xed, 0x57]],
+      ['ld r,a', [0xed, 0x4f]],
+      ['ld a,r', [0xed, 0x5f]],
+    ] as const;
+
+    for (const [source, expected] of cases) {
+      const parsed = parseZ80Instruction(source);
+      expect(parsed).toHaveProperty('instruction');
+      const encoded = encodeZ80Instruction(parsed?.instruction as never);
+      const signature: Array<number | string> = [];
+      for (const fragment of encoded.fragments) {
+        if (fragment.kind === 'bytes') {
+          signature.push(...fragment.bytes);
+        } else {
+          signature.push(fragment.kind);
+        }
+      }
+      const expectedSize = expected.reduce(
+        (size, item) => size + (String(item) === 'abs16' ? 2 : 1),
+        0,
+      );
+      expect(encoded.size).toBe(expectedSize);
+      expect(signature).toEqual(expected);
+    }
+
+    expect(parseZ80Instruction('ld (Dst),(Src)')).toEqual({
+      error: 'ld does not support memory-to-memory transfers',
+    });
+    expect(parseZ80Instruction('ld i,b')).toEqual({
+      error: 'ld expects a supported register/memory/immediate transfer form',
+    });
+    expect(parseZ80Instruction('ld b,r')).toEqual({
+      error: 'ld expects a supported register/memory/immediate transfer form',
+    });
+    expect(
+      encodeZ80Instruction({
+        mnemonic: 'ld',
+        target: { kind: 'mem-abs', expression: { kind: 'symbol', name: 'Dst' } },
+        source: { kind: 'mem-abs', expression: { kind: 'symbol', name: 'Src' } },
+      }),
+    ).toEqual({ size: 0, fragments: [] });
+    expect(
+      encodeZ80Instruction({
+        mnemonic: 'ld',
+        target: { kind: 'special8', register: 'i' },
+        source: { kind: 'reg8', register: 'b' },
+      }),
+    ).toEqual({ size: 0, fragments: [] });
+  });
+
+  it('parses and emits the non-indexed CB bit/rotate/shift evidence slice', () => {
+    expect(parseZ80Instruction('bit 3,a')).toEqual({
+      instruction: {
+        mnemonic: 'bit',
+        bit: 3,
+        operand: { kind: 'reg8', register: 'a' },
+      },
+    });
+    expect(parseZ80Instruction('res 2,(hl)')).toEqual({
+      instruction: {
+        mnemonic: 'res',
+        bit: 2,
+        operand: { kind: 'reg-indirect', register: 'hl' },
+      },
+    });
+    expect(parseZ80Instruction('rlc b')).toEqual({
+      instruction: {
+        mnemonic: 'rlc',
+        operand: { kind: 'reg8', register: 'b' },
+      },
+    });
+
+    const cases = [
+      ['bit 3,a', [0xcb, 0x5f]],
+      ['bit 0,b', [0xcb, 0x40]],
+      ['bit 7,(hl)', [0xcb, 0x7e]],
+      ['res 2,(hl)', [0xcb, 0x96]],
+      ['res 0,b', [0xcb, 0x80]],
+      ['set 7,a', [0xcb, 0xff]],
+      ['set 1,(hl)', [0xcb, 0xce]],
+      ['rlc b', [0xcb, 0x00]],
+      ['rrc c', [0xcb, 0x09]],
+      ['rl d', [0xcb, 0x12]],
+      ['rr e', [0xcb, 0x1b]],
+      ['sla h', [0xcb, 0x24]],
+      ['sra (hl)', [0xcb, 0x2e]],
+      ['sll l', [0xcb, 0x35]],
+      ['sls a', [0xcb, 0x37]],
+      ['srl (hl)', [0xcb, 0x3e]],
+    ] as const;
+
+    for (const [source, expected] of cases) {
+      const parsed = parseZ80Instruction(source);
+      expect(parsed).toHaveProperty('instruction');
+      expect(encodeZ80Instruction(parsed?.instruction as never)).toEqual({
+        size: expected.length,
+        fragments: [{ kind: 'bytes', bytes: expected }],
+      });
+    }
+
+    expect(parseZ80Instruction('bit 8,a')).toEqual({
+      error: 'bit expects bit index 0..7',
+    });
+    expect(parseZ80Instruction('res -1,c')).toEqual({
+      error: 'res expects bit index 0..7',
+    });
+    expect(parseZ80Instruction('set 1')).toEqual({
+      error: 'set expects two operands, or three with indexed source + reg8 destination',
+    });
+    expect(parseZ80Instruction('rl')).toEqual({
+      error: 'rl expects one operand, or two with indexed source + reg8 destination',
+    });
+    expect(parseZ80Instruction('rl 1')).toEqual({
+      error: 'rl expects reg8 or (hl)',
+    });
+    expect(parseZ80Instruction('rr (hl),a')).toEqual({
+      error: 'rr two-operand form requires (ix/iy+disp) source',
+    });
+  });
+
+  it('parses and emits the indexed CB result-copy evidence slice', () => {
+    expect(parseZ80Instruction('bit 2,(ix+5)')).toEqual({
+      instruction: {
+        mnemonic: 'bit',
+        bit: 2,
+        operand: { kind: 'indexed', register: 'ix', displacement: { kind: 'number', value: 5 } },
+      },
+    });
+    expect(parseZ80Instruction('set 7,(iy-2),a')).toEqual({
+      instruction: {
+        mnemonic: 'set',
+        bit: 7,
+        operand: {
+          kind: 'indexed',
+          register: 'iy',
+          displacement: { kind: 'unary', operator: '-', expression: { kind: 'number', value: 2 } },
+        },
+        destination: { kind: 'reg8', register: 'a' },
+      },
+    });
+    expect(parseZ80Instruction('rlc (ix+1),b')).toEqual({
+      instruction: {
+        mnemonic: 'rlc',
+        operand: { kind: 'indexed', register: 'ix', displacement: { kind: 'number', value: 1 } },
+        destination: { kind: 'reg8', register: 'b' },
+      },
+    });
+
+    const cases = [
+      ['bit 2,(ix+5)', [0xdd, 0xcb, 'disp8', 0x56]],
+      ['bit 7,(iy-2)', [0xfd, 0xcb, 'disp8', 0x7e]],
+      ['set 0,(ix+1),b', [0xdd, 0xcb, 'disp8', 0xc0]],
+      ['set 7,(iy-2),a', [0xfd, 0xcb, 'disp8', 0xff]],
+      ['res 3,(ix+0),e', [0xdd, 0xcb, 'disp8', 0x9b]],
+      ['res 6,(iy+127),l', [0xfd, 0xcb, 'disp8', 0xb5]],
+      ['set 1,(ix+3)', [0xdd, 0xcb, 'disp8', 0xce]],
+      ['res 4,(iy-4)', [0xfd, 0xcb, 'disp8', 0xa6]],
+      ['rlc (ix+1),b', [0xdd, 0xcb, 'disp8', 0x00]],
+      ['rrc (iy+1),c', [0xfd, 0xcb, 'disp8', 0x09]],
+      ['rl (ix+1)', [0xdd, 0xcb, 'disp8', 0x16]],
+      ['rr (iy+1),e', [0xfd, 0xcb, 'disp8', 0x1b]],
+      ['sla (ix+1),h', [0xdd, 0xcb, 'disp8', 0x24]],
+      ['sra (iy+1)', [0xfd, 0xcb, 'disp8', 0x2e]],
+      ['sll (ix+1),l', [0xdd, 0xcb, 'disp8', 0x35]],
+      ['sls (iy+1),a', [0xfd, 0xcb, 'disp8', 0x37]],
+      ['srl (iy+1),a', [0xfd, 0xcb, 'disp8', 0x3f]],
+    ] as const;
+
+    for (const [source, expected] of cases) {
+      const parsed = parseZ80Instruction(source);
+      expect(parsed).toHaveProperty('instruction');
+      const encoded = encodeZ80Instruction(parsed?.instruction as never);
+      const signature: Array<number | string> = [];
+      for (const fragment of encoded.fragments) {
+        if (fragment.kind === 'bytes') {
+          signature.push(...fragment.bytes);
+        } else {
+          signature.push(fragment.kind);
+        }
+      }
+      expect(encoded.size).toBe(expected.length);
+      expect(signature).toEqual(expected);
+    }
+
+    expect(parseZ80Instruction('bit 1,(ix+1),a')).toEqual({
+      error: 'bit expects two operands',
+    });
+    expect(parseZ80Instruction('set 1,(hl),a')).toEqual({
+      error: 'set b,(ix/iy+disp),r requires an indexed memory source',
+    });
+    expect(parseZ80Instruction('res 2,(ix+0),ix')).toEqual({
+      error: 'res b,(ix/iy+disp),r expects reg8 destination',
+    });
+    expect(parseZ80Instruction('res 1,(ix+1),ixh')).toEqual({
+      error: 'res indexed destination must use plain reg8 B/C/D/E/H/L/A',
+    });
+    expect(parseZ80Instruction('res 1,(ix+1),iyh')).toEqual({
+      error: 'res indexed destination family must match source index base',
+    });
+    expect(parseZ80Instruction('set 2,(iy+1),iyl')).toEqual({
+      error: 'set indexed destination must use plain reg8 B/C/D/E/H/L/A',
+    });
+    expect(parseZ80Instruction('set 2,(iy+1),ixl')).toEqual({
+      error: 'set indexed destination family must match source index base',
+    });
+    expect(parseZ80Instruction('rlc (ix+1),ixh')).toEqual({
+      error: 'rlc indexed destination must use plain reg8 B/C/D/E/H/L/A',
+    });
+    expect(parseZ80Instruction('rlc (ix+1),iyh')).toEqual({
+      error: 'rlc indexed destination family must match source index base',
+    });
+  });
+
+  it('parses and emits the remaining ED/I/O and accumulator-rotate evidence slice', () => {
+    const byteCases = [
+      ['daa', [0x27]],
+      ['rlca', [0x07]],
+      ['rrca', [0x0f]],
+      ['rla', [0x17]],
+      ['rra', [0x1f]],
+      ['neg', [0xed, 0x44]],
+      ['rrd', [0xed, 0x67]],
+      ['rld', [0xed, 0x6f]],
+      ['ldi', [0xed, 0xa0]],
+      ['ldir', [0xed, 0xb0]],
+      ['ldd', [0xed, 0xa8]],
+      ['lddr', [0xed, 0xb8]],
+      ['cpi', [0xed, 0xa1]],
+      ['cpir', [0xed, 0xb1]],
+      ['cpd', [0xed, 0xa9]],
+      ['cpdr', [0xed, 0xb9]],
+      ['ini', [0xed, 0xa2]],
+      ['inir', [0xed, 0xb2]],
+      ['ind', [0xed, 0xaa]],
+      ['indr', [0xed, 0xba]],
+      ['outi', [0xed, 0xa3]],
+      ['otir', [0xed, 0xb3]],
+      ['outd', [0xed, 0xab]],
+      ['otdr', [0xed, 0xbb]],
+      ['in (c)', [0xed, 0x70]],
+      ['in b,(c)', [0xed, 0x40]],
+      ['in a,(c)', [0xed, 0x78]],
+      ['out (c),b', [0xed, 0x41]],
+      ['out (c),a', [0xed, 0x79]],
+      ['out (c),0', [0xed, 0x71]],
+    ] as const;
+
+    for (const [source, expected] of byteCases) {
+      const parsed = parseZ80Instruction(source);
+      expect(parsed).toHaveProperty('instruction');
+      expect(encodeZ80Instruction(parsed?.instruction as never)).toEqual({
+        size: expected.length,
+        fragments: [{ kind: 'bytes', bytes: expected }],
+      });
+    }
+
+    const fragmentCases = [
+      ['in a,($12)', [0xdb, 'port8']],
+      ['out ($34),a', [0xd3, 'port8']],
+    ] as const;
+
+    for (const [source, expected] of fragmentCases) {
+      const parsed = parseZ80Instruction(source);
+      expect(parsed).toHaveProperty('instruction');
+      const encoded = encodeZ80Instruction(parsed?.instruction as never);
+      const signature: Array<number | string> = [];
+      for (const fragment of encoded.fragments) {
+        if (fragment.kind === 'bytes') {
+          signature.push(...fragment.bytes);
+        } else {
+          signature.push(fragment.kind);
+        }
+      }
+      expect(encoded.size).toBe(expected.length);
+      expect(signature).toEqual(expected);
+    }
+
+    expect(parseZ80Instruction('daa a')).toEqual({ error: 'daa expects no operands' });
+    expect(parseZ80Instruction('rlca a')).toEqual({ error: 'rlca expects no operands' });
+    expect(parseZ80Instruction('neg a')).toEqual({ error: 'neg expects no operands' });
+    expect(parseZ80Instruction('ldir a')).toEqual({ error: 'ldir expects no operands' });
+    expect(parseZ80Instruction('in')).toEqual({ error: 'in expects one or two operands' });
+    expect(parseZ80Instruction('in a')).toEqual({
+      error: 'in (c) is the only one-operand in form',
+    });
+    expect(parseZ80Instruction('in a,a')).toEqual({
+      error: 'in expects a port operand (c) or (imm8)',
+    });
+    expect(parseZ80Instruction('in b,(1)')).toEqual({
+      error: 'in a,(n) immediate port form requires destination A',
+    });
+    expect(parseZ80Instruction('in ixh,(c)')).toEqual({
+      error: 'in destination must use plain reg8 B/C/D/E/H/L/A',
+    });
+    expect(parseZ80Instruction('out')).toEqual({ error: 'out expects two operands' });
+    expect(parseZ80Instruction('out (c)')).toEqual({ error: 'out expects two operands' });
+    expect(parseZ80Instruction('out (c),(hl)')).toEqual({
+      error: 'out expects a reg8 source',
+    });
+    expect(parseZ80Instruction('out (1),b')).toEqual({
+      error: 'out (n),a immediate port form requires source A',
+    });
+    expect(parseZ80Instruction('out (c),2')).toEqual({
+      error: 'out (c), n immediate form supports n=0 only',
+    });
+    expect(parseZ80Instruction('out (c),ixl')).toEqual({
+      error: 'out source must use plain reg8 B/C/D/E/H/L/A',
+    });
+  });
+
+  it('parses and emits the indexed 16-bit ADD and remaining EX evidence slice', () => {
+    const cases = [
+      ['add ix,bc', [0xdd, 0x09]],
+      ['add ix,de', [0xdd, 0x19]],
+      ['add ix,ix', [0xdd, 0x29]],
+      ['add ix,sp', [0xdd, 0x39]],
+      ['add iy,bc', [0xfd, 0x09]],
+      ['add iy,de', [0xfd, 0x19]],
+      ['add iy,iy', [0xfd, 0x29]],
+      ['add iy,sp', [0xfd, 0x39]],
+      ["ex af,af'", [0x08]],
+      ["ex af',af", [0x08]],
+      ['ex (sp),ix', [0xdd, 0xe3]],
+      ['ex ix,(sp)', [0xdd, 0xe3]],
+      ['ex (sp),iy', [0xfd, 0xe3]],
+      ['ex iy,(sp)', [0xfd, 0xe3]],
+    ] as const;
+
+    for (const [source, expected] of cases) {
+      const parsed = parseZ80Instruction(source);
+      expect(parsed).toHaveProperty('instruction');
+      expect(encodeZ80Instruction(parsed?.instruction as never)).toEqual({
+        size: expected.length,
+        fragments: [{ kind: 'bytes', bytes: expected }],
+      });
+    }
+
+    expect(parseZ80Instruction('add sp,bc')).toEqual({
+      error: 'add expects destination A, HL, IX, or IY',
+    });
+    expect(parseZ80Instruction('add hl,1')).toEqual({
+      error: 'add HL, rr expects BC/DE/HL/SP',
+    });
+    expect(parseZ80Instruction('add ix,1')).toEqual({
+      error: 'add IX, rr supports BC/DE/SP and same-index pair only',
+    });
+    expect(parseZ80Instruction('add iy,a')).toEqual({
+      error: 'add IY, rr supports BC/DE/SP and same-index pair only',
+    });
+    expect(parseZ80Instruction('add (hl),a')).toEqual({
+      error: 'add expects destination A, HL, IX, or IY',
+    });
+    expect(parseZ80Instruction('ex af,bc')).toEqual({
+      error: 'ex supports "AF, AF\'", "DE, HL", "(SP), HL", "(SP), IX", and "(SP), IY" only',
+    });
+  });
+
+  it('parses and emits half-index ALU operands from current AZM evidence', () => {
+    const halfRegisters = [
+      ['ixh', 0xdd, 4],
+      ['ixl', 0xdd, 5],
+      ['iyh', 0xfd, 4],
+      ['iyl', 0xfd, 5],
+    ] as const;
+    const families = [
+      { mnemonic: 'add', base: 0x80, explicitA: true },
+      { mnemonic: 'adc', base: 0x88, explicitA: true },
+      { mnemonic: 'sub', base: 0x90, explicitA: false },
+      { mnemonic: 'sub', base: 0x90, explicitA: true },
+      { mnemonic: 'sbc', base: 0x98, explicitA: true },
+      { mnemonic: 'and', base: 0xa0, explicitA: false },
+      { mnemonic: 'and', base: 0xa0, explicitA: true },
+      { mnemonic: 'or', base: 0xb0, explicitA: false },
+      { mnemonic: 'or', base: 0xb0, explicitA: true },
+      { mnemonic: 'xor', base: 0xa8, explicitA: false },
+      { mnemonic: 'xor', base: 0xa8, explicitA: true },
+      { mnemonic: 'cp', base: 0xb8, explicitA: false },
+      { mnemonic: 'cp', base: 0xb8, explicitA: true },
+    ] as const;
+
+    for (const family of families) {
+      for (const [register, prefix, code] of halfRegisters) {
+        const source = family.explicitA
+          ? `${family.mnemonic} a,${register}`
+          : `${family.mnemonic} ${register}`;
+        const parsed = parseZ80Instruction(source);
+        expect(parsed).toHaveProperty('instruction');
+        expect(encodeZ80Instruction(parsed?.instruction as never)).toEqual({
+          size: 2,
+          fragments: [{ kind: 'bytes', bytes: [prefix, family.base + code] }],
+        });
+      }
+    }
+
+    expect(parseZ80Instruction('sub ixh,a')).toEqual({
+      error: 'sub two-operand form requires destination A',
+    });
+  });
+});
+
+// Supersedes historical PR coverage: `backend/pr477_encode_*_family.test.ts` slices.
+describe('PR477 encoder families (promoted coverage)', () => {
+  it('preserves representative core-ops encodings (pr477_encode_core_ops_family)', () => {
+    const cases = [
+      ['inc ixl', [0xdd, 0x2c]],
+      ['dec (hl)', [0x35]],
+      ['push iy', [0xfd, 0xe5]],
+      ['pop bc', [0xc1]],
+      ['ex (sp),ix', [0xdd, 0xe3]],
+    ] as const;
+
+    for (const [source, expected] of cases) {
+      const parsed = parseZ80Instruction(source);
+      expect(parsed).toHaveProperty('instruction');
+      expect(encodeZ80Instruction(parsed?.instruction as never)).toEqual({
+        size: expected.length,
+        fragments: [{ kind: 'bytes', bytes: [...expected] }],
+      });
+    }
+  });
+
+  it('preserves core-ops push diagnostics (pr477_encode_core_ops_family)', () => {
+    expect(parseZ80Instruction('push (hl)')).toEqual({
+      error: 'push supports BC/DE/HL/AF/IX/IY only',
+    });
+  });
+
+  it('preserves representative ld encodings (pr477_encode_ld_family)', () => {
+    const byteCases = [
+      ['ld (hl),a', [0x77]],
+      ['ld a,(de)', [0x1a]],
+      ['ld ixh,a', [0xdd, 0x67]],
+    ] as const;
+
+    for (const [source, expected] of byteCases) {
+      const parsed = parseZ80Instruction(source);
+      expect(parsed).toHaveProperty('instruction');
+      expect(encodeZ80Instruction(parsed?.instruction as never)).toEqual({
+        size: expected.length,
+        fragments: [{ kind: 'bytes', bytes: [...expected] }],
+      });
+    }
+
+    const ldBc = parseZ80Instruction('ld bc,1234h');
+    expect(ldBc).toHaveProperty('instruction');
+    expect(encodeZ80Instruction(ldBc?.instruction as never)).toEqual({
+      size: 3,
+      fragments: [
+        { kind: 'bytes', bytes: [0x01] },
+        { kind: 'abs16', expression: { kind: 'number', value: 0x1234 } },
+      ],
+    });
+
+    expect(parseZ80Instruction('ld (hl),(de)')).toEqual({
+      error: 'ld does not support memory-to-memory transfers',
+    });
+  });
+
+  it('preserves representative alu encodings (pr477_encode_alu_family)', () => {
+    const cases = [
+      ['add a,b', [0x80]],
+      ['add hl,sp', [0x39]],
+      ['adc hl,de', [0xed, 0x5a]],
+      ['xor 12h', [0xee, 'imm8']],
+      ['sub a,(hl)', [0x96]],
+    ] as const;
+
+    for (const [source, expected] of cases) {
+      const parsed = parseZ80Instruction(source);
+      expect(parsed).toHaveProperty('instruction');
+      const encoded = encodeZ80Instruction(parsed?.instruction as never);
+      if (expected[1] === 'imm8') {
+        expect(encoded).toMatchObject({
+          size: 2,
+          fragments: [
+            { kind: 'bytes', bytes: [expected[0]] },
+            { kind: 'imm8', expression: { kind: 'number', value: 0x12 } },
+          ],
+        });
+      } else {
+        expect(encoded).toEqual({
+          size: expected.length,
+          fragments: [{ kind: 'bytes', bytes: [...expected] }],
+        });
+      }
+    }
+  });
+
+  it('preserves representative alu diagnostics (pr477_encode_alu_family)', () => {
+    expect(parseZ80Instruction('adc bc,de')).toEqual({
+      error: 'adc expects destination A or HL',
+    });
+  });
+
+  it('preserves representative bitops encodings (pr477_encode_bitops_family)', () => {
+    const cases = [
+      ['bit 3,a', [0xcb, 0x5f]],
+      ['res 2,(hl)', [0xcb, 0x96]],
+      ['rlc b', [0xcb, 0x00]],
+      ['sra (hl)', [0xcb, 0x2e]],
+    ] as const;
+
+    for (const [source, expected] of cases) {
+      const parsed = parseZ80Instruction(source);
+      expect(parsed).toHaveProperty('instruction');
+      expect(encodeZ80Instruction(parsed?.instruction as never)).toEqual({
+        size: expected.length,
+        fragments: [{ kind: 'bytes', bytes: [...expected] }],
+      });
+    }
+  });
+
+  it('preserves representative bitops diagnostics (pr477_encode_bitops_family)', () => {
+    expect(parseZ80Instruction('bit 8,a')).toEqual({
+      error: 'bit expects bit index 0..7',
+    });
+  });
+
+  it('preserves representative control-flow encodings (pr477_encode_control_family)', () => {
+    const byteCases = [
+      ['ret', [0xc9]],
+      ['jp (ix)', [0xdd, 0xe9]],
+    ] as const;
+
+    for (const [source, expected] of byteCases) {
+      const parsed = parseZ80Instruction(source);
+      expect(parsed).toHaveProperty('instruction');
+      expect(encodeZ80Instruction(parsed?.instruction as never)).toEqual({
+        size: expected.length,
+        fragments: [{ kind: 'bytes', bytes: [...expected] }],
+      });
+    }
+
+    const call = parseZ80Instruction('call 1234h');
+    expect(call).toHaveProperty('instruction');
+    expect(encodeZ80Instruction(call?.instruction as never)).toEqual({
+      size: 3,
+      fragments: [
+        { kind: 'bytes', bytes: [0xcd] },
+        { kind: 'abs16', expression: { kind: 'number', value: 0x1234 } },
+      ],
+    });
+
+    const jrNz = parseZ80Instruction('jr nz,-2');
+    expect(jrNz).toHaveProperty('instruction');
+    expect(encodeZ80Instruction(jrNz?.instruction as never)).toEqual({
+      size: 2,
+      fragments: [
+        { kind: 'bytes', bytes: [0x20] },
+        {
+          kind: 'rel8',
+          expression: { kind: 'unary', operator: '-', expression: { kind: 'number', value: 2 } },
+          mnemonic: 'jr nz',
+        },
+      ],
+    });
+  });
+
+  it('preserves representative control-flow diagnostics (pr477_encode_control_family)', () => {
+    expect(parseZ80Instruction('jp hl')).toEqual({
+      error: 'jp indirect form requires parentheses; use (hl), (ix), or (iy)',
+    });
+  });
+
+  it('preserves representative io encodings (pr477_encode_io_family)', () => {
+    const byteCases = [
+      ['rst 16', [0xd7]],
+      ['im 2', [0xed, 0x5e]],
+      ['out (c),b', [0xed, 0x41]],
+    ] as const;
+
+    for (const [source, expected] of byteCases) {
+      const parsed = parseZ80Instruction(source);
+      expect(parsed).toHaveProperty('instruction');
+      expect(encodeZ80Instruction(parsed?.instruction as never)).toEqual({
+        size: expected.length,
+        fragments: [{ kind: 'bytes', bytes: [...expected] }],
+      });
+    }
+
+    const inPort = parseZ80Instruction('in a,($12)');
+    expect(inPort).toHaveProperty('instruction');
+    expect(encodeZ80Instruction(inPort?.instruction as never)).toMatchObject({
+      size: 2,
+      fragments: [
+        { kind: 'bytes', bytes: [0xdb] },
+        { kind: 'port8', expression: { kind: 'number', value: 0x12 } },
+      ],
+    });
+  });
+
+  it('preserves representative io diagnostics (pr477_encode_io_family)', () => {
+    expect(parseZ80Instruction('out (12h),b')).toEqual({
+      error: 'out (n),a immediate port form requires source A',
+    });
+  });
+});

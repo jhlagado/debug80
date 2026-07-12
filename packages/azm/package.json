@@ -1,0 +1,112 @@
+{
+  "name": "@jhlagado/azm",
+  "version": "0.3.4",
+  "description": "AZM assembler for the Z80 family (Node.js CLI)",
+  "license": "GPL-3.0-only",
+  "engines": {
+    "node": ">=20"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    },
+    "./compile": {
+      "types": "./dist/src/api-compile.d.ts",
+      "import": "./dist/src/api-compile.js"
+    },
+    "./tooling": {
+      "types": "./dist/src/api-tooling.d.ts",
+      "import": "./dist/src/api-tooling.js"
+    },
+    "./cli": {
+      "types": "./dist/src/cli.d.ts",
+      "import": "./dist/src/cli.js",
+      "default": "./dist/src/cli.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "dist/src/index.d.ts",
+  "bin": {
+    "azm": "dist/src/cli.js"
+  },
+  "files": [
+    "dist/src",
+    "docs/codebase"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jhlagado/AZM.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jhlagado/AZM/issues"
+  },
+  "homepage": "https://github.com/jhlagado/AZM#readme",
+  "keywords": [
+    "assembler",
+    "z80",
+    "retro",
+    "8-bit",
+    "azm"
+  ],
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc -p tsconfig.json",
+    "typecheck": "tsc -p tsconfig.json --noEmit",
+    "lint": "eslint \"src/**/*.ts\" \"test/**/*.ts\"",
+    "lint:fix": "eslint \"src/**/*.ts\" \"test/**/*.ts\" --fix",
+    "fallow": "fallow",
+    "fallow:dead-code": "fallow dead-code",
+    "fallow:dupes": "fallow dupes",
+    "fallow:health": "fallow health",
+    "fallow:audit": "fallow audit --base main",
+    "pretest": "mkdir -p coverage/.tmp",
+    "test": "npm run test:azm:alpha",
+    "test:all": "vitest run",
+    "test:coverage": "vitest run --coverage",
+    "test:ci:coverage-core": "node scripts/dev/run-coverage-core.mjs",
+    "test:ci:slow-reliability": "vitest run --no-file-parallelism --maxWorkers=1 --minWorkers=1 --testTimeout=20000 --hookTimeout=300000 test/cli test/cli_*.test.ts",
+    "test:ci:asm80-parity": "node scripts/ci/run-asm80-parity.mjs",
+    "check:fixture-coverage": "node scripts/dev/check-fixture-coverage.mjs",
+    "check:asm80-coverage": "node scripts/dev/check-asm80-lowering-coverage.mjs",
+    "test:azm:alpha": "node scripts/dev/run-azm-alpha-guardrails.mjs",
+    "test:azm:corpus": "node scripts/dev/run-azm-corpus-guardrails.mjs",
+    "test:package": "npm run build && node scripts/dev/smoke-npm-package.mjs",
+    "test:asm80:baseline": "node scripts/dev/run-asm80-baseline.mjs",
+    "test:asm80:tetro": "AZM_RUN_TETRO_ACCEPTANCE=1 vitest run test/asm80/tetro_acceptance.test.ts",
+    "test:asm80:pacmo": "AZM_RUN_PACMO_ACCEPTANCE=1 vitest run test/asm80/pacmo_acceptance.test.ts",
+    "test:asm80:mon3": "AZM_RUN_MON3_ACCEPTANCE=1 vitest run test/asm80/mon3_acceptance.test.ts",
+    "test:watch": "vitest",
+    "next:typecheck": "tsc -p tsconfig.json --noEmit",
+    "next:test": "vitest run --config vitest.config.ts",
+    "next:check": "npm run next:typecheck && npm run next:test",
+    "next:guardrails:core": "npm run next:check && npm run check:asm80-coverage && npm run test:ci:asm80-parity",
+    "next:guardrails:package": "npm run test:package || npm run next:guardrails:package:local",
+    "next:guardrails:package:local": "npm run build && vitest run -c vitest.config.ts test/integration/stage-16-package-smoke-local.test.ts && vitest run test/public_api_surface.test.ts",
+    "next:guardrails:quality": "npm run lint && npm run check:source-file-sizes && node scripts/check-source-file-sizes.mjs",
+    "next:guardrails": "npm run next:guardrails:core && npm run next:guardrails:package && npm run next:guardrails:quality",
+    "format": "prettier -w .",
+    "format:check": "prettier -c .",
+    "check:source-file-sizes": "node scripts/check-source-file-sizes.mjs",
+    "check:source-file-sizes:enforce": "node scripts/check-source-file-sizes.mjs --enforce-hard-cap",
+    "prepack": "npm run build",
+    "prepublishOnly": "npm run build",
+    "azm": "npm run build && node dist/src/cli.js"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.1",
+    "@vitest/coverage-v8": "^2.1.9",
+    "eslint": "^10.1.0",
+    "fallow": "^2.54.2",
+    "globals": "^17.4.0",
+    "prettier": "^3.5.0",
+    "tsx": "^4.20.5",
+    "typescript": "^5.7.3",
+    "typescript-eslint": "^8.57.2",
+    "vitest": "^2.1.9"
+  }
+}
