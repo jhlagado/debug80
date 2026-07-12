@@ -522,6 +522,4 @@ main:
     expect(result.diagnostics).toEqual([]);
     expect(Array.from(result.bytes)).toEqual([0x21, 0x5d, 0x20]);
   });
-
 });
-

@@ -1654,7 +1654,7 @@ assertions against emulator state over wholesale interactive ROM tests.
 Commands used:
 
 ```sh
-find src webview tests scripts -type f \( -name '*.ts' -o -name '*.js' -o -name '*.css' -o -name '*.html' -o -name '*.cjs' \) -print0 | xargs -0 wc -l | sort -nr | head -80
+find src webview tests scripts -type f \( -name '*.ts' -o -name '*.js' -o -name '*.mjs' -o -name '*.css' -o -name '*.html' \) -print0 | xargs -0 wc -l | sort -nr | head -80
 npm exec --yes fallow -- --only health --format markdown --summary
 npm exec --yes fallow -- --only dead-code --format compact
 npm exec --yes fallow -- --only dupes --format compact --dupes-mode mild

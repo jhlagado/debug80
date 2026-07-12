@@ -2,17 +2,17 @@
  * @fileoverview Session state defaults and reset helpers for the debug adapter.
  */
 
-import type { HexProgram } from '../../z80/loaders';
+import type { HexProgram } from '@jhlagado/debug80-runtime/z80/loaders';
 import type { MappingParseResult, SourceAddressSpace, SourceMapAnchor } from '../../mapping/types';
 import type { D8Symbol } from '../../mapping/d8-map';
 import type { SourceMapIndex } from '../../mapping/source-map';
-import type { CpuStateSnapshot, Z80Runtime } from '../../z80/runtime';
+import type { CpuStateSnapshot, Z80Runtime } from '@jhlagado/debug80-runtime/z80/runtime';
 import type { LaunchRequestArguments } from './types';
 import type { TerminalState } from './terminal-types';
-import type { Tec1Runtime } from '../../platforms/tec1/runtime';
-import type { Tec1gRuntime } from '../../platforms/tec1g/runtime';
-import type { TecBaseRuntime, TecBaseState } from '../../platforms/tec-common';
-import type { Tec1gPlatformConfigNormalized } from '../../platforms/types';
+import type { Tec1Runtime } from '@jhlagado/debug80-runtime/platforms/tec1/runtime';
+import type { Tec1gRuntime } from '@jhlagado/debug80-runtime/platforms/tec1g/runtime';
+import type { TecBaseRuntime, TecBaseState } from '@jhlagado/debug80-runtime/platforms/tec-common';
+import type { Tec1gPlatformConfigNormalized } from '@jhlagado/debug80-runtime/platforms/types';
 
 /**
  * Reasons a debug session can stop.

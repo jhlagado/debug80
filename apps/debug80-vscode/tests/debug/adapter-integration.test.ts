@@ -225,6 +225,7 @@ describe('adapter integration', () => {
   });
 
   it('reports assembly failure and terminates without rejecting the launch request', async () => {
+    const assemblyTimeoutMs = 15_000;
     const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-failed-launch-'));
     try {
       const simpleKit = getProjectKitById('simple/default');
@@ -254,16 +255,22 @@ describe('adapter integration', () => {
       const { client } = harness!;
       await initialize(client);
       const failedEvent = client.waitForEvent<{ body?: { error?: string } }>(
-        'debug80/assemblyFailed'
+        'debug80/assemblyFailed',
+        undefined,
+        assemblyTimeoutMs
       );
-      const terminatedEvent = client.waitForEvent('terminated');
+      const terminatedEvent = client.waitForEvent('terminated', undefined, assemblyTimeoutMs);
 
       await expect(
-        client.sendRequest('launch', {
-          projectConfig: path.join(root, 'debug80.json'),
-          target: 'app',
-          ...defaultLaunchFlags,
-        })
+        client.sendRequest(
+          'launch',
+          {
+            projectConfig: path.join(root, 'debug80.json'),
+            target: 'app',
+            ...defaultLaunchFlags,
+          },
+          assemblyTimeoutMs
+        )
       ).resolves.not.toThrow();
 
       expect((await failedEvent).body?.error).toContain('MissingSymbol');

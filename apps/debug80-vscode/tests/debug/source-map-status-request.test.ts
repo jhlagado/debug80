@@ -10,7 +10,7 @@ import { canonicalizeDebuggerSourcePath } from '../../src/debug/mapping/path-uti
 import { createSessionState } from '../../src/debug/session/session-state';
 import { buildSourceMapIndex } from '../../src/mapping/source-map';
 import type { MappingParseResult } from '../../src/mapping/types';
-import { createZ80Runtime } from '../../src/z80/runtime';
+import { createZ80Runtime } from '@jhlagado/debug80-runtime/z80/runtime';
 
 afterEach(() => {
   vi.restoreAllMocks();

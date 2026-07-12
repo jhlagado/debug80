@@ -9,9 +9,12 @@ import {
   serializeTec1UpdateFromUiState,
   tec1UpdatePayloadFromDebugEventBody,
 } from '../../src/platforms/tec1/serialize-update-payload';
-import { createTec1Runtime, normalizeTec1Config } from '../../src/platforms/tec1/runtime';
+import {
+  createTec1Runtime,
+  normalizeTec1Config,
+} from '@jhlagado/debug80-runtime/platforms/tec1/runtime';
 import { createTec1UiState } from '../../src/platforms/tec1/ui-panel-state';
-import { serializeTec1gUpdateFromRuntimeState } from '../../src/platforms/tec1g/update-controller';
+import { serializeTec1gUpdateFromRuntimeState } from '@jhlagado/debug80-runtime/platforms/tec1g/update-controller';
 import {
   serializeTec1gClearPanelUpdateFromUiState,
   serializeTec1gUpdateFromUiState,

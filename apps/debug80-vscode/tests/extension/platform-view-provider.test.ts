@@ -85,8 +85,8 @@ import * as path from 'path';
 
 import type * as vscode from 'vscode';
 import { PlatformViewProvider } from '../../src/extension/platform-view-provider';
-import type { Tec1UpdatePayload } from '../../src/platforms/tec1/types';
-import type { Tec1gUpdatePayload } from '../../src/platforms/tec1g/types';
+import type { Tec1UpdatePayload } from '@jhlagado/debug80-runtime/platforms/tec1/types';
+import type { Tec1gUpdatePayload } from '@jhlagado/debug80-runtime/platforms/tec1g/types';
 import { registerPlatformUi } from '../../src/extension/platform-view-manifest';
 import {
   createTec1PlatformUiEntry,
@@ -326,8 +326,7 @@ describe('PlatformViewProvider', () => {
 
       const handler = (webviewView.webview.onDidReceiveMessage as ReturnType<typeof vi.fn>).mock
         .calls[0]?.[0] as
-        | ((msg: { type?: string; platform?: string }) => Promise<void>)
-        | undefined;
+        ((msg: { type?: string; platform?: string }) => Promise<void>) | undefined;
       expect(handler).toBeTypeOf('function');
 
       (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
@@ -486,8 +485,7 @@ describe('PlatformViewProvider', () => {
 
     const handler = (webviewView.webview.onDidReceiveMessage as ReturnType<typeof vi.fn>).mock
       .calls[0]?.[0] as
-      | ((msg: { type?: string; stopOnEntry?: boolean }) => Promise<void>)
-      | undefined;
+      ((msg: { type?: string; stopOnEntry?: boolean }) => Promise<void>) | undefined;
     expect(handler).toBeTypeOf('function');
 
     executeCommand.mockClear();

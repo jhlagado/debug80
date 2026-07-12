@@ -75,9 +75,12 @@ async function latestInputMtimeMsForRoots(roots: string[]): Promise<number> {
 }
 
 async function latestInputMtimeMs(): Promise<number> {
+  const localLock = resolve(repoRoot, 'package-lock.json');
+  const workspaceLock = resolve(repoRoot, '..', '..', 'package-lock.json');
+  const packageLock = (await pathExists(localLock)) ? localLock : workspaceLock;
   return latestInputMtimeMsForRoots([
     resolve(repoRoot, 'package.json'),
-    resolve(repoRoot, 'package-lock.json'),
+    packageLock,
     resolve(repoRoot, 'tsconfig.json'),
     resolve(repoRoot, 'src'),
   ]);

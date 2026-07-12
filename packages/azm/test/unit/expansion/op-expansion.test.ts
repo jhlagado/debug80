@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 
-import { collectOps, expandOpInvocation, parseOpInvocation } from '../../../src/expansion/op-expansion.js';
+import {
+  collectOps,
+  expandOpInvocation,
+  parseOpInvocation,
+} from '../../../src/expansion/op-expansion.js';
 import type { Diagnostic } from '../../../src/model/diagnostic.js';
 
 function line(text: string, lineNumber = 1) {
@@ -10,13 +14,7 @@ function line(text: string, lineNumber = 1) {
 describe('op expansion unit surface', () => {
   it('collects zero-operand op declarations before top-level end', () => {
     const diagnostics: Diagnostic[] = [];
-    const lines = [
-      line('op nop()'),
-      line('  nop'),
-      line('end'),
-      line('main:'),
-      line('  nop'),
-    ];
+    const lines = [line('op nop()'), line('  nop'), line('end'), line('main:'), line('  nop')];
     const { ops, opLineIndexes } = collectOps(lines, diagnostics);
 
     expect(diagnostics).toEqual([]);
@@ -63,7 +61,13 @@ describe('op expansion unit surface', () => {
     const invocation = parseOpInvocation(line('halt'));
     expect(invocation).toBeDefined();
 
-    const expanded = expandOpInvocation(ops, ops.get('halt') ?? [], invocation!.operands, line('halt', 4), diagnostics);
+    const expanded = expandOpInvocation(
+      ops,
+      ops.get('halt') ?? [],
+      invocation!.operands,
+      line('halt', 4),
+      diagnostics,
+    );
 
     expect(diagnostics).toEqual([]);
     expect(expanded).toHaveLength(1);

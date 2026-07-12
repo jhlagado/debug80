@@ -48,11 +48,13 @@ describe('project target filesystem utilities', () => {
   });
 
   it('checks relative and absolute target program files through the supplied filesystem probe', () => {
-    const exists = vi.fn((candidate: string) => normalizePath(candidate).endsWith('/src/app.main.asm'));
-
-    expect(targetProgramFileExists(workspaceRoot, { sourceFile: 'src\\app.main.asm' }, exists)).toBe(
-      true
+    const exists = vi.fn((candidate: string) =>
+      normalizePath(candidate).endsWith('/src/app.main.asm')
     );
+
+    expect(
+      targetProgramFileExists(workspaceRoot, { sourceFile: 'src\\app.main.asm' }, exists)
+    ).toBe(true);
     expect(
       targetProgramFileExists(
         workspaceRoot,

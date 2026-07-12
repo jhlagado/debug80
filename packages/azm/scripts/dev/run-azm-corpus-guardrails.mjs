@@ -201,9 +201,7 @@ function runExistingCorpusCheck(check, root, entry, environment) {
 
 function hasCorpusToolFailure(check, asm, azm) {
   if (bothToolsPassed(asm, azm)) return false;
-  console.error(
-    `FAIL ${check.name}: asm80=${corpusToolStatus(asm)} azm=${corpusToolStatus(azm)}`,
-  );
+  console.error(`FAIL ${check.name}: asm80=${corpusToolStatus(asm)} azm=${corpusToolStatus(azm)}`);
   return true;
 }
 

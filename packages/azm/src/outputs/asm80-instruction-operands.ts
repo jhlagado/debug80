@@ -1,5 +1,9 @@
 import type { Z80Instruction } from '../z80/instruction.js';
-import { formatExpression, formatLoweredNumber, type LoweredEvalContext } from './asm80-expressions.js';
+import {
+  formatExpression,
+  formatLoweredNumber,
+  type LoweredEvalContext,
+} from './asm80-expressions.js';
 import { formatIndexedMemory, formatLd } from './asm80-ld-operands.js';
 
 type BitInstruction = Extract<Z80Instruction, { readonly mnemonic: 'bit' | 'res' | 'set' }>;

@@ -5,6 +5,7 @@ export default defineConfig({
     environment: 'node',
     include: ['tests/**/*.test.ts'],
     exclude: ['tests/e2e/**', 'tests/webview/**', ...configDefaults.exclude],
+    testTimeout: 30_000,
     coverage: {
       provider: 'v8',
       reporter: ['text', 'html', 'lcov'],
@@ -34,21 +35,8 @@ export default defineConfig({
         'src/debug/adapter.ts',
         // These are barrel/configuration files with negligible runtime branching.
         'src/debug/index.ts',
-        // Runtime orchestrators are still integration-heavy; keep only the concrete files excluded.
-        'src/platforms/tec1/runtime.ts',
-        'src/platforms/tec1g/runtime.ts',
-        // Platform type declarations and clock helpers are structural support code.
+        // Platform type declarations are structural support code.
         'src/platforms/**/types.ts',
-        'src/platforms/serial/bitbang-uart.ts',
-        'src/platforms/cycle-clock.ts',
-        // Core Z80 execution is currently covered through higher-level runtime and adapter tests.
-        'src/z80/decode.ts',
-        'src/z80/cpu.ts',
-        'src/z80/runtime.ts',
-        'src/z80/types.ts',
-        'src/z80/opcode-types.ts',
-        // Type-only files have no runtime branches to measure.
-        'src/z80/decode-types.ts',
       ],
       lines: 80,
       functions: 80,

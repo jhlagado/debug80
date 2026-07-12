@@ -65,4 +65,3 @@ x .byte
     expect(Array.from(result.bytes)).toEqual([]);
   });
 });
-

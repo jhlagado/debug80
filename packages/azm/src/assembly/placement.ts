@@ -27,7 +27,12 @@ export function placementForOrg(items: readonly SourceItem[], index: number): Pl
     if (!next) {
       continue;
     }
-    if (next.kind === 'db' || next.kind === 'dw' || next.kind === 'ds' || next.kind === 'string-data') {
+    if (
+      next.kind === 'db' ||
+      next.kind === 'dw' ||
+      next.kind === 'ds' ||
+      next.kind === 'string-data'
+    ) {
       return 'data';
     }
     if (next.kind === 'label' || next.kind === 'equ') {
@@ -89,11 +94,17 @@ export function computeResolvedBases(state: PlacementState): {
   return { codeBase, dataBase };
 }
 
-export function absoluteCodeAddress(state: PlacementState, bases: { readonly codeBase: number }): number {
+export function absoluteCodeAddress(
+  state: PlacementState,
+  bases: { readonly codeBase: number },
+): number {
   return bases.codeBase + state.codeOffset;
 }
 
-export function absoluteDataAddress(state: PlacementState, bases: { readonly dataBase: number }): number {
+export function absoluteDataAddress(
+  state: PlacementState,
+  bases: { readonly dataBase: number },
+): number {
   return bases.dataBase + state.dataOffset;
 }
 

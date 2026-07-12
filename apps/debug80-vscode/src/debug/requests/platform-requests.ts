@@ -2,9 +2,9 @@
  * @fileoverview Platform-specific request handlers for debug adapter commands.
  */
 
-import { Z80Runtime } from '../../z80/runtime';
-import type { HexProgram } from '../../z80/loaders';
-import { KEY_RESET } from '../../platforms/tec-common';
+import { Z80Runtime } from '@jhlagado/debug80-runtime/z80/runtime';
+import type { HexProgram } from '@jhlagado/debug80-runtime/z80/loaders';
+import { KEY_RESET } from '@jhlagado/debug80-runtime/platforms/tec-common';
 import { applySerialInput, applySpeedChange, SerialTarget, SpeedTarget } from './io-requests';
 
 export interface KeyTarget {

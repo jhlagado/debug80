@@ -77,8 +77,8 @@ B .typealias A
         .db sizeof(A)
 `);
 
-    expect(result.diagnostics).toEqual(expect.arrayContaining([
-      expect.objectContaining({ message: 'recursive type: A' }),
-    ]));
+    expect(result.diagnostics).toEqual(
+      expect.arrayContaining([expect.objectContaining({ message: 'recursive type: A' })]),
+    );
   });
 });

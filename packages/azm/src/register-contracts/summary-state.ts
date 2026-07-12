@@ -45,9 +45,7 @@ export const REGISTER_PAIRS: RegisterContractsUnit[][] = [
 ];
 
 export type Token =
-  | { origin: RegisterContractsUnit }
-  | { origin: 'produced' }
-  | { origin: 'unknown' };
+  { origin: RegisterContractsUnit } | { origin: 'produced' } | { origin: 'unknown' };
 
 export function unique<T>(items: T[]): T[] {
   return [...new Set(items)];

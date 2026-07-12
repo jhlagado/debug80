@@ -88,7 +88,9 @@ export async function sendHexViaCoolTerm(options: CoolTermSendHexOptions): Promi
         options.status?.('Opening CoolTerm serial connection...');
         const connected = await client.connectSerialPort();
         if (!connected) {
-          options.status?.('CoolTerm could not open the serial port. Check the selected port in CoolTerm.');
+          options.status?.(
+            'CoolTerm could not open the serial port. Check the selected port in CoolTerm.'
+          );
           void vscode.window.showErrorMessage(
             'Debug80: CoolTerm could not open the serial port. Check the selected port and TEC-1 settings.'
           );

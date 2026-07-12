@@ -134,14 +134,17 @@ describe('AZM promoted lowered .z80 artifact boundary', () => {
     ['pr1349_ld_indirect_bc_store.asm', ['ld bc, buf', 'ld (bc), a']],
     ['pr1349_ld_indirect_de_store.asm', ['ld de, buf', 'ld (de), a']],
     ['pr263_case_style_lint.asm', ['ld a, $01', 'ld b, a']],
-  ] as const)('emits normal LD register and register-indirect output for %s', async (fixture, expectedLines) => {
-    const fixturePath = fileURLToPath(new URL(`../fixtures/${fixture}`, import.meta.url));
-    const asm80Text = await runLoweredFixture(fixturePath);
+  ] as const)(
+    'emits normal LD register and register-indirect output for %s',
+    async (fixture, expectedLines) => {
+      const fixturePath = fileURLToPath(new URL(`../fixtures/${fixture}`, import.meta.url));
+      const asm80Text = await runLoweredFixture(fixturePath);
 
-    for (const expected of expectedLines) {
-      expect(asm80Text).toContain(expected);
-    }
-  });
+      for (const expected of expectedLines) {
+        expect(asm80Text).toContain(expected);
+      }
+    },
+  );
 
   it('emits normal LD absolute-memory text', async () => {
     const fixturePath = fileURLToPath(

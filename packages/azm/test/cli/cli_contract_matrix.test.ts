@@ -82,9 +82,14 @@ describe('cli contract matrix', () => {
     );
     await writeFile(
       entry,
-      ['        ORG 0100H', 'main:', '        DEFB 1', '        DEFW main', '        DEFS 1', ''].join(
-        '\n',
-      ),
+      [
+        '        ORG 0100H',
+        'main:',
+        '        DEFB 1',
+        '        DEFW main',
+        '        DEFS 1',
+        '',
+      ].join('\n'),
       'utf8',
     );
 

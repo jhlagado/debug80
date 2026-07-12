@@ -73,10 +73,7 @@ export function ldEffect(
       writes: dstWrites,
     };
   }
-  if (
-    instruction.target.kind === 'reg-index16' ||
-    instruction.target.kind === 'reg-half-index'
-  ) {
+  if (instruction.target.kind === 'reg-index16' || instruction.target.kind === 'reg-half-index') {
     if (dstWrites === undefined) return unknownEffect();
     return {
       ...baseEffect(),
@@ -176,9 +173,7 @@ export function aluEffect(instruction: Z80Instruction): InstructionEffect {
   const source = instruction.source;
   const sourceReads = aluSourceReads(source);
   const xorSelfZero =
-    instruction.mnemonic === 'xor' &&
-    source.kind === 'reg8' &&
-    source.register === 'a';
+    instruction.mnemonic === 'xor' && source.kind === 'reg8' && source.register === 'a';
   const reads = xorSelfZero ? [] : concatUnique(['A'], sourceReads);
   const carryReads: RegisterContractsUnit[] =
     instruction.mnemonic === 'adc' || instruction.mnemonic === 'sbc' ? ['carry'] : [];
@@ -254,7 +249,9 @@ export function bitEffect(
   };
 }
 
-export function inEffect(instruction: Extract<Z80Instruction, { mnemonic: 'in' }>): InstructionEffect {
+export function inEffect(
+  instruction: Extract<Z80Instruction, { mnemonic: 'in' }>,
+): InstructionEffect {
   const targetWrites =
     instruction.target?.kind === 'reg8' ? reg8Units(instruction.target.register) : undefined;
   if (instruction.port.kind === 'imm') {
@@ -296,7 +293,9 @@ export function blockTransferEffect(): InstructionEffect {
   };
 }
 
-export function exEffect(instruction: Extract<Z80Instruction, { mnemonic: 'ex' }>): InstructionEffect {
+export function exEffect(
+  instruction: Extract<Z80Instruction, { mnemonic: 'ex' }>,
+): InstructionEffect {
   if (instruction.form === 'de-hl') {
     return {
       ...baseEffect(),
@@ -310,7 +309,8 @@ export function exEffect(instruction: Extract<Z80Instruction, { mnemonic: 'ex' }
 export function accumulatorRotateEffect(
   mnemonic: 'rlca' | 'rrca' | 'rla' | 'rra',
 ): InstructionEffect {
-  const reads: RegisterContractsUnit[] = mnemonic === 'rla' || mnemonic === 'rra' ? ['A', 'carry'] : ['A'];
+  const reads: RegisterContractsUnit[] =
+    mnemonic === 'rla' || mnemonic === 'rra' ? ['A', 'carry'] : ['A'];
   return {
     ...baseEffect(),
     reads,
@@ -338,6 +338,7 @@ function aluSourceReads(source: AluSource): RegisterContractsUnit[] {
   if (source.kind === 'reg8') return reg8Units(source.register);
   if (source.kind === 'reg16' || source.kind === 'reg-index16') return reg16Units(source.register);
   if (source.kind === 'reg-half-index') return regHalfUnits(source.register);
-  if (source.kind === 'reg-indirect' || source.kind === 'indexed') return operandReads(source) ?? [];
+  if (source.kind === 'reg-indirect' || source.kind === 'indexed')
+    return operandReads(source) ?? [];
   return [];
 }

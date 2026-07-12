@@ -59,8 +59,7 @@ function expectRgb(
 
 function lastGlcdImage(canvas: HTMLCanvasElement & { __ctx: FakeContext2d }) {
   const baseCanvas = canvas.__ctx.drawImage.mock.calls.at(-1)?.[0] as
-    | (HTMLCanvasElement & { __ctx?: FakeContext2d })
-    | undefined;
+    (HTMLCanvasElement & { __ctx?: FakeContext2d }) | undefined;
   const image = baseCanvas?.__ctx?.lastImageData;
   expect(image).toBeDefined();
   return image!;

@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import { Handles } from '@vscode/debugadapter';
 import { VariableService } from '../../src/debug/requests/variable-service';
-import { Cpu } from '../../src/z80/types';
+import { Cpu } from '@jhlagado/debug80-runtime/z80/types';
 
 const buildCpu = (): Cpu => ({
   a: 0x12,

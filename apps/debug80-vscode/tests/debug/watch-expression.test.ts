@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { evaluateWatchExpression } from '../../src/debug/requests/watch-expression';
-import { createZ80Runtime } from '../../src/z80/runtime';
+import { createZ80Runtime } from '@jhlagado/debug80-runtime/z80/runtime';
 import type { SourceMapDebugSymbol } from '../../src/debug/session/session-state';
 
 function createContext() {

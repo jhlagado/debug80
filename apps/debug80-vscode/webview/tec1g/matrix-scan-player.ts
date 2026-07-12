@@ -1,4 +1,7 @@
-import type { Tec1gMatrixScanCycle, Tec1gMatrixScanRow } from '../../src/platforms/tec1g/types';
+import type {
+  Tec1gMatrixScanCycle,
+  Tec1gMatrixScanRow,
+} from '@jhlagado/debug80-runtime/platforms/tec1g/types';
 
 type MatrixScanPlayerOptions = {
   targetLagMs?: number;
@@ -189,7 +192,9 @@ export function createMatrixScanPlayer(
     const cpuText = effHz > 0 ? `${(effHz / 1_000_000).toFixed(2)} MHz` : '-- MHz';
     const latest = latestEndCycle();
     const bufferMs =
-      latest !== null && playheadCycle !== null ? Math.max(0, cyclesToMs(latest - playheadCycle)) : 0;
+      latest !== null && playheadCycle !== null
+        ? Math.max(0, cyclesToMs(latest - playheadCycle))
+        : 0;
     statsEl.textContent =
       `SCAN ${scanText} | CPU ${cpuText} | buffer ${bufferMs.toFixed(0)} ms` +
       ` | dropped ${droppedByRuntime + droppedByPlayback}`;
@@ -362,20 +367,14 @@ export function createMatrixScanPlayer(
         lastScanHz =
           last.endCycle > last.startCycle ? matrixClockHz / (last.endCycle - last.startCycle) : 0;
         if (playheadCycle === null) {
-          playheadCycle = Math.max(
-            cycleQueue[0].startCycle,
-            latest - msToCycles(targetLagMs)
-          );
+          playheadCycle = Math.max(cycleQueue[0].startCycle, latest - msToCycles(targetLagMs));
         }
         const nowMs =
           typeof performance !== 'undefined' && typeof performance.now === 'function'
             ? performance.now()
             : Date.now();
         clockSamples.push({ wallMs: nowMs, cycle: latest });
-        while (
-          clockSamples.length > 2 &&
-          nowMs - clockSamples[0].wallMs > CLOCK_SAMPLE_WINDOW_MS
-        ) {
+        while (clockSamples.length > 2 && nowMs - clockSamples[0].wallMs > CLOCK_SAMPLE_WINDOW_MS) {
           clockSamples.shift();
         }
         schedule();

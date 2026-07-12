@@ -150,10 +150,10 @@ describe('launch-source-state', () => {
       },
     });
 
-    const result = buildFixtureSourceState(
-      fixture,
-      { artifactBase: 'pacmo', outputDir: 'build' } as LaunchRequestArguments
-    );
+    const result = buildFixtureSourceState(fixture, {
+      artifactBase: 'pacmo',
+      outputDir: 'build',
+    } as LaunchRequestArguments);
 
     expect(result.sourceMapSymbols.some((symbol) => symbol.name === 'WIDTH')).toBe(true);
     expect(result.sourceMapSymbols.find((symbol) => symbol.name === 'WIDTH')?.value).toBe(32);
@@ -165,13 +165,7 @@ describe('launch-source-state', () => {
       path.join('src', 'main.asm'),
       'main'
     );
-    const localRomSourcePath = path.join(
-      fixture.projectRoot,
-      'roms',
-      'tec1g',
-      'mon3',
-      'mon3.z80'
-    );
+    const localRomSourcePath = path.join(fixture.projectRoot, 'roms', 'tec1g', 'mon3', 'mon3.z80');
     const localRomMapPath = path.join(
       fixture.projectRoot,
       'build',
@@ -194,15 +188,12 @@ describe('launch-source-state', () => {
       },
     });
 
-    const result = buildFixtureSourceState(
-      fixture,
-      {
-        sourceRoots: ['src', 'roms/tec1g/mon3'],
-        artifactBase: 'main',
-        outputDir: 'build',
-        debugMaps: [localRomMapPath],
-      } as LaunchRequestArguments
-    );
+    const result = buildFixtureSourceState(fixture, {
+      sourceRoots: ['src', 'roms/tec1g/mon3'],
+      artifactBase: 'main',
+      outputDir: 'build',
+      debugMaps: [localRomMapPath],
+    } as LaunchRequestArguments);
 
     const localRomSourceSuffix = ['roms', 'tec1g', 'mon3', 'mon3.z80'].join('/');
     expect(result.romSourcePaths.map(toPortablePath)).toContainEqual(
@@ -244,23 +235,18 @@ describe('launch-source-state', () => {
       },
     });
 
-    const result = buildFixtureSourceState(
-      fixture,
-      {
-        sourceRoots: ['src', 'roms/expansion'],
-        artifactBase: 'main',
-        outputDir: 'build',
-        debugMaps: [bank0MapPath],
-        debugMapAddressTransforms: {
-          [path.normalize(bank0MapPath)]: { rebase: 0x8000, size: 0x4000 },
-        },
-      } as LaunchRequestArguments
-    );
+    const result = buildFixtureSourceState(fixture, {
+      sourceRoots: ['src', 'roms/expansion'],
+      artifactBase: 'main',
+      outputDir: 'build',
+      debugMaps: [bank0MapPath],
+      debugMapAddressTransforms: {
+        [path.normalize(bank0MapPath)]: { rebase: 0x8000, size: 0x4000 },
+      },
+    } as LaunchRequestArguments);
 
     expect(resolveExecutableLocation(result.mappingIndex, bank0SourcePath, 2)).toEqual([0x801f]);
-    expect(result.sourceMapSymbols.find((symbol) => symbol.name === 'BANK0')?.address).toBe(
-      0x801f
-    );
+    expect(result.sourceMapSymbols.find((symbol) => symbol.name === 'BANK0')?.address).toBe(0x801f);
   });
 
   it('logs a warning and returns no symbols when the build D8 cannot be parsed', () => {
@@ -280,9 +266,9 @@ describe('launch-source-state', () => {
     );
 
     expect(result.sourceMapSymbols).toEqual([]);
-    expect(logger.warns.some((message) => message.includes('Could not read source map symbols'))).toBe(
-      true
-    );
+    expect(
+      logger.warns.some((message) => message.includes('Could not read source map symbols'))
+    ).toBe(true);
   });
 
   it('logs unreadable auxiliary D8 maps while keeping symbols from the build artifact', () => {
@@ -315,9 +301,9 @@ describe('launch-source-state', () => {
     expect(result.sourceMapSymbols.map((symbol) => symbol.name)).toEqual(['Main']);
     expect(result.romSourcePaths).toEqual([]);
     expect(result.autoOpenRomSourcePaths).toEqual([]);
-    expect(logger.warns.some((message) => message.includes('Failed to read source map symbols'))).toBe(
-      true
-    );
+    expect(
+      logger.warns.some((message) => message.includes('Failed to read source map symbols'))
+    ).toBe(true);
   });
 });
 

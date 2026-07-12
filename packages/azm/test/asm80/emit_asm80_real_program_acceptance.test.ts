@@ -31,8 +31,7 @@ for (const corpus of CORPORA) {
   const source = configured && configured.length > 0 ? configured : corpus.defaultPath;
   const sourceAvailable = existsSync(source);
   const runAcceptance = process.env[corpus.runFlag] === '1';
-  const describeCorpus =
-    sourceAvailable && runAcceptance ? describe : describe.skip;
+  const describeCorpus = sourceAvailable && runAcceptance ? describe : describe.skip;
 
   describeCorpus(`ASM80 lowered output ${corpus.name} acceptance`, () => {
     it(`lowers ${corpus.name} without AZMN_ASM80 when ${corpus.runFlag}=1`, async () => {
@@ -48,8 +47,7 @@ for (const corpus of CORPORA) {
       );
 
       const asm80Errors = result.diagnostics.filter(
-        (diagnostic) =>
-          diagnostic.severity === 'error' && diagnostic.code === 'AZMN_ASM80',
+        (diagnostic) => diagnostic.severity === 'error' && diagnostic.code === 'AZMN_ASM80',
       );
       expect(asm80Errors).toEqual([]);
 

@@ -39,13 +39,9 @@ describe('register-contracts interface parsing', () => {
 
   it('parses RST selector service interface contracts', () => {
     const contracts = parseInterfaceContracts(
-      [
-        'service rst $10 C 16 SCAN_KEYS',
-        'in C',
-        'out A,carry,zero',
-        'clobbers DE',
-        'end',
-      ].join('\n'),
+      ['service rst $10 C 16 SCAN_KEYS', 'in C', 'out A,carry,zero', 'clobbers DE', 'end'].join(
+        '\n',
+      ),
     );
 
     expect(contracts.get('RST_$10:16')).toEqual({
@@ -98,5 +94,4 @@ describe('register-contracts interface parsing', () => {
       },
     ]);
   });
-
 });

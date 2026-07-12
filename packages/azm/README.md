@@ -557,29 +557,29 @@ azm --contracts --rc audit program.asm
 
 The main switches are:
 
-| Option                                        | Meaning                                                             |
-| --------------------------------------------- | ------------------------------------------------------------------- |
-| `-o, --output <file>`                         | Primary output path. The extension matches `--type`.                |
-| `-t, --type <hex\|bin>`                       | Primary output type. Default: `hex`.                                |
-| `--nobin`                                     | Skip `.bin` output.                                                 |
-| `--nohex`                                     | Skip `.hex` output.                                                 |
-| `--nod8m`                                     | Skip `.d8.json` output.                                             |
-| `--asm80`                                     | Write lowered assembler source as `.z80`.                           |
-| `--source-root <dir>`                         | Emit project-relative source paths in `.d8.json`.                   |
+| Option                                        | Meaning                                                                |
+| --------------------------------------------- | ---------------------------------------------------------------------- |
+| `-o, --output <file>`                         | Primary output path. The extension matches `--type`.                   |
+| `-t, --type <hex\|bin>`                       | Primary output type. Default: `hex`.                                   |
+| `--nobin`                                     | Skip `.bin` output.                                                    |
+| `--nohex`                                     | Skip `.hex` output.                                                    |
+| `--nod8m`                                     | Skip `.d8.json` output.                                                |
+| `--asm80`                                     | Write lowered assembler source as `.z80`.                              |
+| `--source-root <dir>`                         | Emit project-relative source paths in `.d8.json`.                      |
 | `--symbol-case <strict\|insensitive>`         | Symbol lookup mode. Default: `strict`; `insensitive` is compatibility. |
-| `--case-style <mode>`                         | Lint mnemonic, register and op-head case style.                     |
-| `--rc, --register-contracts <mode>`           | Register contracts mode: `off`, `audit`, `warn`, `error`, `strict`. |
-| `--reg-report, --emit-register-report`        | Opt-in debug report: write `.regcontracts.txt`.                     |
-| `--reg-interface, --emit-register-interface`  | Write inferred `.asmi` interface metadata.                          |
-| `--contracts, --annotate-register-contracts`  | Update `.routine` contracts in source.                              |
-| `--fix`                                       | Apply conservative register contract source fixes.                  |
-| `--accept-out <routine:carrier>`              | Promote an inferred output candidate while annotating.              |
-| `--interface <file>`                          | Load external register contracts from `.asmi`.                      |
-| `--reg-profile, --register-profile <profile>` | Register contracts profile. Currently `mon3`.                       |
-| `--aliases <file>`                            | Load project directive alias JSON.                                  |
-| `-I, --include <dir>`                         | Add an include search path.                                         |
-| `-V, --version`                               | Print package version.                                              |
-| `-h, --help`                                  | Print CLI help.                                                     |
+| `--case-style <mode>`                         | Lint mnemonic, register and op-head case style.                        |
+| `--rc, --register-contracts <mode>`           | Register contracts mode: `off`, `audit`, `warn`, `error`, `strict`.    |
+| `--reg-report, --emit-register-report`        | Opt-in debug report: write `.regcontracts.txt`.                        |
+| `--reg-interface, --emit-register-interface`  | Write inferred `.asmi` interface metadata.                             |
+| `--contracts, --annotate-register-contracts`  | Update `.routine` contracts in source.                                 |
+| `--fix`                                       | Apply conservative register contract source fixes.                     |
+| `--accept-out <routine:carrier>`              | Promote an inferred output candidate while annotating.                 |
+| `--interface <file>`                          | Load external register contracts from `.asmi`.                         |
+| `--reg-profile, --register-profile <profile>` | Register contracts profile. Currently `mon3`.                          |
+| `--aliases <file>`                            | Load project directive alias JSON.                                     |
+| `-I, --include <dir>`                         | Add an include search path.                                            |
+| `-V, --version`                               | Print package version.                                                 |
+| `-h, --help`                                  | Print CLI help.                                                        |
 
 See the [AZM Engineering Manual](docs/codebase/) for the maintained codebase,
 CLI and package-interface reference.
@@ -694,7 +694,7 @@ Common programmatic options include:
 | `outputType`                    | Primary output type, `hex` or `bin`.                      |
 | `emitBin`, `emitHex`, `emitD8m` | Select in-memory artifact kinds.                          |
 | `emitAsm80`                     | Request lowered `.z80` artifact.                          |
-| `symbolCase`                    | Symbol lookup mode, `strict` or `insensitive`.             |
+| `symbolCase`                    | Symbol lookup mode, `strict` or `insensitive`.            |
 | `registerContracts`             | Register contracts mode.                                  |
 | `registerContractsInterfaces`   | External `.asmi` contract files.                          |
 

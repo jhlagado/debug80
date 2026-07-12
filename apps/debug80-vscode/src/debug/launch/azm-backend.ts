@@ -101,8 +101,7 @@ type CompileOutcome = AssembleResult | CompileSuccess;
 type LoadAzmFailure = { success: false; result: AssembleResult };
 type LoadAzmResult = { success: true; modules: AzmModules } | LoadAzmFailure;
 type RequiredArtifactResult<K extends Artifact['kind']> =
-  | { ok: true; artifact: Extract<Artifact, { kind: K }> }
-  | { ok: false; result: AssembleResult };
+  { ok: true; artifact: Extract<Artifact, { kind: K }> } | { ok: false; result: AssembleResult };
 
 async function loadAzmModules(): Promise<AzmModules> {
   const { compile, defaultFormatWriters } =

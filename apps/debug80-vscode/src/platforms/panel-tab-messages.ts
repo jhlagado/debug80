@@ -44,4 +44,3 @@ export function handlePanelLayoutMessage<TTab extends string>(
   }
   return false;
 }
-

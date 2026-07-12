@@ -276,7 +276,9 @@ export function isRstVector(value: number | undefined): value is Z80RstVector {
 
 const RST_VECTORS = new Set<Z80RstVector>([0, 8, 16, 24, 32, 40, 48, 56]);
 
-export function parseBitIndexExpression(text: string): 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | Expression | undefined {
+export function parseBitIndexExpression(
+  text: string,
+): 0 | 1 | 2 | 3 | 4 | 5 | 6 | 7 | Expression | undefined {
   const expression = parseExpression(text);
   if (!expression) {
     return undefined;

@@ -10,11 +10,7 @@ import { BUNDLED_MON1B_V1_REL, BUNDLED_MON3_V1_REL } from './bundle-materialize'
 export type ScaffoldPlatform = 'simple' | 'tec1' | 'tec1g';
 export type StarterLanguage = 'asm';
 export type ProjectKitId =
-  | 'simple/default'
-  | 'tec1/mon1b'
-  | 'tec1/classic-2k'
-  | 'tec1g/mon3'
-  | 'tec1g/custom';
+  'simple/default' | 'tec1/mon1b' | 'tec1/classic-2k' | 'tec1g/mon3' | 'tec1g/custom';
 
 export type ProjectKit = {
   id: ProjectKitId;

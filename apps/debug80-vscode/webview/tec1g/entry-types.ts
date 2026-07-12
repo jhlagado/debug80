@@ -3,12 +3,12 @@
  */
 
 import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
-import type { Tec1gUpdatePayload as Tec1gUpdatePayloadBase } from '../../src/platforms/tec1g/types';
+import type { Tec1gUpdatePayload as Tec1gUpdatePayloadBase } from '@jhlagado/debug80-runtime/platforms/tec1g/types';
 import type { SessionStatus } from '../common/session-status';
 
 export type Tec1gPanelTab = 'ui' | 'memory';
 
-export type { Tec1gSpeedMode } from '../../src/platforms/tec1g/types';
+export type { Tec1gSpeedMode } from '@jhlagado/debug80-runtime/platforms/tec1g/types';
 
 /**
  * `update` message body: all fields optional for partial snapshots; `speaker` may be boolean or

@@ -148,7 +148,10 @@ export function rstDispatcherServiceTargetNames(
     rangeMatches(value, entry),
   );
   const configuredRangeServices = configuredRanges
-    .filter((entry) => entry.vector === vector && entry.selector === selector && rangeMatches(value, entry))
+    .filter(
+      (entry) =>
+        entry.vector === vector && entry.selector === selector && rangeMatches(value, entry),
+    )
     .map((entry) => entry.target);
   return [
     ...(service ? [service.name] : []),

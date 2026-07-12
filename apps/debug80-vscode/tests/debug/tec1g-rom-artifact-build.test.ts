@@ -64,8 +64,12 @@ describe('TEC-1G ROM artifact builds', () => {
       sendEvent: () => undefined,
     });
 
-    expect(fs.statSync(path.join(root, 'build/roms/tec1g/tecm8/monitor/monitor.bin')).size).toBe(0x4000);
-    expect(fs.statSync(path.join(root, 'build/roms/tec1g/tecm8/expansion/expansion.bin')).size).toBe(0x24000);
+    expect(fs.statSync(path.join(root, 'build/roms/tec1g/tecm8/monitor/monitor.bin')).size).toBe(
+      0x4000
+    );
+    expect(
+      fs.statSync(path.join(root, 'build/roms/tec1g/tecm8/expansion/expansion.bin')).size
+    ).toBe(0x24000);
     expect(backend.assemble).toHaveBeenCalledTimes(2);
     expect(backend.assemble).toHaveBeenNthCalledWith(
       1,
@@ -221,8 +225,12 @@ describe('TEC-1G ROM artifact builds', () => {
     expect(packed[0x00000]).toBe(0x01);
     expect(packed[0x04000]).toBe(0x02);
     expect(packed[0x20000]).toBe(0x09);
-    expect(fs.statSync(path.join(root, 'build/roms/tec1g/tecm8/expansion/bank0.bin')).size).toBe(0x4000);
-    expect(fs.statSync(path.join(root, 'build/roms/tec1g/tecm8/expansion/bank8.bin')).size).toBe(0x4000);
+    expect(fs.statSync(path.join(root, 'build/roms/tec1g/tecm8/expansion/bank0.bin')).size).toBe(
+      0x4000
+    );
+    expect(fs.statSync(path.join(root, 'build/roms/tec1g/tecm8/expansion/bank8.bin')).size).toBe(
+      0x4000
+    );
     expect(backend.assembleBin).toHaveBeenCalledTimes(3);
     expect(backend.assembleBin).toHaveBeenNthCalledWith(
       3,
@@ -413,7 +421,9 @@ describe('TEC-1G ROM artifact builds', () => {
         backendFactory: () => backend,
         sendEvent: () => undefined,
       })
-    ).rejects.toThrow('ROM artifact bad-expansion output bad-runtime writes the runtime outputBin and must use physical layout');
+    ).rejects.toThrow(
+      'ROM artifact bad-expansion output bad-runtime writes the runtime outputBin and must use physical layout'
+    );
     expect(backend.assemble).not.toHaveBeenCalled();
     expect(backend.assembleBin).not.toHaveBeenCalled();
   });
@@ -851,7 +861,9 @@ describe('TEC-1G ROM artifact builds', () => {
         backendFactory: () => backend,
         sendEvent: () => undefined,
       })
-    ).rejects.toThrow(`ROM artifact tecm8-monitor outputDebugMap must match ${path.join(root, 'build', 'monitor.d8.json')}`);
+    ).rejects.toThrow(
+      `ROM artifact tecm8-monitor outputDebugMap must match ${path.join(root, 'build', 'monitor.d8.json')}`
+    );
     expect(backend.assemble).not.toHaveBeenCalled();
   });
 

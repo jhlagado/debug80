@@ -3,7 +3,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import type { IoHandlers } from '../../src/z80/runtime';
+import type { IoHandlers } from '@jhlagado/debug80-runtime/z80/runtime';
 
 vi.mock('../../src/platforms/tec1/runtime', () => ({
   createTec1Runtime: vi.fn(() => ({

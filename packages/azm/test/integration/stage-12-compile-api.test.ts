@@ -296,8 +296,7 @@ main:
       expect(result.diagnostics).toEqual([]);
 
       const d8m = result.artifacts.find((artifact) => artifact.kind === 'd8m') as
-        | D8mArtifact
-        | undefined;
+        D8mArtifact | undefined;
       expect(d8m).toBeDefined();
 
       const json = d8m!.json;
@@ -340,8 +339,7 @@ main:
 
       expect(result.diagnostics).toEqual([]);
       const d8m = result.artifacts.find((artifact) => artifact.kind === 'd8m') as
-        | D8mArtifact
-        | undefined;
+        D8mArtifact | undefined;
       expect(d8m).toBeDefined();
 
       expect(d8m?.json.files['src/pacmo/pacmo.z80']?.segments).toEqual(
@@ -427,8 +425,7 @@ main:
       const bin = result.artifacts.find((artifact) => artifact.kind === 'bin');
       const hex = result.artifacts.find((artifact) => artifact.kind === 'hex');
       const d8m = result.artifacts.find((artifact) => artifact.kind === 'd8m') as
-        | D8mArtifact
-        | undefined;
+        D8mArtifact | undefined;
 
       expect(Array.from(bin?.bytes ?? [])).toEqual([0xaf, 0xc9, 0xcd, 0x00, 0x40, 0xc9]);
       expect(hex?.text).toBe(':06400000AFC9CD0040C96C\n:00000001FF\n');
@@ -520,8 +517,7 @@ main: nop
 
       expect(result.diagnostics).toEqual([]);
       const d8m = result.artifacts.find((artifact) => artifact.kind === 'd8m') as
-        | D8mArtifact
-        | undefined;
+        D8mArtifact | undefined;
 
       expect(d8m?.json.segments).toEqual([{ start: 0x0000, end: 0x0001 }]);
       expect(d8m?.json.files['main.asm']?.segments).toEqual([
@@ -553,8 +549,7 @@ main: nop
 
     expect(result.diagnostics).toEqual([]);
     const d8m = result.artifacts.find((artifact) => artifact.kind === 'd8m') as
-      | D8mArtifact
-      | undefined;
+      D8mArtifact | undefined;
 
     expect(d8m?.json.files['pr1367_op_port_imm_substitution.asm']?.segments).toEqual([
       expect.objectContaining({
@@ -626,8 +621,7 @@ main:
       );
 
       const d8m = result.artifacts.find((artifact) => artifact.kind === 'd8m') as
-        | D8mArtifact
-        | undefined;
+        D8mArtifact | undefined;
       expect(d8m).toBeDefined();
       expect(d8m?.json.generator).toMatchObject({
         inputs: {

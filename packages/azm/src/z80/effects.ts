@@ -79,7 +79,10 @@ const EFFECT_HANDLERS: Partial<Record<Z80Instruction['mnemonic'], EffectHandler>
     popEffect((instruction as { readonly register: Z80StackRegister16 }).register),
   call: (instruction) =>
     stackControlEffect(
-      callControl(expressionSymbol((instruction as Extract<Z80Instruction, { mnemonic: 'call' }>).expression), false),
+      callControl(
+        expressionSymbol((instruction as Extract<Z80Instruction, { mnemonic: 'call' }>).expression),
+        false,
+      ),
     ),
   'call-cc': (instruction) => {
     const call = instruction as Extract<Z80Instruction, { mnemonic: 'call-cc' }>;
@@ -89,7 +92,9 @@ const EFFECT_HANDLERS: Partial<Record<Z80Instruction['mnemonic'], EffectHandler>
     );
   },
   rst: (instruction) =>
-    stackControlEffect(rstControl((instruction as Extract<Z80Instruction, { mnemonic: 'rst' }>).vector)),
+    stackControlEffect(
+      rstControl((instruction as Extract<Z80Instruction, { mnemonic: 'rst' }>).vector),
+    ),
   ret: () => stackControlEffect({ kind: 'return', conditional: false }),
   'ret-cc': (instruction) =>
     stackControlEffect(
@@ -98,7 +103,10 @@ const EFFECT_HANDLERS: Partial<Record<Z80Instruction['mnemonic'], EffectHandler>
     ),
   jp: (instruction) =>
     controlEffect(
-      jumpControl(expressionSymbol((instruction as Extract<Z80Instruction, { mnemonic: 'jp' }>).expression), false),
+      jumpControl(
+        expressionSymbol((instruction as Extract<Z80Instruction, { mnemonic: 'jp' }>).expression),
+        false,
+      ),
     ),
   'jp-cc': (instruction) => {
     const jump = instruction as Extract<Z80Instruction, { mnemonic: 'jp-cc' }>;
@@ -113,7 +121,12 @@ const EFFECT_HANDLERS: Partial<Record<Z80Instruction['mnemonic'], EffectHandler>
       reg16Units((instruction as Extract<Z80Instruction, { mnemonic: 'jp-indirect' }>).register),
     ),
   jr: (instruction) =>
-    controlEffect(jumpControl(expressionSymbol((instruction as Extract<Z80Instruction, { mnemonic: 'jr' }>).expression), false)),
+    controlEffect(
+      jumpControl(
+        expressionSymbol((instruction as Extract<Z80Instruction, { mnemonic: 'jr' }>).expression),
+        false,
+      ),
+    ),
   'jr-cc': (instruction) => {
     const jump = instruction as Extract<Z80Instruction, { mnemonic: 'jr-cc' }>;
     return controlEffect(
@@ -125,7 +138,10 @@ const EFFECT_HANDLERS: Partial<Record<Z80Instruction['mnemonic'], EffectHandler>
     ...baseEffect(),
     reads: ['B'],
     writes: ['B'],
-    control: jumpControl(expressionSymbol((instruction as Extract<Z80Instruction, { mnemonic: 'djnz' }>).expression), true),
+    control: jumpControl(
+      expressionSymbol((instruction as Extract<Z80Instruction, { mnemonic: 'djnz' }>).expression),
+      true,
+    ),
   }),
   scf: () => ({ ...baseEffect(), writes: ['carry', 'halfCarry'] }),
   ccf: () => ({ ...baseEffect(), reads: ['carry'], writes: ['carry', 'halfCarry'] }),

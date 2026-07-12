@@ -4,7 +4,7 @@
 
 import { Scope, Handles } from '@vscode/debugadapter';
 import { DebugProtocol } from '@vscode/debugprotocol';
-import { Cpu, Flags } from '../../z80/types';
+import { Cpu, Flags } from '@jhlagado/debug80-runtime/z80/types';
 import type { SourceMapDebugSymbol } from '../session/session-state';
 
 type RegisterRuntime = {

@@ -5,7 +5,7 @@
 import { buildPlatformIoHandlers } from '../../debug/session/platform-host';
 import type { LaunchRequestArguments } from '../../debug/session/types';
 import type { ResolvedPlatformProvider } from '../provider';
-import { normalizeSimpleConfig } from './runtime';
+import { normalizeSimpleConfig } from '@jhlagado/debug80-runtime/platforms/simple/runtime';
 
 export function createSimplePlatformProvider(
   args: LaunchRequestArguments

@@ -248,8 +248,7 @@ describe('PR1140: encodeInstruction error paths (parse parity)', () => {
       {
         label: 'ex unsupported pair',
         source: 'ex bc,de',
-        message:
-          'ex supports "AF, AF\'", "DE, HL", "(SP), HL", "(SP), IX", and "(SP), IY" only',
+        message: 'ex supports "AF, AF\'", "DE, HL", "(SP), HL", "(SP), IX", and "(SP), IY" only',
       },
       { label: 'inc wrong arity', source: 'inc', message: 'inc expects one operand' },
       { label: 'ex wrong arity', source: 'ex de', message: 'ex expects two operands' },

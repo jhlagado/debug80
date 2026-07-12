@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { ensureTec1gShadowRom } from '../../src/platforms/tec1g/tec1g-shadow';
+import { ensureTec1gShadowRom } from '@jhlagado/debug80-runtime/platforms/tec1g/tec1g-shadow';
 
 const makeMemory = (): Uint8Array => new Uint8Array(0x10000);
 

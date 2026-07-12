@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest';
 
-import { formatOpSelectionDiagnostic, selectOpOverload } from '../../../src/expansion/op-selection.js';
+import {
+  formatOpSelectionDiagnostic,
+  selectOpOverload,
+} from '../../../src/expansion/op-selection.js';
 import type { OpDecl } from '../../../src/expansion/op-expansion.js';
 import type { OpMatcher, OpOperand } from '../../../src/expansion/op-operands.js';
 
@@ -47,18 +50,24 @@ describe('op overload selection', () => {
   it('leaves incomparable overloads ambiguous', () => {
     const fixedAThenImm16 = overload('load', [{ kind: 'fixed', token: 'A' }, { kind: 'imm16' }], 1);
     const reg8ThenImm8 = overload('load', [{ kind: 'reg8' }, { kind: 'imm8' }], 2);
-    expect(selectOpOverload([fixedAThenImm16, reg8ThenImm8], [reg8('a'), imm('$7F', 0x7f)]))
-      .toEqual({
-        kind: 'ambiguous',
-        candidates: [fixedAThenImm16, reg8ThenImm8],
-      });
+    expect(
+      selectOpOverload([fixedAThenImm16, reg8ThenImm8], [reg8('a'), imm('$7F', 0x7f)]),
+    ).toEqual({
+      kind: 'ambiguous',
+      candidates: [fixedAThenImm16, reg8ThenImm8],
+    });
   });
 
   it('formats arity and mismatch diagnostics with available overloads', () => {
     const candidate = overload('load', [{ kind: 'reg8' }, { kind: 'imm8' }]);
     const arity = selectOpOverload([candidate], [reg8('a')]);
-    expect(formatOpSelectionDiagnostic(arity as Exclude<typeof arity, { kind: 'selected' }>, [candidate], [reg8('a')]))
-      .toContain('No op overload of "load" accepts 1 operand(s).');
+    expect(
+      formatOpSelectionDiagnostic(
+        arity as Exclude<typeof arity, { kind: 'selected' }>,
+        [candidate],
+        [reg8('a')],
+      ),
+    ).toContain('No op overload of "load" accepts 1 operand(s).');
 
     const mismatch = selectOpOverload([candidate], [imm('$100', 0x100), imm('$100', 0x100)]);
     expect(

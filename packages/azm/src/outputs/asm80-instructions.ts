@@ -1,9 +1,5 @@
 import type { Expression } from '../model/expression.js';
-import type {
-  Z80AluMnemonic,
-  Z80Instruction,
-  Z80Operand,
-} from '../z80/instruction.js';
+import type { Z80AluMnemonic, Z80Instruction, Z80Operand } from '../z80/instruction.js';
 import {
   formatExpression,
   formatLoweredNumber,
@@ -134,9 +130,10 @@ function formatAluInstruction(
   return undefined;
 }
 
-function isTargetedAluInstruction(
-  instruction: Z80Instruction,
-): instruction is Extract<Z80Instruction, { readonly mnemonic: 'add' | 'adc' | 'sbc' }> & {
+function isTargetedAluInstruction(instruction: Z80Instruction): instruction is Extract<
+  Z80Instruction,
+  { readonly mnemonic: 'add' | 'adc' | 'sbc' }
+> & {
   readonly target: Extract<Z80Instruction, { readonly mnemonic: 'add' }>['target'];
 } {
   return TARGETED_ALU_MNEMONICS.has(instruction.mnemonic) && 'target' in instruction;
@@ -166,16 +163,7 @@ function formatBitRotateInstruction(
       instruction as Extract<
         Z80Instruction,
         {
-          readonly mnemonic:
-            | 'rlc'
-            | 'rrc'
-            | 'rl'
-            | 'rr'
-            | 'sla'
-            | 'sra'
-            | 'sll'
-            | 'sls'
-            | 'srl';
+          readonly mnemonic: 'rlc' | 'rrc' | 'rl' | 'rr' | 'sla' | 'sra' | 'sll' | 'sls' | 'srl';
         }
       >,
       evalContext,
@@ -218,8 +206,7 @@ function formatBranchStackReturnInstruction(
   evalContext: LoweredEvalContext,
 ): { readonly text: string } | undefined {
   return (
-    formatBranchInstruction(instruction, evalContext) ??
-    formatStackOrReturnInstruction(instruction)
+    formatBranchInstruction(instruction, evalContext) ?? formatStackOrReturnInstruction(instruction)
   );
 }
 
@@ -364,8 +351,7 @@ function formatOut(
   if (port === undefined) {
     return undefined;
   }
-  const source =
-    instruction.source.kind === 'zero' ? '0' : instruction.source.register;
+  const source = instruction.source.kind === 'zero' ? '0' : instruction.source.register;
   return { text: `out ${port}, ${source}` };
 }
 

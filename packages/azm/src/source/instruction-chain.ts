@@ -10,7 +10,9 @@ interface ScannerState {
   escaped?: boolean;
 }
 
-export function splitInstructionChain(text: string): readonly InstructionChainSegment[] | undefined {
+export function splitInstructionChain(
+  text: string,
+): readonly InstructionChainSegment[] | undefined {
   const commentStart = findLineCommentStart(text);
   const codeText = commentStart === undefined ? text : text.slice(0, commentStart);
   const separators = findChainSeparators(codeText);
@@ -41,9 +43,7 @@ function findChainSeparators(text: string): number[] {
     }
     if (startsOrEndsQuote(text, index, state)) {
       state =
-        state.quote === char
-          ? withoutQuote(state)
-          : withQuote(state, state.quote ?? char ?? '');
+        state.quote === char ? withoutQuote(state) : withQuote(state, state.quote ?? char ?? '');
       continue;
     }
     if (char === '\\' && isReadableSeparator(text, index)) {
@@ -74,9 +74,7 @@ function isQuote(char: string | undefined): boolean {
 
 function isApostropheSuffix(text: string, index: number, state: ScannerState): boolean {
   return (
-    state.quote === undefined &&
-    text[index] === "'" &&
-    /[A-Za-z0-9_]/.test(text[index - 1] ?? '')
+    state.quote === undefined && text[index] === "'" && /[A-Za-z0-9_]/.test(text[index - 1] ?? '')
   );
 }
 

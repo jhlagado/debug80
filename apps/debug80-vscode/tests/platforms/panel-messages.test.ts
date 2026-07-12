@@ -12,9 +12,8 @@ import {
 
 describe('panel-messages', () => {
   it('sends register write requests and refreshes after success', async () => {
-    const { customRequest, handled, postSnapshot } = await handlePanelMessageWithDefaultContext(
-      registerEditMessage()
-    );
+    const { customRequest, handled, postSnapshot } =
+      await handlePanelMessageWithDefaultContext(registerEditMessage());
 
     expect(handled).toBe(true);
     expect(customRequest).toHaveBeenCalledWith('debug80/registerWrite', {
@@ -78,9 +77,8 @@ describe('panel-messages', () => {
   });
 
   it('sends memory write requests and refreshes after success', async () => {
-    const { customRequest, handled, postSnapshot } = await handlePanelMessageWithDefaultContext(
-      memoryEditMessage()
-    );
+    const { customRequest, handled, postSnapshot } =
+      await handlePanelMessageWithDefaultContext(memoryEditMessage());
 
     expect(handled).toBe(true);
     expect(customRequest).toHaveBeenCalledWith('debug80/memoryWrite', {

@@ -17,8 +17,8 @@ import {
   Tec1gPlatformConfig,
   Tec1gRomArtifactRole,
   SimplePlatformConfig,
-} from '../../platforms/types';
-import { TEC1G_EXPAND_BANK_COUNT } from '../../platforms/tec-common';
+} from '@jhlagado/debug80-runtime/platforms/types';
+import { TEC1G_EXPAND_BANK_COUNT } from '@jhlagado/debug80-runtime/platforms/tec-common';
 
 // ============================================================================
 // Constants
@@ -78,8 +78,7 @@ export interface ValidationResult {
 }
 
 type OptionalObjectValidation<T extends object> =
-  | { value: T; result?: undefined }
-  | { value?: undefined; result: ValidationResult };
+  { value: T; result?: undefined } | { value?: undefined; result: ValidationResult };
 
 function validResult(warnings: string[] = []): ValidationResult {
   return { valid: true, errors: [], warnings };
@@ -424,7 +423,9 @@ function validateTec1gRomArtifacts(value: unknown): ValidationResult {
     if (active && (role === 'monitor' || role === 'expansion')) {
       const previousId = activeRoles.get(role);
       if (previousId !== undefined) {
-        results.push(invalidResult(`${fieldName}.role duplicates active ${role} artifact ${previousId}`));
+        results.push(
+          invalidResult(`${fieldName}.role duplicates active ${role} artifact ${previousId}`)
+        );
       } else {
         activeRoles.set(role, getArtifactDiagnosticId(artifactConfig, index));
       }
@@ -454,7 +455,11 @@ function validateTec1gRomArtifactShape(
   if (multibankExpansion) {
     results.push(validatePath(artifact.outputBin, `${fieldName}.outputBin`, true));
     results.push(
-      ...validateTec1gExpansionArtifactBanks(artifact.banks, `${fieldName}.banks`, artifact.bankCount)
+      ...validateTec1gExpansionArtifactBanks(
+        artifact.banks,
+        `${fieldName}.banks`,
+        artifact.bankCount
+      )
     );
     results.push(
       ...validateTec1gExpansionArtifactOutputs(
@@ -469,7 +474,9 @@ function validateTec1gRomArtifactShape(
     }
     if (artifact.sourceFile !== undefined || artifact.outputDebugMap !== undefined) {
       results.push(
-        invalidResult(`${fieldName} multibank artifacts must not specify sourceFile or outputDebugMap`)
+        invalidResult(
+          `${fieldName} multibank artifacts must not specify sourceFile or outputDebugMap`
+        )
       );
     }
     if (artifact.binary !== undefined || artifact.debugMap !== undefined) {
@@ -496,7 +503,9 @@ function validateTec1gRomArtifactShape(
     results.push(validatePath(artifact.binary, `${fieldName}.binary`, true));
     results.push(validatePath(artifact.debugMap, `${fieldName}.debugMap`));
     if (artifact.active !== false) {
-      results.push(invalidResult(`${fieldName} active binary-only artifacts are deferred for Phase 2`));
+      results.push(
+        invalidResult(`${fieldName} active binary-only artifacts are deferred for Phase 2`)
+      );
     }
     if (artifact.sourceFile !== undefined || artifact.outputBin !== undefined) {
       results.push(
@@ -543,7 +552,9 @@ function validateTec1gExpansionArtifactOutputs(
     results.push(validateRequiredString(config.id, `${outputField}.id`));
     if (config.kind !== 'packed' && config.kind !== 'perBank') {
       results.push(
-        invalidResult(`${outputField}.kind must be "packed" or "perBank", got ${String(config.kind)}`)
+        invalidResult(
+          `${outputField}.kind must be "packed" or "perBank", got ${String(config.kind)}`
+        )
       );
     }
 
@@ -567,7 +578,9 @@ function validateTec1gExpansionArtifactOutputs(
         config.layout !== 'physical'
       ) {
         results.push(
-          invalidResult(`${outputField} writes the runtime outputBin and must use layout "physical"`)
+          invalidResult(
+            `${outputField} writes the runtime outputBin and must use layout "physical"`
+          )
         );
       }
     } else if (config.kind === 'perBank') {
@@ -620,7 +633,9 @@ function validateTec1gExpansionArtifactBanks(
       (config.physicalBank < 0 || config.physicalBank >= TEC1G_EXPAND_BANK_COUNT)
     ) {
       results.push(
-        invalidResult(`${bankField}.physicalBank must be between 0 and ${TEC1G_EXPAND_BANK_COUNT - 1}`)
+        invalidResult(
+          `${bankField}.physicalBank must be between 0 and ${TEC1G_EXPAND_BANK_COUNT - 1}`
+        )
       );
     }
     if (typeof config.physicalBank === 'number' && Number.isInteger(config.physicalBank)) {
@@ -636,7 +651,9 @@ function validateTec1gExpansionArtifactBanks(
         );
       }
       if (seen.has(config.physicalBank)) {
-        results.push(invalidResult(`${bankField}.physicalBank duplicates bank ${config.physicalBank}`));
+        results.push(
+          invalidResult(`${bankField}.physicalBank duplicates bank ${config.physicalBank}`)
+        );
       }
       seen.add(config.physicalBank);
     }
@@ -698,10 +715,7 @@ function declaredPhysicalBanks(bankDeclarations: unknown): Set<number> {
       typeof bank === 'object' && bank !== null
         ? (bank as Record<string, unknown>).physicalBank
         : undefined;
-    if (
-      typeof physicalBank === 'number' &&
-      Number.isInteger(physicalBank)
-    ) {
+    if (typeof physicalBank === 'number' && Number.isInteger(physicalBank)) {
       declaredBanks.add(physicalBank);
     }
   }
@@ -937,9 +951,7 @@ function collectLaunchValidationResults(args: LaunchRequestArguments): Validatio
     ...LAUNCH_BOOLEAN_FIELDS.map((field) => validateBoolean(args[field], field)),
     validatePlatform(args.platform),
     validateStringArray(args.sourceRoots, 'sourceRoots'),
-    ...LAUNCH_INSTRUCTION_LIMIT_FIELDS.map((field) =>
-      validateInstructionLimit(args[field], field)
-    ),
+    ...LAUNCH_INSTRUCTION_LIMIT_FIELDS.map((field) => validateInstructionLimit(args[field], field)),
     validateTerminalConfig(args.terminal),
     validateSimpleConfig(args.simple),
     validateTec1Config(args.tec1),

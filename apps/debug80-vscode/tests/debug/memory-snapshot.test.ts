@@ -7,8 +7,8 @@ import {
   buildMemorySnapshotResponse,
   type SnapshotRuntime,
 } from '../../src/debug/session/memory-snapshot';
-import { init as initCpu } from '../../src/z80/cpu';
-import type { Cpu } from '../../src/z80/types';
+import { init as initCpu } from '@jhlagado/debug80-runtime/z80/cpu';
+import type { Cpu } from '@jhlagado/debug80-runtime/z80/types';
 
 describe('memory-snapshot', () => {
   it('builds snapshot views and forwards symbols', () => {

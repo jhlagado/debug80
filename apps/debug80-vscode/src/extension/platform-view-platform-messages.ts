@@ -16,4 +16,3 @@ export async function handleActivePlatformViewMessage(
     await deps.handlePlatformMessage(platform, msg);
   }
 }
-

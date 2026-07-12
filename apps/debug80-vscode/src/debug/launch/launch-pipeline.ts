@@ -2,7 +2,7 @@
  * @fileoverview Launch pipeline helpers (config normalization, assembly).
  */
 
-import type { SimplePlatformConfigNormalized } from '../../platforms/types';
+import type { SimplePlatformConfigNormalized } from '@jhlagado/debug80-runtime/platforms/types';
 import { AssembleFailureError } from './assembler';
 import type { AssemblerBackend } from './assembler-backend';
 import type { LaunchRequestArguments } from '../session/types';
@@ -18,16 +18,8 @@ export async function assembleIfRequested(options: {
   simpleConfig?: SimplePlatformConfigNormalized;
   sendEvent: EventSender;
 }): Promise<void> {
-  const {
-    backend,
-    args,
-    asmPath,
-    hexPath,
-    sourceRoot,
-    platform,
-    simpleConfig,
-    sendEvent,
-  } = options;
+  const { backend, args, asmPath, hexPath, sourceRoot, platform, simpleConfig, sendEvent } =
+    options;
   if (asmPath === undefined || asmPath === '' || args.assemble === false) {
     return;
   }

@@ -13,7 +13,7 @@ import {
   handleMatrixModeRequest,
   handleMatrixKeyRequest,
 } from '../../src/debug/requests/matrix-request';
-import type { MatrixKeyCombo } from '../../src/platforms/tec1g/matrix-keymap';
+import type { MatrixKeyCombo } from '@jhlagado/debug80-runtime/platforms/tec1g/matrix-keymap';
 import type { MatrixRuntime } from '../../src/debug/requests/matrix-request';
 
 describe('matrix-request', () => {
@@ -424,9 +424,15 @@ describe('matrix-request', () => {
       };
       const heldKeys = new Map<string, MatrixKeyCombo[]>();
 
-      expect(handleMatrixKeyRequest(runtime, heldKeys, { key: 'Alt', pressed: true, alt: true })).toBeNull();
-      expect(handleMatrixKeyRequest(runtime, heldKeys, { key: 's', pressed: true, alt: true })).toBeNull();
-      expect(handleMatrixKeyRequest(runtime, heldKeys, { key: 's', pressed: false, alt: true })).toBeNull();
+      expect(
+        handleMatrixKeyRequest(runtime, heldKeys, { key: 'Alt', pressed: true, alt: true })
+      ).toBeNull();
+      expect(
+        handleMatrixKeyRequest(runtime, heldKeys, { key: 's', pressed: true, alt: true })
+      ).toBeNull();
+      expect(
+        handleMatrixKeyRequest(runtime, heldKeys, { key: 's', pressed: false, alt: true })
+      ).toBeNull();
 
       expect(matrixRows[0] & (1 << 3)).toBe(0);
       expect(matrixRows[6] & (1 << 6)).not.toBe(0);

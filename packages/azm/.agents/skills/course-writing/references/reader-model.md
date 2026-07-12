@@ -15,6 +15,7 @@ They are not reading documentation. They are learning a skill. The difference ma
 ## What the Reader Wants
 
 By the end of the course, the reader wants to be able to:
+
 - Write Z80 programs in ZAX without constantly consulting a reference
 - Understand what the assembler is doing and why
 - Read existing ZAX programs and understand them
@@ -29,6 +30,7 @@ The course achieves this by building genuine understanding at each step, not by 
 Do not assume any of the following without earning it in earlier chapters:
 
 **Machine model:**
+
 - What a byte is, what a bit is
 - What hexadecimal means
 - What a register is
@@ -38,6 +40,7 @@ Do not assume any of the following without earning it in earlier chapters:
 - What a flag is or why it exists
 
 **Z80 specifics:**
+
 - The register names and their roles
 - What HL vs DE vs BC are for
 - What the flags register records
@@ -46,6 +49,7 @@ Do not assume any of the following without earning it in earlier chapters:
 - What little-endian means
 
 **ZAX specifics:**
+
 - What `section data` means
 - What `func` means
 - What `export` means
@@ -53,6 +57,7 @@ Do not assume any of the following without earning it in earlier chapters:
 - Why sections need addresses
 
 **Assembly concepts:**
+
 - What a label is
 - What an immediate value is
 - What "the flags" means in context
@@ -63,6 +68,7 @@ Do not assume any of the following without earning it in earlier chapters:
 ## What the Reader Does Know (by Chapter)
 
 ### After Chapter 1
+
 - Bit, byte, word
 - Hexadecimal (base 16), `$` prefix
 - Memory: 64K flat array, addresses $0000–$FFFF
@@ -74,6 +80,7 @@ Do not assume any of the following without earning it in earlier chapters:
 - The fetch-execute cycle
 
 ### After Chapter 2
+
 - Opcodes: what they are, multi-byte forms
 - What a running program looks like in memory (concrete hex example)
 - What labels are and why they exist
@@ -81,6 +88,7 @@ Do not assume any of the following without earning it in earlier chapters:
 - The core advantage of assembly over machine code
 
 ### After Chapter 3
+
 - ZAX syntax: `export func main()`, `end`
 - `LD` in all its forms (register, immediate, indirect, indexed, direct)
 - The parentheses rule: parentheses always mean memory access
@@ -92,6 +100,7 @@ Do not assume any of the following without earning it in earlier chapters:
 - `EX DE, HL`
 
 ### After Chapter 4
+
 - The flags register in practice (Z, C, S, P/V as used by branches)
 - `cp n` — what it does, what flags it sets
 - `sub n` — same flags as cp, stores result in A
@@ -105,6 +114,7 @@ Do not assume any of the following without earning it in earlier chapters:
 - The `cp $80` technique for detecting a negative signed byte
 
 ### After Chapter 5
+
 - `djnz` — what it does, how it differs from `dec b / jp nz`
 - The zero-count hardware semantic (B=0 → 256 iterations)
 - Post-loop register state (B=0, pointer advanced past last element)
@@ -116,12 +126,14 @@ Do not assume any of the following without earning it in earlier chapters:
 ## What the Course May Assume
 
 The course may assume:
+
 - The reader has read every chapter before the current one
 - The reader has run the example programs for each chapter
 - The reader is motivated enough to reread a confusing paragraph
 - The reader does not know what is coming in future chapters
 
 The course may not assume:
+
 - The reader remembers every detail from earlier chapters (a brief reminder is allowed)
 - The reader has any programming background beyond what the course has provided
 - The reader will infer something the prose has not stated

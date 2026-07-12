@@ -87,6 +87,4 @@ main:
     );
     expect(result.diagnostics).toHaveLength(5);
   });
-
 });
-

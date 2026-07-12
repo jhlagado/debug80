@@ -130,12 +130,29 @@ platform requirement.
 
 ## Headless behavioural verification
 
-This is primarily a **Debug80 runtime productisation task**, followed by a
-Glimmer acceptance-test task. Debug80 already has headless components: its Z80
-runtime can step instructions, and its TEC-1G runtime models keypad, joystick,
-matrix display, seven-segment display, LCD, speaker and TMS9918 state. The
-missing piece is one supported orchestration API that composes those components
-without the debug adapter, VS Code extension host or webview.
+### Foundation delivered
+
+The Debug80 Toolchain workspace now contains the first working vertical slice:
+
+- `@jhlagado/debug80-runtime` owns the Z80 core and TEC-1/TEC-1G device models
+  without depending on AZM, Glimmer, VS Code or the Debug Adapter Protocol;
+- Debug80 consumes that package rather than retaining a second emulator copy;
+- `Tec1gHeadlessSession` provides bounded execution, cycle propagation, memory
+  overlays, D8 symbol access, physical matrix and joystick input, TMS9918 state
+  and timeout traces;
+- a private workspace test builds `dot.glim`, loads MON-3, enters the generated
+  `Start` symbol, completes matrix scans and moves the dot with an emulated key;
+- the packed ESM runtime is installed and imported by an external smoke fixture
+  so workspace linking cannot hide missing exports.
+
+The remaining work is broader behavioural coverage and richer semantic device
+inspectors, not extraction of the emulator or proof that the architecture can
+work.
+
+This remains primarily a **Debug80 runtime productisation task**, followed by a
+Glimmer acceptance-test task. The first orchestration API now composes the Z80
+and TEC-1G components without the debug adapter, VS Code extension host or
+webview. Its public surface should grow only as acceptance scenarios require.
 
 Glimmer must not implement a second emulator. It should build a `.glim` program
 normally, then hand the resulting HEX, Debug80 map, platform configuration and
@@ -188,15 +205,15 @@ boot or input-integration failures.
 
 ### Delivery slices
 
-1. **Debug80 session core:** compose program loading, Z80 stepping, cycle
+1. **Complete - Debug80 session core:** compose program loading, Z80 stepping, cycle
    accounting and TEC-1G device state behind an internal `HeadlessSession`.
    Prove it with a tiny AZM/HEX fixture before involving Glimmer.
-2. **Input and symbols:** add bounded `runUntil`, D8 symbol access, scan-aware
+2. **Complete - Input and symbols:** add bounded `runUntil`, D8 symbol access, scan-aware
    keypad operations and useful timeout traces. This is the minimum viable
    reusable runner.
-3. **Glimmer smoke scenarios:** build `dot.glim` and prove reset, key input,
-   named state and matrix output. Add one TMS9918 resource/upload scenario from
-   `sprite-chase.glim`.
+3. **In progress - Glimmer smoke scenarios:** `dot.glim` now proves direct
+   application entry, MON-3 calls, key input, named state and matrix scanning.
+   Add one TMS9918 resource/upload scenario from `sprite-chase.glim`.
 4. **Game-path scenarios:** cover Tetro splash-to-play navigation, movement,
    rotation edge behaviour, forced line clear, pause, game over and restart;
    cover sprite-chase movement, collision, score and sustained VDP commits.

@@ -4,11 +4,11 @@
 
 import * as fs from 'fs';
 import type { DebugProtocol } from '@vscode/debugprotocol';
-import { applyExpansionRomMemory, createTec1gMemoryHooks } from './tec1g-memory';
 import {
-  loadTec1gExpansionRomImage,
-  type Tec1gExpansionRomImage,
-} from './tec1g-expansion-rom';
+  applyExpansionRomMemory,
+  createTec1gMemoryHooks,
+} from '@jhlagado/debug80-runtime/platforms/tec1g/tec1g-memory';
+import { loadTec1gExpansionRomImage, type Tec1gExpansionRomImage } from './tec1g-expansion-rom';
 import {
   buildPlatformIoHandlers,
   type PlatformIoBuildResult,
@@ -28,8 +28,8 @@ import type {
   PlatformRuntimeFinalizeContext,
   ResolvedPlatformProvider,
 } from '../provider';
-import type { Tec1gRomArtifactConfig } from '../types';
-import { normalizeTec1gConfig } from './runtime';
+import type { Tec1gRomArtifactConfig } from '@jhlagado/debug80-runtime/platforms/types';
+import { normalizeTec1gConfig } from '@jhlagado/debug80-runtime/platforms/tec1g/runtime';
 
 type Tec1gPlatformAssets = {
   expansionRomImage: Tec1gExpansionRomImage | null;

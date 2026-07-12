@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest';
 import * as os from 'os';
 import { createSessionState, resetSessionState } from '../../src/debug/session/session-state';
-import type { CpuStateSnapshot } from '../../src/z80/runtime';
+import type { CpuStateSnapshot } from '@jhlagado/debug80-runtime/z80/runtime';
 
 function createEntryCpuState(): CpuStateSnapshot {
   return {

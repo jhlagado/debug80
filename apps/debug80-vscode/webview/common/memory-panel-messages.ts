@@ -3,7 +3,7 @@ import type { MemoryPanel } from './memory-panel';
 type MemoryPanelSnapshotPayload = Parameters<MemoryPanel['handleSnapshot']>[0];
 
 export function handleMemoryPanelMessage(
-  message: ({ type?: unknown; message?: unknown } & Partial<MemoryPanelSnapshotPayload>),
+  message: { type?: unknown; message?: unknown } & Partial<MemoryPanelSnapshotPayload>,
   memoryPanel: MemoryPanel | null | undefined
 ): boolean {
   if (message.type === 'snapshot') {

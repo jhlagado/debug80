@@ -3,8 +3,12 @@
  */
 
 import { describe, it, expect } from 'vitest';
-import type { Tec1gRuntime } from '../../src/platforms/tec1g/runtime';
-import { ADDR_MASK, TEC1G_SHADOW_START, TEC1G_SHADOW_SIZE } from '../../src/platforms/tec-common';
+import type { Tec1gRuntime } from '@jhlagado/debug80-runtime/platforms/tec1g/runtime';
+import {
+  ADDR_MASK,
+  TEC1G_SHADOW_START,
+  TEC1G_SHADOW_SIZE,
+} from '@jhlagado/debug80-runtime/platforms/tec-common';
 import { getShadowAlias, isBreakpointAddress } from '../../src/debug/mapping/debug-addressing';
 
 const makeRuntime = (shadowEnabled: boolean): Tec1gRuntime =>

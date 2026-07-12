@@ -13,7 +13,9 @@ const LAYOUT_DECLARATION_RE = new RegExp(
 export function isChainedDirectiveOrDeclaration(text: string): boolean {
   return (
     /^\./.test(text) ||
-    /^(?:org|equ|db|dw|ds|align|include|import|binfrom|binto|cstr|pstr|istr|end|enum|type|union|field|byte|word|addr|endtype|endunion|typealias|if|else|endif|op)\b/i.test(text) ||
+    /^(?:org|equ|db|dw|ds|align|include|import|binfrom|binto|cstr|pstr|istr|end|enum|type|union|field|byte|word|addr|endtype|endunion|typealias|if|else|endif|op)\b/i.test(
+      text,
+    ) ||
     CHAIN_DECLARATION_RE.test(text)
   );
 }

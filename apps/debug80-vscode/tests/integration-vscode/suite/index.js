@@ -1,5 +1,6 @@
-const assert = require('assert');
-const vscode = require('vscode');
+import assert from 'node:assert';
+
+import * as vscode from 'vscode';
 
 const extensionId = 'jhlagado.debug80';
 const expectedCommands = [
@@ -9,7 +10,7 @@ const expectedCommands = [
   'debug80.restartDebug',
 ];
 
-async function run() {
+export async function run() {
   const extension = vscode.extensions.getExtension(extensionId);
 
   assert.ok(extension, `Expected extension id to be present: ${extensionId}`);
@@ -29,5 +30,3 @@ async function run() {
   assert.ok(workspaceFolders.length > 0, 'Expected fixture workspace folder to be visible');
   assert.strictEqual(workspaceFolders[0].name, 'vscode-smoke');
 }
-
-module.exports = { run };

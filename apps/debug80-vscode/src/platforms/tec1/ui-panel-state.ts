@@ -2,7 +2,7 @@
  * @file TEC-1 panel UI state helpers.
  */
 
-import { Tec1SpeedMode, Tec1UpdatePayload } from './types';
+import { Tec1SpeedMode, Tec1UpdatePayload } from '@jhlagado/debug80-runtime/platforms/tec1/types';
 
 export type Tec1UiState = {
   digits: number[];

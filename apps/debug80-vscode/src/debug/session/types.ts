@@ -7,7 +7,7 @@ import type {
   SimplePlatformConfig,
   Tec1PlatformConfig,
   Tec1gPlatformConfig,
-} from '../../platforms/types';
+} from '@jhlagado/debug80-runtime/platforms/types';
 import type { SourceAddressSpace, SourceAddressTransform } from '../../mapping/types';
 import type { TerminalConfig } from './terminal-types';
 

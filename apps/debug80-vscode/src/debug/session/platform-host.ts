@@ -2,15 +2,15 @@
  * @fileoverview Platform runtime and IO handler construction helpers.
  */
 
-import type { IoHandlers } from '../../z80/runtime';
+import type { IoHandlers } from '@jhlagado/debug80-runtime/z80/runtime';
 import type {
   Tec1PlatformConfigNormalized,
   Tec1gPlatformConfigNormalized,
-} from '../../platforms/types';
+} from '@jhlagado/debug80-runtime/platforms/types';
 import type { PlatformKind } from '../launch/program-loader';
 import type { TerminalConfig, TerminalConfigNormalized, TerminalState } from './terminal-types';
-import type { Tec1Runtime } from '../../platforms/tec1/runtime';
-import type { Tec1gRuntime } from '../../platforms/tec1g/runtime';
+import type { Tec1Runtime } from '@jhlagado/debug80-runtime/platforms/tec1/runtime';
+import type { Tec1gRuntime } from '@jhlagado/debug80-runtime/platforms/tec1g/runtime';
 
 export interface PlatformIoBuildOptions {
   platform: PlatformKind;
@@ -53,7 +53,7 @@ export async function buildPlatformIoHandlers(
     if (!tec1Config) {
       return { ioHandlers: undefined };
     }
-    const { createTec1Runtime } = await import('../../platforms/tec1/runtime.js');
+    const { createTec1Runtime } = await import('@jhlagado/debug80-runtime/platforms/tec1/runtime');
     const tec1Runtime = createTec1Runtime(
       tec1Config,
       (payload: unknown) => onTec1Update(payload),
@@ -70,7 +70,8 @@ export async function buildPlatformIoHandlers(
     if (!tec1gConfig) {
       return { ioHandlers: undefined };
     }
-    const { createTec1gRuntime } = await import('../../platforms/tec1g/runtime.js');
+    const { createTec1gRuntime } =
+      await import('@jhlagado/debug80-runtime/platforms/tec1g/runtime');
     const tec1gRuntime = createTec1gRuntime(
       tec1gConfig,
       (payload: unknown) => onTec1gUpdate(payload),

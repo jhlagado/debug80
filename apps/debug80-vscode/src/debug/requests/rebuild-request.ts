@@ -15,11 +15,7 @@ import { resolveAssemblerBackend } from '../launch/assembler-backend';
 import type { BreakpointManager } from '../mapping/breakpoint-manager';
 import { assembleIfRequested } from '../launch/launch-pipeline';
 import type { WarmRebuildResult } from '../session/message-types';
-import {
-  resolveBaseDir,
-  resolveArtifacts,
-  resolveRelative,
-} from '../mapping/path-resolver';
+import { resolveBaseDir, resolveArtifacts, resolveRelative } from '../mapping/path-resolver';
 import { loadProgramArtifacts } from '../launch/program-loader';
 import type { SessionStateShape } from '../session/session-state';
 import type { SourceStateManager } from '../mapping/source-state-manager';
@@ -212,12 +208,14 @@ export async function handleWarmRebuildRequest(
       );
     }
 
-    const builtSourceState = deps.sourceState.build(buildSourceStateBuildArgs({
-      args: launchArgs,
-      hexPath,
-      asmPath,
-      sourceRoots: launchArgs.sourceRoots ?? [],
-    }));
+    const builtSourceState = deps.sourceState.build(
+      buildSourceStateBuildArgs({
+        args: launchArgs,
+        hexPath,
+        asmPath,
+        sourceRoots: launchArgs.sourceRoots ?? [],
+      })
+    );
 
     const symbolIndex = buildSymbolIndex({
       mapping: builtSourceState.mapping,

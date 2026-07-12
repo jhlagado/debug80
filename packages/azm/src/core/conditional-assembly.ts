@@ -56,7 +56,13 @@ export function applyConditionalAssembly(
     }
 
     out.push(line);
-    recordConditionalEquate(line, equates, locationDependentEquates, directiveAliasPolicy, symbolCase);
+    recordConditionalEquate(
+      line,
+      equates,
+      locationDependentEquates,
+      directiveAliasPolicy,
+      symbolCase,
+    );
   }
 
   for (const frame of stack) {
@@ -183,7 +189,9 @@ function evaluateConditionalExpression(
     diagnostics.push(parseDiagnostic(line, `invalid .if expression: ${expressionText}`));
     return undefined;
   }
-  if (expressionReferencesCurrentLocation(expression, equates, locationDependentEquates, symbolCase)) {
+  if (
+    expressionReferencesCurrentLocation(expression, equates, locationDependentEquates, symbolCase)
+  ) {
     diagnostics.push(
       parseDiagnostic(
         line,
@@ -209,10 +217,7 @@ function recordConditionalEquate(
   directiveAliasPolicy: DirectiveAliasPolicy | undefined,
   symbolCase: SymbolCaseMode,
 ): void {
-  const text = normalizeDirectiveAlias(
-    stripLineComment(line.text),
-    directiveAliasPolicy,
-  ).trim();
+  const text = normalizeDirectiveAlias(stripLineComment(line.text), directiveAliasPolicy).trim();
   const equ = /^([A-Za-z_.$?][A-Za-z0-9_.$?]*)(?::\s*|\s+)\.equ\s+(.+)$/.exec(text);
   if (!equ) {
     return;
@@ -224,7 +229,9 @@ function recordConditionalEquate(
   if (!expression) {
     return;
   }
-  if (expressionReferencesCurrentLocation(expression, equates, locationDependentEquates, symbolCase)) {
+  if (
+    expressionReferencesCurrentLocation(expression, equates, locationDependentEquates, symbolCase)
+  ) {
     locationDependentEquates.add(canonicalConditionalSymbolKey(name));
   }
   equates.set(name, {
@@ -252,7 +259,13 @@ function expressionReferencesCurrentLocation(
     );
   }
   return expressionChildExpressions(expression).some((child) =>
-    expressionReferencesCurrentLocation(child, equates, locationDependentEquates, symbolCase, visiting),
+    expressionReferencesCurrentLocation(
+      child,
+      equates,
+      locationDependentEquates,
+      symbolCase,
+      visiting,
+    ),
   );
 }
 
@@ -291,7 +304,13 @@ function symbolReferencesCurrentLocation(
   }
   const lookup = lookupEquateRecord(equates, name, symbolCase);
   if (!lookup) return false;
-  return equateReferencesCurrentLocation(lookup, equates, locationDependentEquates, symbolCase, visiting);
+  return equateReferencesCurrentLocation(
+    lookup,
+    equates,
+    locationDependentEquates,
+    symbolCase,
+    visiting,
+  );
 }
 
 function equateReferencesCurrentLocation(

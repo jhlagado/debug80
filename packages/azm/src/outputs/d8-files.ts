@@ -1,14 +1,5 @@
-import type {
-  D8mFileEntry,
-  D8mSymbol,
-  EmittedSourceSegment,
-} from './types.js';
-import {
-  compareFileSymbol,
-  compareSegment,
-  compareSymbol,
-  rangesOverlap,
-} from './d8-helpers.js';
+import type { D8mFileEntry, D8mSymbol, EmittedSourceSegment } from './types.js';
+import { compareFileSymbol, compareSegment, compareSymbol, rangesOverlap } from './d8-helpers.js';
 
 type AddressRange = { start: number; end: number };
 

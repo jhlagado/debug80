@@ -2,12 +2,7 @@ import { beforeAll, describe, expect, it } from 'vitest';
 import { join } from 'node:path';
 
 import { ensureCliBuilt } from '../helpers/cli/build.js';
-import {
-  exists,
-  makeCliWorkDir,
-  removeCliWorkDir,
-  runCli,
-} from '../helpers/cli/index.js';
+import { exists, makeCliWorkDir, removeCliWorkDir, runCli } from '../helpers/cli/index.js';
 import { writeFile } from 'node:fs/promises';
 
 describe('cli case-style linting', () => {

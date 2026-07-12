@@ -91,7 +91,11 @@ async function handleSerialMessage(
   session: Exclude<PanelSession, undefined>,
   commands: PanelCommands
 ): Promise<boolean> {
-  if (msg.type !== 'serialSend' || typeof msg.text !== 'string' || commands.serialSend === undefined) {
+  if (
+    msg.type !== 'serialSend' ||
+    typeof msg.text !== 'string' ||
+    commands.serialSend === undefined
+  ) {
     return false;
   }
   await sendPanelCommand(session, commands.serialSend, { text: msg.text });

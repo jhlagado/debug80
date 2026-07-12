@@ -15,7 +15,7 @@ import {
   TEC1G_ROM0_START,
   TEC1G_ROM1_END,
   TEC1G_ROM1_START,
-} from '../platforms/tec1g/constants';
+} from '@jhlagado/debug80-runtime/platforms/tec1g/constants';
 import {
   getDefaultProjectKitForPlatform,
   getProjectKitChoices,
@@ -39,8 +39,7 @@ type ScaffoldPlan = {
 };
 
 type SourceChoice =
-  | { kind: 'existing'; sourceFile: string }
-  | { kind: 'starter'; language: StarterLanguage };
+  { kind: 'existing'; sourceFile: string } | { kind: 'starter'; language: StarterLanguage };
 
 function createSimpleDefaults(): Record<string, unknown> {
   return {

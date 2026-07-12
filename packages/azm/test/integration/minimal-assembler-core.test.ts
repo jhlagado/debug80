@@ -91,5 +91,4 @@ start:
     });
     expect(Array.from(result.bytes)).toEqual([0x3e, 0x01, 0xc9]);
   });
-
 });

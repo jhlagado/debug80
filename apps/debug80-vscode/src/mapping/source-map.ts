@@ -3,12 +3,7 @@
  * Provides efficient address-to-source and source-to-address resolution.
  */
 
-import {
-  MappingParseResult,
-  SourceAddressSpace,
-  SourceMapAnchor,
-  SourceMapSegment,
-} from './types';
+import { MappingParseResult, SourceAddressSpace, SourceMapAnchor, SourceMapSegment } from './types';
 import { normalizePathForKey } from '../common/path-utils';
 
 let onSegmentWarning: ((message: string) => void) | undefined;

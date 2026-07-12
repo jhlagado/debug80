@@ -130,9 +130,7 @@ function isConditionalImmediate(
   isCondition: (text: string) => boolean,
 ): concrete is readonly [OpOperand, Extract<OpOperand, { readonly kind: 'imm' }>] {
   return (
-    concrete.length === 2 &&
-    isCondition(concrete[0]?.text ?? '') &&
-    concrete[1]?.kind === 'imm'
+    concrete.length === 2 && isCondition(concrete[0]?.text ?? '') && concrete[1]?.kind === 'imm'
   );
 }
 

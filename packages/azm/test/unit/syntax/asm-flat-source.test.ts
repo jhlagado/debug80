@@ -49,7 +49,10 @@ function asm80Artifact(
 
 describe('.asm source assembly', () => {
   it('parses labels and instructions at source-file top level', async () => {
-    const res = await compileAsmSource(['main:', '  xor a', '  ret', ''].join('\n'), binOnlyOptions);
+    const res = await compileAsmSource(
+      ['main:', '  xor a', '  ret', ''].join('\n'),
+      binOnlyOptions,
+    );
 
     expectNoErrorDiagnostics(res.diagnostics);
     const bin = binArtifact(res.artifacts);
@@ -86,7 +89,9 @@ describe('.asm source assembly', () => {
     expect(res.diagnostics).toContainEqual(
       expect.objectContaining({
         severity: 'error',
-        message: expect.stringMatching(/unsupported source line: not_an_instruction %%%|Unsupported operand: %%%/),
+        message: expect.stringMatching(
+          /unsupported source line: not_an_instruction %%%|Unsupported operand: %%%/,
+        ),
       }),
     );
   });
@@ -211,7 +216,11 @@ describe('.asm source assembly', () => {
     const dir = mkdtempSync(join(tmpdir(), 'asm-flat-aliases-'));
     const entry = join(dir, 'entry.asm');
     const aliases = join(dir, 'azm.aliases.json');
-    writeFileSync(entry, ['STARTAT $5000', 'Table:', '  MYDB 4,5', 'FINISH', ''].join('\n'), 'utf8');
+    writeFileSync(
+      entry,
+      ['STARTAT $5000', 'Table:', '  MYDB 4,5', 'FINISH', ''].join('\n'),
+      'utf8',
+    );
     writeFileSync(
       aliases,
       JSON.stringify(

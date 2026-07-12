@@ -121,13 +121,17 @@ export function createJoystickUiController(
   }
 
   function readArrowKeyMode(element: HTMLElement): ArrowKeyMode | null {
-    return element.dataset.joystickArrowMode === 'move' || element.dataset.joystickArrowMode === 'fire'
+    return element.dataset.joystickArrowMode === 'move' ||
+      element.dataset.joystickArrowMode === 'fire'
       ? element.dataset.joystickArrowMode
       : null;
   }
 
   function resolveBinding(code: string): JoystickBinding | undefined {
-    return BASE_KEY_BINDINGS[code] ?? (arrowKeyMode === 'move' ? ARROW_MOVE_BINDINGS : ARROW_FIRE_BINDINGS)[code];
+    return (
+      BASE_KEY_BINDINGS[code] ??
+      (arrowKeyMode === 'move' ? ARROW_MOVE_BINDINGS : ARROW_FIRE_BINDINGS)[code]
+    );
   }
 
   function setArrowKeyMode(mode: ArrowKeyMode): void {

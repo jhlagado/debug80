@@ -37,7 +37,9 @@ export function shouldBypassEmulatorKeyboardTarget(target: EventTarget | null): 
   if (!(target instanceof HTMLElement)) {
     return true;
   }
-  return target.closest('[data-joystick-bit], [data-joystick-arrow-mode], .matrix-key, .keycap') === null;
+  return (
+    target.closest('[data-joystick-bit], [data-joystick-arrow-mode], .matrix-key, .keycap') === null
+  );
 }
 
 export function createKeyboardOwnerController(

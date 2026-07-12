@@ -6,11 +6,7 @@ import type {
   WriteD8mOptions,
 } from './types.js';
 import { getWrittenRange, getWrittenSegments } from './range.js';
-import {
-  normalizeInputs,
-  normalizeSourceSegments,
-  toD8mSymbol,
-} from './d8-helpers.js';
+import { normalizeInputs, normalizeSourceSegments, toD8mSymbol } from './d8-helpers.js';
 import { buildD8mFiles } from './d8-files.js';
 
 export function writeD8m(

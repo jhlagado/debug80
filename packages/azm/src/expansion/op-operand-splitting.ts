@@ -21,11 +21,7 @@ export function splitOperands(text: string): string[] {
   return state.values;
 }
 
-function advanceOperandSplitState(
-  state: OperandSplitState,
-  text: string,
-  index: number,
-): void {
+function advanceOperandSplitState(state: OperandSplitState, text: string, index: number): void {
   const char = text[index];
   if (state.escaped) {
     state.escaped = false;

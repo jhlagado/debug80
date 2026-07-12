@@ -32,12 +32,12 @@ import { resolveAssemblerBackend } from './assembler-backend';
 import { emitMainSource } from '../session/adapter-ui';
 import { resolvePlatformProvider } from '../../platforms/provider';
 import { buildLaunchSourceState } from './launch-source-state';
-import { createZ80Runtime } from '../../z80/runtime';
+import { createZ80Runtime } from '@jhlagado/debug80-runtime/z80/runtime';
 import type { MappingParseResult, SourceMapAnchor } from '../../mapping/types';
 import type { SourceMapIndex } from '../../mapping/source-map';
 import { formatLogMessage, type Logger } from '../../util/logger';
-import type { MatrixKeyCombo } from '../../platforms/tec1g/matrix-keymap';
-import type { HexProgram } from '../../z80/loaders';
+import type { MatrixKeyCombo } from '@jhlagado/debug80-runtime/platforms/tec1g/matrix-keymap';
+import type { HexProgram } from '@jhlagado/debug80-runtime/z80/loaders';
 import type { LaunchRequestArguments } from '../session/types';
 import type { TerminalState } from '../session/terminal-types';
 import type {
@@ -45,9 +45,9 @@ import type {
   SessionStateShape,
   SourceMapDebugSymbol,
 } from '../session/session-state';
-import type { Z80Runtime } from '../../z80/runtime';
-import type { Tec1Runtime } from '../../platforms/tec1/runtime';
-import type { Tec1gRuntime } from '../../platforms/tec1g/runtime';
+import type { Z80Runtime } from '@jhlagado/debug80-runtime/z80/runtime';
+import type { Tec1Runtime } from '@jhlagado/debug80-runtime/platforms/tec1/runtime';
+import type { Tec1gRuntime } from '@jhlagado/debug80-runtime/platforms/tec1g/runtime';
 import type { ResolvedPlatformProvider } from '../../platforms/provider';
 
 export class MissingLaunchArtifactsError extends Error {
@@ -238,8 +238,7 @@ export async function buildLaunchSession(
     handleMatrixModeRequest: (args) => handleMatrixModeRequest(getTec1gMatrixRuntime(), args),
     handleMatrixKeyRequest: (args) =>
       handleMatrixKeyRequest(getTec1gMatrixRuntime(), context.matrixHeldKeys, args),
-    handleJoystickRequest: (args) =>
-      handleJoystickRequest(context.sessionState.tec1gRuntime, args),
+    handleJoystickRequest: (args) => handleJoystickRequest(context.sessionState.tec1gRuntime, args),
     clearMatrixHeldKeys: () => {
       context.matrixHeldKeys.clear();
     },

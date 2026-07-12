@@ -147,7 +147,10 @@ export class BreakpointManager {
     return { addresses: [], lineDelta: Number.POSITIVE_INFINITY };
   }
 
-  private resolveInFileLineMap(fileMap: Map<number, SourceMapSegment[]>, line: number): {
+  private resolveInFileLineMap(
+    fileMap: Map<number, SourceMapSegment[]>,
+    line: number
+  ): {
     addresses: BreakpointAddress[];
     lineDelta: number;
   } {

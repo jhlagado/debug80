@@ -73,11 +73,13 @@ Before producing any prose, read `references/banned-patterns.md` to load all 20 
 When critiquing existing prose, structure the review in three passes.
 
 **Pass 1 — Technical accuracy**
+
 - Does every claim about ZAX/Z80 behaviour match reality?
 - Does every code excerpt do what the surrounding text says it does?
 - Does the text assume knowledge the course has not yet earned?
 
 **Pass 2 — Structural**
+
 - Does each section open with the problem before the mechanism?
 - Does each section work on both the information and intent levels?
 - Is there a section that is just a list of facts with no reason to care?
@@ -87,6 +89,7 @@ When critiquing existing prose, structure the review in three passes.
 Run the AI-specific tic check from `references/banned-patterns.md`. Search for each pattern explicitly. Do not assume you have noticed all occurrences — grep for them.
 
 Rate each finding as:
+
 - **Blocker**: incorrect language behaviour, wrong code claim, assumed knowledge the course has not earned
 - **Significant**: structural failure, repeated filler, misframed section
 - **Polish**: tighter wording, lighter repetition, cleaner transitions
@@ -106,6 +109,7 @@ Every chapter must be buildable from this skeleton:
 5. A summary bullet list
 
 A chapter introduction must:
+
 - orient the reader
 - state what new thing this chapter adds
 - not justify the whole language again

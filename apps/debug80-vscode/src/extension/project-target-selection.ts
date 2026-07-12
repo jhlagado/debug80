@@ -4,10 +4,7 @@
 
 import * as vscode from 'vscode';
 import { readProjectConfig, updateProjectTargetSource } from './project-config';
-import {
-  loadVisibleTargetChoices,
-  type LoadedTargetChoices,
-} from './project-target-config-policy';
+import { loadVisibleTargetChoices, type LoadedTargetChoices } from './project-target-config-policy';
 import {
   ProjectTargetSourceFileCache,
   projectRootFromProjectConfigPath,

@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { createMatrixScanPlayer } from '../../webview/tec1g/matrix-scan-player';
-import type { Tec1gMatrixScanCycle } from '../../src/platforms/tec1g/types';
+import type { Tec1gMatrixScanCycle } from '@jhlagado/debug80-runtime/platforms/tec1g/types';
 
 type FakeGradient = { stops: string[]; addColorStop: (offset: number, color: string) => void };
 type FakeFill = { stops: string[]; alpha: number };

@@ -66,8 +66,7 @@ export function buildSourceStateBuildArgs(options: {
   debugMapAddressTransforms?: BuildSourceStateArgs['debugMapAddressTransforms'];
 }): BuildSourceStateArgs {
   const debugMaps = options.debugMaps ?? options.args.debugMaps;
-  const debugMapAddressSpaces =
-    options.debugMapAddressSpaces ?? options.args.debugMapAddressSpaces;
+  const debugMapAddressSpaces = options.debugMapAddressSpaces ?? options.args.debugMapAddressSpaces;
   const debugMapAddressTransforms =
     options.debugMapAddressTransforms ?? options.args.debugMapAddressTransforms;
   return {

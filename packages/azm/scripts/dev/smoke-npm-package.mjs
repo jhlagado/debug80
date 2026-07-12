@@ -136,16 +136,16 @@ try {
     [
       "import { DiagnosticIds } from '@jhlagado/azm/tooling';",
       "import type { D8mArtifact, D8mJson, D8mSymbol } from '@jhlagado/azm/compile';",
-      "import type {",
-      "  AnalyzeProgramResult,",
-      "  Diagnostic,",
-      "  DiagnosticId,",
-      "  DiagnosticSeverity,",
-      "  LoadedProgram,",
-      "  LoadProgramResult,",
-      "  RegisterContractsOutputCandidate,",
-      "  RegisterContractsTextEdit,",
-      "  RegisterContractsUnit,",
+      'import type {',
+      '  AnalyzeProgramResult,',
+      '  Diagnostic,',
+      '  DiagnosticId,',
+      '  DiagnosticSeverity,',
+      '  LoadedProgram,',
+      '  LoadProgramResult,',
+      '  RegisterContractsOutputCandidate,',
+      '  RegisterContractsTextEdit,',
+      '  RegisterContractsUnit,',
       "} from '@jhlagado/azm/tooling';",
       '',
       'const diagnosticId = DiagnosticIds.SemanticsError;',
@@ -184,9 +184,17 @@ try {
     ),
     'utf8',
   );
-  await run(process.execPath, [join(repoRoot, 'node_modules', 'typescript', 'bin', 'tsc'), '-p', join(typescriptCheckDir, 'tsconfig.json')], {
-    cwd: installDir,
-  });
+  await run(
+    process.execPath,
+    [
+      join(repoRoot, 'node_modules', 'typescript', 'bin', 'tsc'),
+      '-p',
+      join(typescriptCheckDir, 'tsconfig.json'),
+    ],
+    {
+      cwd: installDir,
+    },
+  );
 
   console.log(`package smoke passed: ${tarball}`);
 } finally {

@@ -9,7 +9,7 @@
 
 import { findSegmentForAddress, type SourceMapIndex } from '../../mapping/source-map';
 import type { SourceAddressSpace } from '../../mapping/types';
-import type { Cpu } from '../../z80/types';
+import type { Cpu } from '@jhlagado/debug80-runtime/z80/types';
 
 export type StepCallResolverContext = {
   cpu: Cpu;

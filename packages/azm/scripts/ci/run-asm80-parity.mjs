@@ -48,12 +48,17 @@ if (!asm80) {
 
 const asm80Env = { ASM80: asm80 };
 
-run('vitest: asm80 lowered output and external round-trip', 'npx', [
-  'vitest',
-  'run',
-  'test/differential/lowered-asm80-artifact.test.ts',
-  'test/differential/asm80-external-roundtrip.test.ts',
-], asm80Env);
+run(
+  'vitest: asm80 lowered output and external round-trip',
+  'npx',
+  [
+    'vitest',
+    'run',
+    'test/differential/lowered-asm80-artifact.test.ts',
+    'test/differential/asm80-external-roundtrip.test.ts',
+  ],
+  asm80Env,
+);
 
 run(
   'vitest: emit_asm80 real-program acceptance (skip when sources absent)',

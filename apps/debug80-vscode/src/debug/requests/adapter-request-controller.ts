@@ -4,7 +4,7 @@
 
 import { Thread } from '@vscode/debugadapter';
 import type { DebugProtocol } from '@vscode/debugprotocol';
-import type { StepInfo } from '../../z80/types';
+import type { StepInfo } from '@jhlagado/debug80-runtime/z80/types';
 import type { BreakpointManager } from '../mapping/breakpoint-manager';
 import type { CommandRouter } from './command-router';
 import {
@@ -33,7 +33,7 @@ import type { VariableService } from './variable-service';
 import type { SessionStateShape } from '../session/session-state';
 import type { PlatformRegistry } from '../session/platform-registry';
 import type { SourceAddressSpace } from '../../mapping/types';
-import { ADDR_MASK } from '../../platforms/tec-common';
+import { ADDR_MASK } from '@jhlagado/debug80-runtime/platforms/tec-common';
 import { tryWriteRegisterByKey, writableRegisterKeyFromVariableName } from './register-request';
 import { buildEvaluateResponseBody, evaluateWatchExpressionTruthy } from './watch-expression';
 import {

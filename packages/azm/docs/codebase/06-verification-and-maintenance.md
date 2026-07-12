@@ -123,19 +123,19 @@ does the corpus still match the accepted compatibility baseline.
 
 Use this map when choosing a verification lane:
 
-| Change                      | Tests                                                                |
-| --------------------------- | -------------------------------------------------------------------- |
-| Parser or expression syntax | `test/unit/syntax/**`, relevant integration tests and `test/asm80/multi_instruction_lines.test.ts` when the change affects chained physical lines. |
-| Source loading or tooling provenance | `test/integration/stage-11-tooling-api.test.ts`, relevant unit tests in `test/unit/source/**`. |
-| Z80 instruction support     | `test/unit/z80/**`, diagnostic matrices, ASM80 parity when relevant. |
-| Layout semantics            | layout integration tests and output tests.                           |
-| Ops                         | `test/unit/expansion/**`, op integration tests and `test/asm80/multi_instruction_lines.test.ts` for chained bodies and invocation segments. |
-| Register contracts          | register contract unit, integration and CLI tests.                   |
-| CLI options                 | `test/cli/**`.                                                       |
-| Output artifacts            | `test/unit/outputs/**`, CLI artifact tests.                          |
-| Public API                  | type tests, public API surface tests and tooling API tests.          |
-| ASM80 lowering or parity    | `check:asm80-coverage`, `test:ci:asm80-parity`, corpus guardrails.   |
-| Package export surface      | `test:package`, public API surface tests.                            |
+| Change                               | Tests                                                                                                                                              |
+| ------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Parser or expression syntax          | `test/unit/syntax/**`, relevant integration tests and `test/asm80/multi_instruction_lines.test.ts` when the change affects chained physical lines. |
+| Source loading or tooling provenance | `test/integration/stage-11-tooling-api.test.ts`, relevant unit tests in `test/unit/source/**`.                                                     |
+| Z80 instruction support              | `test/unit/z80/**`, diagnostic matrices, ASM80 parity when relevant.                                                                               |
+| Layout semantics                     | layout integration tests and output tests.                                                                                                         |
+| Ops                                  | `test/unit/expansion/**`, op integration tests and `test/asm80/multi_instruction_lines.test.ts` for chained bodies and invocation segments.        |
+| Register contracts                   | register contract unit, integration and CLI tests.                                                                                                 |
+| CLI options                          | `test/cli/**`.                                                                                                                                     |
+| Output artifacts                     | `test/unit/outputs/**`, CLI artifact tests.                                                                                                        |
+| Public API                           | type tests, public API surface tests and tooling API tests.                                                                                        |
+| ASM80 lowering or parity             | `check:asm80-coverage`, `test:ci:asm80-parity`, corpus guardrails.                                                                                 |
+| Package export surface               | `test:package`, public API surface tests.                                                                                                          |
 
 For subtle compiler changes, use a narrow test that names the broken layer and
 a broader test that proves the public behaviour. That combination makes failures

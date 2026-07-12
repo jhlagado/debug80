@@ -4,8 +4,7 @@ interface ScannerState {
 }
 
 type ScanResult =
-  | { readonly kind: 'continue'; readonly state: ScannerState }
-  | { readonly kind: 'comment' };
+  { readonly kind: 'continue'; readonly state: ScannerState } | { readonly kind: 'comment' };
 
 export function findLineCommentStart(text: string): number | undefined {
   let state: ScannerState = {};
@@ -61,8 +60,6 @@ function isQuote(char: string | undefined): boolean {
 
 function isApostropheSuffix(text: string, index: number, state: ScannerState): boolean {
   return (
-    state.quote === undefined &&
-    text[index] === "'" &&
-    /[A-Za-z0-9_]/.test(text[index - 1] ?? '')
+    state.quote === undefined && text[index] === "'" && /[A-Za-z0-9_]/.test(text[index - 1] ?? '')
   );
 }

@@ -218,7 +218,13 @@ function offsetPath(
   span: SourceSpan,
   diagnostics: Diagnostic[],
 ): number | undefined {
-  const resolvedTypeExpr = resolveLayoutAlias(typeExpr, layouts, span, diagnostics, new Set([typeExpr.name]));
+  const resolvedTypeExpr = resolveLayoutAlias(
+    typeExpr,
+    layouts,
+    span,
+    diagnostics,
+    new Set([typeExpr.name]),
+  );
   if (!resolvedTypeExpr) {
     return undefined;
   }
@@ -260,7 +266,13 @@ function layoutCastOffset(
   options: EvaluateExpressionOptions,
   evaluateExpression: EvaluateNestedExpression,
 ): number | undefined {
-  const resolvedTypeExpr = resolveLayoutAlias(typeExpr, layouts, span, diagnostics, new Set([typeExpr.name]));
+  const resolvedTypeExpr = resolveLayoutAlias(
+    typeExpr,
+    layouts,
+    span,
+    diagnostics,
+    new Set([typeExpr.name]),
+  );
   if (!resolvedTypeExpr) {
     return undefined;
   }
@@ -298,7 +310,18 @@ function layoutCastOffset(
     if (index === undefined) {
       return undefined;
     }
-    return dynamicArrayOffset(typeExpr, index, tail, labels, equates, layouts, span, diagnostics, options, evaluateExpression);
+    return dynamicArrayOffset(
+      typeExpr,
+      index,
+      tail,
+      labels,
+      equates,
+      layouts,
+      span,
+      diagnostics,
+      options,
+      evaluateExpression,
+    );
   }
 
   return fieldPathOffset({
@@ -349,7 +372,8 @@ function staticArrayOffset(
     tail,
     (elementTypeExpr) =>
       typeExprSize(elementTypeExpr, layouts, span, diagnostics, new Set([typeExpr.name])),
-    (elementTypeExpr, nestedTail) => offsetPath(elementTypeExpr, nestedTail, layouts, span, diagnostics),
+    (elementTypeExpr, nestedTail) =>
+      offsetPath(elementTypeExpr, nestedTail, layouts, span, diagnostics),
   );
 }
 
@@ -453,8 +477,6 @@ function resolveLayoutAlias(
   }
 
   const length =
-    typeExpr.length === undefined
-      ? target.length
-      : (target.length ?? 1) * typeExpr.length;
+    typeExpr.length === undefined ? target.length : (target.length ?? 1) * typeExpr.length;
   return length === undefined ? { name: target.name } : { name: target.name, length };
 }

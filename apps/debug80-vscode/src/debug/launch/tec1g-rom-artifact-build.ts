@@ -16,9 +16,9 @@ import type {
   Tec1gMultibankExpansionRomArtifactConfig,
   Tec1gRomArtifactConfig,
   Tec1gSourceRomArtifactConfig,
-} from '../../platforms/types';
+} from '@jhlagado/debug80-runtime/platforms/types';
 import type { SourceAddressSpace, SourceAddressTransform } from '../../mapping/types';
-import { TEC1G_EXPAND_BANK_COUNT } from '../../platforms/tec-common';
+import { TEC1G_EXPAND_BANK_COUNT } from '@jhlagado/debug80-runtime/platforms/tec-common';
 
 export interface Tec1gBuiltRomArtifact {
   id: string;
@@ -58,13 +58,16 @@ export async function buildTec1gRomArtifactsIfRequested(options: {
           baseDir: options.baseDir,
           args: options.args,
           sendEvent: options.sendEvent,
-          ...(options.backendFactory !== undefined ? { backendFactory: options.backendFactory } : {}),
+          ...(options.backendFactory !== undefined
+            ? { backendFactory: options.backendFactory }
+            : {}),
         })
       );
       continue;
     }
 
-    const backend = options.backendFactory?.(artifact) ?? resolveAssemblerBackend('azm', artifact.sourceFile);
+    const backend =
+      options.backendFactory?.(artifact) ?? resolveAssemblerBackend('azm', artifact.sourceFile);
     const sourceFile = resolveWorkspacePath(options.baseDir, artifact.sourceFile);
     const outputBin = resolveWorkspacePath(options.baseDir, artifact.outputBin);
     assertAzmCompatibleOutputPaths(artifact, options.baseDir, outputBin);
@@ -86,7 +89,8 @@ export async function buildTec1gRomArtifactsIfRequested(options: {
     if (!assembleResult.success) {
       throw new AssembleFailureError({
         ...assembleResult,
-        error: assembleResult.error ?? `${backend.id} failed to assemble ROM artifact ${artifact.id}`,
+        error:
+          assembleResult.error ?? `${backend.id} failed to assemble ROM artifact ${artifact.id}`,
       });
     }
 
@@ -141,7 +145,9 @@ export async function buildTec1gRomArtifactsIfRequested(options: {
   return built;
 }
 
-function romArtifactAzmOptions(args: LaunchRequestArguments): NonNullable<LaunchRequestArguments['azm']> {
+function romArtifactAzmOptions(
+  args: LaunchRequestArguments
+): NonNullable<LaunchRequestArguments['azm']> {
   return {
     ...(args.azm ?? {}),
     registerContracts: 'off',
@@ -290,7 +296,9 @@ async function buildExpansionArtifactBank(options: {
   if (!assembleResult.success) {
     throw new AssembleFailureError({
       ...assembleResult,
-      error: assembleResult.error ?? `${backend.id} failed to assemble ROM artifact ${artifact.id} bank ${bank.physicalBank}`,
+      error:
+        assembleResult.error ??
+        `${backend.id} failed to assemble ROM artifact ${artifact.id} bank ${bank.physicalBank}`,
     });
   }
 
@@ -315,7 +323,9 @@ async function buildExpansionArtifactBank(options: {
   if (!binResult.success) {
     throw new AssembleFailureError({
       ...binResult,
-      error: binResult.error ?? `${backend.id} failed to build ROM artifact ${artifact.id} bank ${bank.physicalBank}`,
+      error:
+        binResult.error ??
+        `${backend.id} failed to build ROM artifact ${artifact.id} bank ${bank.physicalBank}`,
     });
   }
 
@@ -509,9 +519,12 @@ function activeSourceBackedTec1gRomArtifacts(
   artifacts: Tec1gRomArtifactConfig[] | undefined
 ): Array<Tec1gSourceRomArtifactConfig | Tec1gMultibankExpansionRomArtifactConfig> {
   return (artifacts ?? []).filter(
-    (artifact): artifact is Tec1gSourceRomArtifactConfig | Tec1gMultibankExpansionRomArtifactConfig =>
+    (
+      artifact
+    ): artifact is Tec1gSourceRomArtifactConfig | Tec1gMultibankExpansionRomArtifactConfig =>
       artifact.active !== false &&
-      (('sourceFile' in artifact && 'outputBin' in artifact) || isMultibankExpansionArtifact(artifact))
+      (('sourceFile' in artifact && 'outputBin' in artifact) ||
+        isMultibankExpansionArtifact(artifact))
   );
 }
 
@@ -526,7 +539,10 @@ function romArtifactBinaryRange(artifact: Tec1gSourceRomArtifactConfig): {
   binTo: number;
 } {
   if (artifact.role === 'monitor') {
-    return { binFrom: artifact.address ?? 0xc000, binTo: (artifact.address ?? 0xc000) + (artifact.size ?? 0x4000) - 1 };
+    return {
+      binFrom: artifact.address ?? 0xc000,
+      binTo: (artifact.address ?? 0xc000) + (artifact.size ?? 0x4000) - 1,
+    };
   }
 
   return {
@@ -681,7 +697,11 @@ function assertPackedExpansionOutput(
   output: Tec1gExpansionRomArtifactPackedOutputConfig,
   baseDir: string
 ): void {
-  if (output.layout !== undefined && output.layout !== 'contiguous' && output.layout !== 'physical') {
+  if (
+    output.layout !== undefined &&
+    output.layout !== 'contiguous' &&
+    output.layout !== 'physical'
+  ) {
     throw new AssembleFailureError({
       success: false,
       error: `ROM artifact ${artifactId} output ${output.id} layout must be contiguous or physical`,
@@ -693,7 +713,10 @@ function assertPackedExpansionOutput(
       error: `ROM artifact ${artifactId} output ${output.id} outputBin is required`,
     });
   }
-  assertBinOutputPath(`${artifactId} output ${output.id}`, resolveWorkspacePath(baseDir, output.outputBin));
+  assertBinOutputPath(
+    `${artifactId} output ${output.id}`,
+    resolveWorkspacePath(baseDir, output.outputBin)
+  );
 }
 
 function assertMultibankExpansionOutputBanks(

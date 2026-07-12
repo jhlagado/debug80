@@ -21,3 +21,26 @@ npm run check
 
 Each library keeps its own version and is published independently. Debug80 is
 packaged as a VS Code extension.
+
+## Architecture
+
+The dependency direction is acyclic:
+
+```text
+AZM <- Glimmer <- Debug80
+          ^          ^
+          |          |
+      integration  Debug80 Runtime
+          |          ^
+          +----------+
+```
+
+`@jhlagado/debug80-runtime` has no AZM, Glimmer, Debug Adapter Protocol or VS
+Code dependency. It owns the Z80 and TEC runtime implementations and exposes
+the headless verification session. The private integration workspace composes
+Glimmer and the runtime without making either production package depend on the
+other.
+
+All repository-owned JavaScript output and tooling is ESM. Debug80 requires VS
+Code 1.100 or newer, the first extension-host release with supported ESM
+loading, and ships as a bundled ESM extension without `node_modules`.

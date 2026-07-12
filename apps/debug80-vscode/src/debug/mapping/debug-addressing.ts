@@ -8,8 +8,8 @@ import {
   TEC1G_EXPAND_START,
   TEC1G_SHADOW_START,
   TEC1G_SHADOW_SIZE,
-} from '../../platforms/tec-common';
-import type { Tec1gRuntime } from '../../platforms/tec1g/runtime';
+} from '@jhlagado/debug80-runtime/platforms/tec-common';
+import type { Tec1gRuntime } from '@jhlagado/debug80-runtime/platforms/tec1g/runtime';
 import type { SourceAddressSpace } from '../../mapping/types';
 
 export function getShadowAlias(
@@ -44,7 +44,10 @@ export function isBreakpointAddress(
     activePlatform: options.activePlatform,
     tec1gRuntime: options.tec1gRuntime,
   });
-  if (expansionAddressSpace !== undefined && options.hasBreakpoint(address, expansionAddressSpace)) {
+  if (
+    expansionAddressSpace !== undefined &&
+    options.hasBreakpoint(address, expansionAddressSpace)
+  ) {
     return true;
   }
   if (options.hasBreakpoint(address)) {

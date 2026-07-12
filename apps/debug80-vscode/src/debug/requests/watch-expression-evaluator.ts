@@ -1,11 +1,7 @@
-import type { Flags } from '../../z80/types';
-import type { Z80Runtime } from '../../z80/runtime';
+import type { Flags } from '@jhlagado/debug80-runtime/z80/types';
+import type { Z80Runtime } from '@jhlagado/debug80-runtime/z80/runtime';
 import type { SourceMapDebugSymbol } from '../session/session-state';
-import type {
-  WatchEvaluationContext,
-  WatchExpression,
-  WatchValue,
-} from './watch-expression-types';
+import type { WatchEvaluationContext, WatchExpression, WatchValue } from './watch-expression-types';
 
 const REGISTER_NAMES = new Set([
   'A',
@@ -81,8 +77,10 @@ export function evaluateParsedWatchExpression(
       return numberValue(value);
     }
     case 'binary':
-      return evaluateBinary(expression.operator, evaluateParsedWatchExpression(expression.left, context), () =>
-        evaluateParsedWatchExpression(expression.right, context)
+      return evaluateBinary(
+        expression.operator,
+        evaluateParsedWatchExpression(expression.left, context),
+        () => evaluateParsedWatchExpression(expression.right, context)
       );
   }
 }
@@ -92,7 +90,11 @@ export function formatWatchNumber(value: number): string {
   return `0x${masked.toString(16).padStart(masked <= 0xff ? 2 : 4, '0')} / ${masked}`;
 }
 
-function evaluateBinary(operator: string, left: WatchValue, rightThunk: () => WatchValue): WatchValue {
+function evaluateBinary(
+  operator: string,
+  left: WatchValue,
+  rightThunk: () => WatchValue
+): WatchValue {
   if (operator === 'and') {
     return left.value === 0 ? booleanValue(false) : booleanValue(rightThunk().value !== 0);
   }
@@ -243,7 +245,10 @@ function readRegister(name: string, runtime: Z80Runtime): number | undefined {
   }
 }
 
-function findSymbol(name: string, symbols: SourceMapDebugSymbol[]): SourceMapDebugSymbol | undefined {
+function findSymbol(
+  name: string,
+  symbols: SourceMapDebugSymbol[]
+): SourceMapDebugSymbol | undefined {
   return (
     symbols.find((symbol) => symbol.name === name) ??
     symbols.find((symbol) => symbol.name.toLowerCase() === name.toLowerCase())

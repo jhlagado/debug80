@@ -37,7 +37,7 @@ function resolveConfigSearchStart(args: LaunchRequestArguments, workspaceRoot: s
 
 function ancestorDirs(startDir: string): string[] {
   const dirs: string[] = [];
-  for (let dir = startDir; ; ) {
+  for (let dir = startDir; ;) {
     dirs.push(dir);
     const parent = path.dirname(dir);
     if (parent === dir) {

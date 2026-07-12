@@ -4,10 +4,7 @@
 
 import { vi } from 'vitest';
 import { createMemoryViewState } from '../../src/platforms/panel-memory';
-import {
-  createRefreshController,
-  type RefreshController,
-} from '../../src/platforms/panel-refresh';
+import { createRefreshController, type RefreshController } from '../../src/platforms/panel-refresh';
 import {
   handleCommonPanelMessage,
   type PanelCommands,

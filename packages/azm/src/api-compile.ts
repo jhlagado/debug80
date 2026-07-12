@@ -82,12 +82,7 @@ function isRegisterContractsPolicyOffForFile(
 }
 
 export { writeHex, defaultFormatWriters };
-export type {
-  AddressRange,
-  Artifact,
-  EmittedByteMap,
-  FormatWriters,
-};
+export type { AddressRange, Artifact, EmittedByteMap, FormatWriters };
 // fallow-ignore-next-line unused-type
 export type { D8mArtifact };
 // fallow-ignore-next-line unused-type

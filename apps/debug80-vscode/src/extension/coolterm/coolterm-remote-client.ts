@@ -79,10 +79,15 @@ export class CoolTermRemoteClient {
     const packet = encodePacket(pid, op, terminalId, data);
     const response = await this.sendPacket(packet);
     if (response.pid !== pid) {
-      throw new CoolTermRemoteError(`CoolTerm returned packet id ${response.pid}, expected ${pid}.`);
+      throw new CoolTermRemoteError(
+        `CoolTerm returned packet id ${response.pid}, expected ${pid}.`
+      );
     }
     if (response.ack !== ACK_SUCCESS) {
-      throw new CoolTermRemoteError(`CoolTerm rejected command ${op} with ACK ${response.ack}.`, response.ack);
+      throw new CoolTermRemoteError(
+        `CoolTerm rejected command ${op} with ACK ${response.ack}.`,
+        response.ack
+      );
     }
     return response.data;
   }
@@ -101,7 +106,9 @@ export class CoolTermRemoteClient {
       const socket = net.createConnection({ host: this.host, port: this.port });
       const timer = setTimeout(() => {
         socket.destroy();
-        reject(new CoolTermRemoteError(`Timed out connecting to CoolTerm at ${this.host}:${this.port}.`));
+        reject(
+          new CoolTermRemoteError(`Timed out connecting to CoolTerm at ${this.host}:${this.port}.`)
+        );
       }, this.timeoutMs);
       socket.once('connect', () => {
         clearTimeout(timer);

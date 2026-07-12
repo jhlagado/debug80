@@ -1,8 +1,5 @@
 import type { OpDecl } from './op-expansion.js';
-import {
-  expressionFitsKnownImm16,
-  expressionFitsKnownImm8,
-} from './op-constant-expression.js';
+import { expressionFitsKnownImm16, expressionFitsKnownImm8 } from './op-constant-expression.js';
 import {
   formatOpOperand,
   isConditionToken,
@@ -93,12 +90,15 @@ function compareOverloadSpecificity(
   y: OpDecl,
   operands: readonly OpOperand[],
 ): Specificity {
-  const votes = operands.reduce<SpecificityVotes>((current, operand, index) => {
-    return addSpecificityVote(
-      current,
-      compareMatcherSpecificity(x.params[index]!.matcher, y.params[index]!.matcher, operand),
-    );
-  }, { x: 0, y: 0 });
+  const votes = operands.reduce<SpecificityVotes>(
+    (current, operand, index) => {
+      return addSpecificityVote(
+        current,
+        compareMatcherSpecificity(x.params[index]!.matcher, y.params[index]!.matcher, operand),
+      );
+    },
+    { x: 0, y: 0 },
+  );
   return specificityFromVotes(votes);
 }
 
@@ -172,7 +172,9 @@ function matcherMatchesOperand(matcher: OpMatcher, operand: OpOperand): boolean 
 }
 
 function isMemoryOperand(operand: OpOperand): boolean {
-  return operand.kind === 'reg-indirect' || operand.kind === 'mem-abs' || operand.kind === 'indexed';
+  return (
+    operand.kind === 'reg-indirect' || operand.kind === 'mem-abs' || operand.kind === 'indexed'
+  );
 }
 
 export function formatOpSelectionDiagnostic(
@@ -232,8 +234,7 @@ function firstMismatchReason(overload: OpDecl, operands: readonly OpOperand[]): 
 }
 
 function matcherMismatchReason(matcher: OpMatcher, operand: OpOperand): string {
-  const expected =
-    matcher.kind === 'fixed' ? matcher.token : MATCHER_EXPECTATIONS[matcher.kind];
+  const expected = matcher.kind === 'fixed' ? matcher.token : MATCHER_EXPECTATIONS[matcher.kind];
   return `expects ${expected}, got ${formatOpOperand(operand)}`;
 }
 

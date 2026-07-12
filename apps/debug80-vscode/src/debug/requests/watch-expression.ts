@@ -1,8 +1,5 @@
 import type { DebugProtocol } from '@vscode/debugprotocol';
-import {
-  evaluateParsedWatchExpression,
-  formatWatchNumber,
-} from './watch-expression-evaluator';
+import { evaluateParsedWatchExpression, formatWatchNumber } from './watch-expression-evaluator';
 import { parseWatchExpression } from './watch-expression-parser';
 import { tokenizeWatchExpression } from './watch-expression-tokenizer';
 import type { WatchEvaluationContext, WatchEvaluationResult } from './watch-expression-types';

@@ -115,7 +115,9 @@ function scanSpecialTermToken(
   parseNestedExpression: ParseNestedExpression,
 ): TokenScanResult | undefined {
   const term = scanSpecialTerm(input, index, parseNestedExpression);
-  return term ? { token: { kind: 'expression', expression: term.expression }, end: term.end } : undefined;
+  return term
+    ? { token: { kind: 'expression', expression: term.expression }, end: term.end }
+    : undefined;
 }
 
 function scanNumberToken(input: string, index: number): TokenScanResult | undefined {
@@ -127,12 +129,16 @@ function scanNumberToken(input: string, index: number): TokenScanResult | undefi
 
 function scanOperatorToken(input: string, index: number): TokenScanResult | undefined {
   const char = input[index] ?? '';
-  return isOperatorChar(char) ? { token: { kind: 'operator', text: char }, end: index + 1 } : undefined;
+  return isOperatorChar(char)
+    ? { token: { kind: 'operator', text: char }, end: index + 1 }
+    : undefined;
 }
 
 function scanSymbolToken(input: string, index: number): TokenScanResult | undefined {
   const symbol = /^(?:[A-Za-z_.][A-Za-z0-9_.?]*|\?[A-Za-z0-9_.?]+)/.exec(input.slice(index));
-  return symbol ? { token: { kind: 'symbol', text: symbol[0] }, end: index + symbol[0].length } : undefined;
+  return symbol
+    ? { token: { kind: 'symbol', text: symbol[0] }, end: index + symbol[0].length }
+    : undefined;
 }
 
 function isOperatorChar(char: string): char is Operator | UnaryOperator {
@@ -211,10 +217,7 @@ function scanLayoutCallTerm(
   return expression ? { expression, end: close + 1 } : undefined;
 }
 
-function scanLayoutCallHead(
-  input: string,
-  start: number,
-): { readonly open: number } | undefined {
+function scanLayoutCallHead(input: string, start: number): { readonly open: number } | undefined {
   const name = layoutCallNameAt(input, start);
   if (!name) return undefined;
 
@@ -263,9 +266,7 @@ function scanLayoutCastEnd(input: string, start: number): number | undefined {
     return undefined;
   }
   let index = closeType + 1;
-  const base = /^(?:[A-Za-z_$][A-Za-z0-9_$?]*|\?[A-Za-z0-9_$?]+)/.exec(
-    input.slice(index),
-  );
+  const base = /^(?:[A-Za-z_$][A-Za-z0-9_$?]*|\?[A-Za-z0-9_$?]+)/.exec(input.slice(index));
   if (!base) {
     return undefined;
   }
@@ -354,12 +355,12 @@ function scanQuotedByte(
   if (!isQuotedByteValueStart(value, quote)) return undefined;
 
   const scanned =
-    value === '\\' ? scanEscapedQuotedByte(text, valueIndex) : scanLiteralQuotedByte(value, valueIndex);
+    value === '\\'
+      ? scanEscapedQuotedByte(text, valueIndex)
+      : scanLiteralQuotedByte(value, valueIndex);
   if (!scanned) return undefined;
 
-  return text[scanned.end] === quote
-    ? { value: scanned.value, end: scanned.end + 1 }
-    : undefined;
+  return text[scanned.end] === quote ? { value: scanned.value, end: scanned.end + 1 } : undefined;
 }
 
 function isQuotedByteValueStart(value: string | undefined, quote: string): value is string {

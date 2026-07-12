@@ -80,8 +80,7 @@ export async function writeArtifacts(
   outputType: 'hex' | 'bin',
   registerContractsReportFormat: 'text' | 'json' = 'text',
 ): Promise<string | undefined> {
-  const registerContractsReportExt =
-    registerContractsReportFormat === 'json' ? 'json' : 'txt';
+  const registerContractsReportExt = registerContractsReportFormat === 'json' ? 'json' : 'txt';
   const inference = artifacts.find((artifact) => artifact.kind === 'register-contracts-inference');
   const registerContractsInferenceExt =
     inference?.kind === 'register-contracts-inference' && inference.format === 'markdown'

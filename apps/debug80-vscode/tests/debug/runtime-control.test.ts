@@ -14,8 +14,8 @@ import type {
   RuntimeControlContext,
 } from '../../src/debug/session/runtime-control';
 import type { SourceAddressSpace } from '../../src/mapping/types';
-import type { StepInfo } from '../../src/z80/types';
-import type { Z80Runtime } from '../../src/z80/runtime';
+import type { StepInfo } from '@jhlagado/debug80-runtime/z80/types';
+import type { Z80Runtime } from '@jhlagado/debug80-runtime/z80/runtime';
 import { NullLogger } from '../../src/util/logger';
 
 const makeContext = (options?: {

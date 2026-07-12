@@ -9,12 +9,13 @@ export {
 
 type UnaryOperator = Extract<Expression, { readonly kind: 'unary' }>['operator'];
 
-const formatUnaryExpression: Readonly<Record<UnaryOperator, (inner: string) => string | undefined>> =
-  {
-    '+': (inner) => inner,
-    '-': (inner) => `-${inner}`,
-    '~': () => undefined,
-  };
+const formatUnaryExpression: Readonly<
+  Record<UnaryOperator, (inner: string) => string | undefined>
+> = {
+  '+': (inner) => inner,
+  '-': (inner) => `-${inner}`,
+  '~': () => undefined,
+};
 
 export function formatExpression(
   expression: Expression,

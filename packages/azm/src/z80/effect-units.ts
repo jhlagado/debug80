@@ -2,7 +2,13 @@ import type { Expression } from '../model/expression.js';
 import type { InstructionEffect, RegisterContractsUnit } from '../register-contracts/types.js';
 import type { Z80Condition, Z80Operand, Z80RelativeCondition } from './instruction.js';
 
-export const FLAG_WRITES: RegisterContractsUnit[] = ['sign', 'zero', 'halfCarry', 'parity', 'carry'];
+export const FLAG_WRITES: RegisterContractsUnit[] = [
+  'sign',
+  'zero',
+  'halfCarry',
+  'parity',
+  'carry',
+];
 export const INC_DEC_FLAG_WRITES: RegisterContractsUnit[] = ['sign', 'zero', 'halfCarry', 'parity'];
 export const ROTATE_SHIFT_FLAG_WRITES: RegisterContractsUnit[] = [
   'sign',
