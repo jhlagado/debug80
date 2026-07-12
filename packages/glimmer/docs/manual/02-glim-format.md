@@ -1,0 +1,528 @@
+---
+layout: default
+title: 'Chapter 2 - The Glimmer Format'
+parent: 'Glimmer Manual'
+nav_order: 2
+---
+
+[<- Getting Started](01-getting-started.md) | [Manual](index.md)
+
+# Chapter 2 - The Glimmer Format
+
+A `.glim` file is line-oriented. Comments start with `;`. Inside effect
+bodies, lines are passed to the generated AZM verbatim.
+
+## program
+
+```
+program CounterToy
+```
+
+Names the program. Required, once per file.
+
+## platform and display
+
+```
+platform tec1g-mon3
+display matrix8x8
+```
+
+Optional, but declared together when used. They select the profile the
+runtime is generated for.
+
+Without them, the generic profile is used: placeholder API addresses,
+suitable for tests and for reading the generated structure.
+
+With `tec1g-mon3` + `matrix8x8`, the output targets the real TEC-1G under
+MON-3: input is polled through the MON-3 `_scanKeys` API, key names are
+MON-3 key codes (`KEY_0`..`KEY_F`, `KEY_PLUS`, `KEY_MINUS`, `KEY_GO`,
+`KEY_AD`), and the generated loop is scan-driven — every frame the runtime
+scans the whole 8x8 RGB matrix from a framebuffer with fixed row dwell,
+then runs your effects while the matrix is blank. The generated file also
+contains a small profile library your blocks can call: `FbClear`,
+`FbPlot` (B = x, C = y, A = colour bits), `ShapeDraw` when shapes are
+declared, and `MxMask`.
+
+See `examples/dot.glim` for the complete minimal program: a white dot
+moved with keys 2/4/6/8, stopping at every edge.
+
+## state
+
+```
+state Count : byte = 0 changed
+state Score : word = 0
+state Trail : byte[8] changed
+```
+
+Declares a state cell managed by the runtime. Types are `byte` and `word`.
+The initial value is optional and defaults to 0. The `changed` modifier marks the cell
+as already changed at startup so dependent effects run on the first
+frame.
+
+`byte[N]` declares byte array state. The generator emits `.ds N, 0`, the
+whole array has one change flag, and the array name is legal in `on` and
+`updates`. Indexing is ordinary Z80 inside blocks:
+
+```asm
+ld hl,Trail
+ld a,(DotY)
+ld e,a
+ld d,0
+add hl,de
+ld (hl),%10000000
+```
+
+Array initializers and word arrays are not implemented yet.
+
+## type
+
+```
+type Point
+    x : byte
+    y : byte
+end
+
+type Piece
+    origin : Point
+    rows : 4
+    color : byte
+end
+
+type Bag = Piece[7]
+
+state Cursor : Point changed
+state Pieces : Piece[7]
+```
+
+Declares a memory layout. Glimmer names the layout; AZM owns the type
+system: the declaration compiles to an AZM `.type` record (`type Name =
+Expr` compiles to `.typealias`), so `sizeof`, `offset`, and layout casts
+work on the name inside block bodies as ordinary AZM:
+
+```asm
+ld hl,Cursor + offset(Point, y)
+ld a,sizeof(Piece)
+```
+
+Field types are `byte`, `word`, `addr`, a raw byte count (`rows : 4`),
+or another type — including arrays of types. State declared with a type
+name reserves zero-filled typed storage (`.ds Point, 0`), takes no
+initializer, and carries one change flag for the whole cell, exactly
+like a byte array. Recursive layouts are a parse error.
+
+## pulse
+
+```
+pulse IncPressed
+```
+
+Declares a one-frame transient cell. Pulses are set by bindings or code,
+consumed by effects, and cleared automatically at the end of every frame.
+
+## bind
+
+```
+bind key KEY_1 rising -> IncPressed
+```
+
+Declares an input binding. In the current version the only form is a
+rising-edge key binding onto a pulse for the generic profile: the pulse
+fires on the frame the key is first pressed, not while it is held. The
+TEC-1G matrix profile also supports held bindings, described below.
+
+## routine
+
+```
+routine ClampX
+begin
+    cp 8
+    ret c
+    ld a,7
+end
+```
+
+A callable helper with no triggers and no dispatch: blocks call it with
+ordinary `call ClampX`. It becomes a `.routine` boundary followed by
+`ClampX:` in the generated file, with its register contract inferred by AZM.
+Like block bodies, the body falls through — the generator appends the
+final `ret` — and conditional early returns are fine.
+
+## card, enter, and goto
+
+```
+card Splash
+
+effect Start
+    on GoPressed
+    goto Playing
+end
+
+card Playing
+
+enter SetupPlaying
+    updates Score
+begin
+    xor a
+    ld (Score),a
+end
+```
+
+A card is a screen or mode: exactly one is active. A `card` line starts
+a section — everything after it belongs to that card until the next
+`card` line or end of file; declarations before the first `card` are
+global. Blocks in a card's section run only while that card is active.
+
+Cards generate a `Card` enum and a built-in `CurrentCard` cell (legal in
+`on` and `updates`), starting at the first declared card. `enter` blocks
+run once on card entry — no `on` line; entry is the trigger — and before
+the card's other blocks. Entry is edge-triggered: an enter runs only
+when the card actually changed to its card, so marking `CurrentCard`
+changed without switching cannot re-run it. `goto Playing` in a block
+header switches card after the block runs; with `goto`, `begin` is
+optional, so a header-only routing block closes directly with `end`.
+Card switches always land at the next frame start: `CurrentCard` is
+the writable next-card register, and dispatch gates test a copy latched
+once per frame, so a `goto` never lets the same frame's triggers run
+blocks in the destination card. The destination's `enter` blocks run
+first on the frame it activates.
+
+When a transition depends on a runtime test, write `CurrentCard`
+directly under `updates CurrentCard` — `goto` is the unconditional
+sugar, the conditional form is an ordinary conditional store of a
+`Card.` enum value (see Tetro's blocked-spawn game-over).
+
+## text and lcd_row
+
+```
+text MsgPaused "PAUSED"
+```
+
+A zero-terminated string for the TEC-1G's LCD — board hardware, so it
+works on both displays. The generated `lcd_row` op positions the cursor
+and writes it through the MON-3 calls:
+
+```asm
+lcd_row MsgPaused, LcdRow1
+```
+
+`LcdRow1`..`LcdRow4` and the `ApiStringToLcd`/`ApiCharToLcd`/
+`ApiCommandToLcd` equates are emitted alongside.
+
+## bind key any
+
+```
+bind key any rising -> AnyKey
+```
+
+Fires the pulse on every new key press — the "press any key" pattern.
+Rising only (there is no single key to autorepeat), TEC-1G only, and it
+fires alongside any named binding the same press matches.
+
+## part and import
+
+```
+part "trail-blocks.glim"
+import "lib/double.asm"
+```
+
+Programs grow across files with `part`: the entry file declares
+`program`, `platform`, and `display`, and each part contributes cells,
+resources, bindings, and blocks to the same program and namespace —
+the compilation unit is the project, files are storage. Paths resolve
+relative to the entry file, and diagnostics name the file they come
+from.
+
+`import` brings a hand-written AZM module into the program: its
+`@`-exported names become callable from any block (references omit the
+`@`), and its plain declarations stay private to the module. Give each
+callable a `.routine` contract line — the generated program checks
+register contracts strictly, and a call into a routine with no declared
+or inferable contract will not assemble. Glimmer places the `.import`
+where the module's bytes land outside every execution path.
+
+`glimmer --deps entry.glim` prints the program's dependency report:
+for every cell, who raises it and which blocks it triggers — the
+reactive graph, straight from the declarations.
+
+## timer and ramp
+
+```
+timer Blink : byte = 12 -> BlinkTick
+timer Gate : word = 384 -> GateOpen once
+ramp Travel : byte steps 64 -> Arrived
+```
+
+Timing widgets count once per frame and fire pulses.
+
+A `timer` is an oscillator: its cell is the period — writable like any
+state, so `updates Blink` changes the speed from the next cycle — and a
+hidden countdown fires the pulse and reloads each time it runs out. With
+`once` the cell is the countdown itself: it fires a single time when it
+reaches zero and stays idle until your code writes it again.
+
+A `ramp` is a progress counter for motion: each frame it steps toward
+`steps - 1`, marking its cell changed at every step so `compute` and
+`render` blocks can follow it, and fires its pulse on arrival. It idles
+at the terminal value; writing the cell (usually to 0) starts it moving
+again. Timer cells carry no change flag — trigger on the pulse; ramp
+cells do, because the journey is the point.
+
+The built-in `FrameCount` cell increments every frame and may be used
+in `on` for blocks that run continuously.
+
+## display tms9918
+
+```
+platform tec1g-mon3
+display tms9918
+```
+
+Selects the TEC-Deck VDP profile: a written-to display. The generated
+loop waits for vertical blank, flushes dirty shadows to VRAM (the
+commit phase), polls, then runs the effect phases. Render blocks write
+ordinary memory through the profile library — `NamePut` (tile A at
+column D, row E of the name-table shadow), `SpriteSet` (slot A to D=x,
+E=y), `SpriteInit` (slot A's pattern D and colour E) — and never touch
+VDP timing. `sprite` and `tile` declarations generate their patterns,
+colour groups, slot setup, and one-time `LoadResourcesVram` upload;
+hand-written modules can still use `VdpSetAddrWrite`, `VdpWriteBlock`,
+and `VdpFill` for custom data. `VC_*` equates name the sixteen VDP
+colour codes. Sprites use contiguous slots from 0. Sound cues, shapes,
+and the seven-segment HUD service are matrix-profile features.
+
+Sprites and tiles are declarations on this profile:
+
+```
+sprite Player color white
+  "..XXXX.."
+  ...            ; 8 rows of 8
+end
+
+tile Pip color white on black
+  ...
+end
+```
+
+Declaration order is the sprite slot (and pattern number); the name
+compiles to its slot/index equate, and the generated `sprite_at` /
+`tile_at` AZM ops take it directly — `sprite_at Player, PlayerX,
+PlayerY` in a render body. Patterns, colours, and sprite slot setup
+upload once through the generated `LoadResourcesVram`. Graphics I
+colours patterns in groups of eight, so tiles group by their (fg, bg)
+pair; the first pair's background is the screen background.
+
+Note for cards on any profile: a card-gated block never sees flags
+raised while its card was inactive — re-raise the cells a card's
+renders need with an `enter` block's `updates` on entry (see
+sprite-chase's `StartPlaying`).
+
+## sound
+
+```
+sound Arrive len 24 div 3
+sound Click len 2 div 10
+```
+
+Declares a non-blocking sound cue for the `tec1g-mon3` + `matrix8x8`
+profile. Glimmer generates a callable routine for each cue:
+
+```asm
+call Snd_Arrive
+```
+
+The cue uses the matrix scan service, so `len` is measured in row ticks
+(8 ticks is about one matrix frame with the current fixed dwell), and
+`div` is the speaker divider: smaller values are higher pitch. This is
+for low-frequency beeps and clicks, not music. Only one cue is active at
+a time; starting a new cue replaces the current one.
+
+## shape (rotational form)
+
+```
+shape PieceS color green
+  rot0 "XX."
+       ".XX"
+  rot1 ".X"
+       "XX"
+       "X."
+  rot2 "..."
+       "XX."
+       ".XX"
+  rot3 = rot1
+end
+```
+
+`rot0`..`rot3` groups turn a shape into piece-engine data: 4-row
+bitmaps per distinct rotation, plus generated `ShapeRotPtrTable`,
+`ShapeRotRightTbl` (rightmost occupied column per rotation, for X
+bounds), `ShapeRotColorTbl`, and a `ShapeId_<Name>` equate per shape in
+declaration order — index a rotation entry by `id*4 + rotation`.
+Rotations must be declared in order; `rotN = rotM` aliases an earlier
+distinct rotation, and rotations beyond those declared cycle (the I
+piece declares two, O one). Tetro's seven pieces are the worked
+example: the tables its collision engine consumes are generated from
+these declarations, byte-for-byte the corpus data.
+
+## curve
+
+```
+curve SlideX ease_out steps 64 from 0 to 7
+```
+
+Declares a build-time byte table. The compiler computes the values and
+emits a page-aligned AZM table named `Curve_<Name>`:
+
+```asm
+Curve_SlideX:
+    .db ...
+```
+
+Curves are usually driven by ramps. A block reads the ramp cell and indexes
+the generated table with ordinary Z80:
+
+```asm
+ld a,(Travel)
+ld e,a
+ld d,0
+ld hl,Curve_SlideX
+add hl,de
+ld a,(hl)
+```
+
+Presets are `linear`, `ease_in`, `ease_out`, `ease_in_out`, `sine`,
+`overshoot`, and `anticipation`. `from` and `to` are byte values; when
+omitted they default to `0` and `steps - 1`.
+
+## shape
+
+```
+shape Dot color green
+  "XX"
+  "XX"
+end
+```
+
+Declares a small pixel-art resource for the `tec1g-mon3` + `matrix8x8`
+profile. Rows are quoted strings using `X` for a lit pixel and `.` for
+an empty pixel. The current matrix form is rectangular, 1 to 8 pixels
+wide and 1 to 8 rows high.
+
+Glimmer emits a table named `Shape_<Name>` and includes `ShapeDraw` when
+at least one shape exists:
+
+```asm
+ld hl,Shape_Dot
+ld b,3           ; x
+ld c,2           ; y
+call ShapeDraw
+```
+
+Colours are `red`, `green`, `blue`, `yellow`, `cyan`, `magenta`, and
+`white`, mapped to the profile `COLOR_*` constants. `ShapeDraw` ORs
+the shape into the framebuffer and does no clipping; keep the whole
+shape inside the 8x8 matrix.
+
+## bind ... held
+
+```
+bind key KEY_4 held period 8 -> Left
+```
+
+A `held` binding fires on the first press like `rising`, then
+autorepeats every `period` frames while the key stays down — the
+standard movement pattern for action games. Available on the
+tec1g-mon3 platform, where MON-3's `_scanKeys` reports held keys
+directly.
+
+## compute, effect, render
+
+```
+effect ApplyIncrement
+    on IncPressed
+    updates Count
+begin
+    ld hl,Count
+    inc (hl)
+    ld a,(hl)
+    cp 10
+    jr c,_done
+    xor a
+    ld (hl),a
+_done:
+end
+```
+
+A block is a named piece of Z80 with a declared reason to run. Its
+declaration answers three different questions:
+
+- The **keyword** — **when** in the frame it runs. Every frame executes
+  the phases in a fixed order: `compute` blocks first (state computed
+  from other state), then `effect` blocks (ordinary game logic, like
+  `ApplyIncrement` above), then `render` blocks (state drawn to the
+  display). The keyword also enforces the block's nature: `render`
+  takes no `updates` clause, and `compute` requires one.
+- `on` — **why** it runs. This is the trigger: the effect runs when any
+  listed cell changed this frame. This is the one line that cannot
+  be inferred — notice the body above never mentions `IncPressed` at
+  all. The connection between the pulse and the code exists only here.
+- `updates` — **what** it changes. After the effect runs, each listed
+  state cell is marked changed, which is what triggers downstream effects
+  (here, a render effect `on Count`). It is the effect's outward
+  contract: a reader can trace the program's dataflow from `on` and
+  `updates` lines alone, without reading any Z80.
+
+`on` and `updates` are always explicit — why an effect runs and what it
+changes are never implied. The body between `begin` and `end` is real
+AZM assembly. AZM can stack instructions on one line, but Glimmer examples
+prefer one instruction per line because it is easier to read and teach.
+
+Labels inside a block are local to it when they use AZM's `_name`
+local-label syntax: every block compiles under its own routine entry,
+and `_name` labels attach to it, so every block can have its own
+`_done`. The body lands in the generated file byte-for-byte verbatim.
+The leading underscore is the semantics, not just style — a plain label
+in a body is a file-level symbol shared with the whole program (and
+truncates the block's routine boundary), so block-internal branch
+targets must use `_name`.
+
+Block bodies fall through — do not end them with `ret`. The generated
+wrapper appends the change-flag bookkeeping and the `ret`.
+
+Glimmer warns (without failing the build) when a body stores directly
+into a flag-carrying cell that is missing from `updates` — the change
+flag would never be raised, so dependent blocks would not run and the
+`--deps` report would lie. Writes through pointer registers cannot be
+seen by the scan; the `updates` line remains your declaration of intent.
+
+## Sound and the seven-segment display
+
+On the matrix profile, the generated scan loop services a speaker and
+the six-digit seven-segment display once per scanned row (8 ticks per
+frame). Blocks normally start sound through generated `Snd_<Name>` cue
+routines, and may drive the HUD through library routines:
+
+- `Snd_<Name>` — generated from `sound <Name> len <N> div <N>`; starts a
+  low-frequency, non-blocking cue over the scan service.
+- `SndStart` — lower-level helper used by generated sound cues; A =
+  duration in row ticks, C = divider.
+- `ShapeDraw` — generated when shapes exist; HL = `Shape_<Name>`, B =
+  x, C = y. It draws into the framebuffer with no clipping.
+- `HudWriteU16` — HL = value, shown as five decimal digits.
+- `HudBlankDig` — clear the display.
+
+## How changes travel between frames
+
+Delivery of changes is exactly-once. A block's `updates` land the same
+frame for blocks in later phases (compute -> effect -> render), and
+roll over to the next frame when a depending block's phase has already
+run — including blocks in the same phase, so the order you declare
+blocks in never affects behaviour.
+
+## Current limits
+
+This is an early alpha. The present version supports at most 32 state,
+pulse, ramp, and FrameCount flag cells per program (four change-flag
+banks), a small TEC-1G matrix sound-cue backend rather than music,
+byte-valued curve tables, 1..8 by 1..8 matrix shape resources, byte
+arrays up to 256 entries, and placeholder system API addresses in the
+generic profile. See the [roadmap](../roadmap.md) for what comes next.
