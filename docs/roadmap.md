@@ -1,6 +1,6 @@
 # Glimmer Roadmap
 
-Current as of 2026-07-11. Detailed release history lives in
+Current as of 2026-07-12. Detailed release history lives in
 [CHANGELOG.md](../CHANGELOG.md); completed implementation plans remain in
 [`docs/plans/`](plans/) as design records.
 
@@ -89,9 +89,9 @@ All examples are snapshot-covered and assemble under their applicable AZM
 contract policy. Tetro and sprite-chase are native targets in `debug80.json`;
 `tetro-glim` is the repository default.
 
-## Remaining validation
+## Release completion evidence
 
-Two checks cannot be completed by repository automation:
+Two checks still require real hardware playtesting:
 
 1. Play Tetro through its full splash, movement, rotation, lock, line-clear,
    pause, restart, LCD, HUD, and sound paths in Debug80 and on TEC-1G hardware.
@@ -99,12 +99,119 @@ Two checks cannot be completed by repository automation:
    and sustained VDP commit timing in Debug80 and on a TEC-Deck.
 
 Findings from those sessions are release maintenance, not new language scope.
-Strict assembly and emulator startup are necessary evidence but are not a
-substitute for behavioural playtesting.
+Strict assembly and emulator startup remain necessary evidence, but they do not
+prove that a complete game path behaves correctly. Headless Debug80 scenarios
+can automate most emulator playtesting; they cannot replace final checks on
+physical TEC-1G and TEC-Deck hardware.
 
-## Next language phase
+## Ordered next priorities
 
-The strongest next candidate is **source-level routine contract clauses**.
+Work should proceed in this order. A later item moves forward only when a real
+program or platform makes it more urgent than the items above it.
+
+1. **Headless behavioural verification.** Run built Glimmer programs through
+   Debug80's Z80 and TEC-1G device models without VS Code or a webview. Exercise
+   input, cards, reactive phases, memory, matrix output, LCD, sound and TMS9918
+   state with deterministic, bounded scenarios.
+2. **Source-level routine contracts.** Let `.glim` routine headers state the
+   AZM register contract that Glimmer already emits and AZM already verifies.
+3. **TEC-1G input expansion.** Add declarative joystick bindings and settle a
+   profile-neutral input vocabulary before supporting more controllers.
+4. **Profile service interfaces.** Define the small set of services a profile
+   supplies to the generated runtime, so a third platform does not have to copy
+   a TEC-1G profile and edit it internally.
+5. **Namespaced `.glim` libraries.** Design reusable source units only after
+   more than one program needs to share state, effects, bindings or resources
+   beyond today's `part` merge semantics.
+
+Examples are evidence for these capabilities, not a roadmap item themselves.
+New showcase games are deferred unless they expose a missing contract or
+platform requirement.
+
+## Headless behavioural verification
+
+This is primarily a **Debug80 runtime productisation task**, followed by a
+Glimmer acceptance-test task. Debug80 already has headless components: its Z80
+runtime can step instructions, and its TEC-1G runtime models keypad, joystick,
+matrix display, seven-segment display, LCD, speaker and TMS9918 state. The
+missing piece is one supported orchestration API that composes those components
+without the debug adapter, VS Code extension host or webview.
+
+Glimmer must not implement a second emulator. It should build a `.glim` program
+normally, then hand the resulting HEX, Debug80 map, platform configuration and
+ROM selection to the Debug80-owned runner. The runner must not depend on
+Glimmer, because Debug80 already uses Glimmer to build `.glim` launch targets.
+That dependency direction keeps the emulator usable by AZM and hand-written Z80
+programs as well.
+
+### Required runner surface
+
+The first API should provide:
+
+- session creation from HEX, Debug80 map, platform configuration and a pinned
+  monitor ROM;
+- instruction stepping and bounded `runUntil` execution by cycle count,
+  instruction count, address, symbol or state predicate;
+- distinct matrix-scan and TMS9918-frame advancement, rather than one ambiguous
+  `runFrame` operation;
+- matrix-key press, release and tap operations aligned with MON-3 scan timing,
+  plus joystick state injection;
+- symbol-based byte, word and array memory reads and writes using the Debug80
+  map, avoiding hard-coded addresses in tests;
+- semantic snapshots of matrix rows, seven-segment digits, LCD text, speaker
+  edges, TMS9918 registers, VRAM, sprites and framebuffer;
+- deterministic reset, video standard, clock and random-input controls;
+- failure reports containing the stop reason, PC, registers, cycle count and a
+  short instruction trace.
+
+Every run operation needs a mandatory budget. Games intentionally loop forever,
+so waiting for HALT is not a useful default and an unmet condition must fail
+quickly with diagnostic state rather than hang CI.
+
+### Assertion levels
+
+Tests should use the least fragile level that proves the behaviour:
+
+1. **Game state:** inspect named Glimmer state through Debug80 symbols. This is
+   the clearest way to prove navigation, scoring, timers and collision logic.
+2. **Device state:** inspect matrix scan planes, LCD DDRAM, speaker transitions,
+   VRAM, name tables and sprite attributes. This proves the program drove the
+   emulated hardware correctly.
+3. **Rendered output:** compare selected framebuffer regions or a small number
+   of full-screen golden images. Pixel snapshots are valuable for rendering
+   regressions but too broad and brittle to be the default assertion.
+
+Tests may write named state directly to arrange a difficult condition such as a
+nearly complete Tetro row. Each acceptance program should still retain one
+shallow path from reset using only emulated input, so setup helpers cannot hide
+boot or input-integration failures.
+
+### Delivery slices
+
+1. **Debug80 session core:** compose program loading, Z80 stepping, cycle
+   accounting and TEC-1G device state behind an internal `HeadlessSession`.
+   Prove it with a tiny AZM/HEX fixture before involving Glimmer.
+2. **Input and symbols:** add bounded `runUntil`, D8 symbol access, scan-aware
+   keypad operations and useful timeout traces. This is the minimum viable
+   reusable runner.
+3. **Glimmer smoke scenarios:** build `dot.glim` and prove reset, key input,
+   named state and matrix output. Add one TMS9918 resource/upload scenario from
+   `sprite-chase.glim`.
+4. **Game-path scenarios:** cover Tetro splash-to-play navigation, movement,
+   rotation edge behaviour, forced line clear, pause, game over and restart;
+   cover sprite-chase movement, collision, score and sustained VDP commits.
+5. **CI and public boundary:** run the scenarios in Glimmer CI. Once the API has
+   two consumers, expose a small Debug80 headless package or CLI whose runtime
+   layer has no Glimmer dependency. Extraction is not required before the API
+   has proved stable.
+
+The first four slices are complete when the scenarios run deterministically on
+two consecutive clean CI builds, time out with actionable traces when broken,
+and require no VS Code process, browser, canvas or wall-clock sleeps. Physical
+hardware playtests remain a separate release check.
+
+## Source-level routine contracts
+
 AZM 0.3.3 verifies explicit `.routine` interfaces against _callers_ and
 against each routine's own body-effect summary (`declaration_contract_mismatch`
 when a body write is preserved or left unmentioned). Glimmer already emits
@@ -115,19 +222,19 @@ a readable `.glim` header syntax that passes explicit `in`, `out`,
 `.routine` line — without putting non-Z80 semantics inside the body — plus
 negative tests on the Glimmer side.
 
-Profiles may later move monitor interfaces into AZM `.asmi` files when that
-is more useful than the current register profile.
+Profiles may later move monitor interfaces into AZM `.asmi` files when that is
+more useful than the current register profile. This phase is complete when
+contracts are accepted on callable routines, preserved in generated AZM, and
+covered by positive and negative caller/body tests.
 
 ## Later, evidence-driven work
 
-- **`.glim` libraries:** reusable state, bindings, effects, and resources need
-  a namespace and ownership model beyond `part` merge semantics.
 - **Generated module splitting:** move stable runtime/profile sections into
   `.import` units only if editor and debugging experience improves.
 - **Per-block diagnostics:** editor-time isolated assembly and richer dataflow
   analysis, while preserving whole-program verification as the authority.
-- **Additional profiles:** joystick input, TMS9918 Graphics II or NMI pacing,
-  sound hardware, and other Z80 systems supported by Debug80.
+- **Additional profile capabilities:** TMS9918 Graphics II or NMI pacing, sound
+  hardware, and other Z80 systems supported by Debug80.
 - **Larger corpus adaptations:** Pacmo and future games should justify new
   constructs rather than merely demonstrate existing ones again.
 - **Native source origins:** an AZM `.loc`-style directive could eventually
