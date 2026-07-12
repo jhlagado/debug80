@@ -13,3 +13,7 @@ apps/*/*.vsix
 $CODEX_HOME/
 .codex/
 .vscode/
+
+# Versioned Debug80 integration-test project configuration
+!apps/debug80-vscode/tests/e2e/fixtures/**/.vscode/
+!apps/debug80-vscode/tests/e2e/fixtures/**/.vscode/**
