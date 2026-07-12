@@ -234,19 +234,33 @@ Here is what happens from the moment VS Code loads the extension to the moment a
 ### Building
 
 ```bash
-npm run build
+npm run build -w debug80
 ```
 
-This runs two steps: the TypeScript compiler (`tsc`) for the extension and adapter code, and an esbuild bundler for the webview TypeScript. The compiled output goes to `out/`.
+Run this from the Debug80 Toolchain repository root. It type-checks the
+extension and adapter, bundles them as ESM with Rollup, and builds the webview
+assets with esbuild. The compiled output goes to `apps/debug80-vscode/out/`.
 
 ### Running
 
-Open the Debug80 project in VS Code and press F5 to launch an Extension Development Host — a second VS Code window running the extension from the compiled output. Open a workspace with a Debug80 project (e.g., `debug80-tec1g-mon3`) and the extension activates.
+Open the Debug80 Toolchain repository root in VS Code, choose **Debug80
+Extension** in Run and Debug, and press F5. The root launch configuration runs
+the Debug80 build task, starts an Extension Development Host using
+`apps/debug80-vscode` as the extension under development, and opens the simple
+fixture project. Breakpoints in extension and inline debug-adapter TypeScript
+sources use the Rollup source map. The performance-diagnostics launch variant
+also sets `DEBUG80_PERF=1`.
+
+Starting the Extension Development Host is the first stage. To execute adapter
+code, choose **Debug80 E2E (Simple)** in the second window and start that debug
+configuration. The adapter is a `DebugAdapterInlineImplementation`, so it runs
+inside the extension-host process already controlled by the original window's
+debugger. No second Node attach configuration is required.
 
 ### Testing
 
 ```bash
-npm test
+npm test -w debug80
 ```
 
 This runs the full test suite via vitest. Tests cover:

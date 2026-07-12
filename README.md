@@ -22,6 +22,26 @@ npm run check
 Each library keeps its own version and is published independently. Debug80 is
 packaged as a VS Code extension.
 
+## Debugging Debug80
+
+Open the monorepo root in VS Code, select **Run and Debug**, choose
+**Debug80 Extension**, and press F5. The committed launch configuration builds
+the extension, starts an Extension Development Host from
+`apps/debug80-vscode`, and opens the simple test project. Breakpoints in the
+extension, debug adapter, and platform provider TypeScript sources map through
+the bundled source map.
+
+To exercise an adapter breakpoint, set it in the original window, for example
+in `apps/debug80-vscode/src/debug/adapter.ts`. After the Extension Development
+Host opens, select **Debug80 E2E (Simple)** in that second window and press F5
+there. Debug80 runs the adapter inline in the extension host, so the original
+window stops at both extension and adapter breakpoints; there is no separate
+adapter process to attach to.
+
+Choose **Debug80 Extension (performance diagnostics)** to run the same host
+with `DEBUG80_PERF=1`. After changing extension or webview code, restart the
+debug session so the pre-launch build regenerates both bundles.
+
 ## Architecture
 
 The dependency direction is acyclic:
