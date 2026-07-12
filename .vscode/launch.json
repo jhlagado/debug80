@@ -1,0 +1,40 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "Debug80 Extension",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/apps/debug80-vscode",
+        "${workspaceFolder}/apps/debug80-vscode/tests/e2e/fixtures/simple"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/apps/debug80-vscode/out/extension/**/*.js"
+      ],
+      "sourceMaps": true,
+      "preLaunchTask": "debug80: build",
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Debug80 Extension (performance diagnostics)",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/apps/debug80-vscode",
+        "${workspaceFolder}/apps/debug80-vscode/tests/e2e/fixtures/simple"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/apps/debug80-vscode/out/extension/**/*.js"
+      ],
+      "sourceMaps": true,
+      "preLaunchTask": "debug80: build",
+      "env": {
+        "DEBUG80_PERF": "1"
+      },
+      "skipFiles": ["<node_internals>/**"]
+    }
+  ]
+}

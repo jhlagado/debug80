@@ -12,6 +12,12 @@ apps/*/*.vsix
 # Local editor state
 .vscode/
 
+# Shared monorepo debugging configuration
+!.vscode/
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+
 # Versioned Debug80 integration-test project configuration
 !apps/debug80-vscode/tests/e2e/fixtures/**/.vscode/
 !apps/debug80-vscode/tests/e2e/fixtures/**/.vscode/**
