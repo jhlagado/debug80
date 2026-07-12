@@ -57,9 +57,9 @@ AZM <- Glimmer <- Debug80
 
 `@jhlagado/debug80-runtime` has no AZM, Glimmer, Debug Adapter Protocol or VS
 Code dependency. It owns the Z80 and TEC runtime implementations and exposes
-the headless verification session. The private integration workspace composes
-Glimmer and the runtime without making either production package depend on the
-other.
+the stable ESM runner API at `@jhlagado/debug80-runtime/headless`. Private
+integration workspaces compose AZM or Glimmer with the runtime without making
+the production packages depend on each other.
 
 All repository-owned JavaScript output and tooling is ESM. Debug80 requires VS
 Code 1.100 or newer, the first extension-host release with supported ESM
