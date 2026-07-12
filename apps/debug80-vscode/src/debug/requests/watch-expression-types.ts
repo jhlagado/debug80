@@ -1,5 +1,5 @@
 import type { SourceMapDebugSymbol } from '../session/session-state';
-import type { Z80Runtime } from '../../z80/runtime';
+import type { Z80Runtime } from '@jhlagado/debug80-runtime/z80/runtime';
 
 export type WatchExpressionTokenKind =
   | 'number'

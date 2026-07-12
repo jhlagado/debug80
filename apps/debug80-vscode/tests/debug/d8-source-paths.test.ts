@@ -78,9 +78,11 @@ describe('D8 source path helpers', () => {
 
       expect(
         toPortable(
-          findPrimaryDebugMapSource(mapPath, ['src/main.asm', 'roms/tec1g/mon3/mon3.z80'], [
-            projectRoot,
-          ]) ?? ''
+          findPrimaryDebugMapSource(
+            mapPath,
+            ['src/main.asm', 'roms/tec1g/mon3/mon3.z80'],
+            [projectRoot]
+          ) ?? ''
         )
       ).toContain('roms/tec1g/mon3/mon3.z80');
     });

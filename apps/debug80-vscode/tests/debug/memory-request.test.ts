@@ -4,7 +4,7 @@ import {
   handleMemorySnapshotRequest,
   type MemoryRequestDeps,
 } from '../../src/debug/requests/memory-request';
-import { createZ80Runtime } from '../../src/z80/runtime';
+import { createZ80Runtime } from '@jhlagado/debug80-runtime/z80/runtime';
 
 describe('memory-request', () => {
   it('forwards running state so the webview can enable paused memory editing', () => {
@@ -27,9 +27,7 @@ describe('memory-request', () => {
   });
 });
 
-function createMemoryRequestFixture(options: {
-  running: boolean;
-}): {
+function createMemoryRequestFixture(options: { running: boolean }): {
   response: DebugProtocol.Response;
   sendResponse: ReturnType<typeof vi.fn>;
   deps: MemoryRequestDeps;

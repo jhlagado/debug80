@@ -94,10 +94,7 @@ function scanQuotedBracketChar(char: string, state: BracketScanState): BracketSc
   return state;
 }
 
-function startBracketQuote(
-  char: string,
-  state: BracketScanState,
-): BracketScanState | undefined {
+function startBracketQuote(char: string, state: BracketScanState): BracketScanState | undefined {
   return char === '"' || char === "'" ? { ...state, quote: char } : undefined;
 }
 
@@ -171,7 +168,9 @@ function parseLayoutCastPathPart(
 
 function parseLayoutCastField(text: string): ParsedPathPart<LayoutCastPathPart> | undefined {
   const field = new RegExp(`^\\.(${IDENTIFIER_PATTERN})`).exec(text);
-  return field ? { part: { kind: 'field', name: field[1] ?? '' }, rest: text.slice(field[0].length) } : undefined;
+  return field
+    ? { part: { kind: 'field', name: field[1] ?? '' }, rest: text.slice(field[0].length) }
+    : undefined;
 }
 
 function parseLayoutCastIndex(

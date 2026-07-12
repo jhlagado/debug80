@@ -254,7 +254,9 @@ function formatLdIndexed(
 }
 
 function isBcDeIndirectAStore(register: string, source: LdOperand): boolean {
-  return (register === 'bc' || register === 'de') && source.kind === 'reg8' && source.register === 'a';
+  return (
+    (register === 'bc' || register === 'de') && source.kind === 'reg8' && source.register === 'a'
+  );
 }
 
 function formatLdAbsoluteStore(
@@ -272,7 +274,10 @@ function formatLdAbsoluteStore(
   return targetText === undefined ? undefined : { text: `ld ${targetText}, ${source.register}` };
 }
 
-function formatLdText(target: string, source: string | undefined): { readonly text: string } | undefined {
+function formatLdText(
+  target: string,
+  source: string | undefined,
+): { readonly text: string } | undefined {
   return source === undefined ? undefined : { text: `ld ${target}, ${source}` };
 }
 

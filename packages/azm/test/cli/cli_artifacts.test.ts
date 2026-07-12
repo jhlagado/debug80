@@ -181,15 +181,7 @@ describe('cli artifacts', () => {
     const entry = await writeCliMainSource(work);
 
     const outBin = join(work, 'out.bin');
-    const res = await runCli([
-      '--nohex',
-      '--nod8m',
-      '--type',
-      'bin',
-      '-o',
-      outBin,
-      entry,
-    ]);
+    const res = await runCli(['--nohex', '--nod8m', '--type', 'bin', '-o', outBin, entry]);
     expect(res.code).toBe(0);
     expect(res.stdout.trim()).toBe(outBin);
 

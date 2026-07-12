@@ -6,7 +6,7 @@ import {
   getMatrixCombosForAscii,
   type MatrixKeyCombo,
   type MatrixModifier,
-} from '../../platforms/tec1g/matrix-keymap';
+} from '@jhlagado/debug80-runtime/platforms/tec1g/matrix-keymap';
 
 export type MatrixKeyPayload = {
   key: string;
@@ -197,7 +197,7 @@ export function selectMatrixCombo(
           ? 'fn'
           : payload.alt === true
             ? 'alt'
-          : undefined;
+            : undefined;
   if (preferred !== undefined) {
     const preferredMatch = combos.find(
       (combo) => combo.modifier === preferred && matchesCapsLock(combo, capsLock)

@@ -34,19 +34,23 @@ export function resolveCoolTermHexArtifact(
   }
 
   const explicitHex = target?.hex ?? config.hex;
-  const resolved = explicitHex !== undefined && explicitHex.trim() !== ''
-    ? resolveProjectPath(projectRoot, explicitHex)
-    : inferHexPath(projectRoot, compactHexInferenceOptions({
-        outputDir: target?.outputDir ?? config.outputDir,
-        artifactBase: target?.artifactBase ?? config.artifactBase,
-        sourcePath:
-          target?.sourceFile ??
-          target?.asm ??
-          target?.source ??
-          config.sourceFile ??
-          config.asm ??
-          config.source,
-      }));
+  const resolved =
+    explicitHex !== undefined && explicitHex.trim() !== ''
+      ? resolveProjectPath(projectRoot, explicitHex)
+      : inferHexPath(
+          projectRoot,
+          compactHexInferenceOptions({
+            outputDir: target?.outputDir ?? config.outputDir,
+            artifactBase: target?.artifactBase ?? config.artifactBase,
+            sourcePath:
+              target?.sourceFile ??
+              target?.asm ??
+              target?.source ??
+              config.sourceFile ??
+              config.asm ??
+              config.source,
+          })
+        );
 
   if (resolved === undefined) {
     return {
@@ -55,7 +59,9 @@ export function resolveCoolTermHexArtifact(
     };
   }
 
-  return fs.existsSync(resolved) ? { kind: 'found', path: resolved } : { kind: 'missing', path: resolved };
+  return fs.existsSync(resolved)
+    ? { kind: 'found', path: resolved }
+    : { kind: 'missing', path: resolved };
 }
 
 function inferHexPath(
@@ -64,7 +70,9 @@ function inferHexPath(
 ): string | undefined {
   const base =
     options.artifactBase ??
-    (options.sourcePath !== undefined ? path.basename(options.sourcePath, path.extname(options.sourcePath)) : undefined);
+    (options.sourcePath !== undefined
+      ? path.basename(options.sourcePath, path.extname(options.sourcePath))
+      : undefined);
   if (base === undefined || base.trim() === '') {
     return undefined;
   }

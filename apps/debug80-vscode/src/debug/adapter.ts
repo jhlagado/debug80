@@ -33,7 +33,7 @@ import {
   RuntimeControlContext,
 } from './session/runtime-control';
 import { VariableService } from './requests/variable-service';
-import { type MatrixKeyCombo } from '../platforms/tec1g/matrix-keymap';
+import { type MatrixKeyCombo } from '@jhlagado/debug80-runtime/platforms/tec1g/matrix-keymap';
 
 import { LaunchRequestArguments } from './session/types';
 import { resolveBaseDir } from './mapping/path-resolver';

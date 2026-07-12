@@ -113,7 +113,9 @@ describe('.asm source boundary', () => {
   });
 
   it('treats unsupported control-like text as ordinary unsupported assembler syntax', () => {
-    const res = compileBoundarySource(['WARN_CONTROL:', '  branch_when_ready z', '  ret', ''].join('\n'));
+    const res = compileBoundarySource(
+      ['WARN_CONTROL:', '  branch_when_ready z', '  ret', ''].join('\n'),
+    );
 
     expect(res.diagnostics).toContainEqual(
       expect.objectContaining({

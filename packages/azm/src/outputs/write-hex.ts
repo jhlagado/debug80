@@ -1,4 +1,10 @@
-import type { AddressRange, EmittedByteMap, HexArtifact, SymbolEntry, WriteHexOptions } from './types.js';
+import type {
+  AddressRange,
+  EmittedByteMap,
+  HexArtifact,
+  SymbolEntry,
+  WriteHexOptions,
+} from './types.js';
 
 function toHexByte(n: number): string {
   return (n & 0xff).toString(16).toUpperCase().padStart(2, '0');

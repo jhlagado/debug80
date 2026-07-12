@@ -9,9 +9,7 @@ import { expectDiagnostic } from '../helpers/diagnostics/index.js';
 
 const FIXTURES = fileURLToPath(new URL('../fixtures', import.meta.url));
 
-function asm80Artifact(
-  artifacts: readonly { readonly kind: string }[],
-): Asm80Artifact | undefined {
+function asm80Artifact(artifacts: readonly { readonly kind: string }[]): Asm80Artifact | undefined {
   return artifacts.find((artifact): artifact is Asm80Artifact => artifact.kind === 'asm80');
 }
 

@@ -578,8 +578,7 @@ function isUnconditionalExternalTail(
   context: InstructionInferenceContext,
 ): boolean {
   return (
-    isExternalTailJump(routine, context.item, context.effect) &&
-    !context.effect.control.conditional
+    isExternalTailJump(routine, context.item, context.effect) && !context.effect.control.conditional
   );
 }
 
@@ -719,7 +718,9 @@ function inferInstructionSummaryStep(
 function inferenceStateSignature(state: InferenceState): string {
   const tokens = TRACKED_UNITS.map((unit) => `${unit}:${readToken(state.tokens, unit).origin}`);
   const stack = state.stack.map((entry) =>
-    entry.units.map((unit, index) => `${unit}:${entry.tokens[index]?.origin ?? 'unknown'}`).join('+'),
+    entry.units
+      .map((unit, index) => `${unit}:${entry.tokens[index]?.origin ?? 'unknown'}`)
+      .join('+'),
   );
   const sorted = (values: Iterable<RegisterContractsUnit>) => [...new Set(values)].sort();
   return JSON.stringify([
@@ -857,9 +858,7 @@ export function inferRoutineSummary(
   }
   const cycleSummaries = cycles.map((state) => summaryFromNonReturningState(routine, state));
   const summaries =
-    exits.length > 0
-      ? exits.map((state) => summaryFromState(routine, state))
-      : cycleSummaries;
+    exits.length > 0 ? exits.map((state) => summaryFromState(routine, state)) : cycleSummaries;
   const [first, ...rest] = summaries;
   const merged = rest.reduce(mergeAlternativeSummaries, first!);
   return exits.length === 0

@@ -16,7 +16,8 @@ export function writeBin(
   const symbolEnd = symbols.find(
     (symbol) => symbol.kind === 'constant' && symbol.name === BIN_TO_SYMBOL_NAME,
   );
-  const start = optionStart ?? (symbolStart?.kind === 'constant' ? symbolStart.value : writtenStart);
+  const start =
+    optionStart ?? (symbolStart?.kind === 'constant' ? symbolStart.value : writtenStart);
   const end = symbolEnd?.kind === 'constant' ? symbolEnd.value + 1 : writtenEnd;
   const out = new Uint8Array(Math.max(0, end - start));
 

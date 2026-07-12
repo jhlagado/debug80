@@ -2,10 +2,10 @@ import { describe, expect, it } from 'vitest';
 import {
   applyExpansionRomMemory,
   createTec1gMemoryHooks,
-} from '../../src/platforms/tec1g/tec1g-memory';
+} from '@jhlagado/debug80-runtime/platforms/tec1g/tec1g-memory';
 import { loadTec1gExpansionRomImage } from '../../src/platforms/tec1g/tec1g-expansion-rom';
-import { createTec1gRuntime } from '../../src/platforms/tec1g/runtime';
-import type { Tec1gPlatformConfigNormalized } from '../../src/platforms/types';
+import { createTec1gRuntime } from '@jhlagado/debug80-runtime/platforms/tec1g/runtime';
+import type { Tec1gPlatformConfigNormalized } from '@jhlagado/debug80-runtime/platforms/types';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';

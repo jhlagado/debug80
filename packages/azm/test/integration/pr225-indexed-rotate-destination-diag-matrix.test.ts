@@ -6,10 +6,7 @@ import { defaultFormatWriters } from '../../src/outputs/index.js';
 import { expectDiagnostic, expectNoDiagnostic } from '../helpers/diagnostics/index.js';
 
 const PR225_FIXTURE = fileURLToPath(
-  new URL(
-    '../fixtures/pr225_indexed_rotate_destination_diag_matrix_invalid.asm',
-    import.meta.url,
-  ),
+  new URL('../fixtures/pr225_indexed_rotate_destination_diag_matrix_invalid.asm', import.meta.url),
 );
 
 const HEADS = ['rlc', 'rrc', 'rl', 'rr', 'sla', 'sra', 'sll', 'srl'] as const;

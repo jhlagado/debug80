@@ -2707,29 +2707,32 @@ describe('register-contracts integration', () => {
     );
   });
 
-  it.each(['jp', 'jr'])('emits strict errors for unknown direct-%s tail boundaries', async (jump) => {
-    const dir = mkdtempSync(join(tmpdir(), `azm-regcontracts-unknown-tail-${jump}-`));
-    const entry = join(dir, 'main.asm');
-    writeFileSync(
-      entry,
-      ['MISSING_TAIL .equ $0004', '.routine', 'START:', `    ${jump} MISSING_TAIL`, '.end'].join(
-        '\n',
-      ),
-      'utf8',
-    );
+  it.each(['jp', 'jr'])(
+    'emits strict errors for unknown direct-%s tail boundaries',
+    async (jump) => {
+      const dir = mkdtempSync(join(tmpdir(), `azm-regcontracts-unknown-tail-${jump}-`));
+      const entry = join(dir, 'main.asm');
+      writeFileSync(
+        entry,
+        ['MISSING_TAIL .equ $0004', '.routine', 'START:', `    ${jump} MISSING_TAIL`, '.end'].join(
+          '\n',
+        ),
+        'utf8',
+      );
 
-    const res = await compileRegisterContracts(entry, {
-      registerContracts: 'strict',
-    });
+      const res = await compileRegisterContracts(entry, {
+        registerContracts: 'strict',
+      });
 
-    expect(res.diagnostics).toContainEqual(
-      expect.objectContaining({
-        code: 'AZMN_REGISTER_CONTRACTS',
-        severity: 'error',
-        message: expect.stringContaining(`${jump.toUpperCase()} MISSING_TAIL`),
-      }),
-    );
-  });
+      expect(res.diagnostics).toContainEqual(
+        expect.objectContaining({
+          code: 'AZMN_REGISTER_CONTRACTS',
+          severity: 'error',
+          message: expect.stringContaining(`${jump.toUpperCase()} MISSING_TAIL`),
+        }),
+      );
+    },
+  );
 
   it('does not treat routine-local JR loops as tail-call summary boundaries', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-regcontracts-jr-loop-'));
@@ -3298,9 +3301,7 @@ describe('register-contracts integration', () => {
 
     expectNoErrorDiagnostics(res);
     expect(reportArtifact(res)?.findings ?? []).not.toEqual(
-      expect.arrayContaining([
-        expect.objectContaining({ kind: 'declaration_contract_mismatch' }),
-      ]),
+      expect.arrayContaining([expect.objectContaining({ kind: 'declaration_contract_mismatch' })]),
     );
   });
 });

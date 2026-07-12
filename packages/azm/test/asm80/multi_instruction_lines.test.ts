@@ -72,13 +72,7 @@ describe('multi-instruction physical lines', () => {
 
   it('keeps chain diagnostics ordered before later segment diagnostics', () => {
     const result = compileSource(
-      [
-        'op onlyA(dst A)',
-        '  xor a',
-        'end',
-        'main: ld a,b \\  \\ onlyA b',
-        '',
-      ].join('\n'),
+      ['op onlyA(dst A)', '  xor a', 'end', 'main: ld a,b \\  \\ onlyA b', ''].join('\n'),
     );
 
     expect(result.diagnostics).toHaveLength(2);
@@ -102,13 +96,7 @@ describe('multi-instruction physical lines', () => {
 
   it('expands op invocations used as chained segments', () => {
     const result = compileSource(
-      [
-        'op clearA()',
-        '  xor a',
-        'end',
-        'main: clearA \\ ret',
-        '',
-      ].join('\n'),
+      ['op clearA()', '  xor a', 'end', 'main: clearA \\ ret', ''].join('\n'),
     );
 
     expect(result.diagnostics).toEqual([]);
@@ -117,14 +105,7 @@ describe('multi-instruction physical lines', () => {
 
   it('supports chained instruction templates inside op bodies', () => {
     const result = compileSource(
-      [
-        'op copyThenReturn()',
-        '  ld a,b \\ ret',
-        'end',
-        'main:',
-        '  copyThenReturn',
-        '',
-      ].join('\n'),
+      ['op copyThenReturn()', '  ld a,b \\ ret', 'end', 'main:', '  copyThenReturn', ''].join('\n'),
     );
 
     expect(result.diagnostics).toEqual([]);
@@ -152,14 +133,7 @@ describe('multi-instruction physical lines', () => {
 
   it('rejects directives after a first label inside op-body chains', () => {
     const result = compileSource(
-      [
-        'op bad()',
-        'local: .db 1 \\ ret',
-        'end',
-        'main:',
-        '  bad',
-        '',
-      ].join('\n'),
+      ['op bad()', 'local: .db 1 \\ ret', 'end', 'main:', '  bad', ''].join('\n'),
     );
 
     expect(result.diagnostics).toHaveDiagnostic({
@@ -173,14 +147,7 @@ describe('multi-instruction physical lines', () => {
 
   it('rejects later labels inside op-body chains', () => {
     const result = compileSource(
-      [
-        'op bad()',
-        '  ld a,b \\ later: ret',
-        'end',
-        'main:',
-        '  bad',
-        '',
-      ].join('\n'),
+      ['op bad()', '  ld a,b \\ later: ret', 'end', 'main:', '  bad', ''].join('\n'),
     );
 
     expect(result.diagnostics).toHaveDiagnostic({
@@ -194,14 +161,7 @@ describe('multi-instruction physical lines', () => {
 
   it('rejects empty segments inside op-body chains', () => {
     const result = compileSource(
-      [
-        'op bad()',
-        '  ld a,b \\  \\ ret',
-        'end',
-        'main:',
-        '  bad',
-        '',
-      ].join('\n'),
+      ['op bad()', '  ld a,b \\  \\ ret', 'end', 'main:', '  bad', ''].join('\n'),
     );
 
     expect(result.diagnostics).toHaveDiagnostic({
@@ -228,7 +188,7 @@ describe('multi-instruction physical lines', () => {
       expect(result.diagnostics).toEqual([]);
       const d8m = result.artifacts.find((artifact) => artifact.kind === 'd8m');
       expect(d8m?.kind).toBe('d8m');
-      const segments = d8m?.kind === 'd8m' ? d8m.json.files['main.asm']?.segments ?? [] : [];
+      const segments = d8m?.kind === 'd8m' ? (d8m.json.files['main.asm']?.segments ?? []) : [];
       expect(segments).toEqual([
         expect.objectContaining({ start: 0, end: 1, line: 1, column: 7 }),
         expect.objectContaining({ start: 1, end: 2, line: 1, column: 16 }),

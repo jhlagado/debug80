@@ -132,7 +132,9 @@ async function loadBaselineReport(
   if (rawPath === undefined) return undefined;
   const baselinePath = normalize(rawPath);
   try {
-    const parsed = JSON.parse(await readFile(baselinePath, 'utf8')) as Partial<RegisterContractsJsonReportModel>;
+    const parsed = JSON.parse(
+      await readFile(baselinePath, 'utf8'),
+    ) as Partial<RegisterContractsJsonReportModel>;
     if (parsed.format !== 'azm-register-contracts-report' || !Array.isArray(parsed.findings)) {
       diagnostics.push({
         severity: 'error',

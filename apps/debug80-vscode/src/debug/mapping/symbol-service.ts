@@ -15,9 +15,7 @@ export interface SymbolIndex {
   list: Array<{ name: string; address: number }>;
 }
 
-export function buildSymbolIndex(options: {
-  mapping?: MappingParseResult;
-}): SymbolIndex {
+export function buildSymbolIndex(options: { mapping?: MappingParseResult }): SymbolIndex {
   const { mapping } = options;
   const hasAnchors = mapping !== undefined && mapping.anchors.length > 0;
   const anchors = hasAnchors ? mapping.anchors : [];

@@ -2,7 +2,10 @@
  * @file TEC-1G panel UI state helpers.
  */
 
-import { Tec1gSpeedMode, Tec1gUpdatePayload } from './types';
+import {
+  Tec1gSpeedMode,
+  Tec1gUpdatePayload,
+} from '@jhlagado/debug80-runtime/platforms/tec1g/types';
 
 export type GlcdState = {
   displayOn: boolean;

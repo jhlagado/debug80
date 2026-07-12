@@ -38,13 +38,23 @@ describe('stage 3 visible-op diagnostic parity slice', () => {
     const result = await compile(entry, {}, { formats: defaultFormatWriters });
     const messages = result.diagnostics.map((diagnostic) => diagnostic.message ?? '');
 
-    expect(messages.some((message) => message.includes('Invalid op expansion in "clobber_a_with" at call site.'))).toBe(true);
-    expect(messages.some((message) => message.includes('expanded instruction: ld A, SP'))).toBe(true);
+    expect(
+      messages.some((message) =>
+        message.includes('Invalid op expansion in "clobber_a_with" at call site.'),
+      ),
+    ).toBe(true);
+    expect(messages.some((message) => message.includes('expanded instruction: ld A, SP'))).toBe(
+      true,
+    );
     expect(messages.some((message) => message.includes('op definition:'))).toBe(true);
-    expect(messages.some((message) => message.includes('expansion chain: clobber_a_with'))).toBe(true);
-    expect(messages.some((message) =>
-      message.includes('ld expects a supported register/memory/immediate transfer form'),
-    )).toBe(true);
+    expect(messages.some((message) => message.includes('expansion chain: clobber_a_with'))).toBe(
+      true,
+    );
+    expect(
+      messages.some((message) =>
+        message.includes('ld expects a supported register/memory/immediate transfer form'),
+      ),
+    ).toBe(true);
   });
 
   it('reports one invalid-expansion diagnostic per failing expanded instruction', async () => {
@@ -55,8 +65,12 @@ describe('stage 3 visible-op diagnostic parity slice', () => {
     );
 
     expect(invalids).toHaveLength(2);
-    expect(invalids.some((diagnostic) => diagnostic.message?.includes('expanded instruction: ld A, SP'))).toBe(true);
-    expect(invalids.some((diagnostic) => diagnostic.message?.includes('expanded instruction: ld C, SP'))).toBe(true);
+    expect(
+      invalids.some((diagnostic) => diagnostic.message?.includes('expanded instruction: ld A, SP')),
+    ).toBe(true);
+    expect(
+      invalids.some((diagnostic) => diagnostic.message?.includes('expanded instruction: ld C, SP')),
+    ).toBe(true);
   });
 
   it('reports nested invalid expansion diagnostics with full expansion chain', async () => {

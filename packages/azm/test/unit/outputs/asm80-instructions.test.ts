@@ -102,8 +102,6 @@ describe('ASM80 instruction lowering', () => {
       'call nz, Target',
     );
     expect(text({ mnemonic: 'xor', source: { kind: 'reg8', register: 'a' } })).toBe('xor a');
-    expect(text({ mnemonic: 'adc', source: { kind: 'imm', expression: n(1) } })).toBe(
-      'adc a, $01',
-    );
+    expect(text({ mnemonic: 'adc', source: { kind: 'imm', expression: n(1) } })).toBe('adc a, $01');
   });
 });

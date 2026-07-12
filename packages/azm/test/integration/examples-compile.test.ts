@@ -10,8 +10,7 @@ const EXAMPLES_DIR = fileURLToPath(new URL('../../examples', import.meta.url));
 async function exampleEntries(): Promise<string[]> {
   const entries = (await readdir(EXAMPLES_DIR, { withFileTypes: true }))
     .filter(
-      (entry) =>
-        entry.isFile() && (entry.name.endsWith('.asm') || entry.name.endsWith('.z80')),
+      (entry) => entry.isFile() && (entry.name.endsWith('.asm') || entry.name.endsWith('.z80')),
     )
     .map((entry) => join(EXAMPLES_DIR, entry.name))
     .sort((left, right) => left.localeCompare(right));

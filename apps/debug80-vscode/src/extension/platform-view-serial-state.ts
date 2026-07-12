@@ -9,9 +9,7 @@ import type { PlatformId } from '../contracts/platform-view';
 export { createSerialBuffer, type SerialBuffer };
 
 export type PlatformViewSerialMessage =
-  | { type: 'serial'; text: string }
-  | { type: 'serialClear' }
-  | { type: 'serialInit'; text: string };
+  { type: 'serial'; text: string } | { type: 'serialClear' } | { type: 'serialInit'; text: string };
 
 export function appendPlatformSerial(
   serialBuffer: SerialBuffer,

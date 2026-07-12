@@ -23,11 +23,7 @@ import {
   buildSourceStateBuildArgs,
   createSourceStateManager,
 } from './source-state-build-options';
-import {
-  parseD8DebugMap,
-  type D8DebugMap,
-  type D8FileEntry,
-} from '../../mapping/d8-map';
+import { parseD8DebugMap, type D8DebugMap, type D8FileEntry } from '../../mapping/d8-map';
 
 export interface LaunchSourceBuildResult {
   sourceRoots: string[];
@@ -62,15 +58,17 @@ export function buildLaunchSourceState(
     })
   );
 
-  const builtSourceState = sourceState.build(buildSourceStateBuildArgs({
-    args,
-    hexPath,
-    asmPath,
-    sourceRoots: preSourceRoots,
-    debugMaps: args.debugMaps ?? [],
-    debugMapAddressSpaces: args.debugMapAddressSpaces ?? {},
-    debugMapAddressTransforms: args.debugMapAddressTransforms ?? {},
-  }));
+  const builtSourceState = sourceState.build(
+    buildSourceStateBuildArgs({
+      args,
+      hexPath,
+      asmPath,
+      sourceRoots: preSourceRoots,
+      debugMaps: args.debugMaps ?? [],
+      debugMapAddressSpaces: args.debugMapAddressSpaces ?? {},
+      debugMapAddressTransforms: args.debugMapAddressTransforms ?? {},
+    })
+  );
 
   const symbolIndex = buildSymbolIndex({
     mapping: builtSourceState.mapping,

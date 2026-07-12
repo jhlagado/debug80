@@ -4,9 +4,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { createRequire } from 'module';
-
-const moduleRequire = createRequire(__filename);
+import { fileURLToPath } from 'node:url';
 
 /**
  * Result of running the assembler.
@@ -67,23 +65,16 @@ export function formatAssemblyDiagnostic(diagnostic: AssemblyDiagnostic): string
  * @returns Path to the bundled ROM, or undefined
  */
 export function resolveBundledTec1Rom(): string | undefined {
-  let vscodeModule: typeof import('vscode') | undefined;
-  try {
-    vscodeModule = moduleRequire('vscode') as typeof import('vscode');
-  } catch {
-    vscodeModule = undefined;
+  const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
+  const roots = [
+    path.resolve(moduleDirectory, '..', '..', '..'),
+    path.resolve(moduleDirectory, '..', '..'),
+  ];
+  for (const root of roots) {
+    const candidate = path.join(root, 'roms', 'tec1', 'mon-1b', 'mon-1b.hex');
+    if (fs.existsSync(candidate)) {
+      return candidate;
+    }
   }
-
-  const extension = vscodeModule?.extensions.getExtension('jhlagado.debug80');
-  if (!extension) {
-    return undefined;
-  }
-
-  const candidate = path.join(extension.extensionPath, 'roms', 'tec1', 'mon-1b', 'mon-1b.hex');
-
-  if (fs.existsSync(candidate)) {
-    return candidate;
-  }
-
   return undefined;
 }

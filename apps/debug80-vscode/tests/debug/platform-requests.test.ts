@@ -9,7 +9,7 @@ import {
   handleSerialRequest,
   handleSpeedRequest,
 } from '../../src/debug/requests/platform-requests';
-import { KEY_RESET } from '../../src/platforms/tec-common';
+import { KEY_RESET } from '@jhlagado/debug80-runtime/platforms/tec-common';
 
 function createProgram() {
   return { memory: new Uint8Array(0x10000), startAddress: 0 };

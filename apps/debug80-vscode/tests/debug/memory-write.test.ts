@@ -5,7 +5,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { createSessionState } from '../../src/debug/session/session-state';
 import { handleMemoryWriteRequest } from '../../src/debug/requests/memory-write';
-import { createZ80Runtime } from '../../src/z80/runtime';
+import { createZ80Runtime } from '@jhlagado/debug80-runtime/z80/runtime';
 
 describe('memory-write', () => {
   it('writes a byte through the runtime memory hook when paused', () => {

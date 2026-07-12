@@ -40,15 +40,7 @@ export type Z80CoreMnemonic =
 type Z80HlAluMnemonic = 'add' | 'adc' | 'sbc';
 export type Z80BitMnemonic = 'bit' | 'res' | 'set';
 export type Z80RotateShiftMnemonic =
-  | 'rlc'
-  | 'rrc'
-  | 'rl'
-  | 'rr'
-  | 'sla'
-  | 'sra'
-  | 'sll'
-  | 'sls'
-  | 'srl';
+  'rlc' | 'rrc' | 'rl' | 'rr' | 'sla' | 'sra' | 'sll' | 'sls' | 'srl';
 export type Z80Register8 = 'a' | 'b' | 'c' | 'd' | 'e' | 'h' | 'l';
 export type Z80Register16 = 'bc' | 'de' | 'hl' | 'sp';
 export type Z80IndexRegister16 = 'ix' | 'iy';
@@ -105,17 +97,14 @@ export type Z80Instruction =
       readonly mnemonic: 'in';
       readonly target?: { readonly kind: 'reg8'; readonly register: Z80Register8 };
       readonly port:
-        | { readonly kind: 'c' }
-        | { readonly kind: 'imm'; readonly expression: Expression };
+        { readonly kind: 'c' } | { readonly kind: 'imm'; readonly expression: Expression };
     }
   | {
       readonly mnemonic: 'out';
       readonly port:
-        | { readonly kind: 'c' }
-        | { readonly kind: 'imm'; readonly expression: Expression };
+        { readonly kind: 'c' } | { readonly kind: 'imm'; readonly expression: Expression };
       readonly source:
-        | { readonly kind: 'reg8'; readonly register: Z80Register8 }
-        | { readonly kind: 'zero' };
+        { readonly kind: 'reg8'; readonly register: Z80Register8 } | { readonly kind: 'zero' };
     }
   | {
       readonly mnemonic: Z80BitMnemonic;

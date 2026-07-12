@@ -43,7 +43,8 @@ function dispatchKeyboardEvent(target: EventTarget, type: string, key: string): 
 
 describe('keypad focus routing', () => {
   it('identifies native keyboard controls', () => {
-    document.body.innerHTML = '<section><input id="i"><button id="b"></button><div id="d"></div></section>';
+    document.body.innerHTML =
+      '<section><input id="i"><button id="b"></button><div id="d"></div></section>';
 
     expect(isKeyboardControlTarget(document.getElementById('i'))).toBe(true);
     expect(isKeyboardControlTarget(document.getElementById('b'))).toBe(true);
@@ -51,16 +52,17 @@ describe('keypad focus routing', () => {
   });
 
   it('focuses the keypad when a routed panel background is clicked', () => {
-    document.body.innerHTML = '<section id="panel"><div id="surface"></div><input id="input"></section>';
+    document.body.innerHTML =
+      '<section id="panel"><div id="surface"></div><input id="input"></section>';
     const localKeypad = createKeypad();
     wireKeypadFocusPanels([document.getElementById('panel')], localKeypad);
 
-    document.getElementById('surface')?.dispatchEvent(
-      new MouseEvent('mousedown', { bubbles: true, cancelable: true })
-    );
-    document.getElementById('input')?.dispatchEvent(
-      new MouseEvent('mousedown', { bubbles: true, cancelable: true })
-    );
+    document
+      .getElementById('surface')
+      ?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+    document
+      .getElementById('input')
+      ?.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
 
     expect(localKeypad.focusKeypad).toHaveBeenCalledTimes(1);
   });
@@ -86,7 +88,11 @@ describe('keypad focus routing', () => {
     document.body.innerHTML = '<input id="input"><main id="surface"></main>';
     const localKeypad = createKeypad();
     const inputEvent = dispatchKeyboardEvent(document.getElementById('input')!, 'keydown', 'A');
-    const consumedEvent = dispatchKeyboardEvent(document.getElementById('surface')!, 'keydown', 'A');
+    const consumedEvent = dispatchKeyboardEvent(
+      document.getElementById('surface')!,
+      'keydown',
+      'A'
+    );
     consumedEvent.preventDefault();
 
     expect(

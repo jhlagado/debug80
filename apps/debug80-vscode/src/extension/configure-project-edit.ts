@@ -19,9 +19,7 @@ export type ConfigureProjectTargetEdit =
   | { kind: 'artifactBase'; artifactBase: string };
 
 export type ConfigureProjectTargetEditResult =
-  | { kind: 'updated'; targetName: string }
-  | { kind: 'missingTarget' }
-  | { kind: 'noChange' };
+  { kind: 'updated'; targetName: string } | { kind: 'missingTarget' } | { kind: 'noChange' };
 
 type ProjectTargetConfig = NonNullable<ProjectConfig['targets']>[string];
 

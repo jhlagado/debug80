@@ -6,7 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import type { LaunchRequestArguments } from '../session/types';
-import type { Tec1gPlatformConfig } from '../../platforms/types';
+import type { Tec1gPlatformConfig } from '@jhlagado/debug80-runtime/platforms/types';
 
 /**
  * Shallow-merge nested platform blocks so a target can override e.g. `tec1g.appStart`
@@ -140,9 +140,7 @@ function shouldUseBundledAsset(
   );
 }
 
-function hasNonEmptyRomHex(
-  config: Tec1gPlatformConfig | undefined
-): config is Tec1gPlatformConfig {
+function hasNonEmptyRomHex(config: Tec1gPlatformConfig | undefined): config is Tec1gPlatformConfig {
   return typeof config?.romHex === 'string' && config.romHex.trim() !== '';
 }
 
@@ -298,9 +296,7 @@ function resolveTec1gBaseForMerge(cfg: {
     return root;
   }
   const names = Object.keys(cfg.targets ?? {}).sort((a, b) => a.localeCompare(b));
-  const inherited = names
-    .map((name) => cfg.targets?.[name]?.tec1g)
-    .find(hasNonEmptyRomHex);
+  const inherited = names.map((name) => cfg.targets?.[name]?.tec1g).find(hasNonEmptyRomHex);
   if (inherited === undefined) {
     return root;
   }
@@ -445,11 +441,7 @@ function applyExecutionLaunchFields(
     'stopOnEntry',
     firstPresent(args.stopOnEntry, targetCfg?.stopOnEntry, cfg.stopOnEntry)
   );
-  setIfDefined(
-    merged,
-    'assemble',
-    firstPresent(args.assemble, targetCfg?.assemble, cfg.assemble)
-  );
+  setIfDefined(merged, 'assemble', firstPresent(args.assemble, targetCfg?.assemble, cfg.assemble));
   setIfDefined(
     merged,
     'stepOverMaxInstructions',

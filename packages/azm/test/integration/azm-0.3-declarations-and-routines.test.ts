@@ -639,14 +639,9 @@ Owner:
       );
       await writeFile(
         module,
-        [
-          '.contracts off',
-          '.routine out A',
-          '@LegacyValue:',
-          '    ld a,1',
-          '    ret',
-          '',
-        ].join('\n'),
+        ['.contracts off', '.routine out A', '@LegacyValue:', '    ld a,1', '    ret', ''].join(
+          '\n',
+        ),
       );
 
       const result = await compile(

@@ -13,8 +13,7 @@
  * the Debug80 map so block bodies step in .glim source.
  */
 
-import { realpathSync } from 'node:fs';
-import { createRequire } from 'node:module';
+import { readFileSync, realpathSync } from 'node:fs';
 import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
@@ -23,8 +22,6 @@ import type { GlimmerProgram } from './model.js';
 import { buildGlimmerProgram, type BuildDiagnostic } from './build.js';
 import { loadGlimmerProgram } from './load.js';
 import { parseNumber } from './parse.js';
-
-const require = createRequire(import.meta.url);
 
 function usage(): string {
   return [
@@ -124,7 +121,9 @@ export async function main(argv: string[]): Promise<number> {
       return 0;
     }
     if (arg === '-V' || arg === '--version') {
-      const pkg = require('../../package.json') as { version: string };
+      const pkg = JSON.parse(
+        readFileSync(new URL('../../package.json', import.meta.url), 'utf8'),
+      ) as { version: string };
       console.log(pkg.version);
       return 0;
     }

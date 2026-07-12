@@ -34,7 +34,7 @@ vi.mock('../../src/debug/session/platform-host', () => ({
   buildPlatformIoHandlers,
 }));
 
-vi.mock('../../src/platforms/tec1g/tec1g-memory', () => ({
+vi.mock('@jhlagado/debug80-runtime/platforms/tec1g/tec1g-memory', () => ({
   createTec1gMemoryHooks,
   applyExpansionRomMemory,
 }));
@@ -47,7 +47,7 @@ import {
 } from '../../src/platforms/provider';
 import { PlatformRegistry } from '../../src/debug/session/platform-registry';
 import { createSessionState } from '../../src/debug/session/session-state';
-import type { Tec1gRuntime } from '../../src/platforms/tec1g/runtime';
+import type { Tec1gRuntime } from '@jhlagado/debug80-runtime/platforms/tec1g/runtime';
 
 function createCommandContext() {
   return {

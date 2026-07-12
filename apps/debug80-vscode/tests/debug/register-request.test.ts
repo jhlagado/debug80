@@ -9,7 +9,7 @@ import {
   parseHexValue,
   writableRegisterKeyFromVariableName,
 } from '../../src/debug/requests/register-request';
-import { createZ80Runtime } from '../../src/z80/runtime';
+import { createZ80Runtime } from '@jhlagado/debug80-runtime/z80/runtime';
 
 function createRegisterWriteSession(
   options: { running?: boolean } = {}

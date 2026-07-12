@@ -167,12 +167,16 @@ main:
 
     expect(result.diagnostics).toEqual([
       expect.objectContaining({
-        message: expect.stringContaining('No matching op overload for "clear" with provided operands.'),
+        message: expect.stringContaining(
+          'No matching op overload for "clear" with provided operands.',
+        ),
       }),
     ]);
     expect(result.diagnostics[0]?.message).toContain('call-site operands: (B)');
     expect(result.diagnostics[0]?.message).toContain('available overloads:');
-    expect(result.diagnostics[0]?.message).toContain('clear(dst A) (<memory>:2) ; dst: expects A, got B');
+    expect(result.diagnostics[0]?.message).toContain(
+      'clear(dst A) (<memory>:2) ; dst: expects A, got B',
+    );
   });
 
   it('reports ambiguous Stage 9 parameterized op overloads', () => {
@@ -529,6 +533,4 @@ main:
     expect(result.diagnostics).toEqual([]);
     expect(Array.from(result.bytes)).toEqual([0xdd, 0x34, 0x01, 0xdd, 0x35, 0x01]);
   });
-
 });
-

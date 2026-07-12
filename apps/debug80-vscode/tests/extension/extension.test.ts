@@ -108,10 +108,8 @@ describe('extension activation', () => {
         listPlatforms: () => Array<{ id: string; displayName: string }>;
       };
     };
-    const uiManifest =
-      (await import('../../src/extension/platform-view-manifest')) as typeof import('../../src/extension/platform-view-manifest');
-    const unifiedManifest =
-      (await import('../../src/extension/platform-extension-model')) as typeof import('../../src/extension/platform-extension-model');
+    const uiManifest = await import('../../src/extension/platform-view-manifest');
+    const unifiedManifest = await import('../../src/extension/platform-extension-model');
     const context = {
       subscriptions: [] as Array<{ dispose: () => void }>,
       workspaceState: { get: vi.fn(), update: vi.fn() },

@@ -66,4 +66,3 @@ function refreshAfterEdit<TTab extends string>(
     { allowErrors: true }
   );
 }
-

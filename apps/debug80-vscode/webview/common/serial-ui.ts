@@ -17,10 +17,7 @@ export interface SerialUiOptions {
   maxTextLength?: number;
 }
 
-export function wireSerialUi(
-  vscode: VscodeApi,
-  options: SerialUiOptions = {}
-): SerialUiController {
+export function wireSerialUi(vscode: VscodeApi, options: SerialUiOptions = {}): SerialUiController {
   const {
     outputId = 'serialOut',
     inputId = 'serialInput',

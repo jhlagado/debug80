@@ -27,18 +27,14 @@ async function runNextCli(args: string[], cwd?: string): Promise<CliRun> {
 
   let stdout = '';
   let stderr = '';
-  const stdoutSpy = vi
-    .spyOn(process.stdout, 'write')
-    .mockImplementation((chunk: unknown) => {
-      stdout += String(chunk);
-      return true;
-    });
-  const stderrSpy = vi
-    .spyOn(process.stderr, 'write')
-    .mockImplementation((chunk: unknown) => {
-      stderr += String(chunk);
-      return true;
-    });
+  const stdoutSpy = vi.spyOn(process.stdout, 'write').mockImplementation((chunk: unknown) => {
+    stdout += String(chunk);
+    return true;
+  });
+  const stderrSpy = vi.spyOn(process.stderr, 'write').mockImplementation((chunk: unknown) => {
+    stderr += String(chunk);
+    return true;
+  });
 
   try {
     process.chdir(resolvedCwd);
@@ -117,7 +113,10 @@ describe('stage 13 CLI façade', () => {
       expect(badHex.code).toBe(2);
       expect(badHex.stderr).toContain('--output must end with ".hex" when --type is "hex"');
 
-      const noPrimary = await runNextCli(['--type', 'bin', '--nobin', '-o', join(dir, 'out.bin'), entry], dir);
+      const noPrimary = await runNextCli(
+        ['--type', 'bin', '--nobin', '-o', join(dir, 'out.bin'), entry],
+        dir,
+      );
       expect(noPrimary.code).toBe(2);
       expect(noPrimary.stderr).toContain('--type bin requires BIN output to be enabled');
     });
@@ -196,7 +195,10 @@ describe('stage 13 CLI façade', () => {
       await writeFile(includeFile, 'VALUE .equ 7\n', 'utf8');
       await writeFile(entry, '.include "lib.inc"\nmain:\n  ld a,VALUE\n  ret\n', 'utf8');
 
-      const includeRes = await runNextCli(['-I', includes, '--type', 'bin', '-o', out, 'main.asm'], dir);
+      const includeRes = await runNextCli(
+        ['-I', includes, '--type', 'bin', '-o', out, 'main.asm'],
+        dir,
+      );
       expect(includeRes.code).toBe(0);
       expect(await exists(out)).toBe(true);
     });
@@ -237,10 +239,7 @@ describe('stage 13 CLI façade', () => {
       const entry = join(dir, 'main.asm');
       await writeFile(entry, `main:\n  ld a,1\n  ret\n`, 'utf8');
       const out = join(dir, 'main.hex');
-      const res = await runNextCli(
-        ['--asm80', '--nobin', '--nod8m', '-o', out, entry],
-        dir,
-      );
+      const res = await runNextCli(['--asm80', '--nobin', '--nod8m', '-o', out, entry], dir);
 
       expect(res.code).toBe(0);
       expect(await exists(join(dir, 'main.z80'))).toBe(true);

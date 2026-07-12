@@ -3,19 +3,19 @@
  */
 
 import type { DebugProtocol } from '@vscode/debugprotocol';
-import type { Z80Runtime } from '../../z80/runtime';
-import type { StepInfo } from '../../z80/types';
-import type { Tec1Runtime } from '../../platforms/tec1/runtime';
-import type { Tec1gRuntime } from '../../platforms/tec1g/runtime';
+import type { Z80Runtime } from '@jhlagado/debug80-runtime/z80/runtime';
+import type { StepInfo } from '@jhlagado/debug80-runtime/z80/types';
+import type { Tec1Runtime } from '@jhlagado/debug80-runtime/platforms/tec1/runtime';
+import type { Tec1gRuntime } from '@jhlagado/debug80-runtime/platforms/tec1g/runtime';
 import type { Logger } from '../../util/logger';
-import type { MatrixKeyCombo } from '../../platforms/tec1g/matrix-keymap';
+import type { MatrixKeyCombo } from '@jhlagado/debug80-runtime/platforms/tec1g/matrix-keymap';
 import type { SourceStateManager } from '../mapping/source-state-manager';
 import type { PlatformRegistry } from './platform-registry';
 import type { SessionStateShape, StopReason } from './session-state';
 import type { LaunchSequenceContext } from '../launch/launch-sequence';
 import type { LaunchSessionArtifacts } from '../launch/launch-sequence';
 import type { BreakpointManager } from '../mapping/breakpoint-manager';
-import type { CpuStateSnapshot } from '../../z80/runtime';
+import type { CpuStateSnapshot } from '@jhlagado/debug80-runtime/z80/runtime';
 import type { SourceAddressSpace } from '../../mapping/types';
 import { createRuntimePerformanceMonitor } from './performance-monitor';
 import {

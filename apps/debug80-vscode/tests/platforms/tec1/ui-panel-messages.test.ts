@@ -28,8 +28,7 @@ describe('tec1 ui-panel-messages', () => {
     const ctx = {
       getSession: () =>
         undefined as
-          | { type: string; customRequest: (c: string, p: unknown) => Promise<unknown> }
-          | undefined,
+          { type: string; customRequest: (c: string, p: unknown) => Promise<unknown> } | undefined,
       refreshController,
       autoRefreshMs: 250,
       setActiveTab: (tab: 'home' | 'ui' | 'memory') => {

@@ -36,10 +36,7 @@ function setProjectViewState(elements: SharedProjectControlElements, value: stri
   elements.appRoot?.setAttribute('data-project-view-state', value);
 }
 
-function syncTargetControls(
-  elements: SharedProjectControlElements,
-  initialized: boolean
-): void {
+function syncTargetControls(elements: SharedProjectControlElements, initialized: boolean): void {
   setHidden(elements.targetControl, !initialized);
   setSelectDisabled(elements.targetSelect, !initialized);
   if (!initialized && elements.targetSelect) {
@@ -59,10 +56,7 @@ function syncPlatformControls(
   }
 }
 
-function syncRuntimeControls(
-  elements: SharedProjectControlElements,
-  initialized: boolean
-): void {
+function syncRuntimeControls(elements: SharedProjectControlElements, initialized: boolean): void {
   setHidden(elements.stopOnEntryLabel, !initialized);
   setHidden(elements.restartButton, !initialized);
   setHidden(elements.tabs, !initialized);

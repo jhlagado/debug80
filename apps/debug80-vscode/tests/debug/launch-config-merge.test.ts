@@ -178,17 +178,10 @@ describe('launch-config-merge', () => {
       },
     };
 
-    const merged = mergeForTarget(
-      manifest,
-      'game',
-      launchArgs(),
-      {
-        resolveBundledAssetPath: (reference) =>
-          reference.path === 'mon3.d8.json'
-            ? '/extension/tec1g/mon3/v1/mon3.d8.json'
-            : undefined,
-      }
-    );
+    const merged = mergeForTarget(manifest, 'game', launchArgs(), {
+      resolveBundledAssetPath: (reference) =>
+        reference.path === 'mon3.d8.json' ? '/extension/tec1g/mon3/v1/mon3.d8.json' : undefined,
+    });
 
     expect(merged.platform).toBe('tec1g');
     expect(merged.debugMaps).toEqual([

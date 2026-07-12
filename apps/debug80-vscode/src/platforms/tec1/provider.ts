@@ -17,7 +17,7 @@ import type { PlatformContribution } from '../../debug/session/platform-registry
 import type { LaunchRequestArguments } from '../../debug/session/types';
 import { extractKeyCode } from '../../debug/session/message-types';
 import type { PlatformCommandContext, ResolvedPlatformProvider } from '../provider';
-import { normalizeTec1Config } from './runtime';
+import { normalizeTec1Config } from '@jhlagado/debug80-runtime/platforms/tec1/runtime';
 
 /**
  * Sends a successful or failed custom request response.

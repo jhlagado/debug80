@@ -6,6 +6,7 @@ docs/**
 scripts/**
 webview/**
 build/**
+node_modules/**
 .git/**
 .github/**
 .vscode/**
@@ -28,6 +29,3 @@ debug80.json
 tsconfig*.json
 vitest*.config.*
 assets/*.svg
-node_modules/**/test/**
-node_modules/**/tests/**
-node_modules/**/.*

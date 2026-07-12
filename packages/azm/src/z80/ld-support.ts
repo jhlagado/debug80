@@ -98,7 +98,11 @@ function isRegisterIndirectFromAccumulatorLd(target: Z80Operand, source: Z80Oper
 }
 
 function isHlIndirectByteLd(target: Z80Operand, source: Z80Operand): boolean {
-  return target.kind === 'reg-indirect' && target.register === 'hl' && (source.kind === 'reg8' || source.kind === 'imm');
+  return (
+    target.kind === 'reg-indirect' &&
+    target.register === 'hl' &&
+    (source.kind === 'reg8' || source.kind === 'imm')
+  );
 }
 
 function isByteFromHlIndirectLd(target: Z80Operand, source: Z80Operand): boolean {
@@ -117,7 +121,9 @@ function isSupportedSpecialRegisterLd(target: Z80Operand, source: Z80Operand): b
 }
 
 function isMemoryOperand(operand: Z80Operand): boolean {
-  return operand.kind === 'reg-indirect' || operand.kind === 'indexed' || operand.kind === 'mem-abs';
+  return (
+    operand.kind === 'reg-indirect' || operand.kind === 'indexed' || operand.kind === 'mem-abs'
+  );
 }
 
 function isSupportedHalfIndexLd(target: Z80Operand, source: Z80Operand): boolean {
@@ -142,7 +148,10 @@ function unsupportedHalfIndexLdReason(target: Z80Operand, source: Z80Operand): s
     : undefined;
 }
 
-function unsupportedRegisterPairLdReason(target: Z80Operand, source: Z80Operand): string | undefined {
+function unsupportedRegisterPairLdReason(
+  target: Z80Operand,
+  source: Z80Operand,
+): string | undefined {
   if (isUnsupportedIndexPairLd(target, source)) {
     return 'ld rr, rr supports SP <- HL/IX/IY only';
   }
@@ -157,11 +166,19 @@ function unsupportedRegisterPairLdReason(target: Z80Operand, source: Z80Operand)
 }
 
 function isUnsupportedIndexPairLd(target: Z80Operand, source: Z80Operand): boolean {
-  return target.kind === 'reg-index16' && source.kind === 'reg-index16' && target.register !== source.register;
+  return (
+    target.kind === 'reg-index16' &&
+    source.kind === 'reg-index16' &&
+    target.register !== source.register
+  );
 }
 
 function isRegisterPairLdReasonCandidate(target: Z80Operand, source: Z80Operand): boolean {
-  return target.kind === 'reg16' && source.kind !== 'imm' && (source.kind === 'reg16' || source.kind === 'reg-index16');
+  return (
+    target.kind === 'reg16' &&
+    source.kind !== 'imm' &&
+    (source.kind === 'reg16' || source.kind === 'reg-index16')
+  );
 }
 
 function isSupportedRegisterPairLd(target: Z80Operand, source: Z80Operand): boolean {
@@ -179,7 +196,11 @@ function isSameIndexHalfFamily(target: Z80Operand, source: Z80Operand): boolean 
 }
 
 function indexHalfFamily(operand: Z80Operand): 'ix' | 'iy' | undefined {
-  return operand.kind === 'reg-half-index' ? (operand.register.startsWith('ix') ? 'ix' : 'iy') : undefined;
+  return operand.kind === 'reg-half-index'
+    ? operand.register.startsWith('ix')
+      ? 'ix'
+      : 'iy'
+    : undefined;
 }
 
 function usesPlainHlCounterpart(target: Z80Operand, source: Z80Operand): boolean {

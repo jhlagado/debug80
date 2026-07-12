@@ -6,7 +6,10 @@ import { afterEach, describe, it, expect } from 'vitest';
 import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
-import { buildMappingFromDebugMap, isNativeDebugMap } from '../../src/debug/mapping/mapping-service';
+import {
+  buildMappingFromDebugMap,
+  isNativeDebugMap,
+} from '../../src/debug/mapping/mapping-service';
 import { pathsEqual } from '../../src/debug/mapping/path-utils';
 import { buildD8DebugMap, D8DebugMap } from '../../src/mapping/d8-map';
 import { resolveLocation } from '../../src/mapping/source-map';
@@ -168,10 +171,16 @@ describe('mapping-service', () => {
     expect(result.mapping.segments).toHaveLength(1);
     expect(result.index.segmentsByAddress).toHaveLength(1);
     expect(resolveLocation(result.index, asmPath, 3)).toEqual([0x2000]);
-    expect(logs.some((line) => line.includes('Source map loaded: simple.d8.json (azm, target)'))).toBe(
-      true
-    );
-    expect(logs.some((line) => line.includes('Source mapping ready: 1 executable ranges across 1 files; 1 anchors (target).'))).toBe(true);
+    expect(
+      logs.some((line) => line.includes('Source map loaded: simple.d8.json (azm, target)'))
+    ).toBe(true);
+    expect(
+      logs.some((line) =>
+        line.includes(
+          'Source mapping ready: 1 executable ranges across 1 files; 1 anchors (target).'
+        )
+      )
+    ).toBe(true);
     expect(logs.some((line) => line.includes('files=['))).toBe(false);
   });
 
@@ -251,7 +260,9 @@ describe('mapping-service', () => {
     });
 
     expect(result.mapping.segments).toHaveLength(0);
-    expect(logs.some((line) => line.includes('Ignoring non-native source map: simple.d8.json'))).toBe(true);
+    expect(
+      logs.some((line) => line.includes('Ignoring non-native source map: simple.d8.json'))
+    ).toBe(true);
   });
 
   it('prefers an existing native debug map without regenerating it', () => {
@@ -301,7 +312,9 @@ describe('mapping-service', () => {
     expect(logs.some((line) => line.includes('(azm, platform ROM)'))).toBe(true);
     expect(
       logs.some((line) =>
-        line.includes('Source mapping ready: 2 executable ranges across 2 files; 2 anchors (target, 1 platform ROM map).')
+        line.includes(
+          'Source mapping ready: 2 executable ranges across 2 files; 2 anchors (target, 1 platform ROM map).'
+        )
       )
     ).toBe(true);
   });
@@ -454,7 +467,9 @@ describe('mapping-service', () => {
     });
 
     expect(result.mapping.segments).toHaveLength(1);
-    expect(logs.some((line) => line.includes('Ignoring non-native platform source map'))).toBe(true);
+    expect(logs.some((line) => line.includes('Ignoring non-native platform source map'))).toBe(
+      true
+    );
   });
 
   it('uses lstLine as a fallback source line when loading native D8 segments', () => {
@@ -491,5 +506,4 @@ describe('mapping-service', () => {
     expect(result.mapping.segments[0]?.loc.line).toBe(42);
     expect(result.mapping.segments[0]?.context.line).toBe(42);
   });
-
 });

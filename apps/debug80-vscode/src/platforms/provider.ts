@@ -8,13 +8,13 @@ import type { PlatformRegistry } from '../debug/session/platform-registry';
 import type { PlatformKind } from '../debug/launch/program-loader';
 import type { SessionStateShape } from '../debug/session/session-state';
 import type { TerminalConfig } from '../debug/session/terminal-types';
-import type { Z80Runtime } from '../z80/runtime';
+import type { Z80Runtime } from '@jhlagado/debug80-runtime/z80/runtime';
 import type { Logger } from '../util/logger';
 import type {
   SimplePlatformConfigNormalized,
   Tec1PlatformConfigNormalized,
   Tec1gPlatformConfigNormalized,
-} from './types';
+} from '@jhlagado/debug80-runtime/platforms/types';
 
 export interface PlatformCommandContext {
   sessionState: SessionStateShape;

@@ -22,7 +22,9 @@ describe('ASM80 comment preservation', () => {
     );
 
     expect(res.diagnostics).toEqual([]);
-    const asm80 = res.artifacts.find((artifact): artifact is Asm80Artifact => artifact.kind === 'asm80');
+    const asm80 = res.artifacts.find(
+      (artifact): artifact is Asm80Artifact => artifact.kind === 'asm80',
+    );
     expect(asm80).toBeDefined();
 
     const text = asm80!.text;

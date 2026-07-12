@@ -8,7 +8,7 @@ import { AdapterRequestController } from '../../src/debug/requests/adapter-reque
 import { createSessionState } from '../../src/debug/session/session-state';
 import * as runtimeControl from '../../src/debug/session/runtime-control';
 import { VariableService } from '../../src/debug/requests/variable-service';
-import { createZ80Runtime } from '../../src/z80/runtime';
+import { createZ80Runtime } from '@jhlagado/debug80-runtime/z80/runtime';
 
 afterEach(() => {
   vi.restoreAllMocks();

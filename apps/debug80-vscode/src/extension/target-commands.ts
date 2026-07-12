@@ -33,12 +33,7 @@ export type SelectTargetArgs = {
 };
 
 type ConfigureFieldId =
-  | 'targetPlatformOverride'
-  | 'program'
-  | 'assembler'
-  | 'targetName'
-  | 'outputDir'
-  | 'artifactBase';
+  'targetPlatformOverride' | 'program' | 'assembler' | 'targetName' | 'outputDir' | 'artifactBase';
 
 type TargetProjectFolderResolution =
   | { kind: 'found'; folder: vscode.WorkspaceFolder }

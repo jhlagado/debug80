@@ -80,7 +80,15 @@ function findFieldOffset<TPart extends PathPart>(
   for (const field of layout.fields) {
     const foundOffset =
       field.name === head.name
-        ? selectedFieldOffset(typeExpr, layout.kind, field, currentOffset, tail, fieldSize, nestedOffset)
+        ? selectedFieldOffset(
+            typeExpr,
+            layout.kind,
+            field,
+            currentOffset,
+            tail,
+            fieldSize,
+            nestedOffset,
+          )
         : undefined;
     if (foundOffset !== undefined) {
       return foundOffset;

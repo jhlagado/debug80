@@ -3,8 +3,8 @@
  */
 
 import type { SessionStateShape } from '../session/session-state';
-import type { Cpu } from '../../z80/types';
-import { setFlagsFromByte } from '../../z80/core-helpers';
+import type { Cpu } from '@jhlagado/debug80-runtime/z80/types';
+import { setFlagsFromByte } from '@jhlagado/debug80-runtime/z80/core-helpers';
 
 type RegisterWriteArgs = {
   register?: string;

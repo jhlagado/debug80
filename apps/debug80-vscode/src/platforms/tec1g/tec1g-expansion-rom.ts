@@ -8,9 +8,9 @@ import {
   TEC1G_EXPAND_END,
   TEC1G_EXPAND_SIZE,
   TEC1G_EXPAND_START,
-} from '../tec-common';
+} from '@jhlagado/debug80-runtime/platforms/tec-common';
 import { extractRomHex } from '../../debug/launch/program-loader';
-import { parseIntelHex } from '../../z80/loaders';
+import { parseIntelHex } from '@jhlagado/debug80-runtime/z80/loaders';
 
 export type Tec1gExpansionRomImage = {
   banks: Uint8Array[];

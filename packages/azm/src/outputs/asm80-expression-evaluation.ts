@@ -1,8 +1,5 @@
 import type { Expression } from '../model/expression.js';
-import {
-  evaluateExpression,
-  type LayoutRecord,
-} from '../semantics/expression-evaluation.js';
+import { evaluateExpression, type LayoutRecord } from '../semantics/expression-evaluation.js';
 import {
   applyBinaryOperator,
   applyByteFunction,

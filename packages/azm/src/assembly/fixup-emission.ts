@@ -11,10 +11,7 @@ import {
   type EquateRecord,
   type LayoutRecord,
 } from '../semantics/expression-evaluation.js';
-import {
-  applyBinaryOperator,
-  applyUnaryOperator,
-} from '../semantics/constant-operators.js';
+import { applyBinaryOperator, applyUnaryOperator } from '../semantics/constant-operators.js';
 import { encodeZ80Instruction } from '../z80/encode.js';
 import type { EncodedZ80Fragment } from '../z80/instruction.js';
 
@@ -342,9 +339,7 @@ function emitDisp8Expression(
     return;
   }
   if (value < -128 || value > 127) {
-    diagnostics.push(
-      diagnostic(span, message ?? `indexed displacement out of range: ${value}.`),
-    );
+    diagnostics.push(diagnostic(span, message ?? `indexed displacement out of range: ${value}.`));
     bytes.push(0);
     return;
   }
@@ -475,9 +470,7 @@ function rightSymbolFixupTarget(
   if (expression.operator !== '+') return undefined;
   const symbol = expressionSymbol(expression.right);
   const leftConstant = constantExpressionValue(expression.left);
-  return symbol && leftConstant !== undefined
-    ? { symbol, addend: leftConstant }
-    : undefined;
+  return symbol && leftConstant !== undefined ? { symbol, addend: leftConstant } : undefined;
 }
 
 function constantExpressionValue(expression: Expression): number | undefined {

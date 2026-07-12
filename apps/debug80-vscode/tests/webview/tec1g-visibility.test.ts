@@ -214,7 +214,9 @@ describe('tec1g UI visibility controls', () => {
     expect(source).toContain("keyboardOwner.getOwner() === 'keypad'");
     expect(source).toContain('shouldBypassEmulatorKeyboardTarget(event.target)');
     expect(source).toContain('shouldBypassEmulatorKeyboardTarget(target)');
-    expect(source).toContain('keypad: !accordionMachine.hidden && !panelLayout.isMatrixKeyboardOpen()');
+    expect(source).toContain(
+      'keypad: !accordionMachine.hidden && !panelLayout.isMatrixKeyboardOpen()'
+    );
   });
 
   it('uses typed DOM boundary helpers in the TEC-1G composition root', () => {
@@ -225,14 +227,18 @@ describe('tec1g UI visibility controls', () => {
     expect(source).toContain('getOptionalElementBySelector');
     expect(source).not.toContain("document.getElementById('display') as HTMLElement");
     expect(source).not.toContain("document.getElementById('accordion-machine') as HTMLElement");
-    expect(source).not.toContain("document.querySelector('.debug80-toolbar') as HTMLElement | null");
+    expect(source).not.toContain(
+      "document.querySelector('.debug80-toolbar') as HTMLElement | null"
+    );
   });
 
   it('keeps project-status message application behind a typed helper', () => {
     const source = fs.readFileSync(SOURCE_PATH, 'utf8');
 
     expect(source).toContain('type Tec1gProjectStatusMessage');
-    expect(source).toContain('function applyProjectStatusMessage(message: Tec1gProjectStatusMessage)');
+    expect(source).toContain(
+      'function applyProjectStatusMessage(message: Tec1gProjectStatusMessage)'
+    );
     expect(source).toContain('applyProjectStatusMessage(message);');
   });
 

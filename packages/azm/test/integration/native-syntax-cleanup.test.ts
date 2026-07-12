@@ -52,14 +52,7 @@ BASE        .equ $2000
         .db offset(SpriteArray, [2].tile)
         LD HL,<SpriteArray>BASE[3].flags
 `),
-    ).toEqual([
-      ...Array.from({ length: 16 }, () => 0),
-      16,
-      10,
-      0x21,
-      0x0f,
-      0x20,
-    ]);
+    ).toEqual([...Array.from({ length: 16 }, () => 0), 16, 10, 0x21, 0x0f, 0x20]);
   });
 
   it('supports scalar, array, record, and nested name-left aliases', () => {
@@ -95,17 +88,17 @@ A .typealias B
 B .typealias A
         .db sizeof(A)
 `);
-    expect(recursive.diagnostics).toEqual(expect.arrayContaining([
-      expect.objectContaining({ message: 'recursive type: A' }),
-    ]));
+    expect(recursive.diagnostics).toEqual(
+      expect.arrayContaining([expect.objectContaining({ message: 'recursive type: A' })]),
+    );
 
     const missing = compileNext(`
 A .typealias Missing
         .db sizeof(A)
 `);
-    expect(missing.diagnostics).toEqual(expect.arrayContaining([
-      expect.objectContaining({ message: 'unknown type: Missing' }),
-    ]));
+    expect(missing.diagnostics).toEqual(
+      expect.arrayContaining([expect.objectContaining({ message: 'unknown type: Missing' })]),
+    );
 
     const badPath = compileNext(`
 Sprite .type
@@ -115,9 +108,11 @@ tile   .byte
 SpriteArray .typealias Sprite[2]
         .db offset(SpriteArray, [0].missing)
 `);
-    expect(badPath.diagnostics).toEqual(expect.arrayContaining([
-      expect.objectContaining({ message: 'unknown field "[0].missing" in type SpriteArray' }),
-    ]));
+    expect(badPath.diagnostics).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ message: 'unknown field "[0].missing" in type SpriteArray' }),
+      ]),
+    );
   });
 
   it('accepts declaration-only colon forms without emitting address labels', () => {

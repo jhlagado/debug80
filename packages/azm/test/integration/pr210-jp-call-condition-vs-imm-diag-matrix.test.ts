@@ -6,10 +6,7 @@ import { defaultFormatWriters } from '../../src/outputs/index.js';
 import { expectDiagnostic, expectNoDiagnostic } from '../helpers/diagnostics/index.js';
 
 const PR210_FIXTURE = fileURLToPath(
-  new URL(
-    '../fixtures/pr210_jp_call_condition_vs_imm_diag_matrix_invalid.asm',
-    import.meta.url,
-  ),
+  new URL('../fixtures/pr210_jp_call_condition_vs_imm_diag_matrix_invalid.asm', import.meta.url),
 );
 
 type Row = {

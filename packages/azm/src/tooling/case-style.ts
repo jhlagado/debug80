@@ -43,7 +43,9 @@ export function lintCaseStyleNext(options: {
   return diagnostics;
 }
 
-function buildSourceLineMap(sourceTexts: ReadonlyMap<string, string>): Map<string, readonly string[]> {
+function buildSourceLineMap(
+  sourceTexts: ReadonlyMap<string, string>,
+): Map<string, readonly string[]> {
   const result = new Map<string, readonly string[]>();
   for (const [sourceName, text] of sourceTexts) {
     result.set(sourceName, text.split(/\r?\n/));
@@ -62,9 +64,10 @@ function lintInstructionLine(
   const segments = splitInstructionChain(rawLine);
   if (segments !== undefined) {
     for (let index = 0; index < segments.length; index += 1) {
-      const stripped = index === 0
-        ? stripLeadingLabelsWithOffset(segments[index]!.text)
-        : { text: segments[index]!.text, offset: 0 };
+      const stripped =
+        index === 0
+          ? stripLeadingLabelsWithOffset(segments[index]!.text)
+          : { text: segments[index]!.text, offset: 0 };
       lintInstructionSegment(
         stripped.text.trim(),
         segments[index]!.column + stripped.offset + firstColumn(stripped.text) - 1,
@@ -265,7 +268,10 @@ function stripLeadingLabels(text: string): string {
   return stripLeadingLabelsWithOffset(text).text;
 }
 
-function stripLeadingLabelsWithOffset(text: string): { readonly text: string; readonly offset: number } {
+function stripLeadingLabelsWithOffset(text: string): {
+  readonly text: string;
+  readonly offset: number;
+} {
   let remaining = text;
   let offset = 0;
   while (true) {

@@ -36,10 +36,7 @@ describe('include-remap', () => {
       ],
     };
 
-    const remaps = remapMisassignedIncludeAnchors(
-      mapping.anchors,
-      resolveIncludeAnchorRemap
-    );
+    const remaps = remapMisassignedIncludeAnchors(mapping.anchors, resolveIncludeAnchorRemap);
 
     expect(remaps).toEqual([
       { address: 0xd800, oldFile: 'packages.z80', newFile: 'glcd_library.z80' },

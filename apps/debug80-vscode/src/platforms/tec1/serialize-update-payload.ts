@@ -2,25 +2,13 @@
  * @file Central serialization for TEC-1 UI update payloads (runtime, webview, DAP events).
  */
 
-import type { Tec1State } from './runtime';
 import type { Tec1UiState } from './ui-panel-state';
-import type { Tec1SpeedMode, Tec1UpdatePayload } from './types';
-import { readSevenSegmentIntensities } from '../tec-common';
+import type {
+  Tec1SpeedMode,
+  Tec1UpdatePayload,
+} from '@jhlagado/debug80-runtime/platforms/tec1/types';
 
-/**
- * Snapshot payload from emulator runtime state (adapter → extension / UI).
- */
-export function serializeTec1UpdateFromRuntimeState(state: Tec1State): Tec1UpdatePayload {
-  return {
-    digits: [...state.digits],
-    segmentIntensities: readSevenSegmentIntensities(state.segmentDuty),
-    matrix: [...state.matrix],
-    speaker: state.speaker ? 1 : 0,
-    speedMode: state.speedMode,
-    lcd: [...state.lcd],
-    speakerHz: state.speakerHz,
-  };
-}
+export { serializeTec1UpdateFromRuntimeState } from '@jhlagado/debug80-runtime/platforms/tec1/runtime-update-payload';
 
 /**
  * Snapshot payload from sidebar UI state after applying an update (extension → webview).

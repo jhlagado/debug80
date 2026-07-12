@@ -9,8 +9,8 @@
 
 import * as vscode from 'vscode';
 import type { DebugSessionStatus } from '../debug/session/session-status';
-import type { Tec1UpdatePayload } from '../platforms/tec1/types';
-import type { Tec1gUpdatePayload } from '../platforms/tec1g/types';
+import type { Tec1UpdatePayload } from '@jhlagado/debug80-runtime/platforms/tec1/types';
+import type { Tec1gUpdatePayload } from '@jhlagado/debug80-runtime/platforms/tec1g/types';
 import type { PanelTab } from '../platforms/panel-html';
 import { getTec1gHtml } from '../platforms/tec1g/ui-panel-html';
 import type {

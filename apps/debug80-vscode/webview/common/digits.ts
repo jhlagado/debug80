@@ -18,8 +18,7 @@ export function updateDigitIntensity(el: Element, values: readonly number[]): vo
     const segmentEl = seg as HTMLElement;
     const mask = parseInt(segmentEl.dataset.mask || '0', 10);
     const bitIndex = mask > 0 ? Math.log2(mask) : -1;
-    const rawIntensity =
-      Number.isInteger(bitIndex) && bitIndex >= 0 ? (values[bitIndex] ?? 0) : 0;
+    const rawIntensity = Number.isInteger(bitIndex) && bitIndex >= 0 ? (values[bitIndex] ?? 0) : 0;
     const intensity = Math.max(0, Math.min(1, rawIntensity));
     seg.classList.toggle('on', intensity > 0);
     segmentEl.style.opacity = intensity > 0 ? intensity.toFixed(3) : '0';

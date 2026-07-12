@@ -23,13 +23,11 @@ describe('PR133: broad arity diagnostics matrix parity', () => {
     { label: 'bit', message: 'bit expects two operands' },
     {
       label: 'res',
-      message:
-        'res expects two operands, or three with indexed source + reg8 destination',
+      message: 'res expects two operands, or three with indexed source + reg8 destination',
     },
     {
       label: 'set',
-      message:
-        'set expects two operands, or three with indexed source + reg8 destination',
+      message: 'set expects two operands, or three with indexed source + reg8 destination',
     },
     {
       label: 'rl',

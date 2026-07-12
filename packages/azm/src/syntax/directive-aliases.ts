@@ -80,7 +80,16 @@ const RESERVED_INSTRUCTION_HEADS = new Set([
   'xor',
 ]);
 
-const RESERVED_LANGUAGE_HEADS = new Set(['enum', 'op', 'type', 'union', 'field', 'byte', 'word', 'addr']);
+const RESERVED_LANGUAGE_HEADS = new Set([
+  'enum',
+  'op',
+  'type',
+  'union',
+  'field',
+  'byte',
+  'word',
+  'addr',
+]);
 
 const CANONICAL_DIRECTIVES = new Set([
   '.align',
@@ -241,10 +250,7 @@ function normalizeAliasTarget(value: string): string | undefined {
   return CANONICAL_DIRECTIVES.has(dotted) ? dotted : undefined;
 }
 
-function resolveDirectiveAlias(
-  head: string,
-  policy: DirectiveAliasPolicy,
-): string | undefined {
+function resolveDirectiveAlias(head: string, policy: DirectiveAliasPolicy): string | undefined {
   const trimmed = head.trim();
   if (trimmed.startsWith('.')) {
     return CANONICAL_DIRECTIVES.has(trimmed) ? trimmed : undefined;

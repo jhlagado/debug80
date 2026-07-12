@@ -45,18 +45,27 @@ function applyArg(argv, index, options) {
 }
 
 const ARG_HANDLERS = new Map([
-  ['--enforce-hard-cap', (_argv, _index, options) => {
-    options.enforceHardCap = true;
-    return 0;
-  }],
-  ['--root', (argv, index, options) => {
-    options.rootDir = resolveRequiredArg(argv, index, '--root');
-    return 1;
-  }],
-  ['--allowlist-file', (argv, index, options) => {
-    options.allowlistFile = resolveRequiredArg(argv, index, '--allowlist-file');
-    return 1;
-  }],
+  [
+    '--enforce-hard-cap',
+    (_argv, _index, options) => {
+      options.enforceHardCap = true;
+      return 0;
+    },
+  ],
+  [
+    '--root',
+    (argv, index, options) => {
+      options.rootDir = resolveRequiredArg(argv, index, '--root');
+      return 1;
+    },
+  ],
+  [
+    '--allowlist-file',
+    (argv, index, options) => {
+      options.allowlistFile = resolveRequiredArg(argv, index, '--allowlist-file');
+      return 1;
+    },
+  ],
 ]);
 
 function resolveRequiredArg(argv, index, flag) {

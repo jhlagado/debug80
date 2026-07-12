@@ -16,7 +16,7 @@ import {
   type MatrixModifier,
 } from './matrix-state';
 import { createMatrixScanPlayer } from './matrix-scan-player';
-import type { Tec1gMatrixScanCycle } from '../../src/platforms/tec1g/types';
+import type { Tec1gMatrixScanCycle } from '@jhlagado/debug80-runtime/platforms/tec1g/types';
 
 export interface MatrixUiController {
   applyMatrixRows(rows: number[]): void;
@@ -136,11 +136,7 @@ export function createMatrixUiController(
     }
   }
 
-  function postMatrixKeyMessage(
-    key: string,
-    pressed: boolean,
-    mods: MatrixKeyMods
-  ) {
+  function postMatrixKeyMessage(key: string, pressed: boolean, mods: MatrixKeyMods) {
     vscode.postMessage({
       type: 'matrixKey',
       key: key,
@@ -152,11 +148,7 @@ export function createMatrixUiController(
     });
   }
 
-  function sendMatrixKey(
-    key: string,
-    pressed: boolean,
-    mods: MatrixKeyMods
-  ): boolean {
+  function sendMatrixKey(key: string, pressed: boolean, mods: MatrixKeyMods): boolean {
     const keyId = matrixKeyId(key, mods);
     if (pressed) {
       clearMatrixClickReleaseTimer(keyId);
@@ -419,9 +411,7 @@ export function createMatrixUiController(
           clearOneShotMatrixMods();
         });
         const release = () => {
-          if (
-            matrixModifierForKey(keyValue) !== undefined
-          ) {
+          if (matrixModifierForKey(keyValue) !== undefined) {
             return;
           }
           const releaseMods =

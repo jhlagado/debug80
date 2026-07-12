@@ -104,9 +104,9 @@ CHAR .equ 'A'
     ]);
 
     for (const [source, message] of [
-      ['.cstr \'A\'', '.cstr expects one double-quoted string'],
-      ['.pstr \'A\'', '.pstr expects one double-quoted string'],
-      ['.istr \'A\'', '.istr expects one double-quoted string'],
+      [".cstr 'A'", '.cstr expects one double-quoted string'],
+      [".pstr 'A'", '.pstr expects one double-quoted string'],
+      [".istr 'A'", '.istr expects one double-quoted string'],
     ]) {
       const result = compileNext(`${source}\n`);
       expect(result.diagnostics).toEqual([expect.objectContaining({ message })]);

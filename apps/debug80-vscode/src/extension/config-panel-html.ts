@@ -5,7 +5,7 @@
 import { randomBytes } from 'crypto';
 import { resolveProjectPlatform } from './project-config';
 import type { ProjectConfig } from '../debug/session/types';
-import { TEC1_APP_START_DEFAULT } from '../platforms/tec1/constants';
+import { TEC1_APP_START_DEFAULT } from '@jhlagado/debug80-runtime/platforms/tec1/constants';
 import {
   TEC1G_APP_START_DEFAULT,
   TEC1G_RAM_END,
@@ -14,7 +14,7 @@ import {
   TEC1G_ROM0_START,
   TEC1G_ROM1_END,
   TEC1G_ROM1_START,
-} from '../platforms/tec1g/constants';
+} from '@jhlagado/debug80-runtime/platforms/tec1g/constants';
 
 export function createSimplePlatformDefaults(): Record<string, unknown> {
   return {

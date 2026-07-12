@@ -2,20 +2,24 @@
   "name": "debug80-toolchain",
   "version": "0.0.0",
   "private": true,
+  "type": "module",
   "description": "Workspace for the Debug80 Z80 development toolchain",
   "workspaces": [
     "packages/*",
-    "apps/*"
+    "apps/*",
+    "integration/*"
   ],
   "scripts": {
     "build": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/glimmer && npm run build -w @jhlagado/debug80-runtime && npm run build -w debug80",
-    "typecheck": "npm run typecheck -w @jhlagado/azm && npm run typecheck -w @jhlagado/glimmer && npm run typecheck -w @jhlagado/debug80-runtime && npm run typecheck -w debug80 && npm run typecheck:webview -w debug80",
+    "typecheck": "npm run typecheck -w @jhlagado/azm && npm run typecheck -w @jhlagado/glimmer && npm run typecheck -w @jhlagado/debug80-runtime && npm run typecheck -w @jhlagado/glimmer-headless-integration && npm run typecheck -w debug80 && npm run typecheck:webview -w debug80",
     "lint": "npm run lint --workspaces --if-present",
     "format:check": "npm run format:check --workspaces --if-present",
-    "test": "npm run test -w @jhlagado/azm && npm run test -w @jhlagado/glimmer && npm run test -w @jhlagado/debug80-runtime && npm run test -w debug80",
-    "check": "npm run typecheck && npm run lint && npm run format:check && npm run test",
+    "test": "npm run test -w @jhlagado/azm && npm run test -w @jhlagado/glimmer && npm run test -w @jhlagado/debug80-runtime && npm run test -w @jhlagado/glimmer-headless-integration && npm run test -w debug80",
+    "format": "npm run format --workspaces --if-present",
+    "check": "npm run build && npm run typecheck && npm run lint && npm run format:check && npm run test",
     "package:azm": "npm run test:package -w @jhlagado/azm",
     "package:glimmer": "npm pack -w @jhlagado/glimmer --dry-run",
+    "package:runtime": "npm run test:package -w @jhlagado/debug80-runtime",
     "package:debug80": "npm run package:check -w debug80"
   },
   "engines": {

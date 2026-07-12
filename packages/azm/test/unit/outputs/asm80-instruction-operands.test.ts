@@ -23,11 +23,8 @@ describe('ASM80 instruction operand lowering', () => {
 
   it('formats LD register, immediate, indirect, indexed, and absolute forms', () => {
     expect(
-      formatLd(
-        { kind: 'reg8', register: 'a' },
-        { kind: 'reg8', register: 'b' },
-        emptyContext,
-      )?.text,
+      formatLd({ kind: 'reg8', register: 'a' }, { kind: 'reg8', register: 'b' }, emptyContext)
+        ?.text,
     ).toBe('ld a, b');
     expect(
       formatLd(

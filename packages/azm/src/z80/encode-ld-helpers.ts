@@ -9,10 +9,7 @@ import type {
   Z80RegisterIndirect,
 } from './instruction.js';
 
-type Z80InstructionTarget = Extract<
-  Z80Instruction,
-  { readonly expression: unknown }
->['expression'];
+type Z80InstructionTarget = Extract<Z80Instruction, { readonly expression: unknown }>['expression'];
 export type HalfIndexLdOperand = Extract<Z80Operand, { readonly kind: 'reg8' | 'reg-half-index' }>;
 export type LoadSpSourceOperand = Extract<Z80Operand, { readonly kind: 'reg16' | 'reg-index16' }>;
 

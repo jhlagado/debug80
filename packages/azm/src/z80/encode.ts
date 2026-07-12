@@ -474,7 +474,9 @@ function encodeRotateShift(
 }
 
 function cbInstruction(
-  opcode: number | Extract<EncodedZ80Instruction['fragments'][number], { readonly kind: 'cb-bit-opcode' }>,
+  opcode:
+    | number
+    | Extract<EncodedZ80Instruction['fragments'][number], { readonly kind: 'cb-bit-opcode' }>,
 ): EncodedZ80Instruction {
   if (typeof opcode === 'number') {
     return {
@@ -490,7 +492,9 @@ function cbInstruction(
 
 function indexedCbInstruction(
   operand: Extract<Z80Operand, { readonly kind: 'indexed' }>,
-  opcode: number | Extract<EncodedZ80Instruction['fragments'][number], { readonly kind: 'cb-bit-opcode' }>,
+  opcode:
+    | number
+    | Extract<EncodedZ80Instruction['fragments'][number], { readonly kind: 'cb-bit-opcode' }>,
   mnemonic: string,
 ): EncodedZ80Instruction {
   if (typeof opcode === 'number') {

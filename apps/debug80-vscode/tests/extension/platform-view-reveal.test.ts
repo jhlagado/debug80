@@ -71,10 +71,12 @@ describe('platform-view-reveal', () => {
   });
 });
 
-function createRevealHarness(options: {
-  executeCommand?: ReturnType<typeof vi.fn>;
-  target?: () => RevealTarget | undefined;
-} = {}) {
+function createRevealHarness(
+  options: {
+    executeCommand?: ReturnType<typeof vi.fn>;
+    target?: () => RevealTarget | undefined;
+  } = {}
+) {
   const show = vi.fn();
   const executeCommand = options.executeCommand ?? vi.fn(() => resolvedThenable());
 

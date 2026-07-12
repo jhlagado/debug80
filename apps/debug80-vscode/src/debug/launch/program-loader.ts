@@ -4,9 +4,15 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
-import { HexProgram, parseIntelHex } from '../../z80/loaders';
-import { Tec1PlatformConfigNormalized, Tec1gPlatformConfigNormalized } from '../../platforms/types';
-import { Z80_ADDRESS_SPACE, TEC1_ROM_LOAD_ADDR } from '../../platforms/tec-common';
+import { HexProgram, parseIntelHex } from '@jhlagado/debug80-runtime/z80/loaders';
+import {
+  Tec1PlatformConfigNormalized,
+  Tec1gPlatformConfigNormalized,
+} from '@jhlagado/debug80-runtime/platforms/types';
+import {
+  Z80_ADDRESS_SPACE,
+  TEC1_ROM_LOAD_ADDR,
+} from '@jhlagado/debug80-runtime/platforms/tec-common';
 import { Logger } from '../../util/logger';
 
 export type BuiltInPlatformKind = 'simple' | 'tec1' | 'tec1g';

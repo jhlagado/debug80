@@ -1,0 +1,26 @@
+{
+  "name": "@jhlagado/glimmer-headless-integration",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "lint": "eslint test --ext .ts",
+    "format": "prettier --write \"test/**/*.ts\"",
+    "format:check": "prettier --check \"test/**/*.ts\"",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "@jhlagado/debug80-runtime": "^0.1.0",
+    "@jhlagado/glimmer": "^0.5.3"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@typescript-eslint/eslint-plugin": "^6.13.0",
+    "@typescript-eslint/parser": "^6.13.0",
+    "eslint": "^8.55.0",
+    "prettier": "^3.1.0",
+    "typescript": "5.3.3",
+    "vitest": "^4.1.7"
+  }
+}

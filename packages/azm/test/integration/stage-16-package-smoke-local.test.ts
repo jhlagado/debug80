@@ -16,14 +16,10 @@ async function runLocalCli(
   args: string[],
 ): Promise<{ code: number; stdout: string; stderr: string }> {
   try {
-    const child = await execFileAsync(
-      process.execPath,
-      [localCliPath, ...args],
-      {
-        cwd: repoRootPath,
-        encoding: 'utf8',
-      },
-    );
+    const child = await execFileAsync(process.execPath, [localCliPath, ...args], {
+      cwd: repoRootPath,
+      encoding: 'utf8',
+    });
     return { code: 0, stdout: child.stdout, stderr: child.stderr ?? '' };
   } catch (error) {
     const childError = error as {

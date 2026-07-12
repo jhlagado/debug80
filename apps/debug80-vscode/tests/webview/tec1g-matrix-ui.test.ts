@@ -309,36 +309,39 @@ describe('tec1g matrix ui', () => {
     ['Control', { shift: false, ctrl: true, fn: false, alt: false }],
     ['Fn', { shift: false, ctrl: false, fn: true, alt: false }],
     ['Alt', { shift: false, ctrl: false, fn: false, alt: true }],
-  ] as const)('uses clicked %s as a one-shot modifier for exactly one matrix key', (modifier, mods) => {
-    controller.applyKeyboardCapture(true);
-    const modifierKey = document.querySelector(`[data-key="${modifier}"]`) as HTMLElement;
-    const sKey = document.querySelector('[data-key="s"]') as HTMLElement;
-    const aKey = document.querySelector('[data-key="a"]') as HTMLElement;
+  ] as const)(
+    'uses clicked %s as a one-shot modifier for exactly one matrix key',
+    (modifier, mods) => {
+      controller.applyKeyboardCapture(true);
+      const modifierKey = document.querySelector(`[data-key="${modifier}"]`) as HTMLElement;
+      const sKey = document.querySelector('[data-key="s"]') as HTMLElement;
+      const aKey = document.querySelector('[data-key="a"]') as HTMLElement;
 
-    modifierKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
-    sKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
-    sKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
-    flushMatrixClickHold();
-    aKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+      modifierKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+      sKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
+      sKey.dispatchEvent(new MouseEvent('mouseup', { bubbles: true }));
+      flushMatrixClickHold();
+      aKey.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true }));
 
-    expect(messages.filter((message) => message.pressed === true)).toEqual([
-      {
-        type: 'matrixKey',
-        key: 's',
-        pressed: true,
-        ...mods,
-      },
-      {
-        type: 'matrixKey',
-        key: 'a',
-        pressed: true,
-        shift: false,
-        ctrl: false,
-        fn: false,
-        alt: false,
-      },
-    ]);
-  });
+      expect(messages.filter((message) => message.pressed === true)).toEqual([
+        {
+          type: 'matrixKey',
+          key: 's',
+          pressed: true,
+          ...mods,
+        },
+        {
+          type: 'matrixKey',
+          key: 'a',
+          pressed: true,
+          shift: false,
+          ctrl: false,
+          fn: false,
+          alt: false,
+        },
+      ]);
+    }
+  );
 
   it('sends clicked Alt-letter chords as stable one-shot press and release pairs', () => {
     controller.applyKeyboardCapture(true);

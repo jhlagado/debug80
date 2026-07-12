@@ -6,7 +6,10 @@
  */
 
 import type { Tec1gUiState } from './ui-panel-state';
-import type { Tec1gSpeedMode, Tec1gUpdatePayload } from './types';
+import type {
+  Tec1gSpeedMode,
+  Tec1gUpdatePayload,
+} from '@jhlagado/debug80-runtime/platforms/tec1g/types';
 
 /**
  * Sidebar UI state → webview message body after `applyTec1gUpdate`.
@@ -90,7 +93,7 @@ function isMatrixScanCycleArray(
         typeof (cycle as { startCycle?: unknown }).startCycle === 'number' &&
         typeof (cycle as { endCycle?: unknown }).endCycle === 'number' &&
         Array.isArray((cycle as { rows?: unknown }).rows) &&
-        ((cycle as { rows: unknown[] }).rows).every(
+        (cycle as { rows: unknown[] }).rows.every(
           (row) =>
             row !== null &&
             typeof row === 'object' &&

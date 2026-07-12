@@ -114,7 +114,9 @@ function parseInterfaceServiceAliases(trimmed: string): string[] | undefined {
   return parseInterfaceService(trimmed)?.aliases;
 }
 
-function parseInterfaceService(trimmed: string): { primary: string; aliases: string[] } | undefined {
+function parseInterfaceService(
+  trimmed: string,
+): { primary: string; aliases: string[] } | undefined {
   const range = parseInterfaceServiceRange(trimmed);
   if (range !== undefined) return { primary: range.primary, aliases: range.aliases };
   const match = /^service\s+rst\s+(\S+)\s+(\S+)\s+(\S+)(?:\s+(\S+))?\s*$/i.exec(trimmed);
@@ -129,17 +131,14 @@ function parseInterfaceService(trimmed: string): { primary: string; aliases: str
   return { primary, aliases };
 }
 
-function parseInterfaceServiceRange(
-  trimmed: string,
-):
+function parseInterfaceServiceRange(trimmed: string):
   | {
       primary: string;
       aliases: string[];
       range: RegisterContractsServiceRangeContract;
     }
   | undefined {
-  const match =
-    /^service\s+rst\s+(\S+)\s+(\S+)\s+>=\s*(\S+)(?:\s+(\S+))?\s*$/i.exec(trimmed);
+  const match = /^service\s+rst\s+(\S+)\s+(\S+)\s+>=\s*(\S+)(?:\s+(\S+))?\s*$/i.exec(trimmed);
   if (match === null) return undefined;
   const vector = parseInterfaceNumber(match[1]!);
   const selector = match[2]!.toUpperCase();

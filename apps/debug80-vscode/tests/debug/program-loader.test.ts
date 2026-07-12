@@ -7,7 +7,7 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import { loadProgramArtifacts } from '../../src/debug/launch/program-loader';
-import { TEC1_ROM_LOAD_ADDR } from '../../src/platforms/tec-common';
+import { TEC1_ROM_LOAD_ADDR } from '@jhlagado/debug80-runtime/platforms/tec-common';
 import type { Logger } from '../../src/util/logger';
 import type { PlatformId } from '../../src/debug/session/types';
 

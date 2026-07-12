@@ -40,12 +40,13 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/jhlagado/AZM.git"
+    "url": "git+https://github.com/jhlagado/debug80.git",
+    "directory": "packages/azm"
   },
   "bugs": {
-    "url": "https://github.com/jhlagado/AZM/issues"
+    "url": "https://github.com/jhlagado/debug80/issues"
   },
-  "homepage": "https://github.com/jhlagado/AZM#readme",
+  "homepage": "https://github.com/jhlagado/debug80/tree/main/packages/azm#readme",
   "keywords": [
     "assembler",
     "z80",

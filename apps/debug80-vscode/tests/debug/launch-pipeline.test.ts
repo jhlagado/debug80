@@ -6,8 +6,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest';
 import type { AssemblerBackend } from '../../src/debug/launch/assembler-backend';
 import { assembleIfRequested, normalizeStepLimit } from '../../src/debug/launch/launch-pipeline';
 import type { LaunchRequestArguments } from '../../src/debug/session/types';
-import { normalizeSimpleConfig } from '../../src/platforms/simple/runtime';
-import type { SimplePlatformConfigNormalized } from '../../src/platforms/types';
+import { normalizeSimpleConfig } from '@jhlagado/debug80-runtime/platforms/simple/runtime';
+import type { SimplePlatformConfigNormalized } from '@jhlagado/debug80-runtime/platforms/types';
 
 type AssembleOptions = Parameters<typeof assembleIfRequested>[0];
 

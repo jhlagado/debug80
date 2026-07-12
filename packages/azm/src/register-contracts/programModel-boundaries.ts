@@ -140,7 +140,9 @@ function routineTailJumpBoundary(
     line: instruction.line,
     column: instruction.column,
     ...(instruction.sourceUnit !== undefined ? { sourceUnit: instruction.sourceUnit } : {}),
-    ...(instruction.sourceRelation !== undefined ? { sourceRelation: instruction.sourceRelation } : {}),
+    ...(instruction.sourceRelation !== undefined
+      ? { sourceRelation: instruction.sourceRelation }
+      : {}),
     ...(instruction.sourceUnitRelation !== undefined
       ? { sourceUnitRelation: instruction.sourceUnitRelation }
       : {}),
@@ -185,7 +187,9 @@ function unownedTailJumpBoundary(
     column: span.column,
     ...(span.sourceUnit !== undefined ? { sourceUnit: span.sourceUnit } : {}),
     ...(span.sourceRelation !== undefined ? { sourceRelation: span.sourceRelation } : {}),
-    ...(span.sourceUnitRelation !== undefined ? { sourceUnitRelation: span.sourceUnitRelation } : {}),
+    ...(span.sourceUnitRelation !== undefined
+      ? { sourceUnitRelation: span.sourceUnitRelation }
+      : {}),
   };
 }
 
