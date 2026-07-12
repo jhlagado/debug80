@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+## 0.2.0 - 2026-07-12
+
+- Moved Debug80 into the Debug80 Toolchain npm workspace alongside AZM,
+  Glimmer, and the new `@jhlagado/debug80-runtime` package.
+- Extracted the Z80 core and TEC-1/TEC-1G platform implementations into the
+  UI-independent runtime package, with a bounded headless verification API.
+- Converted repository-owned JavaScript, build tooling, package exports, and
+  the shipped VS Code extension bundle to ESM.
+- Added headless integration coverage that compiles a Glimmer program and
+  verifies its input-driven behavior through the TEC-1G runtime.
 - Added Glimmer as a first-class source type: `.glim` files in a
   target's `sourceFile` build through the bundled `@jhlagado/glimmer`
   compiler (generate, single-pass AZM assembly with register-contract
