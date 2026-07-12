@@ -109,10 +109,10 @@ physical TEC-1G and TEC-Deck hardware.
 Work should proceed in this order. A later item moves forward only when a real
 program or platform makes it more urgent than the items above it.
 
-1. **Headless behavioural verification.** Run built Glimmer programs through
-   Debug80's Z80 and TEC-1G device models without VS Code or a webview. Exercise
-   input, cards, reactive phases, memory, matrix output, LCD, sound and TMS9918
-   state with deterministic, bounded scenarios.
+1. **Complete - headless behavioural verification.** Built AZM and Glimmer
+   programs run through Debug80's Z80 and TEC-1G models without VS Code or a
+   webview. Bounded scenarios cover input, cards, reactive phases, memory,
+   matrix output, LCD, sound and TMS9918 state.
 2. **Source-level routine contracts.** Let `.glim` routine headers state the
    AZM register contract that Glimmer already emits and AZM already verifies.
 3. **TEC-1G input expansion.** Add declarative joystick bindings and settle a
@@ -137,17 +137,24 @@ The Debug80 Toolchain workspace now contains the first working vertical slice:
 - `@jhlagado/debug80-runtime` owns the Z80 core and TEC-1/TEC-1G device models
   without depending on AZM, Glimmer, VS Code or the Debug Adapter Protocol;
 - Debug80 consumes that package rather than retaining a second emulator copy;
-- `Tec1gHeadlessSession` provides bounded execution, cycle propagation, memory
-  overlays, D8 symbol access, physical matrix and joystick input, TMS9918 state
-  and timeout traces;
+- the stable `@jhlagado/debug80-runtime/headless` API provides bounded
+  execution, reset, cycle propagation, memory overlays, D8 symbol access,
+  physical matrix and joystick input, semantic device snapshots and timeout
+  traces;
+- a dedicated AZM fixture assembles to HEX and D8, executes from `Start`, and
+  verifies named state without involving Glimmer;
 - a private workspace test builds `dot.glim`, loads MON-3, enters the generated
   `Start` symbol, completes matrix scans and moves the dot with an emulated key;
-- the packed ESM runtime is installed and imported by an external smoke fixture
-  so workspace linking cannot hide missing exports.
+- Tetro covers splash-to-play navigation, movement, rotation, line clear,
+  pause, game over, restart, matrix scans, LCD and sound edges;
+- sprite-chase covers resource upload, sprite commits, movement, collision,
+  score and sustained PAL VDP frames;
+- the packed ESM runtime is installed and exercised through its public headless
+  subpath so workspace linking cannot hide missing exports.
 
-The remaining work is broader behavioural coverage and richer semantic device
-inspectors, not extraction of the emulator or proof that the architecture can
-work.
+The software headless-verification phase is complete. Remaining Tetro and
+sprite-chase work is physical hardware playtesting and maintenance prompted by
+those findings, not runner architecture.
 
 This remains primarily a **Debug80 runtime productisation task**, followed by a
 Glimmer acceptance-test task. The first orchestration API now composes the Z80
@@ -161,9 +168,9 @@ Glimmer, because Debug80 already uses Glimmer to build `.glim` launch targets.
 That dependency direction keeps the emulator usable by AZM and hand-written Z80
 programs as well.
 
-### Required runner surface
+### Public runner surface
 
-The first API should provide:
+The public package API provides:
 
 - session creation from HEX, Debug80 map, platform configuration and a pinned
   monitor ROM;
@@ -177,7 +184,8 @@ The first API should provide:
   map, avoiding hard-coded addresses in tests;
 - semantic snapshots of matrix rows, seven-segment digits, LCD text, speaker
   edges, TMS9918 registers, VRAM, sprites and framebuffer;
-- deterministic reset, video standard, clock and random-input controls;
+- deterministic reset, explicit video standard and platform clock behavior;
+  MON-3 random sequences repeat from the same pinned ROM and reset image;
 - failure reports containing the stop reason, PC, registers, cycle count and a
   short instruction trace.
 
@@ -211,20 +219,20 @@ boot or input-integration failures.
 2. **Complete - Input and symbols:** add bounded `runUntil`, D8 symbol access, scan-aware
    keypad operations and useful timeout traces. This is the minimum viable
    reusable runner.
-3. **In progress - Glimmer smoke scenarios:** `dot.glim` now proves direct
-   application entry, MON-3 calls, key input, named state and matrix scanning.
-   Add one TMS9918 resource/upload scenario from `sprite-chase.glim`.
-4. **Game-path scenarios:** cover Tetro splash-to-play navigation, movement,
-   rotation edge behaviour, forced line clear, pause, game over and restart;
-   cover sprite-chase movement, collision, score and sustained VDP commits.
-5. **CI and public boundary:** run the scenarios in Glimmer CI. Once the API has
-   two consumers, expose a small Debug80 headless package or CLI whose runtime
-   layer has no Glimmer dependency. Extraction is not required before the API
-   has proved stable.
+3. **Complete - Glimmer smoke scenarios:** `dot.glim` proves direct application
+   entry, MON-3 calls, key input, named state and matrix scanning;
+   `sprite-chase.glim` proves TMS9918 resource upload and sprite commits.
+4. **Complete - game-path scenarios:** Tetro covers navigation, movement,
+   rotation, arranged line clear, pause, game over and restart. Sprite-chase
+   covers movement, arranged collision, score and sustained VDP frames.
+5. **Complete - CI and public boundary:** root checks run the private AZM and
+   Glimmer integration workspaces. The ESM-only
+   `@jhlagado/debug80-runtime/headless` package API is the stable boundary and
+   has no AZM or Glimmer dependency; a second CLI would duplicate it without
+   adding a current use case.
 
-The first four slices are complete when the scenarios run deterministically on
-two consecutive clean CI builds, time out with actionable traces when broken,
-and require no VS Code process, browser, canvas or wall-clock sleeps. Physical
+The scenarios are deterministic, bounded with actionable timeout traces, and
+require no VS Code process, browser, canvas or wall-clock sleeps. Physical
 hardware playtests remain a separate release check.
 
 ## Source-level routine contracts

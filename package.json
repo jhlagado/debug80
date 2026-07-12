@@ -11,10 +11,10 @@
   ],
   "scripts": {
     "build": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/glimmer && npm run build -w @jhlagado/debug80-runtime && npm run build -w debug80",
-    "typecheck": "npm run typecheck -w @jhlagado/azm && npm run typecheck -w @jhlagado/glimmer && npm run typecheck -w @jhlagado/debug80-runtime && npm run typecheck -w @jhlagado/glimmer-headless-integration && npm run typecheck -w debug80 && npm run typecheck:webview -w debug80",
+    "typecheck": "npm run typecheck -w @jhlagado/azm && npm run typecheck -w @jhlagado/glimmer && npm run typecheck -w @jhlagado/debug80-runtime && npm run typecheck -w @jhlagado/azm-headless-integration && npm run typecheck -w @jhlagado/glimmer-headless-integration && npm run typecheck -w debug80 && npm run typecheck:webview -w debug80",
     "lint": "npm run lint --workspaces --if-present",
     "format:check": "npm run format:check --workspaces --if-present",
-    "test": "npm run test -w @jhlagado/azm && npm run test -w @jhlagado/glimmer && npm run test -w @jhlagado/debug80-runtime && npm run test -w @jhlagado/glimmer-headless-integration && npm run test -w debug80",
+    "test": "npm run test -w @jhlagado/azm && npm run test -w @jhlagado/glimmer && npm run test -w @jhlagado/debug80-runtime && npm run test -w @jhlagado/azm-headless-integration && npm run test -w @jhlagado/glimmer-headless-integration && npm run test -w debug80",
     "format": "npm run format --workspaces --if-present",
     "check": "npm run build && npm run typecheck && npm run lint && npm run format:check && npm run test",
     "package:azm": "npm run test:package -w @jhlagado/azm",

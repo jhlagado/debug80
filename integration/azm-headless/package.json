@@ -1,19 +1,19 @@
 {
-  "name": "@jhlagado/glimmer-headless-integration",
+  "name": "@jhlagado/azm-headless-integration",
   "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
     "typecheck": "tsc --noEmit",
     "lint": "eslint test --ext .ts",
-    "format": "prettier --write \"test/**/*.ts\"",
+    "format": "prettier --write \"test/**/*.ts\" \"fixtures/**/*.asm\"",
     "format:check": "prettier --check \"test/**/*.ts\"",
-    "pretest": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/glimmer && npm run build -w @jhlagado/debug80-runtime",
+    "pretest": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/debug80-runtime",
     "test": "vitest run"
   },
   "dependencies": {
-    "@jhlagado/debug80-runtime": "^0.1.0",
-    "@jhlagado/glimmer": "^0.5.3"
+    "@jhlagado/azm": "^0.3.4",
+    "@jhlagado/debug80-runtime": "^0.1.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
