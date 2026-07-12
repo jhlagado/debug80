@@ -1,0 +1,13 @@
+node_modules/
+*.log
+.DS_Store
+
+# Package build and test output
+packages/*/dist/
+packages/*/coverage/
+apps/*/out/
+apps/*/coverage/
+apps/*/*.vsix
+
+# Local editor state
+.vscode/
