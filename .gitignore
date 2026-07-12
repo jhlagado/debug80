@@ -11,3 +11,7 @@ apps/*/*.vsix
 
 # Local editor state
 .vscode/
+
+# Versioned Debug80 integration-test project configuration
+!apps/debug80-vscode/tests/e2e/fixtures/**/.vscode/
+!apps/debug80-vscode/tests/e2e/fixtures/**/.vscode/**
