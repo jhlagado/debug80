@@ -32,6 +32,7 @@ describe('register-contracts reports', () => {
       unknownCalls: [],
     });
 
+    expect(text).toContain('AZM version:');
     expect(text).toContain('AZM Register Contracts Report');
     expect(text).toContain('Entry: /tmp/main.z80');
     expect(text).toContain('Mode: audit');

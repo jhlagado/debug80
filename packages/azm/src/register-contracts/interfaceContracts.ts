@@ -8,7 +8,7 @@ import type {
   SmartComment,
 } from './types.js';
 
-const INTERFACE_TAG_RE = /^\s*(in|out|clobbers|preserves)(?:\s+(.+))?$/i;
+const INTERFACE_TAG_RE = /^\s*(noreturn|in|out|clobbers|preserves)(?:\s+(.+))?$/i;
 
 type InterfaceContractKind = Extract<SmartComment['kind'], 'in' | 'out' | 'clobbers' | 'preserves'>;
 
@@ -97,6 +97,9 @@ function parseInterfaceContractLine(line: string): SmartComment | undefined {
 
   const match = INTERFACE_TAG_RE.exec(trimmed);
   if (!match) return undefined;
+  if (match[1]!.toLowerCase() === 'noreturn') {
+    return match[2] === undefined ? { kind: 'noreturn' } : undefined;
+  }
   const tag = match[1]!.toLowerCase() as InterfaceContractKind;
   const carriers = parseInterfaceCarrierList(match[2]?.trim());
   return carriers === undefined ? undefined : INTERFACE_CONTRACT_BUILDERS[tag](carriers);
@@ -187,6 +190,7 @@ function parseInterfaceCarrierList(rest: string | undefined): SmartCommentCarrie
 
 function hasContractContent(contract: RoutineContract): boolean {
   return (
+    contract.noreturn === true ||
     contract.in.length > 0 ||
     contract.out.length > 0 ||
     contract.clobbers.length > 0 ||

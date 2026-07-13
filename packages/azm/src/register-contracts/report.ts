@@ -10,6 +10,7 @@ import type {
   RoutineSummary,
 } from './types.js';
 import type { RoutineContractDeclaration } from '../model/register-contract.js';
+import { packageVersion } from '../package-identity.js';
 
 function list(units: RegisterContractsUnit[]): string {
   return units.length === 0 ? '-' : units.join(',');
@@ -68,8 +69,8 @@ function sourceContractCarrierList(units: RegisterContractsUnit[]): string {
 }
 
 type ContractEntry = {
-  keyword: 'in' | 'out' | 'maybe-out' | 'clobbers' | 'preserves';
-  carriers: string;
+  keyword: 'noreturn' | 'in' | 'out' | 'maybe-out' | 'clobbers' | 'preserves';
+  carriers?: string;
 };
 
 function relationOutputUnits(relations: RoutineSummary['valueRelations']): RegisterContractsUnit[] {
@@ -78,6 +79,7 @@ function relationOutputUnits(relations: RoutineSummary['valueRelations']): Regis
 
 function contractEntries(summary: RoutineSummary): ContractEntry[] {
   const out: ContractEntry[] = [];
+  if (summary.noreturn === true) out.push({ keyword: 'noreturn' });
   if (summary.mayRead.length > 0)
     out.push({ keyword: 'in', carriers: contractCarrierList(summary.mayRead) });
   const outputUnits = relationOutputUnits(summary.valueRelations);
@@ -99,6 +101,9 @@ function sourceContractEntries(
   declared?: RoutineContractDeclaration,
 ): ContractEntry[] {
   const out: ContractEntry[] = [];
+  if (summary.noreturn === true || declared?.noreturn === true) {
+    out.push({ keyword: 'noreturn' });
+  }
   const inputs = uniqueUnits([...summary.mayRead, ...(declared?.in ?? [])]);
   if (inputs.length > 0) out.push({ keyword: 'in', carriers: contractCarrierList(inputs) });
   const relationOut = relationOutUnits(summary);
@@ -110,6 +115,7 @@ function sourceContractEntries(
     out.push({ keyword: 'out', carriers: contractCarrierList(outputUnits) });
   const outputSet = new Set(outputUnits);
   const candidates = uniqueUnits([
+    ...(summary.mayOutput ?? []),
     ...(summary.outputCandidates ?? []),
     ...(declared?.maybeOut ?? []),
   ]).filter((unit) => !relationOut.has(unit) && !outputSet.has(unit));
@@ -140,6 +146,7 @@ function relationOutUnits(summary: RoutineSummary): Set<RegisterContractsUnit> {
 export function renderRegisterContractsReport(model: RegisterContractsReportModel): string {
   const lines = [
     'AZM Register Contracts Report',
+    `AZM version: ${model.packageVersion ?? packageVersion}${model.buildCommit ? ` (${model.buildCommit})` : ''}`,
     `Entry: ${model.entryFile}`,
     `Mode: ${model.mode}`,
   ];
@@ -170,6 +177,8 @@ export function buildRegisterContractsJsonReport(
   return {
     format: 'azm-register-contracts-report',
     version: 1,
+    packageVersion: model.packageVersion ?? packageVersion,
+    ...(model.buildCommit !== undefined ? { buildCommit: model.buildCommit } : {}),
     entryFile: model.entryFile,
     mode: model.mode,
     ...(model.filePolicies !== undefined ? { filePolicies: model.filePolicies } : {}),
@@ -251,8 +260,13 @@ function remediationForFinding(
         category: 'review_output_contract',
         hint:
           finding.autoFixable === true
-            ? 'Generated contracts can promote this candidate to an output.'
+            ? 'Add .expectout to confirm this dependency and promote the callee output.'
             : 'Review the caller and callee before marking this carrier as an output.',
+      };
+    case 'unacknowledged_output':
+      return {
+        category: 'review_output_contract',
+        hint: 'Add .expectout at the call site to acknowledge the declared output dependency.',
       };
     case 'definite_contract_violation':
     case 'flag_lifetime_risk':
@@ -394,7 +408,9 @@ export function renderRegisterContractsInterface(summaries: RoutineSummary[]): s
   for (const summary of summaries) {
     lines.push(`extern ${summary.name}`);
     for (const entry of contractEntries(summary)) {
-      lines.push(`${entry.keyword} ${entry.carriers}`);
+      lines.push(
+        entry.carriers === undefined ? entry.keyword : `${entry.keyword} ${entry.carriers}`,
+      );
     }
     lines.push('end', '');
   }
@@ -410,7 +426,10 @@ export function buildRegisterContractsInference(
     version: 1,
     routines: summaries.map((summary) => {
       const out = relationOutputUnits(summary.valueRelations);
-      const outputCandidateCarriers = summary.outputCandidates ?? [];
+      const outputCandidateCarriers = uniqueUnits([
+        ...(summary.mayOutput ?? []),
+        ...(summary.outputCandidates ?? []),
+      ]);
       return {
         name: summary.name,
         identity: summary.identity ?? summary.name,
@@ -465,5 +484,9 @@ export function renderRegisterContractsRoutineDirective(
 ): string {
   const entries = sourceContractEntries(summary, declared);
   if (entries.length === 0) return '.routine';
-  return `.routine ${entries.map((entry) => `${entry.keyword} ${entry.carriers}`).join(' ')}`;
+  return `.routine ${entries
+    .map((entry) =>
+      entry.carriers === undefined ? entry.keyword : `${entry.keyword} ${entry.carriers}`,
+    )
+    .join(' ')}`;
 }

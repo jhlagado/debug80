@@ -37,6 +37,16 @@ describe('register-contracts interface parsing', () => {
     });
   });
 
+  it('parses nonreturning interface contracts', () => {
+    const contracts = parseInterfaceContracts(
+      ['extern PANIC', 'noreturn', 'clobbers AF', 'end'].join('\n'),
+    );
+
+    expect(contracts.get('PANIC')).toEqual(
+      expect.objectContaining({ noreturn: true, clobbers: expect.arrayContaining(['A', 'carry']) }),
+    );
+  });
+
   it('parses RST selector service interface contracts', () => {
     const contracts = parseInterfaceContracts(
       ['service rst $10 C 16 SCAN_KEYS', 'in C', 'out A,carry,zero', 'clobbers DE', 'end'].join(

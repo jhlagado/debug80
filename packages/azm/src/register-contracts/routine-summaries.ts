@@ -4,7 +4,11 @@ import type {
   RoutineContract,
   RoutineSummary,
 } from './types.js';
-import { applyRoutineContract, inferRoutineSummary } from './summary.js';
+import {
+  applyRoutineContract,
+  demoteInferredRoutineOutputs,
+  inferRoutineSummary,
+} from './summary.js';
 
 function emptyRoutineSummary(name: string, identity = name): RoutineSummary {
   return {
@@ -102,7 +106,12 @@ function summarizeRoutines(
   return routines.map((routine) => {
     const inferred = inferRoutineSummary(routine, boundarySummaryMap, serviceRanges);
     const contract = contractForRoutine(routine, contracts);
-    return { routine, summary: contract ? applyRoutineContract(inferred, contract) : inferred };
+    return {
+      routine,
+      summary: contract
+        ? applyRoutineContract(inferred, contract)
+        : demoteInferredRoutineOutputs(inferred),
+    };
   });
 }
 
@@ -117,6 +126,7 @@ function summaryFingerprint(summary: RoutineSummary): string {
   return JSON.stringify({
     name: summary.name,
     identity: summary.identity,
+    noreturn: summary.noreturn,
     mayRead: sortedUnique(summary.mayRead),
     mayWrite: sortedUnique(summary.mayWrite),
     preserved: sortedUnique(summary.preserved),

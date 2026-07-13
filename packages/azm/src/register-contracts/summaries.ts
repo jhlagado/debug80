@@ -155,7 +155,12 @@ export function withAcceptedOutputs(
         valueRelations.push({ out: [unit], from: [] });
       }
     }
-    return { ...summary, valueRelations };
+    return {
+      ...summary,
+      mayOutput: (summary.mayOutput ?? []).filter((unit) => !promoted.includes(unit)),
+      outputCandidates: (summary.outputCandidates ?? []).filter((unit) => !promoted.includes(unit)),
+      valueRelations,
+    };
   });
 }
 

@@ -15,6 +15,7 @@ export function cliUsage(): string {
     '      --reg-report-format <f> Report format: text|json (default: text)',
     '      --reg-baseline <f> Compare against a JSON register contracts report',
     '      --reg-ratchet      Fail if register contract findings increase',
+    '      --require-expectout Fail on unacknowledged caller output dependencies',
     '      --reg-interface     Emit inferred register contracts interface (.asmi)',
     '      --reg-infer         Emit inferred register contracts review artifact',
     '      --reg-infer-format <f> Inference format: json|markdown (default: json)',

@@ -115,11 +115,12 @@ The directive and contract are always one physical line. Clauses are delimited
 by their keywords rather than semicolons:
 
 ```text
-.routine [in carriers] [out outputs] [maybe-out outputs]
+.routine [noreturn] [in carriers] [out outputs] [maybe-out outputs]
          [clobbers carriers] [preserves carriers]
 ```
 
-Canonical clause order is `in`, `out`, `maybe-out`, `clobbers`, `preserves`.
+Canonical clause order is `noreturn`, `in`, `out`, `maybe-out`, `clobbers`,
+`preserves`.
 Carrier grammar remains the same as AZM 0.2 contracts. Named output suffixes
 are not part of the AZM 0.3 source grammar; contracts describe register and
 flag carriers directly.
@@ -136,7 +137,13 @@ declaration against the routine's own body-effect summary. A body write that
 the declaration lists under `preserves`, or leaves unmentioned (unmentioned
 registers are preserved for callers), is a `declaration_contract_mismatch`.
 Bare `.routine` has no declared assertions and keeps infer-from-body behaviour.
-Annotation writes the complete current inferred contract in canonical order.
+Annotation writes the complete current contract in canonical order. Body
+writes default to `clobbers`; inferred result carriers remain `maybe-out` until
+an existing `out`, `--accept-out`, or caller `.expectout` confirms them.
+
+`noreturn` is a control-flow assertion rather than a register carrier clause.
+It marks routines such as an infinite main loop and prevents unreachable caller
+continuations from contributing liveness or inferred outputs.
 
 A bare directive is an explicit routine with a contract to be inferred:
 

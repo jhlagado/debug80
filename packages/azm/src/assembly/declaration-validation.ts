@@ -19,6 +19,7 @@ const REGISTER_CONTRACT_FINDING_KINDS = new Set([
   'missing_callee_contract',
   'unknown_control_flow',
   'external_interface_unknown',
+  'unacknowledged_output',
   'output_candidate',
 ]);
 

@@ -620,7 +620,9 @@ describe('register-contracts cli', () => {
 
     const annotated = await readFile(entry, 'utf8');
     expect(annotated).toContain(
-      ['; Helper prose stays untouched.', '.routine out HL clobbers A', 'HELPER:'].join('\n'),
+      ['; Helper prose stays untouched.', '.routine maybe-out HL clobbers HL,A', 'HELPER:'].join(
+        '\n',
+      ),
     );
     expect(annotated).not.toContain('.routine out HL\nSTART:');
     expect(annotated).not.toContain('.routine out HL\nSKIP:');
@@ -637,7 +639,9 @@ describe('register-contracts cli', () => {
     ]);
     expect(second.code).toBe(0);
     await expect(readFile(entry, 'utf8')).resolves.toContain(
-      ['; Helper prose stays untouched.', '.routine out HL clobbers A', 'HELPER:'].join('\n'),
+      ['; Helper prose stays untouched.', '.routine maybe-out HL clobbers HL,A', 'HELPER:'].join(
+        '\n',
+      ),
     );
 
     await rm(work, { recursive: true, force: true });

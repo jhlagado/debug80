@@ -284,13 +284,9 @@ describe('op expansion and register-contracts', () => {
       const items = loaded.program.files[0]?.items ?? [];
       const model = buildRegisterContractsProgramModel(items);
       const summary = routineSummary(model.routines, 'main');
-      expect(summary?.valueRelations).toEqual(
-        expect.arrayContaining([
-          { out: ['A'], from: [] },
-          { out: ['zero'], from: [] },
-        ]),
-      );
-      expect(summary?.mayWrite).toEqual(expect.arrayContaining(['sign']));
+      expect(summary?.valueRelations).toEqual([]);
+      expect(summary?.mayWrite).toEqual(expect.arrayContaining(['A', 'zero', 'sign']));
+      expect(summary?.mayOutput).toEqual(expect.arrayContaining(['A', 'zero']));
     });
   });
 
@@ -317,7 +313,9 @@ describe('op expansion and register-contracts', () => {
       expect(main!.instructions.map(instructionHead)).toEqual(['ld', 'ld', 'ret']);
       expect(model.directCalls).toEqual([]);
       const summary = routineSummary(model.routines, 'main');
-      expect(summary?.valueRelations).toEqual(expect.arrayContaining([{ out: ['B'], from: [] }]));
+      expect(summary?.valueRelations).toEqual([]);
+      expect(summary?.mayWrite).toEqual(expect.arrayContaining(['B']));
+      expect(summary?.mayOutput).toEqual(expect.arrayContaining(['B']));
     });
   });
 

@@ -132,6 +132,7 @@ export interface CompileNextFunctionOptions {
   readonly registerContractsReportFormat?: RegisterContractsReportFormat;
   readonly registerContractsBaseline?: string;
   readonly registerContractsRatchet?: boolean;
+  readonly requireRegisterExpectOut?: boolean;
   readonly emitRegisterInterface?: boolean;
   readonly emitRegisterInference?: boolean;
   readonly registerContractsInferenceFormat?: 'json' | 'markdown';

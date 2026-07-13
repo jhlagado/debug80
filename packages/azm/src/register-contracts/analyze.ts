@@ -50,13 +50,14 @@ import { compareRegisterContractsBaseline } from './ratchet.js';
 import {
   findCallerOutputCandidateObservations,
   findRegisterContractsConflicts,
+  findUnacknowledgedOutputDependencies,
 } from './liveness.js';
 import { buildAnnotations } from './annotations.js';
 import {
-  autoAcceptedOutputCandidateMap,
   buildRegisterContractsReportModel,
   declarationContractMismatchFindings,
   diagnosticsForFindings,
+  expectedOutputCandidateMap,
   knownRoutineNames,
   outputCandidatesWithFixability,
   strictStackFindings,
@@ -67,7 +68,6 @@ import {
   buildProfileSummaries,
   buildSummaries,
   buildSummaryByName,
-  outputCandidateKey,
   withAcceptedOutputs,
 } from './summaries.js';
 
@@ -182,6 +182,10 @@ export function analyzeRegisterContracts(
     profileSummaries,
   );
   summaries = withAcceptedOutputs(summaries, options.acceptedOutputCandidates);
+  summaries = withAcceptedOutputs(
+    summaries,
+    expectedOutputCandidateMap(program.directCalls, smartComments),
+  );
   let summariesByName = buildSummaryByName(program.routines, summaries, profileSummaries);
   const knownRoutines = knownRoutineNames(
     program.routines,
@@ -220,16 +224,7 @@ export function analyzeRegisterContracts(
         }),
       ),
   );
-  const autoAcceptedOutputs = autoAcceptedOutputCandidateMap(
-    program.routines,
-    outputCandidatesForPromotion,
-    loaded.sourceTexts,
-  );
-  if (autoAcceptedOutputs.size > 0) {
-    summaries = withAcceptedOutputs(summaries, autoAcceptedOutputs);
-    summariesByName = buildSummaryByName(program.routines, summaries, profileSummaries);
-  }
-  const conflicts = shouldBuildOutputCandidates
+  const rawConflicts = shouldBuildOutputCandidates
     ? program.routines
         .flatMap((routine) =>
           findRegisterContractsConflicts(
@@ -241,8 +236,16 @@ export function analyzeRegisterContracts(
         )
         .filter((conflict) => isAnalyzedFile(conflict.file))
     : [];
-  const { outputCandidates: outputCandidatesWithAutoFixability, outputCandidateFixability } =
-    outputCandidatesWithFixability(program.routines, outputCandidatesForPromotion);
+  const conflicts = rawConflicts;
+  const outputDependencies = shouldBuildOutputCandidates
+    ? findUnacknowledgedOutputDependencies(program.routines, summariesByName, smartComments).filter(
+        (finding) => isAnalyzedFile(finding.file),
+      )
+    : [];
+  const { outputCandidates: outputCandidatesWithAutoFixability } = outputCandidatesWithFixability(
+    program.routines,
+    outputCandidatesForPromotion,
+  );
   const { outputCandidates: allOutputCandidatesWithAutoFixability } =
     outputCandidatesWithFixability(program.routines, outputCandidates);
   const diagnostics: Diagnostic[] = [];
@@ -290,6 +293,7 @@ export function analyzeRegisterContracts(
           ...unknownFindings,
           ...stackFindings,
           ...declarationMismatchFindings,
+          ...outputDependencies,
           ...outputCandidatesWithAutoFixability.map((candidate): RegisterContractsFinding => {
             return {
               kind: 'output_candidate',
@@ -415,6 +419,17 @@ export function analyzeRegisterContracts(
   } else {
     diagnostics.push(...diagnosticsForFindings(activeConflictFindings, options.mode));
   }
+  if (options.requireExpectOut === true) {
+    diagnostics.push(
+      ...diagnosticsForFindings(
+        activeFindings.filter(
+          (finding) =>
+            finding.kind === 'output_candidate' || finding.kind === 'unacknowledged_output',
+        ),
+        'strict',
+      ),
+    );
+  }
 
   const reportModel: RegisterContractsReportModel = buildRegisterContractsReportModel({
     entryFile: loaded.program.entryFile,
@@ -489,8 +504,29 @@ export function analyzeRegisterContracts(
         activeOutputCandidates,
         {
           fixOutputCandidates: options.fixRegisterContracts === true,
-          outputCandidateFixability,
-          outputCandidateKey,
+          fixCandidates: [
+            ...activeOutputCandidates,
+            ...activeFindings
+              .filter((finding) => finding.kind === 'unacknowledged_output')
+              .map((finding): RegisterContractsOutputCandidate => ({
+                file: finding.file,
+                line: finding.line,
+                column: finding.column,
+                ...(finding.sourceUnit !== undefined ? { sourceUnit: finding.sourceUnit } : {}),
+                ...(finding.sourceRelation !== undefined
+                  ? { sourceRelation: finding.sourceRelation }
+                  : {}),
+                ...(finding.sourceUnitRelation !== undefined
+                  ? { sourceUnitRelation: finding.sourceUnitRelation }
+                  : {}),
+                routine: finding.callTarget,
+                ...(finding.routineIdentity !== undefined
+                  ? { routineIdentity: finding.routineIdentity }
+                  : {}),
+                carriers: finding.carriers,
+                message: finding.message,
+              })),
+          ],
         },
       )
     : [];
@@ -670,7 +706,9 @@ function diagnosticsForScopedPolicy(
     .filter(
       (finding) => policyModeForFile(finding.file, policy, fallbackMode, sourcePolicy) === 'strict',
     )
-    .filter((finding) => finding.kind !== 'output_candidate')
+    .filter(
+      (finding) => finding.kind !== 'output_candidate' && finding.kind !== 'unacknowledged_output',
+    )
     .map((finding) => ({
       severity: 'error',
       code: 'AZMN_REGISTER_CONTRACTS',

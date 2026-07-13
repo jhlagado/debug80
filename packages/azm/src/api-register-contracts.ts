@@ -27,7 +27,8 @@ export function shouldAnalyzeRegisterContracts(options: CompileNextFunctionOptio
     options.registerContractsPolicy !== undefined ||
     (options.acceptRegisterOutputCandidates?.length ?? 0) > 0 ||
     (options.registerContractsInterfaces?.length ?? 0) > 0 ||
-    options.registerContractsBaseline !== undefined
+    options.registerContractsBaseline !== undefined ||
+    options.requireRegisterExpectOut === true
   );
 }
 
@@ -86,6 +87,7 @@ export async function runRegisterContracts(
       ? { baselineFile: normalize(options.registerContractsBaseline) }
       : {}),
     ratchet: options.registerContractsRatchet === true,
+    requireExpectOut: options.requireRegisterExpectOut === true,
   } satisfies AnalyzeRegisterContractsOptions);
 
   if (registerContracts.reportText !== undefined) {
