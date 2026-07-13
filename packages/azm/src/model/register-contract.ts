@@ -19,6 +19,7 @@ export type RegisterContractsUnit =
   | 'halfCarry';
 
 export interface RoutineContractDeclaration {
+  readonly noreturn?: boolean;
   readonly in: readonly RegisterContractsUnit[];
   readonly out: readonly RegisterContractsUnit[];
   readonly maybeOut: readonly RegisterContractsUnit[];

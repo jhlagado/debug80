@@ -4,6 +4,17 @@
 
 - None.
 
+## 0.3.5 - 2026-07-13
+
+- Made generated register contracts distinguish body effects from semantic
+  interfaces: inferred results remain `maybe-out`/clobbers until declared,
+  accepted with `--accept-out`, or confirmed by caller `.expectout`.
+- Distinguished missing callee output contracts from unacknowledged caller
+  dependencies, with opt-in `--require-expectout` enforcement.
+- Added `.routine noreturn` and `.asmi` `noreturn` control-flow contracts.
+- Included the AZM package version and optional build commit in register-contract
+  reports.
+
 ## 0.3.3 - 2026-07-11
 
 - Verify explicit `.routine` contracts against their own body-effect summaries.

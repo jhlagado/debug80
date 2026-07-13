@@ -59,7 +59,8 @@ describe('stage-14 register-contracts report summaries', () => {
       const report = reportArtifact(result);
       expect(report?.text).toContain('Routine: HELPER');
       expect(report?.text).toContain('reads:');
-      expect(report?.text).toContain('relation: D,E <= -');
+      expect(report?.text).toContain('writes: D,E');
+      expect(report?.text).not.toContain('relation: D,E <= -');
     });
   });
 

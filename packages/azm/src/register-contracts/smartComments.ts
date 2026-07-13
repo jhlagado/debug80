@@ -14,6 +14,7 @@ function appendUnique<T>(items: T[], values: readonly T[]): void {
 }
 
 function applyContractComment(contract: RoutineContract, comment: SmartComment): void {
+  if (comment.kind === 'noreturn') contract.noreturn = true;
   if (comment.kind === 'in') appendUnique(contract.in, comment.carriers);
   if (comment.kind === 'out') appendUnique(contract.out, comment.carriers);
   if (comment.kind === 'clobbers') appendUnique(contract.clobbers, comment.carriers);
@@ -28,16 +29,20 @@ export function buildDeclaredRoutineContracts(
     const declared = routine.declaredContract;
     if (
       declared !== undefined &&
-      (declared.in.length > 0 ||
+      (declared.noreturn === true ||
+        declared.in.length > 0 ||
         declared.out.length > 0 ||
+        declared.maybeOut.length > 0 ||
         declared.clobbers.length > 0 ||
         declared.preserves.length > 0)
     ) {
       const identity = routine.identity ?? routine.name;
       contracts.set(identity, {
         name: identity,
+        ...(declared.noreturn === true ? { noreturn: true } : {}),
         in: [...declared.in],
         out: [...declared.out],
+        maybeOut: [...declared.maybeOut],
         clobbers: [...declared.clobbers],
         preserves: [...declared.preserves],
       });

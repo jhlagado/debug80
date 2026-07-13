@@ -22,6 +22,7 @@ export type RegisterContractsStackFrameUnit = 'AF' | 'BC' | 'DE' | 'HL' | 'IX' |
 export type SmartComment =
   | { kind: 'extern'; name: string }
   | { kind: 'end' }
+  | { kind: 'noreturn' }
   | { kind: 'in'; carriers: RegisterContractsUnit[]; name?: string }
   | { kind: 'out'; carriers: RegisterContractsUnit[]; name?: string }
   | { kind: 'clobbers'; carriers: RegisterContractsUnit[] }
@@ -39,8 +40,10 @@ export interface LocatedSmartComment {
 
 export interface RoutineContract {
   name: string;
+  noreturn?: boolean;
   in: RegisterContractsUnit[];
   out: RegisterContractsUnit[];
+  maybeOut?: RegisterContractsUnit[];
   clobbers: RegisterContractsUnit[];
   preserves: RegisterContractsUnit[];
   complete?: boolean;
@@ -142,6 +145,7 @@ export interface ValueRelation {
 export interface RoutineSummary {
   name: string;
   identity?: string;
+  noreturn?: boolean;
   mayRead: RegisterContractsUnit[];
   mayWrite: RegisterContractsUnit[];
   mayOutput?: RegisterContractsUnit[];
@@ -190,6 +194,7 @@ export type RegisterContractsFindingKind =
   | 'missing_callee_contract'
   | 'unknown_control_flow'
   | 'external_interface_unknown'
+  | 'unacknowledged_output'
   | 'output_candidate';
 
 interface RegisterContractsFindingBase {
@@ -236,14 +241,24 @@ interface RegisterContractsOutputCandidateFinding extends RegisterContractsFindi
   autoFixable?: boolean;
 }
 
+interface RegisterContractsUnacknowledgedOutputFinding extends RegisterContractsFindingBase {
+  kind: 'unacknowledged_output';
+  routine: string;
+  callTarget: string;
+  carriers: RegisterContractsUnit[];
+}
+
 export type RegisterContractsFinding =
   | RegisterContractsConflictFinding
   | RegisterContractsUnknownBoundaryFinding
   | RegisterContractsStackFinding
   | RegisterContractsDeclarationMismatchFinding
+  | RegisterContractsUnacknowledgedOutputFinding
   | RegisterContractsOutputCandidateFinding;
 
 export interface RegisterContractsReportModel {
+  packageVersion?: string;
+  buildCommit?: string;
   entryFile: string;
   mode: RegisterContractsMode;
   filePolicies?: Readonly<Record<string, RegisterContractsPolicyMode>>;
@@ -309,6 +324,8 @@ export interface RegisterContractsSuppressedFinding {
 export interface RegisterContractsJsonReportModel {
   format: 'azm-register-contracts-report';
   version: 1;
+  packageVersion: string;
+  buildCommit?: string;
   entryFile: string;
   mode: RegisterContractsMode;
   filePolicies?: Readonly<Record<string, RegisterContractsPolicyMode>>;
@@ -376,6 +393,7 @@ export interface AnalyzeRegisterContractsOptions {
   baselineReport?: RegisterContractsJsonReportModel;
   baselineFile?: string;
   ratchet?: boolean;
+  requireExpectOut?: boolean;
 }
 
 export interface RegisterContractsAnnotationFile {

@@ -1,3 +1,4 @@
 content/
+test/fixtures/includes/lib.inc
 examples/language-tour/00_call_with_arg_and_local_baseline.codegen-notes.md
 examples/language-tour/00_call_with_arg_and_local_baseline.handcrafted-notes.md

@@ -303,7 +303,8 @@ describe('register-contracts integration', () => {
       (a): a is RegisterContractsInterfaceArtifact => a.kind === 'register-contracts-interface',
     );
     expect(iface?.text).toContain('extern HELPER');
-    expect(iface?.text).toContain('out A');
+    expect(iface?.text).toContain('clobbers A');
+    expect(iface?.text).not.toContain('out A');
     expect(iface?.text).not.toContain(';');
     expect(iface?.text).not.toContain('@preserves');
     expect(iface?.text).not.toContain('carry,zero,sign,parity,halfCarry');
@@ -591,7 +592,7 @@ describe('register-contracts integration', () => {
     expect(annotations?.files).toHaveLength(1);
     expect(annotations?.files[0]?.path).toBe(entry);
     expect(annotations?.files[0]?.text).toContain(
-      ['; Helper prose.', '.routine out HL', 'HELPER:'].join('\n'),
+      ['; Helper prose.', '.routine maybe-out HL clobbers HL', 'HELPER:'].join('\n'),
     );
   });
 
@@ -622,7 +623,9 @@ describe('register-contracts integration', () => {
 
     expectNoErrorDiagnostics(res);
     const annotations = annotationsArtifact(res);
-    expect(annotations?.files[0]?.text).toContain(['.routine out HL', '@HELPER:'].join('\n'));
+    expect(annotations?.files[0]?.text).toContain(
+      ['.routine maybe-out HL clobbers HL', '@HELPER:'].join('\n'),
+    );
   });
 
   it('applies conditional jumps to at-prefixed entries as boundary summaries', async () => {
@@ -663,7 +666,7 @@ describe('register-contracts integration', () => {
     );
   });
 
-  it('promotes direct caller data uses in source annotations', async () => {
+  it('keeps direct caller data uses as maybe-out until explicitly accepted', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-regcontracts-annotation-candidates-'));
     const entry = join(dir, 'main.asm');
     writeFileSync(
@@ -696,9 +699,9 @@ describe('register-contracts integration', () => {
     expectNoErrorDiagnostics(res);
     const annotations = annotationsArtifact(res);
     expect(annotations?.files[0]?.text).toContain(
-      ['; Mask prose.', '.routine in A out A clobbers C', 'MASK:'].join('\n'),
+      ['; Mask prose.', '.routine in A maybe-out A clobbers A,C', 'MASK:'].join('\n'),
     );
-    expect(annotations?.files[0]?.text).not.toContain('maybe-out A');
+    expect(annotations?.files[0]?.text).not.toContain('.routine in A out A');
   });
 
   it('does not promote suppressed maybe-out output candidates', async () => {
@@ -792,11 +795,107 @@ describe('register-contracts integration', () => {
     const report = reportArtifact(res);
     expect(report?.text).toContain('Output candidates:');
     expect(report?.text).toContain(
-      `MASK: A: CALL MASK writes A and caller reads it later; generated contracts promote this to \`out A\` automatically.`,
+      `MASK: A: CALL MASK writes A and caller reads it later, but MASK does not declare A as output; add \`.expectout A\` above the call to confirm the dependency and promote the callee output.`,
     );
   });
 
-  it('auto-promotes direct continuation data reads into generated callee contracts', async () => {
+  it('distinguishes declared outputs from missing caller acknowledgements', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'azm-regcontracts-output-dependency-'));
+    const entry = join(dir, 'main.asm');
+    writeFileSync(
+      entry,
+      [
+        '.routine',
+        'START:',
+        '    call VALUE',
+        '    ld d,a',
+        '    ret',
+        '.routine out A',
+        'VALUE:',
+        '    ld a,1',
+        '    ret',
+        '.end',
+      ].join('\n'),
+      'utf8',
+    );
+
+    const res = await compileRegisterContracts(entry, {
+      registerContracts: 'audit',
+      emitRegisterReport: true,
+      registerContractsReportFormat: 'json',
+    });
+
+    expectNoErrorDiagnostics(res);
+    expect(reportArtifact(res)?.json?.findings).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          kind: 'unacknowledged_output',
+          callTarget: 'VALUE',
+          carriers: ['A'],
+        }),
+      ]),
+    );
+    expect(reportArtifact(res)?.json?.findings).not.toEqual(
+      expect.arrayContaining([expect.objectContaining({ kind: 'output_candidate' })]),
+    );
+  });
+
+  it('optionally requires caller .expectout acknowledgements', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'azm-regcontracts-require-expectout-'));
+    const entry = join(dir, 'main.asm');
+    writeFileSync(
+      entry,
+      [
+        '.routine',
+        'START:',
+        '    call VALUE',
+        '    ld d,a',
+        '    ret',
+        '.routine out A',
+        'VALUE:',
+        '    ld a,1',
+        '    ret',
+        '.end',
+      ].join('\n'),
+      'utf8',
+    );
+
+    const missing = await compileRegisterContracts(entry, {
+      registerContracts: 'strict',
+      requireRegisterExpectOut: true,
+    });
+    expect(missing.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: 'error',
+        message: expect.stringContaining('dependency is not acknowledged'),
+      }),
+    );
+
+    writeFileSync(
+      entry,
+      [
+        '.routine',
+        'START:',
+        '    .expectout A',
+        '    call VALUE',
+        '    ld d,a',
+        '    ret',
+        '.routine out A',
+        'VALUE:',
+        '    ld a,1',
+        '    ret',
+        '.end',
+      ].join('\n'),
+      'utf8',
+    );
+    const acknowledged = await compileRegisterContracts(entry, {
+      registerContracts: 'strict',
+      requireRegisterExpectOut: true,
+    });
+    expectNoErrorDiagnostics(acknowledged);
+  });
+
+  it('does not auto-promote direct continuation data reads into generated callee contracts', async () => {
     const dir = mkdtempSync(join(tmpdir(), 'azm-regcontracts-auto-promote-data-output-'));
     const entry = join(dir, 'main.asm');
     writeFileSync(
@@ -821,15 +920,17 @@ describe('register-contracts integration', () => {
     );
 
     const res = await compileRegisterContracts(entry, {
-      registerContracts: 'error',
+      registerContracts: 'audit',
       emitRegisterAnnotations: true,
     });
 
     expectNoErrorDiagnostics(res);
     const annotations = annotationsArtifact(res);
     expect(annotations?.files[0]?.text).toContain('; Mask prose.');
-    expect(annotations?.files[0]?.text).toContain('.routine in A out A clobbers BC,DE,HL,IX,IY,F');
-    expect(annotations?.files[0]?.text).not.toContain('maybe-out A');
+    expect(annotations?.files[0]?.text).toContain(
+      '.routine in A maybe-out A clobbers A,BC,DE,HL,IX,IY,F',
+    );
+    expect(annotations?.files[0]?.text).not.toContain('.routine in A out A');
   });
 
   it('does not treat OR A as a data-output use when value-derived flags are dead', async () => {
@@ -931,7 +1032,8 @@ describe('register-contracts integration', () => {
 
     const report = reportArtifact(res);
     expect(report?.text).toContain('Routine: HELPER');
-    expect(report?.text).toContain('relation: A <= -');
+    expect(report?.text).toContain('  writes: A');
+    expect(report?.text).not.toContain('relation: A <= -');
   });
 
   it('warns on direct-call conflicts in warn mode', async () => {
@@ -1139,6 +1241,7 @@ describe('register-contracts integration', () => {
     expect(report?.json).toMatchObject({
       format: 'azm-register-contracts-report',
       version: 1,
+      packageVersion: expect.any(String),
       entryFile: entry,
       mode: 'warn',
     });
@@ -2676,6 +2779,34 @@ describe('register-contracts integration', () => {
         name: 'LOOP_OR_RETURN',
         mayRead: expect.arrayContaining(['B']),
       }),
+    );
+  });
+
+  it('models and annotates explicitly nonreturning routines', async () => {
+    const entry = writeSourceFixture('azm-regcontracts-noreturn-', [
+      '.routine',
+      'START:',
+      '    call HALT',
+      '    ld d,a',
+      '    ret',
+      '.routine noreturn',
+      'HALT:',
+      '    xor a',
+      '    jp HALT',
+      '.end',
+    ]);
+
+    const res = await compileRegisterContracts(entry, {
+      registerContracts: 'strict',
+      emitRegisterAnnotations: true,
+      emitRegisterReport: true,
+      registerContractsReportFormat: 'json',
+    });
+
+    expectNoErrorDiagnostics(res);
+    expect(annotationsArtifact(res)?.files[0]?.text).toContain('.routine noreturn clobbers A,F');
+    expect(reportArtifact(res)?.json?.summaries).toEqual(
+      expect.arrayContaining([expect.objectContaining({ name: 'HALT', noreturn: true })]),
     );
   });
 

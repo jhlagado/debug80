@@ -1,5 +1,6 @@
 import type { Diagnostic } from '../model/diagnostic.js';
-import { autoFixableCandidateKeys, findExpectOutFixesForCandidates } from './fix.js';
+import { packageBuildCommit, packageVersion } from '../package-identity.js';
+import { autoFixableCandidateKeys } from './fix.js';
 import {
   buildOutputCandidateFixability,
   buildProfileSummaryLookup,
@@ -15,6 +16,7 @@ import type {
   AnalyzeRegisterContractsOptions,
   RegisterContractsDirectCall,
   RegisterContractsFinding,
+  LocatedSmartComment,
   RegisterContractsOutputCandidate,
   RegisterContractsReportModel,
   RegisterContractsRoutine,
@@ -28,9 +30,9 @@ function candidateMessageWithFixability(
 ): string {
   const carriers = candidate.carriers.join(',');
   const expectation = candidate.carriers.length === 1 ? candidate.carriers[0]! : `{${carriers}}`;
-  const base = `CALL ${candidate.routine} writes ${carriers} and caller reads it later`;
+  const base = `CALL ${candidate.routine} writes ${carriers} and caller reads it later, but ${candidate.routine} does not declare ${carriers} as output`;
   return autoFixable
-    ? `${base}; generated contracts promote this to \`out ${expectation}\` automatically.`
+    ? `${base}; add \`.expectout ${expectation}\` above the call to confirm the dependency and promote the callee output.`
     : `${base}; manual review required before adding \`.expectout ${expectation}\` because the later read is not a simple direct continuation.`;
 }
 
@@ -212,10 +214,8 @@ export function summariesForAnnotations(
   const summariesForAnnotations = new Map(summariesByName);
   const outputCandidatesByRoutine = outputCandidateUnitsByRoutine(outputCandidates);
   for (const [name, summary] of summariesForAnnotations) {
-    const candidates = outputCandidatesByRoutine.get(name);
-    if (candidates !== undefined && candidates.length > 0) {
-      summariesForAnnotations.set(name, { ...summary, outputCandidates: candidates });
-    }
+    const candidates = outputCandidatesByRoutine.get(name) ?? [];
+    summariesForAnnotations.set(name, { ...summary, outputCandidates: candidates });
   }
   return summariesForAnnotations;
 }
@@ -250,6 +250,8 @@ export function buildRegisterContractsReportModel(input: {
   knownRoutines: ReadonlySet<string>;
 }): RegisterContractsReportModel {
   return {
+    packageVersion,
+    ...(packageBuildCommit !== undefined ? { buildCommit: packageBuildCommit } : {}),
     entryFile: input.entryFile,
     mode: input.mode,
     ...(input.filePolicies !== undefined ? { filePolicies: input.filePolicies } : {}),
@@ -265,51 +267,26 @@ export function buildRegisterContractsReportModel(input: {
   };
 }
 
-export function autoAcceptedOutputCandidateMap(
-  routines: readonly RegisterContractsRoutine[],
-  outputCandidates: readonly RegisterContractsOutputCandidate[],
-  sourceTexts: ReadonlyMap<string, string>,
+export function expectedOutputCandidateMap(
+  directCalls: readonly RegisterContractsDirectCall[],
+  comments: readonly LocatedSmartComment[],
 ): ReadonlyMap<string, RegisterContractsUnit[]> {
   const out = new Map<string, RegisterContractsUnit[]>();
-  const sourceMaybeOut = sourceMaybeOutByRoutine(routines, sourceTexts);
-  for (const fix of findExpectOutFixesForCandidates([...routines], [...outputCandidates])) {
-    const key = fix.routineIdentity ?? fix.routine;
-    const declaredMaybeOut = sourceMaybeOut.get(key) ?? [];
-    const eligibleCarriers = fix.carriers.filter((carrier) => declaredMaybeOut.includes(carrier));
-    if (eligibleCarriers.length === 0) continue;
+  for (const call of directCalls) {
+    const hint = comments.find(
+      (comment) =>
+        comment.comment.kind === 'expectOut' &&
+        comment.file === call.file &&
+        (comment.targetLine ?? comment.line + 1) === call.line &&
+        (comment.targetColumn === undefined || comment.targetColumn === call.column),
+    );
+    if (hint?.comment.kind !== 'expectOut') continue;
+    const key = call.targetIdentity ?? call.target;
     const carriers = out.get(key) ?? [];
-    for (const carrier of eligibleCarriers) {
+    for (const carrier of hint.comment.carriers) {
       if (!carriers.includes(carrier)) carriers.push(carrier);
     }
     out.set(key, carriers);
   }
   return out;
-}
-
-function sourceMaybeOutByRoutine(
-  routines: readonly RegisterContractsRoutine[],
-  sourceTexts: ReadonlyMap<string, string>,
-): ReadonlyMap<string, RegisterContractsUnit[]> {
-  const out = new Map<string, RegisterContractsUnit[]>();
-  for (const routine of routines) {
-    const maybeOutUnits = sourceMaybeOutUnits(routine, sourceTexts);
-    if (maybeOutUnits.length === 0) continue;
-    out.set(routine.identity ?? routine.name, maybeOutUnits);
-    if (routine.span.sourceUnitRelation !== 'import') {
-      for (const label of routine.entryLabels) out.set(label, maybeOutUnits);
-    }
-    for (const label of routine.exportedEntryLabels ?? []) out.set(label, maybeOutUnits);
-  }
-  return out;
-}
-
-function sourceMaybeOutUnits(
-  routine: RegisterContractsRoutine,
-  sourceTexts: ReadonlyMap<string, string>,
-): RegisterContractsUnit[] {
-  if (routine.declaredContract !== undefined) {
-    return [...routine.declaredContract.maybeOut];
-  }
-  void sourceTexts;
-  return [];
 }

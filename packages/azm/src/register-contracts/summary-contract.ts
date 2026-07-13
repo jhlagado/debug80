@@ -70,14 +70,23 @@ export function applyRoutineContract(
   summary: RoutineSummary,
   contract: RoutineContract,
 ): RoutineSummary {
+  const inferredOutputs = unique([
+    ...(summary.mayOutput ?? []),
+    ...summary.valueRelations.flatMap((relation) => relation.out),
+  ]);
   const contractIn = withImpliedFlagUnits(contract.in);
   const contractOut = withImpliedFlagUnits(contract.out);
+  const contractMaybeOut = withImpliedFlagUnits(contract.maybeOut ?? []);
   const contractClobbers = withImpliedFlagUnits(contract.clobbers);
   const contractPreserves = withImpliedFlagUnits(contract.preserves);
   const outputSet = new Set(contractOut);
+  const clobberSet = new Set(contractClobbers);
   const preservedSet = new Set(contractPreserves);
 
-  const inferredWrites = withImpliedFlagUnits(summary.mayWrite);
+  const inferredWrites = withImpliedFlagUnits([
+    ...summary.mayWrite,
+    ...summary.valueRelations.flatMap((relation) => relation.out),
+  ]);
   const baseMayWrite = contract.complete
     ? inferredWrites.filter((unit) => FLAG_UNIT_LIST.includes(unit))
     : inferredWrites;
@@ -89,16 +98,42 @@ export function applyRoutineContract(
     (unit) => !outputSet.has(unit) && !mayWriteSet.has(unit),
   );
 
-  const valueRelations = [...summary.valueRelations];
+  const valueRelations: ValueRelation[] = [];
   const relation = contractOutRelation(contractIn, contractOut);
   if (relation) addContractRelation(valueRelations, relation);
 
+  const mayOutput = unique([...inferredOutputs, ...contractMaybeOut]).filter(
+    (unit) => !outputSet.has(unit) && !clobberSet.has(unit) && !preservedSet.has(unit),
+  );
+
   return {
     ...summary,
+    ...(contract.noreturn === true ? { noreturn: true } : {}),
     mayRead: unique(contractIn),
     mayWrite,
+    ...(mayOutput.length > 0 ? { mayOutput } : { mayOutput: [] }),
+    outputCandidates: contractMaybeOut,
     preserved,
     valueRelations,
+  };
+}
+
+/**
+ * Convert body-level output inference into review metadata. A body write is not
+ * a semantic return value until a source contract, --accept-out, or caller
+ * .expectout explicitly confirms it.
+ */
+export function demoteInferredRoutineOutputs(summary: RoutineSummary): RoutineSummary {
+  const inferredOutputs = unique([
+    ...(summary.mayOutput ?? []),
+    ...summary.valueRelations.flatMap((relation) => relation.out),
+  ]);
+  return {
+    ...summary,
+    mayWrite: unique([...summary.mayWrite, ...inferredOutputs]),
+    mayOutput: inferredOutputs,
+    outputCandidates: unique([...summary.mayWrite, ...inferredOutputs]),
+    valueRelations: [],
   };
 }
 

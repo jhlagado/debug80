@@ -5,9 +5,9 @@ import { expandCarrierList } from '../register-contracts/carriers.js';
 import { parseLineError } from './parse-diagnostics.js';
 import type { ParseLineResult } from './parse-line.js';
 
-type ClauseKind = 'in' | 'out' | 'maybe-out' | 'clobbers' | 'preserves';
+type ClauseKind = 'noreturn' | 'in' | 'out' | 'maybe-out' | 'clobbers' | 'preserves';
 
-const CLAUSE_RE = /(?:^|\s)(maybe-out|clobbers|preserves|in|out)(?=\s|$)/giu;
+const CLAUSE_RE = /(?:^|\s)(noreturn|maybe-out|clobbers|preserves|in|out)(?=\s|$)/giu;
 
 function emptyContract(): RoutineContractDeclaration {
   return { in: [], out: [], maybeOut: [], clobbers: [], preserves: [] };
@@ -15,7 +15,7 @@ function emptyContract(): RoutineContractDeclaration {
 
 function targetFor(
   contract: RoutineContractDeclaration,
-  kind: ClauseKind,
+  kind: Exclude<ClauseKind, 'noreturn'>,
 ): RoutineContractDeclaration[keyof RoutineContractDeclaration] {
   return kind === 'maybe-out' ? contract.maybeOut : contract[kind];
 }
@@ -80,6 +80,16 @@ export function parseRoutineDirective(
     const kind = match[1]!.toLowerCase() as ClauseKind;
     const payloadStart = match.index + match[0].length;
     const payloadEnd = matches[index + 1]?.index ?? text.length;
+    if (kind === 'noreturn') {
+      if (text.slice(payloadStart, payloadEnd).trim().length > 0) {
+        return {
+          items: [],
+          diagnostics: [parseLineError(line, 'invalid .routine noreturn clause')],
+        };
+      }
+      (contract as { noreturn?: boolean }).noreturn = true;
+      continue;
+    }
     const carriers = parseContractCarriers(text.slice(payloadStart, payloadEnd));
     if (carriers === undefined || carriers.length === 0) {
       return {

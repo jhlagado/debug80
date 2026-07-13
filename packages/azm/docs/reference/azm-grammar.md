@@ -521,7 +521,7 @@ Register contracts are one-line declarations attached to the next non-local
 label in the same physical file.
 
 ```text
-routine-line       ::= ".routine" (contract-clause)*
+routine-line       ::= ".routine" ["noreturn"] (contract-clause)*
 contract-clause    ::= contract-key register-list
 contract-key       ::= "in" | "out" | "maybe-out" | "clobbers" | "preserves"
 contracts-line     ::= ".contracts" ("strict" | "audit" | "off")

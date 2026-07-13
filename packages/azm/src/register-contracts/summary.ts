@@ -24,6 +24,7 @@ export {
   bodyEffectWriteUnits,
   declarationContractMismatchUnits,
   declaredAllowedWriteUnits,
+  demoteInferredRoutineOutputs,
   hasExplicitDeclaredContract,
 } from './summary-contract.js';
 import { buildRoutineSummary, type RoutineInferenceStackState } from './summary-result.js';
@@ -646,6 +647,11 @@ function mergeAlternativeSummaries(left: RoutineSummary, right: RoutineSummary):
     ...(left.mayOutput !== undefined || right.mayOutput !== undefined
       ? { mayOutput: intersection(left.mayOutput ?? [], right.mayOutput ?? []) }
       : {}),
+    ...(left.outputCandidates !== undefined || right.outputCandidates !== undefined
+      ? {
+          outputCandidates: intersection(left.outputCandidates ?? [], right.outputCandidates ?? []),
+        }
+      : {}),
     preserved: intersection(left.preserved, right.preserved),
     valueRelations,
     stackBalanced: left.stackBalanced && right.stackBalanced,
@@ -825,6 +831,16 @@ function inferRoutineExitStates(
     }
 
     inferInstructionSummaryStep(current.state, context);
+    if (
+      context.knownBoundary?.noreturn === true &&
+      !(
+        (context.effect.control.kind === 'call' || context.effect.control.kind === 'jump') &&
+        context.effect.control.conditional
+      )
+    ) {
+      cycles.push(current.state);
+      continue;
+    }
     if (isUnconditionalExternalTail(routine, context)) {
       exits.push(current.state);
       continue;
@@ -862,7 +878,7 @@ export function inferRoutineSummary(
   const [first, ...rest] = summaries;
   const merged = rest.reduce(mergeAlternativeSummaries, first!);
   return exits.length === 0
-    ? merged
+    ? { ...merged, noreturn: true }
     : {
         ...merged,
         mayRead: [

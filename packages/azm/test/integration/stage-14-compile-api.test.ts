@@ -192,7 +192,7 @@ describe('stage 14 register-contracts compile API slice', () => {
       expect(text).toContain('.expectout A');
       expect(text).toContain('    call MASK');
       expect(text).toContain('; Helper prose.');
-      expect(text).toContain('.routine in HL maybe-out A clobbers A');
+      expect(text).toContain('.routine in HL out A');
     });
   });
 

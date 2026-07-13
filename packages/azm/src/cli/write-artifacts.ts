@@ -121,6 +121,7 @@ export function buildCompileOptions(parsed: CliOptions, base: string): CompileNe
       ? { registerContractsBaseline: parsed.registerContractsBaseline }
       : {}),
     registerContractsRatchet: parsed.registerContractsRatchet,
+    requireRegisterExpectOut: parsed.requireRegisterExpectOut,
     emitRegisterInterface: parsed.emitRegisterInterface,
     emitRegisterInference: parsed.emitRegisterInference,
     registerContractsInferenceFormat: parsed.registerContractsInferenceFormat,

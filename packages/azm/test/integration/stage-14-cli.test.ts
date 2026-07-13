@@ -263,6 +263,35 @@ describe('stage 14 register-contracts CLI facade', () => {
     });
   });
 
+  it('enforces caller output acknowledgements with --require-expectout', async () => {
+    await withTempDir('azm-next-regcontracts-require-expectout-', async (dir) => {
+      const entry = join(dir, 'main.asm');
+      await writeFile(
+        entry,
+        [
+          '.routine',
+          'START:',
+          '    call VALUE',
+          '    ld d,a',
+          '    ret',
+          '.routine out A',
+          'VALUE:',
+          '    ld a,1',
+          '    ret',
+          '.end',
+        ].join('\n'),
+        'utf8',
+      );
+
+      const res = await runNextCli(
+        [...artifactlessArgs, '--rc', 'strict', '--require-expectout', entry],
+        dir,
+      );
+      expect(res.code).toBe(1);
+      expect(res.stderr).toContain('dependency is not acknowledged');
+    });
+  });
+
   it('writes register-contracts report when strict mode fails and report is requested', async () => {
     await withTempDir('azm-next-regcontracts-strict-report-fail-', async (dir) => {
       const entry = join(dir, 'main.asm');

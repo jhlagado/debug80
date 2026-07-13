@@ -28,6 +28,7 @@ export type CliOptions = {
   registerContractsReportFormat: RegisterContractsReportFormat;
   registerContractsBaseline: string | undefined;
   registerContractsRatchet: boolean;
+  requireRegisterExpectOut: boolean;
   emitRegisterInterface: boolean;
   emitRegisterInference: boolean;
   registerContractsInferenceFormat: RegisterContractsInferenceFormat;
@@ -112,6 +113,12 @@ const BOOLEAN_FLAG_ACTIONS: readonly BooleanFlagAction[] = [
     },
   },
   {
+    flags: ['--require-expectout'],
+    apply: (state) => {
+      state.requireRegisterExpectOut = true;
+    },
+  },
+  {
     flags: ['--fix'],
     apply: (state) => {
       state.fixRegisterContracts = true;
@@ -147,6 +154,7 @@ function createDefaultCliState(): CliState {
     registerContractsReportFormat: 'text',
     registerContractsBaseline: undefined,
     registerContractsRatchet: false,
+    requireRegisterExpectOut: false,
     emitRegisterInterface: false,
     emitRegisterInference: false,
     registerContractsInferenceFormat: 'json',
@@ -493,6 +501,7 @@ function finalizeCliOptions(state: CliState): CliOptions {
       state.registerContractsBaseline !== undefined ? 'json' : state.registerContractsReportFormat,
     registerContractsBaseline: state.registerContractsBaseline,
     registerContractsRatchet: state.registerContractsRatchet,
+    requireRegisterExpectOut: state.requireRegisterExpectOut,
     emitRegisterInterface: state.emitRegisterInterface,
     emitRegisterInference: state.emitRegisterInference,
     registerContractsInferenceFormat: state.registerContractsInferenceFormat,
@@ -537,6 +546,7 @@ function emitsRegisterContractsArtifact(state: CliState): boolean {
     state.emitRegisterAnnotations,
     state.fixRegisterContracts,
     state.acceptRegisterOutputCandidates.length > 0,
+    state.requireRegisterExpectOut,
     state.registerContractsInterfaces.length > 0,
   ].some(Boolean);
 }

@@ -10,6 +10,7 @@ import type {
   LocatedSmartComment,
   InstructionEffect,
   RegisterContractsConflict,
+  RegisterContractsFinding,
   RegisterContractsInstruction,
   RegisterContractsOutputCandidate,
   RegisterContractsRoutine,
@@ -297,7 +298,11 @@ function liveSetsForRoutine(
     boundary ? summaryForBoundary(boundary, summaries)?.summary : undefined,
   );
   const successorIndexes = effects.map((effect, index) =>
-    instructionSuccessors(routine, index, effect, labels, { boundaryFallthrough: true }),
+    boundaries[index] !== undefined &&
+    boundaries[index]!.conditional === false &&
+    resolvedSummaries[index]?.noreturn === true
+      ? []
+      : instructionSuccessors(routine, index, effect, labels, { boundaryFallthrough: true }),
   );
   const liveIn = routine.instructions.map(() => new Set<RegisterContractsUnit>());
   const liveOut = routine.instructions.map(() => new Set<RegisterContractsUnit>());
@@ -344,7 +349,16 @@ function resolvedBoundariesForRoutine(
     if (!boundary) continue;
     const resolved = summaryForBoundary(boundary, summaries);
     if (!resolved) continue;
-    out.push({ item, index, boundary, target: resolved.target, summary: resolved.summary });
+    out.push({
+      item,
+      index,
+      boundary: {
+        ...boundary,
+        returnsToContinuation: boundary.returnsToContinuation && resolved.summary.noreturn !== true,
+      },
+      target: resolved.target,
+      summary: resolved.summary,
+    });
   }
   return out;
 }
@@ -411,7 +425,7 @@ function isFlagUnit(unit: RegisterContractsUnit): boolean {
 function candidateMessage(boundary: BoundaryTarget, units: RegisterContractsUnit[]): string {
   const carriers = units.join(',');
   const expectation = units.length === 1 ? units[0] : `{${carriers}}`;
-  return `${boundary.subject} writes ${carriers} and caller reads it later; review the call site and add \`.expectout ${expectation}\` above the call if this is intentional.`;
+  return `${boundary.subject} writes ${carriers} and caller reads it later, but the callee does not declare ${carriers} as output; review the call site and add \`.expectout ${expectation}\` above the call if this is intentional.`;
 }
 
 export function findCallerOutputCandidateObservations(
@@ -428,6 +442,49 @@ export function findCallerOutputCandidateObservations(
     )) {
       const candidate = callerOutputCandidate(item, boundary, target, summary, liveOut[index]!);
       if (candidate) out.push(candidate);
+    }
+  }
+
+  return out;
+}
+
+export function findUnacknowledgedOutputDependencies(
+  routines: RegisterContractsRoutine[],
+  summaries: Map<string, RoutineSummary>,
+  hints: LocatedSmartComment[],
+): RegisterContractsFinding[] {
+  const out: RegisterContractsFinding[] = [];
+
+  for (const routine of routines) {
+    const { liveOut } = liveSetsForRoutine(routine, summaries, hints);
+    for (const { item, index, boundary, target, summary } of resolvedBoundariesForRoutine(
+      routine,
+      summaries,
+    )) {
+      if (!boundary.returnsToContinuation) continue;
+      const expected = new Set(hintUnitsForLine(hints, item.file, item.line, item.column));
+      const carriers = outputUnits(summary).filter(
+        (unit) => liveOut[index]!.has(unit) && !expected.has(unit),
+      );
+      if (carriers.length === 0) continue;
+      const carrierText = carriers.join(',');
+      const expectation = carriers.length === 1 ? carriers[0]! : `{${carrierText}}`;
+      out.push({
+        kind: 'unacknowledged_output',
+        file: item.file,
+        line: item.line,
+        column: item.column,
+        ...(item.sourceUnit !== undefined ? { sourceUnit: item.sourceUnit } : {}),
+        ...(item.sourceRelation !== undefined ? { sourceRelation: item.sourceRelation } : {}),
+        ...(item.sourceUnitRelation !== undefined
+          ? { sourceUnitRelation: item.sourceUnitRelation }
+          : {}),
+        routine: summary.name,
+        ...(summary.identity !== undefined ? { routineIdentity: summary.identity } : {}),
+        callTarget: boundary.displayTarget ?? target,
+        carriers,
+        message: `${boundary.subject} declares ${carrierText} as output and the caller consumes it, but the dependency is not acknowledged; add \`.expectout ${expectation}\` above the call.`,
+      });
     }
   }
 
@@ -466,10 +523,7 @@ function callerOutputCandidateCarriers(
   liveAfter: ReadonlySet<RegisterContractsUnit>,
 ): RegisterContractsUnit[] {
   const intentionalOutputs = new Set(outputUnits(summary));
-  return unique([
-    ...unintentionalLiveWrites(summary, intentionalOutputs, liveAfter),
-    ...intentionalLiveOutputs(intentionalOutputs, liveAfter),
-  ]);
+  return unique(unintentionalLiveWrites(summary, intentionalOutputs, liveAfter));
 }
 
 function unintentionalLiveWrites(
@@ -477,12 +531,8 @@ function unintentionalLiveWrites(
   intentionalOutputs: ReadonlySet<RegisterContractsUnit>,
   liveAfter: ReadonlySet<RegisterContractsUnit>,
 ): RegisterContractsUnit[] {
-  return summary.mayWrite.filter((unit) => liveAfter.has(unit) && !intentionalOutputs.has(unit));
-}
-
-function intentionalLiveOutputs(
-  intentionalOutputs: ReadonlySet<RegisterContractsUnit>,
-  liveAfter: ReadonlySet<RegisterContractsUnit>,
-): RegisterContractsUnit[] {
-  return [...intentionalOutputs].filter((unit) => liveAfter.has(unit));
+  const inferredCandidates = new Set(summary.outputCandidates ?? []);
+  return summary.mayWrite.filter(
+    (unit) => inferredCandidates.has(unit) && liveAfter.has(unit) && !intentionalOutputs.has(unit),
+  );
 }

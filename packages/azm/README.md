@@ -441,11 +441,18 @@ Calls use the label name:
         call    CheckTile
 ```
 
-The one-line `.routine` directive may declare `in`, `out`, `maybe-out`,
-`clobbers` and `preserves` clauses. `clobbers B` means the routine may change
-`B`. `preserves B` means the value that enters in `B` is still present when the
-routine returns. Legacy semantic `;!` comments are rejected with migration
-diagnostics in AZM 0.3.
+The one-line `.routine` directive may declare `noreturn`, `in`, `out`,
+`maybe-out`, `clobbers` and `preserves` clauses. `clobbers B` means the routine
+may change `B`. `preserves B` means the value that enters in `B` is still
+present when the routine returns. `noreturn` marks an entry such as the main
+loop or a fatal stop that never returns to its caller. Legacy semantic `;!`
+comments are rejected with migration diagnostics in AZM 0.3.
+
+Contract annotation treats body writes as clobbers. A machine-inferred result
+is emitted as `maybe-out` for review, and becomes `out` only when it was already
+declared, accepted with `--accept-out`, or confirmed by a caller `.expectout`.
+Use `--require-expectout` to make unacknowledged caller dependencies fail the
+build without changing the normal strict-mode migration policy.
 
 Run the analysis with:
 
@@ -574,6 +581,7 @@ The main switches are:
 | `--contracts, --annotate-register-contracts`  | Update `.routine` contracts in source.                                 |
 | `--fix`                                       | Apply conservative register contract source fixes.                     |
 | `--accept-out <routine:carrier>`              | Promote an inferred output candidate while annotating.                 |
+| `--require-expectout`                         | Fail on unacknowledged caller output dependencies.                     |
 | `--interface <file>`                          | Load external register contracts from `.asmi`.                         |
 | `--reg-profile, --register-profile <profile>` | Register contracts profile. Currently `mon3`.                          |
 | `--aliases <file>`                            | Load project directive alias JSON.                                     |

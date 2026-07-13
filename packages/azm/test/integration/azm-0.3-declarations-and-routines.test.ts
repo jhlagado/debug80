@@ -144,9 +144,9 @@ describe('AZM 0.3 declarations and routines', () => {
       expect(errorDiagnostics(result)).toEqual([]);
       const summaries = reportArtifact(result)?.json?.summaries;
       expect(summaries?.map((summary) => summary.name)).toEqual(['Worker']);
-      expect(summaries?.[0]?.valueRelations).toEqual(
-        expect.arrayContaining([expect.objectContaining({ out: ['A'] })]),
-      );
+      expect(summaries?.[0]?.valueRelations).toEqual([]);
+      expect(summaries?.[0]?.mayWrite).toEqual(expect.arrayContaining(['A']));
+      expect(summaries?.[0]?.mayOutput).toEqual(expect.arrayContaining(['A']));
       expect(summaries?.[0]?.mayWrite).not.toEqual(expect.arrayContaining(['H', 'L']));
     });
   });
@@ -656,7 +656,7 @@ Owner:
       );
       expect(errorDiagnostics(result)).toEqual([]);
       const candidate = reportArtifact(result)?.json?.findings.find(
-        (finding) => finding.kind === 'output_candidate',
+        (finding) => finding.kind === 'unacknowledged_output',
       );
       expect(candidate?.routineIdentity).toContain('routine:legacy.asm:');
       expect(candidate?.routineIdentity).not.toContain(dir);
@@ -697,7 +697,7 @@ Owner:
           '.expectout A',
           '    callKnown',
           '    ld d,a',
-          '.rcignore output_candidate "reviewed op output"',
+          '.rcignore unacknowledged_output "reviewed op output"',
           '    callKnownAgain',
           '    ld e,a',
           '    ret',
@@ -739,7 +739,7 @@ Owner:
       expect(reportArtifact(result)?.json?.suppressedFindings).toEqual(
         expect.arrayContaining([
           expect.objectContaining({
-            finding: expect.objectContaining({ kind: 'output_candidate' }),
+            finding: expect.objectContaining({ kind: 'unacknowledged_output' }),
           }),
         ]),
       );
@@ -882,17 +882,13 @@ Owner:
       );
       expect(errorDiagnostics(result)).toEqual([]);
       const summaries = reportArtifact(result)?.json?.summaries ?? [];
-      const wrapperAOutputs =
-        summaries
-          .find((summary) => summary.name === 'WrapperA')
-          ?.valueRelations.flatMap((relation) => relation.out) ?? [];
-      const wrapperBOutputs =
-        summaries
-          .find((summary) => summary.name === 'WrapperB')
-          ?.valueRelations.flatMap((relation) => relation.out) ?? [];
-      expect(wrapperAOutputs).toEqual(expect.arrayContaining(['D', 'E']));
-      expect(wrapperAOutputs).not.toEqual(expect.arrayContaining(['H', 'L']));
-      expect(wrapperBOutputs).toEqual(expect.arrayContaining(['H', 'L']));
+      const wrapperAWrites =
+        summaries.find((summary) => summary.name === 'WrapperA')?.mayWrite ?? [];
+      const wrapperBWrites =
+        summaries.find((summary) => summary.name === 'WrapperB')?.mayWrite ?? [];
+      expect(wrapperAWrites).toEqual(expect.arrayContaining(['D', 'E']));
+      expect(wrapperAWrites).not.toEqual(expect.arrayContaining(['H', 'L']));
+      expect(wrapperBWrites).toEqual(expect.arrayContaining(['H', 'L']));
       const helperSummaries = summaries.filter((summary) => summary.name === 'Helper');
       expect(helperSummaries).toHaveLength(2);
       expect(new Set(helperSummaries.map((summary) => summary.identity)).size).toBe(2);
@@ -929,7 +925,7 @@ Owner:
       )?.text;
       expect(annotated).toBeDefined();
       if (annotated === undefined) return;
-      expect(annotated).toContain(['.routine out HL', 'Helper:'].join('\n'));
+      expect(annotated).toContain(['.routine maybe-out HL clobbers HL', 'Helper:'].join('\n'));
       expect(annotated).not.toContain(';!');
     });
   });
