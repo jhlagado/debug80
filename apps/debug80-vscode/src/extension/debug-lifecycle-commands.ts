@@ -51,6 +51,7 @@ export function registerDebugLifecycleCommands(options: {
         );
         return false;
       }
+      platformViewProvider.setBuildStatus(undefined);
       return startCurrentProjectDebugging(
         folder,
         workspaceSelection,
@@ -67,6 +68,8 @@ export function registerDebugLifecycleCommands(options: {
         void vscode.window.showInformationMessage('Debug80: No configured Debug80 project found.');
         return false;
       }
+
+      platformViewProvider.setBuildStatus(undefined);
 
       if (activeSession?.type === 'z80') {
         await vscode.debug.stopDebugging(activeSession);

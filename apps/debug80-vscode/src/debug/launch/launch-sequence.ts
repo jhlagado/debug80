@@ -261,6 +261,7 @@ export async function buildLaunchSession(
     ...(simpleConfig !== undefined ? { simpleConfig } : {}),
     sendEvent: (event) => context.emitEvent(event as DebugProtocol.Event),
   });
+  context.emitDapEvent('debug80/assemblySucceeded', {});
 
   if (hasAppInput && !existsSync(hexPath)) {
     throw new MissingLaunchArtifactsError(hexPath);

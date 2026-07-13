@@ -9,6 +9,9 @@
   status line and Debug80 Output.
 - Separated assembler result state from CoolTerm/hardware status so polling,
   connection checks, and transfers cannot clear active build failures.
+- Fixed a debug-session event ordering race that could erase an assembly
+  failure after AZM had already reported it, and hide the CoolTerm readiness
+  line while a build error is active.
 
 ## 0.2.0 - 2026-07-12
 
