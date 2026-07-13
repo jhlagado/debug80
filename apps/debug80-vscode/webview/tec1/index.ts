@@ -110,6 +110,8 @@ function applyProjectStatus(payload: {
   coolTermHexPath?: ProjectStatusPayload['coolTermHexPath'];
   hardwareStatusText?: ProjectStatusPayload['hardwareStatusText'];
   hardwareStatusState?: ProjectStatusPayload['hardwareStatusState'];
+  buildStatusText?: ProjectStatusPayload['buildStatusText'];
+  buildStatusState?: ProjectStatusPayload['buildStatusState'];
   sourceMapStatusText?: ProjectStatusPayload['sourceMapStatusText'];
   sourceMapStatusState?: ProjectStatusPayload['sourceMapStatusState'];
 }): void {

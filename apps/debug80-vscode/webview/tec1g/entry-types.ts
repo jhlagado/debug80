@@ -54,6 +54,8 @@ export type IncomingMessage =
       coolTermHexPath?: string;
       hardwareStatusText?: string;
       hardwareStatusState?: ProjectStatusPayload['hardwareStatusState'];
+      buildStatusText?: ProjectStatusPayload['buildStatusText'];
+      buildStatusState?: ProjectStatusPayload['buildStatusState'];
       targetUiVisibility?: ProjectStatusPayload['targetUiVisibility'];
       roots: ProjectStatusPayload['roots'];
       targets: ProjectStatusPayload['targets'];

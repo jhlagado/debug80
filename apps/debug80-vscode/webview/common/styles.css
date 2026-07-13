@@ -123,6 +123,21 @@ body {
       display: inline-block;
       margin-right: 6px;
     }
+    .build-status-line {
+      margin: 6px 0 10px 0;
+      color: var(--vscode-errorForeground, #f14c4c);
+      font-size: 11px;
+      font-weight: 600;
+      line-height: 1.35;
+    }
+    .build-status-line[hidden] {
+      display: none;
+    }
+    .build-status-line[data-build-status='error']::before {
+      content: '⚠';
+      display: inline-block;
+      margin-right: 6px;
+    }
     .setup-card {
       margin: 0 0 10px 0;
       padding: 8px;

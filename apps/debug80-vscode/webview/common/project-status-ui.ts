@@ -26,6 +26,7 @@ export type ProjectStatusUiElements = {
   testCoolTermButton?: HTMLButtonElement | null;
   sendHexToBoardButton?: HTMLButtonElement | null;
   buildResultIndicator?: HTMLElement | null;
+  buildStatusLine?: HTMLElement | null;
   hardwareStatusLine?: HTMLElement | null;
   sourceMapStatusLine?: HTMLElement | null;
   homeTargetSelect: HTMLSelectElement | null;
@@ -43,6 +44,8 @@ type ApplyProjectStatusPayload = {
   coolTermHexPath?: ProjectStatusPayload['coolTermHexPath'];
   hardwareStatusText?: ProjectStatusPayload['hardwareStatusText'];
   hardwareStatusState?: ProjectStatusPayload['hardwareStatusState'];
+  buildStatusText?: ProjectStatusPayload['buildStatusText'];
+  buildStatusState?: ProjectStatusPayload['buildStatusState'];
   sourceMapStatusText?: ProjectStatusPayload['sourceMapStatusText'];
   sourceMapStatusState?: ProjectStatusPayload['sourceMapStatusState'];
 };
@@ -123,17 +126,28 @@ function updateBuildResultIndicator(
   if (!indicator) {
     return;
   }
-  const failed = initialized && state.hardwareStatusState === 'error';
+  const failed = initialized && state.buildStatusState === 'error';
   indicator.hidden = !failed;
   indicator.textContent = failed ? '!' : '';
   if (failed) {
-    const label = state.hardwareStatusText || 'Build failed';
+    const label = state.buildStatusText || 'Build failed';
     indicator.title = label;
     indicator.setAttribute('aria-label', label);
   } else {
     indicator.removeAttribute('title');
     indicator.removeAttribute('aria-label');
   }
+}
+
+function updateBuildStatusLine(
+  line: HTMLElement | null | undefined,
+  state: ProjectPanelState,
+  initialized: boolean
+): void {
+  if (line) {
+    line.dataset.buildStatus = state.buildStatusState;
+  }
+  updateStatusLine(line, state.buildStatusText, initialized);
 }
 
 function updateSourceMapStatusLine(
@@ -189,6 +203,7 @@ export function createProjectStatusUi(
     testCoolTermButton,
     sendHexToBoardButton,
     buildResultIndicator,
+    buildStatusLine,
     hardwareStatusLine,
     sourceMapStatusLine,
     homeTargetSelect,
@@ -250,6 +265,7 @@ export function createProjectStatusUi(
     updateSendHexButton(sendHexToBoardButton, currentState);
     updateInitializedButton(testCoolTermButton, initializedProject);
     updateBuildResultIndicator(buildResultIndicator, currentState, initializedProject);
+    updateBuildStatusLine(buildStatusLine, currentState, initializedProject);
     updateHardwareStatusLine(hardwareStatusLine, currentState, initializedProject);
     updateSourceMapStatusLine(sourceMapStatusLine, currentState, initializedProject);
     updateSetupCard(setupCard, setupCardText, setupPrimaryAction, currentState);

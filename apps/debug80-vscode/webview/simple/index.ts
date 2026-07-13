@@ -75,6 +75,8 @@ function applyProjectStatus(payload: {
   azmSymbolCase?: ProjectStatusPayload['azmSymbolCase'];
   hardwareStatusText?: ProjectStatusPayload['hardwareStatusText'];
   hardwareStatusState?: ProjectStatusPayload['hardwareStatusState'];
+  buildStatusText?: ProjectStatusPayload['buildStatusText'];
+  buildStatusState?: ProjectStatusPayload['buildStatusState'];
   sourceMapStatusText?: ProjectStatusPayload['sourceMapStatusText'];
   sourceMapStatusState?: ProjectStatusPayload['sourceMapStatusState'];
 }): void {

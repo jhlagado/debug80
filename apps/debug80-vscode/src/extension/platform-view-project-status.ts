@@ -32,6 +32,8 @@ export interface PlatformViewProjectStatusContext {
   coolTermAvailable?: boolean;
   hardwareStatusText?: string;
   hardwareStatusState?: 'neutral' | 'error';
+  buildStatusText?: string;
+  buildStatusState?: 'neutral' | 'error';
 }
 
 export function resolvePlatformViewWorkspace(
@@ -118,6 +120,12 @@ export function buildPlatformViewProjectStatus(
     hardwareStatusText: ctx.hardwareStatusText ?? buildDefaultHardwareStatus(hexArtifact),
     hardwareStatusState:
       ctx.hardwareStatusText !== undefined ? (ctx.hardwareStatusState ?? 'neutral') : 'neutral',
+    ...(ctx.buildStatusText !== undefined
+      ? {
+          buildStatusText: ctx.buildStatusText,
+          buildStatusState: ctx.buildStatusState ?? 'neutral',
+        }
+      : {}),
     sourceMapStatusText: sourceMapStatus.text,
     sourceMapStatusState: sourceMapStatus.state,
     ...(hexArtifact.kind === 'found' || hexArtifact.kind === 'missing'

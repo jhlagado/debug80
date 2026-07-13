@@ -80,6 +80,8 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   private checkingCoolTerm = false;
   private hardwareStatusText: string | undefined;
   private hardwareStatusState: 'neutral' | 'error' = 'neutral';
+  private buildStatusText: string | undefined;
+  private buildStatusState: 'neutral' | 'error' = 'neutral';
   private coolTermPollTimer: ReturnType<typeof setInterval> | undefined;
   private panelLayoutResetPending = false;
 
@@ -143,6 +145,12 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
 
   setHardwareStatus(message: string | undefined, state: 'neutral' | 'error' = 'neutral'): void {
     this.handleSetHardwareStatus(message, state);
+  }
+
+  setBuildStatus(message: string | undefined, state: 'neutral' | 'error' = 'neutral'): void {
+    this.buildStatusText = message;
+    this.buildStatusState = message === undefined ? 'neutral' : state;
+    this.postProjectStatus();
   }
 
   refreshProjectStatus(): void {
@@ -478,6 +486,12 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
               hardwareStatusState: this.hardwareStatusState,
             }
           : {}),
+        ...(this.buildStatusText !== undefined
+          ? {
+              buildStatusText: this.buildStatusText,
+              buildStatusState: this.buildStatusState,
+            }
+          : {}),
       }),
     });
   }
@@ -491,10 +505,8 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       const available = await isCoolTermRemoteAvailable();
       if (available !== this.coolTermAvailable) {
         this.coolTermAvailable = available;
-        if (this.hardwareStatusState !== 'error') {
-          this.hardwareStatusText = undefined;
-          this.hardwareStatusState = 'neutral';
-        }
+        this.hardwareStatusText = undefined;
+        this.hardwareStatusState = 'neutral';
         this.postProjectStatus();
       }
     } finally {

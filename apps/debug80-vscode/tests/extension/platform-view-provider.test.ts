@@ -663,7 +663,7 @@ describe('PlatformViewProvider', () => {
     await flushPromises();
 
     isCoolTermRemoteAvailable.mockResolvedValue(true);
-    provider.setHardwareStatus('Build failed: unsupported source line: .orgg 0x4000', 'error');
+    provider.setBuildStatus('Build failed: unsupported source line: .orgg 0x4000', 'error');
     (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
     provider.refreshProjectStatus();
     await flushPromises();
@@ -671,10 +671,11 @@ describe('PlatformViewProvider', () => {
     const statusMessages = findProjectStatusMessages(getPostMessageCalls(webviewView));
     const latestStatus = statusMessages.at(-1);
     expect(latestStatus?.coolTermAvailable).toBe(true);
-    expect(latestStatus?.hardwareStatusText).toBe(
+    expect(latestStatus?.buildStatusText).toBe(
       'Build failed: unsupported source line: .orgg 0x4000'
     );
-    expect(latestStatus?.hardwareStatusState).toBe('error');
+    expect(latestStatus?.buildStatusState).toBe('error');
+    expect(latestStatus?.hardwareStatusState).toBe('neutral');
   });
 
   it('setSelectedWorkspace triggers projectStatus update when platform is active', () => {
