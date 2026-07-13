@@ -491,8 +491,10 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       const available = await isCoolTermRemoteAvailable();
       if (available !== this.coolTermAvailable) {
         this.coolTermAvailable = available;
-        this.hardwareStatusText = undefined;
-        this.hardwareStatusState = 'neutral';
+        if (this.hardwareStatusState !== 'error') {
+          this.hardwareStatusText = undefined;
+          this.hardwareStatusState = 'neutral';
+        }
         this.postProjectStatus();
       }
     } finally {

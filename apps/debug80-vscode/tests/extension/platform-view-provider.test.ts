@@ -12,6 +12,7 @@ const {
   listProjectTargetChoices,
   writeProjectConfig,
   updateProjectAzmSymbolCase,
+  isCoolTermRemoteAvailable,
 } = vi.hoisted(() => {
   const executeCommand = vi.fn(() => Promise.resolve(true));
   return {
@@ -30,6 +31,7 @@ const {
     ]),
     writeProjectConfig: vi.fn(() => true),
     updateProjectAzmSymbolCase: vi.fn(() => true),
+    isCoolTermRemoteAvailable: vi.fn(() => Promise.resolve(false)),
   };
 });
 
@@ -81,6 +83,10 @@ vi.mock('../../src/extension/project-target-selection', () => ({
   resolveTargetNameForConfig: vi.fn(() => 'app'),
 }));
 
+vi.mock('../../src/extension/coolterm/coolterm-send', () => ({
+  isCoolTermRemoteAvailable,
+}));
+
 import * as path from 'path';
 
 import type * as vscode from 'vscode';
@@ -121,6 +127,7 @@ function createWebviewView(): vscode.WebviewView {
 describe('PlatformViewProvider', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    isCoolTermRemoteAvailable.mockResolvedValue(false);
     workspaceFolders = undefined;
     registerPlatformUi(createTec1PlatformUiEntry());
     registerPlatformUi(createTec1gPlatformUiEntry());
@@ -630,6 +637,44 @@ describe('PlatformViewProvider', () => {
     expect(statusMessages.length).toBe(1);
     expect(statusMessages[0]?.rootName).toBe('myproject');
     expect(statusMessages[0]?.hasProject).toBe(true);
+  });
+
+  it('preserves an assembly failure when CoolTerm availability changes', async () => {
+    workspaceFolders = [{ name: 'myproject', uri: { fsPath: '/workspace/myproject' } }];
+    const provider = new PlatformViewProvider(extensionRoot, {
+      get: vi.fn(),
+      update: vi.fn(),
+    } as never);
+    const webviewView = createWebviewView();
+
+    await provider.resolveWebviewView(
+      webviewView,
+      {} as vscode.WebviewViewResolveContext,
+      {
+        isCancellationRequested: false,
+        onCancellationRequested: vi.fn(),
+      } as vscode.CancellationToken
+    );
+    provider.setSelectedWorkspace({
+      name: 'myproject',
+      uri: { fsPath: '/workspace/myproject' },
+    } as never);
+    provider.setPlatform('tec1g', undefined, { reveal: false, tab: 'ui' });
+    await flushPromises();
+
+    isCoolTermRemoteAvailable.mockResolvedValue(true);
+    provider.setHardwareStatus('Build failed: unsupported source line: .orgg 0x4000', 'error');
+    (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
+    provider.refreshProjectStatus();
+    await flushPromises();
+
+    const statusMessages = findProjectStatusMessages(getPostMessageCalls(webviewView));
+    const latestStatus = statusMessages.at(-1);
+    expect(latestStatus?.coolTermAvailable).toBe(true);
+    expect(latestStatus?.hardwareStatusText).toBe(
+      'Build failed: unsupported source line: .orgg 0x4000'
+    );
+    expect(latestStatus?.hardwareStatusState).toBe('error');
   });
 
   it('setSelectedWorkspace triggers projectStatus update when platform is active', () => {
