@@ -79,7 +79,7 @@ The display also supports `applySegmentIntensities(values)`, where each digit re
 
 `createProjectStatusUi(vscode, elements, platform)` wires up the project header for a platform panel: it handles `projectStatus` messages, populates the Target dropdown, sets the Platform selector value, shows or hides controls via `applyInitializedProjectControls()`, and wires the Initialize button, target change handler, and stop-on-entry checkbox. This function consolidates the setup-card/target-dropdown/project-root wiring that was previously duplicated across `simple/index.ts`, `tec1/index.ts`, and `tec1g/tec1g-project-status-ui.ts`. All three platform panels now call `createProjectStatusUi()` from this shared module.
 
-The same helper also renders source-map and hardware-send status lines when the provider includes `sourceMapStatusText` or `hardwareStatusText` in `projectStatus`. The hardware send button posts `sendHexViaCoolTerm`; it is enabled only when CoolTerm is reachable and the selected target has an inferred HEX artifact.
+The same helper also renders three independent status surfaces from `projectStatus`: a source-map status line, a hardware-send status line, and a build-failure surface. When `buildStatusState === 'error'`, the shared tab row shows a compact `!` badge beside the Restart button and the panel reveals a dedicated build-status line above the platform UI. That warning is separate from `hardwareStatusText`, so CoolTerm readiness or transfer results stay visible even after an assembly failure. The hardware send button posts `sendHexViaCoolTerm`; it is enabled only when CoolTerm is reachable and the selected target has an inferred HEX artifact.
 
 `webview/tec1g/tec1g-project-status-ui.ts` re-exports from `webview/common/project-status-ui.ts` for backward compatibility rather than containing the implementation itself.
 
@@ -210,9 +210,11 @@ All three `index.html` files follow the same structure:
     <button class="tab" data-tab="memory">CPU</button>
   </div>
   <div class="tabs-status-slot">
+    <span class="build-result-indicator" id="buildResultIndicator" hidden></span>
     <button class="session-status" id="restartDebug">Restart</button>
   </div>
 </div>
+<div class="build-status-line" id="buildStatusLine" hidden></div>
 <div class="panel panel-ui" id="panel-ui"> ... platform UI content ... </div>
 <div class="panel panel-memory" id="panel-memory"> ... registers + memory ... </div>
 ```
@@ -249,6 +251,7 @@ When a `projectStatus` message arrives:
 4. `applyInitializedProjectControls()` shows or hides each control row.
 5. The stop-on-entry checkbox value is set from `message.stopOnEntry`.
 6. The symbol-case checkbox value is set from `message.azmSymbolCase`.
+7. The build-status badge and line are updated from `message.buildStatusText` / `message.buildStatusState`, while the hardware-send line continues to follow `message.hardwareStatusText` / `message.hardwareStatusState`.
 
 ### `projectIsInitialized` guard
 

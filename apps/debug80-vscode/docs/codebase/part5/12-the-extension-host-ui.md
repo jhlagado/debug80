@@ -177,7 +177,7 @@ This is the method that actually populates the panel. It runs on every platform 
 
 ```
 1. Set webview.html to platform HTML (destroys old webview)
-2. Post projectStatus (workspace roots, targets, selected target, active platform, AZM options, source-map status, CoolTerm status)
+2. Post projectStatus (workspace roots, targets, selected target, active platform, AZM options, source-map status, CoolTerm status, build status)
 3. Post sessionStatus (running/paused/not running)
 4. Post full update snapshot (hardware state for TEC-1/TEC-1G; empty for Simple)
 5. Post serialInit (full buffered serial/terminal text, if any)
@@ -228,7 +228,7 @@ This is not the same as emulated serial input. It sends the selected target's bu
 1. `resolveCoolTermHexArtifact()` reads the current `debug80.json`, selected target, `outputDir`, `artifactBase` and any explicit `hex` path to locate the HEX file.
 2. `CoolTermRemoteClient` opens a TCP socket to `127.0.0.1:51413`.
 3. `sendHexViaCoolTerm()` pings CoolTerm, opens the serial port, and sends the HEX file with CoolTerm's `SEND_TEXTFILE` command.
-4. Status is reported through VS Code notifications and the Debug80 project/status area when CoolTerm has accepted and sent the file.
+4. Status is reported through VS Code notifications and the Debug80 hardware-status line when CoolTerm has accepted and sent the file.
 
 Debug80 does not wait for `PASSED` or `FAILED` text on the serial line. MON3's Intel HEX loader reports completion on the TEC-1G seven-segment display: `PASS` means the load was accepted, and `ERROR` means checksum or write verification failed. The serial startup message `TEC-1G Connected` belongs to MON3 boot, not to the HEX load result.
 
@@ -254,7 +254,7 @@ All messages are posted via `postMessage()`. The webview handles them in `window
 | `serial`           | `text: string`                                                                                       | Incremental serial/terminal data                                      |
 | `serialInit`       | `text: string`                                                                                       | Full serial/terminal buffer on rehydration                            |
 | `serialClear`      | —                                                                                                    | Clear the serial/terminal display                                     |
-| `projectStatus`    | `roots[]`, `targets[]`, project fields, AZM option fields, CoolTerm fields, source-map status fields | Workspace, project, target, hardware-send or source-map state changes |
+| `projectStatus`    | `roots[]`, `targets[]`, project fields, AZM option fields, CoolTerm fields, build-status fields, source-map status fields | Workspace, project, target, build, hardware-send, or source-map state changes |
 | `sessionStatus`    | `status: 'starting' \| 'running' \| 'paused' \| 'not running'`                                       | Debug session state changes                                           |
 | `resetPanelLayout` | —                                                                                                    | The user runs `debug80.resetPanelLayout` or equivalent host action    |
 | `selectTab`        | `tab: 'ui' \| 'memory'`                                                                              | Tab should be selected                                                |
@@ -362,7 +362,7 @@ All adapter requests go through `session.customRequest()` on the current `vscode
 The types shared between the extension host and webview are defined in `src/contracts/platform-view.ts`:
 
 - **`PlatformId`** — `'simple' | 'tec1' | 'tec1g'`; the canonical platform identifier used throughout the extension and webview.
-- **`ProjectStatusPayload`** — the shape of the `projectStatus` message body. The key field is `projectState?: 'noWorkspace' | 'uninitialized' | 'initialized'`, which drives control visibility in the webview. Other fields include workspace roots, targets, selected target, entry source, platform, `stopOnEntry`, the project-persisted `azmSymbolCase`, session-scoped AZM option fields, CoolTerm availability / inferred HEX path / hardware status text, and source-map status text/state.
+- **`ProjectStatusPayload`** — the shape of the `projectStatus` message body. The key field is `projectState?: 'noWorkspace' | 'uninitialized' | 'initialized'`, which drives control visibility in the webview. Other fields include workspace roots, targets, selected target, entry source, platform, `stopOnEntry`, the project-persisted `azmSymbolCase`, session-scoped AZM option fields, CoolTerm availability / inferred HEX path / hardware status text, separate build status text/state, and source-map status text/state.
 - **`PlatformViewControlMessage`** — a discriminated union of all project/session/serial/hardware-send control messages (`startDebug`, `restartDebug`, `createProject`, `openWorkspaceFolder`, `selectProject`, `configureProject`, `saveProjectConfig`, `setStopOnEntry`, `setAzmOptions`, `setAzmSymbolCase`, `selectTarget`, `sendHexViaCoolTerm`, `setEntrySource`, `serialSendFile`, `serialSave`, `serialClear`). The `saveProjectConfig` message carries `{ platform: string }` and triggers a config write + debug restart. The `createProject` message carries an optional `platform?: string` field that, when present, selects the default kit for that platform without showing pickers. In practice the webview can also attach an optional `platform` field to `openWorkspaceFolder`, and the message parser forwards that through to `debug80.addWorkspaceFolder`. The `setStopOnEntry` message carries `{ stopOnEntry: boolean }` and updates the provider's global toggle. `setAzmOptions` updates session-scoped AZM restart options. `setAzmSymbolCase` carries `{ symbolCase: 'strict' | 'insensitive' }` and persists the merged project-level `azm.symbolCase` value into `debug80.json`.
 - **`PlatformViewInboundMessage`** — the full union of all messages the extension host can receive: `PlatformViewControlMessage | Tec1Message | Tec1gMessage | { type?: string; [key: string]: unknown }`.
 
@@ -554,7 +554,7 @@ If the user chose to create a starter source file, `createStarterSourceContent()
 
 - The provider holds two parallel maps: `platformStates` (hardware state, serial buffer, tab) and `loadedModules` (behaviour — HTML generation, state serialization, message handling). Modules are loaded once at startup via `preloadAllPlatforms()` and cached permanently. `PlatformUiModules` in `platform-view-manifest.ts` is the interface every platform UI must satisfy.
 
-- The shared message contract is defined in `src/contracts/platform-view.ts`: `PlatformId`, `ProjectStatusPayload` (includes `projectState`, `platform`, `stopOnEntry`, AZM option fields, CoolTerm status and source-map status), `PlatformViewControlMessage` (includes `setStopOnEntry`, `setAzmOptions`, `sendHexViaCoolTerm`, `saveProjectConfig`, and `createProject` with optional `platform?`), and `PlatformViewInboundMessage`.
+- The shared message contract is defined in `src/contracts/platform-view.ts`: `PlatformId`, `ProjectStatusPayload` (includes `projectState`, `platform`, `stopOnEntry`, AZM option fields, CoolTerm status, separate build status, and source-map status), `PlatformViewControlMessage` (includes `setStopOnEntry`, `setAzmOptions`, `sendHexViaCoolTerm`, `saveProjectConfig`, and `createProject` with optional `platform?`), and `PlatformViewInboundMessage`.
 
 - `registerExtensionPlatform()` in `platform-extension-model.ts` is the unified API for registering both the runtime and UI concerns of a platform in a single call.
 
