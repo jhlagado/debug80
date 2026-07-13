@@ -168,9 +168,12 @@ end
 ```
 
 A card is a screen or mode: exactly one is active. A `card` line starts
-a section — everything after it belongs to that card until the next
-`card` line or end of file; declarations before the first `card` are
-global. Blocks in a card's section run only while that card is active.
+a block-dispatch section; subsequent blocks run only while that card is
+active, until the next `card` line or end of file. Cards do not create
+lexical scope or card-local storage: state, timers, types and resources
+remain program-wide and should be declared before the first card. Cards
+are optional; use them for mutually exclusive screens or modes and omit
+them from a one-mode program.
 
 Cards generate a `Card` enum and a built-in `CurrentCard` cell (legal in
 `on` and `updates`), starting at the first declared card. `enter` blocks
@@ -515,8 +518,17 @@ routines, and may drive the HUD through library routines:
 Delivery of changes is exactly-once. A block's `updates` land the same
 frame for blocks in later phases (compute -> effect -> render), and
 roll over to the next frame when a depending block's phase has already
-run — including blocks in the same phase, so the order you declare
-blocks in never affects behaviour.
+run — including blocks in the same phase. Source order cannot change
+that trigger schedule.
+
+Block bodies still execute sequentially against live memory. Glimmer
+warns when same-phase blocks with overlapping card scope share an `on`
+trigger and an `updates` target. The declarations prove both blocks are
+scheduled, but cannot prove which conditional Z80 stores execute. If
+two such blocks have different unconditional `goto` targets, the
+conflict is definite and fails the build. Multiple writers with
+disjoint triggers remain valid. Keep one atomic gameplay invariant in
+one effect or a routine it calls.
 
 ## Current limits
 

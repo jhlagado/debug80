@@ -81,8 +81,8 @@ function emitMatrixLibrary(
 ): void {
   emit('; --- matrix8x8 profile library ---');
   emit();
-  emit('; Scan all 8 rows with fixed dwell, then blank the matrix so');
-  emit('; block work never changes visible row brightness. Sound and the');
+  emit('; Scan all 8 rows with equal dwell, then blank the matrix for game');
+  emit('; work. Excessive work lengthens the dark gap and can reduce brightness.');
   emit('; seven-segment HUD are serviced once per row (8 ticks per frame).');
   emitRoutine(emit, 'ScanFrame', 'clobbers A,BC,DE,HL,carry,zero,sign,parity,halfCarry');
   op('ld      hl,Framebuffer');

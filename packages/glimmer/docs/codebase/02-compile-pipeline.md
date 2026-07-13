@@ -171,8 +171,11 @@ Notable constraints the generator honours:
   phase (merged into `ChangedN` at phase boundaries by `GlimMergeRaised`) or
   into `NextN` when any consumer's phase already ran (rolled into
   `ChangedN` by `GlimEndFrame`). The now/next split is computed per block
-  at compile time from the `on`/`updates` graph — exactly-once delivery,
-  declaration order never semantic.
+  at compile time from the `on`/`updates` graph — exactly-once delivery
+  whose trigger schedule is independent of source order. Bodies still execute
+  sequentially against live memory; validation warns about declaration-visible
+  same-trigger writer overlap and rejects different unconditional `goto`
+  targets rather than promising a state snapshot.
 - **Timing widgets** tick in `GlimTickTimers` before any phase, raising
   directly into the target cell's `ChangedN`: oscillator timers (writable period cell +
   hidden `Glim_<name>_cnt` countdown), `once` timers (the cell is the

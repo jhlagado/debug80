@@ -3,6 +3,34 @@
 Versions are tagged in git and published to npm as `@jhlagado/glimmer`
 (0.4.0 is the first broadly usable published version).
 
+## 0.6.0 - 2026-07-13
+
+The scheduling-contract and behavioural-confidence release.
+
+- Trigger delivery is now documented precisely: source order cannot change
+  whether an update reaches later phases in the current frame or all consumers
+  at the next frame's start. Verbatim Z80 bodies still execute sequentially
+  against live memory; Glimmer does not promise state snapshots or fixed-point
+  derivation.
+- The compiler warns when same-phase blocks with overlapping card scope share
+  an `on` trigger and an `updates` target. Because `updates` cannot prove which
+  conditional stores execute, this remains a warning. Different unconditional
+  `goto` targets under the same conditions are a definite navigation conflict
+  and fail the build; identical targets and mutually exclusive cards remain
+  valid.
+- Focused generation tests prove same-phase deferral is unchanged by block
+  reordering and later-phase updates still forward in the current frame.
+- A new Debug80 headless scenario executes generated Z80 and records the
+  producer and peer effect on adjacent `FrameCount` values, proving one-frame
+  same-phase deferral. The existing Dot, Tetro and Sprite Chase scenarios remain
+  required release evidence.
+- Generated matrix comments, the specification, grammar, manuals and Glimmer
+  book now describe blank-window work as a brightness budget and cards as
+  optional block-dispatch sections rather than storage scope.
+- Requires `@jhlagado/azm` ^0.3.4. Physical Tetro and Sprite Chase hardware
+  playtests remain tracked as post-release hardware maintenance; headless tests
+  do not claim to replace real TEC-1G or TEC-Deck timing checks.
+
 ## 0.5.3 - 2026-07-11
 
 Patch release on the latest AZM 0.3 line.

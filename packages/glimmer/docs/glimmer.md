@@ -345,11 +345,17 @@ end
 ```
 
 A card is a screen or mode in the HyperCard sense: exactly one is
-active. A `card` line starts a section — everything after it belongs to
-that card until the next `card` line or end of file. There is no
-closing keyword, so the language stays nesting-free; declarations
-before the first `card` are global. Repeating a card name re-enters its
-section (including from a part).
+active. A `card` line starts a block-dispatch section: subsequent blocks
+belong to that card until the next `card` line or end of file. There is
+no closing keyword, so the language stays nesting-free. Cards do not
+create lexical scope or card-local storage; state, timers, types and
+resources remain program-wide. Keep those declarations before the first
+card so the source makes their lifetime clear. Repeating a card name
+re-enters its block section (including from a part).
+
+Cards are optional. Use them when groups of blocks belong to mutually
+exclusive screens or modes. A program with one continuously active mode
+needs no `card` declaration, and its blocks dispatch normally.
 
 Cards generate an AZM enum (`Card .enum Splash, Playing`) and a
 built-in state cell `CurrentCard`, initialized to the first card and
@@ -472,9 +478,11 @@ MainLoop:
     jp MainLoop
 ```
 
-`ScanFrame` drives all eight matrix rows with a fixed per-row dwell, which
-keeps brightness uniform however much work the frame does, and leaves the
-matrix blank while effects run.
+`ScanFrame` drives all eight matrix rows with the same per-row dwell, then
+leaves the matrix blank while effects run. Equal dwell prevents row-to-row
+brightness variation. Game work lengthens the dark gap between scans, so
+ordinary short blocks keep the change negligible while excessive work can
+reduce average brightness or cause visible flicker.
 
 ### 5.2 Change Flags
 
@@ -522,12 +530,21 @@ Glim_ApplyIncrement:
     ret
 ```
 
-The v0.2 rule is exactly-once delivery. If every consumer of an updated
+The rule is exactly-once delivery. If every consumer of an updated
 cell is in a later phase, the wrapper raises into that cell's `RaisedN`
 bank and `GlimMergeRaised` makes it visible this frame. If any consumer
 already ran or is in the same phase, the wrapper raises into that cell's
-`NextN` bank; `GlimEndFrame` then makes it visible next frame. Declaration
-order inside a phase is never semantic. Comparing old and new values
+`NextN` bank; `GlimEndFrame` then makes it visible next frame. Source order
+therefore cannot change trigger scheduling.
+
+This is not a state snapshot. Block bodies execute sequentially against live
+memory, so direct reads and writes can still expose dispatch order. Glimmer
+warns when same-phase blocks with overlapping card scope share both a trigger
+and an `updates` target; `updates` cannot prove that conditional Z80 stores
+actually execute. Two such blocks with different unconditional `goto` targets
+are a definite conflict and fail the build. Alternative writers with disjoint
+triggers remain valid; keep state changes that form one atomic gameplay
+invariant inside one block or a routine it calls. Comparing old and new values
 remains a future optimization.
 
 ### 5.4 Frame Cleanup

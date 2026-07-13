@@ -76,8 +76,7 @@ export function compileToAzm(glimSource: string, options: GenerateOptions = {}):
     return { source: null, diagnostics: parsed.diagnostics };
   }
   const generated = generateAzm(parsed.program, options);
-  if (generated.diagnostics.length > 0) {
-    return { source: null, diagnostics: generated.diagnostics };
-  }
-  return { source: generated.source, diagnostics: [] };
+  const diagnostics = [...parsed.diagnostics, ...generated.diagnostics];
+  const hasErrors = diagnostics.some((diagnostic) => diagnostic.severity !== 'warning');
+  return { source: hasErrors ? null : generated.source, diagnostics };
 }

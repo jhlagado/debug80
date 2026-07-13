@@ -23,20 +23,23 @@ and `buildGlimmerProgram` exposes the same workflow in process to Debug80.
 
 ## Current release line
 
-Version 0.5.3 is the AZM 0.3 and native-Debug80 line:
+Version 0.6.0 is the **scheduling-contract and behavioural-confidence** line:
 
-- generated files declare `.contracts` policy and `.routine` boundaries;
-- curated profile routines carry explicit register interfaces while user
-  blocks and routines are inferred from their bodies;
-- `glimmer build` performs one AZM assembly pass and rewrites the resulting
-  map so user-body segments point back to `.glim` source;
-- Debug80 recognises `.glim`, builds it through the Glimmer API, and supports
-  breakpoints and stepping in the original file;
-- the installed npm command works through package-manager bin symlinks.
+- source order cannot change trigger delivery, while verbatim Z80 bodies still
+  execute sequentially against live memory;
+- declaration-visible same-frame writer overlap is a warning, and different
+  unconditional navigation targets under the same trigger are an error;
+- focused generator tests prove same-phase deferral and later-phase forwarding;
+- Debug80's bounded headless Dot, scheduling, Tetro and Sprite Chase scenarios
+  execute the generated programs without VS Code or a webview;
+- generated files retain AZM 0.3 `.contracts` and `.routine` boundaries; and
+- Debug80 builds, breaks and steps in original `.glim` source.
 
-The first published line is complete. New work is selected by pressure from
-real programs and additional platforms, not by an attempt to hide Z80 behind
-an ever-larger language.
+The completed release plan is [`docs/plans/release-0.6.md`](plans/release-0.6.md).
+Physical Tetro and Sprite Chase playtests remain post-release hardware
+maintenance. New language work is selected by pressure from real programs and
+additional platforms, not by an attempt to hide Z80 behind an ever-larger
+language.
 
 ## Shipped language
 
@@ -109,18 +112,21 @@ physical TEC-1G and TEC-Deck hardware.
 Work should proceed in this order. A later item moves forward only when a real
 program or platform makes it more urgent than the items above it.
 
-1. **Complete - headless behavioural verification.** Built AZM and Glimmer
+1. **Complete - 0.6.0 effect-order safety.** Trigger scheduling is documented,
+   declaration-visible writer overlap is diagnosed, ambiguous unconditional
+   navigation is rejected and focused plus headless tests prove the contract.
+2. **Complete - headless behavioural verification.** Built AZM and Glimmer
    programs run through Debug80's Z80 and TEC-1G models without VS Code or a
    webview. Bounded scenarios cover input, cards, reactive phases, memory,
    matrix output, LCD, sound and TMS9918 state.
-2. **Source-level routine contracts.** Let `.glim` routine headers state the
+3. **Source-level routine contracts.** Let `.glim` routine headers state the
    AZM register contract that Glimmer already emits and AZM already verifies.
-3. **TEC-1G input expansion.** Add declarative joystick bindings and settle a
+4. **TEC-1G input expansion.** Add declarative joystick bindings and settle a
    profile-neutral input vocabulary before supporting more controllers.
-4. **Profile service interfaces.** Define the small set of services a profile
+5. **Profile service interfaces.** Define the small set of services a profile
    supplies to the generated runtime, so a third platform does not have to copy
    a TEC-1G profile and edit it internally.
-5. **Namespaced `.glim` libraries.** Design reusable source units only after
+6. **Namespaced `.glim` libraries.** Design reusable source units only after
    more than one program needs to share state, effects, bindings or resources
    beyond today's `part` merge semantics.
 
@@ -234,6 +240,44 @@ boot or input-integration failures.
 The scenarios are deterministic, bounded with actionable timeout traces, and
 require no VS Code process, browser, canvas or wall-clock sleeps. Physical
 hardware playtests remain a separate release check.
+
+## Effect-order safety
+
+The generated runtime already routes a change to `Next` when any consumer is in
+the producer's phase or an earlier phase. Trigger propagation is therefore
+independent of declaration order: a peer effect observes the trigger on the next
+frame, while a later phase may observe it in the current frame. This is a
+**trigger-scheduling** guarantee, not a snapshot of all state, because verbatim
+Z80 bodies read and write live memory as they execute.
+
+Several shipped programs legitimately have more than one writer for a state:
+left and right movement both update X, for example. Multiple writers are not by
+themselves an error. When two blocks are in the same phase, can be active under
+the same card, share a trigger and declare the same `updates` target, Glimmer can
+prove that both are scheduled together but cannot prove which conditional Z80
+stores execute. That overlap is a warning. Different unconditional `goto`
+targets under the same conditions are a definite conflict because both wrappers
+store `CurrentCard`; that case is an error.
+
+The 0.6 enforcement slice should:
+
+- warn about shared-trigger/shared-update overlap, naming both blocks, the
+  trigger, phase and state;
+- fail different unconditional `goto` targets under the same scheduling
+  conditions, including implicit `CurrentCard` updates in the analysis;
+- preserve valid alternative writers with disjoint triggers, phases, or mutually
+  exclusive card scopes;
+- retain the missing-`updates` store warning and explain its limits for indirect
+  Z80 writes;
+- test same-phase deferral, later-phase forwarding, declaration reordering,
+  definite conflicts, and accepted multi-writer examples; and
+- recommend one effect or a called routine for state changes that must preserve
+  one atomic gameplay invariant.
+
+This item does not introduce transactional state, phase snapshots, automatic
+effect sorting, arbitrary read inference, or fixed-point cascades. Those would
+be larger runtime designs and need evidence from a real game before entering
+the roadmap.
 
 ## Source-level routine contracts
 
