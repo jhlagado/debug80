@@ -25,6 +25,7 @@ export type ProjectStatusUiElements = {
   platformInitButton: HTMLButtonElement | null;
   testCoolTermButton?: HTMLButtonElement | null;
   sendHexToBoardButton?: HTMLButtonElement | null;
+  buildResultIndicator?: HTMLElement | null;
   hardwareStatusLine?: HTMLElement | null;
   sourceMapStatusLine?: HTMLElement | null;
   homeTargetSelect: HTMLSelectElement | null;
@@ -114,6 +115,27 @@ function updateHardwareStatusLine(
   updateStatusLine(line, state.hardwareStatusText, initialized);
 }
 
+function updateBuildResultIndicator(
+  indicator: HTMLElement | null | undefined,
+  state: ProjectPanelState,
+  initialized: boolean
+): void {
+  if (!indicator) {
+    return;
+  }
+  const failed = initialized && state.hardwareStatusState === 'error';
+  indicator.hidden = !failed;
+  indicator.textContent = failed ? '!' : '';
+  if (failed) {
+    const label = state.hardwareStatusText || 'Build failed';
+    indicator.title = label;
+    indicator.setAttribute('aria-label', label);
+  } else {
+    indicator.removeAttribute('title');
+    indicator.removeAttribute('aria-label');
+  }
+}
+
 function updateSourceMapStatusLine(
   line: HTMLElement | null | undefined,
   state: ProjectPanelState,
@@ -166,6 +188,7 @@ export function createProjectStatusUi(
     platformInitButton,
     testCoolTermButton,
     sendHexToBoardButton,
+    buildResultIndicator,
     hardwareStatusLine,
     sourceMapStatusLine,
     homeTargetSelect,
@@ -226,6 +249,7 @@ export function createProjectStatusUi(
     applyTargetOptions(homeTargetSelect, currentState);
     updateSendHexButton(sendHexToBoardButton, currentState);
     updateInitializedButton(testCoolTermButton, initializedProject);
+    updateBuildResultIndicator(buildResultIndicator, currentState, initializedProject);
     updateHardwareStatusLine(hardwareStatusLine, currentState, initializedProject);
     updateSourceMapStatusLine(sourceMapStatusLine, currentState, initializedProject);
     updateSetupCard(setupCard, setupCardText, setupPrimaryAction, currentState);

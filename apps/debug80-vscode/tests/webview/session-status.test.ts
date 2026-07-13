@@ -35,10 +35,12 @@ describe('shared restart control', () => {
   it.each(HTML_PATHS)('renders restart in the %s top bar', (_label, htmlPath) => {
     buildDom(htmlPath);
     const restartButton = document.getElementById('restartDebug') as HTMLButtonElement | null;
+    const buildResultIndicator = document.getElementById('buildResultIndicator');
     const topBar = document.querySelector('.tabs, .debug80-toolbar');
 
     expect(topBar).not.toBeNull();
     expect(restartButton).not.toBeNull();
+    expect(buildResultIndicator).not.toBeNull();
     if (!topBar || !restartButton) {
       throw new Error('restart button is missing');
     }

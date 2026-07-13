@@ -73,6 +73,8 @@ function applyProjectStatus(payload: {
   hasProject?: ProjectStatusPayload['hasProject'];
   stopOnEntry?: ProjectStatusPayload['stopOnEntry'];
   azmSymbolCase?: ProjectStatusPayload['azmSymbolCase'];
+  hardwareStatusText?: ProjectStatusPayload['hardwareStatusText'];
+  hardwareStatusState?: ProjectStatusPayload['hardwareStatusState'];
   sourceMapStatusText?: ProjectStatusPayload['sourceMapStatusText'];
   sourceMapStatusState?: ProjectStatusPayload['sourceMapStatusState'];
 }): void {
