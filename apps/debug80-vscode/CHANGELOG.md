@@ -2,6 +2,12 @@
 
 ## Unreleased
 
+- Updated AZM to `^0.3.5`; Glimmer remains current at `^0.6.0` and resolves
+  against the same AZM `0.3.5` workspace package.
+- Added a compact error indicator beside **Build** when AZM or Glimmer
+  assembly fails, while retaining the detailed diagnostic in the Project
+  status line and Debug80 Output.
+
 ## 0.2.0 - 2026-07-12
 
 - Moved Debug80 into the Debug80 Toolchain npm workspace alongside AZM,

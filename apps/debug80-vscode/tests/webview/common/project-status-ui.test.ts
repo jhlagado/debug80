@@ -15,6 +15,7 @@ type ProjectPayload = {
   coolTermAvailable?: ProjectStatusPayload['coolTermAvailable'];
   coolTermHexPath?: ProjectStatusPayload['coolTermHexPath'];
   hardwareStatusText?: ProjectStatusPayload['hardwareStatusText'];
+  hardwareStatusState?: ProjectStatusPayload['hardwareStatusState'];
   sourceMapStatusText?: ProjectStatusPayload['sourceMapStatusText'];
   sourceMapStatusState?: ProjectStatusPayload['sourceMapStatusState'];
 };
@@ -62,6 +63,7 @@ function getElements() {
     platformInitButton: document.getElementById('platformInitButton') as HTMLButtonElement,
     testCoolTermButton: document.getElementById('testCoolTerm') as HTMLButtonElement,
     sendHexToBoardButton: document.getElementById('sendHexToBoard') as HTMLButtonElement,
+    buildResultIndicator: document.getElementById('buildResultIndicator') as HTMLElement,
     hardwareStatusLine: document.getElementById('hardwareStatusLine') as HTMLElement,
     sourceMapStatusLine: document.getElementById('sourceMapStatusLine') as HTMLElement,
     platformInfoControl: document.getElementById('platformInfoControl') as HTMLElement,
@@ -89,6 +91,7 @@ function applyProjectPayload(payload: ProjectPayload): void {
       platformInitButton: elements.platformInitButton,
       testCoolTermButton: elements.testCoolTermButton,
       sendHexToBoardButton: elements.sendHexToBoardButton,
+      buildResultIndicator: elements.buildResultIndicator,
       hardwareStatusLine: elements.hardwareStatusLine,
       sourceMapStatusLine: elements.sourceMapStatusLine,
       homeTargetSelect: elements.homeTargetSelect,
@@ -155,6 +158,7 @@ describe('project status UI invariants', () => {
         </div>
         <button class="project-action-button" id="testCoolTerm" type="button">Test CoolTerm</button>
         <button class="project-action-button" id="sendHexToBoard" type="button">Send to Board</button>
+        <span id="buildResultIndicator" role="status" hidden></span>
         <div id="sourceMapStatusLine"></div>
         <div id="hardwareStatusLine"></div>
         <div class="setup-card" id="setupCard">
@@ -227,6 +231,7 @@ describe('project status UI invariants', () => {
     expect(elements.hardwareStatusLine.hidden).toBe(false);
     expect(elements.hardwareStatusLine.textContent).toBe('Ready to send app.hex via CoolTerm.');
     expect(elements.hardwareStatusLine.dataset.hardwareStatus).toBe('neutral');
+    expect(elements.buildResultIndicator.hidden).toBe(true);
     expect(elements.sourceMapStatusLine.hidden).toBe(false);
     expect(elements.sourceMapStatusLine.textContent).toBe('Source map: current.');
     expect(elements.sourceMapStatusLine.dataset.sourceMapStatus).toBe('current');
@@ -245,10 +250,17 @@ describe('project status UI invariants', () => {
       hardwareStatusState: 'error',
     });
 
-    const line = getElements().hardwareStatusLine;
+    const elements = getElements();
+    const line = elements.hardwareStatusLine;
     expect(line.hidden).toBe(false);
     expect(line.textContent).toBe('Build failed: unresolved symbol.');
     expect(line.dataset.hardwareStatus).toBe('error');
+    expect(elements.buildResultIndicator.hidden).toBe(false);
+    expect(elements.buildResultIndicator.textContent).toBe('!');
+    expect(elements.buildResultIndicator.title).toBe('Build failed: unresolved symbol.');
+    expect(elements.buildResultIndicator.getAttribute('aria-label')).toBe(
+      'Build failed: unresolved symbol.'
+    );
   });
 
   it('posts a CoolTerm connection test request from the project button', () => {
