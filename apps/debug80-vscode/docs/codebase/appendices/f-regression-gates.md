@@ -30,6 +30,7 @@ The source-of-truth strategy lives in `apps/debug80-vscode/docs/regression-test-
 | Webview contract tests   | Project controls, message contracts, UI state invariants                   |
 | VS Code host integration | Activation, commands, views, workspace behavior through real VS Code APIs  |
 | VSIX content check       | Runtime dependencies and packaged assets are present; dev debris is absent |
+| Packaged workspace smoke | Packed package consumers exercise published CLI and runtime entry points   |
 | Packaged VSIX smoke      | Installed extension behaves like the user-facing product                   |
 
 ---
@@ -40,6 +41,7 @@ The most important scenarios to keep guarded are:
 
 - AZM assembles through the packaged linked library backend, not global CLIs;
 - Glimmer assembles `.glim` sources into `.hex`, `.bin`, `.asm`, and `.d8.json` with diagnostics attributed back to authored Glimmer lines;
+- packed Glimmer tarballs still compile and run a headless TEC-1G scheduling scenario, so release packaging preserves the published `build` entry points and runtime dependencies;
 - headless sessions built from `@jhlagado/debug80-runtime/headless` execute the same TEC-1G runtime semantics that the extension uses, including symbol-addressed memory inspection and matrix/video timing boundaries;
 - sparse `ORG` programs preserve address-bearing HEX/D8M behavior;
 - breakpoints verify and stop in target and included source files;
@@ -65,4 +67,4 @@ not to fail because one CI runner is slightly slower.
 Manual diagnosis should continue to use runtime instrumentation such as `DEBUG80_PERF=1`, with
 severe starvation warnings visible in the Debug80 output channel. For cross-package regressions, prefer
 the root `npm run check` gate before narrowing down to `npm test -w debug80`, runtime-package tests,
-or one of the headless integration workspaces.
+`npm run package:glimmer-headless`, or one of the headless integration workspaces.
