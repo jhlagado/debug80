@@ -263,6 +263,7 @@ describe('project status UI invariants', () => {
     expect(elements.buildStatusLine.dataset.buildStatus).toBe('error');
     expect(elements.hardwareStatusLine.textContent).toBe('Ready to send app.hex via CoolTerm.');
     expect(elements.hardwareStatusLine.dataset.hardwareStatus).toBe('neutral');
+    expect(elements.hardwareStatusLine.hidden).toBe(true);
     expect(elements.buildResultIndicator.hidden).toBe(false);
     expect(elements.buildResultIndicator.textContent).toBe('!');
     expect(elements.buildResultIndicator.title).toBe('Build failed: unresolved symbol.');

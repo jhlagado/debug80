@@ -129,6 +129,7 @@ describe('registerExtensionCommands', () => {
       context: { subscriptions: [], ...context } as never,
       platformViewProvider: {
         refreshIdleView: vi.fn(),
+        setBuildStatus: vi.fn(),
         ...platformViewProvider,
       } as never,
       sourceColumns: {} as never,

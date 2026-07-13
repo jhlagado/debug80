@@ -226,7 +226,7 @@ describe('debug session status bridge', () => {
     });
     terminateHandlers[0]?.(session);
 
-    expect(platformViewProvider.setBuildStatus).toHaveBeenCalledWith(undefined);
+    expect(platformViewProvider.setBuildStatus).not.toHaveBeenCalled();
     expect(platformViewProvider.setHardwareStatus).not.toHaveBeenCalled();
     expect(platformViewProvider.setSessionStatus).toHaveBeenNthCalledWith(1, 'starting');
     expect(platformViewProvider.reveal).toHaveBeenCalledWith(false);
@@ -378,5 +378,42 @@ describe('debug session status bridge', () => {
     expect(output.appendLine).toHaveBeenNthCalledWith(2, 'src/tetro/tetro.main.asm:43:9: error');
     expect(output.show).toHaveBeenCalledWith(true);
     expect(vscode.window.showErrorMessage).not.toHaveBeenCalled();
+  });
+
+  it('does not erase an assembly failure when the session-start event arrives late', () => {
+    const { platformViewProvider } = registerTestHandlers();
+    const session = {
+      id: 'session-late-start',
+      type: 'z80',
+      configuration: {},
+      workspaceFolder: undefined,
+    };
+
+    customHandlers[0]?.({
+      session,
+      event: 'debug80/assemblyFailed',
+      body: { error: 'unsupported source line: .orgg 0x4000' },
+    });
+    startHandlers[0]?.(session);
+
+    expect(platformViewProvider.setBuildStatus).toHaveBeenCalledTimes(1);
+    expect(platformViewProvider.setBuildStatus).toHaveBeenCalledWith(
+      'Build failed: unsupported source line: .orgg 0x4000',
+      'error'
+    );
+  });
+
+  it('clears the previous build result only after assembly succeeds', () => {
+    const { platformViewProvider } = registerTestHandlers();
+    const session = {
+      id: 'session-build-success',
+      type: 'z80',
+      configuration: {},
+      workspaceFolder: undefined,
+    };
+
+    customHandlers[0]?.({ session, event: 'debug80/assemblySucceeded', body: {} });
+
+    expect(platformViewProvider.setBuildStatus).toHaveBeenCalledWith(undefined);
   });
 });

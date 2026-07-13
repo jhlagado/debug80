@@ -100,7 +100,6 @@ function handleDebugSessionStarted(
     return;
   }
   assemblyDiagnostics.clear();
-  platformViewProvider.setBuildStatus(undefined);
   platformViewProvider.setSessionStatus('starting');
   sessionState.activeZ80Sessions.add(session.id);
   terminalPanel.clear();
@@ -378,6 +377,7 @@ const debugSessionCustomEventHandlers: Record<string, DebugSessionCustomEventHan
     handleTerminalOutputEvent(evt.session, evt.body as { text?: string } | undefined, deps),
   'debug80/assemblyFailed': (evt, deps) =>
     handleAssemblyFailedEvent(evt.session, evt.body as AssemblyFailedPayload | undefined, deps),
+  'debug80/assemblySucceeded': (_evt, deps) => deps.platformViewProvider.setBuildStatus(undefined),
   'debug80/mainSource': (evt, deps) =>
     handleMainSourceEvent(evt.session, evt.body as { path?: string } | undefined, deps),
   'debug80/tec1Update': (evt, deps) =>

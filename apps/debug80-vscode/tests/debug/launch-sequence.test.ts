@@ -176,6 +176,7 @@ describe('launch-sequence', () => {
     expect(context.sessionState.runtime).toBe(artifacts.runtime);
     expect(context.sessionState.baseDir).toBe(fixture.root);
     expect(context.emitDapEvent).toHaveBeenCalledWith('debug80/platform', { id: 'simple' });
+    expect(context.emitDapEvent).toHaveBeenCalledWith('debug80/assemblySucceeded', {});
     expect(context.sourceState.file).toBe(path.join(fixture.root, 'src', 'main.asm'));
   });
 

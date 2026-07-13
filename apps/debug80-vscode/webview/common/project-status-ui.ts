@@ -115,7 +115,11 @@ function updateHardwareStatusLine(
   if (line) {
     line.dataset.hardwareStatus = state.hardwareStatusState;
   }
-  updateStatusLine(line, state.hardwareStatusText, initialized);
+  updateStatusLine(
+    line,
+    state.hardwareStatusText,
+    initialized && state.buildStatusState !== 'error'
+  );
 }
 
 function updateBuildResultIndicator(
