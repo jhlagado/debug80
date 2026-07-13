@@ -7,8 +7,8 @@
 - Added a compact error indicator beside **Build** when AZM or Glimmer
   assembly fails, while retaining the detailed diagnostic in the Project
   status line and Debug80 Output.
-- Prevented CoolTerm availability polling from clearing an active assembly
-  failure before the Project panel can display it.
+- Separated assembler result state from CoolTerm/hardware status so polling,
+  connection checks, and transfers cannot clear active build failures.
 
 ## 0.2.0 - 2026-07-12
 

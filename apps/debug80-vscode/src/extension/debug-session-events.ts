@@ -100,7 +100,7 @@ function handleDebugSessionStarted(
     return;
   }
   assemblyDiagnostics.clear();
-  platformViewProvider.setHardwareStatus(undefined);
+  platformViewProvider.setBuildStatus(undefined);
   platformViewProvider.setSessionStatus('starting');
   sessionState.activeZ80Sessions.add(session.id);
   terminalPanel.clear();
@@ -244,7 +244,7 @@ function handleAssemblyFailedEvent(
   }
   applyLaunchAssemblyDiagnostic(assemblyDiagnostics, body, session.workspaceFolder);
   const summary = body.diagnostic?.message ?? body.error?.split(/\r?\n/, 1)[0] ?? 'Assembly failed';
-  platformViewProvider.setHardwareStatus?.(`Build failed: ${summary}`, 'error');
+  platformViewProvider.setBuildStatus(`Build failed: ${summary}`, 'error');
   output.appendLine(`Debug80: Build failed: ${summary}`);
   if (body.error !== undefined && body.error.trim().length > 0) {
     output.appendLine(body.error.trimEnd());

@@ -36,6 +36,7 @@ export function getProjectPanelElements(root: ParentNode = document): ProjectPan
   const testCoolTermButton = byId<HTMLButtonElement>(root, 'testCoolTerm');
   const sendHexToBoardButton = byId<HTMLButtonElement>(root, 'sendHexToBoard');
   const buildResultIndicator = byId<HTMLElement>(root, 'buildResultIndicator');
+  const buildStatusLine = byId<HTMLElement>(root, 'buildStatusLine');
   const hardwareStatusLine = byId<HTMLElement>(root, 'hardwareStatusLine');
   const sourceMapStatusLine = byId<HTMLElement>(root, 'sourceMapStatusLine');
   const stopOnEntryInput = byId<HTMLInputElement>(root, 'stopOnEntry');
@@ -70,6 +71,7 @@ export function getProjectPanelElements(root: ParentNode = document): ProjectPan
       testCoolTermButton,
       sendHexToBoardButton,
       buildResultIndicator,
+      buildStatusLine,
       hardwareStatusLine,
       sourceMapStatusLine,
       homeTargetSelect,

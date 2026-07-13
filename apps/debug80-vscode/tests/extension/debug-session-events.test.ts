@@ -59,6 +59,7 @@ function registerTestHandlers(
     reveal: vi.fn(),
     handleSessionTerminated: vi.fn(),
     setPlatform: vi.fn(),
+    setBuildStatus: vi.fn(),
     setHardwareStatus: vi.fn(),
     updateTec1: vi.fn(),
     updateTec1g: vi.fn(),
@@ -225,6 +226,8 @@ describe('debug session status bridge', () => {
     });
     terminateHandlers[0]?.(session);
 
+    expect(platformViewProvider.setBuildStatus).toHaveBeenCalledWith(undefined);
+    expect(platformViewProvider.setHardwareStatus).not.toHaveBeenCalled();
     expect(platformViewProvider.setSessionStatus).toHaveBeenNthCalledWith(1, 'starting');
     expect(platformViewProvider.reveal).toHaveBeenCalledWith(false);
     expect(platformViewProvider.setSessionStatus).toHaveBeenNthCalledWith(2, 'running');
@@ -333,7 +336,7 @@ describe('debug session status bridge', () => {
 
   it('publishes launch assembly diagnostics against the workspace source file', () => {
     const { assemblyDiagnostics, output, platformViewProvider } = registerTestHandlers({
-      platformViewProvider: { setHardwareStatus: vi.fn() },
+      platformViewProvider: { setBuildStatus: vi.fn() },
     });
 
     customHandlers[0]?.({
@@ -364,7 +367,7 @@ describe('debug session status bridge', () => {
         }),
       ]
     );
-    expect(platformViewProvider.setHardwareStatus).toHaveBeenCalledWith(
+    expect(platformViewProvider.setBuildStatus).toHaveBeenCalledWith(
       'Build failed: Unresolved symbol "InitdeState".',
       'error'
     );

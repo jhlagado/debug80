@@ -126,6 +126,8 @@ describe('platform-view-project-status', () => {
           stopOnEntry: true,
           azmRegisterContractsMode: 'audit',
           azmContractUpdateMode: 'never',
+          buildStatusText: 'Build failed: unsupported source line.',
+          buildStatusState: 'error',
         },
         [project]
       )
@@ -145,6 +147,8 @@ describe('platform-view-project-status', () => {
       hardwareStatusText:
         'Select a target with a buildable HEX artifact before sending to hardware.',
       hardwareStatusState: 'neutral',
+      buildStatusText: 'Build failed: unsupported source line.',
+      buildStatusState: 'error',
       sourceMapStatusText: 'Source map: missing, build the selected target.',
       sourceMapStatusState: 'missing',
       targetName: 'app',

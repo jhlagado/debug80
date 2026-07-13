@@ -19,6 +19,8 @@ export type ProjectPanelPayload = {
   coolTermHexPath?: ProjectStatusPayload['coolTermHexPath'];
   hardwareStatusText?: ProjectStatusPayload['hardwareStatusText'];
   hardwareStatusState?: ProjectStatusPayload['hardwareStatusState'];
+  buildStatusText?: ProjectStatusPayload['buildStatusText'];
+  buildStatusState?: ProjectStatusPayload['buildStatusState'];
   sourceMapStatusText?: ProjectStatusPayload['sourceMapStatusText'];
   sourceMapStatusState?: ProjectStatusPayload['sourceMapStatusState'];
 };
@@ -34,6 +36,8 @@ export type ProjectPanelState =
       coolTermHexPath: ProjectStatusPayload['coolTermHexPath'] | undefined;
       hardwareStatusText: string;
       hardwareStatusState: string;
+      buildStatusText: string;
+      buildStatusState: string;
       sourceMapStatusText: string;
       sourceMapStatusState: string;
     }
@@ -47,6 +51,8 @@ export type ProjectPanelState =
       coolTermHexPath: ProjectStatusPayload['coolTermHexPath'] | undefined;
       hardwareStatusText: string;
       hardwareStatusState: string;
+      buildStatusText: string;
+      buildStatusState: string;
       sourceMapStatusText: string;
       sourceMapStatusState: string;
     }
@@ -60,6 +66,8 @@ export type ProjectPanelState =
       coolTermHexPath: ProjectStatusPayload['coolTermHexPath'] | undefined;
       hardwareStatusText: string;
       hardwareStatusState: string;
+      buildStatusText: string;
+      buildStatusState: string;
       sourceMapStatusText: string;
       sourceMapStatusState: string;
     };
@@ -132,6 +140,8 @@ export function createProjectPanelState(payload: ProjectPanelPayload): ProjectPa
     coolTermHexPath: payload.coolTermHexPath,
     hardwareStatusText: payload.hardwareStatusText ?? '',
     hardwareStatusState: payload.hardwareStatusState ?? 'neutral',
+    buildStatusText: payload.buildStatusText ?? '',
+    buildStatusState: payload.buildStatusState ?? 'neutral',
     sourceMapStatusText: payload.sourceMapStatusText ?? '',
     sourceMapStatusState: payload.sourceMapStatusState ?? '',
   };

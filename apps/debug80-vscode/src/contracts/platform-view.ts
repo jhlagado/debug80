@@ -28,8 +28,12 @@ export type ProjectStatusPayload = {
   coolTermHexPath?: string;
   /** Current hardware transfer/setup status for the project area. */
   hardwareStatusText?: string;
-  /** Visual treatment for the hardware/build status line. */
+  /** Visual treatment for the hardware status line. */
   hardwareStatusState?: 'neutral' | 'error';
+  /** Current assembler result for the selected project/target. */
+  buildStatusText?: string;
+  /** Visual treatment for the assembler result. */
+  buildStatusState?: 'neutral' | 'error';
   /** Current source-map status for editor navigation and debugger symbol views. */
   sourceMapStatusText?: string;
   sourceMapStatusState?: 'current' | 'stale' | 'missing' | 'invalid' | 'unknown';
