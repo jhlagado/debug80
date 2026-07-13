@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { mkdtempSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 
 import { compile } from '@jhlagado/azm/compile';
 
@@ -39,6 +39,72 @@ describe('generateAzm', () => {
 
     // updates Count marks the change flag after the user body.
     expect(source).toContain('or      CHG_COUNT');
+  });
+
+  it('keeps same-phase trigger delivery deferred when blocks are reordered', () => {
+    const compileOrder = (peerFirst: boolean): string => {
+      const producer = [
+        'effect Producer',
+        'on Go',
+        'updates Value',
+        'begin',
+        '    inc (Value)',
+        'end',
+      ];
+      const peer = [
+        'effect Peer',
+        'on Value',
+        'updates Seen',
+        'begin',
+        '    ld a,(Value)',
+        '    ld (Seen),a',
+        'end',
+      ];
+      const sourceText = [
+        'program Ordered',
+        'state Value : byte',
+        'state Seen : byte',
+        'pulse Go',
+        ...(peerFirst ? [...peer, ...producer] : [...producer, ...peer]),
+      ].join('\n');
+      const { program, diagnostics } = parseGlimmer(sourceText);
+      expect(diagnostics).toEqual([]);
+      return generateAzm(program!).source;
+    };
+
+    for (const source of [compileOrder(false), compileOrder(true)]) {
+      const start = source.indexOf('Glim_Producer:');
+      const end = source.indexOf('\n        ret', start);
+      const wrapper = source.slice(start, end);
+      expect(wrapper).toContain('ld      (Next0),a');
+      expect(wrapper).not.toContain('ld      (Raised0),a');
+    }
+  });
+
+  it('forwards an update to a later phase in the same frame', () => {
+    const sourceText = [
+      'program Forward',
+      'state Value : byte',
+      'pulse Go',
+      'effect Producer',
+      'on Go',
+      'updates Value',
+      'begin',
+      '    inc (Value)',
+      'end',
+      'render Draw',
+      'on Value',
+      'begin',
+      'end',
+    ].join('\n');
+    const { program, diagnostics } = parseGlimmer(sourceText);
+    expect(diagnostics).toEqual([]);
+    const source = generateAzm(program!).source;
+    const start = source.indexOf('Glim_Producer:');
+    const end = source.indexOf('\n        ret', start);
+    const wrapper = source.slice(start, end);
+    expect(wrapper).toContain('ld      (Raised0),a');
+    expect(wrapper).not.toContain('ld      (Next0),a');
   });
 
   it('emits multiple change-flag banks', async () => {
@@ -200,12 +266,59 @@ describe('generateAzm', () => {
   });
 });
 
+describe('compileToAzm diagnostics', () => {
+  const overlapSource = [
+    'program Warning',
+    'state Score : byte',
+    'pulse Fire',
+    'effect Add',
+    'on Fire',
+    'updates Score',
+    'begin',
+    '    inc (Score)',
+    'end',
+    'effect Reset',
+    'on Fire',
+    'updates Score',
+    'begin',
+    '    ld (Score),a',
+    'end',
+  ].join('\n');
+
+  it('returns parser warnings with generated source', () => {
+    const result = compileToAzm(overlapSource);
+    expect(result.source).toContain('Glim_Add:');
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: 'warning',
+        message: expect.stringContaining('Potential same-frame write overlap'),
+      }),
+    );
+  });
+
+  it('retains parser warnings when generation fails', () => {
+    const states = [
+      'state Score : byte',
+      ...Array.from({ length: 32 }, (_, index) => `state S${index} : byte`),
+    ].join('\n');
+    const result = compileToAzm(overlapSource.replace('state Score : byte', states));
+    expect(result.source).toBeNull();
+    expect(result.diagnostics.map((diagnostic) => diagnostic.message).join('\n')).toContain(
+      'Potential same-frame write overlap',
+    );
+    expect(result.diagnostics.map((diagnostic) => diagnostic.message).join('\n')).toContain(
+      'Change flags are full',
+    );
+  });
+});
+
 describe('verbatim block bodies', () => {
   it('emits block-local labels untouched; AZM scopes them to the @ routine', () => {
     const sourceText = [
       'program Twins',
       'state N : byte',
       'pulse Go',
+      'pulse Other',
       'bind key KEY_1 rising -> Go',
       'effect A',
       'on Go',
@@ -215,7 +328,7 @@ describe('verbatim block bodies', () => {
       '_done:',
       'end',
       'effect B',
-      'on Go',
+      'on Other',
       'updates N',
       'begin',
       '    jr _done',
@@ -471,6 +584,41 @@ describe('CLI pipeline (generate + AZM contract check)', () => {
     });
     expect(stdout).toContain('Usage: glimmer');
   });
+
+  it('prints parser warnings and still generates source', async () => {
+    const { main } = await import('../src/cli.js');
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-cli-warning-'));
+    const entry = path.join(dir, 'warning.glim');
+    writeFileSync(
+      entry,
+      [
+        'program Warning',
+        'state Score : byte',
+        'pulse Fire',
+        'effect Add',
+        'on Fire',
+        'updates Score',
+        'begin',
+        '    inc (Score)',
+        'end',
+        'effect Reset',
+        'on Fire',
+        'updates Score',
+        'begin',
+        '    xor a',
+        '    ld (Score),a',
+        'end',
+      ].join('\n'),
+    );
+    const error = vi.spyOn(console, 'error').mockImplementation(() => undefined);
+    try {
+      expect(await main(['--no-check', entry])).toBe(0);
+      expect(error.mock.calls.flat().join('\n')).toContain('Potential same-frame write overlap');
+      expect(readFileSync(path.join(dir, 'warning.main.asm'), 'utf8')).toContain('Glim_Add:');
+    } finally {
+      error.mockRestore();
+    }
+  });
 });
 
 describe('structured data (layout types)', () => {
@@ -493,7 +641,7 @@ describe('structured data (layout types)', () => {
     'bind key KEY_1 rising -> Go',
     'effect MovePoint',
     '    on Go',
-    '    updates Cursor',
+    '    updates Cursor, Score',
     'begin',
     '    ld hl,Cursor + offset(Point, y)',
     '    inc (hl)',
@@ -549,7 +697,6 @@ describe('routines', () => {
     'begin',
     '    ld a,(X)',
     '    call ClampX',
-    '    ld (X),a',
     'end',
   ].join('\n');
 

@@ -25,11 +25,14 @@ game-only.
 
 ## Status
 
-Version 0.5.3 is the current release line. Glimmer targets AZM 0.3.4,
-generates explicit `.routine` boundaries under an in-file `.contracts`
-policy, and is integrated into Debug80 as a native `.glim` source format.
-The repository's default Debug80 target builds and debugs
-`examples/tetro.glim` directly.
+Version 0.6.0 is the scheduling-contract and behavioural-confidence line.
+Glimmer distinguishes source-order-independent trigger delivery from the
+live-memory execution order of Z80 bodies, warns when same-phase blocks are
+scheduled together with a shared update target and rejects different
+unconditional routes that would make the destination source-order dependent.
+The release is exercised through Debug80's public headless runtime by bounded
+Dot, Tetro, Sprite Chase and scheduling scenarios. Glimmer continues to target
+AZM 0.3.4 and Debug80 treats `.glim` as a native source format.
 
 The language: scalar, array, and typed state (layout types compiled to
 AZM `.type` records), pulses, timers and ramps, held/rising key

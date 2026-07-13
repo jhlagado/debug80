@@ -304,10 +304,13 @@ run: a block runs in its phase when any `on` cell changed, and after it
 runs its `updates` cells are marked changed. Delivery is exactly-once:
 a raise whose consumers are all in later phases lands the same frame; a
 raise any of whose consumers already ran (an earlier or equal phase)
-rolls over whole to the next frame. Declaration order is never
-semantic. Pulses clear at the end of every frame; deferred raises
-become the next frame's changes. That is the whole model; `->` is its
-only symbol.
+rolls over whole to the next frame. Source order does not change that
+trigger schedule. Bodies execute sequentially against live memory, so
+direct reads and writes may still expose dispatch order. Shared-trigger,
+shared-update blocks produce a warning; different unconditional `goto`
+targets in that situation are a build error.
+Pulses clear at the end of every frame; deferred raises become the next
+frame's changes. `->` has one meaning throughout: fires.
 
 ## Deferred extensions
 
@@ -354,10 +357,12 @@ libraries, and richer platform-specific resources and bindings.
   stable `Glim_<Block>:` entry labels; no label rewriting occurs.
 
 - **Cards are sections, not blocks (2026-07-06).** `card <Name>` starts
-  a section that runs to the next `card` line or end of file — no
-  closing keyword. `end` therefore keeps a single meaning: it only ever
-  terminates a `begin` body ("end of assembly"). The language stays
-  nesting-free (rule 6) even with cards.
+  a block-dispatch section that runs to the next `card` line or end of
+  file — no closing keyword. It does not create lexical or storage
+  scope; non-block declarations remain program-wide. `end` therefore
+  keeps a single meaning: it only ever terminates a `begin` body ("end
+  of assembly"). The language stays nesting-free (rule 6) even with
+  cards, and one-mode programs can omit cards entirely.
 
 One syntax question remains deliberately open:
 

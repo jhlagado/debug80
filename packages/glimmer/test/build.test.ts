@@ -226,4 +226,58 @@ describe('buildGlimmerProgram (programmatic API)', () => {
     expect(path.isAbsolute(diagnostic.sourceName)).toBe(true);
     expect(diagnostic.line).toBeGreaterThan(0);
   });
+
+  it('preserves parser warnings through the programmatic build API', async () => {
+    const { buildGlimmerProgram } = await import('../src/build.js');
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-api-warning-'));
+    const entry = path.join(dir, 'warning.glim');
+    writeFileSync(
+      entry,
+      [
+        'program Warning',
+        'state Score : byte',
+        'pulse Fire',
+        'effect Add',
+        'on Fire',
+        'updates Score',
+        'begin',
+        '    inc (Score)',
+        'end',
+        'effect Reset',
+        'on Fire',
+        'updates Score',
+        'begin',
+        '    ld (Score),a',
+        'end',
+      ].join('\n'),
+    );
+
+    const result = await buildGlimmerProgram(entry, { stage: 'generate' });
+    expect(result.artifacts?.asm).toBeDefined();
+    expect(result.diagnostics).toContainEqual(
+      expect.objectContaining({
+        severity: 'warning',
+        sourceName: entry,
+        message: expect.stringContaining('Potential same-frame write overlap'),
+      }),
+    );
+
+    const overflowEntry = path.join(dir, 'overflow.glim');
+    const overflowStates = [
+      'state Score : byte',
+      ...Array.from({ length: 32 }, (_, index) => `state S${index} : byte`),
+    ].join('\n');
+    writeFileSync(
+      overflowEntry,
+      readFileSync(entry, 'utf8').replace('state Score : byte', overflowStates),
+    );
+    const failed = await buildGlimmerProgram(overflowEntry, { stage: 'generate' });
+    expect(failed.artifacts).toBeUndefined();
+    expect(failed.diagnostics.map((diagnostic) => diagnostic.message).join('\n')).toContain(
+      'Potential same-frame write overlap',
+    );
+    expect(failed.diagnostics.map((diagnostic) => diagnostic.message).join('\n')).toContain(
+      'Change flags are full',
+    );
+  });
 });

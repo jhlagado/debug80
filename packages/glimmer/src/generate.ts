@@ -10,7 +10,8 @@
  * this frame, merged at phase boundaries) or NextN (deferred to next
  * frame) depending on whether any consumer's phase has already run —
  * computed per block at compile time, so every raise is delivered
- * exactly once and declaration order is never semantic.
+ * exactly once without source order changing trigger scheduling. Block
+ * bodies still execute sequentially against live memory.
  */
 
 import type {
@@ -141,8 +142,8 @@ export function generateAzm(
   // Rollover masks. For each flag, the earliest consumer phase decides
   // whether a raise from phase P is deliverable this frame (all consumers
   // strictly later) or defers whole to next frame (some consumer at or
-  // before P — including same-phase, so declaration order is never
-  // semantic). Uniform per raise: exactly-once delivery.
+  // before P — including same-phase, so source order cannot change
+  // trigger scheduling). Uniform per raise: exactly-once delivery.
   const minConsumerPhase = new Map<string, number>();
   for (const effect of program.effects) {
     const p = PHASE_NUM[effect.phase] as number;

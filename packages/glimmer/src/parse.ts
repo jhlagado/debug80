@@ -855,9 +855,9 @@ export function parseUnit(
         error(lineNo, `Invalid card name "${name}".`);
         continue;
       }
-      // A card line starts a section: everything after it belongs to
-      // that card until the next card line or end of file. Repeating a
-      // card name re-enters its section (also across parts).
+      // A card line starts a block-dispatch section: subsequent blocks
+      // are gated to that card until the next card line or end of file.
+      // Repeating a card name re-enters its section (also across parts).
       if (name.startsWith('_')) {
         error(lineNo, `Reserved card name "${name}": a leading "_" is AZM local-label syntax.`);
         continue;
@@ -1366,6 +1366,47 @@ function validateReferences(
   for (const effect of parts.effects) {
     if (effect.goto !== undefined && !cardNames.has(effect.goto)) {
       error(effect, `${effect.name}: goto target "${effect.goto}" is not a declared card.`);
+    }
+  }
+
+  // Blocks in one dispatch pass execute sequentially against live memory. A
+  // shared trigger proves that both blocks are scheduled, but `updates` cannot
+  // prove a conditional Z80 body actually stores. Warn on that declaration-level
+  // overlap. Different unconditional goto targets are the one definite conflict:
+  // both wrappers necessarily store distinct CurrentCard values.
+  for (let rightIndex = 1; rightIndex < parts.effects.length; rightIndex += 1) {
+    const right = parts.effects[rightIndex] as EffectDecl;
+    for (let leftIndex = 0; leftIndex < rightIndex; leftIndex += 1) {
+      const left = parts.effects[leftIndex] as EffectDecl;
+      if (left.phase !== right.phase) continue;
+      if (left.card !== undefined && right.card !== undefined && left.card !== right.card) continue;
+
+      const sharedTriggers = right.depends.filter((name) => left.depends.includes(name));
+      if (sharedTriggers.length === 0) continue;
+      const sharedTrigger = sharedTriggers[0] as string;
+
+      if (left.goto !== undefined && right.goto !== undefined && left.goto !== right.goto) {
+        error(
+          right,
+          `Definite same-frame navigation conflict: ${left.name} and ${right.name} run in the ${right.phase} phase on "${sharedTrigger}" while their card scopes overlap, but goto different cards (${left.goto} and ${right.goto}); the destination would depend on declaration order. Combine the routing decision in one block.`,
+        );
+        continue;
+      }
+
+      const sharedTargets = right.updates.filter((name) => left.updates.includes(name));
+      const reportTargets = sharedTargets.filter(
+        (name) =>
+          name !== CURRENT_CARD ||
+          left.goto === undefined ||
+          right.goto === undefined ||
+          left.goto !== right.goto,
+      );
+      if (reportTargets.length === 0) continue;
+
+      warn(
+        right,
+        `Potential same-frame write overlap: ${left.name} and ${right.name} run in the ${right.phase} phase on "${sharedTrigger}" and both declare updates ${reportTargets.map((name) => `"${name}"`).join(', ')} while their card scopes overlap. Z80 bodies use live memory in dispatch order; keep one invariant in one block or verify that the writes are exclusive or order-independent.`,
+      );
     }
   }
 

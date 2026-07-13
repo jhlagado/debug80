@@ -669,6 +669,143 @@ describe('parseGlimmer', () => {
     expect(messages).toContain('Reserved name "CurrentCard"');
   });
 
+  it('warns about a potential same-frame write overlap', () => {
+    const source = [
+      'program P',
+      'state Score : byte',
+      'pulse Fire',
+      'effect AddOne',
+      '    on Fire',
+      '    updates Score',
+      'begin',
+      '    inc (Score)',
+      'end',
+      'effect Reset',
+      '    on Fire',
+      '    updates Score',
+      'begin',
+      '    ld (Score),a',
+      'end',
+    ].join('\n');
+    const { program, diagnostics } = parseGlimmer(source);
+    expect(program).not.toBeNull();
+    expect(diagnostics).toContainEqual(
+      expect.objectContaining({
+        line: 10,
+        severity: 'warning',
+        message: expect.stringContaining(
+          'AddOne and Reset run in the logic phase on "Fire" and both declare updates "Score"',
+        ),
+      }),
+    );
+  });
+
+  it('allows alternative writers with disjoint triggers or phases', () => {
+    const disjoint = [
+      'program P',
+      'state Position : byte',
+      'pulse Left',
+      'pulse Right',
+      'effect MoveLeft',
+      '    on Left',
+      '    updates Position',
+      'begin',
+      '    dec (Position)',
+      'end',
+      'effect MoveRight',
+      '    on Right',
+      '    updates Position',
+      'begin',
+      '    inc (Position)',
+      'end',
+    ].join('\n');
+    expect(parseGlimmer(disjoint).diagnostics).toEqual([]);
+
+    const differentPhases = [
+      'program P',
+      'state Source : byte',
+      'state Result : byte',
+      'pulse Fire',
+      'compute Derive',
+      '    on Fire',
+      '    updates Result',
+      'begin',
+      '    ld (Result),a',
+      'end',
+      'effect Apply',
+      '    on Fire',
+      '    updates Result',
+      'begin',
+      '    ld (Result),a',
+      'end',
+    ].join('\n');
+    expect(parseGlimmer(differentPhases).diagnostics).toEqual([]);
+  });
+
+  it('allows writers in mutually exclusive cards and rejects overlapping scopes', () => {
+    const exclusive = [
+      'program P',
+      'state Score : byte',
+      'pulse Fire',
+      'card A',
+      'effect InA',
+      '    on Fire',
+      '    updates Score',
+      'begin',
+      '    ld (Score),a',
+      'end',
+      'card B',
+      'effect InB',
+      '    on Fire',
+      '    updates Score',
+      'begin',
+      '    ld (Score),a',
+      'end',
+    ].join('\n');
+    expect(parseGlimmer(exclusive).diagnostics).toEqual([]);
+
+    const overlapping = exclusive.replace('card A\n', '').replace('card B\n', 'card B\n');
+    expect(
+      parseGlimmer(overlapping)
+        .diagnostics.map((d) => d.message)
+        .join('\n'),
+    ).toContain('InA and InB run in the logic phase on "Fire" and both declare updates "Score"');
+  });
+
+  it('treats goto as a CurrentCard write when finding conflicts', () => {
+    const source = [
+      'program P',
+      'pulse Go',
+      'card Menu',
+      'effect StartA',
+      '    on Go',
+      '    goto A',
+      'end',
+      'effect StartB',
+      '    on Go',
+      '    goto B',
+      'end',
+      'card A',
+      'card B',
+    ].join('\n');
+    const result = parseGlimmer(source);
+    expect(result.program).toBeNull();
+    const messages = result.diagnostics.map((d) => d.message).join('\n');
+    expect(messages).toContain(
+      'StartA and StartB run in the logic phase on "Go" while their card scopes overlap, but goto different cards (A and B)',
+    );
+
+    const sameDestination = parseGlimmer(source.replace('    goto B', '    goto A'));
+    expect(sameDestination.diagnostics).toEqual([]);
+    expect(sameDestination.program).not.toBeNull();
+
+    const withAnotherSharedTarget = source
+      .replace('pulse Go', 'state Score : byte\npulse Go')
+      .replace('    goto A', '    updates Score\n    goto A')
+      .replace('    goto B', '    updates Score\n    goto B');
+    expect(parseGlimmer(withAnotherSharedTarget).program).toBeNull();
+  });
+
   it('parses rotational shapes with aliases and cycling defaults', () => {
     const source = [
       'program P',

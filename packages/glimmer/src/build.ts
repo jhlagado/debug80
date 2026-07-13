@@ -348,8 +348,12 @@ export async function buildGlimmerProgram(
   const program: GlimmerProgram = loaded.program;
 
   const generated = generateAzm(program, options.org === undefined ? {} : { org: options.org });
-  if (generated.diagnostics.length > 0) {
-    return { diagnostics: fromGlimmerDiagnostics(generated.diagnostics, entryPath), warnings };
+  const frontEndDiagnostics = [
+    ...loadDiagnostics,
+    ...fromGlimmerDiagnostics(generated.diagnostics, entryPath),
+  ];
+  if (hasErrors(frontEndDiagnostics)) {
+    return { diagnostics: frontEndDiagnostics, warnings };
   }
 
   const asmPath = path.resolve(
@@ -362,7 +366,7 @@ export async function buildGlimmerProgram(
   writeFileSync(asmPath, generated.source);
   const stage = options.stage ?? 'build';
   if (stage === 'generate') {
-    return { diagnostics: loadDiagnostics, artifacts: { asm: asmPath }, warnings };
+    return { diagnostics: frontEndDiagnostics, artifacts: { asm: asmPath }, warnings };
   }
 
   // Contract checking runs at the same strength in both stages: the
@@ -388,7 +392,7 @@ export async function buildGlimmerProgram(
       : {}),
   };
   const attributed = (azmDiagnostics: readonly AzmDiagnosticLike[]): BuildDiagnostic[] => [
-    ...loadDiagnostics,
+    ...frontEndDiagnostics,
     ...reattributeDiagnostics(
       fromAzmDiagnostics(azmDiagnostics),
       generated.source,

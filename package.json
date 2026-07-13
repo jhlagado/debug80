@@ -19,6 +19,7 @@
     "check": "npm run build && npm run typecheck && npm run lint && npm run format:check && npm run test",
     "package:azm": "npm run test:package -w @jhlagado/azm",
     "package:glimmer": "npm pack -w @jhlagado/glimmer --dry-run",
+    "package:glimmer-headless": "npm run test:package -w @jhlagado/glimmer-headless-integration",
     "package:runtime": "npm run test:package -w @jhlagado/debug80-runtime",
     "package:debug80": "npm run package:check -w debug80"
   },
