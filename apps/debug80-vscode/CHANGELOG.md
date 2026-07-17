@@ -1,6 +1,11 @@
 # Changelog
 
-## Unreleased
+## 0.2.2 - 2026-07-17
+
+- Updated the Debug80 engineering manual to clarify the build status split
+  between assembler failures and CoolTerm/hardware state.
+- Confirmed bundled AZM and Glimmer dependencies remain current at
+  `@jhlagado/azm` `^0.3.5` and `@jhlagado/glimmer` `^0.6.0`.
 
 ## 0.2.1 - 2026-07-13
 
