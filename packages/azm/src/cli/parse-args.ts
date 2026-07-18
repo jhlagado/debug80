@@ -94,6 +94,12 @@ const BOOLEAN_FLAG_ACTIONS: readonly BooleanFlagAction[] = [
     },
   },
   {
+    flags: ['--nolst'],
+    apply: (state) => {
+      state.emitLst = false;
+    },
+  },
+  {
     flags: ['--emit-register-report', '--reg-report'],
     apply: (state) => {
       state.emitRegisterReport = true;
@@ -154,7 +160,7 @@ function createDefaultCliState(): CliState {
     emitHex: true,
     emitD8m: true,
     emitAsm80: false,
-    emitLst: false,
+    emitLst: true,
     symbolCase: 'strict',
     caseStyle: 'off',
     registerContracts: 'off',

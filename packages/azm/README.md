@@ -571,8 +571,8 @@ The main switches are:
 | `--nobin`                                     | Skip `.bin` output.                                                    |
 | `--nohex`                                     | Skip `.hex` output.                                                    |
 | `--nod8m`                                     | Skip `.d8.json` output.                                                |
+| `--nolst`                                     | Skip `.lst` listing output.                                            |
 | `--asm80`                                     | Write lowered assembler source as `.z80`.                              |
-| `--lst`                                       | Write an asm80-style listing as `.lst`.                                |
 | `--source-root <dir>`                         | Emit project-relative source paths in `.d8.json`.                      |
 | `--symbol-case <strict\|insensitive>`         | Symbol lookup mode. Default: `strict`; `insensitive` is compatibility. |
 | `--case-style <mode>`                         | Lint mnemonic, register and op-head case style.                        |
@@ -603,8 +603,8 @@ using the same base path.
 | `.hex`              | Intel HEX                                    |
 | `.bin`              | flat binary                                  |
 | `.d8.json`          | Debug80 map                                  |
+| `.lst`              | asm80-style listing                          |
 | `.z80`              | ASM80-compatible lowered source when enabled |
-| `.lst`              | asm80-style listing when enabled             |
 | `.regcontracts.txt` | opt-in register contracts debug report       |
 | `.asmi`             | register contracts interface when enabled    |
 

@@ -307,7 +307,8 @@ of omitting it. Internal NUL-qualified assembler names never appear in D8.
 
 ## Listing Artifact
 
-`src/outputs/write-lst.ts` renders an asm80-style listing (`--lst`, `.lst`):
+`src/outputs/write-lst.ts` renders an asm80-style listing (`.lst`, written by
+default like `.hex`/`.bin`/`.d8.json`; suppress with `--nolst`):
 each expanded source line in inclusion order with an address/byte gutter, and a
 symbol table trailer (names padded to 12 columns, 4-hex values, sorted). Byte
 tokens start at column 7; the gutter pads to column 20 when it fits (up to 4

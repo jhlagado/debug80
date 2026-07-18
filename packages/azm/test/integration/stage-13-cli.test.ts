@@ -248,22 +248,25 @@ describe('stage 13 CLI façade', () => {
     });
   });
 
-  it('writes a listing file when --lst is used and none without it', async () => {
+  it('writes a listing file by default and skips it with --nolst', async () => {
     await withTempDir('azm-next-cli-lst-', async (dir) => {
       const entry = join(dir, 'main.asm');
       await writeFile(entry, `main:\n  ld a,1\n  ret\n`, 'utf8');
       const out = join(dir, 'main.hex');
 
-      const withoutFlag = await runNextCli(['--nobin', '--nod8m', '-o', out, entry], dir);
-      expect(withoutFlag.code).toBe(0);
-      expect(await exists(join(dir, 'main.lst'))).toBe(false);
-
-      const res = await runNextCli(['--lst', '--nobin', '--nod8m', '-o', out, entry], dir);
+      const res = await runNextCli(['--nobin', '--nod8m', '-o', out, entry], dir);
       expect(res.code).toBe(0);
       expect(await exists(join(dir, 'main.lst'))).toBe(true);
       const lst = await readFile(join(dir, 'main.lst'), 'utf8');
       expect(lst).toContain('main:');
       expect(lst).toContain('3E 01');
+
+      const suppressed = await runNextCli(
+        ['--nolst', '--nobin', '--nod8m', '-o', join(dir, 'plain.hex'), entry],
+        dir,
+      );
+      expect(suppressed.code).toBe(0);
+      expect(await exists(join(dir, 'plain.lst'))).toBe(false);
     });
   });
 });

@@ -117,14 +117,14 @@ function compileArtifactDefaults(options: CompileNextFunctionOptions): {
   readonly emitAsm80: boolean;
   readonly emitLst: boolean;
 } {
-  const anyPrimary = [options.emitBin, options.emitHex, options.emitD8m].some(
+  const anyPrimary = [options.emitBin, options.emitHex, options.emitD8m, options.emitLst].some(
     (value) => value !== undefined,
   );
   const emitBin = anyPrimary ? (options.emitBin ?? false) : true;
   const emitHex = anyPrimary ? (options.emitHex ?? false) : true;
   const emitD8m = anyPrimary ? (options.emitD8m ?? false) : true;
+  const emitLst = anyPrimary ? (options.emitLst ?? false) : true;
   const emitAsm80 = options.emitAsm80 ?? false;
-  const emitLst = options.emitLst ?? false;
   return { emitBin, emitHex, emitD8m, emitAsm80, emitLst };
 }
 

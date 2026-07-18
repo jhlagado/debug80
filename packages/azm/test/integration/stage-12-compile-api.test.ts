@@ -93,14 +93,19 @@ main:
   ret
 `;
 
-  it('returns default bin, hex, and d8m artifacts from the programming API', async () => {
+  it('returns default bin, hex, d8m, and lst artifacts from the programming API', async () => {
     await withTempDir('azm-next-compile-default-', async (dir) => {
       const entry = join(dir, 'program.asm');
       await writeFile(entry, source, 'utf8');
 
       const result = await compile(entry, {}, { formats: defaultFormatWriters });
       expect(result.diagnostics).toEqual([]);
-      expect(result.artifacts.map((artifact) => artifact.kind)).toEqual(['bin', 'hex', 'd8m']);
+      expect(result.artifacts.map((artifact) => artifact.kind)).toEqual([
+        'bin',
+        'hex',
+        'd8m',
+        'lst',
+      ]);
 
       const bin = result.artifacts.find((artifact) => artifact.kind === 'bin');
       const hex = result.artifacts.find((artifact) => artifact.kind === 'hex');

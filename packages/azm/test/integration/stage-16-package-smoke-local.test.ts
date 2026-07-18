@@ -79,8 +79,8 @@ describe('stage 16 package smoke local fallback', () => {
 
     expect(output.loaded).toBe(true);
     expect(output.diagnosticsCount).toBe(0);
-    expect(output.artifactKinds).toHaveLength(3);
-    expect(output.artifactKinds).toEqual(expect.arrayContaining(['bin', 'hex', 'd8m']));
+    expect(output.artifactKinds).toHaveLength(4);
+    expect(output.artifactKinds).toEqual(expect.arrayContaining(['bin', 'hex', 'd8m', 'lst']));
   }, 60_000);
 
   it('runs the local CLI entry point for smoke output generation', async () => {
