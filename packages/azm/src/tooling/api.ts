@@ -1,6 +1,7 @@
 import type { Diagnostic } from '../model/diagnostic.js';
 import type { SourceItem } from '../model/source-item.js';
 import type { SymbolCaseMode } from '../model/symbol.js';
+import type { LogicalLine } from '../source/logical-lines.js';
 import { assembleProgram } from '../assembly/assemble-program.js';
 import { expandSourceForTooling, type LoadProgramNextOptions } from '../node/source-host.js';
 import { parseNextSourceItems } from '../core/compile.js';
@@ -26,6 +27,8 @@ export interface LoadedProgramNext {
   };
   readonly sourceTexts: ReadonlyMap<string, string>;
   readonly sourceLineComments: ReadonlyMap<string, ReadonlyMap<number, string>>;
+  /** Expanded source lines in listing order (includes/imports inlined at their load site). */
+  readonly logicalLines: readonly LogicalLine[];
 }
 
 export interface LoadProgramNextResult {
@@ -79,6 +82,7 @@ export async function loadProgramNext(
       },
       sourceTexts: expanded.sourceTexts,
       sourceLineComments: expanded.sourceLineComments,
+      logicalLines: expanded.lines,
     },
   };
 }

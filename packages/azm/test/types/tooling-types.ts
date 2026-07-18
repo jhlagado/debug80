@@ -19,6 +19,10 @@ const loaded: LoadedProgram = {
   },
   sourceTexts: new Map([['main.asm', 'main:\n  ret\n']]),
   sourceLineComments: new Map(),
+  logicalLines: [
+    { sourceName: 'main.asm', line: 1, text: 'main:' },
+    { sourceName: 'main.asm', line: 2, text: '  ret' },
+  ],
 };
 
 const loadResult: LoadProgramResult = {

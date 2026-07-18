@@ -263,6 +263,8 @@ export async function compile(
     options,
     formats: deps.formats,
     program,
+    sourceTexts: loaded.loadedProgram.sourceTexts,
+    logicalLines: loaded.loadedProgram.logicalLines,
     bytes: assembled.bytes,
     origin: assembled.origin,
     sourceSegments: assembled.sourceSegments,
