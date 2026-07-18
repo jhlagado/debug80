@@ -329,6 +329,7 @@ function emitOrg(
 }
 
 function emitDb(context: EmitContext, item: Extract<SourceItem, { readonly kind: 'db' }>): void {
+  const startAddress = activePlacementAddress(context.placement);
   for (const value of item.values) {
     emitDbValue(
       value,
@@ -344,9 +345,17 @@ function emitDb(context: EmitContext, item: Extract<SourceItem, { readonly kind:
       context.placement,
     );
   }
+  addSourceSegment(
+    context.sourceSegments,
+    item.span,
+    startAddress,
+    activePlacementAddress(context.placement),
+    'data',
+  );
 }
 
 function emitDw(context: EmitContext, item: Extract<SourceItem, { readonly kind: 'dw' }>): void {
+  const startAddress = activePlacementAddress(context.placement);
   for (const expression of item.values) {
     const emitAddress = activePlacementAddress(context.placement);
     const bytes: number[] = [];
@@ -370,6 +379,13 @@ function emitDw(context: EmitContext, item: Extract<SourceItem, { readonly kind:
       advancePlacement(context.placement, 2);
     }
   }
+  addSourceSegment(
+    context.sourceSegments,
+    item.span,
+    startAddress,
+    activePlacementAddress(context.placement),
+    'data',
+  );
 }
 
 function emitDs(context: EmitContext, item: Extract<SourceItem, { readonly kind: 'ds' }>): void {
@@ -389,6 +405,7 @@ function emitDs(context: EmitContext, item: Extract<SourceItem, { readonly kind:
     for (let index = 0; index < size; index += 1) {
       writeImageByte(context.image, context.initializedAddresses, emitAddress + index, fill);
     }
+    addSourceSegment(context.sourceSegments, item.span, emitAddress, emitAddress + size, 'data');
   } else {
     for (let index = 0; index < size; index += 1) {
       context.reservedAddresses.add(emitAddress + index);
@@ -448,11 +465,19 @@ function emitStringData(
   context: EmitContext,
   item: Extract<SourceItem, { readonly kind: 'string-data' }>,
 ): void {
+  const startAddress = activePlacementAddress(context.placement);
   for (const value of stringDirectiveBytes(item.directive, item.value)) {
     const stringEmitAddress = activePlacementAddress(context.placement);
     writeImageByte(context.image, context.initializedAddresses, stringEmitAddress, value);
     advancePlacement(context.placement, 1);
   }
+  addSourceSegment(
+    context.sourceSegments,
+    item.span,
+    startAddress,
+    activePlacementAddress(context.placement),
+    'data',
+  );
 }
 
 function emitProgramInstruction(
