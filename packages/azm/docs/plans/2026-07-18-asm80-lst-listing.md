@@ -1,6 +1,7 @@
 # Plan: asm80-style `.lst` listing output for AZM
 
-Status: revised after code review (v2)
+Status: implemented (v2 plan; all five phases landed, plus in-place listing
+of `.include`/`.import` lines via flagged logical lines)
 Date: 2026-07-18
 
 ## Goal
