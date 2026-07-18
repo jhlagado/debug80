@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.2.3 - 2026-07-18
+
+- Updated AZM to `^0.3.6`, which adds an asm80-style listing artifact
+  (`--lst`, `.lst`) with an address/byte gutter, inlined includes/imports,
+  and a symbol table trailer.
+- Debug maps (`.d8.json`) now carry `data` segments for `db`/`dw`/string
+  directives and filled `ds` ranges, so data lines map in the debugger like
+  code lines.
+- Clearer AZM parse diagnostics: typographic (smart) quotes are named with
+  their ASCII replacement, and bare `0B`/`1B` data values warn that they
+  parse as binary literals, suggesting the hex spelling when intended.
+
 ## 0.2.2 - 2026-07-17
 
 - Updated the Debug80 engineering manual to clarify the build status split
