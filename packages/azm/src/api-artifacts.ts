@@ -3,6 +3,7 @@ import { dirname, normalize } from 'node:path';
 
 import type { Diagnostic } from './model/diagnostic.js';
 import type { SourceItem } from './model/source-item.js';
+import type { LogicalLine } from './source/logical-lines.js';
 import { UnsupportedAsm80LoweringError } from './outputs/write-asm80.js';
 import type {
   AddressRange,
@@ -19,6 +20,8 @@ interface EmitAssemblyArtifactsOptions {
   readonly options: CompileNextFunctionOptions;
   readonly formats: FormatWriters;
   readonly program: readonly SourceItem[];
+  readonly sourceTexts: ReadonlyMap<string, string>;
+  readonly logicalLines: readonly LogicalLine[];
   readonly bytes: Uint8Array;
   readonly origin: number;
   readonly sourceSegments: EmittedByteMap['sourceSegments'];
