@@ -146,15 +146,15 @@ describe('writeLst', () => {
         [0x4000, 0x00],
         [0x4001, 0x00],
       ],
-      [
-        segment('twice.asm', 1, 0x4000, 0x4001),
-        segment('twice.asm', 1, 0x4001, 0x4002),
-      ],
+      [segment('twice.asm', 1, 0x4000, 0x4001), segment('twice.asm', 1, 0x4001, 0x4002)],
     );
 
     const result = writeLst(map, [], {
       sourceTexts: new Map([['twice.asm', '        nop\n']]),
-      logicalLines: [logical('twice.asm', 1, '        nop'), logical('twice.asm', 1, '        nop')],
+      logicalLines: [
+        logical('twice.asm', 1, '        nop'),
+        logical('twice.asm', 1, '        nop'),
+      ],
     });
 
     expect(lines(result.text).slice(0, 2)).toEqual([

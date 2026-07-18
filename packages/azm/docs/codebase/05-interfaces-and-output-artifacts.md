@@ -108,31 +108,31 @@ analyses the program, assembles it and returns artifacts in memory.
 
 Important options include:
 
-| Option                                       | Meaning                                 |
-| -------------------------------------------- | --------------------------------------- |
-| `includeDirs`                                | Include search paths.                   |
-| `directiveAliasFiles`                        | Project alias profile files.            |
-| `symbolCase`                                 | Symbol lookup mode.                     |
-| `caseStyle`                                  | Case-style lint mode.                   |
-| `outputType`                                 | Primary output type, `hex` or `bin`.    |
-| `sourceRoot`                                 | Root used for portable D8 map paths.    |
-| `d8mInputs`                                  | Artifact paths recorded in D8 metadata. |
-| `emitBin`, `emitHex`, `emitD8m`, `emitAsm80`, `emitLst` | Artifact selection.          |
-| `registerContracts`                          | Register contract mode.                 |
-| `registerContractsPolicy`                    | Per-file strict, audit and off policy.  |
-| `emitRegisterReport`                         | Emit text or JSON report artifact.      |
-| `registerContractsReportFormat`              | Report format, `text` or `json`.        |
-| `registerContractsBaseline`                  | Baseline JSON report for ratcheting.    |
-| `registerContractsRatchet`                   | Fail when findings increase.            |
-| `emitRegisterInterface`                      | Emit `.asmi` artifact.                  |
-| `emitRegisterInference`                      | Emit inference review artifact.         |
-| `registerContractsInferenceFormat`           | Inference format, `json` or `markdown`. |
-| `emitRegisterAnnotations`                    | Emit source annotation artifact.        |
-| `fixRegisterContracts`                       | Apply conservative source fixes.        |
-| `acceptRegisterOutputCandidates`             | Promote selected output candidates.     |
-| `registerContractsProfile`                   | Built-in external contract profile.     |
-| `registerContractsInterfaces`                | External `.asmi` contract files.        |
-| `skipAssembly`                               | Run loading and analysis only.          |
+| Option                                                  | Meaning                                 |
+| ------------------------------------------------------- | --------------------------------------- |
+| `includeDirs`                                           | Include search paths.                   |
+| `directiveAliasFiles`                                   | Project alias profile files.            |
+| `symbolCase`                                            | Symbol lookup mode.                     |
+| `caseStyle`                                             | Case-style lint mode.                   |
+| `outputType`                                            | Primary output type, `hex` or `bin`.    |
+| `sourceRoot`                                            | Root used for portable D8 map paths.    |
+| `d8mInputs`                                             | Artifact paths recorded in D8 metadata. |
+| `emitBin`, `emitHex`, `emitD8m`, `emitAsm80`, `emitLst` | Artifact selection.                     |
+| `registerContracts`                                     | Register contract mode.                 |
+| `registerContractsPolicy`                               | Per-file strict, audit and off policy.  |
+| `emitRegisterReport`                                    | Emit text or JSON report artifact.      |
+| `registerContractsReportFormat`                         | Report format, `text` or `json`.        |
+| `registerContractsBaseline`                             | Baseline JSON report for ratcheting.    |
+| `registerContractsRatchet`                              | Fail when findings increase.            |
+| `emitRegisterInterface`                                 | Emit `.asmi` artifact.                  |
+| `emitRegisterInference`                                 | Emit inference review artifact.         |
+| `registerContractsInferenceFormat`                      | Inference format, `json` or `markdown`. |
+| `emitRegisterAnnotations`                               | Emit source annotation artifact.        |
+| `fixRegisterContracts`                                  | Apply conservative source fixes.        |
+| `acceptRegisterOutputCandidates`                        | Promote selected output candidates.     |
+| `registerContractsProfile`                              | Built-in external contract profile.     |
+| `registerContractsInterfaces`                           | External `.asmi` contract files.        |
+| `skipAssembly`                                          | Run loading and analysis only.          |
 
 `registerContractsPolicy` matches the physical source file recorded on each
 register-contract routine, direct call and finding. In a single assembled

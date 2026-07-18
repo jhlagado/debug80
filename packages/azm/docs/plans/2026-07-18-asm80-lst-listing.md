@@ -27,7 +27,7 @@ survive contact:
    below fixes emission first (which also improves `.d8.json`).
 2. **The per-file cursor walk mis-orders imports.** Walking items and
    printing "all unprinted lines of F up to L" prints the parent file's
-   lines *between its last item and the import site* only after control
+   lines _between its last item and the import site_ only after control
    returns to the parent — i.e. after the entire imported file. The
    expander already produces the exact interleaved order as
    `LogicalLine[]` (`src/node/source-host.ts`, `expandFile`); v1 discarded
@@ -35,7 +35,7 @@ survive contact:
 3. **The full-image map cannot represent `ds`.** `assembledImageToMap`
    zero-fills the whole origin→end image, so a `ds` hole is
    indistinguishable from real `00` bytes. The listing must be built from
-   the *initialized* map (the same map the hex writer gets) so `ds`
+   the _initialized_ map (the same map the hex writer gets) so `ds`
    reservations naturally have no byte tokens.
 
 Also: the column rules for long byte runs were contradictory (pad-to-20 vs
@@ -116,7 +116,7 @@ Verified against the code; items marked **(new)** must be added:
   parsing. Add `logicalLines: readonly LogicalLine[]` to
   `LoadedProgramNext` (`src/tooling/api.ts`) and thread it into
   `emitAssemblyArtifacts`. This is the body driver.
-  - Caveat: `expandFile` *replaces* each `.include`/`.import` directive
+  - Caveat: `expandFile` _replaces_ each `.include`/`.import` directive
     line with the child lines, so the directive line itself is absent from
     `logicalLines`. The writer reconstructs it: when consecutive body lines
     from the same file skip line numbers, the skipped lines are fetched
@@ -134,7 +134,7 @@ Verified against the code; items marked **(new)** must be added:
   listing.
 - The **initialized** byte map — build with the existing
   `assembledInitializedImageToMap(bytes, origin, initializedAddresses,
-  sourceSegments)` (the "sidecar map" in `src/api-artifacts.ts`), *not*
+sourceSegments)` (the "sidecar map" in `src/api-artifacts.ts`), _not_
   `assembledImageToMap`. `ds`-without-fill addresses are absent from it;
   `ds`-with-fill, `align` padding, and all data/code bytes are present.
 - `SymbolEntry[]` from `collectSymbolEntries` (`src/api-artifacts.ts`) —
@@ -188,7 +188,7 @@ reservations only).
      from both passes keyed to the same `(file, line)`. v1 of the writer
      prints the merged union on the first occurrence and an empty gutter on
      repeats. Correct per-occurrence attribution needs emission-order
-     segment IDs; deferred (repeated `.include` of *emitting* code is rare
+     segment IDs; deferred (repeated `.include` of _emitting_ code is rare
      and dubious — repeated `.import` is already deduped upstream).
 2. Index `ds`-without-fill items by `(file, line)` → start address, from
    the item walk (`kind === 'ds'`, no fill). These lines get an
@@ -215,7 +215,7 @@ reservations only).
 Notes:
 
 - Overlapping writes (backwards `org` over an earlier region): the map
-  holds final bytes, so an overwritten line shows the *final* memory
+  holds final bytes, so an overwritten line shows the _final_ memory
   content, not what it originally emitted. asm80 shows the originally
   emitted bytes. Accept and document; matching asm80 here would require
   per-item byte capture during emission and buys little for a debugging
@@ -230,21 +230,21 @@ Notes:
 Verified against the actual files; the `--asm80` flag is the template for
 every row:
 
-| File | Change |
-| --- | --- |
-| `src/tooling/api.ts` | Add `logicalLines: readonly LogicalLine[]` to `LoadedProgramNext`; populate from `expanded.lines` in `loadProgramNext`. |
-| `src/assembly/program-emission.ts` | Phase 1: segments for `db`/`dw`/`string-data`/`ds`-with-fill. |
-| `src/outputs/types.ts` | Add `LstArtifact { kind: 'lst'; path?; text }`, `WriteLstOptions { sourceTexts; logicalLines; reservations }` (exact shape at implementation), extend the `Artifact` union, add optional `writeLst` to `FormatWriters` (optional member — additive, like `writeAsm80`). |
-| `src/outputs/write-lst.ts` (new) | Pure formatter implementing the algorithm above: `writeLst(map, symbols, opts)` where `map` is the initialized sidecar map carrying `sourceSegments`. |
-| `src/outputs/d8-helpers.ts` | Extract shared symbol display-name helper (qualifier logic) for reuse by the trailer. |
-| `src/outputs/index.ts` | Register `writeLst` in `defaultFormatWriters`. |
-| `src/api-compile.ts` | Add `emitLst?: boolean` to `CompileNextFunctionOptions`; pass `loaded.loadedProgram.sourceTexts` and `.logicalLines` through to `emitAssemblyArtifacts`. |
-| `src/api-artifacts.ts` | Emit the `lst` artifact when `emitLst` is set and the writer is present (mirror the `emitAsm80` block, including the defaults handling in `compileArtifactDefaults`: `--lst` is opt-in and does not suppress the primary bin/hex/d8m defaults). Reuse `sidecarMap`. |
-| `src/cli/parse-args.ts` | Add `{ flags: ['--lst'], apply: (state) => { state.emitLst = true; } }`. |
-| `src/cli/usage.ts` | `      --lst             Emit asm80-style listing (.lst)`. |
-| `src/cli/write-artifacts.ts` | Add `lst: `${base}.lst`` to the path map in `writeArtifacts`; add `emitLst: parsed.emitLst` to `buildCompileOptions`. |
-| `src/cli/artifact-files.ts` | Add `lst` to the paths interface and a `byKind.get('lst')` text write, mirroring `asm80`. |
-| `src/index.ts` | Export `LstArtifact` (and `WriteLstOptions` if public); the public surface test imports via `@jhlagado/azm/compile`, so re-export from `api-compile.ts` too. |
+| File                               | Change                                                                                                                                                                                                                                                                  |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/tooling/api.ts`               | Add `logicalLines: readonly LogicalLine[]` to `LoadedProgramNext`; populate from `expanded.lines` in `loadProgramNext`.                                                                                                                                                 |
+| `src/assembly/program-emission.ts` | Phase 1: segments for `db`/`dw`/`string-data`/`ds`-with-fill.                                                                                                                                                                                                           |
+| `src/outputs/types.ts`             | Add `LstArtifact { kind: 'lst'; path?; text }`, `WriteLstOptions { sourceTexts; logicalLines; reservations }` (exact shape at implementation), extend the `Artifact` union, add optional `writeLst` to `FormatWriters` (optional member — additive, like `writeAsm80`). |
+| `src/outputs/write-lst.ts` (new)   | Pure formatter implementing the algorithm above: `writeLst(map, symbols, opts)` where `map` is the initialized sidecar map carrying `sourceSegments`.                                                                                                                   |
+| `src/outputs/d8-helpers.ts`        | Extract shared symbol display-name helper (qualifier logic) for reuse by the trailer.                                                                                                                                                                                   |
+| `src/outputs/index.ts`             | Register `writeLst` in `defaultFormatWriters`.                                                                                                                                                                                                                          |
+| `src/api-compile.ts`               | Add `emitLst?: boolean` to `CompileNextFunctionOptions`; pass `loaded.loadedProgram.sourceTexts` and `.logicalLines` through to `emitAssemblyArtifacts`.                                                                                                                |
+| `src/api-artifacts.ts`             | Emit the `lst` artifact when `emitLst` is set and the writer is present (mirror the `emitAsm80` block, including the defaults handling in `compileArtifactDefaults`: `--lst` is opt-in and does not suppress the primary bin/hex/d8m defaults). Reuse `sidecarMap`.     |
+| `src/cli/parse-args.ts`            | Add `{ flags: ['--lst'], apply: (state) => { state.emitLst = true; } }`.                                                                                                                                                                                                |
+| `src/cli/usage.ts`                 | `      --lst             Emit asm80-style listing (.lst)`.                                                                                                                                                                                                              |
+| `src/cli/write-artifacts.ts`       | Add `lst: `${base}.lst`` to the path map in `writeArtifacts`; add `emitLst: parsed.emitLst` to `buildCompileOptions`.                                                                                                                                                   |
+| `src/cli/artifact-files.ts`        | Add `lst` to the paths interface and a `byKind.get('lst')` text write, mirroring `asm80`.                                                                                                                                                                               |
+| `src/index.ts`                     | Export `LstArtifact` (and `WriteLstOptions` if public); the public surface test imports via `@jhlagado/azm/compile`, so re-export from `api-compile.ts` too.                                                                                                            |
 
 Default remains off (`--lst` opt-in) to keep build outputs stable for
 existing users; flipping the default later is a one-line change.
@@ -263,8 +263,8 @@ existing users; flipping the default later is a one-line change.
 - Compatibility oracle, in the same unit file: import
   `parseListingWrittenRange` from `scripts/dev/listingRangeTools.mjs` and
   assert it recovers exactly `min(initializedAddresses) ..
-  max(initializedAddresses)+1` for a representative program (note: the
-  *initialized* range — the full-image `writtenRange` includes `ds` holes
+max(initializedAddresses)+1` for a representative program (note: the
+  _initialized_ range — the full-image `writtenRange` includes `ds` holes
   and would be wrong).
 - Phase 1 coverage: `test/integration/stage-12-compile-api.test.ts` pins
   d8m segment lists produced by full compiles ("exports D8

@@ -21,7 +21,8 @@ describe('typographic quote diagnostics', () => {
       expect.objectContaining({
         severity: 'error',
         code: 'AZMN_PARSE',
-        message: 'invalid .db value list: typographic quote character “ found — use ASCII quotes (")',
+        message:
+          'invalid .db value list: typographic quote character “ found — use ASCII quotes (")',
       }),
     );
   });
@@ -33,7 +34,8 @@ describe('typographic quote diagnostics', () => {
       expect.objectContaining({
         severity: 'error',
         code: 'AZMN_PARSE',
-        message: "invalid .db value list: typographic quote character ‘ found — use ASCII quotes (')",
+        message:
+          "invalid .db value list: typographic quote character ‘ found — use ASCII quotes (')",
       }),
     );
   });
@@ -56,7 +58,10 @@ describe('typographic quote diagnostics', () => {
     expect(parsed.items).toMatchObject([
       {
         kind: 'db',
-        values: [{ kind: 'string-fragment', value: 'he said “hi”' }, { kind: 'number', value: 0 }],
+        values: [
+          { kind: 'string-fragment', value: 'he said “hi”' },
+          { kind: 'number', value: 0 },
+        ],
       },
     ]);
   });

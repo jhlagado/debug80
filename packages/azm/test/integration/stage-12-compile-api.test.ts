@@ -419,8 +419,7 @@ start:
 
       expect(result.diagnostics).toEqual([]);
       const d8m = result.artifacts.find((artifact) => artifact.kind === 'd8m') as
-        | D8mArtifact
-        | undefined;
+        D8mArtifact | undefined;
       const segments = d8m?.json.files['data.asm']?.segments ?? [];
 
       expect(segments).toEqual(
@@ -435,9 +434,9 @@ start:
       );
       // The unfilled `.ds 4` at $8009-$800C reserves space without emitting
       // bytes, so no segment may cover it.
-      expect(
-        segments.some((segment) => segment.start < 0x800d && segment.end > 0x8009),
-      ).toBe(false);
+      expect(segments.some((segment) => segment.start < 0x800d && segment.end > 0x8009)).toBe(
+        false,
+      );
     });
   });
 
@@ -718,7 +717,9 @@ main:
       const bin = result.artifacts.find((artifact) => artifact.kind === 'bin');
       const listedBytes = (lst?.kind === 'lst' ? lst.text : '')
         .split('\n')
-        .flatMap((line) => (/^[0-9A-F]{4}\s/.exec(line) ? line.slice(7, 31).trim().split(/\s+/) : []))
+        .flatMap((line) =>
+          /^[0-9A-F]{4}\s/.exec(line) ? line.slice(7, 31).trim().split(/\s+/) : [],
+        )
         .filter((token) => /^[0-9A-F]{2}$/.test(token))
         .map((token) => Number.parseInt(token, 16));
       expect(listedBytes).toEqual(Array.from(bin?.kind === 'bin' ? bin.bytes : []));
