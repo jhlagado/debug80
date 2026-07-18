@@ -3,6 +3,12 @@
 Versions are tagged in git and published to npm as `@jhlagado/glimmer`
 (0.4.0 is the first broadly usable published version).
 
+## 0.6.1 - 2026-07-18
+
+- Updated `@jhlagado/azm` to `^0.3.6` (asm80-style `--lst` listing artifact,
+  `data` segments in `.d8.json` debug maps, and clearer parse diagnostics for
+  typographic quotes and `0B`/`1B` binary literals).
+
 ## 0.6.0 - 2026-07-13
 
 The scheduling-contract and behavioural-confidence release.
