@@ -4,6 +4,13 @@
 
 - None.
 
+## 0.3.7 - 2026-07-18
+
+- Wrote the `.lst` listing by default, alongside `.hex`/`.bin`/`.d8.json`
+  (matching asm80, which always emits its listing). Suppress with `--nolst`;
+  the `--lst` flag remains as a no-op for compatibility. API callers that
+  select artifacts explicitly are unaffected.
+
 ## 0.3.6 - 2026-07-18
 
 - Added an asm80-style listing artifact (`--lst`, `.lst`): address/byte gutter

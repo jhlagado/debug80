@@ -3,6 +3,11 @@
 Versions are tagged in git and published to npm as `@jhlagado/glimmer`
 (0.4.0 is the first broadly usable published version).
 
+## 0.6.2 - 2026-07-18
+
+- Updated `@jhlagado/azm` to `^0.3.7` (`.lst` listing now written by default;
+  suppress with `--nolst`).
+
 ## 0.6.1 - 2026-07-18
 
 - Updated `@jhlagado/azm` to `^0.3.6` (asm80-style `--lst` listing artifact,

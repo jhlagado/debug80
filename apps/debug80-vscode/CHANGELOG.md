@@ -1,5 +1,12 @@
 # Changelog
 
+## 0.2.4 - 2026-07-18
+
+- Updated AZM to `^0.3.7` and Glimmer to `^0.6.2`: the AZM CLI now writes the
+  `.lst` listing by default (suppress with `--nolst`), matching asm80.
+  Extension-driven builds select their artifacts explicitly and are
+  unaffected.
+
 ## 0.2.3 - 2026-07-18
 
 - Updated Glimmer to `^0.6.1`, which resolves against the same AZM `0.3.6`
