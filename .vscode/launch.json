@@ -8,7 +8,7 @@
       "runtimeExecutable": "${execPath}",
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}/apps/debug80-vscode",
-        "${workspaceFolder}/apps/debug80-vscode/tests/e2e/fixtures/simple"
+        "${workspaceFolder}/examples/debug80-dev"
       ],
       "outFiles": [
         "${workspaceFolder}/apps/debug80-vscode/out/extension/**/*.js"
@@ -24,7 +24,7 @@
       "runtimeExecutable": "${execPath}",
       "args": [
         "--extensionDevelopmentPath=${workspaceFolder}/apps/debug80-vscode",
-        "${workspaceFolder}/apps/debug80-vscode/tests/e2e/fixtures/simple"
+        "${workspaceFolder}/examples/debug80-dev"
       ],
       "outFiles": [
         "${workspaceFolder}/apps/debug80-vscode/out/extension/**/*.js"
@@ -34,6 +34,22 @@
       "env": {
         "DEBUG80_PERF": "1"
       },
+      "skipFiles": ["<node_internals>/**"]
+    },
+    {
+      "name": "Debug80 Extension (Simple E2E fixture)",
+      "type": "extensionHost",
+      "request": "launch",
+      "runtimeExecutable": "${execPath}",
+      "args": [
+        "--extensionDevelopmentPath=${workspaceFolder}/apps/debug80-vscode",
+        "${workspaceFolder}/apps/debug80-vscode/tests/e2e/fixtures/simple"
+      ],
+      "outFiles": [
+        "${workspaceFolder}/apps/debug80-vscode/out/extension/**/*.js"
+      ],
+      "sourceMaps": true,
+      "preLaunchTask": "debug80: build",
       "skipFiles": ["<node_internals>/**"]
     }
   ]

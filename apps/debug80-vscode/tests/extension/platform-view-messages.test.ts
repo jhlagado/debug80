@@ -22,6 +22,11 @@ describe('platform-view message routing', () => {
       { type: 'selectTarget', rootPath: '/workspace/a', targetName: 'app' },
       deps
     );
+    await handlePlatformViewMessage({ type: 'addTarget', rootPath: '/workspace/a' }, deps);
+    await handlePlatformViewMessage(
+      { type: 'removeTarget', rootPath: '/workspace/a', targetName: 'app' },
+      deps
+    );
     await handlePlatformViewMessage({ type: 'restartDebug' }, deps);
     await handlePlatformViewMessage({ type: 'setEntrySource' }, deps);
     await handlePlatformViewMessage({ type: 'startDebug', rootPath: '/workspace/a' }, deps);
@@ -51,6 +56,11 @@ describe('platform-view message routing', () => {
       platform: 'tec1g',
     });
     expect(deps.handleSelectTarget).toHaveBeenCalledWith({
+      rootPath: '/workspace/a',
+      targetName: 'app',
+    });
+    expect(deps.handleAddTarget).toHaveBeenCalledWith({ rootPath: '/workspace/a' });
+    expect(deps.handleRemoveTarget).toHaveBeenCalledWith({
       rootPath: '/workspace/a',
       targetName: 'app',
     });

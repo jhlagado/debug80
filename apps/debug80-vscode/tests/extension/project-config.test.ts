@@ -3,10 +3,13 @@ import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import {
+  addProjectTarget,
   DEBUG80_PROJECT_VERSION,
   isDebug80ProjectConfig,
   isInitializedDebug80Project,
+  projectTargetNameFromSource,
   readProjectConfig,
+  removeProjectTarget,
   resolveProjectAzmSymbolCase,
   resolveProjectPlatform,
   resolveStopOnEntryForTarget,
@@ -45,6 +48,58 @@ describe('project-config helpers', () => {
     expectTargetSource(configPath, 'app', 'src/new.asm');
     const config = readProjectConfig(configPath);
     expect(config?.targets?.app?.platform).toBe('simple');
+  });
+
+  it('derives concise target names from conventional and arbitrary source files', () => {
+    expect(projectTargetNameFromSource('matrix-smoke.main.asm')).toBe('matrix-smoke');
+    expect(projectTargetNameFromSource('legacy/monitor.main.z80')).toBe('monitor');
+    expect(projectTargetNameFromSource('experiments/display.asm')).toBe('display');
+    expect(projectTargetNameFromSource('demo.glim')).toBe('demo');
+  });
+
+  it('lets each added target infer its assembler from its own source extension', () => {
+    const { configPath } = createProject('debug80-add-cross-language-target-', {
+      defaultTarget: 'game',
+      targets: {
+        game: { sourceFile: 'game.glim', assembler: 'glimmer', platform: 'tec1g' },
+      },
+    });
+
+    expect(addProjectTarget(configPath, 'legacy', 'legacy/main.z80')).toBe(true);
+    const config = readProjectConfig(configPath);
+    expect(config?.targets?.legacy?.sourceFile).toBe('legacy/main.z80');
+    expect(config?.targets?.legacy?.assembler).toBeUndefined();
+  });
+
+  it('removes a target without touching source settings on remaining targets', () => {
+    const { configPath } = createProject('debug80-remove-target-', {
+      defaultTarget: 'matrix',
+      target: 'matrix',
+      targets: {
+        matrix: { sourceFile: 'matrix.main.asm', platform: 'tec1g' },
+        panel: { sourceFile: 'panel.main.asm', platform: 'tec1g' },
+      },
+    });
+
+    expect(removeProjectTarget(configPath, 'matrix')).toEqual({
+      kind: 'removed',
+      nextTarget: 'panel',
+    });
+    const config = readProjectConfig(configPath);
+    expect(config?.targets?.matrix).toBeUndefined();
+    expect(config?.targets?.panel?.sourceFile).toBe('panel.main.asm');
+    expect(config?.defaultTarget).toBe('panel');
+    expect(config?.target).toBe('panel');
+  });
+
+  it('refuses to remove the only configured target', () => {
+    const { configPath } = createProject('debug80-remove-last-target-', {
+      defaultTarget: 'app',
+      targets: { app: { sourceFile: 'app.asm' } },
+    });
+
+    expect(removeProjectTarget(configPath, 'app')).toEqual({ kind: 'lastTarget' });
+    expect(readProjectConfig(configPath)?.targets?.app).toBeDefined();
   });
 
   it('resolves project platform from explicit project manifest fields', () => {
@@ -238,6 +293,22 @@ describe('project-config helpers', () => {
 
     expect(updateProjectTargetSource(configPath, 'app', 'src/game.glim')).toBe(true);
     expect(readProjectConfig(configPath)?.targets?.app?.assembler).toBe('glimmer');
+  });
+
+  it('clears an assembler override that conflicts with the new program extension', () => {
+    const { configPath } = createProject('debug80-cross-language-entry-', {
+      defaultTarget: 'app',
+      targets: {
+        app: {
+          sourceFile: 'src/old.glim',
+          assembler: 'glimmer',
+          platform: 'tec1g',
+        },
+      },
+    });
+
+    expect(updateProjectTargetSource(configPath, 'app', 'src/main.asm')).toBe(true);
+    expect(readProjectConfig(configPath)?.targets?.app?.assembler).toBeUndefined();
   });
 
   it('persists AZM symbol case while preserving other project AZM options', () => {

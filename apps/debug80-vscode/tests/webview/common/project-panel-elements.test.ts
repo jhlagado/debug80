@@ -15,6 +15,8 @@ describe('project panel DOM element collection', () => {
           <label class="stop-on-entry-label"><input id="stopOnEntry" type="checkbox" /></label>
           <div class="project-control" id="targetControl">
             <select id="homeTargetSelect"></select>
+            <button id="addTarget" type="button"></button>
+            <button id="removeTarget" type="button"></button>
           </div>
           <div class="project-control" id="platformControl">
             <select id="platformSelect">
@@ -56,6 +58,8 @@ describe('project panel DOM element collection', () => {
     expect(elements.projectStatus.selectProjectButton!.id).toBe('selectProject');
     expect(elements.projectStatus.setupCard!.id).toBe('setupCard');
     expect(elements.projectStatus.homeTargetSelect!.id).toBe('homeTargetSelect');
+    expect(elements.projectStatus.addTargetButton!.id).toBe('addTarget');
+    expect(elements.projectStatus.removeTargetButton!.id).toBe('removeTarget');
     expect(elements.projectStatus.testCoolTermButton!.id).toBe('testCoolTerm');
     expect(elements.projectStatus.sendHexToBoardButton!.id).toBe('sendHexToBoard');
 

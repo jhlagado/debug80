@@ -21,6 +21,8 @@ export function createPlatformViewDependencies(
     handleSetAzmOptions: vi.fn(() => undefined),
     handleSetAzmSymbolCase: vi.fn(() => undefined),
     handleSelectTarget: vi.fn(() => undefined),
+    handleAddTarget: vi.fn(() => undefined),
+    handleRemoveTarget: vi.fn(() => undefined),
     handleTestCoolTermConnection: vi.fn(() => undefined),
     handleSendHexViaCoolTerm: vi.fn(() => undefined),
     handleRestartDebug: vi.fn(() => undefined),

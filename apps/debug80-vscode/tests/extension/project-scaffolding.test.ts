@@ -3,14 +3,19 @@ import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
 
-const { showQuickPick, showInputBox, showInformationMessage, showErrorMessage } = vi.hoisted(
-  () => ({
-    showQuickPick: vi.fn(),
-    showInputBox: vi.fn(),
-    showInformationMessage: vi.fn(),
-    showErrorMessage: vi.fn(),
-  })
-);
+const {
+  showQuickPick,
+  showInputBox,
+  showInformationMessage,
+  showErrorMessage,
+  listTargetSourceFiles,
+} = vi.hoisted(() => ({
+  showQuickPick: vi.fn(),
+  showInputBox: vi.fn(),
+  showInformationMessage: vi.fn(),
+  showErrorMessage: vi.fn(),
+  listTargetSourceFiles: vi.fn((): string[] => []),
+}));
 
 function defaultExistsSync(candidate: string): boolean {
   const normalized = candidate.replace(/\\/g, '/');
@@ -72,13 +77,14 @@ vi.mock('../../src/extension/target-discovery', async () => {
   );
   return {
     ...actual,
-    listTargetEntrySourceFiles: vi.fn(() => []),
+    listTargetSourceFiles,
   };
 });
 
 describe('project-scaffolding helpers', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    listTargetSourceFiles.mockReturnValue([]);
     vi.mocked(fs.existsSync).mockImplementation(defaultExistsSync);
   });
 
@@ -413,6 +419,9 @@ describe('project-scaffolding helpers', () => {
       showErrorMessage.mockImplementation((message: string) => {
         throw new Error(message);
       });
+      showQuickPick.mockResolvedValueOnce({
+        choice: { kind: 'starter', language: 'asm' },
+      });
 
       const created = await scaffoldProject(
         { name: 'demo', uri: { fsPath: workspaceRoot }, index: 0 } as never,
@@ -422,7 +431,7 @@ describe('project-scaffolding helpers', () => {
       );
 
       expect(created).toBe(true);
-      expect(showQuickPick).not.toHaveBeenCalled();
+      expect(showQuickPick).toHaveBeenCalledTimes(1);
       expect(showInputBox).not.toHaveBeenCalled();
 
       const configWrite = writeFileSync.mock.calls.find(([filePath]) =>
@@ -461,6 +470,42 @@ describe('project-scaffolding helpers', () => {
     }
   });
 
+  it('uses an existing arbitrary source for a preselected platform', async () => {
+    const fs = await import('fs');
+    const actualFs = await vi.importActual<typeof import('fs')>('fs');
+    const writeFileSync = vi.mocked(fs.writeFileSync);
+    const workspaceRoot = actualFs.mkdtempSync(path.join(os.tmpdir(), 'debug80-existing-source-'));
+    try {
+      listTargetSourceFiles.mockReturnValue(['legacy/start.z80']);
+
+      const created = await scaffoldProject(
+        { name: 'demo', uri: { fsPath: workspaceRoot }, index: 0 } as never,
+        false,
+        undefined,
+        'tec1g'
+      );
+
+      expect(created).toBe(true);
+      expect(showQuickPick).not.toHaveBeenCalled();
+      const configWrite = writeFileSync.mock.calls.find(([filePath]) =>
+        String(filePath).replace(/\\/g, '/').endsWith('/debug80.json')
+      );
+      const writtenConfig = JSON.parse(String(configWrite?.[1] ?? '{}')) as {
+        defaultTarget?: string;
+        targets?: Record<string, { sourceFile?: string }>;
+      };
+      expect(writtenConfig.defaultTarget).toBe('start');
+      expect(writtenConfig.targets?.start?.sourceFile).toBe('legacy/start.z80');
+      expect(
+        writeFileSync.mock.calls.some(([filePath]) =>
+          String(filePath).replace(/\\/g, '/').endsWith('/src/main.asm')
+        )
+      ).toBe(false);
+    } finally {
+      actualFs.rmSync(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
   it('creates .vscode only when launch.json is written', async () => {
     const fs = await import('fs');
     const actualFs = await vi.importActual<typeof import('fs')>('fs');
@@ -482,6 +527,9 @@ describe('project-scaffolding helpers', () => {
       });
       showErrorMessage.mockImplementation((message: string) => {
         throw new Error(message);
+      });
+      showQuickPick.mockResolvedValueOnce({
+        choice: { kind: 'starter', language: 'asm' },
       });
 
       const created = await scaffoldProject(

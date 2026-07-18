@@ -8,11 +8,13 @@ import { PlatformViewProvider } from './platform-view-provider';
 import {
   addProjectTarget,
   findProjectConfigPath,
+  projectTargetNameFromSource,
   readProjectConfig,
+  removeProjectTarget,
   updateProjectTargetSource,
   writeProjectConfig,
 } from './project-config';
-import { listTargetEntrySourceFiles } from './target-discovery';
+import { isTargetEntrySourcePath, listTargetSourceFiles } from './target-discovery';
 import { openProjectConfigPanel } from './project-config-panel';
 import {
   ProjectTargetSelectionController,
@@ -22,6 +24,7 @@ import {
 import { buildSourcePickItems, resolveResourceSourceSelection } from './source-selection';
 import { WorkspaceSelectionController } from './workspace-selection';
 import { findWorkspaceFolder, resolveProjectFolderFromResource } from './workspace-folder-resolver';
+import { entrySourceKey, getTargetEntrySource } from './project-target-source-policy';
 import {
   applyConfigureProjectTargetEdit,
   type ConfigureProjectTargetEdit,
@@ -30,6 +33,11 @@ import {
 export type SelectTargetArgs = {
   rootPath?: string;
   targetName?: string;
+};
+
+type AddTargetArgs = {
+  rootPath?: string;
+  sourceFile?: string;
 };
 
 type ConfigureFieldId =
@@ -131,6 +139,130 @@ export function registerTargetCommands(options: {
 
       void vscode.window.showInformationMessage(`Debug80: Selected target ${target}.`);
       return target;
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('debug80.addTarget', async (args?: AddTargetArgs) => {
+      const folderResolution = await resolveTargetProjectFolder(args, workspaceSelection);
+      if (folderResolution.kind !== 'found') {
+        void vscode.window.showInformationMessage('Debug80: No configured Debug80 project found.');
+        return undefined;
+      }
+      const { folder } = folderResolution;
+      const projectConfigPath = findProjectConfigPath(folder);
+      const config =
+        projectConfigPath !== undefined ? readProjectConfig(projectConfigPath) : undefined;
+      if (projectConfigPath === undefined || config === undefined) {
+        void vscode.window.showErrorMessage('Debug80: Failed to read project config.');
+        return undefined;
+      }
+
+      const configuredSources = new Set(
+        Object.values(config.targets ?? {}).flatMap((target) => {
+          const source = getTargetEntrySource(target);
+          return source === undefined ? [] : [entrySourceKey(folder.uri.fsPath, source)];
+        })
+      );
+      const candidates = listTargetSourceFiles(folder.uri.fsPath).filter(
+        (source) => !configuredSources.has(entrySourceKey(folder.uri.fsPath, source))
+      );
+      if (candidates.length === 0) {
+        void vscode.window.showInformationMessage(
+          'Debug80: Every eligible ASM, Z80, or Glimmer program file is already a target.'
+        );
+        return undefined;
+      }
+
+      const requestedSource = args?.sourceFile;
+      const sourceFile =
+        requestedSource !== undefined && candidates.includes(requestedSource)
+          ? requestedSource
+          : (
+              await vscode.window.showQuickPick(
+                candidates.map((source) => ({
+                  label: source,
+                  ...(isTargetEntrySourcePath(source) ? { description: 'suggested entry' } : {}),
+                })),
+                {
+                  placeHolder: 'Select an ASM, Z80, or Glimmer program file to add as a target',
+                  matchOnDescription: true,
+                }
+              )
+            )?.label;
+      if (sourceFile === undefined) {
+        return undefined;
+      }
+
+      const existingNames = new Set(Object.keys(config.targets ?? {}));
+      const baseName = projectTargetNameFromSource(sourceFile) || 'target';
+      let targetName = baseName;
+      let suffix = 2;
+      while (existingNames.has(targetName)) {
+        targetName = `${baseName}-${suffix}`;
+        suffix += 1;
+      }
+      if (!addProjectTarget(projectConfigPath, targetName, sourceFile)) {
+        void vscode.window.showErrorMessage(`Debug80: Failed to add target ${targetName}.`);
+        return undefined;
+      }
+
+      targetSelection.rememberTarget(projectConfigPath, targetName);
+      platformViewProvider.refreshIdleView();
+      void vscode.window.showInformationMessage(
+        `Debug80: Added target ${targetName} from ${sourceFile}.`
+      );
+      return targetName;
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('debug80.removeTarget', async (args?: SelectTargetArgs) => {
+      const folderResolution = await resolveTargetProjectFolder(args, workspaceSelection);
+      if (folderResolution.kind !== 'found') {
+        void vscode.window.showInformationMessage('Debug80: No configured Debug80 project found.');
+        return undefined;
+      }
+      const { folder } = folderResolution;
+      const projectConfigPath = findProjectConfigPath(folder);
+      if (projectConfigPath === undefined) {
+        void vscode.window.showErrorMessage('Debug80: Failed to read project config.');
+        return undefined;
+      }
+      const targetName =
+        args?.targetName ?? resolvePreferredTargetName(context.workspaceState, projectConfigPath);
+      if (targetName === undefined) {
+        void vscode.window.showInformationMessage('Debug80: Select a configured target first.');
+        return undefined;
+      }
+
+      const confirmed = await vscode.window.showWarningMessage(
+        `Remove target ${targetName} from this project? Its source files and build artifacts will not be deleted.`,
+        { modal: true },
+        'Remove Target'
+      );
+      if (confirmed !== 'Remove Target') {
+        return undefined;
+      }
+
+      const result = removeProjectTarget(projectConfigPath, targetName);
+      if (result.kind === 'lastTarget') {
+        void vscode.window.showInformationMessage(
+          "Debug80: Add another target before removing the project's only target."
+        );
+        return undefined;
+      }
+      if (result.kind !== 'removed') {
+        void vscode.window.showErrorMessage(`Debug80: Failed to remove target ${targetName}.`);
+        return undefined;
+      }
+
+      targetSelection.rememberTarget(projectConfigPath, result.nextTarget);
+      platformViewProvider.refreshIdleView();
+      void vscode.window.showInformationMessage(
+        `Debug80: Removed target ${targetName}. Source files were left unchanged.`
+      );
+      return result.nextTarget;
     })
   );
 
@@ -260,7 +392,7 @@ export function registerTargetCommands(options: {
 
       const config = readProjectConfig(projectConfig);
       const currentSource = config?.targets?.[target]?.sourceFile ?? config?.targets?.[target]?.asm;
-      const candidates = listTargetEntrySourceFiles(folder.uri.fsPath);
+      const candidates = listTargetSourceFiles(folder.uri.fsPath);
       if (candidates.length === 0) {
         void vscode.window.showInformationMessage(
           'Debug80: No runnable AZM or Glimmer entry files were found in this project folder.'
@@ -349,7 +481,7 @@ async function resolveTargetEdit(
       : undefined;
   }
   if (field === 'program') {
-    const sources = listTargetEntrySourceFiles(folder.uri.fsPath);
+    const sources = listTargetSourceFiles(folder.uri.fsPath);
     if (sources.length === 0) {
       void vscode.window.showInformationMessage(
         'Debug80: No runnable AZM or Glimmer entry files were found in this project folder.'

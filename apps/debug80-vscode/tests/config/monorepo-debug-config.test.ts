@@ -33,7 +33,7 @@ function readJson<T>(relativePath: string): T {
 }
 
 describe('monorepo Debug80 launch configuration', () => {
-  it('launches the app package with the simple fixture and generated source maps', () => {
+  it('launches the app package with the development playground and generated source maps', () => {
     const launch = readJson<LaunchFile>('.vscode/launch.json');
     const configuration = launch.configurations?.find(({ name }) => name === 'Debug80 Extension');
 
@@ -45,11 +45,20 @@ describe('monorepo Debug80 launch configuration', () => {
     expect(configuration?.args).toContain(
       '--extensionDevelopmentPath=${workspaceFolder}/apps/debug80-vscode'
     );
-    expect(configuration?.args).toContain(
-      '${workspaceFolder}/apps/debug80-vscode/tests/e2e/fixtures/simple'
-    );
+    expect(configuration?.args).toContain('${workspaceFolder}/examples/debug80-dev');
     expect(configuration?.outFiles).toContain(
       '${workspaceFolder}/apps/debug80-vscode/out/extension/**/*.js'
+    );
+  });
+
+  it('keeps the simple fixture available as an explicit E2E launch', () => {
+    const launch = readJson<LaunchFile>('.vscode/launch.json');
+    const configuration = launch.configurations?.find(
+      ({ name }) => name === 'Debug80 Extension (Simple E2E fixture)'
+    );
+
+    expect(configuration?.args).toContain(
+      '${workspaceFolder}/apps/debug80-vscode/tests/e2e/fixtures/simple'
     );
   });
 

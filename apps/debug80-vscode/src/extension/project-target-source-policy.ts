@@ -35,6 +35,14 @@ export function getTargetEntrySource(target: TargetConfigRecord): string | undef
   return typeof sourcePath === 'string' ? sourcePath : undefined;
 }
 
+export function targetNameFromSourcePath(sourceFile: string): string {
+  const extension = path.extname(sourceFile);
+  const withoutExtension = path.basename(sourceFile, extension);
+  return withoutExtension.toLowerCase().endsWith('.main')
+    ? withoutExtension.slice(0, -'.main'.length)
+    : withoutExtension;
+}
+
 export function buildCoveredEntrySourceKeys(
   projectRoot: string,
   targets: Record<string, unknown>,
@@ -100,7 +108,7 @@ export function withDiscoverableTargetChoices({
       continue;
     }
 
-    const baseName = path.basename(sourceFile, path.extname(sourceFile));
+    const baseName = targetNameFromSourcePath(sourceFile);
     let candidateName = baseName;
     let counter = 2;
     while (existingNames.has(candidateName)) {

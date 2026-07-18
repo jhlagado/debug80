@@ -23,6 +23,8 @@ export type ProjectStatusUiElements = {
   setupCardText: HTMLElement | null;
   setupPrimaryAction: HTMLButtonElement | null;
   platformInitButton: HTMLButtonElement | null;
+  addTargetButton?: HTMLButtonElement | null;
+  removeTargetButton?: HTMLButtonElement | null;
   testCoolTermButton?: HTMLButtonElement | null;
   sendHexToBoardButton?: HTMLButtonElement | null;
   buildResultIndicator?: HTMLElement | null;
@@ -204,6 +206,8 @@ export function createProjectStatusUi(
     setupCardText,
     setupPrimaryAction,
     platformInitButton,
+    addTargetButton,
+    removeTargetButton,
     testCoolTermButton,
     sendHexToBoardButton,
     buildResultIndicator,
@@ -249,6 +253,23 @@ export function createProjectStatusUi(
     postProjectAction(selectTargetAction(currentState, homeTargetSelect.value));
   });
 
+  addTargetButton?.addEventListener('click', () => {
+    if (currentState.kind === 'initialized') {
+      vscode.postMessage({ type: 'addTarget', rootPath: currentState.selectedRoot.path });
+    }
+  });
+
+  removeTargetButton?.addEventListener('click', () => {
+    if (currentState.kind !== 'initialized' || !homeTargetSelect?.value) {
+      return;
+    }
+    vscode.postMessage({
+      type: 'removeTarget',
+      rootPath: currentState.selectedRoot.path,
+      targetName: homeTargetSelect.value,
+    });
+  });
+
   sendHexToBoardButton?.addEventListener('click', () => {
     postProjectAction(sendHexAction(currentState, homeTargetSelect?.value));
   });
@@ -260,6 +281,23 @@ export function createProjectStatusUi(
   function applyProjectStatus(payload: ApplyProjectStatusPayload): void {
     currentState = createProjectPanelState(payload);
     const initializedProject = currentState.kind === 'initialized';
+    const configuredTargets =
+      currentState.kind === 'initialized'
+        ? currentState.targets.filter((target) => target.discovered !== true)
+        : [];
+    const selectedTarget =
+      currentState.kind === 'initialized'
+        ? currentState.targets.find((target) => target.name === currentState.targetName)
+        : undefined;
+    if (addTargetButton) {
+      addTargetButton.hidden = !initializedProject;
+      addTargetButton.disabled = !initializedProject;
+    }
+    if (removeTargetButton) {
+      removeTargetButton.hidden = !initializedProject;
+      removeTargetButton.disabled =
+        !initializedProject || configuredTargets.length <= 1 || selectedTarget?.discovered === true;
+    }
     projectRootController.applyProjectStatus({
       rootPath: payload.rootPath,
       roots: currentState.roots,

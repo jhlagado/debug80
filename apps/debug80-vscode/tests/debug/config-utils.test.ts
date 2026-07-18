@@ -81,11 +81,40 @@ describe('config-utils', () => {
       assert.equal(inferred.found, true);
     });
 
+    it('accepts main.z80 and other z80 source files', () => {
+      const main = withTempDir((dir) => {
+        writeSourceFile(dir, 'main.z80');
+        return inferDefaultTarget(dir);
+      });
+      const nested = withTempDir((dir) => {
+        writeSourceFile(dir, path.join('legacy', 'monitor.z80'));
+        return inferDefaultTarget(dir);
+      });
+
+      assert.equal(main.sourceFile, 'main.z80');
+      assert.equal(main.artifactBase, 'main');
+      assert.equal(main.found, true);
+      assert.equal(nested.sourceFile, 'legacy/monitor.z80');
+      assert.equal(nested.artifactBase, 'monitor');
+      assert.equal(nested.found, true);
+    });
+
     it('returns not found when nothing exists', () => {
       const inferred = withTempDir((dir) => inferDefaultTarget(dir));
 
       assert.equal(inferred.sourceFile, 'src/main.asm');
       assert.equal(inferred.artifactBase, 'main');
+      assert.equal(inferred.found, false);
+    });
+
+    it('does not infer generated or dependency sources as project entry files', () => {
+      const inferred = withTempDir((dir) => {
+        writeSourceFile(dir, path.join('build', 'generated.asm'));
+        writeSourceFile(dir, path.join('node_modules', 'package', 'main.z80'));
+        return inferDefaultTarget(dir);
+      });
+
+      assert.equal(inferred.sourceFile, 'src/main.asm');
       assert.equal(inferred.found, false);
     });
   });

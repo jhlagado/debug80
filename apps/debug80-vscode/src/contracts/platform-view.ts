@@ -53,6 +53,8 @@ export type ProjectStatusPayload = {
     name: string;
     description?: string;
     detail?: string;
+    discovered?: boolean;
+    sourceFile?: string;
   }>;
 };
 
@@ -73,6 +75,8 @@ export type PlatformViewControlMessage =
     }
   | { type: 'setAzmSymbolCase'; symbolCase: AzmSymbolCaseMode }
   | { type: 'selectTarget'; rootPath?: string; targetName?: string }
+  | { type: 'addTarget'; rootPath?: string }
+  | { type: 'removeTarget'; rootPath?: string; targetName?: string }
   | { type: 'testCoolTermConnection' }
   | { type: 'sendHexViaCoolTerm'; rootPath?: string; targetName?: string }
   | { type: 'setEntrySource' }

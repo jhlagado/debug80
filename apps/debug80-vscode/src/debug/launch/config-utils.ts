@@ -25,15 +25,26 @@ export interface InferredTarget {
 const DEFAULT_SOURCE = 'src/main.asm';
 /** Default output directory */
 const DEFAULT_OUTPUT_DIR = 'build';
+const SOURCE_SEARCH_EXCLUDED_DIRS = new Set([
+  '.git',
+  '.hg',
+  '.svn',
+  '.vscode',
+  'build',
+  'coverage',
+  'dist',
+  'node_modules',
+  'out',
+]);
 
 /**
  * Infers a default build target by searching for assembly files.
  *
  * Search order:
- * 1. src/main.asm (preferred)
- * 2. main.asm in root
- * 3. First .asm file in src/
- * 4. First .asm file in root
+ * 1. src/main.asm or src/main.z80 (preferred)
+ * 2. main.asm or main.z80 in root
+ * 3. First .asm or .z80 file in src/
+ * 4. First .asm or .z80 file in root
  * 5. Falls back to src/main.asm (not found)
  *
  * @param root - Project root directory
@@ -41,14 +52,18 @@ const DEFAULT_OUTPUT_DIR = 'build';
  */
 export function inferDefaultTarget(root: string): InferredTarget {
   const rootDir = root ?? process.cwd();
-  const preferred = path.join(rootDir, 'src', 'main.asm');
-  const rootMain = path.join(rootDir, 'main.asm');
-  const srcAny = findFirstAsm(path.join(rootDir, 'src'));
-  const rootAny = findFirstAsm(rootDir);
+  const preferredAsm = path.join(rootDir, 'src', 'main.asm');
+  const preferredZ80 = path.join(rootDir, 'src', 'main.z80');
+  const rootMainAsm = path.join(rootDir, 'main.asm');
+  const rootMainZ80 = path.join(rootDir, 'main.z80');
+  const srcAny = findFirstAssemblySource(path.join(rootDir, 'src'));
+  const rootAny = findFirstAssemblySource(rootDir);
 
   const chosen =
-    existing(preferred) ??
-    existing(rootMain) ??
+    existing(preferredAsm) ??
+    existing(preferredZ80) ??
+    existing(rootMainAsm) ??
+    existing(rootMainZ80) ??
     srcAny ??
     rootAny ??
     path.join(rootDir, DEFAULT_SOURCE);
@@ -85,21 +100,23 @@ function normalizeRelative(root: string, absolutePath: string): string {
   return toPortableRelative(root, absolutePath);
 }
 
-function findFirstAsm(dir: string): string | undefined {
+function findFirstAssemblySource(dir: string): string | undefined {
   if (!fs.existsSync(dir)) {
     return undefined;
   }
 
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
+  const entries = fs
+    .readdirSync(dir, { withFileTypes: true })
+    .sort((left, right) => left.name.localeCompare(right.name));
   for (const entry of entries) {
-    if (entry.isFile() && entry.name.toLowerCase().endsWith('.asm')) {
+    if (entry.isFile() && isAssemblySource(entry.name)) {
       return path.join(dir, entry.name);
     }
   }
 
   for (const entry of entries) {
-    if (entry.isDirectory()) {
-      const child = findFirstAsm(path.join(dir, entry.name));
+    if (entry.isDirectory() && !SOURCE_SEARCH_EXCLUDED_DIRS.has(entry.name.toLowerCase())) {
+      const child = findFirstAssemblySource(path.join(dir, entry.name));
       if (child !== undefined) {
         return child;
       }
@@ -107,4 +124,9 @@ function findFirstAsm(dir: string): string | undefined {
   }
 
   return undefined;
+}
+
+function isAssemblySource(fileName: string): boolean {
+  const extension = path.extname(fileName).toLowerCase();
+  return extension === '.asm' || extension === '.z80';
 }
