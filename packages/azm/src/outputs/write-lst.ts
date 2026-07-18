@@ -121,11 +121,7 @@ function rangesByLine(
   return byLine;
 }
 
-function emittingRows(
-  map: EmittedByteMap,
-  ranges: readonly ByteRange[],
-  text: string,
-): string[] {
+function emittingRows(map: EmittedByteMap, ranges: readonly ByteRange[], text: string): string[] {
   const rows: string[] = [];
   for (const range of ranges) {
     for (let start = range.start; start < range.end; start += MAX_ROW_BYTES) {

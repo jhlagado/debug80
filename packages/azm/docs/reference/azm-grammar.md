@@ -356,7 +356,7 @@ binary-suffix      ::= [01]+ [Bb]
 current-location   ::= "$"
 ```
 
-Pitfall: a bare `1B` or `0B` is a *binary* literal (`1B` = 1), not the hex
+Pitfall: a bare `1B` or `0B` is a _binary_ literal (`1B` = 1), not the hex
 byte `0x1B`/`0x0B` — hex needs a prefix or an `h` suffix (`0x1B`, `$1B`,
 `1Bh`). The assembler emits a warning when a `.db`/`.dw` value is exactly one
 binary digit followed by `B`, since such tokens are almost always intended as

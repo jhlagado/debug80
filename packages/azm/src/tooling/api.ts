@@ -69,9 +69,10 @@ export async function loadProgramNext(
   const parsed = parseNextSourceItems(
     expanded.lines.filter((line) => line.loadDirective !== true),
     {
-    directiveAliasPolicy,
-    ...(options.symbolCase !== undefined ? { symbolCase: options.symbolCase } : {}),
-  });
+      directiveAliasPolicy,
+      ...(options.symbolCase !== undefined ? { symbolCase: options.symbolCase } : {}),
+    },
+  );
   const diagnostics = [...loadDiagnostics, ...parsed.diagnostics];
 
   return {
