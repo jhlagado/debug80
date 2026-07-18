@@ -66,7 +66,9 @@ export async function loadProgramNext(
     (options.directiveAliasFiles ?? []).map((path) => readDirectiveAliasProfile(path)),
   );
   const directiveAliasPolicy = buildDirectiveAliasPolicy(directiveAliasProfiles);
-  const parsed = parseNextSourceItems(expanded.lines, {
+  const parsed = parseNextSourceItems(
+    expanded.lines.filter((line) => line.loadDirective !== true),
+    {
     directiveAliasPolicy,
     ...(options.symbolCase !== undefined ? { symbolCase: options.symbolCase } : {}),
   });

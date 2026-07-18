@@ -117,7 +117,7 @@ Important options include:
 | `outputType`                                 | Primary output type, `hex` or `bin`.    |
 | `sourceRoot`                                 | Root used for portable D8 map paths.    |
 | `d8mInputs`                                  | Artifact paths recorded in D8 metadata. |
-| `emitBin`, `emitHex`, `emitD8m`, `emitAsm80` | Artifact selection.                     |
+| `emitBin`, `emitHex`, `emitD8m`, `emitAsm80`, `emitLst` | Artifact selection.          |
 | `registerContracts`                          | Register contract mode.                 |
 | `registerContractsPolicy`                    | Per-file strict, audit and off policy.  |
 | `emitRegisterReport`                         | Emit text or JSON report artifact.      |
@@ -241,6 +241,7 @@ The output layer uses structured artifact objects from `src/outputs/types.ts`:
 - `HexArtifact`
 - `D8mArtifact`
 - `Asm80Artifact`
+- `LstArtifact`
 - `RegisterContractsReportArtifact`
 - `RegisterContractsInterfaceArtifact`
 - `RegisterContractsInferenceArtifact`
@@ -303,6 +304,21 @@ stable declaration `identity`, `visibility` (`exported`, `source` or `local`)
 and normalized `sourceUnit`. When private display names collide, D8 retains all
 declarations and prefixes the private display name with its source unit instead
 of omitting it. Internal NUL-qualified assembler names never appear in D8.
+
+## Listing Artifact
+
+`src/outputs/write-lst.ts` renders an asm80-style listing (`--lst`, `.lst`):
+each expanded source line in inclusion order with an address/byte gutter, and a
+symbol table trailer (names padded to 12 columns, 4-hex values, sorted). Byte
+tokens start at column 7; the gutter pads to column 20 when it fits (up to 4
+bytes). Two deliberate deviations from asm80: lines emitting more than 8 bytes
+wrap onto source-less continuation rows so every byte stays inside the
+columns-7-31 window that `scripts/dev/listingRangeTools.mjs` parses, and
+overlapping `org` rewrites show the final memory bytes (agreeing with `.hex`
+and `.bin`) rather than the originally emitted bytes. Unfilled `.ds` lines get
+an address-only gutter from reservation segments recorded during emission.
+Swallowed `.include`/`.import` directive lines are reconstructed from raw
+source text at their inclusion site.
 
 ## Lowered ASM80 and Register Contract Artifacts
 

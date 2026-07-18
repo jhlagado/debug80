@@ -124,6 +124,17 @@ async function expandFile(options: ExpandFileOptions): Promise<LogicalLine[] | u
       continue;
     }
 
+    // Keep the directive line in listing order; the parser filters it out.
+    output.push({
+      ...withSourceOwnership(
+        line,
+        options.sourceUnit,
+        options.sourceRelation,
+        options.sourceUnitRelation,
+      ),
+      loadDirective: true,
+    });
+
     const result = await resolveSourcePath(sourcePath, directive.path, options.includeDirs);
     if (result.resolved === undefined) {
       options.diagnostics.push({

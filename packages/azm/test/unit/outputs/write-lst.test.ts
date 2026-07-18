@@ -126,6 +126,7 @@ describe('writeLst', () => {
       ]),
       logicalLines: [
         logical('main.asm', 1, '        .org 08000H'),
+        { ...logical('main.asm', 2, '.import "lib.asm"'), loadDirective: true },
         logical('lib.asm', 1, 'lib:    nop'),
         logical('main.asm', 3, 'main:   ret'),
       ],
@@ -133,8 +134,8 @@ describe('writeLst', () => {
 
     expect(lines(result.text).slice(0, 4)).toEqual([
       '                            .org 08000H',
-      '8000   00           lib:    nop',
       '                    .import "lib.asm"',
+      '8000   00           lib:    nop',
       '8001   C9           main:   ret',
     ]);
   });
