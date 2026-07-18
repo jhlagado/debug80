@@ -93,18 +93,22 @@ need to write that file by hand. The **Create Project** command generates the
 setup for the current folder, and Debug80 then looks for program entry points it
 can run.
 
-Target discovery recognizes clear Z80 entry-point conventions and Glimmer program files:
+Target discovery uses a small set of entry-point conventions to suggest targets:
 
 - files ending in `.main.asm`
+- files ending in `.main.z80`
 - files named `main.asm`
+- files named `main.z80`
 - `.glim` files containing a top-level `program` declaration
 
 Glimmer `part` files are not offered as standalone targets because they do not
 declare a complete program.
 
-Files with `.z80` are still supported as Z80/AZM source files, but they are no
-longer auto-discovered as runnable targets. Add them explicitly to
-`debug80.json` if a project still needs one as its entry file.
+These names are conventions, not requirements. Use the `+` control beside the
+target selector to add any `.asm`, `.z80`, or complete Glimmer program in the
+project. Sources may live at the project root, under `src/`, or in other
+subdirectories. Removing a target with the `-` control changes `debug80.json`;
+it does not delete the source file or its existing build artifacts.
 
 When more than one target is available, select the active target from the
 Debug80 panel or the **Debug80: Select Active Target** command.
