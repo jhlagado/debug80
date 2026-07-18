@@ -7,6 +7,10 @@
   address-only lines, and a sorted symbol table trailer.
 - Emitted `data` source segments for `db`/`dw`/string directives and filled
   `ds` ranges, so `.d8.json` now maps data lines as well as code.
+- Named typographic (smart) quotes in `.db`/`.dw`, string-directive, and
+  `.equ` parse errors, with the ASCII replacement to use.
+- Warned when a bare `0B`/`1B` data value parses as a binary literal (trailing
+  `B` suffix), suggesting `0x1B`/`1Bh` when a hex byte was intended.
 
 ## 0.3.5 - 2026-07-13
 
