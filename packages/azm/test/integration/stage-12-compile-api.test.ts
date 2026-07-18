@@ -385,6 +385,54 @@ main:
     });
   });
 
+  it('exports D8 data segments for db, dw, filled ds, and string directives', async () => {
+    await withTempDir('azm-next-compile-d8m-data-segments-', async (dir) => {
+      const entry = join(dir, 'data.asm');
+      await writeFile(
+        entry,
+        `.org $8000
+start:
+  ld a,1
+  .db 1, 2, 3
+  .dw $1234, start
+  .ds 4
+  .ds 2, $ff
+  .cstr "HI"
+  ret
+`,
+        'utf8',
+      );
+
+      const result = await compile(
+        entry,
+        { emitBin: false, emitHex: false, emitD8m: true, sourceRoot: dir },
+        { formats: defaultFormatWriters },
+      );
+
+      expect(result.diagnostics).toEqual([]);
+      const d8m = result.artifacts.find((artifact) => artifact.kind === 'd8m') as
+        | D8mArtifact
+        | undefined;
+      const segments = d8m?.json.files['data.asm']?.segments ?? [];
+
+      expect(segments).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({ start: 0x8000, end: 0x8002, line: 3, kind: 'code' }),
+          expect.objectContaining({ start: 0x8002, end: 0x8005, line: 4, kind: 'data' }),
+          expect.objectContaining({ start: 0x8005, end: 0x8009, line: 5, kind: 'data' }),
+          expect.objectContaining({ start: 0x800d, end: 0x800f, line: 7, kind: 'data' }),
+          expect.objectContaining({ start: 0x800f, end: 0x8012, line: 8, kind: 'data' }),
+          expect.objectContaining({ start: 0x8012, end: 0x8013, line: 9, kind: 'code' }),
+        ]),
+      );
+      // The unfilled `.ds 4` at $8009-$800C reserves space without emitting
+      // bytes, so no segment may cover it.
+      expect(
+        segments.some((segment) => segment.start < 0x800d && segment.end > 0x8009),
+      ).toBe(false);
+    });
+  });
+
   it('emits imported source bytes and D8 provenance from physical imported files', async () => {
     await withTempDir('azm-next-compile-import-output-', async (dir) => {
       const entry = join(dir, 'main.asm');
