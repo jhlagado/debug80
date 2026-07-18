@@ -1,3 +1,4 @@
+import { getWrittenRange } from './range.js';
 import type { EmittedByteMap, BinArtifact, SymbolEntry, WriteBinOptions } from './types.js';
 
 const BIN_FROM_SYMBOL_NAME = '__azm_binfrom';
@@ -26,17 +27,4 @@ export function writeBin(
   }
 
   return { kind: 'bin', bytes: out };
-}
-
-function getWrittenRange(map: EmittedByteMap): { start: number; end: number } {
-  if (map.writtenRange) {
-    return map.writtenRange;
-  }
-  if (map.bytes.size === 0) {
-    return { start: 0, end: 0 };
-  }
-  const keys = [...map.bytes.keys()];
-  const start = Math.min(...keys);
-  const end = Math.max(...keys) + 1;
-  return { start, end };
 }

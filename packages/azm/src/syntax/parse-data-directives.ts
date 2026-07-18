@@ -3,7 +3,7 @@ import type { Expression } from '../model/expression.js';
 import type { DataValue } from '../model/source-item.js';
 import type { LogicalLine } from '../source/logical-lines.js';
 import { parseWholeQuotedString } from './parse-declaration-directives.js';
-import { parseLineError } from './parse-diagnostics.js';
+import { parseLineError, parseLineWarning, typographicQuoteHint } from './parse-diagnostics.js';
 import { parseExpression, parseTypeExpr } from './parse-expression.js';
 import type { ParseLineResult } from './parse-line.js';
 
@@ -20,9 +20,15 @@ export function parseDataDirective(
       ? parts.map(parseDataValue).filter((value) => value !== undefined)
       : parts.map(parseExpression).filter((value) => value !== undefined);
   if (values.length !== parts.length) {
+    const hint = typographicQuoteHint(valueText);
     return {
       items: [],
-      diagnostics: [parseLineError(line, `invalid .${directive} value list`)],
+      diagnostics: [
+        parseLineError(
+          line,
+          hint ? `invalid .${directive} value list: ${hint}` : `invalid .${directive} value list`,
+        ),
+      ],
     };
   }
   return {
@@ -30,8 +36,34 @@ export function parseDataDirective(
       directive === 'db'
         ? [{ kind: 'db', values: values as DataValue[], span }]
         : [{ kind: 'dw', values: values as Expression[], span }],
-    diagnostics: [],
+    diagnostics: parts
+      .map((part) => ambiguousBinaryLiteralWarning(line, directive, part))
+      .filter((diagnostic): diagnostic is Diagnostic => diagnostic !== undefined),
   };
+}
+
+/**
+ * Warn when a whole `.db`/`.dw` value is a single binary digit plus a `B`
+ * suffix (`0B`/`1B`): those are the only binary literals whose text also reads
+ * as a hex byte, and authors writing hex dumps (e.g. ESC/POS `1B 40 ...`)
+ * almost always mean the hex value.
+ */
+function ambiguousBinaryLiteralWarning(
+  line: LogicalLine,
+  directive: 'db' | 'dw',
+  part: string,
+): Diagnostic | undefined {
+  const text = part.trim();
+  if (!/^[01][Bb]$/.test(text)) {
+    return undefined;
+  }
+  const binaryValue = Number.parseInt(text.slice(0, -1), 2);
+  const hexValue = Number.parseInt(text, 16);
+  return parseLineWarning(
+    line,
+    `.${directive} value ${text} is a binary literal with value ${binaryValue} (trailing B is the binary suffix) — ` +
+      `write 0x${text.toUpperCase()} or ${text}h if hex ${hexValue} was intended`,
+  );
 }
 
 export function parseDsDirective(
@@ -73,9 +105,11 @@ export function parseStringDataDirective(
 ): ParseLineResult {
   const value = parseQuotedString(valueText);
   if (value === undefined) {
+    const hint = typographicQuoteHint(valueText);
+    const message = `.${directive} expects one double-quoted string`;
     return {
       items: [],
-      diagnostics: [parseLineError(line, `.${directive} expects one double-quoted string`)],
+      diagnostics: [parseLineError(line, hint ? `${message}: ${hint}` : message)],
     };
   }
   return { items: [{ kind: 'string-data', directive, value, span }], diagnostics: [] };
