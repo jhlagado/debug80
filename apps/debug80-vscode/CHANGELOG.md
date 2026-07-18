@@ -2,6 +2,8 @@
 
 ## 0.2.3 - 2026-07-18
 
+- Updated Glimmer to `^0.6.1`, which resolves against the same AZM `0.3.6`
+  workspace package.
 - Updated AZM to `^0.3.6`, which adds an asm80-style listing artifact
   (`--lst`, `.lst`) with an address/byte gutter, inlined includes/imports,
   and a symbol table trailer.

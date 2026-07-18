@@ -843,7 +843,7 @@
   "dependencies": {
     "@jhlagado/azm": "^0.3.6",
     "@jhlagado/debug80-runtime": "^0.1.0",
-    "@jhlagado/glimmer": "^0.6.0",
+    "@jhlagado/glimmer": "^0.6.1",
     "@vscode/debugadapter": "^1.64.0",
     "@vscode/debugprotocol": "^1.64.0"
   },
