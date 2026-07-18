@@ -2,7 +2,11 @@
 
 ## Unreleased
 
-- None.
+- Added an asm80-style listing artifact (`--lst`, `.lst`): address/byte gutter
+  per source line in expansion order, unfilled `.ds` reservations shown as
+  address-only lines, and a sorted symbol table trailer.
+- Emitted `data` source segments for `db`/`dw`/string directives and filled
+  `ds` ranges, so `.d8.json` now maps data lines as well as code.
 
 ## 0.3.5 - 2026-07-13
 

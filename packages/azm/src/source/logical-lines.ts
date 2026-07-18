@@ -7,6 +7,8 @@ export interface LogicalLine {
   readonly sourceUnit?: string;
   readonly sourceRelation?: SourceRelation;
   readonly sourceUnitRelation?: SourceRelation;
+  /** True for `.include`/`.import` lines, which expand in place and are not parsed as items. */
+  readonly loadDirective?: true;
 }
 
 export type SourceRelation = 'entry' | 'include' | 'import';
