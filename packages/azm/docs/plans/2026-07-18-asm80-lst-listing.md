@@ -37,11 +37,11 @@ survive contact:
    the *initialized* map (the same map the hex writer gets) so `ds`
    reservations naturally have no byte tokens.
 
-Also corrected: the test files cited in v1
-(`test/integration/stage-12-compile-api.test.ts`, "stage-13/14-cli") do not
-exist; real seams are named in the Tests section. The column rules for
-long byte runs were contradictory (pad-to-20 vs 8 bytes wide) and are now
-specified exactly.
+Also: the column rules for long byte runs were contradictory (pad-to-20 vs
+8 bytes wide) and are now specified exactly. The v1 test citations were
+accurate (`stage-12-compile-api.test.ts` has the `--asm80` precedent tests
+to mirror); the Tests section below adds the unit-level seams and names
+the existing segment-pinning tests that Phase 1 will touch.
 
 ## Reference format
 
@@ -250,8 +250,6 @@ existing users; flipping the default later is a one-line change.
 
 ## Tests
 
-Corrected to real seams (the v1-cited stage-12/13/14 files do not exist):
-
 - `test/unit/outputs/write-lst.test.ts` (new; sibling of
   `write-hex.test.ts` / `write-d8.test.ts`): golden-string cases for
   instructions, labels inline and on their own line, `org` gaps, `db`/`dw`
@@ -267,13 +265,24 @@ Corrected to real seams (the v1-cited stage-12/13/14 files do not exist):
   max(initializedAddresses)+1` for a representative program (note: the
   *initialized* range — the full-image `writtenRange` includes `ds` holes
   and would be wrong).
-- Phase 1 coverage: extend `test/unit/outputs/write-d8.test.ts` (or the
-  emission tests beside `program-emission.ts`'s existing suites) to pin
-  the new `data` segments for `db`/`dw`/`ds`-fill/string directives.
+- Phase 1 coverage: `test/integration/stage-12-compile-api.test.ts` pins
+  d8m segment lists produced by full compiles ("exports D8
+  source-attributed file segments…", "clips D8 source-attributed file
+  segments…", "emits visible op expansion D8 segments…") — update those
+  expectations for the new `data` segments, and add cases pinning
+  `db`/`dw`/`ds`-fill/string segments. Check `test/asm80` corpus helpers
+  (`d8m-artifact-helper.ts`) and differential baselines for other pins.
+  `test/unit/outputs/write-d8.test.ts` passes segments in explicitly, so
+  it is unaffected by the emission change.
+- `test/integration/stage-12-compile-api.test.ts`: `emitLst: true`
+  produces a `lst` artifact whose gutter addresses/bytes agree with the
+  `bin` artifact (mirror "emits ASM80 artifacts when enabled").
+- `test/integration/stage-13-cli.test.ts`: `--lst` writes `<base>.lst`
+  (mirror "writes lowered .z80 output when --asm80 is used"); absent flag
+  writes nothing — also cover in `test/cli/cli_artifacts.test.ts` if it
+  enumerates artifact sets.
 - `test/public_api_surface.test.ts`: extend the `@jhlagado/azm/compile`
   usage to reference the new artifact kind if types are re-exported.
-- `test/cli/cli_artifacts.test.ts`: `--lst` writes `<base>.lst`; absent
-  flag writes nothing (mirror the existing `--asm80` cases).
 - Optional (env-gated like `test/asm80/*_acceptance.test.ts`): assemble a
   lowered `.z80` with a real asm80 binary and compare address/byte columns
   of its `.lst` against ours for the shared corpus. Nice-to-have; not a
