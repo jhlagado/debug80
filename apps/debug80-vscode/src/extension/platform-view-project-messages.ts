@@ -29,6 +29,8 @@ const PROJECT_MESSAGE_HANDLERS: Record<string, ProjectMessageHandler> = {
   setAzmOptions: handleSetAzmOptionsMessage,
   setAzmSymbolCase: handleSetAzmSymbolCaseMessage,
   selectTarget: handleSelectTargetMessage,
+  addTarget: handleAddTargetMessage,
+  removeTarget: handleRemoveTargetMessage,
   sendHexViaCoolTerm: handleSendHexViaCoolTermMessage,
   testCoolTermConnection: async (_msg, deps) => deps.handleTestCoolTermConnection(),
   restartDebug: async (_msg, deps) => deps.handleRestartDebug(),
@@ -135,6 +137,26 @@ async function handleSelectTargetMessage(
   const rootPath = rootPathFrom(msg);
   const targetName = targetNameFrom(msg);
   await deps.handleSelectTarget({
+    ...(rootPath !== undefined ? { rootPath } : {}),
+    ...(targetName !== undefined ? { targetName } : {}),
+  });
+}
+
+async function handleAddTargetMessage(
+  msg: PlatformViewMessage,
+  deps: PlatformViewMessageDependencies
+): Promise<void> {
+  const rootPath = rootPathFrom(msg);
+  await deps.handleAddTarget(rootPath !== undefined ? { rootPath } : undefined);
+}
+
+async function handleRemoveTargetMessage(
+  msg: PlatformViewMessage,
+  deps: PlatformViewMessageDependencies
+): Promise<void> {
+  const rootPath = rootPathFrom(msg);
+  const targetName = targetNameFrom(msg);
+  await deps.handleRemoveTarget({
     ...(rootPath !== undefined ? { rootPath } : {}),
     ...(targetName !== undefined ? { targetName } : {}),
   });

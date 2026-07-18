@@ -25,6 +25,8 @@ export interface PlatformViewMessageDependencies {
   ) => PromiseLike<void>;
   handleSetAzmSymbolCase: (symbolCase: AzmSymbolCaseMode) => PromiseLike<void>;
   handleSelectTarget: (args?: { rootPath?: string; targetName?: string }) => PromiseLike<void>;
+  handleAddTarget: (args?: { rootPath?: string }) => PromiseLike<void>;
+  handleRemoveTarget: (args?: { rootPath?: string; targetName?: string }) => PromiseLike<void>;
   handleTestCoolTermConnection: () => PromiseLike<void>;
   handleSendHexViaCoolTerm: (args?: {
     rootPath?: string;

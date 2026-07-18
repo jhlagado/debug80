@@ -5,8 +5,9 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-export const TARGET_ENTRY_SOURCE_SUFFIXES = ['.main.asm', '.main.glim'] as const;
-export const TARGET_ENTRY_SOURCE_FILENAMES = ['main.asm', 'main.glim'] as const;
+export const TARGET_ENTRY_SOURCE_SUFFIXES = ['.main.asm', '.main.z80'] as const;
+export const TARGET_ENTRY_SOURCE_FILENAMES = ['main.asm', 'main.z80'] as const;
+export const TARGET_SOURCE_EXTENSIONS = ['.asm', '.z80', '.glim'] as const;
 
 const TARGET_DISCOVERY_EXCLUDED_DIRS = new Set([
   '.git',
@@ -29,18 +30,23 @@ export function isTargetEntrySourcePath(filePath: string): boolean {
   );
 }
 
+export function isTargetSourcePath(filePath: string): boolean {
+  const extension = path.extname(filePath).toLowerCase();
+  return (TARGET_SOURCE_EXTENSIONS as readonly string[]).includes(extension);
+}
+
 export function listTargetEntrySourceFiles(rootPath: string): string[] {
+  return listTargetSourceFiles(rootPath).filter((filePath) => isTargetEntrySourcePath(filePath));
+}
+
+export function listTargetSourceFiles(rootPath: string): string[] {
   const results: string[] = [];
-  collectTargetEntrySourceFiles(rootPath, rootPath, results);
+  collectTargetSourceFiles(rootPath, rootPath, results);
   results.sort((left, right) => left.localeCompare(right));
   return results;
 }
 
-function collectTargetEntrySourceFiles(
-  rootPath: string,
-  currentPath: string,
-  results: string[]
-): void {
+function collectTargetSourceFiles(rootPath: string, currentPath: string, results: string[]): void {
   const entries = fs.readdirSync(currentPath, { withFileTypes: true });
   for (const entry of entries) {
     const fullPath = path.join(currentPath, entry.name);
@@ -48,11 +54,11 @@ function collectTargetEntrySourceFiles(
       if (TARGET_DISCOVERY_EXCLUDED_DIRS.has(entry.name.toLowerCase())) {
         continue;
       }
-      collectTargetEntrySourceFiles(rootPath, fullPath, results);
+      collectTargetSourceFiles(rootPath, fullPath, results);
       continue;
     }
 
-    if (!entry.isFile() || !isTargetEntrySourcePath(entry.name)) {
+    if (!entry.isFile() || !isTargetSourcePath(entry.name)) {
       continue;
     }
     if (entry.name.toLowerCase().endsWith('.glim') && !hasGlimmerProgramDeclaration(fullPath)) {

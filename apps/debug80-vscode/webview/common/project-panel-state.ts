@@ -77,6 +77,8 @@ export type ProjectPanelAction =
   | { type: 'selectProject'; platform?: string }
   | { type: 'createProject'; rootPath?: string; platform: string }
   | { type: 'selectTarget'; rootPath: string; targetName: string }
+  | { type: 'addTarget'; rootPath: string }
+  | { type: 'removeTarget'; rootPath: string; targetName: string }
   | { type: 'sendHexViaCoolTerm'; rootPath: string; targetName?: string }
   | { type: 'testCoolTermConnection' };
 

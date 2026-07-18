@@ -7,7 +7,7 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { ensureDirExists, inferDefaultTarget } from '../debug/launch/config-utils';
 import { DEBUG80_PROJECT_VERSION, findProjectConfigPath } from './project-config';
-import { listTargetEntrySourceFiles } from './target-discovery';
+import { isTargetEntrySourcePath, listTargetSourceFiles } from './target-discovery';
 import {
   TEC1G_RAM_END,
   TEC1G_RAM_START,
@@ -319,25 +319,9 @@ async function buildScaffoldPlan(
   inferred: { sourceFile: string; outputDir: string; artifactBase: string },
   preselectedPlatform?: string
 ): Promise<ScaffoldPlan | undefined> {
-  const defaultKit = getDefaultProjectKitForPlatform(preselectedPlatform);
-  if (defaultKit !== undefined) {
-    const sourceFile = 'src/main.asm';
-    const artifactBase =
-      path.basename(sourceFile, path.extname(sourceFile)) || inferred.artifactBase;
-    return {
-      kit: defaultKit,
-      targetName: artifactBase,
-      sourceFile,
-      outputDir: inferred.outputDir,
-      artifactBase,
-      starterLanguage: 'asm',
-      starterFile: {
-        path: sourceFile,
-      },
-    };
-  }
-
-  const kit = await chooseProjectKit(preselectedPlatform);
+  const kit =
+    getDefaultProjectKitForPlatform(preselectedPlatform) ??
+    (await chooseProjectKit(preselectedPlatform));
   if (kit === undefined) {
     return undefined;
   }
@@ -379,7 +363,7 @@ async function chooseEntrySource(
   folder: vscode.WorkspaceFolder,
   inferredSourceFile: string
 ): Promise<SourceChoice | undefined> {
-  const sourceFiles = listTargetEntrySourceFiles(folder.uri.fsPath);
+  const sourceFiles = listTargetSourceFiles(folder.uri.fsPath);
   const inferredExists = sourceFiles.includes(inferredSourceFile);
   if (sourceFiles.length === 1) {
     return { kind: 'existing', sourceFile: sourceFiles[0] ?? inferredSourceFile };
@@ -392,7 +376,11 @@ async function chooseEntrySource(
   > = [
     ...sourceFiles.map((sourceFile) => ({
       label: sourceFile,
-      ...(sourceFile === inferredSourceFile && inferredExists ? { description: 'suggested' } : {}),
+      ...(sourceFile === inferredSourceFile && inferredExists
+        ? { description: 'suggested' }
+        : isTargetEntrySourcePath(sourceFile)
+          ? { description: 'main-file convention' }
+          : {}),
       choice: { kind: 'existing', sourceFile } as SourceChoice,
     })),
     {

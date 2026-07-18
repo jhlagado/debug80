@@ -133,6 +133,8 @@ describe('extension activation', () => {
       expect.anything()
     );
     expect(registerCommand).toHaveBeenCalledWith('debug80.selectTarget', expect.anything());
+    expect(registerCommand).toHaveBeenCalledWith('debug80.addTarget', expect.anything());
+    expect(registerCommand).toHaveBeenCalledWith('debug80.removeTarget', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.setEntrySource', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.terminalInput', expect.anything());
     expect(registerCommand).toHaveBeenCalledWith('debug80.openTerminal', expect.anything());

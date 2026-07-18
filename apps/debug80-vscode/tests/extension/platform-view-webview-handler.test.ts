@@ -33,6 +33,8 @@ describe('platform-view webview handler', () => {
     await handler({ type: 'createProject', rootPath: '/workspace/demo', platform: 'tec1g' });
     await handler({ type: 'selectProject', rootPath: '/workspace/demo' });
     await handler({ type: 'selectTarget', rootPath: '/workspace/demo', targetName: 'app' });
+    await handler({ type: 'addTarget', rootPath: '/workspace/demo' });
+    await handler({ type: 'removeTarget', rootPath: '/workspace/demo', targetName: 'app' });
     await handler({ type: 'restartDebug' });
     await handler({ type: 'setEntrySource' });
     await handler({ type: 'startDebug', rootPath: '/workspace/demo' });
@@ -46,6 +48,13 @@ describe('platform-view webview handler', () => {
       rootPath: '/workspace/demo',
     });
     expect(executeCommand).toHaveBeenCalledWith('debug80.selectTarget', {
+      rootPath: '/workspace/demo',
+      targetName: 'app',
+    });
+    expect(executeCommand).toHaveBeenCalledWith('debug80.addTarget', {
+      rootPath: '/workspace/demo',
+    });
+    expect(executeCommand).toHaveBeenCalledWith('debug80.removeTarget', {
       rootPath: '/workspace/demo',
       targetName: 'app',
     });

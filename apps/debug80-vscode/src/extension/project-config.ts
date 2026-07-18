@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import type { AzmSymbolCaseMode, ProjectConfig } from '../debug/session/types';
+import { targetNameFromSourcePath } from './project-target-source-policy';
 
 export const DEBUG80_PROJECT_VERSION = 2 as const;
 
@@ -266,7 +267,14 @@ function nextTargetEntrySource(
   sourceFile: string
 ): Record<string, unknown> {
   const rest: Record<string, unknown> = { ...target };
-  if (rest.assembler !== undefined && !isSupportedAssemblerId(rest.assembler)) {
+  const extension = path.extname(sourceFile).toLowerCase();
+  const incompatibleAssembler =
+    (rest.assembler === 'glimmer' && extension !== '.glim') ||
+    (rest.assembler === 'azm' && extension === '.glim');
+  if (
+    incompatibleAssembler ||
+    (rest.assembler !== undefined && !isSupportedAssemblerId(rest.assembler))
+  ) {
     delete rest.assembler;
   }
   return {
@@ -300,11 +308,8 @@ function buildNewTargetEntry(
   delete template.asm;
   delete template.source;
   delete template.artifactBase;
-  if (template.assembler !== undefined && !isSupportedAssemblerId(template.assembler)) {
-    delete template.assembler;
-  }
-  const ext = path.extname(sourceFile);
-  const baseName = path.basename(sourceFile, ext) || targetName;
+  delete template.assembler;
+  const baseName = projectTargetNameFromSource(sourceFile) || targetName;
 
   return {
     ...template,
@@ -312,6 +317,10 @@ function buildNewTargetEntry(
     asm: sourceFile,
     artifactBase: baseName,
   };
+}
+
+export function projectTargetNameFromSource(sourceFile: string): string {
+  return targetNameFromSourcePath(sourceFile);
 }
 
 export function addProjectTarget(
@@ -359,6 +368,44 @@ export function addProjectTarget(
   } catch {
     return false;
   }
+}
+
+export type RemoveProjectTargetResult =
+  | { kind: 'removed'; nextTarget: string }
+  | { kind: 'missing' }
+  | { kind: 'lastTarget' }
+  | { kind: 'writeFailed' };
+
+export function removeProjectTarget(
+  projectConfigPath: string,
+  targetName: string
+): RemoveProjectTargetResult {
+  const config = readProjectConfig(projectConfigPath);
+  const targets = config?.targets;
+  if (config === undefined || targets?.[targetName] === undefined) {
+    return { kind: 'missing' };
+  }
+  const remainingNames = Object.keys(targets).filter((name) => name !== targetName);
+  if (remainingNames.length === 0) {
+    return { kind: 'lastTarget' };
+  }
+
+  delete targets[targetName];
+  const retainedDefault =
+    config.defaultTarget !== undefined && remainingNames.includes(config.defaultTarget)
+      ? config.defaultTarget
+      : undefined;
+  const nextTarget = retainedDefault ?? remainingNames[0] ?? '';
+  if (retainedDefault === undefined) {
+    config.defaultTarget = nextTarget;
+  }
+  if (config.target === targetName) {
+    config.target = nextTarget;
+  }
+  if (!writeProjectConfig(projectConfigPath, config)) {
+    return { kind: 'writeFailed' };
+  }
+  return { kind: 'removed', nextTarget };
 }
 
 export function updateProjectTargetSource(

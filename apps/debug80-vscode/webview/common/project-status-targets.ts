@@ -15,7 +15,7 @@ export function setTargetOptions(
   for (const option of options) {
     const el = document.createElement('option');
     el.value = option.name;
-    el.textContent = option.name;
+    el.textContent = option.discovered === true ? `+ ${option.name}` : option.name;
     el.title = option.detail ?? option.description ?? option.name;
     homeTargetSelect.appendChild(el);
   }

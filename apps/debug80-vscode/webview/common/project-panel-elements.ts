@@ -33,6 +33,8 @@ export function getProjectPanelElements(root: ParentNode = document): ProjectPan
   const setupCardText = byId<HTMLElement>(root, 'setupCardText');
   const setupPrimaryAction = byId<HTMLButtonElement>(root, 'setupPrimaryAction');
   const platformInitButton = byId<HTMLButtonElement>(root, 'platformInitButton');
+  const addTargetButton = byId<HTMLButtonElement>(root, 'addTarget');
+  const removeTargetButton = byId<HTMLButtonElement>(root, 'removeTarget');
   const testCoolTermButton = byId<HTMLButtonElement>(root, 'testCoolTerm');
   const sendHexToBoardButton = byId<HTMLButtonElement>(root, 'sendHexToBoard');
   const buildResultIndicator = byId<HTMLElement>(root, 'buildResultIndicator');
@@ -68,6 +70,8 @@ export function getProjectPanelElements(root: ParentNode = document): ProjectPan
       setupCardText,
       setupPrimaryAction,
       platformInitButton,
+      addTargetButton,
+      removeTargetButton,
       testCoolTermButton,
       sendHexToBoardButton,
       buildResultIndicator,

@@ -61,14 +61,14 @@ describe('project target source discovery policy', () => {
       targetChoice('main', 'src/main.asm'),
       targetChoice('matrix', 'src/matrix.main.asm'),
       {
-        name: 'matrix.main',
+        name: 'matrix-2',
         description: 'src/matrix.main.asm • new',
         detail: 'src/matrix.main.asm',
         discovered: true,
         sourceFile: 'src/matrix.main.asm',
       },
       {
-        name: 'matrix.main-2',
+        name: 'matrix-3',
         description: 'src/tools/matrix.main.asm • new',
         detail: 'src/tools/matrix.main.asm',
         discovered: true,

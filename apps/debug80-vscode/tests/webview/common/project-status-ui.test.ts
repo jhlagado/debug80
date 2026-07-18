@@ -58,6 +58,8 @@ function getElements() {
       .getElementById('homeTargetSelect')
       ?.closest('.project-control') as HTMLElement,
     homeTargetSelect: document.getElementById('homeTargetSelect') as HTMLSelectElement,
+    addTargetButton: document.getElementById('addTarget') as HTMLButtonElement,
+    removeTargetButton: document.getElementById('removeTarget') as HTMLButtonElement,
     platformControl: document
       .getElementById('platformSelect')
       ?.closest('.project-control') as HTMLElement,
@@ -99,6 +101,8 @@ function applyProjectPayload(payload: ProjectPayload): void {
       hardwareStatusLine: elements.hardwareStatusLine,
       sourceMapStatusLine: elements.sourceMapStatusLine,
       homeTargetSelect: elements.homeTargetSelect,
+      addTargetButton: elements.addTargetButton,
+      removeTargetButton: elements.removeTargetButton,
       getPlatform: () => elements.platformSelect.value,
     },
     'tec1g'
@@ -145,6 +149,8 @@ describe('project status UI invariants', () => {
           <div class="project-control">
             <span class="project-label">Target</span>
             <select class="project-select" id="homeTargetSelect"></select>
+            <button id="addTarget" type="button">+</button>
+            <button id="removeTarget" type="button">-</button>
           </div>
           <div class="project-control" hidden>
             <span class="project-label">Platform</span>
@@ -208,6 +214,67 @@ describe('project status UI invariants', () => {
     ).toEqual(['Select target...', 'app', 'tests']);
     expect(elements.setupCard.hidden).toBe(true);
     expect(visiblePlatformControlCount()).toBe(0);
+  });
+
+  it('adds and removes configured targets through explicit project actions', () => {
+    const postMessage = vi.fn();
+    const elements = getElements();
+    const ui = createProjectStatusUi(
+      createPostingVscodeMock(postMessage),
+      {
+        selectProjectButton: elements.selectProjectButton,
+        setupCard: elements.setupCard,
+        setupCardText: elements.setupCardText,
+        setupPrimaryAction: elements.setupPrimaryAction,
+        platformInitButton: elements.platformInitButton,
+        addTargetButton: elements.addTargetButton,
+        removeTargetButton: elements.removeTargetButton,
+        homeTargetSelect: elements.homeTargetSelect,
+      },
+      'tec1g'
+    );
+
+    ui.applyProjectStatus({
+      projectState: 'initialized',
+      rootPath: '/workspace/debug80',
+      roots: [{ name: 'debug80', path: '/workspace/debug80', hasProject: true }],
+      targets: [
+        { name: 'matrix', sourceFile: 'matrix.main.asm' },
+        { name: 'panel', sourceFile: 'panel.main.asm' },
+        { name: 'scratch', sourceFile: 'scratch.asm', discovered: true },
+      ],
+      targetName: 'matrix',
+      platform: 'tec1g',
+    });
+    elements.addTargetButton.click();
+    elements.removeTargetButton.click();
+
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'addTarget',
+      rootPath: '/workspace/debug80',
+    });
+    expect(postMessage).toHaveBeenCalledWith({
+      type: 'removeTarget',
+      rootPath: '/workspace/debug80',
+      targetName: 'matrix',
+    });
+
+    elements.homeTargetSelect.value = 'scratch';
+    elements.homeTargetSelect.dispatchEvent(new Event('change'));
+    ui.applyProjectStatus({
+      projectState: 'initialized',
+      rootPath: '/workspace/debug80',
+      roots: [{ name: 'debug80', path: '/workspace/debug80', hasProject: true }],
+      targets: [
+        { name: 'matrix', sourceFile: 'matrix.main.asm' },
+        { name: 'panel', sourceFile: 'panel.main.asm' },
+        { name: 'scratch', sourceFile: 'scratch.asm', discovered: true },
+      ],
+      targetName: 'scratch',
+      platform: 'tec1g',
+    });
+    expect(elements.removeTargetButton.disabled).toBe(true);
+    ui.dispose();
   });
 
   it('keeps send visible and lets the send command check CoolTerm availability', () => {

@@ -12,8 +12,10 @@ const registerCommand = vi.fn((name: string, callback: (...args: unknown[]) => u
 const existsSync = vi.fn();
 const readFileSync = vi.fn();
 const writeFileSync = vi.fn();
+const readdirSync = vi.fn();
 const mkdirSync = vi.fn();
 const showInformationMessage = vi.fn();
+const showWarningMessage = vi.fn();
 const showErrorMessage = vi.fn();
 const createWebviewPanel = vi.fn();
 const startDebugging = vi.fn();
@@ -57,6 +59,7 @@ vi.mock('fs', () => ({
   existsSync,
   mkdirSync,
   readFileSync,
+  readdirSync,
   writeFileSync,
 }));
 
@@ -76,6 +79,7 @@ vi.mock('vscode', () => ({
   DebugStackFrame,
   window: {
     showInformationMessage,
+    showWarningMessage,
     showErrorMessage,
     showQuickPick: vi.fn(),
     showOpenDialog: vi.fn(),
@@ -168,6 +172,9 @@ describe('registerExtensionCommands', () => {
         },
       })
     );
+    readdirSync.mockReturnValue([
+      { name: 'scratch.asm', isDirectory: () => false, isFile: () => true },
+    ]);
     panelMessageHandler = undefined;
     panelHtml = '';
     activeStackItem = undefined;
@@ -1051,6 +1058,54 @@ describe('registerExtensionCommands', () => {
     });
 
     expect(result).toBe('serial');
+  });
+
+  it('adds and removes project targets without deleting project files', async () => {
+    const rememberTarget = vi.fn();
+    const refreshIdleView = vi.fn();
+    await registerCommands({
+      context: {
+        subscriptions: [],
+        workspaceState: { get: vi.fn(() => 'app'), update: vi.fn() },
+      } as never,
+      platformViewProvider: { refreshIdleView } as never,
+      workspaceSelection: {
+        resolveWorkspaceFolder: vi.fn(),
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+      targetSelection: {
+        resolveTarget: vi.fn(),
+        rememberTarget,
+      } as never,
+    });
+
+    const addTarget = registeredCommand('debug80.addTarget');
+    const added = await addTarget?.({
+      rootPath: '/workspace/tec1g-mon3',
+      sourceFile: 'scratch.asm',
+    });
+
+    expect(added).toBe('scratch');
+    expect(rememberTarget).toHaveBeenCalledWith(projectConfigPath, 'scratch');
+    const addedConfig = JSON.parse(String(writeFileSync.mock.calls.at(-1)?.[1])) as {
+      targets?: Record<string, { sourceFile?: string }>;
+    };
+    expect(addedConfig.targets?.scratch?.sourceFile).toBe('scratch.asm');
+
+    showWarningMessage.mockResolvedValueOnce('Remove Target');
+    const removeTarget = registeredCommand('debug80.removeTarget');
+    const nextTarget = await removeTarget?.({
+      rootPath: '/workspace/tec1g-mon3',
+      targetName: 'serial',
+    });
+
+    expect(nextTarget).toBe('app');
+    const removedConfig = JSON.parse(String(writeFileSync.mock.calls.at(-1)?.[1])) as {
+      targets?: Record<string, unknown>;
+    };
+    expect(removedConfig.targets?.serial).toBeUndefined();
+    expect(refreshIdleView).toHaveBeenCalledTimes(2);
   });
 
   it('reports an explicit target root that is not open without prompting', async () => {

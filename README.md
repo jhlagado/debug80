@@ -27,9 +27,11 @@ packaged as a VS Code extension.
 Open the monorepo root in VS Code, select **Run and Debug**, choose
 **Debug80 Extension**, and press F5. The committed launch configuration builds
 the extension, starts an Extension Development Host from
-`apps/debug80-vscode`, and opens the simple test project. Breakpoints in the
-extension, debug adapter, and platform provider TypeScript sources map through
-the bundled source map.
+`apps/debug80-vscode`, and opens the TEC-1G development playground in
+`examples/debug80-dev`. It contains matrix and seven-segment smoke targets plus
+an unconfigured source for exercising target addition and removal. Breakpoints
+in the extension, debug adapter, and platform provider TypeScript sources map
+through the bundled source map.
 
 To exercise an adapter breakpoint, set it in the original window, for example
 in `apps/debug80-vscode/src/debug/adapter.ts`. After the Extension Development
@@ -38,7 +40,9 @@ there. Debug80 runs the adapter inline in the extension host, so the original
 window stops at both extension and adapter breakpoints; there is no separate
 adapter process to attach to.
 
-Choose **Debug80 Extension (performance diagnostics)** to run the same host
+Choose **Debug80 Extension (Simple E2E fixture)** when the original minimal
+fixture is specifically required for adapter testing. Choose **Debug80 Extension
+(performance diagnostics)** to run the development playground
 with `DEBUG80_PERF=1`. After changing extension or webview code, restart the
 debug session so the pre-launch build regenerates both bundles.
 
