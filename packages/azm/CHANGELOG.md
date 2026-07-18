@@ -2,6 +2,10 @@
 
 ## Unreleased
 
+- None.
+
+## 0.3.6 - 2026-07-18
+
 - Added an asm80-style listing artifact (`--lst`, `.lst`): address/byte gutter
   per source line in expansion order, unfilled `.ds` reservations shown as
   address-only lines, and a sorted symbol table trailer.
