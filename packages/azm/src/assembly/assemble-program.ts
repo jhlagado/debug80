@@ -21,6 +21,7 @@ interface AssemblyResult {
   readonly initializedAddresses: readonly number[];
   readonly reservedAddresses: readonly number[];
   readonly sourceSegments: readonly EmittedSourceSegment[];
+  readonly reservationSegments: readonly EmittedSourceSegment[];
   readonly bytes: Uint8Array;
 }
 
@@ -37,6 +38,7 @@ function emptyAssemblyResult(
     initializedAddresses: [],
     reservedAddresses: [],
     sourceSegments: [],
+    reservationSegments: [],
     bytes: new Uint8Array(),
   };
 }
@@ -92,6 +94,7 @@ export function assembleProgram(
     initializedAddresses: emitted.initializedAddresses,
     reservedAddresses: emitted.reservedAddresses,
     sourceSegments: emitted.sourceSegments,
+    reservationSegments: emitted.reservationSegments,
     bytes: diagnostics.length > 0 ? new Uint8Array() : emitted.bytes,
   };
 }

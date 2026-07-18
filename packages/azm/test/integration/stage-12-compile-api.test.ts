@@ -59,6 +59,9 @@ function snapshotArtifacts(artifacts: readonly Artifact[]): ArtifactSnapshot[] {
       case 'asm80': {
         return { kind: artifact.kind, payload: artifact.text };
       }
+      case 'lst': {
+        return { kind: artifact.kind, payload: artifact.text };
+      }
       case 'register-contracts-report':
       case 'register-contracts-interface':
       case 'register-contracts-inference': {
@@ -677,6 +680,43 @@ main:
           bin: toPosix(join(collisionPath, 'game.bin')),
         },
       } as Partial<D8mGenerator>);
+    });
+  });
+
+  it('emits LST artifacts whose gutter agrees with the bin artifact', async () => {
+    await withTempDir('azm-next-compile-lst-', async (dir) => {
+      const entry = join(dir, 'program.asm');
+      await writeFile(entry, source, 'utf8');
+
+      const result = await compile(
+        entry,
+        { emitBin: true, emitLst: true },
+        { formats: defaultFormatWriters },
+      );
+
+      expect(result.diagnostics).toEqual([]);
+      expect(result.artifacts.map((artifact) => artifact.kind)).toEqual(['bin', 'lst']);
+
+      const lst = result.artifacts.find((artifact) => artifact.kind === 'lst');
+      expect(lst?.kind === 'lst' ? lst.text : '').toBe(
+        [
+          '                    .org $0100',
+          '                    main:',
+          '0100   3E 2A          ld a,$2a',
+          '0102   C9             ret',
+          '',
+          'main        0100',
+          '',
+        ].join('\n'),
+      );
+
+      const bin = result.artifacts.find((artifact) => artifact.kind === 'bin');
+      const listedBytes = (lst?.kind === 'lst' ? lst.text : '')
+        .split('\n')
+        .flatMap((line) => (/^[0-9A-F]{4}\s/.exec(line) ? line.slice(7, 31).trim().split(/\s+/) : []))
+        .filter((token) => /^[0-9A-F]{2}$/.test(token))
+        .map((token) => Number.parseInt(token, 16));
+      expect(listedBytes).toEqual(Array.from(bin?.kind === 'bin' ? bin.bytes : []));
     });
   });
 

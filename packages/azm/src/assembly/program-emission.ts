@@ -32,6 +32,7 @@ interface EmittedProgram {
   readonly initializedAddresses: readonly number[];
   readonly reservedAddresses: readonly number[];
   readonly sourceSegments: readonly EmittedSourceSegment[];
+  readonly reservationSegments: readonly EmittedSourceSegment[];
   readonly bytes: Uint8Array;
 }
 
@@ -46,6 +47,7 @@ interface EmitContext {
   readonly initializedAddresses: Set<number>;
   readonly reservedAddresses: Set<number>;
   readonly sourceSegments: EmittedSourceSegment[];
+  readonly reservationSegments: EmittedSourceSegment[];
   readonly placement: PlacementState;
   binFrom: number | undefined;
   binTo: number | undefined;
@@ -268,6 +270,7 @@ function emittedProgramFromContext(
     initializedAddresses: sortedAddresses(context.initializedAddresses),
     reservedAddresses: sortedAddresses(context.reservedAddresses),
     sourceSegments: clippedSourceSegments(context.sourceSegments, range.start, range.end),
+    reservationSegments: [...context.reservationSegments],
     bytes: diagnostics.length > 0 ? new Uint8Array() : bytes,
   };
 }
@@ -304,6 +307,7 @@ function createEmitContext(
     initializedAddresses: new Set<number>(),
     reservedAddresses: new Set<number>(),
     sourceSegments: [],
+    reservationSegments: [],
     placement: createPlacementState(),
     binFrom: undefined,
     binTo: undefined,
@@ -410,6 +414,13 @@ function emitDs(context: EmitContext, item: Extract<SourceItem, { readonly kind:
     for (let index = 0; index < size; index += 1) {
       context.reservedAddresses.add(emitAddress + index);
     }
+    addSourceSegment(
+      context.reservationSegments,
+      item.span,
+      emitAddress,
+      emitAddress + size,
+      'directive',
+    );
   }
   advancePlacement(context.placement, size);
 }

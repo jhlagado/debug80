@@ -21,6 +21,7 @@ export type CliOptions = {
   emitHex: boolean;
   emitD8m: boolean;
   emitAsm80: boolean;
+  emitLst: boolean;
   symbolCase: SymbolCaseMode;
   caseStyle: CaseStyleMode;
   registerContracts: RegisterContractsMode;
@@ -87,6 +88,12 @@ const BOOLEAN_FLAG_ACTIONS: readonly BooleanFlagAction[] = [
     },
   },
   {
+    flags: ['--lst'],
+    apply: (state) => {
+      state.emitLst = true;
+    },
+  },
+  {
     flags: ['--emit-register-report', '--reg-report'],
     apply: (state) => {
       state.emitRegisterReport = true;
@@ -147,6 +154,7 @@ function createDefaultCliState(): CliState {
     emitHex: true,
     emitD8m: true,
     emitAsm80: false,
+    emitLst: false,
     symbolCase: 'strict',
     caseStyle: 'off',
     registerContracts: 'off',
@@ -493,6 +501,7 @@ function finalizeCliOptions(state: CliState): CliOptions {
     emitHex: state.emitHex,
     emitD8m: state.emitD8m,
     emitAsm80: state.emitAsm80,
+    emitLst: state.emitLst,
     symbolCase: state.symbolCase,
     caseStyle: state.caseStyle,
     registerContracts: state.registerContracts,

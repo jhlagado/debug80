@@ -69,6 +69,8 @@ export type {
   D8mFileSymbol,
   D8mSegment,
   D8mSymbol,
+  LstArtifact,
   SymbolEntry,
   WriteD8mOptions,
+  WriteLstOptions,
 } from './outputs/types.js';
