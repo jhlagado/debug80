@@ -1,7 +1,7 @@
 import type { Diagnostic } from '../model/diagnostic.js';
 import type { LogicalLine } from '../source/logical-lines.js';
 import { isIdentifier } from './names.js';
-import { parseLineError } from './parse-diagnostics.js';
+import { parseLineError, typographicQuoteHint } from './parse-diagnostics.js';
 import { parseExpression } from './parse-expression.js';
 import type { ParseLineResult } from './parse-line.js';
 
@@ -36,9 +36,11 @@ export function parseEquItem(
       ? { kind: 'number' as const, value: 0 }
       : parseExpression(expressionText);
   if (!expression) {
+    const hint = typographicQuoteHint(expressionText);
+    const message = `invalid .equ expression: ${expressionText}`;
     return {
       items: [],
-      diagnostics: [parseLineError(line, `invalid .equ expression: ${expressionText}`)],
+      diagnostics: [parseLineError(line, hint ? `${message} (${hint})` : message)],
     };
   }
   return {

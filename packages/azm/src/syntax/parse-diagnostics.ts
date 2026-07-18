@@ -62,6 +62,36 @@ export function parseLineError(line: ParseDiagLine, message: string): Diagnostic
   };
 }
 
+/** Return a parse warning at the first non-whitespace column of a source line. */
+export function parseLineWarning(line: ParseDiagLine, message: string): Diagnostic {
+  return {
+    code: 'AZMN_PARSE',
+    severity: 'warning',
+    message,
+    sourceName: line.sourceName,
+    line: line.line,
+    column: firstNonWhitespaceColumn(line.text),
+  };
+}
+
+const TYPOGRAPHIC_QUOTES: ReadonlyMap<string, string> = new Map([
+  ['‘', "'"],
+  ['’', "'"],
+  ['“', '"'],
+  ['”', '"'],
+]);
+
+/** Hint for text that failed to parse because it uses typographic (smart) quotes. */
+export function typographicQuoteHint(text: string): string | undefined {
+  for (const char of text) {
+    const ascii = TYPOGRAPHIC_QUOTES.get(char);
+    if (ascii !== undefined) {
+      return `typographic quote character ${char} found — use ASCII quotes (${ascii})`;
+    }
+  }
+  return undefined;
+}
+
 export function firstNonWhitespaceColumn(text: string): number {
   const match = /\S/.exec(text);
   return match ? match.index + 1 : 1;

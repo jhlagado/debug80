@@ -356,6 +356,12 @@ binary-suffix      ::= [01]+ [Bb]
 current-location   ::= "$"
 ```
 
+Pitfall: a bare `1B` or `0B` is a *binary* literal (`1B` = 1), not the hex
+byte `0x1B`/`0x0B` — hex needs a prefix or an `h` suffix (`0x1B`, `$1B`,
+`1Bh`). The assembler emits a warning when a `.db`/`.dw` value is exactly one
+binary digit followed by `B`, since such tokens are almost always intended as
+hex bytes (e.g. ESC/POS control codes like `1B 40`).
+
 Function and layout terms:
 
 ```text

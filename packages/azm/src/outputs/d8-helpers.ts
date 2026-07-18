@@ -24,14 +24,23 @@ function toHexFilePath(path: string, rootDir?: string): string {
   return rel;
 }
 
+/**
+ * Display name for a symbol, qualified with its source unit when the bare
+ * name is ambiguous. Shared by the D8 map and the listing symbol trailer.
+ */
+export function symbolDisplayName(symbol: SymbolEntry, rootDir?: string): string {
+  const sourceUnit =
+    symbol.sourceUnit !== undefined ? toHexFilePath(symbol.sourceUnit, rootDir) : undefined;
+  return symbol.needsSourceQualifier === true && sourceUnit !== undefined
+    ? `${sourceUnit}::${symbol.name}`
+    : symbol.name;
+}
+
 export function toD8mSymbol(symbol: SymbolEntry, rootDir?: string): D8mSymbol {
   const sourceUnit =
     symbol.sourceUnit !== undefined ? toHexFilePath(symbol.sourceUnit, rootDir) : undefined;
   const identity = normalizeSymbolIdentity(symbol, rootDir);
-  const name =
-    symbol.needsSourceQualifier === true && sourceUnit !== undefined
-      ? `${sourceUnit}::${symbol.name}`
-      : symbol.name;
+  const name = symbolDisplayName(symbol, rootDir);
   if (symbol.kind === 'constant') {
     return {
       name,
