@@ -3,6 +3,7 @@ import { writeBin } from './write-bin.js';
 import { writeD8m } from './write-d8.js';
 import { writeHex } from './write-hex.js';
 import { writeAsm80 } from './write-asm80.js';
+import { writeLst } from './write-lst.js';
 
 /** Default in-memory writers for Stage 12 compile API. */
 export const defaultFormatWriters: FormatWriters = {
@@ -10,4 +11,5 @@ export const defaultFormatWriters: FormatWriters = {
   writeHex,
   writeD8m,
   writeAsm80,
+  writeLst,
 };

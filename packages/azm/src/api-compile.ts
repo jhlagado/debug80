@@ -125,6 +125,7 @@ export interface CompileNextFunctionOptions {
   readonly emitHex?: boolean;
   readonly emitD8m?: boolean;
   readonly emitAsm80?: boolean;
+  readonly emitLst?: boolean;
   readonly symbolCase?: SymbolCaseMode;
   readonly registerContracts?: RegisterContractsMode;
   readonly registerContractsPolicy?: RegisterContractsPolicy;
@@ -268,6 +269,7 @@ export async function compile(
     bytes: assembled.bytes,
     origin: assembled.origin,
     sourceSegments: assembled.sourceSegments,
+    reservationSegments: assembled.reservationSegments,
     initializedAddresses: assembled.initializedAddresses,
     symbols: assembled.symbols,
     internalSymbols: assembled.internalSymbols,

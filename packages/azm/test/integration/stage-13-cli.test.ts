@@ -247,4 +247,23 @@ describe('stage 13 CLI façade', () => {
       expect(z80.length).toBeGreaterThan(0);
     });
   });
+
+  it('writes a listing file when --lst is used and none without it', async () => {
+    await withTempDir('azm-next-cli-lst-', async (dir) => {
+      const entry = join(dir, 'main.asm');
+      await writeFile(entry, `main:\n  ld a,1\n  ret\n`, 'utf8');
+      const out = join(dir, 'main.hex');
+
+      const withoutFlag = await runNextCli(['--nobin', '--nod8m', '-o', out, entry], dir);
+      expect(withoutFlag.code).toBe(0);
+      expect(await exists(join(dir, 'main.lst'))).toBe(false);
+
+      const res = await runNextCli(['--lst', '--nobin', '--nod8m', '-o', out, entry], dir);
+      expect(res.code).toBe(0);
+      expect(await exists(join(dir, 'main.lst'))).toBe(true);
+      const lst = await readFile(join(dir, 'main.lst'), 'utf8');
+      expect(lst).toContain('main:');
+      expect(lst).toContain('3E 01');
+    });
+  });
 });

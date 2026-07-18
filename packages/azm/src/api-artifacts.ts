@@ -26,6 +26,7 @@ interface EmitAssemblyArtifactsOptions {
   readonly bytes: Uint8Array;
   readonly origin: number;
   readonly sourceSegments: EmittedByteMap['sourceSegments'];
+  readonly reservationSegments: EmittedByteMap['sourceSegments'];
   readonly initializedAddresses: readonly number[];
   readonly symbols: Readonly<Record<string, number>>;
   readonly internalSymbols: Readonly<Record<string, number>>;
@@ -74,6 +75,19 @@ export async function emitAssemblyArtifacts(input: EmitAssemblyArtifactsOptions)
     );
   }
 
+  if (emit.emitLst && input.formats.writeLst !== undefined) {
+    artifacts.push(
+      input.formats.writeLst(sidecarMap, symbols, {
+        sourceTexts: input.sourceTexts,
+        logicalLines: input.logicalLines,
+        ...(input.reservationSegments !== undefined
+          ? { reservationSegments: input.reservationSegments }
+          : {}),
+        rootDir: d8Root,
+      }),
+    );
+  }
+
   if (emit.emitAsm80 && input.formats.writeAsm80 !== undefined) {
     try {
       artifacts.push(input.formats.writeAsm80(input.program, symbols));
@@ -101,6 +115,7 @@ function compileArtifactDefaults(options: CompileNextFunctionOptions): {
   readonly emitHex: boolean;
   readonly emitD8m: boolean;
   readonly emitAsm80: boolean;
+  readonly emitLst: boolean;
 } {
   const anyPrimary = [options.emitBin, options.emitHex, options.emitD8m].some(
     (value) => value !== undefined,
@@ -109,7 +124,8 @@ function compileArtifactDefaults(options: CompileNextFunctionOptions): {
   const emitHex = anyPrimary ? (options.emitHex ?? false) : true;
   const emitD8m = anyPrimary ? (options.emitD8m ?? false) : true;
   const emitAsm80 = options.emitAsm80 ?? false;
-  return { emitBin, emitHex, emitD8m, emitAsm80 };
+  const emitLst = options.emitLst ?? false;
+  return { emitBin, emitHex, emitD8m, emitAsm80, emitLst };
 }
 
 function assembledImageToMap(

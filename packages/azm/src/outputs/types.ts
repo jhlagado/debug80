@@ -1,4 +1,5 @@
 import type { SourceItem } from '../model/source-item.js';
+import type { LogicalLine } from '../source/logical-lines.js';
 import type {
   RegisterContractsFinding,
   RegisterContractsInferenceFormat,
@@ -119,6 +120,13 @@ export interface Asm80Artifact {
   text: string;
 }
 
+/** asm80-style listing (.lst) artifact. */
+export interface LstArtifact {
+  kind: 'lst';
+  path?: string;
+  text: string;
+}
+
 export interface D8mSymbol {
   name: string;
   identity?: string;
@@ -221,11 +229,23 @@ export interface WriteD8mOptions {
 
 export interface WriteAsm80Options {}
 
+export interface WriteLstOptions {
+  /** Raw text of every loaded file, keyed by source name. */
+  sourceTexts: ReadonlyMap<string, string>;
+  /** Expanded source lines in listing order (includes/imports inlined). */
+  logicalLines: readonly LogicalLine[];
+  /** Address ranges reserved by unfilled `ds` directives, per source line. */
+  reservationSegments?: readonly EmittedSourceSegment[];
+  /** Root used to relativize source-unit qualifiers in the symbol trailer. */
+  rootDir?: string;
+}
+
 export type Artifact =
   | BinArtifact
   | HexArtifact
   | D8mArtifact
   | Asm80Artifact
+  | LstArtifact
   | RegisterContractsReportArtifact
   | RegisterContractsInterfaceArtifact
   | RegisterContractsInferenceArtifact
@@ -253,4 +273,9 @@ export interface FormatWriters {
     symbols: readonly SymbolEntry[],
     opts?: WriteAsm80Options,
   ): Asm80Artifact;
+  writeLst?(
+    map: EmittedByteMap,
+    symbols: readonly SymbolEntry[],
+    opts: WriteLstOptions,
+  ): LstArtifact;
 }

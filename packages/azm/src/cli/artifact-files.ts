@@ -8,6 +8,7 @@ interface ArtifactPaths {
   readonly bin: string;
   readonly d8m: string;
   readonly asm80: string;
+  readonly lst: string;
   readonly registerContractsReport: string;
   readonly registerContractsInterface: string;
   readonly registerContractsInference: string;
@@ -76,6 +77,11 @@ function queueDebugArtifacts(
   const asm80 = byKind.get('asm80');
   if (asm80?.kind === 'asm80') {
     writes.push(writeTextArtifact(paths.asm80, asm80.text));
+  }
+
+  const lst = byKind.get('lst');
+  if (lst?.kind === 'lst') {
+    writes.push(writeTextArtifact(paths.lst, lst.text));
   }
 }
 
