@@ -46,12 +46,18 @@ interface RegisterContractsInterfaceArtifact {
   text: string;
 }
 
+interface LstArtifact {
+  kind: 'lst';
+  text: string;
+}
+
 type Artifact =
   | HexArtifact
   | BinArtifact
   | D8mArtifact
   | RegisterContractsReportArtifact
-  | RegisterContractsInterfaceArtifact;
+  | RegisterContractsInterfaceArtifact
+  | LstArtifact;
 
 interface CompilerOptions {
   outputType: 'bin' | 'hex';
@@ -63,6 +69,7 @@ interface CompilerOptions {
   emitBin?: boolean;
   emitHex?: boolean;
   emitD8m?: boolean;
+  emitLst?: boolean;
   symbolCase?: 'strict' | 'insensitive';
   registerContracts?: 'off' | 'audit' | 'warn' | 'error' | 'strict';
   registerContractsPolicy?: {
@@ -332,7 +339,7 @@ function requireArtifact<K extends Artifact['kind']>(
 
 function writeOptionalTextArtifact(
   artifacts: Artifact[],
-  kind: 'register-contracts-report' | 'register-contracts-interface',
+  kind: 'register-contracts-report' | 'register-contracts-interface' | 'lst',
   filePath: string
 ): void {
   const artifact = findArtifact(artifacts, kind);
@@ -382,6 +389,7 @@ function writeAssemblyArtifacts(
   }
 
   writeJsonArtifact(`${base}${D8_DEBUG_MAP_EXT}`, d8Result.artifact.json);
+  writeOptionalTextArtifact(artifacts, 'lst', `${base}.lst`);
   writeOptionalTextArtifact(
     artifacts,
     'register-contracts-report',
@@ -440,6 +448,7 @@ export class AzmBackend implements AssemblerBackend {
             emitBin: true,
             emitHex: true,
             emitD8m: true,
+            emitLst: true,
             sourceRoot,
             ...(options.azm ?? {}),
             d8mInputs: {

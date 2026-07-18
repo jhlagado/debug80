@@ -62,6 +62,7 @@ describe('azm-backend', () => {
         emitBin: true,
         emitHex: true,
         emitD8m: true,
+        emitLst: true,
         sourceRoot: tmpDir,
         d8mInputs: {
           hex: hexPath,
@@ -73,6 +74,7 @@ describe('azm-backend', () => {
     expect(fs.readFileSync(hexPath, 'utf-8')).toBe(':0101000000FE\n:00000001FF\n');
     expect([...fs.readFileSync(binPath)]).toEqual([0x00]);
     expect(fs.existsSync(path.join(outDir, 'prog.d8.json'))).toBe(true);
+    expect(fs.readFileSync(path.join(outDir, 'prog.lst'), 'utf-8')).toContain('START: NOP');
     expect(fs.existsSync(path.join(outDir, 'prog.z80'))).toBe(false);
   });
 
@@ -368,6 +370,7 @@ function successfulHexArtifacts(options: TestHexArtifactsOptions = {}): unknown[
       ? [{ kind: 'bin', bytes: new Uint8Array(options.binBytes) }]
       : []),
     d8Artifact(),
+    { kind: 'lst', text: '0100   00           START: NOP\n' },
   ];
 }
 
