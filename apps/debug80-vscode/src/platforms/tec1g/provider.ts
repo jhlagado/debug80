@@ -21,7 +21,7 @@ import {
 } from '../../debug/requests/platform-requests';
 import type { PlatformContribution } from '../../debug/session/platform-registry';
 import type { LaunchRequestArguments } from '../../debug/session/types';
-import { extractKeyCode } from '../../debug/session/message-types';
+import { extractKeyCode, extractKeyPressed } from '../../debug/session/message-types';
 import type {
   PlatformAssetLoadContext,
   PlatformCommandContext,
@@ -147,7 +147,12 @@ function buildTec1gContribution(context: PlatformCommandContext): PlatformContri
       'debug80/tec1gKey': (response, args) =>
         sendPlatformResponse(
           response,
-          handleKeyRequest(context.sessionState.tec1gRuntime, extractKeyCode(args)),
+          handleKeyRequest(
+            context.sessionState.tec1gRuntime,
+            extractKeyCode(args),
+            undefined,
+            extractKeyPressed(args)
+          ),
           context
         ),
       'debug80/tec1gMatrixKey': (response, args) =>

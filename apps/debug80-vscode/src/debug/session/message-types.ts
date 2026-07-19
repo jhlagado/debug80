@@ -155,6 +155,14 @@ export function extractKeyCode(value: unknown): number | undefined {
   return undefined;
 }
 
+export function extractKeyPressed(value: unknown): boolean | undefined {
+  if (typeof value === 'object' && value !== null) {
+    const payload = value as { pressed?: unknown };
+    return typeof payload.pressed === 'boolean' ? payload.pressed : undefined;
+  }
+  return undefined;
+}
+
 /**
  * Checks if value is a valid SpeedChangePayload.
  */

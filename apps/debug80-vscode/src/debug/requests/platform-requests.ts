@@ -8,7 +8,7 @@ import { KEY_RESET } from '@jhlagado/debug80-runtime/platforms/tec-common';
 import { applySerialInput, applySpeedChange, SerialTarget, SpeedTarget } from './io-requests';
 
 export interface KeyTarget {
-  applyKey: (code: number) => void;
+  applyKey: (code: number, pressed?: boolean) => void;
   silenceSpeaker: () => void;
 }
 
@@ -30,7 +30,8 @@ export type ResetOptions = {
 export function handleKeyRequest(
   runtime: KeyTarget | undefined,
   code: number | undefined,
-  onReset?: () => void
+  onReset?: () => void,
+  pressed?: boolean
 ): string | null {
   if (!runtime) {
     return 'Debug80: Platform not active.';
@@ -38,11 +39,15 @@ export function handleKeyRequest(
   if (code === undefined) {
     return 'Debug80: Missing key code.';
   }
-  if (code === KEY_RESET) {
+  if (code === KEY_RESET && pressed !== false) {
     runtime.silenceSpeaker();
     onReset?.();
   }
-  runtime.applyKey(code);
+  if (pressed === undefined) {
+    runtime.applyKey(code);
+  } else {
+    runtime.applyKey(code, pressed);
+  }
   return null;
 }
 

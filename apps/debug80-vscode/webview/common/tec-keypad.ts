@@ -25,6 +25,8 @@ export type TecKeypadStatusEls = {
 
 export type TecKeypad = {
   sendKey: (code: number) => void;
+  pressKey: (code: number) => number;
+  releaseKey: (adjustedCode: number) => void;
   setShiftLatched: (value: boolean) => void;
   getShiftLatched: () => boolean;
   setSysCtrlValue: (value: number) => void;
@@ -60,7 +62,8 @@ export function createTecKeypad(
     className: string | undefined,
     col: number | undefined,
     row: number | undefined,
-    isLongLabel: boolean
+    isLongLabel: boolean,
+    holdCode?: number
   ): HTMLDivElement {
     const button = document.createElement('div');
     button.className = className ? 'keycap ' + className : 'keycap';
@@ -74,10 +77,43 @@ export function createTecKeypad(
     if (row) {
       button.style.gridRow = String(row);
     }
-    button.addEventListener('click', action);
+    if (holdCode === undefined) {
+      button.addEventListener('click', action);
+    } else {
+      wireHoldableKey(button, holdCode);
+    }
     core.addButtonFocusHandler(button);
     keypadEl.appendChild(button);
     return button;
+  }
+
+  const KEYPAD_CLICK_HOLD_MS = 80;
+
+  function wireHoldableKey(button: HTMLElement, code: number): void {
+    let heldCode: number | null = null;
+    let pressedAt = 0;
+    const release = (): void => {
+      if (heldCode === null) {
+        return;
+      }
+      const releasing = heldCode;
+      heldCode = null;
+      const elapsed = Date.now() - pressedAt;
+      const wait = Math.max(0, KEYPAD_CLICK_HOLD_MS - elapsed);
+      if (wait > 0) {
+        setTimeout(() => core.releaseKey(releasing), wait);
+      } else {
+        core.releaseKey(releasing);
+      }
+    };
+    button.addEventListener('pointerdown', (e) => {
+      e.preventDefault();
+      pressedAt = Date.now();
+      heldCode = core.pressKey(code);
+    });
+    button.addEventListener('pointerup', release);
+    button.addEventListener('pointerleave', release);
+    button.addEventListener('pointercancel', release);
   }
 
   function addSysCtrlBar(col: number, row: number, rowSpan?: number): void {
@@ -170,22 +206,24 @@ export function createTecKeypad(
     const isLong = controlLabel.length > 1;
     addButton(
       controlLabel,
-      () => core.sendKey(TEC1G_KEY_MAP[control]),
+      () => undefined,
       'keycap-light',
       2,
       rowNum,
-      isLong
+      isLong,
+      TEC1G_KEY_MAP[control]
     );
     const rowStart = row * 4;
     for (let col = 0; col < 4; col += 1) {
       const label = TEC1G_HEX_ORDER[rowStart + col];
       addButton(
         label,
-        () => core.sendKey(TEC1G_KEY_MAP[label]),
+        () => undefined,
         'keycap-cream',
         3 + col,
         rowNum,
-        false
+        false,
+        TEC1G_KEY_MAP[label]
       );
     }
   }
@@ -196,6 +234,8 @@ export function createTecKeypad(
 
   return {
     sendKey: (code) => core.sendKey(code),
+    pressKey: (code) => core.pressKey(code),
+    releaseKey: (adjustedCode) => core.releaseKey(adjustedCode),
     setShiftLatched: (value) => core.setShiftLatched(value),
     getShiftLatched: () => core.getShiftLatched(),
     setSysCtrlValue: (value: number) => {

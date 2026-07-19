@@ -9,6 +9,7 @@ import type { Logger } from '../util/logger';
 export type PanelMessage = {
   type?: string;
   code?: number;
+  pressed?: boolean;
   mode?: string;
   register?: string;
   address?: number;
