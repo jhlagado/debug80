@@ -277,7 +277,7 @@ The decoder callbacks are intentionally stable for the lifetime of the runtime. 
 
 Two parsers in `packages/debug80-runtime/src/z80/loaders.ts` convert files on disk into in-memory structures.
 
-The same package also exposes a stable headless session API from `packages/debug80-runtime/src/headless/session.ts`. That layer builds on `Z80Runtime` plus the TEC-1G runtime and D8 symbol data to support non-UI verification such as `runUntil()`, `runMatrixScans()`, symbol-addressed memory inspection, and deterministic reset. The extension does not use that API directly during ordinary debug sessions, but the shared runtime code means behavior fixes in the CPU or platform models now affect both the VS Code adapter and the headless integration workspaces.
+The same package also exposes a stable headless session API from `packages/debug80-runtime/src/headless/session.ts`. That layer builds on `Z80Runtime` plus the TEC-1G runtime and D8 symbol data to support non-UI verification such as `runUntil()`, `runMatrixScans()`, symbol-addressed memory inspection, deterministic reset, and explicit TEC-1G keypad press/release control through `pressKeypadKey()` and `releaseKeypadKey()`. The headless keypad helpers take logical MON-3 key codes, translate the active-low Fn hardware bit internally, and drive the same held-key runtime semantics that the extension uses. The extension does not use that API directly during ordinary debug sessions, but the shared runtime code means behavior fixes in the CPU or platform models now affect both the VS Code adapter and the headless integration workspaces.
 
 ### Intel HEX parser
 

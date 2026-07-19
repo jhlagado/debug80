@@ -325,7 +325,7 @@ These arrive in `onDidReceiveMessage` and are dispatched as described above.
 | `serialSendFile`      | —                                             | File picker → character-by-character send (TEC-1/TEC-1G)                                                                                                                                            |
 | `serialSave`          | `text`                                        | Save dialog → write file                                                                                                                                                                            |
 | `serialClear`         | —                                             | Clear serial/terminal buffer                                                                                                                                                                        |
-| `key`                 | `code: number`                                | Platform adapter → adapter custom request                                                                                                                                                           |
+| `key`                 | `code: number`, optional `pressed: boolean`   | Platform adapter → adapter custom request                                                                                                                                                           |
 | `reset`               | —                                             | Platform adapter → adapter custom request                                                                                                                                                           |
 | `speed`               | `mode`                                        | Platform adapter → adapter custom request                                                                                                                                                           |
 | `tab`                 | `tab`                                         | Update active tab; start/stop memory polling                                                                                                                                                        |
@@ -354,6 +354,8 @@ When a platform-specific message arrives, `resolvePlatformAdapter()` returns the
 | `matrixMode` (TEC-1G)     | `debug80/tec1gMatrixMode` |
 | `reset` (TEC-1G)          | `debug80/tec1gReset`      |
 | `speed` (TEC-1G)          | `debug80/tec1gSpeed`      |
+
+For TEC-1G, the optional `pressed` flag is forwarded unchanged to `debug80/tec1gKey`. `pressed: true` starts a held keypad press, `pressed: false` releases it, and omitting the field preserves the older pulse-style request shape that TEC-1 still uses.
 
 All adapter requests go through `session.customRequest()` on the current `vscode.DebugSession`.
 

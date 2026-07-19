@@ -297,6 +297,7 @@ The TEC-1G panel distinguishes matrix attachment from physical keyboard capture,
 
 - Opening the **Matrix Keyboard** accordion posts `{ type: 'matrixMode', enabled: true }`, which attaches the emulated matrix keyboard for MON-3 and disables scanned hex keypad input.
 - `keyboard-owner.ts` tracks three possible owners: the hex keypad, the matrix keyboard, and the joystick panel. Opening Matrix Keyboard promotes it to the active owner. Opening Joystick promotes joystick control only while Matrix Keyboard is closed. Clicking the Machine accordion returns ownership to the keypad.
+- While the keypad owns host input, physical keypad shortcuts and on-screen keypad buttons use explicit press/release messages on TEC-1G. The webview posts `{ type: 'key', code, pressed: true }` on press and a matching `{ pressed: false }` on release, with a short minimum hold on pointer taps so MON-3 polling still sees very fast clicks.
 - Host-keyboard capture stays released until the matrix keyboard owns input and the user clicks within the emulator surfaces. A capture-state cue in `matrix-routing-cue.ts` switches between **Keyboard released**, **Keyboard captured**, and **Joystick controls active**, and applies matching `data-matrix-keyboard-captured` state to the page root.
 - Pointer events outside the emulator surfaces and `window.blur` release host-keyboard capture without closing the accordion or disabling matrix mode.
 - The reset button clears transient matrix UI state before posting `{ type: 'reset', matrixModeAfterReset }`, and it adds `fn: true` when the keypad's one-shot Fn latch is armed. The extension-host adapter handles `debug80/tec1gReset` first, then reissues `debug80/tec1gMatrixMode` when `matrixModeAfterReset` is true so the persisted accordion-open state stays aligned with the MON-3 CONFIG bit after reset.
@@ -323,7 +324,7 @@ SHIFT
 
 `AD`/`GO` and the two directional keys map to 0x13, 0x12, 0x10, 0x11. The same `tec-keypad-layout` tokens are used for both platforms: on the **TEC-1G** panel the keycaps are **◀** (left) and **▶** (right); on **TEC-1** hardware the physical switches are often labeled **UP**/**DOWN** but the webview uses the same chevron keycaps. Hex digits 0–F map to 0x00–0x0F. **Shift** (physical or on-screen) acts as a momentary **FN** modifier; additional shortcuts include **Tab→AD/ADDRESS**, **Space→0**, **Enter→GO**, and **Escape→Reset** (aligning with the TEC-1G map). The keypad `div` is focusable (`tabIndex=0`); key routing runs only while the keypad has focus, and a `mousedown` handler on the UI panel (excluding native form controls) re-focuses the keypad so clicking the emulated front panel does not leave keyboard input targeting the parent document. See the **debug80** repository `src/platforms/tec1/README.md` and `src/platforms/tec1g/README.md` for the panel keyboard shortcut tables.
 
-Each key click or keydown sends `{ type: 'key', code: number }` to the extension host.
+On TEC-1, each key click or keydown sends `{ type: 'key', code: number }` to the extension host.
 
 **Speaker.** An indicator element shows "SPEAKER ON" when `speaker` is true. The `speakerHz` label shows the last measured frequency. The mute button toggles the Web Audio API tone without telling the adapter — muting is local to the current webview session and is not persisted.
 
@@ -395,6 +396,8 @@ The TEC-1G panel uses a modular structure. `index.ts` is a thin composition root
 | `st7920-font.bin`                | ST7920 GLCD font (static asset)                                                                              |
 
 **Layout (UI tab).** The TEC-1G panel is now organized as compact VS Code-style accordion sections. The **Project** section holds project and target selection. **Machine** holds the front-panel status strip, text LCD, six seven-segment digits and keypad. **Displays** holds the ST7920 GLCD and RGB 8×8 matrix. **TMS9918 Video** holds a separate 512×384 canvas plus the PAL/NTSC selector for the optional VDP card. **Joystick** holds the emulated joystick port controls. Matrix keyboard and serial tools live in their own accordion sections below the machine controls.
+
+**Hex keypad input.** `common/tec-keypad.ts` still owns the shared keycap DOM and physical shortcut table, but TEC-1G now uses press/release semantics instead of a fire-and-forget pulse. Pointer presses post `{ type: 'key', code, pressed: true }` and hold the key visible for at least 80 ms before the matching release is sent. Physical PC shortcuts routed through the keypad owner do the same with direct keydown/keyup timing. TEC-1 keeps the older single-message pulse contract and ignores release payloads.
 
 ### Visibility controller
 
