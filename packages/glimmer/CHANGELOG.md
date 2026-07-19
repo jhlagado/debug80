@@ -3,10 +3,12 @@
 Versions are tagged in git and published to npm as `@jhlagado/glimmer`
 (0.4.0 is the first broadly usable published version).
 
-## 0.6.2 - 2026-07-18
+## 0.6.2 - 2026-07-19
 
-- Updated `@jhlagado/azm` to `^0.3.7` (`.lst` listing now written by default;
-  suppress with `--nolst`).
+- Updated `@jhlagado/azm` to `^0.3.8`, preserving BIN and HEX output when
+  assembly source produces warnings but no errors. This includes valid source
+  such as `.db 1B`, where AZM warns about the binary-literal interpretation.
+- Includes AZM 0.3.7's default `.lst` listing output; suppress it with `--nolst`.
 
 ## 0.6.1 - 2026-07-18
 
