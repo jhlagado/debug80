@@ -110,7 +110,11 @@ input: {
   matrixModeEnabled: boolean;
   joystickState: number; // Active-low joystick bits merged into matrix row 3
   keyValue: number; // Hex keypad (0x7F = none)
+  resetKeyValue: number | null; // One-shot Fn latch for reset-time keypad sampling
   keyReleaseEventId: number | null;
+  keyUserHeld: boolean; // True while the UI or headless API still reports the key pressed
+  keyHeldCode: number; // Active-low latched keypad value currently being held
+  keyMinPulseDone: boolean; // Minimum tap pulse completed, release may now clear the latch
   nmiPending: boolean;
   shiftKeyActive: boolean;
   rawKeyActive: boolean;
@@ -182,6 +186,17 @@ The **status port (0x03)** is a read-only register:
 - Bit 5: GIMP signal
 - Bit 6: No key pressed (1 = idle, inverted logic)
 - Bit 7: Serial RX level
+
+### Hex keypad latch model
+
+The TEC-1G keeps the original front-panel keypad on port `0x00`, but the runtime no longer models it as a fixed one-shot pulse. `applyKey(code, pressed?)` now supports two paths:
+
+- The legacy single-argument call keeps the old fixed-pulse behavior for compatibility and automatically clears the latch after the minimum hold interval.
+- The press/release form latches the selected key until the matching release arrives, while still enforcing the same minimum hold interval so a fast tap cannot disappear between MON-3 keypad scans.
+
+`setKeyLatch()` writes the active-low keypad value into `input.keyValue`, updates `rawKeyActive` and `shiftKeyActive`, optionally raises the keypad NMI, and schedules a `keyReleaseEventId` timer for the minimum pulse window. When that timer fires it marks `keyMinPulseDone`. If the UI or headless caller has already released the key, the latch is cleared at that point. If the key is still held, the runtime keeps the same code in `keyValue` until a later release clears it.
+
+This change makes MON-3's `scanKeys` polling path observe sustained front-panel input instead of a 30 ms edge only. It also means Glimmer `held` bindings can autorepeat under emulation because the keypad state remains visible for the whole press.
 
 ---
 
@@ -308,7 +323,7 @@ Matrix mode (`debug80/tec1gMatrixMode`) represents the TEC-1G matrix-keyboard CO
 
 The accordion open state is persisted by the webview, but MON-3 Matrix CONFIG is session runtime state. Debug80 therefore reasserts matrix mode when a debug session becomes active with the accordion already open, and again after a RESET clicked while the accordion is open. This keeps persisted UI state and runtime input routing aligned without requiring a close/reopen cycle.
 
-The TEC-1G reset path also carries an optional reset-time Fn latch. When the user arms Fn on the hex keypad and then triggers RESET, the webview sends that `fn` flag with `debug80/tec1gReset`. The provider translates it into `holdKeyForReset(0x02)`, which loads the Fn key code into a dedicated `resetKeyValue` latch without raising keypad NMI. Port `0x00` returns that latched key once on the first post-reset keypad read, then clears it. This matches MON-3's expectation that the boot path can sample a held key during reset rather than receiving it as a later asynchronous keypad event.
+The TEC-1G reset path also carries an optional reset-time Fn latch. When the user arms Fn on the hex keypad and then triggers RESET, the webview sends that `fn` flag with `debug80/tec1gReset`. The provider translates it into `holdKeyForReset(0x02)`, which loads the Fn key code into the dedicated `resetKeyValue` latch without raising keypad NMI. Port `0x00` returns that latched key once on the first post-reset keypad read, then clears it. This matches MON-3's expectation that the boot path can sample a held key during reset rather than receiving it as a later asynchronous keypad event.
 
 The raw matrix port remains readable through port 0xFE. The MON-3 monitor uses the CONFIG bit to decide whether its monitor key scan should use the matrix keyboard as the input source. The webview sends individual key-down and key-up events as `debug80/tec1gMatrixKey` requests. The adapter expands those payloads into matrix row/column transitions, updates `matrixPendingKeyStates`, and lets the runtime publish the new scan image on the next matrix-row boundary.
 
@@ -438,7 +453,7 @@ The TEC-1G provider registers nine commands:
 
 | Command                    | Action                                 |
 | -------------------------- | -------------------------------------- |
-| `debug80/tec1gKey`         | Queue a hex keypad press               |
+| `debug80/tec1gKey`         | Press, hold, or release a hex keypad key |
 | `debug80/tec1gMatrixKey`   | Press or release a matrix keyboard key |
 | `debug80/tec1gMatrixMode`  | Enable or disable matrix keyboard mode |
 | `debug80/tec1gJoystick`    | Set the active joystick overlay mask   |
@@ -449,6 +464,8 @@ The TEC-1G provider registers nine commands:
 | `debug80/tec1gSerialInput` | Queue bytes for serial RX              |
 
 The reset command snapshots the active MON-3 monitor RAM window at `0x0800-0x0FFF`, performs the cold runtime reset at address `0x0000`, restores that RAM range, resets TEC-1G platform state and clears the `matrixHeldKeys` map in the session. After the restore, `resetMon3PresentationState()` rewrites MON-3's CEL and MCB monitor-RAM fields so the monitor returns to its default menu presentation while still keeping the warm-boot signature and other monitor-owned RAM. When the request payload includes `{ fn: true }`, the provider also primes the runtime's reset-time key latch so MON-3 can sample Fn during its first keypad poll after reset. This preserves monitor-owned state such as MON-3 workspace data across a panel reset while restoring the board to the same reset entry and front-panel presentation that hardware uses.
+
+`debug80/tec1gKey` accepts `{ code, pressed? }`. Omitting `pressed` takes the legacy fixed-pulse path. Sending `{ pressed: true }` latches the key as user-held until the matching `{ pressed: false }` arrives. The provider passes that flag through `handleKeyRequest()` into `runtime.applyKey(code, pressed)` and suppresses RESET handling on release, so releasing the Reset key does not trigger a second reset edge.
 
 ---
 
