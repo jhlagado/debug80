@@ -40,6 +40,19 @@ START:
     ]);
   });
 
+  it('continues assembly when parsing produces warnings only', () => {
+    const result = compileNext('.db 1B\n');
+
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        severity: 'warning',
+        code: 'AZMN_PARSE',
+      }),
+    ]);
+    expect(Array.from(result.bytes)).toEqual([0x01]);
+    expect(result.hexText).toBe(':0100000001FE\n:00000001FF\n');
+  });
+
   it('normalizes built-in directive aliases before canonical parsing', () => {
     const result = compileNext(`
         ORG 0100H

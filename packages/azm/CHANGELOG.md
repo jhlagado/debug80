@@ -4,6 +4,12 @@
 
 - None.
 
+## 0.3.8 - 2026-07-19
+
+- Kept in-memory compilation and artifact emission running when parsing produces
+  warnings only, preventing valid source such as `.db 1B` from yielding empty
+  BIN and HEX artifacts.
+
 ## 0.3.7 - 2026-07-18
 
 - Wrote the `.lst` listing by default, alongside `.hex`/`.bin`/`.d8.json`

@@ -99,7 +99,7 @@ describe('public package API surface', () => {
     };
 
     expect(output.diagnostics).toEqual([]);
-    expect(output.artifactKinds).toEqual(['bin', 'hex', 'd8m']);
+    expect(output.artifactKinds).toEqual(['bin', 'hex', 'd8m', 'lst']);
   });
 
   it('exposes typed D8 metadata for Debug80 through the compile subpath', async () => {
