@@ -55,7 +55,12 @@ async function handleKeyMessage(
   if (msg.type !== 'key' || typeof msg.code !== 'number' || commands.key === undefined) {
     return false;
   }
-  await sendPanelCommand(session, commands.key, { code: msg.code });
+  const pressed = typeof msg.pressed === 'boolean' ? msg.pressed : undefined;
+  await sendPanelCommand(
+    session,
+    commands.key,
+    pressed === undefined ? { code: msg.code } : { code: msg.code, pressed }
+  );
   return true;
 }
 

@@ -10,6 +10,8 @@ import {
 function createKeypad(): KeypadKeyTarget & {
   focusKeypad: ReturnType<typeof vi.fn>;
   sendKey: ReturnType<typeof vi.fn>;
+  pressKey: ReturnType<typeof vi.fn>;
+  releaseKey: ReturnType<typeof vi.fn>;
   setShiftLatched: ReturnType<typeof vi.fn>;
   shiftLatched: boolean;
 } {
@@ -17,6 +19,8 @@ function createKeypad(): KeypadKeyTarget & {
   const keypad = {
     focusKeypad: vi.fn(),
     sendKey: vi.fn(),
+    pressKey: vi.fn((code: number) => code | 0x20),
+    releaseKey: vi.fn(),
     setShiftLatched: vi.fn((value: boolean) => {
       shiftLatched = value;
     }),
@@ -81,7 +85,12 @@ describe('keypad focus routing', () => {
 
     expect(consumed).toBe(true);
     expect(event.defaultPrevented).toBe(true);
-    expect(localKeypad.sendKey).toHaveBeenCalledWith(0x0a);
+    expect(localKeypad.pressKey).toHaveBeenCalledWith(0x0a);
+
+    // The matching keyup releases the same adjusted code the press latched.
+    const upEvent = dispatchKeyboardEvent(document.getElementById('surface')!, 'keyup', 'A');
+    expect(routeTecKeypadKeyup(upEvent, localKeypad)).toBe(true);
+    expect(localKeypad.releaseKey).toHaveBeenCalledWith(0x0a | 0x20);
   });
 
   it('does not route shortcut keys from controls or already-consumed events', () => {
@@ -102,6 +111,7 @@ describe('keypad focus routing', () => {
       routeTecKeypadShortcut(consumedEvent, { kind: 'key', code: 0x0a }, localKeypad, vi.fn())
     ).toBe(false);
     expect(localKeypad.sendKey).not.toHaveBeenCalled();
+    expect(localKeypad.pressKey).not.toHaveBeenCalled();
   });
 
   it('unlatches shift on keyup when keypad routing owns the event', () => {

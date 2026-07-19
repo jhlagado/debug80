@@ -14,6 +14,10 @@ import type { VscodeApi } from './vscode';
 
 export interface KeypadCore {
   sendKey(code: number): void;
+  /** Press-and-hold: posts pressed=true and returns the shift-adjusted code. */
+  pressKey(code: number): number;
+  /** Release a previously pressed key, by the adjusted code pressKey returned. */
+  releaseKey(adjustedCode: number): void;
   setShiftLatched(value: boolean): void;
   getShiftLatched(): boolean;
   toggleShift(): void;
@@ -43,16 +47,32 @@ export function createKeypadCore(
     onShiftChange?.(value);
   }
 
-  function sendKey(code: number): void {
+  function adjustForShift(code: number): number {
     const adjusted = shiftLatched ? code & ~shiftBit : code | shiftBit;
-    vscode.postMessage({ type: 'key', code: adjusted });
     if (shiftLatched) {
       setShiftLatched(false);
     }
+    return adjusted;
+  }
+
+  function sendKey(code: number): void {
+    vscode.postMessage({ type: 'key', code: adjustForShift(code) });
+  }
+
+  function pressKey(code: number): number {
+    const adjusted = adjustForShift(code);
+    vscode.postMessage({ type: 'key', code: adjusted, pressed: true });
+    return adjusted;
+  }
+
+  function releaseKey(adjustedCode: number): void {
+    vscode.postMessage({ type: 'key', code: adjustedCode, pressed: false });
   }
 
   return {
     sendKey,
+    pressKey,
+    releaseKey,
     setShiftLatched,
     getShiftLatched: () => shiftLatched,
     toggleShift: () => setShiftLatched(!shiftLatched),
