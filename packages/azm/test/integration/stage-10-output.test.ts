@@ -31,6 +31,21 @@ describe('stage 10 output artifacts', () => {
     ]);
   });
 
+  it('emits in-memory artifacts when diagnostics contain warnings only', () => {
+    const result = compileNextArtifacts('.db 1B\n', { entryName: 'warning.asm' });
+
+    expect(result.diagnostics).toEqual([
+      expect.objectContaining({
+        severity: 'warning',
+        code: 'AZMN_PARSE',
+      }),
+    ]);
+    const bin = result.artifacts.find((artifact) => artifact.kind === 'bin');
+    const hex = result.artifacts.find((artifact) => artifact.kind === 'hex');
+    expect(bin?.kind === 'bin' ? Array.from(bin.bytes) : []).toEqual([0x01]);
+    expect(hex?.kind === 'hex' ? hex.text : '').toBe(':0100000001FE\n:00000001FF\n');
+  });
+
   it('returns no artifacts when diagnostics contain errors', () => {
     const result = compileNextArtifacts('ld a,UNKNOWN_SYMBOL\n', { entryName: 'broken.asm' });
 

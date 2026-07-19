@@ -324,7 +324,7 @@ export function compileSource(
     ...(options.symbolCase !== undefined ? { symbolCase: options.symbolCase } : {}),
   });
 
-  if (diagnostics.length > 0) {
+  if (diagnostics.some((diagnostic) => diagnostic.severity === 'error')) {
     return {
       diagnostics,
       symbols: {},
