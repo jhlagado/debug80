@@ -18,13 +18,16 @@ If you are going to work on any part of debug80 that touches launching, target s
 
 ## Where the config file lives
 
-The current project model uses one visible project marker: `debug80.json` at the workspace folder root.
+The current project model uses `debug80.json` at the workspace folder root as the primary project marker.
 
-The search starts from the selected workspace folder root. If `debug80.json` is absent, the panel treats the folder as uninitialized: no targets appear in the selector, and the setup card can initialize the folder by writing a new root `debug80.json`.
+The search starts from the selected workspace folder root. `findProjectConfigPath()` in `src/extension/project-config.ts` currently checks two compatibility locations in order:
 
-The discovery logic lives in `findProjectConfigPath()` in `src/extension/project-config.ts`. It takes a `WorkspaceFolder` and returns the absolute path to that folder's `debug80.json`, or `undefined`.
+1. `debug80.json`
+2. `.vscode/debug80.json`
 
-Older code paths may still accept historical config locations or explicit `projectConfig` launch arguments, but new scaffolding and user-facing project setup should use root `debug80.json`. Keeping the marker at the top level makes the project boundary visible in Explorer and keeps the panel's initialized/uninitialized state easy to reason about.
+If neither exists, the panel treats the folder as uninitialized: no configured targets appear in the selector, and the setup card can initialize the folder by writing a new root `debug80.json`.
+
+New scaffolding and user-facing project setup should still use root `debug80.json`. Keeping the marker at the top level makes the project boundary visible in Explorer and keeps the panel's initialized/uninitialized state easy to reason about, while the `.vscode` lookup remains a read-path for older workspaces.
 
 ---
 
@@ -180,7 +183,35 @@ debug80.selectedTarget:{projectConfigPath}
 
 The key includes the config file path, so different projects in a multi-root workspace each remember their own target independently. On the next launch, the stored target is preferred over the config's `defaultTarget`, unless it no longer exists in the config.
 
-The persistence logic lives in `ProjectTargetSelectionController` in `src/extension/project-target-selection.ts`. The controller is now a thin orchestrator around extracted policy modules: `project-target-policy.ts` decides whether to reuse a stored or default target or prompt, `project-target-config-policy.ts` turns config entries into visible choices, `project-target-source-policy.ts` tracks which source files are already covered by targets, `project-target-filesystem.ts` handles existence checks and short-lived source-file caching, and `target-discovery.ts` scans the workspace for runnable AZM entry conventions and `.glim` files that declare a complete program.
+The persistence logic lives in `ProjectTargetSelectionController` in `src/extension/project-target-selection.ts`. The controller is now a thin orchestrator around extracted policy modules: `project-target-policy.ts` decides whether to reuse a stored or default target or prompt, `project-target-config-policy.ts` turns config entries into visible choices, `project-target-source-policy.ts` tracks which source files are already covered by targets, `project-target-filesystem.ts` handles existence checks and short-lived source-file caching, and `target-discovery.ts` scans the workspace for runnable AZM entry conventions plus `.glim` files that declare a complete program.
+
+### Discovered versus configured targets
+
+The project header can now surface two kinds of target choice:
+
+- **Configured targets** already exist under `targets` in `debug80.json`.
+- **Discovered targets** are runnable source files on disk that are not yet represented in `debug80.json`.
+
+`listProjectTargetChoices()` merges those lists. Discovered entries carry `discovered: true` and `sourceFile`, and the webview prefixes them with `+` in the Target selector. Selecting one from the panel persists a new target entry into `debug80.json` by calling `addProjectTarget()`.
+
+The discovery rules are broader than the old `main.asm`-only flow:
+
+- files named exactly `main.asm` or `main.z80`
+- files ending in `.main.asm` or `.main.z80`
+- any `.glim` file whose top-level source declares `program <name>`
+
+The explicit **Add Target** command goes further. It lists every eligible `.asm`, `.z80`, or runnable `.glim` source file in the workspace, even when the file does not match the entry-point naming convention. The command generates a stable target name from the filename, copies the first existing target as a template, then replaces source-specific fields such as `sourceFile`, `asm`, `artifactBase`, and incompatible assembler overrides.
+
+### Target editing and removal
+
+`target-commands.ts` now owns a fuller target-maintenance surface than the earlier selector-only flow:
+
+- `debug80.addTarget` adds a new configured target from a workspace source file
+- `debug80.removeTarget` removes the selected target from `debug80.json` but leaves source files and build artifacts on disk
+- `debug80.setEntrySource` repoints an existing target at another program file and keeps `sourceFile` and `asm` aligned
+- `debug80.configureProject` prompts for a target, then edits one field at a time: target platform override, program file, assembler, target name, output directory, or artifact base
+
+Removal keeps the project valid. `removeProjectTarget()` refuses to delete the last remaining target, picks a replacement current target, and updates `defaultTarget` or legacy `target` when the removed target was still referenced there.
 
 ---
 
