@@ -77,7 +77,7 @@ The display also supports `applySegmentIntensities(values)`, where each digit re
 
 ### Project status UI (`common/project-status-ui.ts`)
 
-`createProjectStatusUi(vscode, elements, platform)` wires up the project header for a platform panel: it handles `projectStatus` messages, populates the Target dropdown, sets the Platform selector value, shows or hides controls via `applyInitializedProjectControls()`, and wires the Initialize button, target change handler, and stop-on-entry checkbox. This function consolidates the setup-card/target-dropdown/project-root wiring that was previously duplicated across `simple/index.ts`, `tec1/index.ts`, and `tec1g/tec1g-project-status-ui.ts`. All three platform panels now call `createProjectStatusUi()` from this shared module.
+`createProjectStatusUi(vscode, elements, platform)` wires up the project header for a platform panel: it handles `projectStatus` messages, populates the Target dropdown, sets the Platform selector value, shows or hides controls via `applyInitializedProjectControls()`, and wires the Initialize button, target change handler, add/remove-target buttons, and stop-on-entry checkbox. This function consolidates the setup-card/target-dropdown/project-root wiring that was previously duplicated across `simple/index.ts`, `tec1/index.ts`, and `tec1g/tec1g-project-status-ui.ts`. All three platform panels now call `createProjectStatusUi()` from this shared module.
 
 The same helper also renders three independent status surfaces from `projectStatus`: a source-map status line, a hardware-send status line, and a build-failure surface. When `buildStatusState === 'error'`, the shared tab row shows a compact `!` badge beside the Restart button and the panel reveals a dedicated build-status line above the platform UI. That warning is separate from `hardwareStatusText`, so CoolTerm readiness or transfer results stay visible even after an assembly failure. The hardware send button posts `sendHexViaCoolTerm`; it is enabled only when CoolTerm is reachable and the selected target has an inferred HEX artifact.
 
@@ -233,7 +233,11 @@ The project header renders the current workspace context and lets the user chang
 
 **Add folder button** (`+`) — always visible, next to the root button. Clicking it sends `{ type: 'openWorkspaceFolder', platform }`, where `platform` is the current platform selector value. The extension host forwards that to `debug80.addWorkspaceFolder`, so a new workspace folder can be added with the same platform context the panel is already showing. This button is always present so the user can add workspace folders from any state without needing to navigate away from the panel.
 
-**Target selector** — visible only when `projectState === 'initialized'`. A `<select>` populated from the `targets[]` array in the `projectStatus` message. When the user picks a target, the webview sends `{ type: 'selectTarget', rootPath, targetName }`.
+**Target selector** — visible only when `projectState === 'initialized'`. A `<select>` populated from the `targets[]` array in the `projectStatus` message. Configured targets render as their target name. Discovered runnable source files render with a `+ ` prefix so the user can tell that selecting them will persist a new target entry. When the user picks a target, the webview sends `{ type: 'selectTarget', rootPath, targetName }`.
+
+**Add Target** — visible only when `projectState === 'initialized'`. Posts `{ type: 'addTarget', rootPath }`, which opens the extension-host picker for eligible `.asm`, `.z80`, and runnable `.glim` sources that are not already configured as targets.
+
+**Remove Target** — visible only when `projectState === 'initialized'`. Posts `{ type: 'removeTarget', rootPath, targetName }` for the currently selected target. The button is disabled when the project has only one configured target left or when the current selection is still a discovered `+` entry that has not yet been persisted into `debug80.json`.
 
 **Platform selector** — visible only when `projectState === 'uninitialized'`. A `<select>` with three fixed options: Simple, TEC-1, TEC-1G. Its value is set from `projectStatus.platform` on each `projectStatus` message. In the current panel redesign it shares the row with an inline **Initialize** button (`platformInitButton`), so project creation can happen directly from the platform row instead of from a duplicate card button.
 
@@ -246,7 +250,7 @@ The project header renders the current workspace context and lets the user chang
 When a `projectStatus` message arrives:
 
 1. The project button text is updated to show the current root name.
-2. The target `<select>` is repopulated with options from `targets[]` and the current target is pre-selected.
+2. The target `<select>` is repopulated with options from `targets[]` and the current target is pre-selected. Discovered source-backed entries keep their `+` prefix.
 3. The platform `<select>` value is set from `platform`.
 4. `applyInitializedProjectControls()` shows or hides each control row.
 5. The stop-on-entry checkbox value is set from `message.stopOnEntry`.
