@@ -9,22 +9,205 @@ on:
 permissions:
   contents: read
 
-jobs:
-  verify:
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
+# Each workspace verifies only when it or an upstream dependency changed.
+# Dependency graph:
+#   azm ──────────┬─▶ glimmer ─────┬─▶ extension
+#   runtime ──────┼────────────────┤
+#                 ├─▶ azm-headless │
+#                 └─▶ glimmer-headless (also needs glimmer)
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      azm: ${{ steps.filter.outputs.azm }}
+      glimmer: ${{ steps.filter.outputs.glimmer }}
+      runtime: ${{ steps.filter.outputs.runtime }}
+      azm-headless: ${{ steps.filter.outputs.azm-headless }}
+      glimmer-headless: ${{ steps.filter.outputs.glimmer-headless }}
+      extension: ${{ steps.filter.outputs.extension }}
+      infra: ${{ steps.filter.outputs.infra }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            azm:
+              - 'packages/azm/**'
+            glimmer:
+              - 'packages/glimmer/**'
+            runtime:
+              - 'packages/debug80-runtime/**'
+            azm-headless:
+              - 'integration/azm-headless/**'
+            glimmer-headless:
+              - 'integration/glimmer-headless/**'
+            extension:
+              - 'apps/debug80-vscode/**'
+            infra:
+              - 'package.json'
+              - 'package-lock.json'
+              - '.github/workflows/**'
 
+  azm:
+    needs: changes
+    if: needs.changes.outputs.azm == 'true' || needs.changes.outputs.infra == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
           node-version: 20
           cache: npm
-
       - run: npm ci --ignore-scripts
-      - run: npm run check
+      - run: npm run build -w @jhlagado/azm
+      - run: npm run typecheck -w @jhlagado/azm
+      - run: npm run lint -w @jhlagado/azm
+      - run: npm run format:check -w @jhlagado/azm
+      - run: npm run test -w @jhlagado/azm
       - run: npm run package:azm
+
+  glimmer:
+    needs: changes
+    if: >-
+      needs.changes.outputs.glimmer == 'true' ||
+      needs.changes.outputs.azm == 'true' ||
+      needs.changes.outputs.infra == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build -w @jhlagado/azm
+      - run: npm run build -w @jhlagado/glimmer
+      - run: npm run typecheck -w @jhlagado/glimmer
+      - run: npm run lint -w @jhlagado/glimmer
+      - run: npm run format:check -w @jhlagado/glimmer
+      - run: npm run test -w @jhlagado/glimmer
       - run: npm run package:glimmer
+
+  runtime:
+    needs: changes
+    if: needs.changes.outputs.runtime == 'true' || needs.changes.outputs.infra == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build -w @jhlagado/debug80-runtime
+      - run: npm run typecheck -w @jhlagado/debug80-runtime
+      - run: npm run lint -w @jhlagado/debug80-runtime
+      - run: npm run format:check -w @jhlagado/debug80-runtime
+      - run: npm run test -w @jhlagado/debug80-runtime
       - run: npm run package:runtime
+
+  azm-headless:
+    needs: changes
+    if: >-
+      needs.changes.outputs.azm-headless == 'true' ||
+      needs.changes.outputs.azm == 'true' ||
+      needs.changes.outputs.runtime == 'true' ||
+      needs.changes.outputs.infra == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build -w @jhlagado/azm
+      - run: npm run build -w @jhlagado/debug80-runtime
+      - run: npm run typecheck -w @jhlagado/azm-headless-integration
+      - run: npm run lint -w @jhlagado/azm-headless-integration
+      - run: npm run format:check -w @jhlagado/azm-headless-integration
+      - run: npm run test -w @jhlagado/azm-headless-integration
+
+  glimmer-headless:
+    needs: changes
+    if: >-
+      needs.changes.outputs.glimmer-headless == 'true' ||
+      needs.changes.outputs.glimmer == 'true' ||
+      needs.changes.outputs.azm == 'true' ||
+      needs.changes.outputs.runtime == 'true' ||
+      needs.changes.outputs.infra == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build -w @jhlagado/azm
+      - run: npm run build -w @jhlagado/glimmer
+      - run: npm run build -w @jhlagado/debug80-runtime
+      - run: npm run typecheck -w @jhlagado/glimmer-headless-integration
+      - run: npm run lint -w @jhlagado/glimmer-headless-integration
+      - run: npm run format:check -w @jhlagado/glimmer-headless-integration
+      - run: npm run test -w @jhlagado/glimmer-headless-integration
+      - run: npm run package:glimmer-headless
+
+  extension:
+    needs: changes
+    if: >-
+      needs.changes.outputs.extension == 'true' ||
+      needs.changes.outputs.azm == 'true' ||
+      needs.changes.outputs.glimmer == 'true' ||
+      needs.changes.outputs.runtime == 'true' ||
+      needs.changes.outputs.infra == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm run build -w @jhlagado/azm
+      - run: npm run build -w @jhlagado/glimmer
+      - run: npm run build -w @jhlagado/debug80-runtime
+      - run: npm run build -w debug80
+      - run: npm run typecheck -w debug80
+      - run: npm run typecheck:webview -w debug80
+      - run: npm run lint -w debug80
+      - run: npm run format:check -w debug80
+      - run: npm run test -w debug80
       - run: npm run package:debug80
+
+  # Single required status; fails if any triggered job failed.
+  ci-ok:
+    needs: [changes, azm, glimmer, runtime, azm-headless, glimmer-headless, extension]
+    if: always()
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check job results
+        run: |
+          results="${{ join(needs.*.result, ' ') }}"
+          echo "job results: $results"
+          for r in $results; do
+            case "$r" in
+              success|skipped) ;;
+              *) echo "a required job reported: $r"; exit 1;;
+            esac
+          done
