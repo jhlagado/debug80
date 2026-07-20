@@ -103,6 +103,48 @@ export function registerProjectWorkspaceCommands(options: {
       }
     )
   );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand(
+      'debug80.removeWorkspaceFolder',
+      async (args?: { rootPath?: string }) => {
+        const folders = vscode.workspace.workspaceFolders ?? [];
+        if (folders.length <= 1) {
+          void vscode.window.showInformationMessage(
+            'Debug80: The last workspace folder cannot be removed.'
+          );
+          return;
+        }
+        const folder =
+          args?.rootPath !== undefined
+            ? folders.find((candidate) => candidate.uri.fsPath === args.rootPath)
+            : undefined;
+        if (folder === undefined) {
+          void vscode.window.showInformationMessage(
+            'Debug80: Select a workspace folder to remove first.'
+          );
+          return;
+        }
+
+        const confirmed = await vscode.window.showWarningMessage(
+          `Remove folder ${folder.name} from the workspace? Files on disk are not affected.`,
+          { modal: true },
+          'Remove Folder'
+        );
+        if (confirmed !== 'Remove Folder') {
+          return;
+        }
+
+        if (!vscode.workspace.updateWorkspaceFolders(folder.index, 1)) {
+          void vscode.window.showErrorMessage(
+            `Debug80: Failed to remove ${folder.name} from the workspace.`
+          );
+          return;
+        }
+        platformViewProvider.refreshIdleView();
+      }
+    )
+  );
 }
 
 async function maybePromptToInitializeAddedFolder(

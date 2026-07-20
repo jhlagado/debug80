@@ -23,6 +23,7 @@ export type ProjectStatusUiElements = {
   setupCardText: HTMLElement | null;
   setupPrimaryAction: HTMLButtonElement | null;
   platformInitButton: HTMLButtonElement | null;
+  removeWorkspaceFolderButton?: HTMLButtonElement | null;
   addTargetButton?: HTMLButtonElement | null;
   removeTargetButton?: HTMLButtonElement | null;
   testCoolTermButton?: HTMLButtonElement | null;
@@ -206,6 +207,7 @@ export function createProjectStatusUi(
     setupCardText,
     setupPrimaryAction,
     platformInitButton,
+    removeWorkspaceFolderButton,
     addTargetButton,
     removeTargetButton,
     testCoolTermButton,
@@ -253,6 +255,16 @@ export function createProjectStatusUi(
     postProjectAction(selectTargetAction(currentState, homeTargetSelect.value));
   });
 
+  removeWorkspaceFolderButton?.addEventListener('click', () => {
+    if (currentState.roots.length <= 1 || currentState.selectedRoot === undefined) {
+      return;
+    }
+    vscode.postMessage({
+      type: 'removeWorkspaceFolder',
+      rootPath: currentState.selectedRoot.path,
+    });
+  });
+
   addTargetButton?.addEventListener('click', () => {
     if (currentState.kind === 'initialized') {
       vscode.postMessage({ type: 'addTarget', rootPath: currentState.selectedRoot.path });
@@ -296,7 +308,14 @@ export function createProjectStatusUi(
     if (removeTargetButton) {
       removeTargetButton.hidden = !initializedProject;
       removeTargetButton.disabled =
-        !initializedProject || configuredTargets.length <= 1 || selectedTarget?.discovered === true;
+        !initializedProject ||
+        configuredTargets.length === 0 ||
+        selectedTarget === undefined ||
+        selectedTarget.discovered === true;
+    }
+    if (removeWorkspaceFolderButton) {
+      removeWorkspaceFolderButton.disabled =
+        currentState.roots.length <= 1 || currentState.selectedRoot === undefined;
     }
     projectRootController.applyProjectStatus({
       rootPath: payload.rootPath,
