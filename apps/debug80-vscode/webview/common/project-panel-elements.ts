@@ -8,6 +8,7 @@ export type ProjectPanelElements = {
   addWorkspaceFolderButton: HTMLButtonElement | null;
   platformSelect: HTMLSelectElement | null;
   restartButton: HTMLButtonElement | null;
+  buildButton: HTMLButtonElement | null;
   stopOnEntryInput: HTMLInputElement | null;
   toolbar: HTMLElement | null;
   projectStatus: ProjectStatusUiElements;
@@ -47,6 +48,7 @@ export function getProjectPanelElements(root: ParentNode = document): ProjectPan
   const platformInfoControl = byId<HTMLElement>(root, 'platformInfoControl');
   const platformValue = byId<HTMLElement>(root, 'platformValue');
   const restartButton = byId<HTMLButtonElement>(root, 'restartDebug');
+  const buildButton = byId<HTMLButtonElement>(root, 'buildTarget');
   const tabs = byId<HTMLElement>(root, 'tabs');
   const accordion = byId<HTMLElement>(root, 'debug80Accordion');
   const panelUi = byId<HTMLElement>(root, 'panel-ui');
@@ -62,6 +64,7 @@ export function getProjectPanelElements(root: ParentNode = document): ProjectPan
     addWorkspaceFolderButton,
     platformSelect,
     restartButton,
+    buildButton,
     stopOnEntryInput,
     toolbar,
     projectStatus: {
@@ -91,6 +94,7 @@ export function getProjectPanelElements(root: ParentNode = document): ProjectPan
       platformValue,
       stopOnEntryLabel,
       restartButton,
+      buildButton,
       tabs,
       accordion,
       panelUi,

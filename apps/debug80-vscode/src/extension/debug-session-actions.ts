@@ -19,6 +19,12 @@ import type {
   AzmPanelContractUpdateMode,
   AzmPanelRegisterContractsMode,
 } from '../contracts/platform-view';
+import { populateFromConfig, normalizePlatformName } from '../debug/launch-args';
+import { resolveArtifacts, resolveBaseDir } from '../debug/mapping/path-resolver';
+import { resolveAssemblerBackend } from '../debug/launch/assembler-backend';
+import { assembleIfRequested } from '../debug/launch/launch-pipeline';
+import { AssembleFailureError, formatAssemblyDiagnostic } from '../debug/launch/assembler';
+import type { LaunchRequestArguments } from '../debug/session/types';
 
 export type PanelLaunchOptions = {
   stopOnEntry: boolean;
@@ -82,6 +88,79 @@ export async function startCurrentProjectDebugging(
     stopOnEntry: options.stopOnEntry,
     ...(azm !== undefined ? { azm } : {}),
   });
+}
+
+/**
+ * Builds the current target's artifacts without launching a debug session,
+ * for workflows that only need the HEX (e.g. sending to real hardware).
+ */
+export async function buildCurrentProjectTarget(
+  folder: vscode.WorkspaceFolder,
+  workspaceSelection: WorkspaceSelectionController,
+  options: PanelLaunchOptions,
+  setBuildStatus: (message: string | undefined, state?: 'neutral' | 'error') => void
+): Promise<boolean> {
+  const projectConfig = findProjectConfigPath(folder);
+  if (projectConfig === undefined) {
+    void vscode.window.showErrorMessage(
+      `Debug80: Could not find a project config in ${folder.uri.fsPath}.`
+    );
+    return false;
+  }
+
+  const targets = readProjectConfig(projectConfig)?.targets ?? {};
+  if (Object.keys(targets).length === 0) {
+    void vscode.window.showInformationMessage(
+      'Debug80: This project has no targets yet. Pick a program file from the target dropdown first.'
+    );
+    return false;
+  }
+
+  workspaceSelection.rememberWorkspace(folder);
+  const azm = resolveAzmLaunchOptions(options);
+  const args: LaunchRequestArguments = {
+    projectConfig,
+    ...(azm !== undefined ? { azm } : {}),
+  };
+  const merged = populateFromConfig(args, {
+    resolveBaseDir: (requestArgs) => resolveBaseDir(requestArgs),
+  });
+  const baseDir = resolveBaseDir(merged);
+  const { hexPath, asmPath } = resolveArtifacts(merged, baseDir);
+  if (asmPath === undefined || asmPath === '') {
+    void vscode.window.showInformationMessage(
+      'Debug80: The selected target has no program file to build.'
+    );
+    return false;
+  }
+
+  setBuildStatus(`Building ${path.relative(baseDir, asmPath)}...`);
+  try {
+    await assembleIfRequested({
+      backend: resolveAssemblerBackend(merged.assembler, asmPath),
+      args: merged,
+      asmPath,
+      hexPath,
+      sourceRoot: baseDir,
+      platform: normalizePlatformName(merged),
+      sendEvent: () => undefined,
+    });
+  } catch (error) {
+    if (error instanceof AssembleFailureError) {
+      const diagnostic = error.result.diagnostic;
+      const summary =
+        diagnostic !== undefined ? formatAssemblyDiagnostic(diagnostic) : error.message;
+      setBuildStatus(summary.split('\n')[0] ?? 'Build failed.', 'error');
+      void vscode.window.showErrorMessage(`Debug80: Build failed. ${summary}`);
+      return false;
+    }
+    setBuildStatus('Build failed.', 'error');
+    void vscode.window.showErrorMessage(`Debug80: Build failed. ${String(error)}`);
+    return false;
+  }
+
+  setBuildStatus(`Build succeeded: ${path.relative(baseDir, hexPath)}`);
+  return true;
 }
 
 export async function maybeAutoStartSingleTargetForRootChange(

@@ -51,7 +51,8 @@ let resizeTimer: number | null = null;
 
 const sessionStatusController = createSessionStatusController(
   vscode,
-  projectElements.restartButton
+  projectElements.restartButton,
+  projectElements.buildButton
 );
 const stopOnEntryControl = wireStopOnEntryControl(vscode, projectElements.stopOnEntryInput);
 const symbolCaseControl = wireSymbolCaseControl(

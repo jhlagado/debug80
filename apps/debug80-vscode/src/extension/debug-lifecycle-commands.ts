@@ -15,6 +15,7 @@ import { findProjectConfigPath } from './project-config';
 import { promptToInitializeSelectedFolder } from './project-initialization-prompt';
 import { findWorkspaceFolder } from './workspace-folder-resolver';
 import {
+  buildCurrentProjectTarget,
   maybeAutoStartSingleTargetForRootChange,
   resolveProjectPlatformForFolder,
   resolveSessionProjectConfigPath,
@@ -79,6 +80,24 @@ export function registerDebugLifecycleCommands(options: {
         folder,
         workspaceSelection,
         panelLaunchOptions(platformViewProvider)
+      );
+    })
+  );
+
+  context.subscriptions.push(
+    vscode.commands.registerCommand('debug80.buildTarget', async () => {
+      const activeSession = vscode.debug.activeDebugSession;
+      const folder = await resolveRestartProjectFolder(activeSession, workspaceSelection);
+      if (!folder) {
+        void vscode.window.showInformationMessage('Debug80: No configured Debug80 project found.');
+        return false;
+      }
+      platformViewProvider.setBuildStatus(undefined);
+      return buildCurrentProjectTarget(
+        folder,
+        workspaceSelection,
+        panelLaunchOptions(platformViewProvider),
+        (message, state) => platformViewProvider.setBuildStatus(message, state)
       );
     })
   );

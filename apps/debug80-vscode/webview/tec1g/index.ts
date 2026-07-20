@@ -113,7 +113,8 @@ const display = createSevenSegDisplay(displayEl, TEC1G_DIGITS, {
 
 const sessionStatusController = createSessionStatusController(
   vscode,
-  projectElements.restartButton
+  projectElements.restartButton,
+  projectElements.buildButton
 );
 const stopOnEntryControl = wireStopOnEntryControl(vscode, projectElements.stopOnEntryInput);
 const symbolCaseControl = wireSymbolCaseControl(vscode, azmSymbolCaseInput);

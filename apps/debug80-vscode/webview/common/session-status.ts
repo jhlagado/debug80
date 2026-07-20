@@ -7,9 +7,9 @@ export interface SessionStatusController {
   dispose: () => void;
 }
 
-const RESTART_LABEL = 'Build';
-const RESTART_TITLE =
-  'Build and relaunch the current project and target using the current launch options';
+const RESTART_LABEL = 'Run';
+const RESTART_TITLE = 'Build the current target and run it in the emulator';
+const BUILD_TITLE = 'Build the current target without launching the emulator';
 
 function statusClass(status: SessionStatus): string {
   return `session-status status-${status.replace(/\s+/g, '-')}`;
@@ -17,7 +17,8 @@ function statusClass(status: SessionStatus): string {
 
 export function createSessionStatusController(
   vscode: VscodeApi,
-  element: HTMLButtonElement | null
+  element: HTMLButtonElement | null,
+  buildElement?: HTMLButtonElement | null
 ): SessionStatusController {
   if (!element) {
     return {
@@ -33,6 +34,12 @@ export function createSessionStatusController(
     }
     vscode.postMessage({ type: 'restartDebug' });
   };
+  const handleBuildClick = (): void => {
+    if (currentStatus === 'starting') {
+      return;
+    }
+    vscode.postMessage({ type: 'buildTarget' });
+  };
 
   const applyStatus = (status: SessionStatus): void => {
     currentStatus = status;
@@ -44,16 +51,26 @@ export function createSessionStatusController(
     element.setAttribute('aria-live', 'polite');
     element.setAttribute('aria-atomic', 'true');
     element.disabled = status === 'starting';
+    if (buildElement) {
+      buildElement.disabled = status === 'starting';
+    }
   };
 
   element.type = 'button';
   element.addEventListener('click', handleClick);
+  if (buildElement) {
+    buildElement.type = 'button';
+    buildElement.title = BUILD_TITLE;
+    buildElement.setAttribute('aria-label', BUILD_TITLE);
+    buildElement.addEventListener('click', handleBuildClick);
+  }
   applyStatus('not running');
 
   return {
     setStatus: applyStatus,
     dispose: () => {
       element.removeEventListener('click', handleClick);
+      buildElement?.removeEventListener('click', handleBuildClick);
     },
   };
 }
