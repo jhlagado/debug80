@@ -33,6 +33,7 @@ export interface PlatformViewMessageDependencies {
     targetName?: string;
   }) => PromiseLike<void>;
   handleRestartDebug: () => PromiseLike<void>;
+  handleBuildTarget: () => PromiseLike<void>;
   handleSetEntrySource: () => PromiseLike<void>;
   currentPlatform: () => PlatformViewPlatform | undefined;
   handleStartDebug: (args?: { rootPath?: string }) => PromiseLike<void>;

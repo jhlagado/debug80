@@ -97,6 +97,9 @@ export function createPlatformViewWebviewHandler(
       handleRestartDebug: async () => {
         await vscode.commands.executeCommand('debug80.restartDebug');
       },
+      handleBuildTarget: async () => {
+        await vscode.commands.executeCommand('debug80.buildTarget');
+      },
       handleSetEntrySource: async () => {
         await vscode.commands.executeCommand('debug80.setEntrySource');
       },

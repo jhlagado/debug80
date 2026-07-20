@@ -12,6 +12,7 @@ export type SharedProjectControlElements = {
   platformValue?: HTMLElement | null;
   stopOnEntryLabel?: HTMLElement | null;
   restartButton?: HTMLElement | null;
+  buildButton?: HTMLElement | null;
   tabs?: HTMLElement | null;
   accordion?: HTMLElement | null;
   panelUi?: HTMLElement | null;
@@ -59,6 +60,7 @@ function syncPlatformControls(
 function syncRuntimeControls(elements: SharedProjectControlElements, initialized: boolean): void {
   setHidden(elements.stopOnEntryLabel, !initialized);
   setHidden(elements.restartButton, !initialized);
+  setHidden(elements.buildButton, !initialized);
   setHidden(elements.tabs, !initialized);
   setHidden(elements.panelUi, !initialized);
   setHidden(elements.panelRegisters, !initialized);

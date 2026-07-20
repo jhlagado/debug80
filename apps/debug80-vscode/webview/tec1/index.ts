@@ -86,7 +86,8 @@ const lcdRenderer = createLcdRenderer();
 const matrixRenderer = createMatrixRenderer();
 const sessionStatusController = createSessionStatusController(
   vscode,
-  projectElements.restartButton
+  projectElements.restartButton,
+  projectElements.buildButton
 );
 const stopOnEntryControl = wireStopOnEntryControl(vscode, projectElements.stopOnEntryInput);
 const symbolCaseControl = wireSymbolCaseControl(

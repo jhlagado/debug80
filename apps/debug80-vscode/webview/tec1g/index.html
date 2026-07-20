@@ -144,16 +144,25 @@
                   hidden
                 ></span>
                 <button
+                  class="project-action-button"
+                  id="buildTarget"
+                  type="button"
+                  title="Build the current target without launching the emulator"
+                  aria-label="Build the current target without launching the emulator"
+                >
+                  Build
+                </button>
+                <button
                   class="session-status"
                   id="restartDebug"
                   type="button"
                   data-status="not-running"
-                  title="Build and relaunch the current project and target using the current launch options"
-                  aria-label="Build and relaunch the current project and target using the current launch options"
+                  title="Build the current target and run it in the emulator"
+                  aria-label="Build the current target and run it in the emulator"
                   aria-live="polite"
                   aria-atomic="true"
                 >
-                  Build
+                  Run
                 </button>
               </div>
             </div>

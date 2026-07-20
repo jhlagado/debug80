@@ -436,6 +436,10 @@
       },
       {
         "command": "debug80.restartDebug",
+        "title": "Debug80: Run Current Target"
+      },
+      {
+        "command": "debug80.buildTarget",
         "title": "Debug80: Build Current Target"
       },
       {

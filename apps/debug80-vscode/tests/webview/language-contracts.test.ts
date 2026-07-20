@@ -313,6 +313,7 @@ describe('package.json language contracts', () => {
       'debug80.createProject',
       'debug80.startDebug',
       'debug80.restartDebug',
+      'debug80.buildTarget',
       'debug80.selectWorkspaceFolder',
       'debug80.selectTarget',
       'debug80.configureProject',

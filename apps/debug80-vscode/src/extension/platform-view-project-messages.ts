@@ -34,6 +34,7 @@ const PROJECT_MESSAGE_HANDLERS: Record<string, ProjectMessageHandler> = {
   sendHexViaCoolTerm: handleSendHexViaCoolTermMessage,
   testCoolTermConnection: async (_msg, deps) => deps.handleTestCoolTermConnection(),
   restartDebug: async (_msg, deps) => deps.handleRestartDebug(),
+  buildTarget: async (_msg, deps) => deps.handleBuildTarget(),
   setEntrySource: async (_msg, deps) => deps.handleSetEntrySource(),
   startDebug: handleStartDebugMessage,
 };
