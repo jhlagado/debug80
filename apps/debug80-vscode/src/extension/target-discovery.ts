@@ -5,7 +5,6 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-export const TARGET_ENTRY_SOURCE_SUFFIXES = ['.main.asm', '.main.z80'] as const;
 export const TARGET_ENTRY_SOURCE_FILENAMES = ['main.asm', 'main.z80'] as const;
 export const TARGET_SOURCE_EXTENSIONS = ['.asm', '.z80', '.glim'] as const;
 
@@ -25,8 +24,7 @@ export function isTargetEntrySourcePath(filePath: string): boolean {
   const fileName = path.basename(filePath).toLowerCase();
   return (
     fileName.endsWith('.glim') ||
-    (TARGET_ENTRY_SOURCE_FILENAMES as readonly string[]).includes(fileName) ||
-    TARGET_ENTRY_SOURCE_SUFFIXES.some((suffix) => fileName.endsWith(suffix))
+    (TARGET_ENTRY_SOURCE_FILENAMES as readonly string[]).includes(fileName)
   );
 }
 

@@ -36,10 +36,14 @@ type ScaffoldPlan = {
   starterFile?: {
     path: string;
   };
+  /** Create the project with an empty targets map; the user picks a program file later. */
+  noTarget?: true;
 };
 
 type SourceChoice =
-  { kind: 'existing'; sourceFile: string } | { kind: 'starter'; language: StarterLanguage };
+  | { kind: 'existing'; sourceFile: string }
+  | { kind: 'starter'; language: StarterLanguage }
+  | { kind: 'none' };
 
 function createSimpleDefaults(): Record<string, unknown> {
   return {
@@ -100,7 +104,7 @@ export function createStarterSourceContent(
 export function createDefaultProjectConfig(plan: ScaffoldPlan): {
   projectVersion: typeof DEBUG80_PROJECT_VERSION;
   projectPlatform: ScaffoldPlatform;
-  defaultTarget: string;
+  defaultTarget?: string;
   defaultProfile: string;
   azm: { symbolCase: 'strict' };
   profiles: Record<string, Record<string, unknown>>;
@@ -181,14 +185,12 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
     projectVersion: DEBUG80_PROJECT_VERSION,
     projectPlatform: plan.kit.platform,
     defaultProfile: plan.kit.profileName,
-    defaultTarget: plan.targetName,
+    ...(plan.noTarget === true ? {} : { defaultTarget: plan.targetName }),
     azm: { symbolCase: 'strict' },
     profiles: {
       [plan.kit.profileName]: profileConfig,
     },
-    targets: {
-      [plan.targetName]: targetConfig,
-    },
+    targets: plan.noTarget === true ? {} : { [plan.targetName]: targetConfig },
   };
 }
 
@@ -243,7 +245,9 @@ export async function scaffoldProject(
     return false;
   }
 
-  ensureDirExists(path.join(workspaceRoot, path.dirname(plan?.sourceFile ?? inferred.sourceFile)));
+  if (plan?.noTarget !== true) {
+    ensureDirExists(path.join(workspaceRoot, path.dirname(plan?.sourceFile ?? inferred.sourceFile)));
+  }
   ensureDirExists(path.join(workspaceRoot, plan?.outputDir ?? inferred.outputDir));
 
   let created = false;
@@ -272,7 +276,9 @@ export async function scaffoldProject(
       }
       fs.writeFileSync(configPath, `${JSON.stringify(defaultConfig, null, 2)}\n`);
       void vscode.window.showInformationMessage(
-        `Debug80: Created ${plan.kit.label} project in debug80.json targeting ${plan.sourceFile}.`
+        plan.noTarget === true
+          ? `Debug80: Created ${plan.kit.label} project in debug80.json. Pick a program file to add the first target.`
+          : `Debug80: Created ${plan.kit.label} project in debug80.json targeting ${plan.sourceFile}.`
       );
       created = true;
     } catch (err) {
@@ -331,6 +337,17 @@ async function buildScaffoldPlan(
     return undefined;
   }
 
+  if (choice.kind === 'none') {
+    return {
+      kit,
+      targetName: inferred.artifactBase,
+      sourceFile: inferred.sourceFile,
+      outputDir: inferred.outputDir,
+      artifactBase: inferred.artifactBase,
+      noTarget: true,
+    };
+  }
+
   if (choice.kind === 'existing') {
     const sourceFile = choice.sourceFile;
     const artifactBase =
@@ -387,6 +404,11 @@ async function chooseEntrySource(
       label: 'Create ASM starter',
       description: 'Create src/main.asm with minimal starter code',
       choice: { kind: 'starter' as const, language: 'asm' as const },
+    },
+    {
+      label: 'No target yet',
+      description: 'Create the project without a target; pick a program file later',
+      choice: { kind: 'none' as const },
     },
   ];
 
