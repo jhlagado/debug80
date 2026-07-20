@@ -100,6 +100,9 @@ export function createPlatformViewWebviewHandler(
       handleBuildTarget: async () => {
         await vscode.commands.executeCommand('debug80.buildTarget');
       },
+      handleRemoveWorkspaceFolder: async (rootPath) => {
+        await vscode.commands.executeCommand('debug80.removeWorkspaceFolder', { rootPath });
+      },
       handleSetEntrySource: async () => {
         await vscode.commands.executeCommand('debug80.setEntrySource');
       },

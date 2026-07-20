@@ -35,6 +35,7 @@ const PROJECT_MESSAGE_HANDLERS: Record<string, ProjectMessageHandler> = {
   testCoolTermConnection: async (_msg, deps) => deps.handleTestCoolTermConnection(),
   restartDebug: async (_msg, deps) => deps.handleRestartDebug(),
   buildTarget: async (_msg, deps) => deps.handleBuildTarget(),
+  removeWorkspaceFolder: async (msg, deps) => deps.handleRemoveWorkspaceFolder(rootPathFrom(msg)),
   setEntrySource: async (_msg, deps) => deps.handleSetEntrySource(),
   startDebug: handleStartDebugMessage,
 };

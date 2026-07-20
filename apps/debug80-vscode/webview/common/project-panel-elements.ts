@@ -30,6 +30,7 @@ export function getProjectPanelElements(root: ParentNode = document): ProjectPan
   const projectHeader = byId<HTMLElement>(root, 'projectHeader');
   const selectProjectButton = byId<HTMLButtonElement>(root, 'selectProject');
   const addWorkspaceFolderButton = byId<HTMLButtonElement>(root, 'addWorkspaceFolder');
+  const removeWorkspaceFolderButton = byId<HTMLButtonElement>(root, 'removeWorkspaceFolder');
   const setupCard = byId<HTMLElement>(root, 'setupCard');
   const setupCardText = byId<HTMLElement>(root, 'setupCardText');
   const setupPrimaryAction = byId<HTMLButtonElement>(root, 'setupPrimaryAction');
@@ -73,6 +74,7 @@ export function getProjectPanelElements(root: ParentNode = document): ProjectPan
       setupCardText,
       setupPrimaryAction,
       platformInitButton,
+      removeWorkspaceFolderButton,
       addTargetButton,
       removeTargetButton,
       testCoolTermButton,
