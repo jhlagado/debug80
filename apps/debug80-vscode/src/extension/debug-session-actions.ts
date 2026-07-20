@@ -64,6 +64,14 @@ export async function startCurrentProjectDebugging(
     return false;
   }
 
+  const targets = readProjectConfig(projectConfig)?.targets ?? {};
+  if (Object.keys(targets).length === 0) {
+    void vscode.window.showInformationMessage(
+      'Debug80: This project has no targets yet. Pick a program file from the target dropdown first.'
+    );
+    return false;
+  }
+
   workspaceSelection.rememberWorkspace(folder);
   const azm = resolveAzmLaunchOptions(options);
   return vscode.debug.startDebugging(folder, {

@@ -246,21 +246,21 @@ export function registerTargetCommands(options: {
       }
 
       const result = removeProjectTarget(projectConfigPath, targetName);
-      if (result.kind === 'lastTarget') {
-        void vscode.window.showInformationMessage(
-          "Debug80: Add another target before removing the project's only target."
-        );
-        return undefined;
-      }
       if (result.kind !== 'removed') {
         void vscode.window.showErrorMessage(`Debug80: Failed to remove target ${targetName}.`);
         return undefined;
       }
 
-      targetSelection.rememberTarget(projectConfigPath, result.nextTarget);
+      if (result.nextTarget === undefined) {
+        targetSelection.forgetTarget(projectConfigPath);
+      } else {
+        targetSelection.rememberTarget(projectConfigPath, result.nextTarget);
+      }
       platformViewProvider.refreshIdleView();
       void vscode.window.showInformationMessage(
-        `Debug80: Removed target ${targetName}. Source files were left unchanged.`
+        result.nextTarget === undefined
+          ? `Debug80: Removed target ${targetName}. The project has no targets now; pick a program file to add one.`
+          : `Debug80: Removed target ${targetName}. Source files were left unchanged.`
       );
       return result.nextTarget;
     })

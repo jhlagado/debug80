@@ -77,10 +77,9 @@ export function isDebug80ProjectConfig(config: ProjectConfig | undefined): confi
     return false;
   }
 
-  const targets = config.targets;
-  if (targets === undefined || Object.keys(targets).length === 0) {
-    return false;
-  }
+  // A project may have no targets yet - the user adds one by picking a
+  // program file - so an empty (or absent) targets map is still a project.
+  const targets = config.targets ?? {};
 
   if (
     config.projectVersion !== undefined &&
@@ -371,9 +370,8 @@ export function addProjectTarget(
 }
 
 export type RemoveProjectTargetResult =
-  | { kind: 'removed'; nextTarget: string }
+  | { kind: 'removed'; nextTarget: string | undefined }
   | { kind: 'missing' }
-  | { kind: 'lastTarget' }
   | { kind: 'writeFailed' };
 
 export function removeProjectTarget(
@@ -386,11 +384,16 @@ export function removeProjectTarget(
     return { kind: 'missing' };
   }
   const remainingNames = Object.keys(targets).filter((name) => name !== targetName);
-  if (remainingNames.length === 0) {
-    return { kind: 'lastTarget' };
-  }
-
   delete targets[targetName];
+  if (remainingNames.length === 0) {
+    // Removing the only target leaves a valid project with no targets.
+    delete config.defaultTarget;
+    delete config.target;
+    if (!writeProjectConfig(projectConfigPath, config)) {
+      return { kind: 'writeFailed' };
+    }
+    return { kind: 'removed', nextTarget: undefined };
+  }
   const retainedDefault =
     config.defaultTarget !== undefined && remainingNames.includes(config.defaultTarget)
       ? config.defaultTarget

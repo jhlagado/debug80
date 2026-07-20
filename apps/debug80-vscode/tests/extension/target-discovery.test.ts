@@ -8,7 +8,6 @@ import {
   listTargetEntrySourceFiles,
   listTargetSourceFiles,
   TARGET_ENTRY_SOURCE_FILENAMES,
-  TARGET_ENTRY_SOURCE_SUFFIXES,
 } from '../../src/extension/target-discovery';
 
 describe('target discovery conventions', () => {
@@ -20,12 +19,11 @@ describe('target discovery conventions', () => {
 
   it('defines the runnable target entry source conventions in one place', () => {
     expect(TARGET_ENTRY_SOURCE_FILENAMES).toEqual(['main.asm', 'main.z80']);
-    expect(TARGET_ENTRY_SOURCE_SUFFIXES).toEqual(['.main.asm', '.main.z80']);
 
     expect(isTargetEntrySourcePath('main.asm')).toBe(true);
     expect(isTargetEntrySourcePath('src/main.asm')).toBe(true);
-    expect(isTargetEntrySourcePath('src/pacmo.main.asm')).toBe(true);
-    expect(isTargetEntrySourcePath('src/pacmo.main.z80')).toBe(true);
+    expect(isTargetEntrySourcePath('src/pacmo.main.asm')).toBe(false);
+    expect(isTargetEntrySourcePath('src/pacmo.main.z80')).toBe(false);
     expect(isTargetEntrySourcePath('examples/tetro.glim')).toBe(true);
     expect(isTargetEntrySourcePath('src/include.asm')).toBe(false);
     expect(isTargetEntrySourcePath('src/tool.z80')).toBe(false);
@@ -51,13 +49,7 @@ describe('target discovery conventions', () => {
     ]);
 
     expect(listTargetEntrySourceFiles(root)).toEqual(
-      [
-        'src/games/tetro.main.asm',
-        'src/main.asm',
-        'src/pacmo.main.asm',
-        'src/tool.main.z80',
-        'examples/tetro.glim',
-      ].sort((left, right) => left.localeCompare(right))
+      ['src/main.asm', 'examples/tetro.glim'].sort((left, right) => left.localeCompare(right))
     );
   });
 
@@ -74,7 +66,7 @@ describe('target discovery conventions', () => {
       'lib/include.asm',
     ]);
 
-    expect(listTargetEntrySourceFiles(root)).toEqual(['app.main.asm', 'game.glim', 'main.asm']);
+    expect(listTargetEntrySourceFiles(root)).toEqual(['game.glim', 'main.asm']);
   });
 
   it('lists any assembly source and valid Glimmer program as an explicit target candidate', () => {

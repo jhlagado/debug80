@@ -1599,7 +1599,7 @@ describe('registerExtensionCommands', () => {
     readFileSync.mockImplementation((candidate: string) => {
       const normalized = path.normalize(candidate);
       if (normalized === staleConfig) {
-        return JSON.stringify({ targets: {} });
+        return JSON.stringify({ projectVersion: 'unsupported', targets: {} });
       }
       if (normalized === projectConfig) {
         return JSON.stringify({ targets: { tetro: { sourceFile: 'src/tetro.asm' } } });
@@ -1643,6 +1643,35 @@ describe('registerExtensionCommands', () => {
         request: 'launch',
         projectConfig,
       })
+    );
+  });
+
+  it('asks for a program file instead of launching a zero-target project', async () => {
+    const projectRoot = '/workspace/empty';
+    const projectConfig = path.normalize(`${projectRoot}/debug80.json`);
+    const folder = { name: 'empty', uri: { fsPath: projectRoot }, index: 0 };
+    workspaceFolders = [folder];
+    existsSync.mockImplementation(
+      (candidate: string) => path.normalize(candidate) === projectConfig
+    );
+    readFileSync.mockImplementation(() => JSON.stringify({ targets: {} }));
+    const resolveWorkspaceFolder = vi.fn().mockResolvedValue(folder);
+
+    await registerCommands({
+      workspaceSelection: {
+        resolveWorkspaceFolder,
+        rememberWorkspace: vi.fn(),
+        selectWorkspaceFolder: vi.fn(),
+      } as never,
+    });
+
+    const restartDebug = registeredCommand('debug80.restartDebug');
+    const result = await restartDebug?.();
+
+    expect(result).toBe(false);
+    expect(startDebugging).not.toHaveBeenCalled();
+    expect(showInformationMessage).toHaveBeenCalledWith(
+      expect.stringContaining('no targets yet')
     );
   });
 

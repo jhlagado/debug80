@@ -92,14 +92,21 @@ describe('project-config helpers', () => {
     expect(config?.target).toBe('panel');
   });
 
-  it('refuses to remove the only configured target', () => {
+  it('removes the only configured target, leaving a valid zero-target project', () => {
     const { configPath } = createProject('debug80-remove-last-target-', {
       defaultTarget: 'app',
       targets: { app: { sourceFile: 'app.asm' } },
     });
 
-    expect(removeProjectTarget(configPath, 'app')).toEqual({ kind: 'lastTarget' });
-    expect(readProjectConfig(configPath)?.targets?.app).toBeDefined();
+    expect(removeProjectTarget(configPath, 'app')).toEqual({
+      kind: 'removed',
+      nextTarget: undefined,
+    });
+    const config = readProjectConfig(configPath);
+    expect(config?.targets).toEqual({});
+    expect(config?.defaultTarget).toBeUndefined();
+    expect(config?.target).toBeUndefined();
+    expect(isDebug80ProjectConfig(config)).toBe(true);
   });
 
   it('resolves project platform from explicit project manifest fields', () => {
@@ -187,13 +194,20 @@ describe('project-config helpers', () => {
     ).toBe(true);
   });
 
-  it('rejects configs without targets as uninitialized', () => {
+  it('accepts configs without targets as zero-target projects', () => {
     expect(
       isDebug80ProjectConfig({
         projectVersion: DEBUG80_PROJECT_VERSION,
         projectPlatform: 'simple',
       })
-    ).toBe(false);
+    ).toBe(true);
+    expect(
+      isDebug80ProjectConfig({
+        projectVersion: DEBUG80_PROJECT_VERSION,
+        projectPlatform: 'simple',
+        targets: {},
+      })
+    ).toBe(true);
   });
 
   it('rejects configs with unsupported project version', () => {
