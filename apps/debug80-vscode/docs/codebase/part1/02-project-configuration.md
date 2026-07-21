@@ -169,7 +169,9 @@ When a debug session launches, the system must decide which target to use. The r
 1. Explicit `target` passed in the launch arguments (e.g., from the webview selector)
 2. The config's `target` field
 3. The config's `defaultTarget` field
-4. The first target alphabetically (if exactly one exists, it is used without prompting)
+4. The first target alphabetically (if one exists)
+
+If the project has no configured targets, launch does not fall through into the adapter. The extension reports that the project needs a program file and leaves the user in the target-picking flow.
 
 This logic lives in `populateFromConfig()` in `src/debug/launch-args.ts`.
 
@@ -197,7 +199,6 @@ The project header can now surface two kinds of target choice:
 The discovery rules are broader than the old `main.asm`-only flow:
 
 - files named exactly `main.asm` or `main.z80`
-- files ending in `.main.asm` or `.main.z80`
 - any `.glim` file whose top-level source declares `program <name>`
 
 The explicit **Add Target** command goes further. It lists every eligible `.asm`, `.z80`, or runnable `.glim` source file in the workspace, even when the file does not match the entry-point naming convention. The command generates a stable target name from the filename, copies the first existing target as a template, then replaces source-specific fields such as `sourceFile`, `asm`, `artifactBase`, and incompatible assembler overrides.
@@ -211,7 +212,7 @@ The explicit **Add Target** command goes further. It lists every eligible `.asm`
 - `debug80.setEntrySource` repoints an existing target at another program file and keeps `sourceFile` and `asm` aligned
 - `debug80.configureProject` prompts for a target, then edits one field at a time: target platform override, program file, assembler, target name, output directory, or artifact base
 
-Removal keeps the project valid. `removeProjectTarget()` refuses to delete the last remaining target, picks a replacement current target, and updates `defaultTarget` or legacy `target` when the removed target was still referenced there.
+Removal keeps the project valid. If other configured targets remain, `removeProjectTarget()` picks a replacement current target and updates `defaultTarget` or legacy `target` when the removed target was still referenced there. If the removed target was the only target, Debug80 writes an empty `targets` map, clears `defaultTarget` and legacy `target`, forgets the remembered selection, and leaves the project in a valid zero-target state until the user picks another program file.
 
 ---
 
@@ -426,7 +427,7 @@ When a user creates a new project, the scaffolding system generates the config f
 
 2. **Resolve the kit.** If the caller already supplied a platform (the panel path), `getDefaultProjectKitForPlatform()` selects the default kit immediately. Otherwise `chooseProjectKit()` shows the kit picker.
 
-3. **Build the scaffold plan.** A `ScaffoldPlan` captures the kit, target name, source file path, output directory, artifact base, and optional starter-file details. In the panel's platform-preselected path this is intentionally minimal: the default source file is `src/main.asm`, the target name is derived from the filename, and no extra prompts are shown.
+3. **Build the scaffold plan.** A `ScaffoldPlan` captures the kit, target name, source file path, output directory, artifact base, and optional starter-file details. In the interactive path the source-file choice also includes **No target yet**, which creates a valid project with an empty `targets` map. In the panel's platform-preselected path this is intentionally minimal: the default source file is `src/main.asm`, the target name is derived from the filename, and no extra prompts are shown.
 
 4. **Write files.** The scaffold writes:
    - the starter source file if it does not already exist
@@ -491,7 +492,7 @@ When a source file is selected or changed, the system infers the assembler from 
 - `.asm`, `.z80`, and `.inc` → use AZM
 - `.glim` → use Glimmer
 
-Target discovery is independent of a mandatory `src/` folder. Debug80 looks for AZM entry points by convention (`main.asm` and `*.main.asm`) and treats a `.glim` file as runnable when it contains a top-level `program` declaration. Glimmer `part` files remain out of the target list. Ordinary helper assembly files and `.z80` files are also left out of automatic discovery unless selected explicitly with **Debug80: Set Program File**.
+Target discovery is independent of a mandatory `src/` folder. Debug80 looks for AZM entry points by convention (`main.asm` and `main.z80`) and treats a `.glim` file as runnable when it contains a top-level `program` declaration. Glimmer `part` files remain out of the target list. Ordinary helper assembly files and non-entry `.z80` files are also left out of automatic discovery unless selected explicitly with **Debug80: Set Program File**.
 
 ---
 
@@ -538,7 +539,7 @@ The watcher registration lives in `WorkspaceSelectionController.registerInfrastr
 
 - The `ProjectConfig` type defines the file structure. The `targets` object holds named build configurations; root-level fields serve as defaults for all targets.
 
-- Target resolution follows a priority chain: explicit argument → stored selection → `defaultTarget` → single target → prompt. Selections are persisted in workspace state, keyed by config path.
+- Target resolution follows a priority chain: explicit argument → stored selection → `defaultTarget` → first available target → prompt. Selections are persisted in workspace state, keyed by config path.
 
 - Launch arguments are assembled from four layers (runtime → target → root → platform defaults) via `populateFromConfig()`. Platform blocks are shallow-merged, not replaced, so targets can override individual fields without losing inherited values.
 

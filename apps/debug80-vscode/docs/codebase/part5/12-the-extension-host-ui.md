@@ -318,8 +318,10 @@ These arrive in `onDidReceiveMessage` and are dispatched as described above.
 | `selectTarget`        | `rootPath`, `targetName`                      | Execute target selection                                                                                                                                                                            |
 | `addTarget`           | optional `rootPath`                           | Add a new configured target from a discovered source file                                                                                                                                            |
 | `removeTarget`        | optional `rootPath`, `targetName`             | Remove a configured target from `debug80.json` while leaving source files unchanged                                                                                                                 |
-| `restartDebug`        | —                                             | Execute restart debug command                                                                                                                                                                       |
+| `restartDebug`        | —                                             | Execute the run-current-target command, which builds then launches the current target                                                                                                               |
+| `buildTarget`         | —                                             | Execute the build-only command for the current target without launching a debug session                                                                                                             |
 | `setAzmOptions`       | `registerContractsMode`, `contractUpdateMode` | Update session-scoped AZM options shown in the Project panel                                                                                                                                        |
+| `removeWorkspaceFolder` | `rootPath`                                  | Remove the selected workspace folder from the VS Code workspace after confirmation, leaving files on disk unchanged                                                                                 |
 | `sendHexViaCoolTerm`  | optional `rootPath`, `targetName`             | Send the selected target's HEX artifact to a real board through CoolTerm                                                                                                                            |
 | `setEntrySource`      | —                                             | Execute set entry source command                                                                                                                                                                    |
 | `serialSendFile`      | —                                             | File picker → character-by-character send (TEC-1/TEC-1G)                                                                                                                                            |
@@ -367,7 +369,7 @@ The types shared between the extension host and webview are defined in `src/cont
 
 - **`PlatformId`** — `'simple' | 'tec1' | 'tec1g'`; the canonical platform identifier used throughout the extension and webview.
 - **`ProjectStatusPayload`** — the shape of the `projectStatus` message body. The key field is `projectState?: 'noWorkspace' | 'uninitialized' | 'initialized'`, which drives control visibility in the webview. Other fields include workspace roots, targets, selected target, entry source, platform, `stopOnEntry`, the project-persisted `azmSymbolCase`, session-scoped AZM option fields, CoolTerm availability / inferred HEX path / hardware status text, separate build status text/state, and source-map status text/state. Each target row can also carry `description`, `detail`, `discovered?: true`, and `sourceFile`, which let the panel distinguish persisted targets from runnable source files that have not yet been written into `debug80.json`.
-- **`PlatformViewControlMessage`** — a discriminated union of all project/session/serial/hardware-send control messages (`startDebug`, `restartDebug`, `createProject`, `openWorkspaceFolder`, `selectProject`, `configureProject`, `saveProjectConfig`, `setStopOnEntry`, `setAzmOptions`, `setAzmSymbolCase`, `selectTarget`, `addTarget`, `removeTarget`, `sendHexViaCoolTerm`, `setEntrySource`, `serialSendFile`, `serialSave`, `serialClear`). The `saveProjectConfig` message carries `{ platform: string }` and triggers a config write + debug restart. The `createProject` message carries an optional `platform?: string` field that, when present, selects the default kit for that platform without showing pickers. In practice the webview can also attach an optional `platform` field to `openWorkspaceFolder`, and the message parser forwards that through to `debug80.addWorkspaceFolder`. The `setStopOnEntry` message carries `{ stopOnEntry: boolean }` and updates the provider's global toggle. `setAzmOptions` updates session-scoped AZM restart options. `setAzmSymbolCase` carries `{ symbolCase: 'strict' | 'insensitive' }` and persists the merged project-level `azm.symbolCase` value into `debug80.json`.
+- **`PlatformViewControlMessage`** — a discriminated union of all project/session/serial/hardware-send control messages (`startDebug`, `restartDebug`, `buildTarget`, `createProject`, `openWorkspaceFolder`, `selectProject`, `configureProject`, `saveProjectConfig`, `setStopOnEntry`, `setAzmOptions`, `setAzmSymbolCase`, `selectTarget`, `addTarget`, `removeTarget`, `removeWorkspaceFolder`, `sendHexViaCoolTerm`, `setEntrySource`, `serialSendFile`, `serialSave`, `serialClear`). The `saveProjectConfig` message carries `{ platform: string }` and triggers a config write + debug restart. The `createProject` message carries an optional `platform?: string` field that, when present, selects the default kit for that platform without showing pickers. In practice the webview can also attach an optional `platform` field to `openWorkspaceFolder`, and the message parser forwards that through to `debug80.addWorkspaceFolder`. The `setStopOnEntry` message carries `{ stopOnEntry: boolean }` and updates the provider's global toggle. `setAzmOptions` updates session-scoped AZM restart options. `setAzmSymbolCase` carries `{ symbolCase: 'strict' | 'insensitive' }` and persists the merged project-level `azm.symbolCase` value into `debug80.json`.
 - **`PlatformViewInboundMessage`** — the full union of all messages the extension host can receive: `PlatformViewControlMessage | Tec1Message | Tec1gMessage | { type?: string; [key: string]: unknown }`.
 
 This file is the authoritative definition of the message boundary. Platform-view-messages.ts imports `PlatformViewInboundMessage` directly from it.
@@ -438,7 +440,7 @@ Three shared modules translate the payload into rendering decisions:
 | `platformInfoControl` | hidden        | hidden          | hidden        |
 | Target control        | hidden        | hidden          | **visible**   |
 | Stop on entry label   | hidden        | hidden          | **visible**   |
-| Restart button        | hidden        | hidden          | **visible**   |
+| Build and Run buttons | hidden        | hidden          | **visible**   |
 | Tabs (UI / Memory)    | hidden        | hidden          | **visible**   |
 | Panel content areas   | hidden        | hidden          | **visible**   |
 
@@ -500,9 +502,9 @@ The `platform?` field on the `createProject` webview message flows through `hand
 After kit selection, `buildScaffoldPlan()` collects the remaining inputs:
 
 1. A target name (input box, default `'app'`).
-2. A source file choice: an existing `.asm` file from the workspace, or a new assembly starter file.
+2. A source file choice: an existing `.asm` file from the workspace, a new assembly starter file, or **No target yet** for a zero-target project.
 
-The result is a `ScaffoldPlan` — `{ kit, targetName, sourceFile, outputDir, artifactBase, starterLanguage?, starterFile? }`.
+The result is a `ScaffoldPlan` — `{ kit, targetName, sourceFile, outputDir, artifactBase, starterLanguage?, starterFile?, noTarget? }`.
 
 ### `createDefaultProjectConfig()` — writing `debug80.json`
 
@@ -510,7 +512,7 @@ The result is a `ScaffoldPlan` — `{ kit, targetName, sourceFile, outputDir, ar
 
 - A `profiles` section with one entry (`plan.kit.profileName`) containing the platform, description, and — if the kit has a `bundledProfile` — a `bundledAssets` map with `romHex`, optional `debugMap`, and optional `source` entries (each a `BundledAssetReference`).
 - A `targets` section with one entry (`plan.targetName`) containing `sourceFile`, `outputDir`, `artifactBase`, `platform`, `profile`, and the platform-specific memory map block (`simple`, `tec1`, or `tec1g`). For kits with a `bundledProfile`, the target block also includes `romHex` and `sourceRoots`. The `tec1g/custom` kit remains project-owned rather than bundle-backed, so its target block writes explicit `romHex` and `expansionRomHex` paths under `roms/tec1g/custom/`.
-- Top-level `projectVersion`, `projectPlatform`, `defaultProfile`, and `defaultTarget` fields.
+- Top-level `projectVersion`, `projectPlatform`, `defaultProfile`, and, when a target is scaffolded immediately, `defaultTarget` fields.
 
 When the scaffold creates or updates project files, it also calls `ensureDebug80Gitignore()` in `src/extension/project-gitignore.ts` to create or append a standard **Debug80**-marked ignore block (see Chapter 2). The normal panel initialization path writes root `debug80.json` and does not create `.vscode/launch.json`; launch scaffolding is an explicit optional path.
 
@@ -564,7 +566,7 @@ If the user chose to create a starter source file, `createStarterSourceContent()
 
 - The memory refresh controller polls the adapter at 150 ms intervals when the memory tab is active and the panel is visible. Polling stops automatically on tab switch or panel hide.
 
-- Project status is assembled from workspace folders, `debug80.json` discovery, workspace-persisted target selection, and the active platform ID. It emits one of three `projectState` values and drives the project header (Project button + `+` Add-folder button, Target dropdown, Platform dropdown, Stop-on-entry checkbox, Restart button).
+- Project status is assembled from workspace folders, `debug80.json` discovery, workspace-persisted target selection, and the active platform ID. It emits one of three `projectState` values and drives the project header (Project button + `+` / `-` workspace-folder buttons, Target dropdown, Platform dropdown, Stop-on-entry checkbox, Strict labels checkbox, Build button, and Run button).
 
 - Project scaffolding is driven by **project kits** (`src/extension/project-kits.ts`). A kit packages the platform, profile name, memory-map defaults, starter templates, and optional bundled ROM references into a single descriptor. `buildScaffoldPlan()` selects a kit interactively (command palette path); `getDefaultProjectKitForPlatform()` selects the bundle-first default silently (panel initialization path). `createDefaultProjectConfig()` writes `profiles` and `targets` from the chosen kit. Bundled ROM references resolve to workspace files first, then extension-bundled files; `debug80.materializeBundledRom` installs workspace copies and the conventional local `*.rom.asm` entry point on demand.
 
