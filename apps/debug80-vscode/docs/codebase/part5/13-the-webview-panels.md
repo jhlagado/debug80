@@ -40,24 +40,24 @@ Not every webview preference should be stored here. In particular, speaker mute 
 
 ### Session status controller (`common/session-status.ts`)
 
-The Restart button sits in the tab row of every platform panel (`id="restartDebug"`). `createSessionStatusController()` manages it:
+The Run button sits in the tab row of every platform panel (`id="restartDebug"`), beside a separate Build button (`id="buildTarget"`). `createSessionStatusController()` manages both:
 
 ```typescript
-const controller = createSessionStatusController(vscode, buttonElement);
+const controller = createSessionStatusController(vscode, runButtonElement, buildButtonElement);
 controller.setStatus('running');
 controller.setStatus('not running');
 ```
 
-The button always renders with the label **Restart**. Its visual state is carried in `data-status` and CSS classes (`status-running`, `status-paused`, etc.). A click sends `{ type: 'restartDebug' }` to the extension host unless the session is still in the `'starting'` state. The button is disabled only while starting.
+The primary button always renders with the label **Run**. Its visual state is carried in `data-status` and CSS classes (`status-running`, `status-paused`, etc.). A click sends `{ type: 'restartDebug' }` to the extension host unless the session is still in the `'starting'` state. The secondary Build button sends `{ type: 'buildTarget' }`. Both buttons are disabled while the session is starting.
 
 The status values are:
 
-| Status          | Label     | Behaviour |
+| Status          | Run label | Behaviour |
 | --------------- | --------- | --------- |
-| `'not running'` | "Restart" | Clickable |
-| `'starting'`    | "Restart" | Disabled  |
-| `'running'`     | "Restart" | Clickable |
-| `'paused'`      | "Restart" | Clickable |
+| `'not running'` | "Run"     | Clickable |
+| `'starting'`    | "Run"     | Disabled  |
+| `'running'`     | "Run"     | Clickable |
+| `'paused'`      | "Run"     | Clickable |
 
 ### Accordion layout (`common/accordion-layout.ts`)
 
@@ -79,7 +79,7 @@ The display also supports `applySegmentIntensities(values)`, where each digit re
 
 `createProjectStatusUi(vscode, elements, platform)` wires up the project header for a platform panel: it handles `projectStatus` messages, populates the Target dropdown, sets the Platform selector value, shows or hides controls via `applyInitializedProjectControls()`, and wires the Initialize button, target change handler, add/remove-target buttons, and stop-on-entry checkbox. This function consolidates the setup-card/target-dropdown/project-root wiring that was previously duplicated across `simple/index.ts`, `tec1/index.ts`, and `tec1g/tec1g-project-status-ui.ts`. All three platform panels now call `createProjectStatusUi()` from this shared module.
 
-The same helper also renders three independent status surfaces from `projectStatus`: a source-map status line, a hardware-send status line, and a build-failure surface. When `buildStatusState === 'error'`, the shared tab row shows a compact `!` badge beside the Restart button and the panel reveals a dedicated build-status line above the platform UI. That warning is separate from `hardwareStatusText`, so CoolTerm readiness or transfer results stay visible even after an assembly failure. The hardware send button posts `sendHexViaCoolTerm`; it is enabled only when CoolTerm is reachable and the selected target has an inferred HEX artifact.
+The same helper also renders three independent status surfaces from `projectStatus`: a source-map status line, a hardware-send status line, and a build-failure surface. When `buildStatusState === 'error'`, the shared tab row shows a compact `!` badge beside the Run button and the panel reveals a dedicated build-status line above the platform UI. That warning is separate from `hardwareStatusText`, so CoolTerm readiness or transfer results stay visible even after an assembly failure. The hardware send button posts `sendHexViaCoolTerm`; it is enabled only when CoolTerm is reachable and the selected target has an inferred HEX artifact.
 
 `webview/tec1g/tec1g-project-status-ui.ts` re-exports from `webview/common/project-status-ui.ts` for backward compatibility rather than containing the implementation itself.
 
@@ -89,7 +89,7 @@ The same helper also renders three independent status surfaces from `projectStat
 
 ### Symbol-case control (`common/symbol-case-control.ts`)
 
-`wireSymbolCaseControl()` owns the shared **Case-sensitive symbols** checkbox that appears in initialized project headers. The control is intentionally small: `projectStatus.azmSymbolCase` sets the checked state, the label is hidden whenever no Debug80 project is active, and user changes post `{ type: 'setAzmSymbolCase', symbolCase }` back to the extension host. The webview does not cache or debounce this setting because the extension host persists it directly into `debug80.json`.
+`wireSymbolCaseControl()` owns the shared **Strict labels** checkbox that appears in initialized project headers. The control is intentionally small: `projectStatus.azmSymbolCase` sets the checked state, the label is hidden whenever no Debug80 project is active, and user changes post `{ type: 'setAzmSymbolCase', symbolCase }` back to the extension host. The webview does not cache or debounce this setting because the extension host persists it directly into `debug80.json`.
 
 ### Memory view element helpers (`common/memory-view-elements.ts`)
 
@@ -176,6 +176,7 @@ All three `index.html` files follow the same structure:
     <span class="project-label">Project</span>
     <button id="selectProject">No workspace roots available</button>
     <button id="addWorkspaceFolder" title="Add folder to workspace">+</button>
+    <button id="removeWorkspaceFolder" title="Remove the selected folder from the workspace">-</button>
   </div>
   <div class="project-control">                          <!-- visible only when initialized -->
     <span class="project-label">Target</span>
@@ -211,7 +212,8 @@ All three `index.html` files follow the same structure:
   </div>
   <div class="tabs-status-slot">
     <span class="build-result-indicator" id="buildResultIndicator" hidden></span>
-    <button class="session-status" id="restartDebug">Restart</button>
+    <button id="buildTarget">Build</button>
+    <button class="session-status" id="restartDebug">Run</button>
   </div>
 </div>
 <div class="build-status-line" id="buildStatusLine" hidden></div>
@@ -237,7 +239,9 @@ The project header renders the current workspace context and lets the user chang
 
 **Add Target** — visible only when `projectState === 'initialized'`. Posts `{ type: 'addTarget', rootPath }`, which opens the extension-host picker for eligible `.asm`, `.z80`, and runnable `.glim` sources that are not already configured as targets.
 
-**Remove Target** — visible only when `projectState === 'initialized'`. Posts `{ type: 'removeTarget', rootPath, targetName }` for the currently selected target. The button is disabled when the project has only one configured target left or when the current selection is still a discovered `+` entry that has not yet been persisted into `debug80.json`.
+**Remove Target** — visible only when `projectState === 'initialized'`. Posts `{ type: 'removeTarget', rootPath, targetName }` for the currently selected target. The button is disabled when the project has no selected configured target or when the current selection is still a discovered `+` entry that has not yet been persisted into `debug80.json`. Removing the last configured target is allowed and returns the project to a zero-target state.
+
+**Remove Workspace Folder** — always visible in the project row beside the `+` button. Posts `{ type: 'removeWorkspaceFolder', rootPath }` for the selected root. The button is disabled when there is only one workspace folder because the last folder cannot be removed from the workspace.
 
 **Platform selector** — visible only when `projectState === 'uninitialized'`. A `<select>` with three fixed options: Simple, TEC-1, TEC-1G. Its value is set from `projectStatus.platform` on each `projectStatus` message. In the current panel redesign it shares the row with an inline **Initialize** button (`platformInitButton`), so project creation can happen directly from the platform row instead of from a duplicate card button.
 
@@ -245,7 +249,7 @@ The project header renders the current workspace context and lets the user chang
 
 **Stop on entry** — visible only when `projectState === 'initialized'`. A checkbox in the project header row that toggles the global stop-on-entry flag for the current VS Code window session. When toggled, the webview sends `{ type: 'setStopOnEntry', stopOnEntry: boolean }`. The value is not persisted into `debug80.json`.
 
-**Case-sensitive symbols** — visible only when `projectState === 'initialized'`. A checkbox in the same shared header row that reflects `projectStatus.azmSymbolCase`. Checked means Debug80 will persist `azm.symbolCase: "strict"` for the project. Clearing it posts `{ type: 'setAzmSymbolCase', symbolCase: 'insensitive' }`, which immediately updates `debug80.json` so legacy mixed-case symbol references can resolve on the next build and debug launch.
+**Strict labels** — visible only when `projectState === 'initialized'`. A checkbox in the same shared header row that reflects `projectStatus.azmSymbolCase`. Checked means Debug80 will persist `azm.symbolCase: "strict"` for the project. Clearing it posts `{ type: 'setAzmSymbolCase', symbolCase: 'insensitive' }`, which immediately updates `debug80.json` so legacy mixed-case symbol references can resolve on the next build and debug launch.
 
 When a `projectStatus` message arrives:
 
