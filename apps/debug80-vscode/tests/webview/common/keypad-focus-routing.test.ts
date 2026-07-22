@@ -10,7 +10,6 @@ import {
 
 function createKeypad(): KeypadKeyTarget & {
   focusKeypad: ReturnType<typeof vi.fn>;
-  sendKey: ReturnType<typeof vi.fn>;
   pressKey: ReturnType<typeof vi.fn>;
   releaseKey: ReturnType<typeof vi.fn>;
   releaseAllKeys: ReturnType<typeof vi.fn>;
@@ -20,7 +19,6 @@ function createKeypad(): KeypadKeyTarget & {
   let shiftLatched = false;
   const keypad = {
     focusKeypad: vi.fn(),
-    sendKey: vi.fn(),
     pressKey: vi.fn((code: number) => ({ code: code | 0x20, generation: code })),
     releaseKey: vi.fn(),
     releaseAllKeys: vi.fn(),
@@ -174,7 +172,6 @@ describe('keypad focus routing', () => {
     expect(
       routeTecKeypadShortcut(consumedEvent, { kind: 'key', code: 0x0a }, localKeypad, vi.fn())
     ).toBe(false);
-    expect(localKeypad.sendKey).not.toHaveBeenCalled();
     expect(localKeypad.pressKey).not.toHaveBeenCalled();
   });
 
