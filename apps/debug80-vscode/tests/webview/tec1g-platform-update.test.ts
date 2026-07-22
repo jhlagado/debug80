@@ -69,6 +69,24 @@ describe('tec1g platform update application', () => {
     expect(deps.segmentPlayer.enqueue).toHaveBeenCalledWith(scans, 3, 400_000);
   });
 
+  it('stops buffered seven-segment scans when the runtime reports an idle blank', () => {
+    const deps = makeDeps();
+    const blank = new Array(48).fill(0);
+
+    applyTec1gPlatformUpdate(deps, {
+      digits: [0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f],
+      segmentIntensities: blank,
+      segmentScanStopped: true,
+    });
+
+    expect(deps.segmentPlayer.stop).toHaveBeenCalledOnce();
+    expect(deps.segmentPlayer.renderStatic).toHaveBeenCalledWith(
+      [0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f],
+      blank
+    );
+    expect(deps.segmentPlayer.enqueue).not.toHaveBeenCalled();
+  });
+
   it('passes matrix scan-cycle batches to the scan player', () => {
     const deps = makeDeps();
     const scanCycles = [

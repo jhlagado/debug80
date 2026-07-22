@@ -10,6 +10,7 @@ type Tec1UpdatePayload = {
   segmentScanCycles?: import('@jhlagado/debug80-runtime/platforms/tec-common').SevenSegmentScanCycle[];
   segmentDroppedScanCycles?: number;
   segmentClockHz?: number;
+  segmentScanStopped?: boolean;
   matrix?: number[];
   speaker?: boolean;
   speedMode?: string;

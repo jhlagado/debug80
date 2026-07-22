@@ -4,6 +4,7 @@ type Tec1PlatformUpdatePayload = {
   segmentScanCycles?: import('@jhlagado/debug80-runtime/platforms/tec-common').SevenSegmentScanCycle[];
   segmentDroppedScanCycles?: number;
   segmentClockHz?: number;
+  segmentScanStopped?: boolean;
   matrix?: number[];
   speaker?: boolean;
   speedMode?: string;
@@ -24,6 +25,7 @@ type Tec1PlatformUpdateDependencies = {
       clockHz?: number
     ) => void;
     renderStatic: (digits?: number[], intensities?: number[]) => void;
+    stop: () => void;
   };
   lcdRenderer: {
     applyLcdUpdate: (payload: Tec1PlatformUpdatePayload) => void;
@@ -39,6 +41,11 @@ function applySevenSegmentUpdate(
   payload: Tec1PlatformUpdatePayload,
   player: Tec1PlatformUpdateDependencies['segmentPlayer']
 ): void {
+  if (payload.segmentScanStopped === true) {
+    player.stop();
+    player.renderStatic(payload.digits, payload.segmentIntensities);
+    return;
+  }
   if (Array.isArray(payload.segmentScanCycles)) {
     player.enqueue(
       payload.segmentScanCycles,
