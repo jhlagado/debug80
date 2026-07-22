@@ -58,6 +58,7 @@ import { Logger, NullLogger } from '../util/logger';
 import { AdapterRequestController } from './requests/adapter-request-controller';
 import { handleWarmRebuildRequest } from './requests/rebuild-request';
 import { getTec1gExpansionAddressSpace } from './mapping/debug-addressing';
+import { assertValidLaunchArgs } from './launch/config-validation';
 
 /** DAP thread identifier (single-threaded Z80) */
 const THREAD_ID = 1;
@@ -254,6 +255,7 @@ export class Z80DebugSession extends DebugSession {
     }
 
     try {
+      assertValidLaunchArgs(merged);
       const artifacts = await buildLaunchSession(
         merged,
         createLaunchSequenceContext({

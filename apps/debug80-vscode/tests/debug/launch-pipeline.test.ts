@@ -102,6 +102,16 @@ describe('launch-pipeline', () => {
     expect(backend.assemble).not.toHaveBeenCalled();
   });
 
+  it('rejects partial and reversed binary ranges before assembly', async () => {
+    await expect(
+      assemble({ simpleConfig: normalizeSimpleConfig({ binFrom: 0x4000 }) })
+    ).rejects.toThrow('simple.binFrom and simple.binTo must be specified together');
+    await expect(
+      assemble({ simpleConfig: normalizeSimpleConfig({ binFrom: 0x5000, binTo: 0x4000 }) })
+    ).rejects.toThrow('simple.binFrom must be less than or equal to simple.binTo');
+    expect(backend.assemble).not.toHaveBeenCalled();
+  });
+
   it('uses the backend id in fallback error messages', async () => {
     backend.assemble.mockResolvedValue({ success: false });
 

@@ -26,6 +26,7 @@ import { assembleIfRequested } from '../debug/launch/launch-pipeline';
 import { AssembleFailureError, formatAssemblyDiagnostic } from '../debug/launch/assembler';
 import type { LaunchRequestArguments } from '../debug/session/types';
 import { resolvePlatformProvider } from '../platforms/provider';
+import { assertValidLaunchArgs } from '../debug/launch/config-validation';
 
 export type PanelLaunchOptions = {
   stopOnEntry: boolean;
@@ -150,6 +151,7 @@ export async function buildCurrentProjectTarget(
 
   setBuildStatus(`Building ${path.relative(baseDir, asmPath)}...`);
   try {
+    assertValidLaunchArgs(merged);
     const platformProvider = await resolvePlatformProvider(merged);
     await assembleIfRequested({
       backend: resolveAssemblerBackend(merged.assembler, asmPath),

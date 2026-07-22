@@ -435,7 +435,6 @@ function applyExecutionLaunchFields(
   args: LaunchRequestArguments
 ): void {
   setIfDefined(merged, 'entry', firstPresent(args.entry, targetCfg?.entry, cfg.entry));
-  setIfDefined(merged, 'simple', firstPresent(args.simple, targetCfg?.simple, cfg.simple));
   setIfDefined(
     merged,
     'stopOnEntry',

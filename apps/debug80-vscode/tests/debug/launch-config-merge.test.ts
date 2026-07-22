@@ -122,6 +122,29 @@ describe('launch-config-merge', () => {
     });
   });
 
+  it('merges Simple configuration field by field across all three precedence layers', () => {
+    const manifest: LaunchConfigManifest = {
+      platform: 'simple',
+      defaultTarget: 'game',
+      simple: { entry: 0x0100, binFrom: 0x4000 },
+      targets: {
+        game: {
+          asm: 'src/game.asm',
+          simple: { appStart: 0x4000, binTo: 0x4fff },
+        },
+      },
+    };
+
+    const merged = mergeForTarget(manifest, 'game', launchArgs({ simple: { entry: 0x0200 } }));
+
+    expect(merged.simple).toMatchObject({
+      appStart: 0x4000,
+      entry: 0x0200,
+      binFrom: 0x4000,
+      binTo: 0x4fff,
+    });
+  });
+
   it('treats null config fields as absent to preserve nullish fallback behavior', () => {
     const manifest = {
       platform: 'tec1g',
