@@ -36,6 +36,7 @@ export function serializeTec1UpdateFromUiState(
 export function serializeTec1ClearFromUiState(state: Tec1UiState): Tec1UpdatePayload {
   return {
     digits: [...state.digits],
+    segmentScanStopped: true,
     matrix: [...state.matrix],
     speaker: 0,
     speedMode: state.speedMode,
