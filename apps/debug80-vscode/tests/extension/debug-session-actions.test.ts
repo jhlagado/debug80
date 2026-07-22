@@ -32,7 +32,12 @@ describe('debug session actions', () => {
         defaultTarget: 'first',
         targets: {
           first: { sourceFile: 'first.asm', platform: 'simple' },
-          second: { sourceFile: 'second.asm', platform: 'simple', assemble: false },
+          second: {
+            sourceFile: 'second.asm',
+            platform: 'simple',
+            assemble: false,
+            simple: { binFrom: 0x4000, binTo: 0x40ff },
+          },
         },
       })
     );
@@ -55,6 +60,7 @@ describe('debug session actions', () => {
       expect.objectContaining({
         asmPath: path.join(root, 'second.asm'),
         args: expect.objectContaining({ target: 'second', assemble: true }),
+        simpleConfig: expect.objectContaining({ binFrom: 0x4000, binTo: 0x40ff }),
       })
     );
     expect(harness.output.append).toHaveBeenCalledWith('assembled second.asm\n');

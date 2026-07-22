@@ -19,12 +19,13 @@ import type {
   AzmPanelContractUpdateMode,
   AzmPanelRegisterContractsMode,
 } from '../contracts/platform-view';
-import { populateFromConfig, normalizePlatformName } from '../debug/launch-args';
+import { populateFromConfig } from '../debug/launch-args';
 import { resolveArtifacts, resolveBaseDir } from '../debug/mapping/path-resolver';
 import { resolveAssemblerBackend } from '../debug/launch/assembler-backend';
 import { assembleIfRequested } from '../debug/launch/launch-pipeline';
 import { AssembleFailureError, formatAssemblyDiagnostic } from '../debug/launch/assembler';
 import type { LaunchRequestArguments } from '../debug/session/types';
+import { resolvePlatformProvider } from '../platforms/provider';
 
 export type PanelLaunchOptions = {
   stopOnEntry: boolean;
@@ -149,13 +150,17 @@ export async function buildCurrentProjectTarget(
 
   setBuildStatus(`Building ${path.relative(baseDir, asmPath)}...`);
   try {
+    const platformProvider = await resolvePlatformProvider(merged);
     await assembleIfRequested({
       backend: resolveAssemblerBackend(merged.assembler, asmPath),
       args: { ...merged, assemble: true },
       asmPath,
       hexPath,
       sourceRoot: baseDir,
-      platform: normalizePlatformName(merged),
+      platform: platformProvider.id,
+      ...(platformProvider.simpleConfig !== undefined
+        ? { simpleConfig: platformProvider.simpleConfig }
+        : {}),
       onOutput: (message) => output.append(message),
     });
   } catch (error) {
