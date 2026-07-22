@@ -3,7 +3,7 @@
  */
 
 import * as vscode from 'vscode';
-import { AZM_LANGUAGE_EXTENSIONS } from './azm-source-extensions';
+import { AZM_LANGUAGE_EXTENSIONS } from './debug80-source-extensions';
 
 const ASM_LANGUAGE_ID = 'z80-asm';
 
