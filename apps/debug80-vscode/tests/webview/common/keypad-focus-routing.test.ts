@@ -237,6 +237,51 @@ describe('keypad focus routing', () => {
     expect(localKeypad.shiftLatched).toBe(true);
   });
 
+  it('keeps the physical latch until both Shift keys are released', () => {
+    document.body.innerHTML = '<main id="surface"></main>';
+    const localKeypad = createKeypad();
+    const surface = document.getElementById('surface')!;
+    for (const code of ['ShiftLeft', 'ShiftRight']) {
+      routeTecKeypadShortcut(
+        dispatchKeyboardEvent(surface, 'keydown', 'Shift', code),
+        { kind: 'shift', latched: true },
+        localKeypad,
+        vi.fn()
+      );
+    }
+
+    routeTecKeypadKeyup(dispatchKeyboardEvent(surface, 'keyup', 'Shift', 'ShiftLeft'), localKeypad);
+    expect(localKeypad.shiftLatched).toBe(true);
+
+    routeTecKeypadKeyup(
+      dispatchKeyboardEvent(surface, 'keyup', 'Shift', 'ShiftRight'),
+      localKeypad
+    );
+    expect(localKeypad.shiftLatched).toBe(false);
+  });
+
+  it('does not let a stale Shift keyup clear Fn after lifecycle release', () => {
+    document.body.innerHTML = '<main id="surface"></main>';
+    const localKeypad = createKeypad();
+    const surface = document.getElementById('surface')!;
+    routeTecKeypadShortcut(
+      dispatchKeyboardEvent(surface, 'keydown', 'Shift', 'ShiftLeft'),
+      { kind: 'shift', latched: true },
+      localKeypad,
+      vi.fn()
+    );
+    releaseAllTecKeypadKeys(localKeypad);
+    localKeypad.setShiftLatched(true);
+
+    expect(
+      routeTecKeypadKeyup(
+        dispatchKeyboardEvent(surface, 'keyup', 'Shift', 'ShiftLeft'),
+        localKeypad
+      )
+    ).toBe(false);
+    expect(localKeypad.shiftLatched).toBe(true);
+  });
+
   it('releases every held keypad key when focus is lost', () => {
     document.body.innerHTML = '<main id="surface"></main>';
     const localKeypad = createKeypad();
