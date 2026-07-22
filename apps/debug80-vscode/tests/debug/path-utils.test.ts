@@ -4,6 +4,7 @@
  */
 
 import { describe, it, expect } from 'vitest';
+import * as fs from 'fs';
 import * as os from 'os';
 import * as path from 'path';
 import {
@@ -69,6 +70,23 @@ describe('path-utils', () => {
   describe('isCanonicalPathWithin', () => {
     it('rejects sibling paths that only share a textual prefix', () => {
       expect(isCanonicalPathWithin('/work/demo-copy/game.glim', '/work/demo')).toBe(false);
+    });
+
+    it.skipIf(IS_WINDOWS)('recognizes a real file through a symlinked workspace path', () => {
+      const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-canonical-path-'));
+      try {
+        const realWorkspace = path.join(tempRoot, 'real-workspace');
+        const linkedWorkspace = path.join(tempRoot, 'linked-workspace');
+        const sourcePath = path.join(realWorkspace, 'src', 'game.glim');
+        fs.mkdirSync(path.dirname(sourcePath), { recursive: true });
+        fs.writeFileSync(sourcePath, '');
+        fs.symlinkSync(realWorkspace, linkedWorkspace, 'dir');
+
+        expect(isPathWithin(sourcePath, linkedWorkspace)).toBe(false);
+        expect(isCanonicalPathWithin(sourcePath, linkedWorkspace)).toBe(true);
+      } finally {
+        fs.rmSync(tempRoot, { recursive: true, force: true });
+      }
     });
   });
 
