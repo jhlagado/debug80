@@ -17,8 +17,13 @@ function mergeNestedPlatformBlock<T extends object>(
 ): T | undefined {
   const out: Record<string, unknown> = {};
   for (const p of parts) {
-    if (p === undefined || typeof p !== 'object' || Array.isArray(p)) {
+    if (p === undefined) {
       continue;
+    }
+    if (typeof p !== 'object' || p === null || Array.isArray(p)) {
+      // Preserve malformed blocks so the merged launch configuration is
+      // rejected by runtime validation instead of silently using defaults.
+      return p as T;
     }
     Object.assign(out, p as Record<string, unknown>);
   }

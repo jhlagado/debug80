@@ -30,6 +30,7 @@ import {
   resolveRelative,
 } from '../../src/debug/mapping/path-resolver';
 import type { LaunchRequestArguments } from '../../src/debug/session/types';
+import { assertValidLaunchArgs } from '../../src/debug/launch/config-validation';
 
 describe('launch-args', () => {
   let tempDirs: string[];
@@ -449,6 +450,31 @@ describe('launch-args', () => {
     const badArgs = { asm: path.join(badDir, 'main.asm') } as LaunchRequestArguments;
     const mergedBad = populateFromConfig(badArgs, { resolveBaseDir: () => badDir });
     expect(mergedBad).toEqual(badArgs);
+  });
+
+  it.each([
+    ['simple', 42],
+    ['tec1', []],
+    ['tec1g', 'invalid'],
+  ])('preserves malformed %s blocks for launch validation', (field, value) => {
+    const dir = makeTempDir(`debug80-malformed-${field}-`);
+    const configPath = path.join(dir, 'debug80.json');
+    fs.writeFileSync(
+      configPath,
+      JSON.stringify({
+        [field]: value,
+        targets: {
+          app: { sourceFile: 'app.asm', platform: field === 'simple' ? 'simple' : field },
+        },
+        defaultTarget: 'app',
+      })
+    );
+
+    const merged = populateFromConfig({ projectConfig: configPath } as LaunchRequestArguments, {
+      resolveBaseDir: () => dir,
+    });
+
+    expect(() => assertValidLaunchArgs(merged)).toThrow(`${field} must be an object`);
   });
 
   it('prefers explicit launch stopOnEntry over project config when projectConfig is present', () => {

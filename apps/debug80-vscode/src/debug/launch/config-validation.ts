@@ -124,8 +124,9 @@ function validateOptionalObject<T extends object>(
     return { result: validResult() };
   }
 
-  if (typeof value !== 'object') {
-    return { result: invalidResult(`${fieldName} must be an object, got ${typeof value}`) };
+  if (typeof value !== 'object' || Array.isArray(value)) {
+    const actualType = Array.isArray(value) ? 'array' : typeof value;
+    return { result: invalidResult(`${fieldName} must be an object, got ${actualType}`) };
   }
 
   return { value: value as T };

@@ -119,6 +119,47 @@ describe('debug session actions', () => {
     );
   });
 
+  it('reports malformed path values without escaping the build action', async () => {
+    fs.writeFileSync(
+      path.join(root, 'debug80.json'),
+      JSON.stringify({
+        defaultTarget: 'second',
+        targets: {
+          second: { sourceFile: 'second.asm', platform: 'simple', outputDir: 7 },
+        },
+      })
+    );
+    const harness = await createBuildHarness('second');
+
+    await expect(harness.build()).resolves.toBe(false);
+
+    expect(assembleIfRequested).not.toHaveBeenCalled();
+    expect(harness.setBuildStatus).toHaveBeenCalledWith('Build failed.', 'error');
+    expect(harness.output.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('outputDir must be a string')
+    );
+    expect(harness.output.show).toHaveBeenCalledWith(true);
+  });
+
+  it('reports targets without a source file as build failures', async () => {
+    fs.writeFileSync(
+      path.join(root, 'debug80.json'),
+      JSON.stringify({
+        defaultTarget: 'second',
+        targets: { second: { platform: 'simple' } },
+      })
+    );
+    const harness = await createBuildHarness('second');
+
+    await expect(harness.build()).resolves.toBe(false);
+
+    expect(assembleIfRequested).not.toHaveBeenCalled();
+    expect(harness.setBuildStatus).toHaveBeenCalledWith('Build failed.', 'error');
+    expect(harness.output.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('requires "asm" (root asm file) or explicit "hex" path')
+    );
+  });
+
   async function createBuildHarness(target: string) {
     const { buildCurrentProjectTarget } = await import('../../src/extension/debug-session-actions');
     const folder = { name: 'project', index: 0, uri: { fsPath: root } };

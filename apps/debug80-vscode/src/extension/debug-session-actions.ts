@@ -137,21 +137,19 @@ export async function buildCurrentProjectTarget(
     target,
     ...(context.azm !== undefined ? { azm: context.azm } : {}),
   };
-  const merged = populateFromConfig(args, {
-    resolveBaseDir: (requestArgs) => resolveBaseDir(requestArgs),
-  });
-  const baseDir = resolveBaseDir(merged);
-  const { hexPath, asmPath } = resolveArtifacts(merged, baseDir);
-  if (asmPath === undefined || asmPath === '') {
-    void vscode.window.showInformationMessage(
-      'Debug80: The selected target has no program file to build.'
-    );
-    return false;
-  }
-
-  setBuildStatus(`Building ${path.relative(baseDir, asmPath)}...`);
   try {
+    assertValidLaunchArgs(args);
+    const merged = populateFromConfig(args, {
+      resolveBaseDir: (requestArgs) => resolveBaseDir(requestArgs),
+    });
     assertValidLaunchArgs(merged);
+    const baseDir = resolveBaseDir(merged);
+    const { hexPath, asmPath } = resolveArtifacts(merged, baseDir);
+    if (asmPath === undefined || asmPath === '') {
+      throw new Error('The selected target has no program file to build.');
+    }
+
+    setBuildStatus(`Building ${path.relative(baseDir, asmPath)}...`);
     const platformProvider = await resolvePlatformProvider(merged);
     await assembleIfRequested({
       backend: resolveAssemblerBackend(merged.assembler, asmPath),
@@ -165,6 +163,11 @@ export async function buildCurrentProjectTarget(
         : {}),
       onOutput: (message) => output.append(message),
     });
+
+    const successMessage = `Build succeeded: ${path.relative(baseDir, hexPath)}`;
+    setBuildStatus(successMessage);
+    output.appendLine(`Debug80: ${successMessage}`);
+    return true;
   } catch (error) {
     if (error instanceof AssembleFailureError) {
       const diagnostic = error.result.diagnostic;
@@ -181,11 +184,6 @@ export async function buildCurrentProjectTarget(
     output.show(true);
     return false;
   }
-
-  const successMessage = `Build succeeded: ${path.relative(baseDir, hexPath)}`;
-  setBuildStatus(successMessage);
-  output.appendLine(`Debug80: ${successMessage}`);
-  return true;
 }
 
 export async function maybeAutoStartSingleTargetForRootChange(
