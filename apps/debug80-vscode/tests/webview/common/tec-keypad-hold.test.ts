@@ -12,6 +12,21 @@ describe('on-screen TEC keypad holds', () => {
     vi.useRealTimers();
   });
 
+  it('moves keyboard focus to the keypad when an on-screen key is pressed', () => {
+    document.body.innerHTML = '<input id="editor"><div id="keypad"></div>';
+    const keypadElement = document.getElementById('keypad')!;
+    createTecKeypad({ postMessage: () => undefined }, keypadElement);
+    const goKey = Array.from(keypadElement.querySelectorAll<HTMLElement>('.keycap')).find(
+      (element) => element.textContent === 'GO'
+    );
+    const editor = document.getElementById('editor') as HTMLInputElement;
+    editor.focus();
+
+    goKey?.dispatchEvent(new Event('pointerdown', { bubbles: true, cancelable: true }));
+
+    expect(document.activeElement).toBe(keypadElement);
+  });
+
   it('does not let an earlier delayed release cancel a newer press', () => {
     const messages: unknown[] = [];
     const keypadElement = document.getElementById('keypad')!;
