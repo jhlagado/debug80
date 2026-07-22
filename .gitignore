@@ -11,6 +11,7 @@ apps/*/*.vsix
 
 # Local agent and editor state
 $CODEX_HOME/
+.claude/
 .codex/
 .vscode/
 
