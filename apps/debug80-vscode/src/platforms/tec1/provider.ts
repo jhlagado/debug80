@@ -15,7 +15,7 @@ import {
 } from '../../debug/requests/platform-requests';
 import type { PlatformContribution } from '../../debug/session/platform-registry';
 import type { LaunchRequestArguments } from '../../debug/session/types';
-import { extractKeyCode } from '../../debug/session/message-types';
+import { extractKeyCode, extractKeyPressed } from '../../debug/session/message-types';
 import type { PlatformCommandContext, ResolvedPlatformProvider } from '../provider';
 import { normalizeTec1Config } from '@jhlagado/debug80-runtime/platforms/tec1/runtime';
 
@@ -45,8 +45,11 @@ function buildTec1Contribution(context: PlatformCommandContext): PlatformContrib
       'debug80/tec1Key': (response, args) =>
         sendPlatformResponse(
           response,
-          handleKeyRequest(context.sessionState.tec1Runtime, extractKeyCode(args), () =>
-            context.sessionState.tec1gRuntime?.silenceSpeaker()
+          handleKeyRequest(
+            context.sessionState.tec1Runtime,
+            extractKeyCode(args),
+            () => context.sessionState.tec1gRuntime?.silenceSpeaker(),
+            extractKeyPressed(args)
           ),
           context
         ),
