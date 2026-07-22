@@ -20,6 +20,7 @@ import {
   wireProjectPanelPlatformControls,
 } from '../common/project-panel-elements';
 import {
+  releaseAllTecKeypadKeys,
   routeTecKeypadKeyup,
   routeTecKeypadShortcut,
   wireKeypadFocusPanels,
@@ -295,6 +296,7 @@ const keypad = createTec1gKeypad(
   },
   {
     onReset: (state) => {
+      releaseAllTecKeypadKeys(keypad);
       joystickUi.clear();
       matrixUi.resetTransientState();
       vscode.postMessage({
@@ -492,8 +494,11 @@ document.addEventListener(
   },
   { capture: true }
 );
-window.addEventListener('blur', () => applyMatrixKeyboardCapture(false));
-window.addEventListener('blur', () => joystickUi.clear());
+window.addEventListener('blur', () => {
+  releaseAllTecKeypadKeys(keypad);
+  applyMatrixKeyboardCapture(false);
+  joystickUi.clear();
+});
 
 window.addEventListener(
   'keydown',
@@ -512,7 +517,7 @@ window.addEventListener(
       const shortcut = resolveTecKeypadShortcut(event.key);
       routeTecKeypadShortcut(event, shortcut, keypad, () => {
         const fn = keypad.getShiftLatched();
-        keypad.setShiftLatched(false);
+        releaseAllTecKeypadKeys(keypad);
         vscode.postMessage(fn ? { type: 'reset', fn: true } : { type: 'reset' });
       });
       return;
@@ -541,6 +546,7 @@ window.addEventListener(
   { capture: true }
 );
 window.addEventListener('beforeunload', () => {
+  releaseAllTecKeypadKeys(keypad);
   sessionStatusController.dispose();
   stopOnEntryControl.dispose();
   azmOptionsControl.dispose();

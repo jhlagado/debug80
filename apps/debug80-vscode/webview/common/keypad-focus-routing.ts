@@ -16,6 +16,17 @@ export type KeypadKeyTarget = KeypadFocusTarget & {
  * keypad code each press latched. */
 const heldPhysicalKeys = new Map<string, number>();
 
+export function releaseAllTecKeypadKeys(keypad: KeypadKeyTarget): void {
+  const heldCodes = new Set(heldPhysicalKeys.values());
+  heldPhysicalKeys.clear();
+  for (const code of heldCodes) {
+    keypad.releaseKey(code);
+  }
+  if (keypad.getShiftLatched()) {
+    keypad.setShiftLatched(false);
+  }
+}
+
 export function isKeyboardControlTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) {
     return false;

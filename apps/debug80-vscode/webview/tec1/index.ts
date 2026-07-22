@@ -2,6 +2,7 @@ import { createMatrixRenderer } from '../common/matrix-renderer';
 import { createTecKeypad } from '../common/tec-keypad';
 import { resolveTecKeypadShortcut } from '../common/tec-keyboard-shortcuts';
 import {
+  releaseAllTecKeypadKeys,
   routeTecKeypadKeyup,
   routeTecKeypadShortcut,
   wireKeypadFocusPanels,
@@ -228,13 +229,18 @@ panelLayout.updateMemoryLayout(false);
 
 window.addEventListener('keydown', (event) => {
   const shortcut = resolveTecKeypadShortcut(event.key);
-  routeTecKeypadShortcut(event, shortcut, keypad, () => vscode.postMessage({ type: 'reset' }));
+  routeTecKeypadShortcut(event, shortcut, keypad, () => {
+    releaseAllTecKeypadKeys(keypad);
+    vscode.postMessage({ type: 'reset' });
+  });
 });
 window.addEventListener('keyup', (event) => {
   routeTecKeypadKeyup(event, keypad);
 });
+window.addEventListener('blur', () => releaseAllTecKeypadKeys(keypad));
 
 window.addEventListener('beforeunload', () => {
+  releaseAllTecKeypadKeys(keypad);
   serialUi.dispose();
   sessionStatusController.dispose();
   stopOnEntryControl.dispose();

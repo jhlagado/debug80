@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import {
   isKeyboardControlTarget,
+  releaseAllTecKeypadKeys,
   routeTecKeypadKeyup,
   routeTecKeypadShortcut,
   wireKeypadFocusPanels,
@@ -123,5 +124,34 @@ describe('keypad focus routing', () => {
     expect(routeTecKeypadKeyup(event, localKeypad)).toBe(true);
     expect(localKeypad.setShiftLatched).toHaveBeenCalledWith(false);
     expect(event.defaultPrevented).toBe(true);
+  });
+
+  it('releases every held keypad key when focus is lost', () => {
+    document.body.innerHTML = '<main id="surface"></main>';
+    const localKeypad = createKeypad();
+    const surface = document.getElementById('surface')!;
+
+    routeTecKeypadShortcut(
+      dispatchKeyboardEvent(surface, 'keydown', 'A'),
+      { kind: 'key', code: 0x0a },
+      localKeypad,
+      vi.fn()
+    );
+    routeTecKeypadShortcut(
+      dispatchKeyboardEvent(surface, 'keydown', 'B'),
+      { kind: 'key', code: 0x0b },
+      localKeypad,
+      vi.fn()
+    );
+    localKeypad.shiftLatched = true;
+
+    releaseAllTecKeypadKeys(localKeypad);
+
+    expect(localKeypad.releaseKey).toHaveBeenCalledWith(0x0a | 0x20);
+    expect(localKeypad.releaseKey).toHaveBeenCalledWith(0x0b | 0x20);
+    expect(localKeypad.setShiftLatched).toHaveBeenCalledWith(false);
+    expect(routeTecKeypadKeyup(dispatchKeyboardEvent(surface, 'keyup', 'A'), localKeypad)).toBe(
+      false
+    );
   });
 });
