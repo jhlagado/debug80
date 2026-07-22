@@ -32,6 +32,11 @@ export type PanelLaunchOptions = {
   azmContractUpdateMode: AzmPanelContractUpdateMode;
 };
 
+type ProjectActionContext = {
+  projectConfig: string;
+  azm: ReturnType<typeof resolveAzmLaunchOptions>;
+};
+
 function resolveAzmLaunchOptions(options: PanelLaunchOptions):
   | {
       registerContracts: 'off' | 'audit' | 'error';
@@ -57,17 +62,17 @@ function resolveAzmLaunchOptions(options: PanelLaunchOptions):
   return { registerContracts: 'off' };
 }
 
-export async function startCurrentProjectDebugging(
+function resolveProjectActionContext(
   folder: vscode.WorkspaceFolder,
   workspaceSelection: WorkspaceSelectionController,
   options: PanelLaunchOptions
-): Promise<boolean> {
+): ProjectActionContext | undefined {
   const projectConfig = findProjectConfigPath(folder);
   if (projectConfig === undefined) {
     void vscode.window.showErrorMessage(
       `Debug80: Could not find a project config in ${folder.uri.fsPath}.`
     );
-    return false;
+    return undefined;
   }
 
   const targets = readProjectConfig(projectConfig)?.targets ?? {};
@@ -75,18 +80,29 @@ export async function startCurrentProjectDebugging(
     void vscode.window.showInformationMessage(
       'Debug80: This project has no targets yet. Pick a program file from the target dropdown first.'
     );
-    return false;
+    return undefined;
   }
 
   workspaceSelection.rememberWorkspace(folder);
-  const azm = resolveAzmLaunchOptions(options);
+  return { projectConfig, azm: resolveAzmLaunchOptions(options) };
+}
+
+export async function startCurrentProjectDebugging(
+  folder: vscode.WorkspaceFolder,
+  workspaceSelection: WorkspaceSelectionController,
+  options: PanelLaunchOptions
+): Promise<boolean> {
+  const context = resolveProjectActionContext(folder, workspaceSelection, options);
+  if (context === undefined) {
+    return false;
+  }
   return vscode.debug.startDebugging(folder, {
     type: 'z80',
     request: 'launch',
     name: 'Debug80: Current Project',
-    projectConfig,
+    projectConfig: context.projectConfig,
     stopOnEntry: options.stopOnEntry,
-    ...(azm !== undefined ? { azm } : {}),
+    ...(context.azm !== undefined ? { azm: context.azm } : {}),
   });
 }
 
@@ -97,30 +113,27 @@ export async function startCurrentProjectDebugging(
 export async function buildCurrentProjectTarget(
   folder: vscode.WorkspaceFolder,
   workspaceSelection: WorkspaceSelectionController,
+  targetSelection: ProjectTargetSelectionController,
   options: PanelLaunchOptions,
+  output: vscode.OutputChannel,
   setBuildStatus: (message: string | undefined, state?: 'neutral' | 'error') => void
 ): Promise<boolean> {
-  const projectConfig = findProjectConfigPath(folder);
-  if (projectConfig === undefined) {
-    void vscode.window.showErrorMessage(
-      `Debug80: Could not find a project config in ${folder.uri.fsPath}.`
-    );
+  const context = resolveProjectActionContext(folder, workspaceSelection, options);
+  if (context === undefined) {
+    return false;
+  }
+  const target = await targetSelection.resolveTarget(context.projectConfig, {
+    prompt: true,
+    placeHolder: 'Select the Debug80 target to build',
+  });
+  if (target === null || target === undefined) {
     return false;
   }
 
-  const targets = readProjectConfig(projectConfig)?.targets ?? {};
-  if (Object.keys(targets).length === 0) {
-    void vscode.window.showInformationMessage(
-      'Debug80: This project has no targets yet. Pick a program file from the target dropdown first.'
-    );
-    return false;
-  }
-
-  workspaceSelection.rememberWorkspace(folder);
-  const azm = resolveAzmLaunchOptions(options);
   const args: LaunchRequestArguments = {
-    projectConfig,
-    ...(azm !== undefined ? { azm } : {}),
+    projectConfig: context.projectConfig,
+    target,
+    ...(context.azm !== undefined ? { azm: context.azm } : {}),
   };
   const merged = populateFromConfig(args, {
     resolveBaseDir: (requestArgs) => resolveBaseDir(requestArgs),
@@ -138,28 +151,33 @@ export async function buildCurrentProjectTarget(
   try {
     await assembleIfRequested({
       backend: resolveAssemblerBackend(merged.assembler, asmPath),
-      args: merged,
+      args: { ...merged, assemble: true },
       asmPath,
       hexPath,
       sourceRoot: baseDir,
       platform: normalizePlatformName(merged),
-      sendEvent: () => undefined,
+      onOutput: (message) => output.append(message),
     });
   } catch (error) {
     if (error instanceof AssembleFailureError) {
       const diagnostic = error.result.diagnostic;
       const summary =
         diagnostic !== undefined ? formatAssemblyDiagnostic(diagnostic) : error.message;
-      setBuildStatus(summary.split('\n')[0] ?? 'Build failed.', 'error');
-      void vscode.window.showErrorMessage(`Debug80: Build failed. ${summary}`);
+      const firstLine = summary.split('\n')[0] ?? 'Unknown assembly error.';
+      setBuildStatus(`Build failed: ${firstLine}`, 'error');
+      output.appendLine(`Debug80: Build failed: ${summary}`);
+      output.show(true);
       return false;
     }
     setBuildStatus('Build failed.', 'error');
-    void vscode.window.showErrorMessage(`Debug80: Build failed. ${String(error)}`);
+    output.appendLine(`Debug80: Build failed: ${String(error)}`);
+    output.show(true);
     return false;
   }
 
-  setBuildStatus(`Build succeeded: ${path.relative(baseDir, hexPath)}`);
+  const successMessage = `Build succeeded: ${path.relative(baseDir, hexPath)}`;
+  setBuildStatus(successMessage);
+  output.appendLine(`Debug80: ${successMessage}`);
   return true;
 }
 

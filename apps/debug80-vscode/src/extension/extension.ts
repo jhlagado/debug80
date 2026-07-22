@@ -142,6 +142,7 @@ export function activate(context: vscode.ExtensionContext): Debug80Api {
     terminalPanel,
     workspaceSelection,
     targetSelection,
+    output,
   });
   registerDebugSessionHandlers({
     context,

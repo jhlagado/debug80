@@ -25,6 +25,7 @@ type CommandDependencies = {
   terminalPanel: TerminalPanelController;
   workspaceSelection: WorkspaceSelectionController;
   targetSelection: ProjectTargetSelectionController;
+  output: vscode.OutputChannel;
 };
 
 export function registerExtensionCommands({
@@ -34,6 +35,7 @@ export function registerExtensionCommands({
   terminalPanel,
   workspaceSelection,
   targetSelection,
+  output,
 }: CommandDependencies): void {
   registerProjectWorkspaceCommands({ context, platformViewProvider, workspaceSelection });
   registerPanelViewCommands({ context, platformViewProvider, sourceColumns, terminalPanel });
@@ -46,6 +48,7 @@ export function registerExtensionCommands({
     platformViewProvider,
     workspaceSelection,
     targetSelection,
+    output,
   });
   registerTargetCommands({ context, platformViewProvider, workspaceSelection, targetSelection });
   registerSerialCommands({ context, platformViewProvider, workspaceSelection });
