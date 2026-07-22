@@ -433,7 +433,8 @@
   width: 46px;
   height: 46px;
 }
-@container (max-width: 739px) {
+/* Keep the 720px hardware rows intact until a genuinely narrow, phone-like width. */
+@container (max-width: 520px) {
   .panel-ui,
   .panel-ui .tec1g-ui-frame,
   .panel-ui .tec1g-layout,
@@ -458,6 +459,38 @@
   .panel-ui .keypad-routing-cue {
     width: 100%;
     max-width: 100%;
+  }
+  .panel-displays .tec1g-ui-frame,
+  .panel-displays .peripheral-grid {
+    width: 100%;
+    max-width: 100%;
+  }
+  .panel-displays .peripheral-grid {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+  .panel-displays .glcd-stack {
+    width: min(var(--tec1g-glcd-panel-width), 100%);
+  }
+  .panel-displays .glcd-stack > .status {
+    width: 100%;
+    max-width: 100%;
+  }
+  .panel-displays .glcd-canvas {
+    height: auto;
+    aspect-ratio: 2 / 1;
+  }
+  .panel-displays .matrix {
+    width: min(var(--tec1g-matrix-panel-width), 100%);
+    max-width: 100%;
+  }
+  .panel-displays .matrix-grid {
+    width: 100%;
+    height: auto;
+    aspect-ratio: 1;
+    box-sizing: border-box;
   }
 }
 @container (max-width: 410px) {

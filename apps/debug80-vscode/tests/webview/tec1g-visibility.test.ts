@@ -65,12 +65,15 @@ describe('tec1g UI visibility controls', () => {
     expect(css).toContain('#35ff8f');
   });
 
-  it('stacks the keypad below the displays when the machine panel is narrow', () => {
+  it('stacks machine and peripheral displays only at a genuinely narrow width', () => {
     const css = fs.readFileSync(CSS_PATH, 'utf8');
-    const stackedLayout = cssBlock(css, '@container (max-width: 739px)');
+    const stackedLayout = cssBlock(css, '@container (max-width: 520px)');
     const narrowLayout = cssBlock(css, '@container (max-width: 410px)');
     const stackedHardwareGrid = cssBlock(stackedLayout, '.panel-ui .hardware-grid', 1);
     const stackedKeypadColumn = cssBlock(stackedLayout, '.panel-ui .hardware-keypad-col');
+    const stackedPeripheralGrid = cssBlock(stackedLayout, '.panel-displays .peripheral-grid', 1);
+    const stackedGlcd = cssBlock(stackedLayout, '.panel-displays .glcd-stack');
+    const stackedMatrix = cssBlock(stackedLayout, '.panel-displays .matrix');
     const narrowKeypadColumn = cssBlock(narrowLayout, '.panel-ui .hardware-keypad-col');
     const narrowKeypad = cssBlock(narrowLayout, '.panel-ui .hardware-keypad-col .keypad');
     const narrowKeycap = cssBlock(narrowLayout, '.panel-ui .hardware-keypad-col .keycap');
@@ -82,6 +85,10 @@ describe('tec1g UI visibility controls', () => {
     expect(stackedHardwareGrid).toContain('flex-direction: column');
     expect(stackedHardwareGrid).toContain('align-self: stretch');
     expect(stackedKeypadColumn).toContain('max-width: 100%');
+    expect(stackedPeripheralGrid).toContain('flex-direction: column');
+    expect(stackedPeripheralGrid).toContain('align-items: center');
+    expect(stackedGlcd).toContain('width: min(var(--tec1g-glcd-panel-width), 100%)');
+    expect(stackedMatrix).toContain('width: min(var(--tec1g-matrix-panel-width), 100%)');
     expect(narrowKeypadColumn).toContain('width: min(302px, 100%)');
     expect(narrowKeypad).toContain('grid-template-columns: repeat(6, minmax(0, 42px))');
     expect(narrowKeypad).toContain('box-sizing: border-box');
