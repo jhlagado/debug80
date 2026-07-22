@@ -43,6 +43,17 @@ describe('tec1g UI visibility controls', () => {
     expect(css).toContain('#35ff8f');
   });
 
+  it('stacks the keypad below the displays when the machine panel is narrow', () => {
+    const css = fs.readFileSync(CSS_PATH, 'utf8');
+
+    expect(css).toContain('@container (max-width: 739px)');
+    expect(css).toContain('.panel-ui .hardware-grid');
+    expect(css).toContain('flex-direction: column');
+    expect(css).toContain('align-self: stretch');
+    expect(css).toContain('@container (max-width: 410px)');
+    expect(css).toContain('grid-template-columns: repeat(6, 42px)');
+  });
+
   it('splits the TEC-1G hardware and displays into separate accordion panels', () => {
     const panelUi = doc.querySelector('#panel-ui');
     const projectContent = doc.querySelector('#accordion-project');
