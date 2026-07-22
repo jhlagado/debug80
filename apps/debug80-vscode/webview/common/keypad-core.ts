@@ -42,7 +42,7 @@ export function createKeypadCore(
   let shiftLatched = false;
   let onShiftChange: ((latched: boolean) => void) | null = null;
   let pressGeneration = 0;
-  const activePresses = new Map<number, KeypadPressHandle>();
+  const activePresses = new Map<number, Map<number, KeypadPressHandle>>();
 
   keypadEl.tabIndex = 0;
   keypadEl.addEventListener('mousedown', (e) => {
@@ -66,24 +66,32 @@ export function createKeypadCore(
   function pressKey(code: number): KeypadPressHandle {
     const adjusted = adjustForShift(code);
     const press = { code: adjusted, generation: ++pressGeneration };
-    activePresses.set(adjusted, press);
-    vscode.postMessage({ type: 'key', code: adjusted, pressed: true });
+    const owners = activePresses.get(adjusted) ?? new Map<number, KeypadPressHandle>();
+    const firstOwner = owners.size === 0;
+    owners.set(press.generation, press);
+    activePresses.set(adjusted, owners);
+    if (firstOwner) {
+      vscode.postMessage({ type: 'key', code: adjusted, pressed: true });
+    }
     return press;
   }
 
   function releaseKey(press: KeypadPressHandle): void {
-    if (activePresses.get(press.code)?.generation !== press.generation) {
+    const owners = activePresses.get(press.code);
+    if (!owners?.delete(press.generation)) {
       return;
     }
-    activePresses.delete(press.code);
-    vscode.postMessage({ type: 'key', code: press.code, pressed: false });
+    if (owners.size === 0) {
+      activePresses.delete(press.code);
+      vscode.postMessage({ type: 'key', code: press.code, pressed: false });
+    }
   }
 
   function releaseAllKeys(): void {
-    const presses = Array.from(activePresses.values());
+    const activeCodes = Array.from(activePresses.keys());
     activePresses.clear();
-    for (const press of presses) {
-      vscode.postMessage({ type: 'key', code: press.code, pressed: false });
+    for (const code of activeCodes) {
+      vscode.postMessage({ type: 'key', code, pressed: false });
     }
   }
 

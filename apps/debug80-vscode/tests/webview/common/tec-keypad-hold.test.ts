@@ -55,9 +55,33 @@ describe('on-screen TEC keypad holds', () => {
     const physicalPress = keypad.pressKey(0x12);
     vi.advanceTimersByTime(40);
 
+    expect(messages.filter(isPressMessage)).toHaveLength(1);
     expect(messages.filter(isReleaseMessage)).toEqual([]);
 
     keypad.releaseKey(physicalPress);
+    expect(messages.filter(isReleaseMessage)).toHaveLength(1);
+  });
+
+  it('keeps a pointer press active after an overlapping physical release', () => {
+    const messages: unknown[] = [];
+    const keypadElement = document.getElementById('keypad')!;
+    const keypad = createTecKeypad(
+      { postMessage: (message) => messages.push(message) },
+      keypadElement
+    );
+    const goKey = Array.from(keypadElement.querySelectorAll<HTMLElement>('.keycap')).find(
+      (element) => element.textContent === 'GO'
+    );
+
+    goKey?.dispatchEvent(new Event('pointerdown', { bubbles: true, cancelable: true }));
+    const physicalPress = keypad.pressKey(0x12);
+    keypad.releaseKey(physicalPress);
+
+    expect(messages.filter(isPressMessage)).toHaveLength(1);
+    expect(messages.filter(isReleaseMessage)).toHaveLength(0);
+
+    vi.advanceTimersByTime(80);
+    goKey?.dispatchEvent(new Event('pointerup', { bubbles: true }));
     expect(messages.filter(isReleaseMessage)).toHaveLength(1);
   });
 
