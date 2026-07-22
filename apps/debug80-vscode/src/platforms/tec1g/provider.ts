@@ -161,7 +161,7 @@ function buildTec1gContribution(context: PlatformCommandContext): PlatformContri
         sendPlatformResponse(response, context.handleMatrixModeRequest(args), context),
       'debug80/tec1gJoystick': (response, args) =>
         sendPlatformResponse(response, context.handleJoystickRequest(args), context),
-      'debug80/tec1gReleaseInputs': (response) => {
+      'debug80/tec1gReleaseInputs': (response): boolean => {
         const runtime = context.sessionState.tec1gRuntime;
         (
           runtime as (typeof runtime & { releaseInputs?: () => void }) | undefined
