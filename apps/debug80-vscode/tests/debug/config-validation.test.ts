@@ -270,6 +270,21 @@ describe('config-validation', () => {
       const result = validateSimpleConfig({ appStart: -1 });
       expect(result.valid).toBe(false);
     });
+
+    it('should require binary range bounds as a pair', () => {
+      expect(validateSimpleConfig({ binFrom: 0x8000 }).errors).toContain(
+        'simple.binFrom and simple.binTo must be specified together'
+      );
+      expect(validateSimpleConfig({ binTo: 0xffff }).errors).toContain(
+        'simple.binFrom and simple.binTo must be specified together'
+      );
+    });
+
+    it('should reject reversed binary ranges', () => {
+      expect(validateSimpleConfig({ binFrom: 0x9000, binTo: 0x8000 }).errors).toContain(
+        'simple.binFrom must be less than or equal to simple.binTo, got 36864 > 32768'
+      );
+    });
   });
 
   // ==========================================================================
@@ -963,6 +978,7 @@ describe('config-validation', () => {
           'terminal.txPort must be between 0 and 255, got 300',
           'terminal.interrupt must be a boolean, got string',
           'simple.binFrom must be between 0 and 0xffff, got -1 (0x-1)',
+          'simple.binFrom and simple.binTo must be specified together',
           'tec1 must be an object, got string',
           'tec1g.expansionRomHex must be a string, got number',
         ],
