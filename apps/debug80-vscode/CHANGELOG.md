@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.5 - 2026-07-23
+
+- Updated AZM to `^0.3.8`, preserving assembler output when source files
+  produce warnings without fatal errors.
+- Added recent Debug80 UI and launch improvements: target management, explicit
+  Run/Build controls, TEC keypad focus and hold handling, responsive TEC-1G
+  panels, seven-segment scan replay, and stricter launch validation.
+- Ignored local `.claude/` settings so editor-agent state does not enter the
+  repository or block release gates.
+
 ## 0.2.4 - 2026-07-18
 
 - Updated AZM to `^0.3.7` and Glimmer to `^0.6.2`: the AZM CLI now writes the
