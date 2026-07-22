@@ -34,6 +34,17 @@ export async function assembleIfRequested(options: {
     return;
   }
 
+  const binaryRange =
+    platform === 'simple' && simpleConfig?.binFrom !== undefined && simpleConfig.binTo !== undefined
+      ? { binFrom: simpleConfig.binFrom, binTo: simpleConfig.binTo }
+      : undefined;
+  if (binaryRange !== undefined && backend.assembleBin === undefined) {
+    throw new AssembleFailureError({
+      success: false,
+      error: `${backend.id} does not support simple.binFrom/simple.binTo; ranged Simple binaries currently require the AZM backend.`,
+    });
+  }
+
   const result = await backend.assemble({
     asmPath,
     hexPath,
@@ -53,16 +64,12 @@ export async function assembleIfRequested(options: {
     });
   }
 
-  if (
-    platform === 'simple' &&
-    simpleConfig?.binFrom !== undefined &&
-    simpleConfig.binTo !== undefined
-  ) {
-    const binResult = await backend.assembleBin?.({
+  if (binaryRange !== undefined && backend.assembleBin !== undefined) {
+    const binResult = await backend.assembleBin({
       asmPath,
       hexPath,
-      binFrom: simpleConfig.binFrom,
-      binTo: simpleConfig.binTo,
+      binFrom: binaryRange.binFrom,
+      binTo: binaryRange.binTo,
       ...(sourceRoot !== undefined ? { sourceRoot } : {}),
       ...(args.azm !== undefined ? { azm: args.azm } : {}),
       onOutput: (message) => {
@@ -72,7 +79,7 @@ export async function assembleIfRequested(options: {
         }
       },
     });
-    if (binResult && !binResult.success) {
+    if (!binResult.success) {
       throw new AssembleFailureError({
         ...binResult,
         error: binResult.error ?? `${backend.id} failed to build binary`,
