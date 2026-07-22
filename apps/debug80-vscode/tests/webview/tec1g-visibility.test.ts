@@ -26,6 +26,25 @@ function buildDom(): Document {
   return document;
 }
 
+function cssBlock(source: string, marker: string): string {
+  const markerIndex = source.indexOf(marker);
+  const openBrace = source.indexOf('{', markerIndex);
+  expect(markerIndex).toBeGreaterThanOrEqual(0);
+  expect(openBrace).toBeGreaterThan(markerIndex);
+  let depth = 0;
+  for (let index = openBrace; index < source.length; index += 1) {
+    if (source[index] === '{') {
+      depth += 1;
+    } else if (source[index] === '}') {
+      depth -= 1;
+      if (depth === 0) {
+        return source.slice(openBrace + 1, index);
+      }
+    }
+  }
+  throw new Error(`Unclosed CSS block: ${marker}`);
+}
+
 describe('tec1g UI visibility controls', () => {
   let doc: Document;
 
@@ -45,13 +64,17 @@ describe('tec1g UI visibility controls', () => {
 
   it('stacks the keypad below the displays when the machine panel is narrow', () => {
     const css = fs.readFileSync(CSS_PATH, 'utf8');
+    const stackedLayout = cssBlock(css, '@container (max-width: 739px)');
+    const narrowLayout = cssBlock(css, '@container (max-width: 410px)');
 
-    expect(css).toContain('@container (max-width: 739px)');
-    expect(css).toContain('.panel-ui .hardware-grid');
-    expect(css).toContain('flex-direction: column');
-    expect(css).toContain('align-self: stretch');
-    expect(css).toContain('@container (max-width: 410px)');
-    expect(css).toContain('grid-template-columns: repeat(6, 42px)');
+    expect(stackedLayout).toContain('.panel-ui .hardware-grid');
+    expect(stackedLayout).toContain('flex-direction: column');
+    expect(stackedLayout).toContain('align-self: stretch');
+    expect(narrowLayout).toContain('width: min(302px, 100%)');
+    expect(narrowLayout).toContain('grid-template-columns: repeat(6, minmax(0, 42px))');
+    expect(narrowLayout).toContain('box-sizing: border-box');
+    expect(narrowLayout).toContain('aspect-ratio: 1');
+    expect(narrowLayout).toContain('height: clamp(3px, 1.5cqw, 8px)');
   });
 
   it('splits the TEC-1G hardware and displays into separate accordion panels', () => {
@@ -207,9 +230,8 @@ describe('tec1g UI visibility controls', () => {
     expect(source).toContain("vscode.postMessage({ type: 'matrixMode', enabled: open })");
     expect(source).toContain('function reassertMatrixKeyboardOpenState()');
     expect(source).toContain('function applyMatrixKeyboardCapture(captured: boolean)');
-    expect(source).toContain(
-      "window.addEventListener('blur', () => applyMatrixKeyboardCapture(false))"
-    );
+    expect(source).toContain("window.addEventListener('blur', () => {");
+    expect(source).toContain('applyMatrixKeyboardCapture(false)');
     expect(source).toContain("message.status === 'running' || message.status === 'paused'");
     expect(source).toContain('if (message.matrixMode === false)');
   });

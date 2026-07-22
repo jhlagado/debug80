@@ -462,17 +462,34 @@
 }
 @container (max-width: 410px) {
   .panel-ui .hardware-keypad-col {
-    width: 302px;
+    width: min(302px, 100%);
+    min-width: 0;
   }
   .panel-ui .hardware-keypad-col .keypad {
-    grid-template-columns: repeat(6, 42px);
-    grid-template-rows: repeat(4, 42px);
-    width: 282px;
-    max-width: calc(100% - 20px);
+    box-sizing: border-box;
+    grid-template-columns: repeat(6, minmax(0, 42px));
+    grid-template-rows: repeat(4, auto);
+    justify-content: space-between;
+    width: 100%;
+    max-width: 302px;
+    padding: clamp(6px, 2.5cqw, 10px);
   }
   .panel-ui .hardware-keypad-col .keycap {
-    width: 42px;
-    height: 42px;
+    width: 100%;
+    min-width: 0;
+    height: auto;
+    aspect-ratio: 1;
+  }
+  .panel-ui .hardware-keypad-col .sysctrl {
+    flex-direction: column;
+    justify-content: space-evenly;
+    gap: 2px;
+    min-width: 0;
+    padding: 4px;
+  }
+  .panel-ui .hardware-keypad-col .sysctrl-seg {
+    width: min(100%, 12px);
+    height: clamp(3px, 1.5cqw, 8px);
   }
   .panel-ui .keypad-routing-cue {
     flex-wrap: wrap;
