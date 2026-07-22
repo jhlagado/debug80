@@ -38,10 +38,16 @@ function createKeypad(): KeypadKeyTarget & {
   return keypad;
 }
 
-function dispatchKeyboardEvent(target: EventTarget, type: string, key: string): KeyboardEvent {
+function dispatchKeyboardEvent(
+  target: EventTarget,
+  type: string,
+  key: string,
+  code = ''
+): KeyboardEvent {
   const event = new KeyboardEvent(type, {
     bubbles: true,
     cancelable: true,
+    code,
     key,
   });
   target.dispatchEvent(event);
@@ -97,6 +103,41 @@ describe('keypad focus routing', () => {
       code: 0x0a | 0x20,
       generation: 0x0a,
     });
+  });
+
+  it('uses the stable physical key code when modifier state changes the key value', () => {
+    document.body.innerHTML = '<main id="surface"></main>';
+    const localKeypad = createKeypad();
+    const surface = document.getElementById('surface')!;
+
+    routeTecKeypadShortcut(
+      dispatchKeyboardEvent(surface, 'keydown', 'A', 'KeyA'),
+      { kind: 'key', code: 0x0a },
+      localKeypad,
+      vi.fn()
+    );
+
+    expect(
+      routeTecKeypadKeyup(dispatchKeyboardEvent(surface, 'keyup', 'a', 'KeyA'), localKeypad)
+    ).toBe(true);
+    expect(localKeypad.releaseKey).toHaveBeenCalledTimes(1);
+  });
+
+  it('passes the latched Fn state to reset before clearing it', () => {
+    document.body.innerHTML = '<main id="surface"></main>';
+    const localKeypad = createKeypad();
+    const reset = vi.fn();
+    localKeypad.shiftLatched = true;
+
+    routeTecKeypadShortcut(
+      dispatchKeyboardEvent(document.getElementById('surface')!, 'keydown', 'Escape', 'Escape'),
+      { kind: 'reset' },
+      localKeypad,
+      reset
+    );
+
+    expect(reset).toHaveBeenCalledWith({ fn: true });
+    expect(localKeypad.shiftLatched).toBe(false);
   });
 
   it('does not route shortcut keys from controls or already-consumed events', () => {

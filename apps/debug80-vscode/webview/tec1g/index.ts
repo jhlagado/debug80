@@ -515,8 +515,7 @@ window.addEventListener(
     }
     if (keyboardOwner.getOwner() === 'keypad') {
       const shortcut = resolveTecKeypadShortcut(event.key);
-      routeTecKeypadShortcut(event, shortcut, keypad, () => {
-        const fn = keypad.getShiftLatched();
+      routeTecKeypadShortcut(event, shortcut, keypad, ({ fn }) => {
         releaseAllTecKeypadKeys(keypad);
         vscode.postMessage(fn ? { type: 'reset', fn: true } : { type: 'reset' });
       });
