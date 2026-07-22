@@ -85,9 +85,9 @@ describe('launch-pipeline', () => {
     ).rejects.toThrow('bad bin');
   });
 
-  it('skips binary assembly when backend does not support it', async () => {
+  it('rejects ranged binaries when the backend does not support them', async () => {
     const noBinBackend: AssemblerBackend = {
-      id: backend.id,
+      id: 'glimmer',
       assemble: backend.assemble,
     };
 
@@ -96,7 +96,10 @@ describe('launch-pipeline', () => {
         backend: noBinBackend,
         simpleConfig: simpleBinaryConfig(),
       })
-    ).resolves.toBeUndefined();
+    ).rejects.toThrow(
+      'glimmer does not support simple.binFrom/simple.binTo; ranged Simple binaries currently require the AZM backend.'
+    );
+    expect(backend.assemble).not.toHaveBeenCalled();
   });
 
   it('uses the backend id in fallback error messages', async () => {
