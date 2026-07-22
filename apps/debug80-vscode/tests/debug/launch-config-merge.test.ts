@@ -214,6 +214,39 @@ describe('launch-config-merge', () => {
     ]);
   });
 
+  it('hydrates a bundled ROM when the configured ROM path is null', () => {
+    const manifest = {
+      platform: 'tec1g',
+      tec1g: { romHex: null },
+      bundledAssets: { romHex: { bundleId: 'tec1g/mon3', path: 'mon3.bin' } },
+      targets: { app: { asm: 'src/app.asm' } },
+    } as unknown as LaunchConfigManifest;
+
+    const merged = mergeForTarget(manifest, 'app', launchArgs(), {
+      resolveBundledAssetPath: (reference) =>
+        reference.path === 'mon3.bin' ? '/extension/tec1g/mon3/mon3.bin' : undefined,
+    });
+
+    expect(merged.tec1g?.romHex).toBe('/extension/tec1g/mon3/mon3.bin');
+    expect(() => assertValidLaunchArgs(merged)).not.toThrow();
+  });
+
+  it('preserves malformed debug maps instead of applying a bundled map', () => {
+    const manifest = {
+      platform: 'tec1g',
+      debugMaps: 42,
+      bundledAssets: { romHex: { bundleId: 'tec1g/mon3', path: 'mon3.bin' } },
+      targets: { app: { asm: 'src/app.asm' } },
+    } as unknown as LaunchConfigManifest;
+
+    const merged = mergeForTarget(manifest, 'app', launchArgs(), {
+      resolveBundledAssetPath: (reference) => `/extension/${reference.path ?? 'asset'}`,
+    });
+
+    expect(merged.debugMaps).toBe(42);
+    expect(() => assertValidLaunchArgs(merged)).toThrow('debugMaps must be an array');
+  });
+
   it('preserves a malformed root TEC-1G block through sibling ROM inheritance', () => {
     const manifest = {
       platform: 'tec1g',
@@ -306,6 +339,22 @@ describe('launch-config-merge', () => {
     expect(() => assertValidLaunchArgs(requestMalformed)).toThrow(
       'tec1g.expansionRomHex must be a string'
     );
+  });
+
+  it('inherits a malformed sibling ROM path so validation can report it', () => {
+    const merged = mergeForTarget(
+      {
+        platform: 'tec1g',
+        targets: {
+          app: { asm: 'src/app.asm', tec1g: { appStart: 0x4000 } },
+          monitor: { tec1g: { romHex: 42 as never } },
+        },
+      },
+      'app'
+    );
+
+    expect(merged.tec1g?.romHex).toBe(42);
+    expect(() => assertValidLaunchArgs(merged)).toThrow('tec1g.romHex must be a string');
   });
 });
 

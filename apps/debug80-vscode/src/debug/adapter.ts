@@ -238,24 +238,25 @@ export class Z80DebugSession extends DebugSession {
     resetSessionState(this.sessionState);
     this.breakpointManager.reset();
     const launchLogger = createLaunchLogger(this.logger, (event) => this.sendEvent(event));
-    const merged: LaunchRequestArguments = populateFromConfig(args, {
-      resolveBaseDir: (requestArgs) => resolveBaseDir(requestArgs),
-    });
-    this.sessionState.launch.launchArgs = merged;
-    this.sessionState.runState.stopOnEntry = merged.stopOnEntry === true;
-    setDiagnosticsEnabled(merged.diagnostics === true);
-
-    if (!hasLaunchInputs(merged)) {
-      await respondToMissingLaunchInputs(
-        response,
-        () => this.promptForConfigCreation(),
-        (launchResponse, id, message) => this.sendErrorResponse(launchResponse, id, message)
-      );
-      return;
-    }
 
     try {
+      const merged: LaunchRequestArguments = populateFromConfig(args, {
+        resolveBaseDir: (requestArgs) => resolveBaseDir(requestArgs),
+      });
+      this.sessionState.launch.launchArgs = merged;
+      this.sessionState.runState.stopOnEntry = merged.stopOnEntry === true;
+      setDiagnosticsEnabled(merged.diagnostics === true);
+
       assertValidLaunchArgs(merged);
+      if (!hasLaunchInputs(merged)) {
+        await respondToMissingLaunchInputs(
+          response,
+          () => this.promptForConfigCreation(),
+          (launchResponse, id, message) => this.sendErrorResponse(launchResponse, id, message)
+        );
+        return;
+      }
+
       const artifacts = await buildLaunchSession(
         merged,
         createLaunchSequenceContext({

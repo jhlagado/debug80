@@ -205,6 +205,11 @@ function hasNonEmptyRomHex(config: Tec1gPlatformConfig | undefined): config is T
   return typeof config?.romHex === 'string' && config.romHex.trim() !== '';
 }
 
+function hasRomHexForInheritance(config: Tec1gPlatformConfig | undefined): boolean {
+  const romHex = config?.romHex;
+  return isMalformedPathField(romHex) || (typeof romHex === 'string' && romHex.trim() !== '');
+}
+
 function resolveProfilePlatform(
   profileName: string | undefined,
   cfg: LaunchConfigManifest
@@ -357,7 +362,7 @@ function resolveTec1gBaseForMerge(cfg: {
     return root;
   }
   const names = Object.keys(cfg.targets ?? {}).sort((a, b) => a.localeCompare(b));
-  const inherited = names.map((name) => cfg.targets?.[name]?.tec1g).find(hasNonEmptyRomHex);
+  const inherited = names.map((name) => cfg.targets?.[name]?.tec1g).find(hasRomHexForInheritance);
   if (inherited === undefined) {
     return root;
   }
@@ -539,11 +544,15 @@ function applyBundledRomPath(
       : platform === 'tec1g'
         ? merged.tec1g?.romHex
         : undefined;
-  if (candidateRomHex !== undefined && typeof candidateRomHex !== 'string') {
+  if (
+    candidateRomHex !== undefined &&
+    candidateRomHex !== null &&
+    typeof candidateRomHex !== 'string'
+  ) {
     return;
   }
   const resolvedRomHex = resolveBundledAssetRuntimePath(
-    candidateRomHex,
+    candidateRomHex ?? undefined,
     options.bundledRomReference,
     options.workspaceRoot,
     options.mergeOptions
@@ -576,7 +585,15 @@ function applyBundledDebugMapPath(
     options
   );
   if (resolvedDebugMap !== undefined) {
-    const existing = merged.debugMaps ?? [];
+    const configuredDebugMaps: unknown = merged.debugMaps;
+    if (
+      configuredDebugMaps !== undefined &&
+      configuredDebugMaps !== null &&
+      !Array.isArray(configuredDebugMaps)
+    ) {
+      return;
+    }
+    const existing = (configuredDebugMaps ?? []) as string[];
     merged.debugMaps = existing.includes(resolvedDebugMap)
       ? existing
       : [...existing, resolvedDebugMap];
