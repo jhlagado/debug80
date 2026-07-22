@@ -986,6 +986,7 @@ function collectLaunchValidationResults(args: LaunchRequestArguments): Validatio
     ...LAUNCH_BOOLEAN_FIELDS.map((field) => validateBoolean(args[field], field)),
     validatePlatform(args.platform),
     validateStringArray(args.sourceRoots, 'sourceRoots'),
+    validateStringArray(args.debugMaps, 'debugMaps'),
     ...LAUNCH_INSTRUCTION_LIMIT_FIELDS.map((field) => validateInstructionLimit(args[field], field)),
     validateTerminalConfig(args.terminal),
     validateSimpleConfig(args.simple),

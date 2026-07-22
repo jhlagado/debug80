@@ -280,6 +280,30 @@ describe('adapter integration', () => {
     }
   });
 
+  it('reports malformed ROM-only launch input before probing it', async () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-invalid-rom-launch-'));
+    try {
+      workspace.workspaceFolders = [{ uri: { fsPath: root } }];
+      const { client } = harness!;
+      await initialize(client);
+      const outputEvent = client.waitForEvent<{ body?: { output?: string } }>('output');
+
+      await expect(
+        client.sendRequest('launch', {
+          platform: 'tec1g',
+          tec1g: { romArtifacts: { role: 'monitor' } },
+          ...defaultLaunchFlags,
+        })
+      ).rejects.toThrow('Failed to load program');
+
+      expect((await outputEvent).body?.output).toContain(
+        'tec1g.romArtifacts must be an array, got object'
+      );
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   it('routes built-in memory snapshot requests through the adapter after launch', async () => {
     const { client } = harness!;
 

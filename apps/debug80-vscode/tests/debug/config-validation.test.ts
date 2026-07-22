@@ -964,6 +964,15 @@ describe('config-validation', () => {
       expect(result.errors.length).toBeGreaterThan(1);
     });
 
+    it('should reject malformed debug map lists', () => {
+      expect(validateLaunchArgs({ debugMaps: 'build/main.d8.json' }).errors).toEqual([
+        'debugMaps must be an array, got string',
+      ]);
+      expect(validateLaunchArgs({ debugMaps: ['build/main.d8.json', 42] }).errors).toEqual([
+        'debugMaps[1] must be a string, got number',
+      ]);
+    });
+
     it('preserves nested platform and terminal field names in collected errors', () => {
       const result = validateLaunchArgs({
         terminal: { txPort: 300, interrupt: 'yes' },
