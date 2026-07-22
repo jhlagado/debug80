@@ -179,6 +179,9 @@ export function tec1gUpdatePayloadFromDebugEventBody(
   if (typeof payload.segmentClockHz === 'number') {
     update.segmentClockHz = payload.segmentClockHz;
   }
+  if (payload.segmentScanStopped === true) {
+    update.segmentScanStopped = true;
+  }
   const matrixGreen = payload.matrixGreen;
   if (isNumberArray(matrixGreen)) {
     update.matrixGreen = matrixGreen;

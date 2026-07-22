@@ -62,6 +62,7 @@ describe('TEC-1 update payload serialization', () => {
         segmentScanCycles: [segmentScan],
         segmentDroppedScanCycles: 4,
         segmentClockHz: 400_000,
+        segmentScanStopped: true,
       })
     ).toMatchObject({
       speaker: 1,
@@ -70,6 +71,7 @@ describe('TEC-1 update payload serialization', () => {
       segmentScanCycles: [segmentScan],
       segmentDroppedScanCycles: 4,
       segmentClockHz: 400_000,
+      segmentScanStopped: true,
     });
   });
 
@@ -174,6 +176,7 @@ describe('TEC-1G update payload serialization', () => {
       segmentScanCycles: [segmentScan],
       segmentDroppedScanCycles: 3,
       segmentClockHz: 4_000_000,
+      segmentScanStopped: true,
       glcdDdram: [0x20],
     });
     expect(payload).toMatchObject({
@@ -184,6 +187,7 @@ describe('TEC-1G update payload serialization', () => {
       segmentScanCycles: [segmentScan],
       segmentDroppedScanCycles: 3,
       segmentClockHz: 4_000_000,
+      segmentScanStopped: true,
       glcdDdram: [0x20],
     });
   });

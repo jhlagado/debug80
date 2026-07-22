@@ -7,6 +7,7 @@ function createHarness() {
   const segmentPlayer = {
     enqueue: vi.fn(),
     renderStatic: vi.fn(),
+    stop: vi.fn(),
   };
   const audio = {
     setSpeakerHz: vi.fn(),
@@ -82,6 +83,24 @@ describe('TEC-1 platform update application', () => {
     expect(harness.speakerHzEl.textContent).toBe('');
     expect(harness.audio.setSpeakerHz).toHaveBeenCalledWith(0);
     expect(harness.audio.updateAudio).toHaveBeenCalledTimes(2);
+  });
+
+  it('stops buffered scan playback before applying an idle blank', () => {
+    const harness = createHarness();
+    const blank = new Array(48).fill(0);
+
+    harness.applyUpdate({
+      digits: [0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f],
+      segmentIntensities: blank,
+      segmentScanStopped: true,
+    });
+
+    expect(harness.segmentPlayer.stop).toHaveBeenCalledOnce();
+    expect(harness.segmentPlayer.renderStatic).toHaveBeenCalledWith(
+      [0x3f, 0x3f, 0x3f, 0x3f, 0x3f, 0x3f],
+      blank
+    );
+    expect(harness.segmentPlayer.enqueue).not.toHaveBeenCalled();
   });
 
   it('applies valid speed changes and forwards payloads to display renderers', () => {

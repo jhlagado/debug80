@@ -33,15 +33,20 @@ export function applyTec1gPlatformUpdate(
     return;
   }
   const data = payload;
-  if (Array.isArray(data.segmentScanCycles)) {
-    deps.segmentPlayer.enqueue(
-      data.segmentScanCycles,
-      data.segmentDroppedScanCycles,
-      data.segmentClockHz
-    );
-  }
-  if (Array.isArray(data.segmentIntensities) || Array.isArray(data.digits)) {
+  if (data.segmentScanStopped === true) {
+    deps.segmentPlayer.stop();
     deps.segmentPlayer.renderStatic(data.digits, data.segmentIntensities);
+  } else {
+    if (Array.isArray(data.segmentScanCycles)) {
+      deps.segmentPlayer.enqueue(
+        data.segmentScanCycles,
+        data.segmentDroppedScanCycles,
+        data.segmentClockHz
+      );
+    }
+    if (Array.isArray(data.segmentIntensities) || Array.isArray(data.digits)) {
+      deps.segmentPlayer.renderStatic(data.digits, data.segmentIntensities);
+    }
   }
 
   deps.audio.applySpeakerFromUpdate(data);

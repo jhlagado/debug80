@@ -116,6 +116,9 @@ export function tec1UpdatePayloadFromDebugEventBody(body: unknown): Tec1UpdatePa
   if (typeof raw.segmentClockHz === 'number') {
     payload.segmentClockHz = raw.segmentClockHz;
   }
+  if (raw.segmentScanStopped === true) {
+    payload.segmentScanStopped = true;
+  }
   const hz = raw.speakerHz;
   if (typeof hz === 'number') {
     payload.speakerHz = hz;
