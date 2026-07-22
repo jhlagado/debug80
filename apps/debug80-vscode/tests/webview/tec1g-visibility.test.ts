@@ -26,8 +26,11 @@ function buildDom(): Document {
   return document;
 }
 
-function cssBlock(source: string, marker: string): string {
-  const markerIndex = source.indexOf(marker);
+function cssBlock(source: string, marker: string, occurrence = 0): string {
+  let markerIndex = -1;
+  for (let index = 0; index <= occurrence; index += 1) {
+    markerIndex = source.indexOf(marker, markerIndex + 1);
+  }
   const openBrace = source.indexOf('{', markerIndex);
   expect(markerIndex).toBeGreaterThanOrEqual(0);
   expect(openBrace).toBeGreaterThan(markerIndex);
@@ -66,15 +69,24 @@ describe('tec1g UI visibility controls', () => {
     const css = fs.readFileSync(CSS_PATH, 'utf8');
     const stackedLayout = cssBlock(css, '@container (max-width: 739px)');
     const narrowLayout = cssBlock(css, '@container (max-width: 410px)');
+    const stackedHardwareGrid = cssBlock(stackedLayout, '.panel-ui .hardware-grid', 1);
+    const stackedKeypadColumn = cssBlock(stackedLayout, '.panel-ui .hardware-keypad-col');
+    const narrowKeypadColumn = cssBlock(narrowLayout, '.panel-ui .hardware-keypad-col');
+    const narrowKeypad = cssBlock(narrowLayout, '.panel-ui .hardware-keypad-col .keypad');
+    const narrowKeycap = cssBlock(narrowLayout, '.panel-ui .hardware-keypad-col .keycap');
+    const narrowSysCtrlSegment = cssBlock(
+      narrowLayout,
+      '.panel-ui .hardware-keypad-col .sysctrl-seg'
+    );
 
-    expect(stackedLayout).toContain('.panel-ui .hardware-grid');
-    expect(stackedLayout).toContain('flex-direction: column');
-    expect(stackedLayout).toContain('align-self: stretch');
-    expect(narrowLayout).toContain('width: min(302px, 100%)');
-    expect(narrowLayout).toContain('grid-template-columns: repeat(6, minmax(0, 42px))');
-    expect(narrowLayout).toContain('box-sizing: border-box');
-    expect(narrowLayout).toContain('aspect-ratio: 1');
-    expect(narrowLayout).toContain('height: clamp(3px, 1.5cqw, 8px)');
+    expect(stackedHardwareGrid).toContain('flex-direction: column');
+    expect(stackedHardwareGrid).toContain('align-self: stretch');
+    expect(stackedKeypadColumn).toContain('max-width: 100%');
+    expect(narrowKeypadColumn).toContain('width: min(302px, 100%)');
+    expect(narrowKeypad).toContain('grid-template-columns: repeat(6, minmax(0, 42px))');
+    expect(narrowKeypad).toContain('box-sizing: border-box');
+    expect(narrowKeycap).toContain('aspect-ratio: 1');
+    expect(narrowSysCtrlSegment).toContain('height: clamp(3px, 1.5cqw, 8px)');
   });
 
   it('splits the TEC-1G hardware and displays into separate accordion panels', () => {
