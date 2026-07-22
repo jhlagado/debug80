@@ -94,6 +94,31 @@ describe('debug session actions', () => {
     expect(showErrorMessage).not.toHaveBeenCalled();
   });
 
+  it('rejects malformed merged Simple binary ranges before assembly', async () => {
+    fs.writeFileSync(
+      path.join(root, 'debug80.json'),
+      JSON.stringify({
+        defaultTarget: 'second',
+        targets: {
+          second: {
+            sourceFile: 'second.asm',
+            platform: 'simple',
+            simple: { binFrom: 0x4000 },
+          },
+        },
+      })
+    );
+    const harness = await createBuildHarness('second');
+
+    await expect(harness.build()).resolves.toBe(false);
+
+    expect(assembleIfRequested).not.toHaveBeenCalled();
+    expect(harness.setBuildStatus).toHaveBeenCalledWith('Build failed.', 'error');
+    expect(harness.output.appendLine).toHaveBeenCalledWith(
+      expect.stringContaining('simple.binFrom and simple.binTo must be specified together')
+    );
+  });
+
   async function createBuildHarness(target: string) {
     const { buildCurrentProjectTarget } = await import('../../src/extension/debug-session-actions');
     const folder = { name: 'project', index: 0, uri: { fsPath: root } };

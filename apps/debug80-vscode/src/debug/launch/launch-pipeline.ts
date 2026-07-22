@@ -8,6 +8,26 @@ import type { AssemblerBackend } from './assembler-backend';
 import type { LaunchRequestArguments } from '../session/types';
 import { emitConsoleOutput, type EventSender } from '../session/adapter-ui';
 
+function resolveSimpleBinaryRange(
+  simpleConfig: SimplePlatformConfigNormalized | undefined
+): { binFrom: number; binTo: number } | undefined {
+  const binFrom = simpleConfig?.binFrom;
+  const binTo = simpleConfig?.binTo;
+  if ((binFrom !== undefined) !== (binTo !== undefined)) {
+    throw new AssembleFailureError({
+      success: false,
+      error: 'simple.binFrom and simple.binTo must be specified together',
+    });
+  }
+  if (binFrom !== undefined && binTo !== undefined && binFrom > binTo) {
+    throw new AssembleFailureError({
+      success: false,
+      error: `simple.binFrom must be less than or equal to simple.binTo, got ${binFrom} > ${binTo}`,
+    });
+  }
+  return binFrom !== undefined && binTo !== undefined ? { binFrom, binTo } : undefined;
+}
+
 export async function assembleIfRequested(options: {
   backend: AssemblerBackend;
   args: LaunchRequestArguments;
@@ -34,10 +54,7 @@ export async function assembleIfRequested(options: {
     return;
   }
 
-  const binaryRange =
-    platform === 'simple' && simpleConfig?.binFrom !== undefined && simpleConfig.binTo !== undefined
-      ? { binFrom: simpleConfig.binFrom, binTo: simpleConfig.binTo }
-      : undefined;
+  const binaryRange = platform === 'simple' ? resolveSimpleBinaryRange(simpleConfig) : undefined;
   if (binaryRange !== undefined && backend.assembleBin === undefined) {
     throw new AssembleFailureError({
       success: false,
