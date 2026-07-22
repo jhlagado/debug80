@@ -81,6 +81,10 @@ type MergeOptions = {
 };
 
 const PLATFORM_BLOCK_KEYS = ['simple', 'tec1', 'tec1g'] as const;
+const PLATFORM_ROM_PATH_FIELDS = {
+  tec1: ['romHex'],
+  tec1g: ['romHex', 'expansionRomHex'],
+} as const;
 
 function isMalformedPlatformBlock(value: unknown): boolean {
   return (
@@ -100,6 +104,37 @@ function restoreMalformedPlatformBlocks(
       // Later transforms may spread or replace a malformed block. Restore it so
       // final launch validation sees the invalid raw configuration.
       merged[key] = malformed as never;
+    }
+  }
+}
+
+function isMalformedPathField(value: unknown): boolean {
+  return value !== undefined && value !== null && typeof value !== 'string';
+}
+
+function restoreMalformedPlatformPathFields(
+  merged: LaunchRequestArguments,
+  cfg: LaunchConfigManifest,
+  targetCfg: LaunchTargetConfig | undefined,
+  args: LaunchRequestArguments
+): void {
+  for (const key of ['tec1', 'tec1g'] as const) {
+    const blocks = [cfg[key], targetCfg?.[key], args[key]];
+    const current = merged[key];
+    if (current === null || typeof current !== 'object' || Array.isArray(current)) {
+      continue;
+    }
+    for (const field of PLATFORM_ROM_PATH_FIELDS[key]) {
+      const malformed = blocks
+        .map((block) =>
+          block !== null && typeof block === 'object' && !Array.isArray(block)
+            ? (block as Record<string, unknown>)[field]
+            : undefined
+        )
+        .find(isMalformedPathField);
+      if (malformed !== undefined) {
+        (current as Record<string, unknown>)[field] = malformed;
+      }
     }
   }
 }
@@ -134,11 +169,8 @@ function firstNormalizedString(...values: unknown[]): string | undefined {
   return undefined;
 }
 
-function resolveRuntimePath(
-  candidatePath: string | undefined,
-  baseDir: string
-): string | undefined {
-  if (candidatePath === undefined || candidatePath === '') {
+function resolveRuntimePath(candidatePath: unknown, baseDir: string): string | undefined {
+  if (typeof candidatePath !== 'string' || candidatePath === '') {
     return undefined;
   }
   return path.isAbsolute(candidatePath)
@@ -500,8 +532,18 @@ function applyBundledRomPath(
     mergeOptions: MergeOptions;
   }
 ): void {
+  const platform = firstPresent(options.launchPlatformResolved, options.platformResolved);
+  const candidateRomHex =
+    platform === 'tec1'
+      ? merged.tec1?.romHex
+      : platform === 'tec1g'
+        ? merged.tec1g?.romHex
+        : undefined;
+  if (candidateRomHex !== undefined && typeof candidateRomHex !== 'string') {
+    return;
+  }
   const resolvedRomHex = resolveBundledAssetRuntimePath(
-    merged.tec1?.romHex ?? merged.tec1g?.romHex,
+    candidateRomHex,
     options.bundledRomReference,
     options.workspaceRoot,
     options.mergeOptions
@@ -509,7 +551,6 @@ function applyBundledRomPath(
   if (resolvedRomHex === undefined) {
     return;
   }
-  const platform = firstPresent(options.launchPlatformResolved, options.platformResolved);
   if (platform === 'tec1') {
     merged.tec1 = { ...(merged.tec1 ?? {}), romHex: resolvedRomHex };
   } else if (platform === 'tec1g') {
@@ -590,6 +631,7 @@ export function mergeLaunchConfigStages(
   applyExecutionLaunchFields(merged, cfg, targetCfg, args);
   applyBundledAssetPaths(merged, cfg, targetCfg, args, workspaceRoot, options);
   restoreMalformedPlatformBlocks(merged, cfg, targetCfg, args);
+  restoreMalformedPlatformPathFields(merged, cfg, targetCfg, args);
   setIfDefined(merged, 'target', resolved.targetName ?? args.target);
   return merged;
 }

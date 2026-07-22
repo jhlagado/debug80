@@ -268,6 +268,45 @@ describe('launch-config-merge', () => {
     expect(() => assertValidLaunchArgs(targetMerged)).toThrow('simple must be an object');
     expect(() => assertValidLaunchArgs(requestMerged)).toThrow('simple must be an object');
   });
+
+  it('preserves malformed nested ROM paths through every merge layer and transform', () => {
+    const rootMalformed = mergeForTarget(
+      {
+        platform: 'tec1',
+        tec1: { romHex: 7 as never },
+        bundledAssets: { romHex: { bundleId: 'tec1/monitor', path: 'monitor.bin' } },
+        targets: { app: { asm: 'src/app.asm' } },
+      },
+      'app',
+      launchArgs(),
+      { resolveBundledAssetPath: () => '/extension/tec1/monitor.bin' }
+    );
+    const targetMalformed = mergeForTarget(
+      {
+        platform: 'tec1g',
+        targets: {
+          app: { asm: 'src/app.asm', tec1g: { romHex: {} as never } },
+          monitor: { tec1g: { romHex: 'roms/monitor.bin' } },
+        },
+      },
+      'app'
+    );
+    const requestMalformed = mergeForTarget(
+      {
+        platform: 'tec1g',
+        tec1g: { expansionRomHex: 'roms/expansion.bin' },
+        targets: { app: { asm: 'src/app.asm' } },
+      },
+      'app',
+      launchArgs({ tec1g: { expansionRomHex: [] as never } })
+    );
+
+    expect(() => assertValidLaunchArgs(rootMalformed)).toThrow('tec1.romHex must be a string');
+    expect(() => assertValidLaunchArgs(targetMalformed)).toThrow('tec1g.romHex must be a string');
+    expect(() => assertValidLaunchArgs(requestMalformed)).toThrow(
+      'tec1g.expansionRomHex must be a string'
+    );
+  });
 });
 
 function mergeForTarget(
