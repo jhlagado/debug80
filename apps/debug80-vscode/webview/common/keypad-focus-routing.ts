@@ -16,9 +16,11 @@ export type KeypadKeyTarget = KeypadFocusTarget & {
 /** Physical keys currently held, by stable KeyboardEvent.code, with the adjusted
  * keypad code each press latched. */
 const heldPhysicalKeys = new Map<string, KeypadPressHandle>();
+const heldPhysicalShiftKeys = new Set<string>();
 
 export function releaseAllTecKeypadKeys(keypad: KeypadKeyTarget): void {
   heldPhysicalKeys.clear();
+  heldPhysicalShiftKeys.clear();
   keypad.releaseAllKeys();
   if (keypad.getShiftLatched()) {
     keypad.setShiftLatched(false);
@@ -63,6 +65,7 @@ export function routeTecKeypadShortcut(
     keypad.setShiftLatched(false);
     reset({ fn });
   } else if (shortcut.kind === 'shift') {
+    heldPhysicalShiftKeys.add(event.code || event.key);
     keypad.setShiftLatched(shortcut.latched);
   } else {
     return false;
@@ -84,8 +87,10 @@ export function routeTecKeypadKeyup(event: KeyboardEvent, keypad: KeypadKeyTarge
     }
     return true;
   }
-  if (event.key === 'Shift' && keypad.getShiftLatched()) {
-    keypad.setShiftLatched(false);
+  if (heldPhysicalShiftKeys.delete(physicalKey)) {
+    if (heldPhysicalShiftKeys.size === 0 && keypad.getShiftLatched()) {
+      keypad.setShiftLatched(false);
+    }
     if (!event.defaultPrevented && !isKeyboardControlTarget(event.target)) {
       event.preventDefault();
       event.stopPropagation();
