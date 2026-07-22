@@ -37,8 +37,9 @@ export function registerDebugLifecycleCommands(options: {
   platformViewProvider: PlatformViewProvider;
   workspaceSelection: WorkspaceSelectionController;
   targetSelection: ProjectTargetSelectionController;
+  output: vscode.OutputChannel;
 }): void {
-  const { context, platformViewProvider, workspaceSelection, targetSelection } = options;
+  const { context, platformViewProvider, workspaceSelection, targetSelection, output } = options;
 
   context.subscriptions.push(
     vscode.commands.registerCommand('debug80.startDebug', async (args?: StartDebugArgs) => {
@@ -96,7 +97,9 @@ export function registerDebugLifecycleCommands(options: {
       return buildCurrentProjectTarget(
         folder,
         workspaceSelection,
+        targetSelection,
         panelLaunchOptions(platformViewProvider),
+        output,
         (message, state) => platformViewProvider.setBuildStatus(message, state)
       );
     })

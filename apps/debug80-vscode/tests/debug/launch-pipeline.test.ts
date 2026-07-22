@@ -46,6 +46,17 @@ describe('launch-pipeline', () => {
     await expect(assemble()).rejects.toThrow('bad asm');
   });
 
+  it('forwards assembler output without requiring a debug event sink', async () => {
+    const onOutput = vi.fn();
+
+    await expect(assemble({ sendEvent: undefined, onOutput })).resolves.toBeUndefined();
+
+    const assembleOptions = backend.assemble.mock.calls[0]?.[0] as
+      { onOutput?: (message: string) => void } | undefined;
+    assembleOptions?.onOutput?.('assembler output\n');
+    expect(onOutput).toHaveBeenCalledWith('assembler output\n');
+  });
+
   it('invokes binary assembly for simple platform', async () => {
     await expect(
       assemble({

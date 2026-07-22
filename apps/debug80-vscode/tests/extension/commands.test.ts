@@ -21,6 +21,9 @@ const createWebviewPanel = vi.fn();
 const startDebugging = vi.fn();
 const stopDebugging = vi.fn();
 const executeCommand = vi.fn();
+const outputAppend = vi.fn();
+const outputAppendLine = vi.fn();
+const outputShow = vi.fn();
 const scaffoldProject = vi.fn();
 const materializeBundledAsset = vi.fn();
 const materializeBundledRom = vi.fn();
@@ -113,19 +116,20 @@ type ExtensionCommandOptions = Parameters<typeof registerExtensionCommandsType>[
 type ExtensionCommandOverrides = Partial<
   Omit<
     ExtensionCommandOptions,
-    'context' | 'platformViewProvider' | 'workspaceSelection' | 'targetSelection'
+    'context' | 'platformViewProvider' | 'workspaceSelection' | 'targetSelection' | 'output'
   >
 > & {
   context?: Record<string, unknown>;
   platformViewProvider?: Record<string, unknown>;
   workspaceSelection?: Record<string, unknown>;
   targetSelection?: Record<string, unknown>;
+  output?: Record<string, unknown>;
 };
 
 describe('registerExtensionCommands', () => {
   const registerCommands = async (overrides: ExtensionCommandOverrides = {}) => {
     const { registerExtensionCommands } = await import('../../src/extension/commands');
-    const { context, platformViewProvider, workspaceSelection, targetSelection, ...rest } =
+    const { context, platformViewProvider, workspaceSelection, targetSelection, output, ...rest } =
       overrides;
 
     registerExtensionCommands({
@@ -146,6 +150,12 @@ describe('registerExtensionCommands', () => {
       } as never,
       targetSelection: {
         ...targetSelection,
+      } as never,
+      output: {
+        append: outputAppend,
+        appendLine: outputAppendLine,
+        show: outputShow,
+        ...output,
       } as never,
     });
   };

@@ -16,10 +16,20 @@ export async function assembleIfRequested(options: {
   sourceRoot?: string;
   platform: string;
   simpleConfig?: SimplePlatformConfigNormalized;
-  sendEvent: EventSender;
+  sendEvent?: EventSender;
+  onOutput?: (message: string) => void;
 }): Promise<void> {
-  const { backend, args, asmPath, hexPath, sourceRoot, platform, simpleConfig, sendEvent } =
-    options;
+  const {
+    backend,
+    args,
+    asmPath,
+    hexPath,
+    sourceRoot,
+    platform,
+    simpleConfig,
+    sendEvent,
+    onOutput,
+  } = options;
   if (asmPath === undefined || asmPath === '' || args.assemble === false) {
     return;
   }
@@ -30,7 +40,10 @@ export async function assembleIfRequested(options: {
     ...(sourceRoot !== undefined ? { sourceRoot } : {}),
     ...(args.azm !== undefined ? { azm: args.azm } : {}),
     onOutput: (message) => {
-      emitConsoleOutput(sendEvent, message, { newline: false });
+      onOutput?.(message);
+      if (sendEvent !== undefined) {
+        emitConsoleOutput(sendEvent, message, { newline: false });
+      }
     },
   });
   if (!result.success) {
@@ -53,7 +66,10 @@ export async function assembleIfRequested(options: {
       ...(sourceRoot !== undefined ? { sourceRoot } : {}),
       ...(args.azm !== undefined ? { azm: args.azm } : {}),
       onOutput: (message) => {
-        emitConsoleOutput(sendEvent, message, { newline: false });
+        onOutput?.(message);
+        if (sendEvent !== undefined) {
+          emitConsoleOutput(sendEvent, message, { newline: false });
+        }
       },
     });
     if (binResult && !binResult.success) {
