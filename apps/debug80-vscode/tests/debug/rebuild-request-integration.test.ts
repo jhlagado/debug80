@@ -146,7 +146,7 @@ describe('warm rebuild assembly integration', () => {
     const breakpointSegments =
       sessionState.mapping?.segments.filter(
         (segment) =>
-          segment.loc.file?.endsWith('probe.glim') &&
+          segment.loc.file?.endsWith('probe.glim') === true &&
           segment.loc.line !== null &&
           Math.abs(segment.loc.line - 11) <= 4
       ) ?? [];
