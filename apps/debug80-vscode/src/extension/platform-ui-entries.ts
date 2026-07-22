@@ -54,6 +54,9 @@ export function createTec1PlatformUiEntry(): PlatformUiEntry {
             ...(tec1Payload.segmentClockHz !== undefined
               ? { segmentClockHz: tec1Payload.segmentClockHz }
               : {}),
+            ...(tec1Payload.segmentIntensities !== undefined
+              ? { segmentIntensities: tec1Payload.segmentIntensities }
+              : {}),
             ...(tec1Payload.segmentScanStopped === true ? { segmentScanStopped: true } : {}),
           } as unknown as Record<string, unknown>;
         },
@@ -125,6 +128,9 @@ export function createTec1gPlatformUiEntry(): PlatformUiEntry {
               : {}),
             ...(tec1gPayload.segmentClockHz !== undefined
               ? { segmentClockHz: tec1gPayload.segmentClockHz }
+              : {}),
+            ...(tec1gPayload.segmentIntensities !== undefined
+              ? { segmentIntensities: tec1gPayload.segmentIntensities }
               : {}),
             ...(tec1gPayload.segmentScanStopped === true ? { segmentScanStopped: true } : {}),
           } as unknown as Record<string, unknown>;
