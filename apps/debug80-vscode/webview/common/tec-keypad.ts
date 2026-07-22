@@ -95,9 +95,11 @@ export function createTecKeypad(
     let activePointerId: number | undefined | null = null;
     let pressedAt = 0;
     let releaseTimer: ReturnType<typeof setTimeout> | null = null;
+    let pendingRelease: KeypadPressHandle | null = null;
     cancelButtonHolds.push(() => {
       heldPress = null;
       activePointerId = null;
+      pendingRelease = null;
       if (releaseTimer !== null) {
         clearTimeout(releaseTimer);
         releaseTimer = null;
@@ -116,9 +118,14 @@ export function createTecKeypad(
       const elapsed = Date.now() - pressedAt;
       const wait = Math.max(0, KEYPAD_CLICK_HOLD_MS - elapsed);
       if (wait > 0) {
+        pendingRelease = releasing;
         releaseTimer = setTimeout(() => {
           releaseTimer = null;
-          core.releaseKey(releasing);
+          const pending = pendingRelease;
+          pendingRelease = null;
+          if (pending !== null) {
+            core.releaseKey(pending);
+          }
         }, wait);
       } else {
         core.releaseKey(releasing);
@@ -129,13 +136,18 @@ export function createTecKeypad(
       if (heldPress !== null) {
         return;
       }
+      const previousPendingRelease = pendingRelease;
       if (releaseTimer !== null) {
         clearTimeout(releaseTimer);
         releaseTimer = null;
       }
+      pendingRelease = null;
       pressedAt = Date.now();
       activePointerId = e.pointerId;
       heldPress = core.pressKey(code);
+      if (previousPendingRelease !== null) {
+        core.releaseKey(previousPendingRelease);
+      }
     });
     button.addEventListener('pointerup', release);
     button.addEventListener('pointerleave', release);
