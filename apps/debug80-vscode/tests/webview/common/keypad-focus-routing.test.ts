@@ -123,6 +123,23 @@ describe('keypad focus routing', () => {
     expect(localKeypad.releaseKey).toHaveBeenCalledTimes(1);
   });
 
+  it('releases an owned key after focus moves into a native control', () => {
+    document.body.innerHTML = '<main id="surface"></main><input id="input">';
+    const localKeypad = createKeypad();
+
+    routeTecKeypadShortcut(
+      dispatchKeyboardEvent(document.getElementById('surface')!, 'keydown', 'A', 'KeyA'),
+      { kind: 'key', code: 0x0a },
+      localKeypad,
+      vi.fn()
+    );
+    const keyup = dispatchKeyboardEvent(document.getElementById('input')!, 'keyup', 'a', 'KeyA');
+
+    expect(routeTecKeypadKeyup(keyup, localKeypad)).toBe(true);
+    expect(localKeypad.releaseKey).toHaveBeenCalledTimes(1);
+    expect(keyup.defaultPrevented).toBe(false);
+  });
+
   it('passes the latched Fn state to reset before clearing it', () => {
     document.body.innerHTML = '<main id="surface"></main>';
     const localKeypad = createKeypad();
