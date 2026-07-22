@@ -348,6 +348,30 @@ export function validateTerminalConfig(config: unknown): ValidationResult {
   ]);
 }
 
+function validateSimpleBinaryRange(binFrom: unknown, binTo: unknown): ValidationResult {
+  const hasFrom = binFrom !== undefined && binFrom !== null;
+  const hasTo = binTo !== undefined && binTo !== null;
+  if (hasFrom !== hasTo) {
+    return invalidResult('simple.binFrom and simple.binTo must be specified together');
+  }
+  if (
+    typeof binFrom === 'number' &&
+    Number.isInteger(binFrom) &&
+    binFrom >= ADDRESS_MIN &&
+    binFrom <= ADDRESS_MAX &&
+    typeof binTo === 'number' &&
+    Number.isInteger(binTo) &&
+    binTo >= ADDRESS_MIN &&
+    binTo <= ADDRESS_MAX &&
+    binFrom > binTo
+  ) {
+    return invalidResult(
+      `simple.binFrom must be less than or equal to simple.binTo, got ${binFrom} > ${binTo}`
+    );
+  }
+  return validResult();
+}
+
 /**
  * Validates simple platform configuration.
  * @param config - Simple config to validate
@@ -366,6 +390,7 @@ export function validateSimpleConfig(config: unknown): ValidationResult {
     validateAddress(sc.entry, 'simple.entry'),
     validateAddress(sc.binFrom, 'simple.binFrom'),
     validateAddress(sc.binTo, 'simple.binTo'),
+    validateSimpleBinaryRange(sc.binFrom, sc.binTo),
   ]);
 }
 
