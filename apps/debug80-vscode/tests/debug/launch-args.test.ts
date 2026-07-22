@@ -60,7 +60,7 @@ describe('launch-args', () => {
     const baseDir = os.tmpdir();
     const args = { asm: 'main.asm' } as LaunchRequestArguments;
     const result = resolveArtifacts(args, baseDir);
-    expect(result.hexPath).toContain(path.join(baseDir, 'main.hex'));
+    expect(result.hexPath).toContain(path.join(baseDir, 'build', 'main.hex'));
   });
 
   it('builds debug map paths', () => {

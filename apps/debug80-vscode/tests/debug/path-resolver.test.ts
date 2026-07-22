@@ -71,7 +71,7 @@ describe('path-resolver', () => {
     const args = launchArgs({ asm: asmPath });
 
     const resolved = resolveArtifacts(args, tmpDir);
-    expect(resolved.hexPath).toBe(tempPath('demo.hex'));
+    expect(resolved.hexPath).toBe(tempPath('build', 'demo.hex'));
     expect(resolved.asmPath).toBe(asmPath);
   });
 

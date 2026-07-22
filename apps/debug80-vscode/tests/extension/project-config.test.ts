@@ -71,6 +71,29 @@ describe('project-config helpers', () => {
     expect(config?.targets?.legacy?.assembler).toBeUndefined();
   });
 
+  it('uses build for the first target added to a zero-target project', () => {
+    const { configPath } = createProject('debug80-add-first-target-', {
+      projectVersion: DEBUG80_PROJECT_VERSION,
+      projectPlatform: 'tec1g',
+      targets: {},
+    });
+
+    expect(addProjectTarget(configPath, 'demo', 'demo.asm')).toBe(true);
+    expect(readProjectConfig(configPath)?.targets?.demo?.outputDir).toBe('build');
+  });
+
+  it('respects a project output directory for the first added target', () => {
+    const { configPath } = createProject('debug80-add-first-custom-output-', {
+      projectVersion: DEBUG80_PROJECT_VERSION,
+      projectPlatform: 'tec1g',
+      outputDir: 'artifacts',
+      targets: {},
+    });
+
+    expect(addProjectTarget(configPath, 'demo', 'demo.asm')).toBe(true);
+    expect(readProjectConfig(configPath)?.targets?.demo?.outputDir).toBe('artifacts');
+  });
+
   it('removes a target without touching source settings on remaining targets', () => {
     const { configPath } = createProject('debug80-remove-target-', {
       defaultTarget: 'matrix',

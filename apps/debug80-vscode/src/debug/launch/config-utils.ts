@@ -24,7 +24,7 @@ export interface InferredTarget {
 /** Default source file location */
 const DEFAULT_SOURCE = 'src/main.asm';
 /** Default output directory */
-const DEFAULT_OUTPUT_DIR = 'build';
+export const DEFAULT_OUTPUT_DIR = 'build';
 const SOURCE_SEARCH_EXCLUDED_DIRS = new Set([
   '.git',
   '.hg',
