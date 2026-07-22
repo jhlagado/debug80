@@ -10,6 +10,7 @@ import {
   IS_WINDOWS,
   pathsEqual,
   isPathWithin,
+  isCanonicalPathWithin,
   relativeIfWithin,
   toPortablePath,
   fromPortablePath,
@@ -62,6 +63,12 @@ describe('path-utils', () => {
       const base = path.join(os.homedir(), 'project');
       const filePath = path.join(base, 'file.ts');
       expect(isPathWithin(filePath, `${base}${path.sep}`)).toBe(true);
+    });
+  });
+
+  describe('isCanonicalPathWithin', () => {
+    it('rejects sibling paths that only share a textual prefix', () => {
+      expect(isCanonicalPathWithin('/work/demo-copy/game.glim', '/work/demo')).toBe(false);
     });
   });
 

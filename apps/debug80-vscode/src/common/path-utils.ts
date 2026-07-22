@@ -160,6 +160,14 @@ export function isPathWithin(filePath: string, baseDir: string): boolean {
 }
 
 /**
+ * Checks containment after resolving existing paths through the filesystem.
+ * This keeps workspace routing stable across symlinks and platform path casing.
+ */
+export function isCanonicalPathWithin(filePath: string, baseDir: string): boolean {
+  return isPathWithin(canonicalizeExistingPath(filePath), canonicalizeExistingPath(baseDir));
+}
+
+/**
  * Makes a path relative to base directory if contained within it.
  * Uses proper path boundary checking.
  *

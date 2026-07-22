@@ -3,6 +3,7 @@ import {
   AZM_LANGUAGE_EXTENSIONS,
   DEBUG80_REBUILD_SOURCE_EXTENSIONS,
   isDebug80RebuildSourcePath,
+  isDebug80RebuildSourceWithinWorkspace,
 } from '../../src/extension/debug80-source-extensions';
 
 describe('Debug80 source extensions', () => {
@@ -22,5 +23,20 @@ describe('Debug80 source extensions', () => {
   it('ignores unrelated files', () => {
     expect(isDebug80RebuildSourcePath('/project/src/notes.txt')).toBe(false);
     expect(isDebug80RebuildSourcePath('/project/src/glim')).toBe(false);
+  });
+
+  it('requires a rebuild source to be inside the active workspace boundary', () => {
+    expect(isDebug80RebuildSourceWithinWorkspace('/work/demo/src/game.glim', '/work/demo')).toBe(
+      true
+    );
+    expect(
+      isDebug80RebuildSourceWithinWorkspace('/work/demo-copy/src/game.glim', '/work/demo')
+    ).toBe(false);
+    expect(
+      isDebug80RebuildSourceWithinWorkspace('C:\\Work\\Demo\\src\\game.glim', 'c:\\work\\demo')
+    ).toBe(true);
+    expect(
+      isDebug80RebuildSourceWithinWorkspace('C:\\Work\\DemoCopy\\game.glim', 'c:\\work\\demo')
+    ).toBe(false);
   });
 });
