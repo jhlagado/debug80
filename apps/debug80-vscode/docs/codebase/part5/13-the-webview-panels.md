@@ -48,7 +48,7 @@ controller.setStatus('running');
 controller.setStatus('not running');
 ```
 
-The primary button always renders with the label **Run**. Its visual state is carried in `data-status` and CSS classes (`status-running`, `status-paused`, etc.). A click sends `{ type: 'restartDebug' }` to the extension host unless the session is still in the `'starting'` state. The secondary Build button sends `{ type: 'buildTarget' }`. Both buttons are disabled while the session is starting.
+The primary button always renders with the label **Run**. Its visual state is carried in `data-status` and CSS classes (`status-running`, `status-paused`, etc.). A click sends `{ type: 'restartDebug' }` to the extension host unless the session is still in the `'starting'` state. The secondary Build button sends `{ type: 'buildTarget' }`, which runs the current target's build path without launching a new session and feeds success or failure text back through `projectStatus.buildStatusText`. Both buttons are disabled while the session is starting.
 
 The status values are:
 
@@ -79,7 +79,7 @@ The display also supports `applySegmentIntensities(values)`, where each digit re
 
 `createProjectStatusUi(vscode, elements, platform)` wires up the project header for a platform panel: it handles `projectStatus` messages, populates the Target dropdown, sets the Platform selector value, shows or hides controls via `applyInitializedProjectControls()`, and wires the Initialize button, target change handler, add/remove-target buttons, and stop-on-entry checkbox. This function consolidates the setup-card/target-dropdown/project-root wiring that was previously duplicated across `simple/index.ts`, `tec1/index.ts`, and `tec1g/tec1g-project-status-ui.ts`. All three platform panels now call `createProjectStatusUi()` from this shared module.
 
-The same helper also renders three independent status surfaces from `projectStatus`: a source-map status line, a hardware-send status line, and a build-failure surface. When `buildStatusState === 'error'`, the shared tab row shows a compact `!` badge beside the Run button and the panel reveals a dedicated build-status line above the platform UI. That warning is separate from `hardwareStatusText`, so CoolTerm readiness or transfer results stay visible even after an assembly failure. The hardware send button posts `sendHexViaCoolTerm`; it is enabled only when CoolTerm is reachable and the selected target has an inferred HEX artifact.
+The same helper also renders three independent status surfaces from `projectStatus`: a source-map status line, a hardware-send status line, and a build-status surface. When `buildStatusState === 'error'`, the shared tab row shows a compact `!` badge beside the Run button and the panel reveals a dedicated build-status line above the platform UI. Successful build-only runs also update that line with the selected target's emitted HEX path until a later status refresh replaces it. This status path is separate from `hardwareStatusText`, so CoolTerm readiness or transfer results stay visible even after an assembly failure. The hardware send button posts `sendHexViaCoolTerm`; it is enabled only when CoolTerm is reachable and the selected target has an inferred HEX artifact.
 
 `webview/tec1g/tec1g-project-status-ui.ts` re-exports from `webview/common/project-status-ui.ts` for backward compatibility rather than containing the implementation itself.
 
