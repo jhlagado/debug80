@@ -9,7 +9,7 @@ PORT_DIG        .equ    0x01
 PORT_SEG        .equ    0x02
 NO_KEY          .equ    0x7f
 ALL_DIG         .equ    0x3f
-ALL_SEG         .equ    0x7f
+ALL_SEG         .equ    0xef
 
 .routine clobbers A,F
 Start:
