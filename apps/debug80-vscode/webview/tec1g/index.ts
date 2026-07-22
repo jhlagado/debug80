@@ -45,6 +45,7 @@ import { createTec1gProjectStatusUi } from './tec1g-project-status-ui';
 import { applyMatrixRoutingCue } from './matrix-routing-cue';
 import {
   createKeyboardOwnerController,
+  releaseDepartedKeyboardOwner,
   shouldBypassEmulatorKeyboardTarget,
   type KeyboardOwner,
 } from './keyboard-owner';
@@ -185,15 +186,11 @@ function keyboardOwnerVisibility(): {
 
 function applyKeyboardOwnerState(previousOwner: KeyboardOwner = null): void {
   const owner = keyboardOwner.getOwner();
-  if (previousOwner === 'keypad' && owner !== 'keypad') {
-    releaseAllTecKeypadKeys(keypad);
-  }
-  if (previousOwner === 'joystick' && owner !== 'joystick') {
-    joystickUi.clear();
-  }
-  if (previousOwner === 'matrixKeyboard' && owner !== 'matrixKeyboard') {
-    matrixUi.releaseKeyboardCapture();
-  }
+  releaseDepartedKeyboardOwner(previousOwner, owner, {
+    keypad: () => releaseAllTecKeypadKeys(keypad),
+    joystick: () => joystickUi.clear(),
+    matrixKeyboard: () => matrixUi.releaseKeyboardCapture(),
+  });
   applyMatrixKeyboardCapture(owner === 'matrixKeyboard');
 }
 

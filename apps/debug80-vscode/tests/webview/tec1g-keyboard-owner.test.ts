@@ -2,6 +2,7 @@ import { describe, expect, it, vi } from 'vitest';
 import {
   createKeyboardOwnerController,
   isNativeKeyboardTarget,
+  releaseDepartedKeyboardOwner,
   shouldBypassEmulatorKeyboardTarget,
   type KeyboardOwner,
 } from '../../webview/tec1g/keyboard-owner';
@@ -107,5 +108,22 @@ describe('TEC-1G keyboard owner controller', () => {
     expect(onOwnerChange).toHaveBeenNthCalledWith(1, 'keypad', null);
     expect(onOwnerChange).toHaveBeenNthCalledWith(2, 'matrixKeyboard', 'keypad');
     expect(onOwnerChange).toHaveBeenNthCalledWith(3, 'keypad', 'matrixKeyboard');
+  });
+
+  it.each([
+    ['keypad', 'matrixKeyboard'],
+    ['matrixKeyboard', 'joystick'],
+    ['joystick', 'keypad'],
+  ] as const)('releases %s state when ownership moves to %s', (previousOwner, owner) => {
+    const handlers = {
+      keypad: vi.fn(),
+      matrixKeyboard: vi.fn(),
+      joystick: vi.fn(),
+    };
+
+    releaseDepartedKeyboardOwner(previousOwner, owner, handlers);
+
+    expect(handlers[previousOwner]).toHaveBeenCalledTimes(1);
+    expect(handlers[owner]).not.toHaveBeenCalled();
   });
 });
