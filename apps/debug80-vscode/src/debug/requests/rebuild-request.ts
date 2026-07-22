@@ -26,6 +26,7 @@ import {
   buildSourceStateBuildArgs,
   createSourceStateManager,
 } from '../launch/source-state-build-options';
+import { resolvePlatformProvider } from '../../platforms/provider';
 
 type RebuildDeps = {
   logger: Logger;
@@ -164,6 +165,7 @@ export async function handleWarmRebuildRequest(
     const baseDir = deps.sessionState.baseDir || resolveBaseDir(launchArgs);
     const { asmPath, hexPath } = resolveArtifacts(launchArgs, baseDir);
     const backend = resolveAssemblerBackend(launchArgs.assembler, asmPath);
+    const platformProvider = await resolvePlatformProvider(launchArgs);
 
     await assembleIfRequested({
       backend,
@@ -171,7 +173,10 @@ export async function handleWarmRebuildRequest(
       asmPath,
       hexPath,
       sourceRoot: baseDir,
-      platform: deps.platformState.active,
+      platform: platformProvider.id,
+      ...(platformProvider.simpleConfig !== undefined
+        ? { simpleConfig: platformProvider.simpleConfig }
+        : {}),
       sendEvent: (event) => deps.sendEvent(event as DebugProtocol.Event),
     });
 
