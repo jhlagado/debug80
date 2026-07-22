@@ -26,6 +26,7 @@ export interface KeypadCore {
   releaseAllKeys(): void;
   setShiftLatched(value: boolean): void;
   getShiftLatched(): boolean;
+  getShiftLatchRevision(): number;
   toggleShift(): void;
   focusKeypad(): void;
   /** Wire a per-button focus mousedown handler. Call once per button element. */
@@ -40,6 +41,7 @@ export function createKeypadCore(
   shiftBit: number
 ): KeypadCore {
   let shiftLatched = false;
+  let shiftLatchRevision = 0;
   let onShiftChange: ((latched: boolean) => void) | null = null;
   let pressGeneration = 0;
   const activePresses = new Map<number, Map<number, KeypadPressHandle>>();
@@ -52,6 +54,7 @@ export function createKeypadCore(
 
   function setShiftLatched(value: boolean): void {
     shiftLatched = value;
+    shiftLatchRevision += 1;
     onShiftChange?.(value);
   }
 
@@ -101,6 +104,7 @@ export function createKeypadCore(
     releaseAllKeys,
     setShiftLatched,
     getShiftLatched: () => shiftLatched,
+    getShiftLatchRevision: () => shiftLatchRevision,
     toggleShift: () => setShiftLatched(!shiftLatched),
     focusKeypad: () => keypadEl.focus(),
     addButtonFocusHandler(button: HTMLElement): void {
