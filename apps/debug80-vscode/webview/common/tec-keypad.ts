@@ -2,7 +2,7 @@
  * @file Shared TEC-1 / TEC-1G on-screen keypad (keycap chrome + grid). SysCtrl bar only on TEC-1G.
  */
 
-import { createKeypadCore } from './keypad-core';
+import { createKeypadCore, type KeypadPressHandle } from './keypad-core';
 import type { VscodeApi } from './vscode';
 import {
   TEC1G_CONTROL_LABELS,
@@ -25,8 +25,9 @@ export type TecKeypadStatusEls = {
 
 export type TecKeypad = {
   sendKey: (code: number) => void;
-  pressKey: (code: number) => number;
-  releaseKey: (adjustedCode: number) => void;
+  pressKey: (code: number) => KeypadPressHandle;
+  releaseKey: (press: KeypadPressHandle) => void;
+  releaseAllKeys: () => void;
   setShiftLatched: (value: boolean) => void;
   getShiftLatched: () => boolean;
   setSysCtrlValue: (value: number) => void;
@@ -90,25 +91,21 @@ export function createTecKeypad(
   const KEYPAD_CLICK_HOLD_MS = 80;
 
   function wireHoldableKey(button: HTMLElement, code: number): void {
-    let heldCode: number | null = null;
+    let heldPress: KeypadPressHandle | null = null;
     let pressedAt = 0;
-    let pressGeneration = 0;
     let releaseTimer: ReturnType<typeof setTimeout> | null = null;
     const release = (): void => {
-      if (heldCode === null) {
+      if (heldPress === null) {
         return;
       }
-      const releasing = heldCode;
-      const releasingGeneration = pressGeneration;
-      heldCode = null;
+      const releasing = heldPress;
+      heldPress = null;
       const elapsed = Date.now() - pressedAt;
       const wait = Math.max(0, KEYPAD_CLICK_HOLD_MS - elapsed);
       if (wait > 0) {
         releaseTimer = setTimeout(() => {
           releaseTimer = null;
-          if (releasingGeneration === pressGeneration) {
-            core.releaseKey(releasing);
-          }
+          core.releaseKey(releasing);
         }, wait);
       } else {
         core.releaseKey(releasing);
@@ -116,13 +113,12 @@ export function createTecKeypad(
     };
     button.addEventListener('pointerdown', (e) => {
       e.preventDefault();
-      pressGeneration += 1;
       if (releaseTimer !== null) {
         clearTimeout(releaseTimer);
         releaseTimer = null;
       }
       pressedAt = Date.now();
-      heldCode = core.pressKey(code);
+      heldPress = core.pressKey(code);
     });
     button.addEventListener('pointerup', release);
     button.addEventListener('pointerleave', release);
@@ -248,7 +244,8 @@ export function createTecKeypad(
   return {
     sendKey: (code) => core.sendKey(code),
     pressKey: (code) => core.pressKey(code),
-    releaseKey: (adjustedCode) => core.releaseKey(adjustedCode),
+    releaseKey: (press) => core.releaseKey(press),
+    releaseAllKeys: () => core.releaseAllKeys(),
     setShiftLatched: (value) => core.setShiftLatched(value),
     getShiftLatched: () => core.getShiftLatched(),
     setSysCtrlValue: (value: number) => {

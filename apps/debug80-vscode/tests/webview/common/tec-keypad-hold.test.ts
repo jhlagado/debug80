@@ -35,6 +35,50 @@ describe('on-screen TEC keypad holds', () => {
 
     expect(messages.filter(isReleaseMessage)).toHaveLength(1);
   });
+
+  it('does not let a delayed pointer release cancel a physical press', () => {
+    const messages: unknown[] = [];
+    const keypadElement = document.getElementById('keypad')!;
+    const keypad = createTecKeypad(
+      { postMessage: (message) => messages.push(message) },
+      keypadElement
+    );
+    const goKey = Array.from(keypadElement.querySelectorAll<HTMLElement>('.keycap')).find(
+      (element) => element.textContent === 'GO'
+    );
+    expect(goKey).toBeDefined();
+
+    goKey?.dispatchEvent(new Event('pointerdown', { bubbles: true, cancelable: true }));
+    goKey?.dispatchEvent(new Event('pointerup', { bubbles: true }));
+    vi.advanceTimersByTime(40);
+
+    const physicalPress = keypad.pressKey(0x12);
+    vi.advanceTimersByTime(40);
+
+    expect(messages.filter(isReleaseMessage)).toEqual([]);
+
+    keypad.releaseKey(physicalPress);
+    expect(messages.filter(isReleaseMessage)).toHaveLength(1);
+  });
+
+  it('releases an on-screen hold when the keypad lifecycle is cleared', () => {
+    const messages: unknown[] = [];
+    const keypadElement = document.getElementById('keypad')!;
+    const keypad = createTecKeypad(
+      { postMessage: (message) => messages.push(message) },
+      keypadElement
+    );
+    const goKey = Array.from(keypadElement.querySelectorAll<HTMLElement>('.keycap')).find(
+      (element) => element.textContent === 'GO'
+    );
+
+    goKey?.dispatchEvent(new Event('pointerdown', { bubbles: true, cancelable: true }));
+    keypad.releaseAllKeys();
+    goKey?.dispatchEvent(new Event('pointerup', { bubbles: true }));
+    vi.advanceTimersByTime(80);
+
+    expect(messages.filter(isReleaseMessage)).toHaveLength(1);
+  });
 });
 
 function isReleaseMessage(message: unknown): boolean {
