@@ -252,6 +252,21 @@ describe('platform providers', () => {
     expect(context.sessionState.tec1gRuntime?.holdKeyForReset).toHaveBeenCalledWith(0x02);
   });
 
+  it('registers a TEC-1G input release command for view teardown', async () => {
+    const provider = await resolvePlatformProvider({ platform: 'tec1g' });
+    const registry = new PlatformRegistry();
+    const context = createCommandContext();
+    const releaseInputs = vi.fn();
+    context.sessionState.tec1gRuntime = { releaseInputs } as never;
+
+    provider.registerCommands(registry, context);
+    registry.getHandler('debug80/tec1gReleaseInputs')?.({} as DebugProtocol.Response, undefined);
+
+    expect(releaseInputs).toHaveBeenCalledTimes(1);
+    expect(context.clearMatrixHeldKeys).toHaveBeenCalledTimes(1);
+    expect(context.sendResponse).toHaveBeenCalledTimes(1);
+  });
+
   it('remembers TMS9918 panel state before the TEC-1G runtime exists', async () => {
     const provider = await resolvePlatformProvider({
       platform: 'tec1g',

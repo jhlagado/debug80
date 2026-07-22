@@ -494,11 +494,13 @@ document.addEventListener(
   },
   { capture: true }
 );
-window.addEventListener('blur', () => {
+function releaseAllHardwareInputs(): void {
   releaseAllTecKeypadKeys(keypad);
   applyMatrixKeyboardCapture(false);
   joystickUi.clear();
-});
+}
+
+window.addEventListener('blur', releaseAllHardwareInputs);
 
 window.addEventListener(
   'keydown',
@@ -545,7 +547,7 @@ window.addEventListener(
   { capture: true }
 );
 window.addEventListener('beforeunload', () => {
-  releaseAllTecKeypadKeys(keypad);
+  releaseAllHardwareInputs();
   sessionStatusController.dispose();
   stopOnEntryControl.dispose();
   azmOptionsControl.dispose();
