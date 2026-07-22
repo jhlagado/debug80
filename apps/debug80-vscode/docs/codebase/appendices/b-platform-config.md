@@ -93,6 +93,8 @@ Config block key: `simple`
 | `binFrom`  | `number`         | —                    | Start address for binary output                                          |
 | `binTo`    | `number`         | —                    | End address for binary output                                            |
 
+`simple.binFrom` and `simple.binTo` are an all-or-nothing pair. Debug80 rejects configs that specify only one side or that set `binFrom > binTo`. When the pair is present, the active assembler backend must also support ranged binary emission. The current implementation exposes that path only through AZM-backed builds.
+
 ---
 
 ## TEC-1 platform (`"platform": "tec1"`)

@@ -219,6 +219,14 @@ The routing functions contain no provider state — they are pure dispatch layer
 - `handlePlatformSerialSendFile()` opens a file picker, reads the file, and sends each character individually as a `debug80/tec1SerialInput` or `debug80/tec1gSerialInput` custom request (2 ms between characters, 10 ms between lines, CR appended at each line end). A cancellable progress notification shows during the transfer.
 - `handlePlatformSerialSave()` opens a save dialog and writes the buffered serial text to a file. If the contents look like Intel HEX (all lines start with `:`), the default filter offers `.hex`.
 
+### Auto rebuild on save
+
+`registerAutoRebuildOnSave()` in `src/extension/auto-rebuild.ts` adds a second extension-host workflow around active sessions. When the user saves an eligible source document during a running Z80 session, the extension debounces the save for 250 ms and then sends `debug80/rebuildWarm` to the active debug session.
+
+Eligibility is checked by `debug80-source-extensions.ts`. The current rebuild-on-save path accepts `.asm`, `.z80`, `.asmi`, and `.glim` files, but only when the saved file is inside the active session's workspace folder. This keeps one workspace's save from warm-rebuilding another workspace's session in a multi-root window.
+
+Successful warm rebuilds clear any prior rebuild diagnostics and append the summary line to the shared Debug80 output channel. Assembly failures are converted into a single VS Code diagnostic at the reported source location, the short summary is appended to the output channel, and the detailed compiler text is shown in the same output stream. Repeated saves while a rebuild is already in flight are coalesced by `SessionStateManager`: the extension marks that another rebuild is pending and reruns exactly once when the current rebuild completes.
+
 ### CoolTerm hardware send
 
 Debug80 also has a host-side hardware send path through CoolTerm. The command `debug80.sendHexViaCoolTerm` is registered in `src/extension/commands.ts` and implemented by `src/extension/coolterm/`.
@@ -566,7 +574,7 @@ If the user chose to create a starter source file, `createStarterSourceContent()
 
 - The memory refresh controller polls the adapter at 150 ms intervals when the memory tab is active and the panel is visible. Polling stops automatically on tab switch or panel hide.
 
-- Project status is assembled from workspace folders, `debug80.json` discovery, workspace-persisted target selection, and the active platform ID. It emits one of three `projectState` values and drives the project header (Project button + `+` / `-` workspace-folder buttons, Target dropdown, Platform dropdown, Stop-on-entry checkbox, Strict labels checkbox, Build button, and Run button).
+- Project status is assembled from workspace folders, `debug80.json` discovery, workspace-persisted target selection, the active platform ID, and inferred build/source-map state. It emits one of three `projectState` values and drives the project header (Project button + `+` / `-` workspace-folder buttons, Target dropdown, Platform dropdown, Stop-on-entry checkbox, Strict labels checkbox, Build button, and Run button). The same payload also carries the selected target's inferred HEX path for CoolTerm, a build-status line for build-only and assembly-failure feedback, and a source-map freshness summary.
 
 - Project scaffolding is driven by **project kits** (`src/extension/project-kits.ts`). A kit packages the platform, profile name, memory-map defaults, starter templates, and optional bundled ROM references into a single descriptor. `buildScaffoldPlan()` selects a kit interactively (command palette path); `getDefaultProjectKitForPlatform()` selects the bundle-first default silently (panel initialization path). `createDefaultProjectConfig()` writes `profiles` and `targets` from the chosen kit. Bundled ROM references resolve to workspace files first, then extension-bundled files; `debug80.materializeBundledRom` installs workspace copies and the conventional local `*.rom.asm` entry point on demand.
 

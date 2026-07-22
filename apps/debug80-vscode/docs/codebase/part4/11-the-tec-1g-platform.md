@@ -475,11 +475,13 @@ The reset command snapshots the active MON-3 monitor RAM window at `0x0800-0x0FF
 
 - Memory management is handled by hooks installed at runtime finalisation. Shadow, protect, and expansion modes are controlled by writing to port 0xFF; the hooks apply the current state on every memory access.
 
-- The RGB LED matrix uses a staging/commit architecture. Row writes accumulate into per-channel staging buffers; when all eight rows have been written, the staging commits to the brightness arrays and a UI update fires. Partial frames flush after 40ms idle.
+- The RGB LED matrix now keeps both steady-state row masks and transient scan-cycle playback data. The runtime records complete 8-row scans with per-row dwell timing, trims the queue when the webview falls behind, and leaves the latest electrical row masks visible when scanning pauses mid-frame.
 
 - The text LCD (HD44780) is larger than the TEC-1 version — four rows of twenty characters with CGRAM support. The GLCD (ST7920) provides 128×64 pixel graphics with both text and graphics modes.
 
 - The matrix keyboard polled via port 0xFE uses active-low row selection and active-low column values, with the row selected from the high port byte. ASCII translation handles modifiers and latched CAPS LOCK.
+
+- The front-panel hex keypad supports held press/release semantics on TEC-1G. The runtime keeps a latched key visible across MON-3 polling until the matching release arrives, while still enforcing the minimum pulse window used for fast taps and reset-time Fn sampling.
 
 - Serial operates at 4800 baud, bitbang. TX is decoded from port 0x01 bit 6; RX is injected at cycle-accurate timing.
 

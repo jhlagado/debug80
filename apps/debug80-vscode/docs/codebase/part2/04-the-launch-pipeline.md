@@ -86,6 +86,8 @@ Platform-specific configuration blocks (`tec1`, `tec1g`, `simple`) are **shallow
 
 The TEC-1G platform has an additional inheritance rule: `resolveTec1gBaseForMerge()` ensures that the `romHex` field from the first target definition carries forward to other targets that don't specify their own ROM. This allows a project to define a ROM once and share it across targets.
 
+Malformed nested platform input is preserved rather than normalized away. If a root config, target config, or explicit launch arg supplies `simple`, `tec1`, or `tec1g` as a non-object, or supplies a malformed ROM path field inside those blocks, `restoreMalformedPlatformBlocks()` and `restoreMalformedPlatformPathFields()` write that raw value back into the merged launch args. The later validation pass then rejects the actual bad input instead of silently falling back to defaults.
+
 ### Field-by-field resolution
 
 After merging, `populateFromConfig()` resolves each field individually:
@@ -207,6 +209,8 @@ interface AssemblerBackend {
 ```
 
 `assemble()` produces the primary build artifacts, normally HEX plus native D8 source map. AZM-backed assembly also emits an asm80-style `.lst` listing by default. `assembleBin()` is optional — the simple platform uses it to produce raw binary output for custom memory regions (configured via `binFrom`/`binTo`), and the TEC-1G ROM-artifact path uses it to materialize monitor or expansion `.bin` images with fixed address windows.
+
+For the simple platform, ranged binary output is now validated as a pair: `simple.binFrom` and `simple.binTo` must both be present or both be absent, and `binFrom` must be less than or equal to `binTo`. This is enforced during launch validation and again immediately before assembly. If a ranged simple build is requested through a backend without `assembleBin()` support, Debug80 fails the launch with a direct build error instead of pretending the range was applied. In the current codebase that means ranged simple binaries require the AZM backend rather than Glimmer.
 
 ### The AZM invocation
 
