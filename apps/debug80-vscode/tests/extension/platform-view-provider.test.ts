@@ -949,6 +949,8 @@ describe('PlatformViewProvider', () => {
     (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
     const payload: Tec1UpdatePayload = {
       digits: [0, 0, 0, 0, 0, 0],
+      segmentIntensities: Array.from({ length: 48 }, () => 0),
+      segmentScanStopped: true,
       matrix: [0, 0, 0, 0, 0, 0, 0, 0],
       speaker: 1,
       speedMode: 'fast',
@@ -965,6 +967,8 @@ describe('PlatformViewProvider', () => {
       speedMode: payload.speedMode,
       lcd: payload.lcd,
       speakerHz: payload.speakerHz,
+      segmentIntensities: payload.segmentIntensities,
+      segmentScanStopped: true,
     });
   });
 
@@ -984,6 +988,8 @@ describe('PlatformViewProvider', () => {
     (webviewView.webview.postMessage as ReturnType<typeof vi.fn>).mockClear();
     const payload: Tec1gUpdatePayload = {
       digits: [0, 0, 0, 0, 0, 0],
+      segmentIntensities: Array.from({ length: 48 }, () => 0),
+      segmentScanStopped: true,
       matrix: [0, 0, 0, 0, 0, 0, 0, 0],
       glcd: [0, 0],
       speaker: 1,
@@ -1007,6 +1013,8 @@ describe('PlatformViewProvider', () => {
     expect(update?.glcd).toEqual(payload.glcd);
     expect(update?.speedMode).toBe(payload.speedMode);
     expect(update?.speakerHz).toBe(payload.speakerHz);
+    expect(update?.segmentIntensities).toEqual(payload.segmentIntensities);
+    expect(update?.segmentScanStopped).toBe(true);
   });
 
   it('posts full Tec1g display fields on every runtime update', async () => {
