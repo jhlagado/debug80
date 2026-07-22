@@ -17,6 +17,7 @@ import {
   type LaunchConfigManifest,
 } from '../../src/debug/launch/launch-config-merge';
 import type { LaunchRequestArguments } from '../../src/debug/session/types';
+import { assertValidLaunchArgs } from '../../src/debug/launch/config-validation';
 
 const PROJECT_CONFIG = '/project/debug80.json';
 const PROJECT_ROOT = '/project';
@@ -211,6 +212,61 @@ describe('launch-config-merge', () => {
       '/project/roms/tec1g/mon3/mon3.d8.json',
       '/extension/tec1g/mon3/v1/mon3.d8.json',
     ]);
+  });
+
+  it('preserves a malformed root TEC-1G block through sibling ROM inheritance', () => {
+    const manifest = {
+      platform: 'tec1g',
+      tec1g: null,
+      targets: {
+        app: { asm: 'src/app.asm', tec1g: { appStart: 0x4000 } },
+        monitor: { tec1g: { romHex: 'roms/monitor.bin' } },
+      },
+    } as unknown as LaunchConfigManifest;
+
+    const merged = mergeForTarget(manifest, 'app');
+
+    expect(merged.tec1g).toBeNull();
+    expect(() => assertValidLaunchArgs(merged)).toThrow('tec1g must be an object, got null');
+  });
+
+  it('preserves a malformed TEC-1 block after bundled ROM resolution', () => {
+    const manifest = {
+      platform: 'tec1',
+      tec1: [],
+      bundledAssets: {
+        romHex: { bundleId: 'tec1/monitor', path: 'monitor.bin' },
+      },
+      targets: { app: { asm: 'src/app.asm' } },
+    } as unknown as LaunchConfigManifest;
+
+    const merged = mergeForTarget(manifest, 'app', launchArgs(), {
+      resolveBundledAssetPath: () => '/extension/tec1/monitor.bin',
+    });
+
+    expect(merged.tec1).toEqual([]);
+    expect(() => assertValidLaunchArgs(merged)).toThrow('tec1 must be an object, got array');
+  });
+
+  it('preserves malformed target and request blocks over valid root blocks', () => {
+    const manifest = {
+      platform: 'simple',
+      simple: { appStart: 0x4000 },
+      targets: { app: { asm: 'src/app.asm', simple: 42 } },
+    } as unknown as LaunchConfigManifest;
+    const targetMerged = mergeForTarget(manifest, 'app');
+    const requestMerged = mergeForTarget(
+      {
+        platform: 'simple',
+        simple: { appStart: 0x4000 },
+        targets: { app: { asm: 'src/app.asm' } },
+      },
+      'app',
+      launchArgs({ simple: 'invalid' as never })
+    );
+
+    expect(() => assertValidLaunchArgs(targetMerged)).toThrow('simple must be an object');
+    expect(() => assertValidLaunchArgs(requestMerged)).toThrow('simple must be an object');
   });
 });
 

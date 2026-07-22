@@ -379,6 +379,9 @@ function validateSimpleBinaryRange(binFrom: unknown, binTo: unknown): Validation
  * @returns Validation result
  */
 export function validateSimpleConfig(config: unknown): ValidationResult {
+  if (config === null) {
+    return invalidResult('simple must be an object, got null');
+  }
   const objectResult = validateOptionalObject<SimplePlatformConfig>(config, 'simple');
   if (objectResult.result !== undefined) {
     return objectResult.result;
@@ -401,6 +404,9 @@ export function validateSimpleConfig(config: unknown): ValidationResult {
  * @returns Validation result
  */
 export function validateTec1Config(config: unknown): ValidationResult {
+  if (config === null) {
+    return invalidResult('tec1 must be an object, got null');
+  }
   const objectResult = validateOptionalObject<Tec1PlatformConfig>(config, 'tec1');
   if (objectResult.result !== undefined) {
     return objectResult.result;
@@ -858,6 +864,9 @@ function getArtifactDiagnosticId(artifact: Record<string, unknown>, index: numbe
  * @returns Validation result
  */
 export function validateTec1gConfig(config: unknown): ValidationResult {
+  if (config === null) {
+    return invalidResult('tec1g must be an object, got null');
+  }
   const objectResult = validateOptionalObject<Tec1gPlatformConfig>(config, 'tec1g');
   if (objectResult.result !== undefined) {
     return objectResult.result;
