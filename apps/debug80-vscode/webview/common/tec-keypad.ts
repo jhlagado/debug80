@@ -134,6 +134,7 @@ export function createTecKeypad(
     };
     button.addEventListener('pointerdown', (e) => {
       e.preventDefault();
+      core.focusKeypad();
       if (heldPress !== null) {
         return;
       }
