@@ -6,7 +6,10 @@ import * as vscode from 'vscode';
 import type { WarmRebuildResult } from '../debug/session/message-types';
 import { isWarmRebuildResult } from '../debug/session/message-types';
 import { SessionStateManager } from './session-state-manager';
-import { isDebug80RebuildSourcePath } from './debug80-source-extensions';
+import {
+  isDebug80RebuildSourcePath,
+  isDebug80RebuildSourceWithinWorkspace,
+} from './debug80-source-extensions';
 
 const REBUILD_DEBOUNCE_MS = 250;
 
@@ -119,7 +122,7 @@ export function registerAutoRebuildOnSave(
       if (
         typeof sessionFolder === 'string' &&
         sessionFolder.length > 0 &&
-        !document.uri.fsPath.startsWith(sessionFolder)
+        !isDebug80RebuildSourceWithinWorkspace(document.uri.fsPath, sessionFolder)
       ) {
         return;
       }
