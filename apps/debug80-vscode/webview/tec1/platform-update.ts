@@ -1,6 +1,9 @@
 type Tec1PlatformUpdatePayload = {
   digits?: number[];
   segmentIntensities?: number[];
+  segmentScanCycles?: import('@jhlagado/debug80-runtime/platforms/tec-common').SevenSegmentScanCycle[];
+  segmentDroppedScanCycles?: number;
+  segmentClockHz?: number;
   matrix?: number[];
   speaker?: boolean;
   speedMode?: string;
@@ -14,9 +17,13 @@ type Tec1PlatformUpdateDependencies = {
     updateAudio: () => void;
   };
   applySpeed: (mode: string) => void;
-  display: {
-    applyDigits: (digits: number[]) => void;
-    applySegmentIntensities: (intensities: number[]) => void;
+  segmentPlayer: {
+    enqueue: (
+      cycles: NonNullable<Tec1PlatformUpdatePayload['segmentScanCycles']>,
+      droppedCycles?: number,
+      clockHz?: number
+    ) => void;
+    renderStatic: (digits?: number[], intensities?: number[]) => void;
   };
   lcdRenderer: {
     applyLcdUpdate: (payload: Tec1PlatformUpdatePayload) => void;
@@ -30,13 +37,18 @@ type Tec1PlatformUpdateDependencies = {
 
 function applySevenSegmentUpdate(
   payload: Tec1PlatformUpdatePayload,
-  display: Tec1PlatformUpdateDependencies['display']
+  player: Tec1PlatformUpdateDependencies['segmentPlayer']
 ): void {
-  if (Array.isArray(payload.segmentIntensities)) {
-    display.applySegmentIntensities(payload.segmentIntensities);
-    return;
+  if (Array.isArray(payload.segmentScanCycles)) {
+    player.enqueue(
+      payload.segmentScanCycles,
+      payload.segmentDroppedScanCycles,
+      payload.segmentClockHz
+    );
   }
-  display.applyDigits(payload.digits || []);
+  if (Array.isArray(payload.segmentIntensities) || Array.isArray(payload.digits)) {
+    player.renderStatic(payload.digits, payload.segmentIntensities);
+  }
 }
 
 function applySpeakerUpdate(
@@ -61,7 +73,7 @@ export function applyTec1PlatformUpdate(
   payload: Tec1PlatformUpdatePayload,
   deps: Tec1PlatformUpdateDependencies
 ): void {
-  applySevenSegmentUpdate(payload, deps.display);
+  applySevenSegmentUpdate(payload, deps.segmentPlayer);
   applySpeakerUpdate(payload, deps);
   deps.audio.updateAudio();
 

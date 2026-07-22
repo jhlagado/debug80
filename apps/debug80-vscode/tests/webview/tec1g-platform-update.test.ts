@@ -3,7 +3,7 @@ import { applyTec1gPlatformUpdate } from '../../webview/tec1g/tec1g-platform-upd
 
 function makeDeps() {
   return {
-    display: { applyDigits: vi.fn() },
+    segmentPlayer: { enqueue: vi.fn(), renderStatic: vi.fn(), stop: vi.fn() },
     audio: { applySpeakerFromUpdate: vi.fn() },
     applySpeed: vi.fn(),
     lcdRenderer: { applyLcdUpdate: vi.fn() },
@@ -35,7 +35,7 @@ describe('tec1g platform update application', () => {
       matrix: [0x80],
     });
 
-    expect(deps.display.applyDigits).not.toHaveBeenCalled();
+    expect(deps.segmentPlayer.renderStatic).not.toHaveBeenCalled();
     expect(deps.matrixUi.applyMatrixRows).toHaveBeenCalledWith([0x80]);
   });
 
@@ -46,7 +46,27 @@ describe('tec1g platform update application', () => {
       digits: [1, 2, 3, 4, 5, 6],
     });
 
-    expect(deps.display.applyDigits).toHaveBeenCalledWith([1, 2, 3, 4, 5, 6]);
+    expect(deps.segmentPlayer.renderStatic).toHaveBeenCalledWith([1, 2, 3, 4, 5, 6], undefined);
+  });
+
+  it('passes seven-segment scan batches to the shared player', () => {
+    const deps = makeDeps();
+    const scans = [
+      {
+        id: 1,
+        startCycle: 10,
+        endCycle: 70,
+        phases: [{ digitMask: 0x3f, segments: 0xef, dwellCycles: 60 }],
+      },
+    ];
+
+    applyTec1gPlatformUpdate(deps, {
+      segmentScanCycles: scans,
+      segmentDroppedScanCycles: 3,
+      segmentClockHz: 400_000,
+    });
+
+    expect(deps.segmentPlayer.enqueue).toHaveBeenCalledWith(scans, 3, 400_000);
   });
 
   it('passes matrix scan-cycle batches to the scan player', () => {

@@ -7,6 +7,9 @@ type Tec1UpdatePayload = {
   uiRevision?: number;
   digits?: number[];
   segmentIntensities?: number[];
+  segmentScanCycles?: import('@jhlagado/debug80-runtime/platforms/tec-common').SevenSegmentScanCycle[];
+  segmentDroppedScanCycles?: number;
+  segmentClockHz?: number;
   matrix?: number[];
   speaker?: boolean;
   speedMode?: string;
