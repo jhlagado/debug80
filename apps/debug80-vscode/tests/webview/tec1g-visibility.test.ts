@@ -242,7 +242,10 @@ describe('tec1g UI visibility controls', () => {
     expect(source).toContain("vscode.postMessage({ type: 'matrixMode', enabled: open })");
     expect(source).toContain('function reassertMatrixKeyboardOpenState()');
     expect(source).toContain('function applyMatrixKeyboardCapture(captured: boolean)');
-    expect(source).toContain("window.addEventListener('blur', () => {");
+    expect(source).toContain('function releaseAllHardwareInputs(): void');
+    expect(source).toContain("window.addEventListener('blur', releaseAllHardwareInputs)");
+    expect(source).toContain("window.addEventListener('beforeunload', () => {");
+    expect(source).toContain('releaseAllHardwareInputs()');
     expect(source).toContain('applyMatrixKeyboardCapture(false)');
     expect(source).toContain("message.status === 'running' || message.status === 'paused'");
     expect(source).toContain('if (message.matrixMode === false)');
