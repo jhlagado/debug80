@@ -54,6 +54,7 @@ export function createTecKeypad(
 ): TecKeypad {
   const statusEls = options?.statusEls ?? null;
   const core = createKeypadCore(keypadEl, vscode, TEC1G_SHIFT_BIT);
+  const cancelButtonHolds: Array<() => void> = [];
   let sysCtrlSegs: HTMLElement[] = [];
   let sysCtrlValue = 0;
 
@@ -92,14 +93,27 @@ export function createTecKeypad(
 
   function wireHoldableKey(button: HTMLElement, code: number): void {
     let heldPress: KeypadPressHandle | null = null;
+    let activePointerId: number | undefined | null = null;
     let pressedAt = 0;
     let releaseTimer: ReturnType<typeof setTimeout> | null = null;
-    const release = (): void => {
+    cancelButtonHolds.push(() => {
+      heldPress = null;
+      activePointerId = null;
+      if (releaseTimer !== null) {
+        clearTimeout(releaseTimer);
+        releaseTimer = null;
+      }
+    });
+    const release = (event: PointerEvent): void => {
       if (heldPress === null) {
+        return;
+      }
+      if (event.pointerId !== activePointerId) {
         return;
       }
       const releasing = heldPress;
       heldPress = null;
+      activePointerId = null;
       const elapsed = Date.now() - pressedAt;
       const wait = Math.max(0, KEYPAD_CLICK_HOLD_MS - elapsed);
       if (wait > 0) {
@@ -113,11 +127,15 @@ export function createTecKeypad(
     };
     button.addEventListener('pointerdown', (e) => {
       e.preventDefault();
+      if (heldPress !== null) {
+        return;
+      }
       if (releaseTimer !== null) {
         clearTimeout(releaseTimer);
         releaseTimer = null;
       }
       pressedAt = Date.now();
+      activePointerId = e.pointerId;
       heldPress = core.pressKey(code);
     });
     button.addEventListener('pointerup', release);
@@ -245,7 +263,12 @@ export function createTecKeypad(
     sendKey: (code) => core.sendKey(code),
     pressKey: (code) => core.pressKey(code),
     releaseKey: (press) => core.releaseKey(press),
-    releaseAllKeys: () => core.releaseAllKeys(),
+    releaseAllKeys: () => {
+      for (const cancelHold of cancelButtonHolds) {
+        cancelHold();
+      }
+      core.releaseAllKeys();
+    },
     setShiftLatched: (value) => core.setShiftLatched(value),
     getShiftLatched: () => core.getShiftLatched(),
     setSysCtrlValue: (value: number) => {

@@ -74,12 +74,50 @@ describe('on-screen TEC keypad holds', () => {
 
     goKey?.dispatchEvent(new Event('pointerdown', { bubbles: true, cancelable: true }));
     keypad.releaseAllKeys();
+    goKey?.dispatchEvent(new Event('pointerdown', { bubbles: true, cancelable: true }));
     goKey?.dispatchEvent(new Event('pointerup', { bubbles: true }));
     vi.advanceTimersByTime(80);
 
+    expect(messages.filter(isPressMessage)).toHaveLength(2);
+    expect(messages.filter(isReleaseMessage)).toHaveLength(2);
+  });
+
+  it('keeps the first pointer as the owner of a held button', () => {
+    const messages: unknown[] = [];
+    const keypadElement = document.getElementById('keypad')!;
+    createTecKeypad({ postMessage: (message) => messages.push(message) }, keypadElement);
+    const goKey = Array.from(keypadElement.querySelectorAll<HTMLElement>('.keycap')).find(
+      (element) => element.textContent === 'GO'
+    );
+
+    goKey?.dispatchEvent(pointerEvent('pointerdown', 1));
+    goKey?.dispatchEvent(pointerEvent('pointerdown', 2));
+    goKey?.dispatchEvent(pointerEvent('pointerup', 2));
+    vi.advanceTimersByTime(80);
+
+    expect(messages.filter(isPressMessage)).toHaveLength(1);
+    expect(messages.filter(isReleaseMessage)).toHaveLength(0);
+
+    goKey?.dispatchEvent(pointerEvent('pointerup', 1));
+    vi.advanceTimersByTime(80);
     expect(messages.filter(isReleaseMessage)).toHaveLength(1);
   });
 });
+
+function pointerEvent(type: string, pointerId: number): Event {
+  const event = new Event(type, { bubbles: true, cancelable: true });
+  Object.defineProperty(event, 'pointerId', { value: pointerId });
+  return event;
+}
+
+function isPressMessage(message: unknown): boolean {
+  return (
+    message !== null &&
+    typeof message === 'object' &&
+    (message as { type?: unknown }).type === 'key' &&
+    (message as { pressed?: unknown }).pressed === true
+  );
+}
 
 function isReleaseMessage(message: unknown): boolean {
   return (
