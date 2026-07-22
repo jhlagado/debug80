@@ -14,15 +14,23 @@ DWELL           .equ    0x40
 
 .routine clobbers A,B,C,D,F
 Start:
+        xor     a
+        out     (PORT_DIG),a
+        out     (PORT_SEG),a
+
+; GO is still held when MON-3 transfers control here. Do not treat that
+; launch key as the first test press; arm only after the keypad is idle.
+_Arm:
+        in      a,(PORT_KEY)
+        and     0x7f
+        cp      NO_KEY
+        jp      nz,_Arm
+
 _Poll:
         in      a,(PORT_KEY)
         and     0x7f
         cp      NO_KEY
         jp      nz,_Scan
-
-        xor     a
-        out     (PORT_DIG),a
-        out     (PORT_SEG),a
         jp      _Poll
 
 _Scan:
@@ -44,4 +52,12 @@ _Dwell:
         out     (PORT_DIG),a
         sla     d
         djnz    _Digit
+
+        in      a,(PORT_KEY)
+        and     0x7f
+        cp      NO_KEY
+        jp      nz,_Scan
+
+        xor     a
+        out     (PORT_SEG),a
         jp      _Poll
