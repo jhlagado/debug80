@@ -75,11 +75,12 @@ describe('TEC-1 update payload serialization', () => {
     });
   });
 
-  it('clear panel snapshot forces speaker off', () => {
+  it('clear panel snapshot forces speaker off and stops segment replay', () => {
     const ui = createTec1UiState();
     ui.speaker = true;
     const cleared = serializeTec1ClearFromUiState(ui);
     expect(cleared.speaker).toBe(0);
+    expect(cleared.segmentScanStopped).toBe(true);
   });
 });
 
@@ -95,6 +96,7 @@ describe('TEC-1G update payload serialization', () => {
 
     const cleared = serializeTec1gClearPanelUpdateFromUiState(ui);
     expect(cleared.speaker).toBe(0);
+    expect(cleared.segmentScanStopped).toBe(true);
     expect(cleared.matrixGreen).toBeDefined();
   });
 

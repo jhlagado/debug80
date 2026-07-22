@@ -59,6 +59,7 @@ export function serializeTec1gUpdateFromUiState(
 export function serializeTec1gClearPanelUpdateFromUiState(state: Tec1gUiState): Tec1gUpdatePayload {
   return {
     digits: [...state.digits],
+    segmentScanStopped: true,
     matrix: [...state.matrix],
     matrixGreen: [...state.matrixGreen],
     matrixBlue: [...state.matrixBlue],
