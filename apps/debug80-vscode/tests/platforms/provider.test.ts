@@ -159,6 +159,10 @@ describe('platform providers', () => {
     expect(context.sessionState.tec1Runtime?.applyKey).toHaveBeenCalledWith(0x41);
     expect(context.sendResponse).toHaveBeenCalledTimes(1);
 
+    keyHandler?.({} as DebugProtocol.Response, { code: 0x41, pressed: false });
+    expect(context.sessionState.tec1Runtime?.applyKey).toHaveBeenLastCalledWith(0x41, false);
+    expect(context.sendResponse).toHaveBeenCalledTimes(2);
+
     const resetHandler = registry.getHandler('debug80/tec1Reset');
     expect(resetHandler).toBeDefined();
     resetHandler?.({} as DebugProtocol.Response, undefined);
