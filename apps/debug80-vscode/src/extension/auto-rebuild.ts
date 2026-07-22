@@ -6,15 +6,15 @@ import * as vscode from 'vscode';
 import type { WarmRebuildResult } from '../debug/session/message-types';
 import { isWarmRebuildResult } from '../debug/session/message-types';
 import { SessionStateManager } from './session-state-manager';
-import { isAzmRebuildSourcePath } from './azm-source-extensions';
+import { isDebug80RebuildSourcePath } from './debug80-source-extensions';
 
 const REBUILD_DEBOUNCE_MS = 250;
 
-function isAssemblyDocument(document: vscode.TextDocument): boolean {
+function isRebuildSourceDocument(document: vscode.TextDocument): boolean {
   if (document.isUntitled || document.uri.scheme !== 'file') {
     return false;
   }
-  return isAzmRebuildSourcePath(document.uri.fsPath);
+  return isDebug80RebuildSourcePath(document.uri.fsPath);
 }
 
 function clearRebuildDiagnostics(
@@ -108,7 +108,7 @@ export function registerAutoRebuildOnSave(
 
   context.subscriptions.push(
     vscode.workspace.onDidSaveTextDocument((document) => {
-      if (!isAssemblyDocument(document)) {
+      if (!isRebuildSourceDocument(document)) {
         return;
       }
       const session = vscode.debug.activeDebugSession;
