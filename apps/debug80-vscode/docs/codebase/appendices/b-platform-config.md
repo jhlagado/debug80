@@ -23,7 +23,7 @@ Project configuration lives in `debug80.json` at the workspace folder root. Top-
 | `sourceFile`              | `string`   | —                                                      | Alias for `asm`                                                                       |
 | `assembler`               | `string`   | inferred                                               | Assembler backend identifier. Inferred from source extension unless set explicitly.   |
 | `hex`                     | `string`   | derived                                                | Path to the output Intel HEX file; derived from `asm` if omitted                      |
-| `outputDir`               | `string`   | asm dir                                                | Directory for build artifacts                                                         |
+| `outputDir`               | `string`   | `build`                                                | Directory for build artifacts                                                         |
 | `artifactBase`            | `string`   | asm filename                                           | Base name for generated artifacts such as `.hex`, `.bin`, `.d8.json`, and AZM reports |
 | `entry`                   | `number`   | platform default                                       | CPU entry address; overrides the platform block's `entry`                             |
 | `stopOnEntry`             | `boolean`  | `true` in raw launch schema; panel toggle defaults off | Pause at the entry point before executing                                             |

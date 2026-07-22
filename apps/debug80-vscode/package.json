@@ -664,7 +664,7 @@
               },
               "outputDir": {
                 "type": "string",
-                "description": "Directory for generated build artifacts (defaults to asm directory)"
+                "description": "Directory for generated build artifacts (defaults to build)"
               },
               "artifactBase": {
                 "type": "string",

@@ -6,6 +6,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import * as vscode from 'vscode';
 import type { AzmSymbolCaseMode, ProjectConfig } from '../debug/session/types';
+import { DEFAULT_OUTPUT_DIR } from '../debug/launch/config-utils';
 import { targetNameFromSourcePath } from './project-target-source-policy';
 
 export const DEBUG80_PROJECT_VERSION = 2 as const;
@@ -293,7 +294,8 @@ function buildNewTargetEntry(
   targets: Record<string, Record<string, unknown>>,
   defaultTargetName: string | undefined,
   targetName: string,
-  sourceFile: string
+  sourceFile: string,
+  defaultOutputDir: string
 ): Record<string, unknown> {
   const templateName =
     typeof defaultTargetName === 'string' && targets[defaultTargetName] !== undefined
@@ -308,6 +310,9 @@ function buildNewTargetEntry(
   delete template.source;
   delete template.artifactBase;
   delete template.assembler;
+  if (!isNonEmptyString(template.outputDir)) {
+    template.outputDir = defaultOutputDir;
+  }
   const baseName = projectTargetNameFromSource(sourceFile) || targetName;
 
   return {
@@ -340,7 +345,8 @@ export function addProjectTarget(
         targets,
         config.defaultTarget ?? (config as ProjectConfig & { target?: string }).target,
         targetName,
-        sourceFile
+        sourceFile,
+        isNonEmptyString(config.outputDir) ? config.outputDir : DEFAULT_OUTPUT_DIR
       );
       config.targets = targets as NonNullable<ProjectConfig['targets']>;
       pkg.debug80 = config;
@@ -359,7 +365,8 @@ export function addProjectTarget(
       targets,
       config.defaultTarget ?? (config as ProjectConfig & { target?: string }).target,
       targetName,
-      sourceFile
+      sourceFile,
+      isNonEmptyString(config.outputDir) ? config.outputDir : DEFAULT_OUTPUT_DIR
     );
     config.targets = targets as NonNullable<ProjectConfig['targets']>;
     fs.writeFileSync(projectConfigPath, `${JSON.stringify(config, null, 2)}\n`);

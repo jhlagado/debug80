@@ -106,6 +106,7 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
   projectPlatform: ScaffoldPlatform;
   defaultTarget?: string;
   defaultProfile: string;
+  outputDir?: string;
   azm: { symbolCase: 'strict' };
   profiles: Record<string, Record<string, unknown>>;
   targets: Record<string, Record<string, unknown>>;
@@ -185,6 +186,7 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
     projectVersion: DEBUG80_PROJECT_VERSION,
     projectPlatform: plan.kit.platform,
     defaultProfile: plan.kit.profileName,
+    ...(plan.noTarget === true ? { outputDir: plan.outputDir } : {}),
     ...(plan.noTarget === true ? {} : { defaultTarget: plan.targetName }),
     azm: { symbolCase: 'strict' },
     profiles: {
@@ -246,7 +248,9 @@ export async function scaffoldProject(
   }
 
   if (plan?.noTarget !== true) {
-    ensureDirExists(path.join(workspaceRoot, path.dirname(plan?.sourceFile ?? inferred.sourceFile)));
+    ensureDirExists(
+      path.join(workspaceRoot, path.dirname(plan?.sourceFile ?? inferred.sourceFile))
+    );
   }
   ensureDirExists(path.join(workspaceRoot, plan?.outputDir ?? inferred.outputDir));
 

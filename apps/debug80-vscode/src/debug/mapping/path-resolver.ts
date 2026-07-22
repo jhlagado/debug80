@@ -8,6 +8,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
 import * as vscode from 'vscode';
+import { DEFAULT_OUTPUT_DIR } from '../launch/config-utils';
 import { LaunchRequestArguments } from '../session/types';
 import { FileResolutionError } from '../session/errors';
 import {
@@ -140,7 +141,7 @@ export function resolveArtifacts(args: LaunchRequestArguments, baseDir: string):
     }
 
     const artifactBase = args.artifactBase ?? path.basename(asmPath, path.extname(asmPath));
-    const outDirRaw = args.outputDir ?? path.dirname(asmPath);
+    const outDirRaw = args.outputDir ?? DEFAULT_OUTPUT_DIR;
     const outDir = resolveRelative(outDirRaw, baseDir);
 
     hexPath = path.join(outDir, `${artifactBase}.hex`);

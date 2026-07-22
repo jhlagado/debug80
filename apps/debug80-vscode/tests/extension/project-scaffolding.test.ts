@@ -157,6 +157,21 @@ describe('project-scaffolding helpers', () => {
     );
   });
 
+  it('retains the build directory when scaffolding without an initial target', () => {
+    const config = createDefaultProjectConfig({
+      kit: kit('tec1g/mon3'),
+      targetName: 'main',
+      sourceFile: 'src/main.asm',
+      outputDir: 'build',
+      artifactBase: 'main',
+      noTarget: true,
+    });
+
+    expect(config.defaultTarget).toBeUndefined();
+    expect(config.outputDir).toBe('build');
+    expect(config.targets).toEqual({});
+  });
+
   it('creates starter source text for all built-in kits', () => {
     const extensionUri = { fsPath: process.cwd() } as never;
     expect(createStarterSourceContent(extensionUri, kit('simple/default'), 'asm')).toContain(
