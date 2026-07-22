@@ -29,6 +29,7 @@ export type TecKeypad = {
   releaseAllKeys: () => void;
   setShiftLatched: (value: boolean) => void;
   getShiftLatched: () => boolean;
+  getShiftLatchRevision: () => number;
   setSysCtrlValue: (value: number) => void;
   getSysCtrlValue: () => number;
   updateSysCtrl: () => void;
@@ -281,6 +282,7 @@ export function createTecKeypad(
     },
     setShiftLatched: (value) => core.setShiftLatched(value),
     getShiftLatched: () => core.getShiftLatched(),
+    getShiftLatchRevision: () => core.getShiftLatchRevision(),
     setSysCtrlValue: (value: number) => {
       sysCtrlValue = value;
     },

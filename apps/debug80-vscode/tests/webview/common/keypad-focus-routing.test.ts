@@ -17,6 +17,7 @@ function createKeypad(): KeypadKeyTarget & {
   shiftLatched: boolean;
 } {
   let shiftLatched = false;
+  let shiftLatchRevision = 0;
   const keypad = {
     focusKeypad: vi.fn(),
     pressKey: vi.fn((code: number) => ({ code: code | 0x20, generation: code })),
@@ -24,8 +25,10 @@ function createKeypad(): KeypadKeyTarget & {
     releaseAllKeys: vi.fn(),
     setShiftLatched: vi.fn((value: boolean) => {
       shiftLatched = value;
+      shiftLatchRevision += 1;
     }),
     getShiftLatched: () => shiftLatched,
+    getShiftLatchRevision: () => shiftLatchRevision,
     get shiftLatched() {
       return shiftLatched;
     },
@@ -209,6 +212,28 @@ describe('keypad focus routing', () => {
     expect(
       routeTecKeypadKeyup(dispatchKeyboardEvent(input, 'keyup', 'Shift', 'ShiftLeft'), localKeypad)
     ).toBe(false);
+    expect(localKeypad.shiftLatched).toBe(true);
+  });
+
+  it('does not clear a newer on-screen Fn latch when physical Shift is released', () => {
+    document.body.innerHTML = '<main id="surface"></main>';
+    const localKeypad = createKeypad();
+    const surface = document.getElementById('surface')!;
+    routeTecKeypadShortcut(
+      dispatchKeyboardEvent(surface, 'keydown', 'Shift', 'ShiftLeft'),
+      { kind: 'shift', latched: true },
+      localKeypad,
+      vi.fn()
+    );
+    localKeypad.setShiftLatched(false);
+    localKeypad.setShiftLatched(true);
+
+    expect(
+      routeTecKeypadKeyup(
+        dispatchKeyboardEvent(surface, 'keyup', 'Shift', 'ShiftLeft'),
+        localKeypad
+      )
+    ).toBe(true);
     expect(localKeypad.shiftLatched).toBe(true);
   });
 
