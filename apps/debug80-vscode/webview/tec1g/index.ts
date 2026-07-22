@@ -185,6 +185,9 @@ function keyboardOwnerVisibility(): {
 
 function applyKeyboardOwnerState(previousOwner: KeyboardOwner = null): void {
   const owner = keyboardOwner.getOwner();
+  if (previousOwner === 'keypad' && owner !== 'keypad') {
+    releaseAllTecKeypadKeys(keypad);
+  }
   if (previousOwner === 'joystick' && owner !== 'joystick') {
     joystickUi.clear();
   }
@@ -528,6 +531,9 @@ window.addEventListener(
 window.addEventListener(
   'keyup',
   (event) => {
+    if (routeTecKeypadKeyup(event, keypad)) {
+      return;
+    }
     if (shouldBypassEmulatorKeyboard(event)) {
       return;
     }
@@ -537,9 +543,6 @@ window.addEventListener(
     }
     if (keyboardOwner.getOwner() === 'joystick' && joystickUi.handleKeyEvent(event, false)) {
       return;
-    }
-    if (keyboardOwner.getOwner() === 'keypad') {
-      routeTecKeypadKeyup(event, keypad);
     }
   },
   { capture: true }
