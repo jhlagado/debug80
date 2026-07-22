@@ -9,6 +9,7 @@ import { SourceStateManager } from '../../src/debug/mapping/source-state-manager
 import { createZ80Runtime } from '@jhlagado/debug80-runtime/z80/runtime';
 import type { HexProgram } from '@jhlagado/debug80-runtime/z80/loaders';
 import { NullLogger } from '../../src/util/logger';
+import { BreakpointManager } from '../../src/debug/mapping/breakpoint-manager';
 
 vi.mock('vscode', () => ({
   workspace: { workspaceFolders: [] },
@@ -110,17 +111,19 @@ describe('warm rebuild assembly integration', () => {
     sessionState.loadedEntry = 0x4000;
     sessionState.runtime = createZ80Runtime(previousProgram);
     const sourceState = new SourceStateManager();
-    const applyAll = vi.fn(() => []);
+    const breakpointManager = new BreakpointManager();
+    breakpointManager.setPending(sourcePath, [{ line: 11 }]);
     const response = {} as DebugProtocol.Response;
     const sendResponse = vi.fn();
+    const sendEvent = vi.fn();
 
     await handleWarmRebuildRequest(response, {
       logger: new NullLogger(),
       sessionState,
       sourceState,
-      breakpointManager: { applyAll } as never,
+      breakpointManager,
       platformState: { active: 'simple' },
-      sendEvent: vi.fn(),
+      sendEvent,
       sendResponse,
       sendErrorResponse: vi.fn(),
     });
@@ -140,7 +143,22 @@ describe('warm rebuild assembly integration', () => {
       sessionState.runtime.hardware.memory.some((byte, address) => address >= 0x4000 && byte !== 0)
     ).toBe(true);
     expect(sessionState.runtime.getPC()).toBe(0x4000);
-    expect(applyAll).toHaveBeenCalledWith(sessionState.mappingIndex);
+    const breakpointSegments =
+      sessionState.mapping?.segments.filter(
+        (segment) =>
+          segment.loc.file?.endsWith('probe.glim') &&
+          segment.loc.line !== null &&
+          Math.abs(segment.loc.line - 11) <= 4
+      ) ?? [];
+    expect(breakpointSegments.some((segment) => breakpointManager.hasAddress(segment.start))).toBe(
+      true
+    );
+    expect(sendEvent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        event: 'breakpoint',
+        body: expect.objectContaining({ breakpoint: expect.objectContaining({ verified: true }) }),
+      })
+    );
     expect(sendResponse).toHaveBeenCalledWith(response);
   });
 });
