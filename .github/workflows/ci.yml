@@ -47,8 +47,10 @@ jobs:
               - 'packages/debug80-runtime/**'
             azm-headless:
               - 'integration/azm-headless/**'
+              - 'integration/.eslintrc.json'
             glimmer-headless:
               - 'integration/glimmer-headless/**'
+              - 'integration/.eslintrc.json'
             extension:
               - 'apps/debug80-vscode/**'
             infra:

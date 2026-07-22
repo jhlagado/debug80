@@ -1670,9 +1670,7 @@ describe('registerExtensionCommands', () => {
 
     expect(result).toBe(false);
     expect(startDebugging).not.toHaveBeenCalled();
-    expect(showInformationMessage).toHaveBeenCalledWith(
-      expect.stringContaining('no targets yet')
-    );
+    expect(showInformationMessage).toHaveBeenCalledWith(expect.stringContaining('no targets yet'));
   });
 
   it('restarts with the current stop-on-entry state', async () => {
