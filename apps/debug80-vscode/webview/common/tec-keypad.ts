@@ -92,22 +92,35 @@ export function createTecKeypad(
   function wireHoldableKey(button: HTMLElement, code: number): void {
     let heldCode: number | null = null;
     let pressedAt = 0;
+    let pressGeneration = 0;
+    let releaseTimer: ReturnType<typeof setTimeout> | null = null;
     const release = (): void => {
       if (heldCode === null) {
         return;
       }
       const releasing = heldCode;
+      const releasingGeneration = pressGeneration;
       heldCode = null;
       const elapsed = Date.now() - pressedAt;
       const wait = Math.max(0, KEYPAD_CLICK_HOLD_MS - elapsed);
       if (wait > 0) {
-        setTimeout(() => core.releaseKey(releasing), wait);
+        releaseTimer = setTimeout(() => {
+          releaseTimer = null;
+          if (releasingGeneration === pressGeneration) {
+            core.releaseKey(releasing);
+          }
+        }, wait);
       } else {
         core.releaseKey(releasing);
       }
     };
     button.addEventListener('pointerdown', (e) => {
       e.preventDefault();
+      pressGeneration += 1;
+      if (releaseTimer !== null) {
+        clearTimeout(releaseTimer);
+        releaseTimer = null;
+      }
       pressedAt = Date.now();
       heldCode = core.pressKey(code);
     });
