@@ -80,6 +80,30 @@ type MergeOptions = {
   resolveBundledAssetPath?: (reference: BundledAssetReferenceLike) => string | undefined;
 };
 
+const PLATFORM_BLOCK_KEYS = ['simple', 'tec1', 'tec1g'] as const;
+
+function isMalformedPlatformBlock(value: unknown): boolean {
+  return (
+    value !== undefined && (value === null || typeof value !== 'object' || Array.isArray(value))
+  );
+}
+
+function restoreMalformedPlatformBlocks(
+  merged: LaunchRequestArguments,
+  cfg: LaunchConfigManifest,
+  targetCfg: LaunchTargetConfig | undefined,
+  args: LaunchRequestArguments
+): void {
+  for (const key of PLATFORM_BLOCK_KEYS) {
+    const malformed = [cfg[key], targetCfg?.[key], args[key]].find(isMalformedPlatformBlock);
+    if (malformed !== undefined) {
+      // Later transforms may spread or replace a malformed block. Restore it so
+      // final launch validation sees the invalid raw configuration.
+      merged[key] = malformed as never;
+    }
+  }
+}
+
 function normalizeNonEmptyString(value: unknown): string | undefined {
   if (typeof value !== 'string') {
     return undefined;
@@ -565,6 +589,7 @@ export function mergeLaunchConfigStages(
   applyArtifactLaunchFields(merged, cfg, targetCfg, args);
   applyExecutionLaunchFields(merged, cfg, targetCfg, args);
   applyBundledAssetPaths(merged, cfg, targetCfg, args, workspaceRoot, options);
+  restoreMalformedPlatformBlocks(merged, cfg, targetCfg, args);
   setIfDefined(merged, 'target', resolved.targetName ?? args.target);
   return merged;
 }
