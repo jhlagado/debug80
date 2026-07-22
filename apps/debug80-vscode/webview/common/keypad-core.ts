@@ -12,12 +12,19 @@
 
 import type { VscodeApi } from './vscode';
 
+export type KeypadPressHandle = {
+  code: number;
+  generation: number;
+};
+
 export interface KeypadCore {
   sendKey(code: number): void;
-  /** Press-and-hold: posts pressed=true and returns the shift-adjusted code. */
-  pressKey(code: number): number;
-  /** Release a previously pressed key, by the adjusted code pressKey returned. */
-  releaseKey(adjustedCode: number): void;
+  /** Press-and-hold: posts pressed=true and returns ownership of that press. */
+  pressKey(code: number): KeypadPressHandle;
+  /** Releases a press only while its ownership handle is still current. */
+  releaseKey(press: KeypadPressHandle): void;
+  /** Releases every active press, regardless of its input route. */
+  releaseAllKeys(): void;
   setShiftLatched(value: boolean): void;
   getShiftLatched(): boolean;
   toggleShift(): void;
@@ -35,6 +42,8 @@ export function createKeypadCore(
 ): KeypadCore {
   let shiftLatched = false;
   let onShiftChange: ((latched: boolean) => void) | null = null;
+  let pressGeneration = 0;
+  const activePresses = new Map<number, KeypadPressHandle>();
 
   keypadEl.tabIndex = 0;
   keypadEl.addEventListener('mousedown', (e) => {
@@ -59,20 +68,35 @@ export function createKeypadCore(
     vscode.postMessage({ type: 'key', code: adjustForShift(code) });
   }
 
-  function pressKey(code: number): number {
+  function pressKey(code: number): KeypadPressHandle {
     const adjusted = adjustForShift(code);
+    const press = { code: adjusted, generation: ++pressGeneration };
+    activePresses.set(adjusted, press);
     vscode.postMessage({ type: 'key', code: adjusted, pressed: true });
-    return adjusted;
+    return press;
   }
 
-  function releaseKey(adjustedCode: number): void {
-    vscode.postMessage({ type: 'key', code: adjustedCode, pressed: false });
+  function releaseKey(press: KeypadPressHandle): void {
+    if (activePresses.get(press.code)?.generation !== press.generation) {
+      return;
+    }
+    activePresses.delete(press.code);
+    vscode.postMessage({ type: 'key', code: press.code, pressed: false });
+  }
+
+  function releaseAllKeys(): void {
+    const presses = Array.from(activePresses.values());
+    activePresses.clear();
+    for (const press of presses) {
+      vscode.postMessage({ type: 'key', code: press.code, pressed: false });
+    }
   }
 
   return {
     sendKey,
     pressKey,
     releaseKey,
+    releaseAllKeys,
     setShiftLatched,
     getShiftLatched: () => shiftLatched,
     toggleShift: () => setShiftLatched(!shiftLatched),
