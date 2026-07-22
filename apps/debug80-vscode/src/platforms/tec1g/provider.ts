@@ -161,6 +161,18 @@ function buildTec1gContribution(context: PlatformCommandContext): PlatformContri
         sendPlatformResponse(response, context.handleMatrixModeRequest(args), context),
       'debug80/tec1gJoystick': (response, args) =>
         sendPlatformResponse(response, context.handleJoystickRequest(args), context),
+      'debug80/tec1gReleaseInputs': (response) => {
+        const runtime = context.sessionState.tec1gRuntime;
+        (
+          runtime as (typeof runtime & { releaseInputs?: () => void }) | undefined
+        )?.releaseInputs?.();
+        context.clearMatrixHeldKeys();
+        return sendPlatformResponse(
+          response,
+          runtime === undefined ? 'Debug80: TEC-1G platform not active.' : null,
+          context
+        );
+      },
       'debug80/tec1gTms9918Active': (response, args) =>
         sendPlatformResponse(response, handleTms9918ActiveRequest(context, args), context),
       'debug80/tec1gTms9918VideoStandard': (response, args) =>

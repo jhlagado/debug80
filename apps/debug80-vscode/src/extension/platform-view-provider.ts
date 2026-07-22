@@ -296,6 +296,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     );
 
     webviewView.onDidDispose(() => {
+      this.releaseActiveTec1gInputs();
       this.view = undefined;
       this.stopCoolTermPolling();
       this.stopAllPlatformRefresh();
@@ -307,6 +308,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         this.startCoolTermPolling();
         return;
       }
+      this.releaseActiveTec1gInputs();
       this.stopCoolTermPolling();
       this.stopAllPlatformRefresh();
     });
@@ -317,6 +319,26 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       this.renderCurrentView(false);
       this.startCoolTermPolling();
     });
+  }
+
+  private releaseActiveTec1gInputs(): void {
+    if (this.currentPlatform !== 'tec1g') {
+      return;
+    }
+    const session = resolvePlatformViewDebugSession(
+      this.sessionState,
+      vscode.debug.activeDebugSession
+    );
+    if (session?.type !== 'z80') {
+      return;
+    }
+    void Promise.resolve(session.customRequest('debug80/tec1gReleaseInputs')).catch(
+      (error: unknown) => {
+        this.logger.warn('Debug80 failed to release TEC-1G panel inputs', {
+          error: String(error),
+        });
+      }
+    );
   }
 
   // -------------------------------------------------------------------------

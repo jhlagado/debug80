@@ -605,6 +605,47 @@ describe('PlatformViewProvider', () => {
     expect(statusMessages[0]?.rootName).toBe('demo');
   });
 
+  it.each(['hidden', 'disposed'] as const)(
+    'releases active TEC-1G inputs when the panel is %s',
+    async (lifecycle) => {
+      const provider = new PlatformViewProvider(extensionRoot);
+      const webviewView = createWebviewView();
+      let visibilityCallback: (() => void) | undefined;
+      let disposeCallback: (() => void) | undefined;
+      (webviewView.onDidChangeVisibility as ReturnType<typeof vi.fn>).mockImplementation(
+        (callback: () => void) => {
+          visibilityCallback = callback;
+          return { dispose: vi.fn() };
+        }
+      );
+      (webviewView.onDidDispose as ReturnType<typeof vi.fn>).mockImplementation(
+        (callback: () => void) => {
+          disposeCallback = callback;
+          return { dispose: vi.fn() };
+        }
+      );
+      const customRequest = vi.fn(() => Promise.resolve());
+      const session = { id: 'session-1', type: 'z80', customRequest } as never;
+
+      provider.resolveWebviewView(
+        webviewView,
+        {} as vscode.WebviewViewResolveContext,
+        { isCancellationRequested: false, onCancellationRequested: vi.fn() } as never
+      );
+      provider.setPlatform('tec1g', session, { reveal: false, tab: 'ui' });
+
+      if (lifecycle === 'hidden') {
+        (webviewView as { visible: boolean }).visible = false;
+        visibilityCallback?.();
+      } else {
+        disposeCallback?.();
+      }
+      await flushPromises();
+
+      expect(customRequest).toHaveBeenCalledWith('debug80/tec1gReleaseInputs');
+    }
+  );
+
   it('refreshProjectStatus posts projectStatus to the webview when a platform is active', () => {
     const provider = new PlatformViewProvider(extensionRoot, {
       get: vi.fn(),
