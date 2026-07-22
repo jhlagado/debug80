@@ -7,7 +7,6 @@ export type KeypadFocusTarget = {
 
 export type KeypadKeyTarget = KeypadFocusTarget & {
   getShiftLatched(): boolean;
-  sendKey(code: number): void;
   pressKey(code: number): KeypadPressHandle;
   releaseKey(press: KeypadPressHandle): void;
   releaseAllKeys(): void;

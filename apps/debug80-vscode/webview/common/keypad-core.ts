@@ -3,7 +3,7 @@
  *
  * Platforms wrap this to add their own button layout and CSS. The core owns:
  *   - tabIndex and container mousedown → focus wiring
- *   - shift latch state + sendKey bit manipulation
+ *   - shift latch state + key-code adjustment
  *   - per-button mousedown focus helper
  *
  * The shift indicator element is registered after creation via setOnShiftChange()
@@ -18,7 +18,6 @@ export type KeypadPressHandle = {
 };
 
 export interface KeypadCore {
-  sendKey(code: number): void;
   /** Press-and-hold: posts pressed=true and returns ownership of that press. */
   pressKey(code: number): KeypadPressHandle;
   /** Releases a press only while its ownership handle is still current. */
@@ -64,10 +63,6 @@ export function createKeypadCore(
     return adjusted;
   }
 
-  function sendKey(code: number): void {
-    vscode.postMessage({ type: 'key', code: adjustForShift(code) });
-  }
-
   function pressKey(code: number): KeypadPressHandle {
     const adjusted = adjustForShift(code);
     const press = { code: adjusted, generation: ++pressGeneration };
@@ -93,7 +88,6 @@ export function createKeypadCore(
   }
 
   return {
-    sendKey,
     pressKey,
     releaseKey,
     releaseAllKeys,

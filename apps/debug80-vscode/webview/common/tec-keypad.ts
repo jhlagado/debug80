@@ -24,7 +24,6 @@ export type TecKeypadStatusEls = {
 };
 
 export type TecKeypad = {
-  sendKey: (code: number) => void;
   pressKey: (code: number) => KeypadPressHandle;
   releaseKey: (press: KeypadPressHandle) => void;
   releaseAllKeys: () => void;
@@ -260,7 +259,6 @@ export function createTecKeypad(
   core.setOnShiftChange((latched) => shiftButton.classList.toggle('active', latched));
 
   return {
-    sendKey: (code) => core.sendKey(code),
     pressKey: (code) => core.pressKey(code),
     releaseKey: (press) => core.releaseKey(press),
     releaseAllKeys: () => {
