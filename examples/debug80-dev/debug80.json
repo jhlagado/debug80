@@ -25,13 +25,13 @@
   },
   "targets": {
     "matrix-smoke": {
-      "sourceFile": "matrix-smoke.main.asm",
-      "asm": "matrix-smoke.main.asm",
+      "sourceFile": "matrix-smoke.asm",
+      "asm": "matrix-smoke.asm",
       "artifactBase": "matrix-smoke"
     },
     "panel-smoke": {
-      "sourceFile": "panel-smoke.main.asm",
-      "asm": "panel-smoke.main.asm",
+      "sourceFile": "panel-smoke.asm",
+      "asm": "panel-smoke.asm",
       "artifactBase": "panel-smoke"
     },
     "keypad-hold": {
