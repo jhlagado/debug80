@@ -52,16 +52,17 @@ export function routeTecKeypadShortcut(
   event: KeyboardEvent,
   shortcut: TecKeypadShortcut,
   keypad: KeypadKeyTarget,
-  reset: () => void
+  reset: (state: { fn: boolean }) => void
 ): boolean {
   if (event.defaultPrevented || event.repeat || isKeyboardControlTarget(event.target)) {
     return false;
   }
   if (shortcut.kind === 'key') {
-    heldPhysicalKeys.set(event.key, keypad.pressKey(shortcut.code));
+    heldPhysicalKeys.set(event.code || event.key, keypad.pressKey(shortcut.code));
   } else if (shortcut.kind === 'reset') {
+    const fn = keypad.getShiftLatched();
     keypad.setShiftLatched(false);
-    reset();
+    reset({ fn });
   } else if (shortcut.kind === 'shift') {
     keypad.setShiftLatched(shortcut.latched);
   } else {
@@ -76,9 +77,10 @@ export function routeTecKeypadKeyup(event: KeyboardEvent, keypad: KeypadKeyTarge
   if (event.defaultPrevented || isKeyboardControlTarget(event.target)) {
     return false;
   }
-  const heldPress = heldPhysicalKeys.get(event.key);
+  const physicalKey = event.code || event.key;
+  const heldPress = heldPhysicalKeys.get(physicalKey);
   if (heldPress !== undefined) {
-    heldPhysicalKeys.delete(event.key);
+    heldPhysicalKeys.delete(physicalKey);
     keypad.releaseKey(heldPress);
     event.preventDefault();
     event.stopPropagation();
