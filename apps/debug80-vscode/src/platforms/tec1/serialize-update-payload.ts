@@ -53,6 +53,32 @@ function isNumberArray(value: unknown): value is number[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'number');
 }
 
+/** True when `value` is a valid six-digit scan-cycle batch. */
+function isSegmentScanCycleArray(
+  value: unknown
+): value is NonNullable<Tec1UpdatePayload['segmentScanCycles']> {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (cycle) =>
+        cycle !== null &&
+        typeof cycle === 'object' &&
+        typeof (cycle as { id?: unknown }).id === 'number' &&
+        typeof (cycle as { startCycle?: unknown }).startCycle === 'number' &&
+        typeof (cycle as { endCycle?: unknown }).endCycle === 'number' &&
+        Array.isArray((cycle as { phases?: unknown }).phases) &&
+        (cycle as { phases: unknown[] }).phases.every(
+          (phase) =>
+            phase !== null &&
+            typeof phase === 'object' &&
+            typeof (phase as { digitMask?: unknown }).digitMask === 'number' &&
+            typeof (phase as { segments?: unknown }).segments === 'number' &&
+            typeof (phase as { dwellCycles?: unknown }).dwellCycles === 'number'
+        )
+    )
+  );
+}
+
 /**
  * Normalizes a `debug80/tec1Update` custom event body to a UI payload, or `undefined` if invalid.
  */
@@ -80,6 +106,15 @@ export function tec1UpdatePayloadFromDebugEventBody(body: unknown): Tec1UpdatePa
   const segmentIntensities = raw.segmentIntensities;
   if (isNumberArray(segmentIntensities)) {
     payload.segmentIntensities = segmentIntensities;
+  }
+  if (isSegmentScanCycleArray(raw.segmentScanCycles)) {
+    payload.segmentScanCycles = raw.segmentScanCycles;
+  }
+  if (typeof raw.segmentDroppedScanCycles === 'number') {
+    payload.segmentDroppedScanCycles = raw.segmentDroppedScanCycles;
+  }
+  if (typeof raw.segmentClockHz === 'number') {
+    payload.segmentClockHz = raw.segmentClockHz;
   }
   const hz = raw.speakerHz;
   if (typeof hz === 'number') {

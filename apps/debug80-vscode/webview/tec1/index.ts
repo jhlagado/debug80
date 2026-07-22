@@ -9,6 +9,7 @@ import {
 import { TEC1G_DIGITS } from '../common/tec-keypad-layout';
 import { wireSerialUi } from '../common/serial-ui';
 import { createSevenSegDisplay } from '../common/seven-seg-display';
+import { createSevenSegmentScanPlayer } from '../common/seven-seg-scan-player';
 import { MemoryPanel } from '../common/memory-panel';
 import { createMemoryViewEntries } from '../common/memory-view-elements';
 import {
@@ -58,6 +59,7 @@ const memoryPanel = getRequiredElementById(document, 'memoryPanel', HTMLElement)
 const toolbarEl = getOptionalElementBySelector(document, '.debug80-toolbar', HTMLElement);
 const accordionEl = getOptionalElementById(document, 'debug80Accordion', HTMLElement);
 const display = createSevenSegDisplay(displayEl, TEC1G_DIGITS);
+const segmentPlayer = createSevenSegmentScanPlayer(display);
 const keypad = createTecKeypad(vscode, keypadEl);
 wireKeypadFocusPanels([accordionMachine], keypad);
 
@@ -156,6 +158,9 @@ muteEl.addEventListener('click', () => {
 function applyUpdate(payload: {
   digits?: number[];
   segmentIntensities?: number[];
+  segmentScanCycles?: import('@jhlagado/debug80-runtime/platforms/tec-common').SevenSegmentScanCycle[];
+  segmentDroppedScanCycles?: number;
+  segmentClockHz?: number;
   matrix?: number[];
   speaker?: boolean;
   speedMode?: string;
@@ -165,7 +170,7 @@ function applyUpdate(payload: {
   applyTec1PlatformUpdate(payload, {
     audio,
     applySpeed,
-    display,
+    segmentPlayer,
     lcdRenderer,
     matrixRenderer,
     speakerEl,

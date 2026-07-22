@@ -79,6 +79,32 @@ function isNumberArray(value: unknown): value is number[] {
   return Array.isArray(value) && value.every((item) => typeof item === 'number');
 }
 
+/** True when `value` is a valid six-digit scan-cycle batch. */
+function isSegmentScanCycleArray(
+  value: unknown
+): value is NonNullable<Tec1gUpdatePayload['segmentScanCycles']> {
+  return (
+    Array.isArray(value) &&
+    value.every(
+      (cycle) =>
+        cycle !== null &&
+        typeof cycle === 'object' &&
+        typeof (cycle as { id?: unknown }).id === 'number' &&
+        typeof (cycle as { startCycle?: unknown }).startCycle === 'number' &&
+        typeof (cycle as { endCycle?: unknown }).endCycle === 'number' &&
+        Array.isArray((cycle as { phases?: unknown }).phases) &&
+        (cycle as { phases: unknown[] }).phases.every(
+          (phase) =>
+            phase !== null &&
+            typeof phase === 'object' &&
+            typeof (phase as { digitMask?: unknown }).digitMask === 'number' &&
+            typeof (phase as { segments?: unknown }).segments === 'number' &&
+            typeof (phase as { dwellCycles?: unknown }).dwellCycles === 'number'
+        )
+    )
+  );
+}
+
 /** True when `value` is a valid matrix scan-cycle array for TEC-1G UI updates. */
 function isMatrixScanCycleArray(
   value: unknown
@@ -143,6 +169,15 @@ export function tec1gUpdatePayloadFromDebugEventBody(
   const segmentIntensities = payload.segmentIntensities;
   if (isNumberArray(segmentIntensities)) {
     update.segmentIntensities = segmentIntensities;
+  }
+  if (isSegmentScanCycleArray(payload.segmentScanCycles)) {
+    update.segmentScanCycles = payload.segmentScanCycles;
+  }
+  if (typeof payload.segmentDroppedScanCycles === 'number') {
+    update.segmentDroppedScanCycles = payload.segmentDroppedScanCycles;
+  }
+  if (typeof payload.segmentClockHz === 'number') {
+    update.segmentClockHz = payload.segmentClockHz;
   }
   const matrixGreen = payload.matrixGreen;
   if (isNumberArray(matrixGreen)) {

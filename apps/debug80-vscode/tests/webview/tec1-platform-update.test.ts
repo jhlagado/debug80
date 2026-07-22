@@ -4,9 +4,9 @@ import { applyTec1PlatformUpdate } from '../../webview/tec1/platform-update';
 function createHarness() {
   const speakerEl = document.createElement('div');
   const speakerHzEl = document.createElement('span');
-  const display = {
-    applyDigits: vi.fn(),
-    applySegmentIntensities: vi.fn(),
+  const segmentPlayer = {
+    enqueue: vi.fn(),
+    renderStatic: vi.fn(),
   };
   const audio = {
     setSpeakerHz: vi.fn(),
@@ -23,7 +23,7 @@ function createHarness() {
   return {
     audio,
     applySpeed,
-    display,
+    segmentPlayer,
     lcdRenderer,
     matrixRenderer,
     speakerEl,
@@ -32,7 +32,7 @@ function createHarness() {
       applyTec1PlatformUpdate(payload, {
         audio,
         applySpeed,
-        display,
+        segmentPlayer,
         lcdRenderer,
         matrixRenderer,
         speakerEl,
@@ -42,16 +42,31 @@ function createHarness() {
 }
 
 describe('TEC-1 platform update application', () => {
-  it('uses segment intensities when present, otherwise falls back to digits', () => {
+  it('forwards scan playback and static display state', () => {
     const harness = createHarness();
+    const scanCycles = [
+      {
+        id: 1,
+        startCycle: 0,
+        endCycle: 60,
+        phases: [{ digitMask: 0x3f, segments: 0xef, dwellCycles: 60 }],
+      },
+    ];
 
-    harness.applyUpdate({ segmentIntensities: [0, 0.5, 1], digits: [1, 2, 3] });
+    harness.applyUpdate({
+      segmentIntensities: [0, 0.5, 1],
+      digits: [1, 2, 3],
+      segmentScanCycles: scanCycles,
+      segmentDroppedScanCycles: 2,
+      segmentClockHz: 4_000_000,
+    });
     harness.applyUpdate({ digits: [4, 5, 6] });
     harness.applyUpdate({});
 
-    expect(harness.display.applySegmentIntensities).toHaveBeenCalledWith([0, 0.5, 1]);
-    expect(harness.display.applyDigits).toHaveBeenNthCalledWith(1, [4, 5, 6]);
-    expect(harness.display.applyDigits).toHaveBeenNthCalledWith(2, []);
+    expect(harness.segmentPlayer.enqueue).toHaveBeenCalledWith(scanCycles, 2, 4_000_000);
+    expect(harness.segmentPlayer.renderStatic).toHaveBeenNthCalledWith(1, [1, 2, 3], [0, 0.5, 1]);
+    expect(harness.segmentPlayer.renderStatic).toHaveBeenNthCalledWith(2, [4, 5, 6], undefined);
+    expect(harness.segmentPlayer.renderStatic).toHaveBeenCalledTimes(2);
   });
 
   it('applies speaker state and speaker frequency to the UI and audio controller', () => {

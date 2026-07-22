@@ -43,10 +43,18 @@ export function createTec1PlatformUiEntry(): PlatformUiEntry {
           const tec1Payload = payload as Parameters<typeof state.applyTec1Update>[1];
           state.applyTec1Update(tec1State, tec1Payload);
           // PlatformUiModules.applyUpdate is loosely typed; payload is TEC-1-shaped after apply.
-          return serializeTec1UpdateFromUiState(
-            tec1State,
-            tec1Payload.speakerHz
-          ) as unknown as Record<string, unknown>;
+          return {
+            ...serializeTec1UpdateFromUiState(tec1State, tec1Payload.speakerHz),
+            ...(tec1Payload.segmentScanCycles !== undefined
+              ? { segmentScanCycles: tec1Payload.segmentScanCycles }
+              : {}),
+            ...(tec1Payload.segmentDroppedScanCycles !== undefined
+              ? { segmentDroppedScanCycles: tec1Payload.segmentDroppedScanCycles }
+              : {}),
+            ...(tec1Payload.segmentClockHz !== undefined
+              ? { segmentClockHz: tec1Payload.segmentClockHz }
+              : {}),
+          } as unknown as Record<string, unknown>;
         },
         createMemoryViewState: memory.createMemoryViewState,
         handleMessage: (message, context): Promise<void> =>
@@ -107,6 +115,15 @@ export function createTec1gPlatformUiEntry(): PlatformUiEntry {
               : {}),
             ...(tec1gPayload.matrixClockHz !== undefined
               ? { matrixClockHz: tec1gPayload.matrixClockHz }
+              : {}),
+            ...(tec1gPayload.segmentScanCycles !== undefined
+              ? { segmentScanCycles: tec1gPayload.segmentScanCycles }
+              : {}),
+            ...(tec1gPayload.segmentDroppedScanCycles !== undefined
+              ? { segmentDroppedScanCycles: tec1gPayload.segmentDroppedScanCycles }
+              : {}),
+            ...(tec1gPayload.segmentClockHz !== undefined
+              ? { segmentClockHz: tec1gPayload.segmentClockHz }
               : {}),
           } as unknown as Record<string, unknown>;
         },

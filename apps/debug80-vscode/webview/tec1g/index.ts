@@ -3,6 +3,7 @@
  */
 
 import { createSevenSegDisplay } from '../common/seven-seg-display';
+import { createSevenSegmentScanPlayer } from '../common/seven-seg-scan-player';
 import { MemoryPanel } from '../common/memory-panel';
 import { createSessionStatusController } from '../common/session-status';
 import { wireStopOnEntryControl } from '../common/stop-on-entry-control';
@@ -110,6 +111,7 @@ const memoryPanelEl = getRequiredElementById(document, 'memoryPanel', HTMLElemen
 const display = createSevenSegDisplay(displayEl, TEC1G_DIGITS, {
   digitClassName: (index) => (index < 2 ? 'digit--data' : 'digit--address'),
 });
+const segmentPlayer = createSevenSegmentScanPlayer(display);
 
 const sessionStatusController = createSessionStatusController(
   vscode,
@@ -319,7 +321,7 @@ speedEl.addEventListener('click', () => {
 let uiRevision = 0;
 
 const platformUpdateDeps = {
-  display,
+  segmentPlayer,
   audio,
   applySpeed,
   lcdRenderer,

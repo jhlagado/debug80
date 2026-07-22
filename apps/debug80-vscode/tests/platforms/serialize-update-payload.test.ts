@@ -44,6 +44,12 @@ describe('TEC-1 update payload serialization', () => {
   });
 
   it('parses debug event bodies', () => {
+    const segmentScan = {
+      id: 2,
+      startCycle: 20,
+      endCycle: 80,
+      phases: [{ digitMask: 0x3f, segments: 0xef, dwellCycles: 60 }],
+    };
     expect(tec1UpdatePayloadFromDebugEventBody(null)).toBeUndefined();
     expect(
       tec1UpdatePayloadFromDebugEventBody({
@@ -53,11 +59,17 @@ describe('TEC-1 update payload serialization', () => {
         speaker: 1,
         speedMode: 'fast',
         speakerHz: 440,
+        segmentScanCycles: [segmentScan],
+        segmentDroppedScanCycles: 4,
+        segmentClockHz: 400_000,
       })
     ).toMatchObject({
       speaker: 1,
       speedMode: 'fast',
       speakerHz: 440,
+      segmentScanCycles: [segmentScan],
+      segmentDroppedScanCycles: 4,
+      segmentClockHz: 400_000,
     });
   });
 
@@ -130,6 +142,12 @@ describe('TEC-1G update payload serialization', () => {
   });
 
   it('parses debug80/tec1gUpdate bodies', () => {
+    const segmentScan = {
+      id: 2,
+      startCycle: 20,
+      endCycle: 80,
+      phases: [{ digitMask: 0x3f, segments: 0xef, dwellCycles: 60 }],
+    };
     const scanCycle = {
       id: 1,
       startCycle: 10,
@@ -153,6 +171,9 @@ describe('TEC-1G update payload serialization', () => {
       matrixScanCycles: [scanCycle],
       matrixDroppedScanCycles: 2,
       matrixClockHz: 4_000_000,
+      segmentScanCycles: [segmentScan],
+      segmentDroppedScanCycles: 3,
+      segmentClockHz: 4_000_000,
       glcdDdram: [0x20],
     });
     expect(payload).toMatchObject({
@@ -160,6 +181,9 @@ describe('TEC-1G update payload serialization', () => {
       matrixScanCycles: [scanCycle],
       matrixDroppedScanCycles: 2,
       matrixClockHz: 4_000_000,
+      segmentScanCycles: [segmentScan],
+      segmentDroppedScanCycles: 3,
+      segmentClockHz: 4_000_000,
       glcdDdram: [0x20],
     });
   });
