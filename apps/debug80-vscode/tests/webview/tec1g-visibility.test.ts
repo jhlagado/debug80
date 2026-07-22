@@ -257,8 +257,7 @@ describe('tec1g UI visibility controls', () => {
     expect(source).toContain("keyboardOwner.getOwner() === 'matrixKeyboard'");
     expect(source).toContain("keyboardOwner.getOwner() === 'joystick'");
     expect(source).toContain("keyboardOwner.getOwner() === 'keypad'");
-    expect(source).toContain("previousOwner === 'keypad' && owner !== 'keypad'");
-    expect(source).toContain('releaseAllTecKeypadKeys(keypad)');
+    expect(source).toContain('releaseDepartedKeyboardOwner(previousOwner, owner');
     expect(source).toContain('shouldBypassEmulatorKeyboardTarget(event.target)');
     expect(source).toContain('shouldBypassEmulatorKeyboardTarget(target)');
     expect(source).toContain(

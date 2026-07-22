@@ -17,6 +17,8 @@ export type KeyboardOwnerControllerOptions = {
   onOwnerChange?: (owner: KeyboardOwner, previousOwner: KeyboardOwner) => void;
 };
 
+export type KeyboardOwnerReleaseHandlers = Record<Exclude<KeyboardOwner, null>, () => void>;
+
 const FALLBACK_ORDER: Array<Exclude<KeyboardOwner, null>> = [
   'matrixKeyboard',
   'joystick',
@@ -40,6 +42,16 @@ export function shouldBypassEmulatorKeyboardTarget(target: EventTarget | null): 
   return (
     target.closest('[data-joystick-bit], [data-joystick-arrow-mode], .matrix-key, .keycap') === null
   );
+}
+
+export function releaseDepartedKeyboardOwner(
+  previousOwner: KeyboardOwner,
+  owner: KeyboardOwner,
+  handlers: KeyboardOwnerReleaseHandlers
+): void {
+  if (previousOwner !== null && previousOwner !== owner) {
+    handlers[previousOwner]();
+  }
 }
 
 export function createKeyboardOwnerController(
