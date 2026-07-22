@@ -281,8 +281,8 @@ describe('tec1g UI visibility controls', () => {
     expect(source).toContain("panelLayout.setPanelOpen('video', true, true)");
   });
 
-  it('labels all eight status lamps including the Memory Expansion bank bits', () => {
-    expect(doc.querySelector('.status-bank-title')?.textContent).toBe('Memory Expansion');
+  it('labels all eight status lamps including the memory bank bits', () => {
+    expect(doc.querySelector('.status-bank-title')).toBeNull();
     expect(doc.querySelector('.status-bank-panel')?.getAttribute('aria-label')).toBe(
       'Memory Expansion'
     );
@@ -305,7 +305,12 @@ describe('tec1g UI visibility controls', () => {
       Array.from(doc.querySelectorAll('.status-bank-leds .status-led-label')).map((node) =>
         node.textContent?.trim()
       )
-    ).toEqual(['3', '2', '1', '0']);
+    ).toEqual(['MEM 3', 'MEM 2', 'MEM 1', 'MEM 0']);
+    expect(
+      Array.from(doc.querySelectorAll('.status-bank-leds .status-led')).map((node) =>
+        node.getAttribute('aria-label')
+      )
+    ).toEqual(['Memory bank bit 3', 'Memory bank bit 2', 'Memory bank bit 1', 'Memory bank bit 0']);
     expect(doc.querySelector('#statusBank3')).not.toBeNull();
     expect(doc.querySelector('#statusBank2')).not.toBeNull();
     expect(doc.querySelector('#statusBank1')).not.toBeNull();

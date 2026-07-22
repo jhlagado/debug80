@@ -515,19 +515,8 @@
   box-shadow: 0 0 6px rgba(255, 196, 70, 0.6);
 }
 .status-bank-panel {
-  display: flex;
-  flex-direction: column;
   flex: 0 0 auto;
-  gap: 3px;
   width: 100%;
-}
-.status-bank-title {
-  color: #9aa0a6;
-  font-size: 9px;
-  letter-spacing: 0.07em;
-  line-height: 1;
-  text-align: center;
-  text-transform: uppercase;
 }
 .status-bank-leds {
   display: grid;
