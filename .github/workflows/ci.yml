@@ -57,6 +57,8 @@ jobs:
               - 'package.json'
               - 'package-lock.json'
               - '.github/workflows/**'
+              - 'scripts/check-source-file-sizes.mjs'
+              - 'scripts/source-file-size-allowlist.json'
 
   azm:
     needs: changes

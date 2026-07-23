@@ -25,10 +25,7 @@ import { SourceStateManager } from './mapping/source-state-manager';
 import { CommandRouter } from './requests/command-router';
 import { PlatformRegistry } from './session/platform-registry';
 import {
-  applyLaunchBreakpoints,
-  applyLaunchSessionArtifacts,
   captureEntryCpuStateIfNeeded,
-  createLaunchSequenceContext,
   createRuntimeControlContext,
   RuntimeControlContext,
 } from './session/runtime-control';
@@ -54,6 +51,11 @@ import {
   respondToMissingArtifacts,
   respondToMissingLaunchInputs,
 } from './launch/launch-sequence';
+import {
+  applyLaunchBreakpoints,
+  applyLaunchSessionArtifacts,
+  createLaunchSequenceContext,
+} from './launch/launch-session-context';
 import { Logger, NullLogger } from '../util/logger';
 import { AdapterRequestController } from './requests/adapter-request-controller';
 import { handleWarmRebuildRequest } from './requests/rebuild-request';
