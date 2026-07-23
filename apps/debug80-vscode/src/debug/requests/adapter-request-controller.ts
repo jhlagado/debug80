@@ -1,82 +1,52 @@
-/**
- * @fileoverview DAP request/control helpers for the debug adapter.
- */
-
 import { Thread } from '@vscode/debugadapter';
 import type { DebugProtocol } from '@vscode/debugprotocol';
 import type { StepInfo } from '@jhlagado/debug80-runtime/z80/types';
-import type { BreakpointManager } from '../mapping/breakpoint-manager';
-import type { CommandRouter } from './command-router';
 import {
   getShadowAlias,
   getTec1gExpansionAddressSpace,
   isBreakpointAddress,
+  sourceAddressSpacesEqual,
 } from '../mapping/debug-addressing';
-import { buildStackFrames, flushDiagLog, isDiagnosticsEnabled } from '../mapping/stack-service';
-import type { SourceStateManager } from '../mapping/source-state-manager';
 import {
   applyStepInfo,
   captureEntryCpuStateIfNeeded,
   runUntilReturnAsync,
   runUntilStopAsync,
-  type RuntimeControlContext,
   type RuntimeStopTarget,
 } from '../session/runtime-control';
-import { normalizeSourcePath, resolveMappedPath } from '../mapping/path-resolver';
-import {
-  findSegmentForAddress,
-  resolveExecutableLocationTargets,
-  type ResolvedSourceAddress,
-} from '../../mapping/source-map';
+import { normalizeSourcePath } from '../mapping/path-resolver';
 import { getUnmappedCallReturnAddress } from '../session/step-call-resolver';
-import type { VariableService } from './variable-service';
-import type { SessionStateShape } from '../session/session-state';
-import type { PlatformRegistry } from '../session/platform-registry';
 import type { SourceAddressSpace } from '../../mapping/types';
 import { ADDR_MASK } from '@jhlagado/debug80-runtime/platforms/tec-common';
-import { tryWriteRegisterByKey, writableRegisterKeyFromVariableName } from './register-request';
-import { buildEvaluateResponseBody, evaluateWatchExpressionTruthy } from './watch-expression';
+import { evaluateWatchExpressionTruthy } from './watch-expression';
 import {
-  emitConsoleDiagnostic,
   emitHaltStopped,
   emitInvalidConditionalBreakpoint,
-  emitSourceMapMissing,
   emitStepStopped,
   emitTerminated,
 } from './request-events';
+import { AdapterInspectionRequests } from './adapter-inspection-requests';
+import { AdapterNavigationRequests } from './adapter-navigation-requests';
+import type { AdapterRequestControllerDeps } from './adapter-request-deps';
 
-export interface AdapterRequestControllerDeps {
-  threadId: number;
-  breakpointManager: BreakpointManager;
-  sourceState: SourceStateManager;
-  sessionState: SessionStateShape;
-  platformState: { active: string };
-  variableService: VariableService;
-  commandRouter: CommandRouter;
-  platformRegistry: PlatformRegistry;
-  sendResponse: (response: DebugProtocol.Response) => void;
-  sendErrorResponse: (response: DebugProtocol.Response, id: number, message: string) => void;
-  sendEvent: (event: unknown) => void;
-  getRuntimeControlContext: () => RuntimeControlContext;
-}
+export type { AdapterRequestControllerDeps } from './adapter-request-deps';
 
-function readFrameId(args: unknown): number | undefined {
-  if (typeof args !== 'object' || args === null || !('frameId' in args)) {
-    return undefined;
-  }
-  const value = (args as { frameId?: unknown }).frameId;
-  return typeof value === 'number' && Number.isInteger(value) ? value : undefined;
-}
-
-/**
- * Handles the adapter's request/control flow so the session class can stay small.
- */
 export class AdapterRequestController {
-  private readonly gotoTargets = new Map<number, RuntimeStopTarget>();
+  private readonly navigationRequests: AdapterNavigationRequests;
+  private readonly inspectionRequests: AdapterInspectionRequests;
   private readonly reportedInvalidBreakpointConditions = new Set<string>();
-  private nextGotoTargetId = 1;
-
-  public constructor(private readonly deps: AdapterRequestControllerDeps) {}
+  public constructor(private readonly deps: AdapterRequestControllerDeps) {
+    this.inspectionRequests = new AdapterInspectionRequests(deps);
+    this.navigationRequests = new AdapterNavigationRequests(
+      deps,
+      () => {
+        this.deps.sessionState.runState.pauseRequested = false;
+        this.updateBreakpointSkip();
+      },
+      (extraBreakpoints, maxInstructions, limitLabel) =>
+        this.runUntilStop(extraBreakpoints, maxInstructions, limitLabel)
+    );
+  }
 
   public markLaunchComplete(): void {
     this.deps.sessionState.runState.launchComplete = true;
@@ -202,187 +172,49 @@ export class AdapterRequestController {
     response: DebugProtocol.GotoTargetsResponse,
     args: DebugProtocol.GotoTargetsArguments
   ): void {
-    const sourcePath = args.source?.path;
-    const line = args.line ?? 0;
-    const mappingIndex = this.deps.sessionState.mappingIndex;
-    if (sourcePath === undefined || sourcePath.length === 0 || mappingIndex === undefined) {
-      response.body = { targets: [] };
-      emitSourceMapMissing(this.deps.sendEvent);
-      this.deps.sendResponse(response);
-      return;
-    }
-
-    const normalized = normalizeSourcePath(sourcePath, this.deps.sessionState.baseDir);
-    const direct = resolveExecutableLocationTargets(mappingIndex, normalized, line);
-    const addresses = direct.length > 0 ? direct : this.resolveGotoByBasename(normalized, line);
-    const targets = addresses.map((target) => {
-      const id = this.nextGotoTargetId++;
-      const address = target.address & ADDR_MASK;
-      this.gotoTargets.set(id, {
-        address,
-        ...(target.addressSpace !== undefined ? { addressSpace: target.addressSpace } : {}),
-      });
-      return {
-        id,
-        label: `$${address.toString(16).toUpperCase().padStart(4, '0')}`,
-        line,
-      };
-    });
-    response.body = { targets };
-    this.deps.sendResponse(response);
+    this.navigationRequests.gotoTargetsRequest(response, args);
   }
 
   public gotoRequest(
     response: DebugProtocol.GotoResponse,
     args: DebugProtocol.GotoArguments
   ): void {
-    const target = this.gotoTargets.get(args.targetId);
-    if (target === undefined) {
-      this.deps.sendErrorResponse(response, 1, 'Debug80: Run to Cursor target is unavailable.');
-      return;
-    }
-    if (this.deps.sessionState.runtime === undefined) {
-      this.deps.sendErrorResponse(response, 1, 'No program loaded');
-      return;
-    }
-    this.gotoTargets.delete(args.targetId);
-    this.deps.sendResponse(response);
-    this.deps.sessionState.runState.pauseRequested = false;
-    this.updateBreakpointSkip();
-    this.runUntilStop([target], undefined, 'run to cursor');
+    this.navigationRequests.gotoRequest(response, args);
   }
 
   public stackTraceRequest(
     response: DebugProtocol.StackTraceResponse,
-    _args: DebugProtocol.StackTraceArguments
+    args: DebugProtocol.StackTraceArguments
   ): void {
-    if (this.deps.sessionState.runtime === undefined) {
-      response.body = { stackFrames: [], totalFrames: 0 };
-      this.deps.sendResponse(response);
-      return;
-    }
-    const pc = this.deps.sessionState.runtime.getPC();
-    const resolveFn = (file: string): string | undefined =>
-      resolveMappedPath(file, undefined, this.deps.sessionState.sourceRoots);
-    const responseBody = buildStackFrames(pc, {
-      ...(this.deps.sessionState.mappingIndex !== undefined
-        ? { mappingIndex: this.deps.sessionState.mappingIndex }
-        : {}),
-      ...(this.deps.sourceState.file !== undefined
-        ? { sourceFile: this.deps.sourceState.file }
-        : {}),
-      symbolAnchors: this.deps.sessionState.symbolAnchors,
-      lookupAnchors: this.deps.sourceState.lookupAnchors,
-      stackPointer: this.deps.sessionState.runtime.getRegisters().sp,
-      maxStackFrames: 8,
-      readMemory: (address) =>
-        this.deps.sessionState.runtime?.hardware.memRead?.(address) ??
-        this.deps.sessionState.runtime?.hardware.memory[address & ADDR_MASK] ??
-        0,
-      resolveMappedPath: resolveFn,
-      getAddressAliases: (address) => {
-        const masked = address & ADDR_MASK;
-        const aliases = [masked];
-        const shadowAlias = this.getShadowAlias(masked);
-        if (shadowAlias !== null && shadowAlias !== masked) {
-          aliases.push(shadowAlias);
-        }
-        return aliases;
-      },
-      getAddressSpace: (address) => this.getExpansionAddressSpace(address & ADDR_MASK),
-    });
-
-    if (isDiagnosticsEnabled()) {
-      const diagLines = flushDiagLog();
-      const frame = responseBody.stackFrames[0];
-      const hasMappingIndex = this.deps.sessionState.mappingIndex !== undefined;
-      const segCount = this.deps.sessionState.mappingIndex?.segmentsByAddress?.length ?? 0;
-      const diagText = [
-        `[debug80-diag] PC=0x${pc.toString(16).padStart(4, '0')} ` +
-          `mappingIndex=${hasMappingIndex} (${segCount} segs) ` +
-          `sourceFile="${this.deps.sourceState.file ?? '(none)'}" ` +
-          `sourceRoots=[${this.deps.sessionState.sourceRoots.join(', ')}]`,
-        ...diagLines,
-        `  => frame.source="${frame?.source?.path ?? '(none)'}" line=${frame?.line ?? '?'}`,
-      ].join('\n');
-      emitConsoleDiagnostic(this.deps.sendEvent, diagText);
-    }
-
-    response.body = responseBody;
-    this.deps.sendResponse(response);
+    this.inspectionRequests.stackTraceRequest(response, args);
   }
 
   public scopesRequest(
     response: DebugProtocol.ScopesResponse,
-    _args: DebugProtocol.ScopesArguments
+    args: DebugProtocol.ScopesArguments
   ): void {
-    response.body = {
-      scopes: this.deps.variableService.createScopes(this.deps.sessionState.sourceMapSymbols),
-    };
-    this.deps.sendResponse(response);
+    this.inspectionRequests.scopesRequest(response, args);
   }
 
   public variablesRequest(
     response: DebugProtocol.VariablesResponse,
     args: DebugProtocol.VariablesArguments
   ): void {
-    response.body = {
-      variables: this.deps.variableService.resolveVariables(
-        args.variablesReference,
-        this.deps.sessionState.runtime
-      ),
-    };
-
-    this.deps.sendResponse(response);
+    this.inspectionRequests.variablesRequest(response, args);
   }
 
   public evaluateRequest(
     response: DebugProtocol.EvaluateResponse,
     args: DebugProtocol.EvaluateArguments
   ): void {
-    try {
-      response.body = buildEvaluateResponseBody(args.expression, {
-        runtime: this.deps.sessionState.runtime,
-        symbols: this.deps.sessionState.sourceMapSymbols,
-      });
-      this.deps.sendResponse(response);
-    } catch (err) {
-      this.deps.sendErrorResponse(response, 1, String(err instanceof Error ? err.message : err));
-    }
+    this.inspectionRequests.evaluateRequest(response, args);
   }
 
   public setVariableRequest(
     response: DebugProtocol.SetVariableResponse,
     args: DebugProtocol.SetVariableArguments
   ): void {
-    if (!this.deps.variableService.isRegistersVariablesReference(args.variablesReference)) {
-      this.deps.sendErrorResponse(response, 1, 'Debug80: This variable cannot be edited here.');
-      return;
-    }
-
-    const registerKey = writableRegisterKeyFromVariableName(args.name);
-    if (registerKey === null) {
-      this.deps.sendErrorResponse(
-        response,
-        1,
-        'Debug80: This register is read-only or not recognized.'
-      );
-      return;
-    }
-
-    const err = tryWriteRegisterByKey(this.deps.sessionState, registerKey, args.value);
-    if (err !== null) {
-      this.deps.sendErrorResponse(response, 1, err);
-      return;
-    }
-
-    const runtime = this.deps.sessionState.runtime;
-    const variables = this.deps.variableService.resolveVariables(args.variablesReference, runtime);
-    const updated = variables.find((v) => v.name === args.name);
-    response.body = {
-      value: updated?.value ?? String(args.value),
-    };
-    this.deps.sendResponse(response);
+    this.inspectionRequests.setVariableRequest(response, args);
   }
 
   public disconnectRequest(
@@ -423,37 +255,7 @@ export class AdapterRequestController {
   }
 
   public runToStackFrameRequest(response: DebugProtocol.Response, args: unknown): boolean {
-    const frameId = readFrameId(args);
-    const runtime = this.deps.sessionState.runtime;
-    if (runtime === undefined) {
-      this.deps.sendErrorResponse(response, 1, 'No program loaded');
-      return true;
-    }
-    if (frameId === undefined || frameId < 1) {
-      this.deps.sendErrorResponse(response, 1, 'Select a stack return frame, not the current PC.');
-      return true;
-    }
-    const sp = runtime.getRegisters().sp & ADDR_MASK;
-    const stackAddress = (sp + (frameId - 1) * 2) & ADDR_MASK;
-    const returnAddress = this.readWord(stackAddress);
-    const segment =
-      this.deps.sessionState.mappingIndex !== undefined
-        ? findSegmentForAddress(this.deps.sessionState.mappingIndex, returnAddress)
-        : undefined;
-    if (segment === undefined || segment.loc.file === null) {
-      this.deps.sendErrorResponse(
-        response,
-        1,
-        `Stack entry $${returnAddress.toString(16).padStart(4, '0')} is not mapped to source code.`
-      );
-      return true;
-    }
-
-    this.deps.sendResponse(response);
-    this.deps.sessionState.runState.pauseRequested = false;
-    this.updateBreakpointSkip();
-    this.runUntilStop([{ address: returnAddress & ADDR_MASK }], undefined, 'stack frame return');
-    return true;
+    return this.navigationRequests.runToStackFrameRequest(response, args);
   }
 
   public isBreakpointAddress(address: number | null): boolean {
@@ -541,7 +343,7 @@ export class AdapterRequestController {
       this.deps.sessionState.runtime?.getPC() === rs.lastBreakpointAddress &&
       rs.lastBreakpointAddress !== null &&
       matched !== null &&
-      addressSpacesEqual(matched.addressSpace, rs.lastBreakpointAddressSpace)
+      sourceAddressSpacesEqual(matched.addressSpace, rs.lastBreakpointAddressSpace)
     ) {
       rs.skipBreakpointOnce = rs.lastBreakpointAddress;
       rs.skipBreakpointAddressSpace = matched.addressSpace;
@@ -584,13 +386,6 @@ export class AdapterRequestController {
       return { address: shadowAlias };
     }
     return null;
-  }
-
-  private readWord(address: number): number {
-    const runtime = this.deps.sessionState.runtime;
-    const readByte = (addr: number): number =>
-      runtime?.hardware.memRead?.(addr) ?? runtime?.hardware.memory[addr & ADDR_MASK] ?? 0;
-    return (readByte(address) & 0xff) | ((readByte((address + 1) & ADDR_MASK) & 0xff) << 8);
   }
 
   private handleSingleStepRequest(
@@ -685,35 +480,6 @@ export class AdapterRequestController {
     });
   }
 
-  private resolveGotoByBasename(sourcePath: string, line: number): ResolvedSourceAddress[] {
-    const mappingIndex = this.deps.sessionState.mappingIndex;
-    if (mappingIndex === undefined) {
-      return [];
-    }
-    const want = sourcePath.split(/[\\/]/).pop()?.toLowerCase() ?? '';
-    const lineSlop = [0, -1, 1, -2, 2, -3, 3, -4, 4];
-    for (const [fileKey, fileMap] of mappingIndex.segmentsByFileLine.entries()) {
-      if ((fileKey.split(/[\\/]/).pop()?.toLowerCase() ?? '') !== want) {
-        continue;
-      }
-      for (const delta of lineSlop) {
-        const tryLine = line + delta;
-        if (tryLine < 1) {
-          continue;
-        }
-        const segments = fileMap.get(tryLine);
-        const executable = segments?.filter((segment) => segment.end > segment.start) ?? [];
-        if (executable.length > 0) {
-          return executable.map((segment) => ({
-            address: segment.start,
-            ...(segment.addressSpace !== undefined ? { addressSpace: segment.addressSpace } : {}),
-          }));
-        }
-      }
-    }
-    return [];
-  }
-
   private getShadowAlias(address: number): number | null {
     return getShadowAlias(address, {
       activePlatform: this.deps.platformState.active,
@@ -727,11 +493,4 @@ export class AdapterRequestController {
       tec1gRuntime: this.deps.sessionState.tec1gRuntime,
     });
   }
-}
-
-function addressSpacesEqual(
-  actual: SourceAddressSpace | undefined,
-  expected: SourceAddressSpace | undefined
-): boolean {
-  return actual?.kind === expected?.kind && actual?.physicalBank === expected?.physicalBank;
 }
