@@ -1,8 +1,3 @@
 {
-  "hardCap": {
-    "packages/glimmer/src/parse.ts": {
-      "ceiling": 1671,
-      "reason": "Legacy parser decomposition is tracked by the repository modularity roadmap."
-    }
-  }
+  "hardCap": {}
 }
