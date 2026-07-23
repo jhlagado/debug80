@@ -195,7 +195,9 @@ function createOutputPlans(
   bankCount: number,
   runtimeOutputBin: string
 ): Tec1gExpansionOutputPlan[] {
-  if (artifact.outputs === undefined) {return [];}
+  if (artifact.outputs === undefined) {
+    return [];
+  }
   if (!Array.isArray(artifact.outputs)) {
     fail(`ROM artifact ${artifact.id} outputs must be an array`);
   }
@@ -337,7 +339,9 @@ function resolveDebugMapPath(
   baseDir: string
 ): string {
   const expectedDebugMap = replaceExtension(outputBin, '.d8.json');
-  if (configuredPath === undefined) {return expectedDebugMap;}
+  if (configuredPath === undefined) {
+    return expectedDebugMap;
+  }
   const outputDebugMap = resolveWorkspacePath(baseDir, configuredPath);
   if (!pathsEqual(outputDebugMap, expectedDebugMap)) {
     fail(`ROM artifact ${artifactId} outputDebugMap must match ${expectedDebugMap}`);
