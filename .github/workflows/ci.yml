@@ -119,6 +119,23 @@ jobs:
       - run: npm run test -w @jhlagado/debug80-runtime
       - run: npm run package:runtime
 
+  source-size:
+    needs: changes
+    if: >-
+      needs.changes.outputs.azm == 'true' ||
+      needs.changes.outputs.glimmer == 'true' ||
+      needs.changes.outputs.runtime == 'true' ||
+      needs.changes.outputs.extension == 'true' ||
+      needs.changes.outputs.infra == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 20
+      - run: npm run check:source-file-sizes:enforce
+
   azm-headless:
     needs: changes
     if: >-
@@ -198,7 +215,17 @@ jobs:
 
   # Single required status; fails if any triggered job failed.
   ci-ok:
-    needs: [changes, azm, glimmer, runtime, azm-headless, glimmer-headless, extension]
+    needs:
+      [
+        changes,
+        azm,
+        glimmer,
+        runtime,
+        source-size,
+        azm-headless,
+        glimmer-headless,
+        extension,
+      ]
     if: always()
     runs-on: ubuntu-latest
     timeout-minutes: 5
