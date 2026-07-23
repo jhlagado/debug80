@@ -12,6 +12,13 @@ import {
 import type { Tec1gRuntime } from '@jhlagado/debug80-runtime/platforms/tec1g/runtime';
 import type { SourceAddressSpace } from '../../mapping/types';
 
+export function sourceAddressSpacesEqual(
+  actual: SourceAddressSpace | undefined,
+  expected: SourceAddressSpace | undefined
+): boolean {
+  return actual?.kind === expected?.kind && actual?.physicalBank === expected?.physicalBank;
+}
+
 export function getShadowAlias(
   address: number,
   options: { activePlatform: string; tec1gRuntime: Tec1gRuntime | undefined }
