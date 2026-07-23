@@ -19,12 +19,7 @@ import {
   getProjectPanelElements,
   wireProjectPanelPlatformControls,
 } from '../common/project-panel-elements';
-import {
-  releaseAllTecKeypadKeys,
-  routeTecKeypadKeyup,
-  routeTecKeypadShortcut,
-  wireKeypadFocusPanels,
-} from '../common/keypad-focus-routing';
+import { releaseAllTecKeypadKeys, wireKeypadFocusPanels } from '../common/keypad-focus-routing';
 import { acquireVscodeApi } from '../common/vscode';
 import { createAccordionLayoutController, type ProviderPanelTab } from '../common/accordion-layout';
 import { createGlcdRenderer } from './glcd-renderer';
@@ -36,7 +31,6 @@ import { wireSerialUi } from '../common/serial-ui';
 import { requestProjectStatus, wireProjectStatusRefresh } from '../common/project-status-refresh';
 import type { IncomingMessage, Tec1gSpeedMode, Tec1gUpdatePayload } from './entry-types';
 import { TEC1G_DIGITS } from '../common/tec-keypad-layout';
-import { resolveTecKeypadShortcut } from '../common/tec-keyboard-shortcuts';
 import { createTec1gMemoryViews } from './tec1g-memory-views';
 import { createTec1gAudio } from './tec1g-audio';
 import { createTec1gKeypad } from './tec1g-keypad';
@@ -46,9 +40,10 @@ import { applyMatrixRoutingCue } from './matrix-routing-cue';
 import {
   createKeyboardOwnerController,
   releaseDepartedKeyboardOwner,
-  shouldBypassEmulatorKeyboardTarget,
   type KeyboardOwner,
 } from './keyboard-owner';
+import { wireTec1gHardwareKeyboard } from './tec1g-hardware-keyboard';
+import { wireTec1gMessageRouter } from './tec1g-message-router';
 
 type Tec1gProjectStatusMessage = Extract<IncomingMessage, { type: 'projectStatus' }>;
 
@@ -320,8 +315,6 @@ speedEl.addEventListener('click', () => {
   vscode.postMessage({ type: 'speed', mode: next });
 });
 
-let uiRevision = 0;
-
 const platformUpdateDeps = {
   segmentPlayer,
   audio,
@@ -378,55 +371,14 @@ memoryPanelController = new MemoryPanel({
 });
 memoryPanelController.wire();
 
-window.addEventListener('message', (event: MessageEvent<IncomingMessage | undefined>): void => {
-  const message = event.data;
-  if (!message) {
-    return;
-  }
-  if (message.type === 'projectStatus') {
-    applyProjectStatusMessage(message);
-    return;
-  }
-  if (message.type === 'sessionStatus') {
-    sessionStatusController.setStatus(message.status);
-    panelLayout.setRegisterRefreshActive(
-      message.status === 'running' || message.status === 'paused'
-    );
-    if (message.status === 'running' || message.status === 'paused') {
-      reassertMatrixKeyboardOpenState();
-    }
-    return;
-  }
-  if (message.type === 'selectTab') {
-    panelLayout.setProviderTab(message.tab, false);
-    return;
-  }
-  if (message.type === 'resetPanelLayout') {
-    panelLayout.resetPanelLayout();
-    return;
-  }
-  if (message.type === 'update') {
-    if (typeof message.uiRevision === 'number') {
-      if (message.uiRevision < uiRevision) {
-        return;
-      }
-      uiRevision = message.uiRevision;
-    }
-    applyUpdateFromPayload(message);
-    if (message.matrixMode === false) {
-      reassertMatrixKeyboardOpenState();
-    }
-    return;
-  }
-  if (message.type === 'snapshot') {
-    memoryPanelController?.handleSnapshot(message);
-    return;
-  }
-  if (message.type === 'snapshotError') {
-    memoryPanelController?.handleSnapshotError(message.message);
-  }
+const messageRouter = wireTec1gMessageRouter({
+  panelLayout,
+  sessionStatusController,
+  memoryPanel: memoryPanelController,
+  applyProjectStatus: applyProjectStatusMessage,
+  applyPlatformUpdate: applyUpdateFromPayload,
+  reassertMatrixKeyboardOpenState,
 });
-
 applySpeed(speedMode);
 audio.applyMuteState();
 document.addEventListener('pointerdown', () => audio.unlockAudio(), { capture: true });
@@ -457,97 +409,22 @@ tms9918Renderer.standardSelect?.addEventListener('change', () => {
   vscode.postMessage({ type: 'tms9918VideoStandard', standard });
 });
 
-function isHardwareKeyboardSurface(target: EventTarget | null): target is Node {
-  if (!(target instanceof Node)) {
-    return false;
-  }
-  return [accordionMachine, accordionMatrixKeyboard, accordionJoystick].some((surface) =>
-    surface.contains(target)
-  );
-}
-
-function shouldBypassEmulatorKeyboard(event: KeyboardEvent): boolean {
-  return shouldBypassEmulatorKeyboardTarget(event.target);
-}
-
-document.addEventListener(
-  'pointerdown',
-  (event) => {
-    const target = event.target;
-    if (shouldBypassEmulatorKeyboardTarget(target)) {
-      return;
-    }
-    if (!isHardwareKeyboardSurface(target)) {
-      return;
-    }
-    if (accordionJoystick.contains(target)) {
-      selectKeyboardOwner('joystick');
-      return;
-    }
-    if (accordionMatrixKeyboard.contains(target)) {
-      selectKeyboardOwner('matrixKeyboard');
-      return;
-    }
-    if (accordionMachine.contains(target)) {
-      selectKeyboardOwner('keypad');
-    }
-  },
-  { capture: true }
-);
-function releaseAllHardwareInputs(): void {
-  releaseAllTecKeypadKeys(keypad);
-  applyMatrixKeyboardCapture(false);
-  joystickUi.clear();
-}
-
-window.addEventListener('blur', releaseAllHardwareInputs);
-
-window.addEventListener(
-  'keydown',
-  (event) => {
-    if (event.repeat || shouldBypassEmulatorKeyboard(event)) {
-      return;
-    }
-    if (keyboardOwner.getOwner() === 'matrixKeyboard' && matrixUi.handleKeyEvent(event, true)) {
-      updateMatrixKeyboardCue();
-      return;
-    }
-    if (keyboardOwner.getOwner() === 'joystick' && joystickUi.handleKeyEvent(event, true)) {
-      return;
-    }
-    if (keyboardOwner.getOwner() === 'keypad') {
-      const shortcut = resolveTecKeypadShortcut(event.key);
-      routeTecKeypadShortcut(event, shortcut, keypad, ({ fn }) => {
-        releaseAllTecKeypadKeys(keypad);
-        vscode.postMessage(fn ? { type: 'reset', fn: true } : { type: 'reset' });
-      });
-      return;
-    }
-  },
-  { capture: true }
-);
-
-window.addEventListener(
-  'keyup',
-  (event) => {
-    if (routeTecKeypadKeyup(event, keypad)) {
-      return;
-    }
-    if (shouldBypassEmulatorKeyboard(event)) {
-      return;
-    }
-    if (keyboardOwner.getOwner() === 'matrixKeyboard' && matrixUi.handleKeyEvent(event, false)) {
-      updateMatrixKeyboardCue();
-      return;
-    }
-    if (keyboardOwner.getOwner() === 'joystick' && joystickUi.handleKeyEvent(event, false)) {
-      return;
-    }
-  },
-  { capture: true }
-);
+const hardwareKeyboard = wireTec1gHardwareKeyboard({
+  machineSurface: accordionMachine,
+  matrixKeyboardSurface: accordionMatrixKeyboard,
+  joystickSurface: accordionJoystick,
+  keypad,
+  matrixUi,
+  joystickUi,
+  getOwner: keyboardOwner.getOwner,
+  selectOwner: selectKeyboardOwner,
+  applyMatrixKeyboardCapture,
+  updateMatrixKeyboardCue,
+  onReset: (fn) => vscode.postMessage(fn ? { type: 'reset', fn: true } : { type: 'reset' }),
+});
 window.addEventListener('beforeunload', () => {
-  releaseAllHardwareInputs();
+  hardwareKeyboard.dispose();
+  messageRouter.dispose();
   sessionStatusController.dispose();
   stopOnEntryControl.dispose();
   azmOptionsControl.dispose();
