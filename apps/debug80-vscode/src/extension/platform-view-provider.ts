@@ -20,7 +20,7 @@ import type {
   PlatformId,
 } from '../contracts/platform-view';
 import { NullLogger, type Logger } from '../util/logger';
-import { createUiPerformanceMonitor, type UiPerformanceMonitor } from './ui-performance-monitor';
+import { createUiPerformanceMonitor } from './ui-performance-monitor';
 import {
   buildPlatformViewProjectStatus,
   resolvePlatformViewWorkspace,
@@ -31,26 +31,12 @@ import {
   syncMemoryRefresh,
 } from './platform-view-memory-refresh';
 import { resolveSaveProjectConfigAction } from './platform-view-config-controls';
-import {
-  appendPlatformSerial,
-  buildSerialInitMessage,
-  clearPlatformSerial,
-} from './platform-view-serial-state';
-import {
-  applyPlatformRuntimeUpdate,
-  buildPlatformRuntimeClearMessage,
-  buildPlatformRuntimeUpdateMessage,
-  clearPlatformRuntimeState,
-} from './platform-view-runtime-state';
+import { buildSerialInitMessage } from './platform-view-serial-state';
+import { buildPlatformRuntimeUpdateMessage } from './platform-view-runtime-state';
 import {
   buildPlatformViewSessionStatusMessage,
-  clearPlatformViewSession,
   createPlatformViewSessionState,
-  isCurrentPlatformViewSession,
-  resolvePlatformViewDebugSession,
   setPlatformViewSession,
-  setPlatformViewSessionStatus,
-  shouldAcceptPlatformViewSession,
 } from './platform-view-session-state';
 import { revealPlatformView } from './platform-view-reveal';
 import { PlatformViewRegistry, type PlatformViewBundle } from './platform-view-registry';
@@ -58,6 +44,22 @@ import { createPlatformViewWebviewHandler } from './platform-view-webview-handle
 import { MEMORY_REFRESH_INTERVAL_MS } from './platform-view-constants';
 import { isCoolTermRemoteAvailable } from './coolterm/coolterm-send';
 import { findProjectConfigPath, updateProjectAzmSymbolCase } from './project-config';
+import {
+  createPlatformViewAvailabilityPoller,
+  type PlatformViewAvailabilityPoller,
+} from './platform-view-availability-poller';
+import {
+  createPlatformViewMessageTransport,
+  type PlatformViewMessageTransport,
+} from './platform-view-message-transport';
+import {
+  createPlatformViewRuntimeController,
+  type PlatformViewRuntimeController,
+} from './platform-view-runtime-controller';
+import {
+  releaseTec1gPanelInputs,
+  requestPlatformViewMemorySnapshot,
+} from './platform-view-debug-requests';
 
 // ---------------------------------------------------------------------------
 // Provider
@@ -69,21 +71,18 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   private view: vscode.WebviewView | undefined;
   private currentPlatform: PlatformId | undefined;
   private readonly sessionState = createPlatformViewSessionState();
-  private uiRevision = 0;
   private selectedWorkspace: vscode.WorkspaceFolder | undefined;
   private readonly workspaceState: vscode.Memento | undefined;
   private readonly extensionUri: vscode.Uri;
   private readonly logger: Logger;
-  private readonly performanceMonitor: UiPerformanceMonitor;
   private readonly registry: PlatformViewRegistry;
-  private coolTermAvailable = false;
-  private checkingCoolTerm = false;
+  private readonly coolTermPoller: PlatformViewAvailabilityPoller;
+  private readonly messageTransport: PlatformViewMessageTransport;
+  private readonly runtimeController: PlatformViewRuntimeController;
   private hardwareStatusText: string | undefined;
   private hardwareStatusState: 'neutral' | 'error' = 'neutral';
   private buildStatusText: string | undefined;
   private buildStatusState: 'neutral' | 'error' = 'neutral';
-  private coolTermPollTimer: ReturnType<typeof setInterval> | undefined;
-  private panelLayoutResetPending = false;
 
   /** Global stop-on-entry toggle — session-scoped, not persisted per project. */
   public stopOnEntry = false;
@@ -100,19 +99,36 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     this.extensionUri = extensionUri;
     this.workspaceState = workspaceState;
     this.logger = logger;
-    this.performanceMonitor = createUiPerformanceMonitor({
+    const performanceMonitor = createUiPerformanceMonitor({
       logger,
       label: 'platform-view',
+    });
+    this.messageTransport = createPlatformViewMessageTransport({
+      getView: () => this.view,
+      performanceMonitor,
+    });
+    this.coolTermPoller = createPlatformViewAvailabilityPoller({
+      check: isCoolTermRemoteAvailable,
+      onChange: () => {
+        this.hardwareStatusText = undefined;
+        this.hardwareStatusState = 'neutral';
+        this.postProjectStatus();
+      },
     });
     this.registry = new PlatformViewRegistry({
       postSnapshot: (command, payload): Promise<void> => this.postSnapshot(command, payload),
       onSnapshotFailed: (allowErrors): void => this.onSnapshotFailed(allowErrors),
     });
+    this.runtimeController = createPlatformViewRuntimeController({
+      sessionState: this.sessionState,
+      registry: this.registry,
+      getCurrentPlatform: () => this.currentPlatform,
+      getActiveBundle: (platform) => this.getActiveBundle(platform),
+      nextRevision: () => this.messageTransport.nextRevision(),
+      postMessage: (message) => this.postMessage(message),
+      stopAllPlatformRefresh: () => this.stopAllPlatformRefresh(),
+    });
   }
-
-  // -------------------------------------------------------------------------
-  // Public API — called from the adapter, extension commands, and tests
-  // -------------------------------------------------------------------------
 
   reveal(focus = false): void {
     revealPlatformView({
@@ -124,9 +140,9 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   }
 
   resetPanelLayout(): void {
-    this.panelLayoutResetPending = true;
+    this.messageTransport.requestPanelLayoutReset();
     this.reveal(true);
-    this.postPendingPanelLayoutReset();
+    this.messageTransport.postPendingPanelLayoutReset();
   }
 
   setSelectedWorkspace(folder: vscode.WorkspaceFolder | undefined): void {
@@ -159,7 +175,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
       return;
     }
     this.postProjectStatus();
-    void this.refreshCoolTermAvailability();
+    void this.coolTermPoller.refresh();
   }
 
   setPlatform(
@@ -184,87 +200,36 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   }
 
   setSessionStatus(status: DebugSessionStatus): void {
-    setPlatformViewSessionStatus(this.sessionState, status);
-    if (!this.currentPlatform) {
-      return;
-    }
-    this.postMessage(buildPlatformViewSessionStatusMessage(this.sessionState));
+    this.runtimeController.setSessionStatus(status);
   }
 
   updateTec1(payload: Tec1UpdatePayload, sessionId?: string): void {
-    if (
-      !shouldAcceptPlatformViewSession(this.sessionState, sessionId) ||
-      this.currentPlatform !== 'tec1'
-    ) {
-      return;
-    }
-    const bundle = this.getActiveBundle('tec1');
-    if (bundle === undefined) {
-      return;
-    }
-    this.postMessage(
-      applyPlatformRuntimeUpdate(bundle.modules, bundle.state, payload, this.nextUiRevision())
-    );
+    this.runtimeController.update('tec1', payload, sessionId);
   }
 
   updateTec1g(payload: Tec1gUpdatePayload, sessionId?: string): void {
-    if (
-      !shouldAcceptPlatformViewSession(this.sessionState, sessionId) ||
-      this.currentPlatform !== 'tec1g'
-    ) {
-      return;
-    }
-    const bundle = this.getActiveBundle('tec1g');
-    if (bundle === undefined) {
-      return;
-    }
-    this.postMessage(
-      applyPlatformRuntimeUpdate(bundle.modules, bundle.state, payload, this.nextUiRevision())
-    );
+    this.runtimeController.update('tec1g', payload, sessionId);
   }
 
   appendTec1Serial(text: string, sessionId?: string): void {
-    this.appendSerial('tec1', text, sessionId);
+    this.runtimeController.appendSerial('tec1', text, sessionId);
   }
 
   appendSimpleTerminal(text: string, sessionId?: string): void {
-    this.appendSerial('simple', text, sessionId);
+    this.runtimeController.appendSerial('simple', text, sessionId);
   }
 
   appendTec1gSerial(text: string, sessionId?: string): void {
-    this.appendSerial('tec1g', text, sessionId);
+    this.runtimeController.appendSerial('tec1g', text, sessionId);
   }
 
   clear(): void {
-    this.registry.forEachState((_id, state, modules) => {
-      if (modules !== undefined) {
-        clearPlatformRuntimeState(modules, state);
-      } else {
-        clearPlatformSerial(state.serialBuffer);
-      }
-    });
-    const bundle = this.getCurrentBundle();
-    if (bundle !== undefined) {
-      this.postMessage(
-        buildPlatformRuntimeClearMessage(bundle.modules, bundle.state, this.nextUiRevision())
-      );
-      this.postMessage({ type: 'serialClear' });
-    }
+    this.runtimeController.clear();
   }
 
   handleSessionTerminated(sessionId: string): void {
-    if (!isCurrentPlatformViewSession(this.sessionState, sessionId)) {
-      return;
-    }
-    clearPlatformViewSession(this.sessionState);
-    this.setSessionStatus('not running');
-    this.stopAllPlatformRefresh();
-    this.clear();
+    this.runtimeController.handleSessionTerminated(sessionId);
   }
-
-  // -------------------------------------------------------------------------
-  // WebviewViewProvider
-  // -------------------------------------------------------------------------
 
   resolveWebviewView(
     webviewView: vscode.WebviewView,
@@ -298,18 +263,18 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     webviewView.onDidDispose(() => {
       this.releaseActiveTec1gInputs();
       this.view = undefined;
-      this.stopCoolTermPolling();
+      this.coolTermPoller.stop();
       this.stopAllPlatformRefresh();
     });
 
     webviewView.onDidChangeVisibility(() => {
       if (webviewView.visible) {
         this.renderCurrentView(true);
-        this.startCoolTermPolling();
+        this.coolTermPoller.start();
         return;
       }
       this.releaseActiveTec1gInputs();
-      this.stopCoolTermPolling();
+      this.coolTermPoller.stop();
       this.stopAllPlatformRefresh();
     });
 
@@ -317,33 +282,18 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     // operations (updateTec1, clear, etc.) can access modules without async.
     return this.registry.preloadAll().then(() => {
       this.renderCurrentView(false);
-      this.startCoolTermPolling();
+      this.coolTermPoller.start();
     });
   }
 
   private releaseActiveTec1gInputs(): void {
-    if (this.currentPlatform !== 'tec1g') {
-      return;
-    }
-    const session = resolvePlatformViewDebugSession(
-      this.sessionState,
-      vscode.debug.activeDebugSession
-    );
-    if (session?.type !== 'z80') {
-      return;
-    }
-    void Promise.resolve(session.customRequest('debug80/tec1gReleaseInputs')).catch(
-      (error: unknown) => {
-        this.logger.warn('Debug80 failed to release TEC-1G panel inputs', {
-          error: String(error),
-        });
-      }
-    );
+    releaseTec1gPanelInputs({
+      currentPlatform: this.currentPlatform,
+      sessionState: this.sessionState,
+      activeSession: vscode.debug.activeDebugSession,
+      logger: this.logger,
+    });
   }
-
-  // -------------------------------------------------------------------------
-  // Private — rendering and module management
-  // -------------------------------------------------------------------------
 
   private renderCurrentView(rehydrate: boolean): void {
     if (!this.view) {
@@ -357,17 +307,21 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         this.extensionUri
       );
       this.postProjectStatus();
-      void this.refreshCoolTermAvailability();
+      void this.coolTermPoller.refresh();
       this.postSessionStatus();
       this.postMessage(
-        buildPlatformRuntimeUpdateMessage(bundle.modules, bundle.state, this.nextUiRevision())
+        buildPlatformRuntimeUpdateMessage(
+          bundle.modules,
+          bundle.state,
+          this.messageTransport.nextRevision()
+        )
       );
       const serialInitMessage = buildSerialInitMessage(bundle.state.serialBuffer);
       if (serialInitMessage !== undefined) {
         this.postMessage(serialInitMessage);
       }
       this.postMessage({ type: 'selectTab', tab: bundle.state.activeTab });
-      this.postPendingPanelLayoutReset();
+      this.messageTransport.postPendingPanelLayoutReset();
       syncMemoryRefresh({
         visible: this.view.visible,
         activeTab: bundle.state.activeTab,
@@ -380,9 +334,9 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     if (rehydrate || this.view.webview.html.length === 0) {
       this.view.webview.html = getTec1gHtml('ui', this.view.webview, this.extensionUri);
       this.postProjectStatus();
-      void this.refreshCoolTermAvailability();
+      void this.coolTermPoller.refresh();
       this.postSessionStatus();
-      this.postPendingPanelLayoutReset();
+      this.messageTransport.postPendingPanelLayoutReset();
     }
   }
 
@@ -399,32 +353,11 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     return this.getActiveBundle(this.currentPlatform);
   }
 
-  private appendSerial(platform: PlatformId, text: string, sessionId?: string): void {
-    if (!shouldAcceptPlatformViewSession(this.sessionState, sessionId)) {
-      return;
-    }
-    const bundle = this.getActiveBundle(platform);
-    if (bundle === undefined) {
-      return;
-    }
-    const message = appendPlatformSerial(bundle.state.serialBuffer, text, {
-      platform,
-      currentPlatform: this.currentPlatform,
-    });
-    if (message !== undefined) {
-      this.postMessage(message);
-    }
-  }
-
   private stopAllPlatformRefresh(): void {
     this.registry.forEachState((_id, state) => {
       stopMemoryRefresh(state.refreshController);
     });
   }
-
-  // -------------------------------------------------------------------------
-  // Private — config
-  // -------------------------------------------------------------------------
 
   /** Applies the shared platform selector only for uninitialized workspaces. */
   private handleSaveProjectConfig(platform: string): void {
@@ -484,10 +417,6 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     this.postProjectStatus();
   }
 
-  // -------------------------------------------------------------------------
-  // Private — status and messaging
-  // -------------------------------------------------------------------------
-
   private postProjectStatus(): void {
     if (!this.view) {
       return;
@@ -501,7 +430,7 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
         stopOnEntry: this.stopOnEntry,
         azmRegisterContractsMode: this.azmRegisterContractsMode,
         azmContractUpdateMode: this.azmContractUpdateMode,
-        coolTermAvailable: this.coolTermAvailable,
+        coolTermAvailable: this.coolTermPoller.getAvailable(),
         ...(this.hardwareStatusText !== undefined
           ? {
               hardwareStatusText: this.hardwareStatusText,
@@ -516,42 +445,6 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
           : {}),
       }),
     });
-  }
-
-  private async refreshCoolTermAvailability(): Promise<void> {
-    if (this.checkingCoolTerm) {
-      return;
-    }
-    this.checkingCoolTerm = true;
-    try {
-      const available = await isCoolTermRemoteAvailable();
-      if (available !== this.coolTermAvailable) {
-        this.coolTermAvailable = available;
-        this.hardwareStatusText = undefined;
-        this.hardwareStatusState = 'neutral';
-        this.postProjectStatus();
-      }
-    } finally {
-      this.checkingCoolTerm = false;
-    }
-  }
-
-  private startCoolTermPolling(): void {
-    if (this.coolTermPollTimer !== undefined) {
-      return;
-    }
-    void this.refreshCoolTermAvailability();
-    this.coolTermPollTimer = setInterval(() => {
-      void this.refreshCoolTermAvailability();
-    }, 3000);
-  }
-
-  private stopCoolTermPolling(): void {
-    if (this.coolTermPollTimer === undefined) {
-      return;
-    }
-    clearInterval(this.coolTermPollTimer);
-    this.coolTermPollTimer = undefined;
   }
 
   private postSessionStatus(): void {
@@ -578,48 +471,20 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
   }
 
   private postMessage(payload: Record<string, unknown>): void {
-    if (!this.view) {
-      return;
-    }
-    this.performanceMonitor.recordMessage(String(payload.type ?? 'unknown'), payload);
-    void this.view.webview.postMessage(payload);
-  }
-
-  private postPendingPanelLayoutReset(): void {
-    if (!this.panelLayoutResetPending || !this.view) {
-      return;
-    }
-    this.panelLayoutResetPending = false;
-    this.postMessage({ type: 'resetPanelLayout' });
-  }
-
-  private nextUiRevision(): number {
-    this.uiRevision += 1;
-    return this.uiRevision;
+    this.messageTransport.post(payload);
   }
 
   private async postSnapshot(
     command: 'debug80/memorySnapshot',
     payload: ReturnType<typeof buildMemorySnapshotPayload>
   ): Promise<void> {
-    if (!this.view) {
-      throw new Error('Debug80: view unavailable');
-    }
-    const target = resolvePlatformViewDebugSession(
-      this.sessionState,
-      vscode.debug.activeDebugSession
-    );
-    if (!target || target.type !== 'z80') {
-      throw new Error('Debug80: No active z80 session.');
-    }
-    const snapshot = (await target.customRequest(command, {
-      before: 16,
-      rowSize: 16,
-      views: payload.views,
-    })) as unknown;
-    if (snapshot === null || snapshot === undefined || typeof snapshot !== 'object') {
-      throw new Error('Debug80: Invalid snapshot payload.');
-    }
-    this.postMessage({ type: 'snapshot', ...(snapshot as Record<string, unknown>) });
+    await requestPlatformViewMemorySnapshot({
+      viewAvailable: this.view !== undefined,
+      sessionState: this.sessionState,
+      activeSession: vscode.debug.activeDebugSession,
+      command,
+      payload,
+      postMessage: (message) => this.postMessage(message),
+    });
   }
 }

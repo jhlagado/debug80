@@ -12,6 +12,14 @@ import * as path from 'path';
 
 const HTML_PATH = path.resolve(__dirname, '../../webview/tec1g/index.html');
 const SOURCE_PATH = path.resolve(__dirname, '../../webview/tec1g/index.ts');
+const HARDWARE_KEYBOARD_SOURCE_PATH = path.resolve(
+  __dirname,
+  '../../webview/tec1g/tec1g-hardware-keyboard.ts'
+);
+const MESSAGE_ROUTER_SOURCE_PATH = path.resolve(
+  __dirname,
+  '../../webview/tec1g/tec1g-message-router.ts'
+);
 const CSS_PATH = path.resolve(__dirname, '../../webview/tec1g/styles.css');
 const COMMON_CSS_PATH = path.resolve(__dirname, '../../webview/common/styles.css');
 
@@ -243,23 +251,28 @@ describe('tec1g UI visibility controls', () => {
 
   it('uses Matrix Keyboard accordion visibility as the matrix attachment switch', () => {
     const source = fs.readFileSync(SOURCE_PATH, 'utf8');
+    const hardwareKeyboardSource = fs.readFileSync(HARDWARE_KEYBOARD_SOURCE_PATH, 'utf8');
+    const messageRouterSource = fs.readFileSync(MESSAGE_ROUTER_SOURCE_PATH, 'utf8');
 
     expect(doc.querySelector('#matrixConfigSwitch')).toBeNull();
     expect(source).not.toContain('matrixConfigSwitch');
     expect(source).toContain("vscode.postMessage({ type: 'matrixMode', enabled: open })");
     expect(source).toContain('function reassertMatrixKeyboardOpenState()');
     expect(source).toContain('function applyMatrixKeyboardCapture(captured: boolean)');
-    expect(source).toContain('function releaseAllHardwareInputs(): void');
-    expect(source).toContain("window.addEventListener('blur', releaseAllHardwareInputs)");
+    expect(hardwareKeyboardSource).toContain('function releaseAll(): void');
+    expect(hardwareKeyboardSource).toContain("window.addEventListener('blur', releaseAll)");
     expect(source).toContain("window.addEventListener('beforeunload', () => {");
-    expect(source).toContain('releaseAllHardwareInputs()');
-    expect(source).toContain('applyMatrixKeyboardCapture(false)');
-    expect(source).toContain("message.status === 'running' || message.status === 'paused'");
-    expect(source).toContain('if (message.matrixMode === false)');
+    expect(source).toContain('hardwareKeyboard.dispose()');
+    expect(hardwareKeyboardSource).toContain('options.applyMatrixKeyboardCapture(false)');
+    expect(messageRouterSource).toContain(
+      "message.status === 'running' || message.status === 'paused'"
+    );
+    expect(messageRouterSource).toContain('if (message.matrixMode === false)');
   });
 
   it('routes physical keys through the explicit keyboard owner', () => {
     const source = fs.readFileSync(SOURCE_PATH, 'utf8');
+    const hardwareKeyboardSource = fs.readFileSync(HARDWARE_KEYBOARD_SOURCE_PATH, 'utf8');
 
     expect(source).toContain('createKeyboardOwnerController');
     expect(source).toContain('function syncKeyboardOwnerVisibility()');
@@ -268,8 +281,8 @@ describe('tec1g UI visibility controls', () => {
     expect(source).toContain("keyboardOwner.getOwner() === 'joystick'");
     expect(source).toContain("keyboardOwner.getOwner() === 'keypad'");
     expect(source).toContain('releaseDepartedKeyboardOwner(previousOwner, owner');
-    expect(source).toContain('shouldBypassEmulatorKeyboardTarget(event.target)');
-    expect(source).toContain('shouldBypassEmulatorKeyboardTarget(target)');
+    expect(hardwareKeyboardSource).toContain('shouldBypassEmulatorKeyboardTarget(event.target)');
+    expect(hardwareKeyboardSource).toContain('shouldBypassEmulatorKeyboardTarget(target)');
     expect(source).toContain(
       'keypad: !accordionMachine.hidden && !panelLayout.isMatrixKeyboardOpen()'
     );
@@ -290,12 +303,14 @@ describe('tec1g UI visibility controls', () => {
 
   it('keeps project-status message application behind a typed helper', () => {
     const source = fs.readFileSync(SOURCE_PATH, 'utf8');
+    const messageRouterSource = fs.readFileSync(MESSAGE_ROUTER_SOURCE_PATH, 'utf8');
 
     expect(source).toContain('type Tec1gProjectStatusMessage');
     expect(source).toContain(
       'function applyProjectStatusMessage(message: Tec1gProjectStatusMessage)'
     );
-    expect(source).toContain('applyProjectStatusMessage(message);');
+    expect(source).toContain('applyProjectStatus: applyProjectStatusMessage');
+    expect(messageRouterSource).toContain('options.applyProjectStatus(message);');
   });
 
   it('labels joystick auxiliary action as Aux instead of Comm2', () => {
