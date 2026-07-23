@@ -9,16 +9,17 @@ import { resolveAssemblerBackend, type AssemblerBackend } from './assembler-back
 import { emitConsoleOutput, type EventSender } from '../session/adapter-ui';
 import type { LaunchRequestArguments } from '../session/types';
 import type {
-  Tec1gExpansionRomArtifactBankConfig,
-  Tec1gExpansionRomArtifactOutputConfig,
-  Tec1gExpansionRomArtifactPackedOutputConfig,
-  Tec1gExpansionRomArtifactPerBankOutputConfig,
   Tec1gMultibankExpansionRomArtifactConfig,
-  Tec1gRomArtifactConfig,
   Tec1gSourceRomArtifactConfig,
 } from '@jhlagado/debug80-runtime/platforms/types';
 import type { SourceAddressSpace, SourceAddressTransform } from '../../mapping/types';
-import { TEC1G_EXPAND_BANK_COUNT } from '@jhlagado/debug80-runtime/platforms/tec-common';
+import {
+  createTec1gRomArtifactBuildPlans,
+  type Tec1gExpansionBankBuildPlan,
+  type Tec1gExpansionOutputPlan,
+  type Tec1gMultibankExpansionBuildPlan,
+  type Tec1gSourceRomArtifactBuildPlan,
+} from './tec1g-rom-artifact-plan';
 
 export interface Tec1gBuiltRomArtifact {
   id: string;
@@ -47,14 +48,14 @@ export async function buildTec1gRomArtifactsIfRequested(options: {
     artifact: Tec1gSourceRomArtifactConfig | Tec1gMultibankExpansionRomArtifactConfig
   ) => AssemblerBackend;
 }): Promise<Tec1gBuiltRomArtifact[]> {
-  const artifacts = activeSourceBackedTec1gRomArtifacts(options.args.tec1g?.romArtifacts);
+  const plans = createTec1gRomArtifactBuildPlans(options.args.tec1g?.romArtifacts, options.baseDir);
   const built: Tec1gBuiltRomArtifact[] = [];
 
-  for (const artifact of artifacts) {
-    if (isMultibankExpansionArtifact(artifact)) {
+  for (const plan of plans) {
+    if (plan.kind === 'multibank') {
       built.push(
         await buildMultibankExpansionArtifact({
-          artifact,
+          plan,
           baseDir: options.baseDir,
           args: options.args,
           sendEvent: options.sendEvent,
@@ -66,20 +67,13 @@ export async function buildTec1gRomArtifactsIfRequested(options: {
       continue;
     }
 
+    const artifact = plan.artifact;
     const backend =
       options.backendFactory?.(artifact) ?? resolveAssemblerBackend('azm', artifact.sourceFile);
-    const sourceFile = resolveWorkspacePath(options.baseDir, artifact.sourceFile);
-    const outputBin = resolveWorkspacePath(options.baseDir, artifact.outputBin);
-    assertAzmCompatibleOutputPaths(artifact, options.baseDir, outputBin);
-    const hexPath = replaceExtension(outputBin, '.hex');
-    const outputDebugMap =
-      artifact.outputDebugMap !== undefined
-        ? resolveWorkspacePath(options.baseDir, artifact.outputDebugMap)
-        : replaceExtension(outputBin, '.d8.json');
 
     const assembleResult = await backend.assemble({
-      asmPath: sourceFile,
-      hexPath,
+      asmPath: plan.sourceFile,
+      hexPath: plan.hexPath,
       sourceRoot: options.baseDir,
       azm: romArtifactAzmOptions(options.args),
       onOutput: (message) => {
@@ -102,9 +96,10 @@ export async function buildTec1gRomArtifactsIfRequested(options: {
     }
 
     const binResult = await backend.assembleBin({
-      asmPath: sourceFile,
-      hexPath,
-      ...romArtifactBinaryRange(artifact),
+      asmPath: plan.sourceFile,
+      hexPath: plan.hexPath,
+      binFrom: plan.binFrom,
+      binTo: plan.binTo,
       sourceRoot: options.baseDir,
       azm: romArtifactAzmOptions(options.args),
       onOutput: (message) => {
@@ -118,27 +113,27 @@ export async function buildTec1gRomArtifactsIfRequested(options: {
       });
     }
 
-    if (!fs.existsSync(outputBin)) {
+    if (!fs.existsSync(plan.outputBin)) {
       throw new AssembleFailureError({
         success: false,
-        error: `ROM artifact ${artifact.id} did not produce binary ${outputBin}`,
+        error: `ROM artifact ${artifact.id} did not produce binary ${plan.outputBin}`,
       });
     }
-    if (!fs.existsSync(outputDebugMap)) {
+    if (!fs.existsSync(plan.outputDebugMap)) {
       throw new AssembleFailureError({
         success: false,
-        error: `ROM artifact ${artifact.id} did not produce debug map ${outputDebugMap}`,
+        error: `ROM artifact ${artifact.id} did not produce debug map ${plan.outputDebugMap}`,
       });
     }
-    normalizeBuiltRomArtifactBinary(artifact, outputBin);
+    normalizeBuiltRomArtifactBinary(plan);
 
     built.push({
       id: artifact.id,
       role: artifact.role,
-      sourceFile,
-      outputBin,
-      outputDebugMap,
-      sourceRoot: path.dirname(artifact.sourceFile),
+      sourceFile: plan.sourceFile,
+      outputBin: plan.outputBin,
+      outputDebugMap: plan.outputDebugMap,
+      sourceRoot: plan.sourceRoot,
     });
   }
 
@@ -158,31 +153,23 @@ function romArtifactAzmOptions(
 /**
  * Enforces configured ROM artifact binary geometry after assembly.
  */
-function normalizeBuiltRomArtifactBinary(
-  artifact: Tec1gSourceRomArtifactConfig,
-  outputBin: string
-): void {
-  const targetSize =
-    artifact.role === 'monitor'
-      ? (artifact.size ?? 0x4000)
-      : (artifact.imageSize ?? artifact.windowSize ?? 0x4000);
-  const sourceLimit = artifact.role === 'monitor' ? targetSize : (artifact.windowSize ?? 0x4000);
-  const bytes = fs.readFileSync(outputBin);
-  if (bytes.length > sourceLimit) {
+function normalizeBuiltRomArtifactBinary(plan: Tec1gSourceRomArtifactBuildPlan): void {
+  const bytes = fs.readFileSync(plan.outputBin);
+  if (bytes.length > plan.sourceLimit) {
     throw new AssembleFailureError({
       success: false,
-      error: `ROM artifact ${artifact.id} binary is ${bytes.length} bytes; limit is ${sourceLimit}`,
+      error: `ROM artifact ${plan.artifact.id} binary is ${bytes.length} bytes; limit is ${plan.sourceLimit}`,
     });
   }
-  if (bytes.length < targetSize) {
-    const padded = Buffer.alloc(targetSize);
+  if (bytes.length < plan.targetSize) {
+    const padded = Buffer.alloc(plan.targetSize);
     bytes.copy(padded);
-    fs.writeFileSync(outputBin, padded);
+    fs.writeFileSync(plan.outputBin, padded);
   }
 }
 
 async function buildMultibankExpansionArtifact(options: {
-  artifact: Tec1gMultibankExpansionRomArtifactConfig;
+  plan: Tec1gMultibankExpansionBuildPlan;
   baseDir: string;
   args: LaunchRequestArguments;
   sendEvent: EventSender;
@@ -190,23 +177,15 @@ async function buildMultibankExpansionArtifact(options: {
     artifact: Tec1gSourceRomArtifactConfig | Tec1gMultibankExpansionRomArtifactConfig
   ) => AssemblerBackend;
 }): Promise<Tec1gBuiltRomArtifact> {
-  const artifact = options.artifact;
-  const outputBin = resolveWorkspacePath(options.baseDir, artifact.outputBin);
-  assertBinOutputPath(artifact.id, outputBin);
-
-  const bankSize = artifact.bankSize ?? artifact.windowSize ?? 0x4000;
-  const imageSize = artifact.imageSize ?? bankSize * (artifact.bankCount ?? 1);
-  const bankCount = artifact.bankCount ?? Math.floor(imageSize / bankSize);
-  assertMultibankExpansionArtifactGeometry(artifact, imageSize, bankSize, bankCount);
-  assertMultibankExpansionArtifactBanks(artifact, bankCount);
-  assertMultibankExpansionArtifactOutputs(artifact, options.baseDir, bankCount);
+  const { plan } = options;
+  const artifact = plan.artifact;
   const builtBanks = new Map<number, BuiltExpansionArtifactBank>();
   const debugMaps: string[] = [];
   const debugMapAddressSpaces: Record<string, SourceAddressSpace> = {};
   const debugMapAddressTransforms: Record<string, SourceAddressTransform> = {};
   const sourceRoots: string[] = [];
 
-  for (const bank of artifact.banks) {
+  for (const bank of plan.banks) {
     const builtBank = await buildExpansionArtifactBank({
       artifact,
       bank,
@@ -225,36 +204,35 @@ async function buildMultibankExpansionArtifact(options: {
       physicalBank: bank.physicalBank,
     };
     debugMapAddressTransforms[path.normalize(builtBank.outputDebugMap)] = {
-      rebase: artifact.windowAddress ?? 0x8000,
-      size: artifact.windowSize ?? bankSize,
+      rebase: plan.windowAddress,
+      size: plan.windowSize,
     };
-    sourceRoots.push(path.dirname(bank.sourceFile));
+    sourceRoots.push(bank.sourceRoot);
   }
 
   const runtimeOutputWritten = writeMultibankExpansionOutputs({
-    artifact,
-    baseDir: options.baseDir,
-    runtimeOutputBin: outputBin,
+    outputs: plan.outputs,
+    runtimeOutputBin: plan.outputBin,
     builtBanks,
-    imageSize,
-    bankSize,
+    imageSize: plan.imageSize,
+    bankSize: plan.bankSize,
   });
   if (!runtimeOutputWritten) {
     writePhysicalPackedExpansionOutput({
-      outputBin,
-      banks: artifact.banks.map((bank) => bank.physicalBank),
+      outputBin: plan.outputBin,
+      banks: plan.banks.map((bank) => bank.physicalBank),
       builtBanks,
-      imageSize,
-      bankSize,
+      imageSize: plan.imageSize,
+      bankSize: plan.bankSize,
     });
   }
 
   return {
     id: artifact.id,
     role: 'expansion',
-    sourceFile: artifact.banks[0]?.sourceFile ?? '',
-    outputBin,
-    sourceRoot: path.dirname(artifact.banks[0]?.sourceFile ?? ''),
+    sourceFile: plan.banks[0]?.sourceFile ?? '',
+    outputBin: plan.outputBin,
+    sourceRoot: plan.banks[0]?.sourceRoot ?? '',
     debugMaps,
     debugMapAddressSpaces,
     debugMapAddressTransforms,
@@ -264,7 +242,7 @@ async function buildMultibankExpansionArtifact(options: {
 
 async function buildExpansionArtifactBank(options: {
   artifact: Tec1gMultibankExpansionRomArtifactConfig;
-  bank: Tec1gExpansionRomArtifactBankConfig;
+  bank: Tec1gExpansionBankBuildPlan;
   baseDir: string;
   args: LaunchRequestArguments;
   sendEvent: EventSender;
@@ -273,20 +251,12 @@ async function buildExpansionArtifactBank(options: {
   ) => AssemblerBackend;
 }): Promise<{ bytes: Buffer; outputDebugMap: string }> {
   const { artifact, bank } = options;
-  const sourceFile = resolveWorkspacePath(options.baseDir, bank.sourceFile);
-  const outputBin = resolveWorkspacePath(options.baseDir, bank.outputBin);
-  assertAzmCompatibleBankOutputPaths(artifact.id, bank, options.baseDir, outputBin);
-  const hexPath = replaceExtension(outputBin, '.hex');
-  const outputDebugMap =
-    bank.outputDebugMap !== undefined
-      ? resolveWorkspacePath(options.baseDir, bank.outputDebugMap)
-      : replaceExtension(outputBin, '.d8.json');
   const backend =
-    options.backendFactory?.(artifact) ?? resolveAssemblerBackend('azm', bank.sourceFile);
+    options.backendFactory?.(artifact) ?? resolveAssemblerBackend('azm', bank.config.sourceFile);
 
   const assembleResult = await backend.assemble({
-    asmPath: sourceFile,
-    hexPath,
+    asmPath: bank.sourceFile,
+    hexPath: bank.hexPath,
     sourceRoot: options.baseDir,
     azm: romArtifactAzmOptions(options.args),
     onOutput: (message) => {
@@ -310,8 +280,8 @@ async function buildExpansionArtifactBank(options: {
   }
 
   const binResult = await backend.assembleBin({
-    asmPath: sourceFile,
-    hexPath,
+    asmPath: bank.sourceFile,
+    hexPath: bank.hexPath,
     binFrom: artifact.windowAddress ?? 0x8000,
     binTo: (artifact.windowAddress ?? 0x8000) + (artifact.windowSize ?? 0x4000) - 1,
     sourceRoot: options.baseDir,
@@ -329,20 +299,20 @@ async function buildExpansionArtifactBank(options: {
     });
   }
 
-  if (!fs.existsSync(outputBin)) {
+  if (!fs.existsSync(bank.outputBin)) {
     throw new AssembleFailureError({
       success: false,
-      error: `ROM artifact ${artifact.id} bank ${bank.physicalBank} did not produce binary ${outputBin}`,
+      error: `ROM artifact ${artifact.id} bank ${bank.physicalBank} did not produce binary ${bank.outputBin}`,
     });
   }
-  if (!fs.existsSync(outputDebugMap)) {
+  if (!fs.existsSync(bank.outputDebugMap)) {
     throw new AssembleFailureError({
       success: false,
-      error: `ROM artifact ${artifact.id} bank ${bank.physicalBank} did not produce debug map ${outputDebugMap}`,
+      error: `ROM artifact ${artifact.id} bank ${bank.physicalBank} did not produce debug map ${bank.outputDebugMap}`,
     });
   }
 
-  const bytes = fs.readFileSync(outputBin);
+  const bytes = fs.readFileSync(bank.outputBin);
   const bankSize = artifact.bankSize ?? artifact.windowSize ?? 0x4000;
   if (bytes.length > bankSize) {
     throw new AssembleFailureError({
@@ -353,15 +323,14 @@ async function buildExpansionArtifactBank(options: {
   const padded = Buffer.alloc(bankSize);
   bytes.copy(padded);
   if (bytes.length < bankSize) {
-    fs.writeFileSync(outputBin, padded);
+    fs.writeFileSync(bank.outputBin, padded);
   }
 
-  return { bytes: padded, outputDebugMap };
+  return { bytes: padded, outputDebugMap: bank.outputDebugMap };
 }
 
 function writeMultibankExpansionOutputs(options: {
-  artifact: Tec1gMultibankExpansionRomArtifactConfig;
-  baseDir: string;
+  outputs: Tec1gExpansionOutputPlan[];
   runtimeOutputBin: string;
   builtBanks: Map<number, BuiltExpansionArtifactBank>;
   imageSize: number;
@@ -369,12 +338,11 @@ function writeMultibankExpansionOutputs(options: {
 }): boolean {
   let runtimeOutputWritten = false;
 
-  for (const output of options.artifact.outputs ?? []) {
+  for (const output of options.outputs) {
     if (output.kind === 'packed') {
-      const outputBin = resolveWorkspacePath(options.baseDir, output.outputBin);
       if (output.layout === 'physical') {
         writePhysicalPackedExpansionOutput({
-          outputBin,
+          outputBin: output.outputBin,
           banks: output.banks,
           builtBanks: options.builtBanks,
           imageSize: options.imageSize,
@@ -382,17 +350,16 @@ function writeMultibankExpansionOutputs(options: {
         });
       } else {
         writeContiguousPackedExpansionOutput({
-          outputBin,
+          outputBin: output.outputBin,
           banks: output.banks,
           builtBanks: options.builtBanks,
           bankSize: options.bankSize,
         });
       }
-      runtimeOutputWritten ||= pathsEqual(outputBin, options.runtimeOutputBin);
+      runtimeOutputWritten ||= pathsEqual(output.outputBin, options.runtimeOutputBin);
     } else {
       writePerBankExpansionOutput({
         output,
-        baseDir: options.baseDir,
         builtBanks: options.builtBanks,
       });
     }
@@ -431,15 +398,13 @@ function writeContiguousPackedExpansionOutput(options: {
 }
 
 function writePerBankExpansionOutput(options: {
-  output: Tec1gExpansionRomArtifactPerBankOutputConfig;
-  baseDir: string;
+  output: Extract<Tec1gExpansionOutputPlan, { kind: 'perBank' }>;
   builtBanks: Map<number, BuiltExpansionArtifactBank>;
 }): void {
-  const outputDir = resolveWorkspacePath(options.baseDir, options.output.outputDir);
-  fs.mkdirSync(outputDir, { recursive: true });
+  fs.mkdirSync(options.output.outputDir, { recursive: true });
   for (const physicalBank of options.output.banks) {
     const bank = requireBuiltExpansionBank(options.builtBanks, physicalBank);
-    fs.writeFileSync(path.join(outputDir, `bank${physicalBank}.bin`), bank.bytes);
+    fs.writeFileSync(path.join(options.output.outputDir, `bank${physicalBank}.bin`), bank.bytes);
   }
 }
 
@@ -462,365 +427,12 @@ function requireBuiltExpansionBank(
   return bank;
 }
 
-export function applyTec1gRomArtifactsToLaunchArgs(
-  args: LaunchRequestArguments,
-  artifacts: Tec1gBuiltRomArtifact[]
-): void {
-  if (artifacts.length === 0) {
-    return;
-  }
-
-  args.tec1g = { ...(args.tec1g ?? {}) };
-  const generatedDebugMaps: string[] = [];
-  const generatedDebugMapAddressSpaces: Record<string, SourceAddressSpace> = {};
-  const generatedDebugMapAddressTransforms: Record<string, SourceAddressTransform> = {};
-  const generatedSourceRoots: string[] = [];
-  let monitorArtifactGenerated = false;
-  for (const artifact of artifacts) {
-    if (artifact.role === 'monitor') {
-      args.tec1g.romHex = artifact.outputBin;
-      monitorArtifactGenerated = true;
-    } else {
-      args.tec1g.expansionRomHex = artifact.outputBin;
-    }
-
-    generatedDebugMaps.push(...artifactDebugMaps(artifact));
-    Object.assign(generatedDebugMapAddressSpaces, artifact.debugMapAddressSpaces ?? {});
-    Object.assign(generatedDebugMapAddressTransforms, artifact.debugMapAddressTransforms ?? {});
-    generatedSourceRoots.push(...artifactSourceRoots(artifact));
-  }
-
-  const existingDebugMaps = monitorArtifactGenerated
-    ? (args.debugMaps ?? []).filter(shouldKeepExistingDebugMapForGeneratedMonitor)
-    : (args.debugMaps ?? []);
-  args.debugMaps = prependUniqueGroup(existingDebugMaps, generatedDebugMaps);
-  args.debugMapAddressSpaces = {
-    ...(args.debugMapAddressSpaces ?? {}),
-    ...generatedDebugMapAddressSpaces,
-  };
-  args.debugMapAddressTransforms = {
-    ...(args.debugMapAddressTransforms ?? {}),
-    ...generatedDebugMapAddressTransforms,
-  };
-  args.sourceRoots = prependUniqueGroup(args.sourceRoots ?? [], generatedSourceRoots);
-}
-
-export function hasActiveTec1gMonitorRomArtifact(args: LaunchRequestArguments): boolean {
-  return activeSourceBackedTec1gRomArtifacts(args.tec1g?.romArtifacts).some(
-    (artifact) => artifact.role === 'monitor'
-  );
-}
-
-export function hasActiveTec1gRomArtifacts(args: LaunchRequestArguments): boolean {
-  return activeSourceBackedTec1gRomArtifacts(args.tec1g?.romArtifacts).length > 0;
-}
-
-function activeSourceBackedTec1gRomArtifacts(
-  artifacts: Tec1gRomArtifactConfig[] | undefined
-): Array<Tec1gSourceRomArtifactConfig | Tec1gMultibankExpansionRomArtifactConfig> {
-  return (artifacts ?? []).filter(
-    (
-      artifact
-    ): artifact is Tec1gSourceRomArtifactConfig | Tec1gMultibankExpansionRomArtifactConfig =>
-      artifact.active !== false &&
-      (('sourceFile' in artifact && 'outputBin' in artifact) ||
-        isMultibankExpansionArtifact(artifact))
-  );
-}
-
-function isMultibankExpansionArtifact(
-  artifact: Tec1gRomArtifactConfig
-): artifact is Tec1gMultibankExpansionRomArtifactConfig {
-  return artifact.role === 'expansion' && 'banks' in artifact && Array.isArray(artifact.banks);
-}
-
-function romArtifactBinaryRange(artifact: Tec1gSourceRomArtifactConfig): {
-  binFrom: number;
-  binTo: number;
-} {
-  if (artifact.role === 'monitor') {
-    return {
-      binFrom: artifact.address ?? 0xc000,
-      binTo: (artifact.address ?? 0xc000) + (artifact.size ?? 0x4000) - 1,
-    };
-  }
-
-  return {
-    binFrom: artifact.windowAddress ?? 0x8000,
-    binTo: (artifact.windowAddress ?? 0x8000) + (artifact.windowSize ?? 0x4000) - 1,
-  };
-}
-
-function resolveWorkspacePath(baseDir: string, filePath: string): string {
-  return path.isAbsolute(filePath) ? path.normalize(filePath) : path.resolve(baseDir, filePath);
-}
-
-function replaceExtension(filePath: string, extension: string): string {
-  return path.join(
-    path.dirname(filePath),
-    `${path.basename(filePath, path.extname(filePath))}${extension}`
-  );
-}
-
-function assertAzmCompatibleOutputPaths(
-  artifact: Tec1gSourceRomArtifactConfig,
-  baseDir: string,
-  outputBin: string
-): void {
-  if (path.extname(outputBin).toLowerCase() !== '.bin') {
-    throw new AssembleFailureError({
-      success: false,
-      error: `ROM artifact ${artifact.id} outputBin must use .bin so AZM writes the configured binary`,
-    });
-  }
-
-  if (artifact.outputDebugMap !== undefined) {
-    const outputDebugMap = resolveWorkspacePath(baseDir, artifact.outputDebugMap);
-    const expectedDebugMap = replaceExtension(outputBin, '.d8.json');
-    if (path.normalize(outputDebugMap) !== path.normalize(expectedDebugMap)) {
-      throw new AssembleFailureError({
-        success: false,
-        error: `ROM artifact ${artifact.id} outputDebugMap must match ${expectedDebugMap}`,
-      });
-    }
-  }
-}
-
-function assertAzmCompatibleBankOutputPaths(
-  artifactId: string,
-  bank: Tec1gExpansionRomArtifactBankConfig,
-  baseDir: string,
-  outputBin: string
-): void {
-  assertBinOutputPath(`${artifactId} bank ${bank.physicalBank}`, outputBin);
-
-  if (bank.outputDebugMap !== undefined) {
-    const outputDebugMap = resolveWorkspacePath(baseDir, bank.outputDebugMap);
-    const expectedDebugMap = replaceExtension(outputBin, '.d8.json');
-    if (path.normalize(outputDebugMap) !== path.normalize(expectedDebugMap)) {
-      throw new AssembleFailureError({
-        success: false,
-        error: `ROM artifact ${artifactId} bank ${bank.physicalBank} outputDebugMap must match ${expectedDebugMap}`,
-      });
-    }
-  }
-}
-
-function assertMultibankExpansionArtifactBanks(
-  artifact: Tec1gMultibankExpansionRomArtifactConfig,
-  bankCount: number
-): void {
-  if (artifact.banks.length === 0) {
-    throw new AssembleFailureError({
-      success: false,
-      error: `ROM artifact ${artifact.id} must declare at least one bank`,
-    });
-  }
-
-  const seen = new Set<number>();
-  for (const bank of artifact.banks) {
-    if (!Number.isInteger(bank.physicalBank) || bank.physicalBank < 0) {
-      throw new AssembleFailureError({
-        success: false,
-        error: `ROM artifact ${artifact.id} bank ${bank.physicalBank} is outside bankCount ${bankCount}`,
-      });
-    }
-    if (bank.physicalBank >= TEC1G_EXPAND_BANK_COUNT) {
-      throw new AssembleFailureError({
-        success: false,
-        error: `ROM artifact ${artifact.id} bank ${bank.physicalBank} is outside supported bank range 0-${TEC1G_EXPAND_BANK_COUNT - 1}`,
-      });
-    }
-    if (bank.physicalBank >= bankCount) {
-      throw new AssembleFailureError({
-        success: false,
-        error: `ROM artifact ${artifact.id} bank ${bank.physicalBank} is outside bankCount ${bankCount}`,
-      });
-    }
-    if (seen.has(bank.physicalBank)) {
-      throw new AssembleFailureError({
-        success: false,
-        error: `ROM artifact ${artifact.id} declares physical bank ${bank.physicalBank} more than once`,
-      });
-    }
-    seen.add(bank.physicalBank);
-  }
-}
-
-function assertMultibankExpansionArtifactOutputs(
-  artifact: Tec1gMultibankExpansionRomArtifactConfig,
-  baseDir: string,
-  bankCount: number
-): void {
-  if (artifact.outputs === undefined) {
-    return;
-  }
-  if (!Array.isArray(artifact.outputs)) {
-    throw new AssembleFailureError({
-      success: false,
-      error: `ROM artifact ${artifact.id} outputs must be an array`,
-    });
-  }
-
-  const declaredBanks = new Set(artifact.banks.map((bank) => bank.physicalBank));
-  for (const output of artifact.outputs) {
-    if (output.kind === 'packed') {
-      assertPackedExpansionOutput(artifact.id, output, baseDir);
-      const runtimeOutputBin = resolveWorkspacePath(baseDir, artifact.outputBin);
-      const recipeOutputBin = resolveWorkspacePath(baseDir, output.outputBin);
-      if (pathsEqual(runtimeOutputBin, recipeOutputBin) && output.layout !== 'physical') {
-        throw new AssembleFailureError({
-          success: false,
-          error: `ROM artifact ${artifact.id} output ${output.id} writes the runtime outputBin and must use physical layout`,
-        });
-      }
-    } else if (output.kind === 'perBank') {
-      if (typeof output.outputDir !== 'string' || output.outputDir === '') {
-        throw new AssembleFailureError({
-          success: false,
-          error: `ROM artifact ${artifact.id} output ${output.id} outputDir is required`,
-        });
-      }
-    } else {
-      throw new AssembleFailureError({
-        success: false,
-        error: `ROM artifact ${artifact.id} output ${String((output as { kind?: unknown }).kind)} is not supported`,
-      });
-    }
-
-    assertMultibankExpansionOutputBanks(artifact, output, declaredBanks, bankCount);
-  }
-}
-
-function assertPackedExpansionOutput(
-  artifactId: string,
-  output: Tec1gExpansionRomArtifactPackedOutputConfig,
-  baseDir: string
-): void {
-  if (
-    output.layout !== undefined &&
-    output.layout !== 'contiguous' &&
-    output.layout !== 'physical'
-  ) {
-    throw new AssembleFailureError({
-      success: false,
-      error: `ROM artifact ${artifactId} output ${output.id} layout must be contiguous or physical`,
-    });
-  }
-  if (typeof output.outputBin !== 'string' || output.outputBin === '') {
-    throw new AssembleFailureError({
-      success: false,
-      error: `ROM artifact ${artifactId} output ${output.id} outputBin is required`,
-    });
-  }
-  assertBinOutputPath(
-    `${artifactId} output ${output.id}`,
-    resolveWorkspacePath(baseDir, output.outputBin)
-  );
-}
-
-function assertMultibankExpansionOutputBanks(
-  artifact: Tec1gMultibankExpansionRomArtifactConfig,
-  output: Tec1gExpansionRomArtifactOutputConfig,
-  declaredBanks: Set<number>,
-  bankCount: number
-): void {
-  if (!Array.isArray(output.banks) || output.banks.length === 0) {
-    throw new AssembleFailureError({
-      success: false,
-      error: `ROM artifact ${artifact.id} output ${output.id} must declare at least one bank`,
-    });
-  }
-
-  const seen = new Set<number>();
-  for (const physicalBank of output.banks) {
-    if (!Number.isInteger(physicalBank) || physicalBank < 0 || physicalBank >= bankCount) {
-      throw new AssembleFailureError({
-        success: false,
-        error: `ROM artifact ${artifact.id} output ${output.id} bank ${physicalBank} is outside bankCount ${bankCount}`,
-      });
-    }
-    if (!declaredBanks.has(physicalBank)) {
-      throw new AssembleFailureError({
-        success: false,
-        error: `ROM artifact ${artifact.id} output ${output.id} references undeclared bank ${physicalBank}`,
-      });
-    }
-    if (seen.has(physicalBank)) {
-      throw new AssembleFailureError({
-        success: false,
-        error: `ROM artifact ${artifact.id} output ${output.id} declares bank ${physicalBank} more than once`,
-      });
-    }
-    seen.add(physicalBank);
-  }
-}
-
-function assertMultibankExpansionArtifactGeometry(
-  artifact: Tec1gMultibankExpansionRomArtifactConfig,
-  imageSize: number,
-  bankSize: number,
-  bankCount: number
-): void {
-  if (!Number.isInteger(bankSize) || bankSize <= 0) {
-    throw new AssembleFailureError({
-      success: false,
-      error: `ROM artifact ${artifact.id} bankSize must be a positive integer`,
-    });
-  }
-  if (!Number.isInteger(imageSize) || imageSize <= 0 || imageSize % bankSize !== 0) {
-    throw new AssembleFailureError({
-      success: false,
-      error: `ROM artifact ${artifact.id} imageSize must be a positive multiple of bankSize`,
-    });
-  }
-  if (!Number.isInteger(bankCount) || bankCount !== imageSize / bankSize) {
-    throw new AssembleFailureError({
-      success: false,
-      error: `ROM artifact ${artifact.id} bankCount must equal imageSize / bankSize`,
-    });
-  }
-}
-
-function assertBinOutputPath(artifactId: string, outputBin: string): void {
-  if (path.extname(outputBin).toLowerCase() !== '.bin') {
-    throw new AssembleFailureError({
-      success: false,
-      error: `ROM artifact ${artifactId} outputBin must use .bin so AZM writes the configured binary`,
-    });
-  }
-}
-
 function pathsEqual(left: string, right: string): boolean {
   return path.normalize(left) === path.normalize(right);
 }
 
-function artifactDebugMaps(artifact: Tec1gBuiltRomArtifact): string[] {
-  if (artifact.debugMaps !== undefined) {
-    return artifact.debugMaps;
-  }
-  return artifact.outputDebugMap !== undefined ? [artifact.outputDebugMap] : [];
-}
-
-function artifactSourceRoots(artifact: Tec1gBuiltRomArtifact): string[] {
-  return artifact.sourceRoots ?? [artifact.sourceRoot];
-}
-
-function prependUniqueGroup(values: string[], group: string[]): string[] {
-  if (group.length === 0) {
-    return values;
-  }
-  const uniqueGroup = group.filter((entry, index) => group.indexOf(entry) === index);
-  return [...uniqueGroup, ...values.filter((existing) => !uniqueGroup.includes(existing))];
-}
-
-function shouldKeepExistingDebugMapForGeneratedMonitor(mapPath: string): boolean {
-  const normalized = mapPath.split(/[\\/]+/).join('/');
-  if (normalized.includes('resources/bundles/tec1g/mon3/v1/') && normalized.endsWith('.d8.json')) {
-    return false;
-  }
-  if (normalized.includes('roms/tec1g/mon3/') && normalized.endsWith('.d8.json')) {
-    return false;
-  }
-  return true;
-}
+export {
+  applyTec1gRomArtifactsToLaunchArgs,
+  hasActiveTec1gMonitorRomArtifact,
+  hasActiveTec1gRomArtifacts,
+} from './tec1g-rom-artifact-launch';
