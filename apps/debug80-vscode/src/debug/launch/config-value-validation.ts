@@ -26,7 +26,9 @@ export function invalidResult(message: string): ValidationResult {
 }
 
 export function validateOptionalInteger(value: unknown, fieldName: string): ValidationResult {
-  if (value === undefined || value === null) {return validResult();}
+  if (value === undefined || value === null) {
+    return validResult();
+  }
   if (typeof value !== 'number') {
     return invalidResult(`${fieldName} must be a number, got ${typeof value}`);
   }
@@ -48,7 +50,9 @@ export function validateOptionalObject<T extends object>(
   value: unknown,
   fieldName: string
 ): OptionalObjectValidation<T> {
-  if (value === undefined || value === null) {return { result: validResult() };}
+  if (value === undefined || value === null) {
+    return { result: validResult() };
+  }
   if (typeof value !== 'object' || Array.isArray(value)) {
     const actualType = Array.isArray(value) ? 'array' : typeof value;
     return { result: invalidResult(`${fieldName} must be an object, got ${actualType}`) };
@@ -57,7 +61,9 @@ export function validateOptionalObject<T extends object>(
 }
 
 export function validatePlatform(platform: unknown): ValidationResult {
-  if (platform === undefined || platform === null || platform === '') {return validResult();}
+  if (platform === undefined || platform === null || platform === '') {
+    return validResult();
+  }
   if (typeof platform !== 'string') {
     return invalidResult(`platform must be a string, got ${typeof platform}`);
   }
@@ -72,7 +78,9 @@ export function validatePlatform(platform: unknown): ValidationResult {
 
 export function validatePort(value: unknown, fieldName: string): ValidationResult {
   const integerResult = validateOptionalInteger(value, fieldName);
-  if (!integerResult.valid || value === undefined || value === null) {return integerResult;}
+  if (!integerResult.valid || value === undefined || value === null) {
+    return integerResult;
+  }
   const numberValue = value as number;
   return numberValue < PORT_MIN || numberValue > PORT_MAX
     ? invalidResult(`${fieldName} must be between ${PORT_MIN} and ${PORT_MAX}, got ${numberValue}`)
@@ -81,7 +89,9 @@ export function validatePort(value: unknown, fieldName: string): ValidationResul
 
 export function validateAddress(value: unknown, fieldName: string): ValidationResult {
   const integerResult = validateOptionalInteger(value, fieldName);
-  if (!integerResult.valid || value === undefined || value === null) {return integerResult;}
+  if (!integerResult.valid || value === undefined || value === null) {
+    return integerResult;
+  }
   const numberValue = value as number;
   return numberValue < ADDRESS_MIN || numberValue > ADDRESS_MAX
     ? invalidResult(
@@ -92,7 +102,9 @@ export function validateAddress(value: unknown, fieldName: string): ValidationRe
 
 export function validateInstructionLimit(value: unknown, fieldName: string): ValidationResult {
   const integerResult = validateOptionalInteger(value, fieldName);
-  if (!integerResult.valid || value === undefined || value === null) {return integerResult;}
+  if (!integerResult.valid || value === undefined || value === null) {
+    return integerResult;
+  }
   const numberValue = value as number;
   if (numberValue < INSTRUCTION_LIMIT_MIN) {
     return invalidResult(`${fieldName} must be non-negative, got ${numberValue}`);
@@ -121,7 +133,9 @@ export function validatePath(
 }
 
 export function validateStringArray(value: unknown, fieldName: string): ValidationResult {
-  if (value === undefined || value === null) {return validResult();}
+  if (value === undefined || value === null) {
+    return validResult();
+  }
   if (!Array.isArray(value)) {
     return invalidResult(`${fieldName} must be an array, got ${typeof value}`);
   }
@@ -132,7 +146,9 @@ export function validateStringArray(value: unknown, fieldName: string): Validati
 }
 
 export function validateBoolean(value: unknown, fieldName: string): ValidationResult {
-  if (value === undefined || value === null) {return validResult();}
+  if (value === undefined || value === null) {
+    return validResult();
+  }
   return typeof value === 'boolean'
     ? validResult()
     : invalidResult(`${fieldName} must be a boolean, got ${typeof value}`);
