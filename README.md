@@ -1,5 +1,9 @@
 # Debug80 Z80 Development Toolchain
 
+**Documentation: [debug80.com](https://debug80.com/)** — the Debug80 manual, the
+[AZM books](https://debug80.com/azm-book/) and the
+[Glimmer book](https://debug80.com/glimmer-book/).
+
 Debug80 is a Z80 development environment built around source-level debugging.
 This monorepo contains the three parts of that environment:
 
@@ -47,7 +51,7 @@ symbol-aware memory access, input controls, and snapshots of emulated devices.
 Start here:
 
 - [Debug80 extension guide](apps/debug80-vscode/README.md)
-- [Debug80 user manual](https://debug80.com/manual/)
+- [Debug80 Book 1 — Getting started](https://debug80.com/debug80-book/book1/)
 - [Debug80 runtime and headless API](packages/debug80-runtime/README.md)
 - [Debug80 engineering manual](apps/debug80-vscode/docs/codebase/index.md)
 - [D8 debug-map format](apps/debug80-vscode/docs/codebase/appendices/g-d8-debug-map-format.md)

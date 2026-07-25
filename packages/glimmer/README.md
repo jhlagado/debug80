@@ -1,5 +1,8 @@
 # Glimmer
 
+**Documentation: [debug80.com/glimmer-book](https://debug80.com/glimmer-book/)** —
+the Glimmer book starts from an empty file and builds up to two complete games.
+
 Glimmer is a preprocessor and project format for AZM. Its initial purpose is to
 help us learn how to build a practical Z80 game engine while keeping real Z80
 assembly visible.
@@ -13,6 +16,7 @@ generated AZM glue for interactive Z80 programs.
 
 Documentation:
 
+- [Glimmer Book](https://debug80.com/glimmer-book/) — the course, from first program to finished games
 - [Glimmer Interactive Runtime Specification](docs/glimmer.md) — the design foundation
 - [Roadmap](docs/roadmap.md) — milestones and platform findings
 - [Glim Grammar Reference](docs/reference/glim-grammar.md) — formal grammar and syntax design rules

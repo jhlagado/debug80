@@ -4,6 +4,10 @@
 
 **Source-level Z80 debugging and machine emulation for VS Code.**
 
+**Documentation: [debug80.com](https://debug80.com/)** — start with
+[Book 1 — Getting started](https://debug80.com/debug80-book/book1/), which goes from
+installing the extension to stepping through a program on real hardware.
+
 Debug80 turns VS Code into a practical development environment for Z80 assembly
 and Glimmer programs. It builds your project, runs it inside an integrated Z80 runtime,
 maps machine addresses back to source with native D8 debug maps, and exposes the
@@ -159,7 +163,7 @@ code --install-extension debug80-0.0.1.vsix --force
 ```
 
 `preflight` runs lint, type checks, tests, packaging, and VSIX content verification.
-The full release checklist is in [docs/release-process.md](docs/release-process.md).
+The full release checklist is in [docs/release-process.md](https://github.com/jhlagado/debug80/blob/main/apps/debug80-vscode/docs/release-process.md).
 
 ## Development
 

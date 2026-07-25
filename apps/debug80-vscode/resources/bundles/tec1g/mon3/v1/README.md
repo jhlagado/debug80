@@ -11,7 +11,7 @@ payload:
 
 ## Maintainer sync
 
-From a local [MON3](https://github.com/tec1group/MON3) checkout that contains both
+From a local [MON3](https://github.com/tec1group/TEC-1G/tree/main/ROMs/MON3) checkout that contains both
 `MON3-1G_BC25-16.bin` and `MON3-1G_BC25-16_src.zip`:
 
 ```bash

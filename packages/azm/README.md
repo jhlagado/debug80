@@ -1,5 +1,7 @@
 # AZM
 
+**Documentation: [debug80.com/azm-book](https://debug80.com/azm-book/)**
+
 AZM is the Z80 assembler used by the Debug80 toolchain. It assembles `.asm`
 and `.z80` source into Intel HEX, flat binary and Debug80 map artifacts for
 hardware, emulators and Debug80.
@@ -9,7 +11,8 @@ AZM manual and broader Debug80 documentation:
 
 - [Debug80 documentation](https://debug80.com/)
 - [AZM Book 0 — Assembler Manual](https://debug80.com/azm-book/book0/)
-- [AZM Book 4](https://jhlagado.github.io/debug80-docs/azm-book/book4/)
+- [AZM Book 1 — Z80 Fundamentals](https://debug80.com/azm-book/book1/)
+- [AZM Book 2 — Algorithms in Assembly](https://debug80.com/azm-book/book2/)
 - [AZM Grammar Reference](docs/reference/azm-grammar.md)
 
 ## Install

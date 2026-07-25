@@ -137,6 +137,7 @@ jobs:
         with:
           node-version: 20
       - run: npm run check:source-file-sizes:enforce
+      - run: npm run check:links:external
 
   azm-headless:
     needs: changes

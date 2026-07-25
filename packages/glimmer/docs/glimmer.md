@@ -69,6 +69,67 @@ generated runtime polls inputs, runs the effects whose triggers changed,
 and clears the change flags. The chain from keypress to pixel is a set of
 declarations you can read at a glance.
 
+<figure style="margin: 1.25rem 0; padding: 1rem; overflow-x: auto; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 8px;">
+  <figcaption style="margin: 0 0 0.75rem; color: #0f172a; font: 600 0.95rem system-ui, sans-serif;">
+    One press of key 6, from key to pixel
+  </figcaption>
+  <svg role="img" aria-labelledby="key6-flow-title key6-flow-desc" viewBox="0 0 920 210" width="920" height="210" style="display: block; max-width: 100%; height: auto; color: #0f172a; background: #f8fafc;">
+    <title id="key6-flow-title">One press of key 6 through a Glimmer program</title>
+    <desc id="key6-flow-desc">Key 6 goes down, Right fires, MoveRight runs, DotX changes, DrawDot runs, and the 8x8 matrix updates.</desc>
+    <defs>
+      <marker id="key6-arrow" viewBox="0 0 10 10" refX="8.5" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+        <path d="M 0 0 L 10 5 L 0 10 z" fill="#475569" />
+      </marker>
+      <style>
+        .key6-node { fill: #ffffff; stroke: #94a3b8; stroke-width: 1.5; }
+        .key6-node-strong { fill: #fff7ed; stroke: #f97316; stroke-width: 2; }
+        .key6-label { fill: #0f172a; font: 600 15px system-ui, sans-serif; text-anchor: middle; dominant-baseline: middle; }
+        .key6-note { fill: #475569; font: 12px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; text-anchor: middle; dominant-baseline: middle; }
+        .key6-arrow { stroke: #475569; stroke-width: 1.8; marker-end: url(#key6-arrow); }
+      </style>
+    </defs>
+
+    <rect x="0.5" y="0.5" width="919" height="209" rx="10" fill="#f8fafc" stroke="#e2e8f0" />
+
+    <rect class="key6-node" x="24" y="62" width="112" height="72" rx="8" />
+    <text class="key6-label" x="80" y="90">bind</text>
+    <text class="key6-note" x="80" y="113">KEY_6 -> Right</text>
+
+    <line class="key6-arrow" x1="136" y1="98" x2="176" y2="98" />
+
+    <rect class="key6-node" x="184" y="62" width="112" height="72" rx="8" />
+    <text class="key6-label" x="240" y="90">on</text>
+    <text class="key6-note" x="240" y="113">MoveRight watches</text>
+
+    <line class="key6-arrow" x1="296" y1="98" x2="336" y2="98" />
+
+    <rect class="key6-node-strong" x="344" y="62" width="120" height="72" rx="8" />
+    <text class="key6-label" x="404" y="90">key 6 down</text>
+    <text class="key6-note" x="404" y="113">Right fires</text>
+
+    <line class="key6-arrow" x1="464" y1="98" x2="504" y2="98" />
+
+    <rect class="key6-node" x="512" y="62" width="120" height="72" rx="8" />
+    <text class="key6-label" x="572" y="90">MoveRight</text>
+    <text class="key6-note" x="572" y="113">updates DotX</text>
+
+    <line class="key6-arrow" x1="632" y1="98" x2="672" y2="98" />
+
+    <rect class="key6-node" x="680" y="62" width="104" height="72" rx="8" />
+    <text class="key6-label" x="732" y="90">DotX</text>
+    <text class="key6-note" x="732" y="113">changed</text>
+
+    <line class="key6-arrow" x1="784" y1="98" x2="824" y2="98" />
+
+    <rect class="key6-node" x="832" y="62" width="64" height="72" rx="8" />
+    <text class="key6-label" x="864" y="90">Draw</text>
+    <text class="key6-note" x="864" y="113">pixel</text>
+
+    <path class="key6-arrow" d="M 864 134 C 864 174, 104 174, 104 138" fill="none" />
+    <text class="key6-note" x="484" y="178">8x8 matrix updates; changed flags clear; the next frame starts clean.</text>
+  </svg>
+</figure>
+
 ### 2.1 The Framework Owns The Loop, You Own The Behaviour
 
 The generated runtime owns the mechanics of every frame:

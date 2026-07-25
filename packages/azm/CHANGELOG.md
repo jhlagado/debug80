@@ -211,7 +211,7 @@ old implementation for normal CLI and package use.
   lowering coverage, external ASM80 round-trip parity, and optional real-program
   ASM80 lowering acceptance.
 - Refreshed the README and active docs to point users to the Debug80 AZM book:
-  <https://jhlagado.github.io/debug80-docs/azm-book/book4/>.
+  <https://debug80.com/azm-book/>.
 
 ## 0.2.0
 
