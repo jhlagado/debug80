@@ -404,6 +404,80 @@ describe('project-scaffolding helpers', () => {
     });
   });
 
+  it('scaffolds with no prompts at all when kit and starter are supplied', async () => {
+    const fs = await import('fs');
+    const actualFs = await vi.importActual<typeof import('fs')>('fs');
+    const existsSync = vi.mocked(fs.existsSync);
+    const writeFileSync = vi.mocked(fs.writeFileSync);
+
+    const workspaceRoot = actualFs.mkdtempSync(path.join(os.tmpdir(), 'debug80-noprompt-'));
+    try {
+      existsSync.mockImplementation((candidate: string) => {
+        const normalized = candidate.replace(/\\/g, '/');
+        if (normalized.endsWith('/.gitignore')) {
+          return false;
+        }
+        return !normalized.endsWith('/debug80.json') && !normalized.endsWith('/src/main.asm');
+      });
+
+      const created = await scaffoldProject(
+        { name: 'demo', uri: { fsPath: workspaceRoot }, index: 0 } as never,
+        false,
+        undefined,
+        undefined,
+        { kitId: 'tec1g/mon3', starter: 'asm' }
+      );
+
+      expect(created).toBe(true);
+      // The whole point: a scripted caller sees no quick picks.
+      expect(showQuickPick).not.toHaveBeenCalled();
+
+      const configWrite = writeFileSync.mock.calls.find((call) =>
+        String(call[0]).replace(/\\/g, '/').endsWith('/debug80.json')
+      );
+      expect(configWrite).toBeDefined();
+      const config = JSON.parse(String(configWrite?.[1])) as { projectPlatform: string };
+      expect(config.projectPlatform).toBe('tec1g');
+    } finally {
+      actualFs.rmSync(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('scaffolds with no target when starter is none', async () => {
+    const fs = await import('fs');
+    const actualFs = await vi.importActual<typeof import('fs')>('fs');
+    const existsSync = vi.mocked(fs.existsSync);
+    const writeFileSync = vi.mocked(fs.writeFileSync);
+
+    const workspaceRoot = actualFs.mkdtempSync(path.join(os.tmpdir(), 'debug80-notarget-'));
+    try {
+      existsSync.mockImplementation(defaultExistsSync);
+
+      const created = await scaffoldProject(
+        { name: 'demo', uri: { fsPath: workspaceRoot }, index: 0 } as never,
+        false,
+        undefined,
+        undefined,
+        { kitId: 'tec1g/mon3', starter: 'none' }
+      );
+
+      expect(created).toBe(true);
+      expect(showQuickPick).not.toHaveBeenCalled();
+
+      const configWrite = writeFileSync.mock.calls.find((call) =>
+        String(call[0]).replace(/\\/g, '/').endsWith('/debug80.json')
+      );
+      const config = JSON.parse(String(configWrite?.[1])) as {
+        targets: Record<string, unknown>;
+        defaultTarget?: string;
+      };
+      expect(config.targets).toEqual({});
+      expect(config.defaultTarget).toBeUndefined();
+    } finally {
+      actualFs.rmSync(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
   it('cancels scaffolding when profile kit selection is dismissed', async () => {
     showQuickPick.mockResolvedValueOnce(undefined);
 

@@ -326,6 +326,13 @@ describe('package.json language contracts', () => {
       'debug80.resetPanelLayout',
       'debug80.sendHexViaCoolTerm',
       'debug80.testCoolTermConnection',
+      // Panel actions are also palette commands so that keyboard users,
+      // tests and scripts can reach everything the panel can do.
+      'debug80.addTarget',
+      'debug80.removeTarget',
+      'debug80.addWorkspaceFolder',
+      'debug80.removeWorkspaceFolder',
+      'debug80.getStatus',
     ]);
     const contextOnly = new Set([
       'debug80.runToSelectedStackFrame',

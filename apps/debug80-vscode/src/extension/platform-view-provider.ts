@@ -417,6 +417,34 @@ export class PlatformViewProvider implements vscode.WebviewViewProvider {
     this.postProjectStatus();
   }
 
+  /**
+   * The panel's own view of the project, as data. Exposed so tests, scripts and
+   * `debug80.getStatus` can assert on state without reading the rendered panel.
+   */
+  public getProjectStatus(): ReturnType<typeof buildPlatformViewProjectStatus> {
+    return buildPlatformViewProjectStatus({
+      workspaceState: this.workspaceState,
+      selectedWorkspace: this.selectedWorkspace,
+      currentPlatform: this.currentPlatform,
+      stopOnEntry: this.stopOnEntry,
+      azmRegisterContractsMode: this.azmRegisterContractsMode,
+      azmContractUpdateMode: this.azmContractUpdateMode,
+      coolTermAvailable: this.coolTermPoller.getAvailable(),
+      ...(this.hardwareStatusText !== undefined
+        ? {
+            hardwareStatusText: this.hardwareStatusText,
+            hardwareStatusState: this.hardwareStatusState,
+          }
+        : {}),
+      ...(this.buildStatusText !== undefined
+        ? {
+            buildStatusText: this.buildStatusText,
+            buildStatusState: this.buildStatusState,
+          }
+        : {}),
+    });
+  }
+
   private postProjectStatus(): void {
     if (!this.view) {
       return;

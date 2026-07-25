@@ -24,7 +24,13 @@ export function registerProjectWorkspaceCommands(options: {
   context.subscriptions.push(
     vscode.commands.registerCommand(
       'debug80.createProject',
-      async (args?: { rootPath?: string; platform?: string }) => {
+      async (args?: {
+        rootPath?: string;
+        platform?: string;
+        kit?: string;
+        sourceFile?: string;
+        starter?: 'asm' | 'none';
+      }) => {
         if (creatingProject) {
           return false;
         }
@@ -46,12 +52,11 @@ export function registerProjectWorkspaceCommands(options: {
           logger.info(
             `createProject: scaffolding ${folder.uri.fsPath} (platform=${args?.platform ?? 'unset'})`
           );
-          const created = await scaffoldProject(
-            folder,
-            false,
-            context.extensionUri,
-            args?.platform
-          );
+          const created = await scaffoldProject(folder, false, context.extensionUri, args?.platform, {
+            ...(args?.kit !== undefined ? { kitId: args.kit } : {}),
+            ...(args?.sourceFile !== undefined ? { sourceFile: args.sourceFile } : {}),
+            ...(args?.starter !== undefined ? { starter: args.starter } : {}),
+          });
           logger.info(`createProject: scaffoldProject returned ${String(created)}`);
           if (created) {
             workspaceSelection.rememberWorkspace(folder);
@@ -124,14 +129,14 @@ export function registerProjectWorkspaceCommands(options: {
           );
           return;
         }
+        // The panel supplies rootPath; the command palette does not, so prompt
+        // rather than refusing outright.
         const folder =
           args?.rootPath !== undefined
             ? folders.find((candidate) => candidate.uri.fsPath === args.rootPath)
-            : undefined;
+            : await pickWorkspaceFolder(folders);
         if (folder === undefined) {
-          void vscode.window.showInformationMessage(
-            'Debug80: Select a workspace folder to remove first.'
-          );
+          logger.info('removeWorkspaceFolder: no folder selected');
           return;
         }
 
@@ -154,6 +159,17 @@ export function registerProjectWorkspaceCommands(options: {
       }
     )
   );
+}
+
+/** Prompts for one of the open workspace folders. */
+async function pickWorkspaceFolder(
+  folders: readonly vscode.WorkspaceFolder[]
+): Promise<vscode.WorkspaceFolder | undefined> {
+  const picked = await vscode.window.showQuickPick(
+    folders.map((folder) => ({ label: folder.name, description: folder.uri.fsPath, folder })),
+    { placeHolder: 'Select the workspace folder to remove' }
+  );
+  return picked?.folder;
 }
 
 async function maybePromptToInitializeAddedFolder(

@@ -485,6 +485,26 @@
       {
         "command": "debug80.materializeBundledRom",
         "title": "Debug80: Copy Monitor ROM into Project"
+      },
+      {
+        "command": "debug80.addTarget",
+        "title": "Debug80: Add Target"
+      },
+      {
+        "command": "debug80.removeTarget",
+        "title": "Debug80: Remove Target"
+      },
+      {
+        "command": "debug80.addWorkspaceFolder",
+        "title": "Debug80: Add Workspace Folder"
+      },
+      {
+        "command": "debug80.removeWorkspaceFolder",
+        "title": "Debug80: Remove Workspace Folder"
+      },
+      {
+        "command": "debug80.getStatus",
+        "title": "Debug80: Copy Project Status (JSON)"
       }
     ],
     "menus": {

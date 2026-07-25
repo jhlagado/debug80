@@ -341,7 +341,7 @@ describe('registerExtensionCommands', () => {
     expect(rememberWorkspace).toHaveBeenCalledWith(folder);
     expect(refreshIdleView).toHaveBeenCalled();
     expect(reveal).toHaveBeenCalledWith(false);
-    expect(scaffoldProject).toHaveBeenCalledWith(folder, false, undefined, 'tec1g');
+    expect(scaffoldProject).toHaveBeenCalledWith(folder, false, undefined, 'tec1g', {});
   });
 
   it('adds a folder from Debug80 and offers to initialize it', async () => {

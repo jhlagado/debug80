@@ -18,6 +18,7 @@ import {
 } from '@jhlagado/debug80-runtime/platforms/tec1g/constants';
 import {
   getDefaultProjectKitForPlatform,
+  getProjectKitById,
   getProjectKitChoices,
   readProjectKitStarterTemplate,
   type ProjectKit,
@@ -226,11 +227,26 @@ export function createDefaultLaunchConfig(): Record<string, unknown> {
   };
 }
 
+/**
+ * Pre-supplied answers to the scaffolding prompts. Any field that is provided
+ * skips its quick pick, which is what lets scripts, tests and the docs
+ * pipeline create a project without a human at the keyboard.
+ */
+export type ScaffoldChoices = {
+  /** Kit id such as `tec1g/mon3`. Skips the profile-kit pick. */
+  kitId?: string;
+  /** Existing workspace-relative source file. Skips the program-file pick. */
+  sourceFile?: string;
+  /** `asm` writes the starter, `none` creates the project with no target. */
+  starter?: 'asm' | 'none';
+};
+
 export async function scaffoldProject(
   folder: vscode.WorkspaceFolder,
   includeLaunch: boolean,
   extensionUri?: vscode.Uri,
-  preselectedPlatform?: string
+  preselectedPlatform?: string,
+  choices?: ScaffoldChoices
 ): Promise<boolean> {
   const workspaceRoot = folder.uri.fsPath;
   const vscodeDir = path.join(workspaceRoot, '.vscode');
@@ -241,7 +257,7 @@ export async function scaffoldProject(
   const inferred = inferDefaultTarget(workspaceRoot);
   const plan = configExists
     ? undefined
-    : await buildScaffoldPlan(folder, inferred, preselectedPlatform);
+    : await buildScaffoldPlan(folder, inferred, preselectedPlatform, choices);
 
   if (!configExists && plan === undefined) {
     return false;
@@ -327,16 +343,18 @@ export async function scaffoldProject(
 async function buildScaffoldPlan(
   folder: vscode.WorkspaceFolder,
   inferred: { sourceFile: string; outputDir: string; artifactBase: string },
-  preselectedPlatform?: string
+  preselectedPlatform?: string,
+  choices?: ScaffoldChoices
 ): Promise<ScaffoldPlan | undefined> {
   const kit =
+    getProjectKitById(choices?.kitId) ??
     getDefaultProjectKitForPlatform(preselectedPlatform) ??
     (await chooseProjectKit(preselectedPlatform));
   if (kit === undefined) {
     return undefined;
   }
 
-  const choice = await chooseEntrySource(folder, inferred.sourceFile);
+  const choice = presuppliedEntrySource(choices) ?? (await chooseEntrySource(folder, inferred.sourceFile));
   if (choice === undefined) {
     return undefined;
   }
@@ -378,6 +396,23 @@ async function buildScaffoldPlan(
       path: sourceFile,
     },
   };
+}
+
+/**
+ * Converts pre-supplied answers into an entry-source choice, so a caller that
+ * already knows what it wants never sees a quick pick.
+ */
+function presuppliedEntrySource(choices?: ScaffoldChoices): SourceChoice | undefined {
+  if (choices?.sourceFile !== undefined && choices.sourceFile.length > 0) {
+    return { kind: 'existing', sourceFile: choices.sourceFile };
+  }
+  if (choices?.starter === 'asm') {
+    return { kind: 'starter', language: 'asm' };
+  }
+  if (choices?.starter === 'none') {
+    return { kind: 'none' };
+  }
+  return undefined;
 }
 
 async function chooseEntrySource(
