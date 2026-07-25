@@ -25,6 +25,9 @@ describe('debug session actions', () => {
 
   beforeEach(() => {
     vi.clearAllMocks();
+    // assembleIfRequested resolves to a result object; contract updates ride
+    // on it, so the mock has to keep that shape.
+    assembleIfRequested.mockResolvedValue({});
     root = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-build-action-'));
     fs.writeFileSync(
       path.join(root, 'debug80.json'),
@@ -50,7 +53,7 @@ describe('debug session actions', () => {
   it('builds the selected target, overrides run-only assembly disablement, and forwards output', async () => {
     assembleIfRequested.mockImplementation((options) => {
       options.onOutput?.('assembled second.asm\n');
-      return Promise.resolve();
+      return Promise.resolve({});
     });
     const harness = await createBuildHarness('second');
 

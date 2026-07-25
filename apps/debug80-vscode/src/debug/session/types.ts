@@ -67,6 +67,13 @@ export interface AzmLaunchOptions {
   registerContractsProfile?: 'mon3';
   /** External .asmi register contracts interface files. */
   registerContractsInterfaces?: string[];
+  /**
+   * Rewrite `.routine` directives from inferred contracts. AZM returns the
+   * revised source as an artifact; it never writes to disk itself.
+   */
+  emitRegisterAnnotations?: boolean;
+  /** Also insert `.expectout` at call sites where the fix is unambiguous. */
+  fixRegisterContracts?: boolean;
 }
 
 /**

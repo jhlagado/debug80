@@ -51,12 +51,23 @@ interface LstArtifact {
   text: string;
 }
 
+/**
+ * Revised source produced by AZM's contract analysis. Each entry is the full
+ * new text of a file, keyed by its original path. AZM hands these back rather
+ * than writing them, so the caller decides whether they land.
+ */
+interface RegisterContractsAnnotationsArtifact {
+  kind: 'register-contracts-annotations';
+  files: { path: string; text: string }[];
+}
+
 type Artifact =
   | HexArtifact
   | BinArtifact
   | D8mArtifact
   | RegisterContractsReportArtifact
   | RegisterContractsInterfaceArtifact
+  | RegisterContractsAnnotationsArtifact
   | LstArtifact;
 
 interface CompilerOptions {
@@ -81,6 +92,8 @@ interface CompilerOptions {
   emitRegisterInterface?: boolean;
   registerContractsProfile?: 'mon3';
   registerContractsInterfaces?: string[];
+  emitRegisterAnnotations?: boolean;
+  fixRegisterContracts?: boolean;
 }
 
 interface EmittedByteMap {
@@ -472,9 +485,13 @@ export class AzmBackend implements AssemblerBackend {
       return artifactFailure;
     }
 
+    const annotations = findArtifact(result.artifacts, 'register-contracts-annotations');
     return {
       success: true,
       stdout: `${options.hexPath}\n`,
+      ...(annotations !== undefined && annotations.files.length > 0
+        ? { contractUpdates: annotations.files }
+        : {}),
     };
   }
 

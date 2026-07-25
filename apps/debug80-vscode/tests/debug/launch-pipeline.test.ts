@@ -35,7 +35,7 @@ describe('launch-pipeline', () => {
 
   it('skips assembly when disabled', async () => {
     const args = { assemble: false } as LaunchRequestArguments;
-    await expect(assemble({ args })).resolves.toBeUndefined();
+    await expect(assemble({ args })).resolves.toEqual({});
   });
 
   it('throws when assembler fails', async () => {
@@ -49,7 +49,7 @@ describe('launch-pipeline', () => {
   it('forwards assembler output without requiring a debug event sink', async () => {
     const onOutput = vi.fn();
 
-    await expect(assemble({ sendEvent: undefined, onOutput })).resolves.toBeUndefined();
+    await expect(assemble({ sendEvent: undefined, onOutput })).resolves.toEqual({});
 
     const assembleOptions = backend.assemble.mock.calls[0]?.[0] as
       { onOutput?: (message: string) => void } | undefined;
@@ -63,7 +63,7 @@ describe('launch-pipeline', () => {
         sourceRoot: '/project',
         simpleConfig: simpleBinaryConfig(),
       })
-    ).resolves.toBeUndefined();
+    ).resolves.toEqual({});
     expect(backend.assemble).toHaveBeenCalledWith(
       expect.objectContaining({ sourceRoot: '/project' })
     );

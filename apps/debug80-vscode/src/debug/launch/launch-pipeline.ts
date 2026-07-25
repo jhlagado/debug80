@@ -3,7 +3,7 @@
  */
 
 import type { SimplePlatformConfigNormalized } from '@jhlagado/debug80-runtime/platforms/types';
-import { AssembleFailureError } from './assembler';
+import { AssembleFailureError, type ContractUpdateFile } from './assembler';
 import type { AssemblerBackend } from './assembler-backend';
 import type { LaunchRequestArguments } from '../session/types';
 import { emitConsoleOutput, type EventSender } from '../session/adapter-ui';
@@ -38,7 +38,7 @@ export async function assembleIfRequested(options: {
   simpleConfig?: SimplePlatformConfigNormalized;
   sendEvent?: EventSender;
   onOutput?: (message: string) => void;
-}): Promise<void> {
+}): Promise<{ contractUpdates?: ContractUpdateFile[] }> {
   const {
     backend,
     args,
@@ -51,7 +51,7 @@ export async function assembleIfRequested(options: {
     onOutput,
   } = options;
   if (asmPath === undefined || asmPath === '' || args.assemble === false) {
-    return;
+    return {};
   }
 
   const binaryRange = platform === 'simple' ? resolveSimpleBinaryRange(simpleConfig) : undefined;
@@ -81,6 +81,8 @@ export async function assembleIfRequested(options: {
     });
   }
 
+  const contractUpdates = result.contractUpdates;
+
   if (binaryRange !== undefined && backend.assembleBin !== undefined) {
     const binResult = await backend.assembleBin({
       asmPath,
@@ -103,6 +105,8 @@ export async function assembleIfRequested(options: {
       });
     }
   }
+
+  return contractUpdates !== undefined ? { contractUpdates } : {};
 }
 
 export function normalizeStepLimit(value: number | undefined, fallback: number): number {
