@@ -1,5 +1,30 @@
 # Changelog
 
+## 0.3.0 - 2026-07-25
+
+- Fixed an inert **Initialize** button. With a single folder open and no
+  remembered workspace root, the panel showed the folder name and an
+  Initialize button while the action silently did nothing. A lone open folder
+  now counts as the selected root, and Initialize falls back to root selection
+  when the choice is genuinely ambiguous instead of doing nothing.
+- Fixed `Build succeeded` rendering in the error colour; only failures are red.
+- Fixed the project row overlapping itself at narrow sidebar widths. The
+  controls now stack one per line below 460px.
+- Panel chrome follows the VS Code colour theme instead of always rendering
+  dark. Hardware depictions keep their fixed colours.
+- Contributed `Debug80: Add Target`, `Debug80: Remove Target`,
+  `Debug80: Add Workspace Folder` and `Debug80: Remove Workspace Folder`,
+  which were registered but unreachable from the Command Palette.
+- Added `Debug80: Copy Project Status (JSON)`, returning the panel's project
+  state as data and copying it to the clipboard, so tests and tooling can
+  assert on state instead of reading the rendered panel.
+- `debug80.createProject` accepts `kit`, `sourceFile` and `starter`, so a
+  scripted caller can scaffold a project without any quick picks.
+  `debug80.removeWorkspaceFolder` prompts for a folder instead of refusing
+  when invoked without arguments.
+- Panel actions are logged to the Debug80 output channel, so a click that
+  never reaches a command is distinguishable from a command that fails.
+
 ## 0.2.5 - 2026-07-23
 
 - Updated AZM to `^0.3.8`, preserving assembler output when source files
