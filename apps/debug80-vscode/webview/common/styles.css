@@ -16,8 +16,8 @@ body {
       margin: 0;
       padding: 0;
       font-family: system-ui, sans-serif;
-      background: #1c1c1c;
-      color: #f0f0f0;
+      background: var(--vscode-sideBar-background, #1c1c1c);
+      color: var(--vscode-foreground, #f0f0f0);
     }
     #app {
       outline: none;
@@ -35,7 +35,9 @@ body {
       align-items: center;
       gap: 6px;
       min-width: 0;
-      flex: 1;
+      /* Basis rather than flex:1 so a control wraps to its own line instead of
+         being crushed below its content when the sidebar is narrow. */
+      flex: 1 1 200px;
     }
     .project-control[hidden] {
       display: none;
@@ -48,16 +50,16 @@ body {
       font-size: 10px;
       letter-spacing: 0.08em;
       text-transform: uppercase;
-      color: #9a9a9a;
+      color: var(--vscode-descriptionForeground, #9a9a9a);
       flex: 0 0 auto;
     }
     .project-root-button {
       flex: 1;
       min-width: 0;
-      border: 1px solid #333;
+      border: 1px solid var(--vscode-panel-border, #333);
       border-radius: 6px;
-      background: #1b1b1b;
-      color: #f0f0f0;
+      background: var(--vscode-input-background, #1b1b1b);
+      color: var(--vscode-foreground, #f0f0f0);
       padding: 4px 8px;
       font-size: 11px;
       text-align: left;
@@ -68,54 +70,54 @@ body {
     }
     .project-root-button:disabled {
       cursor: default;
-      color: #7a7a7a;
+      color: var(--vscode-descriptionForeground, #7a7a7a);
     }
     .add-workspace-button {
       flex: 0 0 auto;
-      border: 1px solid #444;
+      border: 1px solid var(--vscode-input-border, #444);
       border-radius: 4px;
       background: transparent;
-      color: #9a9a9a;
+      color: var(--vscode-descriptionForeground, #9a9a9a);
       padding: 1px 7px;
       font-size: 16px;
       line-height: 1.2;
       cursor: pointer;
     }
     .add-workspace-button:hover {
-      background: #2a2a2a;
-      color: #f0f0f0;
+      background: var(--vscode-button-secondaryBackground, #2a2a2a);
+      color: var(--vscode-foreground, #f0f0f0);
       border-color: #666;
     }
     .target-action-button {
       flex: 0 0 26px;
       width: 26px;
       height: 26px;
-      border: 1px solid #444;
+      border: 1px solid var(--vscode-input-border, #444);
       border-radius: 4px;
       background: transparent;
-      color: #b8b8b8;
+      color: var(--vscode-descriptionForeground, #b8b8b8);
       padding: 0;
       font-size: 16px;
       line-height: 24px;
       cursor: pointer;
     }
     .target-action-button:hover:not(:disabled) {
-      background: #2a2a2a;
-      color: #f0f0f0;
+      background: var(--vscode-button-secondaryBackground, #2a2a2a);
+      color: var(--vscode-foreground, #f0f0f0);
       border-color: #666;
     }
     .target-action-button:disabled {
       cursor: default;
-      color: #555;
+      color: var(--vscode-disabledForeground, #555);
       border-color: #333;
     }
     .project-action-button {
       flex: 0 0 auto;
       min-width: 0;
-      border: 1px solid #333;
+      border: 1px solid var(--vscode-panel-border, #333);
       border-radius: 6px;
-      background: #222;
-      color: #f0f0f0;
+      background: var(--vscode-input-background, #222);
+      color: var(--vscode-foreground, #f0f0f0);
       padding: 4px 8px;
       font-size: 11px;
       cursor: pointer;
@@ -126,11 +128,11 @@ body {
     }
     .project-action-button:disabled {
       cursor: default;
-      color: #7a7a7a;
+      color: var(--vscode-descriptionForeground, #7a7a7a);
     }
     .hardware-status-line {
       margin: 6px 0 10px 0;
-      color: #b8b8b8;
+      color: var(--vscode-descriptionForeground, #b8b8b8);
       font-size: 11px;
       line-height: 1.35;
     }
@@ -148,13 +150,17 @@ body {
     }
     .build-status-line {
       margin: 6px 0 10px 0;
-      color: var(--vscode-errorForeground, #f14c4c);
+      color: var(--vscode-descriptionForeground, #b8b8b8);
       font-size: 11px;
       font-weight: 600;
       line-height: 1.35;
     }
     .build-status-line[hidden] {
       display: none;
+    }
+    /* Only failures are red. Success and progress use the ordinary foreground. */
+    .build-status-line[data-build-status='error'] {
+      color: var(--vscode-errorForeground, #f14c4c);
     }
     .build-status-line[data-build-status='error']::before {
       content: '⚠';
@@ -164,9 +170,9 @@ body {
     .setup-card {
       margin: 0 0 10px 0;
       padding: 8px;
-      border: 1px solid #333;
+      border: 1px solid var(--vscode-panel-border, #333);
       border-radius: 6px;
-      background: #151515;
+      background: var(--vscode-editorWidget-background, #151515);
       display: flex;
       justify-content: space-between;
       align-items: center;
@@ -178,7 +184,7 @@ body {
     }
     .setup-card-text {
       font-size: 11px;
-      color: #bcbcbc;
+      color: var(--vscode-descriptionForeground, #bcbcbc);
       flex: 1;
       min-width: 200px;
     }
@@ -190,25 +196,35 @@ body {
     .project-select {
       flex: 1;
       min-width: 0;
-      border: 1px solid #333;
+      border: 1px solid var(--vscode-panel-border, #333);
       border-radius: 6px;
-      background: #1b1b1b;
-      color: #f0f0f0;
+      background: var(--vscode-input-background, #1b1b1b);
+      color: var(--vscode-foreground, #f0f0f0);
       padding: 4px 6px;
       font-size: 11px;
     }
     .project-value {
       flex: 1;
       min-width: 0;
-      border: 1px solid #333;
+      border: 1px solid var(--vscode-panel-border, #333);
       border-radius: 6px;
-      background: #141414;
-      color: #cfcfcf;
+      background: var(--vscode-editorWidget-background, #141414);
+      color: var(--vscode-descriptionForeground, #cfcfcf);
       padding: 4px 8px;
       font-size: 11px;
       overflow: hidden;
       text-overflow: ellipsis;
       white-space: nowrap;
+    }
+    /* At sidebar widths the panel actually gets, one control per line beats
+       three controls sharing a line and overlapping each other. */
+    @container (max-width: 460px) {
+      .project-control {
+        flex: 1 1 100%;
+      }
+      .project-control.actions {
+        flex: 0 0 auto;
+      }
     }
     .layout {
       display: grid;
