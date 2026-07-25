@@ -2,6 +2,8 @@ import assert from 'node:assert';
 
 import * as vscode from 'vscode';
 
+import { runProjectPipeline } from './project-pipeline.js';
+
 const extensionId = 'jhlagado.debug80';
 const expectedCommands = [
   'debug80.createProject',
@@ -29,4 +31,6 @@ export async function run() {
   const workspaceFolders = vscode.workspace.workspaceFolders ?? [];
   assert.ok(workspaceFolders.length > 0, 'Expected fixture workspace folder to be visible');
   assert.strictEqual(workspaceFolders[0].name, 'vscode-smoke');
+
+  await runProjectPipeline();
 }
