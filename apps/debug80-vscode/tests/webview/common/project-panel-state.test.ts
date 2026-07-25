@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   createProjectAction,
   createProjectPanelState,
+  initializeButtonAction,
   selectTargetAction,
   sendHexAction,
   setupCardForProjectPanel,
@@ -126,5 +127,41 @@ describe('project panel state', () => {
     expect(state.kind).toBe('initialized');
     expect(state.selectedRoot.path).toBe('/workspace/debug80');
     expect(state.selectedRoot.name).toBe('debug80');
+  });
+
+  it('treats a single open folder as selected when the host remembered no root', () => {
+    const state = createProjectPanelState({
+      projectState: 'uninitialized',
+      roots: [{ name: 'project1', path: '/workspace/project1', hasProject: false }],
+    });
+
+    expect(state.selectedRoot?.path).toBe('/workspace/project1');
+    expect(createProjectAction(state, 'tec1g')).toEqual({
+      type: 'createProject',
+      platform: 'tec1g',
+      rootPath: '/workspace/project1',
+    });
+  });
+
+  it('routes Initialize to root selection when several roots are ambiguous', () => {
+    const state = createProjectPanelState({
+      projectState: 'uninitialized',
+      roots: [
+        { name: 'one', path: '/workspace/one', hasProject: false },
+        { name: 'two', path: '/workspace/two', hasProject: false },
+      ],
+    });
+
+    expect(state.selectedRoot).toBeUndefined();
+    expect(initializeButtonAction(state, 'tec1g')).toEqual({
+      type: 'selectProject',
+      platform: 'tec1g',
+    });
+  });
+
+  it('has no createProject action when no folder is open at all', () => {
+    const state = createProjectPanelState({ projectState: 'noWorkspace', roots: [] });
+
+    expect(createProjectAction(state, 'tec1g')).toBeUndefined();
   });
 });

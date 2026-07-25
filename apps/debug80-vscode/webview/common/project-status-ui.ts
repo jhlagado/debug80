@@ -6,7 +6,7 @@ import type { ProjectStatusPayload } from '../../src/contracts/platform-view';
 import type { VscodeApi } from '../common/vscode';
 import { createProjectRootButtonController } from '../common/project-root-button';
 import {
-  createProjectAction,
+  initializeButtonAction,
   createProjectPanelState,
   selectTargetAction,
   sendHexAction,
@@ -248,7 +248,7 @@ export function createProjectStatusUi(
   });
 
   platformInitButton?.addEventListener('click', () => {
-    postProjectAction(createProjectAction(currentState, selectedPlatform()));
+    postProjectAction(initializeButtonAction(currentState, selectedPlatform()));
   });
 
   homeTargetSelect?.addEventListener('change', () => {

@@ -452,8 +452,13 @@ describe('project status UI invariants', () => {
     elements.setupPrimaryAction.click();
     ui.dispose();
 
-    expect(postMessage).toHaveBeenCalledTimes(1);
-    expect(postMessage).toHaveBeenCalledWith({ type: 'selectProject', platform: 'simple' });
+    // Both controls route to root selection rather than guessing a root. The
+    // invariant under test is that neither ever posts createProject; an inert
+    // Initialize button would satisfy that too, but leaves the user stuck.
+    expect(postMessage).toHaveBeenCalledTimes(2);
+    for (const [message] of postMessage.mock.calls) {
+      expect(message).toEqual({ type: 'selectProject', platform: 'simple' });
+    }
   });
 
   it('enables send when CoolTerm and the selected target hex are available', () => {

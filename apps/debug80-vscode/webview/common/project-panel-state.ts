@@ -129,6 +129,13 @@ function selectedRoot(
       }
     );
   }
+  // A single open folder is unambiguous, so treat it as selected even when the
+  // host has not remembered a choice yet. Without this the panel renders the
+  // folder name and an Initialize button while every action that needs a root
+  // silently does nothing.
+  if (roots.length === 1) {
+    return roots[0];
+  }
   return undefined;
 }
 
@@ -214,6 +221,18 @@ export function createProjectAction(
     platform,
     rootPath: state.selectedRoot.path,
   };
+}
+
+/**
+ * Action for the platform row's Initialize button. When the root is ambiguous
+ * this routes to root selection rather than returning nothing, so the button
+ * is never inert while it is on screen.
+ */
+export function initializeButtonAction(
+  state: ProjectPanelState,
+  platform: string
+): ProjectPanelAction {
+  return createProjectAction(state, platform) ?? { type: 'selectProject', platform };
 }
 
 export function setupPrimaryAction(state: ProjectPanelState, platform: string): ProjectPanelAction {
