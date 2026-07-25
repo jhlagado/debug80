@@ -1,5 +1,27 @@
 # Changelog
 
+## 0.3.1 - 2026-07-25
+
+- Fixed the **Contract Updates** dropdown, which had never done anything. The
+  control shipped with a tooltip promising that Debug80 would apply AZM's
+  contract updates; the selected value was read, passed through the extension,
+  and then discarded. It now works.
+
+  After a **Build**, AZM's inferred register contracts can be written back into
+  your source: `.routine` directives rewritten from what the analysis found,
+  and `.expectout` inserted at call sites where the fix is unambiguous. `Ask`
+  offers the change and can show you a diff first, `Auto` applies it, `Never`
+  leaves your source alone.
+
+  Changes are applied as editor edits rather than file writes, so they appear
+  in the diff gutter and undo reverts them. **Run** never rewrites source.
+
+  Contract Updates works independently of the Register Contracts dropdown -
+  asking for updates turns the analysis on by itself.
+- Fixed dead and unresolvable links in this README: the documentation section
+  pointed at `debug80.com/manual/`, which no longer exists, and three
+  repository-relative links that do not resolve on the Marketplace page.
+
 ## 0.3.0 - 2026-07-25
 
 - Fixed an inert **Initialize** button. With a single folder open and no

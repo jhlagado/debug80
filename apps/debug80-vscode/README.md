@@ -176,17 +176,17 @@ not need `npm link`, sibling checkouts, or globally installed assembler binaries
 
 - [debug80.com](https://debug80.com/): published user guides and AZM
   books/manual.
-- [Using Debug80 in VS Code](https://debug80.com/manual/):
-  project setup, debugging workflow, panels, ROMs, serial, source mapping, and
-  troubleshooting.
-- [Debug80 Engineering Manual](docs/codebase/index.md):
+- [Debug80 Book 1 — Getting started](https://debug80.com/debug80-book/book1/):
+  installation, opening a folder, targets, building, the debugger, the emulated
+  machine, sending to real hardware, and the project panel's settings.
+- [Debug80 Engineering Manual](https://github.com/jhlagado/debug80/blob/main/apps/debug80-vscode/docs/codebase/index.md):
   extension architecture, launch pipeline, platform runtimes, webview panels,
   source mapping, extension points, release testing, and regression gates.
-- [D8 Debug Map Format](docs/codebase/appendices/g-d8-debug-map-format.md):
+- [D8 Debug Map Format](https://github.com/jhlagado/debug80/blob/main/apps/debug80-vscode/docs/codebase/appendices/g-d8-debug-map-format.md):
   native source mapping format consumed by Debug80.
 - [AZM Books and Manual](https://debug80.com/azm-book/):
   Z80 learning material and AZM assembler reference.
 - [Glimmer Book](https://debug80.com/glimmer-book/):
   reactive Z80 game development with Glimmer and Debug80.
-- [Release process](docs/release-process.md): local checkout checklist for
+- [Release process](https://github.com/jhlagado/debug80/blob/main/apps/debug80-vscode/docs/release-process.md): local checkout checklist for
   VSIX preparation and publishing.
