@@ -205,7 +205,7 @@ The project and serial handlers are split into `src/extension/platform-view-proj
 
 The message families are:
 
-- Project and session commands (`createProject`, `selectProject`, `openWorkspaceFolder`, `configureProject`, `selectTarget`, `addTarget`, `removeTarget`, `restartDebug`, `setEntrySource`, `startDebug`, `sendHexViaCoolTerm`) are forwarded to the corresponding callback, which invokes a VS Code command or host-side action. The `createProject` path passes an optional `platform` string to `debug80.createProject`; when present the command resolves the default kit for that platform via `getDefaultProjectKitForPlatform()` and scaffolds without showing additional pickers. The `openWorkspaceFolder` path also forwards an optional `platform` field when the webview includes it, so `debug80.addWorkspaceFolder` can preserve the active panel context. `setStopOnEntry` and `setAzmOptions` are handled inline by the provider — they update session-scoped provider fields and refresh the `projectStatus` payload.
+- Project and session commands (`createProject`, `selectProject`, `openWorkspaceFolder`, `configureProject`, `selectTarget`, `addTarget`, `removeTarget`, `restartDebug`, `setEntrySource`, `startDebug`, `sendHexViaCoolTerm`) are forwarded to the corresponding callback, which invokes a VS Code command or host-side action. The handler now logs each forwarded panel action to the shared Debug80 output channel before dispatching it, which makes stuck-button reports inspectable from the extension host side. The `createProject` path passes an optional `platform` string to `debug80.createProject`; when present the command resolves the default kit for that platform via `getDefaultProjectKitForPlatform()` and scaffolds without showing additional pickers. The `openWorkspaceFolder` path also forwards an optional `platform` field when the webview includes it, so `debug80.addWorkspaceFolder` can preserve the active panel context. `setStopOnEntry` and `setAzmOptions` are handled inline by the provider — they update session-scoped provider fields and refresh the `projectStatus` payload.
 - Serial commands (`serialSendFile`, `serialSave`) are forwarded to their callbacks.
 - `serialClear` calls `clearSerialBuffer` for the current platform.
 - Any unrecognised type falls through to `handlePlatformMessage`, which dispatches to the platform-specific adapter.
@@ -243,6 +243,8 @@ Debug80 does not wait for `PASSED` or `FAILED` text on the serial line. MON3's I
 The user must configure CoolTerm with the TEC-1G monitor serial settings (`4800` baud, 8 data bits, no parity, 2 stop bits) and enable its Remote Control Socket on port 51413. Debug80 intentionally delegates native serial-port ownership to CoolTerm here, avoiding bundled native serial dependencies in the VSIX.
 
 The Debug80 source repository also includes `tec-1g.CoolTermSettings` as a CoolTerm settings preset for the TEC-1G defaults. It captures the 4800 8N2 raw-transfer setup, but the user still chooses the real serial port and enables the Remote Control Socket for their local CoolTerm installation.
+
+The shared command surface also now includes panel-parity commands that can be reached without the webview: `debug80.addTarget`, `debug80.removeTarget`, `debug80.addWorkspaceFolder`, `debug80.removeWorkspaceFolder`, and `debug80.getStatus`. These are contributed in `package.json`, so keyboard users, tests, scripts, and the panel all drive the same extension-host entry points.
 
 ### Platform module dispatch
 
@@ -456,6 +458,8 @@ The Platform selector is intentionally shown in the uninitialized state so the u
 
 Because VS Code webview stylesheets set `display: flex` on `.project-control` elements, the UA `[hidden]` → `display: none` rule is overridden. `webview/common/styles.css` includes an explicit `.project-control[hidden] { display: none }` rule, and likewise `.stop-on-entry-label[hidden] { display: none }`, to ensure hidden controls are correctly invisible.
 
+`PlatformViewProvider.getProjectStatus()` exposes the same project-header state as structured data. The `debug80.getStatus` command returns that object to `executeCommand()` callers, and unless the caller passes `{ quiet: true }` it also copies the JSON to the clipboard for manual inspection. This is the stable command contract used by the VS Code-hosted project-pipeline integration test and by documentation tooling that needs project state without scraping the rendered panel.
+
 ---
 
 ## Project scaffolding and project kits
@@ -514,6 +518,8 @@ After kit selection, `buildScaffoldPlan()` collects the remaining inputs:
 
 The result is a `ScaffoldPlan` — `{ kit, targetName, sourceFile, outputDir, artifactBase, starterLanguage?, starterFile?, noTarget? }`.
 
+The scaffolding path also accepts pre-supplied answers. `scaffoldProject()` can receive `ScaffoldChoices` with `kitId`, `sourceFile`, and `starter`, and `buildScaffoldPlan()` resolves those through `getProjectKitById()` plus `presuppliedEntrySource()` before it considers any quick pick. This lets command-driven setup stay non-interactive when the caller already knows the kit and entry-source choice.
+
 ### `createDefaultProjectConfig()` — writing `debug80.json`
 
 `createDefaultProjectConfig(plan)` assembles the `debug80.json` structure from the plan:
@@ -560,7 +566,7 @@ If the user chose to create a starter source file, `createStarterSourceContent()
 
 - `ProjectStatusPayload` carries a `projectState` field with three explicit values: `'noWorkspace'`, `'uninitialized'`, and `'initialized'`. The webview uses `resolveProjectViewState()` from `webview/common/project-state.ts` to map this to rendering decisions. `applyInitializedProjectControls()` from `webview/common/project-controls.ts` shows or hides each control depending on the state — the Platform selector is visible only while uninitialized; all debug controls are visible only once initialized.
 
-- When `projectState` is `'uninitialized'`, the setup card shows an **Initialize Project** button. Clicking it sends `createProject` with the platform currently shown in the Platform selector. The extension uses `getDefaultProjectKitForPlatform()` to resolve the default kit and scaffolds the project without displaying any pickers.
+- When `projectState` is `'uninitialized'`, the setup card shows an **Initialize Project** button. Clicking it sends `createProject` with the platform currently shown in the Platform selector. The extension uses `getDefaultProjectKitForPlatform()` to resolve the default kit and scaffolds the project without displaying any pickers. If there is exactly one open workspace folder and no remembered selection yet, the shared project-state helper now treats that root as selected so the Initialize affordance remains actionable instead of routing nowhere.
 
 - **Stop on entry** is a global session toggle held as `public stopOnEntry = false` on `PlatformViewProvider` — not stored in `debug80.json` and not persisted across restarts. It defaults to `false`. When the checkbox changes, the provider updates the field and broadcasts a `projectStatus` refresh; the new value applies on the **next explicit restart** (it does not trigger an automatic restart). At every call to `startCurrentProjectDebugging()`, `platformViewProvider.stopOnEntry` is passed directly in the launch config object, taking priority over any `stopOnEntry` value left in the project config.
 
@@ -576,7 +582,7 @@ If the user chose to create a starter source file, `createStarterSourceContent()
 
 - Project status is assembled from workspace folders, `debug80.json` discovery, workspace-persisted target selection, the active platform ID, and inferred build/source-map state. It emits one of three `projectState` values and drives the project header (Project button + `+` / `-` workspace-folder buttons, Target dropdown, Platform dropdown, Stop-on-entry checkbox, Strict labels checkbox, Build button, and Run button). The same payload also carries the selected target's inferred HEX path for CoolTerm, a build-status line for build-only and assembly-failure feedback, and a source-map freshness summary.
 
-- Project scaffolding is driven by **project kits** (`src/extension/project-kits.ts`). A kit packages the platform, profile name, memory-map defaults, starter templates, and optional bundled ROM references into a single descriptor. `buildScaffoldPlan()` selects a kit interactively (command palette path); `getDefaultProjectKitForPlatform()` selects the bundle-first default silently (panel initialization path). `createDefaultProjectConfig()` writes `profiles` and `targets` from the chosen kit. Bundled ROM references resolve to workspace files first, then extension-bundled files; `debug80.materializeBundledRom` installs workspace copies and the conventional local `*.rom.asm` entry point on demand.
+- Project scaffolding is driven by **project kits** (`src/extension/project-kits.ts`). A kit packages the platform, profile name, memory-map defaults, starter templates, and optional bundled ROM references into a single descriptor. `buildScaffoldPlan()` selects a kit interactively when the caller has not supplied answers, while `getDefaultProjectKitForPlatform()` plus `ScaffoldChoices` keep the panel and command-driven setup path non-interactive. `createDefaultProjectConfig()` writes `profiles` and `targets` from the chosen kit. Bundled ROM references resolve to workspace files first, then extension-bundled files; `debug80.materializeBundledRom` installs workspace copies and the conventional local `*.rom.asm` entry point on demand.
 
 ---
 

@@ -81,6 +81,8 @@ The display also supports `applySegmentIntensities(values)`, where each digit re
 
 The same helper also renders three independent status surfaces from `projectStatus`: a source-map status line, a hardware-send status line, and a build-status surface. When `buildStatusState === 'error'`, the shared tab row shows a compact `!` badge beside the Run button and the panel reveals a dedicated build-status line above the platform UI. Successful build-only runs also update that line with the selected target's emitted HEX path until a later status refresh replaces it. This status path is separate from `hardwareStatusText`, so CoolTerm readiness or transfer results stay visible even after an assembly failure. The hardware send button posts `sendHexViaCoolTerm`; it is enabled only when CoolTerm is reachable and the selected target has an inferred HEX artifact.
 
+The same project-status path also keeps initialization actionable in multi-root edge cases. When one workspace folder is open and the host has not remembered a selection yet, the shared state helper treats that root as selected. When several folders are open and no root is selected, the inline Initialize button routes to project selection instead of producing no message.
+
 `webview/tec1g/tec1g-project-status-ui.ts` re-exports from `webview/common/project-status-ui.ts` for backward compatibility rather than containing the implementation itself.
 
 ### Project panel element helpers (`common/project-panel-elements.ts`)
@@ -107,6 +109,8 @@ The same helper also renders three independent status surfaces from `projectStat
 - **Contract Updates**: `Ask`, `Auto`, or `Never`
 
 Changing either select posts `{ type: 'setAzmOptions', registerContractsMode, contractUpdateMode }` to the extension host. The values are session-scoped provider state, not persistent project config. On restart, `debug-session-actions.ts` maps `Enforce` to AZM `registerContracts: 'error'` with `emitRegisterReport: true`, maps `Audit` to `registerContracts: 'audit'`, and maps `Off` to `registerContracts: 'off'`. Debug80 also passes `registerContractsProfile: 'mon3'` for the enforcing and audit modes.
+
+The contract-update dropdown only affects the explicit Build path. A panel **Build** can request AZM annotation artifacts and apply them back into the editor as `WorkspaceEdit`s according to `Ask`, `Auto`, or `Never`. A panel **Run** or restart still launches immediately after assembly and never rewrites source under the active session.
 
 ### Create project helper (`common/create-project.ts`)
 
@@ -243,7 +247,7 @@ The project header renders the current workspace context and lets the user chang
 
 **Remove Workspace Folder** — always visible in the project row beside the `+` button. Posts `{ type: 'removeWorkspaceFolder', rootPath }` for the selected root. The button is disabled when there is only one workspace folder because the last folder cannot be removed from the workspace.
 
-**Platform selector** — visible only when `projectState === 'uninitialized'`. A `<select>` with three fixed options: Simple, TEC-1, TEC-1G. Its value is set from `projectStatus.platform` on each `projectStatus` message. In the current panel redesign it shares the row with an inline **Initialize** button (`platformInitButton`), so project creation can happen directly from the platform row instead of from a duplicate card button.
+**Platform selector** — visible only when `projectState === 'uninitialized'`. A `<select>` with three fixed options: Simple, TEC-1, TEC-1G. Its value is set from `projectStatus.platform` on each `projectStatus` message. In the current panel redesign it shares the row with an inline **Initialize** button (`platformInitButton`), so project creation can happen directly from the platform row instead of from a duplicate card button. If no root is selected in a multi-root workspace, that button opens project selection rather than guessing which folder to scaffold.
 
 **Platform info row** — the old read-only `platformInfoControl` slot still exists in the DOM, but the current UI contract keeps it hidden. That avoids rendering a second platform control in initialized state.
 

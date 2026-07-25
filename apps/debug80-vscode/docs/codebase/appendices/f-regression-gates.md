@@ -48,9 +48,14 @@ The most important scenarios to keep guarded are:
 - Windows-style and portable paths resolve consistently;
 - register writes apply to the runtime;
 - RAM writes apply and ROM writes obey the protection policy;
+- command-driven project setup stays non-interactive when callers supply kit and source choices;
+- `debug80.getStatus` returns machine-readable project state without scraping the webview DOM;
+- AZM contract-update builds return proposed source rewrites without writing files behind the extension host's back;
 - initialized, uninitialized, and empty-workspace project states render correctly;
 - platform selection is only shown where it is meaningful;
 - VSIX packaging includes assembler dependencies and ROM resources.
+
+The VS Code host integration layer now includes a dedicated project-pipeline contract in `tests/integration-vscode/suite/project-pipeline.js`. It scaffolds a project through `debug80.createProject` with pre-supplied `kit` and `starter` choices, builds the target through `debug80.buildTarget`, and reads the resulting state back through `debug80.getStatus({ quiet: true })`. This guards the command surface that documentation tooling and keyboard-driven workflows rely on.
 
 ---
 
