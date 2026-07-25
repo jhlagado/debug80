@@ -20,6 +20,19 @@ export interface AssembleResult {
   stderr?: string;
   /** Parsed assembler diagnostic if available */
   diagnostic?: AssemblyDiagnostic;
+  /**
+   * Revised source the assembler produced but did not write. Present only
+   * when contract updates were requested and something actually changed.
+   */
+  contractUpdates?: ContractUpdateFile[];
+}
+
+/** A source file the assembler would rewrite, given the full replacement text. */
+export interface ContractUpdateFile {
+  /** Path of the file as the assembler saw it. */
+  path: string;
+  /** Complete new contents of that file. */
+  text: string;
 }
 
 export interface AssemblyDiagnostic {

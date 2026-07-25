@@ -20,6 +20,7 @@ import { TerminalPanelController } from './terminal-panel';
 import { ProjectTargetSelectionController } from './project-target-selection';
 import { WorkspaceSelectionController } from './workspace-selection';
 import { Debug80ConfigurationProvider } from './debug-configuration-provider';
+import { disposeContractUpdatePreview } from './contract-updates';
 import { OutputChannelLogger } from '../util/logger';
 import { type PlatformManifestEntry } from '../platforms/provider';
 import {
@@ -167,5 +168,5 @@ export function activate(context: vscode.ExtensionContext): Debug80Api {
  * Disposes extension resources on deactivation.
  */
 export function deactivate(): void {
-  // Nothing to clean up
+  disposeContractUpdatePreview();
 }

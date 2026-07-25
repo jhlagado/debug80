@@ -27,6 +27,7 @@ import { AssembleFailureError, formatAssemblyDiagnostic } from '../debug/launch/
 import type { LaunchRequestArguments } from '../debug/session/types';
 import { resolvePlatformProvider } from '../platforms/provider';
 import { assertValidLaunchArgs } from '../debug/launch/config-validation';
+import { applyContractUpdates, contractUpdateAzmOptions } from './contract-updates';
 
 export type PanelLaunchOptions = {
   stopOnEntry: boolean;
@@ -36,22 +37,37 @@ export type PanelLaunchOptions = {
 
 type ProjectActionContext = {
   projectConfig: string;
-  azm: ReturnType<typeof resolveAzmLaunchOptions>;
+  azm: ResolvedAzmLaunchOptions;
 };
 
-function resolveAzmLaunchOptions(options: PanelLaunchOptions):
-  | {
-      registerContracts: 'off' | 'audit' | 'error';
-      emitRegisterReport?: boolean;
-      registerContractsProfile?: 'mon3';
-    }
-  | undefined {
-  void options.azmContractUpdateMode;
+type ResolvedAzmLaunchOptions = {
+  registerContracts: 'off' | 'audit' | 'error';
+  emitRegisterReport?: boolean;
+  registerContractsProfile?: 'mon3';
+  emitRegisterAnnotations?: boolean;
+  fixRegisterContracts?: boolean;
+};
+
+/**
+ * Maps the panel's two AZM dropdowns onto assembler options.
+ *
+ * Contract updates are only requested when `withContractUpdates` is set, which
+ * is the explicit Build path. Run restarts the emulator the moment assembly
+ * finishes, and rewriting the user's source underneath that is disorienting.
+ */
+function resolveAzmLaunchOptions(
+  options: PanelLaunchOptions,
+  withContractUpdates = false
+): ResolvedAzmLaunchOptions {
+  const updates = withContractUpdates
+    ? contractUpdateAzmOptions(options.azmContractUpdateMode)
+    : {};
   if (options.azmRegisterContractsMode === 'enforce') {
     return {
       registerContracts: 'error',
       emitRegisterReport: true,
       registerContractsProfile: 'mon3',
+      ...updates,
     };
   }
   if (options.azmRegisterContractsMode === 'audit') {
@@ -59,15 +75,17 @@ function resolveAzmLaunchOptions(options: PanelLaunchOptions):
       registerContracts: 'audit',
       emitRegisterReport: true,
       registerContractsProfile: 'mon3',
+      ...updates,
     };
   }
-  return { registerContracts: 'off' };
+  return { registerContracts: 'off', ...updates };
 }
 
 function resolveProjectActionContext(
   folder: vscode.WorkspaceFolder,
   workspaceSelection: WorkspaceSelectionController,
-  options: PanelLaunchOptions
+  options: PanelLaunchOptions,
+  withContractUpdates = false
 ): ProjectActionContext | undefined {
   const projectConfig = findProjectConfigPath(folder);
   if (projectConfig === undefined) {
@@ -86,7 +104,7 @@ function resolveProjectActionContext(
   }
 
   workspaceSelection.rememberWorkspace(folder);
-  return { projectConfig, azm: resolveAzmLaunchOptions(options) };
+  return { projectConfig, azm: resolveAzmLaunchOptions(options, withContractUpdates) };
 }
 
 export async function startCurrentProjectDebugging(
@@ -120,7 +138,7 @@ export async function buildCurrentProjectTarget(
   output: vscode.OutputChannel,
   setBuildStatus: (message: string | undefined, state?: 'neutral' | 'error') => void
 ): Promise<boolean> {
-  const context = resolveProjectActionContext(folder, workspaceSelection, options);
+  const context = resolveProjectActionContext(folder, workspaceSelection, options, true);
   if (context === undefined) {
     return false;
   }
@@ -151,7 +169,7 @@ export async function buildCurrentProjectTarget(
 
     setBuildStatus(`Building ${path.relative(baseDir, asmPath)}...`);
     const platformProvider = await resolvePlatformProvider(merged);
-    await assembleIfRequested({
+    const assembled = await assembleIfRequested({
       backend: resolveAssemblerBackend(merged.assembler, asmPath),
       args: { ...merged, assemble: true },
       asmPath,
@@ -163,6 +181,15 @@ export async function buildCurrentProjectTarget(
         : {}),
       onOutput: (message) => output.append(message),
     });
+
+    if (assembled.contractUpdates !== undefined) {
+      await applyContractUpdates({
+        files: assembled.contractUpdates,
+        mode: options.azmContractUpdateMode,
+        baseDir,
+        output,
+      });
+    }
 
     const successMessage = `Build succeeded: ${path.relative(baseDir, hexPath)}`;
     setBuildStatus(successMessage);
