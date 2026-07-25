@@ -17,6 +17,7 @@ import { registerSerialCommands } from './serial-commands';
 import { registerSourceCommands } from './source-commands';
 import { registerTargetCommands } from './target-commands';
 import { registerTerminalCommands } from './terminal-commands';
+import { OutputChannelLogger } from '../util/logger';
 
 type CommandDependencies = {
   context: vscode.ExtensionContext;
@@ -37,7 +38,8 @@ export function registerExtensionCommands({
   targetSelection,
   output,
 }: CommandDependencies): void {
-  registerProjectWorkspaceCommands({ context, platformViewProvider, workspaceSelection });
+  const logger = new OutputChannelLogger(output);
+  registerProjectWorkspaceCommands({ context, platformViewProvider, workspaceSelection, logger });
   registerPanelViewCommands({ context, platformViewProvider, sourceColumns, terminalPanel });
   registerSourceCommands({ context, sourceColumns, workspaceSelection });
   registerTerminalCommands(context);

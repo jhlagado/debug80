@@ -7,6 +7,7 @@ import { createPlatformViewWebviewHandler } from '../../src/extension/platform-v
 import { createPlatformViewSessionState } from '../../src/extension/platform-view-session-state';
 import { createSerialBuffer } from '../../src/extension/platform-view-serial-state';
 import type { PlatformViewBundle } from '../../src/extension/platform-view-registry';
+import { NullLogger } from '../../src/util/logger';
 
 const { executeCommand } = vi.hoisted(() => ({
   executeCommand: vi.fn(() => Promise.resolve(undefined)),
@@ -129,6 +130,7 @@ function createContext(
     handleSetHardwareStatus: vi.fn(),
     handleRequestProjectStatus: vi.fn(),
     isPanelVisible: () => true,
+    logger: new NullLogger(),
     ...overrides,
   };
 }

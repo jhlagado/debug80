@@ -43,10 +43,20 @@ export interface PlatformViewWebviewHandlerContext {
 export function createPlatformViewWebviewHandler(
   context: PlatformViewWebviewHandlerContext
 ): (msg: PlatformViewInboundMessage) => Promise<void> {
+  /**
+   * Records a panel action before dispatching it. Without this a click that
+   * never reaches a command is indistinguishable from a command that fails
+   * silently, which makes "the button does nothing" reports unactionable.
+   */
+  const dispatch = async (action: string, command: string, ...args: unknown[]): Promise<void> => {
+    context.logger.info(`panel action ${action} -> ${command}`, ...args);
+    await vscode.commands.executeCommand(command, ...args);
+  };
+
   return async (msg: PlatformViewInboundMessage): Promise<void> => {
     await handlePlatformViewMessage(msg, {
       handleCreateProject: async (args) => {
-        await vscode.commands.executeCommand('debug80.createProject', args);
+        await dispatch('createProject', 'debug80.createProject', args);
       },
       handleOpenWorkspaceFolder: async (args) => {
         if (args === undefined) {
@@ -56,7 +66,7 @@ export function createPlatformViewWebviewHandler(
         await vscode.commands.executeCommand('debug80.addWorkspaceFolder', args);
       },
       handleSelectProject: async (args) => {
-        await vscode.commands.executeCommand('debug80.selectWorkspaceFolder', args);
+        await dispatch('selectProject', 'debug80.selectWorkspaceFolder', args);
       },
       handleConfigureProject: () => {
         return Promise.resolve();
@@ -78,33 +88,33 @@ export function createPlatformViewWebviewHandler(
         return Promise.resolve();
       },
       handleSelectTarget: async (args) => {
-        await vscode.commands.executeCommand('debug80.selectTarget', args);
+        await dispatch('selectTarget', 'debug80.selectTarget', args);
       },
       handleAddTarget: async (args) => {
-        await vscode.commands.executeCommand('debug80.addTarget', args);
+        await dispatch('addTarget', 'debug80.addTarget', args);
       },
       handleRemoveTarget: async (args) => {
-        await vscode.commands.executeCommand('debug80.removeTarget', args);
+        await dispatch('removeTarget', 'debug80.removeTarget', args);
       },
       handleTestCoolTermConnection: async () => {
         context.handleSetHardwareStatus('Checking CoolTerm remote socket...');
-        await vscode.commands.executeCommand('debug80.testCoolTermConnection');
+        await dispatch('testCoolTerm', 'debug80.testCoolTermConnection');
       },
       handleSendHexViaCoolTerm: async (args) => {
         context.handleSetHardwareStatus('Checking CoolTerm before sending...');
-        await vscode.commands.executeCommand('debug80.sendHexViaCoolTerm', args);
+        await dispatch('sendHex', 'debug80.sendHexViaCoolTerm', args);
       },
       handleRestartDebug: async () => {
-        await vscode.commands.executeCommand('debug80.restartDebug');
+        await dispatch('run', 'debug80.restartDebug');
       },
       handleBuildTarget: async () => {
-        await vscode.commands.executeCommand('debug80.buildTarget');
+        await dispatch('build', 'debug80.buildTarget');
       },
       handleRemoveWorkspaceFolder: async (rootPath) => {
-        await vscode.commands.executeCommand('debug80.removeWorkspaceFolder', { rootPath });
+        await dispatch('removeWorkspaceFolder', 'debug80.removeWorkspaceFolder', { rootPath });
       },
       handleSetEntrySource: async () => {
-        await vscode.commands.executeCommand('debug80.setEntrySource');
+        await dispatch('setEntrySource', 'debug80.setEntrySource');
       },
       currentPlatform: context.currentPlatform,
       handleStartDebug: async (args) => {

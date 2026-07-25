@@ -10,13 +10,15 @@ import { promptToInitializeSelectedFolder } from './project-initialization-promp
 import { scaffoldProject } from './project-scaffolding';
 import { WorkspaceSelectionController } from './workspace-selection';
 import { resolveFolderForProjectCreation } from './workspace-folder-resolver';
+import type { Logger } from '../util/logger';
 
 export function registerProjectWorkspaceCommands(options: {
   context: vscode.ExtensionContext;
   platformViewProvider: PlatformViewProvider;
   workspaceSelection: WorkspaceSelectionController;
+  logger: Logger;
 }): void {
-  const { context, platformViewProvider, workspaceSelection } = options;
+  const { context, platformViewProvider, workspaceSelection, logger } = options;
   let creatingProject = false;
 
   context.subscriptions.push(
@@ -33,17 +35,24 @@ export function registerProjectWorkspaceCommands(options: {
           await new Promise<void>((resolve) => setTimeout(resolve, 0));
           const folder = await resolveFolderForProjectCreation(workspaceSelection, args?.rootPath);
           if (!folder) {
+            logger.warn(
+              `createProject: no workspace folder resolved (rootPath=${args?.rootPath ?? 'none'})`
+            );
             void vscode.window.showErrorMessage(
               'Debug80: No workspace folder available for project creation.'
             );
             return false;
           }
+          logger.info(
+            `createProject: scaffolding ${folder.uri.fsPath} (platform=${args?.platform ?? 'unset'})`
+          );
           const created = await scaffoldProject(
             folder,
             false,
             context.extensionUri,
             args?.platform
           );
+          logger.info(`createProject: scaffoldProject returned ${String(created)}`);
           if (created) {
             workspaceSelection.rememberWorkspace(folder);
             platformViewProvider.refreshIdleView();
