@@ -125,7 +125,7 @@ field-type      ::= "byte" | "word" | "addr"
                   | number                             ; byte count
                   | type-expr
 type-expr       ::= identifier ( "[" number "]" )?
-                  ; compiles to an AZM Book 0 .type record; sizeof/offset/
+                  ; compiles to an AZM Book 1 .type record; sizeof/offset/
                   ; layout casts work on the name in block bodies.
                   ; Recursive layouts are rejected.
 

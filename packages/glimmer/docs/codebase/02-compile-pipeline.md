@@ -53,7 +53,7 @@ convention — unless `-o` overrides it.
 `src/model.ts` defines the model the parser produces and the generator
 consumes:
 
-- `TypeDecl` — a layout type compiled to an AZM Book 0 `.type` record
+- `TypeDecl` — a layout type compiled to an AZM Book 1 `.type` record
   (or `.typealias` for the alias form); fields are byte/word/addr, byte
   counts, or type expressions, validated (unknown references, recursion)
   at parse time

@@ -10,9 +10,9 @@ This README is the condensed manual. The Debug80 website contains the detailed
 AZM manual and broader Debug80 documentation:
 
 - [Debug80 documentation](https://debug80.com/)
-- [AZM Book 0 — Assembler Manual](https://debug80.com/azm-book/book0/)
-- [AZM Book 1 — Z80 Fundamentals](https://debug80.com/azm-book/book1/)
-- [AZM Book 2 — Algorithms in Assembly](https://debug80.com/azm-book/book2/)
+- [AZM Book 1 — Assembler Manual](https://debug80.com/azm-book/book1/)
+- [AZM Book 2 — Z80 Fundamentals](https://debug80.com/azm-book/book2/)
+- [AZM Book 3 — Algorithms in Assembly](https://debug80.com/azm-book/book3/)
 - [AZM Grammar Reference](docs/reference/azm-grammar.md)
 
 ## Install

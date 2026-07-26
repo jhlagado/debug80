@@ -30,7 +30,7 @@ The first target is game writing for the TEC-1G under MON-3.
 
 - [Glim Grammar Reference](../reference/glim-grammar.md) — the formal
   grammar and the syntax design rules
-- [AZM Book 0 — Assembler Manual](https://debug80.com/azm-book/book0/) —
+- [AZM Book 1 — Assembler Manual](https://debug80.com/azm-book/book1/) —
   the assembly language Glimmer blocks are written in
 - [Debug80 documentation](https://debug80.com/) — debugging the assembled
   output

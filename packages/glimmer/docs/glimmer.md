@@ -240,7 +240,7 @@ state Pieces : Piece[7]
 ```
 
 A `type` declaration names a memory layout. Glimmer names it; AZM owns
-the type system — the declaration compiles to an AZM Book 0 `.type`
+the type system — the declaration compiles to an AZM Book 1 `.type`
 record (or `.typealias` for the `type Name = Expr` alias form), so
 `sizeof`, `offset`, and layout casts work on these names in block
 bodies as ordinary AZM:
