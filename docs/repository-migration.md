@@ -12,8 +12,8 @@ retaining the useful AZM and Glimmer histories.
 - No commit from the previous Debug80 repository is reachable from this
   repository.
 
-Ignored VSIX files, `node_modules`, agent state and the untracked `$CODEX_HOME`
-directory were not imported. Debug80 release packages are rebuilt from source.
+Ignored VSIX files and `node_modules` were not imported. Debug80 release
+packages are rebuilt from source.
 
 ## Release Identity
 

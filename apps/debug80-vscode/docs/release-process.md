@@ -144,8 +144,8 @@ The verification gate requires:
 - `node_modules/@jhlagado/azm/...` is present.
 - `out/`, `resources/`, `roms/`, `schemas/`, `syntaxes/`, `README.md`, `LICENSE.txt` or `LICENSE`,
   and `THIRD_PARTY_NOTICES.md` are present.
-- Top-level `src/`, `tests/`, `docs/`, `coverage/`, `.fallow/`, `.github/`,
-  and `.vscode/` are absent.
+- Top-level `src/`, `tests/`, `docs/`, `coverage/`, `.fallow/`, `.github/`, and `.vscode/` are
+  absent.
 
 If unwanted files appear, fix `.vscodeignore` before publishing.
 

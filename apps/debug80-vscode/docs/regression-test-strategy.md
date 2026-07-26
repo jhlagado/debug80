@@ -117,8 +117,7 @@ fail CI because one runner is slightly slower.
 - VSIX includes `node_modules/@jhlagado/azm`.
 - VSIX includes `out`, `resources`, `roms`, `schemas`, `syntaxes`, `README.md`, `LICENSE.txt`,
   and `THIRD_PARTY_NOTICES.md`.
-- VSIX excludes `src`, `tests`, `docs`, `coverage`, `.fallow`, `.github`,
-  and `.vscode`.
+- VSIX excludes `src`, `tests`, `docs`, `coverage`, `.fallow`, `.github`, and `.vscode`.
 
 ## CI Shape
 

@@ -92,7 +92,7 @@ Before calling a VSIX candidate releasable, test:
 - `THIRD_PARTY_NOTICES.md`
 
 It must exclude development-only material such as `src/`, `tests/`, `docs/`, `coverage/`,
-`.github/`, `.vscode/`, `.fallow/`.
+`.github/`, `.vscode/`, and `.fallow/`.
 
 ---
 
