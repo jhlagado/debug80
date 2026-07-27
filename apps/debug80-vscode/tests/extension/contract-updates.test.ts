@@ -33,9 +33,8 @@ vi.mock('vscode', () => ({
   workspace: { applyEdit, openTextDocument, registerTextDocumentContentProvider },
 }));
 
-const { applyContractUpdates, contractUpdateAzmOptions } = await import(
-  '../../src/extension/contract-updates'
-);
+const { applyContractUpdates, contractUpdateAzmOptions } =
+  await import('../../src/extension/contract-updates');
 
 /** A stand-in document whose text drives the "did anything change" check. */
 function fakeDocument(text: string) {

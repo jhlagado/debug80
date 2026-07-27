@@ -354,7 +354,8 @@ async function buildScaffoldPlan(
     return undefined;
   }
 
-  const choice = presuppliedEntrySource(choices) ?? (await chooseEntrySource(folder, inferred.sourceFile));
+  const choice =
+    presuppliedEntrySource(choices) ?? (await chooseEntrySource(folder, inferred.sourceFile));
   if (choice === undefined) {
     return undefined;
   }

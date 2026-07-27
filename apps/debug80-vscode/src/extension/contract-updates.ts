@@ -61,9 +61,9 @@ export function disposeContractUpdatePreview(): void {
 }
 
 /** Drops files whose proposed text matches what is already in the document. */
-async function changedFiles(files: ContractUpdateFile[]): Promise<
-  { uri: vscode.Uri; document: vscode.TextDocument; text: string }[]
-> {
+async function changedFiles(
+  files: ContractUpdateFile[]
+): Promise<{ uri: vscode.Uri; document: vscode.TextDocument; text: string }[]> {
   const changed = [];
   for (const file of files) {
     const uri = vscode.Uri.file(file.path);

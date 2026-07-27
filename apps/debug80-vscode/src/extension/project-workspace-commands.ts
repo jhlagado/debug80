@@ -52,11 +52,17 @@ export function registerProjectWorkspaceCommands(options: {
           logger.info(
             `createProject: scaffolding ${folder.uri.fsPath} (platform=${args?.platform ?? 'unset'})`
           );
-          const created = await scaffoldProject(folder, false, context.extensionUri, args?.platform, {
-            ...(args?.kit !== undefined ? { kitId: args.kit } : {}),
-            ...(args?.sourceFile !== undefined ? { sourceFile: args.sourceFile } : {}),
-            ...(args?.starter !== undefined ? { starter: args.starter } : {}),
-          });
+          const created = await scaffoldProject(
+            folder,
+            false,
+            context.extensionUri,
+            args?.platform,
+            {
+              ...(args?.kit !== undefined ? { kitId: args.kit } : {}),
+              ...(args?.sourceFile !== undefined ? { sourceFile: args.sourceFile } : {}),
+              ...(args?.starter !== undefined ? { starter: args.starter } : {}),
+            }
+          );
           logger.info(`createProject: scaffoldProject returned ${String(created)}`);
           if (created) {
             workspaceSelection.rememberWorkspace(folder);
