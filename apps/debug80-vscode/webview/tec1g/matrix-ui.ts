@@ -16,6 +16,7 @@ import {
   type MatrixModifier,
 } from './matrix-state';
 import { createMatrixScanPlayer } from './matrix-scan-player';
+import { wirePointerHold, type PointerHoldController } from '../common/pointer-hold';
 import type { Tec1gMatrixScanCycle } from '@jhlagado/debug80-runtime/platforms/tec1g/types';
 
 export interface MatrixUiController {
@@ -40,7 +41,7 @@ interface VscodeApi {
   postMessage(message: unknown): void;
 }
 
-const MATRIX_CLICK_HOLD_MS = 80;
+const MATRIX_MINIMUM_POINTER_HOLD_MS = 80;
 
 export function createMatrixUiController(
   vscode: VscodeApi,
@@ -54,8 +55,8 @@ export function createMatrixUiController(
   let keyboardCaptureEnabled = false;
   let capsLockEnabled = false;
   const matrixHeldKeys = new Map<string, MatrixHeldKey>();
-  const matrixClickReleaseTimers = new Map<string, number>();
-  const matrixClickPressMods = new Map<string, MatrixKeyMods>();
+  const matrixHeldSources = new Map<string, MatrixHeldKey>();
+  const matrixPointerHolds: PointerHoldController[] = [];
   const matrixPhysicalPressMods = new Map<string, MatrixKeyMods>();
   const matrixClickMods = createMatrixMods();
   const matrixKeyElements = new Map<string, HTMLElement[]>();
@@ -128,14 +129,6 @@ export function createMatrixUiController(
     }
   }
 
-  function clearMatrixClickReleaseTimer(keyId: string): void {
-    const timer = matrixClickReleaseTimers.get(keyId);
-    if (timer !== undefined) {
-      window.clearTimeout(timer);
-      matrixClickReleaseTimers.delete(keyId);
-    }
-  }
-
   function postMatrixKeyMessage(key: string, pressed: boolean, mods: MatrixKeyMods) {
     vscode.postMessage({
       type: 'matrixKey',
@@ -148,42 +141,48 @@ export function createMatrixUiController(
     });
   }
 
-  function sendMatrixKey(key: string, pressed: boolean, mods: MatrixKeyMods): boolean {
-    const keyId = matrixKeyId(key, mods);
-    if (pressed) {
-      clearMatrixClickReleaseTimer(keyId);
-      if (!holdMatrixKey(matrixHeldKeys, key, mods).changed) {
-        return true;
-      }
-    } else {
-      clearMatrixClickReleaseTimer(keyId);
-      if (!releaseMatrixKey(matrixHeldKeys, key, mods).changed) {
-        return false;
-      }
+  function refreshMatrixKeyPressed(key: string): void {
+    const pressed = Array.from(matrixHeldSources.values()).some((held) => held.key === key);
+    setMatrixKeyPressed(key, pressed);
+  }
+
+  function pressMatrixSource(sourceId: string, key: string, mods: MatrixKeyMods): boolean {
+    if (matrixHeldSources.has(sourceId)) {
+      return true;
     }
-    postMatrixKeyMessage(key, pressed, mods);
+    matrixHeldSources.set(sourceId, { key, mods: cloneMatrixMods(mods) });
+    const changed = holdMatrixKey(matrixHeldKeys, key, mods).changed;
+    refreshMatrixKeyPressed(key);
+    if (changed) {
+      postMatrixKeyMessage(key, true, mods);
+    }
     return true;
   }
 
-  function scheduleMatrixClickRelease(key: string, mods: MatrixKeyMods): void {
-    const keyId = matrixKeyId(key, mods);
-    clearMatrixClickReleaseTimer(keyId);
-    const timer = window.setTimeout(() => {
-      matrixClickReleaseTimers.delete(keyId);
-      matrixClickPressMods.delete(key);
-      setMatrixKeyPressed(key, false);
-      sendMatrixKey(key, false, mods);
-    }, MATRIX_CLICK_HOLD_MS);
-    matrixClickReleaseTimers.set(keyId, timer);
+  function releaseMatrixSource(sourceId: string): boolean {
+    const held = matrixHeldSources.get(sourceId);
+    if (!held) {
+      return false;
+    }
+    matrixHeldSources.delete(sourceId);
+    const keyId = matrixKeyId(held.key, held.mods);
+    const stillHeld = Array.from(matrixHeldSources.values()).some(
+      (candidate) => matrixKeyId(candidate.key, candidate.mods) === keyId
+    );
+    refreshMatrixKeyPressed(held.key);
+    if (stillHeld || !releaseMatrixKey(matrixHeldKeys, held.key, held.mods).changed) {
+      return false;
+    }
+    postMatrixKeyMessage(held.key, false, held.mods);
+    return true;
   }
 
   function releaseHeldMatrixKeys() {
-    for (const timer of matrixClickReleaseTimers.values()) {
-      window.clearTimeout(timer);
+    for (const hold of matrixPointerHolds) {
+      hold.cancel();
     }
-    matrixClickReleaseTimers.clear();
-    matrixClickPressMods.clear();
     matrixPhysicalPressMods.clear();
+    matrixHeldSources.clear();
     for (const held of drainMatrixHeldKeys(matrixHeldKeys)) {
       postMatrixKeyMessage(held.key, false, held.mods);
     }
@@ -198,8 +197,9 @@ export function createMatrixUiController(
       return false;
     }
     const payloadKey = key.length === 1 ? key.toLowerCase() : key;
+    const sourceId = `physical:${event.code || payloadKey}`;
     if (event.metaKey) {
-      if (pressed || !matrixPhysicalPressMods.has(payloadKey)) {
+      if (pressed || !matrixPhysicalPressMods.has(sourceId)) {
         return false;
       }
     }
@@ -220,16 +220,13 @@ export function createMatrixUiController(
       metaKey: event.metaKey,
       altKey: event.altKey,
     });
-    const mods = pressed ? eventMods : (matrixPhysicalPressMods.get(payloadKey) ?? eventMods);
-    setMatrixKeyPressed(key, pressed);
-    if (key.length === 1 && key !== key.toLowerCase()) {
-      setMatrixKeyPressed(key.toLowerCase(), pressed);
-    }
-    sendMatrixKey(payloadKey, pressed, mods);
+    const mods = pressed ? eventMods : (matrixPhysicalPressMods.get(sourceId) ?? eventMods);
     if (pressed) {
-      matrixPhysicalPressMods.set(payloadKey, cloneMatrixMods(mods));
+      pressMatrixSource(sourceId, payloadKey, mods);
+      matrixPhysicalPressMods.set(sourceId, cloneMatrixMods(mods));
     } else {
-      matrixPhysicalPressMods.delete(payloadKey);
+      releaseMatrixSource(sourceId);
+      matrixPhysicalPressMods.delete(sourceId);
     }
     return true;
   }
@@ -388,40 +385,39 @@ export function createMatrixUiController(
           lowerElements.push(keyEl);
           matrixKeyElements.set(keyValue.toLowerCase(), lowerElements);
         }
-        keyEl.addEventListener('mousedown', (event) => {
-          event.preventDefault();
-          if (!keyboardCaptureEnabled || !isUiTabActive()) {
-            return;
-          }
-          const mod = matrixModifierForKey(keyValue);
-          if (mod !== undefined) {
-            armMatrixMod(mod);
-            return;
-          }
-          if (keyValue === 'CapsLock') {
-            applyCapsLock(!capsLockEnabled);
-            setMatrixKeyPressed(keyValue, true);
-            sendMatrixKey(keyValue, true, matrixClickMods);
-            return;
-          }
-          const pressMods = clickModsForKey(keyValue);
-          matrixClickPressMods.set(keyValue, pressMods);
-          setMatrixKeyPressed(keyValue, true);
-          sendMatrixKey(keyValue, true, pressMods);
-          clearOneShotMatrixMods();
-        });
-        const release = () => {
-          if (matrixModifierForKey(keyValue) !== undefined) {
-            return;
-          }
-          const releaseMods =
-            keyValue === 'CapsLock'
-              ? matrixClickMods
-              : (matrixClickPressMods.get(keyValue) ?? clickModsForKey(keyValue));
-          scheduleMatrixClickRelease(keyValue, releaseMods);
-        };
-        keyEl.addEventListener('mouseup', release);
-        keyEl.addEventListener('mouseleave', release);
+        const sourceId = `pointer:${matrixPointerHolds.length}`;
+        const modifier = matrixModifierForKey(keyValue);
+        let pointerPressMods: MatrixKeyMods | null = null;
+        matrixPointerHolds.push(
+          wirePointerHold(keyEl, {
+            minimumHoldMs: modifier === undefined ? MATRIX_MINIMUM_POINTER_HOLD_MS : 0,
+            onPress: () => {
+              if (!keyboardCaptureEnabled || !isUiTabActive()) {
+                return;
+              }
+              if (modifier !== undefined) {
+                armMatrixMod(modifier);
+                return;
+              }
+              if (keyValue === 'CapsLock') {
+                applyCapsLock(!capsLockEnabled);
+                pointerPressMods = cloneMatrixMods(matrixClickMods);
+                pressMatrixSource(sourceId, keyValue, pointerPressMods);
+                return;
+              }
+              pointerPressMods = clickModsForKey(keyValue);
+              pressMatrixSource(sourceId, keyValue, pointerPressMods);
+              clearOneShotMatrixMods();
+            },
+            onRelease: () => {
+              if (pointerPressMods === null) {
+                return;
+              }
+              releaseMatrixSource(sourceId);
+              pointerPressMods = null;
+            },
+          })
+        );
         rowEl.appendChild(keyEl);
       });
       matrixKeyboardGrid.appendChild(rowEl);

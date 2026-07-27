@@ -241,6 +241,7 @@
   font-weight: 800;
   cursor: pointer;
   user-select: none;
+  touch-action: none;
 }
 .joystick-button:active,
 .joystick-button.active,
@@ -792,6 +793,7 @@
     0 0 0 1px rgba(255, 255, 255, 0.05);
   text-shadow: 0 0 4px rgba(255, 255, 255, 0.3);
   user-select: none;
+  touch-action: none;
 }
 .matrix-key-label,
 .matrix-key-sub-label {

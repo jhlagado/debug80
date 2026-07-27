@@ -3,6 +3,7 @@
  */
 
 import type { VscodeApi } from '../common/vscode';
+import { wirePointerHold, type PointerHoldController } from '../common/pointer-hold';
 
 type JoystickBinding = {
   bit: number;
@@ -37,6 +38,7 @@ const ARROW_FIRE_BINDINGS: Record<string, JoystickBinding> = {
 };
 
 const ARROW_KEY_CODES = new Set(Object.keys(ARROW_MOVE_BINDINGS));
+const JOYSTICK_MINIMUM_POINTER_HOLD_MS = 80;
 
 export type JoystickUiController = {
   init: () => void;
@@ -51,14 +53,15 @@ export function createJoystickUiController(
   const root = document.getElementById('accordion-joystick') as HTMLElement | null;
   const buttons = new Map<number, HTMLElement[]>();
   const arrowModeButtons = new Map<ArrowKeyMode, HTMLElement[]>();
-  const heldPointerBits = new Set<number>();
+  const heldPointerSources = new Map<string, number>();
+  const pointerHolds: PointerHoldController[] = [];
   const heldKeyboardCodes = new Set<string>();
   let arrowKeyMode: ArrowKeyMode = 'move';
   let lastPostedMask = -1;
 
   function currentMask(): number {
     let mask = 0;
-    for (const bit of heldPointerBits) {
+    for (const bit of heldPointerSources.values()) {
       mask |= bit;
     }
     for (const code of heldKeyboardCodes) {
@@ -111,11 +114,11 @@ export function createJoystickUiController(
     return Number.isFinite(bit) ? bit & 0xff : null;
   }
 
-  function setPointerBit(bit: number, pressed: boolean): void {
+  function setPointerBit(sourceId: string, bit: number, pressed: boolean): void {
     if (pressed) {
-      heldPointerBits.add(bit);
+      heldPointerSources.set(sourceId, bit);
     } else {
-      heldPointerBits.delete(bit);
+      heldPointerSources.delete(sourceId);
     }
     applyState();
   }
@@ -153,35 +156,24 @@ export function createJoystickUiController(
     if (!root) {
       return;
     }
-    root.querySelectorAll<HTMLElement>('[data-joystick-bit]').forEach((button) => {
+    root.querySelectorAll<HTMLElement>('[data-joystick-bit]').forEach((button, index) => {
       const bit = readBit(button);
       if (bit === null) {
         return;
       }
+      const sourceId = `pointer:${index}`;
       const existing = buttons.get(bit) ?? [];
       existing.push(button);
       buttons.set(bit, existing);
       button.setAttribute('aria-pressed', 'false');
-      button.addEventListener('pointerdown', (event: PointerEvent) => {
-        event.preventDefault();
-        button.focus();
-        try {
-          button.setPointerCapture(event.pointerId);
-        } catch {
-          /* ignore browsers without pointer capture for this element */
-        }
-        setPointerBit(bit, true);
-      });
-      const release = (event: PointerEvent): void => {
-        try {
-          button.releasePointerCapture(event.pointerId);
-        } catch {
-          /* ignore */
-        }
-        setPointerBit(bit, false);
-      };
-      button.addEventListener('pointerup', release);
-      button.addEventListener('pointercancel', release);
+      pointerHolds.push(
+        wirePointerHold(button, {
+          minimumHoldMs: JOYSTICK_MINIMUM_POINTER_HOLD_MS,
+          onPointerDown: () => button.focus(),
+          onPress: () => setPointerBit(sourceId, bit, true),
+          onRelease: () => setPointerBit(sourceId, bit, false),
+        })
+      );
     });
     root.querySelectorAll<HTMLElement>('[data-joystick-arrow-mode]').forEach((button) => {
       const mode = readArrowKeyMode(button);
@@ -217,7 +209,10 @@ export function createJoystickUiController(
   }
 
   function clear(): void {
-    heldPointerBits.clear();
+    for (const hold of pointerHolds) {
+      hold.cancel();
+    }
+    heldPointerSources.clear();
     heldKeyboardCodes.clear();
     applyState();
   }
