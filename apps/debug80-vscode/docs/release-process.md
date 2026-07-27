@@ -187,9 +187,13 @@ npx vsce login jhlagado
 Publishing command:
 
 ```bash
-npm run package:check
 npm run publish:marketplace
 ```
+
+The publish command runs `package:check`, then uploads that verified VSIX with
+`vsce publish --packagePath`. Do not replace this with a bare `vsce publish`
+from the extension workspace: npm's monorepo links can cause `vsce` to traverse
+files outside the extension root.
 
 Do not publish until the candidate VSIX has been manually installed and tested locally.
 
