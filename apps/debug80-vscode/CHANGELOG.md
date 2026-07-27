@@ -1,5 +1,17 @@
 # Changelog
 
+## 0.3.2 - 2026-07-27
+
+- Fixed the on-screen TEC-1G joystick and matrix keyboard controls so they
+  remain electrically pressed for the full pointer hold and release on
+  pointer-up, cancellation, capture loss, panel closure, or keyboard focus
+  transfer.
+- Added a short minimum pulse for quick on-screen taps, preventing joystick
+  and matrix scans from missing clicks that are shorter than a polling pass.
+- Prevented overlapping pointer and physical-key inputs from releasing the
+  same joystick bit or matrix key while another input source still holds it.
+  The existing TEC keypad hold behaviour is unchanged.
+
 ## 0.3.1 - 2026-07-25
 
 - Fixed the **Contract Updates** dropdown, which had never done anything. The
