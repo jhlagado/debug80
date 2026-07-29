@@ -160,6 +160,8 @@ promise that the feature will be added later.
 - Source describes program meaning, not registers, flags or instruction forms.
 - No Glimmer-specific vocabulary.
 - Direct native/substrate code remains available through an explicit boundary.
+- `asm`/`end` passes raw target assembly through an assembly-source backend,
+  with conservative effects and source mapping.
 - Formal routines are part of the direction but structured storage comes
   first.
 
@@ -271,6 +273,11 @@ Randomness, display, input, sound, VRAM and firmware calls are platform
 services, not core keywords. Native declarations and native blocks make the
 substrate boundary visible and typed.
 
+The first raw boundary is `asm`/`end`. It accepts module-level directives/data
+and statement-level assembly for the selected assembler, emits the payload
+verbatim and acts as a conservative compiler barrier. Non-assembly backends
+reject it unless their profile supplies an assembly-fragment pipeline.
+
 ### Debugging and cost
 
 Generated substrate source is a first-class artifact. A useful implementation
@@ -296,8 +303,9 @@ The accepted staging is described fully in the
 
 Parse, type-check and lower imported state, expressions, assignments, array
 and record paths, structured control, imported calls, standard operations and
-`EXIT BODY`. Emit AZM plus maps. K0 does not require user-declared parameters
-or locals.
+`exit body`. Pass through inline `asm`, emit AZM plus maps and preserve
+assembler diagnostics at original source lines. K0 does not require
+user-declared parameters or locals.
 
 Target fixtures: Counter, Dot, Slide, Trail and ordinary Glimmer rule bodies.
 

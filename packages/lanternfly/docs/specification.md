@@ -1386,6 +1386,59 @@ Its declared contract states visible reads, writes, calls, control flow and ABI
 effects. Generated source, original-source mapping and selected helper
 information are normal compiler artifacts.
 
+#### 13.2.1 Inline assembly
+
+`asm` opens an inline assembly block and the next line containing only `end`
+after optional whitespace closes it:
+
+```lanternfly
+sub waitForKey()
+    asm
+        call ROM_WAIT_KEY
+    end
+end
+```
+
+The lines between `asm` and `end` are assembly source for the selected target
+profile. Lanternfly does not tokenize, interpolate or rewrite them. An assembly
+source backend emits those lines verbatim at the corresponding position in its
+generated source, preserving their physical newlines and indentation. The
+assembler then processes the combined generated and inline source. Assembly
+diagnostics map back to the original inline-block lines.
+
+An `asm` block may appear as a module item or as a statement. A module block
+can provide target directives, labels, routines or data. A statement block can
+use instructions, local labels and internal branches, but conforming control
+must reach the generated statement that follows the block. A return or jump
+that bypasses Lanternfly control flow violates the block contract. In a hosted
+body, the block must eventually reach the host epilogue through ordinary body
+completion or generated Lanternfly control.
+
+The block is an observable compiler barrier. Unless a later declared native
+contract narrows its effects, the compiler assumes that statement-level
+assembly:
+
+- reads and writes every mutable object visible at the block;
+- may call target or imported routines and may fault;
+- clobbers processor registers, flags and other volatile machine state;
+- preserves only the stack, mapping and calling-state obligations required to
+  continue with the following generated statement.
+
+The backend spills or preserves any generated value that must survive this
+barrier. Read/write/call summaries and cost reports mark the block as
+conservative native code.
+
+Raw assembly names belong to the selected assembler. There is no automatic
+Lanternfly-name substitution inside the payload. The backend's generated
+symbol artifact documents any Lanternfly storage or routine names exposed to
+inline source.
+
+An `asm` block is target-specific. A C, BASIC or other non-assembly backend
+rejects it unless that target profile explicitly supplies a compatible
+assembly-fragment pipeline. A missing closing `end` is a source error. Once
+raw mode begins, `//` and every other character belong to the assembler; only
+a physical line whose trimmed content is exactly `end` closes the block.
+
 ### 13.3 Hosted bodies
 
 A host such as Glimmer supplies a typed manifest of visible storage, constants,
@@ -1443,6 +1496,7 @@ The current core word candidates include:
 abs
 and
 as
+asm
 at
 case
 const
@@ -1504,6 +1558,7 @@ hosted-body         ::= local-decl* statement*
 top-item            ::= import-decl
                       | export-decl
                       | declaration
+                      | asm-block
 
 import-decl         ::= "import" string-literal
 export-decl         ::= "export" exportable-declaration
@@ -1565,6 +1620,11 @@ statement           ::= assignment-statement
                       | exit-statement
                       | continue-statement
                       | return-statement
+                      | asm-block
+
+asm-block           ::= "asm" newline
+                        raw-assembly-line*
+                        "end"
 
 assignment-statement
                     ::= writable-path "=" expression

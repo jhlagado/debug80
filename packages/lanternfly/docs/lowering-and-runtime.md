@@ -152,6 +152,7 @@ Store(type, address, value)
 Call(signatureId, arguments)
 StandardCall(operationId, arguments)
 NativeBarrier(contractId)
+InlineAssembly(blockId, dialect, placement, payload, conservativeEffects)
 Fault(classId)
 ```
 
@@ -190,6 +191,33 @@ Address calculations that may call, fault or read volatile storage are effects,
 not freely movable value nodes. An assignment's destination address is
 completed once before its right-hand value is evaluated. Optimizers may reorder
 only after proving the operations mutually unobservable.
+
+### 4.7 Inline assembly
+
+`InlineAssembly` retains the raw payload and its exact source span. `placement`
+is `module` or `statement`. A statement block is a `NativeBarrier` with the
+conservative reads, writes, calls, faults and machine-state clobbers defined by
+the language specification.
+
+Before emitting a statement block, the backend spills or preserves every live
+generated value needed after it. The payload is then copied verbatim into the
+assembly source stream. A module block is emitted at its module-item position.
+No optimizer inspects or moves either form.
+
+An assembly-source backend composes:
+
+```text
+Lanternfly source
+    -> generated assembly with verbatim inline ranges
+    -> selected assembler
+    -> machine program and debug artifacts
+```
+
+The generated-to-original map gives every inline line its Lanternfly source
+location, so assembler diagnostics point back into the `asm` block. The
+generated symbol artifact records any compiler-owned names available to raw
+assembly. A backend without a compatible assembly-fragment pipeline rejects
+`InlineAssembly`.
 
 ## 5. Numeric lowering contract
 
@@ -635,6 +663,7 @@ Effects:
 - written symbols;
 - calls;
 - I/O/native barriers;
+- conservative inline-assembly effects;
 - early/no-return.
 
 The host merges requirements across bodies and diagnoses conflicts before final
@@ -661,6 +690,7 @@ Roles:
 - body epilogue transfer;
 - call adapter;
 - runtime helper;
+- inline assembly;
 - synthetic target glue.
 
 Runtime helper source maps point to the runtime source and also retain the call
@@ -767,11 +797,20 @@ backend-focused groups summarize that inventory:
 - arithmetic, address and invalid-value faults;
 - no store after a failed destination check.
 
+### Native boundary
+
+- byte-for-byte inline assembly payload emission;
+- module-item and statement placement;
+- conservative barrier, spill and clobber handling;
+- rejection by incompatible non-assembly backends;
+- assembler diagnostics mapped to the original inline lines.
+
 ### Artifacts
 
 - correct source mapping;
 - deterministic output;
 - runtime deduplication;
+- inline assembly provenance and conservative effect summaries;
 - cost report schema where claimed.
 
 ## 19. Reference implementation strategy
@@ -800,12 +839,13 @@ Documentation recommends:
 2. parser/type checker for K0;
 3. typed IR plus interpreter;
 4. AZM reference lowering for scalar state/control;
-5. maps and Glimmer host epilogue;
-6. exact arrays/records and path lowering;
-7. helper registry and cost skeleton;
-8. local aliases/references;
-9. user routine ABI;
-10. C and BASIC experiments;
-11. far/address-space lowering.
+5. inline `asm` emission, barriers and mappings;
+6. maps and Glimmer host epilogue;
+7. exact arrays/records and path lowering;
+8. helper registry and cost skeleton;
+9. local aliases/references;
+10. user routine ABI;
+11. C and BASIC experiments;
+12. far/address-space lowering.
 
 No compiler code is part of the current package yet.

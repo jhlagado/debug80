@@ -75,6 +75,8 @@ The front end must reject at least the following cases.
 | `E-MODULE-002` | Exported declaration exposes a private type | §12.2 |
 | `E-ENTRY-001` | Executable manifest has no unique parameterless, result-free entry routine | §12.5 |
 | `E-TARGET-001` | Required native service, scalar operation, address class or other target capability is unavailable | §§13.1–13.2 |
+| `E-ASM-001` | `asm` block is unclosed or appears where a block is not permitted | §13.2.1 |
+| `E-ASM-002` | Selected target has no compatible assembly-fragment pipeline | §13.2.1 |
 
 Each error reports original source file, line and column. Import, call-cycle
 and containment-cycle errors also report the relevant path. Hosted diagnostics
@@ -94,6 +96,7 @@ Warnings do not change program meaning. The following are enabled by default:
 | `W-COST-002` | Static object, aggregate copy, stack frame or startup initializer is unusually large | Target/budget policy |
 | `W-ADDRESS-001` | Near/far conversion has a mapping or bank-switch cost | Target policy |
 | `W-NATIVE-001` | Native boundary uses conservative effects because its contract is incomplete | Project may promote to error |
+| `W-ASM-001` | Inline assembly receives the conservative read/write/call/clobber contract | Project may promote to error |
 
 A routine invocation is not considered pure merely because its result is
 discarded. A compiler may add warnings, but a conforming profile documents
@@ -175,6 +178,8 @@ programs:
   on recursive profiles;
 - module diamond import, collisions, cycle rejection and one-time emission;
 - preloaded and startup-copy placed initialization;
+- verbatim module and statement `asm` emission, conservative barriers,
+  assembler-diagnostic mapping and rejection by an incompatible backend;
 - ordinary and early hosted-body completion.
 
 ## 7. Required artifacts
@@ -188,6 +193,7 @@ A source-generating backend emits:
 - selected helper/import list;
 - read/write/call/fault summary;
 - startup-initialization effects;
+- inline-assembly ranges and conservative native effects;
 - target assumptions and optional cost report.
 
 A single source node may map to several generated or machine ranges. Backend or
