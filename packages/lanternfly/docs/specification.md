@@ -13,10 +13,7 @@ surface-language decisions into one implementation contract. Earlier syntax
 using `DIM`, `SUB`/`FUNCTION`, uppercase keywords, integer truth values or named
 block endings is historical.
 
-The design remains open to contraction. Recording a construct here means that
-its present semantics are understood well enough to test. It does not prevent a
-prototype or a corpus translation from showing that Lanternfly can do with
-less.
+Prototype and corpus work may still remove constructs from this draft.
 
 **Must** states a semantic requirement. **Should** states a strong toolchain
 recommendation. **Provisional** marks a rule that still requires implementation
@@ -26,8 +23,8 @@ implementation.
 ## 1. Language scope
 
 Lanternfly is an integer-based general-purpose programming language in the
-structured BASIC family. It is intended to replace ordinary AZM program logic,
-not merely the assembly statements inside Glimmer bodies.
+structured BASIC family. It is intended to replace ordinary AZM program logic
+in standalone programs as well as Glimmer bodies.
 
 The first useful implementation should support:
 
@@ -44,13 +41,13 @@ The first useful implementation should support:
 - target-independent lowering through AZM, another assembler, C or a selected
   BASIC dialect.
 
-Lanternfly remains independent of Glimmer. It has no keyword for Glimmer state,
-pulses, effects, rendering, cards or scheduling. Glimmer may provide imported
-storage and routines to a Lanternfly body.
+Lanternfly is independent of Glimmer. State, pulses, effects, rendering, cards
+and scheduling remain host concerns. Glimmer may provide imported storage and
+routines to a Lanternfly body.
 
-The language has no initial heap, garbage collector, exception system or
-dynamic collection model. Fixed storage and whole-program compilation keep its
-runtime suitable for small machines.
+The first edition uses fixed storage and whole-program compilation. Heap
+allocation, garbage collection, exceptions and dynamic collections are
+deferred.
 
 ## 2. Source style and names
 
@@ -73,8 +70,7 @@ sub updatePlayer()
 end
 ```
 
-The current direction is case-insensitive name resolution with spelling
-preservation:
+Name resolution is case-insensitive and preserves declaration spelling:
 
 - `if`, `var` and every other keyword are written in lowercase;
 - `u8`, `i16`, `boolean` and other built-in types are lowercase;
@@ -110,8 +106,9 @@ Actor
 GameState
 ```
 
-Underscores may remain lexically valid for imported or generated names, but the
-formatter should not introduce snake case into ordinary Lanternfly source.
+Identifiers may contain underscores. The formatter should use camel case for
+ordinary Lanternfly names and preserve underscores in imported or generated
+names.
 
 ### 2.3 Blocks
 
@@ -123,13 +120,11 @@ if active then
 end
 ```
 
-The parser closes the innermost open block. Indentation is canonical and
-required from a formatter, but it is not currently proposed as semantic
-syntax.
+The parser closes the innermost open block. The formatter emits canonical
+indentation, while the parser treats indentation as whitespace.
 
-Bare `end` is provisional. It is being tried because it is no less structured
-than Pascal's `begin`/`end` or braces, while avoiding a repeated closing word
-such as `end if` or `end sub`.
+Bare `end` is provisional. Parser and corpus tests will determine whether long
+nested routines need named endings such as `end if` or `end sub`.
 
 ### 2.4 Lexical rules and comments
 
@@ -186,9 +181,7 @@ The first integer family uses explicit widths:
 | `i32`     | signed 32-bit     |
 | `boolean` | `true` or `false` |
 
-The integer spellings replace the earlier `BYTE`, `SBYTE`, `WORD`, `INTEGER`,
-`DWORD` and `LONG` surface names. Width and signedness remain invariant across
-targets.
+Width and signedness remain invariant across targets.
 
 `true` and `false` are lowercase Boolean literals. They are reserved literals,
 not user-defined constants.
@@ -241,7 +234,8 @@ that conversion preserves every source value:
 The rule converts only to an operand type already written into the expression.
 It never searches for a third common type, so `u8 + u16` evaluates as
 `u16 + u16`, while `u8 + i8` and `i16 + u16` require an explicit conversion.
-No 32-bit operation appears unless one operand is already `u32` or `i32`.
+A 32-bit operation requires an existing `u32` or `i32` operand, and only such
+an operation may select a wide helper.
 
 The result table for matching operand types is:
 
@@ -294,11 +288,6 @@ conversion preserves the bit pattern. A conversion to a signed type interprets
 that pattern as two's complement. Conversions between `boolean` and an integer
 type are deferred from the first implementation.
 
-`i32` and `u32` remain language types. They enter a program only when declared
-or selected explicitly as an operand type; smaller arithmetic does not promote
-into them merely to reconcile signedness. A backend emits wide helpers only
-when the program uses wide operations.
-
 A full-width 32-bit product from 16-bit inputs requires explicitly widening the
 inputs before multiplication.
 
@@ -332,15 +321,15 @@ const visibleMask as u8 = %00000001
 const debuggingEnabled as boolean = false
 ```
 
-The first implementation should require the explicit type. Type inference can
-be reconsidered after constant expressions and overload resolution exist.
+The first implementation should require an explicit type. Type inference is
+deferred.
 
 A scalar constant normally occupies no storage. Taking its address or placing
 it explicitly may force a stored representation.
 
-The first edition does not permit a `const` whose type is, or contains, a
-typed reference. This avoids conflating an immutable reference slot with an
-immutable referent before read-only reference types are designed.
+A first-edition `const` type cannot contain a typed reference. This avoids
+conflating an immutable reference slot with an immutable referent before
+read-only reference types are designed.
 
 An aggregate `const` declares immutable static data:
 
@@ -369,8 +358,7 @@ var lives as u8 = 3
 var gameOver as boolean = false
 ```
 
-`as` introduces the type. Lanternfly does not use `dim` or a colon for ordinary
-type declarations.
+`as` introduces the type.
 
 Module-level variables own static storage. Compiler-allocated static storage
 without an explicit initializer begins with all bits zero, provided its type
@@ -425,8 +413,8 @@ never writes to that register. A volatile or device-mapped initializer is
 accepted only when the profile explicitly permits its startup write; that
 write is an observable initialization effect reported in compiler artifacts.
 
-`at` is target-aware rather than CPU-specific. A banked target may accept a far
-address expression. An address-space profile may accept a qualified device
+Target profiles interpret `at`. A banked target may accept a far address
+expression, and an address-space profile may accept a qualified device
 address. Portable modules should normally leave placement to an entry program
 or target configuration.
 
@@ -448,8 +436,7 @@ aggregate copy involving volatile storage performs the corresponding ordered
 element accesses rather than an unobservable bulk substitution.
 
 The first implementation permits `volatile` only on module-level storage and
-imported/native storage contracts. Volatile local variables have no useful
-hardware meaning and are rejected.
+imported or native storage contracts; volatile local variables are rejected.
 
 ### 4.5 Initializers and constant expressions
 
@@ -516,7 +503,8 @@ record Actor
 end
 ```
 
-A record declaration allocates no storage. An instance declaration does:
+A record declaration defines layout. A `var` declaration allocates instance
+storage:
 
 ```lanternfly
 var player as Actor
@@ -611,8 +599,8 @@ destination = source
 ```
 
 Such an assignment copies the complete fixed-size value. A backend may inline
-the copy, emit a loop or call a runtime helper. Size and cost belong in
-generated listings or cost reports, not in a language restriction.
+the copy, emit a loop or call a runtime helper. Generated listings and cost
+reports expose its size and cost.
 
 For ordinary storage, copying has snapshot semantics: the result is as if the
 complete source value were read before any destination byte changed. A backend
@@ -662,7 +650,7 @@ Field and index access pass transparently through a reference:
 selected.position.x = selected.position.x + 1
 ```
 
-Used without a following field or index, a reference variable evaluates to its
+A reference variable with no following field or index evaluates to its
 reference value. `value(reference)` explicitly denotes its referent and is a
 writable storage path when the reference is writable:
 
@@ -671,18 +659,19 @@ value(scoreReference) = value(scoreReference) + 1
 value(selected) = actors[nextActor]
 ```
 
-Assigning a reference value to a reference variable rebinds the variable:
+Assigning a reference value to a reference variable rebinds the variable
+without copying its referent:
 
 ```lanternfly
 selected = ref actors[nextActor]
 ```
 
-It does not copy the referent. Assignment to `value(selected)`, to a field or
-element through `selected`, to a local aggregate alias, or to an aggregate
-parameter writes the referent and follows the same aggregate-copy rules as
-ordinary storage. Equality and inequality are defined for compatible reference
-types and compare logical storage identities. Ordering, arithmetic and bitwise
-operations on references are invalid.
+Assignment to `value(selected)`, to a field or element through `selected`, to a
+local aggregate alias, or to an aggregate parameter writes the referent and
+follows the same aggregate-copy rules as ordinary storage. Equality and
+inequality are defined for compatible reference types and compare logical
+storage identities. Ordering, arithmetic and bitwise operations on references
+are invalid.
 
 References to mutable storage are writable. The first edition cannot form a
 reference to constant aggregate storage because it has no read-only reference
@@ -709,7 +698,7 @@ ref actor as Actor = actors[selectedActor]
 ```
 
 is shorthand for a non-rebindable local `ref Actor` initialized with
-`ref actors[selectedActor]`. It provides transparent field and index access
+`ref actors[selectedActor]`, providing transparent field and index access
 without allocating an aggregate local.
 
 ## 8. Assignment and expressions
@@ -732,8 +721,8 @@ performs the same bit-preserving or low-bit conversion as an explicit type
 conversion: widening is silent, while narrowing or changing signedness warns
 by default. A project may promote that warning to an error.
 
-A round-trip arithmetic conversion is exempt from that warning. It occurs when
-the destination has integer type `T`, every typed leaf of the source expression
+A round-trip arithmetic conversion is exempt from that warning when the
+destination has integer type `T`, every typed leaf of the source expression
 also has type `T`, every exact integer leaf resolves as `T`, and the expression
 contains only parentheses and the integer operators from section 3.1. Wider
 intermediate results prescribed by the operator table remain part of the same
@@ -744,8 +733,7 @@ lives = lives - 1
 position = position + velocity
 ```
 
-The destination declaration supplies the intended stored width in these
-forms. A value originating in another declared type, an explicit conversion to
+A value originating in another declared type, an explicit conversion to
 another type or a standard operation such as `abs` ends the exemption. The
 ordinary value-preservation analysis may still suppress the warning.
 
@@ -785,7 +773,7 @@ The comparison family is:
 | `>`      | greater than          |
 | `>=`     | greater than or equal |
 
-Comparison chaining is invalid. Write:
+Comparison chaining is invalid. A bounded test combines two comparisons:
 
 ```lanternfly
 if minimum <= value and value <= maximum then
@@ -873,8 +861,7 @@ complement requires the explicit grouping `(not x) = y`.
 
 ### 8.5 Standard operations
 
-Five lowercase value operations complete the initial numeric and layout
-vocabulary:
+The first edition defines five lowercase numeric and layout operations:
 
 ```lanternfly
 distance = abs(playerX - enemyX)
@@ -937,8 +924,8 @@ reports that choice.
 
 ### 8.6 Expression statements
 
-Any expression may stand as a statement. It is evaluated normally and its final
-value is discarded:
+Any expression may stand as a statement. Evaluation proceeds normally and
+discards its final value:
 
 ```lanternfly
 updateClock()
@@ -1088,7 +1075,7 @@ end
 
 When `step` is omitted, it is the mathematical integer `+1`. The start, limit
 and effective step are evaluated once. A zero step is an error. The loop
-variable is declared separately, avoiding hidden local storage.
+variable is declared separately; the loop creates no hidden local storage.
 
 Evaluation is left to right: start, limit, then step. Start and limit must be
 convertible to the loop variable's integer type. The step is a non-zero signed
@@ -1172,8 +1159,8 @@ Boolean, address or typed-reference scalar. Returning a record or fixed array
 by value is deferred.
 
 Parentheses are present for every declaration and invocation, including an
-empty parameter list. This makes a routine invocation syntactically distinct
-from a name.
+empty parameter list, so a routine invocation is syntactically distinct from a
+name.
 
 ### 11.2 Invocation
 
@@ -1220,9 +1207,9 @@ first-edition aggregate parameters are writable, constant storage is not a
 valid actual argument. Typed-reference parameters pass reference values and
 may be rebound locally without rebinding the caller's reference variable.
 
-Parameter-free routines remain the first implementation stage. Parameters,
-locals and the calling convention are later stages of the same source
-language, not separate language editions.
+Parameter-free routines form the first implementation stage. Later stages add
+parameters, locals and the calling convention without changing the source
+language edition.
 
 ### 11.4 Local variables and collection aliases
 
@@ -1238,7 +1225,7 @@ sub updateActor(actor as Actor)
 end
 ```
 
-The ZAX-derived restriction remains useful:
+Local collection storage follows these rules:
 
 - scalar locals may own automatic storage;
 - record and array locals do not allocate aggregate stack objects;
@@ -1253,8 +1240,8 @@ The alias spelling is provisional. The current candidate is:
 ref actor as Actor = actors[selectedActor]
 ```
 
-This keeps `var actor as Actor` available for owning static storage and makes a
-local alias explicit. Unlike a reference variable, this alias cannot be
+The spelling reserves `var actor as Actor` for owning static storage and makes
+a local alias explicit. Unlike a reference variable, this alias cannot be
 rebound.
 
 ### 11.5 Return
@@ -1288,8 +1275,7 @@ sub clamp(value as i16, minimum as i16, maximum as i16) as i16
 end
 ```
 
-Early return is allowed. `exit` remains loop control; `return` leaves the
-routine.
+`exit` remains loop control; `return` leaves the routine.
 
 ### 11.6 Calling convention
 
@@ -1311,7 +1297,7 @@ Lanternfly source semantics.
 
 ## 12. Modules
 
-### 12.1 Import rather than include
+### 12.1 Source imports
 
 `import` loads another source unit:
 
@@ -1421,10 +1407,9 @@ source meaning.
 
 External declarations are module declarations. They may be private or
 exported, and a platform interface module can collect and export them for
-ordinary `import`. Repeated imports still emit one binding. The compiler passes
-named symbols to the selected assembler or substrate toolchain as part of its
-single whole-program build, so this facility does not require a separate
-user-visible linker.
+ordinary `import`. Repeated imports still emit one binding. The selected
+assembler or substrate toolchain resolves named symbols during the
+whole-program build.
 
 An `extern sub` has no Lanternfly body and cannot be selected as the program
 entry. Target profiles may reject absolute `at` bindings or named `from`
@@ -1432,8 +1417,8 @@ bindings that their substrate cannot express.
 
 ### 12.5 Whole-program compilation
 
-Lanternfly does not require object files or a separate user-visible linker. A
-build:
+The compiler performs address allocation and symbol resolution in one
+whole-program build:
 
 1. loads the root module;
 2. resolves the import graph;
@@ -1443,9 +1428,6 @@ build:
 6. resolves external bindings and ABI adapters;
 7. lowers required routines, data and helpers;
 8. produces one target program and its debug artifacts.
-
-Address allocation and symbol resolution still occur inside the compiler.
-Avoiding a separate linker does not remove those compiler responsibilities.
 
 The source file extension remains open. `.lf` is illustrative only.
 
@@ -1507,9 +1489,9 @@ missing implementation is a compile error.
 
 Native source is admitted only through an explicit target-qualified boundary.
 External bindings and inline assembly are those boundaries. Their contracts
-state visible reads, writes, calls, control flow and ABI effects. Generated
-source, original-source mapping and selected helper information are normal
-compiler artifacts.
+state visible reads, writes, calls, control flow and ABI effects. Compiler
+artifacts retain source mappings and selected-helper information across both
+boundaries.
 
 #### 13.2.1 Inline assembly
 
@@ -1586,8 +1568,7 @@ dependency declarations or use it to derive change tracking.
 
 ### 13.4 Floating point
 
-Floating point is deferred, but it is not ruled out. There are two possible
-models:
+Floating point is deferred. Two models remain:
 
 1. A library-defined `Float32` record or opaque value with routines such as
    `floatAdd`. This requires little core-language knowledge but produces
@@ -1597,8 +1578,7 @@ models:
    conversion rules to the language, while adding no runtime bytes to programs
    that do not use it.
 
-The second model is more consistent with ordinary arithmetic, but it requires a
-separate specification for:
+The built-in model requires a separate specification for:
 
 - representation and IEEE-754 conformance;
 - rounding modes;
@@ -1608,14 +1588,13 @@ separate specification for:
 - constant folding;
 - target library ABI and code-size reporting.
 
-The size of a Z80 floating-point library is a deployment cost rather than a
-reason to distort integer semantics. A future `float32` capability should be
-opt-in, linked on demand and visible in the cost report. The integer-only
-language remains complete without it.
+On Z80 targets, floating-point library size is a reported deployment cost. A
+future `float32` capability should be opt-in, linked on demand and visible in
+the cost report.
 
 ## 14. Current word inventory
 
-The current core word candidates include:
+The current core word inventory is:
 
 ```text
 abs
@@ -1663,9 +1642,10 @@ while
 xor
 ```
 
-`ref`, `near`, `far` and `address` are type/reference words.
+The inventory also includes the type and reference words `ref`, `near`, `far`
+and `address`.
 
-The current design deliberately omits:
+The first edition omits:
 
 ```text
 call
