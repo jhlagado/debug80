@@ -180,21 +180,26 @@ The current scalar integer spellings are:
 
 Important numeric rules:
 
-- integer arithmetic has target-independent promotion and narrowing rules;
-- mixed signed and unsigned runtime arithmetic requires an explicit
-  conversion, preventing accidental 32-bit promotion;
+- integer arithmetic has target-independent result and narrowing rules;
+- a narrower operand may widen implicitly to a value-preserving type already
+  present on the other side;
+- the compiler never invents a third common type, so `u8 + i8` and
+  `i16 + u16` still require an explicit conversion;
 - comparisons produce `boolean`;
 - `boolean` is exactly one byte with canonical stored values zero and one;
 - conditions require `boolean`;
 - `and`, `or`, `xor` and `not` form one type-directed Boolean/bitwise family;
 - Boolean `and` and `or` short-circuit;
-- narrowing stores use defined low-bit truncation and normally warn;
+- narrowing destinations use defined low-bit truncation and normally warn;
+- same-type arithmetic stored, passed or returned at its original width uses
+  the round-trip exemption and does not warn;
 - shifts, integer division, remainder and integer power are language
   operations;
 - integer square root is a visible standard operation rather than assumed CPU
   support;
 - `size`, `count` and `offset` expose exact compile-time layout without pointer
   arithmetic;
+- `fill` and `clear` provide typed repeated aggregate stores;
 - floating point is deferred and would be a target capability, not an initial
   requirement.
 
@@ -272,6 +277,11 @@ when used.
 Randomness, display, input, sound, VRAM and firmware calls are platform
 services, not core keywords. Native declarations and native blocks make the
 substrate boundary visible and typed.
+
+`extern sub` declares a typed target routine without a Lanternfly body. `at`
+binds an absolute routine address, `from` names a substrate symbol and an
+unqualified declaration delegates binding to the target profile. The profile
+also supplies the native ABI, effects and clobber contract.
 
 The first raw boundary is `asm`/`end`. It accepts module-level directives/data
 and statement-level assembly for the selected assembler, emits the payload
@@ -364,8 +374,7 @@ Do not present these points as settled without an explicit decision:
 - read-only, output and in/out reference spelling;
 - one-line `if` and an empty-block spelling;
 - source file extension;
-- default warning severity for narrowing;
-- native declaration syntax;
+- source syntax for narrowing an external routine's effect contract;
 - syntax for an explicitly unsafe, nonconforming unchecked-array mode;
 - minimal static string or string-view support;
 - bounded aggregate view syntax;

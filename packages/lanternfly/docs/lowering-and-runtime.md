@@ -16,7 +16,7 @@ The front end owns:
 - integer result typing and conversions;
 - initialization and return-path validation;
 - structured-control validation;
-- host/import interface checking;
+- host/import/external interface checking;
 - typed read/write/call summaries.
 
 The target backend owns:
@@ -54,7 +54,7 @@ type
 mutability
 storageOwner
 addressClass/addressSpace
-initializer or import binding
+initializer or import/external binding
 ```
 
 Each expression has:
@@ -65,7 +65,8 @@ sourceSpan
 resolved type
 value/storage/reference category
 constant value when known
-narrowing/result-type decisions
+operand-widening, narrowing and result-type decisions
+round-trip conversion classification
 purity
 ```
 
@@ -177,7 +178,9 @@ addresses. `COPY`, `MOVE`, `FILL` and `CLEAR` are explicit aggregate effects.
 
 This matches the language rule and avoids an optimizer inventing hidden
 aggregate temporaries. A source aggregate assignment becomes one explicit
-`COPY` effect with source-order and volatile semantics retained.
+`COPY` effect with source-order and volatile semantics retained. Standard
+`fill` and `clear` calls become `FILL` and `CLEAR` effects after the front end
+has validated their target and scalar leaf types.
 
 `COPY` records whether either region is volatile and whether overlap is
 possible. An ordinary copy has snapshot/move semantics. A volatile copy is
@@ -221,8 +224,10 @@ assembly. A backend without a compatible assembly-fragment pipeline rejects
 
 ## 5. Numeric lowering contract
 
-The front end records resolved operand and result types. The backend implements
-those types exactly.
+The front end records resolved operand and result types. It inserts every
+value-preserving operand widening allowed by specification section 3.1 instead
+of asking the backend to infer a common type. The backend implements the
+recorded types exactly.
 
 For every integer operation it receives:
 
@@ -237,6 +242,11 @@ source node
 
 The backend may choose an instruction or helper only when its result matches
 the recorded semantics for all inputs.
+
+Destination conversions also record whether value analysis proved them safe,
+whether the round-trip arithmetic rule suppressed the default warning and
+which low-bit or sign interpretation the destination applies. Warning policy
+never changes the conversion performed.
 
 ### 5.1 C substrate caution
 
@@ -386,12 +396,13 @@ A first implementation may follow the useful ZAX shape:
 
 That ABI is provisional backend design, not source semantics.
 
-### 8.2 Imported ABI adapter
+### 8.2 External and imported ABI adapter
 
 An adapter contract specifies:
 
 ```text
 Lanternfly signature
+binding kind: profile name/substrate symbol/absolute address
 substrate symbol
 substrate parameter carriers/layout
 substrate result carriers/layout
@@ -402,6 +413,12 @@ return behaviour
 ```
 
 AZM adapters must pass strict register-contract verification.
+
+An `extern sub` declaration enters the typed program with this contract. The
+front end resolves `at` and `from` bindings, while the target profile completes
+or verifies the ABI and effects. An incomplete effect description becomes a
+conservative call barrier; a missing binding or incompatible ABI never reaches
+backend emission.
 
 ### 8.3 Hosted body ABI
 
@@ -442,9 +459,10 @@ Selection should be deterministic.
 
 ### 9.1 Intrinsic versus visible call
 
-`sqrt(x)` and `abs(x)` are visible standard operations. The backend may select
-an intrinsic or a helper without changing their source-level purity or result
-types.
+`sqrt(x)` and `abs(x)` are visible standard value operations. `fill(target,
+value)` and `clear(target)` are visible standard effects. The backend may
+select an intrinsic, inline sequence or helper without changing their
+source-level types, evaluation order or volatile-store order.
 
 `index * 6` generated for an address is invisible runtime mechanics. It may use
 the same multiplier implementation without adding a visible call to the source
@@ -464,6 +482,8 @@ arith/u16-div
 arith/i16-div
 arith/u32-mul
 arith/isqrt-u16
+memory/fill-u8
+memory/clear
 address/far-load-u8
 address/far-store-u16
 address/far-call
@@ -748,6 +768,8 @@ backend-focused groups summarize that inventory:
 ### Numeric
 
 - all type boundary conversions;
+- value-preserving operand widening without third-type synthesis;
+- round-trip destination conversion classification;
 - every binary operator across required type pairs;
 - signed/unsigned comparisons;
 - division/remainder edge cases;
@@ -764,6 +786,7 @@ backend-focused groups summarize that inventory:
 - two dynamic indices;
 - reference arrays;
 - `size`, `count` and `offset` query vectors;
+- `fill` and `clear` effects, including ordered volatile stores;
 - field offsets and exact sizes;
 - no substrate padding.
 
@@ -784,7 +807,8 @@ backend-focused groups summarize that inventory:
 - near/far references;
 - aggregate reference parameters;
 - local aliases;
-- imported adapter;
+- external and imported adapters;
+- profile-name, substrate-symbol and absolute-address bindings;
 - nested calls;
 - no-return;
 - rejected recursion cycles on non-recursive profiles;
@@ -799,6 +823,7 @@ backend-focused groups summarize that inventory:
 
 ### Native boundary
 
+- external binding resolution and conservative incomplete-effect handling;
 - byte-for-byte inline assembly payload emission;
 - module-item and statement placement;
 - conservative barrier, spill and clobber handling;

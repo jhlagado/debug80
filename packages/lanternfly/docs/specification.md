@@ -91,6 +91,12 @@ a case-insensitive language:
 var actor as Actor
 ```
 
+One cross-namespace collision is forbidden: a record type and a callable
+routine, including an external routine, may not share the same
+case-insensitive name. This keeps `Point(...)` unambiguously a record
+initializer or a call. A storage name may still match its type, as `actor` and
+`Actor` do above.
+
 ### 2.2 Identifiers
 
 The canonical style is lower camel case for values and Pascal case for
@@ -221,9 +227,21 @@ Thus `if 1 < 2 then` compares two `i16` values, while
 literals always have type `boolean`.
 
 For arithmetic, bitwise and integer comparison operators other than shifts and
-power, all other binary operands must have the same declared type. Different
-widths or signedness require an explicit conversion. This rule prevents
-`i16 + u16` from silently selecting 32-bit helper arithmetic.
+power, matching operand types use the result table below. A narrower operand
+may also widen implicitly to the type already present on the other side when
+that conversion preserves every source value:
+
+| Source | Permitted wider operand type |
+| ------ | ----------------------------- |
+| `u8`   | `u16`, `i16`, `u32`, `i32`   |
+| `i8`   | `i16`, `i32`                  |
+| `u16`  | `u32`, `i32`                  |
+| `i16`  | `i32`                         |
+
+The rule converts only to an operand type already written into the expression.
+It never searches for a third common type, so `u8 + u16` evaluates as
+`u16 + u16`, while `u8 + i8` and `i16 + u16` require an explicit conversion.
+No 32-bit operation appears unless one operand is already `u32` or `i32`.
 
 The result table for matching operand types is:
 
@@ -239,6 +257,22 @@ The result table for matching operand types is:
 The `u8 - u8` rule preserves the complete mathematical range from -255 through
 255 required by coordinate-difference programs. Arithmetic results wrap in the
 selected result width.
+
+The widening rule lets byte arithmetic compose after an intermediate grows:
+
+```lanternfly
+elementNumber = row * 20 + column
+delta = x - y + adjustment
+```
+
+If `row` and `column` are `u8`, the product is `u16` and `column` widens to
+`u16` for the addition. If `x`, `y` and `adjustment` are `u8`, `x - y`
+produces `i16` and `adjustment` widens to `i16`.
+
+Operator order still determines the intermediate type. With `u8` inputs,
+`x + 1 - y` performs the addition as `u16` and the later subtraction also
+uses `u16`, including its wrapping rule. A calculation that needs a negative
+final range can select it explicitly as `i16(x) + 1 - i16(y)`.
 
 Unary `+` retains the operand type. Unary `-` produces `i16` from `u8` or `i8`,
 retains `i16` or `i32`, and is invalid for `u16` or `u32` until the programmer
@@ -257,13 +291,13 @@ i32(signedValue) + i32(unsignedValue)
 Widening a signed value sign-extends it; widening an unsigned value zero-extends
 it. Narrowing retains the low destination-width bits. A same-width signedness
 conversion preserves the bit pattern. A conversion to a signed type interprets
-that pattern as two's complement. Boolean and integer conversions are not
-implicit and are deferred from the first implementation.
+that pattern as two's complement. Conversions between `boolean` and an integer
+type are deferred from the first implementation.
 
 `i32` and `u32` remain language types. They enter a program only when declared
-or selected explicitly; smaller arithmetic does not promote into them merely
-to reconcile signedness. A backend emits wide helpers only when the program
-uses wide operations.
+or selected explicitly as an operand type; smaller arithmetic does not promote
+into them merely to reconcile signedness. A backend emits wide helpers only
+when the program uses wide operations.
 
 A full-width 32-bit product from 16-bit inputs requires explicitly widening the
 inputs before multiplication.
@@ -434,9 +468,9 @@ every field exactly once. Unknown, duplicate or omitted fields are compile
 errors. Record fields may be written in any order, although storage layout
 continues to follow declaration order.
 
-The leading Pascal-cased name resolves in the type namespace, so a record
-initializer is distinct from a routine invocation even though both use
-parentheses.
+The leading name resolves in the type namespace. Section 2.1 forbids a
+case-insensitive collision between that record type and a callable routine, so
+the same token sequence cannot also resolve as an invocation.
 
 Initializer expressions are evaluated in source order. For a record literal,
 that is the written field order; for an array literal, it is left to right at
@@ -696,15 +730,30 @@ For scalar assignment, an exact literal may adopt the destination type when it
 fits. A Boolean destination requires `boolean`. Integer-to-integer assignment
 performs the same bit-preserving or low-bit conversion as an explicit type
 conversion: widening is silent, while narrowing or changing signedness warns
-by default. A project may promote that warning to an error. This deliberate
-store conversion permits compact state updates such as an `i16` subtraction
-stored back into a `u8`, while mixed-type arithmetic itself remains explicit.
+by default. A project may promote that warning to an error.
+
+A round-trip arithmetic conversion is exempt from that warning. It occurs when
+the destination has integer type `T`, every typed leaf of the source expression
+also has type `T`, every exact integer leaf resolves as `T`, and the expression
+contains only parentheses and the integer operators from section 3.1. Wider
+intermediate results prescribed by the operator table remain part of the same
+round trip:
+
+```lanternfly
+lives = lives - 1
+position = position + velocity
+```
+
+The destination declaration supplies the intended stored width in these
+forms. A value originating in another declared type, an explicit conversion to
+another type or a standard operation such as `abs` ends the exemption. The
+ordinary value-preservation analysis may still suppress the warning.
 
 Initializers, scalar arguments and returned values use the same destination
-conversion rules. Aggregate assignment instead requires an identical record
-type or identical array element type, rank and dimensions. Reference
-assignment requires compatible referent and address classes, subject to the
-near/far rules in section 7.1.
+conversion rules, including the round-trip exemption. Aggregate assignment
+instead requires an identical record type or identical array element type,
+rank and dimensions. Reference assignment requires compatible referent and
+address classes, subject to the near/far rules in section 7.1.
 
 The parser recognises assignment when a statement begins with a writable
 storage path followed by `=`. In every other expression context, `=` is
@@ -818,9 +867,13 @@ Power associates right to left; every other binary operator associates left to
 right. Thus `-2 ^ 2` means `-(2 ^ 2)`, while `2 ^ 3 ^ 2` means
 `2 ^ (3 ^ 2)`.
 
+Comparisons bind more tightly than `not`, following BASIC practice.
+`not x = y` means `not (x = y)`. A comparison against the bitwise
+complement requires the explicit grouping `(not x) = y`.
+
 ### 8.5 Standard operations
 
-Four lowercase standard operations complete the initial numeric and layout
+Five lowercase value operations complete the initial numeric and layout
 vocabulary:
 
 ```lanternfly
@@ -857,6 +910,30 @@ rules in section 3.1, and they never read the storage path supplied for type
 inspection. `abs` and `sqrt` are pure value operations, but their argument is
 evaluated normally. They constant-fold under section 4.5; `sqrt` may lower to a
 target helper when evaluated at runtime.
+
+Two standard procedures cover repeated aggregate stores:
+
+```lanternfly
+clear(board)
+fill(framebuffer, backgroundColour)
+```
+
+`clear(target)` writes the all-zero representation to a writable record or
+fixed array. It is valid only when every scalar leaf accepts that
+representation. Integers and Booleans do; typed references do not. A target
+profile decides whether all-zero is valid for one of its opaque address types.
+
+`fill(target, value)` requires a writable fixed array whose leaf element type
+is scalar. The value must be assignable to that element type. Every element of
+a multidimensional array receives the value in row-major order. Arrays whose
+leaf element is a record are rejected; an ordinary aggregate assignment can
+copy a prepared record value when that operation is needed.
+
+Both procedures evaluate the destination path once and then evaluate the value,
+when present, once before storing. Their writes are observable. A volatile
+target receives one ordered scalar write per element or field. A backend may
+inline the operation or select a runtime helper, and the generated listing
+reports that choice.
 
 ### 8.6 Expression statements
 
@@ -1309,7 +1386,51 @@ reached through two dependency paths is emitted once. Import cycles are
 rejected initially with a path diagnostic. Imports do not re-export their own
 imports unless a later explicit re-export facility is added.
 
-### 12.4 Whole-program compilation
+### 12.4 External routines
+
+`extern sub` gives target code a Lanternfly signature without supplying a
+Lanternfly body:
+
+```lanternfly
+export extern sub printChar(ch as u8) at $0008
+export extern sub waitForKey() from "ROM_WAIT_KEY"
+export extern sub screenClear()
+```
+
+`at` binds a routine to an absolute target address. Its operand is a constant
+expression, and the selected profile checks that the address is executable and
+representable. `from` names a substrate symbol exactly. An external declaration
+without either clause asks the target profile to bind the Lanternfly name.
+
+The declaration provides the parameter and result types seen by Lanternfly.
+The selected target profile supplies or verifies the remaining native
+contract:
+
+- substrate symbol or address;
+- parameter and result carriers;
+- calling convention and normal-return behaviour;
+- registers, flags, stack and mapping state preserved or clobbered;
+- visible storage reads and writes, calls, faults and device I/O;
+- reentrancy, interrupt and cost properties.
+
+A missing binding or incompatible ABI is a compile error. An incomplete effect
+contract produces the conservative native-boundary warning and prevents
+optimizations across the call. The backend may generate an adapter when the
+declared Lanternfly signature and native ABI can be reconciled without changing
+source meaning.
+
+External declarations are module declarations. They may be private or
+exported, and a platform interface module can collect and export them for
+ordinary `import`. Repeated imports still emit one binding. The compiler passes
+named symbols to the selected assembler or substrate toolchain as part of its
+single whole-program build, so this facility does not require a separate
+user-visible linker.
+
+An `extern sub` has no Lanternfly body and cannot be selected as the program
+entry. Target profiles may reject absolute `at` bindings or named `from`
+bindings that their substrate cannot express.
+
+### 12.5 Whole-program compilation
 
 Lanternfly does not require object files or a separate user-visible linker. A
 build:
@@ -1319,15 +1440,16 @@ build:
 3. collects private and exported declarations;
 4. type-checks the complete program;
 5. allocates static storage;
-6. lowers required routines, data and helpers;
-7. produces one target program and its debug artifacts.
+6. resolves external bindings and ABI adapters;
+7. lowers required routines, data and helpers;
+8. produces one target program and its debug artifacts.
 
 Address allocation and symbol resolution still occur inside the compiler.
 Avoiding a separate linker does not remove those compiler responsibilities.
 
 The source file extension remains open. `.lf` is illustrative only.
 
-### 12.5 Compilation units and program entry
+### 12.6 Compilation units and program entry
 
 An ordinary Lanternfly source file is a module containing imports and
 declarations. It does not contain loose executable statements. A build
@@ -1341,7 +1463,8 @@ sub main()
 end
 ```
 
-The entry may remain private to the root module. A library build has no entry.
+The entry may remain private to the root module and must name a source-defined
+subroutine rather than an external declaration. A library build has no entry.
 All module storage has been allocated and all constant static initializers have
 been installed before an executable entry begins. Returning from the entry
 invokes the target profile's normal program-termination service.
@@ -1377,14 +1500,16 @@ A target profile declares its CPU or substrate, endianness, supported scalar
 operations, near and far address representations, address spaces, routine ABI,
 standard-service implementations and native dialect.
 
-Display, input, sound, random, firmware and device operations are typed imported
-routines rather than core statements. A missing implementation is a compile
-error.
+Display, input, sound, random, firmware and device operations are typed
+external routines imported from platform interface modules rather than core
+statements. Section 12.4 defines their source declaration and binding forms. A
+missing implementation is a compile error.
 
 Native source is admitted only through an explicit target-qualified boundary.
-Its declared contract states visible reads, writes, calls, control flow and ABI
-effects. Generated source, original-source mapping and selected helper
-information are normal compiler artifacts.
+External bindings and inline assembly are those boundaries. Their contracts
+state visible reads, writes, calls, control flow and ABI effects. Generated
+source, original-source mapping and selected helper information are normal
+compiler artifacts.
 
 #### 13.2.1 Inline assembly
 
@@ -1499,6 +1624,7 @@ as
 asm
 at
 case
+clear
 const
 continue
 count
@@ -1506,8 +1632,11 @@ else
 end
 exit
 export
+extern
 false
+fill
 for
+from
 if
 import
 loop
@@ -1566,12 +1695,14 @@ export-decl         ::= "export" exportable-declaration
 declaration         ::= const-decl
                       | var-decl
                       | record-decl
+                      | extern-sub-decl
                       | sub-decl
 
 exportable-declaration
                     ::= const-decl
                       | var-decl
                       | record-decl
+                      | extern-sub-decl
                       | sub-decl
 
 const-decl          ::= "const" value-name "as" type-expr
@@ -1592,6 +1723,12 @@ sub-decl            ::= "sub" value-name "(" params? ")"
                         ("as" type-expr)? newline
                         routine-block
                         "end"
+
+extern-sub-decl     ::= "extern" "sub" value-name "(" params? ")"
+                        ("as" type-expr)?
+                        external-binding? newline
+external-binding    ::= "at" const-expr
+                      | "from" string-literal
 
 params              ::= param ("," param)*
 param               ::= value-name "as" type-expr
@@ -1715,6 +1852,7 @@ primary-expression  ::= integer-literal
                       | reference-expression
                       | referent-expression
                       | standard-value-operation
+                      | standard-procedure-invocation
                       | layout-query
                       | "(" expression ")"
 
@@ -1727,6 +1865,9 @@ reference-expression
 referent-expression ::= "value" "(" expression ")"
 standard-value-operation
                     ::= ("abs" | "sqrt") "(" expression ")"
+standard-procedure-invocation
+                    ::= "clear" "(" storage-path ")"
+                      | "fill" "(" storage-path "," expression ")"
 layout-query        ::= "size" "(" layout-operand ")"
                       | "count" "(" layout-operand
                         ("," const-expr)? ")"
@@ -1749,10 +1890,10 @@ newline             ::= logical-newline
 
 `const-expr` is syntactically an expression and is restricted semantically by
 section 4.5. `string-character` and `logical-newline` obey section 2.4.
-Capitalisation conventions distinguish the semantic roles of `value-name` and
-`type-name`; their lexical identifier shape is shared. A no-result invocation
-has internal type `unit` and is legal only as the complete expression of an
-expression statement.
+`value-name` and `type-name` share one lexical shape and resolve in their
+respective namespaces, subject to the record/callable collision rule in
+section 2.1. A no-result invocation has internal type `unit` and is legal only
+as the complete expression of an expression statement.
 
 When a statement begins with a storage path followed immediately by `=`, the
 parser selects `assignment-statement`. Otherwise it parses an expression
@@ -1771,6 +1912,7 @@ The following questions remain open or provisional:
 - the spelling of local collection aliases;
 - case-insensitive identifier resolution after parser experiments;
 - whether `at` is sufficient or grows into a section-placement model;
+- source syntax for narrowing an external routine's effect contract;
 - volatile imported-reference spelling;
 - whether selection ranges belong in the first parser;
 - module aliases, re-exports and the source file extension;

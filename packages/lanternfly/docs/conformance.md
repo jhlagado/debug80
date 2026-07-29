@@ -40,7 +40,8 @@ The front end must reject at least the following cases.
 | `E-LEX-001` | Invalid token, malformed numeric literal, unterminated import string or physical newline in a string | Specification §2.4 |
 | `E-NAME-001` | Unknown name or duplicate declaration, including a case-only collision | §§2.1, 12.3 |
 | `E-NAME-002` | Reserved keyword or built-in operation used as a declaration name | §§2.4, 14 |
-| `E-TYPE-001` | Mixed-width or mixed-signedness integer operands without an explicit conversion | §3.1 |
+| `E-NAME-003` | Record type and callable routine share a case-insensitive name | §§2.1, 4.5 |
+| `E-TYPE-001` | Integer operands differ and neither may widen value-preservingly to the type already present on the other side | §3.1 |
 | `E-TYPE-002` | Boolean/integer mixing, non-Boolean condition or invalid Boolean ordering | §§3, 8.2, 8.4 |
 | `E-TYPE-003` | Invalid assignment, argument or return conversion | §§8.1, 11.3, 11.5 |
 | `E-TYPE-004` | A no-result `unit` invocation used where a value is required | §§11.1–11.2 |
@@ -58,6 +59,7 @@ The front end must reject at least the following cases.
 | `E-PATH-002` | Volatile aggregate copy cannot be proven non-overlapping | §7 |
 | `E-COPY-001` | Aggregate assignment has incompatible record type, element type, rank or dimensions | §7 |
 | `E-COPY-002` | Assignment attempts to modify constant storage | §§4.1, 7 |
+| `E-COPY-003` | `clear` target lacks a valid all-zero representation, or `fill` has an invalid target or value | §8.5 |
 | `E-REF-001` | Null reference, reference to owned scalar local, or unsupported reference conversion | §7.1 |
 | `E-REF-002` | Reference is formed from constant storage before read-only references exist | §7.1 |
 | `E-REF-003` | Stored/public reference omits `near` or `far` | §7.1 |
@@ -73,8 +75,10 @@ The front end must reject at least the following cases.
 | `E-CALL-002` | Call cycle occurs on a profile without recursion capability | §11.6 |
 | `E-MODULE-001` | Import cycle, unresolved import or visible export collision | §§12.1–12.3 |
 | `E-MODULE-002` | Exported declaration exposes a private type | §12.2 |
-| `E-ENTRY-001` | Executable manifest has no unique parameterless, result-free entry routine | §12.5 |
-| `E-TARGET-001` | Required native service, scalar operation, address class or other target capability is unavailable | §§13.1–13.2 |
+| `E-EXTERN-001` | External routine has no target binding, an unsupported `at`/`from` binding, or an incompatible ABI | §§12.4, 13.2 |
+| `E-EXTERN-002` | External routine is given a Lanternfly body or selected as the program entry | §§12.4, 12.6 |
+| `E-ENTRY-001` | Executable manifest has no unique parameterless, result-free source-defined entry routine | §12.6 |
+| `E-TARGET-001` | Required native service, scalar operation, address class or other target capability is unavailable | §§12.4, 13.1–13.2 |
 | `E-ASM-001` | `asm` block is unclosed or appears where a block is not permitted | §13.2.1 |
 | `E-ASM-002` | Selected target has no compatible assembly-fragment pipeline | §13.2.1 |
 
@@ -88,7 +92,7 @@ Warnings do not change program meaning. The following are enabled by default:
 
 | ID | Warning | Escalation |
 | --- | --- | --- |
-| `W-CONVERT-001` | Integer store/argument/return narrows or changes signedness without proof that the value is preserved | Project may promote to error |
+| `W-CONVERT-001` | Integer destination conversion narrows or changes signedness and is neither proven value-preserving nor covered by the round-trip arithmetic exemption | Project may promote to error |
 | `W-EXPR-001` | Pure expression statement discards its result | Project may promote to error |
 | `W-UNUSED-001` | Private declaration is unused | Project policy |
 | `W-CONTROL-001` | Unreachable statement or branch | Project policy |
@@ -125,8 +129,8 @@ a fault.
 Each claimed backend eventually runs every applicable program below and
 compares final storage plus ordered service/fault traces:
 
-1. **Counter** — byte state, arithmetic, comparison, Boolean condition and
-   narrowing store.
+1. **Counter** — byte state, arithmetic, comparison, Boolean condition and a
+   warning-free round-trip narrowing store.
 2. **Trail** — runtime array update, record-array field store and bounds check.
 3. **Skyfall numeric case** — signed intermediate followed by deliberate byte
    wrap on assignment.
@@ -137,7 +141,8 @@ compares final storage plus ordered service/fault traces:
    return.
 7. **Tetro collapse** — array of references, local aggregate alias and
    overlapping-safe aggregate movement.
-8. **Pacmo** — exact six-byte record and non-power-of-two runtime stride.
+8. **Pacmo** — exact six-byte record, non-power-of-two runtime stride and
+   composed byte arithmetic.
 9. **TMS9918 boundary** — opaque device address passed to typed services
    without CPU dereference. Required for a target/profile claiming that device
    address-space contract.
@@ -154,7 +159,13 @@ agree on the compared result.
 The suite includes focused positive and negative vectors in addition to the ten
 programs:
 
-- every integer boundary, explicit conversion and assignment conversion;
+- every integer boundary, explicit conversion and destination conversion;
+- every permitted value-preserving operand widening, plus rejected `u8 + i8`
+  and `i16 + u16` cases that must not seek a third common type;
+- chained byte expressions whose operator order selects a signed or unsigned
+  16-bit intermediate;
+- round-trip arithmetic assignments, arguments and returns without
+  `W-CONVERT-001`, plus cross-type cases that retain the warning;
 - all-literal default typing and expected-type propagation;
 - per-operator constant wrapping, including `(u16(65535) + 1) / 2 = 0`;
 - signed division/remainder identities and zero divisors;
@@ -163,10 +174,14 @@ programs:
 - `abs` at every signed minimum and `sqrt` around consecutive perfect squares;
 - canonical Boolean results, short-circuit traces and invalid imported values;
 - exact nested initializer shape and source evaluation order;
+- record/callable case-insensitive name collision rejection;
 - `size`, `count` and `offset` on nested records and multidimensional arrays;
 - exact records of 3, 4, 6 and 8 bytes with no substrate padding;
 - ordinary overlapping aggregate copy and ordered non-overlapping volatile
   copy;
+- `clear` on zero-valid nested aggregates and `fill` on one- and
+  multidimensional scalar arrays, including ordered volatile writes and
+  rejected invalid targets;
 - scalar/aggregate references, arrays of references, `value(reference)`,
   rebind, near/far equality and checked narrowing;
 - ascending default-`+1` and explicit-step loops, descending loops, zero
@@ -177,6 +192,9 @@ programs:
 - rejected recursion cycles on non-recursive profiles and independent frames
   on recursive profiles;
 - module diamond import, collisions, cycle rejection and one-time emission;
+- external routines bound by address, substrate symbol and profile name,
+  including adapter metadata, conservative incomplete effects and missing
+  binding rejection;
 - preloaded and startup-copy placed initialization;
 - verbatim module and statement `asm` emission, conservative barriers,
   assembler-diagnostic mapping and rejection by an incompatible backend;
@@ -191,6 +209,7 @@ A source-generating backend emits:
 - generated-to-machine mapping where available;
 - typed symbol and exact-layout data;
 - selected helper/import list;
+- external bindings and generated ABI adapters;
 - read/write/call/fault summary;
 - startup-initialization effects;
 - inline-assembly ranges and conservative native effects;
