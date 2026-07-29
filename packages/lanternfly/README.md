@@ -1,8 +1,8 @@
 # Lanternfly
 
-Lanternfly is a small, typed, BASIC-like programming language.
-It is intended to replace handwritten assembly in the ordinary logic of a
-Glimmer program while remaining independent of Glimmer itself.
+Lanternfly is a typed, integer-based programming language in the structured
+BASIC family. It is intended to replace handwritten assembly in ordinary
+program logic while remaining independent of Glimmer.
 
 The package is a design workspace. It contains no compiler yet. The documents
 separate accepted direction from provisional proposals and open questions so
@@ -34,6 +34,7 @@ or resources. The Glimmer preprocessor continues to own those concepts.
 - [Documentation index](docs/index.md)
 - [Lanternfly language design book](docs/design-book/index.md)
 - [Language charter](docs/charter.md)
+- [Current surface language draft](docs/surface-language.md)
 - [Working language specification](docs/specification.md)
 - [Lowering, backend and runtime contract](docs/lowering-and-runtime.md)
 - [Research record and evidence](docs/research.md)
@@ -50,6 +51,7 @@ The first design work concentrates on:
 
 Formal arguments and scalar locals form a later implementation stage than
 structured storage, but their semantics are now included in the design.
-Floating point remains deferred. ZAX demonstrates that routine features can be
-added while aggregate locals remain aliases and the language remains
-heap-free.
+Floating point remains deferred. The current design explores an optional
+`float32` capability whose helper library would be linked only when used. ZAX
+demonstrates that routine features can be added while aggregate locals remain
+aliases and the language remains heap-free.

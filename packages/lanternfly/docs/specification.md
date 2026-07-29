@@ -4,6 +4,14 @@ Edition: design draft 0.2
 Implementation status: no compiler exists
 Normative status: working contract for a prototype
 
+> [!IMPORTANT]
+> The later [surface language draft](surface-language.md) supersedes this
+> document's keyword casing, declaration spelling, Boolean model, aggregate
+> assignment restrictions, control endings, routine syntax and module syntax.
+> The numeric, addressing, lowering and hosted-body sections remain the
+> detailed semantic baseline while the two documents are reconciled into the
+> next specification edition.
+
 This specification defines the source meaning selected by the design study.
 It distinguishes mandatory semantics from syntax or facilities that remain
 provisional. The design book gives rationale and examples; this file gives

@@ -55,22 +55,17 @@ The project lives at `packages/lanternfly` in the
 
 At the time of this handover:
 
-- `packages/lanternfly` is an uncommitted, untracked package in the local
-  Debug80 worktree;
-- the root `README.md` and `package-lock.json` contain uncommitted Lanternfly
-  registration changes;
-- the sibling `debug80-docs` repository contains the completed
-  Lanternfly-to-Rushlight game rename;
-- its current worktree contains the opening Lanternfly teaching book and its
-  site integration;
+- `packages/lanternfly` is tracked on `main` in the Debug80 monorepo;
+- the sibling `debug80-docs` repository contains the published Lanternfly
+  teaching book and the completed Lanternfly-to-Rushlight game rename;
 - the npm package manifest uses the unqualified name `lanternfly`, is version
   `0.0.0` and remains private;
 - no npm package has been published or reserved by this work;
 - all content under this package is design and research material, not an
   implemented compiler.
 
-Preserve these changes. Inspect `git status` in both repositories before
-editing, rebasing or performing any cleanup.
+Inspect `git status` in both repositories before editing, rebasing or
+performing any cleanup.
 
 ## Fast reading route
 
@@ -93,16 +88,18 @@ which rules must not be casually reopened.
 
 Continue with:
 
-5. [Design book](design-book/index.md), especially:
+5. [Surface language draft](surface-language.md) for the current lowercase
+   syntax, declarations, expressions, control, routines and modules.
+6. [Design book](design-book/index.md), especially:
    - [Language and boundaries](design-book/01-language-and-boundaries.md)
    - [Numbers, truth and expressions](design-book/02-numbers-and-expressions.md)
    - [Storage and addressing](design-book/03-storage-and-addressing.md)
    - [Control flow and routines](design-book/04-control-and-routines.md)
    - [Lowering and portability](design-book/06-lowering-and-portability.md)
    - [Hosting Lanternfly inside Glimmer](design-book/07-glimmer-hosting.md)
-6. [Working language specification](specification.md) for the current semantic
-   contract and grammar sketch.
-7. [Lowering, backend and runtime contract](lowering-and-runtime.md) for the
+7. [Working language specification](specification.md) for the earlier detailed
+   semantic contract and grammar sketch.
+8. [Lowering, backend and runtime contract](lowering-and-runtime.md) for the
    typed boundaries that a prototype should implement.
 
 ### Before changing a rule
@@ -123,15 +120,18 @@ The most useful entry points are:
 
 Use this order when two documents appear to differ:
 
-1. The [working specification](specification.md) states current language
-   meaning.
-2. The [lowering contract](lowering-and-runtime.md) states compiler, host,
+1. The [surface language draft](surface-language.md) states current source
+   spelling, declarations, expressions, control, routines and modules.
+2. The [working specification](specification.md) retains detailed numeric,
+   addressing, hosted-body and target semantics not replaced by the surface
+   draft.
+3. The [lowering contract](lowering-and-runtime.md) states compiler, host,
    backend and runtime responsibilities.
-3. The [decision chapter](design-book/10-stages-and-decisions.md) states whether
+4. The [decision chapter](design-book/10-stages-and-decisions.md) states whether
    a point is chosen, provisional, open or deferred.
-4. The rest of the [design book](design-book/index.md) explains rationale and
+5. The rest of the [design book](design-book/index.md) explains rationale and
    examples.
-5. The [research record](research.md) and [evidence](evidence/reading-ledger.md)
+6. The [research record](research.md) and [evidence](evidence/reading-ledger.md)
    explain where requirements came from. They are not a second specification.
 
 The documents use three recurring status labels:
@@ -151,8 +151,12 @@ promise that the feature will be added later.
 
 - BASIC-like, grammatical source without line numbers. Labels are reserved for
   cases where structured control does not provide a clear solution.
+- Canonical lowercase keywords and built-in types, lower camel case value and
+  routine names and Pascal case user-defined type names.
 - Static types and declarations before local use.
-- Structured `IF`, selection, counted loops and conditional loops.
+- `var` and `const` declarations with `as` type clauses.
+- Structured `if`, `select`, counted loops and conditional loops, currently
+  closed by bare `end`.
 - Source describes program meaning, not registers, flags or instruction forms.
 - No Glimmer-specific vocabulary.
 - Direct native/substrate code remains available through an explicit boundary.
@@ -161,26 +165,25 @@ promise that the feature will be added later.
 
 ### Integer and truth model
 
-The chosen scalar integer types are:
+The current scalar integer spellings are:
 
-| Type      | Width | Signedness |
-| --------- | ----: | ---------- |
-| `BYTE`    |     8 | unsigned   |
-| `SBYTE`   |     8 | signed     |
-| `INTEGER` |    16 | signed     |
-| `WORD`    |    16 | unsigned   |
-| `LONG`    |    32 | signed     |
-| `DWORD`   |    32 | unsigned   |
+| Type  | Width | Signedness |
+| ----- | ----: | ---------- |
+| `u8`  |     8 | unsigned   |
+| `i8`  |     8 | signed     |
+| `u16` |    16 | unsigned   |
+| `i16` |    16 | signed     |
+| `u32` |    32 | unsigned   |
+| `i32` |    32 | signed     |
 
 Important numeric rules:
 
-- byte-only addition, subtraction, division, remainder and comparison use a
-  range-based common type of at least 16 bits;
+- integer arithmetic has target-independent promotion and narrowing rules;
+- comparisons produce `boolean`;
+- conditions require `boolean`;
+- `and`, `or`, `xor` and `not` form one type-directed Boolean/bitwise family;
+- Boolean `and` and `or` short-circuit;
 - narrowing stores use defined low-bit truncation and normally warn;
-- comparisons produce canonical all-bits-one truth;
-- conditions accept any nonzero value;
-- `AND`, `OR`, `XOR` and `NOT` form one eager numeric truth/bitwise family,
-  closer to classic BASIC than C;
 - shifts, integer division, remainder and integer power are language
   operations;
 - integer square root is a visible standard operation rather than assumed CPU
@@ -202,13 +205,15 @@ Do not let C, BASIC or target-CPU arithmetic silently redefine these results.
 - Records and arrays have exact sizes with no semantic padding.
 - Runtime indexing must multiply by the true stride, including values such as
   six-byte Pacmo records.
+- Equal fixed arrays and records are assignable values and copy their complete
+  fixed-size contents.
 - Multidimensional paths are meaningful language constructs even if an early
   backend stages their address calculation.
 - Static aggregate storage is the default.
 - Scalar locals may own automatic storage.
-- Aggregate local names are aliases to existing storage, not local aggregate
-  copies.
-- Aggregate parameters are typed references.
+- Aggregate local names are explicit aliases to existing storage, not local
+  aggregate allocations.
+- Aggregate parameters alias existing typed storage.
 - References are typed and do not expose unrestricted pointer arithmetic.
 - Bounded views or an explicit reference-and-count convention are still being
   designed for reusable algorithms.
@@ -229,11 +234,13 @@ Address classes are semantic capabilities:
 - Structured control is primary; unrestricted `GOTO` is not enabled.
 - `EXIT BODY` must transfer to the host epilogue. It must never become a direct
   machine return that bypasses Glimmer updates.
-- Calls have one source form whether a backend lowers them inline, through a
-  helper, through an ABI adapter or to a host-language function.
-- User routines eventually support scalar value parameters, typed reference
-  parameters, scalar/reference results and scalar locals.
-- Aggregate automatic locals and implicit aggregate copies are excluded.
+- Every routine uses `sub`; an optional trailing result type replaces a
+  separate `function` declaration.
+- Parentheses identify invocation. There is no `call` keyword.
+- General expression statements are legal and discard their final values.
+- User routines eventually support scalar value parameters, aggregate aliases,
+  optional results and scalar locals.
+- Aggregate automatic locals remain excluded.
 - Recursive call cycles are initially rejected on bare-metal profiles unless
   a profile explicitly supports and costs them.
 - Evaluation order is part of the language contract, not left to a substrate.
@@ -296,9 +303,9 @@ Target fixtures: central Tetro and Pacmo storage patterns.
 
 ### K2: routines
 
-Add procedures, functions, value/reference parameters, results, definite
-assignment, bounded aggregate views or an equivalent convention and ABI
-adapters.
+Add parameterised subs, optional results, scalar-value and aggregate-alias
+parameters, definite assignment, bounded aggregate views or an equivalent
+convention and ABI adapters.
 
 Target fixtures: Snake helpers, Tetro engine routines and Pacmo routines.
 
@@ -333,12 +340,10 @@ run the same fixtures and compare storage plus service traces.
 
 Do not present these points as settled without an explicit decision:
 
-- case-insensitive identifiers with spelling preservation;
 - `REM` comment syntax;
-- module, import and export syntax;
 - read-only, output and in/out reference spelling;
 - whether public references must state `NEAR` or `FAR`;
-- one-line `IF` and `PASS`;
+- one-line `if` and an empty-block spelling;
 - source file extension;
 - default warning severity for narrowing;
 - native declaration syntax;
@@ -349,10 +354,14 @@ Do not present these points as settled without an explicit decision:
 - nominal fixed-width enums;
 - scalar output parameter syntax;
 - restricted labels;
-- optional `FLOAT32` semantics.
+- optional `float32` semantics.
 
-The [working specification](specification.md#24-remaining-specification-decisions)
-lists the points that block a frozen syntax edition. The
+The [surface language draft](surface-language.md#15-decisions-to-revisit)
+records the remaining source-level questions.
+
+The 0.2
+[working specification list](specification.md#24-remaining-specification-decisions)
+is historical where the surface draft has made a later choice. The
 [decision chapter](design-book/10-stages-and-decisions.md#bounded-open-questions)
 contains the broader experiments and evidence required.
 
@@ -383,6 +392,7 @@ fixtures to language facilities and implementation stages.
 - [Documentation index](index.md)
 - [Charter](charter.md)
 - [Design book](design-book/index.md)
+- [Surface language draft](surface-language.md)
 - [Specification](specification.md)
 - [Lowering contract](lowering-and-runtime.md)
 - [Research record](research.md)
@@ -505,8 +515,8 @@ original study rather than silently rewriting history.
    implementation evidence that justifies it.
 9. Update the specification, design rationale, decision status and affected
    evidence together. Avoid letting one document become a competing spec.
-10. Preserve unrelated worktree changes and never clean an untracked
-    Lanternfly package without explicit authority.
+10. Preserve unrelated worktree changes and never remove Lanternfly material
+    without explicit authority.
 
 ## Validation
 
@@ -523,9 +533,8 @@ git diff --check
 ```
 
 The repository link checker obtains Markdown files through `git ls-files`.
-Until the Lanternfly package is tracked, it will not validate these new files.
-Check new relative links directly or add the package to the index intentionally
-before relying on that command's count.
+Check a new untracked document directly or stage it before relying on that
+command's count.
 
 For the Glimmer book rename, run from the sibling `debug80-docs` checkout:
 
@@ -546,10 +555,12 @@ no stale Lanternfly game references and Rushlight's 16-character LCD title is
 
 Before implementation, confirm whether the next goal is:
 
-- freezing the nine syntax decisions that block a first edition;
+- reconciling the 0.2 specification and teaching book with the current surface
+  language draft;
 - designing the host manifest and type descriptors;
 - building the K0 parser and type checker;
 - translating a focused fixture set into canonical Lanternfly;
+- investigating an optional, link-on-use `float32` capability;
 - or creating the typed IR interpreter as a semantic oracle.
 
 If no narrower goal is supplied, the most coherent implementation start is
