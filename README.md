@@ -98,6 +98,20 @@ Start here:
 - [Glimmer Book](https://debug80.com/glimmer-book/)
 - [Glimmer examples and corpus](packages/glimmer/corpus/README.md)
 
+## Lanternfly language design
+
+[Lanternfly](packages/lanternfly/README.md) is a documentation-first design project for a
+small, typed, BASIC-like language. Its first use would be to replace ordinary
+assembly bodies in Glimmer while keeping Glimmer's reactive model and Lanternfly's
+imperative language independent.
+
+The design currently concentrates on fixed arrays and records, indexed storage,
+integer expressions, structured control, portable lowering, and near and far
+addresses. Its design book and working specification are grounded in the
+Glimmer books, current examples, generated AZM, the historical game corpus,
+AZM Books 1–3, the current TETRO/PACMO source, and the later ZAX addressing
+model.
+
 ## Choosing an Entry Point
 
 | You want to...                                | Begin with...                                                            |
@@ -106,6 +120,7 @@ Start here:
 | Assemble an existing `.asm` or `.z80` program | [AZM README](packages/azm/README.md)                                     |
 | Learn AZM syntax and register contracts       | [AZM books](https://debug80.com/azm-book/)                               |
 | Write a reactive Z80 game                     | [Glimmer Book](https://debug80.com/glimmer-book/)                        |
+| Follow the Lanternfly language design         | [Lanternfly design documents](packages/lanternfly/docs/index.md)         |
 | Run Z80 programs in automated tests           | [Debug80 runtime](packages/debug80-runtime/README.md)                    |
 | Understand or extend the implementation       | [Debug80 engineering manual](apps/debug80-vscode/docs/codebase/index.md) |
 
@@ -121,13 +136,14 @@ npm run check
 
 The main workspaces are:
 
-| Path                       | Package                                       |
-| -------------------------- | --------------------------------------------- |
-| `apps/debug80-vscode`      | Debug80 VS Code extension                     |
-| `packages/debug80-runtime` | UI-independent Z80 and machine runtime        |
-| `packages/azm`             | AZM assembler and compile API                 |
-| `packages/glimmer`         | Glimmer language, generator, and build API    |
-| `integration`              | Private end-to-end package integration checks |
+| Path                       | Package                                          |
+| -------------------------- | ------------------------------------------------ |
+| `apps/debug80-vscode`      | Debug80 VS Code extension                        |
+| `packages/debug80-runtime` | UI-independent Z80 and machine runtime           |
+| `packages/azm`             | AZM assembler and compile API                    |
+| `packages/glimmer`         | Glimmer language, generator, and build API       |
+| `packages/lanternfly`      | Lanternfly language design book and working spec |
+| `integration`              | Private end-to-end package integration checks    |
 
 Each published package has its own version. The monorepo allows changes across
 the toolchain to be built and tested together without publishing intermediate

@@ -1,0 +1,8 @@
+{
+  "name": "lanternfly",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Design workspace for Lanternfly, a small typed BASIC-like language for Glimmer and portable retro targets",
+  "license": "GPL-3.0-only",
+  "type": "module"
+}
