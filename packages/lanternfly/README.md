@@ -34,7 +34,6 @@ or resources. The Glimmer preprocessor continues to own those concepts.
 - [Documentation index](docs/index.md)
 - [Lanternfly language design book](docs/design-book/index.md)
 - [Language charter](docs/charter.md)
-- [Current surface language draft](docs/surface-language.md)
 - [Working language specification](docs/specification.md)
 - [Lowering, backend and runtime contract](docs/lowering-and-runtime.md)
 - [Research record and evidence](docs/research.md)

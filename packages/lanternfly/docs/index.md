@@ -12,14 +12,11 @@ working contract before parser or compiler implementation begins.
 3. [Language charter](charter.md) establishes the purpose and boundaries.
 4. [Language design book](design-book/index.md) develops the design from the
    game corpus and compares target lowerings.
-5. [Surface language draft](surface-language.md) records the current lowercase
-   syntax, unified routine model, expression statements and source modules.
-6. [Working language specification](specification.md) retains the detailed
-   numeric, storage, target and hosted-body contract from the earlier syntax
-   edition.
-7. [Lowering, backend and runtime contract](lowering-and-runtime.md) defines
+5. [Working language specification](specification.md) states the consolidated
+   0.3 syntax and semantics as the implementation contract.
+6. [Lowering, backend and runtime contract](lowering-and-runtime.md) defines
    the typed compiler/host/backend boundaries.
-8. [Research record](research.md) links decisions to the Glimmer, AZM and ZAX
+7. [Research record](research.md) links decisions to the Glimmer, AZM and ZAX
    evidence.
 
 The supporting evidence is kept under [evidence](evidence/reading-ledger.md).

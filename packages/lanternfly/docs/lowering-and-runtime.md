@@ -219,20 +219,20 @@ segments.
 Example:
 
 ```lanternfly
-Monsters[index].timer
+monsters[index].timer
 ```
 
 Descriptor:
 
 ```text
-base: static Monsters, near
+base: static monsters, near
 index:
   value: index
   stride: 6
   element: Monster
 field:
   offset: 3
-  type: BYTE
+  type: u8
 ```
 
 The backend computes in an address width that can represent the whole object

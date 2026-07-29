@@ -126,9 +126,18 @@ Glimmer-generated updates run afterward
 Lanternfly does not replace a store with a `SET_STATE` keyword or special accessor.
 This avoids coupling the language to the current Glimmer implementation.
 
-A later optimiser may use Lanternfly's typed read/write summary to remove redundant
-host work or specialize update tracking. That is an integration optimisation,
-not a new source rule.
+A later integration may use Lanternfly's typed write summary to derive
+Glimmer's update set instead of requiring an `updates` clause for every
+Lanternfly body. This is more than an optimisation: it removes a duplicated
+declaration whose accuracy the compiler can already prove.
+
+The first integration should keep explicit `updates` and compare them with the
+summary. That produces useful diagnostics while the host interface is still
+being tested. A later inferred mode can make the summary authoritative and
+print the derived update set in dependency reports, preserving the
+documentation value of the explicit clause without requiring the programmer to
+maintain it twice. Native AZM bodies continue to require explicit declarations
+because their effects cannot always be proved.
 
 ## Body summaries
 
@@ -155,8 +164,8 @@ than textual assembly scanning.
 
 Normal Lanternfly body completion falls through to the Glimmer epilogue.
 
-`EXIT BODY` jumps to that same epilogue. It does not emit `RET`. A Lanternfly
-`RETURN` is illegal at body top level because the body is not a function.
+`exit body` jumps to that same epilogue. It does not emit `RET`. A Lanternfly
+`return` is illegal at body top level because the body is not a sub.
 
 An imported no-return service ends control flow. Glimmer must accept that only
 where a non-returning body is valid and must not emit unreachable update work
@@ -272,8 +281,12 @@ The user should not have to reverse-map a generated label by hand.
 
 A safe rollout has four steps.
 
-1. Add explicit Lanternfly bodies while current AZM bodies remain unchanged.
-2. Translate small examples and compare emulator behaviour and generated maps.
+1. Add the empty-body and scalar read/write K0 tests before implementing the
+   full language. They expose manifest and epilogue mistakes while the
+   interface is still small.
+2. Add explicit Lanternfly bodies while current AZM bodies remain unchanged,
+   then translate small examples and compare emulator behaviour and generated
+   maps.
 3. Translate native game engines selectively once structured memory and
    routines exist.
 4. Decide later whether the default body dialect becomes Lanternfly.
@@ -288,7 +301,7 @@ The minimum tests are:
 
 - one empty Lanternfly body whose Glimmer updates still execute;
 - a body that reads and writes imported scalar state;
-- an early `EXIT BODY` that still executes updates;
+- an early `exit body` that still executes updates;
 - an imported call implemented as AZM op;
 - an imported call implemented as routine;
 - generated resource indexing;

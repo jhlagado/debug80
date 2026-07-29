@@ -1,1493 +1,1202 @@
 # Lanternfly working language specification
 
-Edition: design draft 0.2
+Edition: design draft 0.3
 Implementation status: no compiler exists
 Normative status: working contract for a prototype
 
-> [!IMPORTANT]
-> The later [surface language draft](surface-language.md) supersedes this
-> document's keyword casing, declaration spelling, Boolean model, aggregate
-> assignment restrictions, control endings, routine syntax and module syntax.
-> The numeric, addressing, lowering and hosted-body sections remain the
-> detailed semantic baseline while the two documents are reconciled into the
-> next specification edition.
+This specification consolidates the 0.2 semantic work and the later
+surface-language decisions into one implementation contract. Earlier syntax
+using `DIM`, `SUB`/`FUNCTION`, uppercase keywords, integer truth values or named
+block endings is historical.
 
-This specification defines the source meaning selected by the design study.
-It distinguishes mandatory semantics from syntax or facilities that remain
-provisional. The design book gives rationale and examples; this file gives
-rules.
+The design remains open to contraction. Recording a construct here means that
+its present semantics are understood well enough to test. It does not prevent a
+prototype or a corpus translation from showing that Lanternfly can do with
+less.
 
-## 1. Scope
+**Must** states a semantic requirement. **Should** states a strong toolchain
+recommendation. **Provisional** marks a rule that still requires implementation
+or corpus evidence. **Deferred** marks a facility outside the first
+implementation.
 
-Lanternfly is a statically typed imperative language with:
+## 1. Language scope
 
-- fixed-width integers;
-- exact static arrays and records;
-- typed references to existing storage;
-- BASIC-style expressions and structured control;
-- procedures and scalar/reference-returning functions;
-- target-independent standard services;
-- explicit native and host boundaries.
+Lanternfly is an integer-based general-purpose programming language in the
+structured BASIC family. It is intended to replace ordinary AZM program logic,
+not merely the assembly statements inside Glimmer bodies.
 
-Lanternfly does not define:
+The first useful implementation should support:
 
-- reactive scheduling;
-- display, input or sound statements;
-- a heap;
-- aggregate automatic allocation;
-- implicit aggregate copying;
-- exceptions;
-- line numbers;
-- CPU registers or instructions.
+- fixed-width signed and unsigned integers;
+- Boolean values and binary masks;
+- constants and statically allocated variables;
+- exact records and fixed arrays;
+- field access and runtime indexing;
+- assignment and general expressions;
+- structured decisions, selection and loops;
+- routines with optional parameters, local scalar storage and optional
+  results;
+- source modules with private declarations and explicit exports;
+- target-independent lowering through AZM, another assembler, C or a selected
+  BASIC dialect.
 
-Glimmer may host a Lanternfly body, but Lanternfly has no Glimmer-specific semantics.
+Lanternfly remains independent of Glimmer. It has no keyword for Glimmer state,
+pulses, effects, rendering, cards or scheduling. Glimmer may provide imported
+storage and routines to a Lanternfly body.
 
-## 2. Conformance language
+The language has no initial heap, garbage collector, exception system or
+dynamic collection model. Fixed storage and whole-program compilation keep its
+runtime suitable for small machines.
 
-**Must** states a semantic requirement.
+## 2. Source style and names
 
-**Should** states a strong toolchain recommendation whose absence does not
-change program results.
+### 2.1 Case
 
-**Provisional** marks source spelling or policy that may change before the
-first implemented edition.
-
-**Deferred** marks a facility not accepted in the first implemented edition.
-
-## 3. Source text
-
-### 3.1 Characters
-
-Source is Unicode text. Keywords and identifiers use the ASCII subset in the
-first implementation. Strings and comments may contain Unicode subject to
-file encoding.
-
-Source files must be UTF-8.
-
-### 3.2 Lines and separators
-
-A newline ends a statement except:
-
-- inside parentheses;
-- inside brackets;
-- after a comma in a continued argument or initializer list;
-- where the grammar requires more tokens to complete a declaration.
-
-Colon is not a general statement separator. It terminates a label declaration
-only.
-
-Semicolon statement separation is not supported.
-
-### 3.3 Comments
-
-Provisional: `REM` begins a comment outside a character or string literal:
+Keywords and built-in type names have canonical lowercase spellings. Ordinary
+program names use lower camel case. User-defined type names use Pascal case.
 
 ```lanternfly
-Score = Score + 10  REM path point
+const actorCount as u8 = 8
+var playerScore as u16 = 0
+
+record Actor
+    var currentFrame as u8
+    var active as boolean
+end
+
+sub updatePlayer()
+    playerScore = playerScore + 1
+end
 ```
 
-Comments have no semantic effect.
+The current direction is case-insensitive name resolution with spelling
+preservation:
 
-### 3.4 Case
+- `if`, `var` and every other keyword are written in lowercase;
+- `u8`, `i16`, `boolean` and other built-in types are lowercase;
+- variables, constants, fields, parameters and routines begin lowercase;
+- user-defined records and future named types begin uppercase;
+- tools display an identifier using the spelling at its declaration;
+- declarations that differ only in case conflict within the same namespace.
 
-Provisional: keywords and identifiers compare case-insensitively. Tools must
-preserve declaration spelling for source display. Two declarations differing
-only in case conflict.
+Capitalization is a reading convention rather than a semantic distinction.
+Types and values occupy separate name-resolution contexts, so this is valid in
+a case-insensitive language:
 
-String and character contents remain case-sensitive.
+```lanternfly
+var actor as Actor
+```
 
-### 3.5 Identifiers
+### 2.2 Identifiers
 
-An identifier begins with an ASCII letter or underscore and continues with
-ASCII letters, digits or underscores.
-
-Names beginning with two underscores are reserved to the implementation.
-
-Keywords may not be used as identifiers.
-
-Provisional grammar:
+The canonical style is lower camel case for values and Pascal case for
+user-defined types:
 
 ```text
-identifier ::= letter (letter | digit | "_")*
+player
+playerScore
+updatePlayer
+Actor
+GameState
 ```
 
-### 3.6 Labels
+Underscores may remain lexically valid for imported or generated names, but the
+formatter should not introduce snake case into ordinary Lanternfly source.
 
-A label is an identifier followed by `:`.
+### 2.3 Blocks
 
-Labels and `GOTO` are reserved but not enabled in the first implementation.
-Line numbers are never labels.
+Every structured block currently closes with the single keyword `end`:
 
-## 4. Lexical values
+```lanternfly
+if active then
+    updateActor()
+end
+```
 
-### 4.1 Integer literals
+The parser closes the innermost open block. Indentation is canonical and
+required from a formatter, but it is not currently proposed as semantic
+syntax.
+
+Bare `end` is provisional. It is being tried because it is no less structured
+than Pascal's `begin`/`end` or braces, while avoiding a repeated closing word
+such as `end if` or `end sub`.
+
+## 3. Built-in scalar types
+
+The first integer family uses explicit widths:
+
+| Type      | Meaning           |
+| --------- | ----------------- |
+| `u8`      | unsigned 8-bit    |
+| `i8`      | signed 8-bit      |
+| `u16`     | unsigned 16-bit   |
+| `i16`     | signed 16-bit     |
+| `u32`     | unsigned 32-bit   |
+| `i32`     | signed 32-bit     |
+| `boolean` | `true` or `false` |
+
+The integer spellings replace the earlier `BYTE`, `SBYTE`, `WORD`, `INTEGER`,
+`DWORD` and `LONG` surface names. Width and signedness remain invariant across
+targets.
+
+`true` and `false` are lowercase Boolean literals. They are reserved literals,
+not user-defined constants.
+
+Address types remain part of the design. Their final spelling is still open.
+The current readable candidates are:
+
+```lanternfly
+var screenBuffer as near address
+var bankedImage as far address
+```
+
+or the single built-in names `nearAddress` and `farAddress`. Their physical
+representations remain target-defined.
+
+### 3.1 Integer arithmetic
+
+Integer operations have target-independent widths and signedness. A backend
+must not inherit the promotion rules of C, JavaScript, BASIC or its target CPU.
+
+The first implementation uses these rules:
+
+- an exact literal adopts the other operand's type when its value fits;
+- arithmetic on two 8-bit operands of the same signedness calculates in the
+  corresponding 16-bit type;
+- arithmetic on matching 16-bit or matching 32-bit types retains that type;
+- mixed signed and unsigned runtime operands require an explicit conversion;
+- narrowing assignment keeps the low destination-width bits and should warn
+  unless the source explicitly converts or range analysis proves it fits;
+- overflow wraps in the selected result width.
+
+The mixed-signedness rule prevents an ordinary `i16` and `u16` expression from
+silently selecting 32-bit helper arithmetic:
+
+```lanternfly
+var signedValue as i16
+var unsignedValue as u16
+
+i32(signedValue) + i32(unsignedValue)
+```
+
+`signedValue + unsignedValue` is a compile error because neither signedness
+contains the complete range of the other. The exact conversion spelling shown
+above is provisional. The requirement for an explicit choice is normative.
+
+`i32` and `u32` remain language types. They enter a program only when declared
+or selected explicitly; smaller arithmetic does not promote into them merely
+to reconcile signedness. A backend emits wide helpers only when the program
+uses wide operations.
+
+Multiplication follows the selected operand type. Eight-bit multiplication
+produces the corresponding 16-bit type. A full-width 32-bit product from
+16-bit inputs requires explicitly widening the inputs before multiplication.
+
+Division truncates toward zero. `mod` satisfies:
 
 ```text
-decimal ::= digit+
-hex     ::= "$" hex-digit+
-binary  ::= "%" ("0" | "1")+
+left = (left / right) * right + (left mod right)
 ```
 
-Underscores between digits may be accepted for readability but are
-provisional.
+Division or remainder by constant zero is a compile error. A runtime zero
+divisor invokes the target arithmetic-fault service.
 
-An integer literal has an exact compile-time value until context assigns a
-type.
+## 4. Constants and variables
 
-### 4.2 Character literals
+### 4.1 Constants
 
-A character literal uses single quotes and denotes one byte:
+`const` declares a compile-time value:
 
 ```lanternfly
-'A'
+const screenWidth as u8 = 32
+const maximumLives as u8 = 5
+const visibleMask as u8 = %00000001
+const debuggingEnabled as boolean = false
 ```
 
-The first implementation accepts ASCII characters and the escapes `\0`, `\n`,
-`\r`, `\t`, `\'` and `\\`. The value type is `BYTE`.
+The first implementation should require the explicit type. Type inference can
+be reconsidered after constant expressions and overload resolution exist.
 
-Characters outside the target execution encoding require an explicit encoding
-service and are not single-byte literals.
+A scalar constant normally occupies no storage. Taking its address or placing
+it explicitly may force a stored representation.
 
-### 4.3 String literals
-
-String literal syntax is reserved:
+An aggregate `const` declares immutable static data:
 
 ```lanternfly
-"READY"
+const movementCost as u8[4] = [1, 1, 2, 255]
+
+const smallMap as u8[2, 4] = [
+    [0, 0, 1, 1],
+    [2, 2, 3, 3]
+]
 ```
 
-The first implementation may admit strings only in static byte-array
-initializers and target interfaces. A general runtime string type is deferred.
+Constant arrays and records have exact ordinary layout and may be indexed,
+passed by alias and exported. Assignment through any path to constant storage
+is a compile error. A target may place constant aggregate data in ROM.
 
-## 5. Names and declarations
+### 4.2 Variables
 
-### 5.1 Declaration before use
-
-A source unit is whole-unit resolved. A declaration may be referenced before
-its textual position if no initialization-order ambiguity results.
-
-Local variables and aliases are visible from their declaration to the end of
-their lexical block. They must be declared before use.
-
-### 5.2 Constants
+`var` declares storage:
 
 ```lanternfly
-CONST BOARD_SIZE = 8
-CONST FULL_ROW AS BYTE = $FF
+var score as u16 = 0
+var lives as u8 = 3
+var gameOver as boolean = false
 ```
 
-A constant expression is evaluated at compile time. An optional type constrains
-and records its value.
+`as` introduces the type. Lanternfly does not use `dim` or a colon for ordinary
+type declarations.
 
-An untyped constant retains an exact integer value until used.
+Module-level variables own static storage. Static storage without an explicit
+initializer begins with all bits zero.
 
-### 5.3 Static storage
+Local scalar variables use the same syntax inside a routine:
 
 ```lanternfly
-DIM Score AS WORD
-DIM Board[8] AS BYTE
-DIM Grid[24, 32] AS BYTE
+sub addScore(amount as u16)
+    var previousScore as u16 = playerScore
+    var nextScore as u16 = previousScore + amount
+
+    playerScore = nextScore
+end
 ```
 
-At module scope, `DIM` allocates static storage.
+The initial implementation may require local declarations before executable
+statements and give them routine scope. Whether an omitted local initializer
+means zero initialization or requires definite assignment remains open.
 
-The bracket expressions are positive compile-time element counts. A dimension
-of zero is not accepted in the first implementation.
+### 4.3 Placement
 
-### 5.4 Local storage
-
-Inside a routine or hosted body:
+`at` gives static storage or constant data a target address:
 
 ```lanternfly
-DIM candidate AS INTEGER
-DIM oldRotation AS BYTE = CurRotation
+var workspace as u8[256] at $8000
+const font as u8[512] = [...] at $4000
 ```
 
-Only scalar and reference locals may own automatic storage.
+The address is a compile-time expression. The target profile validates its
+range, address space, alignment requirements and overlap with other placed
+objects. A placed declaration has the same type and access rules as ordinary
+storage.
 
-Aggregate local storage declarations are invalid. Use `ALIAS` or a reference
-to static/imported storage.
+`at` is target-aware rather than CPU-specific. A banked target may accept a far
+address expression. An address-space profile may accept a qualified device
+address. Portable modules should normally leave placement to an entry program
+or target configuration.
 
-A local without an initializer is uninitialized. Reading it before a definite
-assignment is a compile error.
+### 4.4 Volatile storage
 
-### 5.5 Static initialization
-
-Static scalar initializers are constant expressions:
+`volatile` marks storage whose accesses are observable:
 
 ```lanternfly
-DIM Lives AS BYTE = 3
+volatile var keyboardStatus as u8 at $9000
+export volatile var videoControl as u8 at $9001
 ```
 
-Array and record initializers use parentheses:
+Every source read must perform a storage read and every source write must
+perform a storage write. The compiler must not cache, combine, remove or
+reorder volatile accesses across another observable operation.
+
+Volatility follows field and index paths into a volatile aggregate. A whole
+aggregate copy involving volatile storage performs the corresponding ordered
+element accesses rather than an unobservable bulk substitution.
+
+The first implementation permits `volatile` only on module-level storage and
+imported/native storage contracts. Volatile local variables have no useful
+hardware meaning and are rejected.
+
+## 5. Records
+
+`record` declares a Pascal-cased nominal type:
 
 ```lanternfly
-DIM Scores[5] AS WORD = (0, 100, 300, 500, 800)
-DIM Origin AS Point = (0, 0)
+record Point
+    var x as i16
+    var y as i16
+end
+
+record Actor
+    var position as Point
+    var velocity as Point
+    var image as u8
+    var active as boolean
+end
 ```
 
-Nested initializers follow shape. Too few or too many elements are errors.
-
-Uninitialized static storage has all bits zero.
-
-### 5.6 Imports
-
-The source form of external interface files remains provisional. Semantically,
-an import declares:
-
-- name;
-- type or callable signature;
-- mutability;
-- address class/space;
-- effects for a callable;
-- target capability;
-- substrate implementation binding.
-
-An imported name behaves like an ordinary compatible Lanternfly declaration.
-
-## 6. Types
-
-### 6.1 Integer types
-
-| Type      | Signed | Width |     Minimum |    Maximum |
-| --------- | ------ | ----: | ----------: | ---------: |
-| `BYTE`    | no     |     8 |           0 |        255 |
-| `SBYTE`   | yes    |     8 |        -128 |        127 |
-| `INTEGER` | yes    |    16 |      -32768 |      32767 |
-| `WORD`    | no     |    16 |           0 |      65535 |
-| `LONG`    | yes    |    32 | -2147483648 | 2147483647 |
-| `DWORD`   | no     |    32 |           0 | 4294967295 |
-
-All use two's-complement bit representations.
-
-Widths and ranges are invariant across targets.
-
-### 6.2 Default integer
-
-`INTEGER` is the default unconstrained runtime integer type.
-
-An exact literal or constant adopts the required context type if representable.
-Without context it uses `INTEGER` if representable, otherwise `LONG` if
-representable. Larger values require a `DWORD` context or explicit conversion.
-
-### 6.3 Floating point
-
-No floating type exists in the first edition.
-
-`FLOAT32` is reserved for a possible optional target capability. It will
-require a separate semantic specification before use.
-
-### 6.4 Records
+A record declaration allocates no storage. An instance declaration does:
 
 ```lanternfly
-TYPE Point
-    x AS INTEGER
-    y AS INTEGER
-END TYPE
+var player as Actor
 ```
 
-A record:
+Record layout is exact:
 
-- has at least one field;
-- lays fields out in declaration order;
-- requires unique field names;
-- may contain scalar, record, fixed array and reference fields;
-- may not contain itself by value;
-- may refer to another type through a reference.
+- fields appear in declaration order;
+- no padding is inserted implicitly;
+- nested records are stored inline;
+- every offset and total size is known during compilation;
+- a record cannot contain itself directly by value;
+- exporting a record exports its complete field layout.
 
-### 6.5 Arrays
+## 6. Fixed arrays
 
-An array has:
+Dimensions follow the element type:
 
-- fixed rank;
-- fixed positive count in each dimension;
-- one element type;
-- zero-based indexes;
-- row-major layout.
+```lanternfly
+const actorCount as u8 = 8
+const boardRows as u8 = 12
+const boardColumns as u8 = 20
 
-An array is an aggregate storage type, not a freely copied value.
+var actors as Actor[actorCount]
+var board as u8[boardRows, boardColumns]
+```
 
-### 6.6 Type identity
+An array:
 
-Integer built-ins use structural identity by named type.
+- has fixed positive compile-time dimensions;
+- uses zero-based indices;
+- stores elements contiguously;
+- is stored inline;
+- may contain scalars, records or other fixed arrays;
+- may appear as a record field.
 
-Record types are nominal: two separately declared records with identical fields
-are different types.
+Dimensions state element counts. `u8[8]` therefore has indices from `0` through
+`7`.
 
-Array types are structural over element type, rank and counts.
+Array initializers use square brackets:
 
-Reference compatibility includes referent type and address class.
+```lanternfly
+var movementCost as u8[4] = [1, 1, 2, 255]
 
-### 6.7 Exact size
+var smallMap as u8[2, 4] = [
+    [0, 0, 1, 1],
+    [2, 2, 3, 3]
+]
+```
+
+Multidimensional arrays use row-major layout. The rightmost dimension is
+contiguous:
+
+```lanternfly
+board[row, column]
+```
+
+For `u8[12, 20]`, the element number is `row * 20 + column`. A non-power-of-two
+element size uses its true size in the address calculation.
+
+Constant out-of-range indices are compile errors. Runtime bounds checks are the
+safe default, with proof-based removal by the compiler. The target mechanism
+for reporting a failed check remains part of the runtime contract.
+
+## 7. Field access, indexing and collection assignment
+
+A dot selects a field and brackets index an array:
+
+```lanternfly
+player.position.x
+actors[index].active
+animations[animationIndex].frames[frameIndex]
+board[row, column]
+```
+
+Paths may be read or assigned:
+
+```lanternfly
+player.position.x = player.position.x + 1
+actors[index].active = false
+```
+
+Records and fixed arrays are assignable values when their types match:
+
+```lanternfly
+actors[0] = actors[1]
+destination = source
+```
+
+Such an assignment copies the complete fixed-size value. A backend may inline
+the copy, emit a loop or call a runtime helper. Size and cost belong in
+generated listings or cost reports, not in a language restriction.
+
+Collection assignment is rejected when:
+
+- record types differ;
+- array element types, ranks or dimensions differ;
+- the destination is immutable;
+- a future type is explicitly non-copyable.
+
+## 8. Assignment and expressions
+
+### 8.1 Assignment
+
+`=` assigns when it forms an assignment statement:
+
+```lanternfly
+playerScore = playerScore + 10
+player.position.x = player.position.x + 1
+```
+
+Assignment is not an expression. Chained assignment and compound forms such as
+`+=` are absent from the initial language.
+
+The parser recognises assignment when a statement begins with a writable
+storage path followed by `=`. In every other expression context, `=` is
+equality:
 
 ```text
-SIZEOF(BYTE)    = 1
-SIZEOF(SBYTE)   = 1
-SIZEOF(INTEGER) = 2
-SIZEOF(WORD)    = 2
-SIZEOF(LONG)    = 4
-SIZEOF(DWORD)   = 4
-SIZEOF(T[n])    = n * SIZEOF(T)
-SIZEOF(T[a,b])  = a * b * SIZEOF(T)
-SIZEOF(record)  = sum of field sizes
+assignment-statement ::= writable-path "=" expression
 ```
 
-Field offset is the sum of preceding exact field sizes.
+### 8.2 Equality and comparison
 
-No implicit padding or alignment is present.
-
-The target byte order determines the in-memory order of multi-byte scalar
-fields. The initial Z80, 6502 and 8086 profiles are little-endian.
-
-### 6.8 `SIZEOF`, `OFFSET` and `COUNT`
-
-`SIZEOF(type-or-object)` is a compile-time byte count.
-
-`OFFSET(recordType, fieldPath)` is a compile-time byte offset.
-
-`COUNT(array)` gives the first dimension count.
-`COUNT(array, dimension)` gives a selected dimension using zero-based
-dimension numbering.
-
-All three are compile-time operations.
-
-### 6.9 Near and far address values
-
-Lanternfly also has opaque `NEAR ADDRESS` and `FAR ADDRESS` scalar types.
-
-An address identifies a location but carries no referent shape. A typed
-reference is an address capability plus a referent type and mutability.
-
-Address representation size is declared by the target:
-
-- initial Z80 `NEAR ADDRESS` is 16 bits;
-- TEC-1G `FAR ADDRESS` may be bank plus 16-bit offset;
-- 8086 `FAR ADDRESS` may be segment plus offset;
-- a flat target may use the same representation for both.
-
-Address values support compatible equality and inequality. They do not support
-ordinary integer arithmetic or dereference. Target interfaces may define
-bounded offset operations.
-
-Explicit `ADDRESS(reference)` may discard referent shape while retaining its
-address class. Constructing a typed reference from an unshaped address is a
-native/interface operation and is not an ordinary conversion.
-
-A record containing an address has a target-dependent exact size. Such a
-record is portable only among targets with a compatible address-layout
-contract.
-
-## 7. Aliases and references
-
-### 7.1 Static alias
+The same `=` token means equality inside an expression. Grammar context makes
+the two uses unambiguous:
 
 ```lanternfly
-ALIAS EnemyState = Monsters[0].state
+if playerScore = highScore then
+    showHighScore()
+end
 ```
 
-At module scope, the right side must denote a link-time constant storage path.
-The alias owns no storage and denotes the same object or subobject.
+The comparison family is:
 
-### 7.2 Local alias
+| Operator | Meaning               |
+| -------- | --------------------- |
+| `=`      | equal                 |
+| `<>`     | not equal             |
+| `<`      | less than             |
+| `<=`     | less than or equal    |
+| `>`      | greater than          |
+| `>=`     | greater than or equal |
+
+Comparison chaining is invalid. Write:
 
 ```lanternfly
-ALIAS plane = BoardPlanes[planeIndex]
+if minimum <= value and value <= maximum then
+    acceptValue()
+end
 ```
 
-A local alias:
+### 8.3 Arithmetic
 
-- evaluates and binds its initializer when the declaration executes;
-- accepts an aggregate storage path or a reference-valued expression; a
-  reference initializer binds the referent rather than the storage cell that
-  happened to contain the reference;
-- infers the selected aggregate or scalar storage type;
-- cannot be rebound;
-- permits mutation of mutable storage through the bound path;
-- does not copy or allocate aggregate storage;
-- has block lifetime.
-
-The backend may allocate an address-sized temporary to retain a dynamic
-binding.
-
-### 7.3 References
-
-Reference types are:
+The initial arithmetic operators are `+`, `-`, `*`, `/`, `^`, `mod`, `shl` and
+`shr`.
+`mod` has the same precedence as multiplication and division. Integer division
+truncates toward zero. The remainder satisfies:
 
 ```text
-REF TO T
-NEAR REF TO T
-FAR REF TO T
+left = (left / right) * right + (left mod right)
 ```
 
-`T` may be any storable non-void type. Provisional: an unqualified `REF TO T`
-is inferred from the object in local
-contexts. Public/static layout declarations must resolve it to a target-valid
-class.
+Power, square root and operations that the target CPU lacks may lower through
+runtime helpers. Helper use does not alter source semantics.
 
-Reference formation:
+`shl` shifts an integer left and fills low bits with zero. `shr` fills high
+bits with zero for unsigned values and with the sign bit for signed values. The
+left operand retains its type. A negative count is an arithmetic fault. A count
+greater than or equal to the width produces zero for `shl` and unsigned `shr`,
+and produces all sign bits for signed `shr`.
 
-```lanternfly
-REF objectOrSubobject
-```
+### 8.4 Boolean and binary operators
 
-A reference:
-
-- is a scalar value;
-- locates existing storage;
-- carries its referent type;
-- does not own storage;
-- is non-null in the first edition;
-- supports equality/inequality with a compatible reference;
-- supports field/index access through the referent;
-- does not support general integer arithmetic.
-
-The first edition permits reference formation from static/imported storage and
-from subobjects reached through an existing reference. Forming a storable or
-returnable reference to an owned scalar local is deferred; this avoids dangling
-references without adding escape analysis.
-
-### 7.4 Reference assignment
-
-Reference assignment changes the reference value:
-
-```lanternfly
-current = REF Monsters[index]
-```
-
-It does not copy the referent.
-
-### 7.5 Near and far
-
-A near reference is directly usable in the current memory context.
-
-A far reference can identify storage in another target-defined context.
-
-Near-to-far widening is permitted when the target can attach a known context.
-
-Far-to-near conversion is explicit and must be proven or checked by the target
-profile. It may not silently discard context bits.
-
-An ordinary object must fit wholly within one context. Bank-spanning arrays are
-deferred.
-
-### 7.6 Address spaces
-
-A target may declare a nominal opaque address space:
+The word operators are:
 
 ```text
-ADDRESS SPACE VRAM USING WORD
+not
+and
+xor
+or
 ```
 
-`VRAM ADDRESS` is distinct from integers and CPU references. It may support
-equality and bounded integer offset operations defined by the space. It may be
-passed to compatible services.
-
-It cannot be dereferenced through ordinary Lanternfly array/field syntax unless the
-target explicitly declares the address space as CPU-mapped.
-
-### 7.7 Null and optional references
-
-Nullable references and `NO REF` are deferred.
-
-Zero is not a reference literal.
-
-## 8. Values, storage paths and assignment
-
-### 8.1 Scalar value context
-
-A scalar name or scalar field/index path produces its stored value in an
-expression:
+With `boolean` operands they perform logical operations. With integer operands
+they perform bitwise operations:
 
 ```lanternfly
-score + Scores[index]
-monster.timer
+visible = active and onScreen
+maskedFlags = flags and visibleMask
 ```
 
-### 8.2 Aggregate path context
+`and` and `or` short-circuit for Boolean operands. Integer operations evaluate
+both operands and combine their bits. `xor` evaluates both operands.
 
-An array or record path denotes storage. It may be:
-
-- indexed or field-selected further;
-- bound by `ALIAS`;
-- used with `REF`;
-- passed to a compatible aggregate-reference parameter;
-- passed to an aggregate standard procedure.
-
-It is not implicitly copied into a value.
-
-### 8.3 Assignment
+A condition must have type `boolean`. Integers do not become conditions
+implicitly:
 
 ```lanternfly
-destination = expression
+if (flags and visibleMask) <> 0 then
+    drawActor()
+end
 ```
 
-The left side must be mutable scalar storage or a mutable reference variable.
+The present precedence direction, highest to lowest, is:
 
-`=` in statement position is assignment. `=` inside an expression is equality.
-Grammar context disambiguates them.
+1. calls, indexing, field access and parentheses;
+2. power and unary arithmetic;
+3. multiplication, division and `mod`;
+4. addition and subtraction;
+5. `shl` and `shr`;
+6. comparisons;
+7. `not`;
+8. `and`;
+9. `xor`;
+10. `or`.
 
-Aggregate assignment is not supported in the first edition.
+Power precedence remains subject to parser examples.
 
-### 8.4 Narrowing
+### 8.5 Expression statements
 
-Assigning an integer value to a narrower integer type keeps the low `N` bits,
-where `N` is destination width. Signed destinations interpret that bit pattern
-as two's complement.
+Any expression may stand as a statement. It is evaluated normally and its final
+value is discarded:
 
-Runtime narrowing is legal and should warn unless:
+```lanternfly
+updateClock()
+distance(playerX, enemyX)
+playerScore + 10
+readKey() + 1
+```
 
-- range analysis proves the value fits;
-- an explicit destination-type conversion states intent;
-- target configuration disables the warning.
+Discarding the final value does not discard routine effects, bounds checks,
+faults or short-circuit behaviour. An expression proven to have no observable
+effect may produce an unused-result warning, but it remains legal.
 
-A constant initializer must fit unless an explicit conversion requests
-truncation.
+The warning should be enabled by default for a pure arithmetic, comparison,
+field or index expression used as a statement:
 
-### 8.5 Mutability
+```lanternfly
+playerScore + 10
+```
 
-Constants and immutable imported resources cannot be assigned.
+Projects may promote the warning to an error. A routine invocation is not
+warned merely because its result is discarded.
 
-Mutability follows a reference or alias to the referenced object. A reference
-variable may be mutable while pointing to immutable storage; in that case the
-reference can change but storage cannot be written through it.
+## 9. Conditional control
 
-Read-only reference syntax is deferred; interfaces must still record
-mutability.
+### 9.1 `if`
 
-## 9. Expressions
+The basic form is:
 
-### 9.1 Initial expression terms
+```lanternfly
+if active then
+    updateActor()
+end
+```
 
-Expressions contain:
+Alternatives use `else`:
 
-- integer and character literals;
-- constants;
-- scalar storage reads;
-- field and index paths ending in a scalar;
-- parentheses;
-- explicit conversions;
-- unary and binary operators;
-- pure standard/imported function calls.
+```lanternfly
+if lives = 0 then
+    finishGame()
+else
+    continueGame()
+end
+```
 
-Side-effecting procedure calls are statements.
+Several branches use the two words `else if` and one closing `end`:
 
-### 9.2 Operators
+```lanternfly
+if direction = left then
+    playerX = playerX - 1
+else if direction = right then
+    playerX = playerX + 1
+else
+    holdPosition()
+end
+```
+
+One-line conditionals are deferred.
+
+### 9.2 `select`
+
+Selection uses `select`, `case`, optional `else` and `end`:
+
+```lanternfly
+select direction
+case left
+    playerX = playerX - 1
+case right
+    playerX = playerX + 1
+case up
+    playerY = playerY - 1
+case down
+    playerY = playerY + 1
+else
+    holdPosition()
+end
+```
+
+The selected expression is evaluated once. Cases contain compatible
+compile-time constants, never fall through and require no `break`.
+
+Several values may share a case:
+
+```lanternfly
+case grass, sand
+    movementCost = 1
+```
+
+Inclusive constant ranges are provisional:
+
+```lanternfly
+case 0 to 9
+    band = cold
+```
+
+Overlapping or duplicate cases are compile errors.
+
+## 10. Loops
+
+### 10.1 Conditional loop
+
+```lanternfly
+while enemiesRemaining > 0
+    updateEnemy()
+end
+```
+
+The condition must be Boolean and is tested before each iteration.
+
+### 10.2 Counted loop
+
+```lanternfly
+var index as u8
+
+for index = 0 to 7
+    actors[index].active = false
+end
+```
+
+The limit is inclusive. `step` supplies a compile-time integer step in the first
+implementation:
+
+```lanternfly
+for row = 7 to 0 step -1
+    moveRow()
+end
+```
+
+The start, limit and step are evaluated once. A zero step is an error. The loop
+variable is declared separately, avoiding hidden local storage.
+
+### 10.3 Indefinite loop
+
+```lanternfly
+loop
+    readInput()
+    updateGame()
+    drawFrame()
+end
+```
+
+`exit` leaves the innermost loop. `continue` begins its next iteration:
+
+```lanternfly
+for index = 0 to actorCount - 1
+    if not actors[index].active then
+        continue
+    end
+
+    updateActor(actors[index])
+end
+```
+
+`repeat`/`until` is deferred until translated programs demonstrate enough
+post-test loops to justify another form.
+
+## 11. Routines
+
+### 11.1 One routine construct
+
+`sub` declares every user routine. Lanternfly has no separate `function`
+keyword:
+
+```lanternfly
+sub updateClock()
+    frame = frame + 1
+end
+
+sub distance(left as i16, right as i16) as u16
+    if left >= right then
+        return left - right
+    end
+
+    return right - left
+end
+```
+
+An omitted result type means that the routine returns no usable value. A
+trailing `as Type` declares a result. The language does not initially expose a
+`void` type.
+
+Parentheses are present for every declaration and invocation, including an
+empty parameter list. This makes a routine invocation syntactically distinct
+from a name.
+
+### 11.2 Invocation
+
+Lanternfly has no `call` keyword:
+
+```lanternfly
+updateClock()
+separation = distance(playerX, enemyX)
+distance(playerX, enemyX)
+```
+
+The first and third invocations are expression statements. Any result is
+discarded. The second invocation contributes its result to an assignment.
+
+A result-free routine cannot appear where a value is required.
+
+### 11.3 Parameters
+
+Parameters use the same `name as Type` form:
+
+```lanternfly
+sub moveActor(actor as Actor, deltaX as i16, deltaY as i16)
+    actor.position.x = actor.position.x + deltaX
+    actor.position.y = actor.position.y + deltaY
+end
+```
+
+Scalar parameters pass values. Record and array parameters alias existing
+storage rather than copying it. Mutating `actor` in the example mutates the
+caller's record.
+
+Parameter-free routines remain the first implementation stage. Parameters,
+locals and the calling convention are later stages of the same source
+language, not separate language editions.
+
+### 11.4 Local variables and collection aliases
+
+Scalar locals use `var`:
+
+```lanternfly
+sub updateActor(actor as Actor)
+    var nextX as i16 = actor.position.x + actor.velocity.x
+    var nextY as i16 = actor.position.y + actor.velocity.y
+
+    actor.position.x = nextX
+    actor.position.y = nextY
+end
+```
+
+The ZAX-derived restriction remains useful:
+
+- scalar locals may own automatic storage;
+- record and array locals do not allocate aggregate stack objects;
+- a local collection name aliases storage allocated elsewhere.
+
+The alias spelling is provisional. The current candidate is:
+
+```lanternfly
+ref actor as Actor = actors[selectedActor]
+```
+
+This keeps `var actor as Actor` available for owning static storage and makes a
+local alias explicit.
+
+### 11.5 Return
+
+A result-free routine may return early with bare `return`:
+
+```lanternfly
+sub updateActor(actor as Actor)
+    if not actor.active then
+        return
+    end
+
+    actor.position.x = actor.position.x + 1
+end
+```
+
+Reaching `end` also returns from a result-free routine.
+
+A result-bearing routine uses `return expression`. Every reachable path must
+return a compatible value:
+
+```lanternfly
+sub clamp(value as i16, minimum as i16, maximum as i16) as i16
+    if value < minimum then
+        return minimum
+    else if value > maximum then
+        return maximum
+    else
+        return value
+    end
+end
+```
+
+Early return is allowed. `exit` remains loop control; `return` leaves the
+routine.
+
+### 11.6 Calling convention
+
+Source semantics give each invocation fresh scalar parameters and locals. A
+backend may place them in registers, stack slots or both. It may use static
+temporaries when whole-program analysis proves that overlapping invocations
+cannot occur.
+
+The target-specific convention does not change Lanternfly source semantics.
+
+## 12. Modules
+
+### 12.1 Import rather than include
+
+`import` loads another source unit:
+
+```lanternfly
+import "actors.lf"
+```
+
+An import:
+
+- resolves relative to the importing file and configured search paths;
+- loads a resolved source unit once per compilation;
+- retains that unit's private declarations;
+- exposes only explicit exports;
+- contributes code and data to the same whole program;
+- may be written repeatedly without duplicating the module.
+
+Lanternfly has no general textual `include` in the initial language. The
+compiler reads exported declarations directly, so it does not need C-style
+header substitution or include guards.
+
+### 12.2 Exports
+
+Top-level declarations are private by default. `export` makes a declaration
+visible to importing modules:
+
+```lanternfly
+export const actorCount as u8 = 8
+
+export record Actor
+    var x as i16
+    var y as i16
+    var active as boolean
+end
+
+export var actors as Actor[actorCount]
+
+export sub updateActors()
+    ...
+end
+```
+
+The word `export` is preferred to AZM's `@` marker because Lanternfly uses
+English declaration words rather than assembler punctuation.
+
+An exported signature or variable type cannot expose an unexported
+user-defined type.
+
+### 12.3 Visibility and collisions
+
+Exports initially enter the importing module without qualification, following
+AZM's source-module model:
+
+```lanternfly
+import "actors.lf"
+
+updateActors()
+actors[0].active = true
+```
+
+Two visible declarations with the same case-insensitive name cause a compile
+error. Module aliases are a possible extension:
+
+```lanternfly
+import "actors.lf" as actorsModule
+```
+
+Alias syntax remains deferred until real modules demonstrate the collision
+pressure.
+
+Imports are identified by canonical resolved file identity, so the same module
+reached through two dependency paths is emitted once. Import cycles are
+rejected initially with a path diagnostic. Imports do not re-export their own
+imports unless a later explicit re-export facility is added.
+
+### 12.4 Whole-program compilation
+
+Lanternfly does not require object files or a separate user-visible linker. A
+build:
+
+1. loads the entry source;
+2. resolves the import graph;
+3. collects private and exported declarations;
+4. type-checks the complete program;
+5. allocates static storage;
+6. lowers required routines, data and helpers;
+7. produces one target program and its debug artifacts.
+
+Address allocation and symbol resolution still occur inside the compiler.
+Avoiding a separate linker does not remove those compiler responsibilities.
+
+The source file extension remains open. `.lf` is illustrative only.
+
+## 13. Runtime helpers and floating point
+
+### 13.1 Runtime helpers
+
+Lanternfly source states operations rather than the target instructions used to
+perform them. A Z80 backend may select helpers for multiplication, division,
+power, square root, wide arithmetic, collection copying, bounds checks and far
+access. A C backend may express the same operations directly.
+
+Helpers are linked or emitted only when used. Their presence is visible in
+generated listings and cost reports.
+
+### 13.2 Target and native boundary
+
+A target profile declares its CPU or substrate, endianness, supported scalar
+operations, near and far address representations, address spaces, routine ABI,
+standard-service implementations and native dialect.
+
+Display, input, sound, random, firmware and device operations are typed imported
+routines rather than core statements. A missing implementation is a compile
+error.
+
+Native source is admitted only through an explicit target-qualified boundary.
+Its declared contract states visible reads, writes, calls, control flow and ABI
+effects. Generated source, original-source mapping and selected helper
+information are normal compiler artifacts.
+
+### 13.3 Hosted bodies
+
+A host such as Glimmer supplies a typed manifest of visible storage, constants,
+records, resources and routines. Lanternfly has no Glimmer-specific state or
+scheduling words.
+
+Normal body completion reaches the host epilogue. The host-only statement:
+
+```lanternfly
+exit body
+```
+
+also reaches that epilogue and must not lower to a machine return. A body-level
+`return` is invalid because the hosted body is not a sub.
+
+The compiler returns a summary of imported storage reads and writes, routines
+called, native effects, early exits, runtime helpers, static scratch, estimated
+cost and source mappings. A host may compare that summary with explicit
+dependency declarations or use it to derive change tracking.
+
+### 13.4 Floating point
+
+Floating point is deferred, but it is not ruled out. There are two possible
+models:
+
+1. A library-defined `Float32` record or opaque value with routines such as
+   `floatAdd`. This requires little core-language knowledge but produces
+   cumbersome arithmetic source.
+2. An optional compiler-recognised built-in `float32` type whose ordinary
+   operators lower to a selected target library. This adds a scalar type and
+   conversion rules to the language, while adding no runtime bytes to programs
+   that do not use it.
+
+The second model is more consistent with ordinary arithmetic, but it requires a
+separate specification for:
+
+- representation and IEEE-754 conformance;
+- rounding modes;
+- overflow, underflow, infinities and NaN;
+- integer conversions;
+- comparison behaviour;
+- constant folding;
+- target library ABI and code-size reporting.
+
+The size of a Z80 floating-point library is a deployment cost rather than a
+reason to distort integer semantics. A future `float32` capability should be
+opt-in, linked on demand and visible in the cost report. The integer-only
+language remains complete without it.
+
+## 14. Current word inventory
+
+The current core word candidates include:
 
 ```text
-unary:      +  -  NOT
-power:      ^
-multiply:   *  /  MOD
-additive:   +  -
-shift:      SHL  SHR
-compare:    =  <>  <  <=  >  >=
-binary:     AND  XOR  OR
+and
+as
+at
+case
+const
+continue
+else
+end
+exit
+export
+false
+for
+if
+import
+loop
+mod
+not
+or
+record
+return
+select
+shl
+shr
+step
+sub
+then
+to
+true
+var
+volatile
+while
+xor
 ```
 
-### 9.3 Precedence
+`ref`, `near`, `far` and `address` remain provisional type/reference words.
 
-Highest to lowest:
-
-1. calls, indexing, fields, parentheses;
-2. `^`;
-3. unary `+`, unary `-`, `NOT`;
-4. `*`, `/`, `MOD`;
-5. `+`, `-`;
-6. `SHL`, `SHR`;
-7. comparisons;
-8. `AND`;
-9. `XOR`;
-10. `OR`.
-
-Binary operators other than `^` are left-associative. Power is
-right-associative.
-
-Comparison chaining is invalid.
-
-### 9.4 Minimum arithmetic width
-
-Addition, subtraction, division, remainder and comparison never evaluate below
-16 bits. Their common type is selected from the original operand ranges under
-9.5.
-
-Multiplication and power use product-width rules. Binary mask operations and
-shifts use the rules in 9.10 and 9.12.
-
-### 9.5 Common type
-
-For the operations covered by 9.4:
-
-1. an exact literal adopts the other operand's type if representable;
-2. select the smallest supported integer type at least 16 bits wide whose
-   range contains both operand type ranges;
-3. if none exists, require an explicit conversion.
-
-Examples:
+The current design deliberately omits:
 
 ```text
-BYTE + BYTE       -> INTEGER
-INTEGER + BYTE    -> INTEGER
-WORD + BYTE       -> WORD
-INTEGER + WORD    -> LONG
-LONG + DWORD      -> explicit conversion required
+call
+dim
+function
+include
+procedure
 ```
 
-### 9.6 Addition and subtraction
+## 15. Provisional grammar sketch
 
-`+` and `-` use the common type and produce that type. The result wraps modulo
-the result width.
-
-### 9.7 Multiplication
-
-Multiplication selects a product type from effective operand types before
-narrow arithmetic promotion. An exact literal first adopts the other operand's
-type when representable:
+The grammar records block shape and assignment disambiguation. Expression
+precedence is defined in section 8.
 
 ```text
-both at most 8-bit and unsigned  -> WORD
-both at most 8-bit, either signed -> INTEGER
-either 16-bit, both unsigned      -> DWORD
-either 16-bit, either signed      -> LONG
-any 32-bit operand                -> compatible common 32-bit type
+program             ::= top-item*
+
+top-item            ::= import-decl
+                      | export-decl
+                      | declaration
+
+import-decl         ::= "import" string-literal
+export-decl         ::= "export" exportable-declaration
+
+declaration         ::= const-decl
+                      | var-decl
+                      | record-decl
+                      | sub-decl
+
+exportable-declaration
+                    ::= const-decl
+                      | var-decl
+                      | record-decl
+                      | sub-decl
+
+const-decl          ::= "const" value-name "as" type-expr
+                        "=" initializer placement?
+
+var-decl            ::= "volatile"? "var" value-name "as" type-expr
+                        ("=" initializer)? placement?
+
+placement           ::= "at" const-expr
+
+record-decl         ::= "record" type-name newline
+                        field-decl+
+                        "end"
+
+field-decl          ::= "var" value-name "as" type-expr newline
+
+sub-decl            ::= "sub" value-name "(" params? ")"
+                        ("as" type-expr)? newline
+                        routine-block
+                        "end"
+
+params              ::= param ("," param)*
+param               ::= value-name "as" type-expr
+
+routine-block       ::= local-decl* statement*
+local-decl          ::= var-decl | ref-decl
+ref-decl            ::= "ref" value-name "as" type-expr
+                        "=" storage-path
+
+statement           ::= assignment-statement
+                      | expression-statement
+                      | if-statement
+                      | select-statement
+                      | for-statement
+                      | while-statement
+                      | loop-statement
+                      | exit-statement
+                      | continue-statement
+                      | return-statement
+
+assignment-statement
+                    ::= writable-path "=" expression
+
+expression-statement
+                    ::= expression
+
+if-statement        ::= "if" expression "then" newline block
+                        ("else" "if" expression "then" newline block)*
+                        ("else" newline block)?
+                        "end"
+
+select-statement    ::= "select" expression newline
+                        case-clause+
+                        ("else" newline block)?
+                        "end"
+
+case-clause         ::= "case" case-item
+                        ("," case-item)* newline block
+case-item           ::= const-expr
+                      | const-expr "to" const-expr
+
+for-statement       ::= "for" value-name "=" expression
+                        "to" expression
+                        ("step" const-expr)? newline
+                        block
+                        "end"
+
+while-statement     ::= "while" expression newline block "end"
+loop-statement      ::= "loop" newline block "end"
+
+exit-statement      ::= "exit" ("body")?
+continue-statement  ::= "continue"
+return-statement    ::= "return" expression?
+
+block               ::= statement*
+
+type-expr           ::= scalar-type dimensions?
+                      | type-name dimensions?
+                      | reference-type
+                      | address-type
+
+dimensions          ::= "[" const-expr ("," const-expr)* "]"
+storage-path        ::= value-name path-segment*
+writable-path       ::= storage-path
+path-segment        ::= "." value-name
+                      | "[" expression ("," expression)* "]"
 ```
 
-If `LONG` and `DWORD` cannot find a common 32-bit type, an explicit conversion
-is required.
-
-The result wraps at its selected width.
-
-### 9.8 Division and remainder
-
-`/` performs integer division.
-
-Signed division truncates toward zero. `MOD` has the sign of the dividend.
-
-Unsigned division and remainder operate on unsigned magnitudes.
-
-Division by constant zero is a compile error. Runtime zero invokes the target's
-arithmetic fault hook.
-
-`minimumSigned / -1` wraps to `minimumSigned` in ordinary arithmetic.
-
-### 9.9 Power
-
-`base ^ exponent` is integer power. Exponent must be non-negative.
-
-The result type is selected as for multiplication of the base type and remains
-fixed during exponentiation. Repeated products wrap in that type.
-
-`x ^ 0` is 1 converted to the result type, including when `x` is zero.
-
-A constant negative exponent is a compile error. A runtime negative exponent
-invokes the target's arithmetic fault hook.
-
-### 9.10 Shifts
-
-The left operand retains its declared expression type; shifts do not apply
-narrow arithmetic promotion. The right operand is converted to a non-negative
-integer shift count.
-
-`SHL` shifts in zero.
-
-`SHR` shifts in zero for unsigned values and sign bits for signed values.
-
-For count greater than or equal to width:
-
-- `SHL` returns zero;
-- unsigned `SHR` returns zero;
-- signed `SHR` returns zero for non-negative input and all ones for negative
-  input.
-
-Negative counts are compile/runtime arithmetic faults as applicable.
-
-### 9.11 Comparison
-
-Operands convert to their common type. Comparison uses that type's signedness.
-
-The result type is the common comparison type. False is zero. True has every
-bit in the result type set.
-
-Because narrow integers promote, `BYTE < BYTE` returns an `INTEGER` truth
-value, 0 or -1.
-
-Reference equality is permitted only between compatible references and yields
-`INTEGER` truth.
-
-Ordering comparisons on references or opaque addresses are invalid unless an
-address-space contract explicitly provides ordering.
-
-### 9.12 Binary and Boolean operations
-
-`AND`, `OR`, `XOR` and `NOT` operate bitwise on the full operand width.
-
-They do not apply arithmetic's narrow promotion. Binary operands must have the
-same type after contextual typing of literals. Mixed-width or mixed-signedness
-operands require an explicit conversion. `NOT` retains its operand type.
-
-They also combine canonical truth values. No separate short-circuit operator
-family exists.
-
-Both operands of `AND`, `OR` and `XOR` are evaluated. Initial expressions are
-pure, so evaluation has no side-effect ordering.
-
-### 9.13 Numeric conditions
-
-Zero is false. Any nonzero integer is true.
-
-No Boolean type is required.
-
-### 9.14 Conversions
-
-Explicit integer conversion uses the target type as a function:
+When a statement begins with a storage path followed immediately by `=`, the
+parser selects `assignment-statement`. Otherwise it parses an expression
+statement, where `=` can occur only as equality inside the expression.
+Parentheses make a discarded equality test explicit:
 
 ```lanternfly
-BYTE(value)
-LONG(value)
+(left = right)
 ```
 
-Widening preserves value.
-
-Narrowing keeps low bits.
-
-Same-width signed/unsigned conversion preserves bits and changes
-interpretation.
-
-Reference/address conversions use separately specified reference forms and
-cannot use integer conversion syntax.
-
-### 9.15 Evaluation order
-
-Call arguments are evaluated left to right.
-
-No other initial expression form contains side effects. A later edition that
-admits side-effecting expression calls must retain this order.
-
-## 10. Indexed and field access
-
-### 10.1 Index type
-
-An index must be an integer. It is converted to an address-calculation type
-wide enough for:
-
-```text
-index * exactStride + base + fieldOffset
-```
-
-The calculation must not truncate to the index storage width.
-
-### 10.2 Bounds
-
-Valid indexes are 0 through count minus one in each dimension.
-
-Constant out-of-range indexes are compile errors.
-
-The checked execution mode invokes the target's bounds fault for a dynamic
-out-of-range index. A target may also offer an explicitly selected unchecked
-release mode. In that mode the program must keep every dynamic index in range;
-an out-of-range execution has no portable result.
-
-The compiler may remove a check whenever range analysis proves the index valid.
-
-### 10.3 Multiple dimensions
-
-Canonical source:
-
-```lanternfly
-Grid[row, column]
-```
-
-Provisional equivalent:
-
-```lanternfly
-Grid[row][column]
-```
-
-Both denote row-major access and have identical type.
-
-The language permits more than one runtime-varying index. A backend may stage
-the address calculation. An early backend that lacks support must report a
-capability diagnostic and may suggest a row alias.
-
-### 10.4 Reference traversal
-
-Field and index syntax transparently traverses a typed reference:
-
-```lanternfly
-monster.timer
-plane[row]
-```
-
-No separate dereference operator is used.
-
-## 11. Statements and blocks
-
-### 11.1 Block scope
-
-`IF`, loop, selection and routine bodies introduce lexical blocks.
-
-Local declarations are permitted at the start of a block before executable
-statements. Provisional: declarations after an executable statement in the
-same block are invalid.
-
-### 11.2 Empty blocks
-
-Empty hosted bodies and routines are legal.
-
-Provisional: an empty branch within `IF` or `CASE` must contain `PASS` to make
-intent explicit.
-
-### 11.3 Conditional
-
-```lanternfly
-IF condition THEN
-    statements
-ELSEIF condition THEN
-    statements
-ELSE
-    statements
-END IF
-```
-
-Conditions are evaluated in order. At most one branch executes.
-
-The one-line form:
-
-```lanternfly
-IF condition THEN simpleStatement
-```
-
-contains no `ELSE` and ends at newline.
-
-### 11.4 Selection
-
-```lanternfly
-SELECT CASE expression
-CASE constantListOrRange
-    statements
-CASE ELSE
-    statements
-END SELECT
-```
-
-The selector evaluates once.
-
-Case values are compatible compile-time constants. Cases may list constants
-and constant inclusive ranges. Cases must not overlap.
-
-There is no fall-through. `CASE ELSE` is optional and last.
-
-### 11.5 Counted loop
-
-```lanternfly
-FOR variable = start TO limit
-    statements
-NEXT variable
-```
-
-or:
-
-```lanternfly
-FOR variable = start TO limit STEP step
-    statements
-NEXT variable
-```
-
-`start`, `limit`, then `step` evaluate once.
-
-Step defaults to 1 and may not be zero.
-
-Positive step continues while variable is less than or equal to limit.
-Negative step continues while variable is greater than or equal to limit.
-
-Termination uses the mathematical next control value before narrowing, so a
-descending unsigned loop terminates correctly at zero.
-
-The loop control variable may be predeclared or provisionally declared in the
-header:
-
-```lanternfly
-FOR row AS INTEGER = 0 TO 7
-```
-
-The body must not assign the control variable. `NEXT` must name the same
-variable.
-
-### 11.6 Pre-test loop
-
-```lanternfly
-WHILE condition
-    statements
-END WHILE
-```
-
-The condition is tested before each iteration.
-
-### 11.7 Post-test loop
-
-```lanternfly
-DO
-    statements
-LOOP WHILE condition
-```
-
-or:
-
-```lanternfly
-DO
-    statements
-LOOP UNTIL condition
-```
-
-The body executes at least once.
-
-### 11.8 Loop exit and continuation
-
-```text
-EXIT FOR
-CONTINUE FOR
-EXIT WHILE
-CONTINUE WHILE
-EXIT DO
-CONTINUE DO
-```
-
-The named loop kind must match an enclosing loop. The nearest matching loop is
-affected.
-
-### 11.9 Procedure call
-
-```lanternfly
-ProcedureName(argumentList)
-```
-
-A procedure call is a statement.
-
-### 11.10 Hosted body exit
-
-```lanternfly
-EXIT BODY
-```
-
-This transfers to the host-provided body epilogue. It must not bypass host
-updates or cleanup.
-
-It is valid only in a hosted body.
-
-### 11.11 `PASS`
-
-Provisional:
-
-```lanternfly
-PASS
-```
-
-has no effect and documents an intentionally empty branch.
-
-## 12. Routines
-
-### 12.1 Procedure
-
-```lanternfly
-SUB name(parameters)
-    declarations
-    statements
-END SUB
-```
-
-A procedure has no result value.
-
-### 12.2 Function
-
-```lanternfly
-FUNCTION name(parameters) AS resultType
-    declarations
-    statements
-    RETURN expression
-END FUNCTION
-```
-
-The result type must be scalar or a reference in the first edition.
-
-### 12.3 Parameters
-
-```lanternfly
-name AS scalarType
-name AS REF TO T
-name AS NEAR REF TO T
-name AS FAR REF TO T
-```
-
-Non-reference scalar parameters pass values. A reference parameter passes
-access to existing scalar or aggregate storage.
-
-Aggregate parameters must be references and pass access to existing storage.
-
-Reference mutability is determined by the imported/type contract. Read-only
-surface syntax remains provisional.
-
-### 12.4 Results
-
-`RETURN expression` converts expression to the declared result type and exits
-through the routine epilogue.
-
-Every reachable function path must return a value.
-
-A procedure uses:
-
-```lanternfly
-EXIT SUB
-```
-
-or falls through `END SUB`.
-
-A function may use `RETURN` early. `EXIT FUNCTION` without a value is invalid.
-
-### 12.5 Local lifetime
-
-Scalar/reference locals exist separately for each active call under a
-recursive/reentrant profile.
-
-A non-recursive target profile may use static allocation if observable
-semantics remain the same and reentrant calls are rejected.
-
-Aggregate aliases bind existing storage and never allocate aggregate call-local
-memory.
-
-### 12.6 Recursion
-
-The language model does not inherently forbid recursion.
-
-Initial bare-metal profiles may declare `recursion: unsupported`. The compiler
-must reject direct and indirect call cycles for such targets.
-
-### 12.7 Call ordering
-
-Arguments evaluate left to right, are converted/staged, then the call occurs.
-
-Calls and visible stores execute in source order.
-
-### 12.8 Overloading and advanced calls
-
-Overloading, defaults, named arguments, variable arguments, closures, nested
-routines, aggregate returns and indirect calls are deferred.
-
-## 13. Standard operations
-
-### 13.1 Required scalar functions
-
-The first standard library specifies:
-
-```text
-ABS
-MIN
-MAX
-CLAMP
-SGN
-ISQRT
-POW
-BITCOUNT
-```
-
-They are pure.
-
-`ISQRT` accepts non-negative integer input and returns floor square root.
-
-A constant negative `ISQRT` input is a compile error. A runtime negative input
-invokes the target's arithmetic fault hook.
-
-`POW` is equivalent to `^`.
-
-`ABS` widens where the signed minimum cannot fit:
-
-```text
-ABS(SBYTE)   -> INTEGER
-ABS(INTEGER) -> LONG
-ABS(LONG)    -> DWORD
-```
-
-Unsigned `ABS` is identity.
-
-### 13.2 Required aggregate procedures
-
-```text
-FILL(target, scalar)
-CLEAR(target)
-COPY(target, source)
-MOVE(target, source)
-```
-
-`FILL` requires an array target and compatible scalar element.
-
-`CLEAR` writes the all-zero representation and is valid only when all fields
-permit it.
-
-`COPY` requires identical exact size and no overlap.
-
-`MOVE` requires identical exact size and permits overlap.
-
-### 13.3 Runtime implementation
-
-A backend may implement a core or standard operation as:
-
-- native instruction;
-- generated inline sequence;
-- runtime helper;
-- substrate built-in.
-
-This choice does not change source semantics.
-
-Only used helpers should be linked.
-
-## 14. Native and platform boundary
-
-### 14.1 Platform services
-
-Input, display, sound, random, firmware and device functions are imports with
-typed signatures. They are not core statements.
-
-### 14.2 Native implementation
-
-A native import binds a Lanternfly signature to a target/substrate symbol and ABI.
-
-The interface must describe source-visible effects and whether control
-returns. Substrate-specific contracts may additionally describe registers,
-flags, stack and mapping state.
-
-### 14.3 Inline native block
-
-Inline native source is explicitly target-qualified.
-
-Unless annotated otherwise it:
-
-- may read/write all visible mutable storage;
-- may perform I/O;
-- is a scheduling/optimisation barrier;
-- must fall through.
-
-A native block in a hosted body may not bypass the host epilogue.
-
-### 14.4 Missing implementation
-
-Compiling a native import/block for a target with no matching implementation is
-an error.
-
-## 15. Hosted bodies
-
-### 15.1 Host manifest
-
-A host supplies a typed manifest of visible storage, resources, constants,
-services and target capability.
-
-Lanternfly does not infer this contract from substrate text.
-
-### 15.2 No host-specific words
-
-Imported host state is ordinary storage. Imported host services are ordinary
-calls. Host scheduling and change tracking occur outside Lanternfly.
-
-### 15.3 Completion
-
-Normal fall-through and `EXIT BODY` both reach the host epilogue.
-
-A body-level machine return is invalid.
-
-### 15.4 Summary
-
-The Lanternfly compiler returns:
-
-- storage reads/writes;
-- calls and effects;
-- helpers/imports;
-- early/no-return control;
-- generated fragment;
-- explicit source mapping;
-- optional cost information.
-
-## 16. Modules and source units
-
-The concrete file/module syntax is provisional.
-
-The semantic requirements are:
-
-- stable source-unit identity;
-- private declarations by default;
-- explicit exports;
-- typed imports;
-- no textual name capture;
-- deterministic initialization order;
-- target-independent core modules;
-- target-specific implementation alternatives.
-
-A Lanternfly source file extension is not selected.
-
-## 17. Target contract
-
-A target profile declares:
-
-- CPU/substrate identity;
-- platform identity;
-- endianness;
-- scalar support;
-- maximum object and program sizes;
-- near/far representation;
-- address spaces;
-- default routine ABI;
-- recursion/reentrancy support;
-- standard/runtime implementations;
-- native dialect;
-- debug and cost capability.
-
-The compiler must reject an unsupported facility rather than silently alter
-its meaning.
-
-## 18. Diagnostics
-
-### 18.1 Required compile-time errors
-
-At minimum:
-
-- unknown or duplicate name;
-- incompatible assignment;
-- invalid constant range;
-- uninitialized local read;
-- aggregate local allocation;
-- implicit aggregate copy;
-- invalid reference conversion;
-- constant array bounds violation;
-- invalid index type;
-- zero constant divisor or loop step;
-- negative constant shift;
-- negative constant power exponent or `ISQRT` input;
-- missing function return;
-- overlapping selection cases;
-- exit/continue without matching construct;
-- return from hosted body;
-- unsupported target capability;
-- missing native implementation.
-
-### 18.2 Warnings
-
-Should include:
-
-- runtime narrowing not proven safe;
-- costly helper inside a known hot loop;
-- large static object;
-- near/far conversion with mapping cost;
-- native block with conservative effects;
-- unused declaration;
-- unreachable code.
-
-### 18.3 Source coordinates
-
-Diagnostics must report original source file, line and column. Host-integrated
-diagnostics also identify the containing body.
-
-Backend/substrate diagnostics must retain generated-source context and map back
-to the responsible Lanternfly node.
-
-## 19. Debug and generated artifacts
-
-A source-generating backend should emit:
-
-- canonical generated substrate source;
-- original-to-generated provenance;
-- generated-to-machine map where applicable;
-- typed symbol/layout data;
-- helper/import list;
-- optional cost report.
-
-A single Lanternfly statement may map to multiple generated and machine ranges.
-Mappings must represent that directly.
-
-## 20. Cost visibility
-
-Cost is not semantic.
-
-A backend may classify or estimate:
-
-- code bytes;
-- cycles/range;
-- helper calls;
-- temporary storage;
-- bank/segment switches;
-- bounds-check overhead.
-
-Reports must name target assumptions and confidence. Unknown is permitted.
-
-## 21. Provisional grammar sketch
-
-This grammar is sufficient to guide parser experiments. It does not override
-the semantic sections.
-
-```text
-program          ::= top-item*
-
-top-item         ::= const-decl
-                   | type-decl
-                   | dim-decl
-                   | alias-decl
-                   | sub-decl
-                   | function-decl
-                   | import-decl
-                   | native-decl
-
-const-decl       ::= "CONST" identifier ("AS" type-expr)? "=" const-expr
-
-type-decl        ::= "TYPE" identifier newline
-                     field-decl+
-                     "END" "TYPE"
-
-field-decl       ::= identifier "AS" type-expr newline
-
-dim-decl         ::= "DIM" identifier dimensions? "AS" type-expr
-                     ("=" initializer)?
-
-dimensions       ::= "[" const-expr ("," const-expr)* "]"
-
-alias-decl       ::= "ALIAS" identifier "=" storage-path
-
-type-expr        ::= type-primary dimensions?
-type-primary     ::= integer-type
-                   | identifier
-                   | reference-type
-                   | address-type
-                   | address-space-type
-
-integer-type     ::= "BYTE" | "SBYTE" | "INTEGER"
-                   | "WORD" | "LONG" | "DWORD"
-
-reference-type   ::= ("NEAR" | "FAR")? "REF" "TO" type-expr
-address-type     ::= ("NEAR" | "FAR") "ADDRESS"
-
-sub-decl         ::= "SUB" identifier "(" params? ")" newline
-                     block
-                     "END" "SUB"
-
-function-decl    ::= "FUNCTION" identifier "(" params? ")"
-                     "AS" scalar-or-reference-type newline
-                     block
-                     "END" "FUNCTION"
-
-params           ::= param ("," param)*
-param            ::= identifier "AS" type-expr
-
-block            ::= local-decl* statement*
-local-decl       ::= dim-decl | alias-decl
-
-statement        ::= assignment
-                   | call-statement
-                   | if-statement
-                   | select-statement
-                   | for-statement
-                   | while-statement
-                   | do-statement
-                   | exit-statement
-                   | continue-statement
-                   | return-statement
-                   | native-block
-                   | "PASS"
-
-assignment       ::= writable-path "=" expression
-call-statement   ::= identifier "(" args? ")"
-
-if-statement     ::= "IF" expression "THEN" newline block
-                     ("ELSEIF" expression "THEN" newline block)*
-                     ("ELSE" newline block)?
-                     "END" "IF"
-
-select-statement ::= "SELECT" "CASE" expression newline
-                     case-clause+
-                     ("CASE" "ELSE" newline block)?
-                     "END" "SELECT"
-
-for-statement    ::= "FOR" identifier ("AS" integer-type)?
-                     "=" expression "TO" expression
-                     ("STEP" expression)? newline
-                     block
-                     "NEXT" identifier
-
-while-statement  ::= "WHILE" expression newline block "END" "WHILE"
-
-do-statement     ::= "DO" newline block
-                     "LOOP" ("WHILE" | "UNTIL") expression
-
-exit-statement   ::= "EXIT" ("FOR" | "WHILE" | "DO" | "SUB" | "BODY")
-continue-statement ::= "CONTINUE" ("FOR" | "WHILE" | "DO")
-return-statement ::= "RETURN" expression
-
-expression       ::= precedence-defined expression grammar
-storage-path     ::= identifier path-segment*
-path-segment     ::= "." identifier | "[" expression ("," expression)* "]"
-writable-path    ::= storage-path
-
-args             ::= expression-or-aggregate-path
-                     ("," expression-or-aggregate-path)*
-```
-
-Storage declarations use the BASIC-like name-side count:
-
-```lanternfly
-DIM planeBytes[8] AS BYTE
-```
-
-The equivalent shape appears on the type inside a reference:
-
-```lanternfly
-DIM plane AS REF TO BYTE[8]
-```
-
-`BYTE[8]` is therefore a valid `type-expr`; the name-side spelling remains
-canonical for owned `DIM` storage.
-
-## 22. Minimum conformance programs
-
-A conforming implementation must eventually pass:
-
-1. Counter: byte state, arithmetic, comparison, narrowing.
-2. Trail: runtime array update and record-array field store.
-3. Skyfall numeric case: signed intermediate with byte wrap on assignment.
-4. Rushlight numeric case: widened subtraction before `ABS`.
-5. Snake: fixed ring, masks, selection, search loop.
-6. Tetro collision: signed spawn y, reference indexing, early return.
-7. Tetro collapse: array of references and local aggregate alias.
-8. Pacmo: exact six-byte record and non-power-of-two runtime stride.
-9. TMS9918: opaque device address passed to a service.
-10. Hosted exit: `EXIT BODY` reaches Glimmer update epilogue.
-
-The same semantic vectors must run across each claimed backend.
-
-## 23. Deferred features
-
-Not part of the first implemented edition:
-
-- float;
-- dynamic allocation;
-- aggregate automatic locals;
-- aggregate return/copy syntax;
-- nullable references;
-- bit fields;
-- bank-spanning arrays;
-- recursion on profiles that do not opt in;
-- indirect calls;
-- unrestricted `GOTO`;
-- exception handling;
-- generics;
-- operator overloading;
-- rich dynamic strings.
-
-## 24. Remaining specification decisions
-
-Only these points block a frozen syntax edition:
-
-1. case sensitivity;
-2. comment spelling;
-3. import/module/export syntax;
-4. read-only reference spelling;
-5. one-line `IF` inclusion;
-6. `PASS` inclusion;
-7. identifier/file extension;
-8. default warning severity for narrowing;
-9. native declaration syntax.
-
-Numeric meaning, exact layout, reference classes, aggregate allocation,
-structured control, body exit and the core/library boundary are no longer open
-at the design level.
+## 16. Decisions to revisit
+
+The following questions remain open or provisional:
+
+- whether bare `end` stays clearer than named endings in long routines;
+- zero initialization versus definite assignment for scalar locals;
+- the spelling of local collection aliases and typed references;
+- the final near/far address type syntax;
+- case-insensitive identifier resolution after parser experiments;
+- checked-array policy for release builds;
+- exact power and unary precedence;
+- whether `at` is sufficient or grows into a section-placement model;
+- volatile imported-reference spelling;
+- whether selection ranges belong in the first parser;
+- module aliases, re-exports and the source file extension;
+- comments;
+- optional `float32` semantics and its target capability contract.
+
+The first prototype should translate representative Glimmer bodies, Tetro and
+Pacmo routines and AZM Book 3 algorithms before these choices are frozen.

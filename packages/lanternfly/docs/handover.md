@@ -88,8 +88,8 @@ which rules must not be casually reopened.
 
 Continue with:
 
-5. [Surface language draft](surface-language.md) for the current lowercase
-   syntax, declarations, expressions, control, routines and modules.
+5. [Working language specification](specification.md) for the consolidated
+   lowercase syntax and semantic contract.
 6. [Design book](design-book/index.md), especially:
    - [Language and boundaries](design-book/01-language-and-boundaries.md)
    - [Numbers, truth and expressions](design-book/02-numbers-and-expressions.md)
@@ -97,9 +97,7 @@ Continue with:
    - [Control flow and routines](design-book/04-control-and-routines.md)
    - [Lowering and portability](design-book/06-lowering-and-portability.md)
    - [Hosting Lanternfly inside Glimmer](design-book/07-glimmer-hosting.md)
-7. [Working language specification](specification.md) for the earlier detailed
-   semantic contract and grammar sketch.
-8. [Lowering, backend and runtime contract](lowering-and-runtime.md) for the
+7. [Lowering, backend and runtime contract](lowering-and-runtime.md) for the
    typed boundaries that a prototype should implement.
 
 ### Before changing a rule
@@ -120,18 +118,15 @@ The most useful entry points are:
 
 Use this order when two documents appear to differ:
 
-1. The [surface language draft](surface-language.md) states current source
-   spelling, declarations, expressions, control, routines and modules.
-2. The [working specification](specification.md) retains detailed numeric,
-   addressing, hosted-body and target semantics not replaced by the surface
-   draft.
-3. The [lowering contract](lowering-and-runtime.md) states compiler, host,
+1. The [working specification](specification.md) states current source syntax
+   and semantics.
+2. The [lowering contract](lowering-and-runtime.md) states compiler, host,
    backend and runtime responsibilities.
-4. The [decision chapter](design-book/10-stages-and-decisions.md) states whether
+3. The [decision chapter](design-book/10-stages-and-decisions.md) states whether
    a point is chosen, provisional, open or deferred.
-5. The rest of the [design book](design-book/index.md) explains rationale and
+4. The rest of the [design book](design-book/index.md) explains rationale and
    examples.
-6. The [research record](research.md) and [evidence](evidence/reading-ledger.md)
+5. The [research record](research.md) and [evidence](evidence/reading-ledger.md)
    explain where requirements came from. They are not a second specification.
 
 The documents use three recurring status labels:
@@ -179,6 +174,8 @@ The current scalar integer spellings are:
 Important numeric rules:
 
 - integer arithmetic has target-independent promotion and narrowing rules;
+- mixed signed and unsigned runtime arithmetic requires an explicit
+  conversion, preventing accidental 32-bit promotion;
 - comparisons produce `boolean`;
 - conditions require `boolean`;
 - `and`, `or`, `xor` and `not` form one type-directed Boolean/bitwise family;
@@ -207,6 +204,9 @@ Do not let C, BASIC or target-CPU arithmetic silently redefine these results.
   six-byte Pacmo records.
 - Equal fixed arrays and records are assignable values and copy their complete
   fixed-size contents.
+- Aggregate `const` declarations provide immutable tables and maps.
+- `at` places static storage or constant data at a target address.
+- `volatile` preserves every observable memory-mapped read and write.
 - Multidimensional paths are meaningful language constructs even if an early
   backend stages their address calculation.
 - Static aggregate storage is the default.
@@ -332,6 +332,11 @@ The current architecture recommends this order:
 10. use C and BASIC experiments to find assumptions that accidentally belong
     to the first backend rather than the language.
 
+Translate the AZM Book 3 programs alongside these stages. Each translation
+should run against the same expected result as its AZM source, turning the
+algorithms book into a conformance corpus rather than a separate documentation
+exercise.
+
 The interpreter should use arbitrary-precision host integers followed by
 explicit Lanternfly width operations. Backends and the interpreter can then
 run the same fixtures and compare storage plus service traces.
@@ -356,12 +361,8 @@ Do not present these points as settled without an explicit decision:
 - restricted labels;
 - optional `float32` semantics.
 
-The [surface language draft](surface-language.md#15-decisions-to-revisit)
-records the remaining source-level questions.
-
-The 0.2
-[working specification list](specification.md#24-remaining-specification-decisions)
-is historical where the surface draft has made a later choice. The
+The [working specification](specification.md#16-decisions-to-revisit) records
+the remaining source-level questions. The
 [decision chapter](design-book/10-stages-and-decisions.md#bounded-open-questions)
 contains the broader experiments and evidence required.
 
@@ -392,7 +393,6 @@ fixtures to language facilities and implementation stages.
 - [Documentation index](index.md)
 - [Charter](charter.md)
 - [Design book](design-book/index.md)
-- [Surface language draft](surface-language.md)
 - [Specification](specification.md)
 - [Lowering contract](lowering-and-runtime.md)
 - [Research record](research.md)
@@ -555,8 +555,8 @@ no stale Lanternfly game references and Rushlight's 16-character LCD title is
 
 Before implementation, confirm whether the next goal is:
 
-- reconciling the 0.2 specification and teaching book with the current surface
-  language draft;
+- reconciling the teaching book and design-book examples with specification
+  0.3;
 - designing the host manifest and type descriptors;
 - building the K0 parser and type checker;
 - translating a focused fixture set into canonical Lanternfly;
