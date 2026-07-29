@@ -1,5 +1,13 @@
 # Language stages and decisions
 
+> [!IMPORTANT]
+> This chapter preserves the earlier research programme and implementation
+> staging. Its “chosen” and “provisional” lists are historical when they
+> conflict with [the 0.3 specification](../specification.md). In particular,
+> current source uses lowercase built-ins and keywords, strict one-byte
+> Booleans, short-circuit Boolean `and`/`or`, bare `end`, `var name as Type`,
+> and value-copying aggregate assignment.
+
 Lanternfly should become useful in slices. The first slice must already have a stable
 meaning; later slices add source power without redefining old programs.
 

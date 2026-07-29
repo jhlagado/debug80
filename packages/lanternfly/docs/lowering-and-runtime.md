@@ -13,8 +13,8 @@ The front end owns:
 - source parsing;
 - name and type resolution;
 - exact layout;
-- integer promotions and conversions;
-- definite assignment;
+- integer result typing and conversions;
+- initialization and return-path validation;
 - structured-control validation;
 - host/import interface checking;
 - typed read/write/call summaries.
@@ -65,7 +65,7 @@ sourceSpan
 resolved type
 value/storage/reference category
 constant value when known
-narrowing/promotion decisions
+narrowing/result-type decisions
 purity
 ```
 
@@ -88,6 +88,7 @@ A backend-facing type descriptor can represent:
 
 ```text
 integer(width, signed)
+boolean(width=8, falseBits=0, trueBits=1)
 record(typeId, exactSize, fields)
 array(elementType, counts, exactStrides)
 reference(class, referentType, mutable)
@@ -101,6 +102,11 @@ row-major stride so the backend does not recalculate semantic layout.
 
 Reference class is `near`, `far` or a resolved target class. Opaque address
 spaces are nominal.
+
+`unit` may appear as an internal routine result marker but is never a stored
+type. Boolean descriptors are invariant across targets; imported adapters
+validate external representations and invoke the invalid-value fault rather
+than exposing a noncanonical value to Lanternfly.
 
 ## 4. Suggested Lanternfly IR
 
@@ -169,11 +175,25 @@ Aggregates do not appear as arbitrary IR values. They appear as typed
 addresses. `COPY`, `MOVE`, `FILL` and `CLEAR` are explicit aggregate effects.
 
 This matches the language rule and avoids an optimizer inventing hidden
-aggregate copies.
+aggregate temporaries. A source aggregate assignment becomes one explicit
+`COPY` effect with source-order and volatile semantics retained.
+
+`COPY` records whether either region is volatile and whether overlap is
+possible. An ordinary copy has snapshot/move semantics. A volatile copy is
+accepted only after the front end proves non-overlap and retains its
+field-order or row-major scalar access sequence.
+
+### 4.6 Ordered effects
+
+The IR must preserve the source order fixed by specification section 8.7.
+Address calculations that may call, fault or read volatile storage are effects,
+not freely movable value nodes. An assignment's destination address is
+completed once before its right-hand value is evaluated. Optimizers may reorder
+only after proving the operations mutually unobservable.
 
 ## 5. Numeric lowering contract
 
-The front end records promoted operand and result types. The backend implements
+The front end records resolved operand and result types. The backend implements
 those types exactly.
 
 For every integer operation it receives:
@@ -306,7 +326,7 @@ A local aggregate alias is represented as:
 - an address-sized local;
 - a host-language pointer/index.
 
-It never reserves `SIZEOF(aggregate)` local bytes.
+It never reserves `size(aggregate)` local bytes.
 
 ## 8. Routine ABI
 
@@ -394,11 +414,16 @@ Selection should be deterministic.
 
 ### 9.1 Intrinsic versus visible call
 
-`ISQRT(x)` is a visible standard call. The backend may select an intrinsic.
+`sqrt(x)` and `abs(x)` are visible standard operations. The backend may select
+an intrinsic or a helper without changing their source-level purity or result
+types.
 
 `index * 6` generated for an address is invisible runtime mechanics. It may use
 the same multiplier implementation without adding a visible call to the source
 summary.
+
+`size`, `count` and `offset` are resolved and folded by the front end. They do
+not reach the backend as runtime operations.
 
 Cost reports distinguish source calls from compiler helpers.
 
@@ -415,6 +440,12 @@ address/far-load-u8
 address/far-store-u16
 address/far-call
 fault/div-zero
+fault/negative-shift
+fault/negative-power
+fault/negative-sqrt
+fault/bounds
+fault/address
+fault/invalid-value
 ```
 
 The linker includes transitive dependencies of selected components only.
@@ -430,6 +461,10 @@ Each component declares:
 - reentrancy and interrupt properties;
 - test vectors;
 - license/provenance where relevant.
+
+Fault components are non-returning. Their profile-specific implementation may
+trap to a host, terminate, or enter a monitor, but it preserves the fault class
+and source provenance supplied by the call site.
 
 ## 11. Near/far runtime
 
@@ -528,6 +563,7 @@ exact size
 fields with offsets
 array counts/strides
 reference class
+Boolean width and canonical false/true bit patterns
 opaque resource identity
 ```
 
@@ -675,7 +711,9 @@ translation milestones.
 
 ## 18. Backend conformance
 
-A backend claiming a target must pass:
+A backend claiming a target must pass the applicable inventory in
+[the conformance and diagnostics contract](conformance.md). The following
+backend-focused groups summarize that inventory:
 
 ### Numeric
 
@@ -684,8 +722,9 @@ A backend claiming a target must pass:
 - signed/unsigned comparisons;
 - division/remainder edge cases;
 - shift counts at 0, width-1, width and above;
-- power/square-root vectors;
-- byte-wrap and widened-difference corpus cases.
+- power, `abs` and `sqrt` vectors;
+- byte-wrap and widened-difference corpus cases;
+- one-byte canonical Boolean results and invalid imported Boolean values.
 
 ### Layout
 
@@ -694,16 +733,20 @@ A backend claiming a target must pass:
 - nested records and arrays;
 - two dynamic indices;
 - reference arrays;
-- field offsets and `SIZEOF`;
+- `size`, `count` and `offset` query vectors;
+- field offsets and exact sizes;
 - no substrate padding.
 
 ### Control
 
 - all branches and loop forms;
 - descending unsigned loop termination;
+- counted-loop boundary and post-loop values;
 - exit/continue;
 - early routine return;
-- hosted body exit.
+- hosted body exit;
+- left-to-right operand, argument, path and initializer evaluation;
+- destination-before-source assignment evaluation.
 
 ### ABI
 
@@ -713,7 +756,16 @@ A backend claiming a target must pass:
 - local aliases;
 - imported adapter;
 - nested calls;
-- no-return.
+- no-return;
+- rejected recursion cycles on non-recursive profiles;
+- independent frames and stack-cost reporting on recursive profiles.
+
+### Safety
+
+- constant and dynamic bounds failures;
+- proof-based bounds-check removal;
+- arithmetic, address and invalid-value faults;
+- no store after a failed destination check.
 
 ### Artifacts
 

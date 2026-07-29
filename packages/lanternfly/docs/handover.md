@@ -90,14 +90,16 @@ Continue with:
 
 5. [Working language specification](specification.md) for the consolidated
    lowercase syntax and semantic contract.
-6. [Design book](design-book/index.md), especially:
+6. [Conformance and diagnostics](conformance.md) for the required errors,
+   warnings, faults and cross-backend fixtures.
+7. [Design book](design-book/index.md), especially:
    - [Language and boundaries](design-book/01-language-and-boundaries.md)
    - [Numbers, truth and expressions](design-book/02-numbers-and-expressions.md)
    - [Storage and addressing](design-book/03-storage-and-addressing.md)
    - [Control flow and routines](design-book/04-control-and-routines.md)
    - [Lowering and portability](design-book/06-lowering-and-portability.md)
    - [Hosting Lanternfly inside Glimmer](design-book/07-glimmer-hosting.md)
-7. [Lowering, backend and runtime contract](lowering-and-runtime.md) for the
+8. [Lowering, backend and runtime contract](lowering-and-runtime.md) for the
    typed boundaries that a prototype should implement.
 
 ### Before changing a rule
@@ -120,13 +122,15 @@ Use this order when two documents appear to differ:
 
 1. The [working specification](specification.md) states current source syntax
    and semantics.
-2. The [lowering contract](lowering-and-runtime.md) states compiler, host,
+2. The [conformance contract](conformance.md) states the minimum diagnostics,
+   faults, fixtures and artifacts required for a conformance claim.
+3. The [lowering contract](lowering-and-runtime.md) states compiler, host,
    backend and runtime responsibilities.
-3. The [decision chapter](design-book/10-stages-and-decisions.md) states whether
+4. The [decision chapter](design-book/10-stages-and-decisions.md) states whether
    a point is chosen, provisional, open or deferred.
-4. The rest of the [design book](design-book/index.md) explains rationale and
+5. The rest of the [design book](design-book/index.md) explains rationale and
    examples.
-5. The [research record](research.md) and [evidence](evidence/reading-ledger.md)
+6. The [research record](research.md) and [evidence](evidence/reading-ledger.md)
    explain where requirements came from. They are not a second specification.
 
 The documents use three recurring status labels:
@@ -148,6 +152,7 @@ promise that the feature will be added later.
   cases where structured control does not provide a clear solution.
 - Canonical lowercase keywords and built-in types, lower camel case value and
   routine names and Pascal case user-defined type names.
+- `//` introduces a line comment, including after a statement.
 - Static types and declarations before local use.
 - `var` and `const` declarations with `as` type clauses.
 - Structured `if`, `select`, counted loops and conditional loops, currently
@@ -177,6 +182,7 @@ Important numeric rules:
 - mixed signed and unsigned runtime arithmetic requires an explicit
   conversion, preventing accidental 32-bit promotion;
 - comparisons produce `boolean`;
+- `boolean` is exactly one byte with canonical stored values zero and one;
 - conditions require `boolean`;
 - `and`, `or`, `xor` and `not` form one type-directed Boolean/bitwise family;
 - Boolean `and` and `or` short-circuit;
@@ -185,13 +191,15 @@ Important numeric rules:
   operations;
 - integer square root is a visible standard operation rather than assumed CPU
   support;
+- `size`, `count` and `offset` expose exact compile-time layout without pointer
+  arithmetic;
 - floating point is deferred and would be a target capability, not an initial
   requirement.
 
 Three fixtures protect this model:
 
 - Skyfall deliberately narrows a negative intermediate back into byte state;
-- Rushlight and Sprite Chase require subtraction to widen before `ABS`;
+- Rushlight and Sprite Chase require subtraction to widen before `abs`;
 - Tetro uses a genuine signed byte value of -3 while a piece enters the board.
 
 Do not let C, BASIC or target-CPU arithmetic silently redefine these results.
@@ -303,8 +311,8 @@ Target fixtures: central Tetro and Pacmo storage patterns.
 
 ### K2: routines
 
-Add parameterised subs, optional results, scalar-value and aggregate-alias
-parameters, definite assignment, bounded aggregate views or an equivalent
+Add parameterised subs, optional scalar/reference results, scalar-value and
+aggregate-alias parameters, bounded aggregate views or an equivalent
 convention and ABI adapters.
 
 Target fixtures: Snake helpers, Tetro engine routines and Pacmo routines.
@@ -345,15 +353,12 @@ run the same fixtures and compare storage plus service traces.
 
 Do not present these points as settled without an explicit decision:
 
-- `REM` comment syntax;
 - read-only, output and in/out reference spelling;
-- whether public references must state `NEAR` or `FAR`;
 - one-line `if` and an empty-block spelling;
 - source file extension;
 - default warning severity for narrowing;
 - native declaration syntax;
-- local declaration placement;
-- checked-array profile controls;
+- syntax for an explicitly unsafe, nonconforming unchecked-array mode;
 - minimal static string or string-view support;
 - bounded aggregate view syntax;
 - nominal fixed-width enums;

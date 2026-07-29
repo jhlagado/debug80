@@ -1,5 +1,11 @@
 # Hosting Lanternfly inside Glimmer
 
+> [!IMPORTANT]
+> The hosting architecture and manifest design in this chapter remain current,
+> but some Lanternfly snippets use the exploratory pre-0.3 surface syntax.
+> [The working specification](../specification.md) governs language syntax and
+> semantics.
+
 Lanternfly begins as an optional body language. Glimmer remains responsible for the
 program around it.
 

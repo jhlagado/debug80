@@ -7,8 +7,10 @@ precise enough to describe a Z80 game without surrendering arrays, records or
 the cost of an operation.
 
 The book develops the language from repository evidence. It is not a tutorial
-and it is not the normative specification. Examples use the current preferred
-syntax so that design questions become concrete.
+and it is not the normative specification. Many examples preserve the dialect
+being considered when their chapter was written; they are design history, not
+current syntax. Where this book differs from the
+[working specification](../specification.md), the specification governs.
 
 ## Chapters
 

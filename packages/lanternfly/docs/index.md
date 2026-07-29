@@ -14,9 +14,11 @@ working contract before parser or compiler implementation begins.
    game corpus and compares target lowerings.
 5. [Working language specification](specification.md) states the consolidated
    0.3 syntax and semantics as the implementation contract.
-6. [Lowering, backend and runtime contract](lowering-and-runtime.md) defines
+6. [Conformance and diagnostics](conformance.md) turns that contract into
+   required errors, warnings, faults and fixtures.
+7. [Lowering, backend and runtime contract](lowering-and-runtime.md) defines
    the typed compiler/host/backend boundaries.
-7. [Research record](research.md) links decisions to the Glimmer, AZM and ZAX
+8. [Research record](research.md) links decisions to the Glimmer, AZM and ZAX
    evidence.
 
 The supporting evidence is kept under [evidence](evidence/reading-ledger.md).

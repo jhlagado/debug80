@@ -1,5 +1,12 @@
 # Numbers, truth and expressions
 
+> [!IMPORTANT]
+> This chapter records the exploratory design that led to the 0.3 language.
+> Its uppercase type names, range-based mixed promotions, numeric truth values
+> and eager Boolean rules are historical proposals, not current semantics.
+> The normative rules are in
+> [the specification](../specification.md), especially sections 3 and 8.
+
 Numeric rules are where an apparently simple language can become treacherous.
 The corpus contains three behaviours that must coexist:
 

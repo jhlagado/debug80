@@ -35,6 +35,7 @@ or resources. The Glimmer preprocessor continues to own those concepts.
 - [Lanternfly language design book](docs/design-book/index.md)
 - [Language charter](docs/charter.md)
 - [Working language specification](docs/specification.md)
+- [Conformance and diagnostics](docs/conformance.md)
 - [Lowering, backend and runtime contract](docs/lowering-and-runtime.md)
 - [Research record and evidence](docs/research.md)
 
