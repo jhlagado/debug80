@@ -47,6 +47,10 @@ to Lanternfly through an ordinary typed interface. Lanternfly treats those names
 same way as symbols supplied by an assembler, C program, BASIC environment, or
 another host.
 
+Host constants and records enter through the same typed interface. A host
+resource is exposed as an ordinary Lanternfly constant, address, storage object
+or routine; Lanternfly does not add a resource declaration category.
+
 This boundary supports both directions of independence: Glimmer can host Lanternfly,
 AZM, or another body language, and Lanternfly can run without Glimmer.
 
@@ -57,7 +61,7 @@ typing.
 
 BASIC contributes:
 
-- words such as `AND`, `OR`, `NOT`, and `MOD`;
+- words such as `and`, `or`, `not` and `mod`;
 - readable assignments and comparisons;
 - direct structured control flow;
 - a small conceptual vocabulary;
@@ -71,8 +75,9 @@ Static systems languages contribute:
 - compile-time storage layout;
 - diagnostics for incompatible operations.
 
-Lanternfly uses labels where low-level control still needs a named destination. Line
-numbers play no part in the language.
+Lanternfly's core control structures use no labels or line numbers. Raw
+assembly may still use the selected assembler's labels for low-level
+destinations.
 
 ## Storage model
 
@@ -113,13 +118,16 @@ visible.
 
 ## Native substrate access
 
-**Direction:** a program can retain direct substrate code where Lanternfly does not
-yet express the required operation.
+**Direction:** a program can retain direct substrate code where Lanternfly does
+not yet express the required operation.
 
-The exact pass-through syntax is open. Its role is narrow and explicit:
-platform initialisation, device access, carefully tuned loops, interrupt code,
-and operations unique to a target. Native code remains a boundary facility
-rather than a source of implicit Lanternfly semantics.
+An `asm` block passes its contents unchanged to the selected assembler, and
+`end` closes the block. Module blocks may provide directives, labels, routines
+or data; statement blocks place target instructions at one point in generated
+control flow. A module block has emission/provenance metadata but no runtime
+execution effect. A statement block carries conservative
+read/write/call/fault/device-I/O/clobber effects unless a later explicit
+contract narrows them.
 
 ## Design priorities
 
