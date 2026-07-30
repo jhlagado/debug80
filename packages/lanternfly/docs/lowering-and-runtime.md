@@ -14,6 +14,7 @@ The front end owns:
 - name and type resolution;
 - exact layout;
 - integer result typing and conversions;
+- character decoding and C-string typing;
 - initialization and return-path validation;
 - structured-control validation;
 - host/import/external interface checking;
@@ -63,7 +64,7 @@ Each expression has:
 nodeId
 sourceSpan
 resolved type
-value/storage/reference category
+value/storage/aggregate-alias category
 constant value when known
 operand-widening, narrowing and result-type decisions
 round-trip conversion classification
@@ -90,9 +91,10 @@ A backend-facing type descriptor can represent:
 ```text
 integer(width, signed)
 boolean(width=8, falseBits=0, trueBits=1)
+cstr(class, terminator=0, directEncoding=ascii, mutable=false)
 record(typeId, exactSize, fields)
 array(elementType, counts, exactStrides)
-reference(class, referentType, mutable)
+aggregateAlias(class, referentType, mutable)
 address(class, representationWidth)
 opaqueAddress(spaceId, representationWidth)
 procedureSignature(parameters, result, effects)
@@ -101,13 +103,18 @@ procedureSignature(parameters, result, effects)
 Record fields include exact byte offsets. Array descriptors include every
 row-major stride so the backend does not recalculate semantic layout.
 
-Reference class is `near`, `far` or a resolved target class. Opaque address
-spaces are nominal.
+An aggregate-alias class is `near`, `far` or a resolved target class. It is a
+compiler representation of temporary access to existing aggregate storage,
+not a Lanternfly value or source-level type. Opaque address spaces are nominal.
 
 `unit` may appear as an internal routine result marker but is never a stored
 type. Boolean descriptors are invariant across targets; imported adapters
 validate external representations and invoke the invalid-value fault rather
 than exposing a noncanonical value to Lanternfly.
+
+A C-string descriptor carries an address class but no length field. A literal
+node separately carries its decoded payload, appended terminator, static
+storage identity and source-byte mapping.
 
 ## 4. Suggested Lanternfly IR
 
@@ -269,6 +276,25 @@ The front end or backend may fold only after result type is resolved. Folded
 values apply Lanternfly wrapping, shift and division rules rather than host-language
 defaults.
 
+### 5.4 Static text lowering
+
+A character literal reaches the IR as an exact integer value and then follows
+the ordinary expected-type rule. A C-string literal allocates immutable static
+bytes containing its decoded payload followed by zero. The IR value is the
+near or far address-class representation selected for that object.
+
+An AZM backend may emit literal storage with `.cstr` when the decoded payload
+can be represented by that directive without changing bytes. It may use `.db`
+for escaped controls or when exact byte emission gives clearer provenance.
+Both forms emit the same trailing zero. C and BASIC backends must preserve the
+byte-oriented ASCII contract rather than silently adopting a host Unicode
+string representation.
+
+C-string comparison and `length` may lower inline or through selected helpers.
+The helper accepts the address class declared by the operands. A far helper
+must preserve and restore mapping context while it scans. Literal `length`
+folds before helper selection.
+
 ## 6. Path lowering
 
 For a scalar path, the backend receives a base and sequence of constant/dynamic
@@ -313,7 +339,7 @@ The selector may use a speed/size policy. It may not change exact layout.
 ### 6.2 Several dynamic terms
 
 Each dynamic index can be lowered and accumulated in sequence. Register-poor
-targets may spill an intermediate or bind a temporary reference.
+targets may spill an intermediate or bind a temporary storage carrier.
 
 If an early backend lacks this facility, it reports a backend capability error
 with a source-level staging suggestion. The typed program remains valid Lanternfly.
@@ -333,8 +359,8 @@ This matters for cost even though initial indexes are pure.
 
 ## 7. Local allocation
 
-A backend local allocator places scalar/reference locals and compiler
-temporaries.
+A backend local allocator places scalar locals, aggregate-alias carriers and
+compiler temporaries.
 
 Possible locations:
 
@@ -360,20 +386,22 @@ Static scratch is allowed only when:
 A local aggregate alias is represented as:
 
 - a folded static address;
-- a reference in a register;
+- an address carrier in a register;
 - an address-sized local;
 - a host-language pointer/index.
 
-It never reserves `size(aggregate)` local bytes.
+It never reserves `size(aggregate)` local bytes. These representations are IR
+and backend details; Lanternfly source cannot inspect or copy them.
 
 ## 8. Routine ABI
 
 A target defines a default ABI capable of:
 
 - scalar values through 32 bits;
-- near and far references;
+- near and far aggregate aliases;
+- near and far C-string views;
 - opaque address values;
-- one scalar/reference result;
+- one scalar result;
 - normal and no-return calls;
 - local cleanup;
 - host/native adapters.
@@ -387,10 +415,12 @@ A first implementation may follow the useful ZAX shape:
 - right-to-left argument pushes;
 - one 16-bit slot for values no wider than 16 bits;
 - two slots for 32-bit values;
-- one target-sized slot/set for references;
+- one target-sized slot/set for near aggregate aliases;
+- one bank/segment-plus-offset slot set for far aggregate aliases;
+- one address-class slot/set for C-string views;
 - IX frame anchor when named frame slots exist;
 - scalar locals in frame slots;
-- aggregate aliases as near/far reference values;
+- aggregate aliases as non-observable near/far address carriers;
 - declared result carriers;
 - generated prologue/epilogue.
 
@@ -514,9 +544,9 @@ Fault components are non-returning. Their profile-specific implementation may
 trap to a host, terminate, or enter a monitor, but it preserves the fault class
 and source provenance supplied by the call site.
 
-## 11. Near/far runtime
+## 11. Near/far aggregate storage
 
-A target's far-reference descriptor includes:
+A target's far aggregate-carrier descriptor includes:
 
 ```text
 representation fields
@@ -529,10 +559,12 @@ common-memory regions
 object placement restrictions
 ```
 
-### 11.1 Equality
+### 11.1 Carrier identity
 
-Far-reference equality compares logical addresses. If several representations
-can name the same location, the target must normalize or compare accordingly.
+The compiler may need to compare or normalize logical locations while binding
+or forwarding aggregate aliases. If several target representations can name
+the same location, the backend must treat them consistently. This carrier
+identity is not available to Lanternfly source code.
 
 ### 11.2 Load/store
 
@@ -610,7 +642,8 @@ kind
 exact size
 fields with offsets
 array counts/strides
-reference class
+aggregate storage class
+C-string address class, terminator, immutability and program lifetime
 Boolean width and canonical false/true bit patterns
 opaque resource identity
 ```
@@ -778,13 +811,21 @@ backend-focused groups summarize that inventory:
 - byte-wrap and widened-difference corpus cases;
 - one-byte canonical Boolean results and invalid imported Boolean values.
 
+### Text
+
+- character escape decoding and expected integer typing;
+- static literal bytes with exactly one trailing terminator;
+- near/far C-string placement and conversion;
+- content comparison and `u16` length;
+- imported/native termination, immutability and lifetime contracts.
+
 ### Layout
 
 - exact 3-, 4-, 6- and 8-byte records;
 - arrays of those records;
 - nested records and arrays;
 - two dynamic indices;
-- reference arrays;
+- multidimensional arrays and integer selector tables;
 - `size`, `count` and `offset` query vectors;
 - `fill` and `clear` effects, including ordered volatile stores;
 - field offsets and exact sizes;
@@ -795,17 +836,18 @@ backend-focused groups summarize that inventory:
 - all branches and loop forms;
 - descending unsigned loop termination;
 - counted-loop boundary and post-loop values;
+- inclusive `to`, exclusive `until` and `for each` traversal;
 - exit/continue;
 - early routine return;
-- hosted body exit;
+- hosted body return;
 - left-to-right operand, argument, path and initializer evaluation;
 - destination-before-source assignment evaluation.
 
 ### ABI
 
 - every scalar width;
-- near/far references;
-- aggregate reference parameters;
+- near/far aggregate aliases;
+- aggregate alias parameters;
 - local aliases;
 - external and imported adapters;
 - profile-name, substrate-symbol and absolute-address bindings;
@@ -847,7 +889,7 @@ It should model:
 
 - static byte-addressed regions;
 - exact layouts;
-- typed references as region/object/path identities;
+- aggregate aliases as non-escaping region/object/path identities;
 - near/far and opaque spaces symbolically;
 - calls and host epilogues;
 - platform services through injected test doubles.
@@ -868,7 +910,7 @@ Documentation recommends:
 6. maps and Glimmer host epilogue;
 7. exact arrays/records and path lowering;
 8. helper registry and cost skeleton;
-9. local aliases/references;
+9. local aggregate aliases;
 10. user routine ABI;
 11. C and BASIC experiments;
 12. far/address-space lowering.

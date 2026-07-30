@@ -1,6 +1,6 @@
 # Lanternfly working language specification
 
-Edition: design draft 0.3
+Edition: design draft 0.4
 Implementation status: no compiler exists
 Normative status: working contract for a prototype
 
@@ -8,10 +8,11 @@ The companion [conformance and diagnostics contract](conformance.md) collects
 the mandatory errors, warnings, runtime faults, semantic vectors and program
 fixtures for this edition.
 
-This specification consolidates the 0.2 semantic work and the later
-surface-language decisions into one implementation contract. Earlier
-conventions using `DIM`, separate `SUB`/`FUNCTION` forms, uppercase canonical
-keywords, integer truth values or named block endings are historical.
+This edition recasts the language as a streamlined structured BASIC. It keeps
+the readable control forms and word operators associated with structured
+Microsoft BASIC, but uses fixed-width types, exact layouts and one closing
+`end`. It neither claims Visual Basic compatibility nor copies features that
+do not suit fixed-memory targets.
 
 Prototype and corpus work may still remove constructs from this draft.
 
@@ -22,19 +23,20 @@ implementation.
 
 ## 1. Language scope
 
-Lanternfly is an integer-based general-purpose programming language in the
-structured BASIC family. It is intended to replace ordinary AZM program logic
-in standalone programs as well as Glimmer bodies.
+Lanternfly is a statically typed structured BASIC for fixed-memory systems. It
+can replace ordinary AZM program logic in standalone programs as well as
+Glimmer bodies.
 
 The first useful implementation should support:
 
 - fixed-width signed and unsigned integers;
 - Boolean values and binary masks;
+- byte-valued character literals and static NUL-terminated text;
 - constants and statically allocated variables;
 - exact records and fixed arrays;
-- field access and runtime indexing;
+- field access, runtime indexing and temporary storage aliases;
 - assignment and general expressions;
-- structured decisions, selection and loops;
+- `if`, `select`, counted, collection and conditional loops;
 - routines with optional parameters, local scalar storage and optional
   results;
 - source modules with private declarations and explicit exports;
@@ -45,9 +47,31 @@ Lanternfly is independent of Glimmer. State, pulses, effects, rendering, cards
 and scheduling remain host concerns. Glimmer may provide imported storage and
 routines to a Lanternfly body.
 
-The first edition uses fixed storage and whole-program compilation. Heap
-allocation, garbage collection, exceptions and dynamic collections are
-deferred.
+The BASIC lineage is syntactic and educational rather than compatible. Source
+uses short English words, `name as Type` declarations, assignment with `=`,
+word operators, `if ... then`, `select`, `for` and `while`. Lanternfly leaves
+behind line numbers, implicit declarations, variant values, `goto`, optional
+parentheses and dialect-specific UI facilities. Arithmetic and comparison keep
+their familiar symbols; block punctuation, semicolon terminators and curly
+braces do not enter the language.
+
+The first edition uses fixed storage and whole-program compilation. Programs
+identify persistent objects by their declared paths or by integer indices into
+fixed pools. Aggregate parameters and local aliases may name existing storage
+for the duration of a call. A bare alias denotes that storage for field access,
+indexing and aggregate copying. Its backend carrier is not a value and has no
+source syntax.
+
+Lanternfly has no source-level pointer or reference type, address-of operator,
+dereference operator, function value or closure. Backends remain free to
+implement an aggregate parameter or alias with a machine address. That
+representation is lowering machinery and does not enter the language's value
+model.
+
+Heap allocation, garbage collection, exceptions, dynamic collections and
+indirect calls are outside the first edition. Fixed multidimensional arrays
+and indexed pools cover the initial programs that assembly would otherwise
+express through pointer tables.
 
 ## 2. Source style and names
 
@@ -110,9 +134,9 @@ Constant initializers and placement expressions are evaluated in source order.
 Successfully resolved imported exports precede every declaration in the
 importing module for this purpose, regardless of where the `import` item is
 written. Among declarations written in the importing module, an initializer
-may use only earlier constants, and reference formation or a layout path may
-begin only with earlier storage. This source-order restriction applies even
-though the later name is already known to the module scope.
+may use only earlier constants, and a layout path may begin only with earlier
+storage. This source-order restriction applies even though the later name is
+already known to the module scope.
 
 Constant expressions written inside a routine body, including `case` values
 and counted-loop steps, may use any successfully initialized module constant
@@ -126,9 +150,13 @@ dependency path.
 A routine has one value scope containing its parameters and locals. Parameter
 names are distinct, and a parameter or local may not shadow any visible module
 or imported value. A local may not reuse a parameter or earlier local name.
-Its declaration-order visibility remains defined in section 4.2. Record
-fields occupy a separate scope belonging to their record; fields need only be
-unique within that record and are resolved only after a field-selection dot.
+Its declaration-order visibility remains defined in section 4.2. A `for each`
+binding adds one nested value name for its body. It may not shadow a visible
+module value, parameter, local or enclosing `for each` binding. Nested
+traversals therefore use distinct binding names. The same rules apply when the
+enclosing value scope belongs to a hosted body. Record fields occupy a separate
+scope belonging to their record; fields need only be unique within that record
+and are resolved only after a field-selection dot.
 
 ### 2.2 Identifiers
 
@@ -170,25 +198,46 @@ The first-edition source character set is UTF-8, but language identifiers use
 ASCII letters for portable interoperation. An identifier begins with `A`–`Z`
 or `a`–`z`; later characters may also be digits or `_`. Keywords and built-in
 operation names are reserved under case-insensitive comparison. The contextual
-words `type` and `body` are reserved only in the positions defined in
-section 14.
+word `type` is reserved only in the positions defined in section 14.
 
-Integer literals use these forms:
+Integer and character literals use these forms:
 
 ```lanternfly
 42          // decimal
 $2a         // hexadecimal
 %00101010   // binary
+'A'         // encoded byte value
+'\n'        // byte value 10
 ```
 
 A leading `+` or `-` is a unary operator, not part of the literal. Digit
-separators, octal literals and character literals are absent initially.
+separators and octal literals are absent initially.
 
-Import paths and external substrate-symbol names use double-quoted compile-time
-string literals. Within them, `\"` represents a quote and `\\` a backslash.
-Other escapes and a physical newline are invalid. The compiler decodes those
-two escapes before resolving an import path or looking up an external symbol.
-This lexical form does not introduce general runtime strings.
+A character literal uses single quotes and represents one byte. Its contents
+must be one printable ASCII character or one of these escapes:
+
+```text
+\0  \n  \r  \t  \'  \"  \\  \xHH
+```
+
+`HH` is exactly two hexadecimal digits. The resulting value is an exact,
+untyped integer from zero through 255. It adopts an integer type by the same
+contextual rules as a numeric literal. Empty, multi-character, non-ASCII and
+unterminated character literals are invalid.
+
+A double-quoted literal in an expression is a static C string. Direct
+characters range from ASCII space through `~`; the character escapes above are
+accepted except `\0` and `\x00`. A hexadecimal escape contributes its exact
+byte without declaring a character encoding. The compiler appends one zero
+byte. An embedded zero, a physical newline, a non-ASCII character or more than
+65,534 payload bytes is invalid. Section 3.2 defines the resulting `cstr`
+value.
+
+Import paths and external substrate-symbol names use the same double-quoted
+token in compile-time text positions. Within those positions, only `\"` and
+`\\` are accepted. The compiler decodes both escapes before resolving the path
+or looking up the external symbol. A compile-time text position does not
+allocate a runtime C string.
 
 `//` begins a line comment outside a string literal and consumes through the
 physical newline. It may occupy a line or follow a statement:
@@ -257,20 +306,20 @@ must not inherit the promotion rules of C, JavaScript, BASIC or its target CPU.
 An integer literal begins as an exact, untyped value. It adopts the other
 operand's integer type when its value fits. When an all-literal subtree has an
 expected integer type from an initializer, assignment, scalar argument,
-return, `fill` value or counted-loop start or limit, that type propagates to
-its literal leaves. An exact literal in an expected-type context that does not
-fit is a compile error; it does not fall back to `i16` and then narrow with a
-warning. Deliberate low-bit conversion must be written explicitly, as
-`u8(300)`. Without an expected-type context, literal integer operations
-default to `i16`; a value that does not fit requires an explicit conversion.
+return, `fill` value or counted-loop start, that type propagates to its literal
+leaves. An exact literal in an expected-type context that does not fit is a
+compile error; it does not fall back to `i16` and then narrow with a warning.
+Deliberate low-bit conversion must be written explicitly, as `u8(300)`.
+Without an expected-type context, literal integer operations default to `i16`;
+a value that does not fit requires an explicit conversion.
 
 An `at` placement or absolute external binding requires a target-address
 constant expression rather than an ordinary integer expression. It may contain
 integer literals, parentheses, previously declared integer constants, explicit
 integer conversions and layout queries. Its operators are limited to unary
 `+` and `-`, plus `+`, `-`, `*`, `/`, `mod`, `^`, `shl`, `shr`, `and`, `or`
-and `xor`. It may not contain comparisons, Boolean values or operations,
-reference formation or opaque address values.
+and `xor`. It may not contain comparisons, Boolean values or operations, or
+opaque address values.
 
 Integer literals and the results of `size`, `count` and `offset` are exact,
 untyped values in this context. A subtree made entirely from those values
@@ -316,11 +365,11 @@ may also widen implicitly to the type already present on the other side when
 that conversion preserves every source value:
 
 | Source | Permitted wider operand type |
-| ------ | ----------------------------- |
+| ------ | ---------------------------- |
 | `u8`   | `u16`, `i16`, `u32`, `i32`   |
-| `i8`   | `i16`, `i32`                  |
-| `u16`  | `u32`, `i32`                  |
-| `i16`  | `i32`                         |
+| `i8`   | `i16`, `i32`                 |
+| `u16`  | `u32`, `i32`                 |
+| `i16`  | `i32`                        |
 
 The rule converts only to an operand type already written into the expression.
 It never searches for a third common type, so `u8 + u16` evaluates as
@@ -330,14 +379,14 @@ an operation may select a wide helper.
 
 The result table for matching operand types is:
 
-| Operator             | `u8` result | `i8` result | 16/32-bit result |
-| -------------------- | ----------- | ----------- | ---------------- |
-| `+`, `*`, `/`, `mod` | `u16`       | `i16`       | operand type     |
-| `-`                  | `i16`       | `i16`       | operand type     |
-| `and`, `or`, `xor`   | operand type | operand type | operand type    |
-| `shl`, `shr`         | left type   | left type   | left type         |
-| `^`                  | `u16`       | `i16`       | base type         |
-| comparisons          | `boolean`   | `boolean`   | `boolean`        |
+| Operator             | `u8` result  | `i8` result  | 16/32-bit result |
+| -------------------- | ------------ | ------------ | ---------------- |
+| `+`, `*`, `/`, `mod` | `u16`        | `i16`        | operand type     |
+| `-`                  | `i16`        | `i16`        | operand type     |
+| `and`, `or`, `xor`   | operand type | operand type | operand type     |
+| `shl`, `shr`         | left type    | left type    | left type        |
+| `^`                  | `u16`        | `i16`        | base type        |
+| comparisons          | `boolean`    | `boolean`    | `boolean`        |
 
 The `u8 - u8` rule preserves the complete mathematical range from -255 through
 255 required by coordinate-difference programs. Arithmetic results wrap in the
@@ -403,6 +452,75 @@ through repeated products. `x ^ 0` is one in that result type, including when
 `x` is zero. A negative exponent is a compile-time or runtime arithmetic
 fault. Intermediate and final power values wrap in the result type.
 
+### 3.2 Static C strings
+
+`cstr` is a non-null, read-only view of a NUL-terminated byte sequence:
+
+```lanternfly
+const title as near cstr = "LANTERNFLY"
+var prompt as near cstr = "READY?"
+
+extern sub printText(text as near cstr)
+```
+
+The bytes before the terminator are the string's content. Direct source
+characters use their ASCII byte values, and escapes use the values listed in
+section 2.4. The empty literal `""` contains only its terminator.
+
+`near cstr` and `far cstr` state the address class. Unqualified `cstr` uses the
+target profile's default class and is permitted for private parameters and
+local variables. Exported declarations, stored module variables, constants,
+record fields and routine results must state `near` or `far`. A string literal
+adopts an expected address class; otherwise the profile places it in its
+default class.
+
+The runtime representation is the target's text-view carrier. It has no hidden
+length, capacity, ownership flag or allocation. Assigning a `cstr` copies that
+carrier; it does not copy bytes. The text is immutable through the `cstr`
+interface. Literal storage has static lifetime and may be pooled only when
+pooling cannot change observable address-class behaviour.
+
+A near C string widens to `far cstr` when the target can attach the current
+mapping context. The explicit conversions admitted by the grammar are:
+
+- `near cstr(expression)` leaves a near operand unchanged and performs a
+  checked far-to-near conversion on a far operand;
+- `far cstr(expression)` leaves a far operand unchanged and performs the
+  permitted near-to-far widening on a near operand;
+- `cstr(expression)` converts to the profile's default C-string class,
+  applying the corresponding identity, widening or checked narrowing rule.
+
+A required near-to-far widening is a compile error when the profile cannot
+attach a valid mapping context. No form changes the bytes or their lifetime. C
+strings have no conversion to or from integers or opaque addresses.
+
+Every first-edition `cstr` names bytes that remain accessible and immutable
+for the program's lifetime. Literals satisfy that rule directly. Imported and
+hosted storage, manifest values and native routine results declared as `cstr`
+must make the same guarantee. A parameter or local copy retains the guarantee
+of its source. Contracts for temporary native buffers are incompatible with
+`cstr`; a later bounded-view design may introduce shorter, checked lifetimes.
+
+All six comparison operators accept two compatible C strings. They compare
+payload bytes as unsigned values from left to right and stop at the first
+difference or NUL terminator. Equality therefore compares text content rather
+than storage identity. A near and far operand first require the ordinary
+permitted near-to-far conversion.
+
+`length(text)` scans to the terminator and returns the number of payload bytes
+as `u16`. A literal call is a constant expression and folds to its known
+length. Each imported, hosted or native `cstr` contract guarantees an
+accessible NUL terminator within 65,535 bytes of its start and guarantees that
+the sequence remains valid for the program's lifetime. A provider that breaks
+that contract is nonconforming.
+
+Writable text uses ordinary `u8` array storage together with an explicit
+capacity. The first edition does not silently convert such an array into
+`cstr`, because writing a terminator and proving its lifetime are separate
+operations. Bounded views and writable string procedures are specified as
+follow-up work in the
+[language completeness review](language-completeness-review.md).
+
 ## 4. Constants and variables
 
 ### 4.1 Constants
@@ -420,12 +538,9 @@ The first implementation requires an explicit type. Type inference is
 deferred, so omitting `as Type` is a compile error.
 
 A scalar constant normally occupies no storage. Explicit placement or target
-export requirements may force a stored representation, but first-edition
-source cannot form a typed reference to constant storage.
-
-A first-edition `const` type cannot contain a typed reference. This avoids
-conflating an immutable reference slot with an immutable referent before
-read-only reference types are designed.
+export requirements may force a stored representation. A `cstr` constant may
+bind only to compiler-owned literal storage or a conforming imported constant
+C string.
 
 An aggregate `const` declares immutable static data:
 
@@ -458,18 +573,17 @@ var gameOver as boolean = false
 
 Module-level variables own static storage. Compiler-allocated static storage
 without an explicit initializer begins with all bits zero when every scalar
-leaf accepts that representation. Integers and Booleans do; typed references
-do not, and a target profile decides whether zero is valid for each opaque
-address type. A declaration whose type lacks an all-zero value requires an
+leaf accepts that representation. Integers and Booleans do; `cstr` does not,
+and a target profile decides whether zero is valid for each opaque address
+type. A declaration whose type lacks an all-zero value requires an
 initializer. Placed or host- or native-supplied storage without an initializer
 retains the value supplied by the target environment; the compiler performs no
 startup write. Importing a source module does not change a declaration's
 storage class: an unplaced variable in that module remains compiler-allocated
 and uses the ordinary zero-initialization rule, while an uninitialized placed
 variable retains its target-supplied value under section 4.3. A module variable
-whose type is, or contains, a typed reference requires an initializer that
-supplies every reference slot, or a host/native storage contract that
-guarantees valid non-null references.
+whose type contains `cstr` requires an initializer that supplies every such
+field, or a host/native storage contract that guarantees valid C strings.
 
 Local scalar variables use the same syntax inside a routine:
 
@@ -488,8 +602,8 @@ initializer may use parameters, module declarations and earlier locals but
 cannot name itself or a later local. Local initializers execute once per
 invocation in declaration order. An owned scalar local without an initializer
 is set to all bits zero when its declaration is reached; a type whose scalar
-leaves do not accept zero requires an initializer. A typed-reference variable
-is non-null and therefore always requires an initializer.
+leaves do not accept zero requires an initializer. A `cstr` variable therefore
+always requires an initializer.
 
 `const` declarations are module-level in the first edition. A routine can use
 a module constant without allocating storage.
@@ -558,11 +672,10 @@ element accesses rather than an unobservable bulk substitution.
 
 The first implementation permits `volatile` only on module-level storage and
 imported or native storage contracts; volatile local variables are rejected.
-It also rejects forming a typed reference or local aggregate alias to volatile
-storage and rejects passing volatile storage as an aggregate argument.
-Volatile accesses remain available through the original declared storage path.
-A future qualified-reference contract may preserve volatility through
-references and calls.
+It also rejects a local aggregate alias to volatile storage and rejects passing
+volatile storage as an aggregate argument. Volatile accesses remain available
+through the original declared storage path. A later parameter-effect contract
+may permit volatile aggregate calls without weakening access ordering.
 
 ### 4.5 Initializers and constant expressions
 
@@ -600,23 +713,19 @@ A local `var` initializer is an ordinary runtime expression.
 A constant expression in a module declaration may contain literals, names of
 previously declared constants, parentheses, the integer and Boolean operators
 in this specification, comparisons, explicit scalar conversions, the pure
-standard operations `abs` and `sqrt`, the layout queries `size`, `count` and
-`offset`, and reference formation for statically allocated mutable storage
-when every index in the path is constant. Such a constant reference path must
-start at a directly named module or imported static-storage declaration and
-may continue only through by-value record fields and constant array indices.
-It cannot traverse a stored typed reference, a local alias, an aggregate
-parameter or any other path whose address must be loaded from runtime storage.
-The root storage must precede the initializer or placement expression that
-forms the reference. Resolving this restricted path computes a symbolic
-address and does not read storage.
+standard operations `abs`, `sqrt` and `length`, the layout queries `size`,
+`count` and `offset`. `length` is constant only when the operand resolves to
+literal storage whose payload is known to the compiler. A constant expression
+may not read variable storage, invoke a routine, use a volatile object or
+perform any other observable operation.
 
-A checked far-to-near reference conversion in a constant expression is valid
-only when the target profile can prove at compile time that the complete
-logical address is representable as near. Otherwise it is a compile error; a
-constant initializer cannot defer an address fault to runtime. A constant
-expression may not otherwise read variable storage, invoke a routine, use a
-volatile object or perform any other observable operation.
+A C-string conversion whose destination class is near is valid in a constant
+expression only when the target profile proves that the complete logical
+address is representable as near. This includes unqualified `cstr(expression)`
+when the profile default is near. Failure is a compile error; constant
+evaluation cannot defer an address fault to runtime. The same conversion
+applied to a nonconstant runtime value invokes the address-fault service when
+the address is not representable.
 
 For a constant expression inside a routine body, “previously declared” means
 any module constant whose initializer has already been checked successfully,
@@ -688,7 +797,7 @@ An array:
 - uses zero-based indices;
 - stores elements contiguously;
 - is stored inline;
-- may contain scalars, records or other fixed arrays;
+- may contain scalars or records;
 - may appear as a record field.
 
 Dimensions state element counts. `u8[8]` therefore has indices from `0` through
@@ -782,121 +891,103 @@ Collection assignment is rejected when:
 - the destination is immutable;
 - a future type is explicitly non-copyable.
 
-### 7.1 Typed references and aliases
+### 7.1 Storage paths and aliases
 
-A typed reference is a non-null scalar value that identifies existing storage:
+A storage path names a declared object or one of its fields or elements:
+
+```lanternfly
+player.position.x
+actors[selectedActor]
+board[row, column]
+```
+
+Paths and integer indices are Lanternfly's normal way to retain identity. A
+program that needs a persistent link between fixed pool entries stores the
+destination index, not an address. Multidimensional arrays describe regular
+shapes directly rather than through arrays of row pointers.
+
+```lanternfly
+var boardPlanes as u8[planeCount, boardRows]
+
+boardPlanes[selectedPlane, row] = rowMask
+```
+
+For irregular fixed choices, the program stores a selector and uses `select`
+to choose the named object. The backend may still emit an address table when
+that is the cheapest implementation; source semantics remain selectors,
+indices and declared storage.
+
+An aggregate parameter gives a routine a temporary name for caller storage.
+A local `alias` can give a shorter name to a repeated aggregate path:
 
 ```lanternfly
 sub updateSelected()
-    var selected as ref Actor = ref actors[0]
-    var bankedActor as far ref Actor = ref actors[0]
+    alias actor as Actor = actors[selectedActor]
+
+    actor.position.x = actor.position.x + 1
 end
 ```
 
-`ref T` uses the target's default, normally near, reference class. `near ref T`
-and `far ref T` state the class explicitly. Parentheses disambiguate compound
-types: `(near ref Actor)[8]` is an array of eight references, while
-`near ref (Actor[8])` is one reference to an eight-element array.
+The initializer must be a writable storage path whose selected type exactly
+matches the declared record or fixed-array type. Its base and indices are
+evaluated and checked once when execution reaches the declaration. The alias
+then denotes that same storage until the routine returns. Field access,
+indexing and aggregate assignment through the alias use the ordinary path and
+copy rules.
 
-Prefix `ref` forms a reference to a storage path. It evaluates the path's base
-and indices once. Every storage root or imported storage contract has an
-address class. Compiler-allocated ordinary module storage uses the profile's
-default class; placed, banked, hosted and native-supplied storage obtains its
-class from its region contract. A path reached through a typed reference keeps
-that reference's class.
-
-Formation first produces a reference with the path's class. An expected
-reference type may then request the same class or apply the permitted
-near-to-far conversion. It cannot cause far storage to be formed as near.
-Without an expected reference type, the expression retains the path's class.
-Thus `ref bankedObject` is far when `bankedObject` belongs to a far region,
-even on a profile whose default class is near.
-
-References may be formed only to module storage, imported storage, aggregate
-parameters or storage already reached through a reference. Forming, returning
-or storing a reference to an owned scalar local is deferred. There is no null
-reference in the first edition. A path rooted in volatile storage cannot be
-used to form a reference or local aggregate alias.
-
-Field and index access pass transparently through a reference:
+Every source use of an aggregate alias denotes the aggregate storage, never
+the hidden carrier used by a backend. A bare alias on the right of aggregate
+assignment copies from its referent, and a bare alias on the left copies into
+its referent:
 
 ```lanternfly
-selected.position.x = selected.position.x + 1
-currentActor().active = false
+destination = actor
+actor = source
 ```
 
-A field or index path may begin with an invocation that returns a writable
-typed reference. The invocation is evaluated once to obtain the destination
-reference before the assignment source is evaluated. An invocation result
-without a following field or index remains a reference value rather than a
-storage path; assigning its complete referent requires
-`value(currentActor()) = expression`.
+Passing an alias to a compatible aggregate parameter creates another temporary
+name for the same storage. Field access and indexing likewise begin at the
+referent. Source code has no expression for the carrier itself, so it cannot
+rebind, store, return, compare or convert that carrier. Aggregate return and
+aggregate comparison remain deferred under their ordinary type rules. The
+first edition permits `alias` declarations only for records and fixed arrays;
+scalar code uses ordinary values and direct indexed assignment.
 
-A reference variable with no following field or index evaluates to its
-reference value. `value(reference)` explicitly denotes its referent and is a
-writable storage path when the reference is writable:
+Constant storage cannot initialize a writable alias. Volatile storage also
+requires direct access until the language has a parameter contract that can
+preserve volatile ordering. Alias targets have static or caller-provided
+lifetime, so heap lifetime and nullability do not arise.
+
+Every static storage root has a target storage class. Ordinary
+compiler-allocated storage uses the profile default; placed, banked, hosted
+and native storage obtains its class from its region contract. Aggregate
+parameters in private routines use the default class unless qualified:
 
 ```lanternfly
-value(scoreReference) = value(scoreReference) + 1
-value(selected) = actors[nextActor]
+export sub drawMap(far map as TileMap)
+    drawRow(map.rows[0])
+end
 ```
 
-Assigning a reference value to a reference variable rebinds the variable
-without copying its referent:
+`near` and `far` before an aggregate parameter's name constrain the storage
+that may bind to that alias. A near path may bind to a far parameter when the
+target can attach its current mapping context. Far storage cannot bind to a
+near parameter. Exported aggregate parameters must state their class; private
+unqualified parameters use the profile default. Local aliases inherit the
+class of their initializer and do not spell it separately.
 
-```lanternfly
-selected = ref actors[nextActor]
-```
+The storage carrier chosen for an alias is not observable in Lanternfly. A Z80
+backend may use a register pair for a near aggregate and a bank-plus-offset
+carrier for a far aggregate. A C backend may use a pointer. Source code cannot
+inspect, copy or perform arithmetic on any of those representations.
 
-Assignment to `value(selected)`, to a field or element through `selected`, to a
-local aggregate alias, or to an aggregate parameter writes the referent and
-follows the same aggregate-copy rules as ordinary storage. Equality and
-inequality are defined for compatible reference types and compare logical
-storage identities. Ordering, arithmetic and bitwise operations on references
-are invalid.
-
-References to mutable storage are writable. The first edition cannot form a
-reference to any constant storage because it has no read-only reference type.
-Aggregate parameters are mutable references in source semantics and likewise
-reject constant actual arguments.
-
-A near reference may convert implicitly to the corresponding far reference
-when the target can attach the current memory context. A far reference narrows
-only through the explicit checked conversion `near ref T(expression)`;
-failure invokes the target address-fault service. Public interfaces and stored
-reference fields or variables must state `near` or `far`; the unqualified form
-is permitted only for local reference variables and private parameters. A
-routine result, including a private one, must state its reference class.
-
-The unqualified aggregate-parameter shorthand and a local aggregate alias
-have the source type `ref T` in the profile's default class. They do not
-specialize themselves to a far argument. A far aggregate argument therefore
-requires an explicitly declared `far ref T` parameter; a near argument may
-use a `far ref T` parameter through the ordinary widening rule when the target
-can attach its current context.
-
-`near address` and `far address` are opaque machine or device address values,
-not typed references. Assignment and equality require identical address
-classes: near with near or far with far. There is no implicit widening,
-explicit language conversion or mixed-class equality. A target/native
-operation must perform any conversion between the two classes. Opaque
-addresses do not support ordinary field access, indexing or arithmetic.
-Constructing a typed reference from one requires a target/native operation
-whose contract establishes the address space, alignment, lifetime and referent
-type.
-
-The local alias declaration:
-
-```lanternfly
-ref actor as Actor = actors[selectedActor]
-```
-
-is shorthand for a non-rebindable local `ref Actor` initialized with
-`ref actors[selectedActor]`, providing transparent field and index access
-without allocating an aggregate local. The declared referent must be a record
-or fixed-array type. Scalar, opaque-address and typed-reference aliases use
-ordinary local reference variables when rebinding is required; the
-non-rebindable alias form does not accept those types.
+`near address` and `far address` remain opaque native values. Assignment and
+equality require identical classes: near with near or far with far. There is no
+implicit widening, explicit language conversion or mixed-class equality.
+Opaque addresses support neither field access nor indexing nor arithmetic.
+Only a target routine can interpret one as a device or machine address.
+Lanternfly cannot derive an opaque address from storage or derive a storage
+path from an opaque address.
 
 ## 8. Assignment and expressions
 
@@ -932,11 +1023,10 @@ position = position + velocity
 
 A value leaf is an operand whose scalar value contributes to the integer
 calculation. Expressions used only to locate that operand are not value leaves:
-the index in `bytes[index]`, the reference value behind
-`value(byteReference)` and record-selection prefixes do not participate in the
-arithmetic. The loaded array element, selected field or scalar referent does,
-using its declared value type. Thus a `u16` index does not prevent a
-warning-free `u8` round trip in `bytes[index] = bytes[index] + 1`.
+the index in `bytes[index]` and record-selection prefixes do not participate in
+the arithmetic. The loaded array element or selected field does, using its
+declared value type. Thus a `u16` index does not prevent a warning-free `u8`
+round trip in `bytes[index] = bytes[index] + 1`.
 
 A value originating in another declared type, an explicit conversion to
 another type or a standard operation such as `abs` ends the exemption. The
@@ -945,8 +1035,9 @@ ordinary value-preservation analysis may still suppress the warning.
 Initializers, scalar arguments and returned values use the same destination
 conversion rules, including the round-trip exemption. Aggregate assignment
 instead requires an identical record type or identical array element type,
-rank and dimensions. Reference assignment requires compatible referent and
-address classes, subject to the near/far rules in section 7.1.
+rank and dimensions. C-string assignment requires compatible address classes
+under section 3.2. Assignment to a bare aggregate alias copies into its
+referent; it never rebinds the hidden carrier.
 
 The parser recognises assignment when a statement begins with a writable
 storage path followed by `=`. In every other expression context, `=` is
@@ -987,11 +1078,12 @@ end
 ```
 
 Integer comparisons use the operand compatibility rule in section 3.1.
-Booleans support only `=` and `<>`. Compatible typed references support only
-`=` and `<>`, as described in section 7.1. Opaque addresses of the same
-address class support `=` and `<>`; mixed near/far address comparison is
-invalid and has no implicit conversion. Record and array equality is deferred;
-their fields or elements must be compared explicitly.
+Booleans support only `=` and `<>`. Opaque addresses of the same address class
+support `=` and `<>`; mixed near/far address comparison is invalid and has no
+implicit conversion. Compatible C strings support all six operators with the
+content comparison in section 3.2. Record and array equality, including
+equality through an aggregate alias, is deferred; their fields or elements
+must be compared explicitly.
 
 ### 8.3 Arithmetic
 
@@ -1068,11 +1160,12 @@ complement requires the explicit grouping `(not x) = y`.
 
 ### 8.5 Standard operations
 
-The first edition defines five lowercase numeric and layout operations:
+The first edition defines lowercase numeric, text and layout operations:
 
 ```lanternfly
 distance = abs(playerX - enemyX)
 root = sqrt(area)
+titleBytes = length("LANTERNFLY")
 const actorBytes as u16 = size(type Actor)
 const actorCount as u8 = count(actors)
 const rowCount as u8 = count(board, 0)
@@ -1088,6 +1181,9 @@ square root and produces the unsigned type of the operand's width. A negative
 constant is a compile error; a negative runtime value invokes the arithmetic
 fault service.
 
+`length(text)` accepts `cstr` and returns the payload byte count as `u16`.
+Section 3.2 defines its scan, folding and boundary contract.
+
 `size(type Type)` returns the exact byte size of a type. `size(path)` returns
 the size of a statically typed storage path. `count(type ArrayType)` returns
 the extent of a fixed-array type, while `count(path)` takes an array storage
@@ -1097,26 +1193,19 @@ The contextual word `type` selects the type namespace and removes any
 ambiguity when a value and a type share a case-insensitive name.
 
 A layout-query path is an unevaluated designator. It begins with a storage name
-and may contain fields plus constant indices. For `size` and `count`, type
-resolution passes transparently through every typed reference, including a
-reference at the end of the path. `size(selected)` therefore returns the size
-of the declared referent, while `count(arrayReference)` returns the extent of
-the referenced array. `size(selected.position)` likewise follows the declared
-referent type of `selected`. None of these forms loads or dereferences the
-stored reference. To query the reference representation itself, use a type
-operand such as `size(type near ref Actor)`. The compiler constant-folds each
-index and validates it
-statically against the selected array dimension; invalid constant arithmetic
-or an out-of-range index is a compile error. This does not read the base,
-perform runtime index evaluation, run a runtime bounds check or invoke a
-routine. Calls, `value(expression)` and nonconstant indices are invalid in
-this position.
+or local aggregate alias and may contain fields plus constant indices.
+`size(selected)` therefore returns the size of the aggregate named by the
+alias, while `count(board, 0)` returns the first extent of the declared array.
+The compiler constant-folds each index and validates it statically against the
+selected array dimension; invalid constant arithmetic or an out-of-range index
+is a compile error. This does not read the base, perform runtime index
+evaluation, run a runtime bounds check or invoke a routine. Calls and
+nonconstant indices are invalid in this position.
 
 `offset(Record.fieldPath)` returns the exact byte offset of a field path from
 the beginning of its record type. The path contains field names only, not
 runtime indices, and every field before the final field must be a by-value
-record field. A path cannot cross a typed-reference field because the referent
-does not lie inline within the containing record.
+record field.
 
 The three layout queries are compile-time operations. They return exact,
 untyped integer constants that adopt a surrounding integer type by the literal
@@ -1137,9 +1226,9 @@ an initializer, a return expression or any other value context.
 
 `clear(target)` writes the all-zero representation to a writable record or
 fixed array. It is valid only when every scalar leaf accepts that
-representation. Integers and Booleans do; typed references do not. A target
-profile decides whether all-zero is valid for one of its opaque address types.
-It visits record fields recursively in declaration order and array elements
+representation. Integers and Booleans do; `cstr` does not. A target profile
+decides whether all-zero is valid for one of its opaque address types. It
+visits record fields recursively in declaration order and array elements
 recursively in row-major order.
 
 `fill(target, value)` requires a writable fixed array whose leaf element type
@@ -1261,7 +1350,7 @@ end
 
 The selected expression is evaluated once and must have an integer type.
 Cases contain integer compile-time constants, never fall through and require
-no `break`. Boolean, opaque-address and typed-reference selection is deferred.
+no `break`. Boolean and opaque-address selection is deferred.
 
 Several values may share a case:
 
@@ -1291,69 +1380,38 @@ reversed, overlapping or duplicate range is a compile error.
 
 ## 10. Loops
 
-### 10.1 Conditional loop
+Lanternfly has counted loops, collection traversal and one conditional loop.
+The language does not add a separate indefinite form because `while true`
+expresses it directly.
+
+### 10.1 Counted ranges
 
 ```lanternfly
-while enemiesRemaining > 0
-    updateEnemy()
+var level as u8
+
+for level = 1 to 10
+    loadLevel(level)
 end
 ```
 
-The condition must be Boolean and is tested before each iteration.
+`to` includes the limit. With the default positive step, the example visits
+the values 1 through 10.
 
-### 10.2 Counted loop
+`until` excludes the boundary:
 
 ```lanternfly
 var index as u8
 
-for index = 0 to 7
+for index = 0 until count(actors)
     actors[index].active = false
 end
 ```
 
-The control name must denote a writable integer variable or scalar parameter;
-a constant, Boolean, opaque address, reference or aggregate is invalid. The
-limit is inclusive. `step` supplies a compile-time integer step in the first
-implementation:
+For a positive step, `until` visits values strictly below the boundary. This
+half-open form is canonical for zero-based array traversal because an array
+count can appear directly without subtracting one.
 
-```lanternfly
-for row = 7 to 0 step -1
-    moveRow()
-end
-```
-
-When `step` is omitted, it is the mathematical integer `+1`. The effective
-step is folded and validated during compilation. A zero step is a compile
-error, so step evaluation has no runtime stage or effect. The loop introduces
-no source-visible control declaration. A backend may retain the converted
-limit or other preheader values in registers, frame slots or safe static
-temporaries; those resources follow the frame, scratch, reentrancy and
-artifact rules in sections 11.6 and 13.
-
-At runtime the complete preheader order is: evaluate and convert the start,
-evaluate and convert the limit, then store the converted start into the
-control variable. The limit therefore observes the control variable's old
-value. Start and limit use the scalar destination-conversion rules from
-section 8.1, with the loop variable's type as their destination type. Exact
-literals may adopt that type when they fit. A typed narrowing or
-signedness-changing boundary produces `W-CONVERT-001` unless value analysis
-proves the conversion safe; the round-trip arithmetic exemption applies on
-the same terms as an assignment. Each is evaluated and converted once before
-the first test.
-
-The loop variable's type does not provide an expected type to `step`. The step
-is constant-folded independently under the ordinary expression rules,
-including the `i16` default for an all-literal expression, then interpreted as
-a non-zero mathematical integer. Thus `step -1` is valid for a `u16` control
-variable. The step itself is never converted to the control variable's type.
-
-After the preheader stores the converted start value, a positive step continues
-while the current value is less than or equal to the limit; a negative step
-continues while it is greater than or equal to the limit. After the body, the
-implementation computes the next value mathematically. If it would fail the
-next test, the loop ends without storing it. Otherwise it must be representable
-in the loop variable's type and is stored for the next iteration. This rule
-prevents wraparound at either boundary and permits an unsigned descending loop:
+Both forms accept a compile-time `step`:
 
 ```lanternfly
 for row = 7 to 0 step -1
@@ -1361,46 +1419,129 @@ for row = 7 to 0 step -1
 end
 ```
 
+The control name must denote a writable, non-volatile integer variable or
+scalar parameter. A constant, Boolean, opaque address, alias, aggregate or
+volatile integer is invalid. Rejecting volatile control storage avoids
+inventing implicit device reads and writes for the loop machinery. The loop
+introduces no control declaration. When `step` is omitted, it is the
+mathematical integer `+1`. The compiler folds the written step independently
+under the ordinary expression rules and rejects zero. A negative step remains
+valid with an unsigned control variable because the step is not converted to
+that variable's type.
+
+The start and boundary each evaluate once, in that order, before the converted
+start is stored in the control variable. The boundary therefore observes the
+control variable's old value. The start uses the destination-conversion rules
+from section 8.1. The boundary is an independently typed integer expression
+and must be comparable with the control value. An exact literal or layout
+query remains mathematical at this boundary, allowing this complete traversal:
+
+```lanternfly
+var bytes as u8[256]
+var index as u8
+
+for index = 0 until count(bytes)
+    bytes[index] = 0
+end
+```
+
+The exclusive boundary 256 need not fit in `u8` because it is never stored in
+`index`.
+
+For a positive step, `to` continues while the current value is less than or
+equal to the boundary, and `until` continues while it is less than the
+boundary. For a negative step, `to` continues while the current value is
+greater than or equal to the boundary, and `until` continues while it is
+greater than the boundary.
+
+After the body, the implementation computes the next value mathematically and
+tests it before storing it. A value that fails the next test ends the loop
+without being stored. A value that would continue must fit the control
+variable; a statically known failure is a compile error and a dynamic failure
+invokes the arithmetic-fault service. This order prevents unsigned wraparound.
+
 After the loop, the variable retains the last value stored. If the body never
 runs, it retains the converted start value. The loop body may not assign to
-the control variable or pass it to a writable reference or aggregate
-parameter. The restriction includes transitive effects: a call or native
-boundary whose effect summary may write the variable is rejected. A
-conservative inline `asm` block is therefore invalid inside the loop while the
-control variable is visible, unless a future explicit native contract proves
-that the block cannot write it.
+the control variable. The restriction includes transitive effects: a call or
+native boundary whose effect summary may write the variable is rejected. A
+conservative inline `asm` block is therefore invalid while the control
+variable is visible.
 
-### 10.3 Indefinite loop
+`continue` performs the step and next test. `exit` leaves the loop immediately.
+
+### 10.2 Collection traversal
+
+`for each` visits every element of a fixed array in row-major order:
 
 ```lanternfly
-loop
-    readInput()
-    updateGame()
-    drawFrame()
+for each actor in actors
+    updateActor(actor)
 end
 ```
 
-Bare `exit` leaves the innermost loop. Bare `continue` begins its next
-iteration. Either form is invalid without an enclosing loop; the separate
-hosted-body statement `exit body` is defined in section 13.3.
+The collection expression must be a fixed-array storage path. The complete
+path, including every base operation, index expression and bounds check, is
+evaluated exactly once before traversal. The loop introduces the element name
+with the array's leaf element type and scopes it to the body under the
+collision rules in section 2.1. That name denotes the current element itself:
 
 ```lanternfly
-for index = 0 to actorCount - 1
-    if not actors[index].active then
-        continue
+for each pixel in pixels
+    pixel = 0
+end
+```
+
+Assignment to the name changes the current element. In a value context, a
+scalar element name reads the element's ordinary scalar value, which may be
+copied, compared, passed or returned like any value of that type. For a record
+element, bare aggregate assignment, field access and aggregate calls act on
+the record in the array under section 7.1. The backend's traversal carrier is
+not a source value and cannot be rebound, stored, returned, compared or
+converted. A constant array produces a read-only element binding. Volatile
+arrays are rejected in the first edition because the binding would need a
+volatile alias contract.
+
+`continue` advances to the next element. `exit` leaves the traversal. Fixed
+array extents are positive, so the collection itself is never empty.
+
+### 10.3 Conditional iteration
+
+`while` tests its Boolean condition before each iteration:
+
+```lanternfly
+while enemiesRemaining > 0
+    updateEnemy()
+end
+```
+
+An indefinite loop uses the Boolean literal `true`:
+
+```lanternfly
+while true
+    readInput()
+
+    if quitRequested then
+        exit
     end
 
-    updateActor(actors[index])
+    updateGame()
 end
 ```
 
-The first edition has neither labelled loops nor `exit for`/`exit while`
-variants. A routine can use an early `return` to leave a nested search; code
-that must continue after the outer loop uses an explicit Boolean flag. Named
-outer-loop exit remains deferred until corpus translations justify it.
+`continue` returns to the condition test. `exit` leaves the loop.
 
-`repeat`/`until` is deferred until translated programs demonstrate enough
-post-test loops to justify another form.
+### 10.4 Loop control
+
+Bare `exit` leaves the innermost enclosing `for`, `for each` or `while`.
+Bare `continue` begins that loop's next iteration according to the rules above.
+Both statements are compile errors outside a loop. `exit` never terminates the
+program and never leaves a routine; `return` leaves a routine or hosted body.
+
+The first edition has no labelled loops, named `exit` variants, bare
+indefinite `loop`, `do` loop or post-test `repeat`. A routine can use an early
+`return` to leave a nested search; code that must continue after an outer loop
+uses an explicit Boolean flag. A later `repeat`/`until` form requires evidence
+from translated programs.
 
 ## 11. Routines
 
@@ -1427,8 +1568,8 @@ An omitted result type means that the routine returns no usable value. A
 trailing `as Type` declares a result. The language does not initially expose a
 `void` type. Internally, such an invocation has type `unit`; `unit` cannot be
 written in source or used as a value. A declared result must be an integer,
-Boolean, address or typed-reference scalar. Returning a record or fixed array
-by value is deferred.
+Boolean, address or `cstr` scalar. Returning a record or fixed array by value
+is deferred.
 
 Parentheses are present for every declaration and invocation, including an
 empty parameter list, so a routine invocation is syntactically distinct from a
@@ -1460,34 +1601,42 @@ sub moveActor(actor as Actor, deltaX as i16, deltaY as i16)
 end
 ```
 
-Scalar parameters pass values. Record and array parameters alias existing
-storage rather than copying it. Mutating `actor` in the example mutates the
-caller's record.
+Scalar parameters, including `cstr`, pass values. Record and array parameters
+create non-rebindable aliases to caller storage. Mutating `actor` in the
+example mutates the caller's record. The source type remains `Actor`; no
+pointer or reference type appears at either side of the call.
 
-The unqualified aggregate form is private-interface shorthand for a reference
-in the profile's default class; it does not specialize to the actual
-argument's class. An exported routine, or a private routine that accepts far
-storage, states the address class with a typed-reference parameter:
+An unqualified aggregate parameter in a private routine uses the profile's
+default storage class. An exported routine, or a private routine that accepts
+non-default storage, puts `near` or `far` before the parameter name:
 
 ```lanternfly
-export sub moveActor(actor as near ref Actor, deltaX as i16)
+export sub moveActor(near actor as Actor, deltaX as i16)
     actor.position.x = actor.position.x + deltaX
 end
 ```
 
-An aggregate argument must be a compatible storage path or a compatible typed
-reference, not a temporary initializer or other general expression. Because
-first-edition aggregate parameters are writable, constant storage is not a
-valid actual argument. Volatile storage is also rejected until references can
-carry a volatile referent qualification. Typed-reference parameters pass
-reference values and may be rebound locally without rebinding the caller's
-reference variable.
+The position keeps aggregate storage class separate from the type of its
+elements. In `far labels as near cstr[8]`, the array is in far storage and each
+element is a `near cstr`. The two classes are checked independently. A leading
+storage class is valid only when the parameter type is a record or fixed
+array.
+
+An aggregate argument must be a compatible storage path or local alias, not a
+temporary initializer or other general expression. First-edition aggregate
+parameters are writable, so constant and volatile storage are not valid
+arguments. Source code has no expression for the parameter's hidden carrier,
+so rebinding, returning, storing, comparing or converting that carrier has no
+syntax. The parameter name denotes caller storage: ordinary field access,
+indexing, aggregate copying and nested aggregate calls remain valid. Passing
+it to another compatible aggregate parameter extends the temporary alias only
+for that nested call.
 
 Parameter-free routines form the first implementation stage. Later stages add
 parameters, locals and the calling convention without changing the source
 language edition.
 
-### 11.4 Local variables and collection aliases
+### 11.4 Local variables and aggregate aliases
 
 Scalar locals use `var`:
 
@@ -1501,25 +1650,27 @@ sub updateActor(actor as Actor)
 end
 ```
 
-Local collection storage follows these rules:
+Local aggregate storage follows these rules:
 
 - scalar locals may own automatic storage;
 - record and array locals do not allocate aggregate stack objects;
-- a local collection name aliases storage allocated elsewhere.
+- a local aggregate name aliases storage allocated elsewhere.
 
 A local `var` declaration with a record or array type is therefore a compile
 error. The parser accepts the common `var name as Type` shape before semantic
 checking distinguishes an owned scalar from an aggregate.
 
-The alias spelling is provisional. The current candidate is:
+`alias` declares that non-owning local name:
 
 ```lanternfly
-ref actor as Actor = actors[selectedActor]
+alias actor as Actor = actors[selectedActor]
 ```
 
-The spelling reserves `var actor as Actor` for owning static storage and makes
-a local alias explicit. Unlike a reference variable, this alias cannot be
-rebound.
+The declaration evaluates and checks `actors[selectedActor]` once. It
+allocates no record storage and cannot be rebound. Direct indexing remains
+preferable when the path is used only once; an alias earns its name when a
+routine repeatedly accesses the same aggregate or needs to pass it to another
+aggregate parameter.
 
 ### 11.5 Return
 
@@ -1552,7 +1703,8 @@ sub clamp(input as i16, minimum as i16, maximum as i16) as i16
 end
 ```
 
-`exit` remains loop control; `return` leaves the routine.
+`exit` remains loop control. `return` leaves the routine, or reaches the host
+epilogue when used without a value in a hosted body under section 13.3.
 
 ### 11.6 Calling convention
 
@@ -1574,6 +1726,11 @@ deferred: an external or host routine contract may call native services but
 may not re-enter a source-defined Lanternfly routine or hosted body. A binding
 that requires such a callback is incompatible. The target-specific convention
 does not change Lanternfly source semantics.
+
+Routine names are not values. Source code cannot take a routine's address,
+store it in an array, return it or invoke it indirectly. `select` supplies
+runtime dispatch; a backend may lower a dense selection to a jump table
+without exposing code addresses to the program.
 
 ## 12. Modules
 
@@ -1687,6 +1844,10 @@ contract produces the conservative native-boundary warning and prevents
 optimizations across the call. The backend may generate an adapter when the
 declared Lanternfly signature and native ABI can be reconciled without changing
 source meaning.
+
+For a `cstr` parameter or result, the native contract also guarantees the
+terminator, accessible byte range, immutability and program lifetime required
+by section 3.2. AZM `.cstr` data satisfies the representation rule directly.
 
 External declarations are module declarations. They may be private or
 exported, and a platform interface module can collect and export them for
@@ -1806,14 +1967,15 @@ across all three forms.
 
 Every external or host-manifest routine contract preserves Lanternfly value
 invariants at entry and return. An integer has its declared width, a Boolean is
-zero or one, and a typed reference is non-null, correctly aligned, of the
-declared address class and referent type, valid for the promised lifetime and
-rooted in nonvolatile storage. Native code may not mutate constant storage or
-install an invalid Boolean, address or reference representation in Lanternfly
-storage. A contract missing one of these representation or lifetime
-guarantees is incompatible and is rejected; it cannot be made safe merely by
-disabling optimization. If a provider violates a declared guarantee at
-runtime, that provider is nonconforming.
+zero or one, and an aggregate parameter names valid, correctly aligned storage
+of the declared class and exact type for the duration of the call. A `cstr` is
+non-null, immutable through its interface and terminated within its promised
+accessible range for the program's lifetime. Native code may not mutate constant storage or
+install an invalid Boolean, address or C-string representation in Lanternfly
+storage. A contract missing one of these representation, layout or lifetime
+guarantees is incompatible and is rejected; disabling optimization cannot make
+it safe. If a provider violates a declared guarantee at runtime, that provider
+is nonconforming.
 
 The effect part of an external or host routine contract states visible reads,
 writes, calls, faults, device I/O, control flow and ABI clobbers. When this
@@ -1823,7 +1985,7 @@ native routines, fault, perform device I/O and clobber every
 caller-unpreserved machine resource. It still may not violate the value
 invariants above. The compiler emits `W-NATIVE-001` and treats this fallback
 as a write to any visible counted-loop control variable, which can make the
-call invalid under section 10.2.
+call invalid under section 10.1.
 
 The calls named by such a contract are native-to-native edges. A native call
 back into a source-defined Lanternfly routine or hosted body is outside the
@@ -1862,11 +2024,11 @@ block. A return or jump that bypasses Lanternfly control flow violates the
 block contract. In a hosted body, the block must eventually reach the host
 epilogue through ordinary body completion or generated Lanternfly control.
 The block must not modify immutable storage or leave an invalid Boolean,
-opaque-address or typed-reference representation in Lanternfly-visible
-storage. Violating one of these obligations makes the inline block
-nonconforming source for that target. Calling a generated source-defined
-Lanternfly routine from raw assembly is deferred because the compiler cannot
-add that hidden edge to its recursion and reentrancy analysis.
+opaque-address or C-string representation in Lanternfly-visible storage.
+Violating one of these obligations makes the inline block nonconforming source
+for that target. Calling a generated source-defined Lanternfly routine from
+raw assembly is deferred because the compiler cannot add that hidden edge to
+its recursion and reentrancy analysis.
 
 A statement block is an observable compiler barrier. Unless a later declared
 native contract narrows its effects, the compiler assumes that statement-level
@@ -1905,18 +2067,14 @@ manifest error; an incomplete routine effect summary receives the conservative
 fallback and `W-NATIVE-001`. Lanternfly has no Glimmer-specific state or
 scheduling words.
 
-Normal body completion reaches the host epilogue. The host-only statement:
-
-```lanternfly
-exit body
-```
-
-also reaches that epilogue and must not lower to a machine return. A body-level
-`return` is invalid because the hosted body is not a sub.
+Normal body completion reaches the host epilogue. Bare `return` may complete a
+hosted body early and reaches that same epilogue; it must not lower to a
+machine return. A hosted body cannot return a value. This rule keeps `exit`
+exclusive to loop control and avoids a host-specific exit form.
 
 The compiler returns a summary of imported storage reads and writes, routines
-called, native effects, early exits, runtime helpers, static scratch, estimated
-cost and source mappings. A host may compare that summary with explicit
+called, native effects, early returns, runtime helpers, static scratch,
+estimated cost and source mappings. A host may compare that summary with explicit
 dependency declarations or use it to derive change tracking.
 
 ### 13.4 Floating point
@@ -1951,6 +2109,7 @@ The current core word inventory is:
 
 ```text
 abs
+alias
 and
 as
 asm
@@ -1960,6 +2119,7 @@ clear
 const
 continue
 count
+each
 else
 end
 exit
@@ -1971,7 +2131,8 @@ for
 from
 if
 import
-loop
+in
+length
 mod
 not
 offset
@@ -1988,42 +2149,47 @@ sub
 then
 to
 true
-value
+until
 var
 volatile
 while
 xor
 ```
 
-The reserved built-in type and reference words are:
+The reserved built-in type and storage-class words are:
 
 ```text
 address
 boolean
+cstr
 far
 i8
 i16
 i32
 near
-ref
 u8
 u16
 u32
 ```
 
-`type` and `body` are contextual words. `type` selects a type operand inside
-`size` or `count`, and `body` follows `exit` in a hosted body. They remain
-available as ordinary identifiers everywhere else. Contextual-word recognition
-is case-insensitive, and the formatter emits lowercase.
+`type` is contextual. It selects a type operand inside `size` or `count` and
+remains available as an ordinary identifier everywhere else.
+Contextual-word recognition is case-insensitive, and the formatter emits
+lowercase.
 
 The first edition omits:
 
 ```text
+break
 call
 dim
+do
 function
+goto
 include
+loop
 procedure
+repeat
 ```
 
 ## 15. Provisional grammar sketch
@@ -2082,13 +2248,15 @@ external-binding    ::= "at" address-const-expr
                       | "from" string-literal
 
 params              ::= param ("," param)*
-param               ::= value-name "as" type-expr
+param               ::= aggregate-storage-class? value-name "as" type-expr
+aggregate-storage-class
+                    ::= "near" | "far"
 
 routine-block       ::= local-decl* statement*
-local-decl          ::= local-var-decl | ref-decl
+local-decl          ::= local-var-decl | alias-decl
 local-var-decl      ::= "var" value-name "as" type-expr
                         ("=" expression)? newline
-ref-decl            ::= "ref" value-name "as" aggregate-type
+alias-decl          ::= "alias" value-name "as" aggregate-type
                         "=" storage-path newline
 
 constant-initializer
@@ -2108,8 +2276,8 @@ statement           ::= assignment-statement
                       | if-statement
                       | select-statement
                       | for-statement
+                      | for-each-statement
                       | while-statement
-                      | loop-statement
                       | exit-statement
                       | continue-statement
                       | return-statement
@@ -2145,46 +2313,40 @@ case-item           ::= const-expr
                       | const-expr "to" const-expr
 
 for-statement       ::= "for" value-name "=" expression
-                        "to" expression
+                        ("to" | "until") expression
                         ("step" const-expr)? newline
                         block
                         "end" newline
 
-while-statement     ::= "while" expression newline block "end" newline
-loop-statement      ::= "loop" newline block "end" newline
+for-each-statement  ::= "for" "each" value-name "in" storage-path
+                        newline block "end" newline
 
-exit-statement      ::= "exit" ("body")? newline
+while-statement     ::= "while" expression newline block "end" newline
+
+exit-statement      ::= "exit" newline
 continue-statement  ::= "continue" newline
 return-statement    ::= "return" expression? newline
 
 block               ::= statement*
 
 type-expr           ::= arrayable-type dimensions?
-                      | reference-type
 aggregate-type      ::= type-name
                       | arrayable-type dimensions
 arrayable-type      ::= scalar-type
                       | type-name
                       | address-type
-                      | "(" reference-type ")"
 
 dimensions          ::= "[" const-expr ("," const-expr)* "]"
 scalar-type         ::= integer-type | "boolean"
+                      | cstring-type
 integer-type        ::= "u8" | "i8" | "u16" | "i16"
                       | "u32" | "i32"
-reference-type      ::= ("near" | "far")? "ref" reference-referent
-reference-referent  ::= scalar-type
-                      | type-name
-                      | "(" type-expr ")"
+cstring-type        ::= ("near" | "far")? "cstr"
 address-type        ::= ("near" | "far") "address"
 
 storage-base        ::= value-name
-                      | "value" "(" expression ")"
 storage-path        ::= storage-base path-segment*
-returned-reference-path
-                    ::= invocation path-segment+
 writable-path       ::= storage-path
-                      | returned-reference-path
 path-segment        ::= "." value-name
                       | "[" expression ("," expression)* "]"
 
@@ -2211,12 +2373,12 @@ power-expression    ::= postfix-expression ("^" unary-expression)?
 postfix-expression  ::= primary-expression path-segment*
 
 primary-expression  ::= integer-literal
+                      | character-literal
+                      | string-literal
                       | "true" | "false"
                       | value-name
                       | invocation
                       | conversion
-                      | reference-expression
-                      | referent-expression
                       | standard-value-operation
                       | layout-query
                       | "(" expression ")"
@@ -2224,12 +2386,9 @@ primary-expression  ::= integer-literal
 invocation          ::= value-name "(" arguments? ")"
 arguments           ::= expression ("," expression)*
 conversion          ::= integer-type "(" expression ")"
-                      | reference-type "(" expression ")"
-reference-expression
-                    ::= "ref" storage-path
-referent-expression ::= "value" "(" expression ")"
+                      | cstring-type "(" expression ")"
 standard-value-operation
-                    ::= ("abs" | "sqrt") "(" expression ")"
+                    ::= ("abs" | "sqrt" | "length") "(" expression ")"
 layout-query        ::= "size" "(" layout-operand ")"
                       | "count" "(" layout-operand
                         ("," const-expr)? ")"
@@ -2250,13 +2409,16 @@ identifier          ::= ascii-letter
 integer-literal     ::= decimal-digit+
                       | "$" hexadecimal-digit+
                       | "%" binary-digit+
+character-literal   ::= "'" character-content "'"
 string-literal      ::= '"' string-character* '"'
 newline             ::= logical-newline
 ```
 
 `const-expr` and `address-const-expr` are syntactically expressions and are
 restricted semantically by sections 4.5 and 3.1 respectively.
-`string-character` and `logical-newline` obey section 2.4.
+`character-content`, `string-character` and `logical-newline` obey section
+2.4. Grammar positions for imports and external `from` bindings apply the
+more restrictive compile-time text rules from that section.
 `value-name` and `type-name` share one lexical shape and resolve in their
 respective namespaces, subject to the record/callable collision rule in
 section 2.1. A no-result invocation has internal type `unit` and is legal only
@@ -2265,9 +2427,7 @@ also have internal type `unit`, but their grammar admits them only as complete
 standard-procedure statements.
 
 When a statement begins with a writable path followed immediately by `=`, the
-parser selects `assignment-statement`. A writable path is either an ordinary
-storage path or a field/index path rooted in an invocation that returns a
-writable typed reference. Otherwise the parser selects an expression
+parser selects `assignment-statement`. Otherwise it selects an expression
 statement, where `=` can occur only as equality inside the expression.
 Parentheses make a discarded equality test explicit:
 
@@ -2280,13 +2440,14 @@ Parentheses make a discarded equality test explicit:
 The following questions remain open or provisional:
 
 - whether bare `end` stays clearer than named endings in long routines;
-- the spelling of local collection aliases;
 - case-insensitive identifier resolution after parser experiments;
 - whether `at` is sufficient or grows into a section-placement model;
 - source syntax for narrowing an external routine's effect contract;
 - native callback declarations and their call-graph/reentrancy contract;
-- volatile imported-reference spelling;
+- read-only aggregate parameters and bounded writable-text view spelling;
 - whether selection ranges belong in the first parser;
+- whether translated programs justify `repeat`/`until` or named outer-loop
+  exits;
 - module aliases, re-exports and the source file extension;
 - optional `float32` semantics and its target capability contract.
 

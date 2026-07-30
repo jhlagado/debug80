@@ -7,8 +7,8 @@ changing the language design or starting implementation.
 
 ## Thirty-second orientation
 
-Lanternfly is a small, statically typed, BASIC-like imperative language for
-ordinary game logic and other straightforward low-level programs. Its first
+Lanternfly is a streamlined, statically typed structured BASIC for fixed-memory
+game logic and other straightforward low-level programs. Its first
 use is expected to be replacing handwritten AZM assembly inside Glimmer bodies.
 It is nevertheless independent of Glimmer and is intended to lower through
 different backends to Z80 or other assembly languages, C and possibly selected
@@ -92,14 +92,16 @@ Continue with:
    lowercase syntax and semantic contract.
 6. [Conformance and diagnostics](conformance.md) for the required errors,
    warnings, faults and cross-backend fixtures.
-7. [Design book](design-book/index.md), especially:
+7. [Language completeness review](language-completeness-review.md) for the
+   BASIC/Pascal baseline and ranked follow-up work.
+8. [Design book](design-book/index.md), especially:
    - [Language and boundaries](design-book/01-language-and-boundaries.md)
    - [Numbers, truth and expressions](design-book/02-numbers-and-expressions.md)
    - [Storage and addressing](design-book/03-storage-and-addressing.md)
    - [Control flow and routines](design-book/04-control-and-routines.md)
    - [Lowering and portability](design-book/06-lowering-and-portability.md)
    - [Hosting Lanternfly inside Glimmer](design-book/07-glimmer-hosting.md)
-8. [Lowering, backend and runtime contract](lowering-and-runtime.md) for the
+9. [Lowering, backend and runtime contract](lowering-and-runtime.md) for the
    typed boundaries that a prototype should implement.
 
 ### Before changing a rule
@@ -148,15 +150,24 @@ promise that the feature will be added later.
 
 ### Language character
 
-- BASIC-like, grammatical source without line numbers. Labels are reserved for
-  cases where structured control does not provide a clear solution.
+- Streamlined structured BASIC source without line numbers. Labels are
+  reserved for native assembly.
 - Canonical lowercase keywords and built-in types, lower camel case value and
   routine names and Pascal case user-defined type names.
 - `//` introduces a line comment, including after a statement.
 - Static types and declarations before local use.
 - `var` and `const` declarations with `as` type clauses.
-- Structured `if`, `select`, counted loops and conditional loops, currently
-  closed by bare `end`.
+- Character literals produce exact byte values. Static double-quoted text
+  produces read-only NUL-terminated `cstr` values with near/far address
+  classes.
+- Structured `if`, `select`, inclusive `for ... to`, exclusive
+  `for ... until`, `for each ... in` and `while`, closed by bare `end`.
+- `while true` supplies indefinite iteration. `exit` leaves only a loop;
+  `continue` begins its next iteration and `return` leaves a routine or hosted
+  body.
+- Direct paths and indices are the normal identity model. Aggregate parameters
+  and local aliases provide temporary storage access without first-class
+  pointers, reference values or function values.
 - Source describes program meaning, not registers, flags or instruction forms.
 - No Glimmer-specific vocabulary.
 - Direct native/substrate code remains available through an explicit boundary.
@@ -229,16 +240,17 @@ Do not let C, BASIC or target-CPU arithmetic silently redefine these results.
 - Aggregate local names are explicit aliases to existing storage, not local
   aggregate allocations.
 - Aggregate parameters alias existing typed storage.
-- References are typed and do not expose unrestricted pointer arithmetic.
-- Bounded views or an explicit reference-and-count convention are still being
-  designed for reusable algorithms.
+- An alias name denotes its aggregate for copying and access. Its hidden
+  carrier has no source expression, and Lanternfly exposes no first-class
+  storage reference or pointer type.
+- Bounded aggregate views are still being designed for reusable algorithms.
 - The initial language has no heap or garbage collector.
 
 Address classes are semantic capabilities:
 
-- a near reference is directly usable in the target's ordinary address
+- a near aggregate alias is directly usable in the target's ordinary storage
   context;
-- a far reference may require bank, segment or other context;
+- a far aggregate alias may require bank, segment or other context;
 - the physical representation is target-defined and need not always be 32
   bits;
 - opaque device address spaces, such as TMS9918 VRAM, are not ordinary CPU
@@ -247,8 +259,10 @@ Address classes are semantic capabilities:
 ### Control and routine model
 
 - Structured control is primary; unrestricted `GOTO` is not enabled.
-- `EXIT BODY` must transfer to the host epilogue. It must never become a direct
-  machine return that bypasses Glimmer updates.
+- `for ... to` is inclusive, `for ... until` is exclusive, `for each ... in`
+  traverses fixed arrays and `while true` covers indefinite iteration.
+- `exit` is loop-only. Bare hosted `return` transfers to the host epilogue and
+  must never become a direct machine return that bypasses host updates.
 - Every routine uses `sub`; an optional trailing result type replaces a
   separate `function` declaration.
 - Parentheses identify invocation. There is no `call` keyword.
@@ -313,7 +327,7 @@ The accepted staging is described fully in the
 
 Parse, type-check and lower imported state, expressions, assignments, array
 and record paths, structured control, imported calls, standard operations and
-`exit body`. Pass through inline `asm`, emit AZM plus maps and preserve
+hosted `return`. Pass through inline `asm`, emit AZM plus maps and preserve
 assembler diagnostics at original source lines. K0 does not require
 user-declared parameters or locals.
 
@@ -321,15 +335,15 @@ Target fixtures: Counter, Dot, Slide, Trail and ordinary Glimmer rule bodies.
 
 ### K1: structured storage
 
-Add Lanternfly-owned static arrays and records, initializers, arrays of
-references, scalar locals, local aliases, reference variables and broader path
-lowering.
+Add Lanternfly-owned static arrays and records, initializers,
+multidimensional arrays, integer selectors, scalar locals, local aliases and
+broader path lowering.
 
 Target fixtures: central Tetro and Pacmo storage patterns.
 
 ### K2: routines
 
-Add parameterised subs, optional scalar/reference results, scalar-value and
+Add parameterised subs, optional scalar results, scalar-value and
 aggregate-alias parameters, bounded aggregate views or an equivalent
 convention and ABI adapters.
 
@@ -338,7 +352,7 @@ Target fixtures: Snake helpers, Tetro engine routines and Pacmo routines.
 ### K3: target breadth and far memory
 
 Add far data and calls, bank/segment context, at least one additional CPU
-backend, a C reference backend, a named BASIC experiment and cross-backend
+backend, a C semantic backend, a named BASIC experiment and cross-backend
 conformance testing.
 
 ## Recommended first implementation
@@ -353,7 +367,7 @@ The current architecture recommends this order:
 5. lower scalar state and structured control to canonical AZM;
 6. compose source maps and implement the Glimmer body epilogue;
 7. add exact arrays, records and path lowering;
-8. add the helper registry, cost-report skeleton, aliases and references;
+8. add the helper registry, cost-report skeleton and aggregate aliases;
 9. add user routines only after storage paths and diagnostics are reliable;
 10. use C and BASIC experiments to find assumptions that accidentally belong
     to the first backend rather than the language.
@@ -371,12 +385,12 @@ run the same fixtures and compare storage plus service traces.
 
 Do not present these points as settled without an explicit decision:
 
-- read-only, output and in/out reference spelling;
+- read-only, output and in/out aggregate-parameter spelling;
 - one-line `if` and an empty-block spelling;
 - source file extension;
 - source syntax for narrowing an external routine's effect contract;
 - syntax for an explicitly unsafe, nonconforming unchecked-array mode;
-- minimal static string or string-view support;
+- read-only bounded views and writable text-buffer support;
 - bounded aggregate view syntax;
 - nominal fixed-width enums;
 - scalar output parameter syntax;
@@ -399,7 +413,7 @@ contains the broader experiments and evidence required.
 | Rushlight       | widened signed coordinate difference and TMS9918 services                     |
 | Sprite Chase    | a second widened-subtraction fixture                                          |
 | Snake           | fixed circular storage, masks, search and helper routines                     |
-| Tetro           | signed spawn coordinates, references, aliases, early returns and exact planes |
+| Tetro           | signed spawn coordinates, selectors, aliases, early returns and exact planes  |
 | Pacmo           | packed rows, six-byte record stride, fixed candidates and service-heavy logic |
 | AZM Book 3      | sorting, bounded strings, records, recursion and static pointer structures    |
 | ZAX             | scalar locals, stack parameters, aggregate aliases and typed address lowering |
@@ -578,7 +592,7 @@ no stale Lanternfly game references and Rushlight's 16-character LCD title is
 Before implementation, confirm whether the next goal is:
 
 - reconciling the teaching book and design-book examples with specification
-  0.3;
+  0.4;
 - designing the host manifest and type descriptors;
 - building the K0 parser and type checker;
 - translating a focused fixture set into canonical Lanternfly;

@@ -3,9 +3,11 @@
 > [!IMPORTANT]
 > This chapter is an exploratory design record. Syntax and policies shown here,
 > including uppercase declarations and the rejection of aggregate assignment,
-> may have been superseded. The normative 0.3 rules for storage, copying,
-> references and bounds checks are in
+> may have been superseded. The normative 0.4 rules for storage, copying,
+> paths, aliases and bounds checks are in
 > [the specification](../specification.md), sections 4 through 7.
+> Version 0.4 replaces the programmer-visible reference proposals below with
+> direct paths, integer indices and non-escaping aggregate aliases.
 
 Structured memory is Lanternfly's centre of gravity. The corpus rarely asks for
 clever syntax. It repeatedly asks to name the right byte inside a known shape.

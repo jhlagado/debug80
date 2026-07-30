@@ -1,8 +1,8 @@
 # Lanternfly
 
-Lanternfly is a typed, integer-based programming language in the structured
-BASIC family. It is intended to replace handwritten assembly in ordinary
-program logic while remaining independent of Glimmer.
+Lanternfly is a statically typed structured BASIC for fixed-memory systems. It
+is intended to replace handwritten assembly in ordinary program logic while
+remaining independent of Glimmer.
 
 The package is a design workspace. It contains no compiler yet. The documents
 separate accepted direction from provisional proposals and open questions so
@@ -36,6 +36,7 @@ or resources. The Glimmer preprocessor continues to own those concepts.
 - [Language charter](docs/charter.md)
 - [Working language specification](docs/specification.md)
 - [Conformance and diagnostics](docs/conformance.md)
+- [Language completeness review](docs/language-completeness-review.md)
 - [Lowering, backend and runtime contract](docs/lowering-and-runtime.md)
 - [Research record and evidence](docs/research.md)
 
@@ -43,15 +44,17 @@ or resources. The Glimmer preprocessor continues to own those concepts.
 
 The first design work concentrates on:
 
-1. fixed-size arrays, records, indexing, aliases, and references;
-2. a small expression language for arithmetic, comparison, masks, and
+1. fixed-size arrays, records, direct indexing and non-escaping aliases;
+2. static C strings, character bytes and bounded text follow-up;
+3. a small expression language for arithmetic, comparison, masks and
    conditions;
-3. structured conditionals and loops;
-4. portable lowering and target runtime support.
+4. structured conditionals and loops;
+5. portable lowering and target runtime support.
 
 Formal arguments and scalar locals form a later implementation stage than
 structured storage, but their semantics are now included in the design.
 Floating point remains deferred. The current design explores an optional
 `float32` capability whose helper library would be linked only when used. ZAX
 demonstrates that routine features can be added while aggregate locals remain
-aliases and the language remains heap-free.
+aliases and the language remains heap-free. Lanternfly keeps the alias
+behaviour but removes first-class reference values from its source model.

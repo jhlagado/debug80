@@ -1,12 +1,9 @@
 # Language stages and decisions
 
 > [!IMPORTANT]
-> This chapter preserves the earlier research programme and implementation
-> staging. Its “chosen” and “provisional” lists are historical when they
-> conflict with [the 0.3 specification](../specification.md). In particular,
-> current source uses lowercase built-ins and keywords, strict one-byte
-> Booleans, short-circuit Boolean `and`/`or`, bare `end`, `var name as Type`,
-> and value-copying aggregate assignment.
+> This chapter records the implementation staging behind
+> [the 0.4 specification](../specification.md). The specification governs
+> whenever an example here omits a semantic detail.
 
 Lanternfly should become useful in slices. The first slice must already have a stable
 meaning; later slices add source power without redefining old programs.
@@ -19,14 +16,16 @@ Required:
 
 - imported scalar and aggregate declarations;
 - the six integer types;
+- byte-valued character literals and static C-string literals;
 - literals, conversions and pure expressions;
 - assignment;
 - fixed array indexing and record fields;
 - one- and two-dimensional paths in the language model;
-- `IF`, `SELECT CASE`, `FOR`, `WHILE`, post-test `DO`;
+- `if`, `select`, `for ... to`, `for ... until`, `for each ... in` and
+  `while`;
 - imported procedure and pure-function calls;
 - scalar compiler temporaries;
-- `EXIT BODY`;
+- hosted `return`;
 - standard scalar functions and `FILL`/`COPY`;
 - generated AZM and composed source maps;
 - direct AZM bodies beside Lanternfly.
@@ -43,11 +42,10 @@ K1 makes the native game engines readable:
 
 - Lanternfly-owned static arrays and records;
 - exact initializers;
-- arrays of references;
-- local scalar `DIM`;
-- local `ALIAS`;
-- near reference variables;
-- reference parameters in imported interfaces;
+- multidimensional arrays and integer selectors;
+- local scalar `var`;
+- local aggregate `alias`;
+- near and far aggregate parameters in imported interfaces;
 - explicit address-space types;
 - broader path lowering.
 
@@ -58,15 +56,15 @@ routines are mature.
 
 K2 adds:
 
-- `SUB` and `FUNCTION`;
+- one `sub` form with an optional result;
 - scalar value parameters;
-- reference parameters;
-- scalar/reference return;
+- aggregate alias parameters;
+- scalar return;
 - definite assignment;
 - early return;
 - target ABI description and adapters;
 - non-recursive call graph by default;
-- bounded aggregate views or an explicit reference-and-count equivalent;
+- bounded aggregate views;
 - scalar output and in/out parameter contracts.
 
 This moves Snake helpers, the Tetro engine and Pacmo routines into Lanternfly.
@@ -79,11 +77,10 @@ rules needed by K2.
 
 K3 makes the portability promise substantial:
 
-- far data references;
-- far calls and procedure references;
+- far aggregate access and far calls;
 - bank/segment context rules;
 - 6502 and/or 8086 backend;
-- C reference backend;
+- C semantic backend;
 - one named BASIC dialect experiment;
 - cross-backend conformance suite;
 - cost comparison.
@@ -97,21 +94,24 @@ The following have no first-corpus requirement:
 
 - floating point;
 - recursion on bare-metal targets;
-- aggregate returns and copies;
-- nullable references;
+- aggregate returns;
 - dynamic allocation;
 - strings as a rich runtime type;
 - packed bit fields;
 - arrays spanning memory banks;
-- indirect procedure calls;
+- indirect calls, procedure values and closures;
 - exceptions;
 - user-defined operator overloading;
 - generic types.
 
-Nullable references remain deferred, but Book 3 shows that they can support
-statically allocated linked structures without introducing a heap.
-
 Deferral is not a promise to add them.
+
+First-class references and pointers are not merely deferred conveniences.
+Lanternfly deliberately keeps them out of its source value model. Direct
+paths, integer indices, multidimensional arrays and non-escaping aggregate
+aliases are the intended alternatives. Adding pointer values later would
+change that philosophy rather than complete an unfinished first-edition
+feature.
 
 ## Chosen decisions
 
@@ -119,31 +119,35 @@ The current book chooses:
 
 1. Lanternfly is independent of Glimmer.
 2. Glimmer-specific operations do not become Lanternfly keywords.
-3. Source style is BASIC-like and statically typed.
+3. Lanternfly is a streamlined structured BASIC with fixed-width static types.
 4. Variables must be declared.
-5. `INTEGER` is signed 16-bit; compact signed and unsigned variants are
-   explicit.
-6. Addition, subtraction, division, remainder and comparison use a range-based
-   common type of at least 16 bits; multiplication, masks and shifts have
-   width-specific rules.
+5. Integer types state width and signedness explicitly from `u8` through
+   `i32`.
+6. Operator-specific result rules preserve useful byte ranges and never
+   inherit promotion from the backend language.
 7. Fixed-width stores narrow by defined low-bit truncation, with diagnostics.
-8. Comparisons produce canonical all-bits-one truth and conditions accept any
-   nonzero value.
-9. `AND`, `OR`, `XOR` and `NOT` are one eager binary/Boolean family.
+8. Comparisons produce one-byte `boolean` values, and conditions require
+   `boolean`.
+9. `and`, `or`, `xor` and `not` form one type-directed family. Boolean `and`
+   and `or` short-circuit; integer uses combine bits.
 10. Arrays are zero-based, count-declared and row-major.
 11. Records and arrays have exact sizes with no hidden padding.
 12. Static aggregates are the default.
 13. Aggregate local names alias existing storage; they do not allocate copies.
-14. References are typed and do not expose general pointer arithmetic.
+14. Direct paths and integer indices are the persistent identity model.
+    Aggregate parameters and local aliases are temporary names, not values.
 15. Near, far and device addresses are distinct capabilities.
 16. Two dynamic indices are meaningful source even if an early backend asks
     for staging.
 17. Structured control is primary; line numbers do not exist.
-18. `EXIT BODY` preserves a host epilogue.
-19. Calls are source-uniform whether lowered inline, natively or through a
+18. `exit` is loop-only; hosted `return` preserves the host epilogue.
+19. Inclusive `for ... to`, exclusive `for ... until`, `for each ... in` and
+    `while` cover the first-edition loop model. `while true` replaces a bare
+    indefinite loop.
+20. Calls are source-uniform whether lowered inline, natively or through a
     helper.
-20. Runtime helpers link on demand.
-21. Generated substrate source and composed mappings are first-class artifacts.
+21. Runtime helpers link on demand.
+22. Generated substrate source and composed mappings are first-class artifacts.
 
 These decisions are ready to guide a prototype.
 
@@ -153,15 +157,13 @@ The implementation should begin with these rules, but keep focused tests and
 version notes around them:
 
 - source is case-insensitive while preserving declaration spelling;
-- comments begin with `REM`;
-- `DIM name[count] AS type` is the declaration form;
-- blocks use `END IF`, `END SELECT`, `END WHILE`, `END SUB` and
-  `END FUNCTION`;
-- arrays permit both comma and chained indexing, with comma canonical;
+- comments begin with `//`;
+- `var name as Type` is the declaration form;
+- bare `end` closes structured blocks;
+- one bracket supplies every index of a multidimensional array;
 - `^` is integer power;
 - overshifts return defined zero/sign-fill results;
 - runtime narrowing warns but compiles;
-- non-null references are the only initial reference kind;
 - routine arguments evaluate left to right;
 - recursive call cycles are rejected by initial bare-metal profiles;
 - recursion-capable profiles report frame size and bounded maximum stack use;
@@ -198,14 +200,13 @@ Evidence needed before ratification: complete Tetro and Pacmo translations and
 measure whether this restriction causes artificial blocks or hoisted
 temporaries.
 
-### Public reference qualification
+### Public aggregate-storage qualification
 
-The source spelling is `REF TO T`, optionally qualified by `NEAR` or `FAR`.
-The open decision is whether public declarations must always state the
-qualification.
+Exported aggregate parameters state `near` or `far`. Private unqualified
+aggregate parameters use the target profile's default storage class.
 
-Evidence needed: interface examples across Z80 and C. The semantic split is
-settled.
+Evidence from Z80, banked targets and C will test whether this rule remains
+practical.
 
 ### Exposing checked array mode
 
@@ -214,24 +215,24 @@ Working choice: a compiler/profile mode, not a distinct source type.
 Evidence needed before ratification: emulator debugging and cost. Constant
 checks remain unconditional.
 
-### String boundary
+### String boundary closed in 0.4
 
-Working direction: encoded static bytes, explicit framing and bounded library
-operations. The remaining decision is whether a minimal static string or
-string-view type improves contracts enough to justify distinct syntax.
+The 0.4 specification chooses byte-valued character literals and `cstr`, a
+non-null, read-only near/far view of NUL-terminated static bytes. AZM `.cstr`
+data and existing firmware text routines use the same representation.
 
-Evidence available: AZM Book 3 string algorithms and the current TETRO/PACMO
-LCD scripts. Dynamic string allocation is not in scope. A translation and
-lowering experiment should settle the source type.
+Writable strings remain part of the bounded-view question because a
+terminator does not state destination capacity.
 
 ### Bounded aggregate views
 
 Working requirement: reusable algorithms must accept a bounded region of
 existing aggregate storage without allocation.
 
-Open design: spell this as a view type or as a checked reference-and-count
-convention. The insertion-sort, bounded-string and PACMO candidate scans are
-the decision fixtures. Exact-shape references remain available.
+Open design: add a view type whose internal address carrier remains
+inaccessible to source code. The insertion-sort, bounded-string and PACMO
+candidate scans are the decision fixtures. Exact-shape aggregate aliases
+remain available.
 
 ### Named scalar sets
 
@@ -241,14 +242,14 @@ Open design: add nominal, explicitly sized enums for directions, states and
 selectors. The experiment must show useful type errors and exhaustive
 selection without changing packed layout or complicating numeric conversion.
 
-### Reference parameter intent and scalar outputs
+### Parameter intent and scalar outputs
 
-The type model already permits references to scalar and aggregate storage.
-The remaining design has two parts:
+Aggregate parameters already alias caller storage. The remaining design has
+two parts:
 
 - whether source interfaces distinguish read-only, output and in/out access;
-- whether a scalar output is an alias-like parameter mode or an explicitly
-  dereferenced scalar reference.
+- whether a scalar output uses an alias-like parameter mode or an ordinary
+  returned value.
 
 The ring buffer and production search routines provide concrete fixtures.
 
@@ -280,15 +281,17 @@ Several issues no longer need to remain vague.
 - shifts are core operations.
 - `/` and `MOD` semantics must be defined even when constant cases optimize.
 - fixed arrays and records are central.
-- arrays of references and local aggregate aliases are real requirements.
+- local aggregate aliases and runtime selection among fixed aggregates are
+  real requirements; multidimensional arrays and integer selectors cover the
+  current pointer tables.
 - exact non-power-of-two record indexing occurs in Pacmo.
 - two-dimensional indexing occurs in generated resources and video buffers.
 - a heap is not required.
 - reusable algorithms need a bounded aggregate parameter convention.
-- scalar output parameters can carry secondary results without tuple returns,
-  but their write-through syntax is not settled.
+- scalar output parameter modes may carry secondary results without tuple
+  returns, but their syntax is not settled.
 - device addresses cannot be modelled as ordinary CPU pointers.
-- early body exit must preserve Glimmer's update epilogue.
+- early hosted return must preserve Glimmer's update epilogue.
 
 ## Prototype order
 

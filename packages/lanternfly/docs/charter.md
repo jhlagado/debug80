@@ -56,8 +56,8 @@ AZM, or another body language, and Lanternfly can run without Glimmer.
 
 ## Language character
 
-**Direction:** Lanternfly combines BASIC-like source with Pascal- or C-like static
-typing.
+**Direction:** Lanternfly is a streamlined structured BASIC with fixed-width
+static types.
 
 BASIC contributes:
 
@@ -71,13 +71,17 @@ Static systems languages contribute:
 
 - declared widths and signedness;
 - fixed-size arrays and records;
-- typed references;
 - compile-time storage layout;
 - diagnostics for incompatible operations.
 
 Lanternfly's core control structures use no labels or line numbers. Raw
 assembly may still use the selected assembler's labels for low-level
 destinations.
+
+The loop vocabulary is deliberately small: inclusive `for ... to`, exclusive
+`for ... until`, `for each ... in`, and `while`. `while true` supplies
+indefinite iteration. `exit` leaves only the innermost loop, `continue` begins
+its next iteration, and `return` leaves a routine or hosted body.
 
 ## Storage model
 
@@ -87,11 +91,22 @@ map.
 The initial model has:
 
 - signed and unsigned fixed-width scalar values through 32 bits;
+- byte-valued characters and static NUL-terminated text;
 - opaque near and far address values;
 - statically allocated arrays and records;
 - zero-storage aliases for existing objects and subobjects;
-- runtime references for locating existing storage;
 - target-defined near and far address capabilities.
+
+Programs use declared paths, multidimensional indices and integer pool indices
+to locate data. Aggregate parameters and local aliases name existing storage
+temporarily. Their names denote the aggregate itself; the backend carrier has
+no source expression. Backends may use machine addresses to implement aliases
+without exposing pointers in Lanternfly source.
+
+This is a language boundary, not just an implementation shortcut for version
+one. General pointer and reference values would invite a different style of
+programming, so they are not planned extensions. A future feature may add a
+bounded operation or view while still keeping its storage carrier hidden.
 
 Heap allocation, garbage collection, object ownership, and unbounded recursive
 structures lie outside the initial language. Fixed arrays, grids, tables, and
@@ -133,9 +148,9 @@ contract narrows them.
 
 The current priority order is:
 
-1. storage layout, arrays, records, indexing, aliases, and references;
-2. scalar types and expression semantics;
-3. conditionals, loops, and ordinary side effects;
+1. storage layout, arrays, records, indexing and aliases;
+2. scalar types, static text and expression semantics;
+3. conditionals, loops and ordinary side effects;
 4. backend and runtime contracts;
 5. calls, formal arguments, and scalar local variables;
 6. wider numeric and optional floating-point facilities.
@@ -143,8 +158,11 @@ The current priority order is:
 Real Glimmer programs will test this order. Corpus evidence can move a feature
 forward when existing game logic cannot be expressed cleanly without it.
 
-The completed corpus pass did move signed bytes, multiple integer widths,
-arrays of references, local aggregate aliases, multidimensional indexing and
-opaque device addresses into the required model. The
+The completed corpus pass moved signed bytes, multiple integer widths, local
+aggregate aliases, multidimensional indexing and opaque device addresses into
+the required model. Pointer tables in the source corpus are expressed through
+regular multidimensional arrays or integer selectors in Lanternfly. A later
+completeness review moved byte-valued character literals and static C strings
+into the first edition. The
 [research record](research.md) and [feature matrix](evidence/corpus-feature-matrix.md)
 show the evidence.

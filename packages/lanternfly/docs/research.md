@@ -57,7 +57,7 @@ Most game logic consists of:
 - comparisons and numeric conditions;
 - counted and conditional loops;
 - fixed arrays and exact records;
-- references selecting existing global storage;
+- integer selectors and temporary aliases for existing global storage;
 - platform service calls.
 
 The apparent complexity of the assembly engines comes largely from register
@@ -134,15 +134,16 @@ A six-byte monster array requires runtime multiplication by six. Power-of-two
 semantic padding would waste memory and change external layouts. The backend
 must generate the multiplication.
 
-### Reference arrays and aliases
+### Runtime selection and aliases
 
-Tetro selects board planes through an array of references and then aliases the
-selected plane during row collapse. This is direct evidence for:
+The Tetro assembly selects board planes through an address table and then
+aliases the selected plane during row collapse. Lanternfly needs the
+underlying operations, not the assembly representation:
 
-- arrays of typed references;
-- scalar reference variables;
+- multidimensional arrays for regular planes and shape tables;
+- integer selectors plus `select` for irregular named objects;
 - local aggregate aliases that allocate no aggregate storage;
-- aggregate reference parameters.
+- aggregate parameters that alias caller storage temporarily.
 
 ### Multiple dimensions
 
@@ -203,13 +204,15 @@ Registers and flags do not become Lanternfly source concepts.
 
 AZM Book 3 adds reusable algorithms to the layout evidence. Its insertion
 sort, string routines and table walks need a bounded region rather than a
-reference to one exact fixed-array type. The storage can remain static: a view
-is a borrowed base reference and count, not a dynamic container.
+name for one exact fixed-array type. The storage can remain static. A future
+bounded-view feature could pair hidden storage access with a count while still
+denying the program a pointer value.
 
 The ring buffer and the production games also need operations that return
 success while writing a scalar result. Lanternfly can avoid tuple returns and
-processor flags, but its parameter design must choose explicit output aliases,
-parameter modes or scalar-reference dereference syntax.
+processor flags. A later design must choose between explicit scalar parameter
+modes and a result convention; exposing scalar pointers is not among the
+first-edition options.
 
 The current TETRO and PACMO sources confirm:
 
@@ -228,7 +231,9 @@ later profile capability: a backend that admits it must report frame and stack
 costs.
 
 For text, the combined evidence favours encoded static bytes, explicit framing
-and bounded library operations over a rich dynamic string type.
+and bounded library operations over a rich dynamic string type. The 0.4
+working language adopts byte-valued character literals and read-only
+NUL-terminated `cstr` views. Bounded writable operations remain follow-up work.
 
 ## Translation threshold
 
@@ -245,7 +250,7 @@ Trail and rendering bodies add arrays, records and loops.
 
 ### Engine subset
 
-Snake, Tetro and Pacmo add locals, routines, references, aliases, nested paths
+Snake, Tetro and Pacmo add locals, routines, selectors, aliases, nested paths
 and early returns.
 
 ### Native residual
@@ -256,18 +261,20 @@ native or platform services.
 ## Decisions accepted
 
 - language name: Lanternfly;
-- BASIC-like source, static types;
+- streamlined structured BASIC source with static types;
 - no Glimmer-specific vocabulary;
 - exact static layouts;
 - zero-based count-declared row-major arrays;
 - six fixed integer types through 32 bits;
+- byte-valued character literals and static C strings;
 - minimum-width arithmetic plus defined narrowing wrap;
-- numeric truth and unified binary/Boolean operators;
+- one-byte Boolean values and type-directed binary/Boolean operators;
 - shifts, integer division/remainder and integer power;
 - visible integer square-root service;
-- structured control including selection and loops;
+- structured control including `select`, `for ... to`, `for ... until`,
+  `for each ... in` and `while`;
 - scalar locals;
-- aggregate aliases/reference parameters;
+- local and parameter aggregate aliases without first-class pointer values;
 - no initial heap;
 - near/far and opaque device address types;
 - explicit native boundary;

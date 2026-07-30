@@ -1,7 +1,7 @@
 # Numbers, truth and expressions
 
 > [!IMPORTANT]
-> This chapter records the exploratory design that led to the 0.3 language.
+> This chapter records the exploratory design that led to the 0.4 language.
 > Its uppercase type names, range-based mixed promotions, numeric truth values
 > and eager Boolean rules are historical proposals, not current semantics.
 > The normative rules are in

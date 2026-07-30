@@ -13,12 +13,14 @@ working contract before parser or compiler implementation begins.
 4. [Language design book](design-book/index.md) develops the design from the
    game corpus and compares target lowerings.
 5. [Working language specification](specification.md) states the consolidated
-   0.3 syntax and semantics as the implementation contract.
+   0.4 syntax and semantics as the implementation contract.
 6. [Conformance and diagnostics](conformance.md) turns that contract into
    required errors, warnings, faults and fixtures.
-7. [Lowering, backend and runtime contract](lowering-and-runtime.md) defines
+7. [Language completeness review](language-completeness-review.md) assesses
+   the BASIC/Pascal baseline and ranks the remaining design gaps.
+8. [Lowering, backend and runtime contract](lowering-and-runtime.md) defines
    the typed compiler/host/backend boundaries.
-8. [Research record](research.md) links decisions to the Glimmer, AZM and ZAX
+9. [Research record](research.md) links decisions to the Glimmer, AZM and ZAX
    evidence.
 
 The supporting evidence is kept under [evidence](evidence/reading-ledger.md).
