@@ -1,9 +1,9 @@
 # Static storage and ordinal domains
 
 Structured memory is Lanternfly's centre of gravity. The motivating programs
-do not need ownership frameworks or general pointer arithmetic. They need to
-name the right byte inside a known shape and preserve that shape across
-backends.
+work with known shapes: the language must name the right byte and preserve the
+shape across backends. These known shapes need neither ownership frameworks nor
+general pointer arithmetic.
 
 ## Storage ownership
 
@@ -75,8 +75,8 @@ source fields. Capacity fixes both the header width and total size:
 
 The last byte reserved by either formula leaves room for a terminator at full
 capacity. A length of 255 or more therefore belongs to the long form. The
-capacity chooses the form even when the current text is short, keeping every
-surrounding record offset fixed.
+declared capacity fixes the form even when the current text is short, keeping
+every surrounding record offset fixed.
 
 The header, payload and terminator form one sealed value. Source cannot index
 the payload or assign the length directly. This removes an otherwise awkward
@@ -153,8 +153,8 @@ rowPixels[column] = 1
 `column` cannot hold a value outside `ScreenColumn`, so this access needs no
 remaining bounds test.
 
-The rules distinguish two failures. A value entering `ScreenColumn` may cause
-`F-RANGE`; a general integer used directly against `rowPixels` may cause
+Two boundaries can reject a value. Conversion into `ScreenColumn` may cause
+`F-RANGE`; direct indexing of `rowPixels` with a general integer may cause
 `F-BOUNDS`. Both faults occur before the destination changes.
 
 ## Layout and addressing
@@ -247,9 +247,9 @@ must remember which monster is selected, it stores `selectedMonster`, not an
 address. An enum selector can make that relationship nominal when the set is
 small and fixed.
 
-This approach also replaces source arrays of pointers. Regular objects use a
-multidimensional array. Irregular named objects use an integer or enum selector
-plus `select`. The backend may still use addresses internally.
+Regular objects that assembly builds with pointer tables become
+multidimensional arrays. Irregular named objects use an integer or enum
+selector plus `select`; a backend may still choose addresses internally.
 
 ## Aggregate assignment
 
@@ -287,9 +287,10 @@ sub collapsePlane(planeIndex as u8, row as u8)
 end
 ```
 
-The initializer is an exact aggregate storage path. The alias does not allocate
-or copy eight bytes, and it cannot be rebound. A backend may carry the selected
-base in a register pair or frame slot, but that carrier has no source value.
+The initializer is an exact aggregate storage path. The alias neither allocates
+nor copies an eight-byte plane, and cannot be rebound. A backend may carry the
+selected base in a register pair or frame slot, but that carrier has no source
+value.
 
 An alias cannot be stored, returned, compared, converted or used as an array
 element. It remains a temporary name for field access, indexing,
@@ -363,9 +364,8 @@ Every volatile read and write is observable. The compiler preserves their
 source order and does not merge or invent accesses.
 
 Multi-byte numeric meaning is independent of byte order. A target profile
-declares its storage endian convention. Code for a wire format or file format
-uses an explicit platform service rather than assuming that every target is
-little-endian.
+declares its storage endian convention; wire and file formats use explicit
+platform services with their own byte-order contracts.
 
 ## Deliberate limits
 

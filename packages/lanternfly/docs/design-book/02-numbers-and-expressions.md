@@ -57,39 +57,34 @@ const newline as u8 = '\n'
 const escape as u8 = '\x1b'
 ```
 
-It begins as an untyped value from zero through 255 and adopts an integer type
-from context. Lanternfly accepts printable ASCII and the defined byte escapes;
-it does not add a character encoding, a multibyte character type or
-multi-character literals.
+The literal begins as an untyped value from zero through 255 and adopts an
+integer type from context. Printable ASCII and the defined byte escapes make
+up the first-edition character vocabulary; multibyte characters and
+multi-character literals lie outside it.
 
-A double-quoted expression supplies nonzero bytes with at most 65,534
-payload bytes. The source cannot contain an embedded zero, because the
-representation ends its payload with a zero byte. A literal initializes,
-assigns to, appends to or compares with the language's one text type: a
-counted string with a capacity in its type:
+A double-quoted expression supplies at most 65,534 nonzero payload bytes. Zero
+is reserved for the terminator. A literal initializes, assigns to, appends to
+or compares with the language's one text type: a counted string with a
+capacity in its type:
 
 ```lanternfly
 var playerName as string[24]
-
-record Address
-    name as string[24]
-    city as string[32]
-end
+var cityName as string[32]
 ```
 
-The capacity chooses the layout once, at compile time. `string[1]` through
+The declared capacity fixes the layout at compile time. `string[1]` through
 `string[254]` use a one-byte length followed by payload space and a reserved
 terminator byte. `string[255]` through `string[65534]` use a two-byte length.
-The short form deliberately stops at 254: a length of 255 or more means a long
+The short form ends at 254: a length of 255 or more means a long
 string. The long form ends at 65,534, reserving its all-ones length in the same
 way. Even an empty `string[255]` retains the long layout because record offsets
 cannot depend on current contents.
 
-The terminator is always present after the current payload. This makes the
-payload immediately usable, without copying, by any native contract that
-consumes NUL-terminated bytes; every language operation maintains it.
+Every value has a terminator immediately after its current payload. A native
+contract that consumes NUL-terminated bytes can therefore use the payload
+directly, and every language operation maintains that guarantee.
 
-Lanternfly keeps the representation sealed. No field or index names the length
+The representation is sealed. No field or index names the length
 header, payload cells or terminator. Assignment, `append`, `clear`, comparison
 and `length` are the only ordinary ways to operate on it, so those operations
 can preserve the relationship between the count and the terminator. An
@@ -118,8 +113,8 @@ The compiler never invents a third common type. `u8 + u16` is a `u16`
 operation because `u8` widens to the type already present. `u8 + i8` and
 `i16 + u16` require an explicit conversion.
 
-That restriction keeps a small expression legible: a 32-bit helper appears
-only when a 32-bit operand is actually written into the calculation.
+This keeps a small expression legible: a 32-bit helper appears only when the
+calculation contains a 32-bit operand.
 
 ## Result widths
 
@@ -169,9 +164,10 @@ position = position + velocity
 ```
 
 When every value leaf has the destination's type and the expression contains
-only ordinary integer operators, the wider intermediate is understood to
-return to its original storage width. No warning is needed. An explicit
-conversion, another declared type or a standard operation ends that exemption.
+only ordinary integer operators, the exemption includes the wider intermediate
+prescribed by the result table before conversion back to the original storage
+width. No warning is needed. An explicit conversion, another declared type or
+a standard operation ends that exemption.
 
 Skyfall's deliberate wrap is still exact:
 
@@ -289,8 +285,8 @@ arithmetic fault.
 `length` reads a string's header, or a literal's known payload length, and
 returns `u16`. Literal calls fold at compile time.
 
-These operations may become instructions, inline sequences or helpers. Their
-source types and edge cases do not change.
+A backend may implement these operations with instructions, inline sequences
+or helpers. Their source types and edge cases do not change.
 
 ## Numeric conformance
 

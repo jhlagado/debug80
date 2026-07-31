@@ -1,15 +1,15 @@
 # The Lanternfly language design book
 
 Lanternfly is a compiled, statically typed language for fixed-memory systems.
-It combines the exact storage and native-code ambitions of C or Pascal with
-the word-oriented surface of a structured BASIC. Glimmer bodies are its first
-expected use, but the language and compiler stand on their own.
+Its storage and native-code model belongs in the territory of C or Pascal;
+its word-oriented surface comes from structured BASIC. Glimmer bodies are the
+first expected use, but the language and compiler stand on their own.
 
-This book explains the design in the roomier form that a specification cannot.
-It connects source rules to game code, memory layout, backend work and
-debugging. It is a handbook and rationale, not a tutorial: examples assume
-that the reader can follow ordinary typed code and wants to understand why the
-language has its particular shape.
+This book has room for the reasoning that the specification must compress. It
+connects source rules to game code, memory layout, backend work and debugging,
+showing why the language has its particular shape. It is a handbook and design
+rationale rather than a tutorial, and assumes that the reader can follow
+ordinary typed code.
 
 All examples use the current 0.4 surface. The
 [working specification](../specification.md) remains normative, the
@@ -40,8 +40,9 @@ coding order.
 10. [Language stages and decisions](10-stages-and-decisions.md) records what
     is chosen, provisional, open and deferred.
 
-The chapters build on one another, but chapters 5 through 8 also work as
-reference material for implementers.
+The first four chapters build the language from values through routines.
+Chapters 5 through 8 follow those rules across runtime, backend, host and
+debugging boundaries, and also work as reference material for implementers.
 
 ## Topic index
 

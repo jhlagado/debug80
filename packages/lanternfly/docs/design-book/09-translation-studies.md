@@ -1,8 +1,8 @@
 # Translations from the game corpus
 
-The game corpus tests whether Lanternfly can replace ordinary assembly without
-absorbing Glimmer or exposing source pointers. These are semantic translations,
-not line-for-line transliterations.
+The game corpus tests Lanternfly against the work it is meant to take over from
+assembly. Each translation preserves the game rule and storage model instead
+of following the original instructions line by line.
 
 ## Counter
 
@@ -169,7 +169,7 @@ sub plotPosition(position as u8, colour as u8)
 end
 ```
 
-Direction deserves an enum:
+Direction is a closed four-value domain, which makes it a natural enum:
 
 ```lanternfly
 enum Direction as u8
@@ -199,10 +199,10 @@ sub nextPosition(head as u8, direction as Direction) as u8
 end
 ```
 
-The enum makes an unrelated state value invalid at the call boundary and gives
-`select` an exhaustive member set.
+An unrelated state value is now invalid at the call boundary, and `select` has
+an exhaustive member set.
 
-Search still needs no dynamic collection:
+A bounded scan over the fixed ring is enough for search:
 
 ```lanternfly
 sub bodyContains(position as u8) as boolean
@@ -236,7 +236,7 @@ sub chooseFood() as RingIndex
 end
 ```
 
-The caller keeps the chosen ordinal:
+The caller keeps the chosen ordinal in ordinary state:
 
 ```lanternfly
 foodPosition = chooseFood()
@@ -245,9 +245,9 @@ foodPosition = chooseFood()
 The game invariant that the snake never fills all 64 cells explains
 termination.
 
-## Tetro shapes without reference tables
+## Tetro shape tables
 
-The assembly engine uses address tables for rotations. Lanternfly retains the
+The assembly engine uses address tables for rotations. Lanternfly stores the
 logical shape as a fixed multidimensional table:
 
 ```lanternfly
@@ -271,8 +271,8 @@ A row read names all three dimensions:
 mask = shapeRows[currentPiece, currentRotation, pieceRow]
 ```
 
-The backend may still use address tables, shifts or generated labels. Those
-choices do not become source reference values.
+A backend may still use address tables, shifts or generated labels, but none
+of those mechanisms becomes a source reference value.
 
 ## Tetro collision
 
@@ -321,19 +321,19 @@ end
 Rows below zero are above the visible board; rows eight and above meet the
 floor. A dynamic shift may become a loop on Z80.
 
-The layout-query type expression in the loop is illustrative but exact:
-`u8[PieceRow]` has the same named domain as the table's third dimension.
+The loop spells its domain as `u8[PieceRow]`, which has the same named domain
+as the table's third dimension.
 
 ## Tetro colour planes
 
-The four planes are regular record fields rather than an array of pointers:
+The four planes have regular, named roles, so a record holds them directly:
 
 ```lanternfly
 record Board
-    var occupied as u8[8]
-    var red as u8[8]
-    var green as u8[8]
-    var blue as u8[8]
+    occupied as u8[8]
+    red as u8[8]
+    green as u8[8]
+    blue as u8[8]
 end
 
 var board as Board
@@ -381,8 +381,8 @@ sub collapsePlane(plane as Plane, row as u8)
 end
 ```
 
-The selector is one byte. Each helper receives a temporary aggregate alias
-implemented by whatever carrier the backend chooses.
+The selector occupies one byte. Each helper receives a temporary aggregate
+alias implemented through a backend carrier.
 
 ## Tetro framebuffer
 
@@ -396,8 +396,9 @@ for row = lower(framebuffer) to upper(framebuffer)
 end
 ```
 
-The full renderer combines signed `row - playerY`, masks, dynamic shifts and
-the current shape table through the same typed paths.
+These field assignments are the fixed part of the renderer. Drawing the
+falling piece adds signed `row - playerY`, masks and dynamic shifts, while
+continuing to read the current shape through the same typed table paths.
 
 ## Pacmo monsters
 
@@ -409,12 +410,12 @@ enum EnemyState as u8
 end
 
 record Monster
-    var x as u8
-    var y as u8
-    var direction as Direction
-    var timer as u8
-    var respawnTimer as u8
-    var state as EnemyState
+    x as u8
+    y as u8
+    direction as Direction
+    timer as u8
+    respawnTimer as u8
+    state as EnemyState
 end
 
 var monsters as Monster[3]
@@ -452,8 +453,8 @@ sub tickEnemy(monster as Monster)
 end
 ```
 
-The parameter is a temporary alias to caller storage for the duration of the
-call.
+Each call gives `monster` a temporary name for one record in the caller's
+array.
 
 ## Pacmo respawn selection
 
@@ -461,8 +462,8 @@ call.
 range SpawnIndex as u8 = 0 until 6
 
 record Point
-    var x as u8
-    var y as u8
+    x as u8
+    y as u8
 end
 
 const enemySpawns as Point[SpawnIndex] = [
@@ -508,9 +509,9 @@ sub selectRespawn(monster as Monster)
 end
 ```
 
-The original reference proposal needed a rebindable `best` pointer. The
-current model stores `bestIndex`, which is smaller, serializable, debuggable
-and statically tied to the candidate domain.
+The original reference proposal kept a rebindable `best` pointer. Storing
+`bestIndex` instead uses one checked ordinal that is smaller, serializable,
+debuggable and statically tied to the candidate domain.
 
 The routine still needs the game precondition that at least one candidate is
 available, or an explicit no-candidate result.
@@ -519,8 +520,8 @@ available, or an explicit no-candidate result.
 
 ```lanternfly
 record PackedRow15
-    var high as u8
-    var low as u8
+    high as u8
+    low as u8
 end
 
 var world as PackedRow15[15]
@@ -543,8 +544,8 @@ loads and shifts as hand assembly.
 
 ## TMS9918 address bindings
 
-The profile supplies `far address` bindings. Bindings for TMS9918 VRAM carry
-that device-space identity as target metadata:
+The profile supplies `far address` bindings, with TMS9918 VRAM identity carried
+as target metadata:
 
 ```lanternfly
 extern sub vdpWrite(destination as far address, source as far address)
@@ -578,5 +579,7 @@ interface with stores.
 | packed byte record                    | Pacmo world                  |
 | near/far address with device metadata | TMS9918                      |
 
-No listed algorithm requires heap allocation, dynamic containers, closures,
-source references, arrays of pointers or general pointer arithmetic.
+Every listed algorithm fits fixed storage, ordinal selectors and temporary
+aggregate aliases. Heap allocation, dynamic containers, closures, source
+references, arrays of pointers and general pointer arithmetic add nothing to
+these translations.

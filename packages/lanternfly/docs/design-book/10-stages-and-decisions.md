@@ -45,7 +45,7 @@ K1 adds:
 - aggregate assignment, `clear` and `fill`;
 - wider Tetro and Pacmo storage fixtures.
 
-The hidden carrier for an alias remains compiler-only throughout K1.
+The compiler keeps alias carriers internal throughout K1.
 
 ## Stage K2: routines
 
@@ -119,7 +119,7 @@ breaking redesign.
 - Range and bounds checks occur before a destination store; type proofs may
   remove redundant checks.
 
-These choices were made before implementation because they affect name
+Ordinal domains were settled before implementation because they affect name
 resolution, type identity, layout, control, manifests, diagnostics, debug
 symbols and every backend.
 
@@ -231,8 +231,8 @@ The first corpus does not require:
 - indirect calls, procedure values or closures;
 - exceptions, generics or operator overloading.
 
-Source pointers and references are a deliberate exclusion rather than routine
-deferred work. Adding them would change the storage philosophy.
+Source pointers and references are deliberately excluded, not merely deferred.
+Adding them would change the storage philosophy.
 
 ## Questions closed by evidence
 
@@ -241,7 +241,7 @@ The corpus established several requirements:
 - Tetro's -3 spawn row needs signed eight-bit storage.
 - Rushlight needs `u8 - u8` to preserve a signed difference.
 - Skyfall needs defined low-bit destination conversion.
-- masks need `and`, `or`, `xor`, `not`, shifts, division and `mod`.
+- Masks need `and`, `or`, `xor`, `not`, shifts, division and `mod`.
 - Snake and Pacmo benefit from nominal bounded selector types.
 - Tetro and generated resources need multidimensional fixed data.
 - Pacmo needs true six-byte record strides.

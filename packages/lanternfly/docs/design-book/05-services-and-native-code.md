@@ -1,9 +1,9 @@
 # Services, native code and the runtime
 
-A Z80 has no single multiply or divide instruction. A 6502 needs software for
-wide arithmetic. A BASIC substrate already has operators, but may lack
-unsigned words. Lanternfly keeps one source meaning by separating language
-semantics from the machinery used to implement them.
+Multiplication, division and wide arithmetic require different machinery on a
+Z80, a 6502 and a BASIC substrate. Lanternfly keeps one source meaning by
+separating each operation from the instructions, helpers or host expressions
+that implement it.
 
 ## Four implementation layers
 
@@ -55,12 +55,12 @@ soundStart(duration, divider)
 vdpWrite(nameAddress, tileDataAddress)
 ```
 
-These are typed routines supplied through a host manifest, target profile or
-module. Their absence is a capability error rather than a missing keyword. Here
-the two VDP arguments are provider-bound `near address` or `far address` values
-interpreted by the service, not an immutable array passed to a writable
-aggregate parameter. Any device-space identity is target metadata on their
-bindings and the service contract.
+These typed routines come from a host manifest, target profile or module. A
+target that lacks one reports a capability error. In `vdpWrite`, the two
+arguments are provider-bound `near address` or `far address` values interpreted
+by the service, not immutable arrays passed to writable aggregate parameters.
+Any device-space identity is target metadata on their bindings and the service
+contract.
 
 ### Hidden runtime helpers
 
@@ -88,14 +88,14 @@ var banner as string[16] = "LANTERNFLY"
 extern sub printText(text as string[16])
 ```
 
-Capacity chooses a one-byte length through 254 or a two-byte length from 255
-through 65,534. Every value also maintains a zero immediately after its
-nonzero payload, so a native routine that consumes NUL-terminated bytes needs
-only the payload address in the appropriate address class. There is no
-conversion from a raw `u8` buffer because neither its capacity nor its
-termination is guaranteed.
+The declared capacity uses a one-byte length field through 254 or a two-byte
+length field from 255 through 65,534. Every value also maintains a zero
+immediately after its nonzero payload, so a native routine that consumes
+NUL-terminated bytes needs only the payload address in the appropriate address
+class. There is no conversion from a raw `u8` buffer because neither its
+capacity nor its termination is guaranteed.
 
-The type seals its representation. Language code uses checked assignment,
+The representation is sealed. Language code uses checked assignment,
 `append`, `clear`, comparison and `length`; it cannot write a header or payload
 cell separately. Native code that receives a writable string alias
 must preserve the declared layout and all invariants. Its adapter validates a
@@ -120,8 +120,8 @@ target-profile name. The contract includes:
 - device I/O or mapping-context changes;
 - normal or no-return control flow.
 
-The compiler generates an adapter when the substrate ABI differs from the
-Lanternfly ABI. AZM `.routine` contracts then verify that adapter and callee.
+When the substrate and Lanternfly ABIs differ, the compiler generates an
+adapter. AZM `.routine` contracts then verify both adapter and callee.
 
 ## Effects are part of the interface
 

@@ -25,9 +25,9 @@ if counterValue >= 10 then
 end
 ```
 
-Lanternfly gives that rule a precise compiled form. It preserves fixed widths,
-exact layouts and visible native cost while removing register allocation,
-branch distances and instruction selection from ordinary source.
+Lanternfly gives that rule a precise compiled form. Fixed widths, exact layouts
+and native cost remain visible; register allocation, branch distances and
+instruction selection move into the compiler.
 
 ```text
 Glimmer scheduling and resources
@@ -52,11 +52,10 @@ storage and helper costs visible in generated artifacts. The initial compiler
 runs on a desktop and emits AZM for Z80 systems. Its architecture also allows
 other CPU backends and hosted C or BASIC output.
 
-The longer goal includes native compilers on selected eight-bit machines. That
-goal favours a small grammar, fixed storage, simple name resolution and
-compiler passes that can be implemented without a large runtime. A native
-compiler may support a smaller implementation stage, but it must preserve the
-same meaning for every construct it accepts.
+A native compiler on selected eight-bit machines is the longer goal. That
+constraint favours a small grammar, fixed storage, simple name resolution and
+compiler passes that fit a modest runtime. Such a compiler may support a smaller
+implementation stage, but every construct it accepts keeps the same meaning.
 
 ## Structured BASIC on a systems foundation
 
@@ -94,10 +93,10 @@ end
 range ScreenColumn as u8 = 0 until 32
 ```
 
-The result remains easy to read aloud while carrying more information than a
+Both declarations read naturally aloud while carrying more information than a
 collection of unrelated integer constants.
 
-## No Glimmer vocabulary
+## The host boundary
 
 Lanternfly has no keywords for pulses, effects, renders, cards, bindings,
 resources or update scheduling. A host supplies ordinary typed names:
@@ -110,10 +109,9 @@ drawShape(shapeDot, dotX, dotY)
 The manifest says which names are constants, storage or routines and records
 exact aggregate types where they apply. Glimmer may run generated update work
 after the body, but assignment inside the body remains an ordinary Lanternfly
-assignment. The same source outside Glimmer does not acquire reactive
-behaviour.
+assignment. Outside Glimmer, the same assignment has no reactive behaviour.
 
-## No substrate vocabulary in ordinary source
+## The backend boundary
 
 Registers, flags, 6502 zero page, 8086 segments, C pointers and generated BASIC
 line numbers belong to backends. Source instead describes stable facts:
@@ -126,7 +124,7 @@ line numbers belong to backends. Source instead describes stable facts:
 - structured control and typed calls;
 - visible native and platform boundaries.
 
-A declaration answers questions that matter on every target:
+These declarations provide facts that matter on every target:
 
 ```lanternfly
 var playerY as i8 = -3
@@ -134,11 +132,11 @@ var board as u8[1 to 8, 1 to 8]
 var monsters as Monster[3]
 ```
 
-The compiler knows the value domain, byte count, field offsets and legal
-indices. A backend remains free to choose registers, frame slots or helper
-calls.
+From those declarations, the compiler derives the value domain, byte count,
+field offsets and legal indices. A backend remains free to choose registers,
+frame slots or helper calls.
 
-## Storage identity without pointers
+## Paths and selectors
 
 Lanternfly deliberately has no source-level pointer or reference values,
 address-of or dereference operations, pointer arithmetic, function values or
@@ -153,9 +151,9 @@ An aggregate parameter or local `alias` temporarily names existing array or
 record storage. A backend may carry an address internally, but the source
 cannot store, return, compare, convert or rebind that carrier.
 
-This is a language boundary, not a temporary omission. Fixed pools, selectors
-and multidimensional arrays express the current pointer-table algorithms
-without introducing a second, unsafe value model.
+This is a permanent boundary. Fixed pools, selectors and multidimensional
+arrays express the pointer-table algorithms in the current corpus within one
+checked value model.
 
 Opaque `near address` and `far address` values remain available at native
 interfaces. They do not point into ordinary Lanternfly storage and support no
@@ -192,7 +190,7 @@ emitted source with provenance metadata but has no execution point or runtime
 effect summary. A statement-level block is a conservative runtime barrier.
 Neither form weakens type checking elsewhere.
 
-## The measure of success
+## A successful design
 
 Lanternfly is doing its job when ordinary state changes, searches, collision
 tests and rendering calculations move out of assembly; hardware timing and

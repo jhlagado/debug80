@@ -19,8 +19,7 @@ source
 Glimmer may invoke this pipeline for one body, while a standalone build invokes
 it for modules and an entry `sub`. Both routes use the same typed boundary.
 
-The IR carries language decisions rather than reconstructing them in each
-backend:
+The IR carries every language decision that a backend needs:
 
 - integer width, signedness and result type;
 - Boolean canonical form;
@@ -113,7 +112,7 @@ u16 -> uint16_t      i16 -> int16_t
 u32 -> uint32_t      i32 -> int32_t
 ```
 
-Direct textual substitution is unsafe:
+Direct textual substitution can change the program:
 
 - signed C overflow is undefined;
 - C integer promotions differ from Lanternfly;
@@ -139,8 +138,8 @@ payload address while the owning storage remains alive.
 
 ## A named BASIC dialect
 
-“BASIC” is not a backend definition. Each dialect chooses different integer,
-array and call conventions.
+“BASIC” is not a backend definition. Dialects differ in their integer, array
+and call conventions.
 
 A Microsoft-style 16-bit dialect may:
 
@@ -228,9 +227,9 @@ evaluate source
 ```
 
 An array check uses the selected dimension's bounds and faults with
-`F-BOUNDS`. A subrange index can prove that check unnecessary. Proof removal is
-an optimization only in cost; it preserves the same result and fault boundary
-because the type already excludes failure.
+`F-BOUNDS`. A subrange index can prove that check unnecessary. Removing a
+proved check changes only cost: the type has already excluded the failure, so
+the result and fault boundary remain the same.
 
 `lower` and `upper` fold in the front end. They do not become runtime helper
 calls.
@@ -298,9 +297,8 @@ evidence:
 - ABI tests and substrate verification;
 - source-map integrity.
 
-C is useful as a semantic backend only after it implements Lanternfly's
-explicit overflow and conversion rules. Host operators alone are not an
-oracle.
+C becomes a useful semantic backend only after it implements Lanternfly's
+explicit overflow and conversion rules; C operators alone are not an oracle.
 
 Portable algorithms can still require named platform services or far storage.
 Portability promises stable language meaning across profiles that provide

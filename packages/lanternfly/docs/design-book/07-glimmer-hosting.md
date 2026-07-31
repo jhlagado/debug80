@@ -1,7 +1,8 @@
 # Hosting Lanternfly inside Glimmer
 
-Lanternfly begins as an optional Glimmer body language. Glimmer owns the
-scheduled program around each body; Lanternfly compiles the body itself.
+Lanternfly begins as an optional body language inside Glimmer. Glimmer builds
+the scheduled program around each body; Lanternfly compiles the statements
+within it.
 
 ## Hosted body shape
 
@@ -14,9 +15,9 @@ generated Glimmer update epilogue
 generated wrapper return
 ```
 
-The body is a region inside host control flow rather than an independent
-machine routine. That fact determines return lowering, source-map composition
-and effect checking.
+The body sits inside host control flow; it is not an independent machine
+routine. Return lowering, source-map composition and effect checking all follow
+from that placement.
 
 ## Explicit dialect selection
 
@@ -44,8 +45,8 @@ Direct AZM remains a parallel body dialect during adoption.
 
 ## Versioned host manifest
 
-Glimmer supplies language facts rather than generated assembly text. The
-version-1 manifest contains:
+Glimmer supplies typed language facts, leaving generated assembly to the
+compiler. The version-1 manifest contains:
 
 - body identity, edition and original source span;
 - target profile identifier;
@@ -75,13 +76,13 @@ ProviderAddressBinding
     deviceSpaceId (optional)
 ```
 
-The target binding is the sole owner of its class, closed representation and
-device-space identity. The supported near or far `AddressClassCapability`
-instead names the `validityContractId` shared by every value of that class. Its
+The target binding supplies the class, closed representation and device-space
+identity. The supported near or far `AddressClassCapability` names the
+`validityContractId` shared by every value of that class. Its
 `AddressValidityContract` records an ID, representation width and one closed
 rule: `allBitPatterns`, `unsignedRange` with inclusive `min` and `max`, or
-`maskedBytes` with byte-for-byte `mask` and `expected` arrays. Whether all-zero
-storage is valid is derived by applying that rule to zero bytes.
+`maskedBytes` with byte-for-byte `mask` and `expected` arrays. Applying that
+rule to zero bytes determines whether all-zero storage is valid.
 
 Validation resolves `bindingId`, checks the binding class against the
 constant's declared type, resolves the class capability's validity contract and
@@ -109,8 +110,8 @@ An array domain records more than a count:
 }
 ```
 
-This lets a hosted body type-check `palette[green]`, preserve debug names and
-remove a bounds check proven by the enum domain. A count-only manifest would
+With that domain, a hosted body can type-check `palette[green]`, preserve debug
+names and remove a bounds check proved by the enum. A count-only manifest would
 lose those semantics before parsing began.
 
 The semantic validator recomputes sizes and strides. It rejects inconsistent
@@ -160,8 +161,8 @@ The compiler returns generated source or IR together with:
 - optional cost information;
 - the abstract host continuation.
 
-This summary is typed. It distinguishes a possible `F-RANGE` from an array
-`F-BOUNDS`, and it retains the ordinal domain responsible for either check.
+The typed summary distinguishes a possible `F-RANGE` from an array `F-BOUNDS`
+and retains the ordinal domain responsible for either check.
 
 ## Hosted return
 
@@ -175,9 +176,9 @@ end
 updateActors()
 ```
 
-It must not emit a machine `RET`. The generated update work still runs before
-the wrapper returns. A direct machine return from a body fragment is a backend
-or assembly-contract failure.
+The compiler must branch to the continuation rather than emit a machine `RET`.
+Generated update work then runs before the wrapper returns. A direct machine
+return from a body fragment is a backend or assembly-contract failure.
 
 Normal fall-through reaches the same continuation. A declared no-return
 service ends control flow and lets Glimmer omit unreachable epilogue work only
@@ -224,7 +225,7 @@ parameter is legal. Lanternfly has no built-in `plot`, `sprite`, `vram` or
 
 ## Pipeline placement
 
-The preferred integration is:
+The integration proceeds in this order:
 
 1. Glimmer parses the outer program.
 2. It resolves host declarations and creates the versioned manifest.
@@ -251,9 +252,9 @@ semantic identity: target, width, signedness, domain and ABI where relevant.
 
 ## Adoption and acceptance
 
-The staged rollout begins with empty and scalar K0 bodies, then adds ordinary
-array/record paths and imported calls before translating native engines.
-Existing AZM bodies can remain beside Lanternfly throughout.
+The rollout begins with empty and scalar K0 bodies. Array and record paths and
+imported calls follow before native engines are translated. Existing AZM bodies
+can remain beside Lanternfly throughout.
 
 Minimum integration fixtures include:
 

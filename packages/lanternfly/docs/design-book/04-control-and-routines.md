@@ -21,6 +21,7 @@ The first edition has:
 
 Local `var` and `alias` declarations appear before statements in a routine or
 hosted body.
+
 One-line conditionals, `do`, `repeat`, bare `loop`, `break`, `call`, general
 `goto` and separate procedure/function declarations are absent.
 
@@ -183,7 +184,8 @@ while true
 end
 ```
 
-Lanternfly does not add a second spelling for this case.
+`while true` is the language's indefinite loop; there is no second spelling to
+learn.
 
 ## Loop control
 
@@ -256,12 +258,13 @@ writable; read-only, output and in/out modes remain open design work.
 Scalar locals use `var`; counted-string and other aggregate locals use `alias`:
 
 ```lanternfly
-sub tickSelected(index as u8)
+sub tickSelected(index as u8) as boolean
     var expired as boolean = false
     alias monster as Monster = monsters[index]
 
     monster.timer = monster.timer - 1
     expired = (monster.timer = 0)
+    return expired
 end
 ```
 
@@ -288,7 +291,7 @@ Lanternfly body
     -> wrapper return
 ```
 
-This rule preserves update work after early body completion. A direct `RET`
+The update work therefore runs after early body completion. A direct `RET`
 from generated body code would be a backend bug.
 
 ## Calls, recursion and reentrancy
@@ -297,10 +300,9 @@ Arguments evaluate from left to right. Destination paths evaluate before
 assignment sources. Calls and visible storage effects remain in source order
 unless an interface proves a reordering safe.
 
-The language permits a call graph, while bare-metal profiles may reject
-recursive cycles. That lets a backend allocate scalar locals statically and
-report a fixed memory cost. A recursion-capable profile must state its ABI and
-stack costs.
+Routine calls form a statically known graph. Bare-metal profiles may reject
+recursive cycles, allowing scalar locals to occupy static storage with a fixed
+reported cost. A recursion-capable profile must state its ABI and stack costs.
 
 Reentrancy, interrupt safety, mapping-context changes and no-return behaviour
 belong to routine contracts and target profiles. They are not new call syntax.
@@ -351,6 +353,4 @@ and the continuation. Imports, exports, module storage, type declarations and
 routine declarations stay outside the body.
 
 The [conformance contract](../conformance.md) holds the complete fixture
-inventory for control, routines, modules and hosted execution. Keeping that
-inventory in one normative document prevents a shorter chapter checklist from
-drifting away from the language rules.
+inventory for control, routines, modules and hosted execution.

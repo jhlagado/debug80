@@ -110,8 +110,8 @@ The same class reports a checked text operation before it changes its target:
 F-RANGE: 27 payload bytes cannot enter string[24]
 ```
 
-The distinction points to a different remedy: validate a general array index,
-or correct the conversion feeding a checked type.
+The remedies differ: validate a general array index, or correct the conversion
+feeding a checked type.
 
 ## Backend diagnostics
 
@@ -124,7 +124,7 @@ AZM:       build/tetro.main.asm:742
 detail:    adapter reads HL after a callee that may clobber HL
 ```
 
-The complete AZM diagnostic remains available. The primary message identifies
+The complete AZM diagnostic remains available, while the primary message names
 the source construct and generated component.
 
 ## Cost without semantic drift
@@ -179,8 +179,7 @@ so a helper inside a loop is multiplied by the iteration count:
 8 iterations × division helper (140..180 cycles each)
 ```
 
-The host, rather than Lanternfly syntax, decides which scheduled bodies are
-cost-sensitive.
+The host marks the scheduled bodies whose cycle or size budgets matter.
 
 ## Memory and layout reports
 
@@ -205,9 +204,10 @@ display from hiding the static-memory decision.
 
 ## Deterministic output
 
-The same source, compiler version, manifest and target profile produce stable
-symbol names, helper selection, ordering, maps, reports and diagnostics.
-Determinism makes snapshot tests and generated-code review useful.
+The build reproduces symbol names, helper selection, ordering, maps, reports
+and diagnostics when the source, compiler version, manifest and target profile
+remain unchanged. Snapshot tests and generated-code review can then expose a
+real difference instead of incidental churn.
 
 ## Debug checks
 
