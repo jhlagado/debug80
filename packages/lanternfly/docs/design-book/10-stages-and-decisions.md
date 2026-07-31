@@ -40,7 +40,7 @@ K1 adds:
 - exact records and aggregate initializers;
 - non-zero lower-bound normalization and complete path lowering;
 - module import, visibility, export and startup installation;
-- scalar locals and local aggregate aliases;
+- hosted-body scalar locals and local aggregate aliases;
 - aggregate assignment, `clear` and `fill`;
 - wider Tetro and Pacmo storage fixtures.
 
@@ -52,7 +52,7 @@ K2 implements:
 
 - the single `sub` declaration with optional scalar result;
 - scalar value and exact-shape aggregate-alias parameters;
-- local scalar initialization and lifetime;
+- source-routine scalar locals with per-call initialization and lifetime;
 - early routine return;
 - external bindings and standalone entry validation;
 - target ABI descriptions and adapters;
@@ -127,7 +127,8 @@ symbols and every backend.
   storage, never values.
 - There are no source pointers, references, arrays of pointers, address-of,
   dereference or pointer arithmetic operations.
-- Near, far and opaque device addresses remain distinct capabilities.
+- Near and far opaque address values remain distinct; device-space identity is
+  target metadata on bindings and service contracts.
 
 ### Control, calls and artifacts
 

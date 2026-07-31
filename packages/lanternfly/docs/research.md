@@ -54,7 +54,7 @@ Most game logic consists of:
 
 - scalar reads and writes;
 - addition, subtraction, masks and shifts;
-- comparisons and numeric conditions;
+- comparisons and tests of numeric flags in the source material;
 - counted and conditional loops;
 - fixed arrays and exact records;
 - integer selectors and temporary aliases for existing global storage;
@@ -103,17 +103,23 @@ The subtraction must widen before it wraps.
 Historical Tetro uses `$FD` as the genuine value -3 while a piece enters the
 board. A signed 8-bit storage type makes the algorithm legible.
 
-The selected reconciliation is:
+The first evidence notes described this result with `BYTE`/`SBYTE`,
+minimum-width arithmetic and eager numeric truth. Those were interim design
+terms, not the 0.4 contract. The implementation baseline to take from the
+evidence is:
 
-- provide `BYTE` and `SBYTE`;
-- evaluate byte-only addition, subtraction, division, remainder and comparison
-  at a range-based type of at least 16 bits;
-- define narrowing stores as low-bit truncation;
-- warn at implicit narrowing;
-- permit explicit conversion to document intended wrap.
+- the six fixed-width types `u8`, `i8`, `u16`, `i16`, `u32` and `i32`;
+- operator-specific result types, including `u8 - u8` producing `i16` and byte
+  addition and multiplication producing `u16`;
+- value-preserving widening only to a type already present in the expression;
+- low-bit narrowing with a default warning, plus explicit conversion for
+  deliberate wrap;
+- a distinct one-byte `boolean` type required by conditions;
+- type-directed `and`, `or`, `not` and `xor`, with short-circuit Boolean `and`
+  and `or` and eager bitwise integer operations.
 
-Masks and compound conditions justify BASIC-style `AND`, `OR`, `NOT` and
-`XOR`. The language uses one eager bitwise/numeric-truth family.
+These rules preserve the three corpus cases without inheriting numeric truth or
+promotion rules from a BASIC, C or host-language substrate.
 
 ## Structured-memory findings
 
@@ -160,8 +166,12 @@ Near/far is a capability distinction:
 - far on 8086 can mean segment plus offset;
 - far may collapse to near on a flat target.
 
-TMS9918 VRAM proves that not every 16-bit address is a CPU pointer. Device
-addresses need nominal address-space types passed to services.
+TMS9918 VRAM proves that not every 16-bit address is ordinary CPU storage. The
+evidence requires the device-space identity to survive through typed service
+contracts and debugging. Specification 0.4 represents the source value as
+`near address` or `far address` and attaches the device-space identity as
+target metadata on its provider binding or service contract. It does not create
+a nominal source address-space type or permit source dereference.
 
 ## ZAX findings
 
@@ -224,11 +234,11 @@ The current TETRO and PACMO sources confirm:
 - small direction and state sets that may benefit from nominal enums;
 - no requirement for heap allocation.
 
-Book 3's linked list and tree use statically allocated nodes. Nullable
-self-references may therefore remain compatible with a heap-free language, but
-the games still favour arrays, indexes and sentinels. Recursion is similarly a
-later profile capability: a backend that admits it must report frame and stack
-costs.
+Book 3's linked list and tree use statically allocated nodes, evidence that a
+heap is not required. Lanternfly represents such structures through ordinal
+selectors and sentinels; nullable source references are not planned. Recursion
+is similarly a later profile capability: a backend that admits it must report
+frame and stack costs.
 
 For text, the combined evidence favours encoded static bytes, explicit framing
 and bounded library operations over a rich dynamic string type. The 0.4
@@ -264,11 +274,13 @@ native or platform services.
 - streamlined structured BASIC source with static types;
 - no Glimmer-specific vocabulary;
 - exact static layouts;
-- zero-based count-declared row-major arrays;
+- row-major arrays with count, explicit-range, subrange or enum index domains;
 - six fixed integer types through 32 bits;
 - byte-valued character literals and static C strings;
-- minimum-width arithmetic plus defined narrowing wrap;
-- one-byte Boolean values and type-directed binary/Boolean operators;
+- operator-specific integer results, constrained value-preserving widening and
+  defined narrowing wrap;
+- one-byte Boolean values, Boolean-only conditions and type-directed
+  binary/Boolean operators;
 - shifts, integer division/remainder and integer power;
 - visible integer square-root service;
 - structured control including `select`, `for ... to`, `for ... until`,
@@ -276,7 +288,8 @@ native or platform services.
 - scalar locals;
 - local and parameter aggregate aliases without first-class pointer values;
 - no initial heap;
-- near/far and opaque device address types;
+- opaque `near address` and `far address` values with device-space metadata on
+  bindings and service contracts;
 - explicit native boundary;
 - backend-selected helpers linked on demand;
 - composed source maps and cost visibility.

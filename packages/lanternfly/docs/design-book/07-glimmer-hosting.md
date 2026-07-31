@@ -49,21 +49,52 @@ version-1 manifest contains:
 
 - body identity, edition and original source span;
 - target profile identifier;
-- integer, Boolean, C-string and opaque-address types;
-- enum names, representation types and ordered members;
-- subrange hosts and normalized bounds;
-- exact record fields and offsets;
-- array index domains, counts, strides and exact size;
-- scalar and immutable aggregate constants, storage and callables;
-- mutability, volatility, ownership and storage class;
-- routine ABI and effects;
+- integer, Boolean, C-string and near/far address types;
+- type entries for enums, subranges, records and arrays, carrying representation,
+  shape and exact layout but no aggregate storage class;
+- symbol entries for ordinary scalar constants, immutable aggregate constants
+  and storage;
+- storage class on storage symbols and aggregate callable parameters;
+- provider-bound `near address` and `far address` constants;
+- callable entries with signatures, aggregate parameter classes, ABI and
+  effects;
+- mutability, volatility, ownership and visibility where they apply;
 - host epilogue identity.
 
+An address constant declares its `near address` or `far address` type and
+contains one `ProviderAddressReference`, whose only field is `bindingId`. The
+named target-profile entry has this shape:
+
+```text
+ProviderAddressBinding
+    id
+    addressClass: "near" | "far"
+    representation:
+        { kind: "substrateSymbol", symbol }
+        or { kind: "bytes", bytes[] }
+    deviceSpaceId (optional)
+```
+
+The target binding is the sole owner of its class, closed representation and
+device-space identity. The supported near or far `AddressClassCapability`
+instead names the `validityContractId` shared by every value of that class. Its
+`AddressValidityContract` records an ID, representation width and one closed
+rule: `allBitPatterns`, `unsignedRange` with inclusive `min` and `max`, or
+`maskedBytes` with byte-for-byte `mask` and `expected` arrays. Whether all-zero
+storage is valid is derived by applying that rule to zero bytes.
+
+Validation resolves `bindingId`, checks the binding class against the
+constant's declared type, resolves the class capability's validity contract and
+validates the selected representation. A substrate symbol must resolve to exact
+bytes before that validation. A body may read, copy, compare and pass the
+resulting value wherever an ordinary runtime value of that class is accepted.
+It may not use the provider-bound address in a source constant expression.
+
 A richer Glimmer resource does not create a fifth Lanternfly declaration
-category. The host maps it to a constant, a `near address` or `far address`
-token, storage, or a routine before it enters the Lanternfly namespace. This
-keeps resource metadata on the Glimmer side while giving the body one ordinary
-typed interface.
+category. The host maps it to an ordinary constant, a provider-bound
+`near address` or `far address` constant, storage or a routine before it enters
+the Lanternfly namespace. This keeps resource metadata on the Glimmer side
+while giving the body one ordinary typed interface.
 
 An array domain records more than a count:
 
@@ -87,16 +118,16 @@ layouts, invalid ordinal domains, unresolved IDs and host/target mismatches.
 
 ## Names supplied by Glimmer
 
-| Host fact             | Lanternfly view                                |
-| --------------------- | ---------------------------------------------- |
-| byte or word state    | mutable fixed-width integer storage            |
-| Boolean state         | canonical `boolean` storage                    |
-| named small state set | enum or checked subrange                       |
-| typed array state     | fixed array with complete ordinal domains      |
-| layout type           | exact record type                              |
-| constant              | compile-time scalar or aggregate constant      |
-| generated resource    | constant, near/far address, storage or routine |
-| generated operation   | callable signature and effects                 |
+| Host fact             | Lanternfly view                                        |
+| --------------------- | ------------------------------------------------------ |
+| byte or word state    | mutable fixed-width integer storage                    |
+| Boolean state         | canonical `boolean` storage                            |
+| named small state set | enum or checked subrange                               |
+| typed array state     | fixed array with complete ordinal domains              |
+| layout type           | exact record type                                      |
+| constant              | compile-time scalar or aggregate constant              |
+| generated resource    | ordinary or address-bound constant, storage or routine |
+| generated operation   | callable signature and effects                         |
 
 Scheduler labels, trigger machinery and private resource symbols remain host
 implementation details.
@@ -160,12 +191,15 @@ dotX = slideX[travel]
 currentRotation = shapeRotations[pieceIndex, rotation]
 ```
 
-A regular table is a fixed array. Irregular or device-backed resources may be
-opaque handles accepted by platform services. Lanternfly does not infer a
-pointer from a linker symbol and does not represent a resource table as an
-array of source references.
+A regular table is an immutable fixed-array constant or typed storage.
+Irregular or device-backed resources enter as provider-bound `near address` or
+`far address` constants accepted by a platform service. Lanternfly does not
+infer a pointer from a linker symbol and does not represent a resource table as
+an array of source references.
 
-Near/far storage belongs to the manifest entry. Opaque device addresses remain
+Near/far aggregate storage class belongs to a storage symbol or aggregate
+callable parameter. Device-space identity belongs to the target binding and
+service contract for a `near address` or `far address` value. It remains
 distinct from CPU storage even when both use 16 bits.
 
 ## Platform profiles
@@ -173,13 +207,19 @@ distinct from CPU storage even when both use 16 bits.
 Different profiles supply different callables:
 
 ```lanternfly
+extern sub vdpWrite(destination as far address, source as far address)
+extern sub spriteCommit(table as Sprite[32])
+
 framebufferPlot(x, y, colour)
-vdpWrite(nameAddress, tiles)
+vdpWrite(nameAddress, tileDataAddress)
 spriteCommit(spriteTable)
 ```
 
-Lanternfly has no built-in `plot`, `sprite`, `vram` or `sound` statement.
-Missing services are target-capability diagnostics.
+The manifest exposes `nameAddress` and immutable `tileDataAddress` as
+provider-bound `far address` constants interpreted by `vdpWrite`. It supplies
+`spriteTable` as mutable `Sprite[32]` storage, so the writable aggregate
+parameter is legal. Lanternfly has no built-in `plot`, `sprite`, `vram` or
+`sound` statement. Missing services are target-capability diagnostics.
 
 ## Pipeline placement
 

@@ -263,12 +263,6 @@ AddressType
     kind: "address"
     addressClass: "near" | "far"
     representationWidth
-
-OpaqueAddressType
-    id
-    kind: "opaqueAddress"
-    spaceId
-    representationWidth
 ```
 
 `indexDomains` and `exactStrides` have the same nonzero length. An integer
@@ -282,11 +276,13 @@ representation, recomputes each domain count, record offset, stride and exact
 size, and rejects any disagreement. Enum/subrange dependencies and direct or
 mutual record/array containment must be acyclic.
 
-Address class belongs to storage and alias parameters, not to record or array
-types. Two arrays have the same aggregate type when their element type and
-normalized index domains match, even when one is stored near and the other
-far. C-string and opaque-address classes remain part of their scalar type
-because they determine the value representation and legal operations.
+Aggregate storage class belongs to storage roots and aggregate parameters, not
+to record or array types. Two arrays have the same aggregate type when their
+element type and normalized index domains match, even when one is stored near
+and the other far. C-string and address classes remain part of their
+scalar type because they determine the value representation and legal
+operations. A device-space identity is metadata on a provider binding or
+service contract, not another type entry.
 
 Version 1 symbol entries are:
 
@@ -296,7 +292,7 @@ ConstantSymbol
     name
     kind: "constant"
     typeId
-    value
+    value or providerAddressReference
     visibility
 
 StorageSymbol
@@ -307,26 +303,36 @@ StorageSymbol
     mutable
     volatile
     owner: "host" | "source" | "native"
-    addressClass: "near" | "far"
+    storageClass: "near" | "far"
     substrateSymbol
     visibility
 
-ResourceSymbol
-    id
-    name
-    kind: "resource"
-    typeId
-    immutable: true
-    addressClass: "near" | "far" | null
-    addressSpaceId: string | null
-    substrateSymbol
-    visibility
+ProviderAddressReference
+    bindingId
 ```
 
-A host resource must map to an existing Lanternfly constant, storage, address,
-or callable category when it enters the typed program. `resource` is a
-manifest classification for host diagnostics, not a source declaration kind.
-Exactly one of `addressClass` and `addressSpaceId` is non-null.
+A constant normally carries an ordinary scalar value or aggregate initializer.
+A constant whose `typeId` resolves to `near address` or `far address` instead
+carries a provider address binding. The target profile resolves `bindingId` to
+the address class, substrate representation and optional device-space metadata,
+then resolves that class's representation-validity contract. The metadata
+preserves device-space identity for the service contract, debugger and generated
+artifacts without creating a nominal Lanternfly type. The address constant is
+available in ordinary same-class assignment, equality and call expressions, but
+it is not an ordinal constant and cannot appear in a case, range, array domain
+or counted-loop step.
+
+The two constant payload forms are mutually exclusive. A provider address
+binding is valid only for an address type; an ordinary scalar or aggregate
+constant uses `value`. The semantic validator rejects a missing target binding,
+an address-class mismatch, a representation that violates the class's validity
+contract or device metadata incompatible with the selected service contract.
+
+A host resource must map to one of these ordinary namespace entries before
+source checking: a constant, a storage symbol or a callable. An immutable
+device handle commonly becomes a constant with a provider address binding.
+Richer host resource metadata remains outside the Lanternfly namespace. There
+is no `resource` symbol kind in the version-1 manifest.
 
 Callable entries are:
 
@@ -334,12 +340,17 @@ Callable entries are:
 Callable
     id
     name
-    parameters[]
+    parameters[]: ScalarParameter | AggregateParameter
     resultTypeId or null
-    binding
-    abi
-    effects
-    availability[]
+    implementation:
+        { kind: "hostSymbol", symbol }
+        or { kind: "targetBinding", bindingId }
+    abi: CallableAbi
+    effects: CallableEffects (optional)
+    availability:
+        { kind: "allTargets" }
+        or { kind: "profiles", profileIds[] }
+    costMetadataId (optional)
 
 ScalarParameter
     name
@@ -352,32 +363,62 @@ AggregateParameter
     typeId
     storageClass: "near" | "far"
     mutable: true
+
+CallableAbi
+    abiId
+    adapterId or null
+
+DeclaredCallableEffects
+    { kind: "declared",
+      pure,
+      reads: { kind: "symbols", symbolIds[] }
+             or { kind: "allVisible" },
+      writes: { kind: "symbols", symbolIds[] }
+              or { kind: "allVisible" },
+      calls: { kind: "callables", callableIds[] }
+             or { kind: "unknown" },
+      mayFault,
+      deviceIO,
+      changesMappingContext,
+      returns: "normal" | "noReturn" }
+
+CallableEffects
+    DeclaredCallableEffects
+    or { kind: "conservative" }
+
+CallableCostMetadata
+    id
+    codeBytes or null
+    staticDataBytes or null
+    cycles:
+        { kind: "fixed", value }
+        or { kind: "range", min, max }
+        or { kind: "unknown" }
 ```
 
 `AggregateParameter` accepts only a record or fixed-array `typeId`. Its
 `storageClass` describes the caller's aggregate storage. The parameter does
 not introduce a reference type or value. Read-only, output, in/out, and bounded
 view parameter records require a later schema version after their language
-design is accepted.
+design is accepted. `hostSymbol` names a symbol supplied directly by the host;
+`targetBinding` resolves through the selected profile's `externalBindings`.
+`CallableAbi.abiId` names a target ABI description, while an optional adapter
+ID names the selected boundary adapter. `costMetadataId`, when present, resolves
+through the target's `callableCostMetadata` records. Byte counts and cycle
+values are non-negative integers, and a cycle range requires `min <= max`.
+Empty `profileIds` is invalid; a callable available everywhere uses
+`allTargets`. Every record and union above is closed, and referenced IDs must
+resolve uniquely.
 
-The initial callable effect record contains:
-
-```text
-pure
-reads: symbol IDs or "allVisible"
-writes: symbol IDs or "allVisible"
-calls: callable IDs or "unknown"
-mayFault
-deviceIO
-changesMappingContext
-returns: "normal" | "noReturn"
-```
-
-`pure: true` requires empty visible reads and writes, no device I/O, and no
-mapping-context change. `mayFault` remains independent because a pure value
-operation can fault. Any native-to-native call named by a pure contract must
-itself satisfy the same purity rule. Missing or incomplete native effects
-become the conservative forms; they do not default to purity.
+An omitted `effects` field normalizes to `{ kind: "conservative" }`. That
+alternative assumes reads and writes of every visible mutable object, unknown
+native calls, possible fault, device I/O and mapping-context change, with normal
+return. It emits `W-NATIVE-001` and blocks optimizations across the call. In a
+declared effect, `pure: true` requires empty `symbols` reads and writes, forbids
+`allVisible` and `calls: { kind: "unknown" }`, and requires no device I/O or
+mapping-context change. Every callable named in its `calls` list must also have
+declared pure effects. `mayFault` remains independent because a pure value
+operation can fault.
 
 Manifest validation has two layers:
 
@@ -432,14 +473,18 @@ are equal.
 
 The initial target profile records:
 
-- profile ID and substrate;
+- profile ID, substrate and endianness;
 - supported scalar operations and address classes;
 - default private aggregate storage class;
 - maximum object and literal sizes;
-- checked-index policy;
+- required checked indexing;
 - recursion and reentrancy capability;
 - fault bindings;
-- external ABI implementations;
+- provider address bindings, validity contracts and optional device-space
+  metadata;
+- substrate-symbol resolver;
+- external bindings, ABI definitions and adapters;
+- optional callable cost metadata;
 - runtime helper implementations;
 - assembly-fragment support;
 - source-map and cost-report capabilities.
@@ -447,6 +492,176 @@ The initial target profile records:
 The target profile supplies capabilities and implementations. It cannot
 change integer results, exact layout, evaluation order, loop boundaries, or
 any other source semantic.
+
+`endianness` is the closed choice `"little"` or `"big"`.
+
+The closed capability record has these fields:
+
+```text
+TargetCapabilities
+    integerWidths: subset of [8, 16, 32]
+    scalarOperations: subset of the version-1 operation IDs
+    addresses:
+        near:
+            { supported: true, representationWidth, validityContractId }
+            or { supported: false, representationWidth: null,
+                 validityContractId: null }
+        far:
+            { supported: true, representationWidth, validityContractId }
+            or { supported: false, representationWidth: null,
+                 validityContractId: null }
+    nearAggregates
+    farAggregates
+    recursion
+    reentrancy
+    inlineAssembly
+    checkedIndexing: true
+```
+
+The version-1 scalar-operation IDs are `integerArithmetic`,
+`integerConversion`, `integerBitwise`, `integerShift`, `integerComparison`,
+`booleanLogic`, `booleanComparison`, `cstringLength`, `cstringComparison` and
+`addressEquality`. An implementation may use instructions, emitted sequences
+or selected runtime components to provide an advertised operation. A supported
+address class has a positive byte-multiple representation width; an unsupported
+class uses `null`. `integerArithmetic` covers unary sign, addition,
+subtraction, multiplication, division, remainder, power, `abs` and `sqrt`;
+the other IDs cover the operations named by their categories.
+
+Callable linkage, ABI, runtime and fault records have these closed shapes:
+
+```text
+ExternalBinding
+    id
+    implementation:
+        { kind: "substrateSymbol", symbol }
+        or { kind: "runtimeComponent", componentId }
+    abiId
+
+CallableAbiDefinition
+    id
+    implementationId
+
+AdapterDefinition
+    id
+    fromAbiId
+    toAbiId
+    runtimeComponentId
+
+RuntimeComponent
+    id
+    implementationId
+    dependencyIds[]
+    abiId or null
+    effects: DeclaredCallableEffects
+
+FaultBinding
+    faultId
+    runtimeComponentId
+
+SubstrateSymbolResolver
+    id
+    resolutionPhase: "configuration" | "link"
+    implementationId
+```
+
+`implementationId` resolves in the implementation registry supplied by the
+backend selected through `substrate`. M0 verifies every such registry entry
+without executing it. Runtime-component dependency IDs resolve within the
+profile and form an acyclic graph. ABI IDs resolve through
+`callableAbiDefinitions`; adapter endpoints resolve through the same namespace,
+and their runtime component resolves through `runtimeComponents`. A
+`FaultBinding.faultId` is one public fault ID and its component is non-returning.
+All IDs are unique within their named arrays.
+
+The backend registry entry named by an ABI definition supplies its parameter and
+result carriers, calling convention, preserved and clobbered resources, stack
+rules and reentrancy contract. A runtime-component implementation entry supplies
+its emitted implementation, exported symbols, size and cost facts, clobbers,
+interrupt/reentrancy properties, test vectors and provenance. A fault binding's
+component must have declared `returns: "noReturn"` effects. When an external
+binding selects a runtime component, its `abiId` must equal that component's
+non-null `abiId`.
+
+For a callable using `targetBinding`, the binding ID resolves through
+`externalBindings`. With no adapter, `CallableAbi.abiId` must equal the external
+binding's `abiId`; otherwise `CallableAbi.adapterId` resolves an adapter from the
+callable ABI to that external ABI. A `hostSymbol` uses the callable ABI directly
+or its named adapter. A profile-list availability record must contain the
+selected profile ID; otherwise the callable is unavailable and receives
+`E-TARGET-001`.
+
+The selected profile contains one `substrateSymbolResolver`. Its
+`implementationId` resolves through the backend registry. At M0 the validator
+checks resolver availability and the shape of every symbol representation. A
+configuration-phase resolver must produce exact bytes during configuration. A
+link-phase resolver may defer the numeric value, but it must produce exact bytes
+and run the selected address-class validity rule before emitted-program
+completion. Failure to resolve a provider symbol is `E-CONFIG-002`; bytes that
+resolve but fail the rule are `E-BOUNDARY-001`. Failure to resolve a callable or
+external-binding symbol is `E-EXTERN-001`.
+
+Provider address bindings and address-class validity contracts have these
+closed target-profile shapes:
+
+```text
+ProviderAddressBinding
+    id
+    addressClass: "near" | "far"
+    representation:
+        { kind: "substrateSymbol", symbol }
+        or { kind: "bytes", bytes[] }
+    deviceSpaceId (optional)
+
+AddressValidityContract
+    id
+    representationWidth
+    rule:
+        { kind: "allBitPatterns" }
+        or { kind: "unsignedRange", min, max }
+        or { kind: "maskedBytes", mask[], expected[] }
+```
+
+The `representation` alternatives are mutually exclusive. Every byte in a
+literal representation is an integer from 0 through 255, and its length in bits
+must match the selected address class. The backend resolves a
+`substrateSymbol` under the selected substrate; the interpreter uses the binding
+ID as its symbolic representation. The target binding is the single source of
+its near/far class, substrate representation and optional device-space identity.
+A service contract may also name the device space for diagnostics and backend
+validation. Source type compatibility continues to use only the binding's
+near/far class.
+
+`AddressValidityContract.id` is stable within the profile.
+`representationWidth` is a positive multiple of eight and must equal the width
+of every supported address class that selects the contract and the corresponding
+`AddressType.representationWidth` in the host manifest. The contract applies to
+all values of that address class, including provider constants, ordinary storage
+and native results.
+
+`allBitPatterns` accepts every byte sequence of the declared width.
+`unsignedRange` decodes the representation as one unsigned integer using the
+profile's byte order and accepts inclusive `min` through `max`; both endpoints
+must fit the declared width and `min` must not exceed `max`. `maskedBytes`
+requires `mask` and `expected` arrays of exactly `representationWidth / 8`
+bytes. Each entry is from 0 through 255, every expected bit outside its mask is
+zero, and byte `i` is valid exactly when
+`(bytes[i] and mask[i]) = expected[i]`. M0 can therefore validate an exact-byte
+provider representation without executing backend code. A substrate-symbol
+provider must resolve to exact representation bytes before validation.
+
+Zero-validity is derived by applying the selected rule to an all-zero byte
+sequence. Compiler-owned address storage with no initializer is rejected with
+`E-INIT-006` when zero is invalid; no separate zero-validity flag may disagree
+with the rule.
+
+Schema shape failures, including an unknown representation/rule tag, a missing
+union field, a forbidden field from another alternative or an unknown field,
+use `E-CONFIG-001`. A well-shaped representation with the wrong byte length, an
+invalid range/mask rule, an unresolved binding, validity-contract ID or
+substrate symbol, a duplicate ID, or a class/width mismatch uses
+`E-CONFIG-002`. A resolved provider or native value that fails the selected
+rule, or a service that cannot preserve it, uses `E-BOUNDARY-001`.
 
 The matching minimal target profile is:
 
@@ -456,11 +671,37 @@ The matching minimal target profile is:
   "version": 1,
   "id": "z80-tec1g-matrix",
   "substrate": "azm",
+  "endianness": "little",
   "capabilities": {
     "integerWidths": [8, 16, 32],
+    "scalarOperations": [
+      "integerArithmetic",
+      "integerConversion",
+      "integerBitwise",
+      "integerShift",
+      "integerComparison",
+      "booleanLogic",
+      "booleanComparison",
+      "cstringLength",
+      "cstringComparison",
+      "addressEquality"
+    ],
+    "addresses": {
+      "near": {
+        "supported": true,
+        "representationWidth": 16,
+        "validityContractId": "address.u16.all"
+      },
+      "far": {
+        "supported": false,
+        "representationWidth": null,
+        "validityContractId": null
+      }
+    },
     "nearAggregates": true,
     "farAggregates": false,
     "recursion": false,
+    "reentrancy": false,
     "inlineAssembly": true,
     "checkedIndexing": true
   },
@@ -472,9 +713,25 @@ The matching minimal target profile is:
     "maximumStaticObjectBytes": 65536,
     "maximumCStringPayloadBytes": 65534
   },
-  "faults": {},
-  "externalBindings": {},
-  "runtimeComponents": {},
+  "substrateSymbolResolver": {
+    "id": "azm.symbols",
+    "resolutionPhase": "link",
+    "implementationId": "azm.resolve-symbol-bytes"
+  },
+  "addressBindings": [],
+  "addressValidityContracts": [
+    {
+      "id": "address.u16.all",
+      "representationWidth": 16,
+      "rule": { "kind": "allBitPatterns" }
+    }
+  ],
+  "callableCostMetadata": [],
+  "externalBindings": [],
+  "callableAbiDefinitions": [],
+  "adapterDefinitions": [],
+  "runtimeComponents": [],
+  "faultBindings": [],
   "artifacts": {
     "generatedSource": true,
     "sourceMap": true,
@@ -482,6 +739,12 @@ The matching minimal target profile is:
   }
 }
 ```
+
+`checkedIndexing` is the literal value `true` in every conforming version-1
+profile. The compiler performs each dynamic bounds check not removed by proof.
+A future explicitly unsafe unchecked mode requires a separate extension
+contract and cannot claim conforming 0.4 execution; setting this field to
+`false` is not a release-mode option.
 
 M0 validates this structural boundary without interpreting absent runtime
 components. Later milestones extend the same version only by filling fields
@@ -547,8 +810,8 @@ routine, or aggregate while recognising the surrounding syntax.
 
 The initial parser should cover the complete 0.4 grammar even when later
 phases temporarily diagnose an unsupported implementation stage. A single
-grammar avoids replacing a K0 parser when K1 adds module declarations,
-records, or routines.
+grammar avoids replacing a K0 parser when K1 adds source-owned module and
+storage constructs or K2 adds routines.
 
 Raw statement and module `asm` blocks require a lexer mode that preserves
 payload bytes and line boundaries until the case-insensitive closing `end`.
@@ -713,8 +976,10 @@ The first executable fixture sequence is:
 6. Trail;
 7. focused numeric, name, conversion, and control vectors;
 8. exact record and multidimensional-array fixtures;
-9. one Tetro storage routine;
-10. one Pacmo six-byte-record routine.
+9. one hosted Tetro storage body;
+10. one hosted Pacmo six-byte-record storage body;
+11. a source-routine version of the Tetro body;
+12. a source-routine version of the Pacmo body.
 
 ## 10. Delivery milestones
 
@@ -757,16 +1022,21 @@ Deliver:
 
 - host import model;
 - names and namespaces;
-- integer, Boolean, enum and subrange types;
+- integer, Boolean, enum, subrange, C-string and near/far address types;
+- manifest-defined records, fixed arrays and immutable aggregate constants;
 - literals, constants, and expressions;
 - checked ordinal conversions and range proofs;
+- exact record fields, ordinal array paths, index arity and bounds proofs;
+- `size`, `count`, `lower`, `upper` and `offset` layout queries;
+- imported callable signatures, arguments, results and effects;
+- aggregate assignment, `clear` and `fill` over imported storage;
 - destination conversions and warnings;
 - structured control and hosted `return`;
 - typed effects and K0 diagnostics.
 
 Gate:
 
-- Counter, Dot, and focused K0 conformance vectors type-check;
+- Counter, Dot, Trail and focused K0 conformance vectors type-check;
 - required K0 rejection fixtures report their stable IDs;
 - no aggregate carrier enters the expression value model.
 
@@ -777,12 +1047,15 @@ Deliver:
 - typed control-flow IR;
 - interpreter;
 - runtime bounds and range-fault model;
+- imported record and ordinal-array paths;
+- imported aggregate copy, `clear` and `fill`;
 - ordered storage and service traces.
 
 Gate:
 
-- Counter, character/C-string, Dot, and Slide fixtures execute;
+- Counter, character/C-string, Dot, Slide and Trail fixtures execute;
 - numeric boundary vectors match the specification;
+- ordinal-path vectors preserve check and evaluation order;
 - fault traces retain source locations.
 
 ### M4: AZM vertical slice
@@ -790,16 +1063,21 @@ Gate:
 Deliver:
 
 - scalar and control-flow AZM lowering;
+- imported record and ordinal-array path lowering;
+- required range and bounds checks plus proof-based removal;
+- imported aggregate copy, `clear` and `fill`;
 - generated-source provenance;
 - host epilogue composition;
-- statement and module `asm` emission with conservative barriers;
+- module `asm` emission with provenance and statement `asm` emission with
+  conservative barriers;
 - runtime component and fault-hook selection;
 - AZM assembly gate;
 - first external-call adapter.
 
 Gate:
 
-- interpreter and AZM execution agree for Counter and Dot;
+- interpreter and AZM execution agree for character/C-string, Counter, Dot,
+  Slide and Trail fixtures;
 - an AZM diagnostic maps back to the responsible Lanternfly span;
 - generated source is deterministic.
 
@@ -813,14 +1091,21 @@ Deliver:
 - initialisers and startup effects;
 - module imports, visibility, export checks, and deterministic installation;
 - multidimensional lower-bound normalization and bounds checks;
-- scalar locals and local aggregate aliases;
-- aggregate copy, `clear`, and `fill`.
+- hosted-body scalar locals and local aggregate aliases;
+- hosted-local initializer ordering, zero-validity and fresh per-entry
+  lifetime;
+- aggregate copy, `clear`, and `fill` for source-owned storage.
 
 Gate:
 
-- Trail and focused layout vectors pass;
 - exact 3-, 4-, 6-, and 8-byte records pass;
-- one Tetro and one Pacmo fixture agree across interpreter and AZM;
+- one hosted Tetro storage body and one hosted Pacmo storage body agree across
+  interpreter and AZM;
+- source-owned initialization and module-installation traces agree across
+  interpreter and AZM;
+- repeated hosted-body entries receive freshly initialized, independent local
+  storage;
+- every applicable K1 rejection fixture reports its stable diagnostic ID;
 - alias carriers remain absent from source values and public typed output.
 
 ### M6: routines
@@ -830,7 +1115,9 @@ Deliver:
 - source-defined `sub`;
 - scalar parameters and optional scalar results;
 - aggregate alias parameters;
-- definite assignment and return analysis;
+- source-routine scalar locals using the K1 initializer-ordering and
+  zero-validity machinery with fresh per-call lifetime;
+- return-path analysis;
 - non-recursive call graph;
 - `extern sub` bindings and ABI validation;
 - standalone program-entry validation;
@@ -839,8 +1126,11 @@ Deliver:
 Gate:
 
 - nested-call and early-return vectors pass;
+- source-routine versions of the selected Tetro and Pacmo fixtures agree across
+  interpreter and AZM;
 - recursive cycles are rejected for the initial profile;
 - aggregate arguments accept storage paths and reject temporaries;
+- every applicable K2 rejection fixture reports its stable diagnostic ID;
 - frame and scratch artifacts account for every allocated byte.
 
 Bounded views and parameter modes receive a separate language decision before

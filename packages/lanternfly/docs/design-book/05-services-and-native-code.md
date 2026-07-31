@@ -52,9 +52,11 @@ vdpWrite(nameAddress, tileDataAddress)
 ```
 
 These are typed routines supplied through a host manifest, target profile or
-module. Their absence is a capability error rather than a missing keyword.
-Here the two VDP arguments are opaque address tokens interpreted by the
-service, not an immutable array passed to a writable aggregate parameter.
+module. Their absence is a capability error rather than a missing keyword. Here
+the two VDP arguments are provider-bound `near address` or `far address` values
+interpreted by the service, not an immutable array passed to a writable
+aggregate parameter. Any device-space identity is target metadata on their
+bindings and the service contract.
 
 ### Hidden runtime helpers
 
@@ -82,8 +84,8 @@ extern sub printText(text as near cstring)
 ```
 
 The value carries an address class but no length, capacity or ownership.
-Assignment copies that carrier, not the bytes. `length` scans to the guaranteed
-terminator and returns `u16`; literal calls fold.
+Assignment copies that carrier, not the bytes. `length` scans to the
+contract-bounded terminator and returns `u16`; literal calls fold.
 
 Writable text remains ordinary `u8` storage with an explicit capacity.
 Lanternfly does not pretend that a terminator proves enough destination space.

@@ -208,10 +208,10 @@ end
 
 sub distance(left as i16, right as i16) as u16
     if left >= right then
-        return left - right
+        return u16(left - right)
     end
 
-    return right - left
+    return u16(right - left)
 end
 ```
 

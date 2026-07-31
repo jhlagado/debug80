@@ -147,14 +147,43 @@ the next set of cross-document gaps. It:
   scalar and immutable aggregate host constants;
 - made manifest enums, subranges, records and ordinal arrays obey the ordinary
   source type and layout rules;
-- kept device-space identity as target metadata on `near address` or
-  `far address`, with no opaque-address offset or load/store path in source IR;
+- defined manifest `near address` and `far address` constants as provider-bound
+  runtime values: the host constant declares its type and contains one
+  `ProviderAddressReference`, whose only field is the binding ID, while the
+  target profile's `ProviderAddressBinding` owns the class, the closed
+  `{ kind: "substrateSymbol", symbol }` or `{ kind: "bytes", bytes[] }`
+  representation and optional `deviceSpaceId`; the address-class capability
+  owns `validityContractId`, whose closed rule is `allBitPatterns`,
+  `unsignedRange` or `maskedBytes`; validation resolves the binding and checks
+  its class, width and representation, while zero-validity is derived by
+  applying the rule to all-zero bytes and invalid omitted initialization uses
+  `E-INIT-006`; source IR still has no opaque-address offset or load/store path;
+- assigned malformed provider/rule union shape to `E-CONFIG-001`, well-shaped
+  length, rule, ID, symbol, class and width errors to `E-CONFIG-002`, and a
+  resolved value or service that fails its selected rule to `E-BOUNDARY-001`;
+- closed manifest callables over scalar-value and aggregate-alias parameters,
+  `hostSymbol` or `targetBinding` implementations, explicit ABI records,
+  optional declared-or-conservative effects, all-target or profile-list
+  availability, and optional target-owned callable cost metadata; omitted or
+  explicit conservative effects emit `W-NATIVE-001`, while invalid pure
+  declarations are rejected;
+- defined the exact `externalBindings`, `callableAbiDefinitions`,
+  `adapterDefinitions`, `runtimeComponents`, `faultBindings`,
+  `substrateSymbolResolver`, `callableCostMetadata`, `addressBindings` and
+  `addressValidityContracts` target registries and their closed records;
+- validated literal provider bytes during configuration and gave provider
+  substrate symbols configuration- or link-phase resolution to exact bytes
+  before validity checking: unresolved provider symbols use `E-CONFIG-002`,
+  resolved invalid values use `E-BOUNDARY-001`, and unresolved callable or
+  external-binding symbols use `E-EXTERN-001`;
 - preserved separate destination and source path evaluation in
-  read-modify-write statements;
-- admitted enum members plus all five layout queries in constant expressions;
+  read-modify-write statements, including repeated written paths;
+- admitted visible module and manifest enum members plus all five layout queries
+  in constant expressions while excluding provider-bound opaque addresses;
 - added a stable parser diagnostic, zero-statement block coverage and ordinary
   scalar volatile traces;
-- fixed the exact C-string payload and terminator boundary;
+- fixed the exact C-string payload and terminator boundary without limiting a
+  provider's containing storage region;
 - carried enum/subrange validity through inline assembly and standardized the
   public `F-INVALID-BOOLEAN` fault.
 
@@ -407,9 +436,11 @@ unqualified declaration delegates binding to the target profile. The profile
 also supplies the native ABI, effects and clobber contract.
 
 The first raw boundary is `asm`/`end`. It accepts module-level directives/data
-and statement-level assembly for the selected assembler, emits the payload
-verbatim and acts as a conservative compiler barrier. Non-assembly backends
-reject it unless their profile supplies an assembly-fragment pipeline.
+and statement-level assembly for the selected assembler, and emits either
+payload verbatim. A statement-level block acts as a conservative compiler
+barrier; a module-level block has no execution point or runtime effect summary.
+Non-assembly backends reject either form unless their profile supplies an
+assembly-fragment pipeline.
 
 ### Debugging and cost
 
@@ -446,16 +477,16 @@ Target fixtures: Counter, Dot, Slide, Trail and ordinary Glimmer rule bodies.
 
 Add Lanternfly-owned static arrays and records, initializers,
 module imports and visibility, multidimensional arrays, ordinal selectors,
-scalar locals, local aliases and broader path lowering.
+hosted-body scalar locals, hosted-body local aliases and broader path lowering.
 
 Target fixtures: central Tetro and Pacmo storage patterns.
 
 ### K2: routines
 
 Add parameterised subs, optional scalar results, scalar-value and
-aggregate-alias parameters, external bindings, standalone entry validation and
-ABI adapters. Bounded aggregate views and parameter modes remain post-0.4
-design work and do not block this stage.
+aggregate-alias parameters, source-routine scalar locals, external bindings,
+standalone entry validation and ABI adapters. Bounded aggregate views and
+parameter modes remain post-0.4 design work and do not block this stage.
 
 Target fixtures: Snake helpers, Tetro engine routines and Pacmo routines.
 

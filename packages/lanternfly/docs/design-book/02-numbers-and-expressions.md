@@ -75,6 +75,12 @@ payload end before the compiler-supplied terminator. A `cstring` carries an
 address class but no hidden length, capacity or ownership. Assignment copies
 that carrier, while comparison examines the unsigned payload bytes.
 
+A source literal may contain at most 65,534 payload bytes. Its terminator, and
+the terminator promised by an imported, hosted or native C-string contract,
+must occur at an offset from zero through 65,534. The required accessible
+prefix through that terminator therefore occupies at most 65,535 bytes; the
+containing storage region may be larger.
+
 This is deliberately a boundary type rather than a mutable string system.
 Writable text is a fixed `u8` array with an explicit capacity; it does not
 convert implicitly to `cstring`. A C string also has no conversion to an integer

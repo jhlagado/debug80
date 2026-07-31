@@ -318,6 +318,47 @@ var bankedImage as far address
 
 Their physical representations remain target-defined.
 
+Each address class has one closed capability record:
+
+```text
+AddressClassCapability
+  { supported: true, representationWidth, validityContractId }
+  or { supported: false, representationWidth: null,
+       validityContractId: null }
+
+AddressValidityContract
+  id
+  representationWidth
+  rule:
+    { kind: "allBitPatterns" }
+    or { kind: "unsignedRange", min, max }
+    or { kind: "maskedBytes", mask[], expected[] }
+```
+
+For a supported class, the width is a positive multiple of eight and the
+selected contract has the same width. An unsupported class has null width and
+contract fields.
+
+`allBitPatterns` accepts every representation of that width. `unsignedRange`
+decodes the bytes as one unsigned integer in the target profile's endianness and
+accepts the inclusive interval from `min` through `max`. Both endpoints must fit
+the width, and `min` must not exceed `max`. For `maskedBytes`, both arrays have
+exactly one entry per representation byte. Every entry lies from zero through
+255, expected bits outside their mask are zero, and byte `i` is valid exactly
+when `(bytes[i] and mask[i]) = expected[i]`.
+
+The selected rule governs every value of its address class, including provider
+constants, ordinary storage and native results. Applying the rule to an
+all-zero byte sequence determines whether zero initialization is valid.
+Compiler-owned address storage without an initializer is rejected when zero is
+invalid; no independent zero-validity flag exists.
+
+Malformed representation or rule union shape is `E-CONFIG-001`. A well-shaped
+wrong byte length, invalid rule, unresolved ID or substrate symbol, or
+class/width mismatch is `E-CONFIG-002`. A resolved provider or native value that
+fails the selected rule, or a service that cannot preserve it, is
+`E-BOUNDARY-001`.
+
 ### Ordinal types and ranges
 
 Lanternfly's first edition has three kinds of ordinal type:
@@ -603,10 +644,10 @@ permitted near-to-far conversion.
 as `u16`. A literal call is a constant expression and folds to its known
 length. Each imported, hosted or native `cstring` contract guarantees that the
 terminator occurs at an offset from zero through 65,534 inclusive. The
-accessible region therefore contains at most 65,535 bytes including the
-terminator, and `length` returns a value from zero through 65,534. The sequence
-remains valid for the program's lifetime. A provider that breaks that contract
-is nonconforming.
+required accessible prefix through the terminator therefore contains at most
+65,535 bytes, and `length` returns a value from zero through 65,534. The
+containing storage region may be larger. The sequence remains valid for the
+program's lifetime. A provider that breaks that contract is nonconforming.
 
 Writable text uses ordinary `u8` array storage together with an explicit
 capacity. The first edition does not silently convert such an array into
@@ -823,12 +864,14 @@ evaluation cannot defer an address fault to runtime. The same conversion
 applied to a nonconstant runtime value invokes the address-fault service when
 the address is not representable.
 
-For a constant expression inside a routine body, “previously declared” means
-any module constant whose initializer has already been checked successfully,
-as defined in section 2.1. Constant and layout dependencies are checked as one
-acyclic graph; source order controls name eligibility but does not excuse a
-cycle. In a hosted body, typed host-manifest constants also satisfy these
-constant-expression contexts.
+For a constant expression inside a routine body, eligible names include any
+visible module constant whose initializer has already been checked successfully
+and every visible enum member whose declaration has been checked, as defined in
+section 2.1. Constant and layout dependencies are checked as one acyclic graph;
+source order controls name eligibility but does not excuse a cycle. In a hosted
+body, scalar host-manifest constants other than opaque address bindings, and
+every visible manifest enum member, also satisfy these constant-expression
+contexts.
 
 Outside the target-address constant expressions defined in section 3.1, the
 compiler resolves every operator's operand and result types before folding it.
@@ -1789,10 +1832,6 @@ indexing, aggregate copying and nested aggregate calls remain valid. Passing
 it to another compatible aggregate parameter extends the temporary alias only
 for that nested call.
 
-Parameter-free routines form the first implementation stage. Later stages add
-parameters, locals and the calling convention without changing the source
-language edition.
-
 ### 11.4 Local variables and aggregate aliases
 
 Scalar locals use `var`:
@@ -2004,9 +2043,10 @@ and:
 - visible storage reads and writes, calls, faults and device I/O;
 - reentrancy, interrupt and cost properties.
 
-A missing binding or incompatible ABI is a compile error. An incomplete effect
-contract produces the conservative native-boundary warning and prevents
-optimizations across the call. The backend may generate an adapter when the
+A missing binding or incompatible ABI is a compile error. An omitted effect
+contract, or an explicit `{ kind: "conservative" }` contract, produces
+`W-NATIVE-001` and prevents optimizations across the call. The backend may
+generate an adapter when the
 declared Lanternfly signature and native ABI can be reconciled without changing
 source meaning.
 
@@ -2075,13 +2115,33 @@ declarations follow the routine local declaration-order rules from section
 4.2. A hosted local may not shadow a host-manifest value, and it may not reuse
 an earlier hosted local name.
 
-Host-manifest constants have declared Lanternfly types and compile-time values.
-A scalar constant follows the ordinary scalar constant-expression rules. An
-aggregate constant is immutable and obeys the ordinary aggregate initializer,
-type-identity and exact-layout rules. Both forms are available where their
-source-language category is valid; only scalar constants may appear in scalar
-constant expressions such as `case` values, range endpoints and counted-loop
-steps.
+Host-manifest constants have declared Lanternfly types. An ordinary scalar
+constant has a compile-time value and follows the scalar constant-expression
+rules. An aggregate constant is immutable and obeys the ordinary aggregate
+initializer, type-identity and exact-layout rules. Both forms are available
+where their source-language category is valid; only ordinary scalar constants
+may appear in scalar constant expressions such as `case` values, range
+endpoints and counted-loop steps.
+
+A host-manifest constant of type `near address` or `far address` is instead a
+provider-supplied typed binding, not a Lanternfly constant initializer. The
+constant declares its address type and contains one `ProviderAddressReference`,
+whose only field is a binding ID. The named target-profile
+`ProviderAddressBinding` supplies the address class, a closed representation
+whose alternatives are `{ kind: "substrateSymbol", symbol }` and
+`{ kind: "bytes", bytes[] }`, and an optional `deviceSpaceId`. The binding does
+not own validity. Manifest validation requires its class to match the constant's
+declared type, obtains the class's `validityContractId` from the target
+capability, and validates the resolved bytes under that contract. The name may
+be read, copied, compared with an address of the same class and passed to a
+compatible routine wherever an ordinary runtime value is accepted. It may not
+appear in a source constant expression unless a language operation explicitly
+permits opaque addresses in that context; no first-edition operation does.
+
+A `{ kind: "bytes" }` provider representation is validated during
+configuration. A `{ kind: "substrateSymbol" }` representation is validated when
+the selected resolver produces its exact bytes, during configuration or link as
+declared by the target profile.
 
 A manifest may supply enum, subrange and record declarations plus fixed-array
 types. Manifest enums and subranges have stable nominal type identities and
@@ -2092,11 +2152,86 @@ defined in section 6. Configuration validation rejects an invalid
 representation, domain, dependency or layout before hosted source is checked.
 
 `resource` is not a Lanternfly declaration category. A host resource must be
-mapped into the body through an existing typed category: an immutable constant,
-a `near address` or `far address` value, a storage object or a routine. The
-corresponding constant, representation, lifetime and effect rules apply to that
-category. A host may retain richer resource metadata outside the Lanternfly
-namespace.
+mapped into the body through an existing typed category: an ordinary or
+provider-bound constant, a storage object or a callable routine. The
+corresponding constant, representation, lifetime and effect rules apply. A host
+may retain richer resource metadata outside the Lanternfly namespace.
+
+Host-manifest callables use these closed records:
+
+```text
+Callable
+  id
+  name
+  parameters[]: ScalarParameter | AggregateParameter
+  resultTypeId or null
+  implementation:
+    { kind: "hostSymbol", symbol }
+    or { kind: "targetBinding", bindingId }
+  abi: CallableAbi
+  effects: CallableEffects (optional)
+  availability:
+    { kind: "allTargets" }
+    or { kind: "profiles", profileIds[] }
+  costMetadataId (optional)
+
+ScalarParameter
+  name
+  kind: "value"
+  typeId
+
+AggregateParameter
+  name
+  kind: "aggregateAlias"
+  typeId
+  storageClass: "near" | "far"
+  mutable: true
+
+CallableAbi
+  abiId
+  adapterId or null
+
+DeclaredCallableEffects
+  { kind: "declared",
+    pure,
+    reads: { kind: "symbols", symbolIds[] }
+           or { kind: "allVisible" },
+    writes: { kind: "symbols", symbolIds[] }
+            or { kind: "allVisible" },
+    calls: { kind: "callables", callableIds[] }
+           or { kind: "unknown" },
+    mayFault,
+    deviceIO,
+    changesMappingContext,
+    returns: "normal" | "noReturn" }
+
+CallableEffects
+  DeclaredCallableEffects
+  or { kind: "conservative" }
+
+CallableCostMetadata
+  id
+  codeBytes or null
+  staticDataBytes or null
+  cycles:
+    { kind: "fixed", value }
+    or { kind: "range", min, max }
+    or { kind: "unknown" }
+```
+
+`hostSymbol` names a symbol supplied directly by the host. `targetBinding`
+resolves through `externalBindings`. Without an adapter, the callable and
+external binding use the same ABI; otherwise `adapterId` resolves an adapter
+from the callable ABI to the external ABI. A profile-list availability record
+contains the selected profile ID or the compiler reports `E-TARGET-001`.
+
+Omitting `effects` normalizes it to `{ kind: "conservative" }`: reads and writes
+of every visible mutable object, unknown native calls, possible fault, device
+I/O and mapping-context change, with normal return. This emits `W-NATIVE-001`
+and blocks optimization across the call. In declared effects, `pure: true`
+requires empty `symbols` reads and writes, forbids `allVisible` and unknown
+calls, requires no device I/O or mapping-context change, and names only
+callables with declared pure effects. `mayFault` remains independent.
 
 Each host entry executes the body as a fresh invocation. Its scalar locals are
 created and initialized on every entry under section 4.2; no local value
@@ -2129,6 +2264,71 @@ A target profile declares its CPU or substrate, endianness, supported scalar
 operations, near and far address representations, address spaces, routine ABI,
 standard-service implementations and native dialect.
 
+Its callable linkage, ABI, runtime, fault and symbol-resolution registries use
+these closed records and exact array names:
+
+```text
+externalBindings[]: ExternalBinding
+  ExternalBinding
+    id
+    implementation:
+      { kind: "substrateSymbol", symbol }
+      or { kind: "runtimeComponent", componentId }
+    abiId
+
+callableAbiDefinitions[]: CallableAbiDefinition
+  CallableAbiDefinition
+    id
+    implementationId
+
+adapterDefinitions[]: AdapterDefinition
+  AdapterDefinition
+    id
+    fromAbiId
+    toAbiId
+    runtimeComponentId
+
+runtimeComponents[]: RuntimeComponent
+  RuntimeComponent
+    id
+    implementationId
+    dependencyIds[]
+    abiId or null
+    effects: DeclaredCallableEffects
+
+faultBindings[]: FaultBinding
+  FaultBinding
+    faultId
+    runtimeComponentId
+
+substrateSymbolResolver: SubstrateSymbolResolver
+  SubstrateSymbolResolver
+    id
+    resolutionPhase: "configuration" | "link"
+    implementationId
+
+callableCostMetadata[]: CallableCostMetadata
+addressBindings[]: ProviderAddressBinding
+addressValidityContracts[]: AddressValidityContract
+```
+
+Every `implementationId` resolves through the selected backend's implementation
+registry. Runtime-component dependencies resolve within `runtimeComponents` and
+are acyclic. ABI IDs resolve through `callableAbiDefinitions`; adapter endpoints
+use that namespace and their component IDs resolve through `runtimeComponents`.
+A fault ID is public and its component has declared `returns: "noReturn"`
+effects. When an external binding selects a runtime component, its `abiId`
+equals the component's non-null `abiId`. IDs are unique within their named
+arrays.
+
+The selected profile contains one `substrateSymbolResolver`. A
+configuration-phase resolver produces exact bytes during configuration. A
+link-phase resolver may defer them, but produces exact bytes and applies the
+selected validity rule before emitted-program completion. Failure to resolve a
+provider symbol is `E-CONFIG-002`; resolved bytes that fail the rule are
+`E-BOUNDARY-001`. Failure to resolve a callable or external-binding symbol is
+`E-EXTERN-001`.
+
 Display, input, sound, random, firmware and device operations are typed
 external routines imported from platform interface modules rather than core
 statements. Section 12.4 defines their source declaration and binding forms. A
@@ -2154,11 +2354,12 @@ lifetime guarantees is incompatible and is rejected; disabling optimization
 cannot make it safe. If a provider violates a declared guarantee at runtime,
 that provider is nonconforming.
 
-The effect part of an external or host routine contract states visible reads,
-writes, calls, faults, device I/O, control flow and ABI clobbers. When this
-effect summary is incomplete, the conservative fallback assumes that the call
-may read and write every mutable object reachable by the boundary, call other
-native routines, fault, perform device I/O and clobber every
+The declared effect part of an external or host routine contract states visible
+reads, writes, calls, faults, device I/O, control flow and ABI clobbers. When the
+field is omitted or explicitly `{ kind: "conservative" }`, the normalized
+fallback assumes that the call may read and write every mutable object reachable
+by the boundary, call other native routines, fault, perform device I/O and
+clobber every
 caller-unpreserved machine resource. It still may not violate the value
 invariants above. The compiler emits `W-NATIVE-001` and treats this fallback
 as a write to any visible counted-loop control variable, which can make the
@@ -2166,8 +2367,8 @@ call invalid under section 10.1.
 
 The calls named by such a contract are native-to-native edges. A native call
 back into a source-defined Lanternfly routine or hosted body is outside the
-first edition and makes the binding incompatible. An incomplete effect summary
-does not grant callback permission.
+first edition and makes the binding incompatible. Conservative effects do not
+grant callback permission.
 
 #### 13.2.1 Inline assembly
 

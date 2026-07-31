@@ -61,8 +61,8 @@ if visible then
 end
 ```
 
-The manifest may expose `shapeDot` as an opaque handle. Lanternfly does not
-need to know its generated address.
+The manifest exposes `shapeDot` as a provider-bound `far address` constant
+accepted by `drawShape`. Lanternfly cannot inspect its target representation.
 
 ## Trail
 
@@ -72,15 +72,21 @@ Trail combines indexed update and a pure imported operation:
 trail[dotY] = trail[dotY] or matrixMask(dotX)
 ```
 
-The destination path evaluates once before the source. Lowering can retain one
-resolved address:
+The assignment retains two source path occurrences. Its destination evaluates
+first, followed by the right-hand path:
 
 ```text
-path = element(trail, dotY)
-old = load u8 path
+destinationPath = element(trail, dotY)
+sourcePath = element(trail, dotY)
+old = load u8 sourcePath
 new = old or matrixMask(dotX)
-store u8 path, new
+store u8 destinationPath, new
 ```
+
+In this fixture `dotY` is stable, nonvolatile storage, and no effect occurs
+between the two path evaluations. After proving those facts and identical
+fault behaviour, a backend may share the address calculation. The source rule
+does not grant unconditional reuse.
 
 An exact framebuffer record keeps rendering readable:
 
@@ -535,9 +541,10 @@ end
 The record states byte order once. A Z80 backend may recover nearly the same
 loads and shifts as hand assembly.
 
-## TMS9918 VRAM
+## TMS9918 address bindings
 
-VRAM locations are opaque device addresses supplied by the profile:
+The profile supplies `far address` bindings. Bindings for TMS9918 VRAM carry
+that device-space identity as target metadata:
 
 ```lanternfly
 extern sub vdpWrite(destination as far address, source as far address)
@@ -547,27 +554,29 @@ vdpWrite(patternTable, tilePatterns)
 vdpFill(nameTable, $0300, 0)
 ```
 
-`patternTable` and `nameTable` are opaque far-address tokens for VRAM
-locations. `tilePatterns` is another far-address token naming immutable binary
-data; it is not a constant array passed through a writable aggregate parameter.
-The services set a VDP cursor and stream bytes through a port. A memory-mapped
-target can implement the same typed interface with stores.
+`patternTable` and `nameTable` are provider-bound `far address` values for VRAM
+locations. `tilePatterns` is another provider-bound `far address` value naming
+immutable binary data. Device-space identity remains target metadata rather
+than a third source type. None of these values is a constant array passed
+through a writable aggregate parameter. The services set a VDP cursor and
+stream bytes through a port. A memory-mapped target can implement the same typed
+interface with stores.
 
 ## Coverage
 
-| Facility                         | Corpus pressure              |
-| -------------------------------- | ---------------------------- |
-| round-trip byte arithmetic       | Counter                      |
-| explicit byte narrowing and wrap | Skyfall                      |
-| signed byte difference           | Rushlight                    |
-| Boolean state and conditions     | Slide, Pacmo                 |
-| subrange index and proved bounds | Snake, Pacmo candidates      |
-| enum selection and array domains | Snake, Tetro, Pacmo          |
-| multidimensional fixed data      | Tetro shapes                 |
-| aggregate alias parameter        | Tetro planes, Pacmo monsters |
-| exact non-power-of-two record    | Pacmo                        |
-| packed byte record               | Pacmo world                  |
-| opaque device address            | TMS9918                      |
+| Facility                              | Corpus pressure              |
+| ------------------------------------- | ---------------------------- |
+| round-trip byte arithmetic            | Counter                      |
+| explicit byte narrowing and wrap      | Skyfall                      |
+| signed byte difference                | Rushlight                    |
+| Boolean state and conditions          | Slide, Pacmo                 |
+| subrange index and proved bounds      | Snake, Pacmo candidates      |
+| enum selection and array domains      | Snake, Tetro, Pacmo          |
+| multidimensional fixed data           | Tetro shapes                 |
+| aggregate alias parameter             | Tetro planes, Pacmo monsters |
+| exact non-power-of-two record         | Pacmo                        |
+| packed byte record                    | Pacmo world                  |
+| near/far address with device metadata | TMS9918                      |
 
 No listed algorithm requires heap allocation, dynamic containers, closures,
 source references, arrays of pointers or general pointer arithmetic.

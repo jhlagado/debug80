@@ -107,10 +107,11 @@ counterValue = counterValue + 1
 drawShape(shapeDot, dotX, dotY)
 ```
 
-The manifest says which names are mutable storage, constants, aggregates or
-routines. Glimmer may run generated update work after the body, but assignment
-inside the body remains an ordinary Lanternfly assignment. The same source
-outside Glimmer does not acquire reactive behaviour.
+The manifest says which names are constants, storage or routines and records
+exact aggregate types where they apply. Glimmer may run generated update work
+after the body, but assignment inside the body remains an ordinary Lanternfly
+assignment. The same source outside Glimmer does not acquire reactive
+behaviour.
 
 ## No substrate vocabulary in ordinary source
 
@@ -185,9 +186,11 @@ operations do not become language keywords. Chapter 5 develops these
 boundaries and the artifacts that expose their cost.
 
 Target assembly stays available through `asm`/`end` for startup, interrupts,
-exact device protocols and deliberately tuned inner loops. An assembly block
-is target-specific and carries conservative effects; it does not weaken type
-checking elsewhere.
+exact device protocols and deliberately tuned inner loops. Module- and
+statement-level blocks are target-specific. A module-level block contributes
+emitted source with provenance metadata but has no execution point or runtime
+effect summary. A statement-level block is a conservative runtime barrier.
+Neither form weakens type checking elsewhere.
 
 ## The measure of success
 

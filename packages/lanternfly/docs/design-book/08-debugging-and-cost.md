@@ -64,7 +64,7 @@ Debug metadata includes:
 - static address and near/far storage class;
 - scalar local location;
 - local aggregate alias target where recoverable;
-- opaque device address-space name.
+- device-space metadata attached to a near/far address binding.
 
 An enum should display `green`, not merely 2. A subrange violation should name
 the declared domain. An alias is shown as a temporary view:

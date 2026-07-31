@@ -246,7 +246,7 @@ An adapter:
 - materializes hidden aggregate carriers;
 - places values in registers, stack cells or generated storage;
 - preserves required machine and mapping state;
-- invokes the substrate symbol;
+- invokes the resolved host implementation or target binding;
 - validates or converts the result;
 - restores the caller's context.
 
@@ -259,7 +259,7 @@ A target profile states:
 
 - supported integer operations and address classes;
 - maximum object and literal sizes;
-- checked-index policy;
+- required checked indexing, with checks removed only by proof;
 - recursion and reentrancy capability;
 - assembly-fragment pipeline;
 - standard-operation and platform-service implementations;
@@ -268,6 +268,8 @@ A target profile states:
 
 The profile may reject unavailable operations. It cannot change result widths,
 enum order, subrange checks, exact layout, evaluation order or loop boundaries.
+An explicitly unsafe unchecked-array extension is nonconforming execution, not
+a target policy for ordinary 0.4 source.
 
 ## Conformance before optimization
 

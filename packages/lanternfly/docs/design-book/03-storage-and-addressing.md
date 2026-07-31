@@ -182,15 +182,6 @@ Record initializers name every field:
 var spawn as Point = Point(x = 7, y = 1)
 ```
 
-Aggregate assignment copies complete equal-typed storage:
-
-```lanternfly
-monsters[0] = monsters[1]
-```
-
-The implementation must handle overlap safely. The source operation is an
-aggregate copy even when a backend lowers it to a loop or block instruction.
-
 Aggregate `const` declarations create immutable tables with the same exact
 layout. Any assignment through a path rooted in constant storage is an error.
 
@@ -237,6 +228,19 @@ small and fixed.
 This approach also replaces source arrays of pointers. Regular objects use a
 multidimensional array. Irregular named objects use an integer or enum selector
 plus `select`. The backend may still use addresses internally.
+
+## Aggregate assignment
+
+Assignment between equal record types or equal fixed-array types copies the
+complete aggregate:
+
+```lanternfly
+monsters[0] = monsters[1]
+```
+
+Ordinary copies have snapshot semantics even when the source and destination
+overlap. A backend may use a direction-aware move, a loop or a helper, but it
+must preserve that result. The destination must be writable.
 
 ## Local aliases
 
@@ -287,7 +291,7 @@ The storage class describes where the aggregate lives. It is not part of the
 element type. In `far labels as near cstring[8]`, the array is far storage and
 each stored C string has a near text address.
 
-## Near, far and opaque addresses
+## Near/far storage and opaque address values
 
 Near and far aggregate aliases are backend capabilities. A near aggregate is
 directly usable in the current memory context. A far aggregate may require a
@@ -296,8 +300,9 @@ inspected in source.
 
 `near address` and `far address` are opaque scalar values for native
 boundaries. They support same-class assignment and equality, but no field
-selection, indexing, conversion or arithmetic. A device address such as a
-TMS9918 VRAM location is likewise meaningful only to typed services.
+selection, indexing, conversion or arithmetic. A TMS9918 VRAM location uses one
+of those two source types. Its device-space identity is target metadata on the
+provider binding or service contract, not a third Lanternfly address type.
 
 Address zero may be a valid native location, so Lanternfly does not invent a
 universal null value.
