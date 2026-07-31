@@ -534,7 +534,13 @@ Do not present these points as settled without an explicit decision:
 - source file extension;
 - source syntax for narrowing an external routine's effect contract;
 - syntax for an explicitly unsafe, nonconforming unchecked-array mode;
-- read-only bounded views and writable text-buffer support;
+- read-only bounded views and writable text-buffer support — a concrete
+  counted-string design (`string[N]` with capacity-derived header width,
+  sealed representation and a compatibility terminator) awaits ratification
+  in the
+  [language completeness review](language-completeness-review.md#provisional-proposal-counted-strings-with-a-compatibility-terminator),
+  along with the open `cstring`-versus-`zstring` naming decision for the
+  read-only view;
 - bounded aggregate view syntax;
 - scalar output parameter syntax;
 - restricted labels;

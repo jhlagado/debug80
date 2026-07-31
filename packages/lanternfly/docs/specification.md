@@ -2852,7 +2852,10 @@ The following questions remain open or provisional. None blocks K0 or K1:
 - whether `at` is sufficient or grows into a section-placement model;
 - source syntax for narrowing an external routine's effect contract;
 - native callback declarations and their call-graph/reentrancy contract;
-- read-only aggregate parameters and bounded writable-text view spelling;
+- read-only aggregate parameters and bounded writable-text view spelling,
+  where the counted-string proposal in the
+  [language completeness review](language-completeness-review.md) is the
+  current candidate for the writable-text half;
 - whether translated programs justify `repeat`/`until` or named outer-loop
   exits;
 - module aliases, re-exports and the source file extension;

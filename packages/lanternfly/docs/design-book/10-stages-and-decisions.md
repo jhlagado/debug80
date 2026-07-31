@@ -190,6 +190,16 @@ state runtime extent without exposing its carrier.
 Read-only, output and in/out parameter modes should share one mutability model
 with those views.
 
+For the writable-text half of this question, a concrete counted-string
+design now awaits ratification in the
+[language completeness review](../language-completeness-review.md):
+`string[N]` with capacity-derived header width, a sealed representation
+whose header and terminator have no source path, a maintained
+compatibility terminator that makes the payload a valid zero-terminated
+string at no cost, and checked copies under `F-RANGE`. Ratifying it means
+specifying it in the working specification and settling the
+`cstring`-versus-`zstring` name for the read-only view.
+
 ### Checked-array mode
 
 Conforming execution checks every dynamic access not proved safe. Emulator
