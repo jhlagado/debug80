@@ -87,6 +87,10 @@ breaking redesign.
   fixed-width types.
 - Variables are declared; line numbers, implicit typing and general `goto` are
   absent.
+- Imports form a contiguous module prefix, and every local declaration must
+  precede its use.
+- A routine signature is visible within its own body; no other implicit
+  forward reference is permitted.
 - Glimmer and platform concepts arrive through typed interfaces rather than
   keywords.
 
@@ -145,8 +149,22 @@ symbols and every backend.
 - Every routine is a `sub`; a trailing result type replaces a separate
   `function`.
 - Calls use parentheses and need no `call` keyword.
+- Mutual recursion would require a future explicit forward declaration rather
+  than module-wide forward visibility.
 - Generated substrate source, typed layouts, source maps and helper inventories
   are first-class artifacts.
+
+### Program placement
+
+- `at` places one module object or external routine at an exact target address.
+- Ordinary code, constants, variables and scratch use target-profile regions
+  and build-configured placement targets.
+- Hosted body fragments report placement requirements and have no independent
+  origin.
+- An AZM backend emits `.org` from the completed placement plan and validates
+  the initialized-byte, reserved-address and symbol maps against that plan.
+- Source-visible section syntax remains unnecessary until a real program needs
+  placement that `at` and build configuration cannot express.
 
 ## Provisional rules
 
@@ -162,7 +180,7 @@ them:
 - defined zero/sign-fill overshifts;
 - runtime integer narrowing warning by default;
 - left-to-right argument evaluation;
-- recursive-cycle rejection on initial bare-metal profiles;
+- direct self-recursion rejection on initial bare-metal profiles;
 - conservative effects for statement `asm`.
 
 Evidence may change these in a later specification. A development build does
@@ -255,10 +273,12 @@ The corpus established several requirements:
 
 1. Establish source identity, diagnostics and versioned host/target schemas.
 2. Parse the complete grammar.
-3. Collect declarations and resolve enum, subrange and layout dependencies.
+3. Resolve import prefixes and check declarations, enum/subrange domains and
+   layouts in source order.
 4. Type-check K0, including range proofs and effect summaries.
 5. Interpret typed control-flow IR as the semantic oracle.
-6. Emit and verify the first AZM vertical slice.
+6. Plan target regions, emit the first AZM vertical slice and verify its final
+   addressed map.
 7. Add K1 arrays, records, paths, aliases and startup effects.
 8. Add source-owned counted strings and their checked operations.
 9. Translate one Tetro and one Pacmo fixture.

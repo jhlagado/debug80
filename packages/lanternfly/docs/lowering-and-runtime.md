@@ -13,7 +13,7 @@ package seams, and milestone gates.
 The front end owns:
 
 - source parsing;
-- name and type resolution;
+- declaration-ordered import, name and type resolution;
 - exact layout;
 - integer result typing and conversions;
 - character decoding and string invariants;
@@ -28,10 +28,12 @@ The target backend owns:
 - path/address lowering;
 - instruction or substrate selection;
 - ABI and local placement;
+- whole-program memory-region allocation and segment origins;
 - helper selection;
 - near/far mechanics;
 - native adapters;
 - substrate source or object emission;
+- final addressed-map validation;
 - source provenance;
 - target cost information.
 
@@ -57,6 +59,7 @@ type
 mutability
 storageOwner
 storageClass when the declaration is a storage root
+placementClass and explicit address when applicable
 providerBindingId when it is a provider-bound address constant
 initializer or import/external binding
 ```
@@ -222,8 +225,8 @@ field-order or row-major scalar access sequence.
 
 `STRING_COPY` and `STRING_APPEND` retain the destination capacity, header form,
 source text kind, overlap possibility and required pre-write checks. They do
-not decompose into source-visible field stores. `CLEAR` recognizes a
-counted-string descriptor and establishes its all-zero empty representation;
+not decompose into source-visible field stores. `CLEAR` establishes the
+all-zero empty representation when its target has a counted-string descriptor;
 `FILL` never accepts one.
 
 ### 4.6 Ordered effects
@@ -262,6 +265,26 @@ location, so assembler diagnostics point back into the `asm` block. The
 generated symbol artifact records any compiler-owned names available to raw
 assembly. A backend without a compatible assembly-fragment pipeline rejects
 `InlineAssembly`.
+
+### 4.8 Declaration order and fixups
+
+The typed program preserves each module's declaration order. Imported export
+interfaces precede local declarations. Every local declaration records the
+earlier declarations available at its source position; a routine additionally
+records its own checked signature while its body is analyzed. Later names must
+not appear in resolved typed nodes.
+
+This rule permits a front end that reads and checks one module declaration at a
+time, but does not require that implementation. A desktop compiler may parse a
+complete tree and construct typed IR in later passes while enforcing the same
+eligibility boundary.
+
+Single-pass source checking does not require single-pass machine emission.
+Structured branches, a direct self-call, the program entry, module startup
+entries and final segment addresses may leave bounded backend fixups. An AZM
+backend emits labels and lets AZM resolve them; a direct machine-code backend
+may retain an equivalent fixup table. These are address-resolution records,
+not forward-visible Lanternfly declarations.
 
 ## 5. Numeric lowering contract
 
@@ -648,6 +671,55 @@ common-memory trampolines.
 
 ## 12. Target registry and opaque address metadata
 
+The target profile defines the legal placement space before it defines
+bindings within that space:
+
+```text
+memoryRegions[]: MemoryRegion
+  MemoryRegion
+    id
+    addressSpaceId
+    start
+    endExclusive
+    minimumAlignment
+    permissions { read, write, execute }
+    allocation: "automatic" | "explicitOnly"
+    initialization { preloadedImage, startupWrite }
+
+placementDefaults: PlacementDefaults
+  code: PlacementTarget
+  constantData: PlacementTarget
+  variableData: PlacementTarget
+  staticScratch: PlacementTarget
+
+PlacementTarget
+  regionId
+  start or null
+  alignment
+
+placementOverrides: PlacementOverrides
+  code: PlacementTarget or null
+  constantData: PlacementTarget or null
+  variableData: PlacementTarget or null
+  staticScratch: PlacementTarget or null
+```
+
+The configuration validator rejects empty or overlapping regions, invalid
+alignment, incompatible permissions, an unresolved region ID and an automatic
+placement target that names an `explicitOnly` region. A numeric start fixes the
+first nonempty range of its class; an occupied or misaligned start is an error.
+A null start continues at the first aligned free address after earlier classes
+in the same region. Later allocation splits around explicit `at` reservations.
+The class order is code, constant data, variable data and static scratch.
+
+The target profile owns `placementDefaults`; a standalone or whole-program
+host request owns `placementOverrides`. An isolated body request owns neither
+final addresses nor overrides.
+
+Placement and final-map artifacts qualify each address with its region's
+address-space ID. A backend may use bare numeric addresses only when the
+selected profile makes the address space unambiguous.
+
 The target profile uses these exact registry names:
 
 ```text
@@ -977,8 +1049,8 @@ may body no-return
 host updates description
 ```
 
-The Lanternfly compiler uses an abstract epilogue ID. Glimmer chooses the generated
-symbol.
+The Lanternfly compiler uses an abstract epilogue ID. The host supplies the
+generated symbol.
 
 ## 14. Compiler result to host
 
@@ -1000,6 +1072,8 @@ Requirements:
 - imports;
 - runtime components;
 - static scratch;
+- code, constant-data and writable-data size/alignment requirements without a
+  fragment origin;
 - generated private symbols;
 - target features.
 
@@ -1069,18 +1143,48 @@ The report aggregates by:
 A dynamic loop reports per-iteration cost plus known setup, not a fabricated
 total.
 
-## 17. Z80/AZM verification gate
+## 17. Z80/AZM placement and verification gate
+
+The first backend chooses size-known instruction, helper and adapter forms
+before it completes the placement plan. An AZM planning pass also obtains the
+size and explicit addressed ranges of raw module assembly. A branch-relaxation
+change reruns the plan. The backend reserves those assembly ranges and every
+explicit `at` range before allocating unplaced components, then assigns source
+code, helpers and adapters to the code class, immutable aggregates to constant
+data, mutable module storage to variable data and eligible compiler temporaries
+to static scratch. Stable source and component ordering makes the plan
+deterministic.
+
+Each contiguous segment begins with `.org` at its planned address. A hosted
+body fragment contains no `.org`; the host assigns final segment addresses when
+it combines bodies, wrappers, state, libraries and runtime components. If a
+module `asm` block changes AZM placement, the backend restores the next planned
+segment origin after the block.
+
+AZM's address-planning pass may resolve generated labels, later branch targets,
+the entry symbol and other machine fixups. The resulting initialized-byte map,
+reserved-address set and symbol table are checked against the Lanternfly plan.
+This final gate catches code-size growth, an inline origin directive, a backend
+defect or any other emission or reservation that crosses a region boundary,
+violates permissions or alignment, or overlaps another planned range.
 
 Generated AZM must:
 
 - use canonical AZM 0.3 syntax;
+- emit segment `.org` directives from the validated plan;
 - preserve exact Glimmer and Lanternfly layouts;
 - declare generated callable routines with `.routine`;
 - keep local labels in legal scoped form;
 - import helpers deterministically;
 - assemble under the selected profile;
+- reproduce the planned initialized-byte, reserved-address and symbol maps;
 - pass configured strict register-contract analysis;
 - emit expected binary and map artifacts.
+
+A non-AZM backend uses its object, linker or substrate placement mechanism to
+preserve the same plan and returns equivalent occupancy and symbol artifacts.
+It reports `E-TARGET-001` for a target whose placement contract it cannot
+express.
 
 The gate should compare execution against the original example during
 translation milestones.
@@ -1172,6 +1276,18 @@ backend-focused groups summarize that inventory:
 - rejection by incompatible non-assembly backends;
 - assembler diagnostics mapped to the original inline lines.
 
+### Placement
+
+- target memory-region shape, permissions, initialization and alignment;
+- deterministic class allocation around explicit `at` reservations;
+- standalone origin overrides constrained by the selected profile;
+- hosted fragments without independent origins;
+- AZM `.org` directives at planned segment starts;
+- final initialized-byte, reserved-address and symbol maps equal to the
+  placement plan;
+- `E-PLACE-001` for an unsatisfied plan and `E-PLACE-002` for emission outside
+  it.
+
 ### Artifacts
 
 - correct source mapping;
@@ -1205,12 +1321,13 @@ milestones. Their architecture order is:
 
 1. establish source identity, diagnostics, and versioned host/target schemas;
 2. parse the complete 0.4 grammar while preserving raw assembly payloads;
-3. collect declarations, resolve ordinal domains, dependencies and layouts,
-   and type-check K0;
+3. resolve imports and check declarations, ordinal domains and layouts in
+   source order, then type-check K0;
 4. lower the typed program to control-flow IR and execute it in the semantic
    interpreter;
-5. emit canonical AZM for scalar state and structured control, assemble it,
-   and compose source maps through the host;
+5. plan target regions, emit canonical AZM for scalar state and structured
+   control, assemble it, validate its final memory map and compose source maps
+   through the host;
 6. add exact arrays with ordinal index domains, records, startup effects,
    multidimensional paths, hosted-body scalar locals, and hosted-body local
    aggregate aliases;

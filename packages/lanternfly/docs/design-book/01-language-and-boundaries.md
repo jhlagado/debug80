@@ -57,6 +57,12 @@ constraint favours a small grammar, fixed storage, simple name resolution and
 compiler passes that fit a modest runtime. Such a compiler may support a smaller
 implementation stage, but every construct it accepts keeps the same meaning.
 
+Module source supports that goal by reading in dependency order. Imports come
+first; types, storage and helper routines precede their use; a routine may see
+its own checked signature but no later declaration. Desktop compilers remain
+free to retain syntax trees and typed IR, while a smaller compiler can publish
+each completed declaration to a compact symbol table and continue.
+
 ## Structured BASIC on a systems foundation
 
 The surface borrows BASIC's readable words:

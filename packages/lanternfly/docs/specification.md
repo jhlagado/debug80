@@ -136,31 +136,30 @@ and `Actor` do above.
 Each module has one type scope and one value scope. Record, enum and range
 declarations enter the type scope; enum members enter the value scope.
 Constants, variables and routines also enter the value scope, so an enum
-member, storage declaration and callable routine cannot share a name. Imports
-add their exported declarations to those module scopes. All module declaration
-names are collected before declaration bodies and routine bodies are checked.
-A type annotation may therefore name a later type, and a routine body may use
-any successfully checked module declaration. Constant names embedded in array
-domains or other declaration expressions still follow the source-order rule
-below.
+member, storage declaration and callable routine cannot share a name.
 
-Constant initializers, subrange bounds, string capacities, array-domain
-expressions and placement expressions are evaluated in source order. Successfully resolved imported
-exports precede every declaration in the importing module for this purpose,
-regardless of where the `import` item is written. Among declarations written
-in the importing module, such an expression may use only earlier constants or
-enum members, and a layout path may begin only with earlier storage. This
-source-order restriction applies even though the later name is already known
-to the module scope.
+Module visibility follows declaration order. Imports form one contiguous
+prefix and contribute their exports when each import has been resolved. After
+that prefix, a declaration may use imported names and earlier local
+declarations only. A type, constant, enum member, storage name or external
+routine becomes available after its complete declaration has been checked. A
+`sub` signature becomes available after its header has been checked and before
+its body, which permits a direct self-call. Its body may call imported
+routines, earlier local routines and itself; it cannot call a later routine.
 
-Constant expressions written inside a routine body, including `case` values
-and counted-loop steps, may use any successfully initialized module constant
-because routine bodies are checked after module declarations. The compiler
-builds one dependency graph spanning constant values, enum and subrange
-domains, string capacities, array index domains, record layouts,
-placement expressions and layout queries. That graph must be acyclic. A cycle such as a constant taking
-`size(type Packet)` while `Packet` uses that constant in an array domain is
-rejected with the complete dependency path.
+There are no implicit forward references. In particular, a type annotation
+cannot name a later type, an initializer cannot name its own or a later
+declaration, and a routine body cannot use a later constant, variable or
+routine. An implementation may retain a complete syntax tree and perform
+several internal passes, but accepted source must have the same visibility as
+a compiler that processes declarations in order.
+
+This ordering also settles declaration dependencies. Constant initializers,
+subrange bounds, string capacities, array domains, record fields, placement
+expressions and layout queries can depend only on declarations whose values
+and layouts are already complete. Direct and mutual source-declaration cycles
+cannot be formed. Import cycles remain a separate module error under section
+12.1.
 
 A routine has one value scope containing its parameters and locals. Parameter
 names are distinct, and a parameter or local may not shadow any visible module
@@ -621,9 +620,9 @@ A capacity from 255 through 65,534 uses the long form, with `L` stored as a
 target-endian `u16` at offset zero, payload beginning at offset two and exact
 size `N + 3`. A value whose length is 255 or greater is therefore necessarily
 a long string. The short encoding never uses length byte 255, and the long
-encoding never uses length word 65,535. The capacity, not the current contents,
-chooses the form, so `string[255]` remains long even while it contains only a
-few bytes.
+encoding never uses length word 65,535. The declared capacity, not the current
+contents, fixes the form, so `string[255]` remains long even while it contains
+only a few bytes.
 
 Every valid representation satisfies all of these invariants:
 
@@ -736,15 +735,15 @@ Module-level variables own static storage. Compiler-allocated static storage
 without an explicit initializer begins with all bits zero when every leaf
 accepts that representation. Integers, Booleans and strings do — an
 uninitialized string begins empty — while an enum or subrange does only when
-its domain contains ordinal zero, and a target profile decides whether zero is
-valid for each opaque address type. A declaration whose type lacks an all-zero
-value requires an initializer. Placed or host- or native-supplied storage
-without an initializer retains the value supplied by the target environment;
-the compiler performs no startup write. Importing a source module does not
-change a declaration's storage class: an unplaced variable in that module
-remains compiler-allocated and uses the ordinary zero-initialization rule,
-while an uninitialized placed variable retains its target-supplied value under
-section 4.3.
+its domain contains ordinal zero. The selected validity contract determines
+whether zero is valid for each opaque address type. A declaration whose type
+lacks an all-zero value requires an initializer. Placed storage, host storage
+and native storage without an initializer retain the value supplied by the
+target environment; the compiler performs no startup write. Importing a source
+module does not change a declaration's storage class: an unplaced variable in
+that module remains compiler-allocated and uses the ordinary
+zero-initialization rule, while an uninitialized placed variable retains its
+target-supplied value under section 4.3.
 
 Local scalar variables use the same syntax inside a routine:
 
@@ -780,9 +779,53 @@ const glyph as u8[2] = [$00, $7e] at $4000
 ```
 
 The address is a target-address constant expression under section 3.1. The
-target profile validates its range, address space, alignment requirements and
-overlap with other placed objects. A placed declaration has the same type and
-access rules as ordinary storage.
+complete object must fit one compatible target memory region. The target
+profile validates its address space, range, alignment, permissions and overlap
+with every other placed or allocated object. A placed declaration has the same
+type and access rules as ordinary storage.
+
+`at` is the only first-edition Lanternfly placement clause. Ordinary
+declarations do not name sections or origins. Raw module assembly remains
+substrate text and may use target location directives under the checks below.
+The target profile defines the available memory regions and default
+destinations for generated code, constants, writable storage and static
+scratch. A standalone build request, or the host of an embedded body, may
+select another permitted region or starting address through build
+configuration. The same validation applies to defaults and overrides.
+
+The compiler reserves every explicit `at` range before allocating ordinary
+objects. It then produces a deterministic placement plan for source routines,
+module storage, constants, module assembly, startup code, runtime helpers,
+adapters and static scratch. The backend obtains the size and any explicit
+addressed ranges of module assembly before completing the plan. Source
+components use depth-first first-encounter module order from the root, then
+declaration order within each module. Generated components use stable backend
+IDs. The plan records every range, its alignment, its memory region and the
+source or generated component that owns it. Failure to fit the plan is
+`E-PLACE-001`.
+
+An assembly-source backend serializes that completed plan with assembler
+location directives. For AZM, it emits `.org` at the start of each contiguous
+segment. The first `.org` is therefore an output of placement, not the memory
+map policy itself. Labels and ordinary assembler fixups resolve within the
+planned segments. After assembly, the compiler compares AZM's initialized-byte
+map, reserved-address set and symbol table with the plan. Each planned emitted
+or reserved range must have its exact address span, every initialized or
+reserved address must belong to exactly one such range, and each exported or
+generated component symbol must have its planned address. Missing, extra,
+displaced or overlapping output is `E-PLACE-002`.
+
+A non-AZM backend must carry the same plan through its object, linker or
+substrate placement mechanism and return equivalent occupancy and symbol
+artifacts for validation. A backend that cannot preserve the selected target's
+placement contract reports `E-TARGET-001` rather than silently choosing
+addresses.
+
+A hosted body fragment has no independent assembly origin. It reports its code,
+data, helper and scratch requirements to the host, which places the combined
+program and performs the same final-map validation. An inline module `asm`
+block may contain target location directives, but its emitted ranges remain
+subject to the target memory map and final-map check.
 
 A placed variable with an initializer is installed before program entry. The
 target profile declares, for each relevant address space, whether installation
@@ -812,8 +855,9 @@ write is an observable initialization effect reported in compiler artifacts.
 
 Target profiles interpret `at`. A banked target may accept a far address
 expression, and an address-space profile may accept a qualified device
-address. Portable modules should normally leave placement to an entry program
-or target configuration. A local declaration cannot use `at`.
+address. A region intended only for explicit placement is never used by the
+ordinary allocator. Portable modules should normally leave placement to the
+build manifest or target defaults. A local declaration cannot use `at`.
 
 ### 4.4 Volatile storage
 
@@ -885,14 +929,12 @@ immutable string storage whose payload is known to the compiler. A constant
 expression may not read variable storage, invoke a routine, use a volatile
 object or perform any other observable operation.
 
-For a constant expression inside a routine body, eligible names include any
-visible module constant whose initializer has already been checked successfully
-and every visible enum member whose declaration has been checked, as defined in
-section 2.1. Constant and layout dependencies are checked as one acyclic graph;
-source order controls name eligibility but does not excuse a cycle. In a hosted
-body, scalar host-manifest constants other than opaque address bindings, and
-every visible manifest enum member, also satisfy these constant-expression
-contexts.
+For a constant expression inside a routine body, eligible names include
+imported constants, earlier module constants and enum members, as defined in
+section 2.1. A later declaration is unavailable even if the compiler has
+already parsed the complete file. In a hosted body, scalar host-manifest
+constants other than opaque address bindings, and every visible manifest enum
+member, also satisfy these constant-expression contexts.
 
 Outside the target-address constant expressions defined in section 3.1, the
 compiler resolves every operator's operand and result types before folding it.
@@ -935,9 +977,12 @@ Record layout is exact:
 - no padding is inserted implicitly;
 - nested records are stored inline;
 - every offset and total size is known during compilation;
-- the graph of records and arrays contained by value must be acyclic, so direct
-  and mutual recursive containment are both rejected;
+- a field type must already be complete, so direct and mutual recursive
+  containment cannot be declared;
 - exporting a record exports its complete field layout.
+
+Naming the record currently being declared, or any later record, as a field
+type is use before declaration under `E-NAME-001`.
 
 ## 6. Fixed arrays and index domains
 
@@ -1449,10 +1494,11 @@ argument, an initializer, a return expression or any other value context.
 `clear(target)` writes the all-zero representation to a writable record, fixed
 array or string. For a record or array, it is valid only when every leaf
 accepts that representation. Integers, Booleans and strings do; enums and
-subranges do when their domain contains ordinal zero. A target profile decides
-whether all-zero is valid for one of its opaque address types. It visits record
-fields recursively in declaration order and array elements recursively in
-row-major order. A string becomes empty without exposing its sealed cells.
+subranges do when their domain contains ordinal zero. The selected validity
+contract determines whether all-zero is valid for an opaque address type. The
+operation visits record fields recursively in declaration order and array
+elements recursively in row-major order. A string becomes empty without
+exposing its sealed cells.
 
 `fill(target, value)` requires a writable fixed array whose leaf element type
 is scalar. The value receives that leaf type as its expected destination type
@@ -1809,6 +1855,11 @@ Parentheses are present for every declaration and invocation, including an
 empty parameter list, so a routine invocation is syntactically distinct from a
 name.
 
+The parameter and result types in a routine signature must already be visible.
+After that signature is checked, the routine name is visible within its own
+body and in later declarations. This permits direct recursion on a capable
+target. A call to a later routine is a declaration-before-use error.
+
 ### 11.2 Invocation
 
 Lanternfly has no `call` keyword:
@@ -1944,19 +1995,19 @@ backend may place them in registers, stack slots or both. It may use static
 temporaries when whole-program analysis proves that overlapping invocations
 cannot occur.
 
-Recursion is a target-profile capability. A profile without it rejects every
-direct or mutually recursive call cycle with the cycle path in the diagnostic.
-A recursion-capable profile provides independent frames, declares its stack
-and reentrancy rules, and reports per-routine frame size plus any configured
-maximum stack bound. Static temporaries are invalid where recursion,
-reentrancy, interrupts or another overlapping invocation can reach them.
+Recursion is a target-profile capability. Declaration-before-use permits a
+routine to call itself but makes mutual recursion in one source program
+inexpressible. A profile without recursion rejects a direct self-cycle. A
+recursion-capable profile provides independent frames, declares its stack and
+reentrancy rules, and reports per-routine frame size plus any configured maximum
+stack bound. Static temporaries are invalid where recursion, reentrancy,
+interrupts or another overlapping invocation can reach them.
 
-Indirect calls are not in the first edition, so the initial cycle analysis uses
-the complete direct call graph. Native-to-Lanternfly callbacks are also
-deferred: an external or host routine contract may call native services but
-may not re-enter a source-defined Lanternfly routine or hosted body. A binding
-that requires such a callback is incompatible. The target-specific convention
-does not change Lanternfly source semantics.
+Indirect calls are not in the first edition. Native-to-Lanternfly callbacks are
+also deferred: an external or host routine contract may call native services
+but may not re-enter a source-defined Lanternfly routine or hosted body. A
+binding that requires such a callback is incompatible. The target-specific
+convention does not change Lanternfly source semantics.
 
 Routine names are not values. Source code cannot take a routine's address,
 store it in an array, return it or invoke it indirectly. `select` supplies
@@ -1976,6 +2027,9 @@ import "actors.lf"
 An import:
 
 - resolves relative to the importing file and configured search paths;
+- appears in the contiguous import prefix before every other module item;
+- resolves its source unit or compiled export interface before the next module
+  item is checked;
 - loads a resolved source unit once per compilation;
 - retains that unit's private declarations;
 - exposes only explicit exports;
@@ -1985,6 +2039,12 @@ An import:
 Lanternfly has no general textual `include` in the initial language. The
 compiler reads exported declarations directly, so it does not need C-style
 header substitution or include guards.
+
+Source-module resolution proceeds depth first. The resolver marks a module
+while loading it; encountering that module again reports an import cycle. A
+completed module supplies its export table immediately when a diamond import
+reaches it again. Separate compilation may load an equivalent versioned
+export-interface artifact instead of reading the source again.
 
 ### 12.2 Exports
 
@@ -2031,6 +2091,11 @@ updateActors()
 actors[0].active = true
 ```
 
+The exports become visible at the point of the import. Because imports form the
+module prefix, every successfully imported name precedes every local
+declaration. Collisions between two imports are reported while processing the
+later import.
+
 Two visible declarations with the same case-insensitive name in the same
 namespace cause a compile error. A value may share a name with a type under the
 rule in section 2.1, while the cross-namespace type/callable collision remains
@@ -2065,6 +2130,12 @@ checks that the address is executable and representable. `from` names a
 substrate symbol exactly after the compile-time string escapes from section 2.4
 have been decoded. An external declaration without either clause asks the
 target profile to bind the Lanternfly name.
+
+An absolute external routine binding owns no generated bytes and does not move
+a placement origin. The profile must place its address in an executable region
+reserved from ordinary allocation, normally an `explicitOnly` region. Target
+metadata may describe the routine's occupied range when overlap validation
+requires more than its entry address.
 
 The declaration provides the parameter and result types seen by Lanternfly.
 The selected target profile supplies or verifies the remaining native
@@ -2104,17 +2175,23 @@ bindings that their substrate cannot express.
 
 ### 12.5 Whole-program compilation
 
-The compiler performs address allocation and symbol resolution in one
-whole-program build:
+The language permits a declaration-ordered front end but does not require one
+compiler implementation strategy. A whole-program build:
 
 1. loads the root module;
-2. resolves the import graph;
-3. collects private and exported declarations;
-4. type-checks the complete program;
-5. allocates static storage;
-6. resolves external bindings and ABI adapters;
-7. lowers required routines, data and helpers;
-8. produces one target program and its debug artifacts.
+2. resolves each module's contiguous import prefix depth first;
+3. checks declarations in source order, making each completed declaration
+   available to the declarations that follow;
+4. resolves external bindings and ABI adapters;
+5. lowers the required routines, data and helpers;
+6. creates and validates the placement plan from section 4.3;
+7. emits one target program and validates its final memory map and debug
+   artifacts.
+
+A compiler may keep syntax trees, typed IR and several internal passes. It may
+also process a source unit once, retain a compact symbol table and leave branch
+and address fixups to its backend. Both implementations accept the same
+declaration-ordered programs.
 
 The source file extension remains open. `.lf` is illustrative only.
 
@@ -2123,7 +2200,8 @@ The source file extension remains open. `.lf` is illustrative only.
 An ordinary Lanternfly source file is a module containing imports and
 declarations. It does not contain loose executable statements. A build
 manifest names the root module and, for an executable build, one entry
-subroutine. The entry must have no parameters and no result:
+subroutine. The entry must have no parameters and no result. This example
+assumes `initialiseGame` and `gameLoop` were imported or declared earlier:
 
 ```lanternfly
 sub main()
@@ -2301,6 +2379,75 @@ source location in debug artifacts.
 A target profile declares its CPU or substrate, endianness, supported scalar
 operations, near and far address representations, address spaces, routine ABI,
 standard-service implementations and native dialect.
+
+The target profile contains `memoryRegions` and `placementDefaults`. A
+whole-program build request contains `placementOverrides`. They use these
+closed record shapes:
+
+```text
+memoryRegions[]: MemoryRegion
+  MemoryRegion
+    id
+    addressSpaceId
+    start
+    endExclusive
+    minimumAlignment
+    permissions { read, write, execute }
+    allocation: "automatic" | "explicitOnly"
+    initialization { preloadedImage, startupWrite }
+
+PlacementTarget
+  regionId
+  start or null
+  alignment
+
+placementDefaults: PlacementDefaults
+  PlacementDefaults
+    code: PlacementTarget
+    constantData: PlacementTarget
+    variableData: PlacementTarget
+    staticScratch: PlacementTarget
+
+placementOverrides: PlacementOverrides
+  PlacementOverrides
+    code: PlacementTarget or null
+    constantData: PlacementTarget or null
+    variableData: PlacementTarget or null
+    staticScratch: PlacementTarget or null
+```
+
+Region bounds and placement starts are target-address mathematical integers.
+Every planned and reported address is qualified by its region's
+`addressSpaceId`. A substrate with unqualified numeric addresses may omit that
+field only when one relevant address space is possible; otherwise the backend
+must attach the address-space identity or reject the target.
+
+Every region is nonempty, its minimum alignment is a positive power of two,
+and regions in one address space do not overlap. A placement target names an
+`automatic` region and uses an alignment at least as strict as the region's.
+A written start is the exact address of the class's first nonempty range; an
+occupied or misaligned start fails placement rather than moving the origin. A
+null start uses the first aligned free address after earlier planned ranges in
+the same region, or the region start when none exists. Later allocation may
+cross a reserved range only by ending the current segment and continuing at the
+next aligned free address. Placement classes are planned in the order code,
+constant data, variable data and static scratch. The selected region's
+permissions must admit the class: code is executable, constant data is
+readable, and variable data and scratch are readable and writable.
+
+`explicitOnly` regions admit only `at`, external bindings and target assembly;
+they are never selected for ordinary allocation. The two initialization flags
+state whether the program image may contain bytes for the region and whether
+startup code may write it. A placed initializer requires at least one permitted
+mechanism, as described in section 4.3. Every emitted code range requires
+`preloadedImage`; startup code cannot install the code needed to run itself.
+
+A non-null override replaces the corresponding default for that build. It
+changes placement only within the same validated memory map and cannot create a
+region, relax permissions or alignment, or permit an overlap. All-null
+overrides select the profile defaults. A host compiling an isolated body does
+not assign final addresses; it carries the body's placement requirements into
+the combined whole-program plan.
 
 Its callable linkage, ABI, runtime, fault and symbol-resolution registries use
 these closed records and exact array names:
@@ -2494,8 +2641,9 @@ exclusive to loop control and avoids a host-specific exit form.
 
 The compiler returns a summary of imported storage reads and writes, routines
 called, native effects, early returns, runtime helpers, static scratch,
-estimated cost and source mappings. A host may compare that summary with explicit
-dependency declarations or use it to derive change tracking.
+placement-class size and alignment requirements, estimated cost and source
+mappings. It returns no fragment origin. A host may compare that summary with
+explicit dependency declarations or use it to derive change tracking.
 
 ### 13.4 Floating point
 
@@ -2624,11 +2772,10 @@ The grammar records block shape and assignment disambiguation. Expression
 precedence is defined in section 8.
 
 ```text
-module              ::= top-item*
+module              ::= import-decl* top-item*
 hosted-body         ::= local-decl* statement*
 
-top-item            ::= import-decl
-                      | export-decl
+top-item            ::= export-decl
                       | declaration
                       | asm-block
 
@@ -2866,6 +3013,10 @@ restricted semantically by sections 4.5 and 3.1 respectively.
 `character-content`, `string-character` and `logical-newline` obey section
 2.4. Grammar positions for imports and external `from` bindings apply the
 more restrictive compile-time text rules from that section.
+The `import-decl* top-item*` shape makes an import after any declaration or
+module `asm` block invalid under `E-MODULE-003`. Parser recovery may continue
+after that diagnostic rather than treating the later import as an unrelated
+parse error.
 `value-name` and `type-name` share one lexical shape and resolve in their
 respective namespaces, subject to the type/callable collision rule in section
 2.1. In an array index domain, a lone identifier that resolves to an ordinal
@@ -2893,7 +3044,9 @@ The following questions remain open or provisional. None blocks K0 or K1:
 
 - whether bare `end` stays clearer than named endings in long routines;
 - case-insensitive identifier resolution after parser experiments;
-- whether `at` is sufficient or grows into a section-placement model;
+- whether real programs justify source-visible named placement classes beyond
+  `at` and build-configured regions;
+- an explicit `forward sub` declaration if mutual recursion proves necessary;
 - source syntax for narrowing an external routine's effect contract;
 - native callback declarations and their call-graph/reentrancy contract;
 - read-only aggregate parameters and general bounded-view spelling, which

@@ -44,6 +44,18 @@ Ranges belong to the type system and grammar; they are not runtime objects.
 It also includes sealed `string[N]` storage with a capacity-derived length
 header and maintained zero terminator.
 
+Modules read in declaration order. Imports form a prefix; after them, each
+type, constant, storage object and helper precedes its use. A routine signature
+is visible inside its own body, but later declarations are not. This makes a
+small declaration-ordered compiler possible without requiring the desktop
+compiler to use one internal pass.
+
+Target profiles define legal memory regions and placement defaults. Source
+uses `at` only for exact addresses. An AZM backend emits `.org` from the
+validated whole-program placement plan and checks the assembled address map
+against that plan, including initialized bytes, reserved addresses and
+symbols.
+
 ## Documents
 
 - [Implementation plan](docs/implementation-plan.md) gives the coding order,
@@ -72,9 +84,10 @@ Implementation proceeds in this order:
 2. versioned host-manifest and target-profile schemas;
 3. validation of an empty hosted body and its epilogue contract;
 4. the complete 0.4 parser;
-5. K0 name, type, layout, and effect analysis;
+5. K0 declaration-ordered name, type, layout, and effect analysis;
 6. typed IR and interpreter;
-7. canonical AZM lowering and composed source maps;
+7. target-region planning, canonical AZM lowering, final-map validation, and
+   composed source maps;
 8. K1 counted strings, exact arrays, records, paths, locals, and aliases;
 9. user routines after storage and diagnostic behaviour are stable.
 

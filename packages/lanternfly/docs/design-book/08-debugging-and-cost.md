@@ -193,6 +193,12 @@ Static allocation is useful when visible. A report groups:
 - each bank or segment;
 - remaining capacity and placement failures.
 
+The placement artifact names the target region, planned start and end,
+alignment and owner of every code, data and scratch range. The assembled
+initialized-byte map, reserved-address set and symbol table appear beside it. A
+difference is a backend or inline-assembly placement error, not an unexplained
+linker adjustment.
+
 Exact record and array layout appears with domains and strides. A tool may
 suggest an explicit source-layout change for speed, but a backend cannot pad a
 six-byte record privately when its layout is observable.
@@ -228,6 +234,7 @@ The first Z80/AZM backend produces:
 - generated `.asm`;
 - assembled binary or HEX;
 - machine map;
+- validated placement plan and its final-map comparison;
 - composed Lanternfly/AZM/host provenance;
 - typed symbol and exact layout report;
 - helper and adapter inventory;

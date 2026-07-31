@@ -54,10 +54,9 @@ Lanternfly owns the code inside a routine or scheduled body:
 - structured memory access;
 - calls and side effects supplied by its environment.
 
-A Glimmer integration may make Glimmer-declared storage and routines visible
-to Lanternfly through an ordinary typed interface. Lanternfly treats those names in the
-same way as symbols supplied by an assembler, C program, BASIC environment, or
-another host.
+A host may make its storage and routines visible to Lanternfly through an
+ordinary typed interface. The same name-resolution rules apply to symbols
+supplied by an assembler, C program, BASIC environment, or another host.
 
 Host constants and records enter through the same typed interface. A host
 resource is exposed as an ordinary Lanternfly constant, address, storage object
@@ -90,6 +89,12 @@ Lanternfly's core control structures use no labels or line numbers. Raw
 assembly may still use the selected assembler's labels for low-level
 destinations.
 
+Modules are written in dependency order. Imports come first; every local type,
+constant, storage object and routine must be declared before use, with the one
+exception that a routine may call itself after its signature has been checked.
+The rule supports a small compiler without dictating how many internal passes a
+desktop implementation uses.
+
 The loop vocabulary is deliberately small: inclusive `for ... to`, exclusive
 `for ... until`, `for each ... in`, and `while`. `while true` supplies
 indefinite iteration. `exit` leaves only the innermost loop, `continue` begins
@@ -104,7 +109,8 @@ The initial model has:
 
 - signed and unsigned fixed-width scalar values through 32 bits;
 - nominal enums and checked subranges;
-- byte-valued characters and static NUL-terminated text;
+- byte-valued characters and sealed counted strings with maintained NUL
+  terminators;
 - opaque near and far address values;
 - statically allocated arrays with ordinal index domains, and exact records;
 - zero-storage aliases for existing objects and subobjects;
@@ -143,6 +149,11 @@ Portability does not require identical cost. A multiplication may become one
 instruction, an inline sequence, a runtime call, or a host-language expression.
 Generated output and optional cost diagnostics should keep expensive lowering
 visible.
+
+Target profiles also define the legal memory map. Build configuration selects
+origins for generated classes within those regions, while `at` reserves an
+exact source object. An assembler directive such as AZM `.org` carries the
+completed placement plan into one backend; it does not define the plan.
 
 ## Native substrate access
 

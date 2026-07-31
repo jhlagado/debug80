@@ -18,7 +18,7 @@ algorithm feature is also useful in game code. The
 [reading ledger](reading-ledger.md) records the completed files and line
 counts.
 
-## What AZM already solves
+## Existing AZM facilities
 
 AZM has a strong static layout system:
 
@@ -224,7 +224,7 @@ They do not show that every Z80 game profile can afford it. The correct split
 is:
 
 - the language model may describe recursive calls;
-- an initial bare-metal profile may reject call cycles;
+- an initial bare-metal profile may reject direct self-recursion;
 - a profile that accepts recursion must state its stack convention;
 - build output should report frame size and a maximum stack bound when one can
   be proved;
@@ -308,7 +308,7 @@ the first translation. Such a feature should be considered only if it improves
 source clarity without hiding layout or turning every access into an
 unexpected helper call.
 
-## What is logical state and what is assembly scaffolding
+## Logical state and assembly scaffolding
 
 The source study separates four categories.
 

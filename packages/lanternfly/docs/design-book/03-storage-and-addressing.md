@@ -209,10 +209,9 @@ layout. Any assignment through a path rooted in constant storage is an error.
 
 Module initializers are constant data. They may use imported constants and
 earlier constants or enum members from the same module. A storage layout query
-may begin at earlier storage. Constant values, ordinal and array domains,
-record layouts, placement expressions and layout queries share one dependency
-graph, and a cycle is a compile-time error even when every name is otherwise
-visible.
+may begin at earlier storage. Types and layouts are complete before they become
+visible, so a later declaration cannot create a constant, layout or placement
+cycle through an earlier one.
 
 Local scalar initializers are different: they execute once per invocation,
 in declaration order, before the routine's statements. Each initializer may
@@ -359,6 +358,21 @@ indices for selecting a nested type, but it performs no load or runtime check.
 ```lanternfly
 volatile var controlPort as u8 at $80
 ```
+
+Ordinary objects need no source placement clause. The target profile describes
+legal memory regions and the default destinations for code, constant data,
+writable data and scratch. A standalone build or host may select another
+permitted origin. The compiler reserves every `at` range, allocates the rest,
+and records a complete placement plan.
+
+For AZM output, `.org` marks the start of each planned segment. It does not
+decide the memory map: the validated target regions and placement plan do. AZM
+resolves labels and fixups, after which its initialized-byte map,
+reserved-address set and symbol table are checked against the plan. This final
+comparison catches a segment that grew past its region, an overlap, a wrong
+origin or an inline assembly directive that moved output unexpectedly. An
+embedded body reports requirements to its host and therefore emits no origin
+of its own.
 
 Every volatile read and write is observable. The compiler preserves their
 source order and does not merge or invent accesses.

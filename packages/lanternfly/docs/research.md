@@ -168,7 +168,7 @@ Near/far is a capability distinction:
 
 TMS9918 VRAM proves that not every 16-bit address is ordinary CPU storage. The
 evidence requires the device-space identity to survive through typed service
-contracts and debugging. Specification 0.4 represents the source value as
+contracts and debugging. Specification 0.4 uses the source types
 `near address` or `far address` and attaches the device-space identity as
 target metadata on its provider binding or service contract. It does not create
 a nominal source address-space type or permit source dereference.
@@ -198,6 +198,8 @@ a permanent Lanternfly law. Common `grid[row, column]` access is semantically va
 AZM provides:
 
 - exact assembler-time layouts;
+- explicit `.org` directives and addressed byte maps;
+- reserved-address tracking for uninitialized `.ds` storage;
 - arrays, records, unions, `sizeof` and offsets;
 - inline typed-ish ops;
 - modules/import visibility;
@@ -209,6 +211,11 @@ index scaling must be emitted by the Lanternfly backend.
 
 AZM's strict routine contracts are a verification gate for generated Z80.
 Registers and flags do not become Lanternfly source concepts.
+
+AZM's origin directive is an emission mechanism rather than a complete
+placement policy. Lanternfly must validate target regions, reserve explicit
+`at` objects, allocate every generated component and compare AZM's final
+initialized-byte, reserved-address and symbol maps with that plan.
 
 ## Algorithm and production-game findings
 
@@ -235,7 +242,7 @@ The current TETRO and PACMO sources confirm:
 - no requirement for heap allocation.
 
 Book 3's linked list and tree use statically allocated nodes, evidence that a
-heap is not required. Lanternfly represents such structures through ordinal
+heap is not required. Lanternfly builds such structures with ordinal
 selectors and sentinels; nullable source references are not planned. Recursion
 is similarly a later profile capability: a backend that admits it must report
 frame and stack costs.
@@ -273,6 +280,8 @@ native or platform services.
 
 - language name: Lanternfly;
 - streamlined structured BASIC source with static types;
+- contiguous import prefixes and declaration-before-use, with a routine's own
+  checked signature visible in its body;
 - no Glimmer-specific vocabulary;
 - exact static layouts;
 - row-major arrays with count, explicit-range, subrange or enum index domains;
@@ -292,6 +301,8 @@ native or platform services.
 - opaque `near address` and `far address` values with device-space metadata on
   bindings and service contracts;
 - explicit native boundary;
+- target-profile memory regions, build-configured placement and final-map
+  validation;
 - backend-selected helpers linked on demand;
 - composed source maps and cost visibility.
 

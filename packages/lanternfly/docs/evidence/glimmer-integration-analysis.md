@@ -88,7 +88,7 @@ Tests should cover:
 
 ## Typed manifests
 
-The current Glimmer program model already knows state scalar widths, array
+The current Glimmer program model already stores state scalar widths, array
 bounds, layout names and generated resources. It does not carry the richer
 information Lanternfly needs for all services and addresses.
 
@@ -111,7 +111,7 @@ other substrates can each implement it.
 ## Semantic access summaries
 
 Glimmer currently scans only direct assembly stores to warn about missing
-`updates`. Lanternfly knows the target of field and index assignments even when the
+`updates`. Lanternfly's typed paths identify the target of field and index assignments even when the
 lowering uses an indirect pointer. It should return normalized read and write
 sets.
 
@@ -129,9 +129,20 @@ declaration remains authoritative because:
 ## Program and module placement
 
 Glimmer emits wrapped blocks before imported modules and profile libraries.
-AZM supports forward references, so generated Lanternfly calls can target later
-labels. A C or BASIC substrate may impose different declaration order;
-backend planning owns that issue.
+Lanternfly's declaration-before-use rule requires imported and earlier routine
+signatures at the source boundary. Generated structured branches, wrapper
+epilogues and host library symbols may still require assembler or linker
+fixups. Those machine fixups do not grant source visibility to later Lanternfly
+declarations.
+
+The current Glimmer generator emits one configurable `.org`, defaulting to
+`$4000`. Lanternfly needs a stronger integration contract. The selected target
+profile defines legal memory regions; Glimmer contributes wrappers, state,
+bodies, resources and profile libraries to one placement plan; each hosted
+Lanternfly body contributes size and class requirements but no independent
+origin. The AZM output serializes planned segments with `.org`, and its final
+initialized-byte map, reserved-address set and symbol table are checked against
+the plan.
 
 The first Lanternfly integration can compile individual bodies plus separately
 declared Lanternfly modules. It should inherit Glimmer's `part` merge semantics rather

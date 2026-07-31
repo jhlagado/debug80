@@ -50,6 +50,19 @@ The implementation must preserve these boundaries from its first data model:
   source spelling;
 - hosted `return` reaches the host epilogue.
 
+The first data model must also preserve declaration order and placement:
+
+- imports form a contiguous prefix and resolve before local declarations;
+- a module declaration becomes visible only after it is checked, except that a
+  routine signature is visible inside its own body;
+- no pass may grant a source program implicit forward visibility merely
+  because a complete syntax tree is available;
+- target memory regions and placement defaults are validated configuration;
+- `.org` directives are emitted from a placement plan and never substitute for
+  one;
+- a hosted body reports placement requirements but has no independent assembly
+  origin.
+
 ## 2. First implementation target
 
 The first end-to-end target is a Lanternfly body hosted by Glimmer and lowered
@@ -479,6 +492,7 @@ are equal.
 The initial target profile records:
 
 - profile ID, substrate and endianness;
+- target memory regions and default placement targets;
 - supported scalar operations and address classes;
 - default private aggregate storage class;
 - maximum object and literal sizes;
@@ -499,6 +513,66 @@ change integer results, exact layout, evaluation order, loop boundaries, or
 any other source semantic.
 
 `endianness` is the closed choice `"little"` or `"big"`.
+
+Memory-map records are closed:
+
+```text
+MemoryRegion
+    id
+    addressSpaceId
+    start
+    endExclusive
+    minimumAlignment
+    permissions { read, write, execute }
+    allocation: "automatic" | "explicitOnly"
+    initialization { preloadedImage, startupWrite }
+
+PlacementTarget
+    regionId
+    start: non-negative integer | null
+    alignment
+
+PlacementDefaults
+    code: PlacementTarget
+    constantData: PlacementTarget
+    variableData: PlacementTarget
+    staticScratch: PlacementTarget
+
+PlacementOverrides
+    code: PlacementTarget | null
+    constantData: PlacementTarget | null
+    variableData: PlacementTarget | null
+    staticScratch: PlacementTarget | null
+```
+
+Each region is nonempty. Its alignment and every placement alignment are
+positive powers of two. Regions in one `addressSpaceId` do not overlap. A
+planned or reported address is paired with its region's `addressSpaceId`; a
+backend with only unqualified addresses must attach that identity when the
+profile has more than one relevant space. A placement target resolves an
+`automatic` region and cannot weaken its alignment. A numeric start is the
+exact address of the class's first nonempty range; a conflict or alignment
+failure is an error. A null start uses the first aligned free address after
+earlier planned ranges in the same region, or the region start when none
+exists. Later allocation may end one segment before an explicit `at`
+reservation and continue at the next aligned free address.
+Classes are planned in the order code, constant data, variable data and static
+scratch. Code requires execute permission, constant data requires read
+permission, and variable data and scratch require read and write permission.
+The profile omits reserved ranges from automatic regions or models them as
+`explicitOnly` regions.
+
+The `initialization` flags state whether bytes can enter the program image and
+whether generated startup code may write the region. A placed initializer must
+have at least one permitted route. Schema validation checks shape; semantic
+validation checks bounds, overlap, permissions, alignments and references.
+Every emitted code range requires `preloadedImage`.
+
+The target profile contains `PlacementDefaults`. A standalone or
+whole-program host request contains `PlacementOverrides`; a non-null field
+replaces one default for that build, while an all-null record selects the
+defaults unchanged. An isolated hosted-body request has no overrides because
+it does not assign final addresses.
 
 The closed capability record has these fields:
 
@@ -699,6 +773,36 @@ The matching minimal target profile is:
   "id": "z80-tec1g-matrix",
   "substrate": "azm",
   "endianness": "little",
+  "memoryRegions": [
+    {
+      "id": "program.ram",
+      "addressSpaceId": "z80.cpu",
+      "start": 16384,
+      "endExclusive": 32768,
+      "minimumAlignment": 1,
+      "permissions": { "read": true, "write": true, "execute": true },
+      "allocation": "automatic",
+      "initialization": { "preloadedImage": true, "startupWrite": true }
+    }
+  ],
+  "placementDefaults": {
+    "code": { "regionId": "program.ram", "start": 16384, "alignment": 1 },
+    "constantData": {
+      "regionId": "program.ram",
+      "start": null,
+      "alignment": 1
+    },
+    "variableData": {
+      "regionId": "program.ram",
+      "start": null,
+      "alignment": 1
+    },
+    "staticScratch": {
+      "regionId": "program.ram",
+      "start": null,
+      "alignment": 1
+    }
+  },
   "capabilities": {
     "integerWidths": [8, 16, 32],
     "scalarOperations": [
@@ -740,9 +844,9 @@ The matching minimal target profile is:
     "privateAggregateClass": "near"
   },
   "limits": {
-    "maximumStaticObjectBytes": 65536,
-    "maximumStringPayloadBytes": 65533,
-    "maximumCountedStringCapacity": 65533
+    "maximumStaticObjectBytes": 16384,
+    "maximumStringPayloadBytes": 16381,
+    "maximumCountedStringCapacity": 16381
   },
   "substrateSymbolResolver": {
     "id": "azm.symbols",
@@ -813,9 +917,10 @@ nonempty source receives `D-STAGE-001` until M1 supplies the lexer and parser.
 
 ## 6. Front-end pipeline
 
-The front end should use explicit passes. Combining parsing, name lookup, and
-type checking into one walk makes forward visibility, layout dependencies,
-and diagnostic ownership difficult to preserve.
+The desktop front end may use explicit passes and retain a complete syntax
+tree. Those passes must preserve declaration-before-use. A later compiler may
+combine name, type and layout work in one declaration-ordered walk while
+leaving control-flow and machine-address fixups to its backend.
 
 ### 6.1 Source and lexer
 
@@ -848,32 +953,35 @@ Raw statement and module `asm` blocks require a lexer mode that preserves
 payload bytes and line boundaries until the case-insensitive closing `end`.
 The parser must not tokenise assembler content as Lanternfly.
 
-### 6.3 Declaration collection
+### 6.3 Declaration stream
 
-Declaration collection assigns IDs and creates the separate type and value
-namespaces. It registers enum members in the value scope and enforces
-duplicate, case-only, reserved-name, shadowing, and type/callable collision
-rules.
+The module checker assigns IDs and creates the separate type and value
+namespaces as declarations arrive. It registers enum members after their enum
+is complete and enforces duplicate, case-only, reserved-name, shadowing and
+type/callable collision rules.
 
-Module declarations are collected before routine bodies are checked.
-Initialiser visibility still follows source order, so collection and
-eligibility are separate concepts.
+Imports form a contiguous prefix. The checker resolves each imported source
+unit or versioned export interface before continuing, using loading and
+completed states to detect cycles and reuse diamond imports. After the prefix,
+a declaration may use imported names and earlier local declarations only.
 
-### 6.4 Dependency and layout resolution
+A constant, type, storage declaration or external routine enters its namespace
+after its complete declaration has passed semantic checks. A source routine
+enters the value namespace after its signature is checked and before its body,
+which permits a direct self-call. No internal pass may expose a later
+declaration to an earlier body.
 
-The resolver builds dependency graphs for:
+### 6.4 Layout completion
 
-- constants;
-- enum and subrange domains;
-- array index domains;
-- record layouts;
-- placement expressions;
-- layout queries;
-- module imports.
+The checker computes a declaration's ordinal bounds, string form, record
+offsets, array strides, aggregate size and zero-validity before publishing that
+declaration. Every source dependency is therefore already complete. Attempts
+at direct or mutual by-value containment fail as declaration-before-use rather
+than entering a source dependency graph.
 
-It reports cycles with the dependency path. Exact ordinal bounds, record
-offsets, array strides, aggregate sizes, and zero-validity are computed once
-and stored in canonical type descriptors.
+Host manifests remain unordered configuration records. Their semantic
+validator may use dependency graphs to verify enum, subrange, record and array
+entries and reports a configuration cycle with its path.
 
 ### 6.5 Type and effect analysis
 
@@ -947,6 +1055,7 @@ begins after interpreter and emulator results agree.
 The backend receives a typed program and target profile. It owns:
 
 - scalar representation and temporary placement;
+- whole-program region allocation and segment planning;
 - exact path calculation;
 - branch and label selection;
 - helper and adapter selection;
@@ -959,13 +1068,39 @@ Generated names use one reserved prefix that cannot collide with Lanternfly,
 host, or assembler-visible user names. Their allocation is deterministic for
 the same typed program.
 
+### 8.1 Placement and assembly origin
+
+The backend reserves explicit `at` objects and addressed module assembly, then
+plans code, constant data, variable data and static scratch in that order. It
+uses an AZM planning pass to obtain the size and explicit ranges of raw module
+assembly before completing the plan. Source components use depth-first
+first-encounter module order from the root, then declaration order within each
+module. Required adapters, startup code and runtime components have stable
+deterministic ordering within the code class. Every planned range records its
+owning declaration or generated component, region, address space, start, end,
+alignment, permissions and initialization route.
+
+The AZM writer emits `.org` for each contiguous planned segment and restores a
+planned origin after any module assembly range that changes location. It does
+not emit an origin inside an isolated hosted-body fragment. The host places
+that fragment when composing the whole program.
+
+AZM address planning resolves labels and ordinary forward branch fixups. Its
+initialized-byte map, reserved-address set and symbol table are then compared
+with the Lanternfly placement plan. Region overflow, incompatible permissions,
+alignment failure, overlap or inability to install an initializer is
+`E-PLACE-001`. A byte, reservation or symbol outside the validated plan is
+`E-PLACE-002` and identifies the responsible generated component or inline
+assembly source.
+
 AZM assembly is part of the backend gate. A successful backend test:
 
 1. emits canonical AZM;
 2. assembles it through the supported AZM API;
 3. passes strict routine-contract analysis where applicable;
-4. maps AZM diagnostics to Lanternfly source;
-5. compares execution or final state with the IR interpreter.
+4. compares AZM addresses and symbols with the placement plan;
+5. maps AZM diagnostics to Lanternfly source;
+6. compares execution or final state with the IR interpreter.
 
 ## 9. Conformance fixture protocol
 
@@ -1021,12 +1156,15 @@ Deliver:
 - TypeScript package scaffolding;
 - source spans and diagnostics;
 - host-manifest and target-profile schemas;
+- target-region and placement-default schema validation;
 - schema and semantic validators;
 - empty-body API and fixture.
 
 Gate:
 
 - invalid configuration produces stable diagnostics;
+- invalid memory regions, permissions, alignments and placement references are
+  rejected before source work begins;
 - an empty body retains source identity and host epilogue metadata;
 - build, typecheck, lint, format, and tests pass.
 
@@ -1043,6 +1181,7 @@ Deliver:
 Gate:
 
 - every 0.4 grammar production has a focused test;
+- imports are accepted only as a contiguous module prefix;
 - malformed constructs recover far enough to report more than one independent
   error without inventing semantic nodes;
 - syntax nodes retain exact source spans.
@@ -1052,7 +1191,7 @@ Gate:
 Deliver:
 
 - host import model;
-- names and namespaces;
+- declaration-ordered names and namespaces;
 - integer, Boolean, enum, subrange, string and near/far
   address types;
 - manifest-defined records, fixed arrays and immutable aggregate constants;
@@ -1070,6 +1209,8 @@ Deliver:
 Gate:
 
 - Counter, Dot, Trail and focused K0 conformance vectors type-check;
+- later source declarations remain unavailable to earlier declarations and
+  routine bodies despite the complete parsed syntax tree;
 - required K0 rejection fixtures report their stable IDs;
 - no aggregate carrier enters the expression value model.
 
@@ -1105,6 +1246,10 @@ Deliver:
 - module `asm` emission with provenance and statement `asm` emission with
   conservative barriers;
 - runtime component and fault-hook selection;
+- target-region validation, deterministic placement plans and AZM `.org`
+  emission;
+- final AZM initialized-byte, reserved-address and symbol comparison with the
+  placement plan;
 - AZM assembly gate;
 - first external-call adapter.
 
@@ -1113,6 +1258,8 @@ Gate:
 - interpreter and AZM execution agree for character/string,
   Counter, Dot, Slide and Trail fixtures;
 - an AZM diagnostic maps back to the responsible Lanternfly span;
+- region, alignment, overlap, explicit-`at`, hosted-fragment and final-map
+  placement fixtures pass;
 - generated source is deterministic.
 
 ### M5: K1 storage
@@ -1124,6 +1271,8 @@ Deliver:
 - count, range, subrange and enum array index domains;
 - initialisers and startup effects;
 - module imports, visibility, export checks, and deterministic installation;
+- recursive import resolution with completed-interface reuse and no local
+  forward visibility;
 - multidimensional lower-bound normalization and bounds checks;
 - hosted-body scalar locals and local aggregate aliases;
 - hosted-local initializer ordering, zero-validity and fresh per-entry
@@ -1153,7 +1302,8 @@ Deliver:
 - source-routine scalar locals using the K1 initializer-ordering and
   zero-validity machinery with fresh per-call lifetime;
 - return-path analysis;
-- non-recursive call graph;
+- declaration-ordered call graph and profile recursion checks;
+- direct self-call recognition and rejection of calls to later routines;
 - `extern sub` bindings and ABI validation;
 - standalone program-entry validation;
 - ABI frame and adapter reporting.
@@ -1163,7 +1313,7 @@ Gate:
 - nested-call and early-return vectors pass;
 - source-routine versions of the selected Tetro and Pacmo fixtures agree across
   interpreter and AZM;
-- recursive cycles are rejected for the initial profile;
+- direct self-recursion is rejected for the initial profile;
 - aggregate arguments accept storage paths and reject temporaries;
 - every applicable K2 rejection fixture reports its stable diagnostic ID;
 - frame and scratch artifacts account for every allocated byte.
@@ -1178,7 +1328,8 @@ The first implementation change should contain only M0:
 
 1. convert `packages/lanternfly` into a private TypeScript workspace package;
 2. add source-span and diagnostic types;
-3. add versioned host-manifest and target-profile schemas;
+3. add versioned host-manifest and target-profile schemas, including target
+   memory regions and placement defaults;
 4. validate one valid empty-body request and focused invalid requests;
 5. return an empty typed body result containing the abstract epilogue ID,
    source identity, and empty effect summary;

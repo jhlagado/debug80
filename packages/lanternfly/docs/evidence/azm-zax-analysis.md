@@ -251,7 +251,7 @@ the Lanternfly statement or expression that caused them. Copying line numbers
 verbatim is insufficient once an expression expands into a shift-and-add
 sequence.
 
-## What Lanternfly inherits
+## Lanternfly inheritance
 
 Lanternfly inherits these principles:
 

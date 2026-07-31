@@ -51,6 +51,25 @@ The CPU backend owns arithmetic, control and calling mechanics. The platform
 profile owns memory regions, mapping rules, entry, device address spaces and
 services. “Z80” must not quietly mean one display or firmware.
 
+## Regions before origins
+
+An assembly origin is one address in a larger placement decision. The target
+profile first defines the legal regions, their permissions, alignment,
+initialization mechanisms and whether ordinary allocation may use them. Build
+configuration then selects starting points for code, constants, writable data
+and scratch. Explicit `at` declarations reserve exact ranges within that map.
+
+After lowering has selected helpers and adapters, the backend has enough size
+information to create the complete plan. An AZM backend writes `.org` at each
+planned segment boundary. AZM resolves branch and symbol fixups, then the build
+compares its initialized-byte map, reserved-address set and symbol table with
+the plan. The comparison is what guarantees placement; `.org` is merely the
+AZM spelling used to carry the decision into the assembler.
+
+A standalone program receives this plan from its build manifest and profile. A
+hosted body contributes requirements to its host's combined plan and never
+sets an origin inside the fragment.
+
 ## Z80 through AZM
 
 AZM is the first substrate because Glimmer already generates and verifies it.

@@ -110,6 +110,25 @@ preserve the invariants. The earlier read-only `cstring` view type was
 removed once the terminator made it redundant; text at every boundary is now
 `string[N]`.
 
+A subsequent first-edition decision adopted declaration-before-use throughout
+source modules. Imports form one contiguous prefix and resolve in order. After
+that prefix, every type, constant, storage object and routine must precede its
+use. A routine signature becomes visible before its own body, so direct
+self-recursion remains expressible on a capable profile; calls to later
+routines and every other implicit forward reference are errors. The rule makes
+a compact declaration-ordered compiler possible without requiring the desktop
+compiler to use one internal pass. Mutual recursion would require a future
+explicit `forward sub` design rather than module-wide forward visibility.
+
+The placement contract was closed at the same checkpoint. Target profiles
+define legal memory regions, permissions, alignment, initialization mechanisms
+and default placement targets. `at` reserves one exact source object. A
+standalone build or whole-program host selects permitted origins, and the
+backend produces a deterministic plan for code, constants, variables and
+scratch. AZM `.org` directives serialize that plan; its initialized-byte map,
+reserved-address set and symbol table are checked against it. A hosted body
+fragment reports placement requirements and never establishes its own origin.
+
 The most important boundary concerns storage identity. Lanternfly source has
 no general pointer or reference values. Programs keep persistent identity in
 declared paths, multidimensional indices and ordinal selectors. Aggregate
@@ -297,7 +316,8 @@ promise that the feature will be added later.
 - Canonical lowercase keywords and built-in types, lower camel case value and
   routine names and Pascal case user-defined type names.
 - `//` introduces a line comment, including after a statement.
-- Static types and declarations before local use.
+- Imports before other module items and every local declaration before use;
+  only a routine's own checked signature is visible inside its body.
 - `var` and `const` declarations with `as` type clauses.
 - Nominal enums and subranges provide checked ordinal types without becoming
   runtime range objects.
@@ -379,6 +399,9 @@ Do not let C, BASIC or target-CPU arithmetic silently redefine these results.
   fixed-size contents.
 - Aggregate `const` declarations provide immutable tables and maps.
 - `at` places static storage or constant data at a target address.
+- Target profiles define legal memory regions and placement defaults; build
+  configuration selects permitted origins, and final emitted addresses are
+  checked against the placement plan.
 - `volatile` preserves every observable memory-mapped read and write.
 - Multidimensional paths are meaningful language constructs even if an early
   backend stages their address calculation.
@@ -422,8 +445,9 @@ Address classes are semantic capabilities:
 - User routines eventually support scalar value parameters, aggregate aliases,
   optional results and scalar locals.
 - Aggregate automatic locals remain excluded.
-- Recursive call cycles are initially rejected on bare-metal profiles unless
-  a profile explicitly supports and costs them.
+- Direct self-recursion is rejected on initial bare-metal profiles unless a
+  profile explicitly supports and costs it. Declaration-before-use makes
+  mutual source recursion inexpressible.
 - Evaluation order is part of the language contract, not left to a substrate.
 
 ### Libraries and native code
@@ -519,7 +543,8 @@ Begin with M0 only:
 1. convert the private package to the TypeScript, Vitest, ESLint and Prettier
    conventions used by AZM and Glimmer;
 2. add stable source-span and diagnostic types;
-3. add versioned host-manifest and target-profile JSON Schemas;
+3. add versioned host-manifest and target-profile JSON Schemas, including
+   memory regions and placement defaults;
 4. add schema and semantic validation;
 5. accept one valid empty hosted body and reject focused invalid requests;
 6. return the abstract host epilogue, source identity and an empty effect
@@ -751,8 +776,9 @@ no stale Lanternfly game references and Rushlight's 16-character LCD title is
 The next session should implement M0 from the implementation plan. It should
 not start the parser, typed IR or AZM emitter in the same change. M0 is complete
 when package checks pass, the two versioned boundary schemas are executable,
-an empty hosted-body request returns stable identity and epilogue metadata, and
-focused malformed requests report stable configuration diagnostics.
+their memory-region and placement-default records are validated, an empty
+hosted-body request returns stable identity and epilogue metadata, and focused
+malformed requests report stable configuration diagnostics.
 
 ## Paste-ready session prompt
 
@@ -795,6 +821,17 @@ with ordinal index domains. `to` is inclusive and `until` is exclusive in
 subrange declarations, array dimensions, selection and counted loops. Ranges
 are type and grammar forms, not runtime values.
 
+Imports form a contiguous prefix. After them, every type, constant, storage
+object and routine must be declared before use. A routine's checked signature
+is visible inside its own body; no other implicit forward reference is
+permitted.
+
+Target profiles define legal memory regions and placement defaults. `at`
+reserves exact source objects. AZM `.org` directives come from the validated
+whole-program placement plan, and the initialized-byte, reserved-address and
+symbol maps must match that plan. A hosted body fragment has no independent
+origin.
+
 The current loop vocabulary is inclusive `for ... to`, exclusive
 `for ... until`, `for each ... in`, `while`, loop-only `exit`, and `continue`.
 `while true` is the indefinite loop. There is no bare `loop`, `do`, `repeat`,
@@ -802,8 +839,9 @@ The current loop vocabulary is inclusive `for ... to`, exclusive
 
 Implement M0 only: TypeScript package scaffolding, shared source-span and
 diagnostic types, versioned host-manifest and target-profile schemas, their
-validators, and the empty hosted-body request/result. Do not start the parser,
-IR, interpreter, runtime or AZM emitter in the same change.
+validators, including memory-region and placement-default validation, and the
+empty hosted-body request/result. Do not start the parser, IR, interpreter,
+runtime or AZM emitter in the same change.
 
 Preserve existing user changes. Work on main, run package and repository
 checks, commit significant work, and push it.

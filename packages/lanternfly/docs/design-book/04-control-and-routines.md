@@ -300,9 +300,12 @@ Arguments evaluate from left to right. Destination paths evaluate before
 assignment sources. Calls and visible storage effects remain in source order
 unless an interface proves a reordering safe.
 
-Routine calls form a statically known graph. Bare-metal profiles may reject
-recursive cycles, allowing scalar locals to occupy static storage with a fixed
-reported cost. A recursion-capable profile must state its ABI and stack costs.
+Routine calls follow declaration order. A body may call imported routines,
+earlier routines and itself, because its own signature is complete before its
+body begins. A call to a later routine is an error. Bare-metal profiles may
+reject the remaining direct self-cycle, allowing scalar locals to occupy static
+storage with a fixed reported cost. A recursion-capable profile must state its
+ABI and stack costs.
 
 Reentrancy, interrupt safety, mapping-context changes and no-return behaviour
 belong to routine contracts and target profiles. They are not new call syntax.
@@ -331,9 +334,17 @@ export sub deactivateActors()
 end
 ```
 
-Declarations are private unless marked `export`. An import exposes only the
-other module's exports and includes its code and data once in the whole
-program. Import cycles and conflicting visible exports are errors.
+Imports form one prefix at the beginning of the module. Each import is resolved
+before the next module item, exposes only the other module's exports and
+includes its code and data once in the whole program. Import cycles and
+conflicting visible exports are errors.
+
+After the import prefix, declarations become visible in order. Types precede
+the storage that uses them; storage and helper routines precede their callers;
+an entry routine therefore tends to appear near the end of its root module.
+This rule keeps the source readable from top to bottom and permits a compiler
+with a small declaration table. It does not require desktop compilers to use a
+single internal pass.
 
 Name lookup is case-insensitive, while tools preserve the spelling at the
 declaration. Built-in operation names such as `count` and `length` are

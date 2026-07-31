@@ -157,9 +157,14 @@ The compiler returns generated source or IR together with:
 - faults and no-return paths;
 - runtime helpers and adapters;
 - static scratch;
+- code, constant-data, writable-data and scratch size/alignment requirements;
 - source provenance;
 - optional cost information;
 - the abstract host continuation.
+
+The result contains no origin. Glimmer combines the body with wrappers, state,
+resources, imported modules and runtime components, then places the complete
+program within the selected target profile's memory regions.
 
 The typed summary distinguishes a possible `F-RANGE` from an array `F-BOUNDS`
 and retains the ordinal domain responsible for either check.
@@ -230,9 +235,13 @@ The integration proceeds in this order:
 1. Glimmer parses the outer program.
 2. It resolves host declarations and creates the versioned manifest.
 3. It passes the exact body slice to Lanternfly.
-4. Lanternfly returns typed effects, generated AZM and provenance.
-5. Glimmer inserts the fragment and composes the maps.
-6. AZM verifies the complete generated program.
+4. Lanternfly returns typed effects, a relocatable generated fragment,
+   placement requirements and provenance.
+5. Glimmer combines every fragment and generated component into one placement
+   plan and emits AZM `.org` directives at planned segment boundaries.
+6. AZM assembles the complete generated program.
+7. Glimmer compares AZM's initialized-byte map, reserved-address set and symbol
+   table with the placement plan, then composes the source maps.
 
 An earlier source-expansion experiment may be useful, but it still needs the
 manifest. Scraping types from generated AZM would make host implementation
@@ -267,5 +276,7 @@ Minimum integration fixtures include:
 - `F-RANGE` and `F-BOUNDS` mapped to original source;
 - AZM contract failure mapped through the generated call;
 - helper deduplication across bodies;
+- hosted fragments with no independent `.org` and a validated combined memory
+  map;
 - mixed Lanternfly and AZM bodies;
 - no Lanternfly artifacts when a program contains no Lanternfly body.
