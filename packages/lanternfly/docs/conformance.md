@@ -104,7 +104,7 @@ responsible configuration, front-end, placement or backend stage.
 | `E-NAME-003`     | Record, enum or range type and callable routine share a case-insensitive name                                                                                                                                                                                                                                                                                                                                      | §§2.1, 4.5                       |
 | `E-TYPE-001`     | Integer operands differ and neither may widen value-preservingly to the type already present on the other side                                                                                                                                                                                                                                                                                                     | §3.1                             |
 | `E-TYPE-002`     | Boolean/integer mixing, non-Boolean condition, invalid Boolean ordering or deferred `boolean(...)` conversion                                                                                                                                                                                                                                                                                                      | §§3, 8.2, 8.4                    |
-| `E-TYPE-003`     | Invalid assignment, argument or return conversion                                                                                                                                                                                                                                                                                                                                                                  | §§8.1, 11.3, 11.5                |
+| `E-TYPE-003`     | Invalid assignment, argument or return conversion, including a non-text `writeText` argument or a non-string, immutable or otherwise unwritable `readLine` destination                                                                                                                                                                                                                                             | §§8.1, 11.3, 11.5, 12.4.1        |
 | `E-TYPE-004`     | A no-result `unit` invocation, `clear`, `fill` or `append` used where a value is required                                                                                                                                                                                                                                                                                                                          | §§8.5, 11.1–11.2                 |
 | `E-TYPE-005`     | Invalid enum representation, empty or reversed subrange, incompatible ordinal family, or constant outside an enum/subrange domain                                                                                                                                                                                                                                                                                  | §3                               |
 | `E-CONST-001`    | Constant division by zero, negative shift, negative power exponent or negative `sqrt` input                                                                                                                                                                                                                                                                                                                        | §§3.1, 4.5, 8.3, 8.5             |
@@ -144,7 +144,7 @@ responsible configuration, front-end, placement or backend stage.
 | `E-EXTERN-002`   | External routine is given a Lanternfly body or selected as the program entry                                                                                                                                                                                                                                                                                                                                       | §§12.4, 12.6                     |
 | `E-BOUNDARY-001` | A well-shaped resolved provider or native value fails the address class's selected validity rule or a service cannot preserve it; a native or host contract cannot guarantee ordinal/Boolean/address validity, aggregate storage class/layout/lifetime, string layout/invariants or immutable storage; or the integration requires a native callback                                                               | §§3, 11.6, 12.4, 12.6, 13.2–13.3 |
 | `E-ENTRY-001`    | Executable manifest has no unique parameterless, result-free source-defined entry routine                                                                                                                                                                                                                                                                                                                          | §12.6                            |
-| `E-TARGET-001`   | Required native service, callable profile availability, scalar operation, address class or other target capability is unavailable                                                                                                                                                                                                                                                                                  | §§12.4, 13.1–13.2                |
+| `E-TARGET-001`   | Required native service, optional standard-module binding, callable profile availability, scalar operation, address class or other target capability is unavailable                                                                                                                                                                                                                                                | §§12.4, 13.1–13.2                |
 | `E-ASM-001`      | `asm` block is unclosed or appears where a block is not permitted                                                                                                                                                                                                                                                                                                                                                  | §13.2.1                          |
 | `E-ASM-002`      | Selected target has no compatible assembly-fragment pipeline                                                                                                                                                                                                                                                                                                                                                       | §13.2.1                          |
 | `E-PLACE-001`    | Source or build placement cannot fit a compatible target region because of address range, permissions, alignment, capacity, overlap or an unavailable initialization mechanism                                                                                                                                                                                                                                     | §4.3                             |
@@ -230,9 +230,14 @@ compares final storage plus ordered service/fault traces:
     dereference. Required for a target/profile claiming that device-space
     contract.
 11. **Text** — character-byte arithmetic; empty and nonempty string literals;
-    short and long strings; checked assignment and append; `length`, content
-    comparison and an external print-style call on the terminated payload.
-12. **Hosted return** — bare `return` reaches the host epilogue and preserves
+    short and long strings; checked assignment and append; `length` and content
+    comparison.
+12. **Standard text I/O** — explicit standard-module imports; character, text
+    and newline output in order; blocking character input; and bounded line
+    input into short and long strings through injected target services. Each
+    half is required only for a profile that claims the corresponding optional
+    module.
+13. **Hosted return** — bare `return` reaches the host epilogue and preserves
     host updates. Required for a host-integration claim, not a standalone
     backend claim.
 
@@ -247,7 +252,7 @@ agree on the compared result.
 ## 6. Mandatory semantic vectors
 
 The suite includes focused positive and negative vectors in addition to the
-twelve programs:
+programs above:
 
 - every integer boundary, explicit conversion and destination conversion;
 - direct negative literals at every signed minimum, both under an expected
@@ -298,7 +303,21 @@ twelve programs:
 - sealed string representation, with every attempted header, payload
   or terminator path rejected; exact-capacity aggregate aliases and parameters;
   `string[24][8]` layout; and rejected owned aggregate locals, by-value results,
-  capacity-generic parameters, indexing, slicing and truncating copy;
+  ordinary source-declared capacity-generic parameters, indexing, slicing and
+  truncating copy;
+- explicit imports of `standard/text-output.lafy` and
+  `standard/text-input.lafy`; `writeCharacter` with exact and typed `u8`
+  values; `writeText` over literals plus constant and mutable short- and
+  long-form strings of different capacities; one-time path evaluation;
+  read-only access with no source mutation; target-appropriate newline events;
+  blocking `readCharacter` returning an injected `u8`; `readLine` with empty,
+  exact-capacity, short and long fitting lines; a too-long line that stores its
+  fitting prefix, consumes through the line ending and returns `false`; a zero
+  byte with the same false-result and resynchronization rule; one-time writable
+  destination-path evaluation; ordered device-I/O and destination-write
+  traces; `E-TYPE-003` for a non-text `writeText` argument and an invalid
+  `readLine` destination; and `E-TARGET-001` when the selected profile lacks a
+  claimed binding;
 - signed division/remainder identities and zero divisors;
 - shift counts at 0, width minus one, width, above width and negative;
 - power at exponents 0 and 1, `0 ^ 0`, wrapping products and negative exponent;
@@ -321,7 +340,8 @@ twelve programs:
 - contiguous import prefixes, depth-first import resolution and imported
   exports available before local declarations, exact lowercase `.lafy` source
   module paths, rejection of another extension under `E-MODULE-001`, and a
-  later import rejected;
+  later import rejected; reserved `standard/` resolution that cannot be
+  shadowed by a project search path, with no implicit standard imports;
 - declaration-before-use for module types, constants, storage and routines,
   including earlier routine calls and direct self-calls accepted, later routine
   calls rejected, and parameter/local/module shadowing plus record-field scope
@@ -520,6 +540,7 @@ A source-generating backend emits:
 - string layouts, placement classes and
   source-byte mappings;
 - selected helper/import list;
+- selected standard modules and service bindings;
 - external bindings and generated ABI adapters;
 - read/write/call/fault/device-I/O summary;
 - startup-initialization effects;
@@ -561,7 +582,8 @@ The first implemented edition does not silently accept:
 - aggregate return by value;
 - first-class storage references, pointers, address-of and dereference;
 - stored, returned, nullable or scalar aliases;
-- read-only aggregate parameters;
+- general read-only, output and in/out aggregate parameters outside the narrow
+  standard `writeText` and `readLine` service contracts;
 - bit fields and bank-spanning arrays;
 - indirect calls, procedure values and closures;
 - native or inline-assembly callbacks into source-defined Lanternfly routines;
@@ -570,6 +592,7 @@ The first implemented edition does not silently accept:
 - generics and operator overloading;
 - resizable or heap-backed strings;
 - implicit byte-array-to-string conversion and unbounded string writes;
+- general streams, file handles and file-system operations;
 - unchecked indexing as conforming execution.
 
 Recursion is accepted only by a profile that declares and tests the capability.

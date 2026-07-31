@@ -39,6 +39,10 @@ The target backend owns:
 
 The runtime owns reusable implementations selected by the backend.
 
+The toolchain owns the versioned export interfaces for optional standard
+modules. A target profile supplies bindings only for the standard services it
+supports.
+
 The host, when present, owns scheduling, wrapper code, epilogues and the
 manifest supplied to Lanternfly.
 
@@ -136,6 +140,13 @@ capacity plus two bytes in the short form and capacity plus three in the long
 form. The all-ones length is invalid in either form. The target's ordinary
 endianness applies to the 16-bit length. Its sealed
 header, payload and terminator have no independently addressable source fields.
+
+The standard text services also use two compiler-only descriptors. The
+`writeText` source records either a decoded literal payload or one evaluated
+`string[N]` storage path together with its string descriptor and storage
+class. The `readLine` destination records one evaluated writable `string[N]`
+path with the same static layout facts. Both are temporary call operands, not
+Lanternfly types, aggregate aliases or general bounded views.
 
 ## 4. Suggested Lanternfly IR
 
@@ -371,6 +382,24 @@ terminator and header. An adapter that may write counted-string storage
 validates length, nonzero payload and terminator before returning to generated
 Lanternfly code, branching to `F-INVALID-STRING` on failure.
 
+For `writeText`, a literal remains a decoded immutable payload and a storage
+argument evaluates its complete path once. The backend forms a temporary
+read-only text carrier suitable for the selected ABI. It may pass the existing
+terminated payload directly to a monitor or firmware routine, or adapt the
+header and payload to another target contract. The carrier is consumed by the
+call and cannot enter a scalar value, source aggregate alias or stored IR
+location. The operation never validates a native write because its contract
+does not permit one.
+
+For `readLine`, the destination path also evaluates once. The backend forms a
+temporary writable text carrier with its capacity and selected string layout.
+The service establishes an empty destination, stores each valid input byte up
+to capacity, maintains the terminator and length, and consumes the input
+through the selected line ending. It returns canonical `true` when the whole
+line fits. After a zero byte or capacity overflow it retains the longest valid
+prefix, discards the rest of the line and returns canonical `false`. A native
+binding must preserve the final string invariants before Lanternfly resumes.
+
 ## 6. Path lowering
 
 For a scalar path, the backend receives a base and sequence of constant/dynamic
@@ -488,6 +517,14 @@ A target defines a default ABI capable of:
 - local cleanup;
 - host/native adapters.
 
+A target that supplies the optional standard text modules also defines
+carriers for the compiler-only read-only source used by `writeText` and the
+writable destination used by `readLine`. A carrier may contain an address,
+length, capacity or mapping context as required by that target. None of those
+fields becomes a source value. `readLine` returns a canonical `boolean`. The
+remaining standard text operations use ordinary `u8`, no-result or `u8`-
+result ABI forms.
+
 Lanternfly does not dictate register or stack placement.
 
 ### 8.1 Initial Z80 ABI candidate
@@ -585,6 +622,42 @@ summary.
 front end. They do not reach the backend as runtime operations.
 
 Cost reports distinguish source calls from compiler helpers.
+
+### 9.2 Optional standard text services
+
+The compiler-supplied interfaces for `standard/text-output.lafy` and
+`standard/text-input.lafy` map their exports to five stable service IDs:
+
+```text
+standard.textOutput.writeCharacter
+standard.textOutput.writeText
+standard.textOutput.writeNewline
+standard.textInput.readCharacter
+standard.textInput.readLine
+```
+
+The selected target resolves each used ID through its existing external
+binding, ABI, adapter and runtime-component registries. No new stream or file
+registry is implied. A missing binding is `E-TARGET-001` for the optional
+module that the program imported.
+
+The typed IR records these calls as visible `StandardCall` effects with
+declared device I/O and normal return. `writeCharacter` receives one converted
+`u8`. `writeText` receives the compiler-only text source described in sections
+3 and 5.4 and records a read of its storage argument when it has one.
+`writeNewline` has no source operand. `readCharacter` blocks in the abstract
+service model until it produces one `u8` result. `readLine` receives the
+compiler-only writable destination, blocks until a complete line has been
+consumed, writes the bounded result and produces one canonical Boolean result.
+The interpreter implements the operations through injected services and
+records their ordered character, text, newline, input and destination-write
+events.
+
+The backend may bind several operations to one monitor routine or implement
+one operation with generated substrate code. It includes only the bindings,
+adapters and runtime components reached by the imported and used operations.
+Source maps attribute the call site to the Lanternfly invocation and retain
+the selected service implementation as related generated provenance.
 
 ## 10. Runtime package
 
@@ -1244,7 +1317,10 @@ backend-focused groups summarize that inventory:
 - literal storage with exact header, payload and trailing terminator;
 - short and long string layouts at capacities 254 and 255;
 - header-read length, checked copy/append, clear and content comparison;
-- terminated-payload native contracts and native-write invariant validation.
+- terminated-payload native contracts and native-write invariant validation;
+- optional standard text-module imports, temporary read-only `writeText` and
+  writable `readLine` carriers, bounded line-input results, ordered
+  output/input service traces and unavailable-binding rejection.
 
 ### Layout
 
@@ -1360,7 +1436,8 @@ milestones. Their architecture order is:
    multidimensional paths, hosted-body scalar locals, and hosted-body local
    aggregate aliases;
 7. add source-defined routines, source-routine scalar locals, and their ABI
-   after storage and diagnostic behaviour are reliable.
+   after storage and diagnostic behaviour are reliable, including the optional
+   standard text-module interfaces and their target bindings.
 
 After those seven milestones, C, BASIC, far-memory and additional CPU
 experiments test the substrate independence of the established contract.

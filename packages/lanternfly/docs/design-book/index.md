@@ -28,7 +28,8 @@ coding order.
 4. [Control flow and routines](04-control-and-routines.md) covers structured
    execution and the single `sub` form.
 5. [Services, native code and the runtime](05-services-and-native-code.md)
-   separates language operations from platform facilities and helpers.
+   separates language operations and optional standard text modules from
+   platform facilities and helpers.
 6. [Lowering across unlike targets](06-lowering-and-portability.md) follows
    one meaning through AZM, other CPUs, C and BASIC.
 7. [Hosting Lanternfly inside Glimmer](07-glimmer-hosting.md) defines the typed
@@ -46,20 +47,20 @@ debugging boundaries, and also work as reference material for implementers.
 
 ## Topic index
 
-| Topic                                      | Main discussion                                                                               |
-| ------------------------------------------ | --------------------------------------------------------------------------------------------- |
-| integers, Boolean values and conversions   | [Numbers, truth and expressions](02-numbers-and-expressions.md)                               |
-| characters and strings                     | [Numbers, truth and expressions](02-numbers-and-expressions.md#byte-characters-and-strings)   |
-| enums, subranges and array domains         | [Static storage and ordinal domains](03-storage-and-addressing.md#array-index-domains)        |
-| records, paths and aggregate aliases       | [Static storage and ordinal domains](03-storage-and-addressing.md)                            |
-| initialization, placement and volatility   | [Static storage and ordinal domains](03-storage-and-addressing.md#initialization-and-startup) |
-| loops, routines, modules and program entry | [Control flow and routines](04-control-and-routines.md)                                       |
-| platform services, faults and native code  | [Services, native code and the runtime](05-services-and-native-code.md)                       |
-| backend rules and ABI lowering             | [Lowering across unlike targets](06-lowering-and-portability.md)                              |
-| Glimmer manifests and hosted return        | [Hosting Lanternfly inside Glimmer](07-glimmer-hosting.md)                                    |
-| diagnostics, source maps and cost          | [Debugging, generated code and visible cost](08-debugging-and-cost.md)                        |
-| game-corpus examples                       | [Translations from the game corpus](09-translation-studies.md)                                |
-| implementation stages and decision status  | [Language stages and decisions](10-stages-and-decisions.md)                                   |
+| Topic                                                        | Main discussion                                                                               |
+| ------------------------------------------------------------ | --------------------------------------------------------------------------------------------- |
+| integers, Boolean values and conversions                     | [Numbers, truth and expressions](02-numbers-and-expressions.md)                               |
+| characters and strings                                       | [Numbers, truth and expressions](02-numbers-and-expressions.md#byte-characters-and-strings)   |
+| enums, subranges and array domains                           | [Static storage and ordinal domains](03-storage-and-addressing.md#array-index-domains)        |
+| records, paths and aggregate aliases                         | [Static storage and ordinal domains](03-storage-and-addressing.md)                            |
+| initialization, placement and volatility                     | [Static storage and ordinal domains](03-storage-and-addressing.md#initialization-and-startup) |
+| loops, routines, modules and program entry                   | [Control flow and routines](04-control-and-routines.md)                                       |
+| standard text I/O, platform services, faults and native code | [Services, native code and the runtime](05-services-and-native-code.md)                       |
+| backend rules and ABI lowering                               | [Lowering across unlike targets](06-lowering-and-portability.md)                              |
+| Glimmer manifests and hosted return                          | [Hosting Lanternfly inside Glimmer](07-glimmer-hosting.md)                                    |
+| diagnostics, source maps and cost                            | [Debugging, generated code and visible cost](08-debugging-and-cost.md)                        |
+| game-corpus examples                                         | [Translations from the game corpus](09-translation-studies.md)                                |
+| implementation stages and decision status                    | [Language stages and decisions](10-stages-and-decisions.md)                                   |
 
 ## Status language
 

@@ -59,6 +59,11 @@ validated whole-program placement plan and checks the assembled address map
 against that plan, including initialized bytes, reserved addresses and
 symbols.
 
+Two optional standard modules provide portable character and text output plus
+bounded blocking character and line input. A target may bind them to monitor routines, a
+keyboard and display, a serial terminal or a host adapter. They introduce no
+stream, file or operating-system model.
+
 ## Documents
 
 - [Implementation plan](docs/implementation-plan.md) gives the coding order,

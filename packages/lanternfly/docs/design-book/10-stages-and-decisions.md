@@ -57,6 +57,9 @@ K2 implements:
 - source-routine scalar locals with per-call initialization and lifetime;
 - early routine return;
 - external bindings and standalone entry validation;
+- optional standard text-input and text-output modules, including the narrow
+  read-only source and writable destination carriers used by `writeText` and
+  `readLine`;
 - target ABI descriptions and adapters;
 - non-recursive bare-metal call graphs by default.
 
@@ -173,6 +176,29 @@ symbols and every backend.
 - Source-visible section syntax remains unnecessary until a real program needs
   placement that `at` and build configuration cannot express.
 
+### Standard text input and output
+
+- The first edition defines the optional modules
+  `standard/text-output.lafy` and `standard/text-input.lafy`.
+- Imports remain explicit. The reserved `standard/` path resolves through the
+  toolchain and cannot be shadowed by a project file.
+- Text output consists of `writeCharacter`, `writeText` and `writeNewline`;
+  text input consists of blocking `readCharacter` and bounded `readLine`.
+- A target may bind the devices to a keyboard and display, serial terminal,
+  monitor routines, host adapter or another implementation with the same
+  character-byte behaviour.
+- `writeText` accepts a literal or any `string[N]` path through a temporary
+  compiler-only read-only carrier. `readLine` accepts a writable `string[N]`
+  path through an equivalent destination carrier, returns `true` for a fitting
+  line and retains a fitting prefix while returning `false` for invalid or
+  overlong input. Neither carrier is a source value or establishes a general
+  parameter mode or bounded view.
+- A profile may omit either module. Importing a module whose bindings are
+  unavailable reports `E-TARGET-001`.
+- The standard modules define no streams, handles, buffering, files,
+  directories or operating-system interface. Future storage services belong
+  in separate modules.
+
 ## Provisional rules
 
 The implementation follows these rules while keeping focused tests around
@@ -216,7 +242,9 @@ requires awkward hoisting from the point of first use.
 
 The first edition has writable exact-shape aggregate parameters. Reusable
 sorting, bounded text and candidate-scan routines need a later view that can
-state runtime extent without exposing its carrier.
+state runtime extent without exposing its carrier. The standard `writeText`
+and `readLine` services cover narrow input and output text-transfer cases
+without making their carriers available to ordinary routines.
 
 Read-only, output and in/out parameter modes should share one mutability model
 with those views.
@@ -252,6 +280,7 @@ The first corpus does not require:
 - resizable or heap-backed strings;
 - arbitrary packed bit fields;
 - arrays spanning mapping contexts;
+- general streams, file handles and file-system operations;
 - recursion on bare-metal profiles;
 - indirect calls, procedure values or closures;
 - exceptions, generics or operator overloading.
@@ -290,7 +319,9 @@ The corpus established several requirements:
 8. Add source-owned counted strings and their checked operations.
 9. Translate one Tetro and one Pacmo fixture.
 10. Add K2 source routines and adapters.
-11. Use C, BASIC and another CPU to expose substrate assumptions.
+11. Run one optional standard text-input/output vertical slice through a
+    target binding and the interpreter service trace.
+12. Use C, BASIC and another CPU to expose substrate assumptions.
 
 The first coding change remains M0: package scaffolding, shared source and
 diagnostic types, versioned schemas and one empty hosted-body result.

@@ -15,9 +15,10 @@ implement them even when the target needs a helper.
 
 Source never imports an internal name such as `__divide_u16`.
 
-### Standard operations
+### Visible standard layer
 
-The first edition has a deliberately small visible set:
+The first edition has a deliberately small set of language-defined standard
+operations:
 
 | Operation                  | Meaning                                     |
 | -------------------------- | ------------------------------------------- |
@@ -44,9 +45,51 @@ before the first store and never exposes a string's sealed cells.
 destination. Repeated array stores visit elements in row-major order, which
 matters for volatile effects.
 
+#### Optional standard text modules
+
+Portable text transfer uses two explicit imports rather than core `print` or
+`input` statements:
+
+```lanternfly
+import "standard/text-output.lafy"
+import "standard/text-input.lafy"
+
+var key as u8
+var command as string[32]
+var lineFits as boolean
+
+sub useConsole()
+    writeCharacter('>')
+    writeText("READY")
+    writeNewline()
+    key = readCharacter()
+    lineFits = readLine(command)
+end
+```
+
+The selected profile may bind these operations to monitor or firmware
+routines, a keyboard and display, a serial terminal, generated substrate code
+or a host adapter. A profile may omit either module. The portable contract
+defines character and fixed-string output, a target-appropriate newline,
+blocking character input and bounded line input; it does not define streams,
+file handles or an operating system.
+
+`writeText` is the one narrow capacity-generic read-only text service in the
+first edition. It accepts a literal or any `string[N]` path. The compiler forms
+a temporary carrier for the call, but that carrier is not a source value or a
+general read-only parameter.
+
+`readLine` is the matching writable service. It accepts any writable
+`string[N]` path and returns `true` when the complete input line fits. On a
+zero byte or an overlong line, it preserves the longest fitting valid prefix,
+consumes the input through the line ending and returns `false`. Its temporary
+destination carrier is likewise unavailable to source code. Echo and line
+editing belong to the selected device rather than this portable contract.
+
 ### Platform services
 
-Input, display, sound, device memory and randomness depend on a platform:
+Display control, specialized input, sound, device memory and randomness depend
+on a platform:
 
 ```lanternfly
 key = scanKeys()
@@ -100,6 +143,16 @@ The representation is sealed. Language code uses checked assignment,
 cell separately. Native code that receives a writable string alias
 must preserve the declared layout and all invariants. Its adapter validates a
 possibly written value before Lanternfly resumes.
+
+The standard `writeText` operation instead receives a temporary read-only text
+source. For stored strings, an adapter can pass the already terminated payload
+directly. A literal may remain immutable generated data. Neither case exposes
+the carrier to Lanternfly source.
+
+The standard `readLine` operation receives a temporary writable text
+destination of known capacity. The binding replaces its contents while
+maintaining the header, payload and terminator invariants, even when the input
+is too long and the operation returns `false`.
 
 ## External routine declarations
 
@@ -202,9 +255,9 @@ change it into checked arithmetic.
 
 ## Library and helper testing
 
-Language edition, standard-operation contracts and platform packages are
-versioned separately. A platform service may change without redefining integer
-arithmetic.
+Language edition, standard-operation contracts, optional standard modules and
+platform packages are versioned explicitly. A platform service may change
+without redefining integer arithmetic or the standard text contract.
 
 Visible operations receive target-independent vectors. Runtime helpers receive
 the same semantic vectors plus ABI and assembly checks. For `sqrt`, tests cover

@@ -47,6 +47,7 @@ The complete 0.4 language includes:
 - routines with optional parameters, local scalar storage and optional
   results;
 - source modules with private declarations and explicit exports;
+- optional standard modules for portable character and text input and output;
 - target-independent lowering through AZM, another assembler, C or a selected
   BASIC dialect.
 
@@ -675,11 +676,21 @@ declared capacity. Strings cannot be returned by value. Arrays may use a
 string element type; for example, `string[24][8]` is an eight-element array
 of `string[24]`, with the capacity brackets belonging to the element type.
 
-Byte indexing, slicing, capacity-generic parameters, read-only string
-parameters and deliberate truncating copy are deferred. They require a
+Byte indexing, slicing, general capacity-generic parameters, general read-only
+string parameters and deliberate truncating copy are deferred. They require a
 bounded-view design and do not weaken the sealed representation in this
-edition. Until read-only string parameters exist, text reaches a routine
-through writable string storage.
+edition. Ordinary source and external routine parameters therefore continue
+to state an exact capacity and alias writable storage.
+
+The optional standard text modules have two deliberately narrow exceptions.
+The compiler-defined `writeText` service accepts a string literal or a storage
+path of any `string[N]` capacity as a read-only text source. `readLine` accepts
+a writable storage path of any `string[N]` capacity as a text destination. The
+compiler may form temporary carriers containing the storage class, payload
+location and known layout information. A carrier exists only for its call, is
+not a source value and cannot be stored, returned, compared, converted or
+rebound. These service contracts do not introduce general read-only, output or
+in/out parameters or bounded views.
 
 ## 4. Constants and variables
 
@@ -2038,6 +2049,15 @@ An import:
 - contributes code and data to the same whole program;
 - may be written repeatedly without duplicating the module.
 
+Import paths beginning with `standard/` are reserved for the versioned
+Lanternfly standard modules supplied by the toolchain. They do not resolve to
+project files and cannot be shadowed by a configured search path. Standard
+modules remain explicit imports and contribute their exports under the same
+visibility and collision rules as an ordinary module. Whether an optional
+standard module can be used on the selected target is a target capability;
+missing service bindings produce `E-TARGET-001` rather than changing the
+module's source meaning.
+
 Lanternfly has no general textual `include` in the initial language. The
 compiler reads exported declarations directly, so it does not need C-style
 header substitution or include guards.
@@ -2174,6 +2194,91 @@ whole-program build.
 An `extern sub` has no Lanternfly body and cannot be selected as the program
 entry. Target profiles may reject absolute `at` bindings or named `from`
 bindings that their substrate cannot express.
+
+#### 12.4.1 Optional standard text input and output
+
+The first edition defines two optional standard modules. They are never
+imported implicitly:
+
+```lanternfly
+import "standard/text-output.lafy"
+import "standard/text-input.lafy"
+```
+
+The toolchain supplies their versioned export interfaces, and the selected
+profile supplies the service bindings. Their exported operation names become
+visible through the ordinary import rule; they are not keywords or implicit
+global names. The special text-source operand of `writeText` and text
+destination operand of `readLine` exist only in these compiler-defined
+interfaces and cannot be written in an ordinary `sub` or `extern sub`
+declaration.
+
+The interfaces map their exports to these stable target-service IDs:
+
+| Export           | Service ID                           |
+| ---------------- | ------------------------------------ |
+| `writeCharacter` | `standard.textOutput.writeCharacter` |
+| `writeText`      | `standard.textOutput.writeText`      |
+| `writeNewline`   | `standard.textOutput.writeNewline`   |
+| `readCharacter`  | `standard.textInput.readCharacter`   |
+| `readLine`       | `standard.textInput.readLine`        |
+
+The selected profile resolves every used ID through the external-binding, ABI,
+adapter and runtime-component contracts in this specification.
+
+`standard/text-output.lafy` exports these operations:
+
+```lanternfly
+writeCharacter('A')
+writeText("READY")
+writeNewline()
+```
+
+`writeCharacter(value)` accepts a value assignable to `u8` and transfers that
+one character byte to the target-selected output device. `writeText(text)`
+accepts a string literal or any `string[N]` storage path and transfers its
+payload bytes in order without modifying the string. The path is evaluated
+once. Constant and mutable string storage are both valid because the service
+receives the temporary read-only text source described in section 3.2.
+`writeNewline()` transfers one target-appropriate line break; source does not
+assume that the device represents it with one particular byte sequence.
+
+`standard/text-input.lafy` exports two value-producing operations:
+
+```lanternfly
+character = readCharacter()
+lineFits = readLine(command)
+```
+
+`readCharacter()` waits until the target-selected input device supplies one
+character byte and returns it as `u8`.
+
+`readLine(destination)` accepts a writable `string[N]` storage path and
+evaluates it once. It waits for one target-selected input line, consumes the
+line ending without storing it and replaces the destination with the received
+nonzero character bytes. An empty line produces an empty string. When the
+complete payload fits, the operation returns `true`. If a zero byte arrives or
+more than `N` payload bytes precede the line ending, it stores the longest
+valid prefix that fits, consumes and discards the rest of that input line, and
+returns `false`. This bounded behaviour needs no hidden full-line buffer and
+leaves the next call at the beginning of a new line.
+
+The contract does not define local echo or interactive editing. A target may
+provide those behaviours before it supplies the resulting line to the
+service. The first edition has no nonblocking form or end-of-file result.
+
+All five operations have declared device-I/O effects and normal return. They
+do not implicitly read or write other Lanternfly storage. `writeText` reads
+only its evaluated text source for the duration of the call. `readLine` writes
+only its evaluated destination. A target may implement these contracts with
+firmware or monitor routines, a serial terminal, generated substrate code, a
+desktop terminal or a test service. The observable character-byte order and
+line result remain the same.
+
+These modules do not define streams, handles, buffering, redirection, files,
+directories, seeking or an operating-system interface. Future file loading and
+saving belong in separate standard or target modules and do not extend the
+meaning of these text devices.
 
 ### 12.5 Whole-program compilation
 
@@ -2520,10 +2625,11 @@ provider symbol is `E-CONFIG-002`; resolved bytes that fail the rule are
 `E-BOUNDARY-001`. Failure to resolve a callable or external-binding symbol is
 `E-EXTERN-001`.
 
-Display, input, sound, random, firmware and device operations are typed
-external routines imported from platform interface modules rather than core
-statements. Section 12.4 defines their source declaration and binding forms. A
-missing implementation is a compile error.
+Portable character and text transfer uses the optional standard modules in
+section 12.4.1. Richer display, keyboard, sound, random, firmware and device
+operations are typed external routines imported from platform interface
+modules rather than core statements. Section 12.4 defines their source
+declaration and binding forms. A missing implementation is a compile error.
 
 Native source is admitted only through an explicit target-qualified boundary.
 External bindings and statement-level inline assembly are executable
@@ -3091,9 +3197,10 @@ The following questions remain open or provisional. None blocks K0 or K1:
 - an explicit `forward sub` declaration if mutual recursion proves necessary;
 - source syntax for narrowing an external routine's effect contract;
 - native callback declarations and their call-graph/reentrancy contract;
-- read-only aggregate parameters and general bounded-view spelling, which
-  now also decide how literal or constant text reaches a routine, since the
-  one string type aliases writable caller storage when passed;
+- read-only, output and in/out aggregate parameters and general bounded-view
+  spelling; `writeText` and `readLine` already accept differently sized strings
+  through narrow non-escaping service contracts, but ordinary routines still
+  use writable exact-capacity aliases;
 - whether translated programs justify `repeat`/`until` or named outer-loop
   exits;
 - module aliases and re-exports;

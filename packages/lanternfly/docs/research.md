@@ -60,6 +60,11 @@ Most game logic consists of:
 - integer selectors and temporary aliases for existing global storage;
 - platform service calls.
 
+Small monitors such as TEC-1G MON-3 also show a useful implementation seam.
+Character, terminated-text and blocking-input routines can implement a narrow
+portable text contract, while display modes, key matrices, storage, sound and
+other monitor facilities remain target-specific.
+
 The apparent complexity of the assembly engines comes largely from register
 allocation, field offsets, stride calculation, value preservation across calls
 and flag conventions. Those are lowering work.
@@ -305,6 +310,8 @@ native or platform services.
 - target-profile memory regions, build-configured placement and final-map
   validation;
 - backend-selected helpers linked on demand;
+- optional standard character/text output and bounded blocking character/line
+  input, with no stream or file model;
 - composed source maps and cost visibility.
 
 The [decision chapter](design-book/10-stages-and-decisions.md) separates chosen,

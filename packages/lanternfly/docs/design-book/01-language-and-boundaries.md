@@ -189,6 +189,12 @@ interfaces. Source does not import an internal division helper, and display
 operations do not become language keywords. Chapter 5 develops these
 boundaries and the artifacts that expose their cost.
 
+The small exception is a pair of optional standard modules for character and
+text output plus bounded blocking character and line input. Their source contract is portable;
+the selected profile may implement it with a display and keyboard, serial
+terminal, monitor routines or a host adapter. Files, streams and richer device
+control remain separate future or target-specific modules.
+
 Target assembly stays available through `asm`/`end` for startup, interrupts,
 exact device protocols and deliberately tuned inner loops. Module- and
 statement-level blocks are target-specific. A module-level block contributes

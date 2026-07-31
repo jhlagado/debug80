@@ -5,9 +5,10 @@ Status: first-edition completeness review and post-0.4 backlog
 Lanternfly now covers the central executable vocabulary of a small structured
 BASIC or Pascal: scalar values, declarations, expressions, decisions, loops,
 routines, modules, fixed arrays and records. Version 0.4 includes character
-literals, owned counted strings, nominal enums, checked
-subranges and ordinal array domains. The remaining gaps are concentrated around
-general access to variable-size regions and portable service contracts.
+literals, owned counted strings, nominal enums, checked subranges and ordinal
+array domains. The remaining gaps are concentrated around general access to
+variable-size regions and parameter intent. Portable text input and output now
+have a deliberately narrow standard-module contract.
 
 The [specification](specification.md) governs accepted syntax and semantics.
 The first compiler implements that baseline before adding the facilities
@@ -20,15 +21,14 @@ The first text facility uses the representation already consumed by common
 Z80 and AZM routines:
 
 ```lanternfly
+import "standard/text-output.lafy"
+
 var banner as string[10] = "LANTERNFLY"
 const digitZero as u8 = '0'
 
-extern sub printText(text as string[10])
-extern sub printChar(value as u8)
-
 sub showDigit(value as u8)
-    printText(banner)
-    printChar('0' + value)
+    writeText(banner)
+    writeCharacter(u8(digitZero + value))
 end
 ```
 
@@ -48,28 +48,28 @@ the payload is always valid NUL-terminated text.
 
 ## Capability audit
 
-| Capability                                      | 0.4 position                            | Assessment                                                                                  |
-| ----------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Fixed-width integers and Boolean values         | Specified                               | Sufficient for the current machine and game corpus                                          |
-| Character literals                              | Specified as byte-valued literals       | Sufficient for ASCII-oriented firmware and display calls                                    |
-| Strings                                         | Sealed `string[N]` storage              | One text type: exact capacity, checked copy/append and a maintained NUL terminator          |
-| String operations                               | Length, comparison, copy, append, clear | Search, substring and truncating copy remain bounded-view work                              |
-| Arrays and records                              | Fixed, exact, ordinal-indexed storage   | Counts, explicit bounds, subranges and enums cover the relevant Pascal model                |
-| Variable-size array arguments                   | Exact-shape aggregate aliases only      | High-priority gap for reusable algorithms                                                   |
-| Read-only parameters                            | Absent                                  | High-priority gap for constant arrays, records, literal text and general views              |
-| Routines and local scalars                      | Specified                               | Core procedural programming is covered                                                      |
-| Local arrays and records                        | Aliases to existing storage             | Deliberate first-edition limit; Pascal-style owned locals need a frame and cost policy      |
-| Output and in/out parameters                    | Not yet available for scalars           | A declared parameter mode would provide the feature without adding pointer values           |
-| Aggregate and multiple results                  | Caller-owned storage only               | Parameter modes can cover the current corpus before aggregate return values are added       |
-| Enumerations and subranges                      | Nominal checked ordinal types           | Improve domain errors, traversal, selection and array bounds without changing packed layout |
-| Type aliases                                    | Absent                                  | Useful for imported layouts; lower priority than facilities required by current algorithms  |
-| Standard numeric library                        | `abs` and `sqrt`                        | Add `min`, `max`, `clamp` and bit count after the core numeric rules are implemented        |
-| Standard input and output                       | Supplied by external/platform routines  | The boundary is sound, but standard profile contracts still need names and semantics        |
-| Compile-time data tables                        | Aggregate constants                     | Covers the useful role of BASIC `DATA`/`READ` for fixed programs                            |
-| Assertions and controlled termination           | Runtime fault hooks only                | Add user-facing assertion syntax for tests and debug builds                                 |
-| Floating point                                  | Deferred capability                     | Important for some desktop BASIC programs, unnecessary for the current Z80 game corpus      |
-| Heap values and dynamic collections             | Deferred                                | Consistent with the static-memory target and current evidence                               |
-| Files, clocks, graphics, sound and random input | Platform libraries                      | Correctly remain outside the core language                                                  |
+| Capability                                      | 0.4 position                            | Assessment                                                                                           |
+| ----------------------------------------------- | --------------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| Fixed-width integers and Boolean values         | Specified                               | Sufficient for the current machine and game corpus                                                   |
+| Character literals                              | Specified as byte-valued literals       | Sufficient for ASCII-oriented firmware and display calls                                             |
+| Strings                                         | Sealed `string[N]` storage              | One text type: exact capacity, checked copy/append and a maintained NUL terminator                   |
+| String operations                               | Length, comparison, copy, append, clear | Search, substring and truncating copy remain bounded-view work                                       |
+| Arrays and records                              | Fixed, exact, ordinal-indexed storage   | Counts, explicit bounds, subranges and enums cover the relevant Pascal model                         |
+| Variable-size array arguments                   | Exact-shape aggregate aliases only      | High-priority gap for reusable algorithms                                                            |
+| Read-only parameters                            | General form absent                     | `writeText` has a narrow compiler-defined text source; arrays, records and general views remain open |
+| Routines and local scalars                      | Specified                               | Core procedural programming is covered                                                               |
+| Local arrays and records                        | Aliases to existing storage             | Deliberate first-edition limit; Pascal-style owned locals need a frame and cost policy               |
+| Output and in/out parameters                    | General form absent                     | `readLine` has one narrow string destination; declared scalar and aggregate modes remain open        |
+| Aggregate and multiple results                  | Caller-owned storage only               | Parameter modes can cover the current corpus before aggregate return values are added                |
+| Enumerations and subranges                      | Nominal checked ordinal types           | Improve domain errors, traversal, selection and array bounds without changing packed layout          |
+| Type aliases                                    | Absent                                  | Useful for imported layouts; lower priority than facilities required by current algorithms           |
+| Standard numeric library                        | `abs` and `sqrt`                        | Add `min`, `max`, `clamp` and bit count after the core numeric rules are implemented                 |
+| Standard input and output                       | Two optional standard text modules      | Character/text output plus bounded blocking character and line input, without streams or files       |
+| Compile-time data tables                        | Aggregate constants                     | Covers the useful role of BASIC `DATA`/`READ` for fixed programs                                     |
+| Assertions and controlled termination           | Runtime fault hooks only                | Add user-facing assertion syntax for tests and debug builds                                          |
+| Floating point                                  | Deferred capability                     | Important for some desktop BASIC programs, unnecessary for the current Z80 game corpus               |
+| Heap values and dynamic collections             | Deferred                                | Consistent with the static-memory target and current evidence                                        |
+| Files, clocks, graphics, sound and random input | Future standard or target modules       | Correctly remain outside the core language                                                           |
 
 ## Immediate companion: general bounded views
 
@@ -226,8 +226,10 @@ terminator, so a second text type earned nothing but a second set of rules.
   interior reads checked against the current length could not break the
   sealed invariants, while any general write access would need the same
   operation-only discipline as the header;
-- capacity-generic string parameters, which are the bounded-view question in
-  another costume — first-edition parameters state their exact capacity.
+- ordinary capacity-generic string parameters, which are the bounded-view
+  question in another costume — first-edition source declarations state their
+  exact capacity, while standard `writeText` and `readLine` have narrow
+  compiler-defined source and destination contracts.
 
 The native-boundary question is closed for the first edition: writable
 counted-string parameters are exact-capacity aggregate aliases, and an adapter
@@ -236,21 +238,45 @@ Failure invokes `F-INVALID-STRING`.
 
 ## Portable text and console contracts
 
-`print`, keyboard input and display control vary sharply across TEC-1G,
-TRS-80, ZX81, ZX Spectrum, C and hosted BASIC targets. They should be ordinary
-platform routines collected into named profiles rather than core statements.
+Character input and text output vary sharply across TEC-1G, TRS-80, ZX81, ZX
+Spectrum, C and hosted BASIC targets. Lanternfly therefore standardizes a
+small source contract while leaving the selected device and implementation to
+the target profile.
 
-A small console-style profile should define contracts equivalent to:
+A program imports only the half it needs:
 
 ```lanternfly
-extern sub writeChar(value as u8)
-extern sub writeText(text as string[80])
-extern sub readChar() as u8
+import "standard/text-output.lafy"
+import "standard/text-input.lafy"
+
+var key as u8
+var command as string[32]
+var lineFits as boolean
+
+sub useConsole()
+    writeCharacter('>')
+    writeText("READY")
+    writeNewline()
+    key = readCharacter()
+    lineFits = readLine(command)
+end
 ```
 
-Targets can bind those signatures to firmware, emulator services, generated C
-or BASIC runtime code. Screen coordinates, colours, key matrices and
-nonblocking input belong to more specific profiles.
+Targets can bind those operations to firmware or monitor routines, a keyboard
+and display, serial I/O, generated C or BASIC runtime code, or an injected test
+service. `writeText` accepts a literal or any `string[N]` path through one
+temporary compiler-only read-only carrier. `readLine` accepts any writable
+`string[N]` path through an equivalent destination carrier. It returns `true`
+when the line fits; otherwise it keeps the longest valid fitting prefix,
+consumes the rest of the line and returns `false`. These service operands are
+not source values or general bounded views.
+
+The contract stops at character output, text output, a target-appropriate
+newline, blocking character input and bounded line input. Screen coordinates,
+colours, key matrices and nonblocking input belong to target-specific modules.
+Streams, handles, buffering, files, directories and seeking remain undefined.
+Future loading and saving facilities belong in separate modules rather than
+expanding the meaning of the two text devices.
 
 The counted-string operations already carry destination capacity and fault
 before an invalid write. A later bounded-view library can add search,
@@ -323,10 +349,11 @@ preserving the fixed `string[N]` layout and its terminated-payload ABI.
    0.4 front end and AZM backend.
 2. After K1, design read-only and writable bounded views together with
    parameter intent.
-3. Define one minimal console/text platform profile and bounded-view library.
+3. Implement the two settled optional standard text modules through one target
+   profile and the interpreter service trace.
 4. Reassess assertions and smaller standard operations using translated
    programs.
 
-The first item is implementation of an existing rule. The remaining items are
-language or library changes and require specification, conformance, and
-lowering updates before coding.
+The first and third items implement existing rules. General views and the
+remaining additions require specification, conformance and lowering updates
+before coding.

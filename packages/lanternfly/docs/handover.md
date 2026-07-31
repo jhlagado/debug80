@@ -124,6 +124,18 @@ Source module filenames and import paths now use the exact lowercase `.lafy`
 extension. Hosted body slices retain the source identity of their host document
 because they are not standalone Lanternfly module files.
 
+The first edition also defines two optional standard text modules. Explicit
+imports provide character and fixed-string output, a target-appropriate
+newline, blocking character input and bounded line input. A target may bind
+them to monitor or firmware routines, a keyboard and display, serial I/O or a
+host adapter. `writeText` accepts any `string[N]` path or literal through one
+temporary compiler-only read-only carrier. `readLine` accepts any writable
+`string[N]` path through a matching destination carrier, returns whether the
+line fitted, and consumes an overlong line after retaining its fitting prefix.
+Neither service adds a source reference value or a general parameter mode.
+Streams, files and operating-system services remain outside this contract and
+may later appear in separate modules.
+
 The placement contract was closed at the same checkpoint. Target profiles
 define legal memory regions, permissions, alignment, initialization mechanisms
 and default placement targets. `at` reserves one exact source object. A
@@ -468,9 +480,10 @@ root, 32-bit arithmetic, far access or complex indexing. A C backend may not
 need those helpers. The source meaning remains identical and helpers link only
 when used.
 
-Randomness, display, input, sound, VRAM and firmware calls are platform
-services, not core keywords. Native declarations and native blocks make the
-substrate boundary visible and typed.
+Portable character and fixed-text input/output comes from two optional
+standard modules rather than core keywords. Randomness, richer display and
+input, sound, VRAM and firmware calls remain platform services. Native
+declarations and native blocks make the substrate boundary visible and typed.
 
 `extern sub` declares a typed target routine without a Lanternfly body. `at`
 binds an absolute routine address, `from` names a substrate symbol and an
@@ -479,7 +492,7 @@ also supplies the native ABI, effects and clobber contract.
 
 The first raw boundary is `asm`/`end`. It accepts module-level directives/data
 and statement-level assembly for the selected assembler, and emits either
-payload verbatim. A statement-level block acts as a conservative compiler
+payload verbatim. A statement-level block is a conservative compiler
 barrier; a module-level block has no execution point or runtime effect summary.
 Non-assembly backends reject either form unless their profile supplies an
 assembly-fragment pipeline.
@@ -536,8 +549,9 @@ Target fixtures: central Tetro and Pacmo storage patterns.
 
 Add parameterised subs, optional scalar results, scalar-value and
 aggregate-alias parameters, source-routine scalar locals, external bindings,
-standalone entry validation and ABI adapters. Bounded aggregate views and
-parameter modes remain post-0.4 design work and do not block this stage.
+standalone entry validation, ABI adapters and the optional standard text-module
+interfaces. Bounded aggregate views and general parameter modes remain
+post-0.4 design work and do not block this stage.
 
 Target fixtures: Snake helpers, Tetro engine routines and Pacmo routines.
 
@@ -586,7 +600,9 @@ Do not present these points as settled without an explicit decision:
 - source syntax for narrowing an external routine's effect contract;
 - syntax for an explicitly unsafe, nonconforming unchecked-array mode;
 - read-only bounded views beyond the settled exact-capacity string type,
-  including how literal or constant text reaches a routine;
+  including how literal or constant text reaches an ordinary source-defined
+  routine; the standard `writeText` and `readLine` services have narrow
+  compiler-defined contracts;
 - bounded aggregate view syntax;
 - scalar output parameter syntax;
 - restricted labels;

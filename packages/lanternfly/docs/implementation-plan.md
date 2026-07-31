@@ -29,9 +29,11 @@ default. A proposed language change must include:
 - a test that distinguishes the old and proposed rules.
 
 Open facilities do not block the first compiler. General bounded aggregate
-views, read-only/output/in/out parameter modes, floating point, owned local
-aggregates, resizable strings, and recursion-capable bare-metal profiles remain
-outside K0 and K1.
+views, general read-only/output/in/out parameter modes, floating point, owned
+local aggregates, resizable strings, and recursion-capable bare-metal profiles
+remain outside K0 and K1. The optional standard `writeText` and `readLine`
+services have narrow compiler-only read-only-source and writable-destination
+carriers and do not open those general parameter facilities.
 
 The implementation must preserve these boundaries from its first data model:
 
@@ -506,6 +508,7 @@ The initial target profile records:
   metadata;
 - substrate-symbol resolver;
 - external bindings, ABI definitions and adapters;
+- optional standard text-service bindings;
 - optional callable cost metadata;
 - runtime helper implementations;
 - assembly-fragment support;
@@ -694,6 +697,17 @@ callable ABI to that external ABI. A `hostSymbol` uses the callable ABI directly
 or its named adapter. A profile-list availability record must contain the
 selected profile ID; otherwise the callable is unavailable and receives
 `E-TARGET-001`.
+
+The compiler-supplied standard text-module interfaces use the same
+`externalBindings`, ABI, adapter and runtime-component records. They require
+the stable service IDs `standard.textOutput.writeCharacter`,
+`standard.textOutput.writeText`, `standard.textOutput.writeNewline` and
+`standard.textInput.readCharacter` and `standard.textInput.readLine`. A profile
+may omit either module, but every operation used from an imported module must
+resolve. The `writeText` and `readLine` ABIs may use compiler-only read-only
+source and writable-destination text carriers. They are not
+`AggregateParameter` records and do not change the version-1 host callable
+schema.
 
 The selected profile contains one `substrateSymbolResolver`. Its
 `implementationId` resolves through the backend registry. At M0 the validator
@@ -965,6 +979,11 @@ namespaces as declarations arrive. It registers enum members after their enum
 is complete and enforces duplicate, case-only, reserved-name, shadowing and
 type/callable collision rules.
 
+The resolver treats the `standard/` import prefix as toolchain-owned. It loads
+the versioned standard export interface rather than a project file and records
+which optional target bindings the imported interface requires. Missing
+bindings become `E-TARGET-001` after profile resolution.
+
 Imports form a contiguous prefix. The checker resolves each imported source
 unit or versioned export interface before continuing, using loading and
 completed states to detect cycles and reuse diamond imports. After the prefix,
@@ -1188,6 +1207,8 @@ The first executable fixture sequence is:
 10. one hosted Pacmo six-byte-record storage body;
 11. a source-routine version of the Tetro body;
 12. a source-routine version of the Pacmo body.
+13. optional standard text output and input through injected interpreter
+    services and one target binding.
 
 ## 10. Delivery milestones
 
@@ -1352,6 +1373,8 @@ Deliver:
 - declaration-ordered call graph and profile recursion checks;
 - direct self-call recognition and rejection of calls to later routines;
 - `extern sub` bindings and ABI validation;
+- compiler-supplied interfaces for the optional standard text modules and
+  their five stable service bindings;
 - standalone program-entry validation;
 - ABI frame and adapter reporting.
 
@@ -1362,6 +1385,13 @@ Gate:
   interpreter and AZM;
 - direct self-recursion is rejected for the initial profile;
 - aggregate arguments accept storage paths and reject temporaries;
+- `writeText` accepts literal, constant and mutable strings of different
+  capacities without exposing its temporary carrier;
+- `readLine` accepts writable strings of different capacities, produces the
+  specified fitting and truncated results without exposing its carrier, and
+  consumes an overlong input through its line ending;
+- standard text calls produce the required ordered device-I/O and storage
+  traces;
 - every applicable K2 rejection fixture reports its stable diagnostic ID;
 - frame and scratch artifacts account for every allocated byte.
 

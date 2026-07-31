@@ -168,6 +168,23 @@ execution effect. A statement block carries conservative
 read/write/call/fault/device-I/O/clobber effects unless a later explicit
 contract narrows them.
 
+## Standard text input and output
+
+**Direction:** portable text transfer is an optional standard-module
+capability rather than a core statement or a complete operating-system
+interface.
+
+Programs explicitly import small standard text-input and text-output modules.
+The selected target may connect them to a keyboard and display, a serial
+terminal, firmware or monitor routines, or a host adapter. The portable
+contract covers character output, fixed-string output, a target-appropriate
+newline, blocking character input and bounded line input into writable
+fixed-capacity strings.
+
+The contract defines no streams, handles, buffering, files, directories or
+portable line editor. Future loading and saving facilities belong in separate
+modules after real storage systems provide a stable model.
+
 ## Design priorities
 
 The current priority order is:
