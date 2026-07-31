@@ -2457,6 +2457,10 @@ The following questions remain open or provisional. None blocks K0 or K1:
 - source syntax for narrowing an external routine's effect contract;
 - native callback declarations and their call-graph/reentrancy contract;
 - read-only aggregate parameters and bounded writable-text view spelling;
+- nominal, explicitly sized enum types whose members enter the surrounding
+  value scope without qualification;
+- whether subrange types justify their conversion and runtime-checking rules;
+  non-zero-based array bounds remain a separate deferred feature;
 - whether selection ranges belong in the first parser;
 - whether translated programs justify `repeat`/`until` or named outer-loop
   exits;

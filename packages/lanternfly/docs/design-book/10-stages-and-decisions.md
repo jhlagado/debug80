@@ -250,8 +250,28 @@ remain available.
 Working choice: constants remain sufficient for the first storage prototype.
 
 Open design: add nominal, explicitly sized enums for directions, states and
-selectors. The experiment must show useful type errors and exhaustive
-selection without changing packed layout or complicating numeric conversion.
+selectors. The enum name would enter the type scope, while its members would
+enter the surrounding value scope and be written without qualification:
+
+```lanternfly
+enum Colour as u8
+    red
+    green
+    blue
+end
+
+var foreground as Colour = red
+```
+
+This follows traditional Pascal and classic Visual Basic rather than requiring
+`Colour.red`. Existing case-insensitive value-scope collision rules would
+apply to every member. The first implicit member would be zero and each
+following implicit member one greater than its predecessor.
+
+The experiment must show useful type errors, exhaustive selection and useful
+debug symbols without changing packed layout or complicating numeric
+conversion. Subrange types and non-zero-based array bounds are separate
+post-0.4 questions; adding enums would imply neither.
 
 ### Parameter intent and scalar outputs
 

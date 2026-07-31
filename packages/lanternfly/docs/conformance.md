@@ -435,6 +435,7 @@ The first implemented edition does not silently accept:
 - unrestricted labels or `goto`;
 - exceptions;
 - generics and operator overloading;
+- enumeration and subrange types, and non-zero-based array bounds;
 - rich dynamic strings;
 - implicit writable-buffer-to-`cstr` conversion and unbounded string writes;
 - unchecked indexing as conforming execution.
