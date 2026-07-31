@@ -56,6 +56,8 @@ The project lives at `packages/lanternfly` in the
 At the time of this handover:
 
 - `packages/lanternfly` is tracked on `main` in the Debug80 monorepo;
+- commit `3b31fe4` (`Rewrite Lanternfly as a structured BASIC`) is present on
+  `origin/main`;
 - the sibling `debug80-docs` repository contains the published Lanternfly
   teaching book and the completed Lanternfly-to-Rushlight game rename;
 - the npm package manifest uses the unqualified name `lanternfly`, is version
@@ -66,6 +68,59 @@ At the time of this handover:
 
 Inspect `git status` in both repositories before editing, rebasing or
 performing any cleanup.
+
+## Latest completed work
+
+Specification 0.4 rewrote Lanternfly around the agreed streamlined structured
+BASIC model. The rewrite covered the specification, conformance contract,
+charter, lowering notes, research record, decision chapter, package overview
+and a new language-completeness review.
+
+The most important boundary concerns storage identity. Lanternfly source has
+no general pointer or reference values. Programs keep persistent identity in
+declared paths, multidimensional indices and integer selectors. Aggregate
+parameters and local `alias` declarations provide temporary access to existing
+aggregate storage. An alias denotes its record or array for field access,
+indexing, copying and nested calls; the backend carrier has no source
+expression and cannot be stored, returned, compared, converted or rebound.
+First-class pointers are not listed as routine future work because adding them
+would change the language's value model.
+
+Aggregate storage class is written before a parameter name:
+
+```lanternfly
+export sub moveActor(near actor as Actor, deltaX as i16)
+end
+
+export sub showLabels(far labels as near cstr[8])
+end
+```
+
+The second example keeps two distinct facts visible: `labels` names an array
+in far storage, while each element is a `near cstr`.
+
+The same rewrite settled the first-edition loop surface:
+
+- `for index = first to last` includes `last`;
+- `for index = first until boundary` excludes `boundary`;
+- `for each item in items` traverses fixed arrays in row-major order;
+- `while condition` covers conditional and indefinite loops, with
+  `while true` as the indefinite form;
+- `exit` leaves the nearest loop and never terminates the program;
+- `continue` advances or retests the nearest loop.
+
+Four complete read-only review rounds examined the specification and
+conformance contract sentence by sentence under the human-writing rules. The
+reviews found and repaired twelve issues involving alias semantics,
+collection traversal, C-string lifetime and conversion, loop boundaries,
+near/far parameter syntax, volatile controls and conformance coverage. The
+fourth review returned `NO FINDINGS`.
+
+Validation after the 0.4 rewrite and this handover update passes:
+
+- Prettier on the changed Lanternfly files;
+- `git diff --check`;
+- the Debug80 Markdown link checker over 140 tracked Markdown files.
 
 ## Fast reading route
 
@@ -603,3 +658,54 @@ If no narrower goal is supplied, the most coherent implementation start is
 the manifest/type-descriptor schema followed by a K0 parser and type checker.
 That sequence tests the documented boundaries without prematurely committing
 to Z80 code-generation details.
+
+## Paste-ready session prompt
+
+The following prompt gives another LLM enough context to begin without
+repeating the design study:
+
+```text
+Work on the Lanternfly language in the Debug80 monorepo.
+
+Repository:
+  /Users/johnhardy/projects/debug80
+
+Begin by reading this handover in full:
+  packages/lanternfly/docs/handover.md
+
+Then follow its fast reading route. Treat these documents as authoritative in
+this order:
+  1. packages/lanternfly/docs/specification.md
+  2. packages/lanternfly/docs/conformance.md
+  3. packages/lanternfly/docs/lowering-and-runtime.md
+  4. packages/lanternfly/docs/design-book/10-stages-and-decisions.md
+
+The current checkpoint is specification 0.4 at commit 3b31fe4 on main.
+Lanternfly is a streamlined, statically typed structured BASIC for fixed-memory
+systems. It is independent of Glimmer even though Glimmer bodies are its first
+expected use.
+
+Preserve the storage model. Lanternfly has no source-level pointer or reference
+values, address-of operation, dereference operation, function values or
+closures. Persistent identity uses declared paths, multidimensional indexing
+and integer selectors. Aggregate parameters and local aliases are temporary,
+non-escaping names for existing aggregate storage. Their hidden backend
+carriers are not source values. Do not reintroduce REF syntax, pointer
+arithmetic, reference variables or arrays of pointers.
+
+The current loop vocabulary is inclusive `for ... to`, exclusive
+`for ... until`, `for each ... in`, `while`, loop-only `exit`, and `continue`.
+`while true` is the indefinite loop. There is no bare `loop`, `do`, `repeat`,
+`break`, `call`, separate `function` declaration or general `goto`.
+
+Use the human-writing skill for documentation. Read assigned prose completely
+and sequentially before editing, then apply its sentence-by-sentence deletion
+test. Preserve existing user changes. Work on main, run the documented
+formatting and link checks, commit significant work, and push it.
+
+Before making changes, report the current Git status and state which bounded
+task you intend to undertake. If no narrower task has been supplied, stop
+after reading and propose the smallest useful next implementation or
+documentation step; do not start a compiler merely because implementation is
+listed as a possible next phase.
+```
