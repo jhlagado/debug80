@@ -175,8 +175,9 @@ The completed corpus pass moved signed bytes, multiple integer widths, local
 aggregate aliases, multidimensional indexing and opaque device addresses into
 the required model. Pointer tables in the source corpus are expressed through
 regular multidimensional arrays or ordinal selectors in Lanternfly. A later
-completeness review moved byte-valued character literals and static C strings
-into the first edition. Before implementation began, a further design review
+completeness review moved byte-valued character literals and sealed counted
+strings into the first edition. Before implementation began,
+a further design review
 adopted Pascal-style enums, subranges and ordinal array domains, expressed
 with BASIC words rather than symbolic range punctuation. The
 [research record](research.md) and [feature matrix](evidence/corpus-feature-matrix.md)

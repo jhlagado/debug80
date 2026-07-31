@@ -28,9 +28,9 @@ default. A proposed language change must include:
 - compatibility consequences;
 - a test that distinguishes the old and proposed rules.
 
-Open facilities do not block the first compiler. Bounded aggregate views,
-read-only/output/in/out parameter modes, floating point, owned local
-aggregates, rich strings, and recursion-capable bare-metal profiles remain
+Open facilities do not block the first compiler. General bounded aggregate
+views, read-only/output/in/out parameter modes, floating point, owned local
+aggregates, resizable strings, and recursion-capable bare-metal profiles remain
 outside K0 and K1.
 
 The implementation must preserve these boundaries from its first data model:
@@ -42,8 +42,8 @@ The implementation must preserve these boundaries from its first data model:
   values;
 - paths, multidimensional indices, and ordinal selectors provide persistent
   identity;
-- `cstring` is a specialised immutable text value, not a general storage
-  reference;
+- `string[N]` is sealed aggregate storage whose hidden header and payload do
+  not become source paths;
 - opaque address values cannot be dereferenced or converted into storage
   paths;
 - aggregate copies are explicit typed effects even when assignment is their
@@ -188,7 +188,8 @@ The schema must represent:
   and strides;
 - mutability, volatility, ownership, and near/far storage class;
 - canonical Boolean representation;
-- static C-string class, termination, immutability, and program lifetime;
+- string capacity, header width, exact layout, termination and sealed
+  invariants;
 - callable signatures, bindings, ABI keys, and effects;
 - the abstract host epilogue identifier.
 
@@ -227,14 +228,16 @@ SubrangeType
     lowerOrdinal
     upperOrdinal
 
-CStringType
+StringType
     id
-    kind: "cstring"
-    addressClass: "near" | "far"
+    kind: "string"
+    capacity
+    headerWidth: 8 | 16
+    exactSize
     terminator: 0
     directEncoding: "ascii"
-    mutable: false
-    lifetime: "program"
+    reservedAllOnesLength: true
+    sealed: true
 
 RecordType
     id
@@ -271,15 +274,16 @@ domain has a null `rootTypeId`; an enum domain names its root enum.
 named enum or subrange and is otherwise null. Strides are in bytes, ordered
 from the first source dimension to the last.
 
-The semantic validator resolves subrange hosts, checks member and bound
-representation, recomputes each domain count, record offset, stride and exact
-size, and rejects any disagreement. Enum/subrange dependencies and direct or
-mutual record/array containment must be acyclic.
+The semantic validator resolves subrange hosts, checks member, bound and
+counted-string-capacity representations, recomputes each string size, domain
+count, record offset, stride and exact size, and rejects any disagreement.
+Enum/subrange/string-capacity dependencies and direct or mutual record/array
+containment must be acyclic.
 
 Aggregate storage class belongs to storage roots and aggregate parameters, not
-to record or array types. Two arrays have the same aggregate type when their
+to string, record or array types. Two arrays have the same aggregate type when their
 element type and normalized index domains match, even when one is stored near
-and the other far. C-string and address classes remain part of their
+and the other far. Address classes remain part of their
 scalar type because they determine the value representation and legal
 operations. A device-space identity is metadata on a provider binding or
 service contract, not another type entry.
@@ -396,7 +400,8 @@ CallableCostMetadata
         or { kind: "unknown" }
 ```
 
-`AggregateParameter` accepts only a record or fixed-array `typeId`. Its
+`AggregateParameter` accepts only a counted-string, record or fixed-array
+`typeId`. Its
 `storageClass` describes the caller's aggregate storage. The parameter does
 not introduce a reference type or value. Read-only, output, in/out, and bounded
 view parameter records require a later schema version after their language
@@ -500,7 +505,8 @@ The closed capability record has these fields:
 ```text
 TargetCapabilities
     integerWidths: subset of [8, 16, 32]
-    scalarOperations: subset of the version-1 operation IDs
+    scalarOperations: subset of the version-1 scalar-operation IDs
+    aggregateOperations: subset of the version-1 aggregate-operation IDs
     addresses:
         near:
             { supported: true, representationWidth, validityContractId }
@@ -520,13 +526,34 @@ TargetCapabilities
 
 The version-1 scalar-operation IDs are `integerArithmetic`,
 `integerConversion`, `integerBitwise`, `integerShift`, `integerComparison`,
-`booleanLogic`, `booleanComparison`, `cstringLength`, `cstringComparison` and
-`addressEquality`. An implementation may use instructions, emitted sequences
+`booleanLogic`, `booleanComparison` and
+`addressEquality`. The aggregate-operation IDs are `stringLength`,
+`stringComparison`, `stringCopy` and `stringAppend`. An implementation may use instructions, emitted sequences
 or selected runtime components to provide an advertised operation. A supported
 address class has a positive byte-multiple representation width; an unsupported
 class uses `null`. `integerArithmetic` covers unary sign, addition,
 subtraction, multiplication, division, remainder, power, `abs` and `sqrt`;
 the other IDs cover the operations named by their categories.
+
+The limits record is also closed:
+
+```text
+TargetLimits
+    maximumStaticObjectBytes
+    maximumStringPayloadBytes
+    maximumCountedStringCapacity
+```
+
+All three fields are positive integers. `maximumStringPayloadBytes` and
+`maximumCountedStringCapacity` are at most 65,534, and the former does not
+exceed the latter. The declared maximum string capacity must itself fit within
+`maximumStaticObjectBytes` after applying the language's `N + 2` short or
+`N + 3` long layout. A source string literal whose decoded payload exceeds the
+payload limit, a `string[N]` whose capacity exceeds the capacity limit, or any
+single static object whose exact layout exceeds the object limit receives
+`E-TARGET-001`. A missing or unknown limits field is `E-CONFIG-001`; a
+nonpositive, out-of-language-range or mutually inconsistent value is
+`E-CONFIG-002`.
 
 Callable linkage, ABI, runtime and fault records have these closed shapes:
 
@@ -682,9 +709,13 @@ The matching minimal target profile is:
       "integerComparison",
       "booleanLogic",
       "booleanComparison",
-      "cstringLength",
-      "cstringComparison",
       "addressEquality"
+    ],
+    "aggregateOperations": [
+      "stringLength",
+      "stringComparison",
+      "stringCopy",
+      "stringAppend"
     ],
     "addresses": {
       "near": {
@@ -706,12 +737,12 @@ The matching minimal target profile is:
     "checkedIndexing": true
   },
   "defaults": {
-    "privateAggregateClass": "near",
-    "cstringClass": "near"
+    "privateAggregateClass": "near"
   },
   "limits": {
     "maximumStaticObjectBytes": 65536,
-    "maximumCStringPayloadBytes": 65534
+    "maximumStringPayloadBytes": 65533,
+    "maximumCountedStringCapacity": 65533
   },
   "substrateSymbolResolver": {
     "id": "azm.symbols",
@@ -970,7 +1001,7 @@ The first executable fixture sequence is:
 
 1. empty hosted body;
 2. Counter;
-3. character and static C-string literals;
+3. character and string literals;
 4. Dot;
 5. Slide;
 6. Trail;
@@ -1022,14 +1053,16 @@ Deliver:
 
 - host import model;
 - names and namespaces;
-- integer, Boolean, enum, subrange, C-string and near/far address types;
+- integer, Boolean, enum, subrange, string and near/far
+  address types;
 - manifest-defined records, fixed arrays and immutable aggregate constants;
 - literals, constants, and expressions;
 - checked ordinal conversions and range proofs;
 - exact record fields, ordinal array paths, index arity and bounds proofs;
 - `size`, `count`, `lower`, `upper` and `offset` layout queries;
 - imported callable signatures, arguments, results and effects;
-- aggregate assignment, `clear` and `fill` over imported storage;
+- aggregate assignment, counted-string copy/append, `clear` and `fill` over
+  imported storage;
 - destination conversions and warnings;
 - structured control and hosted `return`;
 - typed effects and K0 diagnostics.
@@ -1048,12 +1081,13 @@ Deliver:
 - interpreter;
 - runtime bounds and range-fault model;
 - imported record and ordinal-array paths;
-- imported aggregate copy, `clear` and `fill`;
+- imported aggregate copy, counted-string operations, `clear` and `fill`;
 - ordered storage and service traces.
 
 Gate:
 
-- Counter, character/C-string, Dot, Slide and Trail fixtures execute;
+- Counter, character/string, Dot, Slide and Trail fixtures
+  execute;
 - numeric boundary vectors match the specification;
 - ordinal-path vectors preserve check and evaluation order;
 - fault traces retain source locations.
@@ -1065,7 +1099,7 @@ Deliver:
 - scalar and control-flow AZM lowering;
 - imported record and ordinal-array path lowering;
 - required range and bounds checks plus proof-based removal;
-- imported aggregate copy, `clear` and `fill`;
+- imported aggregate copy, counted-string operations, `clear` and `fill`;
 - generated-source provenance;
 - host epilogue composition;
 - module `asm` emission with provenance and statement `asm` emission with
@@ -1076,8 +1110,8 @@ Deliver:
 
 Gate:
 
-- interpreter and AZM execution agree for character/C-string, Counter, Dot,
-  Slide and Trail fixtures;
+- interpreter and AZM execution agree for character/string,
+  Counter, Dot, Slide and Trail fixtures;
 - an AZM diagnostic maps back to the responsible Lanternfly span;
 - generated source is deterministic.
 
@@ -1094,6 +1128,7 @@ Deliver:
 - hosted-body scalar locals and local aggregate aliases;
 - hosted-local initializer ordering, zero-validity and fresh per-entry
   lifetime;
+- string storage, copy, append and native payload access;
 - aggregate copy, `clear`, and `fill` for source-owned storage.
 
 Gate:
@@ -1114,7 +1149,7 @@ Deliver:
 
 - source-defined `sub`;
 - scalar parameters and optional scalar results;
-- aggregate alias parameters;
+- counted-string and other aggregate alias parameters;
 - source-routine scalar locals using the K1 initializer-ordering and
   zero-validity machinery with fresh per-call lifetime;
 - return-path analysis;

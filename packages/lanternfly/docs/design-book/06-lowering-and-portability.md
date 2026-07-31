@@ -26,6 +26,7 @@ backend:
 - Boolean canonical form;
 - enum identity, representation and member order;
 - subrange host and inclusive normalized bounds;
+- counted-string capacity, header width and exact sealed layout;
 - array index domains, counts and exact strides;
 - path evaluation and fault order;
 - destination conversions and proof status;
@@ -130,6 +131,12 @@ Exact records may use verified packed structs or byte arrays with accessors.
 Imported and exported storage must preserve the declared layout regardless of
 which representation is convenient internally.
 
+A string cannot become a host `char *` or dynamic string object. The C
+backend emits its exact one- or two-byte length header, inline payload capacity
+and reserved terminator, then uses helpers or verified generated code for
+checked copy and append. A native consumer of NUL-terminated text receives the
+payload address while the owning storage remains alive.
+
 ## A named BASIC dialect
 
 “BASIC” is not a backend definition. Each dialect chooses different integer,
@@ -161,6 +168,12 @@ metadata.
 
 Generated line numbers are acceptable when the dialect needs them. They never
 appear in Lanternfly source.
+
+A BASIC backend may use its native string operations internally only after
+proving the same capacity checks, byte ordering and exact storage image. On a
+dialect whose native strings carry a different header or encoding, byte-array
+storage plus generated helpers is the lowering that preserves the declared
+layout.
 
 ## Lowering a typed path
 
@@ -248,6 +261,7 @@ An adapter:
 - preserves required machine and mapping state;
 - invokes the resolved host implementation or target binding;
 - validates or converts the result;
+- validates a counted-string alias after a declared native write;
 - restores the caller's context.
 
 The aggregate carrier never enters public typed output as a value. Adapters

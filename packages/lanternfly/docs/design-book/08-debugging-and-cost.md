@@ -59,6 +59,7 @@ Debug metadata includes:
 - Boolean canonical value;
 - enum name, member and representation;
 - subrange type, host and bounds;
+- counted-string capacity, current length, short/long form and payload text;
 - array domains, counts, strides and lower ordinals;
 - record fields and offsets;
 - static address and near/far storage class;
@@ -103,6 +104,12 @@ F-BOUNDS: index 9 is outside board dimension 1 to 8
 F-RANGE: value 32 cannot enter ScreenColumn (0 until 32)
 ```
 
+The same class reports a checked text operation before it changes its target:
+
+```text
+F-RANGE: 27 payload bytes cannot enter string[24]
+```
+
 The distinction points to a different remedy: validate a general array index,
 or correct the conversion feeding a checked type.
 
@@ -133,8 +140,8 @@ attach:
 - bounds and range checks;
 - source construct and target assumptions.
 
-An honest unknown is better than a precise number that ignores device waits or
-interrupt effects.
+A value reported as unknown is better than a precise number that ignores
+device waits or interrupt effects.
 
 Useful cost classes include direct/native, inline-small, inline-large, helper,
 context-switch, host and unknown.
@@ -190,6 +197,11 @@ Static allocation is useful when visible. A report groups:
 Exact record and array layout appears with domains and strides. A tool may
 suggest an explicit source-layout change for speed, but a backend cannot pad a
 six-byte record privately when its layout is observable.
+
+Counted strings appear with their full reserved size, header width and payload
+capacity. A 24-byte short string costs 26 bytes even while empty; a 255-byte
+long string costs 258. Showing reserved capacity prevents a friendly string
+display from hiding the static-memory decision.
 
 ## Deterministic output
 

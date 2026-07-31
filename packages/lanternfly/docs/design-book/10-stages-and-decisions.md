@@ -14,7 +14,7 @@ slice:
 - versioned host-manifest and target-profile validation;
 - all six integer types and canonical `boolean`;
 - enums, subranges and checked ordinal conversion;
-- byte-valued characters and static `cstring`;
+- byte-valued characters and imported strings;
 - imported constants, storage, aggregates and routines;
 - expressions, destination conversion and assignment;
 - fixed-array domains, indexing and record fields;
@@ -36,6 +36,7 @@ Counter, Dot, Slide, Trail and ordinary Glimmer rules are the first fixtures.
 K1 adds:
 
 - source-owned constants and static variables;
+- source-owned strings with checked copy and append;
 - enum-, subrange-, range- and count-indexed arrays;
 - exact records and aggregate initializers;
 - non-zero lower-bound normalization and complete path lowering;
@@ -52,6 +53,7 @@ K2 implements:
 
 - the single `sub` declaration with optional scalar result;
 - scalar value and exact-shape aggregate-alias parameters;
+- exact-capacity counted-string alias parameters;
 - source-routine scalar locals with per-call initialization and lifetime;
 - early routine return;
 - external bindings and standalone entry validation;
@@ -66,7 +68,7 @@ reference values.
 
 K3 tests the portability claims:
 
-- far aggregate data, far C strings and far calls;
+- far aggregate data, far strings and far calls;
 - bank or segment context;
 - another CPU backend;
 - a C semantic backend;
@@ -98,8 +100,12 @@ breaking redesign.
 - Comparisons produce one-byte `boolean`; conditions require `boolean`.
 - Boolean `and` and `or` short-circuit, while integer word operators combine
   complete bit patterns.
-- Character literals are exact bytes and `cstring` is immutable
-  program-lifetime NUL-terminated text.
+- Character literals are exact bytes. `string[N]` is the one text type: owned
+  counted text whose payload always ends with a zero byte.
+- Capacities through 254 use a one-byte length; 255 through 65,534 use a
+  two-byte length. Capacity fixes the form and exact layout.
+- Every string maintains its terminator, seals its header
+  and payload from source paths, and checks copy or append before writing.
 
 ### Ordinal domains
 
@@ -181,7 +187,7 @@ The current rule groups declarations before executable statements in a routine
 or hosted body. Complete Tetro and Pacmo translations will show whether that
 requires awkward hoisting from the point of first use.
 
-### Aggregate parameter intent and bounded views
+### Aggregate parameter intent and general bounded views
 
 The first edition has writable exact-shape aggregate parameters. Reusable
 sorting, bounded text and candidate-scan routines need a later view that can
@@ -190,15 +196,10 @@ state runtime extent without exposing its carrier.
 Read-only, output and in/out parameter modes should share one mutability model
 with those views.
 
-For the writable-text half of this question, a concrete counted-string
-design now awaits ratification in the
-[language completeness review](../language-completeness-review.md):
-`string[N]` with capacity-derived header width, a sealed representation
-whose header and terminator have no source path, a maintained
-compatibility terminator that makes the payload a valid zero-terminated
-string at no cost, and checked copies under `F-RANGE`. Ratifying it means
-specifying it in the working specification and settling the
-`cstring`-versus-`zstring` name for the read-only view.
+Counted strings settle the common writable-text case without becoming a
+general view mechanism. Their exact-capacity parameters use the existing
+aggregate-alias model. A later view is still needed when one routine must
+accept several capacities or an arbitrary bounded region.
 
 ### Checked-array mode
 
@@ -223,7 +224,7 @@ The first corpus does not require:
 
 - dynamic allocation or garbage collection;
 - aggregate automatic locals or aggregate returns;
-- rich mutable string values;
+- resizable or heap-backed strings;
 - arbitrary packed bit fields;
 - arrays spanning mapping contexts;
 - recursion on bare-metal profiles;
@@ -259,9 +260,10 @@ The corpus established several requirements:
 5. Interpret typed control-flow IR as the semantic oracle.
 6. Emit and verify the first AZM vertical slice.
 7. Add K1 arrays, records, paths, aliases and startup effects.
-8. Translate one Tetro and one Pacmo fixture.
-9. Add K2 source routines and adapters.
-10. Use C, BASIC and another CPU to expose substrate assumptions.
+8. Add source-owned counted strings and their checked operations.
+9. Translate one Tetro and one Pacmo fixture.
+10. Add K2 source routines and adapters.
+11. Use C, BASIC and another CPU to expose substrate assumptions.
 
 The first coding change remains M0: package scaffolding, shared source and
 diagnostic types, versioned schemas and one empty hosted-body result.

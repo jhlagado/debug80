@@ -16,7 +16,7 @@ The front end owns:
 - name and type resolution;
 - exact layout;
 - integer result typing and conversions;
-- character decoding and C-string typing;
+- character decoding and string invariants;
 - initialization and return-path validation;
 - structured-control validation;
 - host/import/external interface checking;
@@ -97,7 +97,8 @@ integer(width, signed)
 boolean(width=8, falseBits=0, trueBits=1)
 enum(typeId, representationType, members)
 subrange(typeId, hostOrdinalType, lowerOrdinal, upperOrdinal)
-cstring(class, terminator=0, directEncoding=ascii, mutable=false)
+string(capacity, headerWidth, exactSize, terminator=0,
+       reservedAllOnesLength=true, sealed=true)
 record(typeId, exactSize, fields)
 array(elementType, indexDomains, counts, exactStrides)
 aggregateAlias(class, referentType, mutable)
@@ -123,9 +124,15 @@ type. Boolean descriptors are invariant across targets; imported adapters
 validate external representations and invoke `F-INVALID-BOOLEAN` rather than
 exposing a noncanonical value to Lanternfly.
 
-A C-string descriptor carries an address class but no length field. A literal
-node separately carries its decoded payload, appended terminator, static
-storage identity and source-byte mapping.
+A literal node carries its decoded payload, static storage identity and
+source-byte mapping.
+
+A string descriptor selects `headerWidth=8` for capacities 1 through
+254 and `headerWidth=16` for capacities 255 through 65,534. Its exact size is
+capacity plus two bytes in the short form and capacity plus three in the long
+form. The all-ones length is invalid in either form. The target's ordinary
+endianness applies to the 16-bit length. Its sealed
+header, payload and terminator have no independently addressable source fields.
 
 ## 4. Suggested Lanternfly IR
 
@@ -199,7 +206,8 @@ debugging and cost aggregation.
 ### 4.5 Aggregate policy
 
 Aggregates do not appear as arbitrary IR values. They appear as typed
-addresses. `COPY`, `MOVE`, `FILL` and `CLEAR` are explicit aggregate effects.
+addresses. `COPY`, `MOVE`, `FILL`, `CLEAR`, `STRING_COPY` and `STRING_APPEND`
+are explicit aggregate effects.
 
 This matches the language rule and avoids an optimizer inventing hidden
 aggregate temporaries. A source aggregate assignment becomes one explicit
@@ -211,6 +219,12 @@ has validated their target and scalar leaf types.
 possible. An ordinary copy has snapshot/move semantics. A volatile copy is
 accepted only after the front end proves non-overlap and retains its
 field-order or row-major scalar access sequence.
+
+`STRING_COPY` and `STRING_APPEND` retain the destination capacity, header form,
+source text kind, overlap possibility and required pre-write checks. They do
+not decompose into source-visible field stores. `CLEAR` recognizes a
+counted-string descriptor and establishes its all-zero empty representation;
+`FILL` never accepts one.
 
 ### 4.6 Ordered effects
 
@@ -226,8 +240,8 @@ only after proving the operations mutually unobservable.
 is `module` or `statement`. A statement block is a `NativeBarrier` with the
 conservative reads, writes, calls, faults and machine-state clobbers defined by
 the language specification. Its target contract also requires every visible
-enum, subrange, Boolean, address and C-string representation to remain valid
-when generated Lanternfly execution resumes.
+enum, subrange, Boolean, address and string representation to
+remain valid when generated Lanternfly execution resumes.
 
 Before emitting a statement block, the backend spills or preserves every live
 generated value needed after it. The payload is then copied verbatim into the
@@ -302,27 +316,37 @@ The front end or backend may fold only after result type is resolved. Folded
 values apply Lanternfly wrapping, shift and division rules rather than host-language
 defaults.
 
-### 5.4 Static text lowering
+### 5.4 Text lowering
 
 A character literal reaches the IR as an exact integer value and then follows
-the ordinary expected-type rule. A C-string literal allocates immutable static
-bytes containing its decoded payload followed by zero. Its payload is at most
-65,534 bytes and its complete stored sequence is at most 65,535 bytes including
-the terminator. The IR value is the near or far address-class representation
-selected for that object.
+the ordinary expected-type rule. A string literal used to initialize constant
+string storage emits the full counted layout: header, decoded payload and
+terminator. Its payload is at most 65,534 bytes.
 
-An AZM backend may emit literal storage with `.cstr` when the decoded payload
-can be represented by that directive without changing bytes. It may use `.db`
-for escaped controls or when exact byte emission gives clearer provenance.
-Both forms emit the same trailing zero. C and BASIC backends must preserve the
-byte-oriented ASCII contract rather than silently adopting a host Unicode
-string representation.
+An AZM backend may emit the payload bytes with `.db`, or reuse text directives
+when they represent the decoded bytes without change; either way the emitted
+object carries the exact header, payload and trailing zero. C and BASIC
+backends must preserve the byte-oriented ASCII contract rather than silently
+adopting a host Unicode string representation.
 
-C-string comparison and `length` may lower inline or through selected helpers.
-The helper accepts the address class declared by the operands. A far helper
-must preserve and restore mapping context while it scans, and no conforming
-contract requires a scan beyond terminator offset 65,534. Literal `length`
-folds before helper selection.
+String comparison and `length` may lower inline or through selected helpers.
+A far helper must preserve and restore mapping context while it runs. Literal
+`length` folds before helper selection.
+
+A counted string is a typed address to sealed inline storage rather than an
+arbitrary IR aggregate value. Its capacity statically selects the header load,
+payload offset and exact copy bound. `length` reads the one- or two-byte header
+and zero-extends the result to `u16`. When a native contract consumes the
+terminated payload, the backend forms the appropriate near or far carrier for
+the payload address; this carrier is a compiler result, not a source pointer
+or address value.
+
+Checked copy and append evaluate and snapshot their sources before the first
+destination write when overlap is possible. They validate capacity and a byte
+append's nonzero rule, branch to `F-RANGE` on failure, then write payload,
+terminator and header. An adapter that may write counted-string storage
+validates length, nonzero payload and terminator before returning to generated
+Lanternfly code, branching to `F-INVALID-STRING` on failure.
 
 ## 6. Path lowering
 
@@ -434,7 +458,7 @@ A target defines a default ABI capable of:
 
 - scalar values through 32 bits;
 - near and far aggregate aliases;
-- near and far C-string views;
+- near and far string aliases with exact capacities;
 - opaque address values;
 - one scalar result;
 - normal and no-return calls;
@@ -452,7 +476,6 @@ A first implementation may follow the useful ZAX shape:
 - two slots for 32-bit values;
 - one target-sized slot/set for near aggregate aliases;
 - one bank/segment-plus-offset slot set for far aggregate aliases;
-- one address-class slot/set for C-string views;
 - IX frame anchor when named frame slots exist;
 - scalar locals in frame slots;
 - aggregate aliases as non-observable near/far address carriers;
@@ -526,7 +549,8 @@ Selection should be deterministic.
 ### 9.1 Intrinsic versus visible call
 
 `sqrt(x)` and `abs(x)` are visible standard value operations. `fill(target,
-value)` and `clear(target)` are visible standard effects. The backend may
+value)`, `clear(target)` and `append(destination, source)` are visible standard
+effects. The backend may
 select an intrinsic, inline sequence or helper without changing their
 source-level types, evaluation order or volatile-store order.
 
@@ -561,11 +585,12 @@ fault/bounds
 fault/range
 fault/address
 fault/invalid-boolean
+fault/invalid-string
 ```
 
-The `fault/invalid-boolean` component reports the public
-`F-INVALID-BOOLEAN` class. Runtime component names remain internal and do not
-replace conformance fault IDs.
+The two invalid-representation components report the public
+`F-INVALID-BOOLEAN` and `F-INVALID-STRING` classes. Runtime component names
+remain internal and do not replace conformance fault IDs.
 
 The linker includes transitive dependencies of selected components only.
 
@@ -807,7 +832,7 @@ fields with offsets
 enum representation and ordered members
 subrange host type and inclusive ordinal bounds
 array index domains/counts/strides
-C-string address class, terminator, immutability and program lifetime
+string capacity, header width, exact size, terminator and sealed invariants
 Boolean width and canonical false/true bit patterns
 ```
 
@@ -924,8 +949,8 @@ CallableCostMetadata
     or { kind: "unknown" }
 ```
 
-All records and unions are closed. `AggregateParameter` accepts only a record
-or fixed-array `typeId`. `hostSymbol` names a symbol supplied directly by the host;
+All records and unions are closed. `AggregateParameter` accepts only a string,
+record or fixed-array `typeId`. `hostSymbol` names a symbol supplied directly by the host;
 `targetBinding` resolves through the target profile's `externalBindings`.
 `abiId` names a target ABI description and `adapterId` names an optional
 boundary adapter. `costMetadataId` resolves through the target's
@@ -1084,10 +1109,10 @@ backend-focused groups summarize that inventory:
 ### Text
 
 - character escape decoding and expected integer typing;
-- static literal bytes with exactly one trailing terminator;
-- near/far C-string placement and conversion;
-- content comparison and `u16` length;
-- imported/native termination, immutability and lifetime contracts.
+- literal storage with exact header, payload and trailing terminator;
+- short and long string layouts at capacities 254 and 255;
+- header-read length, checked copy/append, clear and content comparison;
+- terminated-payload native contracts and native-write invariant validation.
 
 ### Layout
 
@@ -1135,7 +1160,7 @@ backend-focused groups summarize that inventory:
 - proof-based bounds-check removal;
 - constant and dynamic ordinal range failures;
 - proof-based range-check removal;
-- arithmetic, address and `F-INVALID-BOOLEAN` faults;
+- arithmetic, `F-INVALID-BOOLEAN` and `F-INVALID-STRING` faults;
 - no store after a failed destination check.
 
 ### Native boundary
@@ -1199,7 +1224,7 @@ Each milestone has an executable gate. A development build may reject a
 later-stage construct with an implementation-stage diagnostic, but only a
 build that passes the full applicable inventory may claim 0.4 conformance.
 
-Bounded views, parameter modes, floating point, and other post-0.4 design work
+General bounded views, parameter modes, floating point, and other post-0.4 design work
 do not enter the first milestones accidentally. They require a language
 decision, specification changes, conformance fixtures, and a lowering contract
 before implementation.

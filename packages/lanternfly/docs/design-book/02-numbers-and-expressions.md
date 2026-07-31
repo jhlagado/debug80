@@ -3,7 +3,7 @@
 Numeric rules are part of program meaning. A Z80, C compiler and BASIC dialect
 must agree even when their native promotion and overflow rules differ.
 
-Three corpus cases keep the design honest:
+Three corpus cases test the rules against real programs:
 
 - Skyfall deliberately stores a wrapped byte result;
 - Rushlight needs the signed difference between two byte coordinates;
@@ -47,7 +47,7 @@ const wrapped as u8 = u8(300) // 44
 The directly negated minimum of a signed type is legal as one value, so
 `const minimum as i8 = -128` does not first try to represent positive 128.
 
-## Byte characters and static strings
+## Byte characters and strings
 
 A character literal is one exact byte written in single quotes:
 
@@ -62,44 +62,45 @@ from context. Lanternfly accepts printable ASCII and the defined byte escapes;
 it does not add a character encoding, a multibyte character type or
 multi-character literals.
 
-A double-quoted expression creates immutable, program-lifetime bytes with a
-NUL terminator:
+A double-quoted expression supplies nonzero bytes with at most 65,534
+payload bytes. The source cannot contain an embedded zero, because the
+representation ends its payload with a zero byte. A literal initializes,
+assigns to, appends to or compares with the language's one text type: a
+counted string with a capacity in its type:
 
 ```lanternfly
-const title as near cstring = "LANTERNFLY"
-var promptText as near cstring = "READY?"
+var playerName as string[24]
+
+record Address
+    name as string[24]
+    city as string[32]
+end
 ```
 
-The source cannot contain an embedded zero, because that would make the
-payload end before the compiler-supplied terminator. A `cstring` carries an
-address class but no hidden length, capacity or ownership. Assignment copies
-that carrier, while comparison examines the unsigned payload bytes.
+The capacity chooses the layout once, at compile time. `string[1]` through
+`string[254]` use a one-byte length followed by payload space and a reserved
+terminator byte. `string[255]` through `string[65534]` use a two-byte length.
+The short form deliberately stops at 254: a length of 255 or more means a long
+string. The long form ends at 65,534, reserving its all-ones length in the same
+way. Even an empty `string[255]` retains the long layout because record offsets
+cannot depend on current contents.
 
-A source literal may contain at most 65,534 payload bytes. Its terminator, and
-the terminator promised by an imported, hosted or native C-string contract,
-must occur at an offset from zero through 65,534. The required accessible
-prefix through that terminator therefore occupies at most 65,535 bytes; the
-containing storage region may be larger.
+The terminator is always present after the current payload. This makes the
+payload immediately usable, without copying, by any native contract that
+consumes NUL-terminated bytes; every language operation maintains it.
 
-This is deliberately a boundary type rather than a mutable string system.
-Writable text is a fixed `u8` array with an explicit capacity; it does not
-convert implicitly to `cstring`. A C string also has no conversion to an integer
-or opaque address.
+Lanternfly keeps the representation sealed. No field or index names the length
+header, payload cells or terminator. Assignment, `append`, `clear`, comparison
+and `length` are the only ordinary ways to operate on it, so those operations
+can preserve the relationship between the count and the terminator. An
+ordinary `u8` array carries none of these promises and is not a string.
 
-The address class can be converted without changing the bytes or their
-lifetime:
-
-```lanternfly
-farMessage = far cstring(nearMessage)
-nearMessage = near cstring(farMessage)
-defaultMessage = cstring(sourceMessage)
-```
-
-A target may widen a near C string to far when it can attach the current
-mapping context. Far-to-near conversion is checked and invokes `F-ADDRESS` at
-runtime when the logical address has no near representation. The unqualified
-form converts to the target profile's default C-string class. A constant
-conversion that cannot be proved valid is a compile-time error.
+String assignment copies content rather than a carrier. Copying from
+another string or a literal checks the destination capacity first, so
+capacities need not match. `append(destination, source)` accepts a string, a
+literal or one nonzero `u8` byte. A dynamic overflow or zero-byte append
+invokes `F-RANGE` before changing the destination. `length` reads the stored
+count without a scan and returns `u16`.
 
 ## Operand compatibility
 
@@ -256,8 +257,8 @@ returned.
 
 Integers use the compatibility rules above. Subranges compare through their
 host, and enum operands must share a nominal enum family. Booleans allow only
-`=` and `<>`. C strings use content comparison. Record and array equality is
-deferred.
+`=` and `<>`. Strings use content comparison across capacities, including
+against literals. Record and array equality is deferred.
 
 Precedence from highest to lowest is:
 
@@ -285,8 +286,8 @@ right. Comparison chaining is invalid.
 type of the operand's width. A negative value is a compile-time or runtime
 arithmetic fault.
 
-`length` scans a `cstring` payload and returns `u16`. Literal calls fold at compile
-time.
+`length` reads a string's header, or a literal's known payload length, and
+returns `u16`. Literal calls fold at compile time.
 
 These operations may become instructions, inline sequences or helpers. Their
 source types and edge cases do not change.

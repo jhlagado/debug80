@@ -1,29 +1,29 @@
 # Lanternfly language completeness review
 
-Status: post-0.4 design backlog; not a blocker for K0 or K1
+Status: first-edition completeness review and post-0.4 backlog
 
 Lanternfly now covers the central executable vocabulary of a small structured
 BASIC or Pascal: scalar values, declarations, expressions, decisions, loops,
 routines, modules, fixed arrays and records. Version 0.4 includes character
-literals, static C strings, nominal enums, checked subranges and ordinal array
-domains. The remaining gaps are concentrated around safe access to
-variable-size regions, text mutation and portable service contracts.
+literals, owned counted strings, nominal enums, checked
+subranges and ordinal array domains. The remaining gaps are concentrated around
+general access to variable-size regions and portable service contracts.
 
 The [specification](specification.md) governs accepted syntax and semantics.
 The first compiler implements that baseline before adding the facilities
 ranked here. The [implementation plan](implementation-plan.md) defines the
 coding order.
 
-## Static text in 0.4
+## Text in 0.4
 
 The first text facility uses the representation already consumed by common
 Z80 and AZM routines:
 
 ```lanternfly
-const banner as near cstring = "LANTERNFLY"
+var banner as string[10] = "LANTERNFLY"
 const digitZero as u8 = '0'
 
-extern sub printText(text as near cstring)
+extern sub printText(text as string[10])
 extern sub printChar(value as u8)
 
 sub showDigit(value as u8)
@@ -32,50 +32,50 @@ sub showDigit(value as u8)
 end
 ```
 
-A `cstring` is a non-null, read-only address-class value for static bytes
-terminated by zero. Its runtime value contains only the address-class
-representation. This makes a literal suitable for AZM `.cstr` data and for
-firmware routines that already accept the address of NUL-terminated bytes.
+A `string[N]` is owned counted storage whose payload always ends with a zero
+byte. The maintained terminator makes the payload directly suitable for
+firmware routines that already accept the address of NUL-terminated bytes,
+while the length header serves counted consumers without a scan.
 
 Character literals produce exact byte values, so existing routines that accept
 `u8` receive them directly. Direct literal characters use ASCII. Named
 platform encodings can be added later as explicit conversion or resource
 steps, while `\xHH` records an exact target byte when needed.
 
-The language defines `length(cstring)` and content comparison. Assignment copies
-the view, while the referenced bytes remain immutable. Writable text continues
-to use byte arrays until the language has a capacity-carrying view.
+The language defines `length`, content comparison, checked copy and append.
+Literal payloads are immutable; every operation maintains the terminator, so
+the payload is always valid NUL-terminated text.
 
 ## Capability audit
 
-| Capability                                      | 0.4 position                           | Assessment                                                                                  |
-| ----------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------- |
-| Fixed-width integers and Boolean values         | Specified                              | Sufficient for the current machine and game corpus                                          |
-| Character literals                              | Specified as byte-valued literals      | Sufficient for ASCII-oriented firmware and display calls                                    |
-| Static strings                                  | `near cstring` and `far cstring`       | Sufficient for messages, labels, command arguments and read-only native calls               |
-| Mutable strings                                 | Byte arrays only                       | High-priority gap; safe routines need a buffer capacity                                     |
-| String operations                               | Length and comparison                  | Copy, append, search and substring need bounded source and destination views                |
-| Arrays and records                              | Fixed, exact, ordinal-indexed storage  | Counts, explicit bounds, subranges and enums cover the relevant Pascal model                |
-| Variable-size array arguments                   | Exact-shape aggregate aliases only     | High-priority gap for reusable algorithms                                                   |
-| Read-only parameters                            | Available only through `cstring`       | High-priority gap for constant arrays, records and general views                            |
-| Routines and local scalars                      | Specified                              | Core procedural programming is covered                                                      |
-| Local arrays and records                        | Aliases to existing storage            | Deliberate first-edition limit; Pascal-style owned locals need a frame and cost policy      |
-| Output and in/out parameters                    | Not yet available for scalars          | A declared parameter mode would provide the feature without adding pointer values           |
-| Aggregate and multiple results                  | Caller-owned storage only              | Parameter modes can cover the current corpus before aggregate return values are added       |
-| Enumerations and subranges                      | Nominal checked ordinal types          | Improve domain errors, traversal, selection and array bounds without changing packed layout |
-| Type aliases                                    | Absent                                 | Useful for imported layouts; lower priority than facilities required by current algorithms  |
-| Standard numeric library                        | `abs` and `sqrt`                       | Add `min`, `max`, `clamp` and bit count after the core numeric rules are implemented        |
-| Standard input and output                       | Supplied by external/platform routines | The boundary is sound, but standard profile contracts still need names and semantics        |
-| Compile-time data tables                        | Aggregate constants                    | Covers the useful role of BASIC `DATA`/`READ` for fixed programs                            |
-| Assertions and controlled termination           | Runtime fault hooks only               | Add user-facing assertion syntax for tests and debug builds                                 |
-| Floating point                                  | Deferred capability                    | Important for some desktop BASIC programs, unnecessary for the current Z80 game corpus      |
-| Heap values and dynamic collections             | Deferred                               | Consistent with the static-memory target and current evidence                               |
-| Files, clocks, graphics, sound and random input | Platform libraries                     | Correctly remain outside the core language                                                  |
+| Capability                                      | 0.4 position                            | Assessment                                                                                  |
+| ----------------------------------------------- | --------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Fixed-width integers and Boolean values         | Specified                               | Sufficient for the current machine and game corpus                                          |
+| Character literals                              | Specified as byte-valued literals       | Sufficient for ASCII-oriented firmware and display calls                                    |
+| Strings                                         | Sealed `string[N]` storage              | One text type: exact capacity, checked copy/append and a maintained NUL terminator          |
+| String operations                               | Length, comparison, copy, append, clear | Search, substring and truncating copy remain bounded-view work                              |
+| Arrays and records                              | Fixed, exact, ordinal-indexed storage   | Counts, explicit bounds, subranges and enums cover the relevant Pascal model                |
+| Variable-size array arguments                   | Exact-shape aggregate aliases only      | High-priority gap for reusable algorithms                                                   |
+| Read-only parameters                            | Absent                                  | High-priority gap for constant arrays, records, literal text and general views              |
+| Routines and local scalars                      | Specified                               | Core procedural programming is covered                                                      |
+| Local arrays and records                        | Aliases to existing storage             | Deliberate first-edition limit; Pascal-style owned locals need a frame and cost policy      |
+| Output and in/out parameters                    | Not yet available for scalars           | A declared parameter mode would provide the feature without adding pointer values           |
+| Aggregate and multiple results                  | Caller-owned storage only               | Parameter modes can cover the current corpus before aggregate return values are added       |
+| Enumerations and subranges                      | Nominal checked ordinal types           | Improve domain errors, traversal, selection and array bounds without changing packed layout |
+| Type aliases                                    | Absent                                  | Useful for imported layouts; lower priority than facilities required by current algorithms  |
+| Standard numeric library                        | `abs` and `sqrt`                        | Add `min`, `max`, `clamp` and bit count after the core numeric rules are implemented        |
+| Standard input and output                       | Supplied by external/platform routines  | The boundary is sound, but standard profile contracts still need names and semantics        |
+| Compile-time data tables                        | Aggregate constants                     | Covers the useful role of BASIC `DATA`/`READ` for fixed programs                            |
+| Assertions and controlled termination           | Runtime fault hooks only                | Add user-facing assertion syntax for tests and debug builds                                 |
+| Floating point                                  | Deferred capability                     | Important for some desktop BASIC programs, unnecessary for the current Z80 game corpus      |
+| Heap values and dynamic collections             | Deferred                                | Consistent with the static-memory target and current evidence                               |
+| Files, clocks, graphics, sound and random input | Platform libraries                      | Correctly remain outside the core language                                                  |
 
-## Immediate companion: bounded views
+## Immediate companion: general bounded views
 
-Static strings expose why an exact-array-only parameter model is incomplete.
-A routine that copies text needs three facts:
+Counted strings now cover ordinary writable text, but exact-shape aggregate
+parameters remain incomplete for general algorithms. A routine that copies an
+arbitrary region needs three facts:
 
 1. where the source begins;
 2. where the destination begins;
@@ -106,16 +106,14 @@ surface design must settle:
 - overlap rules for copying;
 - bank-boundary restrictions.
 
-This facility has higher priority than concatenation syntax. It creates the
-contract needed to implement bounded copy, append and substring operations
-while retaining static allocation.
+Counted strings no longer wait on this facility. General array slices, sorting,
+table scans, substring views and capacity-generic text routines still do.
 
-## Provisional proposal: counted strings with a compatibility terminator
+## Chosen design: counted strings with a compatibility terminator
 
-**Provisional.** This section records a concrete design for the mutable-string
-gap: a Pascal-style counted string whose payload is always also a valid
-zero-terminated string. Capping the payload at 254 bytes buys both interfaces
-from one representation.
+This first-edition design closes the ordinary mutable-string gap with a
+Pascal-style counted string whose payload is always also a valid
+zero-terminated string.
 
 ### Type and storage
 
@@ -124,8 +122,8 @@ var name as string[24]
 var line as string[80]
 
 record Contact
-    var name as string[24]
-    var city as string[16]
+    name as string[24]
+    city as string[16]
 end
 ```
 
@@ -145,9 +143,10 @@ The wide form is identical with a two-byte length at offset 0 and `N + 3`
 total bytes. Because the header width follows from the declared capacity, it
 is a static fact of the type: `size` folds exactly, record layouts stay
 derivable by eye, and `length(s)` lowers to a plain one- or two-byte load
-with no runtime branch. In the one-byte form, a stored length of 255 is never
-valid, which gives native-boundary checking a free corruption tripwire in the
-spirit of the Boolean zero-or-one rule.
+with no runtime branch. The all-ones length is reserved in either form: 255 is
+never a valid short length and 65,535 is never a valid long length. This gives
+native-boundary checking a free corruption tripwire in the spirit of the
+Boolean zero-or-one rule.
 
 A per-value variable-width length, in the manner of UTF-8 or LEB128, was
 considered and declined: it would put a header-width branch on every
@@ -157,11 +156,11 @@ appropriate for serialized file and stream formats, where data is scanned
 linearly anyway; in-memory working storage takes its width from the declared
 type.
 
-The invariant is that every language-performed write leaves a zero at
-`payload[L]`. The reserved extra cell guarantees room for the terminator even
-at full capacity. Bytes past the terminator are unspecified. All-zero storage
-is a valid empty string, so zero initialization needs no special case and
-`clear` applies.
+The invariant is that payload bytes before `L` are nonzero and every
+language-performed write leaves a zero at `payload[L]`. The reserved extra cell
+guarantees room for the terminator even at full capacity. Bytes past the
+terminator are unspecified. All-zero storage is a valid empty string, so zero
+initialization needs no special case and `clear` applies.
 
 ### Sealed representation
 
@@ -170,19 +169,21 @@ string is not a byte array: no expression names its length byte, its
 terminator cell or a payload position, so no program can set a length
 directly, overwrite the terminator or desynchronize the two. Every read and
 write of the representation goes through the language's own operations —
-`length`, assignment, literals, `append`, comparison, `clear` and the
-zero-terminated payload view — each of which knows the type's header form at
-compile time and maintains all three invariants: the length within capacity,
-the terminator at `payload[L]`, and the one-byte form's never-255 rule. This
+`length`, assignment, literals, `append`, comparison, `clear` and native
+payload access — each of which knows the type's header form at
+compile time and maintains all four invariants: the length within capacity,
+nonzero payload, the terminator at `payload[L]`, and the reserved all-ones
+length rule. This
 is the same doctrine the language applies to alias carriers: the
 representation exists in lowering, and source code cannot misuse what it
 cannot spell.
 
 ### Operations
 
-- `length(s)` reads the length byte: constant time, no scan.
-- All six comparisons compare content under the same byte-wise unsigned
-  order as static strings; equality may short-circuit on unequal lengths.
+- `length(s)` reads the one- or two-byte header, zero-extends it to `u16` and
+  performs no scan.
+- All six comparisons compare content in byte-wise unsigned order; equality
+  may short-circuit on unequal lengths.
 - Assignment between counted strings copies length, payload and terminator.
   A source longer than the destination's capacity is a compile error when
   known and `F-RANGE` otherwise — the length is checked against the
@@ -190,13 +191,12 @@ cannot spell.
   same spirit as a subrange check.
 - A string literal initializes or assigns any `string[N]` whose capacity
   holds it, checked at compile time.
-- Assignment from a zero-terminated static string scans its length first,
-  checks capacity, then copies; the fault precedes any destination write.
 - `append(destination, source)` and `append(destination, byteValue)` are
-  standard procedures with the same capacity check.
-- Used where a zero-terminated string is expected, a counted string supplies
-  its payload view at no cost: the invariant makes `payload` a valid
-  terminated string, so every existing print-style contract works unchanged.
+  standard procedures with the same capacity check. A byte value must be
+  nonzero so the payload remains valid zero-terminated text.
+- Where a native contract expects zero-terminated bytes, a string supplies
+  its payload at no cost: the invariant makes the payload a valid
+  terminated sequence, so every existing print-style contract works unchanged.
   This conversion is the design's point, and it is free.
 
 ### Consequences
@@ -206,18 +206,16 @@ Records of strings get defined storage — `Contact` above is exactly
 wanted all along. Input services receive a destination whose capacity is
 visible in its type, closing the overrun hole that a bare terminator
 convention leaves open. On a Z80, the known length turns copies into block
-moves and gives equality a one-byte fast path. Text longer than 254 bytes
-remains the business of zero-terminated statics and explicit byte buffers,
-which open-ended streams need anyway.
+moves and gives equality a short-header fast path. Capacities from 255 through
+65,534 use the long form without changing the source operations.
 
 ### Naming
 
-With counted strings as the everyday type, the plain word `string` goes to
-them — `string[24]` reads as declared storage, which it is. The read-only
-zero-terminated view then deserves a mechanism-named word; `zstring`
-(zero-terminated, in the ASCIIZ lineage) says what it is without pointing at
-another language's culture, where `cstring` points at C. Whether the view
-keeps `cstring` or becomes `zstring` is an open naming decision.
+Counted strings use the plain word `string`: `string[24]` reads as declared
+storage, which it is. The earlier read-only `cstring` view type was removed
+rather than renamed. Its guarantee — valid NUL-terminated bytes for the
+program's lifetime — is already carried by the sealed representation's
+terminator, so a second text type earned nothing but a second set of rules.
 
 ### Open points
 
@@ -229,9 +227,12 @@ keeps `cstring` or becomes `zstring` is an open naming decision.
   sealed invariants, while any general write access would need the same
   operation-only discipline as the header;
 - capacity-generic string parameters, which are the bounded-view question in
-  another costume — first-edition parameters state their exact capacity;
-- the native-boundary contract wording for services that fill a counted
-  string.
+  another costume — first-edition parameters state their exact capacity.
+
+The native-boundary question is closed for the first edition: writable
+counted-string parameters are exact-capacity aggregate aliases, and an adapter
+validates every possibly written representation before Lanternfly resumes.
+Failure invokes `F-INVALID-STRING`.
 
 ## Portable text and console contracts
 
@@ -243,7 +244,7 @@ A small console-style profile should define contracts equivalent to:
 
 ```lanternfly
 extern sub writeChar(value as u8)
-extern sub writeText(text as near cstring)
+extern sub writeText(text as string[80])
 extern sub readChar() as u8
 ```
 
@@ -251,10 +252,10 @@ Targets can bind those signatures to firmware, emulator services, generated C
 or BASIC runtime code. Screen coordinates, colours, key matrices and
 nonblocking input belong to more specific profiles.
 
-Writable text support should then add bounded library procedures with explicit
-failure results. Copy and append must always receive destination capacity.
-Search and substring should return a bounded view or an index rather than an
-unrestricted pointer.
+The counted-string operations already carry destination capacity and fault
+before an invalid write. A later bounded-view library can add search,
+substring and deliberate truncation; those operations should return a bounded
+view, result status or index rather than an unrestricted pointer.
 
 ## Ordinal types in 0.4
 
@@ -314,17 +315,17 @@ numbers, implicit variables and unrestricted `goto` outside the core.
 
 Heap strings, garbage collection, exceptions and dynamic collections belong
 to a different deployment profile. A later profile can add them while
-preserving the static `cstring` ABI.
+preserving the fixed `string[N]` layout and its terminated-payload ABI.
 
 ## Post-0.4 design order
 
-1. Implement the specified character and C-string facilities as part of the
+1. Implement the specified character and string facilities as part of the
    0.4 front end and AZM backend.
 2. After K1, design read-only and writable bounded views together with
    parameter intent.
-3. Define one minimal console/text platform profile and bounded text library.
-4. Reassess fixed-capacity owned strings, assertions and smaller standard
-   operations using translated programs.
+3. Define one minimal console/text platform profile and bounded-view library.
+4. Reassess assertions and smaller standard operations using translated
+   programs.
 
 The first item is implementation of an existing rule. The remaining items are
 language or library changes and require specification, conformance, and

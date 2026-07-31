@@ -49,7 +49,7 @@ version-1 manifest contains:
 
 - body identity, edition and original source span;
 - target profile identifier;
-- integer, Boolean, C-string and near/far address types;
+- integer, Boolean, string and near/far address types;
 - type entries for enums, subranges, records and arrays, carrying representation,
   shape and exact layout but no aggregate storage class;
 - symbol entries for ordinary scalar constants, immutable aggregate constants
@@ -122,6 +122,7 @@ layouts, invalid ordinal domains, unresolved IDs and host/target mismatches.
 | --------------------- | ------------------------------------------------------ |
 | byte or word state    | mutable fixed-width integer storage                    |
 | Boolean state         | canonical `boolean` storage                            |
+| owned text state      | sealed fixed-capacity `string[N]` storage              |
 | named small state set | enum or checked subrange                               |
 | typed array state     | fixed array with complete ordinal domains              |
 | layout type           | exact record type                                      |

@@ -23,7 +23,7 @@ The first edition has a deliberately small visible set:
 | -------------------------- | ------------------------------------------- |
 | `abs(value)`               | unsigned magnitude at the same width        |
 | `sqrt(value)`              | floor of a non-negative integer square root |
-| `length(text)`             | payload byte count of a `cstring`           |
+| `length(text)`             | payload byte count of a string              |
 | `size(type-or-path)`       | exact compile-time byte size                |
 | `count(array, dimension?)` | compile-time dimension extent               |
 | `lower(array, dimension?)` | first valid ordinal index                   |
@@ -31,14 +31,18 @@ The first edition has a deliberately small visible set:
 | `offset(Record.fieldPath)` | compile-time field offset                   |
 | `clear(target)`            | ordered all-zero aggregate store            |
 | `fill(target, value)`      | ordered repeated scalar store               |
+| `append(target, source)`   | checked string growth                       |
 
 Power is the `^` operator, not a second function. Aggregate assignment performs
 complete equal-type copying, so the core does not need separate `copy` and
 `move` procedures.
 
-`clear` is legal only when every scalar leaf accepts the all-zero
-representation. `fill` converts its value once before the first store. Both
-visit array elements in row-major order, which matters for volatile effects.
+`clear` is legal only when every leaf accepts the all-zero representation; a
+string does and becomes empty. `fill` converts its value once
+before the first store and never exposes a string's sealed cells.
+`append` checks its final length and source byte before changing its
+destination. Repeated array stores visit elements in row-major order, which
+matters for volatile effects.
 
 ### Platform services
 
@@ -67,29 +71,35 @@ A backend may link helpers for:
 - dynamic shifts and power;
 - integer square root;
 - constant-stride address calculation;
-- far aggregate or C-string access;
+- far aggregate or far string access;
 - fault dispatch.
 
 Only selected helpers are linked. Their identities appear in artifacts and
 cost reports, not in ordinary name lookup.
 
-## Static text as a boundary type
+## Owned text at the boundary
 
-`cstring` is a non-null, read-only view of program-lifetime NUL-terminated bytes:
+`string[N]` owns writable inline storage and is the only text type crossing
+the native boundary:
 
 ```lanternfly
-const banner as near cstring = "LANTERNFLY"
+var banner as string[16] = "LANTERNFLY"
 
-extern sub printText(text as near cstring)
+extern sub printText(text as string[16])
 ```
 
-The value carries an address class but no length, capacity or ownership.
-Assignment copies that carrier, not the bytes. `length` scans to the
-contract-bounded terminator and returns `u16`; literal calls fold.
+Capacity chooses a one-byte length through 254 or a two-byte length from 255
+through 65,534. Every value also maintains a zero immediately after its
+nonzero payload, so a native routine that consumes NUL-terminated bytes needs
+only the payload address in the appropriate address class. There is no
+conversion from a raw `u8` buffer because neither its capacity nor its
+termination is guaranteed.
 
-Writable text remains ordinary `u8` storage with an explicit capacity.
-Lanternfly does not pretend that a terminator proves enough destination space.
-Bounded writable views remain later design work.
+The type seals its representation. Language code uses checked assignment,
+`append`, `clear`, comparison and `length`; it cannot write a header or payload
+cell separately. Native code that receives a writable string alias
+must preserve the declared layout and all invariants. Its adapter validates a
+possibly written value before Lanternfly resumes.
 
 ## External routine declarations
 
@@ -97,7 +107,7 @@ Existing substrate routines enter through typed `extern sub` declarations:
 
 ```lanternfly
 extern sub checkCollisionAt(x as i16, y as i16) as boolean from "CheckCollAt"
-extern sub firmwarePrint(text as near cstring) at $0033
+extern sub firmwarePrint(text as string[32]) at $0033
 ```
 
 An external declaration may bind an address, a substrate symbol or a
@@ -149,7 +159,7 @@ control flow explicitly.
 
 ## Far access
 
-Far aggregate parameters, aliases and C strings may require a bank or segment
+Far aggregate parameters, aliases and strings may require a bank or segment
 carrier. A far call commonly:
 
 1. evaluates and preserves arguments;
@@ -171,17 +181,17 @@ reference variable.
 Bare-metal systems may lack exceptions and standard output, but they can still
 distinguish faults:
 
-| Fault               | Condition                                              |
-| ------------------- | ------------------------------------------------------ |
-| `F-BOUNDS`          | dynamic array index outside its domain                 |
-| `F-RANGE`           | value entering an enum/subrange destination is invalid |
-| `F-DIV-ZERO`        | runtime division or `mod` by zero                      |
-| `F-NEGATIVE-SHIFT`  | negative runtime shift count                           |
-| `F-NEGATIVE-POWER`  | negative runtime exponent                              |
-| `F-NEGATIVE-SQRT`   | negative runtime square-root operand                   |
-| `F-LOOP-RANGE`      | continuing loop value cannot fit its control type      |
-| `F-ADDRESS`         | checked far-to-near C-string conversion fails          |
-| `F-INVALID-BOOLEAN` | imported Boolean is not zero or one                    |
+| Fault               | Condition                                         |
+| ------------------- | ------------------------------------------------- |
+| `F-BOUNDS`          | dynamic array index outside its domain            |
+| `F-RANGE`           | checked ordinal or string destination fails       |
+| `F-DIV-ZERO`        | runtime division or `mod` by zero                 |
+| `F-NEGATIVE-SHIFT`  | negative runtime shift count                      |
+| `F-NEGATIVE-POWER`  | negative runtime exponent                         |
+| `F-NEGATIVE-SQRT`   | negative runtime square-root operand              |
+| `F-LOOP-RANGE`      | continuing loop value cannot fit its control type |
+| `F-INVALID-BOOLEAN` | imported Boolean is not zero or one               |
+| `F-INVALID-STRING`  | native write leaves an invalid string             |
 
 A profile binds each class to a non-returning hook. A debug TEC-1G target might
 store a code in known RAM and halt; a C runner might report the mapped source

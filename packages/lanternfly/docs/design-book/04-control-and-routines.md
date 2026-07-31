@@ -9,7 +9,7 @@ The first edition has:
 
 - scalar and aggregate assignment;
 - general expression statements, including calls whose results are discarded;
-- `clear` and `fill`;
+- `clear`, `fill` and `append`;
 - `if`;
 - `select`;
 - `for ... to` and `for ... until`;
@@ -215,8 +215,8 @@ sub distance(left as i16, right as i16) as u16
 end
 ```
 
-An omitted result means no usable value. A result may be an ordinal, Boolean,
-address or `cstring` scalar. Aggregate return is deferred.
+An omitted result means no usable value. A result may be an ordinal, Boolean
+or address scalar. String and other aggregate return is deferred.
 
 Every declaration and invocation uses parentheses, including an empty
 parameter list. There is no `call` keyword:
@@ -232,8 +232,8 @@ invocation remains invalid where a value is required.
 
 ## Parameters
 
-Scalar parameters pass values. Record and array parameters temporarily alias
-caller storage:
+Scalar parameters pass values. Counted-string, record and array parameters
+temporarily alias caller storage:
 
 ```lanternfly
 export sub moveActor(near actor as Actor, deltaX as i16)
@@ -244,7 +244,8 @@ end
 The aggregate argument is a compatible writable storage path or local alias.
 No pointer or reference value appears in source, and the parameter cannot be
 rebound, stored, returned or compared. Its name denotes the caller's
-aggregate.
+aggregate. A counted-string parameter includes its exact capacity, so
+`string[24]` and `string[32]` parameters are different shapes.
 
 Exported aggregate parameters state `near` or `far`. Private unqualified
 parameters use the target default. First-edition aggregate parameters are
@@ -252,7 +253,7 @@ writable; read-only, output and in/out modes remain open design work.
 
 ## Locals and aliases
 
-Scalar locals use `var`; aggregate locals use `alias`:
+Scalar locals use `var`; counted-string and other aggregate locals use `alias`:
 
 ```lanternfly
 sub tickSelected(index as u8)

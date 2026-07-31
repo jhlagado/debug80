@@ -13,6 +13,7 @@ Module variables own static storage:
 var score as u16 = 0
 var body as u8[64]
 var monsters as Monster[3]
+var playerName as string[24]
 ```
 
 The linker or substrate places each object in a target region. Its exact size,
@@ -27,14 +28,14 @@ sub chooseMove() as u8
 end
 ```
 
-Records and arrays declared inside a routine would allocate aggregate frame
-storage, so first-edition locals cannot own them. A local aggregate name is an
-`alias` to storage that already exists.
+Counted strings, records and arrays declared inside a routine would allocate
+aggregate frame storage, so first-edition locals cannot own them. A local
+aggregate name is an `alias` to storage that already exists.
 
 Compiler-owned storage without an initializer begins as all bits zero only
-when zero is valid for every scalar leaf. Integers and Booleans qualify.
-Enums and subranges qualify when their domains include ordinal zero. A `cstring`
-does not.
+when zero is valid for every leaf. Integers, Booleans and strings qualify —
+an uninitialized string begins empty. Enums and subranges qualify when their
+domains include ordinal zero.
 
 ## Exact records
 
@@ -42,12 +43,12 @@ Fields appear in declaration order with no hidden padding:
 
 ```lanternfly
 record Monster
-    var x as u8
-    var y as u8
-    var direction as Direction
-    var timer as u8
-    var respawnTimer as u8
-    var state as EnemyState
+    x as u8
+    y as u8
+    direction as Direction
+    timer as u8
+    respawnTimer as u8
+    state as EnemyState
 end
 ```
 
@@ -61,6 +62,27 @@ the difference cannot be observed.
 
 Records and arrays contained by value must form an acyclic graph. The language
 has no by-value recursive record because it would have no finite size.
+
+## Sealed counted-string storage
+
+A counted string also has exact inline layout, although its cells do not become
+source fields. Capacity fixes both the header width and total size:
+
+| Declared type        | Length form                       | Payload begins | Exact size |
+| -------------------- | --------------------------------- | -------------- | ---------- |
+| `string[N]`, N ≤ 254 | `u8`, never 255                   | offset 1       | N + 2      |
+| `string[N]`, N ≥ 255 | target-endian `u16`, never 65,535 | offset 2       | N + 3      |
+
+The last byte reserved by either formula leaves room for a terminator at full
+capacity. A length of 255 or more therefore belongs to the long form. The
+capacity chooses the form even when the current text is short, keeping every
+surrounding record offset fixed.
+
+The header, payload and terminator form one sealed value. Source cannot index
+the payload or assign the length directly. This removes an otherwise awkward
+class of half-valid states: a program cannot update the count while forgetting
+the terminator, insert an embedded zero, or write past capacity through an
+ordinary array path.
 
 ## Array index domains
 
@@ -248,7 +270,7 @@ A local alias gives a shorter name to one existing aggregate:
 
 ```lanternfly
 record Plane
-    var rows as u8[8]
+    rows as u8[8]
 end
 
 var boardPlanes as Plane[4]
@@ -270,12 +292,13 @@ or copy eight bytes, and it cannot be rebound. A backend may carry the selected
 base in a register pair or frame slot, but that carrier has no source value.
 
 An alias cannot be stored, returned, compared, converted or used as an array
-element. It remains a temporary name for field access, indexing, aggregate
-copy and nested aggregate calls.
+element. It remains a temporary name for field access, indexing,
+counted-string operations, aggregate copy and nested aggregate calls.
 
 ## Aggregate parameters
 
-Record and array parameters use the same non-rebindable storage model:
+Counted-string, record and array parameters use the same non-rebindable storage
+model:
 
 ```lanternfly
 export sub tickMonster(near monster as Monster)
@@ -284,12 +307,13 @@ end
 ```
 
 The argument must be compatible mutable aggregate storage, not a temporary
-value. Exported parameters state `near` or `far`; private parameters may use
-the target profile's default.
+value. A counted-string parameter states its exact capacity. Exported
+parameters state `near` or `far`; private parameters may use the target
+profile's default.
 
 The storage class describes where the aggregate lives. It is not part of the
-element type. In `far labels as near cstring[8]`, the array is far storage and
-each stored C string has a near text address.
+element type. In `far handles as near address[8]`, the array is far storage
+and each stored element is a near opaque address.
 
 ## Near/far storage and opaque address values
 
@@ -345,10 +369,10 @@ little-endian.
 
 ## Deliberate limits
 
-The first edition has no heap, garbage collector, resizable array, aggregate
-automatic local, source pointer/reference value, array of pointers, pointer
-arithmetic, indirect call, arbitrary bit field or array that spans mapping
-contexts.
+The first edition has no heap, garbage collector, resizable array or string,
+aggregate automatic local, source pointer/reference value, array of pointers,
+pointer arithmetic, indirect call, arbitrary bit field or array that spans
+mapping contexts.
 
 Packed byte records and masks cover the observed Pacmo layouts. Bounded views
 remain open work for algorithms that need a variable-sized region of existing

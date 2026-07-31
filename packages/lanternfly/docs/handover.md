@@ -100,12 +100,23 @@ The words `to` and `until` retain their inclusive and exclusive meanings in
 subrange declarations, array dimensions, `select` cases and counted loops.
 This is part of the 0.4 implementation baseline rather than post-0.4 work.
 
+The same first-edition pass now includes the language's one text type:
+`string[N]`, an owned counted string in the Pascal tradition. It uses a
+one-byte length through capacity 254 and a two-byte length from 255 through
+65,534, with a maintained compatibility terminator in either form, so the
+payload is always valid NUL-terminated text for native consumers. Its
+representation is sealed from source paths, and checked copy and append
+preserve the invariants. The earlier read-only `cstring` view type was
+removed once the terminator made it redundant; text at every boundary is now
+`string[N]`.
+
 The most important boundary concerns storage identity. Lanternfly source has
 no general pointer or reference values. Programs keep persistent identity in
 declared paths, multidimensional indices and ordinal selectors. Aggregate
 parameters and local `alias` declarations provide temporary access to existing
-aggregate storage. An alias denotes its record or array for field access,
-indexing, copying and nested calls; the backend carrier has no source
+aggregate storage. An alias denotes its string, record or array for
+the operations that type supports, including copying and nested calls; the
+backend carrier has no source
 expression and cannot be stored, returned, compared, converted or rebound.
 First-class pointers are not listed as routine future work because adding them
 would change the language's value model.
@@ -116,12 +127,13 @@ Aggregate storage class is written before a parameter name:
 export sub moveActor(near actor as Actor, deltaX as i16)
 end
 
-export sub showLabels(far labels as near cstring[8])
+export sub showLabels(far labels as string[16][8])
 end
 ```
 
 The second example keeps two distinct facts visible: `labels` names an array
-in far storage, while each element is a `near cstring`.
+in far storage, while each element is a `string[16]` whose capacity belongs
+to the element type.
 
 The same rewrite settled the first-edition loop surface:
 
@@ -136,7 +148,7 @@ The same rewrite settled the first-edition loop surface:
 Four complete read-only review rounds examined the specification and
 conformance contract sentence by sentence under the human-writing rules. The
 reviews found and repaired twelve issues involving alias semantics,
-collection traversal, C-string lifetime and conversion, loop boundaries,
+collection traversal, text representation and native boundaries, loop boundaries,
 near/far parameter syntax, volatile controls and conformance coverage. The
 fourth review returned `NO FINDINGS`.
 
@@ -182,8 +194,8 @@ the next set of cross-document gaps. It:
   in constant expressions while excluding provider-bound opaque addresses;
 - added a stable parser diagnostic, zero-statement block coverage and ordinary
   scalar volatile traces;
-- fixed the exact C-string payload and terminator boundary without limiting a
-  provider's containing storage region;
+- fixed the exact string-literal payload and terminator boundary without
+  limiting a provider's containing storage region;
 - carried enum/subrange validity through inline assembly and standardized the
   public `F-INVALID-BOOLEAN` fault.
 
@@ -289,9 +301,9 @@ promise that the feature will be added later.
 - `var` and `const` declarations with `as` type clauses.
 - Nominal enums and subranges provide checked ordinal types without becoming
   runtime range objects.
-- Character literals produce exact byte values. Static double-quoted text
-  produces read-only NUL-terminated `cstring` values with near/far address
-  classes.
+- Character literals produce exact byte values. A double-quoted literal
+  initializes, assigns to, appends to or compares with owned `string[N]`
+  storage — the language's one text type.
 - Structured `if`, `select`, inclusive `for ... to`, exclusive
   `for ... until`, `for each ... in` and `while`, closed by bare `end`.
   A structured block may contain zero statements without a placeholder word.
@@ -371,6 +383,8 @@ Do not let C, BASIC or target-CPU arithmetic silently redefine these results.
 - Multidimensional paths are meaningful language constructs even if an early
   backend stages their address calculation.
 - Static aggregate storage is the default.
+- Counted strings are sealed exact-layout aggregates with capacities in their
+  types; their headers, payload cells and terminators have no source paths.
 - Scalar locals may own automatic storage.
 - Aggregate local names are explicit aliases to existing storage, not local
   aggregate allocations.
@@ -467,7 +481,8 @@ The accepted staging is described fully in the
 
 Parse the complete 0.4 grammar, then type-check and lower imported state,
 expressions, assignments, array and record paths, structured control, imported
-calls, standard operations and hosted `return`. Pass through inline `asm`,
+calls, standard operations, imported strings and hosted `return`. Pass
+through inline `asm`,
 emit AZM plus maps and preserve assembler diagnostics at original source
 lines. K0 does not yet implement user-declared parameters or locals.
 
@@ -475,7 +490,7 @@ Target fixtures: Counter, Dot, Slide, Trail and ordinary Glimmer rule bodies.
 
 ### K1: structured storage
 
-Add Lanternfly-owned static arrays and records, initializers,
+Add Lanternfly-owned fixed-capacity strings, arrays and records, initializers,
 module imports and visibility, multidimensional arrays, ordinal selectors,
 hosted-body scalar locals, hosted-body local aliases and broader path lowering.
 
@@ -534,19 +549,14 @@ Do not present these points as settled without an explicit decision:
 - source file extension;
 - source syntax for narrowing an external routine's effect contract;
 - syntax for an explicitly unsafe, nonconforming unchecked-array mode;
-- read-only bounded views and writable text-buffer support — a concrete
-  counted-string design (`string[N]` with capacity-derived header width,
-  sealed representation and a compatibility terminator) awaits ratification
-  in the
-  [language completeness review](language-completeness-review.md#provisional-proposal-counted-strings-with-a-compatibility-terminator),
-  along with the open `cstring`-versus-`zstring` naming decision for the
-  read-only view;
+- read-only bounded views beyond the settled exact-capacity string type,
+  including how literal or constant text reaches a routine;
 - bounded aggregate view syntax;
 - scalar output parameter syntax;
 - restricted labels;
 - optional `float32` semantics.
 
-The [working specification](specification.md#16-decisions-to-revisit) records
+The [working specification](specification.md#16-post-04-design-queue) records
 the remaining source-level questions. The
 [decision chapter](design-book/10-stages-and-decisions.md#bounded-open-questions)
 contains the broader experiments and evidence required.

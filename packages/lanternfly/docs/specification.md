@@ -38,7 +38,7 @@ The complete 0.4 language includes:
 - fixed-width signed and unsigned integers;
 - nominal enums and checked subrange types;
 - Boolean values and binary masks;
-- byte-valued character literals and static NUL-terminated text;
+- byte-valued character literals and fixed-capacity counted strings;
 - constants and statically allocated variables;
 - exact records and fixed arrays with ordinal index domains;
 - field access, runtime indexing and temporary storage aliases;
@@ -98,8 +98,8 @@ const actorCount as u8 = 8
 var playerScore as u16 = 0
 
 record Actor
-    var currentFrame as u8
-    var active as boolean
+    currentFrame as u8
+    active as boolean
 end
 
 sub updatePlayer()
@@ -144,8 +144,8 @@ any successfully checked module declaration. Constant names embedded in array
 domains or other declaration expressions still follow the source-order rule
 below.
 
-Constant initializers, subrange bounds, array-domain expressions and placement
-expressions are evaluated in source order. Successfully resolved imported
+Constant initializers, subrange bounds, string capacities, array-domain
+expressions and placement expressions are evaluated in source order. Successfully resolved imported
 exports precede every declaration in the importing module for this purpose,
 regardless of where the `import` item is written. Among declarations written
 in the importing module, such an expression may use only earlier constants or
@@ -157,8 +157,8 @@ Constant expressions written inside a routine body, including `case` values
 and counted-loop steps, may use any successfully initialized module constant
 because routine bodies are checked after module declarations. The compiler
 builds one dependency graph spanning constant values, enum and subrange
-domains, array index domains, record layouts, placement expressions and layout
-queries. That graph must be acyclic. A cycle such as a constant taking
+domains, string capacities, array index domains, record layouts,
+placement expressions and layout queries. That graph must be acyclic. A cycle such as a constant taking
 `size(type Packet)` while `Packet` uses that constant in an array domain is
 rejected with the complete dependency path.
 
@@ -244,20 +244,19 @@ untyped integer from zero through 255. It adopts an integer type by the same
 contextual rules as a numeric literal. Empty, multi-character, non-ASCII and
 unterminated character literals are invalid.
 
-A double-quoted literal in an expression is a static C string. Direct
-characters range from ASCII space through `~`; the character escapes above are
-accepted except `\0` and `\x00`. A hexadecimal escape contributes its exact
-byte without declaring a character encoding. The compiler appends one zero
-byte. The maximum payload is 65,534 bytes, so the terminator occupies offset
-65,534 and the complete stored sequence occupies at most 65,535 bytes. An
-embedded zero, a physical newline, a non-ASCII character or a 65,535-byte
-payload is invalid. Section 3.2 defines the resulting `cstring` value.
+A double-quoted literal contains a sequence of nonzero bytes. Direct characters
+range from ASCII space through `~`; the character escapes above are accepted
+except `\0` and `\x00`. A hexadecimal escape contributes its exact byte without
+declaring a character encoding. The payload initializes, assigns to, appends
+to or compares with a `string[N]` value. The maximum payload is 65,534 bytes.
+An embedded zero, a physical newline, a non-ASCII character or a 65,535-byte
+payload is invalid. Section 3.2 defines the string type.
 
 Import paths and external substrate-symbol names use the same double-quoted
 token in compile-time text positions. Within those positions, only `\"` and
 `\\` are accepted. The compiler decodes both escapes before resolving the path
 or looking up the external symbol. A compile-time text position does not
-allocate a runtime C string.
+allocate runtime string storage.
 
 `//` begins a line comment outside a string literal and consumes through the
 physical newline. It may occupy a line or follow a statement:
@@ -282,7 +281,7 @@ End of file supplies a final logical newline when the last physical line
 contains tokens but has no line-ending character. Files with and without a
 trailing line ending therefore parse identically.
 
-## 3. Built-in scalar types
+## 3. Built-in types
 
 The first integer family uses explicit widths:
 
@@ -585,76 +584,103 @@ through repeated products. `x ^ 0` is one in that result type, including when
 `x` is zero. A negative exponent is a compile-time or runtime arithmetic
 fault. Intermediate and final power values wrap in the result type.
 
-### 3.2 Static C strings
+### 3.2 Strings
 
-`cstring` is a non-null, read-only view of a NUL-terminated byte sequence:
+`string[N]` is the language's one text type: an owned, fixed-capacity counted
+string in the Pascal tradition, whose payload additionally always ends with a
+zero byte. `N` is a positive constant capacity from 1 through 65,534 and is
+part of the type:
 
 ```lanternfly
-const title as near cstring = "LANTERNFLY"
-var prompt as near cstring = "READY?"
+var playerName as string[24]
 
-extern sub printText(text as near cstring)
+const prompt as string[6] = "READY?"
+
+record Address
+    name as string[24]
+    city as string[32]
+end
 ```
 
-The bytes before the terminator are the string's content. Direct source
-characters use their ASCII byte values, and escapes use the values listed in
-section 2.4. The empty literal `""` contains only its terminator.
+A double-quoted literal initializes, assigns to, appends to or compares with
+a string. Direct source characters use their ASCII byte values, and escapes
+use the values listed in section 2.4. The empty literal `""` denotes the
+empty value.
 
-`near cstring` and `far cstring` state the address class. Unqualified `cstring` uses the
-target profile's default class and is permitted for private parameters and
-local variables. Exported declarations, stored module variables, constants,
-record fields and routine results must state `near` or `far`. A string literal
-adopts an expected address class; otherwise the profile places it in its
-default class.
+The declared capacity fixes the representation. A capacity from 1 through 254
+uses the short form:
 
-The runtime representation is the target's text-view carrier. It has no hidden
-length, capacity, ownership flag or allocation. Assigning a `cstring` copies that
-carrier; it does not copy bytes. The text is immutable through the `cstring`
-interface. Literal storage has static lifetime and may be pooled only when
-pooling cannot change observable address-class behaviour.
+```text
+offset 0        current length L as u8, 0 <= L <= N
+offset 1..N     payload capacity
+offset 1 + L    zero terminator
+exact size      N + 2 bytes
+```
 
-A near C string widens to `far cstring` when the target can attach the current
-mapping context. The explicit conversions admitted by the grammar are:
+A capacity from 255 through 65,534 uses the long form, with `L` stored as a
+target-endian `u16` at offset zero, payload beginning at offset two and exact
+size `N + 3`. A value whose length is 255 or greater is therefore necessarily
+a long string. The short encoding never uses length byte 255, and the long
+encoding never uses length word 65,535. The capacity, not the current contents,
+chooses the form, so `string[255]` remains long even while it contains only a
+few bytes.
 
-- `near cstring(expression)` leaves a near operand unchanged and performs a
-  checked far-to-near conversion on a far operand;
-- `far cstring(expression)` leaves a far operand unchanged and performs the
-  permitted near-to-far widening on a near operand;
-- `cstring(expression)` converts to the profile's default C-string class,
-  applying the corresponding identity, widening or checked narrowing rule.
+Every valid representation satisfies all of these invariants:
 
-A required near-to-far widening is a compile error when the profile cannot
-attach a valid mapping context. No form changes the bytes or their lifetime. C
-strings have no conversion to or from integers or opaque addresses.
+- `0 <= L <= N`;
+- payload bytes before `L` are nonzero;
+- the byte immediately after the payload is zero;
+- the short form never stores 255 as its length, and the long form never stores
+  65,535.
 
-Every first-edition `cstring` names bytes that remain accessible and immutable
-for the program's lifetime. Literals satisfy that rule directly. Imported and
-hosted storage, manifest values and native routine results declared as `cstring`
-must make the same guarantee. A parameter or local copy retains the guarantee
-of its source. Contracts for temporary native buffers are incompatible with
-`cstring`; a later bounded-view design may introduce shorter, checked lifetimes.
+Bytes after the terminator are unspecified. All-zero storage is the valid
+empty value. The length header, payload cells and terminator are sealed: no
+source path can select them. A string is not a byte array, and `fill` cannot
+expose or overwrite its representation. Language operations and native
+contracts must preserve all four invariants.
 
-All six comparison operators accept two compatible C strings. They compare
-payload bytes as unsigned values from left to right and stop at the first
-difference or NUL terminator. Equality therefore compares text content rather
-than storage identity. A near and far operand first require the ordinary
-permitted near-to-far conversion.
+The maintained terminator is the reason the representation is also valid
+NUL-terminated text: a native or substrate contract that consumes
+zero-terminated bytes may read the payload directly, at no conversion cost,
+under the rules in section 13.2. An ordinary `u8` array carries no such
+invariant and is not a string.
 
-`length(text)` scans to the terminator and returns the number of payload bytes
-as `u16`. A literal call is a constant expression and folds to its known
-length. Each imported, hosted or native `cstring` contract guarantees that the
-terminator occurs at an offset from zero through 65,534 inclusive. The
-required accessible prefix through the terminator therefore contains at most
-65,535 bytes, and `length` returns a value from zero through 65,534. The
-containing storage region may be larger. The sequence remains valid for the
-program's lifetime. A provider that breaks that contract is nonconforming.
+The following operations are defined:
 
-Writable text uses ordinary `u8` array storage together with an explicit
-capacity. The first edition does not silently convert such an array into
-`cstring`, because writing a terminator and proving its lifetime are separate
-operations. Bounded views and writable string procedures are specified as
-follow-up work in the
-[language completeness review](language-completeness-review.md).
+- `length(text)` reads the stored length and returns it as `u16` without
+  scanning the payload; a literal operand folds to its known payload length;
+- comparison between two strings, or between a string and a literal, compares
+  unsigned payload bytes lexicographically, so equality compares text content
+  rather than storage identity;
+- assignment from another string or a literal copies content after checking
+  that it fits the destination capacity, so capacities need not match;
+- a string literal initializes or assigns a string when its payload fits;
+- `append(destination, source)` appends another string's or a literal's
+  payload;
+- `append(destination, byte)` appends one nonzero `u8` byte;
+- `clear(destination)` establishes the all-zero empty representation.
+
+A known oversized literal or constant source is a compile-time error. A
+dynamic assignment or append that would exceed capacity, and a dynamic byte
+append whose value is zero, invokes `F-RANGE` before any destination byte
+changes. String assignment has snapshot semantics when source and destination
+storage overlap.
+
+For storage ownership, storage classes, parameters and local aliases,
+`string[N]` follows the aggregate rules. String storage is static, placed,
+hosted or native, in a near or far class like any aggregate; there are no
+automatic string locals. A parameter states its exact capacity and aliases
+writable caller storage; an exported parameter also states `near` or `far`
+before its name. A local `alias` may name an existing string of exactly the
+declared capacity. Strings cannot be returned by value. Arrays may use a
+string element type; for example, `string[24][8]` is an eight-element array
+of `string[24]`, with the capacity brackets belonging to the element type.
+
+Byte indexing, slicing, capacity-generic parameters, read-only string
+parameters and deliberate truncating copy are deferred. They require a
+bounded-view design and do not weaken the sealed representation in this
+edition. Until read-only string parameters exist, text reaches a routine
+through writable string storage.
 
 ## 4. Constants and variables
 
@@ -673,9 +699,9 @@ The first implementation requires an explicit type. Type inference is
 deferred, so omitting `as Type` is a compile error.
 
 A scalar constant normally occupies no storage. Explicit placement or target
-export requirements may force a stored representation. A `cstring` constant may
-bind only to compiler-owned literal storage or a conforming imported constant
-C string.
+export requirements may force a stored representation. A `string[N]` constant
+is immutable aggregate storage initialized from a fitting literal or string
+constant.
 
 An aggregate `const` declares immutable static data:
 
@@ -707,19 +733,18 @@ var gameOver as boolean = false
 `as` introduces the type.
 
 Module-level variables own static storage. Compiler-allocated static storage
-without an explicit initializer begins with all bits zero when every scalar
-leaf accepts that representation. Integers and Booleans do; an enum or
-subrange does only when its domain contains ordinal zero. A `cstring` does not,
-and a target profile decides whether zero is valid for each opaque address
-type. A declaration whose type lacks an all-zero value requires an
-initializer. Placed or host- or native-supplied storage without an initializer
-retains the value supplied by the target environment; the compiler performs no
-startup write. Importing a source module does not change a declaration's
-storage class: an unplaced variable in that module remains compiler-allocated
-and uses the ordinary zero-initialization rule, while an uninitialized placed
-variable retains its target-supplied value under section 4.3. A module variable
-whose type contains `cstring` requires an initializer that supplies every such
-field, or a host/native storage contract that guarantees valid C strings.
+without an explicit initializer begins with all bits zero when every leaf
+accepts that representation. Integers, Booleans and strings do — an
+uninitialized string begins empty — while an enum or subrange does only when
+its domain contains ordinal zero, and a target profile decides whether zero is
+valid for each opaque address type. A declaration whose type lacks an all-zero
+value requires an initializer. Placed or host- or native-supplied storage
+without an initializer retains the value supplied by the target environment;
+the compiler performs no startup write. Importing a source module does not
+change a declaration's storage class: an unplaced variable in that module
+remains compiler-allocated and uses the ordinary zero-initialization rule,
+while an uninitialized placed variable retains its target-supplied value under
+section 4.3.
 
 Local scalar variables use the same syntax inside a routine:
 
@@ -738,8 +763,9 @@ initializer may use parameters, module declarations and earlier locals but
 cannot name itself or a later local. Local initializers execute once per
 invocation in declaration order. An owned scalar local without an initializer
 is set to all bits zero when its declaration is reached; a type whose scalar
-leaves do not accept zero requires an initializer. A `cstring` variable therefore
-always requires an initializer.
+leaves do not accept zero requires an initializer. `string[N]` is aggregate
+storage and follows the local-alias rule in section 11.4 rather than the
+scalar-local rule.
 
 `const` declarations are module-level in the first edition. A routine can use
 a module constant without allocating storage.
@@ -815,20 +841,23 @@ may permit volatile aggregate calls without weakening access ordering.
 
 ### 4.5 Initializers and constant expressions
 
-A constant or module-variable initializer has one of three forms:
+A constant or module-variable initializer has one of four forms:
 
 ```lanternfly
 const lives as u8 = 3
+const prompt as string[6] = "READY?"
 const origin as Point = Point(x = 0, y = 0)
 const row as u8[4] = [1, 2, 3, 4]
 ```
 
-A scalar initializer is an expression. An array initializer contains exactly
-one initializer for each element at its current dimension; nested brackets
-must match the declared rank and shape exactly. A record initializer names
-every field exactly once. Unknown, duplicate or omitted fields are compile
-errors. Record fields may be written in any order, although storage layout
-continues to follow declaration order.
+A scalar initializer is an expression. A string initializer is a literal or a
+previously declared string constant whose compile-time content fits the
+destination capacity. An array initializer contains exactly one initializer
+for each element at its current dimension; nested brackets must match the
+declared rank and shape exactly. A record initializer names every field
+exactly once. Unknown, duplicate or omitted fields are compile errors. Record
+fields may be written in any order, although storage layout continues to
+follow declaration order.
 
 The leading name resolves in the type namespace. Section 2.1 forbids a
 case-insensitive collision between that record type and a callable routine, so
@@ -838,31 +867,23 @@ Initializer expressions are evaluated in source order. For a record literal,
 that is the written field order; for an array literal, it is left to right at
 each dimension. Each value must be assignable to its destination type.
 
-Every array dimension, case value, case-range endpoint and counted-loop step
-is a scalar constant expression. A placement uses the target-address constant
+Every string capacity, array dimension, case value, case-range endpoint
+and counted-loop step is a scalar constant expression. A placement uses the target-address constant
 expression defined in section 3.1. A `const` or module-level `var` instead
-uses a constant initializer: either one scalar constant expression or an
-array/record initializer whose nested values are themselves constant
-initializers. This distinction keeps aggregate values out of scalar contexts.
-A local `var` initializer is an ordinary runtime expression.
+uses a constant initializer: one scalar constant expression, one string
+initializer, or an array/record initializer whose nested values are themselves
+constant initializers. This distinction keeps aggregate values out of scalar
+contexts. A local `var` initializer is an ordinary runtime expression.
 
 A constant expression in a module declaration may contain literals, names of
 eligible previously declared constants and enum members, parentheses, the
 integer and Boolean operators in this specification, comparisons, explicit
 scalar conversions, the pure standard operations `abs`, `sqrt` and `length`,
 and the layout queries `size`, `count`, `lower`, `upper` and `offset`.
-`length` is constant only when the operand resolves to literal storage whose
-payload is known to the compiler. A constant expression may not read variable
-storage, invoke a routine, use a volatile object or perform any other
-observable operation.
-
-A C-string conversion whose destination class is near is valid in a constant
-expression only when the target profile proves that the complete logical
-address is representable as near. This includes unqualified `cstring(expression)`
-when the profile default is near. Failure is a compile error; constant
-evaluation cannot defer an address fault to runtime. The same conversion
-applied to a nonconstant runtime value invokes the address-fault service when
-the address is not representable.
+`length` is constant only when the operand resolves to a literal or to
+immutable string storage whose payload is known to the compiler. A constant
+expression may not read variable storage, invoke a routine, use a volatile
+object or perform any other observable operation.
 
 For a constant expression inside a routine body, eligible names include any
 visible module constant whose initializer has already been checked successfully
@@ -888,20 +909,21 @@ compile error in a constant expression.
 
 ```lanternfly
 record Point
-    var x as i16
-    var y as i16
+    x as i16
+    y as i16
 end
 
 record Actor
-    var position as Point
-    var velocity as Point
-    var image as u8
-    var active as boolean
+    position as Point
+    velocity as Point
+    image as u8
+    active as boolean
 end
 ```
 
-A record declaration defines layout. A `var` declaration allocates instance
-storage:
+Each field is a bare `name as Type` line; no keyword introduces it, because
+the record declares layout rather than storage. A `var` declaration allocates
+instance storage:
 
 ```lanternfly
 var player as Actor
@@ -954,12 +976,14 @@ A subrange dimension uses that type's complete domain. An array:
 - has fixed, nonempty compile-time index domains;
 - stores elements contiguously;
 - is stored inline;
-- may contain scalars or records;
+- may contain scalars, strings or records;
 - may appear as a record field.
 
 The normalized index domain is part of the array type. Arrays with equal
 element counts but different lower bounds or different enum/subrange index
-types are not assignment-compatible.
+types are not assignment-compatible. When the element type is `string[N]`, its
+capacity brackets precede the array dimensions: `string[24][8]` contains eight
+strings of capacity 24.
 
 Array initializers use square brackets:
 
@@ -1096,7 +1120,7 @@ end
 ```
 
 The initializer must be a writable storage path whose selected type exactly
-matches the declared record or fixed-array type. Its base and indices are
+matches the declared record, fixed-array or string type. Its base and indices are
 evaluated and checked once when execution reaches the declaration. The alias
 then denotes that same storage until the routine returns. Field access,
 indexing and aggregate assignment through the alias use the ordinary path and
@@ -1117,8 +1141,8 @@ name for the same storage. Field access and indexing likewise begin at the
 referent. Source code has no expression for the carrier itself, so it cannot
 rebind, store, return, compare or convert that carrier. Aggregate return and
 aggregate comparison remain deferred under their ordinary type rules. The
-first edition permits `alias` declarations only for records and fixed arrays;
-scalar code uses ordinary values and direct indexed assignment.
+first edition permits `alias` declarations only for records, fixed arrays and
+strings; scalar code uses ordinary values and direct indexed assignment.
 
 Constant storage cannot initialize a writable alias. Volatile storage also
 requires direct access until the language has a parameter contract that can
@@ -1210,9 +1234,10 @@ ordinary value-preservation analysis may still suppress the warning.
 Initializers, scalar arguments and returned values use the same destination
 conversion rules, including range checks and the round-trip exemption.
 Aggregate assignment instead requires an identical record type or identical
-array element type, rank and normalized index domains. C-string assignment
-requires compatible address classes under section 3.2. Assignment to a bare
-aggregate alias copies into its referent; it never rebinds the hidden carrier.
+array element type, rank and normalized index domains. String assignment
+follows the checked content-copy rule in section 3.2, so source and
+destination capacities need not match. Assignment to a bare aggregate alias
+copies into its referent; it never rebinds the hidden carrier.
 
 The parser recognises assignment when a statement begins with a writable
 storage path followed by `=`. In every other expression context, `=` is
@@ -1257,10 +1282,9 @@ Subranges compare through their host ordinal type. Enum comparisons require
 the same nominal enum family and follow declaration order. Booleans support
 only `=` and `<>`. Opaque addresses of the same address class support `=` and
 `<>`; mixed near/far address comparison is invalid and has no implicit
-conversion. Compatible C strings support all six operators with the content
-comparison in section 3.2. Record and array equality, including equality
-through an aggregate alias, is deferred; their fields or elements must be
-compared explicitly.
+conversion. Strings support all six operators with the content comparison in
+section 3.2. Record and array equality, including equality through an aggregate
+alias, is deferred; their fields or elements must be compared explicitly.
 
 ### 8.3 Arithmetic
 
@@ -1360,8 +1384,9 @@ square root and produces the unsigned type of the operand's width. A negative
 constant is a compile error; a negative runtime value invokes the arithmetic
 fault service.
 
-`length(text)` accepts `cstring` and returns the payload byte count as `u16`.
-Section 3.2 defines its scan, folding and boundary contract.
+`length(text)` accepts a `string[N]` storage path or a string literal and
+returns the payload byte count as `u16`. It reads the stored length header
+without scanning. Literal calls fold under section 3.2.
 
 `size(type Type)` returns the exact byte size of a type. `size(path)` returns
 the size of a statically typed storage path. `count(type ArrayType)` returns
@@ -1409,24 +1434,25 @@ constants. `abs` and `sqrt` are pure value operations, but their argument is
 evaluated normally. They constant-fold under section 4.5; `sqrt` may lower to
 a target helper when evaluated at runtime.
 
-Two standard procedures cover repeated aggregate stores:
+Three standard procedures cover repeated aggregate stores and string growth:
 
 ```lanternfly
 clear(board)
 fill(framebuffer, backgroundColour)
+append(playerName, '!')
 ```
 
-`clear` and `fill` have the internal result type `unit` and are valid only as
-complete procedure statements. They cannot appear in arithmetic, an argument,
-an initializer, a return expression or any other value context.
+`clear`, `fill` and `append` have the internal result type `unit` and are valid
+only as complete procedure statements. They cannot appear in arithmetic, an
+argument, an initializer, a return expression or any other value context.
 
-`clear(target)` writes the all-zero representation to a writable record or
-fixed array. It is valid only when every scalar leaf accepts that
-representation. Integers and Booleans do; enums and subranges do when their
-domain contains ordinal zero; `cstring` does not. A target profile decides
-whether all-zero is valid for one of its opaque address types. It visits
-record fields recursively in declaration order and array elements recursively
-in row-major order.
+`clear(target)` writes the all-zero representation to a writable record, fixed
+array or string. For a record or array, it is valid only when every leaf
+accepts that representation. Integers, Booleans and strings do; enums and
+subranges do when their domain contains ordinal zero. A target profile decides
+whether all-zero is valid for one of its opaque address types. It visits record
+fields recursively in declaration order and array elements recursively in
+row-major order. A string becomes empty without exposing its sealed cells.
 
 `fill(target, value)` requires a writable fixed array whose leaf element type
 is scalar. The value receives that leaf type as its expected destination type
@@ -1438,8 +1464,16 @@ multidimensional array receives the converted value in row-major order. Arrays
 whose leaf element is a record are rejected; an ordinary aggregate assignment
 can copy a prepared record value when that operation is needed.
 
-Both procedures evaluate the destination path once and then evaluate the value,
-when present, once before storing. Their writes are observable. A volatile
+`append(destination, source)` requires a writable `string[N]` destination. A
+text source is a string storage path or a string literal; a byte source has
+type `u8` and must be nonzero. The procedure evaluates the destination path
+first and the source second, snapshots the source content when the regions may
+overlap, checks the final length and byte invariant, and then writes the
+payload, terminator and length. Failure invokes `F-RANGE` before the destination
+changes.
+
+All three procedures evaluate the destination path once and then evaluate the
+value, when present, once before storing. Their writes are observable. A volatile
 target receives one ordered scalar write per element or field. A backend may
 inline the operation or select a runtime helper, and the generated listing
 reports that choice.
@@ -1768,7 +1802,7 @@ An omitted result type means that the routine returns no usable value. A
 trailing `as Type` declares a result. The language does not initially expose a
 `void` type. Internally, such an invocation has type `unit`; `unit` cannot be
 written in source or used as a value. A declared result must be an ordinal,
-Boolean, address or `cstring` scalar. Returning a record or fixed array by value
+Boolean or address scalar. Returning a string, record or fixed array by value
 is deferred.
 
 Parentheses are present for every declaration and invocation, including an
@@ -1801,10 +1835,10 @@ sub moveActor(actor as Actor, deltaX as i16, deltaY as i16)
 end
 ```
 
-Scalar parameters, including `cstring`, pass values. Record and array parameters
-create non-rebindable aliases to caller storage. Mutating `actor` in the
-example mutates the caller's record. The source type remains `Actor`; no
-pointer or reference type appears at either side of the call.
+Scalar parameters pass values. String, record and array parameters create
+non-rebindable aliases to caller storage. Mutating `actor` in the example
+mutates the caller's record. The source type remains `Actor`; no pointer or
+reference type appears at either side of the call.
 
 An unqualified aggregate parameter in a private routine uses the profile's
 default storage class. An exported routine, or a private routine that accepts
@@ -1817,10 +1851,10 @@ end
 ```
 
 The position keeps aggregate storage class separate from the type of its
-elements. In `far labels as near cstring[8]`, the array is in far storage and each
-element is a `near cstring`. The two classes are checked independently. A leading
-storage class is valid only when the parameter type is a record or fixed
-array.
+elements. In `far handles as near address[8]`, the array is in far storage and
+each element is a near opaque address. The two classes are checked
+independently. A leading storage class is valid only when the parameter type
+is a string, record or fixed array.
 
 An aggregate argument must be a compatible storage path or local alias, not a
 temporary initializer or other general expression. First-edition aggregate
@@ -1849,12 +1883,13 @@ end
 Local aggregate storage follows these rules:
 
 - scalar locals may own automatic storage;
-- record and array locals do not allocate aggregate stack objects;
+- string, record and array locals do not allocate aggregate stack objects;
 - a local aggregate name aliases storage allocated elsewhere.
 
-A local `var` declaration with a record or array type is therefore a compile
-error. The parser accepts the common `var name as Type` shape before semantic
-checking distinguishes an owned scalar from an aggregate.
+A local `var` declaration with a string, record or array type is
+therefore a compile error. The parser accepts the common `var name as Type`
+shape before semantic checking distinguishes an owned scalar from an
+aggregate.
 
 `alias` declares that non-owning local name:
 
@@ -2050,9 +2085,12 @@ generate an adapter when the
 declared Lanternfly signature and native ABI can be reconciled without changing
 source meaning.
 
-For a `cstring` parameter or result, the native contract also guarantees the
-terminator, accessible byte range, immutability and program lifetime required
-by section 3.2. AZM `.cstr` data satisfies the representation rule directly.
+A string parameter uses an aggregate carrier and requires the exact capacity,
+storage class, layout and invariant contract from section 3.2. A native
+routine that consumes NUL-terminated text may read the payload directly under
+that contract, because the terminator is part of the representation; native
+data that supplies a string must lay out the header, payload and terminator
+exactly.
 
 External declarations are module declarations. They may be private or
 exported, and a platform interface module can collect and export them for
@@ -2252,11 +2290,11 @@ access. A C backend may express the same operations directly.
 Helpers are linked or emitted only when used. Their presence is visible in
 generated listings and cost reports.
 
-The bounds, range, arithmetic, address and invalid-Boolean fault services do
-not return to the failing expression. A hosted profile may report or trap the
-fault; a standalone target may terminate or enter a target-defined fault
-monitor. The chosen mechanism must preserve the public fault class and source
-location in debug artifacts.
+The bounds, range, arithmetic, invalid-Boolean and invalid-string fault
+services do not return to the failing expression. A hosted profile may report
+or trap the fault; a standalone target may terminate or enter a target-defined
+fault monitor. The chosen mechanism must preserve the public fault class and
+source location in debug artifacts.
 
 ### 13.2 Target and native boundary
 
@@ -2345,14 +2383,18 @@ Every external or host-manifest routine contract preserves Lanternfly value
 invariants at entry and return. An integer has its declared width, an enum or
 subrange contains a valid member of its domain, a Boolean is zero or one, and
 an aggregate parameter names valid, correctly aligned storage of the declared
-class and exact type for the duration of the call. A `cstring` is non-null,
-immutable through its interface and terminated within its promised accessible
-range for the program's lifetime. Native code may not mutate constant storage
-or install an invalid ordinal, Boolean, address or C-string representation in
-Lanternfly storage. A contract missing one of these representation, layout or
-lifetime guarantees is incompatible and is rejected; disabling optimization
-cannot make it safe. If a provider violates a declared guarantee at runtime,
-that provider is nonconforming.
+class and exact type for the duration of the call. A string has the declared
+short or long layout and satisfies every sealed invariant in section 3.2.
+Native code may not mutate constant storage or install an invalid ordinal,
+Boolean, address or string representation in Lanternfly storage. A
+contract missing one of these representation, layout or lifetime guarantees is
+incompatible and is rejected; disabling optimization cannot make it safe.
+
+An adapter validates a string after a native call that may write it and
+before generated Lanternfly code observes it. An invalid length, embedded zero,
+misplaced terminator or reserved all-ones length invokes `F-INVALID-STRING`.
+A provider that changes a string without declaring the write remains
+nonconforming even when the resulting bytes happen to be valid.
 
 The declared effect part of an external or host routine contract states visible
 reads, writes, calls, faults, device I/O, control flow and ABI clobbers. When the
@@ -2402,9 +2444,9 @@ block. A return or jump that bypasses Lanternfly control flow violates the
 block contract. In a hosted body, the block must eventually reach the host
 epilogue through ordinary body completion or generated Lanternfly control.
 The block must not modify immutable storage or leave an invalid enum, subrange,
-Boolean, opaque-address or C-string representation in Lanternfly-visible
-storage. Violating one of these obligations makes the inline block
-nonconforming source for that target. Calling a generated source-defined
+Boolean, opaque-address or string representation in
+Lanternfly-visible storage. Violating one of these obligations makes the inline
+block nonconforming source for that target. Calling a generated source-defined
 Lanternfly routine from raw assembly is deferred because the compiler cannot
 add that hidden edge to its recursion and reentrancy analysis.
 
@@ -2489,6 +2531,7 @@ The current core word inventory is:
 abs
 alias
 and
+append
 as
 asm
 at
@@ -2543,12 +2586,12 @@ The reserved built-in type and storage-class words are:
 ```text
 address
 boolean
-cstring
 far
 i8
 i16
 i32
 near
+string
 u8
 u16
 u32
@@ -2629,7 +2672,7 @@ record-decl         ::= "record" type-name newline
                         field-decl+
                         "end" newline
 
-field-decl          ::= "var" value-name "as" type-expr newline
+field-decl          ::= value-name "as" type-expr newline
 
 sub-decl            ::= "sub" value-name "(" params? ")"
                         ("as" type-expr)? newline
@@ -2691,6 +2734,7 @@ expression-statement
 standard-procedure-statement
                     ::= "clear" "(" storage-path ")" newline
                       | "fill" "(" storage-path "," expression ")" newline
+                      | "append" "(" storage-path "," expression ")" newline
 
 if-statement        ::= "if" expression "then" newline block
                         ("else" "if" expression "then" newline block)*
@@ -2726,8 +2770,10 @@ block               ::= statement*
 
 type-expr           ::= arrayable-type dimensions?
 aggregate-type      ::= type-name
+                      | string-type
                       | arrayable-type dimensions
 arrayable-type      ::= scalar-type
+                      | string-type
                       | type-name
                       | address-type
 
@@ -2738,10 +2784,9 @@ index-domain        ::= const-expr
 ordinal-range       ::= const-expr ("to" | "until") const-expr
 ordinal-type        ::= integer-type | type-name
 scalar-type         ::= integer-type | "boolean"
-                      | cstring-type
 integer-type        ::= "u8" | "i8" | "u16" | "i16"
                       | "u32" | "i32"
-cstring-type        ::= ("near" | "far")? "cstring"
+string-type         ::= "string" "[" const-expr "]"
 address-type        ::= ("near" | "far") "address"
 
 storage-base        ::= value-name
@@ -2786,7 +2831,6 @@ primary-expression  ::= integer-literal
 invocation          ::= value-name "(" arguments? ")"
 arguments           ::= expression ("," expression)*
 conversion          ::= integer-type "(" expression ")"
-                      | cstring-type "(" expression ")"
                       | type-name "(" expression ")"
 standard-value-operation
                     ::= ("abs" | "sqrt" | "length") "(" expression ")"
@@ -2830,9 +2874,9 @@ expression. A name present in both scopes denotes the type in this position.
 Parenthesizing the name makes it a count expression when the value declaration
 is intended. Calls and checked conversions are likewise distinguished by the
 resolved declaration. A no-result invocation has internal type `unit` and is
-legal only as the complete expression of an expression statement. `clear` and
-`fill` also have internal type `unit`, but their grammar admits them only as
-complete standard-procedure statements.
+legal only as the complete expression of an expression statement. `clear`,
+`fill` and `append` also have internal type `unit`, but their grammar admits
+them only as complete standard-procedure statements.
 
 When a statement begins with a writable path followed immediately by `=`, the
 parser selects `assignment-statement`. Otherwise it selects an expression
@@ -2852,10 +2896,9 @@ The following questions remain open or provisional. None blocks K0 or K1:
 - whether `at` is sufficient or grows into a section-placement model;
 - source syntax for narrowing an external routine's effect contract;
 - native callback declarations and their call-graph/reentrancy contract;
-- read-only aggregate parameters and bounded writable-text view spelling,
-  where the counted-string proposal in the
-  [language completeness review](language-completeness-review.md) is the
-  current candidate for the writable-text half;
+- read-only aggregate parameters and general bounded-view spelling, which
+  now also decide how literal or constant text reaches a routine, since the
+  one string type aliases writable caller storage when passed;
 - whether translated programs justify `repeat`/`until` or named outer-loop
   exits;
 - module aliases, re-exports and the source file extension;

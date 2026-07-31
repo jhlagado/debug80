@@ -241,9 +241,10 @@ is similarly a later profile capability: a backend that admits it must report
 frame and stack costs.
 
 For text, the combined evidence favours encoded static bytes, explicit framing
-and bounded library operations over a rich dynamic string type. The 0.4
-working language adopts byte-valued character literals and read-only
-NUL-terminated `cstring` views. Bounded writable operations remain follow-up work.
+and bounded operations over a rich dynamic string type. The 0.4 working
+language adopts byte-valued character literals and one text type: sealed,
+fixed-capacity `string[N]` storage whose payload stays NUL-terminated.
+General bounded views remain follow-up work.
 
 ## Translation threshold
 
@@ -276,7 +277,7 @@ native or platform services.
 - exact static layouts;
 - row-major arrays with count, explicit-range, subrange or enum index domains;
 - six fixed integer types through 32 bits;
-- byte-valued character literals and static C strings;
+- byte-valued character literals and counted strings;
 - operator-specific integer results, constrained value-preserving widening and
   defined narrowing wrap;
 - one-byte Boolean values, Boolean-only conditions and type-directed

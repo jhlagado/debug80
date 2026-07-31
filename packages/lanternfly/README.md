@@ -35,12 +35,14 @@ its scheduling, change tracking, resources, and platform declarations.
 Lanternfly source has no pointer or reference values. Declared paths,
 multidimensional indices, and ordinal selectors identify persistent storage.
 Aggregate parameters and local aliases are temporary, non-escaping names for
-existing arrays or records. A backend may carry an address internally, but
-that carrier is not a source value.
+existing counted strings, arrays or records. A backend may carry an address
+internally, but that carrier is not a source value.
 
 The first edition includes nominal enums, checked subranges, and fixed arrays
 whose index domains may be counts, explicit ranges, subranges, or enums.
 Ranges belong to the type system and grammar; they are not runtime objects.
+It also includes sealed `string[N]` storage with a capacity-derived length
+header and maintained zero terminator.
 
 ## Documents
 
@@ -59,9 +61,8 @@ Ranges belong to the type system and grammar; they are not runtime objects.
 - [Project handover](docs/handover.md) supplies repository context for a new
   development session.
 
-The separately maintained
-[Lanternfly teaching book](../../../debug80-docs/lanternfly-book/book1/index.md)
-is not part of this implementation package.
+The separately maintained [Lanternfly books](../../../debug80-docs/lanternfly-book/)
+are not part of this implementation package.
 
 ## Implementation order
 
@@ -74,10 +75,10 @@ Implementation proceeds in this order:
 5. K0 name, type, layout, and effect analysis;
 6. typed IR and interpreter;
 7. canonical AZM lowering and composed source maps;
-8. K1 exact arrays, records, paths, locals, and aliases;
+8. K1 counted strings, exact arrays, records, paths, locals, and aliases;
 9. user routines after storage and diagnostic behaviour are stable.
 
-Bounded views, parameter modes, floating point, rich strings, and
+General bounded views, parameter modes, floating point, resizable strings, and
 recursion-capable bare-metal profiles remain later design work. They do not
 block K0 or K1.
 
