@@ -96,12 +96,11 @@ integer(width, signed)
 boolean(width=8, falseBits=0, trueBits=1)
 enum(typeId, representationType, members)
 subrange(typeId, hostOrdinalType, lowerOrdinal, upperOrdinal)
-cstr(class, terminator=0, directEncoding=ascii, mutable=false)
+cstring(class, terminator=0, directEncoding=ascii, mutable=false)
 record(typeId, exactSize, fields)
 array(elementType, indexDomains, counts, exactStrides)
 aggregateAlias(class, referentType, mutable)
 address(class, representationWidth)
-opaqueAddress(spaceId, representationWidth)
 procedureSignature(parameters, result, effects)
 ```
 
@@ -112,12 +111,16 @@ semantic layout.
 
 An aggregate-alias class is `near`, `far` or a resolved target class. It is a
 compiler representation of temporary access to existing aggregate storage,
-not a Lanternfly value or source-level type. Opaque address spaces are nominal.
+not a Lanternfly value or source-level type. Source-visible opaque address
+values have only the `near address` and `far address` types. A profile may
+attach a device-space identity to a binding or service contract as target
+metadata, but that identity does not create a nominal Lanternfly type or alter
+source compatibility.
 
 `unit` may appear as an internal routine result marker but is never a stored
 type. Boolean descriptors are invariant across targets; imported adapters
-validate external representations and invoke the invalid-value fault rather
-than exposing a noncanonical value to Lanternfly.
+validate external representations and invoke `F-INVALID-BOOLEAN` rather than
+exposing a noncanonical value to Lanternfly.
 
 A C-string descriptor carries an address class but no length field. A literal
 node separately carries its decoded payload, appended terminator, static
@@ -147,7 +150,6 @@ StaticAddress(declarationId)
 AggregateAliasBase(aliasId)
 FieldAddress(base, byteOffset, fieldType)
 IndexAddress(base, index, exactStride, elementType)
-OpaqueAddressOffset(base, offset)
 ```
 
 An address retains:
@@ -163,8 +165,10 @@ parameter or local alias. It cannot feed `Const`, `Load`, `Store`, `Compare`,
 selection turn it into an address for the aliased aggregate's scalar leaves or
 bulk effects.
 
-`OpaqueAddressOffset` cannot feed `Load`/`Store` unless its space is declared
-CPU-accessible.
+An opaque `near address` or `far address` is a scalar value, not an IR address
+for Lanternfly storage. Source-derived IR cannot offset it or feed it to
+`Load`, `Store`, `FieldAddress` or `IndexAddress`. Only a selected target
+service implementation may interpret the value under its profile contract.
 
 ### 4.3 Effects
 
@@ -220,7 +224,9 @@ only after proving the operations mutually unobservable.
 `InlineAssembly` retains the raw payload and its exact source span. `placement`
 is `module` or `statement`. A statement block is a `NativeBarrier` with the
 conservative reads, writes, calls, faults and machine-state clobbers defined by
-the language specification.
+the language specification. Its target contract also requires every visible
+enum, subrange, Boolean, address and C-string representation to remain valid
+when generated Lanternfly execution resumes.
 
 Before emitting a statement block, the backend spills or preserves every live
 generated value needed after it. The payload is then copied verbatim into the
@@ -299,8 +305,10 @@ defaults.
 
 A character literal reaches the IR as an exact integer value and then follows
 the ordinary expected-type rule. A C-string literal allocates immutable static
-bytes containing its decoded payload followed by zero. The IR value is the
-near or far address-class representation selected for that object.
+bytes containing its decoded payload followed by zero. Its payload is at most
+65,534 bytes and its complete stored sequence is at most 65,535 bytes including
+the terminator. The IR value is the near or far address-class representation
+selected for that object.
 
 An AZM backend may emit literal storage with `.cstr` when the decoded payload
 can be represented by that directive without changing bytes. It may use `.db`
@@ -311,7 +319,8 @@ string representation.
 
 C-string comparison and `length` may lower inline or through selected helpers.
 The helper accepts the address class declared by the operands. A far helper
-must preserve and restore mapping context while it scans. Literal `length`
+must preserve and restore mapping context while it scans, and no conforming
+contract requires a scan beyond terminator offset 65,534. Literal `length`
 folds before helper selection.
 
 ## 6. Path lowering
@@ -370,13 +379,17 @@ with a source-level staging suggestion. The typed program remains valid Lanternf
 For:
 
 ```lanternfly
-array[index] = array[index] OR mask
+array[index] = array[index] or mask
 ```
 
-the front end should identify a single logical destination path. The backend
-should compute it once unless it proves recomputation equivalent and cheaper.
+the front end retains two path occurrences. The destination path is evaluated
+first; the right-hand path is evaluated later as part of the source expression.
+A backend may share their address calculation only after proving that both
+occurrences are free of calls, faults and volatile reads, produce the same
+address and cannot be distinguished by any intervening effect.
 
-This matters for cost even though initial indexes are pure.
+This restriction preserves the language rule because an index expression may
+call, fault or read volatile storage.
 
 ## 7. Local allocation
 
@@ -545,8 +558,12 @@ fault/negative-sqrt
 fault/bounds
 fault/range
 fault/address
-fault/invalid-value
+fault/invalid-boolean
 ```
+
+The `fault/invalid-boolean` component reports the public
+`F-INVALID-BOOLEAN` class. Runtime component names remain internal and do not
+replace conformance fault IDs.
 
 The linker includes transitive dependencies of selected components only.
 
@@ -602,25 +619,28 @@ Far calls must support nesting according to profile. If interrupts can observe
 or alter the bank, the profile must specify disabling, preservation or
 common-memory trampolines.
 
-## 12. Opaque address spaces
+## 12. Opaque address metadata
 
-An address-space plugin defines:
+A target profile may attach device-space metadata to an address binding or
+service contract:
 
 ```text
 space identity
 representation type
-legal offset range and wrap/fault rule
-equality
-CPU accessibility
+compatible near/far address class
+representation validity constraints
 services accepting the address
 debug display
 ```
 
-For TMS9918 VRAM, CPU accessibility is false. The VDP platform library owns
-cursor and stream operations.
+This metadata does not create a nominal Lanternfly type. Source compatibility
+and equality continue to use only `near address` and `far address`. The generic
+front end and backend do not derive offsets, loads, stores or storage paths from
+an opaque address.
 
-The generic backend must reject `Load(VRAM address)` unless an implementation
-explicitly maps the space.
+For TMS9918 VRAM, the VDP platform library owns cursor and stream operations.
+Only the implementation of a selected target service may interpret the numeric
+carrier or device-space metadata.
 
 ## 13. Glimmer manifest
 
@@ -669,21 +689,36 @@ array index domains/counts/strides
 aggregate storage class
 C-string address class, terminator, immutability and program lifetime
 Boolean width and canonical false/true bit patterns
-opaque resource identity
 ```
+
+Enum and subrange entries carry stable nominal type IDs. Record and array
+entries carry the same exact layout and normalized ordinal-domain facts as
+source-defined types. Manifest validation rejects invalid representations,
+domains, dependencies and layouts before source checking.
 
 ### 13.3 Symbol entries
 
 ```text
 name
-kind: constant/storage/resource
+kind: constant/storage
 type id
 mutable
+constant value or aggregate initializer when kind is constant
 substrate symbol
 address class/space
 visibility
 source owner
 ```
+
+A constant entry may contain a scalar value or an immutable aggregate
+initializer, and its `mutable` field must be false. Aggregate constants obey
+ordinary initializer, type-identity and exact-layout rules. Device-space
+identity, when needed for an address-bearing entry, is target metadata attached
+to the binding rather than a source type or symbol kind.
+
+A host resource maps to a constant, a constant `near address` or `far address`
+value, mutable storage or a callable entry. Richer resource metadata remains
+outside the Lanternfly namespace.
 
 ### 13.4 Callable entries
 
@@ -891,7 +926,7 @@ backend-focused groups summarize that inventory:
 - proof-based bounds-check removal;
 - constant and dynamic ordinal range failures;
 - proof-based range-check removal;
-- arithmetic, address and invalid-value faults;
+- arithmetic, address and `F-INVALID-BOOLEAN` faults;
 - no store after a failed destination check.
 
 ### Native boundary
@@ -921,7 +956,7 @@ It should model:
 - static byte-addressed regions;
 - exact layouts;
 - aggregate aliases as non-escaping region/object/path identities;
-- near/far and opaque spaces symbolically;
+- near/far address values and target device-space metadata symbolically;
 - calls and host epilogues;
 - platform services through injected test doubles.
 
@@ -945,9 +980,10 @@ milestones. Their architecture order is:
 6. add exact arrays with ordinal index domains, records, startup effects,
    multidimensional paths, scalar locals, and local aggregate aliases;
 7. add source-defined routines and their ABI after storage and diagnostic
-   behaviour are reliable;
-8. use C, BASIC, far-memory, and additional CPU experiments to test the
-   substrate independence of the established contract.
+   behaviour are reliable.
+
+After those seven milestones, C, BASIC, far-memory and additional CPU
+experiments test the substrate independence of the established contract.
 
 Each milestone has an executable gate. A development build may reject a
 later-stage construct with an implementation-stage diagnostic, but only a

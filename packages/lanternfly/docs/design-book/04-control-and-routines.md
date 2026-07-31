@@ -216,7 +216,7 @@ end
 ```
 
 An omitted result means no usable value. A result may be an ordinal, Boolean,
-address or `cstr` scalar. Aggregate return is deferred.
+address or `cstring` scalar. Aggregate return is deferred.
 
 Every declaration and invocation uses parentheses, including an empty
 parameter list. There is no `call` keyword:
@@ -304,18 +304,52 @@ stack costs.
 Reentrancy, interrupt safety, mapping-context changes and no-return behaviour
 belong to routine contracts and target profiles. They are not new call syntax.
 
-## Control conformance
+## Modules and visibility
 
-Required fixtures cover:
+An ordinary source file is a module containing imports and declarations, not
+loose executable statements:
 
-- `else if` priority and Boolean conditions;
-- integer, enum and subrange `select`, including `to` and `until`;
-- ascending, descending and exclusive counted loops;
-- one-past-boundary loops whose boundary does not fit the control variable;
-- enum traversal and `F-LOOP-RANGE`;
-- row-major `for each`;
-- `while true`, `exit` and `continue`;
-- early routine and hosted-body return;
-- left-to-right argument and path evaluation;
-- aggregate parameter mutation;
-- recursive-cycle rejection on a non-recursive profile.
+```lanternfly
+import "display-services.lf"
+
+export record Actor
+    var active as boolean
+end
+
+export const actorCount as u8 = 8
+export var actors as Actor[actorCount]
+
+export sub deactivateActors()
+    for each currentActor in actors
+        currentActor.active = false
+    end
+
+    flushActorDisplay()
+end
+```
+
+Declarations are private unless marked `export`. An import exposes only the
+other module's exports and includes its code and data once in the whole
+program. Import cycles and conflicting visible exports are errors.
+
+Name lookup is case-insensitive, while tools preserve the spelling at the
+declaration. Built-in operation names such as `count` and `length` are
+reserved. Types and values occupy separate namespaces, although a record, enum
+or range type may not share its name with a callable routine. These rules apply
+to host-manifest names as well as source modules.
+
+## Standalone entry and hosted units
+
+An executable build manifest selects one parameterless, result-free,
+source-defined `sub` as its entry. Returning from that routine invokes the
+profile's program-termination service. A library build has no entry.
+
+A hosted body is a different compilation unit. It contains local declarations
+followed by statements, while the host manifest supplies every non-local name
+and the continuation. Imports, exports, module storage, type declarations and
+routine declarations stay outside the body.
+
+The [conformance contract](../conformance.md) holds the complete fixture
+inventory for control, routines, modules and hosted execution. Keeping that
+inventory in one normative document prevents a shorter chapter checklist from
+drifting away from the language rules.

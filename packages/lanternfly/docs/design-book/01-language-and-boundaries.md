@@ -18,10 +18,10 @@ _save:
 The corresponding game rule is direct:
 
 ```lanternfly
-count = count + 1
+counterValue = counterValue + 1
 
-if count >= 10 then
-    count = 0
+if counterValue >= 10 then
+    counterValue = 0
 end
 ```
 
@@ -103,7 +103,7 @@ Lanternfly has no keywords for pulses, effects, renders, cards, bindings,
 resources or update scheduling. A host supplies ordinary typed names:
 
 ```lanternfly
-count = count + 1
+counterValue = counterValue + 1
 drawShape(shapeDot, dotX, dotY)
 ```
 
@@ -179,23 +179,15 @@ reject an object that cannot fit its target region before the program runs.
 
 ## Core, libraries and native work
 
-Four layers keep the language small:
+Language operations, platform services and backend helpers occupy separate
+interfaces. Source does not import an internal division helper, and display
+operations do not become language keywords. Chapter 5 develops these
+boundaries and the artifacts that expose their cost.
 
-| Layer              | Source meaning                         | Typical implementation                |
-| ------------------ | -------------------------------------- | ------------------------------------- |
-| core semantics     | expressions, paths, control and calls  | instruction, sequence or helper       |
-| standard operation | `abs`, `sqrt`, `clear`, `fill`, layout | fold, inline sequence or helper       |
-| platform service   | input, display, sound, device access   | firmware, port routine, host API      |
-| runtime helper     | invisible instruction-set support      | linked only when selected by lowering |
-
-An integer division helper is not imported by source. A display operation is
-not a language keyword. Both distinctions remain visible in artifacts and
-cost reports.
-
-Target assembly stays available through `asm`/`end`. It is the right boundary
-for startup, interrupts, exact device protocols and deliberately tuned inner
-loops. An assembly block is target-specific and carries conservative effects;
-it does not weaken type checking elsewhere.
+Target assembly stays available through `asm`/`end` for startup, interrupts,
+exact device protocols and deliberately tuned inner loops. An assembly block
+is target-specific and carries conservative effects; it does not weaken type
+checking elsewhere.
 
 ## The measure of success
 

@@ -33,7 +33,7 @@ storage, so first-edition locals cannot own them. A local aggregate name is an
 
 Compiler-owned storage without an initializer begins as all bits zero only
 when zero is valid for every scalar leaf. Integers and Booleans qualify.
-Enums and subranges qualify when their domains include ordinal zero. A `cstr`
+Enums and subranges qualify when their domains include ordinal zero. A `cstring`
 does not.
 
 ## Exact records
@@ -164,7 +164,7 @@ One bracket operation supplies every index for the selected array rank.
 `board[row, column]` is valid; `board[row]`, `board[row][column]` and an extra
 third index are not. This keeps partial-row values out of the source model.
 
-## Initialization and traversal order
+## Initialization and startup
 
 Array initializers follow ascending ordinal order. The first initializer maps
 to the lower bound, and the rightmost dimension changes fastest:
@@ -193,6 +193,30 @@ aggregate copy even when a backend lowers it to a loop or block instruction.
 
 Aggregate `const` declarations create immutable tables with the same exact
 layout. Any assignment through a path rooted in constant storage is an error.
+
+Module initializers are constant data. They may use imported constants and
+earlier constants or enum members from the same module. A storage layout query
+may begin at earlier storage. Constant values, ordinal and array domains,
+record layouts, placement expressions and layout queries share one dependency
+graph, and a cycle is a compile-time error even when every name is otherwise
+visible.
+
+Local scalar initializers are different: they execute once per invocation,
+in declaration order, before the routine's statements. Each initializer may
+use parameters, module declarations and earlier locals.
+
+Startup order is deterministic when an initializer requires observable writes
+or copies. Beginning at the root module, the compiler visits imports depth
+first in source order and installs each module after its imports. Declarations
+within a module are installed in declaration order. Preloaded image bytes
+appear in the same startup-effect order even when no runtime write occurs.
+
+Within an aggregate, initializer expressions evaluate in their written order,
+while installed scalar leaves follow exact layout: record declaration order
+and row-major array order. A placed variable without an initializer denotes an
+existing target object and is never zeroed. A placed initializer must be
+supported as preloaded data or an explicit startup operation by the selected
+profile.
 
 ## Paths carry identity
 
@@ -260,7 +284,7 @@ value. Exported parameters state `near` or `far`; private parameters may use
 the target profile's default.
 
 The storage class describes where the aggregate lives. It is not part of the
-element type. In `far labels as near cstr[8]`, the array is far storage and
+element type. In `far labels as near cstring[8]`, the array is far storage and
 each stored C string has a near text address.
 
 ## Near, far and opaque addresses

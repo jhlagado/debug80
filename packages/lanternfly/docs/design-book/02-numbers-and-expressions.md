@@ -66,19 +66,34 @@ A double-quoted expression creates immutable, program-lifetime bytes with a
 NUL terminator:
 
 ```lanternfly
-const title as near cstr = "LANTERNFLY"
-var promptText as near cstr = "READY?"
+const title as near cstring = "LANTERNFLY"
+var promptText as near cstring = "READY?"
 ```
 
 The source cannot contain an embedded zero, because that would make the
-payload end before the compiler-supplied terminator. A `cstr` carries an
+payload end before the compiler-supplied terminator. A `cstring` carries an
 address class but no hidden length, capacity or ownership. Assignment copies
 that carrier, while comparison examines the unsigned payload bytes.
 
 This is deliberately a boundary type rather than a mutable string system.
 Writable text is a fixed `u8` array with an explicit capacity; it does not
-convert implicitly to `cstr`. A C string also has no conversion to an integer
+convert implicitly to `cstring`. A C string also has no conversion to an integer
 or opaque address.
+
+The address class can be converted without changing the bytes or their
+lifetime:
+
+```lanternfly
+farMessage = far cstring(nearMessage)
+nearMessage = near cstring(farMessage)
+defaultMessage = cstring(sourceMessage)
+```
+
+A target may widen a near C string to far when it can attach the current
+mapping context. Far-to-near conversion is checked and invokes `F-ADDRESS` at
+runtime when the logical address has no near representation. The unqualified
+form converts to the target profile's default C-string class. A constant
+conversion that cannot be proved valid is a compile-time error.
 
 ## Operand compatibility
 
@@ -264,7 +279,7 @@ right. Comparison chaining is invalid.
 type of the operand's width. A negative value is a compile-time or runtime
 arithmetic fault.
 
-`length` scans a `cstr` payload and returns `u16`. Literal calls fold at compile
+`length` scans a `cstring` payload and returns `u16`. Literal calls fold at compile
 time.
 
 These operations may become instructions, inline sequences or helpers. Their
@@ -283,7 +298,7 @@ Every backend must agree on at least these cases:
 | `i16(-7) / 3`          | -2                      |
 | `i16(-7) mod 3`        | -1                      |
 | `not u8(0)`            | 255                     |
-| `u8(1) < u8(2)`        | `boolean(true)`         |
+| `u8(1) < u8(2)`        | `true` (`boolean`)      |
 | `u8(255) * u8(255)`    | `u16(65025)`            |
 | `i16(1) + u16(1)`      | compile-time type error |
 

@@ -199,12 +199,15 @@ Determinism makes snapshot tests and generated-code review useful.
 
 ## Debug checks
 
-A debug profile may enable bounds checks, range checks, far-mapping checks,
-stack instrumentation, epilogue assertions and runtime self-tests. Constant
-errors remain compile-time errors in every profile.
+Every conforming profile performs dynamic bounds and range checks that the
+compiler cannot prove unnecessary. Debug profiles may add richer fault
+reporting, far-mapping checks, stack instrumentation, epilogue assertions and
+runtime self-tests. Constant errors remain compile-time errors in every
+profile.
 
-An explicitly unsafe unchecked-array extension is nonconforming execution.
-Ordinary arithmetic remains wrapping in debug and release builds.
+An explicitly unsafe unchecked-array extension is nonconforming execution, not
+a release-mode interpretation of ordinary Lanternfly. Arithmetic remains
+wrapping in debug and release builds.
 
 ## Required artifacts
 

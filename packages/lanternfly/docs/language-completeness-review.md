@@ -20,10 +20,10 @@ The first text facility uses the representation already consumed by common
 Z80 and AZM routines:
 
 ```lanternfly
-const banner as near cstr = "LANTERNFLY"
+const banner as near cstring = "LANTERNFLY"
 const digitZero as u8 = '0'
 
-extern sub printText(text as near cstr)
+extern sub printText(text as near cstring)
 extern sub printChar(value as u8)
 
 sub showDigit(value as u8)
@@ -32,7 +32,7 @@ sub showDigit(value as u8)
 end
 ```
 
-A `cstr` is a non-null, read-only address-class value for static bytes
+A `cstring` is a non-null, read-only address-class value for static bytes
 terminated by zero. Its runtime value contains only the address-class
 representation. This makes a literal suitable for AZM `.cstr` data and for
 firmware routines that already accept the address of NUL-terminated bytes.
@@ -42,7 +42,7 @@ Character literals produce exact byte values, so existing routines that accept
 platform encodings can be added later as explicit conversion or resource
 steps, while `\xHH` records an exact target byte when needed.
 
-The language defines `length(cstr)` and content comparison. Assignment copies
+The language defines `length(cstring)` and content comparison. Assignment copies
 the view, while the referenced bytes remain immutable. Writable text continues
 to use byte arrays until the language has a capacity-carrying view.
 
@@ -52,12 +52,12 @@ to use byte arrays until the language has a capacity-carrying view.
 | ----------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------- |
 | Fixed-width integers and Boolean values         | Specified                              | Sufficient for the current machine and game corpus                                          |
 | Character literals                              | Specified as byte-valued literals      | Sufficient for ASCII-oriented firmware and display calls                                    |
-| Static strings                                  | `near cstr` and `far cstr`             | Sufficient for messages, labels, command arguments and read-only native calls               |
+| Static strings                                  | `near cstring` and `far cstring`       | Sufficient for messages, labels, command arguments and read-only native calls               |
 | Mutable strings                                 | Byte arrays only                       | High-priority gap; safe routines need a buffer capacity                                     |
 | String operations                               | Length and comparison                  | Copy, append, search and substring need bounded source and destination views                |
 | Arrays and records                              | Fixed, exact, ordinal-indexed storage  | Counts, explicit bounds, subranges and enums cover the relevant Pascal model                |
 | Variable-size array arguments                   | Exact-shape aggregate aliases only     | High-priority gap for reusable algorithms                                                   |
-| Read-only parameters                            | Available only through `cstr`          | High-priority gap for constant arrays, records and general views                            |
+| Read-only parameters                            | Available only through `cstring`       | High-priority gap for constant arrays, records and general views                            |
 | Routines and local scalars                      | Specified                              | Core procedural programming is covered                                                      |
 | Local arrays and records                        | Aliases to existing storage            | Deliberate first-edition limit; Pascal-style owned locals need a frame and cost policy      |
 | Output and in/out parameters                    | Not yet available for scalars          | A declared parameter mode would provide the feature without adding pointer values           |
@@ -120,7 +120,7 @@ A small console-style profile should define contracts equivalent to:
 
 ```lanternfly
 extern sub writeChar(value as u8)
-extern sub writeText(text as near cstr)
+extern sub writeText(text as near cstring)
 extern sub readChar() as u8
 ```
 
@@ -191,7 +191,7 @@ numbers, implicit variables and unrestricted `goto` outside the core.
 
 Heap strings, garbage collection, exceptions and dynamic collections belong
 to a different deployment profile. A later profile can add them while
-preserving the static `cstr` ABI.
+preserving the static `cstring` ABI.
 
 ## Post-0.4 design order
 

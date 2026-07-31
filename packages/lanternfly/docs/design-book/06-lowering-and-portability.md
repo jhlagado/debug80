@@ -232,9 +232,11 @@ Structured control becomes blocks and branches before emission. This permits
 short or long Z80 branches, inverted 6502 branches, structured C and generated
 BASIC labels without exposing branch distance in source.
 
-Loop IR distinguishes the mathematical next value from the stored control
-value. Hosted `return` targets a host continuation block; routine `return`
-targets the routine epilogue. Bare `exit` targets only the nearest loop.
+The control-flow blocks produced by counted-loop lowering distinguish the
+mathematical next value from the stored control value and retain the source
+loop's node identity. Hosted `return` targets a host continuation block;
+routine `return` targets the routine epilogue. Bare `exit` targets only the
+nearest loop.
 
 ## Calls and ABI adapters
 

@@ -14,7 +14,7 @@ slice:
 - versioned host-manifest and target-profile validation;
 - all six integer types and canonical `boolean`;
 - enums, subranges and checked ordinal conversion;
-- byte-valued characters and static `cstr`;
+- byte-valued characters and static `cstring`;
 - imported constants, storage, aggregates and routines;
 - expressions, destination conversion and assignment;
 - fixed-array domains, indexing and record fields;
@@ -52,7 +52,7 @@ K2 implements:
 
 - the single `sub` declaration with optional scalar result;
 - scalar value and exact-shape aggregate-alias parameters;
-- local scalar lifetime and definite assignment;
+- local scalar initialization and lifetime;
 - early routine return;
 - external bindings and standalone entry validation;
 - target ABI descriptions and adapters;
@@ -98,7 +98,7 @@ breaking redesign.
 - Comparisons produce one-byte `boolean`; conditions require `boolean`.
 - Boolean `and` and `or` short-circuit, while integer word operators combine
   complete bit patterns.
-- Character literals are exact bytes and `cstr` is immutable
+- Character literals are exact bytes and `cstring` is immutable
   program-lifetime NUL-terminated text.
 
 ### Ordinal domains

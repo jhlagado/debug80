@@ -23,7 +23,7 @@ The first edition has a deliberately small visible set:
 | -------------------------- | ------------------------------------------- |
 | `abs(value)`               | unsigned magnitude at the same width        |
 | `sqrt(value)`              | floor of a non-negative integer square root |
-| `length(text)`             | payload byte count of a `cstr`              |
+| `length(text)`             | payload byte count of a `cstring`           |
 | `size(type-or-path)`       | exact compile-time byte size                |
 | `count(array, dimension?)` | compile-time dimension extent               |
 | `lower(array, dimension?)` | first valid ordinal index                   |
@@ -47,12 +47,14 @@ Input, display, sound, device memory and randomness depend on a platform:
 ```lanternfly
 key = scanKeys()
 framebufferPlot(x, y, colour)
-soundStart(length, divider)
-vdpWrite(nameAddress, tiles)
+soundStart(duration, divider)
+vdpWrite(nameAddress, tileDataAddress)
 ```
 
 These are typed routines supplied through a host manifest, target profile or
 module. Their absence is a capability error rather than a missing keyword.
+Here the two VDP arguments are opaque address tokens interpreted by the
+service, not an immutable array passed to a writable aggregate parameter.
 
 ### Hidden runtime helpers
 
@@ -71,12 +73,12 @@ cost reports, not in ordinary name lookup.
 
 ## Static text as a boundary type
 
-`cstr` is a non-null, read-only view of program-lifetime NUL-terminated bytes:
+`cstring` is a non-null, read-only view of program-lifetime NUL-terminated bytes:
 
 ```lanternfly
-const banner as near cstr = "LANTERNFLY"
+const banner as near cstring = "LANTERNFLY"
 
-extern sub printText(text as near cstr)
+extern sub printText(text as near cstring)
 ```
 
 The value carries an address class but no length, capacity or ownership.
@@ -93,7 +95,7 @@ Existing substrate routines enter through typed `extern sub` declarations:
 
 ```lanternfly
 extern sub checkCollisionAt(x as i16, y as i16) as boolean from "CheckCollAt"
-extern sub firmwarePrint(text as near cstr) at $0033
+extern sub firmwarePrint(text as near cstring) at $0033
 ```
 
 An external declaration may bind an address, a substrate symbol or a
@@ -119,8 +121,9 @@ An incomplete native contract is conservative. It may read or write visible
 mutable storage and perform I/O. This prevents unsafe reordering and allows a
 counted loop to reject a call that might mutate its control variable.
 
-Purity permits ordinary expression use and optimization, but only when the
-implementation satisfies the same contract.
+Purity permits reordering, elimination and other optimizations only when the
+implementation satisfies the declared effect contract. Effectful calls remain
+legal in expressions and expression statements.
 
 ## Assembly blocks
 
@@ -137,10 +140,10 @@ statement level, it emits code at that control point and forms a conservative
 compiler barrier. Its payload passes through verbatim to an assembly-source
 backend.
 
-An unmatched non-assembly target rejects the block unless its profile supplies
-a fragment pipeline. Statement assembly defaults to fall-through and may not
-bypass a hosted epilogue. A declared no-return native boundary ends control
-flow explicitly.
+A non-assembly target rejects the block unless its profile supplies a
+compatible fragment pipeline. Statement assembly defaults to fall-through and
+may not bypass a hosted epilogue. A declared no-return native boundary ends
+control flow explicitly.
 
 ## Far access
 

@@ -42,7 +42,7 @@ The implementation must preserve these boundaries from its first data model:
   values;
 - paths, multidimensional indices, and ordinal selectors provide persistent
   identity;
-- `cstr` is a specialised immutable text value, not a general storage
+- `cstring` is a specialised immutable text value, not a general storage
   reference;
 - opaque address values cannot be dereferenced or converted into storage
   paths;
@@ -229,7 +229,7 @@ SubrangeType
 
 CStringType
     id
-    kind: "cstr"
+    kind: "cstring"
     addressClass: "near" | "far"
     terminator: 0
     directEncoding: "ascii"

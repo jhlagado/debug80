@@ -54,10 +54,16 @@ version-1 manifest contains:
 - subrange hosts and normalized bounds;
 - exact record fields and offsets;
 - array index domains, counts, strides and exact size;
-- constants, storage, resources and callables;
+- scalar and immutable aggregate constants, storage and callables;
 - mutability, volatility, ownership and storage class;
 - routine ABI and effects;
 - host epilogue identity.
+
+A richer Glimmer resource does not create a fifth Lanternfly declaration
+category. The host maps it to a constant, a `near address` or `far address`
+token, storage, or a routine before it enters the Lanternfly namespace. This
+keeps resource metadata on the Glimmer side while giving the body one ordinary
+typed interface.
 
 An array domain records more than a count:
 
@@ -89,7 +95,7 @@ layouts, invalid ordinal domains, unresolved IDs and host/target mismatches.
 | typed array state     | fixed array with complete ordinal domains      |
 | layout type           | exact record type                              |
 | constant              | compile-time scalar or aggregate constant      |
-| generated resource    | immutable aggregate, `cstr`, address or handle |
+| generated resource    | constant, near/far address, storage or routine |
 | generated operation   | callable signature and effects                 |
 
 Scheduler labels, trigger machinery and private resource symbols remain host
@@ -112,7 +118,7 @@ analysis cannot prove their writes.
 
 The compiler returns generated source or IR together with:
 
-- imported storage read and written;
+- imported storage reads and writes;
 - routines called;
 - assembly blocks used;
 - faults and no-return paths;

@@ -7,16 +7,16 @@ not line-for-line transliterations.
 ## Counter
 
 ```lanternfly
-count = count + 1
+counterValue = counterValue + 1
 
-if count >= 10 then
-    count = 0
+if counterValue >= 10 then
+    counterValue = 0
 end
 ```
 
-If `count` is `u8`, addition produces `u16`. Assignment back to the same
-`u8` state is a warning-free round trip. The optimizer can still recover the
-familiar byte sequence:
+If `counterValue` is `u8`, addition produces `u16`. Assignment back to the
+same `u8` state is a warning-free round trip. The optimizer can still recover
+the familiar byte sequence:
 
 ```asm
         ld      a,(Count)
@@ -113,8 +113,10 @@ rather than depend on host signed overflow.
 ## Rushlight and signed difference
 
 ```lanternfly
-if abs(playerX - enemyX) < 8 and
-   abs(playerY - enemyY) < 8 then
+if (
+    abs(playerX - enemyX) < 8 and
+    abs(playerY - enemyY) < 8
+) then
     caught = true
 end
 ```
@@ -142,7 +144,7 @@ range RingIndex as u8 = 0 until 64
 
 var body as u8[RingIndex]
 var headIndex as RingIndex = 0
-var length as u8 = 1
+var bodyLength as u8 = 1
 ```
 
 The array access needs no bounds check when indexed by `RingIndex`.
@@ -199,7 +201,7 @@ Search still needs no dynamic collection:
 ```lanternfly
 sub bodyContains(position as u8) as boolean
     var index as RingIndex = headIndex
-    var remaining as u8 = length
+    var remaining as u8 = bodyLength
 
     while remaining <> 0
         if body[index] = position then
@@ -248,8 +250,9 @@ range RotationIndex as u8 = 0 until 4
 range PieceRow as u8 = 0 until 4
 ```
 
-Glimmer supplies the generated `shapeRows` constant with type
-`u8[PieceIndex, RotationIndex, PieceRow]`. Persistent state stores selectors:
+Glimmer supplies the generated immutable aggregate constant `shapeRows` with
+type `u8[PieceIndex, RotationIndex, PieceRow]`. Persistent state stores
+selectors:
 
 ```lanternfly
 var currentPiece as PieceIndex
@@ -387,8 +390,8 @@ for row = lower(framebuffer) to upper(framebuffer)
 end
 ```
 
-The full renderer adds signed `row - playerY`, masks, dynamic shifts and the
-current shape table. No pointer arithmetic is needed to combine those pieces.
+The full renderer combines signed `row - playerY`, masks, dynamic shifts and
+the current shape table through the same typed paths.
 
 ## Pacmo monsters
 
@@ -443,8 +446,8 @@ sub tickEnemy(monster as Monster)
 end
 ```
 
-The parameter is a temporary alias to caller storage. There is no reference
-result to leak from the routine.
+The parameter is a temporary alias to caller storage for the duration of the
+call.
 
 ## Pacmo respawn selection
 
@@ -537,19 +540,25 @@ loads and shifts as hand assembly.
 VRAM locations are opaque device addresses supplied by the profile:
 
 ```lanternfly
+extern sub vdpWrite(destination as far address, source as far address)
+extern sub vdpFill(destination as far address, byteCount as u16, value as u8)
+
 vdpWrite(patternTable, tilePatterns)
 vdpFill(nameTable, $0300, 0)
 ```
 
-`patternTable` and `nameTable` are not CPU pointers. The services set a VDP
-cursor and stream bytes through a port. A memory-mapped target can implement
-the same typed interface with stores.
+`patternTable` and `nameTable` are opaque far-address tokens for VRAM
+locations. `tilePatterns` is another far-address token naming immutable binary
+data; it is not a constant array passed through a writable aggregate parameter.
+The services set a VDP cursor and stream bytes through a port. A memory-mapped
+target can implement the same typed interface with stores.
 
 ## Coverage
 
 | Facility                         | Corpus pressure              |
 | -------------------------------- | ---------------------------- |
-| round-trip byte arithmetic       | Counter, Skyfall             |
+| round-trip byte arithmetic       | Counter                      |
+| explicit byte narrowing and wrap | Skyfall                      |
 | signed byte difference           | Rushlight                    |
 | Boolean state and conditions     | Slide, Pacmo                 |
 | subrange index and proved bounds | Snake, Pacmo candidates      |

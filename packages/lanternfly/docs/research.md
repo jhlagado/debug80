@@ -233,7 +233,7 @@ costs.
 For text, the combined evidence favours encoded static bytes, explicit framing
 and bounded library operations over a rich dynamic string type. The 0.4
 working language adopts byte-valued character literals and read-only
-NUL-terminated `cstr` views. Bounded writable operations remain follow-up work.
+NUL-terminated `cstring` views. Bounded writable operations remain follow-up work.
 
 ## Translation threshold
 

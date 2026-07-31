@@ -116,12 +116,12 @@ Aggregate storage class is written before a parameter name:
 export sub moveActor(near actor as Actor, deltaX as i16)
 end
 
-export sub showLabels(far labels as near cstr[8])
+export sub showLabels(far labels as near cstring[8])
 end
 ```
 
 The second example keeps two distinct facts visible: `labels` names an array
-in far storage, while each element is a `near cstr`.
+in far storage, while each element is a `near cstring`.
 
 The same rewrite settled the first-edition loop surface:
 
@@ -139,6 +139,24 @@ reviews found and repaired twelve issues involving alias semantics,
 collection traversal, C-string lifetime and conversion, loop boundaries,
 near/far parameter syntax, volatile controls and conformance coverage. The
 fourth review returned `NO FINDINGS`.
+
+An independent implementation-readiness audit after the Book 2 rewrite closed
+the next set of cross-document gaps. It:
+
+- removed `resource` as a namespace-facing manifest symbol kind while allowing
+  scalar and immutable aggregate host constants;
+- made manifest enums, subranges, records and ordinal arrays obey the ordinary
+  source type and layout rules;
+- kept device-space identity as target metadata on `near address` or
+  `far address`, with no opaque-address offset or load/store path in source IR;
+- preserved separate destination and source path evaluation in
+  read-modify-write statements;
+- admitted enum members plus all five layout queries in constant expressions;
+- added a stable parser diagnostic, zero-statement block coverage and ordinary
+  scalar volatile traces;
+- fixed the exact C-string payload and terminator boundary;
+- carried enum/subrange validity through inline assembly and standardized the
+  public `F-INVALID-BOOLEAN` fault.
 
 Validation after the 0.4 rewrite and this handover update passes:
 
@@ -243,10 +261,11 @@ promise that the feature will be added later.
 - Nominal enums and subranges provide checked ordinal types without becoming
   runtime range objects.
 - Character literals produce exact byte values. Static double-quoted text
-  produces read-only NUL-terminated `cstr` values with near/far address
+  produces read-only NUL-terminated `cstring` values with near/far address
   classes.
 - Structured `if`, `select`, inclusive `for ... to`, exclusive
   `for ... until`, `for each ... in` and `while`, closed by bare `end`.
+  A structured block may contain zero statements without a placeholder word.
 - `while true` supplies indefinite iteration. `exit` leaves only a loop;
   `continue` begins its next iteration and `return` leaves a routine or hosted
   body.
@@ -340,8 +359,11 @@ Address classes are semantic capabilities:
 - a far aggregate alias may require bank, segment or other context;
 - the physical representation is target-defined and need not always be 32
   bits;
-- opaque device address spaces, such as TMS9918 VRAM, are not ordinary CPU
-  pointers even when their numeric offsets fit in 16 bits.
+- source-visible opaque values have only the `near address` and `far address`
+  types;
+- a device-space identity such as TMS9918 VRAM is target metadata on a binding
+  or service contract, not a nominal source type or permission to derive,
+  offset or dereference storage.
 
 ### Control and routine model
 
@@ -477,7 +499,7 @@ run the same fixtures and compare storage plus service traces.
 Do not present these points as settled without an explicit decision:
 
 - read-only, output and in/out aggregate-parameter spelling;
-- one-line `if` and an empty-block spelling;
+- one-line `if`;
 - source file extension;
 - source syntax for narrowing an external routine's effect contract;
 - syntax for an explicitly unsafe, nonconforming unchecked-array mode;
