@@ -110,6 +110,93 @@ This facility has higher priority than concatenation syntax. It creates the
 contract needed to implement bounded copy, append and substring operations
 while retaining static allocation.
 
+## Provisional proposal: counted strings with a compatibility terminator
+
+**Provisional.** This section records a concrete design for the mutable-string
+gap: a Pascal-style counted string whose payload is always also a valid
+zero-terminated string. Capping the payload at 254 bytes buys both interfaces
+from one representation.
+
+### Type and storage
+
+```lanternfly
+var name as string[24]
+var line as string[80]
+
+record Contact
+    var name as string[24]
+    var city as string[16]
+end
+```
+
+`string[N]` declares an owned, writable counted string with payload capacity
+`N`, where `1 <= N <= 254`. The capacity is part of the type, exactly as an
+array's index domain is. Storage occupies `N + 2` bytes inline:
+
+```text
+offset 0        current length L (u8, 0 <= L <= N)
+offset 1..N     payload bytes
+offset 1 + L    zero terminator (maintained invariant)
+```
+
+The invariant is that every language-performed write leaves a zero at
+`payload[L]`. The reserved extra cell guarantees room for the terminator even
+at full capacity. Bytes past the terminator are unspecified. All-zero storage
+is a valid empty string, so zero initialization needs no special case and
+`clear` applies.
+
+### Operations
+
+- `length(s)` reads the length byte: constant time, no scan.
+- All six comparisons compare content under the same byte-wise unsigned
+  order as static strings; equality may short-circuit on unequal lengths.
+- Assignment between counted strings copies length, payload and terminator.
+  A source longer than the destination's capacity is a compile error when
+  known and `F-RANGE` otherwise — the length is checked against the
+  destination's capacity domain before any destination byte changes, in the
+  same spirit as a subrange check.
+- A string literal initializes or assigns any `string[N]` whose capacity
+  holds it, checked at compile time.
+- Assignment from a zero-terminated static string scans its length first,
+  checks capacity, then copies; the fault precedes any destination write.
+- `append(destination, source)` and `append(destination, byteValue)` are
+  standard procedures with the same capacity check.
+- Used where a zero-terminated string is expected, a counted string supplies
+  its payload view at no cost: the invariant makes `payload` a valid
+  terminated string, so every existing print-style contract works unchanged.
+  This conversion is the design's point, and it is free.
+
+### Consequences
+
+Records of strings get defined storage — `Contact` above is exactly
+`24 + 2 + 16 + 2` bytes — which is what fixed-memory data modelling has
+wanted all along. Input services receive a destination whose capacity is
+visible in its type, closing the overrun hole that a bare terminator
+convention leaves open. On a Z80, the known length turns copies into block
+moves and gives equality a one-byte fast path. Text longer than 254 bytes
+remains the business of zero-terminated statics and explicit byte buffers,
+which open-ended streams need anyway.
+
+### Naming
+
+With counted strings as the everyday type, the plain word `string` goes to
+them — `string[24]` reads as declared storage, which it is. The read-only
+zero-terminated view then deserves a mechanism-named word; `zstring`
+(zero-terminated, in the ASCIIZ lineage) says what it is without pointing at
+another language's culture, where `cstring` points at C. Whether the view
+keeps `cstring` or becomes `zstring` is an open naming decision.
+
+### Open points
+
+- the spelling of a deliberate truncating copy, as opposed to the checked
+  one;
+- byte indexing and slicing of a counted string, which likely waits for the
+  bounded-view design rather than growing private rules here;
+- capacity-generic string parameters, which are the bounded-view question in
+  another costume — first-edition parameters state their exact capacity;
+- the native-boundary contract wording for services that fill a counted
+  string.
+
 ## Portable text and console contracts
 
 `print`, keyboard input and display control vary sharply across TEC-1G,
