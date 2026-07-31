@@ -314,7 +314,7 @@ loose executable statements:
 import "display-services.lf"
 
 export record Actor
-    var active as boolean
+    active as boolean
 end
 
 export const actorCount as u8 = 8

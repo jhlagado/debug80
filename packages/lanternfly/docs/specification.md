@@ -1995,9 +1995,9 @@ visible to importing modules:
 export const actorCount as u8 = 8
 
 export record Actor
-    var x as i16
-    var y as i16
-    var active as boolean
+    x as i16
+    y as i16
+    active as boolean
 end
 
 export enum Direction as u8
