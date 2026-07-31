@@ -1,303 +1,201 @@
 # Services, native code and the runtime
 
-The Z80 does not multiply or divide in one instruction. The 6502 does not have
-a native 16-bit arithmetic instruction set. Microsoft BASIC already has
-numeric operators but may represent every ordinary integer as signed 16-bit.
-Lanternfly needs one source meaning across all three.
-
-Lanternfly uses a layered library model.
+A Z80 has no single multiply or divide instruction. A 6502 needs software for
+wide arithmetic. A BASIC substrate already has operators, but may lack
+unsigned words. Lanternfly keeps one source meaning by separating language
+semantics from the machinery used to implement them.
 
 ## Four implementation layers
 
 ### Core semantics
 
-The language defines assignment, arithmetic, comparisons, binary operations,
-control flow, typed paths and calls. The backend must implement these whether
-through instructions, inline code or helpers.
+Assignment, arithmetic, comparison, bit operations, ordinal conversion,
+structured control, paths and calls are language operations. A backend must
+implement them even when the target needs a helper.
 
-The programmer never imports `__mul16` to make `a * b` work.
+Source never imports an internal name such as `__divide_u16`.
 
-### Visible standard library
+### Standard operations
 
-The standard library contains target-independent operations that deserve
-names:
+The first edition has a deliberately small visible set:
+
+| Operation                  | Meaning                                     |
+| -------------------------- | ------------------------------------------- |
+| `abs(value)`               | unsigned magnitude at the same width        |
+| `sqrt(value)`              | floor of a non-negative integer square root |
+| `length(text)`             | payload byte count of a `cstr`              |
+| `size(type-or-path)`       | exact compile-time byte size                |
+| `count(array, dimension?)` | compile-time dimension extent               |
+| `lower(array, dimension?)` | first valid ordinal index                   |
+| `upper(array, dimension?)` | last valid ordinal index                    |
+| `offset(Record.fieldPath)` | compile-time field offset                   |
+| `clear(target)`            | ordered all-zero aggregate store            |
+| `fill(target, value)`      | ordered repeated scalar store               |
+
+Power is the `^` operator, not a second function. Aggregate assignment performs
+complete equal-type copying, so the core does not need separate `copy` and
+`move` procedures.
+
+`clear` is legal only when every scalar leaf accepts the all-zero
+representation. `fill` converts its value once before the first store. Both
+visit array elements in row-major order, which matters for volatile effects.
+
+### Platform services
+
+Input, display, sound, device memory and randomness depend on a platform:
 
 ```lanternfly
-distance = ABS(dx)
-limited = CLAMP(value, minimum, maximum)
-root = ISQRT(area)
-FILL(BoardRows, 0)
-COPY(Framebuffer, FramebufferBack)
+key = scanKeys()
+framebufferPlot(x, y, colour)
+soundStart(length, divider)
+vdpWrite(nameAddress, tiles)
 ```
 
-Their signatures and edge cases are part of Lanternfly. A backend may replace them
-with built-ins or specialized sequences.
-
-### Platform libraries
-
-A platform library names facilities outside the abstract machine:
-
-```lanternfly
-key = ScanKeys()
-FbPlot(x, y, colour)
-SndStart(length, divider)
-VdpWrite(address, data)
-```
-
-These are typed imports. Another target may implement them differently or not
-offer them. Their absence is a target-capability error, not a missing keyword.
+These are typed routines supplied through a host manifest, target profile or
+module. Their absence is a capability error rather than a missing keyword.
 
 ### Hidden runtime helpers
 
-A backend runtime fills instruction-set gaps:
+A backend may link helpers for:
 
 - signed and unsigned division;
-- wide multiply;
-- 32-bit shifts and comparisons;
-- nontrivial conversion;
-- far load, store and call;
-- arithmetic fault dispatch;
-- complex constant-stride addressing.
+- wide multiplication and 32-bit operations;
+- dynamic shifts and power;
+- integer square root;
+- constant-stride address calculation;
+- far aggregate or C-string access;
+- fault dispatch.
 
-Only referenced helpers are linked. Their names are reserved and do not enter
-ordinary source lookup.
+Only selected helpers are linked. Their identities appear in artifacts and
+cost reports, not in ordinary name lookup.
 
-## The initial standard library
+## Static text as a boundary type
 
-The first portable set should be small.
-
-### Scalar functions
-
-| Function              | Meaning                                                    |
-| --------------------- | ---------------------------------------------------------- |
-| `ABS(x)`              | non-negative magnitude in a type wide enough for the input |
-| `MIN(a, b)`           | smaller value after normal common-type conversion          |
-| `MAX(a, b)`           | larger value after normal common-type conversion           |
-| `CLAMP(x, lo, hi)`    | `MIN(MAX(x, lo), hi)`; error if constant `lo > hi`         |
-| `SGN(x)`              | -1, 0 or 1 as `INTEGER`                                    |
-| `ISQRT(x)`            | floor of integer square root; non-negative input           |
-| `POW(base, exponent)` | integer power with non-negative exponent                   |
-| `BITCOUNT(x)`         | number of one bits, returned as `INTEGER`                  |
-
-`ABS(minimumSigned)` cannot fit its input type. The result therefore widens:
-`ABS(SBYTE)` returns `INTEGER`, `ABS(INTEGER)` returns `LONG`, and
-`ABS(LONG)` requires either a `DWORD` result or an arithmetic fault for the
-single minimum value. The working choice is `DWORD` for `ABS(LONG)`.
-
-### Aggregate procedures
-
-| Procedure              | Meaning                                       |
-| ---------------------- | --------------------------------------------- |
-| `FILL(target, value)`  | assign one scalar value to every element      |
-| `COPY(target, source)` | copy equal-shape exact storage safely         |
-| `MOVE(target, source)` | copy equal-shape storage with overlap allowed |
-| `CLEAR(target)`        | `FILL(target, 0)` where zero is valid         |
-
-`FILL` works on an array or a reference to an array. Records are not
-elementwise-fillable unless every byte representation of the requested value
-has defined meaning. `CLEAR` can zero any aggregate whose fields accept an
-all-zero representation.
-
-`COPY` has no-overlap precondition. `MOVE` defines overlap-safe direction.
-Keeping both lets a backend use `LDIR`, `memcpy`, `memmove` or loops correctly.
-
-### Shape queries
-
-`COUNT(array)` returns the compile-time element count for one-dimensional
-arrays. `COUNT(array, dimension)` handles multiple dimensions. The result is a
-compile-time `WORD` unless a larger shape requires `DWORD`.
-
-`SIZEOF(type-or-object)` and `OFFSET(type, field)` are compile-time operations,
-not runtime functions.
-
-`LOWERBOUND` is always zero and adds little. `UPPERBOUND(array)` may be supplied
-as `COUNT(array) - 1` for BASIC familiarity, but `COUNT` is the canonical
-facility because the declaration syntax uses counts.
-
-## Randomness is not a core standard
-
-The games call a random-byte service. Randomness depends on platform state,
-seeding and reproducibility, so it belongs to the environment:
+`cstr` is a non-null, read-only view of program-lifetime NUL-terminated bytes:
 
 ```lanternfly
-IMPORT RandomByte() AS BYTE
+const banner as near cstr = "LANTERNFLY"
+
+extern sub printText(text as near cstr)
 ```
 
-A test host can inject a deterministic implementation. A platform can use
-firmware, a hardware source or a small PRNG. Lanternfly does not promise a universal
-sequence.
+The value carries an address class but no length, capacity or ownership.
+Assignment copies that carrier, not the bytes. `length` scans to the guaranteed
+terminator and returns `u16`; literal calls fold.
 
-## Services may be calls, ops or built-ins
+Writable text remains ordinary `u8` storage with an explicit capacity.
+Lanternfly does not pretend that a terminator proves enough destination space.
+Bounded writable views remain later design work.
 
-The interface presented to Lanternfly is uniform:
+## External routine declarations
+
+Existing substrate routines enter through typed `extern sub` declarations:
 
 ```lanternfly
-mask = MxMask(x)
+extern sub checkCollisionAt(x as i16, y as i16) as boolean from "CheckCollAt"
+extern sub firmwarePrint(text as near cstr) at $0033
 ```
 
-The Z80/AZM implementation could be:
+An external declaration may bind an address, a substrate symbol or a
+target-profile name. The contract includes:
 
-- an imported `.routine`;
-- an AZM `op` expanded inline;
-- a compiler-recognised intrinsic;
-- a call to a linked runtime helper.
+- Lanternfly parameter and result types;
+- substrate binding and supported target;
+- ABI and storage classes;
+- visible reads, writes, calls and faults;
+- device I/O or mapping-context changes;
+- normal or no-return control flow.
 
-The interface manifest records enough facts for selection:
+The compiler generates an adapter when the substrate ABI differs from the
+Lanternfly ABI. AZM `.routine` contracts then verify that adapter and callee.
 
-```text
-name: MxMask
-kind: pure function
-parameters: BYTE
-result: BYTE
-effects: none
-implementations:
-  z80-tec1g: azm-op
-  c: inline-expression
-  basic: generated-function
-```
+## Effects are part of the interface
 
-Source code does not change when the implementation moves from a call to an
-inline op.
+A routine is not pure merely because its result is discarded. The effect
+summary records visible storage access, calls, faults, device I/O, mapping
+changes and control flow.
 
-## Effects in interfaces
+An incomplete native contract is conservative. It may read or write visible
+mutable storage and perform I/O. This prevents unsafe reordering and allows a
+counted loop to reject a call that might mutate its control variable.
 
-An imported routine contract describes source-visible effects:
+Purity permits ordinary expression use and optimization, but only when the
+implementation satisfies the same contract.
 
-- storage read;
-- storage written;
-- device I/O;
-- may fault;
-- may not return;
-- changes current bank or segment;
-- timing-sensitive;
-- pure.
+## Assembly blocks
 
-Register clobbers remain in the substrate-specific half of the contract.
-
-For the first compiler, an undeclared imported procedure is conservatively
-assumed to read and write any imported mutable storage and perform I/O. This
-prevents unsafe reordering. A pure declaration enables expression use and
-constant folding only when the implementation is also deterministic.
-
-## Native declarations
-
-Existing assembly routines enter Lanternfly through typed declarations:
+`asm`/`end` exposes the selected assembler directly:
 
 ```lanternfly
-NATIVE "azm" IMPORT
-    FUNCTION CheckCollAt(
-        x AS INTEGER,
-        y AS INTEGER
-    ) AS BYTE FROM "tetro-lib.asm"
-END NATIVE
+asm
+    ; exact target assembly
+end
 ```
 
-The exact surface remains provisional, but the contract must include:
+At module level, the block may contain directives, data or routines. At
+statement level, it emits code at that control point and forms a conservative
+compiler barrier. Its payload passes through verbatim to an assembly-source
+backend.
 
-- Lanternfly name and signature;
-- substrate symbol;
-- supported targets;
-- near/far call class;
-- memory effects;
-- source-visible fault or no-return behaviour;
-- backend ABI adapter if the native symbol does not use the default ABI.
+An unmatched non-assembly target rejects the block unless its profile supplies
+a fragment pipeline. Statement assembly defaults to fall-through and may not
+bypass a hosted epilogue. A declared no-return native boundary ends control
+flow explicitly.
 
-The AZM side may add `.routine` register contracts. Those contracts verify the
-adapter and implementation, not the Lanternfly call syntax.
+## Far access
 
-## Native blocks
+Far aggregate parameters, aliases and C strings may require a bank or segment
+carrier. A far call commonly:
 
-Inline native blocks are an escape hatch:
+1. evaluates and preserves arguments;
+2. saves the current mapping context;
+3. selects the callee context;
+4. invokes the near entry;
+5. preserves the result;
+6. restores the caller's context.
 
-```lanternfly
-NATIVE "azm" TARGET "z80-tec1g"
-    ; exact AZM source
-END NATIVE
-```
+Nested calls and interrupts must preserve mapping state according to the target
+contract. Far data access may use scalar-width helpers, a mapped window, an
+inline switch for a known bank or a bulk service.
 
-An inline block is a statement and forms a scheduling barrier. The compiler
-must know its inputs, outputs and memory effects. The minimal first form can
-assume it may read and write all visible storage, but it must still state
-whether it falls through.
+The carrier remains invisible to source. There is no far pointer arithmetic or
+reference variable.
 
-A native block inside a hosted Glimmer body may not return directly around the
-host epilogue. The default contract is fall-through. A special no-return block
-ends control flow and must be accepted by the host.
+## Runtime faults
 
-Native code has no portable fallback. Compiling it for an unmatched target is
-an error unless an alternative implementation is supplied.
+Bare-metal systems may lack exceptions and standard output, but they can still
+distinguish faults:
 
-## Far helpers
+| Fault               | Condition                                              |
+| ------------------- | ------------------------------------------------------ |
+| `F-BOUNDS`          | dynamic array index outside its domain                 |
+| `F-RANGE`           | value entering an enum/subrange destination is invalid |
+| `F-DIV-ZERO`        | runtime division or `mod` by zero                      |
+| `F-NEGATIVE-SHIFT`  | negative runtime shift count                           |
+| `F-NEGATIVE-POWER`  | negative runtime exponent                              |
+| `F-NEGATIVE-SQRT`   | negative runtime square-root operand                   |
+| `F-LOOP-RANGE`      | continuing loop value cannot fit its control type      |
+| `F-ADDRESS`         | checked far-to-near C-string conversion fails          |
+| `F-INVALID-BOOLEAN` | imported Boolean is not zero or one                    |
 
-Banked and segmented operations need careful runtime contracts.
+A profile binds each class to a non-returning hook. A debug TEC-1G target might
+store a code in known RAM and halt; a C runner might report the mapped source
+location and abort.
 
-A far call typically performs:
+Ordinary fixed-width overflow remains wrapping. Debug mode does not silently
+change it into checked arithmetic.
 
-1. evaluate and preserve arguments;
-2. save the current mapping context;
-3. select the callee context;
-4. invoke the near entry;
-5. retain the result;
-6. restore the previous context;
-7. return under the caller's context.
+## Library and helper testing
 
-Nested far calls require a stack of contexts or a convention that naturally
-nests. Interrupt handlers must either preserve the mapping state or run only
-from common memory with explicit rules.
+Language edition, standard-operation contracts and platform packages are
+versioned separately. A platform service may change without redefining integer
+arithmetic.
 
-A far data load/store has similar problems. The compiler may choose:
+Visible operations receive target-independent vectors. Runtime helpers receive
+the same semantic vectors plus ABI and assembly checks. For `sqrt`, tests cover
+zero, values around perfect squares, each integer maximum and negative-input
+failure. For range and bounds helpers, tests verify that failure occurs before
+any destination store.
 
-- a helper per scalar width;
-- a mapped-window abstraction;
-- an inline bank switch for known banks;
-- a bulk service for arrays.
-
-The cost report distinguishes them. The language type remains `FAR REF TO T`.
-
-## Errors on bare metal
-
-Lanternfly cannot assume exceptions, an operating system or standard output. It can
-still define fault classes:
-
-- division by zero;
-- invalid arithmetic domain, such as a negative shift count, power exponent or
-  integer square-root input;
-- invalid checked narrowing;
-- failed far mapping;
-- inserted bounds check;
-- unreachable case assertion.
-
-A target profile binds each class to a fault hook. A debug TEC-1G hook might
-stop with a code in known RAM and on the display. A hosted C target might abort
-through the Lanternfly runner. A BASIC target might set an error variable and stop.
-
-Ordinary wrapping arithmetic does not fault.
-
-## Library versioning
-
-The core language version and library contracts are separate. A Lanternfly source
-unit records:
-
-- required language edition;
-- required standard-library edition;
-- target capability imports.
-
-A platform library can evolve without changing integer semantics. An imported
-signature change is diagnosed like a module-interface mismatch.
-
-## Testing helpers
-
-Every visible standard function receives backend-independent vectors. Hidden
-helpers receive the same semantic vectors plus ABI checks on assembly targets.
-
-For example, `ISQRT` vectors cover:
-
-- 0, 1, 2, 3, 4;
-- the values immediately below and above perfect squares;
-- the maximum value of each supported unsigned type;
-- signed-negative rejection;
-- identical results across Z80, C and BASIC.
-
-An AZM helper additionally assembles under strict routine contracts and runs in
-the emulator. Correct arithmetic with a broken register contract is still a
+Correct arithmetic with a broken register or mapping contract is still a
 backend failure.

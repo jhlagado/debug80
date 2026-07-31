@@ -1,390 +1,321 @@
 # Control flow and routines
 
-Lanternfly's control surface should read as ordinary pseudocode. The backend owns
-branch distances, condition flags and generated labels.
+Lanternfly control reads like structured pseudocode. Branch distances, flags
+and generated labels belong to lowering.
 
-## Statements
+## Executable statements
 
-The initial executable statements are:
+The first edition has:
 
-- scalar assignment;
-- procedure call;
-- `IF`;
-- `SELECT CASE`;
-- `FOR`;
-- `WHILE`;
-- `DO` with `WHILE` or `UNTIL`;
-- loop exit and continuation;
-- routine return;
-- local scalar and alias declarations;
-- explicit native boundary.
+- scalar and aggregate assignment;
+- general expression statements, including calls whose results are discarded;
+- `clear` and `fill`;
+- `if`;
+- `select`;
+- `for ... to` and `for ... until`;
+- `for each ... in`;
+- `while`;
+- loop-only `exit` and `continue`;
+- routine or hosted-body `return`;
+- `asm` blocks.
 
-An empty body is legal. This matters in Glimmer: a scheduled block may
-currently do nothing while its surrounding generated update epilogue still
-runs.
+Local `var` and `alias` declarations appear before statements in a routine or
+hosted body.
+One-line conditionals, `do`, `repeat`, bare `loop`, `break`, `call`, general
+`goto` and separate procedure/function declarations are absent.
 
 ## Conditional blocks
 
-The ordinary form is:
-
 ```lanternfly
-IF score >= target THEN
+if score >= target then
     level = level + 1
-ELSEIF lives = 0 THEN
-    gameOver = -1
-ELSE
-    PlayContinueCue()
-END IF
+else if lives = 0 then
+    gameOver = true
+else
+    playContinueCue()
+end
 ```
 
-`THEN` is retained. It makes a one-line condition easy to scan and feels
-natural to BASIC readers.
+Conditions have type `boolean`; an integer flag needs an explicit comparison.
+The words `else if` form one continued decision, and one bare `end` closes the
+whole block.
 
-A single-line form is allowed only when it contains one simple statement and
-no `ELSE`:
+The compiler evaluates conditions from top to bottom and executes only the
+first matching body. One-line `if` remains deferred.
 
-```lanternfly
-IF Count >= 10 THEN Count = 0
-```
+## Ordinal selection
 
-The compiler's formatter may expand it. Long or nested bodies use the block
-form.
-
-Conditions use numeric truth. No comparison with zero is required, although a
-comparison is clearer when an integer is not conventionally a flag.
-
-## Selection
-
-`SELECT CASE` expresses dispatch over a scalar:
+`select` dispatches over an integer, enum or subrange:
 
 ```lanternfly
-SELECT CASE Direction
-CASE DIR_UP
-    next = (head - 8) AND $3F
-CASE DIR_DOWN
-    next = (head + 8) AND $3F
-CASE DIR_LEFT
-    next = (head AND $38) OR (BYTE(head - 1) AND 7)
-CASE DIR_RIGHT
-    next = (head AND $38) OR (BYTE(head + 1) AND 7)
-CASE ELSE
+select direction
+case up
+    next = (head - 8) and $3f
+case down
+    next = (head + 8) and $3f
+case left, right
+    next = turnHorizontal(head, direction)
+else
     next = head
-END SELECT
+end
 ```
 
-The initial form supports:
+The selected expression runs once. Cases contain compatible compile-time
+ordinal constants, do not fall through and need no `break`.
 
-- one or more constant values in a case;
-- non-overlapping constant ranges;
-- one optional `CASE ELSE`;
-- no fall-through.
-
-The selector is evaluated once. Case expressions are compile-time constants
-compatible with its type. A backend can choose a comparison chain, decision
-tree or jump table.
-
-## Counted loops
-
-The inclusive `FOR` form is:
+Ranges use the same boundary words as types and loops:
 
 ```lanternfly
-FOR row = 0 TO 7
-    Framebuffer[row].green = Trail[row]
-NEXT row
+case 0 to 9
+    band = low
+case 10 until 20
+    band = middle
 ```
 
-A non-unit step is explicit:
+The first case includes 9; the second excludes 20. Empty, reversed,
+overlapping or duplicate cases are errors. An enum selection without `else`
+is exhaustive when its cases cover every member.
+
+## Inclusive and exclusive counted loops
+
+`to` includes its boundary:
 
 ```lanternfly
-FOR destination = row TO 1 STEP -1
-    plane[destination] = plane[destination - 1]
-NEXT destination
+var row as u8
+
+for row = 1 to 8
+    clearRow(row)
+end
 ```
 
-Semantics:
-
-1. start, limit and step are evaluated once, in that order;
-2. the control variable receives start;
-3. a positive step continues while variable `<= limit`;
-4. a negative step continues while variable `>= limit`;
-5. zero step is an error;
-6. the variable advances after the body;
-7. on normal completion it contains the first value beyond the limit, narrowed
-   to its declared type.
-
-The control variable must be a local or static scalar, not a field with an
-effectful address calculation. The loop owns mutation of it; assigning to it
-inside the body is a diagnostic by default.
-
-The compiler analyses descending loops carefully. A `BYTE` variable cannot
-represent -1, so:
+`until` excludes it:
 
 ```lanternfly
-FOR row AS BYTE = 7 TO 0 STEP -1
+var index as u8
+
+for index = 0 until count(actors)
+    updateActor(actors[index])
+end
 ```
 
-must stop after the iteration at zero rather than decrement, wrap and continue.
-Loop termination is defined from the mathematical next value, not from an
-accidentally wrapped stored control variable.
-
-## Conditional loops
-
-Pre-test:
+Explicit-domain arrays can use their own bounds:
 
 ```lanternfly
-WHILE BodyContains(candidate)
-    candidate = candidate + 1
-END WHILE
+var column as ScreenColumn
+
+for column = lower(rowPixels) to upper(rowPixels)
+    rowPixels[column] = 0
+end
 ```
 
-Post-test:
+The control variable already exists and must be a writable, non-volatile
+ordinal scalar. The loop does not declare it. Start and boundary evaluate
+once, in that order, before the converted start is stored.
+
+An optional `step` is a nonzero compile-time integer:
 
 ```lanternfly
-DO
-    key = ReadKey()
-LOOP UNTIL key <> NO_KEY
+for row = 7 to 0 step -1
+    clearRow(row)
+end
 ```
 
-`DO WHILE condition ... LOOP` and `DO UNTIL condition ... LOOP` are also
-readable, but one pre-test spelling is enough. The initial design keeps
-`WHILE ... END WHILE` for pre-test and `DO ... LOOP WHILE/UNTIL` for post-test.
+The implementation computes each next value mathematically and tests whether
+it would continue before storing it. A descending `u8` loop therefore stops
+after zero rather than wrapping to 255. A continuing value that cannot fit the
+control type is a compile error when known and `F-LOOP-RANGE` otherwise.
 
-## Exiting and continuing
+After the loop, the control retains the last value actually stored. If the
+body never runs, it retains the converted start. The body cannot write the
+control directly or through a call or native effect.
 
-Loops support:
+Enum controls advance in declaration order. Their loop step is still written
+as an integer constant.
+
+## Collection traversal
+
+`for each` visits a fixed array in ascending ordinal, row-major order:
 
 ```lanternfly
-EXIT FOR
-CONTINUE FOR
-EXIT WHILE
-CONTINUE WHILE
-EXIT DO
-CONTINUE DO
+for each actor in actors
+    updateActor(actor)
+end
 ```
 
-The noun is required. It prevents an `EXIT` in nested control from depending
-on visual indentation alone.
+The element name denotes the current element. Assignment changes the array:
 
-Routines use `EXIT SUB` or `RETURN value`. A hosted body uses `EXIT BODY`.
+```lanternfly
+for each pixel in pixels
+    pixel = 0
+end
+```
 
-## Hosted body exit
+A scalar element behaves as an ordinary value when read. A record element
+supports fields, complete aggregate assignment and aggregate calls. The
+backend may carry an address or index internally, but that traversal carrier
+is not a source value.
 
-A Glimmer body is not a complete machine routine. Generated update code follows
-it:
+The array operand is one storage path evaluated before traversal. Constant
+arrays give a read-only element binding; volatile arrays are excluded until a
+volatile alias contract exists.
+
+## Conditional and indefinite loops
+
+`while` tests before each iteration:
+
+```lanternfly
+while enemiesRemaining > 0
+    updateEnemy()
+end
+```
+
+An indefinite loop uses the ordinary Boolean literal:
+
+```lanternfly
+while true
+    readInput()
+
+    if quitRequested then
+        exit
+    end
+
+    updateGame()
+end
+```
+
+Lanternfly does not add a second spelling for this case.
+
+## Loop control
+
+Bare `exit` leaves the innermost enclosing loop. Bare `continue` begins that
+loop's next iteration: it steps a counted loop, advances `for each`, or retests
+`while`.
+
+Both are errors outside a loop. `exit` never terminates a program and never
+leaves a routine. `return` performs those different transfers.
+
+Named exits and post-test loops remain possible later additions, but current
+corpus code does not justify their extra vocabulary.
+
+## One routine form
+
+Every routine is a `sub`. A trailing result type makes it value-producing:
+
+```lanternfly
+sub updateClock()
+    frame = frame + 1
+end
+
+sub distance(left as i16, right as i16) as u16
+    if left >= right then
+        return left - right
+    end
+
+    return right - left
+end
+```
+
+An omitted result means no usable value. A result may be an ordinal, Boolean,
+address or `cstr` scalar. Aggregate return is deferred.
+
+Every declaration and invocation uses parentheses, including an empty
+parameter list. There is no `call` keyword:
+
+```lanternfly
+updateClock()
+separation = distance(playerX, enemyX)
+distance(playerX, enemyX) // result deliberately discarded
+```
+
+General expression statements make the final line legal. A result-free
+invocation remains invalid where a value is required.
+
+## Parameters
+
+Scalar parameters pass values. Record and array parameters temporarily alias
+caller storage:
+
+```lanternfly
+export sub moveActor(near actor as Actor, deltaX as i16)
+    actor.position.x = u8(actor.position.x + deltaX)
+end
+```
+
+The aggregate argument is a compatible writable storage path or local alias.
+No pointer or reference value appears in source, and the parameter cannot be
+rebound, stored, returned or compared. Its name denotes the caller's
+aggregate.
+
+Exported aggregate parameters state `near` or `far`. Private unqualified
+parameters use the target default. First-edition aggregate parameters are
+writable; read-only, output and in/out modes remain open design work.
+
+## Locals and aliases
+
+Scalar locals use `var`; aggregate locals use `alias`:
+
+```lanternfly
+sub tickSelected(index as u8)
+    var expired as boolean = false
+    alias monster as Monster = monsters[index]
+
+    monster.timer = monster.timer - 1
+    expired = (monster.timer = 0)
+end
+```
+
+Declarations precede executable statements in the routine or hosted body.
+Initializers run in source order. A local name is visible after its declaration
+and cannot shadow a parameter or visible module value.
+
+An alias binds one exact aggregate path for its lexical lifetime. It cannot be
+reassigned. Changing long-lived selection therefore means changing an ordinal
+selector and forming a fresh alias when execution next needs the storage.
+
+## Returning from routines and hosted bodies
+
+`return expression` supplies the declared result. A result-bearing sub must
+return on every reachable path. A no-result sub uses bare `return` for early
+departure.
+
+A hosted Glimmer body also uses bare `return`. Lowering targets the host
+continuation rather than emitting a machine return:
 
 ```text
-entry wrapper
-    Lanternfly body
-    Glimmer update epilogue
-    return
+Lanternfly body
+    -> Glimmer update epilogue
+    -> wrapper return
 ```
 
-`EXIT BODY` branches to the body epilogue. It does not emit a machine `RET`.
-A direct return would skip Glimmer's updates and change scheduling behaviour.
+This rule preserves update work after early body completion. A direct `RET`
+from generated body code would be a backend bug.
 
-The same concept works in another host: the host supplies the continuation
-point. Standalone Lanternfly may treat the top-level body epilogue as program return.
+## Calls, recursion and reentrancy
 
-## Labels and jumps
+Arguments evaluate from left to right. Destination paths evaluate before
+assignment sources. Calls and visible storage effects remain in source order
+unless an interface proves a reordering safe.
 
-Lanternfly uses labels, never line numbers:
+The language permits a call graph, while bare-metal profiles may reject
+recursive cycles. That lets a backend allocate scalar locals statically and
+report a fixed memory cost. A recursion-capable profile must state its ABI and
+stack costs.
 
-```lanternfly
-retry:
-```
+Reentrancy, interrupt safety, mapping-context changes and no-return behaviour
+belong to routine contracts and target profiles. They are not new call syntax.
 
-Unrestricted `GOTO` is not needed by the current corpus and is deferred. A
-restricted local `GOTO label` may later support generated state machines or
-algorithms that become less clear under artificial flags.
+## Control conformance
 
-If admitted, it must obey:
+Required fixtures cover:
 
-- target label in the same routine or body;
-- no jump into a nested block;
-- no jump across initialization of a local or alias;
-- no jump out of a block that owns cleanup;
-- source maps retain the named label.
-
-Native assembly remains available when the desired control really is
-instruction-level.
-
-## Calls before a full routine system
-
-The first useful Lanternfly integration can call imported zero- or fixed-argument
-services:
-
-```lanternfly
-FbClear()
-FbPlot(DotX, DotY, COLOR_GREEN)
-NextPiece = RandomByte() AND 7
-```
-
-The host interface supplies signatures. A source call does not state whether
-the target implementation is inline or callable.
-
-User-defined routines can arrive in the next stage without changing this call
-syntax.
-
-## Procedures
-
-A procedure returns no value:
-
-```lanternfly
-SUB OrPlaneRow(
-    plane AS REF TO BYTE[8],
-    row AS BYTE,
-    mask AS BYTE
-)
-    plane[row] = plane[row] OR mask
-END SUB
-```
-
-Parameters have lexical names and declared types. Parentheses and commas are
-used even for zero arguments. This is closer to modern BASIC and
-Algol-descended languages than to a BASIC `GOSUB`.
-
-Scalar parameters pass values. Reference parameters pass access to existing
-storage. Aggregate parameters must be references; there is no implicit array
-or record copy.
-
-## Functions
-
-A function returns one scalar or reference value:
-
-```lanternfly
-FUNCTION Manhattan(
-    x0 AS BYTE,
-    y0 AS BYTE,
-    x1 AS BYTE,
-    y1 AS BYTE
-) AS WORD
-    RETURN ABS(x0 - x1) + ABS(y0 - y1)
-END FUNCTION
-```
-
-The first routine system has no:
-
-- overloads;
-- optional parameters;
-- variable argument lists;
-- multiple return values;
-- closures;
-- nested routine declarations;
-- exceptions.
-
-An aggregate return is deferred. Return a reference to existing storage when
-that matches the lifetime.
-
-## Locals
-
-Scalar locals use `DIM`:
-
-```lanternfly
-DIM candidate AS INTEGER
-DIM oldRotation AS BYTE = CurRotation
-```
-
-Initializers execute in source order on routine entry. A local without an
-initializer has no readable value until assigned. Definite-assignment analysis
-rejects a path that reads it first.
-
-Local aliases use `ALIAS` and cannot be rebound:
-
-```lanternfly
-ALIAS monster = Monsters[index]
-```
-
-Local reference variables may be rebound because they are scalars:
-
-```lanternfly
-DIM monster AS NEAR REF TO Monster
-monster = REF Monsters[index]
-```
-
-The distinction makes lifetime and storage cost visible.
-
-## Calling convention is not syntax
-
-Lanternfly does not define IX, register saves or stack slot width. Each backend ABI
-must implement:
-
-- scalar value parameters;
-- typed reference parameters;
-- scalar or reference result;
-- automatic local lifetime;
-- recursion policy;
-- preservation across imported calls.
-
-The Z80 backend may begin with ZAX's proven shape:
-
-- arguments in address-sized stack slots;
-- IX as frame anchor;
-- scalar locals in slots;
-- aggregate aliases as addresses;
-- declared return carrier.
-
-That is one ABI, not Lanternfly's meaning. A 6502 target may use a software frame in
-zero page and memory. C can use its native call surface behind fixed-width
-types. BASIC can lower initial routines to global scratch plus generated
-`GOSUB` conventions if reentrancy is disabled.
-
-## Recursion
-
-Recursion is deferred from the first target profile. It is not forbidden by
-the eventual routine semantics.
-
-Without recursion, a backend may allocate local storage statically along the
-known call graph. This is valuable on small systems and makes maximum memory
-use predictable. The compiler must reject recursive cycles under such a
-profile.
-
-A stack-capable profile may opt into recursion later. Aggregate locals remain
-aliases, so recursion does not imply dynamic arrays.
-
-## Reentrancy and interrupts
-
-A routine or imported service can carry execution properties:
-
-- reentrant;
-- not reentrant;
-- interrupt-safe;
-- may change memory context;
-- no return.
-
-These properties belong to interface and backend checking, not ordinary
-keywords in every call.
-
-A Lanternfly routine using static scratch is not reentrant. The cost report and
-symbol map should identify its scratch allocation. A routine that can be
-called from both main code and an interrupt requires a reentrant ABI or an
-explicit prohibition.
-
-## Evaluation and sequencing
-
-Statements execute in source order. The initial expression subset is pure, so
-operand evaluation order does not expose side effects.
-
-Arguments to a call are evaluated left to right and staged before the call.
-This is chosen now so later pure function expressions and complex reference
-arguments do not acquire backend-dependent ordering.
-
-An imported procedure may read and write memory described by its interface.
-The compiler must not reorder calls or visible storage operations across it
-unless the contract proves that safe. The first compiler need not perform such
-reordering at all.
-
-## Control-flow conformance
-
-The acceptance suite should include:
-
-- nested `IF` with `ELSEIF` priority;
-- `SELECT CASE` with range and default;
-- ascending, descending and negative-step `FOR`;
-- a descending byte loop that terminates correctly at zero;
-- empty `WHILE` and post-test `DO`;
-- `EXIT` and `CONTINUE` from nested conditions;
-- early function return;
-- `EXIT BODY` followed by a host epilogue;
-- definite assignment across branches;
-- reference argument mutation;
-- recursion rejection in a non-recursive target profile.
+- `else if` priority and Boolean conditions;
+- integer, enum and subrange `select`, including `to` and `until`;
+- ascending, descending and exclusive counted loops;
+- one-past-boundary loops whose boundary does not fit the control variable;
+- enum traversal and `F-LOOP-RANGE`;
+- row-major `for each`;
+- `while true`, `exit` and `continue`;
+- early routine and hosted-body return;
+- left-to-right argument and path evaluation;
+- aggregate parameter mutation;
+- recursive-cycle rejection on a non-recursive profile.

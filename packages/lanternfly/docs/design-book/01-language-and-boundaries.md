@@ -1,10 +1,9 @@
-# A language between intention and substrate
+# Language and boundaries
 
-## The problem Lanternfly solves
+## The layer Lanternfly occupies
 
-A Glimmer program already says when code runs. It declares state, triggers,
-pulses, timers, curves, cards, resources and display bindings. Yet the body of
-a rule still drops into assembly:
+A Glimmer program already describes scheduling, state, resources and display
+work. Until now, the body of a rule has commonly dropped into assembly:
 
 ```asm
         ld      a,(Count)
@@ -16,194 +15,195 @@ _save:
         ld      (Count),a
 ```
 
-The game idea is smaller:
+The corresponding game rule is direct:
 
 ```lanternfly
-Count = Count + 1
-IF Count >= 10 THEN Count = 0
+count = count + 1
+
+if count >= 10 then
+    count = 0
+end
 ```
 
-Lanternfly gives that idea an executable form. It does not replace Glimmer's model
-and it does not pretend the machine has disappeared. It occupies the layer
-between them.
+Lanternfly gives that rule a precise compiled form. It preserves fixed widths,
+exact layouts and visible native cost while removing register allocation,
+branch distances and instruction selection from ordinary source.
 
 ```text
 Glimmer scheduling and resources
              |
-        typed body boundary
+       typed body manifest
              |
-            Lanternfly
+          Lanternfly
              |
-     target lowering and runtime
+    typed IR and target lowering
              |
-       AZM / 6502 asm / C / BASIC
+       AZM / C / BASIC / another CPU
 ```
 
-This position explains most of the design.
+The same language can compile a standalone program. Glimmer is the first host,
+not part of Lanternfly's semantics.
 
-Lanternfly must be more readable than assembly because replacing instruction
-mnemonics is its purpose. It must be more exact than informal pseudocode
-because the result runs on machines with eight-bit values, banked memory and
-fixed layouts. It must be independent of Glimmer because the same body
-language should work in a standalone program or another host.
+## A compiler for small systems
+
+Lanternfly is an ahead-of-time compiler rather than an interpreter. A program
+should run in the same broad speed class as compiled C or Pascal, with the
+storage and helper costs visible in generated artifacts. The initial compiler
+runs on a desktop and emits AZM for Z80 systems. Its architecture also allows
+other CPU backends and hosted C or BASIC output.
+
+The longer goal includes native compilers on selected eight-bit machines. That
+goal favours a small grammar, fixed storage, simple name resolution and
+compiler passes that can be implemented without a large runtime. A native
+compiler may support a smaller implementation stage, but it must preserve the
+same meaning for every construct it accepts.
+
+## Structured BASIC on a systems foundation
+
+The surface borrows BASIC's readable words:
+
+```lanternfly
+var score as u16 = 0
+
+if playerAlive and enemyVisible then
+    updateChase()
+end
+```
+
+Declarations read as `name as Type`. Control uses `if`, `select`, `for`,
+`while`, `exit`, `continue` and `return`. Word operators handle Boolean and
+bitwise work. Blocks close with one bare `end`.
+
+Lanternfly leaves behind line numbers, implicit declarations, numeric truth,
+default floating point, optional call parentheses, `goto`-centred structure
+and dialect-specific user-interface statements. The resemblance is
+educational rather than compatible.
+
+Pascal contributes a second influence: nominal enums, checked subranges,
+ordinal array domains and exact structured data. Lanternfly expresses ranges
+with the BASIC words `to` and `until` instead of symbolic punctuation:
+
+```lanternfly
+enum Direction as u8
+    left
+    right
+    up
+    down
+end
+
+range ScreenColumn as u8 = 0 until 32
+```
+
+The result remains easy to read aloud while carrying more information than a
+collection of unrelated integer constants.
 
 ## No Glimmer vocabulary
 
-Lanternfly has no keyword for a pulse, effect, render, card, curve, binding or state
-change. It sees imported declarations:
+Lanternfly has no keywords for pulses, effects, renders, cards, bindings,
+resources or update scheduling. A host supplies ordinary typed names:
 
 ```lanternfly
-IMPORT Count AS BYTE
-IMPORT ShapeDot AS NEAR REF TO Shape
-IMPORT ShapeDraw(shape AS REF TO Shape, x AS BYTE, y AS BYTE)
+count = count + 1
+drawShape(shapeDot, dotX, dotY)
 ```
 
-Those declarations might have come from Glimmer, a hand-written interface, a C
-header model or a platform package. Lanternfly does not distinguish them.
+The manifest says which names are mutable storage, constants, aggregates or
+routines. Glimmer may run generated update work after the body, but assignment
+inside the body remains an ordinary Lanternfly assignment. The same source
+outside Glimmer does not acquire reactive behaviour.
 
-When a Lanternfly body writes `Count`, Glimmer may arrange change tracking around the
-body. That is host code. The assignment itself remains an ordinary assignment.
-This keeps the language honest: compiling the same body outside Glimmer does
-not mysteriously acquire reactive behaviour.
+## No substrate vocabulary in ordinary source
 
-## No substrate vocabulary in ordinary code
+Registers, flags, 6502 zero page, 8086 segments, C pointers and generated BASIC
+line numbers belong to backends. Source instead describes stable facts:
 
-Lanternfly source also avoids Z80 registers, 6502 zero page, 8086 segment registers,
-C pointer syntax and BASIC line numbers. These belong to backends.
+- integers with explicit width and signedness;
+- `boolean`, enums and checked subranges;
+- fixed arrays with ordinal index domains;
+- exact records;
+- declared paths and temporary aggregate aliases;
+- structured control and typed calls;
+- visible native and platform boundaries.
 
-That does not make Lanternfly a high-level general-purpose language. Its abstractions
-remain close to static data:
-
-- integers with explicit widths and signedness;
-- fixed arrays and exact records;
-- references to existing storage;
-- direct assignment and calls;
-- structured branches and loops;
-- visible target services.
-
-The language hides register allocation. It does not hide whether a value is a
-byte, whether an array has 64 elements or whether a reference may cross a bank.
-
-## BASIC-like, not BASIC-compatible
-
-Lanternfly borrows the parts of early BASIC that made small programs approachable:
-
-- assignment reads from left to right;
-- control uses words;
-- zero and nonzero are meaningful conditions;
-- `AND`, `OR`, `XOR`, `NOT` and `MOD` are ordinary operators;
-- procedures are named;
-- declarations can be read aloud.
-
-It rejects some historical BASIC traits:
-
-- no line numbers;
-- no implicit floating-point default;
-- no undeclared variables;
-- no significant single-letter typing suffixes;
-- no ambiguous array upper-bound convention;
-- no unchecked jump into the middle of a block;
-- no target-dependent integer meaning.
-
-The result should feel familiar rather than nostalgic.
-
-## Typed, but not ceremonious
-
-Every stored value has a type. The type determines width, signedness, layout
-and legal access. Lanternfly is not interested in elaborate generic programming,
-class hierarchies or type-level computation.
-
-A declaration should answer a practical question:
+A declaration answers questions that matter on every target:
 
 ```lanternfly
-DIM Score AS WORD
-DIM PlayerY AS SBYTE
-DIM Board[8] AS BYTE
-DIM Monsters[3] AS Monster
-DIM CurrentPlane AS NEAR REF TO BYTE[8]
+var playerY as i8 = -3
+var board as u8[1 to 8, 1 to 8]
+var monsters as Monster[3]
 ```
 
-How many bytes exist? Which values fit? Is the name storage or a reference?
-Can the target reach it directly? Those are useful facts on every backend.
+The compiler knows the value domain, byte count, field offsets and legal
+indices. A backend remains free to choose registers, frame slots or helper
+calls.
+
+## Storage identity without pointers
+
+Lanternfly deliberately has no source-level pointer or reference values,
+address-of or dereference operations, pointer arithmetic, function values or
+closures. Persistent identity uses declared paths and ordinal selectors:
+
+```lanternfly
+monsters[selectedMonster].timer
+board[row, column]
+```
+
+An aggregate parameter or local `alias` temporarily names existing array or
+record storage. A backend may carry an address internally, but the source
+cannot store, return, compare, convert or rebind that carrier.
+
+This is a language boundary, not a temporary omission. Fixed pools, selectors
+and multidimensional arrays express the current pointer-table algorithms
+without introducing a second, unsafe value model.
+
+Opaque `near address` and `far address` values remain available at native
+interfaces. They do not point into ordinary Lanternfly storage and support no
+source dereference or arithmetic.
 
 ## Static by default
 
-The programs studied for Lanternfly use fixed storage:
+The motivating programs use fixed memory:
 
 - Snake has a 64-byte circular body;
-- Tetro has four eight-byte planes and static piece tables;
-- Pacmo has a 15-row packed world and three monster records;
+- Tetro has fixed planes and piece tables;
+- Pacmo has packed world rows and three exact monster records;
 - TMS9918 programs use fixed pattern, colour and sprite tables.
 
-No program needs a heap to express its game logic. Lanternfly therefore begins with
-static aggregates. It can add scalar call-local storage without adding local
-arrays, dynamic allocation or ownership.
+Module arrays and records therefore own static storage. Scalar locals may use
+automatic storage. Aggregate locals are aliases to existing objects rather
+than frame allocations. The first edition has no heap, garbage collector,
+resizable collection or unbounded object graph.
 
-This is a positive model, not merely a missing feature. A static memory map is
-inspectable, debuggable and suitable for machines where memory capacity and
-bank placement are part of the program.
+Static allocation makes the memory map inspectable. It also lets a compiler
+reject an object that cannot fit its target region before the program runs.
 
-## A small core and explicit libraries
+## Core, libraries and native work
 
-The core defines computation:
+Four layers keep the language small:
 
-- literals and typed expressions;
-- assignment;
-- field and index access;
-- branches and loops;
-- routine invocation;
-- reference formation and comparison.
+| Layer              | Source meaning                         | Typical implementation                |
+| ------------------ | -------------------------------------- | ------------------------------------- |
+| core semantics     | expressions, paths, control and calls  | instruction, sequence or helper       |
+| standard operation | `abs`, `sqrt`, `clear`, `fill`, layout | fold, inline sequence or helper       |
+| platform service   | input, display, sound, device access   | firmware, port routine, host API      |
+| runtime helper     | invisible instruction-set support      | linked only when selected by lowering |
 
-The standard library defines useful target-independent operations such as
-integer square root, power, fill and copy. A platform library defines key
-input, random bytes, framebuffer plots, VRAM writes and sound cues. A backend
-runtime supplies hidden helpers for operations the CPU cannot perform directly.
+An integer division helper is not imported by source. A display operation is
+not a language keyword. Both distinctions remain visible in artifacts and
+cost reports.
 
-These three categories must not blur:
+Target assembly stays available through `asm`/`end`. It is the right boundary
+for startup, interrupts, exact device protocols and deliberately tuned inner
+loops. An assembly block is target-specific and carries conservative effects;
+it does not weaken type checking elsewhere.
 
-| Category         | Stable source meaning       | Typical implementation               |
-| ---------------- | --------------------------- | ------------------------------------ |
-| core operation   | language specification      | instruction or generated sequence    |
-| standard service | Lanternfly library contract | inline, helper call or host built-in |
-| platform service | target package contract     | ROM call, port routine, C API        |
-| runtime helper   | invisible backend mechanism | linked only when needed              |
+## The measure of success
 
-`ISQRT` is visible because the programmer chose it. A compiler helper used to
-multiply an index by 13 is invisible because the programmer chose an array
-access.
+Lanternfly is doing its job when ordinary state changes, searches, collision
+tests and rendering calculations move out of assembly; hardware timing and
+device protocols remain explicit services or assembly; generated output can
+still be audited; and the same algorithm keeps its meaning across backends.
 
-## Pass-through remains a boundary
-
-Some work should stay native:
-
-- startup and stack setup;
-- interrupt handlers;
-- cycle-balanced scanout;
-- direct device protocols;
-- deliberately hand-tuned inner loops;
-- operations not yet supported by a backend.
-
-Native code is allowed through an explicit, target-qualified boundary. It does
-not introduce hidden words into Lanternfly and it does not weaken the type of every
-ordinary expression.
-
-The first Glimmer integration can continue to accept direct AZM bodies beside
-Lanternfly bodies. If Lanternfly later becomes the usual surface, native sections remain
-the escape hatch.
-
-## What success looks like
-
-Lanternfly succeeds if the game corpus divides cleanly:
-
-1. ordinary rules, state changes, searches, collision tests and rendering
-   calculations become Lanternfly;
-2. hardware timing and platform entry remain services or native code;
-3. generated output stays readable enough to audit;
-4. the same Lanternfly algorithm can target another CPU or a hosted language without
-   changing its meaning;
-5. the language stays small enough that its complete core can be understood.
-
-It does not need to become the name of the whole system. Glimmer may overshadow
-it, and an eventual integrated product may simply be called Glimmer. Lanternfly is
-still a useful name for the component and for the layer whose rules must remain
-clear.
+The complete language should remain small enough to understand. Its power
+comes from exact types, regular storage and compilation, not from accumulating
+every facility found in later desktop languages.

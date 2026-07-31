@@ -1,396 +1,291 @@
 # Numbers, truth and expressions
 
-> [!IMPORTANT]
-> This chapter records the exploratory design that led to the 0.4 language.
-> Its uppercase type names, range-based mixed promotions, numeric truth values
-> and eager Boolean rules are historical proposals, not current semantics.
-> The normative rules are in
-> [the specification](../specification.md), especially sections 3 and 8.
+Numeric rules are part of program meaning. A Z80, C compiler and BASIC dialect
+must agree even when their native promotion and overflow rules differ.
 
-Numeric rules are where an apparently simple language can become treacherous.
-The corpus contains three behaviours that must coexist:
+Three corpus cases keep the design honest:
 
-- Skyfall subtracts into a byte and deliberately wraps;
-- Rushlight subtracts two byte coordinates and needs a signed intermediate
-  before taking the absolute value;
-- historical Tetro stores the genuine negative value -3 in one byte.
+- Skyfall deliberately stores a wrapped byte result;
+- Rushlight needs the signed difference between two byte coordinates;
+- historical Tetro stores the genuine value -3 in one byte.
 
-Lanternfly cannot leave those results to the backend.
+## Fixed-width integers
 
-## Integer types
+| Type  | Width | Range                                |
+| ----- | ----: | ------------------------------------ |
+| `u8`  |     8 | 0 through 255                        |
+| `i8`  |     8 | -128 through 127                     |
+| `u16` |    16 | 0 through 65,535                     |
+| `i16` |    16 | -32,768 through 32,767               |
+| `u32` |    32 | 0 through 4,294,967,295              |
+| `i32` |    32 | -2,147,483,648 through 2,147,483,647 |
 
-The working integer set is:
+Representations are two's complement and widths do not vary by backend.
+`float32` is deferred and would be an explicit target capability.
 
-| Type      | Width | Range                          |
-| --------- | ----: | ------------------------------ |
-| `BYTE`    |     8 | 0 through 255                  |
-| `SBYTE`   |     8 | -128 through 127               |
-| `INTEGER` |    16 | -32768 through 32767           |
-| `WORD`    |    16 | 0 through 65535                |
-| `LONG`    |    32 | -2147483648 through 2147483647 |
-| `DWORD`   |    32 | 0 through 4294967295           |
+## Exact literals
 
-`INTEGER` is the ordinary type for unconstrained whole-number calculation.
-`BYTE` is the ordinary compact storage type for pixels, counters, masks and
-small table elements. `SBYTE` exists because negative eight-bit game state is
-real, not hypothetical. `WORD` and `DWORD` preserve the upper half of their
-width when a signed range would be too small.
-
-All integer representations are two's complement. Their widths do not change
-with the backend.
-
-`FLOAT32` is deferred. A later profile may provide IEEE binary32 or another
-explicitly named format, but no integer-only program links floating-point
-support.
-
-## Literals
-
-Lanternfly accepts decimal, hexadecimal, binary and character literals:
+An integer literal begins as an exact compile-time value:
 
 ```lanternfly
-42
-$FF
-%00111111
-'A'
+const visibleMask as u8 = %00000001
+const nameTable as u16 = $0800
+const spawnY as i8 = -3
 ```
 
-A literal is initially an exact compile-time integer rather than a prematurely
-chosen machine type. Context then selects a type that contains it:
+An expected type from an initializer, assignment, scalar argument, return,
+`fill` value or counted-loop start propagates through an all-literal subtree.
+Without such a context, literal arithmetic defaults to `i16`; a value outside
+that type needs an explicit conversion.
+
+Explicit conversion also requests low-bit interpretation:
 
 ```lanternfly
-DIM mask AS BYTE = $80
-DIM period AS WORD = 1000
-DIM spawnY AS SBYTE = -3
+const wrapped as u8 = u8(300) // 44
 ```
 
-Without a constraining context, a decimal literal uses `INTEGER` if it fits,
-then `LONG`. A non-decimal literal follows the same rule; spelling `$FFFF`
-does not silently mean -1. Write `-1`, `WORD($FFFF)` or a named mask according
-to the intended value.
+The directly negated minimum of a signed type is legal as one value, so
+`const minimum as i8 = -128` does not first try to represent positive 128.
 
-A constant initializer that cannot fit its declared type is an error. Runtime
-narrowing is different and is discussed below.
+## Byte characters and static strings
 
-## Promotions solve the byte-subtraction conflict
-
-Addition, subtraction, division, remainder and comparison never evaluate below
-16 bits. Their common type is the smallest type of at least 16 bits whose range
-contains both operand ranges. Multiplication and power use their own
-product-width rule; masks and shifts retain explicit bit width. The minimum
-arithmetic width gives byte coordinate subtraction a useful signed range:
+A character literal is one exact byte written in single quotes:
 
 ```lanternfly
-dx = ABS(PlayerX - EnemyX)
+const prompt as u8 = '>'
+const newline as u8 = '\n'
+const escape as u8 = '\x1b'
 ```
 
-If `PlayerX` is 2 and `EnemyX` is 250, the subtraction is -248. It does not
-first wrap to 8.
+It begins as an untyped value from zero through 255 and adopts an integer type
+from context. Lanternfly accepts printable ASCII and the defined byte escapes;
+it does not add a character encoding, a multibyte character type or
+multi-character literals.
 
-A later assignment to byte storage narrows:
+A double-quoted expression creates immutable, program-lifetime bytes with a
+NUL terminator:
 
 ```lanternfly
-EnemyY = EnemyY - FallSpeed
+const title as near cstr = "LANTERNFLY"
+var promptText as near cstr = "READY?"
 ```
 
-The subtraction occurs as `INTEGER`; storing into `EnemyY AS BYTE` keeps the
-low eight bits. This preserves Skyfall's wrap without corrupting every byte
-expression.
+The source cannot contain an embedded zero, because that would make the
+payload end before the compiler-supplied terminator. A `cstr` carries an
+address class but no hidden length, capacity or ownership. Assignment copies
+that carrier, while comparison examines the unsigned payload bytes.
 
-That pair of rules is chosen:
+This is deliberately a boundary type rather than a mutable string system.
+Writable text is a fixed `u8` array with an explicit capacity; it does not
+convert implicitly to `cstr`. A C string also has no conversion to an integer
+or opaque address.
 
-1. byte-only additive, division and comparison operations use at least
-   `INTEGER`;
-2. assignment to a narrower integer uses defined two's-complement truncation.
+## Operand compatibility
 
-A compiler should warn when an implicit narrowing is not provably in range.
-The warning can be suppressed by making intent explicit:
+Matching integer types can be combined directly. A narrower operand may widen
+to the type already present on the other side when every source value fits:
+
+| Source | Permitted written destination operand |
+| ------ | ------------------------------------- |
+| `u8`   | `u16`, `i16`, `u32`, `i32`            |
+| `i8`   | `i16`, `i32`                          |
+| `u16`  | `u32`, `i32`                          |
+| `i16`  | `i32`                                 |
+
+The compiler never invents a third common type. `u8 + u16` is a `u16`
+operation because `u8` widens to the type already present. `u8 + i8` and
+`i16 + u16` require an explicit conversion.
+
+That restriction keeps a small expression legible: a 32-bit helper appears
+only when a 32-bit operand is actually written into the calculation.
+
+## Result widths
+
+For matching operands:
+
+| Operator             | `u8` result  | `i8` result  | 16/32-bit result |
+| -------------------- | ------------ | ------------ | ---------------- |
+| `+`, `*`, `/`, `mod` | `u16`        | `i16`        | operand type     |
+| `-`                  | `i16`        | `i16`        | operand type     |
+| `and`, `or`, `xor`   | operand type | operand type | operand type     |
+| `shl`, `shr`         | left type    | left type    | left type        |
+| `^`                  | `u16`        | `i16`        | base type        |
+| comparisons          | `boolean`    | `boolean`    | `boolean`        |
+
+The `u8 - u8` result covers -255 through 255. Rushlight can therefore write:
 
 ```lanternfly
-EnemyY = BYTE(EnemyY - FallSpeed)
+distance = abs(playerX - enemyX)
 ```
 
-The conversion does not change the result. It documents that wrapping is
-intended.
-
-## Finding a common type
-
-For `+`, `-`, comparison, division and remainder, the compiler finds a common
-type from the original operand ranges, with a minimum arithmetic width of 16
-bits.
-
-The rule is range-based:
-
-1. let an exact literal adopt the other operand's type if it fits;
-2. choose the smallest supported type at least 16 bits wide whose range
-   contains both operand types;
-3. require an explicit conversion when no supported type contains both.
-
-Examples:
-
-| Operands          | Common type                  |
-| ----------------- | ---------------------------- |
-| `BYTE`, `BYTE`    | `INTEGER`                    |
-| `SBYTE`, `BYTE`   | `INTEGER`                    |
-| `INTEGER`, `BYTE` | `INTEGER`                    |
-| `WORD`, `BYTE`    | `WORD`                       |
-| `INTEGER`, `WORD` | `LONG`                       |
-| `LONG`, `WORD`    | `LONG`                       |
-| `LONG`, `DWORD`   | explicit conversion required |
-
-This avoids the particularly dangerous rule that a signed/unsigned mixture
-silently becomes unsigned at the same width.
-
-## Multiplication
-
-Multiplication selects its type from the effective operand types before narrow
-arithmetic promotion:
-
-| Effective operands                | Product type                                         |
-| --------------------------------- | ---------------------------------------------------- |
-| both at most 8-bit and unsigned   | `WORD`                                               |
-| both at most 8-bit, either signed | `INTEGER`                                            |
-| either 16-bit, both unsigned      | `DWORD`                                              |
-| either 16-bit, either signed      | `LONG`                                               |
-| a 32-bit operand                  | compatible common 32-bit type, with defined wrapping |
-
-This rule makes `row * stride` useful without a cast and makes 32-bit integers
-earn their place in the initial model. A backend may still strength-reduce a
-constant multiplication.
-
-An exact literal first adopts the other operand's type when it fits. A
-`LONG`/`DWORD` mixture still requires an explicit conversion because neither
-range contains the other.
-
-Multiplication that has reached 32 bits wraps in its result type. A
-future checked family can report overflow without changing the ordinary
-operators.
-
-## Division and remainder
-
-`/` is integer division. `MOD` is the matching remainder.
-
-For signed types:
-
-- quotient truncates toward zero;
-- remainder has the sign of the dividend;
-- `a = (a / b) * b + (a MOD b)` when `b` is nonzero.
-
-For unsigned types, both operations are unsigned.
-
-A constant zero divisor is a compile error. A runtime zero divisor invokes the
-target's arithmetic fault hook. The default bare-metal hook stops execution in
-a diagnosable target-defined manner. A host backend may raise its ordinary
-runtime error only if the Lanternfly runner maps that error back to the source.
-
-The overflow case `minimumSigned / -1` wraps to `minimumSigned` in the ordinary
-operator family. A checked library routine may reject it later.
-
-## Power and square root
-
-Power is written with `^`:
+without first wrapping the subtraction. Byte multiplication and addition grow
+to 16 bits, so ordinary array-offset arithmetic also composes naturally:
 
 ```lanternfly
-areaScale = base ^ exponent
+elementNumber = row * 20 + column
 ```
 
-`XOR` is a word, so the caret is unambiguous. The exponent must be a
-non-negative integer. The result type follows multiplication's product model
-for the base and then remains fixed for repeated products; overflow wraps in
-that type.
+Operator order still matters. With `u8` values, `x + 1 - y` first produces
+`u16`; the later subtraction is therefore unsigned. A calculation that needs
+a negative final range can write `i16(x) + 1 - i16(y)`.
 
-A constant negative exponent is a compile error. A negative exponent reached
-at runtime invokes the arithmetic fault hook. Fractional reciprocals do not
-belong to the integer operator.
+## Wrapping and destination conversion
 
-The visible `POW(base, exponent)` standard function is equivalent and useful
-where a function value is easier to pass or document. A backend may lower
-either form to the same helper.
+Arithmetic wraps in its selected fixed-width result type. Assignment converts
+that result to its destination:
 
-Integer square root is a standard function:
+- value-preserving widening is silent;
+- narrowing keeps the low destination-width bits;
+- a signedness change preserves the bit pattern;
+- narrowing and signedness changes warn by default.
+
+The common state-update form receives a round-trip exemption:
 
 ```lanternfly
-root = ISQRT(value)
+lives = lives - 1
+position = position + velocity
 ```
 
-It accepts a non-negative integer and returns the floor of the mathematical
-square root. `SQRT` is reserved for a possible floating-point family so source
-does not change meaning when float support arrives.
+When every value leaf has the destination's type and the expression contains
+only ordinary integer operators, the wider intermediate is understood to
+return to its original storage width. No warning is needed. An explicit
+conversion, another declared type or a standard operation ends that exemption.
 
-A constant negative input is a compile error. A negative input reached at
-runtime invokes the arithmetic fault hook.
-
-Neither power nor square root is assumed to be a machine instruction. Used
-helpers are linked; unused helpers cost nothing.
-
-## Overflow and narrowing
-
-Ordinary fixed-width arithmetic wraps modulo `2^width`. Signed results are
-interpreted from the resulting two's-complement bit pattern.
-
-Compile-time expressions follow the same rule only after a result type is
-known. An untyped constant is kept exact so that:
+Skyfall's deliberate wrap is still exact:
 
 ```lanternfly
-CONST TableBytes = 24 * 32
+enemyY = u8(enemyY - fallSpeed)
 ```
 
-does not overflow merely because `INTEGER` is the default runtime type.
+If both inputs are `u8` and hold 2 and 5, subtraction produces `i16(-3)` and
+the conversion stores 253.
 
-There are three conversion situations:
+## Division, remainder, power and shifts
 
-- **widening** preserves the value and is implicit;
-- **runtime narrowing** keeps the low bits and may warn;
-- **constant narrowing** must fit unless an explicit conversion requests
-  truncation.
-
-This distinction removes a common foot gun while preserving low-level control.
-
-## Comparisons and canonical truth
-
-Lanternfly has:
+Integer division truncates toward zero. `mod` satisfies:
 
 ```text
-=  <>  <  <=  >  >=
+left = (left / right) * right + (left mod right)
 ```
 
-Operands first convert to their common type. Signed or unsigned comparison
-then follows that type.
+A zero divisor is a compile-time error when known and a runtime arithmetic
+fault otherwise.
 
-A comparison returns canonical numeric truth in the common comparison type:
+Power uses `^`. Its exponent must be non-negative, and the result type remains
+fixed through repeated products. `x ^ 0` is one in that type. A negative
+runtime exponent faults.
 
-- false is zero;
-- true has every bit set.
+`shl` and `shr` retain the left operand's type. A negative shift count faults.
+A count at least as large as the width produces zero for `shl` and unsigned
+`shr`, and sign fill for signed `shr`. These rules avoid C undefined behaviour
+and CPU-specific masked counts.
 
-Thus an integer comparison yields `0` or `-1`, and a long comparison yields
-`0` or `-1L`. Narrow operands promote to `INTEGER`, so `BYTE < BYTE` also
-returns `INTEGER`.
+## Boolean values
 
-Conditions accept any integer. Zero is false; every nonzero bit pattern is
-true.
-
-Lanternfly does not need a separately stored `BOOLEAN` type in its first version.
-Programs may define named byte state such as `Alive AS BYTE`. A future Boolean
-type would have to interoperate with this numeric model and is not currently
-justified.
-
-## One Boolean and bitwise operator family
-
-`AND`, `OR`, `XOR` and `NOT` operate on complete fixed-width bit patterns.
-They do not apply arithmetic's narrow promotion. Binary operands must have the
-same type after a literal has adopted its context; otherwise an explicit
-conversion states the desired width and signedness. `NOT` retains its operand
-type.
-
-These operators also combine canonical truth values:
+`boolean` occupies one byte and stores only zero or one. Comparisons produce
+`boolean`, and every condition requires it:
 
 ```lanternfly
-IF Alive AND NOT Paused THEN
-    TickGame()
-END IF
-
-masked = flags AND VISIBLE_MASK
-flags = flags OR DIRTY_MASK
+if (flags and visibleMask) <> 0 then
+    drawActor()
+end
 ```
 
-There is no second `&&`/`||` family. This follows classic integer BASIC and
-keeps binary work grammatical.
+Integers do not become conditions implicitly. Imported code that promises a
+Boolean must also provide its canonical representation.
 
-The consequence is deliberate: `NOT` is complement, not a conversion to
-Boolean. If `value` is 2, `NOT value` is not zero. Write `value = 0` when that
-is the intended test.
+With Boolean operands, `not`, `and`, `xor` and `or` are logical. Boolean `and`
+and `or` short-circuit. With integer operands the same words combine complete
+bit patterns, and both operands are evaluated.
 
-This means `NOT BYTE(0)` is `BYTE($FF)`, while `NOT INTEGER(0)` is `-1`.
+## Enums and subranges
 
-`AND` and `OR` evaluate both operands. They do not short-circuit. The initial
-language also excludes side-effecting calls inside expressions, so this rule
-is usually unobservable. If expression calls are later admitted, eager
-evaluation remains the default; an explicit conditional expresses guarded
-effects.
-
-## Shifts
-
-`SHL` and `SHR` shift the left operand by the right operand. They retain the
-left operand's type and do not apply arithmetic's narrow promotion:
+Enums and subranges are ordinal types rather than decorated integers:
 
 ```lanternfly
-mask = 1 SHL row
-screenY = packed SHR 3
+enum Direction as u8
+    left
+    right
+    up
+    down
+end
+
+range InteriorColumn as u8 = 1 until 31
 ```
 
-`SHR` zero-fills an unsigned left operand and sign-extends a signed one. A
-future `USHR` is unnecessary while an explicit unsigned conversion can state
-the same intent.
+Enum members receive ordinals from zero in declaration order. Their names
+enter the surrounding value scope without qualification. Unrelated enum types
+cannot be mixed even when they share a representation width.
 
-For a shift count greater than or equal to the width:
+A subrange is a distinct type whose representation comes from its host.
+Values widen silently to the host type. Assignment, initialization, argument
+passing, return and explicit conversion into the subrange check its domain.
+Known failure is a compile error; dynamic failure invokes `F-RANGE` before the
+destination changes.
 
-- `SHL` returns zero;
-- unsigned `SHR` returns zero;
-- signed `SHR` returns zero or all ones according to the sign.
+Enums support comparison, `select`, counted traversal and array indexing, but
+not integer arithmetic or bitwise operations. An explicit conversion to the
+representation type exposes an enum ordinal. Integer-to-enum conversion is
+checked.
 
-Negative shift counts are errors. Defining overshifts avoids inheriting C's
-undefined behaviour or a CPU's masked count.
+Ranges are type and grammar forms, not values. They cannot be stored, passed or
+returned.
 
-## Operator precedence
+## Comparison and precedence
 
-From highest to lowest:
+Integers use the compatibility rules above. Subranges compare through their
+host, and enum operands must share a nominal enum family. Booleans allow only
+`=` and `<>`. C strings use content comparison. Record and array equality is
+deferred.
 
-1. parentheses, indexing, field selection and calls;
+Precedence from highest to lowest is:
+
+1. calls, indexing, field access and parentheses;
 2. `^`;
-3. unary `+`, unary `-`, `NOT`;
-4. `*`, `/`, `MOD`;
-5. `+`, `-`;
-6. `SHL`, `SHR`;
+3. unary `+` and `-`;
+4. `*`, `/` and `mod`;
+5. `+` and `-`;
+6. `shl` and `shr`;
 7. comparisons;
-8. `AND`;
-9. `XOR`;
-10. `OR`.
+8. `not`;
+9. `and`;
+10. `xor`;
+11. `or`.
 
-Power is right-associative. Following BASIC convention, `-2 ^ 2` means
-`-(2 ^ 2)`; use `(-2) ^ 2` for a positive four.
+Power associates right to left. Other binary operators associate left to
+right. Comparison chaining is invalid.
 
-Comparison chaining is not allowed. Write:
+## Standard scalar operations
 
-```lanternfly
-IF 0 <= x AND x < width THEN
-```
+`abs` returns the unsigned type of the same width as its operand, so
+`abs(i8(-128))` is `u8(128)`. An unsigned operand is unchanged.
 
-rather than `0 <= x < width`.
+`sqrt` returns the floor of a non-negative integer square root in the unsigned
+type of the operand's width. A negative value is a compile-time or runtime
+arithmetic fault.
 
-## Expression purity
+`length` scans a `cstr` payload and returns `u16`. Literal calls fold at compile
+time.
 
-The first expression grammar contains:
+These operations may become instructions, inline sequences or helpers. Their
+source types and edge cases do not change.
 
-- literals and constants;
-- scalar loads;
-- indexed and field loads;
-- pure conversions;
-- pure operators;
-- pure standard functions explicitly marked as such.
+## Numeric conformance
 
-Procedures and platform calls are statements. A later function system may
-allow pure user calls in expressions, but it must define evaluation order and
-cost before doing so.
+Every backend must agree on at least these cases:
 
-This restriction is small in the corpus. The games already stage random bytes
-and service results into temporaries when reuse matters. It also makes
-generated assembly easier to inspect.
+| Case                   | Result                  |
+| ---------------------- | ----------------------- |
+| `u8(2 - 5)`            | 253                     |
+| `abs(u8(2) - u8(250))` | `u16(248)`              |
+| `i8($FD)`              | -3                      |
+| `u16(65535) + u8(1)`   | wrapping `u16(0)`       |
+| `i16(-7) / 3`          | -2                      |
+| `i16(-7) mod 3`        | -1                      |
+| `not u8(0)`            | 255                     |
+| `u8(1) < u8(2)`        | `boolean(true)`         |
+| `u8(255) * u8(255)`    | `u16(65025)`            |
+| `i16(1) + u16(1)`      | compile-time type error |
 
-## The numeric conformance set
-
-Every backend must pass at least these cases:
-
-| Case                       | Required result                 |
-| -------------------------- | ------------------------------- |
-| `BYTE(2 - 5)`              | 253                             |
-| `ABS(BYTE(2) - BYTE(250))` | 248                             |
-| `SBYTE($FD)`               | -3                              |
-| `WORD(65535) + BYTE(1)`    | 0 as wrapping `WORD`            |
-| `INTEGER(-7) / 3`          | -2                              |
-| `INTEGER(-7) MOD 3`        | -1                              |
-| `NOT BYTE(0)`              | 255                             |
-| `BYTE(1) < BYTE(2)`        | -1 as `INTEGER` after promotion |
-| `BYTE(255) * BYTE(255)`    | 65025 as `WORD`                 |
-| `WORD($8000) > INTEGER(1)` | true after promotion to `LONG`  |
-
-These are language tests, not Z80 tests. The C and BASIC backends must not
-inherit different host-language answers.
+These are language tests, not Z80 tests. A C or BASIC backend must insert the
+operations needed to produce the same answers.

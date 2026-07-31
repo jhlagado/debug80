@@ -1,368 +1,268 @@
 # Language stages and decisions
 
-> [!IMPORTANT]
-> This chapter records the implementation staging behind
-> [the 0.4 specification](../specification.md). The specification governs
-> whenever an example here omits a semantic detail.
+Specification 0.4 is the implementation baseline. The stages divide one
+language into useful compiler milestones; they are not smaller dialects and
+cannot assign temporary meanings to later constructs.
 
-Specification 0.4 is the implementation baseline. The stages below divide the
-compiler into useful slices; they do not define smaller language editions or
-permit a stage to reinterpret a construct assigned to later work. Detailed
-delivery gates are in the [implementation plan](../implementation-plan.md).
+The [implementation plan](../implementation-plan.md) gives executable gates.
 
 ## Stage K0: hosted bodies
 
-K0 establishes the complete front end and the first hosted vertical slice. It
-replaces straightforward assembly inside an existing Glimmer body.
-
-Required:
+K0 establishes the complete parser and the first Glimmer-hosted vertical
+slice:
 
 - versioned host-manifest and target-profile validation;
-- complete 0.4 parsing, including syntax assigned to later semantic stages;
-- imported scalar and aggregate declarations;
-- the six integer types;
-- byte-valued character literals and static C-string literals;
-- literals, conversions and pure expressions;
-- assignment;
-- fixed array indexing and record fields;
-- one- and two-dimensional paths in the language model;
-- `if`, `select`, `for ... to`, `for ... until`, `for each ... in` and
-  `while`;
-- imported procedure and pure-function calls;
-- scalar compiler temporaries;
-- hosted `return`;
-- standard scalar functions and `FILL`/`COPY`;
-- generated AZM and composed source maps;
-- direct AZM bodies beside Lanternfly.
+- all six integer types and canonical `boolean`;
+- enums, subranges and checked ordinal conversion;
+- byte-valued characters and static `cstr`;
+- imported constants, storage, aggregates and routines;
+- expressions, destination conversion and assignment;
+- fixed-array domains, indexing and record fields;
+- `size`, `count`, `lower`, `upper` and `offset`;
+- `if`, ordinal `select`, both counted boundaries, `for each` and `while`;
+- loop control and hosted `return`;
+- imported calls, `clear`, `fill` and statement/module `asm`;
+- typed effects, fault boundaries, AZM and composed source maps.
 
-K0 may report an implementation-stage diagnostic for user-defined routines,
-owned module storage, or local declarations while those later stages are under
-construction. Such a build cannot yet claim a conforming 0.4 front end.
-Compiler temporaries remain internal.
+K0 may diagnose source-owned module storage, local declarations and
+user-defined routines as later implementation stages. It still parses their
+0.4 syntax. Such a build is a development slice, not a fully conforming 0.4
+front end.
 
-K0 is enough for Counter, Dot, Slide, Trail and most rule bodies.
+Counter, Dot, Slide, Trail and ordinary Glimmer rules are the first fixtures.
 
 ## Stage K1: structured storage
 
-K1 makes the native game engines readable:
+K1 adds:
 
-- Lanternfly-owned static arrays and records;
-- exact initializers;
-- startup initialisation effects;
-- module imports, visibility, and deterministic installation;
-- multidimensional arrays and ordinal selectors;
-- local scalar `var`;
-- local aggregate `alias`;
-- near and far aggregate parameters in imported interfaces;
-- explicit address-space types;
-- broader path lowering.
+- source-owned constants and static variables;
+- enum-, subrange-, range- and count-indexed arrays;
+- exact records and aggregate initializers;
+- non-zero lower-bound normalization and complete path lowering;
+- module import, visibility, export and startup installation;
+- scalar locals and local aggregate aliases;
+- aggregate assignment, `clear` and `fill`;
+- wider Tetro and Pacmo storage fixtures.
 
-K1 covers the central Tetro and Pacmo memory patterns even before user-defined
-routines are mature.
+The hidden carrier for an alias remains compiler-only throughout K1.
 
 ## Stage K2: routines
 
-K2 adds:
+K2 implements:
 
-- one `sub` form with an optional result;
-- scalar value parameters;
-- aggregate alias parameters;
-- scalar return;
-- definite assignment;
-- early return;
-- external routine bindings and standalone entry validation;
-- target ABI description and adapters;
-- non-recursive call graph by default.
+- the single `sub` declaration with optional scalar result;
+- scalar value and exact-shape aggregate-alias parameters;
+- local scalar lifetime and definite assignment;
+- early routine return;
+- external bindings and standalone entry validation;
+- target ABI descriptions and adapters;
+- non-recursive bare-metal call graphs by default.
 
-This moves Snake helpers, the Tetro engine and Pacmo routines into Lanternfly.
+Bounded views and parameter intent do not block this stage. K2 uses writable
+exact-shape aggregate parameters, optional scalar results and no source
+reference values.
 
-Formal arguments are lower priority than structured memory, but they are not a
-different language direction. K0/K1 deliberately reserve the syntax and type
-rules needed by K2.
+## Stage K3: target breadth and far memory
 
-Bounded aggregate views and scalar output/in/out parameter contracts remain
-post-0.4 design work. The initial routine ABI proceeds with scalar value
-parameters, optional scalar results, and exact-shape aggregate aliases.
+K3 tests the portability claims:
 
-## Stage K3: far memory and target breadth
-
-K3 makes the portability promise substantial:
-
-- far aggregate access and far calls;
-- bank/segment context rules;
-- 6502 and/or 8086 backend;
-- C semantic backend;
+- far aggregate data, far C strings and far calls;
+- bank or segment context;
+- another CPU backend;
+- a C semantic backend;
 - one named BASIC dialect experiment;
-- cross-backend conformance suite;
-- cost comparison.
+- cross-backend conformance and cost comparison.
 
-Near/far types are specified before K3 so storage interfaces do not need a
+Near/far contracts exist before K3 so public storage interfaces do not need a
 breaking redesign.
 
-## Deferred exploration
+## Chosen first-edition rules
 
-The following have no first-corpus requirement:
+### Language character
 
-- floating point;
-- recursion on bare-metal targets;
-- aggregate returns;
-- dynamic allocation;
-- strings as a rich runtime type;
-- packed bit fields;
-- arrays spanning memory banks;
-- indirect calls, procedure values and closures;
-- exceptions;
-- user-defined operator overloading;
-- generic types.
+- Lanternfly is independent of Glimmer.
+- The surface is a structured BASIC with lowercase word syntax and explicit
+  fixed-width types.
+- Variables are declared; line numbers, implicit typing and general `goto` are
+  absent.
+- Glimmer and platform concepts arrive through typed interfaces rather than
+  keywords.
 
-Deferral is not a promise to add them.
+### Values and expressions
 
-First-class references and pointers are not merely deferred conveniences.
-Lanternfly deliberately keeps them out of its source value model. Direct
-paths, ordinal indices, multidimensional arrays and non-escaping aggregate
-aliases are the intended alternatives. Adding pointer values later would
-change that philosophy rather than complete an unfinished first-edition
-feature.
+- Integer widths and signedness run from `u8`/`i8` through `u32`/`i32`.
+- Operator-specific result rules preserve byte products and differences.
+- Operand compatibility may widen to a type already written in the expression
+  but never invents a third common type.
+- Fixed-width conversion has defined low-bit and two's-complement meaning.
+- Comparisons produce one-byte `boolean`; conditions require `boolean`.
+- Boolean `and` and `or` short-circuit, while integer word operators combine
+  complete bit patterns.
+- Character literals are exact bytes and `cstr` is immutable
+  program-lifetime NUL-terminated text.
 
-## Chosen decisions
+### Ordinal domains
 
-The current book chooses:
+- Enums are nominal, explicitly represented and sequential from ordinal zero.
+- Enum members enter the value scope without qualification.
+- Subranges are nominal checked types over an integer or enum host.
+- `to` includes its upper value and `until` excludes its boundary.
+- A range is a type or grammar form, not a runtime value.
+- Array dimensions may use counts, explicit ranges, named subranges or enums.
+- The complete normalized domain is part of array type identity.
+- Range and bounds checks occur before a destination store; type proofs may
+  remove redundant checks.
 
-1. Lanternfly is independent of Glimmer.
-2. Glimmer-specific operations do not become Lanternfly keywords.
-3. Lanternfly is a streamlined structured BASIC with fixed-width static types.
-4. Variables must be declared.
-5. Integer types state width and signedness explicitly from `u8` through
-   `i32`.
-6. Operator-specific result rules preserve useful byte ranges and never
-   inherit promotion from the backend language.
-7. Fixed-width stores narrow by defined low-bit truncation, with diagnostics.
-8. Comparisons produce one-byte `boolean` values, and conditions require
-   `boolean`.
-9. `and`, `or`, `xor` and `not` form one type-directed family. Boolean `and`
-   and `or` short-circuit; integer uses combine bits.
-10. Arrays have compile-time ordinal index domains and row-major layout.
-    A count is shorthand for a zero-based exclusive range.
-11. Records and arrays have exact sizes with no hidden padding.
-12. Static aggregates are the default.
-13. Aggregate local names alias existing storage; they do not allocate copies.
-14. Direct paths and ordinal indices are the persistent identity model.
-    Aggregate parameters and local aliases are temporary names, not values.
-15. Near, far and device addresses are distinct capabilities.
-16. Two dynamic indices are meaningful source even if an early backend asks
-    for staging.
-17. Structured control is primary; line numbers do not exist.
-18. `exit` is loop-only; hosted `return` preserves the host epilogue.
-19. Inclusive `for ... to`, exclusive `for ... until`, `for each ... in` and
-    `while` cover the first-edition loop model. `while true` replaces a bare
-    indefinite loop.
-20. Calls are source-uniform whether lowered inline, natively or through a
-    helper.
-21. Runtime helpers link on demand.
-22. Generated substrate source and composed mappings are first-class artifacts.
+These choices were made before implementation because they affect name
+resolution, type identity, layout, control, manifests, diagnostics, debug
+symbols and every backend.
 
-These decisions form the 0.4 implementation baseline.
+### Storage and identity
 
-## Provisional decisions
+- Arrays and records have exact packed layout.
+- Arrays are row-major and normalize each lower ordinal to element zero.
+- Static aggregates are the default; scalar locals may be automatic.
+- Declared paths and ordinal selectors preserve long-lived identity.
+- Aggregate parameters and local aliases are temporary names for existing
+  storage, never values.
+- There are no source pointers, references, arrays of pointers, address-of,
+  dereference or pointer arithmetic operations.
+- Near, far and opaque device addresses remain distinct capabilities.
 
-The implementation follows these 0.4 rules and keeps focused tests around
-them. Experience may justify a later specification change:
+### Control, calls and artifacts
 
-- source is case-insensitive while preserving declaration spelling;
-- comments begin with `//`;
-- `var name as Type` is the declaration form;
-- bare `end` closes structured blocks;
-- one bracket supplies every index of a multidimensional array;
-- `^` is integer power;
-- overshifts return defined zero/sign-fill results;
-- runtime narrowing warns but compiles;
-- routine arguments evaluate left to right;
-- recursive call cycles are rejected by initial bare-metal profiles;
-- recursion-capable profiles report frame size and bounded maximum stack use;
-- native blocks conservatively read and write visible memory unless annotated.
+- `for ... to`, `for ... until`, `for each ... in` and `while` are the loop
+  forms; `while true` is indefinite iteration.
+- Bare `exit` and `continue` are loop-only.
+- `return` leaves a routine or hosted body and preserves a host epilogue.
+- Every routine is a `sub`; a trailing result type replaces a separate
+  `function`.
+- Calls use parentheses and need no `call` keyword.
+- Generated substrate source, typed layouts, source maps and helper inventories
+  are first-class artifacts.
 
-Syntax prototypes and parser ergonomics can still improve these without
-changing the semantic model.
+## Provisional rules
+
+The implementation follows these rules while keeping focused tests around
+them:
+
+- case-insensitive resolution with declaration spelling preserved;
+- `//` comments;
+- `var name as Type`;
+- one bare `end` for structured blocks;
+- one bracket operation supplying every dimension;
+- `^` for integer power;
+- defined zero/sign-fill overshifts;
+- runtime integer narrowing warning by default;
+- left-to-right argument evaluation;
+- recursive-cycle rejection on initial bare-metal profiles;
+- conservative effects for statement `asm`.
+
+Evidence may change these in a later specification. A development build does
+not reinterpret them.
 
 ## Bounded open questions
 
-### Ratifying case and naming
+### Case and naming
 
-Working choice: case-insensitive identifiers with preserved spelling.
+Parser, imported-symbol and generated C/BASIC experiments will determine
+whether case-insensitive lookup causes material collisions.
 
-Evidence needed before ratification: collisions in imported AZM/Glimmer
-symbols and experience with generated C/BASIC. Case-sensitive lookup remains
-the fallback if interoperation exposes material collisions.
+### Narrowing diagnostics
 
-### Ratifying narrowing diagnostics
+The conversion result is fixed. Corpus translation will decide whether the
+default warning severity is practical and whether more proof cases should
+suppress it.
 
-Working choice: warning by default; explicit conversion or proof of range
-suppresses it.
+### Local declaration placement
 
-Evidence needed before ratification: translate all corpus stores and count
-intentional versus provably safe narrowing. The semantic result is already
-fixed; only default diagnostic severity remains open.
+The current rule groups declarations before executable statements in a routine
+or hosted body. Complete Tetro and Pacmo translations will show whether that
+requires awkward hoisting from the point of first use.
 
-### Ratifying local declaration placement
+### Aggregate parameter intent and bounded views
 
-Working choice: declarations may occur at the start of any block, before its
-executable statements.
+The first edition has writable exact-shape aggregate parameters. Reusable
+sorting, bounded text and candidate-scan routines need a later view that can
+state runtime extent without exposing its carrier.
 
-Evidence needed before ratification: complete Tetro and Pacmo translations and
-measure whether this restriction causes artificial blocks or hoisted
-temporaries.
+Read-only, output and in/out parameter modes should share one mutability model
+with those views.
 
-### Public aggregate-storage qualification
+### Checked-array mode
 
-Exported aggregate parameters state `near` or `far`. Private unqualified
-aggregate parameters use the target profile's default storage class.
+Conforming execution checks every dynamic access not proved safe. Emulator
+cost evidence will determine whether an explicitly unsafe, nonconforming
+unchecked mode is worth exposing.
 
-Evidence from Z80, banked targets and C will test whether this rule remains
-practical.
+### Labels and post-test loops
 
-### Exposing checked array mode
-
-Working choice: a compiler/profile mode, not a distinct source type.
-
-Evidence needed before ratification: emulator debugging and cost. Constant
-checks remain unconditional.
-
-### String boundary closed in 0.4
-
-The 0.4 specification chooses byte-valued character literals and `cstr`, a
-non-null, read-only near/far view of NUL-terminated static bytes. AZM `.cstr`
-data and existing firmware text routines use the same representation.
-
-Writable strings remain part of the bounded-view question because a
-terminator does not state destination capacity.
-
-### Bounded aggregate views
-
-Working requirement: reusable algorithms must accept a bounded region of
-existing aggregate storage without allocation.
-
-Open design: add a view type whose internal address carrier remains
-inaccessible to source code. The insertion-sort, bounded-string and PACMO
-candidate scans are the decision fixtures. Exact-shape aggregate aliases
-remain available.
-
-### Ordinal types and domains
-
-Decision: the first edition includes nominal, explicitly sized enums for
-directions, states and selectors. The enum name enters the type scope, while
-its members enter the surrounding value scope and are written without
-qualification:
-
-```lanternfly
-enum Colour as u8
-    red
-    green
-    blue
-end
-
-var foreground as Colour = red
-```
-
-This follows traditional Pascal and classic Visual Basic rather than requiring
-`Colour.red`. Existing case-insensitive value-scope collision rules apply to
-every member. The first member is zero and each following member one greater
-than its predecessor.
-
-The same ordinal model includes nominal subranges, checked assignment and
-array dimensions declared by counts, integer ranges, named subranges or enum
-types. `to` is inclusive and `until` exclusive in declarations, array
-dimensions, loops and selection. A range is part of the type system and
-grammar rather than a runtime value.
-
-This decision precedes implementation because it shapes type identity,
-conversion, layout, bounds checks, control flow, native contracts, diagnostics
-and debug symbols. It preserves packed layout: enums state their integer
-representation, subranges use their host representation, and array addressing
-normalizes the declared lower ordinal to element zero.
-
-### Parameter intent and scalar outputs
-
-Aggregate parameters already alias caller storage. The remaining design has
-two parts:
-
-- whether source interfaces distinguish read-only, output and in/out access;
-- whether a scalar output uses an alias-like parameter mode or an ordinary
-  returned value.
-
-The ring buffer and production search routines provide concrete fixtures.
-
-### User labels
-
-Decision: omit `GOTO`, admit a restricted local form, or provide a lower-level
-structured state construct.
-
-Evidence needed: a real algorithm that becomes worse without it. No current
-game body requires one.
+Restricted labels, named outer exits and `repeat`/`until` require a real
+translation that becomes materially worse without them. No current game body
+does.
 
 ### Floating point
 
-Decision: optional `FLOAT32` capability and exact semantics.
+An optional `float32` capability needs exact semantics, a motivating program
+and code-size measurements. It is not part of the first edition.
 
-Evidence needed: a game or platform calculation that fixed integers cannot
-reasonably express, plus code-size measurements. It is not part of initial
-implementation.
+## Deferred facilities
 
-## Questions closed by the corpus
+The first corpus does not require:
 
-Several issues no longer need to remain vague.
+- dynamic allocation or garbage collection;
+- aggregate automatic locals or aggregate returns;
+- rich mutable string values;
+- arbitrary packed bit fields;
+- arrays spanning mapping contexts;
+- recursion on bare-metal profiles;
+- indirect calls, procedure values or closures;
+- exceptions, generics or operator overloading.
 
-- Signed 8-bit storage is required by Tetro's -3 spawn row.
-- Unsigned integers remain required for bytes, word masks and full 16-bit
-  ranges.
-- `AND`, `OR` and `NOT` are needed for both conditions and masks.
-- `XOR` is useful for toggles and masks.
-- shifts are core operations.
-- `/` and `MOD` semantics must be defined even when constant cases optimize.
-- fixed arrays and records are central.
-- local aggregate aliases and runtime selection among fixed aggregates are
-  real requirements; multidimensional arrays and ordinal selectors cover the
-  current pointer tables.
-- exact non-power-of-two record indexing occurs in Pacmo.
-- two-dimensional indexing occurs in generated resources and video buffers.
-- a heap is not required.
-- reusable algorithms need a bounded aggregate parameter convention.
-- scalar output parameter modes may carry secondary results without tuple
-  returns, but their syntax is not settled.
-- device addresses cannot be modelled as ordinary CPU pointers.
-- early hosted return must preserve Glimmer's update epilogue.
+Source pointers and references are a deliberate exclusion rather than routine
+deferred work. Adding them would change the storage philosophy.
+
+## Questions closed by evidence
+
+The corpus established several requirements:
+
+- Tetro's -3 spawn row needs signed eight-bit storage.
+- Rushlight needs `u8 - u8` to preserve a signed difference.
+- Skyfall needs defined low-bit destination conversion.
+- masks need `and`, `or`, `xor`, `not`, shifts, division and `mod`.
+- Snake and Pacmo benefit from nominal bounded selector types.
+- Tetro and generated resources need multidimensional fixed data.
+- Pacmo needs true six-byte record strides.
+- Tetro collapse and Pacmo routines need non-escaping aggregate aliases.
+- TMS9918 locations cannot be ordinary CPU storage addresses.
+- hosted early return must preserve the Glimmer epilogue.
+- none of the examined algorithms requires a heap or general pointer
+  arithmetic.
 
 ## Implementation order
 
-The first compiler proceeds:
+1. Establish source identity, diagnostics and versioned host/target schemas.
+2. Parse the complete grammar.
+3. Collect declarations and resolve enum, subrange and layout dependencies.
+4. Type-check K0, including range proofs and effect summaries.
+5. Interpret typed control-flow IR as the semantic oracle.
+6. Emit and verify the first AZM vertical slice.
+7. Add K1 arrays, records, paths, aliases and startup effects.
+8. Translate one Tetro and one Pacmo fixture.
+9. Add K2 source routines and adapters.
+10. Use C, BASIC and another CPU to expose substrate assumptions.
 
-1. define source identity, diagnostics, host-manifest and target-profile
-   schemas;
-2. parse the complete 0.4 grammar;
-3. type-check the K0 hosted subset without generating code;
-4. define and interpret the typed control-flow IR;
-5. generate canonical AZM and compose explicit maps;
-6. execute differential fixtures against the interpreter and existing
-   examples;
-7. add exact records, arrays, startup effects and path lowering;
-8. translate one Tetro routine and one Pacmo routine;
-9. add user routines after storage paths and diagnostics are reliable;
-10. attempt C and BASIC lowering to expose substrate assumptions.
+The first coding change remains M0: package scaffolding, shared source and
+diagnostic types, versioned schemas and one empty hosted-body result.
 
-The first coding change is limited to the boundary: TypeScript package
-scaffolding, shared source and diagnostic types, versioned schemas, and an
-empty hosted-body result. The implementation plan defines the acceptance gate
-for every later milestone.
+## Changing a chosen rule
 
-## Criteria for changing a chosen rule
+A chosen rule needs stronger evidence than familiarity with another language.
+Change is justified when a real program cannot be expressed faithfully, two
+backends would otherwise assign contradictory meaning, a small example exposes
+a serious foot gun, or an implementation experiment produces compelling cost
+or complexity evidence.
 
-A chosen rule changes only when:
-
-- a real corpus program cannot be expressed faithfully;
-- two backends cannot implement it without contradictory meaning;
-- a simple source example exposes a serious foot gun;
-- an implementation experiment produces compelling cost or complexity
-  evidence;
-- the replacement is stated with migration consequences.
-
-Personal familiarity with another language is not enough. Lanternfly is small enough
-that each exception becomes a noticeable part of the language.
+The replacement must state its compatibility and migration consequences. In a
+small language, every exception becomes part of what the whole language feels
+like.

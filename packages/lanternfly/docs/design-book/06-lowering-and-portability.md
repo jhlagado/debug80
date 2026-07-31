@@ -1,363 +1,289 @@
 # Lowering across unlike targets
 
-Lanternfly is portable when its meaning survives a change of substrate. It does not
-promise that every target has the same speed, size or library burden.
+Portability means that source meaning survives a change of substrate. It does
+not promise equal speed, code size or library burden.
 
-## The compilation boundary
-
-The conceptual pipeline is:
+## Compilation boundary
 
 ```text
 source
-  -> parsed declarations and statements
-  -> typed Lanternfly program
-  -> target-neutral Lanternfly IR
+  -> syntax tree with source spans
+  -> declarations, ordinal domains and exact layouts
+  -> typed program and effect summaries
+  -> typed control-flow IR
   -> target lowering
   -> substrate source or machine object
-  -> linked runtime and platform services
+  -> runtime and platform services
 ```
 
-Glimmer may run before the Lanternfly compiler to identify bodies and construct their
-interfaces, or it may invoke Lanternfly as a body compiler. Either arrangement must
-preserve the same typed boundary.
+Glimmer may invoke this pipeline for one body, while a standalone build invokes
+it for modules and an entry `sub`. Both routes use the same typed boundary.
 
-The intermediate representation should be introduced only after the source
-rules are stable enough to deserve it. Its likely operations are simple:
+The IR carries language decisions rather than reconstructing them in each
+backend:
 
-- load and store typed scalar path;
-- form typed reference;
-- integer unary and binary operation;
-- compare;
-- conditional and unconditional branch;
-- call and return;
-- block parameter or temporary;
-- host-body exit;
-- explicit conversion;
-- standard or imported service invocation.
+- integer width, signedness and result type;
+- Boolean canonical form;
+- enum identity, representation and member order;
+- subrange host and inclusive normalized bounds;
+- array index domains, counts and exact strides;
+- path evaluation and fault order;
+- destination conversions and proof status;
+- calls, effects and host continuations.
 
-Arrays and records need not be runtime IR values. Their typed paths lower to
-references and scalar accesses.
+Aggregate aliases may have hidden carriers in IR. Those carriers are not
+Lanternfly values.
 
-## A backend target has two axes
-
-CPU and platform are independent:
+## CPU and platform are separate axes
 
 ```text
 z80 + tec1g
 z80 + trs80
 z80 + zx81
 z80 + spectrum
-6502 + target platform
-8086 + DOS-like platform
+6502 + selected platform
+8086 + selected platform
 C + hosted runtime
-BASIC + chosen dialect
+BASIC + named dialect
 ```
 
-The CPU backend defines arithmetic, control and calling mechanics. The platform
-profile defines memory regions, bank rules, entry point, device address spaces
-and services.
-
-This prevents “Z80” from accidentally meaning “TEC-1G matrix display.”
+The CPU backend owns arithmetic, control and calling mechanics. The platform
+profile owns memory regions, mapping rules, entry, device address spaces and
+services. “Z80” must not quietly mean one display or firmware.
 
 ## Z80 through AZM
 
-AZM is the natural first substrate because Glimmer already generates it.
+AZM is the first substrate because Glimmer already generates and verifies it.
+The backend emits exact layouts, `.routine` boundaries, instructions, imported
+helpers, source annotations and mapping metadata.
 
-The Lanternfly backend can emit:
-
-- AZM exact layout declarations or compatible references to Glimmer layouts;
-- `.routine` boundaries;
-- ordinary Z80 instructions;
-- calls to imported helpers;
-- AZM ops for selected inline idioms;
-- source annotations and explicit mapping metadata.
-
-AZM layout casts calculate constant paths. Runtime Lanternfly paths require generated
-address sequences.
-
-Example:
+For:
 
 ```lanternfly
-value = Monsters[index].timer
+value = monsters[index].timer
 ```
 
-with a six-byte `Monster` can lower conceptually to:
-
-```asm
-; HL = zero-extended index
-; DE = original index
-add hl,hl          ; 2i
-add hl,de          ; 3i
-add hl,hl          ; 6i
-ld de,Monsters
-add hl,de
-inc hl
-inc hl
-inc hl             ; timer offset 3
-ld a,(hl)
-```
-
-The actual selector may find a smaller sequence or preserve registers
-differently. The source map attributes every generated instruction to the one
-field access.
-
-Strict AZM register contracts verify each emitted routine and imported
-boundary. Lanternfly's own typed checks do not replace this substrate proof.
-
-## 6502
-
-A 6502 backend has few registers and no general 16-bit register pair. It is
-likely to use:
-
-- zero-page locations for expression temporaries and near pointers;
-- memory-resident software values for wider integers;
-- helper calls for multiplication, division and 16/32-bit operations;
-- indexed-indirect or indirect-indexed forms for array paths;
-- static call-frame allocation when recursion is disabled.
-
-Lanternfly's restriction to scalar locals and static aggregates is well suited to
-this. A target-specific allocator can give hot references zero-page slots.
-
-The language must not promise that every local lives on a hardware stack. The
-6502 backend's local allocation is an implementation detail visible only in
-maps and cost output.
-
-## 8086
-
-An 8086 backend can use 16-bit arithmetic directly and 32-bit pairs where
-needed. Its segmented memory gives near/far types a natural representation:
-
-- near data reference: offset under an agreed data segment;
-- far data reference: segment and offset;
-- near procedure: offset under current code segment;
-- far procedure: segment and offset with far call/return.
-
-Lanternfly should not equate this implementation with the abstract model. A banked
-Z80 uses the same near/far distinction without sharing 8086 instruction
-semantics.
-
-Exact records may require byte-oriented access or explicit segment overrides.
-The backend must not let a host assembler's structure alignment alter them.
-
-## C
-
-C is a lowering target, not Lanternfly's specification.
-
-A C backend should use `<stdint.h>` types:
+with a six-byte `Monster`, the semantic address is:
 
 ```text
-BYTE    -> uint8_t
-SBYTE   -> int8_t
-INTEGER -> int16_t
-WORD    -> uint16_t
-LONG    -> int32_t
-DWORD   -> uint32_t
+base(monsters) + index * 6 + offset(Monster.timer)
 ```
 
-It cannot naively emit every Lanternfly expression as C:
+The backend may form `6 * index` as shift-and-add. It may not pad `Monster` to
+eight bytes to obtain an easier shift.
 
-- signed overflow is undefined in C;
-- integer promotions may differ;
-- right shift of negative signed values has implementation-defined history;
-- struct padding can change exact layout;
-- evaluation and narrowing may differ;
-- pointer provenance does not model every device or banked address.
+A non-zero lower bound is normalized first:
 
-The backend uses unsigned intermediates, explicit casts, helper functions and
-static assertions to preserve Lanternfly.
+```lanternfly
+value = samples[index] // samples as u8[10 to 20]
+```
 
-An exact record can lower to:
+```text
+base(samples) + (index - 10)
+```
 
-- a packed struct with compile-time size/offset assertions on a supported C
-  compiler;
-- a byte array plus generated field accessors;
-- separate arrays when representation is private and observable layout is not
-  required.
+If `index` has the matching subrange type, the bounds check disappears while
+the subtraction remains part of addressing.
 
-Imported/exported objects always retain exact Lanternfly layout.
+Strict AZM analysis verifies generated routines and imported adapters. A
+source type check does not replace register-contract proof.
 
-Near and far references may both become C pointers in a flat hosted profile,
-but they remain distinct in compiler type checking. Device addresses become
-opaque integer-backed structs or typedefs passed only to services.
+## 6502 and 8086
 
-## BASIC
+A 6502 backend will often use zero-page temporaries, memory-resident wide
+values, static frames and helpers for multiplication or division. Static
+aggregates and non-recursive profiles fit that machine well.
 
-A BASIC backend is possible, but it is the most demanding semantic adapter.
-The chosen dialect must be named. “BASIC” is not one language.
+An 8086 backend has direct 16-bit arithmetic and a natural near/far
+implementation. A near aggregate carrier may be an offset under an agreed
+segment; a far carrier may hold segment and offset. Those representations do
+not enter source types.
 
-For a Microsoft-style 16-bit integer dialect, the backend may:
+Neither backend may let an assembler's alignment policy alter exact records or
+array strides.
 
-- emit `DEFINT` or explicit `%` integer variables in generated code;
-- represent unsigned bytes in integers 0..255;
-- represent words as signed bit patterns plus comparison helpers;
-- flatten records into arrays and calculated offsets;
-- flatten multidimensional exact storage when the dialect's array convention
-  differs;
-- implement references as indexes or integer offsets into generated storage
-  pools;
-- use `GOSUB` plus global argument/result cells for non-recursive routines;
-- implement 32-bit values through paired words or a dialect capability;
-- add wrapping and unsigned comparison helpers.
+## C as a semantic backend
 
-It must avoid the classic upper-bound trap. Lanternfly `DIM Body[64] AS BYTE` means
-64 elements. If the dialect's `DIM Body(64)` allocates indexes 0 through 64,
-the backend emits `DIM Body(63)`.
+The fixed integers map naturally:
 
-Line numbers may appear in generated BASIC if the dialect requires them.
-Lanternfly source never uses or sees them.
+```text
+u8  -> uint8_t       i8  -> int8_t
+u16 -> uint16_t      i16 -> int16_t
+u32 -> uint32_t      i32 -> int32_t
+```
 
-Some Lanternfly targets will not support a practical BASIC backend. A capability
-report should say which integer widths, address classes and service bindings
-are missing instead of quietly changing semantics.
+Direct textual substitution is unsafe:
+
+- signed C overflow is undefined;
+- C integer promotions differ from Lanternfly;
+- right shift and narrowing need explicit treatment;
+- host structs may add padding;
+- evaluation order may differ;
+- a C pointer cannot model every banked or device address.
+
+Generated C uses unsigned intermediates, explicit width operations, helpers and
+static assertions. An enum can lower to its representation integer, while
+generated checks preserve nominal conversion rules. A subrange remains its
+host representation plus checks at every entering destination.
+
+Exact records may use verified packed structs or byte arrays with accessors.
+Imported and exported storage must preserve the declared layout regardless of
+which representation is convenient internally.
+
+## A named BASIC dialect
+
+“BASIC” is not a backend definition. Each dialect chooses different integer,
+array and call conventions.
+
+A Microsoft-style 16-bit dialect may:
+
+- represent `u8` as integers 0 through 255;
+- represent `u16` as signed bits plus helpers;
+- flatten records and arrays into storage pools;
+- implement enums as integer cells while preserving compiler checks;
+- use `GOSUB` plus generated argument/result cells for non-recursive calls;
+- represent 32-bit values with paired words or a dialect capability.
+
+Array bounds need particular care. Lanternfly count shorthand `[64]` contains
+64 elements, while a BASIC `DIM body(64)` may contain 65. The backend can emit
+an upper bound of 63 or flatten the storage.
+
+Explicit Lanternfly bounds can be useful when a dialect supports them:
+
+```lanternfly
+var board as u8[1 to 8, 1 to 8]
+```
+
+The generated BASIC may retain those bounds, but it must still reproduce
+Lanternfly's row-major layout, exact element count and check order. An enum
+domain normally becomes a numeric bound plus compiler-maintained name and type
+metadata.
+
+Generated line numbers are acceptable when the dialect needs them. They never
+appear in Lanternfly source.
 
 ## Lowering a typed path
 
 The backend receives:
 
 ```text
-base object
-referent/address class
-path segments
-scalar result type
+base storage identity
+storage class
+path segments in evaluation order
+per-dimension root family, lower ordinal, count and stride
+field offsets
+leaf type
 read or write context
+bounds proof or required check
 ```
 
-For:
+For a four-byte framebuffer row:
 
 ```lanternfly
-Framebuffer[row].green
+framebuffer[row].green
 ```
 
-with a four-byte row record:
-
 ```text
-base = Framebuffer
-index = row
+base = framebuffer
+lower = 0
 stride = 4
 field offset = 1
 width = 1
 ```
 
-Possible lowerings:
+Possible implementations differ, but all compute the same selected byte. A
+BASIC backend might use `framebuffer(row * 4 + 1)`; C might use a verified
+field accessor.
 
-| Target | Shape                                                              |
-| ------ | ------------------------------------------------------------------ |
-| Z80    | zero-extend row, shift left twice, add base and 1, byte load/store |
-| 6502   | scale index, place pointer in zero page, indirect indexed access   |
-| 8086   | widen index, shift twice, base+index addressing                    |
-| C      | exact-layout accessor or `Framebuffer[row].green`                  |
-| BASIC  | `Framebuffer(row * 4 + 1)` in a flattened integer array            |
+Index evaluation and checks stay left to right. A failure in the first
+dimension prevents evaluation of the second. Destination paths evaluate before
+assignment sources.
 
-The meaning is the tuple, not any one spelling.
+## Ordinal lowering
 
-## Lowering arithmetic
+Enum values retain nominal identity through type checking and debug metadata.
+Their stored bits use the declared integer representation. Enum comparison and
+counted traversal use declaration order.
 
-For each typed operation, the backend selector records:
+A subrange conversion is:
 
-- operand and result type;
-- constant operands;
-- target instruction capability;
-- live temporary pressure;
-- speed/size policy;
-- helper availability.
+```text
+evaluate source
+  -> prove containment or compare normalized bounds
+  -> F-RANGE on failure
+  -> transfer/store unchanged host representation
+```
 
-Multiplication by a constant can use:
+An array check uses the selected dimension's bounds and faults with
+`F-BOUNDS`. A subrange index can prove that check unnecessary. Proof removal is
+an optimization only in cost; it preserves the same result and fault boundary
+because the type already excludes failure.
 
-1. zero or identity;
-2. a shift;
-3. a short addition chain;
-4. a general shift-and-add sequence;
-5. a runtime helper;
-6. the substrate operator.
+`lower` and `upper` fold in the front end. They do not become runtime helper
+calls.
 
-The selector must preserve result width. Multiplication by 256 is not allowed
-to disappear merely because the low byte is zero if the result type is a word.
+## Arithmetic and control
 
-## Control-flow lowering
+Each typed arithmetic node records operand types, result width, constants,
+wrapping rule and possible fault. A backend selector can then choose an
+instruction, inline sequence or helper without reapplying host promotion rules.
 
-Structured control becomes blocks and branches before substrate emission.
-This allows:
+Structured control becomes blocks and branches before emission. This permits
+short or long Z80 branches, inverted 6502 branches, structured C and generated
+BASIC labels without exposing branch distance in source.
 
-- Z80 `JR` where in range and `JP` otherwise;
-- 6502 inverted-condition branches around a `JMP` when the target is far;
-- C structured statements when mappings remain useful;
-- BASIC generated labels and line numbers.
-
-Branch sizing is never a source concern. A Lanternfly programmer should not rewrite
-an `IF` because a Z80 relative target moved.
-
-`EXIT BODY` targets a backend-provided epilogue block. Function returns target
-a function epilogue. Loop exits target loop-specific blocks. Distinguishing
-these in IR prevents the Glimmer fall-through bug.
+Loop IR distinguishes the mathematical next value from the stored control
+value. Hosted `return` targets a host continuation block; routine `return`
+targets the routine epilogue. Bare `exit` targets only the nearest loop.
 
 ## Calls and ABI adapters
 
-The backend chooses a default Lanternfly ABI. An imported substrate symbol can use a
-different ABI through an adapter.
-
 An adapter:
 
-- converts argument widths;
-- materializes reference representation;
-- places values in registers or stack cells;
-- preserves required state;
-- invokes the symbol;
-- converts the result;
-- restores bank/segment state;
-- satisfies substrate contracts.
+- evaluates and converts scalar arguments;
+- materializes hidden aggregate carriers;
+- places values in registers, stack cells or generated storage;
+- preserves required machine and mapping state;
+- invokes the substrate symbol;
+- validates or converts the result;
+- restores the caller's context.
 
-Adapters are generated once when possible. Their cost appears separately from
-the call site.
+The aggregate carrier never enters public typed output as a value. Adapters
+are emitted once where possible, and their cost is reported separately.
 
 ## Capability negotiation
 
-A target profile declares:
+A target profile states:
 
-- supported scalar types;
-- maximum static object size;
-- near/far representations;
-- available address spaces;
-- recursion and reentrancy support;
-- native pass-through dialect;
-- standard-library implementations;
-- platform-service interfaces;
-- debug-map and cost-report capability.
+- supported integer operations and address classes;
+- maximum object and literal sizes;
+- checked-index policy;
+- recursion and reentrancy capability;
+- assembly-fragment pipeline;
+- standard-operation and platform-service implementations;
+- fault bindings;
+- ABI, source-map and cost-report support.
 
-The compiler checks the typed program before emitting substrate source.
-Unsupported `LONG` or far references produce a precise capability diagnostic.
-They do not degrade to floating point or a smaller address.
+The profile may reject unavailable operations. It cannot change result widths,
+enum order, subrange checks, exact layout, evaluation order or loop boundaries.
 
-## Conformance before optimisation
+## Conformance before optimization
 
-Every backend first implements a reference lowering. It may be slow. It must be
-correct.
+A backend begins with a correct reference lowering. Optimization follows
+evidence:
 
-Optimisations are then checked against:
-
-- numeric vectors;
-- memory-layout assertions;
+- numeric and ordinal vectors;
+- exact layout and non-zero-bound assertions;
+- range and bounds fault traces;
 - translated game fixtures;
-- differential execution against a reference interpreter or typed IR runner;
-- source-map integrity;
-- target ABI tests.
+- differential execution against the typed IR interpreter;
+- ABI tests and substrate verification;
+- source-map integrity.
 
-A C or interpreter backend is useful as a semantic oracle, but only after it
-has explicit helpers for Lanternfly overflow and conversion. Native host operators
-alone are not an oracle.
+C is useful as a semantic backend only after it implements Lanternfly's
+explicit overflow and conversion rules. Host operators alone are not an
+oracle.
 
-## Portability has visible limits
-
-Portable source can still ask for a target capability:
-
-```lanternfly
-REQUIRES FAR DATA
-REQUIRES ADDRESS SPACE VRAM
-```
-
-A game that imports TMS9918 services is portable among profiles providing that
-interface, not universally portable to every computer. Lanternfly separates the
-algorithm from the capability; it does not invent devices.
-
-The useful claim is modest: game logic such as chase direction, row collapse,
-score update and collision should survive a target change. Display scanout and
-bank switching remain target work behind typed boundaries.
+Portable algorithms can still require named platform services or far storage.
+Portability promises stable language meaning across profiles that provide
+those capabilities; it does not invent absent hardware.

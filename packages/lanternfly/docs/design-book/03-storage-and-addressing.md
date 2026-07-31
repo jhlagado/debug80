@@ -1,526 +1,326 @@
-# Static storage, layouts and references
+# Static storage and ordinal domains
 
-> [!IMPORTANT]
-> This chapter is an exploratory design record. Syntax and policies shown here,
-> including uppercase declarations and the rejection of aggregate assignment,
-> may have been superseded. The normative 0.4 rules for storage, copying,
-> paths, aliases and bounds checks are in
-> [the specification](../specification.md), sections 4 through 7.
-> Version 0.4 replaces the programmer-visible reference proposals below with
-> direct paths, ordinal indices and non-escaping aggregate aliases.
+Structured memory is Lanternfly's centre of gravity. The motivating programs
+do not need ownership frameworks or general pointer arithmetic. They need to
+name the right byte inside a known shape and preserve that shape across
+backends.
 
-Structured memory is Lanternfly's centre of gravity. The corpus rarely asks for
-clever syntax. It repeatedly asks to name the right byte inside a known shape.
+## Storage ownership
 
-## Storage objects
-
-A storage declaration owns memory:
+Module variables own static storage:
 
 ```lanternfly
-DIM Score AS WORD
-DIM Body[64] AS BYTE
-DIM Monsters[3] AS Monster
+var score as u16 = 0
+var body as u8[64]
+var monsters as Monster[3]
 ```
 
-At module scope, `DIM` creates static storage. The target linker or substrate
-places it in a memory region. The declaration has a stable identity, size and
-address class.
+The linker or substrate places each object in a target region. Its exact size,
+layout and address class are known before execution.
 
-Inside a routine, `DIM` may create a scalar local:
+Scalar locals may use automatic storage:
 
 ```lanternfly
-DIM candidate AS INTEGER
+sub chooseMove() as u8
+    var candidate as u8 = scanCandidate()
+    return candidate
+end
 ```
 
-The backend may place that scalar in a register, a stack slot or statically
-allocated scratch when reentrancy rules allow. Source lifetime and value
-semantics remain the same.
+Records and arrays declared inside a routine would allocate aggregate frame
+storage, so first-edition locals cannot own them. A local aggregate name is an
+`alias` to storage that already exists.
 
-An array or record declared inside a routine would imply aggregate automatic
-allocation. That is deferred. The first language requires aggregate objects to
-be static or imported.
+Compiler-owned storage without an initializer begins as all bits zero only
+when zero is valid for every scalar leaf. Integers and Booleans qualify.
+Enums and subranges qualify when their domains include ordinal zero. A `cstr`
+does not.
 
-## Arrays count elements
+## Exact records
 
-Square brackets contain an element count:
+Fields appear in declaration order with no hidden padding:
 
 ```lanternfly
-DIM Board[8] AS BYTE
-DIM NameShadow[24, 32] AS BYTE
+record Monster
+    var x as u8
+    var y as u8
+    var direction as Direction
+    var timer as u8
+    var respawnTimer as u8
+    var state as EnemyState
+end
 ```
 
-`Board` has indexes 0 through 7. `NameShadow` has 24 rows and 32 columns.
-Unlike old BASIC, the number is not an inclusive upper bound.
+If both enums use `u8` representation, this record occupies six bytes. A C
+backend cannot silently turn it into an aligned host struct; an AZM backend
+cannot round its stride to eight because shifts would be cheaper.
 
-Multiple dimensions are row-major. For:
+Exact layout is observable through imports, exports, placement and layout
+queries. A private backend temporary may use another representation only when
+the difference cannot be observed.
+
+Records and arrays contained by value must form an acyclic graph. The language
+has no by-value recursive record because it would have no finite size.
+
+## Array index domains
+
+Every dimension has a fixed, nonempty ordinal domain. The short form states an
+element count:
 
 ```lanternfly
-DIM Grid[rows, columns] AS Cell
+var body as u8[64]
+var nameShadow as u8[24, 32]
 ```
 
-the address of `Grid[r, c]` is:
+`u8[64]` is identical to `u8[0 until 64]`. The half-open form makes the count
+usable as a loop boundary without subtraction.
+
+Explicit bounds are equally direct:
+
+```lanternfly
+var samples as u8[10 to 20]
+var board as Cell[1 to 8, 1 to 8]
+```
+
+`samples` has eleven elements. The first element is indexed by 10; the board
+is one-based in both dimensions.
+
+A named subrange or enum can supply the entire domain:
+
+```lanternfly
+range ScreenColumn as u8 = 0 until 32
+
+enum Colour as u8
+    black
+    red
+    green
+    blue
+end
+
+var rowPixels as u8[ScreenColumn]
+var palette as u8[Colour]
+```
+
+The enum array has one element per member in declaration order. Its indices are
+`black`, `red`, `green` and `blue`, not the integers 0 through 3.
+
+The normalized domain belongs to the array type. Two arrays with the same
+element count but different lower bounds or nominal domains are not
+assignment-compatible. `u8[8]`, `u8[0 until 8]` and `u8[0 to 7]` normalize to
+the same integer domain.
+
+## Index compatibility and checks
+
+Integer domains accept any integer index type. An enum domain accepts its root
+enum and subranges of that enum, but not a raw integer or unrelated enum.
+
+```lanternfly
+palette[green] = 7
+board[row, column].occupied = true
+```
+
+A constant outside the domain is a compile error. A dynamic index invokes
+`F-BOUNDS` before any load or store when it falls outside. The compiler removes
+the check when the index type or value analysis proves containment:
+
+```lanternfly
+var column as ScreenColumn
+rowPixels[column] = 1
+```
+
+`column` cannot hold a value outside `ScreenColumn`, so this access needs no
+remaining bounds test.
+
+The rules distinguish two failures. A value entering `ScreenColumn` may cause
+`F-RANGE`; a general integer used directly against `rowPixels` may cause
+`F-BOUNDS`. Both faults occur before the destination changes.
+
+## Layout and addressing
+
+Arrays are contiguous and row-major. The rightmost dimension changes fastest.
+Address calculation subtracts each declared lower ordinal before applying its
+stride:
 
 ```text
-base(Grid) + ((r * columns) + c) * sizeof(Cell)
+u8[12, 20]:
+    row * 20 + column
+
+u8[1 to 12, 1 to 20]:
+    (row - 1) * 20 + (column - 1)
 ```
 
-The comma form is preferred in source. A backend IR may represent the same
-access as nested arrays. Chained `Grid[r][c]` can be accepted as an equivalent
-form if it does not complicate diagnostics.
+For enum indexing, the member ordinal is the normalized offset. A
+non-power-of-two element uses its true size:
 
-Constant out-of-range indexes are always errors. Checked execution traps on a
-dynamic failure and can remove checks proved unnecessary. An explicitly
-selected unchecked release mode omits remaining checks and requires the
-program to keep indexes in range.
+```text
+monsters[index].timer
+    base(monsters) + index * 6 + offset(Monster.timer)
+```
 
-## Records are exact
+A Z80 backend may generate shift-and-add scaling, stage a term in a temporary
+or call a multiplier. The six-byte layout does not change.
 
-A record places fields in declaration order:
+One bracket operation supplies every index for the selected array rank.
+`board[row, column]` is valid; `board[row]`, `board[row][column]` and an extra
+third index are not. This keeps partial-row values out of the source model.
+
+## Initialization and traversal order
+
+Array initializers follow ascending ordinal order. The first initializer maps
+to the lower bound, and the rightmost dimension changes fastest:
 
 ```lanternfly
-TYPE Monster
-    x            AS BYTE
-    y            AS BYTE
-    direction    AS BYTE
-    timer        AS BYTE
-    respawnTimer AS BYTE
-    state        AS BYTE
-END TYPE
+var movementCost as u8[1 to 4] = [1, 1, 2, 255]
 ```
 
-This record occupies six bytes. There is no hidden padding.
+Here the four values map to indices 1 through 4. `for each` uses the same
+row-major order.
 
-Exact layout is a chosen semantic rule:
-
-- `SIZEOF(BYTE)` is 1;
-- `SIZEOF(WORD)` is 2;
-- array size is count multiplied by exact element size;
-- record size is the sum of exact field sizes;
-- field offset is the sum of exact sizes before it.
-
-Power-of-two padding was once attractive in ZAX because a Z80 can scale an
-index with shifts. Later ZAX lowering demonstrates the better separation:
-retain the real layout and generate shift-and-add multiplication when needed.
-Lanternfly adopts that separation from the start.
-
-## Alignment and external layouts
-
-The first layout rule has alignment 1 for every field. A target may use a more
-aligned temporary representation internally only when it is unobservable and
-not used for a declared object, import, export or `SIZEOF`.
-
-A later explicit alignment facility may request padding:
+Record initializers name every field:
 
 ```lanternfly
-REM illustrative, not initial syntax
-TYPE HostRecord ALIGN 4
+var spawn as Point = Point(x = 7, y = 1)
 ```
 
-Padding must never appear merely because the backend emits C. A C backend can
-use packed structs, byte arrays with accessors, or static assertions to
-preserve Lanternfly layout.
-
-Imported native data may already have an unusual layout. Its interface must
-state exact field offsets, byte order and address space. An opaque imported
-type is preferable when a backend cannot represent the layout safely.
-
-## Endianness
-
-Lanternfly defines scalar numeric values independently of memory byte order. A target
-profile declares how multi-byte fields are stored. The initial Z80, 6502 and
-8086 profiles are little-endian.
-
-Portable code should read a `WORD` field as a value. Code that needs a wire or
-file byte order uses explicit services:
+Aggregate assignment copies complete equal-typed storage:
 
 ```lanternfly
-value = READ_LE_WORD(bytes, offset)
-WRITE_BE_WORD(bytes, offset, value)
+monsters[0] = monsters[1]
 ```
 
-Field layout is exact, but it does not make every byte serialization portable
-without an endian contract.
+The implementation must handle overlap safely. The source operation is an
+aggregate copy even when a backend lowers it to a loop or block instruction.
 
-## Aggregate values are not freely copied
+Aggregate `const` declarations create immutable tables with the same exact
+layout. Any assignment through a path rooted in constant storage is an error.
 
-An aggregate path denotes storage:
+## Paths carry identity
+
+A storage path begins at a declared or imported object and continues through
+fields and complete index operations:
 
 ```lanternfly
-Monsters[index]
-Framebuffer[row]
+player.position.x
+monsters[selectedMonster].timer
+board[row, column]
 ```
 
-It is not automatically a temporary value. The following is not an implicit
-six-byte copy:
+Paths and ordinal selectors are the persistent identity model. If the program
+must remember which monster is selected, it stores `selectedMonster`, not an
+address. An enum selector can make that relationship nominal when the set is
+small and fixed.
 
-```lanternfly
-REM not initial Lanternfly
-Monsters[0] = Monsters[1]
-```
-
-Programs use field assignment, `COPY`, or an alias according to intent.
-Keeping aggregate copy explicit prevents accidental code-size and time costs
-on small machines.
-
-Scalar fields retain normal value semantics:
-
-```lanternfly
-Monsters[0].x = Monsters[1].x
-```
-
-## Static aliases
-
-A static alias is another name for the same object or subobject:
-
-```lanternfly
-ALIAS EnemyState = Monsters[0].state
-```
-
-It allocates nothing and has no runtime initialization. The alias is resolved
-after layout and before code generation.
-
-This replaces assembly equates such as:
-
-```asm
-EnemyState .equ Monster0 + MonsterState
-```
-
-with a typed relationship. Writes through either name update the same byte.
-
-Static aliases may select only paths whose address is known at link time.
+This approach also replaces source arrays of pointers. Regular objects use a
+multidimensional array. Irregular named objects use an integer or enum selector
+plus `select`. The backend may still use addresses internally.
 
 ## Local aliases
 
-A local alias binds a typed name to an existing object selected when execution
-reaches the declaration:
+A local alias gives a shorter name to one existing aggregate:
 
 ```lanternfly
-ALIAS plane = BoardPlanes[planeIndex]
-```
+record Plane
+    var rows as u8[8]
+end
 
-`plane` is immutable as a binding but mutable as a view: `plane[row] = 0`
-writes the selected plane. The binding may require an address-sized temporary,
-but it never allocates or copies the eight-byte array.
+var boardPlanes as Plane[4]
 
-The initializer may be an aggregate path or a reference-valued expression.
-When it is a reference, the alias binds the referent, not the array slot that
-stored the reference.
+sub collapsePlane(planeIndex as u8, row as u8)
+    alias plane as u8[8] = boardPlanes[planeIndex].rows
 
-The alias lasts to the end of its lexical block. It cannot escape through a
-return or be stored unless explicitly converted to a reference.
-
-This is the natural translation of Tetro row collapse:
-
-```lanternfly
-FOR planeIndex = 0 TO 3
-    ALIAS plane = BoardPlanes[planeIndex]
-    FOR destination = row TO 1 STEP -1
+    var destination as u8
+    for destination = row to 1 step -1
         plane[destination] = plane[destination - 1]
-    NEXT destination
+    end
+
     plane[0] = 0
-NEXT planeIndex
+end
 ```
 
-The compiler infers `plane AS BYTE[8]` from the array-of-references element.
+The initializer is an exact aggregate storage path. The alias does not allocate
+or copy eight bytes, and it cannot be rebound. A backend may carry the selected
+base in a register pair or frame slot, but that carrier has no source value.
 
-## References
+An alias cannot be stored, returned, compared, converted or used as an array
+element. It remains a temporary name for field access, indexing, aggregate
+copy and nested aggregate calls.
 
-A reference is a scalar runtime value that locates existing storage and carries
-the target shape:
+## Aggregate parameters
+
+Record and array parameters use the same non-rebindable storage model:
 
 ```lanternfly
-DIM CurrentPiece AS NEAR REF TO BYTE[4]
-DIM CurrentMonster AS NEAR REF TO Monster
+export sub tickMonster(near monster as Monster)
+    monster.timer = monster.timer - 1
+end
 ```
 
-A reference does not own its referent. Lanternfly's first version has no lifetime
-extension, ownership transfer or allocator. It forms references from
-static/imported objects or through an existing reference. Storing or returning
-a reference to an owned scalar local is deferred.
+The argument must be compatible mutable aggregate storage, not a temporary
+value. Exported parameters state `near` or `far`; private parameters may use
+the target profile's default.
 
-Reference formation uses `REF`:
+The storage class describes where the aggregate lives. It is not part of the
+element type. In `far labels as near cstr[8]`, the array is far storage and
+each stored C string has a near text address.
+
+## Near, far and opaque addresses
+
+Near and far aggregate aliases are backend capabilities. A near aggregate is
+directly usable in the current memory context. A far aggregate may require a
+bank or segment carrier and helper operations. Neither carrier can be
+inspected in source.
+
+`near address` and `far address` are opaque scalar values for native
+boundaries. They support same-class assignment and equality, but no field
+selection, indexing, conversion or arithmetic. A device address such as a
+TMS9918 VRAM location is likewise meaningful only to typed services.
+
+Address zero may be a valid native location, so Lanternfly does not invent a
+universal null value.
+
+## Layout queries
+
+Five compile-time operations expose useful structure without exposing
+addresses:
 
 ```lanternfly
-CurrentMonster = REF Monsters[index]
+const monsterBytes as u16 = size(type Monster)
+const monsterCount as u8 = count(monsters)
+firstColumn = lower(board, 1)
+lastColumn = upper(board, 1)
+const timerOffset as u8 = offset(Monster.timer)
 ```
 
-Access is transparent through a typed reference:
+`count` returns an extent. `lower` and `upper` return the declared bounds and
+preserve a nominal enum or subrange result where one exists. `size` reports
+exact bytes; `offset` reports the field path from the record base.
+
+The path operand of a layout query is unevaluated. It may contain constant
+indices for selecting a nested type, but it performs no load or runtime check.
+
+## Placement, volatility and byte order
+
+`at` places module storage or constant data at a target address:
 
 ```lanternfly
-CurrentMonster.timer = CurrentMonster.timer - 1
-CurrentPiece[row]
+volatile var controlPort as u8 at $80
 ```
 
-There is no general source-level pointer arithmetic. Indexing and field
-selection are the arithmetic.
-
-References support:
-
-- assignment between compatible reference types;
-- equality and inequality;
-- field or index selection through their referent type;
-- passing to reference parameters;
-- explicit conversion between permitted address classes.
-
-Ordering comparisons, multiplication, bit masks and conversion to ordinary
-integers are not defined.
-
-## Arrays of references
-
-Tetro uses an array selecting its four board planes:
-
-```lanternfly
-DIM BoardPlanes[4] AS NEAR REF TO BYTE[8] = (
-    REF BoardRows,
-    REF BoardRed,
-    REF BoardGreen,
-    REF BoardBlue
-)
-```
-
-Each element is a scalar reference. The pointed-to arrays remain separate
-static objects. This layout is useful on machines with inexpensive address
-tables and maps directly to a C array of pointers where address classes permit.
-
-An array of references is not the same as one two-dimensional array. Its planes
-may live at unrelated locations or in different sections.
-
-## Reference nullability
-
-Ordinary `REF TO T` is non-null. It must name a valid object before use.
-
-Optional references are written provisionally as:
-
-```lanternfly
-MAYBE NEAR REF TO Monster
-```
-
-and compared with `NO REF`. This facility is deferred until the corpus needs
-nullable links or optional imported objects. Arrays of known resources and
-current game aliases are non-null.
-
-Using zero as a universal null is unsafe on machines where address zero is a
-valid object or where a far reference has several representations.
-
-## Near and far
-
-`NEAR` and `FAR` describe reachability, not arithmetic width.
-
-A near reference can be accessed in the current memory context. On the initial
-Z80 target it is normally a 16-bit address.
-
-A far reference can identify an object in another context. Its representation
-is target-defined:
-
-- bank identifier plus 16-bit offset on TEC-1G;
-- segment plus offset on 8086;
-- flat 24- or 32-bit address elsewhere;
-- the same representation as near on a flat target.
-
-The referent type remains part of either reference:
-
-```lanternfly
-DIM LocalBoard AS NEAR REF TO BYTE[8]
-DIM Asset AS FAR REF TO SpriteData
-```
-
-Far access may call a runtime helper and may temporarily change bank or segment
-state. The source operation remains a load, store or service call.
-
-## Conversion between address classes
-
-A near reference widens to far when the target can attach the current or
-statically known context. This is safe and may be implicit inside one module
-or bank declaration.
-
-A far reference narrows only through an explicit operation:
-
-```lanternfly
-localAsset = NEAR REF(Asset)
-```
-
-The operation requires proof or a runtime mapping action. A target profile
-defines whether failure is a compile error, a checked runtime result or an
-explicit unsafe assertion. Silent truncation is forbidden.
-
-An object initially fits wholly within one address context. An array that spans
-banks is not an ordinary array because `base + index * stride` may change
-mapping. A future banked collection type can define that operation.
-
-## Unshaped address values
-
-`NEAR ADDRESS` and `FAR ADDRESS` are opaque scalar location values without a
-referent type. They are useful at firmware, linker and native boundaries:
-
-```lanternfly
-DIM entry AS FAR ADDRESS
-```
-
-A typed `REF TO Monster` is safer for ordinary data because it knows the legal
-fields and stride. `ADDRESS(monsterRef)` explicitly discards that shape.
-Constructing a typed reference from an unshaped address requires a native or
-interface operation with a declared target contract.
-
-Addresses support equality, not ordinary integer masks or arithmetic. A target
-service may accept an address plus a bounded offset. Their storage widths are
-target-defined, so a record containing `FAR ADDRESS` has a target-dependent
-exact layout.
-
-## Procedure references
-
-Code references are distinct from data references:
-
-```lanternfly
-NEAR PROC
-FAR PROC
-```
-
-Their complete typed signatures are deferred with indirect calls. A far
-procedure call may need a bank or segment trampoline. Data-reference
-arithmetic must never accidentally construct a callable value.
-
-## Device address spaces
-
-TMS9918 VRAM demonstrates a third category. `$0800` in VRAM is not a Z80
-address and cannot be dereferenced by the CPU. The processor sets a device
-cursor and streams bytes through a port.
-
-A target package can declare an opaque address space:
-
-```lanternfly
-ADDRESS SPACE VRAM USING WORD
-
-IMPORT NAME_TABLE AS VRAM ADDRESS
-IMPORT VdpFill(target AS VRAM ADDRESS, count AS WORD, value AS BYTE)
-```
-
-An address-space value supports:
-
-- equality;
-- addition or subtraction of an integer offset when the space permits it;
-- calls to services accepting the same address space.
-
-It does not support ordinary field or array dereference. A memory-mapped target
-may declare a capability that maps such access, but portable Lanternfly cannot assume
-it.
-
-`VRAM ADDRESS` is nominally distinct from `NEAR ADDRESS`, `WORD` and another
-device address using the same bits.
-
-## Address calculations
-
-Every typed path lowers to:
-
-```text
-base
-+ dynamicIndex0 * stride0
-+ dynamicIndex1 * stride1
-+ constant field and index offsets
-```
-
-For `Monsters[i].timer`, the stride is six and the field offset is three.
-For `NameShadow[row, column]`, the row stride is 32 and the column stride is
-one.
-
-The backend may:
-
-- fold constant terms;
-- use shifts for power-of-two strides;
-- use shift-and-add for other constant strides;
-- stage one dynamic term in a temporary;
-- call a multiply helper;
-- use a host-language index expression.
-
-It must use a wide enough address calculation type. A 24-by-32 byte array has
-768 elements; an 8-bit intermediate cannot address it.
-
-## Two dynamic indices
-
-Lanternfly's language model admits:
-
-```lanternfly
-NameShadow[row, column]
-```
-
-even on a Z80. Rejecting this common form would leak a scratch-register
-shortage into the language.
-
-The first backend implementation may initially lower only one dynamic index
-and ask the programmer to stage a row alias:
-
-```lanternfly
-ALIAS nameRow = NameShadow[row]
-nameRow[column] = tile
-```
-
-That is an implementation capability limit, not the permanent semantics. The
-diagnostic should offer the staging form and the cost report should compare
-both.
-
-## Packed bits
-
-Pacmo stores a 15-column world as two bytes per row. Lanternfly can represent the
-external layout exactly:
-
-```lanternfly
-TYPE PackedRow15
-    high AS BYTE
-    low  AS BYTE
-END TYPE
-
-DIM World[15] AS PackedRow15
-```
-
-The first language does not add arbitrary bit fields. Shifts, masks and small
-standard helpers cover the observed programs without introducing
-implementation-defined packing.
-
-A future fixed bit-array type would need to specify:
-
-- bit order within each byte;
-- row and element stride;
-- addressability of individual bits;
-- atomicity;
-- external layout compatibility.
-
-Until those questions have real demand, an exact byte record is clearer.
-
-## Initialization and placement
-
-Static objects may be zero-initialized or given constant values:
-
-```lanternfly
-DIM ClearScore[5] AS WORD = (0, 100, 300, 500, 800)
-DIM Spawn AS Point = (7, 1)
-```
-
-Record initializers follow field order initially. Named-field initializers can
-be added when records become large enough for order to be error-prone.
-
-Target placement is an attribute outside ordinary type spelling:
-
-```lanternfly
-REM illustrative target declaration
-PLACE AssetData IN BANK 3
-```
-
-The core language only needs to know the resulting address class and
-visibility. Bank numbers and linker sections belong to target configuration.
-
-## What is deliberately absent
-
-The initial storage model has no:
-
-- heap allocation;
-- garbage collection;
-- resizable array;
-- aggregate stack local;
-- implicit aggregate copy;
-- untyped pointer;
-- unrestricted pointer arithmetic;
-- array spanning several banks;
-- implementation-defined record padding.
-
-These absences match the corpus and make each stored byte explainable. They do
-not prevent sophisticated algorithms over fixed pools, grids, rings and
-records.
+Every volatile read and write is observable. The compiler preserves their
+source order and does not merge or invent accesses.
+
+Multi-byte numeric meaning is independent of byte order. A target profile
+declares its storage endian convention. Code for a wire format or file format
+uses an explicit platform service rather than assuming that every target is
+little-endian.
+
+## Deliberate limits
+
+The first edition has no heap, garbage collector, resizable array, aggregate
+automatic local, source pointer/reference value, array of pointers, pointer
+arithmetic, indirect call, arbitrary bit field or array that spans mapping
+contexts.
+
+Packed byte records and masks cover the observed Pacmo layouts. Bounded views
+remain open work for algorithms that need a variable-sized region of existing
+storage. Neither feature weakens the fixed, address-free source model.

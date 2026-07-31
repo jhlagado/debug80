@@ -1,319 +1,223 @@
 # Hosting Lanternfly inside Glimmer
 
-> [!IMPORTANT]
-> The hosting architecture and manifest design in this chapter remain current,
-> but some Lanternfly snippets use the exploratory pre-0.3 surface syntax.
-> [The working specification](../specification.md) governs language syntax and
-> semantics.
+Lanternfly begins as an optional Glimmer body language. Glimmer owns the
+scheduled program around each body; Lanternfly compiles the body itself.
 
-Lanternfly begins as an optional body language. Glimmer remains responsible for the
-program around it.
+## Hosted body shape
 
-## The current generated shape
+A scheduled block normally becomes:
 
-A Glimmer scheduled block produces an AZM routine with:
+```text
+generated entry and guard
+    Lanternfly body
+generated Glimmer update epilogue
+generated wrapper return
+```
 
-1. generated entry and guard logic;
-2. the user's body;
-3. generated `updates` work;
-4. generated return logic.
-
-The body is therefore a region inside a routine, not an independently callable
-routine. This matters for exits, source maps and register contracts.
+The body is a region inside host control flow rather than an independent
+machine routine. That fact determines return lowering, source-map composition
+and effect checking.
 
 ## Explicit dialect selection
 
-Glimmer should never infer body language from tokens. A body declares its
-dialect:
+Glimmer must select the body dialect explicitly:
 
 ```text
 effect MoveDot
     when MovePulse
     begin lanternfly
-        IF DotX < 7 THEN DotX = DotX + 1
+        if dotX < 7 then
+            dotX = dotX + 1
+        end
     end
 ```
 
-The spelling `begin lanternfly` is provisional. The requirement is chosen:
+The exact outer Glimmer spelling remains a host design question. Four rules do
+not:
 
-- dialect selection is explicit;
-- existing bare/native bodies retain their current meaning;
-- a syntax error in Lanternfly does not fall back to AZM;
-- generated diagnostics identify both the Glimmer block and Lanternfly location.
+- existing assembly bodies retain their meaning;
+- a Lanternfly syntax error cannot fall back to assembly;
+- the host supplies the exact body slice and source origin;
+- diagnostics identify both the Glimmer block and Lanternfly construct.
 
-Direct AZM remains a parallel body language during adoption:
+Direct AZM remains a parallel body dialect during adoption.
 
-```text
-begin azm
-    ; native body
-end
-```
+## Versioned host manifest
 
-The current undifferentiated body can remain a compatibility spelling for AZM
-until a deliberate migration.
+Glimmer supplies language facts rather than generated assembly text. The
+version-1 manifest contains:
 
-## The typed body manifest
+- body identity, edition and original source span;
+- target profile identifier;
+- integer, Boolean, C-string and opaque-address types;
+- enum names, representation types and ordered members;
+- subrange hosts and normalized bounds;
+- exact record fields and offsets;
+- array index domains, counts, strides and exact size;
+- constants, storage, resources and callables;
+- mutability, volatility, ownership and storage class;
+- routine ABI and effects;
+- host epilogue identity.
 
-Before compiling a Lanternfly body, Glimmer supplies a manifest. At minimum it
-contains:
-
-- body identity and source span;
-- body kind only for host diagnostics, not Lanternfly semantics;
-- visible scalar storage names and types;
-- arrays, records, sizes, bounds and field offsets;
-- mutability;
-- reference and address-space class;
-- constants and enum-like values;
-- callable services and signatures;
-- service purity and memory effects;
-- generated resource identities;
-- imports required by selected implementations;
-- host epilogue target;
-- target CPU/platform capabilities.
-
-An illustrative entry:
+An array domain records more than a count:
 
 ```json
 {
-  "name": "Framebuffer",
-  "kind": "storage",
-  "mutable": true,
-  "type": {
-    "array": 8,
-    "element": {
-      "record": "FramebufferRow",
-      "size": 4,
-      "fields": {
-        "red": 0,
-        "green": 1,
-        "blue": 2,
-        "aux": 3
-      }
-    }
-  },
-  "addressClass": "near"
+  "family": "enum",
+  "rootTypeId": "Colour",
+  "nominalTypeId": "Colour",
+  "lowerOrdinal": 0,
+  "upperOrdinal": 3,
+  "count": 4
 }
 ```
 
-Lanternfly must not scrape generated AZM text to rediscover this information. The
-manifest is the language boundary.
+This lets a hosted body type-check `palette[green]`, preserve debug names and
+remove a bounds check proven by the enum domain. A count-only manifest would
+lose those semantics before parsing began.
+
+The semantic validator recomputes sizes and strides. It rejects inconsistent
+layouts, invalid ordinal domains, unresolved IDs and host/target mismatches.
 
 ## Names supplied by Glimmer
 
-Glimmer declarations become ordinary imported Lanternfly names.
+| Host fact             | Lanternfly view                                |
+| --------------------- | ---------------------------------------------- |
+| byte or word state    | mutable fixed-width integer storage            |
+| Boolean state         | canonical `boolean` storage                    |
+| named small state set | enum or checked subrange                       |
+| typed array state     | fixed array with complete ordinal domains      |
+| layout type           | exact record type                              |
+| constant              | compile-time scalar or aggregate constant      |
+| generated resource    | immutable aggregate, `cstr`, address or handle |
+| generated operation   | callable signature and effects                 |
 
-| Glimmer declaration      | Lanternfly view                        |
-| ------------------------ | -------------------------------------- |
-| byte state               | mutable `BYTE` storage                 |
-| word state               | mutable `WORD` storage                 |
-| typed array state        | mutable fixed array                    |
-| layout type              | exact Lanternfly record/interface type |
-| constant                 | compile-time constant                  |
-| generated resource       | typed immutable object or reference    |
-| shape/sprite/tile handle | opaque or typed reference              |
-| generated op/routine     | callable signature                     |
+Scheduler labels, trigger machinery and private resource symbols remain host
+implementation details.
 
-This view need not expose every generated implementation symbol. Internal
-trigger flags and scheduler labels remain private unless the body contract
-deliberately imports them.
+## Reads, writes and update tracking
 
-## Reads, writes and change tracking
+Lanternfly emits ordinary typed storage operations. Glimmer runs its generated
+updates after the body.
 
-Lanternfly emits ordinary storage operations. Glimmer decides how state changes are
-observed.
+The first integration should retain explicit Glimmer `updates` declarations
+and compare them with Lanternfly's typed write summary. A disagreement is a
+diagnostic. Once the integration has enough evidence, the host may derive
+updates from the summary and print that derivation in its dependency report.
 
-The simplest integration preserves the existing wrapper:
+Assembly bodies continue to need explicit effect declarations when static
+analysis cannot prove their writes.
 
-```text
-Lanternfly body writes state
-Glimmer-generated updates run afterward
-```
+## Body result and effects
 
-Lanternfly does not replace a store with a `SET_STATE` keyword or special accessor.
-This avoids coupling the language to the current Glimmer implementation.
+The compiler returns generated source or IR together with:
 
-A later integration may use Lanternfly's typed write summary to derive
-Glimmer's update set instead of requiring an `updates` clause for every
-Lanternfly body. This is more than an optimisation: it removes a duplicated
-declaration whose accuracy the compiler can already prove.
+- imported storage read and written;
+- routines called;
+- assembly blocks used;
+- faults and no-return paths;
+- runtime helpers and adapters;
+- static scratch;
+- source provenance;
+- optional cost information;
+- the abstract host continuation.
 
-The first integration should keep explicit `updates` and compare them with the
-summary. That produces useful diagnostics while the host interface is still
-being tested. A later inferred mode can make the summary authoritative and
-print the derived update set in dependency reports, preserving the
-documentation value of the explicit clause without requiring the programmer to
-maintain it twice. Native AZM bodies continue to require explicit declarations
-because their effects cannot always be proved.
+This summary is typed. It distinguishes a possible `F-RANGE` from an array
+`F-BOUNDS`, and it retains the ordinal domain responsible for either check.
 
-## Body summaries
+## Hosted return
 
-The Lanternfly compiler returns a summary with its generated fragment:
-
-- imported storage read;
-- imported storage written;
-- services called;
-- native blocks used;
-- may exit body early;
-- may not return;
-- runtime helpers required;
-- static scratch required;
-- estimated cost;
-- source mapping.
-
-Glimmer can compare this with its dependency model. A mismatch between a
-declared host expectation and the actual summary is a build diagnostic.
-
-The summary also gives the book's dependency reports a more accurate picture
-than textual assembly scanning.
-
-## Falling through the epilogue
-
-Normal Lanternfly body completion falls through to the Glimmer epilogue.
-
-`exit body` jumps to that same epilogue. It does not emit `RET`. A Lanternfly
-`return` is illegal at body top level because the body is not a sub.
-
-An imported no-return service ends control flow. Glimmer must accept that only
-where a non-returning body is valid and must not emit unreachable update work
-as if it ran.
-
-Native pass-through inside the body defaults to fall-through and is checked for
-direct returns where the substrate analyser can detect them.
-
-## Generated resource access
-
-Glimmer already generates arrays and tables for curves, shapes, sprites and
-other resources. Lanternfly sees their public data contract:
+Bare `return` is legal in a hosted body and targets the Glimmer epilogue:
 
 ```lanternfly
-DotX = SlideX[Travel]
-CurrentPiece = ShapeRotations[pieceIndex, rotation]
+if paused then
+    return
+end
+
+updateActors()
 ```
 
-Whether the resource is:
+It must not emit a machine `RET`. The generated update work still runs before
+the wrapper returns. A direct machine return from a body fragment is a backend
+or assembly-contract failure.
 
-- bytes placed in the current bank;
-- an array of near references;
-- a far asset;
-- an opaque service handle;
+Normal fall-through reaches the same continuation. A declared no-return
+service ends control flow and lets Glimmer omit unreachable epilogue work only
+when the host contract permits it.
 
-is stated in the manifest. Lanternfly does not assume that every resource is a raw
-near pointer.
+## Generated resources
 
-## Services from profiles
-
-Matrix and TMS9918 profiles can supply different callable sets:
+Glimmer exposes a public typed contract:
 
 ```lanternfly
-REM matrix profile
-FbPlot(x, y, colour)
-
-REM TMS9918 profile
-VdpWrite(nameAddress, tiles)
-SpriteCommit(spriteTable)
+dotX = slideX[travel]
+currentRotation = shapeRotations[pieceIndex, rotation]
 ```
 
-These are platform imports. Lanternfly has no `PLOT`, `SPRITE`, `VRAM` or `SOUND`
-statement baked into its grammar.
+A regular table is a fixed array. Irregular or device-backed resources may be
+opaque handles accepted by platform services. Lanternfly does not infer a
+pointer from a linker symbol and does not represent a resource table as an
+array of source references.
 
-The same core language compiles either body. A target without the imported
-profile service reports a missing capability.
+Near/far storage belongs to the manifest entry. Opaque device addresses remain
+distinct from CPU storage even when both use 16 bits.
 
-## Placement in the Glimmer pipeline
+## Platform profiles
 
-Two arrangements are possible.
+Different profiles supply different callables:
 
-### Lanternfly before Glimmer AZM generation
+```lanternfly
+framebufferPlot(x, y, colour)
+vdpWrite(nameAddress, tiles)
+spriteCommit(spriteTable)
+```
 
-Glimmer parses the program, creates the typed manifest, calls Lanternfly for each
-body, and inserts the returned AZM fragment into its generator.
+Lanternfly has no built-in `plot`, `sprite`, `vram` or `sound` statement.
+Missing services are target-capability diagnostics.
 
-Advantages:
+## Pipeline placement
 
-- clear body boundaries;
-- direct access to Glimmer type information;
-- no second parse of generated source;
-- easy body summaries.
+The preferred integration is:
 
-### Lanternfly as an earlier source expansion
+1. Glimmer parses the outer program.
+2. It resolves host declarations and creates the versioned manifest.
+3. It passes the exact body slice to Lanternfly.
+4. Lanternfly returns typed effects, generated AZM and provenance.
+5. Glimmer inserts the fragment and composes the maps.
+6. AZM verifies the complete generated program.
 
-A front phase replaces Lanternfly regions with substrate fragments before the main
-Glimmer generation.
+An earlier source-expansion experiment may be useful, but it still needs the
+manifest. Scraping types from generated AZM would make host implementation
+details the language interface.
 
-This may be simpler for an initial experiment but risks losing typed context
-and source ownership. It still must use a manifest rather than textual guesses.
+## Parsing and mapping boundaries
 
-The first arrangement is the long-term design.
+The Glimmer parser owns the outer body delimiter. The Lanternfly parser owns
+every inner bare `end`. A body slice therefore arrives with a source ID,
+UTF-16 offsets and one-based line/column origin.
 
-## Parsing boundaries
+Lanternfly diagnostics use original coordinates. Generated AZM diagnostics map
+back through both the Lanternfly map and the Glimmer wrapper map.
 
-Lanternfly block terminators such as `END IF` do not terminate a Glimmer body. The
-host parser owns the outer delimiter; the Lanternfly parser owns tokens inside it.
+Runtime helpers and adapters requested by several bodies are deduplicated by
+semantic identity: target, width, signedness, domain and ABI where relevant.
 
-The host should pass the exact body slice and starting source coordinate to
-Lanternfly. Lanternfly returns diagnostics in original file coordinates. It should not
-receive a synthetic file containing only the body unless the map retains the
-original source identity.
+## Adoption and acceptance
 
-## Imports and deduplication
+The staged rollout begins with empty and scalar K0 bodies, then adds ordinary
+array/record paths and imported calls before translating native engines.
+Existing AZM bodies can remain beside Lanternfly throughout.
 
-Each body may request runtime helpers and service adapters. Glimmer collects
-those requirements across the program and emits each implementation once.
+Minimum integration fixtures include:
 
-The generated program should not contain five copies of integer division
-because five bodies use `/`. Helper identity includes target, width,
-signedness and ABI.
-
-Imports already required by Glimmer are shared where signatures match. A
-signature conflict is diagnosed before assembly.
-
-## Register contracts
-
-On the AZM backend, every generated body fragment participates in the
-surrounding `.routine` contract.
-
-The Lanternfly compiler can also generate private helper routines with their own
-contracts. The combined program is run through AZM strict analysis. A failure
-is reported with:
-
-- Lanternfly body source location;
-- generated AZM location;
-- routine or helper name;
-- concise backend explanation.
-
-The user should not have to reverse-map a generated label by hand.
-
-## Adoption path
-
-A safe rollout has four steps.
-
-1. Add the empty-body and scalar read/write K0 tests before implementing the
-   full language. They expose manifest and epilogue mistakes while the
-   interface is still small.
-2. Add explicit Lanternfly bodies while current AZM bodies remain unchanged,
-   then translate small examples and compare emulator behaviour and generated
-   maps.
-3. Translate native game engines selectively once structured memory and
-   routines exist.
-4. Decide later whether the default body dialect becomes Lanternfly.
-
-No step requires removing substrate access. If the integrated product is still
-called Glimmer, Lanternfly can become an internal language name without losing its
-independent specification.
-
-## Integration acceptance tests
-
-The minimum tests are:
-
-- one empty Lanternfly body whose Glimmer updates still execute;
-- a body that reads and writes imported scalar state;
-- an early `exit body` that still executes updates;
-- an imported call implemented as AZM op;
-- an imported call implemented as routine;
-- generated resource indexing;
+- an empty body whose updates still execute;
+- scalar read/write and an early hosted `return`;
+- imported pure and effectful calls;
+- imported enum/subrange types and enum-indexed storage;
+- non-zero-bound resource indexing;
 - record-array field access;
-- a Lanternfly diagnostic at the correct original file/line/column;
-- an AZM contract failure mapped back to the Lanternfly call;
-- mixed Lanternfly and AZM bodies in one program;
+- `F-RANGE` and `F-BOUNDS` mapped to original source;
+- AZM contract failure mapped through the generated call;
 - helper deduplication across bodies;
-- no Lanternfly or runtime import in a Glimmer program that contains no Lanternfly.
+- mixed Lanternfly and AZM bodies;
+- no Lanternfly artifacts when a program contains no Lanternfly body.
