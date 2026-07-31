@@ -67,7 +67,7 @@ User-defined Lanternfly functions and procedures have their own return conventio
 are not Glimmer blocks. Their `RETURN` exits the routine normally. The parser
 and intermediate representation must distinguish these two contexts.
 
-## Explicit mapping replaces verbatim mapping
+## Explicit mapping extends label-anchored mapping
 
 Current `computeBlockMappings` verifies that every body line appears
 byte-for-byte in generated AZM, then moves corresponding Debug80 segments from
@@ -75,8 +75,14 @@ the `.asm` file to the `.glim` file. Lanternfly invalidates that assumption beca
 one statement may lower to several instructions and some statements emit no
 code.
 
-The Lanternfly compiler must return explicit mapping records. Glimmer's build stage
-then composes them with the AZM map instead of searching for source text.
+The useful part of the current scheme is its label anchor. Glimmer first finds
+the generated block label, so wrapper lines inserted elsewhere do not change
+the body's identity. Lanternfly should keep that property. Its compiler returns
+a deterministic local anchor with each hosted fragment and records source-node
+spans within its exact text. Glimmer locates the anchor after final composition,
+checks that the fragment is unchanged and joins those explicit records to the
+AZM map. It does not search for Lanternfly source text.
+
 Tests should cover:
 
 - one statement to several instruction segments;
@@ -85,6 +91,7 @@ Tests should cover:
 - a statement in a Glimmer part;
 - an error in generated AZM mapped back to the originating Lanternfly expression;
 - wrapper instructions remaining attributed to generated assembly.
+- missing, duplicated and altered anchors failing without a partial map.
 
 ## Typed manifests
 

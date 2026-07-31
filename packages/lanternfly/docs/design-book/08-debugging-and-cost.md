@@ -31,6 +31,26 @@ identity, generated role, bank or segment and confidence.
 Private labels remain related to their source construct even when their names
 are synthesized.
 
+The AZM backend gives each generated fragment a stable label anchor. A routine
+can use its entry label; a fragment inserted into a host routine uses a local
+label so that it does not disturb AZM's routine scope. Every mapping inside the
+fragment is recorded within its exact text, together with the anchor's position
+in that text. Once the host has assembled the complete program, the anchor
+supplies the fragment's final AZM position and the assembler map supplies its
+machine ranges.
+
+This borrows the dependable part of Glimmer's existing mapping scheme without
+copying its verbatim-line assumption. Glimmer can recognize an unchanged AZM
+body line because that line survives generation intact. Lanternfly cannot:
+one assignment may become a bounds check, address calculation and store, while
+a folded expression may emit nothing. Its backend therefore records the spans
+as it lowers each node. The anchor finds the fragment; it does not decide which
+source statement owns the code.
+
+If a host changes the returned fragment, an anchor is absent or duplicated, or
+a span escapes its fragment, the map cannot be trusted. The build reports
+`E-MAP-001` instead of attaching machine code to the nearest plausible line.
+
 ## Stepping
 
 Tools can offer:

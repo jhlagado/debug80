@@ -500,6 +500,14 @@ When Glimmer hosts a body, its source map and Lanternfly's source map must be
 composed. Backend or AZM diagnostics must map back to the responsible
 Lanternfly construct.
 
+Each generated AZM fragment carries a deterministic compiler-owned label
+anchor, its offset and explicit source-node spans within its exact returned
+text. After host composition, the integration locates the anchor, verifies that
+the fragment is unchanged and joins those spans to the AZM machine map. This
+retains Glimmer's reliable label-location technique without relying on its
+verbatim-body line matching. Missing, duplicate or altered anchors report
+`E-MAP-001`; no guessed or partial map is published.
+
 ## Implementation stages
 
 The accepted staging is described fully in the

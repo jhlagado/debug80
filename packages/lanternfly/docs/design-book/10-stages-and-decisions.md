@@ -155,6 +155,11 @@ symbols and every backend.
   than module-wide forward visibility.
 - Generated substrate source, typed layouts, source maps and helper inventories
   are first-class artifacts.
+- AZM fragments carry deterministic label anchors and explicit source-node
+  spans within their exact returned text. Final map composition validates the
+  fragment before joining those spans to assembler machine ranges.
+- A source-map integrity failure is `E-MAP-001`; the compiler does not emit a
+  guessed or partial map.
 
 ### Program placement
 

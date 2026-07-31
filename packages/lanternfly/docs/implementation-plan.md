@@ -158,6 +158,9 @@ LineMap
 NodeId
 DeclarationId
 BodyId
+GeneratedFragmentId
+GeneratedAnchorId
+GeneratedSpan { startOffset, endOffset }
 ```
 
 Offsets are zero-based UTF-16 code-unit offsets with a half-open end, matching
@@ -1072,6 +1075,33 @@ Generated names use one reserved prefix that cannot collide with Lanternfly,
 host, or assembler-visible user names. Their allocation is deterministic for
 the same typed program.
 
+The AZM result packages its text as anchored fragments:
+
+```text
+GeneratedFragment
+  fragmentId
+  anchorId
+  anchorLabel
+  anchorOffset
+  text
+
+GeneratedProvenance
+  fragmentId
+  anchorId
+  generatedSpanWithinFragment: GeneratedSpan
+  sourceSpan
+  nodeId
+  role
+```
+
+`anchorOffset` and `GeneratedSpan` use zero-based UTF-16 offsets;
+`GeneratedSpan` has a half-open end, matching `SourceSpan`. The backend writes
+provenance as it emits each instruction, directive or inline payload line. It
+never reconstructs ownership by searching for Lanternfly source text.
+Standalone routine and initializer entry labels may serve as anchors. Hosted
+fragments use unique local AZM labels so they do not end the enclosing
+`.routine` scope.
+
 ### 8.1 Placement and assembly origin
 
 The backend reserves explicit `at` objects and addressed module assembly, then
@@ -1103,8 +1133,16 @@ AZM assembly is part of the backend gate. A successful backend test:
 2. assembles it through the supported AZM API;
 3. passes strict routine-contract analysis where applicable;
 4. compares AZM addresses and symbols with the placement plan;
-5. maps AZM diagnostics to Lanternfly source;
-6. compares execution or final state with the IR interpreter.
+5. locates each generated anchor once in the final AZM source or symbol map;
+6. subtracts the recorded anchor offset, validates the exact fragment text and
+   joins fragment-relative provenance to AZM line, column and machine segments;
+7. maps AZM diagnostics to Lanternfly source while retaining generated
+   context;
+8. compares execution or final state with the IR interpreter.
+
+A missing or duplicate anchor, changed anchored fragment or provenance outside
+its fragment is `E-MAP-001`. Map validation does not guess at the intended
+source or publish a partial result.
 
 ## 9. Conformance fixture protocol
 
@@ -1262,6 +1300,11 @@ Gate:
 - interpreter and AZM execution agree for character/string,
   Counter, Dot, Slide and Trail fixtures;
 - an AZM diagnostic maps back to the responsible Lanternfly span;
+- statements with multiple expansions, folded nodes, inline assembly, runtime
+  helpers and host wrappers retain the correct primary and related provenance;
+- hosted mappings survive wrapper insertion through a unique local anchor;
+- damaged, missing and duplicated anchors report `E-MAP-001` without a
+  partial map;
 - region, alignment, overlap, explicit-`at`, hosted-fragment and final-map
   placement fixtures pass;
 - generated source is deterministic.

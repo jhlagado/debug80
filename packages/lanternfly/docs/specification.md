@@ -2631,6 +2631,42 @@ raw mode begins, `//` and every other character belong to the assembler; only
 a physical line whose trimmed content compares case-insensitively equal to
 `end` closes the block. The formatter emits that delimiter in lowercase.
 
+#### 13.2.2 Generated-source provenance
+
+A source-generating backend returns its generated text and an explicit
+provenance map. Each record relates a half-open span within that exact text to
+the originating `SourceSpan`, stable source node ID and generated role. A
+source node may own several generated spans. A node removed by constant folding
+or another semantics-preserving transformation remains in the typed artifacts
+with no generated range; it is not attached to a neighbouring instruction.
+
+An AZM backend divides its output into anchored fragments. A standalone
+routine or module initializer may use its generated entry label as the anchor.
+A hosted fragment uses a compiler-owned local label so that it remains within
+the host's enclosing AZM routine. Anchor names come from the backend's reserved
+generated-name space and are deterministic and unique within the assembly
+unit. Each fragment records the anchor label's offset within its text. Anchor
+and generated-span offsets are zero-based UTF-16 positions; generated spans
+have a half-open end. The host must insert the returned text contiguously
+without changing it.
+
+After final source composition, the integration locates every anchor in the
+AZM source or symbol data. It subtracts the recorded anchor offset to recover
+the fragment start, verifies the exact fragment text, resolves its generated
+spans to final AZM positions and joins them to the assembler's
+generated-source-to-machine map. Missing or duplicate anchors, changed
+generated text and provenance outside its fragment are `E-MAP-001`. After this
+error, the backend does not publish a partial map.
+
+In the composed artifact, instructions produced for a Lanternfly construct
+have that source span as their primary source and retain the generated AZM span
+and role as related provenance. Host wrappers and other synthetic glue that
+have no Lanternfly origin remain attributed to generated source. Runtime
+helpers map to their own runtime source and retain their call sites as related
+locations. Inline assembly maps to its original payload lines. Assembler
+diagnostics use the same composition to select the responsible Lanternfly span
+while preserving the complete generated-source diagnostic.
+
 ### 13.3 Hosted bodies
 
 A host such as Glimmer supplies the typed manifest defined in section 12.6.

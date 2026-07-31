@@ -149,6 +149,7 @@ responsible configuration, front-end, placement or backend stage.
 | `E-ASM-002`      | Selected target has no compatible assembly-fragment pipeline                                                                                                                                                                                                                                                                                                                                                       | §13.2.1                          |
 | `E-PLACE-001`    | Source or build placement cannot fit a compatible target region because of address range, permissions, alignment, capacity, overlap or an unavailable initialization mechanism                                                                                                                                                                                                                                     | §4.3                             |
 | `E-PLACE-002`    | Emitted substrate bytes, reserved addresses or symbols disagree with the validated placement plan, including output outside a region, at a wrong address or over another range                                                                                                                                                                                                                                     | §§4.3, 13.2                      |
+| `E-MAP-001`      | A required generated-source map cannot be composed because an anchor is missing or duplicated, anchored text changed, or a provenance span lies outside its fragment                                                                                                                                                                                                                                               | §13.2.2                          |
 
 Each error reports its originating input. A source error reports the original
 Lanternfly file, line and column. A configuration error reports the build
@@ -508,7 +509,9 @@ twelve programs:
 A source-generating backend emits:
 
 - canonical generated substrate source;
-- original-to-generated provenance;
+- original-to-generated provenance with stable node IDs, source spans,
+  generated roles and fragment-relative generated spans;
+- deterministic generated anchor labels and anchored-fragment identities;
 - generated-to-machine mapping where available;
 - typed symbol and exact-layout data;
 - validated memory-region and placement plan;
@@ -532,6 +535,21 @@ static scratch.
 A single source node may map to several generated or machine ranges. Backend or
 assembler diagnostics retain generated context and map back to the responsible
 Lanternfly location.
+
+For an AZM backend, required provenance fixtures also establish that:
+
+- one source statement may own several non-contiguous machine ranges;
+- a folded node may own no machine range and is not mapped to adjacent code;
+- a hosted fragment still maps after the host adds wrappers before and after it;
+- host glue without a Lanternfly origin remains attributed to generated AZM;
+- inline assembly retains its original payload line and column;
+- runtime helper code maps to runtime source while its call-site relation is
+  retained;
+- an assembler diagnostic selects the exact responsible Lanternfly span and
+  preserves its generated AZM location;
+- a missing anchor, duplicate anchor, changed fragment or out-of-fragment span
+  reports `E-MAP-001` and produces no misleading partial map;
+- identical inputs produce identical anchor names and composed mappings.
 
 ## 8. Deferred-feature rejection
 

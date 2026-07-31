@@ -1094,12 +1094,19 @@ assembly.
 Every emitted substrate item has:
 
 ```text
-generated span
-origin source span
+fragment ID
+anchor ID
+generated span within fragment text
+origin SourceSpan
 origin node ID
 host body ID
 role
 ```
+
+The backend records this relation while lowering. It does not recover source
+ownership by comparing Lanternfly text with generated assembly. Several
+records may name one source node, and a node that emits no code has an empty
+generated range.
 
 Roles:
 
@@ -1116,6 +1123,27 @@ Roles:
 Runtime helper source maps point to the runtime source and also retain the call
 site relation in call metadata. They should not falsely attribute the helper's
 entire body to one Lanternfly line.
+
+For AZM, every emitted fragment contains a deterministic compiler-owned anchor
+at a recorded offset. A standalone routine or initializer can use its entry
+label. A hosted fragment uses a local label beneath the host's non-local
+routine label, which preserves AZM routine scope. The host inserts the fragment
+unchanged.
+
+After the complete AZM source is assembled, map composition:
+
+1. locates each unique anchor in the final source or symbol map;
+2. subtracts the recorded anchor offset and validates the exact fragment text;
+3. turns fragment-relative generated spans into final AZM spans;
+4. joins those spans to assembler segments by generated line and column;
+5. retains the AZM span, generated role and source node alongside every
+   resulting machine range.
+
+Generated wrappers stay mapped to generated AZM. Inline payloads return to
+their original source lines. Runtime helpers retain their own source plus the
+calling node. The same join reattributes assembler diagnostics without
+discarding their generated context. An integrity failure reports `E-MAP-001`,
+and no partial or guessed map is published.
 
 ## 16. Cost model
 

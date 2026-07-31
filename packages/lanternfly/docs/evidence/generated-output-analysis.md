@@ -60,7 +60,8 @@ address classes.
 For each body Lanternfly should return:
 
 - generated substrate text;
-- source-line mappings for every emitted instruction or expansion;
+- a deterministic local anchor and source spans for every emitted instruction
+  or expansion, expressed within that exact fragment text;
 - semantic reads and writes, normalized to the enclosing imported cell;
 - calls and required target capabilities;
 - optional byte/cycle cost records after substrate assembly;
@@ -142,6 +143,12 @@ generated wrappers to `.main.asm`. With Lanternfly, a body line can lower to sev
 instructions or a helper call. The composed map should attribute those
 instructions to the Lanternfly statement while retaining the generated substrate as
 an inspectable secondary source.
+
+The compiler-owned local anchor identifies the body after Glimmer adds its
+wrapper. Explicit relative spans identify the source node responsible for each
+generated range. The integration validates the unchanged fragment and then
+joins those spans to the AZM machine map; the anchor never substitutes for the
+compiler's own lowering provenance.
 
 Calls into a target service should step over at Lanternfly level by default. A user
 who steps in crosses to the service's implementation source, whether AZM,
