@@ -103,13 +103,14 @@ map.
 The initial model has:
 
 - signed and unsigned fixed-width scalar values through 32 bits;
+- nominal enums and checked subranges;
 - byte-valued characters and static NUL-terminated text;
 - opaque near and far address values;
-- statically allocated arrays and records;
+- statically allocated arrays with ordinal index domains, and exact records;
 - zero-storage aliases for existing objects and subobjects;
 - target-defined near and far address capabilities.
 
-Programs use declared paths, multidimensional indices and integer pool indices
+Programs use declared paths, multidimensional indices and ordinal pool indices
 to locate data. Aggregate parameters and local aliases name existing storage
 temporarily. Their names denote the aggregate itself; the backend carrier has
 no source expression. Backends may use machine addresses to implement aliases
@@ -173,8 +174,10 @@ forward when existing game logic cannot be expressed cleanly without it.
 The completed corpus pass moved signed bytes, multiple integer widths, local
 aggregate aliases, multidimensional indexing and opaque device addresses into
 the required model. Pointer tables in the source corpus are expressed through
-regular multidimensional arrays or integer selectors in Lanternfly. A later
+regular multidimensional arrays or ordinal selectors in Lanternfly. A later
 completeness review moved byte-valued character literals and static C strings
-into the first edition. The
+into the first edition. Before implementation began, a further design review
+adopted Pascal-style enums, subranges and ordinal array domains, expressed
+with BASIC words rather than symbolic range punctuation. The
 [research record](research.md) and [feature matrix](evidence/corpus-feature-matrix.md)
 show the evidence.

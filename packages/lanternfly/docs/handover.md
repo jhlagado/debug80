@@ -88,14 +88,21 @@ The implementation-readiness rewrite then:
   passes;
 - made the typed IR interpreter the semantic oracle before AZM optimisation;
 - gave every milestone an executable acceptance gate;
-- moved bounded views, parameter modes, enums and floating point out of the K0
-  and K1 critical path;
+- moved bounded views, parameter modes and floating point out of the K0 and K1
+  critical path;
 - replaced the stale `ReferenceValue` IR name with a compiler-only aggregate
   alias base.
 
+A later first-edition decision added Pascal's ordinal model without adopting
+Pascal's symbolic range syntax. Lanternfly now has nominal, explicitly sized
+enums, nominal checked subranges and fixed arrays with ordinal index domains.
+The words `to` and `until` retain their inclusive and exclusive meanings in
+subrange declarations, array dimensions, `select` cases and counted loops.
+This is part of the 0.4 implementation baseline rather than post-0.4 work.
+
 The most important boundary concerns storage identity. Lanternfly source has
 no general pointer or reference values. Programs keep persistent identity in
-declared paths, multidimensional indices and integer selectors. Aggregate
+declared paths, multidimensional indices and ordinal selectors. Aggregate
 parameters and local `alias` declarations provide temporary access to existing
 aggregate storage. An alias denotes its record or array for field access,
 indexing, copying and nested calls; the backend carrier has no source
@@ -233,6 +240,8 @@ promise that the feature will be added later.
 - `//` introduces a line comment, including after a statement.
 - Static types and declarations before local use.
 - `var` and `const` declarations with `as` type clauses.
+- Nominal enums and subranges provide checked ordinal types without becoming
+  runtime range objects.
 - Character literals produce exact byte values. Static double-quoted text
   produces read-only NUL-terminated `cstr` values with near/far address
   classes.
@@ -284,8 +293,8 @@ Important numeric rules:
   operations;
 - integer square root is a visible standard operation rather than assumed CPU
   support;
-- `size`, `count` and `offset` expose exact compile-time layout without pointer
-  arithmetic;
+- `size`, `count`, `lower`, `upper` and `offset` expose exact compile-time
+  layout and index domains without pointer arithmetic;
 - `fill` and `clear` provide typed repeated aggregate stores;
 - floating point is deferred and would be a target capability, not an initial
   requirement.
@@ -300,7 +309,9 @@ Do not let C, BASIC or target-CPU arithmetic silently redefine these results.
 
 ### Storage and addressing model
 
-- Arrays are fixed-size, zero-based, count-declared and row-major.
+- Arrays are fixed-size and row-major, with compile-time ordinal index domains.
+  A count is shorthand for a zero-based exclusive domain; explicit `to` and
+  `until` bounds, named subranges and enums provide the other forms.
 - Records and arrays have exact sizes with no semantic padding.
 - Runtime indexing must multiply by the true stride, including values such as
   six-byte Pacmo records.
@@ -412,7 +423,7 @@ Target fixtures: Counter, Dot, Slide, Trail and ordinary Glimmer rule bodies.
 ### K1: structured storage
 
 Add Lanternfly-owned static arrays and records, initializers,
-module imports and visibility, multidimensional arrays, integer selectors,
+module imports and visibility, multidimensional arrays, ordinal selectors,
 scalar locals, local aliases and broader path lowering.
 
 Target fixtures: central Tetro and Pacmo storage patterns.
@@ -472,7 +483,6 @@ Do not present these points as settled without an explicit decision:
 - syntax for an explicitly unsafe, nonconforming unchecked-array mode;
 - read-only bounded views and writable text-buffer support;
 - bounded aggregate view syntax;
-- nominal fixed-width enums;
 - scalar output parameter syntax;
 - restricted labels;
 - optional `float32` semantics.
@@ -706,10 +716,15 @@ expected use.
 Preserve the storage model. Lanternfly has no source-level pointer or reference
 values, address-of operation, dereference operation, function values or
 closures. Persistent identity uses declared paths, multidimensional indexing
-and integer selectors. Aggregate parameters and local aliases are temporary,
+and ordinal selectors. Aggregate parameters and local aliases are temporary,
 non-escaping names for existing aggregate storage. Their hidden backend
 carriers are not source values. Do not reintroduce REF syntax, pointer
 arithmetic, reference variables or arrays of pointers.
+
+The first edition includes nominal enums, checked subranges and fixed arrays
+with ordinal index domains. `to` is inclusive and `until` is exclusive in
+subrange declarations, array dimensions, selection and counted loops. Ranges
+are type and grammar forms, not runtime values.
 
 The current loop vocabulary is inclusive `for ... to`, exclusive
 `for ... until`, `for each ... in`, `while`, loop-only `exit`, and `continue`.

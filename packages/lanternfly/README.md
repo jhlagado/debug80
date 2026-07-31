@@ -33,10 +33,14 @@ routines, and a host epilogue through a versioned manifest. Glimmer retains
 its scheduling, change tracking, resources, and platform declarations.
 
 Lanternfly source has no pointer or reference values. Declared paths,
-multidimensional indices, and integer selectors identify persistent storage.
+multidimensional indices, and ordinal selectors identify persistent storage.
 Aggregate parameters and local aliases are temporary, non-escaping names for
 existing arrays or records. A backend may carry an address internally, but
 that carrier is not a source value.
+
+The first edition includes nominal enums, checked subranges, and fixed arrays
+whose index domains may be counts, explicit ranges, subranges, or enums.
+Ranges belong to the type system and grammar; they are not runtime objects.
 
 ## Documents
 
@@ -73,7 +77,7 @@ Implementation proceeds in this order:
 8. K1 exact arrays, records, paths, locals, and aliases;
 9. user routines after storage and diagnostic behaviour are stable.
 
-Bounded views, parameter modes, enums, floating point, rich strings, and
+Bounded views, parameter modes, floating point, rich strings, and
 recursion-capable bare-metal profiles remain later design work. They do not
 block K0 or K1.
 

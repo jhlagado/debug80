@@ -29,7 +29,7 @@ default. A proposed language change must include:
 - a test that distinguishes the old and proposed rules.
 
 Open facilities do not block the first compiler. Bounded aggregate views,
-read-only/output/in/out parameter modes, enums, floating point, owned local
+read-only/output/in/out parameter modes, floating point, owned local
 aggregates, rich strings, and recursion-capable bare-metal profiles remain
 outside K0 and K1.
 
@@ -40,7 +40,7 @@ The implementation must preserve these boundaries from its first data model:
   aggregate storage;
 - hidden address carriers cannot appear as source expressions or stored
   values;
-- paths, multidimensional indices, and integer selectors provide persistent
+- paths, multidimensional indices, and ordinal selectors provide persistent
   identity;
 - `cstr` is a specialised immutable text value, not a general storage
   reference;
@@ -184,7 +184,8 @@ The schema must represent:
 - target profile identifier;
 - body identity and original source span;
 - imported constants and scalar or aggregate storage;
-- exact record fields, array counts, and strides;
+- enum members, subrange bounds, exact record fields, and array index domains
+  and strides;
 - mutability, volatility, ownership, and near/far storage class;
 - canonical Boolean representation;
 - static C-string class, termination, immutability, and program lifetime;
@@ -211,6 +212,21 @@ BooleanType
     falseBits: 0
     trueBits: 1
 
+EnumType
+    id
+    kind: "enum"
+    name
+    representationTypeId
+    members[] { name, ordinal }
+
+SubrangeType
+    id
+    kind: "subrange"
+    name
+    hostTypeId
+    lowerOrdinal
+    upperOrdinal
+
 CStringType
     id
     kind: "cstr"
@@ -231,7 +247,14 @@ ArrayType
     id
     kind: "array"
     elementTypeId
-    counts[]
+    indexDomains[] {
+        family: "integer" | "enum"
+        rootTypeId: string | null
+        nominalTypeId: string | null
+        lowerOrdinal
+        upperOrdinal
+        count
+    }
     exactStrides[]
     exactSize
 
@@ -248,16 +271,22 @@ OpaqueAddressType
     representationWidth
 ```
 
-`counts` and `exactStrides` have the same nonzero length. Strides are in
-bytes, ordered from the first source dimension to the last. The semantic
-validator recomputes record offsets, strides, and exact sizes and rejects any
-disagreement. Direct or mutual record/array containment cycles are invalid.
+`indexDomains` and `exactStrides` have the same nonzero length. An integer
+domain has a null `rootTypeId`; an enum domain names its root enum.
+`nominalTypeId` is present when the complete dimension was declared through a
+named enum or subrange and is otherwise null. Strides are in bytes, ordered
+from the first source dimension to the last.
+
+The semantic validator resolves subrange hosts, checks member and bound
+representation, recomputes each domain count, record offset, stride and exact
+size, and rejects any disagreement. Enum/subrange dependencies and direct or
+mutual record/array containment must be acyclic.
 
 Address class belongs to storage and alias parameters, not to record or array
-types. Two arrays with the same element type and counts have the same
-aggregate type even when one is stored near and the other far. C-string and
-opaque-address classes remain part of their scalar type because they determine
-the value representation and legal operations.
+types. Two arrays have the same aggregate type when their element type and
+normalized index domains match, even when one is stored near and the other
+far. C-string and opaque-address classes remain part of their scalar type
+because they determine the value representation and legal operations.
 
 Version 1 symbol entries are:
 
@@ -528,8 +557,9 @@ The parser must not tokenise assembler content as Lanternfly.
 ### 6.3 Declaration collection
 
 Declaration collection assigns IDs and creates the separate type and value
-namespaces. It enforces duplicate, case-only, reserved-name, shadowing, and
-record/callable collision rules.
+namespaces. It registers enum members in the value scope and enforces
+duplicate, case-only, reserved-name, shadowing, and type/callable collision
+rules.
 
 Module declarations are collected before routine bodies are checked.
 Initialiser visibility still follows source order, so collection and
@@ -540,15 +570,16 @@ eligibility are separate concepts.
 The resolver builds dependency graphs for:
 
 - constants;
-- array extents;
+- enum and subrange domains;
+- array index domains;
 - record layouts;
 - placement expressions;
 - layout queries;
 - module imports.
 
-It reports cycles with the dependency path. Exact record offsets, array
-strides, aggregate sizes, and zero-validity are computed once and stored in
-canonical type descriptors.
+It reports cycles with the dependency path. Exact ordinal bounds, record
+offsets, array strides, aggregate sizes, and zero-validity are computed once
+and stored in canonical type descriptors.
 
 ### 6.5 Type and effect analysis
 
@@ -726,7 +757,9 @@ Deliver:
 
 - host import model;
 - names and namespaces;
-- scalar types, literals, constants, and expressions;
+- integer, Boolean, enum and subrange types;
+- literals, constants, and expressions;
+- checked ordinal conversions and range proofs;
 - destination conversions and warnings;
 - structured control and hosted `return`;
 - typed effects and K0 diagnostics.
@@ -743,7 +776,7 @@ Deliver:
 
 - typed control-flow IR;
 - interpreter;
-- runtime fault model;
+- runtime bounds and range-fault model;
 - ordered storage and service traces.
 
 Gate:
@@ -776,9 +809,10 @@ Deliver:
 
 - Lanternfly-owned constants and variables;
 - exact records and fixed arrays;
+- count, range, subrange and enum array index domains;
 - initialisers and startup effects;
 - module imports, visibility, export checks, and deterministic installation;
-- multidimensional path lowering and bounds checks;
+- multidimensional lower-bound normalization and bounds checks;
 - scalar locals and local aggregate aliases;
 - aggregate copy, `clear`, and `fill`.
 

@@ -36,10 +36,11 @@ Glimmer bodies.
 The complete 0.4 language includes:
 
 - fixed-width signed and unsigned integers;
+- nominal enums and checked subrange types;
 - Boolean values and binary masks;
 - byte-valued character literals and static NUL-terminated text;
 - constants and statically allocated variables;
-- exact records and fixed arrays;
+- exact records and fixed arrays with ordinal index domains;
 - field access, runtime indexing and temporary storage aliases;
 - assignment and general expressions;
 - `if`, `select`, counted, collection and conditional loops;
@@ -68,7 +69,7 @@ their familiar symbols; block punctuation, semicolon terminators and curly
 braces do not enter the language.
 
 The first edition uses fixed storage and whole-program compilation. Programs
-identify persistent objects by their declared paths or by integer indices into
+identify persistent objects by their declared paths or by ordinal indices into
 fixed pools. Aggregate parameters and local aliases may name existing storage
 for the duration of a call. A bare alias denotes that storage for field access,
 indexing and aggregate copying. Its backend carrier is not a value and has no
@@ -114,7 +115,7 @@ case-insensitively, but tools preserve and display their declaration spelling:
 - `if`, `var` and every other keyword are written in lowercase;
 - `u8`, `i16`, `boolean` and other built-in types are lowercase;
 - variables, constants, fields, parameters and routines begin lowercase;
-- user-defined records and future named types begin uppercase;
+- user-defined records, enums and ranges begin uppercase;
 - tools display an identifier using the spelling at its declaration;
 - declarations that differ only in case conflict within the same namespace.
 
@@ -126,38 +127,40 @@ a case-insensitive language:
 var actor as Actor
 ```
 
-One cross-namespace collision is forbidden: a record type and a callable
-routine, including an external routine, may not share the same
-case-insensitive name. This keeps `Point(...)` unambiguously a record
-initializer or a call. A storage name may still match its type, as `actor` and
-`Actor` do above.
+One cross-namespace collision is forbidden: a record, enum or range type and a
+callable routine, including an external routine, may not share the same
+case-insensitive name. This keeps `Point(...)` and checked ordinal conversions
+unambiguous with calls. A storage name may still match its type, as `actor`
+and `Actor` do above.
 
-Each module has one type scope and one value scope. Record declarations enter
-the type scope. Constants, variables and routines enter the value scope, so a
-storage declaration and a callable routine cannot share a name. Imports add
-their exported declarations to those module scopes. All module declaration
+Each module has one type scope and one value scope. Record, enum and range
+declarations enter the type scope; enum members enter the value scope.
+Constants, variables and routines also enter the value scope, so an enum
+member, storage declaration and callable routine cannot share a name. Imports
+add their exported declarations to those module scopes. All module declaration
 names are collected before declaration bodies and routine bodies are checked.
-A type annotation may therefore name a later record type, and a routine body
-may use any successfully checked module declaration. Constant names embedded
-in array extents or other declaration expressions still follow the
-source-order rule below.
+A type annotation may therefore name a later type, and a routine body may use
+any successfully checked module declaration. Constant names embedded in array
+domains or other declaration expressions still follow the source-order rule
+below.
 
-Constant initializers and placement expressions are evaluated in source order.
-Successfully resolved imported exports precede every declaration in the
-importing module for this purpose, regardless of where the `import` item is
-written. Among declarations written in the importing module, an initializer
-may use only earlier constants, and a layout path may begin only with earlier
-storage. This source-order restriction applies even though the later name is
-already known to the module scope.
+Constant initializers, subrange bounds, array-domain expressions and placement
+expressions are evaluated in source order. Successfully resolved imported
+exports precede every declaration in the importing module for this purpose,
+regardless of where the `import` item is written. Among declarations written
+in the importing module, such an expression may use only earlier constants or
+enum members, and a layout path may begin only with earlier storage. This
+source-order restriction applies even though the later name is already known
+to the module scope.
 
 Constant expressions written inside a routine body, including `case` values
 and counted-loop steps, may use any successfully initialized module constant
 because routine bodies are checked after module declarations. The compiler
-builds one dependency graph spanning constant values, array extents, record
-layouts, placement expressions and layout queries. That graph must be
-acyclic. A cycle such as a constant taking `size(type Packet)` while
-`Packet` uses that constant as an array extent is rejected with the complete
-dependency path.
+builds one dependency graph spanning constant values, enum and subrange
+domains, array index domains, record layouts, placement expressions and layout
+queries. That graph must be acyclic. A cycle such as a constant taking
+`size(type Packet)` while `Packet` uses that constant in an array domain is
+rejected with the complete dependency path.
 
 A routine has one value scope containing its parameters and locals. Parameter
 names are distinct, and a parameter or local may not shadow any visible module
@@ -309,6 +312,75 @@ var bankedImage as far address
 ```
 
 Their physical representations remain target-defined.
+
+### Ordinal types and ranges
+
+Lanternfly's first edition has three kinds of ordinal type:
+
+- fixed-width integer types;
+- nominal enumeration types;
+- nominal subrange types constrained to part of another ordinal type.
+
+An ordinal type has a finite ordered domain. Ranges use the words `to` for an
+inclusive upper bound and `until` for an exclusive upper boundary. They are
+type and grammar forms, not runtime values: a range cannot be stored, passed,
+returned or placed in an array element.
+
+Ordinal compatibility follows a root family. All fixed-width integers belong
+to the integer family and retain the conversion rules in section 3.1. Each
+enum begins a distinct family, and a subrange belongs to the family of its
+host. This permits ordinary integer indices of different widths while keeping
+unrelated enums distinct.
+
+An enumeration declares a nominal type with an explicit integer
+representation:
+
+```lanternfly
+enum Colour as u8
+    red
+    green
+    blue
+end
+```
+
+The representation type may be any integer type. The first member has ordinal
+zero and each following member has the next ordinal. The last ordinal must fit
+the representation type. The enum name enters the type scope; its members
+enter the surrounding value scope and are written without qualification.
+Members follow the ordinary case-insensitive collision and export rules.
+
+Enumeration values support assignment, all six comparisons, `select`,
+counted loops and array indexing. They do not support integer arithmetic or
+bitwise operations. An explicit conversion to the representation type exposes
+the ordinal value. Converting an integer to an enum is checked: an invalid
+constant is a compile error and an invalid runtime value causes `F-RANGE`.
+
+A subrange constrains a host ordinal type:
+
+```lanternfly
+range ScreenColumn as u8 = 0 until 32
+range WarmColour as Colour = red to blue
+```
+
+The lower endpoint and an inclusive `to` endpoint must belong to the host
+domain. An exclusive integer `until` boundary is a compatible mathematical
+integer and may be one beyond the host's highest value because it is not a
+member of the subrange. An enum boundary remains a member of the host enum.
+After the boundary is normalized, every included value must belong to the host
+and the range must contain at least one value. Its representation and ordering
+come from its host, while its name declares a distinct type.
+
+A subrange value widens silently to its host type. Assignment, initialization,
+argument passing, return and explicit conversion into a subrange check the
+destination domain. A value outside it is a compile-time error when known and
+otherwise causes `F-RANGE` before the destination changes. Integer arithmetic
+on an integer subrange uses the host integer type and produces the result
+prescribed for that host; assigning the result back performs the range check.
+An enum subrange retains the enum's non-arithmetic operations.
+
+The all-zero representation is valid for an enum or subrange only when its
+domain contains ordinal zero. Compiler-owned uninitialized storage of another
+ordinal type therefore requires an initializer.
 
 ### 3.1 Integer arithmetic
 
@@ -585,7 +657,8 @@ var gameOver as boolean = false
 
 Module-level variables own static storage. Compiler-allocated static storage
 without an explicit initializer begins with all bits zero when every scalar
-leaf accepts that representation. Integers and Booleans do; `cstr` does not,
+leaf accepts that representation. Integers and Booleans do; an enum or
+subrange does only when its domain contains ordinal zero. A `cstr` does not,
 and a target profile decides whether zero is valid for each opaque address
 type. A declaration whose type lacks an all-zero value requires an
 initializer. Placed or host- or native-supplied storage without an initializer
@@ -790,9 +863,10 @@ Record layout is exact:
   and mutual recursive containment are both rejected;
 - exporting a record exports its complete field layout.
 
-## 6. Fixed arrays
+## 6. Fixed arrays and index domains
 
-Dimensions follow the element type:
+Every array dimension declares an ordinal index domain. A lone positive
+constant remains the count shorthand and begins at zero:
 
 ```lanternfly
 const actorCount as u8 = 8
@@ -803,17 +877,35 @@ var actors as Actor[actorCount]
 var board as u8[boardRows, boardColumns]
 ```
 
-An array:
+`Actor[8]` is therefore identical to `Actor[0 until 8]`. An explicit range
+sets any constant lower bound:
 
-- has fixed positive compile-time dimensions;
-- uses zero-based indices;
+```lanternfly
+var samples as u8[10 to 20]
+var tiles as Tile[1 to boardRows, 1 to boardColumns]
+```
+
+The first array has eleven elements indexed from 10 through 20. `to` includes
+the written upper value; `until` excludes it. A named subrange or enum type can
+supply a complete dimension:
+
+```lanternfly
+var pixels as Colour[ScreenColumn]
+var palette as u8[Colour]
+```
+
+An enum dimension contains one element for every member in declaration order.
+A subrange dimension uses that type's complete domain. An array:
+
+- has fixed, nonempty compile-time index domains;
 - stores elements contiguously;
 - is stored inline;
 - may contain scalars or records;
 - may appear as a record field.
 
-Dimensions state element counts. `u8[8]` therefore has indices from `0` through
-`7`.
+The normalized index domain is part of the array type. Arrays with equal
+element counts but different lower bounds or different enum/subrange index
+types are not assignment-compatible.
 
 Array initializers use square brackets:
 
@@ -826,6 +918,10 @@ var smallMap as u8[2, 4] = [
 ]
 ```
 
+Initializer positions follow ascending ordinal order in each dimension. The
+first value corresponds to the lower bound, and the rightmost dimension
+changes fastest. The same order governs `for each` traversal.
+
 Multidimensional arrays use row-major layout. The rightmost dimension is
 contiguous:
 
@@ -833,8 +929,10 @@ contiguous:
 board[row, column]
 ```
 
-For `u8[12, 20]`, the element number is `row * 20 + column`. A non-power-of-two
-element size uses its true size in the address calculation.
+For `u8[12, 20]`, the element number is `row * 20 + column`. In
+`u8[1 to 12, 1 to 20]`, it is `(row - 1) * 20 + (column - 1)`. An enum index
+uses its zero-based ordinal. A non-power-of-two element size uses its true size
+in the address calculation.
 
 One bracket operation supplies exactly one index for every dimension of the
 array it selects. `board[row, column]` is valid for a rank-two array;
@@ -842,12 +940,15 @@ array it selects. `board[row, column]` is valid for a rank-two array;
 Indexing selects an element, never a partial row or subarray. A later bracket
 may follow only after another path segment reaches a different array.
 
-Constant out-of-range indices are compile errors. Every dynamic index is
-checked unless the compiler proves it is in range. An out-of-range access
-invokes the target bounds-fault service before any load or store occurs. A
-target-specific unchecked mode may exist as an explicitly unsafe extension,
-but code compiled in that mode is not a conforming execution of this
-specification.
+An index must belong to the dimension's root ordinal family. Any integer type
+may index an integer domain; an enum domain accepts its enum and subrange
+types, but not an unrelated enum or integer. Constant out-of-range indices are
+compile errors. Every dynamic index is checked unless its type or value
+analysis proves that its domain is contained by the array dimension. An
+out-of-range access invokes the target bounds-fault service before any load or
+store occurs. A target-specific unchecked mode may exist as an explicitly
+unsafe extension, but code compiled in that mode is not a conforming execution
+of this specification.
 
 Index evaluation and checking are interleaved. Within one bracket operation,
 the compiler evaluates the first index and checks it before evaluating the
@@ -913,7 +1014,7 @@ actors[selectedActor]
 board[row, column]
 ```
 
-Paths and integer indices are Lanternfly's normal way to retain identity. A
+Paths and ordinal indices are Lanternfly's normal way to retain identity. A
 program that needs a persistent link between fixed pool entries stores the
 destination index, not an address. Multidimensional arrays describe regular
 shapes directly rather than through arrays of row pointers.
@@ -1019,7 +1120,9 @@ For scalar assignment, an exact literal may adopt the destination type when it
 fits. A Boolean destination requires `boolean`. Integer-to-integer assignment
 performs the same bit-preserving or low-bit conversion as an explicit type
 conversion: widening is silent, while narrowing or changing signedness warns
-by default. A project may promote that warning to an error.
+by default. A project may promote that warning to an error. Assignment to an
+enum or subrange applies the checked ordinal conversion from section 3; a
+failed check causes `F-RANGE` before the destination changes.
 
 A round-trip arithmetic conversion is exempt from that warning when the
 destination has integer type `T`, every typed leaf of the source expression
@@ -1045,11 +1148,11 @@ another type or a standard operation such as `abs` ends the exemption. The
 ordinary value-preservation analysis may still suppress the warning.
 
 Initializers, scalar arguments and returned values use the same destination
-conversion rules, including the round-trip exemption. Aggregate assignment
-instead requires an identical record type or identical array element type,
-rank and dimensions. C-string assignment requires compatible address classes
-under section 3.2. Assignment to a bare aggregate alias copies into its
-referent; it never rebinds the hidden carrier.
+conversion rules, including range checks and the round-trip exemption.
+Aggregate assignment instead requires an identical record type or identical
+array element type, rank and normalized index domains. C-string assignment
+requires compatible address classes under section 3.2. Assignment to a bare
+aggregate alias copies into its referent; it never rebinds the hidden carrier.
 
 The parser recognises assignment when a statement begins with a writable
 storage path followed by `=`. In every other expression context, `=` is
@@ -1090,12 +1193,14 @@ end
 ```
 
 Integer comparisons use the operand compatibility rule in section 3.1.
-Booleans support only `=` and `<>`. Opaque addresses of the same address class
-support `=` and `<>`; mixed near/far address comparison is invalid and has no
-implicit conversion. Compatible C strings support all six operators with the
-content comparison in section 3.2. Record and array equality, including
-equality through an aggregate alias, is deferred; their fields or elements
-must be compared explicitly.
+Subranges compare through their host ordinal type. Enum comparisons require
+the same nominal enum family and follow declaration order. Booleans support
+only `=` and `<>`. Opaque addresses of the same address class support `=` and
+`<>`; mixed near/far address comparison is invalid and has no implicit
+conversion. Compatible C strings support all six operators with the content
+comparison in section 3.2. Record and array equality, including equality
+through an aggregate alias, is deferred; their fields or elements must be
+compared explicitly.
 
 ### 8.3 Arithmetic
 
@@ -1181,6 +1286,8 @@ titleBytes = length("LANTERNFLY")
 const actorBytes as u16 = size(type Actor)
 const actorCount as u8 = count(actors)
 const rowCount as u8 = count(board, 0)
+firstRow = lower(board, 0)
+lastRow = upper(board, 0)
 const xOffset as u8 = offset(Actor.position.x)
 ```
 
@@ -1204,6 +1311,21 @@ path. A multidimensional array requires a zero-based dimension argument, as in
 The contextual word `type` selects the type namespace and removes any
 ambiguity when a value and a type share a case-insensitive name.
 
+`lower(type ArrayType, dimension)` and `upper(type ArrayType, dimension)` query
+an array type; the path forms query an array storage path. They return the
+first and last valid index of the selected dimension. The dimension argument
+follows the same omission and validation rules as `count`. A dimension
+declared with a named enum or subrange returns that nominal type. An anonymous
+enum range returns its enum type, while a count or anonymous integer range
+returns an exact, untyped integer constant. These queries make the declared
+traversal explicit:
+
+```lanternfly
+for row = lower(board, 0) to upper(board, 0)
+    clearRow(row)
+end
+```
+
 A layout-query path is an unevaluated designator. It begins with a storage name
 or local aggregate alias and may contain fields plus constant indices.
 `size(selected)` therefore returns the size of the aggregate named by the
@@ -1219,11 +1341,13 @@ the beginning of its record type. The path contains field names only, not
 runtime indices, and every field before the final field must be a by-value
 record field.
 
-The three layout queries are compile-time operations. They return exact,
-untyped integer constants that adopt a surrounding integer type by the literal
-rules in section 3.1. `abs` and `sqrt` are pure value operations, but their
-argument is evaluated normally. They constant-fold under section 4.5; `sqrt`
-may lower to a target helper when evaluated at runtime.
+The five layout queries are compile-time operations. `size`, `count`, `offset`
+and integer-domain `lower` and `upper` return exact, untyped integer constants
+that adopt a surrounding integer type by the literal rules in section 3.1.
+Enum- and named-subrange-domain `lower` and `upper` return typed ordinal
+constants. `abs` and `sqrt` are pure value operations, but their argument is
+evaluated normally. They constant-fold under section 4.5; `sqrt` may lower to
+a target helper when evaluated at runtime.
 
 Two standard procedures cover repeated aggregate stores:
 
@@ -1238,10 +1362,11 @@ an initializer, a return expression or any other value context.
 
 `clear(target)` writes the all-zero representation to a writable record or
 fixed array. It is valid only when every scalar leaf accepts that
-representation. Integers and Booleans do; `cstr` does not. A target profile
-decides whether all-zero is valid for one of its opaque address types. It
-visits record fields recursively in declaration order and array elements
-recursively in row-major order.
+representation. Integers and Booleans do; enums and subranges do when their
+domain contains ordinal zero; `cstr` does not. A target profile decides
+whether all-zero is valid for one of its opaque address types. It visits
+record fields recursively in declaration order and array elements recursively
+in row-major order.
 
 `fill(target, value)` requires a writable fixed array whose leaf element type
 is scalar. The value receives that leaf type as its expected destination type
@@ -1360,9 +1485,9 @@ else
 end
 ```
 
-The selected expression is evaluated once and must have an integer type.
-Cases contain integer compile-time constants, never fall through and require
-no `break`. Boolean and opaque-address selection is deferred.
+The selected expression is evaluated once and must have an ordinal type.
+Cases contain compatible ordinal compile-time constants, never fall through
+and require no `break`. Boolean and opaque-address selection is deferred.
 
 Several values may share a case:
 
@@ -1371,24 +1496,25 @@ case grass, sand
     movementCost = 1
 ```
 
-Inclusive constant ranges are provisional:
+Inclusive constant ranges use `to`:
 
 ```lanternfly
 case 0 to 9
     band = cold
 ```
 
-Every single case value and range endpoint is constant-folded under its own
-ordinary expression type. An all-literal expression therefore uses the `i16`
-default; the selected type does not propagate into its operators. Only a
-single exact integer literal may adopt the selected type directly. The folded
-mathematical value must be representable in the selected expression's type, to
-which it is then normalized without a conversion warning. A value that is not
-representable is type-incompatible.
+`until` gives an exclusive upper boundary. Every single case value and range
+endpoint is constant-folded under its own ordinary expression type. An
+all-literal integer expression therefore uses the `i16` default; the selected
+type does not propagate into its operators. A single exact integer literal or
+enum member may adopt the selected ordinal type directly. The folded value
+must be representable in the selected type.
 
 Ranges and overlap checks operate on these normalized selected-type values.
-The lower endpoint must be less than or equal to the upper endpoint. A
-reversed, overlapping or duplicate range is a compile error.
+The resulting range must contain at least one value. A reversed, empty,
+overlapping or duplicate range is a compile error. An enum `select` without
+`else` is exhaustive when its cases cover every member; tools may warn when
+they do not.
 
 ## 10. Loops
 
@@ -1420,8 +1546,9 @@ end
 ```
 
 For a positive step, `until` visits values strictly below the boundary. This
-half-open form is canonical for zero-based array traversal because an array
-count can appear directly without subtracting one.
+half-open form is canonical for a count-declared array because its count can
+appear directly without subtracting one. Arrays with explicit domains use
+`lower` and `upper` for matching traversal.
 
 Both forms accept a compile-time `step`:
 
@@ -1431,22 +1558,23 @@ for row = 7 to 0 step -1
 end
 ```
 
-The control name must denote a writable, non-volatile integer variable or
+The control name must denote a writable, non-volatile ordinal variable or
 scalar parameter. A constant, Boolean, opaque address, alias, aggregate or
-volatile integer is invalid. Rejecting volatile control storage avoids
+volatile ordinal is invalid. Rejecting volatile control storage avoids
 inventing implicit device reads and writes for the loop machinery. The loop
 introduces no control declaration. When `step` is omitted, it is the
 mathematical integer `+1`. The compiler folds the written step independently
-under the ordinary expression rules and rejects zero. A negative step remains
-valid with an unsigned control variable because the step is not converted to
-that variable's type.
+under the ordinary integer-expression rules and rejects zero. A negative step
+remains valid with an unsigned control variable because the step is not
+converted to that variable's type. Enum and enum-subrange controls advance by
+ordinal position; their explicit step must be an integer constant.
 
 The start and boundary each evaluate once, in that order, before the converted
 start is stored in the control variable. The boundary therefore observes the
 control variable's old value. The start uses the destination-conversion rules
-from section 8.1. The boundary is an independently typed integer expression
-and must be comparable with the control value. An exact literal or layout
-query remains mathematical at this boundary, allowing this complete traversal:
+from section 8.1. The boundary is an independently typed compatible ordinal
+expression. An exact literal or layout query remains mathematical at an
+integer boundary, allowing this complete traversal:
 
 ```lanternfly
 var bytes as u8[256]
@@ -1470,7 +1598,7 @@ After the body, the implementation computes the next value mathematically and
 tests it before storing it. A value that fails the next test ends the loop
 without being stored. A value that would continue must fit the control
 variable; a statically known failure is a compile error and a dynamic failure
-invokes the arithmetic-fault service. This order prevents unsigned wraparound.
+causes `F-LOOP-RANGE`. This order prevents unsigned wraparound.
 
 After the loop, the variable retains the last value stored. If the body never
 runs, it retains the converted start value. The loop body may not assign to
@@ -1514,7 +1642,7 @@ arrays are rejected in the first edition because the binding would need a
 volatile alias contract.
 
 `continue` advances to the next element. `exit` leaves the traversal. Fixed
-array extents are positive, so the collection itself is never empty.
+array index domains are nonempty, so the collection itself is never empty.
 
 ### 10.3 Conditional iteration
 
@@ -1579,7 +1707,7 @@ end
 An omitted result type means that the routine returns no usable value. A
 trailing `as Type` declares a result. The language does not initially expose a
 `void` type. Internally, such an invocation has type `unit`; `unit` cannot be
-written in source or used as a value. A declared result must be an integer,
+written in source or used as a value. A declared result must be an ordinal,
 Boolean, address or `cstr` scalar. Returning a record or fixed array by value
 is deferred.
 
@@ -1781,16 +1909,24 @@ export record Actor
     var active as boolean
 end
 
+export enum Direction as u8
+    left
+    right
+    up
+    down
+end
+
 export var actors as Actor[actorCount]
 
 export sub updateActors()
 end
 ```
 
-An exported declaration cannot expose an unexported user-defined type. The
-check applies recursively to exported constant and variable types, routine
-parameter and result types, and every field type reachable through an exported
-record. Array layers do not hide their element type from this check.
+Exporting an enum also exports all of its members. An exported declaration
+cannot expose an unexported user-defined type. The check applies recursively
+to exported constant and variable types, routine parameter and result types,
+and every field type reachable through an exported record. Array layers and
+index domains do not hide their element or ordinal types from this check.
 
 ### 12.3 Visibility and collisions
 
@@ -1806,7 +1942,7 @@ actors[0].active = true
 
 Two visible declarations with the same case-insensitive name in the same
 namespace cause a compile error. A value may share a name with a type under the
-rule in section 2.1, while the cross-namespace record/callable collision remains
+rule in section 2.1, while the cross-namespace type/callable collision remains
 forbidden. Module aliases are a possible extension:
 
 ```lanternfly
@@ -1915,7 +2051,7 @@ epilogue. This separation prevents a loose statement sequence from being
 mistaken for an ordinary module.
 
 The host manifest defines one type scope and one value scope under the module
-namespace and record/callable collision rules from section 2.1. Duplicate
+namespace and type/callable collision rules from section 2.1. Duplicate
 host names and same-namespace case-only collisions are errors. Record fields
 remain scoped to their record. A hosted body has one local value scope whose
 declarations follow the routine local declaration-order rules from section
@@ -1978,16 +2114,17 @@ Compiler artifacts retain source mappings and selected-helper information
 across all three forms.
 
 Every external or host-manifest routine contract preserves Lanternfly value
-invariants at entry and return. An integer has its declared width, a Boolean is
-zero or one, and an aggregate parameter names valid, correctly aligned storage
-of the declared class and exact type for the duration of the call. A `cstr` is
-non-null, immutable through its interface and terminated within its promised
-accessible range for the program's lifetime. Native code may not mutate constant storage or
-install an invalid Boolean, address or C-string representation in Lanternfly
-storage. A contract missing one of these representation, layout or lifetime
-guarantees is incompatible and is rejected; disabling optimization cannot make
-it safe. If a provider violates a declared guarantee at runtime, that provider
-is nonconforming.
+invariants at entry and return. An integer has its declared width, an enum or
+subrange contains a valid member of its domain, a Boolean is zero or one, and
+an aggregate parameter names valid, correctly aligned storage of the declared
+class and exact type for the duration of the call. A `cstr` is non-null,
+immutable through its interface and terminated within its promised accessible
+range for the program's lifetime. Native code may not mutate constant storage
+or install an invalid ordinal, Boolean, address or C-string representation in
+Lanternfly storage. A contract missing one of these representation, layout or
+lifetime guarantees is incompatible and is rejected; disabling optimization
+cannot make it safe. If a provider violates a declared guarantee at runtime,
+that provider is nonconforming.
 
 The effect part of an external or host routine contract states visible reads,
 writes, calls, faults, device I/O, control flow and ABI clobbers. When this
@@ -2134,6 +2271,7 @@ count
 each
 else
 end
+enum
 exit
 export
 extern
@@ -2145,10 +2283,12 @@ if
 import
 in
 length
+lower
 mod
 not
 offset
 or
+range
 record
 return
 select
@@ -2162,6 +2302,7 @@ then
 to
 true
 until
+upper
 var
 volatile
 while
@@ -2184,8 +2325,9 @@ u16
 u32
 ```
 
-`type` is contextual. It selects a type operand inside `size` or `count` and
-remains available as an ordinary identifier everywhere else.
+`type` is contextual. It selects a type operand inside `size`, `count`,
+`lower` or `upper` and remains available as an ordinary identifier everywhere
+else.
 Contextual-word recognition is case-insensitive, and the formatter emits
 lowercase.
 
@@ -2223,6 +2365,8 @@ export-decl         ::= "export" exportable-declaration
 
 declaration         ::= const-decl
                       | var-decl
+                      | enum-decl
+                      | range-decl
                       | record-decl
                       | extern-sub-decl
                       | sub-decl
@@ -2230,6 +2374,8 @@ declaration         ::= const-decl
 exportable-declaration
                     ::= const-decl
                       | var-decl
+                      | enum-decl
+                      | range-decl
                       | record-decl
                       | extern-sub-decl
                       | sub-decl
@@ -2241,6 +2387,14 @@ var-decl            ::= "volatile"? "var" value-name "as" type-expr
                         ("=" constant-initializer)? placement? newline
 
 placement           ::= "at" address-const-expr
+
+enum-decl           ::= "enum" type-name "as" integer-type newline
+                        enum-member+
+                        "end" newline
+enum-member         ::= value-name newline
+
+range-decl          ::= "range" type-name "as" ordinal-type
+                        "=" ordinal-range newline
 
 record-decl         ::= "record" type-name newline
                         field-decl+
@@ -2322,7 +2476,7 @@ select-statement    ::= "select" expression newline
 case-clause         ::= "case" case-item
                         ("," case-item)* newline block
 case-item           ::= const-expr
-                      | const-expr "to" const-expr
+                      | const-expr ("to" | "until") const-expr
 
 for-statement       ::= "for" value-name "=" expression
                         ("to" | "until") expression
@@ -2348,7 +2502,12 @@ arrayable-type      ::= scalar-type
                       | type-name
                       | address-type
 
-dimensions          ::= "[" const-expr ("," const-expr)* "]"
+dimensions          ::= "[" index-domain ("," index-domain)* "]"
+index-domain        ::= const-expr
+                      | ordinal-range
+                      | type-name
+ordinal-range       ::= const-expr ("to" | "until") const-expr
+ordinal-type        ::= integer-type | type-name
 scalar-type         ::= integer-type | "boolean"
                       | cstring-type
 integer-type        ::= "u8" | "i8" | "u16" | "i16"
@@ -2399,10 +2558,13 @@ invocation          ::= value-name "(" arguments? ")"
 arguments           ::= expression ("," expression)*
 conversion          ::= integer-type "(" expression ")"
                       | cstring-type "(" expression ")"
+                      | type-name "(" expression ")"
 standard-value-operation
                     ::= ("abs" | "sqrt" | "length") "(" expression ")"
 layout-query        ::= "size" "(" layout-operand ")"
                       | "count" "(" layout-operand
+                        ("," const-expr)? ")"
+                      | ("lower" | "upper") "(" layout-operand
                         ("," const-expr)? ")"
                       | "offset" "(" type-name
                         ("." value-name)+ ")"
@@ -2432,11 +2594,16 @@ restricted semantically by sections 4.5 and 3.1 respectively.
 2.4. Grammar positions for imports and external `from` bindings apply the
 more restrictive compile-time text rules from that section.
 `value-name` and `type-name` share one lexical shape and resolve in their
-respective namespaces, subject to the record/callable collision rule in
-section 2.1. A no-result invocation has internal type `unit` and is legal only
-as the complete expression of an expression statement. `clear` and `fill`
-also have internal type `unit`, but their grammar admits them only as complete
-standard-procedure statements.
+respective namespaces, subject to the type/callable collision rule in section
+2.1. In an array index domain, a lone identifier that resolves to an ordinal
+type denotes that type's complete domain; otherwise it is checked as a count
+expression. A name present in both scopes denotes the type in this position.
+Parenthesizing the name makes it a count expression when the value declaration
+is intended. Calls and checked conversions are likewise distinguished by the
+resolved declaration. A no-result invocation has internal type `unit` and is
+legal only as the complete expression of an expression statement. `clear` and
+`fill` also have internal type `unit`, but their grammar admits them only as
+complete standard-procedure statements.
 
 When a statement begins with a writable path followed immediately by `=`, the
 parser selects `assignment-statement`. Otherwise it selects an expression
@@ -2457,11 +2624,6 @@ The following questions remain open or provisional. None blocks K0 or K1:
 - source syntax for narrowing an external routine's effect contract;
 - native callback declarations and their call-graph/reentrancy contract;
 - read-only aggregate parameters and bounded writable-text view spelling;
-- nominal, explicitly sized enum types whose members enter the surrounding
-  value scope without qualification;
-- whether subrange types justify their conversion and runtime-checking rules;
-  non-zero-based array bounds remain a separate deferred feature;
-- whether selection ranges belong in the first parser;
 - whether translated programs justify `repeat`/`until` or named outer-loop
   exits;
 - module aliases, re-exports and the source file extension;

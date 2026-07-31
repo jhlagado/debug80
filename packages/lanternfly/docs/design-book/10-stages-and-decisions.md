@@ -50,7 +50,7 @@ K1 makes the native game engines readable:
 - exact initializers;
 - startup initialisation effects;
 - module imports, visibility, and deterministic installation;
-- multidimensional arrays and integer selectors;
+- multidimensional arrays and ordinal selectors;
 - local scalar `var`;
 - local aggregate `alias`;
 - near and far aggregate parameters in imported interfaces;
@@ -119,7 +119,7 @@ Deferral is not a promise to add them.
 
 First-class references and pointers are not merely deferred conveniences.
 Lanternfly deliberately keeps them out of its source value model. Direct
-paths, integer indices, multidimensional arrays and non-escaping aggregate
+paths, ordinal indices, multidimensional arrays and non-escaping aggregate
 aliases are the intended alternatives. Adding pointer values later would
 change that philosophy rather than complete an unfinished first-edition
 feature.
@@ -141,11 +141,12 @@ The current book chooses:
    `boolean`.
 9. `and`, `or`, `xor` and `not` form one type-directed family. Boolean `and`
    and `or` short-circuit; integer uses combine bits.
-10. Arrays are zero-based, count-declared and row-major.
+10. Arrays have compile-time ordinal index domains and row-major layout.
+    A count is shorthand for a zero-based exclusive range.
 11. Records and arrays have exact sizes with no hidden padding.
 12. Static aggregates are the default.
 13. Aggregate local names alias existing storage; they do not allocate copies.
-14. Direct paths and integer indices are the persistent identity model.
+14. Direct paths and ordinal indices are the persistent identity model.
     Aggregate parameters and local aliases are temporary names, not values.
 15. Near, far and device addresses are distinct capabilities.
 16. Two dynamic indices are meaningful source even if an early backend asks
@@ -245,13 +246,12 @@ inaccessible to source code. The insertion-sort, bounded-string and PACMO
 candidate scans are the decision fixtures. Exact-shape aggregate aliases
 remain available.
 
-### Named scalar sets
+### Ordinal types and domains
 
-Working choice: constants remain sufficient for the first storage prototype.
-
-Open design: add nominal, explicitly sized enums for directions, states and
-selectors. The enum name would enter the type scope, while its members would
-enter the surrounding value scope and be written without qualification:
+Decision: the first edition includes nominal, explicitly sized enums for
+directions, states and selectors. The enum name enters the type scope, while
+its members enter the surrounding value scope and are written without
+qualification:
 
 ```lanternfly
 enum Colour as u8
@@ -264,14 +264,21 @@ var foreground as Colour = red
 ```
 
 This follows traditional Pascal and classic Visual Basic rather than requiring
-`Colour.red`. Existing case-insensitive value-scope collision rules would
-apply to every member. The first implicit member would be zero and each
-following implicit member one greater than its predecessor.
+`Colour.red`. Existing case-insensitive value-scope collision rules apply to
+every member. The first member is zero and each following member one greater
+than its predecessor.
 
-The experiment must show useful type errors, exhaustive selection and useful
-debug symbols without changing packed layout or complicating numeric
-conversion. Subrange types and non-zero-based array bounds are separate
-post-0.4 questions; adding enums would imply neither.
+The same ordinal model includes nominal subranges, checked assignment and
+array dimensions declared by counts, integer ranges, named subranges or enum
+types. `to` is inclusive and `until` exclusive in declarations, array
+dimensions, loops and selection. A range is part of the type system and
+grammar rather than a runtime value.
+
+This decision precedes implementation because it shapes type identity,
+conversion, layout, bounds checks, control flow, native contracts, diagnostics
+and debug symbols. It preserves packed layout: enums state their integer
+representation, subranges use their host representation, and array addressing
+normalizes the declared lower ordinal to element zero.
 
 ### Parameter intent and scalar outputs
 
@@ -313,7 +320,7 @@ Several issues no longer need to remain vague.
 - `/` and `MOD` semantics must be defined even when constant cases optimize.
 - fixed arrays and records are central.
 - local aggregate aliases and runtime selection among fixed aggregates are
-  real requirements; multidimensional arrays and integer selectors cover the
+  real requirements; multidimensional arrays and ordinal selectors cover the
   current pointer tables.
 - exact non-power-of-two record indexing occurs in Pacmo.
 - two-dimensional indexing occurs in generated resources and video buffers.

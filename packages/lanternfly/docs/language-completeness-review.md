@@ -4,10 +4,10 @@ Status: post-0.4 design backlog; not a blocker for K0 or K1
 
 Lanternfly now covers the central executable vocabulary of a small structured
 BASIC or Pascal: scalar values, declarations, expressions, decisions, loops,
-routines, modules, fixed arrays and records. Version 0.4 adds character
-literals and static C strings. The remaining gaps are concentrated around
-safe access to variable-size regions, text mutation, small named types and
-portable service contracts.
+routines, modules, fixed arrays and records. Version 0.4 includes character
+literals, static C strings, nominal enums, checked subranges and ordinal array
+domains. The remaining gaps are concentrated around safe access to
+variable-size regions, text mutation and portable service contracts.
 
 The [specification](specification.md) governs accepted syntax and semantics.
 The first compiler implements that baseline before adding the facilities
@@ -48,29 +48,29 @@ to use byte arrays until the language has a capacity-carrying view.
 
 ## Capability audit
 
-| Capability                                      | 0.4 position                           | Assessment                                                                                 |
-| ----------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------ |
-| Fixed-width integers and Boolean values         | Specified                              | Sufficient for the current machine and game corpus                                         |
-| Character literals                              | Specified as byte-valued literals      | Sufficient for ASCII-oriented firmware and display calls                                   |
-| Static strings                                  | `near cstr` and `far cstr`             | Sufficient for messages, labels, command arguments and read-only native calls              |
-| Mutable strings                                 | Byte arrays only                       | High-priority gap; safe routines need a buffer capacity                                    |
-| String operations                               | Length and comparison                  | Copy, append, search and substring need bounded source and destination views               |
-| Arrays and records                              | Fixed, exact and statically allocated  | Stronger than many early BASIC dialects and comparable to the relevant Pascal subset       |
-| Variable-size array arguments                   | Exact-shape aggregate aliases only     | High-priority gap for reusable algorithms                                                  |
-| Read-only parameters                            | Available only through `cstr`          | High-priority gap for constant arrays, records and general views                           |
-| Routines and local scalars                      | Specified                              | Core procedural programming is covered                                                     |
-| Local arrays and records                        | Aliases to existing storage            | Deliberate first-edition limit; Pascal-style owned locals need a frame and cost policy     |
-| Output and in/out parameters                    | Not yet available for scalars          | A declared parameter mode would provide the feature without adding pointer values          |
-| Aggregate and multiple results                  | Caller-owned storage only              | Parameter modes can cover the current corpus before aggregate return values are added      |
-| Enumerations                                    | Constants only                         | Useful next type feature for states, directions, colours and selectors                     |
-| Type aliases                                    | Absent                                 | Useful for imported layouts; lower priority than facilities required by current algorithms |
-| Standard numeric library                        | `abs` and `sqrt`                       | Add `min`, `max`, `clamp` and bit count after the core numeric rules are implemented       |
-| Standard input and output                       | Supplied by external/platform routines | The boundary is sound, but standard profile contracts still need names and semantics       |
-| Compile-time data tables                        | Aggregate constants                    | Covers the useful role of BASIC `DATA`/`READ` for fixed programs                           |
-| Assertions and controlled termination           | Runtime fault hooks only               | Add user-facing assertion syntax for tests and debug builds                                |
-| Floating point                                  | Deferred capability                    | Important for some desktop BASIC programs, unnecessary for the current Z80 game corpus     |
-| Heap values and dynamic collections             | Deferred                               | Consistent with the static-memory target and current evidence                              |
-| Files, clocks, graphics, sound and random input | Platform libraries                     | Correctly remain outside the core language                                                 |
+| Capability                                      | 0.4 position                           | Assessment                                                                                  |
+| ----------------------------------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------- |
+| Fixed-width integers and Boolean values         | Specified                              | Sufficient for the current machine and game corpus                                          |
+| Character literals                              | Specified as byte-valued literals      | Sufficient for ASCII-oriented firmware and display calls                                    |
+| Static strings                                  | `near cstr` and `far cstr`             | Sufficient for messages, labels, command arguments and read-only native calls               |
+| Mutable strings                                 | Byte arrays only                       | High-priority gap; safe routines need a buffer capacity                                     |
+| String operations                               | Length and comparison                  | Copy, append, search and substring need bounded source and destination views                |
+| Arrays and records                              | Fixed, exact, ordinal-indexed storage  | Counts, explicit bounds, subranges and enums cover the relevant Pascal model                |
+| Variable-size array arguments                   | Exact-shape aggregate aliases only     | High-priority gap for reusable algorithms                                                   |
+| Read-only parameters                            | Available only through `cstr`          | High-priority gap for constant arrays, records and general views                            |
+| Routines and local scalars                      | Specified                              | Core procedural programming is covered                                                      |
+| Local arrays and records                        | Aliases to existing storage            | Deliberate first-edition limit; Pascal-style owned locals need a frame and cost policy      |
+| Output and in/out parameters                    | Not yet available for scalars          | A declared parameter mode would provide the feature without adding pointer values           |
+| Aggregate and multiple results                  | Caller-owned storage only              | Parameter modes can cover the current corpus before aggregate return values are added       |
+| Enumerations and subranges                      | Nominal checked ordinal types          | Improve domain errors, traversal, selection and array bounds without changing packed layout |
+| Type aliases                                    | Absent                                 | Useful for imported layouts; lower priority than facilities required by current algorithms  |
+| Standard numeric library                        | `abs` and `sqrt`                       | Add `min`, `max`, `clamp` and bit count after the core numeric rules are implemented        |
+| Standard input and output                       | Supplied by external/platform routines | The boundary is sound, but standard profile contracts still need names and semantics        |
+| Compile-time data tables                        | Aggregate constants                    | Covers the useful role of BASIC `DATA`/`READ` for fixed programs                            |
+| Assertions and controlled termination           | Runtime fault hooks only               | Add user-facing assertion syntax for tests and debug builds                                 |
+| Floating point                                  | Deferred capability                    | Important for some desktop BASIC programs, unnecessary for the current Z80 game corpus      |
+| Heap values and dynamic collections             | Deferred                               | Consistent with the static-memory target and current evidence                               |
+| Files, clocks, graphics, sound and random input | Platform libraries                     | Correctly remain outside the core language                                                  |
 
 ## Immediate companion: bounded views
 
@@ -133,22 +133,22 @@ failure results. Copy and append must always receive destination capacity.
 Search and substring should return a bounded view or an index rather than an
 unrestricted pointer.
 
-## Named scalar sets
+## Ordinal types in 0.4
 
-Constants represent states today:
+The first edition follows Pascal in treating small ordered domains as types.
+An enum gives related names one nominal type and an explicit representation
+width. A subrange narrows an integer or enum domain and checks every value that
+enters it.
 
-```lanternfly
-const movingLeft as u8 = 0
-const movingRight as u8 = 1
-```
+That choice reaches beyond nicer names. The same ordinal domain can define an
+array dimension, a counted loop and a `select` range. Non-zero and one-based
+arrays no longer need manual index translation, while an enum-indexed table
+can be traversed in declaration order. The compiler can also remove an array
+bounds check when the index type is already contained by the dimension.
 
-Nominal fixed-width enums would detect accidental mixing of unrelated state
-families, improve debugger display and allow exhaustive `select` checking.
-Their storage width must remain explicit so record layout and external ABI stay
-predictable.
-
-Enums rank behind bounded views because constants already express every
-current program. They improve diagnostics rather than unlock algorithms.
+Ranges use the BASIC words `to` and `until`; they are not runtime values.
+Enums retain explicit widths, and subranges retain their host representation,
+so neither feature changes packed layout or external ABI unexpectedly.
 
 ## Parameter intent and results
 
@@ -200,8 +200,7 @@ preserving the static `cstr` ABI.
 2. After K1, design read-only and writable bounded views together with
    parameter intent.
 3. Define one minimal console/text platform profile and bounded text library.
-4. Add nominal fixed-width enums only if translated fixtures justify them.
-5. Reassess fixed-capacity owned strings, assertions and smaller standard
+4. Reassess fixed-capacity owned strings, assertions and smaller standard
    operations using translated programs.
 
 The first item is implementation of an existing rule. The remaining items are

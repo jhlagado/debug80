@@ -70,6 +70,7 @@ value/storage/aggregate-alias category
 constant value when known
 operand-widening, narrowing and result-type decisions
 round-trip conversion classification
+ordinal-domain proof and required range check
 purity
 ```
 
@@ -93,17 +94,21 @@ A backend-facing type descriptor can represent:
 ```text
 integer(width, signed)
 boolean(width=8, falseBits=0, trueBits=1)
+enum(typeId, representationType, members)
+subrange(typeId, hostOrdinalType, lowerOrdinal, upperOrdinal)
 cstr(class, terminator=0, directEncoding=ascii, mutable=false)
 record(typeId, exactSize, fields)
-array(elementType, counts, exactStrides)
+array(elementType, indexDomains, counts, exactStrides)
 aggregateAlias(class, referentType, mutable)
 address(class, representationWidth)
 opaqueAddress(spaceId, representationWidth)
 procedureSignature(parameters, result, effects)
 ```
 
-Record fields include exact byte offsets. Array descriptors include every
-row-major stride so the backend does not recalculate semantic layout.
+Record fields include exact byte offsets. Each array dimension records its
+root ordinal family, optional nominal type, inclusive lower and upper
+ordinals, count and row-major stride, so the backend does not reconstruct
+semantic layout.
 
 An aggregate-alias class is `near`, `far` or a resolved target class. It is a
 compiler representation of temporary access to existing aggregate storage,
@@ -263,6 +268,12 @@ whether the round-trip arithmetic rule suppressed the default warning and
 which low-bit or sign interpretation the destination applies. Warning policy
 never changes the conversion performed.
 
+An enum or subrange destination records its permitted ordinal interval and
+whether the source type proves containment. A required dynamic check occurs
+after source evaluation and before the store, argument transfer or return.
+Failure selects `F-RANGE`; successful conversion preserves the declared
+representation bits.
+
 ### 5.1 C substrate caution
 
 Signed C overflow may not implement Lanternfly wrapping. A C backend should normally
@@ -320,6 +331,7 @@ Descriptor:
 base: static monsters, near
 index:
   value: index
+  lowerOrdinal: 0
   stride: 6
   element: Monster
 field:
@@ -327,8 +339,9 @@ field:
   type: u8
 ```
 
-The backend computes in an address width that can represent the whole object
-and offset.
+The backend subtracts each dimension's lower ordinal, then computes in an
+address width that can represent the whole object and offset. A zero lower
+ordinal folds away. Enum indices use their recorded ordinal.
 
 ### 6.1 Constant stride scaling
 
@@ -506,8 +519,8 @@ source-level types, evaluation order or volatile-store order.
 the same multiplier implementation without adding a visible call to the source
 summary.
 
-`size`, `count` and `offset` are resolved and folded by the front end. They do
-not reach the backend as runtime operations.
+`size`, `count`, `lower`, `upper` and `offset` are resolved and folded by the
+front end. They do not reach the backend as runtime operations.
 
 Cost reports distinguish source calls from compiler helpers.
 
@@ -530,6 +543,7 @@ fault/negative-shift
 fault/negative-power
 fault/negative-sqrt
 fault/bounds
+fault/range
 fault/address
 fault/invalid-value
 ```
@@ -649,7 +663,9 @@ type id/name
 kind
 exact size
 fields with offsets
-array counts/strides
+enum representation and ordered members
+subrange host type and inclusive ordinal bounds
+array index domains/counts/strides
 aggregate storage class
 C-string address class, terminator, immutability and program lifetime
 Boolean width and canonical false/true bit patterns
@@ -809,6 +825,8 @@ backend-focused groups summarize that inventory:
 ### Numeric
 
 - all type boundary conversions;
+- enum ordinals and checked integer/enum conversion;
+- subrange containment, host widening and checked destination conversion;
 - value-preserving operand widening without third-type synthesis;
 - round-trip destination conversion classification;
 - every binary operator across required type pairs;
@@ -831,10 +849,12 @@ backend-focused groups summarize that inventory:
 
 - exact 3-, 4-, 6- and 8-byte records;
 - arrays of those records;
+- count, inclusive, exclusive, enum and named-subrange index domains;
+- non-zero lower-bound normalization and enum declaration order;
 - nested records and arrays;
 - two dynamic indices;
 - multidimensional arrays and integer selector tables;
-- `size`, `count` and `offset` query vectors;
+- `size`, `count`, `lower`, `upper` and `offset` query vectors;
 - `fill` and `clear` effects, including ordered volatile stores;
 - field offsets and exact sizes;
 - no substrate padding.
@@ -842,6 +862,7 @@ backend-focused groups summarize that inventory:
 ### Control
 
 - all branches and loop forms;
+- integer, enum and subrange selection and counted traversal;
 - descending unsigned loop termination;
 - counted-loop boundary and post-loop values;
 - inclusive `to`, exclusive `until` and `for each` traversal;
@@ -868,6 +889,8 @@ backend-focused groups summarize that inventory:
 
 - constant and dynamic bounds failures;
 - proof-based bounds-check removal;
+- constant and dynamic ordinal range failures;
+- proof-based range-check removal;
 - arithmetic, address and invalid-value faults;
 - no store after a failed destination check.
 
@@ -913,13 +936,14 @@ milestones. Their architecture order is:
 
 1. establish source identity, diagnostics, and versioned host/target schemas;
 2. parse the complete 0.4 grammar while preserving raw assembly payloads;
-3. collect declarations, resolve dependencies and layouts, and type-check K0;
+3. collect declarations, resolve ordinal domains, dependencies and layouts,
+   and type-check K0;
 4. lower the typed program to control-flow IR and execute it in the semantic
    interpreter;
 5. emit canonical AZM for scalar state and structured control, assemble it,
    and compose source maps through the host;
-6. add exact arrays, records, startup effects, multidimensional paths, scalar
-   locals, and local aggregate aliases;
+6. add exact arrays with ordinal index domains, records, startup effects,
+   multidimensional paths, scalar locals, and local aggregate aliases;
 7. add source-defined routines and their ABI after storage and diagnostic
    behaviour are reliable;
 8. use C, BASIC, far-memory, and additional CPU experiments to test the
@@ -929,10 +953,10 @@ Each milestone has an executable gate. A development build may reject a
 later-stage construct with an implementation-stage diagnostic, but only a
 build that passes the full applicable inventory may claim 0.4 conformance.
 
-Bounded views, parameter modes, enums, floating point, and other post-0.4
-design work do not enter the first milestones accidentally. They require a
-language decision, specification changes, conformance fixtures, and a lowering
-contract before implementation.
+Bounded views, parameter modes, floating point, and other post-0.4 design work
+do not enter the first milestones accidentally. They require a language
+decision, specification changes, conformance fixtures, and a lowering contract
+before implementation.
 
 No compiler code is part of the package at this checkpoint. The first coding
 change is M0 from the implementation plan: TypeScript scaffolding, shared
