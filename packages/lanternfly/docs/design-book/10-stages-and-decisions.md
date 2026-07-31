@@ -89,6 +89,8 @@ breaking redesign.
   absent.
 - Imports form a contiguous module prefix, and every local declaration must
   precede its use.
+- Source module filenames and import paths use the lowercase `.lafy`
+  extension.
 - A routine signature is visible within its own body; no other implicit
   forward reference is permitted.
 - Glimmer and platform concepts arrive through typed interfaces rather than

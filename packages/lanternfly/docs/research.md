@@ -280,6 +280,7 @@ native or platform services.
 
 - language name: Lanternfly;
 - streamlined structured BASIC source with static types;
+- lowercase `.lafy` source module filenames and import paths;
 - contiguous import prefixes and declaration-before-use, with a routine's own
   checked signature visible in its body;
 - no Glimmer-specific vocabulary;

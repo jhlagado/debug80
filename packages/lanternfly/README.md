@@ -50,6 +50,9 @@ is visible inside its own body, but later declarations are not. This makes a
 small declaration-ordered compiler possible without requiring the desktop
 compiler to use one internal pass.
 
+Lanternfly source modules use the lowercase `.lafy` filename extension. Import
+paths include that extension.
+
 Target profiles define legal memory regions and placement defaults. Source
 uses `at` only for exact addresses. An AZM backend emits `.org` from the
 validated whole-program placement plan and checks the assembled address map

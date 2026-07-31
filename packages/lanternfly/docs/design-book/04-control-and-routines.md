@@ -316,7 +316,7 @@ An ordinary source file is a module containing imports and declarations, not
 loose executable statements:
 
 ```lanternfly
-import "display-services.lf"
+import "display-services.lafy"
 
 export record Actor
     active as boolean
@@ -338,6 +338,8 @@ Imports form one prefix at the beginning of the module. Each import is resolved
 before the next module item, exposes only the other module's exports and
 includes its code and data once in the whole program. Import cycles and
 conflicting visible exports are errors.
+
+Source module filenames and import paths use the lowercase `.lafy` extension.
 
 After the import prefix, declarations become visible in order. Types precede
 the storage that uses them; storage and helper routines precede their callers;

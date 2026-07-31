@@ -927,6 +927,8 @@ leaving control-flow and machine-address fixups to its backend.
 The source layer provides:
 
 - original text and stable source identity;
+- exact lowercase `.lafy` validation for source module filenames and import
+  paths, while hosted body slices retain their host-document identity;
 - offset-to-line mapping;
 - logical-newline handling, including final input without a line ending;
 - UTF-8 input validation and ASCII identifier classification;
@@ -964,6 +966,8 @@ Imports form a contiguous prefix. The checker resolves each imported source
 unit or versioned export interface before continuing, using loading and
 completed states to detect cycles and reuse diamond imports. After the prefix,
 a declaration may use imported names and earlier local declarations only.
+Before resolution, it rejects an import path without the exact lowercase
+`.lafy` extension under `E-MODULE-001`.
 
 A constant, type, storage declaration or external routine enters its namespace
 after its complete declaration has passed semantic checks. A source routine

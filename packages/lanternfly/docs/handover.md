@@ -120,6 +120,10 @@ a compact declaration-ordered compiler possible without requiring the desktop
 compiler to use one internal pass. Mutual recursion would require a future
 explicit `forward sub` design rather than module-wide forward visibility.
 
+Source module filenames and import paths now use the exact lowercase `.lafy`
+extension. Hosted body slices retain the source identity of their host document
+because they are not standalone Lanternfly module files.
+
 The placement contract was closed at the same checkpoint. Target profiles
 define legal memory regions, permissions, alignment, initialization mechanisms
 and default placement targets. `at` reserves one exact source object. A
@@ -571,7 +575,6 @@ Do not present these points as settled without an explicit decision:
 
 - read-only, output and in/out aggregate-parameter spelling;
 - one-line `if`;
-- source file extension;
 - source syntax for narrowing an external routine's effect contract;
 - syntax for an explicitly unsafe, nonconforming unchecked-array mode;
 - read-only bounded views beyond the settled exact-capacity string type,
@@ -825,6 +828,9 @@ Imports form a contiguous prefix. After them, every type, constant, storage
 object and routine must be declared before use. A routine's checked signature
 is visible inside its own body; no other implicit forward reference is
 permitted.
+
+Lanternfly source module filenames and import paths use the exact lowercase
+`.lafy` extension. Hosted body slices keep their host-document source identity.
 
 Target profiles define legal memory regions and placement defaults. `at`
 reserves exact source objects. AZM `.org` directives come from the validated

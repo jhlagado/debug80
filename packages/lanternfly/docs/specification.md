@@ -2021,12 +2021,14 @@ without exposing code addresses to the program.
 `import` loads another source unit:
 
 ```lanternfly
-import "actors.lf"
+import "actors.lafy"
 ```
 
 An import:
 
 - resolves relative to the importing file and configured search paths;
+- names a source module whose filename ends in the exact lowercase `.lafy`
+  extension; another extension is `E-MODULE-001`;
 - appears in the contiguous import prefix before every other module item;
 - resolves its source unit or compiled export interface before the next module
   item is checked;
@@ -2085,7 +2087,7 @@ Exports initially enter the importing module without qualification, following
 AZM's source-module model:
 
 ```lanternfly
-import "actors.lf"
+import "actors.lafy"
 
 updateActors()
 actors[0].active = true
@@ -2102,7 +2104,7 @@ rule in section 2.1, while the cross-namespace type/callable collision remains
 forbidden. Module aliases are a possible extension:
 
 ```lanternfly
-import "actors.lf" as actorsModule
+import "actors.lafy" as actorsModule
 ```
 
 Alias syntax remains deferred until real modules demonstrate the collision
@@ -2193,14 +2195,18 @@ also process a source unit once, retain a compact symbol table and leave branch
 and address fixups to its backend. Both implementations accept the same
 declaration-ordered programs.
 
-The source file extension remains open. `.lf` is illustrative only.
+Lanternfly source module filenames use the exact lowercase `.lafy` extension.
+The extension is part of each source import path. A compiled export-interface
+artifact may use a target-toolchain extension because the import still names
+the canonical `.lafy` source unit.
 
 ### 12.6 Compilation units and program entry
 
-An ordinary Lanternfly source file is a module containing imports and
+An ordinary Lanternfly source file is a `.lafy` module containing imports and
 declarations. It does not contain loose executable statements. A build
-manifest names the root module and, for an executable build, one entry
-subroutine. The entry must have no parameters and no result. This example
+manifest names the root `.lafy` module and, for an executable build, one entry
+subroutine. A root path without the exact lowercase extension is
+`E-MODULE-001`. The entry must have no parameters and no result. This example
 assumes `initialiseGame` and `gameLoop` were imported or declared earlier:
 
 ```lanternfly
@@ -3054,7 +3060,7 @@ The following questions remain open or provisional. None blocks K0 or K1:
   one string type aliases writable caller storage when passed;
 - whether translated programs justify `repeat`/`until` or named outer-loop
   exits;
-- module aliases, re-exports and the source file extension;
+- module aliases and re-exports;
 - optional `float32` semantics and its target capability contract.
 
 Implementation evidence from representative Glimmer bodies, Tetro and Pacmo
