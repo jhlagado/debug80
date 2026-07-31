@@ -2,7 +2,7 @@
   "name": "lanternfly",
   "version": "0.0.0",
   "private": true,
-  "description": "Design workspace for Lanternfly, a streamlined structured BASIC for fixed-memory targets",
+  "description": "Lanternfly compiler package for a statically typed structured BASIC targeting fixed-memory systems",
   "license": "GPL-3.0-only",
   "type": "module"
 }

@@ -16,7 +16,9 @@ BASIC dialects.
 
 Lanternfly is currently a documentation-only design project. There is no
 parser, type checker, IR, interpreter, code generator, runtime or Glimmer
-integration yet.
+integration yet. Specification 0.4 is now the implementation baseline, and the
+[implementation plan](implementation-plan.md) defines the first coding change,
+package seams, milestone gates and completion criteria.
 
 The central idea is:
 
@@ -63,8 +65,8 @@ At the time of this handover:
 - the npm package manifest uses the unqualified name `lanternfly`, is version
   `0.0.0` and remains private;
 - no npm package has been published or reserved by this work;
-- all content under this package is design and research material, not an
-  implemented compiler.
+- all content under this package is specification, implementation planning,
+  design and research material, not an implemented compiler.
 
 Inspect `git status` in both repositories before editing, rebasing or
 performing any cleanup.
@@ -75,6 +77,21 @@ Specification 0.4 rewrote Lanternfly around the agreed streamlined structured
 BASIC model. The rewrite covered the specification, conformance contract,
 charter, lowering notes, research record, decision chapter, package overview
 and a new language-completeness review.
+
+The implementation-readiness rewrite then:
+
+- declared 0.4 as the coding baseline for K0 through K2;
+- added a TypeScript package architecture and an exact M0 first change;
+- separated development milestones from conformance claims;
+- defined versioned host-manifest and target-profile schema responsibilities;
+- split the front end into source, syntax, declaration, layout, type and effect
+  passes;
+- made the typed IR interpreter the semantic oracle before AZM optimisation;
+- gave every milestone an executable acceptance gate;
+- moved bounded views, parameter modes, enums and floating point out of the K0
+  and K1 critical path;
+- replaced the stale `ReferenceValue` IR name with a compiler-only aggregate
+  alias base.
 
 The most important boundary concerns storage identity. Lanternfly source has
 no general pointer or reference values. Programs keep persistent identity in
@@ -134,6 +151,8 @@ Read these files in order:
 3. [Research record](research.md) for the evidence and empirical conclusions.
 4. [Language stages and decisions](design-book/10-stages-and-decisions.md) for
    chosen, provisional, open and deferred points.
+5. [Implementation plan](implementation-plan.md) for the package layout,
+   milestone gates and exact first coding change.
 
 After this pass, an LLM should be able to explain why Lanternfly exists, what
 belongs to Glimmer, why structured memory has priority over formal routines and
@@ -143,21 +162,21 @@ which rules must not be casually reopened.
 
 Continue with:
 
-5. [Working language specification](specification.md) for the consolidated
+6. [Working language specification](specification.md) for the consolidated
    lowercase syntax and semantic contract.
-6. [Conformance and diagnostics](conformance.md) for the required errors,
+7. [Conformance and diagnostics](conformance.md) for the required errors,
    warnings, faults and cross-backend fixtures.
-7. [Language completeness review](language-completeness-review.md) for the
+8. [Language completeness review](language-completeness-review.md) for the
    BASIC/Pascal baseline and ranked follow-up work.
-8. [Design book](design-book/index.md), especially:
+9. [Design book](design-book/index.md), especially:
    - [Language and boundaries](design-book/01-language-and-boundaries.md)
    - [Numbers, truth and expressions](design-book/02-numbers-and-expressions.md)
    - [Storage and addressing](design-book/03-storage-and-addressing.md)
    - [Control flow and routines](design-book/04-control-and-routines.md)
    - [Lowering and portability](design-book/06-lowering-and-portability.md)
    - [Hosting Lanternfly inside Glimmer](design-book/07-glimmer-hosting.md)
-9. [Lowering, backend and runtime contract](lowering-and-runtime.md) for the
-   typed boundaries that a prototype should implement.
+10. [Lowering, backend and runtime contract](lowering-and-runtime.md) for the
+    typed boundaries that a prototype should implement.
 
 ### Before changing a rule
 
@@ -183,11 +202,13 @@ Use this order when two documents appear to differ:
    faults, fixtures and artifacts required for a conformance claim.
 3. The [lowering contract](lowering-and-runtime.md) states compiler, host,
    backend and runtime responsibilities.
-4. The [decision chapter](design-book/10-stages-and-decisions.md) states whether
+4. The [implementation plan](implementation-plan.md) states delivery order and
+   milestone gates without changing source semantics.
+5. The [decision chapter](design-book/10-stages-and-decisions.md) states whether
    a point is chosen, provisional, open or deferred.
-5. The rest of the [design book](design-book/index.md) explains rationale and
+6. The rest of the [design book](design-book/index.md) explains rationale and
    examples.
-6. The [research record](research.md) and [evidence](evidence/reading-ledger.md)
+7. The [research record](research.md) and [evidence](evidence/reading-ledger.md)
    explain where requirements came from. They are not a second specification.
 
 The documents use three recurring status labels:
@@ -380,27 +401,28 @@ The accepted staging is described fully in the
 
 ### K0: hosted bodies
 
-Parse, type-check and lower imported state, expressions, assignments, array
-and record paths, structured control, imported calls, standard operations and
-hosted `return`. Pass through inline `asm`, emit AZM plus maps and preserve
-assembler diagnostics at original source lines. K0 does not require
-user-declared parameters or locals.
+Parse the complete 0.4 grammar, then type-check and lower imported state,
+expressions, assignments, array and record paths, structured control, imported
+calls, standard operations and hosted `return`. Pass through inline `asm`,
+emit AZM plus maps and preserve assembler diagnostics at original source
+lines. K0 does not yet implement user-declared parameters or locals.
 
 Target fixtures: Counter, Dot, Slide, Trail and ordinary Glimmer rule bodies.
 
 ### K1: structured storage
 
 Add Lanternfly-owned static arrays and records, initializers,
-multidimensional arrays, integer selectors, scalar locals, local aliases and
-broader path lowering.
+module imports and visibility, multidimensional arrays, integer selectors,
+scalar locals, local aliases and broader path lowering.
 
 Target fixtures: central Tetro and Pacmo storage patterns.
 
 ### K2: routines
 
 Add parameterised subs, optional scalar results, scalar-value and
-aggregate-alias parameters, bounded aggregate views or an equivalent
-convention and ABI adapters.
+aggregate-alias parameters, external bindings, standalone entry validation and
+ABI adapters. Bounded aggregate views and parameter modes remain post-0.4
+design work and do not block this stage.
 
 Target fixtures: Snake helpers, Tetro engine routines and Pacmo routines.
 
@@ -412,20 +434,23 @@ conformance testing.
 
 ## Recommended first implementation
 
-The current architecture recommends this order:
+The [implementation plan](implementation-plan.md) defines the complete route.
+Begin with M0 only:
 
-1. define the host manifest schema and backend-facing type descriptors;
-2. implement a parser and type checker for K0;
-3. implement the small typed IR described in the
-   [lowering contract](lowering-and-runtime.md#4-suggested-lanternfly-ir);
-4. build a typed IR interpreter as the semantic oracle;
-5. lower scalar state and structured control to canonical AZM;
-6. compose source maps and implement the Glimmer body epilogue;
-7. add exact arrays, records and path lowering;
-8. add the helper registry, cost-report skeleton and aggregate aliases;
-9. add user routines only after storage paths and diagnostics are reliable;
-10. use C and BASIC experiments to find assumptions that accidentally belong
-    to the first backend rather than the language.
+1. convert the private package to the TypeScript, Vitest, ESLint and Prettier
+   conventions used by AZM and Glimmer;
+2. add stable source-span and diagnostic types;
+3. add versioned host-manifest and target-profile JSON Schemas;
+4. add schema and semantic validation;
+5. accept one valid empty hosted body and reject focused invalid requests;
+6. return the abstract host epilogue, source identity and an empty effect
+   summary;
+7. add build, typecheck, lint, test and format scripts.
+
+M0 establishes the compiler boundary before parser, IR or backend choices can
+leak into it. M1 parses the complete 0.4 grammar. M2 type-checks K0, M3 adds the
+IR interpreter, M4 completes the AZM vertical slice, M5 adds K1 storage and M6
+adds user routines.
 
 Translate the AZM Book 3 programs alongside these stages. Each translation
 should run against the same expected result as its AZM source, turning the
@@ -642,22 +667,13 @@ At this handover point those documentation checks pass, the generated site has
 no stale Lanternfly game references and Rushlight's 16-character LCD title is
 `RUSHLIGHT` followed by seven spaces.
 
-## Best next conversation
+## Next coding session
 
-Before implementation, confirm whether the next goal is:
-
-- reconciling the teaching book and design-book examples with specification
-  0.4;
-- designing the host manifest and type descriptors;
-- building the K0 parser and type checker;
-- translating a focused fixture set into canonical Lanternfly;
-- investigating an optional, link-on-use `float32` capability;
-- or creating the typed IR interpreter as a semantic oracle.
-
-If no narrower goal is supplied, the most coherent implementation start is
-the manifest/type-descriptor schema followed by a K0 parser and type checker.
-That sequence tests the documented boundaries without prematurely committing
-to Z80 code-generation details.
+The next session should implement M0 from the implementation plan. It should
+not start the parser, typed IR or AZM emitter in the same change. M0 is complete
+when package checks pass, the two versioned boundary schemas are executable,
+an empty hosted-body request returns stable identity and epilogue metadata, and
+focused malformed requests report stable configuration diagnostics.
 
 ## Paste-ready session prompt
 
@@ -680,7 +696,9 @@ this order:
   3. packages/lanternfly/docs/lowering-and-runtime.md
   4. packages/lanternfly/docs/design-book/10-stages-and-decisions.md
 
-The current checkpoint is specification 0.4 at commit 3b31fe4 on main.
+The current language checkpoint began with specification 0.4 at commit
+3b31fe4. The package is now ready for M0 from
+packages/lanternfly/docs/implementation-plan.md.
 Lanternfly is a streamlined, statically typed structured BASIC for fixed-memory
 systems. It is independent of Glimmer even though Glimmer bodies are its first
 expected use.
@@ -698,14 +716,15 @@ The current loop vocabulary is inclusive `for ... to`, exclusive
 `while true` is the indefinite loop. There is no bare `loop`, `do`, `repeat`,
 `break`, `call`, separate `function` declaration or general `goto`.
 
-Use the human-writing skill for documentation. Read assigned prose completely
-and sequentially before editing, then apply its sentence-by-sentence deletion
-test. Preserve existing user changes. Work on main, run the documented
-formatting and link checks, commit significant work, and push it.
+Implement M0 only: TypeScript package scaffolding, shared source-span and
+diagnostic types, versioned host-manifest and target-profile schemas, their
+validators, and the empty hosted-body request/result. Do not start the parser,
+IR, interpreter, runtime or AZM emitter in the same change.
 
-Before making changes, report the current Git status and state which bounded
-task you intend to undertake. If no narrower task has been supplied, stop
-after reading and propose the smallest useful next implementation or
-documentation step; do not start a compiler merely because implementation is
-listed as a possible next phase.
+Preserve existing user changes. Work on main, run package and repository
+checks, commit significant work, and push it.
+
+Before making changes, report the current Git status and confirm that the
+bounded task is M0. Stop and report the discrepancy if the implementation plan
+or authoritative contracts no longer match this handover.
 ```

@@ -1,12 +1,14 @@
 # Lanternfly 0.4 conformance and diagnostics
 
-- Status: normative companion to the working 0.4 specification
+- Status: normative companion to the 0.4 implementation baseline
 - Implementation status: fixtures not yet implemented
 
 This document turns the language contract into a testable claim. The
-[working specification](specification.md) defines source meaning. This file
+[specification](specification.md) defines source meaning. This file
 collects the required acceptances, rejections, warnings, faults and artifacts
-that otherwise appear across individual sections.
+that otherwise appear across individual sections. The
+[implementation plan](implementation-plan.md) defines the order in which these
+fixtures become executable.
 
 When the two documents differ, the specification governs semantics and this
 document governs the minimum conformance inventory and default diagnostic
@@ -31,12 +33,66 @@ capability rather than changing their meaning.
 Every fixture has a stable identifier. Future executable fixtures should keep
 these identifiers even when their filenames or organization change.
 
+### 1.1 Development-stage claims
+
+K0, K1, and K2 are development milestones, not smaller language editions. A
+development build may report that a construct belongs to a later milestone,
+but it cannot claim a conforming 0.4 front end until it accepts every required
+0.4 construct and passes the complete applicable inventory.
+
+Milestone reports state:
+
+```text
+implemented milestone
+passed conformance IDs
+expected later-stage rejections
+supported target/profile capabilities
+known implementation defects
+```
+
+An expected later-stage rejection is distinct from a language error. Tests
+must not record it under an `E-*` identifier reserved for invalid Lanternfly
+source. Development builds use `D-STAGE-001` with error severity and name the
+required milestone. This diagnostic disappears as the implementation advances
+and is excluded from conformance claims.
+
+### 1.2 Executable fixture contract
+
+Each executable fixture records:
+
+```text
+stable conformance ID
+language edition
+minimum milestone
+source and source identity
+host manifest when applicable
+target profile
+expected diagnostics and related locations
+expected typed facts
+expected final storage
+expected ordered service or fault trace
+expected artifact assertions
+```
+
+Positive semantic fixtures compare final storage and ordered traces. They do
+not require byte-for-byte generated source unless the fixture tests canonical
+emission or provenance. Negative fixtures compare diagnostic ID, severity,
+primary location, required related locations, and the absence of later
+emission or execution.
+
+The first executable sequence is the empty hosted body, Counter, static text,
+Dot, Slide, Trail, focused numeric/control vectors, exact layout vectors, one
+Tetro routine, and one Pacmo routine. This order supplies a vertical
+host-to-backend path before broadening the language surface.
+
 ## 2. Required compile-time errors
 
 The front end must reject at least the following cases.
 
 | ID               | Required rejection                                                                                                                                                                                         | Normative source             |
 | ---------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------- |
+| `E-CONFIG-001`   | Malformed host manifest or target profile, unsupported format/version, missing required field or unknown field                                                                                             | Implementation plan §5       |
+| `E-CONFIG-002`   | Duplicate or unresolved configuration ID, inconsistent source span, impossible exact layout, invalid type composition or host/target mismatch                                                              | Implementation plan §5       |
 | `E-LEX-001`      | Invalid token, malformed numeric literal, unterminated literal or physical newline in quoted text                                                                                                          | Specification §2.4           |
 | `E-TEXT-001`     | Empty or multi-byte character literal, unsupported direct character or escape, embedded NUL, or oversized C-string literal                                                                                 | §§2.4, 3.2                   |
 | `E-TEXT-002`     | Invalid C-string conversion, operation, address-class combination or omitted required `near`/`far` qualifier                                                                                               | §3.2                         |

@@ -2,16 +2,28 @@
 
 ## Purpose
 
-Lanternfly is a small imperative language for game rules and other straightforward
-program logic. It should read like executable pseudocode and require roughly
-the programming knowledge expected of an early BASIC programmer. Static types,
-fixed memory layouts, and predictable lowering give it more structure than
-classic BASIC.
+Lanternfly is a compiled low-level language for game rules and other
+straightforward program logic. It occupies the same programming territory as
+C and Pascal: source declares exact types and storage, calls machine services,
+and compiles ahead of time to native code. Its structured BASIC syntax uses
+words for declarations and control so the program can be followed without
+first learning a large punctuation vocabulary.
+
+The compiler should be capable of replacing an assembler for ordinary program
+logic. Generated code must retain the speed class, fixed-memory discipline,
+and visible machine costs expected from a small native compiler. Direct
+assembly remains available for hardware protocols, interrupt work, and
+instruction-specific routines.
 
 The first practical use is to replace assembly bodies in Glimmer programs.
 Lanternfly also stands on its own: the same source model should be capable of
 lowering to Z80, 6502, 8086, C, BASIC, and other substrates for which a backend
 and runtime contract can be supplied.
+
+The first implementation is a desktop-hosted compiler in the Debug80
+monorepo. The long-term goal includes native compilers that run on selected
+8-bit systems. A self-hosted compiler may use a smaller implementation subset,
+but it must preserve the same source semantics and conformance results.
 
 A Z80 backend can serve several platform profiles, including TEC-1G, TRS-80,
 ZX81, and ZX Spectrum systems. CPU lowering and platform services are separate

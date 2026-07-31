@@ -1,12 +1,14 @@
-# Lanternfly working language specification
+# Lanternfly language specification
 
-Edition: design draft 0.4
+Edition: 0.4 implementation baseline
 Implementation status: no compiler exists
-Normative status: working contract for a prototype
+Normative status: source-language contract for the first compiler
 
 The companion [conformance and diagnostics contract](conformance.md) collects
 the mandatory errors, warnings, runtime faults, semantic vectors and program
-fixtures for this edition.
+fixtures for this edition. The
+[implementation plan](implementation-plan.md) divides the contract into
+buildable milestones without changing the meaning of accepted programs.
 
 This edition recasts the language as a streamlined structured BASIC. It keeps
 the readable control forms and word operators associated with structured
@@ -14,7 +16,11 @@ Microsoft BASIC, but uses fixed-width types, exact layouts and one closing
 `end`. It neither claims Visual Basic compatibility nor copies features that
 do not suit fixed-memory targets.
 
-Prototype and corpus work may still remove constructs from this draft.
+Implementation may expose a defect in this contract. A semantic change then
+requires a specification change, a conformance fixture, and an explanation of
+its compatibility effect. Unsupported work-in-progress features must be
+diagnosed; an implementation stage cannot silently assign them different
+semantics.
 
 **Must** states a semantic requirement. **Should** states a strong toolchain
 recommendation. **Provisional** marks a rule that still requires implementation
@@ -27,7 +33,7 @@ Lanternfly is a statically typed structured BASIC for fixed-memory systems. It
 can replace ordinary AZM program logic in standalone programs as well as
 Glimmer bodies.
 
-The first useful implementation should support:
+The complete 0.4 language includes:
 
 - fixed-width signed and unsigned integers;
 - Boolean values and binary masks;
@@ -42,6 +48,12 @@ The first useful implementation should support:
 - source modules with private declarations and explicit exports;
 - target-independent lowering through AZM, another assembler, C or a selected
   BASIC dialect.
+
+The first compiler delivers this contract in K0 through K2 stages. K0 hosted
+bodies and K1 structured storage form the first implementation target. Source
+routines complete the initial compiler in K2. A stage may reject constructs
+assigned to a later stage, but it must identify the limitation as an
+implementation-stage or target-capability diagnostic.
 
 Lanternfly is independent of Glimmer. State, pulses, effects, rendering, cards
 and scheduling remain host concerns. Glimmer may provide imported storage and
@@ -2435,9 +2447,9 @@ Parentheses make a discarded equality test explicit:
 (left = right)
 ```
 
-## 16. Decisions to revisit
+## 16. Post-0.4 design queue
 
-The following questions remain open or provisional:
+The following questions remain open or provisional. None blocks K0 or K1:
 
 - whether bare `end` stays clearer than named endings in long routines;
 - case-insensitive identifier resolution after parser experiments;
@@ -2451,5 +2463,6 @@ The following questions remain open or provisional:
 - module aliases, re-exports and the source file extension;
 - optional `float32` semantics and its target capability contract.
 
-The first prototype should translate representative Glimmer bodies, Tetro and
-Pacmo routines and AZM Book 3 algorithms before these choices are frozen.
+Implementation evidence from representative Glimmer bodies, Tetro and Pacmo
+routines, and AZM Book 3 algorithms will determine whether these points enter
+a later edition. Until then, the 0.4 rules remain authoritative.

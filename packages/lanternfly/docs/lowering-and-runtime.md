@@ -1,10 +1,12 @@
 # Lanternfly lowering, backend and runtime contract
 
-Status: working architecture contract
+Status: architecture contract for the 0.4 implementation baseline
 Implementation status: documentation only
 
 This document specifies the boundary a compiler prototype should implement. It
-does not prescribe compiler modules or data structures.
+does not prescribe compiler modules or data structures. The
+[implementation plan](implementation-plan.md) supplies the delivery order,
+package seams, and milestone gates.
 
 ## 1. Responsibilities
 
@@ -137,7 +139,7 @@ Phi/type block parameter, if the chosen IR uses SSA
 
 ```text
 StaticAddress(declarationId)
-ReferenceValue(value)
+AggregateAliasBase(aliasId)
 FieldAddress(base, byteOffset, fieldType)
 IndexAddress(base, index, exactStride, elementType)
 OpaqueAddressOffset(base, offset)
@@ -149,6 +151,12 @@ An address retains:
 - address class/space;
 - mutability;
 - source path provenance.
+
+`AggregateAliasBase` reads a compiler-only binding established by an aggregate
+parameter or local alias. It cannot feed `Const`, `Load`, `Store`, `Compare`,
+`Convert`, or any other scalar-value operation by itself. Field and index
+selection turn it into an address for the aliased aggregate's scalar leaves or
+bulk effects.
 
 `OpaqueAddressOffset` cannot feed `Load`/`Store` unless its space is declared
 CPU-accessible.
@@ -900,19 +908,33 @@ service traces.
 
 ## 20. Implementation sequence
 
-Documentation recommends:
+The [implementation plan](implementation-plan.md) defines seven delivery
+milestones. Their architecture order is:
 
-1. manifest schema and type descriptors;
-2. parser/type checker for K0;
-3. typed IR plus interpreter;
-4. AZM reference lowering for scalar state/control;
-5. inline `asm` emission, barriers and mappings;
-6. maps and Glimmer host epilogue;
-7. exact arrays/records and path lowering;
-8. helper registry and cost skeleton;
-9. local aggregate aliases;
-10. user routine ABI;
-11. C and BASIC experiments;
-12. far/address-space lowering.
+1. establish source identity, diagnostics, and versioned host/target schemas;
+2. parse the complete 0.4 grammar while preserving raw assembly payloads;
+3. collect declarations, resolve dependencies and layouts, and type-check K0;
+4. lower the typed program to control-flow IR and execute it in the semantic
+   interpreter;
+5. emit canonical AZM for scalar state and structured control, assemble it,
+   and compose source maps through the host;
+6. add exact arrays, records, startup effects, multidimensional paths, scalar
+   locals, and local aggregate aliases;
+7. add source-defined routines and their ABI after storage and diagnostic
+   behaviour are reliable;
+8. use C, BASIC, far-memory, and additional CPU experiments to test the
+   substrate independence of the established contract.
 
-No compiler code is part of the current package yet.
+Each milestone has an executable gate. A development build may reject a
+later-stage construct with an implementation-stage diagnostic, but only a
+build that passes the full applicable inventory may claim 0.4 conformance.
+
+Bounded views, parameter modes, enums, floating point, and other post-0.4
+design work do not enter the first milestones accidentally. They require a
+language decision, specification changes, conformance fixtures, and a lowering
+contract before implementation.
+
+No compiler code is part of the package at this checkpoint. The first coding
+change is M0 from the implementation plan: TypeScript scaffolding, shared
+source/diagnostic types, the two boundary schemas, and an empty hosted-body
+result.

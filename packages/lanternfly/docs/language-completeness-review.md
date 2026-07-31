@@ -1,6 +1,6 @@
 # Lanternfly language completeness review
 
-Status: design analysis for the 0.4 working language
+Status: post-0.4 design backlog; not a blocker for K0 or K1
 
 Lanternfly now covers the central executable vocabulary of a small structured
 BASIC or Pascal: scalar values, declarations, expressions, decisions, loops,
@@ -9,8 +9,10 @@ literals and static C strings. The remaining gaps are concentrated around
 safe access to variable-size regions, text mutation, small named types and
 portable service contracts.
 
-The [working specification](specification.md) governs accepted syntax and
-semantics. This review ranks the next design work.
+The [specification](specification.md) governs accepted syntax and semantics.
+The first compiler implements that baseline before adding the facilities
+ranked here. The [implementation plan](implementation-plan.md) defines the
+coding order.
 
 ## Static text in 0.4
 
@@ -30,10 +32,10 @@ sub showDigit(value as u8)
 end
 ```
 
-A `cstr` is a non-null, read-only address-class value pointing to static bytes
+A `cstr` is a non-null, read-only address-class value for static bytes
 terminated by zero. Its runtime value contains only the address-class
 representation. This makes a literal suitable for AZM `.cstr` data and for
-firmware routines that already accept a pointer to NUL-terminated bytes.
+firmware routines that already accept the address of NUL-terminated bytes.
 
 Character literals produce exact byte values, so existing routines that accept
 `u8` receive them directly. Direct literal characters use ASCII. Named
@@ -191,15 +193,17 @@ Heap strings, garbage collection, exceptions and dynamic collections belong
 to a different deployment profile. A later profile can add them while
 preserving the static `cstr` ABI.
 
-## Recommended order
+## Post-0.4 design order
 
-1. Implement character and C-string literals, `cstr` typing, comparison,
-   `length` and AZM `.cstr` lowering in the first front end.
-2. Design read-only and writable bounded views together with parameter intent.
+1. Implement the specified character and C-string facilities as part of the
+   0.4 front end and AZM backend.
+2. After K1, design read-only and writable bounded views together with
+   parameter intent.
 3. Define one minimal console/text platform profile and bounded text library.
-4. Add nominal fixed-width enums.
+4. Add nominal fixed-width enums only if translated fixtures justify them.
 5. Reassess fixed-capacity owned strings, assertions and smaller standard
    operations using translated programs.
 
-This order supports existing Z80 routines immediately and adds writable text
-only after the language can state its capacity and mutation contract.
+The first item is implementation of an existing rule. The remaining items are
+language or library changes and require specification, conformance, and
+lowering updates before coding.

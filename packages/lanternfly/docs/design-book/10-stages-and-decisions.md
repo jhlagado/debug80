@@ -5,15 +5,20 @@
 > [the 0.4 specification](../specification.md). The specification governs
 > whenever an example here omits a semantic detail.
 
-Lanternfly should become useful in slices. The first slice must already have a stable
-meaning; later slices add source power without redefining old programs.
+Specification 0.4 is the implementation baseline. The stages below divide the
+compiler into useful slices; they do not define smaller language editions or
+permit a stage to reinterpret a construct assigned to later work. Detailed
+delivery gates are in the [implementation plan](../implementation-plan.md).
 
 ## Stage K0: hosted bodies
 
-K0 replaces straightforward assembly inside an existing Glimmer body.
+K0 establishes the complete front end and the first hosted vertical slice. It
+replaces straightforward assembly inside an existing Glimmer body.
 
 Required:
 
+- versioned host-manifest and target-profile validation;
+- complete 0.4 parsing, including syntax assigned to later semantic stages;
 - imported scalar and aggregate declarations;
 - the six integer types;
 - byte-valued character literals and static C-string literals;
@@ -30,9 +35,10 @@ Required:
 - generated AZM and composed source maps;
 - direct AZM bodies beside Lanternfly.
 
-K0 need not expose user-declared parameters or locals. The compiler still uses
-internal temporaries to lower expressions. Larger algorithms may use static
-scratch declared by the host.
+K0 may report an implementation-stage diagnostic for user-defined routines,
+owned module storage, or local declarations while those later stages are under
+construction. Such a build cannot yet claim a conforming 0.4 front end.
+Compiler temporaries remain internal.
 
 K0 is enough for Counter, Dot, Slide, Trail and most rule bodies.
 
@@ -42,6 +48,8 @@ K1 makes the native game engines readable:
 
 - Lanternfly-owned static arrays and records;
 - exact initializers;
+- startup initialisation effects;
+- module imports, visibility, and deterministic installation;
 - multidimensional arrays and integer selectors;
 - local scalar `var`;
 - local aggregate `alias`;
@@ -62,16 +70,19 @@ K2 adds:
 - scalar return;
 - definite assignment;
 - early return;
+- external routine bindings and standalone entry validation;
 - target ABI description and adapters;
-- non-recursive call graph by default;
-- bounded aggregate views;
-- scalar output and in/out parameter contracts.
+- non-recursive call graph by default.
 
 This moves Snake helpers, the Tetro engine and Pacmo routines into Lanternfly.
 
 Formal arguments are lower priority than structured memory, but they are not a
 different language direction. K0/K1 deliberately reserve the syntax and type
 rules needed by K2.
+
+Bounded aggregate views and scalar output/in/out parameter contracts remain
+post-0.4 design work. The initial routine ABI proceeds with scalar value
+parameters, optional scalar results, and exact-shape aggregate aliases.
 
 ## Stage K3: far memory and target breadth
 
@@ -149,12 +160,12 @@ The current book chooses:
 21. Runtime helpers link on demand.
 22. Generated substrate source and composed mappings are first-class artifacts.
 
-These decisions are ready to guide a prototype.
+These decisions form the 0.4 implementation baseline.
 
 ## Provisional decisions
 
-The implementation should begin with these rules, but keep focused tests and
-version notes around them:
+The implementation follows these 0.4 rules and keeps focused tests around
+them. Experience may justify a later specification change:
 
 - source is case-insensitive while preserving declaration spelling;
 - comments begin with `//`;
@@ -293,22 +304,27 @@ Several issues no longer need to remain vague.
 - device addresses cannot be modelled as ordinary CPU pointers.
 - early hosted return must preserve Glimmer's update epilogue.
 
-## Prototype order
+## Implementation order
 
-A documentation-driven prototype should proceed:
+The first compiler proceeds:
 
-1. freeze the lexical and declaration subset used by Counter through Trail;
-2. parse and type-check without generating code;
-3. define a small typed IR for that subset;
-4. generate canonical AZM and explicit maps;
-5. execute differential fixtures against existing examples;
-6. add exact records and array paths;
-7. translate one Tetro routine and one Pacmo routine;
-8. add user routines only after storage paths and diagnostics are reliable;
-9. attempt C and BASIC lowering to expose hidden substrate assumptions.
+1. define source identity, diagnostics, host-manifest and target-profile
+   schemas;
+2. parse the complete 0.4 grammar;
+3. type-check the K0 hosted subset without generating code;
+4. define and interpret the typed control-flow IR;
+5. generate canonical AZM and compose explicit maps;
+6. execute differential fixtures against the interpreter and existing
+   examples;
+7. add exact records, arrays, startup effects and path lowering;
+8. translate one Tetro routine and one Pacmo routine;
+9. add user routines after storage paths and diagnostics are reliable;
+10. attempt C and BASIC lowering to expose substrate assumptions.
 
-The compiler is outside this documentation goal. This sequence exists so the
-documents end at an implementable edge rather than at a list of aspirations.
+The first coding change is limited to the boundary: TypeScript package
+scaffolding, shared source and diagnostic types, versioned schemas, and an
+empty hosted-body result. The implementation plan defines the acceptance gate
+for every later milestone.
 
 ## Criteria for changing a chosen rule
 

@@ -11,6 +11,8 @@ and it is not the normative specification. Many examples preserve the dialect
 being considered when their chapter was written; they are design history, not
 current syntax. Where this book differs from the
 [working specification](../specification.md), the specification governs.
+The [implementation plan](../implementation-plan.md) governs coding order and
+milestone gates.
 
 ## Chapters
 

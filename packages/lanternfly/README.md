@@ -1,60 +1,92 @@
 # Lanternfly
 
 Lanternfly is a statically typed structured BASIC for fixed-memory systems. It
-is intended to replace handwritten assembly in ordinary program logic while
-remaining independent of Glimmer.
+combines the direct compilation and exact storage model of C or Pascal with a
+word-oriented syntax intended to be familiar to a BASIC programmer. Programs
+compile ahead of time to native code or another low-level substrate; Lanternfly
+is not an interpreter.
 
-The package is a design workspace. It contains no compiler yet. The documents
-separate accepted direction from provisional proposals and open questions so
-the language can be derived from real Glimmer programs rather than completed
-in the abstract.
+Specification 0.4 is the implementation baseline for the first compiler. This
+package currently contains the language, conformance, architecture, and
+implementation contracts. Compiler source has not yet been added.
 
-Lanternfly sits between structured source and a target substrate:
+The first compiler will be desktop-hosted and will emit AZM for Z80 systems.
+The architecture also supports other processors and hosted C or BASIC
+backends. A later Lanternfly compiler may run directly on the small systems it
+targets.
 
 ```text
 Lanternfly source
     |
     v
-target backend
+typed front end and IR
     |
-    +-- AZM or another Z80 assembler
-    +-- a 6502 or 8086 assembler
-    +-- C
-    `-- BASIC
+    +-- IR interpreter
+    +-- AZM / Z80
+    +-- another CPU backend
+    `-- C or a named BASIC dialect
 ```
 
-Glimmer may host Lanternfly bodies, just as it currently hosts AZM bodies, but Lanternfly
-has no built-in knowledge of Glimmer state, triggers, effects, cards, displays,
-or resources. The Glimmer preprocessor continues to own those concepts.
+Glimmer bodies are the first expected use, but Lanternfly is an independent
+language. A Glimmer integration supplies ordinary typed storage, constants,
+routines, and a host epilogue through a versioned manifest. Glimmer retains
+its scheduling, change tracking, resources, and platform declarations.
+
+Lanternfly source has no pointer or reference values. Declared paths,
+multidimensional indices, and integer selectors identify persistent storage.
+Aggregate parameters and local aliases are temporary, non-escaping names for
+existing arrays or records. A backend may carry an address internally, but
+that carrier is not a source value.
 
 ## Documents
 
-- [LLM project handover](docs/handover.md)
-- [Lanternfly teaching book](../../../debug80-docs/lanternfly-book/book1/index.md)
-- [Documentation index](docs/index.md)
-- [Lanternfly language design book](docs/design-book/index.md)
-- [Language charter](docs/charter.md)
-- [Working language specification](docs/specification.md)
-- [Conformance and diagnostics](docs/conformance.md)
-- [Language completeness review](docs/language-completeness-review.md)
-- [Lowering, backend and runtime contract](docs/lowering-and-runtime.md)
-- [Research record and evidence](docs/research.md)
+- [Implementation plan](docs/implementation-plan.md) gives the coding order,
+  package structure, milestone gates, and first change.
+- [Specification](docs/specification.md) defines 0.4 source syntax and
+  semantics.
+- [Conformance contract](docs/conformance.md) defines required diagnostics,
+  faults, fixtures, and artifacts.
+- [Lowering contract](docs/lowering-and-runtime.md) defines the typed
+  front-end, IR, host, backend, and runtime boundaries.
+- [Decision chapter](docs/design-book/10-stages-and-decisions.md) records
+  chosen, provisional, deferred, and open design points.
+- [Documentation index](docs/index.md) links the charter, design history,
+  completeness review, and evidence.
+- [Project handover](docs/handover.md) supplies repository context for a new
+  development session.
 
-## Current priorities
+The separately maintained
+[Lanternfly teaching book](../../../debug80-docs/lanternfly-book/book1/index.md)
+is not part of this implementation package.
 
-The first design work concentrates on:
+## Implementation order
 
-1. fixed-size arrays, records, direct indexing and non-escaping aliases;
-2. static C strings, character bytes and bounded text follow-up;
-3. a small expression language for arithmetic, comparison, masks and
-   conditions;
-4. structured conditionals and loops;
-5. portable lowering and target runtime support.
+Implementation proceeds in this order:
 
-Formal arguments and scalar locals form a later implementation stage than
-structured storage, but their semantics are now included in the design.
-Floating point remains deferred. The current design explores an optional
-`float32` capability whose helper library would be linked only when used. ZAX
-demonstrates that routine features can be added while aggregate locals remain
-aliases and the language remains heap-free. Lanternfly keeps the alias
-behaviour but removes first-class reference values from its source model.
+1. TypeScript package scaffolding and shared source-span diagnostics;
+2. versioned host-manifest and target-profile schemas;
+3. validation of an empty hosted body and its epilogue contract;
+4. the complete 0.4 parser;
+5. K0 name, type, layout, and effect analysis;
+6. typed IR and interpreter;
+7. canonical AZM lowering and composed source maps;
+8. K1 exact arrays, records, paths, locals, and aliases;
+9. user routines after storage and diagnostic behaviour are stable.
+
+Bounded views, parameter modes, enums, floating point, rich strings, and
+recursion-capable bare-metal profiles remain later design work. They do not
+block K0 or K1.
+
+## Validation
+
+Documentation changes run from the repository root:
+
+```sh
+npx prettier --check \
+  packages/lanternfly/README.md \
+  packages/lanternfly/package.json \
+  'packages/lanternfly/**/*.md'
+
+npm run check:links
+git diff --check
+```
