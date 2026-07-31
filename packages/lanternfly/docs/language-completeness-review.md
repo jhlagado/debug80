@@ -130,8 +130,10 @@ end
 ```
 
 `string[N]` declares an owned, writable counted string with payload capacity
-`N`, where `1 <= N <= 254`. The capacity is part of the type, exactly as an
-array's index domain is. Storage occupies `N + 2` bytes inline:
+`N`. The capacity is part of the type, exactly as an array's index domain is,
+and it selects the header width at compile time: a capacity through 254 uses a
+one-byte length, and a larger capacity through 65,534 uses a two-byte length.
+The common form occupies `N + 2` bytes inline:
 
 ```text
 offset 0        current length L (u8, 0 <= L <= N)
@@ -139,11 +141,42 @@ offset 1..N     payload bytes
 offset 1 + L    zero terminator (maintained invariant)
 ```
 
+The wide form is identical with a two-byte length at offset 0 and `N + 3`
+total bytes. Because the header width follows from the declared capacity, it
+is a static fact of the type: `size` folds exactly, record layouts stay
+derivable by eye, and `length(s)` lowers to a plain one- or two-byte load
+with no runtime branch. In the one-byte form, a stored length of 255 is never
+valid, which gives native-boundary checking a free corruption tripwire in the
+spirit of the Boolean zero-or-one rule.
+
+A per-value variable-width length, in the manner of UTF-8 or LEB128, was
+considered and declined: it would put a header-width branch on every
+operation and make payload offsets depend on runtime contents, breaking exact
+layout to save one byte in rare long strings. That encoding remains
+appropriate for serialized file and stream formats, where data is scanned
+linearly anyway; in-memory working storage takes its width from the declared
+type.
+
 The invariant is that every language-performed write leaves a zero at
 `payload[L]`. The reserved extra cell guarantees room for the terminator even
 at full capacity. Bytes past the terminator are unspecified. All-zero storage
 is a valid empty string, so zero initialization needs no special case and
 `clear` applies.
+
+### Sealed representation
+
+The header and terminator have no source-level storage path. A counted
+string is not a byte array: no expression names its length byte, its
+terminator cell or a payload position, so no program can set a length
+directly, overwrite the terminator or desynchronize the two. Every read and
+write of the representation goes through the language's own operations —
+`length`, assignment, literals, `append`, comparison, `clear` and the
+zero-terminated payload view — each of which knows the type's header form at
+compile time and maintains all three invariants: the length within capacity,
+the terminator at `payload[L]`, and the one-byte form's never-255 rule. This
+is the same doctrine the language applies to alias carriers: the
+representation exists in lowering, and source code cannot misuse what it
+cannot spell.
 
 ### Operations
 
@@ -191,7 +224,10 @@ keeps `cstring` or becomes `zstring` is an open naming decision.
 - the spelling of a deliberate truncating copy, as opposed to the checked
   one;
 - byte indexing and slicing of a counted string, which likely waits for the
-  bounded-view design rather than growing private rules here;
+  bounded-view design rather than growing private rules here — noting that
+  interior reads checked against the current length could not break the
+  sealed invariants, while any general write access would need the same
+  operation-only discipline as the header;
 - capacity-generic string parameters, which are the bounded-view question in
   another costume — first-edition parameters state their exact capacity;
 - the native-boundary contract wording for services that fill a counted
