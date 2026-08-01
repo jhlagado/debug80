@@ -1,6 +1,6 @@
 # Lanternfly language specification
 
-Edition: 0.5 working draft
+Edition: 0.5 implementation baseline
 Implementation status: no compiler exists
 Normative status: source-language contract for the first compiler
 
