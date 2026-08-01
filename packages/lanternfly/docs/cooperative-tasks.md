@@ -22,7 +22,7 @@ threads.
 Games still need several activities in flight at once: the play field
 advances, a cursor blinks, the keypad is watched, a melody plays. Today each
 activity is flattened into one main loop by hand — every routine that would
-naturally pause must instead be dismembered into flag checks and counters
+naturally pause must instead be split into flag checks and counters
 spread through the loop body. The program works, and the structure of each
 activity is gone: reading the cursor-blink logic means reassembling it from
 fragments interleaved with everything else.

@@ -69,7 +69,7 @@ only a few bytes and is worth knowing about, because it is the right
 mechanism for exactly one customer: a target's top-level fault contract,
 where abandoning every in-flight routine is the desired meaning. As a tool
 for recoverable errors it abandons routines mid-body, leaves static
-temporaries torn and skips cleanup; it is a nonlocal goto wearing a type.
+temporaries torn and skips cleanup; it is a nonlocal goto.
 
 The cooperative-tasks paper ([cooperative-tasks.md](cooperative-tasks.md))
 established the test this design must pass: surface syntax is admissible
@@ -87,8 +87,8 @@ behind them, and the language has plainer ones, split by part of speech:
 propagate all name the routine's own act of failing — and `error` is the
 noun, appearing exactly where a failure arrives as a value: `on error`.
 The teaching rule is one sentence — fail is what a routine does, an error
-is what its caller gets — and the handler form is BASIC's `ON ERROR`
-verbatim, structured: a direct descent, not an echo.
+is what its caller gets — and the handler form is BASIC's `ON ERROR`,
+structured.
 
 ## 3. The model
 
@@ -120,11 +120,10 @@ end
 
 The candidate Z80 failure convention: carry set means failure with the
 error code in A; carry clear means success with the result in the ordinary
-result register. The grounds are the machine itself. Carry is the one flag
-with a dedicated set instruction (`SCF`), every conditional call, jump and
-return exists in carry-tested form (`RET C`, `JR C`, `JP C`), and using a
-flag as the discriminant leaves A free for the code — the tag costs no
-register. The local Tetro and Pacmo corpus already returns carry as the
+result register. Carry is the one flag with a dedicated set instruction
+(`SCF`), every conditional call, jump and return exists in carry-tested
+form (`RET C`, `JR C`, `JP C`), and using a flag as the discriminant
+leaves A free for the code — the tag costs no register. The local Tetro and Pacmo corpus already returns carry as the
 Boolean result of its predicate routines, so the convention extends an
 in-house habit with a code register rather than importing a foreign one.
 What the language requires is only the abstract channel — a discriminant
@@ -279,7 +278,7 @@ value:
 var speed as u8 = parseDigit(key) or 1
 ```
 
-Read aloud: parse the digit, or 1. With a `u8` result in A, the lowering
+The line reads as English: parse the digit, or 1. With a `u8` result in A, the lowering
 is four bytes:
 
 ```azm
@@ -291,8 +290,8 @@ _keep:
 
 ### 5.4 Rejected programs
 
-The rules with teeth cost bytes in the compiler and none in the program.
-Both of the following are compile errors:
+The enforcement rules cost bytes in the compiler and none in the
+program. Both of the following are compile errors:
 
 ```lanternfly
 parseHex(entry)              // failure ignored: no handler, no
@@ -441,7 +440,7 @@ end
 
 The manual form carries every property of the design — enum codes,
 exhaustive handling, failability visible in the signature — at the cost
-of boilerplate at every call site. That distribution of clunk is why this
+of boilerplate at every call site. That distribution of boilerplate is why this
 syntax is scheduled ahead of the task syntax: the generator pattern's
 boilerplate is confined to one routine body, while status-checking spreads
 through every routine that touches an error.
