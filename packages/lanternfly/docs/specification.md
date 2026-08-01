@@ -96,6 +96,86 @@ indirect calls are outside the first edition. Fixed multidimensional arrays
 and indexed pools cover the initial programs that assembly would otherwise
 express through pointer tables.
 
+### 1.1 Kernel and capability tiers
+
+The language divides into an irreducible kernel and a closed set of standard
+capability modules.
+
+The kernel is every ungated source-language facility this specification
+defines. The classification is categorical rather than an inventory;
+representative kernel facilities include the lexical
+structure; declarations, modules and imports; the control forms; routines
+and forward declarations; records, fixed arrays, enums and subranges;
+`boolean`, the 8- and 16-bit integer types and counted strings of capacity
+1 through 254; opaque near and far addresses; aliases and volatile storage;
+the standard operations and layout queries; assignment, comparisons and
+integer arithmetic; placement, external routines and inline assembly.
+Declarations introduced by user modules and by standard service modules lie
+outside the kernel/capability partition: their imports introduce names and
+bindings, not language semantics.
+Three properties hold for the kernel. First, the kernel is the self-hosting
+closure: the reference compiler is written in it, and every module form is
+expressed in it, so it is prior to every import. Second, no kernel feature
+places bytes in a program that does not use it; runtime helpers such as
+multiplication, division, string operations and bounds checks are included
+only when used, so use, not configuration, selects their cost. Third,
+kernel constructs have one meaning in every conforming implementation and
+every program. For inline assembly and external bindings, that invariant
+meaning is their Lanternfly boundary contract of block rules, value
+invariants and effect obligations; payloads and bindings remain
+target-specific inside that contract.
+
+A standard capability module legalizes an optional facility that the
+language defines at source level. The 32-bit integer types are enabled by
+`standard/wide32.lafy`, and string capacities from 255 through 65,534 by
+`standard/long-strings.lafy`; future floating-point tiers follow the same
+form. A capability module exports no names: its import legalizes gated
+words, representations and typed operations and nothing else, so it can
+introduce no collision. Gated words remain reserved in every program.
+Mentioning a gated word or facility without the enabling import is
+`E-CAP-001`.
+
+Capability authorization is module-local. A module that mentions a gated
+type, representation or operation states the enabling import in its own
+import prefix. Importing a user module does not confer that module's
+capabilities: a module may import one whose exports use `u32` without
+importing `standard/wide32.lafy`, but every gated mention in its own source,
+including a call whose argument, result or storage type is gated, requires
+the direct import. A capability's ID is its canonical import path, such as
+`standard/wide32.lafy`. A compiled export-interface artifact records, in
+its `requiredCapabilities` field, the capability IDs its exported
+declarations require, so separate compilation under section 12.5 enforces
+the same rule. Capability imports otherwise obey the ordinary import rules
+of section 12.1.
+
+Each capability states target requirements: representation widths, capacity
+and static-object limits, scalar-operation categories and required
+component bindings. The selected target profile must satisfy every
+requirement that a program's gated uses impose, with component bindings
+resolved under section 13.2. Any unsatisfied requirement is `E-TARGET-001`,
+including for a gated use that selects no runtime component. The explicit
+imports determine a program's tier, and a build reports each capability's
+emitted cost.
+
+Three categories share this machinery and must not be conflated. Capability
+modules are export-free source-language gates. The optional standard text
+modules of section 12.4.1 are service modules: they export ordinary names
+and bind services through the same profile registry and cost reporting, but
+they gate no words and change no typing rules. Target-profile support
+claims such as recursion, address classes and far storage are target
+capabilities, which no import controls.
+
+Capability imports are monotone: an import may make more programs legal,
+but it may never change the meaning of a program that was already legal.
+Each operator is a family of typed operations resolved statically by
+operand type. A capability module extends an operator's domain with new
+typed operations; it does not alter any operation the kernel or another
+module defines, and no implicit conversion crosses type families. The
+capability-module set is closed and versioned by the toolchain. User
+modules export types, storage and routines; they never define operator
+meanings or literal forms. Examples elsewhere in this specification that
+use a gated facility assume its enabling import.
+
 ## 2. Source style and names
 
 ### 2.1 Case
@@ -309,6 +389,11 @@ The first integer family uses explicit widths:
 | `boolean` | `true` or `false` |
 
 Width and signedness remain invariant across targets.
+
+`u32` and `i32` are capability-gated under section 1.1: the words are
+reserved in every program, and their use requires
+`import "standard/wide32.lafy"`. Every 32-bit rule in this specification
+applies whenever that import is present.
 
 `true` and `false` are lowercase Boolean literals. They are reserved literals,
 not user-defined constants.
@@ -630,10 +715,13 @@ offset 1 + L    zero terminator
 exact size      N + 2 bytes
 ```
 
-A capacity from 255 through 65,534 uses the long form, with `L` stored as a
-target-endian `u16` at offset zero, payload beginning at offset two and exact
-size `N + 3`. A value whose length is 255 or greater is therefore necessarily
-a long string. The short encoding never uses length byte 255, and the long
+A capacity from 255 through 65,534 uses the long form. Its length `L` is a
+target-endian `u16` at offset zero, its payload begins at offset two, and
+its exact size is `N + 3`. Declaring a capacity above 254 requires
+`import "standard/long-strings.lafy"` under section 1.1. The import
+legalizes the long form and changes nothing about either representation. A
+value whose length is 255 or greater is therefore necessarily a long
+string. The short encoding never uses length byte 255, and the long
 encoding never uses length word 65,535. The declared capacity, not the current
 contents, fixes the form, so `string[255]` remains long even while it contains
 only a few bytes.
@@ -839,9 +927,9 @@ reserved address must belong to exactly one such range, and each exported or
 generated component symbol must have its planned address. Missing, extra,
 displaced or overlapping output is `E-PLACE-002`.
 
-A non-AZM backend must carry the same plan through its object, linker or
-substrate placement mechanism and return equivalent occupancy and symbol
-artifacts for validation. A backend that cannot preserve the selected target's
+A non-AZM backend must carry the same plan through its substrate toolchain's
+placement mechanism and return equivalent occupancy and symbol artifacts for
+validation. A backend that cannot preserve the selected target's
 placement contract reports `E-TARGET-001` rather than silently choosing
 addresses.
 
@@ -2261,7 +2349,10 @@ bindings that their substrate cannot express.
 
 #### 12.4.1 Optional standard text input and output
 
-The first edition defines two optional standard modules. They are never
+The first edition defines two optional standard modules. They are service
+modules under the categories of section 1.1: they export ordinary names and
+bind their services through the same profile machinery as capability
+modules, but they gate no words and change no typing rules. They are never
 imported implicitly:
 
 ```lanternfly
@@ -2369,8 +2460,10 @@ A program is linked by compilation rather than by a relocating link editor.
 Libraries reach a program in three forms. A source import compiles the
 library into the whole program in dependency order. A compiled
 export-interface artifact restates a module's exported declarations, so an
-unchanged library need not be re-read from source; it contributes symbols,
-not relocatable code. A fixed-address library, such as a ROM library on a
+unchanged library need not be re-read from source. It contributes symbols,
+not relocatable code. Its `requiredCapabilities` field lists the capability
+IDs that its exported declarations require under section 1.1. A
+fixed-address library, such as a ROM library on a
 banked system, pairs an export-interface artifact with code that is already
 placed: its symbols bind to final addresses and the build emits no code for
 it. Relocatable object formats and link-time relocation are outside the
@@ -2871,7 +2964,11 @@ explicit dependency declarations or use it to derive change tracking.
 
 ### 13.4 Floating point
 
-Floating point is deferred. Two models remain:
+Floating-point semantics are deferred, but the delivery vehicle is settled:
+a floating-point tier arrives as a standard capability module under section
+1.1, with its type word reserved and gated, its operators joining the typed
+operator families, and its helpers bound as profile runtime components. Of
+the two models below, the second is therefore the adopted form:
 
 1. A library-defined `Float32` record or opaque value with routines such as
    `floatAdd`. This requires little core-language knowledge but produces
@@ -2969,6 +3066,9 @@ u8
 u16
 u32
 ```
+
+`u32` and `i32` are reserved in every program but capability-gated under
+section 1.1; a future floating-point type word would join this gated group.
 
 `type` is contextual. It selects a type operand inside `size`, `count`,
 `lower` or `upper` and remains available as an ordinary identifier everywhere
@@ -3285,13 +3385,12 @@ The following questions remain open or provisional. None blocks K0 or K1:
 - whether translated programs justify `repeat`/`until` or named outer-loop
   exits;
 - module aliases and re-exports;
-- standard capability modules for optional built-in scalar types and long
-  strings: `u32`/`i32`, `float32` and a possible `float48` as reserved words
-  legalized by an explicit `standard/` import, implemented through
-  profile-bound runtime components on the §12.4.1 text-service pattern, with
-  one generic wide-scalar lowering strategy and per-type descriptor and
-  helper tables, so each program selects and pays for its own arithmetic
-  tier; the capability-module set remains closed and toolchain-versioned.
+- `float32` and `float48` capability modules: representation, rounding,
+  conversion and comparison semantics, literal syntax, and the wide-scalar
+  descriptor and helper-table contract shared with `standard/wide32.lafy`;
+- string-literal initialization of `u8` arrays with explicit terminator
+  escapes, giving alternative text representations such as zero-terminated
+  byte strings library-level ergonomics without a second string type.
 
 Implementation evidence from representative Glimmer bodies, Tetro and Pacmo
 routines, and AZM Book 3 algorithms will determine whether these points enter

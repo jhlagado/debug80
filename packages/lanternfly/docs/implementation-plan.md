@@ -1,8 +1,8 @@
-# Lanternfly 0.4 implementation plan
+# Lanternfly 0.5 implementation plan
 
 Status: approved implementation route for the first compiler
 
-Lanternfly 0.4 is ready for implementation. The
+Lanternfly 0.5 is ready for implementation. The
 [language specification](specification.md) defines source meaning, the
 [conformance contract](conformance.md) defines observable correctness, and the
 [lowering contract](lowering-and-runtime.md) defines the boundaries between
@@ -19,7 +19,7 @@ same contract.
 
 ## 1. Implementation baseline
 
-Specification 0.4 is the source-language baseline for K0 through K2. Coding may
+Specification 0.5 is the source-language baseline for K0 through K2. Coding may
 reveal defects, but implementation work does not reopen a chosen rule by
 default. A proposed language change must include:
 
@@ -466,7 +466,7 @@ The M0 empty-body manifest is:
   "body": {
     "id": "counter.tick",
     "displayName": "Counter tick",
-    "edition": "0.4",
+    "edition": "0.5",
     "kind": "effect"
   },
   "types": [],
@@ -895,7 +895,7 @@ The matching minimal target profile is:
 `checkedIndexing` is the literal value `true` in every conforming version-1
 profile. The compiler performs each dynamic bounds check not removed by proof.
 A future explicitly unsafe unchecked mode requires a separate extension
-contract and cannot claim conforming 0.4 execution; setting this field to
+contract and cannot claim conforming 0.5 execution; setting this field to
 `false` is not a release-mode option.
 
 M0 validates this structural boundary without interpreting absent runtime
@@ -963,7 +963,7 @@ token. Comments remain attached as trivia. The parser accepts grammar, not
 types. In particular, it does not decide whether a name is a type, value,
 routine, or aggregate while recognising the surrounding syntax.
 
-The initial parser should cover the complete 0.4 grammar even when later
+The initial parser should cover the complete 0.5 grammar even when later
 phases temporarily diagnose an unsupported implementation stage. A single
 grammar avoids replacing a K0 parser when K1 adds source-owned module and
 storage constructs or K2 adds routines.
@@ -979,10 +979,16 @@ namespaces as declarations arrive. It registers enum members after their enum
 is complete and enforces duplicate, case-only, reserved-name, shadowing and
 type/callable collision rules.
 
-The resolver treats the `standard/` import prefix as toolchain-owned. It loads
-the versioned standard export interface rather than a project file and records
-which optional target bindings the imported interface requires. Missing
-bindings become `E-TARGET-001` after profile resolution.
+The resolver treats the `standard/` import prefix as toolchain-owned. A
+capability import such as `standard/wide32.lafy` is export-free: the
+resolver loads no interface, adds the capability ID — its canonical import
+path — to the module's enabled-capability set, and contributes no names. A
+service import such as `standard/text-output.lafy` loads the versioned
+standard export interface rather than a project file, and the resolver
+records which optional target bindings the imported interface requires.
+Unsatisfied capability target requirements and missing service bindings
+become `E-TARGET-001` after profile resolution. A compiled export interface
+for a user module records its `requiredCapabilities` as capability IDs.
 
 Imports form a contiguous prefix. The checker resolves each imported source
 unit or versioned export interface before continuing, using loading and
@@ -1236,14 +1242,14 @@ Gate:
 Deliver:
 
 - source and lexer;
-- complete 0.4 parser;
+- complete 0.5 parser;
 - raw `asm` preservation;
 - canonical syntax-tree debug printer;
 - parser acceptance and rejection fixtures.
 
 Gate:
 
-- every 0.4 grammar production has a focused test;
+- every 0.5 grammar production has a focused test;
 - imports are accepted only as a contiguous module prefix;
 - malformed constructs recover far enough to report more than one independent
   error without inventing semantic nodes;
@@ -1376,6 +1382,11 @@ Deliver:
 - `extern sub` bindings and ABI validation;
 - compiler-supplied interfaces for the optional standard text modules and
   their five stable service bindings;
+- export-free capability-import handling for `standard/wide32.lafy` and
+  `standard/long-strings.lafy`: the module-local enabled-capability set,
+  capability-gating diagnostics under `E-CAP-001`, target-requirement
+  checks under `E-TARGET-001`, and `requiredCapabilities` recording in
+  compiled export interfaces;
 - standalone program-entry validation;
 - ABI frame and adapter reporting.
 
@@ -1394,6 +1405,10 @@ Gate:
 - standard text calls produce the required ordered device-I/O and storage
   traces;
 - every applicable K2 rejection fixture reports its stable diagnostic ID;
+- the capability-gating vectors pass: missing-import, unsatisfied
+  target-requirement, unused-import and cross-module cases report their
+  stable IDs, and an unused capability import emits no capability-component
+  bytes;
 - frame and scratch artifacts account for every allocated byte.
 
 Bounded views and parameter modes receive a separate language decision before
@@ -1422,7 +1437,7 @@ The first compiler is complete when:
 
 - M0 through M6 gates pass;
 - the applicable conformance inventory is executable and green;
-- unsupported 0.4 profile capabilities produce required diagnostics;
+- unsupported 0.5 profile capabilities produce required diagnostics;
 - interpreter and AZM results agree for the selected corpus;
 - generated AZM assembles under the supported AZM version;
 - source, generated-source, and machine mappings compose;

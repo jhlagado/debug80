@@ -1,6 +1,6 @@
-# Lanternfly 0.4 conformance and diagnostics
+# Lanternfly 0.5 conformance and diagnostics
 
-- Status: normative companion to the 0.4 implementation baseline
+- Status: normative companion to the 0.5 implementation baseline
 - Implementation status: fixtures not yet implemented
 
 This document turns the language contract into a testable claim. The
@@ -18,7 +18,7 @@ severity.
 
 Implementations make claims at three boundaries:
 
-1. A **0.4 front end** accepts and rejects source according to the
+1. A **0.5 front end** accepts and rejects source according to the
    specification and produces the required typed program, diagnostics and
    effect information.
 2. A **target backend** preserves that typed program's behavior for one named
@@ -37,8 +37,8 @@ these identifiers even when their filenames or organization change.
 
 K0, K1, and K2 are development milestones, not smaller language editions. A
 development build may report that a construct belongs to a later milestone,
-but it cannot claim a conforming 0.4 front end until it accepts every required
-0.4 construct and passes the complete applicable inventory.
+but it cannot claim a conforming 0.5 front end until it accepts every required
+0.5 construct and passes the complete applicable inventory.
 
 Milestone reports state:
 
@@ -83,6 +83,11 @@ emission or execution.
 The first executable sequence is the empty hosted body, Counter, static text,
 Dot, Slide, Trail, focused numeric/control vectors, exact layout vectors, hosted
 Tetro and Pacmo storage bodies, then source-routine versions of those bodies.
+The source-routine stage adds forward-declaration program fixtures: a
+mutually recursive routine pair with correct results on a
+recursion-capable profile and `E-CALL-002` on one without recursion, an
+uncompleted forward declaration rejected under `E-FORWARD-001`, and a
+mismatched completing header rejected under `E-FORWARD-002`.
 This order supplies a vertical host-to-backend path before broadening the
 language surface.
 
@@ -96,7 +101,7 @@ responsible configuration, front-end, placement or backend stage.
 | `E-CONFIG-001`   | Malformed host manifest or target profile, unsupported format/version, missing required field, unknown field, invalid primitive field such as a representation byte outside 0 through 255, unknown provider-representation or address-validity-rule tag, or a union with a missing field or a field forbidden by its selected alternative                                                                          | Implementation plan §5           |
 | `E-CONFIG-002`   | Duplicate configuration ID; well-shaped unresolved binding, validity-contract, provider-symbol, registry, component or placement-region reference; wrong provider byte length; invalid range/mask rule; inconsistent source span; impossible exact layout or memory region; invalid enum/subrange/array domain, aggregate constant or type composition; or address-class/representation-width/host-target mismatch | Implementation plan §5           |
 | `E-LEX-001`      | Invalid token, malformed numeric literal, unterminated literal or physical newline in quoted text                                                                                                                                                                                                                                                                                                                  | Specification §2.4               |
-| `E-PARSE-001`    | Token sequence does not match the 0.4 grammar, including a malformed declaration or statement, an unexpected delimiter, or a missing ordinary block `end`                                                                                                                                                                                                                                                          | Specification §15                |
+| `E-PARSE-001`    | Token sequence does not match the 0.5 grammar, including a malformed declaration or statement, an unexpected delimiter, or a missing ordinary block `end`                                                                                                                                                                                                                                                          | Specification §15                |
 | `E-TEXT-001`     | Empty or multi-byte character literal, unsupported direct character or escape, embedded NUL, or oversized string literal                                                                                                                                                                                                                                                                                           | §§2.4, 3.2                       |
 | `E-TEXT-002`     | String capacity outside 1 through 65,534; oversized constant assignment or append; zero constant byte append; invalid string operation, parameter shape or attempted access to the sealed representation                                                                                                                                                                                                           | §3.2                             |
 | `E-NAME-001`     | Unknown name, use before declaration, duplicate declaration, forbidden shadowing or case-only collision                                                                                                                                                                                                                                                                                                            | §§2.1, 12.3                      |
@@ -131,7 +136,7 @@ responsible configuration, front-end, placement or backend stage.
 | `E-CONTROL-001`  | Non-ordinal selection, or empty, duplicate, overlapping, reversed, unrepresentable or type-incompatible `case` value/range                                                                                                                                                                                                                                                                                         | §9.2                             |
 | `E-CONTROL-002`  | Invalid or volatile counted-loop control name, zero step, incompatible start/boundary, or a continuing value outside the control type                                                                                                                                                                                                                                                                              | §10.1                            |
 | `E-CONTROL-003`  | Counted-loop body may write its control variable directly or through a call/native effect summary                                                                                                                                                                                                                                                                                                                  | §10.1                            |
-| `E-CONTROL-004`  | `exit` or `continue` has no enclosing loop                                                                                                                                                                                                                                                                                                                                                                         | §10.4                            |
+| `E-CONTROL-004`  | `exit` or `continue` has no enclosing loop                                                                                                                                                                                                                                                                                                                                                                         | §10.5                            |
 | `E-CONTROL-005`  | `for each` operand is not a fixed-array storage path, its binding collides with a visible name, or the array is volatile                                                                                                                                                                                                                                                                                           | §10.2                            |
 | `E-RETURN-001`   | Bare/value return used with the wrong routine result form, or a result-bearing path reaches `end`                                                                                                                                                                                                                                                                                                                  | §11.5                            |
 | `E-RETURN-002`   | A hosted-body `return` supplies a value                                                                                                                                                                                                                                                                                                                                                                            | §13.3                            |
@@ -147,6 +152,7 @@ responsible configuration, front-end, placement or backend stage.
 | `E-BOUNDARY-001` | A well-shaped resolved provider or native value fails the address class's selected validity rule or a service cannot preserve it; a native or host contract cannot guarantee ordinal/Boolean/address validity, aggregate storage class/layout/lifetime, string layout/invariants or immutable storage; or the integration requires a native callback                                                               | §§3, 11.7, 12.4, 12.6, 13.2–13.3 |
 | `E-ENTRY-001`    | Executable manifest has no unique parameterless, result-free source-defined entry routine                                                                                                                                                                                                                                                                                                                          | §12.6                            |
 | `E-TARGET-001`   | Required native service, optional standard-module binding, callable profile availability, scalar operation, address class or other target capability is unavailable                                                                                                                                                                                                                                                | §§12.4, 13.1–13.2                |
+| `E-CAP-001`      | A capability-gated word or facility — a 32-bit integer type or a string capacity above 254 — is mentioned in a module that lacks its own enabling standard capability import, including gated use of another module's exports without the direct import                                                                                                                                                             | §§1.1, 3, 3.2                    |
 | `E-ASM-001`      | `asm` block is unclosed or appears where a block is not permitted                                                                                                                                                                                                                                                                                                                                                  | §13.2.1                          |
 | `E-ASM-002`      | Selected target has no compatible assembly-fragment pipeline                                                                                                                                                                                                                                                                                                                                                       | §13.2.1                          |
 | `E-PLACE-001`    | Source or build placement cannot fit a compatible target region because of address range, permissions, alignment, capacity, overlap or an unavailable initialization mechanism                                                                                                                                                                                                                                     | §4.3                             |
@@ -252,6 +258,31 @@ Where an original program has known output, Lanternfly and AZM executions must
 agree on the compared result.
 
 ## 6. Mandatory semantic vectors
+
+Every positive vector or fixture that mentions `u32`, `i32` or a string
+capacity above 254 supplies the enabling `standard/wide32.lafy` or
+`standard/long-strings.lafy` import in its source. The capability-gating
+vectors are:
+
+- each gated facility mentioned without its enabling import rejected under
+  `E-CAP-001` at the gated mention;
+- each enabled capability whose target requirements are unsatisfied rejected
+  under `E-TARGET-001`: a missing representation width such as a `u32`
+  declaration on a profile without 32-bit integers, an exceeded capacity or
+  static-object limit, an unavailable scalar-operation category, and an
+  unbound runtime component, including a gated use that selects no
+  component;
+- an imported but unused capability accepted, with no capability-component
+  bytes in the emitted program and every kernel vector's observable
+  behaviour unchanged, demonstrating monotone imports and use-selected cost;
+- a module importing a `u32`-exporting module without
+  `standard/wide32.lafy`, accepted while it mentions no gated facility and
+  rejected under `E-CAP-001` at its first gated mention;
+- a compiled export interface recording its required capability IDs, with
+  separate compilation reproducing both cross-module results;
+- diagnostic precedence: a gated word used as a declaration name reports
+  the reserved-word error `E-NAME-002` whether or not the import is
+  present; `E-CAP-001` applies to gated use, not to naming.
 
 The suite includes focused positive and negative vectors in addition to the
 programs above:

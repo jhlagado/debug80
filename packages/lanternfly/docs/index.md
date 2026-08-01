@@ -1,6 +1,6 @@
 # Lanternfly project documents
 
-Lanternfly 0.4 is the implementation baseline for the first compiler. The
+Lanternfly 0.5 is the implementation baseline for the first compiler. The
 package still contains documentation only, but the language, conformance,
 lowering, and delivery boundaries are defined well enough for coding to begin.
 
@@ -10,7 +10,7 @@ lowering, and delivery boundaries are defined well enough for coding to begin.
    map, project state, and non-negotiable language boundaries.
 2. [Implementation plan](implementation-plan.md) defines the package layout,
    first coding change, milestone gates, and completion criteria.
-3. [Working language specification](specification.md) states the 0.4 syntax
+3. [Working language specification](specification.md) states the 0.5 syntax
    and semantics.
 4. [Conformance and diagnostics](conformance.md) defines required acceptances,
    errors, warnings, faults, fixtures, and artifacts.

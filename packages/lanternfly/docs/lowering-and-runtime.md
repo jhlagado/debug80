@@ -1,12 +1,19 @@
 # Lanternfly lowering, backend and runtime contract
 
-Status: architecture contract for the 0.4 implementation baseline
+Status: architecture contract for the 0.5 implementation baseline
 Implementation status: documentation only
 
 This document specifies the boundary a compiler prototype should implement. It
 does not prescribe compiler modules or data structures. The
 [implementation plan](implementation-plan.md) supplies the delivery order,
 package seams, and milestone gates.
+
+Under the charter's small-systems-first direction, the reference backend
+shape is direct native-code emission with backpatched fixups, matching a
+single-pass front end. Assembly-source generation through AZM or another
+assembler is a transparency and portability backend; its provenance and
+placement contracts in this document apply to that backend form. Both forms
+implement the same typed program boundary.
 
 ## 1. Responsibilities
 
@@ -688,7 +695,26 @@ The two invalid-representation components report the public
 `F-INVALID-BOOLEAN` and `F-INVALID-STRING` classes. Runtime component names
 remain internal and do not replace conformance fault IDs.
 
-The linker includes transitive dependencies of selected components only.
+Component inclusion covers selected components and their transitive
+dependencies only.
+
+A standard capability module under specification section 1.1 makes its type
+descriptors and component implementations eligible through the same
+registry; the import itself selects nothing. Typed operations the program
+actually uses select components, transitive dependencies determine the
+emitted bytes, and an unused operation contributes no bytes, so an unused
+capability import changes the accepted language and nothing else. The cost
+report attributes each selected capability component to its enabling
+import. A banked target may group a capability's components into a bank as
+a placement choice; a profile whose banking granularity forces inclusion of
+unselected components must declare that exception in its cost report. An
+unused import includes nothing under any banking granularity; the exception
+concerns only a bank that a used component selects and that also contains
+unselected components. A
+non-kernel scalar type lowers through one generic wide-scalar strategy:
+operands live in memory temporaries and operations call the type's helper
+table, so each added capability type contributes a descriptor and helpers,
+not new backend code paths.
 
 Each component declares:
 
@@ -1282,7 +1308,7 @@ Generated AZM must:
 - pass configured strict register-contract analysis;
 - emit expected binary and map artifacts.
 
-A non-AZM backend uses its object, linker or substrate placement mechanism to
+A non-AZM backend uses its substrate toolchain's placement mechanism to
 preserve the same plan and returns equivalent occupancy and symbol artifacts.
 It reports `E-TARGET-001` for a target whose placement contract it cannot
 express.
@@ -1424,7 +1450,7 @@ The [implementation plan](implementation-plan.md) defines seven delivery
 milestones. Their architecture order is:
 
 1. establish source identity, diagnostics, and versioned host/target schemas;
-2. parse the complete 0.4 grammar while preserving raw assembly payloads;
+2. parse the complete 0.5 grammar while preserving raw assembly payloads;
 3. resolve imports and check declarations, ordinal domains and layouts in
    source order, then type-check K0;
 4. lower the typed program to control-flow IR and execute it in the semantic
@@ -1444,9 +1470,9 @@ experiments test the substrate independence of the established contract.
 
 Each milestone has an executable gate. A development build may reject a
 later-stage construct with an implementation-stage diagnostic, but only a
-build that passes the full applicable inventory may claim 0.4 conformance.
+build that passes the full applicable inventory may claim 0.5 conformance.
 
-General bounded views, parameter modes, floating point, and other post-0.4 design work
+General bounded views, parameter modes, floating point, and other post-0.5 design work
 do not enter the first milestones accidentally. They require a language
 decision, specification changes, conformance fixtures, and a lowering contract
 before implementation.

@@ -142,25 +142,55 @@ whole-program optimization, provenance mapping and rich diagnostics, remain
 host-side toolchain services rather than language requirements; an
 error-code-and-location diagnostic surface is a conforming implementation.
 
-There is no relocating linker anywhere in the design. Libraries reach a
-program in three forms, all linker-free: source imports compiled into the
-whole program in dependency order; compiled export-interface images that
-restate a module's public symbols without re-reading its source; and
-fixed-address libraries — on banked systems, ROM libraries — whose code is
-already placed and whose interface image simply binds names to addresses.
-Relocatable object formats and link editors are permanently out of scope.
+The Lanternfly toolchain contains no relocating link editor. Libraries
+reach a program in three forms, all linker-free: source imports compiled
+into the whole program in dependency order; compiled export-interface
+images that restate a module's public symbols without re-reading its
+source; and fixed-address libraries — on banked systems, ROM libraries —
+whose code is already placed and whose interface image simply binds names
+to addresses. Relocatable object formats and link editors are permanently
+out of scope for the Lanternfly toolchain itself; a substrate toolchain
+downstream of a backend, such as a C compiler's, may use its own placement
+mechanism to carry the validated placement plan.
 
 On-target backends emit machine code directly to memory or to an image file.
 Assembly-text generation through AZM or another assembler remains a
 transparency and portability backend, not the primary path, and the self-hosted
 compiler does not contain an assembler.
 
+The language divides into an irreducible kernel and a closed set of standard
+capability modules. The kernel is the self-hosting closure: the constructs
+the reference compiler is itself written in, and the constructs every module
+form is expressed in, so it is prior to every import. No kernel feature
+places bytes in a program that does not use it; runtime helpers such as
+multiplication, string operations and bounds checks are included only on
+use, so use, not configuration, selects their cost. A capability module is
+a pseudo-module in the tradition of Oberon's `SYSTEM`: an import the front
+end handles at source level, which legalizes an optional facility — 32-bit
+integers, long strings, a floating-point tier — and binds its helper
+components through the selected target profile. A capability module exports
+no names, and its authorization is module-local: importing a user module
+does not confer the capabilities that module uses. The explicit imports
+determine each program's tier, and the build reports each capability's
+cost.
+
+Capability imports are monotone: an import may make more programs legal, but
+it may never change the meaning of a program that was already legal.
+Operators are typed families resolved statically, so a capability type
+extends an operator's domain without altering any existing operation, and no
+implicit conversion crosses type families. The counted string is the one
+text representation with literal syntax and operators; alternative
+representations, such as zero-terminated byte arrays, are ordinary libraries
+over `u8` storage. The capability set is closed and toolchain-versioned;
+user modules never define operator meanings or literal forms.
+
 **Direction:** program storage is predominantly allocated in the static memory
 map.
 
 The initial model has:
 
-- signed and unsigned fixed-width scalar values through 32 bits;
+- 8- and 16-bit signed and unsigned scalar values in the kernel, with the
+  32-bit widths supplied by a standard capability module;
 - nominal enums and checked subranges;
 - byte-valued characters and sealed counted strings with maintained NUL
   terminators;
@@ -226,6 +256,11 @@ contract narrows them.
 **Direction:** portable text transfer is an optional standard-module
 capability rather than a core statement or a complete operating-system
 interface.
+
+These are standard service modules: they share the profile binding and cost
+reporting used by the capability modules described under small systems
+first, but they export ordinary names and gate no language facilities. The
+export-free capability modules form a separate category.
 
 Programs explicitly import small standard text-input and text-output modules.
 The selected target may connect them to a keyboard and display, a serial
