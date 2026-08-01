@@ -1,6 +1,6 @@
 # Lanternfly project documents
 
-Lanternfly 0.5 is the implementation baseline for the first compiler. The
+Lanternfly 0.6 is the implementation baseline for the first compiler. The
 package still contains documentation only, but the language, conformance,
 lowering, and delivery boundaries are defined well enough for coding to begin.
 
@@ -10,7 +10,7 @@ lowering, and delivery boundaries are defined well enough for coding to begin.
    map, project state, and non-negotiable language boundaries.
 2. [Implementation plan](implementation-plan.md) defines the package layout,
    first coding change, milestone gates, and completion criteria.
-3. [Working language specification](specification.md) states the 0.5 syntax
+3. [Working language specification](specification.md) states the 0.6 syntax
    and semantics.
 4. [Conformance and diagnostics](conformance.md) defines required acceptances,
    errors, warnings, faults, fixtures, and artifacts.
@@ -30,6 +30,14 @@ The remaining documents explain the design:
   BASIC/Pascal baseline and ranks post-K1 facilities.
 - [Research record](research.md) connects decisions to Glimmer, AZM, ZAX, and
   the program corpus.
+- [Cooperative tasks and generators](cooperative-tasks.md) records an
+  exploratory direction: the kernel state-machine task pattern, its strict
+  convention, and a deferred generator/await syntax built on it.
+- [Error handling](error-handling.md) records the design rationale for the
+  failable routines drafted into specification 0.6 — error-set enums,
+  `fails` signatures, the abstract failure channel with its carry-flag Z80
+  candidate, `on error` handling and `defer` — with the scenarios and
+  lowering sketches behind section 11.8.
 - [Lanternfly Book 1](../../../../debug80-docs/lanternfly-book/book1/index.md)
   is maintained in the companion documentation repository and is outside this
   package rewrite.

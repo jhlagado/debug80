@@ -1,8 +1,8 @@
-# Lanternfly 0.5 implementation plan
+# Lanternfly 0.6 implementation plan
 
 Status: approved implementation route for the first compiler
 
-Lanternfly 0.5 is ready for implementation. The
+Lanternfly 0.6 is ready for implementation. The
 [language specification](specification.md) defines source meaning, the
 [conformance contract](conformance.md) defines observable correctness, and the
 [lowering contract](lowering-and-runtime.md) defines the boundaries between
@@ -19,7 +19,7 @@ same contract.
 
 ## 1. Implementation baseline
 
-Specification 0.5 is the source-language baseline for K0 through K2. Coding may
+Specification 0.6 is the source-language baseline for K0 through K2. Coding may
 reveal defects, but implementation work does not reopen a chosen rule by
 default. A proposed language change must include:
 
@@ -466,7 +466,7 @@ The M0 empty-body manifest is:
   "body": {
     "id": "counter.tick",
     "displayName": "Counter tick",
-    "edition": "0.5",
+    "edition": "0.6",
     "kind": "effect"
   },
   "types": [],
@@ -895,7 +895,7 @@ The matching minimal target profile is:
 `checkedIndexing` is the literal value `true` in every conforming version-1
 profile. The compiler performs each dynamic bounds check not removed by proof.
 A future explicitly unsafe unchecked mode requires a separate extension
-contract and cannot claim conforming 0.5 execution; setting this field to
+contract and cannot claim conforming 0.6 execution; setting this field to
 `false` is not a release-mode option.
 
 M0 validates this structural boundary without interpreting absent runtime
@@ -963,7 +963,7 @@ token. Comments remain attached as trivia. The parser accepts grammar, not
 types. In particular, it does not decide whether a name is a type, value,
 routine, or aggregate while recognising the surrounding syntax.
 
-The initial parser should cover the complete 0.5 grammar even when later
+The initial parser should cover the complete 0.6 grammar even when later
 phases temporarily diagnose an unsupported implementation stage. A single
 grammar avoids replacing a K0 parser when K1 adds source-owned module and
 storage constructs or K2 adds routines.
@@ -1242,14 +1242,14 @@ Gate:
 Deliver:
 
 - source and lexer;
-- complete 0.5 parser;
+- complete 0.6 parser;
 - raw `asm` preservation;
 - canonical syntax-tree debug printer;
 - parser acceptance and rejection fixtures.
 
 Gate:
 
-- every 0.5 grammar production has a focused test;
+- every 0.6 grammar production has a focused test;
 - imports are accepted only as a contiguous module prefix;
 - malformed constructs recover far enough to report more than one independent
   error without inventing semantic nodes;
@@ -1376,6 +1376,14 @@ Deliver:
 - source-routine scalar locals using the K1 initializer-ordering and
   zero-validity machinery with fresh per-call lifetime;
 - return-path analysis;
+- failable signatures: `fails`-clause checking against `u8`-representation
+  enums, forward-declaration agreement, and the entry and extern
+  exclusions;
+- failure-consumption analysis for `or fail`, failure defaults and
+  `on error` binding, including position restrictions, the
+  declaration-initializer non-completion rule and the `E-FAIL` diagnostics;
+- `defer` registration, per-exit cleanup expansion in reverse order and the
+  `E-DEFER-001` checks;
 - declaration-ordered call graph and profile recursion checks;
 - direct self-call recognition, `forward sub` declaration and completion
   checks, and rejection of calls to unforwarded later routines;
@@ -1388,11 +1396,17 @@ Deliver:
   checks under `E-TARGET-001`, and `requiredCapabilities` recording in
   compiled export interfaces;
 - standalone program-entry validation;
-- ABI frame and adapter reporting.
+- ABI frame and adapter reporting, including the success/failure channel
+  for failable routines.
 
 Gate:
 
 - nested-call and early-return vectors pass;
+- the error-handling positive program and failable vector group produce
+  matching results across interpreter and AZM, including cleanup order and
+  code preservation on every exit class;
+- every applicable `E-FAIL` and `E-DEFER` rejection fixture reports its
+  stable diagnostic ID;
 - source-routine versions of the selected Tetro and Pacmo fixtures agree across
   interpreter and AZM;
 - direct self-recursion is rejected for the initial profile;
@@ -1437,7 +1451,7 @@ The first compiler is complete when:
 
 - M0 through M6 gates pass;
 - the applicable conformance inventory is executable and green;
-- unsupported 0.5 profile capabilities produce required diagnostics;
+- unsupported 0.6 profile capabilities produce required diagnostics;
 - interpreter and AZM results agree for the selected corpus;
 - generated AZM assembles under the supported AZM version;
 - source, generated-source, and machine mappings compose;

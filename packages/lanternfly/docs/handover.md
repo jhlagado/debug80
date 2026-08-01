@@ -16,9 +16,11 @@ BASIC dialects.
 
 Lanternfly is currently a documentation-only design project. There is no
 parser, type checker, IR, interpreter, code generator, runtime or Glimmer
-integration yet. Specification 0.4 is now the implementation baseline, and the
+integration yet. Specification 0.6 is now the implementation baseline, and the
 [implementation plan](implementation-plan.md) defines the first coding change,
-package seams, milestone gates and completion criteria.
+package seams, milestone gates and completion criteria. References to 0.4 or
+0.5 later in this document describe the editions that existed when their
+sections were written; the working specification is authoritative.
 
 The central idea is:
 

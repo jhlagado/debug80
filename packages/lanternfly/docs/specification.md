@@ -1,6 +1,6 @@
 # Lanternfly language specification
 
-Edition: 0.5 implementation baseline
+Edition: 0.6 implementation baseline
 Implementation status: no compiler exists
 Normative status: source-language contract for the first compiler
 
@@ -39,7 +39,7 @@ Lanternfly is a statically typed structured BASIC for fixed-memory systems. It
 can replace ordinary AZM program logic in standalone programs as well as
 Glimmer bodies.
 
-The complete 0.5 language includes:
+The complete 0.6 language includes:
 
 - fixed-width signed and unsigned integers;
 - nominal enums and checked subrange types;
@@ -54,6 +54,8 @@ The complete 0.5 language includes:
   results;
 - forward routine declarations, so mutually recursive routines remain
   expressible in declaration order;
+- failable routines over error-set enums, with `fail`, statement-level
+  propagation and defaults, `on error` handling blocks and `defer` cleanup;
 - source modules with private declarations and explicit exports;
 - optional standard modules for portable character and text input and output;
 - direct native-code emission as the reference lowering path, with AZM,
@@ -91,8 +93,9 @@ implement an aggregate parameter or alias with a machine address. That
 representation is lowering machinery and does not enter the language's value
 model.
 
-Heap allocation, garbage collection, exceptions, dynamic collections and
-indirect calls are outside the first edition. Fixed multidimensional arrays
+Heap allocation, garbage collection, unwinding exceptions, dynamic collections
+and indirect calls are outside the first edition; section 11.8 handles
+expected failure with ordinary values and branches instead. Fixed multidimensional arrays
 and indexed pools cover the initial programs that assembly would otherwise
 express through pointer tables.
 
@@ -2134,8 +2137,9 @@ runtime cost to the calls it enables.
 The completing declaration is an ordinary `sub` later in the same module. Its
 header must repeat the forward header exactly apart from the word `forward`:
 the same name spelling, export status, parameter storage classes, parameter
-names and types in the same order, and the same result type or its absence.
-A completing header that differs in any of these is `E-FORWARD-002`.
+names and types in the same order, the same result type or its absence, and
+the same `fails` clause or its absence. A completing header that differs in
+any of these is `E-FORWARD-002`.
 
 Each routine has at most one forward declaration, and a forward name follows
 the ordinary duplicate-declaration rules: a second forward declaration for
@@ -2176,6 +2180,165 @@ Routine names are not values. Source code cannot take a routine's address,
 store it in an array, return it or invoke it indirectly. `select` supplies
 runtime dispatch; a backend may lower a dense selection to a jump table
 without exposing code addresses to the program.
+
+### 11.8 Failable routines
+
+Lanternfly separates two kinds of failure. A violated contract is a runtime
+fault under the conformance contract: non-returning, uninterceptable by
+program code, with target-defined consequences. An expected failure — input
+that does not parse, a device operation that does not complete — is a value:
+a member of an ordinary enum, produced and consumed by the forms of this
+section. No form in this section intercepts a fault.
+
+The vocabulary splits by part of speech: `fail` is the verb and names the
+routine's own act in every position it appears, while `error` is the noun
+and appears exactly where a failure arrives as a value. The rules of this
+section and section 11.9 are Provisional until the error-handling
+conformance program and the planned manual-pattern evidence bodies exist.
+
+A routine declares that it can fail by naming an error set after its result
+type, or in place of one:
+
+```lanternfly
+enum ParseError as u8
+    emptyLine
+    badDigit
+    tooLarge
+end
+
+sub parseHex(line as string[8]) as u16 fails ParseError
+
+sub verifyBlock(index as u8) fails TapeError
+```
+
+The error set must be an enum whose representation type is `u8`; any other
+`fails` operand is `E-FAIL-003`. The enum is otherwise ordinary: its members
+obey the ordinary scope rules, and an error value may be stored, passed,
+compared and selected over like any enum value. Each invocation of a failable
+routine completes in exactly one of two ways: success, carrying the declared
+result if there is one, or failure, carrying one member of the error set.
+
+`fail` returns failure:
+
+```lanternfly
+if digit > 15 then
+    fail badDigit
+end
+```
+
+Its operand must be a member of the enclosing routine's declared error set,
+and `fail` outside a failable routine is `E-FAIL-002`. Ordinary `return`
+returns success. In a result-bearing failable routine, every reachable path
+must return a compatible value or `fail`, extending the rule of section 11.5.
+
+A failable invocation may appear only as the complete expression of an
+expression statement, the complete right side of an assignment, the complete
+initializer of a local `var`, or the complete operand of `return`. It may not
+nest inside a larger expression or argument list, and its failure must be
+consumed by exactly one of the three forms below; an unconsumed or nested
+failable invocation is `E-FAIL-001`. In `return` position the first edition
+admits only `or fail`; the same meaning as a failure default or handler is
+available by assigning to a local first, so the grammar of section 15 keeps
+one consumption form there.
+
+**Propagation.** `or fail` returns the callee's failure, unchanged, from the
+enclosing routine:
+
+```lanternfly
+sub loadProgram() as u16 fails TapeError
+    var header as u16 = readBlock(headerBuffer) or fail
+    readBlock(bodyBuffer) or fail
+    return header
+end
+```
+
+The enclosing routine must itself be failable, and the first edition requires
+its declared error set to be the same enum type as the callee's; either
+violation is `E-FAIL-002`. Propagation runs the deferred statements of
+section 11.9 like any other exit.
+
+**Defaults.** `or` followed by an expression supplies the value used when the
+call fails:
+
+```lanternfly
+var speed as u8 = parseDigit(key) or 1
+```
+
+The default expression must be assignment-compatible with the call's result
+type, is evaluated only on failure, and may not itself contain a failable
+invocation. A default on a result-free call is `E-FAIL-003`. When the left
+operand of `or` is a complete failable invocation, the `or` is this failure
+default; otherwise it is the Boolean operator of section 8.4, resolved by the
+operand's type exactly as assignment and equality are resolved in section 15.
+
+**Handling.** An `on error` block follows the failable statement it handles:
+
+```lanternfly
+address = parseHex(entry)
+on error code
+    showParseError(code)
+    return
+end
+```
+
+`on error` binds to the immediately preceding statement, which must be an
+assignment, expression statement or local `var` declaration containing a
+failable invocation that carries no `or` form; any other binding is
+`E-FAIL-004`. The name introduces a read-only value of the callee's error-set
+type, scoped to the block under the collision rules of section 2.1. On
+success the block is skipped. On failure the assignment or initialization
+does not occur — the destination is not written — and the block runs. The
+block contains ordinary statements; a `fail` inside it follows this section's
+ordinary rules, and `continue` or `exit` requires an enclosing loop as usual,
+which the assignment and expression-statement forms may have. When the bound
+statement is a local `var` declaration, the block must not complete normally:
+every path through it must end at `return` or `fail`, so the local is never
+readable uninitialized. Local declarations precede every statement, so a
+declaration-bound block has no enclosing loop; `exit` or `continue` there
+is the ordinary loop error of section 10.4, not a binding error. A block
+that can complete normally in declaration position is `E-FAIL-004`.
+
+The program entry routine of section 12.6 may not carry a `fails` clause,
+because no caller exists to receive the failure; a failable entry is the
+entry-selection error `E-ENTRY-001`. A `fails` clause on an external
+routine of section 12.4, and any form of this section inside a hosted
+body of section 13.3, are deferred; both are `E-FAIL-005`. A forward
+declaration repeats the `fails` clause exactly under section 11.6. An
+exported failable routine's compiled export interface records its error-set
+type with the rest of the signature under section 12.5.
+
+Failable routines require no target capability and select no runtime helper.
+A backend lowers the failure channel — a one-bit completion discriminant plus
+the `u8` error code — under the routine ABI of the lowering contract, and a
+program that declares no failable routine contains no failure-channel code.
+
+### 11.9 `defer`
+
+`defer` registers one cleanup statement to run when the routine exits:
+
+```lanternfly
+sub copyFromTape(bank as u8) fails TapeError
+    mapBank(bank)
+    defer unmapBank()
+
+    readBlock(buffer) or fail
+    storeBlock(bank)
+end
+```
+
+The deferred statement is an assignment or a result-free invocation. It must
+be infallible: a failable invocation, `fail`, `return`, `exit` or `continue`
+inside a deferred statement is `E-DEFER-001`. A `defer` may appear only at
+the top level of a source routine body — not inside a control structure, and
+not in a hosted body; either placement is `E-DEFER-001`.
+
+Every exit from the routine — a `return`, a `fail`, a propagation inserted
+by `or fail`, or reaching `end` — first executes each deferred statement
+that lexically precedes the exit point, most recent first. A deferred
+statement executes as an ordinary statement under the evaluation-order rules
+of section 8.7, and a propagating exit preserves the failure code across the
+deferred statements; that preservation is a backend obligation under the
+lowering contract.
 
 ## 12. Modules
 
@@ -3009,6 +3172,7 @@ clear
 const
 continue
 count
+defer
 each
 else
 end
@@ -3016,6 +3180,8 @@ enum
 exit
 export
 extern
+fail
+fails
 false
 fill
 for
@@ -3029,6 +3195,7 @@ lower
 mod
 not
 offset
+on
 or
 range
 record
@@ -3072,7 +3239,9 @@ section 1.1; a future floating-point type word would join this gated group.
 
 `type` is contextual. It selects a type operand inside `size`, `count`,
 `lower` or `upper` and remains available as an ordinary identifier everywhere
-else.
+else. `error` is likewise contextual: it is recognized only immediately
+after `on` in the handler clause of section 11.8 and remains available as an
+ordinary identifier everywhere else.
 Contextual-word recognition is case-insensitive, and the formatter emits
 lowercase.
 
@@ -3149,9 +3318,11 @@ record-decl         ::= "record" type-name newline
 field-decl          ::= value-name "as" type-expr newline
 
 sub-decl            ::= "sub" value-name "(" params? ")"
-                        ("as" type-expr)? newline
+                        ("as" type-expr)? fails-clause? newline
                         routine-block
                         "end" newline
+
+fails-clause        ::= "fails" type-name
 
 extern-sub-decl     ::= "extern" "sub" value-name "(" params? ")"
                         ("as" type-expr)?
@@ -3160,7 +3331,7 @@ external-binding    ::= "at" address-const-expr
                       | "from" string-literal
 
 forward-sub-decl    ::= "forward" "sub" value-name "(" params? ")"
-                        ("as" type-expr)? newline
+                        ("as" type-expr)? fails-clause? newline
 
 params              ::= param ("," param)*
 param               ::= aggregate-storage-class? value-name "as" type-expr
@@ -3170,7 +3341,8 @@ aggregate-storage-class
 routine-block       ::= local-decl* statement*
 local-decl          ::= local-var-decl | alias-decl
 local-var-decl      ::= "var" value-name "as" type-expr
-                        ("=" expression)? newline
+                        ("=" expression ("or" "fail")?)? newline
+                        on-error-clause?
 alias-decl          ::= "alias" value-name "as" aggregate-type
                         "=" storage-path newline
 
@@ -3196,6 +3368,8 @@ statement           ::= assignment-statement
                       | exit-statement
                       | continue-statement
                       | return-statement
+                      | fail-statement
+                      | defer-statement
                       | asm-block
 
 asm-block           ::= "asm" newline
@@ -3203,10 +3377,21 @@ asm-block           ::= "asm" newline
                         "end" newline
 
 assignment-statement
-                    ::= writable-path "=" expression newline
+                    ::= writable-path "=" expression
+                        ("or" "fail")? newline on-error-clause?
 
 expression-statement
-                    ::= expression newline
+                    ::= expression ("or" "fail")? newline on-error-clause?
+
+on-error-clause     ::= "on" "error" value-name newline
+                        block
+                        "end" newline
+
+fail-statement      ::= "fail" value-name newline
+
+defer-statement     ::= "defer" deferred-statement
+deferred-statement  ::= assignment-statement
+                      | expression-statement
 
 standard-procedure-statement
                     ::= "clear" "(" storage-path ")" newline
@@ -3241,7 +3426,7 @@ while-statement     ::= "while" expression newline block "end" newline
 
 exit-statement      ::= "exit" newline
 continue-statement  ::= "continue" newline
-return-statement    ::= "return" expression? newline
+return-statement    ::= "return" (expression ("or" "fail")?)? newline
 
 block               ::= statement*
 
@@ -3359,6 +3544,17 @@ legal only as the complete expression of an expression statement. `clear`,
 `fill` and `append` also have internal type `unit`, but their grammar admits
 them only as complete standard-procedure statements.
 
+The grammar leaves three failure forms to semantic resolution under section
+11.8. An `or` whose left operand is a complete failable invocation is the
+failure default; every other `or` is the Boolean operator, so the operator
+grammar of section 8.4 is unchanged. An `on-error-clause` binds to the
+statement it follows, and the binding rules — one failable invocation, no
+`or` form on the bound statement, the non-completion rule for declaration
+initializers — are checked semantically as `E-FAIL-004`. A
+`deferred-statement` reuses the assignment and expression-statement
+productions but admits neither `or` form nor an `on error` clause; that
+restriction, with the other `defer` rules, is checked as `E-DEFER-001`.
+
 When a statement begins with a writable path followed immediately by `=`, the
 parser selects `assignment-statement`. Otherwise it selects an expression
 statement, where `=` can occur only as equality inside the expression.
@@ -3368,7 +3564,7 @@ Parentheses make a discarded equality test explicit:
 (left = right)
 ```
 
-## 16. Post-0.5 design queue
+## 16. Post-0.6 design queue
 
 The following questions remain open or provisional. None blocks K0 or K1:
 
@@ -3390,8 +3586,15 @@ The following questions remain open or provisional. None blocks K0 or K1:
   descriptor and helper-table contract shared with `standard/wide32.lafy`;
 - string-literal initialization of `u8` arrays with explicit terminator
   escapes, giving alternative text representations such as zero-terminated
-  byte strings library-level ergonomics without a second string type.
+  byte strings library-level ergonomics without a second string type;
+- error-set inclusion, so `or fail` can propagate a callee's error set into
+  a caller's larger one, which needs a member-renumbering or shared-hosting
+  rule before it is sound;
+- `fails` contracts on external routines, binding the native carry-style
+  failure conventions this platform's routines already use;
+- `on error` forms beyond the single-statement binding, and `defer` inside
+  nested control structure, both waiting on translated-program evidence.
 
 Implementation evidence from representative Glimmer bodies, Tetro and Pacmo
 routines, and AZM Book 3 algorithms will determine whether these points enter
-a later edition. Until then, the 0.5 rules remain authoritative.
+a later edition. Until then, the 0.6 rules remain authoritative.

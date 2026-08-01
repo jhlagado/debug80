@@ -1,6 +1,8 @@
 # Language stages and decisions
 
-Specification 0.4 is the implementation baseline. The stages divide one
+The [working specification](../specification.md), currently the 0.6
+edition, is the implementation baseline; this chapter was written against
+0.4 and stands as design history where they differ. The stages divide one
 language into useful compiler milestones; they are not smaller dialects and
 cannot assign temporary meanings to later constructs.
 

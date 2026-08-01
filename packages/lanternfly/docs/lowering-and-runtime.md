@@ -1,6 +1,6 @@
 # Lanternfly lowering, backend and runtime contract
 
-Status: architecture contract for the 0.5 implementation baseline
+Status: architecture contract for the 0.6 implementation baseline
 Implementation status: documentation only
 
 This document specifies the boundary a compiler prototype should implement. It
@@ -117,8 +117,11 @@ record(typeId, exactSize, fields)
 array(elementType, indexDomains, counts, exactStrides)
 aggregateAlias(class, referentType, mutable)
 address(class, representationWidth)
-procedureSignature(parameters, result, effects)
+procedureSignature(parameters, result, errorSet?, effects)
 ```
+
+`errorSet` names the `u8`-representation enum of a failable signature's
+error set and is absent from a routine without a `fails` clause.
 
 Record fields include exact byte offsets. Each array dimension records its
 root ordinal family, optional nominal type, inclusive lower and upper
@@ -169,8 +172,16 @@ Binary(op, type, left, right)
 Compare(op, type, left, right)
 Convert(kind, sourceType, targetType, value)
 CallResult(callId)
+FailCode(callId)
 Phi/type block parameter, if the chosen IR uses SSA
 ```
+
+For a failable call, `CallResult` is valid only on the success edge of that
+call's `BranchIfFail`, and `FailCode` — the callee's error code as a `u8` of
+the signature's error-set type — is valid only on its failure edge. An IR
+with block parameters may pass the code as a failure-block parameter
+instead of a `FailCode` node; either way the code is an explicit value, not
+an implicit register.
 
 ### 4.2 Addresses
 
@@ -217,12 +228,24 @@ Branch(target)
 BranchIf(value, trueTarget, falseTarget)
 Switch(value, cases, default)
 Return(value?)
+FailReturn(code)
+BranchIfFail(call, failTarget, successTarget)
 BodyExit(hostEpilogueId)
 NoReturn
 ```
 
 Loop syntax is gone by this stage. Its blocks retain original loop node IDs for
 debugging and cost aggregation.
+
+The front end makes every failure edge explicit; the backend receives no
+implicit failure control flow. A `fail` statement becomes `FailReturn`. Each
+failable invocation is followed by one `BranchIfFail` whose fail target
+implements the statement's consumption form: a `FailReturn` reusing the
+callee's `FailCode` for `or fail`, an evaluation of the default value for a
+failure default, or the `on error` block with the code bound to its named
+value. Exits that pass deferred statements route through the cleanup blocks
+in reverse registration order, and a `FailReturn` reached through cleanup
+preserves its code across the cleanup statements.
 
 ### 4.5 Aggregate policy
 
@@ -520,6 +543,8 @@ A target defines a default ABI capable of:
 - near and far string aliases with exact capacities;
 - opaque address values;
 - one scalar result;
+- a failure channel for failable routines: a one-bit completion discriminant
+  plus a `u8` error code, absent from routines without a `fails` clause;
 - normal and no-return calls;
 - local cleanup;
 - host/native adapters.
@@ -532,7 +557,12 @@ fields becomes a source value. `readLine` returns a canonical `boolean`. The
 remaining standard text operations use ordinary `u8`, no-result or `u8`-
 result ABI forms.
 
-Lanternfly does not dictate register or stack placement.
+Lanternfly does not dictate register or stack placement. The failure channel
+is normative as an abstract obligation — a discriminant and a code, produced
+and consumed at the boundaries section 11.8 of the specification defines —
+while its register realization is target ABI design like every other row of
+this section; the carry/A choice below is the provisional Z80 candidate, not
+a language rule.
 
 ### 8.1 Initial Z80 ABI candidate
 
@@ -547,9 +577,21 @@ A first implementation may follow the useful ZAX shape:
 - scalar locals in frame slots;
 - aggregate aliases as non-observable near/far address carriers;
 - declared result carriers;
+- the carry flag as the failure discriminant with the error code in A: `SCF`
+  before a failing return, carry clear on a successful one;
+- propagation as `RET C` where the routine has no frame to unwind, folding to
+  the plain final `RET` in tail position; a framed routine propagates through
+  a conditional jump to its epilogue instead;
+- failure-code preservation around deferred cleanup calls that may clobber
+  A or the flags;
 - generated prologue/epilogue.
 
-That ABI is provisional backend design, not source semantics.
+That ABI is provisional backend design, not source semantics. The carry
+choice rests on the Z80 mechanism — `SCF` sets the discriminant in one
+instruction, the conditional return and jump forms test it directly, and A
+stays free for the code — and native routines that already report status
+in carry, such as the corpus predicate routines, can bind through a future
+`fails` contract with little or no adapter.
 
 ### 8.2 External and imported ABI adapter
 
@@ -1372,6 +1414,11 @@ backend-focused groups summarize that inventory:
 - exit/continue;
 - early routine return;
 - hosted body return;
+- `fail`, `or fail` propagation through one and two levels, failure
+  defaults evaluated only on failure, and `on error` blocks with unwritten
+  destinations;
+- deferred-statement execution in reverse registration order on return,
+  `fail`, propagation and end-of-body exits;
 - left-to-right operand, argument, path and initializer evaluation;
 - destination-before-source assignment evaluation.
 
@@ -1385,6 +1432,9 @@ backend-focused groups summarize that inventory:
 - profile-name, substrate-symbol and absolute-address bindings;
 - nested calls;
 - no-return;
+- the failure channel across result-free and result-bearing failable
+  signatures, including tail-position folding and code preservation across
+  deferred cleanup;
 - rejected recursion cycles on non-recursive profiles;
 - independent frames and stack-cost reporting on recursive profiles.
 
@@ -1450,7 +1500,7 @@ The [implementation plan](implementation-plan.md) defines seven delivery
 milestones. Their architecture order is:
 
 1. establish source identity, diagnostics, and versioned host/target schemas;
-2. parse the complete 0.5 grammar while preserving raw assembly payloads;
+2. parse the complete 0.6 grammar while preserving raw assembly payloads;
 3. resolve imports and check declarations, ordinal domains and layouts in
    source order, then type-check K0;
 4. lower the typed program to control-flow IR and execute it in the semantic
@@ -1462,17 +1512,18 @@ milestones. Their architecture order is:
    multidimensional paths, hosted-body scalar locals, and hosted-body local
    aggregate aliases;
 7. add source-defined routines, source-routine scalar locals, and their ABI
-   after storage and diagnostic behaviour are reliable, including the optional
-   standard text-module interfaces and their target bindings.
+   after storage and diagnostic behaviour are reliable, including failable
+   routines, `defer`, the optional standard text-module interfaces and their
+   target bindings.
 
 After those seven milestones, C, BASIC, far-memory and additional CPU
 experiments test the substrate independence of the established contract.
 
 Each milestone has an executable gate. A development build may reject a
 later-stage construct with an implementation-stage diagnostic, but only a
-build that passes the full applicable inventory may claim 0.5 conformance.
+build that passes the full applicable inventory may claim 0.6 conformance.
 
-General bounded views, parameter modes, floating point, and other post-0.5 design work
+General bounded views, parameter modes, floating point, and other post-0.6 design work
 do not enter the first milestones accidentally. They require a language
 decision, specification changes, conformance fixtures, and a lowering contract
 before implementation.
