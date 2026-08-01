@@ -20,10 +20,17 @@ Lanternfly also stands on its own: the same source model should be capable of
 lowering to Z80, 6502, 8086, C, BASIC, and other substrates for which a backend
 and runtime contract can be supplied.
 
-The first implementation is a desktop-hosted compiler in the Debug80
-monorepo. The long-term goal includes native compilers that run on selected
-8-bit systems. A self-hosted compiler may use a smaller implementation subset,
-but it must preserve the same source semantics and conformance results.
+Lanternfly is a small-system language first. The governing implementation is
+a self-hosted compiler on an 8-bit machine (project codename Candlemoth): a
+single-pass compiler of roughly sixteen kilobytes that reads declaration-ordered
+source once and emits native code directly. The desktop-hosted compiler in the
+Debug80 monorepo ships first chronologically, but it follows the small
+compiler's architecture and accepts exactly the same programs. A hosted
+implementation may not use its host's conveniences — unbounded recursion,
+garbage collection, deferred resolution — in ways the small compiler could not
+mirror. The philosophy runs in one direction: a language that compiles well in
+sixteen kilobytes of Z80 is trivially strong on larger systems, and ports to
+C, Rust or another host inherit a design that never assumed a lazy runtime.
 
 A Z80 backend can serve several platform profiles, including TEC-1G, TRS-80,
 ZX81, and ZX Spectrum systems. CPU lowering and platform services are separate
@@ -89,10 +96,23 @@ Lanternfly's core control structures use no labels or line numbers. Raw
 assembly may still use the selected assembler's labels for low-level
 destinations.
 
+The syntax aims to read as executable pseudocode. Structured BASIC already
+occupies that role in practice: when a coding exercise asks for
+language-neutral pseudocode, what comes out resembles the structured BASIC line — words for declarations and control,
+one statement per line, no punctuation vocabulary to learn first. Lanternfly
+is Pascal-inflected in its type discipline but BASIC in its philosophical
+grounding, particularly in the exclusion of source-level pointers and manual
+memory management.
+
 Modules are written in dependency order. Imports come first; every local type,
-constant, storage object and routine must be declared before use, with the one
-exception that a routine may call itself after its signature has been checked.
-The rule supports a small compiler without dictating how many internal passes a
+constant, storage object and routine must be declared before use. A routine
+may call itself after its signature has been checked, and a forward
+declaration supplies a routine's signature ahead of its body, so mutually
+recursive routines remain expressible in declaration order. A forward
+signature must be completed by a body later in the same module; the compiler
+resolves calls to it by backpatching, the same mechanism that resolves a
+forward branch. The rule
+supports a single-pass compiler without dictating how many internal passes a
 desktop implementation uses.
 
 The loop vocabulary is deliberately small: inclusive `for ... to`, exclusive
@@ -100,7 +120,40 @@ The loop vocabulary is deliberately small: inclusive `for ... to`, exclusive
 indefinite iteration. `exit` leaves only the innermost loop, `continue` begins
 its next iteration, and `return` leaves a routine or hosted body.
 
-## Storage model
+## Small systems first
+
+**Direction:** the reference compiler architecture is single pass, direct
+emitting and self-hostable; every language rule must be affordable inside it.
+
+The reference architecture reads each module once in declaration order,
+keeps a compact symbol table, emits machine code as it goes and resolves
+forward jumps and forward calls by backpatching. Statement structure compiles
+iteratively against an explicit block stack; expressions compile through an
+operator-precedence loop with explicit operand and operator stacks. Bounded
+stacks and indexed pools replace host recursion and heap allocation, so the
+compiler itself is written in the storage style the language prescribes.
+
+A feature enters the language only when its cost inside the reference
+compiler is understood and acceptable. The small compiler's core budget —
+on the order of sixteen kilobytes of code — is a standing design constraint,
+in the tradition of compilers that were judged by how well they compiled
+themselves. Toolchain facilities that cannot meet this bar, such as
+whole-program optimization, provenance mapping and rich diagnostics, remain
+host-side toolchain services rather than language requirements; an
+error-code-and-location diagnostic surface is a conforming implementation.
+
+There is no relocating linker anywhere in the design. Libraries reach a
+program in three forms, all linker-free: source imports compiled into the
+whole program in dependency order; compiled export-interface images that
+restate a module's public symbols without re-reading its source; and
+fixed-address libraries — on banked systems, ROM libraries — whose code is
+already placed and whose interface image simply binds names to addresses.
+Relocatable object formats and link editors are permanently out of scope.
+
+On-target backends emit machine code directly to memory or to an image file.
+Assembly-text generation through AZM or another assembler remains a
+transparency and portability backend, not the primary path, and the self-hosted
+compiler does not contain an assembler.
 
 **Direction:** program storage is predominantly allocated in the static memory
 map.
@@ -197,7 +250,10 @@ The current priority order is:
 6. wider numeric and optional floating-point facilities.
 
 Real Glimmer programs will test this order. Corpus evidence can move a feature
-forward when existing game logic cannot be expressed cleanly without it.
+forward when existing game logic cannot be expressed cleanly without it. The
+small-system gate works in the other direction: a proposal that cannot state
+its cost inside the reference single-pass compiler is not ready for the
+language, whatever a desktop implementation could absorb.
 
 The completed corpus pass moved signed bytes, multiple integer widths, local
 aggregate aliases, multidimensional indexing and opaque device addresses into

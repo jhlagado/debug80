@@ -1371,7 +1371,8 @@ Deliver:
   zero-validity machinery with fresh per-call lifetime;
 - return-path analysis;
 - declaration-ordered call graph and profile recursion checks;
-- direct self-call recognition and rejection of calls to later routines;
+- direct self-call recognition, `forward sub` declaration and completion
+  checks, and rejection of calls to unforwarded later routines;
 - `extern sub` bindings and ABI validation;
 - compiler-supplied interfaces for the optional standard text modules and
   their five stable service bindings;

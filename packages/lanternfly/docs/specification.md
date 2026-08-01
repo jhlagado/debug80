@@ -1,8 +1,14 @@
 # Lanternfly language specification
 
-Edition: 0.4 implementation baseline
+Edition: 0.5 working draft
 Implementation status: no compiler exists
 Normative status: source-language contract for the first compiler
+
+This edition adopts the charter's small-systems-first direction. The reference
+implementation architecture is a single-pass, self-hostable compiler that
+emits native code directly, and every rule in this contract must remain
+affordable inside that architecture. A hosted implementation accepts exactly
+the programs that the reference architecture accepts.
 
 The companion [conformance and diagnostics contract](conformance.md) collects
 the mandatory errors, warnings, runtime faults, semantic vectors and program
@@ -33,7 +39,7 @@ Lanternfly is a statically typed structured BASIC for fixed-memory systems. It
 can replace ordinary AZM program logic in standalone programs as well as
 Glimmer bodies.
 
-The complete 0.4 language includes:
+The complete 0.5 language includes:
 
 - fixed-width signed and unsigned integers;
 - nominal enums and checked subrange types;
@@ -46,10 +52,13 @@ The complete 0.4 language includes:
 - `if`, `select`, counted, collection and conditional loops;
 - routines with optional parameters, local scalar storage and optional
   results;
+- forward routine declarations, so mutually recursive routines remain
+  expressible in declaration order;
 - source modules with private declarations and explicit exports;
 - optional standard modules for portable character and text input and output;
-- target-independent lowering through AZM, another assembler, C or a selected
-  BASIC dialect.
+- direct native-code emission as the reference lowering path, with AZM,
+  another assembler, C or a selected BASIC dialect as transparency and
+  portability backends.
 
 The first compiler delivers this contract in K0 through K2 stages. K0 hosted
 bodies and K1 structured storage form the first implementation target. Source
@@ -145,13 +154,17 @@ that prefix, a declaration may use imported names and earlier local
 declarations only. A type, constant, enum member, storage name or external
 routine becomes available after its complete declaration has been checked. A
 `sub` signature becomes available after its header has been checked and before
-its body, which permits a direct self-call. Its body may call imported
-routines, earlier local routines and itself; it cannot call a later routine.
+its body, which permits a direct self-call. A `forward sub` declaration makes
+a signature available in the same way before its body has appeared, under the
+rules in section 11.6. A routine body may call imported routines, earlier
+local routines, itself and any visible forward-declared routine; it cannot
+call a routine whose signature appears later.
 
-There are no implicit forward references. In particular, a type annotation
-cannot name a later type, an initializer cannot name its own or a later
-declaration, and a routine body cannot use a later constant, variable or
-routine. An implementation may retain a complete syntax tree and perform
+There are no implicit forward references, and `forward sub` is the only
+explicit one. A type annotation cannot name a later type, an initializer
+cannot name its own or a later declaration, and a routine body cannot use a
+later constant, variable or unforwarded routine. No declaration category
+other than a source routine has a forward form. An implementation may retain a complete syntax tree and perform
 several internal passes, but accepted source must have the same visibility as
 a compiler that processes declarations in order.
 
@@ -1869,7 +1882,9 @@ name.
 The parameter and result types in a routine signature must already be visible.
 After that signature is checked, the routine name is visible within its own
 body and in later declarations. This permits direct recursion on a capable
-target. A call to a later routine is a declaration-before-use error.
+target. A call to a routine whose signature has not yet appeared is a
+declaration-before-use error; section 11.6 defines the forward declaration
+that supplies a signature ahead of its body.
 
 ### 11.2 Invocation
 
@@ -1999,16 +2014,65 @@ end
 `exit` remains loop control. `return` leaves the routine, or reaches the host
 epilogue when used without a value in a hosted body under section 13.3.
 
-### 11.6 Calling convention
+### 11.6 Forward declarations
+
+`forward sub` declares a routine's complete signature before its body:
+
+```lanternfly
+forward sub updateEnemies()
+
+sub updatePlayer()
+    if playerCollides() then
+        updateEnemies()
+    end
+end
+
+sub updateEnemies()
+    if enemyCollides() then
+        updatePlayer()
+    end
+end
+```
+
+A forward declaration is checked exactly as a routine header. Its parameter
+and result types must already be visible, and the routine name enters the
+module value scope at that point under the ordinary collision rules. From
+that point the routine may be called wherever a completed routine could be
+called. A call made before the body has appeared has the same meaning as a
+call made after it; a backend resolves such calls by backpatching, the same
+mechanism that resolves a forward branch, so a forward declaration adds no
+runtime cost to the calls it enables.
+
+The completing declaration is an ordinary `sub` later in the same module. Its
+header must repeat the forward header exactly apart from the word `forward`:
+the same name spelling, export status, parameter storage classes, parameter
+names and types in the same order, and the same result type or its absence.
+A completing header that differs in any of these is `E-FORWARD-002`.
+
+Each routine has at most one forward declaration, and a forward name follows
+the ordinary duplicate-declaration rules: a second forward declaration for
+the same name, or a forward declaration for a name that is already visible,
+is a collision error. An exported forward declaration exports the routine,
+and its completing header repeats `export`. A module whose end is reached
+with an uncompleted forward declaration is `E-FORWARD-001`.
+
+`forward` applies only to source routines. An `extern sub` is complete
+without a body, so it can neither carry `forward` nor complete a forward
+declaration. Hosted bodies contain no routine declarations, so a forward
+declaration cannot appear there. The program entry may be forward-declared,
+because its completing body satisfies the entry rules unchanged.
+
+### 11.7 Calling convention
 
 Source semantics give each invocation fresh scalar parameters and locals. A
 backend may place them in registers, stack slots or both. It may use static
 temporaries when whole-program analysis proves that overlapping invocations
 cannot occur.
 
-Recursion is a target-profile capability. Declaration-before-use permits a
-routine to call itself but makes mutual recursion in one source program
-inexpressible. A profile without recursion rejects a direct self-cycle. A
+Recursion is a target-profile capability. A routine may call itself, and
+forward declarations under section 11.6 make mutual recursion expressible. A
+profile without recursion rejects any cycle in the source call graph, whether
+a direct self-call or a cycle through forward-declared routines. A
 recursion-capable profile provides independent frames, declares its stack and
 reentrancy rules, and reports per-routine frame size plus any configured maximum
 stack bound. Static temporaries are invalid where recursion, reentrancy,
@@ -2298,7 +2362,19 @@ compiler implementation strategy. A whole-program build:
 A compiler may keep syntax trees, typed IR and several internal passes. It may
 also process a source unit once, retain a compact symbol table and leave branch
 and address fixups to its backend. Both implementations accept the same
-declaration-ordered programs.
+declaration-ordered programs. The second strategy is the reference
+architecture under the charter's small-systems-first direction.
+
+A program is linked by compilation rather than by a relocating link editor.
+Libraries reach a program in three forms. A source import compiles the
+library into the whole program in dependency order. A compiled
+export-interface artifact restates a module's exported declarations, so an
+unchanged library need not be re-read from source; it contributes symbols,
+not relocatable code. A fixed-address library, such as a ROM library on a
+banked system, pairs an export-interface artifact with code that is already
+placed: its symbols bind to final addresses and the build emits no code for
+it. Relocatable object formats and link-time relocation are outside the
+language and its toolchain contract.
 
 Lanternfly source module filenames use the exact lowercase `.lafy` extension.
 The extension is part of each source import path. A compiled export-interface
@@ -2846,6 +2922,7 @@ extern
 false
 fill
 for
+forward
 from
 if
 import
@@ -2936,6 +3013,7 @@ declaration         ::= const-decl
                       | range-decl
                       | record-decl
                       | extern-sub-decl
+                      | forward-sub-decl
                       | sub-decl
 
 exportable-declaration
@@ -2945,6 +3023,7 @@ exportable-declaration
                       | range-decl
                       | record-decl
                       | extern-sub-decl
+                      | forward-sub-decl
                       | sub-decl
 
 const-decl          ::= "const" value-name "as" type-expr
@@ -2979,6 +3058,9 @@ extern-sub-decl     ::= "extern" "sub" value-name "(" params? ")"
                         external-binding? newline
 external-binding    ::= "at" address-const-expr
                       | "from" string-literal
+
+forward-sub-decl    ::= "forward" "sub" value-name "(" params? ")"
+                        ("as" type-expr)? newline
 
 params              ::= param ("," param)*
 param               ::= aggregate-storage-class? value-name "as" type-expr
@@ -3186,7 +3268,7 @@ Parentheses make a discarded equality test explicit:
 (left = right)
 ```
 
-## 16. Post-0.4 design queue
+## 16. Post-0.5 design queue
 
 The following questions remain open or provisional. None blocks K0 or K1:
 
@@ -3194,7 +3276,6 @@ The following questions remain open or provisional. None blocks K0 or K1:
 - case-insensitive identifier resolution after parser experiments;
 - whether real programs justify source-visible named placement classes beyond
   `at` and build-configured regions;
-- an explicit `forward sub` declaration if mutual recursion proves necessary;
 - source syntax for narrowing an external routine's effect contract;
 - native callback declarations and their call-graph/reentrancy contract;
 - read-only, output and in/out aggregate parameters and general bounded-view
@@ -3204,8 +3285,14 @@ The following questions remain open or provisional. None blocks K0 or K1:
 - whether translated programs justify `repeat`/`until` or named outer-loop
   exits;
 - module aliases and re-exports;
-- optional `float32` semantics and its target capability contract.
+- standard capability modules for optional built-in scalar types and long
+  strings: `u32`/`i32`, `float32` and a possible `float48` as reserved words
+  legalized by an explicit `standard/` import, implemented through
+  profile-bound runtime components on the §12.4.1 text-service pattern, with
+  one generic wide-scalar lowering strategy and per-type descriptor and
+  helper tables, so each program selects and pays for its own arithmetic
+  tier; the capability-module set remains closed and toolchain-versioned.
 
 Implementation evidence from representative Glimmer bodies, Tetro and Pacmo
 routines, and AZM Book 3 algorithms will determine whether these points enter
-a later edition. Until then, the 0.4 rules remain authoritative.
+a later edition. Until then, the 0.5 rules remain authoritative.
