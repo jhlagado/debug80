@@ -61,8 +61,12 @@ else
 end
 ```
 
-The selected expression runs once. Cases contain compatible compile-time
-ordinal constants, do not fall through and need no `break`.
+The selected expression runs once. At most one case body matches. After that
+body, execution continues after the complete `select`, not in the following
+case body. Fall-through means continuing into the following case body. Here,
+execution continues after the complete `select`, so no `break` statement is
+needed. Several values may appear on one `case` line to select the
+same body.
 
 Ranges use the same boundary words as types and loops:
 
@@ -356,9 +360,13 @@ to host-manifest names as well as source modules.
 
 ## Standalone entry and hosted units
 
-An executable build manifest selects one parameterless, result-free,
-source-defined `sub` as its entry. Returning from that routine invokes the
-profile's program-termination service. A library build has no entry.
+An executable build selects one parameterless, result-free, source-defined
+`sub` as its entry. An omitted manifest entry name selects `main`; an explicit
+name overrides the default. The entry may carry a `fails` clause. Normal
+completion reports success, while `fail` supplies an error-set member to the
+profile's program-termination service. Launcher arguments come through the
+optional standard program-arguments module rather than entry parameters. A
+library build has no entry.
 
 A hosted body is a different compilation unit. It contains local declarations
 followed by statements, while the host manifest supplies every non-local name

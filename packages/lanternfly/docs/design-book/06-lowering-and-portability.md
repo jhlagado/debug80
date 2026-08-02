@@ -24,7 +24,7 @@ The IR carries every language decision that a backend needs:
 - integer width, signedness and result type;
 - Boolean canonical form;
 - enum identity, representation and member order;
-- subrange host and inclusive normalized bounds;
+- subrange base type and inclusive normalized bounds;
 - counted-string capacity, header width and exact sealed layout;
 - array index domains, counts and exact strides;
 - path evaluation and fault order;
@@ -169,7 +169,7 @@ A Microsoft-style 16-bit dialect may:
 - use `GOSUB` plus generated argument/result cells for non-recursive calls;
 - represent 32-bit values with paired words or a dialect capability.
 
-Array bounds need particular care. Lanternfly count shorthand `[64]` contains
+Array bounds require a separate check. Lanternfly count shorthand `[64]` contains
 64 elements, while a BASIC `DIM body(64)` may contain 65. The backend can emit
 an upper bound of 63 or flatten the storage.
 
@@ -256,7 +256,7 @@ calls.
 ## Arithmetic and control
 
 Each typed arithmetic node records operand types, result width, constants,
-wrapping rule and possible fault. A backend selector can then choose an
+wrapping rule and possible fault. The backend selector then selects an
 instruction, inline sequence or helper without reapplying host promotion rules.
 
 Structured control becomes blocks and branches before emission. This permits

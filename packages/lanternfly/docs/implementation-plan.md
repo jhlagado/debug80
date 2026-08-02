@@ -292,7 +292,7 @@ domain has a null `rootTypeId`; an enum domain names its root enum.
 named enum or subrange and is otherwise null. Strides are in bytes, ordered
 from the first source dimension to the last.
 
-The semantic validator resolves subrange hosts, checks member, bound and
+The semantic validator resolves subrange base types, checks member, bound and
 counted-string-capacity representations, recomputes each string size, domain
 count, record offset, stride and exact size, and rejects any disagreement.
 Enum/subrange/string-capacity dependencies and direct or mutual record/array
@@ -313,7 +313,9 @@ ConstantSymbol
     id
     name
     kind: "constant"
-    typeId
+    constantType:
+        { kind: "typed", typeId }
+        or { kind: "exactInteger" }
     value or providerAddressReference
     visibility
 
@@ -334,19 +336,22 @@ ProviderAddressReference
 ```
 
 A constant normally carries an ordinary scalar value or aggregate initializer.
-A constant whose `typeId` resolves to `near address` or `far address` instead
-carries a provider address binding. The target profile resolves `bindingId` to
-the address class, substrate representation and optional device-space metadata,
-then resolves that class's representation-validity contract. The metadata
-preserves device-space identity for the service contract, debugger and generated
+`exactInteger` records a mathematical integer with no storage representation;
+it is valid in source and compiled export interfaces. A typed constant whose
+`typeId` resolves to `near address` or `far address` instead carries a provider
+address binding. The target profile resolves `bindingId` to the address class,
+substrate representation and optional device-space metadata, then resolves
+that class's representation-validity contract. The metadata preserves
+device-space identity for the service contract, debugger and generated
 artifacts without creating a nominal Lanternfly type. The address constant is
-available in ordinary same-class assignment, equality and call expressions, but
-it is not an ordinal constant and cannot appear in a case, range, array domain
-or counted-loop step.
+available in ordinary same-class assignment, equality and call expressions,
+but it is not an ordinal constant and cannot appear in a case, range, array
+domain or counted-loop step.
 
 The two constant payload forms are mutually exclusive. A provider address
-binding is valid only for an address type; an ordinary scalar or aggregate
-constant uses `value`. The semantic validator rejects a missing target binding,
+binding is valid only for a typed address constant; an ordinary scalar,
+aggregate or exact integer constant uses `value`. The semantic validator
+rejects a missing target binding,
 an address-class mismatch, a representation that violates the class's validity
 contract or device metadata incompatible with the selected service contract.
 
@@ -508,7 +513,8 @@ The initial target profile records:
   metadata;
 - substrate-symbol resolver;
 - external bindings, ABI definitions and adapters;
-- optional standard text-service bindings;
+- program-termination implementation;
+- optional standard-service bindings for text and launcher arguments;
 - optional callable cost metadata;
 - runtime helper implementations;
 - assembly-fragment support;
@@ -670,6 +676,10 @@ SubstrateSymbolResolver
     id
     resolutionPhase: "configuration" | "link"
     implementationId
+
+ProgramTermination
+    implementationId
+    numericExitStatus
 ```
 
 `implementationId` resolves in the implementation registry supplied by the
@@ -680,6 +690,14 @@ profile and form an acyclic graph. ABI IDs resolve through
 and their runtime component resolves through `runtimeComponents`. A
 `FaultBinding.faultId` is one public fault ID and its component is non-returning.
 All IDs are unique within their named arrays.
+
+The profile contains one `programTermination` record. Its `implementationId`
+resolves through the backend registry, and `numericExitStatus` is Boolean. The
+implementation consumes the abstract entry outcome and does not return to
+Lanternfly code. A true flag requires exit status zero for success and
+`ordinal + 1` for failure; a false flag requires a backend contract and test
+trace that distinguish success and every error member without assigning a
+numeric process status.
 
 The backend registry entry named by an ABI definition supplies its parameter and
 result carriers, calling convention, preserved and clobbered resources, stack
@@ -698,16 +716,17 @@ or its named adapter. A profile-list availability record must contain the
 selected profile ID; otherwise the callable is unavailable and receives
 `E-TARGET-001`.
 
-The compiler-supplied standard text-module interfaces use the same
+The compiler-supplied standard service-module interfaces use the same
 `externalBindings`, ABI, adapter and runtime-component records. They require
 the stable service IDs `standard.textOutput.writeCharacter`,
-`standard.textOutput.writeText`, `standard.textOutput.writeNewline` and
-`standard.textInput.readCharacter` and `standard.textInput.readLine`. A profile
-may omit either module, but every operation used from an imported module must
-resolve. The `writeText` and `readLine` ABIs may use compiler-only read-only
-source and writable-destination text carriers. They are not
-`AggregateParameter` records and do not change the version-1 host callable
-schema.
+`standard.textOutput.writeText`, `standard.textOutput.writeNewline`,
+`standard.textInput.readCharacter`, `standard.textInput.readLine`,
+`standard.programArguments.argumentCount` and
+`standard.programArguments.readArgument`. A profile may omit any module, but
+every operation used from an imported module must resolve. The `writeText`,
+`readLine` and `readArgument` ABIs may use compiler-only read-only-source or
+writable-destination text carriers. They are not `AggregateParameter` records
+and do not change the version-1 host callable schema.
 
 The selected profile contains one `substrateSymbolResolver`. Its
 `implementationId` resolves through the backend registry. At M0 the validator
@@ -1003,6 +1022,13 @@ enters the value namespace after its signature is checked and before its body,
 which permits a direct self-call. No internal pass may expose a later
 declaration to an earlier body.
 
+For an unannotated constant, the checker evaluates the initializer with no
+expected type. An exact integer result creates an `exactInteger` entry; a typed
+scalar result creates a typed entry. `E-CONST-004` rejects an unannotated
+initializer with neither result, and rejects omitted types on aggregate or
+placed constants. An explicit annotation supplies the ordinary initializer
+destination type.
+
 ### 6.4 Layout completion
 
 The checker computes a declaration's ordinal bounds, string form, record
@@ -1082,7 +1108,7 @@ never accepted as implicit Lanternfly semantics.
 
 The first backend emits canonical AZM source and a provenance map. It should
 start with straightforward, auditable instruction sequences. Optimisation
-begins after interpreter and emulator results agree.
+begins after the interpreter and emulator produce matching results.
 
 The backend receives a typed program and target profile. It owns:
 
@@ -1214,7 +1240,10 @@ The first executable fixture sequence is:
 11. a source-routine version of the Tetro body;
 12. a source-routine version of the Pacmo body.
 13. optional standard text output and input through injected interpreter
-    services and one target binding.
+    services and one target binding;
+14. default and explicit entry selection, successful and failed termination,
+    and optional launcher arguments through injected interpreter services and
+    one target binding.
 
 ## 10. Delivery milestones
 
@@ -1324,7 +1353,7 @@ Deliver:
 
 Gate:
 
-- interpreter and AZM execution agree for character/string,
+- interpreter and AZM execution produce matching results for character/string,
   Counter, Dot, Slide and Trail fixtures;
 - an AZM diagnostic maps back to the responsible Lanternfly span;
 - statements with multiple expansions, folded nodes, inline assembly, runtime
@@ -1357,10 +1386,10 @@ Deliver:
 Gate:
 
 - exact 3-, 4-, 6-, and 8-byte records pass;
-- one hosted Tetro storage body and one hosted Pacmo storage body agree across
-  interpreter and AZM;
-- source-owned initialization and module-installation traces agree across
-  interpreter and AZM;
+- interpreter and AZM produce matching results for one hosted Tetro storage
+  body and one hosted Pacmo storage body;
+- interpreter and AZM produce matching source-owned initialization and
+  module-installation traces;
 - repeated hosted-body entries receive freshly initialized, independent local
   storage;
 - every applicable K1 rejection fixture reports its stable diagnostic ID;
@@ -1377,8 +1406,7 @@ Deliver:
   zero-validity machinery with fresh per-call lifetime;
 - return-path analysis;
 - failable signatures: `fails`-clause checking against `u8`-representation
-  enums, forward-declaration agreement, and the entry and extern
-  exclusions;
+  enums, forward-declaration agreement and the external-routine exclusion;
 - failure-consumption analysis for `or fail`, failure defaults and
   `on error` binding, including position restrictions, the
   declaration-initializer non-completion rule and the `E-FAIL` diagnostics;
@@ -1388,14 +1416,16 @@ Deliver:
 - direct self-call recognition, `forward sub` declaration and completion
   checks, and rejection of calls to unforwarded later routines;
 - `extern sub` bindings and ABI validation;
-- compiler-supplied interfaces for the optional standard text modules and
-  their five stable service bindings;
+- compiler-supplied interfaces for the optional standard text and
+  program-arguments modules and their seven stable service bindings;
 - export-free capability-import handling for `standard/wide32.lafy` and
   `standard/long-strings.lafy`: the module-local enabled-capability set,
   capability-gating diagnostics under `E-CAP-001`, target-requirement
   checks under `E-TARGET-001`, and `requiredCapabilities` recording in
   compiled export interfaces;
-- standalone program-entry validation;
+- standalone program-entry validation, including omitted-field `main`
+  selection, explicit override, failable termination and the selected
+  profile's success/failure mapping;
 - ABI frame and adapter reporting, including the success/failure channel
   for failable routines.
 
@@ -1418,6 +1448,11 @@ Gate:
   consumes an overlong input through its line ending;
 - standard text calls produce the required ordered device-I/O and storage
   traces;
+- `argumentCount` and `readArgument` produce the required bounded results and
+  ordered launcher-input and destination-write traces;
+- default and explicit entry selection pass, and successful and failed entry
+  outcomes reach the selected program-termination implementation with the
+  required numeric mapping where applicable;
 - every applicable K2 rejection fixture reports its stable diagnostic ID;
 - the capability-gating vectors pass: missing-import, unsatisfied
   target-requirement, unused-import and cross-module cases report their
@@ -1452,7 +1487,7 @@ The first compiler is complete when:
 - M0 through M6 gates pass;
 - the applicable conformance inventory is executable and green;
 - unsupported 0.6 profile capabilities produce required diagnostics;
-- interpreter and AZM results agree for the selected corpus;
+- interpreter and AZM produce matching results for the selected corpus;
 - generated AZM assembles under the supported AZM version;
 - source, generated-source, and machine mappings compose;
 - emitted symbol, layout, helper, effect, startup, frame, and target-assumption

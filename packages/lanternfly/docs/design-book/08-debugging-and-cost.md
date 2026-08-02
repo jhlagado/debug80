@@ -78,7 +78,7 @@ Debug metadata includes:
 - integer width and signedness;
 - Boolean canonical value;
 - enum name, member and representation;
-- subrange type, host and bounds;
+- subrange type, base type and bounds;
 - counted-string capacity, current length, short/long form and payload text;
 - array domains, counts, strides and lower ordinals;
 - record fields and offsets;

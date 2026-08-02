@@ -110,7 +110,7 @@ A backend-facing type descriptor can represent:
 integer(width, signed)
 boolean(width=8, falseBits=0, trueBits=1)
 enum(typeId, representationType, members)
-subrange(typeId, hostOrdinalType, lowerOrdinal, upperOrdinal)
+subrange(typeId, baseOrdinalType, lowerOrdinal, upperOrdinal)
 string(capacity, headerWidth, exactSize, terminator=0,
        reservedAllOnesLength=true, sealed=true)
 record(typeId, exactSize, fields)
@@ -151,12 +151,12 @@ form. The all-ones length is invalid in either form. The target's ordinary
 endianness applies to the 16-bit length. Its sealed
 header, payload and terminator have no independently addressable source fields.
 
-The standard text services also use two compiler-only descriptors. The
-`writeText` source records either a decoded literal payload or one evaluated
-`string[N]` storage path together with its string descriptor and storage
-class. The `readLine` destination records one evaluated writable `string[N]`
-path with the same static layout facts. Both are temporary call operands, not
-Lanternfly types, aggregate aliases or general bounded views.
+The standard services also use compiler-only descriptors. The `writeText`
+source records either a decoded literal payload or one evaluated `string[N]`
+storage path together with its string descriptor and storage class. The
+`readLine` and `readArgument` destinations each record one evaluated writable
+`string[N]` path with the same static layout facts. These are temporary call
+operands, not Lanternfly types, aggregate aliases or general bounded views.
 
 ## 4. Suggested Lanternfly IR
 
@@ -345,8 +345,8 @@ wrapping/fault rule
 source node
 ```
 
-The backend may choose an instruction or helper only when its result matches
-the recorded semantics for all inputs.
+The backend may emit an instruction or helper only when its result matches the
+recorded semantics for all inputs.
 
 Destination conversions also record whether value analysis proved them safe,
 whether the round-trip arithmetic rule suppressed the default warning and
@@ -549,13 +549,13 @@ A target defines a default ABI capable of:
 - local cleanup;
 - host/native adapters.
 
-A target that supplies the optional standard text modules also defines
+A target that supplies the optional standard service modules also defines
 carriers for the compiler-only read-only source used by `writeText` and the
-writable destination used by `readLine`. A carrier may contain an address,
-length, capacity or mapping context as required by that target. None of those
-fields becomes a source value. `readLine` returns a canonical `boolean`. The
-remaining standard text operations use ordinary `u8`, no-result or `u8`-
-result ABI forms.
+writable destinations used by `readLine` and `readArgument`. A carrier may
+contain an address, length, capacity or mapping context as required by that
+target. None of those fields becomes a source value. `readLine` and
+`readArgument` return canonical `boolean` values. The remaining standard
+service operations use ordinary `u8`, no-result or `u8`-result ABI forms.
 
 Lanternfly does not dictate register or stack placement. The failure channel
 is normative as an abstract obligation — a discriminant and a code, produced
@@ -563,6 +563,14 @@ and consumed at the boundaries section 11.8 of the specification defines —
 while its register realization is target ABI design like every other row of
 this section; the carry/A choice below is the provisional Z80 candidate, not
 a language rule.
+
+For a failable program entry, this channel terminates at the target profile's
+program-termination implementation rather than a source caller. Normal entry
+completion supplies the successful outcome; `fail` supplies the failure
+outcome and zero-based enum member. A numeric-exit-status implementation emits
+zero for success and `n + 1` for a failed member whose ordinal is `n`. Cost
+reports attribute any boundary conversion and termination component to program
+termination rather than to ordinary failable calls.
 
 ### 8.1 Initial Z80 ABI candidate
 
@@ -672,10 +680,11 @@ front end. They do not reach the backend as runtime operations.
 
 Cost reports distinguish source calls from compiler helpers.
 
-### 9.2 Optional standard text services
+### 9.2 Optional standard services
 
-The compiler-supplied interfaces for `standard/text-output.lafy` and
-`standard/text-input.lafy` map their exports to five stable service IDs:
+The compiler-supplied interfaces for `standard/text-output.lafy`,
+`standard/text-input.lafy` and `standard/program-arguments.lafy` map their
+exports to seven stable service IDs:
 
 ```text
 standard.textOutput.writeCharacter
@@ -683,24 +692,31 @@ standard.textOutput.writeText
 standard.textOutput.writeNewline
 standard.textInput.readCharacter
 standard.textInput.readLine
+standard.programArguments.argumentCount
+standard.programArguments.readArgument
 ```
 
-The selected target resolves each used ID through its existing external
-binding, ABI, adapter and runtime-component registries. No new stream or file
-registry is implied. A missing binding is `E-TARGET-001` for the optional
-module that the program imported.
+The first five IDs belong to `standard/text-output.lafy` and
+`standard/text-input.lafy`; the final two belong to
+`standard/program-arguments.lafy`. The selected target resolves each used ID
+through its existing external-binding, ABI, adapter and runtime-component
+registries. No new stream, file or process registry is implied. A missing
+binding is `E-TARGET-001` for the optional module that the program imported.
 
-The typed IR records these calls as visible `StandardCall` effects with
-declared device I/O and normal return. `writeCharacter` receives one converted
-`u8`. `writeText` receives the compiler-only text source described in sections
-3 and 5.4 and records a read of its storage argument when it has one.
-`writeNewline` has no source operand. `readCharacter` blocks in the abstract
-service model until it produces one `u8` result. `readLine` receives the
-compiler-only writable destination, blocks until a complete line has been
+The typed IR records these calls as visible `StandardCall` effects with normal
+return. The text operations carry declared device I/O. `writeCharacter`
+receives one converted `u8`. `writeText` receives the compiler-only text source
+described in sections 3 and 5.4 and records a read of its storage argument when
+it has one. `writeNewline` has no source operand. `readCharacter` blocks in the
+abstract service model until it produces one `u8` result. `readLine` receives
+the compiler-only writable destination, blocks until a complete line has been
 consumed, writes the bounded result and produces one canonical Boolean result.
-The interpreter implements the operations through injected services and
-records their ordered character, text, newline, input and destination-write
-events.
+`argumentCount` produces one `u8`; `readArgument` receives an ordinary `u8`
+index and the compiler-only writable destination, writes the specified bounded
+result and produces one canonical Boolean result. `argumentCount` is pure for
+one invocation; `readArgument` records only its destination write. The
+interpreter implements all seven operations through injected services and
+records their ordered service and destination-write events.
 
 The backend may bind several operations to one monitor routine or implement
 one operation with generated substrate code. It includes only the bindings,
@@ -806,8 +822,8 @@ repeatedly mapping each byte when a target can do better.
 
 ### 11.3 Calls
 
-Far calls must support nesting according to profile. If interrupts can observe
-or alter the bank, the profile must specify disabling, preservation or
+Far calls must support nesting according to profile. If an interrupt handler
+can read or alter the bank, the profile must specify disabling, preservation or
 common-memory trampolines.
 
 ## 12. Target registry and opaque address metadata
@@ -1043,7 +1059,7 @@ kind
 exact size
 fields with offsets
 enum representation and ordered members
-subrange host type and inclusive ordinal bounds
+subrange base type and inclusive ordinal bounds
 array index domains/counts/strides
 string capacity, header width, exact size, terminator and sealed invariants
 Boolean width and canonical false/true bit patterns
@@ -1061,7 +1077,9 @@ ConstantSymbol
   id
   name
   kind: constant
-  typeId
+  constantType:
+    { kind: typed, typeId }
+    or { kind: exactInteger }
   value or providerAddressReference:
     scalar value or aggregate initializer
     ProviderAddressReference { bindingId }
@@ -1080,12 +1098,13 @@ StorageSymbol
   visibility
 ```
 
-A constant entry may contain an ordinary scalar value, an immutable aggregate
-initializer or a provider address reference. Its kind makes it immutable;
-`ConstantSymbol` has no `mutable` or substrate-binding field. Aggregate
-constants obey ordinary initializer, type-identity and exact-layout rules.
-Exactly one of `value` and `providerAddressReference` is present, and the latter
-is valid only when `typeId` names `near address` or `far address`.
+A constant entry may contain an exact integer, an ordinary typed scalar value,
+an immutable aggregate initializer or a provider address reference. Its kind
+makes it immutable; `ConstantSymbol` has no `mutable` or substrate-binding
+field. `exactInteger` has no runtime representation. Aggregate constants obey
+ordinary initializer, type-identity and exact-layout rules. Exactly one of
+`value` and `providerAddressReference` is present, and the latter is valid only
+when a typed constant's `typeId` names `near address` or `far address`.
 `ProviderAddressReference` contains only the binding ID; the constant's
 declared type supplies its expected near/far class. The target profile's
 `ProviderAddressBinding` supplies the actual class, a closed
@@ -1314,7 +1333,7 @@ total.
 
 ## 17. Z80/AZM placement and verification gate
 
-The first backend chooses size-known instruction, helper and adapter forms
+The first backend selects size-known instruction, helper and adapter forms
 before it completes the placement plan. An AZM planning pass also obtains the
 size and explicit addressed ranges of raw module assembly. A branch-relaxation
 change reruns the plan. The backend reserves those assembly ranges and every
@@ -1368,7 +1387,7 @@ backend-focused groups summarize that inventory:
 
 - all type boundary conversions;
 - enum ordinals and checked integer/enum conversion;
-- subrange containment, host widening and checked destination conversion;
+- subrange containment, implicit base-type conversion and checked destination conversion;
 - value-preserving operand widening without third-type synthesis;
 - round-trip destination conversion classification;
 - every binary operator across required type pairs;
@@ -1389,6 +1408,15 @@ backend-focused groups summarize that inventory:
 - optional standard text-module imports, temporary read-only `writeText` and
   writable `readLine` carriers, bounded line-input results, ordered
   output/input service traces and unavailable-binding rejection.
+
+### Program invocation
+
+- default `main` and explicit manifest entry selection;
+- successful and failable entry termination through the selected profile;
+- numeric exit status zero for success and failed ordinal plus one;
+- optional program-arguments import, zero through 255 supplied arguments,
+  repeated reads, temporary writable `readArgument` carriers, bounded copies,
+  invalid indices, launcher-input traces and unavailable-binding rejection.
 
 ### Layout
 
@@ -1435,6 +1463,8 @@ backend-focused groups summarize that inventory:
 - the failure channel across result-free and result-bearing failable
   signatures, including tail-position folding and code preservation across
   deferred cleanup;
+- consumption of a failable entry outcome by the profile's program-termination
+  implementation;
 - rejected recursion cycles on non-recursive profiles;
 - independent frames and stack-cost reporting on recursive profiles.
 
@@ -1513,8 +1543,8 @@ milestones. Their architecture order is:
    aggregate aliases;
 7. add source-defined routines, source-routine scalar locals, and their ABI
    after storage and diagnostic behaviour are reliable, including failable
-   routines, `defer`, the optional standard text-module interfaces and their
-   target bindings.
+   routines, failable program entry, `defer`, the optional standard service
+   interfaces and their target bindings.
 
 After those seven milestones, C, BASIC, far-memory and additional CPU
 experiments test the substrate independence of the established contract.

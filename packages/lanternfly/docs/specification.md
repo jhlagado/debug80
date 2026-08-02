@@ -161,12 +161,12 @@ imports determine a program's tier, and a build reports each capability's
 emitted cost.
 
 Three categories share this machinery and must not be conflated. Capability
-modules are export-free source-language gates. The optional standard text
-modules of section 12.4.1 are service modules: they export ordinary names
+modules are export-free source-language gates. The optional standard modules
+of sections 12.4.1 and 12.4.2 are service modules: they export ordinary names
 and bind services through the same profile registry and cost reporting, but
-they gate no words and change no typing rules. Target-profile support
-claims such as recursion, address classes and far storage are target
-capabilities, which no import controls.
+they gate no words and change no typing rules. Target-profile support claims
+such as recursion, address classes and far storage are target capabilities,
+which no import controls.
 
 Capability imports are monotone: an import may make more programs legal,
 but it may never change the meaning of a program that was already legal.
@@ -475,8 +475,8 @@ returned or placed in an array element.
 Ordinal compatibility follows a root family. All fixed-width integers belong
 to the integer family and retain the conversion rules in section 3.1. Each
 enum begins a distinct family, and a subrange belongs to the family of its
-host. This permits ordinary integer indices of different widths while keeping
-unrelated enums distinct.
+base type. This permits ordinary integer indices of different widths while
+keeping unrelated enums distinct.
 
 An enumeration declares a nominal type with an explicit integer
 representation:
@@ -501,27 +501,29 @@ bitwise operations. An explicit conversion to the representation type exposes
 the ordinal value. Converting an integer to an enum is checked: an invalid
 constant is a compile error and an invalid runtime value causes `F-RANGE`.
 
-A subrange constrains a host ordinal type:
+A subrange defines a named subset of a base ordinal type:
 
 ```lanternfly
 range ScreenColumn as u8 = 0 until 32
 range WarmColour as Colour = red to blue
 ```
 
-The lower endpoint and an inclusive `to` endpoint must belong to the host
-domain. An exclusive integer `until` boundary is a compatible mathematical
-integer and may be one beyond the host's highest value because it is not a
-member of the subrange. An enum boundary remains a member of the host enum.
-After the boundary is normalized, every included value must belong to the host
-and the range must contain at least one value. Its representation and ordering
-come from its host, while its name declares a distinct type.
+The lower endpoint and an inclusive `to` endpoint must belong to the base
+type's domain. An exclusive integer `until` boundary is a compatible
+mathematical integer and may be one beyond the base type's highest value
+because it is not a member of the subrange. An enum boundary remains a member
+of the base enum. After the boundary is normalized, every included value must
+belong to the base type and the range must contain at least one value. Its
+representation and ordering come from its base type, while its name declares a
+distinct type.
 
-A subrange value widens silently to its host type. Assignment, initialization,
-argument passing, return and explicit conversion into a subrange check the
-destination domain. A value outside it is a compile-time error when known and
-otherwise causes `F-RANGE` before the destination changes. Integer arithmetic
-on an integer subrange uses the host integer type and produces the result
-prescribed for that host; assigning the result back performs the range check.
+A value of a subrange type may be used wherever its base type is accepted.
+Assignment, initialization, argument passing, return and explicit conversion
+from the base type into a subrange check the destination domain. A value
+outside it is a compile-time error when known and otherwise causes `F-RANGE`
+before the destination changes. Integer arithmetic on an integer subrange uses
+the base integer type and produces the result prescribed for that type;
+assigning the result back performs the range check.
 An enum subrange retains the enum's non-arithmetic operations.
 
 The all-zero representation is valid for an enum or subrange only when its
@@ -540,8 +542,18 @@ return, `fill` value or counted-loop start, that type propagates to its literal
 leaves. An exact literal in an expected-type context that does not fit is a
 compile error; it does not fall back to `i16` and then narrow with a warning.
 Deliberate low-bit conversion must be written explicitly, as `u8(300)`.
-Without an expected-type context, literal integer operations default to `i16`;
-a value that does not fit requires an explicit conversion.
+
+An unannotated scalar constant initializer supplies no expected type. A
+subtree made entirely from exact values remains exact through unary `+`, unary
+`-`, `+`, `-`, `*`, `/`, `mod`, `^` and `shl`, using mathematical evaluation.
+`not` requires a typed operand, `shr` requires a typed left operand, and
+`and`, `or` and `xor` require at least one typed operand because their meaning
+depends on a finite width. A typed operand, explicit conversion or
+standard value operation applies the ordinary fixed-width rules to its
+containing operation. Outside an unannotated constant initializer and the
+target-address expressions below, literal integer operations without an
+expected type default to `i16`; a value that does not fit requires an explicit
+conversion.
 
 An `at` placement or absolute external binding requires a target-address
 constant expression rather than an ordinary integer expression. It may contain
@@ -786,15 +798,15 @@ bounded-view design and do not weaken the sealed representation in this
 edition. Ordinary source and external routine parameters therefore continue
 to state an exact capacity and alias writable storage.
 
-The optional standard text modules have two deliberately narrow exceptions.
-The compiler-defined `writeText` service accepts a string literal or a storage
-path of any `string[N]` capacity as a read-only text source. `readLine` accepts
-a writable storage path of any `string[N]` capacity as a text destination. The
-compiler may form temporary carriers containing the storage class, payload
-location and known layout information. A carrier exists only for its call, is
-not a source value and cannot be stored, returned, compared, converted or
-rebound. These service contracts do not introduce general read-only, output or
-in/out parameters or bounded views.
+The optional standard service modules have three deliberately narrow
+exceptions. The compiler-defined `writeText` service accepts a string literal
+or a storage path of any `string[N]` capacity as a read-only text source.
+`readLine` and `readArgument` accept a writable storage path of any `string[N]`
+capacity as a text destination. The compiler may form temporary carriers
+containing the storage class, payload location and known layout information. A
+carrier exists only for its call, is not a source value and cannot be stored,
+returned, compared, converted or rebound. These service contracts do not
+introduce general read-only, output or in/out parameters or bounded views.
 
 ## 4. Constants and variables
 
@@ -803,19 +815,42 @@ in/out parameters or bounded views.
 `const` declares a compile-time value:
 
 ```lanternfly
-const screenWidth as u8 = 32
-const maximumLives as u8 = 5
-const visibleMask as u8 = %00000001
-const debuggingEnabled as boolean = false
+const warehouseCapacity = 5000
+const visibleMask as u8 = %10000000
+const debuggingEnabled = false
 ```
 
-The first implementation requires an explicit type. Type inference is
-deferred, so omitting `as Type` is a compile error.
+An annotation is optional for a scalar constant. If an unannotated initializer
+remains an exact integer expression under section 3.1, the declaration creates
+an exact, untyped integer constant. It adopts a fixed integer type when a later
+typed expression or destination requires one. If the initializer already has a
+scalar type, the constant retains it. A Boolean expression therefore produces
+a `boolean` constant, and an enum member produces a constant of its nominal
+enum type:
 
-A scalar constant normally occupies no storage. Explicit placement or target
-export requirements may force a stored representation. A `string[N]` constant
-is immutable aggregate storage initialized from a fitting literal or string
-constant.
+```lanternfly
+enum ReportMode as u8
+    compact
+    detailed
+end
+
+const defaultMode = compact
+```
+
+The `ReportMode` representation remains explicit on the enum declaration.
+There is no untyped enum constant.
+
+An explicit `as Type` supplies the initializer's expected type and applies the
+ordinary conversion and range rules. It is required for string, record and
+array constants, for placed constants and whenever an initializer has neither
+one scalar type nor an exact integer result. Violating this rule is
+`E-CONST-004`.
+
+A scalar constant normally occupies no storage. An exact untyped integer has
+no stored representation. Explicit placement or target export requirements
+may force a typed scalar constant to have a stored representation. A
+`string[N]` constant is immutable aggregate storage initialized from a fitting
+literal or string constant.
 
 An aggregate `const` declares immutable static data:
 
@@ -1022,9 +1057,10 @@ The leading name resolves in the type namespace. Section 2.1 forbids a
 case-insensitive collision between that record type and a callable routine, so
 the same token sequence cannot also resolve as an invocation.
 
-Initializer expressions are evaluated in source order. For a record literal,
-that is the written field order; for an array literal, it is left to right at
-each dimension. Each value must be assignable to its destination type.
+Initializer expressions are evaluated in source order. For a record
+initializer, that is the written field order; for an array initializer, it is
+left to right at each dimension. Each value must be assignable to its
+destination type.
 
 Every string capacity, array dimension, case value, case-range endpoint
 and counted-loop step is a scalar constant expression. A placement uses the target-address constant
@@ -1051,13 +1087,15 @@ already parsed the complete file. In a hosted body, scalar host-manifest
 constants other than opaque address bindings, and every visible manifest enum
 member, also satisfy these constant-expression contexts.
 
-Outside the target-address constant expressions defined in section 3.1, the
-compiler resolves every operator's operand and result types before folding it.
-Each folded operation applies the same wrapping, shift, conversion and fault
-rules as runtime evaluation. Only an untyped literal or layout-query result
-remains exact until context or the `i16` default gives it a type. Consequently,
-if `maximum as u16` is 65535, `(maximum + 1) / 2` is zero, not 32768. Division
-by zero, an invalid shift, a negative power or a negative `sqrt` operand is a
+Except for the exact subtrees permitted in an unannotated constant initializer
+or target-address expression under section 3.1, the compiler resolves every
+operator's operand and result types before folding it. Each folded operation
+applies the same wrapping, shift, conversion and fault rules as runtime
+evaluation. An untyped literal, exact layout-query result or exact integer
+constant remains exact until an expected context, a width-dependent operation
+or the ordinary `i16` default gives it a type. Consequently, if
+`maximum as u16` is 65535, `(maximum + 1) / 2` is zero, not 32768. Division by
+zero, an invalid shift, a negative power or a negative `sqrt` operand is a
 compile error in a constant expression.
 
 ## 5. Records
@@ -1438,7 +1476,7 @@ end
 ```
 
 Integer comparisons use the operand compatibility rule in section 3.1.
-Subranges compare through their host ordinal type. Enum comparisons require
+Subranges compare through their base ordinal type. Enum comparisons require
 the same nominal enum family and follow declaration order. Booleans support
 only `=` and `<>`. Opaque addresses of the same address class support `=` and
 `<>`; mixed near/far address comparison is invalid and has no implicit
@@ -1485,8 +1523,19 @@ visible = active and onScreen
 maskedFlags = flags and visibleMask
 ```
 
-`and` and `or` short-circuit for Boolean operands. Integer operations evaluate
-both operands and combine their bits. `xor` evaluates both operands.
+Boolean `and` and `or` evaluate the left operand first and follow this table:
+
+| Operator | Left operand | Right operand | Result |
+| -------- | ------------ | ------------- | ------ |
+| `and` | `false` | not evaluated | `false` |
+| `and` | `true` | evaluated | the right operand's Boolean value |
+| `or` | `true` | not evaluated | `true` |
+| `or` | `false` | evaluated | the right operand's Boolean value |
+
+An operand marked not evaluated performs no call, storage access, check, fault
+or other effect. These short-circuit rules are observable language semantics.
+Boolean `xor` evaluates both operands. Integer `and`, `or` and `xor` always
+evaluate both operands and combine corresponding bits.
 
 A condition must have type `boolean`. Integers do not become conditions
 implicitly:
@@ -1680,8 +1729,8 @@ faults behave identically on every backend:
   expression, then performs the store;
 - array and record initializer elements evaluate in their written source order.
 
-The destination-first assignment rule means that in
-`actors[nextIndex()].x = nextValue()`, `nextIndex()` runs before `nextValue()`.
+Under destination-first assignment, `actors[nextIndex()].x = nextValue()` runs
+`nextIndex()` before `nextValue()`.
 A backend may reorder work only when it proves that no call, volatile access,
 fault, result or other observable behaviour can distinguish the change.
 
@@ -1740,9 +1789,14 @@ else
 end
 ```
 
-The selected expression is evaluated once and must have an ordinal type.
-Cases contain compatible ordinal compile-time constants, never fall through
-and require no `break`. Boolean and opaque-address selection is deferred.
+The selected expression is evaluated once and must have an ordinal type. Cases
+contain compatible ordinal compile-time constants. Duplicate and overlapping
+cases are invalid, so at most one case body can match. When a case matches, its
+body runs and execution continues after the `select` block's final `end`. It
+does not continue into the following case body. Continuing into that body would
+be fall-through; Lanternfly has no fall-through and no `break` statement. When
+no case matches, the `else` body runs if present; otherwise no body runs.
+Boolean and opaque-address selection is deferred.
 
 Several values may share a case:
 
@@ -1825,8 +1879,9 @@ converted to that variable's type. Enum and enum-subrange controls advance by
 ordinal position; their explicit step must be an integer constant.
 
 The start and boundary each evaluate once, in that order, before the converted
-start is stored in the control variable. The boundary therefore observes the
-control variable's old value. The start uses the destination-conversion rules
+start is stored in the control variable. A boundary expression that reads the
+control variable therefore reads its old value. The start uses the
+destination-conversion rules
 from section 8.1. The boundary is an independently typed compatible ordinal
 expression. An exact literal or layout query remains mathematical at an
 integer boundary, allowing this complete traversal:
@@ -1848,6 +1903,10 @@ equal to the boundary, and `until` continues while it is less than the
 boundary. For a negative step, `to` continues while the current value is
 greater than or equal to the boundary, and `until` continues while it is
 greater than the boundary.
+
+A step directed away from the boundary produces a zero-iteration loop. For
+`for position = 7 to 0 step 1`, the initial continuation test is `7 <= 0`, so
+the body does not run and `position` retains 7.
 
 After the body, the implementation computes the next value mathematically and
 tests it before storing it. A value that fails the next test ends the loop
@@ -2066,10 +2125,9 @@ alias actor as Actor = actors[selectedActor]
 ```
 
 The declaration evaluates and checks `actors[selectedActor]` once. It
-allocates no record storage and cannot be rebound. Direct indexing remains
-preferable when the path is used only once; an alias earns its name when a
-routine repeatedly accesses the same aggregate or needs to pass it to another
-aggregate parameter.
+allocates no record storage and cannot be rebound. Direct indexing suits a path
+used once; an alias suits repeated access to the same aggregate or passage to
+another aggregate parameter.
 
 ### 11.5 Return
 
@@ -2288,7 +2346,7 @@ failable invocation that carries no `or` form; any other binding is
 `E-FAIL-004`. The name introduces a read-only value of the callee's error-set
 type, scoped to the block under the collision rules of section 2.1. On
 success the block is skipped. On failure the assignment or initialization
-does not occur — the destination is not written — and the block runs. The
+does not occur, the destination is not written and the block runs. The
 block contains ordinary statements; a `fail` inside it follows this section's
 ordinary rules, and `continue` or `exit` requires an enclosing loop as usual,
 which the assignment and expression-statement forms may have. When the bound
@@ -2299,14 +2357,15 @@ declaration-bound block has no enclosing loop; `exit` or `continue` there
 is the ordinary loop error of section 10.4, not a binding error. A block
 that can complete normally in declaration position is `E-FAIL-004`.
 
-The program entry routine of section 12.6 may not carry a `fails` clause,
-because no caller exists to receive the failure; a failable entry is the
-entry-selection error `E-ENTRY-001`. A `fails` clause on an external
-routine of section 12.4, and any form of this section inside a hosted
-body of section 13.3, are deferred; both are `E-FAIL-005`. A forward
-declaration repeats the `fails` clause exactly under section 11.6. An
-exported failable routine's compiled export interface records its error-set
-type with the rest of the signature under section 12.5.
+The program entry routine of section 12.6 may carry a `fails` clause. A normal
+`return` or end-of-body completion reports successful program termination;
+`fail` reports unsuccessful termination with the named error-set member. The
+program-termination contract consumes this final outcome because the entry has
+no source caller. A `fails` clause on an external routine of section 12.4, and
+any form of this section inside a hosted body of section 13.3, are deferred;
+both are `E-FAIL-005`. A forward declaration repeats the `fails` clause exactly
+under section 11.6. An exported failable routine's compiled export interface
+records its error-set type with the rest of the signature under section 12.5.
 
 Failable routines require no target capability and select no runtime helper.
 A backend lowers the failure channel — a one-bit completion discriminant plus
@@ -2466,8 +2525,8 @@ export extern sub screenClear()
 target-address constant expression under section 3.1, and the selected profile
 checks that the address is executable and representable. `from` names a
 substrate symbol exactly after the compile-time string escapes from section 2.4
-have been decoded. An external declaration without either clause asks the
-target profile to bind the Lanternfly name.
+have been decoded. An external declaration without either clause receives the
+target-profile binding for the Lanternfly name.
 
 An absolute external routine binding owns no generated bytes and does not move
 a placement origin. The profile must place its address in an executable region
@@ -2513,7 +2572,7 @@ bindings that their substrate cannot express.
 
 #### 12.4.1 Optional standard text input and output
 
-The first edition defines two optional standard modules. They are service
+The first edition defines two optional standard text modules. They are service
 modules under the categories of section 1.1: they export ordinary names and
 bind their services through the same profile machinery as capability
 modules, but they gate no words and change no typing rules. They are never
@@ -2599,6 +2658,47 @@ directories, seeking or an operating-system interface. Future file loading and
 saving belong in separate standard or target modules and do not extend the
 meaning of these text devices.
 
+#### 12.4.2 Optional standard program arguments
+
+Launcher-supplied arguments use a third optional standard service module:
+
+```lanternfly
+import "standard/program-arguments.lafy"
+```
+
+It exports two operations, mapped to stable target-service IDs:
+
+| Export          | Service ID                                      |
+| --------------- | ----------------------------------------------- |
+| `argumentCount` | `standard.programArguments.argumentCount`       |
+| `readArgument`  | `standard.programArguments.readArgument`        |
+
+`argumentCount()` returns the number of user arguments as `u8`. The launcher
+therefore supplies at most 255 arguments. The invocation name is separate from
+this list and is not argument zero.
+
+`readArgument(index, destination)` accepts a value assignable to `u8` and a
+writable `string[N]` storage path of any capacity. Both operands are evaluated
+once. When the index exists and the complete nonzero-byte payload fits, the
+operation replaces the destination with that argument and returns `true`. An
+invalid index clears the destination and returns `false`. An argument that
+contains a zero byte or exceeds the destination capacity stores the longest
+valid prefix that fits and returns `false`.
+
+The launcher supplies an ordered list of already-separated byte strings before
+the program entry begins, and repeated reads of one index produce the same
+payload during that invocation. A shell, monitor, firmware launcher, emulator
+or test runner defines how its own command text becomes that list. The module
+performs no allocation: the program declares the destination storage and the
+service copies one bounded argument into it.
+
+Both operations return normally. `argumentCount` is pure for one invocation;
+`readArgument` writes only its evaluated destination and does not change the
+launcher-supplied list. The selected profile resolves each used service ID
+through the same binding, ABI, adapter and runtime-component contracts as the
+standard text services. A profile with no launcher arguments may implement an
+empty list. A used service with no compatible binding is `E-TARGET-001`.
+
 ### 12.5 Whole-program compilation
 
 The language permits a declaration-ordered front end but does not require one
@@ -2626,7 +2726,9 @@ library into the whole program in dependency order. A compiled
 export-interface artifact restates a module's exported declarations, so an
 unchanged library need not be re-read from source. It contributes symbols,
 not relocatable code. Its `requiredCapabilities` field lists the capability
-IDs that its exported declarations require under section 1.1. A
+IDs that its exported declarations require under section 1.1. An exported
+exact integer constant records its mathematical value without a type or
+storage representation; each importing use supplies its ordinary context. A
 fixed-address library, such as a ROM library on a
 banked system, pairs an export-interface artifact with code that is already
 placed: its symbols bind to final addresses and the build emits no code for
@@ -2642,10 +2744,15 @@ the canonical `.lafy` source unit.
 
 An ordinary Lanternfly source file is a `.lafy` module containing imports and
 declarations. It does not contain loose executable statements. A build
-manifest names the root `.lafy` module and, for an executable build, one entry
-subroutine. A root path without the exact lowercase extension is
-`E-MODULE-001`. The entry must have no parameters and no result. This example
-assumes `initialiseGame` and `gameLoop` were imported or declared earlier:
+manifest names the root `.lafy` module. For an executable build, its optional
+entry field names one root-module subroutine; when the field is absent, the
+entry name is `main`. A root path without the exact lowercase extension is
+`E-MODULE-001`.
+
+The selected entry has no parameters and no result. It is source-defined
+rather than external and may remain private to the root module. It may carry a
+`fails` clause under section 11.8. This example assumes `initialiseGame` and
+`gameLoop` were imported or declared earlier:
 
 ```lanternfly
 sub main()
@@ -2654,11 +2761,27 @@ sub main()
 end
 ```
 
-The entry may remain private to the root module and must name a source-defined
-subroutine rather than an external declaration. A library build has no entry.
+The default name is a build convention rather than a keyword: `main` remains a
+legal ordinary subroutine name in a library, and an executable manifest may
+select another suitable name. A library build has no entry. `E-ENTRY-001`
+reports a missing or invalid selected entry, including one with parameters or
+a result.
+
+Programs receive launcher arguments through the optional service module in
+section 12.4.2 rather than through entry parameters. This keeps the entry
+signature fixed on targets with command lines, monitors, firmware launchers or
+no launcher arguments.
+
 All module storage has been allocated and all constant static initializers have
-been installed before an executable entry begins. Returning from the entry
-invokes the target profile's normal program-termination service.
+been installed before an executable entry begins. A bare `return` or reaching
+the entry's `end` invokes successful program termination. `fail member` from a
+failable entry invokes unsuccessful program termination with that error-set
+member. Error-set members retain their ordinary zero-based, opaque enum
+semantics inside Lanternfly. A target profile that exposes a numeric exit
+status maps success to zero and a failed member with ordinal `n` to `n + 1`;
+that boundary mapping does not add a success member to the error set. Every
+target profile defines how it realizes both outcomes, and a profile that
+cannot represent every outcome of the selected entry reports `E-TARGET-001`.
 
 A hosted body is a distinct compilation-unit form supplied through a host
 manifest. Its source consists of local declarations followed by statements; it
@@ -2822,7 +2945,8 @@ source location in debug artifacts.
 
 A target profile declares its CPU or substrate, endianness, supported scalar
 operations, near and far address representations, address spaces, routine ABI,
-standard-service implementations and native dialect.
+program-termination implementation, standard-service implementations and
+native dialect.
 
 The target profile contains `memoryRegions` and `placementDefaults`. A
 whole-program build request contains `placementOverrides`. They use these
@@ -2936,6 +3060,11 @@ substrateSymbolResolver: SubstrateSymbolResolver
     resolutionPhase: "configuration" | "link"
     implementationId
 
+programTermination: ProgramTermination
+  ProgramTermination
+    implementationId
+    numericExitStatus
+
 callableCostMetadata[]: CallableCostMetadata
 addressBindings[]: ProviderAddressBinding
 addressValidityContracts[]: AddressValidityContract
@@ -2950,6 +3079,14 @@ effects. When an external binding selects a runtime component, its `abiId`
 equals the component's non-null `abiId`. IDs are unique within their named
 arrays.
 
+The program-termination implementation consumes the entry outcome and does not
+return to Lanternfly code. `numericExitStatus` is Boolean. When true, the
+implementation maps success to zero and a failed member with ordinal `n` to
+`n + 1`. When false, its backend contract records how it reports success and
+each failed member to the target's monitor, firmware, host or test interface.
+In both forms, debug and test artifacts preserve the abstract success or
+failure outcome and the error-set member on failure.
+
 The selected profile contains one `substrateSymbolResolver`. A
 configuration-phase resolver produces exact bytes during configuration. A
 link-phase resolver may defer them, but produces exact bytes and applies the
@@ -2959,7 +3096,8 @@ provider symbol is `E-CONFIG-002`; resolved bytes that fail the rule are
 `E-EXTERN-001`.
 
 Portable character and text transfer uses the optional standard modules in
-section 12.4.1. Richer display, keyboard, sound, random, firmware and device
+section 12.4.1. Launcher-supplied program arguments use the optional module in
+section 12.4.2. Richer display, keyboard, sound, random, firmware and device
 operations are typed external routines imported from platform interface
 modules rather than core statements. Section 12.4 defines their source
 declaration and binding forms. A missing implementation is a compile error.
@@ -2982,8 +3120,8 @@ Boolean, address or string representation in Lanternfly storage. A
 contract missing one of these representation, layout or lifetime guarantees is
 incompatible and is rejected; disabling optimization cannot make it safe.
 
-An adapter validates a string after a native call that may write it and
-before generated Lanternfly code observes it. An invalid length, embedded zero,
+An adapter validates a string after a native call that may write it and before
+control returns to generated Lanternfly code. An invalid length, embedded zero,
 misplaced terminator or reserved all-ones length invokes `F-INVALID-STRING`.
 A provider that changes a string without declaring the write remains
 nonconforming even when the resulting bytes happen to be valid.
@@ -3296,7 +3434,7 @@ exportable-declaration
                       | forward-sub-decl
                       | sub-decl
 
-const-decl          ::= "const" value-name "as" type-expr
+const-decl          ::= "const" value-name ("as" type-expr)?
                         "=" constant-initializer placement? newline
 
 var-decl            ::= "volatile"? "var" value-name "as" type-expr

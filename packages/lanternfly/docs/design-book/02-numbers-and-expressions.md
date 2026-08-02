@@ -28,15 +28,18 @@ Representations are two's complement and widths do not vary by backend.
 An integer literal begins as an exact compile-time value:
 
 ```lanternfly
-const visibleMask as u8 = %00000001
+const warehouseCapacity = 5000
+const visibleMask as u8 = %10000000
 const nameTable as u16 = $0800
 const spawnY as i8 = -3
 ```
 
 An expected type from an initializer, assignment, scalar argument, return,
 `fill` value or counted-loop start propagates through an all-literal subtree.
-Without such a context, literal arithmetic defaults to `i16`; a value outside
-that type needs an explicit conversion.
+An unannotated scalar constant supplies no expected type, so exact integer
+arithmetic remains mathematical and the constant remains exact and untyped.
+Outside that form, literal arithmetic without an expected type defaults to
+`i16`; a value outside that type needs an explicit conversion.
 
 Explicit conversion also requests low-bit interpretation:
 
@@ -88,7 +91,7 @@ The representation is sealed. No field or index names the length
 header, payload cells or terminator. Assignment, `append`, `clear`, comparison
 and `length` are the only ordinary ways to operate on it, so those operations
 can preserve the relationship between the count and the terminator. An
-ordinary `u8` array carries none of these promises and is not a string.
+ordinary `u8` array maintains none of these invariants and is not a string.
 
 String assignment copies content rather than a carrier. Copying from
 another string or a literal checks the destination capacity first, so
@@ -209,12 +212,15 @@ if (flags and visibleMask) <> 0 then
 end
 ```
 
-Integers do not become conditions implicitly. Imported code that promises a
-Boolean must also provide its canonical representation.
+Integers do not become conditions implicitly. An imported routine declared to
+return a Boolean must also provide its canonical representation.
 
 With Boolean operands, `not`, `and`, `xor` and `or` are logical. Boolean `and`
-and `or` short-circuit. With integer operands the same words combine complete
-bit patterns, and both operands are evaluated.
+evaluates its right operand only when the left operand is true. Boolean `or`
+evaluates its right operand only when the left operand is false. A skipped
+operand performs no call, storage access, check or fault. Boolean `xor` and all
+integer forms evaluate both operands; integer forms combine complete bit
+patterns.
 
 ## Enums and subranges
 
@@ -235,11 +241,17 @@ Enum members receive ordinals from zero in declaration order. Their names
 enter the surrounding value scope without qualification. Unrelated enum types
 cannot be mixed even when they share a representation width.
 
-A subrange is a distinct type whose representation comes from its host.
-Values widen silently to the host type. Assignment, initialization, argument
-passing, return and explicit conversion into the subrange check its domain.
-Known failure is a compile error; dynamic failure invokes `F-RANGE` before the
-destination changes.
+An unannotated constant initialized from an enum member retains that enum type:
+
+```lanternfly
+const initialDirection = left
+```
+
+A subrange is a distinct type with its base type's representation. A value of
+the subrange type may be used wherever the base type is accepted. Assignment,
+initialization, argument passing, return and explicit conversion from the base
+type into the subrange check its domain. Known failure is a compile error;
+dynamic failure invokes `F-RANGE` before the destination changes.
 
 Enums support comparison, `select`, counted traversal and array indexing, but
 not integer arithmetic or bitwise operations. An explicit conversion to the
@@ -290,7 +302,8 @@ or helpers. Their source types and edge cases do not change.
 
 ## Numeric conformance
 
-Every backend must agree on at least these cases:
+Conformance requires the same results from every backend in at least these
+cases:
 
 | Case                   | Result                  |
 | ---------------------- | ----------------------- |

@@ -205,10 +205,10 @@ temporarily. Their names denote the aggregate itself; the backend carrier has
 no source expression. Backends may use machine addresses to implement aliases
 without exposing pointers in Lanternfly source.
 
-This is a language boundary, not just an implementation shortcut for version
-one. General pointer and reference values would invite a different style of
-programming, so they are not planned extensions. A future feature may add a
-bounded operation or view while still keeping its storage carrier hidden.
+This language boundary applies beyond the first implementation. General
+pointer and reference values would establish a different programming model, so
+they are not planned extensions. A future feature may add a bounded operation
+or view while still keeping its storage carrier hidden.
 
 Heap allocation, garbage collection, object ownership, and unbounded recursive
 structures lie outside the initial language. Fixed arrays, grids, tables, and
@@ -272,6 +272,25 @@ fixed-capacity strings.
 The contract defines no streams, handles, buffering, files, directories or
 portable line editor. Future loading and saving facilities belong in separate
 modules after real storage systems provide a stable model.
+
+## Program invocation and termination
+
+**Direction:** executable programs use a fixed entry signature, with launcher
+arguments and termination outcomes expressed through explicit contracts.
+
+An executable build selects `main` in the root module when its manifest omits
+an entry name; an explicit entry name supports tests, firmware and other build
+arrangements. The selected routine has no parameters or result. Programs that
+need launcher arguments import `standard/program-arguments.lafy` and copy each
+argument into caller-declared fixed-capacity string storage. This keeps command
+lines out of targets that have none and introduces no pointer array or hidden
+allocation.
+
+The entry may declare `fails` with an ordinary `u8` error-set enum. Normal
+completion reports success; `fail` reports one opaque error member. Numeric
+exit-status profiles map success to zero and a failed member's zero-based
+ordinal `n` to `n + 1`. Other targets preserve the same two outcomes through
+their monitor, firmware or host termination contract.
 
 ## Design priorities
 

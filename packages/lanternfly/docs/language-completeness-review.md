@@ -194,10 +194,9 @@ cannot spell.
 - `append(destination, source)` and `append(destination, byteValue)` are
   standard procedures with the same capacity check. A byte value must be
   nonzero so the payload remains valid zero-terminated text.
-- Where a native contract expects zero-terminated bytes, a string supplies
-  its payload at no cost: the invariant makes the payload a valid
-  terminated sequence, so every existing print-style contract works unchanged.
-  This conversion is the design's point, and it is free.
+- Where a native contract requires zero-terminated bytes, the adapter supplies
+  the payload address. The invariant makes the payload a valid terminated
+  sequence, so no payload copy is required.
 
 ### Consequences
 
@@ -297,7 +296,7 @@ can be traversed in declaration order. The compiler can also remove an array
 bounds check when the index type is already contained by the dimension.
 
 Ranges use the BASIC words `to` and `until`; they are not runtime values.
-Enums retain explicit widths, and subranges retain their host representation,
+Enums retain explicit widths, and subranges retain their base representation,
 so neither feature changes packed layout or external ABI unexpectedly.
 
 ## Parameter intent and results
@@ -324,7 +323,7 @@ ordinary programs:
 
 - `assert condition` mapped to the target fault service in checked builds;
 - `min`, `max`, `clamp` and bit-count operations with fixed integer rules;
-- a post-test `repeat`/`until` loop if translations show repeated demand;
+- a post-test `repeat`/`until` loop if repeated translations require it;
 - type aliases for long imported layout types;
 - an explicit way to embed binary resource data when aggregate literals or
   assembly data become unwieldy.
