@@ -2214,9 +2214,10 @@ sub verifyBlock(index as u8) fails TapeError
 The error set must be an enum whose representation type is `u8`; any other
 `fails` operand is `E-FAIL-003`. The enum is otherwise ordinary: its members
 obey the ordinary scope rules, and an error value may be stored, passed,
-compared and selected over like any enum value. Each invocation of a failable
-routine completes in exactly one of two ways: success, carrying the declared
-result if there is one, or failure, carrying one member of the error set.
+compared and selected over like any enum value. Absent a runtime fault, each
+invocation of a failable routine returns in one of two ways: success,
+carrying the declared result if there is one, or failure, carrying one
+member of the error set.
 
 `fail` returns failure:
 
