@@ -518,7 +518,9 @@ The allocation report must retain type, lifetime and source identity.
 Static scratch is allowed only when:
 
 - target profile rejects recursion for the affected call graph;
-- routine cannot be reentered through interrupts or callbacks;
+- routine cannot be reentered through interrupts or callbacks — the
+  interrupt half holds by the handler rule: handlers are native code that
+  never call Lanternfly routines or static-scratch components;
 - aliasing with host/native code is controlled;
 - debugger metadata identifies it.
 
@@ -574,25 +576,34 @@ termination rather than to ordinary failable calls.
 
 ### 8.1 Initial Z80 ABI candidate
 
-A first implementation may follow the useful ZAX shape:
+A first implementation follows the static-frame storage model:
 
-- right-to-left argument pushes;
+- arguments stored to the callee's static slots, or carried in registers
+  where the compiler proves both sides of the call;
 - one 16-bit slot for values no wider than 16 bits;
 - two slots for 32-bit values;
 - one target-sized slot/set for near aggregate aliases;
 - one bank/segment-plus-offset slot set for far aggregate aliases;
-- IX frame anchor when named frame slots exist;
-- scalar locals in frame slots;
+- scalar locals, parameters and temporaries in overlay-colored static
+  slots; no frame pointer, and no generated prologue or epilogue outside
+  recursion-admitted cycles;
+- save-around lowering at call sites inside recursion-admitted cycles:
+  the values live across the call, alias and address carriers included,
+  pushed before the call and restored after it;
+- assume-all-clobbered register handling at calls to forward-declared
+  routines emitted before their completing bodies;
+- the alternate register set reserved for the target's designated
+  interrupt level; compiled code and runtime components never use it;
 - aggregate aliases as non-observable near/far address carriers;
 - declared result carriers;
 - the carry flag as the failure discriminant with the error code in A: `SCF`
   before a failing return, carry clear on a successful one;
-- propagation as `RET C` where the routine has no frame to unwind, folding to
-  the plain final `RET` in tail position; a framed routine propagates through
-  a conditional jump to its epilogue instead;
+- propagation as `RET C` where no save-around bracket is open, folding to
+  the plain final `RET` in tail position; a bracketed call site propagates
+  through a restore stub that preserves the result carrier, the failure
+  discriminant and the error code;
 - failure-code preservation around deferred cleanup calls that may clobber
-  A or the flags;
-- generated prologue/epilogue.
+  A or the flags.
 
 That ABI is provisional backend design, not source semantics. The carry
 choice rests on the Z80 mechanism — `SCF` sets the discriminant in one
@@ -785,6 +796,9 @@ Each component declares:
 - reentrancy and interrupt properties;
 - test vectors;
 - license/provenance where relevant.
+
+A component holding static scratch declares itself non-interrupt-safe, and
+the handler rule forbids calling it from interrupt context.
 
 Fault components are non-returning. Their profile-specific implementation may
 trap to a host, terminate, or enter a monitor, but it preserves the fault class
@@ -1466,7 +1480,11 @@ backend-focused groups summarize that inventory:
 - consumption of a failable entry outcome by the profile's program-termination
   implementation;
 - rejected recursion cycles on non-recursive profiles;
-- independent frames and stack-cost reporting on recursive profiles.
+- independent per-invocation scalar state and stack-cost reporting on
+  recursive profiles;
+- save-around brackets at recursive call sites, with restore stubs that
+  preserve the result carrier, failure discriminant and error code on
+  success and failure paths alike.
 
 ### Safety
 
@@ -1475,7 +1493,9 @@ backend-focused groups summarize that inventory:
 - constant and dynamic ordinal range failures;
 - proof-based range-check removal;
 - arithmetic, `F-INVALID-BOOLEAN` and `F-INVALID-STRING` faults;
-- no store after a failed destination check.
+- no store after a failed destination check;
+- single-instruction volatile word access where the target provides it,
+  never split into byte accesses an interrupt could divide.
 
 ### Native boundary
 

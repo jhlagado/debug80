@@ -1026,6 +1026,15 @@ Volatility follows field and index paths into a volatile aggregate. A whole
 aggregate copy involving volatile storage performs the corresponding ordered
 element accesses rather than an unobservable bulk substitution.
 
+On a target that recognizes interrupts at instruction boundaries, a volatile
+scalar access no wider than the target's single-instruction transfer width
+must be performed by one instruction; a backend must not split a volatile
+16-bit access into separate byte accesses where an interrupt could
+intervene. A volatile aggregate copy is not atomic — its ordered element
+accesses may be separated by interrupts — so storage shared with an
+interrupt handler and wider than the single-instruction width requires an
+access protocol rather than a bulk copy.
+
 The first implementation permits `volatile` only on module-level storage and
 imported or native storage contracts; volatile local variables are rejected.
 It also rejects a local aggregate alias to volatile storage and rejects passing
@@ -1046,7 +1055,9 @@ const row as u8[4] = [1, 2, 3, 4]
 
 A scalar initializer is an expression. A string initializer is a literal or a
 previously declared string constant whose compile-time content fits the
-destination capacity. An array initializer contains exactly one initializer
+destination capacity. An array or record initializer may also be the name of
+a previously declared constant of the identical aggregate type, whose
+compile-time value becomes the initial image. An array initializer contains exactly one initializer
 for each element at its current dimension; nested brackets must match the
 declared rank and shape exactly. A record initializer names every field
 exactly once. Unknown, duplicate or omitted fields are compile errors. Record
@@ -1066,8 +1077,9 @@ Every string capacity, array dimension, case value, case-range endpoint
 and counted-loop step is a scalar constant expression. A placement uses the target-address constant
 expression defined in section 3.1. A `const` or module-level `var` instead
 uses a constant initializer: one scalar constant expression, one string
-initializer, or an array/record initializer whose nested values are themselves
-constant initializers. This distinction keeps aggregate values out of scalar
+initializer, an array/record initializer whose nested values are themselves
+constant initializers, or the name of a previously declared aggregate
+constant of identical type. This distinction keeps aggregate values out of scalar
 contexts. A local `var` initializer is an ordinary runtime expression.
 
 A constant expression in a module declaration may contain literals, names of
@@ -2146,7 +2158,8 @@ end
 Reaching `end` also returns from a result-free routine.
 
 A result-bearing routine uses `return expression`. Every reachable path must
-return a compatible value:
+return a compatible value; statements after a `while true` loop whose body
+cannot `exit` are unreachable and impose no return obligation:
 
 ```lanternfly
 sub clamp(input as i16, minimum as i16, maximum as i16) as i16
@@ -2223,10 +2236,20 @@ Recursion is a target-profile capability. A routine may call itself, and
 forward declarations under section 11.6 make mutual recursion expressible. A
 profile without recursion rejects any cycle in the source call graph, whether
 a direct self-call or a cycle through forward-declared routines. A
-recursion-capable profile provides independent frames, declares its stack and
-reentrancy rules, and reports per-routine frame size plus any configured maximum
-stack bound. Static temporaries are invalid where recursion, reentrancy,
-interrupts or another overlapping invocation can reach them.
+recursion-capable profile provides independent per-invocation scalar state —
+parameters, scalar locals and compiler temporaries; per-invocation aggregate
+state is caller-supplied storage, since aggregates are never locals — declares
+its stack and reentrancy rules, and reports per-routine frame size plus any
+configured maximum stack bound, including any per-level interrupt-handler
+stack allowance the target declares. Static temporaries are invalid where
+recursion, reentrancy, interrupts or another overlapping invocation can reach
+them.
+
+Interrupt handlers are native code outside the language. A handler never
+calls a Lanternfly routine, a runtime component holding static scratch, or a
+native service whose contract does not declare interrupt safety; handlers
+communicate with a program only through volatile storage. Under that rule no
+interrupt reaches Lanternfly frame state.
 
 Indirect calls are not in the first edition. Native-to-Lanternfly callbacks are
 also deferred: an external or host routine contract may call native services

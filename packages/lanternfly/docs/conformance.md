@@ -511,9 +511,12 @@ programs above:
 - rejected aggregate results, routine names used as values, indirect calls and
   `boolean(...)` conversions;
 - rejected direct self-recursion on non-recursive profiles and independent
-  frames on recursive profiles, plus rejection of later-routine calls, mutual
-  recursion without an explicit future facility and native-to-Lanternfly
-  callback bindings;
+  per-invocation scalar state on recursive profiles — with save-around
+  restore stubs preserving the whole return channel on success and failure
+  paths — plus rejection of later-routine calls, mutual recursion without an
+  explicit future facility and native-to-Lanternfly callback bindings;
+- single-instruction volatile word access on targets that provide it, never
+  split into byte accesses an interrupt could divide;
 - module diamond import, collisions, cycle rejection, contiguous-prefix
   enforcement and one-time resolution/emission;
 - recursive private-type exposure rejection for exported constants, variables,
