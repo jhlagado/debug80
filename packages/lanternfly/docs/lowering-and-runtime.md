@@ -500,8 +500,9 @@ call, fault or read volatile storage.
 
 ## 7. Local allocation
 
-A backend local allocator places scalar locals, aggregate-alias carriers and
-compiler temporaries.
+A backend local allocator places scalar locals, per-invocation aggregate
+locals, aggregate-alias carriers and compiler temporaries; `static var`
+storage allocates with module variables.
 
 Possible locations:
 
@@ -584,9 +585,11 @@ A first implementation follows the static-frame storage model:
 - two slots for 32-bit values;
 - one target-sized slot/set for near aggregate aliases;
 - one bank/segment-plus-offset slot set for far aggregate aliases;
-- scalar locals, parameters and temporaries in overlay-colored static
-  slots; no frame pointer, and no generated prologue or epilogue outside
-  recursion-admitted cycles;
+- scalar and per-invocation aggregate locals, parameters and temporaries
+  in overlay-colored static slots, an aggregate local re-establishing
+  its zero value at each declaration; `static var` objects allocated as
+  module storage; no frame pointer, and no generated prologue or
+  epilogue outside recursion-admitted cycles;
 - save-around lowering at call sites inside recursion-admitted cycles:
   the values live across the call, alias and address carriers included,
   pushed before the call and restored after it;
@@ -1484,7 +1487,10 @@ backend-focused groups summarize that inventory:
   recursive profiles;
 - save-around brackets at recursive call sites, with restore stubs that
   preserve the result carrier, failure discriminant and error code on
-  success and failure paths alike.
+  success and failure paths alike;
+- per-invocation aggregate-local zero-value establishment at each
+  declaration, rejection of the form inside cycles, and once-only
+  `static var` installation.
 
 ### Safety
 

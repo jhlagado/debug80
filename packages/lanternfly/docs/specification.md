@@ -784,8 +784,10 @@ storage overlap.
 
 For storage ownership, storage classes, parameters and local aliases,
 `string[N]` follows the aggregate rules. String storage is static, placed,
-hosted or native, in a near or far class like any aggregate; there are no
-automatic string locals. A parameter states its exact capacity and aliases
+hosted or native, in a near or far class like any aggregate; a
+per-invocation string local occupies overlay-colored static storage and
+becomes empty at its declaration under section 11.4's aggregate-local
+rules. A parameter states its exact capacity and aliases
 writable caller storage; an exported parameter also states `near` or `far`
 before its name. A local `alias` may name an existing string of exactly the
 declared capacity. Strings cannot be returned by value. Arrays may use a
@@ -912,9 +914,10 @@ initializer may use parameters, module declarations and earlier locals but
 cannot name itself or a later local. Local initializers execute once per
 invocation in declaration order. An owned scalar local without an initializer
 is set to all bits zero when its declaration is reached; a type whose scalar
-leaves do not accept zero requires an initializer. `string[N]` is aggregate
-storage and follows the local-alias rule in section 11.4 rather than the
-scalar-local rule.
+leaves do not accept zero requires an initializer. An owned aggregate local
+holds its type's zero value when its declaration is reached and takes no
+initializer in the first edition; section 11.4 states its rules, including
+the recursive-cycle rejection and the `static var` alternative.
 
 `const` declarations are module-level in the first edition. A routine can use
 a module constant without allocating storage.
@@ -1007,7 +1010,7 @@ Target profiles interpret `at`. A banked target may accept a far address
 expression, and an address-space profile may accept a qualified device
 address. A region intended only for explicit placement is never used by the
 ordinary allocator. Portable modules should normally leave placement to the
-build manifest or target defaults. A local declaration cannot use `at`.
+build manifest or target defaults. A local declaration, `static var` included, cannot use `at`.
 
 ### 4.4 Volatile storage
 
@@ -1036,7 +1039,8 @@ interrupt handler and wider than the single-instruction width requires an
 access protocol rather than a bulk copy.
 
 The first implementation permits `volatile` only on module-level storage and
-imported or native storage contracts; volatile local variables are rejected.
+imported or native storage contracts; volatile local variables are
+rejected, `static var` included.
 It also rejects a local aggregate alias to volatile storage and rejects passing
 volatile storage as an aggregate argument. Volatile accesses remain available
 through the original declared storage path. A later parameter-effect contract
@@ -1080,7 +1084,9 @@ uses a constant initializer: one scalar constant expression, one string
 initializer, an array/record initializer whose nested values are themselves
 constant initializers, or the name of a previously declared aggregate
 constant of identical type. This distinction keeps aggregate values out of scalar
-contexts. A local `var` initializer is an ordinary runtime expression.
+contexts. A local `var` initializer is an ordinary runtime expression; an aggregate
+local takes no initializer in the first edition (section 11.4), while a
+`static var` takes a constant initializer under the module rules above.
 
 A constant expression in a module declaration may contain literals, names of
 eligible previously declared constants and enum members, parentheses, the
@@ -2122,13 +2128,30 @@ end
 Local aggregate storage follows these rules:
 
 - scalar locals may own automatic storage;
-- string, record and array locals do not allocate aggregate stack objects;
-- a local aggregate name aliases storage allocated elsewhere.
+- an ordinary `var` declaration with a string, record or array type
+  declares a per-invocation aggregate local: each invocation holds the
+  type's zero value when the declaration is reached. The form takes no
+  initializer in the first edition, and a type without a valid all-zero
+  value is rejected in it. Inside a direct or mutual recursive cycle
+  the declaration is a compile error, `E-LOCAL-001`, whose diagnostic
+  names the remedies: a `static var`, a caller-supplied aggregate, or
+  an explicit frame pool indexed by depth. The compiler never lowers a
+  per-invocation declaration onto shared storage;
+- `static var` declares routine-scoped shared storage: one object with
+  program lifetime whose name is visible only inside the declaring
+  routine, used by every invocation, recursive activations included.
+  It is a module variable in all but name scope — never overlay-shared,
+  initialized once by a constant initializer under section 4.5's module
+  rules (or the all-zero value), installed under the section 4.3
+  contract. A `static var` takes no `at`, no `volatile` and no `export`
+  in the first edition, and covers scalars and aggregates uniformly;
+- a local aggregate name may instead alias storage allocated elsewhere.
 
-A local `var` declaration with a string, record or array type is
-therefore a compile error. The parser accepts the common `var name as Type`
-shape before semantic checking distinguishes an owned scalar from an
-aggregate.
+Establishing a per-invocation aggregate local's zero value is real
+work, attributed to the declaring routine in cost reports: a record or
+array clears its leaves, while a string becomes empty by writing its
+length header and terminator, its remaining cells unspecified as
+always.
 
 `alias` declares that non-owning local name:
 
@@ -2237,8 +2260,9 @@ forward declarations under section 11.6 make mutual recursion expressible. A
 profile without recursion rejects any cycle in the source call graph, whether
 a direct self-call or a cycle through forward-declared routines. A
 recursion-capable profile provides independent per-invocation scalar state —
-parameters, scalar locals and compiler temporaries; per-invocation aggregate
-state is caller-supplied storage, since aggregates are never locals — declares
+parameters, scalar locals and compiler temporaries; per-invocation
+aggregate state across recursive activations is caller-supplied storage,
+since section 11.4 bars aggregate locals from cycles — declares
 its stack and reentrancy rules, and reports per-routine frame size plus any
 configured maximum stack bound, including any per-level interrupt-handler
 stack allowance the target declares. Static temporaries are invalid where
@@ -3367,6 +3391,7 @@ shl
 shr
 size
 sqrt
+static
 step
 sub
 then
@@ -3502,9 +3527,11 @@ aggregate-storage-class
 
 routine-block       ::= local-decl* statement*
 local-decl          ::= local-var-decl | alias-decl
-local-var-decl      ::= "var" value-name "as" type-expr
+local-var-decl      ::= "static"? "var" value-name "as" type-expr
                         ("=" expression ("or" "fail")?)? newline
                         on-error-clause?
+                        (* a static var takes a constant initializer;
+                           an aggregate local without static takes none *)
 alias-decl          ::= "alias" value-name "as" aggregate-type
                         "=" storage-path newline
 
