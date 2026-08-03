@@ -6,8 +6,8 @@ lowering, and delivery boundaries are defined well enough for coding to begin.
 
 ## Reading order
 
-1. [LLM project handover](handover.md) gives a fast orientation, repository
-   map, project state, and non-negotiable language boundaries.
+1. [Language charter](charter.md) establishes the purpose, the Candlemoth
+   self-hosting goal, and the product boundaries.
 2. [Implementation plan](implementation-plan.md) defines the package layout,
    first coding change, milestone gates, and completion criteria.
 3. [Working language specification](specification.md) states the 0.6 syntax
@@ -16,38 +16,23 @@ lowering, and delivery boundaries are defined well enough for coding to begin.
    errors, warnings, faults, fixtures, and artifacts.
 5. [Lowering, backend and runtime contract](lowering-and-runtime.md) defines
    the typed compiler, host, backend, and runtime boundaries.
-6. [Language stages and decisions](design-book/10-stages-and-decisions.md)
-   separates the frozen baseline from deferred and open design work.
 
-The remaining documents explain the design:
+The remaining documents:
 
-- [Language charter](charter.md) establishes the purpose and product
-  boundaries.
-- [Language design book](design-book/index.md) develops the design from the
-  game corpus and compares target lowerings. Several chapters retain
-  superseded proposals as labelled design history.
 - [Language completeness review](language-completeness-review.md) assesses the
   BASIC/Pascal baseline and ranks post-K1 facilities.
-- [Research record](research.md) connects decisions to Glimmer, AZM, ZAX, and
-  the program corpus.
-- [Cooperative tasks and generators](cooperative-tasks.md) records an
-  exploratory direction: the kernel state-machine task pattern, its strict
-  convention, and a deferred generator/await syntax built on it.
-- [Error handling](error-handling.md) records the design rationale for the
-  failable routines drafted into specification 0.6 — error-set enums,
-  `fails` signatures, the abstract failure channel with its carry-flag Z80
-  candidate, `on error` handling and `defer` — with the scenarios and
-  lowering sketches behind section 11.8.
+- The white papers
+  [Cooperative tasks for Lanternfly](../../../../debug80-docs/lanternfly-book/papers/cooperative-tasks.md)
+  and
+  [Task-first Lanternfly](../../../../debug80-docs/lanternfly-book/papers/task-first.md)
+  are published in the companion documentation repository and on the
+  documentation site: the cooperative-task architecture proposal and the
+  task-first program-model direction built on it.
 - [Lanternfly Book 1](../../../../debug80-docs/lanternfly-book/book1/index.md)
-  is maintained in the companion documentation repository and is outside this
-  package rewrite.
-
-The supporting evidence is kept under [evidence](evidence/reading-ledger.md).
-It includes the reading ledger, chapter notes, corpus dossiers, a
-[feature matrix](evidence/corpus-feature-matrix.md), generated output and
-integration studies, and the [AZM/ZAX comparison](evidence/azm-zax-analysis.md).
-The [AZM algorithms and native game study](evidence/azm-book3-and-native-games.md)
-tests the storage design against Book 3 and the current TETRO/PACMO source.
+  and Book 2 are maintained in the companion documentation repository.
+- [archive/](archive/) holds superseded design history: the error-handling
+  design rationale behind specification section 11.8, and the language
+  design book developed from the game corpus.
 
 ## Document authority
 
@@ -56,9 +41,9 @@ When documents differ, use this order:
 1. specification;
 2. conformance contract;
 3. lowering contract;
-4. implementation plan;
-5. decision chapter;
-6. design history and evidence.
+4. implementation plan.
+
+Archived documents carry no authority.
 
 The documents use these status labels:
 

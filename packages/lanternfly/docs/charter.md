@@ -317,6 +317,4 @@ completeness review moved byte-valued character literals and sealed counted
 strings into the first edition. Before implementation began,
 a further design review
 adopted Pascal-style enums, subranges and ordinal array domains, expressed
-with BASIC words rather than symbolic range punctuation. The
-[research record](research.md) and [feature matrix](evidence/corpus-feature-matrix.md)
-show the evidence.
+with BASIC words rather than symbolic range punctuation.
