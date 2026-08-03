@@ -1061,7 +1061,13 @@ A scalar initializer is an expression. A string initializer is a literal or a
 previously declared string constant whose compile-time content fits the
 destination capacity. An array or record initializer may also be the name of
 a previously declared constant of the identical aggregate type, whose
-compile-time value becomes the initial image. An array initializer contains exactly one initializer
+compile-time value becomes the initial image.
+
+A `const` or module `var` whose initializer is a record initializer may
+omit its `as` clause: the declared type is the type the initializer
+names, already written on the declaration line. Every other declaration
+states its type — the rule removes repetition, never distance, so a
+constant-name initializer still requires the `as` clause. An array initializer contains exactly one initializer
 for each element at its current dimension; nested brackets must match the
 declared rank and shape exactly. A record initializer names every field
 exactly once. Unknown, duplicate or omitted fields are compile errors. Record
@@ -3485,8 +3491,10 @@ exportable-declaration
 const-decl          ::= "const" value-name ("as" type-expr)?
                         "=" constant-initializer placement? newline
 
-var-decl            ::= "volatile"? "var" value-name "as" type-expr
+var-decl            ::= "volatile"? "var" value-name ("as" type-expr)?
                         ("=" constant-initializer)? placement? newline
+                        (* the as-clause may be omitted only when a
+                           record initializer names the type *)
 
 placement           ::= "at" address-const-expr
 
