@@ -3490,6 +3490,8 @@ exportable-declaration
 
 const-decl          ::= "const" value-name ("as" type-expr)?
                         "=" constant-initializer placement? newline
+                        (* the as-clause may be omitted only when a
+                           record initializer names the type *)
 
 var-decl            ::= "volatile"? "var" value-name ("as" type-expr)?
                         ("=" constant-initializer)? placement? newline
