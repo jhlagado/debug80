@@ -22,12 +22,14 @@ The remaining documents:
 - [Language completeness review](language-completeness-review.md) assesses the
   BASIC/Pascal baseline and ranks post-K1 facilities.
 - The white papers
-  [Cooperative tasks for Lanternfly](../../../../debug80-docs/lanternfly-book/papers/cooperative-tasks.md)
-  and
+  [Cooperative tasks for Lanternfly](../../../../debug80-docs/lanternfly-book/papers/cooperative-tasks.md),
   [Task-first Lanternfly](../../../../debug80-docs/lanternfly-book/papers/task-first.md)
+  and
+  [Static frames for Lanternfly](../../../../debug80-docs/lanternfly-book/papers/static-frames.md)
   are published in the companion documentation repository and on the
-  documentation site: the cooperative-task architecture proposal and the
-  task-first program-model direction built on it.
+  documentation site: the cooperative-task architecture proposal, the
+  task-first program-model direction built on it, and the storage-model
+  justification.
 - [Lanternfly Book 1](../../../../debug80-docs/lanternfly-book/book1/index.md)
   and Book 2 are maintained in the companion documentation repository.
 - [archive/](archive/) holds superseded design history: the error-handling
