@@ -174,8 +174,6 @@ responsible configuration, front-end, placement or backend stage.
 | `E-BLOCK-001`    | A bounded- or unbounded-blocking external routine is called from a task body, a routine reachable from a derivation, or a subroutine one of those calls                                               | §§12.4, 12.6                     |
 | `E-TARGET-001`   | Required native service, optional standard-module binding, program-termination outcome, callable profile availability, scalar operation, address class or other target capability is unavailable                                                                                                                                                                                                                    | §§12.4, 12.6, 13.1–13.2          |
 | `E-CAP-001`      | A capability-gated word or facility, including a 32-bit integer type or string capacity above 254, is mentioned in a module that lacks its own enabling standard capability import, including gated use of another module's exports without the direct import                                                                                                                                                         | §§1.1, 3, 3.2                    |
-| `E-ASM-001`      | `asm` block is unclosed or appears where a block is not permitted                                                                                                                                                                                                                                                                                                                                                  | §13.2.1                          |
-| `E-ASM-002`      | Selected target has no compatible assembly-fragment pipeline                                                                                                                                                                                                                                                                                                                                                       | §13.2.1                          |
 | `E-PLACE-001`    | Source or build placement cannot fit a compatible target region because of address range, permissions, alignment, capacity, overlap or an unavailable initialization mechanism                                                                                                                                                                                                                                     | §4.3                             |
 | `E-PLACE-002`    | Emitted substrate bytes, reserved addresses or symbols disagree with the validated placement plan, including output outside a region, at a wrong address or over another range                                                                                                                                                                                                                                     | §§4.3, 13.2                      |
 | `E-MAP-001`      | A required generated-source map cannot be composed because an anchor is missing or duplicated, anchored text changed, or a provenance span lies outside its fragment                                                                                                                                                                                                                                               | §13.2.2                          |
@@ -202,12 +200,10 @@ Warnings do not change program meaning. The following are enabled by default:
 | `W-COST-002`    | Static object, aggregate copy, stack frame or startup initializer is unusually large                                                                                                                                                       | Target/budget policy         |
 | `W-ADDRESS-001` | Near/far conversion has a mapping or bank-switch cost                                                                                                                                                                                      | Target policy                |
 | `W-NATIVE-001`  | Native boundary omits effects or explicitly uses `{ kind: "conservative" }`                                                                                                                                                                | Project may promote to error |
-| `W-ASM-001`     | Statement-level inline assembly receives the conservative read/write/call/fault/device-I/O/clobber contract                                                                                                                                | Project may promote to error |
 | `W-NATIVE-002`  | An unbounded-blocking external routine is called                                                                                                                                                                                          | Project may promote to error |
 
 A routine invocation is not considered pure merely because its result is
-discarded. `W-ASM-001` is the specialized warning for a conservative
-statement-level `asm` block and suppresses `W-NATIVE-001` for that same block;
+discarded.
 module-level assembly receives neither warning because it has no execution
 point. A compiler may add warnings, but a conforming profile documents their
 identifiers and default severities.
@@ -610,10 +606,8 @@ programs above:
   independent origin; final addressed output accepted only when every
   initialized byte, reserved address and symbol agrees with the placement plan;
   and focused `E-PLACE-001` and `E-PLACE-002` failures;
-- verbatim module and statement `asm` emission, emission-only module-block
   metadata, conservative statement barriers, case-insensitive closing
   delimiters, arbitrary device-I/O effects, assembler-diagnostic mapping and
-  rejection by an incompatible backend, with `W-ASM-001` alone on a
   conservative statement block, no runtime-effect warning on a module block,
   and the contract requirement that statement assembly leave every visible
   enum, subrange, Boolean, address and string representation

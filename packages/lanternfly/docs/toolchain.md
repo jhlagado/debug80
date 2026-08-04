@@ -105,7 +105,26 @@ A missing binding for a used service is `E-TARGET-001`.
 `standard/character-input.lafy` binds nothing: it is an ordinary Lanternfly
 module supplied as source, since it declares a task instance.
 
-## 7. Instant rate
+## 7. Machine-code inclusion
+
+The language has no inline assembly: a machine-code routine is a placed
+constant byte array called through an `extern sub`, under specification
+section 13.3. A build may generate that array from assembly source as a step
+before compilation, so the assembler lives here rather than in a self-hosted
+compiler on a small target.
+
+```text
+AssembledInclusion
+  sourcePath
+  assemblerId
+  origin or null          // null means position-independent
+  emits: { constantName, elementType }
+```
+
+What it generates is ordinary Lanternfly source. A build that cannot run the
+named assembler reports `E-CONFIG-001`.
+
+## 8. Instant rate
 
 A profile may declare an instant rate in hertz. Where it does, an instant is
 that period and a delay is a lower bound in real time. Where it does not, an

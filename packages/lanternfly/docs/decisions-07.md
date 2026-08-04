@@ -313,6 +313,38 @@ specification is reconciled to it, not the other way round.
     real evidence about the 16K budget, which until now has been
     estimated.
 
+## Machine code
+
+82. **Inline assembly is deleted.** `asm` blocks, `E-ASM-001` and
+    `W-ASM-001` go with it, along with the module-versus-statement block
+    distinction and the rule that a derivation may contain none.
+83. A machine-code routine is a **placed constant byte array called
+    through an `extern sub`**. Both mechanisms already existed, so this
+    is a deletion rather than a substitution. The bytes place, report and
+    validate like any other constant, and the routine's reads, writes,
+    blocking class and fault behaviour come from the ordinary `extern`
+    contract instead of a blanket conservative assumption.
+84. The reason is the bootstrap. An `asm` block needs an assembler at
+    compile time, and a self-hosted Candlemoth has none; building a Z80
+    assembler into it would cost kilobytes against a level-0 budget for a
+    feature used a few times per program.
+85. Nothing relocates, so such a routine is either placed at the address
+    it was written for or written to be position-independent. It obeys
+    the calling convention and the value invariants at the native
+    boundary.
+86. The cost, stated plainly: no assembly inside a routine, only calls
+    out to one — 27 T-states for a call and return where inline code
+    would have cost nothing. A tight inner loop is written as the placed
+    routine entire.
+87. **AZM moves to the toolchain.** A build may assemble source into the
+    byte array a program includes, so the mnemonics stay readable and the
+    assembler stays off the small target. Recorded in `toolchain.md`
+    section 7.
+88. Rejected: letting a hosted compiler accept assembly source while
+    Candlemoth accepts only bytes. That would make a program's legality
+    depend on which compiler compiled it, which is what the level
+    structure exists to prevent.
+
 ## Open
 
 Nothing outstanding. Remaining work is reconciliation: the

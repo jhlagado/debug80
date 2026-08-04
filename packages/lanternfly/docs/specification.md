@@ -66,7 +66,7 @@ The complete 0.7 language includes:
 
 Lanternfly has three levels, nested subsets of one language. **Level 0** is
 what a compiler can be written in — integers, arrays, records, subroutines,
-control flow, `extern` and `asm`. **Level 1** is full structured
+control flow and `extern`. **Level 1** is full structured
 programming. **Level 2** adds the tasks, state cells, pulses and derivations
 of sections 12.6 and 17. A level-2 implementation accepts all three, because
 a level-0 program is a Lanternfly program that uses fewer features.
@@ -993,7 +993,7 @@ addresses.
 
 A module assembly block has no independent origin. It reports its code,
 data, helper and scratch requirements to the host, which places the combined
-program and performs the same final-map validation. An inline module `asm`
+program and performs the same final-map validation. A placed constant
 block may contain target location directives, but its emitted ranges remain
 subject to the target memory map and final-map check.
 
@@ -1984,7 +1984,7 @@ After the loop, the variable retains the last value stored. If the body never
 runs, it retains the converted start value. The loop body may not assign to
 the control variable. The restriction includes transitive effects: a call or
 native boundary whose effect summary may write the variable is rejected. A
-conservative inline `asm` block is therefore invalid while the control
+conservative external call is therefore invalid while the control
 variable is visible.
 
 `continue` performs the step and next test. `exit` leaves the loop immediately.
@@ -3371,72 +3371,6 @@ back into a source-defined Lanternfly routine is outside the
 first edition and makes the binding incompatible. Conservative effects do not
 grant callback permission.
 
-#### 13.2.1 Inline assembly
-
-`asm` opens an inline assembly block and the next line containing only `end`
-after optional whitespace closes it:
-
-```lanternfly
-sub waitForKey()
-    asm
-        call ROM_WAIT_KEY
-    end
-end
-```
-
-The lines between `asm` and `end` are assembly source for the selected target
-profile. Lanternfly does not tokenize, interpolate or rewrite them. An assembly
-source backend emits those lines verbatim at the corresponding position in its
-generated source, preserving their physical newlines and indentation. The
-assembler then processes the combined generated and inline source. Assembly
-diagnostics map back to the original inline-block lines.
-
-An `asm` block may appear as a module item or as a statement. A module block
-can provide target directives, labels, routines or data. It has no execution
-point and therefore carries emission and provenance metadata rather than a
-runtime effect summary or optimizer barrier. Effects of a routine defined in
-module assembly belong to the `extern sub` contract that exposes it.
-
-A statement block can use instructions, local labels and internal branches,
-but conforming control must reach the generated statement that follows the
-block. A return or jump that bypasses Lanternfly control flow violates the
-block contract. The block must eventually reach the routine
-epilogue through ordinary body completion or generated Lanternfly control.
-The block must not modify immutable storage or leave an invalid enum, subrange,
-Boolean, opaque-address or string representation in
-Lanternfly-visible storage. Violating one of these obligations makes the inline
-block nonconforming source for that target. Calling a generated source-defined
-Lanternfly routine from raw assembly is deferred because the compiler cannot
-add that hidden edge to its recursion and reentrancy analysis.
-
-A statement block is an observable compiler barrier. Unless a later declared
-native contract narrows its effects, the compiler assumes that statement-level
-assembly:
-
-- reads and writes every mutable object visible at the block;
-- may call target or external routines, may fault and may perform arbitrary
-  target or device I/O;
-- clobbers processor registers, flags and other volatile machine state;
-- preserves only the stack, mapping and calling-state obligations required to
-  continue with the following generated statement.
-
-The backend spills or preserves any generated value that must survive this
-barrier. Read/write/call summaries and cost reports mark the block as
-conservative native code. `W-ASM-001` is the specialized warning for this
-statement-assembly fallback and suppresses `W-NATIVE-001` for the same block.
-
-Raw assembly names belong to the selected assembler. There is no automatic
-Lanternfly-name substitution inside the payload. The backend's generated
-symbol artifact documents any Lanternfly storage or routine names exposed to
-inline source.
-
-An `asm` block is target-specific. A C, BASIC or other non-assembly backend
-rejects it unless that target profile explicitly supplies a compatible
-assembly-fragment pipeline. A missing closing `end` is a source error. Once
-raw mode begins, `//` and every other character belong to the assembler; only
-a physical line whose trimmed content compares case-insensitively equal to
-`end` closes the block. The formatter emits that delimiter in lowercase.
-
 #### 13.2.2 Generated-source provenance
 
 A source-generating backend returns its generated text and an explicit
@@ -3472,6 +3406,35 @@ helpers map to their own runtime source and retain their call sites as related
 locations. Inline assembly maps to its original payload lines. Assembler
 diagnostics use the same composition to select the responsible Lanternfly span
 while preserving the complete generated-source diagnostic.
+
+### 13.3 Machine-code routines
+
+Lanternfly has no inline assembly. A routine written in machine code is a
+placed constant byte array, and calling it is an external binding:
+
+```lanternfly
+const fastScan as u8[11] at $9000 = [$21, $00, $80, $06, $10, ...]
+
+extern sub scanRow() at $9000
+```
+
+The bytes are ordinary constant data, so they place, report and validate
+like any other constant. The routine's reads, writes, blocking class and
+fault behaviour are declared through the `extern` contract of section 12.4,
+so machine code receives the same effect treatment as a ROM routine rather
+than a blanket assumption.
+
+Because nothing relocates, such a routine is either placed at an address it
+was written for or written to be position-independent. It observes the
+calling convention of section 11.7 and the value invariants of section 13.2:
+it leaves no invalid enum, subrange, Boolean, opaque-address or string
+representation in Lanternfly-visible storage, and it writes no immutable
+storage.
+
+An assembler belongs to the toolchain rather than to the language. A build
+may assemble source into the byte array a program includes, which keeps the
+mnemonics readable without requiring a self-hosted compiler to carry an
+assembler.
 
 ### 13.4 Floating point
 
@@ -3513,7 +3476,6 @@ alias
 and
 append
 as
-asm
 at
 case
 clear
@@ -3626,7 +3588,6 @@ module              ::= import-decl* top-item*
 
 top-item            ::= export-decl
                       | declaration
-                      | asm-block
 
 import-decl         ::= "import" string-literal newline
 export-decl         ::= "export" exportable-declaration
@@ -3747,9 +3708,7 @@ statement           ::= assignment-statement
                       | defer-statement
                       | raise-statement
                       | wait-statement
-                      | asm-block
 
-asm-block           ::= "asm" newline
                         raw-assembly-line*
                         "end" newline
 
@@ -3910,7 +3869,7 @@ restricted semantically by sections 4.5 and 3.1 respectively.
 2.4. Grammar positions for imports and external `from` bindings apply the
 more restrictive compile-time text rules from that section.
 The `import-decl* top-item*` shape makes an import after any declaration or
-module `asm` block invalid under `E-MODULE-003`. Parser recovery may continue
+module item invalid under `E-MODULE-003`. Parser recovery may continue
 after that diagnostic rather than treating the later import as an unrelated
 parse error.
 `value-name` and `type-name` share one lexical shape and resolve in their
