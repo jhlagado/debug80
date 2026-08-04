@@ -1,0 +1,611 @@
+// Candlemoth — tokenizer
+//
+// Written in level-0 Lanternfly. Uncompiled: this source exists to define
+// level 0 by what a real compiler front end actually uses, rather than by
+// what a specification asserts it might.
+//
+// Constraints obeyed throughout, each of which cost a rewrite:
+//   - local declarations precede every statement in a routine, so no `var`
+//     appears inside a loop or a branch;
+//   - a counted loop's control variable is declared like any other local;
+//   - a statement occupies one line, so no condition spans two;
+//   - there is no `else if`, so a chain of tests is a chain of nestings or
+//     a `select`;
+//   - one byte of lookahead, so a two-character token is recognised after
+//     its first character is already consumed.
+
+// ---------------------------------------------------------------- classes
+
+enum CharClass as u8
+    classEnd
+    classSpace
+    classNewline
+    classLetter
+    classDigit
+    classPunct
+    classQuote
+    classOther
+end
+
+// A 256-entry table classifies a byte in three instructions once the table
+// is page-aligned. Any `select` over the raw character costs an order more.
+// Entries beyond 0x7e are classOther except the terminator, which the
+// producer guarantees appears only at the end.
+const characterClass as CharClass[256] = [
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classSpace, classNewline, classOther,
+    classOther, classNewline, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classSpace, classPunct, classQuote, classPunct,
+    classPunct, classPunct, classPunct, classQuote,
+    classPunct, classPunct, classPunct, classPunct,
+    classPunct, classPunct, classPunct, classPunct,
+    classDigit, classDigit, classDigit, classDigit,
+    classDigit, classDigit, classDigit, classDigit,
+    classDigit, classDigit, classPunct, classPunct,
+    classPunct, classPunct, classPunct, classPunct,
+    classPunct, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classPunct,
+    classPunct, classPunct, classPunct, classLetter,
+    classPunct, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classPunct,
+    classPunct, classPunct, classPunct, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classEnd
+]
+
+// ----------------------------------------------------------------- tokens
+
+enum TokenKind as u8
+    kindEnd
+    kindName
+    kindNumber
+    kindKeyword
+    kindPunct
+    kindBad
+end
+
+enum Punct as u8
+    punctNone
+    punctLeftParen
+    punctRightParen
+    punctLeftBracket
+    punctRightBracket
+    punctComma
+    punctDot
+    punctColon
+    punctPlus
+    punctMinus
+    punctStar
+    punctSlash
+    punctEqual
+    punctNotEqual
+    punctLess
+    punctLessEqual
+    punctGreater
+    punctGreaterEqual
+end
+
+enum Keyword as u8
+    keywordNone
+    keywordSub
+    keywordEnd
+    keywordVar
+    keywordConst
+    keywordIf
+    keywordThen
+    keywordElse
+    keywordWhile
+    keywordFor
+    keywordTo
+    keywordUntil
+    keywordSelect
+    keywordCase
+    keywordReturn
+    keywordExit
+    keywordContinue
+    keywordAs
+    keywordRecord
+    keywordEnum
+    keywordForward
+    keywordAnd
+    keywordOr
+    keywordNot
+    keywordTrue
+    keywordFalse
+end
+
+const keywordCount as u16 = 26
+
+// ------------------------------------------------------------ diagnostics
+
+enum Fault as u8
+    faultNone
+    faultBadCharacter
+    faultNumberTooLarge
+    faultNameTooLong
+    faultArenaFull
+    faultTooManyNames
+end
+
+// Level 0 has no `fails`, `on error` or `defer`, and a single-pass compiler
+// does not want them: it panics and resynchronises, and unwinding would
+// lose the position it resynchronises from. A module-level fault with an
+// early return serves, checked where its absence would spin.
+var fault as Fault = faultNone
+var faultLine as u16 = 0
+
+// ------------------------------------------------------------ name arena
+
+// Identifiers are interned. They are not offsets into the source, which
+// streams through a one-byte window and holds no stable position.
+const arenaBytes as u16 = 4096
+const nameLimit as u16 = 512
+const bucketCount as u16 = 256
+const bucketMask as u16 = 255
+const spellingLimit as u8 = 64
+
+var arena as u8[arenaBytes]
+var arenaUsed as u16 = 0
+
+var nameOffset as u16[nameLimit]
+var nameLength as u8[nameLimit]
+var nameNext as u16[nameLimit]
+var nameCount as u16 = 0
+
+var bucket as u16[bucketCount]
+
+// A staging buffer for the identifier under construction. It is module
+// level rather than local because `nextToken` sits inside the parser's
+// recursive cycle, and section 11.4 rejects a per-invocation aggregate
+// local there.
+var spelling as u8[spellingLimit]
+var spellingLength as u8 = 0
+
+var keywordName as u16[keywordCount]
+
+// ------------------------------------------------------------ source read
+
+var nextByte as u8 = 0
+var sourceLine as u16 = 1
+
+// ---------------------------------------------------------- current token
+
+var tokenKind as TokenKind = kindEnd
+var tokenNameIndex as u16 = 0
+var tokenNumber as u16 = 0
+var tokenPunct as Punct = punctNone
+var tokenKeyword as Keyword = keywordNone
+var tokenLine as u16 = 1
+
+forward sub advance()
+forward sub reportFault(code as Fault)
+forward sub foldCase(value as u8) as u8
+forward sub hashSpelling() as u16
+forward sub spellingMatches(candidate as u16) as boolean
+forward sub internSpelling() as u16
+forward sub classifyKeyword() as Keyword
+forward sub skipComment()
+forward sub skipBlanks()
+forward sub scanName()
+forward sub scanNumber()
+forward sub scanPunct()
+forward sub nextToken()
+forward sub startTokenizer()
+
+sub advance()
+    nextByte = readSourceByte()
+    if nextByte = 10 then
+        sourceLine = sourceLine + 1
+    end
+end
+
+sub reportFault(code as Fault)
+    if fault = faultNone then
+        fault = code
+        faultLine = sourceLine
+    end
+end
+
+sub foldCase(value as u8) as u8
+    if value >= 65 then
+        if value <= 90 then
+            return value + 32
+        end
+    end
+    return value
+end
+
+// ---------------------------------------------------------------- blanks
+
+// A comment is two slashes. With one byte of lookahead the first slash is
+// already consumed when the second is seen, so a slash that turns out to be
+// division has to be remembered rather than pushed back. `heldSlash` is
+// that memory, and it is the shape a one-byte window forces.
+var heldSlash as boolean = false
+
+sub skipComment()
+    var kind as CharClass = classOther
+    while true
+        kind = characterClass[nextByte]
+        if kind = classEnd then
+            return
+        end
+        if kind = classNewline then
+            return
+        end
+        advance()
+    end
+end
+
+sub skipBlanks()
+    var kind as CharClass = classOther
+    while true
+        kind = characterClass[nextByte]
+        select kind
+        case classSpace
+            advance()
+        case classNewline
+            advance()
+        case classPunct
+            if nextByte <> 47 then
+                return
+            end
+            advance()
+            if nextByte <> 47 then
+                heldSlash = true
+                return
+            end
+            skipComment()
+        else
+            return
+        end
+    end
+end
+
+// ------------------------------------------------------------------ scan
+
+sub scanName()
+    var kind as CharClass = classOther
+    spellingLength = 0
+    while true
+        kind = characterClass[nextByte]
+        if kind <> classLetter then
+            if kind <> classDigit then
+                exit
+            end
+        end
+        if spellingLength >= spellingLimit then
+            reportFault(faultNameTooLong)
+            return
+        end
+        // Case folds here and the original spelling is discarded. A
+        // compiler with no strings cannot echo a name, so the spelling is
+        // dead weight, and folding once removes case comparison from the
+        // hottest loop in the program.
+        spelling[spellingLength] = foldCase(nextByte)
+        spellingLength = spellingLength + 1
+        advance()
+    end
+
+    tokenNameIndex = internSpelling()
+    tokenKeyword = classifyKeyword()
+    if tokenKeyword = keywordNone then
+        tokenKind = kindName
+    else
+        tokenKind = kindKeyword
+    end
+end
+
+sub scanNumber()
+    var accumulated as u16 = 0
+    var digit as u8 = 0
+    while characterClass[nextByte] = classDigit
+        digit = nextByte - 48
+        // 6553 is the largest value that survives a multiply by ten with a
+        // digit still to add. The check precedes the multiply because there
+        // is no overflow trap to catch it afterwards.
+        if accumulated > 6553 then
+            reportFault(faultNumberTooLarge)
+            return
+        end
+        accumulated = accumulated * 10 + u16(digit)
+        advance()
+    end
+    tokenNumber = accumulated
+    tokenKind = kindNumber
+end
+
+sub scanPunct()
+    var first as u8 = 0
+    first = nextByte
+    advance()
+
+    select first
+    case 40
+        tokenPunct = punctLeftParen
+    case 41
+        tokenPunct = punctRightParen
+    case 91
+        tokenPunct = punctLeftBracket
+    case 93
+        tokenPunct = punctRightBracket
+    case 44
+        tokenPunct = punctComma
+    case 46
+        tokenPunct = punctDot
+    case 58
+        tokenPunct = punctColon
+    case 43
+        tokenPunct = punctPlus
+    case 45
+        tokenPunct = punctMinus
+    case 42
+        tokenPunct = punctStar
+    case 47
+        tokenPunct = punctSlash
+    case 61
+        tokenPunct = punctEqual
+    case 60
+        tokenPunct = punctLess
+        if nextByte = 62 then
+            advance()
+            tokenPunct = punctNotEqual
+        end
+        if nextByte = 61 then
+            advance()
+            tokenPunct = punctLessEqual
+        end
+    case 62
+        tokenPunct = punctGreater
+        if nextByte = 61 then
+            advance()
+            tokenPunct = punctGreaterEqual
+        end
+    else
+        reportFault(faultBadCharacter)
+        tokenKind = kindBad
+        return
+    end
+
+    tokenKind = kindPunct
+end
+
+// ------------------------------------------------------------- the driver
+
+sub nextToken()
+    var kind as CharClass = classOther
+
+    if heldSlash then
+        heldSlash = false
+        tokenLine = sourceLine
+        tokenPunct = punctSlash
+        tokenKind = kindPunct
+        return
+    end
+
+    skipBlanks()
+    if heldSlash then
+        heldSlash = false
+        tokenLine = sourceLine
+        tokenPunct = punctSlash
+        tokenKind = kindPunct
+        return
+    end
+
+    tokenLine = sourceLine
+    kind = characterClass[nextByte]
+
+    select kind
+    case classEnd
+        tokenKind = kindEnd
+    case classLetter
+        scanName()
+    case classDigit
+        scanNumber()
+    case classPunct
+        scanPunct()
+    else
+        // A quote has no meaning in level 0, which has no strings, so it
+        // joins every other unexpected byte as one fault rather than eight.
+        reportFault(faultBadCharacter)
+        tokenKind = kindBad
+        advance()
+    end
+end
+
+sub startTokenizer()
+    var index as u16 = 0
+    arenaUsed = 0
+    nameCount = 0
+    for index = 0 until bucketCount
+        bucket[index] = nameLimit
+    end
+    sourceLine = 1
+    fault = faultNone
+    heldSlash = false
+    advance()
+    nextToken()
+end
+
+// ---------------------------------------------------------------- interning
+
+sub hashSpelling() as u16
+    var accumulated as u16 = 0
+    var index as u16 = 0
+    for index = 0 until u16(spellingLength)
+        // Shift and add, never multiply: a sixteen-bit multiply is about
+        // ninety times an add on this machine.
+        accumulated = accumulated * 32 + accumulated + u16(spelling[index])
+    end
+    // A power-of-two mask, never a remainder, for the same reason.
+    return accumulated and bucketMask
+end
+
+sub spellingMatches(candidate as u16) as boolean
+    var at as u16 = 0
+    var index as u16 = 0
+    if nameLength[candidate] <> spellingLength then
+        return false
+    end
+    at = nameOffset[candidate]
+    for index = 0 until u16(spellingLength)
+        if arena[at + index] <> spelling[index] then
+            return false
+        end
+    end
+    return true
+end
+
+sub internSpelling() as u16
+    var slot as u16 = 0
+    var candidate as u16 = 0
+    var fresh as u16 = 0
+    var index as u16 = 0
+
+    slot = hashSpelling()
+    candidate = bucket[slot]
+
+    while candidate <> nameLimit
+        if spellingMatches(candidate) then
+            return candidate
+        end
+        candidate = nameNext[candidate]
+    end
+
+    if nameCount >= nameLimit then
+        reportFault(faultTooManyNames)
+        return 0
+    end
+    if arenaUsed + u16(spellingLength) > arenaBytes then
+        reportFault(faultArenaFull)
+        return 0
+    end
+
+    fresh = nameCount
+    nameOffset[fresh] = arenaUsed
+    nameLength[fresh] = spellingLength
+    nameNext[fresh] = bucket[slot]
+    bucket[slot] = fresh
+    nameCount = nameCount + 1
+
+    for index = 0 until u16(spellingLength)
+        arena[arenaUsed + index] = spelling[index]
+    end
+    arenaUsed = arenaUsed + u16(spellingLength)
+
+    return fresh
+end
+
+// Keywords are interned like any other name and recognised by index. The
+// alternative, comparing bytes at every identifier, puts a string compare
+// in the hottest loop, and level 0 has no strings to compare with.
+//
+// The linear scan below is the shape level 0 forces: an enum cannot be
+// produced from a computed integer, so a table lookup returning a Keyword
+// is not expressible and the search returns a named member from a `select`.
+sub classifyKeyword() as Keyword
+    var index as u16 = 0
+    for index = 1 until keywordCount
+        if keywordName[index] = tokenNameIndex then
+            select index
+            case 1
+                return keywordSub
+            case 2
+                return keywordEnd
+            case 3
+                return keywordVar
+            case 4
+                return keywordConst
+            case 5
+                return keywordIf
+            case 6
+                return keywordThen
+            case 7
+                return keywordElse
+            case 8
+                return keywordWhile
+            case 9
+                return keywordFor
+            case 10
+                return keywordTo
+            case 11
+                return keywordUntil
+            case 12
+                return keywordSelect
+            case 13
+                return keywordCase
+            case 14
+                return keywordReturn
+            case 15
+                return keywordExit
+            case 16
+                return keywordContinue
+            case 17
+                return keywordAs
+            case 18
+                return keywordRecord
+            case 19
+                return keywordEnum
+            case 20
+                return keywordForward
+            case 21
+                return keywordAnd
+            case 22
+                return keywordOr
+            case 23
+                return keywordNot
+            case 24
+                return keywordTrue
+            case 25
+                return keywordFalse
+            else
+                return keywordNone
+            end
+        end
+    end
+    return keywordNone
+end
