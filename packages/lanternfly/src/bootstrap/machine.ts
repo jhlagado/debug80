@@ -29,8 +29,28 @@ export interface MachineOptions {
   readonly stackPointer?: number;
   /** Source text delivered through the source port. */
   readonly source?: Uint8Array | string;
-  /** Ranges the program may not write, for the read-only self-check. */
+  /**
+   * Ranges the program may not write. Defaults to the program's own extent,
+   * so a compiler that writes its own code space fails loudly rather than
+   * producing a wrong image. Pass an empty array to opt out deliberately.
+   */
   readonly romRanges?: ReadonlyArray<{ start: number; end: number }>;
+}
+
+export class SourceFramingError extends Error {
+  constructor(offset: number, byte: number) {
+    super(
+      `source byte 0x${byte.toString(16)} at offset ${offset} is outside ` +
+        `printable ASCII; framing and validation belong to the producer`,
+    );
+    this.name = "SourceFramingError";
+  }
+}
+
+/** One captured store write, for the lockstep differ. */
+export interface StoreWrite {
+  readonly address: number;
+  readonly value: number;
 }
 
 export interface RunBudget {
@@ -44,7 +64,9 @@ export interface RunOutcome {
   readonly instructions: number;
   readonly cycles: number;
   readonly exhausted: boolean;
-  /** Lowest stack pointer observed, sampled. Names a runaway recursion. */
+  /** Greatest stack depth reached, in bytes below the initial pointer. */
+  readonly stackDepth: number;
+  /** Stack pointer at that depth. */
   readonly stackLow: number;
 }
 
@@ -55,12 +77,16 @@ export class BootstrapMachine {
   readonly #code: number[] = [];
   readonly #diagnostic: number[] = [];
   #status: number | undefined;
+  #writes: StoreWrite[] = [];
+  readonly #stackTop: number;
+  #stackDepth = 0;
 
   constructor(options: MachineOptions) {
     const source =
       typeof options.source === "string"
         ? new TextEncoder().encode(options.source)
         : (options.source ?? new Uint8Array(0));
+    assertDeliverableSource(source);
     this.#source = source;
 
     this.#runtime = createZ80Runtime(
@@ -70,10 +96,23 @@ export class BootstrapMachine {
         read: (port) => this.#read(port & 0xff),
         write: (port, value) => this.#write(port & 0xff, value & 0xff),
       },
-      { romRanges: options.romRanges ? [...options.romRanges] : [] },
+      { romRanges: [...(options.romRanges ?? defaultRomRanges(options.program))] },
     );
 
     this.#runtime.cpu.sp = options.stackPointer ?? 0x0000;
+    this.#stackTop = this.#runtime.cpu.sp;
+
+    // Capture store writes so the lockstep differ compares what changed
+    // rather than rescanning the address space every instruction.
+    const inner = this.#runtime.hardware.memWrite;
+    this.#runtime.hardware.memWrite = (address: number, value: number) => {
+      const before = this.#runtime.hardware.memory[address & 0xffff];
+      inner?.(address, value);
+      const after = this.#runtime.hardware.memory[address & 0xffff];
+      if (after !== before) {
+        this.#writes.push({ address: address & 0xffff, value: after });
+      }
+    };
   }
 
   #read(port: number): number {
@@ -134,10 +173,32 @@ export class BootstrapMachine {
   /** One instruction. The lockstep differ drives two machines through this. */
   step(): { halted: boolean; cycles: number } {
     const result = this.#runtime.step();
+    // Depth is the modular distance below the initial pointer, because a
+    // stack starting at 0x0000 wraps to the top on its first push and no
+    // unsigned comparison can see that as deeper.
+    const depth = (this.#stackTop - this.#runtime.cpu.sp) & 0xffff;
+    if (depth > this.#stackDepth) this.#stackDepth = depth;
     return {
       halted: result.halted || this.#runtime.cpu.halted,
       cycles: result.cycles ?? 0,
     };
+  }
+
+  /** Store writes since the last call, then clears them. */
+  takeWrites(): StoreWrite[] {
+    const writes = this.#writes;
+    this.#writes = [];
+    return writes;
+  }
+
+  /** Greatest depth reached, in bytes below the initial stack pointer. */
+  stackDepth(): number {
+    return this.#stackDepth;
+  }
+
+  /** Stack pointer at that greatest depth. */
+  stackLow(): number {
+    return (this.#stackTop - this.#stackDepth) & 0xffff;
   }
 
   /**
@@ -148,28 +209,21 @@ export class BootstrapMachine {
   runToHalt(budget: RunBudget): RunOutcome {
     let instructions = 0;
     let cycles = 0;
-    let stackFloor = this.#runtime.cpu.sp;
 
     while (instructions < budget.maxInstructions) {
-      const result = this.#runtime.step();
+      const result = this.step();
       instructions += 1;
-      cycles += result.cycles ?? 0;
+      cycles += result.cycles;
 
-      // Cheap stack-depth watch: turns runaway recursion from mystifying
-      // wrong output into a named failure.
-      if ((instructions & 0xfff) === 0) {
-        const sp = this.#runtime.cpu.sp;
-        if (sp !== 0 && sp < stackFloor) stackFloor = sp;
-      }
-
-      if (result.halted || this.#runtime.cpu.halted) {
+      if (result.halted) {
         return {
           halted: true,
           haltAddress: (this.#runtime.cpu.pc - 1) & 0xffff,
           instructions,
           cycles,
           exhausted: false,
-          stackLow: stackFloor,
+          stackDepth: this.#stackDepth,
+          stackLow: this.stackLow(),
         };
       }
     }
@@ -180,7 +234,8 @@ export class BootstrapMachine {
       instructions,
       cycles,
       exhausted: true,
-      stackLow: stackFloor,
+      stackDepth: this.#stackDepth,
+      stackLow: this.stackLow(),
     };
   }
 }
@@ -193,5 +248,31 @@ export class BootstrapMachine {
 export function imageOf(bytes: Uint8Array, origin = 0x0000): HexProgram {
   const memory = new Uint8Array(0x10000);
   memory.set(bytes, origin);
-  return { memory, startAddress: origin };
+  return {
+    memory,
+    startAddress: origin,
+    writeRanges: [{ start: origin, end: origin + bytes.length }],
+  };
+}
+
+/** Printable ASCII, tab, newline and carriage return. Nothing else. */
+function assertDeliverableSource(source: Uint8Array): void {
+  for (let offset = 0; offset < source.length; offset += 1) {
+    const byte = source[offset];
+    const printable = byte >= 0x20 && byte <= 0x7e;
+    const whitespace = byte === 0x09 || byte === 0x0a || byte === 0x0d;
+    if (!printable && !whitespace) throw new SourceFramingError(offset, byte);
+  }
+}
+
+function defaultRomRanges(
+  program: HexProgram,
+): ReadonlyArray<{ start: number; end: number }> {
+  if (program.writeRanges && program.writeRanges.length > 0) {
+    return program.writeRanges.map((range) => ({
+      start: range.start,
+      end: range.end - 1,
+    }));
+  }
+  return [];
 }

@@ -26,32 +26,60 @@ export interface Divergence {
 
 export interface LockstepOptions {
   readonly maxInstructions: number;
-  /** Watch this range for divergent writes. Defaults to the whole space. */
-  readonly watch?: { readonly start: number; readonly end: number };
 }
 
 /**
  * Steps two machines together, stopping at the first observable difference.
  * Returns undefined when both ran to the same end with the same output.
+ *
+ * Comparison is proportional to the number of store writes, not to the
+ * address space: each machine records what it wrote and the two lists are
+ * matched. Rescanning memory every instruction would make this unusable at
+ * the tens of millions of instructions a fixpoint takes.
  */
 export function lockstep(
   left: BootstrapMachine,
   right: BootstrapMachine,
   options: LockstepOptions,
 ): Divergence | undefined {
-  const start = options.watch?.start ?? 0x0000;
-  const end = options.watch?.end ?? 0xffff;
-
-  const leftMemory = left.memory;
-  const rightMemory = right.memory;
-  const shadow = leftMemory.slice(start, end + 1);
-
   for (let step = 0; step < options.maxInstructions; step += 1) {
     const leftPc = left.cpu.pc;
     const rightPc = right.cpu.pc;
 
     const leftOutcome = left.step();
     const rightOutcome = right.step();
+
+    const leftWrites = left.takeWrites();
+    const rightWrites = right.takeWrites();
+
+    if (leftWrites.length !== rightWrites.length) {
+      return {
+        step,
+        kind: "memory",
+        detail:
+          `left made ${leftWrites.length} store writes, right made ` +
+          `${rightWrites.length}`,
+        leftPc,
+        rightPc,
+      };
+    }
+
+    for (let index = 0; index < leftWrites.length; index += 1) {
+      const a = leftWrites[index];
+      const b = rightWrites[index];
+      if (a.address === b.address && a.value === b.value) continue;
+      return {
+        step,
+        kind: "memory",
+        detail:
+          `left wrote 0x${a.value.toString(16).padStart(2, "0")} to ` +
+          `0x${a.address.toString(16).padStart(4, "0")}, right wrote ` +
+          `0x${b.value.toString(16).padStart(2, "0")} to ` +
+          `0x${b.address.toString(16).padStart(4, "0")}`,
+        leftPc,
+        rightPc,
+      };
+    }
 
     if (leftOutcome.halted !== rightOutcome.halted) {
       return {
@@ -63,27 +91,6 @@ export function lockstep(
         leftPc,
         rightPc,
       };
-    }
-
-    // Compare only what changed on the left, so the scan is proportional to
-    // writes rather than to the address space.
-    for (let address = start; address <= end; address += 1) {
-      const before = shadow[address - start];
-      const after = leftMemory[address];
-      if (before === after) continue;
-      shadow[address - start] = after;
-      if (rightMemory[address] !== after) {
-        return {
-          step,
-          kind: "memory",
-          detail:
-            `at 0x${address.toString(16).padStart(4, "0")}: ` +
-            `left wrote 0x${after.toString(16).padStart(2, "0")}, ` +
-            `right holds 0x${rightMemory[address].toString(16).padStart(2, "0")}`,
-          leftPc,
-          rightPc,
-        };
-      }
     }
 
     const leftCode = left.code();

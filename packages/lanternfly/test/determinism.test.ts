@@ -92,13 +92,13 @@ describe("determinism", () => {
     const divergence = lockstep(
       new BootstrapMachine(spec(0x22)),
       new BootstrapMachine(spec(0x33)),
-      { maxInstructions: 500, watch: { start: 0x8000, end: 0x8010 } },
+      { maxInstructions: 500 },
     );
 
     expect(divergence?.kind).toBe("memory");
     expect(divergence?.detail).toContain("0x8001");
-    expect(divergence?.detail).toContain("left wrote 0x22");
-    expect(divergence?.detail).toContain("right holds 0x33");
+    expect(divergence?.detail).toContain("0x22");
+    expect(divergence?.detail).toContain("0x33");
   });
 });
 
@@ -162,5 +162,58 @@ describe("throughput", () => {
     // gone badly wrong, such as tracing being left on.
     expect(instructionsPerSecond).toBeGreaterThan(2_000_000);
     expect(realtimeMultiple).toBeGreaterThan(4);
+  });
+});
+
+describe("stack depth", () => {
+  it("measures depth below a stack that starts at zero and wraps", () => {
+    // Five nested calls, each pushing a return address, plus one PUSH each.
+    const assembled = assembleSource(`
+      .org $0000
+      Start:
+          CALL Level1
+          HALT
+      Level1:
+          PUSH HL
+          CALL Level2
+          POP  HL
+          RET
+      Level2:
+          PUSH HL
+          CALL Level3
+          POP  HL
+          RET
+      Level3:
+          PUSH HL
+          CALL Level4
+          POP  HL
+          RET
+      Level4:
+          PUSH HL
+          RET
+    `);
+    const machine = new BootstrapMachine({
+      program: imageOf(assembled.bytes, assembled.origin),
+    });
+
+    const outcome = machine.runToHalt({ maxInstructions: 500 });
+
+    // Four return addresses plus four pushed pairs, at two bytes each.
+    expect(outcome.stackDepth).toBeGreaterThanOrEqual(14);
+    expect(outcome.stackLow).toBe((0x0000 - outcome.stackDepth) & 0xffff);
+  });
+
+  it("reports no depth for a program that never uses the stack", () => {
+    const assembled = assembleSource(`
+      .org $0000
+      Start:
+          LD   A,1
+          HALT
+    `);
+    const machine = new BootstrapMachine({
+      program: imageOf(assembled.bytes, assembled.origin),
+    });
+
+    expect(machine.runToHalt({ maxInstructions: 100 }).stackDepth).toBe(0);
   });
 });

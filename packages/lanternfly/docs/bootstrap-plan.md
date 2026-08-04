@@ -57,11 +57,16 @@ fix addresses while still discovering what determines instruction widths.
 So three passes, each over a rewound source:
 
 1. **Analysis** collects declarations, types and call edges, then computes
-   the strongly-connected components. No addresses.
+   the strongly-connected components. No addresses, no output.
 2. **Layout** runs the real lowerer against a counting sink, with the
-   recursion decisions now available, and fixes every address.
+   recursion decisions now available, and fixes every address. It emits
+   nothing: the sink counts bytes.
 3. **Emission** runs the same lowerer against the code stream and asserts
-   that every address agrees with what layout recorded.
+   that every address agrees with what layout recorded. **Only emission
+   calls `writeCodeByte`.**
+
+The three are referred to by name throughout — analysis, layout, emission —
+rather than by number, since the numbering has already changed once.
 
 The third pass's assertion is the valuable part: any divergence in length
 between layout and emission is caught where it happens rather than
@@ -73,7 +78,7 @@ with each other.
 | --- | --- | --- |
 | `0x00` | `readSourceByte() as u8` | next source byte, `0xFF` at end |
 | `0x05` | `rewindSource()` | return the input to offset zero |
-| `0x01` | `writeCodeByte(b as u8)` | the emitted image, pass two only |
+| `0x01` | `writeCodeByte(b as u8)` | the emitted image; **emission only** |
 | `0x03` | `writeDiagnostic(b as u8)` | diagnostic text and listing |
 | `0x02` | `setExitStatus(b as u8)` | zero for success |
 
@@ -221,14 +226,13 @@ multiply helper is about 1,020 T-states against eleven for `ADD HL,DE`, so
 helper is 1,020. Symbol-table hashing uses a power-of-two mask, never a
 remainder.
 
-**Save-around-call is settled by pass one, not by declarations.** The
+**Save-around-call is settled by analysis, not by declarations.** The
 protocol applies to routines inside a strongly-connected component of the
 call graph. An earlier draft proposed requiring every routine to be
 forward-declared so the graph would be known up front — but a declaration
 carries a name and a signature, and the call edges live in the bodies. The
-prologue would not have completed the graph. Pass one reads the bodies and
-collects the edges, so cycle membership is settled before pass two emits
-anything.
+prologue would not have completed the graph. Analysis reads the bodies and collects the edges, so cycle membership is
+settled before layout fixes a single address.
 
 The cost itself is real: about 195 T-states and 34 bytes at a call site
 with two sixteen-bit and two byte values live, and a parser has a few
@@ -297,22 +301,37 @@ to be complete.
   layouts, temporaries and tables differ from the first instruction even
   when both are correct. For those, compare emitted-stream prefixes and
   named semantic checkpoints.
-- **Throughput: measured, and better than assumed.** The emulator runs
-  **30.3 million instructions and 254 million emulated T-states a second**,
-  which is **63× realtime** against a 4 MHz Z80, stepping without tracing
-  over a loop of sixteen-bit adds and memory accesses. A compiler handling
-  roughly 500 source bytes a second on real hardware therefore takes about
-  200 seconds of emulated time over 100K of source, or **near three seconds
-  of wall clock**; a full A→B→C fixpoint is about ten.
+- **Throughput: two measurements, and the distinction between them
+  matters.** A bare CPU loop with no port traffic runs at **30.3 million
+  instructions a second**, 63× realtime against a 4 MHz Z80. A
+  representative proxy — three passes over 24K of source, a JavaScript
+  callback per source byte, an output byte every four — runs at **10.1
+  million instructions a second**. Port callbacks cost roughly threefold,
+  which is why the bare figure must not be used for projections.
 
-  That changes how the fixpoint is used. It was planned as a slow gate run
-  rarely; at ten seconds it belongs in the ordinary edit loop, run on every
-  change that touches the compiler. Two things become practical with it:
-  **randomised differential testing** over thousands of generated programs,
-  and **delta-debugging** a failing case, which needs many compiles to
-  shrink an input and would have been unusable at minutes apiece.
+  Everything past that rate is arithmetic over an **assumed instruction
+  density**, which is not yet established. The proxy itself spends 7.8
+  instructions per source byte, and a compiler that tokenizes, parses,
+  looks up symbols and emits will spend far more. Over 100K of source in
+  three passes:
 
-  The figure holds only with tracing off. The TEC-1G session allocates an
+  | assumed instructions per source byte | one compile | A→B→C fixpoint |
+  | --- | --- | --- |
+  | 50 | 1.5s | 3.0s |
+  | 200 | 6.1s | 12.2s |
+  | 500 | 15.2s | 30.5s |
+
+  So the earlier "about three seconds, fixpoint about ten" was wrong on two
+  counts: it used the callback-free rate and it counted one pass rather than
+  three. Phase 3 replaces the density assumption with a measurement from
+  Candlemoth's own tokenizer, and only then is the fixpoint's cost known.
+
+  The likely range still puts the fixpoint in tens of seconds rather than
+  minutes, which is probably enough to keep it in the ordinary edit loop
+  along with randomised differential testing and delta-debugging — but that
+  is a projection, and it is labelled one until Phase 3.
+
+  Both figures hold only with tracing off. The TEC-1G session allocates an
   object per instruction and shifts a 24-element array, which is precisely
   the pattern that would spend this margin.
 
@@ -367,8 +386,9 @@ compiled by the seed and run under it. Not the tokenizer alone: a
 tokenizer is a dispatch over character classes and its density resembles
 nothing else in the compiler, so extrapolating from it underestimates,
 probably twofold. The slice exercises save-around-call, forward references, the emitter, and
-the agreement between the layout and emission passes, and its cost does
-extrapolate.
+the agreement between the layout and emission passes. Its byte cost
+extrapolates, and so does its **instruction density**, which is what turns
+the fixpoint's cost from a projection into a number.
 
 Gate: the measured byte cost of the slice, against the twenty-four
 kilobyte budget.
@@ -397,10 +417,11 @@ Seed compiles Candlemoth to **A**; **A** compiles the same source to **B**;
 **B** compiles it to **C**. **B** and **C** must be byte-identical; **A**
 and **B** need not be.
 
-At about ten seconds a run, the fixpoint is cheap enough to be part of the
-ordinary edit loop rather than a release gate — which matters, because a
-fixpoint failure caught the day it appears is a small diff to search and one
-caught a month later is not.
+On the projections above the fixpoint costs tens of seconds, which would
+make it part of the ordinary edit loop rather than a release gate — and that
+matters, because a fixpoint failure caught the day it appears is a small
+diff to search and one caught a month later is not. The figure is a
+projection until Phase 3 measures the density it rests on.
 
 **The fixpoint proves stability, not correctness.** Two identically wrong
 compilers are a perfectly good fixpoint, and Candlemoth's own source is by

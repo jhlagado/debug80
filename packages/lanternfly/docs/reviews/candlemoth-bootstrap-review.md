@@ -313,7 +313,13 @@ Add their availability and diagnostics to the Level 0 conformance contract.
 
 ### 13. Emulator stepping speed is not yet compiler throughput
 
-**Status:** Open
+**Status:** Resolved — a representative proxy now reads 24K of source three
+times through the real port handler and halts through `runToHalt`. It
+measures **10.1M instructions a second** against the bare loop's 30.3M, so
+port callbacks cost roughly threefold. The plan records both rates, states
+that everything past them is arithmetic over an unknown instruction density,
+and tabulates compile and fixpoint times at 50, 200 and 500 instructions per
+source byte — 3.0s to 30.5s for a fixpoint. Phase 3 measures the density.
 
 **Evidence.** The recorded benchmark measures 30.3 million instructions and
 254 million emulated T-states per wall-clock second over a tight loop of
@@ -340,7 +346,9 @@ run on every compiler edit and which run in a larger gate.
 
 ### 14. Three-pass terminology is not reconciled throughout the plan
 
-**Status:** Open
+**Status:** Resolved — the passes are named analysis, layout and emission
+throughout, numbering is used only in the defining list, layout is stated to
+emit nothing, and only emission calls `writeCodeByte`.
 
 **Evidence.** The machine section defines analysis, layout and emission as
 three passes, but later text still says:
@@ -358,6 +366,87 @@ build a harness around the obsolete pass numbering.
 **Smallest credible repair.** Replace numbered references outside the
 three-pass definition with the stable names `analysis`, `layout` and
 `emission`. State that only emission calls `writeCodeByte`.
+
+## Follow-up findings after the Phase 0 harness
+
+The committed Phase 0 suite passes all eight tests. It verifies assembly,
+deterministic image construction, the five bootstrap operations, bounded
+execution, the halted-PC correction, port masking, source rewind, selectable
+read-only ranges, size reporting and byte comparison. The following gaps are
+in the tested contract rather than in those implementations.
+
+### 15. The source producer does not enforce the ASCII framing contract
+
+**Status:** Resolved — `BootstrapMachine` validates every source byte at
+construction and throws `SourceFramingError` outside printable ASCII, tab,
+newline and carriage return. Tests cover an embedded `0xFF`, a non-ASCII
+string and accepted whitespace.
+
+**Evidence.** The plan assigns ASCII validation to the transport producer and
+states that `0xFF` never arrives as source data. `BootstrapMachine` is that
+producer in the test harness, but its `source` option accepts either a string
+or an arbitrary byte array. Strings pass through `TextEncoder`, which encodes
+non-ASCII text instead of rejecting it, and a byte array containing `0xFF` is
+delivered unchanged. The framing test supplies the ASCII string `"Z"`; it
+does not exercise either invalid case.
+
+**Consequence.** The harness can present input that violates the boundary on
+which Candlemoth's end-of-input rule depends. An embedded `0xFF` truncates the
+compiler's view of the source, while other non-ASCII bytes reach a compiler
+that the plan says need not diagnose them.
+
+**Smallest credible repair.** Validate every source byte before the machine
+runs and reject values outside ASCII, including `0xFF`. Add tests for a
+non-ASCII string and for an explicit byte array containing `0xFF`. Keep the
+synthetic terminator produced only after the validated input is exhausted.
+
+### 16. Read-only code protection is optional in the bootstrap machine
+
+**Status:** Resolved — `imageOf` records the loaded extent and the machine
+protects it by default, so a run gets the memory contract without asking.
+An explicit empty range remains as a deliberate opt-out, and both cases are
+tested.
+
+**Evidence.** The plan defines code as read-only and writable store above it.
+`BootstrapMachine` makes `romRanges` optional and supplies an empty list when
+the caller omits it. The gate run omits the option. A separate test proves
+that the runtime blocks writes when a caller supplies the range, but no test
+proves that a normal compiler run protects its actual code image.
+
+**Consequence.** A Candlemoth test can accidentally run with writable code
+and still pass. The current test establishes that the emulator supports ROM
+protection; it does not yet establish the bootstrap machine's memory contract
+or prove that Candlemoth never writes into its own image.
+
+**Smallest credible repair.** Make the occupied code range mandatory or derive
+it from an image type that retains the loaded extent. Run the gate with that
+range enabled, then retain the deliberate-write test as proof that the guard
+detects a violation while permitting writes to the store.
+
+### 17. The stack-depth watch cannot measure a stack descending from zero
+
+**Status:** Resolved — depth is the modular distance below the configured
+initial pointer, sampled every instruction rather than every 4,096, with the
+corresponding pointer reported alongside it. A nested-call test asserts a
+depth of at least fourteen bytes and a program that never touches the stack
+reports zero.
+
+**Evidence.** The harness sets `SP` to `0x0000`, so the first push wraps it to
+the top of memory. `runToHalt` initialises `stackFloor` to zero and updates it
+only when a later non-zero stack pointer is numerically smaller. No unsigned
+sixteen-bit stack pointer is smaller than zero, so `stackLow` remains zero at
+every depth. The suite has no recursive or stack-use case that checks the
+reported value.
+
+**Consequence.** Budget exhaustion still prevents a hang, but the promised
+named recursion clue carries no stack-depth information. A runaway recursive
+compiler and an ordinary infinite loop produce the same useful evidence from
+this field.
+
+**Smallest credible repair.** Measure modular distance from the configured
+initial stack pointer, retain the greatest observed distance and report the
+corresponding stack pointer. Add a small call sequence or push loop whose
+expected depth crosses at least one sampling point.
 
 ## Measurements to retain as hypotheses
 
