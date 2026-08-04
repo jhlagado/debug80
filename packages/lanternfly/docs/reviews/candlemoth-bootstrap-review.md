@@ -309,11 +309,62 @@ fixed signatures and lowering, and state how profile-specific intrinsics enter
 name resolution without restoring the general external-binding machinery.
 Add their availability and diagnostics to the Level 0 conformance contract.
 
+## Follow-up findings after the first measurements
+
+### 13. Emulator stepping speed is not yet compiler throughput
+
+**Status:** Open
+
+**Evidence.** The recorded benchmark measures 30.3 million instructions and
+254 million emulated T-states per wall-clock second over a tight loop of
+sixteen-bit additions and memory accesses with tracing disabled. The plan then
+combines that result with an estimated real-hardware compiler rate of 500
+source bytes per second to project a three-second self-compile and a ten-second
+fixpoint.
+
+Candlemoth now reads the source three times, not once. Its workload also adds
+branch-heavy tokenisation, table probes and a JavaScript callback for every
+input and output operation. None of those costs appears in the measured loop.
+
+**Consequence.** The 63-times-realtime emulator result is measured, but the
+three-second compile and ten-second fixpoint are still estimates. Treating
+them as measurements may put the fixpoint and thousands of randomised cases
+into the ordinary test loop before their actual cost is known.
+
+**Smallest credible repair.** Keep the measured instruction and T-state rates.
+Label the compiler and fixpoint times as projections until Phase 0 runs a
+representative proxy that reads a large source stream three times, performs a
+tokenizer-shaped branch and table workload, emits bytes through the real port
+handler and halts through `runToHalt`. Use that result to decide which checks
+run on every compiler edit and which run in a larger gate.
+
+### 14. Three-pass terminology is not reconciled throughout the plan
+
+**Status:** Open
+
+**Evidence.** The machine section defines analysis, layout and emission as
+three passes, but later text still says:
+
+- `writeCodeByte` is used in “pass two only”;
+- two passes remove the resident image; and
+- cycle membership is settled before pass two emits.
+
+The emission pass is now pass three, and the layout pass emits only to a
+counting sink.
+
+**Consequence.** An implementation agent could emit code during layout or
+build a harness around the obsolete pass numbering.
+
+**Smallest credible repair.** Replace numbered references outside the
+three-pass definition with the stable names `analysis`, `layout` and
+`emission`. State that only emission calls `writeCodeByte`.
+
 ## Measurements to retain as hypotheses
 
-**Status:** Resolved — the plan now opens by stating that every quantity in it
-is an estimate unmeasured from generated Lanternfly, and the RST entry counts
-the vector table and helper bodies alongside the call-site saving.
+**Status:** Partially resolved — port composition, halted-PC behaviour and raw
+emulator stepping speed are measured. Candlemoth throughput and fixpoint time
+remain projected; see finding 13. The RST entry counts the vector table and
+helper bodies alongside the call-site saving.
 
 The proposed twenty-four-kilobyte budget, RST-site savings, source size,
 throughput and bytes-per-construct estimates are useful planning numbers. None
