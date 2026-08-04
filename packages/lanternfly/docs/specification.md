@@ -64,8 +64,18 @@ The complete 0.7 language includes:
   another assembler, C or a selected BASIC dialect as transparency and
   portability backends.
 
-The first compiler delivers this contract in K0 through K2 stages, which are
-development milestones rather than smaller editions of the language. A stage is a development milestone rather than a
+Lanternfly has three levels, nested subsets of one language. **Level 0** is
+what a compiler can be written in — integers, arrays, records, subroutines,
+control flow, `extern` and `asm`. **Level 1** is full structured
+programming. **Level 2** adds the tasks, state cells, pulses and derivations
+of sections 12.6 and 17. A level-2 implementation accepts all three, because
+a level-0 program is a Lanternfly program that uses fewer features.
+
+The levels also describe the bootstrap. Each is enough to write a compiler
+for the level above it, so the reference compiler's own source stays at
+level 0 while what it accepts grows. An implementation may reject what it
+has not yet accepted, identifying the limitation as an implementation-level
+or target-capability diagnostic. A stage is a development milestone rather than a
 smaller edition of the language: it may reject what it has not yet
 implemented, but it must identify the limitation as an implementation-stage
 or target-capability diagnostic.
@@ -3977,7 +3987,8 @@ operators and extends as far right as it can, which puts `c + 1` inside the
 
 ## 16. Design queue
 
-The following questions remain open or provisional. None blocks K0 or K1.
+The following questions remain open or provisional. None blocks level 0 or
+level 1.
 Open items: pulses that carry a payload;
 whether `raise` and `yield` share machinery; a loop form that carries its
 own wait in its head or tail, once real programs show which shapes recur; the driven instance — an

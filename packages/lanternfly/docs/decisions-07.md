@@ -254,6 +254,65 @@ specification is reconciled to it, not the other way round.
     support no indexing, dereference or arithmetic; `byteSize` covers the
     one case that genuinely needs a byte count.
 
+## Levels and bootstrap
+
+68. Lanternfly has **three levels**, nested subsets of one language rather
+    than dialects. **Level 0** is what a compiler can be written in:
+    integers, arrays, records, subroutines, control flow, `extern`,
+    `asm`. **Level 1** is full structured programming, comparable to
+    Pascal or C. **Level 2** adds tasks, state cells, pulses, derivations
+    and the instant, and is what is published and discussed as
+    Lanternfly.
+69. A level-2 compiler accepts all three. A level-0 program is a
+    Lanternfly program that uses fewer features; nothing is translated
+    and nothing is a separate language.
+70. Two axes, not one: the level a compiler is **written in** and the
+    level it **accepts**. Each level suffices to write a compiler for the
+    level above it, so Candlemoth's source stays at level 0 permanently
+    while what it accepts grows. **The 16K budget is therefore a budget
+    for a level-0 program**; the cost of tasks and derivations falls on
+    what the compiler accepts, not on what it is made of.
+71. Level 0's boundary is empirical — whatever Candlemoth's own source
+    turns out to need. Writing the compiler defines it.
+72. The K0–K2 stage vocabulary folds into levels. A compiler's maturity
+    is which level it accepts yet.
+73. **Honeydew retires as a name.** The task and reactive surface is
+    level 2 of Lanternfly, not a dialect over it.
+
+## Bootstrap path
+
+74. A **seed** compiler in JavaScript accepts level 0 and emits Z80. It
+    runs on the host, so it may allocate freely and be slow: its only
+    obligation is correctness.
+75. Candlemoth is written in level-0 Lanternfly and compiled by the seed.
+    Lanternfly's own rules — no heap, no closures, no routine values,
+    static storage — enforce the discipline a Z80 needs, so it is not a
+    matter of remembering to restrict oneself.
+76. Candlemoth runs in the browser as a Z80 binary under debug80's
+    emulator. No JavaScript port of the compiler is needed or wanted; a
+    third implementation would only have to be kept in step.
+77. Candlemoth is a **filter**: characters in, bytes out, no file system.
+    Identical under emulation, over serial to hardware, and piped on a
+    desktop. Its whole I/O surface is `standard.textOutput.writeCharacter`
+    and `standard.characterPoll.poll`, which on a Z80 bind to a reserved
+    port — `OUT` hands a byte to the host, `IN` takes one and yields zero
+    when none waits, which is the nonblocking contract already specified.
+78. Candlemoth is a prologue-only program: a designated subroutine, no
+    scheduler, blocking legal because nothing else needs the processor. It
+    exercises none of level 2.
+79. The bootstrap test is a fixpoint. The seed compiles Candlemoth's
+    source to binary A; A compiles that same source to B; B compiles it to
+    C. A and B may differ, having come from different compilers. **B and C
+    must be byte-identical.** After that the seed is needed only to
+    rebuild from nothing.
+80. Two implementations risk drifting on semantics. The conformance
+    contract is the guard: both must pass the same vectors, so a
+    disagreement is a bug rather than an opinion.
+81. First milestone is **the tokenizer**, written in level-0 Lanternfly
+    and run under the emulator, because its compiled size is the first
+    real evidence about the 16K budget, which until now has been
+    estimated.
+
 ## Open
 
 Nothing outstanding. Remaining work is reconciliation: the

@@ -34,7 +34,8 @@ these identifiers even when their filenames or organization change.
 
 ### 1.1 Development-stage claims
 
-K0, K1, and K2 are development milestones, not smaller language editions. A
+Levels 0, 1 and 2 are nested subsets of one language, as section 1 of the
+specification defines them. A
 development build may report that a construct belongs to a later milestone,
 but it cannot claim a conforming 0.7 front end until it accepts every required
 0.7 construct and passes the complete applicable inventory.
@@ -282,11 +283,11 @@ compares final storage plus ordered service/fault traces:
     runs on the ordinary return, the `fail` and the propagated exits,
     latest-registered first, with the propagated code preserved across
     cleanup; plus a failable designated subroutine whose successful
-    and failed executions reach the profile's distinct termination outcomes. K2 only, because it
+    and failed executions reach the profile's distinct termination outcomes. Level 1 only, because it
     requires source routines.
 
-The K1 Tetro and Pacmo programs exercise module storage and routine locals.
-K2 reruns source-routine versions with parameters, per-call locals, ABI frames
+The Tetro and Pacmo programs exercise module storage and routine locals.
+Level 1 reruns source-routine versions with parameters, per-call locals, ABI frames
 and ordinary routine return.
 
 The AZM Book 3 programs extend this minimum as algorithm-by-algorithm fixtures.
