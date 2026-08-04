@@ -11,9 +11,9 @@ call graph, which forward declarations cannot; and seed–Candlemoth byte equali
 was never needed and buying it would have cost the independence the
 validation rests on.
 
-Every quantity here — the budget, the RST saving, the source size, the
-throughput — is an estimate. None has been measured from generated
-Lanternfly. Phase 0 and Phase 3 replace them with results.
+Every quantity here — the budget, the RST saving, the source size — is an
+estimate unmeasured from generated Lanternfly, and Phase 3 replaces them
+with results. The three measured so far are marked as such.
 
 ## What already exists
 
@@ -266,11 +266,17 @@ to be complete.
 - **A determinism contract**: store zeroed before every run, defined
   padding, deterministic label numbering, deterministic table iteration.
   Without it, fixpoint failures are unreproducible.
-- **The corrections the emulator forces.** `initCpu` leaves `SP` at
-  `0xdff0`, in the middle of the working store, so the session sets it and
-  the seed emits `LD SP,$0000`. A halted CPU reports `PC` one past the
-  `HALT`, so diagnostics report `pc - 1`. `step()` on a halted CPU returns
-  zero cycles forever, so the loop tests `halted` before any predicate.
+- **The corrections the emulator forces**, two of them now confirmed by
+  measurement rather than by reading. `OUT (0x01),A` with `A = 0x41`
+  presents port **`0x4101`**: a handler written against `port === 0x01`
+  never fires, and the compiler would appear to produce no output at all
+  with nothing visibly wrong. Every handler masks with `& 0xff`. A halted
+  CPU reports `PC` **one past** the `HALT` — confirmed with `HALT` at
+  `0x06` reporting `0x07` — so diagnostics report `pc - 1`. `initCpu`
+  leaves `SP` at `0xdff0`, in the middle of the working store, so the
+  session sets it and the seed emits `LD SP,$0000`. `step()` on a halted
+  CPU returns zero cycles forever, so the loop tests `halted` before any
+  predicate.
   `runUntil` on the TEC-1G session *throws* when a program halts, which is
   exactly inverted for a compiler whose success condition is halting — so
   `runToHalt` is written, not adapted. `D8Symbols.address()` already exists
@@ -291,14 +297,28 @@ to be complete.
   layouts, temporaries and tables differ from the first instruction even
   when both are correct. For those, compare emitted-stream prefixes and
   named semantic checkpoints.
-- **A measured throughput number.** A single-pass compiler on a 4 MHz Z80
-  handles roughly 500 source bytes a second, so a self-compile is minutes
-  of emulated time and the fixpoint is a slow gate. Measure the emulator's
-  actual instruction rate in week one, because if it is much slower than
-  assumed the whole approach needs revisiting.
+- **Throughput: measured, and better than assumed.** The emulator runs
+  **30.3 million instructions and 254 million emulated T-states a second**,
+  which is **63× realtime** against a 4 MHz Z80, stepping without tracing
+  over a loop of sixteen-bit adds and memory accesses. A compiler handling
+  roughly 500 source bytes a second on real hardware therefore takes about
+  200 seconds of emulated time over 100K of source, or **near three seconds
+  of wall clock**; a full A→B→C fixpoint is about ten.
+
+  That changes how the fixpoint is used. It was planned as a slow gate run
+  rarely; at ten seconds it belongs in the ordinary edit loop, run on every
+  change that touches the compiler. Two things become practical with it:
+  **randomised differential testing** over thousands of generated programs,
+  and **delta-debugging** a failing case, which needs many compiles to
+  shrink an input and would have been unusable at minutes apiece.
+
+  The figure holds only with tracing off. The TEC-1G session allocates an
+  object per instruction and shifts a 24-element array, which is precisely
+  the pattern that would spend this margin.
 
 Gate: a hand-written AZM program that echoes input doubled, asserted end to
-end, with a size and a throughput figure.
+end, with a size reported. Throughput and the two emulator corrections are
+already measured and recorded above.
 
 ### Phase 1 — Candlemoth's front end, as text
 
@@ -376,6 +396,11 @@ four things the first draft lacked:
 Seed compiles Candlemoth to **A**; **A** compiles the same source to **B**;
 **B** compiles it to **C**. **B** and **C** must be byte-identical; **A**
 and **B** need not be.
+
+At about ten seconds a run, the fixpoint is cheap enough to be part of the
+ordinary edit loop rather than a release gate — which matters, because a
+fixpoint failure caught the day it appears is a small diff to search and one
+caught a month later is not.
 
 **The fixpoint proves stability, not correctness.** Two identically wrong
 compilers are a perfectly good fixpoint, and Candlemoth's own source is by
