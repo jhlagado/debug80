@@ -131,6 +131,15 @@ export class BootstrapMachine {
     return this.#sourceIndex;
   }
 
+  /** One instruction. The lockstep differ drives two machines through this. */
+  step(): { halted: boolean; cycles: number } {
+    const result = this.#runtime.step();
+    return {
+      halted: result.halted || this.#runtime.cpu.halted,
+      cycles: result.cycles ?? 0,
+    };
+  }
+
   /**
    * Steps until the CPU halts or the budget runs out. A compiler's success
    * condition is halting, so this is deliberately not the TEC-1G session's
