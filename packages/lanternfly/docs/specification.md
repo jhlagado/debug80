@@ -1,6 +1,7 @@
 # Lanternfly language specification
 
-Edition: 0.6 implementation baseline
+Edition: 0.7 draft — task-first revision in progress; sections not yet
+rewritten carry the 0.6 baseline text
 Implementation status: no compiler exists
 Normative status: source-language contract for the first compiler
 
@@ -2597,7 +2598,12 @@ and:
 - calling convention and normal-return behaviour;
 - registers, flags, stack and mapping state preserved or clobbered;
 - visible storage reads and writes, calls, faults and device I/O;
-- reentrancy, interrupt and cost properties.
+- reentrancy, interrupt and cost properties;
+- blocking class: nonblocking, bounded with a stated worst case, or
+  unbounded. A bounded- or unbounded-blocking routine is callable only
+  inside a task body (section 17); every unbounded call site is reported
+  by warning `W-NATIVE-002`. Standard service bindings must be
+  nonblocking.
 
 A missing binding or incompatible ABI is a compile error. An omitted effect
 contract, or an explicit `{ kind: "conservative" }` contract, produces
@@ -2793,48 +2799,52 @@ The extension is part of each source import path. A compiled export-interface
 artifact may use a target-toolchain extension because the import still names
 the canonical `.lafy` source unit.
 
-### 12.6 Compilation units and program entry
+### 12.6 Compilation units and program execution
 
 An ordinary Lanternfly source file is a `.lafy` module containing imports and
 declarations. It does not contain loose executable statements. A build
-manifest names the root `.lafy` module. For an executable build, its optional
-entry field names one root-module subroutine; when the field is absent, the
-entry name is `main`. A root path without the exact lowercase extension is
-`E-MODULE-001`.
+manifest names the root `.lafy` module. A root path without the exact
+lowercase extension is `E-MODULE-001`.
 
-The selected entry has no parameters and no result. It is source-defined
-rather than external and may remain private to the root module. It may carry a
-`fails` clause under section 11.8. This example assumes `initialiseGame` and
-`gameLoop` were imported or declared earlier:
+An executable program is its scheduled bodies: every task instance in the
+whole program — module variables of task types, `auto task` instances and
+task-typed arrays elementwise — and every effect and render block
+(section 17). There is no entry routine: no body is called to start the
+program, and no name is reserved for one. A program with no scheduled
+body is `E-ENTRY-001`. A library module's instances and blocks join the
+program that imports it.
 
-```lanternfly
-sub main()
-    initialiseGame()
-    gameLoop()
-end
-```
+Execution proceeds in instants. Each instant runs these steps in order:
 
-The default name is a build convention rather than a keyword: `main` remains a
-legal ordinary subroutine name in a library, and an executable manifest may
-select another suitable name. A library build has no entry. `E-ENTRY-001`
-reports a missing or invalid selected entry, including one with parameters or
-a result.
+1. tasks advance, in import-resolution order and then declaration
+   order: each unfinished task whose trigger has occurred runs from its
+   suspension point to its next suspension or to its end;
+2. derived cells with changed dependencies recompute, in dependency
+   order;
+3. effect blocks whose triggers occurred run, in file order;
+4. render blocks whose triggers occurred run, in file order;
+5. the instant ends: delivered moments clear, and deferred changes
+   become the next instant's changes.
 
-Programs receive launcher arguments through the optional service module in
-section 12.4.2 rather than through entry parameters. This keeps the entry
-signature fixed on targets with command lines, monitors, firmware launchers or
-no launcher arguments.
+A change or moment is delivered exactly once: in the same instant when
+every dependent sits in a later step of this list, otherwise at the
+start of the next instant, to all dependents at once. Each body runs at
+most once per instant. On a target with a frame interrupt the instant is
+locked to the frame; on a target without one, each pass of the generated
+scheduler is an instant.
 
-All module storage has been allocated and all constant static initializers have
-been installed before an executable entry begins. A bare `return` or reaching
-the entry's `end` invokes successful program termination. `fail member` from a
-failable entry invokes unsuccessful program termination with that error-set
-member. Error-set members retain their ordinary zero-based, opaque enum
-semantics inside Lanternfly. A target profile that exposes a numeric exit
-status maps success to zero and a failed member with ordinal `n` to `n + 1`;
-that boundary mapping does not add a success member to the error set. Every
-target profile defines how it realizes both outcomes, and a profile that
-cannot represent every outcome of the selected entry reports `E-TARGET-001`.
+All module storage is allocated and all constant initializers are
+installed before the first instant. A program terminates successfully at
+an instant boundary when every task is finished and no change or moment
+is pending; a program with an unfinished task — waiting or perpetual —
+continues. A target profile that exposes a numeric exit status maps
+successful termination to zero. Unsuccessful termination and a
+program-level error status are an open 0.7 design item recorded in
+section 16.
+
+Programs receive launcher arguments through the optional service module
+in section 12.4.2. This keeps program startup uniform on targets with
+command lines, monitors, firmware launchers or no launcher arguments.
 
 A hosted body is a distinct compilation-unit form supplied through a host
 manifest. Its source consists of local declarations followed by statements; it
@@ -3435,6 +3445,12 @@ section 1.1; a future floating-point type word would join this gated group.
 else. `error` is likewise contextual: it is recognized only immediately
 after `on` in the handler clause of section 11.8 and remains available as an
 ordinary identifier everywhere else.
+
+The 0.7 revision adds contextual words that are never reserved:
+`task`, `state`, `derive`, `pulse`, `effect`, `render`, `wait`, `raise`
+and `auto` in their head positions, `changed` inside a state
+declaration, and `after` inside a wait trigger (section 17). Each is an
+ordinary identifier everywhere else.
 Contextual-word recognition is case-insensitive, and the formatter emits
 lowercase.
 
@@ -3763,9 +3779,45 @@ Parentheses make a discarded equality test explicit:
 (left = right)
 ```
 
+The 0.7 revision adds these productions (section 17 defines the
+semantics):
+
+```text
+task-decl           ::= "auto"? "task" type-name "(" params? ")" newline
+                        task-body
+                        "end" newline
+task-body           ::= local-decl* (statement | wait-stmt)*
+wait-stmt           ::= "wait" "on" wait-trigger ("," wait-trigger)*
+                        newline
+wait-trigger        ::= trigger | "after" "(" expression ")"
+
+state-decl          ::= "state" value-name "as" type-expr
+                        ("=" constant-initializer)? "changed"? newline
+derive-decl         ::= "derive" value-name "as" type-expr
+                        "from" expression newline
+pulse-decl          ::= "pulse" value-name newline
+block-decl          ::= ("effect" | "render") trigger-clause newline
+                        routine-block "end" newline
+
+trigger-clause      ::= "on" trigger ("," trigger)*
+trigger             ::= value-name
+
+raise-stmt          ::= "raise" value-name newline
+```
+
+`auto task` takes no parameters. `wait-stmt` appears only in
+`task-body`; `raise-stmt` is a statement whose use outside effect and
+task bodies is rejected semantically.
+
 ## 16. Post-0.6 design queue
 
-The following questions remain open or provisional. None blocks K0 or K1:
+The following questions remain open or provisional. None blocks K0 or K1.
+Open 0.7 items: unsuccessful program termination and an error status for
+a failing `auto task`; valued moments (a pulse carrying a payload);
+whether `raise` and `yield` share machinery; a block form for
+multi-statement derivations; and the standard nonblocking input service
+with its reactive wrapper module (the section 12.4.1 rewrite is
+pending). The prior queue:
 
 - whether bare `end` stays clearer than named endings in long routines;
 - case-insensitive identifier resolution after parser experiments;
@@ -3797,3 +3849,104 @@ The following questions remain open or provisional. None blocks K0 or K1:
 Implementation evidence from representative Glimmer bodies, Tetro and Pacmo
 routines, and AZM Book 3 algorithms will determine whether these points enter
 a later edition. Until then, the 0.6 rules remain authoritative.
+
+## 17. Tasks, facts and moments
+
+This section is 0.7 core surface. It will be resequenced into the body
+of the specification in the final 0.7 edit; until then, cross-references
+into it use this number. The semantics lower to the record, `select` and
+mask-byte conventions of the white papers, and the manual lowering is
+the conformance oracle for every construct here.
+
+### 17.1 Task types and instances
+
+`task Name(params)` declares a type whose body is a coroutine. The name
+is PascalCase like every type. The compiler derives a record — a state
+discriminant, the declared parameters as visible fields, and every local
+of the body as a hidden field — and a step routine. All locals of a task
+body, scalar and aggregate, are hoisted per-instance fields with
+first-advance initialization; `static var` in a task body keeps its one
+meaning, a single object shared across every instance.
+
+An instance is a module variable of the type: `var cursor as Blink`, a
+pool `var pool as Blink[4]`, or with arguments a record initializer
+naming exactly the declared parameters — `var fast = BlinkAt(rate = 10)`
+under the no-repetition rule of section 4.5. Hidden fields are readable
+from outside and never initializable. Field-level writes to an
+instance's record belong to its own body; whole-value re-imaging —
+`clear` or template assignment — belongs to the owner and is the reset.
+The write boundary is convention, not a check. Task-typed record fields
+and locals are rejected.
+
+`auto task Name()` declares the type and one instance in a single
+declaration. The instance takes the type's name in the value namespace.
+An `auto task` has no parameters.
+
+Advancing resolves through the instance's type: a call whose callee is a
+task-typed storage path — `cursor()`, `pool[i]()` — is a static call to
+the type's step routine with the instance as hidden aggregate argument.
+Extra call arguments are per-turn inputs: ordinary step parameters,
+never hoisted. The scheduler advances every instance under section
+12.6; explicit advancing is for synchronous consumption of a
+value-producing task.
+
+`wait on` suspends a task until a trigger occurs. Its trigger grammar is
+section 15's: moments, facts, and `after(n)` — n instant-clock ticks
+from wait entry, under the wrap-safe comparison with its 32,767-tick
+bound. A task meant to lie dormant designs its first wait as its start
+condition; a zeroed instance is a fresh instance, and a nonzero
+retained-local initializer forces a distinct entry state that only the
+first advance visits.
+
+### 17.2 Facts
+
+`state` declares a watched cell: ordinary storage plus a changed bit in
+the delivery machinery. The constant initializer is installed in the
+build image; `changed` marks the cell already-changed, so its dependents
+run at the first instant. Facts may be aggregates: one fact at the
+declared granularity, its one bit raised by a write anywhere in it.
+There is no change detection by comparison anywhere; notification is
+part of the compiled write. A `state` declaration admits neither `at`
+nor `volatile`; device state reaches facts through the membrane.
+
+`derive` declares an equation: bound-once takes `=`, bound-always takes
+`from`. A derived cell has no other writer. Its dependencies are read
+from the expression and must be state or derived cells; the clock
+counters may be sampled, never depended on; dependency cycles are
+compile errors. Its build image is the formula folded over its
+dependencies' initial images, and it is initially changed exactly when a
+dependency carries `changed`.
+
+Writes to facts are inferred from bodies; there is no updates clause,
+and the dependency report is generated from the code. A state cell is
+written only through its declared path in an effect or task body:
+passing one to a routine as a writable aggregate argument, or taking an
+`alias` to one, is rejected.
+
+### 17.3 Moments
+
+`pulse` declares a moment: it occurs, is delivered once, and is gone at
+the instant's end. `raise name` emits it. Raising is a write: legal in
+effect and task bodies, rejected in a `render` or a `derive` equation,
+listed in the dependency report. A moment appears in trigger position
+only, with one exemption: `on error` consumes its own statement's
+failure moment, which is a moment in this section's sense — delivered
+once, at one point, carrying a payload. The language contains no input
+vocabulary; hardware moments are raised by tasks written over platform
+interface modules.
+
+### 17.4 Blocks
+
+`effect on` and `render on` declare anonymous triggered blocks whose
+bodies are ordinary routine bodies. The phase is the head: derived cells
+settle first, effects run in the middle, renders run last, with tasks
+advancing first of all under section 12.6. A `render` may not write a
+fact or raise a moment; a `derive` equation is pure by form; an `effect`
+may do anything a body may do. These checks see through helper calls.
+
+Triggers are declared; reads are not triggers. Reading an unlisted fact
+is sampling and legal — the timed body that samples a clock without
+running every instant is the normal case. Within a phase, blocks run in
+file order, and a diagnostic names any two same-phase bodies where one
+writes a cell another writes or samples. A block cannot suspend:
+`wait-stmt` belongs to task bodies alone.
