@@ -1,14 +1,14 @@
 # Lanternfly language specification
 
 Edition: 0.7 draft — task-first revision in progress; sections not yet
-rewritten carry the 0.6 baseline text
+rewritten carry the earlier baseline text
 Implementation status: no compiler exists
 Normative status: source-language contract for the first compiler
 
 This edition adopts the charter's small-systems-first direction. The reference
 implementation architecture is a single-pass, self-hostable compiler that
 emits native code directly, and every rule in this contract must remain
-affordable inside that architecture. A hosted implementation accepts exactly
+affordable inside that architecture. An implementation accepts exactly
 the programs that the reference architecture accepts.
 
 The companion [conformance and diagnostics contract](conformance.md) collects
@@ -40,7 +40,7 @@ Lanternfly is a statically typed structured BASIC for fixed-memory systems. It
 can replace ordinary AZM program logic in standalone programs as well as
 Glimmer bodies.
 
-The complete 0.6 language includes:
+The complete 0.7 language includes:
 
 - fixed-width signed and unsigned integers;
 - nominal enums and checked subrange types;
@@ -58,20 +58,27 @@ The complete 0.6 language includes:
 - failable routines over error-set enums, with `fail`, statement-level
   propagation and defaults, `on error` handling blocks and `defer` cleanup;
 - source modules with private declarations and explicit exports;
-- optional standard modules for portable character and text input and output;
+- optional standard modules for portable text output, nonblocking character
+  input and the instant counter;
 - direct native-code emission as the reference lowering path, with AZM,
   another assembler, C or a selected BASIC dialect as transparency and
   portability backends.
 
-The first compiler delivers this contract in K0 through K2 stages. K0 hosted
-bodies and K1 structured storage form the first implementation target. Source
-routines complete the initial compiler in K2. A stage may reject constructs
-assigned to a later stage, but it must identify the limitation as an
-implementation-stage or target-capability diagnostic.
+The first compiler delivers this contract in K0 through K2 stages, which are
+development milestones rather than smaller editions of the language. A stage is a development milestone rather than a
+smaller edition of the language: it may reject what it has not yet
+implemented, but it must identify the limitation as an implementation-stage
+or target-capability diagnostic.
 
-Lanternfly is independent of Glimmer. State, pulses, effects, rendering, cards
-and scheduling remain host concerns. Glimmer may provide imported storage and
-routines to a Lanternfly body.
+The 0.7 revision adds task types and their instances, state cells, pulses,
+single-line derivations, the conditional expression, and the instant-based
+execution model of sections 12.6 and 17.
+
+Lanternfly is independent of Glimmer. Glimmer's cards, host loop and drawing
+services remain host concerns, and Glimmer may provide imported storage and
+routines to a Lanternfly body. The state, pulse, derivation and task
+constructs
+named above are the language's own.
 
 The BASIC lineage is syntactic and educational rather than compatible. Source
 uses short English words, `name as Type` declarations, assignment with `=`,
@@ -162,10 +169,11 @@ imports determine a program's tier, and a build reports each capability's
 emitted cost.
 
 Three categories share this machinery and must not be conflated. Capability
-modules are export-free source-language gates. The optional standard modules
-of sections 12.4.1 and 12.4.2 are service modules: they export ordinary names
-and bind services through the same profile registry and cost reporting, but
-they gate no words and change no typing rules. Target-profile support claims
+modules are export-free source-language gates. The service modules of sections 12.4.1 to
+12.4.3 export ordinary names and bind services through the same profile
+registry and cost reporting, but they gate no words and change no typing
+rules; `standard/character-input.lafy` is an ordinary module rather than a
+service module. Target-profile support claims
 such as recursion, address classes and far storage are target capabilities,
 which no import controls.
 
@@ -266,7 +274,7 @@ Its declaration-order visibility remains defined in section 4.2. A `for each`
 binding adds one nested value name for its body. It may not shadow a visible
 module value, parameter, local or enclosing `for each` binding. Nested
 traversals therefore use distinct binding names. The same rules apply when the
-enclosing value scope belongs to a hosted body. Record fields occupy a separate
+enclosing value scope belongs to a routine. Record fields occupy a separate
 scope belonging to their record; fields need only be unique within that record
 and are resolved only after a field-selection dot.
 
@@ -290,7 +298,7 @@ refactoring that checks every affected namespace for collisions.
 
 ### 2.3 Blocks
 
-Every structured block currently closes with the single keyword `end`:
+Every structured block closes with the single keyword `end`:
 
 ```lanternfly
 if active then
@@ -304,9 +312,6 @@ indentation, while the parser treats indentation as whitespace.
 Structured blocks may contain zero statements. A clause delimiter or closing
 `end` immediately after a block header represents an empty block; no separate
 placeholder statement is required.
-
-Bare `end` is provisional. Parser and corpus tests will determine whether long
-nested routines need named endings such as `end if` or `end sub`.
 
 ### 2.4 Lexical rules and comments
 
@@ -565,7 +570,7 @@ and `xor`. It may not contain comparisons, Boolean values or operations, or
 opaque address values. The layout queries include `lower` and `upper` under
 their result rules in section 8.5.
 
-Integer literals and the results of `size`, `count`, `offset`, and
+Integer literals and the results of `byteSize`, `size`, `offset`, and
 integer-domain `lower` and `upper` are exact, untyped values in this context.
 Enum- and named-subrange-domain `lower` and `upper` retain their typed ordinal
 results. A subtree made entirely from exact values remains exact through unary
@@ -580,8 +585,8 @@ A typed constant or explicit integer conversion ends exact evaluation in its
 containing operation. The ordinary operand, result-width and folding rules
 then apply, with exact operands adopting the written integer type when they
 fit. The selected profile validates the final exact or typed value against its
-address space and representation. Thus `at $8000 + size(type Header)` remains
-exact, while `at u16($8000) + size(type Header)` performs ordinary `u16`
+address space and representation. Thus `at $8000 + byteSize(type Header)` remains
+exact, while `at u16($8000) + byteSize(type Header)` performs ordinary `u16`
 arithmetic. `at $8000` is valid on a profile that accepts that address even
 though `$8000` does not fit `i16`.
 
@@ -785,7 +790,7 @@ storage overlap.
 
 For storage ownership, storage classes, parameters and local aliases,
 `string[N]` follows the aggregate rules. String storage is static, placed,
-hosted or native, in a near or far class like any aggregate; a
+or native, in a near or far class like any aggregate; a
 per-invocation string local occupies overlay-colored static storage and
 becomes empty at its declaration under section 11.4's aggregate-local
 rules. A parameter states its exact capacity and aliases
@@ -795,17 +800,17 @@ declared capacity. Strings cannot be returned by value. Arrays may use a
 string element type; for example, `string[24][8]` is an eight-element array
 of `string[24]`, with the capacity brackets belonging to the element type.
 
-Byte indexing, slicing, general capacity-generic parameters, general read-only
+Byte indexing, slicing, general read-only
 string parameters and deliberate truncating copy are deferred. They require a
 bounded-view design and do not weaken the sealed representation in this
 edition. Ordinary source and external routine parameters therefore continue
 to state an exact capacity and alias writable storage.
 
-The optional standard service modules have three deliberately narrow
-exceptions. The compiler-defined `writeText` service accepts a string literal
-or a storage path of any `string[N]` capacity as a read-only text source.
-`readLine` and `readArgument` accept a writable storage path of any `string[N]`
-capacity as a text destination. The compiler may form temporary carriers
+The optional standard service modules once needed a narrow exception for
+capacity-generic text. They no longer do: `writeText(text as string[])`
+and `readArgument(write destination as string[])` are ordinary signatures that any
+program could write, under the generic aggregate parameters of section 11.3.
+A string literal is accepted as a read-only argument. The compiler may form temporary carriers
 containing the storage class, payload location and known layout information. A
 carrier exists only for its call, is not a source value and cannot be stored,
 returned, compared, converted or rebound. These service contracts do not
@@ -868,9 +873,8 @@ const smallMap as u8[2, 4] = [
 
 Constant arrays and records have exact ordinary layout and may be indexed and
 exported. Assignment through any path to constant storage is a compile error.
-First-edition aggregate parameters are writable aliases, so constant aggregate
-storage cannot be passed to them. A later read-only parameter form may remove
-that restriction. A target may place constant aggregate data in ROM.
+An aggregate parameter is read-only unless marked `write`, so constant
+aggregate storage may be passed to any parameter that is not marked. A target may place constant aggregate data in ROM.
 
 ### 4.2 Variables
 
@@ -890,7 +894,9 @@ accepts that representation. Integers, Booleans and strings do — an
 uninitialized string begins empty — while an enum or subrange does only when
 its domain contains ordinal zero. The selected validity contract determines
 whether zero is valid for each opaque address type. A declaration whose type
-lacks an all-zero value requires an initializer. Placed storage, host storage
+lacks an all-zero value requires an initializer. A derived cell is the
+exception: its formula supplies its value, evaluated before the first
+instant under section 17.5, and it carries no initializer of its own. Placed storage, host storage
 and native storage without an initializer retain the value supplied by the
 target environment; the compiler performs no startup write. Importing a source
 module does not change a declaration's storage class: an unplaced variable in
@@ -975,13 +981,14 @@ validation. A backend that cannot preserve the selected target's
 placement contract reports `E-TARGET-001` rather than silently choosing
 addresses.
 
-A hosted body fragment has no independent assembly origin. It reports its code,
+A module assembly block has no independent origin. It reports its code,
 data, helper and scratch requirements to the host, which places the combined
 program and performs the same final-map validation. An inline module `asm`
 block may contain target location directives, but its emitted ranges remain
 subject to the target memory map and final-map check.
 
-A placed variable with an initializer is installed before program entry. The
+A placed variable with an initializer is installed before the program's start
+runs. The
 target profile declares, for each relevant address space, whether installation
 means bytes preloaded by the program image/loader or generated startup writes.
 If neither mechanism can establish the value, compilation fails. The generated
@@ -993,7 +1000,11 @@ module only on its first encounter, and installs a module after its imports.
 Within that module, every initializer implemented by runtime writes or copies
 runs in declaration order, whether its storage is placed or
 compiler-allocated. Preloaded image bytes need not be written at runtime, but
-the startup-effect artifact records them in the same order.
+the startup-effect artifact records them in the same order. The startup-effect artifact ends at the last initializer write. A
+prologue's writes, and the evaluation of every derivation before the first
+instant, are ordinary program execution: they follow the artifact in the
+order section 12.6 gives them, the prologue first and the derivations after
+it, and the artifact does not record them.
 
 Within one aggregate initializer, observable scalar-leaf writes follow storage
 layout rather than the initializer's written field order. Record fields are
@@ -1099,7 +1110,7 @@ A constant expression in a module declaration may contain literals, names of
 eligible previously declared constants and enum members, parentheses, the
 integer and Boolean operators in this specification, comparisons, explicit
 scalar conversions, the pure standard operations `abs`, `sqrt` and `length`,
-and the layout queries `size`, `count`, `lower`, `upper` and `offset`.
+and the layout queries `byteSize`, `size`, `lower`, `upper` and `offset`.
 `length` is constant only when the operand resolves to a literal or to
 immutable string storage whose payload is known to the compiler. A constant
 expression may not read variable storage, invoke a routine, use a volatile
@@ -1108,7 +1119,7 @@ object or perform any other observable operation.
 For a constant expression inside a routine body, eligible names include
 imported constants, earlier module constants and enum members, as defined in
 section 2.1. A later declaration is unavailable even if the compiler has
-already parsed the complete file. In a hosted body, scalar host-manifest
+already parsed the complete file. Scalar imported
 constants other than opaque address bindings, and every visible manifest enum
 member, also satisfy these constant-expression contexts.
 
@@ -1373,7 +1384,7 @@ preserve volatile ordering. Alias targets have static or caller-provided
 lifetime, so heap lifetime and nullability do not arise.
 
 Every static storage root has a target storage class. Ordinary
-compiler-allocated storage uses the profile default; placed, banked, hosted
+compiler-allocated storage uses the profile default; placed, banked
 and native storage obtains its class from its region contract. Aggregate
 parameters in private routines use the default class unless qualified:
 
@@ -1386,8 +1397,11 @@ end
 `near` and `far` before an aggregate parameter's name constrain the storage
 that may bind to that alias. A near path may bind to a far parameter when the
 target can attach its current mapping context. Far storage cannot bind to a
-near parameter. Exported aggregate parameters must state their class; private
-unqualified parameters use the profile default. Local aliases inherit the
+near parameter. An unqualified parameter takes the profile's default class,
+exported or not, so the words appear only as a deliberate override — and on a
+profile without the far-storage capability, never. This is the same
+distinction `near address` and `far address` draw, applied to where storage
+lives rather than to what an address refers to. Local aliases inherit the
 class of their initializer and do not spell it separately.
 
 The storage carrier chosen for an alias is not observable in Lanternfly. A Z80
@@ -1583,10 +1597,13 @@ Precedence, highest to lowest, is:
 8. `not`;
 9. `and`;
 10. `xor`;
-11. `or`.
+11. `or`;
+12. the conditional `if … then … else`.
 
-Power associates right to left; every other binary operator associates left to
-right. Thus `-2 ^ 2` means `-(2 ^ 2)`, while `2 ^ 3 ^ 2` means
+The conditional binds loosest of all and extends as far right as it can, so
+`if b then a else c + 1` puts `c + 1` in the else branch; parentheses stop
+it. Power associates right to left; every other binary operator associates
+left to right. Thus `-2 ^ 2` means `-(2 ^ 2)`, while `2 ^ 3 ^ 2` means
 `2 ^ (3 ^ 2)`.
 
 Comparisons bind more tightly than `not`, following BASIC practice.
@@ -1601,9 +1618,9 @@ The first edition defines lowercase numeric, text and layout operations:
 distance = abs(playerX - enemyX)
 root = sqrt(area)
 titleBytes = length("LANTERNFLY")
-const actorBytes as u16 = size(type Actor)
-const actorCount as u8 = count(actors)
-const rowCount as u8 = count(board, 0)
+const actorBytes as u16 = byteSize(type Actor)
+const actorCount as u8 = size(actors)
+const rowCount as u8 = size(board, 0)
 firstRow = lower(board, 0)
 lastRow = upper(board, 0)
 const xOffset as u8 = offset(Actor.position.x)
@@ -1622,18 +1639,27 @@ fault service.
 returns the payload byte count as `u16`. It reads the stored length header
 without scanning. Literal calls fold under section 3.2.
 
-`size(type Type)` returns the exact byte size of a type. `size(path)` returns
-the size of a statically typed storage path. `count(type ArrayType)` returns
-the extent of a fixed-array type, while `count(path)` takes an array storage
-path. A multidimensional array requires a zero-based dimension argument, as in
-`count(board, 0)`. An invalid or nonconstant dimension is a compile error.
+`size(type ArrayType)` returns the extent of a fixed-array type, and
+`size(path)` takes an array or string storage path. A multidimensional array
+requires a zero-based dimension argument, as in `size(board, 0)`. An invalid
+or nonconstant dimension is a compile error. `size` is also defined over a
+range, a subrange type and an enum type, where it returns how many values
+that domain contains, so it answers one question everywhere it is legal:
+how many items are in this.
+
+`byteSize(type Type)` returns the exact byte size of a type, and
+`byteSize(path)` the same for a statically typed storage path. It counts
+storage rather than items, including a string's length header and its
+terminator, and it is the operation for a record, which has no item count —
+`size` on a record is `E-LAYOUT-003`. Handing a byte count to an external
+routine is what it is for.
 The contextual word `type` selects the type namespace and removes any
 ambiguity when a value and a type share a case-insensitive name.
 
 `lower(type ArrayType, dimension)` and `upper(type ArrayType, dimension)` query
 an array type; the path forms query an array storage path. They return the
 first and last valid index of the selected dimension. The dimension argument
-follows the same omission and validation rules as `count`. A dimension
+follows the same omission and validation rules as `size`. A dimension
 declared with a named enum or subrange returns that nominal type. An anonymous
 enum range returns its enum type, while a count or anonymous integer range
 returns an exact, untyped integer constant. These queries make the declared
@@ -1647,8 +1673,9 @@ end
 
 A layout-query path is an unevaluated designator. It begins with a storage name
 or local aggregate alias and may contain fields plus constant indices.
-`size(selected)` therefore returns the size of the aggregate named by the
-alias, while `count(board, 0)` returns the first extent of the declared array.
+`byteSize(selected)` therefore returns the storage of the aggregate named by
+the alias, while `size(board, 0)` returns the first extent of the declared
+array.
 The compiler constant-folds each index and validates it statically against the
 selected array dimension; invalid constant arithmetic or an out-of-range index
 is a compile error. This does not read the base, perform runtime index
@@ -1660,7 +1687,10 @@ the beginning of its record type. The path contains field names only, not
 runtime indices, and every field before the final field must be a by-value
 record field.
 
-The five layout queries are compile-time operations. `size`, `count`, `offset`
+On an exact type the layout queries are compile-time operations; on a
+generic aggregate parameter `size` and `byteSize` read the carrier of
+section 11.3 at run time, and `length` has always read a string's header at
+run time. `byteSize`, `size`, `offset`
 and integer-domain `lower` and `upper` return exact, untyped integer constants
 that adopt a surrounding integer type by the literal rules in section 3.1.
 Enum- and named-subrange-domain `lower` and `upper` return typed ordinal
@@ -1793,7 +1823,8 @@ else
 end
 ```
 
-One-line conditionals are deferred.
+A one-line form of the `if` statement is deferred; the conditional
+expression of section 8 is a separate construct.
 
 ### 9.2 `select`
 
@@ -1874,7 +1905,7 @@ the values 1 through 10.
 ```lanternfly
 var index as u8
 
-for index = 0 until count(actors)
+for index = 0 until size(actors)
     actors[index].active = false
 end
 ```
@@ -1915,7 +1946,7 @@ integer boundary, allowing this complete traversal:
 var bytes as u8[256]
 var index as u8
 
-for index = 0 until count(bytes)
+for index = 0 until size(bytes)
     bytes[index] = 0
 end
 ```
@@ -2014,7 +2045,7 @@ end
 Bare `exit` leaves the innermost enclosing `for`, `for each` or `while`.
 Bare `continue` begins that loop's next iteration according to the rules above.
 Both statements are compile errors outside a loop. `exit` never terminates the
-program and never leaves a routine; `return` leaves a routine or hosted body.
+program and never leaves a routine; `return` leaves a routine.
 
 The first edition has no labelled loops, named `exit` variants, bare
 indefinite `loop`, `do` loop or post-test `repeat`. A routine can use an early
@@ -2081,7 +2112,7 @@ A result-free routine cannot appear where a value is required.
 Parameters use the same `name as Type` form:
 
 ```lanternfly
-sub moveActor(actor as Actor, deltaX as i16, deltaY as i16)
+sub moveActor(write actor as Actor, deltaX as i16, deltaY as i16)
     actor.position.x = actor.position.x + deltaX
     actor.position.y = actor.position.y + deltaY
 end
@@ -2092,12 +2123,12 @@ non-rebindable aliases to caller storage. Mutating `actor` in the example
 mutates the caller's record. The source type remains `Actor`; no pointer or
 reference type appears at either side of the call.
 
-An unqualified aggregate parameter in a private routine uses the profile's
-default storage class. An exported routine, or a private routine that accepts
-non-default storage, puts `near` or `far` before the parameter name:
+An unqualified aggregate parameter takes the profile's default storage
+class. A routine accepting non-default storage puts `near` or `far` before
+the parameter name:
 
 ```lanternfly
-export sub moveActor(near actor as Actor, deltaX as i16)
+export sub moveActor(write near actor as Actor, deltaX as i16)
     actor.position.x = actor.position.x + deltaX
 end
 ```
@@ -2108,10 +2139,54 @@ each element is a near opaque address. The two classes are checked
 independently. A leading storage class is valid only when the parameter type
 is a string, record or fixed array.
 
+An aggregate parameter is read-only. `write` before the storage class marks
+one the callee may change:
+
+```lanternfly
+sub drawPanel(near panel as Panel)          // reads it
+sub sortInPlace(write items as u8[])        // changes the caller's storage
+```
+
+Both carry the same hidden carrier and cost the same at run time; the marker
+constrains what the body may do. Reading is the common case, so it is the
+unmarked one, and an unmarked parameter can never disturb a caller's
+storage. Every write path through an unmarked parameter is closed, and each
+is `E-PARAM-001`: assigning to the parameter or to any path through it;
+binding an `alias` to it; passing it to a parameter marked `write`; naming
+it as the destination of `clear`, `fill` or `append`; and assigning to a
+`for each` element bound over it, whose binding is read-only.
+An aggregate parameter may omit its capacity — `items as u8[]`,
+`write text as string[]` — which makes it **generic** and lets one routine serve
+every size. Without routine values there is no map or fold, so every
+traversal is a loop and every reusable loop is a routine that takes an
+array; capacity-locked parameters would mean one copy per size. A generic
+parameter's hidden carrier holds the payload address and the size as `u16`.
+The caller supplies that size as a compile-time constant, always available
+there because the argument's type is static, and a routine forwarding its
+own generic parameter passes the size it received, so composition works to
+any depth. The carrier gains a field and nothing else: it still has no
+source syntax and cannot be stored, returned, compared or converted.
+
+`size(items)` on a generic parameter reads that field, so a counted loop
+takes it as a limit, evaluated once at entry. Indexing bounds-checks against
+it rather than against an immediate. A generic array's index domain is
+zero-based over its size. A generic parameter may be marked
+`write`, since the carrier's size is what makes the bounds check possible: a
+routine appending to a `write text as string[]` compares `length(text)` against
+`size(text)`, the first giving where the characters end and the second where
+the storage does. Records and multidimensional arrays take no generic form, their shape
+being their type.
+
+`write` is valid only on a string, record or fixed-array parameter of a
+source routine; on a scalar parameter, on an `extern sub` parameter, or on a
+task type's parameter it is `E-PARAM-001`, since a task's parameters are
+fields of its instance rather than aliases.
+
 An aggregate argument must be a compatible storage path or local alias, not a
-temporary initializer or other general expression. First-edition aggregate
-parameters are writable, so constant and volatile storage are not valid
-arguments. Source code has no expression for the parameter's hidden carrier,
+temporary initializer or other general expression. A `write` parameter admits neither
+constant nor volatile storage as an argument; an unmarked parameter accepts
+constant storage, and a state cell may be passed only to an unmarked
+parameter, under section 17.3. Source code has no expression for the parameter's hidden carrier,
 so rebinding, returning, storing, comparing or converting that carrier has no
 syntax. The parameter name denotes caller storage: ordinary field access,
 indexing, aggregate copying and nested aggregate calls remain valid. Passing
@@ -2123,7 +2198,7 @@ for that nested call.
 Scalar locals use `var`:
 
 ```lanternfly
-sub updateActor(actor as Actor)
+sub updateActor(write actor as Actor)
     var nextX as i16 = actor.position.x + actor.velocity.x
     var nextY as i16 = actor.position.y + actor.velocity.y
 
@@ -2176,7 +2251,7 @@ another aggregate parameter.
 A result-free routine may return early with bare `return`:
 
 ```lanternfly
-sub updateActor(actor as Actor)
+sub updateActor(write actor as Actor)
     if not actor.active then
         return
     end
@@ -2204,7 +2279,7 @@ end
 ```
 
 `exit` remains loop control. `return` leaves the routine, or reaches the host
-epilogue when used without a value in a hosted body under section 13.3.
+routine when used without a value.
 
 ### 11.6 Forward declarations
 
@@ -2237,7 +2312,8 @@ runtime cost to the calls it enables.
 
 The completing declaration is an ordinary `sub` later in the same module. Its
 header must repeat the forward header exactly apart from the word `forward`:
-the same name spelling, export status, parameter storage classes, parameter
+the same name spelling, export status, `write` markers, parameter storage
+classes, parameter
 names and types in the same order, the same result type or its absence, and
 the same `fails` clause or its absence. A completing header that differs in
 any of these is `E-FORWARD-002`.
@@ -2252,8 +2328,9 @@ with an uncompleted forward declaration is `E-FORWARD-001`.
 `forward` applies only to source routines. An `extern sub` is complete
 without a body, so it can neither carry `forward` nor complete a forward
 declaration. Hosted bodies contain no routine declarations, so a forward
-declaration cannot appear there. The program entry may be forward-declared,
-because its completing body satisfies the entry rules unchanged.
+declaration cannot appear there. A subroutine designated as a program's start
+under section 12.6 may be forward-declared; its completing body satisfies the
+eligibility rules unchanged.
 
 ### 11.7 Calling convention
 
@@ -2284,7 +2361,7 @@ interrupt reaches Lanternfly frame state.
 
 Indirect calls are not in the first edition. Native-to-Lanternfly callbacks are
 also deferred: an external or host routine contract may call native services
-but may not re-enter a source-defined Lanternfly routine or hosted body. A
+but may not re-enter a source-defined Lanternfly routine. A
 binding that requires such a callback is incompatible. The target-specific
 convention does not change Lanternfly source semantics.
 
@@ -2411,13 +2488,13 @@ declaration-bound block has no enclosing loop; `exit` or `continue` there
 is the ordinary loop error of section 10.4, not a binding error. A block
 that can complete normally in declaration position is `E-FAIL-004`.
 
-The program entry routine of section 12.6 may carry a `fails` clause. A normal
-`return` or end-of-body completion reports successful program termination;
-`fail` reports unsuccessful termination with the named error-set member. The
-program-termination contract consumes this final outcome because the entry has
-no source caller. A `fails` clause on an external routine of section 12.4, and
-any form of this section inside a hosted body of section 13.3, are deferred;
-both are `E-FAIL-005`. A forward declaration repeats the `fails` clause exactly
+A subroutine designated as a program's start under section 12.6, and a task
+type under section 17.1, may carry a `fails` clause. A normal `return` or
+end-of-body completion finishes that body; an unhandled `fail` reports
+unsuccessful program termination with the named error-set member. The
+program-termination contract consumes this final outcome because neither a
+designated start nor a task has a source caller. A `fails` clause on an external routine of section 12.4, and
+are deferred and are `E-FAIL-005`. A forward declaration repeats the `fails` clause exactly
 under section 11.6. An exported failable routine's compiled export interface
 records its error-set type with the rest of the signature under section 12.5.
 
@@ -2443,8 +2520,9 @@ end
 The deferred statement is an assignment or a result-free invocation. It must
 be infallible: a failable invocation, `fail`, `return`, `exit` or `continue`
 inside a deferred statement is `E-DEFER-001`. A `defer` may appear only at
-the top level of a source routine body — not inside a control structure, and
-not in a hosted body; either placement is `E-DEFER-001`.
+the top level of a source routine or task body — not inside a control
+structure, and
+; that placement is `E-DEFER-001`.
 
 Every exit from the routine — a `return`, a `fail`, a propagation inserted
 by `or fail`, or reaching `end` — first executes each deferred statement
@@ -2600,8 +2678,12 @@ and:
 - visible storage reads and writes, calls, faults and device I/O;
 - reentrancy, interrupt and cost properties;
 - blocking class: nonblocking, bounded with a stated worst case, or
-  unbounded. A bounded- or unbounded-blocking routine is callable only
-  inside a task body (section 17); every unbounded call site is reported
+  unbounded. A bounded- or unbounded-blocking routine is callable only in a
+  program's prologue or epilogue (section 12.6), and in subroutines those
+  call; a call from a task body, from a routine reachable from a
+  derivation, or from a subroutine one of those calls, is `E-BLOCK-001`,
+  because a body that holds the processor stalls every instant and every
+  deadline in the program. Every unbounded call site is reported
   by warning `W-NATIVE-002`. Standard service bindings must be
   nonblocking.
 
@@ -2625,29 +2707,28 @@ ordinary `import`. Repeated imports still emit one binding. The selected
 assembler or substrate toolchain resolves named symbols during the
 whole-program build.
 
-An `extern sub` has no Lanternfly body and cannot be selected as the program
-entry. Target profiles may reject absolute `at` bindings or named `from`
+An `extern sub` has no Lanternfly body and cannot be designated as a
+program's start. Target profiles may reject absolute `at` bindings or named `from`
 bindings that their substrate cannot express.
 
 #### 12.4.1 Optional standard text input and output
 
-The first edition defines two optional standard text modules. They are service
-modules under the categories of section 1.1: they export ordinary names and
-bind their services through the same profile machinery as capability
-modules, but they gate no words and change no typing rules. They are never
-imported implicitly:
+The first edition defines three optional standard text modules, two of them
+service modules. A service module exports ordinary names and binds them
+through the same profile machinery as a capability module under section 1.1,
+gating no words and changing no typing rules. None is imported implicitly:
 
 ```lanternfly
 import "standard/text-output.lafy"
-import "standard/text-input.lafy"
+import "standard/character-poll.lafy"
 ```
 
 The toolchain supplies their versioned export interfaces, and the selected
 profile supplies the service bindings. Their exported operation names become
 visible through the ordinary import rule; they are not keywords or implicit
-global names. The special text-source operand of `writeText` and text
-destination operand of `readLine` exist only in these compiler-defined
-interfaces and cannot be written in an ordinary `sub` or `extern sub`
+global names. `writeText` and `readArgument` take generic string parameters
+under section 11.3, so their signatures are ordinary and could be written in
+Lanternfly; only their bindings are compiler-defined and cannot be written in an ordinary `sub` or `extern sub`
 declaration.
 
 The interfaces map their exports to these stable target-service IDs:
@@ -2657,8 +2738,7 @@ The interfaces map their exports to these stable target-service IDs:
 | `writeCharacter` | `standard.textOutput.writeCharacter` |
 | `writeText`      | `standard.textOutput.writeText`      |
 | `writeNewline`   | `standard.textOutput.writeNewline`   |
-| `readCharacter`  | `standard.textInput.readCharacter`   |
-| `readLine`       | `standard.textInput.readLine`        |
+| `pollCharacter`  | `standard.characterPoll.poll`        |
 
 The selected profile resolves every used ID through the external-binding, ABI,
 adapter and runtime-component contracts in this specification.
@@ -2680,37 +2760,58 @@ receives the temporary read-only text source described in section 3.2.
 `writeNewline()` transfers one target-appropriate line break; source does not
 assume that the device represents it with one particular byte sequence.
 
-`standard/text-input.lafy` exports two value-producing operations:
+Input is supplied in two layers. The lower one is a device service like the
+output operations above. `standard/character-poll.lafy` exports one
+nonblocking operation:
 
 ```lanternfly
-character = readCharacter()
-lineFits = readLine(command)
+character = pollCharacter()
 ```
 
-`readCharacter()` waits until the target-selected input device supplies one
-character byte and returns it as `u8`.
+`pollCharacter()` returns as `u8` the character byte the target-selected
+input device has waiting, and consumes it. When no byte is waiting it returns
+zero and consumes nothing. It never waits, so its blocking class is
+nonblocking and any body may call it. A program without scheduled bodies
+polls it directly from its prologue; a target that must deliver a zero byte
+as data is outside this edition, as an end-of-file result is.
 
-`readLine(destination)` accepts a writable `string[N]` storage path and
-evaluates it once. It waits for one target-selected input line, consumes the
-line ending without storing it and replaces the destination with the received
-nonzero character bytes. An empty line produces an empty string. When the
-complete payload fits, the operation returns `true`. If a zero byte arrives or
-more than `N` payload bytes precede the line ending, it stores the longest
-valid prefix that fits, consumes and discards the rest of that input line, and
-returns `false`. This bounded behaviour needs no hidden full-line buffer and
-leaves the next call at the beginning of a new line.
+The upper layer is `standard/character-input.lafy`, an ordinary Lanternfly
+module written over that primitive rather than a device service. It binds no
+service ID, and because it declares a task instance it ships as
+toolchain-supplied source and has no export-interface form under section
+12.5. It exports:
 
-The contract does not define local echo or interactive editing. A target may
-provide those behaviours before it supplies the resulting line to the
-service. The first edition has no nonblocking form or end-of-file result.
+```lanternfly
+pulse characterArrived
+sub hasCharacter() as boolean
+sub takeCharacter() as u8
+```
 
-All five operations have declared device-I/O effects and normal return. They
-do not implicitly read or write other Lanternfly storage. `writeText` reads
-only its evaluated text source for the duration of the call. `readLine` writes
-only its evaluated destination. A target may implement these contracts with
-firmware or monitor routines, a serial terminal, generated substrate code, a
-desktop terminal or a test service. The observable character-byte order and
-line result remain the same.
+and declares a private task instance that polls the primitive each instant
+and appends what it finds to a private buffer. `characterArrived` is raised
+when the buffer becomes non-empty. `hasCharacter()` reports whether the
+buffer holds a byte, and `takeCharacter()` removes and returns the oldest,
+returning zero when the buffer is empty. A consumer takes bytes until
+`hasCharacter()` reports none, which is why several bytes arriving within one
+instant lose none: the pulse reports that input is waiting, and the buffer
+carries how much.
+
+Importing this module schedules its poller under section 12.7, so a program
+that must terminate does not import it — the poller waits forever and denies
+the program its quiescence.
+
+Assembling lines, echoing characters and editing them are the work of modules
+written in Lanternfly over these two, not of a device contract. The contract
+defines no local echo and no interactive editing; a target may provide either
+before it supplies a byte.
+
+The output operations and `pollCharacter` have declared device-I/O effects
+and normal return. They do not implicitly read or write other Lanternfly
+storage, and `writeText` reads only its evaluated text source for the
+duration of the call. A target may implement these contracts with firmware or
+monitor routines, a serial terminal, generated substrate code, a desktop
+terminal or a test service. The observable character-byte order remains the
+same.
 
 These modules do not define streams, handles, buffering, redirection, files,
 directories, seeking or an operating-system interface. Future file loading and
@@ -2745,7 +2846,7 @@ contains a zero byte or exceeds the destination capacity stores the longest
 valid prefix that fits and returns `false`.
 
 The launcher supplies an ordered list of already-separated byte strings before
-the program entry begins, and repeated reads of one index produce the same
+the program's start runs, and repeated reads of one index produce the same
 payload during that invocation. A shell, monitor, firmware launcher, emulator
 or test runner defines how its own command text becomes that list. The module
 performs no allocation: the program declares the destination storage and the
@@ -2758,6 +2859,23 @@ through the same binding, ABI, adapter and runtime-component contracts as the
 standard text services. A profile with no launcher arguments may implement an
 empty list. A used service with no compatible binding is `E-TARGET-001`.
 
+#### 12.4.3 Optional standard instant clock
+
+The scheduler's instant counter reaches a program through a fourth optional
+standard service module:
+
+```lanternfly
+import "standard/instant-clock.lafy"
+```
+
+It exports one nonblocking operation, `instantCount() as u16`, returning
+the counter defined in section 12.6. Its service ID is
+`standard.instantClock.count`. A program with no scheduled body has no
+instant counter, so importing this module anywhere in such a program is
+`E-ENTRY-004`. The check is whole-program and reported at the root, since
+whether a program has scheduled bodies is not visible to an importing
+module.
+
 ### 12.5 Whole-program compilation
 
 The language permits a declaration-ordered front end but does not require one
@@ -2768,9 +2886,13 @@ compiler implementation strategy. A whole-program build:
 3. checks declarations in source order, making each completed declaration
    available to the declarations that follow;
 4. resolves external bindings and ABI adapters;
-5. lowers the required routines, data and helpers;
-6. creates and validates the placement plan from section 4.3;
-7. emits one target program and validates its final memory map and debug
+5. resolves the program's start under section 12.6, and where the program has
+   any task instance, fixes the whole-program order of those tasks and the
+   settle order of the derivations;
+6. lowers the required routines, data and helpers, the call to a designated
+   subroutine, and the scheduler where the program has any scheduled body;
+7. creates and validates the placement plan from section 4.3;
+8. emits one target program and validates its final memory map and debug
    artifacts.
 
 A compiler may keep syntax trees, typed IR and several internal passes. It may
@@ -2785,7 +2907,12 @@ library into the whole program in dependency order. A compiled
 export-interface artifact restates a module's exported declarations, so an
 unchanged library need not be re-read from source. It contributes symbols,
 not relocatable code. Its `requiredCapabilities` field lists the capability
-IDs that its exported declarations require under section 1.1. An exported
+IDs that its exported declarations require under section 1.1. A module that
+declares task instances or derivations contributes code that must be
+scheduled or settled, so it is consumed from source and has no
+export-interface form. No summary of a subroutine's writes is recorded: the
+compiler emits each notification at the write site under section 17.3, so
+nothing downstream needs one. An exported
 exact integer constant records its mathematical value without a type or
 storage representation; each importing use supplies its ordinary context. A
 fixed-address library, such as a ROM library on a
@@ -2806,187 +2933,212 @@ declarations. It does not contain loose executable statements. A build
 manifest names the root `.lafy` module. A root path without the exact
 lowercase extension is `E-MODULE-001`.
 
-An executable program is its scheduled bodies: every task instance in the
-whole program — module variables of task types, `auto task` instances and
-task-typed arrays elementwise — and every effect and render block
-(section 17). There is no entry routine: no body is called to start the
-program, and no name is reserved for one. A program with no scheduled
-body is `E-ENTRY-001`. A library module's instances and blocks join the
-program that imports it.
+No module is a program in itself. A program is a root module, the modules
+it imports, and a start. The same module is a program under one build and
+a library under another, and its source says nothing about which.
 
-Execution proceeds in instants. Each instant runs these steps in order:
+A program has a declared start, a designated start, or both. A declared
+start is the program's task instances: module variables of task types,
+`auto task` instances, and task-typed arrays elementwise. A library
+module's instances join the program that imports it and are scheduled with
+it.
 
-1. tasks advance, in import-resolution order and then declaration
-   order: each unfinished task whose trigger has occurred runs from its
-   suspension point to its next suspension or to its end;
-2. derived cells with changed dependencies recompute, in dependency
-   order;
-3. effect blocks whose triggers occurred run, in file order;
-4. render blocks whose triggers occurred run, in file order;
-5. the instant ends: delivered moments clear, and deferred changes
-   become the next instant's changes.
+A designated start is requested by the build manifest's optional `start`
+field. An absent field asks for none, and the program has a declared start
+or none at all. A present field either names one declaration of the root
+module or is empty, which asks for that module's one eligible export.
 
-A change or moment is delivered exactly once: in the same instant when
-every dependent sits in a later step of this list, otherwise at the
-start of the next instant, to all dependents at once. Each body runs at
-most once per instant. On a target with a frame interrupt the instant is
-locked to the frame; on a target without one, each pass of the generated
-scheduler is an instant.
+An eligible declaration is source-defined, declared in the root module,
+exported, and is either a subroutine with no parameters and no result or a task type with
+no parameters. Either may carry a `fails` clause under section 11.8. An `extern sub` is never eligible under
+section 12.4.
 
-All module storage is allocated and all constant initializers are
-installed before the first instant. A program terminates successfully at
-an instant boundary when every task is finished and no change or moment
-is pending; a program with an unfinished task — waiting or perpetual —
-continues. A target profile that exposes a numeric exit status maps
-successful termination to zero. Unsuccessful termination and a
-program-level error status are an open 0.7 design item recorded in
-section 16.
+The two starts combine. A designated subroutine is the program's
+prologue: it is called once, before any instant, and runs to completion.
+Where the program also has scheduled bodies, they follow its return; where
+it has none, its return ends the program. The manifest may name a second
+eligible subroutine as the program's epilogue, which runs once after the
+program's last instant, on both exit paths — quiescence and unhandled
+failure alike — and is the only way to state work that must happen when
+everything else has finished, since no body can ask what else is
+scheduled. A prologue that fails under
+section 11.8 ends the program then and there, and no instant runs. A
+designated task type is instantiated by the toolchain as though the
+instance were declared last in the root module and is scheduled beside
+whatever else the program declares; designating a type that an `auto task`
+has already instantiated is `E-ENTRY-002`.
+
+A program with no scheduled body and no designated start is
+`E-ENTRY-001`. A designated name that does not resolve, names an
+ineligible declaration, or is omitted where the root module has no single
+eligible export is also `E-ENTRY-002`.
+
+A prologue and an epilogue are the only places a program may block.
+Nothing else holds the processor there, so the bounded and unbounded native
+calls of section 12.4 belong to them alone: reading a password, loading an
+image from tape, waiting on a monitor, handing the machine back. A prologue
+is also where an owner assigns an instance's runtime start values, before
+the instance first advances. Between them, no body may block, because a
+body that holds the processor stalls every instant and every deadline in
+the program.
+
+A program has at most one scheduler, and no name in the language denotes
+it. No operation selects or reorders the schedule: none starts a body, ends
+another body, or reports what else is scheduled. The only exit from within
+a scheduled body is an unhandled failure under the termination rule
+below. A task's only controls are its own waits and its own
+completion, and work that begins later is a dormant instance whose first
+wait is its start condition.
+
+The set of scheduled bodies is consequently fixed at compile time. The
+scheduler is emitted as a fixed sequence: a direct call for each singleton
+instance, and a counted loop over a static base address for each task-typed
+array. Every call is guarded by a test against a mask byte at a statically
+known address. No table of code addresses is built, and nothing registers
+itself at run time.
+
+Task instances carry one whole-program order, the order in which section
+4.3 installs modules: imports depth first in their source order, each
+module visited once and installed after its imports, and declaration order
+within a module. A library's tasks therefore precede those of the module
+that imports it.
+
+Execution proceeds in instants. An instant has two phases:
+
+1. **settle** — every derivation whose dependencies changed is evaluated,
+   in the dependency order section 17.5 computes. Values propagate
+   immediately within this phase: it is a recalculation, not a delivery.
+2. **effect** — every unfinished task whose trigger has occurred advances,
+   in whole-program order, from its suspension point to its next
+   suspension or to its end.
+
+Writes made during the effect phase are queued. They become the settle
+phase's input at the next instant, so every task in one instant reads the
+same settled state and nothing a task writes is visible to another task in
+the same instant. At the instant's end, delivered pulses clear and queued
+writes become the next instant's changes. Each task advances at most once
+per instant, so an instant always terminates however tasks write to one
+another's triggers.
+
+Between one suspension point and the next, no other task observes the
+storage a task writes: a task runs to its next suspension without
+interleaving, so a sequence of statements within one advance is indivisible
+with respect to the scheduler. Interrupt handlers lie outside the
+scheduler, so storage shared with one keeps the access protocol required by
+section 4.4. A protocol that spans a suspension point is not indivisible
+either, and carries its own discipline.
+
+On a target with a frame interrupt the instant is locked to the frame: the
+handler sets a volatile flag under section 4.4 and the foreground scheduler
+paces off it, so no Lanternfly body runs inside the handler and the rule in
+section 11.7 stands. On a target without a frame interrupt, each pass of
+the generated scheduler is an instant.
+
+The scheduler maintains one instant counter, a `u16` incremented once at
+each instant's end. Where the instant is locked to a frame interrupt the
+counter counts frames at that interrupt's rate; otherwise it counts
+scheduler passes, whose rate is elastic and depends on what the program
+does. `after(n)` in section 17.2 takes a `u16` operand and counts n
+increments of this counter from the moment a wait is entered, compared
+wrap-safely, which bounds n at 32,767 — half the counter's period, because
+ordering two wrapped values is decidable only within half a period. A
+constant operand above that bound is `E-WAIT-001`; a runtime operand above
+it faults with `F-WAIT-RANGE`.
+
+`after` counts instants, and nothing in the language converts instants to
+time. A target profile may declare an instant rate, and where it does an
+instant is that period and a delay is a lower bound in real time. Where it
+does not, an instant has no duration: a program that requires real time
+uses a clock the profile supplies, and a profile that supplies none reports
+`E-TARGET-001` rather than approximating one. A program reads the counter
+through the optional standard module of section 12.4.3. The counter is not
+a state cell, so reading it establishes no dependency.
+
+All module storage is allocated and all constant initializers are installed
+before the program's start runs. A prologue runs next, so it may compute
+initial values; its writes are queued like any other. Every derivation is
+then evaluated once, in dependency order, so derived cells hold settled
+values before any task advances. A
+program terminates successfully at an instant
+boundary when every task is finished and no change or pulse is pending; a
+program with an unfinished task — waiting or perpetual — continues. No
+operation ends a program successfully, so a program that must stop reaches
+quiescence by agreement: every task that outlives its work watches a cell
+declared for the purpose and returns.
+
+A program terminates unsuccessfully when a `fail` reaches the end of a
+prologue, a task body or an epilogue with no handler. A prologue's failure
+ends the program before any instant, and the epilogue runs even then, since
+it names what must happen however the program ends. A failure in the
+epilogue itself replaces any outcome already reported. Termination is immediate: the
+deferred statements of the failing body run as the failure leaves it,
+every other task is abandoned at its suspension point, and the deferred
+statements of those tasks do not run. A task that handles its own failure
+and returns is finished like any other, and the program continues without
+it, so whether one body's error ends the program follows from whether that
+body handles it.
+
+A target profile that exposes a numeric exit status maps successful
+termination to zero and a failed error member with ordinal `n` to
+`n + 1`.
 
 Programs receive launcher arguments through the optional service module
 in section 12.4.2. This keeps program startup uniform on targets with
 command lines, monitors, firmware launchers or no launcher arguments.
 
-A hosted body is a distinct compilation-unit form supplied through a host
-manifest. Its source consists of local declarations followed by statements; it
-cannot contain imports, exports, module storage, records or subroutine
-declarations. The host manifest supplies all non-local names and the body
-epilogue. This separation prevents a loose statement sequence from being
-mistaken for an ordinary module.
+### 12.7 Tasks and cells across modules
 
-The host manifest defines one type scope and one value scope under the module
-namespace and type/callable collision rules from section 2.1. Duplicate
-host names and same-namespace case-only collisions are errors. Record fields
-remain scoped to their record. A hosted body has one local value scope whose
-declarations follow the routine local declaration-order rules from section
-4.2. A hosted local may not shadow a host-manifest value, and it may not reuse
-an earlier hosted local name.
+Task types, task instances, state cells, pulses and derivations follow the
+import, visibility and collision rules of sections 12.1 to 12.3 without
+change. A task type exports like a record and cannot expose an unexported
+parameter type. Because imports resolve depth first and load a module once
+per compilation, a module reached through several import paths contributes
+one copy of its instances, not one per importer.
 
-Host-manifest constants have declared Lanternfly types. An ordinary scalar
-constant has a compile-time value and follows the scalar constant-expression
-rules. An aggregate constant is immutable and obeys the ordinary aggregate
-initializer, type-identity and exact-layout rules. Both forms are available
-where their source-language category is valid; only ordinary scalar constants
-may appear in scalar constant expressions such as `case` values, range
-endpoints and counted-loop steps.
+An exported state cell is read, written and named in a `wait on` by any
+module that can see it, and an exported pulse is raised and waited on the
+same way. A cross-module write carries its notification with it: the
+changed bit is set by the compiled write wherever that write appears, so
+every waiting task and every derivation that depends on the cell responds,
+including those in modules the writer has never heard of. This is the
+behaviour of `export var` with the observer interface added, and the
+restrictions that hold are the ones section 17.3 places on the writing
+body rather than on which module it sits in. A derived cell keeps its
+single formula wherever it is declared, and no body writes it.
 
-A host-manifest constant of type `near address` or `far address` is instead a
-provider-supplied typed binding, not a Lanternfly constant initializer. The
-constant declares its address type and contains one `ProviderAddressReference`,
-whose only field is a binding ID. The named target-profile
-`ProviderAddressBinding` supplies the address class, a closed representation
-whose alternatives are `{ kind: "substrateSymbol", symbol }` and
-`{ kind: "bytes", bytes[] }`, and an optional `deviceSpaceId`. The binding does
-not own validity. Manifest validation requires its class to match the constant's
-declared type, obtains the class's `validityContractId` from the target
-capability, and validates the resolved bytes under that contract. The name may
-be read, copied, compared with an address of the same class and passed to a
-compatible routine wherever an ordinary runtime value is accepted. It may not
-appear in a source constant expression unless a language operation explicitly
-permits opaque addresses in that context; no first-edition operation does.
+Modules govern visibility. What a module can see, it can use.
 
-A `{ kind: "bytes" }` provider representation is validated during
-configuration. A `{ kind: "substrateSymbol" }` representation is validated when
-the selected resolver produces its exact bytes, during configuration or link as
-declared by the target profile.
+A derivation's dependencies are the cells its expression reads, and a
+task's are the cells and pulses its waits name. Either may reach an
+imported module's declarations, and a task's writes may reach them too, so
+a dependency edge can run against the import direction and the settling
+graph is not confined to the import graph's shape. Computing the settle
+order and searching it for circular references are therefore whole-program
+obligations. Both read the `from` expressions of the derivations
+themselves, so neither needs a summary of what any subroutine writes.
 
-A manifest may supply enum, subrange and record declarations plus fixed-array
-types. Manifest enums and subranges have stable nominal type identities and
-obey the representation, member, host-family and domain rules in section 3.
-Manifest records obey the nominal typing and exact-layout rules in section 5.
-Manifest arrays carry the normalized ordinal domains, counts and exact strides
-defined in section 6. Configuration validation rejects an invalid
-representation, domain, dependency or layout before hosted source is checked.
+A module that declares task instances offers them as services: importing
+it schedules those tasks in the importing program, at the position its
+import order fixes. `auto task` is available to such a module on the same
+terms as any other instance, because a module's tasks are scheduled
+wherever they end up, and which module a build takes as its root settles
+only which module's declarations a designated start may name.
 
-`resource` is not a Lanternfly declaration category. A host resource must be
-mapped into the body through an existing typed category: an ordinary or
-provider-bound constant, a storage object or a callable routine. The
-corresponding constant, representation, lifetime and effect rules apply. A host
-may retain richer resource metadata outside the Lanternfly namespace.
-
-Host-manifest callables use these closed records:
-
-```text
-Callable
-  id
-  name
-  parameters[]: ScalarParameter | AggregateParameter
-  resultTypeId or null
-  implementation:
-    { kind: "hostSymbol", symbol }
-    or { kind: "targetBinding", bindingId }
-  abi: CallableAbi
-  effects: CallableEffects (optional)
-  availability:
-    { kind: "allTargets" }
-    or { kind: "profiles", profileIds[] }
-  costMetadataId (optional)
-
-ScalarParameter
-  name
-  kind: "value"
-  typeId
-
-AggregateParameter
-  name
-  kind: "aggregateAlias"
-  typeId
-  storageClass: "near" | "far"
-  mutable: true
-
-CallableAbi
-  abiId
-  adapterId or null
-
-DeclaredCallableEffects
-  { kind: "declared",
-    pure,
-    reads: { kind: "symbols", symbolIds[] }
-           or { kind: "allVisible" },
-    writes: { kind: "symbols", symbolIds[] }
-            or { kind: "allVisible" },
-    calls: { kind: "callables", callableIds[] }
-           or { kind: "unknown" },
-    mayFault,
-    deviceIO,
-    changesMappingContext,
-    returns: "normal" | "noReturn" }
-
-CallableEffects
-  DeclaredCallableEffects
-  or { kind: "conservative" }
-
-CallableCostMetadata
-  id
-  codeBytes or null
-  staticDataBytes or null
-  cycles:
-    { kind: "fixed", value }
-    or { kind: "range", min, max }
-    or { kind: "unknown" }
-```
-
-`hostSymbol` names a symbol supplied directly by the host. `targetBinding`
-resolves through `externalBindings`. Without an adapter, the callable and
-external binding use the same ABI; otherwise `adapterId` resolves an adapter
-from the callable ABI to the external ABI. A profile-list availability record
-contains the selected profile ID or the compiler reports `E-TARGET-001`.
-
-Omitting `effects` normalizes it to `{ kind: "conservative" }`: reads and writes
-of every visible mutable object, unknown native calls, possible fault, device
-I/O and mapping-context change, with normal return. This emits `W-NATIVE-001`
-and blocks optimization across the call. In declared effects, `pure: true`
-requires empty `symbols` reads and writes, forbids `allVisible` and unknown
-calls, requires no device I/O or mapping-context change, and names only
-callables with declared pure effects. `mayFault` remains independent.
-
-Each host entry executes the body as a fresh invocation. Its scalar locals are
-created and initialized on every entry under section 4.2; no local value
-persists from an earlier entry. A backend may lower them to static scratch only
-when the host contract guarantees that body executions cannot overlap,
-re-enter or be interrupted by another execution that uses the same scratch.
-Otherwise each active entry receives independent storage.
+A program with a designated subroutine and no task instances has no
+scheduler. A standard service therefore exposes its nonblocking primitive
+separately from any reactive module wrapped around it, so such a program
+calls the primitive directly from its prologue. A program that must
+terminate imports no perpetual service: a task that waits forever denies
+the program the quiescence it ends at.
 
 ## 13. Runtime helpers and floating point
+
+The closed record shapes a build supplies — the manifest, external bindings,
+ABI adapters, memory regions and address-class validity contracts — are
+specified in the companion `toolchain.md`, versioned separately. This section
+keeps what a program's meaning depends on: the value invariants a native
+boundary must preserve, and the contracts the language states about calls
+across it.
 
 ### 13.1 Runtime helpers
 
@@ -2999,7 +3151,7 @@ Helpers are linked or emitted only when used. Their presence is visible in
 generated listings and cost reports.
 
 The bounds, range, arithmetic, invalid-Boolean and invalid-string fault
-services do not return to the failing expression. A hosted profile may report
+services do not return to the failing expression. A profile may report
 or trap the fault; a standalone target may terminate or enter a target-defined
 fault monitor. The chosen mechanism must preserve the public fault class and
 source location in debug artifacts.
@@ -3142,8 +3294,12 @@ effects. When an external binding selects a runtime component, its `abiId`
 equals the component's non-null `abiId`. IDs are unique within their named
 arrays.
 
-The program-termination implementation consumes the entry outcome and does not
-return to Lanternfly code. `numericExitStatus` is Boolean. When true, the
+The program-termination implementation consumes the program's final outcome
+under section 12.6 — quiescence, or the unhandled failure of a prologue, a
+task or an epilogue — and does not return to Lanternfly code. Where a program contains more
+than one error-set type that can reach termination, the profile's numeric
+mapping applies to the member actually reported, so ordinals from different
+sets are not distinguished. `numericExitStatus` is Boolean. When true, the
 implementation maps success to zero and a failed member with ordinal `n` to
 `n + 1`. When false, its backend contract records how it reports success and
 each failed member to the target's monitor, firmware, host or test interface.
@@ -3172,7 +3328,7 @@ runtime behaviour belongs to any `extern sub` contract that exposes it.
 Compiler artifacts retain source mappings and selected-helper information
 across all three forms.
 
-Every external or host-manifest routine contract preserves Lanternfly value
+Every external routine contract preserves Lanternfly value
 invariants at entry and return. An integer has its declared width, an enum or
 subrange contains a valid member of its domain, a Boolean is zero or one, and
 an aggregate parameter names valid, correctly aligned storage of the declared
@@ -3201,7 +3357,7 @@ as a write to any visible counted-loop control variable, which can make the
 call invalid under section 10.1.
 
 The calls named by such a contract are native-to-native edges. A native call
-back into a source-defined Lanternfly routine or hosted body is outside the
+back into a source-defined Lanternfly routine is outside the
 first edition and makes the binding incompatible. Conservative effects do not
 grant callback permission.
 
@@ -3234,7 +3390,7 @@ module assembly belong to the `extern sub` contract that exposes it.
 A statement block can use instructions, local labels and internal branches,
 but conforming control must reach the generated statement that follows the
 block. A return or jump that bypasses Lanternfly control flow violates the
-block contract. In a hosted body, the block must eventually reach the host
+block contract. The block must eventually reach the routine
 epilogue through ordinary body completion or generated Lanternfly control.
 The block must not modify immutable storage or leave an invalid enum, subrange,
 Boolean, opaque-address or string representation in
@@ -3282,7 +3438,7 @@ with no generated range; it is not attached to a neighbouring instruction.
 
 An AZM backend divides its output into anchored fragments. A standalone
 routine or module initializer may use its generated entry label as the anchor.
-A hosted fragment uses a compiler-owned local label so that it remains within
+An assembly block uses a compiler-owned local label so that it remains within
 the host's enclosing AZM routine. Anchor names come from the backend's reserved
 generated-name space and are deterministic and unique within the assembly
 unit. Each fragment records the anchor label's offset within its text. Anchor
@@ -3306,26 +3462,6 @@ helpers map to their own runtime source and retain their call sites as related
 locations. Inline assembly maps to its original payload lines. Assembler
 diagnostics use the same composition to select the responsible Lanternfly span
 while preserving the complete generated-source diagnostic.
-
-### 13.3 Hosted bodies
-
-A host such as Glimmer supplies the typed manifest defined in section 12.6.
-Manifest storage and routines obey the shared value-invariant and effect
-contract in section 13.2. A missing representation or lifetime guarantee is a
-manifest error; an incomplete routine effect summary receives the conservative
-fallback and `W-NATIVE-001`. Lanternfly has no Glimmer-specific state or
-scheduling words.
-
-Normal body completion reaches the host epilogue. Bare `return` may complete a
-hosted body early and reaches that same epilogue; it must not lower to a
-machine return. A hosted body cannot return a value. This rule keeps `exit`
-exclusive to loop control and avoids a host-specific exit form.
-
-The compiler returns a summary of imported storage reads and writes, routines
-called, native effects, early returns, runtime helpers, static scratch,
-placement-class size and alignment requirements, estimated cost and source
-mappings. It returns no fragment origin. A host may compare that summary with
-explicit dependency declarations or use it to derive change tracking.
 
 ### 13.4 Floating point
 
@@ -3440,16 +3576,17 @@ u32
 `u32` and `i32` are reserved in every program but capability-gated under
 section 1.1; a future floating-point type word would join this gated group.
 
-`type` is contextual. It selects a type operand inside `size`, `count`,
+`type` is contextual. It selects a type operand inside `byteSize`, `size`,
 `lower` or `upper` and remains available as an ordinary identifier everywhere
 else. `error` is likewise contextual: it is recognized only immediately
 after `on` in the handler clause of section 11.8 and remains available as an
 ordinary identifier everywhere else.
 
 The 0.7 revision adds contextual words that are never reserved:
-`task`, `state`, `derive`, `pulse`, `effect`, `render`, `wait`, `raise`
-and `auto` in their head positions, `changed` inside a state
-declaration, and `after` inside a wait trigger (section 17). Each is an
+`task`, `derive`, `pulse`, `wait`, `raise` and `auto` in their head
+positions, `state` immediately before `var`, `write` immediately before an
+aggregate parameter's storage class or name, `from` inside a derivation,
+and `after` inside a wait trigger (sections 11.3 and 17). Each is an
 ordinary identifier everywhere else.
 Contextual-word recognition is case-insensitive, and the formatter emits
 lowercase.
@@ -3476,7 +3613,6 @@ precedence is defined in section 8.
 
 ```text
 module              ::= import-decl* top-item*
-hosted-body         ::= local-decl* statement*
 
 top-item            ::= export-decl
                       | declaration
@@ -3493,6 +3629,9 @@ declaration         ::= const-decl
                       | extern-sub-decl
                       | forward-sub-decl
                       | sub-decl
+                      | task-decl
+                      | pulse-decl
+                      | derive-decl
 
 exportable-declaration
                     ::= const-decl
@@ -3503,16 +3642,24 @@ exportable-declaration
                       | extern-sub-decl
                       | forward-sub-decl
                       | sub-decl
+                      | task-decl
+                      | pulse-decl
+                      | derive-decl
 
 const-decl          ::= "const" value-name ("as" type-expr)?
                         "=" constant-initializer placement? newline
                         (* the as-clause may be omitted only when a
                            record initializer names the type *)
 
-var-decl            ::= "volatile"? "var" value-name ("as" type-expr)?
-                        ("=" constant-initializer)? placement? newline
+var-decl            ::= var-qualifier* "var" value-name
+                        ("as" type-expr)? ("=" constant-initializer)?
+                        placement? newline
                         (* the as-clause may be omitted only when a
-                           record initializer names the type *)
+                           record initializer names the type; a state
+                           variable admits no placement, and `state` with
+                           `volatile` parses so that section 17.3 may
+                           reject it *)
+var-qualifier       ::= "volatile" | "state"
 
 placement           ::= "at" address-const-expr
 
@@ -3547,7 +3694,10 @@ forward-sub-decl    ::= "forward" "sub" value-name "(" params? ")"
                         ("as" type-expr)? fails-clause? newline
 
 params              ::= param ("," param)*
-param               ::= aggregate-storage-class? value-name "as" type-expr
+param               ::= "write"? aggregate-storage-class? value-name
+                        "as" (type-expr | generic-aggregate-type)
+generic-aggregate-type
+                    ::= ("string" | type-name) "[" "]"
 aggregate-storage-class
                     ::= "near" | "far"
 
@@ -3585,6 +3735,8 @@ statement           ::= assignment-statement
                       | return-statement
                       | fail-statement
                       | defer-statement
+                      | raise-statement
+                      | wait-statement
                       | asm-block
 
 asm-block           ::= "asm" newline
@@ -3672,7 +3824,11 @@ writable-path       ::= storage-path
 path-segment        ::= "." value-name
                       | "[" expression ("," expression)* "]"
 
-expression          ::= or-expression
+expression          ::= conditional-expression
+conditional-expression
+                    ::= "if" or-expression "then" expression
+                        "else" expression
+                      | or-expression
 or-expression       ::= xor-expression ("or" xor-expression)*
 xor-expression      ::= and-expression ("xor" and-expression)*
 and-expression      ::= not-expression ("and" not-expression)*
@@ -3783,52 +3939,66 @@ The 0.7 revision adds these productions (section 17 defines the
 semantics):
 
 ```text
-task-decl           ::= "auto"? "task" type-name "(" params? ")" newline
+task-decl           ::= "auto"? "task" type-name "(" params? ")"
+                        fails-clause? newline
                         task-body
                         "end" newline
-task-body           ::= local-decl* (statement | wait-stmt)*
-wait-stmt           ::= "wait" "on" wait-trigger ("," wait-trigger)*
+task-body           ::= local-decl* statement*
+wait-statement      ::= "wait" "on" wait-trigger ("," wait-trigger)*
                         newline
 wait-trigger        ::= trigger | "after" "(" expression ")"
 
-state-decl          ::= "state" value-name "as" type-expr
-                        ("=" constant-initializer)? "changed"? newline
+pulse-decl          ::= "pulse" value-name newline
 derive-decl         ::= "derive" value-name "as" type-expr
                         "from" expression newline
-pulse-decl          ::= "pulse" value-name newline
-block-decl          ::= ("effect" | "render") trigger-clause newline
-                        routine-block "end" newline
 
-trigger-clause      ::= "on" trigger ("," trigger)*
 trigger             ::= value-name
 
-raise-stmt          ::= "raise" value-name newline
+raise-statement     ::= "raise" value-name newline
 ```
 
-`auto task` takes no parameters. `wait-stmt` appears only in
-`task-body`; `raise-stmt` is a statement whose use outside effect and
-task bodies is rejected semantically.
+`auto task` takes no parameters. `wait-statement` and `raise-statement` are
+ordinary statements, so each may appear wherever a statement may, nested
+control structures included — a `wait` inside a loop is the usual shape of a
+task. Each is then restricted semantically: a `wait-statement` outside a
+task body is `E-TASK-002`, and a `raise-statement` outside a task body, a
+prologue, an epilogue or a subroutine one of those calls is `E-STATE-002`.
+An exported `auto task` exports the type and its instance together.
 
-## 16. Post-0.6 design queue
+`conditional-expression` uses the same three words as the `if` statement in
+the same order, so there is one conditional shape to learn. The two are distinguished by one token of
+lookahead past `then`: a statement `if` has a newline there and a block
+after it, an expression `if` has an expression. The grammar is unambiguous,
+though not LL(1), so a single-pass parser reads the condition first and
+settles the form when it reaches `then`. A conditional standing as another
+conditional's condition needs parentheses. It binds loosest of all
+operators and extends as far right as it can, which puts `c + 1` inside the
+`else` of `if b then a else c + 1`; parentheses stop it.
+
+## 16. Design queue
 
 The following questions remain open or provisional. None blocks K0 or K1.
-Open 0.7 items: unsuccessful program termination and an error status for
-a failing `auto task`; valued moments (a pulse carrying a payload);
-whether `raise` and `yield` share machinery; a block form for
-multi-statement derivations; and the standard nonblocking input service
-with its reactive wrapper module (the section 12.4.1 rewrite is
-pending). The prior queue:
+Open items: pulses that carry a payload;
+whether `raise` and `yield` share machinery; a loop form that carries its
+own wait in its head or tail, once real programs show which shapes recur; the driven instance — an
+instance the scheduler skips, advanced instead by another body, which
+serves a test that steps a task between its waits, a controller sequencing
+one task after another, and the value-producing generator as
+one case rather than the defining one, needing an advance whose effect is
+nothing when the instance's wait is unsatisfied and a diagnostic where no
+call site advances it; a synchronous program's
+access to the instant machinery, should one be wanted, through a service
+that advances the scheduler from a designated subroutine. The prior queue:
 
-- whether bare `end` stays clearer than named endings in long routines;
 - case-insensitive identifier resolution after parser experiments;
 - whether real programs justify source-visible named placement classes beyond
   `at` and build-configured regions;
 - source syntax for narrowing an external routine's effect contract;
 - native callback declarations and their call-graph/reentrancy contract;
 - read-only, output and in/out aggregate parameters and general bounded-view
-  spelling; `writeText` and `readLine` already accept differently sized strings
-  through narrow non-escaping service contracts, but ordinary routines still
-  use writable exact-capacity aliases;
+  spelling; `writeText` already accepts differently sized strings
+  through an ordinary generic parameter, so what remains open is only the
+  output and in/out forms;
 - whether translated programs justify `repeat`/`until` or named outer-loop
   exits;
 - module aliases and re-exports;
@@ -3848,105 +4018,148 @@ pending). The prior queue:
 
 Implementation evidence from representative Glimmer bodies, Tetro and Pacmo
 routines, and AZM Book 3 algorithms will determine whether these points enter
-a later edition. Until then, the 0.6 rules remain authoritative.
+a later edition. Until then, the 0.7 rules remain authoritative.
 
-## 17. Tasks, facts and moments
+## 17. Tasks, state cells, pulses and derivations
 
-This section is 0.7 core surface. It will be resequenced into the body
-of the specification in the final 0.7 edit; until then, cross-references
-into it use this number. The semantics lower to the record, `select` and
-mask-byte conventions of the white papers, and the manual lowering is
-the conformance oracle for every construct here.
+This section is 0.7 core surface. It will be resequenced into the body of
+the specification in the final 0.7 edit; until then, cross-references into
+it use this number.
+
+Everything that runs in a program is a task. Everything that is computed
+from other values is a derivation. There is no third kind of body.
 
 ### 17.1 Task types and instances
 
-`task Name(params)` declares a type whose body is a coroutine. The name
-is PascalCase like every type. The compiler derives a record — a state
-discriminant, the declared parameters as visible fields, and every local
-of the body as a hidden field — and a step routine. All locals of a task
-body, scalar and aggregate, are hoisted per-instance fields with
-first-advance initialization; `static var` in a task body keeps its one
-meaning, a single object shared across every instance.
+`task Name(params)` declares a type whose body is a coroutine. The name is
+PascalCase like every type. The compiler derives a record — a state
+discriminant, the declared parameters as visible fields, and every local of
+the body as a hidden field. A task's aggregate parameters are fields of the
+instance, not aliases to caller storage, since a task has no caller; the
+alias rule of section 11.3 does not reach them — and a step routine. All locals of a task body,
+scalar and aggregate, are hoisted per-instance fields with first-advance
+initialization; `static var` in a task body keeps its one meaning, a single
+object shared across every instance.
 
-An instance is a module variable of the type: `var cursor as Blink`, a
-pool `var pool as Blink[4]`, or with arguments a record initializer
-naming exactly the declared parameters — `var fast = BlinkAt(rate = 10)`
-under the no-repetition rule of section 4.5. Hidden fields are readable
-from outside and never initializable. Field-level writes to an
-instance's record belong to its own body; whole-value re-imaging —
-`clear` or template assignment — belongs to the owner and is the reset.
-The write boundary is convention, not a check. Task-typed record fields
-and locals are rejected.
+An instance is a module variable of the type: `var cursor as Blink`, a pool
+`var pool as Blink[4]`, or with arguments a record initializer naming
+exactly the declared parameters. Visible fields are readable from outside
+and hidden fields are not initializable. An owner writes an instance's
+declared parameter fields before it first advances, which is what a
+prologue does under section 12.6; every other field-level write to an
+instance's record belongs to its own body. Whole-value re-imaging — `clear`
+or template assignment — belongs to the owner and is the reset. Task-typed
+record fields and locals are `E-TASK-001`.
 
 `auto task Name()` declares the type and one instance in a single
-declaration. The instance takes the type's name in the value namespace.
-An `auto task` has no parameters.
+declaration. The instance takes the type's name in the value namespace. An
+`auto task` has no parameters; one that states them is `E-TASK-001`.
 
-Advancing resolves through the instance's type: a call whose callee is a
-task-typed storage path — `cursor()`, `pool[i]()` — is a static call to
-the type's step routine with the instance as hidden aggregate argument.
-Extra call arguments are per-turn inputs: ordinary step parameters,
-never hoisted. The scheduler advances every instance under section
-12.6; explicit advancing is for synchronous consumption of a
-value-producing task.
+A task type may carry a `fails` clause under section 11.8. A task that
+handles its own failure and returns is finished like any other; an
+unhandled failure ends the program under section 12.6.
 
-`wait on` suspends a task until a trigger occurs. Its trigger grammar is
-section 15's: moments, facts, and `after(n)` — n instant-clock ticks
-from wait entry, under the wrap-safe comparison with its 32,767-tick
-bound. A task meant to lie dormant designs its first wait as its start
-condition; a zeroed instance is a fresh instance, and a nonzero
-retained-local initializer forces a distinct entry state that only the
-first advance visits.
+The scheduler advances every instance under section 12.6, at most once per
+instant, and nothing else advances one. A task has no caller, produces no
+result and offers no value channel. Its results reach other bodies through
+the instance's readable fields and the state cells it writes.
 
-### 17.2 Facts
+A task's shape carries its own lifecycle, so the language needs no
+operation to start, stop, restart or end one. A body with no loop runs once
+and finishes. A counted loop runs a fixed number of times. `while true`
+runs forever. `while` over a condition stops on that condition. Statements
+before the loop are per-instance initialization; statements after it are
+cleanup on the normal path.
 
-`state` declares a watched cell: ordinary storage plus a changed bit in
-the delivery machinery. The constant initializer is installed in the
-build image; `changed` marks the cell already-changed, so its dependents
-run at the first instant. Facts may be aggregates: one fact at the
-declared granularity, its one bit raised by a write anywhere in it.
-There is no change detection by comparison anywhere; notification is
-part of the compiled write. A `state` declaration admits neither `at`
-nor `volatile`; device state reaches facts through the membrane.
+### 17.2 Waiting
 
-`derive` declares an equation: bound-once takes `=`, bound-always takes
-`from`. A derived cell has no other writer. Its dependencies are read
-from the expression and must be state or derived cells; the clock
-counters may be sampled, never depended on; dependency cycles are
-compile errors. Its build image is the formula folded over its
-dependencies' initial images, and it is initially changed exactly when a
-dependency carries `changed`.
+`wait on` suspends a task until a trigger occurs. A trigger is a state cell, a derived
+cell or a pulse, or `after(n)` counting n increments of the instant counter
+from wait entry, under the wrap-safe comparison and the 32,767 bound of section
+12.6. A `wait-statement` outside a task body is `E-TASK-002`.
 
-Writes to facts are inferred from bodies; there is no updates clause,
-and the dependency report is generated from the code. A state cell is
-written only through its declared path in an effect or task body:
-passing one to a routine as a writable aggregate argument, or taking an
-`alias` to one, is rejected.
+A trigger list is a disjunction: `wait on ready, timeout` resumes on
+whichever occurs first. A pulse is readable as a Boolean during the instant
+in which it is delivered, so a task tests which trigger resumed it without
+further syntax.
 
-### 17.3 Moments
+Where the wait sits settles what happens at startup. Statements before the
+first wait run in the first instant; a body whose wait comes first does
+nothing until its trigger occurs. That replaces any qualifier on the
+declaration.
 
-`pulse` declares a moment: it occurs, is delivered once, and is gone at
-the instant's end. `raise name` emits it. Raising is a write: legal in
-effect and task bodies, rejected in a `render` or a `derive` equation,
-listed in the dependency report. A moment appears in trigger position
-only, with one exemption: `on error` consumes its own statement's
-failure moment, which is a moment in this section's sense — delivered
-once, at one point, carrying a payload. The language contains no input
-vocabulary; hardware moments are raised by tasks written over platform
-interface modules.
+### 17.3 State cells
 
-### 17.4 Blocks
+A variable and a state cell differ in one respect. A write to a variable is
+invisible: nothing else in the program learns of it. A write to a state
+cell sets that cell's changed bit and schedules every task whose wait names
+it. Storage that nothing reacts to remains a variable.
 
-`effect on` and `render on` declare anonymous triggered blocks whose
-bodies are ordinary routine bodies. The phase is the head: derived cells
-settle first, effects run in the middle, renders run last, with tasks
-advancing first of all under section 12.6. A `render` may not write a
-fact or raise a moment; a `derive` equation is pure by form; an `effect`
-may do anything a body may do. These checks see through helper calls.
+`state var` declares a watched cell: an ordinary variable plus a changed
+bit in the delivery machinery. `state` qualifies `var` as `volatile` and
+`static` do. There is no change detection by comparison anywhere;
+notification is part of the compiled write, so the cell a write targets is
+fixed at compile time. The bits themselves are raised once per body — at
+each suspension point and at body exit — from a compile-time constant mask
+of the cells that body wrote, not once per compiled write. The two are
+observably identical, because a body runs to its next suspension without
+interleaving, so nothing can read a bit in between. The difference is cost:
+a loop writing every element of an aggregate cell would otherwise raise the
+same bit once per element. A `state var` admits neither `at` nor
+`volatile`, which is `E-STATE-001`; device state reaches these cells
+through the volatile storage of section 4.4 and a task that copies it in.
 
-Triggers are declared; reads are not triggers. Reading an unlisted fact
-is sampling and legal — the timed body that samples a clock without
-running every instant is the normal case. Within a phase, blocks run in
-file order, and a diagnostic names any two same-phase bodies where one
-writes a cell another writes or samples. A block cannot suspend:
-`wait-stmt` belongs to task bodies alone.
+A state cell may be an aggregate: one cell at the declared granularity, its
+one bit raised by a write anywhere in it. A state cell is written only
+through its declared path, and passing one as a writable aggregate argument
+or binding an `alias` to it is `E-STATE-002`, because a write through an
+alias is not statically tied to one cell. Reading is
+unrestricted: a state cell may be passed to an unmarked aggregate
+parameter under section 11.3.
+
+A state cell is written in a prologue, an epilogue, a task body, or a
+subroutine one of those calls, and nowhere else; a write elsewhere is
+`E-STATE-002`. Writing is barred throughout the settle phase under section
+17.5. Writes are inferred from bodies; there is no updates clause, and the
+dependency report is generated from the code.
+
+### 17.4 Pulses
+
+`pulse` declares an occurrence rather than a value: it happens, it is
+delivered once, and it is gone at the instant's end. `raise name` emits it.
+Any module raises any pulse it can see. Raising is legal wherever writing a
+state cell is legal, and `E-STATE-002` elsewhere. A pulse raised in a
+prologue is delivered in the first instant.
+
+A pulse appears in trigger position and, within the instant it is
+delivered, as a Boolean. The language contains no input vocabulary; a pulse
+that reports hardware is raised by a task written over a platform interface
+module.
+
+### 17.5 Derivations
+
+A value computed from other values is a derivation:
+
+```lanternfly
+state var count as u8 = 0
+derive barLength as u8 from count / 8
+```
+
+A derivation declares one cell and gives its formula. The cell has no other
+writer. Its dependencies are the state cells and derived cells the
+expression reads, so the compiler builds the dependency graph at cell
+granularity, computes the settling order across the whole program, and
+rejects a circular reference as `E-DERIVE-001`. The programmer never states
+an order.
+
+A derivation is an ordinary expression, including the conditional form of
+section 8. It may call routines. A routine reachable from a derivation
+writes no module storage — only its own locals and parameters — which is
+`E-DERIVE-002`. It may read anything it can see and may perform device
+operations; only writing is barred, because a write during settling lands
+after cells that depend on it have settled. The check is one bit per
+routine, propagated through the call graph from the routines derivations
+call.
+
+Every derivation is evaluated once before the first instant, so a derived
+cell holds its settled value before any task runs.

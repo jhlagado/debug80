@@ -1,6 +1,6 @@
-# Lanternfly 0.6 conformance and diagnostics
+# Lanternfly 0.7 conformance and diagnostics
 
-- Status: normative companion to the 0.6 implementation baseline
+- Status: normative companion to the 0.7 implementation baseline
 - Implementation status: fixtures not yet implemented
 
 This document turns the language contract into a testable claim. The
@@ -18,12 +18,11 @@ severity.
 
 Implementations make claims at three boundaries:
 
-1. A **0.6 front end** accepts and rejects source according to the
+1. A **0.7 front end** accepts and rejects source according to the
    specification and produces the required typed program, diagnostics and
    effect information.
 2. A **target backend** preserves that typed program's behavior for one named
    target profile and passes every applicable semantic vector.
-3. A **host integration** supplies a valid manifest, preserves hosted-body
    control flow and composes diagnostics and source mappings.
 
 A backend may omit a profile capability such as far aggregate access or
@@ -37,8 +36,8 @@ these identifiers even when their filenames or organization change.
 
 K0, K1, and K2 are development milestones, not smaller language editions. A
 development build may report that a construct belongs to a later milestone,
-but it cannot claim a conforming 0.6 front end until it accepts every required
-0.6 construct and passes the complete applicable inventory.
+but it cannot claim a conforming 0.7 front end until it accepts every required
+0.7 construct and passes the complete applicable inventory.
 
 Milestone reports state:
 
@@ -80,8 +79,8 @@ emission or provenance. Negative fixtures compare diagnostic ID, severity,
 primary location, required related locations, and the absence of later
 emission or execution.
 
-The first executable sequence is the empty hosted body, Counter, static text,
-Dot, Slide, Trail, focused numeric/control vectors, exact layout vectors, hosted
+The first executable sequence is Counter, static text,
+Dot, Slide, Trail, focused numeric/control vectors, exact layout vectors,
 Tetro and Pacmo storage bodies, then source-routine versions of those bodies.
 The source-routine stage adds forward-declaration program fixtures: a
 mutually recursive routine pair with correct results on a
@@ -93,6 +92,11 @@ language surface.
 
 ## 2. Required compile-time errors
 
+A conforming compiler reports each condition below by its identifier. The
+identifier is the contract; the message text is not. An implementation may
+carry numeric codes alone and take their text from its environment, which is
+what a self-hosting compiler on a small target does.
+
 A conforming compilation must reject at least the following cases at the
 responsible configuration, front-end, placement or backend stage.
 
@@ -101,7 +105,7 @@ responsible configuration, front-end, placement or backend stage.
 | `E-CONFIG-001`   | Malformed host manifest or target profile, unsupported format/version, missing required field, unknown field, invalid primitive field such as a representation byte outside 0 through 255, unknown provider-representation or address-validity-rule tag, or a union with a missing field or a field forbidden by its selected alternative                                                                          | Implementation plan §5           |
 | `E-CONFIG-002`   | Duplicate configuration ID; well-shaped unresolved binding, validity-contract, provider-symbol, registry, component or placement-region reference; wrong provider byte length; invalid range/mask rule; inconsistent source span; impossible exact layout or memory region; invalid enum/subrange/array domain, aggregate constant or type composition; or address-class/representation-width/host-target mismatch | Implementation plan §5           |
 | `E-LEX-001`      | Invalid token, malformed numeric literal, unterminated literal or physical newline in quoted text                                                                                                                                                                                                                                                                                                                  | Specification §2.4               |
-| `E-PARSE-001`    | Token sequence does not match the 0.6 grammar, including a malformed declaration or statement, an unexpected delimiter, or a missing ordinary block `end`                                                                                                                                                                                                                                                          | Specification §15                |
+| `E-PARSE-001`    | Token sequence does not match the 0.7 grammar, including a malformed declaration or statement, an unexpected delimiter, or a missing ordinary block `end`                                                                                                                                                                                                                                                          | Specification §15                |
 | `E-TEXT-001`     | Empty or multi-byte character literal, unsupported direct character or escape, embedded NUL, or oversized string literal                                                                                                                                                                                                                                                                                           | §§2.4, 3.2                       |
 | `E-TEXT-002`     | String capacity outside 1 through 65,534; oversized constant assignment or append; zero constant byte append; invalid string operation, parameter shape or attempted access to the sealed representation                                                                                                                                                                                                           | §3.2                             |
 | `E-NAME-001`     | Unknown name, use before declaration, duplicate declaration, forbidden shadowing or case-only collision                                                                                                                                                                                                                                                                                                            | §§2.1, 12.3                      |
@@ -109,7 +113,7 @@ responsible configuration, front-end, placement or backend stage.
 | `E-NAME-003`     | Record, enum or range type and callable routine share a case-insensitive name                                                                                                                                                                                                                                                                                                                                      | §§2.1, 4.5                       |
 | `E-TYPE-001`     | Integer operands differ and neither may widen value-preservingly to the type already present on the other side                                                                                                                                                                                                                                                                                                     | §3.1                             |
 | `E-TYPE-002`     | Boolean/integer mixing, non-Boolean condition, invalid Boolean ordering or deferred `boolean(...)` conversion                                                                                                                                                                                                                                                                                                      | §§3, 8.2, 8.4                    |
-| `E-TYPE-003`     | Invalid assignment, argument or return conversion, including a non-text `writeText` argument or a non-string, immutable or otherwise unwritable `readLine` or `readArgument` destination                                                                                                                                                                                                                              | §§8.1, 11.3, 11.5, 12.4.1–12.4.2 |
+| `E-TYPE-003`     | Invalid assignment, argument or return conversion, including a non-text `writeText` argument or a non-string, immutable or otherwise unwritable `readArgument` destination                                                                                                                                                                                                                              | §§8.1, 11.3, 11.5, 12.4.1–12.4.2 |
 | `E-TYPE-004`     | A no-result `unit` invocation, `clear`, `fill` or `append` used where a value is required                                                                                                                                                                                                                                                                                                                          | §§8.5, 11.1–11.2                 |
 | `E-TYPE-005`     | Invalid enum representation, empty or reversed subrange, incompatible ordinal family, or constant outside an enum/subrange domain                                                                                                                                                                                                                                                                                  | §3                               |
 | `E-CONST-001`    | Constant division by zero, negative shift, negative power exponent or negative `sqrt` input                                                                                                                                                                                                                                                                                                                        | §§3.1, 4.5, 8.3, 8.5             |
@@ -119,9 +123,9 @@ responsible configuration, front-end, placement or backend stage.
 | `E-INIT-002`     | Record initializer has an unknown, duplicate or missing field                                                                                                                                                                                                                                                                                                                                                      | §4.5                             |
 | `E-INIT-004`     | A target cannot preload or write a placed initializer                                                                                                                                                                                                                                                                                                                                                              | §4.3                             |
 | `E-INIT-005`     | A volatile/device initializer requires a startup write not explicitly supported by the profile                                                                                                                                                                                                                                                                                                                     | §4.3                             |
-| `E-INIT-006`     | Uninitialised compiler-owned storage has a type whose all-zero value is invalid, including an address class whose selected validity rule rejects an all-zero representation                                                                                                                                                                                                                                        | §§3, 4.2, 8.5                    |
+| `E-INIT-006`     | Uninitialised compiler-owned storage has a type whose all-zero value is invalid, including an address class whose selected validity rule rejects an all-zero representation; a derived cell is exempt under §17.5                                                                                                                                                                                                                                        | §§3, 4.2, 8.5                    |
 | `E-LAYOUT-001`   | Empty, reversed, nonconstant or otherwise invalid array index domain                                                                                                                                                                                                                                                                                                                                               | §6                               |
-| `E-LAYOUT-003`   | Invalid `size`, `count`, `lower`, `upper` or `offset` operand, dimension or field path                                                                                                                                                                                                                                                                                                                             | §8.5                             |
+| `E-LAYOUT-003`   | Invalid `byteSize`, `size`, `lower`, `upper` or `offset` operand, dimension or field path, including `size` on a record                                                                                                                                                                                                                                                                                                                             | §8.5                             |
 | `E-PATH-001`     | Constant array index is out of range or an index has an incompatible ordinal type                                                                                                                                                                                                                                                                                                                                  | §§6–7                            |
 | `E-PATH-002`     | Volatile aggregate copy cannot be proven non-overlapping                                                                                                                                                                                                                                                                                                                                                           | §7                               |
 | `E-PATH-003`     | An array access supplies a number of indices different from the selected array's rank                                                                                                                                                                                                                                                                                                                              | §§6–7                            |
@@ -130,7 +134,6 @@ responsible configuration, front-end, placement or backend stage.
 | `E-COPY-003`     | `clear` target lacks a valid all-zero representation, or `fill` has an invalid target or value                                                                                                                                                                                                                                                                                                                     | §8.5                             |
 | `E-ALIAS-001`    | Alias target is not an exact string, record or array storage path, or is constant or volatile                                                                                                                                                                                                                                                                                                                      | §§3.2, 7.1, 11.4                 |
 | `E-ALIAS-002`    | Exported aggregate parameter omits a leading `near` or `far`, a leading storage class appears on a scalar parameter, or an argument's storage class cannot bind to its parameter                                                                                                                                                                                                                                   | §§7.1, 11.3                      |
-| `E-LOCAL-001`    | Local `var` attempts to own a counted string, record or fixed array                                                                                                                                                                                                                                                                                                                                                | §11.4                            |
 | `E-LOCAL-002`    | A local declaration uses `volatile` or `at`                                                                                                                                                                                                                                                                                                                                                                        | §§4.3–4.4, 11.4                  |
 | `E-LOCAL-003`    | A local alias declares a scalar or opaque-address type                                                                                                                                                                                                                                                                                                                                                             | §§7.1, 11.4                      |
 | `E-CONTROL-001`  | Non-ordinal selection, or empty, duplicate, overlapping, reversed, unrepresentable or type-incompatible `case` value/range                                                                                                                                                                                                                                                                                         | §9.2                             |
@@ -139,14 +142,13 @@ responsible configuration, front-end, placement or backend stage.
 | `E-CONTROL-004`  | `exit` or `continue` has no enclosing loop                                                                                                                                                                                                                                                                                                                                                                         | §10.4                            |
 | `E-CONTROL-005`  | `for each` operand is not a fixed-array storage path, its binding collides with a visible name, or the array is volatile                                                                                                                                                                                                                                                                                           | §10.2                            |
 | `E-RETURN-001`   | Bare/value return used with the wrong routine result form, or a result-bearing path reaches `end`                                                                                                                                                                                                                                                                                                                  | §11.5                            |
-| `E-RETURN-002`   | A hosted-body `return` supplies a value                                                                                                                                                                                                                                                                                                                                                                            | §13.3                            |
 | `E-FAIL-001`     | A failable invocation has no `or fail`, failure default or bound `on error` block, or appears nested inside a larger expression, argument list or non-outermost position                                                                                                                                                                                                                                             | §11.8                            |
 | `E-FAIL-002`     | `fail` or `or fail` appears in a routine without a `fails` clause, or `or fail` propagates between different error-set types                                                                                                                                                                                                                                                                                        | §11.8                            |
 | `E-FAIL-003`     | A `fails` operand is not a `u8`-representation enum, a `fail` operand is not a member of the declared error set, a failure default is type-incompatible with the result, contains a failable invocation or appears on a result-free call                                                                                                                                                                            | §11.8                            |
 | `E-FAIL-004`     | An `on error` block binds to a statement with no failable invocation or one already carrying an `or` form, carries a colliding binding name, or can complete normally when bound to a local declaration initializer; `exit`/`continue` in a declaration-bound block is ordinary `E-CONTROL-004`                                                                                                                     | §§10.4, 11.8                     |
-| `E-FAIL-005`     | A `fails` clause appears on an external routine, or a failure form of §11.8 appears inside a hosted body                                                                                                                                                                                                                                                                                                           | §§11.8, 12.4, 13.3               |
-| `E-DEFER-001`    | A `defer` appears inside a control structure or hosted body, or its deferred statement contains a failable invocation, `fail`, `return`, `exit`, `continue`, an `or` form or an `on error` clause                                                                                                                                                                                                                   | §11.9                            |
-| `E-CALL-001`     | Aggregate argument is a temporary/general expression or aliases constant or volatile storage                                                                                                                                                                                                                                                                                                                       | §§4.4, 11.3                      |
+| `E-FAIL-005`     | A `fails` clause appears on an external routine                                                                                                                                                                                                                                                                                                                                                                   | §§11.8, 12.4                     |
+| `E-DEFER-001`    | A `defer` appears inside a control structure, or its deferred statement contains a failable invocation, `fail`, `return`, `exit`, `continue`, an `or` form or an `on error` clause                                                                                                                                                                                                                   | §11.9                            |
+| `E-CALL-001`     | Aggregate argument is a temporary/general expression or aliases constant storage for a writable parameter, or aliases volatile storage                                                                                                                                                                                                                                                                                                                       | §§4.4, 11.3                      |
 | `E-CALL-002`     | A source call-graph cycle, direct or through forward-declared routines, occurs on a profile without recursion capability                                                                                                                                                                                                                                                                                           | §§11.6–11.7                      |
 | `E-LOCAL-001`    | A per-invocation aggregate local is declared in a routine that belongs to a direct or mutual recursive cycle; the remedies are `static var`, a caller-supplied aggregate, or an explicit frame pool                                                                                                                                                                                                                | §11.4                            |
 | `E-FORWARD-001`  | Module end is reached with a forward declaration that has no completing body                                                                                                                                                                                                                                                                                                                                       | §11.6                            |
@@ -155,9 +157,20 @@ responsible configuration, front-end, placement or backend stage.
 | `E-MODULE-002`   | Exported declaration exposes a private type                                                                                                                                                                                                                                                                                                                                                                        | §12.2                            |
 | `E-MODULE-003`   | An `import` appears after a declaration or module assembly block instead of in the module's contiguous import prefix                                                                                                                                                                                                                                                                                               | §§12.1, 15                       |
 | `E-EXTERN-001`   | External routine has no target binding, a callable or external-binding substrate symbol does not resolve, an `at`/`from` binding is unsupported, or a binding/ABI/adapter relationship is incompatible                                                                                                                                                                                                             | §§12.4, 13.2                     |
-| `E-EXTERN-002`   | External routine is given a Lanternfly body or selected as the program entry                                                                                                                                                                                                                                                                                                                                       | §§12.4, 12.6                     |
+| `E-EXTERN-002`   | External routine is given a Lanternfly body or designated as a program's start                                                                                                                                                                                                                                                                                                                                       | §§12.4, 12.6                     |
 | `E-BOUNDARY-001` | A well-shaped resolved provider or native value fails the address class's selected validity rule or a service cannot preserve it; a native or host contract cannot guarantee ordinal/Boolean/address validity, aggregate storage class/layout/lifetime, string layout/invariants or immutable storage; or the integration requires a native callback                                                               | §§3, 11.7, 12.4, 12.6, 13.2–13.3 |
-| `E-ENTRY-001`    | An executable's selected entry is missing, has parameters or a result, or is not a source-defined root-module routine; an omitted entry field selects `main`                                                                                                                                                                                                                                                        | §12.6                            |
+| `E-ENTRY-001`    | A program has no scheduled body and no designated start                                                                                                                                                                                                                                                        | §12.6                            |
+| `E-ENTRY-002`    | A designated start does not resolve, names an ineligible declaration, names a task type an `auto task` has already instantiated, or is omitted where the root module has no single eligible export; an `extern sub` named as a start reports `E-EXTERN-002` instead                                                                        | §12.6                            |
+| `E-ENTRY-004`    | A program with no scheduled body imports `standard/instant-clock.lafy`                                                                                                | §§12.4.3, 12.6                   |
+| `E-TASK-001`     | Task-typed record field or local, or an `auto task` that states parameters                                                                                             | §17.1                            |
+| `E-TASK-002`     | `wait` appears outside a task body                                                                                                                                    | §§15, 17.2                       |
+| `E-STATE-001`    | State declaration carrying `at` or `volatile`                                                           | §17.3                            |
+| `E-STATE-002`    | A state cell is written, or a pulse raised, outside a prologue, an epilogue, a task body or a subroutine one of those calls; or a state cell is passed as a writable aggregate argument or bound by `alias`                                                                                                | §17.3                            |
+| `E-PARAM-001`    | A write through an unmarked aggregate parameter, or `write` on a scalar, `extern sub` or task-type parameter                                                           | §§11.3, 15                       |
+| `E-DERIVE-001`   | Circular reference among derivations                                                                                                                                  | §17.5                            |
+| `E-DERIVE-002`   | A routine reachable from a derivation writes module storage                                                                                                           | §17.5                            |
+| `E-WAIT-001`     | Constant `after` operand above 32,767                                                                                                                                 | §§12.6, 17.2                     |
+| `E-BLOCK-001`    | A bounded- or unbounded-blocking external routine is called from a task body, a routine reachable from a derivation, or a subroutine one of those calls                                               | §§12.4, 12.6                     |
 | `E-TARGET-001`   | Required native service, optional standard-module binding, program-termination outcome, callable profile availability, scalar operation, address class or other target capability is unavailable                                                                                                                                                                                                                    | §§12.4, 12.6, 13.1–13.2          |
 | `E-CAP-001`      | A capability-gated word or facility, including a 32-bit integer type or string capacity above 254, is mentioned in a module that lacks its own enabling standard capability import, including gated use of another module's exports without the direct import                                                                                                                                                         | §§1.1, 3, 3.2                    |
 | `E-ASM-001`      | `asm` block is unclosed or appears where a block is not permitted                                                                                                                                                                                                                                                                                                                                                  | §13.2.1                          |
@@ -172,7 +185,6 @@ manifest, host manifest or target-profile field that caused it, with a
 line/column when that input format provides them. When a configuration error
 also concerns a source declaration, the diagnostic includes that declaration
 as a related source location. Import, call and all dependency-cycle errors
-also report the relevant path. Hosted source diagnostics identify the
 containing host body.
 
 ## 3. Default warnings
@@ -190,6 +202,7 @@ Warnings do not change program meaning. The following are enabled by default:
 | `W-ADDRESS-001` | Near/far conversion has a mapping or bank-switch cost                                                                                                                                                                                      | Target policy                |
 | `W-NATIVE-001`  | Native boundary omits effects or explicitly uses `{ kind: "conservative" }`                                                                                                                                                                | Project may promote to error |
 | `W-ASM-001`     | Statement-level inline assembly receives the conservative read/write/call/fault/device-I/O/clobber contract                                                                                                                                | Project may promote to error |
+| `W-NATIVE-002`  | An unbounded-blocking external routine is called                                                                                                                                                                                          | Project may promote to error |
 
 A routine invocation is not considered pure merely because its result is
 discarded. `W-ASM-001` is the specialized warning for a conservative
@@ -212,6 +225,7 @@ These faults are non-returning and preserve their class and source location:
 | `F-NEGATIVE-SQRT`   | Runtime `sqrt` operand is negative                                    | §8.5             |
 | `F-LOOP-RANGE`      | A counted loop must store a continuing value outside its control type | §10.1            |
 | `F-INVALID-BOOLEAN` | Imported/native Boolean representation is not zero or one             | §3               |
+| `F-WAIT-RANGE`      | Runtime `after` operand exceeds 32,767                                | §§12.6, 17.2     |
 | `F-INVALID-STRING`  | A native write leaves an invalid string representation                | §§3.2, 13.2      |
 
 Overshifts are not faults; their defined zero or sign-fill results are tested
@@ -248,15 +262,15 @@ compares final storage plus ordered service/fault traces:
     short and long strings; checked assignment and append; `length` and content
     comparison.
 12. **Standard text I/O** — explicit standard-module imports; character, text
-    and newline output in order; blocking character input; and bounded line
-    input into short and long strings through injected target services. Each
+    and newline output in order; and nonblocking `pollCharacter` returning an
+    injected byte and consuming it, against returning zero and consuming
+    nothing, through injected target services. Each
     half is required only for a profile that claims the corresponding optional
     module.
 13. **Program arguments** — zero, one and several launcher arguments;
     repeated reads; a fitting and overlong destination; an invalid index; and
     the invocation name excluded from the argument list. Required only for a
     profile that claims the optional program-arguments module.
-14. **Hosted return** — bare `return` reaches the host epilogue and preserves
     host updates. Required for a host-integration claim, not a standalone
     backend claim.
 15. **Error handling** — an error-set enum; a failable parser exercising
@@ -267,11 +281,11 @@ compares final storage plus ordered service/fault traces:
     exhaustive `select` over the caught code; and a `defer` whose cleanup
     runs on the ordinary return, the `fail` and the propagated exits,
     latest-registered first, with the propagated code preserved across
-    cleanup; plus a failable entry whose successful and failed executions
-    reach the profile's distinct termination outcomes. K2 only, because it
+    cleanup; plus a failable designated subroutine whose successful
+    and failed executions reach the profile's distinct termination outcomes. K2 only, because it
     requires source routines.
 
-The K1 Tetro and Pacmo programs are hosted storage bodies with hosted locals.
+The K1 Tetro and Pacmo programs exercise module storage and routine locals.
 K2 reruns source-routine versions with parameters, per-call locals, ABI frames
 and ordinary routine return.
 
@@ -335,11 +349,11 @@ programs above:
 - oversized exact literals rejected in every destination context unless an
   explicit integer conversion requests low-bit truncation;
 - exact target-address expressions at `$7fff`, `$8000`, `$ffff` and one
-  profile-defined far address, including `$8000 + size(type Header)` and
-  arithmetic over `count` and `offset`, plus fixed-width behaviour after a
+  profile-defined far address, including `$8000 + byteSize(type Header)` and
+  arithmetic over `size` and `offset`, plus fixed-width behaviour after a
   typed constant or explicit conversion enters the address expression;
 - per-operator constant wrapping, including `(u16(65535) + 1) / 2 = 0`;
-- constant folding of `abs`, `sqrt`, literal `length`, `size`, `count`,
+- constant folding of `abs`, `sqrt`, literal `length`, `byteSize`, `size`,
   `lower`, `upper` and `offset`, with the same operand and fault rules as their
   runtime or layout forms, including enum members and typed ordinal
   `lower`/`upper` results;
@@ -355,7 +369,7 @@ programs above:
 - `string[1]`, `string[254]`, `string[255]` and `string[65534]` exact layouts,
   with short-form lengths from zero through capacity, long-form lengths from
   zero through capacity, lengths of 255 or more occurring only in long form,
-  each form's all-ones length rejected, and `size` folding to `N + 2` or
+  each form's all-ones length rejected, and `byteSize` folding to `N + 2` or
   `N + 3`;
 - all-zero empty strings; literal and cross-capacity initialization;
   checked assignment from strings and literals; overlapping snapshot
@@ -370,19 +384,42 @@ programs above:
   `string[24][8]` layout; and rejected owned aggregate locals, by-value results,
   ordinary source-declared capacity-generic parameters, indexing, slicing and
   truncating copy;
+- two `auto task` instances interleaving across instants in declaration order;
+  a task suspending at `wait on` and resuming with its locals intact; a derive
+  chain settling within one settle phase; a task's writes queued and visible
+  only at the next instant; a pulse delivered once
+  and cleared at the instant's end; a cross-module write to an exported state
+  cell waking a dependent in a third module; the pass that runs every derive
+  rule before the first instant; termination at quiescence; and `E-TASK-001`,
+  an unmarked aggregate parameter accepted for reading, a state cell and a
+  constant aggregate each passed to one, a `write` parameter mutating caller
+  storage, and `E-PARAM-001` for every write path through it; a conditional expression grouping `if b then a else c + 1`
+  with the addition inside the else branch, the same parenthesised, one
+  inside a `derive` expression, and one as an `if` statement's condition; a
+  `wait on` with two triggers resuming on either, and the pulse read as a
+  Boolean in the instant it is delivered;
+  a generic aggregate parameter receiving arrays of two different sizes, its
+  `size` read from the carrier and used as a counted-loop limit, forwarded to
+  a second generic routine, and a generic string grown by comparing `length`
+  against `size`; changed bits raised once at a body's suspension rather than
+  once per element written;
+  `E-STATE-001`, `E-STATE-002`, `E-DERIVE-001`, `E-DERIVE-002`, `E-PARAM-001`,
+  `E-WAIT-001`, `E-TASK-002` and `E-BLOCK-001`; a prologue and an epilogue around the
+  instants, the epilogue running on quiescence and on an unhandled failure;
 - explicit imports of `standard/text-output.lafy` and
-  `standard/text-input.lafy`; `writeCharacter` with exact and typed `u8`
+  `standard/character-poll.lafy`; `writeCharacter` with exact and typed `u8`
   values; `writeText` over literals plus constant and mutable short- and
   long-form strings of different capacities; one-time path evaluation;
   read-only access with no source mutation; target-appropriate newline events;
-  blocking `readCharacter` returning an injected `u8`; `readLine` with empty,
-  exact-capacity, short and long fitting lines; a too-long line that stores its
-  fitting prefix, consumes through the line ending and returns `false`; a zero
-  byte with the same false-result and resynchronization rule; one-time writable
-  destination-path evaluation; ordered device-I/O and destination-write
-  traces; `E-TYPE-003` for a non-text `writeText` argument and an invalid
-  `readLine` destination; and `E-TARGET-001` when the selected profile lacks a
+  `pollCharacter` returning an injected `u8` and returning zero where the
+  injected device has nothing waiting, consuming a byte in the first case and
+  none in the second; ordered device-I/O traces; `E-TYPE-003` for a non-text
+  `writeText` argument; and `E-TARGET-001` when the selected profile lacks a
   claimed binding;
+- explicit import of `standard/instant-clock.lafy`; `instantCount` advancing
+  by one each instant, a wrap-safe `after` deadline firing across the
+  counter's wrap, and `E-ENTRY-004` when the program has no
+  scheduled body;
 - explicit import of `standard/program-arguments.lafy`; `argumentCount`
   returning zero, one and 255; `readArgument` with fitting short and long
   destinations, repeated reads of one index, one-time operand evaluation, an
@@ -443,7 +480,7 @@ programs above:
   after the final `end`, no execution of the following case body, shared case
   bodies for comma-separated values and `else` for an unmatched selector;
 - type/callable case-insensitive name collision rejection;
-- `size`, `count`, `lower`, `upper` and `offset` on nested records,
+- `byteSize`, `size`, `lower`, `upper` and `offset` on nested records,
   multidimensional arrays and local aggregate aliases, including `type`
   qualification when a type and value share a name, plus rejection of calls,
   nonconstant indices, out-of-range indices and faulting constant index
@@ -504,11 +541,15 @@ programs above:
   and source are separate path occurrences and call `nextIndex()` twice in that
   order;
 - result-free and result-bearing routines, nested calls and early returns;
-  executable entry selection by omitted-field `main` default and explicit
-  manifest override; `E-ENTRY-001` for a missing or invalid selection; normal
-  entry completion and `fail` from an entry carrying a `u8` error-set enum;
-  zero-based error members preserved inside Lanternfly; and numeric-status
-  profiles mapping success to zero and failed ordinal `n` to `n + 1`;
+  designated start selection by manifest, both with the declaration named and
+  with it omitted where the root module has one eligible export; `E-ENTRY-001` and `E-ENTRY-002`;
+  a prologue followed by instants in one program; a task that handles its own
+  failure and returns while the program continues, against an unhandled task
+  failure that ends the program immediately with the failing body's deferred
+  statements run and the other tasks' left unrun; normal completion and `fail` from a
+  designated subroutine carrying a `u8` error-set enum; zero-based error
+  members preserved inside Lanternfly; and numeric-status profiles mapping
+  success to zero and failed ordinal `n` to `n + 1`;
 - rejected aggregate results, routine names used as values, indirect calls and
   `boolean(...)` conversions;
 - rejected direct self-recursion on non-recursive profiles and independent
@@ -565,7 +606,6 @@ programs above:
 - target memory regions and placement defaults with valid permissions,
   alignment and non-overlap; deterministic allocation around explicit `at`
   ranges; preloaded and startup-copy placed initialization; AZM `.org`
-  directives matching planned segment starts; hosted fragments without an
   independent origin; final addressed output accepted only when every
   initialized byte, reserved address and symbol agrees with the placement plan;
   and focused `E-PLACE-001` and `E-PLACE-002` failures;
@@ -577,11 +617,9 @@ programs above:
   and the contract requirement that statement assembly leave every visible
   enum, subrange, Boolean, address and string representation
   valid;
-- ordinary and early hosted-body completion, including bare `return` reaching
   the host epilogue and value-return rejection, repeated entries with freshly
   initialized locals, independent locals for overlapping entries and static
   scratch only under a non-overlap host contract;
-- scalar host constants in hosted `case`, range and counted-loop-step constant
   expressions; immutable aggregate host constants with ordinary initializer,
   type-identity and exact-layout rules; manifest enums, subranges, records and
   ordinal arrays with ordinary representation, nominal-domain and layout
@@ -655,7 +693,6 @@ A source-generating backend emits:
 - statement-assembly ranges and conservative runtime effects;
 - target assumptions and optional cost report.
 
-A host integration additionally emits hosted early-return paths, the local-frame
 or static-scratch strategy, and any non-overlap assumption used to justify
 static scratch.
 
@@ -667,7 +704,6 @@ For an AZM backend, required provenance fixtures also establish that:
 
 - one source statement may own several non-contiguous machine ranges;
 - a folded node may own no machine range and is not mapped to adjacent code;
-- a hosted fragment still maps after the host adds wrappers before and after it;
 - host glue without a Lanternfly origin remains attributed to generated AZM;
 - inline assembly retains its original payload line and column;
 - runtime helper code maps to runtime source while its call-site relation is
@@ -688,15 +724,14 @@ The first implemented edition does not silently accept:
 - aggregate return by value;
 - first-class storage references, pointers, address-of and dereference;
 - stored, returned, nullable or scalar aliases;
-- general read-only, output and in/out aggregate parameters outside the narrow
-  standard `writeText` and `readLine` service contracts;
+- output and in/out aggregate parameters outside the narrow
+  standard `writeText` and `readArgument` service contracts;
 - bit fields and bank-spanning arrays;
 - indirect calls, procedure values and closures;
 - native or inline-assembly callbacks into source-defined Lanternfly routines;
 - unrestricted labels or `goto`;
 - unwinding exceptions or any caught-region form;
 - `fails` on external routines, error-set inclusion across distinct enums,
-  and §11.8 failure forms inside hosted bodies;
 - generics and operator overloading;
 - resizable or heap-backed strings;
 - implicit byte-array-to-string conversion and unbounded string writes;
