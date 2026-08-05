@@ -1,0 +1,378 @@
+// Candlemoth — symbol table
+//
+// Written in level-0 Lanternfly. The expression parser reads a name's type,
+// storage and constant value from here; the declaration parser writes them.
+//
+// Level 0 has no modules, so the four files are notionally one compilation
+// unit in the order tokenizer, expression, symbols, statement. The expression
+// parser comes before this file because this file emits loads and stores
+// through its `emit` primitives, and it reaches forward to the two routines
+// here that it needs through `forward sub`. That is the only forward edge
+// between the files, and it exists because the emitter primitives and the
+// symbol table each need the other's names.
+
+// ------------------------------------------------------------------ shape
+//
+// Parallel arrays rather than an array of records. This is the fourth table
+// in Candlemoth written that way, after the name arena, the hash buckets and
+// the keyword spellings, and by now the reason is worth stating: each field
+// is read by a different pass with a different access pattern, and a record
+// would put six bytes between two consecutive reads of one field. Records
+// remain unused across the compiler source written so far.
+
+enum SymbolKind as u8
+    symbolNone
+    symbolVariable
+    symbolConstant
+    symbolSubroutine
+    symbolParameter
+end
+
+const symbolLimit as u16 = 512
+
+var symbolName as u16[symbolLimit]
+var symbolClass as SymbolKind[symbolLimit]
+var symbolType as TypeKind[symbolLimit]
+
+// For a variable or parameter this is the storage address the layout pass
+// fixed. For a subroutine it is the entry address. A constant has no storage
+// and leaves it zero.
+var symbolAddress as u16[symbolLimit]
+
+// A constant's folded value, in the magnitude-and-sign form the expression
+// parser folds in.
+var symbolValue as u16[symbolLimit]
+var symbolNegative as boolean[symbolLimit]
+
+// Zero for a scalar. An array's declared element count, which is also the
+// bound every subscript is checked against.
+var symbolLength as u16[symbolLimit]
+
+// Zero for a module-level name, one for a name local to the subroutine being
+// read.
+var symbolDepth as u8[symbolLimit]
+
+var symbolCount as u16 = 0
+
+// One inside a subroutine, zero at module level.
+var currentDepth as u8 = 0
+
+// The first slot belonging to the subroutine being read. A depth-one slot
+// below this belongs to some earlier subroutine and is out of scope.
+var localBase as u16 = 0
+
+// The first slot after the current subroutine's parameters. Locals are
+// discarded at `end`; parameters are not, because every call site addresses
+// a parameter by its offset from the subroutine's own slot and would find
+// nothing there if the slots were released.
+var bodyBase as u16 = 0
+
+// ------------------------------------------------------------- diagnostics
+
+enum SymbolFault as u8
+    symbolFaultNone
+    symbolFaultTableFull
+    symbolFaultRedeclared
+    symbolFaultNotDeclared
+    symbolFaultNotAVariable
+    symbolFaultNotAnArray
+    symbolFaultReadOnly
+end
+
+var symbolFault as SymbolFault = symbolFaultNone
+var symbolFaultLine as u16 = 0
+
+sub reportSymbolFault(code as SymbolFault)
+    if symbolFault = symbolFaultNone then
+        symbolFault = code
+        symbolFaultLine = tokenLine
+    end
+end
+
+// ------------------------------------------------------------------ lookup
+//
+// A linear scan from the top down, so a local shadows a module-level name of
+// the same spelling without a second table. Names are interned, so each
+// comparison is one `u16` test rather than a spelling compare, and a scan of
+// five hundred slots is around two thousand instructions. That is affordable
+// once per name occurrence, and would not be if names were compared by
+// spelling.
+//
+// Slot zero is a real slot, so the result is one greater than the slot and
+// zero says not found.
+//
+// Parameters outlive their subroutine in the table, so the scan skips a
+// depth-one slot below `localBase`: those belong to a subroutine that has
+// already ended. At module level `localBase` equals `symbolCount`, so every
+// depth-one slot is below it and none is visible.
+
+sub findSymbol(name as u16) as u16
+    var index as u16 = symbolCount
+
+    while index > 0
+        index = index - 1
+        if symbolDepth[index] = 1 then
+            if index < localBase then
+                continue
+            end
+        end
+        if symbolName[index] = name then
+            return index + 1
+        end
+    end
+    return 0
+end
+
+// --------------------------------------------------------------- declaring
+
+sub declareSymbol(name as u16, class as SymbolKind, kind as TypeKind) as u16
+    var existing as u16 = findSymbol(name)
+
+    if existing > 0 then
+        // Only a redeclaration at the same depth is an error. A local may
+        // shadow a module-level name, which is what lets a subroutine be
+        // read without knowing every module-level name in the compiler.
+        if symbolDepth[existing - 1] = currentDepth then
+            reportSymbolFault(symbolFaultRedeclared)
+            return existing - 1
+        end
+    end
+    if symbolCount >= symbolLimit then
+        reportSymbolFault(symbolFaultTableFull)
+        return 0
+    end
+    symbolName[symbolCount] = name
+    symbolClass[symbolCount] = class
+    symbolType[symbolCount] = kind
+    symbolAddress[symbolCount] = 0
+    symbolValue[symbolCount] = 0
+    symbolNegative[symbolCount] = false
+    symbolLength[symbolCount] = 0
+    symbolDepth[symbolCount] = currentDepth
+    symbolCount = symbolCount + 1
+    return symbolCount - 1
+end
+
+sub enterLocals()
+    currentDepth = 1
+    localBase = symbolCount
+    bodyBase = symbolCount
+end
+
+// Called once the parameter list is read, which fixes how much of the table
+// survives `end`.
+sub markBodyBase()
+    bodyBase = symbolCount
+end
+
+// Reads a body whose parameters were declared by an earlier `forward sub`.
+sub reenterLocals(first as u16, count as u16)
+    currentDepth = 1
+    localBase = first
+    bodyBase = first + count
+end
+
+sub leaveLocals()
+    currentDepth = 0
+    symbolCount = bodyBase
+    // Every remaining depth-one slot is now below `localBase`, which is what
+    // takes the parameters back out of scope without discarding them.
+    localBase = symbolCount
+end
+
+// ---------------------------------------------------------------- storage
+//
+// Every variable has a fixed address, including a local: static frames, so
+// there is no frame pointer and a local load is the same three-byte
+// instruction as a module-level one.
+
+const opLoadHlFromAddress as u8 = 42
+const opStoreHlToAddress as u8 = 34
+const opLoadAFromAddress as u8 = 58
+const opStoreAToAddress as u8 = 50
+
+sub isByteWide(kind as TypeKind) as boolean
+    if kind = typeU8 then
+        return true
+    end
+    if kind = typeBoolean then
+        return true
+    end
+    return false
+end
+
+sub emitLoadSymbol(slot as u16)
+    if isByteWide(symbolType[slot]) then
+        emit(opLoadAFromAddress)
+        emitWord(symbolAddress[slot])
+        emit(opLoadLFromA)
+        emit(opLoadHImmediate)
+        emit(0)
+        return
+    end
+    emit(opLoadHlFromAddress)
+    emitWord(symbolAddress[slot])
+end
+
+sub emitStoreSymbol(slot as u16)
+    if isByteWide(symbolType[slot]) then
+        emit(opLoadAFromL)
+        emit(opStoreAToAddress)
+        emitWord(symbolAddress[slot])
+        return
+    end
+    emit(opStoreHlToAddress)
+    emitWord(symbolAddress[slot])
+end
+
+sub storageBytes(slot as u16) as u16
+    var each as u16 = 2
+    var count as u16 = symbolLength[slot]
+
+    if isByteWide(symbolType[slot]) then
+        each = 1
+    end
+    if count = 0 then
+        return each
+    end
+    return each * count
+end
+
+// --------------------------------------------------------- name references
+//
+// What `parsePrimary` calls for a name. A constant folds on the spot and
+// emits nothing, which is what lets `const limit as u16 = 4096` be used in a
+// bound without costing an instruction. A variable emits its load.
+
+sub referenceName(index as u16)
+    var found as u16 = findSymbol(index)
+    var slot as u16 = 0
+
+    if found = 0 then
+        reportSymbolFault(symbolFaultNotDeclared)
+        yieldComputed(typeNone)
+        return
+    end
+    slot = found - 1
+
+    if symbolClass[slot] = symbolConstant then
+        yieldSignedConstant(symbolType[slot], symbolValue[slot], symbolNegative[slot])
+        return
+    end
+    if symbolClass[slot] = symbolSubroutine then
+        // A call is a statement or a primary with an argument list, and
+        // neither reaches here. A bare subroutine name is a routine value,
+        // which the language has no form for.
+        reportSymbolFault(symbolFaultNotAVariable)
+        yieldComputed(typeNone)
+        return
+    end
+    if symbolLength[slot] > 0 then
+        // An array name without a subscript. Level 0 passes an aggregate
+        // only by declared name in an argument list, which the call parser
+        // reads without coming through here.
+        reportSymbolFault(symbolFaultNotAVariable)
+        yieldComputed(typeNone)
+        return
+    end
+    emitLoadSymbol(slot)
+    yieldComputed(symbolType[slot])
+end
+
+// ------------------------------------------------------------- subscripts
+//
+// A subscript is bounds-checked, which the language requires and which costs
+// a call. The index reaches the helper in HL with the declared length in DE,
+// and the helper either returns the index or traps. Nothing here elides the
+// check for a constant index, because the declaration parser has not yet
+// been written to record a constant subscript's value at this point; that
+// reduction is worth measuring once the seed exists.
+
+// Leaves the element's address in HL and returns the element type.
+sub emitElementAddress(slot as u16) as TypeKind
+    parseExpression()
+    settleExpression(typeU16)
+
+    if tokenKind = kindPunct then
+        if tokenPunct = punctRightBracket then
+            nextToken()
+        else
+            reportExprFault(exprFaultExpectedRightParen)
+        end
+    else
+        reportExprFault(exprFaultExpectedRightParen)
+    end
+
+    if resultIsConstant then
+        emitLoadAccumulator(constantPattern(resultValue, resultNegative))
+    end
+
+    emitLoadOperand(symbolLength[slot])
+    emitHelperCall(helperBoundsCheck)
+
+    // A two-byte element doubles the index. Adding HL to itself is one byte
+    // and four cycles, against a multiply call of about nine hundred.
+    if isByteWide(symbolType[slot]) = false then
+        emit(opAddHlHl)
+    end
+    emitLoadOperand(symbolAddress[slot])
+    emit(opAddHlDe)
+    return symbolType[slot]
+end
+
+sub referenceElement(index as u16)
+    var found as u16 = findSymbol(index)
+    var slot as u16 = 0
+    var kind as TypeKind = typeNone
+
+    if found = 0 then
+        reportSymbolFault(symbolFaultNotDeclared)
+        yieldComputed(typeNone)
+        return
+    end
+    slot = found - 1
+    if symbolLength[slot] = 0 then
+        reportSymbolFault(symbolFaultNotAnArray)
+        yieldComputed(typeNone)
+        return
+    end
+
+    kind = emitElementAddress(slot)
+    if isByteWide(kind) then
+        emit(opLoadAFromHl)
+        emit(opLoadLFromA)
+        emit(opLoadHImmediate)
+        emit(0)
+    else
+        emit(opLoadEFromHl)
+        emit(opIncHl)
+        emit(opLoadDFromHl)
+        emit(opExDeHl)
+    end
+    yieldComputed(kind)
+end
+
+// Stores the accumulator to the element whose address is in DE. The caller
+// computed the address before evaluating the value, so the address was
+// pushed and popped around it.
+sub emitStoreElement(kind as TypeKind)
+    if isByteWide(kind) then
+        emit(opLoadAFromL)
+        emit(opStoreAToDe)
+        return
+    end
+    emit(opExDeHl)
+    emit(opStoreEToHl)
+    emit(opIncHl)
+    emit(opStoreDToHl)
+end
+
+// The type of a name, for a caller that needs it without emitting a load.
+sub lookUpName(index as u16) as TypeKind
+    var found as u16 = findSymbol(index)
+
+    if found = 0 then
+        return typeNone
+    end
+    return symbolType[found - 1]
+end

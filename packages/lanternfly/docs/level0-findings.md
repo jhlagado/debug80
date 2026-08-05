@@ -4,13 +4,12 @@ Phase 1 deliverable. Level 0's boundary was asserted in `level0.md` and is
 here corrected by writing a real compiler front end against it —
 `candlemoth/tokenizer.lafy`, uncompiled.
 
-Seventeen findings, from writing the tokenizer and the expression parser and
-then having both reviewed twice. Two of them are **retracted**: they claimed
-language limitations that do not exist, which is the failure this exercise
-was meant to catch and did. Seven are language
-rules the draft had not accounted for; two are level-0 choices that turn
-out to cost more than expected. None was discovered by reading the
-specification, which is the point of the exercise.
+The findings began with the tokenizer and expression parser and now include
+the first symbol-table and statement-parser drafts. Two early findings are
+**retracted**: they claimed language limitations that do not exist. The
+current release gate is recorded in
+`reviews/candlemoth-phase1-review.md`; this file preserves what writing the
+compiler taught us without treating uncompiled source as proof of completion.
 
 ## Language rules the draft ignored
 
@@ -115,12 +114,11 @@ cycle, and `nextToken` enters that cycle as soon as the parser calls it. So
 the identifier staging buffer, `spelling`, is module level. Every table in
 the tokenizer is module level for the same reason.
 
-This is workable — it is how one would write it anyway — but it means the
-tokenizer is not reentrant and cannot be instantiated twice. Nothing needs
-that here. It will matter only if the compiler ever has to tokenize a
-second stream while holding the first.
+This works for Candlemoth, but it means the tokenizer is not reentrant and
+cannot be instantiated twice. Nothing needs that here. It will matter only
+if the compiler ever has to tokenize a second stream while holding the first.
 
-## What the expression parser added
+## Expression parser findings
 
 `candlemoth/expression.lafy` is the tightest mutual-recursion cycle a
 compiler has, so it tests what the tokenizer could not.
@@ -157,12 +155,22 @@ it is a line of level-0 source rather than a language feature.
 ### 12. Constant folding needs a wider accumulator than the language has
 
 Folding `leftValue + resultValue` in `u16` wraps where the specification's
-result table says the intermediate is wider. The parser folds at the result
-type and relies on the narrowing rule, which is correct but means a folded
-constant and a computed one can differ at the boundary. The conforming order
-— fold at the widest type, narrow at the destination — is what the code
-does, and it is worth stating in the lowering table rather than leaving to
-each implementation.
+result table says the intermediate is wider. Level 0 has no type wider than
+sixteen bits, so the exact accumulator is built rather than declared: a `u16`
+magnitude with a separate `boolean` sign, which covers -65535 through 65535.
+`exactAdd`, `exactMultiply` and `exactDivide` work in that pair, and
+`yieldFolded` checks the result against the type the operation produced.
+
+Overflow detection is written the same way, because level 0 exposes no carry
+flag and no wider intermediate. An addition of like signs has overflowed when
+the sum is below either operand; a multiplication has overflowed when dividing
+the product by one operand fails to return the other. Both are arithmetic
+tests over the same sixteen bits, which is the level-0 shape of a check that
+a wider language reads from a flag.
+
+The third draft of the parser implements this. The rule to record in the
+lowering table is: an exact subtree evaluates in magnitude-and-sign, and
+narrows once at the destination.
 
 ### 13. Six comparison operators nest six deep
 
@@ -175,16 +183,18 @@ tests in level 0, and the expression parser has three of them.
 ## Second-draft corrections
 
 An independent review found seven defects in the first expression parser and
-two prerequisites missing from the tokenizer. All nine are repaired; each is
-recorded because the class of error matters more than the instance.
+two prerequisites missing from the tokenizer. The second draft addressed
+those nine; the later front-end review found further operator and folding
+cases, recorded in the Phase 1 review. Each correction remains here because
+the class of error matters more than the instance.
 
 ### 14. Two prerequisites the tokenizer was missing entirely
 
 **Keywords were never installed.** `keywordName` was declared and read and
 nothing ever filled it, so every keyword would have parsed as an ordinary
 identifier. The first repair pushed each spelling into the staging buffer a
-byte at a time — 130 lines of calls — which a reviewer correctly called
-static data expressed as code. The absence of strings forces an explicit
+byte at a time, producing 130 lines of calls that expressed static data as
+code. The absence of strings forces an explicit
 byte representation; it does not force one call per byte. The spellings are
 now a single 103-byte constant array with parallel offset and length tables,
 copied by a two-line loop.
@@ -270,7 +280,7 @@ overlong number, a malformed operator, a fault followed by recovery, a slash
 at a line end. A front end that only ever parses correct input looks
 finished long before it is.
 
-## What the tokenizer actually uses
+## Measured feature use
 
 Confirmed against the source, and this is the level-0 boundary as measured
 rather than asserted:
@@ -278,7 +288,7 @@ rather than asserted:
 | Feature | Used |
 | --- | --- |
 | `u8`, `u16`, `boolean` | yes |
-| `i16` | yes — the expression parser's result types demand it |
+| `i16` | yes — the expression parser uses it for result types |
 | enumerations over `u8` | yes, four of them |
 | one-dimensional arrays | yes, seven |
 | records | **not once** |
@@ -308,10 +318,137 @@ them — using parallel arrays instead, which is what the name tables here do
 — then records are a candidate for removal from level 0, and that would take
 field-offset computation and exact-layout rules out of the seed.
 
+### 18. Every value-producing comparison is a call
+
+The Z80 compares by subtracting and reading flags, and it has no instruction
+that leaves the answer as a value. A comparison used as an operand — which is
+every comparison in an expression grammar — is therefore a call to a runtime
+routine. Multiply and divide are calls for the plainer reason that the
+machine has neither.
+
+That makes thirteen runtime routines before the compiler emits a single
+statement: multiply, unsigned divide, signed divide, equality, inequality,
+and four orderings in each signedness. The signed and unsigned orderings
+differ because a sixteen-bit subtract leaves the unsigned answer in the carry
+and the signed answer in the sign against overflow, so one routine cannot
+serve both.
+
+A folded comparison costs nothing, and `foldComparison` takes that path
+whenever both operands fold. The count matters for the twenty-four-kilobyte
+estimate: thirteen small routines are perhaps three hundred bytes, and the
+call sites are three bytes each against the one or two bytes an operation
+would take inline on a machine that had one.
+
+## Statement-parser findings
+
+The symbol table and declaration and statement parser drafts supply the
+destination type the expression parser had no caller for. They also expose
+which Level 0 forms still have no parser; the Phase 1 review records those
+open release-gate findings.
+
+### 19. A streaming output forbids back-patching, and the label table is the bill
+
+The emission pass writes each code byte to a port, so the output cannot be
+seeked and a forward branch cannot be filled in once its target is reached.
+The three passes already solve this — the layout pass records each label's
+address and the emission pass reads a table that is already complete — but the
+table has to be global. Reset the label counter per subroutine and the emission
+pass reads the addresses of whichever subroutine the layout pass happened to
+finish with.
+
+Two thousand labels is four kilobytes of RAM, the largest single table in the
+compiler and a sixth of the whole level-0 estimate. A compiler that could seek
+in its own output would spend a two-entry stack per open construct instead.
+The cost belongs to the port-stream boundary rather than to the language, and
+it is the strongest argument yet for the three-pass design: two passes would
+need the same table *and* a resident image.
+
+### 20. `for … until` and `for … to` are both load-bearing
+
+Level 0 has both, and Candlemoth's own source uses `until` — `installKeywords`
+is written that way, and so are four loops in the tokenizer. A compiler that
+accepted only `to` could not compile itself. The two differ by one comparison:
+`to` leaves the loop when the control variable passes the limit, `until` when
+the two are equal.
+
+This is an empirical confirmation that both forms in the declared Level 0
+subset are load-bearing. The same check should be applied deliberately to
+every construct before the seed is written.
+
+### 21. Parameters outlive their subroutine, which inverts the usual scope rule
+
+Static frames mean a parameter has a fixed address, so a call site stores its
+arguments straight into the callee's parameter storage. That storage is
+addressed by offset from the subroutine's own symbol slot, so the parameter
+slots must stay in the table after the subroutine ends — release them and every
+later call site finds nothing there.
+
+They must also stop being *visible*, or a module-level name would resolve to
+some earlier subroutine's parameter. Both hold at once with one rule: the scan
+skips a depth-one slot below `localBase`, and `leaveLocals` sets `localBase` to
+the new top. Locals are discarded, parameters are kept and hidden.
+
+A `forward sub` makes the same point twice. The body must reuse the forward
+declaration's parameter slots rather than declaring its own, because two sets
+of slots mean two sets of addresses and every call site was compiled against
+the first. The body's parameter list is still read, so a body that disagrees
+with its forward declaration is caught rather than silently miscompiled.
+
+The current slot-retention implementation does not yet preserve a complete
+forward-declaration prologue: re-entering an early body can move
+`symbolCount` backwards over later declarations. Phase 1 review finding 20
+records the required repair.
+
+### 22. One token of lookahead separates assignment from call, using the symbol table
+
+A statement beginning with a name is either an assignment or a call, and the
+tokenizer offers exactly one token of lookahead — which the subscript form
+already spends on `[`. The distinction comes from the symbol's class instead:
+a subroutine name at statement position begins a call, and anything assignable
+is a variable. No second token is needed, and the constraint recorded in
+finding 7 turns out to cost nothing here.
+
+### 23. Type names are ordinary names, not keywords
+
+`u8`, `u16`, `i16` and `boolean` are interned once at startup and recognised by
+four `u16` comparisons. Making them keywords would have meant four more
+reserved words, and the reserved list would grow with the type system. As
+interned names they cost four table slots and no grammar.
+
+### 24. Records are unused across the current source
+
+Three thousand one hundred lines across four files, and not one record is
+declared. Every table is parallel arrays: the name arena, the hash buckets, the
+keyword spellings, the symbol table with its eight fields, the label table, the
+loop stack. The reason is consistent rather than incidental — each field is
+read by a different pass with a different access pattern, and a record would
+put the other seven fields between two consecutive reads of one of them.
+
+This is stronger evidence than the tokenizer supplied, but it is not yet the
+whole front end: the current parser does not accept record declarations or
+field access. Removing records from Level 0 would take field-offset computation
+and exact-layout rules out of the seed. The parser must first implement the
+declared subset, and the code generator is the last place records could earn
+their inclusion.
+
 ## Sizes, for the Phase 3 comparison
 
-Tokenizer: 676 lines, of which the character-class table is 65 and the
-keyword tables 22. Expression parser and emitter: 720 lines.
+Tokenizer: 692 lines, of which the character-class table is 65 and the
+keyword tables 22. Expression parser and emitter: 1,118 lines, the growth
+being exact arithmetic, comparison folding and the operation emission the
+second draft recorded without emitting. Symbol table: 378 lines. Declaration
+and statement parser: 962 lines. The draft is 3,150 lines in total.
+
+The declarations currently contain 17,584 bytes of writable arrays: 7,284 in
+the tokenizer, 28 for helper addresses, 6,144 in the symbol table, and 4,128
+for labels and loop stacks. Constant arrays occupy another 464 bytes in the
+image. Those figures still exclude scalar globals, static frames, recursive
+save-around state, the runtime stack and the source window.
+
+The twenty-four-kilobyte code estimate and the writable-static count are
+separate accounting categories, but they compete for the same flat 64K address
+space. A generated memory map must replace these source-level counts before
+the feasibility claim is settled.
 
 No compiled size exists yet. The character-class table alone is 256 bytes of
 the image, or 1% of the twenty-four-kilobyte estimate, before any code.

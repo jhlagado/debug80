@@ -64,16 +64,35 @@ var resultType as TypeKind = typeNone
 var resultIsConstant as boolean = false
 var resultValue as u16 = 0
 
+// An exact value carries a sign separately from its magnitude, so exact
+// evaluation covers -65535 through 65535 rather than wrapping in `u16`.
+// Section 3.1 asks for mathematical evaluation at arbitrary width; sixteen
+// bits plus a sign is what this compiler can hold, and anything beyond it
+// faults rather than wrapping silently.
+var resultNegative as boolean = false
+
 sub yieldConstant(kind as TypeKind, value as u16)
     resultType = kind
     resultIsConstant = true
     resultValue = value
+    resultNegative = false
+end
+
+sub yieldSignedConstant(kind as TypeKind, value as u16, negative as boolean)
+    resultType = kind
+    resultIsConstant = true
+    resultValue = value
+    resultNegative = negative
+    if value = 0 then
+        resultNegative = false
+    end
 end
 
 sub yieldComputed(kind as TypeKind)
     resultType = kind
     resultIsConstant = false
     resultValue = 0
+    resultNegative = false
 end
 
 // ------------------------------------------------------------- diagnostics
@@ -88,6 +107,7 @@ enum ExprFault as u8
     exprFaultNotDeclared
     exprFaultTooDeep
     exprFaultExactOverflow
+    exprFaultConstantRange
 end
 
 var exprFault as ExprFault = exprFaultNone
@@ -133,6 +153,14 @@ const opEdPrefix as u8 = 237
 const opSbcHlDe as u8 = 82
 const opPushHl as u8 = 229
 const opPopDe as u8 = 209
+const opAddHlHl as u8 = 41
+const opLoadAFromHl as u8 = 126
+const opLoadEFromHl as u8 = 94
+const opLoadDFromHl as u8 = 86
+const opIncHl as u8 = 35
+const opStoreEToHl as u8 = 115
+const opStoreDToHl as u8 = 114
+const opStoreAToDe as u8 = 18
 
 sub emitLoadAccumulator(value as u16)
     emit(opLoadHlImmediate)
@@ -146,6 +174,50 @@ end
 
 sub emitAdd()
     emit(opAddHlDe)
+end
+
+// A boolean occupies one byte of L with H zero, so its operations are
+// byte-wide even though every other value here is sixteen bits.
+const opLoadAFromL as u8 = 125
+const opLoadLFromA as u8 = 111
+const opOrE as u8 = 179
+const opAndE as u8 = 163
+const opXorImmediate as u8 = 238
+const opLoadHImmediate as u8 = 38
+
+sub emitBooleanOr()
+    emit(opLoadAFromL)
+    emit(opOrE)
+    emit(opLoadLFromA)
+    emit(opLoadHImmediate)
+    emit(0)
+end
+
+sub emitBooleanAnd()
+    emit(opLoadAFromL)
+    emit(opAndE)
+    emit(opLoadLFromA)
+    emit(opLoadHImmediate)
+    emit(0)
+end
+
+sub emitBooleanNot()
+    emit(opLoadAFromL)
+    emit(opXorImmediate)
+    emit(1)
+    emit(opLoadLFromA)
+    emit(opLoadHImmediate)
+    emit(0)
+end
+
+sub emitNegate()
+    // The value moves to DE so zero can be loaded into HL and the subtract
+    // run in the one direction the machine offers.
+    emit(opExDeHl)
+    emitLoadAccumulator(0)
+    emit(opOrA)
+    emit(opEdPrefix)
+    emit(opSbcHlDe)
 end
 
 sub emitSubtract()
@@ -228,6 +300,279 @@ sub arithmeticResult(unified as TypeKind, subtracting as boolean) as TypeKind
     return unified
 end
 
+// ------------------------------------------------------- exact arithmetic
+//
+// Magnitude and sign are combined here rather than in each caller, because
+// every one of the four operations can leave the representable range and
+// each must fault rather than wrap.
+
+var exactValue as u16 = 0
+var exactNegative as boolean = false
+
+sub exactAdd(leftValue as u16, leftNegative as boolean, rightValue as u16, rightNegative as boolean)
+    var sum as u16 = 0
+    if leftNegative = rightNegative then
+        sum = leftValue + rightValue
+        if sum < leftValue then
+            reportExprFault(exprFaultExactOverflow)
+        end
+        exactValue = sum
+        exactNegative = leftNegative
+        return
+    end
+    if leftValue >= rightValue then
+        exactValue = leftValue - rightValue
+        exactNegative = leftNegative
+    else
+        exactValue = rightValue - leftValue
+        exactNegative = rightNegative
+    end
+    if exactValue = 0 then
+        exactNegative = false
+    end
+end
+
+sub exactMultiply(leftValue as u16, leftNegative as boolean, rightValue as u16, rightNegative as boolean)
+    var product as u16 = 0
+    exactNegative = false
+    if leftNegative <> rightNegative then
+        exactNegative = true
+    end
+    if leftValue = 0 then
+        exactValue = 0
+        exactNegative = false
+        return
+    end
+    product = leftValue * rightValue
+    // Division recovers the left operand only when the product did not
+    // exceed sixteen bits.
+    if product / leftValue <> rightValue then
+        reportExprFault(exprFaultExactOverflow)
+    end
+    exactValue = product
+    if product = 0 then
+        exactNegative = false
+    end
+end
+
+sub exactDivide(leftValue as u16, leftNegative as boolean, rightValue as u16, rightNegative as boolean)
+    if rightValue = 0 then
+        reportExprFault(exprFaultDivideByZero)
+        exactValue = 0
+        exactNegative = false
+        return
+    end
+    exactValue = leftValue / rightValue
+    exactNegative = false
+    if leftNegative <> rightNegative then
+        exactNegative = true
+    end
+    if exactValue = 0 then
+        exactNegative = false
+    end
+end
+
+// Whether an exact value fits a destination type. Section 3.1 makes an
+// exact literal that does not fit its expected type a compile error rather
+// than a narrowing warning.
+sub exactFits(value as u16, negative as boolean, destination as TypeKind) as boolean
+    if destination = typeU8 then
+        if negative then
+            return false
+        end
+        return value <= 255
+    end
+    if destination = typeU16 then
+        if negative then
+            return false
+        end
+        return true
+    end
+    if destination = typeI16 then
+        if negative then
+            return value <= 32768
+        end
+        return value <= 32767
+    end
+    return false
+end
+
+// Ordering and equality over exact values, used to fold a comparison whose
+// operands both folded. The first draft yielded false for every such
+// comparison, so `1 < 2` compiled to false.
+sub exactLess(leftValue as u16, leftNegative as boolean, rightValue as u16, rightNegative as boolean) as boolean
+    if leftNegative then
+        if rightNegative = false then
+            return true
+        end
+        return leftValue > rightValue
+    end
+    if rightNegative then
+        return false
+    end
+    return leftValue < rightValue
+end
+
+sub exactEqual(leftValue as u16, leftNegative as boolean, rightValue as u16, rightNegative as boolean) as boolean
+    if leftValue <> rightValue then
+        return false
+    end
+    return leftNegative = rightNegative
+end
+
+sub foldComparison(operator as Punct, leftValue as u16, leftNegative as boolean, rightValue as u16, rightNegative as boolean) as u16
+    var less as boolean = exactLess(leftValue, leftNegative, rightValue, rightNegative)
+    var same as boolean = exactEqual(leftValue, leftNegative, rightValue, rightNegative)
+    var answer as boolean = false
+
+    if operator = punctEqual then
+        answer = same
+    end
+    if operator = punctNotEqual then
+        answer = not same
+    end
+    if operator = punctLess then
+        answer = less
+    end
+    if operator = punctLessEqual then
+        if less then
+            answer = true
+        end
+        if same then
+            answer = true
+        end
+    end
+    if operator = punctGreater then
+        if not less then
+            if not same then
+                answer = true
+            end
+        end
+    end
+    if operator = punctGreaterEqual then
+        answer = not less
+    end
+    if answer then
+        return 1
+    end
+    return 0
+end
+
+// A folded result must fit the type the operation produced, or the fold has
+// lost information the emitted form would have kept.
+sub yieldFolded(kind as TypeKind, value as u16, negative as boolean)
+    if kind = typeExact then
+        yieldSignedConstant(kind, value, negative)
+        return
+    end
+    if exactFits(value, negative, kind) = false then
+        reportExprFault(exprFaultConstantRange)
+    end
+    yieldSignedConstant(kind, value, negative)
+end
+
+// The bit pattern a folded constant loads as, which is where a negative
+// exact value becomes two's complement.
+sub constantPattern(value as u16, negative as boolean) as u16
+    if negative then
+        return 0 - value
+    end
+    return value
+end
+
+// ------------------------------------------------------------ helper calls
+//
+// The Z80 has no multiply, no divide and no comparison that yields a value,
+// so each is a call to a runtime routine the compiler plants. Addresses come
+// from the layout pass, which is why emission asserts them rather than
+// inventing them.
+
+enum Helper as u8
+    helperMultiply
+    helperDivide
+    helperSignedDivide
+    helperCompareEqual
+    helperCompareNotEqual
+    helperCompareLess
+    helperCompareLessEqual
+    helperCompareGreater
+    helperCompareGreaterEqual
+    helperCompareSignedLess
+    helperCompareSignedLessEqual
+    helperCompareSignedGreater
+    helperCompareSignedGreaterEqual
+    helperBoundsCheck
+end
+
+const helperCount as u16 = 14
+
+// Filled by the layout pass, which places the runtime routines before it
+// lowers any expression. Emission reads the same table and so plants the
+// same addresses the layout pass counted.
+var helperAddress as u16[helperCount]
+
+sub placeHelper(which as Helper, address as u16)
+    helperAddress[u16(which)] = address
+end
+
+const opCall as u8 = 205
+
+sub emitHelperCall(which as Helper)
+    emit(opCall)
+    emitWord(helperAddress[u16(which)])
+end
+
+// Equality reads one flag either way, so it needs no signed form. Ordering
+// does: on a sixteen-bit subtract the unsigned answer is in the carry and
+// the signed answer is in sign against overflow, so the two orderings are
+// separate routines.
+// The Z80 has neither a multiply nor a divide, so both are calls. Signed
+// division differs from unsigned in the sign of the remainder as well as the
+// quotient, so the sign of the operands selects the routine; multiply agrees
+// in the low sixteen bits either way and needs only one.
+sub emitMultiplicative(dividing as boolean, signed as boolean)
+    if dividing = false then
+        emitHelperCall(helperMultiply)
+        return
+    end
+    if signed then
+        emitHelperCall(helperSignedDivide)
+        return
+    end
+    emitHelperCall(helperDivide)
+end
+
+sub comparisonHelper(operator as Punct, signed as boolean) as Helper
+    if operator = punctEqual then
+        return helperCompareEqual
+    end
+    if operator = punctNotEqual then
+        return helperCompareNotEqual
+    end
+    if signed then
+        if operator = punctLess then
+            return helperCompareSignedLess
+        end
+        if operator = punctLessEqual then
+            return helperCompareSignedLessEqual
+        end
+        if operator = punctGreater then
+            return helperCompareSignedGreater
+        end
+        return helperCompareSignedGreaterEqual
+    end
+    if operator = punctLess then
+        return helperCompareLess
+    end
+    if operator = punctLessEqual then
+        return helperCompareLessEqual
+    end
+    if operator = punctGreater then
+        return helperCompareGreater
+    end
+    return helperCompareGreaterEqual
+end
+
 // ---------------------------------------------------------------- grammar
 
 forward sub parseExpression()
@@ -239,8 +584,11 @@ forward sub parseAdditive()
 forward sub parseMultiplicative()
 forward sub parseUnary()
 forward sub parsePrimary()
-forward sub lookUpName(index as u16) as TypeKind
-forward sub foldMultiplicative(dividing as boolean, left as u16, right as u16) as u16
+// Defined in the symbol table, which comes after this file because it emits
+// through the primitives above. These two are the whole interface.
+forward sub referenceName(index as u16)
+forward sub referenceElement(index as u16)
+forward sub foldMultiplicative(dividing as boolean, left as u16, leftNegative as boolean, right as u16, rightNegative as boolean)
 
 sub parseExpression()
     if enterNesting() = false then
@@ -288,16 +636,22 @@ sub parseOr()
                     yieldConstant(typeBoolean, resultValue)
                 end
             else
-                emitLoadOperand(leftValue)
-                emit(opAddHlDe)
-                yieldComputed(typeBoolean)
+                // A constant true on the left settles the whole disjunction,
+                // because a level-0 expression has no calls and so no side
+                // effect the emitted right operand could have had.
+                if leftValue <> 0 then
+                    emitLoadAccumulator(1)
+                    yieldComputed(typeBoolean)
+                else
+                    yieldComputed(typeBoolean)
+                end
             end
         else
             if resultIsConstant then
                 emitLoadAccumulator(resultValue)
             end
             emit(opPopDe)
-            emit(opAddHlDe)
+            emitBooleanOr()
             yieldComputed(typeBoolean)
         end
     end
@@ -348,6 +702,7 @@ sub parseAnd()
                 emitLoadAccumulator(resultValue)
             end
             emit(opPopDe)
+            emitBooleanAnd()
             yieldComputed(typeBoolean)
         end
     end
@@ -373,6 +728,7 @@ sub parseNot()
                     yieldConstant(typeBoolean, 0)
                 end
             else
+                emitBooleanNot()
                 yieldComputed(typeBoolean)
             end
             return
@@ -409,6 +765,10 @@ sub parseComparison()
     var leftType as TypeKind = typeNone
     var leftIsConstant as boolean = false
     var leftValue as u16 = 0
+    var leftNegative as boolean = false
+    var operator as Punct = punctEqual
+    var unified as TypeKind = typeNone
+    var signed as boolean = false
 
     parseAdditive()
     if tokenKind <> kindPunct then
@@ -421,6 +781,8 @@ sub parseComparison()
     leftType = resultType
     leftIsConstant = resultIsConstant
     leftValue = resultValue
+    leftNegative = resultNegative
+    operator = tokenPunct
 
     nextToken()
     if leftIsConstant = false then
@@ -431,27 +793,31 @@ sub parseComparison()
     // Comparison unifies its operands under the same rule as arithmetic,
     // so a signed and an unsigned sixteen-bit operand are as invalid here
     // as they are in a subtraction.
-    unifyTypes(leftType, resultType)
-
-    if leftIsConstant then
-        if resultIsConstant = false then
-            emitLoadOperand(leftValue)
-        end
-    else
-        if resultIsConstant then
-            emitLoadAccumulator(resultValue)
-        end
-        emit(opPopDe)
+    unified = unifyTypes(leftType, resultType)
+    if unified = typeI16 then
+        signed = true
     end
 
     if leftIsConstant then
         if resultIsConstant then
             // Both sides folded, so the comparison folds and nothing was
             // emitted for either operand.
-            yieldConstant(typeBoolean, 0)
+            yieldConstant(typeBoolean, foldComparison(operator, leftValue, leftNegative, resultValue, resultNegative))
             return
         end
+        emitLoadOperand(constantPattern(leftValue, leftNegative))
+    else
+        if resultIsConstant then
+            emitLoadAccumulator(constantPattern(resultValue, resultNegative))
+        end
+        emit(opPopDe)
     end
+
+    // The Z80 compares by subtracting and reading flags, and there is no
+    // instruction that leaves the answer as a value, so every computed
+    // comparison is a call. Signed and unsigned orderings need different
+    // routines, which is why the unified type selects the helper.
+    emitHelperCall(comparisonHelper(operator, signed))
     yieldComputed(typeBoolean)
 end
 
@@ -464,7 +830,7 @@ sub parseAdditive()
     var subtracting as boolean = false
     var unified as TypeKind = typeNone
     var combined as TypeKind = typeNone
-    var folded as u16 = 0
+    var leftNegative as boolean = false
 
     parseMultiplicative()
     while true
@@ -484,6 +850,7 @@ sub parseAdditive()
         leftType = resultType
         leftIsConstant = resultIsConstant
         leftValue = resultValue
+        leftNegative = resultNegative
 
         nextToken()
         // The left operand only reaches the stack when it is a computed
@@ -501,23 +868,18 @@ sub parseAdditive()
 
         if leftIsConstant then
             if resultIsConstant then
+                // Folding runs on magnitude and sign rather than on a
+                // sixteen-bit pattern, so a subtraction that crosses zero
+                // and an addition that leaves the range are both visible.
+                // The first draft wrapped both silently.
                 if subtracting then
-                    folded = leftValue - resultValue
+                    exactAdd(leftValue, leftNegative, resultValue, not resultNegative)
                 else
-                    folded = leftValue + resultValue
-                    if folded < leftValue then
-                        // Exact evaluation is meant to be mathematical, but
-                        // the widest value this compiler holds is sixteen
-                        // bits. An exact subtree that leaves that range is
-                        // a fault rather than a silent wrap.
-                        if unified = typeExact then
-                            reportExprFault(exprFaultExactOverflow)
-                        end
-                    end
+                    exactAdd(leftValue, leftNegative, resultValue, resultNegative)
                 end
-                yieldConstant(combined, folded)
+                yieldFolded(combined, exactValue, exactNegative)
             else
-                emitLoadOperand(leftValue)
+                emitLoadOperand(constantPattern(leftValue, leftNegative))
                 if subtracting then
                     emitSubtract()
                 else
@@ -527,7 +889,7 @@ sub parseAdditive()
             end
         else
             if resultIsConstant then
-                emitLoadAccumulator(resultValue)
+                emitLoadAccumulator(constantPattern(resultValue, resultNegative))
             end
             emit(opPopDe)
             if subtracting then
@@ -542,16 +904,14 @@ end
 
 // Multiply and divide are separate operations. The first draft folded both
 // as a multiply and raised divide-by-zero for both, so `2 * 0` faulted and
-// `8 / 2` folded to sixteen.
-sub foldMultiplicative(dividing as boolean, left as u16, right as u16) as u16
+// `8 / 2` folded to sixteen. Both now fold through the exact routines, which
+// detect a product that leaves the representable range.
+sub foldMultiplicative(dividing as boolean, left as u16, leftNegative as boolean, right as u16, rightNegative as boolean)
     if dividing then
-        if right = 0 then
-            reportExprFault(exprFaultDivideByZero)
-            return 0
-        end
-        return left / right
+        exactDivide(left, leftNegative, right, rightNegative)
+        return
     end
-    return left * right
+    exactMultiply(left, leftNegative, right, rightNegative)
 end
 
 sub parseMultiplicative()
@@ -561,6 +921,8 @@ sub parseMultiplicative()
     var dividing as boolean = false
     var unified as TypeKind = typeNone
     var combined as TypeKind = typeNone
+    var leftNegative as boolean = false
+    var signed as boolean = false
 
     parseUnary()
     while true
@@ -580,6 +942,7 @@ sub parseMultiplicative()
         leftType = resultType
         leftIsConstant = resultIsConstant
         leftValue = resultValue
+        leftNegative = resultNegative
 
         nextToken()
         if leftIsConstant = false then
@@ -592,22 +955,30 @@ sub parseMultiplicative()
         // addition: u8 gives u16, a sixteen-bit operand gives its own type.
         combined = arithmeticResult(unified, false)
 
+        signed = false
+        if combined = typeI16 then
+            signed = true
+        end
+
         if leftIsConstant then
             if resultIsConstant then
-                yieldConstant(combined, foldMultiplicative(dividing, leftValue, resultValue))
+                foldMultiplicative(dividing, leftValue, leftNegative, resultValue, resultNegative)
+                yieldFolded(combined, exactValue, exactNegative)
             else
-                // A constant multiplier folds into shifts and adds rather
-                // than reaching the helper, which is about ninety times an
-                // add. The helper call is emitted only for a genuinely
-                // variable multiply, which this is not.
-                emitLoadOperand(leftValue)
+                // One operand folded, the other did not, so the operation
+                // still runs. A constant power of two would fold into shifts
+                // instead; that reduction is not written yet, and until it is
+                // the helper carries every computed multiply.
+                emitLoadOperand(constantPattern(leftValue, leftNegative))
+                emitMultiplicative(dividing, signed)
                 yieldComputed(combined)
             end
         else
             if resultIsConstant then
-                emitLoadAccumulator(resultValue)
+                emitLoadAccumulator(constantPattern(resultValue, resultNegative))
             end
             emit(opPopDe)
+            emitMultiplicative(dividing, signed)
             yieldComputed(combined)
         end
     end
@@ -635,8 +1006,12 @@ sub parseUnary()
                 negatedType = typeI16
             end
             if resultIsConstant then
-                yieldConstant(negatedType, 0 - resultValue)
+                // Negation flips the sign of an exact value rather than
+                // wrapping it, so -32768 stays in range for `i16` and -70000
+                // is caught instead of appearing as a small positive number.
+                yieldFolded(negatedType, resultValue, not resultNegative)
             else
+                emitNegate()
                 yieldComputed(negatedType)
             end
             return
@@ -646,7 +1021,6 @@ sub parseUnary()
 end
 
 sub parsePrimary()
-    var nameType as TypeKind = typeNone
     var savedName as u16 = 0
 
     select tokenKind
@@ -670,14 +1044,18 @@ sub parsePrimary()
         reportExprFault(exprFaultExpectedOperand)
         yieldComputed(typeNone)
     case kindName
+        // The name is saved before the lookahead, because reading the token
+        // after it overwrites `tokenNameIndex`.
         savedName = tokenNameIndex
-        nameType = lookUpName(savedName)
-        if nameType = typeNone then
-            reportExprFault(exprFaultNotDeclared)
-        end
-        emitLoadAccumulator(0)
-        yieldComputed(nameType)
         nextToken()
+        if tokenKind = kindPunct then
+            if tokenPunct = punctLeftBracket then
+                nextToken()
+                referenceElement(savedName)
+                return
+            end
+        end
+        referenceName(savedName)
     case kindPunct
         if tokenPunct <> punctLeftParen then
             reportExprFault(exprFaultExpectedOperand)
@@ -706,15 +1084,35 @@ end
 // `i16` under section 3.1, and a value that does not fit needs an explicit
 // conversion. This is the one place an exact value stops being exact.
 sub settleExpression(expected as TypeKind)
+    var destination as TypeKind = expected
+
     if resultType <> typeExact then
+        // A typed expression still has to reach the destination, and section
+        // 3.1 widens only towards a type already written. A narrower
+        // destination needs an explicit conversion the source did not write.
+        if expected <> typeNone then
+            if widensTo(resultType, expected) = false then
+                reportExprFault(exprFaultTypeMismatch)
+            end
+        end
+        if resultIsConstant then
+            emitLoadAccumulator(constantPattern(resultValue, resultNegative))
+        end
         return
     end
-    if expected = typeNone then
-        resultType = typeI16
-    else
-        resultType = expected
+
+    if destination = typeNone then
+        destination = typeI16
     end
+    // An exact value that does not fit the destination is a compile error
+    // rather than a truncation. Without this check `var b as u8 = 300` and
+    // `var b as u8 = 0 - 1` both compiled, the first to 44 and the second
+    // to 255.
+    if exactFits(resultValue, resultNegative, destination) = false then
+        reportExprFault(exprFaultConstantRange)
+    end
+    resultType = destination
     if resultIsConstant then
-        emitLoadAccumulator(resultValue)
+        emitLoadAccumulator(constantPattern(resultValue, resultNegative))
     end
 end

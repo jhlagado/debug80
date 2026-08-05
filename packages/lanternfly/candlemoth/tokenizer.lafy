@@ -173,7 +173,7 @@ enum Fault as u8
 end
 
 // Level 0 has no `fails`, `on error` or `defer`, and a single-pass compiler
-// does not want them: it panics and resynchronises, and unwinding would
+// has no use for them: it panics and resynchronises, and unwinding would
 // lose the position it resynchronises from. A module-level fault with an
 // early return serves, checked where its absence would spin.
 var fault as Fault = faultNone
@@ -276,6 +276,10 @@ var heldSlashLine as u16 = 1
 // statement boundary. Section 2.4 already defines that rule; level 0
 // inherits it rather than inventing a continuation convention.
 var delimiterDepth as u8 = 0
+
+// Set while a token has been seen since the last newline, so end of input
+// can synthesise the boundary the source omitted.
+var pendingFinalNewline as boolean = false
 
 sub skipRemainingName()
     var kind as CharClass = classOther
@@ -494,6 +498,14 @@ sub nextToken()
 
     select kind
     case classEnd
+        // A source that ends without a trailing newline still ends its last
+        // statement, so the boundary is synthesised once before end of
+        // input. Without this a final declaration is never terminated.
+        if pendingFinalNewline then
+            pendingFinalNewline = false
+            tokenKind = kindNewline
+            return
+        end
         tokenKind = kindEnd
     case classNewline
         if delimiterDepth > 0 then
@@ -512,10 +524,13 @@ sub nextToken()
         tokenKind = kindNewline
     case classLetter
         scanName()
+        pendingFinalNewline = true
     case classDigit
         scanNumber()
+        pendingFinalNewline = true
     case classPunct
         scanPunct()
+        pendingFinalNewline = true
     else
         // A quote has no meaning in level 0, which has no strings, so it
         // joins every other unexpected byte as one fault rather than eight.
@@ -583,6 +598,7 @@ sub startTokenizer()
     fault = faultNone
     heldSlash = false
     delimiterDepth = 0
+    pendingFinalNewline = false
     installKeywords()
     advance()
     nextToken()

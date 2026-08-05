@@ -41,9 +41,10 @@ that differs from a keyword by one character.
 
 ### 2. The tokenizer discards statement boundaries
 
-**Status:** Partially resolved — `kindNewline` now preserves and collapses
-physical newline boundaries. Parenthesised and bracketed continuation and the
-synthetic final logical newline remain unimplemented.
+**Status:** Resolved — `kindNewline` preserves and collapses physical newline
+boundaries, `delimiterDepth` suppresses them inside parentheses and brackets,
+and `pendingFinalNewline` synthesises the boundary a source omits when its last
+line carries tokens.
 
 **Evidence.** Newline is a grammar-significant token in Lanternfly: one
 logical line contains at most one statement. `skipBlanks` handles
@@ -64,7 +65,8 @@ and parenthesised continuation.
 
 ### 3. Decimal overflow accepts 65536 through 65539
 
-**Status:** Resolved — rejects above 6553, and at 6553 when the next digit exceeds five; both paths resynchronise — unchanged in `ef63162`.
+**Status:** Resolved — rejects above 6553, and at 6553 when the next digit
+exceeds five; both paths resynchronise.
 
 **Evidence.** `scanNumber` rejects only when the accumulated value is greater
 than 6553 before multiplying by ten and adding the next digit. When the value
@@ -81,7 +83,8 @@ or equals 6553 while the next digit exceeds five. Test 65535, 65536, 65539 and
 
 ### 4. The less-than scanner can consume three characters
 
-**Status:** Resolved — the two tests are exclusive, so `<>` followed by `=` stays two tokens — unchanged in `ef63162`.
+**Status:** Resolved — the two tests are exclusive, so `<>` followed by `=`
+stays two tokens.
 
 **Evidence.** The less-than arm tests for `>` and `=` in two independent
 `if` statements. Given the source `<> =`, the first test consumes `>`, after
@@ -97,7 +100,8 @@ then test `<>`, `<=`, `<`, `<> =` and `<==` as token sequences.
 
 ### 5. Fault paths do not perform the recorded resynchronisation
 
-**Status:** Resolved — scanName and scanNumber consume through the end of the token before returning — unchanged in `ef63162`.
+**Status:** Resolved — `scanName` and `scanNumber` consume through the end of
+the token before returning.
 
 **Evidence.** `level0-findings.md` says that `scanName` and `scanNumber`
 consume the remainder of a faulty token before returning. Both routines return
@@ -118,8 +122,9 @@ each fault and reaches the following token.
 
 ### 6. Lanternfly already defines multiline expression continuation
 
-**Status:** Resolved — section 2.4's logical-line rule is inherited; the tokenizer tracks delimiter depth. Finding 3 of level0-findings.md is retracted — newline tokens now exist, but delimiter depth does not yet
-suppress physical newlines inside parentheses or brackets.
+**Status:** Resolved — section 2.4's logical-line rule is inherited, the
+tokenizer tracks delimiter depth, and finding 3 of `level0-findings.md` is
+retracted.
 
 **Evidence.** Finding 3 says that a condition cannot span physical lines and
 proposes deciding on a continuation convention. Section 2.4 of the reconciled
@@ -138,8 +143,8 @@ newline. No new continuation syntax is needed.
 
 ### 7. Checked integer-to-enum conversion is an existing language operation
 
-**Status:** Resolved — `Keyword(index)` replaces the twenty-five-arm select. Finding 5 of level0-findings.md is retracted — `Keyword(index)` has not been admitted to Level 0, and the
-twenty-five-arm conversion remains.
+**Status:** Resolved — `Keyword(index)` replaces the twenty-five-arm select,
+and finding 5 of `level0-findings.md` is retracted.
 
 **Evidence.** Finding 5 presents integer-to-enum conversion as a possible new
 language decision. Section 3 of the reconciled specification already defines
@@ -159,7 +164,8 @@ runtime-valid and runtime-invalid lowering vectors.
 
 ### 8. The Level 0 lexical subset is still implicit
 
-**Status:** Resolved — decimal only, with hexadecimal, binary and character literals stated outside level 0 — the retained literal forms remain unstated.
+**Status:** Resolved — Level 0 retains decimal literals only and explicitly
+excludes hexadecimal, binary and character literals.
 
 **Evidence.** The tokenizer accepts decimal integers but not hexadecimal,
 binary or character literals, all of which belong to the first-edition lexical
@@ -180,7 +186,7 @@ tokenizer complete.
 
 ### 9. A held slash can acquire the following line number
 
-**Status:** Resolved — the slash's own line is saved when it is held — unchanged in `ef63162`.
+**Status:** Resolved — the slash's own line is saved when it is held.
 
 **Evidence.** `skipBlanks` consumes the byte after a slash before deciding
 whether the slash begins a comment. `advance` increments `sourceLine` as soon
@@ -199,9 +205,10 @@ slash followed immediately by a newline.
 
 ### 10. Multiplication and division are not distinguished
 
-**Status:** Partially resolved — the operator is now saved and constant
-multiplication and division fold separately. Computed multiplication and
-division still record a result without emitting the operation.
+**Status:** Resolved — the operator is saved, constant multiplication and
+division fold through separate exact routines, and `emitMultiplicative` plants
+a call to the multiply, unsigned-divide or signed-divide runtime routine for
+every computed form.
 
 **Evidence.** `parseMultiplicative` accepts either `*` or `/` but does not save
 which operator it consumed. When both operands are constant, it reports
@@ -218,9 +225,10 @@ operators with zero and nonzero operands.
 
 ### 11. Several expression type rules disagree with section 3.1
 
-**Status:** Partially resolved — `unifyTypes` implements the principal widening
-direction. It does not range-check an exact value before adopting the other
-operand's type, and unary minus still accepts `u16` and Boolean operands.
+**Status:** Resolved — `unifyTypes` implements the asymmetric widening rule,
+`yieldFolded` range-checks every folded result against the type the operation
+produced, and unary minus negates in exact space so a value that leaves the
+destination's range faults rather than wrapping.
 
 **Evidence.** `additiveResult` returns `i16` whenever either operand is `i16`,
 which silently accepts `i16` combined with `u16`; the specification requires
@@ -242,9 +250,10 @@ type pair rather than testing representative cases only.
 
 ### 12. Exact literal typing is missing
 
-**Status:** Partially resolved — `typeExact` now preserves the untyped state,
-but `settleExpression` does not check whether the value fits its expected or
-default `i16` type.
+**Status:** Resolved — `typeExact` preserves the untyped state and
+`settleExpression` checks the value against its expected type, or against the
+default `i16` when the context supplies none, reporting `exprFaultConstantRange`
+when it does not fit.
 
 **Evidence.** `parsePrimary` immediately assigns every decimal literal
 `typeU16`. The specification keeps a literal exact until an expected type or a
@@ -265,10 +274,10 @@ Candlemoth's own arithmetic expressions.
 
 ### 13. Constant folding and emitted code do not describe the same result
 
-**Status:** Partially resolved — constants no longer emit eagerly and computed
-addition and subtraction normalise their operands. Computed Boolean,
-comparison, multiplication and division paths remain incomplete; a folded
-comparison currently returns false without inspecting its operator or values.
+**Status:** Resolved — constants no longer emit eagerly, every computed path
+emits its operation (byte-wide sequences for Boolean and, or and not; a helper
+call for each comparison, multiply and divide), and `foldComparison` evaluates
+a folded comparison against its operator and operand signs.
 
 **Evidence.** The parser emits loads, pushes and pops while descending before
 it knows whether the enclosing expression is constant. For `1 + 2`, it emits
@@ -308,10 +317,11 @@ the limit separately with parentheses, `not` and unary minus.
 
 ### 15. The constant-folding finding claims a width the implementation lacks
 
-**Status:** Partially resolved — the divergence is now explicit and exact
-addition detects unsigned overflow. Exact subtraction, multiplication,
-negative values and later division still use wrapped `u16` arithmetic, so the
-stated overflow fault is not yet general.
+**Status:** Resolved — an exact value is a magnitude with a separate sign, so
+the representable range is -65535 through 65535. `exactAdd`, `exactMultiply`
+and `exactDivide` carry that representation through every fold, and
+`exactMultiply` detects a product beyond sixteen bits by dividing back.
+`level0-findings.md` finding 12 records the chosen representation.
 
 **Evidence.** `level0-findings.md` says that folding requires a wider
 accumulator and that the parser implements “fold at the widest type, narrow at
@@ -382,3 +392,154 @@ scalar columns are a natural tokenizer representation. If the complete
 self-hosting source never uses record construction, field selection or arrays
 of records, removing records from Level 0 would then eliminate real seed and
 lowering work without changing Candlemoth.
+
+**Source survey.** The symbol table and the declaration and statement parser
+drafts bring the current source to 3,151 lines across four files, with no
+record declared in any of them. Every current table uses parallel scalar
+columns, including the symbol table's eight fields. The code generator is the
+last place records could earn inclusion, but the parser must first accept the
+record grammar already present in Level 0. `level0-findings.md` finding 24
+records the source evidence; the decision itself remains open.
+
+## Front-end release gate
+
+### 18. The parser cannot parse Candlemoth's own source
+
+**Status:** Open — blocking.
+
+**Evidence.** `parseUnit` accepts forward routines, routines and the statement
+forms implemented by `parseStatement`. Candlemoth's first declaration is an
+`enum`, and its current source also contains constant array initialisers,
+`select` / `case`, integer and checked-enum conversions, and integer `and`.
+There is no parser for those forms. `parseTypeName` recognises only four
+built-in scalar names, and `parsePrimary` treats a name followed by `(` as a
+bare name rather than a conversion.
+
+**Consequence.** The clean name-resolution scan does not establish a complete
+front end. The parser faults on the first declaration of the program it is
+meant to compile, before reaching statement lowering.
+
+**Smallest credible repair.** Add the self-hosting forms in dependency order:
+enum and type symbols with conversions; constant arrays; `select` / `case`;
+integer word operators; then the remaining Level 0 aggregate declarations and
+parameters. Run the concatenated four-file source through analysis and require
+end of input with no lexical, expression, statement or symbol fault.
+
+### 19. Boolean operators do not short-circuit, and integer word operators are absent
+
+**Status:** Open — blocking semantic error. This reopens the Boolean part of
+finding 13.
+
+**Evidence.** `parseOr` and `parseAnd` parse and emit the right operand before
+examining the left value, then combine computed operands with an eager byte
+operation. Section 8.4 requires the right operand of Boolean `or` to be skipped
+when the left is true and the right operand of Boolean `and` to be skipped when
+the left is false. The skipped operand must perform no storage access, bounds
+check or fault. Both routines also require Boolean operands, while
+`hashSpelling` uses integer `and` with `bucketMask`.
+
+**Consequence.** A bounds fault in a skipped Boolean operand still occurs, and
+the expression parser rejects Candlemoth's own hashing expression.
+
+**Smallest credible repair.** Lower Boolean `and` and `or` through conditional
+branches around the right operand. Add eager integer `and`, `or` and `not`
+paths with result types from section 3.1. Verify a skipped bounds fault as well
+as Candlemoth's integer mask expression.
+
+### 20. Re-entering the first forward routine removes later declarations
+
+**Status:** Open — blocking symbol-table error.
+
+**Evidence.** A forward declaration stores its parameter slots immediately
+after its routine slot. When the later body calls `reenterLocals`, `bodyBase`
+returns to the end of that early parameter range. Locals are appended at the
+current end of the table, after all later forward declarations. `leaveLocals`
+then assigns `symbolCount = bodyBase`, removing every symbol declared after
+the routine whose body was just read. The visibility rule has the related
+problem: later routines' depth-one parameter slots lie above `localBase` and
+therefore appear visible inside an earlier body.
+
+**Consequence.** The forward-declaration prologue used by Candlemoth cannot
+survive parsing its first body, and names from later parameter lists may resolve
+inside the wrong routine.
+
+**Smallest credible repair.** Keep persistent declarations separate from the
+current body's transient locals, or retain all slots and identify visibility
+by the current routine's exact parameter and local ranges. Leaving a body must
+not move the persistent declaration high-water mark backwards. Test at least
+two forwards followed by their bodies in declaration order and reverse order.
+
+### 21. Local declarations are accepted after statements and inside blocks
+
+**Status:** Open — conformance error.
+
+**Evidence.** Finding 1 correctly states that routine declarations precede
+every statement. `parseStatement` nevertheless accepts `var` and `const`, and
+the same routine parses the bodies of `if`, `while` and `for` blocks.
+
+**Consequence.** The seed can accept source that the reconciled specification
+rejects, including declarations inside loops and branches. Such source would
+not remain valid when compiled at a higher level.
+
+**Smallest credible repair.** Parse one declaration prefix after the routine
+header, then parse a statement-only body. Remove declaration forms from
+`parseStatement` and add rejection fixtures after the first statement and
+inside each block form.
+
+### 22. The fixed-storage total is incomplete and mixes writable and constant data
+
+**Status:** Open — budget correction required.
+
+**Evidence.** The current declarations contain 17,584 bytes of writable array
+storage: 7,284 in the tokenizer, 28 helper-address bytes, 6,144 symbol bytes
+and 4,128 label and loop-stack bytes. Constant arrays occupy another 464 bytes
+in the image. The stated 17,780-byte RAM total includes the constant
+character-class table but omits other constant tables, helper addresses and
+loop stacks. It also excludes scalar globals, static frames, recursive
+save-around state, the runtime stack and the source window.
+
+**Consequence.** The number cannot yet support the 64K feasibility claim. Code,
+constant data and writable storage are useful budget categories, but all share
+the same flat address space.
+
+**Smallest credible repair.** Generate the budget from declarations and report
+constant image bytes, writable static bytes, reserved stack, source window and
+remaining headroom separately. Keep the 24K code estimate as one component of
+the 64K map, not as a non-competing budget.
+
+### 23. Exact folding is also applied to typed arithmetic
+
+**Status:** Open — blocking semantic error.
+
+**Evidence.** Every folded addition, subtraction, multiplication and division
+runs through the magnitude-and-sign exact routines and then through
+`yieldFolded`, even when the operands already have `u16` or `i16` types. Section
+3.1 requires mathematical evaluation only while a subtree remains exact;
+typed arithmetic wraps in its selected result width. The same type table is
+still incomplete at unary and comparison boundaries: unary minus does not
+reject `u16` or `boolean`, and `unifyTypes` rejects every Boolean comparison
+although Boolean `=` and `<>` are valid.
+
+**Consequence.** A folded typed expression can fault where its emitted form
+wraps, and ordinary valid expressions can be accepted or rejected under the
+wrong type rule. The seed and Candlemoth could therefore disagree before any
+statement lowering is involved.
+
+**Smallest credible repair.** Keep magnitude-and-sign evaluation only for an
+exact subtree. Fold a typed operation in its declared result width, using the
+same bit-pattern rule as emitted code. Complete the unary and comparison type
+tables and exercise every Level 0 type/operator pair, including typed overflow,
+invalid unary minus and Boolean equality.
+
+## Phase 1 status
+
+The tokenizer now synthesises a final logical newline, and the expression
+changes repair several previously reported defects. Findings 19 and 23 show
+that the expression gate is not yet closed. The broader release gate also
+remains open: the four files resolve names against one another, but the grammar
+cannot parse those files and the lowering has not been compiled or executed.
+
+Commit this source as an empirical front-end draft. Phase 1 becomes complete
+when the parser accepts the complete concatenated source, the symbol table
+survives its forward-declaration prologue, the operator semantics match the
+specification, and the resulting program has been compiled and exercised.
