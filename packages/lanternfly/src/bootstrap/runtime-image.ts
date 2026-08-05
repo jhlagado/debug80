@@ -48,6 +48,20 @@ export const HELPER_LABELS = [
  * Two profiles, because the bootstrap machine and a real TEC-1 disagree about
  * who owns page zero.
  */
+/**
+ * How a service call lowers.
+ *
+ * `ports` is the bootstrap machine: each service is an `IN` or `OUT` on its
+ * own port, two bytes, with nothing resident and nothing to install.
+ *
+ * `vector` is a hosted machine: the service number in `C`, the argument byte
+ * in `A`, and a `CALL` to the entry the host publishes — five bytes. It is
+ * declared and not implemented, because no host exists to fix its entry
+ * address, and `runtime.asm`'s trap epilogues still write to ports directly.
+ * See findings 24 and 26.
+ */
+export type ServiceLowering = "ports" | "vector";
+
 export interface TargetProfile {
   readonly name: string;
   /** Where the emitted image begins. The runtime sits at its front. */
@@ -58,6 +72,7 @@ export interface TargetProfile {
    * program at its origin instead.
    */
   readonly ownsResetVector: boolean;
+  readonly services: ServiceLowering;
 }
 
 /**
@@ -74,6 +89,7 @@ export const FLAT_PROFILE: TargetProfile = {
   name: "flat",
   origin: 0x0100,
   ownsResetVector: true,
+  services: "ports",
 };
 
 /**
@@ -90,6 +106,7 @@ export const TEC1_PROFILE: TargetProfile = {
   name: "tec1",
   origin: 0x2000,
   ownsResetVector: false,
+  services: "vector",
 };
 
 /** What Candlemoth's checked-in image is generated for. */
@@ -106,6 +123,16 @@ export function buildRuntimeImage(
   assemblyPath: string,
   profile: TargetProfile = FLAT_PROFILE,
 ): RuntimeImage {
+  if (profile.services !== "ports") {
+    // Review finding 26: `runtime.asm`'s trap epilogues write to ports
+    // directly, so this source produces a flat-port runtime whatever origin
+    // it is given. Building it for a vector host would produce an image whose
+    // bounds and division faults do nothing. Refusing is the honest answer
+    // until a vector runtime source exists.
+    throw new Error(
+      `runtime.asm is the flat-port runtime; profile "${profile.name}" uses the ${profile.services} lowering and needs its own source`,
+    );
+  }
   const text = readFileSync(assemblyPath, "utf8");
   const origin = profile.origin;
   const hex = origin.toString(16).padStart(4, "0");
@@ -136,7 +163,12 @@ export function renderRuntimeLafy(image: RuntimeImage): string {
   const addresses = image.addresses.map((a) => String(a)).join(", ");
 
   const lines = [
-    "// Candlemoth level-0 runtime image",
+    "// Candlemoth level-0 runtime image — FLAT PORT PROFILE",
+    "//",
+    "// This image is for the `flat` profile only. Its trap epilogues write to",
+    "// ports 03 and 02 directly rather than through a service call, so a host",
+    "// using the vector lowering needs its own image and its own runtime",
+    "// source. See review finding 26.",
     "//",
     "// GENERATED from candlemoth/runtime.asm. Do not edit: run",
     "// `npm run generate:runtime` instead. The plan requires this array to be",

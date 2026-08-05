@@ -32,19 +32,21 @@ allocation state has to agree between the layout and emission passes.
 
 ## Expressions
 
+<!-- generated:expressions -->
 | Construct | Sequence | Bytes |
 | --- | --- | --- |
-| Materialise a constant | `LD HL,nn` | 3 |
-| Materialise a constant left operand | `LD DE,nn` | 3 |
-| Save the left operand across the right | `PUSH HL` | 1 |
-| Restore the left operand | `POP DE` | 1 |
+| materialise a constant | `LD HL,nn` | 3 |
+| materialise a constant left operand | `LD DE,nn` | 3 |
+| save the left operand across the right | `PUSH HL` | 1 |
+| restore the left operand | `POP DE` | 1 |
 | `a + b` | `ADD HL,DE` | 1 |
 | `a - b` | `EX DE,HL` / `OR A` / `SBC HL,DE` | 4 |
 | `-a`, computed operand | `EX DE,HL` / `LD HL,0` / `OR A` / `SBC HL,DE` | 7 |
-| `a or b` | `LD A,L` / `OR E` / `LD L,A` / `LD H,0` | 5 |
-| `a and b` | `LD A,L` / `AND E` / `LD L,A` / `LD H,0` | 5 |
-| `not a` | `LD A,L` / `XOR 1` / `LD L,A` / `LD H,0` | 6 |
-| `a * b`, `a / b`, every computed comparison | `CALL helper` | 3 |
+| `a or b`, Boolean operands | `LD A,L` / `OR E` / `LD L,A` / `LD H,0` | 5 |
+| `a and b`, Boolean operands | `LD A,L` / `AND E` / `LD L,A` / `LD H,0` | 5 |
+| `not a`, Boolean operand | `LD A,L` / `XOR 1` / `LD L,A` / `LD H,0` | 6 |
+| `a * b`, `a / b`, every computed comparison | `CALL nn` | 3 |
+<!-- /generated -->
 
 A constant operand emits nothing where it is written. It materialises only
 where something consumes it that could not fold it, which is why a wholly
@@ -58,12 +60,14 @@ accumulator width.
 
 ## Scalar access
 
+<!-- generated:scalars -->
 | Construct | Sequence | Bytes |
 | --- | --- | --- |
-| Read a `u16` or `i16` variable | `LD HL,(addr)` | 3 |
-| Read a `u8` or `boolean` variable | `LD A,(addr)` / `LD L,A` / `LD H,0` | 6 |
-| Assign to a `u16` or `i16` variable | `LD (addr),HL` | 3 |
-| Assign to a `u8` or `boolean` variable | `LD A,L` / `LD (addr),A` | 4 |
+| read a `u8` or `boolean` variable | `LD A,(nn)` / `LD L,A` / `LD H,0` | 6 |
+| read a `u16` or `i16` variable | `LD HL,(nn)` | 3 |
+| assign to a `u8` or `boolean` variable | `LD A,L` / `LD (nn),A` | 4 |
+| assign to a `u16` or `i16` variable | `LD (nn),HL` | 3 |
+<!-- /generated -->
 
 A byte-wide read clears H rather than leaving it, so every value in the
 accumulator is a full sixteen bits regardless of the type it came from. That
@@ -76,14 +80,16 @@ A subscript is bounds-checked, which the language requires. The address
 computation and the access are separate shapes because an assignment computes
 the address before it evaluates the value, and pushes the address across it.
 
+<!-- generated:elements -->
 | Construct | Sequence | Bytes |
 | --- | --- | --- |
-| Address of `a[i]`, byte-wide element | `LD DE,length` / `CALL boundsCheck` / `LD DE,base` / `ADD HL,DE` | 10 |
-| Address of `a[i]`, sixteen-bit element | `LD DE,length` / `CALL boundsCheck` / `ADD HL,HL` / `LD DE,base` / `ADD HL,DE` | 11 |
-| Read `a[i]`, byte-wide, address in HL | `LD A,(HL)` / `LD L,A` / `LD H,0` | 4 |
-| Read `a[i]`, sixteen-bit, address in HL | `LD E,(HL)` / `INC HL` / `LD D,(HL)` / `EX DE,HL` | 4 |
-| Assign to `a[i]`, byte-wide, address in DE | `LD A,L` / `LD (DE),A` | 2 |
-| Assign to `a[i]`, sixteen-bit, address in DE | `EX DE,HL` / `LD (HL),E` / `INC HL` / `LD (HL),D` | 4 |
+| address of `a[i]`, byte-wide element | `LD DE,nn` / `CALL nn` / `LD DE,nn` / `ADD HL,DE` | 10 |
+| address of `a[i]`, sixteen-bit element | `LD DE,nn` / `CALL nn` / `ADD HL,HL` / `LD DE,nn` / `ADD HL,DE` | 11 |
+| read `a[i]`, byte-wide, address in HL | `LD A,(HL)` / `LD L,A` / `LD H,0` | 4 |
+| read `a[i]`, sixteen-bit, address in HL | `LD E,(HL)` / `INC HL` / `LD D,(HL)` / `EX DE,HL` | 4 |
+| assign to `a[i]`, address in DE, value in HL | `LD A,L` / `LD (DE),A` | 2 |
+| assign to `a[i]`, address in DE, value in HL | `EX DE,HL` / `LD (HL),E` / `INC HL` / `LD (HL),D` | 4 |
+<!-- /generated -->
 
 The byte counts above exclude the index expression, which precedes them, and
 the three bytes that materialise the index when it folded.
@@ -98,22 +104,31 @@ because both expressions use HL, and it has to survive the second one.
 
 ## Control
 
+<!-- generated:control -->
 | Construct | Sequence | Bytes |
 | --- | --- | --- |
-| Reduce the accumulator to a flag | `LD A,L` / `OR H` | 2 |
-| Unconditional jump | `JP nn` | 3 |
-| Jump if false | `LD A,L` / `OR H` / `JP Z,nn` | 5 |
-| Jump if true | `LD A,L` / `OR H` / `JP NZ,nn` | 5 |
-| Call | `CALL nn` | 3 |
-| Return | `RET` | 1 |
+| reduce the accumulator to a flag | `LD A,L` / `OR H` | 2 |
+| `while`, `for`, `exit`, `continue`, an `else` arm's skip | `JP nn` | 3 |
+| `if` and `while`, entering the body | `LD A,L` / `OR H` / `JP Z,nn` | 5 |
+| `for`, leaving at the limit | `LD A,L` / `OR H` / `JP NZ,nn` | 5 |
+| a call, once its arguments are stored | `CALL nn` | 3 |
+| `return`, and the implicit one at a body's end | `RET` | 1 |
+<!-- /generated -->
 
 **Every jump is three-byte absolute, forward and backward alike.** A relative
-jump would save a byte, and it is not taken: during the layout pass a forward
-target is still zero, so a displacement computed then would be measured against
-the wrong value, and a displacement that changed between passes would change
-the instruction's length and break the address agreement the third pass checks.
-The saving is one byte per loop; the risk is a whole class of pass
-disagreement.
+jump would save a byte per backward branch, and it is not taken.
+
+The reason is reachability rather than length. `JR` is two bytes whichever
+displacement it carries, so choosing it never changes an instruction's size —
+an earlier version of this paragraph said it did, and that was wrong. What it
+changes is that `JR` only reaches ±127, so a compiler that used it where it
+fits and `JP` where it does not would make the branch form depend on a
+measured distance. Two implementations that measure that distance differently
+emit different bytes for the same source, and the fixpoint is a byte
+comparison.
+
+One shape everywhere costs a byte per backward branch and removes the
+question.
 
 Forward targets work at all because the layout pass records every label's
 address in a table and the emission pass reads a table that is already
@@ -164,8 +179,21 @@ subroutine's parameters occupy the symbol slots immediately above its own,
 which is what lets a call site reach a parameter by arithmetic — necessary
 because a parameter is out of scope everywhere a call is written.
 
-Save-around-call for a recursive group is the callee's business and is emitted
-by the body, not by the call site.
+**Save-around-call is the caller's, at the call site.** A caller that is in
+the same strongly-connected component as its callee saves the storage the call
+would overwrite — the callee's parameters and any of the caller's own locals
+still live — and restores it after the call returns. Callers outside the
+component emit nothing.
+
+The document said the opposite before, which conflicted with the plan, the
+findings and the source. Putting it at the call site is what makes it
+conditional on the call rather than on the routine: a routine in a recursive
+group is called from inside the group and from outside it, and only the
+inside calls need the saving. A callee that saved on entry would pay on every
+call, including the ones that cannot recurse.
+
+The analysis pass supplies the component membership, which is why it reads
+every body before layout begins.
 
 A body that falls off its end emits `RET`, so every subroutine returns whether
 or not the source wrote `return`.

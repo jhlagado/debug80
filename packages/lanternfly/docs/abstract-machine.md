@@ -49,9 +49,38 @@ competes with the window, while a compiler that is loaded competes with
 nothing except the program it is compiling — which is not resident either,
 because the object code streams out to storage as it is produced.
 
-So the working figure for the compiler is **most of 64K**, less whatever the
-host keeps resident. The tables measured so far, 18,736 bytes, are
-comfortable rather than marginal. The measurements stay; the gate goes.
+### The bootstrap host, and its one map
+
+One host is named, so that code, constants, writable tables and stack are
+judged against one address space rather than two that disagree.
+
+**The bootstrap host is the `flat` profile**, and every current measurement is
+against it:
+
+```
+0000..00FF   page zero: entry jump at 0000, restarts, NMI at 0066
+0100..0205   the runtime, 262 bytes
+0206..       compiler code, then its writable arrays
+             ...
+FFFF         stack, growing down
+```
+
+Free memory is everything from `$0206` to the bottom of the stack, a little
+over 63K. Source arrives through a service and object code leaves through one,
+so neither is resident and neither competes for that space.
+
+Measured from the declarations: 18,736 bytes of writable arrays and 754 bytes
+of constant arrays. Against 63K they are comfortable rather than marginal, and
+they are measurements of the current source rather than of a finished
+compiler — the front end is still missing forms Candlemoth itself uses, and
+the code generator is unwritten.
+
+**The TEC-1 map belongs to a profile nobody has built, and no measurement here
+is against it.** A host with a monitor below `$2000`, RAM to `$8000` and a
+sixteen-kilobyte window above it has far less room, and a compiler targeted
+there would be measured against that map when the profile exists. Recording
+its layout is orientation. An earlier revision mixed the two, so a figure
+measured against one map was compared with a limit taken from the other.
 
 ## Services
 
@@ -78,9 +107,23 @@ compiler's concern.
 
 ### Calling convention
 
-Function number in `A`, one argument byte in `A` for the services that take
-one — so a service that takes an argument is two instructions, and one that
-does not is one. Result in `A`.
+**Service number in `C`, argument byte in `A`, result in `A`.**
+
+An earlier draft put both the number and the argument in `A`, which cannot
+work: the lowering is `LD C,n` then `CALL entry`, and had the number gone in
+`A` it would have overwritten the argument before the call. Three of the five
+services take an argument, so the convention was unimplementable for the
+majority of the interface.
+
+`C` carries the selector because no emitted shape holds anything in `BC` —
+the lowering table's register convention leaves `BC` free — so setting it
+costs nothing at the call site. The argument is already in `A` when the
+emitter calls `writeCodeByte`, so the whole sequence is five bytes: `LD C,n`
+and `CALL entry`.
+
+This is CP/M's shape with the argument moved from `E` to `A`, which saves two
+bytes per call at the only cost of differing from a convention nobody here is
+binary-compatible with.
 
 **A service preserves every register except `A` and the flags.** That is the
 assumption the compiler is built on, and it is the right default: a host that
@@ -109,8 +152,10 @@ Two lowerings, and they differ by one emitted sequence:
 - **`ports`** — the bootstrap machine. Each service is an `IN` or `OUT` on its
   own port. Two bytes, no resident code, nothing to install. This is what the
   harness already implements and what the fixpoint runs on.
-- **`vector`** — a hosted machine. `LD A,n` then `CALL entry`, or `RST n` where
-  the host offers one. Five bytes, and the host supplies the entry.
+- **`vector`** — a hosted machine. `LD C,n` then `CALL entry`. Five bytes, and
+  the host supplies the entry. Unimplemented: there is no host yet, and
+  writing it against an imagined one would fix decisions that a real host
+  should make.
 
 Nothing else in the lowering table changes between them. The five intrinsics
 were already the abstraction; what was missing is that their lowering was

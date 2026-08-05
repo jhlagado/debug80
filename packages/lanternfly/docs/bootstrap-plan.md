@@ -166,9 +166,16 @@ resident at all.
   about 600 bytes of store, which is affordable, and it deletes a whole
   class of divergence between the two implementations along with a
   subsystem from each.
-- **Branch form is fixed, not relaxed.** Always `JP` for a forward branch,
-  whose distance is unknown when it is emitted; `JR` for a backward branch
-  when it is in range. No relaxation pass, no ambiguity, no divergence.
+- **Branch form is fixed, not relaxed: always `JP`, forward and backward
+  alike.** An earlier version of this rule allowed `JR` for a backward branch
+  in range, which conflicted with the lowering table and with itself. `JR` is
+  two bytes whichever displacement it carries, so instruction length was never
+  the difficulty; **reachability** is. A backward branch beyond ±127 needs
+  `JP`, so allowing `JR` makes the branch form depend on a distance, and a
+  distance that two implementations measure differently is a divergence in
+  emitted bytes. One shape everywhere costs a byte per backward branch and
+  removes the question. `docs/level0-lowering.md` states the same rule and is
+  the canonical statement of it.
 - **Tables of 256 entries or fewer are page-aligned**, which turns an index
   into `LD H,high(t) / LD L,A` and halves the cost of every lookup. The
   compiler's own record types are **padded to a power of two**, because a
@@ -185,7 +192,22 @@ resident at all.
 
 ## The budget
 
-### The map the budget is against
+### One host, one map
+
+`docs/abstract-machine.md` is the governing statement and this section
+follows it. **Candlemoth is a loaded program, and the bootstrap host is the
+`flat` profile**: page zero reserved, the runtime at `$0100`, compiler code
+and tables above it, stack from the top. Free memory is a little over 63K, and
+source and object code stream through services rather than occupying any of
+it. Every measurement below is against that map.
+
+The TEC-1 map that follows is **orientation for a profile nobody has built**.
+It constrains nothing today. An earlier revision of this section treated it as
+the live constraint while the rest of the documents described the loaded
+model, so a figure measured against one map was compared with a limit taken
+from the other.
+
+### The TEC-1 map, for a future profile
 
 ```
 0000..1FFF   monitor, and page zero: reset, restarts, NMI     8K
@@ -197,57 +219,87 @@ C000..FFFF   shadow ROM                                      16K
 Bulk storage is an SD card, so a compiler running here streams its source in
 and its object code out rather than holding either resident.
 
-That gives two budgets, not one, and they are unrelated:
+If a compiler were ever made resident there, it would face two budgets: a
+sixteen-kilobyte code window at `$8000`, which is the expansion ROM's size and
+a physical page boundary rather than a target anyone chose, and twenty-four
+kilobytes of RAM at `$2000` shared with user data. The TEC-1 banks ROM, so
+exceeding the window would cost a bank switch rather than failing.
 
-- **Code: sixteen kilobytes**, the window at `$8000`. This is the figure that
-  was withdrawn earlier as unreal. It is not unreal — it is the size of the
-  expansion ROM, a physical page boundary rather than a target anyone chose.
-  The TEC-1 banks ROM, so exceeding it costs a bank switch rather than
-  failing, but one page is where a compiler that needs no packaging sits.
-- **Working RAM: twenty-four kilobytes**, `$2000` to `$8000`, shared with the
-  object code once it is loaded back to run and with the user's own data.
+**None of that applies to Candlemoth as designed.** A loaded compiler is not
+resident in the window; it is a file placed in RAM, and the figures below are
+against the `flat` map above.
 
-None of this binds the bootstrap machine, which is a generic Z80 with a flat
-64K and the standard `IN` and `OUT`. A target profile carries the origin and
-whether the compiler owns the reset vector; nothing else in the lowering table
-moves between the two.
+### Arrays, measured
 
-### Working RAM, measured
+Generated from the declarations by `test/capacity.test.ts`, which fails when
+these figures no longer match the source. Two categories, kept apart because
+they land in different places: writable arrays are RAM the loaded image
+allocates, constant arrays are bytes in the image itself.
 
-Counted from the declarations, and re-sized against Candlemoth's own source
-rather than guessed:
+<!-- generated:capacity -->
+**Writable arrays** — RAM the loaded image allocates.
 
-| Table | Bytes | Sized by |
+| Array | File | Bytes |
 | --- | --- | --- |
-| Character class | 256 | fixed, 256 entries |
-| Name arena | 6,144 | 433 distinct identifiers need 5,186 spelling bytes |
-| Interning tables | 3,828 | 640 name slots against 433 in use |
-| Symbol table, eight arrays | 7,680 | 640 slots against 471 at peak |
-| Label table | 1,024 | 512 labels against 416 needed |
-| **Total** | **18,932** | **18.5K of the 24K** |
+| `arena` | tokenizer.lafy | 6144 |
+| `nameOffset` | tokenizer.lafy | 1280 |
+| `nameNext` | tokenizer.lafy | 1280 |
+| `symbolName` | symbols.lafy | 1280 |
+| `symbolAddress` | symbols.lafy | 1280 |
+| `symbolValue` | symbols.lafy | 1280 |
+| `symbolLength` | symbols.lafy | 1280 |
+| `labelAddress` | statement.lafy | 1024 |
+| `nameLength` | tokenizer.lafy | 640 |
+| `symbolClass` | symbols.lafy | 640 |
+| `symbolType` | symbols.lafy | 640 |
+| `symbolNegative` | symbols.lafy | 640 |
+| `symbolDepth` | symbols.lafy | 640 |
+| `bucket` | tokenizer.lafy | 512 |
+| `spelling` | tokenizer.lafy | 64 |
+| `keywordName` | tokenizer.lafy | 52 |
+| `helperAddress` | expression.lafy | 28 |
+| `loopBreakLabel` | statement.lafy | 16 |
+| `loopContinueLabel` | statement.lafy | 16 |
+| **Total** | | **18736** |
 
-Three of those were wrong before the measurement, and two would have stopped
+**Constant arrays** — bytes in the image itself.
+
+| Array | File | Bytes |
+| --- | --- | --- |
+| `runtimeImage` | runtime.lafy | 262 |
+| `characterClass` | tokenizer.lafy | 256 |
+| `keywordText` | tokenizer.lafy | 103 |
+| `keywordStart` | tokenizer.lafy | 52 |
+| `runtimeAddress` | runtime.lafy | 28 |
+| `keywordSize` | tokenizer.lafy | 26 |
+| `typeText` | statement.lafy | 15 |
+| `typeTextStart` | statement.lafy | 8 |
+| `typeTextSize` | statement.lafy | 4 |
+| **Total** | | **754** |
+<!-- /generated -->
+
+Three sizes were wrong before this was measured, and two would have stopped
 the compiler compiling itself: the arena was 4,096 bytes against 5,186 needed,
-and the label table was 2,048 slots against 416 — four times too large, at
-three kilobytes of RAM nobody had checked.
+and the label table was 2,048 slots against 416 — four times too large.
 
-**Eighteen and a half kilobytes of twenty-four leaves five and a half.** The
-compiler's own static frames account for about half a kilobyte of that, source
-and object code stream through ports, and what remains is headroom against a
-program larger than Candlemoth. The tables cannot grow much, and every future
-one is now priced against that five and a half rather than against a machine
-assumed to be roomy.
+**These are measurements of the current source, not of a finished compiler.**
+The front end still lacks several forms Candlemoth itself uses — calls in
+expressions, conversions, `enum`, `select`, constant array literals and
+bitwise word operators — and the code generator is unwritten. The capacity
+measurement is re-run after each of those lands. What it says today is that
+the arrays are a small fraction of a 63K image, not that the compiler fits.
 
-### The code estimate, and where it stands against sixteen kilobytes
+### The code estimate
 
-**The estimate below exceeds the window.** Bottom-up it gives fourteen to
-twenty-four kilobytes with a midpoint near nineteen, against sixteen
-available. That is not a rounding error, and it is the open question this
-section leaves: either the estimate is pessimistic, or level 0 gives up
-something further, or the compiler takes a second bank. It is recorded here
-rather than resolved, because Phase 3's vertical slice replaces the estimate
-with a measurement and there is no point choosing between three options on the
-strength of a guess.
+Bottom-up, summing tokenizer, name arena, symbol and type tables, declaration
+and statement and expression parsing, path lowering, call lowering, the
+emitter, diagnostics and helpers, gives fourteen to twenty-four kilobytes with
+a midpoint near nineteen. Against a little over 63K of free memory on the
+`flat` host, that is not a constraint. It was one only while the compiler was
+treated as resident in a sixteen-kilobyte window.
+
+Phase 3's vertical slice replaces the estimate with a measurement. Until then
+the figure is reported and nothing is gated on it.
 
 Two independent estimates agree on the range. Bottom-up, summing tokenizer,
 name arena, symbol and type tables, declaration and statement and

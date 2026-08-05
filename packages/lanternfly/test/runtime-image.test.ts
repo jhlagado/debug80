@@ -50,19 +50,29 @@ describe("the generated runtime image", () => {
     expect(new Set(image.addresses).size).toBe(image.addresses.length);
   });
 
-  it("generates a distinct image for a target with a different origin", () => {
-    // The bytes are origin-specific, so a TEC-1 image is not the flat image
-    // relocated — it is assembled again. Any two routines that call each
-    // other prove it: their absolute addresses differ by the origin.
+  it("generates a distinct image for a port target at a different origin", () => {
+    // The bytes are origin-specific, so an image for another origin is not
+    // the flat image relocated — it is assembled again. Any two routines that
+    // call each other prove it: their absolute addresses differ by the origin.
     const flat = buildRuntimeImage(ASSEMBLY, FLAT_PROFILE);
-    const tec1 = buildRuntimeImage(ASSEMBLY, TEC1_PROFILE);
+    const elsewhere = buildRuntimeImage(ASSEMBLY, {
+      ...FLAT_PROFILE,
+      name: "flat-at-2000",
+      origin: 0x2000,
+    });
 
-    expect(tec1.origin).toBe(0x2000);
-    expect(tec1.bytes.length).toBe(flat.bytes.length);
-    expect(Array.from(tec1.bytes)).not.toEqual(Array.from(flat.bytes));
-    for (const [ordinal, address] of tec1.addresses.entries()) {
-      expect(address - tec1.origin).toBe(flat.addresses[ordinal] - flat.origin);
+    expect(elsewhere.origin).toBe(0x2000);
+    expect(elsewhere.bytes.length).toBe(flat.bytes.length);
+    expect(Array.from(elsewhere.bytes)).not.toEqual(Array.from(flat.bytes));
+    for (const [ordinal, address] of elsewhere.addresses.entries()) {
+      expect(address - elsewhere.origin).toBe(flat.addresses[ordinal] - flat.origin);
     }
+  });
+
+  it("refuses to build the flat-port runtime for a vector host", () => {
+    // Review finding 26: the trap epilogues write to ports, so an image built
+    // for a vector host would have silent bounds and division faults.
+    expect(() => buildRuntimeImage(ASSEMBLY, TEC1_PROFILE)).toThrow(/flat-port runtime/);
   });
 
   it("clears page zero, entry jump and vectors alike", () => {

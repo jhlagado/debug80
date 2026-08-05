@@ -520,19 +520,24 @@ being exact arithmetic, comparison folding and the operation emission the
 second draft recorded without emitting. Symbol table: 378 lines. Declaration
 and statement parser: 962 lines. The draft is 3,150 lines in total.
 
-The declarations contain 18,736 bytes of writable arrays: 9,972 in the
-tokenizer, 28 for helper addresses, 7,680 in the symbol table, and 1,056 for
-labels and loop stacks. Constant arrays occupy another 754 bytes in the image,
-of which 290 are the generated runtime. Those figures still exclude scalar
-globals, static frames, recursive save-around state, the runtime stack and the
-source window.
+The declarations contain 18,736 bytes of writable arrays and 754 bytes of
+constant arrays. Both totals are generated from the declarations by
+`test/capacity.test.ts`, which writes the per-array table into
+`docs/bootstrap-plan.md` and fails when the source and the document disagree.
+They exclude scalar globals, static frames, recursive save-around state, the
+runtime stack and the source window.
 
-The two figures answer to different budgets rather than competing for one
-address space. Writable arrays live in the RAM between `$2000` and `$8000` —
-24K, shared with the object code once it is loaded back to run and with the
-user's own data — so 18,736 bytes is 76% of it. Code lives in the 16K window
-at `$8000` where the compiler resides. `docs/bootstrap-plan.md` carries both,
-and records that the code estimate exceeds its window at the midpoint.
+Both land in the same image on the same host. `docs/abstract-machine.md` names
+one: the `flat` profile, where the compiler is a loaded program with a little
+over 63K of free memory, source arriving through a service and object code
+leaving through one. Against that, 19,490 bytes of arrays is comfortable.
 
-A generated memory map must still replace these source-level counts before the
-feasibility claim is settled. No compiled size exists yet.
+An earlier revision of this paragraph judged the writable total against a
+twenty-four-kilobyte TEC-1 RAM region and the code against a sixteen-kilobyte
+expansion window, while the rest of the documents described the loaded model.
+That was two maps compared with each other. The TEC-1 layout is orientation
+for a profile nobody has built.
+
+These are measurements of the current source rather than of a finished
+compiler. Findings 26 and the review's 18 to 23 list forms the front end still
+lacks, and the code generator is unwritten. No compiled size exists yet.

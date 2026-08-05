@@ -1,4 +1,10 @@
-; Candlemoth level-0 runtime
+; Candlemoth level-0 runtime — FLAT PORT PROFILE
+;
+; This file implements the `flat` profile. The trap epilogue writes to ports
+; 03 and 02 directly rather than through a service call, so a host using the
+; vector lowering needs its own copy of this file with the epilogue changed.
+; Review finding 26 records that. `buildRuntimeImage` reports an error for a
+; non-port profile rather than producing an image whose faults are silent.
 ;
 ; The fourteen routines the lowering table names, hand-written because the
 ; Z80 has no multiply, no divide and no comparison that yields a value.

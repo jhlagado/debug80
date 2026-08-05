@@ -1,4 +1,9 @@
-// Candlemoth level-0 runtime image
+// Candlemoth level-0 runtime image — FLAT PORT PROFILE
+//
+// This image is for the `flat` profile only. Its trap epilogues write to
+// ports 03 and 02 directly rather than through a service call, so a host
+// using the vector lowering needs its own image and its own runtime
+// source. See review finding 26.
 //
 // GENERATED from candlemoth/runtime.asm. Do not edit: run
 // `npm run generate:runtime` instead. The plan requires this array to be

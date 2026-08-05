@@ -1,229 +1,135 @@
 import { describe, expect, it } from "vitest";
 
-import { assembleSource } from "../src/bootstrap/index.js";
+import {
+  HOLE,
+  LOWERING,
+  NOT_EXTRACTED,
+  type EmittedByte,
+  assembleSource,
+  displayName,
+  emitterBytes,
+  opcodeConstants,
+  readSource,
+} from "../src/bootstrap/index.js";
 
 /**
- * The level-0 lowering table, pinned to bytes.
+ * The level-0 lowering table, pinned across three representations.
  *
- * `docs/level0-lowering.md` presents the same table for a reader. This file
- * is the half a seed author can run: each entry assembles its stated
- * mnemonics through AZM and compares them against the byte sequence
- * Candlemoth's own emitter produces for that construct.
+ * Review finding 28: the earlier version of this file carried its own copy of
+ * the mnemonics and its own copy of the bytes, so it proved that two things
+ * written in the same file agreed. Changing an emitter left it green.
  *
- * Both halves are transcribed from the emitting routines in
- * `candlemoth/expression.lafy`, `candlemoth/symbols.lafy` and
- * `candlemoth/statement.lafy`. When one of those routines changes, this test
- * is what says so.
+ * Now there is one manifest. Each shape's mnemonics are assembled through AZM,
+ * the same shape's bytes are read out of the Lanternfly source, and the two
+ * are compared. An emitter that changes fails here; a manifest that drifts
+ * from the emitters fails here; and `docs/level0-lowering.md` is generated
+ * from the manifest, so a document that drifts fails in `lowering-doc.test.ts`.
  */
 
-/** A hole for an address or immediate the layout pass fills. */
-const ADDR = 0x1234;
-const LOW = ADDR & 0xff;
-const HIGH = ADDR >> 8;
-
-interface Shape {
-  /** The emitting routine in the Candlemoth source. */
-  readonly routine: string;
-  /** The construct as a level-0 programmer writes it. */
-  readonly construct: string;
-  readonly mnemonics: readonly string[];
-  readonly bytes: readonly number[];
-}
-
-const shapes: readonly Shape[] = [
-  // ---------------------------------------------------------- expressions
-  {
-    routine: "emitLoadAccumulator",
-    construct: "materialise a constant",
-    mnemonics: [`LD HL,$1234`],
-    bytes: [0x21, LOW, HIGH],
-  },
-  {
-    routine: "emitLoadOperand",
-    construct: "materialise a constant left operand",
-    mnemonics: [`LD DE,$1234`],
-    bytes: [0x11, LOW, HIGH],
-  },
-  {
-    routine: "parseAdditive (computed left)",
-    construct: "save the left operand across the right",
-    mnemonics: ["PUSH HL"],
-    bytes: [0xe5],
-  },
-  {
-    routine: "parseAdditive (computed left)",
-    construct: "restore the left operand",
-    mnemonics: ["POP DE"],
-    bytes: [0xd1],
-  },
-  {
-    routine: "emitAdd",
-    construct: "a + b",
-    mnemonics: ["ADD HL,DE"],
-    bytes: [0x19],
-  },
-  {
-    routine: "emitSubtract",
-    construct: "a - b",
-    mnemonics: ["EX DE,HL", "OR A", "SBC HL,DE"],
-    bytes: [0xeb, 0xb7, 0xed, 0x52],
-  },
-  {
-    routine: "emitNegate",
-    construct: "-a, computed operand",
-    mnemonics: ["EX DE,HL", "LD HL,$0000", "OR A", "SBC HL,DE"],
-    bytes: [0xeb, 0x21, 0x00, 0x00, 0xb7, 0xed, 0x52],
-  },
-  {
-    routine: "emitBooleanOr",
-    construct: "a or b",
-    mnemonics: ["LD A,L", "OR E", "LD L,A", "LD H,$00"],
-    bytes: [0x7d, 0xb3, 0x6f, 0x26, 0x00],
-  },
-  {
-    routine: "emitBooleanAnd",
-    construct: "a and b",
-    mnemonics: ["LD A,L", "AND E", "LD L,A", "LD H,$00"],
-    bytes: [0x7d, 0xa3, 0x6f, 0x26, 0x00],
-  },
-  {
-    routine: "emitBooleanNot",
-    construct: "not a",
-    mnemonics: ["LD A,L", "XOR $01", "LD L,A", "LD H,$00"],
-    bytes: [0x7d, 0xee, 0x01, 0x6f, 0x26, 0x00],
-  },
-  {
-    routine: "emitHelperCall",
-    construct: "a * b, a / b, and every computed comparison",
-    mnemonics: [`CALL $1234`],
-    bytes: [0xcd, LOW, HIGH],
-  },
-
-  // -------------------------------------------------------- scalar access
-  {
-    routine: "emitLoadSymbol (sixteen-bit)",
-    construct: "read a u16 or i16 variable",
-    mnemonics: [`LD HL,($1234)`],
-    bytes: [0x2a, LOW, HIGH],
-  },
-  {
-    routine: "emitLoadSymbol (byte-wide)",
-    construct: "read a u8 or boolean variable",
-    mnemonics: [`LD A,($1234)`, "LD L,A", "LD H,$00"],
-    bytes: [0x3a, LOW, HIGH, 0x6f, 0x26, 0x00],
-  },
-  {
-    routine: "emitStoreSymbol (sixteen-bit)",
-    construct: "assign to a u16 or i16 variable",
-    mnemonics: [`LD ($1234),HL`],
-    bytes: [0x22, LOW, HIGH],
-  },
-  {
-    routine: "emitStoreSymbol (byte-wide)",
-    construct: "assign to a u8 or boolean variable",
-    mnemonics: ["LD A,L", `LD ($1234),A`],
-    bytes: [0x7d, 0x32, LOW, HIGH],
-  },
-
-  // ------------------------------------------------------- element access
-  {
-    routine: "emitElementAddress (byte-wide element)",
-    construct: "the address part of a[i] for a u8 or boolean array",
-    mnemonics: [`LD DE,$1234`, `CALL $1234`, `LD DE,$1234`, "ADD HL,DE"],
-    bytes: [0x11, LOW, HIGH, 0xcd, LOW, HIGH, 0x11, LOW, HIGH, 0x19],
-  },
-  {
-    routine: "emitElementAddress (sixteen-bit element)",
-    construct: "the address part of a[i] for a u16 or i16 array",
-    mnemonics: [
-      `LD DE,$1234`,
-      `CALL $1234`,
-      "ADD HL,HL",
-      `LD DE,$1234`,
-      "ADD HL,DE",
-    ],
-    bytes: [0x11, LOW, HIGH, 0xcd, LOW, HIGH, 0x29, 0x11, LOW, HIGH, 0x19],
-  },
-  {
-    routine: "referenceElement (byte-wide)",
-    construct: "read a[i] once its address is in HL",
-    mnemonics: ["LD A,(HL)", "LD L,A", "LD H,$00"],
-    bytes: [0x7e, 0x6f, 0x26, 0x00],
-  },
-  {
-    routine: "referenceElement (sixteen-bit)",
-    construct: "read a[i] once its address is in HL",
-    mnemonics: ["LD E,(HL)", "INC HL", "LD D,(HL)", "EX DE,HL"],
-    bytes: [0x5e, 0x23, 0x56, 0xeb],
-  },
-  {
-    routine: "emitStoreElement (byte-wide)",
-    construct: "assign to a[i], address in DE and value in HL",
-    mnemonics: ["LD A,L", "LD (DE),A"],
-    bytes: [0x7d, 0x12],
-  },
-  {
-    routine: "emitStoreElement (sixteen-bit)",
-    construct: "assign to a[i], address in DE and value in HL",
-    mnemonics: ["EX DE,HL", "LD (HL),E", "INC HL", "LD (HL),D"],
-    bytes: [0xeb, 0x73, 0x23, 0x72],
-  },
-
-  // -------------------------------------------------------------- control
-  {
-    routine: "emitTest",
-    construct: "reduce the accumulator to a flag",
-    mnemonics: ["LD A,L", "OR H"],
-    bytes: [0x7d, 0xb4],
-  },
-  {
-    routine: "emitJump",
-    construct: "while, for, exit, continue, and the else arm's skip",
-    mnemonics: [`JP $1234`],
-    bytes: [0xc3, LOW, HIGH],
-  },
-  {
-    routine: "emitJumpIfFalse",
-    construct: "if and while, entering the body",
-    mnemonics: ["LD A,L", "OR H", `JP Z,$1234`],
-    bytes: [0x7d, 0xb4, 0xca, LOW, HIGH],
-  },
-  {
-    routine: "emitJumpIfTrue",
-    construct: "for, leaving at the limit",
-    mnemonics: ["LD A,L", "OR H", `JP NZ,$1234`],
-    bytes: [0x7d, 0xb4, 0xc2, LOW, HIGH],
-  },
-  {
-    routine: "parseCallArguments",
-    construct: "a call, after its arguments are stored",
-    mnemonics: [`CALL $1234`],
-    bytes: [0xcd, LOW, HIGH],
-  },
-  {
-    routine: "parseReturn and parseSubroutine",
-    construct: "return, and the implicit one at a body's end",
-    mnemonics: ["RET"],
-    bytes: [0xc9],
-  },
+const SOURCES = [
+  "candlemoth/expression.lafy",
+  "candlemoth/symbols.lafy",
+  "candlemoth/statement.lafy",
 ];
 
-describe("the level-0 lowering table", () => {
-  for (const shape of shapes) {
-    it(`${shape.routine}: ${shape.construct}`, () => {
-      const source = [".org $0000", "Start:", ...shape.mnemonics.map((m) => `    ${m}`)].join("\n");
-      const assembled = assembleSource(`${source}\n`);
-      expect(Array.from(assembled.bytes)).toEqual(Array.from(shape.bytes));
+const source = readSource(SOURCES);
+
+function assemble(mnemonics: readonly string[]): number[] {
+  const text = [".org $0000", "Start:", ...mnemonics.map((m) => `    ${m}`)].join("\n");
+  return Array.from(assembleSource(`${text}\n`).bytes);
+}
+
+/** Compares an extracted sequence against assembled bytes, holes wild. */
+function agrees(extracted: readonly EmittedByte[], assembled: readonly number[]): void {
+  expect(extracted.length).toBe(assembled.length);
+  for (const [at, byte] of extracted.entries()) {
+    if (byte === HOLE) continue;
+    expect(byte, `byte ${at}`).toBe(assembled[at]);
+  }
+}
+
+describe("every opcode constant in the source is the instruction it is named for", () => {
+  // The constants are read from the Lanternfly source rather than listed
+  // here, so a constant added to the source without a mnemonic below is a
+  // failure rather than an omission.
+  const named: Record<string, string> = {
+    opLoadHlFromAddress: "LD HL,($1234)",
+    opStoreHlToAddress: "LD ($1234),HL",
+    opLoadAFromAddress: "LD A,($1234)",
+    opStoreAToAddress: "LD ($1234),A",
+    opLoadHlImmediate: "LD HL,$1234",
+    opLoadDeImmediate: "LD DE,$1234",
+    opAddHlDe: "ADD HL,DE",
+    opExDeHl: "EX DE,HL",
+    opOrA: "OR A",
+    opEdPrefix: "SBC HL,DE",
+    opSbcHlDe: "SBC HL,DE",
+    opPushHl: "PUSH HL",
+    opPopDe: "POP DE",
+    opAddHlHl: "ADD HL,HL",
+    opLoadAFromHl: "LD A,(HL)",
+    opLoadEFromHl: "LD E,(HL)",
+    opLoadDFromHl: "LD D,(HL)",
+    opIncHl: "INC HL",
+    opStoreEToHl: "LD (HL),E",
+    opStoreDToHl: "LD (HL),D",
+    opStoreAToDe: "LD (DE),A",
+    opLoadAFromL: "LD A,L",
+    opLoadLFromA: "LD L,A",
+    opOrE: "OR E",
+    opAndE: "AND E",
+    opXorImmediate: "XOR $01",
+    opLoadHImmediate: "LD H,$00",
+    opCall: "CALL $1234",
+    opJump: "JP $1234",
+    opJumpIfZero: "JP Z,$1234",
+    opJumpIfNotZero: "JP NZ,$1234",
+    opReturn: "RET",
+    opOrH: "OR H",
+  };
+
+  const opcodes = opcodeConstants(source);
+
+  it("names every opcode constant the source declares", () => {
+    expect([...opcodes.keys()].sort()).toEqual(Object.keys(named).sort());
+  });
+
+  for (const [name, mnemonic] of Object.entries(named)) {
+    it(`${name} is ${mnemonic}`, () => {
+      const value = opcodes.get(name);
+      expect(value, `${name} is not declared in the source`).toBeDefined();
+      const bytes = assemble([mnemonic]);
+      // `SBC HL,DE` is two bytes: the prefix constant is the first and the
+      // opcode constant the second, which is why both map to one mnemonic.
+      const expected = name === "opSbcHlDe" ? bytes[1] : bytes[0];
+      expect(value).toBe(expected);
+    });
+  }
+});
+
+describe("the lowering table agrees with the emitters in the source", () => {
+  for (const shape of LOWERING) {
+    const name = displayName(shape);
+    const extracted = !NOT_EXTRACTED.includes(name);
+
+    it(`${name}: ${shape.construct}`, () => {
+      const assembled = assemble(shape.mnemonics);
+      expect(assembled.length).toBeGreaterThan(0);
+
+      if (!extracted) {
+        // Emitted inline rather than through a routine. The assembler still
+        // checks the mnemonics; nothing checks the source, and NOT_EXTRACTED
+        // is where that is admitted.
+        return;
+      }
+      const emitter = emitterBytes(source, shape.routine!, shape.guard, shape.branch);
+      agrees(emitter.bytes, assembled);
     });
   }
 
-  it("states a byte cost for every shape", () => {
-    const costs = shapes.map((s) => `${s.routine.padEnd(42)} ${s.bytes.length}`);
-    console.log(["level-0 lowering, bytes per shape", ...costs].join("\n  "));
-    // Each shape's declared bytes are what the per-shape tests above proved
-    // against the assembler, so this only guards against an empty entry.
-    for (const shape of shapes) {
-      expect(shape.bytes.length).toBeGreaterThan(0);
-    }
+  it("admits exactly which shapes are not read from the source", () => {
+    const names = LOWERING.map(displayName);
+    for (const admitted of NOT_EXTRACTED) expect(names).toContain(admitted);
+    expect(NOT_EXTRACTED).toHaveLength(6);
   });
 });

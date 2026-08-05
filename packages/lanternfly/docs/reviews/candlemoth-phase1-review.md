@@ -554,7 +554,9 @@ result to the flat profile. They do not invalidate the runtime routines.
 
 ### 24. The vector service ABI assigns two meanings to A
 
-**Status:** Open — blocking the hosted profile.
+**Status:** Resolved — the selector is in C, the argument and result remain in
+A, and `TargetProfile.services` records the selected lowering. The vector
+lowering remains unsupported and is now stated as such.
 
 **Evidence.** `abstract-machine.md` assigns the service number to A and also
 assigns the argument byte to A for write and status services. Its vector
@@ -577,7 +579,11 @@ exercises argument-free reads and rewinds.
 
 ### 25. The loaded-program model and the governing plan describe different machines
 
-**Status:** Open — blocking the memory and budget claims.
+**Status:** Partially resolved — the abstract-machine document, bootstrap plan,
+runtime profile and findings now use the flat loaded-program map. `level0.md`
+still describes a roughly sixteen-kilobyte compiler and still uses relative
+branch displacement as part of its rationale, so the governing Level Zero
+definition retains the old model.
 
 **Evidence.** `abstract-machine.md` and `report.ts` describe Candlemoth as a
 program loaded into ordinary memory, with source and object streamed rather
@@ -600,7 +606,9 @@ different target profile with its own measured limit.
 
 ### 26. Runtime traps bypass the service abstraction
 
-**Status:** Open — blocking the hosted profile.
+**Status:** Resolved for the implemented profile — the runtime sources identify
+the flat-port dependency and `buildRuntimeImage` rejects a vector profile. A
+hosted runtime remains future work rather than an implied capability.
 
 **Evidence.** The trap paths in `runtime.asm` write directly to ports 03 and
 02. Those instructions implement the flat profile, while the abstract machine
@@ -620,7 +628,9 @@ the current generated runtime explicitly as the flat-port runtime.
 
 ### 27. Reset-vector ownership is specified but not implemented
 
-**Status:** Open — image contract incomplete.
+**Status:** Resolved — `image.ts` defines one load address and one contiguous
+byte run, and the image tests inspect and execute the owned-vector form as well
+as checking the hosted form.
 
 **Evidence.** The flat profile sets `ownsResetVector` while placing the program
 origin at 0100. `buildRuntimeImage` emits only the runtime at that origin and
@@ -641,7 +651,10 @@ the current range-only page-zero test with that behavioural check.
 
 ### 28. The lowering tests do not detect drift in the source or document
 
-**Status:** Open — verification claim is too strong.
+**Status:** Resolved with an explicit coverage limit — one manifest generates
+the document tables, and the tests compare its assembled mnemonics with bytes
+extracted from the Lanternfly emitters. `NOT_EXTRACTED` identifies the six
+shapes that still lack source coupling.
 
 **Evidence.** `opcodes.test.ts` contains its own table of names, mnemonics and
 bytes. `lowering.test.ts` contains its own list of routine labels, mnemonics
@@ -661,7 +674,9 @@ tests.
 
 ### 29. The lowering contract conflicts on jumps and recursive calls
 
-**Status:** Open — blocking a canonical seed lowering.
+**Status:** Resolved — the documents consistently require JP for every branch
+and assign recursive preservation to the caller at the recursive call site.
+The rationale now rests on reachability and a single canonical shape.
 
 **Evidence.** `level0-lowering.md` requires an absolute JP for every branch,
 while `bootstrap-plan.md` still calls for backward JR when the displacement
@@ -684,7 +699,9 @@ through emitted bytes.
 
 ### 30. The memory report is misclassified and measured against incomplete source
 
-**Status:** Open — budget correction required.
+**Status:** Resolved for the current source — the capacity test generates
+separate writable and constant tables and identifies the missing compiler
+work that will change them.
 
 **Evidence.** The declarations currently account for 18,736 writable array
 bytes and 754 constant bytes. The plan's 18,932-byte working-RAM total includes
@@ -701,11 +718,65 @@ label them as measurements of the current source, and report headroom against
 the selected host map from finding 25. Re-run the capacity measurement after
 each missing self-hosting form and the code generator land.
 
+### 31. Image construction does not enforce the address-space contract
+
+**Status:** Open — correctness boundary missing.
+
+**Evidence.** `buildImage` checks that the runtime fits after the profile
+origin, but it does not include the compiled code in that check. A typed array
+larger than 65,536 bytes can therefore be returned as a Z80 image. The function
+also accepts any `designatedStart`, although `ImageParts` says that address
+must lie within the code. On an owned-vector profile, a value above 65,535 is
+silently truncated into the two-byte JP operand.
+
+**Consequence.** The image builder can report success for an image the target
+cannot address or for an entry jump that lands outside the program. The tests
+establish the normal layout but not its stated limits.
+
+**Smallest credible repair.** Validate the complete end address, including
+runtime and code, against 65,536. Validate that `designatedStart` lies in the
+code interval and is a sixteen-bit address. Exercise both owning and hosted
+profiles at the exact upper boundary and one byte beyond it.
+
+### 32. Unknown array element types are counted as one byte
+
+**Status:** Open — generated capacity can undercount future source.
+
+**Evidence.** `capacity.test.ts` uses `WIDTH[type] ?? 1`. That default correctly
+counts the current u8-backed enum arrays, but it also assigns one byte to every
+unknown type. A future record array, named scalar type or misspelled type would
+therefore enter the generated table with a plausible but unsupported size.
+
+**Consequence.** The stale-document check can stay green while the capacity
+report understates memory, precisely when the remaining aggregate grammar or
+code generator adds a new type.
+
+**Smallest credible repair.** Parse enum declarations and derive their stated
+representation width. Reject every other unknown element type until the
+capacity reader implements its exact layout. Add a fixture proving that an
+unsupported record array fails generation rather than counting as bytes.
+
+## Level Zero boundary ruling
+
+Level Zero defines itself as the subset Candlemoth uses. Apply that rule now:
+move the unused forms out of the active subset rather than implementing them in
+case later source might need them. The current candidates are integer `xor`,
+`byteSize`, `offset`, `lower`, `upper`, `clear`, `fill`, multi-value cases,
+range cases and records. The character-class table disproves the stated need
+for range cases, and 3,150 lines of front-end source contain no record.
+
+This is a reversible boundary, not a permanent language deletion. If the code
+generator becomes materially simpler by using records or another candidate,
+add that feature back with the source passage that requires it and the measured
+seed cost. Until then, omitting these forms removes parser, type-checker and
+lowering work from both bootstrap compilers while keeping every Level Zero
+program valid Lanternfly.
+
 ## Current release decision
 
-Commit the runtime and target-machine work as a reviewed draft, not as a closed
-machine model. The flat-profile runtime is a tested advance. Findings 24 to 30
-must close before the vector profile, loaded-program memory claim or
-machine-checked lowering can serve as Phase 2 contracts. Findings 18 to 23
-remain open independently and still prevent the present front end from being
-described as complete.
+The service, runtime, reset-vector, lowering and current-capacity repairs close
+their original findings. Finding 25 needs one final sweep through `level0.md`.
+Findings 31 and 32 are narrow implementation repairs and should close before
+the image and capacity generators become Phase 2 infrastructure. Findings 18
+to 23 remain open independently and still prevent the present front end from
+being described as complete.
