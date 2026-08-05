@@ -77,23 +77,28 @@ in two other places.
 
 Section 11.1 allows one scalar result and section 11.3 forbids `write` on a
 scalar parameter, so **there are no scalar out-parameters**. A routine like
-`parseExpression` must return a type index and a value-location flag
-together. The convention is a depth-indexed pool passed as a `write`
-aggregate, which is a legal storage path:
+`parseExpression` must return a type, a constant flag and a constant value
+together.
+
+**Measured answer, from writing that parser.** Because those three results
+are *scalars*, they live in module-level variables and a caller about to
+recurse copies what it needs into its own ordinary locals first;
+save-around-call preserves those locals across the call, which is the
+protocol's own job. `parseAdditive` does exactly this and needs nothing
+further:
 
 ```lanternfly
-depth = depth + 1
-parseExpression(write exprPool[depth])
-depth = depth - 1
+leftType = resultType
+leftIsConstant = resultIsConstant
+leftValue = resultValue
+nextToken()
+parseMultiplicative()
 ```
 
-**Measured correction.** Writing the expression parser showed this is not
-needed where the results are scalars. `parseAdditive` holds a type, a
-constant flag and a constant value in module-level variables, and a caller
-about to recurse copies them into ordinary locals first; save-around-call
-preserves those locals, which is the protocol's own job. The pool is
-required only when a result is an **aggregate**, which no part of an
-expression compiler produces. It stays available and stops being mandatory.
+A **depth-indexed pool** passed as a `write` aggregate is needed only when a
+result is itself an aggregate, which no part of an expression compiler
+produces. It remains available for that case and is not a general
+convention.
 
 And `static var` is shared across recursive activations, so giving a
 routine a scratch record is silently wrong under recursion. Candlemoth

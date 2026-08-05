@@ -101,6 +101,7 @@ const characterClass as CharClass[256] = [
 
 enum TokenKind as u8
     kindEnd
+    kindNewline
     kindName
     kindNumber
     kindKeyword
@@ -228,6 +229,10 @@ forward sub hashSpelling() as u16
 forward sub spellingMatches(candidate as u16) as boolean
 forward sub internSpelling() as u16
 forward sub classifyKeyword() as Keyword
+forward sub beginSpelling()
+forward sub addLetter(value as u8)
+forward sub defineKeyword(slot as u16)
+forward sub installKeywords()
 forward sub skipComment()
 forward sub skipBlanks()
 forward sub scanName()
@@ -281,14 +286,15 @@ sub skipComment()
     end
 end
 
+// Newlines are not blank. A statement is newline-terminated, so the parser
+// needs the boundary and `skipBlanks` must stop at one rather than consume
+// it. This is the single change that lets a statement parser exist at all.
 sub skipBlanks()
     var kind as CharClass = classOther
     while true
         kind = characterClass[nextByte]
         select kind
         case classSpace
-            advance()
-        case classNewline
             advance()
         case classPunct
             if nextByte <> 47 then
@@ -442,6 +448,14 @@ sub nextToken()
     select kind
     case classEnd
         tokenKind = kindEnd
+    case classNewline
+        // Consecutive newlines are one boundary, so a blank line does not
+        // become an empty statement.
+        while characterClass[nextByte] = classNewline
+            advance()
+            skipBlanks()
+        end
+        tokenKind = kindNewline
     case classLetter
         scanName()
     case classDigit
@@ -457,6 +471,206 @@ sub nextToken()
     end
 end
 
+// The keyword table is interned from spelling at startup. Nothing else can
+// populate it: level 0 has no strings, so a keyword's letters have to be
+// placed into the staging buffer a byte at a time and interned like any
+// other name. `defineKeyword` is the whole mechanism.
+sub beginSpelling()
+    spellingLength = 0
+end
+
+sub addLetter(value as u8)
+    if spellingLength < spellingLimit then
+        spelling[spellingLength] = value
+        spellingLength = spellingLength + 1
+    end
+end
+
+sub defineKeyword(slot as u16)
+    keywordName[slot] = internSpelling()
+end
+
+sub installKeywords()
+    // sub
+    beginSpelling()
+    addLetter(115)
+    addLetter(117)
+    addLetter(98)
+    defineKeyword(1)
+    // end
+    beginSpelling()
+    addLetter(101)
+    addLetter(110)
+    addLetter(100)
+    defineKeyword(2)
+    // var
+    beginSpelling()
+    addLetter(118)
+    addLetter(97)
+    addLetter(114)
+    defineKeyword(3)
+    // const
+    beginSpelling()
+    addLetter(99)
+    addLetter(111)
+    addLetter(110)
+    addLetter(115)
+    addLetter(116)
+    defineKeyword(4)
+    // if
+    beginSpelling()
+    addLetter(105)
+    addLetter(102)
+    defineKeyword(5)
+    // then
+    beginSpelling()
+    addLetter(116)
+    addLetter(104)
+    addLetter(101)
+    addLetter(110)
+    defineKeyword(6)
+    // else
+    beginSpelling()
+    addLetter(101)
+    addLetter(108)
+    addLetter(115)
+    addLetter(101)
+    defineKeyword(7)
+    // while
+    beginSpelling()
+    addLetter(119)
+    addLetter(104)
+    addLetter(105)
+    addLetter(108)
+    addLetter(101)
+    defineKeyword(8)
+    // for
+    beginSpelling()
+    addLetter(102)
+    addLetter(111)
+    addLetter(114)
+    defineKeyword(9)
+    // to
+    beginSpelling()
+    addLetter(116)
+    addLetter(111)
+    defineKeyword(10)
+    // until
+    beginSpelling()
+    addLetter(117)
+    addLetter(110)
+    addLetter(116)
+    addLetter(105)
+    addLetter(108)
+    defineKeyword(11)
+    // select
+    beginSpelling()
+    addLetter(115)
+    addLetter(101)
+    addLetter(108)
+    addLetter(101)
+    addLetter(99)
+    addLetter(116)
+    defineKeyword(12)
+    // case
+    beginSpelling()
+    addLetter(99)
+    addLetter(97)
+    addLetter(115)
+    addLetter(101)
+    defineKeyword(13)
+    // return
+    beginSpelling()
+    addLetter(114)
+    addLetter(101)
+    addLetter(116)
+    addLetter(117)
+    addLetter(114)
+    addLetter(110)
+    defineKeyword(14)
+    // exit
+    beginSpelling()
+    addLetter(101)
+    addLetter(120)
+    addLetter(105)
+    addLetter(116)
+    defineKeyword(15)
+    // continue
+    beginSpelling()
+    addLetter(99)
+    addLetter(111)
+    addLetter(110)
+    addLetter(116)
+    addLetter(105)
+    addLetter(110)
+    addLetter(117)
+    addLetter(101)
+    defineKeyword(16)
+    // as
+    beginSpelling()
+    addLetter(97)
+    addLetter(115)
+    defineKeyword(17)
+    // record
+    beginSpelling()
+    addLetter(114)
+    addLetter(101)
+    addLetter(99)
+    addLetter(111)
+    addLetter(114)
+    addLetter(100)
+    defineKeyword(18)
+    // enum
+    beginSpelling()
+    addLetter(101)
+    addLetter(110)
+    addLetter(117)
+    addLetter(109)
+    defineKeyword(19)
+    // forward
+    beginSpelling()
+    addLetter(102)
+    addLetter(111)
+    addLetter(114)
+    addLetter(119)
+    addLetter(97)
+    addLetter(114)
+    addLetter(100)
+    defineKeyword(20)
+    // and
+    beginSpelling()
+    addLetter(97)
+    addLetter(110)
+    addLetter(100)
+    defineKeyword(21)
+    // or
+    beginSpelling()
+    addLetter(111)
+    addLetter(114)
+    defineKeyword(22)
+    // not
+    beginSpelling()
+    addLetter(110)
+    addLetter(111)
+    addLetter(116)
+    defineKeyword(23)
+    // true
+    beginSpelling()
+    addLetter(116)
+    addLetter(114)
+    addLetter(117)
+    addLetter(101)
+    defineKeyword(24)
+    // false
+    beginSpelling()
+    addLetter(102)
+    addLetter(97)
+    addLetter(108)
+    addLetter(115)
+    addLetter(101)
+    defineKeyword(25)
+end
+
 sub startTokenizer()
     var index as u16 = 0
     arenaUsed = 0
@@ -464,9 +678,13 @@ sub startTokenizer()
     for index = 0 until bucketCount
         bucket[index] = nameLimit
     end
+    for index = 0 until keywordCount
+        keywordName[index] = nameLimit
+    end
     sourceLine = 1
     fault = faultNone
     heldSlash = false
+    installKeywords()
     advance()
     nextToken()
 end

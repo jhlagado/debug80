@@ -32,3 +32,4 @@ adapting each finding and for changing the authoritative documents.
 ## Current review
 
 - [Candlemoth bootstrap review](candlemoth-bootstrap-review.md)
+- [Candlemoth Phase 1 review](candlemoth-phase1-review.md)

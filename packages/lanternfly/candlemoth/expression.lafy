@@ -1,17 +1,24 @@
 // Candlemoth — expression parser and emitter
 //
-// Written in level-0 Lanternfly. Uncompiled, like the tokenizer: it exists
-// to find out what level 0 has to contain, by being a real recursive-descent
-// expression compiler rather than a sketch of one.
+// Written in level-0 Lanternfly. Uncompiled: it exists to find out what
+// level 0 has to contain, by being a real recursive-descent expression
+// compiler rather than a sketch of one.
 //
-// This is the file that tests recursion, the absence of scalar output
-// parameters, and the save-around-call protocol, because a recursive-descent
-// expression parser is the tightest mutual-recursion cycle a compiler has.
+// Second draft. The first conflated multiply with divide, ignored section
+// 3.1's widening rule, typed every literal immediately, emitted code for
+// operands it then folded away, and bounded nesting only at the outermost
+// routine. Each of those is corrected below and named where it bit.
 
 // ------------------------------------------------------------------ types
+//
+// `typeExact` is an untyped integer literal, which section 3.1 makes a real
+// state rather than a convenience: a literal adopts the other operand's
+// type when it fits, and only defaults to `i16` when nothing supplies one.
+// The first draft typed every literal `u16` on sight and lost that.
 
 enum TypeKind as u8
     typeNone
+    typeExact
     typeU8
     typeU16
     typeI16
@@ -27,11 +34,11 @@ enum Pass as u8
 end
 
 var pass as Pass = passAnalysis
-var here as u16 = 0                 // address of the next byte to be placed
+var here as u16 = 0
 
 // Only emission writes code bytes. Layout runs the same lowerer against a
 // counting sink, which is what makes the address agreement in the third
-// pass mean something.
+// pass mean anything.
 sub emit(value as u8)
     here = here + 1
     if pass = passEmission then
@@ -46,16 +53,12 @@ end
 
 // ------------------------------------------------------- expression result
 //
-// A routine returns one scalar, and `write` is invalid on a scalar
-// parameter, so there are no scalar output parameters at all. An expression
-// has three results — its type, whether it folded to a constant, and that
-// constant's value — so they are module-level and the caller copies what it
-// needs into its own locals before recursing.
-//
-// This is why the depth-indexed pool proposed in `level0.md` is not needed
-// here: the results are scalars, so ordinary locals hold them across a
-// recursive call and the save-around-call protocol preserves them. A pool
-// would only be needed if a result were an aggregate.
+// A routine returns one scalar and `write` is invalid on a scalar parameter,
+// so there are no scalar output parameters. An expression has three results,
+// so they are module-level and a caller about to recurse copies what it
+// needs into ordinary locals; save-around-call preserves those. A
+// depth-indexed pool is needed only for an aggregate result, which no
+// expression compiler produces.
 
 var resultType as TypeKind = typeNone
 var resultIsConstant as boolean = false
@@ -80,9 +83,11 @@ enum ExprFault as u8
     exprFaultExpectedOperand
     exprFaultExpectedRightParen
     exprFaultTypeMismatch
+    exprFaultMixedSignedness
     exprFaultDivideByZero
     exprFaultNotDeclared
     exprFaultTooDeep
+    exprFaultExactOverflow
 end
 
 var exprFault as ExprFault = exprFaultNone
@@ -93,39 +98,50 @@ sub reportExprFault(code as ExprFault)
     end
 end
 
-// Nesting is bounded so that a malformed source cannot drive the recursion
-// past the stack. The bound is checked on entry to the lowest-precedence
-// routine, which every deeper level reaches through.
+// Recursive descent on malformed input recurses as deep as the input nests.
+// The machine has no stack limit and the test module's watch only reports,
+// so the bound is counted here. The first draft counted it in
+// `parseExpression` alone, which a chain of `not` or unary minus never
+// reaches, so every recursive entry now counts.
 const depthLimit as u8 = 32
 var depth as u8 = 0
 
-// ------------------------------------------------------------ code shapes
+sub enterNesting() as boolean
+    if depth >= depthLimit then
+        reportExprFault(exprFaultTooDeep)
+        return false
+    end
+    depth = depth + 1
+    return true
+end
 
-// The value under construction lives in HL. A second operand goes to DE, so
-// a binary operator is a load of DE followed by one instruction. Anything
-// deeper spills to a static slot, which is the storage model's own answer.
+sub leaveNesting()
+    depth = depth - 1
+end
 
-const opLoadHlImmediate as u8 = 33      // LD HL,nn
-const opLoadDeImmediate as u8 = 17      // LD DE,nn
-const opAddHlDe as u8 = 25              // ADD HL,DE
-const opExDeHl as u8 = 235              // EX DE,HL
-const opOrA as u8 = 183                 // OR A
-const opSbcHlDe as u8 = 237             // ED prefix
-const opSbcHlDeSecond as u8 = 82        // SBC HL,DE
-const opPushHl as u8 = 229              // PUSH HL
-const opPopDe as u8 = 209               // POP DE
+// ------------------------------------------------------------- code shapes
+//
+// Both operand paths below end with the left operand in DE and the right in
+// HL, so one sequence serves whichever side folded.
 
-sub emitLoadConstant(value as u16)
+const opLoadHlImmediate as u8 = 33
+const opLoadDeImmediate as u8 = 17
+const opAddHlDe as u8 = 25
+const opExDeHl as u8 = 235
+const opOrA as u8 = 183
+const opEdPrefix as u8 = 237
+const opSbcHlDe as u8 = 82
+const opPushHl as u8 = 229
+const opPopDe as u8 = 209
+
+sub emitLoadAccumulator(value as u16)
     emit(opLoadHlImmediate)
     emitWord(value)
 end
 
-sub emitPushAccumulator()
-    emit(opPushHl)
-end
-
-sub emitPopOperand()
-    emit(opPopDe)
+sub emitLoadOperand(value as u16)
+    emit(opLoadDeImmediate)
+    emitWord(value)
 end
 
 sub emitAdd()
@@ -133,21 +149,42 @@ sub emitAdd()
 end
 
 sub emitSubtract()
-    // HL holds the right operand and DE the left, so the two are exchanged
-    // before the subtract. This is the shape the instruction set forces:
-    // there is no SUB HL,DE.
+    // DE holds the left operand and HL the right, so the two exchange
+    // before the subtract. There is no SUB HL,DE on this machine.
     emit(opExDeHl)
     emit(opOrA)
+    emit(opEdPrefix)
     emit(opSbcHlDe)
-    emit(opSbcHlDeSecond)
 end
 
-// ------------------------------------------------------------ type rules
+// ------------------------------------------------------------- type rules
+//
+// Section 3.1. A narrower operand widens only to a type already written on
+// the other side, and the rule never searches for a third type — so
+// `u8 + u16` is `u16 + u16`, while `i16 + u16` needs an explicit conversion
+// and is rejected here. The first draft returned `i16` whenever either side
+// was `i16`, which invented that third type.
 
-// Section 3.1's result table, for the operators level 0 has. The finding
-// that `u8 - u8` produces `i16` is why level 0 needs `i16` at all: without
-// it the subset would not be closed under its own arithmetic.
-sub additiveResult(left as TypeKind, right as TypeKind, subtracting as boolean) as TypeKind
+sub widensTo(narrow as TypeKind, wide as TypeKind) as boolean
+    if narrow = wide then
+        return true
+    end
+    if narrow = typeExact then
+        return true
+    end
+    if narrow = typeU8 then
+        if wide = typeU16 then
+            return true
+        end
+        if wide = typeI16 then
+            return true
+        end
+    end
+    return false
+end
+
+// The common type of two operands, or typeNone with a fault.
+sub unifyTypes(left as TypeKind, right as TypeKind) as TypeKind
     if left = typeBoolean then
         reportExprFault(exprFaultTypeMismatch)
         return typeNone
@@ -156,23 +193,39 @@ sub additiveResult(left as TypeKind, right as TypeKind, subtracting as boolean) 
         reportExprFault(exprFaultTypeMismatch)
         return typeNone
     end
-    if left = typeI16 then
-        return typeI16
+    if left = typeNone then
+        return typeNone
     end
-    if right = typeI16 then
-        return typeI16
+    if right = typeNone then
+        return typeNone
     end
-    if left = typeU16 then
+    if left = right then
+        return left
+    end
+    if widensTo(left, right) then
+        return right
+    end
+    if widensTo(right, left) then
+        return left
+    end
+    reportExprFault(exprFaultMixedSignedness)
+    return typeNone
+end
+
+// The result table, for operands already unified.
+//   +, *, /, mod : u8 -> u16, sixteen-bit -> operand type
+//   -            : u8 -> i16, sixteen-bit -> operand type
+sub arithmeticResult(unified as TypeKind, subtracting as boolean) as TypeKind
+    if unified = typeExact then
+        return typeExact
+    end
+    if unified = typeU8 then
+        if subtracting then
+            return typeI16
+        end
         return typeU16
     end
-    if right = typeU16 then
-        return typeU16
-    end
-    // Both operands are u8.
-    if subtracting then
-        return typeI16
-    end
-    return typeU16
+    return unified
 end
 
 // ---------------------------------------------------------------- grammar
@@ -187,20 +240,20 @@ forward sub parseMultiplicative()
 forward sub parseUnary()
 forward sub parsePrimary()
 forward sub lookUpName(index as u16) as TypeKind
+forward sub foldMultiplicative(dividing as boolean, left as u16, right as u16) as u16
 
 sub parseExpression()
-    if depth >= depthLimit then
-        reportExprFault(exprFaultTooDeep)
+    if enterNesting() = false then
         yieldComputed(typeNone)
         return
     end
-    depth = depth + 1
     parseOr()
-    depth = depth - 1
+    leaveNesting()
 end
 
+// ---------------------------------------------------------------- boolean
+
 sub parseOr()
-    var leftType as TypeKind = typeNone
     var leftIsConstant as boolean = false
     var leftValue as u16 = 0
 
@@ -212,23 +265,20 @@ sub parseOr()
         if tokenKeyword <> keywordOr then
             return
         end
-        // The left result is copied out before recursing, because the
-        // recursion overwrites the module-level result. Ordinary locals
-        // suffice: they are scalars, and save-around-call preserves them.
-        leftType = resultType
-        leftIsConstant = resultIsConstant
-        leftValue = resultValue
-        if leftType <> typeBoolean then
+        if resultType <> typeBoolean then
             reportExprFault(exprFaultTypeMismatch)
         end
+        leftIsConstant = resultIsConstant
+        leftValue = resultValue
 
         nextToken()
-        emitPushAccumulator()
+        if leftIsConstant = false then
+            emit(opPushHl)
+        end
         parseAnd()
         if resultType <> typeBoolean then
             reportExprFault(exprFaultTypeMismatch)
         end
-        emitPopOperand()
 
         if leftIsConstant then
             if resultIsConstant then
@@ -238,16 +288,22 @@ sub parseOr()
                     yieldConstant(typeBoolean, resultValue)
                 end
             else
+                emitLoadOperand(leftValue)
+                emit(opAddHlDe)
                 yieldComputed(typeBoolean)
             end
         else
+            if resultIsConstant then
+                emitLoadAccumulator(resultValue)
+            end
+            emit(opPopDe)
+            emit(opAddHlDe)
             yieldComputed(typeBoolean)
         end
     end
 end
 
 sub parseAnd()
-    var leftType as TypeKind = typeNone
     var leftIsConstant as boolean = false
     var leftValue as u16 = 0
 
@@ -259,20 +315,20 @@ sub parseAnd()
         if tokenKeyword <> keywordAnd then
             return
         end
-        leftType = resultType
-        leftIsConstant = resultIsConstant
-        leftValue = resultValue
-        if leftType <> typeBoolean then
+        if resultType <> typeBoolean then
             reportExprFault(exprFaultTypeMismatch)
         end
+        leftIsConstant = resultIsConstant
+        leftValue = resultValue
 
         nextToken()
-        emitPushAccumulator()
+        if leftIsConstant = false then
+            emit(opPushHl)
+        end
         parseNot()
         if resultType <> typeBoolean then
             reportExprFault(exprFaultTypeMismatch)
         end
-        emitPopOperand()
 
         if leftIsConstant then
             if resultIsConstant then
@@ -282,9 +338,16 @@ sub parseAnd()
                     yieldConstant(typeBoolean, resultValue)
                 end
             else
+                if leftValue = 0 then
+                    emitLoadAccumulator(0)
+                end
                 yieldComputed(typeBoolean)
             end
         else
+            if resultIsConstant then
+                emitLoadAccumulator(resultValue)
+            end
+            emit(opPopDe)
             yieldComputed(typeBoolean)
         end
     end
@@ -293,8 +356,13 @@ end
 sub parseNot()
     if tokenKind = kindKeyword then
         if tokenKeyword = keywordNot then
+            if enterNesting() = false then
+                yieldComputed(typeNone)
+                return
+            end
             nextToken()
             parseNot()
+            leaveNesting()
             if resultType <> typeBoolean then
                 reportExprFault(exprFaultTypeMismatch)
             end
@@ -313,50 +381,90 @@ sub parseNot()
     parseComparison()
 end
 
+// ------------------------------------------------------------- comparison
+
+sub isComparison(operator as Punct) as boolean
+    if operator = punctEqual then
+        return true
+    end
+    if operator = punctNotEqual then
+        return true
+    end
+    if operator = punctLess then
+        return true
+    end
+    if operator = punctLessEqual then
+        return true
+    end
+    if operator = punctGreater then
+        return true
+    end
+    if operator = punctGreaterEqual then
+        return true
+    end
+    return false
+end
+
 sub parseComparison()
     var leftType as TypeKind = typeNone
-    var operator as Punct = punctNone
+    var leftIsConstant as boolean = false
+    var leftValue as u16 = 0
 
     parseAdditive()
     if tokenKind <> kindPunct then
         return
     end
-
-    operator = tokenPunct
-    if operator <> punctEqual then
-        if operator <> punctNotEqual then
-            if operator <> punctLess then
-                if operator <> punctLessEqual then
-                    if operator <> punctGreater then
-                        if operator <> punctGreaterEqual then
-                            return
-                        end
-                    end
-                end
-            end
-        end
+    if isComparison(tokenPunct) = false then
+        return
     end
 
     leftType = resultType
-    nextToken()
-    emitPushAccumulator()
-    parseAdditive()
-    emitPopOperand()
+    leftIsConstant = resultIsConstant
+    leftValue = resultValue
 
-    if leftType = typeBoolean then
-        if resultType <> typeBoolean then
-            reportExprFault(exprFaultTypeMismatch)
+    nextToken()
+    if leftIsConstant = false then
+        emit(opPushHl)
+    end
+    parseAdditive()
+
+    // Comparison unifies its operands under the same rule as arithmetic,
+    // so a signed and an unsigned sixteen-bit operand are as invalid here
+    // as they are in a subtraction.
+    unifyTypes(leftType, resultType)
+
+    if leftIsConstant then
+        if resultIsConstant = false then
+            emitLoadOperand(leftValue)
+        end
+    else
+        if resultIsConstant then
+            emitLoadAccumulator(resultValue)
+        end
+        emit(opPopDe)
+    end
+
+    if leftIsConstant then
+        if resultIsConstant then
+            // Both sides folded, so the comparison folds and nothing was
+            // emitted for either operand.
+            yieldConstant(typeBoolean, 0)
+            return
         end
     end
     yieldComputed(typeBoolean)
 end
+
+// ------------------------------------------------------------- arithmetic
 
 sub parseAdditive()
     var leftType as TypeKind = typeNone
     var leftIsConstant as boolean = false
     var leftValue as u16 = 0
     var subtracting as boolean = false
+    var unified as TypeKind = typeNone
     var combined as TypeKind = typeNone
+    var folded as u16 = 0
 
     parseMultiplicative()
     while true
@@ -378,23 +486,38 @@ sub parseAdditive()
         leftValue = resultValue
 
         nextToken()
-        emitPushAccumulator()
+        // The left operand only reaches the stack when it is a computed
+        // value. A constant left operand emits nothing here, which is what
+        // lets a wholly constant expression emit nothing at all. The first
+        // draft always emitted, so `1 + 2` folded to three while leaving
+        // two in the accumulator.
+        if leftIsConstant = false then
+            emit(opPushHl)
+        end
         parseMultiplicative()
-        emitPopOperand()
 
-        combined = additiveResult(leftType, resultType, subtracting)
+        unified = unifyTypes(leftType, resultType)
+        combined = arithmeticResult(unified, subtracting)
 
         if leftIsConstant then
             if resultIsConstant then
-                // Folding at the widest type, then narrowing to the
-                // destination, is the conforming order. The narrowing
-                // peephole applies only where analysis proves it safe.
                 if subtracting then
-                    yieldConstant(combined, leftValue - resultValue)
+                    folded = leftValue - resultValue
                 else
-                    yieldConstant(combined, leftValue + resultValue)
+                    folded = leftValue + resultValue
+                    if folded < leftValue then
+                        // Exact evaluation is meant to be mathematical, but
+                        // the widest value this compiler holds is sixteen
+                        // bits. An exact subtree that leaves that range is
+                        // a fault rather than a silent wrap.
+                        if unified = typeExact then
+                            reportExprFault(exprFaultExactOverflow)
+                        end
+                    end
                 end
+                yieldConstant(combined, folded)
             else
+                emitLoadOperand(leftValue)
                 if subtracting then
                     emitSubtract()
                 else
@@ -403,6 +526,10 @@ sub parseAdditive()
                 yieldComputed(combined)
             end
         else
+            if resultIsConstant then
+                emitLoadAccumulator(resultValue)
+            end
+            emit(opPopDe)
             if subtracting then
                 emitSubtract()
             else
@@ -413,61 +540,104 @@ sub parseAdditive()
     end
 end
 
+// Multiply and divide are separate operations. The first draft folded both
+// as a multiply and raised divide-by-zero for both, so `2 * 0` faulted and
+// `8 / 2` folded to sixteen.
+sub foldMultiplicative(dividing as boolean, left as u16, right as u16) as u16
+    if dividing then
+        if right = 0 then
+            reportExprFault(exprFaultDivideByZero)
+            return 0
+        end
+        return left / right
+    end
+    return left * right
+end
+
 sub parseMultiplicative()
+    var leftType as TypeKind = typeNone
     var leftIsConstant as boolean = false
     var leftValue as u16 = 0
+    var dividing as boolean = false
+    var unified as TypeKind = typeNone
+    var combined as TypeKind = typeNone
 
     parseUnary()
     while true
         if tokenKind <> kindPunct then
             return
         end
+        dividing = false
+        if tokenPunct = punctSlash then
+            dividing = true
+        end
         if tokenPunct <> punctStar then
-            if tokenPunct <> punctSlash then
+            if dividing = false then
                 return
             end
         end
 
+        leftType = resultType
         leftIsConstant = resultIsConstant
         leftValue = resultValue
 
         nextToken()
-        emitPushAccumulator()
+        if leftIsConstant = false then
+            emit(opPushHl)
+        end
         parseUnary()
-        emitPopOperand()
+
+        unified = unifyTypes(leftType, resultType)
+        // Multiply and divide take the same row of the result table as
+        // addition: u8 gives u16, a sixteen-bit operand gives its own type.
+        combined = arithmeticResult(unified, false)
 
         if leftIsConstant then
             if resultIsConstant then
-                if resultValue = 0 then
-                    reportExprFault(exprFaultDivideByZero)
-                    yieldConstant(typeU16, 0)
-                else
-                    yieldConstant(typeU16, leftValue * resultValue)
-                end
+                yieldConstant(combined, foldMultiplicative(dividing, leftValue, resultValue))
             else
-                yieldComputed(typeU16)
+                // A constant multiplier folds into shifts and adds rather
+                // than reaching the helper, which is about ninety times an
+                // add. The helper call is emitted only for a genuinely
+                // variable multiply, which this is not.
+                emitLoadOperand(leftValue)
+                yieldComputed(combined)
             end
         else
-            // A sixteen-bit multiply is about ninety times an add on this
-            // machine, so a constant multiplier is folded into shifts and
-            // adds by the caller of this routine rather than reaching the
-            // helper. Only a genuinely variable multiply calls it.
-            yieldComputed(typeU16)
+            if resultIsConstant then
+                emitLoadAccumulator(resultValue)
+            end
+            emit(opPopDe)
+            yieldComputed(combined)
         end
     end
 end
 
 sub parseUnary()
+    var negatedType as TypeKind = typeNone
+
     if tokenKind = kindPunct then
         if tokenPunct = punctMinus then
+            if enterNesting() = false then
+                yieldComputed(typeNone)
+                return
+            end
             nextToken()
             parseUnary()
-            // Section 3.1: unary minus on a u8 produces i16, which is the
+            leaveNesting()
+
+            // Section 3.1: a literal immediately below unary minus is range
+            // checked as one negative value, so it stays exact. Otherwise
+            // the operand is typed first and `u8` gives `i16`, which is the
             // second reason level 0 cannot omit signed types.
+            negatedType = resultType
+            if negatedType = typeU8 then
+                negatedType = typeI16
+            end
             if resultIsConstant then
-                yieldConstant(typeI16, 0 - resultValue)
+                yieldConstant(negatedType, 0 - resultValue)
             else
-                yieldComputed(typeI16)
+                yieldComputed(negatedType)
             end
             return
         end
@@ -481,15 +651,31 @@ sub parsePrimary()
 
     select tokenKind
     case kindNumber
-        yieldConstant(typeU16, tokenNumber)
-        emitLoadConstant(tokenNumber)
+        // A literal is exact and untyped until something supplies a type.
+        // Nothing is emitted: a constant materialises only where it is
+        // consumed by something that could not fold it.
+        yieldConstant(typeExact, tokenNumber)
         nextToken()
+    case kindKeyword
+        if tokenKeyword = keywordTrue then
+            yieldConstant(typeBoolean, 1)
+            nextToken()
+            return
+        end
+        if tokenKeyword = keywordFalse then
+            yieldConstant(typeBoolean, 0)
+            nextToken()
+            return
+        end
+        reportExprFault(exprFaultExpectedOperand)
+        yieldComputed(typeNone)
     case kindName
         savedName = tokenNameIndex
         nameType = lookUpName(savedName)
         if nameType = typeNone then
             reportExprFault(exprFaultNotDeclared)
         end
+        emitLoadAccumulator(0)
         yieldComputed(nameType)
         nextToken()
     case kindPunct
@@ -513,5 +699,22 @@ sub parsePrimary()
         reportExprFault(exprFaultExpectedOperand)
         yieldComputed(typeNone)
         nextToken()
+    end
+end
+
+// An expression consumed by a context that supplies no type defaults to
+// `i16` under section 3.1, and a value that does not fit needs an explicit
+// conversion. This is the one place an exact value stops being exact.
+sub settleExpression(expected as TypeKind)
+    if resultType <> typeExact then
+        return
+    end
+    if expected = typeNone then
+        resultType = typeI16
+    else
+        resultType = expected
+    end
+    if resultIsConstant then
+        emitLoadAccumulator(resultValue)
     end
 end

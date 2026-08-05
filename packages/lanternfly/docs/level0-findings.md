@@ -4,8 +4,9 @@ Phase 1 deliverable. Level 0's boundary was asserted in `level0.md` and is
 here corrected by writing a real compiler front end against it —
 `candlemoth/tokenizer.lafy`, uncompiled.
 
-Thirteen findings, from writing the tokenizer and then the expression
-parser. Nine broke the first draft of the tokenizer. Seven are language
+Sixteen findings, from writing the tokenizer and the expression parser and
+then having both reviewed. Nine broke the first draft of the tokenizer; a
+review found nine more in what replaced it. Seven are language
 rules the draft had not accounted for; two are level-0 choices that turn
 out to cost more than expected. None was discovered by reading the
 specification, which is the point of the exercise.
@@ -161,6 +162,69 @@ but the selector is an enum member and the arms would each be one case, so
 it is the same size. This is the shape of a chain of unrelated equality
 tests in level 0, and the expression parser has three of them.
 
+## Second-draft corrections
+
+An independent review found seven defects in the first expression parser and
+two prerequisites missing from the tokenizer. All nine are repaired; each is
+recorded because the class of error matters more than the instance.
+
+### 14. Two prerequisites the tokenizer was missing entirely
+
+**Keywords were never installed.** `keywordName` was declared and read and
+nothing ever filled it, so every keyword would have parsed as an ordinary
+identifier. The repair is `installKeywords`, and it is instructive: level 0
+has no strings, so a keyword's spelling has to be pushed into the staging
+buffer one byte at a time and interned like any other name. Twenty-five
+keywords cost about 130 lines of `addLetter` calls.
+
+**Newlines were swallowed.** `skipBlanks` treated a newline as blank, so no
+statement boundary ever reached the parser and a statement parser could not
+have existed. Newline is now its own token kind, consecutive newlines
+collapse to one so a blank line is not an empty statement, and `skipBlanks`
+stops at a boundary rather than consuming it.
+
+Both are the same class of error: a component tested only against itself
+looks complete. Neither would have survived one attempt to parse a
+declaration.
+
+### 15. Seven defects in the first expression parser
+
+- **Multiply and divide were conflated.** The operator was never saved, so
+  both folded as a multiply and both raised divide-by-zero: `2 * 0` faulted
+  and `8 / 2` folded to sixteen.
+- **Section 3.1's widening rule was invented rather than implemented.** The
+  first draft returned `i16` whenever either operand was `i16`. The rule
+  widens only to a type *already written on the other side* and never
+  searches for a third, so `u8 + u16` is `u16` but **`i16 + u16` requires an
+  explicit conversion** and is now rejected.
+- **Every literal was typed `u16` on sight**, discarding the exact-untyped
+  state that section 3.1 makes central. `typeExact` now exists as a type
+  kind, and `settleExpression` is the one place an exact value stops being
+  exact — adopting an expected type, or `i16` when none is supplied.
+- **Folding and emission disagreed.** Operands emitted their loads before
+  anything knew whether the expression would fold, so `1 + 2` folded to
+  three while leaving two in the accumulator. Constants now materialise only
+  where something consumes them that could not fold them, and a wholly
+  constant expression emits nothing at all.
+- **Nesting was bounded only at `parseExpression`**, which a chain of `not`
+  or unary minus never re-enters. Every recursive entry now counts through
+  `enterNesting`.
+- **Exact folding claimed a width it did not have.** All values are `u16`,
+  so an exact subtree leaving that range wrapped silently. It now raises
+  `exprFaultExactOverflow`. Mathematical evaluation at arbitrary width is
+  not available to a compiler with sixteen-bit arithmetic, and that is a
+  real divergence from section 3.1 worth stating rather than hiding.
+- **`level0.md` kept the superseded pool rule** immediately above its own
+  correction. The mandatory version and its example are gone.
+
+### 16. One operand sequence serves both folding paths
+
+The repair produced a shape worth keeping. Whichever side folded, both paths
+end with the left operand in `DE` and the right in `HL`: a constant left
+operand loads `DE` directly, a computed one is pushed and popped. So
+addition is one instruction and subtraction is one exchange plus two, with
+no separate case for a constant on either side.
+
 ## What the tokenizer actually uses
 
 Confirmed against the source, and this is the level-0 boundary as measured
@@ -201,8 +265,8 @@ field-offset computation and exact-layout rules out of the seed.
 
 ## Sizes, for the Phase 3 comparison
 
-Tokenizer: 611 lines, of which the character-class table is 65.
-Expression parser and emitter: 517 lines.
+Tokenizer: 829 lines, of which the character-class table is 65 and keyword
+installation 130. Expression parser and emitter: 720 lines.
 
 No compiled size exists yet. The character-class table alone is 256 bytes of
 the image, or 1% of the twenty-four-kilobyte estimate, before any code.
