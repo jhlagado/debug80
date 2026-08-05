@@ -116,8 +116,6 @@ enum Punct as u8
     punctLeftBracket
     punctRightBracket
     punctComma
-    punctDot
-    punctColon
     punctPlus
     punctMinus
     punctStar
@@ -141,7 +139,6 @@ enum Keyword as u8
     keywordElse
     keywordWhile
     keywordFor
-    keywordTo
     keywordUntil
     keywordSelect
     keywordCase
@@ -149,7 +146,6 @@ enum Keyword as u8
     keywordExit
     keywordContinue
     keywordAs
-    keywordRecord
     keywordEnum
     keywordForward
     keywordAnd
@@ -159,7 +155,7 @@ enum Keyword as u8
     keywordFalse
 end
 
-const keywordCount as u16 = 26
+const keywordCount as u16 = 24
 
 // ------------------------------------------------------------ diagnostics
 
@@ -380,7 +376,9 @@ sub scanNumber()
     var accumulated as u16 = 0
     var digit as u8 = 0
     while characterClass[nextByte] = classDigit
-        digit = nextByte - 48
+        // Section 3.1 gives `u8 - u8` the result type `i16`, so narrowing
+        // back to a byte is written rather than assumed.
+        digit = u8(nextByte - 48)
         // 6553 is the largest value that survives a multiply by ten with a
         // digit still to add. The check precedes the multiply because there
         // is no overflow trap to catch it afterwards.
@@ -416,7 +414,7 @@ sub scanPunct()
     case 41
         tokenPunct = punctRightParen
         if delimiterDepth > 0 then
-            delimiterDepth = delimiterDepth - 1
+            delimiterDepth = u8(delimiterDepth - 1)
         end
     case 91
         tokenPunct = punctLeftBracket
@@ -424,14 +422,10 @@ sub scanPunct()
     case 93
         tokenPunct = punctRightBracket
         if delimiterDepth > 0 then
-            delimiterDepth = delimiterDepth - 1
+            delimiterDepth = u8(delimiterDepth - 1)
         end
     case 44
         tokenPunct = punctComma
-    case 46
-        tokenPunct = punctDot
-    case 58
-        tokenPunct = punctColon
     case 43
         tokenPunct = punctPlus
     case 45
@@ -544,30 +538,27 @@ end
 // length tables, not a call per byte. Level 0 has no strings, which forces an
 // explicit byte representation — it does not force turning static data into
 // repeated code. Slot zero is `keywordNone` and is never read.
-const keywordTextBytes as u16 = 103
+const keywordTextBytes as u16 = 95
 
 const keywordText as u8[keywordTextBytes] = [
     115, 117, 98, 101, 110, 100, 118, 97, 114, 99, 111, 110,
     115, 116, 105, 102, 116, 104, 101, 110, 101, 108, 115, 101,
-    119, 104, 105, 108, 101, 102, 111, 114, 116, 111, 117, 110,
-    116, 105, 108, 115, 101, 108, 101, 99, 116, 99, 97, 115,
-    101, 114, 101, 116, 117, 114, 110, 101, 120, 105, 116, 99,
-    111, 110, 116, 105, 110, 117, 101, 97, 115, 114, 101, 99,
-    111, 114, 100, 101, 110, 117, 109, 102, 111, 114, 119, 97,
-    114, 100, 97, 110, 100, 111, 114, 110, 111, 116, 116, 114,
-    117, 101, 102, 97, 108, 115, 101
+    119, 104, 105, 108, 101, 102, 111, 114, 117, 110, 116, 105,
+    108, 115, 101, 108, 101, 99, 116, 99, 97, 115, 101, 114,
+    101, 116, 117, 114, 110, 101, 120, 105, 116, 99, 111, 110,
+    116, 105, 110, 117, 101, 97, 115, 101, 110, 117, 109, 102,
+    111, 114, 119, 97, 114, 100, 97, 110, 100, 111, 114, 110,
+    111, 116, 116, 114, 117, 101, 102, 97, 108, 115, 101
 ]
 
 const keywordStart as u16[keywordCount] = [
-    0, 0, 3, 6, 9, 14, 16, 20, 24, 29, 32, 34,
-    39, 45, 49, 55, 59, 67, 69, 75, 79, 86, 89, 91,
-    94, 98
+    0, 0, 3, 6, 9, 14, 16, 20, 24, 29, 32, 37,
+    43, 47, 53, 57, 65, 67, 71, 78, 81, 83, 86, 90
 ]
 
 const keywordSize as u8[keywordCount] = [
-    0, 3, 3, 3, 5, 2, 4, 4, 5, 3, 2, 5,
-    6, 4, 6, 4, 8, 2, 6, 4, 7, 3, 2, 3,
-    4, 5
+    0, 3, 3, 3, 5, 2, 4, 4, 5, 3, 5, 6,
+    4, 6, 4, 8, 2, 4, 7, 3, 2, 3, 4, 5
 ]
 
 sub installKeywords()

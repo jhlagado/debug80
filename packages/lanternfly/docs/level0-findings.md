@@ -512,16 +512,192 @@ interrupts those bytes are the vectors, and on one that does not they are
 still the addresses the processor jumps to. A compiler whose output cannot be
 run on a machine with interrupts is not cheaper, it is narrower.
 
+### 28. RETRACTED — byte decrements did not need a conversion
+
+This finding claimed that section 3.1's `u8 - u8 → i16` rule makes
+`depth = depth - 1` on a byte a type error without an explicit conversion, that
+five sites in the front end were written without one, and that the rule
+therefore bites every level-0 program that counts down.
+
+**Section 8.1 already exempts exactly this.** A round-trip arithmetic
+conversion is exempt from the narrowing warning when the destination has
+integer type `T`, every typed leaf of the source expression also has type `T`,
+every exact integer leaf resolves as `T`, and the expression contains only
+parentheses and section 3.1's integer operators — and it states that *wider
+intermediate results prescribed by the operator table remain part of the same
+round trip*. Its worked example is `lives = lives - 1`.
+
+All five sites are round-trip: `digit = nextByte - 48`,
+`delimiterDepth = delimiterDepth - 1`, `depth = depth - 1`,
+`loopDepth = loopDepth - 1`. None was a defect, the `u8(…)` conversions added
+to repair them were unnecessary, and the language question the finding raised
+does not exist.
+
+**How it survived.** The finding was written from section 3.1's result table
+alone. Section 8.1 governs what an assignment does with that result, and
+nothing checked it — the same failure as claiming a language limitation from
+one section without reading the neighbouring one, which findings 3 and 5 were
+retracted for. Three retractions now share a cause, and it is not carelessness
+about the sections: it is treating a rule found first as the whole rule.
+
+The conversions remain in the source, and they are legal — **but not under the
+round-trip rule.** Section 8.1 requires the source expression to contain "only
+parentheses and the integer operators from section 3.1", and `u8(depth - 1)`
+contains a conversion, so the exemption does not reach it. It does not need to:
+an explicit conversion is a stated narrowing, and the exemption exists to waive
+a warning on an *implicit* one. There is no warning to waive.
+
+So the two forms are legal for different reasons — `depth = depth - 1` by the
+round-trip exemption, `depth = u8(depth - 1)` by being explicit — and only the
+first is what section 8.1 describes. Removing the casts is churn, and the claim
+that they were covered by the round-trip rule was a second error inside the
+retraction.
+
+The rule this leaves for the nucleus is in `docs/nucleus-review-actions.md`:
+a byte subtraction assigned to a byte is a round trip, so it lowers to
+`LD A,(a) / SUB (b)` with no widening, and `i16` is not needed to express it.
+
+### 29. The boundary rule, applied
+
+`level0.md` said from the start that a form is in level 0 when Candlemoth's
+source uses it, then argued several forms in on the strength of what a
+compiler would probably need. Applying the rule for the first time moved
+fourteen forms out: records, integer `xor`, `size`, `byteSize`, `offset`, `lower`,
+`upper`, `clear`, `fill`, multi-value cases, range cases, `for … to`, array
+parameters and `write` parameters. Every one has zero uses in 3,150 lines.
+
+Range cases are the sharpest. `level0.md` justified them by saying a tokenizer
+without them is markedly larger; the tokenizer was then written with a
+256-entry character-class table and used neither them nor multi-value cases.
+The argument was reasonable and the evidence went the other way.
+
+`for … to` is the most surprising. Every counted loop in the compiler is
+`for … until`, and the inclusive form — the loop leaves when the control
+variable passes the limit rather than when it reaches it — has no use in
+3,150 lines of ordinary imperative code. A feature can be too obvious to
+question and still be unused.
+
+The boundary is reversible. Each form returns on the evidence that would have
+kept it: a passage of Candlemoth that needs it, quoted, with the measured seed
+cost.
+
+### 30. The parser now reads its own source, and three of the repairs were free
+
+Findings 18 to 23 closed together, and three of the six cost nothing at run
+time.
+
+**Short-circuit Booleans cost less than the eager form they replaced.** A
+Boolean is 0 or 1, so when `or` skips its right operand the left operand is
+already the answer and when `and` skips its right operand the same holds. The
+lowering is a test and a conditional jump — five bytes — and the byte-wise
+combining instructions are gone entirely. The eager form was five bytes plus
+the operand evaluation it could not skip.
+
+**A `const` array's storage is its image bytes.** The literal is emitted where
+the declaration sits and the array's address is wherever the stream had
+reached, so the 256-entry character-class table costs 256 bytes and no
+instructions. A `var` array cannot work that way — its storage is writable and
+level 0 has nowhere to run an initialising loop before the designated start —
+so an initialised array is a `const`, and `var` arrays are zeroed storage.
+
+**An enum member is an ordinary constant.** It folds where it is used, costs
+no storage and can appear in an array bound, which is every rule that already
+held for `const`. What the enum adds is identity: two enums are distinct types
+though both are stored as `u8`, so `symbolEnum` and `resultEnum` carry the
+declaring slot beside the type. `TypeKind` alone could not say which.
+
+The checked ordinal conversion reuses the subscript bounds check. `Keyword(i)`
+is a range check against the member count, which is exactly what `a[i]` is
+against the length, so the same runtime routine serves both and the conversion
+costs six bytes.
+
+### 31. Two regions, because parameters and locals have different lifetimes
+
+The symbol table kept one mark and moved it backwards at the end of every
+body. That worked while a body's locals were the only thing above the mark,
+and broke as soon as a `forward sub` prologue put later declarations there
+too: leaving the first body discarded every declaration made after it.
+
+Parameters cannot simply be dropped, because a call site addresses them by
+offset from the routine's own slot and static frames give them fixed
+addresses. So the table now has a persistent region whose mark only grows and
+a transient region for the current body's locals, and the two never
+interleave. Visibility follows the same split: `findSymbol` scans locals, then
+the current routine's parameters, then module-level names, skipping depth-one
+slots in the last scan.
+
+The general shape is worth keeping. **A table whose entries have two different
+lifetimes needs two marks, not one mark and a convention**, and the convention
+holds right up until a second kind of entry appears above it.
+
+### 32. Factoring a routine out costs five bytes at every call site
+
+Static frames give every parameter a fixed address, so passing one is a store
+at the call site. A call with no arguments is three bytes; a call with one
+byte argument is `LD A,n`, `LD (addr),A` and `CALL nn` — eight.
+
+That inverts the usual instinct. An emission table — every fixed instruction
+sequence in one byte array, played back by one routine taking a shape number —
+looks like an obvious saving: fourteen emitting routines at roughly 21 bytes
+each is about 294 bytes, and the table with its playback loop and two index
+tables is about 141. It saves 150 and costs five bytes at each of some thirty
+call sites, which is 150. A wash, and not written.
+
+**The rule that survives the arithmetic: a table pays when it removes
+branching, and breaks even at best when it only removes duplicated
+straight-line code.** The character-class table removes a ladder of range
+tests from every character read; the emission table would have removed only
+repetition. On a machine with register parameters both would pay.
+
+Before factoring anything out here, count the call sites and multiply by five.
+
+### 33. The precedence table saved depth, not source
+
+Six recursive-descent levels became one loop over a 13-row precedence table
+and a 10-row map from punctuation to operator. Precedence also classifies —
+levels one and two are word operators, three is comparison, four and five are
+arithmetic — so the number that orders the operators also selects the rules
+and no second table is needed.
+
+| | Before | After |
+| --- | --- | --- |
+| Code lines in the binary grammar | 307 | 279 |
+| Routines | 8 | 9 |
+| Static frame bytes | 32 | 39 |
+| Frames entered to read one operand | 9 | 4 |
+
+**The source barely shrank and the static frames grew.** Reading `a` used to
+enter nine frames, every one of them inside the recursive cycle, so eight save
+and restore sequences ran to read one name. It now enters four. That is a
+run-time saving in the instruction count for a self-compilation, and its
+effect on image size is unknown until a compiled image exists.
+
+The comparison also flatters the old column, which had no short-circuit
+Boolean lowering, no typed folding and no integer word operators. The new
+grammar does more in fewer lines; how much of that is the table and how much
+is unrelated is not separable from these numbers.
+
+Two things generalise. **A structural change can be worth making for depth
+alone**, and depth does not appear in a line count or a byte count of the
+source. And the discipline document's rule holds: source appearance is not the
+measurement, and nothing here should be read as a size result.
+
+`docs/candlemoth-programming-model.md` records the model these two findings
+argue for, and where it stops applying.
+
 ## Sizes, for the Phase 3 comparison
 
-Tokenizer: 692 lines, of which the character-class table is 65 and the
-keyword tables 22. Expression parser and emitter: 1,118 lines, the growth
-being exact arithmetic, comparison folding and the operation emission the
-second draft recorded without emitting. Symbol table: 378 lines. Declaration
-and statement parser: 962 lines. The draft is 3,150 lines in total.
+Tokenizer: 694 lines, of which the character-class table is 65 and the
+keyword tables 22. Expression parser and emitter: 1,384 lines, the growth
+being exact arithmetic, typed folding, short-circuit Boolean lowering and the
+integer word operators. Symbol table: 600 lines, which now carries calls and
+conversions. Declaration and statement parser: 1,351 lines, with
+enumerations, `select` and placed constant arrays. The draft is 4,029 lines
+in total, up from 3,150 when the grammar could not read its own source.
 
-The declarations contain 18,736 bytes of writable arrays and 754 bytes of
-constant arrays. Both totals are generated from the declarations by
+The declarations contain 20,016 bytes of writable arrays and 754 bytes of
+constant arrays. The rise is `symbolEnum`, one `u16` per symbol slot, which
+is what carries an enum's identity beside its `u8` representation. Both totals are generated from the declarations by
 `test/capacity.test.ts`, which writes the per-array table into
 `docs/bootstrap-plan.md` and fails when the source and the document disagree.
 They exclude scalar globals, static frames, recursive save-around state, the

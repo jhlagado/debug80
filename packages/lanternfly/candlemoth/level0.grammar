@@ -1,0 +1,375 @@
+# Canonical grammar for Level Zero Lanternfly
+#
+# Stage A of docs/level0-parser-study.md. This describes the accepted source
+# without being shaped for any parser family. A candidate grammar is a
+# recorded transformation of this file; a parser representation is derived
+# from a candidate. The three are kept apart deliberately.
+#
+# Format: one `production` block per nonterminal. Blank lines separate blocks,
+# `#` begins a comment. Fields:
+#
+#   source     where the form comes from: a specification section, level0.md,
+#              or a Level Zero ruling
+#   uses       yes | no  — whether Candlemoth's own source contains the form
+#   predicate  a named contextual predicate the production depends on, or `-`
+#   example    smallest positive example, with \n for newline
+#   ebnf       the production. { } repeats, [ ] optional, | alternates.
+#              Quoted items are terminals; bare words are nonterminals.
+#
+# Terminals are token classes: NAME NUMBER NEWLINE EOF, keyword spellings in
+# quotes, and punctuation in quotes.
+#
+# Two things the analyzer settled that this file got wrong on the first
+# writing, both recorded because the study asks for disagreements rather than
+# quiet corrections:
+#
+# 1. `u8`, `u16`, `i16` and `boolean` were written as quoted terminals. They
+#    are not keywords — the tokenizer emits them as NAME and the parser
+#    resolves them through `isTypeName`. The token audit caught it by finding
+#    four terminals the tokenizer cannot produce.
+#
+# 2. `declaration-prefix` and `statement-list` each carried a `| NEWLINE`
+#    alternative, which put blank lines in two adjacent repetitions and
+#    produced a FIRST/FOLLOW collision on NEWLINE: after a blank line the
+#    parser could not tell a continuing prefix from a beginning statement.
+#    The language has no such ambiguity, because the lexer collapses a run of
+#    newlines into one boundary and every declaration and statement carries
+#    its own terminating NEWLINE. Blank lines are now described once.
+
+# ---------------------------------------------------------------- program
+
+production unit
+  source     level0.md "Program shape"; spec 12.6
+  uses       yes
+  predicate  -
+  example    var a as u8\n
+  ebnf       { NEWLINE | top-declaration } EOF
+
+production top-declaration
+  source     level0.md "Storage", "Routines"
+  uses       yes
+  predicate  -
+  example    var a as u8\n
+  ebnf       enum-declaration | const-declaration | var-declaration | forward-declaration | sub-declaration
+
+# ------------------------------------------------------------ declarations
+
+production enum-declaration
+  source     level0.md "Types"; spec 3
+  uses       yes
+  predicate  -
+  example    enum K as u8\nfirst\nend\n
+  ebnf       "enum" NAME "as" NAME NEWLINE enum-member { enum-member } "end" NEWLINE
+
+production enum-member
+  source     level0.md "Types"
+  uses       yes
+  predicate  -
+  example    first\n
+  ebnf       NAME NEWLINE
+
+production const-declaration
+  source     level0.md "Storage"
+  uses       yes
+  predicate  isConstantContext
+  example    const n as u16 = 4\n
+  ebnf       "const" NAME "as" type "=" const-initializer NEWLINE
+
+production var-declaration
+  source     level0.md "Storage"
+  uses       yes
+  predicate  -
+  example    var a as u8\n
+  ebnf       "var" NAME "as" type [ "=" expression ] NEWLINE
+
+production forward-declaration
+  source     level0.md "Routines"; spec 11
+  uses       yes
+  predicate  -
+  example    forward sub f()\n
+  ebnf       "forward" sub-header NEWLINE
+
+production sub-declaration
+  source     level0.md "Routines"; spec 11
+  uses       yes
+  predicate  -
+  example    sub f()\nreturn\nend\n
+  ebnf       sub-header NEWLINE declaration-prefix statement-list "end" NEWLINE
+
+production sub-header
+  source     level0.md "Routines"
+  uses       yes
+  predicate  -
+  example    sub f()
+  ebnf       "sub" NAME "(" [ parameter-list ] ")" [ "as" scalar-type ]
+
+production parameter-list
+  source     level0.md "Routines"
+  uses       yes
+  predicate  -
+  example    a as u8
+  ebnf       parameter { "," parameter }
+
+production parameter
+  source     level0.md "Routines"; spec 11.3 parameters are read-only
+  uses       yes
+  predicate  -
+  example    a as u8
+  ebnf       NAME "as" scalar-type
+
+production declaration-prefix
+  source     spec 4; level0-findings 21
+  uses       yes
+  predicate  -
+  example    var a as u8\n
+  ebnf       { local-declaration }
+
+production local-declaration
+  source     spec 4
+  uses       yes
+  predicate  -
+  example    var a as u8\n
+  ebnf       const-declaration | var-declaration
+
+# ------------------------------------------------------------------ types
+
+production type
+  source     level0.md "Types"
+  uses       yes
+  predicate  isTypeName
+  example    u8
+  ebnf       scalar-type [ "[" const-expression "]" ]
+
+production scalar-type
+  source     level0.md "Types"; type names are ordinary names, level0-findings 23
+  uses       yes
+  predicate  isTypeName
+  example    u8
+  ebnf       NAME
+
+production const-initializer
+  source     level0.md "Storage"
+  uses       yes
+  predicate  isConstantContext
+  example    4
+  ebnf       const-expression | array-literal
+
+production array-literal
+  source     level0.md "Storage"; level0-findings 30
+  uses       yes
+  predicate  isConstantContext
+  example    [ 1, 2 ]
+  ebnf       "[" [ array-element { "," array-element } ] "]"
+
+production array-element
+  source     level0.md "Storage"
+  uses       yes
+  predicate  isConstantContext
+  example    1
+  ebnf       { NEWLINE } const-expression { NEWLINE }
+
+# ------------------------------------------------------------- statements
+
+  # DEPENDS ON THE LEXER. There is no `| NEWLINE` alternative here, and a blank
+  # line between two statements is absorbed by the first statement's own
+  # terminating NEWLINE, because the tokenizer collapses a run of consecutive
+  # newlines into one boundary token. Adding the alternative back reintroduces
+  # a FIRST/FOLLOW collision on NEWLINE, since the parser could not then tell a
+  # continuing list from a beginning statement. `test/grammar.test.ts` asserts
+  # the collapse loop exists, so removing it fails a test that names this rule.
+
+production statement-list
+  source     level0.md "Control"
+  uses       yes
+  predicate  -
+  example    return\n
+  ebnf       { statement }
+
+production statement
+  source     level0.md "Control"
+  uses       yes
+  predicate  -
+  example    return\n
+  ebnf       simple-statement NEWLINE | if-statement | while-statement | for-statement | select-statement
+
+production simple-statement
+  source     level0.md "Control"
+  uses       yes
+  predicate  isCallableName isWritableName
+  example    return
+  ebnf       assignment | call-statement | return-statement | "exit" | "continue"
+
+production assignment
+  source     level0.md "Control"
+  uses       yes
+  predicate  isWritableName
+  example    a = 1
+  ebnf       NAME [ index-suffix ] "=" expression
+
+production call-statement
+  source     level0.md "Routines"
+  uses       yes
+  predicate  isCallableName
+  example    f()
+  ebnf       NAME argument-list
+
+production return-statement
+  source     level0.md "Control"
+  uses       yes
+  predicate  -
+  example    return
+  ebnf       "return" [ expression ]
+
+production if-statement
+  source     level0.md "Control"
+  uses       yes
+  predicate  -
+  example    if a then\nreturn\nend\n
+  ebnf       "if" expression "then" NEWLINE statement-list [ "else" NEWLINE statement-list ] "end" NEWLINE
+
+production while-statement
+  source     level0.md "Control"
+  uses       yes
+  predicate  -
+  example    while a\nreturn\nend\n
+  ebnf       "while" expression NEWLINE statement-list "end" NEWLINE
+
+production for-statement
+  source     level0.md "Control"; Level Zero ruling removed "for ... to"
+  uses       yes
+  predicate  isWritableName
+  example    for i = 0 until 4\nreturn\nend\n
+  ebnf       "for" NAME "=" expression "until" expression NEWLINE statement-list "end" NEWLINE
+
+production select-statement
+  source     level0.md "Control"
+  uses       yes
+  predicate  -
+  example    select a\ncase 1\nreturn\nend\n
+  ebnf       "select" expression NEWLINE case-clause { case-clause } [ "else" NEWLINE statement-list ] "end" NEWLINE
+
+production case-clause
+  source     level0.md "Control"; one constant per case
+  uses       yes
+  predicate  isConstantContext
+  example    case 1\nreturn\n
+  ebnf       "case" const-expression NEWLINE statement-list
+
+# ------------------------------------------------------------ expressions
+#
+# Repetition at each left-associative level, so the grammar is not
+# left-recursive and every binary operator associates left to right. A
+# candidate grammar for an LR family may use natural left recursion instead;
+# the transformation must preserve the same left association.
+
+production expression
+  source     spec 6, 8.4; level0.md "Operators"
+  uses       yes
+  predicate  -
+  example    1
+  ebnf       disjunction
+
+production disjunction
+  source     spec 6, 8.4
+  uses       yes
+  predicate  -
+  example    1
+  ebnf       conjunction { "or" conjunction }
+
+production conjunction
+  source     spec 6, 8.4
+  uses       yes
+  predicate  -
+  example    1
+  ebnf       negation { "and" negation }
+
+production negation
+  source     spec 6
+  uses       yes
+  predicate  -
+  example    1
+  ebnf       "not" negation | comparison
+
+production comparison
+  source     spec 6; comparisons do not chain
+  uses       yes
+  predicate  -
+  example    1
+  ebnf       additive [ comparison-op additive ]
+
+production comparison-op
+  source     spec 6
+  uses       yes
+  predicate  -
+  example    =
+  ebnf       "=" | "<>" | "<" | "<=" | ">" | ">="
+
+production additive
+  source     spec 3.1, 6
+  uses       yes
+  predicate  -
+  example    1
+  ebnf       multiplicative { additive-op multiplicative }
+
+production additive-op
+  source     spec 6
+  uses       yes
+  predicate  -
+  example    +
+  ebnf       "+" | "-"
+
+production multiplicative
+  source     spec 3.1, 6
+  uses       yes
+  predicate  -
+  example    1
+  ebnf       prefix { multiplicative-op prefix }
+
+production multiplicative-op
+  source     spec 6; "mod" is a recorded discrepancy, see the report
+  uses       yes
+  predicate  -
+  example    *
+  ebnf       "*" | "/"
+
+production prefix
+  source     spec 6; prefix operators nest right to left
+  uses       yes
+  predicate  -
+  example    1
+  ebnf       "-" prefix | postfix
+
+production postfix
+  source     level0.md "Types"; indexing binds tighter than prefix
+  uses       yes
+  predicate  -
+  example    1
+  ebnf       primary { index-suffix }
+
+production index-suffix
+  source     level0.md "Types"; bounds-checked subscript
+  uses       yes
+  predicate  -
+  example    [ 1 ]
+  ebnf       "[" expression "]"
+
+production primary
+  source     spec 6
+  uses       yes
+  predicate  isTypeName isCallableName
+  example    1
+  ebnf       NUMBER | "true" | "false" | NAME | NAME argument-list | "(" expression ")"
+
+production argument-list
+  source     level0.md "Routines"; conversions share this shape
+  uses       yes
+  predicate  isTypeName isCallableName
+  example    ( 1 )
+  ebnf       "(" [ expression { "," expression } ] ")"
+
+production const-expression
+  source     level0.md "Storage"; a semantic restriction over expression
+  uses       yes
+  predicate  isConstantContext
+  example    1
+  ebnf       expression

@@ -51,12 +51,50 @@ export interface ImageParts {
  * On a profile whose host owns the vectors the image begins at the origin and
  * carries no jump. The host launches the program at `entryAddress`.
  */
-export function buildImage(profile: TargetProfile, parts: ImageParts): EmittedImage {
+export const ADDRESS_SPACE = 0x10000;
+
+export class ImageError extends Error {}
+
+/**
+ * Checks what the address space allows before an image is built.
+ *
+ * Review finding 31: the earlier check covered the runtime and left out the
+ * code, so an image larger than the address space could be returned as a Z80
+ * program, and any `designatedStart` was accepted — including one above
+ * 65,535, which the two-byte JP operand silently truncated.
+ */
+function check(profile: TargetProfile, parts: ImageParts): void {
   const { runtime, code, designatedStart } = parts;
 
-  if (runtime.length + profile.origin > 0x10000) {
-    throw new Error(`image does not fit: origin ${profile.origin} plus ${runtime.length} bytes`);
+  const end = profile.origin + runtime.length + code.length;
+  if (end > ADDRESS_SPACE) {
+    throw new ImageError(
+      `image does not fit: origin ${profile.origin} plus ${runtime.length} bytes of runtime ` +
+        `and ${code.length} bytes of code ends at ${end}, past ${ADDRESS_SPACE}`,
+    );
   }
+
+  if (!Number.isInteger(designatedStart) || designatedStart < 0 || designatedStart >= ADDRESS_SPACE) {
+    throw new ImageError(`designated start ${designatedStart} is not a sixteen-bit address`);
+  }
+
+  // `ImageParts` says the designated start is an address within the code, and
+  // an entry jump that lands anywhere else runs bytes that are not a routine.
+  const codeFrom = profile.origin + runtime.length;
+  const codeTo = codeFrom + code.length;
+  if (code.length === 0) {
+    throw new ImageError("an image with no code has no designated start");
+  }
+  if (designatedStart < codeFrom || designatedStart >= codeTo) {
+    throw new ImageError(
+      `designated start ${designatedStart} is outside the code, which runs ${codeFrom}..${codeTo - 1}`,
+    );
+  }
+}
+
+export function buildImage(profile: TargetProfile, parts: ImageParts): EmittedImage {
+  const { runtime, code, designatedStart } = parts;
+  check(profile, parts);
 
   if (!profile.ownsResetVector) {
     const bytes = new Uint8Array(runtime.length + code.length);

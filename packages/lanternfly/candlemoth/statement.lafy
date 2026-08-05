@@ -43,7 +43,7 @@ enum StatementFault as u8
     stmtFaultExpectedEnd
     stmtFaultExpectedNewline
     stmtFaultExpectedAssign
-    stmtFaultExpectedTo
+    stmtFaultExpectedUntil
     stmtFaultExpectedParen
     stmtFaultUnexpectedToken
     stmtFaultLabelDisagreement
@@ -53,6 +53,12 @@ enum StatementFault as u8
     stmtFaultForwardDisagreement
     stmtFaultWrongArgumentCount
     stmtFaultRuntimeMisplaced
+    stmtFaultDeclarationAfterStatement
+    stmtFaultEnumNotByte
+    stmtFaultCaseTypeMismatch
+    stmtFaultTooManyElements
+    stmtFaultElementNotConstant
+    stmtFaultArrayInitialiser
 end
 
 var stmtFault as StatementFault = stmtFaultNone
@@ -182,15 +188,12 @@ sub internTypeNames()
     end
 end
 
-sub parseTypeName() as TypeKind
-    var name as u16 = 0
+// The type a name denotes, or `typeNone` when it denotes no type. This is
+// what tells `X(y)` apart from `f(y)` without a second token: a name that
+// names a type is a conversion and a name that names a subroutine is a call.
+sub conversionTarget(name as u16) as TypeKind
+    var found as u16 = 0
 
-    if tokenKind <> kindName then
-        reportStmtFault(stmtFaultExpectedType)
-        return typeNone
-    end
-    name = tokenNameIndex
-    nextToken()
     if name = typeNameU8 then
         return typeU8
     end
@@ -203,9 +206,71 @@ sub parseTypeName() as TypeKind
     if name = typeNameBoolean then
         return typeBoolean
     end
+    found = findSymbol(name)
+    if found = 0 then
+        return typeNone
+    end
+    if symbolClass[found - 1] = symbolEnumType then
+        return typeU8
+    end
+    return typeNone
+end
+
+// The declaration slot of the enum a name denotes, one greater, or zero.
+sub enumSlotOfTypeName(name as u16) as u16
+    var found as u16 = findSymbol(name)
+
+    if found = 0 then
+        return 0
+    end
+    if symbolClass[found - 1] = symbolEnumType then
+        return found
+    end
+    return 0
+end
+
+sub parseTypeName() as TypeKind
+    var name as u16 = 0
+    var found as u16 = 0
+
+    if tokenKind <> kindName then
+        reportStmtFault(stmtFaultExpectedType)
+        return typeNone
+    end
+    name = tokenNameIndex
+    nextToken()
+    if name = typeNameU8 then
+        declaredEnum = 0
+        return typeU8
+    end
+    if name = typeNameU16 then
+        declaredEnum = 0
+        return typeU16
+    end
+    if name = typeNameI16 then
+        declaredEnum = 0
+        return typeI16
+    end
+    if name = typeNameBoolean then
+        declaredEnum = 0
+        return typeBoolean
+    end
+    found = findSymbol(name)
+    if found > 0 then
+        if symbolClass[found - 1] = symbolEnumType then
+            // An enum is stored as the `u8` it is declared over; its identity
+            // travels beside the type rather than inside it.
+            declaredEnum = found
+            return typeU8
+        end
+    end
+    declaredEnum = 0
     reportStmtFault(stmtFaultExpectedType)
     return typeNone
 end
+
+// Set by `parseTypeName` to the enum a written type denotes, or zero.
+var declaredEnum as u16 = 0
 
 // --------------------------------------------------------------- boundaries
 
@@ -296,19 +361,99 @@ sub parseVariable()
 
     slot = declareSymbol(name, symbolVariable, kind)
     symbolLength[slot] = length
+    symbolEnum[slot] = declaredEnum
 
     if atPunct(punctEqual) then
         nextToken()
+        if length > 0 then
+            // A `var` array is writable storage, so its contents cannot be
+            // image bytes, and level 0 has nowhere to run an initialising
+            // loop before the designated start. An initialised array is a
+            // `const`.
+            reportStmtFault(stmtFaultArrayInitialiser)
+            return
+        end
         parseExpression()
         settleExpression(kind)
-        // A constant initialiser could become an image byte instead of a
-        // load and a store. It does not here: `settleExpression` has already
+        // A constant initialiser could become an image byte instead of a load
+        // and a store. It does not here: `settleExpression` has already
         // planted the load by the time the fold is known, and suppressing it
         // needs the same emission control as the constant-subscript
         // reduction. Both are measured together once the seed exists.
         emitStoreSymbol(slot)
     end
     expectNewline()
+end
+
+// An array initialiser: `[ v, v, v ]`, every element a constant. The values
+// are emitted where the declaration sits, so the array's storage *is* those
+// image bytes — which is what makes the 256-entry character-class table cost
+// 256 bytes and no instructions.
+//
+// The declared length wins over the written count: a short list leaves the
+// remaining elements zero, and a long one is an error rather than a silent
+// overrun of whatever follows.
+// Elements the list did not write are zero, and they still occupy the image
+// because the array's storage is contiguous.
+sub padArray(byteWide as boolean, remaining as u16)
+    var index as u16 = 0
+
+    for index = 0 until remaining
+        if byteWide then
+            emit(0)
+        else
+            emitWord(0)
+        end
+    end
+end
+
+sub parseArrayLiteral(slot as u16, kind as TypeKind, length as u16)
+    var written as u16 = 0
+    var byteWide as boolean = isByteWide(kind)
+
+    // The array begins wherever the stream has reached, and every later
+    // reference loads from here.
+    symbolAddress[slot] = here
+
+    nextToken()
+    while true
+        skipNewlines()
+        if atPunct(punctRightBracket) then
+            nextToken()
+            padArray(byteWide, length - written)
+            return
+        end
+        if written >= length then
+            reportStmtFault(stmtFaultTooManyElements)
+            return
+        end
+
+        parseExpression()
+        settleExpression(kind)
+        if resultIsConstant = false then
+            reportStmtFault(stmtFaultElementNotConstant)
+            return
+        end
+        if byteWide then
+            emit(u8(constantPattern(resultValue, resultNegative) and 255))
+        else
+            emitWord(constantPattern(resultValue, resultNegative))
+        end
+        written = written + 1
+
+        skipNewlines()
+        if atPunct(punctComma) then
+            nextToken()
+        else
+            if atPunct(punctRightBracket) = false then
+                reportStmtFault(stmtFaultExpectedParen)
+                return
+            end
+        end
+        if stmtFault <> stmtFaultNone then
+            return
+        end
+    end
 end
 
 // `const name as type = value`. The value must fold, and it is kept in the
@@ -318,6 +463,7 @@ sub parseConstant()
     var name as u16 = 0
     var kind as TypeKind = typeNone
     var slot as u16 = 0
+    var length as u16 = 0
 
     nextToken()
     if tokenKind <> kindName then
@@ -328,6 +474,42 @@ sub parseConstant()
     nextToken()
     expectKeyword(keywordAs, stmtFaultExpectedType)
     kind = parseTypeName()
+
+    if atPunct(punctLeftBracket) then
+        // `const name as type[length]` — a placed array. Its slot is declared
+        // before the literal is read, because the literal fixes its address.
+        nextToken()
+        parseExpression()
+        settleExpression(typeU16)
+        if resultIsConstant then
+            length = resultValue
+        else
+            reportStmtFault(stmtFaultExpectedType)
+        end
+        if atPunct(punctRightBracket) then
+            nextToken()
+        else
+            reportStmtFault(stmtFaultExpectedParen)
+        end
+
+        slot = declareSymbol(name, symbolConstant, kind)
+        symbolLength[slot] = length
+        symbolEnum[slot] = declaredEnum
+
+        if atPunct(punctEqual) then
+            nextToken()
+        else
+            reportStmtFault(stmtFaultExpectedAssign)
+            return
+        end
+        if atPunct(punctLeftBracket) = false then
+            reportStmtFault(stmtFaultExpectedAssign)
+            return
+        end
+        parseArrayLiteral(slot, kind, length)
+        expectNewline()
+        return
+    end
 
     if atPunct(punctEqual) then
         nextToken()
@@ -349,6 +531,7 @@ sub parseConstant()
     slot = declareSymbol(name, symbolConstant, kind)
     symbolValue[slot] = resultValue
     symbolNegative[slot] = resultNegative
+    symbolEnum[slot] = declaredEnum
     expectNewline()
 end
 
@@ -462,7 +645,7 @@ end
 
 sub popLoop()
     if loopDepth > 0 then
-        loopDepth = loopDepth - 1
+        loopDepth = u8(loopDepth - 1)
     end
 end
 
@@ -492,11 +675,10 @@ end
 // is declared and the restriction is recorded rather than designed around.
 var forLimitSlot as u16 = 0
 
-// `for name = first to last` and `for name = first until last`. Both forms
-// appear in Candlemoth's own source — `installKeywords` uses `until` — so a
-// compiler that read only one of them could not compile itself. `to` includes
-// the limit and `until` stops below it, which is the whole difference and
-// selects the comparison.
+// `for name = first until last`. The Level Zero ruling removed `for ... to`:
+// every counted loop in Candlemoth is exclusive, and the token audit found
+// the parser still accepting the inclusive form after the ruling had removed
+// it from the subset.
 //
 // The control variable is an ordinary declared local, which the findings
 // ledger records as a level-0 consequence: there is no implicit declaration,
@@ -509,7 +691,6 @@ sub parseFor()
     var out as u16 = 0
     var again as u16 = 0
     var kind as TypeKind = typeNone
-    var inclusive as boolean = true
 
     nextToken()
     if tokenKind <> kindName then
@@ -537,16 +718,11 @@ sub parseFor()
     settleExpression(kind)
     emitStoreSymbol(slot)
 
-    if atKeyword(keywordTo) then
+    if atKeyword(keywordUntil) then
         nextToken()
     else
-        if atKeyword(keywordUntil) then
-            inclusive = false
-            nextToken()
-        else
-            reportStmtFault(stmtFaultExpectedTo)
-            return
-        end
+        reportStmtFault(stmtFaultExpectedUntil)
+        return
     end
 
     // The limit is evaluated once, into a compiler-made local, because
@@ -565,13 +741,8 @@ sub parseFor()
     emit(opPushHl)
     emitLoadSymbol(forLimitSlot)
     emit(opPopDe)
-    // `to` leaves the loop when the control variable passes the limit;
-    // `until` leaves it when the two are equal.
-    if inclusive then
-        emitHelperCall(comparisonHelper(punctGreater, kind = typeI16))
-    else
-        emitHelperCall(comparisonHelper(punctGreaterEqual, kind = typeI16))
-    end
+    // `until` leaves the loop when the control variable reaches the limit.
+    emitHelperCall(comparisonHelper(punctGreaterEqual, kind = typeI16))
     emitJumpIfTrue(out)
     expectNewline()
 
@@ -696,6 +867,148 @@ sub parseContinue()
     expectNewline()
 end
 
+// ----------------------------------------------------------- enumerations
+//
+// `enum Name as u8` followed by one member per line. Each member becomes a
+// constant of the enum's type carrying its ordinal, and the enum's own slot
+// carries the member count in `symbolLength` — which is what the checked
+// ordinal conversion checks against.
+//
+// Only `u8` is accepted. Section 3 allows an enum over any integer type, and
+// level 0 has no enum over anything else, so the wider forms stay out under
+// the boundary rule.
+sub parseEnum()
+    var name as u16 = 0
+    var slot as u16 = 0
+    var member as u16 = 0
+    var ordinal as u16 = 0
+    var representation as TypeKind = typeNone
+    var memberSlot as u16 = 0
+
+    nextToken()
+    if tokenKind <> kindName then
+        reportStmtFault(stmtFaultExpectedName)
+        return
+    end
+    name = tokenNameIndex
+    nextToken()
+    expectKeyword(keywordAs, stmtFaultExpectedType)
+    representation = parseTypeName()
+    if representation <> typeU8 then
+        reportStmtFault(stmtFaultEnumNotByte)
+    end
+    expectNewline()
+
+    slot = declareSymbol(name, symbolEnumType, typeU8)
+
+    while true
+        skipNewlines()
+        if atKeyword(keywordEnd) then
+            nextToken()
+            symbolLength[slot] = ordinal
+            expectNewline()
+            return
+        end
+        if tokenKind <> kindName then
+            reportStmtFault(stmtFaultExpectedName)
+            return
+        end
+        member = tokenNameIndex
+        nextToken()
+
+        // A member is an ordinary constant of the enum's type, so every rule
+        // that already holds for a constant holds for it: it folds where it
+        // is used, costs no storage, and can appear in an array bound.
+        memberSlot = declareSymbol(member, symbolConstant, typeU8)
+        symbolValue[memberSlot] = ordinal
+        symbolEnum[memberSlot] = slot + 1
+        ordinal = ordinal + 1
+        expectNewline()
+        if stmtFault <> stmtFaultNone then
+            return
+        end
+    end
+end
+
+// --------------------------------------------------------------- select
+//
+// One constant per `case`, and no fall-through: an arm ends where the next
+// `case` begins. Multi-value and range cases are out under the boundary rule.
+//
+// The selector is evaluated once into compiler-owned storage and compared
+// against each label in turn. A jump table would be faster and needs the
+// labels to be dense, which the compiler cannot know until every arm is read
+// — and it has read none of them when it must emit the dispatch.
+// One slot holds the selector under test. Nested `select` statements would
+// need one per level; the front end nests none, so one is declared and the
+// restriction recorded, as for the counted loop's limit.
+var selectSlot as u16 = 0
+
+sub parseSelect()
+    var out as u16 = allocateLabel()
+    var nextArm as u16 = 0
+    var kind as TypeKind = typeNone
+    var selectorEnum as u16 = 0
+    var arms as u16 = 0
+
+    nextToken()
+    parseExpression()
+    settleExpression(typeNone)
+    kind = resultType
+    selectorEnum = resultEnum
+    emitStoreSymbol(selectSlot)
+    expectNewline()
+
+    while true
+        skipNewlines()
+        if atKeyword(keywordCase) then
+            nextToken()
+            nextArm = allocateLabel()
+
+            emitLoadSymbol(selectSlot)
+            emit(opPushHl)
+            parseExpression()
+            settleExpression(kind)
+            if resultEnum <> selectorEnum then
+                reportStmtFault(stmtFaultCaseTypeMismatch)
+            end
+            if resultIsConstant then
+                emitLoadAccumulator(constantPattern(resultValue, resultNegative))
+            end
+            emit(opPopDe)
+            emitHelperCall(comparisonHelper(punctEqual, false))
+            emitJumpIfFalse(nextArm)
+            expectNewline()
+
+            parseStatementList()
+            emitJump(out)
+            placeLabel(nextArm)
+            arms = arms + 1
+        else
+            if atKeyword(keywordElse) then
+                nextToken()
+                expectNewline()
+                parseStatementList()
+                expectKeyword(keywordEnd, stmtFaultExpectedEnd)
+                placeLabel(out)
+                expectNewline()
+                return
+            end
+            if atKeyword(keywordEnd) then
+                nextToken()
+                placeLabel(out)
+                expectNewline()
+                return
+            end
+            reportStmtFault(stmtFaultUnexpectedToken)
+            return
+        end
+        if stmtFault <> stmtFaultNone then
+            return
+        end
+    end
+end
+
 // A subroutine name at statement position begins a call; anything else that
 // can be assigned to is a variable. The distinction is the symbol's class, so
 // it needs no second token.
@@ -710,12 +1023,17 @@ end
 
 sub parseStatement()
     if tokenKind = kindKeyword then
+        // Review finding 21: `var` and `const` used to be statements, so the
+        // parser accepted a declaration after a statement and inside a loop
+        // or branch. Section 4 puts every routine declaration before every
+        // statement, and `parseDeclarationPrefix` is the only place that
+        // reads one.
         if tokenKeyword = keywordVar then
-            parseVariable()
+            reportStmtFault(stmtFaultDeclarationAfterStatement)
             return
         end
         if tokenKeyword = keywordConst then
-            parseConstant()
+            reportStmtFault(stmtFaultDeclarationAfterStatement)
             return
         end
         if tokenKeyword = keywordIf then
@@ -724,6 +1042,10 @@ sub parseStatement()
         end
         if tokenKeyword = keywordWhile then
             parseWhile()
+            return
+        end
+        if tokenKeyword = keywordSelect then
+            parseSelect()
             return
         end
         if tokenKeyword = keywordFor then
@@ -760,6 +1082,30 @@ sub parseStatement()
     end
     reportStmtFault(stmtFaultUnexpectedToken)
     nextToken()
+end
+
+// Every declaration a routine makes, before its first statement. Section 4
+// puts them there, and reading them in one place is what lets
+// `parseStatement` reject one that appears later.
+sub parseDeclarationPrefix()
+    while true
+        skipNewlines()
+        if tokenKind <> kindKeyword then
+            return
+        end
+        if tokenKeyword = keywordVar then
+            parseVariable()
+        else
+            if tokenKeyword = keywordConst then
+                parseConstant()
+            else
+                return
+            end
+        end
+        if stmtFault <> stmtFaultNone then
+            return
+        end
+    end
 end
 
 // A statement list ends at `end`, `else`, `case` or end of input. None of
@@ -908,6 +1254,10 @@ sub parseSubroutine(declaredForward as boolean)
 
     symbolAddress[slot] = here
     expectNewline()
+    // The transient region was opened when the parameter list closed, so the
+    // prefix declares straight into it. Calling `markBodyBase` again here
+    // would reset the region and discard what the prefix had just declared.
+    parseDeclarationPrefix()
     parseStatementList()
     expectKeyword(keywordEnd, stmtFaultExpectedEnd)
 
@@ -940,7 +1290,22 @@ sub parseUnit()
             if atKeyword(keywordSub) then
                 parseSubroutine(false)
             else
-                parseStatement()
+                // At module level a declaration is the only thing there is:
+                // level 0 has no mainline statements outside a routine.
+                if atKeyword(keywordVar) then
+                    parseVariable()
+                else
+                    if atKeyword(keywordConst) then
+                        parseConstant()
+                    else
+                        if atKeyword(keywordEnum) then
+                            parseEnum()
+                        else
+                            reportStmtFault(stmtFaultUnexpectedToken)
+                            nextToken()
+                        end
+                    end
+                end
             end
         end
         if stmtFault <> stmtFaultNone then
@@ -960,9 +1325,15 @@ sub startParser()
     symbolFault = symbolFaultNone
     symbolCount = 0
     currentDepth = 0
-    localBase = 0
+    localFrom = 0
+    localTop = 0
+    paramFrom = 0
+    paramCount = 0
     internTypeNames()
-    // `nameLimit` is one past the last interning slot, so no source spelling
-    // can produce it and the compiler's own storage cannot be assigned to.
+    // `nameLimit` and above are past the last interning slot, so no source
+    // spelling produces them and the compiler's own storage cannot be
+    // assigned to. Two distinct values, or the second declaration would be a
+    // redeclaration of the first.
     forLimitSlot = declareSymbol(nameLimit, symbolVariable, typeU16)
+    selectSlot = declareSymbol(nameLimit + 1, symbolVariable, typeU16)
 end

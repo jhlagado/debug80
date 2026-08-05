@@ -1,0 +1,266 @@
+# Nucleus — the canonical grammar
+#
+# DRAFT, not normative. The grammar omits admitted forms — the five profile
+# intrinsics, `fill`, `clear`, whole-array assignment and the conversions the
+# lowering table assumes — and its subtraction is not closed under Lanternfly's
+# result table. See docs/nucleus-review-actions.md.
+#
+# For the nucleus subset. `docs/nucleus.md` defines the machine and
+# `docs/nucleus-lowering.md` gives the instruction table. Measured by the same
+# analyzer as `level0.grammar`, and frozen against
+# `docs/nucleus-grammar-report.md`.
+#
+# The shape:
+#
+#   - no parameters, no locals, no routine results;
+#   - global register banks, which are ordinary arrays;
+#   - one loop form; `if` and `select` for choice;
+#   - three types, `u8`, `u16` and `boolean`;
+#   - no enumerations, no conversions in expressions, no `and` or `or`.
+#
+# A form is admitted when it lowers to one instruction or a fixed short
+# sequence with no analysis. `docs/nucleus.md` states that rule and the
+# reasoning; it is the gate every future addition passes.
+#
+# A subroutine survives with no parameters and no result, because a machine
+# with `CALL` and `RET` and no computed jump needs one, and because a
+# parameterless `sub` is already legal Lanternfly. Everything a routine would
+# have taken or returned travels in the register bank, and a routine that
+# recurses saves what it needs by hand — which is what removes save-around-call
+# from the compiler and gives it to the programmer.
+#
+# Every nucleus program is a Lanternfly program with the same meaning. Nothing
+# here is nucleus-only semantics.
+
+# ---------------------------------------------------------------- program
+
+production unit
+  source     nucleus
+  uses       no
+  predicate  -
+  example    var r as u16[64]\n
+  ebnf       { NEWLINE | declaration } EOF
+
+production declaration
+  source     nucleus
+  uses       no
+  predicate  -
+  example    var r as u16[64]\n
+  ebnf       const-declaration | var-declaration | sub-declaration
+
+production const-declaration
+  source     nucleus; placed constant arrays are how tables are written
+  uses       no
+  predicate  isConstantContext
+  example    const n as u16 = 4\n
+  ebnf       "const" NAME "as" type "=" const-initializer NEWLINE
+
+production var-declaration
+  source     nucleus; no initializer, so no code runs before the start
+  uses       no
+  predicate  -
+  example    var r as u16[64]\n
+  ebnf       "var" NAME "as" type NEWLINE
+
+production sub-declaration
+  source     nucleus; no parameters, no result, no locals
+  uses       no
+  predicate  -
+  example    sub step()\nreturn\nend\n
+  ebnf       "sub" NAME "(" ")" NEWLINE statement-list "end" NEWLINE
+
+production type
+  source     nucleus; u8, u16 and boolean, resolved by predicate
+  uses       no
+  predicate  isTypeName
+  example    u16
+  ebnf       NAME [ "[" const-expression "]" ]
+
+production const-initializer
+  source     nucleus
+  uses       no
+  predicate  isConstantContext
+  example    4
+  ebnf       const-expression | array-literal
+
+production array-literal
+  source     nucleus
+  uses       no
+  predicate  isConstantContext
+  example    [ 1, 2 ]
+  ebnf       "[" [ array-element { "," array-element } ] "]"
+
+production array-element
+  source     nucleus
+  uses       no
+  predicate  isConstantContext
+  example    1
+  ebnf       { NEWLINE } const-expression { NEWLINE }
+
+# ------------------------------------------------------------- statements
+
+  # DEPENDS ON THE LEXER. There is no `| NEWLINE` alternative here, and a blank
+  # line between two statements is absorbed by the first statement's own
+  # terminating NEWLINE, because the tokenizer collapses a run of consecutive
+  # newlines into one boundary token. Adding the alternative back reintroduces
+  # a FIRST/FOLLOW collision on NEWLINE, since the parser could not then tell a
+  # continuing list from a beginning statement. `test/grammar.test.ts` asserts
+  # the collapse loop exists, so removing it fails a test that names this rule.
+
+production statement-list
+  source     nucleus
+  uses       no
+  predicate  -
+  example    return\n
+  ebnf       { statement }
+
+production statement
+  source     nucleus; one loop form
+  uses       no
+  predicate  -
+  example    return\n
+  ebnf       simple-statement NEWLINE | if-statement | while-statement | select-statement
+
+production simple-statement
+  source     nucleus
+  uses       no
+  predicate  isCallableName isWritableName
+  example    return
+  ebnf       assignment | call-statement | "return" | "exit" | "continue"
+
+production assignment
+  source     nucleus
+  uses       no
+  predicate  isWritableName
+  example    a = 1
+  ebnf       NAME [ index-suffix ] "=" expression
+
+production call-statement
+  source     nucleus; no arguments, so a call is three bytes
+  uses       no
+  predicate  isCallableName
+  example    f()
+  ebnf       NAME "(" ")"
+
+production select-statement
+  source     nucleus; lowers to a jump table, see nucleus-lowering.md
+  uses       no
+  predicate  -
+  example    select a\ncase 1\nreturn\nend\n
+  ebnf       "select" expression NEWLINE case-clause { case-clause } [ "else" NEWLINE statement-list ] "end" NEWLINE
+
+production case-clause
+  source     nucleus; one constant per case
+  uses       no
+  predicate  isConstantContext
+  example    case 1\nreturn\n
+  ebnf       "case" const-expression NEWLINE statement-list
+
+production if-statement
+  source     nucleus
+  uses       no
+  predicate  -
+  example    if a then\nreturn\nend\n
+  ebnf       "if" expression "then" NEWLINE statement-list [ "else" NEWLINE statement-list ] "end" NEWLINE
+
+production while-statement
+  source     nucleus; the only loop
+  uses       no
+  predicate  -
+  example    while a\nreturn\nend\n
+  ebnf       "while" expression NEWLINE statement-list "end" NEWLINE
+
+# ------------------------------------------------------------ expressions
+#
+# No `and` or `or`. Short-circuit lowering emits the same code as nested `if`
+# in the common case, so they buy nothing until an `else` hangs off a compound
+# condition, and they cost the emission-suppression machinery. They are the
+# first forms to return if writing real nucleus source proves painful without
+# them.
+#
+# `not` stays, because it costs nothing at any of its three lowerings: as a
+# whole condition it swaps the branch arms, over a comparison it inverts the
+# operator, and over a stored Boolean it is `XOR 1`.
+#
+# No unary minus: with unsigned arithmetic only, negation is `0 - x`.
+#
+# No calls or conversions in expressions: a call is a statement, and the only
+# conversion between `u8` and `u16` is a byte load, which the assignment
+# already performs from the declared types.
+
+production expression
+  source     nucleus
+  uses       no
+  predicate  -
+  example    1
+  ebnf       negation
+
+production negation
+  source     nucleus; `not` is free at every lowering, see nucleus-lowering.md
+  uses       no
+  predicate  -
+  example    1
+  ebnf       "not" negation | comparison
+
+production comparison
+  source     nucleus; comparisons do not chain
+  uses       no
+  predicate  -
+  example    1
+  ebnf       additive [ comparison-op additive ]
+
+production comparison-op
+  source     nucleus
+  uses       no
+  predicate  -
+  example    =
+  ebnf       "=" | "<>" | "<" | "<=" | ">" | ">="
+
+production additive
+  source     nucleus
+  uses       no
+  predicate  -
+  example    1
+  ebnf       multiplicative { additive-op multiplicative }
+
+production additive-op
+  source     nucleus
+  uses       no
+  predicate  -
+  example    +
+  ebnf       "+" | "-"
+
+production multiplicative
+  source     nucleus
+  uses       no
+  predicate  -
+  example    1
+  ebnf       primary { multiplicative-op primary }
+
+production multiplicative-op
+  source     nucleus
+  uses       no
+  predicate  -
+  example    *
+  ebnf       "*" | "/"
+
+production primary
+  source     nucleus
+  uses       no
+  predicate  -
+  example    1
+  ebnf       NUMBER | "true" | "false" | NAME [ index-suffix ] | "(" expression ")"
+
+production index-suffix
+  source     nucleus; a constant subscript is checked at compile time
+  uses       no
+  predicate  -
+  example    [ 1 ]
+  ebnf       "[" expression "]"
+
+production const-expression
+  source     nucleus
+  uses       no
+  predicate  isConstantContext
+  example    1
+  ebnf       expression

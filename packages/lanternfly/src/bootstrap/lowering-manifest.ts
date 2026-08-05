@@ -82,21 +82,39 @@ export const LOWERING: readonly LoweringShape[] = [
     section: "expressions",
   },
   {
-    routine: "emitBooleanOr",
-    construct: "`a or b`, Boolean operands",
-    mnemonics: ["LD A,L", "OR E", "LD L,A", "LD H,$00"],
+    label: "`a or b`, Boolean operands",
+    construct: "`a or b`, Boolean — the right operand is skipped when the left is true",
+    mnemonics: ["LD A,L", "OR H", "JP NZ,$1234"],
     section: "expressions",
   },
   {
-    routine: "emitBooleanAnd",
-    construct: "`a and b`, Boolean operands",
-    mnemonics: ["LD A,L", "AND E", "LD L,A", "LD H,$00"],
+    label: "`a and b`, Boolean operands",
+    construct: "`a and b`, Boolean — the right operand is skipped when the left is false",
+    mnemonics: ["LD A,L", "OR H", "JP Z,$1234"],
     section: "expressions",
   },
   {
     routine: "emitBooleanNot",
     construct: "`not a`, Boolean operand",
     mnemonics: ["LD A,L", "XOR $01", "LD L,A", "LD H,$00"],
+    section: "expressions",
+  },
+  {
+    routine: "emitWordAnd",
+    construct: "`a and b`, integer operands — bitwise, both evaluated",
+    mnemonics: ["LD A,L", "AND E", "LD L,A", "LD A,H", "AND D", "LD H,A"],
+    section: "expressions",
+  },
+  {
+    routine: "emitWordOr",
+    construct: "`a or b`, integer operands — bitwise, both evaluated",
+    mnemonics: ["LD A,L", "OR E", "LD L,A", "LD A,H", "OR D", "LD H,A"],
+    section: "expressions",
+  },
+  {
+    routine: "emitWordNot",
+    construct: "`not a`, integer operand — bitwise complement",
+    mnemonics: ["LD A,L", "CPL", "LD L,A", "LD A,H", "CPL", "LD H,A"],
     section: "expressions",
   },
   {
@@ -242,6 +260,11 @@ export const NOT_EXTRACTED: readonly string[] = [
   // out of the source by a reader that only follows `emit` calls.
   "element address, byte-wide",
   "element address, sixteen-bit",
+  // Boolean `and` and `or` are a branch around the right operand rather than
+  // a routine: `parseOr` and `parseAnd` emit the jump inline through the
+  // statement parser's label machinery.
+  "`a or b`, Boolean operands",
+  "`a and b`, Boolean operands",
 ];
 
 /** The document's own name for a shape. */

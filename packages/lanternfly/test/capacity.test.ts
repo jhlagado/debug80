@@ -30,6 +30,48 @@ const END = "<!-- /generated -->";
 
 const WIDTH: Record<string, number> = { u8: 1, u16: 2, i16: 2, boolean: 1 };
 
+export class CapacityError extends Error {}
+
+/**
+ * Element width, from the type's own declaration.
+ *
+ * Review finding 32: this was `WIDTH[type] ?? 1`, which counted the u8-backed
+ * enum arrays correctly and gave every unknown type one byte as well. A record
+ * array, a named scalar type or a misspelled type would have entered the table
+ * with a plausible wrong size, and the stale-document check would have stayed
+ * green while the report understated memory.
+ *
+ * An enum's width now comes from its stated representation. Anything else is
+ * an error, because a reader that cannot compute a layout should say so rather
+ * than guess at it.
+ */
+function widthOf(type: string, enums: ReadonlyMap<string, string>): number {
+  const scalar = WIDTH[type];
+  if (scalar !== undefined) return scalar;
+
+  const representation = enums.get(type);
+  if (representation === undefined) {
+    throw new CapacityError(
+      `array element type "${type}" is neither a level-0 scalar nor a declared enum; ` +
+        `the capacity reader has no layout for it`,
+    );
+  }
+  const width = WIDTH[representation];
+  if (width === undefined) {
+    throw new CapacityError(`enum ${type} is declared over "${representation}", which has no width`);
+  }
+  return width;
+}
+
+/** Every enum in the source, with the type it is declared over. */
+export function enumRepresentations(text: string): ReadonlyMap<string, string> {
+  const enums = new Map<string, string>();
+  for (const m of text.matchAll(/^enum (\w+) as (\w+)\s*$/gm)) {
+    enums.set(m[1], m[2]);
+  }
+  return enums;
+}
+
 interface Array_ {
   readonly file: string;
   readonly name: string;
@@ -44,24 +86,26 @@ function strip(text: string): string {
     .join("\n");
 }
 
-function collect(): Array_[] {
-  const text = SOURCES.map((p) => strip(readFileSync(p, "utf8"))).join("\n");
+export function collectFrom(sources: readonly { path: string; text: string }[]): Array_[] {
+  const all = sources.map((s) => strip(s.text)).join("\n");
   const scalars = new Map<string, number>();
-  for (const m of text.matchAll(/^const (\w+) as u\d+ = (\d+)\s*$/gm)) {
+  for (const m of all.matchAll(/^const (\w+) as u\d+ = (\d+)\s*$/gm)) {
     scalars.set(m[1], Number(m[2]));
   }
+  const enums = enumRepresentations(all);
 
   const found: Array_[] = [];
-  for (const source of SOURCES) {
-    const body = strip(readFileSync(source, "utf8"));
+  for (const source of sources) {
+    const body = strip(source.text);
     for (const m of body.matchAll(/^(var|const) (\w+) as (\w+)\[(\w+)\]/gm)) {
       const [, kind, name, type, count] = m;
-      // An enum-typed array is one byte per element, like the u8 it is over.
-      const width = WIDTH[type] ?? 1;
+      const width = widthOf(type, enums);
       const length = /^\d+$/.test(count) ? Number(count) : scalars.get(count);
-      if (length === undefined) throw new Error(`${name}: unknown length ${count}`);
+      if (length === undefined) {
+        throw new CapacityError(`${name}: array length "${count}" is not a known constant`);
+      }
       found.push({
-        file: source.replace("candlemoth/", ""),
+        file: source.path.replace("candlemoth/", ""),
         name,
         bytes: width * length,
         writable: kind === "var",
@@ -69,6 +113,10 @@ function collect(): Array_[] {
     }
   }
   return found;
+}
+
+function collect(): Array_[] {
+  return collectFrom(SOURCES.map((path) => ({ path, text: readFileSync(path, "utf8") })));
 }
 
 function render(arrays: readonly Array_[]): string {
@@ -117,6 +165,48 @@ describe("array capacity", () => {
     expect(writable).toBeGreaterThan(0);
     expect(constant).toBeGreaterThan(0);
     console.log(`writable ${writable} bytes, constant ${constant} bytes`);
+  });
+
+  it("takes an enum's width from its declared representation", () => {
+    // Every enum in the source is over u8 today, so this passes either way.
+    // The fixtures below are what distinguish a derived width from a default.
+    const enums = enumRepresentations(
+      SOURCES.map((p) => readFileSync(p, "utf8")).join("\n"),
+    );
+    expect(enums.get("SymbolKind")).toBe("u8");
+    expect(enums.get("TypeKind")).toBe("u8");
+
+    const wide = collectFrom([
+      {
+        path: "fixture.lafy",
+        text: "enum Wide as u16\n    first\nend\n\nvar table as Wide[4]\n",
+      },
+    ]);
+    expect(wide).toHaveLength(1);
+    expect(wide[0].bytes).toBe(8);
+  });
+
+  it("reports an element type it has no layout for", () => {
+    // Review finding 32: a record array counted as one byte per element.
+    expect(() =>
+      collectFrom([
+        {
+          path: "fixture.lafy",
+          text: "record Point\n    x as u16\n    y as u16\nend\n\nvar path as Point[64]\n",
+        },
+      ]),
+    ).toThrow(CapacityError);
+
+    // A misspelled scalar is the same failure and not a silent one byte.
+    expect(() =>
+      collectFrom([{ path: "fixture.lafy", text: "var table as u9[16]\n" }]),
+    ).toThrow(/neither a level-0 scalar nor a declared enum/);
+  });
+
+  it("reports an array length it cannot resolve", () => {
+    expect(() =>
+      collectFrom([{ path: "fixture.lafy", text: "var table as u8[unknownLimit]\n" }]),
+    ).toThrow(/not a known constant/);
   });
 
   it("matches the table in the plan", () => {

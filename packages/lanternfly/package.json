@@ -11,7 +11,9 @@
     "test": "vitest run",
     "generate:runtime": "UPDATE_RUNTIME=1 vitest run test/runtime-image.test.ts",
     "generate:lowering": "UPDATE_LOWERING=1 vitest run test/lowering-doc.test.ts",
-    "generate:capacity": "UPDATE_CAPACITY=1 vitest run test/capacity.test.ts"
+    "generate:capacity": "UPDATE_CAPACITY=1 vitest run test/capacity.test.ts",
+    "generate:grammar": "UPDATE_GRAMMAR=1 vitest run test/grammar.test.ts",
+    "generate:nucleus": "UPDATE_NUCLEUS=1 vitest run test/nucleus-lowering.test.ts"
   },
   "dependencies": {
     "@jhlagado/azm": "^0.3.8",

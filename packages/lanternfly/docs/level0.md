@@ -8,11 +8,56 @@ Level 0 is not a different language. Every level-0 program is a Lanternfly
 program that uses fewer features, and a level-2 compiler accepts it
 unchanged.
 
+## The boundary rule
+
+**A form is in level 0 when Candlemoth's own source uses it.** Not when it
+seems likely to be wanted, and not when an argument can be made for it — when
+a passage of the compiler needs it.
+
+That rule was written into this document from the start and then not applied:
+the first draft argued several forms in on the strength of what a compiler
+would probably need, and the compiler was subsequently written without them.
+Range cases are the clearest case. This document justified them by saying a
+tokenizer without them is markedly larger; the tokenizer was then written with
+a 256-entry character-class table and never wanted one.
+
+The rule is now applied, and the forms below have moved out of the active
+subset. **This is a reversible boundary, not a deletion from Lanternfly.**
+Each remains a Lanternfly feature at levels 1 and 2, and each comes back into
+level 0 on the same evidence that would have kept it: a passage of Candlemoth
+that needs it, quoted, with the measured cost to the seed.
+
+| Moved out | Uses in 3,150 lines |
+| --- | --- |
+| Records | 0 |
+| Integer `xor` | 0 |
+| `size`, `byteSize`, `offset` | 0 |
+| `lower`, `upper`, `clear`, `fill` | 0 |
+| Multi-value cases, `case a, b` | 0 |
+| Range cases, `case a to b` | 0 |
+| `for … to` | 0, and every loop is `for … until` |
+| Array parameters | 0 |
+| `write` parameters | 0 |
+
+`for … to` is the surprising one, and it is the rule working rather than
+failing. Every counted loop in the compiler is exclusive, and the inclusive
+form is one comparison away whenever a passage needs it.
+
+Removing these takes parser, type-checker and lowering work out of both
+bootstrap compilers while leaving every level-0 program a valid Lanternfly
+program.
+
 ## The test this subset has to pass
 
 A recursive-descent compiler that reads characters, produces tokens,
-parses, checks types and emits Z80 bytes, running in 64K with roughly 16K
-of its own code, and able to compile its own source.
+parses, checks types and emits Z80 bytes, and compiles its own source.
+
+It is a **loaded program**, not a resident one: `docs/abstract-machine.md`
+names the host, and on it the compiler has a little over 63K of free memory
+with source and object code streaming through services. An earlier draft of
+this line put the compiler in a sixteen-kilobyte window and made its size the
+test. That was a different machine's constraint, and no measurement was ever
+against it.
 
 Everything below is justified by that program and nothing else. Where a
 feature is not needed to write it, the feature is not in level 0.
@@ -27,19 +72,26 @@ feature is not needed to write it, the feature is not in level 0.
   dispatches, and because an unnamed integer would make the source
   unreadable.
 - Fixed arrays with a compile-time size, one dimension.
-- Records with named fields and exact layout.
 
 - `i16`, because **level 0 is not closed under its own arithmetic without
   it**. Section 3.1 gives `u8 - u8` the result type `i16`, and unary minus
-  on a `u8` likewise. Without `i16` a level-0 program could not write
-  `a - b` over two bytes without a conversion at every site, which is a
-  semantic divergence from Lanternfly rather than a subset of it. Cost is
-  signed compare, arithmetic shift right, signed division and sign-extended
-  widening — perhaps 400 to 700 bytes.
+  on a `u8` likewise. Cost is signed compare, arithmetic shift right, signed
+  division and sign-extended widening — perhaps 400 to 700 bytes.
+
+  `i16` is the one type kept without a declaration using it. No variable in
+  Candlemoth is declared `i16`, and the type still arises: `nextByte - 48`
+  and `depth - 1` are both `u8 - u8`, so both are `i16` and both are narrowed
+  at the assignment. A subset that produced a type it could not name would
+  not be a subset. This is the boundary rule applied to a type the *rules*
+  produce rather than to a form the *source* writes.
 
 Not in level 0: `i8`, `u32`, `i32`, floating point, strings, subranges,
-multidimensional arrays, opaque address types. `i8` buys only a storage
-width, since its arithmetic results are `i16` anyway.
+multidimensional arrays, opaque address types, and **records**. `i8` buys
+only a storage width, since its arithmetic results are `i16` anyway. Records
+are out under the boundary rule: the front end declares none in 3,150 lines,
+and every table in it is parallel scalar columns because each field is read by
+a different pass with a different access pattern. Removing them takes
+field-offset computation and exact-layout rules out of the seed.
 
 - **Integer conversions**, `u8(x)` and `u16(x)` and their signed
   counterparts, **and the checked ordinal conversion** `SomeEnum(x)`, which
@@ -49,10 +101,14 @@ width, since its arithmetic results are `i16` anyway.
   workaround unwritable: a compiler narrows constantly, and section 3.1's
   result types mean it must.
 
-Branch displacements are *not* the reason for signed types: a displacement
-is computed in `u16` as `target - pc - 2`, accepted when it is below 128 or
-at or above `0xFF80`, and narrowed. Two lines — but only with a conversion
-operator to narrow with.
+Branch displacements are not a reason for signed types at all, because there
+are no branch displacements: **every jump is three-byte absolute**, forward
+and backward alike, so nothing computes one. `docs/level0-lowering.md` gives
+the reason — `JR` reaches only ±127, so choosing it would make the branch
+form depend on a measured distance, and two implementations that measure
+differently emit different bytes for the same source.
+
+The reason signed types are needed is section 3.1's result table, below.
 
 **Literals are decimal only.** Hexadecimal, binary and character literals
 are outside level 0, and the seed rejects each with a diagnostic rather than
@@ -67,8 +123,9 @@ compiler with no strings cannot echo a name.
 
 ## Storage
 
-- Module `const` with a constant initializer, including array and record
-  initializers.
+- Module `const` with a constant initializer, including array initializers.
+  Seven constant arrays in the front end, from the 256-entry character-class
+  table down to a four-entry index.
 - Module `var`.
 - Routine locals, scalar and aggregate.
 - `static var` inside a routine.
@@ -83,8 +140,11 @@ parser, whose per-invocation state is genuinely scalar — a token kind, a
 symbol index, a type index, a saved emit offset, a label number. It bites
 in two other places.
 
-Section 11.1 allows one scalar result and section 11.3 forbids `write` on a
-scalar parameter, so **there are no scalar out-parameters**. A routine like
+Parameters are read-only. `write` parameters are out under the boundary rule,
+along with array parameters: the front end passes no aggregate and writes
+through no parameter. Section 11.1 allows one scalar result and section 11.3
+forbids `write` on a scalar parameter in any case, so **there are no scalar
+out-parameters**. A routine like
 `parseExpression` must return a type, a constant flag and a constant value
 together.
 
@@ -146,22 +206,33 @@ its absence would cause an infinite loop.
 
 ## Control
 
-`if` / `else`, `while`, `for … to` and `for … until`, `select` / `case` /
-`else`, `return`, `exit`, `continue`.
+`if` / `else`, `while`, `for … until`, `select` / `case` / `else`, `return`,
+`exit`, `continue`.
+
+`for … to` is out under the boundary rule. Every counted loop in Candlemoth
+is exclusive, and the inclusive form differs by one comparison — the loop
+leaves when the control variable passes the limit rather than when it reaches
+it — so it comes back the moment a passage needs it.
 
 Statements are newline-terminated under the **logical-line rule of section
 2.4**, which level 0 inherits unchanged: a physical newline ends a statement
 except inside parentheses or square brackets, so a long condition spans
 lines by being parenthesised. Level 0 invents no continuation syntax.
 
-`select` matters more than it looks: a tokenizer and a parser are both
-large dispatches. Multi-value cases (`case a, b`) and range cases
-(`case '0' to '9'`) are **in** — a tokenizer without range cases is
-markedly larger.
+`select` matters more than it looks: a tokenizer and a parser are both large
+dispatches, and the front end has four of them across twenty-five arms. **One
+constant per `case`.**
 
-Also in, because a compiler needs them: `size`, `byteSize`, `offset`,
-`lower`, `upper`, `clear` and `fill`. Out: `for each`, the conditional
-expression.
+Multi-value cases (`case a, b`) and range cases (`case a to b`) are out. This
+document argued range cases in on the grounds that a tokenizer without them is
+markedly larger; the tokenizer was then written with a 256-entry
+character-class table and used neither form. That is the boundary rule
+catching an argument the evidence did not support, and it is the clearest
+example of why the rule exists.
+
+Out: `for each`, the conditional expression, and the aggregate intrinsics
+`size`, `byteSize`, `offset`, `lower`, `upper`, `clear` and `fill` — the last
+seven listed here as things a compiler needs, and used nowhere in one.
 
 ## Modules
 
@@ -228,12 +299,30 @@ A level-0 program is a designated subroutine — a prologue — and nothing
 else. No tasks, no instants, no scheduler, no epilogue needed. Blocking is
 legal there, which is what lets the compiler read its input.
 
+## Operators
+
+`+`, `-`, `*`, `/`, the six comparisons, and `and`, `or`, `not` —
+which section 6 makes logical on `boolean` operands and bitwise on integer
+ones. The front end uses both readings: `resultIsConstant and leftIsConstant`
+is logical, `value and 255` is a mask.
+
+`xor` is out. Section 6 gives it the same dual reading and the front end uses
+neither, so it is not a keyword in the tokenizer and not a form the seed
+implements.
+
+`mod` is out for the same reason, and this document claimed it until the token
+audit checked. It is not a keyword in the tokenizer, it has no row in the
+operator table, and the front end never uses it. Claiming a form that no part
+of the implementation carries is the failure mode the boundary rule exists to
+catch, and it survived here because nothing compared the document against the
+tokenizer until `level0-grammar-report.md` was generated.
+
 ## What this excludes, and why that is the point
 
 Tasks, state cells, pulses, derivations, the instant, strings, error
 handling, modules, generic parameters, placement, volatile storage,
 capability-gated types, multidimensional arrays, subranges, opaque
-addresses, `alias`.
+addresses, `alias`, and everything in the boundary-rule table above.
 
 None of them is needed to write a compiler. Every one of them is code the
 seed does not have to contain and a construct Candlemoth does not have to
@@ -242,11 +331,19 @@ implement before it can compile itself.
 ## Estimated seed effort
 
 The seed must implement: a tokenizer over this grammar; a recursive-descent
-parser; a type checker over `u8`, `u16`, `i16`, `boolean`, enumerations,
-one-dimensional arrays and records, with the conversions between them; a
-code generator for the Z80
-covering the control forms, `u8`/`u16` arithmetic, array indexing with
-bounds checks, record field access, the calling convention and the
+parser; a type checker over `u8`, `u16`, `i16`, `boolean`, enumerations and
+one-dimensional arrays, with the conversions between them; and a code
+generator for the Z80 covering the control forms, `u8`/`u16` arithmetic,
+array indexing with bounds checks, the calling convention and the
 save-around-call recursion protocol. In idiomatic TypeScript, with no
-constraints on how it allocates, this is a substantial but ordinary
-compiler.
+constraints on how it allocates, this is a substantial but ordinary compiler.
+
+The boundary ruling removes record layout and field access, the aggregate
+intrinsics, multi-value and range case selection, `for … to`, integer `xor`,
+array parameters and `write` parameters from that list. It also removes them
+from Candlemoth, which is the point: work not done twice.
+
+**The seed must reject every form outside this subset**, with a test per
+excluded form. A seed that accepted a superset would let Candlemoth's source
+use a construct Candlemoth does not implement, and the fixpoint would fail at
+step B with a maximally confusing symptom.

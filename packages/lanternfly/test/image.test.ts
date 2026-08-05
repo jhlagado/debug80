@@ -5,6 +5,7 @@ import { describe, expect, it } from "vitest";
 import {
   BootstrapMachine,
   FLAT_PROFILE,
+  ImageError,
   OP_JP,
   TEC1_PROFILE,
   assembleSource,
@@ -100,6 +101,120 @@ describe("an image on a profile whose host owns the vectors", () => {
       designatedStart: codeOrigin(FLAT_PROFILE, runtime.bytes.length),
     });
     expect(owned.bytes.length - image.bytes.length).toBe(FLAT_PROFILE.origin);
+  });
+});
+
+describe("the address-space contract", () => {
+  const runtime = buildRuntimeImage(ASSEMBLY, FLAT_PROFILE);
+  const from = codeOrigin(FLAT_PROFILE, runtime.bytes.length);
+
+  /** Code that ends exactly at the given address. */
+  const upTo = (end: number) => code(end - from);
+
+  it("accepts an image that ends on the last addressable byte", () => {
+    const image = buildImage(FLAT_PROFILE, {
+      runtime: runtime.bytes,
+      code: upTo(0x10000),
+      designatedStart: from,
+    });
+    expect(image.bytes.length).toBe(0x10000);
+  });
+
+  it("rejects an image one byte past the address space", () => {
+    expect(() =>
+      buildImage(FLAT_PROFILE, {
+        runtime: runtime.bytes,
+        code: upTo(0x10001),
+        designatedStart: from,
+      }),
+    ).toThrow(ImageError);
+  });
+
+  it("counts the code, not only the runtime", () => {
+    // Review finding 31: the runtime alone fits at every origin, so an image
+    // could exceed the address space entirely through its code.
+    expect(FLAT_PROFILE.origin + runtime.bytes.length).toBeLessThan(0x10000);
+    expect(() =>
+      buildImage(FLAT_PROFILE, {
+        runtime: runtime.bytes,
+        code: new Uint8Array(0x10000),
+        designatedStart: from,
+      }),
+    ).toThrow(/bytes of code/);
+  });
+
+  it("accepts a designated start on the last byte of the code", () => {
+    const image = buildImage(FLAT_PROFILE, {
+      runtime: runtime.bytes,
+      code: code(16),
+      designatedStart: from + 15,
+    });
+    expect(image.bytes[1] | (image.bytes[2] << 8)).toBe(from + 15);
+  });
+
+  it("rejects a designated start one byte past the code", () => {
+    expect(() =>
+      buildImage(FLAT_PROFILE, {
+        runtime: runtime.bytes,
+        code: code(16),
+        designatedStart: from + 16,
+      }),
+    ).toThrow(/outside the code/);
+  });
+
+  it("rejects a designated start below the code", () => {
+    expect(() =>
+      buildImage(FLAT_PROFILE, {
+        runtime: runtime.bytes,
+        code: code(16),
+        designatedStart: from - 1,
+      }),
+    ).toThrow(/outside the code/);
+  });
+
+  it("rejects a designated start that is not a sixteen-bit address", () => {
+    // Above 65,535 the JP operand silently kept the low two bytes.
+    for (const start of [0x10000, -1, 1.5]) {
+      expect(() =>
+        buildImage(FLAT_PROFILE, {
+          runtime: runtime.bytes,
+          code: code(16),
+          designatedStart: start,
+        }),
+      ).toThrow(/sixteen-bit address/);
+    }
+  });
+
+  it("applies the same limits to a hosted profile", () => {
+    const hosted = { ...TEC1_PROFILE, name: "hosted-ports", services: "ports" } as const;
+    const hostedRuntime = buildRuntimeImage(ASSEMBLY, hosted);
+    const hostedFrom = codeOrigin(hosted, hostedRuntime.bytes.length);
+
+    expect(
+      buildImage(hosted, {
+        runtime: hostedRuntime.bytes,
+        code: code(0x10000 - hostedFrom),
+        designatedStart: hostedFrom,
+      }).bytes.length,
+    ).toBe(0x10000 - hosted.origin);
+
+    expect(() =>
+      buildImage(hosted, {
+        runtime: hostedRuntime.bytes,
+        code: code(0x10000 - hostedFrom + 1),
+        designatedStart: hostedFrom,
+      }),
+    ).toThrow(ImageError);
+  });
+
+  it("rejects an image with no code", () => {
+    expect(() =>
+      buildImage(FLAT_PROFILE, {
+        runtime: runtime.bytes,
+        code: new Uint8Array(0),
+        designatedStart: from,
+      }),
+    ).toThrow(/no code/);
   });
 });
 

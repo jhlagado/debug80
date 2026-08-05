@@ -76,6 +76,11 @@ describe("every opcode constant in the source is the instruction it is named for
     opStoreAToDe: "LD (DE),A",
     opLoadAFromL: "LD A,L",
     opLoadLFromA: "LD L,A",
+    opLoadAFromH: "LD A,H",
+    opLoadHFromA: "LD H,A",
+    opOrD: "OR D",
+    opAndD: "AND D",
+    opComplement: "CPL",
     opOrE: "OR E",
     opAndE: "AND E",
     opXorImmediate: "XOR $01",
@@ -130,6 +135,6 @@ describe("the lowering table agrees with the emitters in the source", () => {
   it("admits exactly which shapes are not read from the source", () => {
     const names = LOWERING.map(displayName);
     for (const admitted of NOT_EXTRACTED) expect(names).toContain(admitted);
-    expect(NOT_EXTRACTED).toHaveLength(6);
+    expect(NOT_EXTRACTED).toHaveLength(8);
   });
 });

@@ -42,9 +42,12 @@ allocation state has to agree between the layout and emission passes.
 | `a + b` | `ADD HL,DE` | 1 |
 | `a - b` | `EX DE,HL` / `OR A` / `SBC HL,DE` | 4 |
 | `-a`, computed operand | `EX DE,HL` / `LD HL,0` / `OR A` / `SBC HL,DE` | 7 |
-| `a or b`, Boolean operands | `LD A,L` / `OR E` / `LD L,A` / `LD H,0` | 5 |
-| `a and b`, Boolean operands | `LD A,L` / `AND E` / `LD L,A` / `LD H,0` | 5 |
+| `a or b`, Boolean — the right operand is skipped when the left is true | `LD A,L` / `OR H` / `JP NZ,nn` | 5 |
+| `a and b`, Boolean — the right operand is skipped when the left is false | `LD A,L` / `OR H` / `JP Z,nn` | 5 |
 | `not a`, Boolean operand | `LD A,L` / `XOR 1` / `LD L,A` / `LD H,0` | 6 |
+| `a and b`, integer operands — bitwise, both evaluated | `LD A,L` / `AND E` / `LD L,A` / `LD A,H` / `AND D` / `LD H,A` | 6 |
+| `a or b`, integer operands — bitwise, both evaluated | `LD A,L` / `OR E` / `LD L,A` / `LD A,H` / `OR D` / `LD H,A` | 6 |
+| `not a`, integer operand — bitwise complement | `LD A,L` / `CPL` / `LD L,A` / `LD A,H` / `CPL` / `LD H,A` | 6 |
 | `a * b`, `a / b`, every computed comparison | `CALL nn` | 3 |
 <!-- /generated -->
 

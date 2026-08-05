@@ -7,3 +7,4 @@ export * from "./image.js";
 export * from "./lowering-extract.js";
 export * from "./lowering-manifest.js";
 export * from "./lowering-doc.js";
+export * from "./nucleus-manifest.js";

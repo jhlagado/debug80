@@ -248,6 +248,7 @@ allocates, constant arrays are bytes in the image itself.
 | `symbolAddress` | symbols.lafy | 1280 |
 | `symbolValue` | symbols.lafy | 1280 |
 | `symbolLength` | symbols.lafy | 1280 |
+| `symbolEnum` | symbols.lafy | 1280 |
 | `labelAddress` | statement.lafy | 1024 |
 | `nameLength` | tokenizer.lafy | 640 |
 | `symbolClass` | symbols.lafy | 640 |
@@ -256,11 +257,11 @@ allocates, constant arrays are bytes in the image itself.
 | `symbolDepth` | symbols.lafy | 640 |
 | `bucket` | tokenizer.lafy | 512 |
 | `spelling` | tokenizer.lafy | 64 |
-| `keywordName` | tokenizer.lafy | 52 |
+| `keywordName` | tokenizer.lafy | 48 |
 | `helperAddress` | expression.lafy | 28 |
 | `loopBreakLabel` | statement.lafy | 16 |
 | `loopContinueLabel` | statement.lafy | 16 |
-| **Total** | | **18736** |
+| **Total** | | **20012** |
 
 **Constant arrays** — bytes in the image itself.
 
@@ -268,14 +269,16 @@ allocates, constant arrays are bytes in the image itself.
 | --- | --- | --- |
 | `runtimeImage` | runtime.lafy | 262 |
 | `characterClass` | tokenizer.lafy | 256 |
-| `keywordText` | tokenizer.lafy | 103 |
-| `keywordStart` | tokenizer.lafy | 52 |
+| `keywordText` | tokenizer.lafy | 95 |
+| `keywordStart` | tokenizer.lafy | 48 |
 | `runtimeAddress` | runtime.lafy | 28 |
-| `keywordSize` | tokenizer.lafy | 26 |
+| `keywordSize` | tokenizer.lafy | 24 |
 | `typeText` | statement.lafy | 15 |
+| `binaryPrecedence` | expression.lafy | 13 |
+| `punctOperator` | expression.lafy | 10 |
 | `typeTextStart` | statement.lafy | 8 |
 | `typeTextSize` | statement.lafy | 4 |
-| **Total** | | **754** |
+| **Total** | | **763** |
 <!-- /generated -->
 
 Three sizes were wrong before this was measured, and two would have stopped
@@ -361,6 +364,13 @@ dynamic index carries one, and Candlemoth is index-heavy, so several
 hundred sites at a dozen bytes each.
 
 ## Phases
+
+**`docs/bootstrap-ladder.md` supersedes this sequence.** The seed targets the
+nucleus rather than level 0, the fixpoint arrives at the first generation
+rather than the last phase, and the correctness burden is carried per rung
+rather than in one phase. The machine, the memory model, the budget
+accounting, the three-pass architecture and the fixpoint mechanics below are
+unchanged and remain authoritative.
 
 Phases are vertical slices, not layers. Nothing waits for a layer below it
 to be complete.

@@ -405,6 +405,15 @@ records the source evidence; the decision itself remains open.
 
 ### 18. The parser cannot parse Candlemoth's own source
 
+**Status:** Resolved for every construct the source contains. Calls and
+conversions in expressions reach `referenceCallOrConversion`, which
+distinguishes them by the symbol's class without a second token; `parseEnum`
+reads enumerations and gives each member an ordinal and its enum's identity;
+`parseSelect` reads one-constant cases; `parseArrayLiteral` places a `const`
+array's bytes where the declaration sits, so the array's storage is those
+image bytes; and integer `and`/`or` are parsed and lowered. A survey of the
+four files finds no construct without a parser path.
+
 **Status:** Open — blocking.
 
 **Evidence.** `parseUnit` accepts forward routines, routines and the statement
@@ -427,8 +436,14 @@ end of input with no lexical, expression, statement or symbol fault.
 
 ### 19. Boolean operators do not short-circuit, and integer word operators are absent
 
-**Status:** Open — blocking semantic error. This reopens the Boolean part of
-finding 13.
+**Status:** Resolved — Boolean `and` and `or` lower through a conditional
+branch around the right operand, which `skipDisjunct` and `skipConjunct`
+suppress emission for when the left operand already settles the answer. A
+Boolean is 0 or 1, so the short-circuited left operand is already the result
+and no combining instruction is emitted at all; `emitBooleanOr` and
+`emitBooleanAnd` are gone. Integer `and`, `or` and `not` are eager and bitwise
+through `emitWordAnd`, `emitWordOr` and `emitWordNot`, with result types from
+`unifyTypes`.
 
 **Evidence.** `parseOr` and `parseAnd` parse and emit the right operand before
 examining the left value, then combine computed operands with an eager byte
@@ -448,7 +463,14 @@ as Candlemoth's integer mask expression.
 
 ### 20. Re-entering the first forward routine removes later declarations
 
-**Status:** Open — blocking symbol-table error.
+**Status:** Resolved — the table has two regions that never interleave.
+Persistent slots (module-level names, subroutines, every subroutine's
+parameters) run to `symbolCount`, which only ever grows. Transient locals run
+from `localFrom` to `localTop` and sit above every persistent slot, so leaving
+a body drops them without moving `symbolCount`. `findSymbol` scans locals,
+then the current routine's parameters, then module-level names, skipping
+depth-one slots in the third scan — which is what keeps one routine's
+parameter names out of another's body.
 
 **Evidence.** A forward declaration stores its parameter slots immediately
 after its routine slot. When the later body calls `reenterLocals`, `bodyBase`
@@ -471,7 +493,11 @@ two forwards followed by their bodies in declaration order and reverse order.
 
 ### 21. Local declarations are accepted after statements and inside blocks
 
-**Status:** Open — conformance error.
+**Status:** Resolved — `parseDeclarationPrefix` reads every declaration
+directly after the routine header and is the only place that reads one.
+`parseStatement` reports `stmtFaultDeclarationAfterStatement` for `var` and
+`const`, so a declaration after a statement or inside an `if`, `while`, `for`
+or `select` body is rejected.
 
 **Evidence.** Finding 1 correctly states that routine declarations precede
 every statement. `parseStatement` nevertheless accepts `var` and `const`, and
@@ -488,7 +514,11 @@ inside each block form.
 
 ### 22. The fixed-storage total is incomplete and mixes writable and constant data
 
-**Status:** Open — budget correction required.
+**Status:** Resolved by the repair for finding 30. `test/capacity.test.ts`
+generates both totals from the declarations and writes the per-array table
+into `bootstrap-plan.md`. The character-class table is on the constant side
+and the helper-address and loop-stack arrays on the writable side, which is
+what the earlier figure got wrong.
 
 **Evidence.** The current declarations contain 17,584 bytes of writable array
 storage: 7,284 in the tokenizer, 28 helper-address bytes, 6,144 symbol bytes
@@ -509,7 +539,13 @@ the 64K map, not as a non-competing budget.
 
 ### 23. Exact folding is also applied to typed arithmetic
 
-**Status:** Open — blocking semantic error.
+**Status:** Resolved — magnitude-and-sign evaluation runs only while the
+unified type is `typeExact`. A typed operation folds through `foldTypedAdd`,
+`foldTypedMultiply` or `foldTypedDivide`, wrapping in sixteen bits and
+producing the same bit pattern the emitted form would; `patternOf` converts an
+exact operand joining a typed operation and faults if it does not fit. Unary
+minus now rejects `u16` and `boolean`, and `bothBoolean` lets `=` and `<>`
+compare Booleans while every ordering on them is rejected.
 
 **Evidence.** Every folded addition, subtraction, multiplication and division
 runs through the magnitude-and-sign exact routines and then through
@@ -720,7 +756,12 @@ each missing self-hosting form and the code generator land.
 
 ### 31. Image construction does not enforce the address-space contract
 
-**Status:** Open — correctness boundary missing.
+**Status:** Resolved — `buildImage` validates the complete end address
+including the code, that `designatedStart` is a sixteen-bit address, and that
+it lies inside the code interval, reporting `ImageError` for each.
+`test/image.test.ts` exercises both an owning and a hosted profile at the
+exact upper boundary and one byte past it, and both ends of the code
+interval.
 
 **Evidence.** `buildImage` checks that the runtime fits after the profile
 origin, but it does not include the compiled code in that check. A typed array
@@ -740,7 +781,11 @@ profiles at the exact upper boundary and one byte beyond it.
 
 ### 32. Unknown array element types are counted as one byte
 
-**Status:** Open — generated capacity can undercount future source.
+**Status:** Resolved — `widthOf` derives an enum's width from its declared
+representation and reports `CapacityError` for every other unknown element
+type. Fixtures prove an enum over `u16` counts four bytes per element, and
+that a record array, a misspelled scalar and an unresolvable array length all
+fail generation rather than entering the table.
 
 **Evidence.** `capacity.test.ts` uses `WIDTH[type] ?? 1`. That default correctly
 counts the current u8-backed enum arrays, but it also assigns one byte to every
