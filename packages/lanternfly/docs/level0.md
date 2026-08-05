@@ -87,9 +87,13 @@ parseExpression(write exprPool[depth])
 depth = depth - 1
 ```
 
-This is *the* convention, not one option among several. The alternative —
-module-level globals clobbered by the next nested call — produces the
-hardest bugs available in this project.
+**Measured correction.** Writing the expression parser showed this is not
+needed where the results are scalars. `parseAdditive` holds a type, a
+constant flag and a constant value in module-level variables, and a caller
+about to recurse copies them into ordinary locals first; save-around-call
+preserves those locals, which is the protocol's own job. The pool is
+required only when a result is an **aggregate**, which no part of an
+expression compiler produces. It stays available and stops being mandatory.
 
 And `static var` is shared across recursive activations, so giving a
 routine a scratch record is silently wrong under recursion. Candlemoth
