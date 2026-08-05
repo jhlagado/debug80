@@ -28,7 +28,7 @@ enum SymbolKind as u8
     symbolParameter
 end
 
-const symbolLimit as u16 = 512
+const symbolLimit as u16 = 640
 
 var symbolName as u16[symbolLimit]
 var symbolClass as SymbolKind[symbolLimit]

@@ -1,19 +1,39 @@
 /**
- * Size reporting and image comparison. The budget report exists from the
- * first day so that the twenty-four kilobyte estimate is a number on every
- * run rather than something checked once at the end.
+ * Size reporting and image comparison.
+ *
+ * The size report exists from the first day so that the compiler's footprint
+ * is a number on every run rather than something checked once at the end.
+ *
+ * It reports; it does not gate. The compiler is a loaded program rather than
+ * a ROM resident — see `docs/abstract-machine.md` — so its budget is the free
+ * memory of whatever loads it rather than the size of a particular window.
+ * The reference figure below exists to give the number a scale, and nothing
+ * fails when a build exceeds it.
  */
 
 export interface SizeReport {
   readonly label: string;
   readonly bytes: number;
   readonly origin: number;
-  /** Fraction of the level-0 budget this consumes. */
+  /** Fraction of the reference scale this consumes. Reported, not enforced. */
   readonly budgetFraction: number;
 }
 
-/** The current estimate, not a measurement. See `bootstrap-plan.md`. */
-export const LEVEL0_BUDGET_BYTES = 24 * 1024;
+/**
+ * A reference scale for the fraction reported below, not a limit.
+ *
+ * Thirty-two kilobytes is half the address space, which is the point at which
+ * a compiler and the program it is building stop fitting together comfortably
+ * on a machine with no bulk storage. It replaces the sixteen-kilobyte
+ * expansion window, which was never the compiler's constraint, and the
+ * twenty-four-kilobyte estimate, which was a guess at its size rather than a
+ * budget it had to meet.
+ */
+export const LEVEL0_REFERENCE_BYTES = 32 * 1024;
+
+/** @deprecated Use {@link LEVEL0_REFERENCE_BYTES}. Retained so existing
+ * callers keep reporting rather than break. */
+export const LEVEL0_BUDGET_BYTES = LEVEL0_REFERENCE_BYTES;
 
 export function sizeReport(
   label: string,
@@ -24,7 +44,7 @@ export function sizeReport(
     label,
     bytes: bytes.length,
     origin,
-    budgetFraction: bytes.length / LEVEL0_BUDGET_BYTES,
+    budgetFraction: bytes.length / LEVEL0_REFERENCE_BYTES,
   };
 }
 
@@ -32,7 +52,7 @@ export function formatSizeReport(report: SizeReport): string {
   const percent = (report.budgetFraction * 100).toFixed(1);
   return `${report.label}: ${report.bytes} bytes at 0x${report.origin
     .toString(16)
-    .padStart(4, "0")} (${percent}% of budget)`;
+    .padStart(4, "0")} (${percent}% of the 32K reference)`;
 }
 
 export interface ByteDifference {

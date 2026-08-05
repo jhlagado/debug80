@@ -19,12 +19,17 @@
 // program — reset it per subroutine and emission reads the addresses of
 // whichever subroutine layout happened to finish with.
 //
-// Two thousand labels is four kilobytes of RAM, which is the largest single
-// table in the compiler. It is the price of a streaming output and worth
-// stating plainly: a compiler that could seek in its own output would spend
-// a two-entry stack per open construct instead.
+// The size is measured rather than guessed. Candlemoth's own source needs 416
+// labels — 297 conditionals, 50 else arms, 18 while loops at two each and 11
+// counted loops at three. Five hundred and twelve leaves 23% of headroom and
+// costs one kilobyte, where the two thousand this started at cost four for no
+// reason anyone had checked.
+//
+// A kilobyte is still the price of a streaming output: a compiler that could
+// seek in its own object code would spend a two-entry stack per open construct
+// instead of a table sized by the whole program.
 
-const labelLimit as u16 = 2048
+const labelLimit as u16 = 512
 
 var labelAddress as u16[labelLimit]
 var labelCount as u16 = 0
@@ -47,6 +52,7 @@ enum StatementFault as u8
     stmtFaultTooManyArguments
     stmtFaultForwardDisagreement
     stmtFaultWrongArgumentCount
+    stmtFaultRuntimeMisplaced
 end
 
 var stmtFault as StatementFault = stmtFaultNone

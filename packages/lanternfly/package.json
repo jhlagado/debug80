@@ -8,7 +8,8 @@
   "scripts": {
     "typecheck": "tsc --noEmit",
     "pretest": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/debug80-runtime",
-    "test": "vitest run"
+    "test": "vitest run",
+    "generate:runtime": "UPDATE_RUNTIME=1 vitest run test/runtime-image.test.ts"
   },
   "dependencies": {
     "@jhlagado/azm": "^0.3.8",

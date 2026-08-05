@@ -326,18 +326,19 @@ every comparison in an expression grammar — is therefore a call to a runtime
 routine. Multiply and divide are calls for the plainer reason that the
 machine has neither.
 
-That makes thirteen runtime routines before the compiler emits a single
+That makes fourteen runtime routines before the compiler emits a single
 statement: multiply, unsigned divide, signed divide, equality, inequality,
-and four orderings in each signedness. The signed and unsigned orderings
-differ because a sixteen-bit subtract leaves the unsigned answer in the carry
-and the signed answer in the sign against overflow, so one routine cannot
-serve both.
+four orderings in each signedness, and the subscript bounds check. The signed
+and unsigned orderings differ because a sixteen-bit subtract leaves the
+unsigned answer in the carry and the signed answer in the sign against
+overflow, so one routine cannot serve both.
 
 A folded comparison costs nothing, and `foldComparison` takes that path
 whenever both operands fold. The count matters for the twenty-four-kilobyte
-estimate: thirteen small routines are perhaps three hundred bytes, and the
+estimate: fourteen small routines are perhaps three hundred bytes, and the
 call sites are three bytes each against the one or two bytes an operation
-would take inline on a machine that had one.
+would take inline on a machine that had one. `docs/level0-lowering.md` gives
+each routine's register contract and its ordinal in the address table.
 
 ## Statement-parser findings
 
@@ -431,6 +432,86 @@ and exact-layout rules out of the seed. The parser must first implement the
 declared subset, and the code generator is the last place records could earn
 their inclusion.
 
+### 26. The declaration parser cannot read Candlemoth's own source
+
+Counting constructs against the memory map turned up a bigger gap than the one
+it was looking for. Candlemoth's source contains twelve `enum` declarations
+with 128 members between them, and four `select` statements with 25 `case`
+arms. The declaration and statement parser handles neither: it reads `var`,
+`const`, `if`, `while`, `for`, `return`, `exit`, `continue`, `sub` and
+`forward sub`, and nothing else.
+
+So the front end as written cannot parse the file it is written in. That was
+invisible while the parser was judged against the specification, and obvious
+the moment it was counted against the source it has to read. `record` is
+absent too, which is consistent with finding 24 — no record is declared
+anywhere — but `enum` and `select` are load-bearing and have to be written.
+
+The lesson is the one finding 20 recorded about `for … until`: the compiler's
+own source is the specification of what level 0 must accept, and reading it is
+cheaper than reasoning about it.
+
+### 27. Three of the five tables were the wrong size, two of them fatally
+
+Sizes chosen by eye, divided into the space they have to fit for the first
+time:
+
+| Table | Was | Needed | Now |
+| --- | --- | --- | --- |
+| Name arena | 4,096 bytes | 5,186 | 6,144 |
+| Name slots | 512 | 433 distinct identifiers | 640 |
+| Symbol slots | 512 | 471 at peak | 640 |
+| Labels | 2,048 | 416 | 512 |
+| Character class | 256 | 256 | 256 |
+
+The arena was short by a quarter, so Candlemoth compiling Candlemoth would
+have stopped with `faultArenaFull` — a failure that reads as a compiler bug
+and is a constant. The label table was four times too large, at three
+kilobytes of a twenty-four kilobyte RAM area.
+
+Both are the same error: a number picked because it looked generous, never
+divided into the space it had to fit. The 416 labels are 297 conditionals, 50
+else arms, 18 while loops at two each and 11 counted loops at three.
+
+### 25. The runtime image cannot be relocatable, and finding out cost a rewrite
+
+The plan calls for Candlemoth to plant the runtime as a placed constant byte
+array generated from the assembly source. The obvious form of that is a blob
+assembled at origin zero plus a table of offsets, with the compiler adding
+wherever it puts the array. That form is wrong, and it assembles and passes a
+byte-comparison test without complaint.
+
+The routines call each other, this machine's only `CALL` is absolute, and the
+fourteen comparison routines share two exits reached by absolute `JP`. So the
+bytes are correct at exactly one origin, and at any other they run their own
+jumps into program code. Nothing in the image says so — the failure is a
+comparison returning a plausible wrong answer, which the fixpoint would
+surface a long way from the cause.
+
+The first generated image was assembled at `$0003`, and `placeRuntime` checked
+the address it was given rather than adding a base to an offset. Address
+`$0000` held the three-byte jump to the designated start, which was why the
+first origin was three.
+
+Two things generalise. This runtime is not position-independent under its
+chosen absolute calls and shared jumps, so changing the origin requires
+regeneration rather than relocation. A generated artifact also needs a test
+that *runs* it where it will actually sit: the byte-comparison test was green
+throughout, because the bytes matched a generator that was producing the wrong
+bytes.
+
+**The first choice of origin was wrong for a second reason.** `$0003` is
+directly after the entry jump, and it covers `RST 08` through `RST 38`, the
+IM 1 interrupt entry, and the NMI entry at `$0066`. The bootstrap machine
+raises no interrupt and executes no `RST`, so every test passed. Page zero is
+now reserved whole and code starts at `$0100`, where CP/M starts it.
+
+The 253 bytes that leaves unused are a real cost against a page-sized budget,
+and they are not a saving anywhere: on a target that uses restarts or
+interrupts those bytes are the vectors, and on one that does not they are
+still the addresses the processor jumps to. A compiler whose output cannot be
+run on a machine with interrupts is not cheaper, it is narrower.
+
 ## Sizes, for the Phase 3 comparison
 
 Tokenizer: 692 lines, of which the character-class table is 65 and the
@@ -439,16 +520,19 @@ being exact arithmetic, comparison folding and the operation emission the
 second draft recorded without emitting. Symbol table: 378 lines. Declaration
 and statement parser: 962 lines. The draft is 3,150 lines in total.
 
-The declarations currently contain 17,584 bytes of writable arrays: 7,284 in
-the tokenizer, 28 for helper addresses, 6,144 in the symbol table, and 4,128
-for labels and loop stacks. Constant arrays occupy another 464 bytes in the
-image. Those figures still exclude scalar globals, static frames, recursive
-save-around state, the runtime stack and the source window.
+The declarations contain 18,736 bytes of writable arrays: 9,972 in the
+tokenizer, 28 for helper addresses, 7,680 in the symbol table, and 1,056 for
+labels and loop stacks. Constant arrays occupy another 754 bytes in the image,
+of which 290 are the generated runtime. Those figures still exclude scalar
+globals, static frames, recursive save-around state, the runtime stack and the
+source window.
 
-The twenty-four-kilobyte code estimate and the writable-static count are
-separate accounting categories, but they compete for the same flat 64K address
-space. A generated memory map must replace these source-level counts before
-the feasibility claim is settled.
+The two figures answer to different budgets rather than competing for one
+address space. Writable arrays live in the RAM between `$2000` and `$8000` —
+24K, shared with the object code once it is loaded back to run and with the
+user's own data — so 18,736 bytes is 76% of it. Code lives in the 16K window
+at `$8000` where the compiler resides. `docs/bootstrap-plan.md` carries both,
+and records that the code estimate exceeds its window at the midpoint.
 
-No compiled size exists yet. The character-class table alone is 256 bytes of
-the image, or 1% of the twenty-four-kilobyte estimate, before any code.
+A generated memory map must still replace these source-level counts before the
+feasibility claim is settled. No compiled size exists yet.

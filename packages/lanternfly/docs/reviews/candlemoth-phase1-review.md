@@ -543,3 +543,169 @@ Commit this source as an empirical front-end draft. Phase 1 becomes complete
 when the parser accepts the complete concatenated source, the symbol table
 survives its forward-declaration prologue, the operator semantics match the
 specification, and the resulting program has been compiled and exercised.
+
+## Target-machine release gate
+
+The runtime work establishes a useful, tested baseline for the flat port
+profile. Fourteen helpers occupy 262 bytes, their generated Lanternfly image
+matches the assembly source, and the arithmetic, comparison and trap tests run
+successfully on the bootstrap machine. The following findings limit that
+result to the flat profile. They do not invalidate the runtime routines.
+
+### 24. The vector service ABI assigns two meanings to A
+
+**Status:** Open — blocking the hosted profile.
+
+**Evidence.** `abstract-machine.md` assigns the service number to A and also
+assigns the argument byte to A for write and status services. Its vector
+lowering is `LD A, service` followed by `CALL entry`, which necessarily
+replaces the argument. `TargetProfile` also has no service-lowering field,
+although the document defines `services` as one of a profile's three
+properties.
+
+**Consequence.** A hosted compiler cannot call write-object,
+write-diagnostic or set-status under the stated convention. The profile type
+cannot select the documented port and vector lowerings, so the second profile
+is descriptive rather than implementable.
+
+**Smallest credible repair.** Choose one complete calling convention before
+implementing the vector profile. Put the selector in another register, use a
+separate entry for each service, or define another convention that leaves the
+argument intact. Add the service lowering to `TargetProfile` and test all five
+operations through both profiles. Do not add a vector profile test that only
+exercises argument-free reads and rewinds.
+
+### 25. The loaded-program model and the governing plan describe different machines
+
+**Status:** Open — blocking the memory and budget claims.
+
+**Evidence.** `abstract-machine.md` and `report.ts` describe Candlemoth as a
+program loaded into ordinary memory, with source and object streamed rather
+than resident. `bootstrap-plan.md`, the TEC-1 profile comment and finding 25
+still place the compiler in a fixed sixteen-kilobyte expansion window and use
+a separate twenty-four-kilobyte RAM region. The report then measures against
+an unrelated thirty-two-kilobyte reference. Phase 3 still treats twenty-four
+kilobytes as a code gate.
+
+**Consequence.** There is no single address-space model against which code,
+constants, writable tables and stack can be judged. The relaxed budget may be
+correct, but the current documents cannot establish it because they retain the
+constraint they say was removed.
+
+**Smallest credible repair.** Name one bootstrap host and publish one complete
+memory map for it. If Candlemoth is loaded like a transient compiler, remove
+the expansion-window model and report the selected host's available image and
+working-memory capacities separately. Preserve the old window only as a
+different target profile with its own measured limit.
+
+### 26. Runtime traps bypass the service abstraction
+
+**Status:** Open — blocking the hosted profile.
+
+**Evidence.** The trap paths in `runtime.asm` write directly to ports 03 and
+02. Those instructions implement the flat profile, while the abstract machine
+says all host interaction passes through the selected service lowering. The
+checked-in `runtime.lafy` is also generated only for the flat origin and
+contains absolute internal addresses.
+
+**Consequence.** Bounds and division faults do not work on a vector-service
+host. A target-specific runtime image is expected, but the build currently
+provides no way for Candlemoth to select or include the image for another
+profile.
+
+**Smallest credible repair.** Generate the trap epilogues through the same
+profile service lowering as compiler I/O, then generate and test one runtime
+image per supported profile and origin. Until the vector profile exists, label
+the current generated runtime explicitly as the flat-port runtime.
+
+### 27. Reset-vector ownership is specified but not implemented
+
+**Status:** Open — image contract incomplete.
+
+**Evidence.** The flat profile sets `ownsResetVector` while placing the program
+origin at 0100. `buildRuntimeImage` emits only the runtime at that origin and
+never reads `ownsResetVector`. The page-zero test checks numeric ranges; it
+does not construct or inspect an entry jump. Runtime execution tests install a
+small driver separately and place HALT at address zero.
+
+**Consequence.** The implementation does not yet establish whether the output
+is one contiguous image beginning at zero, one image beginning at 0100 plus a
+separate page-zero segment, or a host-loaded image whose entry point is
+metadata. That ambiguity affects file shape, size reporting and the meaning of
+`origin`.
+
+**Smallest credible repair.** Define the emitted-image contract explicitly,
+implement it in one image builder, and test the actual entry bytes for an
+owned-vector profile and their absence for a monitor-owned profile. Replace
+the current range-only page-zero test with that behavioural check.
+
+### 28. The lowering tests do not detect drift in the source or document
+
+**Status:** Open — verification claim is too strong.
+
+**Evidence.** `opcodes.test.ts` contains its own table of names, mnemonics and
+bytes. `lowering.test.ts` contains its own list of routine labels, mnemonics
+and bytes. Neither test reads the opcode constants or emitter routines from
+the Lanternfly source, and neither reads `level0-lowering.md`.
+
+**Consequence.** Changing an emitter or the document leaves both tests green.
+The tests prove that the instruction sequences copied into the tests assemble
+to the bytes also copied into the tests; they do not pin the three
+representations to one another.
+
+**Smallest credible repair.** Put the lowering vectors in one machine-readable
+manifest and generate the document table and test cases from it, or execute
+the real emitter and compare its output with independently assembled vectors.
+Until then, describe these as opcode and lowering-vector tests, not drift
+tests.
+
+### 29. The lowering contract conflicts on jumps and recursive calls
+
+**Status:** Open — blocking a canonical seed lowering.
+
+**Evidence.** `level0-lowering.md` requires an absolute JP for every branch,
+while `bootstrap-plan.md` still calls for backward JR when the displacement
+fits. The lowering document also says recursive save-around-call is the
+callee's business, while the source, findings and plan assign it to the caller
+at the recursive call site. The stated reason for rejecting JR says a changed
+displacement changes instruction length, but a JR instruction remains two
+bytes; reachability is the real question.
+
+**Consequence.** Two seed writers following the governing documents can emit
+different sizes and put recursive preservation on opposite sides of the
+call. Layout and emission agreement cannot compensate for an unsettled
+canonical lowering.
+
+**Smallest credible repair.** Retain the simple all-JP policy if predictability
+is worth the byte cost, but state the reachability and single-shape rationale
+accurately and remove the contrary JR rule. Assign save-around-call to the
+caller protocol consistently, then pin one recursive cycle from source call
+through emitted bytes.
+
+### 30. The memory report is misclassified and measured against incomplete source
+
+**Status:** Open — budget correction required.
+
+**Evidence.** The declarations currently account for 18,736 writable array
+bytes and 754 constant bytes. The plan's 18,932-byte working-RAM total includes
+a constant table, omits the helper-address and loop-stack arrays, and therefore
+does not represent either category. The measured capacities also cover a
+front end that still lacks several forms used by Candlemoth itself.
+
+**Consequence.** The current table is not a reliable feasibility statement,
+and its remaining headroom may shrink when the missing grammar and code
+generator are added.
+
+**Smallest credible repair.** Generate the category totals from declarations,
+label them as measurements of the current source, and report headroom against
+the selected host map from finding 25. Re-run the capacity measurement after
+each missing self-hosting form and the code generator land.
+
+## Current release decision
+
+Commit the runtime and target-machine work as a reviewed draft, not as a closed
+machine model. The flat-profile runtime is a tested advance. Findings 24 to 30
+must close before the vector profile, loaded-program memory claim or
+machine-checked lowering can serve as Phase 2 contracts. Findings 18 to 23
+remain open independently and still prevent the present front end from being
+described as complete.

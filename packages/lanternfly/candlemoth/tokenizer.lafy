@@ -183,8 +183,8 @@ var faultLine as u16 = 0
 
 // Identifiers are interned. They are not offsets into the source, which
 // streams through a one-byte window and holds no stable position.
-const arenaBytes as u16 = 4096
-const nameLimit as u16 = 512
+const arenaBytes as u16 = 6144
+const nameLimit as u16 = 640
 const bucketCount as u16 = 256
 const bucketMask as u16 = 255
 const spellingLimit as u8 = 64

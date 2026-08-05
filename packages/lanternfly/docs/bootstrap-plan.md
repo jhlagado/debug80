@@ -11,11 +11,11 @@ call graph, which forward declarations cannot; and seed–Candlemoth byte equali
 was never needed and buying it would have cost the independence the
 validation rests on.
 
-Every quantity here — the budget, the RST saving, the source size — is an
-estimate unmeasured from generated Lanternfly, and Phase 3 replaces them
+The budget, the RST saving and the source size are estimates unmeasured from
+generated Lanternfly, and Phase 3 replaces them
 with results. The three measured so far are marked as such.
 
-## What already exists
+## Existing components
 
 `createZ80Runtime(program, entry, ioHandlers, { romRanges })` in
 `packages/debug80-runtime/src/z80/runtime.ts` — flat 64K, steppable CPU,
@@ -65,8 +65,8 @@ So three passes, each over a rewound source:
    that every address agrees with what layout recorded. **Only emission
    calls `writeCodeByte`.**
 
-The three are referred to by name throughout — analysis, layout, emission —
-rather than by number, since the numbering has already changed once.
+The plan refers to the three passes by name: analysis, layout and emission.
+Their numbering has already changed once.
 
 The third pass's assertion is the valuable part: any divergence in length
 between layout and emission is caught where it happens rather than
@@ -94,7 +94,7 @@ different semantics implies a compatibility that does not exist, so the
 bootstrap operation is `readSourceByte`.
 
 `0xFF` is **framing and is never delivered as source data**. The transport
-producer — the test module, or whatever feeds a real machine — validates
+producer, whether the test module or the code that feeds a real machine, validates
 that the source is ASCII before delivery and appends the terminator. That
 removes an ambiguity the earlier draft carried: a compiler cannot both treat
 `0xFF` as the end and diagnose an embedded `0xFF` as bad source, because at
@@ -148,7 +148,7 @@ diagnostic.
 The first draft said identifiers are byte ranges into the source buffer
 *and* that the source buffer is a sliding window. Those contradict:
 offsets into a moving window are not stable. Candlemoth's own source will
-be several thousand lines — on the order of 100K of text — so it cannot be
+be several thousand lines, on the order of 100,000 bytes of text, so it cannot be
 resident at all.
 
 - **Source streams** through a window of a few hundred bytes, enough for
@@ -185,8 +185,71 @@ resident at all.
 
 ## The budget
 
-**Sixteen kilobytes is not achievable and should be abandoned as a
-target.** Two independent estimates agree. Bottom-up, summing tokenizer,
+### The map the budget is against
+
+```
+0000..1FFF   monitor, and page zero: reset, restarts, NMI     8K
+2000..7FFF   RAM: user code, object code, user data          24K
+8000..BFFF   the compiler                                    16K
+C000..FFFF   shadow ROM                                      16K
+```
+
+Bulk storage is an SD card, so a compiler running here streams its source in
+and its object code out rather than holding either resident.
+
+That gives two budgets, not one, and they are unrelated:
+
+- **Code: sixteen kilobytes**, the window at `$8000`. This is the figure that
+  was withdrawn earlier as unreal. It is not unreal — it is the size of the
+  expansion ROM, a physical page boundary rather than a target anyone chose.
+  The TEC-1 banks ROM, so exceeding it costs a bank switch rather than
+  failing, but one page is where a compiler that needs no packaging sits.
+- **Working RAM: twenty-four kilobytes**, `$2000` to `$8000`, shared with the
+  object code once it is loaded back to run and with the user's own data.
+
+None of this binds the bootstrap machine, which is a generic Z80 with a flat
+64K and the standard `IN` and `OUT`. A target profile carries the origin and
+whether the compiler owns the reset vector; nothing else in the lowering table
+moves between the two.
+
+### Working RAM, measured
+
+Counted from the declarations, and re-sized against Candlemoth's own source
+rather than guessed:
+
+| Table | Bytes | Sized by |
+| --- | --- | --- |
+| Character class | 256 | fixed, 256 entries |
+| Name arena | 6,144 | 433 distinct identifiers need 5,186 spelling bytes |
+| Interning tables | 3,828 | 640 name slots against 433 in use |
+| Symbol table, eight arrays | 7,680 | 640 slots against 471 at peak |
+| Label table | 1,024 | 512 labels against 416 needed |
+| **Total** | **18,932** | **18.5K of the 24K** |
+
+Three of those were wrong before the measurement, and two would have stopped
+the compiler compiling itself: the arena was 4,096 bytes against 5,186 needed,
+and the label table was 2,048 slots against 416 — four times too large, at
+three kilobytes of RAM nobody had checked.
+
+**Eighteen and a half kilobytes of twenty-four leaves five and a half.** The
+compiler's own static frames account for about half a kilobyte of that, source
+and object code stream through ports, and what remains is headroom against a
+program larger than Candlemoth. The tables cannot grow much, and every future
+one is now priced against that five and a half rather than against a machine
+assumed to be roomy.
+
+### The code estimate, and where it stands against sixteen kilobytes
+
+**The estimate below exceeds the window.** Bottom-up it gives fourteen to
+twenty-four kilobytes with a midpoint near nineteen, against sixteen
+available. That is not a rounding error, and it is the open question this
+section leaves: either the estimate is pessimistic, or level 0 gives up
+something further, or the compiler takes a second bank. It is recorded here
+rather than resolved, because Phase 3's vertical slice replaces the estimate
+with a measurement and there is no point choosing between three options on the
+strength of a guess.
+
+Two independent estimates agree on the range. Bottom-up, summing tokenizer,
 name arena, symbol and type tables, declaration and statement and
 expression parsing, path lowering, call lowering, the emitter, diagnostics
 and helpers, gives fourteen to twenty-four kilobytes with a midpoint near
@@ -205,8 +268,8 @@ that makes the budget itself an estimate.** Narrowing byte arithmetic to
 its destination width turns an eighteen-byte sequence into nine — some 24K
 across roughly two thousand statements — but section 3.1 gives intermediate
 expressions defined types, and truncating early can change a later
-comparison, division or shift. Applying it generally would shrink the
-compiler by altering what programs mean.
+comparison, division or shift. General application would reduce compiler size
+by changing program semantics.
 
 So the **canonical lowering table carries the full-width conforming
 sequence**, and narrowing is applied only where range or modular-arithmetic
@@ -374,7 +437,7 @@ excluded construct. If it accepts a superset, Candlemoth's source can use a
 construct Candlemoth does not implement, and the fixpoint fails at step B
 with a maximally confusing symptom.
 
-Runtime helpers — multiply, divide, comparison — are hand-written in AZM,
+Runtime helpers for multiplication, division and comparison are hand-written in AZM,
 carry register contracts, and are covered by proofs. **The `const u8[N]`
 arrays that Candlemoth emits are generated from that AZM source at build
 time**, so the two copies cannot drift.
@@ -436,16 +499,15 @@ still reproduces it.
 
 ## Conventions outside the language
 
-Includes are handled by **the host concatenating files into one stream**,
+The host handles includes by **concatenating files into one stream**,
 with a side table mapping global line back to file and line for
-diagnostics. Candlemoth implements no include mechanism at all — zero
-compiler bytes, and both implementations agree by construction because
-neither has the feature.
+diagnostics. Candlemoth implements no include mechanism, so the feature costs
+no compiler bytes. Both implementations omit it.
 
 A known-good `candlemoth.bin` is checked in, so a clean build does not
 depend on the seed continuing to work.
 
-## What is not in this plan
+## Excluded scope
 
 Level 1, level 2, tasks, derivations, the books, hardware. The fixpoint is
 the end of it.
