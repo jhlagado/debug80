@@ -42,7 +42,10 @@ multidimensional arrays, opaque address types. `i8` buys only a storage
 width, since its arithmetic results are `i16` anyway.
 
 - **Integer conversions**, `u8(x)` and `u16(x)` and their signed
-  counterparts. The first draft omitted them, which made its own proposed
+  counterparts, **and the checked ordinal conversion** `SomeEnum(x)`, which
+  section 3 already defines: an invalid constant is a compile error and an
+  invalid runtime value raises `F-RANGE`. Omitting it forced a
+  twenty-five-arm `select` in the tokenizer for what one call expresses. The first draft omitted them, which made its own proposed
   workaround unwritable: a compiler narrows constantly, and section 3.1's
   result types mean it must.
 
@@ -50,6 +53,11 @@ Branch displacements are *not* the reason for signed types: a displacement
 is computed in `u16` as `target - pc - 2`, accepted when it is below 128 or
 at or above `0xFF80`, and narrowed. Two lines — but only with a conversion
 operator to narrow with.
+
+**Literals are decimal only.** Hexadecimal, binary and character literals
+are outside level 0, and the seed rejects each with a diagnostic rather than
+accepting what Candlemoth would not. Candlemoth's own source uses decimal
+throughout, including for the character codes its keyword table installs.
 
 **No strings.** Identifiers are interned into a name arena and thereafter
 carried as an offset and a length into it. They are not offsets into the
@@ -140,6 +148,11 @@ its absence would cause an infinite loop.
 
 `if` / `else`, `while`, `for … to` and `for … until`, `select` / `case` /
 `else`, `return`, `exit`, `continue`.
+
+Statements are newline-terminated under the **logical-line rule of section
+2.4**, which level 0 inherits unchanged: a physical newline ends a statement
+except inside parentheses or square brackets, so a long condition spans
+lines by being parenthesised. Level 0 invents no continuation syntax.
 
 `select` matters more than it looks: a tokenizer and a parser are both
 large dispatches. Multi-value cases (`case a, b`) and range cases

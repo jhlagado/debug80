@@ -229,10 +229,9 @@ forward sub hashSpelling() as u16
 forward sub spellingMatches(candidate as u16) as boolean
 forward sub internSpelling() as u16
 forward sub classifyKeyword() as Keyword
-forward sub beginSpelling()
-forward sub addLetter(value as u8)
-forward sub defineKeyword(slot as u16)
 forward sub installKeywords()
+forward sub skipRemainingName()
+forward sub skipRemainingDigits()
 forward sub skipComment()
 forward sub skipBlanks()
 forward sub scanName()
@@ -271,6 +270,31 @@ end
 // division has to be remembered rather than pushed back. `heldSlash` is
 // that memory, and it is the shape a one-byte window forces.
 var heldSlash as boolean = false
+var heldSlashLine as u16 = 1
+
+// Delimiter depth, so a newline inside parentheses or brackets is not a
+// statement boundary. Section 2.4 already defines that rule; level 0
+// inherits it rather than inventing a continuation convention.
+var delimiterDepth as u8 = 0
+
+sub skipRemainingName()
+    var kind as CharClass = classOther
+    while true
+        kind = characterClass[nextByte]
+        if kind <> classLetter then
+            if kind <> classDigit then
+                return
+            end
+        end
+        advance()
+    end
+end
+
+sub skipRemainingDigits()
+    while characterClass[nextByte] = classDigit
+        advance()
+    end
+end
 
 sub skipComment()
     var kind as CharClass = classOther
@@ -300,6 +324,7 @@ sub skipBlanks()
             if nextByte <> 47 then
                 return
             end
+            heldSlashLine = sourceLine
             advance()
             if nextByte <> 47 then
                 heldSlash = true
@@ -326,6 +351,7 @@ sub scanName()
         end
         if spellingLength >= spellingLimit then
             reportFault(faultNameTooLong)
+            skipRemainingName()
             return
         end
         // Case folds here and the original spelling is discarded. A
@@ -356,7 +382,16 @@ sub scanNumber()
         // is no overflow trap to catch it afterwards.
         if accumulated > 6553 then
             reportFault(faultNumberTooLarge)
+            skipRemainingDigits()
             return
+        end
+        if accumulated = 6553 then
+            if digit > 5 then
+                // 65536 through 65539 pass a `> 6553` test and then wrap.
+                reportFault(faultNumberTooLarge)
+                skipRemainingDigits()
+                return
+            end
         end
         accumulated = accumulated * 10 + u16(digit)
         advance()
@@ -373,12 +408,20 @@ sub scanPunct()
     select first
     case 40
         tokenPunct = punctLeftParen
+        delimiterDepth = delimiterDepth + 1
     case 41
         tokenPunct = punctRightParen
+        if delimiterDepth > 0 then
+            delimiterDepth = delimiterDepth - 1
+        end
     case 91
         tokenPunct = punctLeftBracket
+        delimiterDepth = delimiterDepth + 1
     case 93
         tokenPunct = punctRightBracket
+        if delimiterDepth > 0 then
+            delimiterDepth = delimiterDepth - 1
+        end
     case 44
         tokenPunct = punctComma
     case 46
@@ -396,14 +439,18 @@ sub scanPunct()
     case 61
         tokenPunct = punctEqual
     case 60
-        tokenPunct = punctLess
+        // Exclusive, or `<>` followed by `=` consumes three characters and
+        // reports `<=` where the source holds two tokens.
         if nextByte = 62 then
             advance()
             tokenPunct = punctNotEqual
-        end
-        if nextByte = 61 then
-            advance()
-            tokenPunct = punctLessEqual
+        else
+            if nextByte = 61 then
+                advance()
+                tokenPunct = punctLessEqual
+            else
+                tokenPunct = punctLess
+            end
         end
     case 62
         tokenPunct = punctGreater
@@ -427,7 +474,7 @@ sub nextToken()
 
     if heldSlash then
         heldSlash = false
-        tokenLine = sourceLine
+        tokenLine = heldSlashLine
         tokenPunct = punctSlash
         tokenKind = kindPunct
         return
@@ -436,7 +483,7 @@ sub nextToken()
     skipBlanks()
     if heldSlash then
         heldSlash = false
-        tokenLine = sourceLine
+        tokenLine = heldSlashLine
         tokenPunct = punctSlash
         tokenKind = kindPunct
         return
@@ -449,6 +496,13 @@ sub nextToken()
     case classEnd
         tokenKind = kindEnd
     case classNewline
+        if delimiterDepth > 0 then
+            // Inside parentheses or brackets a physical newline continues
+            // the statement, under section 2.4.
+            advance()
+            nextToken()
+            return
+        end
         // Consecutive newlines are one boundary, so a blank line does not
         // become an empty statement.
         while characterClass[nextByte] = classNewline
@@ -471,204 +525,48 @@ sub nextToken()
     end
 end
 
-// The keyword table is interned from spelling at startup. Nothing else can
-// populate it: level 0 has no strings, so a keyword's letters have to be
-// placed into the staging buffer a byte at a time and interned like any
-// other name. `defineKeyword` is the whole mechanism.
-sub beginSpelling()
-    spellingLength = 0
-end
+// The keyword spellings are one constant byte array with parallel offset and
+// length tables, not a call per byte. Level 0 has no strings, which forces an
+// explicit byte representation — it does not force turning static data into
+// repeated code. Slot zero is `keywordNone` and is never read.
+const keywordTextBytes as u16 = 103
 
-sub addLetter(value as u8)
-    if spellingLength < spellingLimit then
-        spelling[spellingLength] = value
-        spellingLength = spellingLength + 1
-    end
-end
+const keywordText as u8[keywordTextBytes] = [
+    115, 117, 98, 101, 110, 100, 118, 97, 114, 99, 111, 110,
+    115, 116, 105, 102, 116, 104, 101, 110, 101, 108, 115, 101,
+    119, 104, 105, 108, 101, 102, 111, 114, 116, 111, 117, 110,
+    116, 105, 108, 115, 101, 108, 101, 99, 116, 99, 97, 115,
+    101, 114, 101, 116, 117, 114, 110, 101, 120, 105, 116, 99,
+    111, 110, 116, 105, 110, 117, 101, 97, 115, 114, 101, 99,
+    111, 114, 100, 101, 110, 117, 109, 102, 111, 114, 119, 97,
+    114, 100, 97, 110, 100, 111, 114, 110, 111, 116, 116, 114,
+    117, 101, 102, 97, 108, 115, 101
+]
 
-sub defineKeyword(slot as u16)
-    keywordName[slot] = internSpelling()
-end
+const keywordStart as u16[keywordCount] = [
+    0, 0, 3, 6, 9, 14, 16, 20, 24, 29, 32, 34,
+    39, 45, 49, 55, 59, 67, 69, 75, 79, 86, 89, 91,
+    94, 98
+]
+
+const keywordSize as u8[keywordCount] = [
+    0, 3, 3, 3, 5, 2, 4, 4, 5, 3, 2, 5,
+    6, 4, 6, 4, 8, 2, 6, 4, 7, 3, 2, 3,
+    4, 5
+]
 
 sub installKeywords()
-    // sub
-    beginSpelling()
-    addLetter(115)
-    addLetter(117)
-    addLetter(98)
-    defineKeyword(1)
-    // end
-    beginSpelling()
-    addLetter(101)
-    addLetter(110)
-    addLetter(100)
-    defineKeyword(2)
-    // var
-    beginSpelling()
-    addLetter(118)
-    addLetter(97)
-    addLetter(114)
-    defineKeyword(3)
-    // const
-    beginSpelling()
-    addLetter(99)
-    addLetter(111)
-    addLetter(110)
-    addLetter(115)
-    addLetter(116)
-    defineKeyword(4)
-    // if
-    beginSpelling()
-    addLetter(105)
-    addLetter(102)
-    defineKeyword(5)
-    // then
-    beginSpelling()
-    addLetter(116)
-    addLetter(104)
-    addLetter(101)
-    addLetter(110)
-    defineKeyword(6)
-    // else
-    beginSpelling()
-    addLetter(101)
-    addLetter(108)
-    addLetter(115)
-    addLetter(101)
-    defineKeyword(7)
-    // while
-    beginSpelling()
-    addLetter(119)
-    addLetter(104)
-    addLetter(105)
-    addLetter(108)
-    addLetter(101)
-    defineKeyword(8)
-    // for
-    beginSpelling()
-    addLetter(102)
-    addLetter(111)
-    addLetter(114)
-    defineKeyword(9)
-    // to
-    beginSpelling()
-    addLetter(116)
-    addLetter(111)
-    defineKeyword(10)
-    // until
-    beginSpelling()
-    addLetter(117)
-    addLetter(110)
-    addLetter(116)
-    addLetter(105)
-    addLetter(108)
-    defineKeyword(11)
-    // select
-    beginSpelling()
-    addLetter(115)
-    addLetter(101)
-    addLetter(108)
-    addLetter(101)
-    addLetter(99)
-    addLetter(116)
-    defineKeyword(12)
-    // case
-    beginSpelling()
-    addLetter(99)
-    addLetter(97)
-    addLetter(115)
-    addLetter(101)
-    defineKeyword(13)
-    // return
-    beginSpelling()
-    addLetter(114)
-    addLetter(101)
-    addLetter(116)
-    addLetter(117)
-    addLetter(114)
-    addLetter(110)
-    defineKeyword(14)
-    // exit
-    beginSpelling()
-    addLetter(101)
-    addLetter(120)
-    addLetter(105)
-    addLetter(116)
-    defineKeyword(15)
-    // continue
-    beginSpelling()
-    addLetter(99)
-    addLetter(111)
-    addLetter(110)
-    addLetter(116)
-    addLetter(105)
-    addLetter(110)
-    addLetter(117)
-    addLetter(101)
-    defineKeyword(16)
-    // as
-    beginSpelling()
-    addLetter(97)
-    addLetter(115)
-    defineKeyword(17)
-    // record
-    beginSpelling()
-    addLetter(114)
-    addLetter(101)
-    addLetter(99)
-    addLetter(111)
-    addLetter(114)
-    addLetter(100)
-    defineKeyword(18)
-    // enum
-    beginSpelling()
-    addLetter(101)
-    addLetter(110)
-    addLetter(117)
-    addLetter(109)
-    defineKeyword(19)
-    // forward
-    beginSpelling()
-    addLetter(102)
-    addLetter(111)
-    addLetter(114)
-    addLetter(119)
-    addLetter(97)
-    addLetter(114)
-    addLetter(100)
-    defineKeyword(20)
-    // and
-    beginSpelling()
-    addLetter(97)
-    addLetter(110)
-    addLetter(100)
-    defineKeyword(21)
-    // or
-    beginSpelling()
-    addLetter(111)
-    addLetter(114)
-    defineKeyword(22)
-    // not
-    beginSpelling()
-    addLetter(110)
-    addLetter(111)
-    addLetter(116)
-    defineKeyword(23)
-    // true
-    beginSpelling()
-    addLetter(116)
-    addLetter(114)
-    addLetter(117)
-    addLetter(101)
-    defineKeyword(24)
-    // false
-    beginSpelling()
-    addLetter(102)
-    addLetter(97)
-    addLetter(108)
-    addLetter(115)
-    addLetter(101)
-    defineKeyword(25)
+    var slot as u16 = 0
+    var index as u16 = 0
+    var at as u16 = 0
+    for slot = 1 until keywordCount
+        at = keywordStart[slot]
+        spellingLength = keywordSize[slot]
+        for index = 0 until u16(spellingLength)
+            spelling[index] = keywordText[at + index]
+        end
+        keywordName[slot] = internSpelling()
+    end
 end
 
 sub startTokenizer()
@@ -684,6 +582,7 @@ sub startTokenizer()
     sourceLine = 1
     fault = faultNone
     heldSlash = false
+    delimiterDepth = 0
     installKeywords()
     advance()
     nextToken()
@@ -759,70 +658,18 @@ sub internSpelling() as u16
 end
 
 // Keywords are interned like any other name and recognised by index. The
-// alternative, comparing bytes at every identifier, puts a string compare
-// in the hottest loop, and level 0 has no strings to compare with.
-//
-// The linear scan below is the shape level 0 forces: an enum cannot be
-// produced from a computed integer, so a table lookup returning a Keyword
-// is not expressible and the search returns a named member from a `select`.
+// alternative, comparing bytes at every identifier, puts a string compare in
+// the hottest loop, and level 0 has no strings to compare with.
 sub classifyKeyword() as Keyword
     var index as u16 = 0
     for index = 1 until keywordCount
         if keywordName[index] = tokenNameIndex then
-            select index
-            case 1
-                return keywordSub
-            case 2
-                return keywordEnd
-            case 3
-                return keywordVar
-            case 4
-                return keywordConst
-            case 5
-                return keywordIf
-            case 6
-                return keywordThen
-            case 7
-                return keywordElse
-            case 8
-                return keywordWhile
-            case 9
-                return keywordFor
-            case 10
-                return keywordTo
-            case 11
-                return keywordUntil
-            case 12
-                return keywordSelect
-            case 13
-                return keywordCase
-            case 14
-                return keywordReturn
-            case 15
-                return keywordExit
-            case 16
-                return keywordContinue
-            case 17
-                return keywordAs
-            case 18
-                return keywordRecord
-            case 19
-                return keywordEnum
-            case 20
-                return keywordForward
-            case 21
-                return keywordAnd
-            case 22
-                return keywordOr
-            case 23
-                return keywordNot
-            case 24
-                return keywordTrue
-            case 25
-                return keywordFalse
-            else
-                return keywordNone
-            end
+            // Section 3 already defines a checked integer-to-enum
+            // conversion: an invalid constant is a compile error, an invalid
+            // runtime value raises F-RANGE. The twenty-five-arm select this
+            // replaces existed only because an earlier draft asserted the
+            // operation did not exist.
+            return Keyword(index)
         end
     end
     return keywordNone

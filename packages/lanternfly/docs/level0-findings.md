@@ -4,9 +4,10 @@ Phase 1 deliverable. Level 0's boundary was asserted in `level0.md` and is
 here corrected by writing a real compiler front end against it —
 `candlemoth/tokenizer.lafy`, uncompiled.
 
-Sixteen findings, from writing the tokenizer and the expression parser and
-then having both reviewed. Nine broke the first draft of the tokenizer; a
-review found nine more in what replaced it. Seven are language
+Seventeen findings, from writing the tokenizer and the expression parser and
+then having both reviewed twice. Two of them are **retracted**: they claimed
+language limitations that do not exist, which is the failure this exercise
+was meant to catch and did. Seven are language
 rules the draft had not accounted for; two are level-0 choices that turn
 out to cost more than expected. None was discovered by reading the
 specification, which is the point of the exercise.
@@ -33,16 +34,22 @@ Section 10.1 declares `var level as u8` and then writes `for level = 1 to 10`.
 The loop does not introduce the name. Five loops in the first draft used an
 undeclared `index`.
 
-### 3. A statement occupies one line
+### 3. RETRACTED — a statement is a logical line, not a physical one
 
-Every statement production ends in a newline, so a condition cannot span two
-lines. The first draft wrapped a two-term `while` condition, which is not
-level-0 source. Long conditions are split into nested `if`s instead, which
-is why several tests below read as a ladder rather than a conjunction.
+**This finding was wrong, and wrong in the way that matters most here: it
+asserted a language limitation without reading the language.** Section 2.4
+says a physical newline ends a declaration or statement *except while inside
+parentheses or square brackets*, and that a multiline expression outside
+those adds parentheses. There is one statement per logical line.
 
-**This is the single most intrusive rule on readability**, and it is worth
-deciding deliberately rather than inheriting. A continuation convention
-would change the shape of a lot of compiler source.
+So a long condition spans lines by being parenthesised, level 0 needs no
+continuation convention, and the nested-`if` ladders the first draft grew
+were unnecessary. Had the claim stood, level 0 would have been a syntactic
+variant rather than a nested subset — valid level-0 source would have needed
+structural rewriting before a level-2 compiler could accept it.
+
+The tokenizer now tracks delimiter depth and emits a newline token only at
+depth zero.
 
 ### 4. There is no `else if`
 
@@ -52,19 +59,22 @@ is `select`, which level 0 has and which is both smaller and faster than a
 compare chain — but `select` needs an ordinal selector, so a chain of
 unrelated tests still nests.
 
-### 5. An enum cannot be produced from a computed integer
+### 5. RETRACTED — checked ordinal conversion already exists
 
-`classifyKeyword` searches a table and must return the matching
-`Keyword`. It cannot: an enum is nominal, and level 0 has no conversion from
-an integer to an enum member. The working version is a twenty-five-arm
-`select` that returns a named member per index — about 150 bytes of source
-for what a cast would express in one line.
+**RETRACTED, for the same reason as finding 3.** Section 3 already defines
+the checked integer-to-enum conversion: an invalid constant is a compile
+error and an invalid runtime value raises `F-RANGE`. Level 0 listed integer
+conversions and omitted the ordinal form, which is an omission rather than a
+language limitation.
 
-**This is the finding most likely to change level 0.** Either an
-integer-to-enum conversion is admitted, checked against the member range, or
-compilers written in Lanternfly carry this shape wherever a table maps to an
-enumeration. It will recur in the parser for token-to-node mapping and in
-the code generator for opcode selection.
+`classifyKeyword` is now `return Keyword(index)`, and the twenty-five-arm
+`select` it replaces is gone. Its lowering is a range check over the
+unchanged representation, and the bootstrap profile already carries the
+non-returning range-fault service it needs.
+
+The lesson is the one from finding 3: two of the sixteen findings here were
+not findings at all, but claims about the language made without checking
+it.
 
 ### 6. Names collide across the value and type namespaces in practice
 
@@ -172,10 +182,12 @@ recorded because the class of error matters more than the instance.
 
 **Keywords were never installed.** `keywordName` was declared and read and
 nothing ever filled it, so every keyword would have parsed as an ordinary
-identifier. The repair is `installKeywords`, and it is instructive: level 0
-has no strings, so a keyword's spelling has to be pushed into the staging
-buffer one byte at a time and interned like any other name. Twenty-five
-keywords cost about 130 lines of `addLetter` calls.
+identifier. The first repair pushed each spelling into the staging buffer a
+byte at a time — 130 lines of calls — which a reviewer correctly called
+static data expressed as code. The absence of strings forces an explicit
+byte representation; it does not force one call per byte. The spellings are
+now a single 103-byte constant array with parallel offset and length tables,
+copied by a two-line loop.
 
 **Newlines were swallowed.** `skipBlanks` treated a newline as blank, so no
 statement boundary ever reached the parser and a statement parser could not
@@ -225,6 +237,39 @@ operand loads `DE` directly, a computed one is pushed and popped. So
 addition is one instruction and subtraction is one exchange plus two, with
 no separate case for a constant on either side.
 
+### 17. Five more defects, and a pattern in them
+
+A second review pass found five further faults in the tokenizer, all in
+paths that a component tested against itself never reaches.
+
+- **Decimal overflow accepted 65536 through 65539.** The guard rejected
+  above 6553 before the multiply, so exactly 6553 followed by a digit above
+  five wrapped silently. Four invalid literals became small values, which in
+  compiler source silently alters an array capacity or an address.
+- **The `<` scanner could consume three characters.** Two independent `if`
+  tests meant `<>` followed by `=` consumed all three and reported `<=`,
+  losing a token. They are now exclusive.
+- **The fault paths did not resynchronise**, although this document claimed
+  they did. `scanName` and `scanNumber` returned with the offending suffix
+  still unread, so a caller asking for another token met the same suffix and
+  could spin. Both now consume through the end of the token.
+- **A held slash took the following line number.** `skipBlanks` consumes the
+  byte after a slash before deciding whether it starts a comment, and
+  `advance` increments the line as soon as that byte is a newline. A
+  diagnostic on that slash reported the next line. The slash's own line is
+  now saved with it.
+- **The lexical subset was implicit.** The tokenizer accepts decimal and
+  nothing else, while `level0.md` excluded only strings. Decimal-only is now
+  stated, with hexadecimal, binary and character literals explicitly outside
+  level 0, so the seed and Candlemoth cannot each follow a reasonable
+  reading and accept different source.
+
+**The pattern is worth more than the five.** Every one of them is on a path
+the tokenizer never takes when reading its own well-formed source: an
+overlong number, a malformed operator, a fault followed by recovery, a slash
+at a line end. A front end that only ever parses correct input looks
+finished long before it is.
+
 ## What the tokenizer actually uses
 
 Confirmed against the source, and this is the level-0 boundary as measured
@@ -265,8 +310,8 @@ field-offset computation and exact-layout rules out of the seed.
 
 ## Sizes, for the Phase 3 comparison
 
-Tokenizer: 829 lines, of which the character-class table is 65 and keyword
-installation 130. Expression parser and emitter: 720 lines.
+Tokenizer: 676 lines, of which the character-class table is 65 and the
+keyword tables 22. Expression parser and emitter: 720 lines.
 
 No compiled size exists yet. The character-class table alone is 256 bytes of
 the image, or 1% of the twenty-four-kilobyte estimate, before any code.

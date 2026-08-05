@@ -10,6 +10,9 @@ emitter*; `level0-findings.md`, *Level 0, as the tokenizer found it*;
 `level0.md`, *Lanternfly Level 0 — draft for review*; and the reconciled
 specification.
 
+Repair verification: `ef63162`, *Repair the expression parser and the
+tokenizer's two prerequisites*.
+
 This review checks whether the first empirical Level 0 program is a complete
 tokenizer for its stated subset and whether the findings agree with the
 normative language. It is non-normative. The reconciled specification remains
@@ -19,7 +22,8 @@ the language authority.
 
 ### 1. Keyword recognition has no keyword data
 
-**Status:** Open
+**Status:** Resolved — `installKeywords` now interns every keyword before the
+first source token and records its name index.
 
 **Evidence.** `keywordName` is a zero-initialised module array. No constant
 contains the keyword spellings, and `startTokenizer` clears the name table but
@@ -37,7 +41,9 @@ that differs from a keyword by one character.
 
 ### 2. The tokenizer discards statement boundaries
 
-**Status:** Open
+**Status:** Partially resolved — `kindNewline` now preserves and collapses
+physical newline boundaries. Parenthesised and bracketed continuation and the
+synthetic final logical newline remain unimplemented.
 
 **Evidence.** Newline is a grammar-significant token in Lanternfly: one
 logical line contains at most one statement. `skipBlanks` handles
@@ -58,7 +64,7 @@ and parenthesised continuation.
 
 ### 3. Decimal overflow accepts 65536 through 65539
 
-**Status:** Open
+**Status:** Resolved — rejects above 6553, and at 6553 when the next digit exceeds five; both paths resynchronise — unchanged in `ef63162`.
 
 **Evidence.** `scanNumber` rejects only when the accumulated value is greater
 than 6553 before multiplying by ten and adding the next digit. When the value
@@ -75,7 +81,7 @@ or equals 6553 while the next digit exceeds five. Test 65535, 65536, 65539 and
 
 ### 4. The less-than scanner can consume three characters
 
-**Status:** Open
+**Status:** Resolved — the two tests are exclusive, so `<>` followed by `=` stays two tokens — unchanged in `ef63162`.
 
 **Evidence.** The less-than arm tests for `>` and `=` in two independent
 `if` statements. Given the source `<> =`, the first test consumes `>`, after
@@ -91,7 +97,7 @@ then test `<>`, `<=`, `<`, `<> =` and `<==` as token sequences.
 
 ### 5. Fault paths do not perform the recorded resynchronisation
 
-**Status:** Open
+**Status:** Resolved — scanName and scanNumber consume through the end of the token before returning — unchanged in `ef63162`.
 
 **Evidence.** `level0-findings.md` says that `scanName` and `scanNumber`
 consume the remainder of a faulty token before returning. Both routines return
@@ -112,7 +118,8 @@ each fault and reaches the following token.
 
 ### 6. Lanternfly already defines multiline expression continuation
 
-**Status:** Open
+**Status:** Resolved — section 2.4's logical-line rule is inherited; the tokenizer tracks delimiter depth. Finding 3 of level0-findings.md is retracted — newline tokens now exist, but delimiter depth does not yet
+suppress physical newlines inside parentheses or brackets.
 
 **Evidence.** Finding 3 says that a condition cannot span physical lines and
 proposes deciding on a continuation convention. Section 2.4 of the reconciled
@@ -131,7 +138,8 @@ newline. No new continuation syntax is needed.
 
 ### 7. Checked integer-to-enum conversion is an existing language operation
 
-**Status:** Open
+**Status:** Resolved — `Keyword(index)` replaces the twenty-five-arm select. Finding 5 of level0-findings.md is retracted — `Keyword(index)` has not been admitted to Level 0, and the
+twenty-five-arm conversion remains.
 
 **Evidence.** Finding 5 presents integer-to-enum conversion as a possible new
 language decision. Section 3 of the reconciled specification already defines
@@ -151,7 +159,7 @@ runtime-valid and runtime-invalid lowering vectors.
 
 ### 8. The Level 0 lexical subset is still implicit
 
-**Status:** Open
+**Status:** Resolved — decimal only, with hexadecimal, binary and character literals stated outside level 0 — the retained literal forms remain unstated.
 
 **Evidence.** The tokenizer accepts decimal integers but not hexadecimal,
 binary or character literals, all of which belong to the first-edition lexical
@@ -172,7 +180,7 @@ tokenizer complete.
 
 ### 9. A held slash can acquire the following line number
 
-**Status:** Open
+**Status:** Resolved — the slash's own line is saved when it is held — unchanged in `ef63162`.
 
 **Evidence.** `skipBlanks` consumes the byte after a slash before deciding
 whether the slash begins a comment. `advance` increments `sourceLine` as soon
@@ -191,7 +199,9 @@ slash followed immediately by a newline.
 
 ### 10. Multiplication and division are not distinguished
 
-**Status:** Open
+**Status:** Partially resolved — the operator is now saved and constant
+multiplication and division fold separately. Computed multiplication and
+division still record a result without emitting the operation.
 
 **Evidence.** `parseMultiplicative` accepts either `*` or `/` but does not save
 which operator it consumed. When both operands are constant, it reports
@@ -208,7 +218,9 @@ operators with zero and nonzero operands.
 
 ### 11. Several expression type rules disagree with section 3.1
 
-**Status:** Open
+**Status:** Partially resolved — `unifyTypes` implements the principal widening
+direction. It does not range-check an exact value before adopting the other
+operand's type, and unary minus still accepts `u16` and Boolean operands.
 
 **Evidence.** `additiveResult` returns `i16` whenever either operand is `i16`,
 which silently accepts `i16` combined with `u16`; the specification requires
@@ -230,7 +242,9 @@ type pair rather than testing representative cases only.
 
 ### 12. Exact literal typing is missing
 
-**Status:** Open
+**Status:** Partially resolved — `typeExact` now preserves the untyped state,
+but `settleExpression` does not check whether the value fits its expected or
+default `i16` type.
 
 **Evidence.** `parsePrimary` immediately assigns every decimal literal
 `typeU16`. The specification keeps a literal exact until an expected type or a
@@ -251,7 +265,10 @@ Candlemoth's own arithmetic expressions.
 
 ### 13. Constant folding and emitted code do not describe the same result
 
-**Status:** Open
+**Status:** Partially resolved — constants no longer emit eagerly and computed
+addition and subtraction normalise their operands. Computed Boolean,
+comparison, multiplication and division paths remain incomplete; a folded
+comparison currently returns false without inspecting its operator or values.
 
 **Evidence.** The parser emits loads, pushes and pops while descending before
 it knows whether the enclosing expression is constant. For `1 + 2`, it emits
@@ -274,7 +291,8 @@ emitter.
 
 ### 14. The nesting guard omits recursive unary chains
 
-**Status:** Open
+**Status:** Resolved — `enterNesting` now covers parenthesised expressions,
+recursive `not` and recursive unary minus.
 
 **Evidence.** `depth` is checked only in `parseExpression`, which bounds
 parenthesised recursion through `parsePrimary`. `parseNot` calls itself for
@@ -290,7 +308,10 @@ the limit separately with parentheses, `not` and unary minus.
 
 ### 15. The constant-folding finding claims a width the implementation lacks
 
-**Status:** Open
+**Status:** Partially resolved — the divergence is now explicit and exact
+addition detects unsigned overflow. Exact subtraction, multiplication,
+negative values and later division still use wrapped `u16` arithmetic, so the
+stated overflow fault is not yet general.
 
 **Evidence.** `level0-findings.md` says that folding requires a wider
 accumulator and that the parser implements “fold at the widest type, narrow at
@@ -311,7 +332,9 @@ rule is implemented.
 
 ### 16. The mandatory-pool correction remains layered over the old rule
 
-**Status:** Open
+**Status:** Resolved — the obsolete mandatory rule and example have been
+replaced by the scalar-result convention, with a pool retained only for an
+aggregate result.
 
 **Evidence.** `level0.md` still states that the depth-indexed pool is “the
 convention,” retains the pool example, and then adds a “Measured correction”
@@ -326,6 +349,30 @@ contract.
 module-level result plus caller-local snapshot convention for scalar results,
 then describe a depth-indexed pool only as the available mechanism for an
 aggregate result that must survive recursive overlap.
+
+## Follow-up architecture finding
+
+### 17. The keyword installer turns static data into repeated code
+
+**Status:** Resolved — the spellings are one 103-byte constant array with
+parallel offset and length tables, copied by a two-line loop. The 130 lines of
+`addLetter` calls are gone and the tokenizer is 676 lines, down from 887.
+
+**Evidence.** `installKeywords` spells every keyword through a sequence of
+`addLetter` calls, producing roughly 130 lines of source. Level 0 has no string
+type, but it does have constant byte arrays, as the character-class table
+already demonstrates. The absence of strings therefore requires an explicit
+byte representation; it does not require one call per byte.
+
+**Consequence.** Unless the compiler performs substantial inlining and
+folding, the installer converts a small fixed data set into repeated load and
+call sequences in Candlemoth's code budget. It also obscures the correspondence
+between the keyword spellings, offsets and enum ordinals.
+
+**Smallest credible repair.** Store the folded spellings in one constant byte
+array with parallel offset and length tables. A short loop copies each slice
+to `spelling` and interns it. Measure both forms once the seed exists; retain
+the call form only if its compiled cost is competitive.
 
 ## Decision carried forward
 
