@@ -1,3 +1,5 @@
+> **Historical and superseded.** This frozen report describes the earlier `candlemoth/nucleus.grammar` experiment. Chapter 17 of [`specification.md`](specification.md#17-complete-grammar) is the normative, current Nucleus grammar.
+
 # Nucleus grammar report
 
 GENERATED from `candlemoth/nucleus.grammar` by `npm run generate:grammar`. Stage A and stage B of `docs/level0-parser-study.md`. Every figure below is derived; nothing is asserted by hand.

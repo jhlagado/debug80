@@ -1,6 +1,6 @@
 # Nucleus 0.1 Language Specification
 
-## Planned contents
+## Contents
 
 1. [Status and conformance](#1-status-and-conformance)
 2. [Design constraints](#2-design-constraints)
@@ -10,25 +10,25 @@
 6. [Types](#6-types)
 7. [Storage, values, and lifetime](#7-storage-values-and-lifetime)
 8. [Constants and declarations](#8-constants-and-declarations)
-9. Expressions
-10. Statements
-11. Conditional control
-12. Loop control
-13. Routines and calls
-14. Recoverable errors
-15. Safety failures and traps
-16. System boundary
-17. Complete grammar
-18. Static semantics
-19. Runtime semantics
-20. Feature ledger
-21. Conformance examples
+9. [Expressions](#9-expressions)
+10. [Statements](#10-statements)
+11. [Conditional control](#11-conditional-control)
+12. [Loop control](#12-loop-control)
+13. [Routines and calls](#13-routines-and-calls)
+14. [Recoverable errors](#14-recoverable-errors)
+15. [Safety failures and traps](#15-safety-failures-and-traps)
+16. [System boundary](#16-system-boundary)
+17. [Complete grammar](#17-complete-grammar)
+18. [Static semantics](#18-static-semantics)
+19. [Runtime semantics](#19-runtime-semantics)
+20. [Feature ledger](#20-feature-ledger)
+21. [Conformance examples](#21-conformance-examples)
 
 ## 1. Status and conformance
 
 ### 1.1 Status
 
-This specification is a working draft. Nucleus 0.1 has not been frozen or released as a standard, and later revisions may change rules recorded here. Several planned chapters are still unwritten, so this revision does not yet support a complete conformance determination.
+This specification is a working draft. Nucleus 0.1 has not been frozen or released as a standard, and later revisions may change rules recorded here. This revision defines the complete proposed 0.1 source language and supports conformance review, but the project may still correct it before the freeze.
 
 The language under design is named **Nucleus 0.1**. "V2" was a working label for an architecture paper and is not the public language name. Nucleus is not a Lanternfly or Candlemoth bootstrap level. It has one source language: no Level Zero, Level One, selectable language profiles, or compiler-selected subsets of standard syntax exist.
 
@@ -77,12 +77,15 @@ A conforming Nucleus 0.1 source program:
 
 Exceeding one compiler's documented capacity does not affect a program's language conformance. The compiler may reject the program with a capacity diagnostic; that diagnostic reports an implementation limit rather than a source-language violation.
 
-Because the grammar and semantic chapters are not yet complete, no program can use this revision alone to establish full Nucleus 0.1 conformance. Rules already stated in completed chapters still govern their subjects.
+The complete accepted programs in Chapter 21 form the minimum conformance corpus. A conforming compiler and execution environment must compile and execute each program under its stated inputs without a capacity diagnostic or an `activation-capacity` trap. An implementation may publish smaller limits than another implementation only above this floor. This requirement establishes a minimum useful implementation without creating a language profile or changing the conformance of larger source programs.
+
+A program can use this complete working revision to establish conformance. Such a claim identifies the exact specification revision because the draft may still change before the 0.1 freeze.
 
 ### 1.6 Conforming compilers
 
 A compiler claiming Nucleus 0.1 conformance must:
 
+- compile every complete accepted program in Chapter 21 without a capacity diagnostic;
 - accept and translate every conforming source program within its documented capacity limits;
 - preserve the specified observable results, side effects, and runtime traps of each accepted program;
 - issue a diagnostic for compile-time invalid source rather than silently translating it with another meaning;
@@ -135,7 +138,7 @@ A compiler using a later native backend may emit Z80 or another target directly.
 
 Nucleus inherits selected syntax and design ideas from Lanternfly. Lanternfly documentation is not normative for Nucleus, and Lanternfly behaviour does not fill a gap in this specification.
 
-This working draft makes no claim that the language definition is complete. It does not require the first compiler to be written in Nucleus or compile its own source. It also does not require every conforming compiler to use the project's initial VM path.
+This working draft makes no claim that Nucleus 0.1 is frozen or implementation-validated. It does not require the first compiler to be written in Nucleus or compile its own source. It also does not require every conforming compiler to use the project's initial VM path.
 
 ## 2. Design constraints
 
@@ -149,7 +152,7 @@ Nucleus 0.1 is one language. Measurements may change the draft before it is froz
 
 ### 2.2 Language-shaping constraints
 
-Nucleus remains a safe, practical language for routine TEC-1 programs. Its minimum programming model includes `u8`, `u16`, and Boolean values; formal arguments; named local variables; routines with no result or one typed result; fixed-layout records; checked fixed arrays; bounded strings or views; assignment and calls; `if`/`elseif`/`else`; `while`; counted `for`; `return`; and the unlabeled, innermost-loop forms of `exit` and `continue`. Silently removing one of these requirements does not make an oversized compiler acceptable. If a faithful implementation cannot fit, that result requires compiler-architecture redesign or rejection of the architecture hypothesis.
+Nucleus remains a safe, practical language for routine TEC-1 programs. Its minimum programming model includes `u8`, `u16`, and Boolean values; formal arguments; named local variables; routines with no result or one typed result; fixed-layout records; checked fixed arrays; bounded strings; assignment and calls; `if`/`elseif`/`else`; `while`; counted `for`; `return`; and the unlabeled, innermost-loop forms of `exit` and `continue`. Silently removing one of these requirements does not make an oversized compiler acceptable. If a faithful implementation cannot fit, that result requires compiler-architecture redesign or rejection of the architecture hypothesis.
 
 The language design uses deterministic parsing with canonical forms, minimal lookahead, and no backtracking. A smaller production count is useful only when it preserves the required programming model. Grammar terseness is not an independent design goal.
 
@@ -194,7 +197,7 @@ Compiler simplicity has priority over VM execution speed. The primary target is 
 
 Structured control lowers to ordinary semantic operations; no dedicated high-level control opcode is required. The bytecode front end initially performs no Z80 register allocation, native instruction selection, branch shortening, relocation planning, native calling-convention analysis, or peephole optimization. A later direct-Z80 backend may consume the same semantic operations as they are produced. Its independent measurement covers code, constants, workspace, output, and execution cost.
 
-VM organization remains an experimental choice. The current hypothesis favors a memory-backed virtual-register file with explicit stacks or save regions where nesting and re-entry require them. This is neither a source-global register model nor a settled pure operand-stack design. This chapter fixes no virtual-register count, page layout, slot width, or opcode encoding.
+VM organization remains an experimental choice. The current hypothesis uses a memory-backed virtual-register file with explicit stacks or save regions where nesting and re-entry require them. This is neither a source-global register model nor a settled pure operand-stack design. This chapter fixes no virtual-register count, page layout, slot width, or opcode encoding.
 
 ### 2.7 System boundary and portability
 
@@ -212,9 +215,9 @@ Project reports assign every size, storage, or performance claim one of these ev
 
 A candidate's admission record reports its incremental compiler-core code, required immutable data, peak writable workspace, VM or backend cost, effect on emitted programs, and total-system trade. Source-line count, host executable size, and an opcode sketch are not substitutes for target measurements. Before Nucleus 0.1 is frozen, the project either admits the candidate to the one normative language or omits it.
 
-Recoverable error handling remains a strong candidate. Project acceptance requires a measured attempt to include it before the project decides whether to admit or omit it. This status does not admit general exceptions, stack unwinding, destructors, `finally`, or `defer`. If recoverable errors are admitted, Chapter 14 defines their semantics.
+Nucleus 0.1 admits the explicit recoverable-error mechanism in Chapter 14. The implementation ledger still records its compiler-core, immutable-data, workspace, emitted-code, and runtime costs. General exceptions, stack unwinding, destructors, `finally`, and `defer` remain excluded.
 
-Recursion may be staged while the project measures activation storage, re-entry state, depth limits, and failure behavior. Staging does not impose a permanent language prohibition. The frozen Nucleus 0.1 specification will state the final decision.
+Nucleus 0.1 admits recursive routine calls. The first implementation may stage their construction while it measures activation storage, re-entry state, depth limits, and failure behaviour, but staging does not create a non-recursive language profile. Chapter 13 defines the source semantics, and Chapter 15 defines activation-capacity failure.
 
 ### 2.9 Decision boundary and failure conditions
 
@@ -232,7 +235,7 @@ This chapter defines how a Nucleus source byte stream becomes a token stream. It
 
 The rules are deterministic and require no backtracking. Rules stated for source text, token identity, or lexical errors apply to every conforming compiler. Project acceptance requires the first compiler to consume the source in order with bounded state and without retaining a complete source copy. This is a Chapter 2 project constraint, not a required internal organization for another compiler. Another compiler may organize tokenization differently, but it must produce the same tokens. One byte of lookahead is sufficient for every token rule in this chapter.
 
-Nucleus inherits several spellings from Lanternfly, but Lanternfly documentation and the current Candlemoth tokenizer are evidence rather than authority. Rules in this chapter become Nucleus rules only when this chapter states them. Provisional rules are marked explicitly.
+Nucleus inherits several spellings from Lanternfly, but Lanternfly documentation and the current Candlemoth tokenizer are evidence rather than authority. Rules in this chapter become Nucleus rules only when this chapter states them.
 
 ### 3.2 Source bytes
 
@@ -311,49 +314,40 @@ The complete folded identifier is its identity. An implementation must not trunc
 
 After scanning the longest identifier, the tokenizer compares its folded spelling with a fixed reserved-word table. A longer name is never split at a keyword boundary: `elseifReady` is one `NAME`, not `ELSEIF NAME`.
 
-The current Nucleus 0.1 reserved words are:
+The Nucleus 0.1 reserved words are:
 
 ```text
-as       boolean  const     continue  else     elseif
-end      exit     false     for       forward  if
-record   return   step      string    sub      to
-true     u16      u8        until     var      while
+and      as       boolean  const     continue  else     elseif
+end      error    exit     fail      fails     false    for
+forward  if       not      on        or        record   return
+step     string   sub      to        true      u16      u8
+until    var      while
 ```
 
 `elseif` is one keyword. `else if` produces the two tokens `ELSE` and `IF` and does not form an `ELSEIF` clause. Case folding means that `ELSEIF` and `elseif` produce the same token.
 
-When explicitly selected for measurement under Section 1.10, the recoverable-error candidate uses these four reserved words:
+Chapter 14 defines the recoverable-error forms that use `error`, `fail`, `fails`, and `on`.
 
-```text
-error    fail     fails     on
-```
-
-These words are not yet part of the standard reserved-word table, and their prototype reservation does not admit recoverable-error syntax. If Chapter 14 admits the candidate, the words enter the standard table; if it omits the candidate, they remain identifiers.
-
-This chapter does not reserve `call`. If Chapter 13 adopts a `call` keyword, that choice requires an amendment to this table; until then, `call` is an identifier.
+Nucleus uses name-led routine invocation and has no `call` keyword. `call` remains an identifier.
 
 The current Candlemoth tokenizer supplies evidence for ASCII case folding and bounded name scanning, but two implementation shortcuts are not Nucleus rules. It accepts `_` as a first byte because one class represents both name-start and name-continuation characters, and it can silently conflate two names whose hash pairs collide. A compiler claiming Nucleus conformance must enforce the spelling above and exact folded identity.
 
 ### 3.6 Numeric literals
 
-Nucleus admits unsigned decimal integer literals. When explicitly selected for measurement under Section 1.10, the provisional hexadecimal candidate adds the `$` form:
+Nucleus admits unsigned decimal integer literals:
 
 ```text
-decimal-literal     ::= decimal-digit+
-hexadecimal-literal ::= "$" hexadecimal-digit+
-integer-literal     ::= decimal-literal
-                      | hexadecimal-literal  (* provisional *)
+decimal-literal ::= decimal-digit+
+integer-literal ::= decimal-literal
 ```
 
-Hexadecimal digits are `0` through `9`, `A` through `F`, and `a` through `f`. The `$` prefix is a provisional recommendation because hexadecimal directly represents byte and word values on the target system. It is not yet standard Nucleus 0.1 syntax. The tokenizer measurement reports its incremental code and table cost under Sections 2.3 and 2.8 before the freeze decision.
-
-Until admission, every `$` rule and example in this chapter applies only when the hexadecimal candidate is selected explicitly for measurement. Standard mode diagnoses its use as an unadmitted extension under Section 1.7.
+Hexadecimal integer literals are not part of Nucleus 0.1. The checked Candlemoth scanner implements bounded decimal accumulation but no hexadecimal path, and no target measurement justifies adding one under Chapter 2's admission rule. Hexadecimal digits remain part of the `\xHH` escape syntax in Section 3.7; that lexical use does not create an integer-literal form.
 
 The tokenizer computes an exact unsigned value from zero through 65,535. A literal whose value exceeds 65,535 is a lexical error. Later type checking decides whether the value fits its context, including `u8`, `u16`, an array bound, or a counted-loop parameter.
 
 A leading `+` or `-` is a separate punctuation token and is never part of the literal. Thus `-32768` begins with `-` followed by the literal `32768`; expression and constant rules determine whether that combination is valid.
 
-A hexadecimal literal has at least one digit after `$`. A letter or underscore immediately following a decimal literal, or a non-hexadecimal name character immediately following a hexadecimal literal, makes the numeric token malformed instead of beginning an adjacent identifier. This rejects forms such as `0x2a`, `$2g`, and `12u8` with one diagnostic.
+A letter or underscore immediately following a decimal literal makes the numeric token malformed instead of beginning an adjacent identifier. This rejects forms such as `0x2a` and `12u8` with one diagnostic. `$` begins no Nucleus token and is a lexical error.
 
 Binary, octal, and floating-point literals are absent. Numeric separators, exponent notation, decimal points, and type suffixes are absent. In particular, `%1010`, `1_000`, `1.0`, and `42u8` are not alternative integer spellings.
 
@@ -378,7 +372,7 @@ Both literal forms accept only these escapes:
 
 A character literal must decode to exactly one byte. `''` and `'ab'` are errors. A string literal may decode to zero bytes, so `""` is valid. A physical line ending or EOF before the closing quote is an unterminated-literal error. A backslash followed by a physical line ending does not continue a literal.
 
-The token records decoded bytes. Later chapters determine which character or bounded-string contexts accept those bytes and whether a particular representation excludes zero. The tokenizer does not infer a string capacity or type from a literal.
+The token records decoded bytes. Later chapters determine which character or bounded-string contexts accept those bytes. The tokenizer does not infer a string capacity or type from a literal.
 
 Nucleus 0.1 has no interpolated, raw, or multiline literal family. It has no Unicode escape or encoding conversion. Adjacent string literals remain separate tokens; the tokenizer does not concatenate them.
 
@@ -434,7 +428,6 @@ hexadecimal-digit  ::= decimal-digit | "A".."F" | "a".."f"
 identifier         ::= ascii-letter
                        (ascii-letter | decimal-digit | "_")*
 integer-literal    ::= decimal-digit+
-                     | "$" hexadecimal-digit+  (* provisional *)
 character-literal  ::= "'" literal-byte "'"
 string-literal     ::= '"' literal-byte* '"'
 literal-byte       ::= direct-literal-byte | escape
@@ -470,31 +463,30 @@ Capacity failure must not change token identity. In particular, an overlong name
 
 ### 3.11 Token examples
 
-| Source                     | Result or required diagnostic                 |
-| -------------------------- | --------------------------------------------- |
-| `player_2`                 | one `NAME`                                    |
-| `_player`                  | lexical error at `_`                          |
-| `elseif`                   | one `ELSEIF` keyword                          |
-| `ELSEIF`                   | one `ELSEIF` keyword                          |
-| `elseifReady`              | one `NAME`                                    |
-| `else if`                  | `ELSE IF`; not an `ELSEIF` clause             |
-| `42`                       | `NUMBER(42)`                                  |
-| `$2a`                      | provisional hexadecimal: `NUMBER(42)`         |
-| `-42`                      | `- NUMBER(42)`                                |
-| `$`                        | provisional hexadecimal: malformed number     |
-| `0x2a`                     | malformed-number diagnostic                   |
-| `%00101010`                | lexical error; binary literals are absent     |
-| `'A'`                      | `CHARACTER(65)`                               |
-| `'\x41'`                   | `CHARACTER(65)`                               |
-| `''`                       | empty-character diagnostic                    |
-| `""`                       | empty `STRING`                                |
-| `"A\nB"`                   | `STRING` containing bytes 65, 10, 66          |
-| `"A\q"`                    | invalid-escape diagnostic                     |
-| `a <= b`                   | `NAME <= NAME`                                |
-| `a != b`                   | lexical error at `!`                          |
-| `a; b`                     | lexical error at `;`                          |
-| `a / / b`                  | `NAME / / NAME`; not a comment                |
-| `a // note` followed by LF | `NAME NEWLINE`; the comment produces no token |
+| Source                     | Result or required diagnostic                  |
+| -------------------------- | ---------------------------------------------- |
+| `player_2`                 | one `NAME`                                     |
+| `_player`                  | lexical error at `_`                           |
+| `elseif`                   | one `ELSEIF` keyword                           |
+| `ELSEIF`                   | one `ELSEIF` keyword                           |
+| `elseifReady`              | one `NAME`                                     |
+| `else if`                  | `ELSE IF`; not an `ELSEIF` clause              |
+| `42`                       | `NUMBER(42)`                                   |
+| `-42`                      | `- NUMBER(42)`                                 |
+| `$2a`                      | lexical error; hexadecimal integers are absent |
+| `0x2a`                     | malformed-number diagnostic                    |
+| `%00101010`                | lexical error; binary literals are absent      |
+| `'A'`                      | `CHARACTER(65)`                                |
+| `'\x41'`                   | `CHARACTER(65)`                                |
+| `''`                       | empty-character diagnostic                     |
+| `""`                       | empty `STRING`                                 |
+| `"A\nB"`                   | `STRING` containing bytes 65, 10, 66           |
+| `"A\q"`                    | invalid-escape diagnostic                      |
+| `a <= b`                   | `NAME <= NAME`                                 |
+| `a != b`                   | lexical error at `!`                           |
+| `a; b`                     | lexical error at `;`                           |
+| `a / / b`                  | `NAME / / NAME`; not a comment                 |
+| `a // note` followed by LF | `NAME NEWLINE`; the comment produces no token  |
 
 For this source:
 
@@ -512,16 +504,9 @@ NAME ( NAME [ NAME ] ) NEWLINE EOF
 
 The two physical line endings inside delimiters do not appear in the token sequence.
 
-### 3.12 Decisions still required before 0.1 freeze
+### 3.12 Reserved-word and literal decisions
 
-Four lexical questions remain narrow and explicit:
-
-1. **Recoverable-error words.** If Chapter 14 admits the candidate under Section 1.10, `fail`, `fails`, `on`, and `error` enter the standard reserved-word table. If Chapter 14 omits it, the four words remain identifiers.
-2. **Word operators.** The Chapter 9 operator inventory determines whether words such as `not`, `and`, `or`, or `mod` enter the reserved-word table. Each admitted word becomes a fixed reserved word; an omitted word remains an identifier. This chapter does not assign operator meaning in advance.
-3. **Conditional header marker.** The Chapter 11 grammar decision is whether `if` and `elseif` headers require `then` before `NEWLINE`. `then` is not reserved in the current table. Admitting it requires one keyword-table entry and a corresponding grammar token.
-4. **Hexadecimal prefix.** The measurement under Sections 2.3 and 2.8 covers the incremental scanner and table cost of `$` literals. The freeze decision retains the prefix if that cost is compatible with the compiler-core gate; otherwise Nucleus 0.1 has decimal literals only.
-
-Except for these four provisional decisions, the lexical forms in this chapter govern the current 0.1 draft. A later chapter that needs another token requires an amendment here and cost accounting for the added scanner, table, test, and diagnostic work.
+Chapter 9 admits `not`, `and`, and `or`. Chapter 14 admits `fail`, `fails`, `on`, and `error`. These seven words are reserved. Chapter 11 omits a conditional header marker, so `then` remains an identifier. Nucleus 0.1 integer literals are decimal only. A later revision that needs another token requires an amendment here and cost accounting for the added scanner, table, test, and diagnostic work.
 
 ## 4. Program and file structure
 
@@ -541,7 +526,7 @@ The structural skeleton is:
 compilation-unit ::= { top-level-declaration } EOF
 ```
 
-The complete grammar in Chapter 17 will replace this skeleton. Its declaration productions consume the logical `NEWLINE` tokens defined in Chapter 3.
+The complete grammar in Chapter 17 replaces this skeleton. Its declaration productions consume the logical `NEWLINE` tokens defined in Chapter 3.
 
 Blank and comment-only physical lines contribute no top-level item. If the final item has no physical line ending, Chapter 3 requires the tokenizer to emit its final `NEWLINE` before `EOF`.
 
@@ -575,7 +560,7 @@ This rule applies across physical file boundaries because all files contribute t
 
 The types named by a constant, variable, record field, formal parameter, routine result, or forward signature must already be declared at that position. The exact scope and collision rules appear in Chapter 5. Constant-expression restrictions and initialization order appear in Chapter 8.
 
-After a routine header has been checked, its routine name and complete signature are available in its body and in later declarations. This permits the body to contain a direct self-call if Chapter 13 admits recursion. A call to another routine whose header has not appeared requires an earlier forward declaration.
+After a routine header has been checked, its routine name and complete signature are available in its body and in later declarations. This permits the body to contain a direct self-call under Chapter 13. A call to another routine whose header has not appeared requires an earlier forward declaration.
 
 For example, this order satisfies the structural rules:
 
@@ -617,9 +602,9 @@ The parameter and result types in a forward declaration must already be availabl
 The completing definition must appear later in the same compilation unit. Its header must match the forward declaration in:
 
 - routine-name identity under Chapter 3's case-folding rule;
-- formal-parameter count, order, names, and types;
+- formal-parameter count, order, and types;
 - the absence or presence of a result and, when present, its type; and
-- every other source-level signature property admitted by Chapter 13.
+- the absence or presence of the `fails` effect from Chapter 14.
 
 A routine may have at most one forward declaration and exactly one definition. A second forward declaration, a forward declaration after the definition, a second definition, or a definition with a mismatched header is invalid. Completing a forward declaration does not declare a second routine.
 
@@ -627,16 +612,11 @@ Forward declarations apply only to source routines. They do not provide a genera
 
 ### 4.7 Program entry
 
-Nucleus has no executable top-level statements, so an executable build requires one defined routine to be designated as its entry. The entry requires a body by the end of the compilation unit; an uncompleted forward declaration cannot be an entry.
+Every Nucleus 0.1 compilation unit defines exactly one routine named `main`. Its data signature is fixed: it has no parameters and no result. It may include the `fails` effect declared by Chapter 14. The definition must have a body by `EOF`; a forward declaration alone cannot satisfy the entry rule.
 
-The entry-selection mechanism and eligible signature remain open before the 0.1 freeze. The two compact candidates are:
+Execution begins by calling `main` after program-lifetime initialization. Normal completion of `main` terminates successfully. A failure returned from `main` performs the unhandled-error trap in Chapter 15. The build does not select another entry name, and Nucleus 0.1 defines no library-only compilation unit without `main`.
 
-1. a fixed conventional routine name with a fixed signature; or
-2. a routine name supplied as build input, also constrained to a fixed signature.
-
-Neither candidate needs another source keyword or a module system. The eventual rule will state whether an entry takes parameters or returns a result, how a missing or ineligible entry is diagnosed, and whether a compilation unit may be translated as a library-like artifact with no entry. Project evaluation reports the compiler-core and build-tool cost. Until this choice is specified, Chapter 1's incomplete-draft rule prevents a full conformance determination for executable programs.
-
-Program startup, program-lifetime storage initialization, observable termination, and the system calls available to the entry are runtime and system-boundary subjects for Chapters 7, 15, 16, and 19.
+Program startup, initialization, termination, and system services are specified in Chapters 16 and 19.
 
 ### 4.8 End of input and duplicate completion
 
@@ -647,7 +627,7 @@ At `EOF`, the compiler must verify that:
 - every forward routine declaration has one matching definition;
 - every routine has at most one body;
 - no top-level declaration remains structurally incomplete; and
-- the selected entry satisfies Section 4.7 once the entry rule is settled.
+- exactly one defined `main` satisfies Section 4.7.
 
 The compiler may diagnose a duplicate declaration or mismatched completion as soon as it encounters the later declaration. It must not defer a detectable error merely because end-of-input validation also covers the condition. After any structural error, the initial compiler may stop under the diagnostic policy in Chapter 1; it must not report a successful translation.
 
@@ -785,12 +765,12 @@ const value as u16 = 0     // valid: the ordinary namespace
 
 The compiler resolves a name at its source position in this order:
 
-| Context                                | Lookup                                                                                            |
-| -------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| A reserved word or built-in type token | Use the token established by Chapter 3; perform no ordinary-name lookup                           |
-| A field name after `.`                 | Use only the field scope of the statically selected record type                                   |
-| An ordinary name inside a routine      | Search visible parameters and locals in the current routine scope, then the visible program scope |
-| An ordinary name at top level          | Search the visible program scope                                                                  |
+| Context                                | Lookup                                                                                                 |
+| -------------------------------------- | ------------------------------------------------------------------------------------------------------ |
+| A reserved word or built-in type token | Use the token established by Chapter 3; perform no ordinary-name lookup                                |
+| A name after `.`                       | Use the selected record's field scope, or require intrinsic `length` when the base is a bounded string |
+| An ordinary name inside a routine      | Search visible parameters and locals in the current routine scope, then the visible program scope      |
+| An ordinary name at top level          | Search the visible program scope                                                                       |
 
 The no-shadowing rule ensures that the routine and program searches cannot both produce valid bindings for the same identity. Field names are never found by unqualified ordinary lookup.
 
@@ -798,9 +778,9 @@ If lookup finds no binding, the compiler must issue an undeclared-name diagnosti
 
 ### 5.8 Forward routine signatures
 
-An explicit forward signature is the only source form that creates a name binding before its full definition. After its complete signature has been checked, it creates the routine's canonical program-scope binding. Its parameter names are signature components; they do not become program-scope bindings and open no routine scope because the forward declaration has no body.
+An explicit forward signature is the only source form that creates a name binding before its full definition. After its complete signature has been checked, it creates the routine's canonical program-scope binding. Its parameter names are present for syntax and documentation but are not part of completion identity; they do not become program-scope bindings and open no routine scope because the forward declaration has no body.
 
-The later routine definition completes that binding. It does not declare a second routine. The completing header must match the forward signature in folded routine identity, parameter count and order, folded parameter identities, parameter types, optional result type, and every other source-level signature property defined by Chapter 13.
+The later routine definition completes that binding. It does not declare a second routine. The completing header must match the forward signature in folded routine identity, parameter count and order, parameter types, optional result type, and `fails` effect. Parameter names need not match; the definition's parameter names create the bindings used by its body.
 
 A routine may have at most one forward declaration and one definition. A second forward declaration, a forward declaration after a definition, a definition without an applicable forward when the name is already bound, or a mismatched completing header is invalid. Every forward declaration must have a completing definition in the same compilation unit.
 
@@ -816,12 +796,12 @@ sub emit(value as u8)
 end
 ```
 
-This completion does not:
+This completion also matches because parameter spelling is not part of forward completion:
 
 ```nucleus
 forward sub emit(value as u8)
 
-sub emit(byte as u8)          // invalid: parameter identity differs
+sub emit(byte as u8)
     return
 end
 ```
@@ -846,13 +826,15 @@ sub second(value as u16)
 end
 ```
 
-Under these rules, those names resolve. Chapter 13 determines whether recursive calls are admitted and defines their call semantics; Chapter 7 defines activation storage and lifetime. Implementation staging must not change the name-resolution result.
+Under these rules, those names resolve. Chapter 13 admits recursive calls and defines their call semantics; Chapter 7 defines activation storage and lifetime. Implementation staging must not change the name-resolution result.
 
-### 5.10 Reserved, predefined, and generated names
+### 5.10 Reserved, predefined, entry, and generated names
 
 Reserved words, built-in type words, and Boolean literals recognized by Chapter 3 are tokens rather than ordinary bindings. A source declaration cannot use their spellings as identifiers.
 
-Nucleus 0.1 has no implementation-selected predefined source names. If another chapter admits a fixed predefined routine, constant, or service name, the compiler establishes that ordinary program-scope binding before the first source token. User declarations and routine-scope declarations cannot redeclare or shadow it. An implementation extension may add names only under the explicit extension rules in Section 1.7.
+Chapter 16 defines the complete standard set of predefined source routines and constants. The compiler establishes those ordinary program-scope bindings before the first source token. User declarations and routine-scope declarations cannot redeclare or shadow them. An implementation extension may add names only under the explicit extension rules in Section 1.7.
+
+`main` is not a predefined binding. Its required source definition creates the ordinary routine binding and must satisfy Section 4.7. No other declaration may use that identity.
 
 Compiler-generated temporaries, labels, and helper names remain outside the source namespace. They cannot collide with a source identifier or become visible to source lookup.
 
@@ -917,13 +899,13 @@ A scalar variable, parameter, field, array element, or routine result holds a sc
 
 An integer literal is exact and has no fixed integer type until an expected integer type or an expression rule supplies one. In a declaration initializer, scalar argument, assignment, return, array index, or other expected-type position, a literal may take type `u8` or `u16` when its value lies in that type's range. A literal outside the expected range is invalid; it is not truncated or wrapped.
 
-Chapter 9 will define the treatment of an integer literal with no expected type and the result types of operators. This chapter does not assign an expression-wide default type.
+Chapter 9 defines the treatment of an integer literal with no expected type and the result types of operators. This chapter does not assign an expression-wide default type.
 
 A character literal has type `u8` and its value is the decoded byte from Chapter 3. Nucleus has no separate character type. The ordinary `u8`-to-`u16` widening rule permits a character literal where a `u16` value is expected.
 
 The only implicit conversion between declared scalar types is `u8` to `u16`. It preserves every source value and zero-extends in representations where extension is required. The same conversion applies to assignment, initialization, scalar arguments, scalar results, and operands when Chapter 9 admits a mixed-width operation.
 
-Conversion from `u16` to `u8` requires an explicit checked narrowing operation. Chapter 9 will define its expression spelling. When the source value is known and exceeds 255, the compiler must issue a diagnostic. When the value is not known until execution, the generated program must trap before producing or storing a `u8` result if the value exceeds 255. Checked narrowing never means low-byte extraction, modulo reduction, or reinterpretation.
+Conversion from `u16` to `u8` requires an explicit checked narrowing operation. Chapter 9 defines its expression spelling. When the source value is known and exceeds 255, the compiler must issue a diagnostic. When the value is not known until execution, the generated program must trap before producing or storing a `u8` result if the value exceeds 255. Checked narrowing never means low-byte extraction, modulo reduction, or reinterpretation.
 
 No implicit or explicit scalar conversion changes `boolean` into an integer or an integer into `boolean`. Nucleus 0.1 also has no arbitrary cast or same-width reinterpretation operation.
 
@@ -943,7 +925,7 @@ Top-level variables may provide owned aggregate storage. Aggregate storage may a
 
 A local declaration of record, fixed-array, or bounded-string type creates an aggregate alias rather than owned local aggregate storage. An aggregate parameter is also an alias to caller-provided storage. These aliases have fixed referent types and cannot be rebound through assignment.
 
-Nucleus has no ordinary aggregate value copy. Assignment does not copy a complete record, fixed array, or bounded string, and a routine does not return one by value. Programs update scalar fields, scalar elements, or bounded-string content through operations admitted by later chapters. A later bulk operation must be explicit and does not change the type rules in this chapter.
+Nucleus has no ordinary aggregate value copy. Assignment does not copy a complete record, fixed array, or bounded string, and a routine does not return one by value. Programs update scalar fields, scalar fixed-array elements, or existing bounded-string bytes through the postfix operations defined below. A later bulk operation must be explicit and does not change the type rules in this chapter.
 
 An aggregate routine result is a typed alias to existing storage. The returned referent must remain alive after the call. Chapter 7 defines the lifetime and escape check; Chapter 13 defines result syntax. A result that would refer to storage ending with the call is invalid.
 
@@ -979,11 +961,18 @@ A string literal is a contextual bounded-string initializer. It is compatible wi
 
 Two bounded-string types are identical only when their capacities are equal. An alias to `string[16]` is not compatible with `string[32]`, even when the current contents would fit both. This exact rule keeps the referent extent available from the static type and permits a one-address alias representation.
 
-A bounded string is an aggregate, not a `u8` array. It has no source-level header field, payload field, terminator field, or byte-index operation. Chapters 8 through 10 and 16 may define explicit initialization, content, comparison, and system-boundary operations without exposing its representation.
+A bounded string is an aggregate, not a `u8` array. It has no source-level header field, payload field, or terminator field. Nucleus 0.1 provides two intrinsic postfix operations without exposing that representation:
+
+- `text.length` is a read-only `u8` value equal to the current logical byte length.
+- `text[index]` selects one existing byte as a `u8` storage path. The index must have type `u8` or `u16` and must be less than the current length. A failed check performs the `bounds` trap before a read or write.
+
+A byte assignment replaces exactly one existing byte and does not change the string's length or capacity. These operations provide no append, insertion, resize, truncation, bulk copy, whole-string assignment, or whole-string comparison. Embedded zero bytes are ordinary content and do not terminate either operation.
+
+The `.length` intrinsic applies only when the postfix base has bounded-string type. On a record base, `.length` remains ordinary lookup in that record's field scope. Any other field suffix on a bounded string is invalid.
 
 Nucleus 0.1 has no `string[]`, open string, slice, general view, or address-and-length source value. A routine that accepts a bounded string names an exact capacity in its parameter type. A broader read-only view may be considered in a later language version after its compiler, carrier, lifetime, and result-ABI costs have been measured.
 
-This chapter fixes the semantic domain and capacity, not the stored layout. Chapter 7 defines storage identity and lifetime, Chapter 8 defines declaration initialization, and the VM specification or backend defines the physical representation and byte encoding. Any representation must preserve embedded zero bytes and lengths through 255.
+This chapter fixes the semantic domain and capacity, not the stored layout. Chapter 7 defines storage identity and lifetime, Chapter 8 defines declaration initialization, and the VM specification or backend defines the physical representation and byte encoding. Any representation must preserve embedded zero bytes, lengths through 255, and alias-visible byte mutation.
 
 ### 6.9 Aggregate aliases and address separation
 
@@ -1018,6 +1007,8 @@ The compiler applies these compatibility rules:
 | Boolean condition or destination                       | `boolean` only.                                                                     |
 | Record field selection                                 | The field's declared type.                                                          |
 | Fixed-array index                                      | `u8` or `u16` index; result has the exact element type.                             |
+| Bounded-string `.length`                               | Read-only `u8` value equal to the current logical length.                           |
+| Bounded-string index                                   | `u8` or `u16` index below the current length; result is a writable `u8` path.       |
 | Aggregate parameter or local alias                     | Exact referent-type identity.                                                       |
 | Aggregate result                                       | Exact referent-type identity and a referent that passes Chapter 7's lifetime check. |
 | Ordinary aggregate assignment or by-value result       | Invalid; Nucleus 0.1 provides neither operation.                                    |
@@ -1097,6 +1088,8 @@ var name as string[12]
 
 `bytes[0]` through `bytes[15]` are within the declared domain. `bytes[16]` is a compile-time error. A runtime value used as the index is checked before access. `string[12]` and `string[16]` are different types, and a thirteen-byte literal cannot initialize `name`.
 
+For a bounded string `name`, `name.length` reads its logical length and `name[index]` reads or replaces one existing byte. An index equal to the current length traps; assignment through the index does not append or change `name.length`.
+
 ## 7. Storage, values, and lifetime
 
 ### 7.1 Scope
@@ -1109,12 +1102,12 @@ The rules in this chapter do not expose physical addresses, banks, virtual-regis
 
 Nucleus distinguishes four related concepts:
 
-| Concept               | Source meaning                                                                                                               |
-| --------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
-| Scalar value          | One `u8`, `u16`, or `boolean` value. Scalar values can be copied.                                                            |
-| Object                | Storage associated with a declared variable.                                                                                 |
-| Subobject             | A record field or fixed-array element. A bounded string may itself be an object or an aggregate subobject.                   |
-| Typed aggregate alias | A non-owning, fixed binding to an existing record, fixed-array, or bounded-string object or subobject of one of those types. |
+| Concept               | Source meaning                                                                                                                         |
+| --------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
+| Scalar value          | One `u8`, `u16`, or `boolean` value. Scalar values can be copied.                                                                      |
+| Object                | Storage associated with a declared variable.                                                                                           |
+| Subobject             | A record field, fixed-array element, or existing bounded-string byte. A bounded string may itself be an object or aggregate subobject. |
+| Typed aggregate alias | A non-owning, fixed binding to an existing record, fixed-array, or bounded-string object or subobject of one of those types.           |
 
 An object has one identity throughout its lifetime. Writing a new scalar value into an object or subobject changes its contents, not its identity. An alias has the exact aggregate type of its target and does not create another object.
 
@@ -1154,7 +1147,7 @@ An aggregate parameter is a typed alias to caller-provided storage. A routine-lo
 
 Two simultaneously active invocations have distinct logical parameters, scalar locals, and local alias bindings. This rule applies even when the implementation assigns the same virtual-register numbers or physical storage to invocations that cannot overlap.
 
-Recursion remains subject to the admission decision in Section 2.8. An implementation that admits recursion preserves distinct logical activation state at every active depth. Caller-save regions, hardware-stack entries, static-slot save areas, or another re-entry mechanism may implement that rule; none is source storage.
+Recursive calls use the same activation rule. An implementation preserves distinct logical activation state at every active depth. Caller-save regions, hardware-stack entries, static-slot save areas, or another re-entry mechanism may implement that rule; none is source storage.
 
 ### 7.6 Aggregate alias binding
 
@@ -1165,6 +1158,8 @@ An aggregate alias binds once, when its parameter or local declaration is establ
 - another in-scope aggregate alias; or
 - an aggregate field or fixed-array element reached from one of those roots.
 
+A compatible aggregate-alias result from an infallible routine invocation may also establish a local alias. Chapter 13 guarantees that such a result denotes program-lifetime storage. The compiler evaluates the invocation once before fixing the local binding.
+
 The compiler evaluates every field selection and checked index used to form a local alias once at binding. Later changes to an index variable do not retarget the alias. The target type must exactly match the alias type under Chapter 6.
 
 An alias does not extend the target's lifetime. Current aggregate storage belongs to variables, so scalar-leaf writes through an aggregate alias are allowed under the ordinary assignment rules.
@@ -1173,17 +1168,17 @@ An alias does not extend the target's lifetime. Current aggregate storage belong
 
 A subobject begins and ends its lifetime with its containing object. Nested containment does not create a separately managed lifetime. An alias to an aggregate record field or fixed-array element remains valid only while the containing object remains alive.
 
-Distinct fields of one record and distinct elements of one fixed array are distinct subobjects. An object overlaps each of its own subobjects, and a nested subobject overlaps every containing object on its path. Sibling fields and sibling array elements do not overlap in source semantics.
+Distinct fields of one record, distinct elements of one fixed array, and distinct byte positions in one bounded string are distinct subobjects. An object overlaps each of its own subobjects, and a nested subobject overlaps every containing object on its path. Sibling fields, sibling array elements, and distinct string bytes do not overlap in source semantics.
 
 Two aliases may denote the same object or overlapping objects. Nucleus provides no alias-identity comparison, but identity is observable through mutation: a scalar write through one path is visible through every other path to that scalar subobject. An implementation must preserve this effect even if it caches a scalar value or uses different carriers for the two paths.
 
 ### 7.8 Assignment and aggregate mutation
 
-Scalar assignment copies a value into a scalar destination. The destination may be a scalar variable, parameter, record field, or fixed-array element. After the assignment, later changes to the source do not change the destination.
+Scalar assignment copies a value into a scalar destination. The destination may be a scalar variable, parameter, record field, fixed-array element, or existing bounded-string byte. After the assignment, later changes to the source do not change the destination.
 
 Aggregate alias binding is not assignment. Once established, an aggregate parameter or local alias cannot be rebound. An assignment whose destination is a bare record, fixed array, bounded string, or aggregate alias is invalid: it neither changes an alias binding nor copies an aggregate object.
 
-Nucleus 0.1 has no implicit whole-record, whole-array, or whole-string copy. Programs mutate aggregates through scalar fields, scalar array elements, and explicit bounded-string operations specified in later chapters. An explicitly admitted library routine can perform an element-wise or content operation, but it remains an ordinary checked operation and does not add aggregate value assignment to the language.
+Nucleus 0.1 has no implicit whole-record, whole-array, or whole-string copy. Programs mutate aggregates through scalar fields, scalar fixed-array elements, and checked bounded-string byte selection. An explicitly admitted library routine can perform an element-wise or content operation, but it remains an ordinary checked operation and does not add aggregate value assignment to the language.
 
 ### 7.9 Aggregate results and escape checking
 
@@ -1271,9 +1266,9 @@ The invalid declaration does not allocate an `Entry` in the activation. Chapter 
 
 Language lifetime is independent of a value's physical location. Reusing a physical address or VM slot at different times, overlaying non-overlapping locals, bank placement, and hardware-stack reuse do not merge source objects or activations. Conversely, two source paths to the same object retain shared identity even if a backend represents them differently.
 
-An implementation may bound active call depth, scalar locals, aggregate-alias bindings, or the metadata used for lifetime checks. It must publish each limit. A compile-time excess requires a capacity diagnostic under Chapter 1. An implementation must not share live activation state, wrap a depth counter, or produce a dangling alias when a limit is reached.
+An implementation may bound scalar locals, aggregate-alias bindings, or the metadata used for lifetime checks. It must publish each limit. A compile-time excess requires a capacity diagnostic under Chapter 1. An implementation must not share live activation state or produce a dangling alias when a limit is reached.
 
-One lifetime decision remains attached to recursion admission: if activation depth can exceed a configured limit only at runtime, admission requires a specified failure and a trap defined in Chapter 15. Until then, prototype recursion follows Section 1.10 rather than adding an unspecified runtime failure to Nucleus 0.1.
+The maximum simultaneous activation depth is implementation-defined under Chapter 13. Reaching that limit at runtime performs the activation-capacity trap defined by Chapter 15. The limit and trap do not change the source lifetime of an activation that begins successfully.
 
 Nucleus 0.1 exposes no raw pointer value, address arithmetic, heap allocation, manual deallocation, open slice or view, variable-sized local, arbitrary aggregate copy, or storage-layout query through this chapter. Field byte offsets, array byte offsets, bounded-string encoding, VM carriers, calling opcodes, and save-region layouts belong to the VM specification or a backend contract.
 
@@ -1337,13 +1332,13 @@ routine-definition    ::= routine-header NEWLINE
                           "end" NEWLINE
 routine-header        ::= "sub" NAME "(" [ formal-parameter
                           { "," formal-parameter } ] ")"
-                          [ "as" type ]
+                          [ "as" type ] [ "fails" ]
 formal-parameter      ::= NAME "as" type
 
-local-declaration     ::= "var" NAME "as" scalar-type
-                          [ "=" expression ] NEWLINE
-                        | "var" NAME "as" aggregate-type
-                          "=" aggregate-storage-path NEWLINE
+local-declaration     ::= "var" NAME "as" type
+                          [ "=" local-initializer ] NEWLINE
+local-initializer     ::= expression
+                        | failable-invocation "or" "fail"
 
 constant-initializer  ::= scalar-constant-expression
 program-initializer   ::= scalar-constant-expression
@@ -1354,7 +1349,7 @@ scalar-array-initializer
                           { "," scalar-constant-expression } "]"
 ```
 
-`type`, `scalar-type`, and `aggregate-type` are defined by Chapter 6. The parser selects the initializer form from the declared type. `routine-statement-sequence`, `expression`, and `aggregate-storage-path` are placeholders for later chapters, not additional declaration syntax.
+`type`, `scalar-type`, and `aggregate-type` are defined by Chapter 6. The parser selects the initializer form from the declared type. `routine-statement-sequence` and `expression` are placeholders for later chapters, not additional declaration syntax.
 
 Each constant, variable, record header, field, and local declaration introduces one name. A routine header introduces one routine name and its individually written parameters. Each field and parameter repeats the canonical `name as Type` form. No comma-separated field or variable group is permitted.
 
@@ -1422,7 +1417,7 @@ Record field names use the record's field scope under Chapter 5. A case-insensit
 
 A top-level `var` declaration owns one mutable program-lifetime object. The declared type may be scalar, record, fixed array, or bounded string.
 
-Every program variable has an initial value. With no initializer, the compiler establishes the type's zero value from Section 7.4 before the entry routine begins. The default is therefore integer zero, `false`, an empty bounded string, or the recursive zero value of a record or fixed array.
+Every program variable has an initial value. With no initializer, the compiler establishes the type's zero value from Section 7.4 before the entry routine begins. The default is therefore integer zero, `false`, an empty bounded string with length zero, or the recursive zero value of a record or fixed array.
 
 An explicit program initializer is permitted only in these forms:
 
@@ -1433,7 +1428,7 @@ An explicit program initializer is permitted only in these forms:
 | Fixed array with scalar element type   | One flat list of exactly the declared number of compatible constant elements |
 | Record or array with aggregate element | None; omit the initializer to select recursive zero initialization           |
 
-Program initialization does not evaluate an ordinary runtime expression or read another variable. A string or array initializer cannot name another aggregate object. Nucleus has no record-constructor initializer, designated-field initializer, implicit aggregate copy, or partial array initializer. A fixed-array list that is too short or too long is invalid; the compiler neither pads nor discards elements.
+Program initialization does not evaluate an ordinary runtime expression or read another variable. A string literal establishes both the decoded bytes and their logical length; embedded zero bytes count toward that length. A string or array initializer cannot name another aggregate object. Nucleus has no record-constructor initializer, designated-field initializer, implicit aggregate copy, or partial array initializer. A fixed-array list that is too short or too long is invalid; the compiler neither pads nor discards elements.
 
 The program variable becomes visible only after the compiler has checked its type and initializer. Its initializer may therefore use earlier scalar constants but cannot use the variable itself or a later declaration.
 
@@ -1443,7 +1438,7 @@ One routine header declares a routine name, an ordered list of zero or more form
 
 A scalar parameter denotes a per-invocation copied value. An aggregate parameter establishes a fixed typed alias to caller-provided program-variable storage. Scalar-leaf mutation through that alias is permitted. Chapter 13 defines calls, result rules, and the value supplied for each parameter; this chapter defines only the bindings written in the header.
 
-A forward routine declaration contains the complete header and no body. The later definition must match it under Chapters 4 and 5, including case-folded routine and parameter identities, parameter count and order, parameter types, and the optional result type. The definition completes the existing routine binding; it does not declare another routine.
+A forward routine declaration contains the complete header and no body. The later definition must match it under Chapters 4 and 5, including case-folded routine identity, parameter count and order, parameter types, optional result type, and `fails` effect. Parameter spelling may differ; the definition's parameter names create its body bindings. The definition completes the existing routine binding; it does not declare another routine.
 
 A routine definition without an earlier forward makes its checked signature visible before the local-declaration prefix and body. No nested routine declaration is permitted.
 
@@ -1451,11 +1446,11 @@ A routine definition without an earlier forward makes its checked signature visi
 
 Local declarations execute in source order at the start of each invocation, after parameter binding and before the first statement. They remain in one contiguous prefix.
 
-A scalar local owns one per-invocation scalar value. Its initializer is an ordinary expression evaluated once when execution reaches the declaration. The expression must be compatible with the declared scalar type. If the initializer is omitted, the compiler establishes zero for `u8` or `u16` and `false` for `boolean` at that point.
+A scalar local owns one per-invocation scalar value. Its initializer is an ordinary expression or the failable-invocation propagation form from Chapter 14, evaluated once when execution reaches the declaration. The successful result must be compatible with the declared scalar type. If the initializer is omitted, the compiler establishes zero for `u8` or `u16` and `false` for `boolean` at that point.
 
-An aggregate local owns no aggregate storage. Its initializer is mandatory and must be a compatible aggregate storage path rooted as Section 7.6 permits. The compiler evaluates and checks the path once when execution reaches the declaration, then establishes an immutable typed alias binding to that object or subobject. Later changes to an index used in the initializer do not retarget the alias.
+An aggregate local owns no aggregate storage. Its initializer is mandatory and must be a compatible aggregate storage path rooted as Section 7.6 permits, a compatible aggregate-alias result from an infallible invocation, or a failable aggregate-alias invocation followed by `or fail` under Chapter 14. The compiler evaluates the path or invocation once when execution reaches the declaration, checks the result's type and program-lifetime provenance, then establishes an immutable typed alias binding to that object or subobject. Later changes to an index used in the initializer do not retarget the alias.
 
-An aggregate local's binding cannot be reassigned. Its target is mutable program-variable storage reached directly or through another aggregate alias. Mutation through a scalar field or scalar element is permitted.
+An aggregate local's binding cannot be reassigned. Its target is mutable program-variable storage reached directly, through another aggregate alias, or through a checked aggregate-alias result. Mutation through a scalar field, scalar fixed-array element, or bounded-string byte is permitted.
 
 A local becomes visible only after its complete declaration and initializer have been checked. Its initializer may name parameters, visible program declarations, and earlier locals. It cannot name itself or a later local. A local declaration inside a statement block or after the first statement is invalid.
 
@@ -1574,3 +1569,1781 @@ end
 ```
 
 Inside a routine, `var current as Cell = cells[0]` is alias binding and is valid. At top level, the same initializer would request an aggregate object initialization from another object and is invalid. Assignment such as `current = cells[1]` is also invalid: it performs neither alias rebinding nor whole-record copying.
+
+## 9. Expressions
+
+### 9.1 Scope
+
+This chapter defines expression syntax, precedence, associativity, operand and result types, scalar conversions, designator formation, and evaluation order. Chapter 6 defines the type set and compatibility rules. Chapter 7 defines storage identity and aggregate aliases. Chapter 10 defines assignment and the statement contexts that contain expressions. Chapter 13 defines routine signatures, argument passing, and result transfer.
+
+Nucleus uses one predictive expression grammar for ordinary, initializer, argument, index, condition, and return contexts. A context may restrict the resulting category or supply an expected type, but it does not select another precedence ladder. The grammar requires no backtracking or retained syntax tree.
+
+### 9.2 Expression grammar
+
+The reusable expression fragment is:
+
+```text
+expression             ::= or-expression
+or-expression          ::= and-expression { "or" and-expression }
+and-expression         ::= not-expression { "and" not-expression }
+not-expression         ::= "not" not-expression | comparison
+comparison             ::= additive [ comparison-operator additive ]
+comparison-operator    ::= "=" | "<>" | "<" | "<=" | ">" | ">="
+additive               ::= multiplicative
+                           { ( "+" | "-" ) multiplicative }
+multiplicative         ::= unary { ( "*" | "/" ) unary }
+unary                  ::= ( "+" | "-" ) unary | postfix-expression
+postfix-expression     ::= primary { postfix-suffix }
+primary                ::= NUMBER | CHARACTER | "true" | "false"
+                         | NAME | conversion | "(" expression ")"
+conversion             ::= ( "u8" | "u16" ) "(" expression ")"
+postfix-suffix         ::= argument-list | "[" expression "]" | "." NAME
+argument-list          ::= "(" [ expression { "," expression } ] ")"
+```
+
+Chapter 17 incorporates this fragment into the complete grammar. The semantic restrictions below reject suffix combinations that the compact syntactic loop can recognize but Nucleus does not admit.
+
+A string literal is not a general expression primary. Chapter 8 permits it as a bounded-string initializer. A later system or bounded-string operation may accept a string literal in an explicitly defined operand position without turning it into a copyable aggregate value.
+
+### 9.3 Names, calls, and postfix operations
+
+The compiler resolves each `NAME` before interpreting its postfix suffixes. A visible scalar constant, scalar variable, parameter, or local supplies its declared scalar type. A visible aggregate object or alias supplies its exact aggregate type and storage category. A visible routine name must be followed immediately by an argument list; routine names are not values.
+
+An argument-list suffix in an ordinary expression invokes only an infallible source routine named by the primary. Nucleus has no routine values, indirect calls, callable results, overload resolution, or invocation of an arbitrary parenthesized expression. A second argument-list suffix is invalid. Chapter 13 defines argument and result compatibility, and Chapter 14 gives failable calls their restricted statement, initializer, assignment, and return positions.
+
+An index suffix requires a fixed-array or bounded-string storage path or typed alias. Its expression must have type `u8` or `u16`. For a fixed array, the result has the array's exact element type; the compiler diagnoses a statically out-of-range index and emits a checked access for a dynamic index unless it proves the index is in range. For a bounded string, the result is a `u8` storage path and the implementation checks the index against the current logical length before every access unless it proves that access safe. A failed check occurs before the element or byte is read or written.
+
+A field suffix on a record storage path or typed record alias resolves the field name only in that record's field scope and produces the field's declared type. A `.length` suffix on a bounded-string storage path or alias produces its read-only `u8` logical length. Other field suffixes on bounded strings are invalid. Selection does not expose an offset, header, or address to source code.
+
+Index and field suffixes may follow an aggregate result from a routine call. The result remains a typed alias to the object established by Chapter 13; the suffix does not copy that object. A scalar result cannot be indexed or selected, and a result-free call cannot take another suffix.
+
+### 9.4 Expression categories and storage paths
+
+Expression checking records both a type and one of these source categories:
+
+| Category               | Permitted use                                                                                          |
+| ---------------------- | ------------------------------------------------------------------------------------------------------ |
+| Exact integer constant | Adopts an admitted integer type from context or the rules in Section 9.7.                              |
+| Scalar value           | May be copied, converted, compared, passed, returned, or stored in a compatible scalar destination.    |
+| Scalar storage path    | Reads as its scalar value in an expression and may be a writable destination when its root is mutable. |
+| Aggregate storage path | May be indexed, selected, bound to a compatible alias, passed, or returned under the lifetime rules.   |
+| Aggregate alias result | Denotes existing compatible storage and supports the same postfix operations as that storage.          |
+| Result-free invocation | Is valid as a complete call statement, or in Chapter 14's result-free failable propagating `return`.   |
+
+A **storage path** begins with a visible program variable, parameter, or local and continues through zero or more field and index suffixes. Each suffix preserves the root object's identity while selecting a subobject. A scalar constant and a routine call are not storage-path roots. A call that returns an aggregate alias may be selected or indexed in a value context, but Chapter 10 does not admit it as an assignment root.
+
+A bare aggregate storage path is not a copyable value. It is valid only where a rule requires compatible aggregate storage or an alias, or as the base of another postfix suffix. Nucleus has no implicit aggregate load, comparison, copy, or truth test.
+
+### 9.5 Explicit integer conversions
+
+`u16(expression)` performs the explicit form of the `u8`-to-`u16` conversion. Its operand must have type `u8` or `u16`. A `u8` operand is widened without changing its value; a `u16` operand is unchanged.
+
+`u8(expression)` performs checked narrowing. Its operand must have type `u8` or `u16`. A `u8` operand is unchanged. A known `u16` value outside 0 through 255 makes the source invalid. For a value known only at runtime, the generated program checks the range and performs the Chapter 15 narrowing trap before producing a result when the value is outside that range.
+
+Both forms evaluate their operand once. They do not reinterpret bits, extract a low byte, wrap, or expose a machine representation. `boolean(expression)`, record conversions, array conversions, string-capacity conversions, and conversions between `u16` and an aggregate-alias carrier are absent.
+
+The type words in these two forms are fixed tokens, not routine names. A user declaration cannot override them, and conversion syntax does not participate in routine lookup.
+
+### 9.6 Precedence and associativity
+
+Precedence from highest to lowest is:
+
+1. routine invocation, indexing, field selection, and parenthesized grouping;
+2. unary `+` and unary `-`;
+3. multiplication and division;
+4. addition and subtraction;
+5. one comparison;
+6. `not`;
+7. `and`;
+8. `or`.
+
+Binary arithmetic, `and`, and `or` associate from left to right. Unary `+`, unary `-`, and `not` associate from right to left. A comparison contains at most one comparison operator and therefore has no associativity.
+
+`not` binds less tightly than comparison. Thus `not left = right` means `not (left = right)`. An integer complement used as a comparison operand requires parentheses, as in `(not mask) = expected`.
+
+The repeated forms in Section 9.2 preserve left association without a left-recursive predictive grammar. An implementation may use another parser family only if it accepts the same token sequences and produces the same association.
+
+### 9.7 Integer-literal resolution
+
+An exact integer literal adopts an expected `u8` or `u16` type when its value fits. The expected type may come from a declaration initializer, scalar destination, parameter, result, conversion operand, or a typed operand in the same arithmetic operation. An expected type never narrows an already typed operand implicitly.
+
+For an integer operation:
+
+- when one operand has integer type and the other is an exact integer constant, the constant adopts that type when it fits;
+- when the operands have types `u8` and `u16`, the `u8` operand widens and the operation uses `u16`;
+- when both operands are exact integer constants, an expected integer result type applies when both operands fit; otherwise the operation uses `u16`; and
+- when a standalone exact integer literal has no expected type, it uses `u16`.
+
+An exact value that does not fit the selected type makes the source invalid. The compiler does not truncate the literal or select a wider intermediate type after the context has fixed a narrower operation.
+
+A character literal has type `u8`. It follows the ordinary implicit widening rule when combined with or supplied to `u16`. `true` and `false` have type `boolean` and never adopt an integer type.
+
+### 9.8 Integer arithmetic
+
+`+`, `-`, `*`, and `/` accept integer operands. After literal resolution and implicit widening, both operands have the same type and the result has that type.
+
+Addition, subtraction, multiplication, and unary minus use arithmetic modulo 256 for `u8` and modulo 65,536 for `u16`. Unary minus is subtraction from zero in the selected width. Unary plus preserves the operand and its type. These rules define wraparound; overflow is neither undefined nor a narrowing conversion.
+
+Division produces the unsigned integer quotient with any remainder discarded. Division by zero performs the arithmetic trap specified by Chapter 15. When the divisor is a compile-time constant zero, the source is invalid and the compiler issues a diagnostic instead of emitting a guaranteed trap.
+
+The result width is determined before evaluation. Arithmetic does not widen merely because a mathematical result would exceed that width. A program that requires a wider result widens an operand explicitly or supplies a `u16` operand before the operation.
+
+### 9.9 Comparison
+
+The six comparison operators accept compatible integer operands and produce `boolean`. Literal resolution and `u8`-to-`u16` widening follow Section 9.7. Integer comparison uses unsigned ordering.
+
+Boolean operands support only `=` and `<>`. Both operands must have type `boolean`. Boolean ordering is invalid.
+
+Records, fixed arrays, bounded strings, aggregate aliases, and alias carriers have no comparison operation in Nucleus 0.1. Equal layout, equal capacity, or identity of the referred object does not add an equality operator. A bounded-string content operation, if admitted at the system boundary, defines its own result and does not change this rule.
+
+Comparison chaining is invalid. `minimum <= value <= maximum` is not two comparisons; after the first comparison, the left side would be Boolean and the grammar permits no second comparison operator. The equivalent valid form is `minimum <= value and value <= maximum`.
+
+### 9.10 `not`, `and`, and `or`
+
+`not` accepts one `boolean`, `u8`, or `u16` operand. For `boolean`, it exchanges `true` and `false`. For an integer, it complements every bit in the operand's declared width and produces the same integer type.
+
+`and` and `or` accept either two Boolean operands or two compatible integer operands. Mixed Boolean and integer operands are invalid. Integer operands use literal resolution and widening from Section 9.7, combine corresponding bits, evaluate both operands, and produce the resolved integer type.
+
+Boolean `and` and `or` short-circuit. The left operand is evaluated first:
+
+| Operator | Left value | Right operand | Result                            |
+| -------- | ---------- | ------------- | --------------------------------- |
+| `and`    | `false`    | not evaluated | `false`                           |
+| `and`    | `true`     | evaluated     | the right operand's Boolean value |
+| `or`     | `true`     | not evaluated | `true`                            |
+| `or`     | `false`    | evaluated     | the right operand's Boolean value |
+
+An operand that is not evaluated performs no call, storage access, bounds check, conversion check, arithmetic trap, or other source operation. The Boolean and integer meanings are selected by static types and create no parsing ambiguity.
+
+`xor`, shifts, rotations, power, `mod`, and symbolic Boolean operators are absent. A later proposal for one of these operators requires its own measured admission and a Chapter 3 token amendment when it uses a word.
+
+### 9.11 Evaluation order
+
+Nucleus fixes evaluation order:
+
+- a unary operand is evaluated before its operator;
+- binary operands are evaluated from left to right, subject to Boolean short-circuiting;
+- a postfix base is evaluated before its suffixes, and suffixes are applied from left to right;
+- each index expression is evaluated and checked when its suffix is reached;
+- routine arguments are evaluated from left to right under Chapter 13; and
+- an explicit conversion evaluates its operand before checking or producing the result.
+
+If an earlier operation traps, later operands and suffixes are not evaluated. Field selection performs no source-level read by itself, but evaluation of its base and any preceding index or call remains observable.
+
+A backend may reorder operations only when it proves that no result, call, mutation, storage access, check, trap, or other observable behaviour can distinguish the order. The permitted implementation arrangement does not change source semantics.
+
+### 9.12 Constant expressions
+
+The scalar operators and conversions in this chapter are available to the scalar constant expressions defined by Chapter 8. The compiler applies the same literal resolution, width, wraparound, comparison, and short-circuit rules used at runtime.
+
+A constant division by zero is invalid. A checked `u8` conversion of a known value outside 0 through 255 is invalid. A short-circuited constant operand is not evaluated and therefore cannot contribute a fault.
+
+Routine calls and storage paths remain unavailable in constant expressions. The presence of a pure-looking routine or a program variable with a constant initializer does not extend the constant-expression grammar.
+
+### 9.13 Invalid expressions and capacity limits
+
+The compiler must diagnose:
+
+- a name of the wrong declaration class for its expression position;
+- a routine name without its argument list or an argument-list suffix on a non-routine;
+- an invalid field, index, suffix sequence, or aggregate use;
+- an operand-type mismatch or a literal that does not fit its resolved type;
+- a chained comparison;
+- an implicit narrowing or unavailable conversion;
+- a result-free call used as a value;
+- an aggregate used where a scalar value is required; and
+- a statically provable bounds, narrowing, or division failure.
+
+An implementation may bound expression nesting, prefix depth, postfix depth, arguments, and retained expression-checking state. It must publish each limit and issue a capacity diagnostic before a stack, counter, temporary pool, or type record overflows. Capacity exhaustion must not change precedence, omit a check, truncate an argument list, or alter an expression's type.
+
+### 9.14 Examples
+
+For `u16` values `a`, `b`, and `c`, these expressions associate as shown:
+
+```nucleus
+a - b - c       // (a - b) - c
+a / b * c       // (a / b) * c
+- -a            // -( -a ) in u16 arithmetic
+not not flag    // not (not flag)
+```
+
+Postfix operations share one left-to-right path:
+
+```nucleus
+cells[index].value
+entryAt(index).value
+measure(cells[index].value)
+```
+
+`entryAt` must return an aggregate alias with the selected record type, and `measure` must have a compatible visible signature. The index is checked before field selection or argument transfer.
+
+These forms illustrate comparison and conversion rules:
+
+```nucleus
+minimum <= value and value <= maximum
+u16(byteValue) + wordValue
+u8(wordValue)
+(not (mask and readyMask)) = 0
+```
+
+The first expression contains two non-chained comparisons. The third performs checked narrowing. In the last expression, parentheses make the integer complement the left comparison operand; without them, `not` would apply to the Boolean comparison result.
+
+Each of these forms is invalid:
+
+```nucleus
+first < second < third  // comparisons do not chain
+flag + 1               // Boolean is not integer
+recordValue = other    // aggregate equality is absent
+routineName            // a routine name is not a value
+boolean(value)          // Boolean conversion is absent
+```
+
+## 10. Statements
+
+### 10.1 Scope
+
+This chapter defines statement syntax, statement sequencing, name-led dispatch, assignment, routine-call statements, and execution order. Chapters 11 and 12 define the compound conditional and loop statements. Chapter 13 completes the rules for calls and `return`. Chapter 12 completes the rules for `exit` and `continue`.
+
+Executable statements occur only in a routine body. Chapter 8 requires every local declaration to precede the first statement, so a statement sequence contains no declarations and opens no name scope.
+
+### 10.2 Statement grammar
+
+The reusable statement fragment is:
+
+```text
+statement-sequence      ::= { statement }
+statement               ::= simple-statement NEWLINE [ on-error-clause ]
+                          | if-statement
+                          | while-statement
+                          | for-statement
+simple-statement        ::= assignment-statement
+                          | routine-call-statement
+                          | return-statement
+                          | "exit"
+                          | "continue"
+                          | fail-statement
+assignment-statement    ::= assignment-target "=" expression
+assignment-target       ::= NAME { postfix-suffix }
+routine-call-statement  ::= NAME argument-list
+return-statement        ::= "return" [ expression ]
+```
+
+Chapters 11 through 14 define the referenced productions and semantic restrictions. Chapter 17 replaces this fragment with the complete grammar for failable invocations, propagation, and `on error` attachment.
+
+A simple statement consumes one logical `NEWLINE`. A compound statement consumes the `NEWLINE` after its own closing `end`. Blank and comment-only physical lines produce no token under Chapter 3 and therefore do not create empty statements. A statement sequence may contain no statements; this permits an empty conditional clause or loop body without a placeholder operation.
+
+Nucleus has no semicolon, colon separator, multiple statements on one logical line, one-line compound statement, or empty-statement token.
+
+### 10.3 Name-led dispatch
+
+When a statement begins with `NAME`, the compiler resolves that name before selecting the statement form:
+
+| Resolved declaration                         | Required continuation                                                            |
+| -------------------------------------------- | -------------------------------------------------------------------------------- |
+| Source routine                               | Its argument list, forming a routine-call statement.                             |
+| Mutable scalar variable, parameter, or local | Zero or more field or index suffixes, followed by `=`.                           |
+| Aggregate object or alias                    | One or more field or index suffixes ending at a mutable scalar, followed by `=`. |
+| Constant, type, or another declaration class | No name-led statement form; the compiler diagnoses the class mismatch.           |
+
+This dispatch uses the declaration class already established by Chapters 5 and 8. It requires no token backtracking. A routine name followed by `=` is invalid, and a variable followed by an argument list is invalid; the compiler does not reinterpret either name as another declaration class.
+
+Nucleus has no `call` keyword. An already declared routine name followed by its parenthesized argument list is the canonical invocation statement.
+
+### 10.4 Assignment
+
+An assignment target is a mutable scalar storage path rooted in a program variable, parameter, or local. The parser uses the Chapter 9 postfix-suffix path; the storage-path rule rejects every call suffix and any field or index suffix unsuitable for the preceding type. The final selected type must be `u8`, `u16`, or `boolean`. A bounded-string byte selected by `text[index]` is writable; `text.length` is not.
+
+The compiler evaluates an assignment in this order:
+
+1. evaluate the target path from left to right, including every index expression and bounds check;
+2. evaluate the right-hand expression;
+3. apply the destination compatibility and checked-conversion rules; and
+4. store the scalar result in the selected destination.
+
+The target path is evaluated once. A call or mutation in an index expression therefore occurs before any operation in the right-hand expression. If target evaluation traps, the right-hand expression is not evaluated. If the right-hand expression or a checked conversion traps, the destination is not changed, although effects from the earlier target evaluation remain.
+
+In this statement position, `=` is the assignment operator. Inside an expression, it is equality under Chapter 9. Assignment is not an expression and produces no value. Chained assignment, compound assignment such as `+=`, increment and decrement statements, and assignment inside a condition or argument are absent.
+
+Assignment to a bare record, fixed array, bounded string, or aggregate alias is invalid. It does not copy storage or rebind an alias. Programs mutate admitted aggregates through scalar fields, scalar fixed-array elements, and bounded-string byte selection. A string-byte assignment replaces the selected byte without changing the string's length or capacity.
+
+### 10.5 Routine-call statements
+
+A routine-call statement invokes one visible source routine with the argument list defined by Chapters 9 and 13. A result-free routine is valid in this form. A value or aggregate-alias result may also be discarded; discarding the result does not suppress argument evaluation, routine effects, checks, or traps.
+
+Only the invocation itself forms the statement. A scalar arithmetic expression, comparison, storage read, conversion, field selection, or index operation cannot stand as a statement. An aggregate result cannot be selected and then discarded as an expression statement. These restrictions keep name-led dispatch distinct from general expression parsing.
+
+### 10.6 `return`, `fail`, `exit`, and `continue`
+
+`return` leaves the current routine successfully under Chapter 13. Its permitted expression form depends on the routine's declared result. `fail` leaves a failable routine unsuccessfully under Chapter 14. Neither form is loop control.
+
+`exit` and `continue` apply only to the innermost enclosing loop under Chapter 12. They do not leave a routine or terminate the program. Either word outside a loop is invalid.
+
+All four are complete simple statements. No label, condition, target name, or trailing expression may follow `exit` or `continue`.
+
+### 10.7 Execution and bounded failure
+
+Statements in a sequence begin in source order. A compound statement completes before the following statement begins. A `return`, `fail`, taken `exit`, taken `continue`, or trap prevents normal execution of the remaining statements on that path.
+
+A compiler may emit semantic operations as it checks each statement. It need not retain a statement tree. Forward branches may use bounded fixup state under Chapter 2, provided capacity exhaustion produces a diagnostic rather than an unresolved or incorrect branch.
+
+The compiler must diagnose an invalid statement start, a wrong-class name, a missing assignment operator or argument list, a non-scalar or non-writable assignment target, an incompatible right-hand expression, a forbidden general expression statement, and any context-invalid `return`, `fail`, `exit`, or `continue`.
+
+An implementation may bound statement nesting, active control contexts, branch fixups, and retained emission state. It must publish each limit and issue a capacity diagnostic before overflow changes statement association, branch targets, or execution order.
+
+### 10.8 Examples
+
+These are valid simple statements when the names have compatible declarations:
+
+```nucleus
+count = count + 1
+cells[index].value = nextValue()
+updateDisplay()
+measure(count)
+return
+exit
+continue
+```
+
+`measure(count)` remains a routine-call statement even when `measure` has a result; the result is discarded. `exit` and `continue` require an enclosing loop, and bare `return` requires a result-free routine.
+
+These forms are invalid:
+
+```nucleus
+count + 1                 // general expression statement
+call updateDisplay()      // no call keyword
+left = right = 0          // assignment is not an expression
+cells = otherCells        // aggregate assignment is absent
+cells[index]              // storage read is not a statement
+```
+
+## 11. Conditional control
+
+### 11.1 Scope
+
+This chapter defines the Nucleus `if` statement, its repeated `elseif` clauses, its optional `else` clause, condition evaluation, and clause selection. Chapter 9 defines Boolean expressions. Chapter 10 defines statement sequences. Chapter 17 supplies the complete grammar.
+
+Nucleus uses one multiline conditional form. It has no conditional expression, pattern matching, or general multi-way selection statement.
+
+### 11.2 Syntax
+
+The conditional grammar is:
+
+```text
+if-statement    ::= "if" expression NEWLINE statement-sequence
+                    { "elseif" expression NEWLINE statement-sequence }
+                    [ "else" NEWLINE statement-sequence ]
+                    "end" NEWLINE
+```
+
+`elseif` is one token. The complete chain has one closing `end`. Each clause body is a statement sequence and may be empty. A clause body opens no declaration scope; Chapter 5's routine scope remains in effect throughout the chain.
+
+A logical `NEWLINE` terminates each condition header. Physical line endings inside parentheses or brackets remain suppressed under Chapter 3, so a parenthesized condition may span physical lines without changing this grammar.
+
+### 11.3 Conditions
+
+Every `if` and `elseif` condition must have type `boolean`. Nucleus does not treat zero, a nonzero integer, an aggregate, an alias carrier, or a routine name as a condition. A call used in a condition must return `boolean`.
+
+The compiler evaluates a condition only when control reaches its clause. It evaluates that expression once, with the order, short-circuiting, checks, and traps defined by Chapter 9. A trap in a condition prevents selection of any clause body.
+
+### 11.4 Clause selection
+
+Execution tests the `if` condition first. If it is `true`, the corresponding body executes and control continues after the closing `end`. If it is `false`, execution tests each `elseif` condition in source order until one is `true`. After a true condition, its body executes and no later condition or body is evaluated.
+
+When every written condition is `false`, the `else` body executes if present. With no `else`, the statement performs no body operation. After the selected body completes normally, execution continues with the statement following the closing `end`.
+
+Effects from an evaluated false condition remain observable. Conditions after a selected true clause are not evaluated and perform no calls, storage accesses, checks, or traps.
+
+### 11.5 Flat and nested forms
+
+The flat form is:
+
+```nucleus
+if firstCondition
+    firstAction()
+elseif secondCondition
+    secondAction()
+else
+    fallbackAction()
+end
+```
+
+A genuinely nested conditional has another `if` statement and another `end` in a clause body:
+
+```nucleus
+if outerCondition
+    if innerCondition
+        innerAction()
+    end
+else
+    fallbackAction()
+end
+```
+
+An `if` that is the sole statement of an `else` body can express the same simple truth conditions as a flat `elseif` chain. Nucleus retains `elseif` because the token marks the clause directly, one `end` closes the chain, and the parser can process repeated clauses with one iterative path. The two spellings do not create different Boolean semantics.
+
+`else if` is not an alternative spelling for `elseif`. It produces two tokens. After `else`, this grammar requires `NEWLINE`; a nested `if` begins as a statement on a following logical line and has its own `end`.
+
+### 11.6 Conditional header termination
+
+Nucleus conditional headers do not use `then`. The logical newline already separates the condition from its body, and Chapter 9 has no conditional expression whose tokens could extend across that boundary. A `then` keyword would add a reserved word and grammar token without resolving a parsing choice.
+
+Consequently, `then` remains an identifier under Chapter 3. A Boolean variable named `then` may appear as the complete condition in `if then`; the following logical newline terminates that header.
+
+### 11.7 Lowering boundary
+
+The source semantics require ordered condition evaluation and selection of at most one body. A compiler may lower the statement to comparisons, conditional branches, and ordinary branches while parsing it. The semantic-operation interface and VM require no `if`, `elseif`, or `else` opcode.
+
+Branch fixups and active clause state are implementation details. They must preserve the source order above, skip every unselected body, and continue after the one closing `end`.
+
+### 11.8 Excluded conditional mechanisms
+
+Nucleus 0.1 has no:
+
+- one-line `if` form;
+- postfix or statement-modifier condition;
+- conditional expression;
+- `select` or `case` statement;
+- pattern matching;
+- fall-through selection; or
+- implicit integer truth test.
+
+A restricted dense nonnegative selection form remains a possible later candidate under Chapter 2. It is not standard syntax unless a later specification revision admits it after measurement.
+
+### 11.9 Invalid conditionals and capacity limits
+
+The compiler must diagnose a non-Boolean condition, `elseif` after `else`, more than one `else`, `else if` used as a flat-clause spelling, a missing logical newline, a missing closing `end`, and any clause token outside its conditional context.
+
+An implementation may bound nested conditional depth, clause count, and branch-fixup state. It must publish each limit and issue a capacity diagnostic before overflow changes clause association, skips a selected body, evaluates an unselected condition, or emits an unresolved branch.
+
+### 11.10 Examples
+
+This chain evaluates `ready` first and `waiting` only when `ready` is false:
+
+```nucleus
+if ready
+    run()
+elseif waiting
+    poll()
+else
+    stop()
+end
+```
+
+An empty body is valid:
+
+```nucleus
+if unchanged
+elseif needsUpdate
+    update()
+end
+```
+
+These headers are invalid:
+
+```nucleus
+if count              // u16 is not a condition
+if ready then         // then is an identifier, not a header marker
+else if waiting       // not the flat elseif token
+```
+
+## 12. Loop control
+
+### 12.1 Scope
+
+This chapter defines the two Nucleus 0.1 loop forms, counted-loop direction and bounds, and the required `exit` and `continue` statements. Chapter 9 defines expressions, and Chapter 10 defines statement sequences.
+
+Nucleus has one pre-test conditional loop and one counted loop. Both use the ordinary branch and comparison semantics required by the source language; neither requires a dedicated loop operation in the VM or another backend.
+
+### 12.2 Grammar
+
+The reusable loop fragment is:
+
+```text
+while-statement       ::= "while" expression NEWLINE
+                          statement-sequence
+                          "end" NEWLINE
+
+for-statement         ::= "for" NAME "=" expression
+                          for-bound expression
+                          [ "step" step-constant ] NEWLINE
+                          statement-sequence
+                          "end" NEWLINE
+for-bound             ::= "to" | "until"
+step-constant         ::= [ "+" | "-" ] step-magnitude
+step-magnitude        ::= NUMBER | NAME
+```
+
+A `NAME` used as a step magnitude must denote an earlier `u8` or `u16` named constant. The optional sign belongs to the counted-loop header and is not a runtime signed value. A written numeric magnitude follows Chapter 3's admitted integer-literal forms.
+
+Each loop body is a statement sequence and may be empty. A loop opens no name scope, and its `end` closes only that loop.
+
+### 12.3 `while`
+
+A `while` condition must have type `boolean`. The condition is evaluated before every possible iteration. When it produces `true`, the body executes. Normal completion of the body returns control to the condition. When the condition produces `false`, execution continues after the loop.
+
+The loop may execute zero times. Calls, checks, mutations, and traps performed by each evaluated condition remain observable. A condition is evaluated once per test; a trap prevents entry to the body or any later iteration.
+
+An indefinite loop uses `while true`. Nucleus has no separate unconditional-loop keyword.
+
+### 12.4 Counted-loop counter and operands
+
+The counter name must resolve to a writable scalar program variable, parameter, or local of type `u8` or `u16`. A constant, Boolean, aggregate, alias, routine, field path, or indexed path is invalid. The loop introduces no declaration.
+
+The start expression must be assignment-compatible with the counter type. The bound must be an integer expression. A typed `u8` counter may be compared with a `u16` bound through the ordinary widening rule. An exact bound remains mathematical for the loop comparison and need not fit the counter because the bound is never stored in it.
+
+The compiler evaluates the start expression and then the bound expression exactly once when the loop begins. It performs both evaluations before storing the converted start in the counter. A bound expression that reads the counter therefore reads its pre-loop value. If either evaluation or the start conversion traps, the counter is not initialized by the loop and the body does not begin.
+
+`step` defaults to mathematical `+1`. A written step is a compile-time signed constant. The compiler resolves a named magnitude under Chapter 5, applies the optional sign, and requires a nonzero magnitude from 1 through 65,535. `step 0` and `step -0` are invalid. The signed step is loop-control metadata; Nucleus does not acquire a signed runtime scalar type.
+
+### 12.5 Counted-loop tests
+
+`to` makes the bound inclusive. `until` makes it exclusive. The step sign selects the comparison:
+
+| Step direction | `to` continues while | `until` continues while |
+| -------------- | -------------------- | ----------------------- |
+| Positive       | counter `<=` bound   | counter `<` bound       |
+| Negative       | counter `>=` bound   | counter `>` bound       |
+
+The compiler stores the converted start in the counter and performs this test before the first iteration. A start already beyond the bound in the selected direction therefore executes zero iterations and leaves the counter holding the start value.
+
+After normal body completion, and after `continue`, the implementation computes the next counter value mathematically and tests it against the bound before storing it. A value that fails the next test ends the loop without being stored. A value that would continue must fit the counter type. Every such overflow is the runtime `loop-range` trap defined by Chapter 15, even when the compiler can prove it from source constants. The trap occurs only if execution reaches the increment path; an earlier `exit`, `return`, `fail`, or other terminating transfer from the body prevents that increment and its trap.
+
+This order prevents the loop machinery from wrapping an unsigned counter at its terminal boundary. Ordinary assignments in the body still have their Chapter 10 meaning. If the body changes the counter, the increment and next test use the changed value.
+
+After the loop, the counter retains the last value stored. A zero-iteration loop leaves the converted start. `exit` also leaves the current counter value unchanged.
+
+### 12.6 `to`, `until`, and collection traversal
+
+The canonical traversal of indices from zero through a length minus one uses the exclusive form:
+
+```nucleus
+for index = 0 until itemCount
+    visit(index)
+end
+```
+
+The inclusive form directly expresses a closed ordinal interval. Positive and negative steps use the same surface forms; the sign, not the spelling `to` or `until`, determines direction.
+
+The start and bound are not reevaluated after the loop begins. A change to storage read by the original bound expression does not change the saved bound for the active loop.
+
+Nucleus has no `for in`, iterator protocol, range object, callback traversal, anonymous counter, omitted start, omitted bound, implicit array-length bound, or source form that declares the counter. The counter and both endpoint expressions are explicit.
+
+### 12.7 `exit` and `continue`
+
+Every Nucleus loop supports bare `exit` and bare `continue`. They are unlabeled and apply to the innermost enclosing loop.
+
+`exit` transfers control to the statement after that loop's closing `end`. It does not leave the routine or terminate the program.
+
+In a `while` loop, `continue` transfers control to the next condition test. In a counted `for` loop, it transfers control to the increment-and-next-test path from Section 12.5. It does not skip the increment.
+
+Either statement outside a loop is invalid. Nucleus has no labelled transfer, numeric loop depth, `break` synonym, or transfer directly to an outer loop. An early `return` under Chapter 13 remains the way to leave the routine from inside nested loops.
+
+The grammar adds only the two simple statements, and their lowering uses the active loop's existing continue and exit branch targets. This low incremental structure is a settled language decision; target-byte cost remains subject to the Chapter 2 ledger.
+
+### 12.8 Lowering boundary
+
+A counted loop has the same source effect as ordered start and bound evaluation, counter initialization, a direction-specific comparison, a conditional branch, the body, a checked mathematical increment, and a backward branch. `to` and `until` differ only in whether the bound comparison is inclusive.
+
+The VM and semantic-operation interface require no `for`, `while`, `exit`, or `continue` opcode. A compiler may emit ordinary comparisons and branches as it parses the loop, provided it preserves one-time operand evaluation, the test and store order, and the transfer targets above.
+
+### 12.9 Excluded loop forms
+
+Nucleus 0.1 has no:
+
+- `repeat until` or `do while` loop;
+- post-test loop;
+- general unconditional `loop` statement;
+- collection or iterator loop;
+- omission-based counted-loop variant; or
+- labelled loop or labelled transfer.
+
+These omissions leave `while` for condition-controlled iteration and one mechanically specified `for` for counted traversal.
+
+### 12.10 Invalid loops and capacity limits
+
+The compiler must diagnose a non-Boolean `while` condition, an unsuitable or non-writable counter, an incompatible start or bound, an unavailable or nonconstant step magnitude, a zero step, a missing header `NEWLINE` or closing `end`, and `exit` or `continue` outside a loop.
+
+An implementation may bound loop nesting, retained saved bounds, active branch targets, and fixup state. It must publish each limit and issue a capacity diagnostic before overflow changes a loop's bound, direction, target, or counter update.
+
+### 12.11 Examples
+
+These counted loops visit ascending, exclusive, and descending ranges:
+
+```nucleus
+for level = 1 to 10
+    loadLevel(level)
+end
+
+for index = 0 until itemCount
+    visit(index)
+end
+
+for row = 7 to 0 step -1
+    clearRow(row)
+end
+```
+
+This direction mismatch executes zero iterations:
+
+```nucleus
+for position = 7 to 0 step 1
+    unreachableAction()
+end
+```
+
+Nested transfer targets the inner loop:
+
+```nucleus
+while active
+    for index = 0 until itemCount
+        if skip(index)
+            continue
+        elseif stop(index)
+            exit
+        end
+        visit(index)
+    end
+    update()
+end
+```
+
+The `continue` advances and retests the `for`; the `exit` leaves that `for` and proceeds to `update()`.
+
+## 13. Routines and calls
+
+### 13.1 Scope
+
+This chapter defines routine declarations as callable interfaces, invocation, argument binding, results, `return`, routine completion, recursive calls, and source-level activation behaviour. Chapters 4, 5, and 8 define declaration order, forwards, names, headers, parameters, and local declarations. Chapters 6 and 7 define value copying, aggregate aliases, and lifetime.
+
+Nucleus has one routine family. A routine declares no result or one result type. It has no overload, nested declaration, multiple-result form, implicit result variable, routine-name assignment, routine value, indirect call, or callback type.
+
+### 13.2 Routine syntax
+
+The routine fragment is:
+
+```text
+routine-header       ::= "sub" NAME "(" [ formal-parameter
+                         { "," formal-parameter } ] ")"
+                         [ "as" type ] [ "fails" ]
+formal-parameter     ::= NAME "as" type
+
+forward-routine      ::= "forward" routine-header NEWLINE
+routine-definition   ::= routine-header NEWLINE
+                         { local-declaration }
+                         statement-sequence
+                         "end" NEWLINE
+
+routine-invocation   ::= NAME argument-list
+argument-list        ::= "(" [ expression { "," expression } ] ")"
+return-statement     ::= "return" [ expression ]
+```
+
+Chapter 8 remains authoritative for declaration placement and the local-declaration prefix. The fragments here complete their call and result meaning. Parentheses are required in every header and invocation, including a routine with no parameters or arguments.
+
+An omitted result type declares a result-free routine. A written type declares one result of that exact scalar or aggregate type. The optional `fails` effect is defined by Chapter 14. The header has no separate procedure/function keyword and no result-name declaration.
+
+### 13.3 Visible signatures and invocation
+
+A routine invocation begins with a visible routine name whose complete signature has already been checked. An earlier forward declaration supplies that signature when the definition appears later. The compiler does not infer a signature from arguments or defer checking until another pass.
+
+The invocation must supply exactly one argument for each formal parameter, in declaration order. Nucleus has no optional, named, variadic, grouped, or default arguments. An infallible result-free routine may be used only as the complete call statement from Chapter 10. An infallible result-bearing routine may be used as an expression or as a call statement that discards the result. Chapter 14 restricts every failable call to a position with one explicit failure consumer.
+
+A call expression takes its static result type directly from the signature. A scalar result is a scalar value. An aggregate result is a typed alias and may take the field or index suffixes admitted by Chapter 9. A routine name without its argument list is invalid in every expression and statement context.
+
+### 13.4 Argument evaluation and compatibility
+
+Arguments are evaluated from left to right. Each scalar argument is evaluated and converted if permitted, and its resulting value is retained before evaluation of the next argument. Each aggregate argument evaluates its storage path, including field selection and checked indexing, and establishes the alias value supplied to the parameter.
+
+If argument evaluation traps, no later argument is evaluated and the routine body does not begin. Effects from earlier arguments remain observable.
+
+A scalar argument must have the exact parameter type, be an exact literal that fits it, or use the implicit `u8`-to-`u16` widening. Passing `u16` to `u8` requires explicit checked `u8(...)`. Boolean and integer arguments do not convert between each other.
+
+An aggregate argument must be an aggregate storage path or an aggregate-alias result with exact referent-type identity. It does not copy the record, fixed array, or bounded string. The callee's parameter becomes a fixed alias to the same object or subobject. Scalar-leaf mutation through that parameter is visible through every other path to the same storage.
+
+Nucleus has no parameter modes, implicit read-only aggregate parameter, write permission, copy-in/copy-out aggregate parameter, or hidden source-level pointer conversion.
+
+### 13.5 Activation semantics
+
+A successful call begins one logical activation after all arguments have been evaluated. The activation contains that invocation's copied scalar parameters, aggregate-parameter bindings, scalar locals, and aggregate-local bindings. Local initialization follows Section 8.11 before the first statement begins.
+
+Each simultaneously active invocation has distinct activation state. Calling another routine does not change the caller's scalar parameters, scalar locals, or alias bindings. The callee may change program-lifetime storage that it can name or reach through an aggregate argument, and those mutations remain visible to the caller.
+
+The caller resumes after the invocation when the callee returns normally. For an expression call, the result is transferred before evaluation continues in the containing expression. For a call statement, any result is discarded after transfer.
+
+### 13.6 `return` and results
+
+A result-free routine normally uses bare `return`. In a result-free failable routine, `return` may instead have the restricted form `return failableInvocation() or fail` when the invoked routine is also result-free. Success returns successfully from the enclosing routine; failure propagates the callee's code. Every other `return expression` is invalid in a result-free routine. Reaching the routine's closing `end` also returns normally from a result-free routine.
+
+A result-bearing routine uses `return expression`. Bare `return` is invalid. The expression is evaluated once before the activation ends and must be compatible with the declared result type.
+
+A scalar result follows the scalar destination rules: exact type, fitting exact literal, or implicit `u8`-to-`u16` widening. Checked narrowing must be written explicitly. The caller receives a copied scalar value.
+
+An aggregate result must be an alias with exact referent-type identity and must pass the program-lifetime derivation rule in Section 7.9. The caller receives an alias to the same existing object, not a copy and not the callee's local binding. A result derived from program storage or an incoming aggregate parameter is valid; a result whose lifetime cannot be proved is invalid.
+
+`return` may appear anywhere in a routine statement sequence, including inside a conditional or loop. It ends the current activation immediately after transferring the result, if any. It does not execute later statements in the routine.
+
+### 13.7 Value-routine completion
+
+A value routine is invalid when its closing `end` is reachable without executing `return expression`. Nucleus does not supply an implicit value, result variable, or default return.
+
+The static rule uses a bounded structured fallthrough summary:
+
+- `return expression` does not fall through;
+- assignment and call statements fall through;
+- an `if` does not fall through only when it has an `else` and every clause body does not fall through;
+- an `if` without `else` may fall through; and
+- every `while` and `for` is treated as able to finish, regardless of a constant condition or its body.
+
+A statement sequence can reach its end when control can pass through every statement on a path. Once a statement on a path does not fall through, later statements on that path do not restore fallthrough. This rule permits one streaming summary per nested statement and requires no control-flow graph.
+
+The conservative loop rule is part of Nucleus 0.1 validity. A value routine whose only non-returning path is an apparently indefinite loop still requires a structurally reachable `return expression` after that loop or another arrangement that satisfies the rules above.
+
+### 13.8 Forward definitions and recursion
+
+A definition that completes a forward declaration must match the routine identity, parameter count, parameter order and types, optional result type, and `fails` effect under Chapters 4, 5, 8, and 14. Parameter names need not match. The definition's parameter names bind the routine body. The forward declaration and definition denote one routine.
+
+After its header has been checked, a routine may call itself directly. Mutually recursive routines require an earlier forward signature for every routine called before its definition. Recursive calls use the ordinary argument, activation, result, and lifetime rules; Nucleus has no separate recursive syntax.
+
+Recursion is admitted in Nucleus 0.1. Implementation staging may postpone its construction in the first compiler, but standard language mode must not reinterpret or permanently reject recursive source within the implementation's documented compile-time capacities.
+
+### 13.9 Activation capacity
+
+The maximum number of simultaneously active routine invocations is implementation-defined. An implementation must publish the limit and provide at least the depth needed by every complete accepted program in Chapter 21 under its stated inputs. Before beginning a call that would exceed it, the program performs the activation-capacity trap specified by Chapter 15; it must not overwrite a live activation, alias one activation's locals with another, or continue with partial parameter binding.
+
+The trap point is after argument evaluation and before the new activation begins. Effects from evaluated arguments remain observable, while the callee performs no local initialization or body statement.
+
+This runtime limit does not create a non-recursive language profile. A compiler accepts recursive call graphs subject to its ordinary compile-time capacities; active depth is a runtime property.
+
+### 13.10 Cleanup and lowering boundary
+
+Nucleus routines have no destructors, `finally`, `defer`, exception unwinding, variable-sized local allocation, or other source-level scope-exit action. A `return` therefore performs no hidden source cleanup before transferring control.
+
+The source semantics permit an all-caller-save implementation. A backend may save live implementation values before a call, place arguments, invoke the callee, capture a result before restoring overlapping state, and restore the caller afterward. Recursive calls may use the same rule for each activation. These operations are backend mechanics, not source-visible registers, clobber declarations, or parameter modes.
+
+The compiler may lower calls and returns to regular semantic operations while parsing. This specification does not define virtual-register numbers, save regions, physical stacks, calling opcodes, operand widths, or a native ABI.
+
+### 13.11 Invalid calls and capacity limits
+
+The compiler must diagnose an unavailable or non-routine callee, a missing argument list, wrong arity, an incompatible scalar argument or result, an aggregate argument or result with the wrong referent type, an unprovable aggregate-result lifetime, a result-free call used as a value, the wrong `return` form, a value routine whose end is reachable, and a mismatched forward completion.
+
+An implementation may bound parameters, arguments, active expression-call nesting, retained signatures, fallthrough-summary depth, and compile-time call-graph metadata. It must publish each limit and issue a capacity diagnostic before dropping an argument, corrupting a signature, losing a result, merging live state, or changing a call target. Runtime activation depth follows Section 13.9 rather than this compile-time capacity rule.
+
+### 13.12 Examples
+
+A result-free routine and a value routine use the same declaration family:
+
+```nucleus
+sub display(value as u8)
+    return
+end
+
+sub maximum(left as u16, right as u16) as u16
+    if left >= right
+        return left
+    else
+        return right
+    end
+end
+```
+
+Both paths through `maximum` return a compatible value. The result may be used directly:
+
+```nucleus
+largest = maximum(first, second)
+```
+
+An aggregate result preserves alias identity:
+
+```nucleus
+sub entryAt(index as u8) as Entry
+    return entries[index]
+end
+
+sub update(index as u8)
+    var current as Entry = entries[index]
+    current.value = entryAt(index).value
+end
+```
+
+`entryAt` returns an alias to program-lifetime storage. No `Entry` is copied.
+
+Direct and mutual recursion use ordinary signatures:
+
+```nucleus
+forward sub odd(value as u16) as boolean
+
+sub even(value as u16) as boolean
+    if value = 0
+        return true
+    end
+    return odd(value - 1)
+end
+
+sub odd(value as u16) as boolean
+    if value = 0
+        return false
+    end
+    return even(value - 1)
+end
+```
+
+These forms are invalid:
+
+```nucleus
+sub missing(value as u8) as u8
+    if value = 0
+        return 1
+    end
+end                              // value path reaches end
+
+sub procedure()
+    return 1                     // result-free routine
+end
+
+sub value() as u8
+    return                       // value routine requires an expression
+end
+```
+
+## 14. Recoverable errors
+
+### 14.1 Two failure classes
+
+A **recoverable error** is an expected unsuccessful result that source code may propagate or handle. A **trap** is a non-recoverable safety failure defined by Chapter 15. Error handling does not intercept, convert, or resume after a trap.
+
+Nucleus represents a recoverable error with a `u8` code carried beside a routine's ordinary success result. The code has no separate error-set type. Programs give codes stable names with top-level `u8` constants; Chapter 16 also defines the standard service codes. The value zero is permitted, although the standard codes are nonzero.
+
+### 14.2 Failable signatures
+
+A routine that can return a recoverable error writes `fails` at the end of its header:
+
+```text
+routine-header ::= "sub" NAME "(" [ formal-parameter
+                   { "," formal-parameter } ] ")"
+                   [ "as" type ] [ "fails" ]
+```
+
+`fails` is part of the routine signature. A forward declaration and its definition must either both include it or both omit it. The clause does not change the declared parameters or optional success-result type.
+
+Absent a trap, a failable invocation completes in exactly one of two ways:
+
+- **success**, with the ordinary scalar value, aggregate alias, or no result declared by the header; or
+- **failure**, with one `u8` error code and no success result.
+
+An infallible routine has only successful completion. It cannot use `fail` or propagate a callee's failure.
+
+### 14.3 Producing failure
+
+The statement
+
+```text
+fail-statement ::= "fail" expression
+```
+
+ends the current failable routine with failure. The expression is evaluated once and must be compatible with `u8`; an exact literal must fit, and `u16` requires explicit checked narrowing. The activation ends after the code is obtained. No later statement in that routine executes.
+
+`fail` in an infallible routine is invalid. A trap while evaluating the code remains a trap and does not become a recoverable error.
+
+Named codes are ordinary constants:
+
+```nucleus
+const badDigit as u8 = 1
+const tooLarge as u8 = 2
+
+sub parseDigit(value as u8) as u8 fails
+    if value < '0' or value > '9'
+        fail badDigit
+    end
+    return value - '0'
+end
+```
+
+### 14.4 Required consumption
+
+Every call of a failable routine must consume failure at that call site. Nucleus provides exactly two forms:
+
+1. `or fail` propagates the code from the current failable routine.
+2. A following `on error` clause handles the code locally.
+
+A failable invocation cannot appear inside an argument, arithmetic operation, comparison, condition, index, general conversion, or other larger expression. It may be only:
+
+- the complete initializer of a local declaration, followed by `or fail`;
+- the complete right side of an assignment;
+- the complete routine-call statement; or
+- the complete operand of `return`, followed by `or fail`. The caller and callee must either both have a result or both be result-free.
+
+The assignment and call-statement forms use exactly one of `or fail` or a following `on error` clause. An unconsumed failable invocation, two consumers on one invocation, or a failable invocation in any other position is invalid. Program-variable and constant initializers cannot call routines under Chapter 8 and therefore cannot be failable.
+
+### 14.5 Propagation
+
+The propagation suffix is:
+
+```text
+failure-propagation ::= "or" "fail"
+```
+
+On success, the surrounding declaration or assignment uses the callee's ordinary result, a call statement continues, and `return` returns successfully with the callee's result or with no result when both routines are result-free. On failure, `or fail` immediately returns the same `u8` code from the enclosing routine. The enclosing routine must declare `fails`.
+
+```nucleus
+sub loadByte() as u8 fails
+    var value as u8 = readStorageByte() or fail
+    return value
+end
+```
+
+Propagation is explicit at every intermediate call. Nucleus has no implicit propagation, error-set inclusion, code remapping, handler stack, or unwinding.
+
+### 14.6 Local handling
+
+An `on error` clause follows the assignment or routine-call statement whose direct failable invocation it handles:
+
+```text
+on-error-clause ::= "on" "error" NAME NEWLINE
+                    statement-sequence
+                    "end" NEWLINE
+```
+
+The name must resolve to an existing writable `u8` scalar variable, parameter, or local. The clause declares no binding and opens no scope. This rule preserves the declaration-prefix and scope rules from Chapters 5 and 8.
+
+On success, the call supplies its ordinary result, the assignment occurs when present, and the handler body is skipped. On failure, no success-result store occurs, then the compiler stores the error code in the named `u8` destination and executes the handler body. This ordering also applies when the assignment destination and error destination are the same variable: the variable receives the error code. Normal completion of the body continues after its closing `end`. A `return`, `fail`, `exit`, or `continue` inside the body has its ordinary enclosing context.
+
+```nucleus
+sub copyOne()
+    var code as u8
+    var value as u8
+
+    value = readStorageByte()
+    on error code
+        return
+    end
+
+    writeOutputByte(value)
+    on error code
+        return
+    end
+end
+```
+
+The handled call must be the complete right side of the assignment or the complete call statement. A clause cannot attach to a local declaration, `return`, compound statement, infallible call, propagated call, or earlier statement separated by another statement.
+
+### 14.7 Results, flow, and entry failure
+
+Ordinary `return` denotes successful completion. A result-free failable routine may use bare `return`, reach its closing `end`, or use `return resultFreeFailableInvocation() or fail`. In the last form, callee success returns successfully from the caller and callee failure propagates its code. A result-bearing failable routine must return a compatible success result or fail on every path under the fallthrough rules in Section 13.7, extended so `fail` does not fall through.
+
+`or fail` can exit on failure and continue on success, so it does not by itself make following source unreachable. An `on error` clause can complete normally unless its body has a non-fallthrough statement on every path.
+
+The fixed `main` routine may declare `fails`. A failure returned from `main` has no source caller and performs the unhandled-error trap in Chapter 15 with the returned code. A successful return from `main` terminates normally.
+
+### 14.8 Lowering boundary
+
+The source semantics require a success/failure discriminant and a `u8` code for each failable result. The separate VM specification or native backend defines their carriers and calling sequence. A carry flag and byte register are possible backend choices, not source semantics.
+
+Failure propagation is an ordinary conditional return. Local handling is an ordinary conditional branch. Nucleus has no exception object, stack walk, cleanup action, hidden handler registration, or resumable failure state. The all-caller-save-compatible call semantics in Chapter 13 apply to both outcomes.
+
+### 14.9 Invalid forms and capacities
+
+The compiler must diagnose:
+
+- `fail` or `or fail` in an infallible routine;
+- a failure code incompatible with `u8`;
+- a failable invocation in a nested expression or unsupported context;
+- a failable invocation with no consumer or more than one consumer;
+- an `on error` clause attached to an ineligible statement;
+- an error destination that is unavailable, non-writable, or not `u8`;
+- a mismatch in `fails` between a forward declaration and definition; and
+- a result-bearing failable routine that can reach its end without success or failure.
+
+An implementation may bound retained failable signatures, nested handlers, failure fixups, and active error destinations. It must publish each limit and issue a capacity diagnostic before exhaustion can discard a check, route a code to the wrong caller, or execute the wrong handler.
+
+## 15. Safety failures and traps
+
+### 15.1 Trap semantics
+
+A **trap** terminates Nucleus source execution immediately. Source code cannot catch, handle, resume, mask, or convert it to a recoverable error. A trap performs no stack unwinding and runs no source cleanup action.
+
+The implementation reports a stable symbolic trap reason and the best available location for the operation that failed. When source mapping is available, the report must identify the source span. Otherwise, it must identify the bytecode or native instruction location. Numeric trap encodings, transport records, monitor integration, and physical output belong to the VM specification or backend contract.
+
+Effects completed before the failing operation remain observable. The failing operation performs no result store unless its rule below says otherwise. No later source operation executes.
+
+### 15.2 Required trap reasons
+
+Nucleus 0.1 defines these trap reasons:
+
+| Reason                | Condition and point                                                                                                                                               |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `bounds`              | A dynamic fixed-array index or bounded-string byte index is outside zero through current length minus one. The trap precedes the read, write, or alias formation. |
+| `narrowing`           | A dynamic checked `u8(...)` operand exceeds 255. The trap precedes production or storage of the narrowed result.                                                  |
+| `division-by-zero`    | A runtime divisor is zero. The trap precedes production of a quotient.                                                                                            |
+| `loop-range`          | A counted-loop next value would continue but does not fit the counter type. The trap precedes the counter store.                                                  |
+| `activation-capacity` | A call would exceed the implementation-defined active-invocation limit. The trap occurs after argument evaluation and before the new activation begins.           |
+| `unhandled-error`     | `main` returns failure. The report includes the returned `u8` code.                                                                                               |
+
+A conforming implementation may use more detailed internal causes, but it must preserve these public reason identities. It must not report a required reason as another reason merely because two checks share a helper.
+
+### 15.3 Compile-time proof
+
+When the compiler proves a bounds, narrowing, or division failure from source constants, the source is invalid and compilation produces a diagnostic. It must not emit an executable whose first relevant action is a guaranteed trap. Counted-loop `loop-range` failure is different: it remains a runtime trap because earlier control flow in the loop body may prevent execution from reaching the increment. When the compiler proves an operation safe, it may omit the runtime check.
+
+If validity depends on runtime data, the program remains conforming and the check is part of its specified execution. Optimization must preserve the trap reason, ordering, and prior observable effects.
+
+### 15.4 Ordering details
+
+Chapter 9's left-to-right rules determine which of several possible failures occurs first. Assignment checks its target path before its right side. Calls evaluate every argument before the activation-capacity check. A counted loop checks the mathematical next value before storing it. Boolean short-circuiting suppresses every check in an operand that is not evaluated.
+
+A recoverable service error follows Chapter 14 and is not a trap while a source caller can consume it. Only failure reaching the end of `main` becomes `unhandled-error`. A trap raised within a failable routine bypasses its failure channel and every `on error` clause.
+
+### 15.5 Host failures
+
+The execution environment must preserve a trap even if its reporting device or output stream is unavailable. It may fall back to a monitor code, halt state, or other documented target mechanism. Reporting failure must not resume the Nucleus program or replace the original symbolic reason with an unrelated success outcome.
+
+## 16. System boundary
+
+### 16.1 Boundary model
+
+Nucleus 0.1 defines a small portable service boundary for byte-stream input and output, slow bulk storage, successful termination, and trap reporting. Programs invoke typed predefined routines and use predefined constants. The source language exposes no service numbers, ports, firmware entry points, raw addresses, file descriptors, device registers, or TEC-1 memory map.
+
+The **Nucleus System Services 0.1** set is versioned with this language revision. A conforming execution environment supplies every service in Section 16.3 with the stated source contract and the initial stream states stated there. Later additions require a language revision or an explicit extension under Section 1.7 and measured admission under Chapter 2.
+
+### 16.2 Predefined error codes
+
+The compiler establishes these `u8` constants before the first source token:
+
+| Name             | Value | Meaning                                                                      |
+| ---------------- | ----: | ---------------------------------------------------------------------------- |
+| `endOfInput`     |     1 | The selected input stream has no further byte.                               |
+| `inputFailure`   |     2 | Standard input could not supply a byte for a reason other than end of input. |
+| `outputFailure`  |     3 | Standard output could not accept a byte.                                     |
+| `storageFailure` |     4 | A bulk-storage read, write, rewind, or seek failed.                          |
+
+The names occupy the ordinary program namespace and cannot be redeclared or shadowed. They are named recoverable-error codes, not enumeration members or a distinct error type.
+
+### 16.3 Predefined routines
+
+The compiler establishes these routine signatures before the first source token:
+
+```nucleus
+sub readInputByte() as u8 fails
+sub writeOutputByte(value as u8) fails
+sub readStorageByte() as u8 fails
+sub rewindStorageInput() fails
+sub writeStorageByte(value as u8) fails
+sub seekStorageOutput(offset as u16) fails
+```
+
+The declarations above state interfaces; they are not source definitions and do not require completing bodies in the compilation unit.
+
+Standard input starts with its cursor before the first supplied byte. `readInputByte` obtains the next byte from standard input. It may block until a byte, end-of-input condition, or input failure is available. It succeeds with the byte and advances the cursor, fails with `endOfInput` at the end, or fails with `inputFailure` for another input error. Failure leaves the cursor unchanged.
+
+Standard output starts empty and is append-only. `writeOutputByte` appends one byte to standard output. It succeeds after the byte has been accepted or fails with `outputFailure`. Successful writes occur in call order; failure leaves the output unchanged.
+
+The bulk-storage routines operate on one logical input stream and one logical output stream selected by the execution environment. Both cursors start at offset zero. The output supplied to a Chapter 21 conformance run starts empty. `readStorageByte` advances the input cursor after a successful byte and reports `endOfInput` or `storageFailure` otherwise. `rewindStorageInput` moves the input cursor to offset zero or reports `storageFailure`.
+
+`writeStorageByte` overwrites the existing byte when the output cursor is below the current end, appends when the cursor is exactly at the end, and advances the cursor by one on success. It never inserts a byte or truncates later bytes. `seekStorageOutput` moves that cursor to an existing offset or exactly to the current end; seeking past the end fails with `storageFailure`. Every failed bulk-storage operation is atomic: it leaves its affected cursor and all output contents unchanged.
+
+These contracts support streaming programs without exposing a filesystem. Nucleus 0.1 source cannot open, close, name, enumerate, create, or delete files. A launcher or build tool selects the streams outside the source language.
+
+### 16.4 Program startup and termination
+
+After establishing all program-variable initial values, the environment invokes `main`. It supplies no command-line arguments or implicit source values. Source code obtains input only through the predefined services.
+
+Normal return from `main` terminates successfully. Nucleus 0.1 has no source statement for process exit status or immediate successful termination. Failure returned from `main` and every safety trap terminate unsuccessfully under Chapter 15.
+
+The external representation of success, recoverable-error codes, and trap reasons is implementation-defined only where the VM specification or target contract explicitly says so. That representation must preserve the source-level distinction among normal termination, unhandled recoverable error, and each required trap reason.
+
+### 16.5 Portability and implementation
+
+An environment may implement services with CP/M calls, a monitor, port I/O, host callbacks, or another mechanism. It may buffer transfers if buffering preserves call order, failure points, and visible bytes. Those choices do not add source names or expose their addresses.
+
+Historical Candlemoth intrinsics supplied source reading, object writing, diagnostics, status, rewind, and output seek for one bootstrap profile. The 0.1 boundary retains the useful streaming and cursor operations, separates ordinary standard I/O from bulk storage, and gives failures Chapter 14 semantics. The historical names, port numbers, end marker, and profile binding are not Nucleus rules.
+
+Arbitrary BIOS calls, native-call declarations, inline assembly, memory peeks and pokes, port access, and callbacks are excluded from the safe source boundary. A later service must have a typed target-independent contract and pass the measured admission rule before it enters the standard set.
+
+## 17. Complete grammar
+
+### 17.1 Notation and lexical boundary
+
+Quoted words and punctuation are terminals. Uppercase names are token categories from Chapter 3. Lowercase hyphenated names are nonterminals. `{ X }` means zero or more repetitions, `[ X ]` means optional, parentheses group alternatives, and `|` separates alternatives.
+
+The lexical forms are:
+
+```text
+ascii-letter       ::= "A".."Z" | "a".."z"
+decimal-digit      ::= "0".."9"
+hexadecimal-digit  ::= decimal-digit | "A".."F" | "a".."f"
+
+identifier         ::= ascii-letter
+                       { ascii-letter | decimal-digit | "_" }
+integer-literal    ::= decimal-digit { decimal-digit }
+character-literal  ::= "'" literal-byte "'"
+string-literal     ::= '"' { literal-byte } '"'
+escape             ::= "\\0" | "\\n" | "\\r" | "\\t"
+                     | "\\'" | '\\"' | "\\\\"
+                     | "\\x" hexadecimal-digit hexadecimal-digit
+line-comment       ::= "//" { source-byte } (line-ending | EOF)
+line-ending        ::= LF | CR LF
+```
+
+Sections 3.2 through 3.10 define `literal-byte`, accepted source bytes, maximal token formation, case folding, numeric range, and lexical errors. Hexadecimal digits occur only in escapes; integer literals are decimal.
+
+The tokenizer emits `NAME`, `NUMBER`, `CHARACTER`, `STRING`, keyword and punctuation terminals, `NEWLINE`, and `EOF`. It emits `NEWLINE` only at delimiter depth zero, collapses blank or comment-only lines, and synthesizes the final logical newline when Section 3.4 requires one. Those stateful rules are part of the token contract and are not context-free productions.
+
+### 17.2 Syntactic grammar
+
+```text
+compilation-unit
+    ::= { top-level-declaration } EOF
+
+top-level-declaration
+    ::= const-declaration
+      | program-var-declaration
+      | record-declaration
+      | forward-routine
+      | routine-definition
+
+const-declaration
+    ::= "const" NAME "as" type "=" expression NEWLINE
+
+program-var-declaration
+    ::= "var" NAME "as" type [ "=" program-initializer ] NEWLINE
+program-initializer
+    ::= expression | STRING | array-initializer
+array-initializer
+    ::= "[" expression { "," expression } "]"
+
+record-declaration
+    ::= "record" NAME NEWLINE
+        field-declaration { field-declaration }
+        "end" NEWLINE
+field-declaration
+    ::= NAME "as" type NEWLINE
+
+forward-routine
+    ::= "forward" routine-header NEWLINE
+routine-definition
+    ::= routine-header NEWLINE
+        { local-declaration }
+        statement-sequence
+        "end" NEWLINE
+routine-header
+    ::= "sub" NAME "(" [ formal-parameter
+        { "," formal-parameter } ] ")"
+        [ "as" type ] [ "fails" ]
+formal-parameter
+    ::= NAME "as" type
+
+local-declaration
+    ::= "var" NAME "as" type
+        [ "=" local-initializer ] NEWLINE
+local-initializer
+    ::= failable-invocation failure-propagation
+      | expression
+
+type
+    ::= type-atom [ "[" expression "]" ]
+type-atom
+    ::= scalar-type | NAME | bounded-string-type
+scalar-type
+    ::= "u8" | "u16" | "boolean"
+bounded-string-type
+    ::= "string" "[" expression "]"
+
+statement-sequence
+    ::= { statement }
+statement
+    ::= simple-statement NEWLINE [ on-error-clause ]
+      | if-statement
+      | while-statement
+      | for-statement
+
+simple-statement
+    ::= assignment-statement
+      | routine-call-statement
+      | return-statement
+      | "exit"
+      | "continue"
+      | fail-statement
+
+assignment-statement
+    ::= assignment-target "=" assignment-source
+assignment-target
+    ::= NAME { field-suffix | index-suffix }
+assignment-source
+    ::= failable-invocation [ failure-propagation ]
+      | expression
+
+routine-call-statement
+    ::= NAME argument-list [ failure-propagation ]
+return-statement
+    ::= "return" [ return-source ]
+return-source
+    ::= failable-invocation failure-propagation
+      | expression
+fail-statement
+    ::= "fail" expression
+
+failure-propagation
+    ::= "or" "fail"
+failable-invocation
+    ::= NAME argument-list
+on-error-clause
+    ::= "on" "error" NAME NEWLINE
+        statement-sequence
+        "end" NEWLINE
+
+if-statement
+    ::= "if" expression NEWLINE statement-sequence
+        { "elseif" expression NEWLINE statement-sequence }
+        [ "else" NEWLINE statement-sequence ]
+        "end" NEWLINE
+
+while-statement
+    ::= "while" expression NEWLINE
+        statement-sequence
+        "end" NEWLINE
+
+for-statement
+    ::= "for" NAME "=" expression
+        for-bound expression
+        [ "step" step-constant ] NEWLINE
+        statement-sequence
+        "end" NEWLINE
+for-bound
+    ::= "to" | "until"
+step-constant
+    ::= [ "+" | "-" ] (NUMBER | NAME)
+
+expression
+    ::= or-expression
+or-expression
+    ::= and-expression { "or" and-expression }
+and-expression
+    ::= not-expression { "and" not-expression }
+not-expression
+    ::= "not" not-expression | comparison
+comparison
+    ::= additive [ comparison-operator additive ]
+comparison-operator
+    ::= "=" | "<>" | "<" | "<=" | ">" | ">="
+additive
+    ::= multiplicative { ("+" | "-") multiplicative }
+multiplicative
+    ::= unary { ("*" | "/") unary }
+unary
+    ::= ("+" | "-") unary | postfix-expression
+postfix-expression
+    ::= primary { postfix-suffix }
+primary
+    ::= NUMBER | CHARACTER | "true" | "false"
+      | NAME | conversion | "(" expression ")"
+conversion
+    ::= ("u8" | "u16") "(" expression ")"
+postfix-suffix
+    ::= argument-list | index-suffix | field-suffix
+argument-list
+    ::= "(" [ expression { "," expression } ] ")"
+index-suffix
+    ::= "[" expression "]"
+field-suffix
+    ::= "." NAME
+```
+
+The grammar uses the general `expression` nonterminal for constant initializers and type bounds. Chapter 8's constant-context predicate rejects variables, calls, nonconstant operations, and values outside the required range. `type` permits at most one array suffix outside a bounded-string atom, which admits arrays of scalars, records, and bounded strings but not arrays of arrays.
+
+### 17.3 Semantic predicates
+
+The grammar uses these declared semantic predicates:
+
+| Predicate                           | Decision                                                                                                                                                                                                                |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `isCallableName` / `isWritableName` | At statement head, select a routine-call statement or an assignment from the resolved declaration class.                                                                                                                |
+| `isFailableCallableName`            | In a local initializer, assignment source, or return source beginning with `NAME`, select the restricted failable-invocation path when the visible signature has `fails`; otherwise parse the ordinary expression path. |
+| `isRecordTypeName`                  | Accept a `NAME` as a type atom only when it resolves to a visible record type.                                                                                                                                          |
+| `isInitializerForDeclaredType`      | Apply the scalar, string, flat scalar-array, zero-default, or aggregate-alias rules after the declared type is known.                                                                                                   |
+| `isFailablePrecedingStatement`      | Admit `on error` only after the direct failable assignment or call statement required by Section 14.6.                                                                                                                  |
+| `isConstantContext`                 | In constants, type bounds, array lengths, string capacities, and program initializers, admit only the compile-time operands and operations from Chapter 8.                                                              |
+| `isInfallibleCallableName`          | Admit a call in an ordinary expression only when the visible signature omits `fails`.                                                                                                                                   |
+| `isIntegerConstantName`             | Admit a `NAME` as a counted-loop step magnitude only when it denotes an earlier `u8` or `u16` constant.                                                                                                                 |
+
+Field lookup after `.` uses the selected record type, except that a bounded-string base admits only the intrinsic read-only suffix `.length`. Index selection uses a fixed-array domain or a bounded string's current logical length according to the base type; this distinction needs no grammar change. The `NAME` in `step-constant` must denote an earlier integer constant. Calls within ordinary expressions require an infallible visible routine; failable calls use the separate path above. For `return-source`, a result-free failable caller and callee form the admitted no-result propagation case; otherwise the caller and callee result shapes must match. These are static semantic checks over an otherwise deterministic token stream, not token backtracking.
+
+### 17.4 Predictive analysis
+
+The repository grammar analyzer mechanically expanded the grammar above to 159 BNF rules over 86 nonterminals. It found no nullable-prefix left-recursion cycle, unreachable nonterminal, or unproductive nonterminal. The LL(1) table contained four conflict sites, all on lookahead `NAME`:
+
+| Nonterminal         | Conflict                              | Resolution                          |
+| ------------------- | ------------------------------------- | ----------------------------------- |
+| `simple-statement`  | assignment versus routine call        | `isWritableName` / `isCallableName` |
+| `local-initializer` | failable invocation versus expression | `isFailableCallableName`            |
+| `assignment-source` | failable invocation versus expression | `isFailableCallableName`            |
+| `return-source`     | failable invocation versus expression | `isFailableCallableName`            |
+
+No unexplained FIRST/FIRST or FIRST/FOLLOW conflict remained. The expression repetitions expand to right-recursive implementation rules while their semantic actions preserve the left association specified in Section 9.6. Unary and `not` recursion remains right-recursive by design. A compiler must not change the grammar silently to remove a reported conflict; it must implement and audit the named predicate or report a specification defect.
+
+The analyzer result checks the collected grammar's formal shape. It does not prove the static compatibility, lifetime, capacity, or flow rules consolidated in Chapter 18.
+
+## 18. Static semantics
+
+### 18.1 Compilation order
+
+The compiler processes one logical compilation unit in token order. Every use requires an earlier visible declaration, except that an exact forward routine signature makes that routine callable before its body. A routine header makes its own signature visible before its local prefix and body. At `EOF`, every forward must be completed and exactly one `main` definition satisfying Section 4.7 must exist.
+
+Top-level declarations occur only in the compilation-unit sequence. Parameters occur only in routine headers. Local declarations form one contiguous prefix before the first statement. Record fields occur only inside their record declaration. Conditional and loop bodies contain statements and open no declaration scope.
+
+### 18.2 Names and declaration classes
+
+Identifiers use complete ASCII-folded identity. Program and routine scopes have one ordinary namespace; record fields have one field scope per record type. No ordinary declaration overloads or shadows another visible ordinary declaration. A suffix name uses the statically selected record type's field scope or the bounded-string `length` intrinsic.
+
+Name-led parsing first resolves the visible binding, then checks its declaration class. A routine name starts a call. A mutable scalar storage root starts an assignment. A record type is valid only in a type position. A failable routine selects the restricted failable-invocation path. Failure to find a binding, finding the wrong class, or finding a later declaration is invalid source.
+
+The standard service names and error constants from Chapter 16 are visible before source declarations. `main` is source-defined and must have no parameters and no result.
+
+### 18.3 Types and compatibility
+
+Every expression, storage path, symbol, parameter, local, field, and routine result has one static type. Scalar values have type `u8`, `u16`, or `boolean`. Records are nominal. Fixed-array identity consists of exact element type and length. Bounded-string identity consists of exact capacity.
+
+Scalar compatibility permits exact type, a fitting contextual literal, and implicit `u8`-to-`u16` widening. Checked `u8(...)` is the only `u16`-to-`u8` conversion. Boolean and integer types do not convert. Aggregate compatibility requires exact type identity and never performs a copy.
+
+The compiler checks every operator, condition, assignment, argument, result, field, index, initializer, and failure code locally. A failable invocation supplies no ordinary expression value until its failure has been consumed under Chapter 14.
+
+### 18.4 Storage and aliases
+
+A program variable owns program-lifetime storage. A scalar parameter or local owns one activation value. An aggregate parameter or local is a fixed typed alias to compatible program-lifetime storage. Aggregate alias binding is not assignment, and a bare aggregate is never an assignment destination or copyable value.
+
+Field and checked-index selection preserve the root identity and exact selected type. A bounded-string index selects an existing writable `u8` byte when the index is below the string's current length; `.length` yields a read-only `u8` value. A returned aggregate alias must be statically derived from a program object or an incoming aggregate parameter. The compiler rejects a return when it cannot prove that program-lifetime derivation.
+
+### 18.5 Constants, bounds, and initialization
+
+Named constants are top-level scalar values with explicit types and restricted constant initializers. Constant evaluation may use literals, earlier scalar constants, admitted pure scalar operators, parentheses, and checked scalar conversions. It may not read storage or call a routine.
+
+Array lengths and string capacities are positive constant values in the ranges set by Chapter 6. Constant fixed-array indices outside their domains are invalid. A bounded-string byte index is checked at runtime against the current logical length, even when the index expression is constant, unless the compiler proves the current length makes it safe at that program point.
+
+Program variables use the zero or explicit constant initializer forms in Chapter 8. Scalar locals use zero, an ordinary compatible expression, or a direct compatible failable result followed by `or fail`. Aggregate locals require one compatible storage path, a direct infallible aggregate-alias result, or a direct failable aggregate-alias result followed by `or fail`; each initializer is evaluated once, its program-lifetime derivation must be proved, and the binding is fixed afterward.
+
+### 18.6 Routine and failure checking
+
+A call must match the visible signature in arity and parameter order. Scalar arguments copy compatible values. Aggregate arguments bind aliases of the exact referent type. A forward definition must match routine identity, parameter count, ordered parameter types, result presence and type, and the `fails` effect exactly. Parameter names may differ; the definition's names bind its body.
+
+Every failable invocation has exactly one failure consumer. `or fail` requires a failable enclosing routine. A result-free `return invocation() or fail` requires a result-free failable callee and caller. `on error` requires an immediately preceding eligible assignment or call statement and an existing writable `u8` destination. Failable invocations are invalid inside larger expressions or argument lists.
+
+A result-bearing routine is invalid if its closing `end` is reachable without `return expression` or, when it declares `fails`, `fail`. Structured fallthrough follows Section 13.7. Loops remain conservatively able to finish. `return` and `fail` do not fall through; a call with `or fail` may succeed and fall through.
+
+### 18.7 Control contexts
+
+An `if` or `elseif` condition and a `while` condition must be Boolean. A counted-loop counter must be a writable `u8` or `u16` scalar. Its step is a nonzero signed compile-time constant. A provable counted-loop increment overflow remains valid source and traps only if execution reaches that increment. `exit` and `continue` require an enclosing loop and target the innermost one.
+
+No label, goto, exception region, or hidden cleanup edge changes these contexts. The compiler may summarize active loops and fallthrough with bounded stacks, but capacity exhaustion must produce a diagnostic before it changes a target or validity result.
+
+### 18.8 Invalid source and capacities
+
+A grammar, visibility, declaration-class, type, lifetime, constant, flow, failure-consumption, or context violation makes the source invalid. The compiler issues a diagnostic and must not present an executable as a successful translation.
+
+An implementation may bound source length, identifier length, symbols, types, fields, forwards, parameters, locals, expression depth, statement nesting, fixups, constants, initializer elements, and other retained compile-time state. It must document every limit that can reject otherwise conforming source and issue a capacity diagnostic before truncation, wraparound, dropped state, or changed semantics. Those limits must still compile every complete accepted Chapter 21 program. Runtime activation depth is separately implementation-defined, must accommodate the accepted corpus, and traps under Chapter 15 beyond the published limit.
+
+## 19. Runtime semantics
+
+### 19.1 Startup and observable behaviour
+
+Execution begins after the implementation has established every program variable's required initial value in declaration order. The environment then calls `main`. Observable behaviour consists of ordered system-service effects, mutations visible through source aliases, normal termination, recoverable-error outcomes consumed by source, and required traps.
+
+Normal return from `main` terminates successfully. Failure from `main` and a safety trap terminate unsuccessfully. The source language defines no other program-termination operation.
+
+### 19.2 Evaluation and assignment
+
+Expressions evaluate in the order specified by Section 9.11. Binary operands are left-to-right except for Boolean short-circuit suppression. Postfix suffixes apply left-to-right, and each index is checked when reached. Arguments evaluate left-to-right before a call begins.
+
+Integer arithmetic uses the fixed widths and wraparound rules in Chapter 9. Comparisons use unsigned integer order or Boolean equality as applicable. Checked narrowing, division, indexing, and counted-loop increment perform their required checks before producing or storing a result.
+
+Assignment evaluates and checks the complete scalar target path, then evaluates the right side, then converts and stores. A failure or trap before the success-result store leaves the destination unchanged, while effects already completed remain visible. A handled failable assignment then stores its error code in the handler destination; if both destinations name the same scalar, that scalar receives the error code.
+
+### 19.3 Objects and aliases
+
+Program objects exist throughout execution. Each routine call creates a distinct logical activation containing copied scalar parameters, scalar locals, and aggregate-alias bindings. Aggregate aliases denote existing objects or aggregate subobjects and preserve identity. Mutation of a scalar leaf is visible through every path to that leaf.
+
+Aggregate arguments and results transfer aliases, not object contents. A returned aggregate alias denotes the original program-lifetime object after the callee's binding ends and may initialize a fixed local alias after one evaluation. Bounded-string byte mutation through any alias is visible through every alias to the same object; it replaces an existing byte without changing length or capacity. No runtime type tag accompanies an alias, and the source language provides no operation that inspects its carrier.
+
+### 19.4 Calls, returns, and recursion
+
+A call starts after all arguments have been evaluated and the activation-capacity check succeeds. Parameter binding precedes local initialization; local declarations initialize in source order. The first statement begins after the local prefix.
+
+`return` transfers an optional success result and ends the activation. A result-free routine also returns successfully at its closing `end`. In a result-free failable routine, `return invocation() or fail` returns successfully when the result-free callee succeeds and propagates its code when it fails. Direct and mutual recursion use the same rules and create distinct active state at each depth. Backend save regions, register files, stacks, and return encodings must preserve these semantics but are not source-visible.
+
+### 19.5 Conditional and loop execution
+
+An `if` chain tests conditions in source order until one is true, executes at most one body, and skips every later condition. A `while` tests before each iteration. A counted `for` evaluates its start and bound once, initializes the counter, tests before the first iteration, and uses the direction and inclusive or exclusive rule from Chapter 12.
+
+Normal completion and `continue` in a counted loop use the increment-and-next-test path. `exit`, `return`, and `fail` can leave the body without running that path. A counted-loop next value is tested mathematically before storage, preventing unsigned wrap from creating another iteration; a continuing value outside the counter type performs `loop-range` at runtime even when statically predictable.
+
+### 19.6 Recoverable errors
+
+A failable call returns success or one `u8` error code. On success, the ordinary result, if any, is transferred before surrounding evaluation continues. On failure, `or fail` returns the same code from the caller, while `on error` performs no success-result store, stores the code, and executes its handler. No success result exists on the failure path.
+
+Error propagation ends activations through ordinary return control. It performs no stack unwinding, source cleanup, or handler search. A trap bypasses this channel. Failure reaching the external caller of `main` becomes the `unhandled-error` trap.
+
+### 19.7 System services and traps
+
+The predefined services execute in call order and follow Chapter 16's initial-state, cursor, byte, success, and atomic-failure rules. Standard output appends. Bulk output overwrites below its end and appends at its end without insertion or truncation. Host buffering or target-specific calls may not reorder visible bytes or change a recoverable result into silent success.
+
+A trap stops source execution at the failing operation. The environment reports the required reason and best available location. Earlier completed effects remain; no later source operation or source-level cleanup executes.
+
+## 20. Feature ledger
+
+### 20.1 Required Nucleus 0.1 language
+
+The following mechanisms are required in the single Nucleus 0.1 language:
+
+| Area         | Required forms and rules                                                                                                                                                                 |
+| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Source       | ASCII-compatible bytes, `//` comments, logical newlines, case-insensitive exact names, decimal integers, byte characters, bounded string literals, fixed punctuation.                    |
+| Structure    | One ordered compilation unit, declaration before use, exact forwards, fixed `main()` entry, no executable top level.                                                                     |
+| Types        | `u8`, `u16`, `boolean`, nominal fixed records, checked fixed arrays, mutable bounded `string[N]` with current length and byte indexing, exact aggregate aliases.                         |
+| Declarations | Scalar constants, program variables, record fields, formal parameters, contiguous scalar and aggregate-alias locals, routine definitions and forwards.                                   |
+| Expressions  | Calls, checked array and bounded-string indexing, field selection and string `.length`, explicit integer conversions, unary `+`/`-`, arithmetic, one comparison, `not`, `and`, and `or`. |
+| Statements   | Scalar assignment, name-led calls, `return`, `fail`, `exit`, and `continue`.                                                                                                             |
+| Control      | Flat `if`/`elseif`/`else`, pre-test `while`, counted `for` with `to` or `until` and optional constant `step`.                                                                            |
+| Routines     | Formal arguments, named locals, no result or one typed result, early return, direct and mutual recursion, forward signatures with exact type shape.                                      |
+| Failure      | Explicit `fails`, `fail`, `or fail`, result-free propagating return, and statement-bound `on error`; required safety traps remain separate.                                              |
+| System       | Nucleus System Services 0.1 with deterministic initial cursors and output writes, normal entry return, unhandled-error termination, and stable trap reasons.                             |
+
+No conforming compiler may expose a standard profile that omits one of these mechanisms.
+
+### 20.2 Implementation-defined limits
+
+An implementation selects and documents capacities, not syntax or semantics. Permitted limits include source and identifier length, symbol and type counts, record fields, array and string storage capacity below a target's available resources, parameters, locals, nesting, fixups, initializer elements, and simultaneous activation depth. Every limit must be high enough to compile and execute the complete accepted Chapter 21 programs under their stated inputs. A compile-time excess above that floor produces a capacity diagnostic; activation-depth excess above that floor traps at runtime.
+
+Diagnostic wording, internal representations, bytecode or native encoding, physical layout, service transport, and the external presentation of status are implementation-defined where earlier chapters leave them to an implementation contract. These choices must preserve the source rules.
+
+### 20.3 Post-0.1 candidates
+
+These forms are omitted from 0.1 and may be reconsidered only by a future language revision after measured admission:
+
+The maintainer of this language specification owns source-language admission. The maintainers of the VM specification and System Services contract co-own decisions that change their respective interfaces.
+
+| Candidate                                                                                             | Required decision evidence and owner                                                                                                                           |
+| ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `$` hexadecimal integer literals                                                                      | Scanner, keyword/table, diagnostic, and compiler-core cost; language-specification maintainer in a future revision.                                            |
+| Dense nonnegative selection                                                                           | Compiler cost versus emitted jump-table savings on representative programs; language-specification maintainer in a future revision.                            |
+| Open arrays, slices, or capacity-erased string views                                                  | Source typing, multiword carrier, lifetime, call/result ABI, compiler and VM cost; language- and VM-specification maintainers in coordinated future revisions. |
+| Explicit bulk aggregate operations or bounded-string growth, resize, append, and bulk-copy operations | Typed contract, alias effects, emitted cost, and reusable-program evidence; language-specification maintainer in a future revision.                            |
+| Additional system services                                                                            | Portable typed contract and complete compiler, runtime, and target cost; System Services maintainer in a future service revision.                              |
+
+These candidates are not provisional 0.1 syntax. Extensions may prototype them only under Section 1.7.
+
+### 20.4 Excluded mechanisms
+
+Nucleus 0.1 excludes language levels and compiler-selected profiles; modules, imports, namespaces, macros, and textual includes; raw pointers, address arithmetic, memory or port access, inline assembly, arbitrary native calls, and unrestricted casts; enumeration, subrange, set, union, variant, overlaid, generic, heap, resizable, open-array, slice, and dynamic types; aggregate constants, aggregate copy, local owned aggregates, destructuring, inferred declarations, nested routines, overloads, routine values, callbacks, indirect calls, parameter modes, and multiple results.
+
+It also excludes assignment expressions, chained comparisons, conditional expressions, general expression statements, `call` and `then` keywords, `select`/`case`, pattern matching, repeat/do loops, `for in`, omitted counted-loop operands, labels, goto, labelled exit, exceptions, throw/catch, unwinding, destructors, `finally`, `defer`, resumable traps, and runtime type tags.
+
+Implementation alternatives such as stack, virtual-register, or hybrid bytecode; direct native emission; register allocation; and physical calling convention are not source features. The VM specification records the selected VM mechanisms, and project decisions use measurements without creating Nucleus dialects.
+
+## 21. Conformance examples
+
+### 21.1 Complete accepted program
+
+This program exercises records, a checked fixed array, an aggregate alias parameter and result, a local alias, a counted loop, a conditional chain, a call, and observable output:
+
+```nucleus
+record Cell
+    value as u8
+end
+
+var cells as Cell[4]
+
+sub cellAt(index as u8) as Cell
+    return cells[index]
+end
+
+sub setCell(cell as Cell, value as u8)
+    cell.value = value
+end
+
+sub main()
+    var index as u8
+    var current as Cell = cells[0]
+    var code as u8
+
+    for index = 0 until 4
+        setCell(cells[index], index + 1)
+    end
+
+    current.value = cellAt(0).value
+    if current.value = 1
+        writeOutputByte('Y')
+        on error code
+            return
+        end
+    elseif current.value = 0
+        writeOutputByte('N')
+        on error code
+            return
+        end
+    end
+end
+```
+
+The expected standard output is the byte for `Y`, provided the output service succeeds.
+
+### 21.2 Recoverable error and propagation
+
+```nucleus
+const badByte as u8 = 10
+
+sub checkedByte() as u8 fails
+    var value as u8 = readInputByte() or fail
+    if value = 0
+        fail badByte
+    end
+    return value
+end
+
+sub emitByte() fails
+    var value as u8 = checkedByte() or fail
+    writeOutputByte(value) or fail
+end
+
+sub main() fails
+    emitByte() or fail
+end
+```
+
+For the minimum conformance-corpus run, standard input supplies byte `A` and the output service succeeds; the expected standard output is `A`. More generally, success copies one input byte to output. End of input or a service error propagates its standard code, a zero byte produces `badByte`, and any failure reaching `main` performs the `unhandled-error` trap with that code.
+
+### 21.3 Recursion and control flow
+
+```nucleus
+forward sub odd(value as u16) as boolean
+
+sub even(value as u16) as boolean
+    if value = 0
+        return true
+    end
+    return odd(value - 1)
+end
+
+sub odd(value as u16) as boolean
+    if value = 0
+        return false
+    end
+    return even(value - 1)
+end
+
+sub main()
+    var index as u16
+    var code as u8
+
+    for index = 0 to 5
+        if odd(index)
+            continue
+        elseif index = 4
+            exit
+        end
+    end
+
+    writeOutputByte(u8(index))
+    on error code
+        return
+    end
+end
+```
+
+The program is valid and writes byte value 4 when the output service succeeds. The Chapter 21 conformance floor requires enough activation capacity for this execution; an implementation may perform `activation-capacity` only beyond its published, conformant limit.
+
+### 21.4 Bounded-string aliasing and byte mutation
+
+```nucleus
+var text as string[4] = "A\0B"
+
+sub textAlias() as string[4]
+    return text
+end
+
+sub mutate(value as string[4])
+    value[1] = 'Z'
+end
+
+sub main() fails
+    var alias as string[4] = textAlias()
+
+    if alias.length = 3 and alias[1] = 0
+        mutate(alias)
+    end
+
+    if text[1] = 'Z' and alias.length = 3
+        writeOutputByte('Y') or fail
+    end
+end
+```
+
+The literal's embedded zero is an ordinary byte, so its logical length is three. The local is initialized once with an alias returned by an infallible routine. Mutation through the parameter alias is visible through both program and local aliases, and the expected standard output is `Y`.
+
+### 21.5 Result-free return propagation
+
+```nucleus
+sub emitMarker() fails
+    writeOutputByte('R') or fail
+end
+
+sub relayMarker() fails
+    return emitMarker() or fail
+end
+
+sub main() fails
+    relayMarker() or fail
+end
+```
+
+When output succeeds, `emitMarker` has no result, `relayMarker` returns successfully, and the expected standard output is `R`. An output failure propagates unchanged through both callers.
+
+### 21.6 Same-destination error handling
+
+```nucleus
+const sampleFailure as u8 = 7
+
+sub alwaysFails() as u8 fails
+    fail sampleFailure
+end
+
+sub main() fails
+    var code as u8
+
+    code = alwaysFails()
+    on error code
+        writeOutputByte(code) or fail
+        return
+    end
+
+    writeOutputByte(0) or fail
+end
+```
+
+The failed assignment performs no success-result store and then stores `sampleFailure` in `code`, even though `code` is both destinations. The expected standard output is byte value 7.
+
+### 21.7 Bulk-output cursor state
+
+```nucleus
+sub main() fails
+    writeStorageByte('A') or fail
+    writeStorageByte('B') or fail
+    seekStorageOutput(0) or fail
+    writeStorageByte('Z') or fail
+end
+```
+
+The conformance output begins empty with its cursor at zero. The first two calls append `AB`; the seek returns to zero; the final call overwrites the first byte without inserting or truncating. The expected bulk output is `ZB`, with its cursor at offset one.
+
+### 21.8 Runtime loop-range reachability
+
+```nucleus
+sub main()
+    var index as u8
+
+    for index = 250 to 300 step 10
+        exit
+    end
+end
+```
+
+This program is valid and terminates normally with `index` equal to 250. Without the `exit`, the first increment would store 260 if it fit and the loop would continue, so execution would perform `loop-range`; the compiler must not reject the source merely because it can prove that possible runtime path.
+
+### 21.9 Specified trap cases
+
+Each listing below is valid source. The external conformance harness supplies the stated standard-input byte and observes the trap report.
+
+```nucleus
+var bytes as u8[2]
+
+sub main() fails
+    var index as u8 = readInputByte() or fail
+    bytes[index] = 1
+end
+```
+
+With input byte 2, the required result is `bounds` before the store.
+
+```nucleus
+sub divide(value as u16, divisor as u16) as u16
+    return value / divisor
+end
+
+sub main() fails
+    var divisor as u16 = readInputByte() or fail
+    var result as u16 = divide(8, divisor)
+end
+```
+
+With input byte zero, the required result is `division-by-zero`.
+
+### 21.10 Complete rejected programs
+
+Each program is rejected for the stated independent reason.
+
+Failable call without consumption:
+
+```nucleus
+sub readOne() as u8 fails
+    return readInputByte() or fail
+end
+
+sub main()
+    var value as u8
+    value = readOne()
+end
+```
+
+Aggregate copy or alias rebinding:
+
+```nucleus
+record Cell
+    value as u8
+end
+
+var left as Cell
+var right as Cell
+
+sub main()
+    var alias as Cell = left
+    alias = right
+end
+```
+
+Value routine with a reachable end:
+
+```nucleus
+sub choose(flag as boolean) as u8
+    if flag
+        return 1
+    end
+end
+
+sub main()
+end
+```
+
+Later declaration used before a forward signature:
+
+```nucleus
+sub main()
+    later()
+end
+
+sub later()
+end
+```
+
+Wrong entry signature:
+
+```nucleus
+sub main(argument as u8)
+end
+```
+
+Hexadecimal integer syntax:
+
+```nucleus
+const value as u8 = $2a
+
+sub main()
+end
+```
+
+The last program fails lexically at `$`; Nucleus 0.1 integer literals are decimal.

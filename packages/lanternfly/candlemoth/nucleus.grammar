@@ -1,4 +1,8 @@
-# Nucleus — the canonical grammar
+# HISTORICAL AND SUPERSEDED — not the current Nucleus grammar.
+# Chapter 17 of docs/nucleus/specification.md is the normative, current grammar.
+# This file is retained only as a frozen record of an earlier Candlemoth experiment.
+
+# Historical Nucleus grammar experiment
 #
 # DRAFT, not normative. The grammar omits admitted forms — the five profile
 # intrinsics, `fill`, `clear`, whole-array assignment and the conversions the

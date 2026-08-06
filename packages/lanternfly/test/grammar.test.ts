@@ -18,6 +18,11 @@ const GRAMMAR = "candlemoth/level0.grammar";
 const REPORT = "docs/level0-grammar-report.md";
 const NUCLEUS = "candlemoth/nucleus.grammar";
 const NUCLEUS_REPORT = "docs/nucleus/grammar-report.md";
+const NUCLEUS_HISTORY_BANNER =
+  "> **Historical and superseded.** This frozen report describes the earlier " +
+  "`candlemoth/nucleus.grammar` experiment. Chapter 17 of " +
+  "[`specification.md`](specification.md#17-complete-grammar) is the normative, " +
+  "current Nucleus grammar.\n\n";
 const TOKENIZER = "candlemoth/tokenizer.lafy";
 const PARSERS = [
   "candlemoth/expression.lafy",
@@ -103,11 +108,17 @@ describe("the nucleus grammar", () => {
 
   it("is frozen against its generated report", () => {
     if (process.env.UPDATE_GRAMMAR === "1") {
-      writeFileSync(NUCLEUS_REPORT, nucleus.text, "utf8");
+      writeFileSync(
+        NUCLEUS_REPORT,
+        NUCLEUS_HISTORY_BANNER + nucleus.text,
+        "utf8",
+      );
       console.log(`wrote ${NUCLEUS_REPORT}`);
       return;
     }
-    expect(readFileSync(NUCLEUS_REPORT, "utf8")).toBe(nucleus.text);
+    expect(readFileSync(NUCLEUS_REPORT, "utf8")).toBe(
+      NUCLEUS_HISTORY_BANNER + nucleus.text,
+    );
   });
 
   it("is not left-recursive", () => {
