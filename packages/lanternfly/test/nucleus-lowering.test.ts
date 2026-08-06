@@ -12,7 +12,7 @@ import {
 /**
  * Every nucleus lowering sequence, assembled.
  *
- * Two claims in `docs/nucleus-lowering.md` were written from memory and were
+ * Two claims in `docs/nucleus/lowering.md` were written from memory and were
  * wrong — `SUB (nn)` is not an instruction, and "build a word" was two bytes
  * only when both halves were already in registers. The assembler was available
  * throughout. This test is what makes it impossible to skip.
@@ -22,7 +22,7 @@ import {
  * document. A count cannot disagree with the assembler by construction.
  */
 
-const DOCUMENT = "docs/nucleus-lowering.md";
+const DOCUMENT = "docs/nucleus/lowering.md";
 const BEGIN = (section: string) => `<!-- generated:${section} -->`;
 const END = "<!-- /generated -->";
 

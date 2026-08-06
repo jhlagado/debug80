@@ -1,7 +1,7 @@
 /**
  * The nucleus lowering table, as data, so every sequence is assembled.
  *
- * `docs/nucleus-lowering.md` carried Z80 sequences and byte counts written
+ * `docs/nucleus/lowering.md` carried Z80 sequences and byte counts written
  * from memory. Two were wrong: `LD A,(a) / SUB (b)` does not assemble because
  * `SUB (nn)` is not an instruction, and "build a word" was quoted at two bytes,
  * which holds only when both halves are already in registers.
@@ -162,7 +162,7 @@ export const NUCLEUS_LOWERING: readonly NucleusShape[] = [
   {
     label: "byte subtract, round-trip position",
     construct: "`d = a - b`, all `u8`",
-    given: "the round-trip conditions in `nucleus-review-actions.md` all hold",
+    given: "the round-trip conditions in `docs/nucleus/review-actions.md` all hold",
     mnemonics: ["LD HL,$9001", "LD A,($9000)", "SUB (HL)"],
     section: "arithmetic",
   },

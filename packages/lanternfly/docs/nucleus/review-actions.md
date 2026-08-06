@@ -10,17 +10,17 @@ language definition is in question.
 | --- | --- | --- |
 | Report provenance | The nucleus report was titled "Level Zero grammar report" and claimed generation from `level0.grammar`. The stale-file test passed while the document published false provenance. | The report takes an identity — title, grammar path, and a coverage note. The nucleus report states that its zero production coverage is by construction, not by measurement. |
 | `RST` saving overstated | Claimed 658 bytes from eight slots with no vector cost. `RST 00` is taken by the entry jump, and a restart slot is eight bytes — too small for a routine, so it holds a `JP` to one. | Recomputed with vectors counted: **601 bytes from seven slots**, 558 from six if `RST 08` carries a fault vector. |
-| Unassembled Z80 in the lowering table | Every sequence and byte count in `nucleus-lowering.md` was written from memory. Two were wrong: `LD A,(a) / SUB (b)` does not assemble, and "build a word" was quoted at two bytes when that holds only with both halves already in registers — from memory it is eight. | `src/bootstrap/nucleus-manifest.ts` carries the mnemonics and nothing else; `test/nucleus-lowering.test.ts` assembles every entry and generates the document's tables, so a byte count cannot disagree with the assembler. A `Given` column states the condition wherever a sequence holds only under one. |
+| Unassembled Z80 in the lowering table | Every sequence and byte count in `lowering.md` was written from memory. Two were wrong: `LD A,(a) / SUB (b)` does not assemble, and "build a word" was quoted at two bytes when that holds only with both halves already in registers — from memory it is eight. | `src/bootstrap/nucleus-manifest.ts` carries the mnemonics and nothing else; `test/nucleus-lowering.test.ts` assembles every entry and generates the document's tables, so a byte count cannot disagree with the assembler. A `Given` column states the condition wherever a sequence holds only under one. |
 | Blockers 5 and 6, incidentally | The `select` sequence omitted normalisation and the range check; the variable-index form read two bytes for a `u8` index. | Both are now separate manifest entries with their own assembled counts: `u8` and `u16` index forms at 15 and 12 bytes, a byte-register index at 7, and `select` split into dispatch, range check and base normalisation. |
-| Two writable-array totals | `bootstrap-plan.md` carried the generated figure and `abstract-machine.md` a stale copy. | `abstract-machine.md` points at the generated table instead of repeating it. One authoritative place. |
+| Two writable-array totals | `../bootstrap-plan.md` carried the generated figure and `../abstract-machine.md` a stale copy. | `../abstract-machine.md` points at the generated table instead of repeating it. One authoritative place. |
 
 ## Blockers
 
-### 1. The five profile intrinsics take arguments
+### 1. The six profile intrinsics take arguments
 
 `writeCodeByte(value)`, `writeDiagnostic(value)`, `setExitStatus(value)` take
 one argument; `readSourceByte()` returns one. `fill(target, value)` and
-`clear(target)` take arguments and `nucleus.md` admits them. A parameterless
+`clear(target)` take arguments and `v1.md` admits them. A parameterless
 language with no calls in expressions cannot express any of it, so **a nucleus
 program cannot perform the I/O a compiler requires.**
 
@@ -162,8 +162,8 @@ sixteen-bit path.
 
 ### 3. The three nucleus documents describe different languages
 
-`nucleus.md` admits `fill`, `clear` and whole-array assignment; the grammar has
-none of them. `nucleus-lowering.md` gives sequences for `and`, `shl` and
+`v1.md` admits `fill`, `clear` and whole-array assignment; the grammar has
+none of them. `lowering.md` gives sequences for `and`, `shl` and
 `u8(…)`, which the grammar excludes.
 
 **Resolution to implement.** A generated construct matrix with one row per
@@ -192,7 +192,7 @@ padding.
 
 **Resolution to implement.** State that the selector is `u8`. Give the complete
 sequence including normalisation and range check, and assemble it in a
-generated test the way `level0-lowering.md`'s shapes are pinned. Re-quote the
+generated test the way `../level0-lowering.md`'s shapes are pinned. Re-quote the
 comparison against a ladder from the complete sequence.
 
 ### 6. Byte-indexed access reads two bytes
@@ -218,11 +218,11 @@ consecutive newlines into one boundary token, so a blank line between two
 statements is absorbed by the first statement's own terminator. Corpus cases
 covering blank lines at each block boundary come with the nucleus slice.
 
-**`bootstrap-plan.md` is stale.** It says no Lanternfly source exists, lists
+**`../bootstrap-plan.md` is stale.** It says no Lanternfly source exists, lists
 front-end forms that now exist as missing, duplicates the code estimate, and
 refers once to two passes. The repair — reduce it to the shared machine and
 validation foundation, move superseded phases to a decision log, and let
-`bootstrap-ladder.md` own the generation sequence — is right and is a separate
+`../bootstrap-ladder.md` own the generation sequence — is right and is a separate
 pass, because doing it in the same change as the nucleus repairs would make
 both hard to review.
 
@@ -236,6 +236,6 @@ both hard to review.
 4. A small real nucleus slice, so production coverage is measured rather than
    zero by construction.
 5. Freeze the nucleus.
-6. Rewrite `bootstrap-plan.md` as the shared foundation.
+6. Rewrite `../bootstrap-plan.md` as the shared foundation.
 
 The seed does not start until step 5.

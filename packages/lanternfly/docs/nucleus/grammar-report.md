@@ -2,7 +2,7 @@
 
 GENERATED from `candlemoth/nucleus.grammar` by `npm run generate:grammar`. Stage A and stage B of `docs/level0-parser-study.md`. Every figure below is derived; nothing is asserted by hand.
 
-**Draft.** No nucleus source exists, so every production reports `uses: no` and the coverage figure below is zero by construction rather than by measurement. The grammar is also known to omit admitted forms — see `docs/nucleus-review-actions.md`.
+**Draft.** No nucleus source exists, so every production reports `uses: no` and the coverage figure below is zero by construction rather than by measurement. The grammar is also known to omit admitted forms — see `docs/nucleus/review-actions.md`.
 
 ## Summary
 
@@ -69,12 +69,12 @@ The tokenizer installs 23 keyword spellings and 15 punctuation forms. Unused tok
 | `simple-statement` | **no** | isCallableName, isWritableName | nucleus |
 | `assignment` | **no** | isWritableName | nucleus |
 | `call-statement` | **no** | isCallableName | nucleus; no arguments, so a call is three bytes |
-| `select-statement` | **no** | — | nucleus; lowers to a jump table, see nucleus-lowering.md |
+| `select-statement` | **no** | — | nucleus; lowers to a jump table, see docs/nucleus/lowering.md |
 | `case-clause` | **no** | isConstantContext | nucleus; one constant per case |
 | `if-statement` | **no** | — | nucleus |
 | `while-statement` | **no** | — | nucleus; the only loop |
 | `expression` | **no** | — | nucleus |
-| `negation` | **no** | — | nucleus; `not` is free at every lowering, see nucleus-lowering.md |
+| `negation` | **no** | — | nucleus; `not` is free at every lowering, see docs/nucleus/lowering.md |
 | `comparison` | **no** | — | nucleus; comparisons do not chain |
 | `comparison-op` | **no** | — | nucleus |
 | `additive` | **no** | — | nucleus |

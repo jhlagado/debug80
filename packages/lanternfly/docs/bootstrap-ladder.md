@@ -19,7 +19,7 @@ already accepts, and it gains features one at a time.
 ## Generations
 
 **Generation 0.** The seed, written in TypeScript against the nucleus grammar
-and `nucleus-lowering.md`, compiles the compiler's nucleus source to **A**.
+and `nucleus/lowering.md`, compiles the compiler's nucleus source to **A**.
 
 **Generation 1.** **A** compiles the same source to **B**. **B** compiles it to
 **C**. **B** and **C** must be byte-identical; **A** and **B** need not be.
@@ -157,7 +157,7 @@ and fixpoint mechanics are unchanged. Three things move:
 
 **The seed targets the nucleus, not level 0.** The plan's Phase 2 describes a
 seed implemented against the level-0 grammar and lowering table. It is
-implemented against the nucleus grammar and `nucleus-lowering.md` instead, and
+implemented against the nucleus grammar and `nucleus/lowering.md` instead, and
 is roughly half the size. The independence requirement is unchanged: the seed
 is written against the specification, not transliterated from the compiler's
 source.

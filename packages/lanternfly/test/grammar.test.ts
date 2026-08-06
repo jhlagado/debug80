@@ -17,7 +17,7 @@ import { buildReport } from "../src/grammar/report.js";
 const GRAMMAR = "candlemoth/level0.grammar";
 const REPORT = "docs/level0-grammar-report.md";
 const NUCLEUS = "candlemoth/nucleus.grammar";
-const NUCLEUS_REPORT = "docs/nucleus-grammar-report.md";
+const NUCLEUS_REPORT = "docs/nucleus/grammar-report.md";
 const TOKENIZER = "candlemoth/tokenizer.lafy";
 const PARSERS = [
   "candlemoth/expression.lafy",
@@ -98,7 +98,7 @@ describe("the nucleus grammar", () => {
       "**Draft.** No nucleus source exists, so every production reports `uses: no` " +
       "and the coverage figure below is zero by construction rather than by " +
       "measurement. The grammar is also known to omit admitted forms — see " +
-      "`docs/nucleus-review-actions.md`.",
+      "`docs/nucleus/review-actions.md`.",
   });
 
   it("is frozen against its generated report", () => {

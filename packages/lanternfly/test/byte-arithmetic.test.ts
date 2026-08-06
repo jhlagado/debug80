@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 /**
  * The round-trip byte lowering, checked rather than asserted.
  *
- * `docs/nucleus-review-actions.md` claims a byte expression assigned to a byte
+ * `docs/nucleus/review-actions.md` claims a byte expression assigned to a byte
  * may be computed in byte arithmetic — wrapping at every step — when every
  * operator is `+`, `-` or `*`, and may not when a division or comparison is
  * involved.

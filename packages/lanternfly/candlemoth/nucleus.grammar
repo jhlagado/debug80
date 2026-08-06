@@ -3,12 +3,12 @@
 # DRAFT, not normative. The grammar omits admitted forms — the five profile
 # intrinsics, `fill`, `clear`, whole-array assignment and the conversions the
 # lowering table assumes — and its subtraction is not closed under Lanternfly's
-# result table. See docs/nucleus-review-actions.md.
+# result table. See docs/nucleus/review-actions.md.
 #
-# For the nucleus subset. `docs/nucleus.md` defines the machine and
-# `docs/nucleus-lowering.md` gives the instruction table. Measured by the same
+# For the nucleus subset. `docs/nucleus/v1.md` defines the machine and
+# `docs/nucleus/lowering.md` gives the instruction table. Measured by the same
 # analyzer as `level0.grammar`, and frozen against
-# `docs/nucleus-grammar-report.md`.
+# `docs/nucleus/grammar-report.md`.
 #
 # The shape:
 #
@@ -19,7 +19,7 @@
 #   - no enumerations, no conversions in expressions, no `and` or `or`.
 #
 # A form is admitted when it lowers to one instruction or a fixed short
-# sequence with no analysis. `docs/nucleus.md` states that rule and the
+# sequence with no analysis. `docs/nucleus/v1.md` states that rule and the
 # reasoning; it is the gate every future addition passes.
 #
 # A subroutine survives with no parameters and no result, because a machine
@@ -143,7 +143,7 @@ production call-statement
   ebnf       NAME "(" ")"
 
 production select-statement
-  source     nucleus; lowers to a jump table, see nucleus-lowering.md
+  source     nucleus; lowers to a jump table, see docs/nucleus/lowering.md
   uses       no
   predicate  -
   example    select a\ncase 1\nreturn\nend\n
@@ -196,7 +196,7 @@ production expression
   ebnf       negation
 
 production negation
-  source     nucleus; `not` is free at every lowering, see nucleus-lowering.md
+  source     nucleus; `not` is free at every lowering, see docs/nucleus/lowering.md
   uses       no
   predicate  -
   example    1

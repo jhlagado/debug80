@@ -10,7 +10,7 @@ import { BootstrapMachine, assembleSource, imageOf } from "../src/bootstrap/inde
  * is the claim that actually licenses the lowering. This file assembles the
  * real sequence and runs it.
  *
- * Writing it found that the sequence quoted in `nucleus-review-actions.md` did
+ * Writing it found that the sequence quoted in `docs/nucleus/review-actions.md` did
  * not exist: `SUB (nn)` is not a Z80 instruction, so `LD A,(a) / SUB (b)` — the
  * "two instructions, no widening" the byte lowering was justified by — does not
  * assemble. The real sequence is below and it is seven bytes.

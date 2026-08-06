@@ -2,7 +2,7 @@
 
 The instruction table. Every nucleus construct and the Z80 it becomes.
 
-**Draft, not normative.** See `docs/nucleus-review-actions.md`.
+**Draft, not normative.** See `docs/nucleus/review-actions.md`.
 
 **Every sequence below is assembled.** The tables are generated from
 `src/bootstrap/nucleus-manifest.ts` by `npm run generate:nucleus`, and the byte
@@ -11,7 +11,7 @@ written by hand were wrong, one of them a sequence that does not exist. The
 `Given` column states the condition where a sequence holds only under one,
 because the two errors were both cases quoted as general.
 
-Draft alongside `docs/nucleus.md`, which defines the machine, and
+Draft alongside `docs/nucleus/v1.md`, which defines the machine, and
 `candlemoth/nucleus.grammar`, which defines the syntax. This document is what
 makes the admission rule checkable: a form belongs in the nucleus when it
 appears here as one instruction or a fixed short sequence.
@@ -69,7 +69,7 @@ instructions that pick a half of `HL`.
 
 ## Arithmetic
 
-Unchanged from `level0-lowering.md` for the shared operators, minus everything
+Unchanged from `../level0-lowering.md` for the shared operators, minus everything
 signed.
 
 <!-- generated:arithmetic -->
@@ -77,7 +77,7 @@ signed.
 | --- | --- | --- | --- |
 | `a + b` | `ADD HL,DE` | 1 | — |
 | `a - b` | `EX DE,HL` / `OR A` / `SBC HL,DE` | 4 | — |
-| `d = a - b`, all `u8` | `LD HL,$9001` / `LD A,($9000)` / `SUB (HL)` | 7 | the round-trip conditions in `nucleus-review-actions.md` all hold |
+| `d = a - b`, all `u8` | `LD HL,$9001` / `LD A,($9000)` / `SUB (HL)` | 7 | the round-trip conditions in `docs/nucleus/review-actions.md` all hold |
 | `a * b`, `a / b` | `CALL $0200` | 3 | — |
 | `a * 2` | `ADD HL,HL` | 1 | — |
 | `a and <single-bit constant>` | `BIT 3,(HL)` | 2 | the value is addressed through `HL` |
@@ -119,7 +119,7 @@ makes `if flag then` and `if flag <> 0 then` identical code and what makes
 Every jump is absolute, forward and backward. `JR` reaches only ±127, so
 choosing it would make the branch form depend on a measured distance, and two
 implementations that measure differently emit different bytes for the same
-source. `level0-lowering.md` states the same rule.
+source. `../level0-lowering.md` states the same rule.
 
 ### Statement shapes
 
@@ -217,7 +217,7 @@ slot is too small to hold a routine, so it holds a jump to one.
 
 Six slots rather than seven if a fault vector is wanted at `RST 08`, which is
 the conventional place for one. Which routines take the slots is a layout
-decision from the call graph the analysis pass already builds.
+decision from the call graph, which a single walk builds as it goes.
 
 ## Runtime routines
 
@@ -236,7 +236,7 @@ are gone with `i16`.
 | 7 | `compareGreaterEqual` | DE, HL | HL = 0 or 1 |
 | 8 | `boundsCheck` | HL index, DE limit | HL unchanged, or traps |
 
-Trap semantics are as `level0-lowering.md` states: a diagnostic byte to port
+Trap semantics are as `../level0-lowering.md` states: a diagnostic byte to port
 `$03`, exit status `$02`, then halt.
 
 ## Rules that are recognitions, not optimisations
@@ -264,5 +264,5 @@ on a constant operand or a fixed shape, decidable without analysis:
   threshold.
 
 None of these can be decided from source appearance, and
-`candlemoth-size-discipline.md` is explicit that the binary and the memory map
+`../candlemoth-size-discipline.md` is explicit that the binary and the memory map
 set the priorities.

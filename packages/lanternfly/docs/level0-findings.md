@@ -553,7 +553,7 @@ first is what section 8.1 describes. Removing the casts is churn, and the claim
 that they were covered by the round-trip rule was a second error inside the
 retraction.
 
-The rule this leaves for the nucleus is in `docs/nucleus-review-actions.md`:
+The rule this leaves for the nucleus is in `docs/nucleus/review-actions.md`:
 a byte subtraction assigned to a byte is a round trip, so it lowers to
 `LD A,(a) / SUB (b)` with no widening, and `i16` is not needed to express it.
 
