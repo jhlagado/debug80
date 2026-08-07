@@ -34,7 +34,7 @@ The language under design is named **Nucleus 0.1**. "V2" was a working label for
 
 ### 1.2 Scope
 
-This specification defines the source-language syntax, static semantics, runtime semantics, required diagnostics, and specified safety failures of Nucleus 0.1. It defines the conditions for a source program or compiler to claim Nucleus 0.1 conformance.
+This specification defines the source-language syntax, static semantics, runtime semantics, required diagnostics, specified safety failures, and abstract compilation-input contract of Nucleus 0.1. It defines the conditions for a source program or compiler to claim Nucleus 0.1 conformance.
 
 The separate Nucleus VM Specification defines the bytecode instruction set, encoding, and virtual-machine execution rules. Non-normative implementation plans and design papers record compiler strategies and project constraints; they do not add source-language semantics.
 
@@ -87,9 +87,11 @@ A compiler claiming Nucleus 0.1 conformance must:
 
 - compile every complete accepted program in Chapter 21 without a capacity diagnostic;
 - accept and translate every conforming source program within its documented capacity limits;
+- accept an in-capacity program presented through the multipart compilation stream in Section 4.3;
 - preserve the specified observable results, side effects, and runtime traps of each accepted program;
 - issue a diagnostic for compile-time invalid source rather than silently translating it with another meaning;
 - issue a diagnostic when a documented capacity limit prevents translation;
+- identify each source diagnostic by stable source-part identity and position within that part;
 - identify and document every implementation-defined choice it makes;
 - keep extensions separate from standard Nucleus mode.
 
@@ -185,7 +187,7 @@ Project accounting counts each shared component once and assigns it to an identi
 
 ### 2.5 Streaming compilation model
 
-Bulk storage may be available but slow. The primary bytecode path consumes one logical source stream and emits one logical bytecode stream. A platform may materialize either stream in external storage. Multiple source files and imports do not require the compiler to retain the whole program in memory.
+Bulk storage may be available but slow. The primary bytecode path consumes the ordered multipart compilation stream defined by Chapter 4 and emits one logical bytecode stream. A platform may materialize either stream in external storage. Physical source discovery, ordering, and transport do not require the compiler to retain the whole program in memory.
 
 The first compiler is handwritten Z80 and uses streaming, single-pass compilation wherever the language semantics permit it. Declarations precede use. An explicit forward routine signature supplies the necessary exception without requiring a later whole-program pass.
 
@@ -231,7 +233,7 @@ The first implementation is not required to compile itself. The project may eval
 
 ### 3.1 Scope
 
-This chapter defines how a Nucleus source byte stream becomes a token stream. It defines source bytes, line endings, whitespace, comments, names, reserved words, literals, punctuation, source positions, and lexical errors. Later chapters define grammar, name resolution, types, expression precedence, and runtime meaning.
+This chapter defines how the source bytes in each ordered source part become one logical token stream. It defines source bytes, line endings, whitespace, comments, names, reserved words, literals, punctuation, source positions, and lexical errors. Chapter 4 defines the multipart input around those bytes. Later chapters define grammar, name resolution, types, expression precedence, and runtime meaning.
 
 The rules are deterministic and require no backtracking. Rules stated for source text, token identity, or lexical errors apply to every conforming compiler. Project acceptance requires the first compiler to consume the source in order with bounded state and without retaining a complete source copy. This is a Chapter 2 project constraint, not a required internal organization for another compiler. Another compiler may organize tokenization differently, but it must produce the same tokens. One byte of lookahead is sufficient for every token rule in this chapter.
 
@@ -239,7 +241,7 @@ Nucleus inherits several spellings from Lanternfly, but Lanternfly documentation
 
 ### 3.2 Source bytes
 
-A Nucleus source file is a sequence of bytes in an ASCII-compatible encoding. The accepted source-byte repertoire is:
+A Nucleus source part is a sequence of bytes in an ASCII-compatible encoding. The accepted source-byte repertoire is:
 
 | Bytes        | Use              |
 | ------------ | ---------------- |
@@ -258,13 +260,14 @@ This repertoire excludes Unicode identifiers, Unicode normalization, and locale-
 
 LF and CRLF each form one physical line ending. The tokenizer normalizes either spelling to the same line-break event. A final physical line need not contain a line ending.
 
-Diagnostics must identify a reproducible source position. Each token has a half-open byte span in the original stream and a one-based line and byte column for the span's start. Each lexical error identifies:
+Diagnostics must identify a reproducible source position. Each source part starts at byte offset zero, line one, and byte column one. Each token has the stable source-part identity from Section 4.3, a half-open byte span within that part, and a one-based line and byte column for the span's start. Each lexical error identifies:
 
-- a zero-based byte offset in the original byte stream;
+- the stable source-part identity;
+- a zero-based byte offset within that part;
 - a one-based line number; and
 - a one-based byte column within that line.
 
-When CRLF produces `NEWLINE`, its two bytes occupy one token span, advance the byte offset by two, and advance the line number once. A synthesized final `NEWLINE` has a zero-width span at EOF. A horizontal tab advances the byte column by one; the column is not a display-cell count. These counters permit streaming diagnostics without a resident source map. An implementation that bounds a counter or source length must publish the limit and diagnose overflow.
+When CRLF produces `NEWLINE`, its two bytes occupy one token span, advance the byte offset by two, and advance the line number once. A synthesized source-part-boundary or final `NEWLINE` has a zero-width span at the end of its source part. A horizontal tab advances the byte column by one; the column is not a display-cell count. The optional diagnostic name from Section 4.3 may accompany a diagnostic but does not replace the stable identity. These counters permit streaming diagnostics without a resident source map. An implementation that bounds a counter or source-part length must publish the limit and diagnose overflow.
 
 ### 3.4 Whitespace, comments, and logical newlines
 
@@ -278,7 +281,7 @@ Delimiter state tracks open parentheses and square brackets. A physical line end
 
 This is a tokenizer-parser interface rule rather than statement grammar: the tokenizer emits `NEWLINE` under this rule, while later chapters specify which grammar positions accept it. Delimiter state must distinguish `(` from `[`. A closing delimiter with no matching opener, a mismatched closing delimiter, an open delimiter at EOF, or implementation-capacity exhaustion is diagnosed.
 
-Blank and comment-only physical lines produce no `NEWLINE`. Consecutive physical line endings therefore cannot create empty statements. After any token on a delimiter-depth-zero line, its physical line ending produces one `NEWLINE`. If EOF follows such a line without a physical line ending, the tokenizer emits one final `NEWLINE` before `EOF`. EOF following an empty or comment-only final line produces only `EOF`.
+Blank and comment-only physical lines produce no `NEWLINE`. Consecutive physical line endings therefore cannot create empty statements. After any token on a delimiter-depth-zero line, its physical line ending produces one `NEWLINE`. Section 4.3 supplies the same line-ending event at a source-part boundary when the part has no final physical line ending. If EOF follows a token line without either event, the tokenizer emits one final `NEWLINE` before `EOF`. EOF following an empty or comment-only final line produces only `EOF`.
 
 Examples:
 
@@ -518,7 +521,7 @@ Nucleus compilation is declaration ordered and streaming. The rules in this chap
 
 ### 4.2 Compilation unit
 
-A **compilation unit** is one logical Nucleus token stream ending in one `EOF` token. The compiler processes that stream from beginning to end as a single ordered unit. A compilation unit supplies one outer declaration sequence; a physical file boundary does not begin a scope, clear declarations, or change declaration order. Chapter 5 defines the resulting scopes.
+A **compilation unit** is one logical Nucleus token stream formed from one or more ordered source parts and ending in one `EOF` token. The compiler processes that stream from beginning to end as a single ordered unit. A compilation unit supplies one outer declaration sequence; a source-part boundary does not begin a scope, clear declarations, or change declaration order. Chapter 5 defines the resulting scopes.
 
 The structural skeleton is:
 
@@ -530,15 +533,29 @@ The complete grammar in Chapter 17 replaces this skeleton. Its declaration produ
 
 Blank and comment-only physical lines contribute no top-level item. If the final item has no physical line ending, Chapter 3 requires the tokenizer to emit its final `NEWLINE` before `EOF`.
 
-### 4.3 Physical files and stream assembly
+### 4.3 Multipart compilation stream
 
-The core Nucleus 0.1 compiler accepts one logical source stream. It does not open source files, search directories, or resolve source dependencies while parsing that stream.
+The core Nucleus 0.1 compiler does not open source files, search directories, or resolve source dependencies. An external packaging layer supplies one ordered logical compilation stream through these transport-neutral events or records:
 
-A build tool may assemble the stream from one or more physical files. It must preserve their declared order and must not join tokens across a file boundary. When the preceding file does not end at a physical line boundary, the tool must insert a line ending before the next file's first byte. Tokenization then proceeds as if the assembled bytes had been supplied in one file.
+```text
+begin-compilation
+begin-source-part(stable-source-identity, [diagnostic-name])
+source-bytes(bytes)
+end-source-part
+end-compilation
+```
 
-Nucleus 0.1 has no source-level `import`, `include`, `module`, or namespace declaration. File lists, search paths, dependency resolution, and any mapping from logical source positions back to physical filenames are toolchain inputs outside the language. If a project tool calls a dependency an import, it must resolve and order that dependency before invoking the core compiler. A tool may retain a source-position mapping for diagnostics, but the compiler's conformance does not depend on a particular project-file or package format.
+A compilation contains one or more source parts. `source-bytes` may occur repeatedly within a part; its chunk boundaries have no lexical or semantic effect. The stable source identity is unique within the compilation and remains unchanged for every diagnostic from that part. The optional diagnostic name is display metadata. Neither value is part of the Nucleus byte stream, creates a token or identifier, opens a scope, or otherwise participates in program semantics.
 
-This arrangement does not permit textual macro processing. A stream assembler may combine source files and preserve source-position metadata; it must not add declarations, replace tokens, or make the accepted language depend on the file from which a token came.
+Each source part must end at a logical source boundary with delimiter depth zero. When its final source bytes do not include LF or CRLF, the compiler input layer supplies one zero-width line-ending event at the end of that part. It supplies no additional event when the part already ends with a physical line ending. Chapter 3 applies its ordinary comment, blank-line, and `NEWLINE` rules to that event. The next part therefore cannot continue a name, number, literal, comment, parenthesized expression, bracketed expression, or other token sequence from the preceding part. `end-source-part` does not emit `EOF`; only `end-compilation` does so after the final part.
+
+Program scope, declaration order, forward completion, and every other source rule continue across source-part boundaries exactly as they do within one part. Declaration before use determines legal part order. An earlier exact forward routine signature permits the later routine references already admitted by Chapters 4, 5, and 13; the compiler does not infer signatures or construct a dependency graph.
+
+The external packaging layer owns physical files, filenames, dependency discovery, dependency ordering, duplicate suppression, and source transport. It must resolve or reject missing physical inputs and must not present duplicate stable source identities. These are packaging failures, not Nucleus source diagnostics, and the core compiler need not diagnose a host filesystem failure. Nucleus 0.1 retains no source-level `import`, `include`, `module`, or namespace declaration.
+
+The compiler may consume each event and byte chunk incrementally. It need not materialize a source part or the complete compilation stream. A later compiler-input or transport specification may assign a concrete binary, serial, tape, image, memory, or host representation, but that representation must preserve this event order, the source bytes, stable identities, optional names, and boundary rule. No MIME syntax, operating system, filesystem, or project-file format is part of the Nucleus 0.1 contract. A host build tool, serial uploader, tape or image builder, CP/M driver, or memory-resident monitor can implement the packaging layer.
+
+The packaging layer must not add declarations, replace tokens, perform textual macro processing, or make accepted source depend on a part's physical origin. A diagnostic from multipart input must carry the stable source-part identity and the Chapter 3 position within that part, allowing the packaging layer to map it back to a physical source when such a mapping exists.
 
 ### 4.4 Top-level declarations
 
@@ -556,7 +573,7 @@ Executable statements must appear inside a routine body. A call, assignment, con
 
 Except for a routine use covered by an earlier forward declaration, each name must be declared before use. Chapter 5 defines the declaration point, visibility, and lookup rules.
 
-This rule applies across physical file boundaries because all files contribute to one ordered compilation unit. Moving a declaration to a later file moves it later in declaration order. Splitting a unit into more files does not make later names visible sooner.
+This rule applies across source-part boundaries because all parts contribute to one ordered compilation unit. Moving a declaration to a later part moves it later in declaration order. Splitting a unit into more parts does not make later names visible sooner.
 
 The types named by a constant, variable, record field, formal parameter, routine result, or forward signature must already be declared at that position. The exact scope and collision rules appear in Chapter 5. Constant-expression restrictions and initialization order appear in Chapter 8.
 
@@ -631,17 +648,17 @@ At `EOF`, the compiler must verify that:
 
 The compiler may diagnose a duplicate declaration or mismatched completion as soon as it encounters the later declaration. It must not defer a detectable error merely because end-of-input validation also covers the condition. After any structural error, the initial compiler may stop under the diagnostic policy in Chapter 1; it must not report a successful translation.
 
-### 4.9 Capacity limits and file organization
+### 4.9 Capacity limits and source parts
 
-Documented compiler capacities apply to the complete logical compilation unit. A physical file boundary must not reset a symbol count, forward-signature count, nesting limit, source-position counter, or other unit-wide resource. Dividing the same ordered source among more files neither increases the language-defined capacity nor creates extra scopes.
+Documented compiler capacities apply to the complete logical compilation unit. A source-part boundary must not reset a symbol count, forward-signature count, nesting limit, or other unit-wide resource. Dividing the same ordered source among more parts neither increases a language-defined capacity nor creates extra scopes. Chapter 3 source-position counters restart for each part because diagnostics use part-relative positions.
 
-An implementation may bound the logical source length, number of physical-file mappings retained by its build tool, number of declarations, number of unresolved forwards, or other storage required by this chapter. It must document each limit and issue a capacity diagnostic when the limit is exceeded. Under Chapter 1, that diagnostic does not make an otherwise conforming source program invalid.
+An implementation may bound the complete logical source length, source-part count, source-identity or diagnostic-name length, number of declarations, number of unresolved forwards, or other storage required by this chapter. It must document each limit and issue a capacity diagnostic when the limit is exceeded. Under Chapter 1, that diagnostic does not make an otherwise conforming source program invalid.
 
 The first compiler's 16 KiB core gate does not change these structural rules. Project measurements account for the code and immutable data used to enforce them, while writable tables and source maps remain in their separately reported accounts under Chapter 2.
 
 ### 4.10 Provenance
 
-Lanternfly Level 0 and the current Candlemoth source provide evidence that ordered physical files can form one streaming compilation unit and that unresolved forwards can be checked at its end. Nucleus adopts those two mechanisms through the rules above. It does not inherit Lanternfly's modules, imports, language levels, entry manifest, or Candlemoth's historical global-register source model.
+Lanternfly Level 0 and the current Candlemoth source provide evidence that ordered source parts can form one streaming compilation unit and that unresolved forwards can be checked at its end. Nucleus adopts those two mechanisms through the rules above. It does not inherit Lanternfly's modules, imports, language levels, entry manifest, or Candlemoth's historical global-register source model.
 
 ## 5. Names and scopes
 
@@ -669,7 +686,7 @@ Nucleus uses these scopes:
 | Routine      | The routine's formal parameters and named local variables                                    | Program scope as visible at the routine's source position                                     |
 | Record field | The fields declared by one record type                                                       | None for ordinary-name lookup; selection uses the field scope associated with the record type |
 
-One compilation unit has one program scope. A physical file boundary does not open another scope. Chapter 4 defines how source files, if more than one, contribute to that ordered unit.
+One compilation unit has one program scope. A source-part boundary does not open another scope. Chapter 4 defines how ordered source parts contribute to that unit.
 
 Each routine definition has one routine scope. Parameters and locals are binding classes within that scope, not separate nested scopes. Conditional clauses, loops, and other statement blocks do not open name scopes. Local declarations therefore remain in the routine's declaration prefix and cannot appear inside a statement block.
 
@@ -2685,7 +2702,7 @@ line-ending        ::= LF | CR LF
 
 Sections 3.2 through 3.10 define `literal-byte`, accepted source bytes, maximal token formation, case folding, numeric range, and lexical errors. Hexadecimal digits occur only in escapes; integer literals are decimal.
 
-The tokenizer emits `NAME`, `NUMBER`, `CHARACTER`, `STRING`, keyword and punctuation terminals, `NEWLINE`, and `EOF`. It emits `NEWLINE` only at delimiter depth zero, collapses blank or comment-only lines, and synthesizes the final logical newline when Section 3.4 requires one. Those stateful rules are part of the token contract and are not context-free productions.
+The tokenizer emits `NAME`, `NUMBER`, `CHARACTER`, `STRING`, keyword and punctuation terminals, `NEWLINE`, and `EOF`. It emits `NEWLINE` only at delimiter depth zero, collapses blank or comment-only lines, and synthesizes a source-part-boundary or final logical newline when Sections 3.4 and 4.3 require one. Source-part events and metadata remain outside the token grammar. Those stateful rules are part of the token contract and are not context-free productions.
 
 ### 17.2 Syntactic grammar
 
@@ -2885,7 +2902,7 @@ The analyzer result checks the collected grammar's formal shape. It does not pro
 
 ### 18.1 Compilation order
 
-The compiler processes one logical compilation unit in token order. Every use requires an earlier visible declaration, except that an exact forward routine signature makes that routine callable before its body. A routine header makes its own signature visible before its local prefix and body. At `EOF`, every forward must be completed and exactly one `main` definition satisfying Section 4.7 must exist.
+The compiler processes one logical compilation unit in token order across the ordered source parts from Section 4.3. Source-part metadata has no static meaning. Every use requires an earlier visible declaration, except that an exact forward routine signature makes that routine callable before its body. A routine header makes its own signature visible before its local prefix and body. At `EOF`, every forward must be completed and exactly one `main` definition satisfying Section 4.7 must exist.
 
 Top-level declarations occur only in the compilation-unit sequence. Parameters occur only in routine headers. Local declarations form one contiguous prefix before the first statement. Record fields occur only inside their record declaration. Conditional and loop bodies contain statements and open no declaration scope.
 
@@ -2937,7 +2954,7 @@ No label, goto, exception region, or hidden cleanup edge changes these contexts.
 
 A grammar, visibility, declaration-class, type, lifetime, constant, flow, failure-consumption, or context violation makes the source invalid. The compiler issues a diagnostic and must not present an executable as a successful translation.
 
-An implementation may bound source length, identifier length, symbols, types, fields, forwards, parameters, locals, expression depth, statement nesting, fixups, constants, initializer elements, and other retained compile-time state. It must document every limit that can reject otherwise conforming source and issue a capacity diagnostic before truncation, wraparound, dropped state, or changed semantics. Those limits must still compile every complete accepted Chapter 21 program. Runtime activation capacity is separately implementation-defined, must accommodate the accepted corpus, and traps under Chapter 15 beyond any published activation-depth or activation-storage limit.
+An implementation may bound complete source length, source-part count and metadata length, identifier length, symbols, types, fields, forwards, parameters, locals, expression depth, statement nesting, fixups, constants, initializer elements, and other retained compile-time state. It must document every limit that can reject otherwise conforming source and issue a capacity diagnostic before truncation, wraparound, dropped state, or changed semantics. Those limits must still compile every complete accepted Chapter 21 program. Runtime activation capacity is separately implementation-defined, must accommodate the accepted corpus, and traps under Chapter 15 beyond any published activation-depth or activation-storage limit.
 
 ## 19. Runtime semantics
 
@@ -2991,24 +3008,24 @@ A trap stops source execution at the failing operation. The environment reports 
 
 The following mechanisms are required in the single Nucleus 0.1 language:
 
-| Area         | Required forms and rules                                                                                                                                                                 |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Source       | ASCII-compatible bytes, `//` comments, logical newlines, case-insensitive exact names, decimal integers, byte characters, bounded string literals, fixed punctuation.                    |
-| Structure    | One ordered compilation unit, declaration before use, exact forwards, fixed `main()` entry, no executable top level.                                                                     |
-| Types        | `u8`, `u16`, `boolean`, nominal fixed records, checked fixed arrays, mutable bounded `string[N]` with current length and byte indexing, exact aggregate aliases.                         |
-| Declarations | Scalar constants, program variables, record fields, formal parameters, contiguous scalar and aggregate-alias locals, routine definitions and forwards.                                   |
-| Expressions  | Calls, checked array and bounded-string indexing, field selection and string `.length`, explicit integer conversions, unary `+`/`-`, arithmetic, one comparison, `not`, `and`, and `or`. |
-| Statements   | Scalar assignment, name-led calls, `return`, `fail`, `exit`, and `continue`.                                                                                                             |
-| Control      | Flat `if`/`elseif`/`else`, pre-test `while`, counted `for` with `to` or `until` and optional constant `step`.                                                                            |
-| Routines     | Formal arguments, named locals, no result or one typed result, early return, direct and mutual recursion, forward signatures with exact type shape.                                      |
-| Failure      | Explicit `fails`, `fail`, `or fail`, result-free propagating return, and statement-bound `on error`; required safety traps remain separate.                                              |
-| System       | Nucleus System Services 0.1 with deterministic initial cursors and output writes, normal entry return, unhandled-error termination, and stable trap reasons.                             |
+| Area         | Required forms and rules                                                                                                                                                                                                                                             |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Source       | Ordered multipart compilation input with stable part identities and part-relative diagnostics; ASCII-compatible bytes, `//` comments, logical newlines, case-insensitive exact names, decimal integers, byte characters, bounded string literals, fixed punctuation. |
+| Structure    | One program scope and ordered declaration sequence across source parts, declaration before use, exact forwards, fixed `main()` entry, no executable top level.                                                                                                       |
+| Types        | `u8`, `u16`, `boolean`, nominal fixed records, checked fixed arrays, mutable bounded `string[N]` with current length and byte indexing, exact aggregate aliases.                                                                                                     |
+| Declarations | Scalar constants, program variables, record fields, formal parameters, contiguous scalar and aggregate-alias locals, routine definitions and forwards.                                                                                                               |
+| Expressions  | Calls, checked array and bounded-string indexing, field selection and string `.length`, explicit integer conversions, unary `+`/`-`, arithmetic, one comparison, `not`, `and`, and `or`.                                                                             |
+| Statements   | Scalar assignment, name-led calls, `return`, `fail`, `exit`, and `continue`.                                                                                                                                                                                         |
+| Control      | Flat `if`/`elseif`/`else`, pre-test `while`, counted `for` with `to` or `until` and optional constant `step`.                                                                                                                                                        |
+| Routines     | Formal arguments, named locals, no result or one typed result, early return, direct and mutual recursion, forward signatures with exact type shape.                                                                                                                  |
+| Failure      | Explicit `fails`, `fail`, `or fail`, result-free propagating return, and statement-bound `on error`; required safety traps remain separate.                                                                                                                          |
+| System       | Nucleus System Services 0.1 with deterministic initial cursors and output writes, normal entry return, unhandled-error termination, and stable trap reasons.                                                                                                         |
 
 No conforming compiler may expose a standard profile that omits one of these mechanisms.
 
 ### 20.2 Implementation-defined limits
 
-An implementation selects and documents capacities, not syntax or semantics. Permitted limits include source and identifier length, symbol and type counts, record fields, array and string storage capacity below a target's available resources, parameters, locals, nesting, fixups, initializer elements, simultaneous activation depth, and activation-storage consumption. Every limit must be high enough to compile and execute the complete accepted Chapter 21 programs under their stated inputs. A compile-time excess above that floor produces a capacity diagnostic; runtime activation-capacity excess above that floor traps at runtime.
+An implementation selects and documents capacities, not syntax or semantics. Permitted limits include complete source length, source-part count and metadata length, identifier length, symbol and type counts, record fields, array and string storage capacity below a target's available resources, parameters, locals, nesting, fixups, initializer elements, simultaneous activation depth, and activation-storage consumption. Every limit must be high enough to compile and execute the complete accepted Chapter 21 programs under their stated inputs. A compile-time excess above that floor produces a capacity diagnostic; runtime activation-capacity excess above that floor traps at runtime.
 
 Diagnostic wording, internal representations, bytecode or native encoding, physical layout, service transport, and the external presentation of status are implementation-defined where earlier chapters leave them to an implementation contract. These choices must preserve the source rules.
 
@@ -3347,3 +3364,9 @@ end
 ```
 
 The last program fails lexically at `$`; Nucleus 0.1 integer literals are decimal.
+
+### 21.11 Multipart input presentation
+
+The conformance harness must also present the complete accepted program in Section 21.1 as at least two ordered source parts. It splits the program after a delimiter-depth-zero logical newline, assigns a distinct stable identity to each part, and otherwise preserves every source byte and the declared order. The expected output remains `Y`.
+
+For the diagnostic case, the harness introduces an undeclared name in the second part. The compiler diagnostic must identify the second part's stable identity and the position of that name within the part. A separate run may use different physical files or transport chunks, but those changes must not alter tokens, declaration visibility, validity, or program behaviour.
