@@ -30,7 +30,7 @@
 
 This specification is a working draft. Nucleus 0.1 has not been frozen or released as a standard, and later revisions may change rules recorded here. This revision defines the complete proposed 0.1 source language and supports conformance review, but the project may still correct it before the freeze.
 
-The language under design is named **Nucleus 0.1**. "V2" was a working label for an architecture paper and is not the public language name. Nucleus is not a Lanternfly or Candlemoth bootstrap level. It has one source language: no Level Zero, Level One, selectable language profiles, or compiler-selected subsets of standard syntax exist.
+The language under design is named **Nucleus 0.1**. It has one source language: no language levels, selectable language profiles, or compiler-selected subsets of standard syntax exist.
 
 ### 1.2 Scope
 
@@ -47,9 +47,8 @@ When repository materials disagree, apply this order:
 1. This specification governs Nucleus 0.1 source syntax and semantics.
 2. The Nucleus VM Specification governs bytecode and VM execution. It cannot change the meaning required by this specification.
 3. The implementation plan is non-normative. It records construction order, budgets, measurements, and implementation choices.
-4. Architecture and design-rationale papers, including the paper formerly labelled V2, explain decisions but do not override either specification.
+4. Architecture and design-rationale papers explain decisions but do not override either specification.
 5. Conformance tests provide evidence that an implementation follows the specifications. A conflicting test is a test defect, not a language amendment.
-6. Lanternfly documentation and materials from the earlier experiment that will be archived as Old Nucleus provide non-normative provenance and development history.
 
 An unwritten rule cannot be supplied by a lower-ranked document. Until this specification states the rule, the point remains unresolved for Nucleus 0.1 conformance.
 
@@ -64,7 +63,7 @@ This specification uses four requirement words:
 | **may**      | The form or implementation choice is permitted but not required.                                                 |
 | **should**   | The rule is recommended. A departure needs a documented reason and must not violate a `must` or `must not` rule. |
 
-Declarative syntax and semantic rules are normative even when they contain none of these words. Notes, rationale, examples, implementation sketches, and historical remarks are non-normative unless they explicitly state a rule.
+Declarative syntax and semantic rules are normative even when they contain none of these words. Notes, rationale, examples, and implementation sketches are non-normative unless they explicitly state a rule.
 
 ### 1.5 Conforming source programs
 
@@ -136,9 +135,7 @@ A compiler that emits Nucleus bytecode must preserve this specification's source
 
 A compiler using a later native backend may emit Z80 or another target directly. It need not retain or serialize bytecode, but it must preserve the same source semantics, diagnostics, and specified traps. Adding a backend does not create another Nucleus language profile.
 
-### 1.12 Provenance and non-requirements
-
-Nucleus inherits selected syntax and design ideas from Lanternfly. Lanternfly documentation is not normative for Nucleus, and Lanternfly behaviour does not fill a gap in this specification.
+### 1.12 Non-requirements
 
 This working draft makes no claim that Nucleus 0.1 is frozen or implementation-validated. It does not require the first compiler to be written in Nucleus or compile its own source. It also does not require every conforming compiler to use the project's initial VM path.
 
@@ -189,7 +186,7 @@ Project accounting counts each shared component once and assigns it to an identi
 
 Bulk storage may be available but slow. The primary bytecode path consumes the ordered multipart compilation stream defined by Chapter 4 and emits one logical bytecode stream. A platform may materialize either stream in external storage. Physical source discovery, ordering, and transport do not require the compiler to retain the whole program in memory.
 
-The first compiler is handwritten Z80 and uses streaming, single-pass compilation wherever the language semantics permit it. Declarations precede use. An explicit forward routine signature supplies the necessary exception without requiring a later whole-program pass. Because that declaration is the sole signature, the compiler retains its parameter names until the abbreviated body begins. This removes duplicate source signatures and later signature-comparison cases, but its compiler-core and workspace effects remain unmeasured.
+The first compiler is handwritten Z80 and uses streaming, single-pass compilation wherever the language semantics permit it. Declarations precede use. An explicit forward routine signature supplies the necessary exception without requiring a later whole-program pass. Because that declaration is the sole signature, the compiler retains its parameter names until the abbreviated body begins and performs no body-signature comparison. Its compiler-core and workspace effects remain unmeasured.
 
 The architecture excludes an abstract syntax tree, global type inference, whole-program optimization, and unbounded buffering from the first compiler. The compiler may retain bounded state required for declarations, scopes, forward signatures, control-flow fixups, and emission, provided each capacity is explicit and measured.
 
@@ -236,8 +233,6 @@ The first implementation is not required to compile itself. The project may eval
 This chapter defines how the source bytes in each ordered source part become one logical token stream. It defines source bytes, line endings, whitespace, comments, names, reserved words, literals, punctuation, source positions, and lexical errors. Chapter 4 defines the multipart input around those bytes. Later chapters define grammar, name resolution, types, expression precedence, and runtime meaning.
 
 The rules are deterministic and require no backtracking. Rules stated for source text, token identity, or lexical errors apply to every conforming compiler. Project acceptance requires the first compiler to consume the source in order with bounded state and without retaining a complete source copy. This is a Chapter 2 project constraint, not a required internal organization for another compiler. Another compiler may organize tokenization differently, but it must produce the same tokens. One byte of lookahead is sufficient for every token rule in this chapter.
-
-Nucleus inherits several spellings from Lanternfly, but Lanternfly documentation and the current Candlemoth tokenizer are evidence rather than authority. Rules in this chapter become Nucleus rules only when this chapter states them.
 
 ### 3.2 Source bytes
 
@@ -333,8 +328,6 @@ Chapter 14 defines the recoverable-error forms that use `error`, `fail`, `fails`
 
 Nucleus uses name-led routine invocation and has no `call` keyword. `call` remains an identifier.
 
-The current Candlemoth tokenizer supplies evidence for bounded name scanning, but its case folding and two other shortcuts are not Nucleus rules. It accepts `_` as a first byte because one class represents both name-start and name-continuation characters, and it can silently conflate two names whose hash pairs collide. A compiler claiming Nucleus conformance must enforce the spelling and exact identity above.
-
 ### 3.6 Numeric literals
 
 Nucleus admits unsigned decimal integer literals:
@@ -344,7 +337,7 @@ decimal-literal ::= decimal-digit+
 integer-literal ::= decimal-literal
 ```
 
-Hexadecimal integer literals are not part of Nucleus 0.1. The checked Candlemoth scanner implements bounded decimal accumulation but no hexadecimal path, and no target measurement justifies adding one under Chapter 2's admission rule. Hexadecimal digits remain part of the `\xHH` escape syntax in Section 3.7; that lexical use does not create an integer-literal form.
+Hexadecimal integer literals are not part of Nucleus 0.1. Hexadecimal digits remain part of the `\xHH` escape syntax in Section 3.7; that lexical use does not create an integer-literal form. Any additional integer-literal form requires measured admission under Chapter 2.
 
 The tokenizer computes an exact unsigned value from zero through 65,535. A literal whose value exceeds 65,535 is a lexical error. Later type checking decides whether the value fits its context, including `u8`, `u16`, an array bound, or a counted-loop parameter.
 
@@ -659,10 +652,6 @@ An implementation may bound the complete logical source length, source-part coun
 
 The first compiler's 16 KiB core gate does not change these structural rules. Project measurements account for the code and immutable data used to enforce them, while writable tables and source maps remain in their separately reported accounts under Chapter 2.
 
-### 4.10 Provenance
-
-Lanternfly Level 0 and the current Candlemoth source provide evidence that ordered source parts can form one streaming compilation unit and that unresolved forwards can be checked at its end. Nucleus adopts those two mechanisms through the rules above. The flat manifest in Section 4.3.1 is an external build convention, not Lanternfly's source-level module or import machinery. Nucleus does not inherit Lanternfly's modules, imports, language levels, or Candlemoth's historical global-register source model.
-
 ## 5. Names and scopes
 
 ### 5.1 Scope
@@ -671,7 +660,7 @@ This chapter defines how declarations bind names and where those bindings are vi
 
 A scope controls where source text may refer to a declaration. It does not determine storage allocation, initialization, storage duration, or value lifetime; Chapter 7 defines those subjects.
 
-Nucleus has no implicit declarations, overloads, generic parameters, nested routines, or source-level module namespaces. The historical Candlemoth global `b` and `w` register arrays are not predefined Nucleus names and do not replace formal parameters or named local variables.
+Nucleus has no implicit declarations, overloads, generic parameters, nested routines, or source-level module namespaces. Formal parameters and named local variables use the declarations defined by Chapters 8 and 13.
 
 ### 5.2 Name identity
 
@@ -868,12 +857,6 @@ An implementation may bound identifier length, retained name bytes, ordinary bin
 
 The implementation may use one bounded ordinary symbol table, a mark for the current routine, and a field table associated with each record type. That layout is non-normative. The observable lookup, collision, visibility, and diagnostic rules above remain the same for any internal representation.
 
-### 5.12 Provenance
-
-Lanternfly's declaration-order checks, forward signatures, and per-record field scopes provide implementation evidence for these rules. Nucleus does not inherit Lanternfly's modules, imports, split type and value namespaces, nested routine machinery, enum-member namespaces, or traversal-binding scopes.
-
-The current Candlemoth implementation uses bounded linear lookup and discards transient local entries after each routine body. Its local shadowing, hash-only name equality, separate type-name path, and source-visible global-register programming model are superseded and are not Nucleus semantics.
-
 ## 6. Types
 
 ### 6.1 Scope
@@ -907,7 +890,7 @@ bounded-string-type
 
 An array has one dimension. An array element may be a scalar, record, or bounded string, but not another array. Records may contain fields of any admitted type, including fixed arrays.
 
-The spelling `string[N]` settles the bounded-text question previously left open by Chapter 3. `string` is a core reserved word. No other type word is added by this chapter.
+`string[N]` is the bounded-text form. `string` is a core reserved word. No other type word is added by this chapter.
 
 ### 6.3 Scalar types
 
@@ -1404,7 +1387,7 @@ Named integer constants replace enumeration members where a program needs symbol
 
 Nucleus 0.1 named constants are scalar only. `const` cannot declare a record, fixed array, or bounded string. The language has no separate read-only aggregate-storage declaration.
 
-A program that needs an initialized string or scalar table declares a program variable under Section 8.8. That object is mutable storage even when the program never writes it. Historical Lanternfly constant tables do not establish a read-only aggregate-storage family for Nucleus.
+A program that needs an initialized string or scalar table declares a program variable under Section 8.8. That object is mutable storage even when the program never writes it.
 
 ### 8.6 Scalar constant expressions
 
@@ -2334,7 +2317,7 @@ The conservative loop rule is part of Nucleus 0.1 validity. A value routine whos
 
 A forward declaration contains the routine's complete and sole signature, including its parameter names. Its later body begins with `sub NAME` and a logical newline. That name must resolve to exactly one incomplete forward under Chapters 4, 5, and 8. The stored parameter names bind the body; no parameter, result, or `fails` clause is repeated. The forward declaration and body definition denote one routine.
 
-This source form removes duplicate signatures and the corresponding signature-comparison cases. A streaming compiler must retain the forward's parameter names as well as its type and effect metadata until it compiles the body. The net compiler-core and workspace effects remain unmeasured.
+The body does not repeat the signature, so the compiler performs no body-signature comparison. A streaming compiler must retain the forward's parameter names as well as its type and effect metadata until it compiles the body. The net compiler-core and workspace effects remain unmeasured.
 
 After its complete signature has been checked, a routine may call itself directly. Mutually recursive routines require an earlier forward signature for every routine called before its definition. Recursive calls use the ordinary argument, activation, result, and lifetime rules; Nucleus has no separate recursive syntax.
 
@@ -2687,8 +2670,6 @@ The external representation of success, recoverable-error codes, and trap reason
 ### 16.5 Portability and implementation
 
 An environment may implement services with CP/M calls, a monitor, port I/O, host callbacks, or another mechanism. It may buffer transfers if buffering preserves call order, failure points, and visible bytes. Those choices do not add source names or expose their addresses.
-
-Historical Candlemoth intrinsics supplied source reading, object writing, diagnostics, status, rewind, and output seek for one bootstrap profile. The 0.1 boundary retains the useful streaming and cursor operations, separates ordinary standard I/O from bulk storage, and gives failures Chapter 14 semantics. The historical names, port numbers, end marker, and profile binding are not Nucleus rules.
 
 Arbitrary BIOS calls, native-call declarations, inline assembly, memory peeks and pokes, port access, and callbacks are excluded from the safe source boundary. A later service must have a typed target-independent contract and pass the measured admission rule before it enters the standard set.
 

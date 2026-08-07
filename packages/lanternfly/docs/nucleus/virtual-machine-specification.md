@@ -39,7 +39,7 @@ Appendices:
 
 This document defines the Nucleus Virtual Machine 0.1, abbreviated NVM 0.1. It is the normative contract for NVM 0.1 bytecode images, loaders, interpreters, service adapters, and native backends. It is a working specification until the Nucleus 0.1 release is frozen.
 
-The [Nucleus 0.1 Language Specification](specification.md) governs source-language meaning. This document governs the execution target. If the books conflict about source meaning, the language specification prevails. If they conflict about an NVM encoding or state transition, this document prevails. Architecture and history papers are non-normative.
+The [Nucleus 0.1 Language Specification](specification.md) governs source-language meaning. This document governs the execution target. If the books conflict about source meaning, the language specification prevails. If they conflict about an NVM encoding or state transition, this document prevails. Other repository documents do not override either specification.
 
 In this document, **must** and **must not** state conformance requirements. **May** permits a choice. **Should** states a recommendation whose exception requires a documented reason.
 
@@ -84,7 +84,7 @@ The compiler-core account has the language project's hard 16 KiB bank gate. Inte
 
 ### 2.3 Non-goals
 
-NVM is not a Z80, CHIP-8, Sweet 16, or historical CPU compatibility layer. It does not expose a source pointer model, dynamic types, garbage collection, exceptions, unwinding, destructors, branch shortening, relocation records, native register allocation, or native peephole rules.
+NVM is not a CPU-compatibility layer. It does not expose a source pointer model, dynamic types, garbage collection, exceptions, unwinding, destructors, branch shortening, relocation records, native register allocation, or native peephole rules.
 
 NVM contains no dedicated `if`, `while`, `for`, `select`, pattern, aggregate-copy, or source-scope instruction. Compilers lower source constructs to the primitive operations in this book.
 
@@ -100,7 +100,7 @@ A future native backend may consume the semantic operations immediately. The ope
 
 ### 3.2 Selected organization
 
-NVM combines a memory-backed word-slot file with explicit argument, result, error, and activation carriers. It was selected over a pure stack, a source-visible global-register model, and an accumulator-only machine because it gives the streaming compiler uniform addressed destinations without requiring expression-tree recovery or Z80 register allocation.
+NVM combines a memory-backed word-slot file with explicit argument, result, error, and activation carriers. This organization gives the streaming compiler uniform addressed destinations without requiring expression-tree recovery or Z80 register allocation.
 
 The slot file contains 128 words. A routine owns a prefix of it, declared by its descriptor. Calls save only the prefix that the caller and callee can both clobber. The model remains pure caller-save: the callee owns no preserved state and performs no cleanup.
 
@@ -558,7 +558,7 @@ For a non-entry activation the VM pops the record, restores the saved prefix, se
 
 ### 13.7 Early return and recursion
 
-Every return performs the same pop and restore. The callee owns no preservation set, destructor, cleanup list, or epilogue obligation. This is the caller-save model discussed by the language design: the VM call operation preserves the caller's overlap once, and every early callee return uses the same record.
+Every return performs the same pop and restore. The callee owns no preservation set, destructor, cleanup list, or epilogue obligation. The VM call operation preserves the caller's overlap once, and every early callee return uses the same record.
 
 Direct and mutual recursion use ordinary `CALL`. Each nested call receives a distinct saved record, so active scalar locals and alias carriers are restored correctly. No routine-specific recursion opcode or static recursion ban exists.
 
@@ -770,7 +770,7 @@ The compiler's own resident bank may be reclaimed before execution under the pla
 
 ### 17.9 No self-hosting requirement
 
-The first interpreter and compiler are native Z80 assembly. NVM 0.1 does not require either component to be written in Nucleus, produced by Nucleus, or capable of compiling itself. A later self-hosting experiment does not change conformance.
+The first interpreter and compiler are native Z80 assembly. NVM 0.1 does not require either component to be written in Nucleus, produced by Nucleus, or capable of compiling itself.
 
 ## 18. Native-backend contract
 
@@ -953,7 +953,7 @@ Every size or timing entry is labeled **Measured**, **Projected**, or **Hypothes
 | recoverable failure          |           open |                               open |       carriers open | call-local sequence | not measured              | Hypothesis                           |
 | services and traps           |           open |                               open |   adapter dependent |   2/service or trap | not measured              | Hypothesis                           |
 
-The existing spike measured only seven provisional handlers and three slot-addressing arrangements. Its complete core sizes were 165, 162, and 210 bytes for those sketches. Those figures exclude the separately placed dispatch table, and they are not complete-interpreter estimates.
+The measured harness covered seven handlers and three slot-addressing arrangements. Their complete core sizes were 165, 162, and 210 bytes. Those figures exclude the separately placed dispatch table, and they are not complete-interpreter estimates.
 
 ### 21.3 Required reports
 
