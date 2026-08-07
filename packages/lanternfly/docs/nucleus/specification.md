@@ -151,7 +151,7 @@ Nucleus 0.1 is one language. Measurements may change the draft before it is froz
 
 ### 2.2 Language-shaping constraints
 
-Nucleus remains a safe, practical language for routine TEC-1 programs. Its minimum programming model includes `u8`, `u16`, and Boolean values; formal arguments; named local variables; routines with no result or one typed result; fixed-layout records; checked fixed arrays; bounded strings; assignment and calls; `if`/`elseif`/`else`; `while`; counted `for`; `return`; and the unlabeled, innermost-loop forms of `exit` and `continue`. Silently removing one of these requirements does not make an oversized compiler acceptable. If a faithful implementation cannot fit, that result requires compiler-architecture redesign or rejection of the architecture hypothesis.
+Nucleus remains a safe, practical language for routine TEC-1 programs. Its minimum programming model includes `u8`, `u16`, and Boolean values; formal arguments; named local variables; routines with no result or one typed result; fixed-layout records; checked fixed arrays; bounded strings; complete positional static initializers; exact-type aggregate assignment; assignment and calls; `if`/`elseif`/`else`; `while`; counted `for`; `return`; and the unlabeled, innermost-loop forms of `exit` and `continue`. Silently removing one of these requirements does not make an oversized compiler acceptable. If a faithful implementation cannot fit, that result requires compiler-architecture redesign or rejection of the architecture hypothesis.
 
 The language design uses deterministic parsing with canonical forms, minimal lookahead, and no backtracking. A smaller production count is useful only when it preserves the required programming model. Grammar terseness is not an independent design goal.
 
@@ -217,6 +217,8 @@ A candidate's admission record reports its incremental compiler-core code, requi
 Nucleus 0.1 admits the explicit recoverable-error mechanism in Chapter 14. The implementation ledger still records its compiler-core, immutable-data, workspace, emitted-code, and runtime costs. General exceptions, stack unwinding, destructors, `finally`, and `defer` remain excluded.
 
 Nucleus 0.1 admits recursive routine calls. The first implementation may stage their construction while it measures activation storage, re-entry state, depth limits, and failure behaviour, but staging does not create a non-recursive language profile. Chapter 13 defines the source semantics, and Chapter 15 defines activation-capacity failure.
+
+Several source-preserving economies remain implementation measurements rather than language changes. The first compiler should compare the existing precedence ladder with one precedence-driven expression loop; compare early signature predicates for failable calls with parsing a direct call before checking its category; and compare interned type ordinals with compact structural metadata stored directly in symbols. The VM implementation should measure shared handlers or compiler selection of an equivalent word-width operation where canonical `u8` carriers make the result identical. None of these experiments may change accepted source, arithmetic width, diagnostics required by this specification, or the assigned NVM opcode meanings.
 
 ### 2.9 Decision boundary and failure conditions
 
@@ -378,18 +380,18 @@ An implementation may impose a maximum decoded literal length. It must publish t
 
 The tokenizer recognizes these punctuation tokens:
 
-| Spelling | Token or use                                         |
-| -------- | ---------------------------------------------------- |
-| `(` `)`  | grouping, calls, and declarations                    |
-| `[` `]`  | array types and indexing                             |
-| `,`      | item and argument separator                          |
-| `.`      | record-field selection                               |
-| `+` `-`  | arithmetic punctuation; also unary punctuation       |
-| `*` `/`  | arithmetic punctuation                               |
-| `=`      | assignment or equality, according to grammar context |
-| `<>`     | not equal                                            |
-| `<` `<=` | less-than comparisons                                |
-| `>` `>=` | greater-than comparisons                             |
+| Spelling | Token or use                                           |
+| -------- | ------------------------------------------------------ |
+| `(` `)`  | grouping, calls, declarations, and record initializers |
+| `[` `]`  | array types, indexing, and array initializers          |
+| `,`      | item and argument separator                            |
+| `.`      | record-field selection                                 |
+| `+` `-`  | arithmetic punctuation; also unary punctuation         |
+| `*` `/`  | arithmetic punctuation                                 |
+| `=`      | assignment or equality, according to grammar context   |
+| `<>`     | not equal                                              |
+| `<` `<=` | less-than comparisons                                  |
+| `>` `>=` | greater-than comparisons                               |
 
 Chapter 9 defines which expression operators are admitted, their operand types, precedence, and associativity. Listing a punctuation token here defines its formation, not every grammar position in which it is valid.
 
@@ -464,7 +466,7 @@ Capacity failure must not change token identity. In particular, an overlong name
 | `player_2`                 | one `NAME`                                     |
 | `_player`                  | lexical error at `_`                           |
 | `elseif`                   | one `ELSEIF` keyword                           |
-| `ELSEIF`                   | one `ELSEIF` keyword                           |
+| `ELSEIF`                   | one `NAME`; keywords require lowercase         |
 | `elseifReady`              | one `NAME`                                     |
 | `else if`                  | `ELSE IF`; not an `ELSEIF` clause              |
 | `42`                       | `NUMBER(42)`                                   |
@@ -926,13 +928,13 @@ The source type and the way a source occurrence denotes data are separate proper
 
 A named constant has type `u8`, `u16`, or `boolean`; records, fixed arrays, bounded strings, and aggregate aliases cannot be declared as constants.
 
-Top-level variables may provide owned aggregate storage. Aggregate storage may also occur inline as a record field or fixed-array element. The permitted declaration sites, initialization rules, mutability, and storage duration appear in Chapters 7 and 8.
+Top-level variables may provide owned aggregate storage. A routine-local aggregate declaration with no initializer or with a structured initializer provides routine-private owned aggregate storage with program lifetime. Aggregate storage may also occur inline as a record field or fixed-array element. The permitted declaration sites, initialization rules, mutability, and storage duration appear in Chapters 7 and 8.
 
-A local declaration of record, fixed-array, or bounded-string type creates an aggregate alias rather than owned local aggregate storage. An aggregate parameter is also an alias to caller-provided storage. These aliases have fixed referent types and cannot be rebound through assignment.
+An aggregate local initialized from a storage path creates an alias rather than owned storage. An aggregate parameter is also an alias to caller-provided storage. These aliases have fixed referent types and cannot be rebound through assignment. A transient aggregate result cannot initialize a local alias.
 
-Nucleus has no ordinary aggregate value copy. Assignment does not copy a complete record, fixed array, or bounded string, and a routine does not return one by value. Programs update scalar fields, scalar fixed-array elements, or existing bounded-string bytes through the postfix operations defined below. A later bulk operation must be explicit and does not change the type rules in this chapter.
+Assignment between aggregate designators of the exact same type copies the complete record, fixed array, or bounded string into the destination. The assignment changes the destination object's contents and never rebinds an alias. Routine arguments and aggregate results continue to transfer aliases rather than copying automatically.
 
-An aggregate routine result is a typed alias to existing storage. The returned referent must remain alive after the call. Chapter 7 defines the lifetime and escape check; Chapter 13 defines result syntax. A result that would refer to storage ending with the call is invalid.
+An aggregate routine result is a transient typed alias to existing storage. The returned referent must remain alive after the call. Chapter 7 defines its lifetime, permitted consumption, and escape check; Chapter 13 defines result syntax. A result that would refer to storage ending with the call is invalid.
 
 ### 6.6 Record types
 
@@ -971,7 +973,7 @@ A bounded string is an aggregate, not a `u8` array. It has no source-level heade
 - `text.length` is a read-only `u8` value equal to the current logical byte length.
 - `text[index]` selects one existing byte as a `u8` storage path. The index must have type `u8` or `u16` and must be less than the current length. A failed check performs the `bounds` trap before a read or write.
 
-A byte assignment replaces exactly one existing byte and does not change the string's length or capacity. These operations provide no append, insertion, resize, truncation, bulk copy, whole-string assignment, or whole-string comparison. Embedded zero bytes are ordinary content and do not terminate either operation.
+A byte assignment replaces exactly one existing byte and does not change the string's length or capacity. These operations provide no append, insertion, resize, truncation, or whole-string comparison. Whole-string assignment is available only between identical `string[N]` types under Section 7.8. Embedded zero bytes are ordinary content and do not terminate either operation.
 
 The `.length` intrinsic applies only when the postfix base has bounded-string type. On a record base, `.length` remains ordinary lookup in that record's field scope. Any other field suffix on a bounded string is invalid.
 
@@ -983,7 +985,7 @@ This chapter fixes the semantic domain and capacity, not the stored layout. Chap
 
 An aggregate alias has the same source type as its referent and a separate alias category. For example, an alias to a `Person` record permits `Person` field selection, and an alias to `u8[64]` permits indexing with the fixed bound 64. The alias does not create a reference type that can be named independently.
 
-The compiler must retain the referent type through local aliases, aggregate parameters, field and element selection, assignments admitted for scalar leaves, calls, and aggregate results. An alias passed or returned where another aggregate type is required is invalid unless the two referent types are identical.
+The compiler must retain the referent type through local aliases, aggregate parameters, field and element selection, scalar and aggregate assignments, calls, and aggregate results. Passing or returning an alias, or using it as an aggregate-copy source or destination, is invalid unless the required aggregate type is identical to its referent type.
 
 A backend may represent an alias at runtime with one untagged address-sized value because compiler metadata records the record layout, array length, or string capacity. The runtime carrier has no source spelling and no runtime type tag. Source code cannot read, write, compare, convert, store, return as a scalar, or perform arithmetic on the carrier itself.
 
@@ -1015,8 +1017,9 @@ The compiler applies these compatibility rules:
 | Bounded-string `.length`                               | Read-only `u8` value equal to the current logical length.                           |
 | Bounded-string index                                   | `u8` or `u16` index below the current length; result is a writable `u8` path.       |
 | Aggregate parameter or local alias                     | Exact referent-type identity.                                                       |
+| Aggregate assignment                                   | Exact type identity; copy the complete aggregate into the destination.              |
 | Aggregate result                                       | Exact referent-type identity and a referent that passes Chapter 7's lifetime check. |
-| Ordinary aggregate assignment or by-value result       | Invalid; Nucleus 0.1 provides neither operation.                                    |
+| Aggregate by-value argument or result                  | Invalid; calls transfer aggregate aliases.                                          |
 
 Compatibility is checked at the source operation. The backend does not infer compatibility from equal byte widths, equal layouts, VM slot numbers, or runtime addresses.
 
@@ -1042,9 +1045,9 @@ An implementation must diagnose a source form that requires one of these mechani
 
 ### 6.12 Type metadata and capacity
 
-The first compiler's current implementation target represents source types with compact ordinals. Reserved ordinals identify the predefined scalar types; record declarations receive nominal IDs; and fixed-array and bounded-string descriptors are interned by their identity rules. Symbols and routine signatures record these IDs, while the streaming expression checker carries a value or alias category with its type ID.
+Exact type identity is checked from retained metadata without reconstructing source text. Record declarations require nominal IDs. Predefined scalars, fixed arrays, and bounded strings have compact, bounded structural descriptions: kind, element type when applicable, and length or capacity. A compiler may store those descriptions directly in symbols and signatures or intern them behind compact ordinals. Measurements of compiler-core bytes, immutable data, writable workspace, and comparison code determine the representation used by the first implementation.
 
-A byte-sized type ID is the initial implementation target. The implementation must document its maximum number of simultaneously retained type descriptors and diagnose exhaustion before an ID wraps, aliases another type, or changes a compatibility result. The same rule applies to bounded record-field, array-descriptor, and signature tables.
+Every selected representation has a published capacity. An ordinal representation diagnoses exhaustion before an ID wraps or aliases another type. An inline representation diagnoses any limit on element-type nesting, length, capacity, symbol entries, record fields, or signatures before truncation changes a compatibility result. A byte-sized type ID remains a candidate, not a language or VM requirement.
 
 The numeric type ID has no source meaning and need not match across compilations. VM registers and slots are untagged storage locations; the compiler's symbol and expression metadata supply their current source types. Runtime type tags, reflection, and dynamic type tests are absent.
 
@@ -1110,7 +1113,7 @@ Nucleus distinguishes four related concepts:
 | Concept               | Source meaning                                                                                                                         |
 | --------------------- | -------------------------------------------------------------------------------------------------------------------------------------- |
 | Scalar value          | One `u8`, `u16`, or `boolean` value. Scalar values can be copied.                                                                      |
-| Object                | Storage associated with a declared variable.                                                                                           |
+| Object                | Storage associated with a program variable or a routine-private aggregate variable.                                                    |
 | Subobject             | A record field, fixed-array element, or existing bounded-string byte. A bounded string may itself be an object or aggregate subobject. |
 | Typed aggregate alias | A non-owning, fixed binding to an existing record, fixed-array, or bounded-string object or subobject of one of those types.           |
 
@@ -1122,9 +1125,11 @@ Every alias is bound to an object or aggregate subobject when the alias is estab
 
 A top-level variable owns one object with program lifetime. A scalar variable owns one scalar cell. A record, fixed-array, or bounded-string variable owns the complete aggregate object, including every contained subobject.
 
+A routine-local aggregate declaration with no initializer or with a structured initializer owns one routine-private object with program lifetime. The compiler reserves its storage statically and establishes its zero or explicit initial image before `main` begins. Its local name is visible only in the declaring routine, but every invocation, including a recursive invocation, reaches the same object. Initialization does not run again on routine entry.
+
 Named constants are scalar-only. A named constant denotes a value and need not occupy source-observable storage. Materializing that value in memory does not give it object identity visible to a Nucleus program.
 
-Aggregate storage occurs only in program-lifetime objects and inline within other aggregate storage. A record field has storage within its containing record. An array element has storage within its containing array. A bounded string has its counted content within its containing string object. Nucleus does not allocate owned aggregate storage for a routine-local declaration.
+Aggregate storage occurs only in program-lifetime objects and inline within other aggregate storage. A record field has storage within its containing record. An array element has storage within its containing array. A bounded string has its counted content within its containing string object. Nucleus allocates no activation-lifetime aggregate storage.
 
 ### 7.4 Program lifetime
 
@@ -1148,7 +1153,7 @@ Each routine invocation creates a distinct logical activation. An activation con
 
 A scalar parameter receives a copied value. Each scalar local belongs to one activation. Its source lifetime begins when execution reaches its declaration and Chapter 8 has established its initial value; its lifetime ends with the activation. A scalar result is copied from the returned expression to the caller. It is not shared storage in the callee.
 
-An aggregate parameter is a typed alias to caller-provided storage. A routine-local declaration of record, fixed-array, or bounded-string type also establishes a typed alias rather than allocating an aggregate object in the activation. The alias binding belongs to the activation, but the target retains its own lifetime.
+An aggregate parameter is a typed alias to caller-provided storage. A routine-local aggregate declaration initialized from a storage path also establishes a typed alias. The alias binding belongs to the activation, but the target retains its own lifetime. A routine-private aggregate object is outside the activation and is shared by every invocation of its routine.
 
 Two simultaneously active invocations have distinct logical parameters, scalar locals, and local alias bindings. This rule applies even when the implementation assigns the same virtual-register numbers or physical storage to invocations that cannot overlap.
 
@@ -1159,11 +1164,10 @@ Recursive calls use the same activation rule. An implementation preserves distin
 An aggregate alias binds once, when its parameter or local declaration is established. The target is a compatible aggregate storage path rooted in:
 
 - a program-lifetime variable;
+- a routine-private aggregate object visible in the current routine;
 - an incoming aggregate parameter;
 - another in-scope aggregate alias; or
 - an aggregate field or fixed-array element reached from one of those roots.
-
-A compatible aggregate-alias result from an infallible routine invocation may also establish a local alias. Chapter 13 guarantees that such a result denotes program-lifetime storage. The compiler evaluates the invocation once before fixing the local binding.
 
 The compiler evaluates every field selection and checked index used to form a local alias once at binding. Later changes to an index variable do not retarget the alias. The target type must exactly match the alias type under Chapter 6.
 
@@ -1181,24 +1185,32 @@ Two aliases may denote the same object or overlapping objects. Nucleus provides 
 
 Scalar assignment copies a value into a scalar destination. The destination may be a scalar variable, parameter, record field, fixed-array element, or existing bounded-string byte. After the assignment, later changes to the source do not change the destination.
 
-Aggregate alias binding is not assignment. Once established, an aggregate parameter or local alias cannot be rebound. An assignment whose destination is a bare record, fixed array, bounded string, or aggregate alias is invalid: it neither changes an alias binding nor copies an aggregate object.
+Aggregate assignment requires a mutable aggregate destination and an aggregate source of the exact same type. It copies the complete aggregate value into the destination. For the packed NVM representation, the compiler or VM copies exactly the type's fixed byte extent; another backend performs an equivalent recursive field or element copy. A bounded-string copy includes its logical length and complete fixed-capacity object representation.
 
-Nucleus 0.1 has no implicit whole-record, whole-array, or whole-string copy. Programs mutate aggregates through scalar fields, scalar fixed-array elements, and checked bounded-string byte selection. An explicitly admitted library routine can perform an element-wise or content operation, but it remains an ordinary checked operation and does not add aggregate value assignment to the language.
+The compiler evaluates the destination storage path once, then the source storage path or aggregate-alias result once, and validates both complete extents before the first destination byte changes. If evaluation or validation traps, no byte of the aggregate destination changes. A source and destination that denote the same object or subobject produce no change.
+
+Under the Nucleus 0.1 type and containment rules, two designators of one exact aggregate type are either identical or disjoint. A proper partial overlap would require recursive by-value containment, an overlaid layout, a slice, or arbitrary address formation, all of which are absent. Aggregate assignment therefore needs no runtime overlap check.
+
+Aggregate alias binding is not assignment. Once established, an aggregate parameter or local alias cannot be rebound. When an alias is the destination of aggregate assignment, the copy changes its referent. It does not change the binding.
 
 ### 7.9 Aggregate results and escape checking
 
-An aggregate routine result is a typed alias to existing storage. The returned target must outlive the callee activation. The result preserves the target's exact aggregate type and denotes the same object.
+An aggregate routine result is a transient typed alias to existing storage. The returned target must outlive the callee activation. The result preserves the target's exact aggregate type and denotes the same object.
 
 A returned aggregate alias is valid when its target is:
 
 - program-lifetime storage; or
 - storage reached through an incoming aggregate parameter, including one of its aggregate fields or fixed-array elements.
 
-Every valid incoming aggregate parameter is ultimately rooted in program-lifetime storage because Nucleus has no routine-local owned aggregate, heap aggregate, or variable-sized local. Returning a local alias is permitted only when its binding is statically derived from program-lifetime storage or an incoming aggregate parameter. Returning the local binding ends that binding; the result denotes the target object, not the callee's alias carrier.
+Program-lifetime storage includes top-level objects and routine-private aggregate objects. Every valid incoming aggregate parameter is ultimately rooted in such storage because Nucleus has no activation-lifetime aggregate, heap aggregate, or variable-sized local. Returning a local alias is permitted only when its binding is statically derived from program-lifetime storage or an incoming aggregate parameter. Returning the local binding ends that binding; the result denotes the target object, not the callee's alias carrier.
 
 A compiler needs only one local lifetime fact for an aggregate alias expression: whether it is statically derived from program-lifetime storage. An incoming aggregate parameter has that property. Field selection, checked indexing, and local alias binding preserve it. An aggregate return is invalid when the compiler cannot prove the property. Once the compiler has checked a routine body, callers may rely on its aggregate result being a valid typed alias to program-lifetime storage; no result-provenance syntax or parameter identity is required in the routine signature.
 
-Nucleus has no routine-local owned aggregate object, aggregate temporary, heap object, or variable-sized local object. A local declaration such as an unbound record, array, or bounded string is therefore invalid rather than an allocation whose address could escape. The absence of local aggregate allocation removes the principal dangling-result case; the lifetime check still applies to every aggregate return.
+The caller must consume a returned aggregate alias immediately. It may discard the result, forward it as an aggregate argument or aggregate return, select a field or element from it, or use it as the source of exact-type aggregate assignment. Assignment is the materialization operation: it copies the complete aggregate into owning storage or into the referent of an existing alias. A result cannot initialize a local alias, be stored as a carrier, or survive beyond the containing source operation. Code that needs to retain the value declares aggregate storage and assigns the result to that storage.
+
+Immediate consumption does not permit a later call to destroy the transient carrier before it is used. When evaluation of another argument, index, or suffix can call a routine, the compiler must stage or preserve the typed carrier as live implementation state. This staging is not a source alias and ends with the containing operation.
+
+Nucleus has no activation-lifetime aggregate object, aggregate temporary, heap object, or variable-sized local object. A routine-private aggregate object has program lifetime and may be returned safely. An aggregate local with no written initializer owns such an object with the recursive zero value; it is not an unbound alias. The lifetime check still applies to every aggregate return.
 
 ### 7.10 End of lifetime and dangling aliases
 
@@ -1249,23 +1261,34 @@ item.value = 7
 
 The assignment changes the caller's selected `Entry`. It does not create another `Entry`.
 
-If `first` and `second` are aggregate aliases and `otherEntries` is another `Entry[8]` object, the following forms are invalid:
+If `first` and `second` are `Entry` aliases and `otherEntries` is another `Entry[8]` object, these assignments copy complete aggregates:
 
 ```nucleus
-first = second          // no alias rebinding or whole-record copy
-entries = otherEntries  // no whole-array copy
+first = second          // copy one Entry into first's referent
+entries = otherEntries  // copy all eight Entry values
 ```
 
-A routine cannot create shorter-lived aggregate storage and return it:
+A routine-private structured initializer creates program-lifetime storage and may supply an aggregate result:
 
 ```nucleus
-sub invalidResult() as Entry
-    var scratch as Entry    // invalid: an aggregate local cannot be unbound
+sub initialEntry() as Entry
+    var scratch as Entry = (7)
     return scratch
 end
 ```
 
-The invalid declaration does not allocate an `Entry` in the activation. Chapter 8 defines the binding syntax for a valid aggregate local. A routine that needs scratch aggregate storage receives it through an aggregate parameter or uses declared program-lifetime storage.
+Every call returns an alias to the same routine-private `scratch` object. Its initializer is applied once before `main`, and later mutations persist across calls and recursive invocations.
+
+An aggregate local with no written initializer owns zero-initialized routine-private storage:
+
+```nucleus
+sub defaultResult() as Entry
+    var scratch as Entry
+    return scratch
+end
+```
+
+The declaration does not allocate an `Entry` in the activation. It reserves one program-lifetime object, initializes that object to zero before `main`, and returns an alias to it. Chapter 8 distinguishes zero or structured static initialization from alias binding.
 
 ### 7.12 Implementation independence and capacities
 
@@ -1275,7 +1298,7 @@ An implementation may bound scalar locals, aggregate-alias bindings, or the meta
 
 Runtime activation capacity is implementation-defined under Chapter 13. An implementation may bound simultaneous activation depth, activation-storage consumption, or both. Reaching either published limit at runtime performs the activation-capacity trap defined by Chapter 15. The limits and trap do not change the source lifetime of an activation that begins successfully.
 
-Nucleus 0.1 exposes no raw pointer value, address arithmetic, heap allocation, manual deallocation, open slice or view, variable-sized local, arbitrary aggregate copy, or storage-layout query through this chapter. Field byte offsets, array byte offsets, bounded-string encoding, VM carriers, calling opcodes, and save-region layouts belong to the VM specification or a backend contract.
+Nucleus 0.1 exposes no raw pointer value, address arithmetic, heap allocation, manual deallocation, open slice or view, variable-sized local, or storage-layout query through this chapter. Field byte offsets, array byte offsets, bounded-string encoding, VM carriers, calling opcodes, aggregate-copy lowering, and save-region layouts belong to the VM specification or a backend contract.
 
 ## 8. Constants and declarations
 
@@ -1289,17 +1312,18 @@ Nucleus uses explicit declarations and explicit types. It has no inferred declar
 
 The declaration families are:
 
-| Declaration           | Permitted location                          | Binding or storage established                                            |
-| --------------------- | ------------------------------------------- | ------------------------------------------------------------------------- |
-| Named constant        | Top level                                   | One typed compile-time scalar value                                       |
-| Program variable      | Top level                                   | One mutable program-lifetime scalar or aggregate object                   |
-| Record type           | Top level                                   | One nominal fixed-layout record type and its field scope                  |
-| Forward routine       | Top level                                   | One routine signature without a body                                      |
-| Routine definition    | Top level                                   | One routine signature and body, or completion of an earlier forward       |
-| Formal parameter      | Routine header                              | One scalar activation value or aggregate-alias binding                    |
-| Scalar local          | Contiguous routine declaration prefix       | One per-invocation scalar value                                           |
-| Aggregate-alias local | Contiguous routine declaration prefix       | One per-invocation immutable binding to existing aggregate storage        |
-| Record field          | Between a record header and its closing end | One named scalar or aggregate subobject in each object of the record type |
+| Declaration             | Permitted location                          | Binding or storage established                                            |
+| ----------------------- | ------------------------------------------- | ------------------------------------------------------------------------- |
+| Named constant          | Top level                                   | One typed compile-time scalar value                                       |
+| Program variable        | Top level                                   | One mutable program-lifetime scalar or aggregate object                   |
+| Record type             | Top level                                   | One nominal fixed-layout record type and its field scope                  |
+| Forward routine         | Top level                                   | One routine signature without a body                                      |
+| Routine definition      | Top level                                   | One routine signature and body, or completion of an earlier forward       |
+| Formal parameter        | Routine header                              | One scalar activation value or aggregate-alias binding                    |
+| Scalar local            | Contiguous routine declaration prefix       | One per-invocation scalar value                                           |
+| Private aggregate local | Contiguous routine declaration prefix       | One zero-initialized or explicitly initialized routine-private object     |
+| Aggregate-alias local   | Contiguous routine declaration prefix       | One per-invocation immutable binding to existing aggregate storage        |
+| Record field            | Between a record header and its closing end | One named scalar or aggregate subobject in each object of the record type |
 
 Only top-level declarations occur in the compilation-unit sequence. Parameters occur only in a routine header. Local declarations form one contiguous prefix after the header and before the first statement. A conditional or loop body cannot contain a declaration, and a declaration after the first statement of a routine is invalid.
 
@@ -1348,22 +1372,30 @@ formal-parameter      ::= NAME "as" type
 local-declaration     ::= "var" NAME "as" type
                           [ "=" local-initializer ] NEWLINE
 local-initializer     ::= expression
+                        | static-aggregate-initializer
                         | failable-invocation "or" "fail"
 
 constant-initializer  ::= scalar-constant-expression
-program-initializer   ::= scalar-constant-expression
+program-initializer   ::= static-initializer
+static-initializer    ::= scalar-constant-expression
                         | STRING
-                        | scalar-array-initializer
-scalar-array-initializer
-                      ::= "[" scalar-constant-expression
-                          { "," scalar-constant-expression } "]"
+                        | record-initializer
+                        | array-initializer
+static-aggregate-initializer
+                      ::= STRING
+                        | record-initializer
+                        | array-initializer
+record-initializer    ::= "(" static-initializer
+                          { "," static-initializer } ")"
+array-initializer     ::= "[" static-initializer
+                          { "," static-initializer } "]"
 ```
 
-`type`, `scalar-type`, and `aggregate-type` are defined by Chapter 6. The parser selects the initializer form from the declared type. `routine-statement-sequence` and `expression` are placeholders for later chapters, not additional declaration syntax.
+`type`, `scalar-type`, and `aggregate-type` are defined by Chapter 6. The parser selects the initializer form from the declared type. A parenthesized scalar expression and a record initializer share `(` as their first token; the already checked declared or component type selects the form without backtracking. `routine-statement-sequence` and `expression` are placeholders for later chapters, not additional declaration syntax.
 
 Each constant, variable, record header, field, and local declaration introduces one name. A routine header introduces one routine name and its individually written parameters. Each field and parameter repeats the canonical `name as Type` form. No comma-separated field or variable group is permitted.
 
-Square brackets suppress logical newlines under Chapter 3. A scalar-array initializer may therefore span physical lines without adding newline productions to this grammar.
+Parentheses and square brackets suppress logical newlines under Chapter 3. A structured initializer may therefore span physical lines without adding newline productions to this grammar.
 
 ### 8.4 Named constants
 
@@ -1431,14 +1463,18 @@ Every program variable has an initial value. With no initializer, the compiler e
 
 An explicit program initializer is permitted only in these forms:
 
-| Declared type                          | Permitted initializer                                                        |
-| -------------------------------------- | ---------------------------------------------------------------------------- |
-| `u8`, `u16`, or `boolean`              | One compatible scalar constant expression                                    |
-| `string[N]`                            | One fitting string literal                                                   |
-| Fixed array with scalar element type   | One flat list of exactly the declared number of compatible constant elements |
-| Record or array with aggregate element | None; omit the initializer to select recursive zero initialization           |
+| Declared type             | Permitted initializer                                                              |
+| ------------------------- | ---------------------------------------------------------------------------------- |
+| `u8`, `u16`, or `boolean` | One compatible scalar constant expression                                          |
+| `string[N]`               | One fitting string literal                                                         |
+| Record                    | One positional record initializer with exactly one initializer per field           |
+| Fixed array               | One array initializer with exactly one compatible initializer per declared element |
 
-Program initialization does not evaluate an ordinary runtime expression or read another variable. A string literal establishes both the decoded bytes and their logical length; embedded zero bytes count toward that length. A string or array initializer cannot name another aggregate object. Nucleus has no record-constructor initializer, designated-field initializer, implicit aggregate copy, or partial array initializer. A fixed-array list that is too short or too long is invalid; the compiler neither pads nor discards elements.
+Program initialization does not evaluate an ordinary runtime expression or read another variable. A string literal establishes both the decoded bytes and their logical length; embedded zero bytes count toward that length. A literal shorter than its capacity is valid, while one that exceeds the capacity is invalid and is never truncated.
+
+A record initializer uses parentheses and supplies fields in declaration order. An array initializer uses square brackets and supplies elements in increasing index order. A nested record, fixed array, or bounded string uses its own initializer at the corresponding position, so the initializer delimiters mirror the finite aggregate type tree. Every scalar leaf is a compatible scalar constant expression. Every record and array level is complete: too few or too many components are invalid, and the compiler neither pads an explicit initializer nor discards components.
+
+Nucleus has no named-field, partial, spread, or runtime aggregate initializer. A static initializer cannot name another aggregate object or call a routine. It is a declaration-only description of one static object image, not a general aggregate expression.
 
 The program variable becomes visible only after the compiler has checked its type and initializer. Its initializer may therefore use earlier scalar constants but cannot use the variable itself or a later declaration.
 
@@ -1446,7 +1482,7 @@ The program variable becomes visible only after the compiler has checked its typ
 
 One routine header declares a routine name, an ordered list of zero or more formal parameters, and either no result type or one result type. Every parameter has an explicit `name as Type` declaration. Parameters have no initializer or default argument, and a header has no grouped names or multiple result list.
 
-A scalar parameter denotes a per-invocation copied value. An aggregate parameter establishes a fixed typed alias to caller-provided program-variable storage. Scalar-leaf mutation through that alias is permitted. Chapter 13 defines calls, result rules, and the value supplied for each parameter; this chapter defines only the bindings written in the header.
+A scalar parameter denotes a per-invocation copied value. An aggregate parameter establishes a fixed typed alias to caller-provided program-lifetime storage. Scalar-leaf mutation through that alias is permitted. Chapter 13 defines calls, result rules, and the value supplied for each parameter; this chapter defines only the bindings written in the header.
 
 A forward routine declaration contains the complete and sole header and no body. The compiler retains its exact routine and parameter names, ordered parameter types, optional result type, and `fails` effect. The later abbreviated `sub NAME` header opens the body under Chapters 4 and 5; the forward's parameter names create that body's parameter bindings. The definition completes the existing routine binding and does not declare another routine or repeat its signature.
 
@@ -1454,13 +1490,15 @@ A routine definition without an earlier forward makes its checked signature visi
 
 ### 8.10 Local declarations
 
-Local declarations execute in source order at the start of each invocation, after parameter binding and before the first statement. They remain in one contiguous prefix.
+After parameter binding, activation-local declarations take effect in source order before the first statement. Routine-private aggregate objects already exist and are merely brought into lexical use at their declaration positions. All local declarations remain in one contiguous prefix.
 
 A scalar local owns one per-invocation scalar value. Its initializer is an ordinary expression or the failable-invocation propagation form from Chapter 14, evaluated once when execution reaches the declaration. The successful result must be compatible with the declared scalar type. If the initializer is omitted, the compiler establishes zero for `u8` or `u16` and `false` for `boolean` at that point.
 
-An aggregate local owns no aggregate storage. Its initializer is mandatory and must be a compatible aggregate storage path rooted as Section 7.6 permits, a compatible aggregate-alias result from an infallible invocation, or a failable aggregate-alias invocation followed by `or fail` under Chapter 14. The compiler evaluates the path or invocation once when execution reaches the declaration, checks the result's type and program-lifetime provenance, then establishes an immutable typed alias binding to that object or subobject. Later changes to an index used in the initializer do not retarget the alias.
+An aggregate local with no initializer or with a structured initializer creates one routine-private object of the declared type. That object has program lifetime, receives its zero or explicit constant initial image once before `main`, and is shared by every invocation of the routine. The local name denotes that object; routine entry does not clear, copy, or reinitialize it.
 
-An aggregate local's binding cannot be reassigned. Its target is mutable program-variable storage reached directly, through another aggregate alias, or through a checked aggregate-alias result. Mutation through a scalar field, scalar fixed-array element, or bounded-string byte is permitted.
+An aggregate local initialized from a compatible aggregate storage path creates a fixed alias instead. The compiler evaluates the path once on each routine activation, checks its exact type and program-lifetime provenance, then establishes the binding. Later changes to an index used in the initializer do not retarget the alias. An aggregate routine result is transient and cannot supply this binding; retaining its value requires a later aggregate assignment into owning storage.
+
+Neither form can be rebound. Aggregate assignment to a routine-private object changes that object's contents; aggregate assignment through an alias changes its referent. Scalar-field, scalar-element, and bounded-string byte mutation remain permitted.
 
 A local becomes visible only after its complete declaration and initializer have been checked. Its initializer may name parameters, visible program declarations, and earlier locals. It cannot name itself or a later local. A local declaration inside a statement block or after the first statement is invalid.
 
@@ -1468,28 +1506,29 @@ A local becomes visible only after its complete declaration and initializer have
 
 Constant expressions are evaluated during compilation and perform no source-level runtime operation.
 
-The compiler establishes each program variable's zero or explicit initial value exactly once before the entry routine begins. The semantic order is top-level declaration order. Every program variable has reached its initial value before source execution can read it. Chapter 7 defines lifetime, and Chapter 19 defines startup semantics and implementation requirements.
+The compiler establishes every program variable and routine-private aggregate object's zero or explicit initial value exactly once before the entry routine begins. Their semantic order follows source declaration order, with routine-private objects ordered by their local declarations within each routine definition. Static initializers have no source-level effects and cannot read storage, so this order is not otherwise observable. Every program-lifetime object has reached its initial value before source execution can read it. Chapter 7 defines lifetime, and Chapter 19 defines startup semantics and implementation requirements.
 
-On each routine invocation, parameter binding precedes local initialization. Local declarations then execute once each in source order. A scalar local receives its zero or evaluated value at its declaration. An aggregate local evaluates its storage path and fixes its alias binding at its declaration. After the last local declaration, execution continues with the first statement.
+On each routine invocation, parameter binding precedes activation-local initialization. Local declarations then take effect in source order. A scalar local receives its zero or evaluated value at its declaration. An aggregate alias local evaluates its storage path and fixes its binding at its declaration. A routine-private aggregate object already exists and receives no per-invocation initialization. After the last local declaration, execution continues with the first statement.
 
 ### 8.12 Invalid declarations and capacity failures
 
 The compiler must diagnose:
 
 - a declaration in a location not permitted by Section 8.2;
-- a missing type, required initializer, or alias target;
+- a missing type or an incomplete alias initializer;
 - a type, bound, initializer, or name that is not visible at its declaration point;
 - an exact duplicate name or forbidden shadowing under Chapter 5;
 - a nonconstant operand or invalid folded operation in a constant expression;
 - a scalar initializer incompatible with its declared type;
-- an invalid array length, string capacity, string length, or array element count;
+- an invalid array length, string capacity, string length, record field count, array element count, or nested initializer shape;
 - a record field with an unavailable type or a record with no fields;
-- an aggregate `const` or a program aggregate initializer not admitted by Section 8.8;
+- an aggregate `const`, a nonconstant aggregate initializer, or an initializer form incompatible with its declared component type;
 - an aggregate alias whose target type is not identical to its declared type;
-- an attempt to rebind an aggregate alias or copy a complete aggregate; and
+- an attempt to retain a transient aggregate result as a local alias;
+- an attempt to rebind an aggregate alias or copy between nonidentical aggregate types; and
 - an abbreviated body without one matching incomplete forward, a second completion, or an uncompleted forward.
 
-An implementation may bound top-level declarations, record fields, parameters, locals, aggregate aliases, constant-expression nesting, initializer elements, decoded string bytes, type descriptors, retained signatures, and initialization records. It must publish each limit and issue a capacity diagnostic before truncation, wraparound, omitted initialization, dropped fields, or an incorrect binding can occur. A capacity failure does not change an otherwise conforming declaration into invalid source.
+An implementation may bound top-level declarations, record fields, parameters, locals, aggregate aliases, constant-expression nesting, structured-initializer depth and elements, decoded string bytes, routine-private aggregate storage, type descriptors, retained signatures, and initialization records. It must publish each limit and issue a capacity diagnostic before truncation, wraparound, omitted initialization, dropped fields, or an incorrect binding can occur. A capacity failure does not change an otherwise conforming declaration into invalid source.
 
 ### 8.13 Examples
 
@@ -1503,13 +1542,15 @@ record Cell
 end
 
 var cells as Cell[cellCount]
+var origin as Cell = (0, false)
+var templates as Cell[2] = [(1, true), (2, false)]
 var flags as u8[4] = [1, 2, 4, 8]
 var prompt as string[8] = "READY"
 var title as string[12] = "NUCLEUS"
 var attempts as u8
 ```
 
-`cells` and `attempts` begin with their zero values, including every field of every `Cell`. `flags`, `prompt`, and `title` are mutable program-lifetime objects with the written initial contents. `title` begins with seven decoded bytes.
+`cells` and `attempts` begin with their zero values, including every field of every `Cell`. `origin`, `templates`, `flags`, `prompt`, and `title` are mutable program-lifetime objects with the written initial contents. `title` begins with seven decoded bytes.
 
 A local aggregate declaration binds existing storage rather than copying it:
 
@@ -1542,6 +1583,17 @@ sub inspect()
 end
 ```
 
+A structured local initializer creates routine-private static storage:
+
+```nucleus
+sub privateCell() as Cell
+    var cell as Cell = (3, true)
+    return cell
+end
+```
+
+The initializer is applied once before `main`; calls return aliases to the same `cell` object. An aggregate assignment such as `cell = templates[0]` copies a complete `Cell` into that object without changing its identity.
+
 A forward declaration supplies the sole signature, and its abbreviated definition supplies the body:
 
 ```nucleus
@@ -1552,7 +1604,7 @@ sub inspectState
 end
 ```
 
-The following marked forms are invalid. They illustrate separate errors and are not one compilation unit:
+The following declarations illustrate valid and invalid boundary cases. They are not one compilation unit:
 
 ```nucleus
 const Limit as u16 = 8
@@ -1571,15 +1623,15 @@ var lateBound as u8[laterLength]    // later constant is unavailable
 const laterLength as u16 = 4
 
 var shortText as string[4] = "READY" // decoded literal is too long
-var copiedCell as Cell = cells[0]   // top-level record copy initialization is absent
+var copiedCell as Cell = cells[0]   // static initializers cannot read aggregate storage
 
 sub invalidLocal()
-    var aggregateLocal as Cell      // aggregate local requires a target
+    var aggregateLocal as Cell      // valid zero-initialized private object
     return
 end
 ```
 
-Inside a routine, `var current as Cell = cells[0]` is alias binding and is valid. At top level, the same initializer would request an aggregate object initialization from another object and is invalid. Assignment such as `current = cells[1]` is also invalid: it performs neither alias rebinding nor whole-record copying.
+Inside a routine, `var current as Cell = cells[0]` is alias binding and is valid. `var aggregateLocal as Cell` instead creates a zero-initialized routine-private object. At top level, `var copiedCell as Cell = cells[0]` would read aggregate storage during static initialization and is invalid. Assignment such as `current = cells[1]` is valid and copies the selected `Cell` into `current`'s referent without rebinding `current`.
 
 ## 9. Expressions
 
@@ -1626,24 +1678,24 @@ An index suffix requires a fixed-array or bounded-string storage path or typed a
 
 A field suffix on a record storage path or typed record alias resolves the field name only in that record's field scope and produces the field's declared type. A `.length` suffix on a bounded-string storage path or alias produces its read-only `u8` logical length. Other field suffixes on bounded strings are invalid. Selection does not expose an offset, header, or address to source code.
 
-Index and field suffixes may follow an aggregate result from a routine call. The result remains a typed alias to the object established by Chapter 13; the suffix does not copy that object. A scalar result cannot be indexed or selected, and a result-free call cannot take another suffix.
+Index and field suffixes may follow an aggregate result from a routine call. The result remains a transient typed alias to the object established by Chapter 13; the suffix does not copy that object. A scalar result cannot be indexed or selected, and a result-free call cannot take another suffix.
 
 ### 9.4 Expression categories and storage paths
 
 Expression checking records both a type and one of these source categories:
 
-| Category               | Permitted use                                                                                          |
-| ---------------------- | ------------------------------------------------------------------------------------------------------ |
-| Exact integer constant | Adopts an admitted integer type from context or the rules in Section 9.7.                              |
-| Scalar value           | May be copied, converted, compared, passed, returned, or stored in a compatible scalar destination.    |
-| Scalar storage path    | Reads as its scalar value in an expression and may be a writable destination when its root is mutable. |
-| Aggregate storage path | May be indexed, selected, bound to a compatible alias, passed, or returned under the lifetime rules.   |
-| Aggregate alias result | Denotes existing compatible storage and supports the same postfix operations as that storage.          |
-| Result-free invocation | Is valid as a complete call statement, or in Chapter 14's result-free failable propagating `return`.   |
+| Category               | Permitted use                                                                                                                         |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Exact integer constant | Adopts an admitted integer type from context or the rules in Section 9.7.                                                             |
+| Scalar value           | May be copied, converted, compared, passed, returned, or stored in a compatible scalar destination.                                   |
+| Scalar storage path    | Reads as its scalar value in an expression and may be a writable destination when its root is mutable.                                |
+| Aggregate storage path | May be indexed, selected, copied by exact-type assignment, bound to a compatible alias, passed, or returned under the lifetime rules. |
+| Aggregate alias result | Transiently denotes compatible storage and may be selected, indexed, copied by exact-type assignment, passed, returned, or discarded. |
+| Result-free invocation | Is valid as a complete call statement, or in Chapter 14's result-free failable propagating `return`.                                  |
 
 A **storage path** begins with a visible program variable, parameter, or local and continues through zero or more field and index suffixes. Each suffix preserves the root object's identity while selecting a subobject. A scalar constant and a routine call are not storage-path roots. A call that returns an aggregate alias may be selected or indexed in a value context, but Chapter 10 does not admit it as an assignment root.
 
-A bare aggregate storage path is not a copyable value. It is valid only where a rule requires compatible aggregate storage or an alias, or as the base of another postfix suffix. Nucleus has no implicit aggregate load, comparison, copy, or truth test.
+A bare aggregate storage path is valid where a rule requires compatible aggregate storage, an alias, or the source or destination of exact-type aggregate assignment. It is not a general expression value. Nucleus has no aggregate comparison, truth test, automatic argument copy, or automatic result copy.
 
 ### 9.5 Explicit integer conversions
 
@@ -1849,12 +1901,12 @@ Nucleus has no semicolon, colon separator, multiple statements on one logical li
 
 When a statement begins with `NAME`, the compiler resolves that name before selecting the statement form:
 
-| Resolved declaration                         | Required continuation                                                            |
-| -------------------------------------------- | -------------------------------------------------------------------------------- |
-| Source routine                               | Its argument list, forming a routine-call statement.                             |
-| Mutable scalar variable, parameter, or local | Zero or more field or index suffixes, followed by `=`.                           |
-| Aggregate object or alias                    | One or more field or index suffixes ending at a mutable scalar, followed by `=`. |
-| Constant, type, or another declaration class | No name-led statement form; the compiler diagnoses the class mismatch.           |
+| Resolved declaration                         | Required continuation                                                                          |
+| -------------------------------------------- | ---------------------------------------------------------------------------------------------- |
+| Source routine                               | Its argument list, forming a routine-call statement.                                           |
+| Mutable scalar variable, parameter, or local | Zero or more field or index suffixes, followed by `=`.                                         |
+| Aggregate object or alias                    | Zero or more field or index suffixes ending at a mutable scalar or aggregate, followed by `=`. |
+| Constant, type, or another declaration class | No name-led statement form; the compiler diagnoses the class mismatch.                         |
 
 This dispatch uses the declaration class already established by Chapters 5 and 8. It requires no token backtracking. A routine name followed by `=` is invalid, and a variable followed by an argument list is invalid; the compiler does not reinterpret either name as another declaration class.
 
@@ -1862,20 +1914,22 @@ Nucleus has no `call` keyword. An already declared routine name followed by its 
 
 ### 10.4 Assignment
 
-An assignment target is a mutable scalar storage path rooted in a program variable, parameter, or local. The parser uses the Chapter 9 postfix-suffix path; the storage-path rule rejects every call suffix and any field or index suffix unsuitable for the preceding type. The final selected type must be `u8`, `u16`, or `boolean`. A bounded-string byte selected by `text[index]` is writable; `text.length` is not.
+An assignment target is a mutable scalar or aggregate storage path rooted in a program variable, parameter, or local. The parser uses the Chapter 9 postfix-suffix path; the storage-path rule rejects every call suffix and any field or index suffix unsuitable for the preceding type. A bounded-string byte selected by `text[index]` is writable; `text.length` is not.
 
 The compiler evaluates an assignment in this order:
 
 1. evaluate the target path from left to right, including every index expression and bounds check;
 2. evaluate the right-hand expression;
 3. apply the destination compatibility and checked-conversion rules; and
-4. store the scalar result in the selected destination.
+4. store the scalar result or copy the aggregate into the selected destination.
 
 The target path is evaluated once. A call or mutation in an index expression therefore occurs before any operation in the right-hand expression. If target evaluation traps, the right-hand expression is not evaluated. If the right-hand expression or a checked conversion traps, the destination is not changed, although effects from the earlier target evaluation remain.
 
+A scalar destination uses the scalar compatibility rules from Chapter 6. An aggregate destination requires a writable aggregate storage path. Its source must be an aggregate storage path or transient aggregate result with the exact same aggregate type. The compiler validates the complete source and destination extents before copying the fixed object representation. Assignment through an alias changes its referent and never rebinds the alias. Self-assignment has no effect.
+
 In this statement position, `=` is the assignment operator. Inside an expression, it is equality under Chapter 9. Assignment is not an expression and produces no value. Chained assignment, compound assignment such as `+=`, increment and decrement statements, and assignment inside a condition or argument are absent.
 
-Assignment to a bare record, fixed array, bounded string, or aggregate alias is invalid. It does not copy storage or rebind an alias. Programs mutate admitted aggregates through scalar fields, scalar fixed-array elements, and bounded-string byte selection. A string-byte assignment replaces the selected byte without changing the string's length or capacity.
+Assignment to a record, fixed array, bounded string, or aggregate alias copies a complete value only when the source has the exact same type. A string-byte assignment still replaces one selected byte without changing the string's length or capacity. No assignment changes an alias binding.
 
 ### 10.5 Routine-call statements
 
@@ -1897,7 +1951,7 @@ Statements in a sequence begin in source order. A compound statement completes b
 
 A compiler may emit semantic operations as it checks each statement. It need not retain a statement tree. Forward branches may use bounded fixup state under Chapter 2, provided capacity exhaustion produces a diagnostic rather than an unresolved or incorrect branch.
 
-The compiler must diagnose an invalid statement start, a wrong-class name, a missing assignment operator or argument list, a non-scalar or non-writable assignment target, an incompatible right-hand expression, a forbidden general expression statement, and any context-invalid `return`, `fail`, `exit`, or `continue`.
+The compiler must diagnose an invalid statement start, a wrong-class name, a missing assignment operator or argument list, a non-writable assignment target, an incompatible right-hand expression, a forbidden general expression statement, and any context-invalid `return`, `fail`, `exit`, or `continue`.
 
 An implementation may bound statement nesting, active control contexts, branch fixups, and retained emission state. It must publish each limit and issue a capacity diagnostic before overflow changes statement association, branch targets, or execution order.
 
@@ -1908,6 +1962,7 @@ These are valid simple statements when the names have compatible declarations:
 ```nucleus
 count = count + 1
 cells[index].value = nextValue()
+cells[index] = template
 updateDisplay()
 measure(count)
 return
@@ -1923,7 +1978,7 @@ These forms are invalid:
 count + 1                 // general expression statement
 call updateDisplay()      // no call keyword
 left = right = 0          // assignment is not an expression
-cells = otherCells        // aggregate assignment is absent
+cells = shorterCells      // invalid when the fixed-array types differ
 cells[index]              // storage read is not a statement
 ```
 
@@ -2263,7 +2318,7 @@ A routine invocation begins with a visible routine name whose complete signature
 
 The invocation must supply exactly one argument for each formal parameter, in declaration order. Nucleus has no optional, named, variadic, grouped, or default arguments. An infallible result-free routine may be used only as the complete call statement from Chapter 10. An infallible result-bearing routine may be used as an expression or as a call statement that discards the result. Chapter 14 restricts every failable call to a position with one explicit failure consumer.
 
-A call expression takes its static result type directly from the signature. A scalar result is a scalar value. An aggregate result is a typed alias and may take the field or index suffixes admitted by Chapter 9. A routine name without its argument list is invalid in every expression and statement context.
+A call expression takes its static result type directly from the signature. A scalar result is a scalar value. An aggregate result is a transient typed alias and may take the field or index suffixes admitted by Chapter 9. It must then be consumed under Section 13.6; a routine name without its argument list is invalid in every expression and statement context.
 
 ### 13.4 Argument evaluation and compatibility
 
@@ -2279,7 +2334,7 @@ Nucleus has no parameter modes, implicit read-only aggregate parameter, write pe
 
 ### 13.5 Activation semantics
 
-A successful call begins one logical activation after all arguments have been evaluated. The activation contains that invocation's copied scalar parameters, aggregate-parameter bindings, scalar locals, and aggregate-local bindings. Local initialization follows Section 8.11 before the first statement begins.
+A successful call begins one logical activation after all arguments have been evaluated. The activation contains that invocation's copied scalar parameters, aggregate-parameter bindings, scalar locals, and aggregate-alias-local bindings. Routine-private aggregate objects have program lifetime and are not part of the activation. Activation-local initialization follows Section 8.11 before the first statement begins.
 
 Each simultaneously active invocation has distinct activation state. Calling another routine does not change the caller's scalar parameters, scalar locals, or alias bindings. The callee may change program-lifetime storage that it can name or reach through an aggregate argument, and those mutations remain visible to the caller.
 
@@ -2293,7 +2348,11 @@ A result-bearing routine uses `return expression`. Bare `return` is invalid. The
 
 A scalar result follows the scalar destination rules: exact type, fitting exact literal, or implicit `u8`-to-`u16` widening. Checked narrowing must be written explicitly. The caller receives a copied scalar value.
 
-An aggregate result must be an alias with exact referent-type identity and must pass the program-lifetime derivation rule in Section 7.9. The caller receives an alias to the same existing object, not a copy and not the callee's local binding. A result derived from program storage or an incoming aggregate parameter is valid; a result whose lifetime cannot be proved is invalid.
+An aggregate result must be an alias or aggregate storage path with exact referent-type identity and must pass the program-lifetime derivation rule in Section 7.9. The caller receives a transient alias to the same existing object, not a copy and not the callee's local binding. A result derived from top-level storage, routine-private aggregate storage, or an incoming aggregate parameter is valid; a result whose lifetime cannot be proved is invalid.
+
+The caller may consume that transient alias only by discarding it as a complete call statement, passing it directly to an aggregate parameter, forwarding it as an aggregate return, applying an immediate field or index suffix, or using it as the source of exact-type aggregate assignment. It cannot initialize a local alias or be retained in any source variable. To retain the returned value, the caller declares owning aggregate storage and assigns the call result into it, causing the complete copy defined by Section 7.8.
+
+If evaluating a later argument or suffix performs another call, the compiler preserves the transient carrier until its containing operation consumes it. Backend liveness or argument staging provides that protection; it does not create a source-visible pointer or extend the result beyond the operation.
 
 `return` may appear anywhere in a routine statement sequence, including inside a conditional or loop. It ends the current activation immediately after transferring the result, if any. It does not execute later statements in the routine.
 
@@ -2341,7 +2400,7 @@ The compiler may lower calls and returns to regular semantic operations while pa
 
 ### 13.11 Invalid calls and capacity limits
 
-The compiler must diagnose an unavailable or non-routine callee, a missing argument list, wrong arity, an incompatible scalar argument or result, an aggregate argument or result with the wrong referent type, an unprovable aggregate-result lifetime, a result-free call used as a value, the wrong `return` form, a value routine whose end is reachable, an abbreviated body without one incomplete forward, and a duplicate or missing forward completion.
+The compiler must diagnose an unavailable or non-routine callee, a missing argument list, wrong arity, an incompatible scalar argument or result, an aggregate argument or result with the wrong referent type, an unprovable aggregate-result lifetime, an attempt to retain a transient result as a local alias, a result-free call used as a value, the wrong `return` form, a value routine whose end is reachable, an abbreviated body without one incomplete forward, and a duplicate or missing forward completion.
 
 An implementation may bound parameters, arguments, active expression-call nesting, retained signatures, fallthrough-summary depth, and compile-time call-graph metadata. It must publish each limit and issue a capacity diagnostic before dropping an argument, corrupting a signature, losing a result, merging live state, or changing a call target. Runtime activation capacity follows Section 13.9 rather than this compile-time capacity rule.
 
@@ -2382,7 +2441,19 @@ sub update(index as u8)
 end
 ```
 
-`entryAt` returns an alias to program-lifetime storage. No `Entry` is copied.
+`entryAt` returns an alias to program-lifetime storage. The call itself copies no `Entry`; an aggregate assignment using that result copies into its destination.
+
+To retain the complete returned value, the caller provides owning storage:
+
+```nucleus
+sub retain(index as u8)
+    var saved as Entry
+
+    saved = entryAt(index)
+end
+```
+
+By contrast, `var saved as Entry = entryAt(index)` is invalid because it would attempt to preserve the transient result as a local alias rather than materialize it.
 
 Direct and mutual recursion use ordinary signatures:
 
@@ -2484,7 +2555,7 @@ Every call of a failable routine must consume failure at that call site. Nucleus
 
 A failable invocation cannot appear inside an argument, arithmetic operation, comparison, condition, index, general conversion, or other larger expression. It may be only:
 
-- the complete initializer of a local declaration, followed by `or fail`;
+- the complete initializer of a scalar local declaration, followed by `or fail`;
 - the complete right side of an assignment;
 - the complete routine-call statement; or
 - the complete operand of `return`, followed by `or fail`. The caller and callee must either both have a result or both be result-free.
@@ -2605,7 +2676,7 @@ If validity depends on runtime data, the program remains conforming and the chec
 
 ### 15.4 Ordering details
 
-Chapter 9's left-to-right rules determine which of several possible failures occurs first. Assignment checks its target path before its right side. Calls evaluate every argument before the activation-capacity check. A counted loop checks the mathematical next value before storing it. Boolean short-circuiting suppresses every check in an operand that is not evaluated.
+Chapter 9's left-to-right rules determine which of several possible failures occurs first. Assignment checks its target path before its right side; aggregate assignment validates both complete extents before changing the destination. Calls evaluate every argument before the activation-capacity check. A counted loop checks the mathematical next value before storing it. Boolean short-circuiting suppresses every check in an operand that is not evaluated.
 
 A recoverable service error follows Chapter 14 and is not a trap while a source caller can consume it. Only failure reaching the end of `main` becomes `unhandled-error`. A trap raised within a failable routine bypasses its failure channel and every `on error` clause.
 
@@ -2721,9 +2792,22 @@ const-declaration
 program-var-declaration
     ::= "var" NAME "as" type [ "=" program-initializer ] NEWLINE
 program-initializer
-    ::= expression | STRING | array-initializer
+    ::= static-initializer
+static-initializer
+    ::= expression
+      | STRING
+      | record-initializer
+      | array-initializer
+static-aggregate-initializer
+    ::= STRING
+      | record-initializer
+      | array-initializer
+record-initializer
+    ::= "(" static-initializer
+        { "," static-initializer } ")"
 array-initializer
-    ::= "[" expression { "," expression } "]"
+    ::= "[" static-initializer
+        { "," static-initializer } "]"
 
 record-declaration
     ::= "record" NAME NEWLINE
@@ -2755,6 +2839,7 @@ local-declaration
         [ "=" local-initializer ] NEWLINE
 local-initializer
     ::= failable-invocation failure-propagation
+      | static-aggregate-initializer
       | expression
 
 type
@@ -2866,7 +2951,7 @@ field-suffix
     ::= "." NAME
 ```
 
-The grammar uses the general `expression` nonterminal for constant initializers and type bounds. Chapter 8's constant-context predicate rejects variables, calls, nonconstant operations, and values outside the required range. `type` permits at most one array suffix outside a bounded-string atom, which admits arrays of scalars, records, and bounded strings but not arrays of arrays.
+The grammar uses the general `expression` nonterminal for scalar constant leaves and type bounds. Chapter 8's constant-context predicate rejects variables, calls, nonconstant operations, and values outside the required range. The declared type and current aggregate component select a scalar expression, string literal, parenthesized record initializer, or bracketed array initializer. This type-directed choice resolves the shared opening `(` of a parenthesized scalar expression and a record initializer without backtracking. `type` permits at most one array suffix outside a bounded-string atom, which admits arrays of scalars, records, and bounded strings but not arrays of arrays.
 
 ### 17.3 Semantic predicates
 
@@ -2877,27 +2962,29 @@ The grammar uses these declared semantic predicates:
 | `isCallableName` / `isWritableName` | At statement head, select a routine-call statement or an assignment from the resolved declaration class.                                                                                                                |
 | `isFailableCallableName`            | In a local initializer, assignment source, or return source beginning with `NAME`, select the restricted failable-invocation path when the visible signature has `fails`; otherwise parse the ordinary expression path. |
 | `isRecordTypeName`                  | Accept a `NAME` as a type atom only when it resolves to a visible record type.                                                                                                                                          |
-| `isInitializerForDeclaredType`      | Apply the scalar, string, flat scalar-array, zero-default, or aggregate-alias rules after the declared type is known.                                                                                                   |
+| `isInitializerForDeclaredType`      | Select and check the scalar, string, positional record, recursive array, zero-default, private-static, or aggregate-alias rule from the declared or current component type.                                             |
 | `isFailablePrecedingStatement`      | Admit `on error` only after the direct failable assignment or call statement required by Section 14.6.                                                                                                                  |
 | `isConstantContext`                 | In constants, type bounds, array lengths, string capacities, and program initializers, admit only the compile-time operands and operations from Chapter 8.                                                              |
 | `isInfallibleCallableName`          | Admit a call in an ordinary expression only when the visible signature omits `fails`.                                                                                                                                   |
 | `isIntegerConstantName`             | Admit a `NAME` as a counted-loop step magnitude only when it denotes an earlier `u8` or `u16` constant.                                                                                                                 |
 | `isIncompleteForwardName`           | Admit `sub NAME NEWLINE` as a body header only when the exact name resolves to one incomplete forward; install that forward's stored parameter bindings for the body.                                                   |
 
-Field lookup after `.` uses the selected record type, except that a bounded-string base admits only the intrinsic read-only suffix `.length`. Index selection uses a fixed-array domain or a bounded string's current logical length according to the base type; this distinction needs no grammar change. The `NAME` in `step-constant` must denote an earlier integer constant. Calls within ordinary expressions require an infallible visible routine; failable calls use the separate path above. For `return-source`, a result-free failable caller and callee form the admitted no-result propagation case; otherwise the caller and callee result shapes must match. These are static semantic checks over an otherwise deterministic token stream, not token backtracking.
+Field lookup after `.` uses the selected record type, except that a bounded-string base admits only the intrinsic read-only suffix `.length`. Index selection uses a fixed-array domain or a bounded string's current logical length according to the base type; this distinction needs no grammar change. Static initializer checking descends the finite declared type tree and records the expected component before parsing each nested initializer. The `NAME` in `step-constant` must denote an earlier integer constant. Calls within ordinary expressions require an infallible visible routine; failable calls use the separate path above. For `return-source`, a result-free failable caller and callee form the admitted no-result propagation case; otherwise the caller and callee result shapes must match. These are static semantic checks over an otherwise deterministic token stream, not token backtracking.
 
 ### 17.4 Predictive analysis
 
-The repository grammar analyzer mechanically expanded the grammar above to 163 BNF rules over 89 nonterminals. It found no nullable-prefix left-recursion cycle, unreachable nonterminal, or unproductive nonterminal. The LL(1) table contained four conflict sites, all on lookahead `NAME`. The focused test reads this Chapter 17 block directly, so the analyzer evidence does not create a second grammar authority.
+The repository grammar analyzer mechanically expanded the grammar above to 172 BNF rules over 93 nonterminals. It found no nullable-prefix left-recursion cycle, unreachable nonterminal, or unproductive nonterminal. The LL(1) table contained six conflict sites. Four use lookahead `NAME`; two use lookahead `(` where a declared type distinguishes a record initializer from a scalar expression. The focused test reads this Chapter 17 block directly, so the analyzer evidence does not create a second grammar authority.
 
-| Nonterminal         | Conflict                              | Resolution                          |
-| ------------------- | ------------------------------------- | ----------------------------------- |
-| `simple-statement`  | assignment versus routine call        | `isWritableName` / `isCallableName` |
-| `local-initializer` | failable invocation versus expression | `isFailableCallableName`            |
-| `assignment-source` | failable invocation versus expression | `isFailableCallableName`            |
-| `return-source`     | failable invocation versus expression | `isFailableCallableName`            |
+| Nonterminal          | Lookahead | Conflict                                               | Resolution                          |
+| -------------------- | --------- | ------------------------------------------------------ | ----------------------------------- |
+| `simple-statement`   | `NAME`    | assignment versus routine call                         | `isWritableName` / `isCallableName` |
+| `local-initializer`  | `NAME`    | failable invocation versus expression                  | `isFailableCallableName`            |
+| `assignment-source`  | `NAME`    | failable invocation versus expression                  | `isFailableCallableName`            |
+| `return-source`      | `NAME`    | failable invocation versus expression                  | `isFailableCallableName`            |
+| `static-initializer` | `(`       | record initializer versus parenthesized expression     | `isInitializerForDeclaredType`      |
+| `local-initializer`  | `(`       | structured initializer versus parenthesized expression | `isInitializerForDeclaredType`      |
 
-No unexplained FIRST/FIRST or FIRST/FOLLOW conflict remained. The expression repetitions expand to right-recursive implementation rules while their semantic actions preserve the left association specified in Section 9.6. Unary and `not` recursion remains right-recursive by design. A compiler must not change the grammar silently to remove a reported conflict; it must implement and audit the named predicate or report a specification defect.
+No unexplained FIRST/FIRST or FIRST/FOLLOW conflict remained. The expression repetitions expand to right-recursive implementation rules while their semantic actions preserve the left association specified in Section 9.6. Unary and `not` recursion remains right-recursive by design. A compiler may parse a direct call before applying the same failable-call category check, and it may recognize terminal `or fail` while parsing the `or` level, instead of branching on `isFailableCallableName` before parsing. Any such implementation must accept the same token sequences and produce the same static decisions. Other reported conflicts require their named predicate or an audited equivalent; a compiler must report a specification defect rather than change the language silently.
 
 The analyzer result checks the collected grammar's formal shape. It does not prove the static compatibility, lifetime, capacity, or flow rules consolidated in Chapter 18.
 
@@ -2913,7 +3000,7 @@ Top-level declarations occur only in the compilation-unit sequence. Parameters o
 
 Identifiers use their complete case-sensitive source spelling as identity. Program and routine scopes have one ordinary namespace; record fields have one field scope per record type. No ordinary declaration overloads, redefines, or shadows another visible ordinary declaration with the same exact identity. Definition order never changes which declaration governs a later use. A suffix name uses the statically selected record type's field scope or the bounded-string `length` intrinsic.
 
-Name-led parsing first resolves the visible binding, then checks its declaration class. A routine name starts a call. A mutable scalar storage root starts an assignment. A record type is valid only in a type position. A failable routine selects the restricted failable-invocation path. Failure to find a binding, finding the wrong class, or finding a later declaration is invalid source.
+Name-led parsing first resolves the visible binding, then checks its declaration class. A routine name starts a call. A mutable scalar or aggregate storage path starts an assignment. A record type is valid only in a type position. A failable routine selects the restricted failable-invocation path. Failure to find a binding, finding the wrong class, or finding a later declaration is invalid source.
 
 The standard service names and error constants from Chapter 16 are visible before source declarations. `main` is source-defined and must have no parameters and no result.
 
@@ -2921,13 +3008,13 @@ The standard service names and error constants from Chapter 16 are visible befor
 
 Every expression, storage path, symbol, parameter, local, field, and routine result has one static type. Scalar values have type `u8`, `u16`, or `boolean`. Records are nominal. Fixed-array identity consists of exact element type and length. Bounded-string identity consists of exact capacity.
 
-Scalar compatibility permits exact type, a fitting contextual literal, and implicit `u8`-to-`u16` widening. Checked `u8(...)` is the only `u16`-to-`u8` conversion. Boolean and integer types do not convert. Aggregate compatibility requires exact type identity and never performs a copy.
+Scalar compatibility permits exact type, a fitting contextual literal, and implicit `u8`-to-`u16` widening. Checked `u8(...)` is the only `u16`-to-`u8` conversion. Boolean and integer types do not convert. Aggregate arguments, results, alias bindings, and assignments require exact type identity. Aggregate assignment copies the complete value. Aggregate parameters and aggregate-alias locals are fixed aliases, while aggregate results are transient aliases that must be consumed immediately.
 
 The compiler checks every operator, condition, assignment, argument, result, field, index, initializer, and failure code locally. A failable invocation supplies no ordinary expression value until its failure has been consumed under Chapter 14.
 
 ### 18.4 Storage and aliases
 
-A program variable owns program-lifetime storage. A scalar parameter or local owns one activation value. An aggregate parameter or local is a fixed typed alias to compatible program-lifetime storage. Aggregate alias binding is not assignment, and a bare aggregate is never an assignment destination or copyable value.
+A program variable owns program-lifetime storage. A routine-local aggregate declared without an initializer or with a structured initializer owns one routine-private program-lifetime object. A scalar parameter or local owns one activation value. An aggregate parameter is a fixed typed alias established for the activation. An aggregate local declared from a storage path is likewise a fixed typed alias, while an omitted or structured initializer denotes routine-private storage. A returned aggregate alias is transient and cannot establish a local binding. Alias binding is not assignment. A writable aggregate storage path may be an assignment destination, and an aggregate storage path or result of the exact same type may be its source.
 
 Field and checked-index selection preserve the root identity and exact selected type. A bounded-string index selects an existing writable `u8` byte when the index is below the string's current length; `.length` yields a read-only `u8` value. A returned aggregate alias must be statically derived from a program object or an incoming aggregate parameter. The compiler rejects a return when it cannot prove that program-lifetime derivation.
 
@@ -2937,7 +3024,7 @@ Named constants are top-level scalar values with explicit types and restricted c
 
 Array lengths and string capacities are positive constant values in the ranges set by Chapter 6. Constant fixed-array indices outside their domains are invalid. A bounded-string byte index is checked at runtime against the current logical length, even when the index expression is constant, unless the compiler proves the current length makes it safe at that program point.
 
-Program variables use the zero or explicit constant initializer forms in Chapter 8. Scalar locals use zero, an ordinary compatible expression, or a direct compatible failable result followed by `or fail`. Aggregate locals require one compatible storage path, a direct infallible aggregate-alias result, or a direct failable aggregate-alias result followed by `or fail`; each initializer is evaluated once, its program-lifetime derivation must be proved, and the binding is fixed afterward.
+Program variables use the zero or complete static initializer forms in Chapter 8. Scalar locals use zero, an ordinary compatible expression, or a direct compatible failable result followed by `or fail`. An aggregate local with no initializer or with a structured initializer denotes one routine-private object initialized once before `main`; initialization is not rerun on entry. An aggregate local initialized from a compatible storage path is instead bound once per successful activation. Its program-lifetime derivation must be proved, and the binding is fixed for that activation. A routine result cannot supply that binding; an aggregate assignment materializes its value when retention is required.
 
 ### 18.6 Routine and failure checking
 
@@ -2957,13 +3044,13 @@ No label, goto, exception region, or hidden cleanup edge changes these contexts.
 
 A grammar, visibility, declaration-class, type, lifetime, constant, flow, failure-consumption, or context violation makes the source invalid. The compiler issues a diagnostic and must not present an executable as a successful translation.
 
-An implementation may bound complete source length, source-part count and metadata length, identifier length, symbols, types, fields, forwards, retained forward parameter-name bytes, parameters, locals, expression depth, statement nesting, fixups, constants, initializer elements, and other retained compile-time state. It must document every limit that can reject otherwise conforming source and issue a capacity diagnostic before truncation, wraparound, dropped state, or changed semantics. Those limits must still compile every complete accepted Chapter 21 program. Runtime activation capacity is separately implementation-defined, must accommodate the accepted corpus, and traps under Chapter 15 beyond any published activation-depth or activation-storage limit.
+An implementation may bound complete source length, source-part count and metadata length, identifier length, symbols, types, fields, forwards, retained forward parameter-name bytes, parameters, locals, expression depth, statement nesting, fixups, constants, structured-initializer depth and elements, routine-private aggregate storage, and other retained compile-time state. It must document every limit that can reject otherwise conforming source and issue a capacity diagnostic before truncation, wraparound, dropped state, or changed semantics. Those limits must still compile every complete accepted Chapter 21 program. Runtime activation capacity is separately implementation-defined, must accommodate the accepted corpus, and traps under Chapter 15 beyond any published activation-depth or activation-storage limit.
 
 ## 19. Runtime semantics
 
 ### 19.1 Startup and observable behaviour
 
-Execution begins after the implementation has established every program variable's required initial value in declaration order. The environment then calls `main`. Observable behaviour consists of ordered system-service effects, mutations visible through source aliases, normal termination, recoverable-error outcomes consumed by source, and required traps.
+Execution begins after the implementation has established every program variable and routine-private aggregate object's required initial value in declaration order. The environment then calls `main`. Observable behaviour consists of ordered system-service effects, object copies and mutations visible through source paths, normal termination, recoverable-error outcomes consumed by source, and required traps.
 
 Normal return from `main` terminates successfully. Failure from `main` and a safety trap terminate unsuccessfully. The source language defines no other program-termination operation.
 
@@ -2973,17 +3060,19 @@ Expressions evaluate in the order specified by Section 9.11. Binary operands are
 
 Integer arithmetic uses the fixed widths and wraparound rules in Chapter 9. Comparisons use unsigned integer order or Boolean equality as applicable. Checked narrowing, division, indexing, and counted-loop increment perform their required checks before producing or storing a result.
 
-Assignment evaluates and checks the complete scalar target path, then evaluates the right side, then converts and stores. A failure or trap before the success-result store leaves the destination unchanged, while effects already completed remain visible. A handled failable assignment then stores its error code in the handler destination; if both destinations name the same scalar, that scalar receives the error code.
+Scalar assignment evaluates and checks the complete target path, then evaluates the right side, then converts and stores. Aggregate assignment evaluates its complete destination path first and its source second. It validates both complete extents before changing the destination, then copies exactly the byte representation of their common nominal type. Self-assignment has no effect. The type rules make two distinct same-type aggregate subobjects disjoint, so partial overlap cannot arise in Nucleus 0.1.
+
+A failure or trap before a success-result store or aggregate copy leaves the destination unchanged, while effects already completed remain visible. A handled failable scalar assignment then stores its error code in the handler destination; if both destinations name the same scalar, that scalar receives the error code.
 
 ### 19.3 Objects and aliases
 
-Program objects exist throughout execution. Each routine call creates a distinct logical activation containing copied scalar parameters, scalar locals, and aggregate-alias bindings. Aggregate aliases denote existing objects or aggregate subobjects and preserve identity. Mutation of a scalar leaf is visible through every path to that leaf.
+Program variables and routine-private aggregate objects exist throughout execution. Each routine call creates a distinct logical activation containing copied scalar parameters, scalar locals, and aggregate-alias bindings. Aggregate aliases denote existing objects or aggregate subobjects and preserve identity. Mutation of a scalar leaf is visible through every path to that leaf.
 
-Aggregate arguments and results transfer aliases, not object contents. A returned aggregate alias denotes the original program-lifetime object after the callee's binding ends and may initialize a fixed local alias after one evaluation. Bounded-string byte mutation through any alias is visible through every alias to the same object; it replaces an existing byte without changing length or capacity. No runtime type tag accompanies an alias, and the source language provides no operation that inspects its carrier.
+Aggregate arguments and results transfer aliases, not object contents. A returned aggregate alias transiently denotes the original program-lifetime object after the callee's binding ends. It may be discarded, forwarded, selected, passed onward, or consumed by aggregate assignment, but it cannot become a stored local binding. Aggregate assignment copies object contents into the destination referent and does not rebind either operand. Bounded-string byte mutation through any alias is visible through every alias to the same object; it replaces an existing byte without changing length or capacity. No runtime type tag accompanies an alias, and the source language provides no operation that inspects its carrier.
 
 ### 19.4 Calls, returns, and recursion
 
-A call starts after all arguments have been evaluated and the activation-capacity check succeeds. Parameter binding precedes local initialization; local declarations initialize in source order. The first statement begins after the local prefix.
+A call starts after all arguments have been evaluated and the activation-capacity check succeeds. Parameter binding precedes activation-local initialization. Scalar locals initialize in source order, and aggregate-alias local initializers establish their per-activation bindings in source order. Routine-private aggregate objects already exist with their startup values and are neither reinitialized nor saved and restored for recursion. The first statement begins after the local prefix.
 
 `return` transfers an optional success result and ends the activation. A result-free routine also returns successfully at its closing `end`. In a result-free failable routine, `return invocation() or fail` returns successfully when the result-free callee succeeds and propagates its code when it fails. Direct and mutual recursion use the same rules and create distinct active state at each depth. Backend save regions, register files, stacks, and return encodings must preserve these semantics but are not source-visible.
 
@@ -3015,10 +3104,10 @@ The following mechanisms are required in the single Nucleus 0.1 language:
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Source       | Ordered multipart compilation input with stable part identities and part-relative diagnostics; flat ordered build manifest; ASCII-compatible bytes, `//` comments, logical newlines, case-sensitive preserved names, lowercase keywords, decimal integers, byte characters, bounded string literals, fixed punctuation. |
 | Structure    | One program scope and ordered declaration sequence across source parts, declaration before use, sole-signature forwards with abbreviated bodies, fixed `main()` entry, no executable top level.                                                                                                                         |
-| Types        | `u8`, `u16`, `boolean`, nominal fixed records, checked fixed arrays, mutable bounded `string[N]` with current length and byte indexing, exact aggregate aliases.                                                                                                                                                        |
-| Declarations | Scalar constants, program variables, record fields, formal parameters, contiguous scalar and aggregate-alias locals, routine definitions and forwards.                                                                                                                                                                  |
+| Types        | `u8`, `u16`, `boolean`, nominal fixed records, checked fixed arrays, mutable bounded `string[N]` with current length and byte indexing, exact aggregate aliases, and exact-type aggregate value copying.                                                                                                                |
+| Declarations | Scalar constants, program variables, complete positional recursive static initializers, record fields, formal parameters, contiguous scalar locals, routine-private aggregate objects and aggregate-alias locals, routine definitions and forwards.                                                                     |
 | Expressions  | Calls, checked array and bounded-string indexing, field selection and string `.length`, explicit integer conversions, unary `+`/`-`, arithmetic, one comparison, `not`, `and`, and `or`.                                                                                                                                |
-| Statements   | Scalar assignment, name-led calls, `return`, `fail`, `exit`, and `continue`.                                                                                                                                                                                                                                            |
+| Statements   | Scalar and exact-type aggregate assignment, name-led calls, `return`, `fail`, `exit`, and `continue`.                                                                                                                                                                                                                   |
 | Control      | Flat `if`/`elseif`/`else`, pre-test `while`, counted `for` with `to` or `until` and optional constant `step`.                                                                                                                                                                                                           |
 | Routines     | Formal arguments, named locals, no result or one typed result, early return, direct and mutual recursion, and one complete forward signature whose parameter names bind its abbreviated body.                                                                                                                           |
 | Failure      | Explicit `fails`, `fail`, `or fail`, result-free propagating return, and statement-bound `on error`; required safety traps remain separate.                                                                                                                                                                             |
@@ -3028,7 +3117,7 @@ No conforming compiler may expose a standard profile that omits one of these mec
 
 ### 20.2 Implementation-defined limits
 
-An implementation selects and documents capacities, not syntax or semantics. Permitted limits include complete source length, source-part count and metadata length, identifier length, symbol and type counts, record fields, array and string storage capacity below a target's available resources, parameters, locals, nesting, fixups, initializer elements, simultaneous activation depth, and activation-storage consumption. Every limit must be high enough to compile and execute the complete accepted Chapter 21 programs under their stated inputs. A compile-time excess above that floor produces a capacity diagnostic; runtime activation-capacity excess above that floor traps at runtime.
+An implementation selects and documents capacities, not syntax or semantics. Permitted limits include complete source length, source-part count and metadata length, identifier length, symbol and type counts, record fields, array and string storage capacity below a target's available resources, parameters, locals, nesting, fixups, structured-initializer depth and elements, routine-private aggregate storage, simultaneous activation depth, and activation-storage consumption. Every limit must be high enough to compile and execute the complete accepted Chapter 21 programs under their stated inputs. A compile-time excess above that floor produces a capacity diagnostic; runtime activation-capacity excess above that floor traps at runtime.
 
 Diagnostic wording, internal representations, bytecode or native encoding, physical layout, service transport, and the external presentation of status are implementation-defined where earlier chapters leave them to an implementation contract. These choices must preserve the source rules.
 
@@ -3038,19 +3127,19 @@ These forms are omitted from 0.1 and may be reconsidered only by a future langua
 
 The maintainer of this language specification owns source-language admission. The maintainers of the VM specification and System Services contract co-own decisions that change their respective interfaces.
 
-| Candidate                                                                                             | Required decision evidence and owner                                                                                                                           |
-| ----------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `$` hexadecimal integer literals                                                                      | Scanner, keyword/table, diagnostic, and compiler-core cost; language-specification maintainer in a future revision.                                            |
-| Dense nonnegative selection                                                                           | Compiler cost versus emitted jump-table savings on representative programs; language-specification maintainer in a future revision.                            |
-| Open arrays, slices, or capacity-erased string views                                                  | Source typing, multiword carrier, lifetime, call/result ABI, compiler and VM cost; language- and VM-specification maintainers in coordinated future revisions. |
-| Explicit bulk aggregate operations or bounded-string growth, resize, append, and bulk-copy operations | Typed contract, alias effects, emitted cost, and reusable-program evidence; language-specification maintainer in a future revision.                            |
-| Additional system services                                                                            | Portable typed contract and complete compiler, runtime, and target cost; System Services maintainer in a future service revision.                              |
+| Candidate                                                               | Required decision evidence and owner                                                                                                                           |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `$` hexadecimal integer literals                                        | Scanner, keyword/table, diagnostic, and compiler-core cost; language-specification maintainer in a future revision.                                            |
+| Dense nonnegative selection                                             | Compiler cost versus emitted jump-table savings on representative programs; language-specification maintainer in a future revision.                            |
+| Open arrays, slices, or capacity-erased string views                    | Source typing, multiword carrier, lifetime, call/result ABI, compiler and VM cost; language- and VM-specification maintainers in coordinated future revisions. |
+| Bounded-string growth, resize, append, and capacity-changing operations | Typed contract, alias effects, emitted cost, and reusable-program evidence; language-specification maintainer in a future revision.                            |
+| Additional system services                                              | Portable typed contract and complete compiler, runtime, and target cost; System Services maintainer in a future service revision.                              |
 
 These candidates are not provisional 0.1 syntax. Extensions may prototype them only under Section 1.7.
 
 ### 20.4 Excluded mechanisms
 
-Nucleus 0.1 excludes language levels and compiler-selected profiles; modules, imports, namespaces, macros, and textual includes; raw pointers, address arithmetic, memory or port access, inline assembly, arbitrary native calls, and unrestricted casts; enumeration, subrange, set, union, variant, overlaid, generic, heap, resizable, open-array, slice, and dynamic types; aggregate constants, aggregate copy, local owned aggregates, destructuring, inferred declarations, nested routines, overloads, routine values, callbacks, indirect calls, parameter modes, and multiple results.
+Nucleus 0.1 excludes language levels and compiler-selected profiles; modules, imports, namespaces, macros, and textual includes; raw pointers, address arithmetic, memory or port access, inline assembly, arbitrary native calls, and unrestricted casts; enumeration, subrange, set, union, variant, overlaid, generic, heap, resizable, open-array, slice, and dynamic types; aggregate constants, activation-lifetime owned aggregates, general aggregate expressions or constructors, partial or named-field initializers, destructuring, inferred declarations, nested routines, overloads, routine values, callbacks, indirect calls, parameter modes, and multiple results.
 
 It also excludes assignment expressions, chained comparisons, conditional expressions, general expression statements, `call` and `then` keywords, `select`/`case`, pattern matching, repeat/do loops, `for in`, omitted counted-loop operands, labels, goto, labelled exit, exceptions, throw/catch, unwinding, destructors, `finally`, `defer`, resumable traps, and runtime type tags.
 
@@ -3060,14 +3149,15 @@ Implementation alternatives such as stack, virtual-register, or hybrid bytecode;
 
 ### 21.1 Complete accepted program
 
-This program exercises records, a checked fixed array, an aggregate alias parameter and result, a local alias, a counted loop, a conditional chain, a call, and observable output:
+This program exercises records, complete aggregate initializers, exact-type aggregate assignment, a checked fixed array, an aggregate alias parameter and result, a local alias, a counted loop, a conditional chain, a call, and observable output:
 
 ```nucleus
 record Cell
     value as u8
 end
 
-var cells as Cell[4]
+var template as Cell = (1)
+var cells as Cell[4] = [(0), (0), (0), (0)]
 
 sub cellAt(index as u8) as Cell
     return cells[index]
@@ -3083,7 +3173,8 @@ sub main()
     var code as u8
 
     for index = 0 until 4
-        setCell(cells[index], index + 1)
+        cells[index] = template
+        setCell(template, index + 1)
     end
 
     current.value = cellAt(0).value
@@ -3101,7 +3192,7 @@ sub main()
 end
 ```
 
-The expected standard output is the byte for `Y`, provided the output service succeeds.
+Each aggregate assignment copies `template` into the selected array element before `template` is changed for the next iteration. The expected standard output is the byte for `Y`, provided the output service succeeds.
 
 ### 21.2 Recoverable error and propagation
 
@@ -3182,19 +3273,21 @@ sub mutate(value as string[4])
 end
 
 sub main() fails
-    var alias as string[4] = textAlias()
+    var snapshot as string[4]
 
-    if alias.length = 3 and alias[1] = 0
-        mutate(alias)
+    snapshot = textAlias()
+
+    if snapshot.length = 3 and snapshot[1] = 0
+        mutate(textAlias())
     end
 
-    if text[1] = 'Z' and alias.length = 3
+    if text[1] = 'Z' and snapshot[1] = 0
         writeOutputByte('Y') or fail
     end
 end
 ```
 
-The literal's embedded zero is an ordinary byte, so its logical length is three. The local is initialized once with an alias returned by an infallible routine. Mutation through the parameter alias is visible through both program and local aliases, and the expected standard output is `Y`.
+The literal's embedded zero is an ordinary byte, so its logical length is three. Assignment materializes `textAlias()` by copying it into the routine-private `snapshot` object. Passing a second result directly to `mutate` forwards the transient alias without copying, so mutation changes `text` while `snapshot` retains its copied zero byte. The expected standard output is `Y`.
 
 ### 21.5 Result-free return propagation
 
@@ -3310,21 +3403,59 @@ sub main()
 end
 ```
 
-Aggregate copy or alias rebinding:
+Aggregate assignment between different nominal types:
+
+```nucleus
+record LeftCell
+    value as u8
+end
+
+record RightCell
+    value as u8
+end
+
+var left as LeftCell
+var right as RightCell
+
+sub main()
+    left = right
+end
+```
+
+Incomplete structured initializer:
+
+```nucleus
+record Color
+    red as u8
+    green as u8
+    blue as u8
+end
+
+var color as Color = (1, 2)
+
+sub main()
+end
+```
+
+Transient aggregate result retained as a local alias:
 
 ```nucleus
 record Cell
     value as u8
 end
 
-var left as Cell
-var right as Cell
+var cell as Cell
+
+sub cellAlias() as Cell
+    return cell
+end
 
 sub main()
-    var alias as Cell = left
-    alias = right
+    var held as Cell = cellAlias()
 end
 ```
+
+The valid materializing form declares `held` without an initializer and then assigns `cellAlias()` to it.
 
 Value routine with a reachable end:
 
@@ -3406,3 +3537,34 @@ end
 The expected standard output is byte value 6. The lowercase keywords are recognized as keywords; `Player`, `player`, and `PLAYER` are distinct identifiers. The abbreviated body obtains `Player` from the forward signature.
 
 Changing the body header to `sub Render` makes the program invalid because no incomplete forward named `Render` exists. Writing `SUB render` is also invalid: `SUB` is a `NAME`, not the keyword `sub`.
+
+### 21.13 Routine-private aggregate storage
+
+This program distinguishes a fixed local alias from a routine-private aggregate object and confirms that aggregate assignment copies without rebinding:
+
+```nucleus
+record Counter
+    value as u8
+end
+
+sub counter() as Counter
+    var state as Counter = (0)
+    state.value = state.value + 1
+    return state
+end
+
+sub main() fails
+    var first as Counter
+    var snapshot as Counter
+
+    first = counter()
+    snapshot = first
+    counter()
+
+    if snapshot.value = 1 and counter().value = 3
+        writeOutputByte('Y') or fail
+    end
+end
+```
+
+`state`, `first`, and `snapshot` each own one routine-private object initialized before `main`. The three calls to `counter` share `state`. `first = counter()` materializes the transient result, and `snapshot = first` copies that value again into a different object. The expected standard output is `Y`.

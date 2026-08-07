@@ -86,7 +86,7 @@ The compiler-core account has the language project's hard 16 KiB bank gate. Inte
 
 NVM is not a CPU-compatibility layer. It does not expose a source pointer model, dynamic types, garbage collection, exceptions, unwinding, destructors, branch shortening, relocation records, native register allocation, or native peephole rules.
 
-NVM contains no dedicated `if`, `while`, `for`, `select`, pattern, aggregate-copy, or source-scope instruction. Compilers lower source constructs to the primitive operations in this book.
+NVM contains no dedicated `if`, `while`, `for`, `select`, pattern, aggregate-copy, or source-scope instruction. Compilers lower source constructs to the primitive operations in this book. In particular, exact-type aggregate assignment uses checked addresses plus ordinary loads and stores; it does not add an unmeasured 0.1 opcode.
 
 Interpreter speed matters after compiler regularity and size. This priority does not permit an unbounded or incomplete interpreter.
 
@@ -286,7 +286,7 @@ A string alias is the offset of the length byte. `STRLEN` reads the length after
 
 An alias has no runtime tag, ownership bit, or lifetime counter. It denotes storage by data offset. The source compiler guarantees exact referent type and program-lifetime derivation. Field selection uses `ADDO`; array and string selection use checked address instructions.
 
-Because Nucleus 0.1 allocates owned aggregates only in program data, a valid aggregate alias remains addressable across calls. Slot save and restore preserves alias words like other scalar carriers.
+Because Nucleus 0.1 allocates every owned aggregate in program data, including routine-private static objects, a valid aggregate alias remains addressable across calls. Slot save and restore preserves alias words like other scalar carriers.
 
 ### 7.5 Invalid representations
 
@@ -442,6 +442,8 @@ A conforming compiler uses `STORE8` for `u8`, Boolean, and bounded-string byte d
 
 The address instructions enforce the supplied dynamic region checks. They do not prove that a constant offset belongs to the nominal record type or that a stride belongs to the selected array type. Those are compiler obligations. NVM bytecode is an execution format rather than a hostile-code capability system.
 
+For exact-type aggregate assignment, the compiler obtains a checked destination address and a checked source address for the complete common extent before emitting the first store. It may then emit `LOAD16`/`STORE16` pairs and a final `LOAD8`/`STORE8` pair, or byte pairs throughout. The source type system makes two distinct same-type aggregate paths disjoint, and self-assignment is a no-op, so the generated sequence requires no overlap direction or temporary object. NVM 0.1 deliberately has no block-copy opcode.
+
 ## 11. Arithmetic, logic, comparison, and conversions
 
 ### 11.1 Width rule
@@ -554,7 +556,7 @@ If capacity is insufficient, the activation-capacity trap occurs after source ar
 
 For a non-entry activation the VM pops the record, restores the saved prefix, selects the caller, and resumes at the saved offset. An infallible result-free return leaves completion `none`. A failable result-free success leaves completion `success`. A result-bearing success leaves completion `result` and the captured carrier in `result`.
 
-`GETR destination` requires result completion, copies the result carrier, and clears completion. It works for scalar and aggregate-alias results; the compiler retains their static type and alias provenance.
+`GETR destination` requires result completion, copies the result carrier, and clears completion. It works for scalar and aggregate-alias results; the compiler retains their static type and alias provenance. A source aggregate result is transient even though its lowered carrier occupies a slot: the compiler must consume it as an argument, return, selection, discard, or aggregate-copy source rather than preserve it as a source-level local alias. If another call occurs during that containing operation, ordinary live-slot save rules preserve the carrier until consumption.
 
 ### 13.7 Early return and recursion
 
@@ -776,7 +778,7 @@ The first interpreter and compiler are native Z80 assembly. NVM 0.1 does not req
 
 ### 18.1 Semantic input
 
-A native backend consumes the same lowered operations represented by the opcode families: fixed-width scalar operations, checked conversions, packed-layout addresses, loads and stores, primitive branches, calls, failure edges, traps, and system services. It need not decode a serialized NVM image when the compiler feeds those operations directly.
+A native backend consumes the same lowered operations represented by the opcode families: fixed-width scalar operations, checked conversions, packed-layout addresses, scalar and fixed-size aggregate-copy effects, loads and stores, primitive branches, calls, failure edges, traps, and system services. It need not decode a serialized NVM image when the compiler feeds those operations directly.
 
 ### 18.2 Required equivalence
 
@@ -786,6 +788,8 @@ For the same source and external streams, native output must preserve:
 - byte and word wraparound;
 - unsigned comparison and division;
 - packed object layout and string length semantics;
+- startup images for top-level and routine-private aggregate objects;
+- exact-type aggregate copies, including complete bounded-string representations;
 - bounds, narrowing, and division checks before writes;
 - call argument evaluation and activation-capacity timing;
 - result-free and value results;
@@ -906,7 +910,7 @@ The suite covers each opcode at boundary values, including:
 
 ### 20.4 Required layout vectors
 
-The suite constructs nested packed records, scalar and aggregate arrays, and `string[1]`, `string[4]`, and `string[255]`. It verifies exact offsets, little-endian words, embedded zero string bytes, current-length indexing, bounds failures before stores, and an invalid stored string length.
+The suite constructs nested packed records, scalar and aggregate arrays, and `string[1]`, `string[4]`, and `string[255]`. It verifies exact offsets, little-endian words, embedded zero string bytes, recursive static initializer images, routine-private object initialization, current-length indexing, bounds failures before stores, exact-type aggregate copies, self-assignment, and an invalid stored string length.
 
 ### 20.5 Required control vectors
 
@@ -940,20 +944,24 @@ Every size or timing entry is labeled **Measured**, **Projected**, or **Hypothes
 
 ### 21.2 Component ledger
 
-| Component                    | Compiler bytes |                  Interpreter bytes |    Writable runtime |       Emitted bytes | Timing evidence           | Status                               |
-| ---------------------------- | -------------: | ---------------------------------: | ------------------: | ------------------: | ------------------------- | ------------------------------------ |
-| image header and descriptors |           open |                               open | loader scratch open |      32 + 8/routine | not measured              | Projected                            |
-| page dispatch                |           none | 11-byte dispatcher; 256-byte table |                none |            1/opcode | 64 T dispatch in spike    | Measured dispatcher; Projected table |
-| common page slot addressing  |           none |                      7-byte helper |       slot page 256 |      1/slot operand | 350 T measured `ADD` path | Measured, isolated                   |
-| inlined page slot addressing |           none |                   no shared helper |       slot page 256 |           unchanged | 299 T measured `ADD` path | Measured handler paths               |
-| argument staging             |           open |                               open |            34 bytes |          3/argument | not measured              | Projected                            |
-| packed activation records    |           open |                               open |   `4 + 2n` per call |              2/call | not measured              | Projected                            |
-| arithmetic helpers           |           open |                               open |        scratch open | fixed opcode widths | not measured              | Hypothesis                           |
-| address and safety checks    |           open |                               open |        scratch open |     3–8/instruction | not measured              | Hypothesis                           |
-| recoverable failure          |           open |                               open |       carriers open | call-local sequence | not measured              | Hypothesis                           |
-| services and traps           |           open |                               open |   adapter dependent |   2/service or trap | not measured              | Hypothesis                           |
+| Component                    | Compiler bytes |                  Interpreter bytes |    Writable runtime |           Emitted bytes | Timing evidence           | Status                               |
+| ---------------------------- | -------------: | ---------------------------------: | ------------------: | ----------------------: | ------------------------- | ------------------------------------ |
+| image header and descriptors |           open |                               open | loader scratch open |          32 + 8/routine | not measured              | Projected                            |
+| page dispatch                |           none | 11-byte dispatcher; 256-byte table |                none |                1/opcode | 64 T dispatch in spike    | Measured dispatcher; Projected table |
+| common page slot addressing  |           none |                      7-byte helper |       slot page 256 |          1/slot operand | 350 T measured `ADD` path | Measured, isolated                   |
+| inlined page slot addressing |           none |                   no shared helper |       slot page 256 |               unchanged | 299 T measured `ADD` path | Measured handler paths               |
+| argument staging             |           open |                               open |            34 bytes |              3/argument | not measured              | Projected                            |
+| packed activation records    |           open |                               open |   `4 + 2n` per call |                  2/call | not measured              | Projected                            |
+| arithmetic helpers           |           open |                               open |        scratch open |     fixed opcode widths | not measured              | Hypothesis                           |
+| canonical-width sharing      |           open |                               open |                none |               unchanged | not measured              | Hypothesis                           |
+| address and safety checks    |           open |                               open |        scratch open |         3–8/instruction | not measured              | Hypothesis                           |
+| aggregate-copy lowering      |           open |                               none |  scratch slots open | size-dependent sequence | not measured              | Hypothesis                           |
+| recoverable failure          |           open |                               open |       carriers open |     call-local sequence | not measured              | Hypothesis                           |
+| services and traps           |           open |                               open |   adapter dependent |       2/service or trap | not measured              | Hypothesis                           |
 
 The measured harness covered seven handlers and three slot-addressing arrangements. Their complete core sizes were 165, 162, and 210 bytes. Those figures exclude the separately placed dispatch table, and they are not complete-interpreter estimates.
+
+The canonical-width experiment may share handler bodies between byte and word opcodes, or let the compiler emit a word opcode for a source `u8` operation only where Section 7.1's zero-high-byte invariant makes the complete state transition identical. Division, binary `and` and `or`, equality, and unsigned comparison are candidates. Wrapping arithmetic, negation, and complement are not equivalent without an additional mask and require separate measurement. The experiment does not remove assigned opcodes or change their meanings in NVM 0.1.
 
 ### 21.3 Required reports
 
@@ -971,7 +979,7 @@ The first complete Z80 implementation reports:
 
 ### 21.4 Decision gates
 
-The design is accepted only after one vertical slice compiles, validates, and runs source that exercises scalar locals, arguments, recursion, records, arrays, strings, branches, a handled error, a propagated error, a service, and each reachable safety trap. A direct-Z80 backend for the same slice provides a comparison, not a prerequisite.
+The design is accepted only after one vertical slice compiles, validates, and runs source that exercises scalar locals, arguments, recursion, records, recursive static initializers, routine-private aggregate objects, aggregate assignment, arrays, strings, branches, a handled error, a propagated error, a service, and each reachable safety trap. A direct-Z80 backend for the same slice provides a comparison, not a prerequisite.
 
 If the interpreter or compiler exceeds its account, the project identifies the responsible component and tests a narrower representation. It does not remove a settled source requirement silently or charge the bytes to another account.
 
@@ -1100,6 +1108,26 @@ done:
 ```
 
 The right-hand block is unreachable when left is false, so its calls and traps do not occur.
+
+### C.6 Aggregate assignment
+
+For an exact-type object of extent `objectExtent`, with destination and source aliases in slots 0 and 1, the compiler first validates both complete regions:
+
+```nvm
+ADDO  0, 0, objectExtent, 2
+ADDO  1, 0, objectExtent, 3
+```
+
+It then emits fixed-offset checked addresses and ordinary loads and stores for the known extent. This schematic pair copies one word at `byteOffset`:
+
+```nvm
+ADDO     3, byteOffset, 2, 4
+ADDO     2, byteOffset, 2, 5
+LOAD16   4, 6
+STORE16  6, 5
+```
+
+A final odd byte uses `LOAD8` and `STORE8`. The two initial instructions guarantee the complete extents before the first store; the later constant subregions cannot fail when the carriers remain unchanged. A self-copy may be omitted. A direct Z80 backend may implement the same semantic operation with `LDIR` after its equivalent complete-range checks.
 
 ## Appendix D. Reference interpreter
 

@@ -9,7 +9,11 @@ const text = readFileSync(SPECIFICATION, "utf8");
 
 const predicates: Readonly<Record<string, readonly string[]>> = {
   "simple-statement": ["isCallableName", "isWritableName"],
-  "local-initializer": ["isFailableCallableName"],
+  "local-initializer": [
+    "isFailableCallableName",
+    "isInitializerForDeclaredType",
+  ],
+  "static-initializer": ["isInitializerForDeclaredType"],
   "assignment-source": ["isFailableCallableName"],
   "return-source": ["isFailableCallableName"],
   "type-atom": ["isRecordTypeName"],
@@ -68,7 +72,7 @@ describe("the normative Nucleus 0.1 grammar", () => {
     expect(analysis.unproductive).toEqual([]);
   });
 
-  it("has only the four declared name-led LL(1) conflicts", () => {
+  it("has only the declared predicate-resolved LL(1) conflicts", () => {
     expect(
       analysis.collisions.map((collision) => ({
         nonterminal: collision.nonterminal,
@@ -83,8 +87,13 @@ describe("the normative Nucleus 0.1 grammar", () => {
       },
       {
         nonterminal: "local-initializer",
+        lookahead: "(",
+        predicates: ["isFailableCallableName", "isInitializerForDeclaredType"],
+      },
+      {
+        nonterminal: "local-initializer",
         lookahead: "NAME",
-        predicates: ["isFailableCallableName"],
+        predicates: ["isFailableCallableName", "isInitializerForDeclaredType"],
       },
       {
         nonterminal: "return-source",
@@ -95,6 +104,11 @@ describe("the normative Nucleus 0.1 grammar", () => {
         nonterminal: "simple-statement",
         lookahead: "NAME",
         predicates: ["isCallableName", "isWritableName"],
+      },
+      {
+        nonterminal: "static-initializer",
+        lookahead: "(",
+        predicates: ["isInitializerForDeclaredType"],
       },
     ]);
   });
@@ -116,6 +130,21 @@ describe("the normative Nucleus 0.1 grammar", () => {
     expect(text).toContain("#### 4.3.1 Flat source manifest");
     expect(text).not.toMatch(
       /case-insensitive exact names|ASCII-folded identity/,
+    );
+  });
+
+  it("records aggregate storage, copying, and transient results", () => {
+    expect(text).toContain(
+      "An aggregate local with no initializer or with a structured initializer creates one routine-private object",
+    );
+    expect(text).toContain(
+      "Aggregate assignment requires a mutable aggregate destination and an aggregate source of the exact same type",
+    );
+    expect(text).toContain(
+      "The caller must consume a returned aggregate alias immediately",
+    );
+    expect(text).toContain(
+      'record-initializer\n    ::= "(" static-initializer',
     );
   });
 
