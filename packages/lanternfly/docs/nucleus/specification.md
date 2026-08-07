@@ -311,11 +311,11 @@ identifier ::= ascii-letter (ascii-letter | decimal-digit | "_")*
 
 Leading underscores are not identifiers. Nucleus does not assign implementation names through a source spelling convention; compiler-generated names remain outside the source namespace.
 
-Identifier and reserved-word comparison is ASCII case-insensitive. The tokenizer folds `A` through `Z` to `a` through `z` and leaves every other accepted byte unchanged. No locale participates, and spelling case does not create a distinct name.
+Identifiers are case-sensitive and preserve their source spelling. `Player`, `player`, and `PLAYER` are three distinct identifiers. No locale participates in comparison.
 
-The complete folded identifier is its identity. An implementation must not truncate a spelling, compare only a prefix, or treat an unchecked hash match as equality. It may use hashes to locate candidates only if it resolves collisions by exact comparison. An implementation may impose a maximum identifier length and a maximum number of retained names. It must publish each limit, and exceeding one is a capacity diagnostic.
+The complete preserved spelling is an identifier's identity. An implementation must not fold case, truncate a spelling, compare only a prefix, or treat an unchecked hash match as equality. It may use hashes to locate candidates only if it resolves collisions by exact byte comparison. An implementation may impose a maximum identifier length and a maximum number of retained names. It must publish each limit, and exceeding one is a capacity diagnostic.
 
-After scanning the longest identifier, the tokenizer compares its folded spelling with a fixed reserved-word table. A longer name is never split at a keyword boundary: `elseifReady` is one `NAME`, not `ELSEIF NAME`.
+After scanning the longest identifier, the tokenizer compares its exact spelling with a fixed reserved-word table. A reserved word is recognized only in the canonical lowercase spelling listed below. A longer name is never split at a keyword boundary: `elseifReady` is one `NAME`, not `elseif` followed by `NAME`.
 
 The Nucleus 0.1 reserved words are:
 
@@ -327,13 +327,13 @@ step     string   sub      to        true      u16      u8
 until    var      while
 ```
 
-`elseif` is one keyword. `else if` produces the two tokens `ELSE` and `IF` and does not form an `ELSEIF` clause. Case folding means that `ELSEIF` and `elseif` produce the same token.
+`elseif` is one keyword. `else if` produces the two keywords `else` and `if` and does not form an `elseif` clause. `ELSEIF` is a `NAME`, not a keyword.
 
 Chapter 14 defines the recoverable-error forms that use `error`, `fail`, `fails`, and `on`.
 
 Nucleus uses name-led routine invocation and has no `call` keyword. `call` remains an identifier.
 
-The current Candlemoth tokenizer supplies evidence for ASCII case folding and bounded name scanning, but two implementation shortcuts are not Nucleus rules. It accepts `_` as a first byte because one class represents both name-start and name-continuation characters, and it can silently conflate two names whose hash pairs collide. A compiler claiming Nucleus conformance must enforce the spelling above and exact folded identity.
+The current Candlemoth tokenizer supplies evidence for bounded name scanning, but its case folding and two other shortcuts are not Nucleus rules. It accepts `_` as a first byte because one class represents both name-start and name-continuation characters, and it can silently conflate two names whose hash pairs collide. A compiler claiming Nucleus conformance must enforce the spelling and exact identity above.
 
 ### 3.6 Numeric literals
 
@@ -406,11 +406,11 @@ Braces, colon, semicolon, question mark, hash, at sign, and backtick have no tok
 
 ### 3.9 Token contract
 
-The tokenizer emits the following token categories. The parser must not depend on the token's original case.
+The tokenizer emits the following token categories. Identifier spelling is part of the token contract.
 
 | Category    | Payload                                                       |
 | ----------- | ------------------------------------------------------------- |
-| `NAME`      | exact folded identifier identity and source span              |
+| `NAME`      | exact preserved identifier spelling and source span           |
 | keyword     | fixed reserved-word ordinal and source span                   |
 | `NUMBER`    | exact value from 0 through 65,535 and source span             |
 | `CHARACTER` | one decoded byte and source span                              |
@@ -557,6 +557,14 @@ The compiler may consume each event and byte chunk incrementally. It need not ma
 
 The packaging layer must not add declarations, replace tokens, perform textual macro processing, or make accepted source depend on a part's physical origin. A diagnostic from multipart input must carry the stable source-part identity and the Chapter 3 position within that part, allowing the packaging layer to map it back to a physical source when such a mapping exists.
 
+#### 4.3.1 Flat source manifest
+
+The standard authoring convention for this abstract stream is a flat ordered manifest. Each nonblank logical line contains one physical source name. Blank lines are ignored. The build driver processes entries in their written order, resolves every name within one base directory or storage namespace selected for that build, reads the named source, and emits one source part for it. The listed name is the part's diagnostic name. Its stable source identity combines that name with the entry's position, so a driver that permits a duplicate entry can still identify each part.
+
+The manifest has no nesting, glob patterns, variables, conditional entries, dependency discovery, or recursive import meaning. It does not enter the source-byte stream, and the Nucleus tokenizer never sees it. The build driver defines how physical source names and line endings are encoded; a later compiler-input specification may define concrete multipart framing. Those transport choices do not change the ordered-part contract in Section 4.3.
+
+The driver reports a missing physical source or an unresolvable source name before compilation. It may reject a duplicate manifest entry. If it emits the duplicate instead, the compiler processes both parts in order and ordinarily reports duplicate source declarations. A forgotten dependency ordinarily produces an unknown-name diagnostic; a wrong order produces the applicable declaration-before-use diagnostic; and a forward that no later part completes fails at `EOF`. The compiler does not search for another file or reorder parts in response.
+
 ### 4.4 Top-level declarations
 
 Only top-level declarations may appear in a compilation unit. The current Nucleus 0.1 declaration families are:
@@ -577,7 +585,7 @@ This rule applies across source-part boundaries because all parts contribute to 
 
 The types named by a constant, variable, record field, formal parameter, routine result, or forward signature must already be declared at that position. The exact scope and collision rules appear in Chapter 5. Constant-expression restrictions and initialization order appear in Chapter 8.
 
-After a routine header has been checked, its routine name and complete signature are available in its body and in later declarations. This permits the body to contain a direct self-call under Chapter 13. A call to another routine whose header has not appeared requires an earlier forward declaration.
+After a routine's complete signature has been checked, its routine name and signature are available in its body and in later declarations. This permits the body to contain a direct self-call under Chapter 13. A call to another routine whose signature has not appeared requires an earlier forward declaration.
 
 For example, this order satisfies the structural rules:
 
@@ -590,7 +598,7 @@ sub run()
     return
 end
 
-sub emit(value as u8)
+sub emit
     return
 end
 ```
@@ -616,14 +624,9 @@ A forward routine declaration supplies a routine signature without a body. It is
 
 The parameter and result types in a forward declaration must already be available. Once checked, the declaration makes the routine callable at later positions under the same rules as a routine whose body has already appeared. It creates no executable statement and does not begin a routine body.
 
-The completing definition must appear later in the same compilation unit. Its header must match the forward declaration in:
+The forward declaration is the complete and sole signature. It records the routine name, parameter names and ordered types, optional result type, and `fails` effect. The later body begins with the abbreviated header `sub NAME` followed by a logical newline. That name must resolve to exactly one incomplete forward. The parameters named by the forward become the parameter bindings in the body; the body cannot rename or redeclare them.
 
-- routine-name identity under Chapter 3's case-folding rule;
-- formal-parameter count, order, and types;
-- the absence or presence of a result and, when present, its type; and
-- the absence or presence of the `fails` effect from Chapter 14.
-
-A routine may have at most one forward declaration and exactly one definition. A second forward declaration, a forward declaration after the definition, a second definition, or a definition with a mismatched header is invalid. Completing a forward declaration does not declare a second routine.
+A routine may have at most one forward declaration and exactly one definition. A second forward declaration, a forward declaration after the definition, a second definition, an abbreviated body without an incomplete forward, or a completion with another name is invalid. Completing a forward declaration does not declare a second routine. An ordinary routine without a forward retains the complete parenthesized header defined in Chapter 13.
 
 Forward declarations apply only to source routines. They do not provide a general forward reference for constants, types, variables, fields, or local names.
 
@@ -641,7 +644,7 @@ Program startup, initialization, termination, and system services are specified 
 
 At `EOF`, the compiler must verify that:
 
-- every forward routine declaration has one matching definition;
+- every forward routine declaration has one abbreviated body definition;
 - every routine has at most one body;
 - no top-level declaration remains structurally incomplete; and
 - exactly one defined `main` satisfies Section 4.7.
@@ -658,7 +661,7 @@ The first compiler's 16 KiB core gate does not change these structural rules. Pr
 
 ### 4.10 Provenance
 
-Lanternfly Level 0 and the current Candlemoth source provide evidence that ordered source parts can form one streaming compilation unit and that unresolved forwards can be checked at its end. Nucleus adopts those two mechanisms through the rules above. It does not inherit Lanternfly's modules, imports, language levels, entry manifest, or Candlemoth's historical global-register source model.
+Lanternfly Level 0 and the current Candlemoth source provide evidence that ordered source parts can form one streaming compilation unit and that unresolved forwards can be checked at its end. Nucleus adopts those two mechanisms through the rules above. The flat manifest in Section 4.3.1 is an external build convention, not Lanternfly's source-level module or import machinery. Nucleus does not inherit Lanternfly's modules, imports, language levels, or Candlemoth's historical global-register source model.
 
 ## 5. Names and scopes
 
@@ -672,9 +675,9 @@ Nucleus has no implicit declarations, overloads, generic parameters, nested rout
 
 ### 5.2 Name identity
 
-Chapter 3 establishes an identifier's exact ASCII-folded spelling as its identity. All name binding, collision detection, forward completion, and lookup use that complete identity. Original letter case does not distinguish names.
+Chapter 3 establishes an identifier's exact preserved spelling as its identity. All name binding, collision detection, forward completion, and lookup use that complete case-sensitive identity. Letter case distinguishes names.
 
-An implementation may use a hash or an interned ordinal to locate a candidate binding, but it must confirm equality from the complete folded identity. It must not compare only a prefix, truncate a spelling, or treat an unchecked hash match as equality.
+An implementation may use a hash or an interned ordinal to locate a candidate binding, but it must confirm equality from the complete preserved spelling. It must not fold case, compare only a prefix, truncate a spelling, or treat an unchecked hash match as equality.
 
 ### 5.3 Scope structure
 
@@ -694,13 +697,13 @@ Each record type has its own field scope. A field scope is separate from the ord
 
 ### 5.4 One ordinary namespace
 
-Program and routine scopes use one ordinary namespace. A record type, named constant, variable, routine, parameter, or local with a given folded identity prevents another visible ordinary binding from using that identity. Type and value names do not occupy separate namespaces.
+Program and routine scopes use one ordinary namespace. A record type, named constant, variable, routine, parameter, or local with a given exact identity prevents another visible ordinary binding from using that identity. Type and value names do not occupy separate namespaces.
 
 Name lookup first finds the one ordinary binding and then checks whether its declaration class is valid in context. A record type used as an expression, a variable used as a type, or a result-free routine used as a value is invalid. The compiler must not continue searching for another declaration of a more convenient class.
 
 Nucleus has no overload sets. Two routines with the same identity conflict even when their parameter or result types differ. Enumeration and subrange types are absent and introduce no member or range namespaces.
 
-Every ordinary binding has one canonical declaration. A matching routine definition completes an earlier forward declaration under Section 5.8; it is the only case in which a later header with the same identity is not a duplicate declaration.
+Every ordinary binding has one canonical declaration. An abbreviated routine body completes an earlier forward declaration under Section 5.8; it is the only case in which a later header with the same identity is not a duplicate declaration.
 
 For example, the single namespace accepts this pair of names:
 
@@ -712,30 +715,40 @@ end
 var origin as Point
 ```
 
-It rejects this declaration because `Point` and `point` have the same folded identity:
+Case variants are distinct names, so this declaration is valid:
 
 ```nucleus
 record Point
     x as u16
 end
 
-var point as Point       // duplicate ordinary name
+var point as Point
+```
+
+Repeating the exact type name in the same namespace is invalid:
+
+```nucleus
+record Point
+    x as u16
+end
+
+var Point as Point       // invalid: exact duplicate of the type name
 ```
 
 ### 5.5 Declaration visibility
 
 A completed declaration must precede every use. For routines, the checked signature is the declaration: an ordinary header exposes its name before its own body, and a forward header exposes the name before the later definition.
 
-| Declaration                          | Declaration point and later visibility                                                                                        |
-| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------- |
-| Predefined name                      | Before the first source token; visible throughout the unit                                                                    |
-| Named constant or program variable   | After the complete declaration, including its type and any initializer, has been checked                                      |
-| Record type                          | After the complete record declaration, including every field, has been checked                                                |
-| Routine definition without a forward | After the complete signature has been checked and before the body begins                                                      |
-| Forward routine declaration          | After the complete signature has been checked                                                                                 |
-| Formal parameters                    | Together, after the complete routine header has been checked; visible in the local-declaration prefix and body                |
-| Local variable                       | After its complete declaration, including any initializer, has been checked; visible in later local declarations and the body |
-| Record field                         | After the complete record declaration has been checked; visible only through selection on that record type                    |
+| Declaration                          | Declaration point and later visibility                                                                                                            |
+| ------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Predefined name                      | Before the first source token; visible throughout the unit                                                                                        |
+| Named constant or program variable   | After the complete declaration, including its type and any initializer, has been checked                                                          |
+| Record type                          | After the complete record declaration, including every field, has been checked                                                                    |
+| Routine definition without a forward | After the complete signature has been checked and before the body begins                                                                          |
+| Forward routine declaration          | After the complete signature has been checked                                                                                                     |
+| Formal parameters                    | Together, after an ordinary header is checked or an abbreviated body header opens its forward; visible in that body's local prefix and statements |
+| Local variable                       | After its complete declaration, including any initializer, has been checked; visible in later local declarations and the body                     |
+| Record field                         | After the complete record declaration has been checked; visible only through selection on that record type                                        |
 
 A declaration is not visible in its own type, bound, initializer, or other declaration operand. A record type is not visible in its own field list. These rules reject self-reference by non-routine declarations and prevent declaration cycles without a dependency graph or a second declaration pass.
 
@@ -750,7 +763,9 @@ Declaration order applies across the whole logical compilation unit. A later dec
 
 ### 5.6 Duplicate declarations and shadowing
 
-Two declarations in the same scope conflict when their folded identities are equal. A difference only in letter case is therefore a duplicate, not a second name.
+Two declarations in the same scope conflict when their exact case-sensitive identities are equal. A difference in letter case creates a different name; repeating the same spelling is a duplicate.
+
+Lookup never selects a later declaration in preference to an earlier one. Nucleus has no temporal shadowing, source-level replacement, or latest-definition rule.
 
 A parameter or local must not shadow an ordinary program binding visible at its declaration point. A local must not reuse the identity of a parameter or an earlier local. Because routine bodies contain no nested declaration scopes, no inner-block shadowing case exists.
 
@@ -764,7 +779,7 @@ end
 
 The no-shadowing rule is evaluated at the declaration point. A program declaration that appears after an earlier routine is not visible in that routine and does not retroactively invalidate one of its parameter or local names.
 
-Within one record, two fields with the same folded identity conflict. The same field identity may appear in different records, and a field may share an identity with an ordinary binding, because field selection supplies the record type before field lookup.
+Within one record, two fields with the same exact identity conflict. The same field identity may appear in different records, and a field may share an identity with an ordinary binding, because field selection supplies the record type before field lookup.
 
 ```nucleus
 record Point
@@ -795,11 +810,11 @@ If lookup finds no binding, the compiler must issue an undeclared-name diagnosti
 
 ### 5.8 Forward routine signatures
 
-An explicit forward signature is the only source form that creates a name binding before its full definition. After its complete signature has been checked, it creates the routine's canonical program-scope binding. Its parameter names are present for syntax and documentation but are not part of completion identity; they do not become program-scope bindings and open no routine scope because the forward declaration has no body.
+An explicit forward signature is the only source form that creates a name binding before its body. After its complete signature has been checked, it creates the routine's canonical program-scope binding and retains the parameter names and ordered types, optional result type, and `fails` effect. The parameter names do not become program-scope bindings or open a routine scope at the forward declaration.
 
-The later routine definition completes that binding. It does not declare a second routine. The completing header must match the forward signature in folded routine identity, parameter count and order, parameter types, optional result type, and `fails` effect. Parameter names need not match; the definition's parameter names create the bindings used by its body.
+The later abbreviated body header, `sub NAME`, completes that binding. It does not declare a second routine or repeat any signature component. The name must resolve by exact identity to one incomplete forward. At that point, the forward's parameter names become the formal bindings in the routine scope and remain the only parameter spellings for the body.
 
-A routine may have at most one forward declaration and one definition. A second forward declaration, a forward declaration after a definition, a definition without an applicable forward when the name is already bound, or a mismatched completing header is invalid. Every forward declaration must have a completing definition in the same compilation unit.
+A routine may have at most one forward declaration and one definition. A second forward declaration, a forward declaration after a definition, an abbreviated body without one matching incomplete forward, or another completion is invalid. Every forward declaration must have a completing definition in the same compilation unit.
 
 Forward declarations apply only to source routines. Constants, variables, record types, fields, parameters, and locals have no forward form.
 
@@ -808,24 +823,14 @@ This completion matches:
 ```nucleus
 forward sub emit(value as u8)
 
-sub emit(value as u8)
-    return
-end
-```
-
-This completion also matches because parameter spelling is not part of forward completion:
-
-```nucleus
-forward sub emit(value as u8)
-
-sub emit(byte as u8)
+sub emit
     return
 end
 ```
 
 ### 5.9 Self-reference and recursive call graphs
 
-After a routine definition's complete signature has been checked, its program-scope binding is visible in its own body. Name resolution therefore permits a direct self-reference without a forward declaration.
+After a routine's complete signature has been checked, its program-scope binding is visible in its own body. Name resolution therefore permits a direct self-reference without a forward declaration.
 
 Mutual references require forward signatures for every later routine that an earlier body names. In this example, `second` is visible through its forward declaration, while `first` is visible after its own header:
 
@@ -837,7 +842,7 @@ sub first(value as u16)
     return
 end
 
-sub second(value as u16)
+sub second
     first(value)
     return
 end
@@ -851,13 +856,13 @@ Reserved words, built-in type words, and Boolean literals recognized by Chapter 
 
 Chapter 16 defines the complete standard set of predefined source routines and constants. The compiler establishes those ordinary program-scope bindings before the first source token. User declarations and routine-scope declarations cannot redeclare or shadow them. An implementation extension may add names only under the explicit extension rules in Section 1.7.
 
-`main` is not a predefined binding. Its required source definition creates the ordinary routine binding and must satisfy Section 4.7. No other declaration may use that identity.
+`main` is not a predefined binding. Its required lowercase source definition creates the ordinary routine binding and must satisfy Section 4.7. A differently cased name such as `Main` is distinct and does not satisfy the entry rule. No other declaration may use the exact identity `main`.
 
 Compiler-generated temporaries, labels, and helper names remain outside the source namespace. They cannot collide with a source identifier or become visible to source lookup.
 
 ### 5.11 Diagnostics and capacity limits
 
-The compiler must diagnose an undeclared use, a duplicate or case-only collision, forbidden shadowing, a wrong declaration class, a forward-signature mismatch, and an uncompleted forward declaration. It may stop after the first diagnostic under Chapter 1.
+The compiler must diagnose an undeclared use, an exact duplicate, forbidden shadowing, a wrong declaration class, an abbreviated body without one incomplete forward, a second completion, and an uncompleted forward declaration. It may stop after the first diagnostic under Chapter 1.
 
 An implementation may bound identifier length, retained name bytes, ordinary bindings, routine-local bindings, record fields, or unresolved forward signatures. It must document each limit and issue a capacity diagnostic before truncation, wraparound, dropped declarations, or unchecked collision can occur. A capacity failure does not change identifier identity or make an otherwise conforming program invalid.
 
@@ -1343,11 +1348,16 @@ field-declaration     ::= NAME "as" type NEWLINE
 
 forward-routine-declaration
                       ::= "forward" routine-header NEWLINE
-routine-definition    ::= routine-header NEWLINE
-                          { local-declaration }
+routine-definition    ::= "sub" NAME routine-definition-tail
+routine-definition-tail
+                      ::= routine-signature-tail NEWLINE routine-body
+                        | NEWLINE routine-body
+routine-body          ::= { local-declaration }
                           routine-statement-sequence
                           "end" NEWLINE
-routine-header        ::= "sub" NAME "(" [ formal-parameter
+routine-header        ::= "sub" NAME routine-signature-tail
+routine-signature-tail
+                      ::= "(" [ formal-parameter
                           { "," formal-parameter } ] ")"
                           [ "as" type ] [ "fails" ]
 formal-parameter      ::= NAME "as" type
@@ -1428,7 +1438,7 @@ The declaration contains at least one field. Each field declares one name and on
 
 The record type becomes visible only after the complete declaration has been checked. It is therefore unavailable in its own field list. This rule, the declaration-before-use rule, and Chapter 6's finite-size requirement reject direct and indirect recursive containment without a second declaration pass.
 
-Record field names use the record's field scope under Chapter 5. A case-insensitive duplicate within that field scope is invalid. Record layout offsets and backend encoding are outside this chapter.
+Record field names use the record's field scope under Chapter 5. An exact duplicate within that field scope is invalid; differently cased field names are distinct. Record layout offsets and backend encoding are outside this chapter.
 
 ### 8.8 Program variables
 
@@ -1455,7 +1465,7 @@ One routine header declares a routine name, an ordered list of zero or more form
 
 A scalar parameter denotes a per-invocation copied value. An aggregate parameter establishes a fixed typed alias to caller-provided program-variable storage. Scalar-leaf mutation through that alias is permitted. Chapter 13 defines calls, result rules, and the value supplied for each parameter; this chapter defines only the bindings written in the header.
 
-A forward routine declaration contains the complete header and no body. The later definition must match it under Chapters 4 and 5, including case-folded routine identity, parameter count and order, parameter types, optional result type, and `fails` effect. Parameter spelling may differ; the definition's parameter names create its body bindings. The definition completes the existing routine binding; it does not declare another routine.
+A forward routine declaration contains the complete and sole header and no body. The compiler retains its exact routine and parameter names, ordered parameter types, optional result type, and `fails` effect. The later abbreviated `sub NAME` header opens the body under Chapters 4 and 5; the forward's parameter names create that body's parameter bindings. The definition completes the existing routine binding and does not declare another routine or repeat its signature.
 
 A routine definition without an earlier forward makes its checked signature visible before the local-declaration prefix and body. No nested routine declaration is permitted.
 
@@ -1486,7 +1496,7 @@ The compiler must diagnose:
 - a declaration in a location not permitted by Section 8.2;
 - a missing type, required initializer, or alias target;
 - a type, bound, initializer, or name that is not visible at its declaration point;
-- a duplicate name, case-only collision, or forbidden shadowing under Chapter 5;
+- an exact duplicate name or forbidden shadowing under Chapter 5;
 - a nonconstant operand or invalid folded operation in a constant expression;
 - a scalar initializer incompatible with its declared type;
 - an invalid array length, string capacity, string length, or array element count;
@@ -1494,7 +1504,7 @@ The compiler must diagnose:
 - an aggregate `const` or a program aggregate initializer not admitted by Section 8.8;
 - an aggregate alias whose target type is not identical to its declared type;
 - an attempt to rebind an aggregate alias or copy a complete aggregate; and
-- a forward completion that does not match its signature.
+- an abbreviated body without one matching incomplete forward, a second completion, or an uncompleted forward.
 
 An implementation may bound top-level declarations, record fields, parameters, locals, aggregate aliases, constant-expression nesting, initializer elements, decoded string bytes, type descriptors, retained signatures, and initialization records. It must publish each limit and issue a capacity diagnostic before truncation, wraparound, omitted initialization, dropped fields, or an incorrect binding can occur. A capacity failure does not change an otherwise conforming declaration into invalid source.
 
@@ -1549,12 +1559,12 @@ sub inspect()
 end
 ```
 
-A matching forward declaration and definition repeat the complete header:
+A forward declaration supplies the sole signature, and its abbreviated definition supplies the body:
 
 ```nucleus
 forward sub inspectState(item as State)
 
-sub inspectState(item as State)
+sub inspectState
     return
 end
 ```
@@ -1563,7 +1573,8 @@ The following marked forms are invalid. They illustrate separate errors and are 
 
 ```nucleus
 const Limit as u16 = 8
-var limit as u16                    // case-insensitive duplicate
+var limit as u16                    // valid: names are case-sensitive
+var Limit as u16                    // invalid: exact duplicate
 
 const flags as u8[4] = [1, 2, 4, 8] // named constants are scalar only
 const prompt as string[8] = "READY"  // bounded-string constants are absent
@@ -2239,23 +2250,27 @@ Nucleus has one routine family. A routine declares no result or one result type.
 The routine fragment is:
 
 ```text
-routine-header       ::= "sub" NAME "(" [ formal-parameter
+routine-header       ::= "sub" NAME routine-signature-tail
+routine-signature-tail
+                     ::= "(" [ formal-parameter
                          { "," formal-parameter } ] ")"
                          [ "as" type ] [ "fails" ]
 formal-parameter     ::= NAME "as" type
 
 forward-routine      ::= "forward" routine-header NEWLINE
-routine-definition   ::= routine-header NEWLINE
-                         { local-declaration }
-                         statement-sequence
-                         "end" NEWLINE
+routine-definition   ::= "sub" NAME routine-definition-tail
+routine-definition-tail
+                     ::= routine-signature-tail NEWLINE routine-body
+                       | NEWLINE routine-body
+routine-body         ::= { local-declaration }
+                         statement-sequence "end" NEWLINE
 
 routine-invocation   ::= NAME argument-list
 argument-list        ::= "(" [ expression { "," expression } ] ")"
 return-statement     ::= "return" [ expression ]
 ```
 
-Chapter 8 remains authoritative for declaration placement and the local-declaration prefix. The fragments here complete their call and result meaning. Parentheses are required in every header and invocation, including a routine with no parameters or arguments.
+Chapter 8 remains authoritative for declaration placement and the local-declaration prefix. The fragments here complete their call and result meaning. Parentheses are required in every complete header and invocation, including a routine with no parameters or arguments. The abbreviated header is available only to the body that completes an earlier forward.
 
 An omitted result type declares a result-free routine. A written type declares one result of that exact scalar or aggregate type. The optional `fails` effect is defined by Chapter 14. The header has no separate procedure/function keyword and no result-name declaration.
 
@@ -2317,9 +2332,11 @@ The conservative loop rule is part of Nucleus 0.1 validity. A value routine whos
 
 ### 13.8 Forward definitions and recursion
 
-A definition that completes a forward declaration must match the routine identity, parameter count, parameter order and types, optional result type, and `fails` effect under Chapters 4, 5, 8, and 14. Parameter names need not match. The definition's parameter names bind the routine body. The forward declaration and definition denote one routine.
+A forward declaration contains the routine's complete and sole signature, including its parameter names. Its later body begins with `sub NAME` and a logical newline. That name must resolve to exactly one incomplete forward under Chapters 4, 5, and 8. The stored parameter names bind the body; no parameter, result, or `fails` clause is repeated. The forward declaration and body definition denote one routine.
 
-After its header has been checked, a routine may call itself directly. Mutually recursive routines require an earlier forward signature for every routine called before its definition. Recursive calls use the ordinary argument, activation, result, and lifetime rules; Nucleus has no separate recursive syntax.
+This source form removes duplicate signatures and the corresponding signature-comparison cases. A streaming compiler must retain the forward's parameter names as well as its type and effect metadata until it compiles the body. The net compiler-core and workspace effects remain unmeasured.
+
+After its complete signature has been checked, a routine may call itself directly. Mutually recursive routines require an earlier forward signature for every routine called before its definition. Recursive calls use the ordinary argument, activation, result, and lifetime rules; Nucleus has no separate recursive syntax.
 
 Recursion is admitted in Nucleus 0.1. Implementation staging may postpone its construction in the first compiler, but standard language mode must not reinterpret or permanently reject recursive source within the implementation's documented compile-time capacities.
 
@@ -2341,7 +2358,7 @@ The compiler may lower calls and returns to regular semantic operations while pa
 
 ### 13.11 Invalid calls and capacity limits
 
-The compiler must diagnose an unavailable or non-routine callee, a missing argument list, wrong arity, an incompatible scalar argument or result, an aggregate argument or result with the wrong referent type, an unprovable aggregate-result lifetime, a result-free call used as a value, the wrong `return` form, a value routine whose end is reachable, and a mismatched forward completion.
+The compiler must diagnose an unavailable or non-routine callee, a missing argument list, wrong arity, an incompatible scalar argument or result, an aggregate argument or result with the wrong referent type, an unprovable aggregate-result lifetime, a result-free call used as a value, the wrong `return` form, a value routine whose end is reachable, an abbreviated body without one incomplete forward, and a duplicate or missing forward completion.
 
 An implementation may bound parameters, arguments, active expression-call nesting, retained signatures, fallthrough-summary depth, and compile-time call-graph metadata. It must publish each limit and issue a capacity diagnostic before dropping an argument, corrupting a signature, losing a result, merging live state, or changing a call target. Runtime activation capacity follows Section 13.9 rather than this compile-time capacity rule.
 
@@ -2396,7 +2413,7 @@ sub even(value as u16) as boolean
     return odd(value - 1)
 end
 
-sub odd(value as u16) as boolean
+sub odd
     if value = 0
         return false
     end
@@ -2440,7 +2457,7 @@ routine-header ::= "sub" NAME "(" [ formal-parameter
                    [ "as" type ] [ "fails" ]
 ```
 
-`fails` is part of the routine signature. A forward declaration and its definition must either both include it or both omit it. The clause does not change the declared parameters or optional success-result type.
+`fails` is part of the routine signature. A forward declaration records it once; the later abbreviated body header cannot repeat it. An ordinary routine without a forward includes it in its complete header. The clause does not change the declared parameters or optional success-result type.
 
 Absent a trap, a failable invocation completes in exactly one of two ways:
 
@@ -2567,7 +2584,7 @@ The compiler must diagnose:
 - a failable invocation with no consumer or more than one consumer;
 - an `on error` clause attached to an ineligible statement;
 - an error destination that is unavailable, non-writable, or not `u8`;
-- a mismatch in `fails` between a forward declaration and definition; and
+- a `fails` clause or other signature text repeated on an abbreviated forward body; and
 - a result-bearing failable routine that can reach its end without success or failure.
 
 An implementation may bound retained failable signatures, nested handlers, failure fixups, and active error destinations. It must publish each limit and issue a capacity diagnostic before exhaustion can discard a check, route a code to the wrong caller, or execute the wrong handler.
@@ -2700,7 +2717,7 @@ line-comment       ::= "//" { source-byte } (line-ending | EOF)
 line-ending        ::= LF | CR LF
 ```
 
-Sections 3.2 through 3.10 define `literal-byte`, accepted source bytes, maximal token formation, case folding, numeric range, and lexical errors. Hexadecimal digits occur only in escapes; integer literals are decimal.
+Sections 3.2 through 3.10 define `literal-byte`, accepted source bytes, maximal token formation, case-sensitive keyword and identifier recognition, numeric range, and lexical errors. Hexadecimal digits occur only in escapes; integer literals are decimal.
 
 The tokenizer emits `NAME`, `NUMBER`, `CHARACTER`, `STRING`, keyword and punctuation terminals, `NEWLINE`, and `EOF`. It emits `NEWLINE` only at delimiter depth zero, collapses blank or comment-only lines, and synthesizes a source-part-boundary or final logical newline when Sections 3.4 and 4.3 require one. Source-part events and metadata remain outside the token grammar. Those stateful rules are part of the token contract and are not context-free productions.
 
@@ -2737,12 +2754,16 @@ field-declaration
 forward-routine
     ::= "forward" routine-header NEWLINE
 routine-definition
-    ::= routine-header NEWLINE
-        { local-declaration }
-        statement-sequence
-        "end" NEWLINE
+    ::= "sub" NAME routine-definition-tail
+routine-definition-tail
+    ::= routine-signature-tail NEWLINE routine-body
+      | NEWLINE routine-body
+routine-body
+    ::= { local-declaration } statement-sequence "end" NEWLINE
 routine-header
-    ::= "sub" NAME "(" [ formal-parameter
+    ::= "sub" NAME routine-signature-tail
+routine-signature-tail
+    ::= "(" [ formal-parameter
         { "," formal-parameter } ] ")"
         [ "as" type ] [ "fails" ]
 formal-parameter
@@ -2880,12 +2901,13 @@ The grammar uses these declared semantic predicates:
 | `isConstantContext`                 | In constants, type bounds, array lengths, string capacities, and program initializers, admit only the compile-time operands and operations from Chapter 8.                                                              |
 | `isInfallibleCallableName`          | Admit a call in an ordinary expression only when the visible signature omits `fails`.                                                                                                                                   |
 | `isIntegerConstantName`             | Admit a `NAME` as a counted-loop step magnitude only when it denotes an earlier `u8` or `u16` constant.                                                                                                                 |
+| `isIncompleteForwardName`           | Admit `sub NAME NEWLINE` as a body header only when the exact name resolves to one incomplete forward; install that forward's stored parameter bindings for the body.                                                   |
 
 Field lookup after `.` uses the selected record type, except that a bounded-string base admits only the intrinsic read-only suffix `.length`. Index selection uses a fixed-array domain or a bounded string's current logical length according to the base type; this distinction needs no grammar change. The `NAME` in `step-constant` must denote an earlier integer constant. Calls within ordinary expressions require an infallible visible routine; failable calls use the separate path above. For `return-source`, a result-free failable caller and callee form the admitted no-result propagation case; otherwise the caller and callee result shapes must match. These are static semantic checks over an otherwise deterministic token stream, not token backtracking.
 
 ### 17.4 Predictive analysis
 
-The repository grammar analyzer mechanically expanded the grammar above to 159 BNF rules over 86 nonterminals. It found no nullable-prefix left-recursion cycle, unreachable nonterminal, or unproductive nonterminal. The LL(1) table contained four conflict sites, all on lookahead `NAME`:
+The repository grammar analyzer mechanically expanded the grammar above to 163 BNF rules over 89 nonterminals. It found no nullable-prefix left-recursion cycle, unreachable nonterminal, or unproductive nonterminal. The LL(1) table contained four conflict sites, all on lookahead `NAME`. The focused test reads this Chapter 17 block directly, so the analyzer evidence does not create a second grammar authority.
 
 | Nonterminal         | Conflict                              | Resolution                          |
 | ------------------- | ------------------------------------- | ----------------------------------- |
@@ -2902,13 +2924,13 @@ The analyzer result checks the collected grammar's formal shape. It does not pro
 
 ### 18.1 Compilation order
 
-The compiler processes one logical compilation unit in token order across the ordered source parts from Section 4.3. Source-part metadata has no static meaning. Every use requires an earlier visible declaration, except that an exact forward routine signature makes that routine callable before its body. A routine header makes its own signature visible before its local prefix and body. At `EOF`, every forward must be completed and exactly one `main` definition satisfying Section 4.7 must exist.
+The compiler processes one logical compilation unit in token order across the ordered source parts from Section 4.3. Source-part metadata has no static meaning. Every use requires an earlier visible declaration, except that an exact forward routine signature makes that routine callable before its body. An ordinary header or earlier forward makes the routine's signature visible before its local prefix and body. At `EOF`, every forward must be completed and exactly one `main` definition satisfying Section 4.7 must exist.
 
 Top-level declarations occur only in the compilation-unit sequence. Parameters occur only in routine headers. Local declarations form one contiguous prefix before the first statement. Record fields occur only inside their record declaration. Conditional and loop bodies contain statements and open no declaration scope.
 
 ### 18.2 Names and declaration classes
 
-Identifiers use complete ASCII-folded identity. Program and routine scopes have one ordinary namespace; record fields have one field scope per record type. No ordinary declaration overloads or shadows another visible ordinary declaration. A suffix name uses the statically selected record type's field scope or the bounded-string `length` intrinsic.
+Identifiers use their complete case-sensitive source spelling as identity. Program and routine scopes have one ordinary namespace; record fields have one field scope per record type. No ordinary declaration overloads, redefines, or shadows another visible ordinary declaration with the same exact identity. Definition order never changes which declaration governs a later use. A suffix name uses the statically selected record type's field scope or the bounded-string `length` intrinsic.
 
 Name-led parsing first resolves the visible binding, then checks its declaration class. A routine name starts a call. A mutable scalar storage root starts an assignment. A record type is valid only in a type position. A failable routine selects the restricted failable-invocation path. Failure to find a binding, finding the wrong class, or finding a later declaration is invalid source.
 
@@ -2938,7 +2960,7 @@ Program variables use the zero or explicit constant initializer forms in Chapter
 
 ### 18.6 Routine and failure checking
 
-A call must match the visible signature in arity and parameter order. Scalar arguments copy compatible values. Aggregate arguments bind aliases of the exact referent type. A forward definition must match routine identity, parameter count, ordered parameter types, result presence and type, and the `fails` effect exactly. Parameter names may differ; the definition's names bind its body.
+A call must match the visible signature in arity and parameter order. Scalar arguments copy compatible values. Aggregate arguments bind aliases of the exact referent type. A forward declaration is the sole complete signature. Its abbreviated `sub NAME` body header must resolve to that exact incomplete forward, and the stored forward parameter names bind the body.
 
 Every failable invocation has exactly one failure consumer. `or fail` requires a failable enclosing routine. A result-free `return invocation() or fail` requires a result-free failable callee and caller. `on error` requires an immediately preceding eligible assignment or call statement and an existing writable `u8` destination. Failable invocations are invalid inside larger expressions or argument lists.
 
@@ -2954,7 +2976,7 @@ No label, goto, exception region, or hidden cleanup edge changes these contexts.
 
 A grammar, visibility, declaration-class, type, lifetime, constant, flow, failure-consumption, or context violation makes the source invalid. The compiler issues a diagnostic and must not present an executable as a successful translation.
 
-An implementation may bound complete source length, source-part count and metadata length, identifier length, symbols, types, fields, forwards, parameters, locals, expression depth, statement nesting, fixups, constants, initializer elements, and other retained compile-time state. It must document every limit that can reject otherwise conforming source and issue a capacity diagnostic before truncation, wraparound, dropped state, or changed semantics. Those limits must still compile every complete accepted Chapter 21 program. Runtime activation capacity is separately implementation-defined, must accommodate the accepted corpus, and traps under Chapter 15 beyond any published activation-depth or activation-storage limit.
+An implementation may bound complete source length, source-part count and metadata length, identifier length, symbols, types, fields, forwards, retained forward parameter-name bytes, parameters, locals, expression depth, statement nesting, fixups, constants, initializer elements, and other retained compile-time state. It must document every limit that can reject otherwise conforming source and issue a capacity diagnostic before truncation, wraparound, dropped state, or changed semantics. Those limits must still compile every complete accepted Chapter 21 program. Runtime activation capacity is separately implementation-defined, must accommodate the accepted corpus, and traps under Chapter 15 beyond any published activation-depth or activation-storage limit.
 
 ## 19. Runtime semantics
 
@@ -3008,18 +3030,18 @@ A trap stops source execution at the failing operation. The environment reports 
 
 The following mechanisms are required in the single Nucleus 0.1 language:
 
-| Area         | Required forms and rules                                                                                                                                                                                                                                             |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Source       | Ordered multipart compilation input with stable part identities and part-relative diagnostics; ASCII-compatible bytes, `//` comments, logical newlines, case-insensitive exact names, decimal integers, byte characters, bounded string literals, fixed punctuation. |
-| Structure    | One program scope and ordered declaration sequence across source parts, declaration before use, exact forwards, fixed `main()` entry, no executable top level.                                                                                                       |
-| Types        | `u8`, `u16`, `boolean`, nominal fixed records, checked fixed arrays, mutable bounded `string[N]` with current length and byte indexing, exact aggregate aliases.                                                                                                     |
-| Declarations | Scalar constants, program variables, record fields, formal parameters, contiguous scalar and aggregate-alias locals, routine definitions and forwards.                                                                                                               |
-| Expressions  | Calls, checked array and bounded-string indexing, field selection and string `.length`, explicit integer conversions, unary `+`/`-`, arithmetic, one comparison, `not`, `and`, and `or`.                                                                             |
-| Statements   | Scalar assignment, name-led calls, `return`, `fail`, `exit`, and `continue`.                                                                                                                                                                                         |
-| Control      | Flat `if`/`elseif`/`else`, pre-test `while`, counted `for` with `to` or `until` and optional constant `step`.                                                                                                                                                        |
-| Routines     | Formal arguments, named locals, no result or one typed result, early return, direct and mutual recursion, forward signatures with exact type shape.                                                                                                                  |
-| Failure      | Explicit `fails`, `fail`, `or fail`, result-free propagating return, and statement-bound `on error`; required safety traps remain separate.                                                                                                                          |
-| System       | Nucleus System Services 0.1 with deterministic initial cursors and output writes, normal entry return, unhandled-error termination, and stable trap reasons.                                                                                                         |
+| Area         | Required forms and rules                                                                                                                                                                                                                                                                                                |
+| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Source       | Ordered multipart compilation input with stable part identities and part-relative diagnostics; flat ordered build manifest; ASCII-compatible bytes, `//` comments, logical newlines, case-sensitive preserved names, lowercase keywords, decimal integers, byte characters, bounded string literals, fixed punctuation. |
+| Structure    | One program scope and ordered declaration sequence across source parts, declaration before use, sole-signature forwards with abbreviated bodies, fixed `main()` entry, no executable top level.                                                                                                                         |
+| Types        | `u8`, `u16`, `boolean`, nominal fixed records, checked fixed arrays, mutable bounded `string[N]` with current length and byte indexing, exact aggregate aliases.                                                                                                                                                        |
+| Declarations | Scalar constants, program variables, record fields, formal parameters, contiguous scalar and aggregate-alias locals, routine definitions and forwards.                                                                                                                                                                  |
+| Expressions  | Calls, checked array and bounded-string indexing, field selection and string `.length`, explicit integer conversions, unary `+`/`-`, arithmetic, one comparison, `not`, `and`, and `or`.                                                                                                                                |
+| Statements   | Scalar assignment, name-led calls, `return`, `fail`, `exit`, and `continue`.                                                                                                                                                                                                                                            |
+| Control      | Flat `if`/`elseif`/`else`, pre-test `while`, counted `for` with `to` or `until` and optional constant `step`.                                                                                                                                                                                                           |
+| Routines     | Formal arguments, named locals, no result or one typed result, early return, direct and mutual recursion, and one complete forward signature whose parameter names bind its abbreviated body.                                                                                                                           |
+| Failure      | Explicit `fails`, `fail`, `or fail`, result-free propagating return, and statement-bound `on error`; required safety traps remain separate.                                                                                                                                                                             |
+| System       | Nucleus System Services 0.1 with deterministic initial cursors and output writes, normal entry return, unhandled-error termination, and stable trap reasons.                                                                                                                                                            |
 
 No conforming compiler may expose a standard profile that omits one of these mechanisms.
 
@@ -3137,7 +3159,7 @@ sub even(value as u16) as boolean
     return odd(value - 1)
 end
 
-sub odd(value as u16) as boolean
+sub odd
     if value = 0
         return false
     end
@@ -3370,3 +3392,36 @@ The last program fails lexically at `$`; Nucleus 0.1 integer literals are decima
 The conformance harness must also present the complete accepted program in Section 21.1 as at least two ordered source parts. It splits the program after a delimiter-depth-zero logical newline, assigns a distinct stable identity to each part, and otherwise preserves every source byte and the declared order. The expected output remains `Y`.
 
 For the diagnostic case, the harness introduces an undeclared name in the second part. The compiler diagnostic must identify the second part's stable identity and the position of that name within the part. A separate run may use different physical files or transport chunks, but those changes must not alter tokens, declaration visibility, validity, or program behaviour.
+
+The harness must also construct the same ordered parts from this flat manifest, using one selected base directory:
+
+```text
+model.nu
+
+main.nu
+```
+
+It emits `model.nu` first and `main.nu` second. The blank line adds no part. The manifest text is not presented to the Nucleus tokenizer, and diagnostics for the second part use `main.nu` as its diagnostic name.
+
+### 21.12 Case-sensitive names and forward parameters
+
+This complete program uses three distinct case variants and a forward parameter binding:
+
+```nucleus
+forward sub render(Player as u8) as u8
+
+var player as u8 = 1
+var PLAYER as u8 = 2
+
+sub render
+    return Player + player + PLAYER
+end
+
+sub main() fails
+    writeOutputByte(render(3)) or fail
+end
+```
+
+The expected standard output is byte value 6. The lowercase keywords are recognized as keywords; `Player`, `player`, and `PLAYER` are distinct identifiers. The abbreviated body obtains `Player` from the forward signature.
+
+Changing the body header to `sub Render` makes the program invalid because no incomplete forward named `Render` exists. Writing `SUB render` is also invalid: `SUB` is a `NAME`, not the keyword `sub`.
