@@ -197,7 +197,7 @@ Compiler simplicity has priority over VM execution speed. The primary target is 
 
 Structured control lowers to ordinary semantic operations; no dedicated high-level control opcode is required. The bytecode front end initially performs no Z80 register allocation, native instruction selection, branch shortening, relocation planning, native calling-convention analysis, or peephole optimization. A later direct-Z80 backend may consume the same semantic operations as they are produced. Its independent measurement covers code, constants, workspace, output, and execution cost.
 
-VM organization remains an experimental choice. The current hypothesis uses a memory-backed virtual-register file with explicit stacks or save regions where nesting and re-entry require them. This is neither a source-global register model nor a settled pure operand-stack design. This chapter fixes no virtual-register count, page layout, slot width, or opcode encoding.
+The companion Nucleus VM Specification fixes the NVM 0.1 organization, including its memory-backed virtual-slot file, caller-save activations, and bytecode encoding. Those choices implement but do not alter the source semantics. This chapter fixes no virtual-slot count, page layout, slot width, or opcode encoding for another conforming backend.
 
 ### 2.7 System boundary and portability
 
@@ -1268,7 +1268,7 @@ Language lifetime is independent of a value's physical location. Reusing a physi
 
 An implementation may bound scalar locals, aggregate-alias bindings, or the metadata used for lifetime checks. It must publish each limit. A compile-time excess requires a capacity diagnostic under Chapter 1. An implementation must not share live activation state or produce a dangling alias when a limit is reached.
 
-The maximum simultaneous activation depth is implementation-defined under Chapter 13. Reaching that limit at runtime performs the activation-capacity trap defined by Chapter 15. The limit and trap do not change the source lifetime of an activation that begins successfully.
+Runtime activation capacity is implementation-defined under Chapter 13. An implementation may bound simultaneous activation depth, activation-storage consumption, or both. Reaching either published limit at runtime performs the activation-capacity trap defined by Chapter 15. The limits and trap do not change the source lifetime of an activation that begins successfully.
 
 Nucleus 0.1 exposes no raw pointer value, address arithmetic, heap allocation, manual deallocation, open slice or view, variable-sized local, arbitrary aggregate copy, or storage-layout query through this chapter. Field byte offsets, array byte offsets, bounded-string encoding, VM carriers, calling opcodes, and save-region layouts belong to the VM specification or a backend contract.
 
@@ -2308,7 +2308,7 @@ Recursion is admitted in Nucleus 0.1. Implementation staging may postpone its co
 
 ### 13.9 Activation capacity
 
-The maximum number of simultaneously active routine invocations is implementation-defined. An implementation must publish the limit and provide at least the depth needed by every complete accepted program in Chapter 21 under its stated inputs. Before beginning a call that would exceed it, the program performs the activation-capacity trap specified by Chapter 15; it must not overwrite a live activation, alias one activation's locals with another, or continue with partial parameter binding.
+Runtime activation capacity is implementation-defined. An implementation may bound the number of simultaneously active routine invocations, the storage consumed by their activation state, or both. It must publish every bound and provide at least the capacity needed by every complete accepted program in Chapter 21 under its stated inputs. Before beginning a call that would exceed a published bound, the program performs the activation-capacity trap specified by Chapter 15; it must not overwrite a live activation, alias one activation's locals with another, or continue with partial parameter binding.
 
 The trap point is after argument evaluation and before the new activation begins. Effects from evaluated arguments remain observable, while the callee performs no local initialization or body statement.
 
@@ -2326,7 +2326,7 @@ The compiler may lower calls and returns to regular semantic operations while pa
 
 The compiler must diagnose an unavailable or non-routine callee, a missing argument list, wrong arity, an incompatible scalar argument or result, an aggregate argument or result with the wrong referent type, an unprovable aggregate-result lifetime, a result-free call used as a value, the wrong `return` form, a value routine whose end is reachable, and a mismatched forward completion.
 
-An implementation may bound parameters, arguments, active expression-call nesting, retained signatures, fallthrough-summary depth, and compile-time call-graph metadata. It must publish each limit and issue a capacity diagnostic before dropping an argument, corrupting a signature, losing a result, merging live state, or changing a call target. Runtime activation depth follows Section 13.9 rather than this compile-time capacity rule.
+An implementation may bound parameters, arguments, active expression-call nesting, retained signatures, fallthrough-summary depth, and compile-time call-graph metadata. It must publish each limit and issue a capacity diagnostic before dropping an argument, corrupting a signature, losing a result, merging live state, or changing a call target. Runtime activation capacity follows Section 13.9 rather than this compile-time capacity rule.
 
 ### 13.12 Examples
 
@@ -2575,7 +2575,7 @@ Nucleus 0.1 defines these trap reasons:
 | `narrowing`           | A dynamic checked `u8(...)` operand exceeds 255. The trap precedes production or storage of the narrowed result.                                                  |
 | `division-by-zero`    | A runtime divisor is zero. The trap precedes production of a quotient.                                                                                            |
 | `loop-range`          | A counted-loop next value would continue but does not fit the counter type. The trap precedes the counter store.                                                  |
-| `activation-capacity` | A call would exceed the implementation-defined active-invocation limit. The trap occurs after argument evaluation and before the new activation begins.           |
+| `activation-capacity` | A call would exceed a published activation-depth or activation-storage limit. The trap occurs after argument evaluation and before the new activation begins.     |
 | `unhandled-error`     | `main` returns failure. The report includes the returned `u8` code.                                                                                               |
 
 A conforming implementation may use more detailed internal causes, but it must preserve these public reason identities. It must not report a required reason as another reason merely because two checks share a helper.
@@ -2937,7 +2937,7 @@ No label, goto, exception region, or hidden cleanup edge changes these contexts.
 
 A grammar, visibility, declaration-class, type, lifetime, constant, flow, failure-consumption, or context violation makes the source invalid. The compiler issues a diagnostic and must not present an executable as a successful translation.
 
-An implementation may bound source length, identifier length, symbols, types, fields, forwards, parameters, locals, expression depth, statement nesting, fixups, constants, initializer elements, and other retained compile-time state. It must document every limit that can reject otherwise conforming source and issue a capacity diagnostic before truncation, wraparound, dropped state, or changed semantics. Those limits must still compile every complete accepted Chapter 21 program. Runtime activation depth is separately implementation-defined, must accommodate the accepted corpus, and traps under Chapter 15 beyond the published limit.
+An implementation may bound source length, identifier length, symbols, types, fields, forwards, parameters, locals, expression depth, statement nesting, fixups, constants, initializer elements, and other retained compile-time state. It must document every limit that can reject otherwise conforming source and issue a capacity diagnostic before truncation, wraparound, dropped state, or changed semantics. Those limits must still compile every complete accepted Chapter 21 program. Runtime activation capacity is separately implementation-defined, must accommodate the accepted corpus, and traps under Chapter 15 beyond any published activation-depth or activation-storage limit.
 
 ## 19. Runtime semantics
 
@@ -3008,7 +3008,7 @@ No conforming compiler may expose a standard profile that omits one of these mec
 
 ### 20.2 Implementation-defined limits
 
-An implementation selects and documents capacities, not syntax or semantics. Permitted limits include source and identifier length, symbol and type counts, record fields, array and string storage capacity below a target's available resources, parameters, locals, nesting, fixups, initializer elements, and simultaneous activation depth. Every limit must be high enough to compile and execute the complete accepted Chapter 21 programs under their stated inputs. A compile-time excess above that floor produces a capacity diagnostic; activation-depth excess above that floor traps at runtime.
+An implementation selects and documents capacities, not syntax or semantics. Permitted limits include source and identifier length, symbol and type counts, record fields, array and string storage capacity below a target's available resources, parameters, locals, nesting, fixups, initializer elements, simultaneous activation depth, and activation-storage consumption. Every limit must be high enough to compile and execute the complete accepted Chapter 21 programs under their stated inputs. A compile-time excess above that floor produces a capacity diagnostic; runtime activation-capacity excess above that floor traps at runtime.
 
 Diagnostic wording, internal representations, bytecode or native encoding, physical layout, service transport, and the external presentation of status are implementation-defined where earlier chapters leave them to an implementation contract. These choices must preserve the source rules.
 
