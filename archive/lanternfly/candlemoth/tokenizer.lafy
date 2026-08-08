@@ -1,0 +1,688 @@
+// Candlemoth — tokenizer
+//
+// Written in level-0 Lanternfly. Uncompiled: this source exists to define
+// level 0 by what a real compiler front end actually uses, rather than by
+// what a specification asserts it might.
+//
+// Constraints obeyed throughout, each of which cost a rewrite:
+//   - local declarations precede every statement in a routine, so no `var`
+//     appears inside a loop or a branch;
+//   - a counted loop's control variable is declared like any other local;
+//   - a statement occupies one line, so no condition spans two;
+//   - there is no `else if`, so a chain of tests is a chain of nestings or
+//     a `select`;
+//   - one byte of lookahead, so a two-character token is recognised after
+//     its first character is already consumed.
+
+// ---------------------------------------------------------------- classes
+
+enum CharClass as u8
+    classEnd
+    classSpace
+    classNewline
+    classLetter
+    classDigit
+    classPunct
+    classQuote
+    classOther
+end
+
+// A 256-entry table classifies a byte in three instructions once the table
+// is page-aligned. Any `select` over the raw character costs an order more.
+// Entries beyond 0x7e are classOther except the terminator, which the
+// producer guarantees appears only at the end.
+const characterClass as CharClass[256] = [
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classSpace, classNewline, classOther,
+    classOther, classNewline, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classSpace, classPunct, classQuote, classPunct,
+    classPunct, classPunct, classPunct, classQuote,
+    classPunct, classPunct, classPunct, classPunct,
+    classPunct, classPunct, classPunct, classPunct,
+    classDigit, classDigit, classDigit, classDigit,
+    classDigit, classDigit, classDigit, classDigit,
+    classDigit, classDigit, classPunct, classPunct,
+    classPunct, classPunct, classPunct, classPunct,
+    classPunct, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classPunct,
+    classPunct, classPunct, classPunct, classLetter,
+    classPunct, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classLetter,
+    classLetter, classLetter, classLetter, classPunct,
+    classPunct, classPunct, classPunct, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classOther,
+    classOther, classOther, classOther, classEnd
+]
+
+// ----------------------------------------------------------------- tokens
+
+enum TokenKind as u8
+    kindEnd
+    kindNewline
+    kindName
+    kindNumber
+    kindKeyword
+    kindPunct
+    kindBad
+end
+
+enum Punct as u8
+    punctNone
+    punctLeftParen
+    punctRightParen
+    punctLeftBracket
+    punctRightBracket
+    punctComma
+    punctPlus
+    punctMinus
+    punctStar
+    punctSlash
+    punctEqual
+    punctNotEqual
+    punctLess
+    punctLessEqual
+    punctGreater
+    punctGreaterEqual
+end
+
+enum Keyword as u8
+    keywordNone
+    keywordSub
+    keywordEnd
+    keywordVar
+    keywordConst
+    keywordIf
+    keywordThen
+    keywordElse
+    keywordWhile
+    keywordFor
+    keywordUntil
+    keywordSelect
+    keywordCase
+    keywordReturn
+    keywordExit
+    keywordContinue
+    keywordAs
+    keywordEnum
+    keywordForward
+    keywordAnd
+    keywordOr
+    keywordNot
+    keywordTrue
+    keywordFalse
+end
+
+const keywordCount as u16 = 24
+
+// ------------------------------------------------------------ diagnostics
+
+enum Fault as u8
+    faultNone
+    faultBadCharacter
+    faultNumberTooLarge
+    faultNameTooLong
+    faultTooManyNames
+end
+
+// Level 0 has no `fails`, `on error` or `defer`, and a single-pass compiler
+// has no use for them: it panics and resynchronises, and unwinding would
+// lose the position it resynchronises from. A module-level fault with an
+// early return serves, checked where its absence would spin.
+var fault as Fault = faultNone
+var faultLine as u16 = 0
+
+// ------------------------------------------------------------ name arena
+
+// Identifiers are interned. They are not offsets into the source, which
+// streams through a one-byte window and holds no stable position.
+// **Names are hashes, not spellings.**
+//
+// An identifier is two sixteen-bit hashes of its case-folded bytes and nothing
+// else. The arena that held the spellings, the offsets into it, the lengths
+// and the staging buffer are all gone — 9,920 bytes of name storage becomes
+// 4,352.
+//
+// **This is not sound, and it is a property of this compiler rather than of
+// the language.** Two identifiers whose hashes both agree become the same
+// name, and with the spellings gone the compiler cannot tell. It is a silent
+// miscompile, not a diagnostic.
+//
+// **Level 0 compares names exactly.** A conforming compiler must, and the seed
+// does. This is a bootstrap-compiler limitation taken deliberately because the
+// machine is small and 5,568 bytes matter more here than the guarantee does.
+// `docs/level0.md` records the boundary.
+//
+// `test/names.test.ts` checks that no two identifiers in Candlemoth's own
+// source collide, which covers the input this compiler must handle to exist.
+// Nothing can cover arbitrary level-0 source.
+//
+// Two multipliers rather than one because a single sixteen-bit hash collides
+// four times over these identifiers, and every pair tried collides none.
+//
+// Nothing is lost in diagnostics, because a compiler with no strings cannot
+// echo a name in the first place.
+const nameLimit as u16 = 640
+const bucketCount as u16 = 256
+const bucketMask as u16 = 255
+
+// A name longer than this is a fault. Nothing stores the characters, so the
+// limit exists only to stop a runaway scan.
+const nameLengthLimit as u8 = 64
+
+const hashMultiplierA as u16 = 31
+const hashMultiplierB as u16 = 131
+
+var nameHashA as u16[nameLimit]
+var nameHashB as u16[nameLimit]
+var nameNext as u16[nameLimit]
+var nameCount as u16 = 0
+
+var bucket as u16[bucketCount]
+
+// The hashes of the identifier being scanned, accumulated as its bytes are
+// read. No buffer: a character is folded, mixed in, and forgotten.
+var scanHashA as u16 = 0
+var scanHashB as u16 = 0
+
+var keywordName as u16[keywordCount]
+
+// ------------------------------------------------------------ source read
+
+var nextByte as u8 = 0
+var sourceLine as u16 = 1
+
+// ---------------------------------------------------------- current token
+
+var tokenKind as TokenKind = kindEnd
+var tokenNameIndex as u16 = 0
+var tokenNumber as u16 = 0
+var tokenPunct as Punct = punctNone
+var tokenKeyword as Keyword = keywordNone
+var tokenLine as u16 = 1
+
+forward sub advance()
+forward sub reportFault(code as Fault)
+forward sub foldCase(value as u8) as u8
+forward sub beginName()
+forward sub mixName(value as u8)
+forward sub internName() as u16
+forward sub classifyKeyword() as Keyword
+
+
+sub advance()
+    nextByte = readSourceByte()
+    if nextByte = 10 then
+        sourceLine = sourceLine + 1
+    end
+end
+
+sub reportFault(code as Fault)
+    if fault = faultNone then
+        fault = code
+        faultLine = sourceLine
+    end
+end
+
+sub foldCase(value as u8) as u8
+    if value >= 65 then
+        if value <= 90 then
+            return value + 32
+        end
+    end
+    return value
+end
+
+// ---------------------------------------------------------------- blanks
+
+// A comment is two slashes. With one byte of lookahead the first slash is
+// already consumed when the second is seen, so a slash that turns out to be
+// division has to be remembered rather than pushed back. `heldSlash` is
+// that memory, and it is the shape a one-byte window forces.
+var heldSlash as boolean = false
+var heldSlashLine as u16 = 1
+
+// Delimiter depth, so a newline inside parentheses or brackets is not a
+// statement boundary. Section 2.4 already defines that rule; level 0
+// inherits it rather than inventing a continuation convention.
+var delimiterDepth as u8 = 0
+
+// Set while a token has been seen since the last newline, so end of input
+// can synthesise the boundary the source omitted.
+var pendingFinalNewline as boolean = false
+
+sub skipRemainingName()
+    var kind as CharClass = classOther
+    while true
+        kind = characterClass[nextByte]
+        if kind <> classLetter then
+            if kind <> classDigit then
+                return
+            end
+        end
+        advance()
+    end
+end
+
+sub skipRemainingDigits()
+    while characterClass[nextByte] = classDigit
+        advance()
+    end
+end
+
+sub skipComment()
+    var kind as CharClass = classOther
+    while true
+        kind = characterClass[nextByte]
+        if kind = classEnd then
+            return
+        end
+        if kind = classNewline then
+            return
+        end
+        advance()
+    end
+end
+
+// Newlines are not blank. A statement is newline-terminated, so the parser
+// needs the boundary and `skipBlanks` must stop at one rather than consume
+// it. This is the single change that lets a statement parser exist at all.
+sub skipBlanks()
+    var kind as CharClass = classOther
+    while true
+        kind = characterClass[nextByte]
+        select kind
+        case classSpace
+            advance()
+        case classPunct
+            if nextByte <> 47 then
+                return
+            end
+            heldSlashLine = sourceLine
+            advance()
+            if nextByte <> 47 then
+                heldSlash = true
+                return
+            end
+            skipComment()
+        else
+            return
+        end
+    end
+end
+
+// ------------------------------------------------------------------ scan
+
+sub scanName()
+    var kind as CharClass = classOther
+    var length as u8 = 0
+
+    beginName()
+    while true
+        kind = characterClass[nextByte]
+        if kind <> classLetter then
+            if kind <> classDigit then
+                exit
+            end
+        end
+        if length >= nameLengthLimit then
+            reportFault(faultNameTooLong)
+            skipRemainingName()
+            return
+        end
+        // Case folds here and the byte is then forgotten. Folding once
+        // removes case comparison from the hottest loop in the program, and
+        // nothing keeps the spelling.
+        mixName(foldCase(nextByte))
+        length = length + 1
+        advance()
+    end
+
+    tokenNameIndex = internName()
+    tokenKeyword = classifyKeyword()
+    if tokenKeyword = keywordNone then
+        tokenKind = kindName
+    else
+        tokenKind = kindKeyword
+    end
+end
+
+
+sub scanNumber()
+    var accumulated as u16 = 0
+    var digit as u8 = 0
+    while characterClass[nextByte] = classDigit
+        // Section 3.1 gives `u8 - u8` the result type `i16`, so narrowing
+        // back to a byte is written rather than assumed.
+        digit = u8(nextByte - 48)
+        // 6553 is the largest value that survives a multiply by ten with a
+        // digit still to add. The check precedes the multiply because there
+        // is no overflow trap to catch it afterwards.
+        if accumulated > 6553 then
+            reportFault(faultNumberTooLarge)
+            skipRemainingDigits()
+            return
+        end
+        if accumulated = 6553 then
+            if digit > 5 then
+                // 65536 through 65539 pass a `> 6553` test and then wrap.
+                reportFault(faultNumberTooLarge)
+                skipRemainingDigits()
+                return
+            end
+        end
+        accumulated = accumulated * 10 + u16(digit)
+        advance()
+    end
+    tokenNumber = accumulated
+    tokenKind = kindNumber
+end
+
+sub scanPunct()
+    var first as u8 = 0
+    first = nextByte
+    advance()
+
+    select first
+    case 40
+        tokenPunct = punctLeftParen
+        delimiterDepth = delimiterDepth + 1
+    case 41
+        tokenPunct = punctRightParen
+        if delimiterDepth > 0 then
+            delimiterDepth = u8(delimiterDepth - 1)
+        end
+    case 91
+        tokenPunct = punctLeftBracket
+        delimiterDepth = delimiterDepth + 1
+    case 93
+        tokenPunct = punctRightBracket
+        if delimiterDepth > 0 then
+            delimiterDepth = u8(delimiterDepth - 1)
+        end
+    case 44
+        tokenPunct = punctComma
+    case 43
+        tokenPunct = punctPlus
+    case 45
+        tokenPunct = punctMinus
+    case 42
+        tokenPunct = punctStar
+    case 47
+        tokenPunct = punctSlash
+    case 61
+        tokenPunct = punctEqual
+    case 60
+        // Exclusive, or `<>` followed by `=` consumes three characters and
+        // reports `<=` where the source holds two tokens.
+        if nextByte = 62 then
+            advance()
+            tokenPunct = punctNotEqual
+        else
+            if nextByte = 61 then
+                advance()
+                tokenPunct = punctLessEqual
+            else
+                tokenPunct = punctLess
+            end
+        end
+    case 62
+        tokenPunct = punctGreater
+        if nextByte = 61 then
+            advance()
+            tokenPunct = punctGreaterEqual
+        end
+    else
+        reportFault(faultBadCharacter)
+        tokenKind = kindBad
+        return
+    end
+
+    tokenKind = kindPunct
+end
+
+// ------------------------------------------------------------- the driver
+
+sub nextToken()
+    var kind as CharClass = classOther
+
+    if heldSlash then
+        heldSlash = false
+        tokenLine = heldSlashLine
+        tokenPunct = punctSlash
+        tokenKind = kindPunct
+        return
+    end
+
+    skipBlanks()
+    if heldSlash then
+        heldSlash = false
+        tokenLine = heldSlashLine
+        tokenPunct = punctSlash
+        tokenKind = kindPunct
+        return
+    end
+
+    tokenLine = sourceLine
+    kind = characterClass[nextByte]
+
+    select kind
+    case classEnd
+        // A source that ends without a trailing newline still ends its last
+        // statement, so the boundary is synthesised once before end of
+        // input. Without this a final declaration is never terminated.
+        if pendingFinalNewline then
+            pendingFinalNewline = false
+            tokenKind = kindNewline
+            return
+        end
+        tokenKind = kindEnd
+    case classNewline
+        if delimiterDepth > 0 then
+            // Inside parentheses or brackets a physical newline continues
+            // the statement, under section 2.4.
+            advance()
+            nextToken()
+            return
+        end
+        // Consecutive newlines are one boundary, so a blank line does not
+        // become an empty statement.
+        while characterClass[nextByte] = classNewline
+            advance()
+            skipBlanks()
+        end
+        tokenKind = kindNewline
+    case classLetter
+        scanName()
+        pendingFinalNewline = true
+    case classDigit
+        scanNumber()
+        pendingFinalNewline = true
+    case classPunct
+        scanPunct()
+        pendingFinalNewline = true
+    else
+        // A quote has no meaning in level 0, which has no strings, so it
+        // joins every other unexpected byte as one fault rather than eight.
+        reportFault(faultBadCharacter)
+        tokenKind = kindBad
+        advance()
+    end
+end
+
+// The keyword spellings are one constant byte array with parallel offset and
+// length tables, not a call per byte. Level 0 has no strings, which forces an
+// explicit byte representation — it does not force turning static data into
+// repeated code. Slot zero is `keywordNone` and is never read.
+const keywordTextBytes as u16 = 95
+
+const keywordText as u8[keywordTextBytes] = [
+    115, 117, 98, 101, 110, 100, 118, 97, 114, 99, 111, 110,
+    115, 116, 105, 102, 116, 104, 101, 110, 101, 108, 115, 101,
+    119, 104, 105, 108, 101, 102, 111, 114, 117, 110, 116, 105,
+    108, 115, 101, 108, 101, 99, 116, 99, 97, 115, 101, 114,
+    101, 116, 117, 114, 110, 101, 120, 105, 116, 99, 111, 110,
+    116, 105, 110, 117, 101, 97, 115, 101, 110, 117, 109, 102,
+    111, 114, 119, 97, 114, 100, 97, 110, 100, 111, 114, 110,
+    111, 116, 116, 114, 117, 101, 102, 97, 108, 115, 101
+]
+
+const keywordStart as u16[keywordCount] = [
+    0, 0, 3, 6, 9, 14, 16, 20, 24, 29, 32, 37,
+    43, 47, 53, 57, 65, 67, 71, 78, 81, 83, 86, 90
+]
+
+const keywordSize as u8[keywordCount] = [
+    0, 3, 3, 3, 5, 2, 4, 4, 5, 3, 5, 6,
+    4, 6, 4, 8, 2, 4, 7, 3, 2, 3, 4, 5
+]
+
+sub installKeywords()
+    var slot as u16 = 0
+    var index as u16 = 0
+    var at as u16 = 0
+    for slot = 1 until keywordCount
+        at = keywordStart[slot]
+        beginName()
+        for index = 0 until u16(keywordSize[slot])
+            mixName(keywordText[at + index])
+        end
+        keywordName[slot] = internName()
+    end
+end
+
+sub startTokenizer()
+    var index as u16 = 0
+    nameCount = 0
+    for index = 0 until bucketCount
+        bucket[index] = nameLimit
+    end
+    for index = 0 until keywordCount
+        keywordName[index] = nameLimit
+    end
+    sourceLine = 1
+    fault = faultNone
+    heldSlash = false
+    delimiterDepth = 0
+    pendingFinalNewline = false
+    installKeywords()
+    advance()
+    nextToken()
+end
+
+// ---------------------------------------------------------------- interning
+
+sub beginName()
+    scanHashA = 0
+    scanHashB = 0
+end
+
+// Mixes one folded byte into both hashes.
+//
+// Shift and add rather than multiply: a sixteen-bit multiply is about ninety
+// times an add on this machine. 31 is `x * 32 - x`, and 131 is
+// `x * 128 + x + x + x` — **three** additions, not two. An earlier version had
+// two, which computes 130, so the collision test was validating an algorithm
+// the compiler did not run.
+sub mixName(value as u8)
+    scanHashA = scanHashA * 32 - scanHashA + u16(value)
+    scanHashB = scanHashB * 128 + scanHashB + scanHashB + scanHashB + u16(value)
+end
+
+// Returns the index of the scanned name, adding it if it is new.
+//
+// Two names whose hashes both agree are **the same name here**, and nothing
+// remains to tell them apart. That is the trade: 5,568 bytes against a
+// guarantee. `test/names.test.ts` checks Candlemoth's own identifiers.
+sub internName() as u16
+    var slot as u16 = 0
+    var candidate as u16 = 0
+    var fresh as u16 = 0
+
+    // A power-of-two mask, never a remainder: a remainder is a divide.
+    slot = scanHashA and bucketMask
+    candidate = bucket[slot]
+
+    while candidate <> nameLimit
+        if nameHashA[candidate] = scanHashA then
+            if nameHashB[candidate] = scanHashB then
+                return candidate
+            end
+        end
+        candidate = nameNext[candidate]
+    end
+
+    if nameCount >= nameLimit then
+        reportFault(faultTooManyNames)
+        return 0
+    end
+
+    fresh = nameCount
+    nameHashA[fresh] = scanHashA
+    nameHashB[fresh] = scanHashB
+    nameNext[fresh] = bucket[slot]
+    bucket[slot] = fresh
+    nameCount = nameCount + 1
+    return fresh
+end
+
+
+// Keywords are interned like any other name and recognised by index. The
+// alternative, comparing bytes at every identifier, puts a string compare in
+// the hottest loop, and level 0 has no strings to compare with.
+sub classifyKeyword() as Keyword
+    var index as u16 = 0
+    for index = 1 until keywordCount
+        if keywordName[index] = tokenNameIndex then
+            // Section 3 already defines a checked integer-to-enum
+            // conversion: an invalid constant is a compile error, an invalid
+            // runtime value raises F-RANGE. The twenty-five-arm select this
+            // replaces existed only because an earlier draft asserted the
+            // operation did not exist.
+            return Keyword(index)
+        end
+    end
+    return keywordNone
+end

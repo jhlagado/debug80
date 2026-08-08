@@ -1,5 +1,6 @@
 /**
- * Checks every link in the repository's tracked markdown.
+ * Checks every link in the repository's active tracked Markdown. Material
+ * under archive/ is preserved in its retired state and is not maintained.
  *
  * Two kinds of breakage matter here and both have bitten us:
  *
@@ -26,7 +27,7 @@ const PUBLISHED = new Set(['apps/debug80-vscode/README.md']);
 
 const files = execFileSync('git', ['ls-files', '*.md'], { cwd: ROOT, encoding: 'utf8' })
   .split('\n')
-  .filter(Boolean);
+  .filter((file) => file && !file.startsWith('archive/'));
 
 /** Markdown inline links, plus bare autolinks in angle brackets. */
 function linksIn(text) {

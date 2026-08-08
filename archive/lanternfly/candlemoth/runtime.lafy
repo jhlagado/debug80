@@ -1,0 +1,69 @@
+// Candlemoth level-0 runtime image — FLAT PORT PROFILE
+//
+// This image is for the `flat` profile only. Its trap epilogues write to
+// ports 03 and 02 directly rather than through a service call, so a host
+// using the vector lowering needs its own image and its own runtime
+// source. See review finding 26.
+//
+// GENERATED from candlemoth/runtime.asm. Do not edit: run
+// `npm run generate:runtime` instead. The plan requires this array to be
+// generated rather than transcribed, so the assembly source and the bytes
+// Candlemoth plants cannot drift apart.
+//
+// The image is NOT position-independent: the routines call each other, the
+// only CALL this machine has is absolute, and the comparison routines share
+// two exits reached by absolute jumps. It is assembled at one fixed origin
+// and has to be placed there.
+//
+// Page zero is reserved whole: the entry jump at 0000, the restart vectors
+// at 0008 through 0038, and the NMI entry at 0066. Code starts at 0100,
+// where CP/M starts it and for the same reason. The runtime is first, and
+// program code follows it.
+//
+// The ordinals are the order of the `Helper` enum in expression.lafy, which
+// `docs/level0-lowering.md` states as part of the lowering contract.
+
+const runtimeOrigin as u16 = 256
+const runtimeBytes as u16 = 262
+
+const runtimeImage as u8[runtimeBytes] = [
+    68, 77, 33, 0, 0, 120, 177, 200, 203, 56, 203, 25,
+    48, 1, 25, 235, 41, 235, 24, 241, 124, 181, 202, 253,
+    1, 68, 77, 33, 0, 0, 62, 16, 203, 35, 203, 18,
+    237, 106, 237, 66, 56, 3, 28, 24, 1, 9, 61, 32,
+    239, 235, 201, 122, 172, 245, 203, 122, 196, 74, 1, 203,
+    124, 196, 82, 1, 205, 20, 1, 241, 203, 127, 200, 195,
+    82, 1, 175, 147, 95, 62, 0, 154, 87, 201, 175, 149,
+    111, 62, 0, 156, 103, 201, 183, 237, 82, 202, 234, 1,
+    195, 238, 1, 183, 237, 82, 202, 238, 1, 195, 234, 1,
+    183, 237, 82, 218, 238, 1, 202, 238, 1, 195, 234, 1,
+    183, 237, 82, 218, 238, 1, 195, 234, 1, 183, 237, 82,
+    218, 234, 1, 195, 238, 1, 183, 237, 82, 218, 234, 1,
+    202, 234, 1, 195, 238, 1, 183, 237, 82, 202, 238, 1,
+    226, 165, 1, 242, 238, 1, 195, 234, 1, 250, 238, 1,
+    195, 234, 1, 183, 237, 82, 202, 234, 1, 226, 186, 1,
+    242, 238, 1, 195, 234, 1, 250, 238, 1, 195, 234, 1,
+    183, 237, 82, 202, 238, 1, 226, 207, 1, 242, 234, 1,
+    195, 238, 1, 250, 234, 1, 195, 238, 1, 183, 237, 82,
+    202, 234, 1, 226, 228, 1, 242, 234, 1, 195, 238, 1,
+    250, 234, 1, 195, 238, 1, 33, 1, 0, 201, 33, 0,
+    0, 201, 229, 183, 237, 82, 225, 216, 62, 1, 195, 255,
+    1, 62, 2, 211, 3, 62, 2, 211, 2, 118
+]
+
+const runtimeAddress as u16[helperCount] = [256, 276, 307, 346, 355, 364, 376, 385, 394, 406, 427, 448, 469, 498]
+
+// Called once the runtime image has been placed. The address it
+// reports is checked rather than trusted, because a runtime placed anywhere
+// else would run its own absolute jumps into program code.
+sub placeRuntime(base as u16)
+    var ordinal as u16 = 0
+
+    if base <> runtimeOrigin then
+        reportStmtFault(stmtFaultRuntimeMisplaced)
+        return
+    end
+    for ordinal = 0 until helperCount
+        helperAddress[ordinal] = runtimeAddress[ordinal]
+    end
+end

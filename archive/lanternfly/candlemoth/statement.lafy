@@ -1,0 +1,1621 @@
+// Candlemoth — declaration and statement parser
+//
+// Written in level-0 Lanternfly. Last of the four files: tokenizer,
+// expression, symbols, statement. This one supplies the destination types
+// the expression parser settles exact literals against. Parsing Candlemoth's
+// complete source is the test of whether these four files cover level 0.
+
+// ------------------------------------------------------------------ labels
+//
+// Lanternfly is single-pass. A jump whose target is already known carries it
+// directly; a jump forward emits a placeholder and records where the operand
+// sits, and `placeLabel` writes the target in when it is reached. That is
+// back-patching, it is what `forward` exists for, and it is what a Pascal
+// compiler has always done.
+//
+// An earlier draft used three passes and a label table sized by the whole
+// program — 512 entries, 1,024 bytes, holding every label whether or not
+// anything was still waiting for it. The patch list holds only what is
+// *unresolved*: across the whole front end that peaks at 27 entries against
+// 502 labels.
+//
+// Patching writes into output already sent, which `seekCode` provides. The
+// alternative, buffering the image in memory and flushing at the end, needs a
+// buffer as large as the compiler and does not fit.
+
+forward sub emitCall(slot as u16)
+forward sub recordCallSite(callee as u16)
+forward sub patchCallSites()
+forward sub assignRoutineIndex(slot as u16)
+forward sub finishUnit()
+
+// `seekCode` names an offset into the output stream and `here` is an address,
+// so every seek converts. A flat image based at zero would hide the
+// distinction rather than remove it.
+forward sub imageOrigin() as u16
+
+// A label is alive only until it is placed, so identifiers come from a small
+// pool and return to it. Nesting bounds how many are alive at once.
+const labelLimit as u16 = 32
+
+var labelAddress as u16[labelLimit]
+var labelPlaced as boolean[labelLimit]
+var labelInUse as boolean[labelLimit]
+
+// One entry per forward reference not yet paid off.
+const patchLimit as u16 = 64
+
+var patchAt as u16[patchLimit]
+var patchLabel as u16[patchLimit]
+var patchCount as u16 = 0
+
+// Every call site, recorded once and kept until the image is finished.
+//
+// One table does three jobs that were three tables and did not work together:
+//
+//   - the **patch list**, because a call to a routine not yet defined needs
+//     its operand filled in later;
+//   - the **call graph**, because caller and callee are what the
+//     strongly-connected components are computed from;
+//   - the **redirection list**, because a call inside a component is patched
+//     to the callee's save and restore stub rather than to the callee.
+//
+// The third job is why an entry carries its operand offset even when the
+// callee was already defined, and why nothing is discarded when a body
+// appears. An earlier version wrote the final address immediately for a
+// resolved call and dropped a forward call's offset once paid, so once the
+// components were computed there was nowhere left to redirect either kind.
+//
+// **No call operand is written during the walk.** They are all written once
+// the source ends and the stubs exist, which is the only moment the right
+// target is known.
+//
+// Four bytes a site rather than two: offset, caller, callee.
+//
+// A list, not a bit matrix. The matrix was chosen on an argument that did not
+// survive measurement: it assumed an edge costs four bytes, when a routine
+// ordinal fits a byte. It also grows with the *square* of the routine count
+// while a list grows with the calls.
+//
+// Save-around-call applies to routines inside a strongly-connected component,
+// the components come from the edges, and **the edges live in the bodies**. A
+// `forward` declaration carries a name and a signature and no edge at all, so
+// it cannot supply the graph. `bootstrap-plan.md` records that an earlier
+// draft proposed exactly that and why it fails.
+//
+// `test/capacity.test.ts` measures every Candlemoth file against these limits
+// and fails when the source outgrows them. The first version stopped at 128
+// routines when the source already had 145.
+const routineLimit as u16 = 192
+const callSiteLimit as u16 = 1024
+
+var callSiteAt as u16[callSiteLimit]
+var callSiteFrom as u8[callSiteLimit]
+var callSiteTo as u8[callSiteLimit]
+var callSiteCount as u16 = 0
+var routineCount as u16 = 0
+
+// Entry address by routine ordinal, which is what a call site names.
+//
+// **One longer than `routineLimit`.** An ordinal is stored one greater so that
+// zero means unassigned, so the values run 1 to `routineLimit` and indexing a
+// `routineLimit`-element array with the last of them runs off the end.
+const routineSlots as u16 = 193
+
+var routineAddress as u16[routineSlots]
+
+// The routine whose body is being read, one greater so zero means module
+// level.
+var currentRoutine as u16 = 0
+
+enum StatementFault as u8
+    stmtFaultNone
+    stmtFaultTooManyLabels
+    stmtFaultTooManyPatches
+    stmtFaultTooManyRoutines
+    stmtFaultTooManyCallSites
+    stmtFaultUnresolvedCall
+    stmtFaultForwardWithoutBody
+    stmtFaultExpectedName
+    stmtFaultExpectedType
+    stmtFaultExpectedThen
+    stmtFaultExpectedEnd
+    stmtFaultExpectedNewline
+    stmtFaultExpectedAssign
+    stmtFaultExpectedUntil
+    stmtFaultExpectedParen
+    stmtFaultUnexpectedToken
+    stmtFaultReturnOutsideSub
+    stmtFaultExitOutsideLoop
+    stmtFaultTooManyArguments
+    stmtFaultForwardDisagreement
+    stmtFaultWrongArgumentCount
+    stmtFaultRuntimeMisplaced
+    stmtFaultDeclarationAfterStatement
+    stmtFaultEnumNotByte
+    stmtFaultCaseTypeMismatch
+    stmtFaultTooManyElements
+    stmtFaultElementNotConstant
+    stmtFaultArrayInitialiser
+end
+
+var stmtFault as StatementFault = stmtFaultNone
+var stmtFaultLine as u16 = 0
+
+sub reportStmtFault(code as StatementFault)
+    if stmtFault = stmtFaultNone then
+        stmtFault = code
+        stmtFaultLine = tokenLine
+    end
+end
+
+sub allocateLabel() as u16
+    var index as u16 = 0
+
+    for index = 0 until labelLimit
+        if labelInUse[index] = false then
+            labelInUse[index] = true
+            labelPlaced[index] = false
+            labelAddress[index] = 0
+            return index
+        end
+    end
+    reportStmtFault(stmtFaultTooManyLabels)
+    return 0
+end
+
+// Fixes a label here and pays off every forward reference waiting for it.
+// This is the only place already-emitted output is written to.
+sub placeLabel(id as u16)
+    var index as u16 = 0
+    var kept as u16 = 0
+    var resume as u16 = here
+
+    labelAddress[id] = here
+    labelPlaced[id] = true
+
+    for index = 0 until patchCount
+        if patchLabel[index] = id then
+            seekCode(patchAt[index] - imageOrigin())
+            writeCodeByte(u8(here and 255))
+            writeCodeByte(u8(here / 256))
+        else
+            // Compact the list in place, so it holds only what is still
+            // unresolved and never grows with the program.
+            patchAt[kept] = patchAt[index]
+            patchLabel[kept] = patchLabel[index]
+            kept = kept + 1
+        end
+    end
+    patchCount = kept
+    seekCode(resume - imageOrigin())
+end
+
+// Releases a label once nothing can reference it again. A loop's exit label
+// dies at `end`; a loop's top is held by the loop stack until then.
+sub releaseLabel(id as u16)
+    labelInUse[id] = false
+end
+
+// ------------------------------------------------------------------ jumps
+//
+// Every jump is three-byte absolute, forward and backward alike. `JR` reaches
+// only ±127, so choosing it would make the branch form depend on a measured
+// distance, and a forward jump's distance is unknown when it is emitted. One
+// shape everywhere costs a byte per backward branch and removes the question.
+
+const opJump as u8 = 195
+const opJumpIfZero as u8 = 202
+const opJumpIfNotZero as u8 = 194
+const opReturn as u8 = 201
+const opOrH as u8 = 180
+
+// A jump to a label. Backward, the address is known; forward, a placeholder
+// goes out and the operand's address joins the patch list.
+// Records where a placeholder sits, so `placeLabel` can pay it off. Split out
+// so `emitJumpTarget` stays two straight-line arms and its byte count is
+// readable from the source.
+sub recordPatch(id as u16)
+    if patchCount >= patchLimit then
+        reportStmtFault(stmtFaultTooManyPatches)
+        return
+    end
+    patchAt[patchCount] = here
+    patchLabel[patchCount] = id
+    patchCount = patchCount + 1
+end
+
+sub emitJumpTarget(id as u16)
+    if labelPlaced[id] then
+        emitWord(labelAddress[id])
+        return
+    end
+    recordPatch(id)
+    emitWord(0)
+end
+
+sub emitJump(id as u16)
+    emit(opJump)
+    emitJumpTarget(id)
+end
+
+// Tests the accumulator against zero, which for a Boolean is the false case.
+sub emitTest()
+    emit(opLoadAFromL)
+    emit(opOrH)
+end
+
+sub emitJumpIfFalse(id as u16)
+    emitTest()
+    emit(opJumpIfZero)
+    emitJumpTarget(id)
+end
+
+sub emitJumpIfTrue(id as u16)
+    emitTest()
+    emit(opJumpIfNotZero)
+    emitJumpTarget(id)
+end
+
+// ------------------------------------------------------------------- types
+//
+// The four type spellings are interned once at startup, so recognising a
+// type is four `u16` comparisons rather than four spelling compares. They
+// are ordinary names rather than keywords, which lets a local called `count`
+// coexist with a type called `u8` without a reserved-word list that grows
+// with the type system.
+
+const typeTextBytes as u16 = 15
+const typeText as u8[typeTextBytes] = [
+    117, 56,                                    // u8
+    117, 49, 54,                                // u16
+    105, 49, 54,                                // i16
+    98, 111, 111, 108, 101, 97, 110             // boolean
+]
+const typeTextStart as u16[4] = [0, 2, 5, 8]
+const typeTextSize as u8[4] = [2, 3, 3, 7]
+
+var typeNameU8 as u16 = 0
+var typeNameU16 as u16 = 0
+var typeNameI16 as u16 = 0
+var typeNameBoolean as u16 = 0
+
+// The same copy-then-intern shape `installKeywords` uses, for the same
+// reason: level 0 has no strings, so a spelling is a slice of a constant
+// byte array.
+sub internTypeNames()
+    var which as u16 = 0
+    var index as u16 = 0
+    var at as u16 = 0
+    var interned as u16 = 0
+
+    for which = 0 until 4
+        at = typeTextStart[which]
+        beginName()
+        for index = 0 until u16(typeTextSize[which])
+            mixName(typeText[at + index])
+        end
+        interned = internName()
+        if which = 0 then
+            typeNameU8 = interned
+        end
+        if which = 1 then
+            typeNameU16 = interned
+        end
+        if which = 2 then
+            typeNameI16 = interned
+        end
+        if which = 3 then
+            typeNameBoolean = interned
+        end
+    end
+end
+
+// The type a name denotes, or `typeNone` when it denotes no type. This is
+// what tells `X(y)` apart from `f(y)` without a second token: a name that
+// names a type is a conversion and a name that names a subroutine is a call.
+sub conversionTarget(name as u16) as TypeKind
+    var found as u16 = 0
+
+    if name = typeNameU8 then
+        return typeU8
+    end
+    if name = typeNameU16 then
+        return typeU16
+    end
+    if name = typeNameI16 then
+        return typeI16
+    end
+    if name = typeNameBoolean then
+        return typeBoolean
+    end
+    found = findSymbol(name)
+    if found = 0 then
+        return typeNone
+    end
+    if symbolClassOf(found - 1) = symbolEnumType then
+        return typeU8
+    end
+    return typeNone
+end
+
+// The declaration slot of the enum a name denotes, one greater, or zero.
+sub enumSlotOfTypeName(name as u16) as u16
+    var found as u16 = findSymbol(name)
+
+    if found = 0 then
+        return 0
+    end
+    if symbolClassOf(found - 1) = symbolEnumType then
+        return found
+    end
+    return 0
+end
+
+sub parseTypeName() as TypeKind
+    var name as u16 = 0
+    var found as u16 = 0
+
+    if tokenKind <> kindName then
+        reportStmtFault(stmtFaultExpectedType)
+        return typeNone
+    end
+    name = tokenNameIndex
+    nextToken()
+    if name = typeNameU8 then
+        declaredEnum = 0
+        return typeU8
+    end
+    if name = typeNameU16 then
+        declaredEnum = 0
+        return typeU16
+    end
+    if name = typeNameI16 then
+        declaredEnum = 0
+        return typeI16
+    end
+    if name = typeNameBoolean then
+        declaredEnum = 0
+        return typeBoolean
+    end
+    found = findSymbol(name)
+    if found > 0 then
+        if symbolClassOf(found - 1) = symbolEnumType then
+            // An enum is stored as the `u8` it is declared over; its identity
+            // travels beside the type rather than inside it.
+            declaredEnum = found
+            return typeU8
+        end
+    end
+    declaredEnum = 0
+    reportStmtFault(stmtFaultExpectedType)
+    return typeNone
+end
+
+// Set by `parseTypeName` to the enum a written type denotes, or zero.
+var declaredEnum as u16 = 0
+
+// --------------------------------------------------------------- boundaries
+
+sub expectNewline()
+    if tokenKind = kindNewline then
+        nextToken()
+        return
+    end
+    if tokenKind = kindEnd then
+        return
+    end
+    reportStmtFault(stmtFaultExpectedNewline)
+end
+
+sub skipNewlines()
+    while tokenKind = kindNewline
+        nextToken()
+    end
+end
+
+sub expectKeyword(which as Keyword, code as StatementFault)
+    if tokenKind = kindKeyword then
+        if tokenKeyword = which then
+            nextToken()
+            return
+        end
+    end
+    reportStmtFault(code)
+end
+
+sub atKeyword(which as Keyword) as boolean
+    if tokenKind <> kindKeyword then
+        return false
+    end
+    return tokenKeyword = which
+end
+
+sub atPunct(which as Punct) as boolean
+    if tokenKind <> kindPunct then
+        return false
+    end
+    return tokenPunct = which
+end
+
+// ------------------------------------------------------------ declarations
+
+forward sub parseStatement()
+forward sub parseStatementList()
+
+
+// `var name as type` with an optional `[length]` and an optional `= value`.
+// The declared type is what `settleExpression` narrows the initialiser
+// against, which is the destination context the expression parser was
+// written without and could not test.
+sub parseVariable()
+    var name as u16 = 0
+    var kind as TypeKind = typeNone
+    var slot as u16 = 0
+    var length as u16 = 0
+
+    nextToken()
+    if tokenKind <> kindName then
+        reportStmtFault(stmtFaultExpectedName)
+        return
+    end
+    name = tokenNameIndex
+    nextToken()
+    expectKeyword(keywordAs, stmtFaultExpectedType)
+    kind = parseTypeName()
+
+    if atPunct(punctLeftBracket) then
+        nextToken()
+        parseExpression()
+        settleExpression(typeU16)
+        if resultIsConstant then
+            length = resultValue
+        else
+            // An array length is a compile-time quantity, because storage is
+            // laid out before anything runs. A computed bound would need a
+            // heap, which the language does not have.
+            reportStmtFault(stmtFaultExpectedType)
+        end
+        if atPunct(punctRightBracket) then
+            nextToken()
+        else
+            reportStmtFault(stmtFaultExpectedParen)
+        end
+    end
+
+    slot = declareSymbol(name, symbolVariable, kind)
+    symbolLength[slot] = length
+    symbolEnum[slot] = declaredEnum
+
+    if atPunct(punctEqual) then
+        nextToken()
+        if length > 0 then
+            // A `var` array is writable storage, so its contents cannot be
+            // image bytes, and level 0 has nowhere to run an initialising
+            // loop before the designated start. An initialised array is a
+            // `const`.
+            reportStmtFault(stmtFaultArrayInitialiser)
+            return
+        end
+        parseExpression()
+        settleExpression(kind)
+        // A constant initialiser could become an image byte instead of a load
+        // and a store. It does not here: `settleExpression` has already
+        // planted the load by the time the fold is known, and suppressing it
+        // needs the same emission control as the constant-subscript
+        // reduction. Both are measured together once the seed exists.
+        emitStoreSymbol(slot)
+    end
+    expectNewline()
+end
+
+// An array initialiser: `[ v, v, v ]`, every element a constant. The values
+// are emitted where the declaration sits, so the array's storage *is* those
+// image bytes — which is what makes the 256-entry character-class table cost
+// 256 bytes and no instructions.
+//
+// The declared length wins over the written count: a short list leaves the
+// remaining elements zero, and a long one is an error rather than a silent
+// overrun of whatever follows.
+// Elements the list did not write are zero, and they still occupy the image
+// because the array's storage is contiguous.
+sub padArray(byteWide as boolean, remaining as u16)
+    var index as u16 = 0
+
+    for index = 0 until remaining
+        if byteWide then
+            emit(0)
+        else
+            emitWord(0)
+        end
+    end
+end
+
+sub parseArrayLiteral(slot as u16, kind as TypeKind, length as u16)
+    var written as u16 = 0
+    var byteWide as boolean = isByteWide(kind)
+
+    // The array begins wherever the stream has reached, and every later
+    // reference loads from here.
+    symbolAddress[slot] = here
+
+    nextToken()
+    while true
+        skipNewlines()
+        if atPunct(punctRightBracket) then
+            nextToken()
+            padArray(byteWide, length - written)
+            return
+        end
+        if written >= length then
+            reportStmtFault(stmtFaultTooManyElements)
+            return
+        end
+
+        parseExpression()
+        settleExpression(kind)
+        if resultIsConstant = false then
+            reportStmtFault(stmtFaultElementNotConstant)
+            return
+        end
+        if byteWide then
+            emit(u8(constantPattern(resultValue, resultNegative) and 255))
+        else
+            emitWord(constantPattern(resultValue, resultNegative))
+        end
+        written = written + 1
+
+        skipNewlines()
+        if atPunct(punctComma) then
+            nextToken()
+        else
+            if atPunct(punctRightBracket) = false then
+                reportStmtFault(stmtFaultExpectedParen)
+                return
+            end
+        end
+        if stmtFault <> stmtFaultNone then
+            return
+        end
+    end
+end
+
+// `const name as type = value`. The value must fold, and it is kept in the
+// symbol table rather than in storage, so a constant costs nothing at run
+// time and can be used in an array bound.
+sub parseConstant()
+    var name as u16 = 0
+    var kind as TypeKind = typeNone
+    var slot as u16 = 0
+    var length as u16 = 0
+
+    nextToken()
+    if tokenKind <> kindName then
+        reportStmtFault(stmtFaultExpectedName)
+        return
+    end
+    name = tokenNameIndex
+    nextToken()
+    expectKeyword(keywordAs, stmtFaultExpectedType)
+    kind = parseTypeName()
+
+    if atPunct(punctLeftBracket) then
+        // `const name as type[length]` — a placed array. Its slot is declared
+        // before the literal is read, because the literal fixes its address.
+        nextToken()
+        parseExpression()
+        settleExpression(typeU16)
+        if resultIsConstant then
+            length = resultValue
+        else
+            reportStmtFault(stmtFaultExpectedType)
+        end
+        if atPunct(punctRightBracket) then
+            nextToken()
+        else
+            reportStmtFault(stmtFaultExpectedParen)
+        end
+
+        slot = declareSymbol(name, symbolConstant, kind)
+        symbolLength[slot] = length
+        symbolEnum[slot] = declaredEnum
+
+        if atPunct(punctEqual) then
+            nextToken()
+        else
+            reportStmtFault(stmtFaultExpectedAssign)
+            return
+        end
+        if atPunct(punctLeftBracket) = false then
+            reportStmtFault(stmtFaultExpectedAssign)
+            return
+        end
+        parseArrayLiteral(slot, kind, length)
+        expectNewline()
+        return
+    end
+
+    if atPunct(punctEqual) then
+        nextToken()
+    else
+        reportStmtFault(stmtFaultExpectedAssign)
+    end
+
+    // `settleExpression` is deliberately not called: it plants the load that
+    // materialises a constant, and a constant declaration produces no code
+    // at all. The fit check it would have performed is done here instead.
+    parseExpression()
+    if resultIsConstant = false then
+        reportStmtFault(stmtFaultUnexpectedToken)
+    end
+    if exactFits(resultValue, resultNegative, kind) = false then
+        reportExprFault(exprFaultConstantRange)
+    end
+
+    slot = declareSymbol(name, symbolConstant, kind)
+    symbolAddress[slot] = resultValue
+    setSymbolNegative(slot, resultNegative)
+    symbolEnum[slot] = declaredEnum
+    expectNewline()
+end
+
+// ------------------------------------------------------------- assignment
+//
+// The left side is read before the right, so an element assignment computes
+// its address first and pushes it. That order matters: the index expression
+// and the value expression both use HL, and the address must survive the
+// second one.
+
+sub parseAssignment()
+    var name as u16 = 0
+    var found as u16 = 0
+    var slot as u16 = 0
+    var kind as TypeKind = typeNone
+    var subscripted as boolean = false
+
+    name = tokenNameIndex
+    nextToken()
+
+    found = findSymbol(name)
+    if found = 0 then
+        reportSymbolFault(symbolFaultNotDeclared)
+        return
+    end
+    slot = found - 1
+    if symbolClassOf(slot) = symbolConstant then
+        reportSymbolFault(symbolFaultReadOnly)
+        return
+    end
+    kind = symbolType[slot]
+
+    if atPunct(punctLeftBracket) then
+        subscripted = true
+        nextToken()
+        kind = emitElementAddress(slot)
+        emit(opPushHl)
+    end
+
+    if atPunct(punctEqual) then
+        nextToken()
+    else
+        reportStmtFault(stmtFaultExpectedAssign)
+        return
+    end
+
+    parseExpression()
+    settleExpression(kind)
+
+    if subscripted then
+        emit(opPopDe)
+        emitStoreElement(kind)
+    else
+        emitStoreSymbol(slot)
+    end
+    expectNewline()
+end
+
+// --------------------------------------------------------------- selection
+
+sub parseIf()
+    var skipArm as u16 = 0
+    var skipRest as u16 = 0
+
+    nextToken()
+    parseExpression()
+    settleExpression(typeBoolean)
+    expectKeyword(keywordThen, stmtFaultExpectedThen)
+
+    skipArm = allocateLabel()
+    emitJumpIfFalse(skipArm)
+    expectNewline()
+    parseStatementList()
+
+    if atKeyword(keywordElse) then
+        nextToken()
+        skipRest = allocateLabel()
+        emitJump(skipRest)
+        placeLabel(skipArm)
+        expectNewline()
+        parseStatementList()
+        placeLabel(skipRest)
+        releaseLabel(skipRest)
+    else
+        placeLabel(skipArm)
+    end
+    releaseLabel(skipArm)
+    expectKeyword(keywordEnd, stmtFaultExpectedEnd)
+    expectNewline()
+end
+
+// ------------------------------------------------------------------- loops
+//
+// `exit` and `continue` need the enclosing loop's two labels, and loops
+// nest, so the labels are a stack. Eight deep is past anything in the
+// compiler's own source, which reaches three.
+
+const loopLimit as u8 = 8
+
+var loopBreakLabel as u16[loopLimit]
+var loopContinueLabel as u16[loopLimit]
+var loopDepth as u8 = 0
+
+sub pushLoop(breakLabel as u16, continueLabel as u16)
+    if loopDepth >= loopLimit then
+        reportStmtFault(stmtFaultTooManyLabels)
+        return
+    end
+    loopBreakLabel[loopDepth] = breakLabel
+    loopContinueLabel[loopDepth] = continueLabel
+    loopDepth = loopDepth + 1
+end
+
+sub popLoop()
+    if loopDepth > 0 then
+        loopDepth = u8(loopDepth - 1)
+    end
+end
+
+sub parseWhile()
+    var top as u16 = allocateLabel()
+    var out as u16 = allocateLabel()
+
+    nextToken()
+    placeLabel(top)
+    parseExpression()
+    settleExpression(typeBoolean)
+    emitJumpIfFalse(out)
+    expectNewline()
+
+    pushLoop(out, top)
+    parseStatementList()
+    popLoop()
+
+    emitJump(top)
+    placeLabel(out)
+    releaseLabel(out)
+    releaseLabel(top)
+    expectKeyword(keywordEnd, stmtFaultExpectedEnd)
+    expectNewline()
+end
+
+// One storage slot holds the loop's limit. Nested counted loops would need
+// one per level; Candlemoth's own source never nests a counted loop, so one
+// is declared and the restriction is recorded rather than designed around.
+var forLimitSlot as u16 = 0
+
+// `for name = first until last`. The Level Zero ruling removed `for ... to`:
+// every counted loop in Candlemoth is exclusive, and the token audit found
+// the parser still accepting the inclusive form after the ruling had removed
+// it from the subset.
+//
+// The control variable is an ordinary declared local, which the findings
+// ledger records as a level-0 consequence: there is no implicit declaration,
+// so the name must already exist.
+sub parseFor()
+    var name as u16 = 0
+    var found as u16 = 0
+    var slot as u16 = 0
+    var top as u16 = 0
+    var out as u16 = 0
+    var again as u16 = 0
+    var kind as TypeKind = typeNone
+
+    nextToken()
+    if tokenKind <> kindName then
+        reportStmtFault(stmtFaultExpectedName)
+        return
+    end
+    name = tokenNameIndex
+    nextToken()
+
+    found = findSymbol(name)
+    if found = 0 then
+        reportSymbolFault(symbolFaultNotDeclared)
+        return
+    end
+    slot = found - 1
+    kind = symbolType[slot]
+
+    if atPunct(punctEqual) then
+        nextToken()
+    else
+        reportStmtFault(stmtFaultExpectedAssign)
+        return
+    end
+    parseExpression()
+    settleExpression(kind)
+    emitStoreSymbol(slot)
+
+    if atKeyword(keywordUntil) then
+        nextToken()
+    else
+        reportStmtFault(stmtFaultExpectedUntil)
+        return
+    end
+
+    // The limit is evaluated once, into a compiler-made local, because
+    // re-evaluating it each turn would be a second reading of an expression
+    // the source wrote once.
+    parseExpression()
+    settleExpression(kind)
+    emitStoreSymbol(forLimitSlot)
+
+    top = allocateLabel()
+    out = allocateLabel()
+    again = allocateLabel()
+
+    placeLabel(top)
+    emitLoadSymbol(slot)
+    emit(opPushHl)
+    emitLoadSymbol(forLimitSlot)
+    emit(opPopDe)
+    // `until` leaves the loop when the control variable reaches the limit.
+    emitHelperCall(comparisonHelper(punctGreaterEqual, kind = typeI16))
+    emitJumpIfTrue(out)
+    expectNewline()
+
+    pushLoop(out, again)
+    parseStatementList()
+    popLoop()
+
+    placeLabel(again)
+    emitLoadSymbol(slot)
+    emitLoadOperand(1)
+    emitAdd()
+    emitStoreSymbol(slot)
+    emitJump(top)
+    placeLabel(out)
+    releaseLabel(out)
+    releaseLabel(again)
+    releaseLabel(top)
+
+    expectKeyword(keywordEnd, stmtFaultExpectedEnd)
+    expectNewline()
+end
+
+// ------------------------------------------------------------------- calls
+
+const argumentLimit as u8 = 8
+
+// A call evaluates its arguments left to right into the callee's parameter
+// storage. Static frames mean a parameter has a fixed address, so an
+// argument is a store rather than a push, and the call sequence is the same
+// whether or not the callee is in a recursive group. Save-around-call is the
+// caller's business and is emitted by the subroutine body, not here.
+sub parseCallArguments(slot as u16)
+    var parameter as u16 = slot + 1
+    var given as u16 = 0
+    var wanted as u16 = symbolLength[slot]
+
+    if atPunct(punctLeftParen) = false then
+        reportStmtFault(stmtFaultExpectedParen)
+        return
+    end
+    nextToken()
+
+    while atPunct(punctRightParen) = false
+        if given >= u16(argumentLimit) then
+            reportStmtFault(stmtFaultTooManyArguments)
+            return
+        end
+        if given >= wanted then
+            reportStmtFault(stmtFaultWrongArgumentCount)
+            return
+        end
+        parseExpression()
+        settleExpression(symbolType[parameter])
+        emitStoreSymbol(parameter)
+        parameter = parameter + 1
+        given = given + 1
+        if atPunct(punctComma) then
+            nextToken()
+        else
+            if atPunct(punctRightParen) = false then
+                reportStmtFault(stmtFaultExpectedParen)
+                return
+            end
+        end
+    end
+    nextToken()
+
+    if given <> wanted then
+        reportStmtFault(stmtFaultWrongArgumentCount)
+        return
+    end
+
+    emitCall(slot)
+end
+
+// Every call emits a placeholder and records its site. The operand is written
+// at end of source, when the components are known and the stubs exist: a call
+// inside a component goes to the callee's stub and a call from outside goes
+// straight to the callee, and neither answer is available here.
+sub emitCall(slot as u16)
+    emit(opCall)
+    recordCallSite(slot)
+    emitWord(0)
+end
+
+// Records one call site: where its operand sits, who is calling, and whom.
+//
+// **The graph is collected and not yet used.** Save-around-call applies to
+// routines inside a strongly-connected component, the components are computed
+// from these sites once the source ends, and neither the computation nor the
+// save and restore stubs are written. `docs/bootstrap-plan.md` has the design;
+// this compiler does not implement it, so **a recursive routine miscompiles
+// today**.
+sub recordCallSite(callee as u16)
+    var caller as u16 = 0
+
+    if callSiteCount >= callSiteLimit then
+        reportStmtFault(stmtFaultTooManyCallSites)
+        return
+    end
+    assignRoutineIndex(callee)
+    // A call at module level has no caller and so no edge, but its operand
+    // still needs writing, which is why it is recorded either way. Zero is no
+    // caller, and a routine ordinal is stored one greater.
+    if currentRoutine > 0 then
+        assignRoutineIndex(currentRoutine - 1)
+        caller = routineIndex[currentRoutine - 1]
+    end
+
+    callSiteAt[callSiteCount] = here
+    callSiteFrom[callSiteCount] = u8(caller)
+    callSiteTo[callSiteCount] = u8(routineIndex[callee])
+    callSiteCount = callSiteCount + 1
+end
+
+// Gives a routine its ordinal in the call graph, once, on first sight. A
+// forward declaration gets one too, because a call can name it before its body
+// exists.
+sub assignRoutineIndex(slot as u16)
+    if routineIndex[slot] <> 0 then
+        return
+    end
+    if routineCount >= routineLimit then
+        reportStmtFault(stmtFaultTooManyRoutines)
+        return
+    end
+    routineCount = routineCount + 1
+    routineIndex[slot] = u8(routineCount)
+end
+
+// Fixes a routine's entry address. Called when its body begins, not when it is
+// forward-declared: a declaration carries a name and a signature, and no
+// address. It patches nothing, because no call operand is written until the
+// source ends.
+sub placeRoutine(slot as u16)
+    symbolAddress[slot] = here
+    assignRoutineIndex(slot)
+    routineAddress[routineIndex[slot]] = here
+end
+
+sub parseCallStatement()
+    var name as u16 = tokenNameIndex
+    var found as u16 = 0
+
+    nextToken()
+    found = findSymbol(name)
+    if found = 0 then
+        reportSymbolFault(symbolFaultNotDeclared)
+        return
+    end
+    parseCallArguments(found - 1)
+    expectNewline()
+end
+
+// -------------------------------------------------------------- statements
+
+var currentReturnType as TypeKind = typeNone
+
+sub parseReturn()
+    nextToken()
+    if tokenKind = kindNewline then
+        emit(opReturn)
+        expectNewline()
+        return
+    end
+    parseExpression()
+    settleExpression(currentReturnType)
+    emit(opReturn)
+    expectNewline()
+end
+
+sub parseExit()
+    nextToken()
+    if loopDepth = 0 then
+        reportStmtFault(stmtFaultExitOutsideLoop)
+        return
+    end
+    emitJump(loopBreakLabel[loopDepth - 1])
+    expectNewline()
+end
+
+sub parseContinue()
+    nextToken()
+    if loopDepth = 0 then
+        reportStmtFault(stmtFaultExitOutsideLoop)
+        return
+    end
+    emitJump(loopContinueLabel[loopDepth - 1])
+    expectNewline()
+end
+
+// ----------------------------------------------------------- enumerations
+//
+// `enum Name as u8` followed by one member per line. Each member becomes a
+// constant of the enum's type carrying its ordinal, and the enum's own slot
+// carries the member count in `symbolLength` — which is what the checked
+// ordinal conversion checks against.
+//
+// Only `u8` is accepted. Section 3 allows an enum over any integer type, and
+// level 0 has no enum over anything else, so the wider forms stay out under
+// the boundary rule.
+sub parseEnum()
+    var name as u16 = 0
+    var slot as u16 = 0
+    var member as u16 = 0
+    var ordinal as u16 = 0
+    var representation as TypeKind = typeNone
+    var memberSlot as u16 = 0
+
+    nextToken()
+    if tokenKind <> kindName then
+        reportStmtFault(stmtFaultExpectedName)
+        return
+    end
+    name = tokenNameIndex
+    nextToken()
+    expectKeyword(keywordAs, stmtFaultExpectedType)
+    representation = parseTypeName()
+    if representation <> typeU8 then
+        reportStmtFault(stmtFaultEnumNotByte)
+    end
+    expectNewline()
+
+    slot = declareSymbol(name, symbolEnumType, typeU8)
+
+    while true
+        skipNewlines()
+        if atKeyword(keywordEnd) then
+            nextToken()
+            symbolLength[slot] = ordinal
+            expectNewline()
+            return
+        end
+        if tokenKind <> kindName then
+            reportStmtFault(stmtFaultExpectedName)
+            return
+        end
+        member = tokenNameIndex
+        nextToken()
+
+        // A member is an ordinary constant of the enum's type, so every rule
+        // that already holds for a constant holds for it: it folds where it
+        // is used, costs no storage, and can appear in an array bound.
+        memberSlot = declareSymbol(member, symbolConstant, typeU8)
+        symbolAddress[memberSlot] = ordinal
+        symbolEnum[memberSlot] = slot + 1
+        ordinal = ordinal + 1
+        expectNewline()
+        if stmtFault <> stmtFaultNone then
+            return
+        end
+    end
+end
+
+// --------------------------------------------------------------- select
+//
+// One constant per `case`, and no fall-through: an arm ends where the next
+// `case` begins. Multi-value and range cases are out under the boundary rule.
+//
+// The selector is evaluated once into compiler-owned storage and compared
+// against each label in turn. A jump table would be faster and needs the
+// labels to be dense, which the compiler cannot know until every arm is read
+// — and it has read none of them when it must emit the dispatch.
+// One slot holds the selector under test. Nested `select` statements would
+// need one per level; the front end nests none, so one is declared and the
+// restriction recorded, as for the counted loop's limit.
+var selectSlot as u16 = 0
+
+sub parseSelect()
+    var out as u16 = allocateLabel()
+    var nextArm as u16 = 0
+    var kind as TypeKind = typeNone
+    var selectorEnum as u16 = 0
+    var arms as u16 = 0
+
+    nextToken()
+    parseExpression()
+    settleExpression(typeNone)
+    kind = resultType
+    selectorEnum = resultEnum
+    emitStoreSymbol(selectSlot)
+    expectNewline()
+
+    while true
+        skipNewlines()
+        if atKeyword(keywordCase) then
+            nextToken()
+            nextArm = allocateLabel()
+
+            emitLoadSymbol(selectSlot)
+            emit(opPushHl)
+            parseExpression()
+            settleExpression(kind)
+            if resultEnum <> selectorEnum then
+                reportStmtFault(stmtFaultCaseTypeMismatch)
+            end
+            if resultIsConstant then
+                emitLoadAccumulator(constantPattern(resultValue, resultNegative))
+            end
+            emit(opPopDe)
+            emitHelperCall(comparisonHelper(punctEqual, false))
+            emitJumpIfFalse(nextArm)
+            expectNewline()
+
+            parseStatementList()
+            emitJump(out)
+            placeLabel(nextArm)
+            releaseLabel(nextArm)
+            arms = arms + 1
+        else
+            if atKeyword(keywordElse) then
+                nextToken()
+                expectNewline()
+                parseStatementList()
+                expectKeyword(keywordEnd, stmtFaultExpectedEnd)
+                placeLabel(out)
+                releaseLabel(out)
+                expectNewline()
+                return
+            end
+            if atKeyword(keywordEnd) then
+                nextToken()
+                placeLabel(out)
+                releaseLabel(out)
+                expectNewline()
+                return
+            end
+            reportStmtFault(stmtFaultUnexpectedToken)
+            return
+        end
+        if stmtFault <> stmtFaultNone then
+            return
+        end
+    end
+end
+
+// A subroutine name at statement position begins a call; anything else that
+// can be assigned to is a variable. The distinction is the symbol's class, so
+// it needs no second token.
+sub nameBeginsCall() as boolean
+    var found as u16 = findSymbol(tokenNameIndex)
+
+    if found = 0 then
+        return false
+    end
+    return symbolClassOf(found - 1) = symbolSubroutine
+end
+
+sub parseStatement()
+    if tokenKind = kindKeyword then
+        // Review finding 21: `var` and `const` used to be statements, so the
+        // parser accepted a declaration after a statement and inside a loop
+        // or branch. Section 4 puts every routine declaration before every
+        // statement, and `parseDeclarationPrefix` is the only place that
+        // reads one.
+        if tokenKeyword = keywordVar then
+            reportStmtFault(stmtFaultDeclarationAfterStatement)
+            return
+        end
+        if tokenKeyword = keywordConst then
+            reportStmtFault(stmtFaultDeclarationAfterStatement)
+            return
+        end
+        if tokenKeyword = keywordIf then
+            parseIf()
+            return
+        end
+        if tokenKeyword = keywordWhile then
+            parseWhile()
+            return
+        end
+        if tokenKeyword = keywordSelect then
+            parseSelect()
+            return
+        end
+        if tokenKeyword = keywordFor then
+            parseFor()
+            return
+        end
+        if tokenKeyword = keywordReturn then
+            parseReturn()
+            return
+        end
+        if tokenKeyword = keywordExit then
+            parseExit()
+            return
+        end
+        if tokenKeyword = keywordContinue then
+            parseContinue()
+            return
+        end
+        reportStmtFault(stmtFaultUnexpectedToken)
+        nextToken()
+        return
+    end
+    if tokenKind = kindName then
+        // A name begins either an assignment or a call, and one token of
+        // lookahead separates them. The tokenizer offers exactly one, which
+        // is the constraint the findings ledger records; this is the place
+        // it is spent.
+        if nameBeginsCall() then
+            parseCallStatement()
+        else
+            parseAssignment()
+        end
+        return
+    end
+    reportStmtFault(stmtFaultUnexpectedToken)
+    nextToken()
+end
+
+// Every declaration a routine makes, before its first statement. Section 4
+// puts them there, and reading them in one place is what lets
+// `parseStatement` reject one that appears later.
+sub parseDeclarationPrefix()
+    while true
+        skipNewlines()
+        if tokenKind <> kindKeyword then
+            return
+        end
+        if tokenKeyword = keywordVar then
+            parseVariable()
+        else
+            if tokenKeyword = keywordConst then
+                parseConstant()
+            else
+                return
+            end
+        end
+        if stmtFault <> stmtFaultNone then
+            return
+        end
+    end
+end
+
+// A statement list ends at `end`, `else`, `case` or end of input. None of
+// those is consumed here, so the caller reads whichever one it was written
+// to accept.
+sub parseStatementList()
+    while true
+        skipNewlines()
+        if tokenKind = kindEnd then
+            return
+        end
+        if tokenKind = kindKeyword then
+            if tokenKeyword = keywordEnd then
+                return
+            end
+            if tokenKeyword = keywordElse then
+                return
+            end
+            if tokenKeyword = keywordCase then
+                return
+            end
+        end
+        parseStatement()
+        if stmtFault <> stmtFaultNone then
+            return
+        end
+    end
+end
+
+// ------------------------------------------------------------ subroutines
+
+// A subroutine's `symbolLength` holds its parameter count, and its
+// parameters are the slots immediately above it. That adjacency is what lets
+// a call site reach a parameter by arithmetic instead of by name, which
+// matters because a parameter is out of scope everywhere a call is written.
+//
+// `declaring` is false when the body follows a `forward sub`: the parameters
+// already exist at fixed addresses, and declaring a second set would give
+// the body different storage from every call site. The list is still read,
+// so a body that disagrees with its forward declaration is caught.
+sub parseParameters(slot as u16, declaring as boolean)
+    var name as u16 = 0
+    var kind as TypeKind = typeNone
+    var count as u16 = 0
+
+    if atPunct(punctLeftParen) = false then
+        reportStmtFault(stmtFaultExpectedParen)
+        return
+    end
+    nextToken()
+
+    while atPunct(punctRightParen) = false
+        if tokenKind <> kindName then
+            reportStmtFault(stmtFaultExpectedName)
+            return
+        end
+        name = tokenNameIndex
+        nextToken()
+        expectKeyword(keywordAs, stmtFaultExpectedType)
+        kind = parseTypeName()
+
+        if declaring then
+            declareSymbol(name, symbolParameter, kind)
+        else
+            if symbolName[slot + 1 + count] <> name then
+                reportStmtFault(stmtFaultForwardDisagreement)
+            end
+            if symbolType[slot + 1 + count] <> kind then
+                reportStmtFault(stmtFaultForwardDisagreement)
+            end
+        end
+        count = count + 1
+
+        if atPunct(punctComma) then
+            nextToken()
+        end
+    end
+    nextToken()
+
+    if declaring then
+        symbolLength[slot] = count
+    else
+        if symbolLength[slot] <> count then
+            reportStmtFault(stmtFaultForwardDisagreement)
+        end
+    end
+end
+
+sub parseSubroutine(declaredForward as boolean)
+    var name as u16 = 0
+    var slot as u16 = 0
+    var found as u16 = 0
+    var declaring as boolean = true
+
+    nextToken()
+    if tokenKind <> kindName then
+        reportStmtFault(stmtFaultExpectedName)
+        return
+    end
+    name = tokenNameIndex
+    nextToken()
+
+    // A `forward sub` declared the name and its parameters already, so the
+    // body reuses that slot rather than declaring a second one. Parameter
+    // storage is addressed from the slot, so a duplicate would give the body
+    // different addresses from every call site.
+    found = findSymbol(name)
+    if found > 0 then
+        if symbolClassOf(found - 1) = symbolSubroutine then
+            declaring = false
+            slot = found - 1
+        else
+            slot = declareSymbol(name, symbolSubroutine, typeNone)
+        end
+    else
+        slot = declareSymbol(name, symbolSubroutine, typeNone)
+    end
+
+    if declaring then
+        enterLocals()
+        parseParameters(slot, true)
+        markBodyBase()
+    else
+        reenterLocals(slot + 1, symbolLength[slot])
+        parseParameters(slot, false)
+    end
+
+    currentReturnType = typeNone
+    if atKeyword(keywordAs) then
+        nextToken()
+        currentReturnType = parseTypeName()
+    end
+    if declaring then
+        symbolType[slot] = currentReturnType
+    else
+        if symbolType[slot] <> currentReturnType then
+            reportStmtFault(stmtFaultForwardDisagreement)
+        end
+    end
+
+    if declaredForward then
+        leaveLocals()
+        expectNewline()
+        return
+    end
+
+    placeRoutine(slot)
+    assignRoutineIndex(slot)
+    currentRoutine = slot + 1
+    expectNewline()
+    // The transient region was opened when the parameter list closed, so the
+    // prefix declares straight into it. Calling `markBodyBase` again here
+    // would reset the region and discard what the prefix had just declared.
+    parseDeclarationPrefix()
+    parseStatementList()
+    currentRoutine = 0
+    expectKeyword(keywordEnd, stmtFaultExpectedEnd)
+
+    // A body that falls off its end still returns. A body with a declared
+    // result that falls off its end returns whatever the accumulator holds,
+    // which the language leaves undefined and this compiler does not
+    // diagnose. Checking it needs the body's exit paths, which a single walk
+    // can track and this draft does not.
+    emit(opReturn)
+    leaveLocals()
+    expectNewline()
+end
+
+// ------------------------------------------------------------------- units
+
+sub parseUnit()
+    while true
+        skipNewlines()
+        if tokenKind = kindEnd then
+            return
+        end
+        if atKeyword(keywordForward) then
+            nextToken()
+            if atKeyword(keywordSub) then
+                parseSubroutine(true)
+            else
+                reportStmtFault(stmtFaultUnexpectedToken)
+                nextToken()
+            end
+        else
+            if atKeyword(keywordSub) then
+                parseSubroutine(false)
+            else
+                // At module level a declaration is the only thing there is:
+                // level 0 has no mainline statements outside a routine.
+                if atKeyword(keywordVar) then
+                    parseVariable()
+                else
+                    if atKeyword(keywordConst) then
+                        parseConstant()
+                    else
+                        if atKeyword(keywordEnum) then
+                            parseEnum()
+                        else
+                            reportStmtFault(stmtFaultUnexpectedToken)
+                            nextToken()
+                        end
+                    end
+                end
+            end
+        end
+        if stmtFault <> stmtFaultNone then
+            return
+        end
+        if symbolFault <> symbolFaultNone then
+            return
+        end
+    end
+    finishUnit()
+end
+
+// Where the emitted image begins. `seekCode` names an offset into the output
+// stream, which starts at zero whatever origin the code is emitted for, so
+// every seek subtracts this. A flat image based at zero would hide the
+// distinction rather than remove it.
+// Where the emitted image loads, which is what an output offset is relative
+// to. `seekCode` names an offset into the output stream and `here` is a target
+// address, so a seek subtracts this.
+//
+// **This is the image's load address, not the runtime's origin.** On the flat
+// profile the compiler owns the reset vector, so the image begins at $0000
+// with the entry jump, the runtime follows at $0100, and offset and address
+// coincide — the subtraction is a no-op there and the conversion is kept
+// because a hosted profile whose loader places the image elsewhere needs it.
+//
+// An earlier version returned $0100, the runtime origin, which put every patch
+// 256 bytes early.
+const imageLoadAddress as u16 = 0
+
+sub imageOrigin() as u16
+    return imageLoadAddress
+end
+
+// Checks at end of source what a single pass can only check at the end.
+//
+// A forward declaration that never received a body leaves its calls patched to
+// nothing, and an unpaid call patch ships as a call to address zero — the
+// reset vector. Neither is visible while the source is still being read, so
+// both are checked once it is not.
+sub finishUnit()
+    var index as u16 = 0
+
+    // Every call site's operand is still a placeholder at this point, because
+    // none is written until the components are known. What must hold is that
+    // every routine a call names now has an address.
+    for index = 0 until symbolCount
+        if symbolClassOf(index) = symbolSubroutine then
+            if symbolAddress[index] = 0 then
+                reportStmtFault(stmtFaultForwardWithoutBody)
+            end
+        end
+    end
+    // An intrinsic is deliberately not checked: it has no body by definition.
+    // It is also not a subroutine, so it never reaches the loop above.
+    patchCallSites()
+end
+
+// Writes every call operand, once the source has ended.
+//
+// **Incomplete.** The components are not computed and no save or restore stub
+// is emitted, so every call is patched straight to its callee and a recursive
+// routine miscompiles. What is right about it is that the information needed
+// to fix that — every call site's operand offset, caller and callee — is here
+// and was not before.
+sub patchCallSites()
+    var index as u16 = 0
+    var target as u16 = 0
+    var resume as u16 = here
+
+    for index = 0 until callSiteCount
+        target = routineAddress[callSiteTo[index]]
+        if target = 0 then
+            reportStmtFault(stmtFaultUnresolvedCall)
+        end
+        seekCode(callSiteAt[index] - imageOrigin())
+        writeCodeByte(u8(target and 255))
+        writeCodeByte(u8(target / 256))
+    end
+    seekCode(resume - imageOrigin())
+end
+
+sub startParser()
+    var index as u16 = 0
+
+    patchCount = 0
+    callSiteCount = 0
+    routineCount = 0
+    currentRoutine = 0
+    for index = 0 until labelLimit
+        labelInUse[index] = false
+        labelPlaced[index] = false
+    end
+    loopDepth = 0
+    stmtFault = stmtFaultNone
+    stmtFaultLine = 0
+    symbolFault = symbolFaultNone
+    symbolCount = 0
+    currentDepth = 0
+    localFrom = 0
+    localTop = 0
+    paramFrom = 0
+    paramCount = 0
+    internTypeNames()
+    // `nameLimit` and above are past the last interning slot, so no source
+    // spelling produces them and the compiler's own storage cannot be
+    // assigned to. Two distinct values, or the second declaration would be a
+    // redeclaration of the first.
+    forLimitSlot = declareSymbol(nameLimit, symbolVariable, typeU16)
+    selectSlot = declareSymbol(nameLimit + 1, symbolVariable, typeU16)
+end

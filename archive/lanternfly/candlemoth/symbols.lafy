@@ -1,0 +1,654 @@
+// Candlemoth — symbol table
+//
+// Written in level-0 Lanternfly. The expression parser reads a name's type,
+// storage and constant value from here; the declaration parser writes them.
+//
+// Level 0 has no modules, so the four files are notionally one compilation
+// unit in the order tokenizer, expression, symbols, statement. The expression
+// parser comes before this file because this file emits loads and stores
+// through its `emit` primitives, and it reaches forward to the two routines
+// here that it needs through `forward sub`. That is the only forward edge
+// between the files, and it exists because the emitter primitives and the
+// symbol table each need the other's names.
+
+// ------------------------------------------------------------------ shape
+//
+// Parallel arrays rather than an array of records. This is the fourth table
+// in Candlemoth written that way, after the name arena, the hash buckets and
+// the keyword spellings, and by now the reason is worth stating: each field
+// is read by a different pass with a different access pattern, and a record
+// would put six bytes between two consecutive reads of one field. Records
+// remain unused across the compiler source written so far.
+
+enum SymbolKind as u8
+    symbolNone
+    symbolVariable
+    symbolConstant
+    symbolSubroutine
+    symbolParameter
+    symbolEnumType
+    // A profile intrinsic. Section 12 binds these names before parsing, and
+    // they are not subroutines: they have no body, no address and no `CALL`.
+    // `writeCodeByte(x)` lowers to `OUT ($01),A`, so generic call lowering
+    // would emit a call to nothing and the end-of-source check would reject
+    // them for lacking a body.
+    symbolIntrinsic
+end
+
+const symbolLimit as u16 = 640
+
+var symbolName as u16[symbolLimit]
+var symbolType as TypeKind[symbolLimit]
+
+// **One column, two meanings**, because no symbol class needs both. For a
+// variable, parameter or subroutine it is an address; for a constant it is the
+// folded value. Two columns spent 1,280 bytes expressing a distinction the
+// class already carries.
+var symbolAddress as u16[symbolLimit]
+
+// Zero for a scalar. An array's declared element count, which is also the
+// bound every subscript is checked against. A subroutine's parameter count.
+var symbolLength as u16[symbolLimit]
+
+// **Class, scope depth and a constant's sign in one byte.**
+//
+// Three columns held one small value each: a class with six cases, a depth
+// that is zero or one, and a sign. Each cost a byte per symbol and together
+// they cost 1,920, to carry five bits.
+//
+//   bits 0-2  class
+//   bit 3     depth, set for a name local to the routine being read
+//   bit 4     the sign of a constant's value
+//
+// This is the packing `candlemoth-size-discipline.md` asks for and none of
+// the symbol table had. The table was fifteen bytes a slot with every column
+// allocated for every symbol whatever its class, and a column was added to it
+// almost every time the design moved.
+const flagClassMask as u8 = 7
+const flagDepth as u8 = 8
+const flagNegative as u8 = 16
+
+var symbolFlags as u8[symbolLimit]
+
+sub symbolClassOf(slot as u16) as SymbolKind
+    return SymbolKind(u16(symbolFlags[slot] and flagClassMask))
+end
+
+sub symbolDepthOf(slot as u16) as u8
+    // A bitwise `and` on integers yields an integer, and a condition must be
+    // Boolean, so the comparison is written rather than implied.
+    if (symbolFlags[slot] and flagDepth) <> 0 then
+        return 1
+    end
+    return 0
+end
+
+sub symbolIsNegative(slot as u16) as boolean
+    return (symbolFlags[slot] and flagNegative) <> 0
+end
+
+sub setSymbolFlags(slot as u16, class as SymbolKind, depth as u8)
+    var bits as u8 = u8(class)
+
+    if depth = 1 then
+        bits = bits or flagDepth
+    end
+    symbolFlags[slot] = bits
+end
+
+sub setSymbolNegative(slot as u16, negative as boolean)
+    if negative then
+        symbolFlags[slot] = symbolFlags[slot] or flagNegative
+    else
+        symbolFlags[slot] = symbolFlags[slot] and u8(255 - flagNegative)
+    end
+end
+
+// For an enum member or a value of an enum type, the slot of the enum's own
+// declaration, one greater so that zero means none. Two enums are distinct
+// types even though both are stored as `u8`.
+var symbolEnum as u16[symbolLimit]
+
+// ------------------------------------------------------- the two regions
+//
+// Review finding 20: an earlier version kept one count and moved it backwards
+// at the end of every body. Parameters have to outlive their subroutine —
+// a call site addresses them by offset from the routine's own slot — so
+// `end` cannot simply discard everything above a mark. It discarded every
+// declaration made after the routine whose body had just been read, which
+// broke the forward-declaration prologue Candlemoth opens with.
+//
+// The table now has two regions that never interleave.
+//
+// **Persistent**, slots 0 to `symbolCount`: module-level names, subroutines,
+// and every subroutine's parameters. This mark only ever grows.
+//
+// **Transient**, slots `localFrom` to `localTop`: the locals of the body
+// being read. `localFrom` is set to `symbolCount` on entering a body, so the
+// locals sit above every persistent slot, and leaving a body drops them by
+// setting `localTop` back without touching `symbolCount`.
+
+var symbolCount as u16 = 0
+
+// A subroutine's ordinal in the call graph, denser than its symbol slot
+// because most symbols are not routines. One greater than the ordinal, so
+// zero means unassigned, and a byte because `routineLimit` is below 256.
+var routineIndex as u8[symbolLimit]
+
+// One inside a subroutine, zero at module level.
+var currentDepth as u8 = 0
+
+// The transient region: the current body's locals.
+var localFrom as u16 = 0
+var localTop as u16 = 0
+
+// The current subroutine's parameter slots, which are persistent and sit
+// directly above its own slot. Another subroutine's parameters are at depth
+// one as well, and they are out of scope precisely because they are outside
+// this range.
+var paramFrom as u16 = 0
+var paramCount as u16 = 0
+
+// ------------------------------------------------------------- diagnostics
+
+enum SymbolFault as u8
+    symbolFaultNone
+    symbolFaultTableFull
+    symbolFaultRedeclared
+    symbolFaultNotDeclared
+    symbolFaultNotAVariable
+    symbolFaultNotAnArray
+    symbolFaultReadOnly
+end
+
+var symbolFault as SymbolFault = symbolFaultNone
+var symbolFaultLine as u16 = 0
+
+sub reportSymbolFault(code as SymbolFault)
+    if symbolFault = symbolFaultNone then
+        symbolFault = code
+        symbolFaultLine = tokenLine
+    end
+end
+
+// ------------------------------------------------------------------ lookup
+//
+// A linear scan from the top down, so a local shadows a module-level name of
+// the same spelling without a second table. Names are interned, so each
+// comparison is one `u16` test rather than a spelling compare, and a scan of
+// five hundred slots is around two thousand instructions. That is affordable
+// once per name occurrence, and would not be if names were compared by
+// spelling.
+//
+// Slot zero is a real slot, so the result is one greater than the slot and
+// zero says not found.
+//
+// Three scans in scope order: the current body's locals, then the current
+// subroutine's parameters, then module-level names. A depth-one slot reached
+// by the third scan belongs to some other subroutine and is skipped, which is
+// what keeps one routine's parameter names out of another's body.
+
+sub findSymbol(name as u16) as u16
+    var index as u16 = localTop
+
+    while index > localFrom
+        index = index - 1
+        if symbolName[index] = name then
+            return index + 1
+        end
+    end
+
+    index = paramFrom + paramCount
+    while index > paramFrom
+        index = index - 1
+        if symbolName[index] = name then
+            return index + 1
+        end
+    end
+
+    index = symbolCount
+    while index > 0
+        index = index - 1
+        if symbolDepthOf(index) = 1 then
+            continue
+        end
+        if symbolName[index] = name then
+            return index + 1
+        end
+    end
+    return 0
+end
+
+// --------------------------------------------------------------- declaring
+
+// Fills one slot. The two regions differ only in which mark advances.
+sub fillSlot(slot as u16, name as u16, class as SymbolKind, kind as TypeKind)
+    symbolName[slot] = name
+    setSymbolFlags(slot, class, currentDepth)
+    symbolType[slot] = kind
+    symbolAddress[slot] = 0
+    symbolLength[slot] = 0
+    symbolEnum[slot] = 0
+    routineIndex[slot] = 0
+end
+
+// A module-level name, a subroutine, or a parameter: all persistent.
+sub declarePersistent(name as u16, class as SymbolKind, kind as TypeKind) as u16
+    var existing as u16 = findSymbol(name)
+
+    if existing > 0 then
+        if symbolDepthOf(existing - 1) = currentDepth then
+            reportSymbolFault(symbolFaultRedeclared)
+            return existing - 1
+        end
+    end
+    if symbolCount >= symbolLimit then
+        reportSymbolFault(symbolFaultTableFull)
+        return 0
+    end
+    fillSlot(symbolCount, name, class, kind)
+    symbolCount = symbolCount + 1
+    // Locals always sit above every persistent slot, so the transient region
+    // follows the mark up while no body is being read.
+    if currentDepth = 0 then
+        localFrom = symbolCount
+        localTop = symbolCount
+    end
+    return symbolCount - 1
+end
+
+// A local of the body being read, dropped when that body ends.
+sub declareLocal(name as u16, class as SymbolKind, kind as TypeKind) as u16
+    var existing as u16 = findSymbol(name)
+
+    if existing > 0 then
+        // Only a redeclaration at the same depth is an error. A local may
+        // shadow a module-level name, which is what lets a subroutine be
+        // read without knowing every module-level name in the compiler.
+        if symbolDepthOf(existing - 1) = currentDepth then
+            reportSymbolFault(symbolFaultRedeclared)
+            return existing - 1
+        end
+    end
+    if localTop >= symbolLimit then
+        reportSymbolFault(symbolFaultTableFull)
+        return 0
+    end
+    fillSlot(localTop, name, class, kind)
+    localTop = localTop + 1
+    return localTop - 1
+end
+
+// What a caller writes when either region may be the right one.
+sub declareSymbol(name as u16, class as SymbolKind, kind as TypeKind) as u16
+    if currentDepth = 1 then
+        if class <> symbolParameter then
+            return declareLocal(name, class, kind)
+        end
+    end
+    return declarePersistent(name, class, kind)
+end
+
+// Opens a routine that is declaring its parameters now.
+sub enterLocals()
+    currentDepth = 1
+    paramFrom = symbolCount
+    paramCount = 0
+    localFrom = symbolCount
+    localTop = symbolCount
+end
+
+// Called once the parameter list is read: the parameters are persistent, so
+// the transient region starts above them.
+sub markBodyBase()
+    paramCount = symbolCount - paramFrom
+    localFrom = symbolCount
+    localTop = symbolCount
+end
+
+// Opens a body whose parameters an earlier `forward sub` already declared.
+// Locals still go above every persistent slot, which is what the earlier
+// version got wrong: it put them above the *parameters* and then discarded
+// everything between.
+sub reenterLocals(first as u16, count as u16)
+    currentDepth = 1
+    paramFrom = first
+    paramCount = count
+    localFrom = symbolCount
+    localTop = symbolCount
+end
+
+sub leaveLocals()
+    currentDepth = 0
+    // `symbolCount` is untouched: the persistent mark never moves backwards.
+    localTop = symbolCount
+    localFrom = symbolCount
+    paramFrom = symbolCount
+    paramCount = 0
+end
+
+// ---------------------------------------------------------------- storage
+//
+// Every variable has a fixed address, including a local: static frames, so
+// there is no frame pointer and a local load is the same three-byte
+// instruction as a module-level one.
+
+const opLoadHlFromAddress as u8 = 42
+const opStoreHlToAddress as u8 = 34
+const opLoadAFromAddress as u8 = 58
+const opStoreAToAddress as u8 = 50
+
+sub isByteWide(kind as TypeKind) as boolean
+    if kind = typeU8 then
+        return true
+    end
+    if kind = typeBoolean then
+        return true
+    end
+    return false
+end
+
+sub emitLoadSymbol(slot as u16)
+    if isByteWide(symbolType[slot]) then
+        emit(opLoadAFromAddress)
+        emitWord(symbolAddress[slot])
+        emit(opLoadLFromA)
+        emit(opLoadHImmediate)
+        emit(0)
+        return
+    end
+    emit(opLoadHlFromAddress)
+    emitWord(symbolAddress[slot])
+end
+
+sub emitStoreSymbol(slot as u16)
+    if isByteWide(symbolType[slot]) then
+        emit(opLoadAFromL)
+        emit(opStoreAToAddress)
+        emitWord(symbolAddress[slot])
+        return
+    end
+    emit(opStoreHlToAddress)
+    emitWord(symbolAddress[slot])
+end
+
+sub storageBytes(slot as u16) as u16
+    var each as u16 = 2
+    var count as u16 = symbolLength[slot]
+
+    if isByteWide(symbolType[slot]) then
+        each = 1
+    end
+    if count = 0 then
+        return each
+    end
+    return each * count
+end
+
+forward sub parseCallArguments(slot as u16)
+forward sub conversionTarget(name as u16) as TypeKind
+forward sub enumSlotOfTypeName(name as u16) as u16
+forward sub atPunct(which as Punct) as boolean
+forward sub parseConversion(target as TypeKind, enumSlot as u16)
+forward sub conversionWidth(target as TypeKind) as TypeKind
+
+// --------------------------------------------------------- name references
+//
+// What `parsePrimary` calls for a name. A constant folds on the spot and
+// emits nothing, which is what lets `const limit as u16 = 4096` be used in a
+// bound without costing an instruction. A variable emits its load.
+
+sub referenceName(index as u16)
+    var found as u16 = findSymbol(index)
+    var slot as u16 = 0
+
+    if found = 0 then
+        // A bare name that is a type name is a type used as a value, which
+        // reads better as its own diagnostic than as an undeclared name.
+        if conversionTarget(index) <> typeNone then
+            reportSymbolFault(symbolFaultNotAVariable)
+            yieldComputed(typeNone)
+            return
+        end
+        reportSymbolFault(symbolFaultNotDeclared)
+        yieldComputed(typeNone)
+        return
+    end
+    slot = found - 1
+
+    if symbolClassOf(slot) = symbolConstant then
+        yieldSignedConstant(symbolType[slot], symbolAddress[slot], symbolIsNegative(slot))
+        resultEnum = symbolEnum[slot]
+        return
+    end
+    if symbolClassOf(slot) = symbolSubroutine then
+        // A call is a statement or a primary with an argument list, and
+        // neither reaches here. A bare subroutine name is a routine value,
+        // which the language has no form for.
+        reportSymbolFault(symbolFaultNotAVariable)
+        yieldComputed(typeNone)
+        return
+    end
+    if symbolLength[slot] > 0 then
+        // An array name without a subscript. Level 0 passes an aggregate
+        // only by declared name in an argument list, which the call parser
+        // reads without coming through here.
+        reportSymbolFault(symbolFaultNotAVariable)
+        yieldComputed(typeNone)
+        return
+    end
+    emitLoadSymbol(slot)
+    yieldComputed(symbolType[slot])
+    resultEnum = symbolEnum[slot]
+end
+
+// ------------------------------------------------------------- subscripts
+//
+// A subscript is bounds-checked, which the language requires and which costs
+// a call. The index reaches the helper in HL with the declared length in DE,
+// and the helper either returns the index or traps. Nothing here elides the
+// check for a constant index, because the declaration parser has not yet
+// been written to record a constant subscript's value at this point; that
+// reduction is worth measuring once the seed exists.
+
+// Leaves the element's address in HL and returns the element type.
+sub emitElementAddress(slot as u16) as TypeKind
+    parseExpression()
+    settleExpression(typeU16)
+
+    if tokenKind = kindPunct then
+        if tokenPunct = punctRightBracket then
+            nextToken()
+        else
+            reportExprFault(exprFaultExpectedRightParen)
+        end
+    else
+        reportExprFault(exprFaultExpectedRightParen)
+    end
+
+    if resultIsConstant then
+        emitLoadAccumulator(constantPattern(resultValue, resultNegative))
+    end
+
+    emitLoadOperand(symbolLength[slot])
+    emitHelperCall(helperBoundsCheck)
+
+    // A two-byte element doubles the index. Adding HL to itself is one byte
+    // and four cycles, against a multiply call of about nine hundred.
+    if isByteWide(symbolType[slot]) = false then
+        emit(opAddHlHl)
+    end
+    emitLoadOperand(symbolAddress[slot])
+    emit(opAddHlDe)
+    return symbolType[slot]
+end
+
+sub referenceElement(index as u16)
+    var found as u16 = findSymbol(index)
+    var slot as u16 = 0
+    var kind as TypeKind = typeNone
+
+    if found = 0 then
+        reportSymbolFault(symbolFaultNotDeclared)
+        yieldComputed(typeNone)
+        return
+    end
+    slot = found - 1
+    if symbolLength[slot] = 0 then
+        reportSymbolFault(symbolFaultNotAnArray)
+        yieldComputed(typeNone)
+        return
+    end
+
+    kind = emitElementAddress(slot)
+    if isByteWide(kind) then
+        emit(opLoadAFromHl)
+        emit(opLoadLFromA)
+        emit(opLoadHImmediate)
+        emit(0)
+    else
+        emit(opLoadEFromHl)
+        emit(opIncHl)
+        emit(opLoadDFromHl)
+        emit(opExDeHl)
+    end
+    yieldComputed(kind)
+end
+
+// Stores the accumulator to the element whose address is in DE. The caller
+// computed the address before evaluating the value, so the address was
+// pushed and popped around it.
+sub emitStoreElement(kind as TypeKind)
+    if isByteWide(kind) then
+        emit(opLoadAFromL)
+        emit(opStoreAToDe)
+        return
+    end
+    emit(opExDeHl)
+    emit(opStoreEToHl)
+    emit(opIncHl)
+    emit(opStoreDToHl)
+end
+
+// ------------------------------------------------ calls and conversions
+//
+// A name followed by `(` is one of three things, and the symbol table decides
+// which without a second token: a subroutine is a call, a type name is a
+// conversion, and anything else is an error. `parsePrimary` had none of these
+// before, so the compiler could not read an expression from its own source —
+// `enterNesting()`, `u16(spellingLength)` and `Keyword(index)` were all
+// unparseable.
+
+// `u8(x)` clears the high half; the sixteen-bit conversions reinterpret and
+// emit nothing, because every value in the accumulator is already sixteen
+// bits wide.
+sub emitNarrowToByte()
+    emit(opLoadHImmediate)
+    emit(0)
+end
+
+sub referenceCallOrConversion(index as u16)
+    var found as u16 = findSymbol(index)
+    var slot as u16 = 0
+    var target as TypeKind = typeNone
+    var enumSlot as u16 = 0
+
+    // A type name is not a symbol, so conversions are checked first.
+    target = conversionTarget(index)
+    if target <> typeNone then
+        parseConversion(target, enumSlotOfTypeName(index))
+        return
+    end
+
+    if found = 0 then
+        reportSymbolFault(symbolFaultNotDeclared)
+        yieldComputed(typeNone)
+        return
+    end
+    slot = found - 1
+    if symbolClassOf(slot) <> symbolSubroutine then
+        reportSymbolFault(symbolFaultNotAVariable)
+        yieldComputed(typeNone)
+        return
+    end
+    if symbolType[slot] = typeNone then
+        // A routine with no result used as an operand. The call is still
+        // parsed so its arguments are consumed and the fault is one, not one
+        // per argument.
+        parseCallArguments(slot)
+        reportSymbolFault(symbolFaultNotAVariable)
+        yieldComputed(typeNone)
+        return
+    end
+    parseCallArguments(slot)
+    yieldComputed(symbolType[slot])
+    resultEnum = symbolEnum[slot]
+end
+
+// `u8(x)`, `u16(x)`, `i16(x)` and `SomeEnum(x)`. The token on entry is the
+// opening parenthesis.
+sub parseConversion(target as TypeKind, enumSlot as u16)
+    var source as TypeKind = typeNone
+
+    nextToken()
+    parseExpression()
+    source = resultType
+
+    if atPunct(punctRightParen) then
+        nextToken()
+    else
+        reportExprFault(exprFaultExpectedRightParen)
+    end
+
+    if resultIsConstant then
+        // A constant conversion folds, and section 3 makes an invalid
+        // constant a compile error rather than a runtime fault.
+        if exactFits(resultValue, resultNegative, conversionWidth(target)) = false then
+            reportExprFault(exprFaultConstantRange)
+        end
+        if enumSlot > 0 then
+            if constantPattern(resultValue, resultNegative) >= symbolLength[enumSlot - 1] then
+                reportExprFault(exprFaultConstantRange)
+            end
+        end
+        yieldConstant(target, constantPattern(resultValue, resultNegative))
+        resultEnum = enumSlot
+        return
+    end
+
+    if enumSlot > 0 then
+        // Section 3's checked ordinal conversion: an invalid runtime value
+        // faults. The member count is the bound, which is exactly what the
+        // subscript check already does.
+        emitLoadOperand(symbolLength[enumSlot - 1])
+        emitHelperCall(helperBoundsCheck)
+        emitNarrowToByte()
+        yieldComputed(target)
+        resultEnum = enumSlot
+        return
+    end
+    if target = typeU8 then
+        emitNarrowToByte()
+    end
+    yieldComputed(target)
+    resultEnum = 0
+end
+
+// The width an exact value is checked against for a conversion. An enum is
+// stored as a byte, so its range check is a byte's.
+sub conversionWidth(target as TypeKind) as TypeKind
+    if target = typeBoolean then
+        return typeU8
+    end
+    return target
+end
+
+// The type of a name, for a caller that needs it without emitting a load.
+sub lookUpName(index as u16) as TypeKind
+    var found as u16 = findSymbol(index)
+
+    if found = 0 then
+        return typeNone
+    end
+    return symbolType[found - 1]
+end
