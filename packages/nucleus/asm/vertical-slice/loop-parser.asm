@@ -19,7 +19,7 @@ CompilerSetDiagnostic:
 .routine in E out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
 ParserExpect:
             PUSH DE
-            CALL TokenizerNext
+            CALL ParserTake
             POP  DE
             RET  C
             CP   E
@@ -27,6 +27,39 @@ ParserExpect:
             LD   A,E
             OR   DiagnosticExpectedTokenBase
             JP   CompilerSetDiagnostic
+
+; The expression parser needs one token of lookahead. Token metadata remains
+; current until another tokenizer request, so buffering kind and byte payload
+; is sufficient for names, positions, numbers, and characters.
+.routine out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
+ParserPeek:
+            LD   A,(ParserLookaheadKind)
+            CP   $FF
+            JR   NZ,ParserPeekBuffered
+            CALL TokenizerNext
+            RET  C
+            LD   (ParserLookaheadKind),A
+            LD   A,C
+            LD   (ParserLookaheadValue),A
+            LD   A,(ParserLookaheadKind)
+            RET
+ParserPeekBuffered:
+            LD   A,(ParserLookaheadValue)
+            LD   C,A
+            LD   A,(ParserLookaheadKind)
+            OR   A
+            RET
+
+.routine out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
+ParserTake:
+            CALL ParserPeek
+            RET  C
+            LD   B,A
+            LD   A,$FF
+            LD   (ParserLookaheadKind),A
+            LD   A,B
+            OR   A
+            RET
 
 ; Frequent token checks enter the common ParserExpect tail. These wrappers
 ; trade one shared seven-byte body for each repeated eight-byte inline check.
@@ -199,7 +232,7 @@ ParserExpectWriteYes:
             OR   A
             RET
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+.routine out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
 ParserExpectNumber:
             LD   E,TokenNumber
             CALL ParserExpect
@@ -207,6 +240,120 @@ ParserExpectNumber:
             LD   A,C
             OR   A
             RET
+
+; Append one operation followed by the byte in C. The helper preserves the
+; operand across the sink's internal cursor work.
+.routine in A,C out A,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
+ParserEmitOperationC:
+            PUSH BC
+            CALL SemanticSinkOperation
+            POP  BC
+            RET  C
+            LD   A,C
+            JP   SemanticSinkPut
+
+; A resolved scalar symbol is represented by its class in A and its storage
+; ordinal in C. Expressions emit postfix operations, leaving evaluation order
+; independent of either backend's register choices.
+.routine in A,C out A,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
+ParserEmitSymbolLoad:
+            CP   SymbolInfoProgramU8
+            JR   Z,ParserEmitProgramLoad
+            CP   SymbolInfoLocalU8
+            JR   NZ,ParserExpectedScalar
+            LD   A,SemanticLoadLocalU8
+            JP   ParserEmitOperationC
+ParserEmitProgramLoad:
+            LD   A,SemanticLoadProgramU8
+            JP   ParserEmitOperationC
+
+.routine in A,C out A,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
+ParserEmitSymbolStore:
+            CP   SymbolInfoProgramU8
+            JR   Z,ParserEmitProgramStore
+            CP   SymbolInfoLocalU8
+            JR   NZ,ParserExpectedScalar
+            LD   A,SemanticStoreLocalU8
+            JP   ParserEmitOperationC
+ParserEmitProgramStore:
+            LD   A,SemanticStoreProgramU8
+            JP   ParserEmitOperationC
+
+ParserExpectedScalar:
+            LD   A,DiagnosticExpectedScalar
+            JP   CompilerSetDiagnostic
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+ParserParseScalarPrimary:
+            CALL ParserTake
+            RET  C
+            CP   TokenNumber
+            JR   Z,ParserParseScalarLiteral
+            CP   TokenName
+            JR   NZ,ParserExpectedScalar
+            CALL SymbolLookupCurrent
+            RET  C
+            JP   ParserEmitSymbolLoad
+ParserParseScalarLiteral:
+            LD   A,SemanticLiteralU8
+            JP   ParserEmitOperationC
+
+; Precedence climbing uses one loop for both admitted operators. B is the
+; minimum precedence; recursive calls only represent nested precedence, not a
+; separate parser routine per grammar level.
+.routine in B out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+ParserParseScalarExpressionMin:
+            PUSH BC
+            CALL ParserParseScalarPrimary
+            POP  BC
+            RET  C
+ParserParseScalarExpressionLoop:
+            PUSH BC
+            CALL ParserPeek
+            POP  BC
+            RET  C
+            CP   TokenPlus
+            JR   Z,ParserScalarPlus
+            CP   TokenStar
+            JR   NZ,ParserScalarExpressionDone
+            LD   C,2
+            LD   D,SemanticMultiplyU8
+            JR   ParserScalarOperator
+ParserScalarPlus:
+            LD   C,1
+            LD   D,SemanticAddU8
+ParserScalarOperator:
+            LD   A,C
+            CP   B
+            JR   C,ParserScalarExpressionDone
+            PUSH BC
+            PUSH DE
+            CALL ParserTake
+            POP  DE
+            POP  BC
+            RET  C
+            PUSH BC
+            PUSH DE
+            LD   B,C
+            INC  B
+            CALL ParserParseScalarExpressionMin
+            POP  DE
+            POP  BC
+            RET  C
+            LD   A,D
+            PUSH BC
+            CALL SemanticSinkOperation
+            POP  BC
+            RET  C
+            JR   ParserParseScalarExpressionLoop
+ParserScalarExpressionDone:
+            OR   A
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+ParserParseScalarExpression:
+            LD   B,1
+            JP   ParserParseScalarExpressionMin
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectRoutineHeader:
@@ -327,15 +474,225 @@ ParserParseLoopProgramAfterSub:
             RET  C
             JP   ParserFinishRoutine
 
-; Parse `var bytes as u8[4] = [b0, b1, b2, b3]` after `var`.
+; The first general scalar path admits bounded program variables and scalar
+; locals, then parses a main body as assignment and output statements. The
+; current token is the program variable's name on entry.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
-ParserParseArrayProgramAfterVar:
-            CALL ParserExpectBytes
+ParserParseScalarProgramDeclaration:
+            LD   A,(NextProgramSlot)
+            LD   E,A
+            LD   D,SymbolInfoProgramU8
+            CALL SymbolPrepareCurrent
             RET  C
-            CALL ParserExpectAs
+            JP   ParserParseScalarProgramDeclarationAfterPrepare
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+ParserParseScalarProgramDeclarationAfterPrepare:
+            CALL ParserExpectAsU8
             RET  C
-            CALL ParserExpectU8
+            JP   ParserParseScalarProgramDeclarationAfterU8
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+ParserParseScalarProgramDeclarationAfterU8:
+            CALL ParserExpectEqual
             RET  C
+            CALL ParserExpectNumber
+            RET  C
+            LD   B,0
+            PUSH BC
+            LD   A,SemanticDefineProgramU8
+            CALL SemanticSinkOperation
+            JR   C,ParserScalarProgramOperandFailure
+            LD   A,(NextProgramSlot)
+            CALL SemanticSinkPut
+            JR   C,ParserScalarProgramOperandFailure
+            POP  BC
+            LD   A,C
+            CALL SemanticSinkPut
+            RET  C
+            CALL ParserExpectLine
+            RET  C
+            CALL SymbolCommit
+            LD   HL,NextProgramSlot
+            INC  (HL)
+            XOR  A
+            RET
+ParserScalarProgramOperandFailure:
+            POP  BC
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+ParserParseScalarLocalDeclaration:
+            LD   E,TokenName
+            CALL ParserExpect
+            RET  C
+            LD   A,(NextLocalSlot)
+            LD   E,A
+            LD   D,SymbolInfoLocalU8
+            CALL SymbolPrepareCurrent
+            RET  C
+            CALL ParserExpectAsU8
+            RET  C
+            CALL ParserExpectEqual
+            RET  C
+            LD   A,(NextLocalSlot)
+            LD   C,A
+            LD   A,SemanticDeclareLocalU8
+            CALL ParserEmitOperationC
+            RET  C
+            CALL ParserParseScalarExpression
+            RET  C
+            LD   A,(NextLocalSlot)
+            LD   C,A
+            LD   A,SemanticStoreLocalU8
+            CALL ParserEmitOperationC
+            RET  C
+            CALL ParserExpectLine
+            RET  C
+            CALL SymbolCommit
+            LD   HL,NextLocalSlot
+            INC  (HL)
+            XOR  A
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+ParserParseScalarAssignment:
+            CALL SymbolLookupCurrent
+            RET  C
+            LD   B,A
+            PUSH BC
+            CALL ParserExpectEqual
+            JR   C,ParserScalarAssignmentFailure
+            CALL ParserParseScalarExpression
+            JR   C,ParserScalarAssignmentFailure
+            POP  BC
+            LD   A,B
+            CALL ParserEmitSymbolStore
+            RET  C
+            JP   ParserExpectLine
+ParserScalarAssignmentFailure:
+            POP  BC
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+ParserParseScalarWrite:
+            LD   HL,(TokenStartOffset)
+            PUSH HL
+            CALL ParserExpectLeft
+            JR   C,ParserScalarWriteFailure
+            CALL ParserParseScalarExpression
+            JR   C,ParserScalarWriteFailure
+            CALL ParserExpectRight
+            JR   C,ParserScalarWriteFailure
+            LD   A,SemanticWriteValueU8
+            CALL SemanticSinkOperation
+            JR   C,ParserScalarWriteFailure
+            POP  HL
+            LD   A,L
+            PUSH HL
+            CALL SemanticSinkPut
+            POP  HL
+            RET  C
+            LD   A,H
+            CALL SemanticSinkPut
+            RET  C
+            JP   ParserExpectOrFailLine
+ParserScalarWriteFailure:
+            POP  HL
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+ParserParseScalarStatements:
+            CALL ParserPeek
+            RET  C
+            CP   TokenEnd
+            JR   Z,ParserParseScalarEnd
+            CP   TokenName
+            JP   NZ,ParserExpectedScalar
+            CALL ParserTake
+            RET  C
+            LD   HL,NameWriteOutputByte
+            LD   B,15
+            CALL TokenNameEquals
+            JR   NC,ParserParseScalarAssignmentStatement
+            CALL ParserParseScalarWrite
+            RET  C
+            JR   ParserParseScalarStatements
+ParserParseScalarAssignmentStatement:
+            CALL ParserParseScalarAssignment
+            RET  C
+            JR   ParserParseScalarStatements
+ParserParseScalarEnd:
+            CALL ParserTake
+            RET  C
+            CALL ParserExpectLine
+            RET  C
+            LD   A,SemanticEndMain
+            CALL SemanticSinkOperation
+            RET  C
+            LD   E,TokenEof
+            JP   ParserExpect
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+ParserParseScalarTopLevel:
+            CALL ParserPeek
+            RET  C
+            CP   TokenVar
+            JR   NZ,ParserParseScalarMain
+            CALL ParserTake
+            RET  C
+            LD   E,TokenName
+            CALL ParserExpect
+            RET  C
+            CALL ParserParseScalarProgramDeclaration
+            RET  C
+            JR   ParserParseScalarTopLevel
+ParserParseScalarMain:
+            CP   TokenSub
+            JR   NZ,ParserScalarExpectedTopLevel
+            CALL ParserTake
+            RET  C
+            CALL ParserExpectRoutineHeader
+            RET  C
+            LD   A,SemanticBeginMain
+            CALL SemanticSinkOperation
+            RET  C
+ParserParseScalarLocals:
+            CALL ParserPeek
+            RET  C
+            CP   TokenVar
+            JR   NZ,ParserParseScalarStatements
+            CALL ParserTake
+            RET  C
+            CALL ParserParseScalarLocalDeclaration
+            RET  C
+            JR   ParserParseScalarLocals
+ParserScalarExpectedTopLevel:
+            LD   A,DiagnosticExpectedTopLevel
+            JP   CompilerSetDiagnostic
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+ParserParseProgramAfterVar:
+            LD   E,TokenName
+            CALL ParserExpect
+            RET  C
+            LD   A,(NextProgramSlot)
+            LD   E,A
+            LD   D,SymbolInfoProgramU8
+            CALL SymbolPrepareCurrent
+            RET  C
+            CALL ParserExpectAsU8
+            RET  C
+            CALL ParserPeek
+            RET  C
+            CP   TokenLeftBracket
+            JP   Z,ParserParseArrayProgramAfterU8
+            CALL ParserParseScalarProgramDeclarationAfterU8
+            RET  C
+            JP   ParserParseScalarTopLevel
+
+; The older array slice is selected by the bracketed type suffix. Its body is
+; still deliberately fixed; this split only keeps scalar names unrestricted.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+ParserParseArrayProgramAfterU8:
             CALL ParserExpectLeftBracket
             RET  C
             LD   A,SemanticStaticU8Array
@@ -615,12 +972,12 @@ ParserForwardIncomplete:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserParseProgram:
-            CALL TokenizerNext
+            CALL ParserTake
             RET  C
             CP   TokenSub
             JP   Z,ParserParseLoopProgramAfterSub
             CP   TokenVar
-            JP   Z,ParserParseArrayProgramAfterVar
+            JP   Z,ParserParseProgramAfterVar
             CP   TokenForward
             JP   Z,ParserParseCallProgramAfterForward
             LD   A,DiagnosticExpectedTopLevel
@@ -635,6 +992,9 @@ CompileSlice:
             LD   (DiagnosticCode),A
             LD   (DiagnosticPartId),A
             CALL SemanticSinkReset
+            LD   A,$FF
+            LD   (ParserLookaheadKind),A
+            CALL SymbolReset
             XOR  A
             LD   (ForwardCompleted),A
             CALL ParserParseProgram

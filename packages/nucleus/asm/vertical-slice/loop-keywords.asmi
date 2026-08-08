@@ -20,7 +20,9 @@ PunctuationTable:
             .db  "=",TokenEquals
             .db  ",",TokenComma
             .db  "-",TokenMinus
-PunctuationCount        .equ 3
+            .db  "+",TokenPlus
+            .db  "*",TokenStar
+PunctuationCount        .equ 5
 
 NameMain:               .db "main"
 NameIndex:              .db "index"

@@ -79,6 +79,19 @@ NativeActivationPop:
             XOR  A
             RET
 
+; Unsigned low-byte multiplication for generated expression code. A and B are
+; the operands; the result wraps modulo 256 exactly as MUL8 requires.
+.routine in A,B out A,carry,zero clobbers sign,parity,halfCarry,B,C
+NativeMultiplyU8:
+            LD   C,A
+            XOR  A
+            INC  B
+NativeMultiplyU8Loop:
+            DEC  B
+            RET  Z
+            ADD  A,C
+            JR   NativeMultiplyU8Loop
+
 ; Carry returns endOfInput, a configured input failure, or success in A.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,HL
 NativeReadInputByte:

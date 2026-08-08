@@ -9,6 +9,7 @@ CompilerCodeStart:
             .include "source-adapter.asm"
             .include "loop-tokenizer.asm"
             .include "loop-semantic-sink.asm"
+            .include "loop-symbols.asm"
             .include "loop-parser.asm"
 CompilerCommonCodeEnd:
 NativeSinkCodeStart:

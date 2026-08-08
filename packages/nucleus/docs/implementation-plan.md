@@ -5,16 +5,20 @@
 This document records the construction order, measurement method, and readiness
 gates for the first Nucleus compiler and Z80 execution system. It is
 non-normative. The Nucleus language specification governs source syntax and
-semantics, and the Nucleus VM specification governs bytecode images and
-execution. When this plan conflicts with either specification, the plan must be
-corrected.
+semantics. The former NVM specification remains a historical design record
+while its source-level service, trap, layout, and activation obligations are
+being extracted into a smaller direct-Z80 implementation contract. It is no
+longer an active output-format requirement. When this plan conflicts with the
+language specification, the plan must be corrected.
 
 The compiler and target runtime are handwritten Z80 assembly. Direct Z80 code
-generation is the primary deployment path. NVM remains the normative portable
-execution format and the host-side reference oracle; the first implementation
-does not grow a resident NVM interpreter beyond the completed comparison
-spikes. Both sinks continue to consume the same checked semantic operations so
-that the host validator and reference VM can test the native path independently.
+generation is the sole active implementation path. The compiler's checked
+semantic-operation stream remains an internal boundary between analysis and
+emission; it is not a portable bytecode product. Host tests assemble and run the
+generated Z80 directly, then inspect output, state, diagnostics, and traps
+against the source-level expectation. Existing NVM encoders, interpreters, and
+proofs are retained as archived research evidence, but new language increments
+do not extend or depend on them.
 
 ## Project objective
 
@@ -62,8 +66,9 @@ explicitly reopens them:
   inline subobjects;
 - aggregate parameters and results use typed, opaque address carriers;
 - aggregate assignment copies the complete fixed representation;
-- the compiler emits checked semantic operations and initially uses fixed Z80
-  templates without register allocation or whole-program optimization;
+- the compiler emits checked semantic operations into a direct-Z80 backend and
+  initially uses fixed templates without register allocation or whole-program
+  optimization;
 - each working increment then receives a proof-preserving size pass that may
   share tails and prefixes, exploit fall-through and live flags, or replace
   repeated inline sequences with calls when the measured byte trade is
@@ -83,10 +88,10 @@ The repository already contains executable foundations for the implementation:
 | `src/grammar-analysis.ts`                   | Checks the collected grammar for recursion, reachability, productivity, and predictive conflicts.                                          |
 | `src/type-metadata.ts`                      | Exercises bounded representations for every admitted source type.                                                                          |
 | `src/vm-definition.ts`                      | Records the machine-readable opcode, trap, and service assignments.                                                                        |
-| `src/vm-image.ts`                           | Builds and validates NVM images.                                                                                                           |
-| `src/vm-reference.ts`                       | Executes the specified NVM state transitions on the host.                                                                                  |
+| `src/vm-image.ts`                           | Historical NVM image construction and validation evidence.                                                                                 |
+| `src/vm-reference.ts`                       | Historical executable evidence for the retired NVM design.                                                                                 |
 | `asm/variant-a.asm` through `variant-c.asm` | Measure alternative Z80 dispatch and slot-addressing arrangements.                                                                         |
-| `asm/native-*.asm` and `asm/nvm-*.asm`      | Compare direct templates with partial NVM execution paths for named semantic operations.                                                   |
+| `asm/native-*.asm` and `asm/nvm-*.asm`      | Preserve the completed comparison that selected direct Z80; NVM files are not an active backend.                                           |
 | `test/`                                     | Checks grammar evidence, type metadata, VM images, interpreter behavior, specification synchronization, and measured assembly experiments. |
 
 This host-side evidence is an executable design oracle. It does not count toward
@@ -113,10 +118,9 @@ Before Stage 2 begins, the implementation records a concrete memory map for:
 - compiler workspace;
 - source and diagnostic adapter state;
 - emitted-image staging or bulk-storage output;
-- interpreter code and immutable tables;
 - native runtime helpers and service adapters;
 - slot and dispatch pages;
-- loaded NVM code and data;
+- generated Z80 code and program data;
 - activation storage; and
 - service buffers.
 
@@ -134,8 +138,7 @@ Every implementation report keeps these accounts separate:
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
 | Compiler core      | Z80 code plus immutable tables and constants required while compiling.                                                  |
 | Compiler workspace | Peak simultaneously live writable tokenizer, parser, symbol, type, fixup, diagnostic, and emission state.               |
-| Generated output   | NVM image bytes or native code, static data, relocation or fixup records, and any required startup image.               |
-| NVM interpreter    | Z80 code, immutable dispatch and service data, loader or validator code, and fixed writable machine state.              |
+| Generated output   | Native Z80 code, static data, relocation or fixup records, and any required startup image.                              |
 | Native runtime     | Shared Z80 checks, arithmetic helpers, service adapters, call machinery, and fixed writable runtime state.              |
 | Execution storage  | Slot page, staged arguments, completion carriers, activation arena, loaded code and data, and service buffers.          |
 | Execution cost     | Executed Z80 instructions and T-states for named programs and input conditions.                                         |
@@ -147,53 +150,30 @@ measured basis and arithmetic. Unknown values remain open.
 
 ## Backend decision rule
 
-The current Stage 4 front end produces checked semantic operations as it parses
-and retains no abstract syntax tree or parser-specific program record. The
-present proof sink records a bounded semantic transcript: eleven bytes for the
-loop program, fourteen for the array program, and sixteen for the scalar call
-program. The selected backend consumes that transcript after parsing succeeds.
-This is a deliberate narrow-slice economy, not the intended final buffering
-policy. A measured sink that emitted native code while the parser was still
-active required more code and simultaneously live state; the rejected
-experiment is recorded below. The
-separate Stage 3 proof remains a historical narrow slice and is not linked into
-the current compiler spine. It shares the current source adapter, so reductions
-to that common module still update its measured account.
+The Stage 3 and Stage 4 comparisons are complete: direct Z80 is the selected
+backend. New vertical slices implement, measure, and optimize that path only.
+No new NVM opcode, encoder, validator, interpreter, proof, or publication work
+belongs to the active implementation plan.
 
-An NVM sink encodes the checked transcript as bytecode. A native sink emits Z80
-instructions, fixed fragments, and calls to shared helpers. Both sinks use the
-same resolved types, slot assignments, branch fixups, source positions, and
-safety decisions. Later slices must remeasure direct sink emission when a
-general semantic dispatcher can replace enough fixed encoder code to pay for
-it.
+The front end still produces checked semantic operations as it parses and
+retains no abstract syntax tree or parser-specific program record. The current
+proof sink records a bounded transcript and the native backend consumes it only
+after parsing succeeds. This preserves diagnostic and output atomicity. The
+transcript is an internal compiler representation whose ordinals and layout may
+change whenever a smaller proven representation is found.
 
-This boundary prevents the backend experiment from creating two languages or
-two semantic analyzers. It also avoids an unnecessary NVM serialization step in
-the native path. NVM bytecode remains available as a conformance oracle and a
-portable execution format even if direct code generation becomes the first
-deployment path.
+An earlier experiment emitted native code while the parser remained active. It
+needed more compiler code and more simultaneously live workspace, so the
+post-parse transcript remains the smaller measured arrangement. Later slices
+must remeasure it when a general statement or expression dispatcher can replace
+enough fixed encoder code to pay for another organization.
 
-The decision compares complete, mutually exclusive configurations:
-
-1. compiler core with NVM encoder, generated NVM image, loader, validator,
-   interpreter, and execution state;
-2. compiler core with native template emitter, generated Z80 code and data,
-   shared native helpers, service adapters, and execution state.
-
-The comparison reports compiler bytes, peak compiler workspace, emitted program
-bytes, target-runtime bytes, writable execution state, instruction count,
-T-states, and preserved safety behavior. It also records the trust model: NVM
-accepts structurally valid images from outside the compiler and therefore needs
-image validation and generic data-region checks; native code emitted and loaded
-as one compiler-controlled program may discharge some structural facts during
-compilation. Those are different products and must not be made to look equal by
-omitting the extra guarantee from one account.
-
-The Stage 3 and early Stage 4 measurements selected direct Z80 as the primary
-implementation path. New vertical slices therefore implement and optimize the
-native sink first. The NVM sink remains a host-validated comparison oracle and
-portable output experiment; no new Z80-resident interpreter handler is required
-unless later measurements reopen that decision.
+Host verification now has two independent layers. AZM checks the compiler and
+generated-program register contracts; Debug80 runs the emitted Z80 and exposes
+its output, state, trap record, and instruction count. A host-side source
+expectation checks those observations directly. The archived NVM reference
+implementation may still explain an old measurement, but it is not an oracle
+that new code must reproduce.
 
 ## Initial backend measurements
 
@@ -217,29 +197,31 @@ proof relies on a compiler-established typed base and measures the dynamic index
 check. The NVM `INDEX` handler also defends the generic data-region boundary.
 Neither experiment includes a loader, validator, calls, recursion, failure
 propagation, services, aggregate results, aggregate copying, or a Z80-resident
-compiler. The measurements justify continuing the native experiment. They do
-not establish which complete system is smaller.
+compiler. They are retained because they contributed to the later decision;
+they are not active implementation paths or evidence that future increments
+must preserve NVM output.
 
 ## Current readiness baseline
 
-Stages 2 and 3 are executable, and Stage 4 now includes counted-loop, checked
-array, and scalar-recursion increments. These remain narrow proofs rather than
-a complete compiler. The repository does not yet satisfy the complete vector
-obligations in the VM specification.
+Stages 2 and 3 are executable historical evidence. Stage 4 completed the
+backend decision with counted-loop, checked-array, and scalar-recursion
+increments. Stage 5 now has its first direct-Z80 scalar-symbol and expression
+increment. These remain narrow proofs rather than a complete compiler.
 
-| Area                | Current evidence                                                                                                                       | Work before Z80 translation                                                                                                                                 |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Specifications      | Review found the language, VM, and reviewer authorities consistent at revision `6088a08`; the matching reading editions are published. | Treat later normative changes as explicit corrections or redesigns and review them before implementation depends on them.                                   |
-| Grammar             | The collected grammar is analyzed mechanically and its three predictive conflicts are locked by tests.                                 | Preserve the result while adding the source compiler; no new grammar work is planned.                                                                       |
-| Type metadata       | Compact structural metadata and alias-category separation have executable tests.                                                       | Measure inline metadata against interned ordinals in Z80 before selecting the first representation.                                                         |
-| Image format        | Exact image builders, the minimal image, initializer application, and representative rejection paths have tests.                       | Complete every Chapter 19 rejection vector and every completion-shape combination.                                                                          |
-| Reference execution | Scalar operations, representative layout checks, calls, failures, services, traps, and argument-mask checks execute on the host.       | Fill the Chapter 20 matrix: call extremes and recursion, all failure shapes, all services and errors, aggregate-copy cases, and atomic capacity boundaries. |
-| Source corpus       | Chapter 21 records expected accepted and rejected behavior.                                                                            | Add a compiler-to-NVM harness after a source compiler exists; fixture images may cover VM behavior first.                                                   |
-| Z80 evidence        | Three dispatch variants and two direct-native templates assemble and run through the measurement harness.                              | Complete the Stage 4 decision slice; the current variants are measurements, not a partial conforming interpreter or native backend.                         |
+| Area                 | Current evidence                                                                                                                       | Work ahead                                                                                                                |
+| -------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- |
+| Specifications       | Review found the language, VM, and reviewer authorities consistent at revision `6088a08`; the matching reading editions are published. | Treat later normative changes as explicit corrections or redesigns and review them before implementation depends on them. |
+| Grammar              | The collected grammar is analyzed mechanically and its three predictive conflicts are locked by tests.                                 | Preserve the result while adding the source compiler; no new grammar work is planned.                                     |
+| Type metadata        | Compact structural metadata and alias-category separation have executable tests.                                                       | Measure inline metadata against interned ordinals in Z80 before selecting the first representation.                       |
+| Retired NVM evidence | Image builders, validation, and representative reference execution remain tested as historical research.                               | Archive them outside the active Nucleus implementation and publication paths.                                             |
+| Source corpus        | Chapter 21 records expected accepted and rejected behavior.                                                                            | Compile each applicable case to Z80 and check its direct output, state, diagnostic, or trap.                              |
+| Z80 evidence         | The compiler emits and runs loop, checked-array, recursive-call, and scalar-expression programs with measured accounts.                | Generalize one bounded component at a time and reach a measured size plateau before the next increment.                   |
 
-`npm test -w nucleus` is the host-evidence baseline. `npm run measure -w
-nucleus` rebuilds its AZM and runtime dependencies before assembling and running
-the Z80 measurement variants.
+`vitest run test/proof-harness.test.ts` from `packages/nucleus` is the focused
+assembly-proof gate. The broader Nucleus package suite runs only after that
+gate passes. AZM and Debug80 dependencies are rebuilt only when their outputs
+are absent or stale; an ordinary Nucleus change does not trigger a monorepo-wide
+rebuild.
 
 ## AZM and Debug80 proof architecture
 
@@ -249,15 +231,15 @@ that includes or links the production assembly under test, runs at a declared
 address in a declared memory map, and exposes a small set of named observations.
 The host assembles the proof, loads it into Debug80, executes it with a finite
 instruction or cycle limit, and compares those observations with the host
-oracle.
+expectation for that source program.
 
 Use three proof scales:
 
-1. **Module proofs** exercise one tokenizer, parser, image, or interpreter
+1. **Module proofs** exercise one tokenizer, parser, emitter, or runtime-helper
    boundary with minimal machine state.
 2. **Boundary proofs** exercise a complete contract between two components,
-   such as compiler emission followed by image loading, or service invocation
-   followed by completion handling.
+   such as compiler emission followed by generated-code execution, or service
+   invocation followed by completion handling.
 3. **Milestone proofs** execute one visible end-to-end program for the current
    build stage. They do not replace the smaller proofs.
 
@@ -272,12 +254,12 @@ A proof reports through named symbols and bounded state, chosen from:
 - emitted bytes and the output cursor;
 - the current source position;
 - selected compiler tables and their high-water marks;
-- NVM or native registers, slots, data bytes, activation state, and service
-  output; and
+- generated-Z80 registers, scalar storage, data bytes, activation state, and
+  service output; and
 - instruction, cycle, code-size, and writable-memory totals.
 
 The host harness owns assembly, machine construction, step limits, symbol
-lookup, oracle comparison, and failure diagnostics. Individual proof manifests
+lookup, expectation comparison, and failure diagnostics. Individual proof manifests
 provide only the source file, memory profile, entry and stopping conditions,
 fixtures, and expected observations. This keeps new proofs data-driven and
 avoids a separate TypeScript runner for every assembly file. A failed proof must
@@ -313,7 +295,10 @@ Completion evidence:
   and
 - the implementation begins from one recorded specification revision.
 
-### Stage 1: preserve the executable oracle
+### Stage 1: preserve executable design evidence
+
+This completed host-side stage belongs to the archived NVM investigation. Its
+fixtures remain useful evidence but do not gate new direct-Z80 increments.
 
 Complete any missing host vectors before translating the machinery into Z80.
 The host suite must cover every opcode transition, image-validity rule, service,
@@ -332,7 +317,10 @@ Completion evidence:
 - every accepted Chapter 21 program has a recorded expected behavior; and
 - every rejected Chapter 21 program has a recorded rejection reason.
 
-### Stage 2: dual execution spines
+### Stage 2: historical backend comparison
+
+This completed stage records the NVM-versus-native experiment that selected
+direct Z80. Its NVM tasks are not instructions for future implementation.
 
 Implement the smallest complete NVM execution path in Z80:
 
@@ -362,7 +350,7 @@ Completion evidence:
 - malformed NVM images fail atomically, and the native proof rejects an
   unresolved or out-of-range fixup before loading code.
 
-### Stage 3: compiler spine and output sinks
+### Stage 3: compiler spine and historical output comparison
 
 Implement one end-to-end source path before filling out the language breadth:
 
@@ -378,10 +366,10 @@ output construction, and source-positioned diagnostics. It deliberately avoids
 operator expressions, locals, user routines, and data layout until the compiler
 can emit and run a complete program.
 
-The checked front end writes through a small semantic-operation sink. The NVM
-sink emits the canonical image. The native sink emits Z80 templates and bounded
-fixups without first creating NVM bytecode. Neither sink may change evaluation
-order, failure behavior, source diagnostics, or safety checks.
+For this completed comparison, the checked front end wrote through a small
+semantic-operation sink. One historical sink emitted the canonical NVM image;
+the selected sink emitted Z80 templates and bounded fixups without first
+creating NVM bytecode.
 
 Completion evidence:
 
@@ -431,26 +419,21 @@ both accepted and malformed input in 8,825 instructions and 90,816 T-states.
 
 This result does not choose a backend. The program has no expressions, locals,
 user calls, data layout, or general control flow, so it strongly favors a
-direct template. Stage 4 remains the decision slice because it introduces the
+direct template. Stage 4 supplied the decision slice because it introduced the
 shared machinery and safety paths that can change the comparison.
 
-### Stage 4: representative backend decision slice
+### Stage 4: completed backend decision slice
 
-Before either path grows into the full implementation, compile and execute the
-same narrow program set through both sinks:
+This completed stage compared the first three narrow program groups through
+both sinks:
 
 1. fixed-slot scalar arithmetic and a counted loop;
 2. checked fixed-array selection on success and at the bounds trap;
-3. a user-routine call and bounded scalar recursion;
-4. a failable call on success, local handling, and propagation;
-5. a standard service on success and failure;
-6. aggregate parameter selection and a transient aggregate result; and
-7. exact aggregate copying at a small and a larger fixed extent.
+3. a user-routine call and bounded scalar recursion.
 
-The slice implements only the operations needed by those proofs, but each
-operation obeys the complete source semantics. The NVM account includes its
-loader and required validator. The native account includes all shared helpers,
-call machinery, safety paths, and service adapters required by the slice.
+Those measurements were enough to select direct Z80. Failure handling,
+services, aggregate parameters, transient results, and aggregate copying now
+advance only through the direct backend in their later language stages.
 
 #### First Stage 4 increment: scalar local and counted loop
 
@@ -534,11 +517,11 @@ the exact four-byte static image, rejects a missing initializer comma at its
 source position, and reports output capacity without publishing a partial
 program or changing runnable state.
 
-Direct Z80 is the production experiment for this increment. The NVM sink emits
-an 89-byte comparison image that the host validator and reference VM execute;
-the Z80-resident NVM interpreter is unchanged.
+Direct Z80 was the production experiment for this increment. The historical
+NVM sink emitted an 89-byte comparison image; it is retained only in the
+archived measurement.
 
-| Account                    |                        Direct-Z80 path |                   Host-only NVM oracle |
+| Account                    |                        Direct-Z80 path |                    Historical NVM path |
 | -------------------------- | -------------------------------------: | -------------------------------------: |
 | common front-end code      |                            1,680 bytes |                            1,680 bytes |
 | backend sink code          |                              772 bytes |                              801 bytes |
@@ -719,7 +702,7 @@ and writable native state from 18 to 17 bytes while retaining an independent
 arena-capacity guard. The consolidation pass described below reduces the same
 compiler to 2,841 bytes.
 
-| Account                    |                        Direct-Z80 path |                   Host-only NVM oracle |
+| Account                    |                        Direct-Z80 path |                    Historical NVM path |
 | -------------------------- | -------------------------------------: | -------------------------------------: |
 | common front-end code      |                            1,707 bytes |                            1,707 bytes |
 | backend sink code          |                            1,007 bytes |                              139 bytes |
@@ -741,12 +724,10 @@ call-specific parser path now occupies 338 bytes and the call backend 332
 bytes; their enclosing front end and sink accounts also contain the earlier
 loop and array machinery.
 
-The NVM path is deliberately a host oracle, not a production sink comparison.
-Its 139-byte encoder copies and patches a fixed 102-byte image, which the host
-validator and reference VM execute independently. Both runs write zero and
-perform `activation-capacity` at depth three. The NVM trap record identifies
-routine ordinal one and code offset 46. The native path reports source byte
-offset 201 for activation exhaustion and byte offset 95 for output failure.
+The historical NVM path used a 139-byte encoder to copy and patch a fixed
+102-byte image. That run wrote zero and performed `activation-capacity` at depth
+three; its retained trap record identifies routine ordinal one and code offset 46. The direct path reports source byte offset 201 for activation exhaustion
+and byte offset 95 for output failure.
 The native proof checks both locations, exact transcript consumption, the four
 successful active calls, the depth-three high-water state, the untouched
 fourth arena byte on rejection, empty output, and complete unwind.
@@ -827,15 +808,15 @@ bytes, and the native runtime remains 196 code bytes plus 17 writable bytes.
 
 Completion evidence:
 
-- both paths agree with the host oracle on every normal, failure, and trap
-  outcome;
-- the compiler reports the common front end and the two mutually exclusive
-  output sinks separately;
+- the historical paths agreed on every normal, failure, and trap outcome used
+  in the decision;
+- the compiler reported the common front end and the two mutually exclusive
+  output sinks separately during that comparison;
 - complete generated-program, target-runtime, writable-state, instruction, and
   T-state accounts are reported for every proof;
 - the comparison records which checks are runtime operations and which facts a
   compiler-controlled native image establishes statically; and
-- the project records one primary implementation path before Stage 5 begins.
+- direct Z80 is the sole active implementation path before Stage 5 begins.
 
 ### Stage 5: scalars, expressions, and structured control
 
@@ -847,10 +828,53 @@ specified left-to-right and short-circuit behavior.
 The stage ends with scalar recursion and every scalar safety trap, including the
 wide-bound `u8` counted-loop case.
 
+#### First Stage 5 increment: bounded scalar symbols and precedence
+
+The first increment replaces the fixed scalar names used by earlier slices with
+a six-entry exact-name table. Each five-byte entry retains a pointer and length
+into resident source, one class-and-type byte, and one storage ordinal. An entry
+remains provisional while its initializer is checked, so a declaration cannot
+refer to itself and a failed declaration never becomes visible. The seventh
+name produces a positioned capacity diagnostic.
+
+The accepted proof declares one program `u8`, two per-activation local `u8`
+values, assigns through a postfix operation stream, and executes
+`left + right * 4`. A single precedence-climbing routine gives multiplication
+priority over addition. The generated Z80 writes byte 14, stores 14 in the
+program object, and reports a forced output failure at the exact source byte.
+Companion cases reject a duplicate name, an unknown name, a missing right
+operand, and the seventh symbol at their exact positions. The representative
+program deliberately calls its scalar `bytes`; type-suffix dispatch proves that
+the old fixed array slice no longer reserves that otherwise ordinary name.
+
+The direct compiler is now 3,883 bytes of code and immutable data with 103 bytes
+of peak workspace. Its measured components are 2,369 bytes for the common front
+end, including a 121-byte symbol module and 1,596-byte parser, and 1,383 bytes
+for the native sink, including a 362-byte expression backend. The generated
+program is 101 bytes. The shared native runtime is 204 bytes of code plus 17
+bytes of writable state.
+
+The first correct form measured 3,900 compiler bytes. Sharing retained emission
+fragments reduced that to 3,866. Removing the accidental `bytes` reservation
+added ten bytes of real generality, and sharing the expression push tail
+recovered four. The final audit then replaced a truncated one-byte source
+position with the required 16-bit operand; an execution proof places the output
+call at byte 284 and checks the full trap offset. That correction adds eleven
+compiler bytes and one workspace byte, producing the 3,883-byte plateau. A
+proposed common indirect dispatcher for the call and expression tables was rejected because its
+synthetic return stack could not satisfy strict AZM stack-contract proof. The
+proven duplicated dispatch kernels remain until a different representation has
+a measurable complete-path saving.
+
+The 33-byte semantic transcript is exactly full in this proof. It is a measured
+narrow-slice capacity, not a suitable general limit; the next increment must
+either enlarge it with an explicit diagnostic or replace it with a smaller
+general statement representation before adding operations.
+
 Completion evidence:
 
-- arithmetic and comparison behavior matches the host model at all width
-  boundaries;
+- arithmetic and comparison behavior matches the source specification at all
+  width boundaries;
 - constant folding matches runtime width and wraparound rules;
 - direct and mutual recursion preserve active scalar state;
 - every bounded table and nesting stack has an exercised capacity diagnostic;
@@ -866,12 +890,11 @@ storage is allocated only while processing top-level program declarations.
 
 Completion evidence:
 
-- emitted layouts match the VM layout vectors byte for byte in both backends;
-- zero and explicit initializers produce identical host, NVM, and native data
-  images;
+- emitted layouts match the language layout rules byte for byte in generated
+  Z80 data;
+- zero and explicit initializers produce the required native data images;
 - incorrect counts, nesting, types, and string lengths produce diagnostics;
-- NVM initializer application remains atomic after complete image validation,
-  and native startup exposes no partially applied data image; and
+- native startup exposes no partially applied data image; and
 - type-metadata and initializer workspace limits are measured.
 
 ### Stage 7: aggregate calls, results, and copying
@@ -879,8 +902,7 @@ Completion evidence:
 Add aggregate parameter carriers, checked selection, transient aggregate
 results, carrier preservation across intervening calls, and exact-type
 aggregate assignment. Measure straight-line copying, a counted byte-copy loop,
-and any shared native helper before selecting a lowering policy for either
-backend.
+and any shared native helper before selecting the direct-Z80 lowering policy.
 
 Completion evidence:
 
@@ -896,27 +918,23 @@ Completion evidence:
 
 Complete packed activations, sixteen argument positions, early returns,
 recoverable failure, local handling, propagation, all services, and all traps.
-If NVM is the selected deployment path, complete its structural validator,
-including completion shapes and argument-mask data flow. If native Z80 is the
-selected path, complete the corresponding load, fixup, and compiler-controlled
-image-integrity rules. NVM validation remains part of the reference backend.
+Complete the corresponding load, fixup, and compiler-controlled image-integrity
+rules for generated Z80.
 
 Completion evidence:
 
-- every applicable VM Chapter 20 vector passes on the Z80 interpreter and the
-  selected execution path;
+- every applicable language behavior has a direct-Z80 execution or rejection
+  proof;
 - activation byte and depth exhaustion are atomic;
 - every service and failure path preserves its specified destination and
   cursor effects; and
-- validator or native image-integrity cost is measured separately from
-  execution code.
+- image-integrity cost is measured separately from execution code.
 
 ### Stage 9: complete corpus and final accounting
 
 Compile every accepted Chapter 21 program with the Z80 compiler, run it through
 the selected execution path, and reject every invalid program before execution.
-The NVM reference path validates and runs the corresponding image for every
-program. Report all resource accounts for the complete implementation.
+Report all resource accounts for the complete implementation.
 
 The architecture passes only when the compiler core and immutable compilation
 data fit the 16 KiB gate and every conformance program fits the published
@@ -930,22 +948,23 @@ The first implementation fixes a numeric limit before each bounded structure is
 used. Each row remains open until a Z80 representation and a minimum corpus
 requirement are both known.
 
-| Resource                                  |                 Limit | Representation            | Excess diagnostic or trap                      | Evidence                                       |
-| ----------------------------------------- | --------------------: | ------------------------- | ---------------------------------------------- | ---------------------------------------------- |
-| source part count                         |                  open | open                      | capacity diagnostic                            | open                                           |
-| diagnostic-name bytes                     |                  open | open                      | capacity diagnostic                            | open                                           |
-| identifier bytes                          |                  open | open                      | capacity diagnostic                            | open                                           |
-| ordinary symbols                          |                  open | open                      | capacity diagnostic                            | open                                           |
-| record types and fields                   |                  open | open                      | capacity diagnostic                            | open                                           |
-| retained forward signatures and names     |                  open | copied or interned bytes  | capacity diagnostic                            | one resident-part pair; general retention open |
-| parameters and scalar locals              |                  open | open                      | capacity diagnostic                            | open                                           |
-| expression and statement nesting          |                  open | open                      | capacity diagnostic                            | open                                           |
-| branch fixups and active loops            |                  open | open                      | capacity diagnostic                            | open                                           |
-| structured-initializer depth and elements |                  open | open                      | capacity diagnostic                            | open                                           |
-| emitted image bytes                       | 65,535 format maximum | open                      | capacity diagnostic below or at format maximum | format rule; target open                       |
-| activation bytes                          |                  open | packed records            | `activation-capacity`                          | one-byte Stage 4 slice                         |
-| activation depth                          |                  open | counter plus packed arena | `activation-capacity`                          | depth-three trap proof                         |
-| service stream and bulk-storage extents   |                  open | target adapter            | service error or documented host capacity      | open                                           |
+| Resource                                  | Limit | Representation                  | Excess diagnostic or trap                 | Evidence                                       |
+| ----------------------------------------- | ----: | ------------------------------- | ----------------------------------------- | ---------------------------------------------- |
+| source part count                         |  open | open                            | capacity diagnostic                       | open                                           |
+| diagnostic-name bytes                     |  open | open                            | capacity diagnostic                       | open                                           |
+| identifier bytes                          |  open | open                            | capacity diagnostic                       | open                                           |
+| ordinary scalar symbols                   |     6 | five-byte source-backed entries | capacity diagnostic                       | duplicate, unknown, and seventh-name proof     |
+| record types and fields                   |  open | open                            | capacity diagnostic                       | open                                           |
+| retained forward signatures and names     |  open | copied or interned bytes        | capacity diagnostic                       | one resident-part pair; general retention open |
+| parameters and scalar locals              |  open | open                            | capacity diagnostic                       | open                                           |
+| expression and statement nesting          |  open | open                            | capacity diagnostic                       | open                                           |
+| semantic transcript bytes                 |    33 | flat operation buffer           | capacity diagnostic                       | exactly full in first Stage 5 proof            |
+| branch fixups and active loops            |  open | open                            | capacity diagnostic                       | open                                           |
+| structured-initializer depth and elements |  open | open                            | capacity diagnostic                       | open                                           |
+| emitted Z80 program bytes                 |  open | bounded output cursor           | capacity diagnostic                       | 101-byte Stage 5 program in 4 KiB proof region |
+| activation bytes                          |  open | packed records                  | `activation-capacity`                     | one-byte Stage 4 slice                         |
+| activation depth                          |  open | counter plus packed arena       | `activation-capacity`                     | depth-three trap proof                         |
+| service stream and bulk-storage extents   |  open | target adapter                  | service error or documented host capacity | open                                           |
 
 No implementation may wrap, truncate, drop state, or change source meaning when
 one of these limits is exceeded.
@@ -958,7 +977,7 @@ Implementation changes follow a short evidence loop:
 2. add or select an executable vector;
 3. implement the smallest complete semantic path;
 4. assemble and measure it;
-5. compare behavior with the host oracle;
+5. compare generated-Z80 behavior with the source-level expected result;
 6. inspect any structure that now occurs twice and select a consolidation
    candidate;
 7. assemble the candidate and retain it only when the complete resident account
@@ -979,23 +998,19 @@ An implementation experiment may remain on a branch or behind a harness. It
 must not alter the published language merely because it is smaller in isolation.
 Measurements compare complete accounting boundaries and equivalent semantics.
 
-## Readiness checklist
+## Continued implementation checklist
 
-Implementation may begin when:
+Before a new language stage begins:
 
-- the current adversarial specification review is resolved;
-- the specifications, reviewer charter, and published editions agree;
-- machine-readable opcodes, traps, services, and image fields are synchronized;
-- the host image validator and reference interpreter pass their complete suites;
+- outstanding adversarial findings for the current stage are resolved;
+- the language specification, direct-Z80 contract, reviewer charter, and
+  published editions agree;
+- machine-readable trap and service assignments match the direct runtime
+  contract;
 - every Chapter 21 program has a source-level expected result;
-- the initial compiler input/output and diagnostic transport are selected;
 - the Z80 memory map identifies the compiler bank, compiler workspace, generated
-  program destination, target-runtime regions, loaded code and data, and
+  program destination, target-runtime regions, program code and data, and
   activation arena without overlap; and
 - the measurement harness reports compiler bytes, immutable data, peak
   workspace, target-runtime bytes, runtime state, emitted bytes, and T-states
   as separate accounts.
-
-The first source implementation task is Stage 3 only after Stages 0 through 2
-have supplied a stable machine target. Work may prepare tests and measurements
-for later stages without widening the first slice.

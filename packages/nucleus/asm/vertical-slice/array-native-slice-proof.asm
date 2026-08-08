@@ -15,6 +15,9 @@ TokenizerCodeEnd:
 SemanticSinkCodeStart:
             .include "loop-semantic-sink.asm"
 SemanticSinkCodeEnd:
+SymbolCodeStart:
+            .include "loop-symbols.asm"
+SymbolCodeEnd:
 ParserCodeStart:
             .include "loop-parser.asm"
 ParserCodeEnd:

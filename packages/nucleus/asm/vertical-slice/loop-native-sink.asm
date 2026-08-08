@@ -29,6 +29,22 @@ NativeEmitWord:
             LD   A,C
             JP   NativeEmitByte
 
+; Copy B retained opcode bytes. Shared fixed sequences are cheaper as data
+; once two or more encoder paths need four or more emitted bytes.
+.routine in B,HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeEmitBytes:
+            LD   A,(HL)
+            INC  HL
+            PUSH BC
+            PUSH HL
+            CALL NativeEmitByte
+            POP  HL
+            POP  BC
+            RET  C
+            DJNZ NativeEmitBytes
+            OR   A
+            RET
+
 ; Patch one Z80 relative displacement. DE is the operand and HL the target.
 .routine in DE,HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
 NativePatchRelative:
@@ -496,6 +512,236 @@ NativeEncodeCallProgram:
             RET  C
             JP   NativeFinishProgram
 NativeCallBackendEnd:
+
+; Dense postfix-expression backend. Program data follows an initial JP, so its
+; address is known before the code entry is patched. Scalar locals use an IX
+; frame and therefore remain per activation; the evaluation stack lies below
+; that frame and is empty at every statement boundary.
+NativeExpressionBackendStart:
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
+NativeDispatchExpressionOperations:
+            LD   HL,SemanticBufferBase+1
+            LD   (SemanticReadCursor),HL
+            LD   A,(SemanticBufferBase)
+            OR   A
+            RET  Z
+            LD   B,A
+NativeDispatchExpressionNext:
+            PUSH BC
+            CALL NativeNextSemanticByte
+            SUB  SemanticDefineProgramU8
+            CP   NativeExpressionOperationCount
+            JR   NC,NativeDispatchExpressionInvalid
+            ADD  A,A
+            LD   E,A
+            LD   D,0
+            LD   HL,NativeExpressionOperationTable
+            ADD  HL,DE
+            LD   E,(HL)
+            INC  HL
+            LD   D,(HL)
+            EX   DE,HL
+            LD   DE,NativeDispatchExpressionReturn
+            PUSH DE
+            JP   (HL)
+NativeDispatchExpressionReturn:
+            POP  BC
+            RET  C
+            DJNZ NativeDispatchExpressionNext
+            OR   A
+            RET
+NativeDispatchExpressionInvalid:
+            POP  BC
+            LD   A,DiagnosticSinkCapacity
+            JP   CompilerSetDiagnostic
+
+NativeExpressionOperationTable:
+            .dw NativeExpressionDefineProgram
+            .dw NativeExpressionBeginMain
+            .dw NativeExpressionDeclareLocal
+            .dw NativeExpressionLiteral
+            .dw NativeExpressionLoadProgram
+            .dw NativeExpressionLoadLocal
+            .dw NativeExpressionMultiply
+            .dw NativeExpressionAdd
+            .dw NativeExpressionStoreProgram
+            .dw NativeExpressionStoreLocal
+            .dw NativeExpressionWrite
+            .dw NativeExpressionEndMain
+NativeExpressionOperationCount .equ 12
+
+.routine in A out HL clobbers carry,halfCarry,D,E
+NativeExpressionProgramAddress:
+            LD   E,A
+            LD   D,0
+            LD   HL,GeneratedBase+3
+            ADD  HL,DE
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+NativeExpressionDefineProgram:
+            CALL NativeNextSemanticByte
+            CALL NativeNextSemanticByte
+            JP   NativeEmitByte
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeExpressionBeginMain:
+            LD   DE,(EmitDataFixup)
+            LD   HL,(EmitCursor)
+            CALL NativePatchWord
+            LD   HL,NativeExpressionFrameBytes
+            LD   B,8
+            JP   NativeEmitBytes
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+NativeExpressionDeclareLocal:
+            CALL NativeNextSemanticByte
+            LD   A,$3B
+            JP   NativeEmitByte
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeExpressionLiteral:
+            CALL NativeNextSemanticByte
+            CALL NativeEmitLoadAImmediate
+            RET  C
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+NativeExpressionPushA:
+            LD   A,$F5
+            JP   NativeEmitByte
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+NativeExpressionLoadProgram:
+            CALL NativeNextSemanticByte
+            CALL NativeExpressionProgramAddress
+            LD   A,$3A
+            CALL NativeEmitOpcodeWord
+            RET  C
+            JP   NativeExpressionPushA
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeExpressionLoadLocal:
+            CALL NativeNextSemanticByte
+            CPL
+            LD   C,A
+            LD   A,$DD
+            CALL NativeEmitByte
+            RET  C
+            LD   A,$7E
+            CALL NativeEmitOpcodeByte
+            RET  C
+            JP   NativeExpressionPushA
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeExpressionMultiply:
+            LD   A,$C1
+            CALL NativeEmitByte
+            RET  C
+            LD   A,$F1
+            CALL NativeEmitByte
+            RET  C
+            LD   HL,NativeMultiplyU8
+            CALL NativeEmitCall
+            RET  C
+            LD   A,$F5
+            JP   NativeEmitByte
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+NativeExpressionAdd:
+            LD   HL,NativeExpressionAddBytes
+            LD   B,4
+            JP   NativeEmitBytes
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+NativeExpressionStoreProgram:
+            CALL NativeNextSemanticByte
+            CALL NativeExpressionProgramAddress
+            PUSH HL
+            LD   A,$F1
+            CALL NativeEmitByte
+            POP  HL
+            RET  C
+            LD   A,$32
+            JP   NativeEmitOpcodeWord
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeExpressionStoreLocal:
+            CALL NativeNextSemanticByte
+            CPL
+            LD   C,A
+            LD   A,$F1
+            CALL NativeEmitByte
+            RET  C
+            LD   A,$DD
+            CALL NativeEmitByte
+            RET  C
+            LD   A,$77
+            JP   NativeEmitOpcodeByte
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeExpressionWrite:
+            CALL NativeNextSemanticByte
+            LD   C,A
+            CALL NativeNextSemanticByte
+            LD   H,A
+            LD   L,C
+            LD   (EmitLoopHead),HL
+            LD   A,$F1
+            CALL NativeEmitByte
+            RET  C
+            LD   HL,NativeWriteOutputByte
+            CALL NativeEmitCall
+            RET  C
+            CALL NativeEmitJrCPlaceholder
+            RET  C
+            LD   (EmitFailureFixup),DE
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+NativeExpressionRestoreFrame:
+            LD   HL,NativeExpressionRestoreBytes
+            LD   B,4
+            JP   NativeEmitBytes
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeExpressionEndMain:
+            CALL NativeExpressionRestoreFrame
+            RET  C
+            CALL NativeEmitSuccessReturn
+            RET  C
+            LD   DE,(EmitFailureFixup)
+            CALL NativePatchHere
+            RET  C
+            CALL NativeExpressionRestoreFrame
+            RET  C
+            LD   HL,(EmitLoopHead)
+            CALL NativeEmitLoadHl
+            RET  C
+            CALL NativeEmitUnhandledTrapPrefix
+            RET  C
+            JP   NativeEmitTrapEnding
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+NativeEncodeExpressionProgram:
+            LD   HL,GeneratedLimit
+            CALL NativeBeginProgram
+            LD   A,$C3
+            CALL NativeEmitByte
+            RET  C
+            LD   HL,(EmitCursor)
+            LD   (EmitDataFixup),HL
+            LD   HL,0
+            CALL NativeEmitWord
+            RET  C
+            CALL NativeDispatchExpressionOperations
+            RET  C
+            JP   NativeFinishProgram
+NativeExpressionFrameBytes:
+            .db $DD,$E5,$DD,$21,$00,$00,$DD,$39
+NativeExpressionAddBytes:
+            .db $C1,$F1,$80,$F5
+NativeExpressionRestoreBytes:
+            .db $DD,$F9,$DD,$E1
+NativeExpressionBackendEnd:
 
 ; Default entry and proof-only bounded entry for the checked-array program.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY

@@ -15,6 +15,9 @@ TokenizerCodeEnd:
 SemanticSinkCodeStart:
             .include "loop-semantic-sink.asm"
 SemanticSinkCodeEnd:
+SymbolCodeStart:
+            .include "loop-symbols.asm"
+SymbolCodeEnd:
 ParserCodeStart:
             .include "loop-parser.asm"
 ParserCodeEnd:
@@ -93,7 +96,7 @@ ProofStart:
             SBC  HL,DE
             JP   NZ,ProofFailSize
             LD   HL,(SemanticReadCursor)
-            LD   DE,SemanticBufferLimit
+            LD   DE,SemanticBufferBase+$10
             OR   A
             SBC  HL,DE
             JP   NZ,ProofFailTranscriptEnd

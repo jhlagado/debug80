@@ -2,7 +2,7 @@
   "name": "nucleus",
   "version": "0.0.0",
   "private": true,
-  "description": "Nucleus: a small typed language for 16K Z80 systems with NVM and native backends",
+  "description": "Nucleus: a small typed language with a direct compiler for 16K Z80 systems",
   "license": "GPL-3.0-only",
   "type": "module",
   "scripts": {

@@ -1,0 +1,120 @@
+{
+  "name": "general-scalar-expression-native-z80",
+  "source": "../asm/vertical-slice/expression-native-slice-proof.asm",
+  "memoryProfile": "vertical-slice-memory.json",
+  "interfaces": ["../asm/vertical-slice/expression-generated-native.asmi"],
+  "execution": {
+    "entry": "ProofStart",
+    "maxInstructions": 250000,
+    "maxCycles": 2500000,
+    "halted": true
+  },
+  "observations": [
+    { "at": "ProofStatus", "width": "u8", "equals": 165 },
+    { "at": "ProofCase", "width": "u8", "equals": 0 }
+  ],
+  "extents": [
+    {
+      "name": "common-front-end",
+      "from": "CompilerCodeStart",
+      "to": "CompilerCommonCodeEnd",
+      "maxBytes": 16384
+    },
+    {
+      "name": "source-adapter",
+      "from": "SourceAdapterCodeStart",
+      "to": "SourceAdapterCodeEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "tokenizer",
+      "from": "TokenizerCodeStart",
+      "to": "TokenizerCodeEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "semantic-sink",
+      "from": "SemanticSinkCodeStart",
+      "to": "SemanticSinkCodeEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "symbol-table",
+      "from": "SymbolCodeStart",
+      "to": "SymbolCodeEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "parser",
+      "from": "ParserCodeStart",
+      "to": "ParserCodeEnd",
+      "maxBytes": 8192
+    },
+    {
+      "name": "native-output-sink",
+      "from": "NativeSinkCodeStart",
+      "to": "NativeSinkCodeEnd",
+      "maxBytes": 8192
+    },
+    {
+      "name": "native-expression-backend",
+      "from": "NativeExpressionBackendStart",
+      "to": "NativeExpressionBackendEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "compiler-code",
+      "from": "CompilerCodeStart",
+      "to": "CompilerCodeEnd",
+      "maxBytes": 16384
+    },
+    {
+      "name": "compiler-immutable",
+      "from": "CompilerImmutableStart",
+      "to": "CompilerImmutableEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "compiler-core",
+      "from": "CompilerCodeStart",
+      "to": "CompilerCoreEnd",
+      "maxBytes": 16384
+    },
+    {
+      "name": "compiler-workspace",
+      "from": "CompilerStateBase",
+      "to": "CompilerWorkspaceEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "generated-native",
+      "from": "GeneratedBase",
+      "to": "GeneratedExpressionEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "native-runtime",
+      "from": "NativeRuntimeCodeStart",
+      "to": "NativeRuntimeCodeEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "native-state",
+      "from": "NativeStateBase",
+      "to": "NativeStateEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "service-state",
+      "from": "ServiceBase",
+      "to": "ServiceStateEnd",
+      "maxBytes": 2048
+    },
+    {
+      "name": "proof-code-and-data",
+      "from": "ProofStart",
+      "to": "ProofEnd",
+      "maxBytes": 4096
+    }
+  ]
+}
