@@ -1,0 +1,102 @@
+{
+  "name": "vertical-slice-nvm",
+  "source": "../asm/vertical-slice/nvm-slice-proof.asm",
+  "memoryProfile": "vertical-slice-memory.json",
+  "execution": {
+    "entry": "ProofStart",
+    "maxInstructions": 30000,
+    "maxCycles": 300000,
+    "halted": true
+  },
+  "observations": [
+    { "at": "ProofStatus", "width": "u8", "equals": 165 },
+    { "at": "ProofCase", "width": "u8", "equals": 0 },
+    { "at": "ProofSuccessOutput", "width": "u8", "equals": 65 },
+    { "at": "GeneratedSize", "width": "u16", "equals": 58 },
+    { "at": "NvmRunState", "width": "u8", "equals": 3 },
+    { "at": "NvmTrapNumber", "width": "u8", "equals": 6 },
+    { "at": "NvmTrapOffset", "width": "u16", "equals": 14 },
+    { "at": "NvmTrapError", "width": "u8", "equals": 3 },
+    { "at": "ServiceOutputLength", "width": "u8", "equals": 0 }
+  ],
+  "extents": [
+    {
+      "name": "common-front-end",
+      "from": "CompilerCodeStart",
+      "to": "CompilerCommonCodeEnd",
+      "maxBytes": 16384
+    },
+    {
+      "name": "nvm-output-sink",
+      "from": "NvmSinkCodeStart",
+      "to": "NvmSinkCodeEnd",
+      "maxBytes": 1024
+    },
+    {
+      "name": "compiler-code",
+      "from": "CompilerCodeStart",
+      "to": "CompilerCodeEnd",
+      "maxBytes": 16384
+    },
+    {
+      "name": "compiler-immutable",
+      "from": "CompilerImmutableStart",
+      "to": "CompilerImmutableEnd",
+      "maxBytes": 512
+    },
+    {
+      "name": "compiler-core",
+      "from": "CompilerCodeStart",
+      "to": "CompilerCoreEnd",
+      "maxBytes": 16384
+    },
+    {
+      "name": "compiler-workspace",
+      "from": "CompilerStateBase",
+      "to": "CompilerWorkspaceEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "generated-nvm",
+      "from": "GeneratedBase",
+      "to": "GeneratedImageEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "nvm-runtime-code",
+      "from": "NvmRuntimeCodeStart",
+      "to": "NvmRuntimeCodeEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "nvm-runtime-immutable",
+      "from": "NvmRuntimeImmutableStart",
+      "to": "NvmRuntimeImmutableEnd",
+      "maxBytes": 256
+    },
+    {
+      "name": "nvm-runtime",
+      "from": "NvmRuntimeCodeStart",
+      "to": "NvmRuntimeEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "nvm-state",
+      "from": "NvmStateBase",
+      "to": "NvmStateEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "service-state",
+      "from": "ServiceForceFailure",
+      "to": "ServiceStateEnd",
+      "maxBytes": 2048
+    },
+    {
+      "name": "proof-code-and-data",
+      "from": "ProofStart",
+      "to": "ProofEnd",
+      "maxBytes": 1024
+    }
+  ]
+}

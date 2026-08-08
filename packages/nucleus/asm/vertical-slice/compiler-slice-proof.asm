@@ -58,7 +58,7 @@ ProofStart:
             LD   A,(DiagnosticCode)
             OR   A
             JP   NZ,ProofFailAcceptedDiagnostic
-            LD   HL,GeneratedBase
+            LD   HL,SemanticBufferBase
             LD   DE,ExpectedOperations
             LD   B,6
             CALL ProofCompareBytes
@@ -90,7 +90,7 @@ ProofStart:
             OR   A
             SBC  HL,DE
             JP   NZ,ProofFailMalformedColumn
-            LD   A,(GeneratedBase)
+            LD   A,(SemanticBufferBase)
             OR   A
             JP   NZ,ProofFailMalformedOutput
 

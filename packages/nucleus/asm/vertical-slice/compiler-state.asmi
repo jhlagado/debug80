@@ -32,8 +32,12 @@ DiagnosticColumn        .equ CompilerStateBase+$20
 
 SinkCursor              .equ CompilerStateBase+$22
 SinkOperationCount      .equ CompilerStateBase+$24
+GeneratedSize           .equ CompilerStateBase+$25
 
-CompilerStateEnd        .equ CompilerStateBase+$25
+CompilerStateEnd        .equ CompilerStateBase+$27
+SemanticBufferBase      .equ CompilerStateEnd
+SemanticBufferLimit     .equ SemanticBufferBase+$10
+CompilerWorkspaceEnd    .equ SemanticBufferLimit
 
 ; Token ordinals needed by the fixed Stage-3 program.
 TokenEof                .equ 0

@@ -16,7 +16,7 @@
     { "at": "DiagnosticOffset", "width": "u16", "equals": 50 },
     { "at": "DiagnosticLine", "width": "u16", "equals": 3 },
     { "at": "DiagnosticColumn", "width": "u16", "equals": 1 },
-    { "at": "GeneratedBase", "width": "u8", "equals": 0 }
+    { "at": "SemanticBufferBase", "width": "u8", "equals": 0 }
   ],
   "extents": [
     {
@@ -40,7 +40,7 @@
     {
       "name": "compiler-workspace",
       "from": "CompilerStateBase",
-      "to": "CompilerStateEnd",
+      "to": "CompilerWorkspaceEnd",
       "maxBytes": 4096
     },
     {

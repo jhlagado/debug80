@@ -3,18 +3,18 @@
 
 .routine out carry,zero clobbers sign,parity,halfCarry,A,HL
 SemanticSinkReset:
-            LD   HL,GeneratedBase+1
+            LD   HL,SemanticBufferBase+1
             LD   (SinkCursor),HL
             XOR  A
             LD   (SinkOperationCount),A
-            LD   (GeneratedBase),A
+            LD   (SemanticBufferBase),A
             RET
 
 .routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
 SemanticSinkPut:
             LD   B,A
             LD   HL,(SinkCursor)
-            LD   DE,GeneratedLimit
+            LD   DE,SemanticBufferLimit
             LD   A,H
             CP   D
             JR   NZ,SemanticSinkPutRoom
@@ -52,6 +52,6 @@ SemanticSinkEmitProgram:
             RET  C
             LD   A,4
             LD   (SinkOperationCount),A
-            LD   (GeneratedBase),A
+            LD   (SemanticBufferBase),A
             OR   A
             RET

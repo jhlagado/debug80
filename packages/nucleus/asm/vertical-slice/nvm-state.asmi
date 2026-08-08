@@ -1,0 +1,37 @@
+; Writable state for the minimal NVM execution spine.
+
+NvmStateBase            .equ ExecutionBase
+NvmImagePointer         .equ NvmStateBase+$00
+NvmCodePointer          .equ NvmStateBase+$02
+NvmPc                   .equ NvmStateBase+$04
+NvmInstructionStart     .equ NvmStateBase+$06
+NvmSlot0                .equ NvmStateBase+$08
+NvmArgument0            .equ NvmStateBase+$0A
+NvmArgumentMask         .equ NvmStateBase+$0C
+NvmCompletion           .equ NvmStateBase+$0E
+NvmError                .equ NvmStateBase+$0F
+NvmRunState             .equ NvmStateBase+$10
+NvmTrapNumber           .equ NvmStateBase+$11
+NvmTrapRoutine          .equ NvmStateBase+$12
+NvmTrapOffset           .equ NvmStateBase+$13
+NvmTrapError            .equ NvmStateBase+$15
+NvmStateEnd             .equ NvmStateBase+$16
+
+NvmCompletionNone       .equ 0
+NvmCompletionSuccess    .equ 1
+NvmCompletionFailure    .equ 3
+
+NvmRunReady             .equ 1
+NvmRunSucceeded         .equ 2
+NvmRunTrapped           .equ 3
+NvmRunInvalid           .equ 4
+
+ServiceForceFailure     .equ ServiceBase+$00
+ServiceOutputLength     .equ ServiceBase+$01
+ServiceOutputByte       .equ ServiceBase+$02
+ServiceStateEnd         .equ ServiceBase+$03
+
+NvmImageSize            .equ 58
+NvmCodeOffset           .equ 42
+NvmCodeSize             .equ 16
+GeneratedImageEnd       .equ GeneratedBase+NvmImageSize
