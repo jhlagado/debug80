@@ -98,19 +98,25 @@ Start here:
 - [Glimmer Book](https://debug80.com/glimmer-book/)
 - [Glimmer examples and corpus](packages/glimmer/corpus/README.md)
 
-## Lanternfly language design
+## Nucleus language and virtual machine
 
-[Lanternfly](packages/lanternfly/README.md) is a documentation-first design project for a
-small, typed, BASIC-like language. Its first use would be to replace ordinary
-assembly bodies in Glimmer while keeping Glimmer's reactive model and Lanternfly's
-imperative language independent.
+[Nucleus](packages/nucleus/README.md) is a small, safe, statically typed
+language for systems where memory and machine cost remain visible. Its first
+implementation is a handwritten Z80 compiler whose executable core and
+required immutable data must fit in one 16 KiB bank.
 
-The design currently concentrates on fixed arrays and records, indexed storage,
-integer expressions, structured control, portable lowering, and near and far
-addresses. Its design book and working specification are grounded in the
-Glimmer books, current examples, generated AZM, the historical game corpus,
-AZM Books 1–3, the current TETRO/PACMO source, and the later ZAX addressing
-model.
+The language uses fixed-width scalars, nominal records, fixed arrays, bounded
+strings, structured control, typed routines, static aggregate storage, and an
+explicit failure model. The companion Nucleus Virtual Machine defines a
+compact register/slot target, bytecode image, instruction set, services, traps,
+and Z80 implementation contract.
+
+Start here:
+
+- [Nucleus project](packages/nucleus/README.md)
+- [Nucleus 0.1 Language Specification](packages/nucleus/docs/specification.md)
+- [Nucleus Virtual Machine 0.1 Specification](packages/nucleus/docs/virtual-machine-specification.md)
+- [Published Nucleus books](https://debug80.com/nucleus/)
 
 ## Choosing an Entry Point
 
@@ -120,7 +126,7 @@ model.
 | Assemble an existing `.asm` or `.z80` program | [AZM README](packages/azm/README.md)                                     |
 | Learn AZM syntax and register contracts       | [AZM books](https://debug80.com/azm-book/)                               |
 | Write a reactive Z80 game                     | [Glimmer Book](https://debug80.com/glimmer-book/)                        |
-| Follow the Lanternfly language design         | [Lanternfly design documents](packages/lanternfly/docs/index.md)         |
+| Read or implement Nucleus                     | [Nucleus project](packages/nucleus/README.md)                            |
 | Run Z80 programs in automated tests           | [Debug80 runtime](packages/debug80-runtime/README.md)                    |
 | Understand or extend the implementation       | [Debug80 engineering manual](apps/debug80-vscode/docs/codebase/index.md) |
 
@@ -142,7 +148,7 @@ The main workspaces are:
 | `packages/debug80-runtime` | UI-independent Z80 and machine runtime           |
 | `packages/azm`             | AZM assembler and compile API                    |
 | `packages/glimmer`         | Glimmer language, generator, and build API       |
-| `packages/lanternfly`      | Lanternfly language design book and working spec |
+| `packages/nucleus`         | Nucleus language, VM, specifications, and models |
 | `integration`              | Private end-to-end package integration checks    |
 
 Each published package has its own version. The monorepo allows changes across

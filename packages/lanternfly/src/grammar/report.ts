@@ -1,6 +1,13 @@
 import { readFileSync } from "node:fs";
 
-import { EPSILON, END, type Analysis, analyze, readGrammar, shortestWitness } from "./analyze.js";
+import {
+  EPSILON,
+  END,
+  type Analysis,
+  analyze,
+  readGrammar,
+  shortestWitness,
+} from "../../../nucleus/src/grammar-analysis.js";
 
 /**
  * The generated Stage A and B report.
@@ -48,9 +55,16 @@ export function auditTokens(
 
   // Keyword spellings come from the installed table rather than the enum, so
   // the audit reports what the tokenizer can actually recognise.
-  const textMatch = /const keywordText as u8\[keywordTextBytes\] = \[([\s\S]*?)\]/.exec(tokenizer)!;
-  const startMatch = /const keywordStart as u16\[keywordCount\] = \[([\s\S]*?)\]/.exec(tokenizer)!;
-  const sizeMatch = /const keywordSize as u8\[keywordCount\] = \[([\s\S]*?)\]/.exec(tokenizer)!;
+  const textMatch =
+    /const keywordText as u8\[keywordTextBytes\] = \[([\s\S]*?)\]/.exec(
+      tokenizer,
+    )!;
+  const startMatch =
+    /const keywordStart as u16\[keywordCount\] = \[([\s\S]*?)\]/.exec(
+      tokenizer,
+    )!;
+  const sizeMatch =
+    /const keywordSize as u8\[keywordCount\] = \[([\s\S]*?)\]/.exec(tokenizer)!;
   const bytes = [...textMatch[1].matchAll(/\d+/g)].map((m) => Number(m[0]));
   const starts = [...startMatch[1].matchAll(/\d+/g)].map((m) => Number(m[0]));
   const sizes = [...sizeMatch[1].matchAll(/\d+/g)].map((m) => Number(m[0]));
@@ -79,7 +93,9 @@ export function auditTokens(
 
   for (const word of keywords) {
     if (terminals.has(word)) continue;
-    const consulted = new RegExp(`keyword${word[0].toUpperCase()}${word.slice(1)}\\b`).test(parsers);
+    const consulted = new RegExp(
+      `keyword${word[0].toUpperCase()}${word.slice(1)}\\b`,
+    ).test(parsers);
     stale.push({
       token: `"${word}"`,
       note: consulted
@@ -89,21 +105,34 @@ export function auditTokens(
   }
   for (const punct of puncts) {
     if (terminals.has(punct)) continue;
-    const name = Object.entries(PUNCT_SPELLING).find(([, s]) => s === punct)?.[0] ?? "";
+    const name =
+      Object.entries(PUNCT_SPELLING).find(([, s]) => s === punct)?.[0] ?? "";
     const consulted = name !== "" && new RegExp(`\\b${name}\\b`).test(parsers);
     stale.push({
       token: `"${punct}"`,
-      note: consulted ? "recognised and still consulted" : "recognised and never consulted",
+      note: consulted
+        ? "recognised and still consulted"
+        : "recognised and never consulted",
     });
   }
 
-  const produced = new Set<string>([...keywords, ...puncts, "NAME", "NUMBER", "NEWLINE", "EOF"]);
+  const produced = new Set<string>([
+    ...keywords,
+    ...puncts,
+    "NAME",
+    "NUMBER",
+    "NEWLINE",
+    "EOF",
+  ]);
   const missing = [...terminals].filter((t) => !produced.has(t)).sort();
 
   return { keywords, puncts, stale, missing };
 }
 
-function table(header: readonly string[], rows: readonly (readonly string[])[]): string {
+function table(
+  header: readonly string[],
+  rows: readonly (readonly string[])[],
+): string {
   return [
     `| ${header.join(" | ")} |`,
     `| ${header.map(() => "---").join(" | ")} |`,
@@ -155,7 +184,10 @@ export function renderReport(
         ["LL(1) collisions", String(analysis.collisions.length)],
         ["Unreachable nonterminals", String(analysis.unreachable.length)],
         ["Unproductive nonterminals", String(analysis.unproductive.length)],
-        ["Productions Candlemoth uses", `${canonical.filter((p) => p.uses).length} of ${canonical.length}`],
+        [
+          "Productions Candlemoth uses",
+          `${canonical.filter((p) => p.uses).length} of ${canonical.length}`,
+        ],
       ],
     ),
   );
@@ -194,13 +226,18 @@ export function renderReport(
         ["Nonterminal", "Lookahead", "Kind", "Rules", "Predicate", "Witness"],
         analysis.collisions.map((c) => {
           const witness = c.rules
-            .map((r) => shortestWitness(g, r.rhs[0] ?? EPSILON)?.join(" ") ?? "—")
+            .map(
+              (r) => shortestWitness(g, r.rhs[0] ?? EPSILON)?.join(" ") ?? "—",
+            )
             .join(" / ");
           return [
             `\`${c.nonterminal}\``,
             `\`${c.lookahead}\``,
             c.kind,
-            c.rules.map((r) => `${r.rhs.join(" ") || EPSILON}`).join(" · ").replace(/\|/g, "\\|"),
+            c.rules
+              .map((r) => `${r.rhs.join(" ") || EPSILON}`)
+              .join(" · ")
+              .replace(/\|/g, "\\|"),
             c.predicates.length > 0 ? c.predicates.join(", ") : "**none**",
             witness.replace(/\|/g, "\\|"),
           ];
@@ -234,7 +271,9 @@ export function renderReport(
   );
   out.push("");
   if (audit.stale.length === 0) {
-    out.push("No stale token: every token the tokenizer recognises appears in the grammar.");
+    out.push(
+      "No stale token: every token the tokenizer recognises appears in the grammar.",
+    );
   } else {
     out.push(
       table(

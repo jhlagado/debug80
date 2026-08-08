@@ -1,0 +1,405 @@
+# Nucleus reviewer's charter
+
+## Purpose
+
+This charter defines the terms for reviewing Nucleus 0.1. It records the
+project directions that a reviewer must preserve, the implementation choices
+that remain open to measurement, and the evidence required for a proposed
+change.
+
+Nucleus is a small, statically typed language and compact virtual machine for
+practical programs on constrained Z80 systems. The first compiler is a
+handwritten Z80 program whose executable core and required immutable data must
+fit in one 16 KiB bank. That constraint governs implementation work. It does
+not authorise a reviewer to remove settled language facilities or create an
+unnamed smaller dialect.
+
+This charter does not replace either specification. It provides instructions
+for review work within them. When the charter and a specification appear to
+conflict, the reviewer must report the discrepancy and leave the rule
+unchanged until the project owner resolves the authority conflict.
+
+## Authority
+
+Apply the following authority order:
+
+1. The [Nucleus 0.1 Language Specification](specification.md) governs source
+   syntax, static semantics, runtime meaning, diagnostics, traps, and language
+   conformance.
+2. The [Nucleus Virtual Machine 0.1 Specification](virtual-machine-specification.md)
+   governs bytecode images, VM state, instruction transitions, validation,
+   services, and backend equivalence.
+3. Explicit project-owner decisions govern work that the specifications still
+   mark as open.
+4. Executable tests, analyzers, and measurements provide evidence. They do not
+   amend a specification when they disagree with it.
+5. Design notes, old reports, implementation sketches, and repository history
+   are non-normative.
+
+Review the current revisions of both specifications. Do not reconstruct the
+design from old commits, superseded notes, or historical discussions.
+
+## Project objective
+
+Nucleus must be small enough for a real Z80 while remaining safe, structured,
+and pleasant to use. The project is not an exercise in deleting features until
+some compiler fits. The implementation must preserve the admitted language,
+and measurements must identify whether the selected compiler architecture can
+meet the bank gate.
+
+If a faithful implementation exceeds the limit, investigate parser structure,
+metadata representation, shared routines, lowering strategy, workspace
+organisation, and the compiler/VM boundary. Removing a settled facility is a
+language redesign and requires a separate decision.
+
+## Settled design principles
+
+### One language
+
+Nucleus 0.1 has one normative language. It has no levels, profiles, optional
+standard subsets, or implementation-selected dialects. An implementation may
+publish bounded capacities, but those limits do not change accepted syntax or
+program meaning. Every conforming implementation must satisfy the minimum
+conformance corpus.
+
+### Static and bounded operation
+
+The system uses fixed-width scalars, fixed-layout nominal records, fixed
+arrays, bounded strings, statically allocated aggregate storage, bounded
+compiler tables, and bounded activation storage.
+
+Nucleus has no source-visible pointer type, null reference, pointer arithmetic,
+heap, garbage collector, variable-sized local object, reflection, runtime type
+test, open array, slice, or unrestricted dynamic allocation. These exclusions
+are part of the small-system architecture rather than temporary omissions in
+an otherwise dynamic design.
+
+### Compile-time knowledge before runtime machinery
+
+The compiler performs every source-safety check whose outcome is available
+during compilation. A source-safety condition that depends on runtime data uses
+one of the specified traps. The compiler retains source types, aggregate
+extents, record identities, array lengths, string capacities, routine
+signatures, and alias categories. The VM therefore does not need runtime type
+tags.
+
+### Streaming compilation
+
+The first compiler processes one ordered logical token stream. It retains
+bounded declarations, signatures, types, source positions, fixups, expression
+state, and other information required for correct emission, but it does not
+need a complete syntax tree or general whole-program inference.
+
+Declarations precede use. Explicit forward routine declarations permit direct
+and mutual call cycles without a second source pass. An external build driver
+reads a flat ordered manifest and supplies a multipart logical source stream;
+the compiler contains no filesystem search, import resolver, or dependency
+reordering algorithm.
+
+### Source semantics are independent of representation
+
+An implementation may represent an aggregate alias as an address-sized word,
+but source code cannot inspect or preserve that carrier. A backend may use VM
+slots, Z80 registers, static locations, a native stack, shared helpers, or
+another private representation. These choices must preserve source types,
+evaluation order, failures, traps, and observable effects.
+
+An implementation economy is welcome when it preserves the complete source
+contract. A change to accepted source or observable meaning is not an economy;
+it is a redesign.
+
+### Measurement before assertion
+
+Z80 size and timing claims require assembled code and executable evidence.
+Source-line counts, host executable sizes, and intuition are not target
+measurements. Estimates must be labelled as estimates.
+
+Report resource accounts separately:
+
+- compiler executable code and required immutable data;
+- compiler writable workspace;
+- input, output, and source-map storage;
+- VM or interpreter code and data;
+- activation storage; and
+- external build-driver or host tooling.
+
+Moving required compiler code or tables into another account does not satisfy
+the 16 KiB compiler-core gate.
+
+## Settled language directions
+
+### Names, declarations, and source assembly
+
+Identifiers are case-sensitive and preserve their spelling. Keywords use
+their lowercase reserved spellings. Nucleus rejects duplicate declarations
+and does not use Forth-style latest-definition lookup. Local declarations do
+not shadow visible ordinary names.
+
+A forward declaration supplies the complete routine signature once. Its later
+definition uses the abbreviated `sub NAME` body header. Do not restore a
+second copy of the parameter list merely to imitate another language.
+
+Nucleus source has no `import` or `include` statement. A flat ordered manifest
+belongs to the external build driver. Missing files, forgotten dependencies,
+and incorrect order receive explicit diagnostics; the compiler does not search
+for alternative files or reorder source parts.
+
+### Scalar types
+
+The scalar types are `u8`, `u16`, and `boolean`. Boolean is distinct from both
+integer types. The language provides no Boolean/integer conversion.
+
+The only implicit declared-type conversion is `u8` to `u16`. Narrowing through
+`u8(expression)` is checked. Nucleus has no arbitrary cast, low-byte
+reinterpretation, same-width type punning, or word/address interchange.
+
+Compile-time evaluation must agree with runtime evaluation, including operand
+width, modular wraparound, short-circuit behaviour, and invalid constant
+operations. Reducing compiler size does not justify a second arithmetic
+language for constants.
+
+### Aggregate types
+
+Nucleus admits nominal records, one-dimensional fixed arrays, and `string[N]`.
+Arrays may contain scalars, records, or bounded strings, but not arrays.
+Records have nominal identity; equal field sequences do not create structural
+compatibility.
+
+Nucleus does not admit record subtyping, interface inheritance, generic record
+parameters, open arrays, slices, variant records, unions, or general aggregate
+comparison. Task-oriented syntax may later desugar to ordinary routines with a
+scalar state and a task-specific data record. It must not introduce a second
+record type system.
+
+Bounded strings retain a current length, permit embedded zero bytes, support
+`.length`, checked byte access, byte replacement, and exact-type aggregate
+assignment. They have no append, insertion, resize, truncation, open capacity,
+or general comparison operation.
+
+### Structured initializers
+
+Declarations may contain complete, constant-only positional aggregate
+initializers. Parentheses group record components; brackets group array
+elements. The nesting follows the finite declared type tree. Every component
+must be present and compatible. The compiler reports incorrect counts,
+incorrect nesting, incompatible constants, and overlong string literals.
+
+Structured initializers establish static storage images. They are not general
+runtime record constructors or aggregate expressions.
+
+### Aggregate storage, aliases, and copying
+
+An aggregate object is a fixed region of storage with one exact static type.
+Top-level variables own program-lifetime storage. Aggregate fields and array
+elements are inline subobjects.
+
+A routine-local aggregate declared without an initializer owns one
+zero-initialised routine-private object. A structured initializer gives such an
+object an explicit initial image. The compiler reserves this storage
+statically and establishes its value once before `main`. Every call, including
+a recursive call, reaches the same object. The object resembles a C
+block-scope `static` variable; it is not activation-local storage.
+
+An aggregate parameter is a fixed typed alias to caller-provided storage. A
+local aggregate initialized from a storage path is a fixed typed alias bound
+for that activation. Neither form is nullable or reseatable.
+
+Assignment between identical aggregate types copies the complete object. The
+left side supplies the destination storage and the right side supplies the
+source storage. Assignment through an alias changes its referent and never
+changes the binding. Self-assignment has no effect.
+
+An aggregate routine result is a transient typed alias to program-lifetime
+storage. The caller may discard it, forward it as an argument or result,
+select or index it, or use it immediately as the source of exact-type
+aggregate assignment. Source code cannot store the carrier as a pointer or use
+the result to establish a persistent local alias. Assignment is the
+materialisation operation. The compiler must preserve or stage a transient
+carrier when another call could overwrite it before consumption.
+
+### Control flow, calls, failure, and traps
+
+Nucleus retains structured conditionals, `while`, counted `for`, constant
+`step`, innermost-loop `exit` and `continue`, early return, typed routines, and
+direct and mutual recursion. Do not remove one of these forms merely to shrink
+the first compiler.
+
+Recoverable failure is explicit through `fails`, `fail`, `or fail`, and a
+following statement-bound `on error` clause. Nucleus has no exception search or
+general unwinding. Safety traps remain distinct from recoverable errors.
+
+## Compiler implementation direction
+
+The complete grammar is predictive apart from a small set of documented,
+bounded semantic decisions. A review must rerun the grammar analyzer after a
+grammar change and explain every reported conflict. Backtracking or a general
+parser generator runtime is not part of the first compiler plan.
+
+The first compiler uses one precedence-driven loop and a compact operator
+table for binary expressions. Comparison's single-use rule and Boolean
+short-circuit emission remain explicit cases. Primary, postfix, unary, and
+right-recursive `not` retain separate parsing where their structures differ.
+
+The compiler parses an assignment source or return source once and then checks
+the completed result category. It does not fork the grammar in advance for
+scalar values, aggregate paths, aggregate results, and failable calls. At an
+eligible boundary, the reserved pair `or fail` terminates the expression, and
+the checker requires the complete expression to be one direct failable call.
+
+Compact inline type descriptors and interned type ordinals are both permitted
+implementation candidates. One demonstrated structural descriptor fits every
+admitted type in four bytes, including arrays of records and bounded strings.
+Repeated types can make one-byte interned ordinals cheaper. The selection must
+count retained bytes, construction, lookup, equality, interning, capacity
+checks, and exhaustion diagnostics.
+
+Required source diagnostics remain part of the compiler contract. Replacing a
+typed delimiter stack with a depth counter, for example, is not a
+semantics-preserving saving when it removes required mismatch diagnostics.
+
+## VM implementation direction
+
+NVM 0.1 is a register/slot machine rather than an operand-stack machine. It has
+128 shared sixteen-bit slots, 16 staged argument cells, explicit result and
+error carriers, and bounded packed caller-save activation records.
+
+Calls stage arguments and save the slot prefix that the caller and callee can
+both clobber. Recursion uses the same mechanism as an ordinary call. An
+activation-capacity excess traps before the call changes machine state.
+
+The VM uses little-endian words, packed records, contiguous fixed arrays,
+counted bounded strings, and data offsets for aggregate aliases. VM slots have
+no runtime source type.
+
+NVM 0.1 has no block-copy opcode. Exact-type aggregate assignment lowers to
+checked `LOAD16`/`STORE16` pairs and, when required, a final
+`LOAD8`/`STORE8` pair. A native Z80 backend may use `LDIR` while preserving the
+same prechecks and effects. A later block-copy instruction would require a
+measured versioned design decision, not an assumption that aggregate semantics
+require one.
+
+Canonical `u8` carriers have a zero high byte. For valid compiler output,
+division, integer `and` and `or`, equality, inequality, and unsigned ordering
+comparisons may share their arithmetic core with the corresponding word
+operation. The assigned byte opcodes remain distinct because a byte
+instruction must diagnose a noncanonical carrier before shared processing.
+
+Byte addition, subtraction, multiplication, negation, and complement retain
+width-specific modulo-256 behaviour. A compiler may measure a longer lowering,
+such as implementing integer complement with a width-specific constant and
+subtraction, but it must preserve the source operator and compare total
+compiler, interpreter, image, slot, and runtime costs.
+
+## Open implementation questions
+
+The following choices remain open because they can preserve the complete
+language and VM contracts:
+
+- inline type descriptors versus interned ordinals;
+- the exact shared-handler organisation for canonical byte operations;
+- direct handlers versus longer lowering for width-specific operations;
+- final symbol, signature, fixup, expression, and source-map capacities;
+- aggregate-copy lowering in the VM emitter and native backend;
+- helper calls versus inlined hot paths;
+- page alignment and physical Z80 register allocation;
+- interpreter activation-arena placement;
+- native Z80 emission compared with NVM execution; and
+- the complete measured size and timing of the compiler and interpreter.
+
+An experiment may change one of these choices only after preserving conformance
+and reporting the relevant resource accounts.
+
+## Review duties
+
+A substantive review must examine the complete current language specification
+and the complete current VM specification in reader order. Search results and
+old summaries are insufficient substitutes for that read.
+
+Reviewers should test the following boundaries aggressively:
+
+1. Cross-chapter agreement among grammar, types, storage, lifetime, calls,
+   failures, traps, and examples.
+2. Predictive parser feasibility and the bounded state required for every
+   semantic decision.
+3. Agreement between compile-time evaluation and runtime operations.
+4. Correct lowering of every source category to the specified VM.
+5. Alias lifetime, aggregate-result staging, recursion, and activation failure.
+6. Atomic failure behaviour for checks, copies, calls, services, and traps.
+7. Capacity diagnostics before truncation, wraparound, dropped state, or
+   changed meaning.
+8. Agreement between the prose, executable opcode table, image validator,
+   reference VM, grammar analyzer, and conformance examples.
+9. Evidence behind every Z80 byte and timing claim.
+10. Prose quality under the project's human-writing standard: exact agency,
+    direct wording, stable terms, verified examples, no stale history or
+    provenance, and no mechanical filler.
+
+## Finding classes
+
+Classify every substantive finding before proposing a change.
+
+### Correctness repair
+
+A correctness repair resolves a contradiction, missing rule, invalid example,
+unsafe transition, or authority mismatch while preserving the settled design.
+State the affected locations, the governing rule, the consequence, and the
+smallest complete correction.
+
+### Semantics-preserving economy
+
+A semantics-preserving economy changes parser structure, metadata,
+organisation, lowering, helper sharing, or physical representation while
+preserving accepted source and observable behaviour. Supply a concrete design,
+identify every affected resource account, and provide assembled measurements
+before claiming a saving.
+
+### Language or VM redesign
+
+A redesign changes accepted source, type compatibility, storage duration,
+alias behaviour, evaluation order, failure timing, trap behaviour, opcode
+meaning, image validity, or observable effects. Report it separately. Do not
+implement it without an explicit project-owner decision.
+
+## Directions reviewers must not reopen implicitly
+
+Do not present any of the following as a routine correction or size cleanup:
+
+- language levels, profiles, or optional normative subsets;
+- removal of admitted syntax to meet the bank gate;
+- case-insensitive names or latest-definition lookup;
+- source imports or filesystem resolution inside the compiler;
+- repeated forward signatures;
+- Boolean/integer interchange or arbitrary casts;
+- general pointers, null, heap allocation, or pointer arithmetic;
+- record subtyping, structural interfaces, generics, or inheritance;
+- automatic aggregate copying for routine arguments;
+- aggregate assignment that rebinds an alias;
+- activation-lifetime aggregate objects;
+- general runtime aggregate constructors;
+- arrays of arrays, open arrays, or slices;
+- exception unwinding;
+- an operand-stack replacement for NVM;
+- removal of required diagnostics without explicit approval;
+- conflation of compiler, workspace, interpreter, and activation budgets;
+- estimates presented as Z80 measurements; or
+- historical and provenance material in the current-system books.
+
+Any of these may be proposed as a future version or an explicit redesign. The
+review report must identify that status clearly and must not blend the proposal
+into repairs for Nucleus 0.1.
+
+## Review report format
+
+Order findings by consequence:
+
+1. normative contradiction or unsafe behaviour;
+2. source/VM mismatch or impossible lowering;
+3. grammar, capacity, or diagnostic defect;
+4. unmeasured implementation cost or semantics-preserving economy;
+5. example, cross-reference, or conformance gap; and
+6. prose and presentation fault.
+
+For each finding, give its class, exact location, evidence, consequence, and
+smallest credible response. Distinguish confirmed defects from hypotheses that
+need measurement. Finish with decisions that require the project owner; do not
+convert those decisions into silent edits.

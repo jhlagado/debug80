@@ -1,9 +1,9 @@
 import { readFileSync } from "node:fs";
 
 /**
- * Stage B of `docs/level0-parser-study.md`: a grammar analyzer.
+ * Grammar analysis for the Nucleus specification and related research.
  *
- * It reads the canonical grammar, expands EBNF mechanically into BNF,
+ * It reads an EBNF grammar, expands it mechanically into BNF,
  * computes nullable, FIRST and FOLLOW to a fixed point, finds left recursion
  * through a left-corner graph that accounts for nullable prefixes, builds an
  * LL(1) prediction table and reports every collision.
@@ -51,7 +51,8 @@ export function readGrammar(path: string): readonly Production[] {
 
   const flush = () => {
     if (current.name === undefined) return;
-    if (current.ebnf === undefined) throw new Error(`${current.name}: no ebnf field`);
+    if (current.ebnf === undefined)
+      throw new Error(`${current.name}: no ebnf field`);
     productions.push({
       name: current.name,
       source: current.source ?? "",
@@ -81,7 +82,8 @@ export function readGrammar(path: string): readonly Production[] {
     if (key === "example") current.example = value;
     if (key === "ebnf") current.ebnf = value;
     if (key === "predicate") {
-      current.predicates = value.trim() === "-" ? [] : value.trim().split(/\s+/);
+      current.predicates =
+        value.trim() === "-" ? [] : value.trim().split(/\s+/);
     }
   }
   flush();
@@ -94,7 +96,8 @@ export function readGrammar(path: string): readonly Production[] {
 // so the expansion is mechanical and reversible rather than a rewrite.
 
 interface Token {
-  readonly kind: "terminal" | "nonterminal" | "(" | ")" | "{" | "}" | "[" | "]" | "|";
+  readonly kind:
+    "terminal" | "nonterminal" | "(" | ")" | "{" | "}" | "[" | "]" | "|";
   readonly text: string;
 }
 
@@ -103,8 +106,10 @@ function lex(ebnf: string): Token[] {
   const pattern = /"([^"]*)"|([A-Za-z][A-Za-z0-9-]*)|([(){}[\]|])/g;
   let match: RegExpExecArray | null;
   while ((match = pattern.exec(ebnf)) !== null) {
-    if (match[1] !== undefined) tokens.push({ kind: "terminal", text: match[1] });
-    else if (match[2] !== undefined) tokens.push({ kind: "nonterminal", text: match[2] });
+    if (match[1] !== undefined)
+      tokens.push({ kind: "terminal", text: match[1] });
+    else if (match[2] !== undefined)
+      tokens.push({ kind: "nonterminal", text: match[2] });
     else tokens.push({ kind: match[3] as Token["kind"], text: match[3] });
   }
   return tokens;
@@ -120,7 +125,12 @@ export function expand(productions: readonly Production[]): Grammar {
   };
 
   /** Parses an alternation and returns the alternatives' symbol sequences. */
-  function parseAlternation(tokens: Token[], at: number, origin: string, stop: string[]): {
+  function parseAlternation(
+    tokens: Token[],
+    at: number,
+    origin: string,
+    stop: string[],
+  ): {
     alternatives: string[][];
     at: number;
   } {
@@ -144,7 +154,8 @@ export function expand(productions: readonly Production[]): Grammar {
         continue;
       }
       if (token.kind === "{" || token.kind === "[" || token.kind === "(") {
-        const closing = token.kind === "{" ? "}" : token.kind === "[" ? "]" : ")";
+        const closing =
+          token.kind === "{" ? "}" : token.kind === "[" ? "]" : ")";
         const inner = parseAlternation(tokens, index + 1, origin, [closing]);
         index = inner.at + 1;
 
@@ -193,7 +204,11 @@ export function expand(productions: readonly Production[]): Grammar {
     const tokens = lex(production.ebnf);
     const parsed = parseAlternation(tokens, 0, production.name, []);
     for (const alternative of parsed.alternatives) {
-      rules.push({ lhs: production.name, rhs: alternative, origin: production.name });
+      rules.push({
+        lhs: production.name,
+        rhs: alternative,
+        origin: production.name,
+      });
     }
   }
 
@@ -231,7 +246,10 @@ export function nullableSet(g: Grammar): ReadonlySet<string> {
   return nullable;
 }
 
-export function firstSets(g: Grammar, nullable: ReadonlySet<string>): Map<string, Set<string>> {
+export function firstSets(
+  g: Grammar,
+  nullable: ReadonlySet<string>,
+): Map<string, Set<string>> {
   const first = new Map<string, Set<string>>();
   for (const nonterminal of g.nonterminals) first.set(nonterminal, new Set());
   for (const terminal of g.terminals) first.set(terminal, new Set([terminal]));
@@ -309,7 +327,10 @@ export interface Cycle {
   readonly members: readonly string[];
 }
 
-export function leftCorners(g: Grammar, nullable: ReadonlySet<string>): Map<string, Set<string>> {
+export function leftCorners(
+  g: Grammar,
+  nullable: ReadonlySet<string>,
+): Map<string, Set<string>> {
   const edges = new Map<string, Set<string>>();
   for (const nonterminal of g.nonterminals) edges.set(nonterminal, new Set());
   for (const rule of g.rules) {
@@ -322,7 +343,9 @@ export function leftCorners(g: Grammar, nullable: ReadonlySet<string>): Map<stri
 }
 
 /** Strongly connected components of the left-corner graph, Tarjan's method. */
-export function leftRecursionCycles(edges: ReadonlyMap<string, Set<string>>): Cycle[] {
+export function leftRecursionCycles(
+  edges: ReadonlyMap<string, Set<string>>,
+): Cycle[] {
   const index = new Map<string, number>();
   const low = new Map<string, number>();
   const onStack = new Set<string>();
@@ -355,8 +378,11 @@ export function leftRecursionCycles(edges: ReadonlyMap<string, Set<string>>): Cy
         members.push(w);
       } while (w !== v);
       // A component of one is a cycle only when the node reaches itself.
-      const selfLoop = members.length === 1 && (edges.get(members[0])?.has(members[0]) ?? false);
-      if (members.length > 1 || selfLoop) cycles.push({ members: members.sort() });
+      const selfLoop =
+        members.length === 1 &&
+        (edges.get(members[0])?.has(members[0]) ?? false);
+      if (members.length > 1 || selfLoop)
+        cycles.push({ members: members.sort() });
     }
   };
 
@@ -416,7 +442,9 @@ export function analyze(productions: readonly Production[]): Analysis {
   for (const [nonterminal, row] of table) {
     for (const [lookahead, rules] of row) {
       if (rules.length < 2) continue;
-      const nullableRule = rules.some((r) => firstOf(r.rhs, first, nullable).has(EPSILON));
+      const nullableRule = rules.some((r) =>
+        firstOf(r.rhs, first, nullable).has(EPSILON),
+      );
       const declared = new Set<string>();
       for (const rule of rules) {
         for (const p of predicatesOf.get(rule.origin) ?? []) declared.add(p);
@@ -452,7 +480,9 @@ export function analyze(productions: readonly Production[]): Analysis {
     changed = false;
     for (const rule of grammar.rules) {
       if (productive.has(rule.lhs)) continue;
-      if (rule.rhs.every((s) => !grammar.nonterminals.has(s) || productive.has(s))) {
+      if (
+        rule.rhs.every((s) => !grammar.nonterminals.has(s) || productive.has(s))
+      ) {
         productive.add(rule.lhs);
         changed = true;
       }
@@ -466,10 +496,16 @@ export function analyze(productions: readonly Production[]): Analysis {
     follow,
     cycles,
     collisions: collisions.sort(
-      (a, b) => a.nonterminal.localeCompare(b.nonterminal) || a.lookahead.localeCompare(b.lookahead),
+      (a, b) =>
+        a.nonterminal.localeCompare(b.nonterminal) ||
+        a.lookahead.localeCompare(b.lookahead),
     ),
-    unreachable: [...grammar.nonterminals].filter((n) => !reachable.has(n)).sort(),
-    unproductive: [...grammar.nonterminals].filter((n) => !productive.has(n)).sort(),
+    unreachable: [...grammar.nonterminals]
+      .filter((n) => !reachable.has(n))
+      .sort(),
+    unproductive: [...grammar.nonterminals]
+      .filter((n) => !productive.has(n))
+      .sort(),
   };
 }
 

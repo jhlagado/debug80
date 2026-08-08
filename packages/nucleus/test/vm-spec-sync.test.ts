@@ -14,10 +14,7 @@ import {
 describe("NVM specification synchronization", () => {
   it("keeps every normative opcode number, name, and width equal to the executable definition", () => {
     const specification = readFileSync(
-      new URL(
-        "../../lanternfly/docs/nucleus/virtual-machine-specification.md",
-        import.meta.url,
-      ),
+      new URL("../docs/virtual-machine-specification.md", import.meta.url),
       "utf8",
     );
     const chapter = specification.slice(
@@ -49,10 +46,7 @@ describe("NVM specification synchronization", () => {
 
   it("keeps trap, service, and service-error numbers equal to the executable definition", () => {
     const specification = readFileSync(
-      new URL(
-        "../../lanternfly/docs/nucleus/virtual-machine-specification.md",
-        import.meta.url,
-      ),
+      new URL("../docs/virtual-machine-specification.md", import.meta.url),
       "utf8",
     );
     expect(numberedNames(specification, "### 15.1", "### 15.2")).toEqual(

@@ -21,7 +21,7 @@ const NUCLEUS_REPORT = "docs/nucleus/grammar-report.md";
 const NUCLEUS_HISTORY_BANNER =
   "> **Historical and superseded.** This frozen report describes the earlier " +
   "`candlemoth/nucleus.grammar` experiment. Chapter 17 of " +
-  "[`specification.md`](specification.md#17-complete-grammar) is the normative, " +
+  "the [Nucleus specification](../../../nucleus/docs/specification.md#17-complete-grammar) is the normative, " +
   "current Nucleus grammar.\n\n";
 const TOKENIZER = "candlemoth/tokenizer.lafy";
 const PARSERS = [
@@ -59,7 +59,9 @@ describe("the canonical grammar", () => {
   });
 
   it("has no LL(1) collision without a declared predicate", () => {
-    const unexplained = built.analysis.collisions.filter((c) => c.predicates.length === 0);
+    const unexplained = built.analysis.collisions.filter(
+      (c) => c.predicates.length === 0,
+    );
     const described = unexplained.map(
       (c) => `${c.nonterminal} on ${c.lookahead} (${c.kind})`,
     );
@@ -131,7 +133,9 @@ describe("the nucleus grammar", () => {
   });
 
   it("has one contextual decision and no unexplained conflict", () => {
-    const unexplained = nucleus.analysis.collisions.filter((c) => c.predicates.length === 0);
+    const unexplained = nucleus.analysis.collisions.filter(
+      (c) => c.predicates.length === 0,
+    );
     expect(unexplained).toEqual([]);
     // A name at statement head is an assignment or a call. Level Zero has a
     // second decision — a name in a primary is a call or a conversion — and
@@ -168,7 +172,9 @@ describe("the newline-collapse invariant", () => {
   it("the tokenizer collapses consecutive newlines into one boundary", () => {
     // `nextToken`'s classNewline arm skips further newlines before yielding a
     // single kindNewline.
-    expect(tokenizer).toMatch(/while characterClass\[nextByte\] = classNewline/);
+    expect(tokenizer).toMatch(
+      /while characterClass\[nextByte\] = classNewline/,
+    );
     expect(tokenizer).toMatch(/tokenKind = kindNewline/);
   });
 
@@ -176,7 +182,9 @@ describe("the newline-collapse invariant", () => {
     // If one does, the collision returns and this test is the reminder why.
     for (const path of [GRAMMAR, NUCLEUS]) {
       const grammar = readFileSync(path, "utf8");
-      const production = /production statement-list[\s\S]*?ebnf\s+(.*)/.exec(grammar);
+      const production = /production statement-list[\s\S]*?ebnf\s+(.*)/.exec(
+        grammar,
+      );
       expect(production, `${path} has no statement-list`).not.toBeNull();
       expect(production![1].trim()).toBe("{ statement }");
     }

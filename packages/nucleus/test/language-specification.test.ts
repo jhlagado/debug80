@@ -2,10 +2,12 @@ import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
-import { analyze, type Production } from "../src/grammar/analyze.js";
+import { analyze, type Production } from "../src/grammar-analysis.js";
 
-const SPECIFICATION = "docs/nucleus/specification.md";
-const text = readFileSync(SPECIFICATION, "utf8");
+const text = readFileSync(
+  new URL("../docs/specification.md", import.meta.url),
+  "utf8",
+);
 
 const predicates: Readonly<Record<string, readonly string[]>> = {
   "simple-statement": ["isCallableName", "isWritableName"],
