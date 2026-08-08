@@ -11,7 +11,6 @@ const text = readFileSync(
 
 const predicates: Readonly<Record<string, readonly string[]>> = {
   "simple-statement": ["isCallableName", "isWritableName"],
-  "local-initializer": ["isInitializerForDeclaredType"],
   "static-initializer": ["isInitializerForDeclaredType"],
   "type-atom": ["isRecordTypeName"],
   "program-initializer": ["isInitializerForDeclaredType"],
@@ -79,11 +78,6 @@ describe("the normative Nucleus 0.1 grammar", () => {
       })),
     ).toEqual([
       {
-        nonterminal: "local-initializer",
-        lookahead: "(",
-        predicates: ["isInitializerForDeclaredType"],
-      },
-      {
         nonterminal: "or-expression·rep26",
         lookahead: "or",
         predicates: ["isFailurePropagationBoundary"],
@@ -123,7 +117,10 @@ describe("the normative Nucleus 0.1 grammar", () => {
 
   it("records aggregate storage, copying, and transient results", () => {
     expect(text).toContain(
-      "An aggregate local with no initializer or with a structured initializer creates one routine-private object",
+      "The declared local type must be `u8`, `u16`, or `boolean`",
+    );
+    expect(text).toContain(
+      "A routine-local declaration with aggregate type is invalid.",
     );
     expect(text).toContain(
       "Aggregate assignment requires a mutable aggregate destination and an aggregate source of the exact same type",
@@ -135,7 +132,7 @@ describe("the normative Nucleus 0.1 grammar", () => {
       'record-initializer\n    ::= "(" static-initializer',
     );
     expect(text).toContain(
-      "every aggregate storage path, alias binding, and transient aggregate-alias result denotes program-lifetime storage",
+      "every aggregate storage path, aggregate-parameter binding, and transient aggregate-alias result denotes program-lifetime storage",
     );
     expect(text).not.toContain("unprovable aggregate-result lifetime");
   });

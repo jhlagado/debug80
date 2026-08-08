@@ -286,7 +286,7 @@ A string alias is the offset of the length byte. `STRLEN` reads the length after
 
 An alias has no runtime tag, ownership bit, or lifetime counter. It denotes storage by data offset. Every alias a conforming compiler emits has an exact referent type and denotes program-lifetime storage. Field selection uses `ADDO`; array and string selection use checked address instructions.
 
-Because Nucleus 0.1 allocates every owned aggregate in program data, including routine-private static objects, a valid aggregate alias remains addressable across calls. Slot save and restore preserves alias words like other scalar carriers.
+Because Nucleus 0.1 allocates every owned aggregate in top-level program data, a valid aggregate alias remains addressable across calls. Slot save and restore preserves aggregate-parameter and transient-result words like other scalar carriers.
 
 ### 7.5 Invalid representations
 
@@ -298,7 +298,7 @@ An out-of-data address or stored string length greater than its declared capacit
 
 Slots are numbered 0 through 127. Slot operands are one byte, but a routine may address only `0 .. clobberCount - 1`. A routine's parameter values arrive in slots `0 .. parameterCount - 1`.
 
-Each routine descriptor declares one clobber prefix. It covers parameters, named scalar locals, aggregate-alias bindings, and expression temporaries. Slots have no permanent source name or type.
+Each routine descriptor declares one clobber prefix. It covers parameters, named scalar locals, and expression temporaries, including transient aggregate-alias carriers. Slots have no permanent source name or type.
 
 ### 8.2 Page-aligned Z80 mapping
 
@@ -565,7 +565,7 @@ If capacity is insufficient, the activation-capacity trap occurs after source ar
 
 For a non-entry activation the VM pops the record, restores the saved prefix, selects the caller, and resumes at the saved offset. An infallible result-free return leaves completion `none`. A failable result-free success leaves completion `success`. A result-bearing success leaves completion `result` and the captured carrier in `result`.
 
-`GETR destination` requires result completion, copies the result carrier, and clears completion. It works for scalar results and transient aggregate-alias results; the compiler retains their static type and source category. A source aggregate result is transient even though its lowered carrier occupies a slot: the compiler must consume it as an argument, return, selection, discard, or aggregate-copy source rather than preserve it as a source-level local alias. If another call occurs during that containing operation, ordinary live-slot save rules preserve the carrier until consumption.
+`GETR destination` requires result completion, copies the result carrier, and clears completion. It works for scalar results and transient aggregate-alias results; the compiler retains their static type and source category. A source aggregate result is transient even though its lowered carrier occupies a slot: the compiler must consume it as an argument, return, selection, discard, or aggregate-copy source rather than preserve it as a persistent source binding. If another call occurs during that containing operation, ordinary live-slot save rules preserve the carrier until consumption.
 
 ### 13.7 Early return and recursion
 
@@ -797,7 +797,7 @@ For the same source and external streams, native output must preserve:
 - byte and word wraparound;
 - unsigned comparison and division;
 - packed object layout and string length semantics;
-- startup images for top-level and routine-private aggregate objects;
+- startup images for top-level aggregate objects;
 - exact-type aggregate copies, including complete bounded-string representations;
 - bounds, narrowing, and division checks before writes;
 - call argument evaluation and activation-capacity timing;
@@ -919,7 +919,7 @@ The suite covers each opcode at boundary values, including:
 
 ### 20.4 Required layout vectors
 
-The suite constructs nested packed records, scalar and aggregate arrays, and `string[1]`, `string[4]`, and `string[255]`. It verifies exact offsets, little-endian words, embedded zero string bytes, recursive static initializer images, routine-private object initialization, current-length indexing, bounds failures before stores, exact-type aggregate copies, self-assignment, and an invalid stored string length.
+The suite constructs nested packed records, scalar and aggregate arrays, and `string[1]`, `string[4]`, and `string[255]`. It verifies exact offsets, little-endian words, embedded zero string bytes, recursive program-object initializer images, current-length indexing, bounds failures before stores, exact-type aggregate copies, self-assignment, and an invalid stored string length.
 
 ### 20.5 Required control vectors
 
@@ -991,7 +991,7 @@ The first complete Z80 implementation reports:
 
 ### 21.4 Decision gates
 
-The design is accepted only after one vertical slice compiles, validates, and runs source that exercises scalar locals, arguments, recursion, records, recursive static initializers, routine-private aggregate objects, aggregate assignment, arrays, strings, branches, a handled error, a propagated error, a service, and each reachable safety trap. A direct-Z80 backend for the same slice provides a comparison, not a prerequisite.
+The design is accepted only after one vertical slice compiles, validates, and runs source that exercises scalar locals, scalar and aggregate arguments, aggregate selection and transient results, recursion, records, recursive program-object initializers, aggregate assignment, arrays, strings, branches, a handled error, a propagated error, a service, and each reachable safety trap. A direct-Z80 backend for the same slice provides a comparison, not a prerequisite.
 
 If the interpreter or compiler exceeds its account, the project identifies the responsible component and tests a narrower representation. It does not remove a settled source requirement silently or charge the bytes to another account.
 

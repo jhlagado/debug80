@@ -178,7 +178,7 @@ or general comparison operation.
 
 ### Structured initializers
 
-Declarations may contain complete, constant-only positional aggregate
+Program-variable declarations may contain complete, constant-only positional aggregate
 initializers. Parentheses group record components; brackets group array
 elements. The nesting follows the finite declared type tree. Every component
 must be present and compatible. The compiler reports incorrect counts,
@@ -190,19 +190,14 @@ runtime record constructors or aggregate expressions.
 ### Aggregate storage, aliases, and copying
 
 An aggregate object is a fixed region of storage with one exact static type.
-Top-level variables own program-lifetime storage. Aggregate fields and array
-elements are inline subobjects.
+Top-level variables own all program-lifetime aggregate storage. Aggregate
+fields and array elements are inline subobjects. A routine cannot declare an
+aggregate local, whether as owned storage or as a local alias.
 
-A routine-local aggregate declared without an initializer owns one
-zero-initialised routine-private object. A structured initializer gives such an
-object an explicit initial image. The compiler reserves this storage
-statically and establishes its value once before `main`. Every call, including
-a recursive call, reaches the same object. The object resembles a C
-block-scope `static` variable; it is not activation-local storage.
-
-An aggregate parameter is a fixed typed alias to caller-provided storage. A
-local aggregate initialized from a storage path is a fixed typed alias bound
-for that activation. Neither form is nullable or reseatable.
+An aggregate parameter is a fixed typed alias to caller-provided storage. It
+is neither nullable nor reseatable. A routine that needs aggregate destination
+or scratch storage receives it from its caller or addresses a top-level
+object. Every local variable is scalar and belongs to its activation.
 
 Assignment between identical aggregate types copies the complete object. The
 left side supplies the destination storage and the right side supplies the
@@ -213,7 +208,7 @@ An aggregate routine result is a transient typed alias to program-lifetime
 storage. The caller may discard it, forward it as an argument or result,
 select or index it, or use it immediately as the source of exact-type
 aggregate assignment. Source code cannot store the carrier as a pointer or use
-the result to establish a persistent local alias. Assignment is the
+the result to establish a persistent source binding. Assignment is the
 materialisation operation. The compiler must preserve or stage a transient
 carrier when another call could overwrite it before consumption.
 
@@ -385,6 +380,7 @@ Do not present any of the following as a routine correction or size cleanup:
 - automatic aggregate copying for routine arguments;
 - aggregate assignment that rebinds an alias;
 - activation-lifetime aggregate objects;
+- routine-local aggregate declarations, whether owning storage or binding an alias;
 - program-variable, parameter, or source-writable counted-loop counters;
 - general runtime aggregate constructors;
 - arrays of arrays, open arrays, or slices;
