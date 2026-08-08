@@ -21,6 +21,7 @@ interface ProofManifest {
   readonly name: string;
   readonly source: string;
   readonly memoryProfile: string;
+  readonly interfaces?: readonly string[];
   readonly execution: {
     readonly entry: string;
     readonly maxInstructions: number;
@@ -91,6 +92,9 @@ export async function runProofManifest(
     emitHex: true,
     emitD8m: true,
     registerContracts: "strict",
+    registerContractsInterfaces: (manifest.interfaces ?? []).map((file) =>
+      path.resolve(manifestDirectory, file),
+    ),
   });
   const errors = assembled.diagnostics.filter(
     (diagnostic) => diagnostic.severity === "error",

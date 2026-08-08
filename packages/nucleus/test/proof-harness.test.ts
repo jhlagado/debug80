@@ -64,14 +64,14 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     const image = outcome.memory.slice(imageBase, imageBase + imageSize);
     const validated = validateImage(image);
 
-    expect(outcome.instructions).toBe(6_472);
-    expect(outcome.cycles).toBe(62_038);
+    expect(outcome.instructions).toBe(6_457);
+    expect(outcome.cycles).toBe(61_903);
     expect(outcome.extents).toEqual([
       { name: "common-front-end", bytes: 947 },
-      { name: "nvm-output-sink", bytes: 65 },
-      { name: "compiler-code", bytes: 1_012 },
+      { name: "nvm-output-sink", bytes: 25 },
+      { name: "compiler-code", bytes: 972 },
       { name: "compiler-immutable", bytes: 94 },
-      { name: "compiler-core", bytes: 1_106 },
+      { name: "compiler-core", bytes: 1_066 },
       { name: "compiler-workspace", bytes: 55 },
       { name: "generated-nvm", bytes: 58 },
       { name: "nvm-runtime-code", bytes: 487 },
@@ -123,5 +123,43 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
         errorCode: ServiceError.outputFailure,
       });
     }
+  });
+
+  it("executes the same checked operations as a direct-Z80 program", async () => {
+    const outcome = await runProofManifest(proof("native-slice-proof"));
+    const generatedBase = outcome.symbols.GeneratedBase ?? -1;
+    const generatedSize = outcome.symbols.NativeProgramSize ?? -1;
+    const generated = outcome.memory.slice(
+      generatedBase,
+      generatedBase + generatedSize,
+    );
+
+    expect(outcome.instructions).toBe(4_878);
+    expect(outcome.cycles).toBe(47_488);
+    expect(outcome.extents).toEqual([
+      { name: "common-front-end", bytes: 947 },
+      { name: "native-output-sink", bytes: 25 },
+      { name: "compiler-code", bytes: 972 },
+      { name: "compiler-immutable", bytes: 73 },
+      { name: "compiler-core", bytes: 1_045 },
+      { name: "compiler-workspace", bytes: 55 },
+      { name: "generated-native", bytes: 37 },
+      { name: "native-runtime", bytes: 51 },
+      { name: "native-state", bytes: 6 },
+      { name: "service-state", bytes: 3 },
+      { name: "proof-code-and-data", bytes: 207 },
+    ]);
+    expect(Array.from(generated.slice(0, 3))).toEqual([0x3e, 0x41, 0xcd]);
+    expect(generated[3] | ((generated[4] ?? 0) << 8)).toBe(
+      outcome.symbols.NativeWriteOutputByte,
+    );
+    expect(Array.from(generated.slice(5, 8))).toEqual([0x38, 0x06, 0x3e]);
+    expect(outcome.memory[outcome.symbols.ProofSuccessOutput ?? -1]).toBe(0x41);
+    expect(outcome.memory[outcome.symbols.NativeTrapNumber ?? -1]).toBe(
+      Trap.unhandledError,
+    );
+    expect(outcome.memory[outcome.symbols.NativeTrapError ?? -1]).toBe(
+      ServiceError.outputFailure,
+    );
   });
 });

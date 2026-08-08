@@ -1,0 +1,22 @@
+; Writable state exposed by the direct-Z80 proof target.
+
+NativeStateBase         .equ ExecutionBase
+NativeRunState          .equ NativeStateBase+$00
+NativeTrapNumber        .equ NativeStateBase+$01
+NativeTrapRoutine       .equ NativeStateBase+$02
+NativeTrapOffset        .equ NativeStateBase+$03
+NativeTrapError         .equ NativeStateBase+$05
+NativeStateEnd          .equ NativeStateBase+$06
+
+NativeRunReady          .equ 1
+NativeRunSucceeded      .equ 2
+NativeRunTrapped        .equ 3
+
+ServiceForceFailure     .equ ServiceBase+$00
+ServiceOutputLength     .equ ServiceBase+$01
+ServiceOutputByte       .equ ServiceBase+$02
+ServiceStateEnd         .equ ServiceBase+$03
+
+NativeProgramSize       .equ 37
+NativeFailureOffset     .equ 13
+GeneratedNativeEnd      .equ GeneratedBase+NativeProgramSize

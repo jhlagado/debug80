@@ -1,0 +1,91 @@
+{
+  "name": "vertical-slice-native",
+  "source": "../asm/vertical-slice/native-slice-proof.asm",
+  "memoryProfile": "vertical-slice-memory.json",
+  "interfaces": ["../asm/vertical-slice/generated-native.asmi"],
+  "execution": {
+    "entry": "ProofStart",
+    "maxInstructions": 20000,
+    "maxCycles": 200000,
+    "halted": true
+  },
+  "observations": [
+    { "at": "ProofStatus", "width": "u8", "equals": 165 },
+    { "at": "ProofCase", "width": "u8", "equals": 0 },
+    { "at": "ProofSuccessOutput", "width": "u8", "equals": 65 },
+    { "at": "GeneratedSize", "width": "u16", "equals": 37 },
+    { "at": "NativeRunState", "width": "u8", "equals": 3 },
+    { "at": "NativeTrapNumber", "width": "u8", "equals": 6 },
+    { "at": "NativeTrapOffset", "width": "u16", "equals": 13 },
+    { "at": "NativeTrapError", "width": "u8", "equals": 3 },
+    { "at": "ServiceOutputLength", "width": "u8", "equals": 0 }
+  ],
+  "extents": [
+    {
+      "name": "common-front-end",
+      "from": "CompilerCodeStart",
+      "to": "CompilerCommonCodeEnd",
+      "maxBytes": 16384
+    },
+    {
+      "name": "native-output-sink",
+      "from": "NativeSinkCodeStart",
+      "to": "NativeSinkCodeEnd",
+      "maxBytes": 1024
+    },
+    {
+      "name": "compiler-code",
+      "from": "CompilerCodeStart",
+      "to": "CompilerCodeEnd",
+      "maxBytes": 16384
+    },
+    {
+      "name": "compiler-immutable",
+      "from": "CompilerImmutableStart",
+      "to": "CompilerImmutableEnd",
+      "maxBytes": 512
+    },
+    {
+      "name": "compiler-core",
+      "from": "CompilerCodeStart",
+      "to": "CompilerCoreEnd",
+      "maxBytes": 16384
+    },
+    {
+      "name": "compiler-workspace",
+      "from": "CompilerStateBase",
+      "to": "CompilerWorkspaceEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "generated-native",
+      "from": "GeneratedBase",
+      "to": "GeneratedNativeEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "native-runtime",
+      "from": "NativeRuntimeCodeStart",
+      "to": "NativeRuntimeCodeEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "native-state",
+      "from": "NativeStateBase",
+      "to": "NativeStateEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "service-state",
+      "from": "ServiceForceFailure",
+      "to": "ServiceStateEnd",
+      "maxBytes": 2048
+    },
+    {
+      "name": "proof-code-and-data",
+      "from": "ProofStart",
+      "to": "ProofEnd",
+      "maxBytes": 1024
+    }
+  ]
+}
