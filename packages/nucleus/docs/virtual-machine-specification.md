@@ -67,7 +67,7 @@ Tests and the executable model are evidence for this contract. They do not overr
 
 NVM is a regular compilation target for the small, streaming Nucleus compiler. The instruction set favors direct emission, predictable lengths, simple fixups, and local type-directed selection. It avoids exposing Z80 instruction irregularities to the front end.
 
-The primary interpreter is native Z80 code in a CP/M-like 64 KiB environment. Every 0.1 field and operand therefore fits a byte or little-endian word, and all machine resources have explicit bounds.
+The primary interpreter is native Z80 code in a flat 64 KiB environment. Every 0.1 field and operand therefore fits a byte or little-endian word, and all machine resources have explicit bounds. No operating system, monitor, or physical memory map is part of the NVM contract.
 
 ### 2.2 Resource accounts
 

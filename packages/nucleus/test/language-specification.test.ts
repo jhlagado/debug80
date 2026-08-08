@@ -126,6 +126,16 @@ describe("the normative Nucleus 0.1 grammar", () => {
     );
   });
 
+  it("keeps the language independent of one Z80 platform", () => {
+    expect(text).toContain(
+      "a safe, practical, general-purpose structured language designed to remain viable on small Z80 systems",
+    );
+    expect(text).toContain(
+      "does not bind Nucleus source semantics to a particular operating system, monitor, or memory map",
+    );
+    expect(text).not.toContain("TEC-1");
+  });
+
   it("records aggregate storage, copying, and transient results", () => {
     expect(text).toContain(
       "The declared local type must be `u8`, `u16`, or `boolean`",

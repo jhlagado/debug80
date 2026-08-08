@@ -60,6 +60,21 @@ describe("NVM specification synchronization", () => {
     );
   });
 
+  it("keeps the VM independent of an operating system or monitor", () => {
+    const specification = readFileSync(
+      new URL("../docs/virtual-machine-specification.md", import.meta.url),
+      "utf8",
+    );
+    expect(specification).toContain(
+      "The primary interpreter is native Z80 code in a flat 64 KiB environment",
+    );
+    expect(specification).toContain(
+      "No operating system, monitor, or physical memory map is part of the NVM contract",
+    );
+    expect(specification).not.toContain("CP/M-like");
+    expect(specification).not.toContain("TEC-1");
+  });
+
   it("records the settled aggregate-copy and counted-loop lowerings", () => {
     const specification = readFileSync(
       new URL("../docs/virtual-machine-specification.md", import.meta.url),

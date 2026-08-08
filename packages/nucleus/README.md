@@ -11,8 +11,8 @@ package does not govern Nucleus.
 
 |         |                                                                |
 | ------- | -------------------------------------------------------------- |
-| `docs/` | language and VM specifications, plus the reviewer's charter    |
-| `asm/`  | virtual-machine implementation experiments in AZM              |
+| `docs/` | specifications, implementation plan, and reviewer's charter    |
+| `asm/`  | NVM and direct-Z80 implementation experiments in AZM           |
 | `src/`  | grammar analysis, executable NVM, and compiler metadata models |
 | `test/` | grammar, measurement, and VM conformance evidence              |
 
@@ -20,6 +20,7 @@ The current authorities are:
 
 - [Nucleus 0.1 Language Specification](docs/specification.md)
 - [Nucleus Virtual Machine 0.1 Specification](docs/virtual-machine-specification.md)
+- [Nucleus 0.1 Implementation Plan](docs/implementation-plan.md)
 - [Nucleus reviewer's charter](docs/reviewers-charter.md)
 
 ## Method

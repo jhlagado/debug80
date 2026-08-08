@@ -151,7 +151,7 @@ Nucleus 0.1 is one language. Measurements may change the draft before it is froz
 
 ### 2.2 Language-shaping constraints
 
-Nucleus remains a safe, practical language for routine TEC-1 programs. Its minimum programming model includes `u8`, `u16`, and Boolean values; formal arguments; named scalar local variables; routines with no result or one typed result; fixed-layout records; checked fixed arrays; bounded strings; complete positional static initializers; exact-type aggregate assignment; assignment and calls; `if`/`elseif`/`else`; `while`; counted `for`; `return`; and the unlabeled, innermost-loop forms of `exit` and `continue`. Silently removing one of these requirements does not make an oversized compiler acceptable. If a faithful implementation cannot fit, that result requires compiler-architecture redesign or rejection of the architecture hypothesis.
+Nucleus is a safe, practical, general-purpose structured language designed to remain viable on small Z80 systems. Its minimum programming model includes `u8`, `u16`, and Boolean values; formal arguments; named scalar local variables; routines with no result or one typed result; fixed-layout records; checked fixed arrays; bounded strings; complete positional static initializers; exact-type aggregate assignment; assignment and calls; `if`/`elseif`/`else`; `while`; counted `for`; `return`; and the unlabeled, innermost-loop forms of `exit` and `continue`. Silently removing one of these requirements does not make an oversized compiler acceptable. If a faithful implementation cannot fit, that result requires compiler-architecture redesign or rejection of the architecture hypothesis.
 
 The language design uses deterministic parsing with canonical forms, minimal lookahead, and no backtracking. A smaller production count is useful only when it preserves the required programming model. Grammar terseness is not an independent design goal.
 
@@ -165,7 +165,7 @@ Project acceptance requires the first compiler's executable core and every immut
 
 For each tested configuration, the compiler-core total includes the front end, the active emitter, and all immutable data that either component requires. A mutually exclusive native or later backend may have a separate total. The report identifies the resident configuration and includes every shared or required component.
 
-The first implementation may use a CP/M-like 64 KiB address-space model as its initial abstraction. This model does not bind Nucleus source semantics to a particular TEC-1 memory map. TEC-1 banking motivates the one-bank compiler-core gate; additional banks may hold separately budgeted components, but they are not a fallback for an oversized core.
+The first implementation may use a flat 64 KiB address-space model as its initial abstraction. This model does not bind Nucleus source semantics to a particular operating system, monitor, or memory map. Additional memory or banks may hold separately budgeted components, but they are not a fallback for an oversized core.
 
 ### 2.4 Separate resource accounts
 
@@ -202,7 +202,7 @@ The companion Nucleus VM Specification fixes the NVM 0.1 organization, including
 
 The initial system boundary contains only services that the compiler and VM demonstrably require: input, output, termination, trap reporting, and bulk-storage access. Each additional service requires measured need.
 
-The semantic-operation boundary may support later native or non-Z80 backends where target neutrality has no material cost against the TEC-1 constraints. Portability does not justify growth that causes the first compiler to fail its core gate.
+The semantic-operation boundary may support later native or non-Z80 backends where target neutrality has no material cost against the compiler-core gate and other bounded accounts. Portability does not justify growth that causes the first compiler to fail its core gate.
 
 ### 2.8 Evidence and feature admission
 
@@ -2678,7 +2678,7 @@ The execution environment must preserve a trap even if its reporting device or o
 
 ### 16.1 Boundary model
 
-Nucleus 0.1 defines a small portable service boundary for byte-stream input and output, slow bulk storage, successful termination, and trap reporting. Programs invoke typed predefined routines and use predefined constants. The source language exposes no service numbers, ports, firmware entry points, raw addresses, file descriptors, device registers, or TEC-1 memory map.
+Nucleus 0.1 defines a small portable service boundary for byte-stream input and output, slow bulk storage, successful termination, and trap reporting. Programs invoke typed predefined routines and use predefined constants. The source language exposes no service numbers, ports, firmware entry points, raw addresses, file descriptors, device registers, or machine-specific memory map.
 
 The **Nucleus System Services 0.1** set is versioned with this language revision. A conforming execution environment supplies every service in Section 16.3 with the stated source contract and the initial stream states stated there. Later additions require a language revision or an explicit extension under Section 1.7 and measured admission under Chapter 2.
 
