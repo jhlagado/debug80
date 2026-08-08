@@ -1131,6 +1131,8 @@ A top-level variable owns one object with program lifetime. A scalar variable ow
 
 A routine-local aggregate declaration with no initializer or with a structured initializer owns one routine-private object with program lifetime. The compiler reserves its storage statically and establishes its zero or explicit initial image before `main` begins. Its local name is visible only in the declaring routine, but every invocation, including a recursive invocation, reaches the same object. Initialization does not run again on routine entry.
 
+The local scope of that name does not imply activation-local storage. A routine-private aggregate object has the same storage duration as a top-level aggregate object; only its source visibility differs. It is persistent routine-private state, not a fresh object for each invocation. A mutation made during one invocation remains visible to later invocations and to a recursive invocation that reaches the same declaration.
+
 Named constants are scalar-only. A named constant denotes a value and need not occupy source-observable storage. Materializing that value in memory does not give it object identity visible to a Nucleus program.
 
 Aggregate storage occurs only in program-lifetime objects and inline within other aggregate storage. A record field has storage within its containing record. An array element has storage within its containing array. A bounded string has its counted content within its containing string object. Nucleus allocates no activation-lifetime aggregate storage.
@@ -1162,6 +1164,10 @@ An aggregate parameter is a typed alias to caller-provided storage. A routine-lo
 Two simultaneously active invocations have distinct logical parameters, scalar locals, and local alias bindings. This rule applies even when the implementation assigns the same virtual-register numbers or physical storage to invocations that cannot overlap.
 
 Recursive calls use the same activation rule. An implementation preserves distinct logical activation state at every active depth. Caller-save regions, hardware-stack entries, static-slot save areas, or another re-entry mechanism may implement that rule; none is source storage.
+
+These rules divide storage into two practical planes. The aggregate plane contains fixed program-lifetime objects, including top-level objects and routine-private aggregate objects. The activation plane contains copied scalar parameters, scalar locals, and aggregate-alias bindings. Calls preserve overlapping activation-plane state; they do not save, clear, or restore the bytes of a routine-private aggregate object.
+
+As programming guidance, ordinary Nucleus code normally places persistent aggregates at program scope, passes them to routines through aggregate parameters, and uses scalar locals for per-invocation work. A routine-private aggregate object is appropriate when the program deliberately needs persistent routine-private state, such as a fixed buffer, cache, or result area. Using one as though it were a fresh aggregate temporary would give the program shared state instead.
 
 ### 7.6 Aggregate alias binding
 
@@ -1499,6 +1505,8 @@ After parameter binding, activation-local declarations take effect in source ord
 A scalar local owns one per-invocation scalar value. Its initializer is an ordinary expression or the failable-invocation propagation form from Chapter 14, evaluated once when execution reaches the declaration. The successful result must be compatible with the declared scalar type. If the initializer is omitted, the compiler establishes zero for `u8` or `u16` and `false` for `boolean` at that point.
 
 An aggregate local with no initializer or with a structured initializer creates one routine-private object of the declared type. That object has program lifetime, receives its zero or explicit constant initial image once before `main`, and is shared by every invocation of the routine. The local name denotes that object; routine entry does not clear, copy, or reinitialize it.
+
+The declaration's routine scope hides the name from other routines but does not give the object activation lifetime. In particular, recursion does not create another object or preserve and restore the object's contents. A programmer who needs fresh per-invocation state uses scalar locals or asks the caller to supply aggregate storage through a parameter.
 
 An aggregate local initialized from a compatible aggregate storage path creates a fixed alias instead. The compiler evaluates the path once on each routine activation, checks its exact type and program-lifetime provenance, then establishes the binding. Later changes to an index used in the initializer do not retarget the alias. An aggregate routine result is transient and cannot supply this binding; retaining its value requires a later aggregate assignment into owning storage.
 
@@ -2341,6 +2349,8 @@ Nucleus has no parameter modes, implicit read-only aggregate parameter, write pe
 A successful call begins one logical activation after all arguments have been evaluated. The activation contains that invocation's copied scalar parameters, aggregate-parameter bindings, scalar locals, and aggregate-alias-local bindings. Routine-private aggregate objects have program lifetime and are not part of the activation. Activation-local initialization follows Section 8.11 before the first statement begins.
 
 Each simultaneously active invocation has distinct activation state. Calling another routine does not change the caller's scalar parameters, scalar locals, or alias bindings. The callee may change program-lifetime storage that it can name or reach through an aggregate argument, and those mutations remain visible to the caller.
+
+The distinct activation state does not include the bytes of a routine-private aggregate object. A nested or recursive call may therefore observe and mutate the same object as its caller. This sharing is the specified source behaviour, not an implementation failure to preserve local state.
 
 The caller resumes after the invocation when the callee returns normally. For an expression call, the result is transferred before evaluation continues in the containing expression. For a call statement, any result is discarded after transfer.
 
