@@ -317,7 +317,9 @@ NativeNextSemanticByte:
             RET
 
 ; Dense ordinal dispatcher for the first non-positional backend. A pushed
-; continuation turns the Z80's JP (HL) into a compact indirect call.
+; continuation turns the Z80's JP (HL) into a compact indirect call. This
+; entry is post-parse only: SemanticSinkFinish must have published the complete
+; transcript before emitter scratch overlays the retained forward signature.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
 NativeDispatchCallOperations:
             LD   HL,SemanticBufferBase+1
@@ -480,7 +482,7 @@ NativeCallEndRoutine:
             LD   DE,(EmitUpdateExitFixup)
             CALL NativePatchHere
             RET  C
-            LD   HL,0
+            LD   HL,NativeCallCapacityOffset
             CALL NativeEmitLoadHl
             RET  C
             CALL NativeEmitTrapEnding
@@ -488,7 +490,7 @@ NativeCallEndRoutine:
             LD   DE,(EmitFailureFixup)
             CALL NativePatchHere
             RET  C
-            LD   HL,0
+            LD   HL,NativeCallFailureOffset
             CALL NativeEmitLoadHl
             RET  C
             CALL NativeEmitUnhandledTrapPrefix

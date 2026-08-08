@@ -688,16 +688,34 @@ The parser retains the forward and parameter names as source pointer-and-length
 pairs, checks the call and abbreviated body by exact identity, and rejects a
 mismatched completion at its source position.
 
+Those retained pointers are an economy of this one-part slice, whose source
+buffer remains resident until emission finishes. A general multipart compiler
+must copy or intern every retained forward and parameter name under a published
+capacity. The slice also admits only one retained forward and one unresolved
+call fixup. Before a second forward or unresolved call is accepted, the
+implementation must replace those cells with bounded collections and report a
+capacity diagnostic rather than overwrite either entry. Emission remains a
+separate post-parse pass while emitter scratch overlays the retained signature;
+an interleaved emitter would require disjoint live state or a different
+retention scheme.
+
 The direct backend now walks a variable-width semantic transcript through a
 dense ordinal dispatcher. An isolated AZM census measured the eight-operation
-jump-table selector at 37 bytes and an equivalent comparison chain at 42 bytes,
-so the table is retained. Forward declarations and entry markers do not enter
-the transcript because they emit no target operation. Removing those two
-no-ops and sharing repeated parser and emitter tails reduced the first working
-compiler from 3,135 to 3,068 bytes. The packed one-byte activation slice derives
-its arena position from its depth counter; this reduced the native runtime from
-216 to 196 bytes and writable native state from 18 to 17 bytes while retaining
-an independent arena-capacity guard.
+word-table selector at 37 bytes and an equivalent comparison chain at 42 bytes.
+A one-byte page-offset selector needs only 23 bytes when every handler entry
+shares one 256-byte page. The current handlers occupy more than one page; eight
+page-local jump trampolines raise that alternative to 47 bytes. The 37-byte
+word table therefore remains the smallest applicable form. It destroys the
+operation ordinal in `A`; none of the current handlers needs that value, and a
+future handler that does must trigger a new complete-path measurement.
+
+Forward declarations and entry markers do not enter the transcript because
+they emit no target operation. Removing those two no-ops and sharing repeated
+parser and emitter tails reduced the first working compiler from 3,135 to 3,068
+bytes. The packed one-byte activation slice derives its arena position from its
+depth counter; this reduced the native runtime from 216 to 196 bytes and
+writable native state from 18 to 17 bytes while retaining an independent
+arena-capacity guard.
 
 | Account                    |                        Direct-Z80 path |                   Host-only NVM oracle |
 | -------------------------- | -------------------------------------: | -------------------------------------: |
@@ -709,7 +727,7 @@ an independent arena-capacity guard.
 | generated program or image |                               99 bytes |                              102 bytes |
 | native runtime code        |                              196 bytes |                         not applicable |
 | native writable state      |                               17 bytes |                         not applicable |
-| complete proof execution   | 63,849 instructions / 595,934 T-states | 22,389 instructions / 211,290 T-states |
+| complete proof execution   | 64,135 instructions / 598,613 T-states | 22,389 instructions / 211,290 T-states |
 
 The 913-byte direct compiler increase over the preceding 2,155-byte plateau is
 not a projection for arbitrary calls. It includes three keywords, exact
@@ -724,8 +742,11 @@ The NVM path is deliberately a host oracle, not a production sink comparison.
 Its 139-byte encoder copies and patches a fixed 102-byte image, which the host
 validator and reference VM execute independently. Both runs write zero and
 perform `activation-capacity` at depth three. The NVM trap record identifies
-routine ordinal one and code offset 46; the native proof separately checks its
-trap number, empty output, and restored arena.
+routine ordinal one and code offset 46. The native path reports source byte
+offset 201 for activation exhaustion and byte offset 95 for output failure.
+The native proof checks both locations, exact transcript consumption, the four
+successful active calls, the depth-three high-water state, the untouched
+fourth arena byte on rejection, empty output, and complete unwind.
 
 Completion evidence:
 
@@ -832,22 +853,22 @@ The first implementation fixes a numeric limit before each bounded structure is
 used. Each row remains open until a Z80 representation and a minimum corpus
 requirement are both known.
 
-| Resource                                  |                 Limit | Representation            | Excess diagnostic or trap                      | Evidence                 |
-| ----------------------------------------- | --------------------: | ------------------------- | ---------------------------------------------- | ------------------------ |
-| source part count                         |                  open | open                      | capacity diagnostic                            | open                     |
-| diagnostic-name bytes                     |                  open | open                      | capacity diagnostic                            | open                     |
-| identifier bytes                          |                  open | open                      | capacity diagnostic                            | open                     |
-| ordinary symbols                          |                  open | open                      | capacity diagnostic                            | open                     |
-| record types and fields                   |                  open | open                      | capacity diagnostic                            | open                     |
-| retained forward signatures and names     |                  open | open                      | capacity diagnostic                            | open                     |
-| parameters and scalar locals              |                  open | open                      | capacity diagnostic                            | open                     |
-| expression and statement nesting          |                  open | open                      | capacity diagnostic                            | open                     |
-| branch fixups and active loops            |                  open | open                      | capacity diagnostic                            | open                     |
-| structured-initializer depth and elements |                  open | open                      | capacity diagnostic                            | open                     |
-| emitted image bytes                       | 65,535 format maximum | open                      | capacity diagnostic below or at format maximum | format rule; target open |
-| activation bytes                          |                  open | packed records            | `activation-capacity`                          | one-byte Stage 4 slice   |
-| activation depth                          |                  open | counter plus packed arena | `activation-capacity`                          | depth-three trap proof   |
-| service stream and bulk-storage extents   |                  open | target adapter            | service error or documented host capacity      | open                     |
+| Resource                                  |                 Limit | Representation            | Excess diagnostic or trap                      | Evidence                                       |
+| ----------------------------------------- | --------------------: | ------------------------- | ---------------------------------------------- | ---------------------------------------------- |
+| source part count                         |                  open | open                      | capacity diagnostic                            | open                                           |
+| diagnostic-name bytes                     |                  open | open                      | capacity diagnostic                            | open                                           |
+| identifier bytes                          |                  open | open                      | capacity diagnostic                            | open                                           |
+| ordinary symbols                          |                  open | open                      | capacity diagnostic                            | open                                           |
+| record types and fields                   |                  open | open                      | capacity diagnostic                            | open                                           |
+| retained forward signatures and names     |                  open | copied or interned bytes  | capacity diagnostic                            | one resident-part pair; general retention open |
+| parameters and scalar locals              |                  open | open                      | capacity diagnostic                            | open                                           |
+| expression and statement nesting          |                  open | open                      | capacity diagnostic                            | open                                           |
+| branch fixups and active loops            |                  open | open                      | capacity diagnostic                            | open                                           |
+| structured-initializer depth and elements |                  open | open                      | capacity diagnostic                            | open                                           |
+| emitted image bytes                       | 65,535 format maximum | open                      | capacity diagnostic below or at format maximum | format rule; target open                       |
+| activation bytes                          |                  open | packed records            | `activation-capacity`                          | one-byte Stage 4 slice                         |
+| activation depth                          |                  open | counter plus packed arena | `activation-capacity`                          | depth-three trap proof                         |
+| service stream and bulk-storage extents   |                  open | target adapter            | service error or documented host capacity      | open                                           |
 
 No implementation may wrap, truncate, drop state, or change source meaning when
 one of these limits is exceeded.

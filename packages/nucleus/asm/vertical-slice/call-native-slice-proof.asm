@@ -34,15 +34,21 @@ CallProofSource:
             .db "forward sub descend(value as u8) as u8",10
             .db 10
             .db "sub main() fails",10
-            .db "    var result as u8 = descend(3)",10
-            .db "    writeOutputByte(result) or fail",10
+            .db "    var result as u8 = "
+CallProofInitialCall:
+            .db "descend(3)",10
+            .db "    "
+CallProofOutputCall:
+            .db "writeOutputByte(result) or fail",10
             .db "end",10
             .db 10
             .db "sub descend",10
             .db "    if value = 0",10
             .db "        return value",10
             .db "    end",10
-            .db "    return descend(value - 1)",10
+            .db "    return "
+CallProofRecursiveCall:
+            .db "descend(value - 1)",10
             .db "end",10
 CallProofSourceEnd:
 
@@ -86,6 +92,11 @@ ProofStart:
             OR   A
             SBC  HL,DE
             JP   NZ,ProofFailSize
+            LD   HL,(SemanticReadCursor)
+            LD   DE,SemanticBufferLimit
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailTranscriptEnd
 
             CALL NativeReset
             CALL GeneratedBase
@@ -101,8 +112,13 @@ ProofStart:
             LD   A,(NativeActivationDepth)
             OR   A
             JP   NZ,ProofFailSuccessActivation
+            LD   A,(NativeActivationArena+3)
+            CP   1
+            JP   NZ,ProofFailSuccessPeak
 
             CALL NativeReset
+            LD   A,$A5
+            LD   (NativeActivationArena+3),A
             LD   A,3
             LD   (NativeActivationLimit),A
             CALL GeneratedBase
@@ -118,6 +134,42 @@ ProofStart:
             LD   A,(NativeActivationDepth)
             OR   A
             JP   NZ,ProofFailCapacityActivation
+            LD   HL,(NativeTrapOffset)
+            LD   DE,NativeCallCapacityOffset
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailCapacityOffset
+            LD   A,(NativeActivationArena+2)
+            CP   2
+            JP   NZ,ProofFailCapacityPeak
+            LD   A,(NativeActivationArena+3)
+            CP   $A5
+            JP   NZ,ProofFailCapacityAtomic
+
+            CALL NativeReset
+            LD   A,1
+            LD   (ServiceFailureCall),A
+            CALL GeneratedBase
+            LD   A,(NativeRunState)
+            CP   NativeRunTrapped
+            JP   NZ,ProofFailOutputState
+            LD   A,(NativeTrapNumber)
+            CP   6
+            JP   NZ,ProofFailOutputTrap
+            LD   A,(NativeTrapError)
+            CP   3
+            JP   NZ,ProofFailOutputError
+            LD   HL,(NativeTrapOffset)
+            LD   DE,NativeCallFailureOffset
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailOutputOffset
+            LD   A,(ServiceOutputLength)
+            OR   A
+            JP   NZ,ProofFailOutputBytes
+            LD   A,(NativeActivationDepth)
+            OR   A
+            JP   NZ,ProofFailOutputActivation
 
             LD   A,61
             LD   HL,BadCompletionSource
@@ -175,6 +227,28 @@ ProofFailBadAccepted:         LD A,12
 ProofFailBadCode:             LD A,13
                               JR ProofFailed
 ProofFailBadPosition:         LD A,14
+                              JR ProofFailed
+ProofFailTranscriptEnd:       LD A,16
+                              JR ProofFailed
+ProofFailSuccessPeak:         LD A,17
+                              JR ProofFailed
+ProofFailCapacityOffset:      LD A,18
+                              JR ProofFailed
+ProofFailCapacityPeak:        LD A,19
+                              JR ProofFailed
+ProofFailCapacityAtomic:      LD A,20
+                              JR ProofFailed
+ProofFailOutputState:         LD A,21
+                              JR ProofFailed
+ProofFailOutputTrap:          LD A,22
+                              JR ProofFailed
+ProofFailOutputError:         LD A,23
+                              JR ProofFailed
+ProofFailOutputOffset:        LD A,24
+                              JR ProofFailed
+ProofFailOutputBytes:         LD A,25
+                              JR ProofFailed
+ProofFailOutputActivation:   LD A,26
 ProofFailed:
             LD   (ProofCase),A
             LD   A,$E0

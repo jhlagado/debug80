@@ -337,8 +337,8 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
   it("executes a forward-declared recursive scalar value call", async () => {
     const outcome = await runProofManifest(proof("call-native-slice-proof"));
 
-    expect(outcome.instructions).toBe(63_849);
-    expect(outcome.cycles).toBe(595_934);
+    expect(outcome.instructions).toBe(64_135);
+    expect(outcome.cycles).toBe(598_613);
     expect(outcome.extents).toEqual([
       { name: "common-front-end", bytes: 1_905 },
       { name: "source-adapter", bytes: 106 },
@@ -356,7 +356,7 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
       { name: "native-runtime", bytes: 196 },
       { name: "native-state", bytes: 17 },
       { name: "service-state", bytes: 14 },
-      { name: "proof-code-and-data", bytes: 256 },
+      { name: "proof-code-and-data", bytes: 414 },
     ]);
     const generatedSizeAddress = outcome.symbols.GeneratedSize ?? -1;
     expect(
@@ -369,6 +369,28 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     ).toEqual([9, 12, 1, 3, 13, 19, 14, 1, 15, 0, 16, 17, 18, 1, 1, 19]);
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
     expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
+    expect(
+      (outcome.symbols.CallProofRecursiveCall ?? -1) -
+        (outcome.symbols.CallProofSource ?? -1),
+    ).toBe(outcome.symbols.NativeCallCapacityOffset);
+    expect(
+      (outcome.symbols.CallProofOutputCall ?? -1) -
+        (outcome.symbols.CallProofSource ?? -1),
+    ).toBe(outcome.symbols.NativeCallFailureOffset);
+    expect(
+      new Set(
+        [
+          "NativeCallLiteral",
+          "NativeCallWriteLocal",
+          "NativeCallBeginForward",
+          "NativeCallIfParameterZero",
+          "NativeCallReturnParameter",
+          "NativeCallEndIf",
+          "NativeCallReturnSelfMinus",
+          "NativeCallEndRoutine",
+        ].map((name) => (outcome.symbols[name] ?? -1) >>> 8),
+      ).size,
+    ).toBeGreaterThan(1);
   }, 20_000);
 
   it("checks the recursive scalar call against the NVM host oracle", async () => {
@@ -410,9 +432,21 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
 
   it("measures dense semantic dispatch against a comparison chain", async () => {
     const outcome = await runProofManifest(proof("dispatcher-measurement"));
+    const direct = await runProofManifest(
+      proof("dispatcher-offset-direct-measurement"),
+    );
+    const trampoline = await runProofManifest(
+      proof("dispatcher-offset-trampoline-measurement"),
+    );
     expect(outcome.extents.slice(0, 2)).toEqual([
       { name: "table-dispatch-selection", bytes: 37 },
       { name: "comparison-chain-selection", bytes: 42 },
+    ]);
+    expect(direct.extents).toEqual([
+      { name: "page-offset-direct-selection", bytes: 23 },
+    ]);
+    expect(trampoline.extents).toEqual([
+      { name: "page-offset-trampoline-selection", bytes: 47 },
     ]);
   }, 20_000);
 });

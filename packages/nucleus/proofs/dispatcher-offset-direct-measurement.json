@@ -1,0 +1,20 @@
+{
+  "name": "semantic-operation-page-offset-direct-census",
+  "source": "../asm/vertical-slice/dispatcher-offset-direct-measurement.asm",
+  "memoryProfile": "vertical-slice-memory.json",
+  "execution": {
+    "entry": "ProofStart",
+    "maxInstructions": 20,
+    "maxCycles": 200,
+    "halted": true
+  },
+  "observations": [{ "at": "ProofStatus", "width": "u8", "equals": 165 }],
+  "extents": [
+    {
+      "name": "page-offset-direct-selection",
+      "from": "OffsetDirectSelectionStart",
+      "to": "OffsetDirectSelectionEnd",
+      "maxBytes": 256
+    }
+  ]
+}

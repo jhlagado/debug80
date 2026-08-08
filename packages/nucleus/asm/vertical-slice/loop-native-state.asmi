@@ -40,4 +40,6 @@ NativeArrayOutputFailureOffset .equ 22
 GeneratedArrayEnd       .equ GeneratedBase+NativeArrayProgramSize
 
 NativeCallProgramSize   .equ 99
+NativeCallFailureOffset .equ 95
+NativeCallCapacityOffset .equ 201
 GeneratedCallEnd        .equ GeneratedBase+NativeCallProgramSize

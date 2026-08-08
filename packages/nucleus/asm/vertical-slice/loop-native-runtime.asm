@@ -35,6 +35,9 @@ NativeActivationPush:
             LD   B,A
             LD   A,(NativeActivationDepth)
             LD   C,A
+            ; Reset/configuration fixes the limit before execution and every
+            ; accepted push increments depth by one, so depth cannot pass the
+            ; limit. Equality is the complete configured-limit test here.
             LD   A,(NativeActivationLimit)
             CP   C
             JR   Z,NativeActivationFull
