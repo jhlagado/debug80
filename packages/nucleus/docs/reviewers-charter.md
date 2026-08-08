@@ -224,6 +224,14 @@ Nucleus retains structured conditionals, `while`, counted `for`, constant
 direct and mutual recursion. Do not remove one of these forms merely to shrink
 the first compiler.
 
+A counted-loop counter is a predeclared scalar local and is read-only to source
+statements while its loop is active. A nested counted loop cannot reuse that
+local as its counter. Program variables and parameters are not counted-loop
+counters. This rule keeps calls from changing loop progress without effect
+analysis and lets lowering rely on the comparison that admitted the active
+iteration. A program that controls its progress variable explicitly uses
+`while`.
+
 Recoverable failure is explicit through `fails`, `fail`, `or fail`, and a
 following statement-bound `on error` clause. Nucleus has no exception search or
 general unwinding. Safety traps remain distinct from recoverable errors.
@@ -271,12 +279,14 @@ The VM uses little-endian words, packed records, contiguous fixed arrays,
 counted bounded strings, and data offsets for aggregate aliases. VM slots have
 no runtime source type.
 
-NVM 0.1 has no block-copy opcode. Exact-type aggregate assignment lowers to
-checked `LOAD16`/`STORE16` pairs and, when required, a final
-`LOAD8`/`STORE8` pair. A native Z80 backend may use `LDIR` while preserving the
-same prechecks and effects. A later block-copy instruction would require a
-measured versioned design decision, not an assumption that aggregate semantics
-require one.
+NVM 0.1 has no block-copy opcode. Exact-type aggregate assignment first checks
+the complete source and destination extents. The compiler may then use a
+straight-line sequence of checked loads and stores or a fixed-size byte-copy
+loop that uses `INDEX` at unit stride. The lowering choice is implementation
+private and should be measured across representative extents. A native Z80
+backend may use `LDIR` while preserving the same prechecks and effects. A later
+block-copy instruction would require a measured versioned design decision, not
+an assumption that aggregate semantics require one.
 
 Canonical `u8` carriers have a zero high byte. For valid compiler output,
 division, integer `and` and `or`, equality, inequality, and unsigned ordering
@@ -323,7 +333,7 @@ Reviewers should test the following boundaries aggressively:
    semantic decision.
 3. Agreement between compile-time evaluation and runtime operations.
 4. Correct lowering of every source category to the specified VM.
-5. Alias lifetime, aggregate-result staging, recursion, and activation failure.
+5. Alias categories, aggregate-result staging, recursion, and activation failure.
 6. Atomic failure behaviour for checks, copies, calls, services, and traps.
 7. Capacity diagnostics before truncation, wraparound, dropped state, or
    changed meaning.
@@ -375,6 +385,7 @@ Do not present any of the following as a routine correction or size cleanup:
 - automatic aggregate copying for routine arguments;
 - aggregate assignment that rebinds an alias;
 - activation-lifetime aggregate objects;
+- program-variable, parameter, or source-writable counted-loop counters;
 - general runtime aggregate constructors;
 - arrays of arrays, open arrays, or slices;
 - exception unwinding;

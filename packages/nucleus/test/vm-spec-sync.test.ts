@@ -59,6 +59,22 @@ describe("NVM specification synchronization", () => {
       entries(ServiceError),
     );
   });
+
+  it("records the settled aggregate-copy and counted-loop lowerings", () => {
+    const specification = readFileSync(
+      new URL("../docs/virtual-machine-specification.md", import.meta.url),
+      "utf8",
+    );
+    expect(specification).toContain(
+      "Exact-type aggregate assignment copies the complete `N + 1` byte string representation, including the length byte",
+    );
+    expect(specification).toContain(
+      "It may instead emit a counted byte-copy loop that walks the common extent with `INDEX` at unit stride",
+    );
+    expect(specification).toContain(
+      "The counter is a scalar local that source statements cannot change while the loop is active",
+    );
+  });
 });
 
 function parseOperands(cell: string): readonly OperandKind[] {

@@ -134,6 +134,25 @@ describe("the normative Nucleus 0.1 grammar", () => {
     expect(text).toContain(
       'record-initializer\n    ::= "(" static-initializer',
     );
+    expect(text).toContain(
+      "every aggregate storage path, alias binding, and transient aggregate-alias result denotes program-lifetime storage",
+    );
+    expect(text).not.toContain("unprovable aggregate-result lifetime");
+  });
+
+  it("keeps counted-loop counters local and read-only", () => {
+    expect(text).toContain(
+      "The counter name must resolve to a scalar local of type `u8` or `u16`",
+    );
+    expect(text).toContain(
+      "A nested counted loop cannot reuse the same local as its counter",
+    );
+    expect(text).toContain(
+      "A scalar local serving as an active counted-loop counter is read-only and cannot be the error destination",
+    );
+    expect(text).not.toContain(
+      "If the body changes the counter, the increment and next test use the changed value",
+    );
   });
 
   it("reports the analyzed grammar dimensions in Chapter 17", () => {
