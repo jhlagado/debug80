@@ -102,6 +102,17 @@ describe("the normative Nucleus 0.1 grammar", () => {
     expect(text).toContain("`isIncompleteForwardName`");
   });
 
+  it("uses one post-parse failure-consumption rule in every grammar summary", () => {
+    expect(text).toContain(
+      'local-initializer     ::= expression [ "or" "fail" ]',
+    );
+    expect(text).toContain(
+      "A failable call is parsed as an ordinary call and then checked for exactly one failure consumer under Chapter 14.",
+    );
+    expect(text).not.toContain("failable-invocation");
+    expect(text).not.toContain("restricted failable-invocation path");
+  });
+
   it("records exact case identity and the external manifest boundary", () => {
     expect(text).toContain(
       "Identifiers are case-sensitive and preserve their source spelling.",

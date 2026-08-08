@@ -1362,8 +1362,7 @@ formal-parameter      ::= NAME "as" type
 
 local-declaration     ::= "var" NAME "as" scalar-type
                           [ "=" local-initializer ] NEWLINE
-local-initializer     ::= expression
-                        | failable-invocation "or" "fail"
+local-initializer     ::= expression [ "or" "fail" ]
 
 constant-initializer  ::= scalar-constant-expression
 program-initializer   ::= static-initializer
@@ -1478,7 +1477,7 @@ A routine definition without an earlier forward makes its checked signature visi
 
 After parameter binding, scalar local declarations take effect in source order before the first statement. All local declarations remain in one contiguous prefix.
 
-A scalar local owns one per-invocation scalar value. Its initializer is an ordinary expression or the failable-invocation propagation form from Chapter 14, evaluated once when execution reaches the declaration. The successful result must be compatible with the declared scalar type. If the initializer is omitted, the compiler establishes zero for `u8` or `u16` and `false` for `boolean` at that point.
+A scalar local owns one per-invocation scalar value. Its initializer is an ordinary expression or a direct failable call followed by `or fail` under Chapter 14, evaluated once when execution reaches the declaration. The successful result must be compatible with the declared scalar type. If the initializer is omitted, the compiler establishes zero for `u8` or `u16` and `false` for `boolean` at that point.
 
 The declared local type must be `u8`, `u16`, or `boolean`. A record, fixed array, or bounded string is invalid in a local declaration whether or not an initializer is written. Routines receive aggregates only through formal parameters, reach aggregate subobjects through field and index paths, and may return transient aggregate aliases under Chapters 7 and 13.
 
@@ -2978,7 +2977,7 @@ Top-level declarations occur only in the compilation-unit sequence. Parameters o
 
 Identifiers use their complete case-sensitive source spelling as identity. Program and routine scopes have one ordinary namespace; record fields have one field scope per record type. No ordinary declaration overloads, redefines, or shadows another visible ordinary declaration with the same exact identity. Definition order never changes which declaration governs a later use. A suffix name uses the statically selected record type's field scope or the bounded-string `length` intrinsic.
 
-Name-led parsing first resolves the visible binding, then checks its declaration class. A routine name starts a call. A mutable scalar or aggregate storage path starts an assignment. A record type is valid only in a type position. A failable routine selects the restricted failable-invocation path. Failure to find a binding, finding the wrong class, or finding a later declaration is invalid source.
+Name-led parsing first resolves the visible binding, then checks its declaration class. A routine name starts a call. A mutable scalar or aggregate storage path starts an assignment. A record type is valid only in a type position. A failable call is parsed as an ordinary call and then checked for exactly one failure consumer under Chapter 14. Failure to find a binding, finding the wrong class, or finding a later declaration is invalid source.
 
 The standard service names and error constants from Chapter 16 are visible before source declarations. `main` is source-defined and must have no parameters and no result.
 
