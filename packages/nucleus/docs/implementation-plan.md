@@ -375,6 +375,46 @@ Completion evidence:
 - the common front end, each output sink, and peak workspace are reported as
   separate accounts.
 
+#### First completed compiler slice
+
+The first Stage 3 path is executable. `test/proof-harness.test.ts` assembles the
+Z80 compiler and both target paths with AZM, runs them through Debug80, and
+checks the emitted NVM image again with the host validator and reference VM.
+The accepted program produces `A`. Forced output failure produces
+`unhandled-error` with `outputFailure` and no output byte. A source with its
+closing `end` removed is rejected at source part 9, byte offset 50, line 3,
+column 1.
+
+These are measured narrow-slice accounts, not projections for the completed
+language:
+
+| Account                                             |                             NVM path |                      Direct-Z80 path |
+| --------------------------------------------------- | -----------------------------------: | -----------------------------------: |
+| common front-end code                               |                            947 bytes |                            947 bytes |
+| common keyword and name bytes                       |                             36 bytes |                             36 bytes |
+| backend sink code                                   |                             25 bytes |                             25 bytes |
+| backend template bytes retained by the compiler     |                             58 bytes |                             37 bytes |
+| complete compiler core for this path                |                          1,066 bytes |                          1,045 bytes |
+| peak compiler workspace                             |                             55 bytes |                             55 bytes |
+| generated program                                   |                             58 bytes |                             37 bytes |
+| target runtime code                                 |                            487 bytes |                             51 bytes |
+| target runtime immutable data                       |                             57 bytes |                              0 bytes |
+| target writable state                               |                             22 bytes |                              6 bytes |
+| shared service state                                |                              3 bytes |                              3 bytes |
+| complete compile, success, and forced-failure proof | 6,422 instructions / 61,558 T-states | 4,878 instructions / 47,488 T-states |
+
+The NVM proof includes validation and loading before each run; the direct path
+executes compiler-controlled output and therefore has no corresponding image
+loader. A separate malformed-image proof takes 447 instructions and 4,909
+T-states and confirms that NVM rejection leaves runnable state unchanged. The
+source-compiler proof uses 983 core bytes and 55 workspace bytes and exercises
+both accepted and malformed input.
+
+This result does not choose a backend. The program has no expressions, locals,
+user calls, data layout, or general control flow, so it strongly favors a
+direct template. Stage 4 remains the decision slice because it introduces the
+shared machinery and safety paths that can change the comparison.
+
 ### Stage 4: representative backend decision slice
 
 Before either path grows into the full implementation, compile and execute the

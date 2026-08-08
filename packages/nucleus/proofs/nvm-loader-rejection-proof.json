@@ -1,0 +1,37 @@
+{
+  "name": "vertical-slice-nvm-loader-rejection",
+  "source": "../asm/vertical-slice/nvm-slice-proof.asm",
+  "memoryProfile": "vertical-slice-memory.json",
+  "execution": {
+    "entry": "NvmRejectProofStart",
+    "maxInstructions": 2000,
+    "maxCycles": 20000,
+    "halted": true
+  },
+  "observations": [
+    { "at": "NvmRejectStatus", "width": "u8", "equals": 165 },
+    { "at": "NvmRejectCase", "width": "u8", "equals": 0 },
+    { "at": "NvmRunState", "width": "u8", "equals": 3 },
+    { "at": "NvmTrapError", "width": "u8", "equals": 3 }
+  ],
+  "extents": [
+    {
+      "name": "nvm-runtime-code",
+      "from": "NvmRuntimeCodeStart",
+      "to": "NvmRuntimeCodeEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "nvm-runtime-immutable",
+      "from": "NvmRuntimeImmutableStart",
+      "to": "NvmRuntimeImmutableEnd",
+      "maxBytes": 256
+    },
+    {
+      "name": "rejection-proof",
+      "from": "NvmRejectProofStart",
+      "to": "NvmRejectProofEnd",
+      "maxBytes": 512
+    }
+  ]
+}

@@ -64,8 +64,8 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     const image = outcome.memory.slice(imageBase, imageBase + imageSize);
     const validated = validateImage(image);
 
-    expect(outcome.instructions).toBe(6_457);
-    expect(outcome.cycles).toBe(61_903);
+    expect(outcome.instructions).toBe(6_422);
+    expect(outcome.cycles).toBe(61_558);
     expect(outcome.extents).toEqual([
       { name: "common-front-end", bytes: 947 },
       { name: "nvm-output-sink", bytes: 25 },
@@ -79,7 +79,7 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
       { name: "nvm-runtime", bytes: 544 },
       { name: "nvm-state", bytes: 22 },
       { name: "service-state", bytes: 3 },
-      { name: "proof-code-and-data", bytes: 278 },
+      { name: "proof-code-and-data", bytes: 233 },
     ]);
     expect(validated.code).toEqual(
       Uint8Array.of(
@@ -123,6 +123,22 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
         errorCode: ServiceError.outputFailure,
       });
     }
+  });
+
+  it("rejects a malformed NVM image without changing runnable state", async () => {
+    const outcome = await runProofManifest(proof("nvm-loader-rejection-proof"));
+
+    expect(outcome.instructions).toBe(447);
+    expect(outcome.cycles).toBe(4_909);
+    expect(outcome.extents).toEqual([
+      { name: "nvm-runtime-code", bytes: 487 },
+      { name: "nvm-runtime-immutable", bytes: 57 },
+      { name: "rejection-proof", bytes: 103 },
+    ]);
+    expect(outcome.memory[outcome.symbols.NvmRunState ?? -1]).toBe(3);
+    expect(outcome.memory[outcome.symbols.NvmTrapError ?? -1]).toBe(
+      ServiceError.outputFailure,
+    );
   });
 
   it("executes the same checked operations as a direct-Z80 program", async () => {

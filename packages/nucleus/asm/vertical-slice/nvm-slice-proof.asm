@@ -137,21 +137,6 @@ ProofStart:
             CP   3
             JP   NZ,ProofFailTrapError
 
-            XOR  A
-            LD   (GeneratedBase),A
-            LD   HL,GeneratedBase
-            LD   DE,GeneratedBase+NvmImageSize
-            CALL NvmLoad
-            JP   NC,ProofFailMalformedImage
-            LD   A,$4E
-            LD   (GeneratedBase),A
-            LD   A,(NvmRunState)
-            CP   NvmRunTrapped
-            JP   NZ,ProofFailAtomicLoad
-            LD   A,(NvmTrapError)
-            CP   3
-            JP   NZ,ProofFailAtomicLoad
-
             LD   A,$A5
             LD   (ProofStatus),A
             HALT
@@ -197,12 +182,6 @@ ProofFailTrapOffset:
             JR   ProofFailed
 ProofFailTrapError:
             LD   A,14
-            JR   ProofFailed
-ProofFailMalformedImage:
-            LD   A,15
-            JR   ProofFailed
-ProofFailAtomicLoad:
-            LD   A,16
 ProofFailed:
             LD   (ProofCase),A
             LD   A,$E0
@@ -216,5 +195,60 @@ ProofCase:
 ProofSuccessOutput:
             .db  0
 ProofEnd:
+
+.routine out carry,zero clobbers sign,parity,halfCarry,A,BC,DE,HL,IX,IY
+NvmRejectProofStart:
+            LD   SP,StackTop
+            XOR  A
+            LD   (NvmRejectCase),A
+            LD   (NvmRejectStatus),A
+            LD   HL,NvmEncoderImageTemplate
+            LD   DE,GeneratedBase
+            LD   BC,NvmImageSize
+            LDIR
+            LD   HL,GeneratedBase
+            LD   DE,GeneratedBase+NvmImageSize
+            CALL NvmLoad
+            JR   C,NvmRejectValidFailed
+            LD   A,NvmRunTrapped
+            LD   (NvmRunState),A
+            LD   A,3
+            LD   (NvmTrapError),A
+            XOR  A
+            LD   (GeneratedBase),A
+            LD   HL,GeneratedBase
+            LD   DE,GeneratedBase+NvmImageSize
+            CALL NvmLoad
+            JR   NC,NvmRejectInvalidAccepted
+            LD   A,$4E
+            LD   (GeneratedBase),A
+            LD   A,(NvmRunState)
+            CP   NvmRunTrapped
+            JR   NZ,NvmRejectStateChanged
+            LD   A,(NvmTrapError)
+            CP   3
+            JR   NZ,NvmRejectStateChanged
+            LD   A,$A5
+            LD   (NvmRejectStatus),A
+            HALT
+NvmRejectValidFailed:
+            LD   A,1
+            JR   NvmRejectFailed
+NvmRejectInvalidAccepted:
+            LD   A,2
+            JR   NvmRejectFailed
+NvmRejectStateChanged:
+            LD   A,3
+NvmRejectFailed:
+            LD   (NvmRejectCase),A
+            LD   A,$E0
+            LD   (NvmRejectStatus),A
+            HALT
+
+NvmRejectStatus:
+            .db  0
+NvmRejectCase:
+            .db  0
+NvmRejectProofEnd:
 
             .end

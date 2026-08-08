@@ -36,6 +36,7 @@ arrays of records and bounded strings, without turning aggregate aliases into
 runtime types.
 
 ```bash
+npm run proof -w nucleus
 npm run measure -w nucleus
 npm test -w nucleus
 ```
