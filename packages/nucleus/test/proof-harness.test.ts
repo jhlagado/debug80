@@ -182,13 +182,13 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
   it("checks the scalar-local and counted-loop source slice", async () => {
     const outcome = await runProofManifest(proof("loop-compiler-slice-proof"));
 
-    expect(outcome.instructions).toBe(38_939);
-    expect(outcome.cycles).toBe(376_553);
+    expect(outcome.instructions).toBe(39_561);
+    expect(outcome.cycles).toBe(382_047);
     expect(outcome.extents).toEqual([
-      { name: "compiler-code", bytes: 1_304 },
-      { name: "compiler-immutable", bytes: 56 },
-      { name: "compiler-core", bytes: 1_360 },
-      { name: "compiler-workspace", bytes: 80 },
+      { name: "compiler-code", bytes: 1_680 },
+      { name: "compiler-immutable", bytes: 74 },
+      { name: "compiler-core", bytes: 1_754 },
+      { name: "compiler-workspace", bytes: 90 },
       { name: "proof-code-and-data", bytes: 241 },
     ]);
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
@@ -204,15 +204,15 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     const validated = validateImage(image);
     const services = new BufferSystemServices();
 
-    expect(outcome.instructions).toBe(43_759);
-    expect(outcome.cycles).toBe(415_315);
+    expect(outcome.instructions).toBe(44_266);
+    expect(outcome.cycles).toBe(419_779);
     expect(outcome.extents).toEqual([
-      { name: "common-front-end", bytes: 1_304 },
-      { name: "nvm-output-sink", bytes: 453 },
-      { name: "compiler-code", bytes: 1_757 },
-      { name: "compiler-immutable", bytes: 98 },
-      { name: "compiler-core", bytes: 1_855 },
-      { name: "compiler-workspace", bytes: 80 },
+      { name: "common-front-end", bytes: 1_680 },
+      { name: "nvm-output-sink", bytes: 801 },
+      { name: "compiler-code", bytes: 2_481 },
+      { name: "compiler-immutable", bytes: 116 },
+      { name: "compiler-core", bytes: 2_597 },
+      { name: "compiler-workspace", bytes: 90 },
       { name: "generated-nvm", bytes: 96 },
       { name: "nvm-runtime-code", bytes: 797 },
       { name: "nvm-runtime-immutable", bytes: 96 },
@@ -234,23 +234,99 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
       generatedBase + generatedSize,
     );
 
-    expect(outcome.instructions).toBe(35_245);
-    expect(outcome.cycles).toBe(336_248);
+    expect(outcome.instructions).toBe(35_974);
+    expect(outcome.cycles).toBe(344_354);
     expect(outcome.extents).toEqual([
-      { name: "common-front-end", bytes: 1_304 },
-      { name: "native-output-sink", bytes: 455 },
-      { name: "compiler-code", bytes: 1_759 },
-      { name: "compiler-immutable", bytes: 56 },
-      { name: "compiler-core", bytes: 1_815 },
-      { name: "compiler-workspace", bytes: 80 },
+      { name: "common-front-end", bytes: 1_680 },
+      { name: "native-output-sink", bytes: 772 },
+      { name: "compiler-code", bytes: 2_452 },
+      { name: "compiler-immutable", bytes: 74 },
+      { name: "compiler-core", bytes: 2_526 },
+      { name: "compiler-workspace", bytes: 90 },
       { name: "generated-native", bytes: 54 },
-      { name: "native-runtime", bytes: 85 },
+      { name: "native-runtime", bytes: 122 },
       { name: "native-state", bytes: 6 },
-      { name: "service-state", bytes: 7 },
+      { name: "service-state", bytes: 14 },
       { name: "proof-code-and-data", bytes: 298 },
     ]);
     expect(Array.from(generated.slice(0, 7))).toEqual([
       0x16, 0x00, 0x16, 0x00, 0x7a, 0xfe, 0x03,
     ]);
+  }, 20_000);
+
+  it("executes checked initialized-array selection as direct Z80", async () => {
+    const outcome = await runProofManifest(proof("array-native-slice-proof"));
+
+    expect(outcome.instructions).toBe(50_326);
+    expect(outcome.cycles).toBe(478_188);
+    expect(outcome.extents).toEqual([
+      { name: "common-front-end", bytes: 1_680 },
+      { name: "native-output-sink", bytes: 772 },
+      { name: "compiler-code", bytes: 2_452 },
+      { name: "compiler-immutable", bytes: 74 },
+      { name: "compiler-core", bytes: 2_526 },
+      { name: "compiler-workspace", bytes: 90 },
+      { name: "generated-native", bytes: 74 },
+      { name: "native-runtime", bytes: 122 },
+      { name: "native-state", bytes: 6 },
+      { name: "service-state", bytes: 14 },
+      { name: "proof-code-and-data", bytes: 643 },
+    ]);
+
+    expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
+    expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
+  }, 20_000);
+
+  it("checks the initialized-array NVM image with the host oracle", async () => {
+    const outcome = await runProofManifest(proof("array-nvm-oracle-proof"));
+    const imageBase = outcome.symbols.GeneratedBase ?? -1;
+    const imageSize = outcome.symbols.ArrayNvmImageSize ?? -1;
+    const image = outcome.memory.slice(imageBase, imageBase + imageSize);
+    const validated = validateImage(image);
+    const successServices = new BufferSystemServices([1]);
+
+    expect(outcome.instructions).toBe(15_370);
+    expect(outcome.cycles).toBe(146_120);
+    expect(outcome.extents).toEqual([
+      { name: "common-front-end", bytes: 1_680 },
+      { name: "nvm-oracle-sink", bytes: 801 },
+      { name: "compiler-code", bytes: 2_481 },
+      { name: "compiler-immutable", bytes: 114 },
+      { name: "compiler-core", bytes: 2_595 },
+      { name: "compiler-workspace", bytes: 90 },
+      { name: "generated-nvm", bytes: 89 },
+      { name: "proof-code-and-data", bytes: 103 },
+    ]);
+
+    expect(Array.from(validated.initialData)).toEqual([65, 66, 67, 68]);
+    expect(
+      new ReferenceVm(validated, { services: successServices }).run().kind,
+    ).toBe("success");
+    expect(successServices.standardOutput).toEqual([66]);
+
+    const bounds = new ReferenceVm(validated, {
+      services: new BufferSystemServices([4]),
+    }).run();
+    expect(bounds.kind).toBe("trap");
+    if (bounds.kind === "trap") {
+      expect(bounds.record).toEqual({
+        trap: Trap.bounds,
+        routine: 0,
+        offset: 11,
+      });
+    }
+
+    const inputFailure = new ReferenceVm(validated, {
+      services: new BufferSystemServices(),
+    }).run();
+    expect(inputFailure.kind).toBe("trap");
+    if (inputFailure.kind === "trap") {
+      expect(inputFailure.record).toEqual({
+        trap: Trap.unhandledError,
+        routine: 0,
+        offset: 33,
+        errorCode: ServiceError.endOfInput,
+      });
+    }
   }, 20_000);
 });

@@ -29,6 +29,8 @@ KeywordFor:             .db "for"
 KeywordUntil:           .db "until"
 NameMain:               .db "main"
 NameIndex:              .db "index"
+NameBytes:              .db "bytes"
+NameReadInputByte:      .db "readInputByte"
 NameWriteOutputByte:    .db "writeOutputByte"
 
 NvmEncoderHeaderTemplate:
@@ -38,6 +40,7 @@ NvmEncoderHeaderTemplate:
             .db $36,$00,$00,$00,$04,$00,$01,$00
             .db $00,$00,$36,$00,$00,$06,$02,$00
             .db $00,$00
+ArrayNvmHeaderTemplate  .equ NvmEncoderHeaderTemplate
 CompilerImmutableEnd:
 CompilerCoreEnd:
 

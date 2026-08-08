@@ -9,11 +9,12 @@ semantics, and the Nucleus VM specification governs bytecode images and
 execution. When this plan conflicts with either specification, the plan must be
 corrected.
 
-The compiler and target runtime are handwritten Z80 assembly. NVM remains the
-normative portable execution format and the reference backend. Direct Z80 code
-generation is an equally valid implementation of the native-backend contract in
-the VM specification. Early implementation work measures both paths before the
-project selects the primary deployment path.
+The compiler and target runtime are handwritten Z80 assembly. Direct Z80 code
+generation is the primary deployment path. NVM remains the normative portable
+execution format and the host-side reference oracle; the first implementation
+does not grow a resident NVM interpreter beyond the completed comparison
+spikes. Both sinks continue to consume the same checked semantic operations so
+that the host validator and reference VM can test the native path independently.
 
 ## Project objective
 
@@ -61,8 +62,12 @@ explicitly reopens them:
   inline subobjects;
 - aggregate parameters and results use typed, opaque address carriers;
 - aggregate assignment copies the complete fixed representation;
-- the compiler emits checked semantic operations and performs no Z80 register
-  allocation or peephole optimization in either initial backend path;
+- the compiler emits checked semantic operations and initially uses fixed Z80
+  templates without register allocation or whole-program optimization;
+- each working increment then receives a proof-preserving size pass that may
+  share tails and prefixes, exploit fall-through and live flags, or replace
+  repeated inline sequences with calls when the measured byte trade is
+  favorable;
 - every bounded compiler resource has a capacity diagnostic; and
 - every runtime-dependent safety condition has the specified trap behavior.
 
@@ -171,11 +176,11 @@ as one compiler-controlled program may discharge some structural facts during
 compilation. Those are different products and must not be made to look equal by
 omitting the extra guarantee from one account.
 
-No single loop, handler, or source example selects the backend. Stage 4 supplies
-a representative decision slice before implementation broadens around one
-path. The project records the evidence and the selected path. The other backend
-remains an oracle or an optional later target unless maintaining it has a
-measured, accepted cost.
+The Stage 3 and early Stage 4 measurements selected direct Z80 as the primary
+implementation path. New vertical slices therefore implement and optimize the
+native sink first. The NVM sink remains a host-validated comparison oracle and
+portable output experiment; no new Z80-resident interpreter handler is required
+unless later measurements reopen that decision.
 
 ## Initial backend measurements
 
@@ -493,6 +498,69 @@ one positive unit-step `until` loop, and the existing output call. It has no
 general symbol table, expressions, arbitrary statements, `to`, `step`, wide
 bounds, or loop-range path. The result measures the first control-flow growth;
 it does not complete item 1 or select a backend.
+
+#### Second Stage 4 increment: initialized array and checked selection
+
+The second increment adds one program-scope initialized array, failable input,
+a checked dynamic selection, and failable output:
+
+```nucleus
+var bytes as u8[4] = [65, 66, 67, 68]
+
+sub main() fails
+    var index as u8 = readInputByte() or fail
+    writeOutputByte(bytes[index]) or fail
+end
+```
+
+Input byte `1` produces `B`. Input byte `4` performs `bounds` before any array
+read or output. Empty input propagates `endOfInput`, and a forced output failure
+propagates `outputFailure` without publishing a byte. The compiler also proves
+the exact four-byte static image, rejects a missing initializer comma at its
+source position, and reports output capacity without publishing a partial
+program or changing runnable state.
+
+Direct Z80 is the production experiment for this increment. The NVM sink emits
+an 89-byte comparison image that the host validator and reference VM execute;
+the Z80-resident NVM interpreter is unchanged.
+
+| Account                    |                        Direct-Z80 path |                   Host-only NVM oracle |
+| -------------------------- | -------------------------------------: | -------------------------------------: |
+| common front-end code      |                            1,680 bytes |                            1,680 bytes |
+| backend sink code          |                              772 bytes |                              801 bytes |
+| compiler immutable data    |                               74 bytes |                              114 bytes |
+| complete compiler core     |                            2,526 bytes |                            2,595 bytes |
+| peak compiler workspace    |                               90 bytes |                               90 bytes |
+| generated program or image |                               74 bytes |                               89 bytes |
+| native runtime code        |                              122 bytes |                         not applicable |
+| native writable state      |                               20 bytes |                         not applicable |
+| complete proof execution   | 50,326 instructions / 478,188 T-states | 15,370 instructions / 146,120 T-states |
+
+Relative to the preceding direct compiler, the new source and backend behavior
+adds 711 compiler-core bytes and 10 workspace bytes. That delta includes three
+new delimiters, the array declaration and initializer path, input service
+state, static-data emission, checked address formation, three distinct failure
+paths, and their diagnostics. It is not a projection for arbitrary arrays or
+expressions.
+
+The first correct direct implementation occupied 2,939 compiler-core bytes.
+The size pass reduced it by 413 bytes without changing the accepted source,
+semantic stream, 74-byte generated program, or proof outcomes:
+
+| Transformation                            |     Front end |   Native sink |         Total |
+| ----------------------------------------- | ------------: | ------------: | ------------: |
+| shared token-expectation and parser tails |     219 bytes |             — |     219 bytes |
+| shared opcode-plus-operand emission tails |             — |     141 bytes |     141 bytes |
+| shared success and trap emission suffixes |             — |      53 bytes |      53 bytes |
+| **measured reduction**                    | **219 bytes** | **194 bytes** | **413 bytes** |
+
+The smaller compiler executes 554 more Z80 instructions and 5,301 more
+T-states in the complete direct proof because several inline parser and emitter
+sequences became calls or compact loops. This is an accepted compile-time trade:
+resident compiler bytes are the binding constraint, generated execution is
+unchanged, and every safety and atomicity proof remains green. TECM8's shared
+save paths and CandleMoth's common Boolean return tails provide local precedent
+for the same control-flow style.
 
 Completion evidence:
 

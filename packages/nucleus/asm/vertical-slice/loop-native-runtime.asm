@@ -8,6 +8,7 @@ NativeReset:
             LD   (NativeTrapError),A
             LD   (ServiceCallCount),A
             LD   (ServiceOutputLength),A
+            LD   (ServiceInputCursor),A
             LD   HL,0
             LD   (NativeTrapOffset),HL
             LD   HL,ServiceOutputBase
@@ -19,6 +20,32 @@ NativeResetOutput:
             LD   A,NativeRunReady
             LD   (NativeRunState),A
             OR   A
+            RET
+
+; Carry returns endOfInput, a configured input failure, or success in A.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,HL
+NativeReadInputByte:
+            LD   A,(ServiceInputFailure)
+            OR   A
+            JR   NZ,NativeReadInputByteFailure
+            LD   A,(ServiceInputCursor)
+            LD   C,A
+            LD   A,(ServiceInputLength)
+            CP   C
+            JR   Z,NativeReadInputByteEnd
+            LD   B,0
+            LD   HL,ServiceInputBase
+            ADD  HL,BC
+            INC  C
+            LD   A,C
+            LD   (ServiceInputCursor),A
+            LD   A,(HL)
+            OR   A
+            RET
+NativeReadInputByteEnd:
+            LD   A,1
+NativeReadInputByteFailure:
+            SCF
             RET
 
 ; Input A is the byte. Carry returns a recoverable outputFailure code.

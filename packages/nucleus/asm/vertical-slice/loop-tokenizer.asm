@@ -1,4 +1,4 @@
-; Tokenizer subset for the scalar-local and counted-loop proof.
+; Tokenizer subset for the scalar-local, counted-loop, and array proofs.
 
 .routine out carry,zero clobbers sign,parity,halfCarry,A,DE,HL
 TokenRecordStart:
@@ -255,7 +255,7 @@ TokenizerNextLoop:
             CP   9
             JR   Z,TokenizerSkipByte
             CP   10
-            JR   Z,TokenizerLf
+            JP   Z,TokenizerLf
             CP   13
             JP   Z,TokenizerCrLf
             CP   "/"
@@ -266,6 +266,12 @@ TokenizerNextLoop:
             JR   Z,TokenizerRightParen
             CP   "="
             JR   Z,TokenizerEquals
+            CP   "["
+            JR   Z,TokenizerLeftBracket
+            CP   "]"
+            JR   Z,TokenizerRightBracket
+            CP   ","
+            JP   Z,TokenizerComma
             CP   "'"
             JP   Z,TokenScanCharacter
             CP   "0"
@@ -313,6 +319,30 @@ TokenizerRightParen:
 TokenizerEquals:
             CALL SourceTake
             LD   A,TokenEquals
+            JP   TokenFinish
+
+TokenizerLeftBracket:
+            CALL SourceTake
+            LD   A,(SourceDelimiterDepth)
+            INC  A
+            JP   Z,TokenLexicalFailure
+            LD   (SourceDelimiterDepth),A
+            LD   A,TokenLeftBracket
+            JP   TokenFinish
+
+TokenizerRightBracket:
+            LD   A,(SourceDelimiterDepth)
+            OR   A
+            JP   Z,TokenLexicalFailure
+            DEC  A
+            LD   (SourceDelimiterDepth),A
+            CALL SourceTake
+            LD   A,TokenRightBracket
+            JP   TokenFinish
+
+TokenizerComma:
+            CALL SourceTake
+            LD   A,TokenComma
             JP   TokenFinish
 
 TokenizerLf:

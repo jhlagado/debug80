@@ -4,7 +4,7 @@
 NativeEmitByte:
             LD   B,A
             LD   HL,(EmitCursor)
-            LD   DE,GeneratedLimit
+            LD   DE,(EmitLimit)
             LD   A,H
             CP   D
             JR   NZ,NativeEmitByteRoom
@@ -62,21 +62,19 @@ NativePatchInvalid:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 NativeEncodeLoopProgram:
+            LD   HL,GeneratedLimit
+            LD   (EmitLimit),HL
+            LD   HL,0
+            LD   (GeneratedSize),HL
             LD   HL,GeneratedBase
             LD   (EmitCursor),HL
             LD   (EmitCodeStart),HL
 
-            LD   A,$16
-            CALL NativeEmitByte
-            RET  C
             LD   A,(SemanticBufferBase+2)
-            CALL NativeEmitByte
-            RET  C
-            LD   A,$16
-            CALL NativeEmitByte
+            CALL NativeEmitLoadDImmediate
             RET  C
             LD   A,(SemanticBufferBase+4)
-            CALL NativeEmitByte
+            CALL NativeEmitLoadDImmediate
             RET  C
 
             LD   HL,(EmitCursor)
@@ -84,11 +82,8 @@ NativeEncodeLoopProgram:
             LD   A,$7A
             CALL NativeEmitByte
             RET  C
-            LD   A,$FE
-            CALL NativeEmitByte
-            RET  C
             LD   A,(SemanticBufferBase+5)
-            CALL NativeEmitByte
+            CALL NativeEmitCompareImmediate
             RET  C
             LD   A,$30
             CALL NativeEmitByte
@@ -99,17 +94,11 @@ NativeEncodeLoopProgram:
             CALL NativeEmitByte
             RET  C
 
-            LD   A,$3E
-            CALL NativeEmitByte
-            RET  C
             LD   A,(SemanticBufferBase+7)
-            CALL NativeEmitByte
-            RET  C
-            LD   A,$CD
-            CALL NativeEmitByte
+            CALL NativeEmitLoadAImmediate
             RET  C
             LD   HL,NativeWriteOutputByte
-            CALL NativeEmitWord
+            CALL NativeEmitCall
             RET  C
             LD   A,$38
             CALL NativeEmitByte
@@ -122,12 +111,9 @@ NativeEncodeLoopProgram:
             LD   A,$7A
             CALL NativeEmitByte
             RET  C
-            LD   A,$FE
-            CALL NativeEmitByte
-            RET  C
             LD   A,(SemanticBufferBase+5)
             DEC  A
-            CALL NativeEmitByte
+            CALL NativeEmitCompareImmediate
             RET  C
             LD   A,$30
             CALL NativeEmitByte
@@ -160,78 +146,286 @@ NativeEncodeLoopProgram:
             LD   DE,(EmitUpdateExitFixup)
             CALL NativePatchRelative
             RET  C
-            LD   A,$3E
-            CALL NativeEmitByte
-            RET  C
-            LD   A,NativeRunSucceeded
-            CALL NativeEmitByte
-            RET  C
-            LD   A,$32
-            CALL NativeEmitByte
-            RET  C
-            LD   HL,NativeRunState
-            CALL NativeEmitWord
-            RET  C
-            LD   A,$C9
-            CALL NativeEmitByte
+            CALL NativeEmitSuccessReturn
             RET  C
 
             LD   HL,(EmitCursor)
             LD   DE,(EmitFailureFixup)
             CALL NativePatchRelative
             RET  C
+            LD   HL,NativeLoopFailureOffset
+            CALL NativeEmitLoadHl
+            RET  C
+            CALL NativeEmitUnhandledTrapTail
+            RET  C
+
+            LD   HL,(EmitCursor)
+            LD   DE,GeneratedBase
+            OR   A
+            SBC  HL,DE
+            LD   (GeneratedSize),HL
+            OR   A
+            RET
+
+; Small instruction emitters shared by the direct back end. Multiple entry
+; points share the opcode-plus-operand tails rather than repeating them in
+; every semantic operation.
+.routine in A,HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeEmitOpcodeWord:
+            PUSH HL
+            CALL NativeEmitByte
+            POP  HL
+            RET  C
+            JP   NativeEmitWord
+
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeEmitCall:
+            LD   A,$CD
+            JP   NativeEmitOpcodeWord
+
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeEmitLoadHl:
+            LD   A,$21
+            JP   NativeEmitOpcodeWord
+
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeEmitStoreA:
             LD   A,$32
+            JP   NativeEmitOpcodeWord
+
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeEmitStoreHl:
+            LD   A,$22
+            JP   NativeEmitOpcodeWord
+
+.routine in A,C out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+NativeEmitOpcodeByte:
             CALL NativeEmitByte
             RET  C
-            LD   HL,NativeTrapError
-            CALL NativeEmitWord
+            LD   A,C
+            JP   NativeEmitByte
+
+.routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeEmitLoadAImmediate:
+            LD   C,A
+            LD   A,$3E
+            JP   NativeEmitOpcodeByte
+
+.routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeEmitLoadDImmediate:
+            LD   C,A
+            LD   A,$16
+            JP   NativeEmitOpcodeByte
+
+.routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeEmitCompareImmediate:
+            LD   C,A
+            LD   A,$FE
+            JP   NativeEmitOpcodeByte
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeEmitSuccessReturn:
+            LD   A,NativeRunSucceeded
+            CALL NativeEmitLoadAImmediate
+            RET  C
+            LD   HL,NativeRunState
+            CALL NativeEmitStoreA
+            RET  C
+            LD   A,$C9
+            JP   NativeEmitByte
+
+; At runtime A carries the trap number and HL carries the source offset.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeEmitTrapEnding:
+            LD   HL,NativeTrapNumber
+            CALL NativeEmitStoreA
             RET  C
             LD   A,$AF
             CALL NativeEmitByte
             RET  C
-            LD   A,$32
+            LD   HL,NativeTrapRoutine
+            CALL NativeEmitStoreA
+            RET  C
+            LD   HL,NativeTrapOffset
+            CALL NativeEmitStoreHl
+            RET  C
+            LD   A,NativeRunTrapped
+            CALL NativeEmitLoadAImmediate
+            RET  C
+            LD   HL,NativeRunState
+            CALL NativeEmitStoreA
+            RET  C
+            LD   A,$C9
+            JP   NativeEmitByte
+
+; At runtime A carries an unhandled error and HL the failing source offset.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeEmitUnhandledTrapPrefix:
+            LD   HL,NativeTrapError
+            CALL NativeEmitStoreA
+            RET  C
+            LD   A,6
+            CALL NativeEmitLoadAImmediate
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeEmitUnhandledTrapTail:
+            CALL NativeEmitUnhandledTrapPrefix
+            RET  C
+            JP   NativeEmitTrapEnding
+
+.routine in A out A,carry,zero,DE clobbers sign,parity,halfCarry,B,HL
+NativeEmitRelativePlaceholder:
             CALL NativeEmitByte
             RET  C
-            LD   HL,NativeTrapRoutine
-            CALL NativeEmitWord
+            LD   HL,(EmitCursor)
+            PUSH HL
+            XOR  A
+            CALL NativeEmitByte
+            POP  DE
+            RET
+
+.routine in DE,HL out A,carry,zero clobbers sign,parity,halfCarry,DE,HL
+NativePatchWord:
+            LD   A,L
+            LD   (DE),A
+            INC  DE
+            LD   A,H
+            LD   (DE),A
+            OR   A
+            RET
+
+; Default entry and proof-only bounded entry for the checked-array program.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+NativeEncodeArrayProgram:
+            LD   HL,GeneratedLimit
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+NativeEncodeArrayProgramWithinLimit:
+            LD   (EmitLimit),HL
+            LD   HL,0
+            LD   (GeneratedSize),HL
+            LD   HL,GeneratedBase
+            LD   (EmitCursor),HL
+
+            LD   HL,NativeReadInputByte
+            CALL NativeEmitCall
+            RET  C
+            LD   A,$30
+            CALL NativeEmitRelativePlaceholder
+            RET  C
+            LD   (EmitExitFixup),DE
+            LD   HL,NativeArrayInputFailureOffset
+            CALL NativeEmitLoadHl
+            RET  C
+            LD   A,$18
+            CALL NativeEmitRelativePlaceholder
+            RET  C
+            LD   (EmitFailureFixup),DE
+
+            LD   HL,(EmitCursor)
+            LD   DE,(EmitExitFixup)
+            CALL NativePatchRelative
+            RET  C
+            LD   A,(SemanticBufferBase+2)
+            CALL NativeEmitCompareImmediate
+            RET  C
+            LD   A,$30
+            CALL NativeEmitRelativePlaceholder
+            RET  C
+            LD   (EmitUpdateExitFixup),DE
+            LD   A,$5F
+            CALL NativeEmitByte
+            RET  C
+            XOR  A
+            CALL NativeEmitLoadDImmediate
             RET  C
             LD   A,$21
             CALL NativeEmitByte
             RET  C
-            LD   HL,NativeLoopFailureOffset
+            LD   HL,(EmitCursor)
+            LD   (EmitDataFixup),HL
+            LD   HL,0
             CALL NativeEmitWord
             RET  C
-            LD   A,$22
+            LD   A,$19
             CALL NativeEmitByte
             RET  C
-            LD   HL,NativeTrapOffset
-            CALL NativeEmitWord
-            RET  C
-            LD   A,$3E
+            LD   A,$7E
             CALL NativeEmitByte
             RET  C
-            LD   A,6
+            LD   HL,NativeWriteOutputByte
+            CALL NativeEmitCall
+            RET  C
+            LD   A,$30
+            CALL NativeEmitRelativePlaceholder
+            RET  C
+            LD   (EmitLoopHead),DE
+            LD   HL,NativeArrayOutputFailureOffset
+            CALL NativeEmitLoadHl
+            RET  C
+            LD   A,$18
+            CALL NativeEmitRelativePlaceholder
+            RET  C
+            LD   (EmitCodeStart),DE
+
+            LD   HL,(EmitCursor)
+            LD   DE,(EmitLoopHead)
+            CALL NativePatchRelative
+            RET  C
+            CALL NativeEmitSuccessReturn
+            RET  C
+
+            LD   HL,(EmitCursor)
+            LD   DE,(EmitUpdateExitFixup)
+            CALL NativePatchRelative
+            RET  C
+            LD   HL,NativeArrayBoundsOffset
+            CALL NativeEmitLoadHl
+            RET  C
+            LD   A,$AF
             CALL NativeEmitByte
             RET  C
-            LD   A,$32
+            LD   HL,NativeTrapError
+            CALL NativeEmitStoreA
+            RET  C
+            LD   A,1
+            CALL NativeEmitLoadAImmediate
+            RET  C
+            LD   A,$18
+            CALL NativeEmitRelativePlaceholder
+            RET  C
+            LD   (EmitExitFixup),DE
+
+            LD   HL,(EmitCursor)
+            LD   DE,(EmitFailureFixup)
+            CALL NativePatchRelative
+            RET  C
+            LD   HL,(EmitCursor)
+            LD   DE,(EmitCodeStart)
+            CALL NativePatchRelative
+            RET  C
+            CALL NativeEmitUnhandledTrapPrefix
+            RET  C
+            LD   HL,(EmitCursor)
+            LD   DE,(EmitExitFixup)
+            CALL NativePatchRelative
+            RET  C
+            CALL NativeEmitTrapEnding
+            RET  C
+
+            LD   HL,(EmitCursor)
+            LD   DE,(EmitDataFixup)
+            CALL NativePatchWord
+            LD   A,(SemanticBufferBase+3)
             CALL NativeEmitByte
             RET  C
-            LD   HL,NativeTrapNumber
-            CALL NativeEmitWord
-            RET  C
-            LD   A,$3E
+            LD   A,(SemanticBufferBase+4)
             CALL NativeEmitByte
             RET  C
-            LD   A,NativeRunTrapped
+            LD   A,(SemanticBufferBase+5)
             CALL NativeEmitByte
             RET  C
-            LD   A,$32
-            CALL NativeEmitByte
-            RET  C
-            LD   HL,NativeRunState
-            CALL NativeEmitWord
-            RET  C
-            LD   A,$C9
+            LD   A,(SemanticBufferBase+6)
             CALL NativeEmitByte
             RET  C
 

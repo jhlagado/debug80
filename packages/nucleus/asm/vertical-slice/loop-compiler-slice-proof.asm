@@ -24,6 +24,8 @@ KeywordFor:             .db "for"
 KeywordUntil:           .db "until"
 NameMain:               .db "main"
 NameIndex:              .db "index"
+NameBytes:              .db "bytes"
+NameReadInputByte:      .db "readInputByte"
 NameWriteOutputByte:    .db "writeOutputByte"
 CompilerImmutableEnd:
 CompilerCoreEnd:

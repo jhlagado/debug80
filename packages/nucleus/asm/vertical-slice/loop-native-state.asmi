@@ -17,8 +17,19 @@ ServiceCallCount        .equ ServiceBase+$01
 ServiceOutputLength     .equ ServiceBase+$02
 ServiceOutputBase       .equ ServiceBase+$03
 ServiceOutputCapacity   .equ 4
-ServiceStateEnd         .equ ServiceOutputBase+ServiceOutputCapacity
+ServiceInputLength      .equ ServiceBase+$07
+ServiceInputCursor      .equ ServiceBase+$08
+ServiceInputFailure     .equ ServiceBase+$09
+ServiceInputBase        .equ ServiceBase+$0A
+ServiceInputCapacity    .equ 4
+ServiceStateEnd         .equ ServiceInputBase+ServiceInputCapacity
 
 NativeProgramSize       .equ 54
 NativeLoopFailureOffset .equ 30
 GeneratedNativeEnd      .equ GeneratedBase+NativeProgramSize
+
+NativeArrayProgramSize  .equ 74
+NativeArrayInputFailureOffset .equ 0
+NativeArrayBoundsOffset .equ 10
+NativeArrayOutputFailureOffset .equ 22
+GeneratedArrayEnd       .equ GeneratedBase+NativeArrayProgramSize

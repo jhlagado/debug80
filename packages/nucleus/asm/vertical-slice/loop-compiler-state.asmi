@@ -1,4 +1,4 @@
-; Fixed compiler state for the scalar-local and counted-loop slice.
+; Fixed compiler state for the scalar-local, counted-loop, and array slice.
 
 CompilerStateBase       .equ CompilerWorkBase
 
@@ -40,8 +40,16 @@ EmitExitFixup           .equ CompilerStateBase+$30
 EmitFailureFixup        .equ CompilerStateBase+$32
 EmitUpdateExitFixup     .equ CompilerStateBase+$34
 EmitPatchAddress        .equ CompilerStateBase+$36
+ParsedProgramKind       .equ CompilerStateBase+$38
+ParsedArrayLength       .equ CompilerStateBase+$39
+ParsedArrayByte0        .equ CompilerStateBase+$3A
+ParsedArrayByte1        .equ CompilerStateBase+$3B
+ParsedArrayByte2        .equ CompilerStateBase+$3C
+ParsedArrayByte3        .equ CompilerStateBase+$3D
+EmitLimit               .equ CompilerStateBase+$3E
+EmitDataFixup           .equ CompilerStateBase+$40
 
-CompilerStateEnd        .equ CompilerStateBase+$38
+CompilerStateEnd        .equ CompilerStateBase+$42
 SemanticBufferBase      .equ CompilerStateEnd
 SemanticBufferLimit     .equ SemanticBufferBase+$18
 CompilerWorkspaceEnd    .equ SemanticBufferLimit
@@ -64,6 +72,9 @@ TokenAs                 .equ 14
 TokenU8                 .equ 15
 TokenFor                .equ 16
 TokenUntil              .equ 17
+TokenLeftBracket        .equ 18
+TokenRightBracket       .equ 19
+TokenComma              .equ 20
 
 DiagnosticNone          .equ 0
 DiagnosticLexical       .equ 1
@@ -88,8 +99,15 @@ DiagnosticExpectedNumber .equ 33
 DiagnosticExpectedFor   .equ 34
 DiagnosticExpectedUntil .equ 35
 DiagnosticActiveCounter .equ 36
+DiagnosticExpectedTopLevel .equ 37
+DiagnosticExpectedBytes .equ 38
+DiagnosticExpectedArrayLength .equ 39
 DiagnosticSinkCapacity  .equ 40
 DiagnosticFixupRange    .equ 41
+DiagnosticExpectedLeftBracket .equ 42
+DiagnosticExpectedRightBracket .equ 43
+DiagnosticExpectedComma .equ 44
+DiagnosticExpectedRead  .equ 45
 
 SemanticDeclareU8       .equ 1
 SemanticForUntilU8      .equ 2
@@ -97,3 +115,11 @@ SemanticWriteOutputByte .equ 3
 SemanticPropagate       .equ 4
 SemanticEndLoop         .equ 5
 SemanticReturn          .equ 6
+SemanticStaticU8Array   .equ 7
+SemanticReadInputByte   .equ 8
+SemanticStoreResultU8   .equ 9
+SemanticLoadArrayU8     .equ 10
+SemanticWriteOutputU8   .equ 11
+
+ProgramKindLoop         .equ 1
+ProgramKindArray        .equ 2

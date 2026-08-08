@@ -1,4 +1,4 @@
-; Checked semantic-operation buffer for the counted-loop slice.
+; Checked semantic-operation buffer for the counted-loop and array slices.
 
 .routine out carry,zero clobbers sign,parity,halfCarry,A,HL
 SemanticSinkReset:
@@ -33,6 +33,9 @@ SemanticSinkPutFull:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
 SemanticSinkEmitProgram:
+            LD   A,(ParsedProgramKind)
+            CP   ProgramKindArray
+            JP   Z,SemanticSinkEmitArrayProgram
             LD   A,SemanticDeclareU8
             CALL SemanticSinkPut
             RET  C
@@ -64,6 +67,52 @@ SemanticSinkEmitProgram:
             CALL SemanticSinkPut
             RET  C
             LD   A,6
+            LD   (SinkOperationCount),A
+            LD   (SemanticBufferBase),A
+            OR   A
+            RET
+
+SemanticSinkEmitArrayProgram:
+            LD   A,SemanticStaticU8Array
+            CALL SemanticSinkPut
+            RET  C
+            LD   A,(ParsedArrayLength)
+            CALL SemanticSinkPut
+            RET  C
+            LD   A,(ParsedArrayByte0)
+            CALL SemanticSinkPut
+            RET  C
+            LD   A,(ParsedArrayByte1)
+            CALL SemanticSinkPut
+            RET  C
+            LD   A,(ParsedArrayByte2)
+            CALL SemanticSinkPut
+            RET  C
+            LD   A,(ParsedArrayByte3)
+            CALL SemanticSinkPut
+            RET  C
+            LD   A,SemanticReadInputByte
+            CALL SemanticSinkPut
+            RET  C
+            LD   A,SemanticPropagate
+            CALL SemanticSinkPut
+            RET  C
+            LD   A,SemanticStoreResultU8
+            CALL SemanticSinkPut
+            RET  C
+            LD   A,SemanticLoadArrayU8
+            CALL SemanticSinkPut
+            RET  C
+            LD   A,SemanticWriteOutputU8
+            CALL SemanticSinkPut
+            RET  C
+            LD   A,SemanticPropagate
+            CALL SemanticSinkPut
+            RET  C
+            LD   A,SemanticReturn
+            CALL SemanticSinkPut
+            RET  C
+            LD   A,8
             LD   (SinkOperationCount),A
             LD   (SemanticBufferBase),A
             OR   A
