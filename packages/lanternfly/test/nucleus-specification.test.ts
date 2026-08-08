@@ -9,17 +9,13 @@ const text = readFileSync(SPECIFICATION, "utf8");
 
 const predicates: Readonly<Record<string, readonly string[]>> = {
   "simple-statement": ["isCallableName", "isWritableName"],
-  "local-initializer": [
-    "isFailableCallableName",
-    "isInitializerForDeclaredType",
-  ],
+  "local-initializer": ["isInitializerForDeclaredType"],
   "static-initializer": ["isInitializerForDeclaredType"],
-  "assignment-source": ["isFailableCallableName"],
-  "return-source": ["isFailableCallableName"],
   "type-atom": ["isRecordTypeName"],
   "program-initializer": ["isInitializerForDeclaredType"],
   "on-error-clause": ["isFailablePrecedingStatement"],
-  expression: ["isInfallibleCallableName"],
+  expression: ["isCallableName"],
+  "or-expression": ["isFailurePropagationBoundary"],
   "step-constant": ["isIntegerConstantName"],
   "routine-definition-tail": ["isIncompleteForwardName"],
   "const-declaration": ["isConstantContext"],
@@ -81,24 +77,14 @@ describe("the normative Nucleus 0.1 grammar", () => {
       })),
     ).toEqual([
       {
-        nonterminal: "assignment-source",
-        lookahead: "NAME",
-        predicates: ["isFailableCallableName"],
-      },
-      {
         nonterminal: "local-initializer",
         lookahead: "(",
-        predicates: ["isFailableCallableName", "isInitializerForDeclaredType"],
+        predicates: ["isInitializerForDeclaredType"],
       },
       {
-        nonterminal: "local-initializer",
-        lookahead: "NAME",
-        predicates: ["isFailableCallableName", "isInitializerForDeclaredType"],
-      },
-      {
-        nonterminal: "return-source",
-        lookahead: "NAME",
-        predicates: ["isFailableCallableName"],
+        nonterminal: "or-expression·rep26",
+        lookahead: "or",
+        predicates: ["isFailurePropagationBoundary"],
       },
       {
         nonterminal: "simple-statement",

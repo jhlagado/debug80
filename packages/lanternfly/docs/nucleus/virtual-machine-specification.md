@@ -953,7 +953,7 @@ Every size or timing entry is labeled **Measured**, **Projected**, or **Hypothes
 | argument staging             |           open |                               open |            34 bytes |              3/argument | not measured              | Projected                            |
 | packed activation records    |           open |                               open |   `4 + 2n` per call |                  2/call | not measured              | Projected                            |
 | arithmetic helpers           |           open |                               open |        scratch open |     fixed opcode widths | not measured              | Hypothesis                           |
-| canonical-width sharing      |           open |                               open |                none |               unchanged | not measured              | Hypothesis                           |
+| canonical-width selection    |           open |                               open |                none |               unchanged | reference mapping checked | Implemented model; Z80 open          |
 | address and safety checks    |           open |                               open |        scratch open |         3–8/instruction | not measured              | Hypothesis                           |
 | aggregate-copy lowering      |           open |                               none |  scratch slots open | size-dependent sequence | not measured              | Hypothesis                           |
 | recoverable failure          |           open |                               open |       carriers open |     call-local sequence | not measured              | Hypothesis                           |
@@ -961,7 +961,9 @@ Every size or timing entry is labeled **Measured**, **Projected**, or **Hypothes
 
 The measured harness covered seven handlers and three slot-addressing arrangements. Their complete core sizes were 165, 162, and 210 bytes. Those figures exclude the separately placed dispatch table, and they are not complete-interpreter estimates.
 
-The canonical-width experiment may share handler bodies between byte and word opcodes, or let the compiler emit a word opcode for a source `u8` operation only where Section 7.1's zero-high-byte invariant makes the complete state transition identical. Division, binary `and` and `or`, equality, and unsigned comparison are candidates. Wrapping arithmetic, negation, and complement are not equivalent without an additional mask and require separate measurement. The experiment does not remove assigned opcodes or change their meanings in NVM 0.1.
+The executable definition maps nine canonical-byte operations to an equivalent word implementation: division, binary `and` and `or`, equality, inequality, and the four unsigned order comparisons. A compiler may emit the mapped word opcode for a statically typed `u8` operation because valid byte carriers have zero high bytes and these results already fit in one byte. Wrapping addition, subtraction, multiplication, negation, and complement are not equivalent and retain their byte operations.
+
+This mapping does not make the byte opcode entries removable. A byte opcode still has the Section 7.1 carrier precondition, while its word counterpart accepts every word. An interpreter may check the byte operands and then enter a shared arithmetic or comparison core, but it cannot point both dispatch entries directly at an unchecked word handler and still satisfy Section 15.7. The target measurement therefore counts any byte-entry checks as well as the shared core. No assigned opcode or opcode meaning changes.
 
 ### 21.3 Required reports
 

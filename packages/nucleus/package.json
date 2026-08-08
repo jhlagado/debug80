@@ -1,0 +1,23 @@
+{
+  "name": "nucleus",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Nucleus: a small typed language for 16K Z80 systems, executed by a register virtual machine",
+  "license": "GPL-3.0-only",
+  "type": "module",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "pretest": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/debug80-runtime",
+    "test": "vitest run",
+    "measure": "vitest run test/frame-addressing.test.ts --reporter=verbose"
+  },
+  "dependencies": {
+    "@jhlagado/azm": "^0.3.8",
+    "@jhlagado/debug80-runtime": "^0.1.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "typescript": "5.3.3",
+    "vitest": "^4.1.7"
+  }
+}

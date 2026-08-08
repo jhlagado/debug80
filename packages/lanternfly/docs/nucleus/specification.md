@@ -218,7 +218,7 @@ Nucleus 0.1 admits the explicit recoverable-error mechanism in Chapter 14. The i
 
 Nucleus 0.1 admits recursive routine calls. The first implementation may stage their construction while it measures activation storage, re-entry state, depth limits, and failure behaviour, but staging does not create a non-recursive language profile. Chapter 13 defines the source semantics, and Chapter 15 defines activation-capacity failure.
 
-Several source-preserving economies remain implementation measurements rather than language changes. The first compiler should compare the existing precedence ladder with one precedence-driven expression loop; compare early signature predicates for failable calls with parsing a direct call before checking its category; and compare interned type ordinals with compact structural metadata stored directly in symbols. The VM implementation should measure shared handlers or compiler selection of an equivalent word-width operation where canonical `u8` carriers make the result identical. None of these experiments may change accepted source, arithmetic width, diagnostics required by this specification, or the assigned NVM opcode meanings.
+Several source-preserving economies belong in the first implementation rather than in language variants. The first compiler uses one precedence-driven loop for binary expressions and classifies a completed call expression before admitting `or fail`; it does not duplicate the precedence ladder or branch on a routine signature before parsing the call. Interned type ordinals versus compact structural metadata stored directly in symbols remains a measured representation choice. The VM implementation likewise measures shared handlers or compiler selection of an equivalent word-width operation where canonical `u8` carriers make the complete state transition identical. None of these choices may change accepted source, arithmetic width, diagnostics required by this specification, array aliases, or the assigned NVM opcode meanings.
 
 ### 2.9 Decision boundary and failure conditions
 
@@ -1047,6 +1047,10 @@ An implementation must diagnose a source form that requires one of these mechani
 
 Exact type identity is checked from retained metadata without reconstructing source text. Record declarations require nominal IDs. Predefined scalars, fixed arrays, and bounded strings have compact, bounded structural descriptions: kind, element type when applicable, and length or capacity. A compiler may store those descriptions directly in symbols and signatures or intern them behind compact ordinals. Measurements of compiler-core bytes, immutable data, writable workspace, and comparison code determine the representation used by the first implementation.
 
+One direct representation fits every admitted type in four bytes. Its kind byte distinguishes the three scalars, records, bounded strings, and the five permitted array-element families. A second byte carries a record ordinal or string capacity where needed, and two bytes carry an array length. Folding the element family into the array kind is valid because arrays cannot contain arrays. It does not remove arrays of records, arrays of bounded strings, or aliases to any aggregate type; alias category is stored separately from referent-type identity.
+
+Four inline bytes are not automatically cheaper than one ordinal per symbol. With mostly distinct types, direct descriptors avoid an interning table; with many repeated types, ordinals reduce writable symbol storage. The measurement package reports both retained-data totals for representative symbol populations. The first compiler also counts the code and scratch state for descriptor construction, interning, exhaustion checks, and equality before selecting either form.
+
 Every selected representation has a published capacity. An ordinal representation diagnoses exhaustion before an ID wraps or aliases another type. An inline representation diagnoses any limit on element-type nesting, length, capacity, symbol entries, record fields, or signatures before truncation changes a compatibility result. A byte-sized type ID remains a candidate, not a language or VM requirement.
 
 The numeric type ID has no source meaning and need not match across compilations. VM registers and slots are untagged storage locations; the compiler's symbol and expression metadata supply their current source types. Runtime type tags, reflection, and dynamic type tests are absent.
@@ -1724,7 +1728,7 @@ Binary arithmetic, `and`, and `or` associate from left to right. Unary `+`, unar
 
 `not` binds less tightly than comparison. Thus `not left = right` means `not (left = right)`. An integer complement used as a comparison operand requires parentheses, as in `(not mask) = expected`.
 
-The repeated forms in Section 9.2 preserve left association without a left-recursive predictive grammar. An implementation may use another parser family only if it accepts the same token sequences and produces the same association.
+The repeated forms in Section 9.2 preserve left association without a left-recursive predictive grammar. The first handwritten compiler implements the binary levels with one precedence-driven loop and a compact operator table; comparison's single-use rule and Boolean short-circuit emission remain explicit cases in that loop. Separate parsing remains appropriate for primary, postfix, unary, and right-recursive `not`. Another conforming compiler may use a different parser family only if it accepts the same token sequences and produces the same association and evaluation order.
 
 ### 9.7 Integer-literal resolution
 
@@ -2838,9 +2842,8 @@ local-declaration
     ::= "var" NAME "as" type
         [ "=" local-initializer ] NEWLINE
 local-initializer
-    ::= failable-invocation failure-propagation
-      | static-aggregate-initializer
-      | expression
+    ::= static-aggregate-initializer
+      | expression [ failure-propagation ]
 
 type
     ::= type-atom [ "[" expression "]" ]
@@ -2872,23 +2875,19 @@ assignment-statement
 assignment-target
     ::= NAME { field-suffix | index-suffix }
 assignment-source
-    ::= failable-invocation [ failure-propagation ]
-      | expression
+    ::= expression [ failure-propagation ]
 
 routine-call-statement
     ::= NAME argument-list [ failure-propagation ]
 return-statement
     ::= "return" [ return-source ]
 return-source
-    ::= failable-invocation failure-propagation
-      | expression
+    ::= expression [ failure-propagation ]
 fail-statement
     ::= "fail" expression
 
 failure-propagation
     ::= "or" "fail"
-failable-invocation
-    ::= NAME argument-list
 on-error-clause
     ::= "on" "error" NAME NEWLINE
         statement-sequence
@@ -2957,34 +2956,32 @@ The grammar uses the general `expression` nonterminal for scalar constant leaves
 
 The grammar uses these declared semantic predicates:
 
-| Predicate                           | Decision                                                                                                                                                                                                                |
-| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `isCallableName` / `isWritableName` | At statement head, select a routine-call statement or an assignment from the resolved declaration class.                                                                                                                |
-| `isFailableCallableName`            | In a local initializer, assignment source, or return source beginning with `NAME`, select the restricted failable-invocation path when the visible signature has `fails`; otherwise parse the ordinary expression path. |
-| `isRecordTypeName`                  | Accept a `NAME` as a type atom only when it resolves to a visible record type.                                                                                                                                          |
-| `isInitializerForDeclaredType`      | Select and check the scalar, string, positional record, recursive array, zero-default, private-static, or aggregate-alias rule from the declared or current component type.                                             |
-| `isFailablePrecedingStatement`      | Admit `on error` only after the direct failable assignment or call statement required by Section 14.6.                                                                                                                  |
-| `isConstantContext`                 | In constants, type bounds, array lengths, string capacities, and program initializers, admit only the compile-time operands and operations from Chapter 8.                                                              |
-| `isInfallibleCallableName`          | Admit a call in an ordinary expression only when the visible signature omits `fails`.                                                                                                                                   |
-| `isIntegerConstantName`             | Admit a `NAME` as a counted-loop step magnitude only when it denotes an earlier `u8` or `u16` constant.                                                                                                                 |
-| `isIncompleteForwardName`           | Admit `sub NAME NEWLINE` as a body header only when the exact name resolves to one incomplete forward; install that forward's stored parameter bindings for the body.                                                   |
+| Predicate                      | Decision                                                                                                                                                                    |
+| ------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `isCallableName`               | At statement head, select a routine-call statement; in an expression, admit a call suffix only on a visible routine and retain its result and failure category.             |
+| `isWritableName`               | At statement head, select assignment only when the resolved declaration is a mutable scalar or aggregate root.                                                              |
+| `isRecordTypeName`             | Accept a `NAME` as a type atom only when it resolves to a visible record type.                                                                                              |
+| `isInitializerForDeclaredType` | Select and check the scalar, string, positional record, recursive array, zero-default, private-static, or aggregate-alias rule from the declared or current component type. |
+| `isFailurePropagationBoundary` | At an eligible initializer, assignment, or return boundary, treat the reserved pair `or fail` as propagation rather than beginning another Boolean operand.                 |
+| `isFailablePrecedingStatement` | Admit `on error` only after the direct failable assignment or call statement required by Section 14.6.                                                                      |
+| `isConstantContext`            | In constants, type bounds, array lengths, string capacities, and program initializers, admit only the compile-time operands and operations from Chapter 8.                  |
+| `isIntegerConstantName`        | Admit a `NAME` as a counted-loop step magnitude only when it denotes an earlier `u8` or `u16` constant.                                                                     |
+| `isIncompleteForwardName`      | Admit `sub NAME NEWLINE` as a body header only when the exact name resolves to one incomplete forward; install that forward's stored parameter bindings for the body.       |
 
-Field lookup after `.` uses the selected record type, except that a bounded-string base admits only the intrinsic read-only suffix `.length`. Index selection uses a fixed-array domain or a bounded string's current logical length according to the base type; this distinction needs no grammar change. Static initializer checking descends the finite declared type tree and records the expected component before parsing each nested initializer. The `NAME` in `step-constant` must denote an earlier integer constant. Calls within ordinary expressions require an infallible visible routine; failable calls use the separate path above. For `return-source`, a result-free failable caller and callee form the admitted no-result propagation case; otherwise the caller and callee result shapes must match. These are static semantic checks over an otherwise deterministic token stream, not token backtracking.
+Field lookup after `.` uses the selected record type, except that a bounded-string base admits only the intrinsic read-only suffix `.length`. Index selection uses a fixed-array domain or a bounded string's current logical length according to the base type; this distinction needs no grammar change. Static initializer checking descends the finite declared type tree and records the expected component before parsing each nested initializer. The `NAME` in `step-constant` must denote an earlier integer constant. A call suffix first produces a call expression with the visible signature's result and failure category. The checker then rejects a failable call unless the enclosing initializer, assignment, call statement, or return consumes that complete direct call under Chapter 14. For `return-source`, a result-free failable caller and callee form the admitted no-result propagation case; otherwise the caller and callee result shapes must match. These are static semantic checks over an otherwise deterministic token stream, not token backtracking.
 
 ### 17.4 Predictive analysis
 
-The repository grammar analyzer mechanically expanded the grammar above to 172 BNF rules over 93 nonterminals. It found no nullable-prefix left-recursion cycle, unreachable nonterminal, or unproductive nonterminal. The LL(1) table contained six conflict sites. Four use lookahead `NAME`; two use lookahead `(` where a declared type distinguishes a record initializer from a scalar expression. The focused test reads this Chapter 17 block directly, so the analyzer evidence does not create a second grammar authority.
+The repository grammar analyzer mechanically expanded the grammar above to 172 BNF rules over 94 nonterminals. It found no nullable-prefix left-recursion cycle, unreachable nonterminal, or unproductive nonterminal. The LL(1) table contained four conflict sites: one name-led statement choice, two type-directed initializer choices, and one `or fail` boundary choice. The focused test reads this Chapter 17 block directly, so the analyzer evidence does not create a second grammar authority.
 
 | Nonterminal          | Lookahead | Conflict                                               | Resolution                          |
 | -------------------- | --------- | ------------------------------------------------------ | ----------------------------------- |
 | `simple-statement`   | `NAME`    | assignment versus routine call                         | `isWritableName` / `isCallableName` |
-| `local-initializer`  | `NAME`    | failable invocation versus expression                  | `isFailableCallableName`            |
-| `assignment-source`  | `NAME`    | failable invocation versus expression                  | `isFailableCallableName`            |
-| `return-source`      | `NAME`    | failable invocation versus expression                  | `isFailableCallableName`            |
 | `static-initializer` | `(`       | record initializer versus parenthesized expression     | `isInitializerForDeclaredType`      |
 | `local-initializer`  | `(`       | structured initializer versus parenthesized expression | `isInitializerForDeclaredType`      |
+| `or-expression`      | `or`      | Boolean operand versus terminal propagation pair       | `isFailurePropagationBoundary`      |
 
-No unexplained FIRST/FIRST or FIRST/FOLLOW conflict remained. The expression repetitions expand to right-recursive implementation rules while their semantic actions preserve the left association specified in Section 9.6. Unary and `not` recursion remains right-recursive by design. A compiler may parse a direct call before applying the same failable-call category check, and it may recognize terminal `or fail` while parsing the `or` level, instead of branching on `isFailableCallableName` before parsing. Any such implementation must accept the same token sequences and produce the same static decisions. Other reported conflicts require their named predicate or an audited equivalent; a compiler must report a specification defect rather than change the language silently.
+No unexplained FIRST/FIRST or FIRST/FOLLOW conflict remained. The expression repetitions expand to right-recursive analysis rules while their semantic actions preserve the left association specified in Section 9.6. Unary and `not` recursion remains right-recursive by design. At an initializer, assignment, or return boundary, the parser treats the reserved pair `or fail` as `failure-propagation` rather than as Boolean `or` followed by an operand. Because `fail` cannot begin an expression operand, this is a fixed two-token boundary decision, not symbol-table-directed parsing or backtracking. The completed expression must then be exactly one direct failable invocation. Other reported conflicts require their named predicate or an audited equivalent; a compiler must report a specification defect rather than change the language silently.
 
 The analyzer result checks the collected grammar's formal shape. It does not prove the static compatibility, lifetime, capacity, or flow rules consolidated in Chapter 18.
 
