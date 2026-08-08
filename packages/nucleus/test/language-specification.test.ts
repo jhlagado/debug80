@@ -63,6 +63,18 @@ function specificationGrammar(): readonly Production[] {
 const analysis = analyze(specificationGrammar());
 
 describe("the normative Nucleus 0.1 grammar", () => {
+  it("names only the direct-Z80 runtime contract as its execution authority", () => {
+    expect(text).toContain(
+      "[Nucleus Z80 Runtime and Backend Contract](z80-runtime-contract.md)",
+    );
+    expect(text).toContain(
+      "The first compiler emits Z80 machine code directly",
+    );
+    expect(text).not.toContain("Nucleus Virtual Machine Specification");
+    expect(text).not.toContain("virtual-machine-specification.md");
+    expect(text).not.toContain("primary bytecode path");
+  });
+
   it("has no left recursion, unreachable rule, or unproductive rule", () => {
     expect(analysis.cycles).toEqual([]);
     expect(analysis.unreachable).toEqual([]);

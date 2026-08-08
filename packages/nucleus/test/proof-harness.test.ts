@@ -2,10 +2,8 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { ServiceError, Trap } from "../src/vm-definition.js";
-import { validateImage } from "../src/vm-image.js";
-import { BufferSystemServices, ReferenceVm } from "../src/vm-reference.js";
 import { runProofManifest } from "../src/proof.js";
+import { ServiceError, Trap } from "../src/runtime-contract.js";
 
 const proof = (name: string): string =>
   path.resolve(import.meta.dirname, "..", "proofs", `${name}.json`);
@@ -55,90 +53,6 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
       outcome.extents[2]?.bytes ?? 0,
     );
     expect(outcome.extents[2]?.bytes).toBeLessThanOrEqual(16_384);
-  });
-
-  it("emits, validates, and executes the same NVM image on Z80 and the host oracle", async () => {
-    const outcome = await runProofManifest(proof("nvm-slice-proof"));
-    const imageBase = outcome.symbols.GeneratedBase ?? -1;
-    const imageSize = outcome.symbols.NvmImageSize ?? -1;
-    const image = outcome.memory.slice(imageBase, imageBase + imageSize);
-    const validated = validateImage(image);
-
-    expect(outcome.instructions).toBe(6_175);
-    expect(outcome.cycles).toBe(62_402);
-    expect(outcome.extents).toEqual([
-      { name: "common-front-end", bytes: 940 },
-      { name: "nvm-output-sink", bytes: 25 },
-      { name: "compiler-code", bytes: 965 },
-      { name: "compiler-immutable", bytes: 94 },
-      { name: "compiler-core", bytes: 1_059 },
-      { name: "compiler-workspace", bytes: 55 },
-      { name: "generated-nvm", bytes: 58 },
-      { name: "nvm-runtime-code", bytes: 487 },
-      { name: "nvm-runtime-immutable", bytes: 57 },
-      { name: "nvm-runtime", bytes: 544 },
-      { name: "nvm-state", bytes: 22 },
-      { name: "service-state", bytes: 3 },
-      { name: "proof-code-and-data", bytes: 233 },
-    ]);
-    expect(validated.code).toEqual(
-      Uint8Array.of(
-        0x01,
-        0x41,
-        0x00,
-        0x04,
-        0x00,
-        0x00,
-        0x51,
-        0x01,
-        0x0b,
-        0x0c,
-        0x00,
-        0x52,
-        0x06,
-        0x00,
-        0x54,
-        0x00,
-      ),
-    );
-
-    const services = new BufferSystemServices();
-    expect(new ReferenceVm(validated, { services }).run().kind).toBe("success");
-    expect(services.standardOutput).toEqual([0x41]);
-
-    const failed = new ReferenceVm(validated, {
-      services: {
-        invoke: () => ({
-          ok: false as const,
-          code: ServiceError.outputFailure,
-        }),
-      },
-    }).run();
-    expect(failed.kind).toBe("trap");
-    if (failed.kind === "trap") {
-      expect(failed.record).toEqual({
-        trap: Trap.unhandledError,
-        routine: 0,
-        offset: 14,
-        errorCode: ServiceError.outputFailure,
-      });
-    }
-  });
-
-  it("rejects a malformed NVM image without changing runnable state", async () => {
-    const outcome = await runProofManifest(proof("nvm-loader-rejection-proof"));
-
-    expect(outcome.instructions).toBe(447);
-    expect(outcome.cycles).toBe(4_909);
-    expect(outcome.extents).toEqual([
-      { name: "nvm-runtime-code", bytes: 487 },
-      { name: "nvm-runtime-immutable", bytes: 57 },
-      { name: "rejection-proof", bytes: 103 },
-    ]);
-    expect(outcome.memory[outcome.symbols.NvmRunState ?? -1]).toBe(3);
-    expect(outcome.memory[outcome.symbols.NvmTrapError ?? -1]).toBe(
-      ServiceError.outputFailure,
-    );
   });
 
   it("executes the same checked operations as a direct-Z80 program", async () => {
@@ -198,35 +112,6 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     );
   }, 20_000);
 
-  it("executes the counted loop through NVM and the host oracle", async () => {
-    const outcome = await runProofManifest(proof("loop-nvm-slice-proof"));
-    const imageBase = outcome.symbols.GeneratedBase ?? -1;
-    const imageSize = outcome.symbols.NvmImageSize ?? -1;
-    const image = outcome.memory.slice(imageBase, imageBase + imageSize);
-    const validated = validateImage(image);
-    const services = new BufferSystemServices();
-
-    expect(outcome.instructions).toBe(45_283);
-    expect(outcome.cycles).toBe(440_920);
-    expect(outcome.extents).toEqual([
-      { name: "common-front-end", bytes: 2_369 },
-      { name: "nvm-output-sink", bytes: 801 },
-      { name: "compiler-code", bytes: 3_170 },
-      { name: "compiler-immutable", bytes: 173 },
-      { name: "compiler-core", bytes: 3_343 },
-      { name: "compiler-workspace", bytes: 103 },
-      { name: "generated-nvm", bytes: 96 },
-      { name: "nvm-runtime-code", bytes: 797 },
-      { name: "nvm-runtime-immutable", bytes: 96 },
-      { name: "nvm-runtime", bytes: 893 },
-      { name: "nvm-state", bytes: 32 },
-      { name: "service-state", bytes: 7 },
-      { name: "proof-code-and-data", bytes: 339 },
-    ]);
-    expect(new ReferenceVm(validated, { services }).run().kind).toBe("success");
-    expect(services.standardOutput).toEqual([0x41, 0x41, 0x41]);
-  }, 20_000);
-
   it("executes the counted loop as direct Z80", async () => {
     const outcome = await runProofManifest(proof("loop-native-slice-proof"));
     const generatedBase = outcome.symbols.GeneratedBase ?? -1;
@@ -281,59 +166,6 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
 
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
     expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
-  }, 20_000);
-
-  it("checks the initialized-array NVM image with the host oracle", async () => {
-    const outcome = await runProofManifest(proof("array-nvm-oracle-proof"));
-    const imageBase = outcome.symbols.GeneratedBase ?? -1;
-    const imageSize = outcome.symbols.ArrayNvmImageSize ?? -1;
-    const image = outcome.memory.slice(imageBase, imageBase + imageSize);
-    const validated = validateImage(image);
-    const successServices = new BufferSystemServices([1]);
-
-    expect(outcome.instructions).toBe(15_865);
-    expect(outcome.cycles).toBe(155_699);
-    expect(outcome.extents).toEqual([
-      { name: "common-front-end", bytes: 2_369 },
-      { name: "nvm-oracle-sink", bytes: 801 },
-      { name: "compiler-code", bytes: 3_170 },
-      { name: "compiler-immutable", bytes: 171 },
-      { name: "compiler-core", bytes: 3_341 },
-      { name: "compiler-workspace", bytes: 103 },
-      { name: "generated-nvm", bytes: 89 },
-      { name: "proof-code-and-data", bytes: 103 },
-    ]);
-
-    expect(Array.from(validated.initialData)).toEqual([65, 66, 67, 68]);
-    expect(
-      new ReferenceVm(validated, { services: successServices }).run().kind,
-    ).toBe("success");
-    expect(successServices.standardOutput).toEqual([66]);
-
-    const bounds = new ReferenceVm(validated, {
-      services: new BufferSystemServices([4]),
-    }).run();
-    expect(bounds.kind).toBe("trap");
-    if (bounds.kind === "trap") {
-      expect(bounds.record).toEqual({
-        trap: Trap.bounds,
-        routine: 0,
-        offset: 11,
-      });
-    }
-
-    const inputFailure = new ReferenceVm(validated, {
-      services: new BufferSystemServices(),
-    }).run();
-    expect(inputFailure.kind).toBe("trap");
-    if (inputFailure.kind === "trap") {
-      expect(inputFailure.record).toEqual({
-        trap: Trap.unhandledError,
-        routine: 0,
-        offset: 33,
-        errorCode: ServiceError.endOfInput,
-      });
-    }
   }, 20_000);
 
   it("executes a forward-declared recursive scalar value call", async () => {
@@ -436,43 +268,6 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
     expect(generatedSize).toBeGreaterThan(0);
     expect(outcome.memory[(outcome.symbols.GeneratedBase ?? -1) + 3]).toBe(0);
-  }, 20_000);
-
-  it("checks the recursive scalar call against the NVM host oracle", async () => {
-    const outcome = await runProofManifest(proof("call-nvm-oracle-proof"));
-    const base = outcome.symbols.GeneratedBase ?? -1;
-    const size = outcome.symbols.CallNvmImageSize ?? -1;
-    const image = validateImage(outcome.memory.slice(base, base + size));
-    const services = new BufferSystemServices();
-
-    expect(outcome.instructions).toBe(22_247);
-    expect(outcome.cycles).toBe(221_194);
-    expect(outcome.extents).toEqual([
-      { name: "common-front-end", bytes: 2_369 },
-      { name: "nvm-oracle-sink", bytes: 139 },
-      { name: "compiler-code", bytes: 2_508 },
-      { name: "compiler-immutable", bytes: 131 },
-      { name: "compiler-core", bytes: 2_639 },
-      { name: "compiler-workspace", bytes: 103 },
-      { name: "generated-nvm", bytes: 102 },
-      { name: "proof-code-and-data", bytes: 66 },
-    ]);
-    expect(new ReferenceVm(image, { services }).run().kind).toBe("success");
-    expect(services.standardOutput).toEqual([0]);
-
-    const exhausted = new ReferenceVm(image, {
-      services: new BufferSystemServices(),
-      maximumActivationBytes: 4096,
-      maximumActivationDepth: 3,
-    }).run();
-    expect(exhausted.kind).toBe("trap");
-    if (exhausted.kind === "trap") {
-      expect(exhausted.record).toEqual({
-        trap: Trap.activationCapacity,
-        routine: 1,
-        offset: 46,
-      });
-    }
   }, 20_000);
 
   it("measures dense semantic dispatch against a comparison chain", async () => {

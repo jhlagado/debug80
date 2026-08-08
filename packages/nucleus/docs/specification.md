@@ -36,18 +36,18 @@ The language under design is named **Nucleus 0.1**. It has one source language: 
 
 This specification defines the source-language syntax, static semantics, runtime semantics, required diagnostics, specified safety failures, and abstract compilation-input contract of Nucleus 0.1. It defines the conditions for a source program or compiler to claim Nucleus 0.1 conformance.
 
-The separate Nucleus VM Specification defines the bytecode instruction set, encoding, and virtual-machine execution rules. Non-normative implementation plans and design papers record compiler strategies and project constraints; they do not add source-language semantics.
+The separate [Nucleus Z80 Runtime and Backend Contract](z80-runtime-contract.md) defines the packed data representation, direct-code integrity rules, runtime boundary, and target execution obligations. Non-normative implementation plans and design papers record compiler strategies and project constraints; they do not add source-language semantics.
 
-The first implementation is a handwritten Z80 compiler. Project acceptance requires its compiler core and required immutable constants to fit in one 16 KiB bank, while its VM or interpreter has a separate budget. That gate does not create a smaller Nucleus dialect or alter the meaning of a conforming program. Chapter 2 and the implementation plan carry the detailed budget rules.
+The first implementation is a handwritten Z80 compiler that emits Z80 machine code directly. Project acceptance requires its compiler core and required immutable constants to fit in one 16 KiB bank; generated programs, compiler workspace, and the target runtime have separate budgets. That gate does not create a smaller Nucleus dialect or alter the meaning of a conforming program. Chapter 2 and the implementation plan carry the detailed budget rules.
 
 ### 1.3 Authority
 
 When repository materials disagree, apply this order:
 
 1. This specification governs Nucleus 0.1 source syntax and semantics.
-2. The Nucleus VM Specification governs bytecode and VM execution. It cannot change the meaning required by this specification.
+2. The Nucleus Z80 Runtime and Backend Contract governs packed representation, generated-code integrity, runtime services, and direct Z80 execution. It cannot change the meaning required by this specification.
 3. The implementation plan is non-normative. It records construction order, budgets, measurements, and implementation choices.
-4. Architecture and design-rationale papers explain decisions but do not override either specification.
+4. Architecture and design-rationale papers explain decisions but do not override either authority.
 5. Conformance tests provide evidence that an implementation follows the specifications. A conflicting test is a test defect, not a language amendment.
 
 An unwritten rule cannot be supplied by a lower-ranked document. Until this specification states the rule, the point remains unresolved for Nucleus 0.1 conformance.
@@ -129,21 +129,21 @@ Design candidates may be prototyped and measured while Nucleus 0.1 remains a wor
 
 A program that depends on an unadmitted candidate is not yet a conforming Nucleus 0.1 program. Prototype support for that candidate follows the extension rules in Section 1.7.
 
-### 1.11 VM and native backends
+### 1.11 Direct Z80 implementation
 
-A compiler that emits Nucleus bytecode must preserve this specification's source semantics and satisfy the separate VM Specification for the bytecode it emits. The VM Specification governs the execution mechanism; this specification governs the source-language meaning.
+The first compiler emits Z80 machine code directly and satisfies the separate Z80 runtime and backend contract. It may retain a checked semantic-operation transcript as private compiler workspace, but it does not serialize or execute that transcript as a public bytecode format.
 
-A compiler using a later native backend may emit Z80 or another target directly. It need not retain or serialize bytecode, but it must preserve the same source semantics, diagnostics, and specified traps. Adding a backend does not create another Nucleus language profile.
+Another compiler may use a different internal organization or target only when it preserves the same source semantics, diagnostics, and specified traps. An implementation choice does not create another Nucleus language profile.
 
 ### 1.12 Non-requirements
 
-This working draft makes no claim that Nucleus 0.1 is frozen or implementation-validated. It does not require the first compiler to be written in Nucleus or compile its own source. It also does not require every conforming compiler to use the project's initial VM path.
+This working draft makes no claim that Nucleus 0.1 is frozen or implementation-validated. It does not require the first compiler to be written in Nucleus or compile its own source. It also does not require another conforming compiler to copy the first compiler's internal organization.
 
 ## 2. Design constraints
 
 ### 2.1 Scope
 
-This chapter records three kinds of constraint: properties preserved by the Nucleus 0.1 language design, acceptance gates for the first handwritten Z80 compiler, and evidence required before a provisional feature enters the language. Later chapters define the source language and its semantics. The separate Nucleus VM Specification defines the bytecode machine.
+This chapter records three kinds of constraint: properties preserved by the Nucleus 0.1 language design, acceptance gates for the first handwritten Z80 compiler, and evidence required before a provisional feature enters the language. Later chapters define the source language and its semantics. The separate Z80 runtime and backend contract defines the direct target obligations.
 
 The implementation gates in this chapter apply to the first compiler project. They are not language-conformance requirements for every Nucleus compiler. A compiler may conform to Nucleus 0.1 on another host without using Z80 code, banked memory, or the same internal architecture.
 
@@ -163,7 +163,7 @@ Every implementation capacity must have an explicit limit and a diagnostic for e
 
 Project acceptance requires the first compiler's executable core and every immutable table or constant required while compiling to fit together in one 16 KiB bank. Placing required code or immutable data in another bank does not satisfy this gate.
 
-For each tested configuration, the compiler-core total includes the front end, the active emitter, and all immutable data that either component requires. A mutually exclusive native or later backend may have a separate total. The report identifies the resident configuration and includes every shared or required component.
+For each tested configuration, the compiler-core total includes the front end, the direct-Z80 emitter, and all immutable data that either component requires. The report identifies the resident configuration and includes every shared or required component.
 
 The first implementation may use a flat 64 KiB address-space model as its initial abstraction. This model does not bind Nucleus source semantics to a particular operating system, monitor, or memory map. Additional memory or banks may hold separately budgeted components, but they are not a fallback for an oversized core.
 
@@ -175,32 +175,31 @@ Resources outside the compiler-core gate may use other RAM or banks where the pl
 | --------------------------- | -------------------------------------------------------------------------------------------------------------------------- |
 | Compiler core               | Executable code and required immutable data for the tested front end and active emitter, measured against the 16 KiB gate. |
 | Writable compiler workspace | Peak live bytes, including lexical, parsing, name, type, lowering, diagnostic, and emission state.                         |
-| Generated output            | Emitted bytecode or native program bytes, separate from compiler storage.                                                  |
-| VM/interpreter              | Executable code, immutable data, writable state, and relevant execution cost.                                              |
-| Native or later backend     | A separate total for each mutually exclusive configuration, including its required constants and workspace.                |
+| Generated output            | Emitted Z80 program and static-data bytes, separate from compiler storage.                                                 |
+| Target runtime              | Shared helpers, service adapter, trap machinery, immutable data, writable state, and relevant execution cost.              |
 | Execution                   | A stated measure, such as instruction count or cycles, for representative emitted programs.                                |
 
 Project accounting counts each shared component once and assigns it to an identified account. Reports distinguish resident components, overlays, and mutually exclusive configurations. Peak workspace is the maximum simultaneously live storage, not the sum of buffers whose lifetimes do not overlap.
 
 ### 2.5 Streaming compilation model
 
-Bulk storage may be available but slow. The primary bytecode path consumes the ordered multipart compilation stream defined by Chapter 4 and emits one logical bytecode stream. A platform may materialize either stream in external storage. Physical source discovery, ordering, and transport do not require the compiler to retain the whole program in memory.
+Bulk storage may be available but slow. The compiler consumes the ordered multipart compilation stream defined by Chapter 4 and emits one logical Z80 program and static-data output. A platform may materialize either stream in external storage. Physical source discovery, ordering, and transport do not require the compiler to retain the whole program in memory.
 
 The first compiler is handwritten Z80 and uses streaming, single-pass compilation wherever the language semantics permit it. Declarations precede use. An explicit forward routine signature supplies the necessary exception without requiring a later whole-program pass. Because that declaration is the sole signature, the compiler retains its parameter names until the abbreviated body begins and performs no body-signature comparison. Its compiler-core and workspace effects remain unmeasured.
 
 The architecture excludes an abstract syntax tree, global type inference, whole-program optimization, and unbounded buffering from the first compiler. The compiler may retain bounded state required for declarations, scopes, forward signatures, control-flow fixups, and emission, provided each capacity is explicit and measured.
 
-### 2.6 Semantic operations and the VM boundary
+### 2.6 Semantic operations and direct emission
 
-Compiler simplicity has priority over VM execution speed. The primary target is a regular vocabulary of checked semantic operations serialized as compact bytecode. Target-specific irregularity belongs in the separately budgeted VM or a later backend only when measurement shows that placement reduces total front-end machinery.
+Compiler size has priority over compilation speed. The front end records a compact vocabulary of checked semantic operations and the backend turns those operations into Z80 machine code. The operation transcript is a private, bounded compiler representation rather than a portable target or execution format.
 
-Structured control lowers to ordinary semantic operations; no dedicated high-level control opcode is required. The bytecode front end initially performs no Z80 register allocation, native instruction selection, branch shortening, relocation planning, native calling-convention analysis, or peephole optimization. A later direct-Z80 backend may consume the same semantic operations as they are produced. Its independent measurement covers code, constants, workspace, output, and execution cost.
+Structured control lowers to ordinary comparisons, branches, calls, and checked runtime operations. The first direct backend uses fixed, proof-driven templates and bounded fixups before adding register allocation, branch shortening, whole-program optimization, or peephole optimization. Each increment measures compiler code, immutable data, workspace, generated output, target runtime, and execution cost.
 
-The companion Nucleus VM Specification fixes the NVM 0.1 organization, including its memory-backed virtual-slot file, caller-save activations, and bytecode encoding. Those choices implement but do not alter the source semantics. This chapter fixes no virtual-slot count, page layout, slot width, or opcode encoding for another conforming backend.
+The companion Z80 runtime and backend contract fixes packed data layout, stable service and trap codes, call obligations, and generated-code integrity. Physical register allocation, helper organization, fixup representation, and calling-convention details remain measured implementation choices where that contract leaves them open.
 
 ### 2.7 System boundary and portability
 
-The initial system boundary contains only services that the compiler and VM demonstrably require: input, output, termination, trap reporting, and bulk-storage access. Each additional service requires measured need.
+The initial system boundary contains only services that Nucleus programs demonstrably require: input, output, termination, trap reporting, and bulk-storage access. Each additional service requires measured need.
 
 The semantic-operation boundary may support later native or non-Z80 backends where target neutrality has no material cost against the compiler-core gate and other bounded accounts. Portability does not justify growth that causes the first compiler to fail its core gate.
 
@@ -212,17 +211,17 @@ Project reports assign every size, storage, or performance claim one of these ev
 - **Projected:** calculated from measured components under stated assumptions.
 - **Hypothesis:** an expectation not yet tested by an implementation.
 
-A candidate's admission record reports its incremental compiler-core code, required immutable data, peak writable workspace, VM or backend cost, effect on emitted programs, and total-system trade. Source-line count, host executable size, and an opcode sketch are not substitutes for target measurements. Before Nucleus 0.1 is frozen, the project either admits the candidate to the one normative language or omits it.
+A candidate's admission record reports its incremental compiler-core code, required immutable data, peak writable workspace, target-runtime cost, effect on emitted programs, and total-system trade. Source-line count, host executable size, and an instruction sketch are not substitutes for target measurements. Before Nucleus 0.1 is frozen, the project either admits the candidate to the one normative language or omits it.
 
 Nucleus 0.1 admits the explicit recoverable-error mechanism in Chapter 14. The implementation ledger still records its compiler-core, immutable-data, workspace, emitted-code, and runtime costs. General exceptions, stack unwinding, destructors, `finally`, and `defer` remain excluded.
 
 Nucleus 0.1 admits recursive routine calls. The first implementation may stage their construction while it measures activation storage, re-entry state, depth limits, and failure behaviour, but staging does not create a non-recursive language profile. Chapter 13 defines the source semantics, and Chapter 15 defines activation-capacity failure.
 
-Several source-preserving economies belong in the first implementation rather than in language variants. The first compiler uses one precedence-driven loop for binary expressions and classifies a completed call expression before admitting `or fail`; it does not duplicate the precedence ladder or branch on a routine signature before parsing the call. Interned type ordinals versus compact structural metadata stored directly in symbols remains a measured representation choice. The VM implementation likewise measures shared handlers or compiler selection of an equivalent word-width operation where canonical `u8` carriers make the complete state transition identical. None of these choices may change accepted source, arithmetic width, diagnostics required by this specification, array aliases, or the assigned NVM opcode meanings.
+Several source-preserving economies belong in the first implementation rather than in language variants. The first compiler uses one precedence-driven loop for binary expressions and classifies a completed call expression before admitting `or fail`; it does not duplicate the precedence ladder or branch on a routine signature before parsing the call. Interned type ordinals versus compact structural metadata stored directly in symbols remains a measured representation choice. The direct backend measures shared tails, table dispatch, helper calls, fall-through layout, and width-specific target sequences. None of these choices may change accepted source, arithmetic width, required diagnostics, array aliases, or observable behavior.
 
 ### 2.9 Decision boundary and failure conditions
 
-An architecture decision requires measurements from an identified compiler configuration and representative accepted and rejected source. The report includes the complete compiler-core total, immutable-data contribution, peak writable workspace, VM or backend totals, emitted-program size, execution cost under a stated method, capacity limits, and diagnostics produced when those limits are exceeded. Candidate comparisons use equivalent source semantics and accounting boundaries.
+An architecture decision requires measurements from an identified compiler configuration and representative accepted and rejected source. The report includes the complete compiler-core total, immutable-data contribution, peak writable workspace, target-runtime total, emitted-program size, execution cost under a stated method, capacity limits, and diagnostics produced when those limits are exceeded. Candidate comparisons use equivalent source semantics and accounting boundaries.
 
 The decision record labels every value as Measured, Projected, or Hypothesis and states the assumptions behind projections. Unmeasured values remain open rather than being replaced with invented byte estimates.
 
@@ -900,7 +899,7 @@ An array has one dimension. An array element may be a scalar, record, or bounded
 
 `boolean` has exactly the values `false` and `true`. It is distinct from both integer types. An integer is not a condition, a Boolean value is not an integer, and Nucleus 0.1 provides no Boolean-to-integer or integer-to-Boolean conversion.
 
-A scalar variable, parameter, field, array element, or routine result holds a scalar value. Scalar assignment and scalar argument passing copy the value. A backend may use any VM slot or machine representation that preserves the type and value; that representation does not alter source compatibility.
+A scalar variable, parameter, field, array element, or routine result holds a scalar value. Scalar assignment and scalar argument passing copy the value. A compiler may use any private register or memory representation that preserves the type and value; that representation does not alter source compatibility.
 
 ### 6.4 Literals and scalar conversion
 
@@ -946,7 +945,7 @@ A record must have finite size. A field therefore must not contain its own recor
 
 Selecting a scalar field produces a scalar occurrence of the field's declared type. Selecting an aggregate field produces a storage path or aggregate alias with the field's exact aggregate type. Selection does not expose a byte offset or address to source code.
 
-Chapter 8 defines record declaration and field syntax. Runtime byte offsets, alignment, and layout descriptors belong to the VM specification or backend.
+Chapter 8 defines record declaration and field syntax. Runtime byte offsets and packed layout belong to the Z80 runtime and backend contract.
 
 ### 6.7 Fixed-array types
 
@@ -979,7 +978,7 @@ The `.length` intrinsic applies only when the postfix base has bounded-string ty
 
 Nucleus 0.1 has no `string[]`, open string, slice, general view, or address-and-length source value. A routine that accepts a bounded string names an exact capacity in its parameter type. A broader read-only view may be considered in a later language version after its compiler, carrier, lifetime, and result-ABI costs have been measured.
 
-This chapter fixes the semantic domain and capacity, not the stored layout. Chapter 7 defines storage identity and lifetime, Chapter 8 defines declaration initialization, and the VM specification or backend defines the physical representation and byte encoding. Any representation must preserve embedded zero bytes, lengths through 255, and alias-visible byte mutation.
+This chapter fixes the semantic domain and capacity, not the stored layout. Chapter 7 defines storage identity and lifetime, Chapter 8 defines declaration initialization, and the Z80 runtime and backend contract defines the physical representation and byte encoding. That representation preserves embedded zero bytes, lengths through 255, and alias-visible byte mutation.
 
 ### 6.9 Aggregate aliases and address separation
 
@@ -987,9 +986,9 @@ An aggregate alias has the same source type as its referent and a separate alias
 
 The compiler must retain the referent type through aggregate parameters, field and element selection, scalar and aggregate assignments, calls, and aggregate results. Passing or returning an alias, or using it as an aggregate-copy source or destination, is invalid unless the required aggregate type is identical to its referent type.
 
-A backend may represent an alias at runtime with one untagged address-sized value because compiler metadata records the record layout, array length, or string capacity. The runtime carrier has no source spelling and no runtime type tag. Source code cannot read, write, compare, convert, store, return as a scalar, or perform arithmetic on the carrier itself.
+A direct backend represents an alias at runtime with one untagged 16-bit address because compiler metadata records the record layout, array length, or string capacity. The runtime carrier has no source spelling and no runtime type tag. Source code cannot read, write, compare, convert, store, return as a scalar, or perform arithmetic on the carrier itself.
 
-An alias carrier and `u16` remain different typed entities even if both occupy one word in a VM slot. No conversion exists in either direction. Address derivation for field and element access is a checked compiler or backend operation, not `u16` arithmetic visible to the program.
+An alias carrier and `u16` remain different typed entities even though both occupy one word. No conversion exists in either direction. Address derivation for field and element access is a checked compiler or backend operation, not `u16` arithmetic visible to the program.
 
 ### 6.10 Type identity and compatibility
 
@@ -1021,7 +1020,7 @@ The compiler applies these compatibility rules:
 | Aggregate result                                       | Exact referent-type identity and immediate consumption under Chapter 7.            |
 | Aggregate by-value argument or result                  | Invalid; calls transfer aggregate aliases.                                         |
 
-Compatibility is checked at the source operation. The backend does not infer compatibility from equal byte widths, equal layouts, VM slot numbers, or runtime addresses.
+Compatibility is checked at the source operation. The backend does not infer compatibility from equal byte widths, equal layouts, compiler storage ordinals, registers, or runtime addresses.
 
 ### 6.11 Excluded type mechanisms
 
@@ -1041,7 +1040,7 @@ Nucleus 0.1 has none of the following:
 - variable-sized local allocation; or
 - unrestricted dynamic data.
 
-An implementation must diagnose a source form that requires one of these mechanisms. Equal storage width or a convenient VM representation does not admit the source operation.
+An implementation must diagnose a source form that requires one of these mechanisms. Equal storage width or a convenient machine representation does not admit the source operation.
 
 ### 6.12 Type metadata and capacity
 
@@ -1051,9 +1050,9 @@ One direct representation fits every admitted type in four bytes. Its kind byte 
 
 Four inline bytes are not automatically cheaper than one ordinal per symbol. With mostly distinct types, direct descriptors avoid an interning table; with many repeated types, ordinals reduce writable symbol storage. The measurement package reports both retained-data totals for representative symbol populations. The first compiler also counts the code and scratch state for descriptor construction, interning, exhaustion checks, and equality before selecting either form.
 
-Every selected representation has a published capacity. An ordinal representation diagnoses exhaustion before an ID wraps or aliases another type. An inline representation diagnoses any limit on element-type nesting, length, capacity, symbol entries, record fields, or signatures before truncation changes a compatibility result. A byte-sized type ID remains a candidate, not a language or VM requirement.
+Every selected representation has a published capacity. An ordinal representation diagnoses exhaustion before an ID wraps or aliases another type. An inline representation diagnoses any limit on element-type nesting, length, capacity, symbol entries, record fields, or signatures before truncation changes a compatibility result. A byte-sized type ID remains a candidate, not a language or target requirement.
 
-The numeric type ID has no source meaning and need not match across compilations. VM registers and slots are untagged storage locations; the compiler's symbol and expression metadata supply their current source types. Runtime type tags, reflection, and dynamic type tests are absent.
+The numeric type ID has no source meaning and need not match across compilations. Z80 registers and compiler-managed storage locations are untagged; the compiler's symbol and expression metadata supply their current source types. Runtime type tags, reflection, and dynamic type tests are absent.
 
 ### 6.13 Examples
 
@@ -1108,7 +1107,7 @@ For a bounded string `name`, `name.length` reads its logical length and `name[in
 
 This chapter defines source-level storage, object identity, value copying, aggregate aliases, storage duration, and lifetime. Chapter 6 defines the types that occupy storage. Chapter 8 defines declaration syntax, constants, initializers, and when a declaration installs a zero or explicit initial value. Chapter 13 defines routine syntax, result syntax, and calls.
 
-The rules in this chapter do not expose physical addresses, banks, virtual-register numbers, stack positions, frame layouts, or compiler workspace. Those are implementation matters. A conforming implementation preserves the source-level identity and lifetime rules regardless of its storage arrangement.
+The rules in this chapter do not expose physical addresses, banks, Z80 registers, stack positions, activation layouts, or compiler workspace. Those are implementation matters. A conforming implementation preserves the source-level identity and lifetime rules regardless of its storage arrangement.
 
 ### 7.2 Values, objects, subobjects, and aliases
 
@@ -1157,7 +1156,7 @@ A scalar parameter receives a copied value. Each scalar local belongs to one act
 
 An aggregate parameter is a typed alias to caller-provided storage. Its binding belongs to the activation, but the target retains program lifetime. A routine has no other named aggregate binding.
 
-Two simultaneously active invocations have distinct logical parameters and scalar locals. This rule applies even when the implementation assigns the same virtual-register numbers or physical storage to invocations that cannot overlap.
+Two simultaneously active invocations have distinct logical parameters and scalar locals. This rule applies even when the implementation assigns the same registers or physical storage to invocations that cannot overlap.
 
 Recursive calls use the same activation rule. An implementation preserves distinct logical activation state at every active depth. Caller-save regions, hardware-stack entries, static-slot save areas, or another re-entry mechanism may implement that rule; none is source storage.
 
@@ -1185,7 +1184,7 @@ Two aliases may denote the same object or overlapping objects. Nucleus provides 
 
 Scalar assignment copies a value into a scalar destination. The destination may be a scalar variable, parameter, record field, fixed-array element, or existing bounded-string byte. After the assignment, later changes to the source do not change the destination.
 
-Aggregate assignment requires a mutable aggregate destination and an aggregate source of the exact same type. It copies the complete aggregate value into the destination. For the packed NVM representation, the compiler or VM copies exactly the type's fixed byte extent; another backend performs an equivalent recursive field or element copy. A bounded-string copy includes its logical length and complete fixed-capacity object representation.
+Aggregate assignment requires a mutable aggregate destination and an aggregate source of the exact same type. It copies the complete aggregate value into the destination. The direct backend copies exactly the type's packed fixed byte extent. A bounded-string copy includes its logical length and complete fixed-capacity object representation.
 
 The compiler evaluates the destination storage path once, then the source storage path or transient aggregate-alias result once, and validates both complete extents before the first destination byte changes. If evaluation or validation traps, no byte of the aggregate destination changes. A source and destination that denote the same object or subobject produce no change.
 
@@ -1285,13 +1284,13 @@ The forwarded alias still denotes an element of the caller-provided array. No ag
 
 ### 7.12 Implementation independence and capacities
 
-Language lifetime is independent of a value's physical location. Reusing a physical address or VM slot at different times, overlaying non-overlapping locals, bank placement, and hardware-stack reuse do not merge source objects or activations. Conversely, two source paths to the same object retain shared identity even if a backend represents them differently.
+Language lifetime is independent of a value's physical location. Reusing a register or physical address at different times, overlaying non-overlapping locals, bank placement, and hardware-stack reuse do not merge source objects or activations. Conversely, two source paths to the same object retain shared identity even if a backend represents them differently.
 
 An implementation may bound scalar locals, aggregate-parameter bindings, or the metadata used for their exact types and result categories. It must publish each limit. A compile-time excess requires a capacity diagnostic under Chapter 1. An implementation must not share live activation state or lose an alias binding when a limit is reached.
 
 Runtime activation capacity is implementation-defined under Chapter 13. An implementation may bound simultaneous activation depth, activation-storage consumption, or both. Reaching either published limit at runtime performs the activation-capacity trap defined by Chapter 15. The limits and trap do not change the source lifetime of an activation that begins successfully.
 
-Nucleus 0.1 exposes no raw pointer value, address arithmetic, heap allocation, manual deallocation, open slice or view, variable-sized local, or storage-layout query through this chapter. Field byte offsets, array byte offsets, bounded-string encoding, VM carriers, calling opcodes, aggregate-copy lowering, and save-region layouts belong to the VM specification or a backend contract.
+Nucleus 0.1 exposes no raw pointer value, address arithmetic, heap allocation, manual deallocation, open slice or view, variable-sized local, or storage-layout query through this chapter. Field byte offsets, array byte offsets, bounded-string encoding, address carriers, aggregate-copy lowering, and call-state layouts belong to the Z80 runtime and backend contract.
 
 ## 8. Constants and declarations
 
@@ -2033,7 +2032,7 @@ Consequently, `then` remains an identifier under Chapter 3. A Boolean variable n
 
 ### 11.7 Lowering boundary
 
-The source semantics require ordered condition evaluation and selection of at most one body. A compiler may lower the statement to comparisons, conditional branches, and ordinary branches while parsing it. The semantic-operation interface and VM require no `if`, `elseif`, or `else` opcode.
+The source semantics require ordered condition evaluation and selection of at most one body. A compiler may lower the statement to comparisons, conditional branches, and ordinary branches while parsing it. The internal semantic-operation interface requires no dedicated `if`, `elseif`, or `else` operation.
 
 Branch fixups and active clause state are implementation details. They must preserve the source order above, skip every unselected body, and continue after the one closing `end`.
 
@@ -2094,7 +2093,7 @@ else if waiting       // not the flat elseif token
 
 This chapter defines the two Nucleus 0.1 loop forms, counted-loop direction and bounds, and the required `exit` and `continue` statements. Chapter 9 defines expressions, and Chapter 10 defines statement sequences.
 
-Nucleus has one pre-test conditional loop and one counted loop. Both use the ordinary branch and comparison semantics required by the source language; neither requires a dedicated loop operation in the VM or another backend.
+Nucleus has one pre-test conditional loop and one counted loop. Both use ordinary comparisons and direct Z80 branches; neither requires a dedicated loop runtime mechanism.
 
 ### 12.2 Grammar
 
@@ -2188,7 +2187,7 @@ The grammar adds only the two simple statements, and their lowering uses the act
 
 A counted loop has the same source effect as ordered start and bound evaluation, counter initialization, a direction-specific comparison, a conditional branch, a body in which the counter is read-only, a checked mathematical increment, and a backward branch. `to` and `until` differ only in whether the bound comparison is inclusive.
 
-The VM and semantic-operation interface require no `for`, `while`, `exit`, or `continue` opcode. A compiler may emit ordinary comparisons and branches as it parses the loop, provided it preserves one-time operand evaluation, the test and store order, and the transfer targets above.
+The semantic-operation interface requires no dedicated `for`, `while`, `exit`, or `continue` operation. A compiler may emit ordinary comparisons and branches, provided it preserves one-time operand evaluation, the test and store order, and the transfer targets above.
 
 ### 12.9 Excluded loop forms
 
@@ -2389,7 +2388,7 @@ Nucleus routines have no destructors, `finally`, `defer`, exception unwinding, v
 
 The source semantics permit an all-caller-save implementation. A backend may save live implementation values before a call, place arguments, invoke the callee, capture a result before restoring overlapping state, and restore the caller afterward. Recursive calls may use the same rule for each activation. These operations are backend mechanics, not source-visible registers, clobber declarations, or parameter modes.
 
-The compiler may lower calls and returns to regular semantic operations while parsing. This specification does not define virtual-register numbers, save regions, physical stacks, calling opcodes, operand widths, or a native ABI.
+The compiler may lower calls and returns to regular semantic operations while parsing. This specification does not define register assignments, save regions, hardware-stack use, helper entry points, or the physical calling convention. The Z80 runtime and backend contract supplies the required target-level effects.
 
 ### 13.11 Invalid calls and capacity limits
 
@@ -2614,7 +2613,7 @@ The fixed `main` routine may declare `fails`. A failure returned from `main` has
 
 ### 14.8 Lowering boundary
 
-The source semantics require a success/failure discriminant and a `u8` code for each failable result. The separate VM specification or native backend defines their carriers and calling sequence. A carry flag and byte register are possible backend choices, not source semantics.
+The source semantics require a success/failure discriminant and a `u8` code for each failable result. The Z80 runtime and backend contract defines their required target behavior while leaving the carrier choice private. Carry plus a byte register is one possible calling convention, not source semantics.
 
 Failure propagation is an ordinary conditional return. Local handling is an ordinary conditional branch. Nucleus has no exception object, stack walk, cleanup action, hidden handler registration, or resumable failure state. The all-caller-save-compatible call semantics in Chapter 13 apply to both outcomes.
 
@@ -2639,7 +2638,7 @@ An implementation may bound retained failable signatures, nested handlers, failu
 
 A **trap** terminates Nucleus source execution immediately. Source code cannot catch, handle, resume, mask, or convert it to a recoverable error. A trap performs no stack unwinding and runs no source cleanup action.
 
-The implementation reports a stable symbolic trap reason and the best available location for the operation that failed. When source mapping is available, the report must identify the source span. Otherwise, it must identify the bytecode or native instruction location. Numeric trap encodings, transport records, monitor integration, and physical output belong to the VM specification or backend contract.
+The implementation reports a stable symbolic trap reason and the best available location for the operation that failed. When source mapping is available, the report must identify the source span. Otherwise, it must identify the generated instruction location. Numeric trap encodings, transport records, monitor integration, and physical output belong to the Z80 runtime and backend contract.
 
 Effects completed before the failing operation remain observable. The failing operation performs no result store unless its rule below says otherwise. No later source operation executes.
 
@@ -2726,7 +2725,7 @@ After every program variable has its initial value, the environment invokes `mai
 
 Normal return from `main` terminates successfully. Nucleus 0.1 has no source statement for process exit status or immediate successful termination. Failure returned from `main` and every safety trap terminate unsuccessfully under Chapter 15.
 
-The external representation of success, recoverable-error codes, and trap reasons is implementation-defined only where the VM specification or target contract explicitly says so. That representation must preserve the source-level distinction among normal termination, unhandled recoverable error, and each required trap reason.
+The external representation of success, recoverable-error codes, and trap reasons is implementation-defined only where the Z80 runtime and backend contract explicitly says so. That representation must preserve the source-level distinction among normal termination, unhandled recoverable error, and each required trap reason.
 
 ### 16.5 Portability and implementation
 
@@ -3096,22 +3095,22 @@ No conforming compiler may expose a standard profile that omits one of these mec
 
 An implementation selects and documents capacities, not syntax or semantics. Permitted limits include complete source length, source-part count and metadata length, identifier length, symbol and type counts, record fields, array and string storage capacity below a target's available resources, parameters, scalar locals, nesting, fixups, structured-initializer depth and elements, emitted code size, total emitted image size, simultaneous activation depth, and activation-storage consumption. Every limit must be high enough to compile and execute the complete accepted Chapter 21 programs under their stated inputs. A compile-time excess above that floor produces a capacity diagnostic; runtime activation-capacity excess above that floor traps at runtime.
 
-Diagnostic wording, internal representations, bytecode or native encoding, physical layout, service transport, and the external presentation of status are implementation-defined where earlier chapters leave them to an implementation contract. These choices must preserve the source rules.
+Diagnostic wording, private compiler representations, generated-code organization, service transport, and the external presentation of status are implementation-defined where earlier chapters leave them to the Z80 runtime and backend contract. These choices must preserve the source rules.
 
 ### 20.3 Post-0.1 candidates
 
 These forms are omitted from 0.1 and may be reconsidered only by a future language revision after measured admission:
 
-The maintainer of this language specification owns source-language admission. The maintainers of the VM specification and System Services contract co-own decisions that change their respective interfaces.
+The maintainer of this language specification owns source-language admission. The maintainer of the Z80 runtime and backend contract co-owns decisions that change the target representation or System Services interface.
 
-| Candidate                                                               | Required decision evidence and owner                                                                                                                           |
-| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `$` hexadecimal integer literals                                        | Scanner, keyword/table, diagnostic, and compiler-core cost; language-specification maintainer in a future revision.                                            |
-| Dense nonnegative selection                                             | Compiler cost versus emitted jump-table savings on representative programs; language-specification maintainer in a future revision.                            |
-| Routine-local aggregate objects or fixed local aggregate aliases        | Representative-program need, declaration and initialization rules, recursion effects, compiler-core cost, and activation cost; language maintainer.            |
-| Open arrays, slices, or capacity-erased string views                    | Source typing, multiword carrier, lifetime, call/result ABI, compiler and VM cost; language- and VM-specification maintainers in coordinated future revisions. |
-| Bounded-string growth, resize, append, and capacity-changing operations | Typed contract, alias effects, emitted cost, and reusable-program evidence; language-specification maintainer in a future revision.                            |
-| Additional system services                                              | Portable typed contract and complete compiler, runtime, and target cost; System Services maintainer in a future service revision.                              |
+| Candidate                                                               | Required decision evidence and owner                                                                                                                                       |
+| ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `$` hexadecimal integer literals                                        | Scanner, keyword/table, diagnostic, and compiler-core cost; language-specification maintainer in a future revision.                                                        |
+| Dense nonnegative selection                                             | Compiler cost versus emitted jump-table savings on representative programs; language-specification maintainer in a future revision.                                        |
+| Routine-local aggregate objects or fixed local aggregate aliases        | Representative-program need, declaration and initialization rules, recursion effects, compiler-core cost, and activation cost; language maintainer.                        |
+| Open arrays, slices, or capacity-erased string views                    | Source typing, multiword carrier, lifetime, call/result ABI, compiler and target-runtime cost; language and runtime-contract maintainers in a coordinated future revision. |
+| Bounded-string growth, resize, append, and capacity-changing operations | Typed contract, alias effects, emitted cost, and reusable-program evidence; language-specification maintainer in a future revision.                                        |
+| Additional system services                                              | Portable typed contract and complete compiler, runtime, and target cost; System Services maintainer in a future service revision.                                          |
 
 These candidates are not provisional 0.1 syntax. Extensions may prototype them only under Section 1.7.
 
@@ -3121,7 +3120,7 @@ Nucleus 0.1 excludes language levels and compiler-selected profiles; modules, im
 
 It also excludes assignment expressions, chained comparisons, conditional expressions, general expression statements, `call` and `then` keywords, `select`/`case`, pattern matching, repeat/do loops, `for in`, omitted counted-loop operands, counted-loop counters drawn from program variables or parameters, source assignment to an active counter, nested reuse of an active counter, labels, goto, labelled exit, exceptions, throw/catch, unwinding, destructors, `finally`, `defer`, resumable traps, and runtime type tags.
 
-Implementation alternatives such as stack, virtual-register, or hybrid bytecode; direct native emission; register allocation; and physical calling convention are not source features. The VM specification records the selected VM mechanisms, and project decisions use measurements without creating Nucleus dialects.
+Implementation alternatives such as register allocation, helper organization, hardware-stack use, fixup representation, and physical calling convention are not source features. The Z80 runtime and backend contract records the selected target obligations, and project decisions use measurements without creating Nucleus dialects.
 
 ## 21. Conformance examples
 

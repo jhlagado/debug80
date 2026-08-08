@@ -7,8 +7,8 @@ project directions that a reviewer must preserve, the implementation choices
 that remain open to measurement, and the evidence required for a proposed
 change.
 
-Nucleus is a small, statically typed language and compact virtual machine for
-practical programs on constrained Z80 systems. The first compiler is a
+Nucleus is a small, statically typed language compiled directly to Z80 machine
+code for practical programs on constrained systems. The first compiler is a
 handwritten Z80 program whose executable core and required immutable data must
 fit in one 16 KiB bank. That constraint governs implementation work. It does
 not authorise a reviewer to remove settled language facilities or create an
@@ -26,9 +26,9 @@ Apply the following authority order:
 1. The [Nucleus 0.1 Language Specification](specification.md) governs source
    syntax, static semantics, runtime meaning, diagnostics, traps, and language
    conformance.
-2. The [Nucleus Virtual Machine 0.1 Specification](virtual-machine-specification.md)
-   governs bytecode images, VM state, instruction transitions, validation,
-   services, and backend equivalence.
+2. The [Nucleus Z80 Runtime and Backend Contract](z80-runtime-contract.md)
+   governs packed representation, direct-code integrity, runtime services,
+   trap records, and direct Z80 execution.
 3. Explicit project-owner decisions govern work that the specifications still
    mark as open.
 4. Executable tests, analyzers, and measurements provide evidence. They do not
@@ -36,7 +36,7 @@ Apply the following authority order:
 5. Design notes, old reports, implementation sketches, and repository history
    are non-normative.
 
-Review the current revisions of both specifications. Do not reconstruct the
+Review the current revisions of both authorities. Do not reconstruct the
 design from old commits, superseded notes, or historical discussions.
 
 ## Project objective
@@ -49,7 +49,7 @@ meet the bank gate.
 
 If a faithful implementation exceeds the limit, investigate parser structure,
 metadata representation, shared routines, lowering strategy, workspace
-organisation, and the compiler/VM boundary. Removing a settled facility is a
+organisation, and the frontend/direct-backend boundary. Removing a settled facility is a
 language redesign and requires a separate decision.
 
 ## Settled design principles
@@ -80,8 +80,8 @@ The compiler performs every source-safety check whose outcome is available
 during compilation. A source-safety condition that depends on runtime data uses
 one of the specified traps. The compiler retains source types, aggregate
 extents, record identities, array lengths, string capacities, routine
-signatures, and alias categories. The VM therefore does not need runtime type
-tags.
+signatures, and alias categories. Generated programs therefore need no runtime
+type tags.
 
 ### Streaming compilation
 
@@ -98,10 +98,10 @@ reordering algorithm.
 
 ### Source semantics are independent of representation
 
-An implementation may represent an aggregate alias as an address-sized word,
-but source code cannot inspect or preserve that carrier. A backend may use VM
-slots, Z80 registers, static locations, a native stack, shared helpers, or
-another private representation. These choices must preserve source types,
+An implementation represents an aggregate alias as an address-sized word, but
+source code cannot inspect or preserve that carrier. The compiler may use Z80
+registers, static locations, the hardware stack, shared helpers, or another
+private representation. These choices must preserve source types,
 evaluation order, failures, traps, and observable effects.
 
 An implementation economy is welcome when it preserves the complete source
@@ -119,7 +119,7 @@ Report resource accounts separately:
 - compiler executable code and required immutable data;
 - compiler writable workspace;
 - input, output, and source-map storage;
-- VM or interpreter code and data;
+- target-runtime code and data;
 - activation storage; and
 - external build-driver or host tooling.
 
@@ -260,65 +260,62 @@ Required source diagnostics remain part of the compiler contract. Replacing a
 typed delimiter stack with a depth counter, for example, is not a
 semantics-preserving saving when it removes required mismatch diagnostics.
 
-## VM implementation direction
+## Direct-Z80 implementation direction
 
-NVM 0.1 is a register/slot machine rather than an operand-stack machine. It has
-128 shared sixteen-bit slots, 16 staged argument cells, explicit result and
-error carriers, and bounded packed caller-save activation records.
+Direct Z80 emission is the sole active implementation path. The compiler's
+semantic-operation transcript is private bounded workspace, not bytecode and
+not a compatibility promise. Do not propose a portable intermediate machine as
+routine cleanup; that would reverse a settled architecture decision and reopen
+an interpreter, validator, image, and publication cost already retired.
 
-Calls stage arguments and save the slot prefix that the caller and callee can
-both clobber. Recursion uses the same mechanism as an ordinary call. An
-activation-capacity excess traps before the call changes machine state.
+Generated programs use little-endian scalars, packed records, contiguous fixed
+arrays, counted bounded strings, and 16-bit address carriers for aggregate
+aliases. Registers and compiler-managed locations have no runtime source type.
+The compiler retains every type and extent needed to select code and checks.
 
-The VM uses little-endian words, packed records, contiguous fixed arrays,
-counted bounded strings, and data offsets for aggregate aliases. VM slots have
-no runtime source type.
+Calls preserve distinct active scalar values and aggregate carriers through
+ordinary and recursive invocations. The physical arrangement may use the
+hardware stack, a bounded arena, saved static locations, or a measured
+combination. An activation-capacity excess occurs after source arguments have
+been evaluated and before a callee or caller state changes.
 
-NVM 0.1 has no block-copy opcode. Exact-type aggregate assignment first checks
-the complete source and destination extents. The compiler may then use a
-straight-line sequence of checked loads and stores or a counted byte-copy
-loop that uses `INDEX` at unit stride. The lowering choice is implementation
-private and should be measured across representative extents. A native Z80
-backend may use `LDIR` while preserving the same prechecks and effects. A later
-block-copy instruction would require a measured versioned design decision, not
-an assumption that aggregate semantics require one.
+Exact-type aggregate assignment first checks the complete source and
+destination extents. The backend may then use straight-line loads and stores,
+a counted loop, `LDIR`, or a shared helper. It measures complete compiler,
+generated-program, runtime, workspace, and timing effects before selecting the
+policy. The source-visible copy and failure ordering do not change.
 
-Canonical `u8` carriers have a zero high byte. For valid compiler output,
-division, integer `and` and `or`, equality, inequality, and unsigned ordering
-comparisons may share their arithmetic core with the corresponding word
-operation. The assigned byte opcodes remain distinct because a byte
-instruction must diagnose a noncanonical carrier before shared processing.
-
-Byte addition, subtraction, multiplication, negation, and complement retain
-width-specific modulo-256 behaviour. A compiler may measure a longer lowering,
-such as implementing integer complement with a width-specific constant and
-subtraction, but it must preserve the source operator and compare total
-compiler, interpreter, image, slot, and runtime costs.
+The implementation may share arithmetic tails or helpers when complete
+width-specific behavior remains identical. Byte addition, subtraction,
+multiplication, negation, and complement retain modulo-256 behavior; word forms
+retain modulo-65,536 behavior. An economy is measured against the complete
+direct compiler and runtime path, not against an isolated instruction sketch.
 
 ## Open implementation questions
 
 The following choices remain open because they can preserve the complete
-language and VM contracts:
+language and direct-Z80 runtime contracts:
 
 - inline type descriptors versus interned ordinals;
-- the exact shared-handler organisation for canonical byte operations;
-- direct handlers versus longer lowering for width-specific operations;
+- the exact shared-helper organization for scalar operations;
+- inline sequences versus helper calls for width-specific operations;
 - final symbol, signature, fixup, expression, and source-map capacities;
-- aggregate-copy lowering in the VM emitter and native backend;
+- aggregate-copy lowering in the direct backend;
 - helper calls versus inlined hot paths;
 - page alignment and physical Z80 register allocation;
-- interpreter activation-arena placement;
-- native Z80 emission compared with NVM execution; and
-- the complete measured size and timing of the compiler and interpreter.
+- activation-state placement;
+- fixup, target-map, and generated-output organization; and
+- the complete measured size and timing of the compiler and target runtime.
 
 An experiment may change one of these choices only after preserving conformance
-and reporting the relevant resource accounts.
+and reporting the relevant resource accounts. It may not restore an NVM path as
+an implementation experiment without an explicit project-owner redesign decision.
 
 ## Review duties
 
 A substantive review must examine the complete current language specification
-and the complete current VM specification in reader order. Search results and
-old summaries are insufficient substitutes for that read.
+and the complete current Z80 runtime and backend contract in reader order.
+Search results and old summaries are insufficient substitutes for that read.
 
 Reviewers should test the following boundaries aggressively:
 
@@ -327,13 +324,13 @@ Reviewers should test the following boundaries aggressively:
 2. Predictive parser feasibility and the bounded state required for every
    semantic decision.
 3. Agreement between compile-time evaluation and runtime operations.
-4. Correct lowering of every source category to the specified VM.
+4. Correct lowering of every source category to direct Z80 and the specified runtime helpers.
 5. Alias categories, aggregate-result staging, recursion, and activation failure.
 6. Atomic failure behaviour for checks, copies, calls, services, and traps.
 7. Capacity diagnostics before truncation, wraparound, dropped state, or
    changed meaning.
-8. Agreement between the prose, executable opcode table, image validator,
-   reference VM, grammar analyzer, and conformance examples.
+8. Agreement between the prose, machine-readable trap and service assignments,
+   generated-code proofs, grammar analyzer, and conformance examples.
 9. Evidence behind every Z80 byte and timing claim.
 10. Prose quality under the project's human-writing standard: exact agency,
     direct wording, stable terms, verified examples, no stale history or
@@ -358,11 +355,11 @@ preserving accepted source and observable behaviour. Supply a concrete design,
 identify every affected resource account, and provide assembled measurements
 before claiming a saving.
 
-### Language or VM redesign
+### Language or runtime redesign
 
 A redesign changes accepted source, type compatibility, storage duration,
-alias behaviour, evaluation order, failure timing, trap behaviour, opcode
-meaning, image validity, or observable effects. Report it separately. Do not
+alias behaviour, evaluation order, failure timing, trap behaviour, runtime
+contract, generated-code validity, or observable effects. Report it separately. Do not
 implement it without an explicit project-owner decision.
 
 ## Directions reviewers must not reopen implicitly
@@ -385,9 +382,9 @@ Do not present any of the following as a routine correction or size cleanup:
 - general runtime aggregate constructors;
 - arrays of arrays, open arrays, or slices;
 - exception unwinding;
-- an operand-stack replacement for NVM;
+- restoration of NVM, another portable bytecode, or an interpreter as an active path;
 - removal of required diagnostics without explicit approval;
-- conflation of compiler, workspace, interpreter, and activation budgets;
+- conflation of compiler, workspace, target-runtime, and activation budgets;
 - estimates presented as Z80 measurements; or
 - historical and provenance material in the current-system books.
 
@@ -400,7 +397,7 @@ into repairs for Nucleus 0.1.
 Order findings by consequence:
 
 1. normative contradiction or unsafe behaviour;
-2. source/VM mismatch or impossible lowering;
+2. source/runtime mismatch or impossible lowering;
 3. grammar, capacity, or diagnostic defect;
 4. unmeasured implementation cost or semantics-preserving economy;
 5. example, cross-reference, or conformance gap; and

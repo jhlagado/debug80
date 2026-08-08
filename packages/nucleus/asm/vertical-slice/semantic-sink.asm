@@ -1,5 +1,5 @@
-; Checked, streaming semantic-operation sink shared by the later NVM and
-; direct-Z80 encoders. The leading byte is the operation count.
+; Checked semantic-operation transcript used by the direct-Z80 encoders. The
+; leading byte is the operation count.
 
 .routine out carry,zero clobbers sign,parity,halfCarry,A,HL
 SemanticSinkReset:

@@ -10,7 +10,7 @@
     "pretest": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/debug80-runtime",
     "test": "vitest run",
     "premeasure": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/debug80-runtime",
-    "measure": "vitest run test/frame-addressing.test.ts test/native-backend.test.ts --reporter=verbose",
+    "measure": "vitest run test/proof-harness.test.ts --reporter=verbose",
     "preproof": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/debug80-runtime",
     "proof": "vitest run test/proof-harness.test.ts --reporter=verbose"
   },

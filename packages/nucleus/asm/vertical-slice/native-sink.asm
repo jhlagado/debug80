@@ -1,4 +1,4 @@
-; Direct-Z80 encoder for the same checked four-operation stream as NVM.
+; Direct-Z80 encoder for the first checked four-operation stream.
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
 NativeEncodeSemanticProgram:

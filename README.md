@@ -98,7 +98,7 @@ Start here:
 - [Glimmer Book](https://debug80.com/glimmer-book/)
 - [Glimmer examples and corpus](packages/glimmer/corpus/README.md)
 
-## Nucleus language and virtual machine
+## Nucleus language
 
 [Nucleus](packages/nucleus/README.md) is a small, safe, statically typed
 language for systems where memory and machine cost remain visible. Its first
@@ -107,15 +107,15 @@ required immutable data must fit in one 16 KiB bank.
 
 The language uses fixed-width scalars, nominal records, fixed arrays, bounded
 strings, structured control, typed routines, static aggregate storage, and an
-explicit failure model. The companion Nucleus Virtual Machine defines a
-compact register/slot target, bytecode image, instruction set, services, traps,
-and Z80 implementation contract.
+explicit failure model. Its compiler emits Z80 machine code directly. A compact
+runtime and backend contract defines packed storage, calls, services, traps,
+and generated-code integrity without introducing a bytecode interpreter.
 
 Start here:
 
 - [Nucleus project](packages/nucleus/README.md)
 - [Nucleus 0.1 Language Specification](packages/nucleus/docs/specification.md)
-- [Nucleus Virtual Machine 0.1 Specification](packages/nucleus/docs/virtual-machine-specification.md)
+- [Nucleus Z80 Runtime and Backend Contract](packages/nucleus/docs/z80-runtime-contract.md)
 - [Published Nucleus books](https://debug80.com/nucleus/)
 
 ## Choosing an Entry Point
@@ -142,14 +142,14 @@ npm run check
 
 The main workspaces are:
 
-| Path                       | Package                                          |
-| -------------------------- | ------------------------------------------------ |
-| `apps/debug80-vscode`      | Debug80 VS Code extension                        |
-| `packages/debug80-runtime` | UI-independent Z80 and machine runtime           |
-| `packages/azm`             | AZM assembler and compile API                    |
-| `packages/glimmer`         | Glimmer language, generator, and build API       |
-| `packages/nucleus`         | Nucleus language, VM, specifications, and models |
-| `integration`              | Private end-to-end package integration checks    |
+| Path                       | Package                                                           |
+| -------------------------- | ----------------------------------------------------------------- |
+| `apps/debug80-vscode`      | Debug80 VS Code extension                                         |
+| `packages/debug80-runtime` | UI-independent Z80 and machine runtime                            |
+| `packages/azm`             | AZM assembler and compile API                                     |
+| `packages/glimmer`         | Glimmer language, generator, and build API                        |
+| `packages/nucleus`         | Nucleus language, direct Z80 compiler, specifications, and proofs |
+| `integration`              | Private end-to-end package integration checks                     |
 
 Each published package has its own version. The monorepo allows changes across
 the toolchain to be built and tested together without publishing intermediate

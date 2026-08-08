@@ -1,7 +1,7 @@
 /**
  * Compact compiler metadata for the complete Nucleus 0.1 type grammar.
  *
- * This is compiler-side metadata, not an NVM runtime tag. The tag folds an
+ * This is compiler-side metadata, not a generated-program runtime tag. The tag folds an
  * array's element family into the outer kind, which keeps every admitted type
  * in four bytes without excluding arrays of records or bounded strings.
  */
