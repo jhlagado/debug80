@@ -16,6 +16,12 @@ KeywordTable:
             .db  2,"if",TokenIf
 KeywordCount            .equ 13
 
+PunctuationTable:
+            .db  "=",TokenEquals
+            .db  ",",TokenComma
+            .db  "-",TokenMinus
+PunctuationCount        .equ 3
+
 NameMain:               .db "main"
 NameIndex:              .db "index"
 NameBytes:              .db "bytes"

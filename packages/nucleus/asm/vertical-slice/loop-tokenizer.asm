@@ -10,42 +10,32 @@ TokenRecordStart:
             LD   (TokenStartColumn),HL
             LD   HL,(SourceCursor)
             LD   (TokenLexemePointer),HL
-            XOR  A
-            LD   (TokenLength),A
             RET
 
-.routine in A out A,carry,zero clobbers sign,parity,halfCarry
+.routine in A out A,carry,zero clobbers sign,parity,halfCarry,B
 TokenFinish:
-            LD   (TokenKind),A
+            LD   B,A
             LD   A,1
             LD   (SourceLineHasToken),A
-            LD   A,(TokenKind)
+            LD   A,B
             OR   A
             RET
 
-.routine out carry,zero clobbers sign,parity,halfCarry,A,HL
+.routine out carry,zero clobbers sign,parity,halfCarry,A,DE,HL
 TokenLexicalFailure:
             LD   A,DiagnosticLexical
             JP   CompilerSetDiagnostic
 
-.routine in A out A,carry clobbers zero,sign,parity,halfCarry
+.routine in A out A,carry clobbers zero,sign,parity,halfCarry,C
 TokenIsLetter:
-            CP   "A"
-            JR   C,TokenIsLetterNo
-            CP   "Z"+1
-            JR   C,TokenIsLetterYes
-            CP   "a"
-            JR   C,TokenIsLetterNo
-            CP   "z"+1
-            JR   C,TokenIsLetterYes
-TokenIsLetterNo:
-            OR   A
-            RET
-TokenIsLetterYes:
-            SCF
+            LD   C,A
+            OR   $20
+            SUB  "a"
+            CP   26
+            LD   A,C
             RET
 
-.routine in A out A,carry clobbers zero,sign,parity,halfCarry
+.routine in A out A,carry clobbers zero,sign,parity,halfCarry,C
 TokenIsNameByte:
             CALL TokenIsLetter
             RET  C
@@ -140,10 +130,10 @@ TokenScanNumberLoop:
             LD   A,B
             CP   25
             JR   C,TokenScanNumberAccumulate
-            JP   NZ,TokenLexicalFailure
+            JR   NZ,TokenScanCharacterFailure
             LD   A,C
             CP   6
-            JP   NC,TokenLexicalFailure
+            JR   NC,TokenScanCharacterFailure
 TokenScanNumberAccumulate:
             LD   A,B
             ADD  A,A
@@ -156,34 +146,33 @@ TokenScanNumberAccumulate:
             CALL SourceTake
             JR   TokenScanNumberLoop
 TokenScanNumberDone:
-            LD   A,B
-            LD   (TokenValue),A
+            LD   C,B
             LD   A,TokenNumber
             JP   TokenFinish
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
 TokenScanCharacter:
             CALL SourceTake
-            JP   C,TokenLexicalFailure
-            CALL SourcePeek
-            JP   C,TokenLexicalFailure
+            JR   C,TokenScanCharacterFailure
+            CALL SourceTake
+            JR   C,TokenScanCharacterFailure
             CP   $20
-            JP   C,TokenLexicalFailure
+            JR   C,TokenScanCharacterFailure
             CP   $7F
-            JP   NC,TokenLexicalFailure
+            JR   NC,TokenScanCharacterFailure
             CP   "'"
-            JP   Z,TokenLexicalFailure
+            JR   Z,TokenScanCharacterFailure
             CP   "\\"
-            JP   Z,TokenLexicalFailure
+            JR   Z,TokenScanCharacterFailure
+            LD   C,A
             CALL SourceTake
-            LD   (TokenValue),A
-            CALL SourcePeek
-            JP   C,TokenLexicalFailure
+            JR   C,TokenScanCharacterFailure
             CP   "'"
-            JP   NZ,TokenLexicalFailure
-            CALL SourceTake
+            JR   NZ,TokenScanCharacterFailure
             LD   A,TokenCharacter
             JP   TokenFinish
+TokenScanCharacterFailure:
+            JP   TokenLexicalFailure
 
 .routine out carry,zero clobbers sign,parity,halfCarry,A,DE,HL
 TokenSkipComment:
@@ -197,7 +186,7 @@ TokenSkipCommentLoop:
             CALL SourceTake
             JR   TokenSkipCommentLoop
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+.routine out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
 TokenizerNext:
 TokenizerNextLoop:
             CALL TokenRecordStart
@@ -218,16 +207,18 @@ TokenizerNextLoop:
             JR   Z,TokenizerLeftParen
             CP   ")"
             JR   Z,TokenizerRightParen
-            CP   "="
-            JR   Z,TokenizerEquals
             CP   "["
             JR   Z,TokenizerLeftBracket
             CP   "]"
             JR   Z,TokenizerRightBracket
-            CP   ","
-            JP   Z,TokenizerComma
-            CP   "-"
-            JP   Z,TokenizerMinus
+            LD   HL,PunctuationTable
+            LD   B,PunctuationCount
+TokenizerTryPunctuation:
+            CP   (HL)
+            INC  HL
+            JR   Z,TokenizerPunctuation
+            INC  HL
+            DJNZ TokenizerTryPunctuation
             CP   "'"
             JP   Z,TokenScanCharacter
             CP   "0"
@@ -237,7 +228,7 @@ TokenizerNextLoop:
 TokenizerTryName:
             CALL TokenIsLetter
             JP   C,TokenScanName
-            JP   TokenLexicalFailure
+            JR   TokenizerLexicalFailure
 
 TokenizerSkipByte:
             CALL SourceTake
@@ -246,9 +237,9 @@ TokenizerSkipByte:
 TokenizerSlash:
             CALL SourceTake
             CALL SourcePeek
-            JP   C,TokenLexicalFailure
+            JR   C,TokenizerLexicalFailure
             CP   "/"
-            JP   NZ,TokenLexicalFailure
+            JR   NZ,TokenizerLexicalFailure
             CALL SourceTake
             CALL TokenSkipComment
             JR   TokenizerNextLoop
@@ -261,17 +252,13 @@ TokenizerRightParen:
             LD   C,TokenRightParen
             JR   TokenizerRightDelimiter
 
-TokenizerEquals:
-            LD   C,TokenEquals
-            JR   TokenizerSimpleToken
-
 TokenizerLeftBracket:
             LD   C,TokenLeftBracket
 TokenizerLeftDelimiter:
             CALL SourceTake
             LD   A,(SourceDelimiterDepth)
             INC  A
-            JP   Z,TokenLexicalFailure
+            JR   Z,TokenizerLexicalFailure
             LD   (SourceDelimiterDepth),A
             LD   A,C
             JP   TokenFinish
@@ -281,18 +268,18 @@ TokenizerRightBracket:
 TokenizerRightDelimiter:
             LD   A,(SourceDelimiterDepth)
             OR   A
-            JP   Z,TokenLexicalFailure
+            JR   Z,TokenizerLexicalFailure
             DEC  A
             LD   (SourceDelimiterDepth),A
             CALL SourceTake
             LD   A,C
             JP   TokenFinish
 
-TokenizerComma:
-            LD   C,TokenComma
-            JR   TokenizerSimpleToken
-TokenizerMinus:
-            LD   C,TokenMinus
+TokenizerLexicalFailure:
+            JP   TokenLexicalFailure
+
+TokenizerPunctuation:
+            LD   C,(HL)
 TokenizerSimpleToken:
             CALL SourceTake
             LD   A,C
@@ -304,9 +291,9 @@ TokenizerLf:
 TokenizerCrLf:
             CALL SourceTake
             CALL SourcePeek
-            JP   C,TokenLexicalFailure
+            JR   C,TokenizerLexicalFailure
             CP   10
-            JP   NZ,TokenLexicalFailure
+            JR   NZ,TokenizerLexicalFailure
             CALL SourceTake
 TokenizerFinishLine:
             CALL SourceFinishLine
@@ -319,30 +306,22 @@ TokenizerFinishLine:
             XOR  A
             LD   (SourceLineHasToken),A
             LD   A,TokenNewline
-            LD   (TokenKind),A
             OR   A
             RET
 
 TokenizerAtEof:
             LD   A,(SourceDelimiterDepth)
             OR   A
-            JP   NZ,TokenLexicalFailure
-            LD   A,(TokenizerEofPending)
-            OR   A
-            JR   NZ,TokenizerEmitEof
+            JR   NZ,TokenizerLexicalFailure
             LD   A,(SourceLineHasToken)
             OR   A
             JR   Z,TokenizerEmitEof
             XOR  A
             LD   (SourceLineHasToken),A
-            INC  A
-            LD   (TokenizerEofPending),A
             LD   A,TokenNewline
-            LD   (TokenKind),A
             OR   A
             RET
 TokenizerEmitEof:
             LD   A,TokenEof
-            LD   (TokenKind),A
             OR   A
             RET

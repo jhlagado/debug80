@@ -153,11 +153,12 @@ present proof sink records a bounded semantic transcript: eleven bytes for the
 loop program, fourteen for the array program, and sixteen for the scalar call
 program. The selected backend consumes that transcript after parsing succeeds.
 This is a deliberate narrow-slice economy, not the intended final buffering
-policy. A measured sink that emitted
-native code while the parser was still active required more code and
-simultaneously live state; the rejected experiment is recorded below. The
-separate Stage 3 proof remains frozen as a historical measurement and is not
-linked into the current compiler spine.
+policy. A measured sink that emitted native code while the parser was still
+active required more code and simultaneously live state; the rejected
+experiment is recorded below. The
+separate Stage 3 proof remains a historical narrow slice and is not linked into
+the current compiler spine. It shares the current source adapter, so reductions
+to that common module still update its measured account.
 
 An NVM sink encodes the checked transcript as bytecode. A native sink emits Z80
 instructions, fixed fragments, and calls to shared helpers. Both sinks use the
@@ -408,25 +409,25 @@ language:
 
 | Account                                             |                             NVM path |                      Direct-Z80 path |
 | --------------------------------------------------- | -----------------------------------: | -----------------------------------: |
-| common front-end code                               |                            947 bytes |                            947 bytes |
+| common front-end code                               |                            941 bytes |                            941 bytes |
 | common keyword and name bytes                       |                             36 bytes |                             36 bytes |
 | backend sink code                                   |                             25 bytes |                             25 bytes |
 | backend template bytes retained by the compiler     |                             58 bytes |                             37 bytes |
-| complete compiler core for this path                |                          1,066 bytes |                          1,045 bytes |
+| complete compiler core for this path                |                          1,060 bytes |                          1,039 bytes |
 | peak compiler workspace                             |                             55 bytes |                             55 bytes |
 | generated program                                   |                             58 bytes |                             37 bytes |
 | target runtime code                                 |                            487 bytes |                             51 bytes |
 | target runtime immutable data                       |                             57 bytes |                              0 bytes |
 | target writable state                               |                             22 bytes |                              6 bytes |
 | shared service state                                |                              3 bytes |                              3 bytes |
-| complete compile, success, and forced-failure proof | 6,422 instructions / 61,558 T-states | 4,878 instructions / 47,488 T-states |
+| complete compile, success, and forced-failure proof | 6,298 instructions / 63,632 T-states | 4,754 instructions / 49,562 T-states |
 
 The NVM proof includes validation and loading before each run; the direct path
 executes compiler-controlled output and therefore has no corresponding image
 loader. A separate malformed-image proof takes 447 instructions and 4,909
 T-states and confirms that NVM rejection leaves runnable state unchanged. The
-source-compiler proof uses 983 core bytes and 55 workspace bytes and exercises
-both accepted and malformed input.
+source-compiler proof uses 977 core bytes and 55 workspace bytes and exercises
+both accepted and malformed input in 8,825 instructions and 90,816 T-states.
 
 This result does not choose a backend. The program has no expressions, locals,
 user calls, data layout, or general control flow, so it strongly favors a
@@ -652,12 +653,12 @@ Two measured alternatives were rejected:
   statements or expressions can replace the fixed encoders with a shared
   dispatcher.
 
-One representation candidate remains deliberately deferred. Simple
-punctuation now shares a seven-byte tail; a character-to-token table becomes a
-candidate only when the completed punctuation set makes it smaller than the
-sparse comparisons and two-byte entry stubs. The loop and array encoders remain
-positional. They should move to the general dispatcher only when replacing the
-fixed encoders produces a measured net reduction.
+Simple punctuation first shared one tail. The post-call pass replaces its three
+separate comparisons with a three-entry character-to-token table; the complete
+compiler is smaller despite the six immutable table bytes. Sparse delimiters
+retain their specialized paths. The loop and array encoders remain positional.
+They should move to the general dispatcher only when replacing the fixed
+encoders produces a measured net reduction.
 
 #### Third Stage 4 increment: scalar calls and bounded recursion
 
@@ -711,32 +712,34 @@ future handler that does must trigger a new complete-path measurement.
 
 Forward declarations and entry markers do not enter the transcript because
 they emit no target operation. Removing those two no-ops and sharing repeated
-parser and emitter tails reduced the first working compiler from 3,135 to 3,068
-bytes. The packed one-byte activation slice derives its arena position from its
-depth counter; this reduced the native runtime from 216 to 196 bytes and
-writable native state from 18 to 17 bytes while retaining an independent
-arena-capacity guard.
+parser and emitter tails reduced the first working call compiler from 3,135 to
+3,068 bytes. The packed one-byte activation slice derives its arena position
+from its depth counter; this reduced the native runtime from 216 to 196 bytes
+and writable native state from 18 to 17 bytes while retaining an independent
+arena-capacity guard. The consolidation pass described below reduces the same
+compiler to 2,862 bytes.
 
 | Account                    |                        Direct-Z80 path |                   Host-only NVM oracle |
 | -------------------------- | -------------------------------------: | -------------------------------------: |
-| common front-end code      |                            1,905 bytes |                            1,905 bytes |
-| backend sink code          |                            1,030 bytes |                              139 bytes |
-| compiler immutable data    |                              133 bytes |                              133 bytes |
-| complete compiler core     |                            3,068 bytes |                            2,177 bytes |
-| peak compiler workspace    |                               54 bytes |                               54 bytes |
+| common front-end code      |                            1,715 bytes |                            1,715 bytes |
+| backend sink code          |                            1,008 bytes |                              139 bytes |
+| compiler immutable data    |                              139 bytes |                              139 bytes |
+| complete compiler core     |                            2,862 bytes |                            1,993 bytes |
+| peak compiler workspace    |                               51 bytes |                               51 bytes |
 | generated program or image |                               99 bytes |                              102 bytes |
 | native runtime code        |                              196 bytes |                         not applicable |
 | native writable state      |                               17 bytes |                         not applicable |
-| complete proof execution   | 64,135 instructions / 598,613 T-states | 22,389 instructions / 211,290 T-states |
+| complete proof execution   | 61,921 instructions / 611,019 T-states | 21,342 instructions / 213,740 T-states |
 
-The 913-byte direct compiler increase over the preceding 2,155-byte plateau is
-not a projection for arbitrary calls. It includes three keywords, exact
+The first working call compiler added 913 bytes to the preceding 2,155-byte
+plateau. After consolidation the difference is 707 bytes. Neither number is a
+projection for arbitrary calls. The increment includes three keywords, exact
 forward and parameter retention, the new routine grammar path, scalar result
 flow, recursive native code generation, the first general semantic dispatcher,
 activation diagnostics, and all retained names and error paths. The
-call-specific parser path occupies 363 bytes and the call backend 341 bytes;
-their enclosing front end and sink accounts also contain the earlier loop and
-array machinery.
+call-specific parser path now occupies 341 bytes and the call backend 332
+bytes; their enclosing front end and sink accounts also contain the earlier
+loop and array machinery.
 
 The NVM path is deliberately a host oracle, not a production sink comparison.
 Its 139-byte encoder copies and patches a fixed 102-byte image, which the host
@@ -747,6 +750,59 @@ offset 201 for activation exhaustion and byte offset 95 for output failure.
 The native proof checks both locations, exact transcript consumption, the four
 successful active calls, the depth-three high-water state, the untouched
 fourth arena byte on rejection, empty output, and complete unwind.
+
+#### Consolidation plateau after scalar calls
+
+The post-call size pass retained every accepted source, diagnostic position,
+semantic transcript, generated byte, runtime helper, trap, and proof outcome.
+It reduced the direct compiler core from 3,068 to 2,862 bytes. Compiler code
+fell by 212 bytes while immutable data grew by six bytes for the punctuation
+table, giving a net reduction of 206 bytes. Workspace fell from 54 to 51 bytes.
+
+| Transformation                                                           | Core reduction |
+| ------------------------------------------------------------------------ | -------------: |
+| remove parser wrappers with one caller                                   |       28 bytes |
+| encode ordinary expected-token diagnostics from the token ordinal        |       72 bytes |
+| table-drive simple punctuation and shorten character scanning            |       11 bytes |
+| remove redundant EOF and token-finalization state                        |       18 bytes |
+| preserve the array initializer counter only at its one required site     |        2 bytes |
+| retain the semantic-operation count in a register during dispatch        |        4 bytes |
+| replace repeated cursor-limit branches with compact subtraction tests    |        3 bytes |
+| use native emitter tail calls and proven flag-preserving returns         |        6 bytes |
+| classify ASCII letters by case folding and one range comparison          |       11 bytes |
+| share nearby lexical-error trampolines                                   |       12 bytes |
+| reuse zero during source setup and copy diagnostic positions with LDIR   |        7 bytes |
+| remove the unread stored token kind                                      |       12 bytes |
+| return numeric and character payloads in C                               |        9 bytes |
+| test relative-fixup range by comparing sign extension with the high byte |       11 bytes |
+| **measured reduction**                                                   |  **206 bytes** |
+
+The three removed workspace bytes were `TokenizerEofPending`, `TokenKind`, and
+`TokenValue`. The remaining state records only values read after the operation
+that creates them. At physical EOF, clearing `SourceLineHasToken` while
+returning the implicit final newline is enough to make the following request
+return EOF. The tokenizer returns the token kind in `A` and a byte literal in
+`C`; the parser consumes both directly. Ordinary token diagnostics reserve bit
+7 and store the expected token ordinal in the low seven bits. Context-specific
+name and semantic diagnostics retain distinct codes.
+
+The relative-fixup check uses the two's-complement invariant directly. A
+displacement fits in a signed byte exactly when its high byte equals the sign
+extension of bit 7 in its low byte. This replaces separate positive and
+negative range branches without weakening the fixup diagnostic.
+
+Two candidates were rejected during the pass. Preserving the original fixup
+address with a stack pair reduced the handwritten sequence, but multiple exits
+made its stack balance harder to verify; a single-exit form erased the saving.
+A general dispatcher for the positional loop and array encoders remains
+deferred until enough fixed encoder code can be removed to pay for the new
+handlers and table entries. Neither rejection changes the current architecture.
+
+The direct proof now executes 2,214 fewer instructions than the 3,068-byte
+baseline and takes 12,406 more T-states. The punctuation scan and compact
+sixteen-bit equality checks exchange cycles for resident bytes. Generated code
+remains 99 bytes, and the native runtime remains 196 code bytes plus 17 writable
+bytes.
 
 Completion evidence:
 

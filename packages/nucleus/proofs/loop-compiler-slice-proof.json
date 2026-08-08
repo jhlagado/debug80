@@ -11,7 +11,7 @@
   "observations": [
     { "at": "ProofStatus", "width": "u8", "equals": 165 },
     { "at": "ProofCase", "width": "u8", "equals": 0 },
-    { "at": "DiagnosticCode", "width": "u8", "equals": 26 }
+    { "at": "DiagnosticCode", "width": "u8", "equals": 140 }
   ],
   "extents": [
     {

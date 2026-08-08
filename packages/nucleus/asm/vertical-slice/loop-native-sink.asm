@@ -5,11 +5,10 @@ NativeEmitByte:
             LD   B,A
             LD   HL,(EmitCursor)
             LD   DE,(EmitLimit)
-            LD   A,H
-            CP   D
-            JR   NZ,NativeEmitByteRoom
-            LD   A,L
-            CP   E
+            PUSH HL
+            OR   A
+            SBC  HL,DE
+            POP  HL
             JR   Z,NativeEmitByteFull
 NativeEmitByteRoom:
             LD   A,B
@@ -39,16 +38,10 @@ NativePatchRelative:
             OR   A
             SBC  HL,DE
             LD   C,L
-            LD   A,H
-            OR   A
-            JR   Z,NativePatchPositive
-            INC  A
-            JR   NZ,NativePatchInvalid
-            BIT  7,C
-            JR   Z,NativePatchInvalid
-            JR   NativePatchStore
-NativePatchPositive:
-            BIT  7,C
+            LD   A,C
+            ADD  A,A
+            SBC  A,A
+            CP   H
             JR   NZ,NativePatchInvalid
 NativePatchStore:
             LD   DE,(EmitPatchAddress)
@@ -252,8 +245,7 @@ NativeEmitUnhandledTrapPrefix:
             CALL NativeEmitStoreA
             RET  C
             LD   A,6
-            CALL NativeEmitLoadAImmediate
-            RET
+            JP   NativeEmitLoadAImmediate
 
 .routine out A,carry,zero,DE clobbers sign,parity,halfCarry,B,HL
 NativeEmitJrPlaceholder:
@@ -325,13 +317,11 @@ NativeDispatchCallOperations:
             LD   HL,SemanticBufferBase+1
             LD   (SemanticReadCursor),HL
             LD   A,(SemanticBufferBase)
-            LD   (SemanticRemaining),A
-NativeDispatchCallNext:
-            LD   A,(SemanticRemaining)
             OR   A
             RET  Z
-            DEC  A
-            LD   (SemanticRemaining),A
+            LD   B,A
+NativeDispatchCallNext:
+            PUSH BC
             CALL NativeNextSemanticByte
             SUB  SemanticCallLiteralU8
             CP   NativeCallOperationCount
@@ -349,9 +339,13 @@ NativeDispatchCallNext:
             PUSH DE
             JP   (HL)
 NativeDispatchCallReturn:
+            POP  BC
             RET  C
-            JR   NativeDispatchCallNext
+            DJNZ NativeDispatchCallNext
+            OR   A
+            RET
 NativeDispatchCallInvalid:
+            POP  BC
             LD   A,DiagnosticSinkCapacity
             JP   CompilerSetDiagnostic
 
@@ -394,7 +388,6 @@ NativeCallLiteral:
             CALL NativeEmitJrCPlaceholder
             RET  C
             LD   (EmitUpdateExitFixup),DE
-            OR   A
             RET
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
@@ -405,7 +398,6 @@ NativeCallWriteLocal:
             CALL NativeEmitJrCPlaceholder
             RET  C
             LD   (EmitFailureFixup),DE
-            OR   A
             RET
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
@@ -414,9 +406,7 @@ NativeCallBeginForward:
             LD   HL,(EmitCursor)
             LD   (EmitRoutineAddress),HL
             LD   DE,(EmitRoutineCallFixup)
-            CALL NativePatchWord
-            OR   A
-            RET
+            JP   NativePatchWord
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 NativeCallIfParameterZero:
@@ -430,7 +420,6 @@ NativeCallIfParameterZero:
             CALL NativeEmitRelativePlaceholder
             RET  C
             LD   (EmitIfFixup),DE
-            OR   A
             RET
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL

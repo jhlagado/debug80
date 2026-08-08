@@ -14,11 +14,10 @@ SemanticSinkPut:
             LD   B,A
             LD   HL,(SinkCursor)
             LD   DE,SemanticBufferLimit
-            LD   A,H
-            CP   D
-            JR   NZ,SemanticSinkPutRoom
-            LD   A,L
-            CP   E
+            PUSH HL
+            OR   A
+            SBC  HL,DE
+            POP  HL
             JR   Z,SemanticSinkPutFull
 SemanticSinkPutRoom:
             LD   A,B

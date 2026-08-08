@@ -8,13 +8,12 @@ SourceInitialize:
             LD   (SourceEnd),HL
             LD   HL,0
             LD   (SourceOffset),HL
-            LD   HL,1
+            INC  HL
             LD   (SourceLine),HL
             LD   (SourceColumn),HL
             XOR  A
             LD   (SourceLineHasToken),A
             LD   (SourceDelimiterDepth),A
-            LD   (TokenizerEofPending),A
             RET
 
 ; Return the current source byte in A. Carry denotes the separate EOF event.
@@ -22,11 +21,10 @@ SourceInitialize:
 SourcePeek:
             LD   HL,(SourceCursor)
             LD   DE,(SourceEnd)
-            LD   A,H
-            CP   D
-            JR   NZ,SourcePeekByte
-            LD   A,L
-            CP   E
+            PUSH HL
+            OR   A
+            SBC  HL,DE
+            POP  HL
             JR   NZ,SourcePeekByte
             SCF
             RET

@@ -1,21 +1,22 @@
 ; Predictive parser for the counted-loop and checked-array proof programs.
 
-.routine in A out A,carry clobbers zero,sign,parity,halfCarry,HL
+.routine in A out A,carry clobbers zero,sign,parity,halfCarry,DE,HL
 CompilerSetDiagnostic:
             LD   (DiagnosticCode),A
             LD   A,(SourcePartId)
             LD   (DiagnosticPartId),A
-            LD   HL,(TokenStartOffset)
-            LD   (DiagnosticOffset),HL
-            LD   HL,(TokenStartLine)
-            LD   (DiagnosticLine),HL
-            LD   HL,(TokenStartColumn)
-            LD   (DiagnosticColumn),HL
+            LD   HL,TokenStartOffset
+            LD   DE,DiagnosticOffset
+            PUSH BC
+            LD   BC,6
+            LDIR
+            POP  BC
             SCF
             RET
 
-; D is the diagnostic code and E the expected token ordinal.
-.routine in DE out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+; E is the expected token ordinal. An ordinary mismatch reports the token
+; ordinal with DiagnosticExpectedTokenBase set.
+.routine in E out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
 ParserExpect:
             PUSH DE
             CALL TokenizerNext
@@ -23,34 +24,30 @@ ParserExpect:
             RET  C
             CP   E
             RET  Z
-            LD   A,D
+            LD   A,E
+            OR   DiagnosticExpectedTokenBase
             JP   CompilerSetDiagnostic
 
 ; Frequent token checks enter the common ParserExpect tail. These wrappers
 ; trade one shared seven-byte body for each repeated eight-byte inline check.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectLine:
-            LD   D,DiagnosticExpectedLine
             LD   E,TokenNewline
             JP   ParserExpect
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectLeft:
-            LD   D,DiagnosticExpectedLeft
             LD   E,TokenLeftParen
             JP   ParserExpect
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectRight:
-            LD   D,DiagnosticExpectedRight
             LD   E,TokenRightParen
             JP   ParserExpect
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectAs:
-            LD   D,DiagnosticExpectedAs
             LD   E,TokenAs
             JP   ParserExpect
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectU8:
-            LD   D,DiagnosticExpectedU8
             LD   E,TokenU8
             JP   ParserExpect
 
@@ -62,45 +59,20 @@ ParserExpectAsU8:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectSub:
-            LD   D,DiagnosticExpectedSub
             LD   E,TokenSub
             JP   ParserExpect
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectEqual:
-            LD   D,DiagnosticExpectedEqual
             LD   E,TokenEquals
             JP   ParserExpect
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
-ParserExpectOr:
-            LD   D,DiagnosticExpectedOr
-            LD   E,TokenOr
-            JP   ParserExpect
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
-ParserExpectFail:
-            LD   D,DiagnosticExpectedFail
-            LD   E,TokenFail
-            JP   ParserExpect
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
-ParserExpectEnd:
-            LD   D,DiagnosticExpectedEnd
-            LD   E,TokenEnd
-            JP   ParserExpect
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectLeftBracket:
-            LD   D,DiagnosticExpectedLeftBracket
             LD   E,TokenLeftBracket
             JP   ParserExpect
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectRightBracket:
-            LD   D,DiagnosticExpectedRightBracket
             LD   E,TokenRightBracket
             JP   ParserExpect
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
-ParserExpectComma:
-            LD   D,DiagnosticExpectedComma
-            LD   E,TokenComma
-            JP   ParserExpect
-
 .routine in B,D,HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectNamed:
             PUSH BC
@@ -121,13 +93,6 @@ ParserExpectNamedNo:
             JP   CompilerSetDiagnostic
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
-ParserExpectMain:
-            LD   D,DiagnosticExpectedMain
-            LD   HL,NameMain
-            LD   B,4
-            JP   ParserExpectNamed
-
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectIndex:
             LD   D,DiagnosticExpectedIndex
             LD   HL,NameIndex
@@ -142,24 +107,10 @@ ParserExpectBytes:
             JP   ParserExpectNamed
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
-ParserExpectRead:
-            LD   D,DiagnosticExpectedRead
-            LD   HL,NameReadInputByte
-            LD   B,13
-            JP   ParserExpectNamed
-
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectResult:
             LD   D,DiagnosticExpectedResult
             LD   HL,NameResult
             LD   B,6
-            JP   ParserExpectNamed
-
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
-ParserExpectValue:
-            LD   D,DiagnosticExpectedValue
-            LD   HL,NameValue
-            LD   B,5
             JP   ParserExpectNamed
 
 ; Compare the current name token with the one retained by the forward.
@@ -228,7 +179,6 @@ ParserForwardParameterNo:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectWrite:
-            LD   D,DiagnosticExpectedWrite
             LD   E,TokenName
             CALL ParserExpect
             RET  C
@@ -249,28 +199,26 @@ ParserExpectWriteYes:
             OR   A
             RET
 
-.routine in D out A,carry,zero clobbers sign,parity,halfCarry,D,DE
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectNumber:
-            PUSH BC
-            PUSH HL
             LD   E,TokenNumber
             CALL ParserExpect
-            POP  HL
-            POP  BC
             RET  C
-            LD   A,(TokenValue)
+            LD   A,C
             OR   A
             RET
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectRoutineHeader:
-            CALL ParserExpectMain
+            LD   D,DiagnosticExpectedMain
+            LD   HL,NameMain
+            LD   B,4
+            CALL ParserExpectNamed
             RET  C
             CALL ParserExpectLeft
             RET  C
             CALL ParserExpectRight
             RET  C
-            LD   D,DiagnosticExpectedFails
             LD   E,TokenFails
             CALL ParserExpect
             RET  C
@@ -278,7 +226,6 @@ ParserExpectRoutineHeader:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectIndexDeclaration:
-            LD   D,DiagnosticExpectedVar
             LD   E,TokenVar
             CALL ParserExpect
             RET  C
@@ -292,9 +239,11 @@ ParserExpectIndexDeclaration:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectOrFailLine:
-            CALL ParserExpectOr
+            LD   E,TokenOr
+            CALL ParserExpect
             RET  C
-            CALL ParserExpectFail
+            LD   E,TokenFail
+            CALL ParserExpect
             RET  C
             JP   ParserExpectLine
 
@@ -307,7 +256,8 @@ ParserExpectPropagateLine:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectEndLine:
-            CALL ParserExpectEnd
+            LD   E,TokenEnd
+            CALL ParserExpect
             RET  C
             JP   ParserExpectLine
 
@@ -321,7 +271,6 @@ ParserParseLoopProgramAfterSub:
             LD   A,SemanticDeclareU8
             CALL SemanticSinkOperation
             RET  C
-            LD   D,DiagnosticExpectedNumber
             CALL ParserExpectNumber
             RET  C
             CALL SemanticSinkPut
@@ -329,7 +278,6 @@ ParserParseLoopProgramAfterSub:
             CALL ParserExpectLine
             RET  C
 
-            LD   D,DiagnosticExpectedFor
             LD   E,TokenFor
             CALL ParserExpect
             RET  C
@@ -340,16 +288,13 @@ ParserParseLoopProgramAfterSub:
             LD   A,SemanticForUntilU8
             CALL SemanticSinkOperation
             RET  C
-            LD   D,DiagnosticExpectedNumber
             CALL ParserExpectNumber
             RET  C
             CALL SemanticSinkPut
             RET  C
-            LD   D,DiagnosticExpectedUntil
             LD   E,TokenUntil
             CALL ParserExpect
             RET  C
-            LD   D,DiagnosticExpectedNumber
             CALL ParserExpectNumber
             RET  C
             CALL SemanticSinkPut
@@ -364,11 +309,10 @@ ParserParseLoopProgramAfterSub:
             LD   A,SemanticWriteOutputByte
             CALL SemanticSinkOperation
             RET  C
-            LD   D,DiagnosticExpectedChar
             LD   E,TokenCharacter
             CALL ParserExpect
             RET  C
-            LD   A,(TokenValue)
+            LD   A,C
             CALL SemanticSinkPut
             RET  C
             CALL ParserExpectRight
@@ -397,7 +341,6 @@ ParserParseArrayProgramAfterVar:
             LD   A,SemanticStaticU8Array
             CALL SemanticSinkOperation
             RET  C
-            LD   D,DiagnosticExpectedArrayLength
             CALL ParserExpectNumber
             RET  C
             CP   4
@@ -415,15 +358,17 @@ ParserArrayLengthYes:
             RET  C
             LD   C,4
 ParserArrayInitializer:
-            LD   D,DiagnosticExpectedNumber
+            PUSH BC
             CALL ParserExpectNumber
+            POP  BC
             RET  C
             CALL SemanticSinkPut
             RET  C
             DEC  C
             JR   Z,ParserArrayInitializerDone
             PUSH BC
-            CALL ParserExpectComma
+            LD   E,TokenComma
+            CALL ParserExpect
             POP  BC
             RET  C
             JR   ParserArrayInitializer
@@ -433,7 +378,6 @@ ParserArrayInitializerDone:
             CALL ParserExpectLine
             RET  C
 
-            LD   D,DiagnosticExpectedSub
             LD   E,TokenSub
             CALL ParserExpect
             RET  C
@@ -442,7 +386,10 @@ ParserArrayInitializerDone:
 
             CALL ParserExpectIndexDeclaration
             RET  C
-            CALL ParserExpectRead
+            LD   D,DiagnosticExpectedRead
+            LD   HL,NameReadInputByte
+            LD   B,13
+            CALL ParserExpectNamed
             RET  C
             CALL ParserExpectLeft
             RET  C
@@ -486,7 +433,6 @@ ParserFinishRoutine:
             LD   A,SemanticReturn
             CALL SemanticSinkOperation
             RET  C
-            LD   D,DiagnosticExpectedEof
             LD   E,TokenEof
             CALL ParserExpect
             RET  C
@@ -500,14 +446,12 @@ ParserFinishRoutine:
 ParserParseCallProgramAfterForward:
             CALL ParserExpectSub
             RET  C
-            LD   D,DiagnosticExpectedDescend
             LD   E,TokenName
             CALL ParserExpect
             RET  C
             CALL ParserRetainForwardName
             CALL ParserExpectLeft
             RET  C
-            LD   D,DiagnosticExpectedValue
             LD   E,TokenName
             CALL ParserExpect
             RET  C
@@ -526,7 +470,6 @@ ParserParseCallProgramAfterForward:
             RET  C
             CALL ParserExpectRoutineHeader
             RET  C
-            LD   D,DiagnosticExpectedVar
             LD   E,TokenVar
             CALL ParserExpect
             RET  C
@@ -547,7 +490,6 @@ ParserParseCallProgramAfterForward:
             LD   A,(ForwardOrdinal)
             CALL SemanticSinkPut
             RET  C
-            LD   D,DiagnosticExpectedNumber
             CALL ParserExpectNumber
             RET  C
             CALL SemanticSinkPut
@@ -592,7 +534,6 @@ ParserParseCallProgramAfterForward:
             CALL SemanticSinkPut
             RET  C
 
-            LD   D,DiagnosticExpectedIf
             LD   E,TokenIf
             CALL ParserExpect
             RET  C
@@ -604,7 +545,6 @@ ParserParseCallProgramAfterForward:
             LD   A,SemanticIfParameterZero
             CALL SemanticSinkOperation
             RET  C
-            LD   D,DiagnosticExpectedNumber
             CALL ParserExpectNumber
             RET  C
             OR   A
@@ -614,7 +554,6 @@ ParserParseCallProgramAfterForward:
             CALL ParserExpectLine
             RET  C
 
-            LD   D,DiagnosticExpectedReturn
             LD   E,TokenReturn
             CALL ParserExpect
             RET  C
@@ -632,7 +571,6 @@ ParserParseCallProgramAfterForward:
             CALL SemanticSinkOperation
             RET  C
 
-            LD   D,DiagnosticExpectedReturn
             LD   E,TokenReturn
             CALL ParserExpect
             RET  C
@@ -644,7 +582,6 @@ ParserParseCallProgramAfterForward:
             LD   D,DiagnosticExpectedValue
             CALL ParserExpectForwardParameter
             RET  C
-            LD   D,DiagnosticExpectedMinus
             LD   E,TokenMinus
             CALL ParserExpect
             RET  C
@@ -654,7 +591,6 @@ ParserParseCallProgramAfterForward:
             LD   A,(ForwardOrdinal)
             CALL SemanticSinkPut
             RET  C
-            LD   D,DiagnosticExpectedNumber
             CALL ParserExpectNumber
             RET  C
             CALL SemanticSinkPut
@@ -671,7 +607,6 @@ ParserParseCallProgramAfterForward:
             LD   A,(ForwardCompleted)
             OR   A
             JR   Z,ParserForwardIncomplete
-            LD   D,DiagnosticExpectedEof
             LD   E,TokenEof
             CALL ParserExpect
             RET  C

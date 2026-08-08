@@ -10,27 +10,24 @@ SourceLine              .equ CompilerStateBase+$07
 SourceColumn            .equ CompilerStateBase+$09
 SourceLineHasToken       .equ CompilerStateBase+$0B
 SourceDelimiterDepth    .equ CompilerStateBase+$0C
-TokenizerEofPending     .equ CompilerStateBase+$0D
 
-TokenKind               .equ CompilerStateBase+$0E
-TokenValue              .equ CompilerStateBase+$0F
-TokenStartOffset        .equ CompilerStateBase+$10
-TokenStartLine          .equ CompilerStateBase+$12
-TokenStartColumn        .equ CompilerStateBase+$14
-TokenLexemePointer      .equ CompilerStateBase+$16
-TokenLength             .equ CompilerStateBase+$18
+TokenStartOffset        .equ CompilerStateBase+$0D
+TokenStartLine          .equ CompilerStateBase+$0F
+TokenStartColumn        .equ CompilerStateBase+$11
+TokenLexemePointer      .equ CompilerStateBase+$13
+TokenLength             .equ CompilerStateBase+$15
 
-DiagnosticCode          .equ CompilerStateBase+$19
-DiagnosticPartId        .equ CompilerStateBase+$1A
-DiagnosticOffset        .equ CompilerStateBase+$1B
-DiagnosticLine          .equ CompilerStateBase+$1D
-DiagnosticColumn        .equ CompilerStateBase+$1F
+DiagnosticCode          .equ CompilerStateBase+$16
+DiagnosticPartId        .equ CompilerStateBase+$17
+DiagnosticOffset        .equ CompilerStateBase+$18
+DiagnosticLine          .equ CompilerStateBase+$1A
+DiagnosticColumn        .equ CompilerStateBase+$1C
 
 ; A diagnostic ends parsing, so the live semantic sink may reuse the eventual
 ; offset and line fields. DiagnosticCode and DiagnosticPartId remain clear on
 ; successful compilation; an error overwrites all reused bytes before return.
-SinkCursor              .equ CompilerStateBase+$1B
-SinkOperationCount      .equ CompilerStateBase+$1D
+SinkCursor              .equ CompilerStateBase+$18
+SinkOperationCount      .equ CompilerStateBase+$1A
 
 ; Emission begins only after parsing succeeds. Its scratch words therefore
 ; overlay dead source, token, diagnostic, and sink fields. SourcePartId and
@@ -42,11 +39,11 @@ EmitLoopHead            .equ CompilerStateBase+$07
 EmitExitFixup           .equ CompilerStateBase+$09
 EmitFailureFixup        .equ CompilerStateBase+$0B
 EmitUpdateExitFixup     .equ CompilerStateBase+$0D
-EmitPatchAddress        .equ CompilerStateBase+$16
-EmitLimit               .equ CompilerStateBase+$18
-EmitDataFixup           .equ CompilerStateBase+$1A
+EmitPatchAddress        .equ CompilerStateBase+$13
+EmitLimit               .equ CompilerStateBase+$15
+EmitDataFixup           .equ CompilerStateBase+$17
 
-CompilerStateEnd        .equ CompilerStateBase+$1E
+CompilerStateEnd        .equ CompilerStateBase+$1B
 SemanticBufferBase      .equ CompilerStateEnd
 SemanticBufferLimit     .equ SemanticBufferBase+$10
 
@@ -63,7 +60,6 @@ CompilerWorkspaceEnd    .equ SemanticBufferLimit+$08
 
 ; Emission follows successful parsing and may overlay the retained forward.
 SemanticReadCursor      .equ ForwardNamePointer
-SemanticRemaining       .equ ForwardNameLength
 EmitRoutineAddress      .equ ForwardParameterPointer
 EmitRoutineCallFixup    .equ ForwardParameterLength
 EmitIfFixup             .equ ForwardOrdinal
@@ -96,45 +92,49 @@ TokenMinus              .equ 24
 
 DiagnosticNone          .equ 0
 DiagnosticLexical       .equ 1
-DiagnosticExpectedSub   .equ 16
 DiagnosticExpectedMain  .equ 17
-DiagnosticExpectedLeft  .equ 18
-DiagnosticExpectedRight .equ 19
-DiagnosticExpectedFails .equ 20
-DiagnosticExpectedLine  .equ 21
 DiagnosticExpectedWrite .equ 22
-DiagnosticExpectedChar  .equ 23
-DiagnosticExpectedOr    .equ 24
-DiagnosticExpectedFail  .equ 25
-DiagnosticExpectedEnd   .equ 26
-DiagnosticExpectedEof   .equ 27
-DiagnosticExpectedVar   .equ 28
 DiagnosticExpectedIndex .equ 29
-DiagnosticExpectedAs    .equ 30
-DiagnosticExpectedU8    .equ 31
-DiagnosticExpectedEqual .equ 32
-DiagnosticExpectedNumber .equ 33
-DiagnosticExpectedFor   .equ 34
-DiagnosticExpectedUntil .equ 35
 DiagnosticActiveCounter .equ 36
 DiagnosticExpectedTopLevel .equ 37
 DiagnosticExpectedBytes .equ 38
 DiagnosticExpectedArrayLength .equ 39
 DiagnosticSinkCapacity  .equ 40
 DiagnosticFixupRange    .equ 41
-DiagnosticExpectedLeftBracket .equ 42
-DiagnosticExpectedRightBracket .equ 43
-DiagnosticExpectedComma .equ 44
 DiagnosticExpectedRead  .equ 45
-DiagnosticExpectedForward .equ 46
-DiagnosticExpectedReturn .equ 47
-DiagnosticExpectedIf    .equ 48
-DiagnosticExpectedMinus .equ 49
 DiagnosticExpectedDescend .equ 50
 DiagnosticExpectedValue .equ 51
 DiagnosticExpectedResult .equ 52
 DiagnosticForwardMismatch .equ 53
 DiagnosticForwardIncomplete .equ 54
+
+; Ordinary token mismatches encode the token ordinal directly. Named-value
+; mismatches retain their context-specific diagnostic codes above.
+DiagnosticExpectedTokenBase .equ $80
+DiagnosticExpectedEof   .equ DiagnosticExpectedTokenBase+TokenEof
+DiagnosticExpectedLine  .equ DiagnosticExpectedTokenBase+TokenNewline
+DiagnosticExpectedChar  .equ DiagnosticExpectedTokenBase+TokenCharacter
+DiagnosticExpectedNumber .equ DiagnosticExpectedTokenBase+TokenNumber
+DiagnosticExpectedLeft  .equ DiagnosticExpectedTokenBase+TokenLeftParen
+DiagnosticExpectedRight .equ DiagnosticExpectedTokenBase+TokenRightParen
+DiagnosticExpectedEqual .equ DiagnosticExpectedTokenBase+TokenEquals
+DiagnosticExpectedSub   .equ DiagnosticExpectedTokenBase+TokenSub
+DiagnosticExpectedFails .equ DiagnosticExpectedTokenBase+TokenFails
+DiagnosticExpectedOr    .equ DiagnosticExpectedTokenBase+TokenOr
+DiagnosticExpectedFail  .equ DiagnosticExpectedTokenBase+TokenFail
+DiagnosticExpectedEnd   .equ DiagnosticExpectedTokenBase+TokenEnd
+DiagnosticExpectedVar   .equ DiagnosticExpectedTokenBase+TokenVar
+DiagnosticExpectedAs    .equ DiagnosticExpectedTokenBase+TokenAs
+DiagnosticExpectedU8    .equ DiagnosticExpectedTokenBase+TokenU8
+DiagnosticExpectedFor   .equ DiagnosticExpectedTokenBase+TokenFor
+DiagnosticExpectedUntil .equ DiagnosticExpectedTokenBase+TokenUntil
+DiagnosticExpectedLeftBracket .equ DiagnosticExpectedTokenBase+TokenLeftBracket
+DiagnosticExpectedRightBracket .equ DiagnosticExpectedTokenBase+TokenRightBracket
+DiagnosticExpectedComma .equ DiagnosticExpectedTokenBase+TokenComma
+DiagnosticExpectedForward .equ DiagnosticExpectedTokenBase+TokenForward
+DiagnosticExpectedReturn .equ DiagnosticExpectedTokenBase+TokenReturn
+DiagnosticExpectedIf    .equ DiagnosticExpectedTokenBase+TokenIf
+DiagnosticExpectedMinus .equ DiagnosticExpectedTokenBase+TokenMinus
 
 SemanticDeclareU8       .equ 1
 SemanticForUntilU8      .equ 2
