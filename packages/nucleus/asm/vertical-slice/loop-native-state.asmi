@@ -1,0 +1,24 @@
+; Writable state for the direct-Z80 counted-loop proof target.
+
+NativeStateBase         .equ ExecutionBase
+NativeRunState          .equ NativeStateBase+$00
+NativeTrapNumber        .equ NativeStateBase+$01
+NativeTrapRoutine       .equ NativeStateBase+$02
+NativeTrapOffset        .equ NativeStateBase+$03
+NativeTrapError         .equ NativeStateBase+$05
+NativeStateEnd          .equ NativeStateBase+$06
+
+NativeRunReady          .equ 1
+NativeRunSucceeded      .equ 2
+NativeRunTrapped        .equ 3
+
+ServiceFailureCall      .equ ServiceBase+$00
+ServiceCallCount        .equ ServiceBase+$01
+ServiceOutputLength     .equ ServiceBase+$02
+ServiceOutputBase       .equ ServiceBase+$03
+ServiceOutputCapacity   .equ 4
+ServiceStateEnd         .equ ServiceOutputBase+ServiceOutputCapacity
+
+NativeProgramSize       .equ 54
+NativeLoopFailureOffset .equ 30
+GeneratedNativeEnd      .equ GeneratedBase+NativeProgramSize

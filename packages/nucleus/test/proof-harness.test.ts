@@ -178,4 +178,79 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
       ServiceError.outputFailure,
     );
   });
+
+  it("checks the scalar-local and counted-loop source slice", async () => {
+    const outcome = await runProofManifest(proof("loop-compiler-slice-proof"));
+
+    expect(outcome.instructions).toBe(38_939);
+    expect(outcome.cycles).toBe(376_553);
+    expect(outcome.extents).toEqual([
+      { name: "compiler-code", bytes: 1_304 },
+      { name: "compiler-immutable", bytes: 56 },
+      { name: "compiler-core", bytes: 1_360 },
+      { name: "compiler-workspace", bytes: 80 },
+      { name: "proof-code-and-data", bytes: 241 },
+    ]);
+    expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
+    expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
+    expect(outcome.memory[outcome.symbols.DiagnosticCode ?? -1]).toBe(26);
+  }, 20_000);
+
+  it("executes the counted loop through NVM and the host oracle", async () => {
+    const outcome = await runProofManifest(proof("loop-nvm-slice-proof"));
+    const imageBase = outcome.symbols.GeneratedBase ?? -1;
+    const imageSize = outcome.symbols.NvmImageSize ?? -1;
+    const image = outcome.memory.slice(imageBase, imageBase + imageSize);
+    const validated = validateImage(image);
+    const services = new BufferSystemServices();
+
+    expect(outcome.instructions).toBe(43_759);
+    expect(outcome.cycles).toBe(415_315);
+    expect(outcome.extents).toEqual([
+      { name: "common-front-end", bytes: 1_304 },
+      { name: "nvm-output-sink", bytes: 453 },
+      { name: "compiler-code", bytes: 1_757 },
+      { name: "compiler-immutable", bytes: 98 },
+      { name: "compiler-core", bytes: 1_855 },
+      { name: "compiler-workspace", bytes: 80 },
+      { name: "generated-nvm", bytes: 96 },
+      { name: "nvm-runtime-code", bytes: 797 },
+      { name: "nvm-runtime-immutable", bytes: 96 },
+      { name: "nvm-runtime", bytes: 893 },
+      { name: "nvm-state", bytes: 32 },
+      { name: "service-state", bytes: 7 },
+      { name: "proof-code-and-data", bytes: 339 },
+    ]);
+    expect(new ReferenceVm(validated, { services }).run().kind).toBe("success");
+    expect(services.standardOutput).toEqual([0x41, 0x41, 0x41]);
+  }, 20_000);
+
+  it("executes the counted loop as direct Z80", async () => {
+    const outcome = await runProofManifest(proof("loop-native-slice-proof"));
+    const generatedBase = outcome.symbols.GeneratedBase ?? -1;
+    const generatedSize = outcome.symbols.NativeProgramSize ?? -1;
+    const generated = outcome.memory.slice(
+      generatedBase,
+      generatedBase + generatedSize,
+    );
+
+    expect(outcome.instructions).toBe(35_245);
+    expect(outcome.cycles).toBe(336_248);
+    expect(outcome.extents).toEqual([
+      { name: "common-front-end", bytes: 1_304 },
+      { name: "native-output-sink", bytes: 455 },
+      { name: "compiler-code", bytes: 1_759 },
+      { name: "compiler-immutable", bytes: 56 },
+      { name: "compiler-core", bytes: 1_815 },
+      { name: "compiler-workspace", bytes: 80 },
+      { name: "generated-native", bytes: 54 },
+      { name: "native-runtime", bytes: 85 },
+      { name: "native-state", bytes: 6 },
+      { name: "service-state", bytes: 7 },
+      { name: "proof-code-and-data", bytes: 298 },
+    ]);
+    expect(Array.from(generated.slice(0, 7))).toEqual([
+      0x16, 0x00, 0x16, 0x00, 0x7a, 0xfe, 0x03,
+    ]);
+  }, 20_000);
 });

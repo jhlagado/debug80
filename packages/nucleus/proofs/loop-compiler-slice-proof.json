@@ -1,0 +1,48 @@
+{
+  "name": "scalar-local-counted-loop-source-compiler",
+  "source": "../asm/vertical-slice/loop-compiler-slice-proof.asm",
+  "memoryProfile": "vertical-slice-memory.json",
+  "execution": {
+    "entry": "ProofStart",
+    "maxInstructions": 50000,
+    "maxCycles": 500000,
+    "halted": true
+  },
+  "observations": [
+    { "at": "ProofStatus", "width": "u8", "equals": 165 },
+    { "at": "ProofCase", "width": "u8", "equals": 0 },
+    { "at": "DiagnosticCode", "width": "u8", "equals": 26 }
+  ],
+  "extents": [
+    {
+      "name": "compiler-code",
+      "from": "CompilerCodeStart",
+      "to": "CompilerCodeEnd",
+      "maxBytes": 16384
+    },
+    {
+      "name": "compiler-immutable",
+      "from": "CompilerImmutableStart",
+      "to": "CompilerImmutableEnd",
+      "maxBytes": 256
+    },
+    {
+      "name": "compiler-core",
+      "from": "CompilerCodeStart",
+      "to": "CompilerCoreEnd",
+      "maxBytes": 16384
+    },
+    {
+      "name": "compiler-workspace",
+      "from": "CompilerStateBase",
+      "to": "CompilerWorkspaceEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "proof-code-and-data",
+      "from": "ProofStart",
+      "to": "ProofEnd",
+      "maxBytes": 1024
+    }
+  ]
+}

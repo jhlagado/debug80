@@ -433,6 +433,67 @@ operation obeys the complete source semantics. The NVM account includes its
 loader and required validator. The native account includes all shared helpers,
 call machinery, safety paths, and service adapters required by the slice.
 
+#### First Stage 4 increment: scalar local and counted loop
+
+The first Stage 4 increment compiles this program through both sinks:
+
+```nucleus
+sub main() fails
+    var index as u8 = 0
+    for index = 0 until 3
+        writeOutputByte('A') or fail
+    end
+end
+```
+
+Both executions produce `AAA`. Companion proofs cover a zero-iteration loop,
+exclusive-bound termination, failure on the second service call, source
+rejection when the body assigns to the active counter, and a positioned
+diagnostic when an `end` is missing. The emitted NVM image also passes the host
+validator and produces the same output on the reference VM. Both target proofs
+also leave `index` at `2`, showing that an exclusive loop exits without storing
+the crossed bound.
+
+The sinks construct their output byte by byte. The NVM sink retains and patches
+three word branch targets. The native sink retains three forward relative
+fixups, patches the backward edge, and checks that every relative displacement
+fits. The 80-byte workspace account includes those bounded fixup addresses.
+
+| Account                                         |                               NVM path |                        Direct-Z80 path |
+| ----------------------------------------------- | -------------------------------------: | -------------------------------------: |
+| common front-end code                           |                            1,304 bytes |                            1,304 bytes |
+| common keyword and name bytes                   |                               56 bytes |                               56 bytes |
+| backend sink code                               |                              453 bytes |                              455 bytes |
+| backend immutable bytes retained during compile |                               42 bytes |                                0 bytes |
+| complete compiler core                          |                            1,855 bytes |                            1,815 bytes |
+| peak compiler workspace                         |                               80 bytes |                               80 bytes |
+| generated program                               |                               96 bytes |                               54 bytes |
+| target runtime code                             |                              797 bytes |                               85 bytes |
+| target runtime immutable data                   |                               96 bytes |                                0 bytes |
+| target writable state                           |                               32 bytes |                                6 bytes |
+| shared service state                            |                                7 bytes |                                7 bytes |
+| complete proof execution                        | 43,759 instructions / 415,315 T-states | 35,245 instructions / 336,248 T-states |
+
+The 96-byte NVM output consists of a 42-byte image envelope and 54 bytes of
+bytecode. The direct program is also 54 bytes. The generated instruction
+payloads are therefore equal in this increment; the NVM image is larger because
+it carries its portable header, routine descriptor, and empty initializer
+section.
+
+The source-only proof uses a 1,360-byte core and the same 80-byte workspace. It
+checks four sources in 38,939 instructions and 376,553 T-states. Relative to
+the first source-only compiler, decimal byte literals, five additional
+keywords, one fixed local binding, nested-loop parsing, the counter-write rule,
+and the larger semantic stream add 377 core bytes and 25 workspace bytes. The
+complete backend cores add 789 bytes on the NVM path and 770 bytes on the native
+path relative to the first Stage 3 executables.
+
+This increment recognizes one fixed `u8` local named `index`, byte constants,
+one positive unit-step `until` loop, and the existing output call. It has no
+general symbol table, expressions, arbitrary statements, `to`, `step`, wide
+bounds, or loop-range path. The result measures the first control-flow growth;
+it does not complete item 1 or select a backend.
+
 Completion evidence:
 
 - both paths agree with the host oracle on every normal, failure, and trap
