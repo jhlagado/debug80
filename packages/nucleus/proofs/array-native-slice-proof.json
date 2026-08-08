@@ -21,6 +21,30 @@
       "maxBytes": 16384
     },
     {
+      "name": "source-adapter",
+      "from": "SourceAdapterCodeStart",
+      "to": "SourceAdapterCodeEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "tokenizer",
+      "from": "TokenizerCodeStart",
+      "to": "TokenizerCodeEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "semantic-sink",
+      "from": "SemanticSinkCodeStart",
+      "to": "SemanticSinkCodeEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "parser",
+      "from": "ParserCodeStart",
+      "to": "ParserCodeEnd",
+      "maxBytes": 8192
+    },
+    {
       "name": "native-output-sink",
       "from": "NativeSinkCodeStart",
       "to": "NativeSinkCodeEnd",

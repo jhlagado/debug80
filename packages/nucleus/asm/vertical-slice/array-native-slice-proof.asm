@@ -6,10 +6,18 @@
 
             .org CompilerCoreBase
 CompilerCodeStart:
+SourceAdapterCodeStart:
             .include "source-adapter.asm"
+SourceAdapterCodeEnd:
+TokenizerCodeStart:
             .include "loop-tokenizer.asm"
+TokenizerCodeEnd:
+SemanticSinkCodeStart:
             .include "loop-semantic-sink.asm"
+SemanticSinkCodeEnd:
+ParserCodeStart:
             .include "loop-parser.asm"
+ParserCodeEnd:
 CompilerCommonCodeEnd:
 NativeSinkCodeStart:
             .include "loop-native-sink.asm"
@@ -17,21 +25,7 @@ NativeSinkCodeEnd:
 CompilerCodeEnd:
 
 CompilerImmutableStart:
-KeywordSub:             .db "sub"
-KeywordFails:           .db "fails"
-KeywordOr:              .db "or"
-KeywordFail:            .db "fail"
-KeywordEnd:             .db "end"
-KeywordVar:             .db "var"
-KeywordAs:              .db "as"
-KeywordU8:              .db "u8"
-KeywordFor:             .db "for"
-KeywordUntil:           .db "until"
-NameMain:               .db "main"
-NameIndex:              .db "index"
-NameBytes:              .db "bytes"
-NameReadInputByte:      .db "readInputByte"
-NameWriteOutputByte:    .db "writeOutputByte"
+            .include "loop-keywords.asmi"
 CompilerImmutableEnd:
 CompilerCoreEnd:
 
@@ -195,13 +189,13 @@ ProofStart:
             SBC  HL,DE
             JP   NZ,ProofFailBadPosition
 
+            LD   A,$5A
+            LD   (NativeRunState),A
             LD   A,40
             LD   HL,ArrayProofSource
             LD   DE,ArrayProofSourceEnd
             CALL CompileSlice
             JP   C,ProofFailCompile
-            LD   A,$5A
-            LD   (NativeRunState),A
             LD   HL,GeneratedBase+10
             CALL NativeEncodeArrayProgramWithinLimit
             JP   NC,ProofFailCapacityAccepted

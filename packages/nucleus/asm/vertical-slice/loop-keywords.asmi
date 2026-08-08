@@ -1,0 +1,20 @@
+; Compact variable-length keyword table followed by parser-only names.
+
+KeywordTable:
+            .db  3,"var",TokenVar
+            .db  2,"as",TokenAs
+            .db  2,"u8",TokenU8
+            .db  2,"or",TokenOr
+            .db  4,"fail",TokenFail
+            .db  3,"end",TokenEnd
+            .db  3,"sub",TokenSub
+            .db  5,"fails",TokenFails
+            .db  3,"for",TokenFor
+            .db  5,"until",TokenUntil
+KeywordCount            .equ 10
+
+NameMain:               .db "main"
+NameIndex:              .db "index"
+NameBytes:              .db "bytes"
+NameReadInputByte:      .db "readInputByte"
+NameWriteOutputByte:    .db "writeOutputByte"

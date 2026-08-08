@@ -147,12 +147,23 @@ measured basis and arithmetic. Unknown values remain open.
 
 ## Backend decision rule
 
-The front end produces checked semantic operations as it parses. It sends each
-operation immediately to an output sink; it does not retain an abstract syntax
-tree or a complete intermediate program. An NVM sink encodes the operation as
-bytecode. A native sink expands it into a fixed Z80 template or a call to a
-shared helper. Both sinks use the same resolved types, slot assignments, branch
-fixups, source positions, and safety decisions.
+The current Stage 4 front end produces checked semantic operations as it parses
+and retains no abstract syntax tree or parser-specific program record. The
+present proof sink records a bounded semantic transcript: eleven bytes for the
+loop program and fourteen for the array program. The selected backend consumes
+that transcript after parsing succeeds. This is a deliberate narrow-slice
+economy, not the intended final buffering policy. A measured sink that emitted
+native code while the parser was still active required more code and
+simultaneously live state; the rejected experiment is recorded below. The
+separate Stage 3 proof remains frozen as a historical measurement and is not
+linked into the current compiler spine.
+
+An NVM sink encodes the checked transcript as bytecode. A native sink expands
+it into a fixed Z80 template or a call to a shared helper. Both sinks use the
+same resolved types, slot assignments, branch fixups, source positions, and
+safety decisions. Later slices must remeasure direct sink emission when a
+general semantic dispatcher can replace enough fixed encoder code to pay for
+it.
 
 This boundary prevents the backend experiment from creating two languages or
 two semantic analyzers. It also avoids an unnecessary NVM serialization step in
@@ -559,8 +570,94 @@ T-states in the complete direct proof because several inline parser and emitter
 sequences became calls or compact loops. This is an accepted compile-time trade:
 resident compiler bytes are the binding constraint, generated execution is
 unchanged, and every safety and atomicity proof remains green. TECM8's shared
-save paths and CandleMoth's common Boolean return tails provide local precedent
-for the same control-flow style.
+save paths and the repository's existing common Boolean return tails provide
+local precedent for the same control-flow style.
+
+#### Consolidation plateau before the next feature
+
+A second pass replaced the parser's fixed parsed-value record and whole-program
+semantic replay with semantic operations emitted as each construct completes.
+It then measured the repeated structures exposed by the loop and array paths.
+The accepted changes reduce the 2,526-byte direct compiler by another 371 bytes:
+
+| Transformation                                                                              | Core reduction |
+| ------------------------------------------------------------------------------------------- | -------------: |
+| streaming semantic operations; remove ten parsed-value bytes                                |       77 bytes |
+| compact variable-length keyword table                                                       |       93 bytes |
+| shared delimiter and logical-newline tails                                                  |       53 bytes |
+| shared routine-ending and propagation tails; one initializer loop                           |       28 bytes |
+| increment the semantic-operation count in place                                             |        3 bytes |
+| shared emitter lifecycle, current-position patching, placeholders, and initializer emission |       94 bytes |
+| shared generated success and trap ending                                                    |       14 bytes |
+| inline two emitter wrappers with one caller each                                            |        6 bytes |
+| shared simple-punctuation token tail                                                        |        3 bytes |
+| **measured reduction**                                                                      |  **371 bytes** |
+
+Each row is the difference between two complete passing proof builds. At every
+checkpoint the harness measured compiler core, peak workspace, generated
+output, instructions, and T-states. The loop and array outputs remained 54 and
+74 bytes respectively; the final plateau values below replace the intermediate
+measurements as the locked baseline.
+
+An opcode-plus-operand wrapper reaches byte break-even at three callers. The
+current emitter retains wrappers with at least three sites and inlines the two
+one-site cases. Future emitter work repeats this census instead of adding a
+wrapper before its shared tail pays for the call site.
+
+The workspace fell from 90 to 44 bytes. Ten parser-owned value bytes
+disappeared with semantic streaming. The semantic transcript was then bounded
+to its measured fourteen-byte maximum. Emitter scratch overlays source,
+tokenizer, diagnostic, and sink fields whose lifetimes have ended; the six
+token-position bytes required for an emitter diagnostic remain untouched. The
+live sink cursor and count reuse diagnostic fields that an error overwrites
+before returning.
+
+The final direct compiler account is:
+
+| Subsystem                         |     Bytes |
+| --------------------------------- | --------: |
+| source adapter                    |       106 |
+| tokenizer                         |       558 |
+| semantic transcript sink          |        60 |
+| parser                            |       679 |
+| native output sink                |       658 |
+| keyword, name, and immutable data |        94 |
+| **compiler core**                 | **2,155** |
+| peak writable workspace           |        44 |
+
+These boundaries are labels in `array-native-slice-proof.asm`; the proof
+manifest and test lock every extent independently. A later reduction cannot be
+credited to the wrong subsystem or hidden by movement across an account
+boundary.
+
+The complete direct proof now executes 411 more compiler and proof instructions
+than the 2,526-byte baseline, but takes 2,811 fewer T-states. Keyword ordering
+puts the most frequent names first, offsetting the calls introduced by shared
+tails. Generated native code remains 74 bytes and has identical runtime
+behavior.
+
+Two measured alternatives were rejected:
+
+- A fixed-width keyword table containing pointers reduced the then-current core
+  by 70 bytes. The variable-length table reduced it by 93 bytes and avoided IX
+  traffic, so only the smaller representation remains.
+- Sending semantic operations directly into the native sink during parsing
+  raised the then-current direct compiler from 2,178 to 2,327 bytes and raised
+  workspace from 44 to 54 bytes. It reduced the complete array proof to 49,137
+  instructions and 460,626 T-states, but compile speed does not justify 149
+  resident bytes at this stage. The experiment preserved the 74-byte output,
+  exact diagnostics, and atomic publication. Remeasure it after general
+  statements or expressions can replace the fixed encoders with a shared
+  dispatcher.
+
+Two representation candidates remain deliberately deferred. Simple
+punctuation now shares a seven-byte tail; a character-to-token table becomes a
+candidate only when the completed punctuation set makes it smaller than the
+sparse comparisons and two-byte entry stubs. The present backends encode two
+fixed transcripts positionally, so they have no semantic-operation dispatcher
+to optimize. The first general dispatcher must measure a dense ordinal jump
+table against a comparison chain before either representation becomes part of
+the backend.
 
 Completion evidence:
 
@@ -696,9 +793,21 @@ Implementation changes follow a short evidence loop:
 3. implement the smallest complete semantic path;
 4. assemble and measure it;
 5. compare behavior with the host oracle;
-6. update the cost and capacity ledgers; and
-7. classify any proposed change as a correctness repair, a semantics-preserving
-   economy, or a redesign requiring project-owner approval.
+6. inspect any structure that now occurs twice and select a consolidation
+   candidate;
+7. assemble the candidate and retain it only when the complete resident account
+   or another declared binding account improves;
+8. repeat the proof and measurement pass until no remaining structural
+   candidate has credible evidence of a net saving;
+9. update the cost and capacity ledgers; and
+10. classify any proposed change as a correctness repair, a
+    semantics-preserving economy, or a redesign requiring project-owner
+    approval.
+
+The next feature does not begin until the current increment reaches this local
+plateau. Micro-optimizations may remain in the ledger for a later pass, but a
+known duplicated representation, fixed-program scaffold, or avoidable lifetime
+overlap must be measured before the compiler grows around it.
 
 An implementation experiment may remain on a branch or behind a harness. It
 must not alter the published language merely because it is smaller in isolation.

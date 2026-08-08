@@ -20,38 +20,35 @@ TokenStartColumn        .equ CompilerStateBase+$14
 TokenLexemePointer      .equ CompilerStateBase+$16
 TokenLength             .equ CompilerStateBase+$18
 
-ParsedDeclarationInitial .equ CompilerStateBase+$19
-ParsedLoopInitial       .equ CompilerStateBase+$1A
-ParsedLoopBound         .equ CompilerStateBase+$1B
-ParsedOutputByte        .equ CompilerStateBase+$1C
-DiagnosticCode          .equ CompilerStateBase+$1D
-DiagnosticPartId        .equ CompilerStateBase+$1E
-DiagnosticOffset        .equ CompilerStateBase+$1F
-DiagnosticLine          .equ CompilerStateBase+$21
-DiagnosticColumn        .equ CompilerStateBase+$23
+DiagnosticCode          .equ CompilerStateBase+$19
+DiagnosticPartId        .equ CompilerStateBase+$1A
+DiagnosticOffset        .equ CompilerStateBase+$1B
+DiagnosticLine          .equ CompilerStateBase+$1D
+DiagnosticColumn        .equ CompilerStateBase+$1F
 
-SinkCursor              .equ CompilerStateBase+$25
-SinkOperationCount      .equ CompilerStateBase+$27
-GeneratedSize           .equ CompilerStateBase+$28
-EmitCursor              .equ CompilerStateBase+$2A
-EmitCodeStart           .equ CompilerStateBase+$2C
-EmitLoopHead            .equ CompilerStateBase+$2E
-EmitExitFixup           .equ CompilerStateBase+$30
-EmitFailureFixup        .equ CompilerStateBase+$32
-EmitUpdateExitFixup     .equ CompilerStateBase+$34
-EmitPatchAddress        .equ CompilerStateBase+$36
-ParsedProgramKind       .equ CompilerStateBase+$38
-ParsedArrayLength       .equ CompilerStateBase+$39
-ParsedArrayByte0        .equ CompilerStateBase+$3A
-ParsedArrayByte1        .equ CompilerStateBase+$3B
-ParsedArrayByte2        .equ CompilerStateBase+$3C
-ParsedArrayByte3        .equ CompilerStateBase+$3D
-EmitLimit               .equ CompilerStateBase+$3E
-EmitDataFixup           .equ CompilerStateBase+$40
+; A diagnostic ends parsing, so the live semantic sink may reuse the eventual
+; offset and line fields. DiagnosticCode and DiagnosticPartId remain clear on
+; successful compilation; an error overwrites all reused bytes before return.
+SinkCursor              .equ CompilerStateBase+$1B
+SinkOperationCount      .equ CompilerStateBase+$1D
 
-CompilerStateEnd        .equ CompilerStateBase+$42
+; Emission begins only after parsing succeeds. Its scratch words therefore
+; overlay dead source, token, diagnostic, and sink fields. SourcePartId and
+; TokenStartOffset..TokenStartColumn remain intact for an emitter diagnostic.
+GeneratedSize           .equ CompilerStateBase+$01
+EmitCursor              .equ CompilerStateBase+$03
+EmitCodeStart           .equ CompilerStateBase+$05
+EmitLoopHead            .equ CompilerStateBase+$07
+EmitExitFixup           .equ CompilerStateBase+$09
+EmitFailureFixup        .equ CompilerStateBase+$0B
+EmitUpdateExitFixup     .equ CompilerStateBase+$0D
+EmitPatchAddress        .equ CompilerStateBase+$16
+EmitLimit               .equ CompilerStateBase+$18
+EmitDataFixup           .equ CompilerStateBase+$1A
+
+CompilerStateEnd        .equ CompilerStateBase+$1E
 SemanticBufferBase      .equ CompilerStateEnd
-SemanticBufferLimit     .equ SemanticBufferBase+$18
+SemanticBufferLimit     .equ SemanticBufferBase+$0E
 CompilerWorkspaceEnd    .equ SemanticBufferLimit
 
 TokenEof                .equ 0
@@ -120,6 +117,3 @@ SemanticReadInputByte   .equ 8
 SemanticStoreResultU8   .equ 9
 SemanticLoadArrayU8     .equ 10
 SemanticWriteOutputU8   .equ 11
-
-ProgramKindLoop         .equ 1
-ProgramKindArray        .equ 2

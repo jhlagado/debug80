@@ -182,13 +182,13 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
   it("checks the scalar-local and counted-loop source slice", async () => {
     const outcome = await runProofManifest(proof("loop-compiler-slice-proof"));
 
-    expect(outcome.instructions).toBe(39_561);
-    expect(outcome.cycles).toBe(382_047);
+    expect(outcome.instructions).toBe(40_562);
+    expect(outcome.cycles).toBe(384_682);
     expect(outcome.extents).toEqual([
-      { name: "compiler-code", bytes: 1_680 },
-      { name: "compiler-immutable", bytes: 74 },
-      { name: "compiler-core", bytes: 1_754 },
-      { name: "compiler-workspace", bytes: 90 },
+      { name: "compiler-code", bytes: 1_403 },
+      { name: "compiler-immutable", bytes: 94 },
+      { name: "compiler-core", bytes: 1_497 },
+      { name: "compiler-workspace", bytes: 44 },
       { name: "proof-code-and-data", bytes: 241 },
     ]);
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
@@ -204,15 +204,15 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     const validated = validateImage(image);
     const services = new BufferSystemServices();
 
-    expect(outcome.instructions).toBe(44_266);
-    expect(outcome.cycles).toBe(419_779);
+    expect(outcome.instructions).toBe(44_914);
+    expect(outcome.cycles).toBe(420_781);
     expect(outcome.extents).toEqual([
-      { name: "common-front-end", bytes: 1_680 },
+      { name: "common-front-end", bytes: 1_403 },
       { name: "nvm-output-sink", bytes: 801 },
-      { name: "compiler-code", bytes: 2_481 },
-      { name: "compiler-immutable", bytes: 116 },
-      { name: "compiler-core", bytes: 2_597 },
-      { name: "compiler-workspace", bytes: 90 },
+      { name: "compiler-code", bytes: 2_204 },
+      { name: "compiler-immutable", bytes: 136 },
+      { name: "compiler-core", bytes: 2_340 },
+      { name: "compiler-workspace", bytes: 44 },
       { name: "generated-nvm", bytes: 96 },
       { name: "nvm-runtime-code", bytes: 797 },
       { name: "nvm-runtime-immutable", bytes: 96 },
@@ -234,15 +234,15 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
       generatedBase + generatedSize,
     );
 
-    expect(outcome.instructions).toBe(35_974);
-    expect(outcome.cycles).toBe(344_354);
+    expect(outcome.instructions).toBe(36_685);
+    expect(outcome.cycles).toBe(346_115);
     expect(outcome.extents).toEqual([
-      { name: "common-front-end", bytes: 1_680 },
-      { name: "native-output-sink", bytes: 772 },
-      { name: "compiler-code", bytes: 2_452 },
-      { name: "compiler-immutable", bytes: 74 },
-      { name: "compiler-core", bytes: 2_526 },
-      { name: "compiler-workspace", bytes: 90 },
+      { name: "common-front-end", bytes: 1_403 },
+      { name: "native-output-sink", bytes: 658 },
+      { name: "compiler-code", bytes: 2_061 },
+      { name: "compiler-immutable", bytes: 94 },
+      { name: "compiler-core", bytes: 2_155 },
+      { name: "compiler-workspace", bytes: 44 },
       { name: "generated-native", bytes: 54 },
       { name: "native-runtime", bytes: 122 },
       { name: "native-state", bytes: 6 },
@@ -257,15 +257,19 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
   it("executes checked initialized-array selection as direct Z80", async () => {
     const outcome = await runProofManifest(proof("array-native-slice-proof"));
 
-    expect(outcome.instructions).toBe(50_326);
-    expect(outcome.cycles).toBe(478_188);
+    expect(outcome.instructions).toBe(50_737);
+    expect(outcome.cycles).toBe(475_377);
     expect(outcome.extents).toEqual([
-      { name: "common-front-end", bytes: 1_680 },
-      { name: "native-output-sink", bytes: 772 },
-      { name: "compiler-code", bytes: 2_452 },
-      { name: "compiler-immutable", bytes: 74 },
-      { name: "compiler-core", bytes: 2_526 },
-      { name: "compiler-workspace", bytes: 90 },
+      { name: "common-front-end", bytes: 1_403 },
+      { name: "source-adapter", bytes: 106 },
+      { name: "tokenizer", bytes: 558 },
+      { name: "semantic-sink", bytes: 60 },
+      { name: "parser", bytes: 679 },
+      { name: "native-output-sink", bytes: 658 },
+      { name: "compiler-code", bytes: 2_061 },
+      { name: "compiler-immutable", bytes: 94 },
+      { name: "compiler-core", bytes: 2_155 },
+      { name: "compiler-workspace", bytes: 44 },
       { name: "generated-native", bytes: 74 },
       { name: "native-runtime", bytes: 122 },
       { name: "native-state", bytes: 6 },
@@ -285,15 +289,15 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     const validated = validateImage(image);
     const successServices = new BufferSystemServices([1]);
 
-    expect(outcome.instructions).toBe(15_370);
-    expect(outcome.cycles).toBe(146_120);
+    expect(outcome.instructions).toBe(15_502);
+    expect(outcome.cycles).toBe(145_291);
     expect(outcome.extents).toEqual([
-      { name: "common-front-end", bytes: 1_680 },
+      { name: "common-front-end", bytes: 1_403 },
       { name: "nvm-oracle-sink", bytes: 801 },
-      { name: "compiler-code", bytes: 2_481 },
-      { name: "compiler-immutable", bytes: 114 },
-      { name: "compiler-core", bytes: 2_595 },
-      { name: "compiler-workspace", bytes: 90 },
+      { name: "compiler-code", bytes: 2_204 },
+      { name: "compiler-immutable", bytes: 134 },
+      { name: "compiler-core", bytes: 2_338 },
+      { name: "compiler-workspace", bytes: 44 },
       { name: "generated-nvm", bytes: 89 },
       { name: "proof-code-and-data", bytes: 103 },
     ]);

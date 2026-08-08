@@ -209,6 +209,13 @@ ParserExpectOrFailLine:
             JP   ParserExpectLine
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+ParserExpectPropagateLine:
+            CALL ParserExpectOrFailLine
+            RET  C
+            LD   A,SemanticPropagate
+            JP   SemanticSinkOperation
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectEndLine:
             CALL ParserExpectEnd
             RET  C
@@ -216,17 +223,19 @@ ParserExpectEndLine:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserParseLoopProgramAfterSub:
-            LD   A,ProgramKindLoop
-            LD   (ParsedProgramKind),A
             CALL ParserExpectRoutineHeader
             RET  C
 
             CALL ParserExpectIndexDeclaration
             RET  C
+            LD   A,SemanticDeclareU8
+            CALL SemanticSinkOperation
+            RET  C
             LD   D,DiagnosticExpectedNumber
             CALL ParserExpectNumber
             RET  C
-            LD   (ParsedDeclarationInitial),A
+            CALL SemanticSinkPut
+            RET  C
             CALL ParserExpectLine
             RET  C
 
@@ -238,10 +247,14 @@ ParserParseLoopProgramAfterSub:
             RET  C
             CALL ParserExpectEqual
             RET  C
+            LD   A,SemanticForUntilU8
+            CALL SemanticSinkOperation
+            RET  C
             LD   D,DiagnosticExpectedNumber
             CALL ParserExpectNumber
             RET  C
-            LD   (ParsedLoopInitial),A
+            CALL SemanticSinkPut
+            RET  C
             LD   D,DiagnosticExpectedUntil
             LD   E,TokenUntil
             CALL ParserExpect
@@ -249,7 +262,8 @@ ParserParseLoopProgramAfterSub:
             LD   D,DiagnosticExpectedNumber
             CALL ParserExpectNumber
             RET  C
-            LD   (ParsedLoopBound),A
+            CALL SemanticSinkPut
+            RET  C
             CALL ParserExpectLine
             RET  C
 
@@ -257,33 +271,31 @@ ParserParseLoopProgramAfterSub:
             RET  C
             CALL ParserExpectLeft
             RET  C
+            LD   A,SemanticWriteOutputByte
+            CALL SemanticSinkOperation
+            RET  C
             LD   D,DiagnosticExpectedChar
             LD   E,TokenCharacter
             CALL ParserExpect
             RET  C
             LD   A,(TokenValue)
-            LD   (ParsedOutputByte),A
+            CALL SemanticSinkPut
+            RET  C
             CALL ParserExpectRight
             RET  C
-            CALL ParserExpectOrFailLine
+            CALL ParserExpectPropagateLine
             RET  C
 
             CALL ParserExpectEndLine
             RET  C
-            CALL ParserExpectEndLine
+            LD   A,SemanticEndLoop
+            CALL SemanticSinkOperation
             RET  C
-            LD   D,DiagnosticExpectedEof
-            LD   E,TokenEof
-            CALL ParserExpect
-            RET  C
-            OR   A
-            RET
+            JP   ParserFinishRoutine
 
 ; Parse `var bytes as u8[4] = [b0, b1, b2, b3]` after `var`.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserParseArrayProgramAfterVar:
-            LD   A,ProgramKindArray
-            LD   (ParsedProgramKind),A
             CALL ParserExpectBytes
             RET  C
             CALL ParserExpectAs
@@ -291,6 +303,9 @@ ParserParseArrayProgramAfterVar:
             CALL ParserExpectU8
             RET  C
             CALL ParserExpectLeftBracket
+            RET  C
+            LD   A,SemanticStaticU8Array
+            CALL SemanticSinkOperation
             RET  C
             LD   D,DiagnosticExpectedArrayLength
             CALL ParserExpectNumber
@@ -300,27 +315,25 @@ ParserParseArrayProgramAfterVar:
             LD   A,DiagnosticExpectedArrayLength
             JP   CompilerSetDiagnostic
 ParserArrayLengthYes:
-            LD   (ParsedArrayLength),A
+            CALL SemanticSinkPut
+            RET  C
             CALL ParserExpectRightBracket
             RET  C
             CALL ParserExpectEqual
             RET  C
             CALL ParserExpectLeftBracket
             RET  C
-            LD   B,4
-            LD   HL,ParsedArrayByte0
+            LD   C,4
 ParserArrayInitializer:
             LD   D,DiagnosticExpectedNumber
             CALL ParserExpectNumber
             RET  C
-            LD   (HL),A
-            INC  HL
-            DEC  B
+            CALL SemanticSinkPut
+            RET  C
+            DEC  C
             JR   Z,ParserArrayInitializerDone
             PUSH BC
-            PUSH HL
             CALL ParserExpectComma
-            POP  HL
             POP  BC
             RET  C
             JR   ParserArrayInitializer
@@ -345,7 +358,13 @@ ParserArrayInitializerDone:
             RET  C
             CALL ParserExpectRight
             RET  C
-            CALL ParserExpectOrFailLine
+            LD   A,SemanticReadInputByte
+            CALL SemanticSinkOperation
+            RET  C
+            CALL ParserExpectPropagateLine
+            RET  C
+            LD   A,SemanticStoreResultU8
+            CALL SemanticSinkOperation
             RET  C
 
             CALL ParserExpectWrite
@@ -362,9 +381,20 @@ ParserArrayInitializerDone:
             RET  C
             CALL ParserExpectRight
             RET  C
-            CALL ParserExpectOrFailLine
+            LD   A,SemanticLoadArrayU8
+            CALL SemanticSinkOperation
             RET  C
+            LD   A,SemanticWriteOutputU8
+            CALL SemanticSinkOperation
+            RET  C
+            CALL ParserExpectPropagateLine
+            RET  C
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+ParserFinishRoutine:
             CALL ParserExpectEndLine
+            RET  C
+            LD   A,SemanticReturn
+            CALL SemanticSinkOperation
             RET  C
             LD   D,DiagnosticExpectedEof
             LD   E,TokenEof
@@ -395,5 +425,4 @@ CompileSlice:
             CALL SemanticSinkReset
             CALL ParserParseProgram
             RET  C
-            CALL SemanticSinkEmitProgram
-            RET
+            JP   SemanticSinkFinish

@@ -31,89 +31,18 @@ SemanticSinkPutFull:
             LD   A,DiagnosticSinkCapacity
             JP   CompilerSetDiagnostic
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
-SemanticSinkEmitProgram:
-            LD   A,(ParsedProgramKind)
-            CP   ProgramKindArray
-            JP   Z,SemanticSinkEmitArrayProgram
-            LD   A,SemanticDeclareU8
+.routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+SemanticSinkOperation:
             CALL SemanticSinkPut
             RET  C
-            LD   A,(ParsedDeclarationInitial)
-            CALL SemanticSinkPut
-            RET  C
-            LD   A,SemanticForUntilU8
-            CALL SemanticSinkPut
-            RET  C
-            LD   A,(ParsedLoopInitial)
-            CALL SemanticSinkPut
-            RET  C
-            LD   A,(ParsedLoopBound)
-            CALL SemanticSinkPut
-            RET  C
-            LD   A,SemanticWriteOutputByte
-            CALL SemanticSinkPut
-            RET  C
-            LD   A,(ParsedOutputByte)
-            CALL SemanticSinkPut
-            RET  C
-            LD   A,SemanticPropagate
-            CALL SemanticSinkPut
-            RET  C
-            LD   A,SemanticEndLoop
-            CALL SemanticSinkPut
-            RET  C
-            LD   A,SemanticReturn
-            CALL SemanticSinkPut
-            RET  C
-            LD   A,6
-            LD   (SinkOperationCount),A
-            LD   (SemanticBufferBase),A
-            OR   A
+            LD   HL,SinkOperationCount
+            INC  (HL)
+            XOR  A
             RET
 
-SemanticSinkEmitArrayProgram:
-            LD   A,SemanticStaticU8Array
-            CALL SemanticSinkPut
-            RET  C
-            LD   A,(ParsedArrayLength)
-            CALL SemanticSinkPut
-            RET  C
-            LD   A,(ParsedArrayByte0)
-            CALL SemanticSinkPut
-            RET  C
-            LD   A,(ParsedArrayByte1)
-            CALL SemanticSinkPut
-            RET  C
-            LD   A,(ParsedArrayByte2)
-            CALL SemanticSinkPut
-            RET  C
-            LD   A,(ParsedArrayByte3)
-            CALL SemanticSinkPut
-            RET  C
-            LD   A,SemanticReadInputByte
-            CALL SemanticSinkPut
-            RET  C
-            LD   A,SemanticPropagate
-            CALL SemanticSinkPut
-            RET  C
-            LD   A,SemanticStoreResultU8
-            CALL SemanticSinkPut
-            RET  C
-            LD   A,SemanticLoadArrayU8
-            CALL SemanticSinkPut
-            RET  C
-            LD   A,SemanticWriteOutputU8
-            CALL SemanticSinkPut
-            RET  C
-            LD   A,SemanticPropagate
-            CALL SemanticSinkPut
-            RET  C
-            LD   A,SemanticReturn
-            CALL SemanticSinkPut
-            RET  C
-            LD   A,8
-            LD   (SinkOperationCount),A
+.routine out A,carry,zero clobbers sign,parity,halfCarry
+SemanticSinkFinish:
+            LD   A,(SinkOperationCount)
             LD   (SemanticBufferBase),A
             OR   A
             RET

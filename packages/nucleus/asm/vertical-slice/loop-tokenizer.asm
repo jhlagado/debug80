@@ -81,7 +81,7 @@ TokenNameEqualsNo:
             OR   A
             RET
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 TokenScanName:
             LD   B,0
 TokenScanNameLoop:
@@ -96,78 +96,32 @@ TokenScanNameLoop:
 TokenScanNameDone:
             LD   A,B
             LD   (TokenLength),A
-
-            LD   HL,KeywordSub
-            LD   B,3
-            CALL TokenNameEquals
-            JR   C,TokenScanNameSub
-            LD   HL,KeywordFails
-            LD   B,5
-            CALL TokenNameEquals
-            JR   C,TokenScanNameFails
-            LD   HL,KeywordOr
-            LD   B,2
-            CALL TokenNameEquals
-            JR   C,TokenScanNameOr
-            LD   HL,KeywordFail
-            LD   B,4
-            CALL TokenNameEquals
-            JR   C,TokenScanNameFail
-            LD   HL,KeywordEnd
-            LD   B,3
-            CALL TokenNameEquals
-            JR   C,TokenScanNameEnd
-            LD   HL,KeywordVar
-            LD   B,3
-            CALL TokenNameEquals
-            JR   C,TokenScanNameVar
-            LD   HL,KeywordAs
-            LD   B,2
-            CALL TokenNameEquals
-            JR   C,TokenScanNameAs
-            LD   HL,KeywordU8
-            LD   B,2
-            CALL TokenNameEquals
-            JR   C,TokenScanNameU8
-            LD   HL,KeywordFor
-            LD   B,3
-            CALL TokenNameEquals
-            JR   C,TokenScanNameFor
-            LD   HL,KeywordUntil
-            LD   B,5
-            CALL TokenNameEquals
-            JR   C,TokenScanNameUntil
+            LD   HL,KeywordTable
+            LD   C,KeywordCount
+TokenScanKeyword:
+            LD   B,(HL)
+            INC  HL
+            LD   A,(TokenLength)
+            CP   B
+            JR   NZ,TokenScanKeywordSkip
+            LD   DE,(TokenLexemePointer)
+TokenScanKeywordByte:
+            LD   A,(DE)
+            CP   (HL)
+            JR   NZ,TokenScanKeywordSkip
+            INC  DE
+            INC  HL
+            DJNZ TokenScanKeywordByte
+            LD   A,(HL)
+            JP   TokenFinish
+TokenScanKeywordSkip:
+            LD   E,B
+            LD   D,0
+            ADD  HL,DE
+            INC  HL
+            DEC  C
+            JR   NZ,TokenScanKeyword
             LD   A,TokenName
-            JP   TokenFinish
-TokenScanNameSub:
-            LD   A,TokenSub
-            JP   TokenFinish
-TokenScanNameFails:
-            LD   A,TokenFails
-            JP   TokenFinish
-TokenScanNameOr:
-            LD   A,TokenOr
-            JP   TokenFinish
-TokenScanNameFail:
-            LD   A,TokenFail
-            JP   TokenFinish
-TokenScanNameEnd:
-            LD   A,TokenEnd
-            JP   TokenFinish
-TokenScanNameVar:
-            LD   A,TokenVar
-            JP   TokenFinish
-TokenScanNameAs:
-            LD   A,TokenAs
-            JP   TokenFinish
-TokenScanNameU8:
-            LD   A,TokenU8
-            JP   TokenFinish
-TokenScanNameFor:
-            LD   A,TokenFor
-            JP   TokenFinish
-TokenScanNameUntil:
-            LD   A,TokenUntil
             JP   TokenFinish
 
 ; Scan one or more decimal digits and reject a value above 255.
@@ -298,69 +252,50 @@ TokenizerSlash:
             JR   TokenizerNextLoop
 
 TokenizerLeftParen:
-            CALL SourceTake
-            LD   A,(SourceDelimiterDepth)
-            INC  A
-            JP   Z,TokenLexicalFailure
-            LD   (SourceDelimiterDepth),A
-            LD   A,TokenLeftParen
-            JP   TokenFinish
+            LD   C,TokenLeftParen
+            JR   TokenizerLeftDelimiter
 
 TokenizerRightParen:
-            LD   A,(SourceDelimiterDepth)
-            OR   A
-            JP   Z,TokenLexicalFailure
-            DEC  A
-            LD   (SourceDelimiterDepth),A
-            CALL SourceTake
-            LD   A,TokenRightParen
-            JP   TokenFinish
+            LD   C,TokenRightParen
+            JR   TokenizerRightDelimiter
 
 TokenizerEquals:
-            CALL SourceTake
-            LD   A,TokenEquals
-            JP   TokenFinish
+            LD   C,TokenEquals
+            JR   TokenizerSimpleToken
 
 TokenizerLeftBracket:
+            LD   C,TokenLeftBracket
+TokenizerLeftDelimiter:
             CALL SourceTake
             LD   A,(SourceDelimiterDepth)
             INC  A
             JP   Z,TokenLexicalFailure
             LD   (SourceDelimiterDepth),A
-            LD   A,TokenLeftBracket
+            LD   A,C
             JP   TokenFinish
 
 TokenizerRightBracket:
+            LD   C,TokenRightBracket
+TokenizerRightDelimiter:
             LD   A,(SourceDelimiterDepth)
             OR   A
             JP   Z,TokenLexicalFailure
             DEC  A
             LD   (SourceDelimiterDepth),A
             CALL SourceTake
-            LD   A,TokenRightBracket
+            LD   A,C
             JP   TokenFinish
 
 TokenizerComma:
+            LD   C,TokenComma
+TokenizerSimpleToken:
             CALL SourceTake
-            LD   A,TokenComma
+            LD   A,C
             JP   TokenFinish
 
 TokenizerLf:
             CALL SourceTake
-            CALL SourceFinishLine
-            LD   A,(SourceDelimiterDepth)
-            OR   A
-            JP   NZ,TokenizerNextLoop
-            LD   A,(SourceLineHasToken)
-            OR   A
-            JP   Z,TokenizerNextLoop
-            XOR  A
-            LD   (SourceLineHasToken),A
-            LD   A,TokenNewline
-            LD   (TokenKind),A
-            OR   A
-            RET
-
+            JR   TokenizerFinishLine
 TokenizerCrLf:
             CALL SourceTake
             CALL SourcePeek
@@ -368,6 +303,7 @@ TokenizerCrLf:
             CP   10
             JP   NZ,TokenLexicalFailure
             CALL SourceTake
+TokenizerFinishLine:
             CALL SourceFinishLine
             LD   A,(SourceDelimiterDepth)
             OR   A
