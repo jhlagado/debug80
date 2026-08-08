@@ -1,0 +1,72 @@
+; Fixed state for the first Nucleus compiler proof.
+;
+; All addresses are within the compiler-workspace account. The symbols make
+; the peak writable extent directly measurable from the AZM debug map.
+
+CompilerStateBase       .equ CompilerWorkBase
+
+SourcePartId            .equ CompilerStateBase+$00
+SourceCursor            .equ CompilerStateBase+$01
+SourceEnd               .equ CompilerStateBase+$03
+SourceOffset            .equ CompilerStateBase+$05
+SourceLine              .equ CompilerStateBase+$07
+SourceColumn            .equ CompilerStateBase+$09
+SourceLineHasToken       .equ CompilerStateBase+$0B
+SourceDelimiterDepth    .equ CompilerStateBase+$0C
+TokenizerEofPending     .equ CompilerStateBase+$0D
+
+TokenKind               .equ CompilerStateBase+$0E
+TokenValue              .equ CompilerStateBase+$0F
+TokenStartOffset        .equ CompilerStateBase+$10
+TokenStartLine          .equ CompilerStateBase+$12
+TokenStartColumn        .equ CompilerStateBase+$14
+TokenLexemePointer      .equ CompilerStateBase+$16
+TokenLength             .equ CompilerStateBase+$18
+
+ParsedOutputByte        .equ CompilerStateBase+$19
+DiagnosticCode          .equ CompilerStateBase+$1A
+DiagnosticPartId        .equ CompilerStateBase+$1B
+DiagnosticOffset        .equ CompilerStateBase+$1C
+DiagnosticLine          .equ CompilerStateBase+$1E
+DiagnosticColumn        .equ CompilerStateBase+$20
+
+SinkCursor              .equ CompilerStateBase+$22
+SinkOperationCount      .equ CompilerStateBase+$24
+
+CompilerStateEnd        .equ CompilerStateBase+$25
+
+; Token ordinals needed by the fixed Stage-3 program.
+TokenEof                .equ 0
+TokenNewline            .equ 1
+TokenName               .equ 2
+TokenCharacter          .equ 3
+TokenLeftParen          .equ 4
+TokenRightParen         .equ 5
+TokenSub                .equ 6
+TokenFails              .equ 7
+TokenOr                 .equ 8
+TokenFail               .equ 9
+TokenEnd                .equ 10
+
+; First-failure diagnostics. Values are proof-visible and intentionally small.
+DiagnosticNone          .equ 0
+DiagnosticLexical       .equ 1
+DiagnosticExpectedSub   .equ 16
+DiagnosticExpectedMain  .equ 17
+DiagnosticExpectedLeft  .equ 18
+DiagnosticExpectedRight .equ 19
+DiagnosticExpectedFails .equ 20
+DiagnosticExpectedLine  .equ 21
+DiagnosticExpectedWrite .equ 22
+DiagnosticExpectedChar  .equ 23
+DiagnosticExpectedOr    .equ 24
+DiagnosticExpectedFail  .equ 25
+DiagnosticExpectedEnd   .equ 26
+DiagnosticExpectedEof   .equ 27
+DiagnosticSinkCapacity  .equ 32
+
+; Checked semantic-operation stream ordinals.
+SemanticLoadU8          .equ 1
+SemanticWriteOutputByte .equ 2
+SemanticPropagate       .equ 3
+SemanticReturn          .equ 4

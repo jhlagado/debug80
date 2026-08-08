@@ -33,4 +33,24 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
       outcome.regions.reduce((total, region) => total + region.bytes, 0),
     ).toBe(65_536);
   });
+
+  it("compiles the fixed source and rejects a malformed source by position", async () => {
+    const outcome = await runProofManifest(proof("compiler-slice-proof"));
+
+    expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
+    expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
+    expect(outcome.instructions).toBe(9_048);
+    expect(outcome.cycles).toBe(86_788);
+    expect(outcome.extents).toEqual([
+      { name: "compiler-code", bytes: 947 },
+      { name: "compiler-immutable", bytes: 36 },
+      { name: "compiler-core", bytes: 983 },
+      { name: "compiler-workspace", bytes: 37 },
+      { name: "proof-code-and-data", bytes: 191 },
+    ]);
+    expect(outcome.extents[0]?.bytes).toBeLessThan(
+      outcome.extents[2]?.bytes ?? 0,
+    );
+    expect(outcome.extents[2]?.bytes).toBeLessThanOrEqual(16_384);
+  });
 });
