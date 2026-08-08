@@ -1,0 +1,44 @@
+{
+  "name": "vertical-slice-memory-map",
+  "source": "../asm/vertical-slice/memory-map-proof.asm",
+  "memoryProfile": "vertical-slice-memory.json",
+  "execution": {
+    "entry": "ProofStart",
+    "maxInstructions": 16,
+    "maxCycles": 128,
+    "halted": true
+  },
+  "symbols": {
+    "CompilerCoreBase": 0,
+    "CompilerCoreLimit": 16384,
+    "CompilerWorkBase": 16384,
+    "CompilerWorkLimit": 20480,
+    "SourceBase": 20480,
+    "SourceLimit": 22528,
+    "GeneratedBase": 22528,
+    "GeneratedLimit": 26624,
+    "TargetRuntimeBase": 26624,
+    "TargetRuntimeLimit": 30720,
+    "ExecutionBase": 30720,
+    "ExecutionLimit": 34816,
+    "ServiceBase": 34816,
+    "ServiceLimit": 36864,
+    "ProofBase": 36864,
+    "ProofLimit": 38912,
+    "SpareBase": 38912,
+    "SpareLimit": 61440,
+    "StackFloor": 61440,
+    "StackTop": 65280,
+    "HighReservedBase": 65280,
+    "AddressSpaceLimit": 65536
+  },
+  "observations": [{ "at": "ProofStatus", "width": "u8", "equals": 165 }],
+  "extents": [
+    {
+      "name": "proof-code",
+      "from": "ProofStart",
+      "to": "ProofEnd",
+      "maxBytes": 16
+    }
+  ]
+}
