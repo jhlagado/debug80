@@ -2240,7 +2240,7 @@ These omissions leave `while` for condition-controlled iteration and one mechani
 
 The compiler must diagnose a non-Boolean `while` condition, a counter that is not a scalar local of type `u8` or `u16`, assignment to an active counter, reuse of an active counter by a nested loop, an incompatible start or bound, an unavailable or nonconstant step magnitude, a zero step, a missing header `NEWLINE` or closing `end`, and `exit` or `continue` outside a loop.
 
-An implementation may bound loop nesting, retained saved bounds, active branch targets, and fixup state. It must publish each limit and issue a capacity diagnostic before overflow changes a loop's bound, direction, target, or counter update.
+An implementation may bound loop nesting, retained saved bounds, active counter bindings, active branch targets, and fixup state. It must publish each limit and issue a capacity diagnostic before overflow changes a loop's bound, direction, target, or counter update.
 
 ### 12.11 Examples
 
@@ -3162,7 +3162,7 @@ These candidates are not provisional 0.1 syntax. Extensions may prototype them o
 
 Nucleus 0.1 excludes language levels and compiler-selected profiles; modules, imports, namespaces, macros, and textual includes; raw pointers, address arithmetic, memory or port access, inline assembly, arbitrary native calls, and unrestricted casts; enumeration, subrange, set, union, variant, overlaid, generic, heap, resizable, open-array, slice, and dynamic types; aggregate constants, activation-lifetime owned aggregates, general aggregate expressions or constructors, partial or named-field initializers, destructuring, inferred declarations, nested routines, overloads, routine values, callbacks, indirect calls, parameter modes, and multiple results.
 
-It also excludes assignment expressions, chained comparisons, conditional expressions, general expression statements, `call` and `then` keywords, `select`/`case`, pattern matching, repeat/do loops, `for in`, omitted counted-loop operands, labels, goto, labelled exit, exceptions, throw/catch, unwinding, destructors, `finally`, `defer`, resumable traps, and runtime type tags.
+It also excludes assignment expressions, chained comparisons, conditional expressions, general expression statements, `call` and `then` keywords, `select`/`case`, pattern matching, repeat/do loops, `for in`, omitted counted-loop operands, counted-loop counters drawn from program variables or parameters, source assignment to an active counter, nested reuse of an active counter, labels, goto, labelled exit, exceptions, throw/catch, unwinding, destructors, `finally`, `defer`, resumable traps, and runtime type tags.
 
 Implementation alternatives such as stack, virtual-register, or hybrid bytecode; direct native emission; register allocation; and physical calling convention are not source features. The VM specification records the selected VM mechanisms, and project decisions use measurements without creating Nucleus dialects.
 

@@ -501,7 +501,7 @@ For current counter `c`, saved bound `b`, and positive step magnitude `s`, an ad
 | negative `to`    | `c - b < s`    | `c - s`         |
 | negative `until` | `c - b <= s`   | `c - s`         |
 
-The active-iteration invariant makes each subtraction nonnegative, so no wider VM integer is required. A negative next value that continues is automatically within the unsigned counter type. A continuing positive next value also fits for a `u16` counter or a `u8` counter with a `u8` bound. Only a positive `u8` counter with a `u16` bound needs another check: when `s` is at most 255, `c > 255 - s` performs `TRAP loop-range`; when `s` is greater than 255, every continuing path traps. The trap occurs before the store. NVM has no counted-loop opcode or hidden loop state.
+The active-iteration invariant makes each subtraction nonnegative, so no wider VM integer is required. Under a negative step, a continuing next value is automatically within the unsigned counter type: it is at or beyond a nonnegative bound and no greater than the current counter. A continuing positive next value also fits for a `u16` counter or a `u8` counter with a `u8` bound. Only a positive `u8` counter with a `u16` bound needs another check: when `s` is at most 255, `c > 255 - s` performs `TRAP loop-range`; when `s` is greater than 255, every continuing path traps. The trap occurs before the store. NVM has no counted-loop opcode or hidden loop state.
 
 ### 12.5 Failure branch
 
@@ -965,7 +965,7 @@ Every size or timing entry is labeled **Measured**, **Projected**, or **Hypothes
 | canonical-width selection    |           open |                               open |                none |                                     unchanged | reference mapping checked | Implemented model; Z80 open          |
 | address and safety checks    |           open |                               open |        scratch open |                               3–8/instruction | not measured              | Hypothesis                           |
 | counted-loop increment       |           open |                               none |    saved bound slot | subtraction and comparison; optional fit trap | not measured              | Hypothesis                           |
-| aggregate-copy lowering      |           open |                               none |  scratch slots open |                   straight-line or fixed loop | not measured              | Hypothesis                           |
+| aggregate-copy lowering      |           open |                               none |  scratch slots open |                 straight-line or counted loop | not measured              | Hypothesis                           |
 | recoverable failure          |           open |                               open |       carriers open |                           call-local sequence | not measured              | Hypothesis                           |
 | services and traps           |           open |                               open |   adapter dependent |                             2/service or trap | not measured              | Hypothesis                           |
 
@@ -1141,17 +1141,20 @@ STORE16  6, 5
 
 A final odd byte uses `LOAD8` and `STORE8`. The two initial instructions guarantee the complete extents before the first store; the later constant subregions cannot fail when the carriers remain unchanged.
 
-For a larger extent, the compiler may instead emit a fixed-size byte-copy loop. With zero, one, and `objectExtent` loaded in ordinary slots, the body has this shape:
+For a larger extent, the compiler may instead emit a counted byte-copy loop. This example uses slot 4 as the index, slot 5 as the constant one, slot 6 as the extent, slots 7 and 8 as the selected byte addresses, slot 9 as the copied byte, and slot 10 as the loop condition:
 
 ```nvm
+LDI16   0, 4
+LDI16   1, 5
+LDI16   objectExtent, 6
 loop:
-INDEX   3, index, objectExtent, 1, sourceByte
-INDEX   2, index, objectExtent, 1, destinationByte
-LOAD8   sourceByte, value
-STORE8  value, destinationByte
-ADD16   index, one, index
-LT16    index, extent, more
-JNZ     more, loop
+INDEX   3, 4, objectExtent, 1, 7
+INDEX   2, 4, objectExtent, 1, 8
+LOAD8   7, 9
+STORE8  9, 8
+ADD16   4, 5, 4
+LT16    4, 6, 10
+JNZ     10, loop
 ```
 
 `INDEX` remains the address-producing operation; `ADD16` changes only the ordinary `u16` loop counter. The two complete-region checks still precede the first store. A self-copy may be omitted. A direct Z80 backend may implement the same semantic operation with `LDIR` after its equivalent complete-range checks.

@@ -147,8 +147,12 @@ describe("the normative Nucleus 0.1 grammar", () => {
     expect(text).toContain(
       "A nested counted loop cannot reuse the same local as its counter",
     );
+    expect(text).toContain("active counter bindings");
     expect(text).toContain(
       "A scalar local serving as an active counted-loop counter is read-only and cannot be the error destination",
+    );
+    expect(text).toContain(
+      "counted-loop counters drawn from program variables or parameters",
     );
     expect(text).not.toContain(
       "If the body changes the counter, the increment and next test use the changed value",

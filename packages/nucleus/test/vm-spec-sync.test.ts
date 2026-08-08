@@ -71,6 +71,7 @@ describe("NVM specification synchronization", () => {
     expect(specification).toContain(
       "It may instead emit a counted byte-copy loop that walks the common extent with `INDEX` at unit stride",
     );
+    expect(specification).not.toContain("fixed-size byte-copy loop");
     expect(specification).toContain(
       "The counter is a scalar local that source statements cannot change while the loop is active",
     );

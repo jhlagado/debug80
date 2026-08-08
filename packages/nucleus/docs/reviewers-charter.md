@@ -281,7 +281,7 @@ no runtime source type.
 
 NVM 0.1 has no block-copy opcode. Exact-type aggregate assignment first checks
 the complete source and destination extents. The compiler may then use a
-straight-line sequence of checked loads and stores or a fixed-size byte-copy
+straight-line sequence of checked loads and stores or a counted byte-copy
 loop that uses `INDEX` at unit stride. The lowering choice is implementation
 private and should be measured across representative extents. A native Z80
 backend may use `LDIR` while preserving the same prechecks and effects. A later
