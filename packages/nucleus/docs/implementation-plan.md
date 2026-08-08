@@ -101,11 +101,11 @@ compiler core is still linked and measured as one self-contained 16 KiB bank.
 This configuration exposes ordinary Z80 addressing while the implementation
 measures the compiler, target runtime, and workspace independently.
 
-The TEC-1 is the first physical proof target. Its monitor, bank-switching,
-keypad, display, and storage adapters follow the portable compiler and service
-boundaries. A CP/M adapter or another Z80 environment can use the same
-boundaries. Target adapters must not add source syntax or enter the compiler-core
-account unless compilation requires them to be resident.
+Physical proof begins on constrained Z80 hardware. A TEC-1 adapter is an early
+adapter rather than an architectural target; CP/M and other Z80 environments
+use the same compiler and service boundaries. Target adapters must not add
+source syntax or enter the compiler-core account unless compilation requires
+them to be resident.
 
 Before Stage 2 begins, the implementation records a concrete memory map for:
 
@@ -150,16 +150,17 @@ measured basis and arithmetic. Unknown values remain open.
 The current Stage 4 front end produces checked semantic operations as it parses
 and retains no abstract syntax tree or parser-specific program record. The
 present proof sink records a bounded semantic transcript: eleven bytes for the
-loop program and fourteen for the array program. The selected backend consumes
-that transcript after parsing succeeds. This is a deliberate narrow-slice
-economy, not the intended final buffering policy. A measured sink that emitted
+loop program, fourteen for the array program, and sixteen for the scalar call
+program. The selected backend consumes that transcript after parsing succeeds.
+This is a deliberate narrow-slice economy, not the intended final buffering
+policy. A measured sink that emitted
 native code while the parser was still active required more code and
 simultaneously live state; the rejected experiment is recorded below. The
 separate Stage 3 proof remains frozen as a historical measurement and is not
 linked into the current compiler spine.
 
-An NVM sink encodes the checked transcript as bytecode. A native sink expands
-it into a fixed Z80 template or a call to a shared helper. Both sinks use the
+An NVM sink encodes the checked transcript as bytecode. A native sink emits Z80
+instructions, fixed fragments, and calls to shared helpers. Both sinks use the
 same resolved types, slot assignments, branch fixups, source positions, and
 safety decisions. Later slices must remeasure direct sink emission when a
 general semantic dispatcher can replace enough fixed encoder code to pay for
@@ -220,9 +221,10 @@ not establish which complete system is smaller.
 
 ## Current readiness baseline
 
-The repository is not yet at Stage 2. The present evidence establishes the
-machine definition and several representative paths, but it does not yet satisfy
-the complete vector obligations in the VM specification.
+Stages 2 and 3 are executable, and Stage 4 now includes counted-loop, checked
+array, and scalar-recursion increments. These remain narrow proofs rather than
+a complete compiler. The repository does not yet satisfy the complete vector
+obligations in the VM specification.
 
 | Area                | Current evidence                                                                                                                       | Work before Z80 translation                                                                                                                                 |
 | ------------------- | -------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -650,14 +652,80 @@ Two measured alternatives were rejected:
   statements or expressions can replace the fixed encoders with a shared
   dispatcher.
 
-Two representation candidates remain deliberately deferred. Simple
+One representation candidate remains deliberately deferred. Simple
 punctuation now shares a seven-byte tail; a character-to-token table becomes a
 candidate only when the completed punctuation set makes it smaller than the
-sparse comparisons and two-byte entry stubs. The present backends encode two
-fixed transcripts positionally, so they have no semantic-operation dispatcher
-to optimize. The first general dispatcher must measure a dense ordinal jump
-table against a comparison chain before either representation becomes part of
-the backend.
+sparse comparisons and two-byte entry stubs. The loop and array encoders remain
+positional. They should move to the general dispatcher only when replacing the
+fixed encoders produces a measured net reduction.
+
+#### Third Stage 4 increment: scalar calls and bounded recursion
+
+The third increment adds one retained forward signature, one scalar parameter
+and result, an abbreviated forward completion, direct call fixups, and bounded
+recursion:
+
+```nucleus
+forward sub descend(value as u8) as u8
+
+sub main() fails
+    var result as u8 = descend(3)
+    writeOutputByte(result) or fail
+end
+
+sub descend
+    if value = 0
+        return value
+    end
+    return descend(value - 1)
+end
+```
+
+The native program writes byte zero. Four active `descend` calls fit; a proof
+with a depth limit of three performs `activation-capacity` before the fourth
+activation begins. Both outcomes restore the packed activation arena to empty.
+The parser retains the forward and parameter names as source pointer-and-length
+pairs, checks the call and abbreviated body by exact identity, and rejects a
+mismatched completion at its source position.
+
+The direct backend now walks a variable-width semantic transcript through a
+dense ordinal dispatcher. An isolated AZM census measured the eight-operation
+jump-table selector at 37 bytes and an equivalent comparison chain at 42 bytes,
+so the table is retained. Forward declarations and entry markers do not enter
+the transcript because they emit no target operation. Removing those two
+no-ops and sharing repeated parser and emitter tails reduced the first working
+compiler from 3,135 to 3,068 bytes. The packed one-byte activation slice derives
+its arena position from its depth counter; this reduced the native runtime from
+216 to 196 bytes and writable native state from 18 to 17 bytes while retaining
+an independent arena-capacity guard.
+
+| Account                    |                        Direct-Z80 path |                   Host-only NVM oracle |
+| -------------------------- | -------------------------------------: | -------------------------------------: |
+| common front-end code      |                            1,905 bytes |                            1,905 bytes |
+| backend sink code          |                            1,030 bytes |                              139 bytes |
+| compiler immutable data    |                              133 bytes |                              133 bytes |
+| complete compiler core     |                            3,068 bytes |                            2,177 bytes |
+| peak compiler workspace    |                               54 bytes |                               54 bytes |
+| generated program or image |                               99 bytes |                              102 bytes |
+| native runtime code        |                              196 bytes |                         not applicable |
+| native writable state      |                               17 bytes |                         not applicable |
+| complete proof execution   | 63,849 instructions / 595,934 T-states | 22,389 instructions / 211,290 T-states |
+
+The 913-byte direct compiler increase over the preceding 2,155-byte plateau is
+not a projection for arbitrary calls. It includes three keywords, exact
+forward and parameter retention, the new routine grammar path, scalar result
+flow, recursive native code generation, the first general semantic dispatcher,
+activation diagnostics, and all retained names and error paths. The
+call-specific parser path occupies 363 bytes and the call backend 341 bytes;
+their enclosing front end and sink accounts also contain the earlier loop and
+array machinery.
+
+The NVM path is deliberately a host oracle, not a production sink comparison.
+Its 139-byte encoder copies and patches a fixed 102-byte image, which the host
+validator and reference VM execute independently. Both runs write zero and
+perform `activation-capacity` at depth three. The NVM trap record identifies
+routine ordinal one and code offset 46; the native proof separately checks its
+trap number, empty output, and restored arena.
 
 Completion evidence:
 
@@ -777,8 +845,8 @@ requirement are both known.
 | branch fixups and active loops            |                  open | open                      | capacity diagnostic                            | open                     |
 | structured-initializer depth and elements |                  open | open                      | capacity diagnostic                            | open                     |
 | emitted image bytes                       | 65,535 format maximum | open                      | capacity diagnostic below or at format maximum | format rule; target open |
-| activation bytes                          |                  open | packed records            | `activation-capacity`                          | open                     |
-| activation depth                          |                  open | counter plus packed arena | `activation-capacity`                          | open                     |
+| activation bytes                          |                  open | packed records            | `activation-capacity`                          | one-byte Stage 4 slice   |
+| activation depth                          |                  open | counter plus packed arena | `activation-capacity`                          | depth-three trap proof   |
 | service stream and bulk-storage extents   |                  open | target adapter            | service error or documented host capacity      | open                     |
 
 No implementation may wrap, truncate, drop state, or change source meaning when

@@ -197,6 +197,23 @@ NativeEmitCompareImmediate:
             JP   NativeEmitOpcodeByte
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeEmitLoadScalar:
+            LD   HL,NativeScalarSlot
+            LD   A,$3A
+            JP   NativeEmitOpcodeWord
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeEmitRestoreAfterCall:
+            LD   A,$F5
+            CALL NativeEmitByte
+            RET  C
+            LD   HL,NativeActivationPop
+            CALL NativeEmitCall
+            RET  C
+            LD   A,$F1
+            JP   NativeEmitByte
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 NativeEmitSuccessReturn:
             LD   A,NativeRunSucceeded
             JR   NativeEmitRunEnding
@@ -256,6 +273,11 @@ NativeEmitRelativePlaceholder:
             POP  DE
             RET
 
+.routine out A,carry,zero,DE clobbers sign,parity,halfCarry,B,HL
+NativeEmitJrCPlaceholder:
+            LD   A,$38
+            JP   NativeEmitRelativePlaceholder
+
 .routine in DE,HL out A,carry,zero clobbers sign,parity,halfCarry,DE,HL
 NativePatchWord:
             LD   A,L
@@ -281,6 +303,209 @@ NativeFinishProgram:
             LD   (GeneratedSize),HL
             OR   A
             RET
+
+; Read one operand from the checked semantic transcript. The operation count
+; bounds dispatch; individual handlers know the fixed width of their operands.
+NativeCallBackendStart:
+.routine out A,carry,zero clobbers sign,parity,halfCarry,HL
+NativeNextSemanticByte:
+            LD   HL,(SemanticReadCursor)
+            LD   A,(HL)
+            INC  HL
+            LD   (SemanticReadCursor),HL
+            OR   A
+            RET
+
+; Dense ordinal dispatcher for the first non-positional backend. A pushed
+; continuation turns the Z80's JP (HL) into a compact indirect call.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
+NativeDispatchCallOperations:
+            LD   HL,SemanticBufferBase+1
+            LD   (SemanticReadCursor),HL
+            LD   A,(SemanticBufferBase)
+            LD   (SemanticRemaining),A
+NativeDispatchCallNext:
+            LD   A,(SemanticRemaining)
+            OR   A
+            RET  Z
+            DEC  A
+            LD   (SemanticRemaining),A
+            CALL NativeNextSemanticByte
+            SUB  SemanticCallLiteralU8
+            CP   NativeCallOperationCount
+            JR   NC,NativeDispatchCallInvalid
+            ADD  A,A
+            LD   E,A
+            LD   D,0
+            LD   HL,NativeCallOperationTable
+            ADD  HL,DE
+            LD   E,(HL)
+            INC  HL
+            LD   D,(HL)
+            EX   DE,HL
+            LD   DE,NativeDispatchCallReturn
+            PUSH DE
+            JP   (HL)
+NativeDispatchCallReturn:
+            RET  C
+            JR   NativeDispatchCallNext
+NativeDispatchCallInvalid:
+            LD   A,DiagnosticSinkCapacity
+            JP   CompilerSetDiagnostic
+
+NativeCallOperationTable:
+            .dw NativeCallLiteral
+            .dw NativeCallWriteLocal
+            .dw NativeCallBeginForward
+            .dw NativeCallIfParameterZero
+            .dw NativeCallReturnParameter
+            .dw NativeCallEndIf
+            .dw NativeCallReturnSelfMinus
+            .dw NativeCallEndRoutine
+NativeCallOperationCount .equ 8
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
+NativeCallLiteral:
+            CALL NativeNextSemanticByte
+            CALL NativeNextSemanticByte
+            CALL NativeEmitLoadAImmediate
+            RET  C
+            LD   HL,NativeActivationPush
+            CALL NativeEmitCall
+            RET  C
+            CALL NativeEmitJrCPlaceholder
+            RET  C
+            LD   (EmitExitFixup),DE
+            LD   A,$CD
+            CALL NativeEmitByte
+            RET  C
+            LD   HL,(EmitCursor)
+            LD   (EmitRoutineCallFixup),HL
+            LD   HL,0
+            CALL NativeEmitWord
+            RET  C
+            CALL NativeEmitRestoreAfterCall
+            RET  C
+            LD   DE,(EmitExitFixup)
+            CALL NativePatchHere
+            RET  C
+            CALL NativeEmitJrCPlaceholder
+            RET  C
+            LD   (EmitUpdateExitFixup),DE
+            OR   A
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeCallWriteLocal:
+            LD   HL,NativeWriteOutputByte
+            CALL NativeEmitCall
+            RET  C
+            CALL NativeEmitJrCPlaceholder
+            RET  C
+            LD   (EmitFailureFixup),DE
+            OR   A
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeCallBeginForward:
+            CALL NativeNextSemanticByte
+            LD   HL,(EmitCursor)
+            LD   (EmitRoutineAddress),HL
+            LD   DE,(EmitRoutineCallFixup)
+            CALL NativePatchWord
+            OR   A
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeCallIfParameterZero:
+            CALL NativeNextSemanticByte
+            CALL NativeEmitLoadScalar
+            RET  C
+            LD   A,$B7
+            CALL NativeEmitByte
+            RET  C
+            LD   A,$20
+            CALL NativeEmitRelativePlaceholder
+            RET  C
+            LD   (EmitIfFixup),DE
+            OR   A
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeCallReturnParameter:
+            CALL NativeEmitLoadScalar
+            RET  C
+            LD   A,$C9
+            JP   NativeEmitByte
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
+NativeCallEndIf:
+            LD   DE,(EmitIfFixup)
+            JP   NativePatchHere
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+NativeCallReturnSelfMinus:
+            CALL NativeNextSemanticByte
+            CALL NativeNextSemanticByte
+            LD   C,A
+            PUSH BC
+            CALL NativeEmitLoadScalar
+            POP  BC
+            RET  C
+            LD   A,$D6
+            CALL NativeEmitOpcodeByte
+            RET  C
+            LD   HL,NativeActivationPush
+            CALL NativeEmitCall
+            RET  C
+            LD   A,$D8
+            CALL NativeEmitByte
+            RET  C
+            LD   HL,(EmitRoutineAddress)
+            CALL NativeEmitCall
+            RET  C
+            CALL NativeEmitRestoreAfterCall
+            RET  C
+            LD   A,$C9
+            JP   NativeEmitByte
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
+NativeCallEndRoutine:
+            LD   HL,(EmitRoutineAddress)
+            LD   A,H
+            OR   L
+            RET  NZ
+            CALL NativeEmitSuccessReturn
+            RET  C
+            LD   DE,(EmitUpdateExitFixup)
+            CALL NativePatchHere
+            RET  C
+            LD   HL,0
+            CALL NativeEmitLoadHl
+            RET  C
+            CALL NativeEmitTrapEnding
+            RET  C
+            LD   DE,(EmitFailureFixup)
+            CALL NativePatchHere
+            RET  C
+            LD   HL,0
+            CALL NativeEmitLoadHl
+            RET  C
+            CALL NativeEmitUnhandledTrapPrefix
+            RET  C
+            JP   NativeEmitTrapEnding
+
+; Compile the routine slice from its variable-width semantic stream.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+NativeEncodeCallProgram:
+            LD   HL,GeneratedLimit
+            CALL NativeBeginProgram
+            LD   HL,0
+            LD   (EmitRoutineAddress),HL
+            CALL NativeDispatchCallOperations
+            RET  C
+            JP   NativeFinishProgram
+NativeCallBackendEnd:
 
 ; Default entry and proof-only bounded entry for the checked-array program.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY

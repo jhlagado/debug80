@@ -1,0 +1,38 @@
+{
+  "name": "semantic-operation-dispatcher-census",
+  "source": "../asm/vertical-slice/dispatcher-measurement.asm",
+  "memoryProfile": "vertical-slice-memory.json",
+  "execution": {
+    "entry": "ProofStart",
+    "maxInstructions": 20,
+    "maxCycles": 200,
+    "halted": true
+  },
+  "observations": [{ "at": "ProofStatus", "width": "u8", "equals": 165 }],
+  "extents": [
+    {
+      "name": "table-dispatch-selection",
+      "from": "TableDispatchStart",
+      "to": "TableDispatchEnd",
+      "maxBytes": 256
+    },
+    {
+      "name": "comparison-chain-selection",
+      "from": "ChainDispatchStart",
+      "to": "ChainDispatchEnd",
+      "maxBytes": 256
+    },
+    {
+      "name": "compiler-core",
+      "from": "CompilerCodeStart",
+      "to": "CompilerCoreEnd",
+      "maxBytes": 16384
+    },
+    {
+      "name": "proof-code-and-data",
+      "from": "ProofStart",
+      "to": "ProofEnd",
+      "maxBytes": 256
+    }
+  ]
+}

@@ -1,18 +1,17 @@
 {
-  "name": "scalar-local-counted-loop-native-z80",
-  "source": "../asm/vertical-slice/loop-native-slice-proof.asm",
+  "name": "forward-recursive-scalar-call-native-z80",
+  "source": "../asm/vertical-slice/call-native-slice-proof.asm",
   "memoryProfile": "vertical-slice-memory.json",
-  "interfaces": ["../asm/vertical-slice/loop-generated-native.asmi"],
+  "interfaces": ["../asm/vertical-slice/call-generated-native.asmi"],
   "execution": {
     "entry": "ProofStart",
-    "maxInstructions": 50000,
-    "maxCycles": 600000,
+    "maxInstructions": 250000,
+    "maxCycles": 2500000,
     "halted": true
   },
   "observations": [
     { "at": "ProofStatus", "width": "u8", "equals": 165 },
-    { "at": "ProofCase", "width": "u8", "equals": 0 },
-    { "at": "ServiceOutputLength", "width": "u8", "equals": 0 }
+    { "at": "ProofCase", "width": "u8", "equals": 0 }
   ],
   "extents": [
     {
@@ -22,10 +21,46 @@
       "maxBytes": 16384
     },
     {
+      "name": "source-adapter",
+      "from": "SourceAdapterCodeStart",
+      "to": "SourceAdapterCodeEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "tokenizer",
+      "from": "TokenizerCodeStart",
+      "to": "TokenizerCodeEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "semantic-sink",
+      "from": "SemanticSinkCodeStart",
+      "to": "SemanticSinkCodeEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "parser",
+      "from": "ParserCodeStart",
+      "to": "ParserCodeEnd",
+      "maxBytes": 8192
+    },
+    {
+      "name": "call-parser-path",
+      "from": "ParserParseCallProgramAfterForward",
+      "to": "ParserParseProgram",
+      "maxBytes": 4096
+    },
+    {
       "name": "native-output-sink",
       "from": "NativeSinkCodeStart",
       "to": "NativeSinkCodeEnd",
-      "maxBytes": 2048
+      "maxBytes": 8192
+    },
+    {
+      "name": "native-call-backend",
+      "from": "NativeCallBackendStart",
+      "to": "NativeCallBackendEnd",
+      "maxBytes": 4096
     },
     {
       "name": "compiler-code",
@@ -54,7 +89,7 @@
     {
       "name": "generated-native",
       "from": "GeneratedBase",
-      "to": "GeneratedNativeEnd",
+      "to": "GeneratedCallEnd",
       "maxBytes": 4096
     },
     {
@@ -79,7 +114,7 @@
       "name": "proof-code-and-data",
       "from": "ProofStart",
       "to": "ProofEnd",
-      "maxBytes": 2048
+      "maxBytes": 4096
     }
   ]
 }

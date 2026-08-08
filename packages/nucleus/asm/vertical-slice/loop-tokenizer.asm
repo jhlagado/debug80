@@ -226,6 +226,8 @@ TokenizerNextLoop:
             JR   Z,TokenizerRightBracket
             CP   ","
             JP   Z,TokenizerComma
+            CP   "-"
+            JP   Z,TokenizerMinus
             CP   "'"
             JP   Z,TokenScanCharacter
             CP   "0"
@@ -288,6 +290,9 @@ TokenizerRightDelimiter:
 
 TokenizerComma:
             LD   C,TokenComma
+            JR   TokenizerSimpleToken
+TokenizerMinus:
+            LD   C,TokenMinus
 TokenizerSimpleToken:
             CALL SourceTake
             LD   A,C

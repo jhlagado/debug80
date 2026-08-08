@@ -48,8 +48,25 @@ EmitDataFixup           .equ CompilerStateBase+$1A
 
 CompilerStateEnd        .equ CompilerStateBase+$1E
 SemanticBufferBase      .equ CompilerStateEnd
-SemanticBufferLimit     .equ SemanticBufferBase+$0E
-CompilerWorkspaceEnd    .equ SemanticBufferLimit
+SemanticBufferLimit     .equ SemanticBufferBase+$10
+
+; One retained forward signature is enough for the first routine-call slice.
+; The source bytes remain stable, so exact names are retained as pointer/length
+; pairs rather than copied into another buffer.
+ForwardNamePointer      .equ SemanticBufferLimit+$00
+ForwardNameLength       .equ SemanticBufferLimit+$02
+ForwardParameterPointer .equ SemanticBufferLimit+$03
+ForwardParameterLength  .equ SemanticBufferLimit+$05
+ForwardOrdinal          .equ SemanticBufferLimit+$06
+ForwardCompleted        .equ SemanticBufferLimit+$07
+CompilerWorkspaceEnd    .equ SemanticBufferLimit+$08
+
+; Emission follows successful parsing and may overlay the retained forward.
+SemanticReadCursor      .equ ForwardNamePointer
+SemanticRemaining       .equ ForwardNameLength
+EmitRoutineAddress      .equ ForwardParameterPointer
+EmitRoutineCallFixup    .equ ForwardParameterLength
+EmitIfFixup             .equ ForwardOrdinal
 
 TokenEof                .equ 0
 TokenNewline            .equ 1
@@ -72,6 +89,10 @@ TokenUntil              .equ 17
 TokenLeftBracket        .equ 18
 TokenRightBracket       .equ 19
 TokenComma              .equ 20
+TokenForward            .equ 21
+TokenReturn             .equ 22
+TokenIf                 .equ 23
+TokenMinus              .equ 24
 
 DiagnosticNone          .equ 0
 DiagnosticLexical       .equ 1
@@ -105,6 +126,15 @@ DiagnosticExpectedLeftBracket .equ 42
 DiagnosticExpectedRightBracket .equ 43
 DiagnosticExpectedComma .equ 44
 DiagnosticExpectedRead  .equ 45
+DiagnosticExpectedForward .equ 46
+DiagnosticExpectedReturn .equ 47
+DiagnosticExpectedIf    .equ 48
+DiagnosticExpectedMinus .equ 49
+DiagnosticExpectedDescend .equ 50
+DiagnosticExpectedValue .equ 51
+DiagnosticExpectedResult .equ 52
+DiagnosticForwardMismatch .equ 53
+DiagnosticForwardIncomplete .equ 54
 
 SemanticDeclareU8       .equ 1
 SemanticForUntilU8      .equ 2
@@ -117,3 +147,11 @@ SemanticReadInputByte   .equ 8
 SemanticStoreResultU8   .equ 9
 SemanticLoadArrayU8     .equ 10
 SemanticWriteOutputU8   .equ 11
+SemanticCallLiteralU8   .equ 12
+SemanticWriteLocalU8    .equ 13
+SemanticBeginForwardU8  .equ 14
+SemanticIfParameterZero .equ 15
+SemanticReturnParameter .equ 16
+SemanticEndIf           .equ 17
+SemanticReturnSelfMinus .equ 18
+SemanticEndRoutine      .equ 19

@@ -1,0 +1,3 @@
+extern GeneratedBase
+clobbers A,B,C,D,E,HL,carry,zero,sign,parity,halfCarry
+end

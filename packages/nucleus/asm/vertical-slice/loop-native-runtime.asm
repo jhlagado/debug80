@@ -9,6 +9,10 @@ NativeReset:
             LD   (ServiceCallCount),A
             LD   (ServiceOutputLength),A
             LD   (ServiceInputCursor),A
+            LD   (NativeActivationDepth),A
+            LD   (NativeScalarSlot),A
+            LD   A,NativeActivationCapacity
+            LD   (NativeActivationLimit),A
             LD   HL,0
             LD   (NativeTrapOffset),HL
             LD   HL,ServiceOutputBase
@@ -20,6 +24,56 @@ NativeResetOutput:
             LD   A,NativeRunReady
             LD   (NativeRunState),A
             OR   A
+            RET
+
+; Begin one scalar activation atomically. A is the copied u8 argument. The
+; packed arena stores exactly the overwritten byte; Z80 CALL/RET carries the
+; native return address separately. Carry reports activation-capacity with
+; trap number 5 and leaves depth, arena, and the active scalar unchanged.
+.routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,C,HL
+NativeActivationPush:
+            LD   B,A
+            LD   A,(NativeActivationDepth)
+            LD   C,A
+            LD   A,(NativeActivationLimit)
+            CP   C
+            JR   Z,NativeActivationFull
+            LD   A,C
+            CP   NativeActivationCapacity
+            JR   NC,NativeActivationFull
+            LD   A,(NativeScalarSlot)
+            PUSH BC
+            LD   B,0
+            LD   HL,NativeActivationArena
+            ADD  HL,BC
+            POP  BC
+            LD   (HL),A
+            INC  C
+            LD   A,C
+            LD   (NativeActivationDepth),A
+            LD   A,B
+            LD   (NativeScalarSlot),A
+            XOR  A
+            RET
+NativeActivationFull:
+            LD   A,5
+            SCF
+            RET
+
+; Pop one successful scalar activation. The result is preserved by the
+; generated caller while this helper restores its previous scalar byte.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,HL
+NativeActivationPop:
+            LD   A,(NativeActivationDepth)
+            DEC  A
+            LD   (NativeActivationDepth),A
+            LD   C,A
+            LD   B,0
+            LD   HL,NativeActivationArena
+            ADD  HL,BC
+            LD   A,(HL)
+            LD   (NativeScalarSlot),A
+            XOR  A
             RET
 
 ; Carry returns endOfInput, a configured input failure, or success in A.

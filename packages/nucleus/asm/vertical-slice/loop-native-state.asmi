@@ -6,7 +6,12 @@ NativeTrapNumber        .equ NativeStateBase+$01
 NativeTrapRoutine       .equ NativeStateBase+$02
 NativeTrapOffset        .equ NativeStateBase+$03
 NativeTrapError         .equ NativeStateBase+$05
-NativeStateEnd          .equ NativeStateBase+$06
+NativeActivationDepth   .equ NativeStateBase+$06
+NativeActivationLimit   .equ NativeStateBase+$07
+NativeScalarSlot        .equ NativeStateBase+$08
+NativeActivationArena   .equ NativeStateBase+$09
+NativeActivationCapacity .equ 8
+NativeStateEnd          .equ NativeActivationArena+NativeActivationCapacity
 
 NativeRunReady          .equ 1
 NativeRunSucceeded      .equ 2
@@ -33,3 +38,6 @@ NativeArrayInputFailureOffset .equ 0
 NativeArrayBoundsOffset .equ 10
 NativeArrayOutputFailureOffset .equ 22
 GeneratedArrayEnd       .equ GeneratedBase+NativeArrayProgramSize
+
+NativeCallProgramSize   .equ 99
+GeneratedCallEnd        .equ GeneratedBase+NativeCallProgramSize
