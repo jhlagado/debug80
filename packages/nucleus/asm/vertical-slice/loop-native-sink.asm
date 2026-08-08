@@ -5,10 +5,9 @@ NativeEmitByte:
             LD   B,A
             LD   HL,(EmitCursor)
             LD   DE,(EmitLimit)
-            PUSH HL
             OR   A
             SBC  HL,DE
-            POP  HL
+            ADD  HL,DE
             JR   Z,NativeEmitByteFull
 NativeEmitByteRoom:
             LD   A,B

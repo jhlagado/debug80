@@ -26,6 +26,9 @@ DiagnosticColumn        .equ CompilerStateBase+$1C
 ; A diagnostic ends parsing, so the live semantic sink may reuse the eventual
 ; offset and line fields. DiagnosticCode and DiagnosticPartId remain clear on
 ; successful compilation; an error overwrites all reused bytes before return.
+; The high byte of DiagnosticLine and both bytes of DiagnosticColumn extend
+; past CompilerStateEnd into the dead semantic buffer. The diagnostic is
+; terminal, so no semantic byte remains live.
 SinkCursor              .equ CompilerStateBase+$18
 SinkOperationCount      .equ CompilerStateBase+$1A
 
@@ -38,7 +41,7 @@ EmitCodeStart           .equ CompilerStateBase+$05
 EmitLoopHead            .equ CompilerStateBase+$07
 EmitExitFixup           .equ CompilerStateBase+$09
 EmitFailureFixup        .equ CompilerStateBase+$0B
-EmitUpdateExitFixup     .equ CompilerStateBase+$0D
+EmitUpdateExitFixup     .equ CompilerStateBase+$19
 EmitPatchAddress        .equ CompilerStateBase+$13
 EmitLimit               .equ CompilerStateBase+$15
 EmitDataFixup           .equ CompilerStateBase+$17
@@ -102,7 +105,6 @@ DiagnosticExpectedArrayLength .equ 39
 DiagnosticSinkCapacity  .equ 40
 DiagnosticFixupRange    .equ 41
 DiagnosticExpectedRead  .equ 45
-DiagnosticExpectedDescend .equ 50
 DiagnosticExpectedValue .equ 51
 DiagnosticExpectedResult .equ 52
 DiagnosticForwardMismatch .equ 53

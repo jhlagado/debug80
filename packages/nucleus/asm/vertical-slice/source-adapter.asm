@@ -21,10 +21,9 @@ SourceInitialize:
 SourcePeek:
             LD   HL,(SourceCursor)
             LD   DE,(SourceEnd)
-            PUSH HL
             OR   A
             SBC  HL,DE
-            POP  HL
+            ADD  HL,DE
             JR   NZ,SourcePeekByte
             SCF
             RET

@@ -150,7 +150,7 @@ export function aluEffect(instruction: Z80Instruction): InstructionEffect {
     'target' in instruction &&
     (instruction.target.kind === 'reg16' || instruction.target.kind === 'reg-index16')
   ) {
-    return wideAluEffect(instruction, []);
+    return wideAluEffect(instruction, [], ['halfCarry', 'carry']);
   }
 
   if (
@@ -158,7 +158,7 @@ export function aluEffect(instruction: Z80Instruction): InstructionEffect {
     'target' in instruction &&
     (instruction.target.kind === 'reg16' || instruction.target.kind === 'reg-index16')
   ) {
-    return wideAluEffect(instruction, ['carry']);
+    return wideAluEffect(instruction, ['carry'], FLAG_WRITES);
   }
 
   if (
@@ -166,7 +166,7 @@ export function aluEffect(instruction: Z80Instruction): InstructionEffect {
     'target' in instruction &&
     (instruction.target.kind === 'reg16' || instruction.target.kind === 'reg-index16')
   ) {
-    return wideAluEffect(instruction, ['carry']);
+    return wideAluEffect(instruction, ['carry'], FLAG_WRITES);
   }
 
   if (!('source' in instruction)) return unknownEffect();
@@ -321,6 +321,7 @@ export function accumulatorRotateEffect(
 function wideAluEffect(
   instruction: Extract<Z80Instruction, { mnemonic: 'add' | 'adc' | 'sbc' }>,
   extraReads: RegisterContractsUnit[],
+  flagWrites: RegisterContractsUnit[],
 ): InstructionEffect {
   const targetReads = operandReads(instruction.target);
   const sourceReads = operandReads(instruction.source);
@@ -328,7 +329,7 @@ function wideAluEffect(
   return {
     ...baseEffect(),
     reads: concatUnique(targetReads, sourceReads, extraReads),
-    writes: concatUnique(operandWrites(instruction.target) ?? [], FLAG_WRITES),
+    writes: concatUnique(operandWrites(instruction.target) ?? [], flagWrites),
   };
 }
 

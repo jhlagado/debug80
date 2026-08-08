@@ -38,6 +38,24 @@ describe('Z80 register-contracts effects', () => {
     });
   });
 
+  it('models ADD HL,DE as preserving sign, zero, and parity', () => {
+    expect(effect('add hl,de')).toMatchObject({
+      reads: ['H', 'L', 'D', 'E'],
+      writes: ['H', 'L', 'halfCarry', 'carry'],
+    });
+  });
+
+  it('models ADC and SBC HL,DE as writing the complete public flag set', () => {
+    expect(effect('adc hl,de')).toMatchObject({
+      reads: ['H', 'L', 'D', 'E', 'carry'],
+      writes: ['H', 'L', 'sign', 'zero', 'halfCarry', 'parity', 'carry'],
+    });
+    expect(effect('sbc hl,de')).toMatchObject({
+      reads: ['H', 'L', 'D', 'E', 'carry'],
+      writes: ['H', 'L', 'sign', 'zero', 'halfCarry', 'parity', 'carry'],
+    });
+  });
+
   it('models PUSH DE as reading D,E and pushing two stack bytes', () => {
     expect(effect('push de')).toMatchObject({
       reads: ['D', 'E'],

@@ -434,10 +434,7 @@ ParserFinishRoutine:
             CALL SemanticSinkOperation
             RET  C
             LD   E,TokenEof
-            CALL ParserExpect
-            RET  C
-            OR   A
-            RET
+            JP   ParserExpect
 
 ; Parse the first general routine-call slice. It deliberately admits one
 ; retained forward signature while exercising exact completion and parameter
@@ -608,10 +605,7 @@ ParserParseCallProgramAfterForward:
             OR   A
             JR   Z,ParserForwardIncomplete
             LD   E,TokenEof
-            CALL ParserExpect
-            RET  C
-            OR   A
-            RET
+            JP   ParserExpect
 ParserExpectedZero:
             LD   A,DiagnosticExpectedNumber
             JP   CompilerSetDiagnostic
