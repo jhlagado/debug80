@@ -305,7 +305,8 @@ Bulk input begins at offset zero and can be rewound to zero. Bulk output begins
 with adapter-supplied bytes and a cursor at their end; the conformance harness
 supplies an empty output. A write overwrites below the end, appends at the end,
 and never inserts or truncates. A seek accepts an existing offset or the exact
-end. Every failed service leaves its affected cursor and bytes unchanged.
+end. A seek beyond the end fails with `storageFailure`. Every failed service
+leaves its affected cursor and bytes unchanged.
 
 ### 8.4 Adapter freedom
 
@@ -313,6 +314,16 @@ A target may implement the services through CP/M, a monitor, ports, firmware,
 host callbacks, or tests. The binding must preserve bytes, call order, failure
 points, cursor state, and atomicity. No target address, port, file handle, or
 operating-system name enters Nucleus source semantics.
+
+### 8.5 Runs and reset
+
+Before each new run, the adapter restores every service input, output, and
+cursor to the initial state in Section 8.3. A new run therefore does not inherit
+bytes, cursors, or failures from an earlier run. The external execution
+interface identifies the reset execution as a distinct run.
+
+Resuming or restarting generated code while retaining mutated service state is
+a debugger or target-specific continuation, not a new conforming run.
 
 ## 9. Generated-code integrity
 
