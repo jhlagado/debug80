@@ -14,7 +14,7 @@ interface SourceGrammar {
   readonly productions: readonly SourceProduction[];
 }
 
-export interface FullHybridAnalysis {
+export interface Stage7GrammarAnalysis {
   readonly nullable: readonly string[];
   readonly first: Readonly<Record<string, readonly string[]>>;
   readonly follow: Readonly<Record<string, readonly string[]>>;
@@ -23,9 +23,9 @@ export interface FullHybridAnalysis {
 }
 
 const here = path.dirname(fileURLToPath(import.meta.url));
-const sourcePath = path.join(here, "full-hybrid-grammar.json");
+const sourcePath = path.join(here, "stage7-grammar.json");
 
-export function readFullHybridGrammar(): SourceGrammar {
+export function readStage7Grammar(): SourceGrammar {
   return JSON.parse(readFileSync(sourcePath, "utf8")) as SourceGrammar;
 }
 
@@ -33,9 +33,9 @@ const isAction = (symbol: string) => symbol.startsWith("a:");
 const isExternal = (symbol: string) => symbol.startsWith("x:");
 const externalName = (symbol: string) => symbol.slice(2);
 
-export function analyzeFullHybridGrammar(
-  grammar = readFullHybridGrammar(),
-): FullHybridAnalysis {
+export function analyzeStage7Grammar(
+  grammar = readStage7Grammar(),
+): Stage7GrammarAnalysis {
   const nonterminals = new Set(grammar.productions.map(({ lhs }) => lhs));
   if (!nonterminals.has(grammar.start)) throw new Error("missing start symbol");
   const nullable = new Set<string>();
@@ -66,7 +66,8 @@ export function analyzeFullHybridGrammar(
       return new Set(tokens);
     }
     if (nonterminals.has(symbol)) return first.get(symbol)!;
-    if (!symbol.startsWith("Token")) throw new Error(`unknown symbol ${symbol}`);
+    if (!symbol.startsWith("Token"))
+      throw new Error(`unknown symbol ${symbol}`);
     return new Set([symbol]);
   };
   const firstOfSequence = (rhs: readonly string[]) => {
@@ -88,7 +89,8 @@ export function analyzeFullHybridGrammar(
     for (const production of grammar.productions) {
       const target = first.get(production.lhs)!;
       const before = target.size;
-      for (const token of firstOfSequence(production.rhs).tokens) target.add(token);
+      for (const token of firstOfSequence(production.rhs).tokens)
+        target.add(token);
       if (target.size !== before) changed = true;
     }
   }
@@ -148,9 +150,9 @@ export function analyzeFullHybridGrammar(
   };
 }
 
-export function generateFullHybridTables(): string {
-  const grammar = readFullHybridGrammar();
-  const analysis = analyzeFullHybridGrammar(grammar);
+export function generateStage7Tables(): string {
+  const grammar = readStage7Grammar();
+  const analysis = analyzeStage7Grammar(grammar);
   if (analysis.conflicts.length !== 0)
     throw new Error(`LL(1) conflicts:\n${analysis.conflicts.join("\n")}`);
 
@@ -190,14 +192,15 @@ export function generateFullHybridTables(): string {
   const symbol = (name: string): string => {
     if (name.startsWith("Token")) return name;
     const nonterminal = nonterminals.indexOf(name);
-    if (nonterminal >= 0) return `$${(0x40 + nonterminal).toString(16).padStart(2, "0")}`;
+    if (nonterminal >= 0)
+      return `$${(0x40 + nonterminal).toString(16).padStart(2, "0")}`;
     const action = actions.indexOf(name);
     if (action >= 0) return `$${(0x80 + action).toString(16).padStart(2, "0")}`;
     throw new Error(`unencoded symbol ${name}`);
   };
 
   const lines = [
-    "; Generated from full-hybrid-grammar.json.",
+    "; Generated from stage7-grammar.json.",
     `HybridLL1NonterminalCount .equ ${nonterminals.length}`,
     `HybridLL1ProductionCount  .equ ${grammar.productions.length}`,
     `HybridLL1ProductionSplit  .equ ${productionSplit}`,
@@ -230,11 +233,13 @@ export function generateFullHybridTables(): string {
     lines.push("            .db $FF");
   }
   lines.push("HybridLL1RowsEnd:", "", "HybridLL1ProductionDirectory:");
-  grammar.productions.slice(0, productionSplit).forEach((production, index) =>
-    lines.push(
-      `            .db HybridLL1Production${index}-HybridLL1Productions ; ${production.lhs}`,
-    ),
-  );
+  grammar.productions
+    .slice(0, productionSplit)
+    .forEach((production, index) =>
+      lines.push(
+        `            .db HybridLL1Production${index}-HybridLL1Productions ; ${production.lhs}`,
+      ),
+    );
   lines.push(
     "            .db HybridLL1ProductionsHigh-HybridLL1Productions",
     "HybridLL1ProductionDirectoryHigh:",
@@ -254,19 +259,25 @@ export function generateFullHybridTables(): string {
     if (index === productionSplit) lines.push("HybridLL1ProductionsHigh:");
     const reversed = [...production.rhs].reverse();
     lines.push(`HybridLL1Production${index}: ; ${production.lhs}`);
-    if (reversed.length) lines.push(`            .db ${reversed.map(symbol).join(",")}`);
+    if (reversed.length)
+      lines.push(`            .db ${reversed.map(symbol).join(",")}`);
   });
   lines.push("HybridLL1ProductionsEnd:", "", "HybridLL1ActionDirectory:");
   for (const action of actions) {
     const label = `HybridLL1${action.slice(2)}`;
     lines.push(`            .dw ${label} ; ${action}`);
   }
-  lines.push("HybridLL1ActionDirectoryEnd:", "", "HybridLL1GeneratedTableEnd:", "");
+  lines.push(
+    "HybridLL1ActionDirectoryEnd:",
+    "",
+    "HybridLL1GeneratedTableEnd:",
+    "",
+  );
   return lines.join("\n");
 }
 
-export function generateFullHybridActionStubs(): string {
-  const grammar = readFullHybridGrammar();
+export function generateStage7ProofActions(): string {
+  const grammar = readStage7Grammar();
   const actions = [
     ...new Set(
       grammar.productions.flatMap(({ rhs }) =>
@@ -275,7 +286,7 @@ export function generateFullHybridActionStubs(): string {
     ),
   ];
   return [
-    "; Generated proof-only action aliases from full-hybrid-grammar.json.",
+    "; Generated proof-only action aliases from stage7-grammar.json.",
     ...actions.map((action) => `HybridLL1${action.slice(2)}:`),
     "            RET",
     "",
@@ -283,12 +294,9 @@ export function generateFullHybridActionStubs(): string {
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
+  writeFileSync(path.join(here, "stage7-tables.asmi"), generateStage7Tables());
   writeFileSync(
-    path.join(here, "full-hybrid-tables.asmi"),
-    generateFullHybridTables(),
-  );
-  writeFileSync(
-    path.join(here, "full-hybrid-action-stubs.asmi"),
-    generateFullHybridActionStubs(),
+    path.join(here, "stage7-proof-actions.asmi"),
+    generateStage7ProofActions(),
   );
 }

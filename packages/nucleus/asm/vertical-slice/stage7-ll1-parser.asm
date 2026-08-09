@@ -1,4 +1,4 @@
-; Packed LL(1) interpreter for the complete Stage 7 hybrid experiment.
+; Packed LL(1) interpreter for the complete Stage 7 grammar.
 ; Token ordinals occupy $00..$3F, nonterminals $40..$7F, and explicit
 ; semantic or retained-expression actions $80..$FE. Productions store their
 ; right sides in reverse order so one bounded copy pushes a complete rule.
@@ -69,7 +69,7 @@ HybridLL1Nonterminal:
             PUSH HL
             CALL ParserPeek
             POP  HL
-            RET  C
+            JR   C,HybridLL1PredictionPeekFailure
             LD   C,A
 HybridLL1PredictionNext:
             LD   A,(HL)
@@ -90,6 +90,9 @@ HybridLL1PredictionToken:
 HybridLL1PredictionFailure:
             POP  AF
             JP   CompilerSetDiagnostic
+HybridLL1PredictionPeekFailure:
+            POP  BC
+            RET
 HybridLL1PredictionFound:
             POP  AF
             LD   A,B
@@ -97,7 +100,7 @@ HybridLL1PredictionFound:
             RET  C
             JR   HybridLL1Loop
 
-; A is a production ordinal. The generated body starts with its byte length.
+; A is a production ordinal. Adjacent directory offsets delimit its body.
 .routine in A out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry
 HybridLL1PushProduction:
             CP   HybridLL1ProductionSplit
@@ -178,5 +181,5 @@ HybridLL1CapacityFailure:
             JP   CompilerSetDiagnostic
 
 HybridLL1EngineEnd:
-            .include "../../experiments/ll1-stage7/full-hybrid-tables.asmi"
+            .include "../../grammar/stage7-tables.asmi"
 HybridLL1TablesEnd:

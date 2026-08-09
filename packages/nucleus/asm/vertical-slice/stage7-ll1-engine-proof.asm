@@ -10,6 +10,12 @@
             .org CompilerCoreBase
 .routine out A,BC,carry,zero clobbers sign,parity,halfCarry,D,DE,HL
 ParserPeek:
+            LD   A,(MockPeekFailure)
+            OR   A
+            JR   Z,ParserPeekReady
+            LD   A,DiagnosticExpectedTokenBase
+            JP   CompilerSetDiagnostic
+ParserPeekReady:
             LD   HL,(MockTokenCursor)
             LD   A,(HL)
             OR   A
@@ -57,12 +63,35 @@ ProofStart:
             XOR  A
             LD   (DiagnosticCode),A
             CALL HybridLL1Parse
-            JR   C,ProofFailure
+            JP   C,ProofFailure
             LD   HL,(MockTokenCursor)
             LD   DE,MockTokenStreamEnd
             OR   A
             SBC  HL,DE
-            JR   NZ,ProofFailure
+            JP   NZ,ProofFailure
+
+            ; Prediction must propagate a tokenizer/source failure without
+            ; retaining the row diagnostic on the hardware stack.
+            LD   HL,MockTokenStream
+            LD   (MockTokenCursor),HL
+            LD   A,1
+            LD   (MockPeekFailure),A
+            LD   (ProofExpectedSP),SP
+            CALL HybridLL1Parse
+            JP   NC,ProofFailure
+            CP   DiagnosticExpectedTokenBase
+            JP   NZ,ProofFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticExpectedTokenBase
+            JP   NZ,ProofFailure
+            LD   HL,0
+            ADD  HL,SP
+            LD   DE,(ProofExpectedSP)
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailure
+            XOR  A
+            LD   (MockPeekFailure),A
 
             ; A four-symbol production exactly fills slots 60..63 without
             ; touching the action workspace immediately above the stack.
@@ -113,8 +142,10 @@ ProofFailure:
             LD   (ProofStatus),A
             HALT
 
-            .include "../../experiments/ll1-stage7/full-hybrid-action-stubs.asmi"
+            .include "../../grammar/stage7-proof-actions.asmi"
 
 ProofStatus:     .db 0
 MockTokenCursor: .dw 0
+MockPeekFailure: .db 0
+ProofExpectedSP: .dw 0
 ProofEnd:

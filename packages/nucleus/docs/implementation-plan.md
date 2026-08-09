@@ -56,6 +56,9 @@ explicitly reopens them:
 - the compiler builds no abstract syntax tree;
 - declarations precede use, with complete forward routine signatures as the
   sole exception;
+- a packed LL(1) interpreter parses declaration and statement structure, with
+  precedence expressions and bounded semantic decisions retained as explicit
+  external islands;
 - one precedence-driven loop parses binary expressions;
 - the parser completes a call before classifying `or fail` consumption;
 - all routine-local variables are scalar;
@@ -80,13 +83,13 @@ compiler-managed state with an exact retained referent type, not a source value.
 
 The repository already contains executable foundations for the implementation:
 
-| Evidence                            | Present role                                                                                      |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------- |
-| `src/grammar-analysis.ts`           | Checks the collected grammar for recursion, reachability, productivity, and predictive conflicts. |
-| `src/type-metadata.ts`              | Exercises bounded representations for every admitted source type.                                 |
-| `src/runtime-contract.ts`           | Records the machine-readable direct-runtime trap and service assignments.                         |
-| `asm/vertical-slice/*-z80-*.asm`   | Implements and proves the active direct-Z80 compiler slices.                                      |
-| `test/`                             | Checks grammar, type metadata, runtime-contract synchronization, and measured direct-Z80 proofs.  |
+| Evidence                         | Present role                                                                                      |
+| -------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `src/grammar-analysis.ts`        | Checks the collected grammar for recursion, reachability, productivity, and predictive conflicts. |
+| `src/type-metadata.ts`           | Exercises bounded representations for every admitted source type.                                 |
+| `src/runtime-contract.ts`        | Records the machine-readable direct-runtime trap and service assignments.                         |
+| `asm/vertical-slice/*-z80-*.asm` | Implements and proves the active direct-Z80 compiler slices.                                      |
+| `test/`                          | Checks grammar, type metadata, runtime-contract synchronization, and measured direct-Z80 proofs.  |
 
 This host-side evidence is executable design evidence. It does not count toward
 the Z80 compiler or target-runtime budget, and it cannot override either
@@ -131,7 +134,7 @@ Every implementation report keeps these accounts separate:
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
 | Compiler core      | Z80 code plus immutable tables and constants required while compiling.                                                  |
 | Compiler workspace | Peak simultaneously live writable tokenizer, parser, symbol, type, fixup, diagnostic, and emission state.               |
-| Generated output   | Z80 machine code, static data, relocation or fixup records, and any required startup image.                            |
+| Generated output   | Z80 machine code, static data, relocation or fixup records, and any required startup image.                             |
 | Z80 runtime        | Shared checks, arithmetic helpers, service adapters, call machinery, and fixed writable runtime state.                  |
 | Execution storage  | Program data, completion carriers, activation storage, generated code, and service buffers.                             |
 | Execution cost     | Executed Z80 instructions and T-states for named programs and input conditions.                                         |
@@ -175,13 +178,13 @@ baseline and a measured compression pass. This remains a bounded proof
 increment rather than a complete compiler. Its resident size is the current
 plateau from which the next feature must grow.
 
-| Area                 | Current evidence                                                                                                        | Work ahead                                                                                              |
-| -------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Specifications       | The language specification, direct-Z80 contract, reviewer charter, and implementation plan define the active system.    | Review normative changes before implementation depends on them.                                         |
-| Grammar              | The collected grammar is analyzed mechanically and its three predictive conflicts are locked by tests.                  | Preserve the result while adding the source compiler; no new grammar work is planned.                   |
-| Type metadata        | Compact structural metadata and alias-category separation have executable tests.                                        | Measure inline metadata against interned ordinals in Z80 before selecting the first representation.     |
-| Source corpus        | Chapter 21 records expected accepted and rejected behavior.                                                             | Compile each applicable case to Z80 and check its direct output, state, diagnostic, or trap.            |
-| Z80 evidence         | The compiler emits and runs loop, checked-array, recursive-call, and scalar-expression programs with measured accounts. | Generalize one bounded component at a time and reach a measured size plateau before the next increment. |
+| Area           | Current evidence                                                                                                        | Work ahead                                                                                              |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
+| Specifications | The language specification, direct-Z80 contract, reviewer charter, and implementation plan define the active system.    | Review normative changes before implementation depends on them.                                         |
+| Grammar        | The collected grammar is analyzed mechanically and its three predictive conflicts are locked by tests.                  | Preserve the result while adding the source compiler; no new grammar work is planned.                   |
+| Type metadata  | Compact structural metadata and alias-category separation have executable tests.                                        | Measure inline metadata against interned ordinals in Z80 before selecting the first representation.     |
+| Source corpus  | Chapter 21 records expected accepted and rejected behavior.                                                             | Compile each applicable case to Z80 and check its direct output, state, diagnostic, or trap.            |
+| Z80 evidence   | The compiler emits and runs loop, checked-array, recursive-call, and scalar-expression programs with measured accounts. | Generalize one bounded component at a time and reach a measured size plateau before the next increment. |
 
 `vitest run test/proof-harness.test.ts` from `packages/nucleus` is the focused
 assembly-proof gate. The broader Nucleus package suite runs only after that
@@ -599,16 +602,24 @@ constant-expression preparation, and repeated identifier comparisons. One
 proposed initializer shortcut was rejected because it would overwrite a live
 constant result.
 
-The current build measures 12,093 code bytes plus 219 immutable bytes, for a
-12,312-byte compiler core. Workspace remains 1,198 bytes. The common front end
-is 9,084 bytes, including an 8,064-byte parser, and the typed and aggregate Z80
-sink is 2,673 bytes. The generated proof programs occupy 522, 599, 339, and 239
-bytes. The final proof discriminates Boolean results and short-circuited
-aggregate selection inside a scalar call argument; it executes 650,903
-instructions and 6,185,165 T-states and occupies 1,666 proof bytes. The final
-review also restored carry propagation in the shared control-frame field
-helper. The two compression passes remove 428 bytes from the repaired
-correctness baseline. The core retains 4,072 bytes below the 16 KiB gate.
+The final recursive-descent build measures 12,093 code bytes plus 219 immutable
+bytes, for a 12,312-byte compiler core. Workspace is 1,198 bytes. Its parser is
+8,064 bytes. This build remains a differential oracle while the packed LL(1)
+path is established.
+
+The adopted packed LL(1) build measures 11,784 code bytes plus the same 219
+immutable bytes, for a 12,003-byte compiler core. Workspace is 1,276 bytes.
+The 7,755-byte parser consists of 4,968 bytes of retained precedence and
+semantic support, a 229-byte interpreter, 654 bytes of generated tables, and
+1,904 bytes of semantic actions. It therefore removes 309 core bytes and adds
+78 workspace bytes relative to the recursive-descent oracle. The main Stage 7
+proof executes 826,798 instructions and 7,643,527 T-states. A separate
+differential program exercises constants, default and explicit scalar locals,
+`elseif`, `while`, both counted-loop directions, default, named, and signed
+steps, and nearest-loop `exit` and `continue`. Both parsers produce identical
+semantic transcripts, generated images, and final runtime state for their
+shared surface. The LL(1) proof also checks the named-constant route that the
+retired Stage 7 top-level parser cannot serve as an oracle for.
 
 Completion evidence:
 
@@ -663,6 +674,7 @@ requirement are both known.
 | direct routine declarations             |          4 | seven-byte source-backed entries                              | capacity diagnostic                       | rejected fifth routine                                |
 | retained direct parameters              |          8 | four-byte source-backed entries                               | capacity diagnostic                       | rejected ninth total parameter                        |
 | nested compiler call frames             |          4 | nine-byte parser frames                                       | capacity diagnostic                       | rejected fifth nested call                            |
+| LL(1) grammar symbols                   |         64 | byte stack plus thirteen bytes of action state                | parser-capacity diagnostic                | exact-fill and atomic internal-overflow engine proof  |
 | dynamic types, records, and fields      | 8 / 5 / 12 | three-byte type, two-byte record, and five-byte field entries | capacity diagnostic                       | accepted nested layout and metadata exhaustion proofs |
 | complete aggregate type extent          |        255 | retained byte extent; selected Stage 6 layout bound           | capacity diagnostic                       | rejected 256-byte field type                          |
 | retained forward signatures and names   |       open | copied or interned bytes                                      | capacity diagnostic                       | one resident-part pair; general retention open        |

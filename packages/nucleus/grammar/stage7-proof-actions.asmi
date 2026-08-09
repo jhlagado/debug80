@@ -1,4 +1,4 @@
-; Generated proof-only action aliases from full-hybrid-grammar.json.
+; Generated proof-only action aliases from stage7-grammar.json.
 HybridLL1RequireMain:
 HybridLL1RequireBeforeMain:
 HybridLL1RetainDeclarationName:

@@ -61,7 +61,7 @@ HybridLL1StrayClause:
 
 HybridLL1TypeU8:
             LD   A,AggregateTypeIdU8
-            JP   HybridLL1SetCurrentType
+            JR   HybridLL1SetCurrentType
 HybridLL1TypeU16:
             LD   A,AggregateTypeIdU16
             JR   HybridLL1SetCurrentType
@@ -125,6 +125,7 @@ HybridLL1MakeStringType:
             JP   NZ,AggregateProgramDataCapacityFailure
             LD   A,L
             LD   (AggregateCandidateExtent),A
+HybridLL1InternCurrentType:
             CALL AggregateInternType
             RET  C
             JR   HybridLL1SetCurrentType
@@ -166,18 +167,16 @@ HybridLL1ArrayExtentLoop:
             LD   (AggregateCandidateExtent),A
             LD   A,AggregateTypeKindArray
             LD   (AggregateCandidateKind),A
-            CALL AggregateInternType
-            RET  C
-            JP   HybridLL1SetCurrentType
+            JR   HybridLL1InternCurrentType
 
 ; --------------------------------------------------------- scalar constants
 
-HybridLL1RetainDeclarationName:
-            JP   TypedRetainDeclarationName
+HybridLL1RetainDeclarationName .equ TypedRetainDeclarationName
 
 HybridLL1SaveDeclarationType:
             LD   A,(AggregateCurrentTypeId)
             LD   (DeclarationInfo),A
+HybridLL1SaveExpectedType:
             LD   (ExpressionExpectedType),A
             OR   A
             RET
@@ -588,6 +587,10 @@ HybridLL1BeginMainBody:
             LD   (Stage7CurrentResultType),A
             LD   (ControlRoutineKind),A
             CALL ControlReset
+            JP   HybridLL1SetFallsThrough
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry
+HybridLL1SetFallsThrough:
             LD   A,1
             LD   (ControlSequenceFallsThrough),A
             OR   A
@@ -640,6 +643,7 @@ HybridLL1SaveLocalType:
             LD   A,(DeclarationInfo)
             AND  ScalarMetaTypeMask
             CALL TypedEmitLocalDeclare
+HybridLL1SetLocalExpectedType:
             RET  C
             LD   A,(DeclarationInfo)
             AND  ScalarMetaTypeMask
@@ -650,9 +654,7 @@ HybridLL1SaveLocalType:
 HybridLL1BeginLocalInitializer:
             LD   A,(DeclarationInfo)
             AND  ScalarMetaTypeMask
-            LD   (ExpressionExpectedType),A
-            OR   A
-            RET
+            JP   HybridLL1SaveExpectedType
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry
 HybridLL1DefaultLocalInitializer:
@@ -675,13 +677,15 @@ HybridLL1DefaultLocalInitializer:
 
 .routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C,IX,IY
 HybridLL1FinishLocalInitializer:
-            LD   HL,(ExpressionRightValue)
-            LD   A,(ExpressionRightMeta)
-            LD   D,A
             LD   A,(DeclarationInfo)
             AND  ScalarMetaTypeMask
             LD   E,A
-            LD   A,D
+            JP   HybridLL1CheckExpressionAssignable
+
+.routine in E out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C,IX,IY
+HybridLL1CheckExpressionAssignable:
+            LD   HL,(ExpressionRightValue)
+            LD   A,(ExpressionRightMeta)
             JP   TypedCheckAssignable
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
@@ -864,23 +868,25 @@ HybridLL1SaveFlow:
             LD   A,(ControlDepth)
             CP   ControlFrameCapacity
             JP   NC,ControlCapacityFailure
-            LD   E,A
-            LD   D,0
-            LD   HL,HybridLL1FlowStackBase
-            ADD  HL,DE
+            CALL HybridLL1FlowAddress
             LD   A,(ControlSequenceFallsThrough)
             LD   (HL),A
             OR   A
             RET
 
-; The frame has already been popped. Restore its enclosing sequence bit.
-.routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C
-HybridLL1RestoreFlow:
+.routine out A,DE,HL clobbers carry,zero,sign,parity,halfCarry
+HybridLL1FlowAddress:
             LD   A,(ControlDepth)
             LD   E,A
             LD   D,0
             LD   HL,HybridLL1FlowStackBase
             ADD  HL,DE
+            RET
+
+; The frame has already been popped. Restore its enclosing sequence bit.
+.routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C
+HybridLL1RestoreFlow:
+            CALL HybridLL1FlowAddress
             LD   A,(HL)
             LD   (ControlSequenceFallsThrough),A
             OR   A
@@ -892,11 +898,7 @@ HybridLL1CombineFlow:
             LD   B,A
             CALL ControlPopFrame
             RET  C
-            LD   A,(ControlDepth)
-            LD   E,A
-            LD   D,0
-            LD   HL,HybridLL1FlowStackBase
-            ADD  HL,DE
+            CALL HybridLL1FlowAddress
             LD   A,(HL)
             AND  B
             LD   (ControlSequenceFallsThrough),A
@@ -905,10 +907,8 @@ HybridLL1CombineFlow:
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1CheckBooleanResult:
-            LD   HL,(ExpressionRightValue)
-            LD   A,(ExpressionRightMeta)
             LD   E,ScalarTypeBoolean
-            JP   TypedCheckAssignable
+            JP   HybridLL1CheckExpressionAssignable
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1BeginIf:
@@ -935,18 +935,21 @@ HybridLL1BeginIf:
 HybridLL1BeginIfBody:
             CALL HybridLL1CheckBooleanResult
             RET  C
-            CALL ControlTopFrame
-            INC  HL
+            LD   B,ControlFrameLabelA
+            JR   HybridLL1BeginConditionBody
+
+.routine in B out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+HybridLL1BeginConditionBody:
+            CALL ControlTopFrameField
+            RET  C
             LD   C,(HL)
             CALL ControlEmitBranchFalse
+HybridLL1CheckedSetFallsThrough:
             RET  C
-            LD   A,1
-            LD   (ControlSequenceFallsThrough),A
-            OR   A
-            RET
+            JP   HybridLL1SetFallsThrough
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
-HybridLL1BeginElseIf:
+HybridLL1BeginBranchClause:
             CALL StructuredRecordIfClause
             RET  C
             CALL ControlTopFrame
@@ -958,7 +961,11 @@ HybridLL1BeginElseIf:
             CALL ControlTopFrame
             INC  HL
             LD   C,(HL)
-            CALL ControlEmitLabel
+            JP   ControlEmitLabel
+
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+HybridLL1BeginElseIf:
+            CALL HybridLL1BeginBranchClause
             RET  C
             LD   B,ControlFrameLabelA
             CALL ControlAllocateInto
@@ -970,23 +977,8 @@ HybridLL1BeginElseIf:
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1BeginElse:
-            CALL StructuredRecordIfClause
-            RET  C
-            CALL ControlTopFrame
-            LD   DE,ControlFrameExit
-            ADD  HL,DE
-            LD   C,(HL)
-            CALL ControlEmitJump
-            RET  C
-            CALL ControlTopFrame
-            INC  HL
-            LD   C,(HL)
-            CALL ControlEmitLabel
-            RET  C
-            LD   A,1
-            LD   (ControlSequenceFallsThrough),A
-            OR   A
-            RET
+            CALL HybridLL1BeginBranchClause
+            JR   HybridLL1CheckedSetFallsThrough
 
 .routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C
 HybridLL1FinishElse:
@@ -1057,16 +1049,8 @@ HybridLL1BeginWhile:
 HybridLL1BeginWhileBody:
             CALL HybridLL1CheckBooleanResult
             RET  C
-            CALL ControlTopFrame
-            LD   DE,ControlFrameExit
-            ADD  HL,DE
-            LD   C,(HL)
-            CALL ControlEmitBranchFalse
-            RET  C
-            LD   A,1
-            LD   (ControlSequenceFallsThrough),A
-            OR   A
-            RET
+            LD   B,ControlFrameExit
+            JP   HybridLL1BeginConditionBody
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1EndWhile:
@@ -1082,6 +1066,7 @@ HybridLL1EndWhile:
             LD   C,(HL)
             CALL ControlEmitLabel
             RET  C
+HybridLL1PopAndRestoreFlow:
             CALL ControlPopFrame
             RET  C
             JP   HybridLL1RestoreFlow
@@ -1105,23 +1090,9 @@ HybridLL1BeginFor:
             CP   ScalarTypeBoolean
             JP   Z,StructuredCounterFailure
             CALL ControlCheckActiveCounter
-            RET  C
-            LD   A,(DeclarationInfo)
-            AND  ScalarMetaTypeMask
-            LD   (ExpressionExpectedType),A
-            OR   A
-            RET
+            JP   HybridLL1SetLocalExpectedType
 
-.routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C,IX,IY
-HybridLL1CheckForInitial:
-            LD   HL,(ExpressionRightValue)
-            LD   A,(ExpressionRightMeta)
-            LD   D,A
-            LD   A,(DeclarationInfo)
-            AND  ScalarMetaTypeMask
-            LD   E,A
-            LD   A,D
-            JP   TypedCheckAssignable
+HybridLL1CheckForInitial .equ HybridLL1FinishLocalInitializer
 
 HybridLL1ForTo:
             LD   A,1
@@ -1130,7 +1101,7 @@ HybridLL1ForUntil:
             XOR  A
 HybridLL1ForBoundSelected:
             LD   (HybridLL1ForMode),A
-            CALL HybridLL1CheckForInitial
+            CALL HybridLL1FinishLocalInitializer
             RET  C
             LD   A,ScalarTypeU16
             LD   (ExpressionExpectedType),A
@@ -1139,13 +1110,10 @@ HybridLL1ForBoundSelected:
 
 .routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C,IX,IY
 HybridLL1CheckForBound:
-            LD   HL,(ExpressionRightValue)
-            LD   A,(ExpressionRightMeta)
             LD   E,ScalarTypeU16
-            JP   TypedCheckAssignable
+            JP   HybridLL1CheckExpressionAssignable
 
-HybridLL1SaveForStep:
-            JP   HybridLL1CheckForBound
+HybridLL1SaveForStep .equ HybridLL1CheckForBound
 
 HybridLL1DefaultForStep:
             CALL HybridLL1CheckForBound
@@ -1204,11 +1172,7 @@ HybridLL1ForModeReady:
             CALL ControlEmitLabel
             RET  C
             CALL StructuredEmitForTest
-            RET  C
-            LD   A,1
-            LD   (ControlSequenceFallsThrough),A
-            OR   A
-            RET
+            JP   HybridLL1CheckedSetFallsThrough
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1EndFor:
@@ -1229,7 +1193,5 @@ HybridLL1EndFor:
             LD   A,SemanticForCleanup
             CALL SemanticSinkOperation
             RET  C
-            CALL ControlPopFrame
-            RET  C
-            JP   HybridLL1RestoreFlow
+            JP   HybridLL1PopAndRestoreFlow
 HybridLL1ActionsEnd:

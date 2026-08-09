@@ -1,0 +1,223 @@
+; Common end-to-end discriminator for the recursive-descent and packed LL(1)
+; Stage 7 parsers. The including source selects Stage7LL1 before this body.
+
+            .include "memory-map.asmi"
+            .include "loop-compiler-state.asmi"
+            .include "aggregate-call-state.asmi"
+            .include "loop-z80-state.asmi"
+
+            .org CompilerCoreBase
+CompilerCodeStart:
+LegacyCompilerSlices .equ 0
+AggregateCallSlices  .equ 1
+SourceAdapterCodeStart:
+            .include "source-adapter.asm"
+SourceAdapterCodeEnd:
+TokenizerCodeStart:
+            .include "loop-tokenizer.asm"
+TokenizerCodeEnd:
+SemanticSinkCodeStart:
+            .include "loop-semantic-sink.asm"
+SemanticSinkCodeEnd:
+SymbolCodeStart:
+            .include "loop-symbols.asm"
+SymbolCodeEnd:
+ParserCodeStart:
+            .include "loop-parser.asm"
+ParserCodeEnd:
+CompilerCommonCodeEnd:
+SinkCodeStart:
+LegacyEncoders .equ 0
+            .include "loop-z80-sink.asm"
+TypedSinkCodeStart:
+            .include "typed-expression-z80.asm"
+            .include "aggregate-z80.asm"
+TypedSinkCodeEnd:
+SinkCodeEnd:
+CompilerCodeEnd:
+CompilerImmutableStart:
+            .include "loop-keywords.asmi"
+CompilerImmutableEnd:
+CompilerCoreEnd:
+
+            .org SourceBase
+Stage7ParserCoverageSource:
+            .db "var out as u8 = 0",10
+            .db "var finalI as u8 = 0",10
+            .db "var finalJ as u16 = 0",10
+            .db "sub main() fails",10
+            .db "var i as u8",10
+            .db "var j as u16 = 3",10
+            .db "if false",10
+            .db "out = 99",10
+            .db "elseif true",10
+            .db "out = 1",10
+            .db "else",10
+            .db "out = 98",10
+            .db "end",10
+            .db "while out < 3",10
+            .db "out = out + 1",10
+            .db "end",10
+            .db "for i = 0 until 4",10
+            .db "if i = 1",10
+            .db "continue",10
+            .db "end",10
+            .db "if i = 3",10
+            .db "exit",10
+            .db "end",10
+            .db "out = out + i",10
+            .db "end",10
+            .db "for j = 3 to 0 step -1",10
+            .db "out = out + 1",10
+            .db "end",10
+            .db "finalI = i",10
+            .db "finalJ = j",10
+            .db "writeOutputByte(out) or fail",10
+            .db "end",10
+Stage7ParserCoverageSourceEnd:
+
+; The retired recursive-descent Stage 7 integration leaves its top-level
+; route after a constant declaration. Exercise the adopted LL(1) constant
+; and named-step actions independently, then publish the common comparison
+; program last so both parser builds expose identical final state.
+Stage7LL1ConstantSource:
+            .db "const stepSize as u8 = 1",10
+            .db "var out as u8 = 0",10
+            .db "sub main() fails",10
+            .db "var i as u8",10
+            .db "for i = 0 until 2 step stepSize",10
+            .db "out = out + stepSize",10
+            .db "end",10
+            .db "writeOutputByte(out) or fail",10
+            .db "end",10
+Stage7LL1ConstantSourceEnd:
+
+            .org TargetRuntimeBase
+RuntimeCodeStart:
+            .include "loop-z80-runtime.asm"
+RuntimeCodeEnd:
+
+            .org ProofBase
+.routine out carry,zero clobbers sign,parity,halfCarry,A,BC,DE,HL,IX,IY
+ProofStart:
+            LD   SP,StackTop
+            XOR  A
+            LD   (ProofStatus),A
+            LD   (ProofCase),A
+.if Stage7LL1
+            LD   A,160
+            LD   HL,Stage7LL1ConstantSource
+            LD   DE,Stage7LL1ConstantSourceEnd
+            CALL CompileAggregateCallSlice
+            JP   C,ProofConstantCompileFailure
+            CALL EncodeAggregateProgram
+            JP   C,ProofConstantEncodeFailure
+            CALL Reset
+            CALL ProofCallGenerated
+            JP   C,ProofConstantFrameFailure
+            LD   A,(RunState)
+            CP   RunSucceeded
+            JP   NZ,ProofConstantRunFailure
+            LD   A,(ServiceOutputLength)
+            CP   1
+            JP   NZ,ProofConstantOutputFailure
+            LD   A,(ServiceOutputBase)
+            CP   2
+            JP   NZ,ProofConstantOutputFailure
+.endif
+            LD   A,160
+            LD   HL,Stage7ParserCoverageSource
+            LD   DE,Stage7ParserCoverageSourceEnd
+            CALL CompileAggregateCallSlice
+            JR   C,ProofCompileFailure
+            CALL EncodeAggregateProgram
+            JR   C,ProofEncodeFailure
+            LD   HL,(GeneratedSize)
+            LD   (ProofGeneratedSize),HL
+            CALL Reset
+            CALL ProofCallGenerated
+            JR   C,ProofFrameFailure
+            LD   A,(RunState)
+            CP   RunSucceeded
+            JR   NZ,ProofRunFailure
+            LD   A,(ServiceOutputLength)
+            CP   1
+            JR   NZ,ProofOutputFailure
+            LD   A,(ServiceOutputBase)
+            CP   9
+            JR   NZ,ProofOutputFailure
+            LD   A,(GeneratedBase+4)
+            CP   3
+            JR   NZ,ProofOutputFailure
+            LD   A,(GeneratedBase+5)
+            OR   A
+            JR   NZ,ProofOutputFailure
+            LD   A,(GeneratedBase+6)
+            OR   A
+            JR   NZ,ProofOutputFailure
+            LD   A,$A5
+            LD   (ProofStatus),A
+            HALT
+
+ProofCompileFailure:
+            LD   A,1
+            JR   ProofFailed
+ProofEncodeFailure:
+            LD   A,2
+            JR   ProofFailed
+ProofFrameFailure:
+            LD   A,3
+            JR   ProofFailed
+ProofRunFailure:
+            LD   A,4
+            JR   ProofFailed
+ProofOutputFailure:
+            LD   A,5
+            JR   ProofFailed
+ProofConstantCompileFailure:
+            LD   A,6
+            JR   ProofFailed
+ProofConstantEncodeFailure:
+            LD   A,7
+            JR   ProofFailed
+ProofConstantFrameFailure:
+            LD   A,8
+            JR   ProofFailed
+ProofConstantRunFailure:
+            LD   A,9
+            JR   ProofFailed
+ProofConstantOutputFailure:
+            LD   A,10
+ProofFailed:
+            LD   (ProofCase),A
+            HALT
+
+; The generated program must restore both the root hardware stack and IX.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+ProofCallGenerated:
+            LD   HL,0
+            ADD  HL,SP
+            LD   (ProofExpectedSP),HL
+            LD   IX,$A55A
+            CALL GeneratedBase
+            PUSH IX
+            POP  DE
+            LD   HL,$A55A
+            OR   A
+            SBC  HL,DE
+            JR   NZ,ProofCallGeneratedFailure
+            LD   HL,0
+            ADD  HL,SP
+            LD   DE,(ProofExpectedSP)
+            OR   A
+            SBC  HL,DE
+            RET  Z
+ProofCallGeneratedFailure:
+            SCF
+            RET
+
+ProofExpectedSP:   .dw 0
+ProofGeneratedSize: .dw 0
+ProofStatus:        .db 0
+ProofCase:          .db 0
+ProofEnd:

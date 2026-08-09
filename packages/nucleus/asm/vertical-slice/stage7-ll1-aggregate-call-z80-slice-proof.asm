@@ -1,4 +1,4 @@
-; Prove the amended Stage 7 packed-LL(1) candidate against aggregate calls and paths.
+; Prove the Stage 7 packed LL(1) parser against aggregate calls and paths.
 
             .include "memory-map.asmi"
             .include "loop-compiler-state.asmi"

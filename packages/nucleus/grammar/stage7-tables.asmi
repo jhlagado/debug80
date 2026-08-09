@@ -1,4 +1,4 @@
-; Generated from full-hybrid-grammar.json.
+; Generated from stage7-grammar.json.
 HybridLL1NonterminalCount .equ 34
 HybridLL1ProductionCount  .equ 63
 HybridLL1ProductionSplit  .equ 32

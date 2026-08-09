@@ -9,12 +9,14 @@ package does not govern Nucleus.
 
 ## Layout
 
-|         |                                                               |
-| ------- | ------------------------------------------------------------- |
-| `docs/` | specifications, implementation plan, and reviewer's charter   |
-| `asm/`  | direct-Z80 compiler and generated-program experiments in AZM  |
-| `src/`  | grammar analysis, runtime assignments, and metadata models    |
-| `test/` | grammar, contract, measurement, and direct-Z80 proof evidence |
+|            |                                                                      |
+| ---------- | -------------------------------------------------------------------- |
+| `docs/`    | language and runtime authorities, implementation plan, and charter   |
+| `grammar/` | machine-readable Stage 7 grammar, generator, and packed LL(1) tables |
+| `asm/`     | direct-Z80 compiler, runtime, and executable AZM proof fixtures      |
+| `proofs/`  | bounded memory profiles and proof-harness manifests                  |
+| `src/`     | host-side grammar analysis, runtime assignments, and metadata models |
+| `test/`    | grammar, contract, measurement, and direct-Z80 proof gates           |
 
 The current authorities are:
 
@@ -29,11 +31,12 @@ Bottom up. Every claim about Z80 bytes or timing is produced by AZM and the
 Debug80 Z80 runtime from a test in `test/`, or is labelled an estimate in the
 document that makes it.
 
-The grammar analyzer reads the complete grammar from the language
-specification. Machine-readable trap and service assignments are checked
-against the direct-Z80 contract. The type-metadata model covers every Nucleus type, including
-arrays of records and bounded strings, without turning aggregate aliases into
-runtime types.
+The specification grammar analyzer checks the grammar printed in the language
+specification. The packed parser uses the machine-readable Stage 7 grammar in
+`grammar/`; its generated tables are reproducible and conflict-free. Trap and
+service assignments are checked against the direct-Z80 contract. The
+type-metadata model covers every Nucleus type, including arrays of records and
+bounded strings, without turning aggregate aliases into runtime types.
 
 ```bash
 npm run proof -w nucleus

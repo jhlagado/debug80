@@ -1,5 +1,5 @@
 {
-  "name": "stage7-complete-hybrid-ll1-z80",
+  "name": "stage7-packed-ll1-z80",
   "source": "../asm/vertical-slice/stage7-ll1-aggregate-call-z80-slice-proof.asm",
   "memoryProfile": "vertical-slice-memory.json",
   "interfaces": ["../asm/vertical-slice/expression-generated-z80.asmi"],
@@ -18,18 +18,83 @@
     { "at": "ProofBoundsGeneratedSize", "width": "u16", "equals": 239 }
   ],
   "extents": [
-    { "name": "common-front-end", "from": "CompilerCodeStart", "to": "CompilerCommonCodeEnd", "maxBytes": 16384 },
-    { "name": "parser", "from": "ParserCodeStart", "to": "ParserCodeEnd", "maxBytes": 14336 },
-    { "name": "full-hybrid-engine", "from": "HybridLL1Parse", "to": "HybridLL1EngineEnd", "maxBytes": 1024 },
-    { "name": "full-hybrid-tables", "from": "HybridLL1RowDirectory", "to": "HybridLL1TablesEnd", "maxBytes": 4096 },
-    { "name": "full-hybrid-actions", "from": "HybridLL1ConstantExpression", "to": "HybridLL1ActionsEnd", "maxBytes": 4096 },
-    { "name": "typed-aggregate-z80-sink", "from": "TypedSinkCodeStart", "to": "TypedSinkCodeEnd", "maxBytes": 8192 },
-    { "name": "compiler-code", "from": "CompilerCodeStart", "to": "CompilerCodeEnd", "maxBytes": 16384 },
-    { "name": "compiler-immutable", "from": "CompilerImmutableStart", "to": "CompilerImmutableEnd", "maxBytes": 4096 },
-    { "name": "compiler-core", "from": "CompilerCodeStart", "to": "CompilerCoreEnd", "maxBytes": 16384 },
-    { "name": "compiler-workspace", "from": "CompilerStateBase", "to": "HybridLL1WorkspaceEnd", "maxBytes": 4096 },
-    { "name": "static-image", "from": "StaticImageBase", "to": "StaticImageLimit", "maxBytes": 255 },
-    { "name": "z80-runtime", "from": "RuntimeCodeStart", "to": "RuntimeCodeEnd", "maxBytes": 4096 },
-    { "name": "proof-code-and-data", "from": "ProofStart", "to": "ProofEnd", "maxBytes": 4096 }
+    {
+      "name": "common-front-end",
+      "from": "CompilerCodeStart",
+      "to": "CompilerCommonCodeEnd",
+      "maxBytes": 16384
+    },
+    {
+      "name": "parser",
+      "from": "ParserCodeStart",
+      "to": "ParserCodeEnd",
+      "maxBytes": 14336
+    },
+    {
+      "name": "ll1-engine",
+      "from": "HybridLL1Parse",
+      "to": "HybridLL1EngineEnd",
+      "maxBytes": 1024
+    },
+    {
+      "name": "ll1-tables",
+      "from": "HybridLL1RowDirectory",
+      "to": "HybridLL1TablesEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "ll1-actions",
+      "from": "HybridLL1ConstantExpression",
+      "to": "HybridLL1ActionsEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "typed-aggregate-z80-sink",
+      "from": "TypedSinkCodeStart",
+      "to": "TypedSinkCodeEnd",
+      "maxBytes": 8192
+    },
+    {
+      "name": "compiler-code",
+      "from": "CompilerCodeStart",
+      "to": "CompilerCodeEnd",
+      "maxBytes": 16384
+    },
+    {
+      "name": "compiler-immutable",
+      "from": "CompilerImmutableStart",
+      "to": "CompilerImmutableEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "compiler-core",
+      "from": "CompilerCodeStart",
+      "to": "CompilerCoreEnd",
+      "maxBytes": 16384
+    },
+    {
+      "name": "compiler-workspace",
+      "from": "CompilerStateBase",
+      "to": "HybridLL1WorkspaceEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "static-image",
+      "from": "StaticImageBase",
+      "to": "StaticImageLimit",
+      "maxBytes": 255
+    },
+    {
+      "name": "z80-runtime",
+      "from": "RuntimeCodeStart",
+      "to": "RuntimeCodeEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "proof-code-and-data",
+      "from": "ProofStart",
+      "to": "ProofEnd",
+      "maxBytes": 4096
+    }
   ]
 }

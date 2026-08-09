@@ -1,0 +1,16 @@
+{
+  "name": "stage7-packed-ll1-parser-coverage",
+  "source": "../asm/vertical-slice/stage7-ll1-parser-coverage-proof.asm",
+  "memoryProfile": "vertical-slice-memory.json",
+  "interfaces": ["../asm/vertical-slice/expression-generated-z80.asmi"],
+  "execution": {
+    "entry": "ProofStart",
+    "maxInstructions": 1000000,
+    "maxCycles": 10000000,
+    "halted": true
+  },
+  "observations": [
+    { "at": "ProofStatus", "width": "u8", "equals": 165 },
+    { "at": "ProofCase", "width": "u8", "equals": 0 }
+  ]
+}

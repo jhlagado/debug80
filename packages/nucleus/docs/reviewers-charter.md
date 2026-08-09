@@ -233,10 +233,16 @@ general unwinding. Safety traps remain distinct from recoverable errors.
 
 ## Compiler implementation direction
 
-The complete grammar is predictive apart from a small set of documented,
-bounded semantic decisions. A review must rerun the grammar analyzer after a
-grammar change and explain every reported conflict. Backtracking or a general
-parser generator runtime is not part of the first compiler plan.
+The first compiler uses a packed LL(1) interpreter for declaration and
+statement structure. Generated tables contain the prediction rows,
+productions, and semantic-action directory. Precedence expressions,
+type-directed aggregate initializers, and name-led statements remain explicit
+external islands because their decisions depend on retained type and symbol
+information. A review must regenerate the tables and rerun the grammar
+analyzer after a grammar change. Backtracking and abstract syntax trees remain
+outside the first compiler plan. The former recursive-descent parser may remain
+temporarily as a differential test oracle; it is not an active implementation
+path.
 
 The first compiler uses one precedence-driven loop and a compact operator
 table for binary expressions. Comparison's single-use rule and Boolean

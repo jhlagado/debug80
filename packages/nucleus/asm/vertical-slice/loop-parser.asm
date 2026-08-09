@@ -1,6 +1,6 @@
 ; Predictive parser for the counted-loop and checked-array proof programs.
 
-; Only the Stage 7 candidate selects the complete grammar overlay. Nesting the
+; Only the Stage 7 packed parser selects the complete grammar overlay. Nesting the
 ; Stage7LL1 reference keeps every older proof source independent of that flag.
 .if AggregateCallSlices
 .if Stage7LL1
