@@ -308,8 +308,8 @@ language and direct-Z80 runtime contracts:
 - the complete measured size and timing of the compiler and target runtime.
 
 An experiment may change one of these choices only after preserving conformance
-and reporting the relevant resource accounts. It may not restore an NVM path as
-an implementation experiment without an explicit project-owner redesign decision.
+and reporting the relevant resource accounts. Introducing a portable bytecode
+or interpreter requires an explicit project-owner redesign decision.
 
 ## Review duties
 
@@ -382,7 +382,7 @@ Do not present any of the following as a routine correction or size cleanup:
 - general runtime aggregate constructors;
 - arrays of arrays, open arrays, or slices;
 - exception unwinding;
-- restoration of NVM, another portable bytecode, or an interpreter as an active path;
+- a portable bytecode or interpreter as an active path;
 - removal of required diagnostics without explicit approval;
 - conflation of compiler, workspace, target-runtime, and activation budgets;
 - estimates presented as Z80 measurements; or

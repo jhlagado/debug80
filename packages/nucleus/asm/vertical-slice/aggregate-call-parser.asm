@@ -42,6 +42,22 @@ Stage7FindRoutineCurrent:
 Stage7FindRoutineLoop:
             LD   A,B
             CALL Stage7RoutineAddress
+            CALL Stage7CurrentNameMatchesAtHL
+            JR   C,Stage7FindRoutineFound
+            INC  B
+            DEC  C
+            JR   NZ,Stage7FindRoutineLoop
+Stage7FindRoutineMissing:
+            LD   A,$FF
+            OR   A
+            RET
+Stage7FindRoutineFound:
+            LD   A,B
+            CP   A
+            RET
+
+.routine in BC,HL out A,carry,zero clobbers sign,parity,halfCarry,DE
+Stage7CurrentNameMatchesAtHL:
             PUSH BC
             PUSH HL
             LD   E,(HL)
@@ -54,17 +70,6 @@ Stage7FindRoutineLoop:
             CALL TokenNameEquals
             POP  HL
             POP  BC
-            JR   C,Stage7FindRoutineFound
-            INC  B
-            DEC  C
-            JR   NZ,Stage7FindRoutineLoop
-Stage7FindRoutineMissing:
-            LD   A,$FF
-            OR   A
-            RET
-Stage7FindRoutineFound:
-            LD   A,B
-            CP   A
             RET
 
 .routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
@@ -151,18 +156,7 @@ Stage7CheckParameterDuplicate:
 Stage7CheckParameterLoop:
             LD   A,B
             CALL Stage7ParameterAddress
-            PUSH BC
-            PUSH HL
-            LD   E,(HL)
-            INC  HL
-            LD   D,(HL)
-            INC  HL
-            LD   A,(HL)
-            LD   B,A
-            EX   DE,HL
-            CALL TokenNameEquals
-            POP  HL
-            POP  BC
+            CALL Stage7CurrentNameMatchesAtHL
             JP   C,TypedDuplicateNameFailure
             INC  B
             DEC  C
@@ -439,15 +433,8 @@ Stage7RoutineParameterLoop:
             DEC  B
             JR   Stage7RoutineParameterLoop
 Stage7RoutineLocals:
-            CALL ParserPeek
+            CALL TypedParseLocalRun
             RET  C
-            CP   TokenVar
-            JR   NZ,Stage7RoutineStatements
-            CALL ParserTake
-            RET  C
-            CALL TypedParseLocalDeclaration
-            RET  C
-            JR   Stage7RoutineLocals
 Stage7RoutineStatements:
             CALL TypedParseStatements
             RET  C
@@ -510,15 +497,8 @@ Stage7MainLine:
             LD   A,1
             LD   (ControlSequenceFallsThrough),A
 Stage7MainLocals:
-            CALL ParserPeek
+            CALL TypedParseLocalRun
             RET  C
-            CP   TokenVar
-            JR   NZ,Stage7MainStatements
-            CALL ParserTake
-            RET  C
-            CALL TypedParseLocalDeclaration
-            RET  C
-            JR   Stage7MainLocals
 Stage7MainStatements:
             CALL TypedParseStatements
             RET  C

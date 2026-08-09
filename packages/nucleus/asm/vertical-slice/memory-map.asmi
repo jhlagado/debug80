@@ -30,10 +30,10 @@ ProofLimit          .equ $9800
 SpareBase           .equ $9800
 SpareLimit          .equ $F000
 
-; Transactional native emission keeps the prior 4 KiB published image here.
+; Transactional Z80 emission keeps the prior 4 KiB published image here.
 ; Proof-only overflow sources end below this bounded subregion.
-NativeBackupBase    .equ $A000
-NativeBackupLimit   .equ $B000
+BackupBase    .equ $A000
+BackupLimit   .equ $B000
 
 StackFloor          .equ $F000
 StackTop            .equ $FF00

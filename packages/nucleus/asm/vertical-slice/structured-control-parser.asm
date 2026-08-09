@@ -1,5 +1,5 @@
 ; Bounded structured-control parser layered over typed scalar expressions.
-; Parser frames live only during source checking. Native emission reuses their
+; Parser frames live only during source checking. Z80 emission reuses their
 ; workspace after the complete semantic transcript has been published.
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,HL
@@ -242,15 +242,7 @@ StructuredParseIfCondition:
             RET  C
             JR   StructuredParseIfEnd
 StructuredParseElseIf:
-            LD   B,ControlFrameExit
-            CALL ControlTopFrameField
-            LD   C,(HL)
-            CALL ControlEmitJump
-            RET  C
-            CALL ControlTopFrame
-            INC  HL
-            LD   C,(HL)
-            CALL ControlEmitLabel
+            CALL StructuredEmitFrameExitAndLabel
             RET  C
             LD   B,ControlFrameLabelA
             CALL ControlAllocateInto
@@ -259,15 +251,7 @@ StructuredParseElseIf:
             RET  C
             JR   StructuredParseIfCondition
 StructuredParseElse:
-            LD   B,ControlFrameExit
-            CALL ControlTopFrameField
-            LD   C,(HL)
-            CALL ControlEmitJump
-            RET  C
-            CALL ControlTopFrame
-            INC  HL
-            LD   C,(HL)
-            CALL ControlEmitLabel
+            CALL StructuredEmitFrameExitAndLabel
             RET  C
             CALL ParserTake
             RET  C
@@ -307,6 +291,18 @@ StructuredParseIfEnd:
             CALL ControlPopFrame
             POP  AF
             RET
+
+.routine out A,C,DE,HL,carry,zero clobbers sign,parity,halfCarry,B
+StructuredEmitFrameExitAndLabel:
+            LD   B,ControlFrameExit
+            CALL ControlTopFrameField
+            LD   C,(HL)
+            CALL ControlEmitJump
+            RET  C
+            CALL ControlTopFrame
+            INC  HL
+            LD   C,(HL)
+            JP   ControlEmitLabel
 
 .routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B
 StructuredRecordIfClause:

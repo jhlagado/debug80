@@ -112,9 +112,9 @@ EmitBooleanFixupBase    .equ ExpressionStackLimit+$01
 EmitBooleanFixupCapacity .equ 16
 EmitBooleanFixupLimit   .equ EmitBooleanFixupBase+EmitBooleanFixupCapacity*2
 
-; Structured-control parsing and native emission occur in disjoint phases.
+; Structured-control parsing and Z80 emission occur in disjoint phases.
 ; The parser uses bounded ten-byte control frames; after successful parsing the
-; native backend reuses the same region for absolute labels and branch fixups.
+; Z80 backend reuses the same region for absolute labels and branch fixups.
 ControlWorkspaceBase    .equ EmitBooleanFixupLimit
 ControlDepth            .equ ControlWorkspaceBase+$00
 ControlNextLabel        .equ ControlWorkspaceBase+$01
@@ -154,13 +154,13 @@ EmitControlFixupLimit   .equ EmitControlFixupBase+EmitControlFixupSize*EmitContr
 ; Published program metadata must survive source parsing. It therefore cannot
 ; overlay SourceCursor as the earlier non-atomic slices did.
 GeneratedSize           .equ EmitControlFixupLimit
-NativePublishedSize     .equ GeneratedSize+2
-Stage5WorkspaceEnd      .equ NativePublishedSize+2
+PublishedSize     .equ GeneratedSize+2
+Stage5WorkspaceEnd      .equ PublishedSize+2
 
 ; Stage 6 retains aggregate type and layout metadata for the complete
 ; compilation. Type IDs 1..3 are the predefined scalars; IDs 4 and above name
 ; bounded four-byte descriptors. Record field offsets remain live for the
-; later selection stage, while the complete static image survives into native
+; later selection stage, while the complete static image survives into Z80
 ; emission.
 AggregateStateBase      .equ Stage5WorkspaceEnd
 AggregateMode           .equ AggregateStateBase+$00

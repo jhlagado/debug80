@@ -386,10 +386,3 @@ the proof that produced it. Reports separate compiler code, compiler immutable
 data, peak workspace, generated program, target runtime, fixed runtime state,
 activation storage, instruction count, and T-states. A projection states its
 measured basis; an untested expectation is labelled a hypothesis.
-
-### 10.3 Historical NVM material
-
-The retired Nucleus Virtual Machine specification, interpreter, encoders,
-images, and comparison proofs are preserved under `archive/nucleus-nvm/` as
-historical research. They are not active authorities, package tests,
-publication inputs, or requirements on new compiler work.

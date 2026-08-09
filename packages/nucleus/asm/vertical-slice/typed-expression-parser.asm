@@ -1220,7 +1220,7 @@ TypedNotConstantDone:
             RET
 
 ; Boolean short circuit is represented by prefix/suffix operations so the
-; native backend can branch around the right operand. Integer and/or use the
+; Z80 backend can branch around the right operand. Integer and/or use the
 ; ordinary postfix reduction.
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedParseAnd:
@@ -1514,6 +1514,18 @@ TypedParseConstantAfterName:
             LD   A,(DeclarationInfo)
             CALL TypedExpressionBeginConstant
             RET  C
+            CALL TypedRetainConstantExpression
+            RET  C
+            LD   A,(DeclarationInfo)
+            OR   SymbolClassConstant
+            LD   D,A
+            LD   BC,(DeclarationPayload)
+            CALL TypedPrepareCurrentWord
+            RET  C
+            JP   SymbolCommit
+
+.routine in A,HL out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+TypedRetainConstantExpression:
             LD   D,A
             LD   A,(DeclarationInfo)
             LD   E,A
@@ -1524,14 +1536,7 @@ TypedParseConstantAfterName:
             JP   Z,TypedTypeFailure
             LD   (DeclarationPayload),HL
             CALL ParserExpectLine
-            RET  C
-            LD   A,(DeclarationInfo)
-            OR   SymbolClassConstant
-            LD   D,A
-            LD   BC,(DeclarationPayload)
-            CALL TypedPrepareCurrentWord
-            RET  C
-            JP   SymbolCommit
+            RET
 
 ; Current token is the variable name.
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
@@ -1578,16 +1583,7 @@ TypedProgramExplicit:
             CALL TypedExpressionBeginConstant
             RET  C
 TypedProgramHaveExpression:
-            LD   D,A
-            LD   A,(DeclarationInfo)
-            LD   E,A
-            LD   A,D
-            CALL TypedCheckAssignable
-            RET  C
-            AND  ScalarMetaConstant
-            JP   Z,TypedTypeFailure
-            LD   (DeclarationPayload),HL
-            CALL ParserExpectLine
+            CALL TypedRetainConstantExpression
             RET  C
             LD   A,(NextProgramSlot)
             LD   C,A
@@ -1664,7 +1660,7 @@ TypedParseTopLevelConstAfterTake:
             JP   TypedParseTopLevel
 
 ; TokenForward has already been consumed. Nucleus 0.1 permits a bounded
-; retained signature; this first native increment supports one scalar
+; retained signature; this first Z80 increment supports one scalar
 ; parameter and one scalar result, with exact completion after main.
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedParseForwardAfterTake:
@@ -1728,15 +1724,8 @@ TypedParseMainAfterTake:
             XOR  A
             LD   (ControlRoutineKind),A
 TypedParseLocals:
-            CALL ParserPeek
+            CALL TypedParseLocalRun
             RET  C
-            CP   TokenVar
-            JR   NZ,TypedParseMainStatements
-            CALL ParserTake
-            RET  C
-            CALL TypedParseLocalDeclaration
-            RET  C
-            JR   TypedParseLocals
 TypedParseMainStatements:
             CALL TypedParseStatements
             RET  C
@@ -1818,6 +1807,21 @@ TypedLocalHaveExpression:
             LD   (HL),A
             OR   A
             RET
+
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+TypedParseLocalRun:
+            CALL ParserPeek
+            RET  C
+            CP   TokenVar
+            JR   Z,TypedParseLocalRunTake
+            OR   A
+            RET
+TypedParseLocalRunTake:
+            CALL ParserTake
+            RET  C
+            CALL TypedParseLocalDeclaration
+            RET  C
+            JR   TypedParseLocalRun
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedEmitLocalDeclare:
@@ -2119,15 +2123,8 @@ TypedParseForwardCompletion:
             CALL SemanticSinkPut
             RET  C
 TypedParseRoutineLocals:
-            CALL ParserPeek
+            CALL TypedParseLocalRun
             RET  C
-            CP   TokenVar
-            JR   NZ,TypedParseRoutineStatements
-            CALL ParserTake
-            RET  C
-            CALL TypedParseLocalDeclaration
-            RET  C
-            JR   TypedParseRoutineLocals
 TypedParseRoutineStatements:
             CALL TypedParseStatements
             RET  C

@@ -15,8 +15,7 @@ generation is the sole active implementation path. The compiler's checked
 semantic-operation stream remains an internal boundary between analysis and
 emission; it is not a portable bytecode product. Host tests assemble and run the
 generated Z80 directly, then inspect output, state, diagnostics, and traps
-against the source-level expectation. Retired NVM material is preserved under
-`archive/nucleus-nvm/`; it is not an active dependency or test gate.
+against the source-level expectation.
 
 ## Project objective
 
@@ -86,7 +85,7 @@ The repository already contains executable foundations for the implementation:
 | `src/grammar-analysis.ts`           | Checks the collected grammar for recursion, reachability, productivity, and predictive conflicts. |
 | `src/type-metadata.ts`              | Exercises bounded representations for every admitted source type.                                 |
 | `src/runtime-contract.ts`           | Records the machine-readable direct-runtime trap and service assignments.                         |
-| `asm/vertical-slice/*-native-*.asm` | Implements and proves the active direct-Z80 compiler slices.                                      |
+| `asm/vertical-slice/*-z80-*.asm`   | Implements and proves the active direct-Z80 compiler slices.                                      |
 | `test/`                             | Checks grammar, type metadata, runtime-contract synchronization, and measured direct-Z80 proofs.  |
 
 This host-side evidence is executable design evidence. It does not count toward
@@ -113,7 +112,7 @@ Before Stage 2 begins, the implementation records a concrete memory map for:
 - compiler workspace;
 - source and diagnostic adapter state;
 - generated-program staging or bulk-storage output;
-- native runtime helpers and service adapters;
+- Z80 runtime helpers and service adapters;
 - generated Z80 code and program data;
 - activation storage; and
 - service buffers.
@@ -121,7 +120,7 @@ Before Stage 2 begins, the implementation records a concrete memory map for:
 Before Stage 3 begins, a small adapter contract must carry ordered source-part
 events, source bytes, generated output bytes, and diagnostics. The first adapter
 may use host callbacks or bulk-storage fixtures, provided it supplies the
-compiler core through the same bounded event interface that a native target
+compiler core through the same bounded event interface that a Z80 target
 adapter will implement.
 
 ## Measurement accounts
@@ -132,8 +131,8 @@ Every implementation report keeps these accounts separate:
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------- |
 | Compiler core      | Z80 code plus immutable tables and constants required while compiling.                                                  |
 | Compiler workspace | Peak simultaneously live writable tokenizer, parser, symbol, type, fixup, diagnostic, and emission state.               |
-| Generated output   | Native Z80 code, static data, relocation or fixup records, and any required startup image.                              |
-| Native runtime     | Shared Z80 checks, arithmetic helpers, service adapters, call machinery, and fixed writable runtime state.              |
+| Generated output   | Z80 machine code, static data, relocation or fixup records, and any required startup image.                            |
+| Z80 runtime        | Shared checks, arithmetic helpers, service adapters, call machinery, and fixed writable runtime state.                  |
 | Execution storage  | Program data, completion carriers, activation storage, generated code, and service buffers.                             |
 | Execution cost     | Executed Z80 instructions and T-states for named programs and input conditions.                                         |
 | Complete system    | Compiler plus the selected target runtime and one named generated program, with mutually exclusive paths kept separate. |
@@ -144,19 +143,17 @@ measured basis and arithmetic. Unknown values remain open.
 
 ## Backend decision rule
 
-The Stage 3 and Stage 4 comparisons are complete: direct Z80 is the selected
-backend. New vertical slices implement, measure, and optimize that path only.
-No NVM opcode, encoder, validator, interpreter, proof, or publication work
-belongs to the active implementation plan.
+Direct Z80 is the implementation path. New vertical slices implement, measure,
+and optimize that path only.
 
 The front end still produces checked semantic operations as it parses and
 retains no abstract syntax tree or parser-specific program record. The current
-proof sink records a bounded transcript and the native backend consumes it only
+proof sink records a bounded transcript and the Z80 backend consumes it only
 after parsing succeeds. This preserves diagnostic and output atomicity. The
 transcript is an internal compiler representation whose ordinals and layout may
 change whenever a smaller proven representation is found.
 
-An earlier experiment emitted native code while the parser remained active. It
+An earlier experiment emitted Z80 code while the parser remained active. It
 needed more compiler code and more simultaneously live workspace, so the
 post-parse transcript remains the smaller measured arrangement. Later slices
 must remeasure it when a general statement or expression dispatcher can replace
@@ -165,17 +162,7 @@ enough fixed encoder code to pay for another organization.
 Host verification now has two independent layers. AZM checks the compiler and
 generated-program register contracts; Debug80 runs the emitted Z80 and exposes
 its output, state, trap record, and instruction count. A host-side source
-expectation checks those observations directly. Archived NVM results may still
-explain an old measurement, but they are not an oracle that new code must
-reproduce.
-
-## Retired backend comparison
-
-The completed NVM-versus-native experiments selected direct Z80 on compiler
-size, target-runtime size, generated-program size, and execution cost. Their
-full measurements, source, proofs, and contemporary plan text are preserved in
-`archive/nucleus-nvm/`. They are not repeated here because they no longer guide
-active implementation work.
+expectation checks those observations directly.
 
 ## Current readiness baseline
 
@@ -193,7 +180,6 @@ plateau from which the next feature must grow.
 | Specifications       | The language specification, direct-Z80 contract, reviewer charter, and implementation plan define the active system.    | Review normative changes before implementation depends on them.                                         |
 | Grammar              | The collected grammar is analyzed mechanically and its three predictive conflicts are locked by tests.                  | Preserve the result while adding the source compiler; no new grammar work is planned.                   |
 | Type metadata        | Compact structural metadata and alias-category separation have executable tests.                                        | Measure inline metadata against interned ordinals in Z80 before selecting the first representation.     |
-| Retired NVM evidence | The specification, models, Z80 experiments, tests, proofs, and prior plan are preserved under `archive/nucleus-nvm/`.   | No active implementation or publication work remains.                                                   |
 | Source corpus        | Chapter 21 records expected accepted and rejected behavior.                                                             | Compile each applicable case to Z80 and check its direct output, state, diagnostic, or trap.            |
 | Z80 evidence         | The compiler emits and runs loop, checked-array, recursive-call, and scalar-expression programs with measured accounts. | Generalize one bounded component at a time and reach a measured size plateau before the next increment. |
 
@@ -275,8 +261,8 @@ runtime is 358 code bytes. These are narrow-slice accounts, not projections for
 the completed language. Historical proof configurations retain the fixed
 parsers and encoders needed to rerun their original evidence; those fixtures
 are excluded from the production Stage 6 account.
-The detailed path-by-path measurements and every retired NVM comparison are
-preserved in `archive/nucleus-nvm/docs/implementation-plan-at-retirement.md`.
+The detailed path-by-path measurements for the active Z80 implementation are
+recorded below.
 
 Before each new stage, the current increment reaches a measured size plateau,
 passes its direct-Z80 proofs, and receives adversarial review.
@@ -313,8 +299,8 @@ the old fixed array slice no longer reserves that otherwise ordinary name.
 The direct compiler is now 3,883 bytes of code and immutable data with 103 bytes
 of peak workspace. Its measured components are 2,369 bytes for the common front
 end, including a 121-byte symbol module and 1,596-byte parser, and 1,383 bytes
-for the native sink, including a 362-byte expression backend. The generated
-program is 101 bytes. The shared native runtime is 204 bytes of code plus 17
+for the Z80 sink, including a 362-byte expression backend. The generated
+program is 101 bytes. The shared Z80 runtime is 204 bytes of code plus 17
 bytes of writable state.
 
 The first correct form measured 3,900 compiler bytes. Sharing retained emission
@@ -400,7 +386,7 @@ leak. Each repair gained a discriminating proof before compression began.
 The retained compression pass shares conversion parsing, Boolean reduction and
 fault paths, expression-stack address calculation, generated address and trap
 position helpers, and equal-width binary-handler tails. It overlaps identical
-immutable template bytes, removes inert padding from native scalar sequences,
+immutable template bytes, removes inert padding from Z80 scalar sequences,
 and deletes redundant register and flag setup. One conversion refactor exposed
 and repaired several error-carry propagation bugs. A later adversarial pass
 found and repaired an unbalanced named-constant capacity exit before allowing
@@ -409,9 +395,9 @@ discriminating proofs.
 
 The complete pass reduces the compiler by 143 bytes without reducing the proof
 surface: 7,637 code bytes plus 177 immutable bytes, for a 7,814-byte core. The
-common front end is 5,185 bytes. The retained native emission paths occupy 2,452
+common front end is 5,185 bytes. The retained Z80 emission paths occupy 2,452
 bytes, including 1,069 bytes of typed lowering. Workspace remains 505 bytes.
-The accepted generated program is 799 bytes and the shared native runtime is 324
+The accepted generated program is 799 bytes and the shared Z80 runtime is 324
 bytes. The complete proof driver executes 943,921 instructions and 8,796,591
 T-states across its accepted, rejected, capacity, and trap cases. The higher
 proof count comes from stronger correctness cases and shared compiler helpers,
@@ -445,10 +431,10 @@ The third increment integrates typed expressions with `if`, `elseif`, `else`,
 `while`, immutable-local counted `for`, nearest-loop `exit` and `continue`, and
 one complete forward-declared scalar value routine. Boolean, `u8`, and `u16`
 parameters and results use the same canonical scalar carriers as ordinary
-expressions. Native routine frames preserve scalar parameters and locals across
+expressions. Z80 routine frames preserve scalar parameters and locals across
 recursion. Every success and trap path restores the root stack pointer and IX.
 
-The structured parser retains at most eight ten-byte control frames. Native
+The structured parser retains at most eight ten-byte control frames. Z80
 emission reuses that storage for 31 dynamic labels, with ordinal 31 reserved for
 the retained routine, and 32 three-byte absolute fixups. A label allocation
 that would collide with the routine label fails during parsing. The counted
@@ -463,7 +449,7 @@ Routine terminators require `end`, so an outer `else` or `elseif` cannot close a
 routine. The retained forward name, its parameter, `main`, and scalar
 declarations share the required ordinary-namespace collision checks.
 
-Native output publication is transactional. The encoder copies the previous
+Z80 output publication is transactional. The encoder copies the previous
 published image to a dedicated 4 KiB backup region before writing
 `GeneratedBase`. Every retained encoder restores the complete prior image and
 size after a failed emission; successful fixup completion publishes the new
@@ -478,7 +464,7 @@ completion tail. It also groups the four transactional encoder wrappers around
 one result-and-rollback tail. Those changes remove 50 bytes. The current
 plateau is 10,547 code bytes plus 224 immutable bytes, for a 10,771-byte core.
 The common front end is 6,987 bytes, including a 6,099-byte parser; retained
-native emission is 3,560 bytes, including 2,115 bytes for typed and structured
+Z80 emission is 3,560 bytes, including 2,115 bytes for typed and structured
 lowering. Workspace remains 704 bytes. The structured proof executes 296,855
 instructions and 2,906,759 T-states across its accepted, trap, namespace,
 capacity, and publication cases.
@@ -500,9 +486,9 @@ Completion evidence:
 
 - emitted layouts match the language layout rules byte for byte in generated
   Z80 data;
-- zero and explicit initializers produce the required native data images;
+- zero and explicit initializers produce the required static-data images;
 - incorrect counts, nesting, types, and string lengths produce diagnostics;
-- native startup exposes no partially applied data image; and
+- Z80 startup exposes no partially applied data image; and
 - type-metadata and initializer workspace limits are measured.
 
 The first correctness-complete build uses eight dynamic type descriptors, five
@@ -530,8 +516,8 @@ parser paths; interns structural type descriptors; and stops rewriting string
 padding that the zeroed image already supplies. Fresh production assembly now
 measures 9,652 code bytes plus 211 immutable bytes, for a 9,863-byte compiler
 core. The common front end is 7,171 bytes, including a 6,151-byte parser. The
-retained typed and aggregate native sink is 2,163 bytes. Workspace is 1,085
-bytes and the selected native runtime is 358 bytes.
+retained typed and aggregate Z80 sink is 2,163 bytes. Workspace is 1,085
+bytes and the selected Z80 runtime is 358 bytes.
 
 The compression pass removes 2,608 core bytes and 36 workspace bytes from the
 correctness baseline. It also leaves the Stage 6 compiler 908 bytes smaller
@@ -587,7 +573,7 @@ that verifies the source position and restored root frame.
 Fresh assembly after those repairs measures 12,521 code bytes plus 219 immutable
 bytes, for a 12,740-byte compiler core. Workspace is 1,198 bytes. The common
 front end is 9,272 bytes, including an 8,252-byte parser. The typed and aggregate
-native sink occupies 2,931 bytes, and the selected runtime is 419 bytes. The
+Z80 sink occupies 2,931 bytes, and the selected runtime is 419 bytes. The
 four generated proof programs remain 523, 600, 341, and 239 bytes. The expanded
 Stage 7 proof executes 597,738 instructions and 5,674,804 T-states and occupies
 1,666 proof bytes. These figures describe the repaired correctness baseline;
@@ -595,25 +581,34 @@ the second correctness review cleared it for size work without another
 production repair.
 
 The measured compression pass removes 216 compiler-core bytes. It shares the
-native publication header, indexed-local emitter, control-frame field lookup,
+Z80 publication header, indexed-local emitter, control-frame field lookup,
 control-label allocation and store, and constant binary preparation. Constant
 multiplication consumes the values prepared by that shared path. Four trailing
 generated `NOP` bytes and one no-effect compiler instruction are also gone. A
-final census aliases eight byte-identical or contained native templates and
+final census aliases eight byte-identical or contained Z80 templates and
 inlines four single-caller reset and allocation wrappers. The OR/AND fold merge
 no longer pays after the shared constant path, and spilling counted-loop
 registers would trade a small remaining code saving for more workspace and a
 new liveness obligation, so neither experiment is retained.
 
-Fresh assembly after compression measures 12,305 code bytes plus 219 immutable
-bytes, for a 12,524-byte compiler core. Workspace remains 1,198 bytes. The
-common front end is 9,159 bytes, including an 8,139-byte parser, and the typed
-and aggregate native sink is 2,828 bytes. The generated proof programs now
-occupy 522, 599, 339, and 239 bytes. The final proof discriminates Boolean
-results and short-circuited aggregate selection inside a scalar call argument;
-it executes 649,832 instructions and 6,172,556 T-states and occupies 1,666
-proof bytes. The final review also restored carry propagation in the shared
-control-frame field helper. The core retains 3,860 bytes below the 16 KiB gate.
+Fresh assembly after that compression measures 12,305 code bytes plus 219
+immutable bytes, for a 12,524-byte compiler core. A follow-up review then
+removed another 212 bytes. It shared fixed-length emission, local-declaration
+parsing, call-offset reads, aggregate-region checks, branch-clause prefixes,
+constant-expression preparation, and repeated identifier comparisons. One
+proposed initializer shortcut was rejected because it would overwrite a live
+constant result.
+
+The current build measures 12,093 code bytes plus 219 immutable bytes, for a
+12,312-byte compiler core. Workspace remains 1,198 bytes. The common front end
+is 9,084 bytes, including an 8,064-byte parser, and the typed and aggregate Z80
+sink is 2,673 bytes. The generated proof programs occupy 522, 599, 339, and 239
+bytes. The final proof discriminates Boolean results and short-circuited
+aggregate selection inside a scalar call argument; it executes 650,903
+instructions and 6,185,165 T-states and occupies 1,666 proof bytes. The final
+review also restored carry propagation in the shared control-frame field
+helper. The two compression passes remove 428 bytes from the repaired
+correctness baseline. The core retains 4,072 bytes below the 16 KiB gate.
 
 Completion evidence:
 

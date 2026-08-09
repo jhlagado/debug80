@@ -3,7 +3,7 @@
 ; Types use one-byte IDs. 1..3 are the predefined scalar types; dynamic IDs
 ; index a bounded four-byte descriptor plus a retained word extent. Aggregate
 ; storage is allocated only by top-level var declarations. Initializer bytes
-; are written into a private static image which the native backend publishes
+; are written into a private static image which the Z80 backend publishes
 ; only after the complete source has succeeded.
 
 .routine in A out A,HL clobbers carry,zero,sign,parity,halfCarry,DE
@@ -721,13 +721,8 @@ AggregateRecordInitializerLoop:
             RET  C
             JR   AggregateRecordInitializerLoop
 AggregateRecordInitializerExpectClose:
-            CALL ParserPeek
-            RET  C
-            CP   TokenRightParen
-            JR   Z,AggregateInitializerTakeClose
-            CP   TokenRightBracket
-            JP   Z,AggregateInitializerShapeFailure
-            JP   AggregateInitializerCountFailure
+            LD   BC,(TokenRightParen<<8)|TokenRightBracket
+            JP   AggregateInitializerExpectClose
 
 AggregateParseArrayInitializer:
             EX   DE,HL
@@ -765,11 +760,16 @@ AggregateArrayInitializerLoop:
             RET  C
             JR   AggregateArrayInitializerLoop
 AggregateArrayInitializerExpectClose:
-            CALL ParserPeek
+            LD   BC,(TokenRightBracket<<8)|TokenRightParen
+            JP   AggregateInitializerExpectClose
+
+.routine in BC out A,BC,carry,zero clobbers sign,parity,halfCarry,D,DE,HL,IX,IY
+AggregateInitializerExpectClose:
+            CALL AggregatePeekPreserveBC
             RET  C
-            CP   TokenRightBracket
+            CP   B
             JR   Z,AggregateInitializerTakeClose
-            CP   TokenRightParen
+            CP   C
             JP   Z,AggregateInitializerShapeFailure
             JP   AggregateInitializerCountFailure
 AggregateInitializerTakeClose:

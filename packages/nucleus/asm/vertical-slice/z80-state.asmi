@@ -1,0 +1,22 @@
+; Writable state exposed by the direct-Z80 proof target.
+
+StateBase         .equ ExecutionBase
+RunState          .equ StateBase+$00
+TrapNumber        .equ StateBase+$01
+TrapRoutine       .equ StateBase+$02
+TrapOffset        .equ StateBase+$03
+TrapError         .equ StateBase+$05
+StateEnd          .equ StateBase+$06
+
+RunReady          .equ 1
+RunSucceeded      .equ 2
+RunTrapped        .equ 3
+
+ServiceForceFailure     .equ ServiceBase+$00
+ServiceOutputLength     .equ ServiceBase+$01
+ServiceOutputByte       .equ ServiceBase+$02
+ServiceStateEnd         .equ ServiceBase+$03
+
+ProgramSize       .equ 37
+FailureOffset     .equ 13
+GeneratedEnd      .equ GeneratedBase+ProgramSize

@@ -1,0 +1,784 @@
+; Correctness-first direct-Z80 backend for the complete scalar-expression
+; increment. All evaluation values use canonical 16-bit carriers on the Z80
+; stack. Declared u8/boolean objects still occupy one byte; u16 occupies two.
+
+; Typed dispatch and loop dispatch are currently mutually exclusive. These
+; aliases make the temporary reuse visible; merging the dispatchers requires
+; dedicated storage or a new liveness proof.
+EmitTypedTrapPosition .equ EmitLoopHead
+EmitTypedWidth        .equ EmitCodeStart
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
+TypedDispatch:
+            LD   HL,SemanticBufferBase+1
+            LD   (SemanticReadCursor),HL
+            XOR  A
+            LD   (EmitBooleanFixupDepth),A
+            LD   (EmitControlFixupCount),A
+            LD   HL,EmitControlLabelValidBase
+            LD   B,EmitControlLabelCapacity
+TypedResetControlLabels:
+            LD   (HL),A
+            INC  HL
+            DJNZ TypedResetControlLabels
+            LD   A,(SemanticBufferBase)
+            OR   A
+            RET  Z
+            LD   B,A
+TypedDispatchNext:
+            PUSH BC
+            CALL NextSemanticByte
+            SUB  SemanticDefineProgramU8
+            CP   TypedOperationCount
+            JR   NC,TypedInvalidPopped
+            ADD  A,A
+            LD   E,A
+            LD   D,0
+            LD   HL,TypedOperationTable
+            ADD  HL,DE
+            LD   E,(HL)
+            INC  HL
+            LD   D,(HL)
+            EX   DE,HL
+            LD   DE,TypedDispatchReturn
+            PUSH DE
+            JP   (HL)
+TypedDispatchReturn:
+            POP  BC
+            RET  C
+            DJNZ TypedDispatchNext
+            JP   StructuredResolveFixups
+TypedInvalidPopped:
+            POP  BC
+TypedInternalOperation:
+            JP   TypedExpressionStackUnderflow
+TypedBooleanFixupCapacity:
+            LD   A,DiagnosticBooleanFixupCapacity
+            JP   CompilerSetDiagnostic
+
+TypedOperationTable:
+            .dw TypedDefine8          ; 20
+            .dw TypedBeginMain        ; 21
+            .dw TypedDeclare8         ; 22
+            .dw TypedInternalOperation ; 23 retired literal8
+            .dw TypedLoadProgram8     ; 24
+            .dw TypedLoadLocal8       ; 25
+            .dw TypedInternalOperation ; 26 retired multiply8
+            .dw TypedInternalOperation ; 27 retired add8
+            .dw TypedStoreProgram8    ; 28
+            .dw TypedStoreLocal8      ; 29
+            .dw TypedWrite8           ; 30
+            .dw TypedEndMain          ; 31
+            .dw TypedDefine16         ; 32
+            .dw TypedDeclare16        ; 33
+            .dw TypedLiteral16        ; 34
+            .dw TypedLoadProgram16    ; 35
+            .dw TypedLoadLocal16      ; 36
+            .dw TypedAdd8             ; 37
+            .dw TypedAdd16            ; 38
+            .dw TypedSubtract8        ; 39
+            .dw TypedSubtract16       ; 40
+            .dw TypedMultiply8        ; 41
+            .dw TypedMultiply16       ; 42
+            .dw TypedDivide8          ; 43
+            .dw TypedDivide16         ; 44
+            .dw TypedNegate8          ; 45
+            .dw TypedNegate16         ; 46
+            .dw TypedNot8             ; 47
+            .dw TypedNot16            ; 48
+            .dw TypedNotBoolean       ; 49
+            .dw TypedAnd8             ; 50
+            .dw TypedAnd16            ; 51
+            .dw TypedOr8              ; 52
+            .dw TypedOr16             ; 53
+            .dw TypedCompare          ; 54
+            .dw TypedCompare          ; 55
+            .dw TypedCompare          ; 56
+            .dw TypedNarrow8          ; 57
+            .dw TypedStoreProgram16   ; 58
+            .dw TypedStoreLocal16     ; 59
+            .dw TypedBeginAnd         ; 60
+            .dw TypedBeginOr          ; 61
+            .dw TypedEndBoolean       ; 62
+            .dw StructuredLabel       ; 63
+            .dw StructuredBranchFalse ; 64
+            .dw StructuredJump        ; 65
+            .dw StructuredForSetup    ; 66
+            .dw StructuredForTest     ; 67
+            .dw StructuredForNext     ; 68
+            .dw StructuredForCleanup  ; 69
+            .dw TypedBeginRoutine     ; 70
+            .dw TypedLoadLocal8       ; 71 parameter u8
+            .dw TypedLoadLocal16      ; 72 parameter u16
+            .dw TypedCallScalar       ; 73
+            .dw TypedReturnScalar     ; 74
+            .dw TypedStoreLocal8      ; 75 parameter u8
+            .dw TypedStoreLocal16     ; 76 parameter u16
+            .dw TypedEndRoutine       ; 77
+.if AggregateCallSlices
+            .dw Stage7BeginRoutine    ; 78
+            .dw Stage7BindParameter   ; 79
+            .dw Stage7Call            ; 80
+            .dw Stage7ReturnAggregate ; 81
+            .dw Stage7EndRoutine      ; 82
+            .dw Stage7LoadProgramAlias ; 83
+            .dw Stage7LoadParameterAlias ; 84
+            .dw Stage7SelectField     ; 85
+            .dw Stage7SelectIndex     ; 86
+            .dw Stage7LoadIndirect8   ; 87
+            .dw Stage7LoadIndirect16  ; 88
+            .dw Stage7StoreIndirect8  ; 89
+            .dw Stage7StoreIndirect16 ; 90
+            .dw Stage7CopyAggregate   ; 91
+            .dw Stage7StringLength    ; 92
+            .dw Stage7StringIndex     ; 93
+TypedOperationCount .equ 74
+.else
+TypedOperationCount .equ 58
+.endif
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+TypedDefine8:
+            CALL NextSemanticByte     ; byte offset
+            CALL NextSemanticByte     ; value
+            JP   EmitByte
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+TypedDefine16:
+            CALL NextSemanticByte     ; byte offset
+            CALL NextSemanticByte
+            CALL EmitByte
+            RET  C
+            CALL NextSemanticByte
+            JP   EmitByte
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedBeginMain:
+            LD   DE,(EmitDataFixup)
+            LD   HL,(EmitCursor)
+            CALL PatchWord
+            CALL TypedSaveRootFrame
+            RET  C
+            LD   HL,ExpressionFrameBytes
+            JP   EmitEight
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+TypedDeclare8:
+            CALL NextSemanticByte
+            LD   A,$3B                    ; DEC SP
+            JP   EmitByte
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+TypedDeclare16:
+            CALL NextSemanticByte
+            LD   A,$3B
+            CALL EmitByte
+            RET  C
+            LD   A,$3B
+            JP   EmitByte
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedLiteral16:
+            CALL NextSemanticByte
+            LD   C,A
+            CALL NextSemanticByte
+            LD   H,A
+            LD   L,C
+            LD   A,$21                    ; LD HL,nn
+            CALL EmitOpcodeWord
+            RET  C
+            LD   A,$E5                    ; PUSH HL
+            JP   EmitByte
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+TypedLoadProgram8:
+            CALL NextSemanticByte
+            CALL ExpressionProgramAddress
+            LD   A,$3A                    ; LD A,(nn)
+            CALL EmitOpcodeWord
+            RET  C
+            LD   HL,TypedAtoHL
+            JP   EmitFour
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+TypedLoadProgram16:
+            CALL NextSemanticByte
+            CALL ExpressionProgramAddress
+            LD   A,$2A                    ; LD HL,(nn)
+            CALL EmitOpcodeWord
+            RET  C
+            LD   A,$E5
+            JP   EmitByte
+
+; C receives -(byte offset + 1), the displacement of the low byte from IX.
+.routine out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
+TypedLocalDisplacement:
+            CALL NextSemanticByte
+            CPL
+            LD   C,A
+            OR   A
+            RET
+
+.routine in C,HL out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
+TypedEmitIndexed:
+            LD   B,0
+            PUSH BC
+            LD   B,2
+            CALL EmitBytes
+            POP  BC
+            RET  C
+            LD   A,C
+            JP   EmitByte
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+TypedLoadLocal8:
+            CALL TypedLocalDisplacement
+            LD   HL,TypedLoadLocalLow
+            CALL TypedEmitIndexed
+            RET  C
+            LD   HL,TypedZeroHighPush
+            JP   EmitThree
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+TypedLoadLocal16:
+            CALL TypedLocalDisplacement
+            LD   HL,TypedLoadLocalLow
+            CALL TypedEmitIndexed
+            RET  C
+            DEC  C
+            LD   HL,TypedLoadLocalHigh
+            CALL TypedEmitIndexed
+            RET  C
+            LD   A,$E5
+            JP   EmitByte
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+TypedPopOperands:
+            LD   HL,TypedPopOperandsBytes
+            JP   EmitPair
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+TypedPushHL:
+            LD   A,$E5
+            JP   EmitByte
+
+.routine in B,HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedEmitSequence:
+            PUSH BC
+            PUSH HL
+            CALL TypedPopOperands
+            POP  HL
+            POP  BC
+            RET  C
+            CALL EmitBytes
+            RET  C
+            JP   TypedPushHL
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedAdd8:
+            LD   HL,TypedAdd8Bytes
+            JR   TypedBinary5
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedSubtract8:
+            LD   HL,TypedSubtract8Bytes
+            JR   TypedBinary5
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedAnd8:
+            LD   HL,TypedAnd8Bytes
+            JR   TypedBinary5
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedOr8:
+            LD   HL,TypedOr8Bytes
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedBinary5:
+            LD   B,5
+            JP   TypedEmitSequence
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedAnd16:
+            LD   HL,TypedAnd16Bytes
+            JR   TypedBinary6
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedOr16:
+            LD   HL,TypedOr16Bytes
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedBinary6:
+            LD   B,6
+            JP   TypedEmitSequence
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedAdd16:
+            LD   HL,TypedAdd16Bytes
+            LD   B,1
+            JP   TypedEmitSequence
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedSubtract16:
+            LD   HL,TypedSubtract16Bytes
+            LD   B,3
+            JP   TypedEmitSequence
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedMultiply8:
+            CALL TypedPopOperands
+            RET  C
+            LD   HL,MultiplyU16
+            CALL EmitCall
+            RET  C
+            LD   HL,TypedZeroHigh
+            CALL   EmitPair
+            RET  C
+            JP   TypedPushHL
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedMultiply16:
+            CALL TypedPopOperands
+            RET  C
+            LD   HL,MultiplyU16
+            CALL EmitCall
+            RET  C
+            JP   TypedPushHL
+
+.routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry
+TypedReadTrapPosition:
+            CALL NextSemanticByte
+            LD   E,A
+            CALL NextSemanticByte
+            LD   D,A
+            LD   (EmitTypedTrapPosition),DE
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
+TypedDivide8:
+            LD   C,1
+            JR   TypedDivide
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedDivide16:
+            LD   C,0
+TypedDivide:
+            CALL TypedReadTrapPosition
+            LD   A,C
+            LD   (EmitTypedWidth),A
+            CALL TypedPopOperands
+            RET  C
+            LD   HL,DivideU16
+            CALL EmitCall
+            RET  C
+            CALL EmitJrNcPlaceholder
+            RET  C
+            LD   (EmitExitFixup),DE
+            LD   HL,(EmitTypedTrapPosition)
+            CALL EmitLoadHl
+            RET  C
+            LD   A,3
+            CALL EmitLoadAImmediate
+            RET  C
+            CALL TypedEmitTrapEnding
+            RET  C
+            LD   DE,(EmitExitFixup)
+            CALL PatchHere
+            RET  C
+            LD   A,(EmitTypedWidth)
+            OR   A
+            JR   Z,TypedDividePush
+            LD   HL,TypedZeroHigh
+            CALL   EmitPair
+            RET  C
+TypedDividePush:
+            JP   TypedPushHL
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
+TypedNegate8:
+            LD   HL,TypedNegate8Bytes
+            LD   B,6
+            JR   TypedUnarySequence
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
+TypedNegate16:
+            LD   HL,TypedNegate16Bytes
+            LD   B,8
+            JR   TypedUnarySequence
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
+TypedNot8:
+            LD   HL,TypedNot8Bytes
+            LD   B,6
+            JR   TypedUnarySequence
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
+TypedNot16:
+            LD   HL,TypedNot16Bytes
+            LD   B,7
+            JR   TypedUnarySequence
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedNotBoolean:
+            LD   HL,TypedNotBooleanBytes
+            LD   B,7
+TypedUnarySequence:
+            CALL EmitBytes
+            RET  C
+            JP   TypedPushHL
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedCompare:
+            CALL NextSemanticByte
+            LD   C,A
+            PUSH BC
+            CALL TypedPopOperands
+            POP  BC
+            RET  C
+            LD   A,C
+            CALL EmitLoadAImmediate
+            RET  C
+            LD   HL,CompareU16
+            CALL EmitCall
+            RET  C
+            JP   TypedPushHL
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedNarrow8:
+            CALL TypedReadTrapPosition
+            LD   A,$E1                    ; POP HL
+            CALL EmitByte
+            RET  C
+            LD   HL,TypedTestHigh
+            CALL   EmitPair
+            RET  C
+            LD   A,$28                    ; JR Z,success
+            CALL EmitRelativePlaceholder
+            RET  C
+            LD   (EmitExitFixup),DE
+            LD   HL,(EmitTypedTrapPosition)
+            CALL EmitLoadHl
+            RET  C
+            LD   A,2
+            CALL EmitLoadAImmediate
+            RET  C
+            CALL TypedEmitTrapEnding
+            RET  C
+            LD   DE,(EmitExitFixup)
+            CALL PatchHere
+            RET  C
+            JP   TypedPushHL
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+TypedStoreProgram8:
+            CALL NextSemanticByte
+            CALL ExpressionProgramAddress
+            PUSH HL
+            LD   HL,TypedPopHLtoA
+            CALL   EmitPair
+            POP  HL
+            RET  C
+            LD   A,$32
+            JP   EmitOpcodeWord
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+TypedStoreProgram16:
+            CALL NextSemanticByte
+            CALL ExpressionProgramAddress
+            PUSH HL
+            LD   A,$E1
+            CALL EmitByte
+            POP  HL
+            RET  C
+            LD   A,$22
+            JP   EmitOpcodeWord
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+TypedStoreLocal8:
+            CALL TypedLocalDisplacement
+            LD   A,$E1
+            CALL EmitByte
+            RET  C
+            LD   HL,TypedStoreLocalLow
+            JP   TypedEmitIndexed
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+TypedStoreLocal16:
+            CALL TypedLocalDisplacement
+            LD   A,$E1
+            CALL EmitByte
+            RET  C
+            LD   HL,TypedStoreLocalLow
+            CALL TypedEmitIndexed
+            RET  C
+            DEC  C
+            LD   HL,TypedStoreLocalHigh
+            JP   TypedEmitIndexed
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedWrite8:
+            CALL TypedReadTrapPosition
+            LD   HL,TypedPopHLtoA
+            CALL   EmitPair
+            RET  C
+            LD   HL,WriteOutputByte
+            CALL EmitCall
+            RET  C
+            CALL EmitJrNcPlaceholder
+            RET  C
+            LD   (EmitExitFixup),DE
+            LD   HL,(EmitTypedTrapPosition)
+            CALL EmitLoadHl
+            RET  C
+            CALL EmitUnhandledTrapPrefix
+            RET  C
+            CALL TypedEmitTrapEnding
+            RET  C
+            LD   DE,(EmitExitFixup)
+            JP   PatchHere
+
+; Every terminal typed-expression trap must dismantle the routine frame before
+; emitting the common trap record and RET. Without this epilogue the generated
+; return consumes local bytes or the saved IX value as its return address.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedEmitTrapEnding:
+            CALL TypedRestoreRootFrame
+            RET  C
+            LD   A,$F5                    ; PUSH AF, preserve trap reason
+            CALL EmitByte
+            RET  C
+            LD   A,$AF                    ; XOR A
+            CALL EmitByte
+            RET  C
+            LD   HL,ActivationDepth
+            CALL EmitStoreA
+            RET  C
+            LD   A,$F1                    ; POP AF
+            CALL EmitByte
+            RET  C
+            JP   EmitTrapEnding
+
+; Save the outer machine frame before main allocates locals, and restore that
+; exact frame on every terminal trap, including a trap inside recursive calls.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedSaveRootFrame:
+            LD   HL,TypedStoreSPPrefix
+            CALL   EmitPair
+            RET  C
+            LD   HL,RootSP
+            CALL EmitWord
+            RET  C
+            LD   HL,TypedStoreIXPrefix
+            CALL   EmitPair
+            RET  C
+            LD   HL,RootIX
+            JP   EmitWord
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedRestoreRootFrame:
+            LD   HL,TypedLoadSPPrefix
+            CALL   EmitPair
+            RET  C
+            LD   HL,RootSP
+            CALL EmitWord
+            RET  C
+            LD   HL,TypedLoadIXPrefix
+            CALL   EmitPair
+            RET  C
+            LD   HL,RootIX
+            JP   EmitWord
+
+; Begin the single retained value routine. Operand bytes are routine ordinal
+; and parameter type. HL carries the copied argument into this entry.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+TypedBeginRoutine:
+            CALL NextSemanticByte
+            CALL NextSemanticByte
+            LD   (EmitTypedWidth),A
+            LD   C,ControlRoutineLabel
+            CALL StructuredDefineLabel
+            RET  C
+            LD   HL,ExpressionFrameBytes
+            CALL   EmitEight
+            RET  C
+            LD   A,(EmitTypedWidth)
+            CP   ScalarTypeU16
+            LD   HL,TypedParameter8Bytes
+            LD   B,4
+            JR   NZ,TypedBeginRoutineParameter
+            LD   HL,TypedParameter16Bytes
+            LD   B,8
+TypedBeginRoutineParameter:
+            JP   EmitBytes
+
+; Evaluate has already left the copied argument as one canonical carrier.
+; Claim activation capacity before the callee begins, then call the fixed
+; forward label. The result returns in HL and becomes the enclosing carrier.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+TypedCallScalar:
+            CALL NextSemanticByte     ; ordinal
+            CALL NextSemanticByte     ; result type
+            LD   (EmitTypedWidth),A
+            CALL TypedReadTrapPosition
+            LD   A,$E1                    ; POP HL argument
+            CALL EmitByte
+            RET  C
+            LD   HL,ActivationClaim
+            CALL EmitCall
+            RET  C
+            CALL EmitJrNcPlaceholder
+            RET  C
+            LD   (EmitExitFixup),DE
+            LD   HL,(EmitTypedTrapPosition)
+            CALL EmitLoadHl
+            RET  C
+            LD   A,5
+            CALL EmitLoadAImmediate
+            RET  C
+            CALL TypedEmitTrapEnding
+            RET  C
+            LD   DE,(EmitExitFixup)
+            CALL PatchHere
+            RET  C
+            LD   C,ControlRoutineLabel
+            LD   A,$CD                    ; CALL nn
+            CALL StructuredEmitFixup
+            RET  C
+            LD   HL,ActivationRelease
+            CALL EmitCall
+            RET  C
+            LD   A,$E5                    ; PUSH HL result carrier
+            JP   EmitByte
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+TypedReturnScalar:
+            LD   A,$E1                    ; POP HL result
+            CALL EmitByte
+            RET  C
+            CALL ExpressionRestoreFrame
+            RET  C
+            LD   A,$C9
+            JP   EmitByte
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry
+TypedEndRoutine:
+            XOR  A
+            RET
+
+.routine in DE out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedPushBooleanFixup:
+            LD   A,(EmitBooleanFixupDepth)
+            CP   EmitBooleanFixupCapacity
+            JP   NC,TypedBooleanFixupCapacity
+            LD   C,A
+            LD   B,0
+            LD   HL,EmitBooleanFixupBase
+            ADD  HL,BC
+            ADD  HL,BC
+            LD   (HL),E
+            INC  HL
+            LD   (HL),D
+            LD   A,(EmitBooleanFixupDepth)
+            INC  A
+            LD   (EmitBooleanFixupDepth),A
+            OR   A
+            RET
+
+.routine out A,carry,zero,DE clobbers sign,parity,halfCarry,B,C,HL
+TypedPopBooleanFixup:
+            LD   A,(EmitBooleanFixupDepth)
+            OR   A
+            JP   Z,TypedInternalOperation
+            DEC  A
+            LD   (EmitBooleanFixupDepth),A
+            LD   C,A
+            LD   B,0
+            LD   HL,EmitBooleanFixupBase
+            ADD  HL,BC
+            ADD  HL,BC
+            LD   E,(HL)
+            INC  HL
+            LD   D,(HL)
+            OR   A
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
+TypedBeginAnd:
+            LD   HL,TypedBeginAndBytes
+            LD   B,6
+            JR   TypedBeginBoolean
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedBeginOr:
+            LD   HL,TypedBeginOrBytes
+            LD   B,6
+TypedBeginBoolean:
+            CALL EmitBytes
+            RET  C
+            CALL EmitJrPlaceholder
+            RET  C
+            JP   TypedPushBooleanFixup
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedEndBoolean:
+            CALL TypedPopBooleanFixup
+            RET  C
+            JP   PatchHere
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
+TypedEndMain:
+            LD   A,(EmitBooleanFixupDepth)
+            OR   A
+            JP   NZ,TypedInternalOperation
+            CALL ExpressionRestoreFrame
+            RET  C
+            JP   EmitSuccessReturn
+
+; Entry point used by the typed-expression proof.
+TypedBackendStart:
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+EncodeProgramHeader:
+            CALL BeginProgram
+            LD   A,$C3
+            CALL EmitByte
+            RET  C
+            LD   HL,(EmitCursor)
+            LD   (EmitDataFixup),HL
+            LD   HL,0
+            JP   EmitWord
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+EncodeTypedExpressionProgram:
+            LD   HL,GeneratedLimit
+            CALL EncodeProgramHeader
+            JP   C,AbortProgram
+.if AggregateCallSlices
+            JP   AggregateDispatch
+.else
+            CALL TypedDispatch
+            JP   C,AbortProgram
+            JP   FinishProgram
+.endif
+TypedBackendEnd:
+
+            .include "structured-control-z80.asm"
+.if AggregateCallSlices
+            .include "aggregate-call-z80.asm"
+.endif
+
+TypedAtoHL:             .db $6F,$26,$00,$E5
+TypedStoreSPPrefix:     .db $ED,$73
+TypedStoreIXPrefix:     .db $DD,$22
+TypedLoadSPPrefix:      .db $ED,$7B
+TypedLoadIXPrefix:      .db $DD,$2A
+TypedParameter16Bytes:  .db $3B,$3B,$DD,$75,$FF,$DD,$74,$FE
+TypedParameter8Bytes    .equ TypedParameter16Bytes+1
+TypedLoadLocalLow:      .db $DD,$6E
+TypedLoadLocalHigh:     .db $DD,$66
+TypedStoreLocalLow:     .db $DD,$75
+TypedStoreLocalHigh:    .db $DD,$74
+TypedZeroHighPush       .equ TypedAtoHL+1
+TypedZeroHigh           .equ TypedAtoHL+1
+TypedPopOperandsBytes:  .db $D1,$E1
+TypedTestHigh:          .db $7C,$B7
+TypedAdd8Bytes:         .db $7D,$83,$6F,$26,$00
+TypedAdd16Bytes:        .db $19
+TypedSubtract8Bytes:    .db $7D,$93,$6F,$26,$00
+TypedSubtract16Bytes:   .db $AF,$ED,$52
+TypedNegate8Bytes:      .db $E1,$AF,$95,$6F,$26,$00
+TypedNegate16Bytes:     .db $E1,$AF,$95,$6F,$3E,$00,$9C,$67
+TypedNot8Bytes:         .db $E1,$7D,$2F,$6F,$26,$00
+TypedPopHLtoA           .equ TypedNot8Bytes
+TypedNot16Bytes:        .db $E1,$7D,$2F,$6F,$7C,$2F,$67
+TypedNotBooleanBytes:   .db $E1,$7D,$EE,$01,$6F,$26,$00
+TypedAnd8Bytes:         .db $7D,$A3,$6F,$26,$00
+TypedAnd16Bytes:        .db $7D,$A3,$6F,$7C,$A2,$67
+TypedOr8Bytes:          .db $7D,$B3,$6F,$26,$00
+TypedOr16Bytes:         .db $7D,$B3,$6F,$7C,$B2,$67
+; POP HL; LD A,L; OR A; JR NZ/Z,+3; PUSH HL
+TypedBeginAndBytes:     .db $E1,$7D,$B7,$20,$03,$E5
+TypedBeginOrBytes:      .db $E1,$7D,$B7,$28,$03,$E5
