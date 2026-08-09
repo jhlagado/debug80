@@ -14,7 +14,13 @@ TypedNativeDispatch:
             LD   (SemanticReadCursor),HL
             XOR  A
             LD   (EmitBooleanFixupDepth),A
-            CALL StructuredNativeReset
+            LD   (EmitControlFixupCount),A
+            LD   HL,EmitControlLabelValidBase
+            LD   B,EmitControlLabelCapacity
+TypedNativeResetControlLabels:
+            LD   (HL),A
+            INC  HL
+            DJNZ TypedNativeResetControlLabels
             LD   A,(SemanticBufferBase)
             OR   A
             RET  Z
@@ -109,7 +115,27 @@ TypedNativeOperationTable:
             .dw TypedNativeStoreLocal8      ; 75 parameter u8
             .dw TypedNativeStoreLocal16     ; 76 parameter u16
             .dw TypedNativeEndRoutine       ; 77
+.if AggregateCallSlices
+            .dw Stage7NativeBeginRoutine    ; 78
+            .dw Stage7NativeBindParameter   ; 79
+            .dw Stage7NativeCall            ; 80
+            .dw Stage7NativeReturnAggregate ; 81
+            .dw Stage7NativeEndRoutine      ; 82
+            .dw Stage7NativeLoadProgramAlias ; 83
+            .dw Stage7NativeLoadParameterAlias ; 84
+            .dw Stage7NativeSelectField     ; 85
+            .dw Stage7NativeSelectIndex     ; 86
+            .dw Stage7NativeLoadIndirect8   ; 87
+            .dw Stage7NativeLoadIndirect16  ; 88
+            .dw Stage7NativeStoreIndirect8  ; 89
+            .dw Stage7NativeStoreIndirect16 ; 90
+            .dw Stage7NativeCopyAggregate   ; 91
+            .dw Stage7NativeStringLength    ; 92
+            .dw Stage7NativeStringIndex     ; 93
+TypedNativeOperationCount .equ 74
+.else
 TypedNativeOperationCount .equ 58
+.endif
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
 TypedNativeDefine8:
@@ -195,18 +221,22 @@ TypedNativeLocalDisplacement:
             OR   A
             RET
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
-TypedNativeLoadLocal8:
-            CALL TypedNativeLocalDisplacement
+.routine in C,HL out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
+TypedNativeEmitIndexed:
             LD   B,0
             PUSH BC
-            LD   HL,TypedNativeLoadLocalLow
             LD   B,2
             CALL NativeEmitBytes
             POP  BC
             RET  C
             LD   A,C
-            CALL NativeEmitByte
+            JP   NativeEmitByte
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+TypedNativeLoadLocal8:
+            CALL TypedNativeLocalDisplacement
+            LD   HL,TypedNativeLoadLocalLow
+            CALL TypedNativeEmitIndexed
             RET  C
             LD   HL,TypedNativeZeroHighPush
             LD   B,3
@@ -215,26 +245,12 @@ TypedNativeLoadLocal8:
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 TypedNativeLoadLocal16:
             CALL TypedNativeLocalDisplacement
-            LD   B,0
-            PUSH BC
             LD   HL,TypedNativeLoadLocalLow
-            LD   B,2
-            CALL NativeEmitBytes
-            POP  BC
-            RET  C
-            LD   A,C
-            CALL NativeEmitByte
+            CALL TypedNativeEmitIndexed
             RET  C
             DEC  C
-            LD   B,0
-            PUSH BC
             LD   HL,TypedNativeLoadLocalHigh
-            LD   B,2
-            CALL NativeEmitBytes
-            POP  BC
-            RET  C
-            LD   A,C
-            CALL NativeEmitByte
+            CALL TypedNativeEmitIndexed
             RET  C
             LD   A,$E5
             JP   NativeEmitByte
@@ -477,41 +493,20 @@ TypedNativeStoreLocal8:
             LD   A,$E1
             CALL NativeEmitByte
             RET  C
-            LD   B,0
-            PUSH BC
             LD   HL,TypedNativeStoreLocalLow
-            LD   B,2
-            CALL NativeEmitBytes
-            POP  BC
-            RET  C
-            LD   A,C
-            JP   NativeEmitByte
+            JP   TypedNativeEmitIndexed
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 TypedNativeStoreLocal16:
             CALL TypedNativeLocalDisplacement
             LD   A,$E1
             CALL NativeEmitByte
             RET  C
-            LD   B,0
-            PUSH BC
             LD   HL,TypedNativeStoreLocalLow
-            LD   B,2
-            CALL NativeEmitBytes
-            POP  BC
-            RET  C
-            LD   A,C
-            CALL NativeEmitByte
+            CALL TypedNativeEmitIndexed
             RET  C
             DEC  C
-            LD   B,0
-            PUSH BC
             LD   HL,TypedNativeStoreLocalHigh
-            LD   B,2
-            CALL NativeEmitBytes
-            POP  BC
-            RET  C
-            LD   A,C
-            JP   NativeEmitByte
+            JP   TypedNativeEmitIndexed
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedNativeWrite8:
@@ -743,24 +738,35 @@ TypedNativeEndMain:
 
 ; Entry point used by the typed-expression proof.
 TypedNativeBackendStart:
-.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
-NativeEncodeTypedExpressionProgram:
-            LD   HL,GeneratedLimit
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+NativeEncodeProgramHeader:
             CALL NativeBeginProgram
             LD   A,$C3
             CALL NativeEmitByte
-            JP   C,NativeAbortProgram
+            RET  C
             LD   HL,(EmitCursor)
             LD   (EmitDataFixup),HL
             LD   HL,0
-            CALL NativeEmitWord
+            JP   NativeEmitWord
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+NativeEncodeTypedExpressionProgram:
+            LD   HL,GeneratedLimit
+            CALL NativeEncodeProgramHeader
             JP   C,NativeAbortProgram
+.if AggregateCallSlices
+            JP   AggregateNativeDispatch
+.else
             CALL TypedNativeDispatch
             JP   C,NativeAbortProgram
             JP   NativeFinishProgram
+.endif
 TypedNativeBackendEnd:
 
             .include "structured-control-native.asm"
+.if AggregateCallSlices
+            .include "aggregate-call-native.asm"
+.endif
 
 TypedNativeAtoHL:             .db $6F,$26,$00,$E5
 TypedNativeStoreSPPrefix:     .db $ED,$73

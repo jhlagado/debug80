@@ -8,14 +8,7 @@ NativeEncodeAggregateProgram:
             LD   HL,GeneratedLimit
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 NativeEncodeAggregateProgramWithinLimit:
-            CALL NativeBeginProgram
-            LD   A,$C3
-            CALL NativeEmitByte
-            JP   C,NativeAbortProgram
-            LD   HL,(EmitCursor)
-            LD   (EmitDataFixup),HL
-            LD   HL,0
-            CALL NativeEmitWord
+            CALL NativeEncodeProgramHeader
             JP   C,NativeAbortProgram
             LD   HL,StaticImageBase
             LD   A,(StaticImageLength)

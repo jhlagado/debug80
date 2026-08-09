@@ -39,7 +39,12 @@ PunctuationTable:
             .db  "+",TokenPlus
             .db  "*",TokenStar
             .db  "/",TokenSlash
+.if AggregateCallSlices
+            .db  ".",TokenDot
+PunctuationCount        .equ 7
+.else
 PunctuationCount        .equ 6
+.endif
 
 NameMain:               .db "main"
 .if LegacyCompilerSlices
@@ -48,6 +53,9 @@ NameBytes:              .db "bytes"
 NameReadInputByte:      .db "readInputByte"
 .endif
 NameWriteOutputByte:    .db "writeOutputByte"
+.if AggregateCallSlices
+NameLength:             .db "length"
+.endif
 .if LegacyCompilerSlices
 NameResult:             .db "result"
 .endif

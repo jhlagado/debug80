@@ -1035,8 +1035,14 @@ CompileSliceInitialize:
             LD   A,$FF
             LD   (ParserLookaheadKind),A
             CALL SymbolReset
-            CALL AggregateReset
             XOR  A
+            LD   HL,AggregateMode
+            LD   B,AggregateInitializerElements-AggregateMode+1
+CompileSliceResetAggregateLoop:
+            LD   (HL),A
+            INC  HL
+            DJNZ CompileSliceResetAggregateLoop
+            LD   (StaticImageLength),A
             LD   (ForwardCompleted),A
             LD   (ForwardOrdinal),A
             RET
@@ -1046,3 +1052,6 @@ CompileSliceInitialize:
 ; tails back into this parser after the rules are stable.
             .include "typed-expression-parser.asm"
             .include "aggregate-parser.asm"
+.if AggregateCallSlices
+            .include "aggregate-call-parser.asm"
+.endif

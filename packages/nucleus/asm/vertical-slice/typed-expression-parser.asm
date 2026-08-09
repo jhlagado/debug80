@@ -59,6 +59,14 @@ TypedPrepareCurrentWord:
             LD   DE,TokenStartOffset
             LD   BC,6
             LDIR
+.if AggregateCallSlices
+            CALL Stage7RejectCurrentDeclarationName
+            JR   NC,TypedPrepareCurrentRoutineClear
+            POP  DE
+            POP  BC
+            RET
+TypedPrepareCurrentRoutineClear:
+.endif
             POP  DE
             POP  BC
             JP   SymbolPrepareCurrentWord
@@ -307,10 +315,8 @@ TypedMaskResultWidth:
             RET
 
 ; Constant multiplication modulo 65536, using sixteen shift/add steps.
-.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+.routine in DE,HL out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedConstantMultiply:
-            LD   HL,(ExpressionLeftValue)
-            LD   DE,(ExpressionRightValue)
             LD   BC,0
             LD   A,16
 TypedConstantMultiplyLoop:
@@ -365,6 +371,18 @@ TypedEmitWidthOperation:
 TypedEmitWidthSelected:
             JP   TypedEmitOperation
 
+; Emit the selected operation, then retain both values only when the pair is
+; compile-time constant. Carry reports emission failure; zero reports dynamic.
+.routine in C,D,E out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+TypedPrepareConstantBinary:
+            CALL TypedEmitWidthOperation
+            RET  C
+            CALL TypedBothConstant
+            RET  Z
+            LD   HL,(ExpressionLeftValue)
+            LD   DE,(ExpressionRightValue)
+            RET
+
 ; Reduce +, -, *, /, integer and, or. ExpressionOperator holds the token.
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedReduceIntegerBinary:
@@ -384,12 +402,9 @@ TypedReduceIntegerBinary:
 TypedReduceOr:
             LD   D,SemanticOr8
             LD   E,SemanticOr16
-            CALL TypedEmitWidthOperation
+            CALL TypedPrepareConstantBinary
             RET  C
-            CALL TypedBothConstant
             JP   Z,TypedReduceIntegerMeta
-            LD   HL,(ExpressionLeftValue)
-            LD   DE,(ExpressionRightValue)
             LD   A,L
             OR   E
             LD   L,A
@@ -400,12 +415,9 @@ TypedReduceOr:
 TypedReduceAnd:
             LD   D,SemanticAnd8
             LD   E,SemanticAnd16
-            CALL TypedEmitWidthOperation
+            CALL TypedPrepareConstantBinary
             RET  C
-            CALL TypedBothConstant
             JP   Z,TypedReduceIntegerMeta
-            LD   HL,(ExpressionLeftValue)
-            LD   DE,(ExpressionRightValue)
             LD   A,L
             AND  E
             LD   L,A
@@ -416,32 +428,25 @@ TypedReduceAnd:
 TypedReduceAdd:
             LD   D,SemanticAdd8
             LD   E,SemanticAdd16
-            CALL TypedEmitWidthOperation
+            CALL TypedPrepareConstantBinary
             RET  C
-            CALL TypedBothConstant
             JR   Z,TypedReduceIntegerMeta
-            LD   HL,(ExpressionLeftValue)
-            LD   DE,(ExpressionRightValue)
             ADD  HL,DE
             JR   TypedReduceIntegerConstantDone
 TypedReduceSubtract:
             LD   D,SemanticSubtract8
             LD   E,SemanticSubtract16
-            CALL TypedEmitWidthOperation
+            CALL TypedPrepareConstantBinary
             RET  C
-            CALL TypedBothConstant
             JR   Z,TypedReduceIntegerMeta
-            LD   HL,(ExpressionLeftValue)
-            LD   DE,(ExpressionRightValue)
             OR   A
             SBC  HL,DE
             JR   TypedReduceIntegerConstantDone
 TypedReduceMultiply:
             LD   D,SemanticMultiply8
             LD   E,SemanticMultiply16
-            CALL TypedEmitWidthOperation
+            CALL TypedPrepareConstantBinary
             RET  C
-            CALL TypedBothConstant
             JR   Z,TypedReduceIntegerMeta
             CALL TypedConstantMultiply
             JR   TypedReduceIntegerConstantDone
@@ -537,6 +542,17 @@ TypedPrimaryEmitTypedConstantFailure:
             POP  BC
             RET
 TypedPrimaryName:
+.if AggregateCallSlices
+            CALL Stage7FindRoutineCurrent
+            JP   Z,Stage7TypedPrimaryRoutine
+            CALL SymbolLookupCurrent
+            RET  C
+            LD   D,A
+            AND  SymbolAggregateFlag
+            JP   NZ,Stage7TypedPrimaryAggregateSymbol
+            LD   A,D
+            JR   TypedPrimaryNameResolved
+.endif
             LD   A,(ForwardOrdinal)
             OR   A
             JR   Z,TypedPrimaryVariableName
@@ -549,6 +565,7 @@ TypedPrimaryVariableName:
             CALL SymbolLookupCurrent
             RET  C
             LD   D,A
+TypedPrimaryNameResolved:
             AND  SymbolRecordTypeFlag+SymbolAggregateFlag
             JP   NZ,TypedTypeFailure
             LD   A,D
@@ -602,7 +619,11 @@ TypedPrimaryConstantName:
             LD   L,C
             LD   B,D
             SET  7,B
+.if AggregateCallSlices
+            JP   TypedPrimaryEmitTypedConstant
+.else
             JR   TypedPrimaryEmitTypedConstant
+.endif
 
 ; Parse one call to the retained scalar forward. The outer call position stays
 ; on the compiler stack while a nested argument call is parsed.
@@ -1882,6 +1903,10 @@ TypedStatementDispatch:
             LD   B,15
             CALL TokenNameEquals
             JP   C,TypedParseWrite
+.if AggregateCallSlices
+            CALL Stage7FindRoutineCurrent
+            JP   Z,Stage7ParseCallStatement
+.endif
             CALL TypedParseAssignment
             RET  C
             JP   TypedParseStatementsContinue
@@ -1922,6 +1947,11 @@ TypedStatementControlFailure:
 TypedStatementReturn:
             CALL ParserTake
             RET  C
+.if AggregateCallSlices
+            LD   A,(Stage7CurrentResultType)
+            CP   AggregateFirstDynamicTypeId
+            JP   NC,Stage7ParseAggregateReturn
+.endif
             LD   A,(ControlRoutineKind)
             CP   ControlRoutineValue
             JR   NZ,TypedRoutineFlowFailure
@@ -1989,6 +2019,11 @@ TypedParseAssignment:
             LD   (DeclarationInfo),A
             LD   (DeclarationPayload),BC
             LD   D,A
+.if AggregateCallSlices
+            AND  SymbolAggregateFlag
+            JP   NZ,Stage7ParseAggregateAssignment
+            LD   A,D
+.endif
             AND  SymbolRecordTypeFlag+SymbolAggregateFlag
             JP   NZ,TypedTypeFailure
             LD   A,D

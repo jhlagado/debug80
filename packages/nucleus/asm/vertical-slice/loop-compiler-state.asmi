@@ -283,6 +283,7 @@ TokenContinue           .equ 46
 TokenStringLiteral      .equ 47
 TokenRecord             .equ 48
 TokenString             .equ 49
+TokenDot                .equ 50
 
 DiagnosticNone          .equ 0
 DiagnosticLexical       .equ 1

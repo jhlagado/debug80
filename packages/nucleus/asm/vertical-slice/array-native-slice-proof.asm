@@ -7,6 +7,7 @@
             .org CompilerCoreBase
 CompilerCodeStart:
 LegacyCompilerSlices .equ 1
+AggregateCallSlices  .equ 0
 SourceAdapterCodeStart:
             .include "source-adapter.asm"
 SourceAdapterCodeEnd:

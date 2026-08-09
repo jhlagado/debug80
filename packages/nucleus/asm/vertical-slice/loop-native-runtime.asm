@@ -109,6 +109,72 @@ NativeActivationRelease:
             XOR  A
             RET
 
+.if AggregateCallSlices
+; Carry reports an out-of-domain u16 index. A is the one-byte retained length
+; and DE is the canonical index carrier.
+.routine in A,DE out A,carry,zero clobbers sign,parity,halfCarry,C
+NativeCheckArrayIndex:
+            LD   C,A
+            LD   A,D
+            OR   A
+            JR   NZ,NativeAggregateBoundsFailure
+            LD   A,E
+            CP   C
+            JR   NC,NativeAggregateBoundsFailure
+            OR   A
+            RET
+
+; HL is a bounded-string carrier and DE the canonical index. On success HL is
+; the addressed payload byte; no byte is read before the logical-length test.
+.routine in DE,HL out A,HL,carry,zero clobbers sign,parity,halfCarry,BC,DE
+NativeCheckStringIndex:
+            LD   A,D
+            OR   A
+            JR   NZ,NativeAggregateBoundsFailure
+            LD   A,(HL)
+            CP   E
+            JR   C,NativeAggregateBoundsFailure
+            JR   Z,NativeAggregateBoundsFailure
+            INC  HL
+            ADD  HL,DE
+            OR   A
+            RET
+
+; A is a nonzero fixed extent, HL an address, and DE the exclusive data end.
+; The helper rejects wrapped arithmetic and any region outside GeneratedBase+3
+; through the supplied end. It is used twice before aggregate copying begins.
+.routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IY
+NativeCheckAggregateRegion:
+            PUSH DE
+            POP  IY
+            LD   C,A
+            LD   B,0
+            PUSH HL
+            LD   DE,GeneratedBase+3
+            OR   A
+            SBC  HL,DE
+            JR   C,NativeAggregateRegionLow
+            POP  HL
+            ADD  HL,BC
+            JR   C,NativeAggregateBoundsFailure
+            PUSH IY
+            POP  DE
+            OR   A
+            SBC  HL,DE
+            JR   C,NativeAggregateRegionSuccess
+            JR   Z,NativeAggregateRegionSuccess
+NativeAggregateBoundsFailure:
+            SCF
+            RET
+NativeAggregateRegionLow:
+            POP  HL
+            SCF
+            RET
+NativeAggregateRegionSuccess:
+            OR   A
+            RET
+.endif
+
 ; Unsigned low-byte multiplication for generated expression code. A and B are
 ; the operands; the result wraps modulo 256 exactly as MUL8 requires.
 .routine in A,B out A,carry,zero clobbers sign,parity,halfCarry,B,C

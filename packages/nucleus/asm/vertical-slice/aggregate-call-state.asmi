@@ -1,0 +1,82 @@
+; Stage 7 aggregate-call state. This first direct increment retains four
+; already-declared routines and eight parameters. Source bytes remain resident,
+; so names use pointer/length pairs. Types are the Stage 6 one-byte ordinals.
+
+Stage7StateBase             .equ AggregateWorkspaceEnd
+Stage7RoutineCount          .equ Stage7StateBase+$00
+Stage7ParameterCount        .equ Stage7StateBase+$01
+Stage7CurrentRoutine        .equ Stage7StateBase+$02
+Stage7CurrentResultType     .equ Stage7StateBase+$03
+Stage7CurrentParameterStart .equ Stage7StateBase+$04
+Stage7CurrentParameterCount .equ Stage7StateBase+$05
+Stage7GlobalSymbolCount     .equ Stage7StateBase+$06
+Stage7PathType              .equ Stage7StateBase+$07
+Stage7PathExtent            .equ Stage7StateBase+$08
+Stage7PathOffset            .equ Stage7StateBase+$09
+Stage7ArgumentIndex         .equ Stage7StateBase+$0A
+Stage7ArgumentCount         .equ Stage7StateBase+$0B
+Stage7CallResultType        .equ Stage7StateBase+$0C
+Stage7CallLabel             .equ Stage7StateBase+$0D
+Stage7CallOffset            .equ Stage7StateBase+$0E
+Stage7CallDepth             .equ Stage7StateBase+$10
+Stage7StateEnd              .equ Stage7StateBase+$11
+
+Stage7RoutineTableBase      .equ Stage7StateEnd
+Stage7RoutineEntrySize      .equ 7
+Stage7RoutineCapacity       .equ 4
+Stage7RoutineTableLimit     .equ Stage7RoutineTableBase+Stage7RoutineEntrySize*Stage7RoutineCapacity
+Stage7RoutineNamePointer    .equ 0
+Stage7RoutineNameLength     .equ 2
+Stage7RoutineParameterStart .equ 3
+Stage7RoutineParameterCount .equ 4
+Stage7RoutineResultType     .equ 5
+Stage7RoutineLabel          .equ 6
+
+Stage7ParameterTableBase    .equ Stage7RoutineTableLimit
+Stage7ParameterEntrySize    .equ 4
+Stage7ParameterCapacity     .equ 8
+Stage7ParameterTableLimit   .equ Stage7ParameterTableBase+Stage7ParameterEntrySize*Stage7ParameterCapacity
+Stage7ParameterNamePointer  .equ 0
+Stage7ParameterNameLength   .equ 2
+Stage7ParameterType         .equ 3
+
+Stage7CallFrameBase         .equ Stage7ParameterTableLimit
+Stage7CallFrameSize         .equ 9
+Stage7CallFrameCapacity     .equ 4
+Stage7CallFrameLimit        .equ Stage7CallFrameBase+Stage7CallFrameSize*Stage7CallFrameCapacity
+Stage7CallFrameLabel        .equ 0
+Stage7CallFrameResult       .equ 1
+Stage7CallFrameParameter    .equ 2
+Stage7CallFrameRemaining    .equ 3
+Stage7CallFrameArgumentCount .equ 4
+Stage7CallFrameKeep         .equ 5
+Stage7CallFrameOffset       .equ 6
+Stage7CallFrameExpected     .equ 8
+
+Stage7CompilerWorkspaceEnd  .equ Stage7CallFrameLimit
+
+Stage7RoutineLabelBase      .equ 28
+Stage7ControlLabelLimit     .equ Stage7RoutineLabelBase
+Stage7NoResult              .equ 0
+
+; Stage 7 semantic operations extend the dense production dispatch range.
+SemanticBeginGeneralRoutine .equ 78
+SemanticBindParameter       .equ 79
+SemanticCallGeneral         .equ 80
+SemanticReturnAggregate     .equ 81
+SemanticEndGeneralRoutine   .equ 82
+SemanticLoadProgramAlias    .equ 83
+SemanticLoadParameterAlias  .equ 84
+SemanticSelectField         .equ 85
+SemanticSelectIndex         .equ 86
+SemanticLoadIndirect8       .equ 87
+SemanticLoadIndirect16      .equ 88
+SemanticStoreIndirect8      .equ 89
+SemanticStoreIndirect16     .equ 90
+SemanticCopyAggregate       .equ 91
+SemanticStringLength        .equ 92
+SemanticStringIndex         .equ 93
+
+DiagnosticRoutineCapacity  .equ 84
+DiagnosticParameterCapacity .equ 85
+DiagnosticTransientAlias   .equ 86

@@ -6,18 +6,6 @@
 ; are written into a private static image which the native backend publishes
 ; only after the complete source has succeeded.
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,HL
-AggregateReset:
-            XOR  A
-            LD   HL,AggregateMode
-            LD   B,AggregateInitializerElements-AggregateMode+1
-AggregateResetStateLoop:
-            LD   (HL),A
-            INC  HL
-            DJNZ AggregateResetStateLoop
-            LD   (StaticImageLength),A
-            RET
-
 .routine in A out A,HL clobbers carry,zero,sign,parity,halfCarry,DE
 AggregateTypeAddress:
             SUB  AggregateFirstDynamicTypeId
@@ -445,7 +433,11 @@ AggregateRecordFinish:
             LD   (HL),A
             LD   HL,AggregateRecordCount
             INC  (HL)
+.if AggregateCallSlices
+            JP   Stage7ParseTopLevel
+.else
             JP   TypedParseTopLevel
+.endif
 AggregateRecordEmptyFailure:
             LD   A,DiagnosticRecordEmpty
             JP   CompilerSetDiagnostic
@@ -890,7 +882,11 @@ AggregateProgramPrepareSymbol:
             LD   A,(AggregateCurrentObjectEnd)
             LD   (StaticImageLength),A
             LD   (NextProgramSlot),A
+.if AggregateCallSlices
+            JP   Stage7ParseTopLevel
+.else
             JP   TypedParseTopLevel
+.endif
 
 ; Dedicated Stage 6 compile entry. Historical slices keep AggregateMode clear;
 ; this entry makes the complete static-image path authoritative.

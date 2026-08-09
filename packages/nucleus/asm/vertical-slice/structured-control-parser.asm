@@ -6,8 +6,12 @@
 ControlReset:
             XOR  A
             LD   (ControlDepth),A
+.if AggregateCallSlices
+            RET
+.else
             LD   (ControlNextLabel),A
             RET
+.endif
 
 .routine in A out A,DE,HL,carry,zero clobbers sign,parity,halfCarry
 ControlFrameAddress:
@@ -66,6 +70,16 @@ ControlTopFrame:
             DEC  A
             JP   ControlFrameAddress
 
+.routine in B out A,DE,HL,carry,zero clobbers sign,parity,halfCarry
+ControlTopFrameField:
+            CALL ControlTopFrame
+            RET  C
+            LD   E,B
+            LD   D,0
+            ADD  HL,DE
+            OR   A
+            RET
+
 .routine out A,carry,zero clobbers sign,parity,halfCarry,HL
 ControlPopFrame:
             LD   HL,ControlDepth
@@ -76,18 +90,24 @@ ControlPopFrame:
             XOR  A
             RET
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,HL
-ControlAllocateLabel:
+.routine in B out A,C,DE,HL,carry,zero clobbers sign,parity,halfCarry
+ControlAllocateInto:
             LD   A,(ControlNextLabel)
+.if AggregateCallSlices
+            CP   Stage7ControlLabelLimit
+.else
             ; Ordinal 31 is the retained routine entry.
             CP   ControlRoutineLabel
+.endif
             JR   NC,ControlLabelFailure
-            LD   L,A
+            LD   C,A
             INC  A
             LD   (ControlNextLabel),A
-            LD   A,L
-            OR   A
+            CALL ControlTopFrameField
+            RET  C
+            LD   (HL),C
             RET
+
 ControlLabelFailure:
             LD   A,DiagnosticControlLabelCapacity
             JP   CompilerSetDiagnostic
@@ -186,19 +206,12 @@ StructuredParseIf:
             LD   A,ControlKindIf
             CALL ControlPushFrame
             RET  C
-            CALL ControlAllocateLabel
+            LD   B,ControlFrameExit
+            CALL ControlAllocateInto
             RET  C
-            LD   C,A
-            CALL ControlTopFrame
-            LD   DE,ControlFrameExit
-            ADD  HL,DE
-            LD   (HL),C
-            CALL ControlAllocateLabel
+            LD   B,ControlFrameLabelA
+            CALL ControlAllocateInto
             RET  C
-            LD   C,A
-            CALL ControlTopFrame
-            INC  HL
-            LD   (HL),C
             LD   DE,ControlFrameCounter-1
             ADD  HL,DE
             LD   (HL),1
@@ -229,9 +242,8 @@ StructuredParseIfCondition:
             RET  C
             JR   StructuredParseIfEnd
 StructuredParseElseIf:
-            CALL ControlTopFrame
-            LD   DE,ControlFrameExit
-            ADD  HL,DE
+            LD   B,ControlFrameExit
+            CALL ControlTopFrameField
             LD   C,(HL)
             CALL ControlEmitJump
             RET  C
@@ -240,20 +252,15 @@ StructuredParseElseIf:
             LD   C,(HL)
             CALL ControlEmitLabel
             RET  C
-            CALL ControlAllocateLabel
+            LD   B,ControlFrameLabelA
+            CALL ControlAllocateInto
             RET  C
-            PUSH AF
-            CALL ControlTopFrame
-            INC  HL
-            POP  AF
-            LD   (HL),A
             CALL ParserTake
             RET  C
             JR   StructuredParseIfCondition
 StructuredParseElse:
-            CALL ControlTopFrame
-            LD   DE,ControlFrameExit
-            ADD  HL,DE
+            LD   B,ControlFrameExit
+            CALL ControlTopFrameField
             LD   C,(HL)
             CALL ControlEmitJump
             RET  C
@@ -270,9 +277,8 @@ StructuredParseElse:
             RET  C
             CALL StructuredRecordIfClause
             RET  C
-            CALL ControlTopFrame
-            LD   DE,ControlFrameMode
-            ADD  HL,DE
+            LD   B,ControlFrameMode
+            CALL ControlTopFrameField
             LD   (HL),1
             CALL ParserPeek
             RET  C
@@ -283,19 +289,17 @@ StructuredParseIfEnd:
             RET  C
             CALL ParserExpectLine
             RET  C
-            CALL ControlTopFrame
-            LD   DE,ControlFrameExit
-            ADD  HL,DE
+            LD   B,ControlFrameExit
+            CALL ControlTopFrameField
             LD   C,(HL)
             CALL ControlEmitLabel
             RET  C
-            CALL ControlTopFrame
+            LD   B,ControlFrameCounter
+            CALL ControlTopFrameField
             PUSH HL
-            LD   DE,ControlFrameCounter
-            ADD  HL,DE
             LD   A,(HL)
             POP  HL
-            LD   DE,ControlFrameMode
+            LD   DE,ControlFrameMode-ControlFrameCounter
             ADD  HL,DE
             AND  (HL)
             XOR  1
@@ -304,14 +308,13 @@ StructuredParseIfEnd:
             POP  AF
             RET
 
-.routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry
+.routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B
 StructuredRecordIfClause:
             LD   A,(ControlSequenceFallsThrough)
             OR   A
             RET  Z
-            CALL ControlTopFrame
-            LD   DE,ControlFrameCounter
-            ADD  HL,DE
+            LD   B,ControlFrameCounter
+            CALL ControlTopFrameField
             LD   (HL),0
             XOR  A
             RET
@@ -322,21 +325,14 @@ StructuredParseWhile:
             LD   A,ControlKindWhile
             CALL ControlPushFrame
             RET  C
-            CALL ControlAllocateLabel
+            LD   B,ControlFrameLabelA
+            CALL ControlAllocateInto
             RET  C
-            LD   C,A
-            CALL ControlTopFrame
             INC  HL
             LD   (HL),C
-            INC  HL
-            LD   (HL),C
-            CALL ControlAllocateLabel
+            LD   B,ControlFrameExit
+            CALL ControlAllocateInto
             RET  C
-            LD   C,A
-            CALL ControlTopFrame
-            LD   DE,ControlFrameExit
-            ADD  HL,DE
-            LD   (HL),C
             CALL ControlTopFrame
             INC  HL
             LD   C,(HL)
@@ -344,9 +340,8 @@ StructuredParseWhile:
             RET  C
             CALL StructuredParseBooleanHeader
             RET  C
-            CALL ControlTopFrame
-            LD   DE,ControlFrameExit
-            ADD  HL,DE
+            LD   B,ControlFrameExit
+            CALL ControlTopFrameField
             LD   C,(HL)
             CALL ControlEmitBranchFalse
             RET  C
@@ -356,15 +351,13 @@ StructuredParseWhile:
             RET  C
             CP   TokenEnd
             JP   NZ,ParserExpectedScalar
-            CALL ControlTopFrame
-            LD   DE,ControlFrameContinue
-            ADD  HL,DE
+            LD   B,ControlFrameContinue
+            CALL ControlTopFrameField
             LD   C,(HL)
             CALL ControlEmitJump
             RET  C
-            CALL ControlTopFrame
-            LD   DE,ControlFrameExit
-            ADD  HL,DE
+            LD   B,ControlFrameExit
+            CALL ControlTopFrameField
             LD   C,(HL)
             CALL ControlEmitLabel
             RET  C
@@ -533,48 +526,25 @@ StructuredForStepReady:
             RET  C
             PUSH BC
             PUSH DE
-            CALL ControlAllocateLabel
+            LD   B,ControlFrameLabelA
+            CALL ControlAllocateInto
             POP  DE
             POP  BC
             RET  C
-            LD   C,A
             PUSH BC
             PUSH DE
-            CALL ControlTopFrame
-            INC  HL
-            LD   (HL),C
-            POP  DE
-            POP  BC
-            PUSH BC
-            PUSH DE
-            CALL ControlAllocateLabel
+            LD   B,ControlFrameContinue
+            CALL ControlAllocateInto
             POP  DE
             POP  BC
             RET  C
-            LD   C,A
             PUSH BC
             PUSH DE
-            CALL ControlTopFrame
-            LD   DE,ControlFrameContinue
-            ADD  HL,DE
-            LD   (HL),C
-            POP  DE
-            POP  BC
-            PUSH BC
-            PUSH DE
-            CALL ControlAllocateLabel
+            LD   B,ControlFrameExit
+            CALL ControlAllocateInto
             POP  DE
             POP  BC
             RET  C
-            LD   C,A
-            PUSH BC
-            PUSH DE
-            CALL ControlTopFrame
-            LD   DE,ControlFrameExit
-            ADD  HL,DE
-            LD   (HL),C
-            POP  DE
-            POP  BC
             PUSH DE
             CALL ControlTopFrame
             POP  DE
@@ -619,17 +589,15 @@ StructuredForModeReady:
             RET  C
             CP   TokenEnd
             JP   NZ,ParserExpectedScalar
-            CALL ControlTopFrame
-            LD   DE,ControlFrameContinue
-            ADD  HL,DE
+            LD   B,ControlFrameContinue
+            CALL ControlTopFrameField
             LD   C,(HL)
             CALL ControlEmitLabel
             RET  C
             CALL StructuredEmitForNext
             RET  C
-            CALL ControlTopFrame
-            LD   DE,ControlFrameExit
-            ADD  HL,DE
+            LD   B,ControlFrameExit
+            CALL ControlTopFrameField
             LD   C,(HL)
             CALL ControlEmitLabel
             RET  C
@@ -681,9 +649,8 @@ StructuredEmitForTest:
             CALL SemanticSinkPut
             POP  HL
             RET  C
-            CALL ControlTopFrame
-            LD   DE,ControlFrameExit
-            ADD  HL,DE
+            LD   B,ControlFrameExit
+            CALL ControlTopFrameField
             LD   A,(HL)                  ; exit label
             JP   SemanticSinkPut
 StructuredEmitFrameBytes:

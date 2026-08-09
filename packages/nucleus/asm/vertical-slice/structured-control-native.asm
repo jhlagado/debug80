@@ -9,18 +9,6 @@ EmitControlTrapOffset   .equ EmitExitFixup
 EmitControlTestLabel    .equ EmitFailureFixup
 EmitControlExitLabel    .equ EmitFailureFixup+1
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,HL
-StructuredNativeReset:
-            XOR  A
-            LD   (EmitControlFixupCount),A
-            LD   HL,EmitControlLabelValidBase
-            LD   B,EmitControlLabelCapacity
-StructuredNativeResetLabels:
-            LD   (HL),A
-            INC  HL
-            DJNZ StructuredNativeResetLabels
-            RET
-
 ; C is a label ordinal and DE is the address of a generated word operand.
 .routine in C,DE out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 StructuredNativeRecordFixup:

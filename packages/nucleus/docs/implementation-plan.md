@@ -558,8 +558,62 @@ code unchanged. The figures above include all follow-ups.
 
 Add aggregate parameter carriers, checked selection, transient aggregate
 results, carrier preservation across intervening calls, and exact-type
-aggregate assignment. Measure straight-line copying, a counted byte-copy loop,
-and any shared native helper before selecting the direct-Z80 lowering policy.
+aggregate assignment.
+
+The initial correctness form retains four direct routine declarations, eight
+parameters across those declarations, and four nested compiler call frames.
+Aggregate arguments enter generated routines as canonical address words and
+are copied into distinct activation storage before the routine body runs.
+Aggregate results reuse the scalar result carrier but remain statically typed;
+source expressions cannot convert, compare, calculate with, or store the
+carrier itself. Field and array selection derive another checked carrier, while
+bounded-string `length` produces a read-only scalar value.
+
+Exact-type aggregate assignment uses the Z80 `LDIR` instruction after two
+complete-region checks. Both checks finish before the first destination write.
+The fixed Stage 6 extent limit of 255 bytes makes the copy count representable
+in one retained extent byte and in `BC`. The proof also supplies an invalid
+source carrier and an invalid destination carrier independently, then verifies
+that neither case changes either destination byte.
+
+The initial correctness draft measured 12,440 code bytes plus 219 immutable
+bytes, for a 12,659-byte compiler core. The first adversarial review found
+unbalanced suffix-capacity exits, two namespace omissions, a scalar suffix
+escaping into aggregate metadata, and a suppressed bounds fault that still
+produced a diagnostic. The repairs add exact diagnostics, stack-pointer checks,
+short-circuit controls, call-shape mismatches, and an activation-capacity trap
+that verifies the source position and restored root frame.
+
+Fresh assembly after those repairs measures 12,521 code bytes plus 219 immutable
+bytes, for a 12,740-byte compiler core. Workspace is 1,198 bytes. The common
+front end is 9,272 bytes, including an 8,252-byte parser. The typed and aggregate
+native sink occupies 2,931 bytes, and the selected runtime is 419 bytes. The
+four generated proof programs remain 523, 600, 341, and 239 bytes. The expanded
+Stage 7 proof executes 597,738 instructions and 5,674,804 T-states and occupies
+1,666 proof bytes. These figures describe the repaired correctness baseline;
+the second correctness review cleared it for size work without another
+production repair.
+
+The measured compression pass removes 216 compiler-core bytes. It shares the
+native publication header, indexed-local emitter, control-frame field lookup,
+control-label allocation and store, and constant binary preparation. Constant
+multiplication consumes the values prepared by that shared path. Four trailing
+generated `NOP` bytes and one no-effect compiler instruction are also gone. A
+final census aliases eight byte-identical or contained native templates and
+inlines four single-caller reset and allocation wrappers. The OR/AND fold merge
+no longer pays after the shared constant path, and spilling counted-loop
+registers would trade a small remaining code saving for more workspace and a
+new liveness obligation, so neither experiment is retained.
+
+Fresh assembly after compression measures 12,305 code bytes plus 219 immutable
+bytes, for a 12,524-byte compiler core. Workspace remains 1,198 bytes. The
+common front end is 9,159 bytes, including an 8,139-byte parser, and the typed
+and aggregate native sink is 2,828 bytes. The generated proof programs now
+occupy 522, 599, 339, and 239 bytes. The final proof discriminates Boolean
+results and short-circuited aggregate selection inside a scalar call argument;
+it executes 649,832 instructions and 6,172,556 T-states and occupies 1,666
+proof bytes. The final review also restored carry propagation in the shared
+control-frame field helper. The core retains 3,860 bytes below the 16 KiB gate.
 
 Completion evidence:
 
@@ -611,6 +665,9 @@ requirement are both known.
 | diagnostic-name bytes                   |       open | open                                                          | capacity diagnostic                       | open                                                  |
 | identifier bytes                        |       open | open                                                          | capacity diagnostic                       | open                                                  |
 | ordinary scalar symbols                 |          6 | six-byte source-backed entries                                | capacity diagnostic                       | duplicate, unknown, and seventh-name proof            |
+| direct routine declarations             |          4 | seven-byte source-backed entries                              | capacity diagnostic                       | rejected fifth routine                                |
+| retained direct parameters              |          8 | four-byte source-backed entries                               | capacity diagnostic                       | rejected ninth total parameter                        |
+| nested compiler call frames             |          4 | nine-byte parser frames                                       | capacity diagnostic                       | rejected fifth nested call                            |
 | dynamic types, records, and fields      | 8 / 5 / 12 | three-byte type, two-byte record, and five-byte field entries | capacity diagnostic                       | accepted nested layout and metadata exhaustion proofs |
 | complete aggregate type extent          |        255 | retained byte extent; selected Stage 6 layout bound           | capacity diagnostic                       | rejected 256-byte field type                          |
 | retained forward signatures and names   |       open | copied or interned bytes                                      | capacity diagnostic                       | one resident-part pair; general retention open        |
