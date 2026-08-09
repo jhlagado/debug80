@@ -6,6 +6,7 @@
 
             .org CompilerCoreBase
 CompilerCodeStart:
+LegacyCompilerSlices .equ 1
 SourceAdapterCodeStart:
             .include "source-adapter.asm"
 SourceAdapterCodeEnd:
@@ -23,6 +24,7 @@ ParserCodeStart:
 ParserCodeEnd:
 CompilerCommonCodeEnd:
 NativeSinkCodeStart:
+NativeLegacyEncoders .equ 0
             .include "loop-native-sink.asm"
 TypedNativeSinkCodeStart:
             .include "typed-expression-native.asm"

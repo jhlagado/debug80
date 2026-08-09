@@ -181,11 +181,12 @@ active implementation work.
 
 Stages 2 and 3 are executable historical evidence. Stage 4 completed the
 backend decision with counted-loop, checked-array, and scalar-recursion
-increments. Stage 5 now covers typed scalar declarations and expressions,
-structured control, and one retained recursive scalar routine. Each increment
-has passed correctness review and a measured compression pass. This remains a
-bounded proof increment rather than a complete compiler. Its resident size is
-the current plateau from which the next feature must grow.
+increments. Stage 5 covers typed scalar declarations and expressions,
+structured control, and one retained recursive scalar routine. Stage 6 adds
+aggregate layout and static images. Each completed increment has a correctness
+baseline and a measured compression pass. This remains a bounded proof
+increment rather than a complete compiler. Its resident size is the current
+plateau from which the next feature must grow.
 
 | Area                 | Current evidence                                                                                                        | Work ahead                                                                                              |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
@@ -267,11 +268,13 @@ generated program through Debug80. Success, malformed source, output failure,
 checked array access, counted loops, forward calls, bounded recursion, and typed
 scalar expressions have executable proofs.
 
-The current measured build is 10,771 bytes of code and immutable data with 704
-bytes of peak workspace. The structured-control program is 715 bytes, the
-comprehensive typed-expression bound is 857 bytes, and the shared target
+The Stage 6 production build is 9,863 bytes of code and immutable data with
+1,085 bytes of peak workspace. The structured-control program is 715 bytes,
+the comprehensive typed-expression bound is 857 bytes, and the shared target
 runtime is 358 code bytes. These are narrow-slice accounts, not projections for
-the completed language.
+the completed language. Historical proof configurations retain the fixed
+parsers and encoders needed to rerun their original evidence; those fixtures
+are excluded from the production Stage 6 account.
 The detailed path-by-path measurements and every retired NVM comparison are
 preserved in `archive/nucleus-nvm/docs/implementation-plan-at-retirement.md`.
 
@@ -502,6 +505,55 @@ Completion evidence:
 - native startup exposes no partially applied data image; and
 - type-metadata and initializer workspace limits are measured.
 
+The first correctness-complete build uses eight dynamic type descriptors, five
+record descriptors, twelve field entries, four active initializer levels,
+thirty-two initializer nodes including the root, and a 255-byte static-image
+region. The representative program defines nested records, a bounded string,
+and fixed arrays. Its zero and explicit declarations produce a 52-byte packed
+image. The publisher copies that image ahead of the generated entry code and
+restores the previous generated image and size after a forced mid-publication
+failure.
+
+The correctness baseline measured 12,231 code bytes plus 240 immutable bytes,
+for a 12,471-byte compiler core. Workspace was 1,121 bytes. The first
+adversarial review found scalar use of record and aggregate symbols, duplicate
+field acceptance, and a record type admitted as a counted-loop step. Each
+repair gained a whole-source proof. The same review strengthened the rollback
+case so the failed publication writes bytes different from the previous image,
+and added exact initializer-node and metadata-capacity boundaries.
+
+The compression pass separates historical fixed-slice parsers and encoders from
+the production configuration while preserving their standalone executable
+proofs. It also narrows extents, offsets, and static-image counters after the
+255-byte capacity checks; compacts type and field records; shares token and
+parser paths; interns structural type descriptors; and stops rewriting string
+padding that the zeroed image already supplies. Fresh production assembly now
+measures 9,652 code bytes plus 211 immutable bytes, for a 9,863-byte compiler
+core. The common front end is 7,171 bytes, including a 6,151-byte parser. The
+retained typed and aggregate native sink is 2,163 bytes. Workspace is 1,085
+bytes and the selected native runtime is 358 bytes.
+
+The compression pass removes 2,608 core bytes and 36 workspace bytes from the
+correctness baseline. It also leaves the Stage 6 compiler 908 bytes smaller
+than the reviewed Stage 5 plateau. The expanded aggregate proof executes
+338,164 instructions and 3,195,501 T-states and occupies 1,075 proof bytes. It
+checks lowercase and uppercase hexadecimal escapes, canonical Boolean image
+bytes, nominal record identity, structural array interning, the 255-byte type
+extent boundary, and atomic publication in addition to the original layout and
+initializer cases.
+
+The final size reviews found another 73 resident bytes. Four structured-control
+templates now alias identical typed-expression bytes; three one-caller token
+wrappers are inlined in the production configuration; and repeated diagnostic
+tails share their existing implementations. The first follow-up shared Boolean
+and `u8` literal emission. Its fresh census exposed the same body in numeric
+literals, so the final form selects metadata once and sends all three forms
+through one balanced emitter. The final census then routed named constants
+through the same checked path. Its symbol byte already contains only the scalar
+type, so the final form sets the constant metadata bit directly. The additional
+compiler-side save and restore work changes proof timing but leaves generated
+code unchanged. The figures above include all follow-ups.
+
 ### Stage 7: aggregate calls, results, and copying
 
 Add aggregate parameter carriers, checked selection, transient aggregate
@@ -553,26 +605,28 @@ The first implementation fixes a numeric limit before each bounded structure is
 used. Each row remains open until a Z80 representation and a minimum corpus
 requirement are both known.
 
-| Resource                                  | Limit | Representation                 | Excess diagnostic or trap                 | Evidence                                       |
-| ----------------------------------------- | ----: | ------------------------------ | ----------------------------------------- | ---------------------------------------------- |
-| source part count                         |  open | open                           | capacity diagnostic                       | open                                           |
-| diagnostic-name bytes                     |  open | open                           | capacity diagnostic                       | open                                           |
-| identifier bytes                          |  open | open                           | capacity diagnostic                       | open                                           |
-| ordinary scalar symbols                   |     6 | six-byte source-backed entries | capacity diagnostic                       | duplicate, unknown, and seventh-name proof     |
-| record types and fields                   |  open | open                           | capacity diagnostic                       | open                                           |
-| retained forward signatures and names     |  open | copied or interned bytes       | capacity diagnostic                       | one resident-part pair; general retention open |
-| scalar parameters                         |  open | open                           | capacity diagnostic                       | one recursive-parameter proof                  |
-| expression nesting                        |    16 | seven-byte metadata entries    | capacity diagnostic                       | seventeen-deep pending-expression proof        |
-| semantic transcript payload bytes         |   255 | counted variable-width stream  | capacity diagnostic                       | 52-assignment exhaustion proof                 |
-| Boolean fixups                            |    16 | two-byte generated addresses   | capacity diagnostic                       | exhaustion and underflow boundary proofs       |
-| active control frames                     |     8 | ten-byte parser frames         | capacity diagnostic                       | nested structured-control proofs               |
-| dynamic labels                            |    31 | byte ordinals; 31 reserved     | capacity diagnostic                       | thirty-first allocation boundary proof         |
-| branch fixups                             |    32 | three-byte absolute records    | capacity diagnostic                       | bounded resolver and generated branch proofs   |
-| structured-initializer depth and elements |  open | open                           | capacity diagnostic                       | open                                           |
-| emitted Z80 program bytes                 | 4,096 | bounded output cursor          | capacity diagnostic                       | 857-byte Stage 5 bound and rollback proof       |
-| activation bytes                          |  open | packed records                 | `activation-capacity`                     | one-byte Stage 4 slice                         |
-| activation depth                          |  open | counter plus packed arena      | `activation-capacity`                     | depth-three trap proof                         |
-| service stream and bulk-storage extents   |  open | target adapter                 | service error or documented host capacity | open                                           |
+| Resource                                |      Limit | Representation                                                | Excess diagnostic or trap                 | Evidence                                              |
+| --------------------------------------- | ---------: | ------------------------------------------------------------- | ----------------------------------------- | ----------------------------------------------------- |
+| source part count                       |       open | open                                                          | capacity diagnostic                       | open                                                  |
+| diagnostic-name bytes                   |       open | open                                                          | capacity diagnostic                       | open                                                  |
+| identifier bytes                        |       open | open                                                          | capacity diagnostic                       | open                                                  |
+| ordinary scalar symbols                 |          6 | six-byte source-backed entries                                | capacity diagnostic                       | duplicate, unknown, and seventh-name proof            |
+| dynamic types, records, and fields      | 8 / 5 / 12 | three-byte type, two-byte record, and five-byte field entries | capacity diagnostic                       | accepted nested layout and metadata exhaustion proofs |
+| complete aggregate type extent          |        255 | retained byte extent; selected Stage 6 layout bound           | capacity diagnostic                       | rejected 256-byte field type                          |
+| retained forward signatures and names   |       open | copied or interned bytes                                      | capacity diagnostic                       | one resident-part pair; general retention open        |
+| scalar parameters                       |       open | open                                                          | capacity diagnostic                       | one recursive-parameter proof                         |
+| expression nesting                      |         16 | seven-byte metadata entries                                   | capacity diagnostic                       | seventeen-deep pending-expression proof               |
+| semantic transcript payload bytes       |        255 | counted variable-width stream                                 | capacity diagnostic                       | 52-assignment exhaustion proof                        |
+| Boolean fixups                          |         16 | two-byte generated addresses                                  | capacity diagnostic                       | exhaustion and underflow boundary proofs              |
+| active control frames                   |          8 | ten-byte parser frames                                        | capacity diagnostic                       | nested structured-control proofs                      |
+| dynamic labels                          |         31 | byte ordinals; 31 reserved                                    | capacity diagnostic                       | thirty-first allocation boundary proof                |
+| branch fixups                           |         32 | three-byte absolute records                                   | capacity diagnostic                       | bounded resolver and generated branch proofs          |
+| structured-initializer depth and nodes  |     4 / 32 | counters plus recursive parser state; root counts as a node   | capacity diagnostic                       | depth and 31/32 source-element boundary proofs        |
+| program static-image bytes              |        255 | private compiler image                                        | capacity diagnostic                       | 255-byte object followed by rejected allocation       |
+| emitted Z80 program bytes               |      4,096 | bounded output cursor                                         | capacity diagnostic                       | 857-byte Stage 5 bound and rollback proof             |
+| activation bytes                        |       open | packed records                                                | `activation-capacity`                     | one-byte Stage 4 slice                                |
+| activation depth                        |       open | counter plus packed arena                                     | `activation-capacity`                     | depth-three trap proof                                |
+| service stream and bulk-storage extents |       open | target adapter                                                | service error or documented host capacity | open                                                  |
 
 No implementation may wrap, truncate, drop state, or change source meaning when
 one of these limits is exceeded.

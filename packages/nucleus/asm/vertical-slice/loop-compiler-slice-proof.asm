@@ -5,6 +5,7 @@
 
             .org CompilerCoreBase
 CompilerCodeStart:
+LegacyCompilerSlices .equ 1
             .include "source-adapter.asm"
             .include "loop-tokenizer.asm"
             .include "loop-semantic-sink.asm"

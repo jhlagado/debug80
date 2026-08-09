@@ -45,8 +45,7 @@ TypedNativeDispatchReturn:
 TypedNativeInvalidPopped:
             POP  BC
 TypedNativeInternalOperation:
-            LD   A,DiagnosticInternalOperation
-            JP   CompilerSetDiagnostic
+            JP   TypedExpressionStackUnderflow
 TypedNativeBooleanFixupCapacity:
             LD   A,DiagnosticBooleanFixupCapacity
             JP   CompilerSetDiagnostic

@@ -155,7 +155,77 @@ EmitControlFixupLimit   .equ EmitControlFixupBase+EmitControlFixupSize*EmitContr
 ; overlay SourceCursor as the earlier non-atomic slices did.
 GeneratedSize           .equ EmitControlFixupLimit
 NativePublishedSize     .equ GeneratedSize+2
-CompilerWorkspaceEnd    .equ NativePublishedSize+2
+Stage5WorkspaceEnd      .equ NativePublishedSize+2
+
+; Stage 6 retains aggregate type and layout metadata for the complete
+; compilation. Type IDs 1..3 are the predefined scalars; IDs 4 and above name
+; bounded four-byte descriptors. Record field offsets remain live for the
+; later selection stage, while the complete static image survives into native
+; emission.
+AggregateStateBase      .equ Stage5WorkspaceEnd
+AggregateMode           .equ AggregateStateBase+$00
+AggregateTypeCount      .equ AggregateStateBase+$01
+AggregateRecordCount    .equ AggregateStateBase+$02
+AggregateFieldCount     .equ AggregateStateBase+$03
+AggregateInitializerDepth .equ AggregateStateBase+$04
+AggregateInitializerElements .equ AggregateStateBase+$05
+AggregateCurrentTypeId  .equ AggregateStateBase+$06
+AggregateCurrentFieldStart .equ AggregateStateBase+$07
+AggregateCurrentFieldCount .equ AggregateStateBase+$08
+AggregateCurrentRecordExtent .equ AggregateStateBase+$09
+AggregateCurrentObjectOffset .equ AggregateStateBase+$0A
+AggregateCurrentObjectExtent .equ AggregateStateBase+$0B
+AggregateCandidateKind .equ AggregateStateBase+$0C
+AggregateCandidateAux  .equ AggregateStateBase+$0D
+AggregateCandidateLength .equ AggregateStateBase+$0E
+AggregateCandidateExtent .equ AggregateStateBase+$0F
+AggregateCurrentObjectEnd .equ AggregateStateBase+$10
+AggregateStateEnd       .equ AggregateStateBase+$11
+
+AggregateTypeTableBase  .equ AggregateStateEnd
+AggregateTypeEntrySize  .equ 3
+AggregateTypeCapacity   .equ 8
+AggregateTypeTableLimit .equ AggregateTypeTableBase+AggregateTypeEntrySize*AggregateTypeCapacity
+AggregateTypeKind       .equ 0
+AggregateTypeAux        .equ 1
+AggregateTypeLength     .equ 2
+; The first Stage 6 representation admits only complete aggregate layouts up
+; to 255 bytes, so one retained byte holds every admitted extent. A wider
+; valid source type receives the documented program-data capacity diagnostic
+; while its layout is constructed, even when no object has allocated storage.
+AggregateTypeExtentBase .equ AggregateTypeTableLimit
+AggregateTypeExtentLimit .equ AggregateTypeExtentBase+AggregateTypeCapacity
+
+AggregateRecordTableBase .equ AggregateTypeExtentLimit
+AggregateRecordEntrySize .equ 2
+AggregateRecordCapacity .equ 5
+AggregateRecordTableLimit .equ AggregateRecordTableBase+AggregateRecordEntrySize*AggregateRecordCapacity
+AggregateRecordFieldStart .equ 0
+AggregateRecordFieldCount .equ 1
+
+AggregateFieldTableBase .equ AggregateRecordTableLimit
+AggregateFieldEntrySize .equ 5
+AggregateFieldCapacity  .equ 12
+AggregateFieldTableLimit .equ AggregateFieldTableBase+AggregateFieldEntrySize*AggregateFieldCapacity
+AggregateFieldNamePointer .equ 0
+AggregateFieldNameLength .equ 2
+AggregateFieldTypeId    .equ 3
+AggregateFieldOffset    .equ 4
+
+; One type ID per ordinary symbol is enough because the ordinary symbol table
+; owns name identity and the payload word owns the program-data offset.
+AggregateSymbolTypeBase .equ AggregateFieldTableLimit
+AggregateSymbolTypeLimit .equ AggregateSymbolTypeBase+SymbolCapacity
+
+StaticImageLength       .equ AggregateSymbolTypeLimit
+StaticImageBase         .equ StaticImageLength+1
+StaticImageCapacity     .equ 255
+StaticImageLimit        .equ StaticImageBase+StaticImageCapacity
+AggregateWorkspaceEnd   .equ StaticImageLimit
+CompilerWorkspaceEnd    .equ AggregateWorkspaceEnd
+
+AggregateInitializerDepthCapacity .equ 4
+AggregateInitializerElementCapacity .equ 32
 
 ; Emission follows successful parsing and may overlay the retained forward.
 SemanticReadCursor      .equ ForwardNamePointer
@@ -210,6 +280,9 @@ TokenTo                 .equ 43
 TokenStep               .equ 44
 TokenExit               .equ 45
 TokenContinue           .equ 46
+TokenStringLiteral      .equ 47
+TokenRecord             .equ 48
+TokenString             .equ 49
 
 DiagnosticNone          .equ 0
 DiagnosticLexical       .equ 1
@@ -248,6 +321,14 @@ DiagnosticExpectedLoop .equ 72
 DiagnosticLoopCounter  .equ 73
 DiagnosticLoopStep     .equ 74
 DiagnosticRoutineFlow  .equ 75
+DiagnosticTypeMetadataCapacity .equ 76
+DiagnosticInitializerCapacity .equ 77
+DiagnosticInitializerShape .equ 78
+DiagnosticInitializerCount .equ 79
+DiagnosticStringLength .equ 80
+DiagnosticProgramDataCapacity .equ 81
+DiagnosticRecordEmpty  .equ 82
+DiagnosticTypeBound    .equ 83
 
 ; Ordinary token mismatches encode the token ordinal directly. Named-value
 ; mismatches retain their context-specific diagnostic codes above.
@@ -278,6 +359,7 @@ DiagnosticExpectedIf    .equ DiagnosticExpectedTokenBase+TokenIf
 DiagnosticExpectedMinus .equ DiagnosticExpectedTokenBase+TokenMinus
 DiagnosticExpectedPlus  .equ DiagnosticExpectedTokenBase+TokenPlus
 DiagnosticExpectedStar  .equ DiagnosticExpectedTokenBase+TokenStar
+DiagnosticExpectedStringLiteral .equ DiagnosticExpectedTokenBase+TokenStringLiteral
 
 ScalarTypeExact         .equ 0
 ScalarTypeU8            .equ 1
@@ -291,6 +373,18 @@ SymbolClassProgram      .equ $04
 SymbolClassLocal        .equ $08
 SymbolClassParameter    .equ $0C
 SymbolClassMask         .equ $0C
+SymbolRecordTypeFlag    .equ $40
+SymbolAggregateFlag     .equ $80
+SymbolInfoRecordType    .equ SymbolRecordTypeFlag
+SymbolInfoAggregateProgram .equ SymbolAggregateFlag+SymbolClassProgram
+
+AggregateTypeIdU8       .equ ScalarTypeU8
+AggregateTypeIdU16      .equ ScalarTypeU16
+AggregateTypeIdBoolean  .equ ScalarTypeBoolean
+AggregateFirstDynamicTypeId .equ 4
+AggregateTypeKindRecord .equ 4
+AggregateTypeKindString .equ 5
+AggregateTypeKindArray  .equ 6
 
 SymbolInfoConstantU8    .equ SymbolClassConstant+ScalarTypeU8
 SymbolInfoConstantU16   .equ SymbolClassConstant+ScalarTypeU16

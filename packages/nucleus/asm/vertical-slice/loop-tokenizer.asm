@@ -191,6 +191,89 @@ TokenScanCharacter:
 TokenScanCharacterFailure:
             JP   TokenLexicalFailure
 
+; Return carry and the decoded nibble for one hexadecimal digit. Tokenization
+; needs only the validity flag; the static-image decoder reuses the value.
+.routine in A out A,carry,zero clobbers sign,parity,halfCarry
+TokenIsHexDigit:
+            CP   "0"
+            JR   C,TokenHexNo
+            CP   "9"+1
+            JR   C,TokenHexDecimal
+            OR   $20
+            SUB  "a"
+            CP   6
+            JR   NC,TokenHexNo
+            ADD  A,10
+            SCF
+            RET
+TokenHexDecimal:
+            SUB  "0"
+            SCF
+            RET
+TokenHexNo:
+            OR   A
+            RET
+
+; Scan and validate a bounded-string literal. BC returns the decoded byte
+; length. TokenLexemePointer continues to identify the opening quote so the
+; declaration parser can decode the bytes directly into the static image.
+.routine out A,BC,carry,zero clobbers sign,parity,halfCarry,D,DE,HL
+TokenScanString:
+            CALL SourceTake
+            JR   C,TokenScanCharacterFailure
+            LD   C,0
+TokenScanStringNext:
+            CALL SourceTake
+            JR   C,TokenScanCharacterFailure
+            CP   '"'
+            JR   Z,TokenScanStringDone
+            CP   $20
+            JR   C,TokenScanCharacterFailure
+            CP   $7F
+            JR   NC,TokenScanCharacterFailure
+            CP   "\\"
+            JR   Z,TokenScanStringEscape
+TokenScanStringCount:
+            INC  C
+            JP   Z,TokenScanCharacterFailure
+            JR   TokenScanStringNext
+TokenScanStringEscape:
+            CALL SourceTake
+            JR   C,TokenScanCharacterFailure
+            CP   "x"
+            JR   Z,TokenScanStringHex
+            CP   "0"
+            JR   Z,TokenScanStringCount
+            CP   "n"
+            JR   Z,TokenScanStringCount
+            CP   "r"
+            JR   Z,TokenScanStringCount
+            CP   "t"
+            JR   Z,TokenScanStringCount
+            CP   "'"
+            JR   Z,TokenScanStringCount
+            CP   '"'
+            JR   Z,TokenScanStringCount
+            CP   "\\"
+            JR   NZ,TokenScanCharacterFailure
+            JR   TokenScanStringCount
+TokenScanStringHex:
+            CALL SourceTake
+            JR   C,TokenScanCharacterFailure
+            CALL TokenIsHexDigit
+            JR   NC,TokenScanCharacterFailure
+            CALL SourceTake
+            JR   C,TokenScanCharacterFailure
+            CALL TokenIsHexDigit
+            JR   NC,TokenScanCharacterFailure
+            JR   TokenScanStringCount
+TokenScanStringDone:
+            LD   B,0
+            LD   A,C
+            LD   (TokenLength),A
+            LD   A,TokenStringLiteral
+            JP   TokenFinish
+
 .routine out carry,zero clobbers sign,parity,halfCarry,A,DE,HL
 TokenSkipComment:
 TokenSkipCommentLoop:
@@ -242,6 +325,8 @@ TokenizerTryPunctuation:
             DJNZ TokenizerTryPunctuation
             CP   "'"
             JP   Z,TokenScanCharacter
+            CP   '"'
+            JP   Z,TokenScanString
             CP   "0"
             JR   C,TokenizerTryName
             CP   "9"+1

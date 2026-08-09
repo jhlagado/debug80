@@ -17,8 +17,7 @@ NativeEmitByteRoom:
             OR   A
             RET
 NativeEmitByteFull:
-            LD   A,DiagnosticSinkCapacity
-            JP   CompilerSetDiagnostic
+            JP   SemanticSinkPutFull
 
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 NativeEmitWord:
@@ -100,6 +99,7 @@ NativeAbortProgramSize:
             SCF
             RET
 
+.if NativeLegacyEncoders
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 NativeEncodeLoopProgram:
             CALL NativeEncodeLoopProgramBody
@@ -197,6 +197,7 @@ NativeEncodeLoopProgramBody:
             RET  C
 
             JP   NativeFinishProgram
+.endif
 
 ; Small instruction emitters shared by the direct back end. Multiple entry
 ; points share the opcode-plus-operand tails rather than repeating them in
@@ -237,6 +238,7 @@ NativeEmitLoadAImmediate:
             LD   A,$3E
             JP   NativeEmitOpcodeByte
 
+.if NativeLegacyEncoders
 .routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 NativeEmitLoadDImmediate:
             LD   C,A
@@ -248,7 +250,9 @@ NativeEmitCompareImmediate:
             LD   C,A
             LD   A,$FE
             JP   NativeEmitOpcodeByte
+.endif
 
+.if NativeLegacyEncoders
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 NativeEmitLoadScalar:
             LD   HL,NativeScalarSlot
@@ -265,6 +269,7 @@ NativeEmitRestoreAfterCall:
             RET  C
             LD   A,$F1
             JP   NativeEmitByte
+.endif
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 NativeEmitSuccessReturn:
@@ -325,10 +330,12 @@ NativeEmitRelativePlaceholder:
             POP  DE
             RET
 
+.if NativeLegacyEncoders
 .routine out A,carry,zero,DE clobbers sign,parity,halfCarry,B,HL
 NativeEmitJrCPlaceholder:
             LD   A,$38
             JP   NativeEmitRelativePlaceholder
+.endif
 
 .routine in DE,HL out A,carry,zero clobbers sign,parity,halfCarry,DE,HL
 NativePatchWord:
@@ -372,6 +379,7 @@ NativeNextSemanticByte:
 ; continuation turns the Z80's JP (HL) into a compact indirect call. This
 ; entry is post-parse only: SemanticSinkFinish must have published the complete
 ; transcript before emitter scratch overlays the retained forward signature.
+.if NativeLegacyEncoders
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
 NativeDispatchCallOperations:
             LD   HL,SemanticBufferBase+1
@@ -557,11 +565,13 @@ NativeEncodeCallProgramBody:
             RET  C
             JP   NativeFinishProgram
 NativeCallBackendEnd:
+.endif
 
 ; Dense postfix-expression backend. Program data follows an initial JP, so its
 ; address is known before the code entry is patched. Scalar locals use an IX
 ; frame and therefore remain per activation; the evaluation stack lies below
 ; that frame and is empty at every statement boundary.
+.if NativeLegacyEncoders
 NativeExpressionBackendStart:
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
 NativeDispatchExpressionOperations:
@@ -614,6 +624,7 @@ NativeExpressionOperationTable:
             .dw NativeExpressionWrite
             .dw NativeExpressionEndMain
 NativeExpressionOperationCount .equ 12
+.endif
 
 .routine in A out HL clobbers carry,halfCarry,D,E
 NativeExpressionProgramAddress:
@@ -623,6 +634,7 @@ NativeExpressionProgramAddress:
             ADD  HL,DE
             RET
 
+.if NativeLegacyEncoders
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
 NativeExpressionDefineProgram:
             CALL NativeNextSemanticByte
@@ -740,6 +752,7 @@ NativeExpressionWrite:
             RET  C
             LD   (EmitFailureFixup),DE
             RET
+.endif
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
 NativeExpressionRestoreFrame:
@@ -747,6 +760,7 @@ NativeExpressionRestoreFrame:
             LD   B,4
             JP   NativeEmitBytes
 
+.if NativeLegacyEncoders
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 NativeExpressionEndMain:
             CALL NativeExpressionRestoreFrame
@@ -780,12 +794,16 @@ NativeEncodeExpressionProgramBody:
             CALL NativeDispatchExpressionOperations
             RET  C
             JP   NativeFinishProgram
+.endif
 NativeExpressionFrameBytes:
             .db $DD,$E5,$DD,$21,$00,$00,$DD,$39
+.if NativeLegacyEncoders
 NativeExpressionAddBytes:
             .db $C1,$F1,$80,$F5
+.endif
 NativeExpressionRestoreBytes:
             .db $DD,$F9,$DD,$E1
+.if NativeLegacyEncoders
 NativeExpressionBackendEnd:
 
 ; Default entry and proof-only bounded entry for the checked-array program.
@@ -902,3 +920,4 @@ NativeEmitArrayData:
             DEC  C
             JR   NZ,NativeEmitArrayData
             JP   NativeFinishProgram
+.endif

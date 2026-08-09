@@ -77,6 +77,7 @@ ParserExpectRight:
 ParserExpectAs:
             LD   E,TokenAs
             JP   ParserExpect
+.if LegacyCompilerSlices
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectU8:
             LD   E,TokenU8
@@ -87,14 +88,16 @@ ParserExpectAsU8:
             CALL ParserExpectAs
             RET  C
             JP   ParserExpectU8
+.endif
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
-ParserExpectSub:
-            LD   E,TokenSub
-            JP   ParserExpect
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectEqual:
             LD   E,TokenEquals
+            JP   ParserExpect
+.if LegacyCompilerSlices
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+ParserExpectSub:
+            LD   E,TokenSub
             JP   ParserExpect
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectLeftBracket:
@@ -104,6 +107,7 @@ ParserExpectLeftBracket:
 ParserExpectRightBracket:
             LD   E,TokenRightBracket
             JP   ParserExpect
+.endif
 .routine in B,D,HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectNamed:
             PUSH BC
@@ -123,6 +127,7 @@ ParserExpectNamedNo:
             LD   A,D
             JP   CompilerSetDiagnostic
 
+.if LegacyCompilerSlices
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectIndex:
             LD   D,DiagnosticExpectedIndex
@@ -143,6 +148,7 @@ ParserExpectResult:
             LD   HL,NameResult
             LD   B,6
             JP   ParserExpectNamed
+.endif
 
 ; Compare the current name token with the one retained by the forward.
 .routine in D out A,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
@@ -156,9 +162,7 @@ ParserCurrentNameIsForward:
             JR   NC,ParserCurrentNameNotForward
             OR   A
             RET
-ParserCurrentNameNotForward:
-            LD   A,D
-            JP   CompilerSetDiagnostic
+ParserCurrentNameNotForward .equ ParserExpectNamedNo
 
 .routine in D out A,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
 ParserExpectForwardName:
@@ -188,6 +192,7 @@ ParserRetainForwardParameter:
             OR   A
             RET
 
+.if LegacyCompilerSlices
 .routine in D out A,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
 ParserExpectForwardParameter:
             PUSH DE
@@ -207,7 +212,9 @@ ParserExpectForwardParameter:
 ParserForwardParameterNo:
             LD   A,D
             JP   CompilerSetDiagnostic
+.endif
 
+.if LegacyCompilerSlices
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectWrite:
             LD   E,TokenName
@@ -229,7 +236,9 @@ ParserActiveCounter:
 ParserExpectWriteYes:
             OR   A
             RET
+.endif
 
+.if LegacyCompilerSlices
 .routine out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
 ParserExpectNumber:
             LD   E,TokenNumber
@@ -238,6 +247,7 @@ ParserExpectNumber:
             LD   A,C
             OR   A
             RET
+.endif
 
 ; Append one operation followed by the byte in C. The helper preserves the
 ; operand across the sink's internal cursor work.
@@ -250,6 +260,7 @@ ParserEmitOperationC:
             LD   A,C
             JP   SemanticSinkPut
 
+.if LegacyCompilerSlices
 ; A resolved scalar symbol is represented by its class in A and its storage
 ; ordinal in C. Expressions emit postfix operations, leaving evaluation order
 ; independent of either backend's register choices.
@@ -276,11 +287,13 @@ ParserEmitSymbolStore:
 ParserEmitProgramStore:
             LD   A,SemanticStoreProgramU8
             JP   ParserEmitOperationC
+.endif
 
 ParserExpectedScalar:
             LD   A,DiagnosticExpectedScalar
             JP   CompilerSetDiagnostic
 
+.if LegacyCompilerSlices
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserParseScalarPrimary:
             CALL ParserTake
@@ -352,6 +365,7 @@ ParserScalarExpressionDone:
 ParserParseScalarExpression:
             LD   B,1
             JP   ParserParseScalarExpressionMin
+.endif
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectRoutineHeader:
@@ -369,6 +383,7 @@ ParserExpectRoutineHeader:
             RET  C
             JP   ParserExpectLine
 
+.if LegacyCompilerSlices
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectIndexDeclaration:
             LD   E,TokenVar
@@ -381,6 +396,7 @@ ParserExpectIndexDeclaration:
             CALL ParserExpectU8
             RET  C
             JP   ParserExpectEqual
+.endif
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectOrFailLine:
@@ -392,6 +408,7 @@ ParserExpectOrFailLine:
             RET  C
             JP   ParserExpectLine
 
+.if LegacyCompilerSlices
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectPropagateLine:
             CALL ParserExpectOrFailLine
@@ -471,10 +488,12 @@ ParserParseLoopProgramAfterSub:
             CALL SemanticSinkOperation
             RET  C
             JP   ParserFinishRoutine
+.endif
 
 ; The first general scalar path admits bounded program variables and scalar
 ; locals, then parses a main body as assignment and output statements. The
 ; current token is the program variable's name on entry.
+.if LegacyCompilerSlices
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserParseScalarProgramDeclaration:
             LD   A,(NextProgramSlot)
@@ -666,6 +685,7 @@ ParserParseScalarLocals:
 ParserScalarExpectedTopLevel:
             LD   A,DiagnosticExpectedTopLevel
             JP   CompilerSetDiagnostic
+.endif
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 ParserParseProgramAfterVar:
@@ -676,6 +696,7 @@ ParserParseProgramAfterVar:
 
 ; The older array slice is selected by the bracketed type suffix. Its body is
 ; still deliberately fixed; this split only keeps scalar names unrestricted.
+.if LegacyCompilerSlices
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserParseArrayProgramAfterU8:
             CALL ParserExpectLeftBracket
@@ -777,10 +798,12 @@ ParserFinishRoutine:
             RET  C
             LD   E,TokenEof
             JP   ParserExpect
+.endif
 
 ; Parse the first general routine-call slice. It deliberately admits one
 ; retained forward signature while exercising exact completion and parameter
 ; lookup, scalar call/result flow, and direct recursion.
+.if LegacyCompilerSlices
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserParseCallProgramAfterForward:
             CALL ParserExpectSub
@@ -954,6 +977,7 @@ ParserExpectedZero:
 ParserForwardIncomplete:
             LD   A,DiagnosticForwardIncomplete
             JP   CompilerSetDiagnostic
+.endif
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 ParserParseProgram:
@@ -967,10 +991,13 @@ ParserParseProgram:
             JP   Z,TypedParseForwardAfterTake
             CP   TokenConst
             JP   Z,TypedParseTopLevelConstAfterTake
+            CP   TokenRecord
+            JP   Z,AggregateParseRecordAfterTake
             LD   A,DiagnosticExpectedTopLevel
             JP   CompilerSetDiagnostic
 
 ; A is the stable source-part identity; HL..DE is the half-open byte range.
+.if LegacyCompilerSlices
 .routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 CompileLoopSlice:
             CALL CompileSliceInitialize
@@ -991,6 +1018,7 @@ CompileCallSlice:
             CALL ParserParseCallProgramAfterForward
             RET  C
             JP   SemanticSinkFinish
+.endif
 .routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 CompileSlice:
             CALL CompileSliceInitialize
@@ -1007,6 +1035,7 @@ CompileSliceInitialize:
             LD   A,$FF
             LD   (ParserLookaheadKind),A
             CALL SymbolReset
+            CALL AggregateReset
             XOR  A
             LD   (ForwardCompleted),A
             LD   (ForwardOrdinal),A
@@ -1016,3 +1045,4 @@ CompileSliceInitialize:
 ; correctness-first and under review. The compression pass may fold shared
 ; tails back into this parser after the rules are stable.
             .include "typed-expression-parser.asm"
+            .include "aggregate-parser.asm"

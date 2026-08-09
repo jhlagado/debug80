@@ -419,6 +419,9 @@ StructuredStepMagnitude:
             CALL SymbolLookupCurrent
             RET  C
             LD   D,A
+            AND  SymbolRecordTypeFlag+SymbolAggregateFlag
+            JR   NZ,StructuredStepFailure
+            LD   A,D
             AND  SymbolClassMask
             JR   NZ,StructuredStepFailure
             LD   A,D

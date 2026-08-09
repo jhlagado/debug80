@@ -39,10 +39,12 @@ SymbolFindCurrentLoop:
 
 ; Compatibility entry for the older slices: D is class/type information and E
 ; is a byte-sized payload. New typed declarations call the word entry below.
+.if LegacyCompilerSlices
 .routine in D,E out A,carry,zero,HL clobbers sign,parity,halfCarry,B,C,D,DE
 SymbolPrepareCurrent:
             LD   B,0
             LD   C,E
+.endif
 .routine in D,BC out A,carry,zero,HL clobbers sign,parity,halfCarry,B,C,D,DE
 SymbolPrepareCurrentWord:
             PUSH BC
@@ -82,8 +84,7 @@ SymbolPrepareCurrentWord:
             OR   A
             RET
 SymbolPrepareDuplicate:
-            LD   A,DiagnosticDuplicateName
-            JP   CompilerSetDiagnostic
+            JP   TypedDuplicateNameFailure
 SymbolPrepareFull:
             LD   A,DiagnosticSymbolCapacity
             JP   CompilerSetDiagnostic

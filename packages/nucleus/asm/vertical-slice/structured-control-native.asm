@@ -50,8 +50,7 @@ StructuredNativeRecordFixup:
             XOR  A
             RET
 StructuredNativeLabelFailure:
-            LD   A,DiagnosticControlLabelCapacity
-            JP   CompilerSetDiagnostic
+            JP   ControlLabelFailure
 StructuredNativeFixupFailure:
             LD   A,DiagnosticControlFixupCapacity
             JP   CompilerSetDiagnostic
@@ -457,10 +456,10 @@ StructuredNativeForCleanup:
             LD   A,$D1                    ; POP DE, discard retained bound
             JP   NativeEmitByte
 
-StructuredNativeBranchFalseBytes: .db $E1,$7D,$B7
-StructuredNativePopBoundStart:     .db $D1,$E1
+StructuredNativeBranchFalseBytes .equ TypedNativeBeginAndBytes
+StructuredNativePopBoundStart    .equ TypedNativePopOperandsBytes
 StructuredNativeBoundPeek:         .db $D1,$D5
-StructuredNativeTestHL:            .db $7D,$B7
+StructuredNativeTestHL           .equ TypedNativeBeginAndBytes+1
 StructuredNativeSubtractDE:        .db $B7,$ED,$52
 StructuredNativeTestThenPopCurrent: .db $7D,$B7,$E1
-StructuredNativeTestHigh:          .db $7C,$B7
+StructuredNativeTestHigh         .equ TypedNativeTestHigh

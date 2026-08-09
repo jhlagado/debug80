@@ -28,7 +28,9 @@ KeywordTable:
             .db  4,"step",TokenStep
             .db  4,"exit",TokenExit
             .db  8,"continue",TokenContinue
-KeywordCount            .equ 28
+            .db  6,"record",TokenRecord
+            .db  6,"string",TokenString
+KeywordCount            .equ 30
 
 PunctuationTable:
             .db  "=",TokenEquals
@@ -40,8 +42,12 @@ PunctuationTable:
 PunctuationCount        .equ 6
 
 NameMain:               .db "main"
+.if LegacyCompilerSlices
 NameIndex:              .db "index"
 NameBytes:              .db "bytes"
 NameReadInputByte:      .db "readInputByte"
+.endif
 NameWriteOutputByte:    .db "writeOutputByte"
+.if LegacyCompilerSlices
 NameResult:             .db "result"
+.endif

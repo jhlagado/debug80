@@ -502,18 +502,8 @@ TypedParsePrimary:
 TypedPrimaryNumber:
             LD   H,B
             LD   L,C
-            PUSH HL
-            LD   A,SemanticLiteral16
-            CALL TypedEmitOperation
-            POP  HL
-            RET  C
-            PUSH HL
-            CALL TypedEmitWord
-            POP  HL
-            RET  C
-            LD   A,ScalarMetaConstant+ScalarTypeExact
-            OR   A
-            RET
+            LD   B,ScalarMetaConstant+ScalarTypeExact
+            JR   TypedPrimaryEmitTypedConstant
 TypedPrimaryCharacter:
             LD   H,0
             LD   L,C
@@ -524,30 +514,27 @@ TypedPrimaryTrue:
 TypedPrimaryFalse:
             LD   HL,0
 TypedPrimaryBooleanConstant:
+            LD   B,ScalarMetaConstant+ScalarTypeBoolean
+            JR   TypedPrimaryEmitTypedConstant
+TypedPrimaryU8Constant:
+            LD   B,ScalarMetaConstant+ScalarTypeU8
+TypedPrimaryEmitTypedConstant:
+            PUSH BC
             PUSH HL
             LD   A,SemanticLiteral16
             CALL TypedEmitOperation
             POP  HL
-            RET  C
+            JR   C,TypedPrimaryEmitTypedConstantFailure
             PUSH HL
             CALL TypedEmitWord
             POP  HL
+            POP  BC
             RET  C
-            LD   A,ScalarMetaConstant+ScalarTypeBoolean
+            LD   A,B
             OR   A
             RET
-TypedPrimaryU8Constant:
-            PUSH HL
-            LD   A,SemanticLiteral16
-            CALL TypedEmitOperation
-            POP  HL
-            RET  C
-            PUSH HL
-            CALL TypedEmitWord
-            POP  HL
-            RET  C
-            LD   A,ScalarMetaConstant+ScalarTypeU8
-            OR   A
+TypedPrimaryEmitTypedConstantFailure:
+            POP  BC
             RET
 TypedPrimaryName:
             LD   A,(ForwardOrdinal)
@@ -562,6 +549,9 @@ TypedPrimaryVariableName:
             CALL SymbolLookupCurrent
             RET  C
             LD   D,A
+            AND  SymbolRecordTypeFlag+SymbolAggregateFlag
+            JP   NZ,TypedTypeFailure
+            LD   A,D
             AND  SymbolClassMask
             JR   Z,TypedPrimaryConstantName
             LD   A,D
@@ -610,23 +600,9 @@ TypedPrimaryEmitLoad:
 TypedPrimaryConstantName:
             LD   H,B
             LD   L,C
-            PUSH DE
-            PUSH HL
-            LD   A,SemanticLiteral16
-            CALL TypedEmitOperation
-            POP  HL
-            POP  DE
-            RET  C
-            PUSH DE
-            PUSH HL
-            CALL TypedEmitWord
-            POP  HL
-            POP  DE
-            RET  C
-            LD   A,D
-            AND  ScalarMetaTypeMask
-            OR   ScalarMetaConstant
-            RET
+            LD   B,D
+            SET  7,B
+            JR   TypedPrimaryEmitTypedConstant
 
 ; Parse one call to the retained scalar forward. The outer call position stays
 ; on the compiler stack while a nested argument call is parsed.
@@ -1539,6 +1515,9 @@ TypedParseConstantAfterName:
 ; Current token is the variable name.
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedParseProgramAfterVar:
+            LD   A,(AggregateMode)
+            OR   A
+            JP   NZ,AggregateParseProgramAfterVar
             CALL TypedRetainDeclarationName
             RET  C
             CALL ParserExpectAs
@@ -1546,6 +1525,7 @@ TypedParseProgramAfterVar:
             CALL TypedParseType
             RET  C
             LD   (DeclarationInfo),A
+.if LegacyCompilerSlices
             ; Preserve the legacy initialized-array proof behind u8[...].
             CP   ScalarTypeU8
             JR   NZ,TypedProgramScalar
@@ -1560,6 +1540,7 @@ TypedParseProgramAfterVar:
             CALL TypedPrepareCurrentWord
             RET  C
             JP   ParserParseArrayProgramAfterU8
+.endif
 TypedProgramScalar:
             CALL ParserPeek
             RET  C
@@ -1624,6 +1605,8 @@ TypedParseTopLevel:
             JR   Z,TypedTopLevelForward
             CP   TokenSub
             JP   Z,TypedParseMain
+            CP   TokenRecord
+            JR   Z,TypedTopLevelRecord
             LD   A,DiagnosticExpectedTopLevel
             JP   CompilerSetDiagnostic
 TypedTopLevelVar:
@@ -1646,6 +1629,10 @@ TypedTopLevelForward:
             CALL ParserTake
             RET  C
             JP   TypedParseForwardAfterTake
+TypedTopLevelRecord:
+            CALL ParserTake
+            RET  C
+            JP   AggregateParseRecordAfterTake
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedParseTopLevelConstAfterTake:
             LD   E,TokenName
@@ -1660,7 +1647,8 @@ TypedParseTopLevelConstAfterTake:
 ; parameter and one scalar result, with exact completion after main.
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedParseForwardAfterTake:
-            CALL ParserExpectSub
+            LD   E,TokenSub
+            CALL ParserExpect
             RET  C
             LD   E,TokenName
             CALL ParserExpect
@@ -2001,6 +1989,9 @@ TypedParseAssignment:
             LD   (DeclarationInfo),A
             LD   (DeclarationPayload),BC
             LD   D,A
+            AND  SymbolRecordTypeFlag+SymbolAggregateFlag
+            JP   NZ,TypedTypeFailure
+            LD   A,D
             AND  SymbolClassMask
             CP   SymbolClassLocal
             JR   NZ,TypedAssignmentCounterChecked
