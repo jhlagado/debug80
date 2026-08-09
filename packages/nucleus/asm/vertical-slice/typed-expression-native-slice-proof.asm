@@ -133,23 +133,26 @@ TypedLiteralOverflowSource:
             .db "var bad as u16 = 65536",10
 TypedLiteralOverflowSourceEnd:
 
-; Fifty-two five-byte expression/store pairs exceed the 255-byte transcript.
+; The u16 definition and main marker consume five bytes. Fifty named-constant
+; expression/store pairs fill the remaining 250 bytes, so pair 51 must fail on
+; its first operation and unwind the saved symbol metadata.
 TypedTranscriptCapacitySource:
-            .db "var out as u8 = 0",10
+            .db "const k as u8 = 1",10
+            .db "var out as u16 = 0",10
             .db "sub main() fails",10
-            .db "out=1",10,"out=1",10,"out=1",10,"out=1",10
-            .db "out=1",10,"out=1",10,"out=1",10,"out=1",10
-            .db "out=1",10,"out=1",10,"out=1",10,"out=1",10
-            .db "out=1",10,"out=1",10,"out=1",10,"out=1",10
-            .db "out=1",10,"out=1",10,"out=1",10,"out=1",10
-            .db "out=1",10,"out=1",10,"out=1",10,"out=1",10
-            .db "out=1",10,"out=1",10,"out=1",10,"out=1",10
-            .db "out=1",10,"out=1",10,"out=1",10,"out=1",10
-            .db "out=1",10,"out=1",10,"out=1",10,"out=1",10
-            .db "out=1",10,"out=1",10,"out=1",10,"out=1",10
-            .db "out=1",10,"out=1",10,"out=1",10,"out=1",10
-            .db "out=1",10,"out=1",10,"out=1",10,"out=1",10
-            .db "out=1",10,"out=1",10,"out=1",10,"out=1",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
             .db "end",10
 TypedTranscriptCapacitySourceEnd:
 

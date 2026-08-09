@@ -85,8 +85,6 @@ TypedExpressionPush:
             LD   A,(ExpressionStackDepth)
             CP   ExpressionStackCapacity
             JR   NC,TypedExpressionStackFull
-            LD   C,A
-            LD   B,0
             CALL TypedExpressionAddress
             LD   A,(ExpressionLeftMeta)
             LD   (HL),A
@@ -135,7 +133,6 @@ TypedRestoreOperands:
             JR   Z,TypedExpressionStackUnderflow
             DEC  A
             LD   (ExpressionStackDepth),A
-            LD   C,A
             CALL TypedExpressionAddress
             LD   A,(HL)
             LD   (ExpressionLeftMeta),A
@@ -184,7 +181,6 @@ TypedSuppressedFault:
             LD   A,B
             LD   HL,0
             OR   ScalarMetaConstant
-            OR   A
             RET
 
 ; Resolve two integer operands. The four source metadata/value cells are live.
@@ -448,7 +444,6 @@ TypedReduceIntegerConstantDone:
             CALL TypedMaskResultWidth
             LD   A,C
             OR   ScalarMetaConstant
-            OR   A
             RET
 TypedReduceIntegerMeta:
             LD   A,C
@@ -574,7 +569,9 @@ TypedPrimaryConstantName:
             LD   A,SemanticLiteral16
             CALL TypedEmitOperation
             POP  HL
+            POP  DE
             RET  C
+            PUSH DE
             PUSH HL
             CALL TypedEmitWord
             POP  HL
@@ -583,7 +580,6 @@ TypedPrimaryConstantName:
             LD   A,D
             AND  ScalarMetaTypeMask
             OR   ScalarMetaConstant
-            OR   A
             RET
 TypedPrimaryParen:
             CALL TypedParseOr
@@ -1064,7 +1060,6 @@ TypedParseNot:
             JR   Z,TypedNotEmit
             LD   A,D
             AND  ScalarMetaTypeMask
-            OR   A
             JR   NZ,TypedNotTypedInteger
             LD   A,(ExpressionExpectedType)
             CP   ScalarTypeU8
@@ -1237,7 +1232,7 @@ TypedBeginSuppression:
             RET  Z
             LD   HL,(ExpressionLeftValue)
             LD   A,L
-            CP   C
+            XOR  C
             RET  NZ
             LD   HL,ExpressionSuppressFault
             INC  (HL)
@@ -1288,7 +1283,6 @@ TypedBooleanConstant:
 TypedCheckAssignable:
             LD   D,A
             AND  ScalarMetaTypeMask
-            OR   A
             JR   NZ,TypedAssignableTyped
             LD   A,E
             CP   ScalarTypeBoolean

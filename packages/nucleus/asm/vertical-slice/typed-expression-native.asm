@@ -2,6 +2,12 @@
 ; increment. All evaluation values use canonical 16-bit carriers on the Z80
 ; stack. Declared u8/boolean objects still occupy one byte; u16 occupies two.
 
+; Typed dispatch and loop dispatch are currently mutually exclusive. These
+; aliases make the temporary reuse visible; merging the dispatchers requires
+; dedicated storage or a new liveness proof.
+EmitTypedTrapPosition .equ EmitLoopHead
+EmitTypedWidth        .equ EmitCodeStart
+
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
 TypedNativeDispatch:
             LD   HL,SemanticBufferBase+1
@@ -243,17 +249,39 @@ TypedNativeEmitSequence:
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedNativeAdd8:
             LD   HL,TypedNativeAdd8Bytes
+            JR   TypedNativeBinary5
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedNativeSubtract8:
+            LD   HL,TypedNativeSubtract8Bytes
+            JR   TypedNativeBinary5
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedNativeAnd8:
+            LD   HL,TypedNativeAnd8Bytes
+            JR   TypedNativeBinary5
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedNativeOr8:
+            LD   HL,TypedNativeOr8Bytes
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedNativeBinary5:
             LD   B,5
             JP   TypedNativeEmitSequence
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedNativeAnd16:
+            LD   HL,TypedNativeAnd16Bytes
+            JR   TypedNativeBinary6
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedNativeOr16:
+            LD   HL,TypedNativeOr16Bytes
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedNativeBinary6:
+            LD   B,6
+            JP   TypedNativeEmitSequence
+
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedNativeAdd16:
             LD   HL,TypedNativeAdd16Bytes
             LD   B,1
-            JP   TypedNativeEmitSequence
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
-TypedNativeSubtract8:
-            LD   HL,TypedNativeSubtract8Bytes
-            LD   B,5
             JP   TypedNativeEmitSequence
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedNativeSubtract16:
@@ -282,6 +310,15 @@ TypedNativeMultiply16:
             RET  C
             JP   TypedNativePushHL
 
+.routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry
+TypedNativeReadTrapPosition:
+            CALL NativeNextSemanticByte
+            LD   E,A
+            CALL NativeNextSemanticByte
+            LD   D,A
+            LD   (EmitTypedTrapPosition),DE
+            RET
+
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
 TypedNativeDivide8:
             LD   C,1
@@ -290,13 +327,9 @@ TypedNativeDivide8:
 TypedNativeDivide16:
             LD   C,0
 TypedNativeDivide:
-            CALL NativeNextSemanticByte
-            LD   E,A
-            CALL NativeNextSemanticByte
-            LD   D,A
-            LD   (EmitLoopHead),DE
+            CALL TypedNativeReadTrapPosition
             LD   A,C
-            LD   (EmitCodeStart),A
+            LD   (EmitTypedWidth),A
             CALL TypedNativePopOperands
             RET  C
             LD   HL,NativeDivideU16
@@ -305,7 +338,7 @@ TypedNativeDivide:
             CALL NativeEmitJrNcPlaceholder
             RET  C
             LD   (EmitExitFixup),DE
-            LD   HL,(EmitLoopHead)
+            LD   HL,(EmitTypedTrapPosition)
             CALL NativeEmitLoadHl
             RET  C
             LD   A,3
@@ -316,7 +349,7 @@ TypedNativeDivide:
             LD   DE,(EmitExitFixup)
             CALL NativePatchHere
             RET  C
-            LD   A,(EmitCodeStart)
+            LD   A,(EmitTypedWidth)
             OR   A
             JR   Z,TypedNativeDividePush
             LD   HL,TypedNativeZeroHigh
@@ -356,27 +389,6 @@ TypedNativeUnarySequence:
             JP   TypedNativePushHL
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
-TypedNativeAnd8:
-            LD   HL,TypedNativeAnd8Bytes
-            LD   B,5
-            JP   TypedNativeEmitSequence
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
-TypedNativeAnd16:
-            LD   HL,TypedNativeAnd16Bytes
-            LD   B,6
-            JP   TypedNativeEmitSequence
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
-TypedNativeOr8:
-            LD   HL,TypedNativeOr8Bytes
-            LD   B,5
-            JP   TypedNativeEmitSequence
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
-TypedNativeOr16:
-            LD   HL,TypedNativeOr16Bytes
-            LD   B,6
-            JP   TypedNativeEmitSequence
-
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedNativeCompare:
             CALL NativeNextSemanticByte
             LD   C,A
@@ -394,11 +406,7 @@ TypedNativeCompare:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedNativeNarrow8:
-            CALL NativeNextSemanticByte
-            LD   E,A
-            CALL NativeNextSemanticByte
-            LD   D,A
-            LD   (EmitLoopHead),DE
+            CALL TypedNativeReadTrapPosition
             LD   A,$E1                    ; POP HL
             CALL NativeEmitByte
             RET  C
@@ -410,7 +418,7 @@ TypedNativeNarrow8:
             CALL NativeEmitRelativePlaceholder
             RET  C
             LD   (EmitExitFixup),DE
-            LD   HL,(EmitLoopHead)
+            LD   HL,(EmitTypedTrapPosition)
             CALL NativeEmitLoadHl
             RET  C
             LD   A,2
@@ -491,11 +499,7 @@ TypedNativeStoreLocal16:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedNativeWrite8:
-            CALL NativeNextSemanticByte
-            LD   E,A
-            CALL NativeNextSemanticByte
-            LD   D,A
-            LD   (EmitLoopHead),DE
+            CALL TypedNativeReadTrapPosition
             LD   HL,TypedNativePopHLtoA
             LD   B,2
             CALL NativeEmitBytes
@@ -506,7 +510,7 @@ TypedNativeWrite8:
             CALL NativeEmitJrNcPlaceholder
             RET  C
             LD   (EmitExitFixup),DE
-            LD   HL,(EmitLoopHead)
+            LD   HL,(EmitTypedTrapPosition)
             CALL NativeEmitLoadHl
             RET  C
             CALL NativeEmitUnhandledTrapPrefix
@@ -617,10 +621,9 @@ TypedNativeLoadLocalLow:      .db $DD,$6E
 TypedNativeLoadLocalHigh:     .db $DD,$66
 TypedNativeStoreLocalLow:     .db $DD,$75
 TypedNativeStoreLocalHigh:    .db $DD,$74
-TypedNativeZeroHighPush:      .db $26,$00,$E5
-TypedNativeZeroHigh:          .db $26,$00
+TypedNativeZeroHighPush       .equ TypedNativeAtoHL+1
+TypedNativeZeroHigh           .equ TypedNativeAtoHL+1
 TypedNativePopOperandsBytes:  .db $D1,$E1
-TypedNativePopHLtoA:          .db $E1,$7D
 TypedNativeTestHigh:          .db $7C,$B7
 TypedNativeAdd8Bytes:         .db $7D,$83,$6F,$26,$00
 TypedNativeAdd16Bytes:        .db $19
@@ -629,6 +632,7 @@ TypedNativeSubtract16Bytes:   .db $AF,$ED,$52
 TypedNativeNegate8Bytes:      .db $E1,$AF,$95,$6F,$26,$00
 TypedNativeNegate16Bytes:     .db $E1,$AF,$95,$6F,$3E,$00,$9C,$67
 TypedNativeNot8Bytes:         .db $E1,$7D,$2F,$6F,$26,$00
+TypedNativePopHLtoA           .equ TypedNativeNot8Bytes
 TypedNativeNot16Bytes:        .db $E1,$7D,$2F,$6F,$7C,$2F,$67
 TypedNativeNotBooleanBytes:   .db $E1,$7D,$EE,$01,$6F,$26,$00
 TypedNativeAnd8Bytes:         .db $7D,$A3,$6F,$26,$00

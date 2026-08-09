@@ -266,7 +266,7 @@ generated program through Debug80. Success, malformed source, output failure,
 checked array access, counted loops, forward calls, bounded recursion, and typed
 scalar expressions have executable proofs.
 
-The current measured build is 7,854 bytes of code and immutable data with 505
+The current measured build is 7,814 bytes of code and immutable data with 505
 bytes of peak workspace. The comprehensive typed-expression program is 799
 bytes, and the shared target runtime is 324 code bytes. These are narrow-slice
 accounts, not projections for the completed language.
@@ -379,8 +379,11 @@ operation to retain its statically selected `u8` result type. Missing closing
 parentheses and a tokenizer failure after a complete left operand must propagate
 through every stacked parser exit. A direct near-capacity case makes a default
 local's first literal operand fail, proving that default initialization cannot
-mask transcript exhaustion. The existing call proof continues to exercise
-preservation of a scalar local across recursive activations.
+mask transcript exhaustion. A named-constant capacity case also proves that
+saved symbol metadata is unwound before the failure returns. The existing call
+proof exercises preservation of one-byte scalar state across recursive
+activations; typed-local recursion remains an integration obligation for the
+call and structured-control increment.
 
 Before compression, fresh assembly measured 7,780 compiler-code bytes plus 177
 immutable bytes, for a 7,957-byte core with 505 bytes of workspace. The first
@@ -390,19 +393,32 @@ nested trap positions, malformed decimal adjacency, and a suppressed-fault type
 leak. Each repair gained a discriminating proof before compression began.
 
 The retained compression pass shares conversion parsing, Boolean reduction and
-fault paths, expression-stack address calculation, and an identical generated
-address helper. It also removes inert padding from native scalar sequences. One
-conversion refactor exposed and repaired several error-carry propagation bugs;
-the malformed and capacity forms now have discriminating proofs. These changes
-reduce the compiler by 103 bytes without reducing the proof surface: 7,677 code
-bytes plus 177 immutable bytes, for a 7,854-byte core. The common front end is
-5,192 bytes;
-the retained native emission paths occupy 2,485 bytes, including 1,102 bytes of
-typed lowering. Workspace remains 505 bytes. The accepted generated program is
-799 bytes and the shared native runtime is 324 bytes. The complete proof driver
-executes 926,070 instructions and 8,648,040 T-states across its accepted,
-rejected, capacity, and trap cases. The higher proof count comes from the added
-correctness cases, not from compiler or generated-program growth.
+fault paths, expression-stack address calculation, generated address and trap
+position helpers, and equal-width binary-handler tails. It overlaps identical
+immutable template bytes, removes inert padding from native scalar sequences,
+and deletes redundant register and flag setup. One conversion refactor exposed
+and repaired several error-carry propagation bugs. A later adversarial pass
+found and repaired an unbalanced named-constant capacity exit before allowing
+the additional size work to proceed. The malformed and capacity forms now have
+discriminating proofs.
+
+The complete pass reduces the compiler by 143 bytes without reducing the proof
+surface: 7,637 code bytes plus 177 immutable bytes, for a 7,814-byte core. The
+common front end is 5,185 bytes. The retained native emission paths occupy 2,452
+bytes, including 1,069 bytes of typed lowering. Workspace remains 505 bytes.
+The accepted generated program is 799 bytes and the shared native runtime is 324
+bytes. The complete proof driver executes 943,921 instructions and 8,796,591
+T-states across its accepted, rejected, capacity, and trap cases. The higher
+proof count comes from stronger correctness cases and shared compiler helpers,
+not from generated-program growth.
+
+The follow-up began at the reviewed 7,854-byte plateau. Balancing the
+named-constant failure exit added two bytes. Immutable-template overlap, dead
+register and flag setup, and the five- and six-byte binary-handler tails removed
+28 bytes. Sharing the three trap-position readers removed another 14 bytes.
+The net follow-up reduction is therefore 40 bytes. Larger shared trap tails and
+a table-driven comparison-token recognizer remain unmeasured hypotheses and are
+not included in the current account.
 
 Completion evidence:
 
@@ -412,7 +428,7 @@ Completion evidence:
   wraparound rules;
 - success and trap returns preserve the generated frame and report the trapping
   operator's source offset;
-- direct and mutual recursion preserve active scalar state;
+- direct and mutual recursion preserve active one-byte scalar state;
 - every bounded table and nesting stack has an exercised capacity diagnostic;
   and
 - compiler, selected-runtime, generated-program, activation, and timing deltas
