@@ -14,6 +14,7 @@ TypedNativeDispatch:
             LD   (SemanticReadCursor),HL
             XOR  A
             LD   (EmitBooleanFixupDepth),A
+            CALL StructuredNativeReset
             LD   A,(SemanticBufferBase)
             OR   A
             RET  Z
@@ -40,8 +41,7 @@ TypedNativeDispatchReturn:
             POP  BC
             RET  C
             DJNZ TypedNativeDispatchNext
-            OR   A
-            RET
+            JP   StructuredNativeResolveFixups
 TypedNativeInvalidPopped:
             POP  BC
 TypedNativeInternalOperation:
@@ -95,7 +95,22 @@ TypedNativeOperationTable:
             .dw TypedNativeBeginAnd         ; 60
             .dw TypedNativeBeginOr          ; 61
             .dw TypedNativeEndBoolean       ; 62
-TypedNativeOperationCount .equ 43
+            .dw StructuredNativeLabel       ; 63
+            .dw StructuredNativeBranchFalse ; 64
+            .dw StructuredNativeJump        ; 65
+            .dw StructuredNativeForSetup    ; 66
+            .dw StructuredNativeForTest     ; 67
+            .dw StructuredNativeForNext     ; 68
+            .dw StructuredNativeForCleanup  ; 69
+            .dw TypedNativeBeginRoutine     ; 70
+            .dw TypedNativeLoadLocal8       ; 71 parameter u8
+            .dw TypedNativeLoadLocal16      ; 72 parameter u16
+            .dw TypedNativeCallScalar       ; 73
+            .dw TypedNativeReturnScalar     ; 74
+            .dw TypedNativeStoreLocal8      ; 75 parameter u8
+            .dw TypedNativeStoreLocal16     ; 76 parameter u16
+            .dw TypedNativeEndRoutine       ; 77
+TypedNativeOperationCount .equ 58
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
 TypedNativeDefine8:
@@ -117,6 +132,8 @@ TypedNativeBeginMain:
             LD   DE,(EmitDataFixup)
             LD   HL,(EmitCursor)
             CALL NativePatchWord
+            CALL TypedNativeSaveRootFrame
+            RET  C
             LD   HL,NativeExpressionFrameBytes
             LD   B,8
             JP   NativeEmitBytes
@@ -525,9 +542,137 @@ TypedNativeWrite8:
 ; return consumes local bytes or the saved IX value as its return address.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedNativeEmitTrapEnding:
-            CALL NativeExpressionRestoreFrame
+            CALL TypedNativeRestoreRootFrame
+            RET  C
+            LD   A,$F5                    ; PUSH AF, preserve trap reason
+            CALL NativeEmitByte
+            RET  C
+            LD   A,$AF                    ; XOR A
+            CALL NativeEmitByte
+            RET  C
+            LD   HL,NativeActivationDepth
+            CALL NativeEmitStoreA
+            RET  C
+            LD   A,$F1                    ; POP AF
+            CALL NativeEmitByte
             RET  C
             JP   NativeEmitTrapEnding
+
+; Save the outer machine frame before main allocates locals, and restore that
+; exact frame on every terminal trap, including a trap inside recursive calls.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedNativeSaveRootFrame:
+            LD   HL,TypedNativeStoreSPPrefix
+            LD   B,2
+            CALL NativeEmitBytes
+            RET  C
+            LD   HL,NativeRootSP
+            CALL NativeEmitWord
+            RET  C
+            LD   HL,TypedNativeStoreIXPrefix
+            LD   B,2
+            CALL NativeEmitBytes
+            RET  C
+            LD   HL,NativeRootIX
+            JP   NativeEmitWord
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedNativeRestoreRootFrame:
+            LD   HL,TypedNativeLoadSPPrefix
+            LD   B,2
+            CALL NativeEmitBytes
+            RET  C
+            LD   HL,NativeRootSP
+            CALL NativeEmitWord
+            RET  C
+            LD   HL,TypedNativeLoadIXPrefix
+            LD   B,2
+            CALL NativeEmitBytes
+            RET  C
+            LD   HL,NativeRootIX
+            JP   NativeEmitWord
+
+; Begin the single retained value routine. Operand bytes are routine ordinal
+; and parameter type. HL carries the copied argument into this entry.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+TypedNativeBeginRoutine:
+            CALL NativeNextSemanticByte
+            CALL NativeNextSemanticByte
+            LD   (EmitTypedWidth),A
+            LD   C,ControlRoutineLabel
+            CALL StructuredNativeDefineLabel
+            RET  C
+            LD   HL,NativeExpressionFrameBytes
+            LD   B,8
+            CALL NativeEmitBytes
+            RET  C
+            LD   A,(EmitTypedWidth)
+            CP   ScalarTypeU16
+            LD   HL,TypedNativeParameter8Bytes
+            LD   B,4
+            JR   NZ,TypedNativeBeginRoutineParameter
+            LD   HL,TypedNativeParameter16Bytes
+            LD   B,8
+TypedNativeBeginRoutineParameter:
+            JP   NativeEmitBytes
+
+; Evaluate has already left the copied argument as one canonical carrier.
+; Claim activation capacity before the callee begins, then call the fixed
+; forward label. The result returns in HL and becomes the enclosing carrier.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+TypedNativeCallScalar:
+            CALL NativeNextSemanticByte     ; ordinal
+            CALL NativeNextSemanticByte     ; result type
+            LD   (EmitTypedWidth),A
+            CALL NativeNextSemanticByte
+            LD   E,A
+            CALL NativeNextSemanticByte
+            LD   D,A
+            LD   (EmitTypedTrapPosition),DE
+            LD   A,$E1                    ; POP HL argument
+            CALL NativeEmitByte
+            RET  C
+            LD   HL,NativeActivationClaim
+            CALL NativeEmitCall
+            RET  C
+            CALL NativeEmitJrNcPlaceholder
+            RET  C
+            LD   (EmitExitFixup),DE
+            LD   HL,(EmitTypedTrapPosition)
+            CALL NativeEmitLoadHl
+            RET  C
+            LD   A,5
+            CALL NativeEmitLoadAImmediate
+            RET  C
+            CALL TypedNativeEmitTrapEnding
+            RET  C
+            LD   DE,(EmitExitFixup)
+            CALL NativePatchHere
+            RET  C
+            LD   C,ControlRoutineLabel
+            LD   A,$CD                    ; CALL nn
+            CALL StructuredNativeEmitFixup
+            RET  C
+            LD   HL,NativeActivationRelease
+            CALL NativeEmitCall
+            RET  C
+            LD   A,$E5                    ; PUSH HL result carrier
+            JP   NativeEmitByte
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+TypedNativeReturnScalar:
+            LD   A,$E1                    ; POP HL result
+            CALL NativeEmitByte
+            RET  C
+            CALL NativeExpressionRestoreFrame
+            RET  C
+            LD   A,$C9
+            JP   NativeEmitByte
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry
+TypedNativeEndRoutine:
+            XOR  A
+            RET
 
 .routine in DE out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedNativePushBooleanFixup:
@@ -605,18 +750,26 @@ NativeEncodeTypedExpressionProgram:
             CALL NativeBeginProgram
             LD   A,$C3
             CALL NativeEmitByte
-            RET  C
+            JP   C,NativeAbortProgram
             LD   HL,(EmitCursor)
             LD   (EmitDataFixup),HL
             LD   HL,0
             CALL NativeEmitWord
-            RET  C
+            JP   C,NativeAbortProgram
             CALL TypedNativeDispatch
-            RET  C
+            JP   C,NativeAbortProgram
             JP   NativeFinishProgram
 TypedNativeBackendEnd:
 
+            .include "structured-control-native.asm"
+
 TypedNativeAtoHL:             .db $6F,$26,$00,$E5
+TypedNativeStoreSPPrefix:     .db $ED,$73
+TypedNativeStoreIXPrefix:     .db $DD,$22
+TypedNativeLoadSPPrefix:      .db $ED,$7B
+TypedNativeLoadIXPrefix:      .db $DD,$2A
+TypedNativeParameter8Bytes:   .db $3B,$DD,$75,$FF
+TypedNativeParameter16Bytes:  .db $3B,$3B,$DD,$75,$FF,$DD,$74,$FE
 TypedNativeLoadLocalLow:      .db $DD,$6E
 TypedNativeLoadLocalHigh:     .db $DD,$66
 TypedNativeStoreLocalLow:     .db $DD,$75

@@ -79,6 +79,36 @@ NativeActivationPop:
             XOR  A
             RET
 
+; The integrated typed-call path keeps parameters and locals in each native
+; stack frame. These helpers therefore account only for bounded active depth;
+; they preserve HL so a checked argument or returned carrier can cross them.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,C
+NativeActivationClaim:
+            LD   A,(NativeActivationDepth)
+            LD   C,A
+            LD   A,(NativeActivationLimit)
+            CP   C
+            JR   Z,NativeActivationClaimFull
+            LD   A,C
+            CP   NativeActivationCapacity
+            JR   NC,NativeActivationClaimFull
+            INC  A
+            LD   (NativeActivationDepth),A
+            XOR  A
+            RET
+NativeActivationClaimFull:
+            LD   A,5
+            SCF
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry
+NativeActivationRelease:
+            LD   A,(NativeActivationDepth)
+            DEC  A
+            LD   (NativeActivationDepth),A
+            XOR  A
+            RET
+
 ; Unsigned low-byte multiplication for generated expression code. A and B are
 ; the operands; the result wraps modulo 256 exactly as MUL8 requires.
 .routine in A,B out A,carry,zero clobbers sign,parity,halfCarry,B,C

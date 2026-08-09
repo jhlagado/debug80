@@ -21,7 +21,14 @@ KeywordTable:
             .db  7,"forward",TokenForward
             .db  6,"return",TokenReturn
             .db  2,"if",TokenIf
-KeywordCount            .equ 21
+            .db  6,"elseif",TokenElseIf
+            .db  4,"else",TokenElse
+            .db  5,"while",TokenWhile
+            .db  2,"to",TokenTo
+            .db  4,"step",TokenStep
+            .db  4,"exit",TokenExit
+            .db  8,"continue",TokenContinue
+KeywordCount            .equ 28
 
 PunctuationTable:
             .db  "=",TokenEquals

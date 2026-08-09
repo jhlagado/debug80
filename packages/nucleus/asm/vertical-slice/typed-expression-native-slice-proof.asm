@@ -768,7 +768,7 @@ ProofStatus:                  .db 0
 ProofCase:                    .db 0
 ProofEnd:
 
-GeneratedTypedEnd             .equ GeneratedBase+799
+GeneratedTypedEnd             .equ GeneratedBase+857
 
             .org SpareBase
 TypedDynamicZeroSource:

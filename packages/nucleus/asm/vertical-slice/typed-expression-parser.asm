@@ -8,6 +8,19 @@
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedRetainDeclarationName:
+            LD   HL,NameMain
+            LD   B,4
+            CALL TokenNameEquals
+            JP   C,TypedDuplicateNameFailure
+            LD   A,(ForwardOrdinal)
+            OR   A
+            JR   Z,TypedRetainDeclarationNameReady
+            LD   HL,(ForwardNamePointer)
+            LD   A,(ForwardNameLength)
+            LD   B,A
+            CALL TokenNameEquals
+            JP   C,TypedDuplicateNameFailure
+TypedRetainDeclarationNameReady:
             LD   HL,(TokenLexemePointer)
             LD   (DeclarationNamePointer),HL
             LD   A,(TokenLength)
@@ -16,6 +29,21 @@ TypedRetainDeclarationName:
             LD   DE,DeclarationNamePosition
             LD   BC,6
             LDIR
+            OR   A
+            RET
+
+TypedDuplicateNameFailure:
+            LD   A,DiagnosticDuplicateName
+            JP   CompilerSetDiagnostic
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+TypedRejectCurrentOrdinaryName:
+            CALL SymbolFindCurrent
+            JR   C,TypedDuplicateNameFailure
+            LD   HL,NameMain
+            LD   B,4
+            CALL TokenNameEquals
+            JR   C,TypedDuplicateNameFailure
             OR   A
             RET
 
@@ -522,6 +550,15 @@ TypedPrimaryU8Constant:
             OR   A
             RET
 TypedPrimaryName:
+            LD   A,(ForwardOrdinal)
+            OR   A
+            JR   Z,TypedPrimaryVariableName
+            LD   HL,(ForwardNamePointer)
+            LD   A,(ForwardNameLength)
+            LD   B,A
+            CALL TokenNameEquals
+            JP   C,TypedPrimaryScalarCall
+TypedPrimaryVariableName:
             CALL SymbolLookupCurrent
             RET  C
             LD   D,A
@@ -534,6 +571,8 @@ TypedPrimaryName:
             AND  SymbolClassMask
             CP   SymbolClassProgram
             JR   Z,TypedPrimaryProgramName
+            CP   SymbolClassParameter
+            JR   Z,TypedPrimaryParameterName
             LD   A,E
             CP   ScalarTypeU16
             LD   A,SemanticLoadLocalU8
@@ -546,6 +585,13 @@ TypedPrimaryProgramName:
             LD   A,SemanticLoadProgramU8
             JR   NZ,TypedPrimaryEmitLoad
             LD   A,SemanticLoadProgram16
+            JR   TypedPrimaryEmitLoad
+TypedPrimaryParameterName:
+            LD   A,E
+            CP   ScalarTypeU16
+            LD   A,SemanticLoadParameter8
+            JR   NZ,TypedPrimaryEmitLoad
+            LD   A,SemanticLoadParameter16
 TypedPrimaryEmitLoad:
             PUSH DE
             PUSH BC
@@ -580,6 +626,72 @@ TypedPrimaryConstantName:
             LD   A,D
             AND  ScalarMetaTypeMask
             OR   ScalarMetaConstant
+            RET
+
+; Parse one call to the retained scalar forward. The outer call position stays
+; on the compiler stack while a nested argument call is parsed.
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+TypedPrimaryScalarCall:
+            LD   HL,(TokenStartOffset)
+            PUSH HL
+            CALL ParserExpectLeft
+            JR   C,TypedPrimaryCallFailure
+            LD   A,(ExpressionExpectedType)
+            LD   B,A
+            LD   A,(ForwardParameterType)
+            LD   C,A
+            PUSH BC
+            LD   (ExpressionExpectedType),A
+            CALL TypedParseOr
+            JR   C,TypedPrimaryCallContextFailure
+            LD   D,A
+            PUSH DE
+            PUSH HL
+            CALL ParserExpectRight
+            JR   C,TypedPrimaryCallRightFailure
+            POP  HL
+            POP  DE
+            POP  BC
+            LD   A,B
+            LD   (ExpressionExpectedType),A
+            LD   A,C
+            LD   E,A
+            LD   A,D
+            CALL TypedCheckAssignable
+            JR   C,TypedPrimaryCallFailure
+            POP  HL
+            PUSH HL
+            LD   A,SemanticCallScalar
+            CALL TypedEmitOperation
+            JR   C,TypedPrimaryCallEmitFailure
+            LD   A,(ForwardOrdinal)
+            CALL TypedEmitByte
+            JR   C,TypedPrimaryCallEmitFailure
+            LD   A,(ForwardResultType)
+            CALL TypedEmitByte
+            JR   C,TypedPrimaryCallEmitFailure
+            POP  HL
+            PUSH HL
+            CALL TypedEmitWord
+            JR   C,TypedPrimaryCallEmitFailure
+            POP  HL
+            LD   A,(ForwardResultType)
+            OR   A
+            RET
+TypedPrimaryCallEmitFailure:
+            POP  HL
+            SCF
+            RET
+TypedPrimaryCallRightFailure:
+            POP  HL
+            POP  DE
+TypedPrimaryCallContextFailure:
+            POP  BC
+            LD   A,B
+            LD   (ExpressionExpectedType),A
+TypedPrimaryCallFailure:
+            POP  HL
+            SCF
             RET
 TypedPrimaryParen:
             CALL TypedParseOr
@@ -857,39 +969,28 @@ TypedAdditivePeekFailure:
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedComparisonToken:
-            CP   TokenEquals
-            JR   Z,TypedComparisonEqual
-            CP   TokenNotEqual
-            JR   Z,TypedComparisonNotEqual
-            CP   TokenLess
-            JR   Z,TypedComparisonLess
-            CP   TokenLessEqual
-            JR   Z,TypedComparisonLessEqual
-            CP   TokenGreater
-            JR   Z,TypedComparisonGreater
-            CP   TokenGreaterEqual
-            JR   Z,TypedComparisonGreaterEqualYes
+            LD   HL,TypedComparisonTokens
+            LD   B,6
+TypedComparisonTokenNext:
+            CP   (HL)
+            JR   Z,TypedComparisonTokenYes
+            INC  HL
+            INC  HL
+            DJNZ TypedComparisonTokenNext
             OR   A
             RET
-TypedComparisonGreaterEqualYes:
-            LD   C,ComparisonGreaterEqual
+TypedComparisonTokenYes:
+            INC  HL
+            LD   C,(HL)
             SCF
             RET
-TypedComparisonEqual:        LD C,ComparisonEqual
-                             SCF
-                             RET
-TypedComparisonNotEqual:     LD C,ComparisonNotEqual
-                             SCF
-                             RET
-TypedComparisonLess:         LD C,ComparisonLess
-                             SCF
-                             RET
-TypedComparisonLessEqual:    LD C,ComparisonLessEqual
-                             SCF
-                             RET
-TypedComparisonGreater:      LD C,ComparisonGreater
-                             SCF
-                             RET
+TypedComparisonTokens:
+            .db TokenEquals,ComparisonEqual
+            .db TokenNotEqual,ComparisonNotEqual
+            .db TokenLess,ComparisonLess
+            .db TokenLessEqual,ComparisonLessEqual
+            .db TokenGreater,ComparisonGreater
+            .db TokenGreaterEqual,ComparisonGreaterEqual
 
 TypedParseComparison:
             CALL TypedParseAdditive
@@ -1405,6 +1506,7 @@ TypedEmitProgramDefinitionHigh:
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedParseConstantAfterName:
             CALL TypedRetainDeclarationName
+            RET  C
             CALL ParserExpectAs
             RET  C
             CALL TypedParseType
@@ -1438,6 +1540,7 @@ TypedParseConstantAfterName:
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedParseProgramAfterVar:
             CALL TypedRetainDeclarationName
+            RET  C
             CALL ParserExpectAs
             RET  C
             CALL TypedParseType
@@ -1517,6 +1620,8 @@ TypedParseTopLevel:
             JR   Z,TypedTopLevelVar
             CP   TokenConst
             JR   Z,TypedTopLevelConst
+            CP   TokenForward
+            JR   Z,TypedTopLevelForward
             CP   TokenSub
             JP   Z,TypedParseMain
             LD   A,DiagnosticExpectedTopLevel
@@ -1537,6 +1642,10 @@ TypedTopLevelConst:
             CALL TypedParseConstantAfterName
             RET  C
             JR   TypedParseTopLevel
+TypedTopLevelForward:
+            CALL ParserTake
+            RET  C
+            JP   TypedParseForwardAfterTake
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedParseTopLevelConstAfterTake:
             LD   E,TokenName
@@ -1546,24 +1655,83 @@ TypedParseTopLevelConstAfterTake:
             RET  C
             JP   TypedParseTopLevel
 
+; TokenForward has already been consumed. Nucleus 0.1 permits a bounded
+; retained signature; this first native increment supports one scalar
+; parameter and one scalar result, with exact completion after main.
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+TypedParseForwardAfterTake:
+            CALL ParserExpectSub
+            RET  C
+            LD   E,TokenName
+            CALL ParserExpect
+            RET  C
+            LD   A,(ForwardOrdinal)
+            OR   A
+            JP   NZ,TypedDuplicateNameFailure
+            CALL TypedRejectCurrentOrdinaryName
+            RET  C
+            CALL ParserRetainForwardName
+            CALL ParserExpectLeft
+            RET  C
+            LD   E,TokenName
+            CALL ParserExpect
+            RET  C
+            LD   HL,(ForwardNamePointer)
+            LD   A,(ForwardNameLength)
+            LD   B,A
+            CALL TokenNameEquals
+            JP   C,TypedDuplicateNameFailure
+            CALL TypedRejectCurrentOrdinaryName
+            RET  C
+            CALL ParserRetainForwardParameter
+            CALL ParserExpectAs
+            RET  C
+            CALL TypedParseType
+            RET  C
+            LD   (ForwardParameterType),A
+            CALL ParserExpectRight
+            RET  C
+            CALL ParserExpectAs
+            RET  C
+            CALL TypedParseType
+            RET  C
+            LD   (ForwardResultType),A
+            CALL ParserExpectLine
+            RET  C
+            LD   A,1
+            LD   (ForwardOrdinal),A
+            XOR  A
+            LD   (ForwardCompleted),A
+            JP   TypedParseTopLevel
+
 TypedParseMain:
             CALL ParserTake
             RET  C
+TypedParseMainAfterTake:
             CALL ParserExpectRoutineHeader
             RET  C
             LD   A,SemanticBeginMain
             CALL SemanticSinkOperation
             RET  C
+            CALL ControlReset
+            LD   A,(SymbolCount)
+            LD   (ControlGlobalSymbolCount),A
+            XOR  A
+            LD   (ControlRoutineKind),A
 TypedParseLocals:
             CALL ParserPeek
             RET  C
             CP   TokenVar
-            JP   NZ,TypedParseStatements
+            JR   NZ,TypedParseMainStatements
             CALL ParserTake
             RET  C
             CALL TypedParseLocalDeclaration
             RET  C
             JR   TypedParseLocals
+TypedParseMainStatements:
+            CALL TypedParseStatements
+            RET  C
+            JP   TypedParseEndMain
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedParseLocalDeclaration:
@@ -1571,6 +1739,7 @@ TypedParseLocalDeclaration:
             CALL ParserExpect
             RET  C
             CALL TypedRetainDeclarationName
+            RET  C
             CALL ParserExpectAs
             RET  C
             CALL TypedParseType
@@ -1661,7 +1830,17 @@ TypedEmitStoreByInfo:
             CP   SymbolClassProgram
             JR   Z,TypedStoreProgram
             CP   SymbolClassLocal
+            JR   Z,TypedStoreLocal
+            CP   SymbolClassParameter
             JP   NZ,TypedTypeFailure
+            LD   A,D
+            AND  ScalarMetaTypeMask
+            CP   ScalarTypeU16
+            LD   A,SemanticStoreParameter8
+            JR   NZ,TypedStoreSelected
+            LD   A,SemanticStoreParameter16
+            JR   TypedStoreSelected
+TypedStoreLocal:
             LD   A,D
             AND  ScalarMetaTypeMask
             CP   ScalarTypeU16
@@ -1679,11 +1858,34 @@ TypedStoreProgram:
 TypedStoreSelected:
             JP   ParserEmitOperationC
 
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedParseStatements:
+            LD   A,1
+            LD   (ControlSequenceFallsThrough),A
+TypedParseStatementsContinue:
             CALL ParserPeek
             RET  C
             CP   TokenEnd
-            JP   Z,TypedParseEndMain
+            RET  Z
+            CP   TokenElseIf
+            RET  Z
+            CP   TokenElse
+            RET  Z
+            CP   TokenReturn
+            JR   Z,TypedStatementReturn
+            LD   C,A
+TypedStatementDispatch:
+            LD   A,C
+            CP   TokenIf
+            JR   Z,TypedStatementIf
+            CP   TokenWhile
+            JR   Z,TypedStatementWhile
+            CP   TokenFor
+            JR   Z,TypedStatementFor
+            CP   TokenExit
+            JP   Z,TypedStatementTransfer
+            CP   TokenContinue
+            JP   Z,TypedStatementTransfer
             CP   TokenName
             JP   NZ,ParserExpectedScalar
             CALL ParserTake
@@ -1691,10 +1893,78 @@ TypedParseStatements:
             LD   HL,NameWriteOutputByte
             LD   B,15
             CALL TokenNameEquals
-            JR   C,TypedParseWrite
+            JP   C,TypedParseWrite
             CALL TypedParseAssignment
             RET  C
-            JR   TypedParseStatements
+            JP   TypedParseStatementsContinue
+TypedStatementIf:
+            CALL ParserTake
+            RET  C
+            LD   A,(ControlSequenceFallsThrough)
+            PUSH AF
+            CALL StructuredParseIf
+            JR   C,TypedStatementControlFailure
+            LD   C,A
+            POP  AF
+            AND  C
+            LD   (ControlSequenceFallsThrough),A
+            JP   TypedParseStatementsContinue
+TypedStatementWhile:
+            CALL ParserTake
+            RET  C
+            LD   A,(ControlSequenceFallsThrough)
+            PUSH AF
+            CALL StructuredParseWhile
+            JR   TypedStatementLoopComplete
+TypedStatementFor:
+            CALL ParserTake
+            RET  C
+            LD   A,(ControlSequenceFallsThrough)
+            PUSH AF
+            CALL StructuredParseFor
+TypedStatementLoopComplete:
+            JR   C,TypedStatementControlFailure
+            POP  AF
+            LD   (ControlSequenceFallsThrough),A
+            JP   TypedParseStatementsContinue
+TypedStatementControlFailure:
+            POP  AF
+            SCF
+            RET
+TypedStatementReturn:
+            CALL ParserTake
+            RET  C
+            LD   A,(ControlRoutineKind)
+            CP   ControlRoutineValue
+            JR   NZ,TypedRoutineFlowFailure
+            LD   A,(ControlResultType)
+            CALL TypedExpressionBeginRuntime
+            RET  C
+            LD   D,A
+            LD   A,(ControlResultType)
+            LD   E,A
+            LD   A,D
+            CALL TypedCheckAssignable
+            RET  C
+            CALL ParserExpectLine
+            RET  C
+            LD   A,SemanticReturnScalar
+            CALL SemanticSinkOperation
+            RET  C
+            XOR  A
+            LD   (ControlSequenceFallsThrough),A
+            JP   TypedParseStatementsContinue
+TypedRoutineFlowFailure:
+            LD   A,DiagnosticRoutineFlow
+            JP   CompilerSetDiagnostic
+TypedStatementTransfer:
+            LD   (DeclarationInfo),A
+            CALL ParserTake
+            RET  C
+            LD   A,(DeclarationInfo)
+            CALL StructuredParseLoopTransfer
+            RET  C
+            JP   TypedParseStatementsContinue
 TypedParseWrite:
             LD   HL,(TokenStartOffset)
             LD   (ExpressionCallOffset),HL
@@ -1722,7 +1992,7 @@ TypedParseWrite:
             RET  C
             CALL ParserExpectOrFailLine
             RET  C
-            JR   TypedParseStatements
+            JP   TypedParseStatementsContinue
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedParseAssignment:
@@ -1730,6 +2000,14 @@ TypedParseAssignment:
             RET  C
             LD   (DeclarationInfo),A
             LD   (DeclarationPayload),BC
+            LD   D,A
+            AND  SymbolClassMask
+            CP   SymbolClassLocal
+            JR   NZ,TypedAssignmentCounterChecked
+            CALL ControlCheckActiveCounter
+            RET  C
+TypedAssignmentCounterChecked:
+            LD   A,D
             AND  SymbolClassMask
             JP   Z,TypedTypeFailure
             CALL ParserExpectEqual
@@ -1753,12 +2031,97 @@ TypedParseAssignment:
             JP   ParserExpectLine
 
 TypedParseEndMain:
-            CALL ParserTake
+            LD   E,TokenEnd
+            CALL ParserExpect
             RET  C
             CALL ParserExpectLine
             RET  C
             LD   A,SemanticEndMain
             CALL SemanticSinkOperation
             RET  C
+            LD   A,(ForwardOrdinal)
+            OR   A
+            JR   NZ,TypedParseForwardCompletion
             LD   E,TokenEof
             JP   ParserExpect
+
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+TypedParseForwardCompletion:
+            CALL ParserPeek
+            RET  C
+            CP   TokenSub
+            JP   NZ,TypedForwardIncomplete
+            CALL ParserTake
+            RET  C
+            LD   D,DiagnosticForwardMismatch
+            CALL ParserExpectForwardName
+            RET  C
+            CALL ParserExpectLine
+            RET  C
+            LD   A,(ControlGlobalSymbolCount)
+            LD   (SymbolCount),A
+            XOR  A
+            LD   (NextLocalSlot),A
+            LD   HL,(ForwardParameterPointer)
+            LD   (TokenLexemePointer),HL
+            LD   A,(ForwardParameterLength)
+            LD   (TokenLength),A
+            LD   A,(ForwardParameterType)
+            OR   SymbolClassParameter
+            LD   D,A
+            LD   BC,0
+            CALL SymbolPrepareCurrentWord
+            RET  C
+            CALL SymbolCommit
+            RET  C
+            LD   A,(ForwardParameterType)
+            CALL TypedTypeWidth
+            LD   (NextLocalSlot),A
+            LD   A,ControlRoutineValue
+            LD   (ControlRoutineKind),A
+            LD   A,(ForwardResultType)
+            LD   (ControlResultType),A
+            LD   A,1
+            LD   (ControlSequenceFallsThrough),A
+            LD   A,SemanticBeginRoutine
+            CALL SemanticSinkOperation
+            RET  C
+            LD   A,(ForwardOrdinal)
+            CALL SemanticSinkPut
+            RET  C
+            LD   A,(ForwardParameterType)
+            CALL SemanticSinkPut
+            RET  C
+TypedParseRoutineLocals:
+            CALL ParserPeek
+            RET  C
+            CP   TokenVar
+            JR   NZ,TypedParseRoutineStatements
+            CALL ParserTake
+            RET  C
+            CALL TypedParseLocalDeclaration
+            RET  C
+            JR   TypedParseRoutineLocals
+TypedParseRoutineStatements:
+            CALL TypedParseStatements
+            RET  C
+            LD   A,(ControlSequenceFallsThrough)
+            OR   A
+            JP   NZ,TypedRoutineFlowFailure
+            LD   E,TokenEnd
+            CALL ParserExpect
+            RET  C
+            CALL ParserExpectLine
+            RET  C
+            LD   A,SemanticEndTypedRoutine
+            CALL SemanticSinkOperation
+            RET  C
+            LD   A,1
+            LD   (ForwardCompleted),A
+            LD   E,TokenEof
+            JP   ParserExpect
+TypedForwardIncomplete:
+            LD   A,DiagnosticForwardIncomplete
+            JP   CompilerSetDiagnostic
+
+            .include "structured-control-parser.asm"

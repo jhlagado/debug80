@@ -960,11 +960,11 @@ ParserParseProgram:
             CALL ParserTake
             RET  C
             CP   TokenSub
-            JP   Z,ParserParseLoopProgramAfterSub
+            JP   Z,TypedParseMainAfterTake
             CP   TokenVar
             JP   Z,ParserParseProgramAfterVar
             CP   TokenForward
-            JP   Z,ParserParseCallProgramAfterForward
+            JP   Z,TypedParseForwardAfterTake
             CP   TokenConst
             JP   Z,TypedParseTopLevelConstAfterTake
             LD   A,DiagnosticExpectedTopLevel
@@ -973,7 +973,32 @@ ParserParseProgram:
 ; A is the stable source-part identity; HL..DE is the half-open byte range.
 .routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 CompileLoopSlice:
+            CALL CompileSliceInitialize
+            CALL ParserTake
+            RET  C
+            CP   TokenSub
+            JP   NZ,ParserScalarExpectedTopLevel
+            CALL ParserParseLoopProgramAfterSub
+            RET  C
+            JP   SemanticSinkFinish
+.routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+CompileCallSlice:
+            CALL CompileSliceInitialize
+            CALL ParserTake
+            RET  C
+            CP   TokenForward
+            JP   NZ,ParserScalarExpectedTopLevel
+            CALL ParserParseCallProgramAfterForward
+            RET  C
+            JP   SemanticSinkFinish
+.routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 CompileSlice:
+            CALL CompileSliceInitialize
+            CALL ParserParseProgram
+            RET  C
+            JP   SemanticSinkFinish
+.routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+CompileSliceInitialize:
             CALL SourceInitialize
             XOR  A
             LD   (DiagnosticCode),A
@@ -984,9 +1009,8 @@ CompileSlice:
             CALL SymbolReset
             XOR  A
             LD   (ForwardCompleted),A
-            CALL ParserParseProgram
-            RET  C
-            JP   SemanticSinkFinish
+            LD   (ForwardOrdinal),A
+            RET
 
 ; The typed scalar increment is kept in a separate source unit while it is
 ; correctness-first and under review. The compression pass may fold shared

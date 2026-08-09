@@ -83,7 +83,7 @@ ProofStart:
             LD   A,60
             LD   HL,CallProofSource
             LD   DE,CallProofSourceEnd
-            CALL CompileSlice
+            CALL CompileCallSlice
             JP   C,ProofFailCompile
             LD   A,(SemanticBufferBase)
             CP   9
@@ -177,7 +177,7 @@ ProofStart:
             LD   A,61
             LD   HL,BadCompletionSource
             LD   DE,BadCompletionSourceEnd
-            CALL CompileSlice
+            CALL CompileCallSlice
             JP   NC,ProofFailBadAccepted
             LD   A,(DiagnosticCode)
             CP   DiagnosticForwardMismatch
@@ -192,7 +192,7 @@ ProofStart:
             LD   A,60
             LD   HL,CallProofSource
             LD   DE,CallProofSourceEnd
-            CALL CompileSlice
+            CALL CompileCallSlice
             JP   C,ProofFailCompile
             CALL NativeEncodeCallProgram
             JP   C,ProofFailEncode

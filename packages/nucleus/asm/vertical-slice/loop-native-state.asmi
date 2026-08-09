@@ -11,7 +11,9 @@ NativeActivationLimit   .equ NativeStateBase+$07
 NativeScalarSlot        .equ NativeStateBase+$08
 NativeActivationArena   .equ NativeStateBase+$09
 NativeActivationCapacity .equ 8
-NativeStateEnd          .equ NativeActivationArena+NativeActivationCapacity
+NativeRootSP            .equ NativeActivationArena+NativeActivationCapacity
+NativeRootIX            .equ NativeRootSP+2
+NativeStateEnd          .equ NativeRootIX+2
 
 NativeRunReady          .equ 1
 NativeRunSucceeded      .equ 2

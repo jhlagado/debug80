@@ -206,9 +206,15 @@ ProofStart:
             CP   DiagnosticSinkCapacity
             JP   NZ,ProofFailCapacityCode
             LD   HL,(GeneratedSize)
-            LD   A,H
-            OR   L
+            LD   DE,NativeArrayProgramSize
+            OR   A
+            SBC  HL,DE
             JP   NZ,ProofFailCapacityPublished
+            LD   HL,GeneratedBase
+            LD   DE,NativeBackupBase
+            LD   B,NativeArrayProgramSize
+            CALL ProofCompareBytes
+            JP   C,ProofFailCapacityPublished
             LD   A,(NativeRunState)
             CP   $5A
             JP   NZ,ProofFailCapacityState

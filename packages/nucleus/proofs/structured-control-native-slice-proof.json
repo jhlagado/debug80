@@ -1,0 +1,28 @@
+{
+  "name": "structured-control-native-z80",
+  "source": "../asm/vertical-slice/structured-control-native-slice-proof.asm",
+  "memoryProfile": "vertical-slice-memory.json",
+  "interfaces": ["../asm/vertical-slice/expression-generated-native.asmi"],
+  "execution": {
+    "entry": "ProofStart",
+    "maxInstructions": 1500000,
+    "maxCycles": 15000000,
+    "halted": true
+  },
+  "observations": [
+    { "at": "ProofStatus", "width": "u8", "equals": 165 },
+    { "at": "ProofCase", "width": "u8", "equals": 0 }
+  ],
+  "extents": [
+    { "name": "common-front-end", "from": "CompilerCodeStart", "to": "CompilerCommonCodeEnd", "maxBytes": 16384 },
+    { "name": "parser", "from": "ParserCodeStart", "to": "ParserCodeEnd", "maxBytes": 16384 },
+    { "name": "structured-native-sink", "from": "StructuredNativeSinkStart", "to": "StructuredNativeSinkEnd", "maxBytes": 12288 },
+    { "name": "compiler-code", "from": "CompilerCodeStart", "to": "CompilerCodeEnd", "maxBytes": 16384 },
+    { "name": "compiler-immutable", "from": "CompilerImmutableStart", "to": "CompilerImmutableEnd", "maxBytes": 4096 },
+    { "name": "compiler-core", "from": "CompilerCodeStart", "to": "CompilerCoreEnd", "maxBytes": 16384 },
+    { "name": "compiler-workspace", "from": "CompilerStateBase", "to": "CompilerWorkspaceEnd", "maxBytes": 4096 },
+    { "name": "generated-native-bound", "from": "GeneratedBase", "to": "GeneratedTypedEnd", "maxBytes": 4096 },
+    { "name": "native-runtime", "from": "NativeRuntimeCodeStart", "to": "NativeRuntimeCodeEnd", "maxBytes": 4096 },
+    { "name": "proof-code-and-data", "from": "ProofStart", "to": "ProofEnd", "maxBytes": 4096 }
+  ]
+}

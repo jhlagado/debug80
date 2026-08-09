@@ -68,18 +68,63 @@ NativePatchInvalid:
             LD   A,DiagnosticFixupRange
             JP   CompilerSetDiagnostic
 
-.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,HL
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
 NativeBeginProgram:
             LD   (EmitLimit),HL
-            LD   HL,0
-            LD   (GeneratedSize),HL
+            LD   BC,(GeneratedSize)
+            LD   (NativePublishedSize),BC
+            LD   A,B
+            OR   C
+            JR   Z,NativeBeginProgramReady
+            LD   HL,GeneratedBase
+            LD   DE,NativeBackupBase
+            LDIR
+NativeBeginProgramReady:
             LD   HL,GeneratedBase
             LD   (EmitCursor),HL
             OR   A
             RET
 
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
+NativeAbortProgram:
+            LD   BC,(NativePublishedSize)
+            LD   A,B
+            OR   C
+            JR   Z,NativeAbortProgramSize
+            LD   HL,NativeBackupBase
+            LD   DE,GeneratedBase
+            LDIR
+NativeAbortProgramSize:
+            LD   HL,(NativePublishedSize)
+            LD   (GeneratedSize),HL
+            SCF
+            RET
+
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 NativeEncodeLoopProgram:
+            CALL NativeEncodeLoopProgramBody
+            JR   NativeEncodeProgramResult
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+NativeEncodeCallProgram:
+            CALL NativeEncodeCallProgramBody
+            JR   NativeEncodeProgramResult
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+NativeEncodeExpressionProgram:
+            CALL NativeEncodeExpressionProgramBody
+            JR   NativeEncodeProgramResult
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+NativeEncodeArrayProgram:
+            LD   HL,GeneratedLimit
+            JR   NativeEncodeArrayProgramWithinLimit
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+NativeEncodeArrayProgramWithinLimit:
+            CALL NativeEncodeArrayProgramBody
+NativeEncodeProgramResult:
+            RET  NC
+            JP   NativeAbortProgram
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+NativeEncodeLoopProgramBody:
             LD   HL,GeneratedLimit
             CALL NativeBeginProgram
 
@@ -503,7 +548,7 @@ NativeCallEndRoutine:
 
 ; Compile the routine slice from its variable-width semantic stream.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
-NativeEncodeCallProgram:
+NativeEncodeCallProgramBody:
             LD   HL,GeneratedLimit
             CALL NativeBeginProgram
             LD   HL,0
@@ -721,7 +766,7 @@ NativeExpressionEndMain:
             JP   NativeEmitTrapEnding
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
-NativeEncodeExpressionProgram:
+NativeEncodeExpressionProgramBody:
             LD   HL,GeneratedLimit
             CALL NativeBeginProgram
             LD   A,$C3
@@ -744,11 +789,8 @@ NativeExpressionRestoreBytes:
 NativeExpressionBackendEnd:
 
 ; Default entry and proof-only bounded entry for the checked-array program.
-.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
-NativeEncodeArrayProgram:
-            LD   HL,GeneratedLimit
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
-NativeEncodeArrayProgramWithinLimit:
+NativeEncodeArrayProgramBody:
             CALL NativeBeginProgram
 
             LD   HL,NativeReadInputByte

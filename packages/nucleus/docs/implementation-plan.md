@@ -181,10 +181,11 @@ active implementation work.
 
 Stages 2 and 3 are executable historical evidence. Stage 4 completed the
 backend decision with counted-loop, checked-array, and scalar-recursion
-increments. Stage 5 now has a correctness-first implementation of typed scalar
-declarations and expressions followed by its first measured compression pass.
-This remains a bounded proof increment rather than a complete compiler. Its
-resident size is the current plateau from which the next feature must grow.
+increments. Stage 5 now covers typed scalar declarations and expressions,
+structured control, and one retained recursive scalar routine. Each increment
+has passed correctness review and a measured compression pass. This remains a
+bounded proof increment rather than a complete compiler. Its resident size is
+the current plateau from which the next feature must grow.
 
 | Area                 | Current evidence                                                                                                        | Work ahead                                                                                              |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
@@ -266,10 +267,11 @@ generated program through Debug80. Success, malformed source, output failure,
 checked array access, counted loops, forward calls, bounded recursion, and typed
 scalar expressions have executable proofs.
 
-The current measured build is 7,814 bytes of code and immutable data with 505
-bytes of peak workspace. The comprehensive typed-expression program is 799
-bytes, and the shared target runtime is 324 code bytes. These are narrow-slice
-accounts, not projections for the completed language.
+The current measured build is 10,771 bytes of code and immutable data with 704
+bytes of peak workspace. The structured-control program is 715 bytes, the
+comprehensive typed-expression bound is 857 bytes, and the shared target
+runtime is 358 code bytes. These are narrow-slice accounts, not projections for
+the completed language.
 The detailed path-by-path measurements and every retired NVM comparison are
 preserved in `archive/nucleus-nvm/docs/implementation-plan-at-retirement.md`.
 
@@ -434,6 +436,57 @@ Completion evidence:
 - compiler, selected-runtime, generated-program, activation, and timing deltas
   are recorded by feature group.
 
+#### Third Stage 5 increment: structured control and scalar recursion
+
+The third increment integrates typed expressions with `if`, `elseif`, `else`,
+`while`, immutable-local counted `for`, nearest-loop `exit` and `continue`, and
+one complete forward-declared scalar value routine. Boolean, `u8`, and `u16`
+parameters and results use the same canonical scalar carriers as ordinary
+expressions. Native routine frames preserve scalar parameters and locals across
+recursion. Every success and trap path restores the root stack pointer and IX.
+
+The structured parser retains at most eight ten-byte control frames. Native
+emission reuses that storage for 31 dynamic labels, with ordinal 31 reserved for
+the retained routine, and 32 three-byte absolute fixups. A label allocation
+that would collide with the routine label fails during parsing. The counted
+loop lowering retains the bound once, rejects source writes to an active local
+counter, and traps before storing a continuing `u8` value that does not fit.
+
+Routine flow summaries are structural. A value routine is complete when its
+statement sequence cannot fall through. An `if` has that property only when it
+has an `else` and every clause is non-fallthrough; loops remain conservative.
+Statements following an unconditional return do not change the summary.
+Routine terminators require `end`, so an outer `else` or `elseif` cannot close a
+routine. The retained forward name, its parameter, `main`, and scalar
+declarations share the required ordinary-namespace collision checks.
+
+Native output publication is transactional. The encoder copies the previous
+published image to a dedicated 4 KiB backup region before writing
+`GeneratedBase`. Every retained encoder restores the complete prior image and
+size after a failed emission; successful fixup completion publishes the new
+size. The bounded-array boundary proof forces a failure after the first write
+and compares every restored byte with the backup.
+
+The correctness-complete form measured 10,597 code bytes plus 224 immutable
+bytes, for a 10,821-byte compiler core with 704 bytes of workspace. The size
+pass replaced the six-way comparison-token chain with a dense pair table,
+inlined two one-caller namespace checks, and shared the identical `while`/`for`
+completion tail. It also groups the four transactional encoder wrappers around
+one result-and-rollback tail. Those changes remove 50 bytes. The current
+plateau is 10,547 code bytes plus 224 immutable bytes, for a 10,771-byte core.
+The common front end is 6,987 bytes, including a 6,099-byte parser; retained
+native emission is 3,560 bytes, including 2,115 bytes for typed and structured
+lowering. Workspace remains 704 bytes. The structured proof executes 296,855
+instructions and 2,906,759 T-states across its accepted, trap, namespace,
+capacity, and publication cases.
+
+The proof set covers all-return Boolean conditionals, unreachable statements,
+recursive scalar calls, activation capacity, exact root-frame restoration,
+wide-bound `u8` loop range, active-counter assignment, outer stray branch
+tokens, forward and `main` name collisions, label capacity, and complete-image
+rollback. The representative accepted program combines nested selection,
+loops, transfers, descending iteration, recursion, scalar storage, and output.
+
 ### Stage 6: aggregate layout and static images
 
 Add nominal records, fixed arrays, bounded strings, recursive positional
@@ -512,9 +565,11 @@ requirement are both known.
 | expression nesting                        |    16 | seven-byte metadata entries    | capacity diagnostic                       | seventeen-deep pending-expression proof        |
 | semantic transcript payload bytes         |   255 | counted variable-width stream  | capacity diagnostic                       | 52-assignment exhaustion proof                 |
 | Boolean fixups                            |    16 | two-byte generated addresses   | capacity diagnostic                       | exhaustion and underflow boundary proofs       |
-| branch fixups and active loops            |  open | open                           | capacity diagnostic                       | open                                           |
+| active control frames                     |     8 | ten-byte parser frames         | capacity diagnostic                       | nested structured-control proofs               |
+| dynamic labels                            |    31 | byte ordinals; 31 reserved     | capacity diagnostic                       | thirty-first allocation boundary proof         |
+| branch fixups                             |    32 | three-byte absolute records    | capacity diagnostic                       | bounded resolver and generated branch proofs   |
 | structured-initializer depth and elements |  open | open                           | capacity diagnostic                       | open                                           |
-| emitted Z80 program bytes                 |  open | bounded output cursor          | capacity diagnostic                       | 799-byte Stage 5 program in 4 KiB proof region |
+| emitted Z80 program bytes                 | 4,096 | bounded output cursor          | capacity diagnostic                       | 857-byte Stage 5 bound and rollback proof       |
 | activation bytes                          |  open | packed records                 | `activation-capacity`                     | one-byte Stage 4 slice                         |
 | activation depth                          |  open | counter plus packed arena      | `activation-capacity`                     | depth-three trap proof                         |
 | service stream and bulk-storage extents   |  open | target adapter                 | service error or documented host capacity | open                                           |
