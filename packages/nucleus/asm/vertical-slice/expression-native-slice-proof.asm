@@ -24,6 +24,7 @@ ParserCodeEnd:
 CompilerCommonCodeEnd:
 NativeSinkCodeStart:
             .include "loop-native-sink.asm"
+            .include "typed-expression-native.asm"
 NativeSinkCodeEnd:
 CompilerCodeEnd:
 
@@ -104,23 +105,14 @@ ProofStart:
             LD   DE,ExpressionProofSourceEnd
             CALL CompileSlice
             JP   C,ProofFailCompile
-            LD   HL,SemanticBufferBase
-            LD   DE,ExpectedExpressionOperations
-            LD   B,33
-            CALL ProofCompareBytes
-            JP   C,ProofFailOperations
-            CALL NativeEncodeExpressionProgram
+            CALL NativeEncodeTypedExpressionProgram
             JP   C,ProofFailEncode
-            LD   HL,(GeneratedSize)
-            LD   DE,NativeExpressionProgramSize
-            OR   A
-            SBC  HL,DE
-            JP   NZ,ProofFailGeneratedSize
 
             CALL NativeReset
             XOR  A
             LD   (ServiceFailureCall),A
-            CALL GeneratedBase
+            CALL ProofCallGenerated
+            JP   C,ProofFailFrame
             LD   A,(NativeRunState)
             CP   NativeRunSucceeded
             JP   NZ,ProofFailSuccessState
@@ -137,7 +129,8 @@ ProofStart:
             CALL NativeReset
             LD   A,1
             LD   (ServiceFailureCall),A
-            CALL GeneratedBase
+            CALL ProofCallGenerated
+            JP   C,ProofFailFrame
             LD   A,(NativeRunState)
             CP   NativeRunTrapped
             JP   NZ,ProofFailOutputState
@@ -218,7 +211,7 @@ ProofStart:
             LD   DE,ExpressionProofSourceEnd
             CALL CompileSlice
             JP   C,ProofFailCompile
-            CALL NativeEncodeExpressionProgram
+            CALL NativeEncodeTypedExpressionProgram
             JP   C,ProofFailEncode
 
             LD   A,$A5
@@ -236,6 +229,29 @@ ProofCompareBytes:
             OR   A
             RET
 ProofCompareBytesNo:
+            SCF
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+ProofCallGenerated:
+            LD   HL,0
+            ADD  HL,SP
+            LD   (ProofExpectedSP),HL
+            LD   IX,$A55A
+            CALL GeneratedBase
+            PUSH IX
+            POP  DE
+            LD   HL,$A55A
+            OR   A
+            SBC  HL,DE
+            JR   NZ,ProofCallGeneratedNo
+            LD   HL,0
+            ADD  HL,SP
+            LD   DE,(ProofExpectedSP)
+            OR   A
+            SBC  HL,DE
+            RET  Z
+ProofCallGeneratedNo:
             SCF
             RET
 
@@ -288,6 +304,8 @@ ProofFailMalformedAccepted:   LD A,23
 ProofFailMalformedCode:       LD A,24
                               JR ProofFailed
 ProofFailMalformedPosition:   LD A,25
+                              JR ProofFailed
+ProofFailFrame:               LD A,26
 ProofFailed:
             LD   (ProofCase),A
             LD   A,$E0
@@ -311,9 +329,10 @@ ExpectedExpressionOperations:
             .db SemanticEndMain
 ProofStatus:                 .db 0
 ProofCase:                   .db 0
+ProofExpectedSP:             .dw 0
 ProofEnd:
 
-NativeExpressionProgramSize .equ 101
+NativeExpressionProgramSize .equ 116
 GeneratedExpressionEnd      .equ GeneratedBase+NativeExpressionProgramSize
 
             .end

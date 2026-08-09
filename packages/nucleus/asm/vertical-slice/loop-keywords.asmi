@@ -4,7 +4,14 @@ KeywordTable:
             .db  3,"var",TokenVar
             .db  2,"as",TokenAs
             .db  2,"u8",TokenU8
+            .db  3,"u16",TokenU16
+            .db  7,"boolean",TokenBoolean
+            .db  4,"true",TokenTrue
+            .db  5,"false",TokenFalse
+            .db  5,"const",TokenConst
             .db  2,"or",TokenOr
+            .db  3,"and",TokenAnd
+            .db  3,"not",TokenNot
             .db  4,"fail",TokenFail
             .db  3,"end",TokenEnd
             .db  3,"sub",TokenSub
@@ -14,7 +21,7 @@ KeywordTable:
             .db  7,"forward",TokenForward
             .db  6,"return",TokenReturn
             .db  2,"if",TokenIf
-KeywordCount            .equ 13
+KeywordCount            .equ 21
 
 PunctuationTable:
             .db  "=",TokenEquals
@@ -22,7 +29,8 @@ PunctuationTable:
             .db  "-",TokenMinus
             .db  "+",TokenPlus
             .db  "*",TokenStar
-PunctuationCount        .equ 5
+            .db  "/",TokenSlash
+PunctuationCount        .equ 6
 
 NameMain:               .db "main"
 NameIndex:              .db "index"

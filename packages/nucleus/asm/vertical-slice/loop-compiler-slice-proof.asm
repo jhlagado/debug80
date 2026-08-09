@@ -55,7 +55,7 @@ MissingEndSource:
 MissingEndSourceEnd:
 
             .org ProofBase
-.routine out carry,zero clobbers sign,parity,halfCarry,A,BC,DE,HL
+.routine out carry,zero clobbers sign,parity,halfCarry,A,BC,DE,HL,IX,IY
 ProofStart:
             LD   SP,StackTop
             XOR  A

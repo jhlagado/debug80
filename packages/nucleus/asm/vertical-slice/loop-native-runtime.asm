@@ -92,6 +92,112 @@ NativeMultiplyU8Loop:
             ADD  A,C
             JR   NativeMultiplyU8Loop
 
+; Full-width multiplication for typed generated expressions. The sixteen
+; shift/add rounds return the low sixteen bits, matching u16 wraparound.
+.routine in DE,HL out HL,carry,zero clobbers sign,parity,halfCarry,A,BC,DE
+NativeMultiplyU16:
+            LD   BC,0
+            LD   A,16
+NativeMultiplyU16Loop:
+            SRL  D
+            RR   E
+            JR   NC,NativeMultiplyU16Skip
+            PUSH HL
+            ADD  HL,BC
+            LD   B,H
+            LD   C,L
+            POP  HL
+NativeMultiplyU16Skip:
+            ADD  HL,HL
+            DEC  A
+            JR   NZ,NativeMultiplyU16Loop
+            LD   H,B
+            LD   L,C
+            OR   A
+            RET
+
+; Unsigned quotient. Carry reports a zero divisor without producing a value.
+.routine in DE,HL out HL,carry,zero clobbers sign,parity,halfCarry,A,BC,DE
+NativeDivideU16:
+            LD   A,D
+            OR   E
+            JR   Z,NativeDivideU16Zero
+            LD   BC,0
+NativeDivideU16Loop:
+            OR   A
+            SBC  HL,DE
+            JR   C,NativeDivideU16Done
+            INC  BC
+            JR   NativeDivideU16Loop
+NativeDivideU16Done:
+            LD   H,B
+            LD   L,C
+            OR   A
+            RET
+NativeDivideU16Zero:
+            SCF
+            RET
+
+; A selects Comparison*. Both integer widths and booleans use canonical u16
+; carriers here; the parser has already restricted Boolean relations to =/<>.
+.routine in A,DE,HL out HL,carry,zero clobbers sign,parity,halfCarry,A,BC,DE
+NativeCompareU16:
+            LD   B,A
+            OR   A
+            SBC  HL,DE
+            PUSH AF
+            POP  DE
+            LD   A,B
+            CP   ComparisonEqual
+            JR   Z,NativeCompareEqual
+            CP   ComparisonNotEqual
+            JR   Z,NativeCompareNotEqual
+            CP   ComparisonLess
+            JR   Z,NativeCompareLess
+            CP   ComparisonLessEqual
+            JR   Z,NativeCompareLessEqual
+            CP   ComparisonGreater
+            JR   Z,NativeCompareGreater
+NativeCompareGreaterEqual:
+            PUSH DE
+            POP  AF
+            JR   NC,NativeCompareTrue
+            JR   NativeCompareFalse
+NativeCompareEqual:
+            PUSH DE
+            POP  AF
+            JR   Z,NativeCompareTrue
+            JR   NativeCompareFalse
+NativeCompareNotEqual:
+            PUSH DE
+            POP  AF
+            JR   NZ,NativeCompareTrue
+            JR   NativeCompareFalse
+NativeCompareLess:
+            PUSH DE
+            POP  AF
+            JR   C,NativeCompareTrue
+            JR   NativeCompareFalse
+NativeCompareLessEqual:
+            PUSH DE
+            POP  AF
+            JR   C,NativeCompareTrue
+            JR   Z,NativeCompareTrue
+            JR   NativeCompareFalse
+NativeCompareGreater:
+            PUSH DE
+            POP  AF
+            JR   C,NativeCompareFalse
+            JR   Z,NativeCompareFalse
+NativeCompareTrue:
+            LD   HL,1
+            OR   A
+            RET
+NativeCompareFalse:
+            LD   HL,0
+            OR   A
+            RET
+
 ; Carry returns endOfInput, a configured input failure, or success in A.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,HL
 NativeReadInputByte:

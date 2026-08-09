@@ -37,23 +37,31 @@ SymbolFindCurrentLoop:
             OR   A
             RET
 
-; D is class/type information and E is the storage ordinal. The current name
-; is written to the first uncommitted entry but is not yet visible to lookup.
+; Compatibility entry for the older slices: D is class/type information and E
+; is a byte-sized payload. New typed declarations call the word entry below.
 .routine in D,E out A,carry,zero,HL clobbers sign,parity,halfCarry,B,C,D,DE
 SymbolPrepareCurrent:
+            LD   B,0
+            LD   C,E
+.routine in D,BC out A,carry,zero,HL clobbers sign,parity,halfCarry,B,C,D,DE
+SymbolPrepareCurrentWord:
+            PUSH BC
             PUSH DE
             CALL SymbolFindCurrent
             POP  DE
+            POP  BC
             JR   C,SymbolPrepareDuplicate
             LD   A,(SymbolCount)
             CP   SymbolCapacity
             JR   NC,SymbolPrepareFull
+            PUSH BC
             LD   C,A
             LD   B,0
-            LD   H,B
+            LD   H,0
             LD   L,C
             ADD  HL,HL
             ADD  HL,HL
+            ADD  HL,BC
             ADD  HL,BC
             LD   BC,SymbolTableBase
             ADD  HL,BC
@@ -67,7 +75,10 @@ SymbolPrepareCurrent:
             INC  HL
             LD   (HL),D
             INC  HL
-            LD   (HL),E
+            POP  BC
+            LD   (HL),C
+            INC  HL
+            LD   (HL),B
             OR   A
             RET
 SymbolPrepareDuplicate:
@@ -84,8 +95,8 @@ SymbolCommit:
             XOR  A
             RET
 
-; Return the current name's class/type in A and storage ordinal in C.
-.routine out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
+; Return the current name's class/type in A and word payload in BC.
+.routine out A,BC,carry,zero clobbers sign,parity,halfCarry,D,DE,HL
 SymbolLookupCurrent:
             CALL SymbolFindCurrent
             JR   NC,SymbolLookupMissing
@@ -95,6 +106,8 @@ SymbolLookupCurrent:
             LD   A,(HL)
             INC  HL
             LD   C,(HL)
+            INC  HL
+            LD   B,(HL)
             OR   A
             RET
 SymbolLookupMissing:

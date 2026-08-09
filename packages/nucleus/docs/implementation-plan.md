@@ -181,8 +181,10 @@ active implementation work.
 
 Stages 2 and 3 are executable historical evidence. Stage 4 completed the
 backend decision with counted-loop, checked-array, and scalar-recursion
-increments. Stage 5 now has its first direct-Z80 scalar-symbol and expression
-increment. These remain narrow proofs rather than a complete compiler.
+increments. Stage 5 now has a correctness-first implementation of typed scalar
+declarations and expressions followed by its first measured compression pass.
+This remains a bounded proof increment rather than a complete compiler. Its
+resident size is the current plateau from which the next feature must grow.
 
 | Area                 | Current evidence                                                                                                        | Work ahead                                                                                              |
 | -------------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
@@ -261,13 +263,13 @@ names.
 The completed foundation consumes source through the bounded adapter, tokenizes
 and parses it, records checked semantic operations, emits Z80, and runs the
 generated program through Debug80. Success, malformed source, output failure,
-checked array access, counted loops, forward calls, bounded recursion, and the
-first scalar-expression path have executable proofs.
+checked array access, counted loops, forward calls, bounded recursion, and typed
+scalar expressions have executable proofs.
 
-The current compiler is 3,883 bytes of code and immutable data with 103 bytes
-of peak workspace. The generated scalar-expression program is 101 bytes, and
-the shared target runtime is 204 code bytes plus 17 writable bytes. These are
-measured narrow-slice accounts, not projections for the completed language.
+The current measured build is 7,854 bytes of code and immutable data with 505
+bytes of peak workspace. The comprehensive typed-expression program is 799
+bytes, and the shared target runtime is 324 code bytes. These are narrow-slice
+accounts, not projections for the completed language.
 The detailed path-by-path measurements and every retired NVM comparison are
 preserved in `archive/nucleus-nvm/docs/implementation-plan-at-retirement.md`.
 
@@ -322,16 +324,94 @@ synthetic return stack could not satisfy strict AZM stack-contract proof. The
 proven duplicated dispatch kernels remain until a different representation has
 a measurable complete-path saving.
 
-The 33-byte semantic transcript is exactly full in this proof. It is a measured
-narrow-slice capacity, not a suitable general limit; the next increment must
-either enlarge it with an explicit diagnostic or replace it with a smaller
-general statement representation before adding operations.
+The 33-byte semantic transcript is exactly full in this proof. It records the
+limit that forced the next representation change; it is no longer the active
+capacity.
+
+#### Second Stage 5 increment: typed scalar expressions
+
+The correctness build generalizes scalar constants, program variables, and
+locals to `u8`, `u16`, and `boolean`. Decimal literals cover 0 through 65,535.
+The parser applies the specified literal resolution, implicit `u8` widening,
+checked explicit narrowing, conversions, unary operations, arithmetic,
+comparisons, Boolean operations, and short-circuit evaluation. Constant folding
+uses the same selected width, wraparound, division, and narrowing rules as
+runtime evaluation. A folded fault in an unevaluated short-circuit operand is
+suppressed; the corresponding evaluated operation still produces its required
+diagnostic or trap.
+
+Every emitted runtime expression uses a canonical 16-bit carrier. Declared
+storage remains one byte for `u8` and `boolean` and two bytes for `u16`. A dense
+semantic-operation table selects the direct-Z80 lowering. The pre-review build
+deliberately retained explicit type metadata, a seven-byte expression-stack
+entry, and repeated legacy paths so the first adversarial review could assess
+semantics before representation changes obscured them. The compression pass
+keeps the explicit metadata while sharing only paths proved equivalent.
+
+The active transcript contains one operation-count byte and at most 255 payload
+bytes. A proof with 52 assignments reaches its capacity diagnostic. Expression
+metadata has sixteen seven-byte entries. Each entry retains the type and value
+state, suppression state, pending operator, and that operator's 16-bit source
+offset. A seventeen-deep pending expression
+reaches its separate capacity diagnostic. Failed compilation publishes neither
+a partial symbol nor a successful transcript.
+
+Boolean-fixup exhaustion has a distinct capacity diagnostic. A retired
+operation, an unbalanced Boolean transcript, a Boolean-fixup underflow, or an
+expression-reduction underflow reports an internal-operation diagnostic rather
+than attributing the failure to transcript capacity. Direct boundary proofs
+exercise each defensive path.
+
+The accepted proofs cover default initialization, both integer widths, Boolean
+values, all comparison families, conversions, width-specific wraparound,
+operator precedence, short-circuit suppression, static folding, named constants,
+unary plus, and direct output. Separate programs prove positioned dynamic
+narrowing and division traps without changing their destinations. Every
+generated return path checks the exact stack pointer and an IX sentinel, so a
+trap cannot appear to succeed after returning through local storage or a saved
+frame word. Nested division and narrowing cases check that the outer trapping
+operator retains its own source offset. Rejected programs cover implicit
+narrowing, Boolean and integer mixing, chained comparisons, a constant-zero
+divisor with a dynamic dividend, out-of-range unary operands, malformed decimal
+adjacency, lexical overflow, transcript exhaustion, and expression-stack
+exhaustion. Suppressed divide and narrowing proofs also require the skipped
+operation to retain its statically selected `u8` result type. Missing closing
+parentheses and a tokenizer failure after a complete left operand must propagate
+through every stacked parser exit. A direct near-capacity case makes a default
+local's first literal operand fail, proving that default initialization cannot
+mask transcript exhaustion. The existing call proof continues to exercise
+preservation of a scalar local across recursive activations.
+
+Before compression, fresh assembly measured 7,780 compiler-code bytes plus 177
+immutable bytes, for a 7,957-byte core with 505 bytes of workspace. The first
+adversarial review found incorrect trap-frame exits, incomplete constant-zero
+division checking, width leaks in unary operations and conversions, unstable
+nested trap positions, malformed decimal adjacency, and a suppressed-fault type
+leak. Each repair gained a discriminating proof before compression began.
+
+The retained compression pass shares conversion parsing, Boolean reduction and
+fault paths, expression-stack address calculation, and an identical generated
+address helper. It also removes inert padding from native scalar sequences. One
+conversion refactor exposed and repaired several error-carry propagation bugs;
+the malformed and capacity forms now have discriminating proofs. These changes
+reduce the compiler by 103 bytes without reducing the proof surface: 7,677 code
+bytes plus 177 immutable bytes, for a 7,854-byte core. The common front end is
+5,192 bytes;
+the retained native emission paths occupy 2,485 bytes, including 1,102 bytes of
+typed lowering. Workspace remains 505 bytes. The accepted generated program is
+799 bytes and the shared native runtime is 324 bytes. The complete proof driver
+executes 926,070 instructions and 8,648,040 T-states across its accepted,
+rejected, capacity, and trap cases. The higher proof count comes from the added
+correctness cases, not from compiler or generated-program growth.
 
 Completion evidence:
 
-- arithmetic and comparison behavior matches the source specification at all
-  width boundaries;
-- constant folding matches runtime width and wraparound rules;
+- the representative arithmetic, comparison, conversion, and width-boundary
+  vectors produce the specified values or diagnostics;
+- paired constant and runtime vectors exercise the selected width and
+  wraparound rules;
+- success and trap returns preserve the generated frame and report the trapping
+  operator's source offset;
 - direct and mutual recursion preserve active scalar state;
 - every bounded table and nesting stack has an exercised capacity diagnostic;
   and
@@ -404,23 +484,24 @@ The first implementation fixes a numeric limit before each bounded structure is
 used. Each row remains open until a Z80 representation and a minimum corpus
 requirement are both known.
 
-| Resource                                  | Limit | Representation                  | Excess diagnostic or trap                 | Evidence                                       |
-| ----------------------------------------- | ----: | ------------------------------- | ----------------------------------------- | ---------------------------------------------- |
-| source part count                         |  open | open                            | capacity diagnostic                       | open                                           |
-| diagnostic-name bytes                     |  open | open                            | capacity diagnostic                       | open                                           |
-| identifier bytes                          |  open | open                            | capacity diagnostic                       | open                                           |
-| ordinary scalar symbols                   |     6 | five-byte source-backed entries | capacity diagnostic                       | duplicate, unknown, and seventh-name proof     |
-| record types and fields                   |  open | open                            | capacity diagnostic                       | open                                           |
-| retained forward signatures and names     |  open | copied or interned bytes        | capacity diagnostic                       | one resident-part pair; general retention open |
-| parameters and scalar locals              |  open | open                            | capacity diagnostic                       | open                                           |
-| expression and statement nesting          |  open | open                            | capacity diagnostic                       | open                                           |
-| semantic transcript bytes                 |    33 | flat operation buffer           | capacity diagnostic                       | exactly full in first Stage 5 proof            |
-| branch fixups and active loops            |  open | open                            | capacity diagnostic                       | open                                           |
-| structured-initializer depth and elements |  open | open                            | capacity diagnostic                       | open                                           |
-| emitted Z80 program bytes                 |  open | bounded output cursor           | capacity diagnostic                       | 101-byte Stage 5 program in 4 KiB proof region |
-| activation bytes                          |  open | packed records                  | `activation-capacity`                     | one-byte Stage 4 slice                         |
-| activation depth                          |  open | counter plus packed arena       | `activation-capacity`                     | depth-three trap proof                         |
-| service stream and bulk-storage extents   |  open | target adapter                  | service error or documented host capacity | open                                           |
+| Resource                                  | Limit | Representation                 | Excess diagnostic or trap                 | Evidence                                       |
+| ----------------------------------------- | ----: | ------------------------------ | ----------------------------------------- | ---------------------------------------------- |
+| source part count                         |  open | open                           | capacity diagnostic                       | open                                           |
+| diagnostic-name bytes                     |  open | open                           | capacity diagnostic                       | open                                           |
+| identifier bytes                          |  open | open                           | capacity diagnostic                       | open                                           |
+| ordinary scalar symbols                   |     6 | six-byte source-backed entries | capacity diagnostic                       | duplicate, unknown, and seventh-name proof     |
+| record types and fields                   |  open | open                           | capacity diagnostic                       | open                                           |
+| retained forward signatures and names     |  open | copied or interned bytes       | capacity diagnostic                       | one resident-part pair; general retention open |
+| scalar parameters                         |  open | open                           | capacity diagnostic                       | one recursive-parameter proof                  |
+| expression nesting                        |    16 | seven-byte metadata entries    | capacity diagnostic                       | seventeen-deep pending-expression proof        |
+| semantic transcript payload bytes         |   255 | counted variable-width stream  | capacity diagnostic                       | 52-assignment exhaustion proof                 |
+| Boolean fixups                            |    16 | two-byte generated addresses   | capacity diagnostic                       | exhaustion and underflow boundary proofs       |
+| branch fixups and active loops            |  open | open                           | capacity diagnostic                       | open                                           |
+| structured-initializer depth and elements |  open | open                           | capacity diagnostic                       | open                                           |
+| emitted Z80 program bytes                 |  open | bounded output cursor          | capacity diagnostic                       | 799-byte Stage 5 program in 4 KiB proof region |
+| activation bytes                          |  open | packed records                 | `activation-capacity`                     | one-byte Stage 4 slice                         |
+| activation depth                          |  open | counter plus packed arena      | `activation-capacity`                     | depth-three trap proof                         |
+| service stream and bulk-storage extents   |  open | target adapter                 | service error or documented host capacity | open                                           |
 
 No implementation may wrap, truncate, drop state, or change source meaning when
 one of these limits is exceeded.

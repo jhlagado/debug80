@@ -29,9 +29,9 @@ ParserExpect:
             JP   CompilerSetDiagnostic
 
 ; The expression parser needs one token of lookahead. Token metadata remains
-; current until another tokenizer request, so buffering kind and byte payload
+; current until another tokenizer request, so buffering kind and word payload
 ; is sufficient for names, positions, numbers, and characters.
-.routine out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
+.routine out A,BC,carry,zero clobbers sign,parity,halfCarry,D,DE,HL
 ParserPeek:
             LD   A,(ParserLookaheadKind)
             CP   $FF
@@ -39,25 +39,23 @@ ParserPeek:
             CALL TokenizerNext
             RET  C
             LD   (ParserLookaheadKind),A
-            LD   A,C
-            LD   (ParserLookaheadValue),A
+            LD   (ParserLookaheadValue),BC
             LD   A,(ParserLookaheadKind)
             RET
 ParserPeekBuffered:
-            LD   A,(ParserLookaheadValue)
-            LD   C,A
+            LD   BC,(ParserLookaheadValue)
             LD   A,(ParserLookaheadKind)
             OR   A
             RET
 
-.routine out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
+.routine out A,BC,carry,zero clobbers sign,parity,halfCarry,D,DE,HL
 ParserTake:
             CALL ParserPeek
             RET  C
-            LD   B,A
+            LD   D,A
             LD   A,$FF
             LD   (ParserLookaheadKind),A
-            LD   A,B
+            LD   A,D
             OR   A
             RET
 
@@ -669,25 +667,12 @@ ParserScalarExpectedTopLevel:
             LD   A,DiagnosticExpectedTopLevel
             JP   CompilerSetDiagnostic
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 ParserParseProgramAfterVar:
             LD   E,TokenName
             CALL ParserExpect
             RET  C
-            LD   A,(NextProgramSlot)
-            LD   E,A
-            LD   D,SymbolInfoProgramU8
-            CALL SymbolPrepareCurrent
-            RET  C
-            CALL ParserExpectAsU8
-            RET  C
-            CALL ParserPeek
-            RET  C
-            CP   TokenLeftBracket
-            JP   Z,ParserParseArrayProgramAfterU8
-            CALL ParserParseScalarProgramDeclarationAfterU8
-            RET  C
-            JP   ParserParseScalarTopLevel
+            JP   TypedParseProgramAfterVar
 
 ; The older array slice is selected by the bracketed type suffix. Its body is
 ; still deliberately fixed; this split only keeps scalar names unrestricted.
@@ -970,7 +955,7 @@ ParserForwardIncomplete:
             LD   A,DiagnosticForwardIncomplete
             JP   CompilerSetDiagnostic
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 ParserParseProgram:
             CALL ParserTake
             RET  C
@@ -980,11 +965,13 @@ ParserParseProgram:
             JP   Z,ParserParseProgramAfterVar
             CP   TokenForward
             JP   Z,ParserParseCallProgramAfterForward
+            CP   TokenConst
+            JP   Z,TypedParseTopLevelConstAfterTake
             LD   A,DiagnosticExpectedTopLevel
             JP   CompilerSetDiagnostic
 
 ; A is the stable source-part identity; HL..DE is the half-open byte range.
-.routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
+.routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 CompileLoopSlice:
 CompileSlice:
             CALL SourceInitialize
@@ -1000,3 +987,8 @@ CompileSlice:
             CALL ParserParseProgram
             RET  C
             JP   SemanticSinkFinish
+
+; The typed scalar increment is kept in a separate source unit while it is
+; correctness-first and under review. The compression pass may fold shared
+; tails back into this parser after the rules are stable.
+            .include "typed-expression-parser.asm"

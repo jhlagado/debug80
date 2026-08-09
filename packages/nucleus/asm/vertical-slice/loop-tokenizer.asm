@@ -12,12 +12,12 @@ TokenRecordStart:
             LD   (TokenLexemePointer),HL
             RET
 
-.routine in A out A,carry,zero clobbers sign,parity,halfCarry,B
+.routine in A out A,carry,zero clobbers sign,parity,halfCarry,D
 TokenFinish:
-            LD   B,A
+            LD   D,A
             LD   A,1
             LD   (SourceLineHasToken),A
-            LD   A,B
+            LD   A,D
             OR   A
             RET
 
@@ -114,39 +114,56 @@ TokenScanKeywordSkip:
             LD   A,TokenName
             JP   TokenFinish
 
-; Scan one or more decimal digits and reject a value above 255.
+; Scan one or more decimal digits and reject a value above 65535. BC carries
+; the exact unsigned literal payload to the predictive parser.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 TokenScanNumber:
-            LD   B,0
+            LD   HL,0
 TokenScanNumberLoop:
+            PUSH HL
             CALL SourcePeek
-            JR   C,TokenScanNumberDone
+            POP  HL
+            JR   C,TokenScanNumberEof
             CP   "0"
             JR   C,TokenScanNumberDone
             CP   "9"+1
             JR   NC,TokenScanNumberDone
             SUB  "0"
             LD   C,A
-            LD   A,B
-            CP   25
+            LD   A,H
+            CP   $19
+            JR   C,TokenScanNumberAccumulate
+            JR   NZ,TokenScanCharacterFailure
+            LD   A,L
+            CP   $99
             JR   C,TokenScanNumberAccumulate
             JR   NZ,TokenScanCharacterFailure
             LD   A,C
             CP   6
             JR   NC,TokenScanCharacterFailure
 TokenScanNumberAccumulate:
-            LD   A,B
-            ADD  A,A
-            LD   D,A
-            ADD  A,A
-            ADD  A,A
-            ADD  A,D
-            ADD  A,C
-            LD   B,A
+            LD   D,0
+            LD   E,C
+            ADD  HL,HL
+            LD   B,H
+            LD   C,L
+            ADD  HL,HL
+            ADD  HL,HL
+            ADD  HL,BC
+            ADD  HL,DE
+            PUSH HL
             CALL SourceTake
+            POP  HL
             JR   TokenScanNumberLoop
 TokenScanNumberDone:
-            LD   C,B
+            ; A decimal token cannot be followed immediately by a name byte.
+            ; Reject forms such as 0x2a and 12u8 as one malformed number rather
+            ; than exposing a misleading number/name token pair to the parser.
+            CALL TokenIsNameByte
+            JP   C,TokenLexicalFailure
+TokenScanNumberEof:
+            LD   B,H
+            LD   C,L
             LD   A,TokenNumber
             JP   TokenFinish
 
@@ -186,7 +203,7 @@ TokenSkipCommentLoop:
             CALL SourceTake
             JR   TokenSkipCommentLoop
 
-.routine out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
+.routine out A,BC,carry,zero clobbers sign,parity,halfCarry,D,DE,HL
 TokenizerNext:
 TokenizerNextLoop:
             CALL TokenRecordStart
@@ -204,19 +221,23 @@ TokenizerNextLoop:
             CP   "/"
             JR   Z,TokenizerSlash
             CP   "("
-            JR   Z,TokenizerLeftParen
+            JP   Z,TokenizerLeftParen
             CP   ")"
-            JR   Z,TokenizerRightParen
+            JP   Z,TokenizerRightParen
             CP   "["
-            JR   Z,TokenizerLeftBracket
+            JP   Z,TokenizerLeftBracket
             CP   "]"
-            JR   Z,TokenizerRightBracket
+            JP   Z,TokenizerRightBracket
+            CP   "<"
+            JR   Z,TokenizerLess
+            CP   ">"
+            JR   Z,TokenizerGreater
             LD   HL,PunctuationTable
             LD   B,PunctuationCount
 TokenizerTryPunctuation:
             CP   (HL)
             INC  HL
-            JR   Z,TokenizerPunctuation
+            JP   Z,TokenizerPunctuation
             INC  HL
             DJNZ TokenizerTryPunctuation
             CP   "'"
@@ -228,7 +249,7 @@ TokenizerTryPunctuation:
 TokenizerTryName:
             CALL TokenIsLetter
             JP   C,TokenScanName
-            JR   TokenizerLexicalFailure
+            JP   TokenizerLexicalFailure
 
 TokenizerSkipByte:
             CALL SourceTake
@@ -237,12 +258,49 @@ TokenizerSkipByte:
 TokenizerSlash:
             CALL SourceTake
             CALL SourcePeek
-            JR   C,TokenizerLexicalFailure
+            JR   C,TokenizerSlashToken
             CP   "/"
-            JR   NZ,TokenizerLexicalFailure
+            JR   NZ,TokenizerSlashToken
             CALL SourceTake
             CALL TokenSkipComment
             JR   TokenizerNextLoop
+TokenizerSlashToken:
+            LD   A,TokenSlash
+            JP   TokenFinish
+
+TokenizerLess:
+            CALL SourceTake
+            CALL SourcePeek
+            JR   C,TokenizerLessToken
+            CP   "="
+            JR   Z,TokenizerLessEqual
+            CP   ">"
+            JR   Z,TokenizerNotEqual
+TokenizerLessToken:
+            LD   A,TokenLess
+            JP   TokenFinish
+TokenizerLessEqual:
+            CALL SourceTake
+            LD   A,TokenLessEqual
+            JP   TokenFinish
+TokenizerNotEqual:
+            CALL SourceTake
+            LD   A,TokenNotEqual
+            JP   TokenFinish
+
+TokenizerGreater:
+            CALL SourceTake
+            CALL SourcePeek
+            JR   C,TokenizerGreaterToken
+            CP   "="
+            JR   Z,TokenizerGreaterEqual
+TokenizerGreaterToken:
+            LD   A,TokenGreater
+            JP   TokenFinish
+TokenizerGreaterEqual:
+            CALL SourceTake
+            LD   A,TokenGreaterEqual
+            JP   TokenFinish
 
 TokenizerLeftParen:
             LD   C,TokenLeftParen
