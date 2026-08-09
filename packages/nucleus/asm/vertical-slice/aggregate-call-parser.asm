@@ -82,7 +82,12 @@ CompileAggregateCallSlice:
             LD   (Stage7ParameterCount),A
             LD   (Stage7CallDepth),A
             LD   (ControlNextLabel),A
+.if Stage7LL1
+            LD   (Stage7CurrentRoutine),A
+            CALL HybridLL1Parse
+.else
             CALL Stage7ParseTopLevel
+.endif
             RET  C
             JP   SemanticSinkFinish
 
@@ -101,6 +106,8 @@ Stage7RejectCurrentDeclarationName:
             OR   A
             RET
 
+.if HybridLL1Full
+.else
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7ParseTopLevel:
             CALL ParserPeek
@@ -143,6 +150,7 @@ Stage7TopLevelRoutine:
             CALL TokenNameEquals
             JP   C,Stage7ParseMainAfterName
             JP   Stage7ParseRoutineAfterName
+.endif
 
 ; Check the current parameter name against the current signature prefix.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
@@ -216,6 +224,8 @@ Stage7ParameterCapacityFailure:
             JP   CompilerSetDiagnostic
 
 ; Parse the parameter list and optional result of the provisional routine.
+.if HybridLL1Full
+.else
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 Stage7ParseSignature:
             CALL ParserExpectLeft
@@ -271,6 +281,7 @@ Stage7SignatureClose:
             LD   (Stage7CurrentResultType),A
 Stage7SignatureLine:
             JP   ParserExpectLine
+.endif
 
 ; Install one retained parameter as an activation symbol and emit the copy
 ; from its caller-stack carrier into the routine's negative IX frame.
@@ -342,6 +353,8 @@ Stage7InstallParameterWidth:
             RET
 
 ; Current token is a non-main routine name.
+.if HybridLL1Full
+.else
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 Stage7ParseRoutineAfterName:
             LD   A,(Stage7RoutineCount)
@@ -512,6 +525,7 @@ Stage7MainStatements:
             RET  C
             LD   E,TokenEof
             JP   ParserExpect
+.endif
 
 ; Return aggregate symbol info in D, byte payload in BC, and exact type ID in
 ; A. The ordinary symbol-table address determines the parallel type entry.
@@ -1135,6 +1149,8 @@ Stage7TypedPrimaryAggregateSymbol:
             JP   Stage7FinishScalarPath
 
 ; Current routine name has already been consumed as a complete statement.
+.if HybridLL1Full
+.else
 Stage7ParseCallStatement:
             LD   C,0
             CALL Stage7ParseCall
@@ -1165,6 +1181,7 @@ Stage7AggregateReturnFailure:
             POP  AF
             SCF
             RET
+.endif
 
 ; D contains the aggregate symbol info and DeclarationPayload its root offset.
 Stage7ParseAggregateAssignment:
@@ -1224,3 +1241,8 @@ Stage7AggregateCopyFailure:
             POP  AF
             SCF
             RET
+
+.if Stage7LL1
+            .include "stage7-ll1-parser.asm"
+            .include "stage7-ll1-actions.asm"
+.endif

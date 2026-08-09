@@ -1,4 +1,4 @@
-; Prove Stage 7 aggregate parameters, field paths, and exact-type copying.
+; Prove the amended Stage 7 packed-LL(1) candidate against aggregate calls and paths.
 
             .include "memory-map.asmi"
             .include "loop-compiler-state.asmi"
@@ -9,7 +9,7 @@
 CompilerCodeStart:
 LegacyCompilerSlices .equ 0
 AggregateCallSlices  .equ 1
-Stage7LL1            .equ 0
+Stage7LL1            .equ 1
 SourceAdapterCodeStart:
             .include "source-adapter.asm"
 SourceAdapterCodeEnd:
@@ -197,6 +197,34 @@ Stage7MainParameterSource:
             .db "sub main()",10
             .db "end",10
 Stage7MainParameterSourceEnd:
+
+Stage7MainParameterSyntaxSource:
+            .db "sub main(value as u8)",10
+            .db "end",10
+Stage7MainParameterSyntaxSourceEnd:
+
+Stage7MainResultSource:
+            .db "sub main() as u8",10
+            .db "end",10
+Stage7MainResultSourceEnd:
+
+Stage7RoutineFailsSource:
+            .db "sub f() fails",10
+            .db "end",10
+            .db "sub main()",10
+            .db "end",10
+Stage7RoutineFailsSourceEnd:
+
+Stage7MissingMainSource:
+            .db "sub f()",10
+            .db "end",10
+Stage7MissingMainSourceEnd:
+
+Stage7AfterMainSource:
+            .db "sub main()",10
+            .db "end",10
+            .db "var x as u8",10
+Stage7AfterMainSourceEnd:
 
 Stage7ServiceRoutineSource:
             .db "sub writeOutputByte(value as u8)",10
@@ -562,6 +590,36 @@ ProofStart:
             LD   DE,Stage7MainParameterSourceEnd
             CALL ProofExpectCompileDiagnostic
             JP   C,ProofFailMainParameter
+            LD   A,DiagnosticExpectedRight
+            LD   BC,9
+            LD   HL,Stage7MainParameterSyntaxSource
+            LD   DE,Stage7MainParameterSyntaxSourceEnd
+            CALL ProofExpectCompileDiagnostic
+            JP   C,ProofFailMainParameterSyntax
+            LD   A,DiagnosticExpectedLine
+            LD   BC,11
+            LD   HL,Stage7MainResultSource
+            LD   DE,Stage7MainResultSourceEnd
+            CALL ProofExpectCompileDiagnostic
+            JP   C,ProofFailMainResult
+            LD   A,DiagnosticExpectedLine
+            LD   BC,8
+            LD   HL,Stage7RoutineFailsSource
+            LD   DE,Stage7RoutineFailsSourceEnd
+            CALL ProofExpectCompileDiagnostic
+            JP   C,ProofFailRoutineFails
+            LD   A,DiagnosticExpectedTopLevel
+            LD   BC,12
+            LD   HL,Stage7MissingMainSource
+            LD   DE,Stage7MissingMainSourceEnd
+            CALL ProofExpectCompileDiagnostic
+            JP   C,ProofFailMissingMain
+            LD   A,DiagnosticExpectedEof
+            LD   BC,15
+            LD   HL,Stage7AfterMainSource
+            LD   DE,Stage7AfterMainSourceEnd
+            CALL ProofExpectCompileDiagnostic
+            JP   C,ProofFailAfterMain
             LD   A,DiagnosticDuplicateName
             LD   BC,4
             LD   HL,Stage7ServiceRoutineSource
@@ -1106,6 +1164,16 @@ ProofFailAggregateForScalar: LD A,48
 ProofFailScalarResultAggregate: LD A,49
                   JP ProofFailed
 ProofFailAggregateResultScalar: LD A,50
+                  JP ProofFailed
+ProofFailMainParameterSyntax: LD A,51
+                  JP ProofFailed
+ProofFailMainResult: LD A,52
+                  JP ProofFailed
+ProofFailRoutineFails: LD A,53
+                  JP ProofFailed
+ProofFailMissingMain: LD A,54
+                  JP ProofFailed
+ProofFailAfterMain: LD A,55
 ProofFailed:
             LD   (ProofCase),A
             HALT

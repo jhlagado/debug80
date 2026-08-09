@@ -1,0 +1,42 @@
+{
+  "name": "stage7-hybrid-ll1-engine",
+  "source": "../asm/vertical-slice/stage7-ll1-engine-proof.asm",
+  "memoryProfile": "vertical-slice-memory.json",
+  "execution": {
+    "entry": "ProofStart",
+    "maxInstructions": 100000,
+    "maxCycles": 1000000,
+    "halted": true
+  },
+  "observations": [
+    { "at": "ProofStatus", "width": "u8", "equals": 165 },
+    { "at": "DiagnosticCode", "width": "u8", "equals": 87 },
+    { "at": "HybridLL1StackDepth", "width": "u8", "equals": 63 }
+  ],
+  "extents": [
+    {
+      "name": "full-hybrid-engine-and-tables",
+      "from": "HybridLL1MeasuredStart",
+      "to": "HybridLL1MeasuredEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "full-hybrid-engine",
+      "from": "HybridLL1Parse",
+      "to": "HybridLL1EngineEnd",
+      "maxBytes": 1024
+    },
+    {
+      "name": "full-hybrid-tables",
+      "from": "HybridLL1RowDirectory",
+      "to": "HybridLL1TablesEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "full-hybrid-workspace",
+      "from": "HybridLL1StackDepth",
+      "to": "HybridLL1WorkspaceEnd",
+      "maxBytes": 256
+    }
+  ]
+}

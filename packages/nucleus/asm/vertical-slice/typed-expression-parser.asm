@@ -1428,6 +1428,8 @@ TypedExpressionBeginConstant:
             JP   TypedParseOr
 
 ; Parse u8, u16, or boolean and return ScalarType* in A.
+.if HybridLL1Full
+.else
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedParseType:
             CALL ParserTake
@@ -1449,6 +1451,7 @@ TypedTypeU16:      LD A,ScalarTypeU16
 TypedTypeBoolean:  LD A,ScalarTypeBoolean
                    OR A
                    RET
+.endif
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedTypeWidth:
@@ -1459,6 +1462,8 @@ TypedTypeWidth:
             RET
 
 ; Emit a typed static program object. D=type, BC=offset, HL=value.
+.if HybridLL1Full
+.else
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedEmitProgramDefinition:
             LD   A,D
@@ -1822,6 +1827,7 @@ TypedParseLocalRunTake:
             CALL TypedParseLocalDeclaration
             RET  C
             JR   TypedParseLocalRun
+.endif
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedEmitLocalDeclare:
@@ -1871,6 +1877,8 @@ TypedStoreProgram:
 TypedStoreSelected:
             JP   ParserEmitOperationC
 
+.if HybridLL1Full
+.else
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedParseStatements:
             LD   A,1
@@ -1976,9 +1984,12 @@ TypedStatementReturn:
             XOR  A
             LD   (ControlSequenceFallsThrough),A
             JP   TypedParseStatementsContinue
+.endif
 TypedRoutineFlowFailure:
             LD   A,DiagnosticRoutineFlow
             JP   CompilerSetDiagnostic
+.if HybridLL1Full
+.else
 TypedStatementTransfer:
             LD   (DeclarationInfo),A
             CALL ParserTake
@@ -2143,6 +2154,7 @@ TypedParseRoutineStatements:
             LD   (ForwardCompleted),A
             LD   E,TokenEof
             JP   ParserExpect
+.endif
 TypedForwardIncomplete:
             LD   A,DiagnosticForwardIncomplete
             JP   CompilerSetDiagnostic

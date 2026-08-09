@@ -190,6 +190,8 @@ ControlActiveCounterFailure:
             LD   A,DiagnosticActiveCounter
             JP   CompilerSetDiagnostic
 
+.if HybridLL1Full
+.else
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 StructuredParseBooleanHeader:
             LD   A,ScalarTypeBoolean
@@ -303,6 +305,7 @@ StructuredEmitFrameExitAndLabel:
             INC  HL
             LD   C,(HL)
             JP   ControlEmitLabel
+.endif
 
 .routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B
 StructuredRecordIfClause:
@@ -316,6 +319,8 @@ StructuredRecordIfClause:
             RET
 
 ; TokenWhile has already been consumed.
+.if HybridLL1Full
+.else
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 StructuredParseWhile:
             LD   A,ControlKindWhile
@@ -381,6 +386,7 @@ StructuredLoopTransferSelected:
             CALL ControlEmitJump
             RET  C
             JP   ParserExpectLine
+.endif
 
 ; Parse one compile-time step constant. B returns mode bit 1 and DE magnitude.
 .routine out A,B,DE,carry,zero clobbers sign,parity,halfCarry,C,HL
@@ -433,6 +439,8 @@ StructuredStepFailure:
             JP   CompilerSetDiagnostic
 
 ; TokenFor has already been consumed.
+.if HybridLL1Full
+.else
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 StructuredParseFor:
             LD   E,TokenName
@@ -601,6 +609,7 @@ StructuredForModeReady:
             CALL SemanticSinkOperation
             RET  C
             JP   StructuredCompleteLoop
+.endif
 StructuredCounterFailure:
             LD   A,DiagnosticLoopCounter
             JP   CompilerSetDiagnostic

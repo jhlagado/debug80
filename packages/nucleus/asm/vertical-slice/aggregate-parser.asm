@@ -113,6 +113,16 @@ AggregateInternFound:
             OR   A
             RET
 
+.if HybridLL1Full
+AggregateNestedArrayFailure:
+            POP  AF
+AggregateTypeShapeFailure:
+            LD   A,DiagnosticTypeBound
+            JP   CompilerSetDiagnostic
+AggregateProgramDataCapacityFailure:
+            LD   A,DiagnosticProgramDataCapacity
+            JP   CompilerSetDiagnostic
+.else
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 AggregateParseBound:
             LD   A,ScalarTypeU16
@@ -264,6 +274,7 @@ AggregateArrayExtentLoop:
 AggregateProgramDataCapacityFailure:
             LD   A,DiagnosticProgramDataCapacity
             JP   CompilerSetDiagnostic
+.endif
 
 .routine in A out A,HL clobbers carry,zero,sign,parity,halfCarry,DE
 AggregateFieldAddress:
@@ -310,6 +321,11 @@ AggregateFieldDuplicateUnwind:
 AggregateFieldDuplicateFailure:
             JP   TypedDuplicateNameFailure
 
+.if HybridLL1Full
+AggregateRecordEmptyFailure:
+            LD   A,DiagnosticRecordEmpty
+            JP   CompilerSetDiagnostic
+.else
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 AggregateParseRecordAfterTake:
             LD   E,TokenName
@@ -441,6 +457,7 @@ AggregateRecordFinish:
 AggregateRecordEmptyFailure:
             LD   A,DiagnosticRecordEmpty
             JP   CompilerSetDiagnostic
+.endif
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,HL
 AggregateInitializerElement:
@@ -798,6 +815,8 @@ AggregateZeroCurrentLoop:
             RET
 
 ; The current token is the program variable name.
+.if HybridLL1Full
+.else
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 AggregateParseProgramAfterVar:
             CALL TypedRetainDeclarationName
@@ -887,6 +906,7 @@ AggregateProgramPrepareSymbol:
 .else
             JP   TypedParseTopLevel
 .endif
+.endif
 
 ; Dedicated Stage 6 compile entry. Historical slices keep AggregateMode clear;
 ; this entry makes the complete static-image path authoritative.
@@ -895,6 +915,12 @@ CompileAggregateSlice:
             CALL CompileSliceInitialize
             LD   A,1
             LD   (AggregateMode),A
+.if HybridLL1Full
+            XOR  A
+            LD   (Stage7CurrentRoutine),A
+            CALL HybridLL1Parse
+.else
             CALL ParserParseProgram
+.endif
             RET  C
             JP   SemanticSinkFinish

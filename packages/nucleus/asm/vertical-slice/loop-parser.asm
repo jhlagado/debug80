@@ -1,5 +1,17 @@
 ; Predictive parser for the counted-loop and checked-array proof programs.
 
+; Only the Stage 7 candidate selects the complete grammar overlay. Nesting the
+; Stage7LL1 reference keeps every older proof source independent of that flag.
+.if AggregateCallSlices
+.if Stage7LL1
+HybridLL1Full .equ 1
+.else
+HybridLL1Full .equ 0
+.endif
+.else
+HybridLL1Full .equ 0
+.endif
+
 .routine in A out A,carry clobbers zero,sign,parity,halfCarry,DE,HL
 CompilerSetDiagnostic:
             LD   (DiagnosticCode),A
@@ -108,6 +120,8 @@ ParserExpectRightBracket:
             LD   E,TokenRightBracket
             JP   ParserExpect
 .endif
+.if HybridLL1Full
+.else
 .routine in B,D,HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectNamed:
             PUSH BC
@@ -191,6 +205,7 @@ ParserRetainForwardParameter:
             LD   (ForwardParameterLength),A
             OR   A
             RET
+.endif
 
 .if LegacyCompilerSlices
 .routine in D out A,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
@@ -367,6 +382,8 @@ ParserParseScalarExpression:
             JP   ParserParseScalarExpressionMin
 .endif
 
+.if HybridLL1Full
+.else
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectRoutineHeader:
             LD   D,DiagnosticExpectedMain
@@ -382,6 +399,7 @@ ParserExpectRoutineHeader:
             CALL ParserExpect
             RET  C
             JP   ParserExpectLine
+.endif
 
 .if LegacyCompilerSlices
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
@@ -687,12 +705,15 @@ ParserScalarExpectedTopLevel:
             JP   CompilerSetDiagnostic
 .endif
 
+.if HybridLL1Full
+.else
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 ParserParseProgramAfterVar:
             LD   E,TokenName
             CALL ParserExpect
             RET  C
             JP   TypedParseProgramAfterVar
+.endif
 
 ; The older array slice is selected by the bracketed type suffix. Its body is
 ; still deliberately fixed; this split only keeps scalar names unrestricted.
@@ -979,6 +1000,8 @@ ParserForwardIncomplete:
             JP   CompilerSetDiagnostic
 .endif
 
+.if HybridLL1Full
+.else
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 ParserParseProgram:
             CALL ParserTake
@@ -995,6 +1018,7 @@ ParserParseProgram:
             JP   Z,AggregateParseRecordAfterTake
             LD   A,DiagnosticExpectedTopLevel
             JP   CompilerSetDiagnostic
+.endif
 
 ; A is the stable source-part identity; HL..DE is the half-open byte range.
 .if LegacyCompilerSlices
@@ -1022,7 +1046,13 @@ CompileCallSlice:
 .routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 CompileSlice:
             CALL CompileSliceInitialize
+.if HybridLL1Full
+            XOR  A
+            LD   (Stage7CurrentRoutine),A
+            CALL HybridLL1Parse
+.else
             CALL ParserParseProgram
+.endif
             RET  C
             JP   SemanticSinkFinish
 .routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
