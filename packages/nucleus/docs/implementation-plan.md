@@ -643,6 +643,37 @@ Completion evidence:
   cursor effects; and
 - image-integrity cost is measured separately from execution code.
 
+The Stage 8 implementation includes the complete scalar and aggregate
+call ABI, sixteen argument positions, direct and mutual recursion, forward
+signatures including an abbreviated `main` body, direct and forward-visible
+calls to `main`, early return, recoverable
+failure, propagation, statement-bound handling, and result-free return
+propagation. The six standard services and four stable error constants share
+one predefined-name table. Direct runtime calls preserve the specified cursor,
+byte, and atomic-failure behavior, and `Reset` clears prior service failures.
+
+The combined active-LL(1) proof exercises all five runtime traps plus
+`unhandled-error`, exact trap locations, root SP/IX restoration, handler bypass,
+all service success and error families, same-destination handling, sixteen
+arguments, mutual forward recursion, direct and forward-visible `main`
+recursion, result-free return propagation, and
+predefined-name and service-signature rejections. Compiler-controlled image
+integrity is checked at assembly/proof time: generated-size arithmetic, the
+final publication cursor, target-map non-overlap, fixed runtime entry ranges,
+bounded fixups and tables, and rollback of a divergent failed publication. A
+hostile-code loader or opcode validator remains outside the selected contract.
+
+The correctness-cleared precompression account was 14,059 core bytes. After
+measured compression and a second read-only adversarial review, fresh assembly
+measures 13,439 code bytes plus 368 immutable bytes, for a 13,807-byte compiler
+core. Workspace is 1,398 bytes; the selected runtime is 561 bytes. The common
+front end is 9,990 bytes, including an 8,972-byte parser, and the retained Z80
+sink is 3,449 bytes, of which the typed and aggregate portion is 3,106 bytes.
+The combined proof occupies 2,953 bytes and executes 1,515,147 instructions in
+14,119,829 T-states. The compiler core is 252 bytes smaller than the
+correctness-cleared baseline and remains 2,577 bytes inside the hard 16 KiB
+gate. Exact test locks record these figures as the Stage 8 size plateau.
+
 ### Stage 9: complete corpus and final accounting
 
 Compile every accepted Chapter 21 program with the Z80 compiler, run it through
@@ -661,32 +692,32 @@ The first implementation fixes a numeric limit before each bounded structure is
 used. Each row remains open until a Z80 representation and a minimum corpus
 requirement are both known.
 
-| Resource                                |      Limit | Representation                                                | Excess diagnostic or trap                 | Evidence                                              |
-| --------------------------------------- | ---------: | ------------------------------------------------------------- | ----------------------------------------- | ----------------------------------------------------- |
-| source part count                       |       open | open                                                          | capacity diagnostic                       | open                                                  |
-| diagnostic-name bytes                   |       open | open                                                          | capacity diagnostic                       | open                                                  |
-| identifier bytes                        |       open | open                                                          | capacity diagnostic                       | open                                                  |
-| ordinary scalar symbols                 |          6 | six-byte source-backed entries                                | capacity diagnostic                       | duplicate, unknown, and seventh-name proof            |
-| direct routine declarations             |          4 | seven-byte source-backed entries                              | capacity diagnostic                       | rejected fifth routine                                |
-| retained direct parameters              |          8 | four-byte source-backed entries                               | capacity diagnostic                       | rejected ninth total parameter                        |
-| nested compiler call frames             |          4 | nine-byte parser frames                                       | capacity diagnostic                       | rejected fifth nested call                            |
-| LL(1) grammar symbols                   |         64 | byte stack plus thirteen bytes of action state                | parser-capacity diagnostic                | exact-fill and atomic internal-overflow engine proof  |
-| dynamic types, records, and fields      | 8 / 5 / 12 | three-byte type, two-byte record, and five-byte field entries | capacity diagnostic                       | accepted nested layout and metadata exhaustion proofs |
-| complete aggregate type extent          |        255 | retained byte extent; selected Stage 6 layout bound           | capacity diagnostic                       | rejected 256-byte field type                          |
-| retained forward signatures and names   |       open | copied or interned bytes                                      | capacity diagnostic                       | one resident-part pair; general retention open        |
-| scalar parameters                       |       open | open                                                          | capacity diagnostic                       | one recursive-parameter proof                         |
-| expression nesting                      |         16 | seven-byte metadata entries                                   | capacity diagnostic                       | seventeen-deep pending-expression proof               |
-| semantic transcript payload bytes       |        255 | counted variable-width stream                                 | capacity diagnostic                       | 52-assignment exhaustion proof                        |
-| Boolean fixups                          |         16 | two-byte generated addresses                                  | capacity diagnostic                       | exhaustion and underflow boundary proofs              |
-| active control frames                   |          8 | ten-byte parser frames                                        | capacity diagnostic                       | nested structured-control proofs                      |
-| dynamic labels                          |         31 | byte ordinals; 31 reserved                                    | capacity diagnostic                       | thirty-first allocation boundary proof                |
-| branch fixups                           |         32 | three-byte absolute records                                   | capacity diagnostic                       | bounded resolver and generated branch proofs          |
-| structured-initializer depth and nodes  |     4 / 32 | counters plus recursive parser state; root counts as a node   | capacity diagnostic                       | depth and 31/32 source-element boundary proofs        |
-| program static-image bytes              |        255 | private compiler image                                        | capacity diagnostic                       | 255-byte object followed by rejected allocation       |
-| emitted Z80 program bytes               |      4,096 | bounded output cursor                                         | capacity diagnostic                       | 857-byte Stage 5 bound and rollback proof             |
-| activation bytes                        |       open | packed records                                                | `activation-capacity`                     | one-byte Stage 4 slice                                |
-| activation depth                        |       open | counter plus packed arena                                     | `activation-capacity`                     | depth-three trap proof                                |
-| service stream and bulk-storage extents |       open | target adapter                                                | service error or documented host capacity | open                                                  |
+| Resource                                |      Limit | Representation                                                              | Excess diagnostic or trap  | Evidence                                                                     |
+| --------------------------------------- | ---------: | --------------------------------------------------------------------------- | -------------------------- | ---------------------------------------------------------------------------- |
+| source part count                       |       open | open                                                                        | capacity diagnostic        | open                                                                         |
+| diagnostic-name bytes                   |       open | open                                                                        | capacity diagnostic        | open                                                                         |
+| identifier bytes                        |       open | open                                                                        | capacity diagnostic        | open                                                                         |
+| ordinary scalar symbols                 |         16 | six-byte source-backed entries                                              | capacity diagnostic        | duplicate, unknown, and seventeenth-name proof                               |
+| direct routine declarations             |          4 | eight-byte source-backed entries                                            | capacity diagnostic        | rejected fifth routine                                                       |
+| retained direct parameters              |         16 | four-byte source-backed entries                                             | capacity diagnostic        | accepted sixteen-position call and rejected seventeenth parameter            |
+| nested compiler call frames             |          4 | ten-byte parser frames                                                      | capacity diagnostic        | rejected fifth nested call                                                   |
+| LL(1) grammar symbols                   |         64 | byte stack plus thirteen bytes of action state                              | parser-capacity diagnostic | exact-fill and atomic internal-overflow engine proof                         |
+| dynamic types, records, and fields      | 8 / 5 / 12 | three-byte type, two-byte record, and five-byte field entries               | capacity diagnostic        | accepted nested layout and metadata exhaustion proofs                        |
+| complete aggregate type extent          |        255 | retained byte extent; selected Stage 6 layout bound                         | capacity diagnostic        | rejected 256-byte field type                                                 |
+| retained forward signatures and names   |          4 | shared eight-byte routine entries plus one main-forward flag                | capacity diagnostic        | mutual recursion, incomplete forward, and forward-main proofs                |
+| scalar parameters                       |       open | open                                                                        | capacity diagnostic        | one recursive-parameter proof                                                |
+| expression nesting                      |         16 | seven-byte metadata entries                                                 | capacity diagnostic        | seventeen-deep pending-expression proof                                      |
+| semantic transcript payload bytes       |        255 | counted variable-width stream                                               | capacity diagnostic        | 52-assignment exhaustion proof                                               |
+| Boolean fixups                          |         16 | two-byte generated addresses                                                | capacity diagnostic        | exhaustion and underflow boundary proofs                                     |
+| active control frames                   |          8 | ten-byte parser frames                                                      | capacity diagnostic        | nested structured-control proofs                                             |
+| dynamic labels                          |         27 | byte ordinals; 27 reserved for callable `main`, 28–31 for retained routines | capacity diagnostic        | exact allocation boundary and callable-main proofs                           |
+| branch fixups                           |         32 | three-byte absolute records                                                 | capacity diagnostic        | bounded resolver and generated branch proofs                                 |
+| structured-initializer depth and nodes  |     4 / 32 | counters plus recursive parser state; root counts as a node                 | capacity diagnostic        | depth and 31/32 source-element boundary proofs                               |
+| program static-image bytes              |        255 | private compiler image                                                      | capacity diagnostic        | 255-byte object followed by rejected allocation                              |
+| emitted Z80 program bytes               |      4,096 | bounded output cursor                                                       | capacity diagnostic        | 857-byte Stage 5 bound and rollback proof                                    |
+| activation bytes                        |       open | packed records                                                              | `activation-capacity`      | one-byte Stage 4 slice                                                       |
+| activation depth                        |          8 | counter plus generated hardware-stack frames                                | `activation-capacity`      | recursive handler-bypass and root-frame trap proof                           |
+| service stream and bulk-storage extents |          4 | proof adapter byte arrays with independent cursors                          | stable service error       | success, end, configured failure, overwrite, append, rewind, and seek proofs |
 
 No implementation may wrap, truncate, drop state, or change source meaning when
 one of these limits is exceeded.

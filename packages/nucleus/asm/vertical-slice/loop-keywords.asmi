@@ -30,7 +30,9 @@ KeywordTable:
             .db  8,"continue",TokenContinue
             .db  6,"record",TokenRecord
             .db  6,"string",TokenString
-KeywordCount            .equ 30
+            .db  2,"on",TokenOn
+            .db  5,"error",TokenError
+KeywordCount            .equ 32
 
 PunctuationTable:
             .db  "=",TokenEquals
@@ -50,11 +52,35 @@ NameMain:               .db "main"
 .if LegacyCompilerSlices
 NameIndex:              .db "index"
 NameBytes:              .db "bytes"
-NameReadInputByte:      .db "readInputByte"
 .endif
-NameWriteOutputByte:    .db "writeOutputByte"
 .if AggregateCallSlices
 NameLength:             .db "length"
+
+; Predefined services and error constants remain ordinary names to the
+; tokenizer. The packed table gives the parser one namespace and dispatch
+; authority without installing source-visible symbol entries.
+Stage8PredefinedTable:
+            .db 13
+NameReadInputByte:
+            .db "readInputByte"
+            .db 15
+NameWriteOutputByte:
+            .db "writeOutputByte"
+            .db 15,"readStorageByte"
+            .db 18,"rewindStorageInput"
+            .db 16,"writeStorageByte"
+            .db 17,"seekStorageOutput"
+            .db 10,"endOfInput"
+            .db 12,"inputFailure"
+            .db 13,"outputFailure"
+            .db 14,"storageFailure"
+Stage8PredefinedCount .equ 10
+.else
+; Earlier proof fixtures retain their deliberately narrower parsers. These
+; names are their immutable comparison strings and are not a second service
+; namespace in the active packed LL(1) compiler.
+NameReadInputByte:      .db "readInputByte"
+NameWriteOutputByte:    .db "writeOutputByte"
 .endif
 .if LegacyCompilerSlices
 NameResult:             .db "result"

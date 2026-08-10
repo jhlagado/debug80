@@ -395,6 +395,14 @@ NextSemanticByte:
             OR   A
             RET
 
+.routine out A,DE,carry,zero clobbers sign,parity,halfCarry,HL
+ReadSemanticWord:
+            CALL NextSemanticByte
+            LD   E,A
+            CALL NextSemanticByte
+            LD   D,A
+            RET
+
 ; Dense ordinal dispatcher for the first non-positional backend. A pushed
 ; continuation turns the Z80's JP (HL) into a compact indirect call. This
 ; entry is post-parse only: SemanticSinkFinish must have published the complete

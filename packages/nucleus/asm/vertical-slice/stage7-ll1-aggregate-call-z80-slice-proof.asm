@@ -158,7 +158,10 @@ Stage7RoutineCapacitySource:
 Stage7RoutineCapacitySourceEnd:
 
 Stage7ParameterCapacitySource:
-            .db "sub many(a as u8, b as u8, c as u8, d as u8, e as u8, f as u8, g as u8, h as u8, i as u8)",10
+            .db "sub many(a as u8, b as u8, c as u8, d as u8, e as u8, f as u8, g as u8, h as u8, i as u8, j as u8, k as u8, l as u8, m as u8, n as u8, o as u8, p as u8, "
+            .db "q as u8"
+Stage7ParameterCapacityPoint:
+            .db ")",10
             .db "end",10
 Stage7ParameterCapacitySourceEnd:
 
@@ -561,7 +564,7 @@ ProofStart:
             CALL ProofExpectCompileDiagnostic
             JP   C,ProofFailRoutineCapacity
             LD   A,DiagnosticParameterCapacity
-            LD   BC,88
+            LD   BC,Stage7ParameterCapacityPoint-Stage7ParameterCapacitySource
             LD   HL,Stage7ParameterCapacitySource
             LD   DE,Stage7ParameterCapacitySourceEnd
             CALL ProofExpectCompileDiagnostic
@@ -602,11 +605,10 @@ ProofStart:
             LD   DE,Stage7MainResultSourceEnd
             CALL ProofExpectCompileDiagnostic
             JP   C,ProofFailMainResult
-            LD   A,DiagnosticExpectedLine
-            LD   BC,8
+            LD   A,160
             LD   HL,Stage7RoutineFailsSource
             LD   DE,Stage7RoutineFailsSourceEnd
-            CALL ProofExpectCompileDiagnostic
+            CALL CompileAggregateCallSlice
             JP   C,ProofFailRoutineFails
             LD   A,DiagnosticExpectedTopLevel
             LD   BC,12

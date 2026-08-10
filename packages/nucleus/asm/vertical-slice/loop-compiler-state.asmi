@@ -78,7 +78,7 @@ NextLocalSlot           .equ SemanticBufferLimit+$0E
 NextProgramSlot         .equ SemanticBufferLimit+$0F
 SymbolTableBase         .equ SemanticBufferLimit+$10
 SymbolEntrySize         .equ 6
-SymbolCapacity          .equ 6
+SymbolCapacity          .equ 16
 SymbolTableLimit        .equ SymbolTableBase+SymbolEntrySize*SymbolCapacity
 
 ; Expression metadata is deliberately explicit in the correctness build.
@@ -130,6 +130,7 @@ ControlFrameLimit       .equ ControlFrameBase+ControlFrameSize*ControlFrameCapac
 ControlKindIf           .equ 1
 ControlKindWhile        .equ 2
 ControlKindFor          .equ 3
+ControlKindHandler      .equ 4
 ControlRoutineNone      .equ 0
 ControlRoutineValue     .equ 1
 ControlRoutineLabel     .equ 31
@@ -284,6 +285,8 @@ TokenStringLiteral      .equ 47
 TokenRecord             .equ 48
 TokenString             .equ 49
 TokenDot                .equ 50
+TokenOn                 .equ 51
+TokenError              .equ 52
 
 DiagnosticNone          .equ 0
 DiagnosticLexical       .equ 1

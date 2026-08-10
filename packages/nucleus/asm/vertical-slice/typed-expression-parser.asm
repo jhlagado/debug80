@@ -51,12 +51,18 @@ TypedRejectCurrentOrdinaryName:
             OR   A
             RET
 
-.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
-TypedPrepareCurrentWord:
+; Restore the retained declaration spelling as the current name token.
+.routine out A,HL
+TypedRestoreDeclarationToken:
             LD   HL,(DeclarationNamePointer)
             LD   (TokenLexemePointer),HL
             LD   A,(DeclarationNameLength)
             LD   (TokenLength),A
+            RET
+
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+TypedPrepareCurrentWord:
+            CALL TypedRestoreDeclarationToken
             PUSH BC
             PUSH DE
             LD   HL,DeclarationNamePosition
@@ -149,6 +155,7 @@ TypedExpressionPush:
             LD   (ExpressionStackDepth),A
             OR   A
             RET
+
 TypedExpressionStackFull:
             LD   A,DiagnosticExpressionCapacity
             JP   CompilerSetDiagnostic
@@ -547,6 +554,16 @@ TypedPrimaryEmitTypedConstantFailure:
             RET
 TypedPrimaryName:
 .if AggregateCallSlices
+            CALL Stage8MatchPredefinedCurrent
+            JR   NC,TypedPrimaryOrdinaryName
+            CP   Stage8PredefinedConstantBase
+            JP   NC,Stage8TypedPrimaryConstant
+            LD   B,A
+            AND  $FD                     ; readInput/readStorage map to zero
+            JP   NZ,TypedTypeFailure
+            LD   A,B
+            JP   Stage8TypedPrimaryService
+TypedPrimaryOrdinaryName:
             CALL Stage7FindRoutineCurrent
             JP   Z,Stage7TypedPrimaryRoutine
             CALL SymbolLookupCurrent
@@ -688,6 +705,31 @@ TypedPrimaryCallFailure:
             POP  HL
             SCF
             RET
+.if AggregateCallSlices
+; A failable invocation remains consumable only while it is the complete,
+; untouched expression. Preserve the expression result while checking that no
+; pending direct failure is being enclosed by another expression form.
+.routine in A,HL out A,HL,carry,zero clobbers sign,parity,halfCarry,BC,DE,IX,IY
+TypedRequireComposable:
+            LD   C,A
+            LD   A,(Stage8DirectFailable)
+            OR   A
+            JP   NZ,HybridLL1FailureContext
+            LD   A,C
+            RET
+
+.routine in A,HL out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+TypedComposableSaveLeft:
+            CALL TypedRequireComposable
+            RET  C
+            JP   TypedSaveLeft
+
+.routine in A,HL out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+TypedComposableRestoreOperands:
+            CALL TypedRequireComposable
+            RET  C
+            JP   TypedRestoreOperands
+.endif
 TypedPrimaryParen:
             CALL TypedParseOr
             RET  C
@@ -697,6 +739,9 @@ TypedPrimaryParen:
             JR   C,TypedPrimaryParenFailure
             POP  HL
             POP  AF
+.if AggregateCallSlices
+            CALL TypedRequireComposable
+.endif
             RET
 TypedPrimaryParenFailure:
             POP  HL
@@ -730,6 +775,10 @@ TypedParseConversionOperand:
             LD   A,B
             LD   (ExpressionExpectedType),A
             LD   A,D
+.if AggregateCallSlices
+            CALL TypedRequireComposable
+            RET  C
+.endif
             OR   A
             RET
 TypedParseConversionRightFailure:
@@ -817,6 +866,10 @@ TypedUnaryPlus:
             RET  C
             CALL TypedParseUnary
             RET  C
+.if AggregateCallSlices
+            CALL TypedRequireComposable
+            RET  C
+.endif
             LD   D,A
             AND  ScalarMetaTypeMask
             CP   ScalarTypeBoolean
@@ -902,11 +955,19 @@ TypedMultiplicativeOperator:
             LD   (ExpressionOperatorOffset),HL
             POP  HL
             POP  AF
+.if AggregateCallSlices
+            CALL TypedComposableSaveLeft
+.else
             CALL TypedSaveLeft
+.endif
             RET  C
             CALL TypedParseUnary
             RET  C
+.if AggregateCallSlices
+            CALL TypedComposableRestoreOperands
+.else
             CALL TypedRestoreOperands
+.endif
             RET  C
             CALL TypedReduceIntegerBinary
             RET  C
@@ -940,11 +1001,19 @@ TypedAdditiveOperator:
             JR   C,TypedAdditivePeekFailure
             POP  HL
             POP  AF
+.if AggregateCallSlices
+            CALL TypedComposableSaveLeft
+.else
             CALL TypedSaveLeft
+.endif
             RET  C
             CALL TypedParseMultiplicative
             RET  C
+.if AggregateCallSlices
+            CALL TypedComposableRestoreOperands
+.else
             CALL TypedRestoreOperands
+.endif
             RET  C
             CALL TypedReduceIntegerBinary
             RET  C
@@ -999,11 +1068,19 @@ TypedParseComparison:
             JR   C,TypedComparisonStackFailure
             POP  HL
             POP  AF
+.if AggregateCallSlices
+            CALL TypedComposableSaveLeft
+.else
             CALL TypedSaveLeft
+.endif
             RET  C
             CALL TypedParseAdditive
             RET  C
+.if AggregateCallSlices
+            CALL TypedComposableRestoreOperands
+.else
             CALL TypedRestoreOperands
+.endif
             RET  C
             CALL TypedReduceComparison
             RET  C
@@ -1145,6 +1222,10 @@ TypedParseNot:
             RET  C
             CALL TypedParseNot
             RET  C
+.if AggregateCallSlices
+            CALL TypedRequireComposable
+            RET  C
+.endif
             LD   D,A
             AND  ScalarMetaTypeMask
             CP   ScalarTypeBoolean
@@ -1230,10 +1311,14 @@ TypedAndLoop:
             JP   NZ,TypedBooleanDone
             LD   (ExpressionOperator),A
             CALL ParserTake
-            JR   C,TypedBooleanPeekFailure
+            JP   C,TypedBooleanPeekFailure
             POP  HL
             POP  AF
+.if AggregateCallSlices
+            CALL TypedComposableSaveLeft
+.else
             CALL TypedSaveLeft
+.endif
             RET  C
             LD   A,(ExpressionLeftMeta)
             AND  ScalarMetaTypeMask
@@ -1246,7 +1331,11 @@ TypedAndLoop:
 TypedAndParseRight:
             CALL TypedParseNot
             RET  C
+.if AggregateCallSlices
+            CALL TypedComposableRestoreOperands
+.else
             CALL TypedRestoreOperands
+.endif
             RET  C
             LD   A,(ExpressionLeftMeta)
             AND  ScalarMetaTypeMask
@@ -1271,6 +1360,12 @@ TypedOrLoop:
             JR   C,TypedBooleanPeekFailure
             CP   TokenOr
             JR   NZ,TypedBooleanDone
+.if AggregateCallSlices
+            LD   A,(Stage8DirectFailable)
+            OR   A
+            JR   NZ,TypedBooleanDone
+            LD   A,TokenOr
+.endif
             LD   (ExpressionOperator),A
             CALL ParserTake
             JR   C,TypedBooleanPeekFailure
@@ -1289,7 +1384,11 @@ TypedOrLoop:
 TypedOrParseRight:
             CALL TypedParseAnd
             RET  C
+.if AggregateCallSlices
+            CALL TypedComposableRestoreOperands
+.else
             CALL TypedRestoreOperands
+.endif
             RET  C
             LD   A,(ExpressionLeftMeta)
             AND  ScalarMetaTypeMask
@@ -1407,6 +1506,11 @@ TypedAssignableSame:
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedExpressionBeginRuntime:
             LD   (ExpressionExpectedType),A
+.if AggregateCallSlices
+            XOR  A
+            LD   (Stage8DirectFailable),A
+            LD   (Stage8RetainedCarriers),A
+.endif
             LD   A,1
             LD   (ExpressionEmitEnabled),A
             XOR  A

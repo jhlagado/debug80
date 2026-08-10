@@ -1,7 +1,6 @@
-; Stage 7 predictive aggregate paths and bounded direct routine signatures.
-; The stage deliberately retains only already-declared routines; forward and
-; mutually recursive completion remain Stage 8 work. Runtime carriers are
-; never entered in the source symbol model as integers.
+; Predictive aggregate paths, bounded routine signatures, forwards, and the
+; predefined Stage 8 service surface. Runtime carriers are never entered in
+; the source symbol model as integers.
 
 .routine in A out A,HL,carry,zero clobbers sign,parity,halfCarry,DE
 Stage7RoutineAddress:
@@ -10,10 +9,6 @@ Stage7RoutineAddress:
             ADD  HL,HL
             ADD  HL,HL
             ADD  HL,HL
-            LD   E,A
-            LD   D,0
-            OR   A
-            SBC  HL,DE
             LD   DE,Stage7RoutineTableBase
             ADD  HL,DE
             OR   A
@@ -48,6 +43,17 @@ Stage7FindRoutineLoop:
             DEC  C
             JR   NZ,Stage7FindRoutineLoop
 Stage7FindRoutineMissing:
+            LD   A,(Stage8ForwardMainFlags)
+            AND  Stage7RoutineMain
+            JR   Z,Stage7FindRoutineAbsent
+            LD   HL,NameMain
+            LD   B,4
+            CALL TokenNameEquals
+            JR   NC,Stage7FindRoutineAbsent
+            LD   A,Stage7MainRoutine
+            CP   A
+            RET
+Stage7FindRoutineAbsent:
             LD   A,$FF
             OR   A
             RET
@@ -72,18 +78,53 @@ Stage7CurrentNameMatchesAtHL:
             POP  BC
             RET
 
+; Carry identifies a predefined service or error constant and A returns its
+; dense ordinal. No match returns carry clear.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+Stage8MatchPredefinedCurrent:
+            LD   HL,Stage8PredefinedTable
+            LD   C,Stage8PredefinedCount
+Stage8MatchPredefinedLoop:
+            LD   B,(HL)
+            INC  HL
+            LD   A,(TokenLength)
+            CP   B
+            JR   NZ,Stage8MatchPredefinedSkip
+            LD   DE,(TokenLexemePointer)
+Stage8MatchPredefinedByte:
+            LD   A,(DE)
+            CP   (HL)
+            JR   NZ,Stage8MatchPredefinedSkip
+            INC  DE
+            INC  HL
+            DJNZ Stage8MatchPredefinedByte
+            LD   A,Stage8PredefinedCount
+            SUB  C
+            SCF
+            RET
+Stage8MatchPredefinedSkip:
+            LD   E,B
+            LD   D,0
+            ADD  HL,DE
+            DEC  C
+            JR   NZ,Stage8MatchPredefinedLoop
+            OR   A
+            RET
+
 .routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 CompileAggregateCallSlice:
             CALL CompileSliceInitialize
             INC  A
             LD   (AggregateMode),A
+            LD   HL,Stage7StateBase
+            LD   B,Stage7CompilerWorkspaceEnd-Stage7StateBase
             XOR  A
-            LD   (Stage7RoutineCount),A
-            LD   (Stage7ParameterCount),A
-            LD   (Stage7CallDepth),A
+CompileAggregateCallResetLoop:
+            LD   (HL),A
+            INC  HL
+            DJNZ CompileAggregateCallResetLoop
             LD   (ControlNextLabel),A
 .if Stage7LL1
-            LD   (Stage7CurrentRoutine),A
             CALL HybridLL1Parse
 .else
             CALL Stage7ParseTopLevel
@@ -99,9 +140,7 @@ Stage7RejectCurrentDeclarationName:
             JP   C,TypedDuplicateNameFailure
             CALL Stage7FindRoutineCurrent
             JP   Z,TypedDuplicateNameFailure
-            LD   HL,NameWriteOutputByte
-            LD   B,15
-            CALL TokenNameEquals
+            CALL Stage8MatchPredefinedCurrent
             JP   C,TypedDuplicateNameFailure
             OR   A
             RET
@@ -251,10 +290,7 @@ Stage7SignatureParameter:
             CALL AggregateParseType
             RET  C
             PUSH AF
-            LD   HL,(DeclarationNamePointer)
-            LD   (TokenLexemePointer),HL
-            LD   A,(DeclarationNameLength)
-            LD   (TokenLength),A
+            CALL TypedRestoreDeclarationToken
             POP  AF
             CALL Stage7AppendParameter
             RET  C
@@ -684,13 +720,21 @@ Stage7PathSuffixLoop:
             CALL ParserPeek
             JP   C,Stage7PathSuffixFailure
             CP   TokenDot
-            JR   Z,Stage7PathField
+            JR   Z,Stage7PathFieldComposition
             CP   TokenLeftBracket
-            JR   Z,Stage7PathIndex
+            JR   Z,Stage7PathIndexComposition
             POP  AF
             LD   D,0
             OR   A
             RET
+Stage7PathFieldComposition:
+            POP  AF
+            LD   (Stage7PathType),A
+            CALL Stage8RequireNoPendingFailure
+            RET  C
+            LD   A,(Stage7PathType)
+            PUSH AF
+            JR   Stage7PathField
 Stage7PathField:
             CALL ParserTake
             JP   C,Stage7PathSuffixFailure
@@ -727,6 +771,14 @@ Stage7PathRecordField:
             JP   C,Stage7PathSuffixFailure
             POP  AF
             JP   Stage7PathSuffixLoop
+Stage7PathIndexComposition:
+            POP  AF
+            LD   (Stage7PathType),A
+            CALL Stage8RequireNoPendingFailure
+            RET  C
+            LD   A,(Stage7PathType)
+            PUSH AF
+            JR   Stage7PathIndex
 Stage7PathIndex:
             LD   HL,(TokenStartOffset)
             PUSH HL
@@ -741,6 +793,8 @@ Stage7PathIndex:
             LD   A,ScalarTypeU16
             LD   (ExpressionExpectedType),A
             CALL TypedParseOr
+            JP   C,Stage7PathIndexExpressionFailure
+            CALL TypedRequireComposable
             JP   C,Stage7PathIndexExpressionFailure
             LD   (ExpressionRightMeta),A
             LD   (ExpressionRightValue),HL
@@ -847,7 +901,7 @@ Stage7PathFieldTypeFailure:
             POP  AF
             JP   TypedTypeFailure
 
-; Address one bounded nested-call frame. Nine bytes retain everything that a
+; Address one bounded nested-call frame. Ten bytes retain everything that a
 ; nested argument call may overwrite, so the compiler's own hardware stack
 ; carries no hidden parse state.
 .routine in A out A,HL,carry,zero clobbers sign,parity,halfCarry,D,DE
@@ -855,10 +909,10 @@ Stage7CallFrameAddress:
             LD   L,A
             LD   H,0
             ADD  HL,HL
+            LD   E,L
+            LD   D,H
             ADD  HL,HL
             ADD  HL,HL
-            LD   E,A
-            LD   D,0
             ADD  HL,DE
             LD   DE,Stage7CallFrameBase
             ADD  HL,DE
@@ -886,6 +940,8 @@ Stage7PushCallFrameSpace:
             CALL Stage7CallFrameAddress
             PUSH HL
             LD   A,(Stage7ArgumentIndex)
+            CP   Stage7MainRoutine
+            JR   Z,Stage7PushMainCallFrame
             CALL Stage7RoutineAddress
             LD   DE,Stage7RoutineParameterStart
             ADD  HL,DE
@@ -896,6 +952,17 @@ Stage7PushCallFrameSpace:
             LD   B,(HL)                  ; result
             INC  HL
             LD   A,(HL)                  ; label
+            INC  HL
+            LD   C,(HL)                  ; failure flags
+            JR   Stage7PushCallFrameReady
+Stage7PushMainCallFrame:
+            LD   D,0                     ; parameter start
+            LD   E,0                     ; parameter count
+            LD   B,0                     ; result-free
+            LD   A,(Stage8ForwardMainFlags)
+            LD   C,A
+            LD   A,Stage7MainLabel
+Stage7PushCallFrameReady:
             POP  HL
             LD   (HL),A
             INC  HL
@@ -917,6 +984,8 @@ Stage7PushCallFrameSpace:
             INC  HL
             XOR  A
             LD   (HL),A
+            INC  HL
+            LD   (HL),C
             LD   HL,Stage7CallDepth
             INC  (HL)
             XOR  A
@@ -956,6 +1025,9 @@ Stage7CallArgumentLoop:
             ADD  HL,DE
             LD   A,(Stage7PathType)
             LD   (HL),A
+            XOR  A
+            LD   (Stage8DirectFailable),A
+            LD   A,(Stage7PathType)
             CP   AggregateFirstDynamicTypeId
             JR   NC,Stage7CallAggregateArgument
             LD   A,(ExpressionExpectedType)
@@ -982,6 +1054,8 @@ Stage7CallArgumentLoop:
             LD   HL,(ExpressionRightValue)
             CALL TypedCheckAssignable
             JP   C,Stage7CallFailure
+            CALL Stage8RequireNoPendingFailure
+            JP   C,Stage7CallFailure
             JR   Stage7CallArgumentReady
 Stage7CallScalarExpressionFailure:
             POP  AF
@@ -999,7 +1073,9 @@ Stage7CallAggregateArgument:
             LD   D,(HL)
             LD   A,(Stage7PathType)
             CP   D
-            JR   NZ,Stage7CallTypeFailure
+            JP   NZ,Stage7CallTypeFailure
+            CALL Stage8RequireNoPendingFailure
+            JP   C,Stage7CallFailure
 Stage7CallArgumentReady:
             CALL Stage7CurrentCallFrame
             LD   DE,Stage7CallFrameParameter
@@ -1010,11 +1086,11 @@ Stage7CallArgumentReady:
             JR   Z,Stage7CallArgumentsDone
             LD   E,TokenComma
             CALL ParserExpect
-            JR   C,Stage7CallFailure
+            JP   C,Stage7CallFailure
             JP   Stage7CallArgumentLoop
 Stage7CallArgumentsDone:
             CALL ParserExpectRight
-            JR   C,Stage7CallFailure
+            JP   C,Stage7CallFailure
             CALL Stage7CurrentCallFrame
             LD   A,(HL)
             LD   (Stage7CallLabel),A
@@ -1033,7 +1109,18 @@ Stage7CallArgumentsDone:
             INC  HL
             LD   D,(HL)
             LD   (Stage7CallOffset),DE
+            INC  HL
+            INC  HL
+            LD   A,(HL)
+            LD   (Stage8CallFlags),A
             CALL Stage7PopCallFrame
+            LD   A,(Stage8CallFlags)
+            AND  Stage7RoutineFails
+            JR   Z,Stage7CallFailureClassReady
+            LD   A,(Stage7CallDepth)
+            OR   A
+            JP   NZ,HybridLL1FailureContext
+Stage7CallFailureClassReady:
             LD   A,SemanticCallGeneral
             CALL SemanticSinkOperation
             RET  C
@@ -1052,6 +1139,14 @@ Stage7CallArgumentsDone:
             LD   HL,(Stage7CallOffset)
             CALL Stage7EmitWord
             RET  C
+            LD   A,(Stage8CallFlags)
+            CALL SemanticSinkPut
+            RET  C
+            CALL Stage8EmitFailurePlaceholders
+            RET  C
+            LD   A,(Stage8CallFlags)
+            AND  Stage7RoutineFails
+            LD   (Stage8DirectFailable),A
             LD   A,(Stage7CallResultType)
             OR   A
             RET
@@ -1141,6 +1236,96 @@ Stage7TypedPrimaryRoutineAggregate:
             RET  C
             JP   Stage7FinishScalarPath
 
+.routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+Stage8TypedPrimaryService:
+            LD   HL,(TokenStartOffset)
+            LD   (Stage7CallOffset),HL
+            LD   C,1
+            JP   Stage8ParseServiceCall
+
+.routine in A out A,B,HL,carry,zero clobbers sign,parity,halfCarry,C,D,DE,IX,IY
+Stage8TypedPrimaryConstant:
+            SUB  Stage8PredefinedConstantBase-1
+            LD   L,A
+            LD   H,0
+            LD   B,ScalarMetaConstant+ScalarTypeU8
+            JP   TypedPrimaryEmitTypedConstant
+
+; A is the dense service ID and C says whether a successful u8 result is kept.
+.routine in A,C out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+Stage8ParseServiceCall:
+            LD   (Stage8ServiceId),A
+            LD   A,C
+            LD   (Stage8ServiceKeep),A
+            CALL ParserExpectLeft
+            RET  C
+            LD   A,(Stage8ServiceId)
+            CP   Stage8ServiceWriteOutput
+            JR   Z,Stage8ServiceU8Argument
+            CP   Stage8ServiceWriteStorage
+            JR   Z,Stage8ServiceU8Argument
+            CP   Stage8ServiceSeekStorage
+            JR   Z,Stage8ServiceU16Argument
+            JR   Stage8ServiceExpectRight
+Stage8ServiceU8Argument:
+            LD   D,ScalarTypeU8
+            JR   Stage8ServiceArgument
+Stage8ServiceU16Argument:
+            LD   D,ScalarTypeU16
+Stage8ServiceArgument:
+            LD   A,D
+            CALL TypedExpressionBeginRuntime
+            RET  C
+            LD   D,A
+            LD   A,(ExpressionExpectedType)
+            LD   E,A
+            LD   A,D
+            CALL TypedCheckAssignable
+            RET  C
+            CALL Stage8RequireNoPendingFailure
+            RET  C
+Stage8ServiceExpectRight:
+            CALL ParserExpectRight
+            RET  C
+            LD   A,SemanticCallService
+            CALL SemanticSinkOperation
+            RET  C
+            LD   A,(Stage8ServiceId)
+            CALL SemanticSinkPut
+            RET  C
+            LD   A,(Stage8ServiceKeep)
+            CALL SemanticSinkPut
+            RET  C
+            LD   HL,(Stage7CallOffset)
+            CALL Stage7EmitWord
+            RET  C
+            CALL Stage8EmitFailurePlaceholders
+            RET  C
+            LD   A,Stage7RoutineFails
+            LD   (Stage8DirectFailable),A
+            LD   A,(Stage8ServiceId)
+            AND  $FD                     ; readInput/readStorage map to zero
+            JR   Z,Stage8ServiceScalarResult
+            XOR  A
+            RET
+Stage8ServiceScalarResult:
+            LD   A,ScalarTypeU8
+            OR   A
+            RET
+
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry
+Stage8EmitFailurePlaceholders:
+            LD   HL,(SinkCursor)
+            LD   (Stage8CallModePointer),HL
+            LD   C,3
+Stage8FailurePlaceholderLoop:
+            XOR  A
+            CALL SemanticSinkPut
+            RET  C
+            DEC  C
+            JR   NZ,Stage8FailurePlaceholderLoop
+            RET
+
 Stage7TypedPrimaryAggregateSymbol:
             CALL Stage7EmitAggregateSymbolRoot
             RET  C
@@ -1211,6 +1396,10 @@ Stage7ParseAggregateAssignment:
             LD   A,D
             CALL TypedCheckAssignable
             RET  C
+            LD   A,1
+            LD   (Stage8RetainedCarriers),A
+            CALL Stage8SelectFailureConsumer
+            RET  C
             LD   A,(Stage7PathType)
             CP   ScalarTypeU16
             LD   A,SemanticStoreIndirect8
@@ -1219,7 +1408,11 @@ Stage7ParseAggregateAssignment:
 Stage7ScalarAssignmentEmit:
             CALL SemanticSinkOperation
             RET  C
+.if Stage7LL1
+            RET
+.else
             JP   ParserExpectLine
+.endif
 Stage7AggregateCopyAssignment:
             PUSH AF
             CALL Stage7ParseAggregateValue
@@ -1229,14 +1422,25 @@ Stage7AggregateCopyAssignment:
             CP   D
             JP   NZ,TypedTypeFailure
             CALL AggregateGetExtent
-            LD   C,L
+            LD   A,L
+            LD   (Stage7PathExtent),A
+            LD   A,1
+            LD   (Stage8RetainedCarriers),A
+            CALL Stage8SelectFailureConsumer
+            RET  C
+            LD   A,(Stage7PathExtent)
+            LD   C,A
             LD   A,SemanticCopyAggregate
             CALL Stage7EmitOperationByte
             RET  C
             LD   HL,(Stage7CallOffset)
             CALL Stage7EmitWord
             RET  C
+.if Stage7LL1
+            RET
+.else
             JP   ParserExpectLine
+.endif
 Stage7AggregateCopyFailure:
             POP  AF
             SCF

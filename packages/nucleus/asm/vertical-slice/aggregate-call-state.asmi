@@ -1,6 +1,7 @@
-; Stage 7 aggregate-call state. This first direct increment retains four
-; already-declared routines and eight parameters. Source bytes remain resident,
-; so names use pointer/length pairs. Types are the Stage 6 one-byte ordinals.
+; Packed aggregate-call and Stage 8 routine state. Four direct routine entries,
+; sixteen retained parameter positions, and four nested parser call frames are
+; bounded independently. Source bytes remain resident, so names use
+; pointer/length pairs. Types are the Stage 6 one-byte ordinals.
 
 Stage7StateBase             .equ AggregateWorkspaceEnd
 Stage7RoutineCount          .equ Stage7StateBase+$00
@@ -19,10 +20,23 @@ Stage7CallResultType        .equ Stage7StateBase+$0C
 Stage7CallLabel             .equ Stage7StateBase+$0D
 Stage7CallOffset            .equ Stage7StateBase+$0E
 Stage7CallDepth             .equ Stage7StateBase+$10
-Stage7StateEnd              .equ Stage7StateBase+$11
+Stage7CurrentFlags          .equ Stage7StateBase+$11
+Stage8FailureOffset         .equ Stage7StateBase+$12
+Stage8DirectFailable        .equ Stage7StateBase+$14
+Stage8CallModePointer       .equ Stage7StateBase+$15
+Stage8HandlerEligible       .equ Stage7StateBase+$17
+Stage8ForwardMainFlags      .equ Stage7StateBase+$18
+; Number of already-evaluated destination carriers below a failable result.
+; A local handler discards these before entering its statement body.
+Stage8RetainedCarriers      .equ Stage7StateBase+$19
+; These values span expression parsing, so nested calls must not overlay them.
+Stage8ServiceId             .equ Stage7StateBase+$1A
+Stage8ServiceKeep           .equ Stage7StateBase+$1B
+Stage8CallFlags             .equ Stage7StateBase+$1C
+Stage7StateEnd              .equ Stage7StateBase+$1D
 
 Stage7RoutineTableBase      .equ Stage7StateEnd
-Stage7RoutineEntrySize      .equ 7
+Stage7RoutineEntrySize      .equ 8
 Stage7RoutineCapacity       .equ 4
 Stage7RoutineTableLimit     .equ Stage7RoutineTableBase+Stage7RoutineEntrySize*Stage7RoutineCapacity
 Stage7RoutineNamePointer    .equ 0
@@ -31,17 +45,18 @@ Stage7RoutineParameterStart .equ 3
 Stage7RoutineParameterCount .equ 4
 Stage7RoutineResultType     .equ 5
 Stage7RoutineLabel          .equ 6
+Stage7RoutineFlags          .equ 7
 
 Stage7ParameterTableBase    .equ Stage7RoutineTableLimit
 Stage7ParameterEntrySize    .equ 4
-Stage7ParameterCapacity     .equ 8
+Stage7ParameterCapacity     .equ 16
 Stage7ParameterTableLimit   .equ Stage7ParameterTableBase+Stage7ParameterEntrySize*Stage7ParameterCapacity
 Stage7ParameterNamePointer  .equ 0
 Stage7ParameterNameLength   .equ 2
 Stage7ParameterType         .equ 3
 
 Stage7CallFrameBase         .equ Stage7ParameterTableLimit
-Stage7CallFrameSize         .equ 9
+Stage7CallFrameSize         .equ 10
 Stage7CallFrameCapacity     .equ 4
 Stage7CallFrameLimit        .equ Stage7CallFrameBase+Stage7CallFrameSize*Stage7CallFrameCapacity
 Stage7CallFrameLabel        .equ 0
@@ -52,12 +67,34 @@ Stage7CallFrameArgumentCount .equ 4
 Stage7CallFrameKeep         .equ 5
 Stage7CallFrameOffset       .equ 6
 Stage7CallFrameExpected     .equ 8
+Stage7CallFrameFlags        .equ 9
 
 Stage7CompilerWorkspaceEnd  .equ Stage7CallFrameLimit
 
+; Emission begins only after parsing has published the semantic transcript, so
+; its consecutive call fields overlay the no-longer-live declaration prefix.
+Stage8EmitFieldBase         .equ Stage7StateBase
+Stage8EmitCallFlags         .equ Stage8EmitFieldBase+$00
+Stage8EmitResultType        .equ Stage8EmitFieldBase+$01
+Stage8EmitCallMode          .equ Stage8EmitFieldBase+$02
+Stage8EmitHandlerLabel      .equ Stage8EmitFieldBase+$03
+Stage8EmitRetainedCarriers  .equ Stage8EmitFieldBase+$04
+
 Stage7RoutineLabelBase      .equ 28
-Stage7ControlLabelLimit     .equ Stage7RoutineLabelBase
+; Label 27 is the callable body of main. The startup wrapper calls this label
+; just like a source call, while labels 28..31 retain ordinary routines.
+Stage7MainLabel             .equ 27
+Stage7ControlLabelLimit     .equ Stage7MainLabel
+Stage7MainRoutine           .equ $FE
 Stage7NoResult              .equ 0
+Stage7RoutineFails          .equ 1
+Stage7RoutineMain           .equ 2
+Stage8RoutineIncomplete     .equ 4
+
+Stage8CallModeInfallible       .equ 0
+Stage8CallModePropagateRoutine .equ 1
+Stage8CallModePropagateMain    .equ 2
+Stage8CallModeHandle           .equ 3
 
 ; Stage 7 semantic operations extend the dense production dispatch range.
 SemanticBeginGeneralRoutine .equ 78
@@ -76,7 +113,26 @@ SemanticStoreIndirect16     .equ 90
 SemanticCopyAggregate       .equ 91
 SemanticStringLength        .equ 92
 SemanticStringIndex         .equ 93
+SemanticFailRoutine         .equ 94
+SemanticFailMain            .equ 95
+SemanticReturnFailableScalar .equ 96
+SemanticReturnFailableAggregate .equ 97
+SemanticEndFailableRoutine  .equ 98
+SemanticSkipHandler          .equ 99
+SemanticBeginHandler         .equ 100
+SemanticEndHandler           .equ 101
+SemanticCallService          .equ 102
+SemanticBeginCallableMain    .equ 103
+
+Stage8ServiceReadInput       .equ 0
+Stage8ServiceWriteOutput     .equ 1
+Stage8ServiceReadStorage     .equ 2
+Stage8ServiceRewindStorage   .equ 3
+Stage8ServiceWriteStorage    .equ 4
+Stage8ServiceSeekStorage     .equ 5
+Stage8PredefinedConstantBase .equ 6
 
 DiagnosticRoutineCapacity  .equ 84
 DiagnosticParameterCapacity .equ 85
 DiagnosticTransientAlias   .equ 86
+DiagnosticFailureContext   .equ 87

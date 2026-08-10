@@ -131,7 +131,7 @@ AggregateStringLengthSourceEnd:
 
 AggregateBooleanSource:
             .db "record Flags",10
-            .db "off as boolean",10,"on as boolean",10,"end",10
+            .db "off as boolean",10,"enabled as boolean",10,"end",10
             .db "var flags as Flags = (false,true)",10
             .db "sub main() fails",10,"end",10
 AggregateBooleanSourceEnd:

@@ -418,13 +418,17 @@ ParserExpectIndexDeclaration:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectOrFailLine:
+            CALL ParserExpectOrFail
+            RET  C
+            JP   ParserExpectLine
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+ParserExpectOrFail:
             LD   E,TokenOr
             CALL ParserExpect
             RET  C
             LD   E,TokenFail
-            CALL ParserExpect
-            RET  C
-            JP   ParserExpectLine
+            JP   ParserExpect
 
 .if LegacyCompilerSlices
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
@@ -1043,7 +1047,9 @@ CompileCallSlice:
             RET  C
             JP   SemanticSinkFinish
 .endif
-.routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+.if AggregateCallSlices
+.else
+            .routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 CompileSlice:
             CALL CompileSliceInitialize
 .if HybridLL1Full
@@ -1055,6 +1061,7 @@ CompileSlice:
 .endif
             RET  C
             JP   SemanticSinkFinish
+.endif
 .routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 CompileSliceInitialize:
             CALL SourceInitialize

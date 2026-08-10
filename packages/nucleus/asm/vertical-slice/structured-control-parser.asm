@@ -411,6 +411,17 @@ StructuredStepMagnitude:
             JR   Z,StructuredStepNumber
             CP   TokenName
             JR   NZ,StructuredStepFailure
+.if AggregateCallSlices
+            CALL Stage8MatchPredefinedCurrent
+            JR   NC,StructuredStepSourceConstant
+            CP   Stage8PredefinedConstantBase
+            JR   C,StructuredStepFailure
+            SUB  Stage8PredefinedConstantBase-1
+            LD   D,0
+            LD   E,A
+            JR   StructuredStepHaveMagnitude
+StructuredStepSourceConstant:
+.endif
             CALL SymbolLookupCurrent
             RET  C
             LD   D,A

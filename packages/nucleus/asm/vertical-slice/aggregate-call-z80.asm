@@ -95,12 +95,29 @@ Stage7BoundsGuard:
 
 .routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry
 Stage7ReadCallOffset:
-            CALL NextSemanticByte
-            LD   E,A
-            CALL NextSemanticByte
-            LD   D,A
+            CALL ReadSemanticWord
             LD   (Stage7CallOffset),DE
             RET
+
+; Read one semantic operand into a consecutive post-parse scratch field.
+.routine in DE out A,DE,carry,zero clobbers sign,parity,halfCarry,HL
+Stage8ReadSemanticToDE:
+            CALL NextSemanticByte
+            RET  C
+            LD   (DE),A
+            INC  DE
+            RET
+
+; Retain the source position of a propagated failure. The root wrapper uses
+; the last propagation site when failure finally leaves callable main.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+Stage8EmitFailureOffset:
+            LD   HL,(Stage7CallOffset)
+            CALL EmitLoadHl
+            RET  C
+            LD   HL,TrapOffset
+            LD   A,$22                    ; LD (nn),HL
+            JP   EmitOpcodeWord
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 Stage7Call:
@@ -113,6 +130,12 @@ Stage7Call:
             CALL NextSemanticByte
             LD   (Stage7PathOffset),A       ; keep-result flag
             CALL Stage7ReadCallOffset
+            LD   DE,Stage8EmitFieldBase
+            CALL Stage8ReadSemanticToDE    ; failure flags
+            LD   DE,Stage8EmitCallMode
+            CALL Stage8ReadSemanticToDE    ; failure mode
+            CALL Stage8ReadSemanticToDE    ; handler label
+            CALL Stage8ReadSemanticToDE    ; retained destination carriers
             LD   HL,ActivationClaim
             CALL EmitCall
             RET  C
@@ -135,21 +158,37 @@ Stage7Call:
             LD   A,$CD
             CALL StructuredEmitFixup
             RET  C
+            LD   A,(Stage8EmitCallFlags)
+            AND  Stage7RoutineFails
+            JR   NZ,Stage8CallFailable
             LD   HL,ActivationRelease
             CALL EmitCall
             RET  C
-            LD   A,(Stage7ArgumentCount)
-            OR   A
-            JR   Z,Stage7CallResult
-Stage7DiscardArguments:
-            DEC  A
-            LD   (Stage7ArgumentCount),A
-            LD   A,$D1                    ; POP DE
+            JP   Stage7CallDiscard
+Stage8CallFailable:
+            LD   A,$F5                    ; PUSH AF result discriminant/code
             CALL EmitByte
             RET  C
+            LD   HL,ActivationRelease
+            CALL EmitCall
+            RET  C
+            LD   A,$F1                    ; POP AF
+            CALL EmitByte
+            RET  C
+            CALL EmitJrNcPlaceholder
+            RET  C
+            LD   (EmitExitFixup),DE
+            CALL Stage8EmitFailureOutcome
+            RET  C
+Stage8CallFailureReady:
+            LD   DE,(EmitExitFixup)
+            CALL PatchHere
+            RET  C
+Stage7CallDiscard:
             LD   A,(Stage7ArgumentCount)
-            OR   A
-            JR   NZ,Stage7DiscardArguments
+            LD   C,A
+            CALL Stage8DiscardCarriers
+            RET  C
 Stage7CallResult:
             LD   A,(Stage7CallResultType)
             OR   A
@@ -160,7 +199,238 @@ Stage7CallResult:
             LD   A,$E5                    ; PUSH HL result carrier
             JP   EmitByte
 
+.routine in C out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
+Stage8DiscardCarriers:
+            LD   A,C
+            OR   A
+            RET  Z
+Stage8DiscardCarrier:
+            LD   A,$D1                    ; POP DE carrier
+            CALL EmitByte
+            RET  C
+            DEC  C
+            JR   Stage8DiscardCarriers
+
 Stage7ReturnAggregate .equ TypedReturnScalar
+
+; Failable completion uses carry plus A privately: carry clear denotes success;
+; carry set carries one u8 error code in A. Source code cannot inspect this ABI.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+Stage8FailRoutine:
+            CALL Stage7ReadCallOffset
+            CALL Stage8EmitFailureOffset
+            RET  C
+            LD   HL,Stage8PopErrorBytes
+            CALL   EmitPair
+            RET  C
+            JP   Stage8FailureReturnTail
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+Stage8FailMain:
+            CALL Stage7ReadCallOffset
+            LD   HL,Stage8PopErrorBytes
+            CALL   EmitPair
+            RET  C
+            LD   HL,(Stage7CallOffset)
+            CALL EmitLoadHl
+            RET  C
+            CALL EmitUnhandledTrapPrefix
+            RET  C
+            JP   TypedEmitTrapEnding
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+Stage8ReturnSuccess:
+            LD   A,$E1                    ; POP HL result carrier
+            CALL EmitByte
+            RET  C
+            JR   Stage8SuccessTail
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+Stage8EndFailableRoutine:
+            CALL NextSemanticByte
+            OR   A
+            RET  NZ
+Stage8SuccessTail:
+            CALL ExpressionRestoreFrame
+            RET  C
+            LD   HL,Stage8SuccessReturnBytes
+            JP   EmitPair
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+Stage8SkipHandler:
+            CALL NextSemanticByte
+            LD   C,A
+            LD   A,$C3
+            JP   StructuredEmitFixup
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+Stage8BeginHandler:
+            CALL NextSemanticByte
+            LD   C,A
+            CALL StructuredDefineLabel
+            RET  C
+            CALL NextSemanticByte
+            LD   (Stage8EmitCallFlags),A
+            LD   HL,Stage8ErrorCarrierBytes
+            CALL EmitFour
+            RET  C
+            LD   A,(Stage8EmitCallFlags)
+            AND  SymbolClassMask
+            CP   SymbolClassProgram
+            JP   Z,TypedStoreProgram8
+            JP   TypedStoreLocal8
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+Stage8EndHandler:
+            CALL NextSemanticByte
+            LD   C,A
+            JP   StructuredDefineLabel
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+Stage8EmitFailureOutcome:
+            LD   A,(Stage8EmitCallMode)
+            OR   A
+            JP   Z,TypedInternalOperation
+            CP   Stage8CallModeHandle
+            JR   Z,Stage8FailureHandle
+            CALL Stage8EmitFailureOffset
+            RET  C
+Stage8FailureReturnTail:
+            CALL ExpressionRestoreFrame
+            RET  C
+            LD   HL,Stage8FailureReturnBytes
+            JP   EmitPair
+Stage8FailureHandle:
+            LD   A,$4F                    ; LD C,A error code
+            CALL EmitByte
+            RET  C
+            LD   A,(Stage7ArgumentCount)
+            LD   HL,Stage8EmitRetainedCarriers
+            ADD  A,(HL)
+            LD   C,A
+            CALL Stage8DiscardCarriers
+            RET  C
+            LD   A,$79                    ; LD A,C
+            CALL EmitByte
+            RET  C
+            LD   A,(Stage8EmitHandlerLabel)
+            LD   C,A
+            LD   A,$C3
+            JP   StructuredEmitFixup
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+Stage8CallService:
+            LD   DE,Stage8EmitFieldBase
+            CALL Stage8ReadSemanticToDE    ; service ID
+            CALL Stage8ReadSemanticToDE    ; successful result type
+            CALL Stage7ReadCallOffset
+            LD   DE,Stage8EmitCallMode
+            CALL Stage8ReadSemanticToDE    ; failure mode
+            CALL Stage8ReadSemanticToDE    ; handler label
+            CALL Stage8ReadSemanticToDE    ; retained destination carriers
+            LD   A,(Stage8EmitCallFlags)
+            CP   Stage8ServiceWriteOutput
+            JR   Z,Stage8ServiceByteArgument
+            CP   Stage8ServiceWriteStorage
+            JR   Z,Stage8ServiceByteArgument
+            CP   Stage8ServiceSeekStorage
+            JR   NZ,Stage8ServiceAddress
+            LD   A,$E1                    ; POP HL offset
+            CALL EmitByte
+            RET  C
+            JR   Stage8ServiceAddress
+Stage8ServiceByteArgument:
+            LD   HL,Stage8PopErrorBytes   ; POP HL / LD A,L
+            CALL EmitPair
+            RET  C
+Stage8ServiceAddress:
+            LD   A,(Stage8EmitCallFlags)
+            ADD  A,A
+            LD   E,A
+            LD   D,0
+            LD   HL,Stage8ServiceAddressTable
+            ADD  HL,DE
+            LD   E,(HL)
+            INC  HL
+            LD   D,(HL)
+            EX   DE,HL
+            CALL EmitCall
+            RET  C
+            CALL EmitJrNcPlaceholder
+            RET  C
+            LD   (EmitExitFixup),DE
+            XOR  A
+            LD   (Stage7ArgumentCount),A
+            CALL Stage8EmitFailureOutcome
+            RET  C
+Stage8ServiceFailureReady:
+            LD   DE,(EmitExitFixup)
+            CALL PatchHere
+            RET  C
+            LD   A,(Stage8EmitCallFlags)
+            AND  $FD                     ; readInput/readStorage map to zero
+            JR   NZ,Stage8ServiceNoResult
+Stage8ServiceResult:
+            LD   A,(Stage8EmitResultType)
+            OR   A
+            RET  Z
+            LD   HL,Stage8ErrorCarrierBytes
+            JP   EmitFour
+Stage8ServiceNoResult:
+            OR   A
+            RET
+
+Stage8ServiceAddressTable:
+            .dw ReadInputByte
+            .dw WriteOutputByte
+            .dw ReadStorageByte
+            .dw RewindStorageInput
+            .dw WriteStorageByte
+            .dw SeekStorageOutput
+
+; Startup is a terminal wrapper around main's ordinary callable body. The
+; source body therefore has the same frame, return, recursion, and failure ABI
+; as every other result-free routine; only this wrapper converts final failure
+; into unhandled-error and final success into host completion.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+Stage8BeginCallableMain:
+            CALL NextSemanticByte
+            LD   (Stage8EmitCallFlags),A
+            LD   DE,(EmitDataFixup)
+            LD   HL,(EmitCursor)
+            CALL PatchWord
+            CALL TypedSaveRootFrame
+            RET  C
+            LD   C,Stage7MainLabel
+            LD   A,$CD
+            CALL StructuredEmitFixup
+            RET  C
+            LD   A,(Stage8EmitCallFlags)
+            AND  Stage7RoutineFails
+            JR   Z,Stage8MainWrapperSuccess
+            CALL EmitJrNcPlaceholder
+            RET  C
+            LD   (EmitExitFixup),DE
+            LD   HL,Stage8ReloadFailureOffsetBytes
+            CALL EmitFive
+            RET  C
+            CALL EmitUnhandledTrapPrefix
+            RET  C
+            CALL TypedEmitTrapEnding
+            RET  C
+            LD   DE,(EmitExitFixup)
+            CALL PatchHere
+            RET  C
+Stage8MainWrapperSuccess:
+            CALL TypedRestoreRootFrame
+            RET  C
+            CALL EmitSuccessReturn
+            RET  C
+            LD   C,Stage7MainLabel
+            CALL StructuredDefineLabel
+            RET  C
+            LD   HL,ExpressionFrameBytes
+            JP   EmitEight
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7EndRoutine:
@@ -344,3 +614,11 @@ Stage7StoreIXH            .equ TypedStoreLocalHigh
 Stage7AddDEPush           .equ Stage7OffsetAddress+3
 Stage7PopIndexBase        .equ TypedPopOperandsBytes
 Stage7StoreIndirect8Bytes .equ Stage7StoreIndirect16Bytes
+Stage8PopErrorBytes:      .db $E1,$7D      ; POP HL / LD A,L
+Stage8FailureReturnBytes: .db $37,$C9      ; SCF / RET
+Stage8SuccessReturnBytes: .db $B7,$C9      ; OR A / RET
+Stage8ErrorCarrierBytes .equ TypedAtoHL       ; LD L,A / LD H,0 / PUSH HL
+Stage8ReloadFailureOffsetBytes:
+            .db $F5,$2A                   ; PUSH AF / LD HL,(nn)
+            .dw TrapOffset
+            .db $F1                       ; POP AF

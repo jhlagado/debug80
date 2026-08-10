@@ -7,8 +7,15 @@ Reset:
             LD   (TrapRoutine),A
             LD   (TrapError),A
             LD   (ServiceCallCount),A
+            LD   (ServiceFailureCall),A
             LD   (ServiceOutputLength),A
             LD   (ServiceInputCursor),A
+            LD   (ServiceInputFailure),A
+            LD   (ServiceStorageInputCursor),A
+            LD   (ServiceStorageInputFailure),A
+            LD   (ServiceStorageOutputLength),A
+            LD   (ServiceStorageOutputCursor),A
+            LD   (ServiceStorageOutputFailure),A
             LD   (ActivationDepth),A
             LD   (ScalarSlot),A
             LD   A,ActivationCapacity
@@ -21,6 +28,12 @@ ResetOutput:
             LD   (HL),A
             INC  HL
             DJNZ ResetOutput
+            LD   HL,ServiceStorageOutputBase
+            LD   B,ServiceStorageOutputCapacity
+ResetStorageOutput:
+            LD   (HL),A
+            INC  HL
+            DJNZ ResetStorageOutput
             LD   A,RunReady
             LD   (RunState),A
             OR   A
@@ -351,5 +364,92 @@ WriteOutputByteStore:
             RET
 WriteOutputByteFailure:
             LD   A,3
+            SCF
+            RET
+
+; Bulk input has the same cursor discipline as standard input, but any
+; configured adapter failure is reported as storageFailure.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,HL
+ReadStorageByte:
+            LD   A,(ServiceStorageInputFailure)
+            OR   A
+            JR   NZ,StorageFailure
+            LD   A,(ServiceStorageInputCursor)
+            LD   C,A
+            LD   A,(ServiceStorageInputLength)
+            CP   C
+            JR   Z,ReadStorageByteEnd
+            LD   B,0
+            LD   HL,ServiceStorageInputBase
+            ADD  HL,BC
+            INC  C
+            LD   A,C
+            LD   (ServiceStorageInputCursor),A
+            LD   A,(HL)
+            OR   A
+            RET
+ReadStorageByteEnd:
+            LD   A,1
+            SCF
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry
+RewindStorageInput:
+            LD   A,(ServiceStorageInputFailure)
+            OR   A
+            JR   NZ,StorageFailure
+            LD   (ServiceStorageInputCursor),A
+            RET
+
+; Input A is written at the current bulk-output cursor. Every check precedes
+; the first cursor, length, or output-byte mutation.
+.routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,HL
+WriteStorageByte:
+            LD   D,A
+            LD   A,(ServiceStorageOutputFailure)
+            OR   A
+            JR   NZ,StorageFailure
+            LD   A,(ServiceStorageOutputCursor)
+            LD   C,A
+            LD   A,(ServiceStorageOutputLength)
+            CP   C
+            JR   C,StorageFailure
+            JR   NZ,WriteStorageByteAddress
+            LD   A,C
+            CP   ServiceStorageOutputCapacity
+            JR   NC,StorageFailure
+            INC  A
+            LD   (ServiceStorageOutputLength),A
+WriteStorageByteAddress:
+            LD   B,0
+            LD   HL,ServiceStorageOutputBase
+            ADD  HL,BC
+            LD   (HL),D
+            INC  C
+            LD   A,C
+            LD   (ServiceStorageOutputCursor),A
+            XOR  A
+            RET
+
+; Input HL is an unsigned offset. Only existing positions and the exact end
+; are admitted; failure leaves the cursor unchanged.
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry
+SeekStorageOutput:
+            LD   A,H
+            OR   A
+            JR   NZ,StorageFailure
+            LD   A,(ServiceStorageOutputFailure)
+            OR   A
+            JR   NZ,StorageFailure
+            LD   A,(ServiceStorageOutputLength)
+            CP   L
+            JR   C,StorageFailure
+            LD   A,L
+            LD   (ServiceStorageOutputCursor),A
+            OR   A
+            RET
+
+StorageFailure:
+            LD   A,4
             SCF
             RET

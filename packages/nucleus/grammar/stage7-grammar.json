@@ -11,7 +11,9 @@
     "record-fields": "DiagnosticRecordEmpty",
     "record-field-tail": "DiagnosticExpectedScalar",
     "record-field": "DiagnosticExpectedScalar",
+    "forward-declaration": "DiagnosticExpectedForward",
     "sub-definition": "DiagnosticExpectedSub",
+    "sub-definition-tail": "DiagnosticExpectedLeft",
     "parameter-list": "DiagnosticExpectedRight",
     "parameter-tail": "DiagnosticExpectedRight",
     "parameter": "DiagnosticExpectedScalar",
@@ -24,6 +26,9 @@
     "statement-sequence": "DiagnosticExpectedScalar",
     "statement": "DiagnosticExpectedScalar",
     "return-statement": "DiagnosticExpectedReturn",
+    "return-value-opt": "DiagnosticExpectedLine",
+    "fail-statement": "DiagnosticExpectedFail",
+    "on-error-opt": "DiagnosticFailureContext",
     "transfer-statement": "DiagnosticExpectedLoop",
     "if-statement": "DiagnosticExpectedIf",
     "if-tail": "DiagnosticExpectedScalar",
@@ -109,6 +114,7 @@
     { "lhs": "top-level-declaration", "rhs": ["const-declaration"] },
     { "lhs": "top-level-declaration", "rhs": ["program-var-declaration"] },
     { "lhs": "top-level-declaration", "rhs": ["record-declaration"] },
+    { "lhs": "top-level-declaration", "rhs": ["forward-declaration"] },
     { "lhs": "top-level-declaration", "rhs": ["sub-definition"] },
 
     {
@@ -186,10 +192,30 @@
     },
 
     {
-      "lhs": "sub-definition",
+      "lhs": "forward-declaration",
       "rhs": [
+        "TokenForward",
         "TokenSub",
         "TokenName",
+        "a:RetainSubName",
+        "a:BeginForward",
+        "TokenLeftParen",
+        "parameter-list",
+        "TokenRightParen",
+        "result-opt",
+        "fails-opt",
+        "TokenNewline",
+        "a:CommitForward"
+      ]
+    },
+
+    {
+      "lhs": "sub-definition",
+      "rhs": ["TokenSub", "TokenName", "a:RetainSubName", "sub-definition-tail"]
+    },
+    {
+      "lhs": "sub-definition-tail",
+      "rhs": [
         "a:BeginSub",
         "TokenLeftParen",
         "parameter-list",
@@ -201,6 +227,10 @@
         "routine-body",
         "a:EndSub"
       ]
+    },
+    {
+      "lhs": "sub-definition-tail",
+      "rhs": ["a:BeginForwardBody", "TokenNewline", "routine-body", "a:EndSub"]
     },
     { "lhs": "parameter-list", "rhs": ["parameter", "parameter-tail"] },
     { "lhs": "parameter-list", "rhs": [] },
@@ -261,8 +291,12 @@
 
     { "lhs": "statement-sequence", "rhs": ["statement", "statement-sequence"] },
     { "lhs": "statement-sequence", "rhs": [] },
-    { "lhs": "statement", "rhs": ["x:NameStatement"] },
+    {
+      "lhs": "statement",
+      "rhs": ["x:NameStatement", "TokenNewline", "on-error-opt"]
+    },
     { "lhs": "statement", "rhs": ["return-statement", "TokenNewline"] },
+    { "lhs": "statement", "rhs": ["fail-statement", "TokenNewline"] },
     { "lhs": "statement", "rhs": ["transfer-statement", "TokenNewline"] },
     { "lhs": "statement", "rhs": ["if-statement"] },
     { "lhs": "statement", "rhs": ["while-statement"] },
@@ -270,13 +304,32 @@
 
     {
       "lhs": "return-statement",
+      "rhs": ["TokenReturn", "a:BeginReturnValue", "return-value-opt"]
+    },
+    {
+      "lhs": "return-value-opt",
+      "rhs": ["x:ReturnValue", "a:CommitReturn"]
+    },
+    { "lhs": "return-value-opt", "rhs": ["a:CommitBareReturn"] },
+    {
+      "lhs": "fail-statement",
+      "rhs": ["TokenFail", "a:BeginFail", "x:RuntimeExpression", "a:CommitFail"]
+    },
+    {
+      "lhs": "on-error-opt",
       "rhs": [
-        "TokenReturn",
-        "a:BeginReturnValue",
-        "x:ReturnValue",
-        "a:CommitReturn"
+        "TokenOn",
+        "TokenError",
+        "TokenName",
+        "a:BeginOnError",
+        "TokenNewline",
+        "statement-sequence",
+        "TokenEnd",
+        "TokenNewline",
+        "a:EndOnError"
       ]
     },
+    { "lhs": "on-error-opt", "rhs": ["a:FinishFailureStatement"] },
     { "lhs": "transfer-statement", "rhs": ["TokenExit", "a:EmitExit"] },
     { "lhs": "transfer-statement", "rhs": ["TokenContinue", "a:EmitContinue"] },
 

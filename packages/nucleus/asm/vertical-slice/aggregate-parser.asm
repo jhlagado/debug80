@@ -909,7 +909,9 @@ AggregateProgramPrepareSymbol:
 
 ; Dedicated Stage 6 compile entry. Historical slices keep AggregateMode clear;
 ; this entry makes the complete static-image path authoritative.
-.routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+.if AggregateCallSlices
+.else
+            .routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 CompileAggregateSlice:
             CALL CompileSliceInitialize
             LD   A,1
@@ -923,3 +925,4 @@ CompileAggregateSlice:
 .endif
             RET  C
             JP   SemanticSinkFinish
+.endif

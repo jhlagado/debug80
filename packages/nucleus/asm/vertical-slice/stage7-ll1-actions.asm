@@ -77,6 +77,8 @@ HybridLL1ResolveRecordType:
             CALL SymbolLookupCurrent
             RET  C
             LD   D,A
+            LD   (DeclarationInfo),A
+            LD   (DeclarationPayload),BC
             AND  SymbolRecordTypeFlag+SymbolAggregateFlag
             CP   SymbolRecordTypeFlag
             JP   NZ,AggregateTypeShapeFailure
@@ -405,18 +407,60 @@ HybridLL1RequireBeforeMain:
             LD   A,DiagnosticExpectedEof
             JP   CompilerSetDiagnostic
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,DE,HL
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
 HybridLL1RequireMain:
             LD   A,(Stage7CurrentRoutine)
             INC  A
+            JR   Z,HybridLL1RequireOrdinaryForwards
+            LD   A,(Stage8ForwardMainFlags)
+            AND  Stage8RoutineIncomplete
+            JR   NZ,HybridLL1IncompleteForward
+            JR   HybridLL1MissingMain
+HybridLL1RequireOrdinaryForwards:
+            LD   A,(Stage7RoutineCount)
+            LD   B,A
+            XOR  A
+            LD   C,A
+HybridLL1RequireForwardLoop:
+            LD   A,B
+            OR   A
             RET  Z
+            LD   A,C
+            CALL Stage7RoutineAddress
+            LD   DE,Stage7RoutineFlags
+            ADD  HL,DE
+            LD   A,(HL)
+            AND  Stage8RoutineIncomplete
+            JR   NZ,HybridLL1IncompleteForward
+            INC  C
+            DEC  B
+            JR   HybridLL1RequireForwardLoop
+HybridLL1MissingMain:
             LD   A,DiagnosticExpectedTopLevel
+            JP   CompilerSetDiagnostic
+HybridLL1IncompleteForward:
+            LD   A,DiagnosticForwardIncomplete
             JP   CompilerSetDiagnostic
 
 ; The grammar deliberately treats the lexeme `main` as the same NAME token as
 ; ordinary routine names. This action is the one semantic discriminator.
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+HybridLL1RetainSubName:
+            JP   TypedRetainDeclarationNameReady
+
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry
+HybridLL1RestoreSubName:
+            CALL TypedRestoreDeclarationToken
+            LD   HL,DeclarationNamePosition
+            LD   DE,TokenStartOffset
+            LD   BC,6
+            LDIR
+            OR   A
+            RET
+
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 HybridLL1BeginSub:
+            CALL HybridLL1RestoreSubName
             CALL HybridLL1RequireBeforeMain
             RET  C
             LD   HL,NameMain
@@ -445,8 +489,12 @@ HybridLL1BeginSub:
             XOR  A
             LD   (Stage7CurrentParameterCount),A
             LD   (Stage7CurrentResultType),A
+            LD   (Stage7CurrentFlags),A
             RET
 HybridLL1BeginMainSignature:
+            LD   A,(Stage8ForwardMainFlags)
+            AND  Stage8RoutineIncomplete
+            JP   NZ,TypedDuplicateNameFailure
             CALL Stage7RejectCurrentDeclarationName
             RET  C
             LD   A,$FF
@@ -454,10 +502,56 @@ HybridLL1BeginMainSignature:
             XOR  A
             LD   (Stage7CurrentParameterCount),A
             LD   (Stage7CurrentResultType),A
+            LD   A,Stage7RoutineMain
+            LD   (Stage7CurrentFlags),A
             RET
 HybridLL1RoutineCapacityFailure:
             LD   A,DiagnosticRoutineCapacity
             JP   CompilerSetDiagnostic
+
+; A forward uses the ordinary signature builder, then publishes that sole
+; signature without opening a body or emitting code.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+HybridLL1BeginForward:
+            CALL HybridLL1BeginSub
+            RET  C
+            LD   A,(Stage7CurrentFlags)
+            OR   Stage8RoutineIncomplete
+            LD   (Stage7CurrentFlags),A
+            OR   A
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+HybridLL1CommitForward:
+            LD   A,(Stage7CurrentRoutine)
+            INC  A
+            JR   Z,HybridLL1CommitForwardMain
+            DEC  A
+            CALL Stage7RoutineAddress
+            LD   DE,Stage7RoutineParameterCount
+            ADD  HL,DE
+            LD   A,(Stage7CurrentParameterCount)
+            LD   (HL),A
+            INC  HL
+            LD   A,(Stage7CurrentResultType)
+            LD   (HL),A
+            INC  HL
+            LD   A,(Stage7CurrentRoutine)
+            ADD  A,Stage7RoutineLabelBase
+            LD   (HL),A
+            INC  HL
+            LD   A,(Stage7CurrentFlags)
+            LD   (HL),A
+            LD   HL,Stage7RoutineCount
+            INC  (HL)
+            XOR  A
+            RET
+HybridLL1CommitForwardMain:
+            LD   A,(Stage7CurrentFlags)
+            LD   (Stage8ForwardMainFlags),A
+            XOR  A
+            LD   (Stage7CurrentRoutine),A
+            RET
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 HybridLL1RetainParameter:
@@ -478,10 +572,7 @@ HybridLL1MainParameterFailure:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 HybridLL1CommitParameter:
-            LD   HL,(DeclarationNamePointer)
-            LD   (TokenLexemePointer),HL
-            LD   A,(DeclarationNameLength)
-            LD   (TokenLength),A
+            CALL TypedRestoreDeclarationToken
             LD   A,(AggregateCurrentTypeId)
             JP   Stage7AppendParameter
 
@@ -498,11 +589,66 @@ HybridLL1SaveSubResult:
             RET
 
 HybridLL1MarkSubFails:
-            LD   A,(Stage7CurrentRoutine)
-            INC  A
-            RET  Z
+            LD   A,(Stage7CurrentFlags)
+            OR   Stage7RoutineFails
+            LD   (Stage7CurrentFlags),A
+            OR   A
+            RET
 HybridLL1SubSignatureLineFailure:
             LD   A,DiagnosticExpectedLine
+            JP   CompilerSetDiagnostic
+
+; Open the abbreviated body of one exact incomplete forward and recover its
+; sole stored signature, including the original parameter spellings.
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+HybridLL1BeginForwardBody:
+            CALL HybridLL1RestoreSubName
+            CALL HybridLL1RequireBeforeMain
+            RET  C
+            LD   HL,NameMain
+            LD   B,4
+            CALL TokenNameEquals
+            JR   C,HybridLL1BeginForwardMainBody
+            CALL Stage7FindRoutineCurrent
+            JR   NZ,HybridLL1ForwardMissing
+            LD   (Stage7CurrentRoutine),A
+            CALL Stage7RoutineAddress
+            LD   DE,Stage7RoutineParameterStart
+            ADD  HL,DE
+            LD   A,(HL)
+            LD   (Stage7CurrentParameterStart),A
+            INC  HL
+            LD   A,(HL)
+            LD   (Stage7CurrentParameterCount),A
+            INC  HL
+            LD   A,(HL)
+            LD   (Stage7CurrentResultType),A
+            INC  HL
+            LD   A,(HL)
+            LD   (Stage7CallLabel),A
+            INC  HL
+            LD   A,(HL)
+            BIT  2,A
+            JP   Z,TypedDuplicateNameFailure
+            AND  $FB
+            LD   (HL),A
+            LD   (Stage7CurrentFlags),A
+            JP   HybridLL1OpenRoutineBody
+HybridLL1BeginForwardMainBody:
+            LD   A,(Stage8ForwardMainFlags)
+            BIT  2,A
+            JR   Z,HybridLL1ForwardMissing
+            AND  $FB
+            LD   (Stage7CurrentFlags),A
+            LD   (Stage8ForwardMainFlags),A
+            XOR  A
+            LD   (Stage7CurrentParameterCount),A
+            LD   (Stage7CurrentResultType),A
+            DEC  A
+            LD   (Stage7CurrentRoutine),A
+            JP   HybridLL1BeginMainBody
+HybridLL1ForwardMissing:
+            LD   A,DiagnosticUnknownName
             JP   CompilerSetDiagnostic
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
@@ -524,8 +670,12 @@ HybridLL1BeginSubBody:
             ADD  A,Stage7RoutineLabelBase
             LD   (HL),A
             LD   (Stage7CallLabel),A
+            INC  HL
+            LD   A,(Stage7CurrentFlags)
+            LD   (HL),A
             LD   HL,Stage7RoutineCount
             INC  (HL)
+HybridLL1OpenRoutineBody:
             LD   A,(SymbolCount)
             LD   (Stage7GlobalSymbolCount),A
             XOR  A
@@ -577,8 +727,13 @@ HybridLL1InstallParameterLoop:
             JR   HybridLL1InstallParameterLoop
 
 HybridLL1BeginMainBody:
-            LD   A,SemanticBeginMain
+            LD   A,(Stage7CurrentFlags)
+            LD   (Stage8ForwardMainFlags),A
+            LD   A,SemanticBeginCallableMain
             CALL SemanticSinkOperation
+            RET  C
+            LD   A,(Stage7CurrentFlags)
+            CALL SemanticSinkPut
             RET  C
             LD   A,(SymbolCount)
             LD   (Stage7GlobalSymbolCount),A
@@ -608,7 +763,12 @@ HybridLL1EndSub:
             OR   A
             JP   NZ,TypedRoutineFlowFailure
 HybridLL1EndRoutineEmit:
+            LD   A,(Stage7CurrentFlags)
+            AND  Stage7RoutineFails
             LD   A,SemanticEndGeneralRoutine
+            JR   Z,HybridLL1EndRoutineSelected
+            LD   A,SemanticEndFailableRoutine
+HybridLL1EndRoutineSelected:
             CALL SemanticSinkOperation
             RET  C
             LD   A,(Stage7CurrentResultType)
@@ -620,8 +780,203 @@ HybridLL1EndRoutineEmit:
             LD   (NextLocalSlot),A
             RET
 HybridLL1EndMainBody:
-            LD   A,SemanticEndMain
-            JP   SemanticSinkOperation
+            LD   A,(Stage7CurrentFlags)
+            AND  Stage7RoutineFails
+            LD   A,SemanticEndGeneralRoutine
+            JR   Z,HybridLL1EndMainSelected
+            LD   A,SemanticEndFailableRoutine
+HybridLL1EndMainSelected:
+            CALL SemanticSinkOperation
+            RET  C
+            XOR  A
+            JP   SemanticSinkPut
+
+; ------------------------------------------------------ recoverable failure
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,HL
+HybridLL1BeginFail:
+            LD   A,(Stage7CurrentFlags)
+            AND  Stage7RoutineFails
+            JP   Z,HybridLL1FailureContext
+            LD   HL,(TokenStartOffset)
+            LD   (Stage8FailureOffset),HL
+            LD   A,ScalarTypeU8
+            LD   (ExpressionExpectedType),A
+            OR   A
+            RET
+
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+HybridLL1CommitFail:
+            LD   E,ScalarTypeU8
+            LD   A,(ExpressionRightMeta)
+            LD   HL,(ExpressionRightValue)
+            CALL TypedCheckAssignable
+            RET  C
+            CALL Stage8RequireNoPendingFailure
+            RET  C
+            LD   A,SemanticFailRoutine
+HybridLL1FailOperationReady:
+            CALL SemanticSinkOperation
+            RET  C
+            LD   HL,(Stage8FailureOffset)
+            PUSH HL
+            LD   A,L
+            CALL SemanticSinkPut
+            POP  HL
+            RET  C
+            LD   A,H
+            CALL SemanticSinkPut
+            RET  C
+            XOR  A
+            LD   (ControlSequenceFallsThrough),A
+            RET
+HybridLL1FailureContext:
+            LD   A,DiagnosticFailureContext
+            JP   CompilerSetDiagnostic
+
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry
+Stage8ConsumePropagation:
+            LD   A,(Stage7CurrentFlags)
+            AND  Stage7RoutineFails
+            JR   Z,HybridLL1FailureContext
+            LD   A,(Stage8DirectFailable)
+            OR   A
+            JR   Z,HybridLL1FailureContext
+            LD   E,TokenOr
+            CALL ParserExpect
+            RET  C
+            LD   E,TokenFail
+            CALL ParserExpect
+            RET  C
+            LD   A,Stage8CallModePropagateRoutine
+Stage8PropagationModeReady:
+            LD   HL,(Stage8CallModePointer)
+            LD   (HL),A
+            INC  HL
+            INC  HL
+            LD   A,(Stage8RetainedCarriers)
+            LD   (HL),A
+Stage8ClearPendingFailure:
+            XOR  A
+            LD   (Stage8DirectFailable),A
+            LD   (Stage8RetainedCarriers),A
+            RET
+
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry
+Stage8SelectFailureConsumer:
+            LD   A,(Stage8DirectFailable)
+            OR   A
+            JR   NZ,Stage8SelectPendingFailure
+            LD   (Stage8RetainedCarriers),A
+            RET
+Stage8SelectPendingFailure:
+            CALL ParserPeek
+            RET  C
+            CP   TokenOr
+            JP   Z,Stage8ConsumePropagation
+            CALL HybridLL1SaveFlow
+            RET  C
+            LD   A,ControlKindHandler
+            CALL ControlPushFrame
+            RET  C
+            LD   B,ControlFrameLabelA
+            CALL ControlAllocateInto
+            RET  C
+            LD   B,ControlFrameExit
+            CALL ControlAllocateInto
+            RET  C
+            LD   HL,(Stage8CallModePointer)
+            LD   (HL),Stage8CallModeHandle
+            LD   B,ControlFrameLabelA
+            CALL ControlTopFrameField
+            LD   C,(HL)
+            LD   HL,(Stage8CallModePointer)
+            INC  HL
+            LD   (HL),C
+            INC  HL
+            LD   A,(Stage8RetainedCarriers)
+            LD   (HL),A
+            LD   A,1
+            LD   (Stage8HandlerEligible),A
+            JP   Stage8ClearPendingFailure
+
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+HybridLL1BeginOnError:
+            LD   A,(Stage8HandlerEligible)
+            OR   A
+            JP   Z,HybridLL1FailureContext
+            CALL SymbolLookupCurrent
+            RET  C
+            LD   (DeclarationInfo),A
+            LD   (DeclarationPayload),BC
+            LD   D,A
+            AND  SymbolRecordTypeFlag+SymbolAggregateFlag
+            JP   NZ,TypedTypeFailure
+            LD   A,D
+            AND  SymbolClassMask
+            JP   Z,TypedTypeFailure
+            CP   SymbolClassLocal
+            JR   NZ,Stage8HandlerCounterReady
+            CALL ControlCheckActiveCounter
+            RET  C
+Stage8HandlerCounterReady:
+            LD   A,(DeclarationInfo)
+            AND  ScalarMetaTypeMask
+            CP   ScalarTypeU8
+            JP   NZ,TypedTypeFailure
+            LD   B,ControlFrameExit
+            CALL ControlTopFrameField
+            LD   C,(HL)
+            LD   A,SemanticSkipHandler
+            CALL Stage8EmitOperationLabel
+            RET  C
+            LD   B,ControlFrameLabelA
+            CALL ControlTopFrameField
+            LD   C,(HL)
+            LD   A,SemanticBeginHandler
+            CALL Stage8EmitOperationLabel
+            RET  C
+            LD   A,(DeclarationInfo)
+            CALL SemanticSinkPut
+            RET  C
+            LD   A,(DeclarationPayload)
+            CALL SemanticSinkPut
+            RET  C
+            JP   HybridLL1SetFallsThrough
+
+.routine in A,C out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+Stage8EmitOperationLabel:
+            CALL SemanticSinkOperation
+            RET  C
+            LD   A,C
+            JP   SemanticSinkPut
+
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+HybridLL1EndOnError:
+            LD   B,ControlFrameExit
+            CALL ControlTopFrameField
+            LD   C,(HL)
+            LD   A,SemanticEndHandler
+            CALL Stage8EmitOperationLabel
+            RET  C
+            XOR  A
+            LD   (Stage8HandlerEligible),A
+            LD   A,1
+            JP   HybridLL1CombineFlow
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+HybridLL1FinishFailureStatement:
+            LD   A,(Stage8HandlerEligible)
+            OR   A
+            JP   NZ,HybridLL1FailureContext
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+Stage8RequireNoPendingFailure:
+            LD   A,(Stage8DirectFailable)
+            OR   A
+            RET  Z
+            JP   HybridLL1FailureContext
 
 ; ------------------------------------------------------------- local scalars
 
@@ -680,7 +1035,12 @@ HybridLL1FinishLocalInitializer:
             LD   A,(DeclarationInfo)
             AND  ScalarMetaTypeMask
             LD   E,A
-            JP   HybridLL1CheckExpressionAssignable
+            CALL HybridLL1CheckExpressionAssignable
+            RET  C
+            LD   A,(Stage8DirectFailable)
+            OR   A
+            RET  Z
+            JP   Stage8ConsumePropagation
 
 .routine in E out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C,IX,IY
 HybridLL1CheckExpressionAssignable:
@@ -711,20 +1071,28 @@ HybridLL1CommitLocal:
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1NameStatement:
+            XOR  A
+            LD   (Stage8HandlerEligible),A
             CALL ParserTake
             RET  C
             LD   HL,(TokenStartOffset)
             LD   (ExpressionCallOffset),HL
-            LD   HL,NameWriteOutputByte
-            LD   B,15
-            CALL TokenNameEquals
-            JR   C,HybridLL1ParseWrite
+            LD   (Stage7CallOffset),HL
+            CALL Stage8MatchPredefinedCurrent
+            JR   NC,HybridLL1OrdinaryNameStatement
+            CP   Stage8PredefinedConstantBase
+            JP   NC,TypedTypeFailure
+            LD   C,0
+            CALL Stage8ParseServiceCall
+            RET  C
+            JP   Stage8SelectFailureConsumer
+HybridLL1OrdinaryNameStatement:
             CALL Stage7FindRoutineCurrent
             JR   NZ,HybridLL1ParseAssignment
             LD   C,0
             CALL Stage7ParseCall
             RET  C
-            JP   ParserExpectLine
+            JP   Stage8SelectFailureConsumer
 HybridLL1ParseAssignment:
             CALL SymbolLookupCurrent
             RET  C
@@ -759,41 +1127,18 @@ HybridLL1StatementCounterChecked:
             LD   A,D
             CALL TypedCheckAssignable
             RET  C
+            CALL Stage8SelectFailureConsumer
+            RET  C
             LD   BC,(DeclarationPayload)
             LD   A,(DeclarationInfo)
             LD   D,A
             CALL TypedEmitStoreByInfo
             RET  C
-            JP   ParserExpectLine
-HybridLL1ParseWrite:
-            CALL ParserExpectLeft
-            RET  C
-            LD   A,ScalarTypeU8
-            CALL TypedExpressionBeginRuntime
-            RET  C
-            LD   E,ScalarTypeU8
-            CALL TypedCheckAssignable
-            RET  C
-            CALL ParserExpectRight
-            RET  C
-            LD   A,SemanticWriteValueU8
-            CALL SemanticSinkOperation
-            RET  C
-            LD   HL,(ExpressionCallOffset)
-            PUSH HL
-            LD   A,L
-            CALL SemanticSinkPut
-            POP  HL
-            RET  C
-            LD   A,H
-            CALL SemanticSinkPut
-            RET  C
-            JP   ParserExpectOrFailLine
-
+            RET
 HybridLL1BeginReturnValue:
             LD   A,(Stage7CurrentResultType)
             OR   A
-            JP   Z,TypedRoutineFlowFailure
+            RET  Z
             CP   AggregateFirstDynamicTypeId
             RET  NC
             LD   (ExpressionExpectedType),A
@@ -803,6 +1148,8 @@ HybridLL1BeginReturnValue:
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1ReturnValue:
             LD   A,(Stage7CurrentResultType)
+            OR   A
+            JR   Z,HybridLL1ReturnResultFreeCall
             CP   AggregateFirstDynamicTypeId
             JR   NC,HybridLL1ReturnAggregateValue
             CALL TypedExpressionBeginRuntime
@@ -814,8 +1161,60 @@ HybridLL1ReturnAggregateValue:
             OR   A
             RET
 
+; A result-free return operand is not a general expression. It is exactly one
+; direct result-free failable invocation, whose following `or fail` is consumed
+; by HybridLL1CommitReturn.
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+HybridLL1ReturnResultFreeCall:
+            LD   HL,(TokenStartOffset)
+            LD   (Stage7CallOffset),HL
+            CALL ParserTake
+            RET  C
+            CALL Stage8MatchPredefinedCurrent
+            JR   NC,HybridLL1ReturnResultFreeRoutine
+            CP   Stage8PredefinedConstantBase
+            JP   NC,TypedTypeFailure
+            LD   B,A
+            AND  $FD                     ; readInput/readStorage map to zero
+            JP   Z,TypedTypeFailure
+            LD   A,B
+            LD   C,0
+            JP   Stage8ParseServiceCall
+HybridLL1ReturnResultFreeRoutine:
+            CALL Stage7FindRoutineCurrent
+            JR   NZ,HybridLL1ReturnResultFreeUnknown
+            LD   (Stage7CallLabel),A
+            CP   Stage7MainRoutine
+            JR   Z,HybridLL1ReturnResultFreeMain
+            CALL Stage7RoutineAddress
+            LD   DE,Stage7RoutineResultType
+            ADD  HL,DE
+            LD   A,(HL)
+            OR   A
+            JP   NZ,TypedTypeFailure
+            INC  HL
+            INC  HL
+            LD   A,(HL)
+            AND  Stage7RoutineFails
+            JP   Z,HybridLL1FailureContext
+            LD   A,(Stage7CallLabel)
+            LD   C,0
+            JP   Stage7ParseCall
+HybridLL1ReturnResultFreeMain:
+            LD   A,(Stage8ForwardMainFlags)
+            AND  Stage7RoutineFails
+            JP   Z,HybridLL1FailureContext
+            LD   A,Stage7MainRoutine
+            LD   C,0
+            JP   Stage7ParseCall
+HybridLL1ReturnResultFreeUnknown:
+            LD   A,DiagnosticUnknownName
+            JP   CompilerSetDiagnostic
+
 HybridLL1CommitReturn:
             LD   A,(Stage7CurrentResultType)
+            OR   A
+            JR   Z,HybridLL1CommitResultFreeReturn
             CP   AggregateFirstDynamicTypeId
             JR   NC,HybridLL1CommitAggregateReturn
             LD   E,A
@@ -823,7 +1222,14 @@ HybridLL1CommitReturn:
             LD   HL,(ExpressionRightValue)
             CALL TypedCheckAssignable
             RET  C
+            CALL HybridLL1ConsumeReturnFailure
+            RET  C
+            LD   A,(Stage7CurrentFlags)
+            AND  Stage7RoutineFails
             LD   A,SemanticReturnScalar
+            JR   Z,HybridLL1ReturnScalarSelected
+            LD   A,SemanticReturnFailableScalar
+HybridLL1ReturnScalarSelected:
             CALL SemanticSinkOperation
             RET  C
             JR   HybridLL1ReturnCommitted
@@ -832,13 +1238,54 @@ HybridLL1CommitAggregateReturn:
             LD   A,(Stage7PathType)
             CP   D
             JP   NZ,TypedTypeFailure
+            CALL HybridLL1ConsumeReturnFailure
+            RET  C
+            LD   A,(Stage7CurrentFlags)
+            AND  Stage7RoutineFails
             LD   A,SemanticReturnAggregate
+            JR   Z,HybridLL1ReturnAggregateSelected
+            LD   A,SemanticReturnFailableAggregate
+HybridLL1ReturnAggregateSelected:
             CALL SemanticSinkOperation
             RET  C
+            JR   HybridLL1ReturnCommitted
+HybridLL1CommitResultFreeReturn:
+            CALL Stage8ConsumePropagation
+            RET  C
+            JP   HybridLL1CommitBareReturn
 HybridLL1ReturnCommitted:
             XOR  A
             LD   (ControlSequenceFallsThrough),A
             RET
+
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+HybridLL1CommitBareReturn:
+            LD   A,(Stage7CurrentResultType)
+            OR   A
+            JP   NZ,TypedRoutineFlowFailure
+            LD   A,(Stage7CurrentFlags)
+            AND  Stage7RoutineFails
+            LD   A,SemanticEndGeneralRoutine
+            JR   Z,HybridLL1BareReturnSelected
+            LD   A,SemanticEndFailableRoutine
+HybridLL1BareReturnSelected:
+            LD   (DeclarationInfo),A
+            CALL SemanticSinkOperation
+            RET  C
+            LD   A,(DeclarationInfo)
+            CP   SemanticEndMain
+            JR   Z,HybridLL1ReturnCommitted
+            XOR  A
+            CALL SemanticSinkPut
+            RET  C
+            JR   HybridLL1ReturnCommitted
+
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry
+HybridLL1ConsumeReturnFailure:
+            LD   A,(Stage8DirectFailable)
+            OR   A
+            RET  Z
+            JP   Stage8ConsumePropagation
 
 HybridLL1EmitExit:
             LD   A,TokenExit
@@ -907,6 +1354,8 @@ HybridLL1CombineFlow:
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1CheckBooleanResult:
+            CALL Stage8RequireNoPendingFailure
+            RET  C
             LD   E,ScalarTypeBoolean
             JP   HybridLL1CheckExpressionAssignable
 
@@ -952,9 +1401,8 @@ HybridLL1CheckedSetFallsThrough:
 HybridLL1BeginBranchClause:
             CALL StructuredRecordIfClause
             RET  C
-            CALL ControlTopFrame
-            LD   DE,ControlFrameExit
-            ADD  HL,DE
+            LD   B,ControlFrameExit
+            CALL ControlTopFrameField
             LD   C,(HL)
             CALL ControlEmitJump
             RET  C
@@ -984,9 +1432,8 @@ HybridLL1BeginElse:
 HybridLL1FinishElse:
             CALL StructuredRecordIfClause
             RET  C
-            CALL ControlTopFrame
-            LD   DE,ControlFrameMode
-            ADD  HL,DE
+            LD   B,ControlFrameMode
+            CALL ControlTopFrameField
             LD   (HL),1
             XOR  A
             RET
@@ -1002,9 +1449,8 @@ HybridLL1FinishIfClauses:
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1EndIf:
-            CALL ControlTopFrame
-            LD   DE,ControlFrameExit
-            ADD  HL,DE
+            LD   B,ControlFrameExit
+            CALL ControlTopFrameField
             LD   C,(HL)
             CALL ControlEmitLabel
             RET  C
@@ -1054,15 +1500,13 @@ HybridLL1BeginWhileBody:
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1EndWhile:
-            CALL ControlTopFrame
-            LD   DE,ControlFrameContinue
-            ADD  HL,DE
+            LD   B,ControlFrameContinue
+            CALL ControlTopFrameField
             LD   C,(HL)
             CALL ControlEmitJump
             RET  C
-            CALL ControlTopFrame
-            LD   DE,ControlFrameExit
-            ADD  HL,DE
+            LD   B,ControlFrameExit
+            CALL ControlTopFrameField
             LD   C,(HL)
             CALL ControlEmitLabel
             RET  C
@@ -1092,7 +1536,13 @@ HybridLL1BeginFor:
             CALL ControlCheckActiveCounter
             JP   HybridLL1SetLocalExpectedType
 
-HybridLL1CheckForInitial .equ HybridLL1FinishLocalInitializer
+HybridLL1CheckForInitial:
+            LD   A,(DeclarationInfo)
+            AND  ScalarMetaTypeMask
+            LD   E,A
+            CALL HybridLL1CheckExpressionAssignable
+            RET  C
+            JP   Stage8RequireNoPendingFailure
 
 HybridLL1ForTo:
             LD   A,1
@@ -1110,6 +1560,8 @@ HybridLL1ForBoundSelected:
 
 .routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C,IX,IY
 HybridLL1CheckForBound:
+            CALL Stage8RequireNoPendingFailure
+            RET  C
             LD   E,ScalarTypeU16
             JP   HybridLL1CheckExpressionAssignable
 
@@ -1139,9 +1591,8 @@ HybridLL1BeginForBody:
             LD   B,ControlFrameExit
             CALL ControlAllocateInto
             RET  C
-            CALL ControlTopFrame
-            LD   DE,ControlFrameCounter
-            ADD  HL,DE
+            LD   B,ControlFrameCounter
+            CALL ControlTopFrameField
             LD   A,(DeclarationPayload)
             LD   (HL),A
             INC  HL
@@ -1176,17 +1627,15 @@ HybridLL1ForModeReady:
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1EndFor:
-            CALL ControlTopFrame
-            LD   DE,ControlFrameContinue
-            ADD  HL,DE
+            LD   B,ControlFrameContinue
+            CALL ControlTopFrameField
             LD   C,(HL)
             CALL ControlEmitLabel
             RET  C
             CALL StructuredEmitForNext
             RET  C
-            CALL ControlTopFrame
-            LD   DE,ControlFrameExit
-            ADD  HL,DE
+            LD   B,ControlFrameExit
+            CALL ControlTopFrameField
             LD   C,(HL)
             CALL ControlEmitLabel
             RET  C

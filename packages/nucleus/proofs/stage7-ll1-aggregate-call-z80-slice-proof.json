@@ -12,10 +12,10 @@
   "observations": [
     { "at": "ProofStatus", "width": "u8", "equals": 165 },
     { "at": "ProofCase", "width": "u8", "equals": 0 },
-    { "at": "ProofCopyGeneratedSize", "width": "u16", "equals": 522 },
-    { "at": "ProofForwardGeneratedSize", "width": "u16", "equals": 599 },
-    { "at": "ProofStringGeneratedSize", "width": "u16", "equals": 339 },
-    { "at": "ProofBoundsGeneratedSize", "width": "u16", "equals": 239 }
+    { "at": "ProofCopyGeneratedSize", "width": "u16", "equals": 551 },
+    { "at": "ProofForwardGeneratedSize", "width": "u16", "equals": 628 },
+    { "at": "ProofStringGeneratedSize", "width": "u16", "equals": 368 },
+    { "at": "ProofBoundsGeneratedSize", "width": "u16", "equals": 268 }
   ],
   "extents": [
     {

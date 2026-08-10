@@ -296,15 +296,9 @@ StructuredReadForNext:
             LD   (EmitControlCounter),A
             CALL NextSemanticByte
             LD   (EmitControlMode),A
-            CALL NextSemanticByte
-            LD   E,A
-            CALL NextSemanticByte
-            LD   D,A
+            CALL ReadSemanticWord
             LD   (EmitControlStep),DE
-            CALL NextSemanticByte
-            LD   E,A
-            CALL NextSemanticByte
-            LD   D,A
+            CALL ReadSemanticWord
             LD   (EmitControlTrapOffset),DE
             XOR  A
             RET

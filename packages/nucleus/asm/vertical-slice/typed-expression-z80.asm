@@ -132,7 +132,17 @@ TypedOperationTable:
             .dw Stage7CopyAggregate   ; 91
             .dw Stage7StringLength    ; 92
             .dw Stage7StringIndex     ; 93
-TypedOperationCount .equ 74
+            .dw Stage8FailRoutine     ; 94
+            .dw Stage8FailMain        ; 95
+            .dw Stage8ReturnSuccess   ; 96
+            .dw Stage8ReturnSuccess   ; 97
+            .dw Stage8EndFailableRoutine ; 98
+            .dw Stage8SkipHandler     ; 99
+            .dw Stage8BeginHandler    ; 100
+            .dw Stage8EndHandler      ; 101
+            .dw Stage8CallService     ; 102
+            .dw Stage8BeginCallableMain ; 103
+TypedOperationCount .equ 84
 .else
 TypedOperationCount .equ 58
 .endif
@@ -339,10 +349,7 @@ TypedMultiply16:
 
 .routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry
 TypedReadTrapPosition:
-            CALL NextSemanticByte
-            LD   E,A
-            CALL NextSemanticByte
-            LD   D,A
+            CALL ReadSemanticWord
             LD   (EmitTypedTrapPosition),DE
             RET
 

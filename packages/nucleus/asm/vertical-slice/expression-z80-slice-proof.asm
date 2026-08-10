@@ -84,9 +84,19 @@ FullScalarSource:
             .db "var d as u8 = 0",10
             .db "var e as u8 = 0",10
             .db "var f as u8 = 0",10
+            .db "var g as u8 = 0",10
+            .db "var h as u8 = 0",10
+            .db "var i as u8 = 0",10
+            .db "var j as u8 = 0",10
+            .db "var k as u8 = 0",10
+            .db "var l as u8 = 0",10
+            .db "var m as u8 = 0",10
+            .db "var n as u8 = 0",10
+            .db "var o as u8 = 0",10
+            .db "var p as u8 = 0",10
             .db "var "
 FullScalarName:
-            .db "g as u8 = 0",10
+            .db "q as u8 = 0",10
 FullScalarSourceEnd:
 
             .org TargetRuntimeBase
