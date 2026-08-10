@@ -1608,17 +1608,12 @@ TypedEmitProgramDefinitionHigh:
 TypedParseConstantAfterName:
             CALL TypedRetainDeclarationName
             RET  C
-            CALL ParserExpectAs
-            RET  C
-            CALL TypedParseType
-            RET  C
-            LD   (DeclarationInfo),A
             CALL ParserExpectEqual
             RET  C
-            LD   A,(DeclarationInfo)
+            LD   A,ScalarTypeExact
             CALL TypedExpressionBeginConstant
             RET  C
-            CALL TypedRetainConstantExpression
+            CALL TypedRetainInferredConstantExpression
             RET  C
             LD   A,(DeclarationInfo)
             OR   SymbolClassConstant
@@ -1638,6 +1633,22 @@ TypedRetainConstantExpression:
             RET  C
             AND  ScalarMetaConstant
             JP   Z,TypedTypeFailure
+            LD   (DeclarationPayload),HL
+            JP   ParserExpectLine
+
+.routine in A,HL out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+TypedRetainInferredConstantExpression:
+            LD   D,A
+            AND  ScalarMetaConstant
+            JP   Z,TypedTypeFailure
+            LD   A,D
+            AND  ScalarMetaTypeMask
+            CP   ScalarTypeBoolean
+            LD   A,ScalarTypeExact
+            JR   NZ,TypedRetainConstantTypeReady
+            LD   A,ScalarTypeBoolean
+TypedRetainConstantTypeReady:
+            LD   (DeclarationInfo),A
             LD   (DeclarationPayload),HL
             JP   ParserExpectLine
 

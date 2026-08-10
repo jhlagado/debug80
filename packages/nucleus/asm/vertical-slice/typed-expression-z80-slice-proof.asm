@@ -39,7 +39,7 @@ CompilerCoreEnd:
 
             .org SourceBase
 TypedAcceptedSource:
-            .db "const folded as u16 = 65535 + 2",10
+            .db "const folded = 65535 + 2",10
             .db "var out as u8 = 0",10
             .db "var word as u16 = 300",10
             .db "var flag as boolean = true",10
@@ -125,11 +125,11 @@ TypedChainSource:
 TypedChainSourceEnd:
 
 TypedConstantDivideSource:
-            .db "const bad as u16 = 1 / 0",10
+            .db "const bad = 1 / 0",10
 TypedConstantDivideSourceEnd:
 
 TypedConstantNarrowSource:
-            .db "const bad as u8 = u8(300)",10
+            .db "const bad = u8(300)",10
 TypedConstantNarrowSourceEnd:
 
 TypedLiteralOverflowSource:
@@ -140,7 +140,7 @@ TypedLiteralOverflowSourceEnd:
 ; expression/store pairs fill the remaining 250 bytes, so pair 51 must fail on
 ; its first operation and unwind the saved symbol metadata.
 TypedTranscriptCapacitySource:
-            .db "const k as u8 = 1",10
+            .db "const k = 1",10
             .db "var out as u16 = 0",10
             .db "sub main() fails",10
             .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
@@ -835,9 +835,9 @@ TypedDefaultLocalCapacitySource:
 TypedDefaultLocalCapacitySourceEnd:
 
 TypedCoverageSource:
-            .db "const byteMask as u8 = u8(255)",10
-            .db "const truth as boolean = true",10
-            .db "const quotient as u16 = 8 / 2",10
+            .db "const byteMask = u8(255)",10
+            .db "const truth = true",10
+            .db "const quotient = 8 / 2",10
             .db "var out as u8 = 0",10
             .db "var flag as boolean = false",10
             .db "sub main() fails",10

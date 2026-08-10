@@ -125,7 +125,7 @@ Stage8SixteenArgumentsSource:
 Stage8SixteenArgumentsSourceEnd:
 
 Stage8LocalHandlerSource:
-            .db "const sampleFailure as u8 = 7",10
+            .db "const sampleFailure = 7",10
             .db "sub alwaysFails() as u8 fails",10
             .db "fail sampleFailure",10
             .db "end",10

@@ -78,7 +78,7 @@ Stage7ParserCoverageSourceEnd:
 ; Exercise constant declarations and named counted-loop steps separately from
 ; the larger control-flow program.
 Stage7LL1ConstantSource:
-            .db "const stepSize as u8 = 1",10
+            .db "const stepSize = 1",10
             .db "var out as u8 = 0",10
             .db "sub main() fails",10
             .db "var i as u8",10

@@ -743,10 +743,10 @@ A completed declaration must precede every use. For routines, the checked signat
 A declaration is not visible in its own type, bound, initializer, or other declaration operand. A record type is not visible in its own field list. These rules reject self-reference by non-routine declarations and prevent declaration cycles without a dependency graph or a second declaration pass.
 
 ```nucleus
-const first as u16 = second   // invalid: second is not yet visible
-const second as u16 = 2
+const first = second   // invalid: second is not yet visible
+const second = 2
 
-const count as u16 = count    // invalid: count is not visible in its initializer
+const count = count    // invalid: count is not visible in its initializer
 ```
 
 Declaration order applies across the whole logical compilation unit. A later declaration does not become visible to an earlier routine merely because an implementation retained the source or built a syntax tree.
@@ -760,7 +760,7 @@ Lookup never selects a later declaration in preference to an earlier one. Nucleu
 A parameter or local must not shadow an ordinary program binding visible at its declaration point. A local must not reuse the identity of a parameter or an earlier local. Because routine bodies contain no nested declaration scopes, no inner-block shadowing case exists.
 
 ```nucleus
-const limit as u16 = 10
+const limit = 10
 
 sub clamp(limit as u16)       // invalid: parameter shadows visible constant
     return
@@ -780,7 +780,7 @@ record Sample
     value as u8            // valid: a different field scope
 end
 
-const value as u16 = 0     // valid: the ordinary namespace
+const value = 0     // valid: the ordinary namespace
 ```
 
 ### 5.7 Lookup
@@ -925,7 +925,7 @@ The source type and the way a source occurrence denotes data are separate proper
 | Owned aggregate storage | Storage containing one record, fixed array, or bounded string for a lifetime defined in Chapter 7. |
 | Aggregate alias         | A typed, non-owning binding to existing aggregate storage.                                         |
 
-A named constant has type `u8`, `u16`, or `boolean`; records, fixed arrays, bounded strings, and aggregate aliases cannot be declared as constants.
+A named constant has either an exact integer type inferred from its initializer or type `boolean`; records, fixed arrays, bounded strings, and aggregate aliases cannot be declared as constants.
 
 Top-level variables provide all owned aggregate storage. Aggregate storage may also occur inline as a record field or fixed-array element. A routine cannot declare aggregate storage or an aggregate-alias local. The permitted declaration sites, initialization rules, mutability, and storage duration appear in Chapters 7 and 8.
 
@@ -1006,19 +1006,19 @@ Type identity is determined as follows:
 
 The compiler applies these compatibility rules:
 
-| Context                                                | Required compatibility                                                             |
-| ------------------------------------------------------ | ---------------------------------------------------------------------------------- |
-| Scalar assignment, initialization, argument, or result | Exact scalar type, contextual fitting literal, or implicit `u8`-to-`u16` widening. |
-| Checked narrowing to `u8`                              | Explicit operation and successful range check.                                     |
-| Boolean condition or destination                       | `boolean` only.                                                                    |
-| Record field selection                                 | The field's declared type.                                                         |
-| Fixed-array index                                      | `u8` or `u16` index; result has the exact element type.                            |
-| Bounded-string `.length`                               | Read-only `u8` value equal to the current logical length.                          |
-| Bounded-string index                                   | `u8` or `u16` index below the current length; result is a writable `u8` path.      |
-| Aggregate parameter                                    | Exact referent-type identity.                                                      |
-| Aggregate assignment                                   | Exact type identity; copy the complete aggregate into the destination.             |
-| Aggregate result                                       | Exact referent-type identity and immediate consumption under Chapter 7.            |
-| Aggregate by-value argument or result                  | Invalid; calls transfer aggregate aliases.                                         |
+| Context                                                | Required compatibility                                                                                  |
+| ------------------------------------------------------ | ------------------------------------------------------------------------------------------------------- |
+| Scalar assignment, initialization, argument, or result | Exact scalar type, fitting exact integer literal or named constant, or implicit `u8`-to-`u16` widening. |
+| Checked narrowing to `u8`                              | Explicit operation and successful range check.                                                          |
+| Boolean condition or destination                       | `boolean` only.                                                                                         |
+| Record field selection                                 | The field's declared type.                                                                              |
+| Fixed-array index                                      | `u8` or `u16` index; result has the exact element type.                                                 |
+| Bounded-string `.length`                               | Read-only `u8` value equal to the current logical length.                                               |
+| Bounded-string index                                   | `u8` or `u16` index below the current length; result is a writable `u8` path.                           |
+| Aggregate parameter                                    | Exact referent-type identity.                                                                           |
+| Aggregate assignment                                   | Exact type identity; copy the complete aggregate into the destination.                                  |
+| Aggregate result                                       | Exact referent-type identity and immediate consumption under Chapter 7.                                 |
+| Aggregate by-value argument or result                  | Invalid; calls transfer aggregate aliases.                                                              |
 
 Compatibility is checked at the source operation. The backend does not infer compatibility from equal byte widths, equal layouts, compiler storage ordinals, registers, or runtime addresses.
 
@@ -1298,7 +1298,7 @@ Nucleus 0.1 exposes no raw pointer value, address arithmetic, heap allocation, m
 
 This chapter defines the Nucleus 0.1 declaration families, their canonical source forms, constant expressions, initializers, and declaration-time binding. Chapter 4 defines the compilation-unit sequence and top-level placement. Chapter 5 defines declaration points, scopes, name identity, and collisions. Chapters 6 and 7 define types, storage ownership, aggregate aliases, and lifetime. Chapter 13 defines routine calls, results, and complete routine semantics.
 
-Nucleus uses explicit declarations and explicit types. It has no inferred declarations, implicit variables, grouped declarations, destructuring declarations, or general type-alias declaration.
+Nucleus uses explicit declarations. Variables, fields, parameters, locals, and routine results have explicit types; named constants infer their scalar type from the required initializer. Nucleus has no implicit variables, grouped declarations, destructuring declarations, or general type-alias declaration.
 
 ### 8.2 Declaration families and placement
 
@@ -1330,7 +1330,7 @@ top-level-declaration ::= const-declaration
                         | forward-routine-declaration
                         | routine-definition
 
-const-declaration     ::= "const" NAME "as" type "="
+const-declaration     ::= "const" NAME "="
                           constant-initializer NEWLINE
 
 program-var-declaration
@@ -1386,16 +1386,18 @@ Parentheses and square brackets suppress logical newlines under Chapter 3. A str
 A named constant declaration has this form:
 
 ```nucleus
-const bufferLength as u16 = 64
-const readyMask as u8 = 128
-const enabled as boolean = true
+const bufferLength = 64
+const readyMask = 128
+const enabled = true
 ```
 
-The declared type must be `u8`, `u16`, or `boolean`. The `as` clause is required; Nucleus does not infer a constant's declared type. The declared type supplies the expected type for contextual literals and for the final compatibility check.
+The initializer determines the constant's type. A Boolean-valued initializer gives the constant type `boolean`. An integer-valued initializer gives it an exact integer type: the value has no fixed `u8` or `u16` type until each use supplies an expected integer type or an expression rule selects one.
+
+An exact named integer constant behaves like an exact integer literal at every use. The same constant may adopt `u8` in one context and `u16` in another when its value fits both. A declaration such as `const Big = 300` is valid; a later use of `Big` where `u8` is required is invalid at that use, while a use where `u16` is required is valid. The compiler reports the position of the incompatible use rather than the constant declaration.
 
 A named constant denotes its compile-time scalar value. It does not declare storage and need not occupy runtime storage. The compiler may materialize the value in generated code or immutable implementation data, but no source operation exposes object identity for it.
 
-The initializer is required and must be a scalar constant expression compatible with the declared type. A named constant becomes visible only after the compiler has checked the complete declaration, so its initializer cannot name itself. Chapter 5's declaration-order rule also excludes later names and constant cycles.
+The initializer is required and must be a scalar constant expression. Its completed value must be either integer-valued or Boolean-valued. A named constant becomes visible only after the compiler has checked the complete declaration, so its initializer cannot name itself. Chapter 5's declaration-order rule also excludes later names and constant cycles.
 
 Named integer constants replace enumeration members where a program needs symbolic numeric values. A constant declaration does not create an enumeration, subrange, distinct integer type, or overload.
 
@@ -1418,7 +1420,7 @@ It cannot read a variable, field, array element, or bounded string; call a routi
 
 The compiler evaluates a constant expression at compile time with the operand types, result type, overflow rule, and fault rule that Chapter 9 assigns to each admitted operator. It must not substitute host-language overflow, silently widen a typed operation, or fold an expression differently from the corresponding runtime operation. If Chapter 9 assigns no constant-expression rule to an operator, that operator is unavailable in this context.
 
-An exact integer literal remains exact until the declared destination, an operator rule, or a conversion supplies its type. The implicit `u8`-to-`u16` conversion from Chapter 6 is permitted. A checked `u16`-to-`u8` conversion is valid at compile time only when its value lies from 0 through 255; otherwise the declaration is invalid. A constant operation that Chapter 9 defines to trap at runtime makes the constant expression invalid when the compiler proves that condition during evaluation.
+An exact integer literal or earlier exact named integer constant remains exact until an operator rule or conversion supplies its type. The completed integer value of a named constant returns to the exact category for later uses. The implicit `u8`-to-`u16` conversion from Chapter 6 is permitted. A checked `u16`-to-`u8` conversion is valid at compile time only when its value lies from 0 through 255; otherwise the declaration is invalid. A constant operation that Chapter 9 defines to trap at runtime makes the constant expression invalid when the compiler proves that condition during evaluation.
 
 An array length is a scalar constant expression whose value must lie from 1 through 65,535. A `string[N]` capacity is a scalar constant expression whose value must lie from 1 through 255. The compiler evaluates the bound before constructing the type identity. A later constant, a variable, or a cyclic dependency cannot supply a bound.
 
@@ -1515,7 +1517,7 @@ An implementation may bound top-level declarations, record fields, parameters, s
 These top-level declarations are valid under this chapter:
 
 ```nucleus
-const cellCount as u16 = 8
+const cellCount = 8
 record Cell
     value as u16
     active as boolean
@@ -1580,20 +1582,20 @@ end
 The following declarations illustrate valid and invalid boundary cases. They are not one compilation unit:
 
 ```nucleus
-const Limit as u16 = 8
+const Limit = 8
 var limit as u16                    // valid: names are case-sensitive
 var Limit as u16                    // invalid: exact duplicate
 
-const flags as u8[4] = [1, 2, 4, 8] // named constants are scalar only
-const prompt as string[8] = "READY"  // bounded-string constants are absent
+const flags = [1, 2, 4, 8] // named constants are scalar only
+const prompt = "READY"     // bounded-string constants are absent
 
-const first as u16 = second         // later name is unavailable
-const second as u16 = first         // the first error prevents a cycle
+const first = second         // later name is unavailable
+const second = first         // the first error prevents a cycle
 
-const noElements as u16 = 0
+const noElements = 0
 var empty as u8[noElements]         // fixed arrays must be nonempty
 var lateBound as u8[laterLength]    // later constant is unavailable
-const laterLength as u16 = 4
+const laterLength = 4
 
 var shortText as string[4] = "READY" // decoded literal is too long
 var copiedCell as Cell = cells[0]   // static initializers cannot read aggregate storage
@@ -1699,9 +1701,9 @@ Binary arithmetic, `and`, and `or` associate from left to right. Unary `+`, unar
 
 The repeated forms in Section 9.2 preserve left association without a left-recursive predictive grammar. The first handwritten compiler implements the binary levels with one precedence-driven loop and a compact operator table; comparison's single-use rule and Boolean short-circuit emission remain explicit cases in that loop. Separate parsing remains appropriate for primary, postfix, unary, and right-recursive `not`. Another conforming compiler may use a different parser family only if it accepts the same token sequences and produces the same association and evaluation order.
 
-### 9.7 Integer-literal resolution
+### 9.7 Exact-integer resolution
 
-An exact integer literal adopts an expected `u8` or `u16` type when its value fits. The expected type may come from a declaration initializer, scalar destination, parameter, result, conversion operand, or a typed operand in the same arithmetic operation. An expected type never narrows an already typed operand implicitly.
+An exact integer literal or exact named integer constant adopts an expected `u8` or `u16` type when its value fits. The expected type may come from a declaration initializer, scalar destination, parameter, result, conversion operand, or a typed operand in the same arithmetic operation. An expected type never narrows an already typed operand implicitly.
 
 For an integer operation:
 
@@ -2524,8 +2526,8 @@ ends the current failable routine with failure. The expression is evaluated once
 Named codes are ordinary constants:
 
 ```nucleus
-const badDigit as u8 = 1
-const tooLarge as u8 = 2
+const badDigit = 1
+const tooLarge = 2
 
 sub parseDigit(value as u8) as u8 fails
     if value < '0' or value > '9'
@@ -2776,7 +2778,7 @@ top-level-declaration
       | routine-definition
 
 const-declaration
-    ::= "const" NAME "as" type "=" expression NEWLINE
+    ::= "const" NAME "=" expression NEWLINE
 
 program-var-declaration
     ::= "var" NAME "as" type [ "=" program-initializer ] NEWLINE
@@ -2984,7 +2986,7 @@ The standard service names and error constants from Chapter 16 are visible befor
 
 Every expression, storage path, symbol, parameter, local, field, and routine result has one static type. Scalar values have type `u8`, `u16`, or `boolean`. Records are nominal. Fixed-array identity consists of exact element type and length. Bounded-string identity consists of exact capacity.
 
-Scalar compatibility permits exact type, a fitting contextual literal, and implicit `u8`-to-`u16` widening. Checked `u8(...)` is the only `u16`-to-`u8` conversion. Boolean and integer types do not convert. Aggregate arguments, results, parameter bindings, and assignments require exact type identity. Aggregate assignment copies the complete value. Aggregate parameters are fixed aliases, while aggregate results are transient aliases that must be consumed immediately.
+Scalar compatibility permits exact type, a fitting exact integer literal or named constant, and implicit `u8`-to-`u16` widening. Checked `u8(...)` is the only `u16`-to-`u8` conversion. Boolean and integer types do not convert. Aggregate arguments, results, parameter bindings, and assignments require exact type identity. Aggregate assignment copies the complete value. Aggregate parameters are fixed aliases, while aggregate results are transient aliases that must be consumed immediately.
 
 The compiler checks every operator, condition, assignment, argument, result, field, index, initializer, and failure code locally. A failable invocation supplies no ordinary expression value until its failure has been consumed under Chapter 14.
 
@@ -2996,7 +2998,7 @@ Field and checked-index selection preserve the root identity and exact selected 
 
 ### 18.5 Constants, bounds, and initialization
 
-Named constants are top-level scalar values with explicit types and restricted constant initializers. Constant evaluation may use literals, earlier scalar constants, admitted pure scalar operators, parentheses, and checked scalar conversions. It may not read storage or call a routine.
+Named constants are top-level scalar values with types inferred from restricted constant initializers. Boolean-valued constants retain type `boolean`; integer-valued constants remain exact at later uses. Constant evaluation may use literals, earlier scalar constants, admitted pure scalar operators, parentheses, and checked scalar conversions. It may not read storage or call a routine.
 
 Array lengths and string capacities are positive constant values in the ranges set by Chapter 6. Constant fixed-array indices outside their domains are invalid. A bounded-string byte index is checked at runtime against the current logical length, even when the index expression is constant, unless the compiler proves the current length makes it safe at that program point.
 
@@ -3173,7 +3175,7 @@ Each aggregate assignment copies `template` into the selected array element befo
 ### 21.2 Recoverable error and propagation
 
 ```nucleus
-const badByte as u8 = 10
+const badByte = 10
 
 sub checkedByte() as u8 fails
     var value as u8 = readInputByte() or fail
@@ -3285,7 +3287,7 @@ When output succeeds, `emitMarker` has no result, `relayMarker` returns successf
 ### 21.6 Same-destination error handling
 
 ```nucleus
-const sampleFailure as u8 = 7
+const sampleFailure = 7
 
 sub alwaysFails() as u8 fails
     fail sampleFailure
@@ -3477,10 +3479,23 @@ end
 
 The counter is a valid scalar local, but it is read-only while its loop is active. A program variable or parameter used as the counter, or reuse of `index` by a nested counted loop, is independently invalid.
 
+Exact integer constant outside the expected range at its use:
+
+```nucleus
+const Big = 300
+var x as u8
+
+sub main()
+    x = Big
+end
+```
+
+The constant declaration is valid. The assignment is invalid at the use of `Big` because 300 does not fit the destination's expected `u8` type.
+
 Hexadecimal integer syntax:
 
 ```nucleus
-const value as u8 = $2a
+const value = $2a
 
 sub main()
 end
@@ -3586,3 +3601,22 @@ end
 ```
 
 Both result-bearing routines transfer transient aliases to storage inside `samples`. `replace` receives the forwarded alias and mutates the selected original object without an aggregate copy. The expected standard output is `Y`.
+
+### 21.15 Inferred constant types
+
+This program uses one exact integer constant in both integer widths and retains a separate Boolean constant:
+
+```nucleus
+const sharedValue = 200
+const enabled = true
+var byteUse as u8 = sharedValue
+var wordUse as u16 = sharedValue
+
+sub main() fails
+    if enabled and byteUse = 200 and wordUse = 200
+        writeOutputByte('Y') or fail
+    end
+end
+```
+
+`sharedValue` adopts `u8` for `byteUse` and `u16` for `wordUse`. `enabled` has type `boolean`. The expected standard output is `Y`.

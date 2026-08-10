@@ -12,7 +12,7 @@ HybridLL1ActionStateEnd .equ HybridLL1FlowStackBase+ControlFrameCapacity
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1ConstantExpression:
-            LD   A,(ExpressionExpectedType)
+            LD   A,ScalarTypeExact
             CALL TypedExpressionBeginConstant
             JR   HybridLL1SaveExpressionResult
 
@@ -174,9 +174,6 @@ HybridLL1ArrayExtentLoop:
 
 HybridLL1RetainDeclarationName .equ TypedRetainDeclarationName
 
-HybridLL1SaveDeclarationType:
-            LD   A,(AggregateCurrentTypeId)
-            LD   (DeclarationInfo),A
 HybridLL1SaveExpectedType:
             LD   (ExpressionExpectedType),A
             OR   A
@@ -187,13 +184,16 @@ HybridLL1FinishConstantExpression:
             LD   HL,(ExpressionRightValue)
             LD   A,(ExpressionRightMeta)
             LD   D,A
-            LD   A,(DeclarationInfo)
-            LD   E,A
-            LD   A,D
-            CALL TypedCheckAssignable
-            RET  C
             AND  ScalarMetaConstant
             JP   Z,TypedTypeFailure
+            LD   A,D
+            AND  ScalarMetaTypeMask
+            CP   ScalarTypeBoolean
+            LD   A,ScalarTypeExact
+            JR   NZ,HybridLL1ConstantTypeReady
+            LD   A,ScalarTypeBoolean
+HybridLL1ConstantTypeReady:
+            LD   (DeclarationInfo),A
             LD   HL,(ExpressionRightValue)
             LD   (DeclarationPayload),HL
             OR   A

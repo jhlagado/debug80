@@ -2,7 +2,6 @@
 HybridLL1RequireMain:
 HybridLL1RequireBeforeMain:
 HybridLL1RetainDeclarationName:
-HybridLL1SaveDeclarationType:
 HybridLL1ConstantExpression:
 HybridLL1FinishConstantExpression:
 HybridLL1CommitConstant:

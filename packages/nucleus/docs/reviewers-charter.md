@@ -153,6 +153,10 @@ The only implicit declared-type conversion is `u8` to `u16`. Narrowing through
 `u8(expression)` is checked. Nucleus has no arbitrary cast, low-byte
 reinterpretation, same-width type punning, or word/address interchange.
 
+Integer constants have no declared width. Their declarations retain an exact
+integer value, which must fit the type selected by each use. Boolean constants
+retain Boolean type and never participate in integer resolution.
+
 Compile-time evaluation must agree with runtime evaluation, including operand
 width, modular wraparound, short-circuit behaviour, and invalid constant
 operations. Reducing compiler size does not justify a second arithmetic

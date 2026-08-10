@@ -96,7 +96,7 @@ Chapter21_1Descriptors:
             .dw Chapter21_1Part2,Chapter21_1Part2End
 
 Chapter21_2Source:
-            .db "const badByte as u8 = 10",10
+            .db "const badByte = 10",10
             .db 10
             .db "sub checkedByte() as u8 fails",10
             .db "    var value as u8 = readInputByte() or fail",10
@@ -192,7 +192,7 @@ Chapter21_5Source:
 Chapter21_5SourceEnd:
 
 Chapter21_6Source:
-            .db "const sampleFailure as u8 = 7",10
+            .db "const sampleFailure = 7",10
             .db 10
             .db "sub alwaysFails() as u8 fails",10
             .db "    fail sampleFailure",10
@@ -317,6 +317,19 @@ Chapter21_14Source:
             .db "end",10
 Chapter21_14SourceEnd:
 
+Chapter21_15Source:
+            .db "const sharedValue = 200",10
+            .db "const enabled = true",10
+            .db "var byteUse as u8 = sharedValue",10
+            .db "var wordUse as u16 = sharedValue",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    if enabled and byteUse = 200 and wordUse = 200",10
+            .db "        writeOutputByte('Y') or fail",10
+            .db "    end",10
+            .db "end",10
+Chapter21_15SourceEnd:
+
 Chapter21_10UnconsumedSource:
             .db "sub readOne() as u8 fails",10
             .db "    return readInputByte() or fail",10
@@ -425,8 +438,19 @@ Chapter21_10ActiveCounterName:
             .db "end",10
 Chapter21_10ActiveCounterSourceEnd:
 
+Chapter21_10ExactUseSource:
+            .db "const Big = 300",10
+            .db "var x as u8",10
+            .db 10
+            .db "sub main()",10
+            .db "    x = Big"
+Chapter21_10ExactUsePoint:
+            .db 10
+            .db "end",10
+Chapter21_10ExactUseSourceEnd:
+
 Chapter21_10HexSource:
-            .db "const value as u8 = "
+            .db "const value = "
 Chapter21_10HexPoint:
             .db "$2a",10
             .db 10
@@ -759,6 +783,16 @@ ProofStart:
             CALL ProofExpectDiagnosticSingle
             JP   C,ProofFailed
 
+            LD   A,60
+            LD   (ProofCase),A
+            LD   A,69
+            LD   B,DiagnosticIntegerRange
+            LD   IX,Chapter21_10ExactUsePoint-Chapter21_10ExactUseSource
+            LD   HL,Chapter21_10ExactUseSource
+            LD   DE,Chapter21_10ExactUseSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
             LD   A,29
             LD   (ProofCase),A
             LD   A,59
@@ -898,6 +932,17 @@ ProofStart:
             LD   A,24
             LD   HL,Chapter21_14Source
             LD   DE,Chapter21_14SourceEnd
+            CALL ProofRunSingle
+            JP   C,ProofFailed
+            LD   A,"Y"
+            CALL ProofCheckOutput
+            JP   C,ProofFailed
+
+            LD   A,15
+            LD   (ProofCase),A
+            LD   A,25
+            LD   HL,Chapter21_15Source
+            LD   DE,Chapter21_15SourceEnd
             CALL ProofRunSingle
             JP   C,ProofFailed
             LD   A,"Y"

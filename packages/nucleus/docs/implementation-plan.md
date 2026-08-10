@@ -692,10 +692,10 @@ capacities. If it fails, use the component ledger to select a semantics-
 preserving representation or lowering experiment. Do not infer the cause from
 source size or host measurements.
 
-The completed harness locks all twenty-two `nucleus` code fences in Chapter 21
+The completed harness locks all twenty-four `nucleus` code fences in Chapter 21
 byte for byte. It compiles and runs every accepted program, checks both
 specified runtime-trap cases at their exact source offsets, and rejects all
-nine invalid programs before execution with their required diagnostic class
+ten invalid programs before execution with their required diagnostic class
 and position. The generated terminal paths restore the root stack pointer, IX,
 and activation depth. The largest generated program in this corpus is 945
 bytes.
@@ -716,11 +716,20 @@ descriptor-pointer sentinel, folds the pending-boundary flag into the high bit
 of the remaining-part count, shares existing source-position initialization,
 uses fall-through at the two compilation-entry joins, inlines the sole
 multipart-initialization caller, and selects relative transfers for the new
-in-range tails. Fresh assembly measures 13,450 code bytes
-plus 368 immutable bytes, for a 13,818-byte compiler core. Workspace is 1,401
-bytes and the selected runtime is 561 bytes. The complete proof occupies 1,274
-bytes and executes 1,088,280 instructions in 10,231,174 T-states. The final
-core remains 2,566 bytes inside the 16 KiB gate.
+in-range tails. Fresh assembly measured 13,450 code bytes plus 368 immutable
+bytes, for a 13,818-byte compiler core. Workspace was 1,401 bytes and the
+selected runtime was 561 bytes.
+
+The inferred-constant pass removes the scalar-type phrase from constant
+declarations and records integer constants as exact values while retaining
+Boolean constants as Boolean. The Chapter 21 proof uses one integer constant
+in both `u8` and `u16` contexts and rejects an out-of-range use rather than its
+declaration. Regenerated LL(1) tables and actions reduce the active compiler by
+seven code bytes. Fresh assembly measures 13,443 code bytes plus 368 immutable
+bytes, for a 13,811-byte compiler core with 1,401 bytes of workspace. The
+largest generated program remains 945 bytes and the selected runtime remains
+561 bytes. The expanded 1,326-byte proof executes 1,141,034 instructions in
+10,733,651 T-states. The core remains 2,573 bytes inside the 16 KiB gate.
 
 ## Capacity ledger
 

@@ -2,7 +2,7 @@
 HybridLL1NonterminalCount .equ 39
 HybridLL1ProductionCount  .equ 73
 HybridLL1ProductionSplit  .equ 37
-HybridLL1ActionCount      .equ 71
+HybridLL1ActionCount      .equ 70
 HybridLL1StartSymbol      .equ $40
 
 HybridLL1RowDirectory:
@@ -397,29 +397,29 @@ HybridLL1Production6: ; top-level-declaration
 HybridLL1Production7: ; top-level-declaration
             .db $4b
 HybridLL1Production8: ; const-declaration
-            .db $86,TokenNewline,$85,$84,TokenEquals,$83,$66,TokenAs,$82,TokenName,TokenConst,$81
+            .db $85,TokenNewline,$84,$83,TokenEquals,$82,TokenName,TokenConst,$81
 HybridLL1Production9: ; program-var-declaration
-            .db $88,TokenNewline,$45,$87,$63,TokenAs,$82,TokenName,TokenVar,$81
+            .db $87,TokenNewline,$45,$86,$63,TokenAs,$82,TokenName,TokenVar,$81
 HybridLL1Production10: ; program-initializer-opt
-            .db $8a,$89,TokenEquals
+            .db $89,$88,TokenEquals
 HybridLL1Production11: ; program-initializer-opt
 HybridLL1Production12: ; record-declaration
-            .db $8c,TokenNewline,TokenEnd,$47,TokenNewline,$8b,TokenName,TokenRecord,$81
+            .db $8b,TokenNewline,TokenEnd,$47,TokenNewline,$8a,TokenName,TokenRecord,$81
 HybridLL1Production13: ; record-fields
             .db $48,$49
 HybridLL1Production14: ; record-field-tail
             .db $48,$49
 HybridLL1Production15: ; record-field-tail
 HybridLL1Production16: ; record-field
-            .db $8e,TokenNewline,$63,TokenAs,$8d,TokenName
+            .db $8d,TokenNewline,$63,TokenAs,$8c,TokenName
 HybridLL1Production17: ; forward-declaration
-            .db $91,TokenNewline,$51,$50,TokenRightParen,$4d,TokenLeftParen,$90,$8f,TokenName,TokenSub,TokenForward
+            .db $90,TokenNewline,$51,$50,TokenRightParen,$4d,TokenLeftParen,$8f,$8e,TokenName,TokenSub,TokenForward
 HybridLL1Production18: ; sub-definition
-            .db $4c,$8f,TokenName,TokenSub
+            .db $4c,$8e,TokenName,TokenSub
 HybridLL1Production19: ; sub-definition-tail
-            .db $94,$52,$93,TokenNewline,$51,$50,TokenRightParen,$4d,TokenLeftParen,$92
+            .db $93,$52,$92,TokenNewline,$51,$50,TokenRightParen,$4d,TokenLeftParen,$91
 HybridLL1Production20: ; sub-definition-tail
-            .db $94,$52,TokenNewline,$95
+            .db $93,$52,TokenNewline,$94
 HybridLL1Production21: ; parameter-list
             .db $4e,$4f
 HybridLL1Production22: ; parameter-list
@@ -427,32 +427,32 @@ HybridLL1Production23: ; parameter-tail
             .db $4e,$4f,TokenComma
 HybridLL1Production24: ; parameter-tail
 HybridLL1Production25: ; parameter
-            .db $97,$63,TokenAs,$96,TokenName
+            .db $96,$63,TokenAs,$95,TokenName
 HybridLL1Production26: ; result-opt
-            .db $99,$63,$98,TokenAs
+            .db $98,$63,$97,TokenAs
 HybridLL1Production27: ; result-opt
 HybridLL1Production28: ; fails-opt
-            .db $9a,TokenFails
+            .db $99,TokenFails
 HybridLL1Production29: ; fails-opt
 HybridLL1Production30: ; routine-body
             .db TokenNewline,TokenEnd,$56,$53
 HybridLL1Production31: ; routine-body
-            .db $9b
+            .db $9a
 HybridLL1Production32: ; local-list
             .db $53,$54
 HybridLL1Production33: ; local-list
 HybridLL1Production34: ; local-declaration
-            .db $9d,TokenNewline,$55,$9c,$66,TokenAs,$82,TokenName,TokenVar
+            .db $9c,TokenNewline,$55,$9b,$66,TokenAs,$82,TokenName,TokenVar
 HybridLL1Production35: ; local-initializer-opt
-            .db $a0,$9f,$9e,TokenEquals
+            .db $9f,$9e,$9d,TokenEquals
 HybridLL1Production36: ; local-initializer-opt
-            .db $a1
+            .db $a0
 HybridLL1ProductionsHigh:
 HybridLL1Production37: ; statement-sequence
             .db $56,$57
 HybridLL1Production38: ; statement-sequence
 HybridLL1Production39: ; statement
-            .db $5b,TokenNewline,$a2
+            .db $5b,TokenNewline,$a1
 HybridLL1Production40: ; statement
             .db TokenNewline,$58
 HybridLL1Production41: ; statement
@@ -466,65 +466,64 @@ HybridLL1Production44: ; statement
 HybridLL1Production45: ; statement
             .db $60
 HybridLL1Production46: ; return-statement
-            .db $59,$a3,TokenReturn
+            .db $59,$a2,TokenReturn
 HybridLL1Production47: ; return-value-opt
-            .db $a5,$a4
+            .db $a4,$a3
 HybridLL1Production48: ; return-value-opt
-            .db $a6
+            .db $a5
 HybridLL1Production49: ; fail-statement
-            .db $a8,$9f,$a7,TokenFail
+            .db $a7,$9e,$a6,TokenFail
 HybridLL1Production50: ; on-error-opt
-            .db $aa,TokenNewline,TokenEnd,$56,TokenNewline,$a9,TokenName,TokenError,TokenOn
+            .db $a9,TokenNewline,TokenEnd,$56,TokenNewline,$a8,TokenName,TokenError,TokenOn
 HybridLL1Production51: ; on-error-opt
-            .db $ab
+            .db $aa
 HybridLL1Production52: ; transfer-statement
-            .db $ac,TokenExit
+            .db $ab,TokenExit
 HybridLL1Production53: ; transfer-statement
-            .db $ad,TokenContinue
+            .db $ac,TokenContinue
 HybridLL1Production54: ; if-statement
-            .db $b0,TokenNewline,TokenEnd,$5e,$56,$af,TokenNewline,$9f,$ae,TokenIf
+            .db $af,TokenNewline,TokenEnd,$5e,$56,$ae,TokenNewline,$9e,$ad,TokenIf
 HybridLL1Production55: ; if-tail
-            .db $5e,$56,$af,TokenNewline,$9f,$b1,TokenElseIf
+            .db $5e,$56,$ae,TokenNewline,$9e,$b0,TokenElseIf
 HybridLL1Production56: ; if-tail
-            .db $b3,$56,TokenNewline,$b2,TokenElse
+            .db $b2,$56,TokenNewline,$b1,TokenElse
 HybridLL1Production57: ; if-tail
-            .db $b4
+            .db $b3
 HybridLL1Production58: ; while-statement
-            .db $b7,TokenNewline,TokenEnd,$56,$b6,TokenNewline,$9f,$b5,TokenWhile
+            .db $b6,TokenNewline,TokenEnd,$56,$b5,TokenNewline,$9e,$b4,TokenWhile
 HybridLL1Production59: ; for-statement
-            .db $ba,TokenNewline,TokenEnd,$56,$b9,TokenNewline,$62,$9f,$61,$9f,TokenEquals,$b8,TokenName,TokenFor
+            .db $b9,TokenNewline,TokenEnd,$56,$b8,TokenNewline,$62,$9e,$61,$9e,TokenEquals,$b7,TokenName,TokenFor
 HybridLL1Production60: ; for-bound
-            .db $bb,TokenTo
+            .db $ba,TokenTo
 HybridLL1Production61: ; for-bound
-            .db $bc,TokenUntil
+            .db $bb,TokenUntil
 HybridLL1Production62: ; for-step-opt
-            .db $be,$bd,TokenStep
+            .db $bd,$bc,TokenStep
 HybridLL1Production63: ; for-step-opt
-            .db $bf
+            .db $be
 HybridLL1Production64: ; type
             .db $65,$64
 HybridLL1Production65: ; type-atom
             .db $66
 HybridLL1Production66: ; type-atom
-            .db $c0,TokenName
+            .db $bf,TokenName
 HybridLL1Production67: ; type-atom
-            .db $c2,TokenRightBracket,$84,$c1,TokenLeftBracket,TokenString
+            .db $c1,TokenRightBracket,$83,$c0,TokenLeftBracket,TokenString
 HybridLL1Production68: ; type-array-opt
-            .db $c3,TokenRightBracket,$84,$c1,TokenLeftBracket
+            .db $c2,TokenRightBracket,$83,$c0,TokenLeftBracket
 HybridLL1Production69: ; type-array-opt
 HybridLL1Production70: ; scalar-type
-            .db $c4,TokenU8
+            .db $c3,TokenU8
 HybridLL1Production71: ; scalar-type
-            .db $c5,TokenU16
+            .db $c4,TokenU16
 HybridLL1Production72: ; scalar-type
-            .db $c6,TokenBoolean
+            .db $c5,TokenBoolean
 HybridLL1ProductionsEnd:
 
 HybridLL1ActionDirectory:
             .dw HybridLL1RequireMain ; a:RequireMain
             .dw HybridLL1RequireBeforeMain ; a:RequireBeforeMain
             .dw HybridLL1RetainDeclarationName ; a:RetainDeclarationName
-            .dw HybridLL1SaveDeclarationType ; a:SaveDeclarationType
             .dw HybridLL1ConstantExpression ; x:ConstantExpression
             .dw HybridLL1FinishConstantExpression ; a:FinishConstantExpression
             .dw HybridLL1CommitConstant ; a:CommitConstant
