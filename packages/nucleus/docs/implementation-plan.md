@@ -794,6 +794,20 @@ program's runtime result; and conditional calls could not replace the two
 initializer-capacity helpers because successful `CP` paths deliberately retain
 carry. The proven inline copies, reader boundary, and capacity helpers remain.
 
+The first post-Stage-9 language increment adds `$` hexadecimal and `%` binary
+integer literals. Their scanners share base-dependent accumulation but retain
+separate four- and sixteen-digit overflow guards; the decimal value guard is
+unchanged. The Chapter 21 corpus accepts both spellings at their 16-bit
+boundaries and rejects a fifth hexadecimal digit and seventeenth binary digit
+at the literal position. Fresh assembly measures 13,736 compiler-code bytes
+plus 372 immutable bytes, for a 14,108-byte compiler core with 1,509 bytes of
+workspace. The largest generated program remains 1,019 bytes and the selected
+runtime remains 585 bytes. The expanded 1,501-byte Chapter 21 proof executes
+1,248,626 instructions in 11,767,489 T-states. Relative to the Stage 9 plateau,
+the feature adds 87 compiler-code bytes and four immutable descriptor bytes,
+for 91 compiler-core bytes in total; it changes no workspace, generated, or
+runtime account.
+
 ## Capacity ledger
 
 The first implementation fixes a numeric limit before each bounded structure is

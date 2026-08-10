@@ -41,11 +41,17 @@ PunctuationTable:
             .db  "+",TokenPlus
             .db  "*",TokenStar
             .db  "/",TokenSlash
+            ; High-bit descriptors route numeric prefixes to the based-number
+            ; scanner; the low seven bits retain its one-past digit count.
 .if AggregateCallSlices
             .db  ".",TokenDot
-PunctuationCount        .equ 7
+            .db  "$",$85
+            .db  "%",$91
+PunctuationCount        .equ 9
 .else
-PunctuationCount        .equ 6
+            .db  "$",$85
+            .db  "%",$91
+PunctuationCount        .equ 8
 .endif
 
 NameMain:               .db "main"

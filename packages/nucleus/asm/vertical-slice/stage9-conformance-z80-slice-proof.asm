@@ -330,6 +330,19 @@ Chapter21_15Source:
             .db "end",10
 Chapter21_15SourceEnd:
 
+Chapter21_16Source:
+            .db "const hexMask = $FF",10
+            .db "const binaryMask = %10110000",10
+            .db "const hexMaximum = $ffff",10
+            .db "const binaryMaximum = %1111111111111111",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    if hexMask = 255 and binaryMask = 176 and hexMaximum = 65535 and binaryMaximum = 65535",10
+            .db "        writeOutputByte(binaryMask) or fail",10
+            .db "    end",10
+            .db "end",10
+Chapter21_16SourceEnd:
+
 Chapter21_10UnconsumedSource:
             .db "sub readOne() as u8 fails",10
             .db "    return readInputByte() or fail",10
@@ -481,11 +494,20 @@ Chapter21_10IntegerAsBooleanSourceEnd:
 Chapter21_10HexSource:
             .db "const value = "
 Chapter21_10HexPoint:
-            .db "$2a",10
+            .db "$10000",10
             .db 10
             .db "sub main()",10
             .db "end",10
 Chapter21_10HexSourceEnd:
+
+Chapter21_10BinarySource:
+            .db "const value = "
+Chapter21_10BinaryPoint:
+            .db "%10000000000000000",10
+            .db 10
+            .db "sub main()",10
+            .db "end",10
+Chapter21_10BinarySourceEnd:
 
 Chapter21_11BadPart2:
             .db "sub cellAt(index as u8) as Cell",10
@@ -882,6 +904,16 @@ ProofStart:
             CALL ProofExpectDiagnosticSingle
             JP   C,ProofFailed
 
+            LD   A,64
+            LD   (ProofCase),A
+            LD   A,73
+            LD   B,DiagnosticLexical
+            LD   IX,Chapter21_10BinaryPoint-Chapter21_10BinarySource
+            LD   HL,Chapter21_10BinarySource
+            LD   DE,Chapter21_10BinarySourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
             LD   A,30
             LD   (ProofCase),A
             LD   A,2
@@ -1025,6 +1057,17 @@ ProofStart:
             CALL ProofRunSingle
             JP   C,ProofFailed
             LD   A,"Y"
+            CALL ProofCheckOutput
+            JP   C,ProofFailed
+
+            LD   A,65
+            LD   (ProofCase),A
+            LD   A,74
+            LD   HL,Chapter21_16Source
+            LD   DE,Chapter21_16SourceEnd
+            CALL ProofRunSingle
+            JP   C,ProofFailed
+            LD   A,176
             CALL ProofCheckOutput
             JP   C,ProofFailed
 

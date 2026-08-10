@@ -331,22 +331,26 @@ Nucleus uses name-led routine invocation and has no `call` keyword. `call` remai
 
 ### 3.6 Numeric literals
 
-Nucleus admits unsigned decimal integer literals:
+Nucleus admits unsigned decimal, hexadecimal, and binary integer literals:
 
 ```text
 decimal-literal ::= decimal-digit+
+hexadecimal-literal ::= "$" hexadecimal-digit+
+binary-literal ::= "%" binary-digit+
 integer-literal ::= decimal-literal
+                  | hexadecimal-literal
+                  | binary-literal
 ```
 
-Hexadecimal integer literals are not part of Nucleus 0.1. Hexadecimal digits remain part of the `\xHH` escape syntax in Section 3.7; that lexical use does not create an integer-literal form. Any additional integer-literal form requires measured admission under Chapter 2.
+Hexadecimal digits may use either letter case. The `$` and `%` prefixes are part of the literal and do not form separate punctuation tokens. A prefix must be followed by at least one digit of its base.
 
-The tokenizer computes an exact unsigned value from zero through 65,535. A literal whose value exceeds 65,535 is a lexical error. Later type checking decides whether the value fits its context, including `u8`, `u16`, an array bound, or a counted-loop parameter.
+The tokenizer computes an exact unsigned value from zero through 65,535. A decimal literal whose value exceeds 65,535 is a lexical error. A hexadecimal literal may contain at most four digits, and a binary literal may contain at most sixteen digits; an additional digit is an overflow even when it is a leading or trailing zero. Later type checking decides whether the value fits its context, including `u8`, `u16`, an array bound, or a counted-loop parameter.
 
 A leading `+` or `-` is a separate punctuation token and is never part of the literal. Thus `-32768` begins with `-` followed by the literal `32768`; expression and constant rules determine whether that combination is valid.
 
-A letter or underscore immediately following a decimal literal makes the numeric token malformed instead of beginning an adjacent identifier. This rejects forms such as `0x2a` and `12u8` with one diagnostic. `$` begins no Nucleus token and is a lexical error.
+A letter or underscore immediately following any integer literal makes the numeric token malformed instead of beginning an adjacent identifier. This rejects forms such as `0x2a`, `12u8`, `$ffu8`, and `%10value` with one diagnostic. A decimal digit other than zero or one inside a binary literal is likewise malformed rather than the start of a following decimal token.
 
-Binary, octal, and floating-point literals are absent. Numeric separators, exponent notation, decimal points, and type suffixes are absent. In particular, `%1010`, `1_000`, `1.0`, and `42u8` are not alternative integer spellings.
+Octal and floating-point literals are absent. Numeric separators, exponent notation, decimal points, and type suffixes are absent. In particular, `1_000`, `1.0`, and `42u8` are not alternative integer spellings. The later word operator `mod` is distinct from the `%` binary-literal prefix.
 
 ### 3.7 Character and string literals
 
@@ -421,10 +425,13 @@ For reuse in Chapter 17, the lexical grammar is:
 ascii-letter       ::= "A".."Z" | "a".."z"
 decimal-digit      ::= "0".."9"
 hexadecimal-digit  ::= decimal-digit | "A".."F" | "a".."f"
+binary-digit       ::= "0" | "1"
 
 identifier         ::= ascii-letter
                        (ascii-letter | decimal-digit | "_")*
 integer-literal    ::= decimal-digit+
+                     | "$" hexadecimal-digit+
+                     | "%" binary-digit+
 character-literal  ::= "'" literal-byte "'"
 string-literal     ::= '"' literal-byte* '"'
 literal-byte       ::= direct-literal-byte | escape
@@ -460,30 +467,32 @@ Capacity failure must not change token identity. In particular, an overlong name
 
 ### 3.11 Token examples
 
-| Source                     | Result or required diagnostic                  |
-| -------------------------- | ---------------------------------------------- |
-| `player_2`                 | one `NAME`                                     |
-| `_player`                  | lexical error at `_`                           |
-| `elseif`                   | one `ELSEIF` keyword                           |
-| `ELSEIF`                   | one `NAME`; keywords require lowercase         |
-| `elseifReady`              | one `NAME`                                     |
-| `else if`                  | `ELSE IF`; not an `ELSEIF` clause              |
-| `42`                       | `NUMBER(42)`                                   |
-| `-42`                      | `- NUMBER(42)`                                 |
-| `$2a`                      | lexical error; hexadecimal integers are absent |
-| `0x2a`                     | malformed-number diagnostic                    |
-| `%00101010`                | lexical error; binary literals are absent      |
-| `'A'`                      | `CHARACTER(65)`                                |
-| `'\x41'`                   | `CHARACTER(65)`                                |
-| `''`                       | empty-character diagnostic                     |
-| `""`                       | empty `STRING`                                 |
-| `"A\nB"`                   | `STRING` containing bytes 65, 10, 66           |
-| `"A\q"`                    | invalid-escape diagnostic                      |
-| `a <= b`                   | `NAME <= NAME`                                 |
-| `a != b`                   | lexical error at `!`                           |
-| `a; b`                     | lexical error at `;`                           |
-| `a / / b`                  | `NAME / / NAME`; not a comment                 |
-| `a // note` followed by LF | `NAME NEWLINE`; the comment produces no token  |
+| Source                     | Result or required diagnostic                 |
+| -------------------------- | --------------------------------------------- |
+| `player_2`                 | one `NAME`                                    |
+| `_player`                  | lexical error at `_`                          |
+| `elseif`                   | one `ELSEIF` keyword                          |
+| `ELSEIF`                   | one `NAME`; keywords require lowercase        |
+| `elseifReady`              | one `NAME`                                    |
+| `else if`                  | `ELSE IF`; not an `ELSEIF` clause             |
+| `42`                       | `NUMBER(42)`                                  |
+| `-42`                      | `- NUMBER(42)`                                |
+| `$2a`                      | `NUMBER(42)`                                  |
+| `0x2a`                     | malformed-number diagnostic                   |
+| `%00101010`                | `NUMBER(42)`                                  |
+| `$10000`                   | malformed-number diagnostic; too many digits  |
+| `%10000000000000000`       | malformed-number diagnostic; too many digits  |
+| `'A'`                      | `CHARACTER(65)`                               |
+| `'\x41'`                   | `CHARACTER(65)`                               |
+| `''`                       | empty-character diagnostic                    |
+| `""`                       | empty `STRING`                                |
+| `"A\nB"`                   | `STRING` containing bytes 65, 10, 66          |
+| `"A\q"`                    | invalid-escape diagnostic                     |
+| `a <= b`                   | `NAME <= NAME`                                |
+| `a != b`                   | lexical error at `!`                          |
+| `a; b`                     | lexical error at `;`                          |
+| `a / / b`                  | `NAME / / NAME`; not a comment                |
+| `a // note` followed by LF | `NAME NEWLINE`; the comment produces no token |
 
 For this source:
 
@@ -503,7 +512,7 @@ The two physical line endings inside delimiters do not appear in the token seque
 
 ### 3.12 Reserved-word and literal decisions
 
-Chapter 9 admits `not`, `and`, and `or`. Chapter 14 admits `fail`, `fails`, `on`, and `error`. These seven words are reserved. Chapter 11 omits a conditional header marker, so `then` remains an identifier. Nucleus 0.1 integer literals are decimal only. A later revision that needs another token requires an amendment here and cost accounting for the added scanner, table, test, and diagnostic work.
+Chapter 9 admits `not`, `and`, and `or`. Chapter 14 admits `fail`, `fails`, `on`, and `error`. These seven words are reserved. Chapter 11 omits a conditional header marker, so `then` remains an identifier. Nucleus integer literals use decimal digits, `$` hexadecimal, or `%` binary. A later revision that needs another token requires an amendment here and cost accounting for the added scanner, table, test, and diagnostic work.
 
 ## 4. Program and file structure
 
@@ -2747,10 +2756,13 @@ The lexical forms are:
 ascii-letter       ::= "A".."Z" | "a".."z"
 decimal-digit      ::= "0".."9"
 hexadecimal-digit  ::= decimal-digit | "A".."F" | "a".."f"
+binary-digit       ::= "0" | "1"
 
 identifier         ::= ascii-letter
                        { ascii-letter | decimal-digit | "_" }
 integer-literal    ::= decimal-digit { decimal-digit }
+                     | "$" hexadecimal-digit { hexadecimal-digit }
+                     | "%" binary-digit { binary-digit }
 character-literal  ::= "'" literal-byte "'"
 string-literal     ::= '"' { literal-byte } '"'
 escape             ::= "\\0" | "\\n" | "\\r" | "\\t"
@@ -2760,7 +2772,7 @@ line-comment       ::= "//" { source-byte } (line-ending | EOF)
 line-ending        ::= LF | CR LF
 ```
 
-Sections 3.2 through 3.10 define `literal-byte`, accepted source bytes, maximal token formation, case-sensitive keyword and identifier recognition, numeric range, and lexical errors. Hexadecimal digits occur only in escapes; integer literals are decimal.
+Sections 3.2 through 3.10 define `literal-byte`, accepted source bytes, maximal token formation, case-sensitive keyword and identifier recognition, numeric range, and lexical errors. Hexadecimal digits also occur in escapes, but an escape remains part of a character or string literal rather than an integer token.
 
 The tokenizer emits `NAME`, `NUMBER`, `CHARACTER`, `STRING`, keyword and punctuation terminals, `NEWLINE`, and `EOF`. It emits `NEWLINE` only at delimiter depth zero, collapses blank or comment-only lines, and synthesizes a source-part-boundary or final logical newline when Sections 3.4 and 4.3 require one. Source-part events and metadata remain outside the token grammar. Those stateful rules are part of the token contract and are not context-free productions.
 
@@ -3078,18 +3090,18 @@ A trap stops source execution at the failing operation. The environment reports 
 
 The following mechanisms are required in the single Nucleus 0.1 language:
 
-| Area         | Required forms and rules                                                                                                                                                                                                                                                                                                |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Source       | Ordered multipart compilation input with stable part identities and part-relative diagnostics; flat ordered build manifest; ASCII-compatible bytes, `//` comments, logical newlines, case-sensitive preserved names, lowercase keywords, decimal integers, byte characters, bounded string literals, fixed punctuation. |
-| Structure    | One program scope and ordered declaration sequence across source parts, declaration before use, sole-signature forwards with abbreviated bodies, fixed `main()` entry, no executable top level.                                                                                                                         |
-| Types        | `u8`, `u16`, `boolean`, nominal fixed records, checked fixed arrays, mutable bounded `string[N]` with current length and byte indexing, exact aggregate aliases, and exact-type aggregate value copying.                                                                                                                |
-| Declarations | Scalar constants, program variables, complete positional recursive static initializers, record fields, formal parameters, contiguous scalar locals, routine definitions and forwards.                                                                                                                                   |
-| Expressions  | Calls, checked array and bounded-string indexing, field selection and string `.length`, explicit integer conversions, unary `+`/`-`, arithmetic, one comparison, `not`, `and`, and `or`.                                                                                                                                |
-| Statements   | Scalar and exact-type aggregate assignment, name-led calls, `return`, `fail`, `exit`, and `continue`.                                                                                                                                                                                                                   |
-| Control      | Flat `if`/`elseif`/`else`, pre-test `while`, counted `for` over a read-only scalar-local counter with `to` or `until` and optional constant `step`.                                                                                                                                                                     |
-| Routines     | Formal arguments, named scalar locals, no result or one typed result, early return, direct and mutual recursion, and one complete forward signature whose parameter names bind its abbreviated body.                                                                                                                    |
-| Failure      | Explicit `fails`, `fail`, `or fail`, result-free propagating return, and statement-bound `on error`; required safety traps remain separate.                                                                                                                                                                             |
-| System       | Nucleus System Services 0.1 with deterministic initial cursors and output writes, normal entry return, unhandled-error termination, and stable trap reasons.                                                                                                                                                            |
+| Area         | Required forms and rules                                                                                                                                                                                                                                                                                                                         |
+| ------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Source       | Ordered multipart compilation input with stable part identities and part-relative diagnostics; flat ordered build manifest; ASCII-compatible bytes, `//` comments, logical newlines, case-sensitive preserved names, lowercase keywords, decimal, hexadecimal, and binary integers, byte characters, bounded string literals, fixed punctuation. |
+| Structure    | One program scope and ordered declaration sequence across source parts, declaration before use, sole-signature forwards with abbreviated bodies, fixed `main()` entry, no executable top level.                                                                                                                                                  |
+| Types        | `u8`, `u16`, `boolean`, nominal fixed records, checked fixed arrays, mutable bounded `string[N]` with current length and byte indexing, exact aggregate aliases, and exact-type aggregate value copying.                                                                                                                                         |
+| Declarations | Scalar constants, program variables, complete positional recursive static initializers, record fields, formal parameters, contiguous scalar locals, routine definitions and forwards.                                                                                                                                                            |
+| Expressions  | Calls, checked array and bounded-string indexing, field selection and string `.length`, explicit integer conversions, unary `+`/`-`, arithmetic, one comparison, `not`, `and`, and `or`.                                                                                                                                                         |
+| Statements   | Scalar and exact-type aggregate assignment, name-led calls, `return`, `fail`, `exit`, and `continue`.                                                                                                                                                                                                                                            |
+| Control      | Flat `if`/`elseif`/`else`, pre-test `while`, counted `for` over a read-only scalar-local counter with `to` or `until` and optional constant `step`.                                                                                                                                                                                              |
+| Routines     | Formal arguments, named scalar locals, no result or one typed result, early return, direct and mutual recursion, and one complete forward signature whose parameter names bind its abbreviated body.                                                                                                                                             |
+| Failure      | Explicit `fails`, `fail`, `or fail`, result-free propagating return, and statement-bound `on error`; required safety traps remain separate.                                                                                                                                                                                                      |
+| System       | Nucleus System Services 0.1 with deterministic initial cursors and output writes, normal entry return, unhandled-error termination, and stable trap reasons.                                                                                                                                                                                     |
 
 No conforming compiler may expose a standard profile that omits one of these mechanisms.
 
@@ -3107,7 +3119,6 @@ The maintainer of this language specification owns source-language admission. Th
 
 | Candidate                                                               | Required decision evidence and owner                                                                                                                                       |
 | ----------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `$` hexadecimal integer literals                                        | Scanner, keyword/table, diagnostic, and compiler-core cost; language-specification maintainer in a future revision.                                                        |
 | Dense nonnegative selection                                             | Compiler cost versus emitted jump-table savings on representative programs; language-specification maintainer in a future revision.                                        |
 | Routine-local aggregate objects or fixed local aggregate aliases        | Representative-program need, declaration and initialization rules, recursion effects, compiler-core cost, and activation cost; language maintainer.                        |
 | Open arrays, slices, or capacity-erased string views                    | Source typing, multiword carrier, lifetime, call/result ABI, compiler and target-runtime cost; language and runtime-contract maintainers in a coordinated future revision. |
@@ -3492,16 +3503,25 @@ end
 
 The constant declaration is valid. The assignment is invalid at the use of `Big` because 300 does not fit the destination's expected `u8` type.
 
-Hexadecimal integer syntax:
+Hexadecimal overflow:
 
 ```nucleus
-const value = $2a
+const value = $10000
 
 sub main()
 end
 ```
 
-The last program fails lexically at `$`; Nucleus 0.1 integer literals are decimal.
+Binary overflow:
+
+```nucleus
+const value = %10000000000000000
+
+sub main()
+end
+```
+
+Both programs fail lexically at the literal prefix. A hexadecimal literal has at most four digits, and a binary literal has at most sixteen.
 
 ### 21.11 Multipart input presentation
 
@@ -3620,3 +3640,22 @@ end
 ```
 
 `sharedValue` adopts `u8` for `byteUse` and `u16` for `wordUse`. `enabled` has type `boolean`. The expected standard output is `Y`.
+
+### 21.16 Integer literal spellings
+
+This program exercises hexadecimal and binary literals at ordinary and maximum word values:
+
+```nucleus
+const hexMask = $FF
+const binaryMask = %10110000
+const hexMaximum = $ffff
+const binaryMaximum = %1111111111111111
+
+sub main() fails
+    if hexMask = 255 and binaryMask = 176 and hexMaximum = 65535 and binaryMaximum = 65535
+        writeOutputByte(binaryMask) or fail
+    end
+end
+```
+
+All three literal spellings produce the same exact integer category. The expected standard output is byte value 176.

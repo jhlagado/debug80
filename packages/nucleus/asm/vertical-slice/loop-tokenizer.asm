@@ -156,7 +156,7 @@ TokenScanNumberAccumulate:
             POP  HL
             JR   TokenScanNumberLoop
 TokenScanNumberDone:
-            ; A decimal token cannot be followed immediately by a name byte.
+            ; An integer token cannot be followed immediately by a name byte.
             ; Reject forms such as 0x2a and 12u8 as one malformed number rather
             ; than exposing a misleading number/name token pair to the parser.
             CALL TokenIsNameByte
@@ -314,7 +314,7 @@ TokenizerNextLoop:
             CP   "<"
             JR   Z,TokenizerLess
             CP   ">"
-            JR   Z,TokenizerGreater
+            JP   Z,TokenizerGreater
             LD   HL,PunctuationTable
             LD   B,PunctuationCount
 TokenizerTryPunctuation:
@@ -338,7 +338,7 @@ TokenizerTryName:
 
 TokenizerSkipByte:
             CALL SourceTake
-            JR   TokenizerNextLoop
+            JP   TokenizerNextLoop
 
 TokenizerSlash:
             CALL SourceTake
@@ -348,7 +348,7 @@ TokenizerSlash:
             JR   NZ,TokenizerSlashToken
             CALL SourceTake
             CALL TokenSkipComment
-            JR   TokenizerNextLoop
+            JP   TokenizerNextLoop
 TokenizerSlashToken:
             LD   A,TokenSlash
             JP   TokenFinish
@@ -423,10 +423,16 @@ TokenizerLexicalFailure:
 
 TokenizerPunctuation:
             LD   C,(HL)
+            BIT  7,C
+            JR   NZ,TokenizerBasedNumber
 TokenizerSimpleToken:
             CALL SourceTake
             LD   A,C
             JP   TokenFinish
+TokenizerBasedNumber:
+            RES  7,C
+            LD   B,C
+            JP   TokenScanBasedNumber
 
 TokenizerLf:
             CALL SourceTake
@@ -493,3 +499,54 @@ TokenizerEmitEof:
             LD   A,TokenEof
             OR   A
             RET
+
+.routine in BC out A,BC,carry,zero clobbers sign,parity,halfCarry,D,DE,HL
+TokenScanBasedNumber:
+            CALL SourceTake
+            LD   HL,0
+TokenScanBasedLoop:
+            LD   D,0
+            PUSH HL
+            CALL SourcePeek
+            POP  HL
+            JR   C,TokenScanBasedDone
+            LD   D,A
+            BIT  4,C
+            JR   NZ,TokenScanBinaryDigit
+            CALL TokenIsHexDigit
+            JR   C,TokenScanBasedDigit
+            JR   TokenScanBasedDone
+TokenScanBinaryDigit:
+            SUB  "0"
+            JR   C,TokenScanBasedDone
+            CP   2
+            JR   C,TokenScanBasedDigit
+            JR   TokenScanBasedDone
+TokenScanBasedDigit:
+            DEC  B
+            JR   Z,TokenNumberFailure
+            LD   E,A
+            BIT  4,C
+            JR   NZ,TokenScanBasedShift
+            ADD  HL,HL
+            ADD  HL,HL
+            ADD  HL,HL
+TokenScanBasedShift:
+            ADD  HL,HL
+            LD   A,E
+            OR   L
+            LD   L,A
+            PUSH HL
+            CALL SourceTake
+            POP  HL
+            JR   TokenScanBasedLoop
+TokenScanBasedDone:
+            LD   A,B
+            CP   C
+            JR   Z,TokenNumberFailure
+            LD   A,D
+            OR   A
+            JP   Z,TokenScanNumberEof
+            JP   TokenScanNumberDone
+TokenNumberFailure:
+            JP   TokenLexicalFailure
