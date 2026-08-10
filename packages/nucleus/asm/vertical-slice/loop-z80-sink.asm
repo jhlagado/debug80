@@ -119,6 +119,153 @@ AbortProgramSize:
             SCF
             RET
 
+.if AggregateCallSlices
+; Initialize the fixed adapter table, retain all previously published segment
+; sizes, and back up both image-bearing segments before tentative emission.
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+BeginSegmentedProgram:
+            PUSH HL
+            LD   HL,GeneratedSize
+            LD   DE,PublishedSize
+            LD   BC,8
+            LDIR
+            LD   BC,(GeneratedSize)
+            LD   HL,GeneratedCodeBase
+            LD   DE,BackupBase
+            CALL SegmentCopyIfAny
+            LD   BC,(GeneratedRoDataSize)
+            LD   HL,GeneratedRoDataBase
+            LD   DE,BackupBase+(GeneratedRoDataBase-GeneratedBase)
+            CALL SegmentCopyIfAny
+            LD   HL,SegmentInitialTable
+            LD   DE,SegmentTableBase
+            LD   BC,SegmentEntrySize*SegmentCapacity
+            LDIR
+            POP  HL
+            LD   (SegmentCodeEntry+SegmentEntryLimit),HL
+
+            CALL ValidateSegmentTable
+            RET  C
+            XOR  A
+            RET
+
+SegmentInitialTable:
+            .dw GeneratedCodeBase,GeneratedCodeLimit
+            .dw GeneratedRoDataBase,GeneratedRoDataLimit
+            .dw ProgramDataBase,ProgramDataLimit
+            .dw ProgramBssBase,ProgramBssLimit
+
+.routine in BC,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
+SegmentCopyIfAny:
+            LD   A,B
+            OR   C
+            RET  Z
+            LDIR
+            OR   A
+            RET
+
+; Only the two image-bearing segments are selectable by the byte emitter. A is
+; an internal SegmentCode/SegmentRoData ordinal supplied at the two call sites.
+; Their current cursors remain cached in EmitCursor/EmitLimit and are written
+; back to the bounded table at each segment switch and at publication.
+.routine in A out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+SelectOutputSegment:
+            OR   A
+            JR   NZ,SelectOutputSegmentRoData
+            LD   DE,(EmitCursor)
+            LD   (SegmentRoDataCursor),DE
+            LD   HL,SegmentCodeEntry
+            JR   SelectOutputSegmentReady
+SelectOutputSegmentRoData:
+            LD   HL,SegmentRoDataEntry
+SelectOutputSegmentReady:
+            LD   E,(HL)
+            INC  HL
+            LD   D,(HL)
+            LD   (EmitCursor),DE
+            INC  HL
+            LD   E,(HL)
+            INC  HL
+            LD   D,(HL)
+            LD   (EmitLimit),DE
+            OR   A
+            RET
+
+; The adapter owns two ordered ROM-image segments and two ordered RAM
+; segments. Reject malformed or overlapping target maps before one byte can
+; be published.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+ValidateSegmentTable:
+            LD   IX,SegmentTableBase
+            LD   B,SegmentCapacity
+ValidateSegmentEntryLoop:
+            LD   L,(IX+SegmentEntryBase)
+            LD   H,(IX+SegmentEntryBase+1)
+            LD   E,(IX+SegmentEntryLimit)
+            LD   D,(IX+SegmentEntryLimit+1)
+            OR   A
+            SBC  HL,DE
+            JR   NC,SegmentTableFailure
+            LD   DE,SegmentEntrySize
+            ADD  IX,DE
+            DJNZ ValidateSegmentEntryLoop
+            LD   HL,(SegmentCodeEntry+SegmentEntryLimit)
+            LD   DE,(SegmentRoDataEntry+SegmentEntryBase)
+            CALL SegmentRequireOrder
+            RET  C
+            LD   HL,(SegmentDataEntry+SegmentEntryLimit)
+            LD   DE,(SegmentBssEntry+SegmentEntryBase)
+.routine in DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+SegmentRequireOrder:
+            OR   A
+            SBC  HL,DE
+            JR   C,SegmentOrderReady
+            RET  Z
+            JR   SegmentTableFailure
+SegmentOrderReady:
+            OR   A
+            RET
+SegmentTableFailure:
+            LD   A,DiagnosticOutputSegment
+            JP   CompilerSetDiagnostic
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
+AbortSegmentedProgram:
+            LD   BC,(PublishedSize)
+            LD   HL,BackupBase
+            LD   DE,GeneratedCodeBase
+            CALL SegmentCopyIfAny
+            LD   BC,(PublishedRoDataSize)
+            LD   HL,BackupBase+(GeneratedRoDataBase-GeneratedBase)
+            LD   DE,GeneratedRoDataBase
+            CALL SegmentCopyIfAny
+            LD   HL,PublishedSize
+            LD   DE,GeneratedSize
+            LD   BC,8
+            LDIR
+            SCF
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,DE,HL
+FinishSegmentedProgram:
+            LD   HL,(EmitCursor)
+            LD   DE,GeneratedCodeBase
+            OR   A
+            SBC  HL,DE
+            LD   (GeneratedSize),HL
+            LD   HL,(SegmentRoDataCursor)
+            LD   DE,GeneratedRoDataBase
+            OR   A
+            SBC  HL,DE
+            LD   (GeneratedRoDataSize),HL
+            LD   HL,(StaticImageLength)
+            LD   (GeneratedDataSize),HL
+            LD   HL,(ProgramBssLength)
+            LD   (GeneratedBssSize),HL
+            OR   A
+            RET
+.endif
+
 .if LegacyEncoders
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 EncodeLoopProgram:
@@ -238,6 +385,11 @@ EmitCall:
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 EmitLoadHl:
             LD   A,$21
+            JR   EmitOpcodeWord
+
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+EmitLoadBcImmediate:
+            LD   A,$01
             JR   EmitOpcodeWord
 
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
@@ -654,13 +806,22 @@ ExpressionOperationTable:
 ExpressionOperationCount .equ 12
 .endif
 
-.routine in A out HL clobbers carry,halfCarry,D,E
+.routine out A,HL,carry,zero clobbers sign,parity,halfCarry,D,E
 ExpressionProgramAddress:
+.if AggregateCallSlices
+            CALL ReadSemanticWord
+            LD   H,D
+            LD   L,E
+            OR   A
+            RET
+.else
+            CALL NextSemanticByte
             LD   E,A
             LD   D,0
             LD   HL,GeneratedBase+3
             ADD  HL,DE
             RET
+.endif
 
 .if LegacyEncoders
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL

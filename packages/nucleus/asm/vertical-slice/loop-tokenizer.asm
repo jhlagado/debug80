@@ -314,7 +314,7 @@ TokenizerNextLoop:
             CP   "<"
             JR   Z,TokenizerLess
             CP   ">"
-            JP   Z,TokenizerGreater
+            JR   Z,TokenizerGreater
             LD   HL,PunctuationTable
             LD   B,PunctuationCount
 TokenizerTryPunctuation:
@@ -338,7 +338,7 @@ TokenizerTryName:
 
 TokenizerSkipByte:
             CALL SourceTake
-            JP   TokenizerNextLoop
+            JR   TokenizerNextLoop
 
 TokenizerSlash:
             CALL SourceTake
@@ -348,7 +348,7 @@ TokenizerSlash:
             JR   NZ,TokenizerSlashToken
             CALL SourceTake
             CALL TokenSkipComment
-            JP   TokenizerNextLoop
+            JR   TokenizerNextLoop
 TokenizerSlashToken:
             LD   A,TokenSlash
             JP   TokenFinish
@@ -432,7 +432,7 @@ TokenizerSimpleToken:
 TokenizerBasedNumber:
             RES  7,C
             LD   B,C
-            JP   TokenScanBasedNumber
+            JR   TokenScanBasedNumber
 
 TokenizerLf:
             CALL SourceTake

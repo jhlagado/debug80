@@ -709,13 +709,19 @@ Stage7EmitAggregateSymbolRoot:
             CP   SymbolClassProgram
             JR   NZ,Stage7EmitAggregateRootParameter
             LD   A,SemanticLoadProgramAlias
-            JR   Stage7EmitAggregateRootSelected
+            PUSH BC
+            CALL SemanticSinkOperation
+            POP  HL
+            RET  C
+            CALL Stage7EmitWord
+            JR   Stage7EmitAggregateRootReady
 Stage7EmitAggregateRootParameter:
             CP   SymbolClassParameter
             JP   NZ,TypedTypeFailure
             LD   A,SemanticLoadParameterAlias
 Stage7EmitAggregateRootSelected:
             CALL Stage7EmitOperationByte
+Stage7EmitAggregateRootReady:
             RET  C
             LD   A,(Stage7PathType)
             OR   A

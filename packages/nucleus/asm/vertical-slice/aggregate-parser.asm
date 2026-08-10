@@ -46,8 +46,6 @@ AggregateGetDynamicExtent:
             LD   L,A
             LD   H,0
             OR   A
-            RET  NZ
-            INC  H                       ; zero encodes the 256-byte extent
             RET
 
 ; Append the descriptor and extent in AggregateCandidate*. No structural
@@ -200,7 +198,7 @@ AggregateParseStringType:
             LD   A,L
             OR   A
             JP   Z,AggregateTypeShapeFailure
-            CP   255
+            CP   254
             JP   NC,AggregateStringCapacityFailure
             LD   A,L
             LD   (AggregateCandidateLength),A
@@ -260,14 +258,8 @@ AggregateArrayExtentLoop:
             ADD  HL,DE
             JP   C,AggregateProgramDataCapacityFailure
             LD   A,H
-            CP   2
-            JP   NC,AggregateProgramDataCapacityFailure
-            OR   A
-            JR   Z,AggregateArrayExtentReady
-            LD   A,L
             OR   A
             JP   NZ,AggregateProgramDataCapacityFailure
-AggregateArrayExtentReady:
             DJNZ AggregateArrayExtentLoop
             LD   A,L
             LD   (AggregateCandidateExtent),A
@@ -402,13 +394,6 @@ AggregateRecordFieldLoop:
             INC  HL
             LD   A,(AggregateCurrentRecordExtent)
             LD   E,A
-            OR   A
-            JR   NZ,AggregateRecordFieldOffsetReady
-            LD   A,(AggregateCurrentFieldCount)
-            OR   A
-            JP   NZ,AggregateProgramDataCapacityFailure
-            XOR  A
-AggregateRecordFieldOffsetReady:
             LD   (HL),A
             LD   D,0
             PUSH DE
@@ -418,14 +403,8 @@ AggregateRecordFieldOffsetReady:
             ADD  HL,DE
             JP   C,AggregateProgramDataCapacityFailure
             LD   A,H
-            CP   2
-            JP   NC,AggregateProgramDataCapacityFailure
-            OR   A
-            JR   Z,AggregateRecordExtentReady
-            LD   A,L
             OR   A
             JP   NZ,AggregateProgramDataCapacityFailure
-AggregateRecordExtentReady:
             LD   A,L
             LD   (AggregateCurrentRecordExtent),A
             CALL ParserExpectLine
@@ -523,8 +502,12 @@ AggregateWriteByte:
             LD   HL,(AggregateCurrentObjectOffset)
             LD   A,H
             OR   A
+.if AggregateCallSlices
+            JR   NZ,AggregateProgramDataCapacityFailure
+.else
             JP   NZ,AggregateProgramDataCapacityFailure
-            LD   DE,StaticImageBase
+.endif
+            LD   DE,AggregateInitializerBase
             ADD  HL,DE
             LD   A,B
             LD   (HL),A
@@ -825,10 +808,10 @@ AggregateInitializerTakeClose:
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 AggregateZeroCurrentObject:
             LD   HL,(AggregateCurrentObjectOffset)
-            LD   DE,StaticImageBase
+            LD   DE,AggregateInitializerBase
             ADD  HL,DE
             LD   A,(AggregateCurrentObjectExtent)
-            LD   B,A                     ; zero encodes 256 iterations
+            LD   B,A
 AggregateZeroCurrentLoop:
             XOR  A
             LD   (HL),A
@@ -856,14 +839,8 @@ AggregateParseProgramAfterVar:
             ADD  HL,DE
             JP   C,AggregateProgramDataCapacityFailure
             LD   A,H
-            CP   2
-            JP   NC,AggregateProgramDataCapacityFailure
-            OR   A
-            JR   Z,AggregateProgramObjectEndReady
-            LD   A,L
             OR   A
             JP   NZ,AggregateProgramDataCapacityFailure
-AggregateProgramObjectEndReady:
             LD   (AggregateCurrentObjectEnd),HL
             CALL AggregateZeroCurrentObject
             RET  C

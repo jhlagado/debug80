@@ -1,6 +1,7 @@
 ; Prove failable signatures and explicit failure on the packed LL(1) path.
 
             .include "memory-map.asmi"
+SegmentedOutput .equ 1
             .include "loop-compiler-state.asmi"
             .include "aggregate-call-state.asmi"
             .include "loop-z80-state.asmi"
@@ -139,6 +140,26 @@ Stage8LocalHandlerSource:
             .db "writeOutputByte(0) or fail",10
             .db "end",10
 Stage8LocalHandlerSourceEnd:
+
+; A program variable is a valid on-error destination. The handler performs a
+; later expression and service call so a one-byte address operand cannot pass
+; by accidentally consuming the following semantic opcode.
+Stage8ProgramHandlerSource:
+            .db "var saved as u8",10
+            .db "const sampleFailure = 7",10
+            .db "sub alwaysFails() as u8 fails",10
+            .db "fail sampleFailure",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "var value as u8",10
+            .db "value = alwaysFails()",10
+            .db "on error saved",10
+            .db "writeOutputByte(saved + 1) or fail",10
+            .db "return",10
+            .db "end",10
+            .db "writeOutputByte(0) or fail",10
+            .db "end",10
+Stage8ProgramHandlerSourceEnd:
 
 Stage8ReadInputSuccessSource:
             .db "sub identity(value as u8) as u8",10
@@ -825,6 +846,32 @@ ProofStart:
             LD   A,(ServiceOutputBase)
             CP   7
             JP   NZ,ProofHandlerRunFailure
+
+            LD   A,204
+            LD   HL,Stage8ProgramHandlerSource
+            LD   DE,Stage8ProgramHandlerSourceEnd
+            CALL CompileAggregateCallSlice
+            JP   C,ProofProgramHandlerCompileFailure
+            CALL EncodeAggregateProgram
+            JP   C,ProofProgramHandlerEncodeFailure
+            CALL Reset
+            CALL ProofCallGenerated
+            JP   C,ProofProgramHandlerRunFailure
+            LD   A,(RunState)
+            CP   RunSucceeded
+            JP   NZ,ProofProgramHandlerRunFailure
+            LD   A,(ActivationDepth)
+            OR   A
+            JP   NZ,ProofProgramHandlerRunFailure
+            LD   A,(ProgramBssBase)
+            CP   7
+            JP   NZ,ProofProgramHandlerRunFailure
+            LD   A,(ServiceOutputLength)
+            CP   1
+            JP   NZ,ProofProgramHandlerRunFailure
+            LD   A,(ServiceOutputBase)
+            CP   8
+            JP   NZ,ProofProgramHandlerRunFailure
 
             LD   A,177
             LD   HL,Stage8ReadInputSuccessSource
@@ -1870,6 +1917,12 @@ ProofRetainedFieldCompileFailure: LD A,109
 ProofRetainedFieldValueFailure: LD A,110
                          JP ProofFailed
 ProofRetainedFieldWidthFailure: LD A,111
+                         JP ProofFailed
+ProofProgramHandlerCompileFailure: LD A,112
+                         JP ProofFailed
+ProofProgramHandlerEncodeFailure: LD A,113
+                         JP ProofFailed
+ProofProgramHandlerRunFailure: LD A,114
 ProofFailed:
             LD   (ProofCase),A
             HALT

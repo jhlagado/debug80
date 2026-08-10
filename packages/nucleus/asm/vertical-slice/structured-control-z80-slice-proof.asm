@@ -1,6 +1,7 @@
 ; Prove typed if/elseif/else, while, counted for, and loop transfers end to end.
 
             .include "memory-map.asmi"
+SegmentedOutput .equ 0
             .include "loop-compiler-state.asmi"
             .include "loop-z80-state.asmi"
 

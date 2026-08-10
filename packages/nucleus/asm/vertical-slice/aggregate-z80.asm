@@ -5,11 +5,22 @@
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 EncodeAggregateProgram:
+.if AggregateCallSlices
+            LD   HL,GeneratedCodeLimit
+.else
             LD   HL,GeneratedLimit
+.endif
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 EncodeAggregateProgramWithinLimit:
+.if AggregateCallSlices
+            CALL BeginSegmentedProgram
+            JP   C,AbortSegmentedProgram
+            LD   A,SegmentRoData
+            CALL SelectOutputSegment
+.else
             CALL EncodeProgramHeader
             JP   C,AbortProgram
+.endif
             LD   HL,StaticImageBase
             LD   BC,(StaticImageLength)
             LD   A,B
@@ -23,12 +34,76 @@ AggregateCopyLoop:
             CALL EmitByte
             POP  HL
             POP  BC
-            JP   C,AbortProgram
+            JP   C,AggregateAbortProgram
             DEC  BC
             LD   A,B
             OR   C
             JR   NZ,AggregateCopyLoop
 AggregateDispatch:
+.if AggregateCallSlices
+            LD   A,SegmentCode
+            CALL SelectOutputSegment
+            CALL EncodeSegmentedProgramHeader
+            JP   C,AbortSegmentedProgram
+.endif
             CALL TypedDispatch
-            JP   C,AbortProgram
+            JP   C,AggregateAbortProgram
+.if AggregateCallSlices
+            JP   FinishSegmentedProgram
+.else
             JP   FinishProgram
+.endif
+
+.if AggregateCallSlices
+AggregateAbortProgram .equ AbortSegmentedProgram
+.else
+AggregateAbortProgram .equ AbortProgram
+.endif
+
+.if AggregateCallSlices
+; Emit startup into the code segment. Prepared bytes are copied from rodata
+; into initialized RAM, then the complete BSS allocation is cleared before the
+; existing entry jump transfers to main.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+EncodeSegmentedProgramHeader:
+            LD   HL,(StaticImageLength)
+            LD   A,H
+            OR   L
+            JR   Z,EncodeSegmentedBss
+            LD   HL,GeneratedRoDataBase
+            CALL EmitLoadHl
+            RET  C
+            LD   DE,ProgramDataBase
+            CALL EmitLoadDeImmediate
+            RET  C
+            LD   HL,(StaticImageLength)
+            CALL EmitLoadBcImmediate
+            RET  C
+            LD   HL,SegmentedCopyBytes
+            CALL EmitPair
+            RET  C
+EncodeSegmentedBss:
+            LD   HL,(ProgramBssLength)
+            LD   A,H
+            OR   L
+            JR   Z,EncodeSegmentedEntry
+            LD   HL,ProgramBssBase
+            CALL EmitLoadHl
+            RET  C
+            LD   HL,(ProgramBssLength)
+            CALL EmitLoadBcImmediate
+            RET  C
+            LD   HL,InitializeBss
+            CALL EmitCall
+            RET  C
+EncodeSegmentedEntry:
+            LD   A,$C3                    ; JP main
+            CALL EmitByte
+            RET  C
+            LD   HL,(EmitCursor)
+            LD   (EmitDataFixup),HL
+            LD   HL,0
+            JP   EmitWord
+
+SegmentedCopyBytes: .db $ED,$B0           ; LDIR
+.endif

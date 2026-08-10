@@ -307,7 +307,11 @@ ParserEmitProgramStore:
 ParserExpectedScalar:
             LD   A,DiagnosticExpectedScalar
             ; The legacy proof layouts put this target outside JR range.
+.if AggregateCallSlices
+            JR   CompilerSetDiagnostic
+.else
             JP   CompilerSetDiagnostic
+.endif
 
 .if LegacyCompilerSlices
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
@@ -422,7 +426,11 @@ ParserExpectOrFailLine:
             CALL ParserExpectOrFail
             RET  C
             ; The legacy proof layouts put this target outside JR range.
+.if AggregateCallSlices
+            JR   ParserExpectLine
+.else
             JP   ParserExpectLine
+.endif
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectOrFail:
@@ -431,7 +439,11 @@ ParserExpectOrFail:
             RET  C
             LD   E,TokenFail
             ; The legacy proof layouts put this target outside JR range.
+.if AggregateCallSlices
+            JR   ParserExpect
+.else
             JP   ParserExpect
+.endif
 
 .if LegacyCompilerSlices
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
@@ -1092,6 +1104,10 @@ CompileSliceResetAggregateLoop:
             DJNZ CompileSliceResetAggregateLoop
             LD   (StaticImageLength),A
             LD   (StaticImageLength+1),A
+.if AggregateCallSlices
+            LD   (ProgramBssLength),A
+            LD   (ProgramBssLength+1),A
+.endif
             LD   (ForwardCompleted),A
             LD   (ForwardOrdinal),A
             RET

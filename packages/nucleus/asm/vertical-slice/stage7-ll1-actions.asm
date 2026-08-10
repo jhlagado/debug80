@@ -116,7 +116,7 @@ HybridLL1MakeStringType:
             OR   A
             JP   NZ,AggregateStringCapacityFailure
             LD   A,L
-            CP   255
+            CP   254
             JP   NC,AggregateStringCapacityFailure
             LD   A,L
             LD   (AggregateCandidateLength),A
@@ -162,14 +162,8 @@ HybridLL1ArrayExtentLoop:
             ADD  HL,DE
             JP   C,AggregateProgramDataCapacityFailure
             LD   A,H
-            CP   2
-            JP   NC,AggregateProgramDataCapacityFailure
-            OR   A
-            JR   Z,HybridLL1ArrayExtentReady
-            LD   A,L
             OR   A
             JP   NZ,AggregateProgramDataCapacityFailure
-HybridLL1ArrayExtentReady:
             DJNZ HybridLL1ArrayExtentLoop
             LD   A,L
             LD   (AggregateCandidateExtent),A
@@ -243,20 +237,9 @@ HybridLL1SaveProgramType:
             CALL AggregateGetExtent
             LD   A,L
             LD   (AggregateCurrentObjectExtent),A
-            LD   DE,(StaticImageLength)
-            LD   (AggregateCurrentObjectOffset),DE
-            ADD  HL,DE
-            JP   C,AggregateProgramDataCapacityFailure
-            LD   A,H
-            CP   2
-            JP   NC,AggregateProgramDataCapacityFailure
-            OR   A
-            JR   Z,HybridLL1ProgramObjectEndReady
-            LD   A,L
-            OR   A
-            JP   NZ,AggregateProgramDataCapacityFailure
-HybridLL1ProgramObjectEndReady:
             LD   (AggregateCurrentObjectEnd),HL
+            LD   HL,0
+            LD   (AggregateCurrentObjectOffset),HL
             CALL AggregateZeroCurrentObject
             RET  C
             XOR  A
@@ -275,7 +258,14 @@ HybridLL1FinishProgramInitializer:
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1CommitProgramVariable:
-            LD   BC,(StaticImageLength)
+            LD   A,(AggregateInitializerElements)
+            OR   A
+            JR   Z,HybridLL1CommitBssObject
+            JR   HybridLL1AllocateDataObject
+HybridLL1CommitBssObject:
+            JR   HybridLL1AllocateBssObject
+HybridLL1CommitObjectReady:
+            PUSH BC
             LD   A,(DeclarationInfo)
             CP   AggregateFirstDynamicTypeId
             JR   C,HybridLL1ProgramScalarInfo
@@ -285,7 +275,6 @@ HybridLL1ProgramScalarInfo:
             OR   SymbolClassProgram
             LD   D,A
 HybridLL1ProgramPrepareSymbol:
-            PUSH BC
             CALL TypedPrepareCurrentWord
             POP  BC
             RET  C
@@ -298,12 +287,77 @@ HybridLL1ProgramPrepareSymbol:
             LD   (HL),A
             CALL SymbolCommit
             RET  C
-            LD   HL,(AggregateCurrentObjectEnd)
-            LD   (StaticImageLength),HL
-            LD   A,L
-            LD   (NextProgramSlot),A
             OR   A
             RET
+
+; Return the absolute target address of one initialized program object in BC.
+; The complete prepared bytes are appended to the rodata-backed data image.
+HybridLL1AllocateDataObject:
+            LD   DE,(StaticImageLength)
+            CALL HybridLL1AllocateObjectEnd
+            RET  C
+            LD   (StaticImageLength),HL
+            LD   A,(DeclarationInfo)
+            CALL AggregateGetExtent
+            LD   B,H
+            LD   C,L
+            LD   HL,AggregateInitializerBase
+            LD   DE,(AggregateCurrentObjectOffset)
+            PUSH HL
+            LD   HL,StaticImageBase
+            ADD  HL,DE
+            EX   DE,HL
+            POP  HL
+            LDIR
+            LD   BC,(AggregateCurrentObjectOffset)
+            LD   HL,ProgramDataBase
+            ADD  HL,BC
+            LD   B,H
+            LD   C,L
+            OR   A
+            JR   HybridLL1CommitObjectReady
+
+; Return the absolute target address of one default-initialized object in BC.
+HybridLL1AllocateBssObject:
+            LD   DE,(ProgramBssLength)
+            CALL HybridLL1AllocateObjectEnd
+            RET  C
+            LD   (ProgramBssLength),HL
+            LD   B,D
+            LD   C,E
+            LD   HL,ProgramBssBase
+            ADD  HL,BC
+            LD   B,H
+            LD   C,L
+            OR   A
+            JR   HybridLL1CommitObjectReady
+
+; Add the current object extent to the selected segment length in DE. Return
+; the old offset in DE and the checked mathematical end in HL.
+.routine in DE out A,DE,HL,carry,zero clobbers sign,parity,halfCarry
+HybridLL1AllocateObjectEnd:
+            LD   (AggregateCurrentObjectOffset),DE
+            LD   A,(DeclarationInfo)
+            CALL AggregateGetExtent
+            LD   DE,(AggregateCurrentObjectOffset)
+            ADD  HL,DE
+HybridLL1CheckProgramSegmentEnd:
+
+; Initialized data and BSS each have one 1 KiB adapter region. Exact end is
+; admitted; a larger mathematical end receives the existing data diagnostic.
+            LD   A,H
+            CP   4
+            JR   C,HybridLL1ProgramSegmentReady
+            JR   NZ,HybridLL1ProgramSegmentFull
+            LD   A,L
+            OR   A
+            JR   NZ,HybridLL1ProgramSegmentFull
+HybridLL1ProgramSegmentReady:
+            OR   A
+            RET
+HybridLL1ProgramSegmentFull:
+            LD   A,DiagnosticProgramDataCapacity
+            JP   CompilerSetDiagnostic
 
 ; ---------------------------------------------------------- record metadata
 
@@ -362,13 +416,6 @@ HybridLL1CommitRecordField:
             INC  HL
             LD   A,(AggregateCurrentRecordExtent)
             LD   E,A
-            OR   A
-            JR   NZ,HybridLL1FieldOffsetReady
-            LD   A,(AggregateCurrentFieldCount)
-            OR   A
-            JP   NZ,AggregateProgramDataCapacityFailure
-            XOR  A
-HybridLL1FieldOffsetReady:
             LD   (HL),A
             LD   D,0
             LD   A,(AggregateCurrentTypeId)
@@ -378,14 +425,8 @@ HybridLL1FieldOffsetReady:
             ADD  HL,DE
             JP   C,AggregateProgramDataCapacityFailure
             LD   A,H
-            CP   2
-            JP   NC,AggregateProgramDataCapacityFailure
-            OR   A
-            JR   Z,HybridLL1RecordExtentReady
-            LD   A,L
             OR   A
             JP   NZ,AggregateProgramDataCapacityFailure
-HybridLL1RecordExtentReady:
             LD   A,L
             LD   (AggregateCurrentRecordExtent),A
             LD   HL,AggregateCurrentFieldCount
@@ -978,8 +1019,16 @@ Stage8HandlerCounterReady:
             LD   A,(DeclarationInfo)
             CALL SemanticSinkPut
             RET  C
-            LD   A,(DeclarationPayload)
+            AND  SymbolClassMask
+            CP   SymbolClassProgram
+            LD   HL,(DeclarationPayload)
+            JR   Z,HybridLL1BeginOnErrorProgramPayload
+            LD   A,L
             CALL SemanticSinkPut
+            JR   HybridLL1BeginOnErrorPayloadReady
+HybridLL1BeginOnErrorProgramPayload:
+            CALL Stage7EmitWord
+HybridLL1BeginOnErrorPayloadReady:
             RET  C
             JP   HybridLL1SetFallsThrough
 

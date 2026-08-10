@@ -1,6 +1,7 @@
 ; Prove Stage 6 packed aggregate layouts and atomic static-image publication.
 
             .include "memory-map.asmi"
+SegmentedOutput .equ 0
             .include "loop-compiler-state.asmi"
             .include "loop-z80-state.asmi"
 
@@ -151,7 +152,7 @@ AggregateMalformedEscapeSourceEnd:
 AggregateStringExtentCapacitySource:
             .db "var bad as string[25"
 AggregateStringExtentCapacityDigit:
-            .db "5"
+            .db "4"
 AggregateStringExtentCapacityPoint:
             .db "]",10
 AggregateStringExtentCapacitySourceEnd:
@@ -212,14 +213,13 @@ AggregateElementCapacityRejectedSourceEnd:
 
 AggregateDataCapacitySource:
             .db "var a as u8[255]",10
-            .db "var b as u8",10
-            .db "var c as u8"
+            .db "var b as u8"
 AggregateDataCapacityPoint:
             .db 10
 AggregateDataCapacitySourceEnd:
 
 AggregateTypeExtentCapacitySource:
-            .db "record Huge",10,"data as u8[256]",10,"end",10
+            .db "record Huge",10,"data as u16[128]",10,"end",10
 AggregateTypeExtentCapacitySourceEnd:
 
             .org TargetRuntimeBase
@@ -487,7 +487,7 @@ AggregateAtomicFailedAsExpected:
             OR   A
             SBC  HL,DE
             JP   NZ,ProofFailStringExtentCapacity
-            LD   A,'6'
+            LD   A,'5'
             LD   (AggregateStringExtentCapacityDigit),A
             LD   A,156
             LD   HL,AggregateStringExtentCapacitySource
@@ -506,12 +506,12 @@ AggregateAtomicFailedAsExpected:
             CALL CompileAggregateSlice
             JP   C,ProofFailStringExtentCapacity
             LD   HL,(StaticImageLength)
-            LD   DE,256
+            LD   DE,255
             OR   A
             SBC  HL,DE
             JP   NZ,ProofFailStringExtentCapacity
             LD   HL,StaticImageBase
-            LD   BC,256
+            LD   BC,255
 AggregateSealedStringZeroLoop:
             LD   A,(HL)
             OR   A
@@ -719,7 +719,7 @@ AggregateExpectedImage:
             .db 2,0,13,14,15,0,0,0,0,0,0,16,17,18
 AggregateExpectedImageEnd:
 AggregateSealedStringBoundarySource:
-            .db "var full as string[254]",10
+            .db "var full as string[253]",10
             .db "sub main() fails",10,"end",10
 AggregateSealedStringBoundarySourceEnd:
 ProofEnd:

@@ -111,6 +111,17 @@ TypedEmitWord:
             LD   A,H
             JR   TypedEmitByte
 
+; Emit one expression operation followed by a complete program address.
+.if AggregateCallSlices
+.routine in A,BC out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+TypedEmitOperationBC:
+            PUSH BC
+            CALL TypedEmitOperation
+            POP  HL
+            RET  C
+            JR   TypedEmitWord
+.endif
+
 ; Push one pending binary-expression context into the bounded compiler stack.
 ; Retaining the operator source offset is necessary because a nested operation
 ; may replace the global offset before the outer operation is reduced.
@@ -639,9 +650,21 @@ TypedPrimaryProgramName:
             LD   A,E
             CP   ScalarTypeU16
             LD   A,SemanticLoadProgramU8
-            JR   NZ,TypedPrimaryEmitLoad
+            JR   NZ,TypedPrimaryProgramSelected
             LD   A,SemanticLoadProgram16
+.if AggregateCallSlices
+TypedPrimaryProgramSelected:
+            PUSH DE
+            CALL TypedEmitOperationBC
+            POP  DE
+            RET  C
+            LD   A,E
+            OR   A
+            RET
+.else
+TypedPrimaryProgramSelected:
             JR   TypedPrimaryEmitLoad
+.endif
 TypedPrimaryParameterName:
             LD   A,E
             CP   ScalarTypeU16
@@ -2025,8 +2048,12 @@ TypedStoreProgram:
             AND  ScalarMetaTypeMask
             CP   ScalarTypeU16
             LD   A,SemanticStoreProgramU8
-            JR   NZ,TypedStoreSelected
+            JR   NZ,TypedStoreProgramSelected
             LD   A,SemanticStoreProgram16
+TypedStoreProgramSelected:
+.if AggregateCallSlices
+            JP   TypedEmitOperationBC
+.endif
 TypedStoreSelected:
             JP   ParserEmitOperationC
 

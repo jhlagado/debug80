@@ -444,7 +444,6 @@ Stage7EndRoutine:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7LoadProgramAlias:
-            CALL NextSemanticByte
             CALL ExpressionProgramAddress
             LD   A,$21                    ; LD HL,nn
             CALL EmitOpcodeWord
@@ -488,8 +487,6 @@ Stage7SelectIndex:
             CALL Stage7BoundsGuard
             RET  C
             LD   A,(Stage7PathExtent)
-            OR   A
-            JR   Z,Stage7SelectIndexStride256
             LD   HL,Stage7IndexToA
             LD   B,1
             CALL EmitBytes
@@ -503,9 +500,6 @@ Stage7SelectIndex:
             CALL EmitCall
             RET  C
             LD   HL,Stage7OffsetAddress
-            JP   EmitFive
-Stage7SelectIndexStride256:
-            LD   HL,Stage7OffsetAddress256
             JP   EmitFive
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
@@ -552,12 +546,7 @@ Stage7CopyAggregate:
             LD   A,(Stage7PathExtent)
             LD   L,A
             LD   H,0
-            OR   A
-            JR   NZ,Stage7CopyExtentReady
-            INC  H                       ; zero encodes 256 bytes
-Stage7CopyExtentReady:
-            LD   A,$01                    ; LD BC,nn
-            CALL EmitOpcodeWord
+            CALL EmitLoadBcImmediate
             RET  C
             LD   HL,Stage7LDIR
             JP   EmitPair
@@ -576,17 +565,21 @@ Stage7EmitRegionCheck:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7EmitDataEnd:
+.if AggregateCallSlices
+            LD   DE,ProgramDataRegionLimit
+.else
             LD   HL,(StaticImageLength)
             LD   DE,GeneratedBase+3
             ADD  HL,DE
             EX   DE,HL
+.endif
             JP   EmitLoadDeImmediate
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7StringLength:
             CALL NextSemanticByte
             LD   (Stage7ArgumentCount),A
-            ADD  A,2                     ; zero denotes string[254]'s extent
+            ADD  A,2
             LD   (Stage7PathExtent),A
             CALL Stage7ReadCallOffset
             LD   A,$E1                    ; POP HL carrier
@@ -648,7 +641,6 @@ Stage7PopHLLoadDE:        .db $E1,$11
 Stage7IndexToA:           .db $7B
 Stage7LoadBImmediate:     .db $06
 Stage7OffsetAddress:      .db $5F,$16,$00,$19,$E5
-Stage7OffsetAddress256:   .db $53,$1E,$00,$19,$E5
 Stage7LoadIndirect8Bytes: .db $E1,$7E,$6F,$26,$00,$E5
 Stage7LoadIndirect16Bytes:.db $E1,$5E,$23,$56,$D5
 Stage7StoreIndirect16Bytes:.db $D1,$E1,$73,$23,$72

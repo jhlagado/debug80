@@ -4,6 +4,7 @@
 ; order, indirect action returns, and clean completion.
 
             .include "memory-map.asmi"
+SegmentedOutput .equ 0
             .include "loop-compiler-state.asmi"
             .include "aggregate-call-state.asmi"
 

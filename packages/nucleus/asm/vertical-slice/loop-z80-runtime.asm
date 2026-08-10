@@ -176,22 +176,22 @@ CheckStringIndexLengthReady:
             OR   A
             RET
 
-; A is a fixed extent (zero encodes 256), HL an address, and DE the exclusive
-; data end.
-; The helper rejects wrapped arithmetic and any region outside GeneratedBase+3
-; through the supplied end. It is used twice before aggregate copying begins.
+; A is a nonzero fixed extent, HL an address, and DE the exclusive data end.
+; The helper rejects wrapped arithmetic and any region outside the selected
+; program-data region through the supplied end. It is used twice before
+; aggregate copying begins.
 .routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IY
 CheckAggregateRegion:
             PUSH DE
             POP  IY
             LD   C,A
             LD   B,0
-            OR   A
-            JR   NZ,CheckAggregateExtentReady
-            INC  B
-CheckAggregateExtentReady:
             PUSH HL
+.if AggregateCallSlices
+            LD   DE,ProgramDataBase
+.else
             LD   DE,GeneratedBase+3
+.endif
             OR   A
             SBC  HL,DE
             JR   C,AggregateRegionLow
@@ -214,6 +214,26 @@ AggregateRegionLow:
 AggregateRegionSuccess:
             OR   A
             RET
+
+.if AggregateCallSlices
+; Clear one complete BSS segment before main. BC is a nonzero published size
+; and HL is the fixed target-adapter base.
+.routine in BC,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,D,HL
+InitializeBss:
+            LD   A,B
+            OR   C
+            RET  Z
+            LD   D,0
+InitializeBssLoop:
+            LD   (HL),D
+            INC  HL
+            DEC  BC
+            LD   A,B
+            OR   C
+            JR   NZ,InitializeBssLoop
+            OR   A
+            RET
+.endif
 .endif
 
 ; Unsigned low-byte multiplication for generated expression code. A and B are
@@ -285,8 +305,7 @@ DivideU16:
 
 .routine in DE,HL out HL,carry,zero clobbers sign,parity,halfCarry,A,BC,DE
 ModuloU16:
-            CALL DivideU16Core
-            RET
+            JR   DivideU16Core
 
 .routine in DE,HL out BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,A
 DivideU16Core:

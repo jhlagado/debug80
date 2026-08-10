@@ -2,6 +2,7 @@
 ; production packed LL(1) compiler and direct-Z80 backend.
 
             .include "memory-map.asmi"
+SegmentedOutput .equ 1
             .include "loop-compiler-state.asmi"
             .include "aggregate-call-state.asmi"
             .include "loop-z80-state.asmi"
@@ -1288,16 +1289,29 @@ ProofRunSingle:
             CALL ProofResetServices
             JP   ProofCallGenerated
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,DE,HL
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
 ProofUpdateMaxGenerated:
             LD   HL,(GeneratedSize)
+            LD   DE,(GeneratedRoDataSize)
+            ADD  HL,DE
+            LD   B,H
+            LD   C,L
             LD   DE,(ProofMaxGenerated)
             OR   A
             SBC  HL,DE
             JR   C,ProofUpdateMaxDone
             JR   Z,ProofUpdateMaxDone
-            LD   HL,(GeneratedSize)
+            LD   H,B
+            LD   L,C
             LD   (ProofMaxGenerated),HL
+            LD   HL,(GeneratedSize)
+            LD   (ProofMaxGeneratedCode),HL
+            LD   HL,(GeneratedRoDataSize)
+            LD   (ProofMaxGeneratedRoData),HL
+            LD   HL,(GeneratedDataSize)
+            LD   (ProofMaxGeneratedData),HL
+            LD   HL,(GeneratedBssSize)
+            LD   (ProofMaxGeneratedBss),HL
 ProofUpdateMaxDone:
             XOR  A
             RET
@@ -1312,10 +1326,40 @@ ProofComparePublishedProgram:
             OR   A
             SBC  HL,DE
             JR   NZ,ProofComparePublishedNo
+            LD   HL,(GeneratedRoDataSize)
+            LD   DE,(PublishedRoDataSize)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,ProofComparePublishedNo
+            LD   HL,(GeneratedDataSize)
+            LD   DE,(PublishedDataSize)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,ProofComparePublishedNo
+            LD   HL,(GeneratedBssSize)
+            LD   DE,(PublishedBssSize)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,ProofComparePublishedNo
             LD   BC,(GeneratedSize)
             LD   HL,GeneratedBase
             LD   DE,BackupBase
 ProofComparePublishedLoop:
+            LD   A,B
+            OR   C
+            JR   Z,ProofComparePublishedRoData
+            LD   A,(DE)
+            CP   (HL)
+            JR   NZ,ProofComparePublishedNo
+            INC  DE
+            INC  HL
+            DEC  BC
+            JR   ProofComparePublishedLoop
+ProofComparePublishedRoData:
+            LD   BC,(GeneratedRoDataSize)
+            LD   HL,GeneratedRoDataBase
+            LD   DE,BackupBase+(GeneratedRoDataBase-GeneratedBase)
+ProofComparePublishedRoDataLoop:
             LD   A,B
             OR   C
             RET  Z
@@ -1325,7 +1369,7 @@ ProofComparePublishedLoop:
             INC  DE
             INC  HL
             DEC  BC
-            JR   ProofComparePublishedLoop
+            JR   ProofComparePublishedRoDataLoop
 ProofComparePublishedNo:
             SCF
             RET
@@ -1474,6 +1518,10 @@ ProofExpectedSP: .dw 0
 ProofExpectedOffset: .dw 0
 ProofExpectedTrap: .db 0
 ProofMaxGenerated: .dw 0
+ProofMaxGeneratedCode: .dw 0
+ProofMaxGeneratedRoData: .dw 0
+ProofMaxGeneratedData: .dw 0
+ProofMaxGeneratedBss: .dw 0
 ProofExpectedDiagnostic: .db 0
 ProofExpectedPart: .db 0
 ProofPartCount: .db 0

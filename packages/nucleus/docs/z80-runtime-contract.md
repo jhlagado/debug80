@@ -112,7 +112,8 @@ table, length word, or address.
 `L`; bytes 1 through `N` are the content capacity; and byte `N + 1` is always
 `$00`. The compiler writes that final byte while building the static image,
 and no runtime operation writes it again. Bytes `L + 1` through `N` are also
-zero. The invariant is `0 <= L <= N`.
+zero. The invariant is `0 <= L <= N`, and the complete object extent is at
+most 255 bytes.
 
 The address `carrier + 1` is always zero-terminated within `N + 1` bytes, so a
 terminator-consuming routine can never read past the end of the object. This

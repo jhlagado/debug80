@@ -157,8 +157,38 @@ EmitControlFixupLimit   .equ EmitControlFixupBase+EmitControlFixupSize*EmitContr
 ; Published program metadata must survive source parsing. It therefore cannot
 ; overlay SourceCursor as the earlier non-atomic slices did.
 GeneratedSize           .equ EmitControlFixupLimit
-PublishedSize     .equ GeneratedSize+2
+.if SegmentedOutput
+; Four target-adapter segments. Each retained entry is base then exclusive
+; limit. Code and rodata have published image bytes;
+; data and bss describe runtime storage initialized by the generated startup.
+GeneratedRoDataSize     .equ GeneratedSize+2
+GeneratedDataSize       .equ GeneratedRoDataSize+2
+GeneratedBssSize        .equ GeneratedDataSize+2
+PublishedSize           .equ GeneratedBssSize+2
+PublishedRoDataSize     .equ PublishedSize+2
+PublishedDataSize       .equ PublishedRoDataSize+2
+PublishedBssSize        .equ PublishedDataSize+2
+SegmentTableBase        .equ PublishedBssSize+2
+SegmentEntrySize        .equ 4
+SegmentCapacity         .equ 4
+SegmentTableLimit       .equ SegmentTableBase+SegmentEntrySize*SegmentCapacity
+SegmentEntryBase        .equ 0
+SegmentEntryLimit       .equ 2
+SegmentCode             .equ 0
+SegmentRoData           .equ 1
+SegmentData             .equ 2
+SegmentBss              .equ 3
+SegmentCodeEntry        .equ SegmentTableBase+SegmentEntrySize*SegmentCode
+SegmentRoDataEntry      .equ SegmentTableBase+SegmentEntrySize*SegmentRoData
+SegmentDataEntry        .equ SegmentTableBase+SegmentEntrySize*SegmentData
+SegmentBssEntry         .equ SegmentTableBase+SegmentEntrySize*SegmentBss
+SegmentRoDataCursor     .equ SegmentTableLimit ; word
+ProgramBssLength        .equ SegmentRoDataCursor+2 ; word
+Stage5WorkspaceEnd      .equ ProgramBssLength+2
+.else
+PublishedSize           .equ GeneratedSize+2
 Stage5WorkspaceEnd      .equ PublishedSize+2
+.endif
 
 ; Stage 6 retains aggregate type and layout metadata for the complete
 ; compilation. Type IDs 1..3 are the predefined scalars; IDs 4 and above name
@@ -192,8 +222,8 @@ AggregateTypeTableLimit .equ AggregateTypeTableBase+AggregateTypeEntrySize*Aggre
 AggregateTypeKind       .equ 0
 AggregateTypeAux        .equ 1
 AggregateTypeLength     .equ 2
-; Complete aggregate layouts are bounded at 256 bytes. One retained byte holds
-; each extent, with zero denoting 256; no admitted aggregate has zero extent.
+; Complete aggregate layouts are bounded at 255 bytes, so every admitted
+; nonzero extent is retained directly in one byte.
 AggregateTypeExtentBase .equ AggregateTypeTableLimit
 AggregateTypeExtentLimit .equ AggregateTypeExtentBase+AggregateTypeCapacity
 
@@ -219,8 +249,18 @@ AggregateSymbolTypeBase .equ AggregateFieldTableLimit
 AggregateSymbolTypeLimit .equ AggregateSymbolTypeBase+SymbolCapacity
 
 StaticImageLength       .equ AggregateSymbolTypeLimit ; word
+.if SegmentedOutput
+; One complete object is built in scratch, then either appended to the
+; prepared data image or discarded into the BSS allocation account.
+AggregateInitializerBase .equ StaticImageLength+2
+AggregateInitializerCapacity .equ 255
+StaticImageBase         .equ AggregateInitializerBase+AggregateInitializerCapacity
+StaticImageCapacity     .equ 1024
+.else
 StaticImageBase         .equ StaticImageLength+2
-StaticImageCapacity     .equ 256
+AggregateInitializerBase .equ StaticImageBase
+StaticImageCapacity     .equ 255
+.endif
 StaticImageLimit        .equ StaticImageBase+StaticImageCapacity
 AggregateWorkspaceEnd   .equ StaticImageLimit
 CompilerWorkspaceEnd    .equ AggregateWorkspaceEnd
@@ -334,10 +374,11 @@ DiagnosticInitializerShape .equ 78
 DiagnosticInitializerCount .equ 79
 DiagnosticStringLength .equ 80
 DiagnosticProgramDataCapacity .equ 81
-; Bounded string capacity is at most 254; use u8[N] plus a scalar length for
+; Bounded string capacity is at most 253; use u8[N] plus a scalar length for
 ; an unterminated, caller-managed buffer.
 DiagnosticStringCapacity .equ 90
 DiagnosticAssertionFailed .equ 91
+DiagnosticOutputSegment .equ 92
 DiagnosticRecordEmpty  .equ 82
 DiagnosticTypeBound    .equ 83
 

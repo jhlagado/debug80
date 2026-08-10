@@ -206,7 +206,6 @@ TypedLiteral16:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 TypedLoadProgram8:
-            CALL NextSemanticByte
             CALL ExpressionProgramAddress
             LD   A,$3A                    ; LD A,(nn)
             CALL EmitOpcodeWord
@@ -216,7 +215,6 @@ TypedLoadProgram8:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 TypedLoadProgram16:
-            CALL NextSemanticByte
             CALL ExpressionProgramAddress
             LD   A,$2A                    ; LD HL,(nn)
             CALL EmitOpcodeWord
@@ -486,7 +484,6 @@ TypedNarrow8:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 TypedStoreProgram8:
-            CALL NextSemanticByte
             CALL ExpressionProgramAddress
             PUSH HL
             LD   HL,TypedPopHLtoA
@@ -497,7 +494,6 @@ TypedStoreProgram8:
             JP   EmitOpcodeWord
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 TypedStoreProgram16:
-            CALL NextSemanticByte
             CALL ExpressionProgramAddress
             PUSH HL
             LD   A,$E1

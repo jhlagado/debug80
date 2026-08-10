@@ -114,8 +114,8 @@ function requireDescriptor(descriptor: TypeDescriptor): void {
 }
 
 function capacity(value: number): number {
-  if (!Number.isInteger(value) || value < 1 || value > 0xff) {
-    throw new Error("string capacity must lie in 1..255");
+  if (!Number.isInteger(value) || value < 1 || value > 253) {
+    throw new Error("string capacity must lie in 1..253");
   }
   return value;
 }

@@ -15,11 +15,27 @@ SourceLimit         .equ $5800
 GeneratedBase       .equ $5800
 GeneratedLimit      .equ $6800
 
+; The production adapter divides generated output and target program storage
+; into bounded segments. Historical slice proofs continue to use the complete
+; GeneratedBase..GeneratedLimit span as one degenerate code segment.
+GeneratedCodeBase       .equ GeneratedBase
+GeneratedCodeLimit      .equ $6400
+GeneratedRoDataBase     .equ GeneratedCodeLimit
+GeneratedRoDataLimit    .equ GeneratedLimit
+
 TargetRuntimeBase   .equ $6800
 TargetRuntimeLimit  .equ $7800
 
 ExecutionBase       .equ $7800
 ExecutionLimit      .equ $8800
+
+; Runtime state occupies the first page of ExecutionBase. Mutable initialized
+; data and zero-initialized data occupy adjacent target regions after it.
+ProgramDataBase         .equ ExecutionBase+$0100
+ProgramDataLimit        .equ ProgramDataBase+$0400
+ProgramBssBase          .equ ProgramDataLimit
+ProgramBssLimit         .equ ProgramBssBase+$0400
+ProgramDataRegionLimit  .equ ProgramBssLimit
 
 ServiceBase         .equ $8800
 ServiceLimit        .equ $9000

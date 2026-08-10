@@ -1,6 +1,7 @@
 ; End-to-end coverage for the packed LL(1) Stage 7 parser.
 
             .include "memory-map.asmi"
+SegmentedOutput .equ 1
             .include "loop-compiler-state.asmi"
             .include "aggregate-call-state.asmi"
             .include "loop-z80-state.asmi"
@@ -141,13 +142,13 @@ ProofStart:
             LD   A,(ServiceOutputBase)
             CP   9
             JR   NZ,ProofOutputFailure
-            LD   A,(GeneratedBase+4)
+            LD   A,(ProgramDataBase+1)
             CP   3
             JR   NZ,ProofOutputFailure
-            LD   A,(GeneratedBase+5)
+            LD   A,(ProgramDataBase+2)
             OR   A
             JR   NZ,ProofOutputFailure
-            LD   A,(GeneratedBase+6)
+            LD   A,(ProgramDataBase+3)
             OR   A
             JR   NZ,ProofOutputFailure
             LD   A,$A5

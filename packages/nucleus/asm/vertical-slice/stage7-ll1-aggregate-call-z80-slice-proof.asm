@@ -1,6 +1,7 @@
 ; Prove the Stage 7 packed LL(1) parser against aggregate calls and paths.
 
             .include "memory-map.asmi"
+SegmentedOutput .equ 1
             .include "loop-compiler-state.asmi"
             .include "aggregate-call-state.asmi"
             .include "loop-z80-state.asmi"
@@ -181,6 +182,56 @@ Stage7CallDepthSourceEnd:
             ; Additional adversarial source fixtures live after the Z80
             ; transaction backup rather than consuming the 2 KiB source bank.
             .org BackupLimit
+
+Stage7LargeDataSource:
+            .db "var first as string[253] = \"A\"",10
+            .db "var second as string[253] = \"B\"",10
+            .db "sub main() fails",10
+            .db "if first.length = 1 and second[0] = 'B'",10
+            .db "writeOutputByte('Y') or fail",10
+            .db "end",10
+            .db "end",10
+Stage7LargeDataSourceEnd:
+
+Stage7DataCapacityAcceptedSource:
+            .db "var a as string[253] = \"\"",10
+            .db "var b as string[253] = \"\"",10
+            .db "var c as string[253] = \"\"",10
+            .db "var d as string[253] = \"\"",10
+            .db "var tail as u8[4] = [0,0,0,0]",10
+            .db "sub main()",10,"end",10
+Stage7DataCapacityAcceptedSourceEnd:
+
+Stage7DataCapacityRejectedSource:
+            .db "var a as string[253] = \"\"",10
+            .db "var b as string[253] = \"\"",10
+            .db "var c as string[253] = \"\"",10
+            .db "var d as string[253] = \"\"",10
+            .db "var tail as u8[4] = [0,0,0,0]",10
+            .db "var e as u8 = 1"
+Stage7DataCapacityRejectedPoint:
+            .db 10
+Stage7DataCapacityRejectedSourceEnd:
+
+Stage7BssCapacityAcceptedSource:
+            .db "var a as string[253]",10
+            .db "var b as string[253]",10
+            .db "var c as string[253]",10
+            .db "var d as string[253]",10
+            .db "var tail as u8[4]",10
+            .db "sub main()",10,"end",10
+Stage7BssCapacityAcceptedSourceEnd:
+
+Stage7BssCapacityRejectedSource:
+            .db "var a as string[253]",10
+            .db "var b as string[253]",10
+            .db "var c as string[253]",10
+            .db "var d as string[253]",10
+            .db "var tail as u8[4]",10
+            .db "var e as u8"
+Stage7BssCapacityRejectedPoint:
+            .db 10
+Stage7BssCapacityRejectedSourceEnd:
 
 Stage7ParameterRoutineCollisionSource:
             .db "sub choose(choose as u8)",10
@@ -441,10 +492,10 @@ ProofStart:
             LD   A,(ServiceOutputBase)
             CP   'Y'
             JP   NZ,ProofFailOutput
-            LD   A,(GeneratedBase+3)
+            LD   A,(ProgramDataBase)
             CP   1
             JP   NZ,ProofFailStorage
-            LD   A,(GeneratedBase+4)
+            LD   A,(ProgramBssBase)
             CP   2
             JP   NZ,ProofFailStorage
             LD   A,160
@@ -468,10 +519,10 @@ ProofStart:
             LD   A,(ServiceOutputBase)
             CP   'Y'
             JP   NZ,ProofFailForwardOutput
-            LD   A,(GeneratedBase+3)
+            LD   A,(ProgramDataBase)
             CP   3
             JP   NZ,ProofFailForwardStorage
-            LD   A,(GeneratedBase+4)
+            LD   A,(ProgramDataBase+1)
             CP   9
             JP   NZ,ProofFailForwardStorage
             LD   A,160
@@ -495,19 +546,19 @@ ProofStart:
             LD   A,(ServiceOutputBase)
             CP   'Y'
             JP   NZ,ProofFailStringOutput
-            LD   A,(GeneratedBase+3)
+            LD   A,(ProgramDataBase)
             CP   3
             JP   NZ,ProofFailStringStorage
-            LD   A,(GeneratedBase+4)
+            LD   A,(ProgramDataBase+1)
             CP   'A'
             JP   NZ,ProofFailStringStorage
-            LD   A,(GeneratedBase+5)
+            LD   A,(ProgramDataBase+2)
             CP   'Y'
             JP   NZ,ProofFailStringStorage
-            LD   A,(GeneratedBase+6)
+            LD   A,(ProgramDataBase+3)
             CP   'C'
             JP   NZ,ProofFailStringStorage
-            LD   A,(GeneratedBase+7)      ; sealed byte at capacity+1
+            LD   A,(ProgramDataBase+4)    ; sealed byte at capacity+1
             OR   A
             JP   NZ,ProofFailStringStorage
             LD   A,161
@@ -518,7 +569,7 @@ ProofStart:
             CALL EncodeAggregateProgram
             JP   C,ProofFailBoundsEncode
             LD   A,$FF                    ; L=255 remains invalid
-            LD   (GeneratedBase+3),A
+            LD   (GeneratedRoDataBase),A
             CALL Reset
             CALL ProofCallGenerated
             JP   C,ProofFailBoundsFrame
@@ -541,7 +592,7 @@ ProofStart:
             CALL EncodeAggregateProgram
             JP   C,ProofFailBoundsEncode
             LD   A,$FF                    ; indexing rejects the same corruption
-            LD   (GeneratedBase+3),A
+            LD   (GeneratedRoDataBase),A
             CALL Reset
             CALL ProofCallGenerated
             JP   C,ProofFailBoundsFrame
@@ -561,14 +612,14 @@ ProofStart:
             LD   DE,Stage7SealedArraySourceEnd
             CALL CompileAggregateCallSlice
             JP   C,ProofFailStringCompile
-            LD   HL,(StaticImageLength)
-            LD   DE,256
+            LD   HL,(ProgramBssLength)
+            LD   DE,255
             OR   A
             SBC  HL,DE
             JP   NZ,ProofFailStringStorage
             CALL EncodeAggregateProgram
             JP   C,ProofFailStringEncode
-            LD   A,(GeneratedBase+3+255)  ; permanent terminator in element 0
+            LD   A,(ProgramBssBase+254)   ; permanent terminator in element 0
             OR   A
             JP   NZ,ProofFailStringStorage
             CALL Reset
@@ -583,7 +634,157 @@ ProofStart:
             LD   A,(ServiceOutputBase)
             CP   'Y'
             JP   NZ,ProofFailStringOutput
-            LD   A,'5'
+            LD   A,166
+            LD   HL,Stage7LargeDataSource
+            LD   DE,Stage7LargeDataSourceEnd
+            CALL CompileAggregateCallSlice
+            JP   C,ProofFailStringCompile
+            LD   HL,(StaticImageLength)
+            LD   DE,510
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailStringStorage
+            CALL EncodeAggregateProgram
+            JP   C,ProofFailStringEncode
+            LD   HL,(GeneratedRoDataSize)
+            LD   DE,510
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailStringStorage
+            LD   HL,(GeneratedDataSize)
+            LD   DE,510
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailStringStorage
+            CALL Reset
+            CALL ProofCallGenerated
+            JP   C,ProofFailStringFrame
+            LD   A,(RunState)
+            CP   RunSucceeded
+            JP   NZ,ProofFailStringRun
+            LD   A,(ServiceOutputBase)
+            CP   'Y'
+            JP   NZ,ProofFailStringOutput
+            LD   A,(ProgramDataBase)
+            CP   1
+            JP   NZ,ProofFailStringStorage
+            LD   A,(ProgramDataBase+255)
+            CP   1
+            JP   NZ,ProofFailStringStorage
+            LD   A,(ProgramDataBase+256)
+            CP   'B'
+            JP   NZ,ProofFailStringStorage
+            LD   A,(ProgramDataBase+509)
+            OR   A
+            JP   NZ,ProofFailStringStorage
+
+            ; Four complete sealed strings plus a four-byte tail exactly fill
+            ; the initialized-data and rodata regions. Startup must copy all
+            ; 1024 bytes without changing the first byte beyond the region.
+            LD   A,167
+            LD   HL,Stage7DataCapacityAcceptedSource
+            LD   DE,Stage7DataCapacityAcceptedSourceEnd
+            CALL CompileAggregateCallSlice
+            JP   C,ProofFailDataCapacityAccepted
+            LD   HL,(StaticImageLength)
+            LD   DE,1024
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailDataCapacityAccepted
+            CALL EncodeAggregateProgram
+            JP   C,ProofFailDataCapacityAccepted
+            LD   HL,(GeneratedRoDataSize)
+            LD   DE,1024
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailDataCapacityAccepted
+            LD   HL,(GeneratedDataSize)
+            LD   DE,1024
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailDataCapacityAccepted
+            LD   A,$A5
+            LD   (ProgramDataLimit),A
+            CALL Reset
+            CALL ProofCallGenerated
+            JP   C,ProofFailDataCapacityAccepted
+            LD   A,(RunState)
+            CP   RunSucceeded
+            JP   NZ,ProofFailDataCapacityAccepted
+            LD   A,(ProgramDataBase)
+            OR   A
+            JP   NZ,ProofFailDataCapacityAccepted
+            LD   A,(ProgramDataLimit-1)
+            OR   A
+            JP   NZ,ProofFailDataCapacityAccepted
+            LD   A,(ProgramDataLimit)
+            CP   $A5
+            JP   NZ,ProofFailDataCapacityAccepted
+
+            LD   A,168
+            LD   HL,Stage7DataCapacityRejectedSource
+            LD   DE,Stage7DataCapacityRejectedSourceEnd
+            LD   A,DiagnosticProgramDataCapacity
+            LD   BC,Stage7DataCapacityRejectedPoint-Stage7DataCapacityRejectedSource
+            CALL ProofExpectCompileDiagnostic
+            JP   C,ProofFailDataCapacityRejected
+            LD   A,169
+            LD   HL,Stage7DataCapacityAcceptedSource
+            LD   DE,Stage7DataCapacityAcceptedSourceEnd
+            CALL CompileAggregateCallSlice
+            JP   C,ProofFailDataCapacityRejected
+
+            ; The same exact-fill and first-rejection boundary applies
+            ; independently to default-initialized BSS storage.
+            LD   A,170
+            LD   HL,Stage7BssCapacityAcceptedSource
+            LD   DE,Stage7BssCapacityAcceptedSourceEnd
+            CALL CompileAggregateCallSlice
+            JP   C,ProofFailBssCapacityAccepted
+            LD   HL,(ProgramBssLength)
+            LD   DE,1024
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailBssCapacityAccepted
+            CALL EncodeAggregateProgram
+            JP   C,ProofFailBssCapacityAccepted
+            LD   HL,(GeneratedBssSize)
+            LD   DE,1024
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailBssCapacityAccepted
+            LD   A,$A5
+            LD   (ProgramBssLimit),A
+            CALL Reset
+            CALL ProofCallGenerated
+            JP   C,ProofFailBssCapacityAccepted
+            LD   A,(RunState)
+            CP   RunSucceeded
+            JP   NZ,ProofFailBssCapacityAccepted
+            LD   A,(ProgramBssBase)
+            OR   A
+            JP   NZ,ProofFailBssCapacityAccepted
+            LD   A,(ProgramBssLimit-1)
+            OR   A
+            JP   NZ,ProofFailBssCapacityAccepted
+            LD   A,(ProgramBssLimit)
+            CP   $A5
+            JP   NZ,ProofFailBssCapacityAccepted
+
+            LD   A,171
+            LD   HL,Stage7BssCapacityRejectedSource
+            LD   DE,Stage7BssCapacityRejectedSourceEnd
+            LD   A,DiagnosticProgramDataCapacity
+            LD   BC,Stage7BssCapacityRejectedPoint-Stage7BssCapacityRejectedSource
+            CALL ProofExpectCompileDiagnostic
+            JP   C,ProofFailBssCapacityRejected
+            LD   A,172
+            LD   HL,Stage7BssCapacityAcceptedSource
+            LD   DE,Stage7BssCapacityAcceptedSourceEnd
+            CALL CompileAggregateCallSlice
+            JP   C,ProofFailBssCapacityRejected
+
+            LD   A,'4'
             LD   (Stage7SealedArrayCapacityDigit),A
             LD   A,164
             LD   HL,Stage7SealedArraySource
@@ -598,7 +799,7 @@ ProofStart:
             OR   A
             SBC  HL,DE
             JP   NZ,ProofFailStringCapacity
-            LD   A,'6'
+            LD   A,'5'
             LD   (Stage7SealedArrayCapacityDigit),A
             LD   A,165
             LD   HL,Stage7SealedArraySource
@@ -639,10 +840,10 @@ ProofStart:
             LD   A,(ServiceOutputLength)
             OR   A
             JP   NZ,ProofFailBoundsRun
-            LD   A,(GeneratedBase+3)
+            LD   A,(ProgramDataBase)
             CP   3
             JP   NZ,ProofFailBoundsStorage
-            LD   A,(GeneratedBase+4)
+            LD   A,(ProgramDataBase+1)
             CP   7
             JP   NZ,ProofFailBoundsStorage
             LD   A,DiagnosticIntegerRange
@@ -822,6 +1023,8 @@ ProofStart:
             JP   C,ProofFailInvalidCopyDestination
             CALL ProofCheckEncodeRollback
             JP   C,ProofFailEncodeRollback
+            CALL ProofCheckSegmentOverlap
+            JP   C,ProofFailSegmentOverlap
             LD   A,$A5
             LD   (ProofStatus),A
             HALT
@@ -919,7 +1122,7 @@ ProofRunRecursiveCapacity:
             LD   A,(ActivationDepth)
             OR   A
             JR   NZ,ProofRecursiveCapacityFailure
-            LD   A,(GeneratedBase+3)
+            LD   A,(ProgramBssBase)
             OR   A
             RET  Z
 ProofRecursiveCapacityFailure:
@@ -1063,7 +1266,8 @@ ProofSuffixFailure:
             RET
 
 ; Build one structurally valid Z80 stream with an intentionally invalid
-; opaque carrier. B is the destination offset and C the source offset. The
+; opaque carrier. Zero selects the prepared data object; nonzero selects the
+; first address beyond the complete program-data region. The
 ; complete data bytes must survive either region-check trap unchanged.
 .routine in B,C out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 ProofRunInvalidCopy:
@@ -1080,11 +1284,27 @@ ProofRunInvalidCopy:
             INC  HL
             LD   (HL),SemanticLoadProgramAlias
             INC  HL
-            LD   (HL),B
+            LD   DE,ProgramDataBase
+            LD   A,B
+            OR   A
+            JR   Z,ProofInvalidCopyDestinationReady
+            LD   DE,ProgramDataRegionLimit
+ProofInvalidCopyDestinationReady:
+            LD   (HL),E
+            INC  HL
+            LD   (HL),D
             INC  HL
             LD   (HL),SemanticLoadProgramAlias
             INC  HL
-            LD   (HL),C
+            LD   DE,ProgramDataBase
+            LD   A,C
+            OR   A
+            JR   Z,ProofInvalidCopySourceReady
+            LD   DE,ProgramDataRegionLimit
+ProofInvalidCopySourceReady:
+            LD   (HL),E
+            INC  HL
+            LD   (HL),D
             INC  HL
             LD   (HL),SemanticCopyAggregate
             INC  HL
@@ -1111,10 +1331,10 @@ ProofRunInvalidCopy:
             OR   A
             SBC  HL,DE
             JR   NZ,ProofInvalidCopyFailure
-            LD   A,(GeneratedBase+3)
+            LD   A,(ProgramDataBase)
             CP   $11
             JR   NZ,ProofInvalidCopyFailure
-            LD   A,(GeneratedBase+4)
+            LD   A,(ProgramDataBase+1)
             CP   $22
             JR   NZ,ProofInvalidCopyFailure
             OR   A
@@ -1129,6 +1349,8 @@ ProofInvalidCopyFailure:
 ProofCheckEncodeRollback:
             LD   HL,(GeneratedSize)
             LD   (ProofExpectedOffset),HL
+            LD   HL,(GeneratedRoDataSize)
+            LD   (ProofExpectedRoDataSize),HL
             LD   A,$99
             LD   (StaticImageBase),A
             LD   A,1
@@ -1147,6 +1369,11 @@ ProofCheckEncodeRollback:
             OR   A
             SBC  HL,DE
             JR   NZ,ProofEncodeRollbackFailure
+            LD   HL,(GeneratedRoDataSize)
+            LD   DE,(ProofExpectedRoDataSize)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,ProofEncodeRollbackFailure
             LD   BC,(GeneratedSize)
             LD   HL,GeneratedBase
             LD   DE,BackupBase
@@ -1162,12 +1389,48 @@ ProofEncodeRollbackCompare:
             DEC  BC
             JR   ProofEncodeRollbackCompare
 ProofEncodeRollbackReady:
-            LD   A,(GeneratedBase+3)
+            LD   BC,(GeneratedRoDataSize)
+            LD   HL,GeneratedRoDataBase
+            LD   DE,BackupBase+(GeneratedRoDataBase-GeneratedBase)
+ProofEncodeRollbackRoDataCompare:
+            LD   A,B
+            OR   C
+            JR   Z,ProofEncodeRollbackRoDataReady
+            LD   A,(DE)
+            CP   (HL)
+            JR   NZ,ProofEncodeRollbackFailure
+            INC  DE
+            INC  HL
+            DEC  BC
+            JR   ProofEncodeRollbackRoDataCompare
+ProofEncodeRollbackRoDataReady:
+            LD   A,(GeneratedRoDataBase)
             CP   $11
             JR   NZ,ProofEncodeRollbackFailure
             OR   A
             RET
 ProofEncodeRollbackFailure:
+            SCF
+            RET
+
+; A malformed target adapter must be rejected before publication. The
+; compiler then restores the complete preceding code and rodata image.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+ProofCheckSegmentOverlap:
+            LD   HL,GeneratedCodeLimit
+            CALL BeginSegmentedProgram
+            RET  C
+            LD   HL,GeneratedCodeBase+1
+            LD   (SegmentRoDataEntry+SegmentEntryBase),HL
+            CALL ValidateSegmentTable
+            JR   NC,ProofSegmentOverlapFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticOutputSegment
+            JR   NZ,ProofSegmentOverlapFailure
+            CALL AbortSegmentedProgram
+            OR   A
+            RET
+ProofSegmentOverlapFailure:
             SCF
             RET
 
@@ -1284,12 +1547,23 @@ ProofFailRoutineFails: LD A,53
 ProofFailMissingMain: LD A,54
                   JP ProofFailed
 ProofFailAfterMain: LD A,55
+                  JP ProofFailed
+ProofFailSegmentOverlap: LD A,56
+                  JP ProofFailed
+ProofFailDataCapacityAccepted: LD A,57
+                  JP ProofFailed
+ProofFailDataCapacityRejected: LD A,58
+                  JP ProofFailed
+ProofFailBssCapacityAccepted: LD A,59
+                  JP ProofFailed
+ProofFailBssCapacityRejected: LD A,60
 ProofFailed:
             LD   (ProofCase),A
             HALT
 
 ProofExpectedSP: .dw 0
 ProofExpectedOffset: .dw 0
+ProofExpectedRoDataSize: .dw 0
 ProofExpectedDiagnostic: .db 0
 ProofCopyGeneratedSize: .dw 0
 ProofForwardGeneratedSize: .dw 0
@@ -1298,7 +1572,7 @@ ProofBoundsGeneratedSize: .dw 0
 ProofStatus:     .db 0
 ProofCase:       .db 0
 Stage7CorruptStringSource:
-            .db "var text as string[3]",10
+            .db "var text as string[3] = \"\"",10
             .db "sub main() fails",10
             .db "if text."
 Stage7CorruptStringLengthPoint:
@@ -1307,7 +1581,7 @@ Stage7CorruptStringLengthPoint:
             .db "end",10
 Stage7CorruptStringSourceEnd:
 Stage7CorruptStringIndexSource:
-            .db "var text as string[3]",10
+            .db "var text as string[3] = \"\"",10
             .db "sub main() fails",10
             .db "if text"
 Stage7CorruptStringIndexPoint:
@@ -1318,7 +1592,7 @@ Stage7CorruptStringIndexSourceEnd:
 Stage7SealedArraySource:
             .db "var texts as string[25"
 Stage7SealedArrayCapacityDigit:
-            .db "4"
+            .db "3"
 Stage7SealedArrayCapacityPoint:
             .db "][1]",10
             .db "sub main() fails",10

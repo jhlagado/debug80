@@ -16,7 +16,7 @@ describe("compact Nucleus compiler type metadata", () => {
       { kind: "u16" },
       { kind: "boolean" },
       { kind: "record", id: 17 },
-      { kind: "string", capacity: 255 },
+      { kind: "string", capacity: 253 },
       { kind: "array", length: 65_535, element: { kind: "u8" } },
       { kind: "array", length: 19, element: { kind: "record", id: 23 } },
       {
@@ -85,6 +85,9 @@ describe("compact Nucleus compiler type metadata", () => {
   it("rejects capacities that would truncate identity", () => {
     expect(() => encodeType({ kind: "record", id: 256 })).toThrow(/record id/);
     expect(() => encodeType({ kind: "string", capacity: 0 })).toThrow(
+      /capacity/,
+    );
+    expect(() => encodeType({ kind: "string", capacity: 254 })).toThrow(
       /capacity/,
     );
     expect(() =>

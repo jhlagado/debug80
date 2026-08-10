@@ -1,6 +1,7 @@
 ; Compile and execute the counted-loop source as direct Z80 code.
 
             .include "memory-map.asmi"
+SegmentedOutput .equ 0
             .include "loop-compiler-state.asmi"
             .include "loop-z80-state.asmi"
 

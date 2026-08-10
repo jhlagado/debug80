@@ -61,7 +61,7 @@
       "name": "static-image",
       "from": "StaticImageBase",
       "to": "StaticImageLimit",
-      "maxBytes": 256
+      "maxBytes": 255
     },
     {
       "name": "z80-runtime",

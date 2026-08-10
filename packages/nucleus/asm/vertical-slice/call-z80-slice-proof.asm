@@ -1,6 +1,7 @@
 ; Compile and execute one forward-declared recursive scalar value routine.
 
             .include "memory-map.asmi"
+SegmentedOutput .equ 0
             .include "loop-compiler-state.asmi"
             .include "loop-z80-state.asmi"
 

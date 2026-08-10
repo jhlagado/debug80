@@ -12,10 +12,10 @@
   "observations": [
     { "at": "ProofStatus", "width": "u8", "equals": 165 },
     { "at": "ProofCase", "width": "u8", "equals": 0 },
-    { "at": "ProofCopyGeneratedSize", "width": "u16", "equals": 551 },
-    { "at": "ProofForwardGeneratedSize", "width": "u16", "equals": 628 },
-    { "at": "ProofStringGeneratedSize", "width": "u16", "equals": 557 },
-    { "at": "ProofBoundsGeneratedSize", "width": "u16", "equals": 268 }
+    { "at": "ProofCopyGeneratedSize", "width": "u16", "equals": 569 },
+    { "at": "ProofForwardGeneratedSize", "width": "u16", "equals": 637 },
+    { "at": "ProofStringGeneratedSize", "width": "u16", "equals": 563 },
+    { "at": "ProofBoundsGeneratedSize", "width": "u16", "equals": 277 }
   ],
   "extents": [
     {
@@ -82,7 +82,7 @@
       "name": "static-image",
       "from": "StaticImageBase",
       "to": "StaticImageLimit",
-      "maxBytes": 256
+      "maxBytes": 1024
     },
     {
       "name": "z80-runtime",
