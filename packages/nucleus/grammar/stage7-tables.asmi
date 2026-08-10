@@ -43,22 +43,20 @@ HybridLL1RowDirectory:
 HybridLL1RowDirectoryEnd:
 HybridLL1Rows:
 HybridLL1Row0: ; compilation-unit
-            .db 0
+            .db 0+$80
             .db TokenConst
             .db TokenEof
             .db TokenRecord
             .db TokenSub
             .db TokenVar+$80
-            .db $FF
 HybridLL1Row1: ; top-level-list
             .db 1
             .db TokenConst
             .db TokenRecord
             .db TokenSub
             .db TokenVar+$80
-            .db 2
+            .db 2+$80
             .db TokenEof+$80
-            .db $FF
 HybridLL1Row2: ; top-level-declaration
             .db 3
             .db TokenConst+$80
@@ -66,74 +64,60 @@ HybridLL1Row2: ; top-level-declaration
             .db TokenVar+$80
             .db 5
             .db TokenRecord+$80
-            .db 6
+            .db 6+$80
             .db TokenSub+$80
-            .db $FF
 HybridLL1Row3: ; const-declaration
-            .db 7
+            .db 7+$80
             .db TokenConst+$80
-            .db $FF
 HybridLL1Row4: ; program-var-declaration
-            .db 8
+            .db 8+$80
             .db TokenVar+$80
-            .db $FF
 HybridLL1Row5: ; program-initializer-opt
             .db 9
             .db TokenEquals+$80
-            .db 10
+            .db 10+$80
             .db TokenNewline+$80
-            .db $FF
 HybridLL1Row6: ; record-declaration
-            .db 11
+            .db 11+$80
             .db TokenRecord+$80
-            .db $FF
 HybridLL1Row7: ; record-fields
-            .db 12
+            .db 12+$80
             .db TokenName+$80
-            .db $FF
 HybridLL1Row8: ; record-field-tail
             .db 13
             .db TokenName+$80
-            .db 14
+            .db 14+$80
             .db TokenEnd+$80
-            .db $FF
 HybridLL1Row9: ; record-field
-            .db 15
+            .db 15+$80
             .db TokenName+$80
-            .db $FF
 HybridLL1Row10: ; sub-definition
-            .db 16
+            .db 16+$80
             .db TokenSub+$80
-            .db $FF
 HybridLL1Row11: ; parameter-list
             .db 17
             .db TokenName+$80
-            .db 18
+            .db 18+$80
             .db TokenRightParen+$80
-            .db $FF
 HybridLL1Row12: ; parameter-tail
             .db 19
             .db TokenComma+$80
-            .db 20
+            .db 20+$80
             .db TokenRightParen+$80
-            .db $FF
 HybridLL1Row13: ; parameter
-            .db 21
+            .db 21+$80
             .db TokenName+$80
-            .db $FF
 HybridLL1Row14: ; result-opt
             .db 22
             .db TokenAs+$80
-            .db 23
+            .db 23+$80
             .db TokenFails
             .db TokenNewline+$80
-            .db $FF
 HybridLL1Row15: ; fails-opt
             .db 24
             .db TokenFails+$80
-            .db 25
+            .db 25+$80
             .db TokenNewline+$80
-            .db $FF
 HybridLL1Row16: ; routine-body
             .db 26
             .db TokenContinue
@@ -145,14 +129,13 @@ HybridLL1Row16: ; routine-body
             .db TokenReturn
             .db TokenVar
             .db TokenWhile+$80
-            .db 27
+            .db 27+$80
             .db TokenElse
             .db TokenElseIf+$80
-            .db $FF
 HybridLL1Row17: ; local-list
             .db 28
             .db TokenVar+$80
-            .db 29
+            .db 29+$80
             .db TokenContinue
             .db TokenEnd
             .db TokenExit
@@ -161,17 +144,14 @@ HybridLL1Row17: ; local-list
             .db TokenName
             .db TokenReturn
             .db TokenWhile+$80
-            .db $FF
 HybridLL1Row18: ; local-declaration
-            .db 30
+            .db 30+$80
             .db TokenVar+$80
-            .db $FF
 HybridLL1Row19: ; local-initializer-opt
             .db 31
             .db TokenEquals+$80
-            .db 32
+            .db 32+$80
             .db TokenNewline+$80
-            .db $FF
 HybridLL1Row20: ; statement-sequence
             .db 33
             .db TokenContinue
@@ -181,11 +161,10 @@ HybridLL1Row20: ; statement-sequence
             .db TokenName
             .db TokenReturn
             .db TokenWhile+$80
-            .db 34
+            .db 34+$80
             .db TokenElse
             .db TokenElseIf
             .db TokenEnd+$80
-            .db $FF
 HybridLL1Row21: ; statement
             .db 35
             .db TokenName+$80
@@ -198,59 +177,49 @@ HybridLL1Row21: ; statement
             .db TokenIf+$80
             .db 39
             .db TokenWhile+$80
-            .db 40
+            .db 40+$80
             .db TokenFor+$80
-            .db $FF
 HybridLL1Row22: ; return-statement
-            .db 41
+            .db 41+$80
             .db TokenReturn+$80
-            .db $FF
 HybridLL1Row23: ; transfer-statement
             .db 42
             .db TokenExit+$80
-            .db 43
+            .db 43+$80
             .db TokenContinue+$80
-            .db $FF
 HybridLL1Row24: ; if-statement
-            .db 44
+            .db 44+$80
             .db TokenIf+$80
-            .db $FF
 HybridLL1Row25: ; if-tail
             .db 45
             .db TokenElseIf+$80
             .db 46
             .db TokenElse+$80
-            .db 47
+            .db 47+$80
             .db TokenEnd+$80
-            .db $FF
 HybridLL1Row26: ; while-statement
-            .db 48
+            .db 48+$80
             .db TokenWhile+$80
-            .db $FF
 HybridLL1Row27: ; for-statement
-            .db 49
+            .db 49+$80
             .db TokenFor+$80
-            .db $FF
 HybridLL1Row28: ; for-bound
             .db 50
             .db TokenTo+$80
-            .db 51
+            .db 51+$80
             .db TokenUntil+$80
-            .db $FF
 HybridLL1Row29: ; for-step-opt
             .db 52
             .db TokenStep+$80
-            .db 53
+            .db 53+$80
             .db TokenNewline+$80
-            .db $FF
 HybridLL1Row30: ; type
-            .db 54
+            .db 54+$80
             .db TokenBoolean
             .db TokenName
             .db TokenString
             .db TokenU16
             .db TokenU8+$80
-            .db $FF
 HybridLL1Row31: ; type-atom
             .db 55
             .db TokenBoolean
@@ -258,27 +227,24 @@ HybridLL1Row31: ; type-atom
             .db TokenU8+$80
             .db 56
             .db TokenName+$80
-            .db 57
+            .db 57+$80
             .db TokenString+$80
-            .db $FF
 HybridLL1Row32: ; type-array-opt
             .db 58
             .db TokenLeftBracket+$80
-            .db 59
+            .db 59+$80
             .db TokenComma
             .db TokenEquals
             .db TokenFails
             .db TokenNewline
             .db TokenRightParen+$80
-            .db $FF
 HybridLL1Row33: ; scalar-type
             .db 60
             .db TokenU8+$80
             .db 61
             .db TokenU16+$80
-            .db 62
+            .db 62+$80
             .db TokenBoolean+$80
-            .db $FF
 HybridLL1RowsEnd:
 
 HybridLL1ProductionDirectory:

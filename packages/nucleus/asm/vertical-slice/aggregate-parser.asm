@@ -690,6 +690,25 @@ AggregateParseStringDecode:
             ; so decoding need only overwrite the length and payload bytes.
             JP   AggregateDecodeString
 
+.routine in A,BC out A,BC,carry,zero clobbers sign,parity,halfCarry,D,DE,HL
+AggregateBeginCompositeInitializer:
+            PUSH AF
+            CALL AggregatePeekPreserveBC
+            POP  DE
+            RET  C
+            CP   D
+            JP   NZ,AggregateInitializerShapeFailure
+            CALL AggregateTakePreserveBC
+            RET  C
+            PUSH BC
+            CALL AggregateInitializerEnter
+            POP  BC
+            RET  C
+            LD   A,C
+            OR   A
+            JP   Z,AggregateInitializerCountFailure
+            RET
+
 AggregateParseRecordInitializer:
             EX   DE,HL
             LD   A,L
@@ -704,19 +723,9 @@ AggregateParseRecordInitializer:
             LD   B,(HL)
             INC  HL
             LD   C,(HL)
-            CALL AggregatePeekPreserveBC
+            LD   A,TokenLeftParen
+            CALL AggregateBeginCompositeInitializer
             RET  C
-            CP   TokenLeftParen
-            JP   NZ,AggregateInitializerShapeFailure
-            CALL AggregateTakePreserveBC
-            RET  C
-            PUSH BC
-            CALL AggregateInitializerEnter
-            POP  BC
-            RET  C
-            LD   A,C
-            OR   A
-            JP   Z,AggregateInitializerCountFailure
 AggregateRecordInitializerLoop:
             PUSH BC
             LD   A,B
@@ -749,19 +758,9 @@ AggregateParseArrayInitializer:
             LD   B,(HL)
             INC  HL
             LD   C,(HL)
-            CALL AggregatePeekPreserveBC
+            LD   A,TokenLeftBracket
+            CALL AggregateBeginCompositeInitializer
             RET  C
-            CP   TokenLeftBracket
-            JP   NZ,AggregateInitializerShapeFailure
-            CALL AggregateTakePreserveBC
-            RET  C
-            PUSH BC
-            CALL AggregateInitializerEnter
-            POP  BC
-            RET  C
-            LD   A,C
-            OR   A
-            JP   Z,AggregateInitializerCountFailure
 AggregateArrayInitializerLoop:
             PUSH BC
             LD   A,B

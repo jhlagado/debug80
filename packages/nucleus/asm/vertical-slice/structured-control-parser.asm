@@ -615,10 +615,9 @@ StructuredCounterFailure:
             JP   CompilerSetDiagnostic
 
 ; Emit the fixed-width counted-loop records from the current frame.
-.routine in HL out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
-StructuredEmitForSetup:
+.routine in A,HL out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+StructuredEmitForPrefix:
             PUSH HL
-            LD   A,SemanticForSetup
             CALL SemanticSinkOperation
             POP  HL
             RET  C
@@ -630,25 +629,22 @@ StructuredEmitForSetup:
             POP  HL
             RET  C
             INC  HL
+            RET
+
+.routine in HL out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+StructuredEmitForSetup:
+            LD   A,SemanticForSetup
+            CALL StructuredEmitForPrefix
+            RET  C
             LD   A,(HL)
             JP   SemanticSinkPut
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 StructuredEmitForTest:
             CALL ControlTopFrame
-            PUSH HL
             LD   A,SemanticForTest
-            CALL SemanticSinkOperation
-            POP  HL
+            CALL StructuredEmitForPrefix
             RET  C
-            LD   DE,ControlFrameCounter
-            ADD  HL,DE
-            LD   A,(HL)                  ; counter
-            PUSH HL
-            CALL SemanticSinkPut
-            POP  HL
-            RET  C
-            INC  HL
             LD   A,(HL)                  ; mode
             PUSH HL
             CALL SemanticSinkPut

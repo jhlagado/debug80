@@ -52,7 +52,7 @@ SymbolPrepareCurrentWord:
             CALL SymbolFindCurrent
             POP  DE
             POP  BC
-            JR   C,SymbolPrepareDuplicate
+            JP   C,TypedDuplicateNameFailure
             LD   A,(SymbolCount)
             CP   SymbolCapacity
             JR   NC,SymbolPrepareFull
@@ -83,8 +83,6 @@ SymbolPrepareCurrentWord:
             LD   (HL),B
             OR   A
             RET
-SymbolPrepareDuplicate:
-            JP   TypedDuplicateNameFailure
 SymbolPrepareFull:
             LD   A,DiagnosticSymbolCapacity
             JP   CompilerSetDiagnostic

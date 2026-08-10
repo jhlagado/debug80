@@ -8,8 +8,6 @@ tables live in [`../grammar/`](../grammar/).
 
 Files ending in `-proof.asm` and `-measurement.asm` are not production code.
 They remain here because the proof harness still assembles them against the
-same source modules and uses them to detect regressions in earlier stages. The
-recursive-descent Stage 7 fixture is retained only for differential comparison
-with the LL(1) parser.
+same source modules and uses them to detect regressions in earlier stages.
 
 The corresponding manifests and memory limits live in [`../proofs/`](../proofs/).

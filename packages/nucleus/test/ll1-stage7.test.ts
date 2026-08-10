@@ -53,29 +53,13 @@ describe("Stage 7 packed LL(1)", () => {
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
     expect(outcome.extents).toContainEqual({
       name: "ll1-engine",
-      bytes: 229,
+      bytes: 230,
     });
     expect(outcome.extents).toContainEqual({
       name: "ll1-workspace",
       bytes: 78,
     });
   });
-
-  it("locks the committed recursive-descent Stage 7 baseline", async () => {
-    const outcome = await runProofManifest(
-      proof("aggregate-call-z80-slice-proof"),
-    );
-    expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
-    expect(outcome.extents).toContainEqual({ name: "parser", bytes: 8_064 });
-    expect(outcome.extents).toContainEqual({
-      name: "compiler-core",
-      bytes: 12_312,
-    });
-    expect(outcome.extents).toContainEqual({
-      name: "compiler-workspace",
-      bytes: 1_198,
-    });
-  }, 30_000);
 
   it("runs the Stage 7 parser through the complete packed grammar", async () => {
     const outcome = await runProofManifest(
@@ -85,14 +69,14 @@ describe("Stage 7 packed LL(1)", () => {
       outcome.extents.map(({ name, bytes }) => [name, bytes]),
     );
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
-    expect(outcome.extents).toContainEqual({ name: "parser", bytes: 7_755 });
+    expect(outcome.extents).toContainEqual({ name: "parser", bytes: 7_683 });
     expect(outcome.extents).toContainEqual({
       name: "ll1-engine",
-      bytes: 229,
+      bytes: 230,
     });
     expect(outcome.extents).toContainEqual({
       name: "ll1-tables",
-      bytes: 654,
+      bytes: 620,
     });
     expect(outcome.extents).toContainEqual({
       name: "ll1-actions",
@@ -100,11 +84,11 @@ describe("Stage 7 packed LL(1)", () => {
     });
     expect(outcome.extents).toContainEqual({
       name: "compiler-core",
-      bytes: 12_003,
+      bytes: 11_875,
     });
     expect(outcome.extents).toContainEqual({
       name: "compiler-code",
-      bytes: 11_784,
+      bytes: 11_656,
     });
     expect(outcome.extents).toContainEqual({
       name: "compiler-immutable",
@@ -123,67 +107,14 @@ describe("Stage 7 packed LL(1)", () => {
         (extents.get("ll1-engine") ?? -1) -
         (extents.get("ll1-tables") ?? -1) -
         (extents.get("ll1-actions") ?? -1),
-    ).toBe(4_968);
+    ).toBe(4_929);
   }, 30_000);
 
-  it("differentially matches the recursive-descent Stage 7 oracle", async () => {
-    const [oracle, candidate] = await Promise.all([
-      runProofManifest(proof("aggregate-call-z80-slice-proof")),
-      runProofManifest(proof("stage7-ll1-aggregate-call-z80-slice-proof")),
-    ]);
-    const region = (
-      outcome: typeof oracle,
-      from: string,
-      to: string,
-    ): number[] => {
-      const start = outcome.symbols[from];
-      const end = outcome.symbols[to];
-      expect(start, `missing ${from}`).toBeTypeOf("number");
-      expect(end, `missing ${to}`).toBeTypeOf("number");
-      return Array.from(outcome.memory.slice(start, end));
-    };
-    for (const [from, to] of [
-      ["SemanticBufferBase", "SemanticBufferLimit"],
-      ["GeneratedBase", "GeneratedLimit"],
-      ["StateBase", "StateEnd"],
-      ["ProofExpectedSP", "ProofEnd"],
-    ] as const) {
-      expect(region(candidate, from, to)).toEqual(region(oracle, from, to));
-    }
-    const extent = (outcome: typeof oracle, name: string): number =>
-      outcome.extents.find((entry) => entry.name === name)?.bytes ?? -1;
-    expect(
-      extent(candidate, "compiler-core") - extent(oracle, "compiler-core"),
-    ).toBe(-309);
-    expect(
-      extent(candidate, "compiler-workspace") -
-        extent(oracle, "compiler-workspace"),
-    ).toBe(78);
-  }, 30_000);
-
-  it("matches every retained Stage 7 action family against recursive descent", async () => {
-    const [oracle, candidate] = await Promise.all([
-      runProofManifest(proof("stage7-rd-parser-coverage-proof")),
-      runProofManifest(proof("stage7-ll1-parser-coverage-proof")),
-    ]);
-    const region = (
-      outcome: typeof oracle,
-      from: string,
-      to: string,
-    ): number[] => {
-      const start = outcome.symbols[from];
-      const end = outcome.symbols[to];
-      expect(start, `missing ${from}`).toBeTypeOf("number");
-      expect(end, `missing ${to}`).toBeTypeOf("number");
-      return Array.from(outcome.memory.slice(start, end));
-    };
-    for (const [from, to] of [
-      ["SemanticBufferBase", "SemanticBufferLimit"],
-      ["GeneratedBase", "GeneratedLimit"],
-      ["StateBase", "StateEnd"],
-      ["ProofGeneratedSize", "ProofEnd"],
-    ] as const) {
-      expect(region(candidate, from, to)).toEqual(region(oracle, from, to));
-    }
+  it("executes every retained Stage 7 action family", async () => {
+    const outcome = await runProofManifest(
+      proof("stage7-ll1-parser-coverage-proof"),
+    );
+    expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
+    expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
   }, 30_000);
 });

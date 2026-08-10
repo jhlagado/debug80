@@ -1,5 +1,4 @@
-; Common end-to-end discriminator for the recursive-descent and packed LL(1)
-; Stage 7 parsers. The including source selects Stage7LL1 before this body.
+; End-to-end coverage for the packed LL(1) Stage 7 parser.
 
             .include "memory-map.asmi"
             .include "loop-compiler-state.asmi"
@@ -76,10 +75,8 @@ Stage7ParserCoverageSource:
             .db "end",10
 Stage7ParserCoverageSourceEnd:
 
-; The retired recursive-descent Stage 7 integration leaves its top-level
-; route after a constant declaration. Exercise the adopted LL(1) constant
-; and named-step actions independently, then publish the common comparison
-; program last so both parser builds expose identical final state.
+; Exercise constant declarations and named counted-loop steps separately from
+; the larger control-flow program.
 Stage7LL1ConstantSource:
             .db "const stepSize as u8 = 1",10
             .db "var out as u8 = 0",10
@@ -104,7 +101,6 @@ ProofStart:
             XOR  A
             LD   (ProofStatus),A
             LD   (ProofCase),A
-.if Stage7LL1
             LD   A,160
             LD   HL,Stage7LL1ConstantSource
             LD   DE,Stage7LL1ConstantSourceEnd
@@ -124,7 +120,6 @@ ProofStart:
             LD   A,(ServiceOutputBase)
             CP   2
             JP   NZ,ProofConstantOutputFailure
-.endif
             LD   A,160
             LD   HL,Stage7ParserCoverageSource
             LD   DE,Stage7ParserCoverageSourceEnd

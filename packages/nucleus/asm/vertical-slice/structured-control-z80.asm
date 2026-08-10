@@ -14,7 +14,7 @@ EmitControlExitLabel    .equ EmitFailureFixup+1
 StructuredRecordFixup:
             LD   A,C
             CP   EmitControlLabelCapacity
-            JR   NC,StructuredLabelFailure
+            JP   NC,ControlLabelFailure
             LD   A,(EmitControlFixupCount)
             CP   EmitControlFixupCapacity
             JR   NC,StructuredFixupFailure
@@ -37,8 +37,6 @@ StructuredRecordFixup:
             INC  (HL)
             XOR  A
             RET
-StructuredLabelFailure:
-            JP   ControlLabelFailure
 StructuredFixupFailure:
             LD   A,DiagnosticControlFixupCapacity
             JP   CompilerSetDiagnostic
@@ -68,7 +66,7 @@ StructuredLabel:
 StructuredDefineLabel:
             LD   A,C
             CP   EmitControlLabelCapacity
-            JR   NC,StructuredLabelFailure
+            JP   NC,ControlLabelFailure
             LD   B,0
             LD   HL,EmitControlLabelValidBase
             ADD  HL,BC

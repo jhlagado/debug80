@@ -602,24 +602,20 @@ constant-expression preparation, and repeated identifier comparisons. One
 proposed initializer shortcut was rejected because it would overwrite a live
 constant result.
 
-The final recursive-descent build measures 12,093 code bytes plus 219 immutable
-bytes, for a 12,312-byte compiler core. Workspace is 1,198 bytes. Its parser is
-8,064 bytes. This build remains a differential oracle while the packed LL(1)
-path is established.
-
-The adopted packed LL(1) build measures 11,784 code bytes plus the same 219
-immutable bytes, for a 12,003-byte compiler core. Workspace is 1,276 bytes.
-The 7,755-byte parser consists of 4,968 bytes of retained precedence and
-semantic support, a 229-byte interpreter, 654 bytes of generated tables, and
-1,904 bytes of semantic actions. It therefore removes 309 core bytes and adds
-78 workspace bytes relative to the recursive-descent oracle. The main Stage 7
-proof executes 826,798 instructions and 7,643,527 T-states. A separate
-differential program exercises constants, default and explicit scalar locals,
+The adopted packed LL(1) build measures 11,656 code bytes plus the same 219
+immutable bytes, for an 11,875-byte compiler core. Workspace is 1,276 bytes.
+The 7,683-byte parser consists of 4,929 bytes of retained precedence and
+semantic support, a 230-byte interpreter, 620 bytes of generated tables, and
+1,904 bytes of semantic actions. The main Stage 7 proof executes 823,997
+instructions and 7,640,666 T-states. A separate coverage program exercises
+constants, default and explicit scalar locals,
 `elseif`, `while`, both counted-loop directions, default, named, and signed
-steps, and nearest-loop `exit` and `continue`. Both parsers produce identical
-semantic transcripts, generated images, and final runtime state for their
-shared surface. The LL(1) proof also checks the named-constant route that the
-retired Stage 7 top-level parser cannot serve as an oracle for.
+steps, and nearest-loop `exit` and `continue`. It compiles and runs those forms,
+then checks the generated program's output and retained local values.
+
+Prediction rows mark their final production in the production ordinal's high
+bit instead of storing a separate row terminator. This caps the generated
+grammar at 127 productions; Stage 7 uses 63.
 
 Completion evidence:
 

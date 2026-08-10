@@ -240,9 +240,8 @@ type-directed aggregate initializers, and name-led statements remain explicit
 external islands because their decisions depend on retained type and symbol
 information. A review must regenerate the tables and rerun the grammar
 analyzer after a grammar change. Backtracking and abstract syntax trees remain
-outside the first compiler plan. The former recursive-descent parser may remain
-temporarily as a differential test oracle; it is not an active implementation
-path.
+outside the first compiler plan. The packed LL(1) parser is the only active
+Stage 7 implementation path.
 
 The first compiler uses one precedence-driven loop and a compact operator
 table for binary expressions. Comparison's single-use rule and Boolean

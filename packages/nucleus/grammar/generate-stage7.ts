@@ -166,7 +166,7 @@ export function generateStage7Tables(): string {
   ];
   if (nonterminals.length > 64) throw new Error("too many nonterminals");
   if (actions.length > 127) throw new Error("too many actions/externals");
-  if (grammar.productions.length > 255) throw new Error("too many productions");
+  if (grammar.productions.length > 127) throw new Error("too many productions");
   if (grammar.productions.some(({ rhs }) => rhs.length > 64))
     throw new Error("production exceeds parser stack capacity");
   const productionSplit = Math.ceil(grammar.productions.length / 2);
@@ -178,7 +178,6 @@ export function generateStage7Tables(): string {
       if (grammar.productions[index]?.lhs !== nonterminal) continue;
       rowOffset += 1 + analysis.predictions[index]!.length;
     }
-    rowOffset += 1;
   }
   const productionHalfBytes = (from: number, to: number) =>
     grammar.productions
@@ -218,19 +217,22 @@ export function generateStage7Tables(): string {
   ];
   for (const [nonterminalIndex, name] of nonterminals.entries()) {
     lines.push(`HybridLL1Row${nonterminalIndex}: ; ${name}`);
-    grammar.productions.forEach((production, productionIndex) => {
-      if (production.lhs !== name) return;
+    const rowProductions = grammar.productions
+      .map((production, productionIndex) => ({ production, productionIndex }))
+      .filter(({ production }) => production.lhs === name);
+    rowProductions.forEach(({ production, productionIndex }, rowIndex) => {
       const predictions = analysis.predictions[productionIndex];
       if (predictions.length === 0)
         throw new Error(`production ${productionIndex} has no prediction`);
-      lines.push(`            .db ${productionIndex}`);
+      lines.push(
+        `            .db ${productionIndex}${rowIndex === rowProductions.length - 1 ? "+$80" : ""}`,
+      );
       predictions.forEach((token, index) =>
         lines.push(
           `            .db ${token}${index === predictions.length - 1 ? "+$80" : ""}`,
         ),
       );
     });
-    lines.push("            .db $FF");
   }
   lines.push("HybridLL1RowsEnd:", "", "HybridLL1ProductionDirectory:");
   grammar.productions

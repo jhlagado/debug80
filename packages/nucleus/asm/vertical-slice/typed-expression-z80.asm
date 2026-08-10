@@ -346,6 +346,12 @@ TypedReadTrapPosition:
             LD   (EmitTypedTrapPosition),DE
             RET
 
+.routine in DE out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedEmitTrapHead:
+            LD   (EmitExitFixup),DE
+            LD   HL,(EmitTypedTrapPosition)
+            JP   EmitLoadHl
+
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
 TypedDivide8:
             LD   C,1
@@ -364,17 +370,12 @@ TypedDivide:
             RET  C
             CALL EmitJrNcPlaceholder
             RET  C
-            LD   (EmitExitFixup),DE
-            LD   HL,(EmitTypedTrapPosition)
-            CALL EmitLoadHl
+            CALL TypedEmitTrapHead
             RET  C
             LD   A,3
             CALL EmitLoadAImmediate
             RET  C
-            CALL TypedEmitTrapEnding
-            RET  C
-            LD   DE,(EmitExitFixup)
-            CALL PatchHere
+            CALL TypedEmitTrapTail
             RET  C
             LD   A,(EmitTypedWidth)
             OR   A
@@ -442,17 +443,12 @@ TypedNarrow8:
             LD   A,$28                    ; JR Z,success
             CALL EmitRelativePlaceholder
             RET  C
-            LD   (EmitExitFixup),DE
-            LD   HL,(EmitTypedTrapPosition)
-            CALL EmitLoadHl
+            CALL TypedEmitTrapHead
             RET  C
             LD   A,2
             CALL EmitLoadAImmediate
             RET  C
-            CALL TypedEmitTrapEnding
-            RET  C
-            LD   DE,(EmitExitFixup)
-            CALL PatchHere
+            CALL TypedEmitTrapTail
             RET  C
             JP   TypedPushHL
 
@@ -479,7 +475,7 @@ TypedStoreProgram16:
             LD   A,$22
             JP   EmitOpcodeWord
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+.routine out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
 TypedStoreLocal8:
             CALL TypedLocalDisplacement
             LD   A,$E1
@@ -489,12 +485,7 @@ TypedStoreLocal8:
             JP   TypedEmitIndexed
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 TypedStoreLocal16:
-            CALL TypedLocalDisplacement
-            LD   A,$E1
-            CALL EmitByte
-            RET  C
-            LD   HL,TypedStoreLocalLow
-            CALL TypedEmitIndexed
+            CALL TypedStoreLocal8
             RET  C
             DEC  C
             LD   HL,TypedStoreLocalHigh
@@ -511,16 +502,11 @@ TypedWrite8:
             RET  C
             CALL EmitJrNcPlaceholder
             RET  C
-            LD   (EmitExitFixup),DE
-            LD   HL,(EmitTypedTrapPosition)
-            CALL EmitLoadHl
+            CALL TypedEmitTrapHead
             RET  C
             CALL EmitUnhandledTrapPrefix
             RET  C
-            CALL TypedEmitTrapEnding
-            RET  C
-            LD   DE,(EmitExitFixup)
-            JP   PatchHere
+            JP   TypedEmitTrapTail
 
 ; Every terminal typed-expression trap must dismantle the routine frame before
 ; emitting the common trap record and RET. Without this epilogue the generated
@@ -542,6 +528,13 @@ TypedEmitTrapEnding:
             CALL EmitByte
             RET  C
             JP   EmitTrapEnding
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedEmitTrapTail:
+            CALL TypedEmitTrapEnding
+            RET  C
+            LD   DE,(EmitExitFixup)
+            JP   PatchHere
 
 ; Save the outer machine frame before main allocates locals, and restore that
 ; exact frame on every terminal trap, including a trap inside recursive calls.
@@ -613,17 +606,12 @@ TypedCallScalar:
             RET  C
             CALL EmitJrNcPlaceholder
             RET  C
-            LD   (EmitExitFixup),DE
-            LD   HL,(EmitTypedTrapPosition)
-            CALL EmitLoadHl
+            CALL TypedEmitTrapHead
             RET  C
             LD   A,5
             CALL EmitLoadAImmediate
             RET  C
-            CALL TypedEmitTrapEnding
-            RET  C
-            LD   DE,(EmitExitFixup)
-            CALL PatchHere
+            CALL TypedEmitTrapTail
             RET  C
             LD   C,ControlRoutineLabel
             LD   A,$CD                    ; CALL nn

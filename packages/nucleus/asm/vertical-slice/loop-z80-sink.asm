@@ -8,7 +8,7 @@ EmitByte:
             OR   A
             SBC  HL,DE
             ADD  HL,DE
-            JR   Z,EmitByteFull
+            JP   Z,SemanticSinkPutFull
 EmitByteRoom:
             LD   A,B
             LD   (HL),A
@@ -16,9 +16,6 @@ EmitByteRoom:
             LD   (EmitCursor),HL
             OR   A
             RET
-EmitByteFull:
-            JP   SemanticSinkPutFull
-
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 EmitWord:
             LD   C,H

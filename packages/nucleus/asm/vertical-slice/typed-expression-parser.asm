@@ -6,19 +6,23 @@
 ; postfix stream of 16-bit carriers; u8 and boolean carriers have a zero high
 ; byte. The declared type, not the carrier, controls width and compatibility.
 
+.routine out A,B,HL,carry,zero clobbers sign,parity,halfCarry,C,DE
+TypedMatchForwardName:
+            LD   A,(ForwardOrdinal)
+            OR   A
+            RET  Z
+            LD   HL,(ForwardNamePointer)
+            LD   A,(ForwardNameLength)
+            LD   B,A
+            JP   TokenNameEquals
+
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedRetainDeclarationName:
             LD   HL,NameMain
             LD   B,4
             CALL TokenNameEquals
             JP   C,TypedDuplicateNameFailure
-            LD   A,(ForwardOrdinal)
-            OR   A
-            JR   Z,TypedRetainDeclarationNameReady
-            LD   HL,(ForwardNamePointer)
-            LD   A,(ForwardNameLength)
-            LD   B,A
-            CALL TokenNameEquals
+            CALL TypedMatchForwardName
             JP   C,TypedDuplicateNameFailure
 TypedRetainDeclarationNameReady:
             LD   HL,(TokenLexemePointer)
@@ -553,13 +557,7 @@ TypedPrimaryName:
             LD   A,D
             JR   TypedPrimaryNameResolved
 .endif
-            LD   A,(ForwardOrdinal)
-            OR   A
-            JR   Z,TypedPrimaryVariableName
-            LD   HL,(ForwardNamePointer)
-            LD   A,(ForwardNameLength)
-            LD   B,A
-            CALL TokenNameEquals
+            CALL TypedMatchForwardName
             JP   C,TypedPrimaryScalarCall
 TypedPrimaryVariableName:
             CALL SymbolLookupCurrent
@@ -813,6 +811,7 @@ TypedParseUnary:
             CP   TokenMinus
             JR   Z,TypedUnaryMinus
             JP   TypedParsePrimary
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedUnaryPlus:
             CALL ParserTake
             RET  C
@@ -826,14 +825,10 @@ TypedUnaryPlus:
             OR   A
             RET
 TypedUnaryMinus:
-            CALL ParserTake
-            RET  C
-            CALL TypedParseUnary
+            CALL TypedUnaryPlus
             RET  C
             LD   D,A
             AND  ScalarMetaTypeMask
-            CP   ScalarTypeBoolean
-            JP   Z,TypedTypeFailure
             OR   A
             JR   NZ,TypedUnaryMinusTyped
             LD   A,(ExpressionExpectedType)
@@ -1540,8 +1535,7 @@ TypedRetainConstantExpression:
             AND  ScalarMetaConstant
             JP   Z,TypedTypeFailure
             LD   (DeclarationPayload),HL
-            CALL ParserExpectLine
-            RET
+            JP   ParserExpectLine
 
 ; Current token is the variable name.
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY

@@ -72,10 +72,7 @@ HybridLL1Nonterminal:
             JR   C,HybridLL1PredictionPeekFailure
             LD   C,A
 HybridLL1PredictionNext:
-            LD   A,(HL)
-            CP   $FF
-            JR   Z,HybridLL1PredictionFailure
-            LD   B,A
+            LD   B,(HL)
             INC  HL
 HybridLL1PredictionToken:
             LD   A,(HL)
@@ -86,6 +83,8 @@ HybridLL1PredictionToken:
             INC  HL
             BIT  7,E
             JR   Z,HybridLL1PredictionToken
+            BIT  7,B
+            JR   NZ,HybridLL1PredictionFailure
             JR   HybridLL1PredictionNext
 HybridLL1PredictionFailure:
             POP  AF
@@ -96,6 +95,7 @@ HybridLL1PredictionPeekFailure:
 HybridLL1PredictionFound:
             POP  AF
             LD   A,B
+            AND  $7F
             CALL HybridLL1PushProduction
             RET  C
             JR   HybridLL1Loop
