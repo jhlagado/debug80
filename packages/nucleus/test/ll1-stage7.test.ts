@@ -103,7 +103,7 @@ describe("Stage 7 packed LL(1)", () => {
     });
     expect(outcome.extents).toContainEqual({
       name: "z80-runtime",
-      bytes: 596,
+      bytes: 649,
     });
     expect(
       (extents.get("parser") ?? -1) -

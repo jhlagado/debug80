@@ -566,6 +566,9 @@ ProofStart:
             CP   DiagnosticInternalOperation
             JP   NZ,ProofFailUnbalancedBoolean
 
+            CALL ProofCheckArithmeticFastPaths
+            JP   C,ProofFailArithmeticRuntime
+
             ; Restore the accepted compiler result for host-side inspection.
             LD   A,80
             LD   HL,TypedAcceptedSource
@@ -616,6 +619,74 @@ ProofCallGenerated:
             SBC  HL,DE
             RET  Z
 ProofCallGeneratedNo:
+            SCF
+            RET
+
+; The runtime fast paths must preserve the full multiply/divide/modulo result
+; matrix at their gating boundaries. Rows are dividend, divisor, quotient,
+; remainder, and wrapped product.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX
+ProofCheckArithmeticFastPaths:
+            LD   IX,ProofArithmeticCases
+ProofCheckArithmeticRow:
+            LD   L,(IX+0)
+            LD   H,(IX+1)
+            LD   E,(IX+2)
+            LD   D,(IX+3)
+            CALL DivideU16
+            JR   C,ProofCheckArithmeticNo
+            LD   E,(IX+4)
+            LD   D,(IX+5)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,ProofCheckArithmeticNo
+            LD   L,(IX+0)
+            LD   H,(IX+1)
+            LD   E,(IX+2)
+            LD   D,(IX+3)
+            CALL ModuloU16
+            JR   C,ProofCheckArithmeticNo
+            LD   E,(IX+6)
+            LD   D,(IX+7)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,ProofCheckArithmeticNo
+            LD   L,(IX+0)
+            LD   H,(IX+1)
+            LD   E,(IX+2)
+            LD   D,(IX+3)
+            CALL MultiplyU16
+            JR   C,ProofCheckArithmeticNo
+            LD   E,(IX+8)
+            LD   D,(IX+9)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,ProofCheckArithmeticNo
+            LD   DE,10
+            ADD  IX,DE
+            PUSH IX
+            POP  HL
+            LD   DE,ProofArithmeticCasesEnd
+            OR   A
+            SBC  HL,DE
+            JR   NZ,ProofCheckArithmeticRow
+
+            LD   HL,1000
+            LD   DE,0
+            CALL DivideU16
+            JR   NC,ProofCheckArithmeticNo
+            LD   HL,1000
+            LD   DE,0
+            CALL ModuloU16
+            JR   NC,ProofCheckArithmeticNo
+            LD   HL,37
+            LD   DE,0
+            CALL MultiplyU16
+            JR   C,ProofCheckArithmeticNo
+            LD   A,H
+            OR   L
+            RET  Z
+ProofCheckArithmeticNo:
             SCF
             RET
 
@@ -695,7 +766,7 @@ ProofFailBooleanCapacity:     LD A,36
 ProofFailBooleanUnderflow:    LD A,37
                               JP ProofFailed
 ProofFailRetiredOperation:    LD A,38
-                              JR ProofFailed
+                              JP ProofFailed
 ProofFailUnbalancedBoolean:   LD A,39
                               JR ProofFailed
 ProofFailFrame:               LD A,40
@@ -759,6 +830,8 @@ ProofFailNestedNarrowState:   LD A,62
 ProofFailNestedNarrowOffset:  LD A,63
                               JR ProofFailed
 ProofFailNestedNarrowAtomic:  LD A,64
+                              JR ProofFailed
+ProofFailArithmeticRuntime:   LD A,71
 ProofFailed:
             LD   (ProofCase),A
             LD   A,$E0
@@ -769,6 +842,14 @@ TypedGeneratedSize:           .dw 0
 ProofExpectedSP:              .dw 0
 ProofStatus:                  .db 0
 ProofCase:                    .db 0
+ProofArithmeticCases:
+            .dw 1000,1,1000,0,1000
+            .dw 1000,2,500,0,2000
+            .dw 1000,255,3,235,58392
+            .dw 1000,256,3,232,59392
+            .dw 1000,257,3,229,60392
+            .dw 65535,65535,1,0,1
+ProofArithmeticCasesEnd:
 ProofEnd:
 
 GeneratedTypedEnd             .equ GeneratedBase+857

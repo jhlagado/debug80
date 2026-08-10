@@ -836,6 +836,20 @@ commit, `mod` adds 44 compiler-code bytes and five immutable bytes, for 49
 compiler-core bytes, and 11 runtime bytes; workspace and maximum generated
 program size do not change.
 
+The next increment changes only the target runtime. `MultiplyU16` and the
+shared divide/modulo core recognize nonzero power-of-two operands whose high
+byte is zero. Multiplication shifts left; division shifts the quotient right
+while retaining the remainder required by `mod`. Operands at or above 256 stay
+on the existing general paths, where repeated division is already bounded and
+the shortcut would be slower. Direct runtime proofs cover zero, 1, 2, 255,
+256, 257, and 65,535 for quotient, remainder, and wrapped product. Measured
+compiler code remains 13,847 bytes, immutable data 382 bytes, compiler core
+14,229 bytes, workspace 1,509 bytes, and maximum generated program 1,019
+bytes. The selected runtime grows by 53 bytes, from 596 to 649. The unchanged
+1,653-byte Chapter 21 proof executes 1,428,272 instructions in 13,445,707
+T-states. This is a runtime-only increment: no compiler-core, workspace, or
+generated-output account moves.
+
 ## Capacity ledger
 
 The first implementation fixes a numeric limit before each bounded structure is

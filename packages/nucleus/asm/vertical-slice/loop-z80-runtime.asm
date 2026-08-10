@@ -229,10 +229,30 @@ MultiplyU8Loop:
             ADD  A,C
             JR   MultiplyU8Loop
 
-; Full-width multiplication for typed generated expressions. The sixteen
-; shift/add rounds return the low sixteen bits, matching u16 wraparound.
+; Full-width multiplication for typed generated expressions. Small nonzero
+; powers of two shift directly; the general sixteen-round path returns the low
+; sixteen bits, matching u16 wraparound.
 .routine in DE,HL out HL,carry,zero clobbers sign,parity,halfCarry,A,BC,DE
 MultiplyU16:
+            LD   A,D
+            OR   A
+            JR   NZ,MultiplyU16General
+            LD   A,E
+            OR   A
+            JR   Z,MultiplyU16General
+            DEC  A
+            AND  E
+            JR   NZ,MultiplyU16General
+            LD   A,E
+MultiplyU16Power:
+            SRL  A
+            JR   Z,MultiplyU16PowerDone
+            ADD  HL,HL
+            JR   MultiplyU16Power
+MultiplyU16PowerDone:
+            OR   A
+            RET
+MultiplyU16General:
             LD   BC,0
             LD   A,16
 MultiplyU16Loop:
@@ -273,6 +293,32 @@ DivideU16Core:
             LD   A,D
             OR   E
             JR   Z,DivideU16Zero
+            LD   A,D
+            OR   A
+            JR   NZ,DivideU16General
+            LD   A,E
+            DEC  A
+            AND  E
+            JR   NZ,DivideU16General
+            LD   A,E
+            DEC  A
+            AND  L
+            LD   D,A
+            LD   A,E
+DivideU16Power:
+            SRL  A
+            JR   Z,DivideU16PowerDone
+            SRL  H
+            RR   L
+            JR   DivideU16Power
+DivideU16PowerDone:
+            LD   B,H
+            LD   C,L
+            LD   L,D
+            LD   H,0
+            OR   A
+            RET
+DivideU16General:
             LD   BC,0
 DivideU16Loop:
             OR   A
