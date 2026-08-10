@@ -619,62 +619,6 @@ Stage7SymbolIndexReady:
             OR   A
             RET
 
-; Current token is a field name. A is the exact record type. Return the field
-; type in A and packed byte offset in C.
-.routine in A out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
-Stage7LookupField:
-            CALL AggregateTypeAddress
-            LD   A,(HL)
-            CP   AggregateTypeKindRecord
-            JP   NZ,TypedTypeFailure
-            INC  HL
-            LD   A,(HL)
-            ADD  A,A
-            LD   E,A
-            LD   D,0
-            LD   HL,AggregateRecordTableBase
-            ADD  HL,DE
-            LD   B,(HL)
-            INC  HL
-            LD   D,(HL)
-Stage7LookupFieldLoop:
-            LD   A,D
-            OR   A
-            JR   Z,Stage7FieldMissing
-            LD   A,B
-            CALL AggregateFieldAddress
-            PUSH BC
-            PUSH DE
-            PUSH HL
-            LD   E,(HL)
-            INC  HL
-            LD   D,(HL)
-            INC  HL
-            LD   A,(HL)
-            LD   B,A
-            EX   DE,HL
-            CALL TokenNameEquals
-            POP  HL
-            POP  DE
-            POP  BC
-            JR   C,Stage7LookupFieldFound
-            INC  B
-            DEC  D
-            JR   Stage7LookupFieldLoop
-Stage7LookupFieldFound:
-            LD   A,B
-            CALL AggregateFieldAddress
-            LD   DE,AggregateFieldTypeId
-            ADD  HL,DE
-            LD   A,(HL)
-            INC  HL
-            LD   C,(HL)
-            OR   A
-            RET
-Stage7FieldMissing:
-            LD   A,DiagnosticUnknownName
-            JP   CompilerSetDiagnostic
-
 .routine in A,C out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7EmitOperationByte:
             PUSH BC
@@ -740,7 +684,7 @@ Stage7PathSuffixLoop:
             CP   TokenDot
             JR   Z,Stage7PathFieldComposition
             CP   TokenLeftBracket
-            JR   Z,Stage7PathIndexComposition
+            JP   Z,Stage7PathIndexComposition
             POP  AF
             LD   D,0
             OR   A
@@ -785,16 +729,70 @@ Stage7PathField:
             LD   D,1
             OR   A
             RET
+Stage7FieldMissing:
+            LD   A,DiagnosticUnknownName
+            JP   CompilerSetDiagnostic
 Stage7PathRecordField:
             POP  AF
-            CALL Stage7LookupField
-            RET  C
+            CALL AggregateTypeAddress
+            LD   A,(HL)
+            CP   AggregateTypeKindRecord
+            JP   NZ,TypedTypeFailure
+            INC  HL
+            LD   A,(HL)
+            ADD  A,A
+            LD   E,A
+            LD   D,0
+            LD   HL,AggregateRecordTableBase
+            ADD  HL,DE
+            LD   B,(HL)
+            INC  HL
+            LD   D,(HL)
+Stage7PathRecordFieldLoop:
+            LD   A,D
+            OR   A
+            JR   Z,Stage7FieldMissing
+            LD   A,B
+            CALL AggregateFieldAddress
+            PUSH BC
+            PUSH DE
+            PUSH HL
+            LD   E,(HL)
+            INC  HL
+            LD   D,(HL)
+            INC  HL
+            LD   A,(HL)
+            LD   B,A
+            EX   DE,HL
+            CALL TokenNameEquals
+            POP  HL
+            POP  DE
+            POP  BC
+            JR   C,Stage7PathRecordFieldFound
+            INC  B
+            DEC  D
+            JR   Stage7PathRecordFieldLoop
+Stage7PathRecordFieldFound:
+            LD   A,B
+            CALL AggregateFieldAddress
+            LD   DE,AggregateFieldTypeId
+            ADD  HL,DE
+            LD   A,(HL)
+            INC  HL
+            LD   E,(HL)
+            INC  HL
+            LD   D,(HL)
+            OR   A
             PUSH AF
+            LD   (Stage7PathOffset),DE
             LD   A,SemanticSelectField
-            CALL Stage7EmitOperationByte
+            CALL SemanticSinkOperation
+            JP   C,Stage7PathSuffixFailure
+            LD   HL,(Stage7PathOffset)
+            CALL Stage7EmitWord
             JP   C,Stage7PathSuffixFailure
             POP  AF
-            JR   Stage7PathSuffixLoop
+            JP   Stage7PathSuffixLoop
 Stage7PathIndexComposition:
             POP  AF
             LD   (Stage7PathType),A
@@ -845,35 +843,32 @@ Stage7PathIndex:
             CP   AggregateTypeKindArray
             JP   NZ,Stage7PathFieldTypeFailure
             INC  HL
-            LD   C,(HL)                  ; element type
+            LD   A,(HL)                  ; element type
+            LD   (Stage7PathType),A
             INC  HL
-            LD   B,(HL)                  ; fixed length
+            LD   C,(HL)                  ; fixed length
+            INC  HL
+            LD   B,(HL)
             LD   A,(ExpressionRightMeta)
             AND  ScalarMetaConstant
             JR   Z,Stage7PathIndexDynamic
             LD   HL,(ExpressionRightValue)
-            LD   A,H
             OR   A
-            JR   NZ,Stage7PathIndexRangeFailure
-            LD   A,L
-            CP   B
+            SBC  HL,BC
             JR   NC,Stage7PathIndexRangeFailure
 Stage7PathIndexDynamic:
-            LD   A,C
+            LD   (Stage7PathOffset),BC
+            LD   A,(Stage7PathType)
             CALL AggregateGetExtent
-            LD   D,L                    ; stride / element extent
-            LD   A,B
-            LD   (Stage7ArgumentCount),A
-            LD   A,D
-            LD   (Stage7PathExtent),A
+            LD   (Stage7PathExtent),HL
             LD   A,SemanticSelectIndex
             CALL SemanticSinkOperation
             JR   C,Stage7PathSuffixFailure
-            LD   A,(Stage7ArgumentCount)
-            CALL SemanticSinkPut
+            LD   HL,(Stage7PathOffset)
+            CALL Stage7EmitWord
             JR   C,Stage7PathSuffixFailure
-            LD   A,(Stage7PathExtent)
-            CALL SemanticSinkPut
+            LD   HL,(Stage7PathExtent)
+            CALL Stage7EmitWord
             JR   C,Stage7PathSuffixFailure
             LD   HL,(Stage7CallOffset)
             CALL Stage7EmitWord
@@ -1445,16 +1440,16 @@ Stage7AggregateCopyAssignment:
             CP   D
             JP   NZ,TypedTypeFailure
             CALL AggregateGetExtent
-            LD   A,L
-            LD   (Stage7PathExtent),A
+            LD   (Stage7PathExtent),HL
             LD   A,1
             LD   (Stage8RetainedCarriers),A
             CALL Stage8SelectFailureConsumer
             RET  C
-            LD   A,(Stage7PathExtent)
-            LD   C,A
             LD   A,SemanticCopyAggregate
-            CALL Stage7EmitOperationByte
+            CALL SemanticSinkOperation
+            RET  C
+            LD   HL,(Stage7PathExtent)
+            CALL Stage7EmitWord
             RET  C
             LD   HL,(Stage7CallOffset)
             CALL Stage7EmitWord

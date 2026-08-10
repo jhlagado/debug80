@@ -106,6 +106,12 @@ A fixed array stores its elements consecutively. Its stride is the complete
 element extent. Neither a record nor an array stores a runtime type tag, field
 table, length word, or address.
 
+Compiler metadata retains every complete aggregate extent, fixed-array length,
+fixed-array stride, and record-field offset as an unsigned 16-bit value. The
+same word-sized extent machinery applies to records, arrays, and bounded
+strings. This is compiler metadata only; it adds no header to an aggregate
+object.
+
 ### 3.3 Bounded strings
 
 `string[N]` occupies `N + 2` bytes. Byte zero is the current logical length
@@ -113,7 +119,8 @@ table, length word, or address.
 `$00`. The compiler writes that final byte while building the static image,
 and no runtime operation writes it again. Bytes `L + 1` through `N` are also
 zero. The invariant is `0 <= L <= N`, and the complete object extent is at
-most 255 bytes.
+most 255 bytes because the source capacity is at most 253. This string-specific
+limit does not constrain the complete extent of a containing record or array.
 
 The address `carrier + 1` is always zero-terminated within `N + 1` bytes, so a
 terminator-consuming routine can never read past the end of the object. This

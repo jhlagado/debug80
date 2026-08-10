@@ -31,6 +31,11 @@ SemanticSinkPutFull:
 
 .routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
 SemanticSinkOperation:
+            LD   B,A
+            LD   A,(SinkOperationCount)
+            CP   255
+            JR   Z,SemanticSinkPutFull
+            LD   A,B
             CALL SemanticSinkPut
             RET  C
             LD   HL,SinkOperationCount

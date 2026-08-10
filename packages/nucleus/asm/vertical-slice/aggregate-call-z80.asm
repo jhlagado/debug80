@@ -455,14 +455,12 @@ Stage7LoadParameterAlias .equ TypedLoadLocal16
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7SelectField:
-            CALL NextSemanticByte
-            LD   (Stage7PathOffset),A
+            CALL ReadSemanticWord
+            LD   (Stage7PathOffset),DE
             LD   HL,Stage7PopHLLoadDE
             CALL   EmitPair
             RET  C
-            LD   A,(Stage7PathOffset)
-            LD   L,A
-            LD   H,0
+            LD   HL,(Stage7PathOffset)
             CALL EmitWord
             RET  C
             LD   HL,Stage7AddDEPush
@@ -470,37 +468,34 @@ Stage7SelectField:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7SelectIndex:
-            CALL NextSemanticByte
-            LD   (Stage7ArgumentCount),A   ; length
-            CALL NextSemanticByte
-            LD   (Stage7PathExtent),A      ; stride
+            CALL ReadSemanticWord
+            LD   (Stage7PathOffset),DE     ; length
+            CALL ReadSemanticWord
+            LD   (Stage7PathExtent),DE     ; stride
             CALL Stage7ReadCallOffset
             LD   HL,Stage7PopIndexBase
             CALL   EmitPair
             RET  C
-            LD   A,(Stage7ArgumentCount)
-            CALL EmitLoadAImmediate
+            LD   HL,(Stage7PathOffset)
+            CALL EmitLoadBcImmediate
             RET  C
             LD   HL,CheckArrayIndex
             CALL EmitCall
             RET  C
             CALL Stage7BoundsGuard
             RET  C
-            LD   A,(Stage7PathExtent)
-            LD   HL,Stage7IndexToA
-            LD   B,1
-            CALL EmitBytes
+            LD   A,$E5                    ; retain base
+            CALL EmitByte
             RET  C
-            LD   A,(Stage7PathExtent)
-            LD   C,A
-            LD   A,$06                    ; LD B,n
-            CALL EmitOpcodeByte
+            LD   HL,(Stage7PathExtent)
+            LD   A,$21                    ; LD HL,nn stride
+            CALL EmitOpcodeWord
             RET  C
-            LD   HL,MultiplyU8
+            LD   HL,MultiplyU16
             CALL EmitCall
             RET  C
-            LD   HL,Stage7OffsetAddress
-            JP   EmitFive
+            LD   HL,Stage7PopDEAddPush
+            JP   EmitThree
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7LoadIndirect8:
@@ -524,8 +519,8 @@ Stage7StoreIndirect16:
 ; second check reaches bounds with the destination still untouched.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 Stage7CopyAggregate:
-            CALL NextSemanticByte
-            LD   (Stage7PathExtent),A
+            CALL ReadSemanticWord
+            LD   (Stage7PathExtent),DE
             CALL Stage7ReadCallOffset
             LD   HL,Stage7CopyPrepare
             CALL   EmitFour
@@ -543,9 +538,7 @@ Stage7CopyAggregate:
             LD   HL,Stage7CopyFinish
             CALL   EmitPair
             RET  C
-            LD   A,(Stage7PathExtent)
-            LD   L,A
-            LD   H,0
+            LD   HL,(Stage7PathExtent)
             CALL EmitLoadBcImmediate
             RET  C
             LD   HL,Stage7LDIR
@@ -553,35 +546,31 @@ Stage7CopyAggregate:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7EmitRegionCheck:
-            CALL Stage7EmitDataEnd
+            LD   DE,ProgramDataRegionLimit
+            CALL EmitLoadDeImmediate
             RET  C
-            LD   A,(Stage7PathExtent)
-            CALL EmitLoadAImmediate
+            LD   HL,(Stage7PathExtent)
+            CALL EmitLoadBcImmediate
             RET  C
             LD   HL,CheckAggregateRegion
             CALL EmitCall
             RET  C
             JP   Stage7BoundsGuard
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
-Stage7EmitDataEnd:
-.if AggregateCallSlices
-            LD   DE,ProgramDataRegionLimit
-.else
-            LD   HL,(StaticImageLength)
-            LD   DE,GeneratedBase+3
-            ADD  HL,DE
-            EX   DE,HL
-.endif
-            JP   EmitLoadDeImmediate
+.routine out A,DE,carry,zero clobbers sign,parity,halfCarry,HL
+Stage7ReadStringExtent:
+            CALL NextSemanticByte
+            LD   (Stage7ArgumentCount),A
+            LD   L,A
+            LD   H,0
+            INC  HL
+            INC  HL
+            LD   (Stage7PathExtent),HL
+            JP   Stage7ReadCallOffset
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7StringLength:
-            CALL NextSemanticByte
-            LD   (Stage7ArgumentCount),A
-            ADD  A,2
-            LD   (Stage7PathExtent),A
-            CALL Stage7ReadCallOffset
+            CALL Stage7ReadStringExtent
             LD   A,$E1                    ; POP HL carrier
             CALL EmitByte
             RET  C
@@ -608,11 +597,7 @@ Stage7StringLength:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7StringIndex:
-            CALL NextSemanticByte     ; capacity retained by static type
-            LD   (Stage7ArgumentCount),A
-            ADD  A,2
-            LD   (Stage7PathExtent),A
-            CALL Stage7ReadCallOffset
+            CALL Stage7ReadStringExtent
             LD   HL,Stage7PopIndexBase
             CALL   EmitPair
             RET  C
@@ -646,6 +631,7 @@ Stage7LoadIndirect16Bytes:.db $E1,$5E,$23,$56,$D5
 Stage7StoreIndirect16Bytes:.db $D1,$E1,$73,$23,$72
 Stage7CopyPrepare:        .db $D1,$E1,$E5,$D5
 Stage7CopyFinish:         .db $E1,$D1
+Stage7PopDEAddPush:       .db $D1,$19,$E5
 Stage7PushDEHL:           .db $D5,$E5
 Stage7LDIR:               .db $ED,$B0
 

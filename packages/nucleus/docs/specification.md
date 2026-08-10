@@ -1439,6 +1439,13 @@ An exact integer literal or earlier exact named integer constant remains exact u
 
 An array length is a scalar constant expression whose value must lie from 1 through 65,535. A `string[N]` capacity is a scalar constant expression whose value must lie from 1 through 253. The compiler evaluates the bound before constructing the type identity. A later constant, a variable, or a cyclic dependency cannot supply a bound.
 
+The bounded-string capacity is a property of that source type only. It does
+not impose a 253- or 255-byte ceiling on a fixed array, record, array of
+records, array of bounded strings, or record containing any of those types.
+Their complete extents follow recursively from their declared members. An
+implementation may still diagnose an otherwise valid declaration when the
+complete object cannot fit its published program-data capacity.
+
 ### 8.7 Compile-time assertions
 
 A compile-time assertion has this top-level form:

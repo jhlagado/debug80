@@ -209,6 +209,7 @@ AggregateElementCapacityRejectedSource:
             .db "var items as u8[32] = ["
             .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
             .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]",10
+            .db "sub main() fails",10,"end",10
 AggregateElementCapacityRejectedSourceEnd:
 
 AggregateDataCapacitySource:
@@ -219,7 +220,7 @@ AggregateDataCapacityPoint:
 AggregateDataCapacitySourceEnd:
 
 AggregateTypeExtentCapacitySource:
-            .db "record Huge",10,"data as u16[128]",10,"end",10
+            .db "var huge as u16[128]",10
 AggregateTypeExtentCapacitySourceEnd:
 
             .org TargetRuntimeBase
@@ -559,8 +560,7 @@ AggregateSealedStringZeroLoop:
             LD   A,147
             LD   HL,AggregateElementCapacityRejectedSource
             LD   DE,AggregateElementCapacityRejectedSourceEnd
-            LD   B,DiagnosticInitializerCapacity
-            CALL ProofExpectDiagnostic
+            CALL CompileAggregateSlice
             JP   C,ProofFailElementBoundary
             LD   A,136
             LD   HL,AggregateDataCapacitySource

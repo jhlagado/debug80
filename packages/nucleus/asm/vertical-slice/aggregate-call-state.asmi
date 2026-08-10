@@ -12,28 +12,28 @@ Stage7CurrentParameterStart .equ Stage7StateBase+$04
 Stage7CurrentParameterCount .equ Stage7StateBase+$05
 Stage7GlobalSymbolCount     .equ Stage7StateBase+$06
 Stage7PathType              .equ Stage7StateBase+$07
-Stage7PathExtent            .equ Stage7StateBase+$08
-Stage7PathOffset            .equ Stage7StateBase+$09
-Stage7ArgumentIndex         .equ Stage7StateBase+$0A
-Stage7ArgumentCount         .equ Stage7StateBase+$0B
-Stage7CallResultType        .equ Stage7StateBase+$0C
-Stage7CallLabel             .equ Stage7StateBase+$0D
-Stage7CallOffset            .equ Stage7StateBase+$0E
-Stage7CallDepth             .equ Stage7StateBase+$10
-Stage7CurrentFlags          .equ Stage7StateBase+$11
-Stage8FailureOffset         .equ Stage7StateBase+$12
-Stage8DirectFailable        .equ Stage7StateBase+$14
-Stage8CallModePointer       .equ Stage7StateBase+$15
-Stage8HandlerEligible       .equ Stage7StateBase+$17
-Stage8ForwardMainFlags      .equ Stage7StateBase+$18
+Stage7PathExtent            .equ Stage7StateBase+$08 ; word
+Stage7PathOffset            .equ Stage7StateBase+$0A ; word
+Stage7ArgumentIndex         .equ Stage7StateBase+$0C
+Stage7ArgumentCount         .equ Stage7StateBase+$0D
+Stage7CallResultType        .equ Stage7StateBase+$0E
+Stage7CallLabel             .equ Stage7StateBase+$0F
+Stage7CallOffset            .equ Stage7StateBase+$10
+Stage7CallDepth             .equ Stage7StateBase+$12
+Stage7CurrentFlags          .equ Stage7StateBase+$13
+Stage8FailureOffset         .equ Stage7StateBase+$14
+Stage8DirectFailable        .equ Stage7StateBase+$16
+Stage8CallModePointer       .equ Stage7StateBase+$17
+Stage8HandlerEligible       .equ Stage7StateBase+$19
+Stage8ForwardMainFlags      .equ Stage7StateBase+$1A
 ; Number of already-evaluated destination carriers below a failable result.
 ; A local handler discards these before entering its statement body.
-Stage8RetainedCarriers      .equ Stage7StateBase+$19
+Stage8RetainedCarriers      .equ Stage7StateBase+$1B
 ; These values span expression parsing, so nested calls must not overlay them.
-Stage8ServiceId             .equ Stage7StateBase+$1A
-Stage8ServiceKeep           .equ Stage7StateBase+$1B
-Stage8CallFlags             .equ Stage7StateBase+$1C
-Stage7StateEnd              .equ Stage7StateBase+$1D
+Stage8ServiceId             .equ Stage7StateBase+$1C
+Stage8ServiceKeep           .equ Stage7StateBase+$1D
+Stage8CallFlags             .equ Stage7StateBase+$1E
+Stage7StateEnd              .equ Stage7StateBase+$1F
 
 Stage7RoutineTableBase      .equ Stage7StateEnd
 Stage7RoutineEntrySize      .equ 8

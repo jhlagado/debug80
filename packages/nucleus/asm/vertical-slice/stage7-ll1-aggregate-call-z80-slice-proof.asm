@@ -214,24 +214,71 @@ Stage7DataCapacityRejectedPoint:
 Stage7DataCapacityRejectedSourceEnd:
 
 Stage7BssCapacityAcceptedSource:
-            .db "var a as string[253]",10
-            .db "var b as string[253]",10
-            .db "var c as string[253]",10
-            .db "var d as string[253]",10
-            .db "var tail as u8[4]",10
-            .db "sub main()",10,"end",10
+            .db "var bytes as u8[1024]",10
+            .db "sub main() fails",10
+            .db "bytes[1023] = 'Y'",10
+            .db "writeOutputByte(bytes[1023]) or fail",10
+            .db "end",10
 Stage7BssCapacityAcceptedSourceEnd:
 
 Stage7BssCapacityRejectedSource:
-            .db "var a as string[253]",10
-            .db "var b as string[253]",10
-            .db "var c as string[253]",10
-            .db "var d as string[253]",10
-            .db "var tail as u8[4]",10
-            .db "var e as u8"
+            .db "var bytes as u8[1025"
 Stage7BssCapacityRejectedPoint:
-            .db 10
+            .db "]",10
 Stage7BssCapacityRejectedSourceEnd:
+
+Stage7WideAggregateSource:
+            .db "record Wide",10
+            .db "padding as u8[300]",10
+            .db "values as u8[200]",10
+            .db "tail as u8",10
+            .db "end",10
+            .db "var items as Wide[2]",10
+            .db "sub main() fails",10
+            .db "items[0].values[199] = 'Y'",10
+            .db "items[1] = items[0]",10
+            .db "writeOutputByte(items[1].values[199]) or fail",10
+            .db "end",10
+Stage7WideAggregateSourceEnd:
+
+Stage7WideRecordRejectedSource:
+            .db "record TooLarge",10
+            .db "bytes as u8[1024]",10
+            .db "extra as u8"
+Stage7WideRecordRejectedPoint:
+            .db 10
+            .db "end",10
+Stage7WideRecordRejectedSourceEnd:
+
+Stage7WideInitializedSource:
+            .db "var bytes as u8[256] = ["
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]",10
+            .db "sub main()",10,"end",10
+Stage7WideInitializedSourceEnd:
+
+; These word lengths share their low byte. Structural interning must compare
+; the high byte and retain two different array descriptors.
+Stage7WordLengthInterningSource:
+            .db "var small as u8[1]",10
+            .db "var wide as u8[257]",10
+            .db "sub main() fails",10
+            .db "end",10
+Stage7WordLengthInterningSourceEnd:
 
 Stage7ParameterRoutineCollisionSource:
             .db "sub choose(choose as u8)",10
@@ -613,13 +660,13 @@ ProofStart:
             CALL CompileAggregateCallSlice
             JP   C,ProofFailStringCompile
             LD   HL,(ProgramBssLength)
-            LD   DE,255
+            LD   DE,1020
             OR   A
             SBC  HL,DE
             JP   NZ,ProofFailStringStorage
             CALL EncodeAggregateProgram
             JP   C,ProofFailStringEncode
-            LD   A,(ProgramBssBase+254)   ; permanent terminator in element 0
+            LD   A,(ProgramBssBase+1019)  ; terminator in final 255-byte element
             OR   A
             JP   NZ,ProofFailStringStorage
             CALL Reset
@@ -765,7 +812,7 @@ ProofStart:
             OR   A
             JP   NZ,ProofFailBssCapacityAccepted
             LD   A,(ProgramBssLimit-1)
-            OR   A
+            CP   'Y'
             JP   NZ,ProofFailBssCapacityAccepted
             LD   A,(ProgramBssLimit)
             CP   $A5
@@ -783,6 +830,93 @@ ProofStart:
             LD   DE,Stage7BssCapacityAcceptedSourceEnd
             CALL CompileAggregateCallSlice
             JP   C,ProofFailBssCapacityRejected
+
+            ; One record may exceed 255 bytes. Its word field offset, array
+            ; length, 501-byte outer-array stride, nested element address and
+            ; complete 501-byte copy must all survive. The array occupies 1002
+            ; BSS bytes.
+            LD   A,173
+            LD   HL,Stage7WideAggregateSource
+            LD   DE,Stage7WideAggregateSourceEnd
+            CALL CompileAggregateCallSlice
+            JP   C,ProofFailWideAggregate
+            LD   HL,(ProgramBssLength)
+            LD   DE,1002
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailWideAggregate
+            CALL EncodeAggregateProgram
+            JP   C,ProofFailWideAggregate
+            CALL Reset
+            CALL ProofCallGenerated
+            JP   C,ProofFailWideAggregate
+            LD   A,(RunState)
+            CP   RunSucceeded
+            JP   NZ,ProofFailWideAggregate
+            LD   A,(ServiceOutputLength)
+            CP   1
+            JP   NZ,ProofFailWideAggregate
+            LD   A,(ServiceOutputBase)
+            CP   'Y'
+            JP   NZ,ProofFailWideAggregate
+            LD   A,(ProgramBssBase+499)
+            CP   'Y'
+            JP   NZ,ProofFailWideAggregate
+            LD   A,(ProgramBssBase+1000)
+            CP   'Y'
+            JP   NZ,ProofFailWideAggregate
+
+            ; Growing an already-1024-byte field by one byte is rejected at
+            ; the final field declaration rather than wrapping its extent.
+            LD   A,174
+            LD   HL,Stage7WideRecordRejectedSource
+            LD   DE,Stage7WideRecordRejectedSourceEnd
+            LD   A,DiagnosticProgramDataCapacity
+            LD   BC,Stage7WideRecordRejectedPoint-Stage7WideRecordRejectedSource
+            CALL ProofExpectCompileDiagnostic
+            JP   C,ProofFailWideRecordCapacity
+
+            ; Explicit initialization also crosses the old byte ceiling. The
+            ; 256th source element must be retained and copied into RAM.
+            LD   A,175
+            LD   HL,Stage7WideInitializedSource
+            LD   DE,Stage7WideInitializedSourceEnd
+            CALL CompileAggregateCallSlice
+            JP   C,ProofFailWideInitializer
+            LD   HL,(StaticImageLength)
+            LD   DE,256
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailWideInitializer
+            LD   A,(StaticImageBase)
+            CP   1
+            JP   NZ,ProofFailWideInitializer
+            LD   A,(StaticImageBase+255)
+            CP   1
+            JP   NZ,ProofFailWideInitializer
+            CALL EncodeAggregateProgram
+            JP   C,ProofFailWideInitializer
+            CALL Reset
+            CALL ProofCallGenerated
+            JP   C,ProofFailWideInitializer
+            LD   A,(RunState)
+            CP   RunSucceeded
+            JP   NZ,ProofFailWideInitializer
+            LD   A,(ProgramDataBase)
+            CP   1
+            JP   NZ,ProofFailWideInitializer
+            LD   A,(ProgramDataBase+255)
+            CP   1
+            JP   NZ,ProofFailWideInitializer
+
+            LD   A,176
+            LD   HL,Stage7WordLengthInterningSource
+            LD   DE,Stage7WordLengthInterningSourceEnd
+            CALL CompileAggregateCallSlice
+            JP   C,ProofFailWordLengthInterning
+            LD   A,(AggregateTypeCount)
+            CP   2
+            JP   NZ,ProofFailWordLengthInterning
 
             LD   A,'4'
             LD   (Stage7SealedArrayCapacityDigit),A
@@ -1310,6 +1444,8 @@ ProofInvalidCopySourceReady:
             INC  HL
             LD   (HL),1
             INC  HL
+            LD   (HL),0
+            INC  HL
             LD   (HL),$34
             INC  HL
             LD   (HL),$12
@@ -1557,6 +1693,14 @@ ProofFailDataCapacityRejected: LD A,58
 ProofFailBssCapacityAccepted: LD A,59
                   JP ProofFailed
 ProofFailBssCapacityRejected: LD A,60
+                  JP ProofFailed
+ProofFailWideAggregate: LD A,61
+                  JP ProofFailed
+ProofFailWideRecordCapacity: LD A,62
+                  JP ProofFailed
+ProofFailWordLengthInterning: LD A,64
+                  JR ProofFailed
+ProofFailWideInitializer: LD A,63
 ProofFailed:
             LD   (ProofCase),A
             HALT
@@ -1594,10 +1738,10 @@ Stage7SealedArraySource:
 Stage7SealedArrayCapacityDigit:
             .db "3"
 Stage7SealedArrayCapacityPoint:
-            .db "][1]",10
+            .db "][4]",10
             .db "sub main() fails",10
-            .db "texts[0] = texts[0]",10
-            .db "if texts[0].length = 0",10
+            .db "texts[3] = texts[3]",10
+            .db "if texts[3].length = 0",10
             .db "writeOutputByte('Y') or fail",10
             .db "end",10,"end",10
 Stage7SealedArraySourceEnd:

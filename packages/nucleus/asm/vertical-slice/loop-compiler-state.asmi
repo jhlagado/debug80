@@ -47,10 +47,10 @@ EmitDataFixup           .equ CompilerStateBase+$17
 
 CompilerStateEnd        .equ CompilerStateBase+$1B
 SemanticBufferBase      .equ CompilerStateEnd
-; The leading byte is an operation count and the remaining 255 bytes are a
-; bounded variable-width transcript. The previous 33-byte proof buffer was
-; already full and could not represent the complete scalar-expression layer.
-SemanticBufferLimit     .equ SemanticBufferBase+$100
+; The leading byte is an operation count and the remaining 511 bytes are a
+; bounded variable-width transcript. Word aggregate operands must not make the
+; complete Chapter 21 program depend on the retired byte-extent encoding.
+SemanticBufferLimit     .equ SemanticBufferBase+$200
 
 ; One retained forward signature is enough for the first routine-call slice.
 ; The source bytes remain stable, so exact names are retained as pointer/length
@@ -201,31 +201,34 @@ AggregateTypeCount      .equ AggregateStateBase+$01
 AggregateRecordCount    .equ AggregateStateBase+$02
 AggregateFieldCount     .equ AggregateStateBase+$03
 AggregateInitializerDepth .equ AggregateStateBase+$04
-AggregateInitializerElements .equ AggregateStateBase+$05
+; Nonzero once an explicit initializer has supplied at least one value. The
+; value is a Boolean allocation choice, not a retained element count.
+AggregateHasInitializer .equ AggregateStateBase+$05
 AggregateCurrentTypeId  .equ AggregateStateBase+$06
 AggregateCurrentFieldStart .equ AggregateStateBase+$07
 AggregateCurrentFieldCount .equ AggregateStateBase+$08
-AggregateCurrentRecordExtent .equ AggregateStateBase+$09
-AggregateCurrentObjectOffset .equ AggregateStateBase+$0A ; word
-AggregateCurrentObjectExtent .equ AggregateStateBase+$0C
-AggregateCandidateKind .equ AggregateStateBase+$0D
-AggregateCandidateAux  .equ AggregateStateBase+$0E
-AggregateCandidateLength .equ AggregateStateBase+$0F
-AggregateCandidateExtent .equ AggregateStateBase+$10
-AggregateCurrentObjectEnd .equ AggregateStateBase+$11 ; word
-AggregateStateEnd       .equ AggregateStateBase+$13
+AggregateCurrentRecordExtent .equ AggregateStateBase+$09 ; word
+AggregateCurrentObjectOffset .equ AggregateStateBase+$0B ; word
+AggregateCurrentObjectExtent .equ AggregateStateBase+$0D ; word
+AggregateCandidateKind .equ AggregateStateBase+$0F
+AggregateCandidateAux  .equ AggregateStateBase+$10
+AggregateCandidateLength .equ AggregateStateBase+$11 ; word
+AggregateCandidateExtent .equ AggregateStateBase+$13 ; word
+AggregateCurrentObjectEnd .equ AggregateStateBase+$15 ; word
+AggregateStateEnd       .equ AggregateStateBase+$17
 
 AggregateTypeTableBase  .equ AggregateStateEnd
-AggregateTypeEntrySize  .equ 3
+AggregateTypeEntrySize  .equ 4
 AggregateTypeCapacity   .equ 8
 AggregateTypeTableLimit .equ AggregateTypeTableBase+AggregateTypeEntrySize*AggregateTypeCapacity
 AggregateTypeKind       .equ 0
 AggregateTypeAux        .equ 1
-AggregateTypeLength     .equ 2
-; Complete aggregate layouts are bounded at 255 bytes, so every admitted
-; nonzero extent is retained directly in one byte.
+AggregateTypeLength     .equ 2 ; word
+; Every dynamic type retains its complete nonzero extent as a word. Strings
+; remain byte-capacity values, while arrays and records may occupy the complete
+; selected program-data region.
 AggregateTypeExtentBase .equ AggregateTypeTableLimit
-AggregateTypeExtentLimit .equ AggregateTypeExtentBase+AggregateTypeCapacity
+AggregateTypeExtentLimit .equ AggregateTypeExtentBase+2*AggregateTypeCapacity
 
 AggregateRecordTableBase .equ AggregateTypeExtentLimit
 AggregateRecordEntrySize .equ 2
@@ -235,13 +238,13 @@ AggregateRecordFieldStart .equ 0
 AggregateRecordFieldCount .equ 1
 
 AggregateFieldTableBase .equ AggregateRecordTableLimit
-AggregateFieldEntrySize .equ 5
+AggregateFieldEntrySize .equ 6
 AggregateFieldCapacity  .equ 12
 AggregateFieldTableLimit .equ AggregateFieldTableBase+AggregateFieldEntrySize*AggregateFieldCapacity
 AggregateFieldNamePointer .equ 0
 AggregateFieldNameLength .equ 2
 AggregateFieldTypeId    .equ 3
-AggregateFieldOffset    .equ 4
+AggregateFieldOffset    .equ 4 ; word
 
 ; One type ID per ordinary symbol is enough because the ordinary symbol table
 ; owns name identity and the payload word owns the program-data offset.
@@ -253,7 +256,7 @@ StaticImageLength       .equ AggregateSymbolTypeLimit ; word
 ; One complete object is built in scratch, then either appended to the
 ; prepared data image or discarded into the BSS allocation account.
 AggregateInitializerBase .equ StaticImageLength+2
-AggregateInitializerCapacity .equ 255
+AggregateInitializerCapacity .equ 1024
 StaticImageBase         .equ AggregateInitializerBase+AggregateInitializerCapacity
 StaticImageCapacity     .equ 1024
 .else
@@ -266,7 +269,6 @@ AggregateWorkspaceEnd   .equ StaticImageLimit
 CompilerWorkspaceEnd    .equ AggregateWorkspaceEnd
 
 AggregateInitializerDepthCapacity .equ 4
-AggregateInitializerElementCapacity .equ 32
 
 ; Emission follows successful parsing and may overlay the retained forward.
 SemanticReadCursor      .equ ForwardNamePointer

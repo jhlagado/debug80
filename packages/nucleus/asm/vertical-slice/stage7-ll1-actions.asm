@@ -119,14 +119,13 @@ HybridLL1MakeStringType:
             CP   254
             JP   NC,AggregateStringCapacityFailure
             LD   A,L
-            LD   (AggregateCandidateLength),A
             LD   (AggregateCandidateAux),A
+            LD   (AggregateCandidateLength),HL
             LD   A,AggregateTypeKindString
             LD   (AggregateCandidateKind),A
             INC  HL
             INC  HL
-            LD   A,L
-            LD   (AggregateCandidateExtent),A
+            LD   (AggregateCandidateExtent),HL
 HybridLL1InternCurrentType:
             CALL AggregateInternType
             RET  C
@@ -147,12 +146,9 @@ HybridLL1ArrayElementReady:
             LD   (AggregateCandidateAux),A
             CALL HybridLL1CheckedBound
             RET  C
-            LD   A,H
-            OR   A
-            JP   NZ,AggregateProgramDataCapacityFailure
-            LD   A,L
-            LD   (AggregateCandidateLength),A
-            LD   B,A
+            LD   (AggregateCandidateLength),HL
+            LD   B,H
+            LD   C,L
             LD   A,(AggregateCandidateAux)
             CALL AggregateGetExtent
             LD   D,H
@@ -161,12 +157,13 @@ HybridLL1ArrayElementReady:
 HybridLL1ArrayExtentLoop:
             ADD  HL,DE
             JP   C,AggregateProgramDataCapacityFailure
-            LD   A,H
-            OR   A
-            JP   NZ,AggregateProgramDataCapacityFailure
-            DJNZ HybridLL1ArrayExtentLoop
-            LD   A,L
-            LD   (AggregateCandidateExtent),A
+            CALL AggregateCheckExtentCapacity
+            RET  C
+            DEC  BC
+            LD   A,B
+            OR   C
+            JR   NZ,HybridLL1ArrayExtentLoop
+            LD   (AggregateCandidateExtent),HL
             LD   A,AggregateTypeKindArray
             LD   (AggregateCandidateKind),A
             JR   HybridLL1InternCurrentType
@@ -235,8 +232,7 @@ HybridLL1SaveProgramType:
             LD   A,(AggregateCurrentTypeId)
             LD   (DeclarationInfo),A
             CALL AggregateGetExtent
-            LD   A,L
-            LD   (AggregateCurrentObjectExtent),A
+            LD   (AggregateCurrentObjectExtent),HL
             LD   (AggregateCurrentObjectEnd),HL
             LD   HL,0
             LD   (AggregateCurrentObjectOffset),HL
@@ -244,10 +240,12 @@ HybridLL1SaveProgramType:
             RET  C
             XOR  A
             LD   (AggregateInitializerDepth),A
-            LD   (AggregateInitializerElements),A
+            LD   (AggregateHasInitializer),A
             RET
 
 HybridLL1FinishProgramInitializer:
+            LD   A,1
+            LD   (AggregateHasInitializer),A
             LD   HL,(AggregateCurrentObjectOffset)
             LD   DE,(AggregateCurrentObjectEnd)
             OR   A
@@ -258,7 +256,7 @@ HybridLL1FinishProgramInitializer:
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1CommitProgramVariable:
-            LD   A,(AggregateInitializerElements)
+            LD   A,(AggregateHasInitializer)
             OR   A
             JR   Z,HybridLL1CommitBssObject
             JR   HybridLL1AllocateDataObject
@@ -375,7 +373,9 @@ HybridLL1BeginRecord:
             LD   (AggregateCurrentFieldStart),A
             XOR  A
             LD   (AggregateCurrentFieldCount),A
-            LD   (AggregateCurrentRecordExtent),A
+            LD   H,A
+            LD   L,A
+            LD   (AggregateCurrentRecordExtent),HL
             RET
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
@@ -414,21 +414,19 @@ HybridLL1CommitRecordField:
             LD   A,(AggregateCurrentTypeId)
             LD   (HL),A
             INC  HL
-            LD   A,(AggregateCurrentRecordExtent)
-            LD   E,A
-            LD   (HL),A
-            LD   D,0
+            LD   DE,(AggregateCurrentRecordExtent)
+            LD   (HL),E
+            INC  HL
+            LD   (HL),D
             LD   A,(AggregateCurrentTypeId)
             PUSH DE
             CALL AggregateGetExtent
             POP  DE
             ADD  HL,DE
             JP   C,AggregateProgramDataCapacityFailure
-            LD   A,H
-            OR   A
-            JP   NZ,AggregateProgramDataCapacityFailure
-            LD   A,L
-            LD   (AggregateCurrentRecordExtent),A
+            CALL AggregateCheckExtentCapacity
+            RET  C
+            LD   (AggregateCurrentRecordExtent),HL
             LD   HL,AggregateCurrentFieldCount
             INC  (HL)
             XOR  A
@@ -443,10 +441,10 @@ HybridLL1CommitRecord:
             LD   (AggregateCandidateKind),A
             LD   A,(AggregateRecordCount)
             LD   (AggregateCandidateAux),A
-            XOR  A
-            LD   (AggregateCandidateLength),A
-            LD   A,(AggregateCurrentRecordExtent)
-            LD   (AggregateCandidateExtent),A
+            LD   HL,0
+            LD   (AggregateCandidateLength),HL
+            LD   HL,(AggregateCurrentRecordExtent)
+            LD   (AggregateCandidateExtent),HL
             CALL AggregateAppendType
             RET  C
             LD   (AggregateCurrentTypeId),A
@@ -1221,7 +1219,6 @@ HybridLL1StatementCounterChecked:
             LD   A,(DeclarationInfo)
             LD   D,A
             CALL TypedEmitStoreByInfo
-            RET  C
             RET
 HybridLL1BeginReturnValue:
             LD   A,(Stage7CurrentResultType)

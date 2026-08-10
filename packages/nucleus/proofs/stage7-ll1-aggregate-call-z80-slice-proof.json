@@ -5,16 +5,16 @@
   "interfaces": ["../asm/vertical-slice/expression-generated-z80.asmi"],
   "execution": {
     "entry": "ProofStart",
-    "maxInstructions": 1500000,
-    "maxCycles": 15000000,
+    "maxInstructions": 2200000,
+    "maxCycles": 22000000,
     "halted": true
   },
   "observations": [
     { "at": "ProofStatus", "width": "u8", "equals": 165 },
     { "at": "ProofCase", "width": "u8", "equals": 0 },
-    { "at": "ProofCopyGeneratedSize", "width": "u16", "equals": 569 },
+    { "at": "ProofCopyGeneratedSize", "width": "u16", "equals": 573 },
     { "at": "ProofForwardGeneratedSize", "width": "u16", "equals": 637 },
-    { "at": "ProofStringGeneratedSize", "width": "u16", "equals": 563 },
+    { "at": "ProofStringGeneratedSize", "width": "u16", "equals": 566 },
     { "at": "ProofBoundsGeneratedSize", "width": "u16", "equals": 277 }
   ],
   "extents": [

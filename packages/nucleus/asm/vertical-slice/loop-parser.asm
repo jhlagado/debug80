@@ -1097,7 +1097,7 @@ CompileSliceResetState:
             CALL SymbolReset
             XOR  A
             LD   HL,AggregateMode
-            LD   B,AggregateInitializerElements-AggregateMode+1
+            LD   B,AggregateHasInitializer-AggregateMode+1
 CompileSliceResetAggregateLoop:
             LD   (HL),A
             INC  HL

@@ -123,17 +123,18 @@ ActivationRelease:
             RET
 
 .if AggregateCallSlices
-; Carry reports an out-of-domain u16 index. A is the one-byte retained length
-; and DE is the canonical index carrier.
-.routine in A,DE out A,carry,zero clobbers sign,parity,halfCarry,C
+; Carry reports an out-of-domain u16 index. BC is the retained word length and
+; DE is the canonical index carrier.
+.routine in BC,DE out A,carry,zero clobbers sign,parity,halfCarry
 CheckArrayIndex:
-            LD   C,A
             LD   A,D
-            OR   A
+            CP   B
+            JR   C,CheckArrayIndexReady
             JR   NZ,AggregateBoundsFailure
             LD   A,E
             CP   C
             JR   NC,AggregateBoundsFailure
+CheckArrayIndexReady:
             OR   A
             RET
 
@@ -176,16 +177,14 @@ CheckStringIndexLengthReady:
             OR   A
             RET
 
-; A is a nonzero fixed extent, HL an address, and DE the exclusive data end.
+; BC is a nonzero word extent, HL an address, and DE the exclusive data end.
 ; The helper rejects wrapped arithmetic and any region outside the selected
 ; program-data region through the supplied end. It is used twice before
 ; aggregate copying begins.
-.routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IY
+.routine in BC,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,DE,HL,IY
 CheckAggregateRegion:
             PUSH DE
             POP  IY
-            LD   C,A
-            LD   B,0
             PUSH HL
 .if AggregateCallSlices
             LD   DE,ProgramDataBase

@@ -1,6 +1,6 @@
 # Plan: program storage and implicit startup
 
-Status: design pending; do not treat as implementation authority
+Status: implemented by `b2799117`; retained as a historical design record
 Date: 2026-08-10
 Planning baseline: `5e0a7af3` plus the uncommitted segmented-output experiment
 
@@ -16,10 +16,10 @@ different machines. Those mechanisms must remain implicit. A programmer must
 not declare a second ROM object, write a manual copy, or call an initialization
 routine to obtain the value promised by one variable declaration.
 
-This plan records the design work required before implementation is approved.
-It does not amend the language specification or the Z80 runtime contract. The
-current segmented-output experiment supplies measurements and executable
-evidence, but it does not settle the manifest or startup model.
+This plan records the design work that preceded implementation. It does not
+amend the language specification or the Z80 runtime contract. The current
+authorities and capacity ledger supersede its provisional measurements and
+limits.
 
 ## Settled source semantics
 
@@ -205,9 +205,9 @@ Every step reports compiler code, immutable data, core, workspace, each output
 segment, runtime, instruction count, and T-states separately. The 16 KiB
 compiler-core gate remains binding.
 
-## Current experimental evidence
+## Historical implementation evidence
 
-The uncommitted segmented-output experiment demonstrates that one code segment,
+The original segmented-output experiment demonstrated that one code segment,
 one read-only/load-image segment, initialized RAM, zero-initialized RAM, an
 implicit copy-and-clear startup stub, and transactional rollback fit within the
 existing architecture.
@@ -216,8 +216,8 @@ Its latest executable Stage 7 measurement is 14,300 compiler-code bytes plus
 390 immutable bytes, or 14,690 bytes of compiler core. Workspace is 2,564
 bytes, selected runtime is 657 bytes, and the proof executes 1,359,658
 instructions in 12,670,276 T-states. The proof includes exact 1 KiB boundaries
-for initialized data and BSS. Individual aggregate objects remain bounded at
-255 bytes; four 255-byte strings plus a four-byte tail distinguish each total
-region boundary. These are experimental measurements, not settled target
-budgets. The experiment still requires final correctness and size review before
-it can support a design choice.
+for initialized data and BSS. Individual aggregate objects were then bounded
+at 255 bytes; four 255-byte strings plus a four-byte tail distinguished each
+total region boundary. The later 16-bit aggregate-extent correction supersedes
+that object limit. These figures remain historical measurements, not current
+target budgets.

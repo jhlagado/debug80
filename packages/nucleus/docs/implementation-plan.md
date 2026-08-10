@@ -883,6 +883,41 @@ Stage 9 proof executes 1,510,705 instructions in 14,226,734 T-states. Relative
 to the immediately preceding segmented-output plateau, the correction removes
 49 compiler-code bytes, one workspace byte, and four selected-runtime bytes.
 
+The following aggregate-width correction supersedes that object ceiling.
+Dynamic descriptors now retain a 16-bit array length and a separate 16-bit
+complete extent. Record-field offsets and record extents are also words.
+Selection, region validation, and exact-type copying consume those word values;
+arrays use the element's complete word extent as their stride. Bounded strings
+remain capped at `string[253]`, but participate in the same complete-extent,
+allocation, region-checking, and copying paths as every other aggregate.
+
+The active segmented compiler admits one complete object up to the enclosing
+1,024-byte initialized-data or BSS region. This is an allocation capacity, not
+a type-system ceiling: the source array bound remains 1 through 65,535, and a
+later memory-map profile can enlarge the program-data regions without another
+aggregate-representation change. The proof constructs and copies a 501-byte
+record containing two wide arrays, indexes through its word field offset and
+word stride, accepts an exact 1,024-byte array, rejects the first 1,025-byte
+object, and publishes an explicit 256-byte initialized array.
+
+Fresh production assembly measures 14,311 compiler-code bytes plus 390
+immutable bytes, for a 14,701-byte compiler core. Workspace is 3,623 bytes,
+including the 1,024-byte object-building scratch and 511-byte semantic
+transcript. The selected runtime is 655 bytes, and the largest Chapter 21
+generated program is 1,040 bytes. The expanded Stage 7 proof executes
+1,701,877 instructions in 15,720,339 T-states and occupies 3,044 proof bytes.
+
+The post-correctness compression pass saves 41 compiler-core bytes without
+changing workspace, generated-program, or runtime accounts. The first measured
+pass removes 23 bytes through direct word-table address arithmetic, one
+explicit-initializer flag, a shared bounded-string extent reader, and compact
+descriptor publication. The final 18 bytes come from folding call-offset reads
+into that string reader, inlining the sole initializer-entry and field-lookup
+paths, and removing two one-call wrappers and a redundant return. A shared
+RD/LL(1) array-extent helper was rejected after it grew the selected production
+image by five bytes. Executable proof also rejected a proposed manual
+descriptor-copy loop, so the proven `LDIR` form remains.
+
 ## Capacity ledger
 
 The first implementation fixes a numeric limit before each bounded structure is
@@ -899,19 +934,20 @@ requirement are both known.
 | retained direct parameters              |         16 | four-byte source-backed entries                                               | capacity diagnostic                                                              | accepted sixteen-position call and rejected seventeenth parameter            |
 | nested compiler call frames             |          4 | ten-byte parser frames                                                        | capacity diagnostic                                                              | rejected fifth nested call                                                   |
 | LL(1) grammar symbols                   |         64 | byte stack plus thirteen bytes of action state                                | parser-capacity diagnostic                                                       | exact-fill and atomic internal-overflow engine proof                         |
-| dynamic types, records, and fields      | 8 / 5 / 12 | three-byte type, two-byte record, and five-byte field entries                 | capacity diagnostic                                                              | accepted nested layout and metadata exhaustion proofs                        |
-| fixed-array element count               |        255 | descriptor byte; complete object extent is bounded separately                 | capacity diagnostic                                                              | accepted `u8[255]` followed by one byte; rejected `u8[256]`                  |
+| dynamic types, records, and fields      | 8 / 5 / 12 | four-byte type, two-byte record, and six-byte field entries                   | capacity diagnostic                                                              | accepted nested layout and metadata exhaustion proofs                        |
+| fixed-array element count               |     65,535 | retained word; allocation is bounded separately by complete extent            | program-data capacity diagnostic when the object cannot fit                      | accepted and indexed `u8[1024]`; rejected allocated `u8[1025]`               |
 | bounded-string capacity                 |        253 | descriptor byte; object extent is capacity plus two                           | `bounded-string-capacity`; use `u8[N]` plus a scalar length for constructed text | accepted 253 and rejected 254/255; zero payload and sealed-byte proof        |
-| complete aggregate type extent          |        255 | direct nonzero retained byte                                                  | capacity diagnostic                                                              | accepted `string[253]` and `u8[255]`; rejected `u16[128]`                    |
+| complete aggregate type extent          |     65,535 | retained word shared by records, arrays, and bounded strings                  | program-data capacity diagnostic when an allocated object cannot fit             | 501-byte nested record; exact 1,024-byte object; rejected 1,025-byte object  |
 | retained forward signatures and names   |          4 | shared eight-byte routine entries plus one main-forward flag                  | capacity diagnostic                                                              | mutual recursion, incomplete forward, and forward-main proofs                |
 | scalar parameters                       |         16 | shared four-byte retained-parameter entries                                   | capacity diagnostic                                                              | accepted sixteen-position call and rejected seventeenth parameter            |
 | expression nesting                      |         16 | thirteen-byte metadata entries retaining operand value, type, and position    | capacity diagnostic                                                              | seventeen-deep pending-expression proof                                      |
-| semantic transcript payload bytes       |        255 | counted variable-width stream                                                 | capacity diagnostic                                                              | 52-assignment exhaustion proof                                               |
+| semantic transcript payload bytes       |        511 | counted variable-width stream                                                 | capacity diagnostic                                                              | widened assignment-exhaustion proof                                          |
+| semantic transcript operations          |        255 | one-byte published operation count                                            | capacity diagnostic                                                              | pre-append operation-count guard                                             |
 | Boolean fixups                          |         16 | two-byte generated addresses                                                  | capacity diagnostic                                                              | exhaustion and underflow boundary proofs                                     |
 | active control frames                   |          8 | ten-byte parser frames                                                        | capacity diagnostic                                                              | nested structured-control proofs                                             |
 | dynamic labels                          |         27 | byte ordinals; 27 reserved for callable `main`, 28–31 for retained routines   | capacity diagnostic                                                              | exact allocation boundary and callable-main proofs                           |
 | branch fixups                           |         32 | three-byte absolute records                                                   | capacity diagnostic                                                              | bounded resolver and generated branch proofs                                 |
-| structured-initializer depth and nodes  |     4 / 32 | counters plus recursive parser state; root counts as a node                   | capacity diagnostic                                                              | depth and 31/32 source-element boundary proofs                               |
+| structured-initializer depth            |          4 | recursive parser state; total nodes are streamed and not retained             | capacity diagnostic                                                              | exact nesting boundary and wide 256-element initializer                      |
 | initialized program-data bytes          |      1,024 | private compiler image plus a retained word length                            | capacity diagnostic                                                              | exact four-string-plus-tail image and rejected following byte                |
 | zero-initialized program-data bytes     |      1,024 | retained word length; no stored image bytes                                   | capacity diagnostic                                                              | exact four-string-plus-tail BSS and rejected following byte                  |
 | emitted Z80 program bytes               |      4,096 | bounded output cursor                                                         | capacity diagnostic                                                              | 857-byte Stage 5 bound and rollback proof                                    |

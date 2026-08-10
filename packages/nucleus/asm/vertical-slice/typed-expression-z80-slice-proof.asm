@@ -137,9 +137,9 @@ TypedLiteralOverflowSource:
             .db "var bad as u16 = 65536",10
 TypedLiteralOverflowSourceEnd:
 
-; The u16 definition and main marker consume five bytes. Fifty named-constant
-; expression/store pairs fill the remaining 250 bytes, so pair 51 must fail on
-; its first operation and unwind the saved symbol metadata.
+; The u16 definition and main marker consume five bytes. The repeated
+; named-constant expression/store pairs cross the 511-byte transcript payload
+; without approaching the independent 255-operation limit.
 TypedTranscriptCapacitySource:
             .db "const k = 1",10
             .db "var out as u16 = 0",10
@@ -157,6 +157,19 @@ TypedTranscriptCapacitySource:
             .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
             .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
             .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10
             .db "end",10
 TypedTranscriptCapacitySourceEnd:
 
@@ -333,6 +346,34 @@ ProofStart:
             LD   C,DiagnosticSinkCapacity
             CALL ProofExpectDiagnostic
             JP   C,ProofFailTranscriptCapacity
+
+            ; The byte stream still has room after 255 one-byte operations,
+            ; but the independently published operation count does not. Lock
+            ; the exact count and cursor before the 256th operation; its
+            ; terminal diagnostic intentionally overlays that dead sink state.
+            CALL SemanticSinkReset
+            LD   C,255
+ProofFillOperationCount:
+            LD   A,SemanticLiteral16
+            CALL SemanticSinkOperation
+            JP   C,ProofFailOperationCapacityFill
+            DEC  C
+            JR   NZ,ProofFillOperationCount
+            LD   A,(SinkOperationCount)
+            CP   255
+            JP   NZ,ProofFailOperationCapacityBoundary
+            LD   HL,(SinkCursor)
+            LD   DE,SemanticBufferBase+256
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailOperationCapacityBoundary
+            LD   A,SemanticLiteral16
+            CALL SemanticSinkOperation
+            JP   NC,ProofFailOperationCapacityAccept
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticSinkCapacity
+            JP   NZ,ProofFailOperationCapacityDiagnostic
+
             LD   A,91
             LD   HL,TypedExpressionCapacitySource
             LD   DE,TypedExpressionCapacitySourceEnd
@@ -769,17 +810,17 @@ ProofFailBooleanUnderflow:    LD A,37
 ProofFailRetiredOperation:    LD A,38
                               JP ProofFailed
 ProofFailUnbalancedBoolean:   LD A,39
-                              JR ProofFailed
+                              JP ProofFailed
 ProofFailFrame:               LD A,40
-                              JR ProofFailed
+                              JP ProofFailed
 ProofFailDynamicZero:         LD A,41
-                              JR ProofFailed
+                              JP ProofFailed
 ProofFailUnaryMinusRange:     LD A,42
-                              JR ProofFailed
+                              JP ProofFailed
 ProofFailNotRange:            LD A,43
-                              JR ProofFailed
+                              JP ProofFailed
 ProofFailMalformedHex:        LD A,44
-                              JR ProofFailed
+                              JP ProofFailed
 ProofFailMalformedSuffix:     LD A,45
                               JR ProofFailed
 ProofFailSuppressedDivideType: LD A,65
@@ -794,6 +835,14 @@ ProofFailMalformedAfterLeft:  LD A,69
                               JR ProofFailed
 ProofFailDefaultLocalCapacity: LD A,70
                               JR ProofFailed
+ProofFailOperationCapacityFill: LD A,71
+                              JP ProofFailed
+ProofFailOperationCapacityBoundary: LD A,72
+                              JP ProofFailed
+ProofFailOperationCapacityAccept: LD A,73
+                              JP ProofFailed
+ProofFailOperationCapacityDiagnostic: LD A,74
+                              JP ProofFailed
 ProofFailCoverageCompile:     LD A,46
                               JR ProofFailed
 ProofFailCoverageEncode:      LD A,47
