@@ -71,6 +71,16 @@ Stage7CallFrameFlags        .equ 9
 
 Stage7CompilerWorkspaceEnd  .equ Stage7CallFrameLimit
 
+; The memory-backed multipart adapter retains only the next external
+; descriptor and a remaining-part count. Bit 7 of the count records a pending
+; boundary newline; the low seven bits retain the count itself.
+; Source bytes and the descriptor table remain outside compiler workspace.
+SourcePartDescriptorCursor  .equ Stage7CompilerWorkspaceEnd
+SourcePartsRemaining        .equ SourcePartDescriptorCursor+2
+SourceMultipartWorkspaceEnd .equ SourcePartsRemaining+1
+SourcePartDescriptorSize    .equ 5
+SourcePartCapacity          .equ 8
+
 ; Emission begins only after parsing has published the semantic transcript, so
 ; its consecutive call fields overlay the no-longer-live declaration prefix.
 Stage8EmitFieldBase         .equ Stage7StateBase
@@ -136,3 +146,4 @@ DiagnosticRoutineCapacity  .equ 84
 DiagnosticParameterCapacity .equ 85
 DiagnosticTransientAlias   .equ 86
 DiagnosticFailureContext   .equ 87
+DiagnosticSourcePartCapacity .equ 88

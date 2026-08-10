@@ -111,9 +111,21 @@ Stage8MatchPredefinedSkip:
             OR   A
             RET
 
+.routine in A,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+CompileAggregateCallParts:
+            PUSH AF
+            PUSH HL
+            CALL CompileSliceResetState
+            POP  HL
+            POP  AF
+            CALL SourceInitializeParts
+            RET  C
+            JR   CompileAggregateCallReady
 .routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 CompileAggregateCallSlice:
             CALL CompileSliceInitialize
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+CompileAggregateCallReady:
             INC  A
             LD   (AggregateMode),A
             LD   HL,Stage7StateBase

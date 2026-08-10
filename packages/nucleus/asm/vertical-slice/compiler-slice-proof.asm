@@ -4,6 +4,8 @@
             .include "memory-map.asmi"
             .include "compiler-state.asmi"
 
+AggregateCallSlices .equ 0
+
             .org CompilerCoreBase
 CompilerCodeStart:
             .include "source-adapter.asm"

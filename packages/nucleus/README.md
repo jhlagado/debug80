@@ -15,7 +15,7 @@ package does not govern Nucleus.
 | `grammar/` | machine-readable Stage 7 grammar, generator, and packed LL(1) tables |
 | `asm/`     | direct-Z80 compiler, runtime, and executable AZM proof fixtures      |
 | `proofs/`  | bounded memory profiles and proof-harness manifests                  |
-| `src/`     | host-side grammar analysis, runtime assignments, and metadata models |
+| `src/`     | host-side grammar, manifest, runtime, and metadata support           |
 | `test/`    | grammar, contract, measurement, and direct-Z80 proof gates           |
 
 The current authorities are:
@@ -37,6 +37,8 @@ specification. The packed parser uses the machine-readable Stage 7 grammar in
 service assignments are checked against the direct-Z80 contract. The
 type-metadata model covers every Nucleus type, including arrays of records and
 bounded strings, without turning aggregate aliases into runtime types.
+The flat-manifest adapter preserves ordered source-part identities and
+diagnostic names outside the compiler core.
 
 ```bash
 npm run proof -w nucleus

@@ -7,6 +7,8 @@
             .include "loop-compiler-state.asmi"
             .include "aggregate-call-state.asmi"
 
+AggregateCallSlices .equ 0
+
             .org CompilerCoreBase
 .routine out A,BC,carry,zero clobbers sign,parity,halfCarry,D,DE,HL
 ParserPeek:

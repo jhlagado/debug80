@@ -169,22 +169,20 @@ expectation checks those observations directly.
 
 ## Current readiness baseline
 
-Stages 2 and 3 are executable historical evidence. Stage 4 completed the
-backend decision with counted-loop, checked-array, and scalar-recursion
-increments. Stage 5 covers typed scalar declarations and expressions,
-structured control, and one retained recursive scalar routine. Stage 6 adds
-aggregate layout and static images. Each completed increment has a correctness
-baseline and a measured compression pass. This remains a bounded proof
-increment rather than a complete compiler. Its resident size is the current
-plateau from which the next feature must grow.
+Stages 2 through 8 remain executable historical evidence for the direct-Z80
+compiler increments. Stage 9 compiles and executes the complete Chapter 21
+corpus, including ordered multipart input, and locks the final resource
+accounts. Each completed increment has a correctness baseline and a measured
+compression pass. The resident Stage 9 size is the current implementation
+plateau.
 
-| Area           | Current evidence                                                                                                        | Work ahead                                                                                              |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| Specifications | The language specification, direct-Z80 contract, reviewer charter, and implementation plan define the active system.    | Review normative changes before implementation depends on them.                                         |
-| Grammar        | The collected grammar is analyzed mechanically and its three predictive conflicts are locked by tests.                  | Preserve the result while adding the source compiler; no new grammar work is planned.                   |
-| Type metadata  | Compact structural metadata and alias-category separation have executable tests.                                        | Measure inline metadata against interned ordinals in Z80 before selecting the first representation.     |
-| Source corpus  | Chapter 21 records expected accepted and rejected behavior.                                                             | Compile each applicable case to Z80 and check its direct output, state, diagnostic, or trap.            |
-| Z80 evidence   | The compiler emits and runs loop, checked-array, recursive-call, and scalar-expression programs with measured accounts. | Generalize one bounded component at a time and reach a measured size plateau before the next increment. |
+| Area           | Current evidence                                                                                                        | Work ahead                                                                                          |
+| -------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
+| Specifications | The language specification, direct-Z80 contract, reviewer charter, and implementation plan define the active system.    | Review normative changes before implementation depends on them.                                     |
+| Grammar        | The collected grammar is analyzed mechanically and its three predictive conflicts are locked by tests.                  | Preserve the result while adding the source compiler; no new grammar work is planned.               |
+| Type metadata  | Compact structural metadata and alias-category separation have executable tests.                                        | Measure inline metadata against interned ordinals in Z80 before selecting the first representation. |
+| Source corpus  | Every Chapter 21 program is byte-locked to the specification and has a direct output, state, diagnostic, or trap proof. | Extend the corpus only when a language or implementation change requires another discriminator.     |
+| Z80 evidence   | The complete Chapter 21 corpus runs through the direct compiler with final measured accounts.                           | Preserve the final gate while preparing hardware and adapter evidence.                              |
 
 `vitest run test/proof-harness.test.ts` from `packages/nucleus` is the focused
 assembly-proof gate. The broader Nucleus package suite runs only after that
@@ -694,38 +692,68 @@ capacities. If it fails, use the component ledger to select a semantics-
 preserving representation or lowering experiment. Do not infer the cause from
 source size or host measurements.
 
+The completed harness locks all twenty-two `nucleus` code fences in Chapter 21
+byte for byte. It compiles and runs every accepted program, checks both
+specified runtime-trap cases at their exact source offsets, and rejects all
+nine invalid programs before execution with their required diagnostic class
+and position. The generated terminal paths restore the root stack pointer, IX,
+and activation depth. The largest generated program in this corpus is 945
+bytes.
+
+The Section 21.1 program is assembled from the literal flat manifest
+`model.nu`, a blank line, and `main.nu`. The host adapter preserves written
+order, gives duplicate names distinct stable identities, and maps a diagnostic
+from identity 2 back to `main.nu`. The Z80 adapter accepts one through eight
+five-byte source descriptors. Its proof covers counts 1, 8, and 9, a missing
+physical newline, an open delimiter at a part boundary, a positioned failure
+in the second part, and successful compilation after earlier multipart and
+capacity failures.
+
+The correctness-cleared build measured 13,501 code bytes plus 368 immutable
+bytes, for a 13,869-byte compiler core with 1,402 bytes of workspace. The size
+pass removes 51 core bytes and one workspace byte. It eliminates a redundant
+descriptor-pointer sentinel, folds the pending-boundary flag into the high bit
+of the remaining-part count, shares existing source-position initialization,
+uses fall-through at the two compilation-entry joins, inlines the sole
+multipart-initialization caller, and selects relative transfers for the new
+in-range tails. Fresh assembly measures 13,450 code bytes
+plus 368 immutable bytes, for a 13,818-byte compiler core. Workspace is 1,401
+bytes and the selected runtime is 561 bytes. The complete proof occupies 1,274
+bytes and executes 1,088,280 instructions in 10,231,174 T-states. The final
+core remains 2,566 bytes inside the 16 KiB gate.
+
 ## Capacity ledger
 
 The first implementation fixes a numeric limit before each bounded structure is
 used. Each row remains open until a Z80 representation and a minimum corpus
 requirement are both known.
 
-| Resource                                |      Limit | Representation                                                              | Excess diagnostic or trap  | Evidence                                                                     |
-| --------------------------------------- | ---------: | --------------------------------------------------------------------------- | -------------------------- | ---------------------------------------------------------------------------- |
-| source part count                       |       open | open                                                                        | capacity diagnostic        | open                                                                         |
-| diagnostic-name bytes                   |       open | open                                                                        | capacity diagnostic        | open                                                                         |
-| identifier bytes                        |       open | open                                                                        | capacity diagnostic        | open                                                                         |
-| ordinary scalar symbols                 |         16 | six-byte source-backed entries                                              | capacity diagnostic        | duplicate, unknown, and seventeenth-name proof                               |
-| direct routine declarations             |          4 | eight-byte source-backed entries                                            | capacity diagnostic        | rejected fifth routine                                                       |
-| retained direct parameters              |         16 | four-byte source-backed entries                                             | capacity diagnostic        | accepted sixteen-position call and rejected seventeenth parameter            |
-| nested compiler call frames             |          4 | ten-byte parser frames                                                      | capacity diagnostic        | rejected fifth nested call                                                   |
-| LL(1) grammar symbols                   |         64 | byte stack plus thirteen bytes of action state                              | parser-capacity diagnostic | exact-fill and atomic internal-overflow engine proof                         |
-| dynamic types, records, and fields      | 8 / 5 / 12 | three-byte type, two-byte record, and five-byte field entries               | capacity diagnostic        | accepted nested layout and metadata exhaustion proofs                        |
-| complete aggregate type extent          |        255 | retained byte extent; selected Stage 6 layout bound                         | capacity diagnostic        | rejected 256-byte field type                                                 |
-| retained forward signatures and names   |          4 | shared eight-byte routine entries plus one main-forward flag                | capacity diagnostic        | mutual recursion, incomplete forward, and forward-main proofs                |
-| scalar parameters                       |       open | open                                                                        | capacity diagnostic        | one recursive-parameter proof                                                |
-| expression nesting                      |         16 | seven-byte metadata entries                                                 | capacity diagnostic        | seventeen-deep pending-expression proof                                      |
-| semantic transcript payload bytes       |        255 | counted variable-width stream                                               | capacity diagnostic        | 52-assignment exhaustion proof                                               |
-| Boolean fixups                          |         16 | two-byte generated addresses                                                | capacity diagnostic        | exhaustion and underflow boundary proofs                                     |
-| active control frames                   |          8 | ten-byte parser frames                                                      | capacity diagnostic        | nested structured-control proofs                                             |
-| dynamic labels                          |         27 | byte ordinals; 27 reserved for callable `main`, 28–31 for retained routines | capacity diagnostic        | exact allocation boundary and callable-main proofs                           |
-| branch fixups                           |         32 | three-byte absolute records                                                 | capacity diagnostic        | bounded resolver and generated branch proofs                                 |
-| structured-initializer depth and nodes  |     4 / 32 | counters plus recursive parser state; root counts as a node                 | capacity diagnostic        | depth and 31/32 source-element boundary proofs                               |
-| program static-image bytes              |        255 | private compiler image                                                      | capacity diagnostic        | 255-byte object followed by rejected allocation                              |
-| emitted Z80 program bytes               |      4,096 | bounded output cursor                                                       | capacity diagnostic        | 857-byte Stage 5 bound and rollback proof                                    |
-| activation bytes                        |       open | packed records                                                              | `activation-capacity`      | one-byte Stage 4 slice                                                       |
-| activation depth                        |          8 | counter plus generated hardware-stack frames                                | `activation-capacity`      | recursive handler-bypass and root-frame trap proof                           |
-| service stream and bulk-storage extents |          4 | proof adapter byte arrays with independent cursors                          | stable service error       | success, end, configured failure, overwrite, append, rewind, and seek proofs |
+| Resource                                |      Limit | Representation                                                                | Excess diagnostic or trap                           | Evidence                                                                     |
+| --------------------------------------- | ---------: | ----------------------------------------------------------------------------- | --------------------------------------------------- | ---------------------------------------------------------------------------- |
+| source part count                       |          8 | external five-byte descriptors plus three compiler-workspace bytes            | capacity diagnostic                                 | accepted 1- and 8-part units; rejected ninth part                            |
+| diagnostic-name bytes                   |   external | retained by the host manifest adapter, not by the compiler core               | packaging diagnostic                                | exact `model.nu` and `main.nu` mapping                                       |
+| identifier bytes                        |        255 | source-backed name plus one-byte length                                       | lexical diagnostic                                  | scanner wrap guard                                                           |
+| ordinary scalar symbols                 |         16 | six-byte source-backed entries                                                | capacity diagnostic                                 | duplicate, unknown, and seventeenth-name proof                               |
+| direct routine declarations             |          4 | eight-byte source-backed entries                                              | capacity diagnostic                                 | rejected fifth routine                                                       |
+| retained direct parameters              |         16 | four-byte source-backed entries                                               | capacity diagnostic                                 | accepted sixteen-position call and rejected seventeenth parameter            |
+| nested compiler call frames             |          4 | ten-byte parser frames                                                        | capacity diagnostic                                 | rejected fifth nested call                                                   |
+| LL(1) grammar symbols                   |         64 | byte stack plus thirteen bytes of action state                                | parser-capacity diagnostic                          | exact-fill and atomic internal-overflow engine proof                         |
+| dynamic types, records, and fields      | 8 / 5 / 12 | three-byte type, two-byte record, and five-byte field entries                 | capacity diagnostic                                 | accepted nested layout and metadata exhaustion proofs                        |
+| complete aggregate type extent          |        255 | retained byte extent; selected Stage 6 layout bound                           | capacity diagnostic                                 | rejected 256-byte field type                                                 |
+| retained forward signatures and names   |          4 | shared eight-byte routine entries plus one main-forward flag                  | capacity diagnostic                                 | mutual recursion, incomplete forward, and forward-main proofs                |
+| scalar parameters                       |         16 | shared four-byte retained-parameter entries                                   | capacity diagnostic                                 | accepted sixteen-position call and rejected seventeenth parameter            |
+| expression nesting                      |         16 | seven-byte metadata entries                                                   | capacity diagnostic                                 | seventeen-deep pending-expression proof                                      |
+| semantic transcript payload bytes       |        255 | counted variable-width stream                                                 | capacity diagnostic                                 | 52-assignment exhaustion proof                                               |
+| Boolean fixups                          |         16 | two-byte generated addresses                                                  | capacity diagnostic                                 | exhaustion and underflow boundary proofs                                     |
+| active control frames                   |          8 | ten-byte parser frames                                                        | capacity diagnostic                                 | nested structured-control proofs                                             |
+| dynamic labels                          |         27 | byte ordinals; 27 reserved for callable `main`, 28–31 for retained routines   | capacity diagnostic                                 | exact allocation boundary and callable-main proofs                           |
+| branch fixups                           |         32 | three-byte absolute records                                                   | capacity diagnostic                                 | bounded resolver and generated branch proofs                                 |
+| structured-initializer depth and nodes  |     4 / 32 | counters plus recursive parser state; root counts as a node                   | capacity diagnostic                                 | depth and 31/32 source-element boundary proofs                               |
+| program static-image bytes              |        255 | private compiler image                                                        | capacity diagnostic                                 | 255-byte object followed by rejected allocation                              |
+| emitted Z80 program bytes               |      4,096 | bounded output cursor                                                         | capacity diagnostic                                 | 857-byte Stage 5 bound and rollback proof                                    |
+| activation bytes                        |      3,840 | reserved machine-stack region; frame size is bounded by retained declarations | `activation-capacity` or fixed memory-map rejection | memory-map proof, sixteen-position call, and depth boundary                  |
+| activation depth                        |          8 | counter plus generated hardware-stack frames                                  | `activation-capacity`                               | recursive handler-bypass and root-frame trap proof                           |
+| service stream and bulk-storage extents |          4 | proof adapter byte arrays with independent cursors                            | stable service error                                | success, end, configured failure, overwrite, append, rewind, and seek proofs |
 
 No implementation may wrap, truncate, drop state, or change source meaning when
 one of these limits is exceeded.

@@ -2,6 +2,8 @@
 
             .include "memory-map.asmi"
             .include "compiler-state.asmi"
+
+AggregateCallSlices .equ 0
             .include "z80-state.asmi"
 
             .org CompilerCoreBase

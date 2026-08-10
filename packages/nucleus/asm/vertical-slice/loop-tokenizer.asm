@@ -456,6 +456,31 @@ TokenizerAtEof:
             LD   A,(SourceDelimiterDepth)
             OR   A
             JR   NZ,TokenizerLexicalFailure
+.if AggregateCallSlices
+            LD   A,(SourcePartsRemaining)
+            BIT  7,A
+            JR   NZ,TokenizerAdvancePart
+            OR   A
+            JR   Z,TokenizerAtCompilationEof
+            LD   A,(SourceLineHasToken)
+            OR   A
+            JR   Z,TokenizerAdvancePart
+            XOR  A
+            LD   (SourceLineHasToken),A
+            LD   HL,SourcePartsRemaining
+            SET  7,(HL)
+            LD   A,TokenNewline
+            OR   A
+            RET
+TokenizerAdvancePart:
+            LD   HL,SourcePartsRemaining
+            RES  7,(HL)
+            DEC  (HL)
+            LD   HL,(SourcePartDescriptorCursor)
+            CALL SourceLoadPart
+            JP   TokenizerNextLoop
+TokenizerAtCompilationEof:
+.endif
             LD   A,(SourceLineHasToken)
             OR   A
             JR   Z,TokenizerEmitEof

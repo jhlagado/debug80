@@ -4,7 +4,11 @@
 ; right sides in reverse order so one bounded copy pushes a complete rule.
 
 HybridLL1StackCapacity .equ 64
+.if AggregateCallSlices
+HybridLL1StackDepth    .equ SourceMultipartWorkspaceEnd
+.else
 HybridLL1StackDepth    .equ Stage7CompilerWorkspaceEnd
+.endif
 HybridLL1StackBase     .equ HybridLL1StackDepth+1
 HybridLL1WorkspaceEnd  .equ HybridLL1StackBase+HybridLL1StackCapacity+13
 DiagnosticParserCapacity .equ 87

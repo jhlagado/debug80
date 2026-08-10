@@ -1067,7 +1067,15 @@ CompileSlice:
 .endif
 .routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 CompileSliceInitialize:
+.if AggregateCallSlices
+            PUSH AF
+            XOR  A
+            LD   (SourcePartsRemaining),A
+            POP  AF
+.endif
             CALL SourceInitialize
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+CompileSliceResetState:
             XOR  A
             LD   (DiagnosticCode),A
             LD   (DiagnosticPartId),A

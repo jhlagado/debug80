@@ -16,6 +16,47 @@ SourceInitialize:
             LD   (SourceDelimiterDepth),A
             RET
 
+.if AggregateCallSlices
+; A is a bounded part count and HL points to five-byte descriptors containing
+; stable identity, source start, and source end. The source and descriptors
+; remain resident until compilation finishes.
+.routine in A,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
+SourceInitializeParts:
+            DEC  A
+            CP   SourcePartCapacity
+            JR   NC,SourcePartCapacityFailure
+            LD   (SourcePartsRemaining),A
+            JR   SourceLoadPart
+SourcePartCapacityFailure:
+            XOR  A
+            LD   H,A
+            LD   L,A
+            LD   D,A
+            LD   E,A
+            CALL SourceInitialize
+            CALL TokenRecordStart
+            LD   A,DiagnosticSourcePartCapacity
+            JP   CompilerSetDiagnostic
+
+; Load the descriptor at HL and retain the address of the following one.
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
+SourceLoadPart:
+            LD   A,(HL)
+            INC  HL
+            LD   E,(HL)
+            INC  HL
+            LD   D,(HL)
+            INC  HL
+            PUSH DE
+            LD   E,(HL)
+            INC  HL
+            LD   D,(HL)
+            INC  HL
+            LD   (SourcePartDescriptorCursor),HL
+            POP  HL
+            JR   SourceInitialize
+.endif
+
 ; Return the current source byte in A. Carry denotes the separate EOF event.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,DE,HL
 SourcePeek:

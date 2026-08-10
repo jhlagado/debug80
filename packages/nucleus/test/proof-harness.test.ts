@@ -1,9 +1,11 @@
 import path from "node:path";
+import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
 
 import { runProofManifest } from "../src/proof.js";
 import { ServiceError, Trap } from "../src/runtime-contract.js";
+import { buildSourceParts } from "../src/source-manifest.js";
 
 const proof = (name: string): string =>
   path.resolve(import.meta.dirname, "..", "proofs", `${name}.json`);
@@ -12,6 +14,113 @@ const wordAt = (memory: Uint8Array, address: number): number =>
   (memory[address] ?? 0) | ((memory[address + 1] ?? 0) << 8);
 
 describe("manifest-driven AZM and Debug80 proofs", () => {
+  it("compiles and executes the Chapter 21 corpus as direct Z80", async () => {
+    const outcome = await runProofManifest(
+      proof("stage9-conformance-z80-slice-proof"),
+    );
+    expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
+    expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
+    expect(
+      outcome.extents.find(({ name }) => name === "compiler-core")?.bytes,
+    ).toBeLessThanOrEqual(16_384);
+    expect(outcome.instructions).toBe(1_088_280);
+    expect(outcome.cycles).toBe(10_231_174);
+    expect(outcome.extents).toEqual([
+      { name: "compiler-code", bytes: 13_450 },
+      { name: "compiler-immutable", bytes: 368 },
+      { name: "compiler-core", bytes: 13_818 },
+      { name: "compiler-workspace", bytes: 1_401 },
+      { name: "generated-z80-bound", bytes: 4_096 },
+      { name: "z80-runtime", bytes: 561 },
+      { name: "corpus-source-and-descriptors", bytes: 5_078 },
+      { name: "proof-code-and-data", bytes: 1_274 },
+    ]);
+
+    const symbol = (name: string): number => {
+      const address = outcome.symbols[name];
+      expect(address, `${name} must be retained`).toBeDefined();
+      return address ?? -1;
+    };
+    expect(wordAt(outcome.memory, symbol("ProofMaxGenerated"))).toBe(945);
+    const source = (start: string, end: string): string =>
+      new TextDecoder().decode(
+        outcome.memory.slice(symbol(start), symbol(end)),
+      );
+    const specification = readFileSync(
+      path.resolve(import.meta.dirname, "..", "docs", "specification.md"),
+      "utf8",
+    );
+    const chapter21 = specification.slice(specification.indexOf("## 21."));
+    const specificationPrograms = Array.from(
+      chapter21.matchAll(/```nucleus\n([\s\S]*?)```/g),
+      (match) => match[1] ?? "",
+    );
+    const proofPrograms = [
+      source("Chapter21_1Part1", "Chapter21_1Part1End") +
+        source("Chapter21_1Part2", "Chapter21_1Part2End"),
+      ...[
+        "Chapter21_2",
+        "Chapter21_3",
+        "Chapter21_4",
+        "Chapter21_5",
+        "Chapter21_6",
+        "Chapter21_7",
+        "Chapter21_8",
+        "Chapter21_9Bounds",
+        "Chapter21_9Divide",
+        "Chapter21_10Unconsumed",
+        "Chapter21_10Nominal",
+        "Chapter21_10Initializer",
+        "Chapter21_10AggregateLocal",
+        "Chapter21_10RoutineFlow",
+        "Chapter21_10Later",
+        "Chapter21_10MainSignature",
+        "Chapter21_10ActiveCounter",
+        "Chapter21_10Hex",
+        "Chapter21_12",
+        "Chapter21_13",
+        "Chapter21_14",
+      ].map((name) => source(`${name}Source`, `${name}SourceEnd`)),
+    ];
+    expect(specificationPrograms).toHaveLength(22);
+    expect(proofPrograms).toEqual(specificationPrograms);
+
+    const manifestParts = buildSourceParts("model.nu\n\nmain.nu\n", (name) =>
+      name === "model.nu"
+        ? outcome.memory.slice(
+            symbol("Chapter21_1Part1"),
+            symbol("Chapter21_1Part1End"),
+          )
+        : outcome.memory.slice(
+            symbol("Chapter21_1Part2"),
+            symbol("Chapter21_1Part2End"),
+          ),
+    );
+    expect(
+      manifestParts.map(({ ordinal, diagnosticName, stableIdentity }) => ({
+        ordinal,
+        diagnosticName,
+        stableIdentity,
+      })),
+    ).toEqual([
+      {
+        ordinal: 1,
+        diagnosticName: "model.nu",
+        stableIdentity: "1:model.nu",
+      },
+      {
+        ordinal: 2,
+        diagnosticName: "main.nu",
+        stableIdentity: "2:main.nu",
+      },
+    ]);
+    expect(
+      new TextDecoder().decode(manifestParts[0]?.bytes ?? new Uint8Array()) +
+        new TextDecoder().decode(manifestParts[1]?.bytes ?? new Uint8Array()),
+    ).toBe(specificationPrograms[0]);
+    expect(manifestParts[1]?.diagnosticName).toBe("main.nu");
+  }, 30_000);
+
   it("executes failable signatures and explicit failure as direct Z80", async () => {
     const outcome = await runProofManifest(
       proof("stage8-failure-z80-slice-proof"),
@@ -21,13 +130,13 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     expect(
       outcome.extents.find(({ name }) => name === "compiler-core")?.bytes,
     ).toBeLessThanOrEqual(16_384);
-    expect(outcome.instructions).toBe(1_515_084);
-    expect(outcome.cycles).toBe(14_125_764);
+    expect(outcome.instructions).toBe(1_515_449);
+    expect(outcome.cycles).toBe(14_129_116);
     expect(outcome.extents).toEqual([
-      { name: "compiler-code", bytes: 13_344 },
+      { name: "compiler-code", bytes: 13_450 },
       { name: "compiler-immutable", bytes: 368 },
-      { name: "compiler-core", bytes: 13_712 },
-      { name: "compiler-workspace", bytes: 1_398 },
+      { name: "compiler-core", bytes: 13_818 },
+      { name: "compiler-workspace", bytes: 1_401 },
       { name: "generated-z80-bound", bytes: 4_096 },
       { name: "z80-runtime", bytes: 561 },
       { name: "proof-code-and-data", bytes: 2_953 },
