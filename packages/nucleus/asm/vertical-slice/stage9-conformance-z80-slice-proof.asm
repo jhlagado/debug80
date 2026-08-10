@@ -443,11 +443,40 @@ Chapter21_10ExactUseSource:
             .db "var x as u8",10
             .db 10
             .db "sub main()",10
-            .db "    x = Big"
+            .db "    x = "
 Chapter21_10ExactUsePoint:
-            .db 10
+            .db "Big",10
             .db "end",10
 Chapter21_10ExactUseSourceEnd:
+
+Chapter21_10ExactNestedSource:
+            .db "const Big = 300",10
+            .db "var x as u8",10
+            .db 10
+            .db "sub main()",10
+            .db "    x = ("
+Chapter21_10ExactNestedPoint:
+            .db "Big + 1)",10
+            .db "end",10
+Chapter21_10ExactNestedSourceEnd:
+
+Chapter21_10BooleanAsIntegerSource:
+            .db "const flag = true",10
+            .db "var x as u8",10
+            .db "sub main()",10
+            .db "    x = flag"
+Chapter21_10BooleanAsIntegerPoint:
+            .db 10,"end",10
+Chapter21_10BooleanAsIntegerSourceEnd:
+
+Chapter21_10IntegerAsBooleanSource:
+            .db "const value = 1",10
+            .db "var flag as boolean",10
+            .db "sub main()",10
+            .db "    flag = value"
+Chapter21_10IntegerAsBooleanPoint:
+            .db 10,"end",10
+Chapter21_10IntegerAsBooleanSourceEnd:
 
 Chapter21_10HexSource:
             .db "const value = "
@@ -790,6 +819,56 @@ ProofStart:
             LD   IX,Chapter21_10ExactUsePoint-Chapter21_10ExactUseSource
             LD   HL,Chapter21_10ExactUseSource
             LD   DE,Chapter21_10ExactUseSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+            LD   HL,(DiagnosticLine)
+            LD   DE,5
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailed
+            LD   HL,(DiagnosticColumn)
+            LD   DE,9
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailed
+
+            LD   A,61
+            LD   (ProofCase),A
+            LD   A,70
+            LD   B,DiagnosticIntegerRange
+            LD   IX,Chapter21_10ExactNestedPoint-Chapter21_10ExactNestedSource
+            LD   HL,Chapter21_10ExactNestedSource
+            LD   DE,Chapter21_10ExactNestedSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+            LD   HL,(DiagnosticLine)
+            LD   DE,5
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailed
+            LD   HL,(DiagnosticColumn)
+            LD   DE,10
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailed
+
+            LD   A,62
+            LD   (ProofCase),A
+            LD   A,71
+            LD   B,DiagnosticTypeMismatch
+            LD   IX,Chapter21_10BooleanAsIntegerPoint-Chapter21_10BooleanAsIntegerSource
+            LD   HL,Chapter21_10BooleanAsIntegerSource
+            LD   DE,Chapter21_10BooleanAsIntegerSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
+            LD   A,63
+            LD   (ProofCase),A
+            LD   A,72
+            LD   B,DiagnosticTypeMismatch
+            LD   IX,Chapter21_10IntegerAsBooleanPoint-Chapter21_10IntegerAsBooleanSource
+            LD   HL,Chapter21_10IntegerAsBooleanSource
+            LD   DE,Chapter21_10IntegerAsBooleanSourceEnd
             CALL ProofExpectDiagnosticSingle
             JP   C,ProofFailed
 

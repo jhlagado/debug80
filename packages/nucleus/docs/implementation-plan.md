@@ -749,6 +749,51 @@ instructions in 10,800,907 T-states. Relative to the inferred-constant
 baseline, the sealed-string change adds 173 core bytes, four workspace bytes,
 and 24 runtime bytes. The core remains 2,400 bytes inside the 16 KiB gate.
 
+The subsequent correctness review found that an incompatible exact constant
+was diagnosed at the end of its expression rather than at the constant name.
+The repaired parser retains offset, line, and column for both operands in each
+pending expression entry. The Chapter 21 proof now locks the direct and nested
+use positions and rejects named Boolean and integer constants in the opposite
+category. The same review records the first compiler's 255-element fixed-array
+limit separately from its 256-byte complete-type limit. Additional aggregate
+proofs execute a 256-byte whole-string copy, reject a corrupted length through
+both `.length` and indexing, and distinguish the `string[255]` and
+`string[256]` capacity paths.
+
+Before the follow-up size pass, fresh assembly measures 13,687 code bytes plus
+368 immutable bytes, for a 14,055-byte compiler core with 1,509 bytes of
+workspace. The selected runtime remains 585 bytes and the largest Chapter 21
+program remains 1,019 bytes. The expanded 1,449-byte Chapter 21 proof executes
+1,188,701 instructions in 11,211,558 T-states. These figures are the repaired
+correctness baseline, not a size plateau.
+
+A follow-up state-liveness audit found that the six-byte retained declaration
+position overlapped four bytes of the retained expression position. The state
+layout now gives those positions disjoint storage, and the Stage 8 proof
+retains a declaration name across a nontrivial initializer before checking its
+exact duplicate-name offset, line, and column.
+
+The follow-up size pass avoids copying the left operand's six-byte position
+into a second workspace cell. Each pending-expression entry already retains
+that position, so the reducer now keeps a two-byte pointer to the live entry.
+The range-error tail falls through to the common diagnostic path. The final
+local pass inlines the single-use constant multiply and divide paths, removes
+the second divisor-zero test after the first has proved a constant divisor
+nonzero, folds two Boolean-suppression selectors into their call sites,
+shortens the expression-entry address calculation, and uses `JR` for the final
+range-qualified call-argument failure branch. Fresh assembly measures 13,649
+code bytes plus 368 immutable bytes, for a 14,017-byte compiler core with 1,509
+bytes of workspace. The selected runtime remains 585 bytes, and the largest
+Chapter 21 program remains 1,019 bytes. The 1,449-byte Chapter 21 proof executes
+1,188,358 instructions in 11,202,292 T-states.
+
+Three arithmetically promising rewrites were rejected by executable evidence:
+a shared six-byte position-copy helper disturbed the Stage 9 proof; inlining
+the fixed-width `ForNext` semantic reader changed the first Chapter 21
+program's runtime result; and conditional calls could not replace the two
+initializer-capacity helpers because successful `CP` paths deliberately retain
+carry. The proven inline copies, reader boundary, and capacity helpers remain.
+
 ## Capacity ledger
 
 The first implementation fixes a numeric limit before each bounded structure is
@@ -766,11 +811,12 @@ requirement are both known.
 | nested compiler call frames             |          4 | ten-byte parser frames                                                        | capacity diagnostic                                                              | rejected fifth nested call                                                   |
 | LL(1) grammar symbols                   |         64 | byte stack plus thirteen bytes of action state                                | parser-capacity diagnostic                                                       | exact-fill and atomic internal-overflow engine proof                         |
 | dynamic types, records, and fields      | 8 / 5 / 12 | three-byte type, two-byte record, and five-byte field entries                 | capacity diagnostic                                                              | accepted nested layout and metadata exhaustion proofs                        |
+| fixed-array element count               |        255 | descriptor byte; complete object extent is bounded separately                 | capacity diagnostic                                                              | accepted `u8[255]` followed by one byte; rejected `u8[256]`                  |
 | bounded-string capacity                 |        254 | descriptor byte; object extent is capacity plus two                           | `bounded-string-capacity`; use `u8[N]` plus a scalar length for constructed text | accepted 254 and rejected 255; zero payload and sealed-byte proof            |
 | complete aggregate type extent          |        256 | retained byte extent with zero denoting 256                                   | capacity diagnostic                                                              | accepted 256-byte string object and rejected wider layout                    |
 | retained forward signatures and names   |          4 | shared eight-byte routine entries plus one main-forward flag                  | capacity diagnostic                                                              | mutual recursion, incomplete forward, and forward-main proofs                |
 | scalar parameters                       |         16 | shared four-byte retained-parameter entries                                   | capacity diagnostic                                                              | accepted sixteen-position call and rejected seventeenth parameter            |
-| expression nesting                      |         16 | seven-byte metadata entries                                                   | capacity diagnostic                                                              | seventeen-deep pending-expression proof                                      |
+| expression nesting                      |         16 | thirteen-byte metadata entries retaining operand value, type, and position    | capacity diagnostic                                                              | seventeen-deep pending-expression proof                                      |
 | semantic transcript payload bytes       |        255 | counted variable-width stream                                                 | capacity diagnostic                                                              | 52-assignment exhaustion proof                                               |
 | Boolean fixups                          |         16 | two-byte generated addresses                                                  | capacity diagnostic                                                              | exhaustion and underflow boundary proofs                                     |
 | active control frames                   |          8 | ten-byte parser frames                                                        | capacity diagnostic                                                              | nested structured-control proofs                                             |

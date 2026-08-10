@@ -100,10 +100,12 @@ DeclarationPayload      .equ SymbolTableLimit+$0E
 DeclarationNamePointer  .equ SymbolTableLimit+$10
 DeclarationNameLength   .equ SymbolTableLimit+$12
 ExpressionCallOffset    .equ SymbolTableLimit+$13
-DeclarationNamePosition .equ SymbolTableLimit+$15
-ExpressionStackBase     .equ SymbolTableLimit+$1B
+DeclarationNamePosition .equ SymbolTableLimit+$15 ; offset, line, column
+ExpressionValuePosition .equ SymbolTableLimit+$1B ; offset, line, column
+ExpressionLeftPositionPointer .equ SymbolTableLimit+$21
+ExpressionStackBase     .equ SymbolTableLimit+$23
 ExpressionStackCapacity .equ 16
-ExpressionStackEntrySize .equ 7
+ExpressionStackEntrySize .equ 13
 ExpressionStackLimit    .equ ExpressionStackBase+ExpressionStackCapacity*ExpressionStackEntrySize
 
 ; Boolean short-circuit emission retains one forward patch per nesting level.

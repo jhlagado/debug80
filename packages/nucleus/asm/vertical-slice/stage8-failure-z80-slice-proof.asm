@@ -283,7 +283,7 @@ Stage8IncompleteForwardSourceEnd:
 Stage8PredefinedVariableSource:
             .db "var "
 Stage8PredefinedVariablePoint:
-            .db "readInputByte as u8",10
+            .db "readInputByte as u8 = 1 + 2",10
             .db "sub main()",10
             .db "end",10
 Stage8PredefinedVariableSourceEnd:
@@ -708,7 +708,7 @@ ProofStart:
             JP   C,ProofInfallibleFailure
 
             LD   A,DiagnosticIntegerRange
-            LD   BC,Stage8FailureRangePoint+8-Stage8FailureRangeSource
+            LD   BC,Stage8FailureRangePoint+5-Stage8FailureRangeSource
             LD   HL,Stage8FailureRangeSource
             LD   DE,Stage8FailureRangeSourceEnd
             CALL ProofExpectDiagnostic
@@ -1134,6 +1134,16 @@ ProofStart:
             LD   DE,Stage8PredefinedVariableSourceEnd
             CALL ProofExpectDiagnostic
             JP   C,ProofPredefinedVariableFailure
+            LD   HL,(DiagnosticLine)
+            LD   DE,1
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofPredefinedVariableFailure
+            LD   HL,(DiagnosticColumn)
+            LD   DE,5
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofPredefinedVariableFailure
 
             LD   A,DiagnosticDuplicateName
             LD   BC,Stage8PredefinedRoutinePoint-Stage8PredefinedRoutineSource

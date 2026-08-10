@@ -149,7 +149,9 @@ AggregateMalformedEscapeSource:
 AggregateMalformedEscapeSourceEnd:
 
 AggregateStringExtentCapacitySource:
-            .db "var bad as string[255"
+            .db "var bad as string[25"
+AggregateStringExtentCapacityDigit:
+            .db "5"
 AggregateStringExtentCapacityPoint:
             .db "]",10
 AggregateStringExtentCapacitySourceEnd:
@@ -211,7 +213,9 @@ AggregateElementCapacityRejectedSourceEnd:
 AggregateDataCapacitySource:
             .db "var a as u8[255]",10
             .db "var b as u8",10
-            .db "var c as u8",10
+            .db "var c as u8"
+AggregateDataCapacityPoint:
+            .db 10
 AggregateDataCapacitySourceEnd:
 
 AggregateTypeExtentCapacitySource:
@@ -483,6 +487,19 @@ AggregateAtomicFailedAsExpected:
             OR   A
             SBC  HL,DE
             JP   NZ,ProofFailStringExtentCapacity
+            LD   A,'6'
+            LD   (AggregateStringExtentCapacityDigit),A
+            LD   A,156
+            LD   HL,AggregateStringExtentCapacitySource
+            LD   DE,AggregateStringExtentCapacitySourceEnd
+            LD   B,DiagnosticStringCapacity
+            CALL ProofExpectDiagnostic
+            JP   C,ProofFailStringExtentCapacity
+            LD   HL,(DiagnosticOffset)
+            LD   DE,AggregateStringExtentCapacityPoint-AggregateStringExtentCapacitySource
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailStringExtentCapacity
             LD   A,155
             LD   HL,AggregateSealedStringBoundarySource
             LD   DE,AggregateSealedStringBoundarySourceEnd
@@ -551,6 +568,11 @@ AggregateSealedStringZeroLoop:
             LD   B,DiagnosticProgramDataCapacity
             CALL ProofExpectDiagnostic
             JP   C,ProofFailDataCapacity
+            LD   HL,(DiagnosticOffset)
+            LD   DE,AggregateDataCapacityPoint-AggregateDataCapacitySource
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailDataCapacity
             LD   A,144
             LD   HL,AggregateTypeExtentCapacitySource
             LD   DE,AggregateTypeExtentCapacitySourceEnd

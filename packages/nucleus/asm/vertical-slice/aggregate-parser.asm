@@ -196,7 +196,7 @@ AggregateParseStringType:
             RET  C
             LD   A,H
             OR   A
-            JP   NZ,AggregateTypeShapeFailure
+            JP   NZ,AggregateStringCapacityFailure
             LD   A,L
             OR   A
             JP   Z,AggregateTypeShapeFailure

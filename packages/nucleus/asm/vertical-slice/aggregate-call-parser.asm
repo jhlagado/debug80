@@ -1107,7 +1107,7 @@ Stage7CallArgumentReady:
             JP   Stage7CallArgumentLoop
 Stage7CallArgumentsDone:
             CALL ParserExpectRight
-            JP   C,Stage7CallFailure
+            JR   C,Stage7CallFailure
             CALL Stage7CurrentCallFrame
             LD   A,(HL)
             LD   (Stage7CallLabel),A

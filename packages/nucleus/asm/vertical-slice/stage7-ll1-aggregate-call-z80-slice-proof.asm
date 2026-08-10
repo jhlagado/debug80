@@ -533,6 +533,29 @@ ProofStart:
             OR   A
             SBC  HL,DE
             JP   NZ,ProofFailBoundsRun
+            LD   A,163
+            LD   HL,Stage7CorruptStringIndexSource
+            LD   DE,Stage7CorruptStringIndexSourceEnd
+            CALL CompileAggregateCallSlice
+            JP   C,ProofFailBoundsCompile
+            CALL EncodeAggregateProgram
+            JP   C,ProofFailBoundsEncode
+            LD   A,$FF                    ; indexing rejects the same corruption
+            LD   (GeneratedBase+3),A
+            CALL Reset
+            CALL ProofCallGenerated
+            JP   C,ProofFailBoundsFrame
+            LD   A,(RunState)
+            CP   RunTrapped
+            JP   NZ,ProofFailBoundsRun
+            LD   A,(TrapNumber)
+            CP   1
+            JP   NZ,ProofFailBoundsRun
+            LD   HL,(TrapOffset)
+            LD   DE,Stage7CorruptStringIndexPoint-Stage7CorruptStringIndexSource
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailBoundsRun
             LD   A,162
             LD   HL,Stage7SealedArraySource
             LD   DE,Stage7SealedArraySourceEnd
@@ -560,6 +583,36 @@ ProofStart:
             LD   A,(ServiceOutputBase)
             CP   'Y'
             JP   NZ,ProofFailStringOutput
+            LD   A,'5'
+            LD   (Stage7SealedArrayCapacityDigit),A
+            LD   A,164
+            LD   HL,Stage7SealedArraySource
+            LD   DE,Stage7SealedArraySourceEnd
+            CALL CompileAggregateCallSlice
+            JP   NC,ProofFailStringCapacity
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticStringCapacity
+            JP   NZ,ProofFailStringCapacity
+            LD   HL,(DiagnosticOffset)
+            LD   DE,Stage7SealedArrayCapacityPoint-Stage7SealedArraySource
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailStringCapacity
+            LD   A,'6'
+            LD   (Stage7SealedArrayCapacityDigit),A
+            LD   A,165
+            LD   HL,Stage7SealedArraySource
+            LD   DE,Stage7SealedArraySourceEnd
+            CALL CompileAggregateCallSlice
+            JP   NC,ProofFailStringCapacity
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticStringCapacity
+            JP   NZ,ProofFailStringCapacity
+            LD   HL,(DiagnosticOffset)
+            LD   DE,Stage7SealedArrayCapacityPoint-Stage7SealedArraySource
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailStringCapacity
             LD   A,160
             LD   HL,Stage7BoundsSource
             LD   DE,Stage7BoundsSourceEnd
@@ -1187,7 +1240,9 @@ ProofFailEncodeRollback: LD A,32
 ProofFailParameterRoutineCollision: LD A,33
                   JP ProofFailed
 ProofFailStringLengthWrite: LD A,34
-                  JP ProofFailed
+                           JP ProofFailed
+ProofFailStringCapacity: LD A,40
+                         JP ProofFailed
 ProofFailMainParameter: LD A,35
                   JP ProofFailed
 ProofFailServiceRoutine: LD A,36
@@ -1251,9 +1306,23 @@ Stage7CorruptStringLengthPoint:
             .db "end",10
             .db "end",10
 Stage7CorruptStringSourceEnd:
-Stage7SealedArraySource:
-            .db "var texts as string[254][1]",10
+Stage7CorruptStringIndexSource:
+            .db "var text as string[3]",10
             .db "sub main() fails",10
+            .db "if text"
+Stage7CorruptStringIndexPoint:
+            .db "[0] = 0",10
+            .db "end",10
+            .db "end",10
+Stage7CorruptStringIndexSourceEnd:
+Stage7SealedArraySource:
+            .db "var texts as string[25"
+Stage7SealedArrayCapacityDigit:
+            .db "4"
+Stage7SealedArrayCapacityPoint:
+            .db "][1]",10
+            .db "sub main() fails",10
+            .db "texts[0] = texts[0]",10
             .db "if texts[0].length = 0",10
             .db "writeOutputByte('Y') or fail",10
             .db "end",10,"end",10

@@ -117,12 +117,13 @@ TypedEmitWord:
 .routine in A out A,HL,carry,zero clobbers sign,parity,halfCarry,B,C,DE,IX,IY
 TypedExpressionAddress:
             LD   E,A
-            LD   D,0
+            ADD  A,A
+            ADD  A,E
             ADD  A,A
             ADD  A,A
-            ADD  A,A
-            SUB  E
+            ADD  A,E
             LD   E,A
+            LD   D,0
             LD   HL,ExpressionStackBase
             ADD  HL,DE
             RET
@@ -150,6 +151,11 @@ TypedExpressionPush:
             LD   (HL),E
             INC  HL
             LD   (HL),D
+            INC  HL
+            EX   DE,HL
+            LD   HL,ExpressionValuePosition
+            LD   BC,6
+            LDIR
             LD   A,(ExpressionStackDepth)
             INC  A
             LD   (ExpressionStackDepth),A
@@ -199,12 +205,23 @@ TypedRestoreOperands:
             INC  HL
             LD   D,(HL)
             LD   (ExpressionOperatorOffset),DE
+            INC  HL
+            LD   (ExpressionLeftPositionPointer),HL
             OR   A
             RET
 TypedExpressionStackUnderflow:
             LD   A,DiagnosticInternalOperation
             JP   CompilerSetDiagnostic
 
+TypedValueRangeFailure:
+            LD   HL,ExpressionValuePosition
+            JR   TypedRangeFailureAtPosition
+TypedLeftRangeFailure:
+            LD   HL,(ExpressionLeftPositionPointer)
+TypedRangeFailureAtPosition:
+            LD   DE,TokenStartOffset
+            LD   BC,6
+            LDIR
 TypedRangeFailure:
             LD   A,DiagnosticIntegerRange
             JP   CompilerSetDiagnostic
@@ -260,11 +277,11 @@ TypedResolveBothExactU8:
             LD   HL,(ExpressionLeftValue)
             LD   A,H
             OR   A
-            JR   NZ,TypedRangeFailure
+            JR   NZ,TypedLeftRangeFailure
             LD   HL,(ExpressionRightValue)
             LD   A,H
             OR   A
-            JR   NZ,TypedRangeFailure
+            JR   NZ,TypedValueRangeFailure
             LD   C,ScalarTypeU8
             OR   A
             RET
@@ -275,7 +292,7 @@ TypedResolveUseRight:
             LD   HL,(ExpressionLeftValue)
             LD   A,H
             OR   A
-            JR   NZ,TypedRangeFailure
+            JR   NZ,TypedLeftRangeFailure
 TypedResolveDone:
             OR   A
             RET
@@ -290,7 +307,7 @@ TypedResolveLeftTyped:
             LD   HL,(ExpressionRightValue)
             LD   A,H
             OR   A
-            JR   NZ,TypedRangeFailure
+            JP   NZ,TypedValueRangeFailure
             JR   TypedResolveDone
 TypedResolveBothTyped:
             LD   A,D
@@ -323,52 +340,6 @@ TypedMaskResultWidth:
             CP   ScalarTypeU8
             RET  NZ
             LD   H,0
-            RET
-
-; Constant multiplication modulo 65536, using sixteen shift/add steps.
-.routine in DE,HL out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
-TypedConstantMultiply:
-            LD   BC,0
-            LD   A,16
-TypedConstantMultiplyLoop:
-            SRL  D
-            RR   E
-            JR   NC,TypedConstantMultiplySkip
-            PUSH HL
-            ADD  HL,BC
-            LD   B,H
-            LD   C,L
-            POP  HL
-TypedConstantMultiplySkip:
-            ADD  HL,HL
-            DEC  A
-            JR   NZ,TypedConstantMultiplyLoop
-            LD   H,B
-            LD   L,C
-            RET
-
-; Compile-time unsigned division. The bounded 16-bit domain makes the simple
-; subtraction loop finite; the later size pass may replace it with a bitwise
-; divider if measurements justify the added code.
-.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
-TypedConstantDivide:
-            LD   DE,(ExpressionRightValue)
-            LD   A,D
-            OR   E
-            JP   Z,TypedDivisionFailure
-            LD   HL,(ExpressionLeftValue)
-            LD   BC,0
-TypedConstantDivideLoop:
-            OR   A
-            SBC  HL,DE
-            JR   C,TypedConstantDivideDone
-            INC  BC
-            JR   TypedConstantDivideLoop
-TypedConstantDivideDone:
-            ADD  HL,DE
-            LD   H,B
-            LD   L,C
-            OR   A
             RET
 
 ; Emit a width-selected binary operation. D=u8 ordinal, E=u16 ordinal.
@@ -415,20 +386,20 @@ TypedReduceOr:
             LD   E,SemanticOr16
             CALL TypedPrepareConstantBinary
             RET  C
-            JR   Z,TypedReduceIntegerMeta
+            JP   Z,TypedReduceIntegerMeta
             LD   A,L
             OR   E
             LD   L,A
             LD   A,H
             OR   D
             LD   H,A
-            JR   TypedReduceIntegerConstantDone
+            JP   TypedReduceIntegerConstantDone
 TypedReduceAnd:
             LD   D,SemanticAnd8
             LD   E,SemanticAnd16
             CALL TypedPrepareConstantBinary
             RET  C
-            JR   Z,TypedReduceIntegerMeta
+            JP   Z,TypedReduceIntegerMeta
             LD   A,L
             AND  E
             LD   L,A
@@ -459,7 +430,25 @@ TypedReduceMultiply:
             CALL TypedPrepareConstantBinary
             RET  C
             JR   Z,TypedReduceIntegerMeta
-            CALL TypedConstantMultiply
+            ; Constant multiplication modulo 65536, using sixteen shift/add
+            ; steps.
+            LD   BC,0
+            LD   A,16
+TypedReduceMultiplyLoop:
+            SRL  D
+            RR   E
+            JR   NC,TypedReduceMultiplySkip
+            PUSH HL
+            ADD  HL,BC
+            LD   B,H
+            LD   C,L
+            POP  HL
+TypedReduceMultiplySkip:
+            ADD  HL,HL
+            DEC  A
+            JR   NZ,TypedReduceMultiplyLoop
+            LD   H,B
+            LD   L,C
             JR   TypedReduceIntegerConstantDone
 TypedReduceDivide:
             LD   D,SemanticDivide8
@@ -482,8 +471,22 @@ TypedReduceDivide:
 TypedReduceDivideFold:
             CALL TypedBothConstant
             JR   Z,TypedReduceIntegerMeta
-            CALL TypedConstantDivide
-            RET  C
+            ; The earlier exact-divisor check proves DE is nonzero here.
+            ; Constant unsigned division uses a bounded subtraction loop.
+            LD   DE,(ExpressionRightValue)
+            LD   HL,(ExpressionLeftValue)
+            LD   BC,0
+TypedReduceDivideLoop:
+            OR   A
+            SBC  HL,DE
+            JR   C,TypedReduceDivideDone
+            INC  BC
+            JR   TypedReduceDivideLoop
+TypedReduceDivideDone:
+            ADD  HL,DE
+            LD   H,B
+            LD   L,C
+            OR   A
 TypedReduceIntegerConstantDone:
             CALL TypedMaskResultWidth
             LD   A,C
@@ -498,6 +501,14 @@ TypedReduceIntegerMeta:
 TypedParsePrimary:
             CALL ParserTake
             RET  C
+            PUSH AF
+            PUSH BC
+            LD   HL,TokenStartOffset
+            LD   DE,ExpressionValuePosition
+            LD   BC,6
+            LDIR
+            POP  BC
+            POP  AF
             CP   TokenNumber
             JR   Z,TypedPrimaryNumber
             CP   TokenCharacter
@@ -929,7 +940,7 @@ TypedUnaryMinusU8:
             JR   Z,TypedUnaryMinusU8Ready
             LD   A,H
             OR   A
-            JP   NZ,TypedRangeFailure
+            JP   NZ,TypedValueRangeFailure
 TypedUnaryMinusU8Ready:
             LD   A,ScalarTypeU8
             JR   TypedUnaryMinusResolved
@@ -1249,7 +1260,7 @@ TypedNotExactU8:
             JR   Z,TypedNotExactU8Ready
             LD   A,H
             OR   A
-            JP   NZ,TypedRangeFailure
+            JP   NZ,TypedValueRangeFailure
 TypedNotExactU8Ready:
             LD   C,ScalarTypeU8
             LD   A,SemanticNot8
@@ -1327,7 +1338,8 @@ TypedAndLoop:
             LD   A,SemanticBeginBooleanAnd
             CALL TypedEmitOperation
             RET  C
-            CALL TypedBeginSuppressionIfFalse
+            LD   C,0
+            CALL TypedBeginSuppression
 TypedAndParseRight:
             CALL TypedParseNot
             RET  C
@@ -1380,7 +1392,8 @@ TypedOrLoop:
             LD   A,SemanticBeginBooleanOr
             CALL TypedEmitOperation
             RET  C
-            CALL TypedBeginSuppressionIfTrue
+            LD   C,1
+            CALL TypedBeginSuppression
 TypedOrParseRight:
             CALL TypedParseAnd
             RET  C
@@ -1411,13 +1424,7 @@ TypedOrInteger:
             RET  C
             JR   TypedOrLoop
 
-.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
-TypedBeginSuppressionIfFalse:
-            LD   C,0
-            JR   TypedBeginSuppression
-.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
-TypedBeginSuppressionIfTrue:
-            LD   C,1
+.routine in C out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedBeginSuppression:
             LD   A,(ExpressionLeftMeta)
             AND  ScalarMetaConstant
@@ -1483,7 +1490,7 @@ TypedCheckAssignable:
             JR   NZ,TypedAssignableExactDone
             LD   A,H
             OR   A
-            JP   NZ,TypedRangeFailure
+            JP   NZ,TypedValueRangeFailure
 TypedAssignableExactDone:
             LD   A,D
             AND  ScalarMetaConstant

@@ -114,7 +114,7 @@ HybridLL1MakeStringType:
             RET  C
             LD   A,H
             OR   A
-            JP   NZ,AggregateTypeShapeFailure
+            JP   NZ,AggregateStringCapacityFailure
             LD   A,L
             CP   255
             JP   NC,AggregateStringCapacityFailure
