@@ -36,7 +36,7 @@ Stage7BindParameter:
             CALL Stage7EmitPairArgumentIndex
             RET  C
             LD   HL,Stage7StoreIXL
-            JP   Stage7EmitPairPathOffset
+            JR   Stage7EmitPairPathOffset
 Stage7BindWord:
             LD   HL,Stage7DecSP2
             CALL   EmitPair
@@ -164,7 +164,7 @@ Stage7Call:
             LD   HL,ActivationRelease
             CALL EmitCall
             RET  C
-            JP   Stage7CallDiscard
+            JR   Stage7CallDiscard
 Stage8CallFailable:
             LD   A,$F5                    ; PUSH AF result discriminant/code
             CALL EmitByte
@@ -223,7 +223,7 @@ Stage8FailRoutine:
             LD   HL,Stage8PopErrorBytes
             CALL   EmitPair
             RET  C
-            JP   Stage8FailureReturnTail
+            JR   Stage8FailureReturnTail
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage8FailMain:

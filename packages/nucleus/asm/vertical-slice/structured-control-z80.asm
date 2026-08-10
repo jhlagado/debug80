@@ -56,7 +56,7 @@ StructuredEmitFixup:
             POP  DE
             POP  BC
             RET  C
-            JP   StructuredRecordFixup
+            JR   StructuredRecordFixup
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 StructuredLabel:
@@ -96,14 +96,14 @@ StructuredBranchFalse:
             POP  BC
             RET  C
             LD   A,$CA                    ; JP Z,nn
-            JP   StructuredEmitFixup
+            JR   StructuredEmitFixup
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 StructuredJump:
             CALL NextSemanticByte
             LD   C,A
             LD   A,$C3                    ; JP nn
-            JP   StructuredEmitFixup
+            JR   StructuredEmitFixup
 
 ; Resolve every retained absolute operand after all label locations are known.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY

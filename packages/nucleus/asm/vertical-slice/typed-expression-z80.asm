@@ -282,7 +282,7 @@ TypedEmitSequence:
             RET  C
             CALL EmitBytes
             RET  C
-            JP   TypedPushHL
+            JR   TypedPushHL
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedAdd8:
@@ -302,7 +302,7 @@ TypedOr8:
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedBinary5:
             LD   B,5
-            JP   TypedEmitSequence
+            JR   TypedEmitSequence
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedAnd16:
@@ -314,18 +314,18 @@ TypedOr16:
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedBinary6:
             LD   B,6
-            JP   TypedEmitSequence
+            JR   TypedEmitSequence
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedAdd16:
             LD   HL,TypedAdd16Bytes
             LD   B,1
-            JP   TypedEmitSequence
+            JR   TypedEmitSequence
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedSubtract16:
             LD   HL,TypedSubtract16Bytes
             LD   B,3
-            JP   TypedEmitSequence
+            JR   TypedEmitSequence
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedMultiply8:
@@ -337,7 +337,7 @@ TypedMultiply8:
             LD   HL,TypedZeroHigh
             CALL   EmitPair
             RET  C
-            JP   TypedPushHL
+            JR   TypedPushHL
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedMultiply16:
             CALL TypedPopOperands
@@ -345,7 +345,7 @@ TypedMultiply16:
             LD   HL,MultiplyU16
             CALL EmitCall
             RET  C
-            JP   TypedPushHL
+            JR   TypedPushHL
 
 .routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry
 TypedReadTrapPosition:
@@ -513,7 +513,7 @@ TypedWrite8:
             RET  C
             CALL EmitUnhandledTrapPrefix
             RET  C
-            JP   TypedEmitTrapTail
+            JR   TypedEmitTrapTail
 
 ; Every terminal typed-expression trap must dismantle the routine frame before
 ; emitting the common trap record and RET. Without this epilogue the generated
@@ -696,7 +696,7 @@ TypedBeginBoolean:
             RET  C
             CALL EmitJrPlaceholder
             RET  C
-            JP   TypedPushBooleanFixup
+            JR   TypedPushBooleanFixup
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedEndBoolean:

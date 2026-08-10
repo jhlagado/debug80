@@ -84,7 +84,7 @@ AggregateTypeCapacityFailure:
 AggregateInternType:
             LD   A,(AggregateTypeCount)
             OR   A
-            JP   Z,AggregateAppendType
+            JR   Z,AggregateAppendType
             LD   B,A
             LD   C,AggregateFirstDynamicTypeId
 AggregateInternLoop:
@@ -107,7 +107,7 @@ AggregateInternDifferent:
 AggregateInternNext:
             INC  C
             DJNZ AggregateInternLoop
-            JP   AggregateAppendType
+            JR   AggregateAppendType
 AggregateInternFound:
             LD   A,C
             OR   A
@@ -494,6 +494,7 @@ AggregateWriteByte:
             LD   B,A
             LD   A,(AggregateCurrentObjectOffset)
             CP   StaticImageCapacity
+            ; The legacy proof layout puts this target outside JR range.
             JP   NC,AggregateProgramDataCapacityFailure
             LD   L,A
             LD   H,0
@@ -610,10 +611,10 @@ AggregateTakePreserveBC:
 
 .routine in A,BC,zero out A,BC,carry,zero clobbers sign,parity,halfCarry,D,DE,HL
 AggregateExpectCommaPreserveBC:
-            JP   Z,AggregateInitializerCountFailure
+            JR   Z,AggregateInitializerCountFailure
             CP   TokenComma
-            JP   NZ,AggregateInitializerShapeFailure
-            JP   AggregateTakePreserveBC
+            JR   NZ,AggregateInitializerShapeFailure
+            JR   AggregateTakePreserveBC
 
 ; Parse one type-directed static initializer at the current image cursor.
 .routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
@@ -623,7 +624,7 @@ AggregateParseInitializer:
             JR   C,AggregateParseInitializerElementFailure
             POP  AF
             CP   AggregateFirstDynamicTypeId
-            JP   C,AggregateParseScalarInitializer
+            JR   C,AggregateParseScalarInitializer
             PUSH AF
             CALL AggregateTypeAddress
             LD   A,(HL)
@@ -631,12 +632,12 @@ AggregateParseInitializer:
             LD   E,D
             LD   D,0
             CP   AggregateTypeKindString
-            JP   Z,AggregateParseStringInitializer
+            JR   Z,AggregateParseStringInitializer
             CP   AggregateTypeKindRecord
-            JP   Z,AggregateParseRecordInitializer
+            JR   Z,AggregateParseRecordInitializer
             CP   AggregateTypeKindArray
             JP   Z,AggregateParseArrayInitializer
-            JP   AggregateInitializerShapeFailure
+            JR   AggregateInitializerShapeFailure
 AggregateParseInitializerElementFailure:
             POP  AF
             SCF
@@ -748,7 +749,7 @@ AggregateRecordInitializerLoop:
             JR   AggregateRecordInitializerLoop
 AggregateRecordInitializerExpectClose:
             LD   BC,(TokenRightParen<<8)|TokenRightBracket
-            JP   AggregateInitializerExpectClose
+            JR   AggregateInitializerExpectClose
 
 AggregateParseArrayInitializer:
             EX   DE,HL
@@ -777,7 +778,6 @@ AggregateArrayInitializerLoop:
             JR   AggregateArrayInitializerLoop
 AggregateArrayInitializerExpectClose:
             LD   BC,(TokenRightBracket<<8)|TokenRightParen
-            JP   AggregateInitializerExpectClose
 
 .routine in BC out A,BC,carry,zero clobbers sign,parity,halfCarry,D,DE,HL,IX,IY
 AggregateInitializerExpectClose:

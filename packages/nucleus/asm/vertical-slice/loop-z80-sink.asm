@@ -23,7 +23,7 @@ EmitWord:
             CALL EmitByte
             RET  C
             LD   A,C
-            JP   EmitByte
+            JR   EmitByte
 
 ; Copy B retained opcode bytes. Shared fixed sequences are cheaper as data
 ; once two or more encoder paths need four or more emitted bytes.
@@ -233,17 +233,17 @@ EmitOpcodeWord:
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 EmitCall:
             LD   A,$CD
-            JP   EmitOpcodeWord
+            JR   EmitOpcodeWord
 
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 EmitLoadHl:
             LD   A,$21
-            JP   EmitOpcodeWord
+            JR   EmitOpcodeWord
 
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 EmitStoreA:
             LD   A,$32
-            JP   EmitOpcodeWord
+            JR   EmitOpcodeWord
 
 .routine in A,C out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
 EmitOpcodeByte:
@@ -256,7 +256,7 @@ EmitOpcodeByte:
 EmitLoadAImmediate:
             LD   C,A
             LD   A,$3E
-            JP   EmitOpcodeByte
+            JR   EmitOpcodeByte
 
 .if LegacyEncoders
 .routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
@@ -330,7 +330,7 @@ EmitUnhandledTrapPrefix:
             CALL EmitStoreA
             RET  C
             LD   A,6
-            JP   EmitLoadAImmediate
+            JR   EmitLoadAImmediate
 
 .routine out A,carry,zero,DE clobbers sign,parity,halfCarry,B,HL
 EmitJrPlaceholder:

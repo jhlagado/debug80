@@ -38,7 +38,7 @@ ParserExpect:
             RET  Z
             LD   A,E
             OR   DiagnosticExpectedTokenBase
-            JP   CompilerSetDiagnostic
+            JR   CompilerSetDiagnostic
 
 ; The expression parser needs one token of lookahead. Token metadata remains
 ; current until another tokenizer request, so buffering kind and word payload
@@ -76,19 +76,19 @@ ParserTake:
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectLine:
             LD   E,TokenNewline
-            JP   ParserExpect
+            JR   ParserExpect
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectLeft:
             LD   E,TokenLeftParen
-            JP   ParserExpect
+            JR   ParserExpect
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectRight:
             LD   E,TokenRightParen
-            JP   ParserExpect
+            JR   ParserExpect
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectAs:
             LD   E,TokenAs
-            JP   ParserExpect
+            JR   ParserExpect
 .if LegacyCompilerSlices
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectU8:
@@ -105,7 +105,7 @@ ParserExpectAsU8:
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectEqual:
             LD   E,TokenEquals
-            JP   ParserExpect
+            JR   ParserExpect
 .if LegacyCompilerSlices
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectSub:
@@ -306,6 +306,7 @@ ParserEmitProgramStore:
 
 ParserExpectedScalar:
             LD   A,DiagnosticExpectedScalar
+            ; The legacy proof layouts put this target outside JR range.
             JP   CompilerSetDiagnostic
 
 .if LegacyCompilerSlices
@@ -420,6 +421,7 @@ ParserExpectIndexDeclaration:
 ParserExpectOrFailLine:
             CALL ParserExpectOrFail
             RET  C
+            ; The legacy proof layouts put this target outside JR range.
             JP   ParserExpectLine
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
@@ -428,6 +430,7 @@ ParserExpectOrFail:
             CALL ParserExpect
             RET  C
             LD   E,TokenFail
+            ; The legacy proof layouts put this target outside JR range.
             JP   ParserExpect
 
 .if LegacyCompilerSlices

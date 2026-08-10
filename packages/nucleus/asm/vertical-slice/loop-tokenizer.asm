@@ -103,7 +103,7 @@ TokenScanKeywordByte:
             INC  HL
             DJNZ TokenScanKeywordByte
             LD   A,(HL)
-            JP   TokenFinish
+            JR   TokenFinish
 TokenScanKeywordSkip:
             LD   E,B
             LD   D,0
@@ -235,7 +235,7 @@ TokenScanStringNext:
             JR   Z,TokenScanStringEscape
 TokenScanStringCount:
             INC  C
-            JP   Z,TokenScanCharacterFailure
+            JR   Z,TokenScanCharacterFailure
             JR   TokenScanStringNext
 TokenScanStringEscape:
             CALL SourceTake

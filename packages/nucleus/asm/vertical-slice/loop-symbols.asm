@@ -85,7 +85,7 @@ SymbolPrepareCurrentWord:
             RET
 SymbolPrepareFull:
             LD   A,DiagnosticSymbolCapacity
-            JP   CompilerSetDiagnostic
+            JR   CompilerSetDiagnostic
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,HL
 SymbolCommit:
@@ -111,4 +111,3 @@ SymbolLookupCurrent:
             RET
 SymbolLookupMissing:
             LD   A,DiagnosticUnknownName
-            JP   CompilerSetDiagnostic

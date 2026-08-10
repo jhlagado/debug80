@@ -21,9 +21,9 @@ TypedRetainDeclarationName:
             LD   HL,NameMain
             LD   B,4
             CALL TokenNameEquals
-            JP   C,TypedDuplicateNameFailure
+            JR   C,TypedDuplicateNameFailure
             CALL TypedMatchForwardName
-            JP   C,TypedDuplicateNameFailure
+            JR   C,TypedDuplicateNameFailure
 TypedRetainDeclarationNameReady:
             LD   HL,(TokenLexemePointer)
             LD   (DeclarationNamePointer),HL
@@ -109,7 +109,7 @@ TypedEmitWord:
             POP  HL
             RET  C
             LD   A,H
-            JP   TypedEmitByte
+            JR   TypedEmitByte
 
 ; Push one pending binary-expression context into the bounded compiler stack.
 ; Retaining the operator source offset is necessary because a nested operation
@@ -165,7 +165,7 @@ TypedExpressionStackFull:
 TypedSaveLeft:
             LD   (ExpressionLeftMeta),A
             LD   (ExpressionLeftValue),HL
-            JP   TypedExpressionPush
+            JR   TypedExpressionPush
 
 ; Save the right result, then restore the most recent left result.
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
@@ -290,7 +290,7 @@ TypedResolveLeftTyped:
             LD   HL,(ExpressionRightValue)
             LD   A,H
             OR   A
-            JP   NZ,TypedRangeFailure
+            JR   NZ,TypedRangeFailure
             JR   TypedResolveDone
 TypedResolveBothTyped:
             LD   A,D
@@ -407,7 +407,7 @@ TypedReduceIntegerBinary:
             CP   TokenStar
             JR   Z,TypedReduceMultiply
             CP   TokenSlash
-            JP   Z,TypedReduceDivide
+            JR   Z,TypedReduceDivide
             CP   TokenAnd
             JR   Z,TypedReduceAnd
 TypedReduceOr:
@@ -415,27 +415,27 @@ TypedReduceOr:
             LD   E,SemanticOr16
             CALL TypedPrepareConstantBinary
             RET  C
-            JP   Z,TypedReduceIntegerMeta
+            JR   Z,TypedReduceIntegerMeta
             LD   A,L
             OR   E
             LD   L,A
             LD   A,H
             OR   D
             LD   H,A
-            JP   TypedReduceIntegerConstantDone
+            JR   TypedReduceIntegerConstantDone
 TypedReduceAnd:
             LD   D,SemanticAnd8
             LD   E,SemanticAnd16
             CALL TypedPrepareConstantBinary
             RET  C
-            JP   Z,TypedReduceIntegerMeta
+            JR   Z,TypedReduceIntegerMeta
             LD   A,L
             AND  E
             LD   L,A
             LD   A,H
             AND  D
             LD   H,A
-            JP   TypedReduceIntegerConstantDone
+            JR   TypedReduceIntegerConstantDone
 TypedReduceAdd:
             LD   D,SemanticAdd8
             LD   E,SemanticAdd16
@@ -575,7 +575,7 @@ TypedPrimaryOrdinaryName:
             JR   TypedPrimaryNameResolved
 .endif
             CALL TypedMatchForwardName
-            JP   C,TypedPrimaryScalarCall
+            JR   C,TypedPrimaryScalarCall
 TypedPrimaryVariableName:
             CALL SymbolLookupCurrent
             RET  C
@@ -740,9 +740,10 @@ TypedPrimaryParen:
             POP  HL
             POP  AF
 .if AggregateCallSlices
-            CALL TypedRequireComposable
-.endif
+            JR   TypedRequireComposable
+.else
             RET
+.endif
 TypedPrimaryParenFailure:
             POP  HL
             POP  AF
@@ -882,7 +883,6 @@ TypedUnaryMinus:
             RET  C
             LD   D,A
             AND  ScalarMetaTypeMask
-            OR   A
             JR   NZ,TypedUnaryMinusTyped
             LD   A,(ExpressionExpectedType)
             CP   ScalarTypeU8

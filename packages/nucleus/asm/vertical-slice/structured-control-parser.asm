@@ -68,7 +68,7 @@ ControlTopFrame:
             OR   A
             JR   Z,ControlLoopFailure
             DEC  A
-            JP   ControlFrameAddress
+            JR   ControlFrameAddress
 
 .routine in B out A,DE,HL,carry,zero clobbers sign,parity,halfCarry
 ControlTopFrameField:
@@ -127,15 +127,15 @@ ControlEmitOperationByte:
 .routine in C out A,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
 ControlEmitLabel:
             LD   D,SemanticControlLabel
-            JP   ControlEmitOperationByte
+            JR   ControlEmitOperationByte
 .routine in C out A,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
 ControlEmitBranchFalse:
             LD   D,SemanticBranchFalse
-            JP   ControlEmitOperationByte
+            JR   ControlEmitOperationByte
 .routine in C out A,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
 ControlEmitJump:
             LD   D,SemanticJump
-            JP   ControlEmitOperationByte
+            JR   ControlEmitOperationByte
 
 ; Return the nearest enclosing while/for frame in HL.
 .routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C

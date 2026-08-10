@@ -105,7 +105,6 @@ HybridLL1CheckedBound:
             LD   HL,(ExpressionRightValue)
             LD   A,H
             OR   L
-            OR   A
             JP   Z,AggregateTypeShapeFailure
             RET
 
@@ -633,7 +632,7 @@ HybridLL1BeginForwardBody:
             AND  $FB
             LD   (HL),A
             LD   (Stage7CurrentFlags),A
-            JP   HybridLL1OpenRoutineBody
+            JR   HybridLL1OpenRoutineBody
 HybridLL1BeginForwardMainBody:
             LD   A,(Stage8ForwardMainFlags)
             BIT  2,A
@@ -655,7 +654,7 @@ HybridLL1ForwardMissing:
 HybridLL1BeginSubBody:
             LD   A,(Stage7CurrentRoutine)
             INC  A
-            JP   Z,HybridLL1BeginMainBody
+            JR   Z,HybridLL1BeginMainBody
             DEC  A
             CALL Stage7RoutineAddress
             LD   DE,Stage7RoutineParameterCount
@@ -742,7 +741,6 @@ HybridLL1BeginMainBody:
             LD   (Stage7CurrentResultType),A
             LD   (ControlRoutineKind),A
             CALL ControlReset
-            JP   HybridLL1SetFallsThrough
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry
 HybridLL1SetFallsThrough:
@@ -797,7 +795,7 @@ HybridLL1EndMainSelected:
 HybridLL1BeginFail:
             LD   A,(Stage7CurrentFlags)
             AND  Stage7RoutineFails
-            JP   Z,HybridLL1FailureContext
+            JR   Z,HybridLL1FailureContext
             LD   HL,(TokenStartOffset)
             LD   (Stage8FailureOffset),HL
             LD   A,ScalarTypeU8
@@ -873,7 +871,7 @@ Stage8SelectPendingFailure:
             CALL ParserPeek
             RET  C
             CP   TokenOr
-            JP   Z,Stage8ConsumePropagation
+            JR   Z,Stage8ConsumePropagation
             CALL HybridLL1SaveFlow
             RET  C
             LD   A,ControlKindHandler
@@ -898,13 +896,13 @@ Stage8SelectPendingFailure:
             LD   (HL),A
             LD   A,1
             LD   (Stage8HandlerEligible),A
-            JP   Stage8ClearPendingFailure
+            JR   Stage8ClearPendingFailure
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1BeginOnError:
             LD   A,(Stage8HandlerEligible)
             OR   A
-            JP   Z,HybridLL1FailureContext
+            JR   Z,HybridLL1FailureContext
             CALL SymbolLookupCurrent
             RET  C
             LD   (DeclarationInfo),A
@@ -1252,7 +1250,7 @@ HybridLL1ReturnAggregateSelected:
 HybridLL1CommitResultFreeReturn:
             CALL Stage8ConsumePropagation
             RET  C
-            JP   HybridLL1CommitBareReturn
+            JR   HybridLL1CommitBareReturn
 HybridLL1ReturnCommitted:
             XOR  A
             LD   (ControlSequenceFallsThrough),A
@@ -1385,7 +1383,6 @@ HybridLL1BeginIfBody:
             CALL HybridLL1CheckBooleanResult
             RET  C
             LD   B,ControlFrameLabelA
-            JR   HybridLL1BeginConditionBody
 
 .routine in B out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1BeginConditionBody:

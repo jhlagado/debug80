@@ -664,15 +664,23 @@ bounded fixups and tables, and rollback of a divergent failed publication. A
 hostile-code loader or opcode validator remains outside the selected contract.
 
 The correctness-cleared precompression account was 14,059 core bytes. After
-measured compression and a second read-only adversarial review, fresh assembly
-measures 13,439 code bytes plus 368 immutable bytes, for a 13,807-byte compiler
+measured compression and the final branch-encoding pass, fresh assembly
+measures 13,344 code bytes plus 368 immutable bytes, for a 13,712-byte compiler
 core. Workspace is 1,398 bytes; the selected runtime is 561 bytes. The common
-front end is 9,990 bytes, including an 8,972-byte parser, and the retained Z80
-sink is 3,449 bytes, of which the typed and aggregate portion is 3,106 bytes.
-The combined proof occupies 2,953 bytes and executes 1,515,147 instructions in
-14,119,829 T-states. The compiler core is 252 bytes smaller than the
-correctness-cleared baseline and remains 2,577 bytes inside the hard 16 KiB
+front end is 9,916 bytes, including an 8,904-byte parser, and the retained Z80
+sink is 3,428 bytes, of which the typed and aggregate portion is 3,091 bytes.
+The combined proof occupies 2,953 bytes and executes 1,515,084 instructions in
+14,125,764 T-states. The compiler core is 347 bytes smaller than the
+correctness-cleared baseline and remains 2,672 bytes inside the hard 16 KiB
 gate. Exact test locks record these figures as the Stage 8 size plateau.
+
+The final branch-encoding pass removes 95 resident bytes. Seventy-six direct
+transfers use relative encodings; six branches to the next instruction are
+deleted; one call-and-return tail becomes a direct relative transfer; and two
+redundant flag operations are removed. Four transfers that fit the production
+layout remain absolute because at least one historical proof configuration
+places their targets outside the signed relative range. Generated programs,
+workspace, immutable data, and runtime size are unchanged.
 
 ### Stage 9: complete corpus and final accounting
 
@@ -750,6 +758,14 @@ overlap must be measured before the compiler grows around it.
 An implementation experiment may remain on a branch or behind a harness. It
 must not alter the published language merely because it is smaller in isolation.
 Measurements compare complete accounting boundaries and equivalent semantics.
+
+Use `JR` for a direct transfer whenever the Z80 has the required relative form
+and every supported assembly configuration places the target within the signed
+eight-bit displacement range. Use `JP` when the condition has no relative form
+or any supported configuration exceeds that range. After a layout change, run
+the branch census and the complete scoped proof set again; newly reachable
+relative transfers may be converted, while an AZM range failure requires the
+affected transfer to fall back to `JP`.
 
 ## Continued implementation checklist
 

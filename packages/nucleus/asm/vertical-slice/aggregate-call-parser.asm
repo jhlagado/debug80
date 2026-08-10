@@ -231,7 +231,7 @@ Stage7CheckParameterDeclarationName:
             EX   DE,HL
             CALL TokenNameEquals
             JP   C,TypedDuplicateNameFailure
-            JP   Stage7CheckParameterDuplicate
+            JR   Stage7CheckParameterDuplicate
 
 ; Append the current parameter name and its parsed type A.
 .routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
@@ -734,7 +734,6 @@ Stage7PathFieldComposition:
             RET  C
             LD   A,(Stage7PathType)
             PUSH AF
-            JR   Stage7PathField
 Stage7PathField:
             CALL ParserTake
             JP   C,Stage7PathSuffixFailure
@@ -770,7 +769,7 @@ Stage7PathRecordField:
             CALL Stage7EmitOperationByte
             JP   C,Stage7PathSuffixFailure
             POP  AF
-            JP   Stage7PathSuffixLoop
+            JR   Stage7PathSuffixLoop
 Stage7PathIndexComposition:
             POP  AF
             LD   (Stage7PathType),A
@@ -778,7 +777,6 @@ Stage7PathIndexComposition:
             RET  C
             LD   A,(Stage7PathType)
             PUSH AF
-            JR   Stage7PathIndex
 Stage7PathIndex:
             LD   HL,(TokenStartOffset)
             PUSH HL
@@ -845,16 +843,16 @@ Stage7PathIndexDynamic:
             LD   (Stage7PathExtent),A
             LD   A,SemanticSelectIndex
             CALL SemanticSinkOperation
-            JP   C,Stage7PathSuffixFailure
+            JR   C,Stage7PathSuffixFailure
             LD   A,(Stage7ArgumentCount)
             CALL SemanticSinkPut
-            JP   C,Stage7PathSuffixFailure
+            JR   C,Stage7PathSuffixFailure
             LD   A,(Stage7PathExtent)
             CALL SemanticSinkPut
-            JP   C,Stage7PathSuffixFailure
+            JR   C,Stage7PathSuffixFailure
             LD   HL,(Stage7CallOffset)
             CALL Stage7EmitWord
-            JP   C,Stage7PathSuffixFailure
+            JR   C,Stage7PathSuffixFailure
             POP  AF
             CALL AggregateTypeAddress
             INC  HL
@@ -865,10 +863,10 @@ Stage7PathStringIndex:
             LD   C,(HL)                  ; capacity
             LD   A,SemanticStringIndex
             CALL Stage7EmitOperationByte
-            JP   C,Stage7PathSuffixFailure
+            JR   C,Stage7PathSuffixFailure
             LD   HL,(Stage7CallOffset)
             CALL Stage7EmitWord
-            JP   C,Stage7PathSuffixFailure
+            JR   C,Stage7PathSuffixFailure
             POP  AF
             LD   A,ScalarTypeU8
             JP   Stage7PathSuffixLoop
@@ -888,11 +886,11 @@ Stage7PathIndexExpressionFailure:
             LD   (ExpressionEmitEnabled),A
             POP  AF
             LD   (ExpressionExpectedType),A
-            JP   Stage7PathIndexFailure
+            JR   Stage7PathIndexFailure
 Stage7PathIndexRangeFailure:
             LD   A,(ExpressionSuppressFault)
             OR   A
-            JP   NZ,Stage7PathIndexDynamic
+            JR   NZ,Stage7PathIndexDynamic
             LD   HL,(Stage7CallOffset)
             LD   (TokenStartOffset),HL
             POP  AF
@@ -923,7 +921,7 @@ Stage7CallFrameAddress:
 Stage7CurrentCallFrame:
             LD   A,(Stage7CallDepth)
             DEC  A
-            JP   Stage7CallFrameAddress
+            JR   Stage7CallFrameAddress
 
 ; A is the routine index and C the keep-result flag.
 .routine in A,C out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
@@ -1039,7 +1037,7 @@ Stage7CallArgumentLoop:
             LD   A,1
             LD   (ExpressionEmitEnabled),A
             CALL TypedParseOr
-            JP   C,Stage7CallScalarExpressionFailure
+            JR   C,Stage7CallScalarExpressionFailure
             LD   (Stage7PathType),A
             LD   (ExpressionRightValue),HL
             POP  AF
@@ -1234,14 +1232,14 @@ Stage7TypedPrimaryRoutine:
 Stage7TypedPrimaryRoutineAggregate:
             CALL Stage7ParsePathSuffix
             RET  C
-            JP   Stage7FinishScalarPath
+            JR   Stage7FinishScalarPath
 
 .routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 Stage8TypedPrimaryService:
             LD   HL,(TokenStartOffset)
             LD   (Stage7CallOffset),HL
             LD   C,1
-            JP   Stage8ParseServiceCall
+            JR   Stage8ParseServiceCall
 
 .routine in A out A,B,HL,carry,zero clobbers sign,parity,halfCarry,C,D,DE,IX,IY
 Stage8TypedPrimaryConstant:
