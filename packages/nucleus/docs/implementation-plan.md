@@ -903,12 +903,6 @@ requirement are both known.
 No implementation may wrap, truncate, drop state, or change source meaning when
 one of these limits is exceeded.
 
-A future layout experiment may place an array of `string[254]` on a page
-boundary. Its 256-byte element stride could then use an 8-bit addition into the
-high address byte instead of a general 16-bit multiply. The current allocator
-does not promise aligned placement, so this remains an unimplemented
-opportunity rather than a layout property.
-
 ## Working discipline
 
 Implementation changes follow a short evidence loop:

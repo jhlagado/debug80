@@ -311,7 +311,7 @@ language and direct-Z80 runtime contracts:
 - final symbol, signature, fixup, expression, and source-map capacities;
 - aggregate-copy lowering in the direct backend;
 - helper calls versus inlined hot paths;
-- page alignment and physical Z80 register allocation;
+- physical Z80 register allocation;
 - activation-state placement;
 - fixup, target-map, and generated-output organization; and
 - the complete measured size and timing of the compiler and target runtime.
