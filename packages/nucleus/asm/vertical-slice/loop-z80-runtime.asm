@@ -256,6 +256,20 @@ MultiplyU16Skip:
 ; Unsigned quotient. Carry reports a zero divisor without producing a value.
 .routine in DE,HL out HL,carry,zero clobbers sign,parity,halfCarry,A,BC,DE
 DivideU16:
+            CALL DivideU16Core
+            RET  C
+            LD   H,B
+            LD   L,C
+            OR   A
+            RET
+
+.routine in DE,HL out HL,carry,zero clobbers sign,parity,halfCarry,A,BC,DE
+ModuloU16:
+            CALL DivideU16Core
+            RET
+
+.routine in DE,HL out BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,A
+DivideU16Core:
             LD   A,D
             OR   E
             JR   Z,DivideU16Zero
@@ -267,8 +281,7 @@ DivideU16Loop:
             INC  BC
             JR   DivideU16Loop
 DivideU16Done:
-            LD   H,B
-            LD   L,C
+            ADD  HL,DE
             OR   A
             RET
 DivideU16Zero:

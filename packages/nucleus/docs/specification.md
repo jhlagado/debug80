@@ -318,7 +318,8 @@ The Nucleus 0.1 reserved words are:
 ```text
 and      as       boolean  const     continue  else     elseif
 end      error    exit     fail      fails     false    for
-forward  if       not      on        or        record   return
+forward  if       mod      not       on        or       record
+return
 step     string   sub      to        true      u16      u8
 until    var      while    xor
 ```
@@ -512,7 +513,7 @@ The two physical line endings inside delimiters do not appear in the token seque
 
 ### 3.12 Reserved-word and literal decisions
 
-Chapter 9 admits `not`, `and`, `or`, and `xor`. Chapter 14 admits `fail`, `fails`, `on`, and `error`. These eight words are reserved. Chapter 11 omits a conditional header marker, so `then` remains an identifier. Nucleus integer literals use decimal digits, `$` hexadecimal, or `%` binary. A later revision that needs another token requires an amendment here and cost accounting for the added scanner, table, test, and diagnostic work.
+Chapter 9 admits `mod`, `not`, `and`, `or`, and `xor`. Chapter 14 admits `fail`, `fails`, `on`, and `error`. These nine words are reserved. Chapter 11 omits a conditional header marker, so `then` remains an identifier. Nucleus integer literals use decimal digits, `$` hexadecimal, or `%` binary. A later revision that needs another token requires an amendment here and cost accounting for the added scanner, table, test, and diagnostic work.
 
 ## 4. Program and file structure
 
@@ -1638,7 +1639,7 @@ comparison             ::= additive [ comparison-operator additive ]
 comparison-operator    ::= "=" | "<>" | "<" | "<=" | ">" | ">="
 additive               ::= multiplicative
                            { ( "+" | "-" ) multiplicative }
-multiplicative         ::= unary { ( "*" | "/" ) unary }
+multiplicative         ::= unary { ( "*" | "/" | "mod" ) unary }
 unary                  ::= ( "+" | "-" ) unary | postfix-expression
 postfix-expression     ::= primary { postfix-suffix }
 primary                ::= NUMBER | CHARACTER | "true" | "false"
@@ -1697,7 +1698,7 @@ Precedence from highest to lowest is:
 
 1. routine invocation, indexing, field selection, and parenthesized grouping;
 2. unary `+` and unary `-`;
-3. multiplication and division;
+3. multiplication, division, and modulo;
 4. addition and subtraction;
 5. one comparison;
 6. `not`;
@@ -1727,11 +1728,11 @@ A character literal has type `u8`. It follows the ordinary implicit widening rul
 
 ### 9.8 Integer arithmetic
 
-`+`, `-`, `*`, and `/` accept integer operands. After literal resolution and implicit widening, both operands have the same type and the result has that type.
+`+`, `-`, `*`, `/`, and `mod` accept integer operands. After literal resolution and implicit widening, both operands have the same type and the result has that type.
 
 Addition, subtraction, multiplication, and unary minus use arithmetic modulo 256 for `u8` and modulo 65,536 for `u16`. Unary minus is subtraction from zero in the selected width. Unary plus preserves the operand and its type. These rules define wraparound; overflow is neither undefined nor a narrowing conversion.
 
-Division produces the unsigned integer quotient with any remainder discarded. Division by zero performs the arithmetic trap specified by Chapter 15. When the divisor is a compile-time constant zero, the source is invalid and the compiler issues a diagnostic instead of emitting a guaranteed trap.
+Division produces the unsigned integer quotient with any remainder discarded. Modulo produces the unsigned remainder from the same division. A zero divisor for either operation performs the `division-by-zero` trap specified by Chapter 15 at the divisor. When the divisor is a compile-time constant zero, the source is invalid and the compiler issues the same diagnostic at that divisor instead of emitting a guaranteed trap.
 
 The result width is determined before evaluation. Arithmetic does not widen merely because a mathematical result would exceed that width. A program that requires a wider result widens an operand explicitly or supplies a `u16` operand before the operation.
 
@@ -1764,7 +1765,7 @@ Boolean `and` and `or` short-circuit. The left operand is evaluated first:
 
 An operand that is not evaluated performs no call, storage access, bounds check, conversion check, arithmetic trap, or other source operation. The Boolean and integer meanings are selected by static types and create no parsing ambiguity.
 
-Shifts, rotations, power, `mod`, and symbolic Boolean operators are absent. A later proposal for one of these operators requires its own measured admission and a Chapter 3 token amendment when it uses a word.
+Shifts, rotations, power, and symbolic Boolean operators are absent. A later proposal for one of these operators requires its own measured admission and a Chapter 3 token amendment when it uses a word.
 
 ### 9.11 Evaluation order
 
@@ -2663,7 +2664,7 @@ Nucleus 0.1 defines these trap reasons:
 | --------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `bounds`              | A dynamic fixed-array index or bounded-string byte index is outside zero through current length minus one. The trap precedes the read, write, or alias formation. |
 | `narrowing`           | A dynamic checked `u8(...)` operand exceeds 255. The trap precedes production or storage of the narrowed result.                                                  |
-| `division-by-zero`    | A runtime divisor is zero. The trap precedes production of a quotient.                                                                                            |
+| `division-by-zero`    | A runtime divisor for `/` or `mod` is zero. The trap precedes production of a quotient or remainder.                                                              |
 | `loop-range`          | A counted-loop next value would continue but does not fit the counter type. The trap precedes the counter store.                                                  |
 | `activation-capacity` | A call would exceed a published activation-depth or activation-storage limit. The trap occurs after argument evaluation and before the new activation begins.     |
 | `unhandled-error`     | `main` returns failure. The report includes the returned `u8` code.                                                                                               |
@@ -2672,7 +2673,7 @@ A conforming implementation may use more detailed internal causes, but it must p
 
 ### 15.3 Compile-time proof
 
-When the compiler proves a bounds, narrowing, or division failure from source constants, the source is invalid and compilation produces a diagnostic. It must not emit an executable whose first relevant action is a guaranteed trap. Counted-loop `loop-range` failure is different: it remains a runtime trap because earlier control flow in the loop body may prevent execution from reaching the increment. When the compiler proves an operation safe, it may omit the runtime check.
+When the compiler proves a bounds, narrowing, division, or modulo failure from source constants, the source is invalid and compilation produces a diagnostic. It must not emit an executable whose first relevant action is a guaranteed trap. Counted-loop `loop-range` failure is different: it remains a runtime trap because earlier control flow in the loop body may prevent execution from reaching the increment. When the compiler proves an operation safe, it may omit the runtime check.
 
 If validity depends on runtime data, the program remains conforming and the check is part of its specified execution. Optimization must preserve the trap reason, ordering, and prior observable effects.
 
@@ -2926,7 +2927,7 @@ comparison-operator
 additive
     ::= multiplicative { ("+" | "-") multiplicative }
 multiplicative
-    ::= unary { ("*" | "/") unary }
+    ::= unary { ("*" | "/" | "mod") unary }
 unary
     ::= ("+" | "-") unary | postfix-expression
 postfix-expression
@@ -2968,7 +2969,7 @@ Field lookup after `.` uses the selected record type, except that a bounded-stri
 
 ### 17.4 Predictive analysis
 
-The repository grammar analyzer mechanically expanded the grammar above to 170 BNF rules over 94 nonterminals. It found no nullable-prefix left-recursion cycle, unreachable nonterminal, or unproductive nonterminal. The LL(1) table contained three conflict sites: one name-led statement choice, one type-directed initializer choice, and one `or fail` boundary choice. The focused test reads this Chapter 17 block directly, so the analyzer evidence does not create a second grammar authority.
+The repository grammar analyzer mechanically expanded the grammar above to 171 BNF rules over 94 nonterminals. It found no nullable-prefix left-recursion cycle, unreachable nonterminal, or unproductive nonterminal. The LL(1) table contained three conflict sites: one name-led statement choice, one type-directed initializer choice, and one `or fail` boundary choice. The focused test reads this Chapter 17 block directly, so the analyzer evidence does not create a second grammar authority.
 
 | Nonterminal          | Lookahead | Conflict                                           | Resolution                          |
 | -------------------- | --------- | -------------------------------------------------- | ----------------------------------- |
@@ -3098,7 +3099,7 @@ The following mechanisms are required in the single Nucleus 0.1 language:
 | Structure    | One program scope and ordered declaration sequence across source parts, declaration before use, sole-signature forwards with abbreviated bodies, fixed `main()` entry, no executable top level.                                                                                                                                                  |
 | Types        | `u8`, `u16`, `boolean`, nominal fixed records, checked fixed arrays, mutable bounded `string[N]` with current length and byte indexing, exact aggregate aliases, and exact-type aggregate value copying.                                                                                                                                         |
 | Declarations | Scalar constants, program variables, complete positional recursive static initializers, record fields, formal parameters, contiguous scalar locals, routine definitions and forwards.                                                                                                                                                            |
-| Expressions  | Calls, checked array and bounded-string indexing, field selection and string `.length`, explicit integer conversions, unary `+`/`-`, arithmetic, one comparison, `not`, `and`, `or`, and integer-only `xor`.                                                                                                                                     |
+| Expressions  | Calls, checked array and bounded-string indexing, field selection and string `.length`, explicit integer conversions, unary `+`/`-`, arithmetic including quotient and remainder, one comparison, `not`, `and`, `or`, and integer-only `xor`.                                                                                                    |
 | Statements   | Scalar and exact-type aggregate assignment, name-led calls, `return`, `fail`, `exit`, and `continue`.                                                                                                                                                                                                                                            |
 | Control      | Flat `if`/`elseif`/`else`, pre-test `while`, counted `for` over a read-only scalar-local counter with `to` or `until` and optional constant `step`.                                                                                                                                                                                              |
 | Routines     | Formal arguments, named scalar locals, no result or one typed result, early return, direct and mutual recursion, and one complete forward signature whose parameter names bind its abbreviated body.                                                                                                                                             |
@@ -3375,6 +3376,19 @@ end
 ```
 
 With input byte zero, the required result is `division-by-zero`.
+
+```nucleus
+sub remainder(value as u16, divisor as u16) as u16
+    return value mod divisor
+end
+
+sub main() fails
+    var divisor as u16 = readInputByte() or fail
+    var result as u16 = remainder(8, divisor)
+end
+```
+
+With input byte zero, the required result is likewise `division-by-zero` at `mod`.
 
 ### 21.10 Complete rejected programs
 
@@ -3692,3 +3706,34 @@ end
 ```
 
 The second program is rejected at `xor` because exclusive OR is integer-only.
+
+### 21.18 Integer remainder
+
+This program exercises constant and runtime `mod` at both integer widths:
+
+```nucleus
+const folded = 100 mod 7
+var byteValue as u8 = 250
+var wordValue as u16 = 1000
+
+sub main() fails
+    byteValue = byteValue mod 16
+    wordValue = wordValue mod 256
+    if folded = 2 and byteValue = 10 and wordValue = 232
+        writeOutputByte(byteValue) or fail
+    end
+end
+```
+
+The expected standard output is byte value 10.
+
+A constant zero divisor is invalid:
+
+```nucleus
+const bad = 1 mod 0
+
+sub main()
+end
+```
+
+The second program is rejected at the zero divisor with the same division-by-zero diagnostic used by `/ 0`.

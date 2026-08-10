@@ -93,60 +93,62 @@ TypedOperationTable:
             .dw TypedOr16             ; 53
             .dw TypedXor8             ; 54
             .dw TypedXor16            ; 55
-            .dw TypedCompare          ; 56
-            .dw TypedCompare          ; 57
+            .dw TypedModulo8          ; 56
+            .dw TypedModulo16         ; 57
             .dw TypedCompare          ; 58
-            .dw TypedNarrow8          ; 59
-            .dw TypedStoreProgram16   ; 60
-            .dw TypedStoreLocal16     ; 61
-            .dw TypedBeginAnd         ; 62
-            .dw TypedBeginOr          ; 63
-            .dw TypedEndBoolean       ; 64
-            .dw StructuredLabel       ; 65
-            .dw StructuredBranchFalse ; 66
-            .dw StructuredJump        ; 67
-            .dw StructuredForSetup    ; 68
-            .dw StructuredForTest     ; 69
-            .dw StructuredForNext     ; 70
-            .dw StructuredForCleanup  ; 71
-            .dw TypedBeginRoutine     ; 72
-            .dw TypedLoadLocal8       ; 73 parameter u8
-            .dw TypedLoadLocal16      ; 74 parameter u16
-            .dw TypedCallScalar       ; 75
-            .dw TypedReturnScalar     ; 76
-            .dw TypedStoreLocal8      ; 77 parameter u8
-            .dw TypedStoreLocal16     ; 78 parameter u16
-            .dw TypedEndRoutine       ; 79
+            .dw TypedCompare          ; 59
+            .dw TypedCompare          ; 60
+            .dw TypedNarrow8          ; 61
+            .dw TypedStoreProgram16   ; 62
+            .dw TypedStoreLocal16     ; 63
+            .dw TypedBeginAnd         ; 64
+            .dw TypedBeginOr          ; 65
+            .dw TypedEndBoolean       ; 66
+            .dw StructuredLabel       ; 67
+            .dw StructuredBranchFalse ; 68
+            .dw StructuredJump        ; 69
+            .dw StructuredForSetup    ; 70
+            .dw StructuredForTest     ; 71
+            .dw StructuredForNext     ; 72
+            .dw StructuredForCleanup  ; 73
+            .dw TypedBeginRoutine     ; 74
+            .dw TypedLoadLocal8       ; 75 parameter u8
+            .dw TypedLoadLocal16      ; 76 parameter u16
+            .dw TypedCallScalar       ; 77
+            .dw TypedReturnScalar     ; 78
+            .dw TypedStoreLocal8      ; 79 parameter u8
+            .dw TypedStoreLocal16     ; 80 parameter u16
+            .dw TypedEndRoutine       ; 81
 .if AggregateCallSlices
-            .dw Stage7BeginRoutine    ; 80
-            .dw Stage7BindParameter   ; 81
-            .dw Stage7Call            ; 82
-            .dw Stage7ReturnAggregate ; 83
-            .dw Stage7EndRoutine      ; 84
-            .dw Stage7LoadProgramAlias ; 85
-            .dw Stage7LoadParameterAlias ; 86
-            .dw Stage7SelectField     ; 87
-            .dw Stage7SelectIndex     ; 88
-            .dw Stage7LoadIndirect8   ; 89
-            .dw Stage7LoadIndirect16  ; 90
-            .dw Stage7StoreIndirect8  ; 91
-            .dw Stage7StoreIndirect16 ; 92
-            .dw Stage7CopyAggregate   ; 93
-            .dw Stage7StringLength    ; 94
-            .dw Stage7StringIndex     ; 95
-            .dw Stage8FailRoutine     ; 96
-            .dw Stage8FailMain        ; 97
-            .dw Stage8ReturnSuccess   ; 98
-            .dw Stage8ReturnSuccess   ; 99
-            .dw Stage8EndFailableRoutine ; 100
-            .dw Stage8SkipHandler     ; 101
-            .dw Stage8BeginHandler    ; 102
-            .dw Stage8EndHandler      ; 103
-            .dw Stage8CallService     ; 104
-            .dw Stage8BeginCallableMain ; 105
-TypedOperationCount .equ 86
+            .dw Stage7BeginRoutine    ; 82
+            .dw Stage7BindParameter   ; 83
+            .dw Stage7Call            ; 84
+            .dw Stage7ReturnAggregate ; 85
+            .dw Stage7EndRoutine      ; 86
+            .dw Stage7LoadProgramAlias ; 87
+            .dw Stage7LoadParameterAlias ; 88
+            .dw Stage7SelectField     ; 89
+            .dw Stage7SelectIndex     ; 90
+            .dw Stage7LoadIndirect8   ; 91
+            .dw Stage7LoadIndirect16  ; 92
+            .dw Stage7StoreIndirect8  ; 93
+            .dw Stage7StoreIndirect16 ; 94
+            .dw Stage7CopyAggregate   ; 95
+            .dw Stage7StringLength    ; 96
+            .dw Stage7StringIndex     ; 97
+            .dw Stage8FailRoutine     ; 98
+            .dw Stage8FailMain        ; 99
+            .dw Stage8ReturnSuccess   ; 100
+            .dw Stage8ReturnSuccess   ; 101
+            .dw Stage8EndFailableRoutine ; 102
+            .dw Stage8SkipHandler     ; 103
+            .dw Stage8BeginHandler    ; 104
+            .dw Stage8EndHandler      ; 105
+            .dw Stage8CallService     ; 106
+            .dw Stage8BeginCallableMain ; 107
+TypedOperationCount .equ 88
 .else
-TypedOperationCount .equ 60
+TypedOperationCount .equ 62
 .endif
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
@@ -373,9 +375,17 @@ TypedEmitTrapHead:
 TypedDivide8:
             LD   C,1
             JR   TypedDivide
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
 TypedDivide16:
             LD   C,0
+            JR   TypedDivide
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
+TypedModulo8:
+            LD   C,3
+            JR   TypedDivide
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedModulo16:
+            LD   C,2
 TypedDivide:
             CALL TypedReadTrapPosition
             LD   A,C
@@ -383,6 +393,11 @@ TypedDivide:
             CALL TypedPopOperands
             RET  C
             LD   HL,DivideU16
+            LD   A,(EmitTypedWidth)
+            BIT  1,A
+            JR   Z,TypedDivideCall
+            LD   HL,ModuloU16
+TypedDivideCall:
             CALL EmitCall
             RET  C
             CALL EmitJrNcPlaceholder
@@ -395,7 +410,7 @@ TypedDivide:
             CALL TypedEmitTrapTail
             RET  C
             LD   A,(EmitTypedWidth)
-            OR   A
+            AND  1
             JR   Z,TypedDividePush
             LD   HL,TypedZeroHigh
             CALL   EmitPair

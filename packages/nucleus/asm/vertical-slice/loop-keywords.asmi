@@ -11,6 +11,7 @@ KeywordTable:
             .db  5,"const",TokenConst
             .db  2,"or",TokenOr
             .db  3,"xor",TokenXor
+            .db  3,"mod",TokenMod
             .db  3,"and",TokenAnd
             .db  3,"not",TokenNot
             .db  4,"fail",TokenFail
@@ -33,7 +34,7 @@ KeywordTable:
             .db  6,"string",TokenString
             .db  2,"on",TokenOn
             .db  5,"error",TokenError
-KeywordCount            .equ 33
+KeywordCount            .equ 34
 
 PunctuationTable:
             .db  "=",TokenEquals

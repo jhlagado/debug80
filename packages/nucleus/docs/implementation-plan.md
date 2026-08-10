@@ -822,6 +822,20 @@ numeric-literal commit, `xor` adds 67 compiler-code bytes and five immutable
 bytes, for 72 compiler-core bytes in total; it changes no workspace, maximum
 generated-program, or runtime account.
 
+The following increment adds integer `mod` at multiplicative precedence. The
+constant folder retains the remainder already produced by its division loop;
+the generated backend selects a shared runtime division core whose quotient
+and remainder entry points preserve the same zero-divisor trap. The Chapter 21
+corpus proves constant folding, runtime `u8` and `u16` remainder, and rejection
+of a constant zero divisor at that divisor. Fresh assembly measures 13,847
+compiler-code bytes plus 382 immutable bytes, for a 14,229-byte compiler core
+with 1,509 bytes of workspace. The largest generated program remains 1,019
+bytes. The selected runtime is 596 bytes. The 1,653-byte Chapter 21 proof
+executes 1,428,311 instructions in 13,446,134 T-states. Relative to the `xor`
+commit, `mod` adds 44 compiler-code bytes and five immutable bytes, for 49
+compiler-core bytes, and 11 runtime bytes; workspace and maximum generated
+program size do not change.
+
 ## Capacity ledger
 
 The first implementation fixes a numeric limit before each bounded structure is

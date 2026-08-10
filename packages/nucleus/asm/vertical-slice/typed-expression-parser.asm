@@ -379,6 +379,8 @@ TypedReduceIntegerBinary:
             JR   Z,TypedReduceMultiply
             CP   TokenSlash
             JP   Z,TypedReduceDivide
+            CP   TokenMod
+            JP   Z,TypedReduceModulo
             CP   TokenAnd
             JR   Z,TypedReduceAnd
             CP   TokenXor
@@ -421,7 +423,7 @@ TypedReduceAnd:
             LD   A,H
             AND  D
             LD   H,A
-            JR   TypedReduceIntegerConstantDone
+            JP   TypedReduceIntegerConstantDone
 TypedReduceAdd:
             LD   D,SemanticAdd8
             LD   E,SemanticAdd16
@@ -466,8 +468,11 @@ TypedReduceMultiplySkip:
             LD   L,C
             JR   TypedReduceIntegerConstantDone
 TypedReduceDivide:
-            LD   D,SemanticDivide8
-            LD   E,SemanticDivide16
+            LD   DE,SemanticDivide8*$100+SemanticDivide16
+            JR   TypedReduceDivision
+TypedReduceModulo:
+            LD   DE,SemanticModulo8*$100+SemanticModulo16
+TypedReduceDivision:
             CALL TypedEmitWidthOperation
             RET  C
             LD   HL,(ExpressionOperatorOffset)
@@ -499,6 +504,9 @@ TypedReduceDivideLoop:
             JR   TypedReduceDivideLoop
 TypedReduceDivideDone:
             ADD  HL,DE
+            LD   A,(ExpressionOperator)
+            CP   TokenMod
+            JR   Z,TypedReduceIntegerConstantDone
             LD   H,B
             LD   L,C
             OR   A
@@ -972,6 +980,8 @@ TypedMultiplicativeLoop:
             CP   TokenStar
             JR   Z,TypedMultiplicativeOperator
             CP   TokenSlash
+            JR   Z,TypedMultiplicativeOperator
+            CP   TokenMod
             JR   NZ,TypedMultiplicativeDone
 TypedMultiplicativeOperator:
             LD   (ExpressionOperator),A

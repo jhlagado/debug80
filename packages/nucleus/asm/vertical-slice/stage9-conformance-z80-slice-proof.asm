@@ -254,6 +254,19 @@ Chapter21_9DividePoint:
             .db "end",10
 Chapter21_9DivideSourceEnd:
 
+Chapter21_9ModuloSource:
+            .db "sub remainder(value as u16, divisor as u16) as u16",10
+            .db "    return value "
+Chapter21_9ModuloPoint:
+            .db "mod divisor",10
+            .db "end",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    var divisor as u16 = readInputByte() or fail",10
+            .db "    var result as u16 = remainder(8, divisor)",10
+            .db "end",10
+Chapter21_9ModuloSourceEnd:
+
 Chapter21_12Source:
             .db "forward sub render(Player as u8) as u8",10
             .db 10
@@ -365,6 +378,29 @@ Chapter21_17BooleanPoint:
             .db "    end",10
             .db "end",10
 Chapter21_17BooleanSourceEnd:
+
+Chapter21_18Source:
+            .db "const folded = 100 mod 7",10
+            .db "var byteValue as u8 = 250",10
+            .db "var wordValue as u16 = 1000",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    byteValue = byteValue mod 16",10
+            .db "    wordValue = wordValue mod 256",10
+            .db "    if folded = 2 and byteValue = 10 and wordValue = 232",10
+            .db "        writeOutputByte(byteValue) or fail",10
+            .db "    end",10
+            .db "end",10
+Chapter21_18SourceEnd:
+
+Chapter21_18ZeroSource:
+            .db "const bad = 1 mod "
+Chapter21_18ZeroPoint:
+            .db "0",10
+            .db 10
+            .db "sub main()",10
+            .db "end",10
+Chapter21_18ZeroSourceEnd:
 
 Chapter21_10UnconsumedSource:
             .db "sub readOne() as u8 fails",10
@@ -1113,6 +1149,46 @@ ProofStart:
             LD   HL,Chapter21_17BooleanSource
             LD   DE,Chapter21_17BooleanSourceEnd
             CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
+            LD   A,68
+            LD   (ProofCase),A
+            LD   A,77
+            LD   HL,Chapter21_18Source
+            LD   DE,Chapter21_18SourceEnd
+            CALL ProofRunSingle
+            JP   C,ProofFailed
+            LD   A,10
+            CALL ProofCheckOutput
+            JP   C,ProofFailed
+
+            LD   A,69
+            LD   (ProofCase),A
+            LD   A,78
+            LD   B,DiagnosticDivisionZero
+            LD   IX,Chapter21_18ZeroPoint-Chapter21_18ZeroSource
+            LD   HL,Chapter21_18ZeroSource
+            LD   DE,Chapter21_18ZeroSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
+            LD   A,70
+            LD   (ProofCase),A
+            LD   A,79
+            LD   HL,Chapter21_9ModuloSource
+            LD   DE,Chapter21_9ModuloSourceEnd
+            CALL ProofBuildSingle
+            JP   C,ProofFailed
+            CALL ProofResetServices
+            LD   A,1
+            LD   (ServiceInputLength),A
+            XOR  A
+            LD   (ServiceInputBase),A
+            CALL ProofCallGenerated
+            JP   C,ProofFailed
+            LD   A,3
+            LD   BC,Chapter21_9ModuloPoint-Chapter21_9ModuloSource
+            CALL ProofCheckTrap
             JP   C,ProofFailed
 
             LD   A,$A5
