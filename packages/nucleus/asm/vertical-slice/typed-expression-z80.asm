@@ -91,60 +91,62 @@ TypedOperationTable:
             .dw TypedAnd16            ; 51
             .dw TypedOr8              ; 52
             .dw TypedOr16             ; 53
-            .dw TypedCompare          ; 54
-            .dw TypedCompare          ; 55
+            .dw TypedXor8             ; 54
+            .dw TypedXor16            ; 55
             .dw TypedCompare          ; 56
-            .dw TypedNarrow8          ; 57
-            .dw TypedStoreProgram16   ; 58
-            .dw TypedStoreLocal16     ; 59
-            .dw TypedBeginAnd         ; 60
-            .dw TypedBeginOr          ; 61
-            .dw TypedEndBoolean       ; 62
-            .dw StructuredLabel       ; 63
-            .dw StructuredBranchFalse ; 64
-            .dw StructuredJump        ; 65
-            .dw StructuredForSetup    ; 66
-            .dw StructuredForTest     ; 67
-            .dw StructuredForNext     ; 68
-            .dw StructuredForCleanup  ; 69
-            .dw TypedBeginRoutine     ; 70
-            .dw TypedLoadLocal8       ; 71 parameter u8
-            .dw TypedLoadLocal16      ; 72 parameter u16
-            .dw TypedCallScalar       ; 73
-            .dw TypedReturnScalar     ; 74
-            .dw TypedStoreLocal8      ; 75 parameter u8
-            .dw TypedStoreLocal16     ; 76 parameter u16
-            .dw TypedEndRoutine       ; 77
+            .dw TypedCompare          ; 57
+            .dw TypedCompare          ; 58
+            .dw TypedNarrow8          ; 59
+            .dw TypedStoreProgram16   ; 60
+            .dw TypedStoreLocal16     ; 61
+            .dw TypedBeginAnd         ; 62
+            .dw TypedBeginOr          ; 63
+            .dw TypedEndBoolean       ; 64
+            .dw StructuredLabel       ; 65
+            .dw StructuredBranchFalse ; 66
+            .dw StructuredJump        ; 67
+            .dw StructuredForSetup    ; 68
+            .dw StructuredForTest     ; 69
+            .dw StructuredForNext     ; 70
+            .dw StructuredForCleanup  ; 71
+            .dw TypedBeginRoutine     ; 72
+            .dw TypedLoadLocal8       ; 73 parameter u8
+            .dw TypedLoadLocal16      ; 74 parameter u16
+            .dw TypedCallScalar       ; 75
+            .dw TypedReturnScalar     ; 76
+            .dw TypedStoreLocal8      ; 77 parameter u8
+            .dw TypedStoreLocal16     ; 78 parameter u16
+            .dw TypedEndRoutine       ; 79
 .if AggregateCallSlices
-            .dw Stage7BeginRoutine    ; 78
-            .dw Stage7BindParameter   ; 79
-            .dw Stage7Call            ; 80
-            .dw Stage7ReturnAggregate ; 81
-            .dw Stage7EndRoutine      ; 82
-            .dw Stage7LoadProgramAlias ; 83
-            .dw Stage7LoadParameterAlias ; 84
-            .dw Stage7SelectField     ; 85
-            .dw Stage7SelectIndex     ; 86
-            .dw Stage7LoadIndirect8   ; 87
-            .dw Stage7LoadIndirect16  ; 88
-            .dw Stage7StoreIndirect8  ; 89
-            .dw Stage7StoreIndirect16 ; 90
-            .dw Stage7CopyAggregate   ; 91
-            .dw Stage7StringLength    ; 92
-            .dw Stage7StringIndex     ; 93
-            .dw Stage8FailRoutine     ; 94
-            .dw Stage8FailMain        ; 95
-            .dw Stage8ReturnSuccess   ; 96
-            .dw Stage8ReturnSuccess   ; 97
-            .dw Stage8EndFailableRoutine ; 98
-            .dw Stage8SkipHandler     ; 99
-            .dw Stage8BeginHandler    ; 100
-            .dw Stage8EndHandler      ; 101
-            .dw Stage8CallService     ; 102
-            .dw Stage8BeginCallableMain ; 103
-TypedOperationCount .equ 84
+            .dw Stage7BeginRoutine    ; 80
+            .dw Stage7BindParameter   ; 81
+            .dw Stage7Call            ; 82
+            .dw Stage7ReturnAggregate ; 83
+            .dw Stage7EndRoutine      ; 84
+            .dw Stage7LoadProgramAlias ; 85
+            .dw Stage7LoadParameterAlias ; 86
+            .dw Stage7SelectField     ; 87
+            .dw Stage7SelectIndex     ; 88
+            .dw Stage7LoadIndirect8   ; 89
+            .dw Stage7LoadIndirect16  ; 90
+            .dw Stage7StoreIndirect8  ; 91
+            .dw Stage7StoreIndirect16 ; 92
+            .dw Stage7CopyAggregate   ; 93
+            .dw Stage7StringLength    ; 94
+            .dw Stage7StringIndex     ; 95
+            .dw Stage8FailRoutine     ; 96
+            .dw Stage8FailMain        ; 97
+            .dw Stage8ReturnSuccess   ; 98
+            .dw Stage8ReturnSuccess   ; 99
+            .dw Stage8EndFailableRoutine ; 100
+            .dw Stage8SkipHandler     ; 101
+            .dw Stage8BeginHandler    ; 102
+            .dw Stage8EndHandler      ; 103
+            .dw Stage8CallService     ; 104
+            .dw Stage8BeginCallableMain ; 105
+TypedOperationCount .equ 86
 .else
-TypedOperationCount .equ 58
+TypedOperationCount .equ 60
 .endif
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
@@ -293,6 +295,10 @@ TypedSubtract8:
             LD   HL,TypedSubtract8Bytes
             JR   TypedBinary5
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedXor8:
+            LD   HL,TypedXor8Bytes
+            JR   TypedBinary5
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedAnd8:
             LD   HL,TypedAnd8Bytes
             JR   TypedBinary5
@@ -304,6 +310,10 @@ TypedBinary5:
             LD   B,5
             JR   TypedEmitSequence
 
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedXor16:
+            LD   HL,TypedXor16Bytes
+            JR   TypedBinary6
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedAnd16:
             LD   HL,TypedAnd16Bytes
@@ -774,6 +784,8 @@ TypedAnd8Bytes:         .db $7D,$A3,$6F,$26,$00
 TypedAnd16Bytes:        .db $7D,$A3,$6F,$7C,$A2,$67
 TypedOr8Bytes:          .db $7D,$B3,$6F,$26,$00
 TypedOr16Bytes:         .db $7D,$B3,$6F,$7C,$B2,$67
+TypedXor8Bytes:         .db $7D,$AB,$6F,$26,$00
+TypedXor16Bytes:        .db $7D,$AB,$6F,$7C,$AA,$67
 ; POP HL; LD A,L; OR A; JR NZ/Z,+3; PUSH HL
 TypedBeginAndBytes:     .db $E1,$7D,$B7,$20,$03,$E5
 TypedBeginOrBytes:      .db $E1,$7D,$B7,$28,$03,$E5

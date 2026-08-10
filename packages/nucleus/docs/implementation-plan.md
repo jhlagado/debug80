@@ -808,6 +808,20 @@ the feature adds 87 compiler-code bytes and four immutable descriptor bytes,
 for 91 compiler-core bytes in total; it changes no workspace, generated, or
 runtime account.
 
+The next increment adds integer-only `xor` at the same precedence as `or`.
+The existing integer-pair resolver supplies exact-constant adoption, widening,
+and Boolean rejection; the backend adds width-specific semantic operations and
+direct Z80 templates, while the constant path folds both bytes. The Chapter 21
+corpus proves left association, constant folding, runtime `u8` and `u16`
+execution, and rejection at a Boolean `xor`. Fresh assembly measures 13,803
+compiler-code bytes plus 377 immutable bytes, for a 14,180-byte compiler core
+with 1,509 bytes of workspace. The largest generated program remains 1,019
+bytes and the selected runtime remains 585 bytes. The 1,553-byte Chapter 21
+proof executes 1,316,919 instructions in 12,402,392 T-states. Relative to the
+numeric-literal commit, `xor` adds 67 compiler-code bytes and five immutable
+bytes, for 72 compiler-core bytes in total; it changes no workspace, maximum
+generated-program, or runtime account.
+
 ## Capacity ledger
 
 The first implementation fixes a numeric limit before each bounded structure is

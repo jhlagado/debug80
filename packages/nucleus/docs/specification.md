@@ -320,7 +320,7 @@ and      as       boolean  const     continue  else     elseif
 end      error    exit     fail      fails     false    for
 forward  if       not      on        or        record   return
 step     string   sub      to        true      u16      u8
-until    var      while
+until    var      while    xor
 ```
 
 `elseif` is one keyword. `else if` produces the two keywords `else` and `if` and does not form an `elseif` clause. `ELSEIF` is a `NAME`, not a keyword.
@@ -512,7 +512,7 @@ The two physical line endings inside delimiters do not appear in the token seque
 
 ### 3.12 Reserved-word and literal decisions
 
-Chapter 9 admits `not`, `and`, and `or`. Chapter 14 admits `fail`, `fails`, `on`, and `error`. These seven words are reserved. Chapter 11 omits a conditional header marker, so `then` remains an identifier. Nucleus integer literals use decimal digits, `$` hexadecimal, or `%` binary. A later revision that needs another token requires an amendment here and cost accounting for the added scanner, table, test, and diagnostic work.
+Chapter 9 admits `not`, `and`, `or`, and `xor`. Chapter 14 admits `fail`, `fails`, `on`, and `error`. These eight words are reserved. Chapter 11 omits a conditional header marker, so `then` remains an identifier. Nucleus integer literals use decimal digits, `$` hexadecimal, or `%` binary. A later revision that needs another token requires an amendment here and cost accounting for the added scanner, table, test, and diagnostic work.
 
 ## 4. Program and file structure
 
@@ -1631,7 +1631,7 @@ The reusable expression fragment is:
 
 ```text
 expression             ::= or-expression
-or-expression          ::= and-expression { "or" and-expression }
+or-expression          ::= and-expression { ( "or" | "xor" ) and-expression }
 and-expression         ::= not-expression { "and" not-expression }
 not-expression         ::= "not" not-expression | comparison
 comparison             ::= additive [ comparison-operator additive ]
@@ -1702,9 +1702,9 @@ Precedence from highest to lowest is:
 5. one comparison;
 6. `not`;
 7. `and`;
-8. `or`.
+8. `or` and `xor`.
 
-Binary arithmetic, `and`, and `or` associate from left to right. Unary `+`, unary `-`, and `not` associate from right to left. A comparison contains at most one comparison operator and therefore has no associativity.
+Binary arithmetic, `and`, `or`, and `xor` associate from left to right. Unary `+`, unary `-`, and `not` associate from right to left. A comparison contains at most one comparison operator and therefore has no associativity.
 
 `not` binds less tightly than comparison. Thus `not left = right` means `not (left = right)`. An integer complement used as a comparison operand requires parentheses, as in `(not mask) = expected`.
 
@@ -1745,11 +1745,13 @@ Records, fixed arrays, bounded strings, aggregate aliases, and alias carriers ha
 
 Comparison chaining is invalid. `minimum <= value <= maximum` is not two comparisons; after the first comparison, the left side would be Boolean and the grammar permits no second comparison operator. The equivalent valid form is `minimum <= value and value <= maximum`.
 
-### 9.10 `not`, `and`, and `or`
+### 9.10 `not`, `and`, `or`, and `xor`
 
 `not` accepts one `boolean`, `u8`, or `u16` operand. For `boolean`, it exchanges `true` and `false`. For an integer, it complements every bit in the operand's declared width and produces the same integer type.
 
 `and` and `or` accept either two Boolean operands or two compatible integer operands. Mixed Boolean and integer operands are invalid. Integer operands use literal resolution and widening from Section 9.7, combine corresponding bits, evaluate both operands, and produce the resolved integer type.
+
+`xor` accepts only two compatible integer operands. It uses the same literal resolution and widening rules, evaluates both operands from left to right, combines corresponding bits by exclusive OR, and produces the resolved integer type. A Boolean operand is invalid. This deliberate restriction avoids placing an eager Boolean operator at the same precedence as short-circuiting Boolean `or`.
 
 Boolean `and` and `or` short-circuit. The left operand is evaluated first:
 
@@ -1762,7 +1764,7 @@ Boolean `and` and `or` short-circuit. The left operand is evaluated first:
 
 An operand that is not evaluated performs no call, storage access, bounds check, conversion check, arithmetic trap, or other source operation. The Boolean and integer meanings are selected by static types and create no parsing ambiguity.
 
-`xor`, shifts, rotations, power, `mod`, and symbolic Boolean operators are absent. A later proposal for one of these operators requires its own measured admission and a Chapter 3 token amendment when it uses a word.
+Shifts, rotations, power, `mod`, and symbolic Boolean operators are absent. A later proposal for one of these operators requires its own measured admission and a Chapter 3 token amendment when it uses a word.
 
 ### 9.11 Evaluation order
 
@@ -2912,7 +2914,7 @@ step-constant
 expression
     ::= or-expression
 or-expression
-    ::= and-expression { "or" and-expression }
+    ::= and-expression { ("or" | "xor") and-expression }
 and-expression
     ::= not-expression { "and" not-expression }
 not-expression
@@ -2966,7 +2968,7 @@ Field lookup after `.` uses the selected record type, except that a bounded-stri
 
 ### 17.4 Predictive analysis
 
-The repository grammar analyzer mechanically expanded the grammar above to 168 BNF rules over 93 nonterminals. It found no nullable-prefix left-recursion cycle, unreachable nonterminal, or unproductive nonterminal. The LL(1) table contained three conflict sites: one name-led statement choice, one type-directed initializer choice, and one `or fail` boundary choice. The focused test reads this Chapter 17 block directly, so the analyzer evidence does not create a second grammar authority.
+The repository grammar analyzer mechanically expanded the grammar above to 170 BNF rules over 94 nonterminals. It found no nullable-prefix left-recursion cycle, unreachable nonterminal, or unproductive nonterminal. The LL(1) table contained three conflict sites: one name-led statement choice, one type-directed initializer choice, and one `or fail` boundary choice. The focused test reads this Chapter 17 block directly, so the analyzer evidence does not create a second grammar authority.
 
 | Nonterminal          | Lookahead | Conflict                                           | Resolution                          |
 | -------------------- | --------- | -------------------------------------------------- | ----------------------------------- |
@@ -3096,7 +3098,7 @@ The following mechanisms are required in the single Nucleus 0.1 language:
 | Structure    | One program scope and ordered declaration sequence across source parts, declaration before use, sole-signature forwards with abbreviated bodies, fixed `main()` entry, no executable top level.                                                                                                                                                  |
 | Types        | `u8`, `u16`, `boolean`, nominal fixed records, checked fixed arrays, mutable bounded `string[N]` with current length and byte indexing, exact aggregate aliases, and exact-type aggregate value copying.                                                                                                                                         |
 | Declarations | Scalar constants, program variables, complete positional recursive static initializers, record fields, formal parameters, contiguous scalar locals, routine definitions and forwards.                                                                                                                                                            |
-| Expressions  | Calls, checked array and bounded-string indexing, field selection and string `.length`, explicit integer conversions, unary `+`/`-`, arithmetic, one comparison, `not`, `and`, and `or`.                                                                                                                                                         |
+| Expressions  | Calls, checked array and bounded-string indexing, field selection and string `.length`, explicit integer conversions, unary `+`/`-`, arithmetic, one comparison, `not`, `and`, `or`, and integer-only `xor`.                                                                                                                                     |
 | Statements   | Scalar and exact-type aggregate assignment, name-led calls, `return`, `fail`, `exit`, and `continue`.                                                                                                                                                                                                                                            |
 | Control      | Flat `if`/`elseif`/`else`, pre-test `while`, counted `for` over a read-only scalar-local counter with `to` or `until` and optional constant `step`.                                                                                                                                                                                              |
 | Routines     | Formal arguments, named scalar locals, no result or one typed result, early return, direct and mutual recursion, and one complete forward signature whose parameter names bind its abbreviated body.                                                                                                                                             |
@@ -3659,3 +3661,34 @@ end
 ```
 
 All three literal spellings produce the same exact integer category. The expected standard output is byte value 176.
+
+### 21.17 Integer exclusive OR
+
+This program exercises constant and runtime `xor` at both integer widths. It also distinguishes left association at the shared `or` and `xor` precedence level:
+
+```nucleus
+const folded = 3 xor 1 or 1
+var byteValue as u8 = $a5
+var wordValue as u16 = $f0f0
+
+sub main() fails
+    byteValue = byteValue xor $ff
+    wordValue = wordValue xor $ffff
+    if folded = 3 and byteValue = $5a and wordValue = $0f0f
+        writeOutputByte(byteValue) or fail
+    end
+end
+```
+
+The expected standard output is byte value 90.
+
+Boolean operands are invalid:
+
+```nucleus
+sub main()
+    if true xor false
+    end
+end
+```
+
+The second program is rejected at `xor` because exclusive OR is integer-only.

@@ -24,7 +24,7 @@
       "name": "compiler-immutable",
       "from": "CompilerImmutableStart",
       "to": "CompilerImmutableEnd",
-      "maxBytes": 256
+      "maxBytes": 512
     },
     {
       "name": "compiler-core",

@@ -90,7 +90,7 @@ describe("the normative Nucleus 0.1 grammar", () => {
       })),
     ).toEqual([
       {
-        nonterminal: "or-expression·rep26",
+        nonterminal: "or-expression·rep27",
         lookahead: "or",
         predicates: ["isFailurePropagationBoundary"],
       },

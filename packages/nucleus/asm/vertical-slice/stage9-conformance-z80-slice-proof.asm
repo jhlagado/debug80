@@ -343,6 +343,29 @@ Chapter21_16Source:
             .db "end",10
 Chapter21_16SourceEnd:
 
+Chapter21_17Source:
+            .db "const folded = 3 xor 1 or 1",10
+            .db "var byteValue as u8 = $a5",10
+            .db "var wordValue as u16 = $f0f0",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    byteValue = byteValue xor $ff",10
+            .db "    wordValue = wordValue xor $ffff",10
+            .db "    if folded = 3 and byteValue = $5a and wordValue = $0f0f",10
+            .db "        writeOutputByte(byteValue) or fail",10
+            .db "    end",10
+            .db "end",10
+Chapter21_17SourceEnd:
+
+Chapter21_17BooleanSource:
+            .db "sub main()",10
+            .db "    if true "
+Chapter21_17BooleanPoint:
+            .db "xor false",10
+            .db "    end",10
+            .db "end",10
+Chapter21_17BooleanSourceEnd:
+
 Chapter21_10UnconsumedSource:
             .db "sub readOne() as u8 fails",10
             .db "    return readInputByte() or fail",10
@@ -1069,6 +1092,27 @@ ProofStart:
             JP   C,ProofFailed
             LD   A,176
             CALL ProofCheckOutput
+            JP   C,ProofFailed
+
+            LD   A,66
+            LD   (ProofCase),A
+            LD   A,75
+            LD   HL,Chapter21_17Source
+            LD   DE,Chapter21_17SourceEnd
+            CALL ProofRunSingle
+            JP   C,ProofFailed
+            LD   A,$5A
+            CALL ProofCheckOutput
+            JP   C,ProofFailed
+
+            LD   A,67
+            LD   (ProofCase),A
+            LD   A,76
+            LD   B,DiagnosticTypeMismatch
+            LD   IX,Chapter21_17BooleanPoint-Chapter21_17BooleanSource
+            LD   HL,Chapter21_17BooleanSource
+            LD   DE,Chapter21_17BooleanSourceEnd
+            CALL ProofExpectDiagnosticSingle
             JP   C,ProofFailed
 
             LD   A,$A5

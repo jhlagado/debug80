@@ -365,7 +365,7 @@ TypedPrepareConstantBinary:
             LD   DE,(ExpressionRightValue)
             RET
 
-; Reduce +, -, *, /, integer and, or. ExpressionOperator holds the token.
+; Reduce +, -, *, /, integer and, or, xor. ExpressionOperator holds the token.
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedReduceIntegerBinary:
             CALL TypedResolveIntegerPair
@@ -378,15 +378,17 @@ TypedReduceIntegerBinary:
             CP   TokenStar
             JR   Z,TypedReduceMultiply
             CP   TokenSlash
-            JR   Z,TypedReduceDivide
+            JP   Z,TypedReduceDivide
             CP   TokenAnd
             JR   Z,TypedReduceAnd
+            CP   TokenXor
+            JR   Z,TypedReduceXor
 TypedReduceOr:
-            LD   D,SemanticOr8
-            LD   E,SemanticOr16
+            LD   DE,SemanticOr8*$100+SemanticOr16
             CALL TypedPrepareConstantBinary
             RET  C
-            JP   Z,TypedReduceIntegerMeta
+            LD   A,C
+            RET  Z
             LD   A,L
             OR   E
             LD   L,A
@@ -394,12 +396,25 @@ TypedReduceOr:
             OR   D
             LD   H,A
             JP   TypedReduceIntegerConstantDone
-TypedReduceAnd:
-            LD   D,SemanticAnd8
-            LD   E,SemanticAnd16
+TypedReduceXor:
+            LD   DE,SemanticXor8*$100+SemanticXor16
             CALL TypedPrepareConstantBinary
             RET  C
-            JP   Z,TypedReduceIntegerMeta
+            LD   A,C
+            RET  Z
+            LD   A,L
+            XOR  E
+            LD   L,A
+            LD   A,H
+            XOR  D
+            LD   H,A
+            JP   TypedReduceIntegerConstantDone
+TypedReduceAnd:
+            LD   DE,SemanticAnd8*$100+SemanticAnd16
+            CALL TypedPrepareConstantBinary
+            RET  C
+            LD   A,C
+            RET  Z
             LD   A,L
             AND  E
             LD   L,A
@@ -1370,6 +1385,8 @@ TypedOrLoop:
             PUSH HL
             CALL ParserPeek
             JR   C,TypedBooleanPeekFailure
+            CP   TokenXor
+            JR   Z,TypedOrOperator
             CP   TokenOr
             JR   NZ,TypedBooleanDone
 .if AggregateCallSlices
@@ -1378,6 +1395,7 @@ TypedOrLoop:
             JR   NZ,TypedBooleanDone
             LD   A,TokenOr
 .endif
+TypedOrOperator:
             LD   (ExpressionOperator),A
             CALL ParserTake
             JR   C,TypedBooleanPeekFailure
@@ -1385,6 +1403,15 @@ TypedOrLoop:
             POP  AF
             CALL TypedSaveLeft
             RET  C
+            LD   A,(ExpressionOperator)
+            CP   TokenXor
+            JR   NZ,TypedOrBooleanLeft
+            LD   A,(ExpressionLeftMeta)
+            AND  ScalarMetaTypeMask
+            CP   ScalarTypeBoolean
+            JP   Z,TypedTypeFailure
+            JR   TypedOrParseRight
+TypedOrBooleanLeft:
             LD   A,(ExpressionLeftMeta)
             AND  ScalarMetaTypeMask
             CP   ScalarTypeBoolean
