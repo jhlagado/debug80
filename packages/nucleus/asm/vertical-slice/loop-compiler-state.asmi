@@ -174,14 +174,14 @@ AggregateCurrentTypeId  .equ AggregateStateBase+$06
 AggregateCurrentFieldStart .equ AggregateStateBase+$07
 AggregateCurrentFieldCount .equ AggregateStateBase+$08
 AggregateCurrentRecordExtent .equ AggregateStateBase+$09
-AggregateCurrentObjectOffset .equ AggregateStateBase+$0A
-AggregateCurrentObjectExtent .equ AggregateStateBase+$0B
-AggregateCandidateKind .equ AggregateStateBase+$0C
-AggregateCandidateAux  .equ AggregateStateBase+$0D
-AggregateCandidateLength .equ AggregateStateBase+$0E
-AggregateCandidateExtent .equ AggregateStateBase+$0F
-AggregateCurrentObjectEnd .equ AggregateStateBase+$10
-AggregateStateEnd       .equ AggregateStateBase+$11
+AggregateCurrentObjectOffset .equ AggregateStateBase+$0A ; word
+AggregateCurrentObjectExtent .equ AggregateStateBase+$0C
+AggregateCandidateKind .equ AggregateStateBase+$0D
+AggregateCandidateAux  .equ AggregateStateBase+$0E
+AggregateCandidateLength .equ AggregateStateBase+$0F
+AggregateCandidateExtent .equ AggregateStateBase+$10
+AggregateCurrentObjectEnd .equ AggregateStateBase+$11 ; word
+AggregateStateEnd       .equ AggregateStateBase+$13
 
 AggregateTypeTableBase  .equ AggregateStateEnd
 AggregateTypeEntrySize  .equ 3
@@ -190,10 +190,8 @@ AggregateTypeTableLimit .equ AggregateTypeTableBase+AggregateTypeEntrySize*Aggre
 AggregateTypeKind       .equ 0
 AggregateTypeAux        .equ 1
 AggregateTypeLength     .equ 2
-; The first Stage 6 representation admits only complete aggregate layouts up
-; to 255 bytes, so one retained byte holds every admitted extent. A wider
-; valid source type receives the documented program-data capacity diagnostic
-; while its layout is constructed, even when no object has allocated storage.
+; Complete aggregate layouts are bounded at 256 bytes. One retained byte holds
+; each extent, with zero denoting 256; no admitted aggregate has zero extent.
 AggregateTypeExtentBase .equ AggregateTypeTableLimit
 AggregateTypeExtentLimit .equ AggregateTypeExtentBase+AggregateTypeCapacity
 
@@ -218,9 +216,9 @@ AggregateFieldOffset    .equ 4
 AggregateSymbolTypeBase .equ AggregateFieldTableLimit
 AggregateSymbolTypeLimit .equ AggregateSymbolTypeBase+SymbolCapacity
 
-StaticImageLength       .equ AggregateSymbolTypeLimit
-StaticImageBase         .equ StaticImageLength+1
-StaticImageCapacity     .equ 255
+StaticImageLength       .equ AggregateSymbolTypeLimit ; word
+StaticImageBase         .equ StaticImageLength+2
+StaticImageCapacity     .equ 256
 StaticImageLimit        .equ StaticImageBase+StaticImageCapacity
 AggregateWorkspaceEnd   .equ StaticImageLimit
 CompilerWorkspaceEnd    .equ AggregateWorkspaceEnd
@@ -331,6 +329,9 @@ DiagnosticInitializerShape .equ 78
 DiagnosticInitializerCount .equ 79
 DiagnosticStringLength .equ 80
 DiagnosticProgramDataCapacity .equ 81
+; Bounded string capacity is at most 254; use u8[N] plus a scalar length for
+; an unterminated, caller-managed buffer.
+DiagnosticStringCapacity .equ 90
 DiagnosticRecordEmpty  .equ 82
 DiagnosticTypeBound    .equ 83
 

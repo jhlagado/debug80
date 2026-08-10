@@ -487,6 +487,9 @@ Stage7SelectIndex:
             RET  C
             CALL Stage7BoundsGuard
             RET  C
+            LD   A,(Stage7PathExtent)
+            OR   A
+            JR   Z,Stage7SelectIndexStride256
             LD   HL,Stage7IndexToA
             LD   B,1
             CALL EmitBytes
@@ -500,6 +503,9 @@ Stage7SelectIndex:
             CALL EmitCall
             RET  C
             LD   HL,Stage7OffsetAddress
+            JP   EmitFive
+Stage7SelectIndexStride256:
+            LD   HL,Stage7OffsetAddress256
             JP   EmitFive
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
@@ -546,6 +552,10 @@ Stage7CopyAggregate:
             LD   A,(Stage7PathExtent)
             LD   L,A
             LD   H,0
+            OR   A
+            JR   NZ,Stage7CopyExtentReady
+            INC  H                       ; zero encodes 256 bytes
+Stage7CopyExtentReady:
             LD   A,$01                    ; LD BC,nn
             CALL EmitOpcodeWord
             RET  C
@@ -566,9 +576,7 @@ Stage7EmitRegionCheck:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7EmitDataEnd:
-            LD   A,(StaticImageLength)
-            LD   L,A
-            LD   H,0
+            LD   HL,(StaticImageLength)
             LD   DE,GeneratedBase+3
             ADD  HL,DE
             EX   DE,HL
@@ -576,15 +584,57 @@ Stage7EmitDataEnd:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7StringLength:
-            LD   HL,Stage7StringLengthBytes
-            JP   EmitFive
+            CALL NextSemanticByte
+            LD   (Stage7ArgumentCount),A
+            ADD  A,2                     ; zero denotes string[254]'s extent
+            LD   (Stage7PathExtent),A
+            CALL Stage7ReadCallOffset
+            LD   A,$E1                    ; POP HL carrier
+            CALL EmitByte
+            RET  C
+            LD   A,$E5                    ; preserve carrier across region check
+            CALL EmitByte
+            RET  C
+            CALL Stage7EmitRegionCheck
+            RET  C
+            LD   A,$E1                    ; POP HL carrier
+            CALL EmitByte
+            RET  C
+            LD   A,(Stage7ArgumentCount)
+            LD   C,A
+            LD   A,$0E                    ; LD C,n capacity
+            CALL EmitOpcodeByte
+            RET  C
+            LD   HL,CheckStringLength
+            CALL EmitCall
+            RET  C
+            CALL Stage7BoundsGuard
+            RET  C
+            LD   A,$E5                    ; PUSH HL length
+            JP   EmitByte
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7StringIndex:
             CALL NextSemanticByte     ; capacity retained by static type
+            LD   (Stage7ArgumentCount),A
+            ADD  A,2
+            LD   (Stage7PathExtent),A
             CALL Stage7ReadCallOffset
             LD   HL,Stage7PopIndexBase
             CALL   EmitPair
+            RET  C
+            LD   HL,Stage7PushDEHL
+            CALL   EmitPair
+            RET  C
+            CALL Stage7EmitRegionCheck
+            RET  C
+            LD   HL,Stage7CopyFinish
+            CALL   EmitPair
+            RET  C
+            LD   A,(Stage7ArgumentCount)
+            LD   C,A
+            LD   A,$0E                    ; LD C,n capacity
+            CALL EmitOpcodeByte
             RET  C
             LD   HL,CheckStringIndex
             CALL EmitCall
@@ -598,13 +648,14 @@ Stage7PopHLLoadDE:        .db $E1,$11
 Stage7IndexToA:           .db $7B
 Stage7LoadBImmediate:     .db $06
 Stage7OffsetAddress:      .db $5F,$16,$00,$19,$E5
+Stage7OffsetAddress256:   .db $53,$1E,$00,$19,$E5
 Stage7LoadIndirect8Bytes: .db $E1,$7E,$6F,$26,$00,$E5
 Stage7LoadIndirect16Bytes:.db $E1,$5E,$23,$56,$D5
 Stage7StoreIndirect16Bytes:.db $D1,$E1,$73,$23,$72
 Stage7CopyPrepare:        .db $D1,$E1,$E5,$D5
 Stage7CopyFinish:         .db $E1,$D1
+Stage7PushDEHL:           .db $D5,$E5
 Stage7LDIR:               .db $ED,$B0
-Stage7StringLengthBytes:  .db $E1,$6E,$26,$00,$E5
 
 Stage7DecSP2              .equ TypedParameter16Bytes
 Stage7LoadIXL             .equ TypedLoadLocalLow

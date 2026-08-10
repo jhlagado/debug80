@@ -961,7 +961,7 @@ Indexing an array of scalars produces a scalar occurrence with the element type.
 
 ### 6.8 Bounded strings
 
-`string[N]` is a fixed-capacity counted sequence of bytes with a current length from 0 through `N`. `N` is a compile-time integer from 1 through 255 and is part of the type. The empty string is a valid value. Payload bytes may have any value from 0 through 255, including zero.
+`string[N]` is a fixed-capacity counted sequence of bytes with a current length from 0 through `N`. `N` is a compile-time integer from 1 through 254 and is part of the type. The empty string is a valid value. Payload bytes may have any value from 0 through 255, including zero.
 
 A string literal is a contextual bounded-string initializer. It is compatible with `string[N]` when its decoded byte length does not exceed `N`. A literal that is too long is invalid. The literal does not create an open-ended string type, infer a new capacity, or permit a later capacity mismatch.
 
@@ -972,13 +972,13 @@ A bounded string is an aggregate, not a `u8` array. It has no source-level heade
 - `text.length` is a read-only `u8` value equal to the current logical byte length.
 - `text[index]` selects one existing byte as a `u8` storage path. The index must have type `u8` or `u16` and must be less than the current length. A failed check performs the `bounds` trap before a read or write.
 
-A byte assignment replaces exactly one existing byte and does not change the string's length or capacity. These operations provide no append, insertion, resize, truncation, or whole-string comparison. Whole-string assignment is available only between identical `string[N]` types under Section 7.8. Embedded zero bytes are ordinary content and do not terminate either operation.
+A bounded string's length is established only by static initialization or by whole-object assignment from an identical `string[N]`. A byte assignment replaces exactly one existing byte and does not change the string's length or capacity. These operations provide no append, insertion, resize, truncation, or whole-string comparison. Source code cannot build counted text by filling bytes and then changing the length. Constructed text uses a fixed `u8[N]` array plus a caller-managed scalar length. Whole-string assignment is available only between identical `string[N]` types under Section 7.8. Embedded zero bytes are ordinary content and do not terminate either operation.
 
 The `.length` intrinsic applies only when the postfix base has bounded-string type. On a record base, `.length` remains ordinary lookup in that record's field scope. Any other field suffix on a bounded string is invalid.
 
 Nucleus 0.1 has no `string[]`, open string, slice, general view, or address-and-length source value. A routine that accepts a bounded string names an exact capacity in its parameter type. A broader read-only view may be considered in a later language version after its compiler, carrier, lifetime, and result-ABI costs have been measured.
 
-This chapter fixes the semantic domain and capacity, not the stored layout. Chapter 7 defines storage identity and lifetime, Chapter 8 defines declaration initialization, and the Z80 runtime and backend contract defines the physical representation and byte encoding. That representation preserves embedded zero bytes, lengths through 255, and alias-visible byte mutation.
+This chapter fixes the semantic domain and capacity, not the stored layout. Chapter 7 defines storage identity and lifetime, Chapter 8 defines declaration initialization, and the Z80 runtime and backend contract defines the physical representation and byte encoding. That representation preserves embedded zero bytes, logical lengths through 254, and alias-visible byte mutation.
 
 ### 6.9 Aggregate aliases and address separation
 
@@ -1422,7 +1422,7 @@ The compiler evaluates a constant expression at compile time with the operand ty
 
 An exact integer literal or earlier exact named integer constant remains exact until an operator rule or conversion supplies its type. The completed integer value of a named constant returns to the exact category for later uses. The implicit `u8`-to-`u16` conversion from Chapter 6 is permitted. A checked `u16`-to-`u8` conversion is valid at compile time only when its value lies from 0 through 255; otherwise the declaration is invalid. A constant operation that Chapter 9 defines to trap at runtime makes the constant expression invalid when the compiler proves that condition during evaluation.
 
-An array length is a scalar constant expression whose value must lie from 1 through 65,535. A `string[N]` capacity is a scalar constant expression whose value must lie from 1 through 255. The compiler evaluates the bound before constructing the type identity. A later constant, a variable, or a cyclic dependency cannot supply a bound.
+An array length is a scalar constant expression whose value must lie from 1 through 65,535. A `string[N]` capacity is a scalar constant expression whose value must lie from 1 through 254. The compiler evaluates the bound before constructing the type identity. A later constant, a variable, or a cyclic dependency cannot supply a bound.
 
 ### 8.7 Record declarations
 

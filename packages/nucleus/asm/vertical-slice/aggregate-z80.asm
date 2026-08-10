@@ -11,18 +11,22 @@ EncodeAggregateProgramWithinLimit:
             CALL EncodeProgramHeader
             JP   C,AbortProgram
             LD   HL,StaticImageBase
-            LD   A,(StaticImageLength)
-            OR   A
+            LD   BC,(StaticImageLength)
+            LD   A,B
+            OR   C
             JR   Z,AggregateDispatch
-            LD   C,A
 AggregateCopyLoop:
             LD   A,(HL)
             INC  HL
+            PUSH BC
             PUSH HL
             CALL EmitByte
             POP  HL
+            POP  BC
             JP   C,AbortProgram
-            DEC  C
+            DEC  BC
+            LD   A,B
+            OR   C
             JR   NZ,AggregateCopyLoop
 AggregateDispatch:
             CALL TypedDispatch

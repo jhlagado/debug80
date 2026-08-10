@@ -137,14 +137,37 @@ CheckArrayIndex:
             OR   A
             RET
 
-; HL is a bounded-string carrier and DE the canonical index. On success HL is
-; the addressed payload byte; no byte is read before the logical-length test.
-.routine in DE,HL out A,HL,carry,zero clobbers sign,parity,halfCarry,BC,DE
+; C is the declared capacity and HL a bounded-string carrier. On success HL is
+; the canonical current length. A corrupted length above capacity is rejected.
+.routine in C,HL out A,HL,carry,zero clobbers sign,parity,halfCarry
+CheckStringLength:
+            LD   A,(HL)
+            CP   C
+            JR   C,CheckStringLengthReady
+            JR   Z,CheckStringLengthReady
+            SCF
+            RET
+CheckStringLengthReady:
+            LD   L,A
+            LD   H,0
+            OR   A
+            RET
+
+; C is the declared capacity, HL a bounded-string carrier, and DE the canonical
+; index. On success HL is the addressed payload byte; no byte is read before
+; the length invariant and logical-index checks.
+.routine in C,DE,HL out A,HL,carry,zero clobbers sign,parity,halfCarry,BC,DE
 CheckStringIndex:
             LD   A,D
             OR   A
             JR   NZ,AggregateBoundsFailure
             LD   A,(HL)
+            LD   B,A
+            CP   C
+            JR   C,CheckStringIndexLengthReady
+            JR   NZ,AggregateBoundsFailure
+CheckStringIndexLengthReady:
+            LD   A,B
             CP   E
             JR   C,AggregateBoundsFailure
             JR   Z,AggregateBoundsFailure
@@ -153,7 +176,8 @@ CheckStringIndex:
             OR   A
             RET
 
-; A is a nonzero fixed extent, HL an address, and DE the exclusive data end.
+; A is a fixed extent (zero encodes 256), HL an address, and DE the exclusive
+; data end.
 ; The helper rejects wrapped arithmetic and any region outside GeneratedBase+3
 ; through the supplied end. It is used twice before aggregate copying begins.
 .routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IY
@@ -162,6 +186,10 @@ CheckAggregateRegion:
             POP  IY
             LD   C,A
             LD   B,0
+            OR   A
+            JR   NZ,CheckAggregateExtentReady
+            INC  B
+CheckAggregateExtentReady:
             PUSH HL
             LD   DE,GeneratedBase+3
             OR   A

@@ -1091,6 +1091,7 @@ CompileSliceResetAggregateLoop:
             INC  HL
             DJNZ CompileSliceResetAggregateLoop
             LD   (StaticImageLength),A
+            LD   (StaticImageLength+1),A
             LD   (ForwardCompleted),A
             LD   (ForwardOrdinal),A
             RET

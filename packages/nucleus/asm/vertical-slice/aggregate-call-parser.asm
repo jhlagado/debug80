@@ -764,8 +764,15 @@ Stage7PathField:
             LD   B,6
             CALL TokenNameEquals
             JP   NC,Stage7PathFieldTypeFailure
+            LD   A,(Stage7PathType)
+            CALL AggregateTypeAddress
+            INC  HL
+            LD   C,(HL)                  ; capacity for L <= N validation
             LD   A,SemanticStringLength
-            CALL SemanticSinkOperation
+            CALL Stage7EmitOperationByte
+            JP   C,Stage7PathSuffixFailure
+            LD   HL,(TokenStartOffset)
+            CALL Stage7EmitWord
             JP   C,Stage7PathSuffixFailure
             POP  AF
             LD   A,ScalarTypeU8

@@ -149,7 +149,9 @@ AggregateMalformedEscapeSource:
 AggregateMalformedEscapeSourceEnd:
 
 AggregateStringExtentCapacitySource:
-            .db "var bad as string[255]",10
+            .db "var bad as string[255"
+AggregateStringExtentCapacityPoint:
+            .db "]",10
 AggregateStringExtentCapacitySourceEnd:
 
 AggregateEmptyRecordSource:
@@ -207,8 +209,9 @@ AggregateElementCapacityRejectedSource:
 AggregateElementCapacityRejectedSourceEnd:
 
 AggregateDataCapacitySource:
-            .db "var full as u8[255]",10
-            .db "var excess as u8",10
+            .db "var a as u8[255]",10
+            .db "var b as u8",10
+            .db "var c as u8",10
 AggregateDataCapacitySourceEnd:
 
 AggregateTypeExtentCapacitySource:
@@ -240,7 +243,7 @@ ProofStart:
             LD   B,AggregateExpectedImageEnd-AggregateExpectedImage
             CALL ProofCompareBytes
             JP   C,ProofFailStaticBytes
-            ; Pixel offsets 0,1,2 and Entry offsets 0,2,5,10.
+            ; Pixel offsets 0,1,2 and Entry offsets 0,2,5,11.
             LD   A,(AggregateFieldTableBase+AggregateFieldOffset)
             OR   A
             JP   NZ,ProofFailLayout
@@ -260,7 +263,7 @@ ProofStart:
             CP   5
             JP   NZ,ProofFailLayout
             LD   A,(AggregateFieldTableBase+AggregateFieldEntrySize*6+AggregateFieldOffset)
-            CP   10
+            CP   11
             JP   NZ,ProofFailLayout
             LD   A,(AggregateTypeCount)
             CP   5
@@ -288,12 +291,12 @@ ProofStart:
             OR   L
             JP   NZ,ProofFailLayout
             LD   HL,(SymbolTableBase+SymbolEntrySize*3+4)
-            LD   DE,13
+            LD   DE,14
             OR   A
             SBC  HL,DE
             JP   NZ,ProofFailLayout
             LD   HL,(SymbolTableBase+SymbolEntrySize*4+4)
-            LD   DE,26
+            LD   DE,28
             OR   A
             SBC  HL,DE
             JP   NZ,ProofFailLayout
@@ -472,9 +475,35 @@ AggregateAtomicFailedAsExpected:
             LD   A,154
             LD   HL,AggregateStringExtentCapacitySource
             LD   DE,AggregateStringExtentCapacitySourceEnd
-            LD   B,DiagnosticProgramDataCapacity
+            LD   B,DiagnosticStringCapacity
             CALL ProofExpectDiagnostic
             JP   C,ProofFailStringExtentCapacity
+            LD   HL,(DiagnosticOffset)
+            LD   DE,AggregateStringExtentCapacityPoint-AggregateStringExtentCapacitySource
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailStringExtentCapacity
+            LD   A,155
+            LD   HL,AggregateSealedStringBoundarySource
+            LD   DE,AggregateSealedStringBoundarySourceEnd
+            CALL CompileAggregateSlice
+            JP   C,ProofFailStringExtentCapacity
+            LD   HL,(StaticImageLength)
+            LD   DE,256
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailStringExtentCapacity
+            LD   HL,StaticImageBase
+            LD   BC,256
+AggregateSealedStringZeroLoop:
+            LD   A,(HL)
+            OR   A
+            JP   NZ,ProofFailStringExtentCapacity
+            INC  HL
+            DEC  BC
+            LD   A,B
+            OR   C
+            JR   NZ,AggregateSealedStringZeroLoop
             LD   A,148
             LD   HL,AggregateEmptyRecordSource
             LD   DE,AggregateEmptyRecordSourceEnd
@@ -659,12 +688,16 @@ ProofStatus:           .db 0
 ProofCase:             .db 0
 AggregateExpectedImage:
             ; zero Entry
-            .db 0,0,0,0,0,0,0,0,0,0,0,0,0
+            .db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
             ; one Entry
-            .db 1,2,1,2,3,2,65,175,0,0,4,5,6
+            .db 1,2,1,2,3,2,65,175,0,0,0,4,5,6
             ; many[0]
-            .db 1,0,7,8,9,2,120,121,0,0,10,11,12
+            .db 1,0,7,8,9,2,120,121,0,0,0,10,11,12
             ; many[1]
-            .db 2,0,13,14,15,0,0,0,0,0,16,17,18
+            .db 2,0,13,14,15,0,0,0,0,0,0,16,17,18
 AggregateExpectedImageEnd:
+AggregateSealedStringBoundarySource:
+            .db "var full as string[254]",10
+            .db "sub main() fails",10,"end",10
+AggregateSealedStringBoundarySourceEnd:
 ProofEnd:

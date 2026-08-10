@@ -42,9 +42,12 @@ AggregateGetU16Extent:
             RET
 AggregateGetDynamicExtent:
             CALL AggregateExtentAddress
-            LD   L,(HL)
+            LD   A,(HL)
+            LD   L,A
             LD   H,0
             OR   A
+            RET  NZ
+            INC  H                       ; zero encodes the 256-byte extent
             RET
 
 ; Append the descriptor and extent in AggregateCandidate*. No structural
@@ -122,6 +125,9 @@ AggregateTypeShapeFailure:
 AggregateProgramDataCapacityFailure:
             LD   A,DiagnosticProgramDataCapacity
             JP   CompilerSetDiagnostic
+AggregateStringCapacityFailure:
+            LD   A,DiagnosticStringCapacity
+            JP   CompilerSetDiagnostic
 .else
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 AggregateParseBound:
@@ -194,15 +200,15 @@ AggregateParseStringType:
             LD   A,L
             OR   A
             JP   Z,AggregateTypeShapeFailure
+            CP   255
+            JP   NC,AggregateStringCapacityFailure
             LD   A,L
             LD   (AggregateCandidateLength),A
             LD   (AggregateCandidateAux),A
             LD   A,AggregateTypeKindString
             LD   (AggregateCandidateKind),A
             INC  HL
-            LD   A,H
-            OR   A
-            JP   NZ,AggregateProgramDataCapacityFailure
+            INC  HL
             LD   A,L
             LD   (AggregateCandidateExtent),A
             CALL AggregateInternType
@@ -254,8 +260,14 @@ AggregateArrayExtentLoop:
             ADD  HL,DE
             JP   C,AggregateProgramDataCapacityFailure
             LD   A,H
+            CP   2
+            JP   NC,AggregateProgramDataCapacityFailure
+            OR   A
+            JR   Z,AggregateArrayExtentReady
+            LD   A,L
             OR   A
             JP   NZ,AggregateProgramDataCapacityFailure
+AggregateArrayExtentReady:
             DJNZ AggregateArrayExtentLoop
             LD   A,L
             LD   (AggregateCandidateExtent),A
@@ -273,6 +285,9 @@ AggregateArrayExtentLoop:
             RET
 AggregateProgramDataCapacityFailure:
             LD   A,DiagnosticProgramDataCapacity
+            JP   CompilerSetDiagnostic
+AggregateStringCapacityFailure:
+            LD   A,DiagnosticStringCapacity
             JP   CompilerSetDiagnostic
 .endif
 
@@ -386,8 +401,15 @@ AggregateRecordFieldLoop:
             LD   (HL),B
             INC  HL
             LD   A,(AggregateCurrentRecordExtent)
-            LD   (HL),A
             LD   E,A
+            OR   A
+            JR   NZ,AggregateRecordFieldOffsetReady
+            LD   A,(AggregateCurrentFieldCount)
+            OR   A
+            JP   NZ,AggregateProgramDataCapacityFailure
+            XOR  A
+AggregateRecordFieldOffsetReady:
+            LD   (HL),A
             LD   D,0
             PUSH DE
             LD   A,B
@@ -396,8 +418,14 @@ AggregateRecordFieldLoop:
             ADD  HL,DE
             JP   C,AggregateProgramDataCapacityFailure
             LD   A,H
+            CP   2
+            JP   NC,AggregateProgramDataCapacityFailure
+            OR   A
+            JR   Z,AggregateRecordExtentReady
+            LD   A,L
             OR   A
             JP   NZ,AggregateProgramDataCapacityFailure
+AggregateRecordExtentReady:
             LD   A,L
             LD   (AggregateCurrentRecordExtent),A
             CALL ParserExpectLine
@@ -492,19 +520,17 @@ AggregateInitializerLeave:
 .routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
 AggregateWriteByte:
             LD   B,A
-            LD   A,(AggregateCurrentObjectOffset)
-            CP   StaticImageCapacity
-            ; The legacy proof layout puts this target outside JR range.
-            JP   NC,AggregateProgramDataCapacityFailure
-            LD   L,A
-            LD   H,0
+            LD   HL,(AggregateCurrentObjectOffset)
+            LD   A,H
+            OR   A
+            JP   NZ,AggregateProgramDataCapacityFailure
             LD   DE,StaticImageBase
             ADD  HL,DE
             LD   A,B
             LD   (HL),A
-            LD   A,(AggregateCurrentObjectOffset)
-            INC  A
-            LD   (AggregateCurrentObjectOffset),A
+            LD   HL,(AggregateCurrentObjectOffset)
+            INC  HL
+            LD   (AggregateCurrentObjectOffset),HL
             OR   A
             RET
 
@@ -582,9 +608,10 @@ AggregateDecodeStringWrite:
 AggregateDecodeStringAdvancePadding:
             LD   E,B
             LD   D,0
-            LD   A,(AggregateCurrentObjectOffset)
-            ADD  A,E
-            LD   (AggregateCurrentObjectOffset),A
+            INC  DE                      ; permanent terminator at capacity+1
+            LD   HL,(AggregateCurrentObjectOffset)
+            ADD  HL,DE
+            LD   (AggregateCurrentObjectOffset),HL
             OR   A
             RET
 
@@ -797,15 +824,11 @@ AggregateInitializerTakeClose:
 ; explicit initializer. This also defines every byte of a zero initializer.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 AggregateZeroCurrentObject:
-            LD   A,(AggregateCurrentObjectOffset)
-            LD   L,A
-            LD   H,0
+            LD   HL,(AggregateCurrentObjectOffset)
             LD   DE,StaticImageBase
             ADD  HL,DE
             LD   A,(AggregateCurrentObjectExtent)
-            OR   A
-            RET  Z
-            LD   B,A
+            LD   B,A                     ; zero encodes 256 iterations
 AggregateZeroCurrentLoop:
             XOR  A
             LD   (HL),A
@@ -828,17 +851,20 @@ AggregateParseProgramAfterVar:
             CALL AggregateGetExtent
             LD   A,L
             LD   (AggregateCurrentObjectExtent),A
-            LD   A,(StaticImageLength)
-            LD   (AggregateCurrentObjectOffset),A
-            LD   E,A
-            LD   D,0
+            LD   DE,(StaticImageLength)
+            LD   (AggregateCurrentObjectOffset),DE
             ADD  HL,DE
             JP   C,AggregateProgramDataCapacityFailure
             LD   A,H
+            CP   2
+            JP   NC,AggregateProgramDataCapacityFailure
+            OR   A
+            JR   Z,AggregateProgramObjectEndReady
+            LD   A,L
             OR   A
             JP   NZ,AggregateProgramDataCapacityFailure
-            LD   A,L
-            LD   (AggregateCurrentObjectEnd),A
+AggregateProgramObjectEndReady:
+            LD   (AggregateCurrentObjectEnd),HL
             CALL AggregateZeroCurrentObject
             RET  C
             XOR  A
@@ -850,8 +876,8 @@ AggregateParseProgramAfterVar:
             JR   NZ,AggregateProgramInitializerDone
             CALL ParserTake
             RET  C
-            LD   A,(StaticImageLength)
-            LD   (AggregateCurrentObjectOffset),A
+            LD   HL,(StaticImageLength)
+            LD   (AggregateCurrentObjectOffset),HL
             LD   A,(AggregateCurrentTypeId)
             LD   B,A
             PUSH BC
@@ -860,9 +886,10 @@ AggregateParseProgramAfterVar:
             POP  BC
             LD   A,B
             LD   (AggregateCurrentTypeId),A
-            LD   A,(AggregateCurrentObjectOffset)
-            LD   HL,AggregateCurrentObjectEnd
-            CP   (HL)
+            LD   HL,(AggregateCurrentObjectOffset)
+            LD   DE,(AggregateCurrentObjectEnd)
+            OR   A
+            SBC  HL,DE
             JP   NZ,AggregateInitializerCountFailure
             JR   AggregateProgramInitializerDone
 AggregateProgramInitializerFailure:
@@ -872,9 +899,7 @@ AggregateProgramInitializerFailure:
 AggregateProgramInitializerDone:
             CALL ParserExpectLine
             RET  C
-            LD   A,(StaticImageLength)
-            LD   C,A
-            LD   B,0
+            LD   BC,(StaticImageLength)
             LD   A,(AggregateCurrentTypeId)
             CP   AggregateFirstDynamicTypeId
             JR   C,AggregateProgramScalarInfo
@@ -897,8 +922,9 @@ AggregateProgramPrepareSymbol:
             LD   (HL),A
             CALL SymbolCommit
             RET  C
-            LD   A,(AggregateCurrentObjectEnd)
-            LD   (StaticImageLength),A
+            LD   HL,(AggregateCurrentObjectEnd)
+            LD   (StaticImageLength),HL
+            LD   A,L
             LD   (NextProgramSlot),A
 .if AggregateCallSlices
             JP   Stage7ParseTopLevel

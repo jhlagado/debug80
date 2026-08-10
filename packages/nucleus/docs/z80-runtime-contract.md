@@ -108,9 +108,18 @@ table, length word, or address.
 
 ### 3.3 Bounded strings
 
-`string[N]` occupies `N + 1` bytes. Byte zero is the current logical length
-`L`; bytes 1 through `L` are the content; the remaining payload bytes are not
-source-readable. The invariant is `0 <= L <= N`.
+`string[N]` occupies `N + 2` bytes. Byte zero is the current logical length
+`L`; bytes 1 through `N` are the content capacity; and byte `N + 1` is always
+`$00`. The compiler writes that final byte while building the static image,
+and no runtime operation writes it again. Bytes `L + 1` through `N` are also
+zero. The invariant is `0 <= L <= N`.
+
+The address `carrier + 1` is always zero-terminated within `N + 1` bytes, so a
+terminator-consuming routine can never read past the end of the object. This
+does not make the payload a C string of exactly `L` bytes. Embedded zero bytes
+are ordinary Nucleus content, but a C consumer stops at the first one. The
+guarantee prevents a runaway read; it does not preserve counted length for a C
+consumer.
 
 An aggregate carrier for a bounded string addresses its length byte. Reading
 `.length` checks the complete object and the length invariant. Indexing checks
@@ -147,7 +156,8 @@ sequence. It must not expose a partly initialized object to source execution.
 
 Static words use little-endian order. Record and array initializers follow the
 packed layout in Chapter 3. A bounded-string initializer writes its length and
-decoded bytes; unused capacity has no source-observable value.
+decoded bytes, zeros payload bytes `L + 1` through `N`, and writes `$00` at
+`N + 1`. Those bytes beyond `L` remain outside source-readable string content.
 
 ### 4.3 Program entry and exit
 
@@ -180,8 +190,9 @@ performs no destination write.
 Exact-type aggregate assignment establishes and checks the complete destination
 region and then the complete source region before the first destination byte
 changes. It copies the common fixed extent, including a bounded string's length
-byte and complete capacity. Self-assignment has no effect. Nucleus types cannot
-produce proper partial overlap between distinct same-type aggregate paths.
+byte, complete capacity, and permanent terminator. Self-assignment has no
+effect. Nucleus types cannot produce proper partial overlap between distinct
+same-type aggregate paths.
 
 The backend may inline the copy, emit a counted loop, or call a shared helper.
 For a Z80 target, `LDIR` is permitted after both complete-region checks. The

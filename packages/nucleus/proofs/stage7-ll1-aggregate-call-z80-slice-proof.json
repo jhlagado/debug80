@@ -14,7 +14,7 @@
     { "at": "ProofCase", "width": "u8", "equals": 0 },
     { "at": "ProofCopyGeneratedSize", "width": "u16", "equals": 551 },
     { "at": "ProofForwardGeneratedSize", "width": "u16", "equals": 628 },
-    { "at": "ProofStringGeneratedSize", "width": "u16", "equals": 368 },
+    { "at": "ProofStringGeneratedSize", "width": "u16", "equals": 557 },
     { "at": "ProofBoundsGeneratedSize", "width": "u16", "equals": 268 }
   ],
   "extents": [
@@ -82,7 +82,7 @@
       "name": "static-image",
       "from": "StaticImageBase",
       "to": "StaticImageLimit",
-      "maxBytes": 255
+      "maxBytes": 256
     },
     {
       "name": "z80-runtime",

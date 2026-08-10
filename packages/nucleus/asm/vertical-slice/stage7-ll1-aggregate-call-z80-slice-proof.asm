@@ -507,6 +507,59 @@ ProofStart:
             LD   A,(GeneratedBase+6)
             CP   'C'
             JP   NZ,ProofFailStringStorage
+            LD   A,(GeneratedBase+7)      ; sealed byte at capacity+1
+            OR   A
+            JP   NZ,ProofFailStringStorage
+            LD   A,161
+            LD   HL,Stage7CorruptStringSource
+            LD   DE,Stage7CorruptStringSourceEnd
+            CALL CompileAggregateCallSlice
+            JP   C,ProofFailBoundsCompile
+            CALL EncodeAggregateProgram
+            JP   C,ProofFailBoundsEncode
+            LD   A,$FF                    ; L=255 remains invalid
+            LD   (GeneratedBase+3),A
+            CALL Reset
+            CALL ProofCallGenerated
+            JP   C,ProofFailBoundsFrame
+            LD   A,(RunState)
+            CP   RunTrapped
+            JP   NZ,ProofFailBoundsRun
+            LD   A,(TrapNumber)
+            CP   1
+            JP   NZ,ProofFailBoundsRun
+            LD   HL,(TrapOffset)
+            LD   DE,Stage7CorruptStringLengthPoint-Stage7CorruptStringSource
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailBoundsRun
+            LD   A,162
+            LD   HL,Stage7SealedArraySource
+            LD   DE,Stage7SealedArraySourceEnd
+            CALL CompileAggregateCallSlice
+            JP   C,ProofFailStringCompile
+            LD   HL,(StaticImageLength)
+            LD   DE,256
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailStringStorage
+            CALL EncodeAggregateProgram
+            JP   C,ProofFailStringEncode
+            LD   A,(GeneratedBase+3+255)  ; permanent terminator in element 0
+            OR   A
+            JP   NZ,ProofFailStringStorage
+            CALL Reset
+            CALL ProofCallGenerated
+            JP   C,ProofFailStringFrame
+            LD   A,(RunState)
+            CP   RunSucceeded
+            JP   NZ,ProofFailStringRun
+            LD   A,(ServiceOutputLength)
+            CP   1
+            JP   NZ,ProofFailStringOutput
+            LD   A,(ServiceOutputBase)
+            CP   'Y'
+            JP   NZ,ProofFailStringOutput
             LD   A,160
             LD   HL,Stage7BoundsSource
             LD   DE,Stage7BoundsSourceEnd
@@ -1189,4 +1242,20 @@ ProofStringGeneratedSize: .dw 0
 ProofBoundsGeneratedSize: .dw 0
 ProofStatus:     .db 0
 ProofCase:       .db 0
+Stage7CorruptStringSource:
+            .db "var text as string[3]",10
+            .db "sub main() fails",10
+            .db "if text."
+Stage7CorruptStringLengthPoint:
+            .db "length = 0",10
+            .db "end",10
+            .db "end",10
+Stage7CorruptStringSourceEnd:
+Stage7SealedArraySource:
+            .db "var texts as string[254][1]",10
+            .db "sub main() fails",10
+            .db "if texts[0].length = 0",10
+            .db "writeOutputByte('Y') or fail",10
+            .db "end",10,"end",10
+Stage7SealedArraySourceEnd:
 ProofEnd:

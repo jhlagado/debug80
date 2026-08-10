@@ -116,14 +116,15 @@ HybridLL1MakeStringType:
             OR   A
             JP   NZ,AggregateTypeShapeFailure
             LD   A,L
+            CP   255
+            JP   NC,AggregateStringCapacityFailure
+            LD   A,L
             LD   (AggregateCandidateLength),A
             LD   (AggregateCandidateAux),A
             LD   A,AggregateTypeKindString
             LD   (AggregateCandidateKind),A
             INC  HL
-            LD   A,H
-            OR   A
-            JP   NZ,AggregateProgramDataCapacityFailure
+            INC  HL
             LD   A,L
             LD   (AggregateCandidateExtent),A
 HybridLL1InternCurrentType:
@@ -161,8 +162,14 @@ HybridLL1ArrayExtentLoop:
             ADD  HL,DE
             JP   C,AggregateProgramDataCapacityFailure
             LD   A,H
+            CP   2
+            JP   NC,AggregateProgramDataCapacityFailure
+            OR   A
+            JR   Z,HybridLL1ArrayExtentReady
+            LD   A,L
             OR   A
             JP   NZ,AggregateProgramDataCapacityFailure
+HybridLL1ArrayExtentReady:
             DJNZ HybridLL1ArrayExtentLoop
             LD   A,L
             LD   (AggregateCandidateExtent),A
@@ -218,17 +225,20 @@ HybridLL1SaveProgramType:
             CALL AggregateGetExtent
             LD   A,L
             LD   (AggregateCurrentObjectExtent),A
-            LD   A,(StaticImageLength)
-            LD   (AggregateCurrentObjectOffset),A
-            LD   E,A
-            LD   D,0
+            LD   DE,(StaticImageLength)
+            LD   (AggregateCurrentObjectOffset),DE
             ADD  HL,DE
             JP   C,AggregateProgramDataCapacityFailure
             LD   A,H
+            CP   2
+            JP   NC,AggregateProgramDataCapacityFailure
+            OR   A
+            JR   Z,HybridLL1ProgramObjectEndReady
+            LD   A,L
             OR   A
             JP   NZ,AggregateProgramDataCapacityFailure
-            LD   A,L
-            LD   (AggregateCurrentObjectEnd),A
+HybridLL1ProgramObjectEndReady:
+            LD   (AggregateCurrentObjectEnd),HL
             CALL AggregateZeroCurrentObject
             RET  C
             XOR  A
@@ -237,18 +247,17 @@ HybridLL1SaveProgramType:
             RET
 
 HybridLL1FinishProgramInitializer:
-            LD   A,(AggregateCurrentObjectOffset)
-            LD   HL,AggregateCurrentObjectEnd
-            CP   (HL)
+            LD   HL,(AggregateCurrentObjectOffset)
+            LD   DE,(AggregateCurrentObjectEnd)
+            OR   A
+            SBC  HL,DE
             JP   NZ,AggregateInitializerCountFailure
             OR   A
             RET
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1CommitProgramVariable:
-            LD   A,(StaticImageLength)
-            LD   C,A
-            LD   B,0
+            LD   BC,(StaticImageLength)
             LD   A,(DeclarationInfo)
             CP   AggregateFirstDynamicTypeId
             JR   C,HybridLL1ProgramScalarInfo
@@ -271,8 +280,9 @@ HybridLL1ProgramPrepareSymbol:
             LD   (HL),A
             CALL SymbolCommit
             RET  C
-            LD   A,(AggregateCurrentObjectEnd)
-            LD   (StaticImageLength),A
+            LD   HL,(AggregateCurrentObjectEnd)
+            LD   (StaticImageLength),HL
+            LD   A,L
             LD   (NextProgramSlot),A
             OR   A
             RET
@@ -333,8 +343,15 @@ HybridLL1CommitRecordField:
             LD   (HL),A
             INC  HL
             LD   A,(AggregateCurrentRecordExtent)
-            LD   (HL),A
             LD   E,A
+            OR   A
+            JR   NZ,HybridLL1FieldOffsetReady
+            LD   A,(AggregateCurrentFieldCount)
+            OR   A
+            JP   NZ,AggregateProgramDataCapacityFailure
+            XOR  A
+HybridLL1FieldOffsetReady:
+            LD   (HL),A
             LD   D,0
             LD   A,(AggregateCurrentTypeId)
             PUSH DE
@@ -343,8 +360,14 @@ HybridLL1CommitRecordField:
             ADD  HL,DE
             JP   C,AggregateProgramDataCapacityFailure
             LD   A,H
+            CP   2
+            JP   NC,AggregateProgramDataCapacityFailure
+            OR   A
+            JR   Z,HybridLL1RecordExtentReady
+            LD   A,L
             OR   A
             JP   NZ,AggregateProgramDataCapacityFailure
+HybridLL1RecordExtentReady:
             LD   A,L
             LD   (AggregateCurrentRecordExtent),A
             LD   HL,AggregateCurrentFieldCount
