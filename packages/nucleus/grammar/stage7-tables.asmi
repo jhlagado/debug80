@@ -1,8 +1,8 @@
 ; Generated from stage7-grammar.json.
-HybridLL1NonterminalCount .equ 39
-HybridLL1ProductionCount  .equ 73
-HybridLL1ProductionSplit  .equ 37
-HybridLL1ActionCount      .equ 70
+HybridLL1NonterminalCount .equ 40
+HybridLL1ProductionCount  .equ 75
+HybridLL1ProductionSplit  .equ 38
+HybridLL1ActionCount      .equ 72
 HybridLL1StartSymbol      .equ $40
 
 HybridLL1RowDirectory:
@@ -10,45 +10,47 @@ HybridLL1RowDirectory:
             .db HybridLL1Row1-HybridLL1Rows,DiagnosticExpectedTopLevel ; top-level-list
             .db HybridLL1Row2-HybridLL1Rows,DiagnosticExpectedTopLevel ; top-level-declaration
             .db HybridLL1Row3-HybridLL1Rows,DiagnosticExpectedTopLevel ; const-declaration
-            .db HybridLL1Row4-HybridLL1Rows,DiagnosticExpectedTopLevel ; program-var-declaration
-            .db HybridLL1Row5-HybridLL1Rows,DiagnosticExpectedEqual ; program-initializer-opt
-            .db HybridLL1Row6-HybridLL1Rows,DiagnosticExpectedTopLevel ; record-declaration
-            .db HybridLL1Row7-HybridLL1Rows,DiagnosticRecordEmpty ; record-fields
-            .db HybridLL1Row8-HybridLL1Rows,DiagnosticExpectedScalar ; record-field-tail
-            .db HybridLL1Row9-HybridLL1Rows,DiagnosticExpectedScalar ; record-field
-            .db HybridLL1Row10-HybridLL1Rows,DiagnosticExpectedForward ; forward-declaration
-            .db HybridLL1Row11-HybridLL1Rows,DiagnosticExpectedSub ; sub-definition
-            .db HybridLL1Row12-HybridLL1Rows,DiagnosticExpectedLeft ; sub-definition-tail
-            .db HybridLL1Row13-HybridLL1Rows,DiagnosticExpectedRight ; parameter-list
-            .db HybridLL1Row14-HybridLL1Rows,DiagnosticExpectedRight ; parameter-tail
-            .db HybridLL1Row15-HybridLL1Rows,DiagnosticExpectedScalar ; parameter
-            .db HybridLL1Row16-HybridLL1Rows,DiagnosticExpectedLine ; result-opt
-            .db HybridLL1Row17-HybridLL1Rows,DiagnosticExpectedLine ; fails-opt
-            .db HybridLL1Row18-HybridLL1Rows,DiagnosticExpectedScalar ; routine-body
-            .db HybridLL1Row19-HybridLL1Rows,DiagnosticExpectedScalar ; local-list
-            .db HybridLL1Row20-HybridLL1Rows,DiagnosticExpectedVar ; local-declaration
-            .db HybridLL1Row21-HybridLL1Rows,DiagnosticExpectedLine ; local-initializer-opt
-            .db HybridLL1Row22-HybridLL1Rows,DiagnosticExpectedScalar ; statement-sequence
-            .db HybridLL1Row23-HybridLL1Rows,DiagnosticExpectedScalar ; statement
-            .db HybridLL1Row24-HybridLL1Rows,DiagnosticExpectedReturn ; return-statement
-            .db HybridLL1Row25-HybridLL1Rows,DiagnosticExpectedLine ; return-value-opt
-            .db HybridLL1Row26-HybridLL1Rows,DiagnosticExpectedFail ; fail-statement
-            .db HybridLL1Row27-HybridLL1Rows,DiagnosticFailureContext ; on-error-opt
-            .db HybridLL1Row28-HybridLL1Rows,DiagnosticExpectedLoop ; transfer-statement
-            .db HybridLL1Row29-HybridLL1Rows,DiagnosticExpectedIf ; if-statement
-            .db HybridLL1Row30-HybridLL1Rows,DiagnosticExpectedScalar ; if-tail
-            .db HybridLL1Row31-HybridLL1Rows,DiagnosticExpectedScalar ; while-statement
-            .db HybridLL1Row32-HybridLL1Rows,DiagnosticExpectedFor ; for-statement
-            .db HybridLL1Row33-HybridLL1Rows,DiagnosticExpectedScalar ; for-bound
-            .db HybridLL1Row34-HybridLL1Rows,DiagnosticExpectedLine ; for-step-opt
-            .db HybridLL1Row35-HybridLL1Rows,DiagnosticExpectedType ; type
-            .db HybridLL1Row36-HybridLL1Rows,DiagnosticExpectedType ; type-atom
-            .db HybridLL1Row37-HybridLL1Rows,DiagnosticExpectedScalar ; type-array-opt
-            .db HybridLL1Row38-HybridLL1Rows,DiagnosticExpectedType ; scalar-type
+            .db HybridLL1Row4-HybridLL1Rows,DiagnosticExpectedTopLevel ; assert-declaration
+            .db HybridLL1Row5-HybridLL1Rows,DiagnosticExpectedTopLevel ; program-var-declaration
+            .db HybridLL1Row6-HybridLL1Rows,DiagnosticExpectedEqual ; program-initializer-opt
+            .db HybridLL1Row7-HybridLL1Rows,DiagnosticExpectedTopLevel ; record-declaration
+            .db HybridLL1Row8-HybridLL1Rows,DiagnosticRecordEmpty ; record-fields
+            .db HybridLL1Row9-HybridLL1Rows,DiagnosticExpectedScalar ; record-field-tail
+            .db HybridLL1Row10-HybridLL1Rows,DiagnosticExpectedScalar ; record-field
+            .db HybridLL1Row11-HybridLL1Rows,DiagnosticExpectedForward ; forward-declaration
+            .db HybridLL1Row12-HybridLL1Rows,DiagnosticExpectedSub ; sub-definition
+            .db HybridLL1Row13-HybridLL1Rows,DiagnosticExpectedLeft ; sub-definition-tail
+            .db HybridLL1Row14-HybridLL1Rows,DiagnosticExpectedRight ; parameter-list
+            .db HybridLL1Row15-HybridLL1Rows,DiagnosticExpectedRight ; parameter-tail
+            .db HybridLL1Row16-HybridLL1Rows,DiagnosticExpectedScalar ; parameter
+            .db HybridLL1Row17-HybridLL1Rows,DiagnosticExpectedLine ; result-opt
+            .db HybridLL1Row18-HybridLL1Rows,DiagnosticExpectedLine ; fails-opt
+            .db HybridLL1Row19-HybridLL1Rows,DiagnosticExpectedScalar ; routine-body
+            .db HybridLL1Row20-HybridLL1Rows,DiagnosticExpectedScalar ; local-list
+            .db HybridLL1Row21-HybridLL1Rows,DiagnosticExpectedVar ; local-declaration
+            .db HybridLL1Row22-HybridLL1Rows,DiagnosticExpectedLine ; local-initializer-opt
+            .db HybridLL1Row23-HybridLL1Rows,DiagnosticExpectedScalar ; statement-sequence
+            .db HybridLL1Row24-HybridLL1Rows,DiagnosticExpectedScalar ; statement
+            .db HybridLL1Row25-HybridLL1Rows,DiagnosticExpectedReturn ; return-statement
+            .db HybridLL1Row26-HybridLL1Rows,DiagnosticExpectedLine ; return-value-opt
+            .db HybridLL1Row27-HybridLL1Rows,DiagnosticExpectedFail ; fail-statement
+            .db HybridLL1Row28-HybridLL1Rows,DiagnosticFailureContext ; on-error-opt
+            .db HybridLL1Row29-HybridLL1Rows,DiagnosticExpectedLoop ; transfer-statement
+            .db HybridLL1Row30-HybridLL1Rows,DiagnosticExpectedIf ; if-statement
+            .db HybridLL1Row31-HybridLL1Rows,DiagnosticExpectedScalar ; if-tail
+            .db HybridLL1Row32-HybridLL1Rows,DiagnosticExpectedScalar ; while-statement
+            .db HybridLL1Row33-HybridLL1Rows,DiagnosticExpectedFor ; for-statement
+            .db HybridLL1Row34-HybridLL1Rows,DiagnosticExpectedScalar ; for-bound
+            .db HybridLL1Row35-HybridLL1Rows,DiagnosticExpectedLine ; for-step-opt
+            .db HybridLL1Row36-HybridLL1Rows,DiagnosticExpectedType ; type
+            .db HybridLL1Row37-HybridLL1Rows,DiagnosticExpectedType ; type-atom
+            .db HybridLL1Row38-HybridLL1Rows,DiagnosticExpectedScalar ; type-array-opt
+            .db HybridLL1Row39-HybridLL1Rows,DiagnosticExpectedType ; scalar-type
 HybridLL1RowDirectoryEnd:
 HybridLL1Rows:
 HybridLL1Row0: ; compilation-unit
             .db 0+$80
+            .db TokenAssert
             .db TokenConst
             .db TokenEof
             .db TokenForward
@@ -57,6 +59,7 @@ HybridLL1Row0: ; compilation-unit
             .db TokenVar+$80
 HybridLL1Row1: ; top-level-list
             .db 1
+            .db TokenAssert
             .db TokenConst
             .db TokenForward
             .db TokenRecord
@@ -68,75 +71,80 @@ HybridLL1Row2: ; top-level-declaration
             .db 3
             .db TokenConst+$80
             .db 4
-            .db TokenVar+$80
+            .db TokenAssert+$80
             .db 5
-            .db TokenRecord+$80
+            .db TokenVar+$80
             .db 6
+            .db TokenRecord+$80
+            .db 7
             .db TokenForward+$80
-            .db 7+$80
+            .db 8+$80
             .db TokenSub+$80
 HybridLL1Row3: ; const-declaration
-            .db 8+$80
-            .db TokenConst+$80
-HybridLL1Row4: ; program-var-declaration
             .db 9+$80
-            .db TokenVar+$80
-HybridLL1Row5: ; program-initializer-opt
-            .db 10
-            .db TokenEquals+$80
+            .db TokenConst+$80
+HybridLL1Row4: ; assert-declaration
+            .db 10+$80
+            .db TokenAssert+$80
+HybridLL1Row5: ; program-var-declaration
             .db 11+$80
-            .db TokenNewline+$80
-HybridLL1Row6: ; record-declaration
-            .db 12+$80
-            .db TokenRecord+$80
-HybridLL1Row7: ; record-fields
+            .db TokenVar+$80
+HybridLL1Row6: ; program-initializer-opt
+            .db 12
+            .db TokenEquals+$80
             .db 13+$80
-            .db TokenName+$80
-HybridLL1Row8: ; record-field-tail
-            .db 14
-            .db TokenName+$80
-            .db 15+$80
-            .db TokenEnd+$80
-HybridLL1Row9: ; record-field
-            .db 16+$80
-            .db TokenName+$80
-HybridLL1Row10: ; forward-declaration
-            .db 17+$80
-            .db TokenForward+$80
-HybridLL1Row11: ; sub-definition
-            .db 18+$80
-            .db TokenSub+$80
-HybridLL1Row12: ; sub-definition-tail
-            .db 19
-            .db TokenLeftParen+$80
-            .db 20+$80
             .db TokenNewline+$80
-HybridLL1Row13: ; parameter-list
-            .db 21
+HybridLL1Row7: ; record-declaration
+            .db 14+$80
+            .db TokenRecord+$80
+HybridLL1Row8: ; record-fields
+            .db 15+$80
             .db TokenName+$80
+HybridLL1Row9: ; record-field-tail
+            .db 16
+            .db TokenName+$80
+            .db 17+$80
+            .db TokenEnd+$80
+HybridLL1Row10: ; record-field
+            .db 18+$80
+            .db TokenName+$80
+HybridLL1Row11: ; forward-declaration
+            .db 19+$80
+            .db TokenForward+$80
+HybridLL1Row12: ; sub-definition
+            .db 20+$80
+            .db TokenSub+$80
+HybridLL1Row13: ; sub-definition-tail
+            .db 21
+            .db TokenLeftParen+$80
             .db 22+$80
-            .db TokenRightParen+$80
-HybridLL1Row14: ; parameter-tail
+            .db TokenNewline+$80
+HybridLL1Row14: ; parameter-list
             .db 23
-            .db TokenComma+$80
+            .db TokenName+$80
             .db 24+$80
             .db TokenRightParen+$80
-HybridLL1Row15: ; parameter
-            .db 25+$80
-            .db TokenName+$80
-HybridLL1Row16: ; result-opt
-            .db 26
-            .db TokenAs+$80
+HybridLL1Row15: ; parameter-tail
+            .db 25
+            .db TokenComma+$80
+            .db 26+$80
+            .db TokenRightParen+$80
+HybridLL1Row16: ; parameter
             .db 27+$80
+            .db TokenName+$80
+HybridLL1Row17: ; result-opt
+            .db 28
+            .db TokenAs+$80
+            .db 29+$80
             .db TokenFails
             .db TokenNewline+$80
-HybridLL1Row17: ; fails-opt
-            .db 28
-            .db TokenFails+$80
-            .db 29+$80
-            .db TokenNewline+$80
-HybridLL1Row18: ; routine-body
+HybridLL1Row18: ; fails-opt
             .db 30
+            .db TokenFails+$80
+            .db 31+$80
+            .db TokenNewline+$80
+HybridLL1Row19: ; routine-body
+            .db 32
             .db TokenContinue
             .db TokenEnd
             .db TokenExit
@@ -147,13 +155,13 @@ HybridLL1Row18: ; routine-body
             .db TokenReturn
             .db TokenVar
             .db TokenWhile+$80
-            .db 31+$80
+            .db 33+$80
             .db TokenElse
             .db TokenElseIf+$80
-HybridLL1Row19: ; local-list
-            .db 32
+HybridLL1Row20: ; local-list
+            .db 34
             .db TokenVar+$80
-            .db 33+$80
+            .db 35+$80
             .db TokenContinue
             .db TokenEnd
             .db TokenExit
@@ -163,16 +171,16 @@ HybridLL1Row19: ; local-list
             .db TokenName
             .db TokenReturn
             .db TokenWhile+$80
-HybridLL1Row20: ; local-declaration
-            .db 34+$80
-            .db TokenVar+$80
-HybridLL1Row21: ; local-initializer-opt
-            .db 35
-            .db TokenEquals+$80
+HybridLL1Row21: ; local-declaration
             .db 36+$80
-            .db TokenNewline+$80
-HybridLL1Row22: ; statement-sequence
+            .db TokenVar+$80
+HybridLL1Row22: ; local-initializer-opt
             .db 37
+            .db TokenEquals+$80
+            .db 38+$80
+            .db TokenNewline+$80
+HybridLL1Row23: ; statement-sequence
+            .db 39
             .db TokenContinue
             .db TokenExit
             .db TokenFail
@@ -181,31 +189,31 @@ HybridLL1Row22: ; statement-sequence
             .db TokenName
             .db TokenReturn
             .db TokenWhile+$80
-            .db 38+$80
+            .db 40+$80
             .db TokenElse
             .db TokenElseIf
             .db TokenEnd+$80
-HybridLL1Row23: ; statement
-            .db 39
-            .db TokenName+$80
-            .db 40
-            .db TokenReturn+$80
+HybridLL1Row24: ; statement
             .db 41
-            .db TokenFail+$80
+            .db TokenName+$80
             .db 42
+            .db TokenReturn+$80
+            .db 43
+            .db TokenFail+$80
+            .db 44
             .db TokenContinue
             .db TokenExit+$80
-            .db 43
+            .db 45
             .db TokenIf+$80
-            .db 44
+            .db 46
             .db TokenWhile+$80
-            .db 45+$80
+            .db 47+$80
             .db TokenFor+$80
-HybridLL1Row24: ; return-statement
-            .db 46+$80
+HybridLL1Row25: ; return-statement
+            .db 48+$80
             .db TokenReturn+$80
-HybridLL1Row25: ; return-value-opt
-            .db 47
+HybridLL1Row26: ; return-value-opt
+            .db 49
             .db TokenCharacter
             .db TokenFalse
             .db TokenLeftParen
@@ -217,15 +225,15 @@ HybridLL1Row25: ; return-value-opt
             .db TokenTrue
             .db TokenU16
             .db TokenU8+$80
-            .db 48+$80
+            .db 50+$80
             .db TokenNewline+$80
-HybridLL1Row26: ; fail-statement
-            .db 49+$80
-            .db TokenFail+$80
-HybridLL1Row27: ; on-error-opt
-            .db 50
-            .db TokenOn+$80
+HybridLL1Row27: ; fail-statement
             .db 51+$80
+            .db TokenFail+$80
+HybridLL1Row28: ; on-error-opt
+            .db 52
+            .db TokenOn+$80
+            .db 53+$80
             .db TokenContinue
             .db TokenElse
             .db TokenElseIf
@@ -237,68 +245,68 @@ HybridLL1Row27: ; on-error-opt
             .db TokenName
             .db TokenReturn
             .db TokenWhile+$80
-HybridLL1Row28: ; transfer-statement
-            .db 52
+HybridLL1Row29: ; transfer-statement
+            .db 54
             .db TokenExit+$80
-            .db 53+$80
+            .db 55+$80
             .db TokenContinue+$80
-HybridLL1Row29: ; if-statement
-            .db 54+$80
+HybridLL1Row30: ; if-statement
+            .db 56+$80
             .db TokenIf+$80
-HybridLL1Row30: ; if-tail
-            .db 55
+HybridLL1Row31: ; if-tail
+            .db 57
             .db TokenElseIf+$80
-            .db 56
+            .db 58
             .db TokenElse+$80
-            .db 57+$80
-            .db TokenEnd+$80
-HybridLL1Row31: ; while-statement
-            .db 58+$80
-            .db TokenWhile+$80
-HybridLL1Row32: ; for-statement
             .db 59+$80
-            .db TokenFor+$80
-HybridLL1Row33: ; for-bound
-            .db 60
-            .db TokenTo+$80
+            .db TokenEnd+$80
+HybridLL1Row32: ; while-statement
+            .db 60+$80
+            .db TokenWhile+$80
+HybridLL1Row33: ; for-statement
             .db 61+$80
-            .db TokenUntil+$80
-HybridLL1Row34: ; for-step-opt
+            .db TokenFor+$80
+HybridLL1Row34: ; for-bound
             .db 62
-            .db TokenStep+$80
+            .db TokenTo+$80
             .db 63+$80
+            .db TokenUntil+$80
+HybridLL1Row35: ; for-step-opt
+            .db 64
+            .db TokenStep+$80
+            .db 65+$80
             .db TokenNewline+$80
-HybridLL1Row35: ; type
-            .db 64+$80
+HybridLL1Row36: ; type
+            .db 66+$80
             .db TokenBoolean
             .db TokenName
             .db TokenString
             .db TokenU16
             .db TokenU8+$80
-HybridLL1Row36: ; type-atom
-            .db 65
+HybridLL1Row37: ; type-atom
+            .db 67
             .db TokenBoolean
             .db TokenU16
             .db TokenU8+$80
-            .db 66
-            .db TokenName+$80
-            .db 67+$80
-            .db TokenString+$80
-HybridLL1Row37: ; type-array-opt
             .db 68
-            .db TokenLeftBracket+$80
+            .db TokenName+$80
             .db 69+$80
+            .db TokenString+$80
+HybridLL1Row38: ; type-array-opt
+            .db 70
+            .db TokenLeftBracket+$80
+            .db 71+$80
             .db TokenComma
             .db TokenEquals
             .db TokenFails
             .db TokenNewline
             .db TokenRightParen+$80
-HybridLL1Row38: ; scalar-type
-            .db 70
+HybridLL1Row39: ; scalar-type
+            .db 72
             .db TokenU8+$80
-            .db 71
+            .db 73
             .db TokenU16+$80
-            .db 72+$80
+            .db 74+$80
             .db TokenBoolean+$80
 HybridLL1RowsEnd:
 
@@ -311,73 +319,75 @@ HybridLL1ProductionDirectory:
             .db HybridLL1Production5-HybridLL1Productions ; top-level-declaration
             .db HybridLL1Production6-HybridLL1Productions ; top-level-declaration
             .db HybridLL1Production7-HybridLL1Productions ; top-level-declaration
-            .db HybridLL1Production8-HybridLL1Productions ; const-declaration
-            .db HybridLL1Production9-HybridLL1Productions ; program-var-declaration
-            .db HybridLL1Production10-HybridLL1Productions ; program-initializer-opt
-            .db HybridLL1Production11-HybridLL1Productions ; program-initializer-opt
-            .db HybridLL1Production12-HybridLL1Productions ; record-declaration
-            .db HybridLL1Production13-HybridLL1Productions ; record-fields
-            .db HybridLL1Production14-HybridLL1Productions ; record-field-tail
-            .db HybridLL1Production15-HybridLL1Productions ; record-field-tail
-            .db HybridLL1Production16-HybridLL1Productions ; record-field
-            .db HybridLL1Production17-HybridLL1Productions ; forward-declaration
-            .db HybridLL1Production18-HybridLL1Productions ; sub-definition
-            .db HybridLL1Production19-HybridLL1Productions ; sub-definition-tail
-            .db HybridLL1Production20-HybridLL1Productions ; sub-definition-tail
-            .db HybridLL1Production21-HybridLL1Productions ; parameter-list
-            .db HybridLL1Production22-HybridLL1Productions ; parameter-list
-            .db HybridLL1Production23-HybridLL1Productions ; parameter-tail
-            .db HybridLL1Production24-HybridLL1Productions ; parameter-tail
-            .db HybridLL1Production25-HybridLL1Productions ; parameter
-            .db HybridLL1Production26-HybridLL1Productions ; result-opt
-            .db HybridLL1Production27-HybridLL1Productions ; result-opt
-            .db HybridLL1Production28-HybridLL1Productions ; fails-opt
-            .db HybridLL1Production29-HybridLL1Productions ; fails-opt
-            .db HybridLL1Production30-HybridLL1Productions ; routine-body
-            .db HybridLL1Production31-HybridLL1Productions ; routine-body
-            .db HybridLL1Production32-HybridLL1Productions ; local-list
-            .db HybridLL1Production33-HybridLL1Productions ; local-list
-            .db HybridLL1Production34-HybridLL1Productions ; local-declaration
-            .db HybridLL1Production35-HybridLL1Productions ; local-initializer-opt
-            .db HybridLL1Production36-HybridLL1Productions ; local-initializer-opt
+            .db HybridLL1Production8-HybridLL1Productions ; top-level-declaration
+            .db HybridLL1Production9-HybridLL1Productions ; const-declaration
+            .db HybridLL1Production10-HybridLL1Productions ; assert-declaration
+            .db HybridLL1Production11-HybridLL1Productions ; program-var-declaration
+            .db HybridLL1Production12-HybridLL1Productions ; program-initializer-opt
+            .db HybridLL1Production13-HybridLL1Productions ; program-initializer-opt
+            .db HybridLL1Production14-HybridLL1Productions ; record-declaration
+            .db HybridLL1Production15-HybridLL1Productions ; record-fields
+            .db HybridLL1Production16-HybridLL1Productions ; record-field-tail
+            .db HybridLL1Production17-HybridLL1Productions ; record-field-tail
+            .db HybridLL1Production18-HybridLL1Productions ; record-field
+            .db HybridLL1Production19-HybridLL1Productions ; forward-declaration
+            .db HybridLL1Production20-HybridLL1Productions ; sub-definition
+            .db HybridLL1Production21-HybridLL1Productions ; sub-definition-tail
+            .db HybridLL1Production22-HybridLL1Productions ; sub-definition-tail
+            .db HybridLL1Production23-HybridLL1Productions ; parameter-list
+            .db HybridLL1Production24-HybridLL1Productions ; parameter-list
+            .db HybridLL1Production25-HybridLL1Productions ; parameter-tail
+            .db HybridLL1Production26-HybridLL1Productions ; parameter-tail
+            .db HybridLL1Production27-HybridLL1Productions ; parameter
+            .db HybridLL1Production28-HybridLL1Productions ; result-opt
+            .db HybridLL1Production29-HybridLL1Productions ; result-opt
+            .db HybridLL1Production30-HybridLL1Productions ; fails-opt
+            .db HybridLL1Production31-HybridLL1Productions ; fails-opt
+            .db HybridLL1Production32-HybridLL1Productions ; routine-body
+            .db HybridLL1Production33-HybridLL1Productions ; routine-body
+            .db HybridLL1Production34-HybridLL1Productions ; local-list
+            .db HybridLL1Production35-HybridLL1Productions ; local-list
+            .db HybridLL1Production36-HybridLL1Productions ; local-declaration
+            .db HybridLL1Production37-HybridLL1Productions ; local-initializer-opt
             .db HybridLL1ProductionsHigh-HybridLL1Productions
 HybridLL1ProductionDirectoryHigh:
-            .db HybridLL1Production37-HybridLL1ProductionsHigh ; statement-sequence
-            .db HybridLL1Production38-HybridLL1ProductionsHigh ; statement-sequence
-            .db HybridLL1Production39-HybridLL1ProductionsHigh ; statement
-            .db HybridLL1Production40-HybridLL1ProductionsHigh ; statement
+            .db HybridLL1Production38-HybridLL1ProductionsHigh ; local-initializer-opt
+            .db HybridLL1Production39-HybridLL1ProductionsHigh ; statement-sequence
+            .db HybridLL1Production40-HybridLL1ProductionsHigh ; statement-sequence
             .db HybridLL1Production41-HybridLL1ProductionsHigh ; statement
             .db HybridLL1Production42-HybridLL1ProductionsHigh ; statement
             .db HybridLL1Production43-HybridLL1ProductionsHigh ; statement
             .db HybridLL1Production44-HybridLL1ProductionsHigh ; statement
             .db HybridLL1Production45-HybridLL1ProductionsHigh ; statement
-            .db HybridLL1Production46-HybridLL1ProductionsHigh ; return-statement
-            .db HybridLL1Production47-HybridLL1ProductionsHigh ; return-value-opt
-            .db HybridLL1Production48-HybridLL1ProductionsHigh ; return-value-opt
-            .db HybridLL1Production49-HybridLL1ProductionsHigh ; fail-statement
-            .db HybridLL1Production50-HybridLL1ProductionsHigh ; on-error-opt
-            .db HybridLL1Production51-HybridLL1ProductionsHigh ; on-error-opt
-            .db HybridLL1Production52-HybridLL1ProductionsHigh ; transfer-statement
-            .db HybridLL1Production53-HybridLL1ProductionsHigh ; transfer-statement
-            .db HybridLL1Production54-HybridLL1ProductionsHigh ; if-statement
-            .db HybridLL1Production55-HybridLL1ProductionsHigh ; if-tail
-            .db HybridLL1Production56-HybridLL1ProductionsHigh ; if-tail
+            .db HybridLL1Production46-HybridLL1ProductionsHigh ; statement
+            .db HybridLL1Production47-HybridLL1ProductionsHigh ; statement
+            .db HybridLL1Production48-HybridLL1ProductionsHigh ; return-statement
+            .db HybridLL1Production49-HybridLL1ProductionsHigh ; return-value-opt
+            .db HybridLL1Production50-HybridLL1ProductionsHigh ; return-value-opt
+            .db HybridLL1Production51-HybridLL1ProductionsHigh ; fail-statement
+            .db HybridLL1Production52-HybridLL1ProductionsHigh ; on-error-opt
+            .db HybridLL1Production53-HybridLL1ProductionsHigh ; on-error-opt
+            .db HybridLL1Production54-HybridLL1ProductionsHigh ; transfer-statement
+            .db HybridLL1Production55-HybridLL1ProductionsHigh ; transfer-statement
+            .db HybridLL1Production56-HybridLL1ProductionsHigh ; if-statement
             .db HybridLL1Production57-HybridLL1ProductionsHigh ; if-tail
-            .db HybridLL1Production58-HybridLL1ProductionsHigh ; while-statement
-            .db HybridLL1Production59-HybridLL1ProductionsHigh ; for-statement
-            .db HybridLL1Production60-HybridLL1ProductionsHigh ; for-bound
-            .db HybridLL1Production61-HybridLL1ProductionsHigh ; for-bound
-            .db HybridLL1Production62-HybridLL1ProductionsHigh ; for-step-opt
-            .db HybridLL1Production63-HybridLL1ProductionsHigh ; for-step-opt
-            .db HybridLL1Production64-HybridLL1ProductionsHigh ; type
-            .db HybridLL1Production65-HybridLL1ProductionsHigh ; type-atom
-            .db HybridLL1Production66-HybridLL1ProductionsHigh ; type-atom
+            .db HybridLL1Production58-HybridLL1ProductionsHigh ; if-tail
+            .db HybridLL1Production59-HybridLL1ProductionsHigh ; if-tail
+            .db HybridLL1Production60-HybridLL1ProductionsHigh ; while-statement
+            .db HybridLL1Production61-HybridLL1ProductionsHigh ; for-statement
+            .db HybridLL1Production62-HybridLL1ProductionsHigh ; for-bound
+            .db HybridLL1Production63-HybridLL1ProductionsHigh ; for-bound
+            .db HybridLL1Production64-HybridLL1ProductionsHigh ; for-step-opt
+            .db HybridLL1Production65-HybridLL1ProductionsHigh ; for-step-opt
+            .db HybridLL1Production66-HybridLL1ProductionsHigh ; type
             .db HybridLL1Production67-HybridLL1ProductionsHigh ; type-atom
-            .db HybridLL1Production68-HybridLL1ProductionsHigh ; type-array-opt
-            .db HybridLL1Production69-HybridLL1ProductionsHigh ; type-array-opt
-            .db HybridLL1Production70-HybridLL1ProductionsHigh ; scalar-type
-            .db HybridLL1Production71-HybridLL1ProductionsHigh ; scalar-type
+            .db HybridLL1Production68-HybridLL1ProductionsHigh ; type-atom
+            .db HybridLL1Production69-HybridLL1ProductionsHigh ; type-atom
+            .db HybridLL1Production70-HybridLL1ProductionsHigh ; type-array-opt
+            .db HybridLL1Production71-HybridLL1ProductionsHigh ; type-array-opt
             .db HybridLL1Production72-HybridLL1ProductionsHigh ; scalar-type
+            .db HybridLL1Production73-HybridLL1ProductionsHigh ; scalar-type
+            .db HybridLL1Production74-HybridLL1ProductionsHigh ; scalar-type
             .db HybridLL1ProductionsEnd-HybridLL1ProductionsHigh
 HybridLL1ProductionDirectoryEnd:
 HybridLL1Productions:
@@ -391,133 +401,137 @@ HybridLL1Production3: ; top-level-declaration
 HybridLL1Production4: ; top-level-declaration
             .db $44
 HybridLL1Production5: ; top-level-declaration
-            .db $46
+            .db $45
 HybridLL1Production6: ; top-level-declaration
-            .db $4a
+            .db $47
 HybridLL1Production7: ; top-level-declaration
             .db $4b
-HybridLL1Production8: ; const-declaration
+HybridLL1Production8: ; top-level-declaration
+            .db $4c
+HybridLL1Production9: ; const-declaration
             .db $85,TokenNewline,$84,$83,TokenEquals,$82,TokenName,TokenConst,$81
-HybridLL1Production9: ; program-var-declaration
-            .db $87,TokenNewline,$45,$86,$63,TokenAs,$82,TokenName,TokenVar,$81
-HybridLL1Production10: ; program-initializer-opt
-            .db $89,$88,TokenEquals
-HybridLL1Production11: ; program-initializer-opt
-HybridLL1Production12: ; record-declaration
-            .db $8b,TokenNewline,TokenEnd,$47,TokenNewline,$8a,TokenName,TokenRecord,$81
-HybridLL1Production13: ; record-fields
-            .db $48,$49
-HybridLL1Production14: ; record-field-tail
-            .db $48,$49
-HybridLL1Production15: ; record-field-tail
-HybridLL1Production16: ; record-field
-            .db $8d,TokenNewline,$63,TokenAs,$8c,TokenName
-HybridLL1Production17: ; forward-declaration
-            .db $90,TokenNewline,$51,$50,TokenRightParen,$4d,TokenLeftParen,$8f,$8e,TokenName,TokenSub,TokenForward
-HybridLL1Production18: ; sub-definition
-            .db $4c,$8e,TokenName,TokenSub
-HybridLL1Production19: ; sub-definition-tail
-            .db $93,$52,$92,TokenNewline,$51,$50,TokenRightParen,$4d,TokenLeftParen,$91
-HybridLL1Production20: ; sub-definition-tail
-            .db $93,$52,TokenNewline,$94
-HybridLL1Production21: ; parameter-list
-            .db $4e,$4f
-HybridLL1Production22: ; parameter-list
-HybridLL1Production23: ; parameter-tail
-            .db $4e,$4f,TokenComma
-HybridLL1Production24: ; parameter-tail
-HybridLL1Production25: ; parameter
-            .db $96,$63,TokenAs,$95,TokenName
-HybridLL1Production26: ; result-opt
-            .db $98,$63,$97,TokenAs
-HybridLL1Production27: ; result-opt
-HybridLL1Production28: ; fails-opt
-            .db $99,TokenFails
-HybridLL1Production29: ; fails-opt
-HybridLL1Production30: ; routine-body
-            .db TokenNewline,TokenEnd,$56,$53
-HybridLL1Production31: ; routine-body
-            .db $9a
-HybridLL1Production32: ; local-list
-            .db $53,$54
-HybridLL1Production33: ; local-list
-HybridLL1Production34: ; local-declaration
-            .db $9c,TokenNewline,$55,$9b,$66,TokenAs,$82,TokenName,TokenVar
-HybridLL1Production35: ; local-initializer-opt
-            .db $9f,$9e,$9d,TokenEquals
-HybridLL1Production36: ; local-initializer-opt
-            .db $a0
+HybridLL1Production10: ; assert-declaration
+            .db $87,TokenNewline,$83,TokenAssert,$86,$81
+HybridLL1Production11: ; program-var-declaration
+            .db $89,TokenNewline,$46,$88,$64,TokenAs,$82,TokenName,TokenVar,$81
+HybridLL1Production12: ; program-initializer-opt
+            .db $8b,$8a,TokenEquals
+HybridLL1Production13: ; program-initializer-opt
+HybridLL1Production14: ; record-declaration
+            .db $8d,TokenNewline,TokenEnd,$48,TokenNewline,$8c,TokenName,TokenRecord,$81
+HybridLL1Production15: ; record-fields
+            .db $49,$4a
+HybridLL1Production16: ; record-field-tail
+            .db $49,$4a
+HybridLL1Production17: ; record-field-tail
+HybridLL1Production18: ; record-field
+            .db $8f,TokenNewline,$64,TokenAs,$8e,TokenName
+HybridLL1Production19: ; forward-declaration
+            .db $92,TokenNewline,$52,$51,TokenRightParen,$4e,TokenLeftParen,$91,$90,TokenName,TokenSub,TokenForward
+HybridLL1Production20: ; sub-definition
+            .db $4d,$90,TokenName,TokenSub
+HybridLL1Production21: ; sub-definition-tail
+            .db $95,$53,$94,TokenNewline,$52,$51,TokenRightParen,$4e,TokenLeftParen,$93
+HybridLL1Production22: ; sub-definition-tail
+            .db $95,$53,TokenNewline,$96
+HybridLL1Production23: ; parameter-list
+            .db $4f,$50
+HybridLL1Production24: ; parameter-list
+HybridLL1Production25: ; parameter-tail
+            .db $4f,$50,TokenComma
+HybridLL1Production26: ; parameter-tail
+HybridLL1Production27: ; parameter
+            .db $98,$64,TokenAs,$97,TokenName
+HybridLL1Production28: ; result-opt
+            .db $9a,$64,$99,TokenAs
+HybridLL1Production29: ; result-opt
+HybridLL1Production30: ; fails-opt
+            .db $9b,TokenFails
+HybridLL1Production31: ; fails-opt
+HybridLL1Production32: ; routine-body
+            .db TokenNewline,TokenEnd,$57,$54
+HybridLL1Production33: ; routine-body
+            .db $9c
+HybridLL1Production34: ; local-list
+            .db $54,$55
+HybridLL1Production35: ; local-list
+HybridLL1Production36: ; local-declaration
+            .db $9e,TokenNewline,$56,$9d,$67,TokenAs,$82,TokenName,TokenVar
+HybridLL1Production37: ; local-initializer-opt
+            .db $a1,$a0,$9f,TokenEquals
 HybridLL1ProductionsHigh:
-HybridLL1Production37: ; statement-sequence
-            .db $56,$57
-HybridLL1Production38: ; statement-sequence
-HybridLL1Production39: ; statement
-            .db $5b,TokenNewline,$a1
-HybridLL1Production40: ; statement
-            .db TokenNewline,$58
+HybridLL1Production38: ; local-initializer-opt
+            .db $a2
+HybridLL1Production39: ; statement-sequence
+            .db $57,$58
+HybridLL1Production40: ; statement-sequence
 HybridLL1Production41: ; statement
-            .db TokenNewline,$5a
+            .db $5c,TokenNewline,$a3
 HybridLL1Production42: ; statement
-            .db TokenNewline,$5c
+            .db TokenNewline,$59
 HybridLL1Production43: ; statement
-            .db $5d
+            .db TokenNewline,$5b
 HybridLL1Production44: ; statement
-            .db $5f
+            .db TokenNewline,$5d
 HybridLL1Production45: ; statement
+            .db $5e
+HybridLL1Production46: ; statement
             .db $60
-HybridLL1Production46: ; return-statement
-            .db $59,$a2,TokenReturn
-HybridLL1Production47: ; return-value-opt
-            .db $a4,$a3
-HybridLL1Production48: ; return-value-opt
-            .db $a5
-HybridLL1Production49: ; fail-statement
-            .db $a7,$9e,$a6,TokenFail
-HybridLL1Production50: ; on-error-opt
-            .db $a9,TokenNewline,TokenEnd,$56,TokenNewline,$a8,TokenName,TokenError,TokenOn
-HybridLL1Production51: ; on-error-opt
-            .db $aa
-HybridLL1Production52: ; transfer-statement
-            .db $ab,TokenExit
-HybridLL1Production53: ; transfer-statement
-            .db $ac,TokenContinue
-HybridLL1Production54: ; if-statement
-            .db $af,TokenNewline,TokenEnd,$5e,$56,$ae,TokenNewline,$9e,$ad,TokenIf
-HybridLL1Production55: ; if-tail
-            .db $5e,$56,$ae,TokenNewline,$9e,$b0,TokenElseIf
-HybridLL1Production56: ; if-tail
-            .db $b2,$56,TokenNewline,$b1,TokenElse
+HybridLL1Production47: ; statement
+            .db $61
+HybridLL1Production48: ; return-statement
+            .db $5a,$a4,TokenReturn
+HybridLL1Production49: ; return-value-opt
+            .db $a6,$a5
+HybridLL1Production50: ; return-value-opt
+            .db $a7
+HybridLL1Production51: ; fail-statement
+            .db $a9,$a0,$a8,TokenFail
+HybridLL1Production52: ; on-error-opt
+            .db $ab,TokenNewline,TokenEnd,$57,TokenNewline,$aa,TokenName,TokenError,TokenOn
+HybridLL1Production53: ; on-error-opt
+            .db $ac
+HybridLL1Production54: ; transfer-statement
+            .db $ad,TokenExit
+HybridLL1Production55: ; transfer-statement
+            .db $ae,TokenContinue
+HybridLL1Production56: ; if-statement
+            .db $b1,TokenNewline,TokenEnd,$5f,$57,$b0,TokenNewline,$a0,$af,TokenIf
 HybridLL1Production57: ; if-tail
-            .db $b3
-HybridLL1Production58: ; while-statement
-            .db $b6,TokenNewline,TokenEnd,$56,$b5,TokenNewline,$9e,$b4,TokenWhile
-HybridLL1Production59: ; for-statement
-            .db $b9,TokenNewline,TokenEnd,$56,$b8,TokenNewline,$62,$9e,$61,$9e,TokenEquals,$b7,TokenName,TokenFor
-HybridLL1Production60: ; for-bound
-            .db $ba,TokenTo
-HybridLL1Production61: ; for-bound
-            .db $bb,TokenUntil
-HybridLL1Production62: ; for-step-opt
-            .db $bd,$bc,TokenStep
-HybridLL1Production63: ; for-step-opt
-            .db $be
-HybridLL1Production64: ; type
-            .db $65,$64
-HybridLL1Production65: ; type-atom
-            .db $66
-HybridLL1Production66: ; type-atom
-            .db $bf,TokenName
+            .db $5f,$57,$b0,TokenNewline,$a0,$b2,TokenElseIf
+HybridLL1Production58: ; if-tail
+            .db $b4,$57,TokenNewline,$b3,TokenElse
+HybridLL1Production59: ; if-tail
+            .db $b5
+HybridLL1Production60: ; while-statement
+            .db $b8,TokenNewline,TokenEnd,$57,$b7,TokenNewline,$a0,$b6,TokenWhile
+HybridLL1Production61: ; for-statement
+            .db $bb,TokenNewline,TokenEnd,$57,$ba,TokenNewline,$63,$a0,$62,$a0,TokenEquals,$b9,TokenName,TokenFor
+HybridLL1Production62: ; for-bound
+            .db $bc,TokenTo
+HybridLL1Production63: ; for-bound
+            .db $bd,TokenUntil
+HybridLL1Production64: ; for-step-opt
+            .db $bf,$be,TokenStep
+HybridLL1Production65: ; for-step-opt
+            .db $c0
+HybridLL1Production66: ; type
+            .db $66,$65
 HybridLL1Production67: ; type-atom
-            .db $c1,TokenRightBracket,$83,$c0,TokenLeftBracket,TokenString
-HybridLL1Production68: ; type-array-opt
-            .db $c2,TokenRightBracket,$83,$c0,TokenLeftBracket
-HybridLL1Production69: ; type-array-opt
-HybridLL1Production70: ; scalar-type
-            .db $c3,TokenU8
-HybridLL1Production71: ; scalar-type
-            .db $c4,TokenU16
+            .db $67
+HybridLL1Production68: ; type-atom
+            .db $c1,TokenName
+HybridLL1Production69: ; type-atom
+            .db $c3,TokenRightBracket,$83,$c2,TokenLeftBracket,TokenString
+HybridLL1Production70: ; type-array-opt
+            .db $c4,TokenRightBracket,$83,$c2,TokenLeftBracket
+HybridLL1Production71: ; type-array-opt
 HybridLL1Production72: ; scalar-type
-            .db $c5,TokenBoolean
+            .db $c5,TokenU8
+HybridLL1Production73: ; scalar-type
+            .db $c6,TokenU16
+HybridLL1Production74: ; scalar-type
+            .db $c7,TokenBoolean
 HybridLL1ProductionsEnd:
 
 HybridLL1ActionDirectory:
@@ -527,6 +541,8 @@ HybridLL1ActionDirectory:
             .dw HybridLL1ConstantExpression ; x:ConstantExpression
             .dw HybridLL1FinishConstantExpression ; a:FinishConstantExpression
             .dw HybridLL1CommitConstant ; a:CommitConstant
+            .dw HybridLL1BeginAssert ; a:BeginAssert
+            .dw HybridLL1CommitAssert ; a:CommitAssert
             .dw HybridLL1SaveProgramType ; a:SaveProgramType
             .dw HybridLL1CommitProgramVariable ; a:CommitProgramVariable
             .dw HybridLL1StaticInitializer ; x:StaticInitializer

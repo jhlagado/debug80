@@ -18,6 +18,7 @@ describe("Stage 7 packed LL(1)", () => {
     const analysis = analyzeStage7Grammar();
     expect(analysis.conflicts).toEqual([]);
     expect(analysis.first["compilation-unit"]).toEqual([
+      "TokenAssert",
       "TokenConst",
       "TokenEof",
       "TokenForward",
@@ -70,32 +71,32 @@ describe("Stage 7 packed LL(1)", () => {
       outcome.extents.map(({ name, bytes }) => [name, bytes]),
     );
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
-    expect(outcome.instructions).toBe(1_042_587);
-    expect(outcome.cycles).toBe(9_654_320);
-    expect(outcome.extents).toContainEqual({ name: "parser", bytes: 9_073 });
+    expect(outcome.instructions).toBe(1_050_940);
+    expect(outcome.cycles).toBe(9_718_145);
+    expect(outcome.extents).toContainEqual({ name: "parser", bytes: 9_121 });
     expect(outcome.extents).toContainEqual({
       name: "ll1-engine",
       bytes: 230,
     });
     expect(outcome.extents).toContainEqual({
       name: "ll1-tables",
-      bytes: 739,
+      bytes: 760,
     });
     expect(outcome.extents).toContainEqual({
       name: "ll1-actions",
-      bytes: 2_702,
+      bytes: 2_729,
     });
     expect(outcome.extents).toContainEqual({
       name: "compiler-core",
-      bytes: 14_229,
+      bytes: 14_285,
     });
     expect(outcome.extents).toContainEqual({
       name: "compiler-code",
-      bytes: 13_847,
+      bytes: 13_895,
     });
     expect(outcome.extents).toContainEqual({
       name: "compiler-immutable",
-      bytes: 382,
+      bytes: 390,
     });
     expect(outcome.extents).toContainEqual({
       name: "compiler-workspace",

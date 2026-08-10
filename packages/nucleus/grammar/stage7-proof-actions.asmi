@@ -5,6 +5,8 @@ HybridLL1RetainDeclarationName:
 HybridLL1ConstantExpression:
 HybridLL1FinishConstantExpression:
 HybridLL1CommitConstant:
+HybridLL1BeginAssert:
+HybridLL1CommitAssert:
 HybridLL1SaveProgramType:
 HybridLL1CommitProgramVariable:
 HybridLL1StaticInitializer:

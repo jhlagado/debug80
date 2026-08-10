@@ -4,8 +4,8 @@
   "memoryProfile": "vertical-slice-memory.json",
   "execution": {
     "entry": "ProofStart",
-    "maxInstructions": 50000,
-    "maxCycles": 500000,
+    "maxInstructions": 60000,
+    "maxCycles": 600000,
     "halted": true
   },
   "observations": [

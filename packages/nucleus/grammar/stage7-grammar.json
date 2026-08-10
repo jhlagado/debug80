@@ -5,6 +5,7 @@
     "top-level-list": "DiagnosticExpectedTopLevel",
     "top-level-declaration": "DiagnosticExpectedTopLevel",
     "const-declaration": "DiagnosticExpectedTopLevel",
+    "assert-declaration": "DiagnosticExpectedTopLevel",
     "program-var-declaration": "DiagnosticExpectedTopLevel",
     "program-initializer-opt": "DiagnosticExpectedEqual",
     "record-declaration": "DiagnosticExpectedTopLevel",
@@ -112,6 +113,7 @@
     },
     { "lhs": "top-level-list", "rhs": [] },
     { "lhs": "top-level-declaration", "rhs": ["const-declaration"] },
+    { "lhs": "top-level-declaration", "rhs": ["assert-declaration"] },
     { "lhs": "top-level-declaration", "rhs": ["program-var-declaration"] },
     { "lhs": "top-level-declaration", "rhs": ["record-declaration"] },
     { "lhs": "top-level-declaration", "rhs": ["forward-declaration"] },
@@ -129,6 +131,17 @@
         "a:FinishConstantExpression",
         "TokenNewline",
         "a:CommitConstant"
+      ]
+    },
+    {
+      "lhs": "assert-declaration",
+      "rhs": [
+        "a:RequireBeforeMain",
+        "a:BeginAssert",
+        "TokenAssert",
+        "x:ConstantExpression",
+        "TokenNewline",
+        "a:CommitAssert"
       ]
     },
     {

@@ -850,6 +850,21 @@ bytes. The selected runtime grows by 53 bytes, from 596 to 649. The unchanged
 T-states. This is a runtime-only increment: no compiler-core, workspace, or
 generated-output account moves.
 
+The final Track A increment adds top-level compile-time `assert`. The packed
+grammar delegates its operand to the existing constant-expression island; one
+action accepts only a constant Boolean result, rejects false with a dedicated
+diagnostic at `assert`, and emits no semantic operation. The Chapter 21 proof
+accepts a true relationship, rejects false and exact-integer operands at the
+keyword, and compares the generated image against an equal-position comment
+control byte for byte. Fresh assembly measures 13,895 compiler-code bytes plus
+390 immutable bytes, for a 14,285-byte compiler core with 1,509 bytes of
+workspace. The largest generated program remains 1,019 bytes and the selected
+runtime remains 649 bytes. The 1,786-byte Chapter 21 proof executes 1,502,625
+instructions in 14,130,034 T-states. Relative to the runtime-fast-path commit,
+`assert` adds 48 compiler-code bytes and eight immutable bytes, for 56
+compiler-core bytes; it changes no workspace, maximum generated-program, or
+runtime account.
+
 ## Capacity ledger
 
 The first implementation fixes a numeric limit before each bounded structure is

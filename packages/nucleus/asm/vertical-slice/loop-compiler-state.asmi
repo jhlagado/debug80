@@ -289,6 +289,7 @@ TokenOn                 .equ 51
 TokenError              .equ 52
 TokenXor                .equ 53
 TokenMod                .equ 54
+TokenAssert             .equ 55
 
 DiagnosticNone          .equ 0
 DiagnosticLexical       .equ 1
@@ -336,6 +337,7 @@ DiagnosticProgramDataCapacity .equ 81
 ; Bounded string capacity is at most 254; use u8[N] plus a scalar length for
 ; an unterminated, caller-managed buffer.
 DiagnosticStringCapacity .equ 90
+DiagnosticAssertionFailed .equ 91
 DiagnosticRecordEmpty  .equ 82
 DiagnosticTypeBound    .equ 83
 

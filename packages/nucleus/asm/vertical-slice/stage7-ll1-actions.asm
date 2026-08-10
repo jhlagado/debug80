@@ -216,6 +216,24 @@ HybridLL1CommitConstant:
             RET  C
             JP   SymbolCommit
 
+HybridLL1BeginAssert .equ TypedRetainDeclarationNameReady
+
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry
+HybridLL1CommitAssert:
+            CALL HybridLL1RestoreSubName
+            LD   A,(ExpressionRightMeta)
+            AND  ScalarMetaConstant+ScalarMetaTypeMask
+            CP   ScalarMetaConstant+ScalarTypeBoolean
+            JR   NZ,HybridLL1AssertTypeFailure
+            LD   A,(ExpressionRightValue)
+            OR   A
+            RET  NZ
+            LD   A,DiagnosticAssertionFailed
+            JP   CompilerSetDiagnostic
+HybridLL1AssertTypeFailure:
+            LD   A,DiagnosticTypeMismatch
+            JP   CompilerSetDiagnostic
+
 ; ------------------------------------------------------ program declarations
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL

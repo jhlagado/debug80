@@ -316,7 +316,8 @@ After scanning the longest identifier, the tokenizer compares its exact spelling
 The Nucleus 0.1 reserved words are:
 
 ```text
-and      as       boolean  const     continue  else     elseif
+and      as       assert   boolean   const     continue else
+elseif
 end      error    exit     fail      fails     false    for
 forward  if       mod      not       on        or       record
 return
@@ -513,7 +514,7 @@ The two physical line endings inside delimiters do not appear in the token seque
 
 ### 3.12 Reserved-word and literal decisions
 
-Chapter 9 admits `mod`, `not`, `and`, `or`, and `xor`. Chapter 14 admits `fail`, `fails`, `on`, and `error`. These nine words are reserved. Chapter 11 omits a conditional header marker, so `then` remains an identifier. Nucleus integer literals use decimal digits, `$` hexadecimal, or `%` binary. A later revision that needs another token requires an amendment here and cost accounting for the added scanner, table, test, and diagnostic work.
+Chapter 8 admits `assert`. Chapter 9 admits `mod`, `not`, `and`, `or`, and `xor`. Chapter 14 admits `fail`, `fails`, `on`, and `error`. These ten words are reserved. Chapter 11 omits a conditional header marker, so `then` remains an identifier. Nucleus integer literals use decimal digits, `$` hexadecimal, or `%` binary. A later revision that needs another token requires an amendment here and cost accounting for the added scanner, table, test, and diagnostic work.
 
 ## 4. Program and file structure
 
@@ -1314,20 +1315,21 @@ Nucleus uses explicit declarations. Variables, fields, parameters, locals, and r
 
 The declaration families are:
 
-| Declaration        | Permitted location                          | Binding or storage established                                            |
-| ------------------ | ------------------------------------------- | ------------------------------------------------------------------------- |
-| Named constant     | Top level                                   | One typed compile-time scalar value                                       |
-| Program variable   | Top level                                   | One mutable program-lifetime scalar or aggregate object                   |
-| Record type        | Top level                                   | One nominal fixed-layout record type and its field scope                  |
-| Forward routine    | Top level                                   | One routine signature without a body                                      |
-| Routine definition | Top level                                   | One routine signature and body, or completion of an earlier forward       |
-| Formal parameter   | Routine header                              | One scalar activation value or aggregate-alias binding                    |
-| Scalar local       | Contiguous routine declaration prefix       | One per-invocation scalar value                                           |
-| Record field       | Between a record header and its closing end | One named scalar or aggregate subobject in each object of the record type |
+| Declaration            | Permitted location                          | Binding or storage established                                            |
+| ---------------------- | ------------------------------------------- | ------------------------------------------------------------------------- |
+| Named constant         | Top level                                   | One typed compile-time scalar value                                       |
+| Compile-time assertion | Top level                                   | No binding or storage; one required compile-time condition                |
+| Program variable       | Top level                                   | One mutable program-lifetime scalar or aggregate object                   |
+| Record type            | Top level                                   | One nominal fixed-layout record type and its field scope                  |
+| Forward routine        | Top level                                   | One routine signature without a body                                      |
+| Routine definition     | Top level                                   | One routine signature and body, or completion of an earlier forward       |
+| Formal parameter       | Routine header                              | One scalar activation value or aggregate-alias binding                    |
+| Scalar local           | Contiguous routine declaration prefix       | One per-invocation scalar value                                           |
+| Record field           | Between a record header and its closing end | One named scalar or aggregate subobject in each object of the record type |
 
 Only top-level declarations occur in the compilation-unit sequence. Parameters occur only in a routine header. Local declarations form one contiguous prefix after the header and before the first statement. A conditional or loop body cannot contain a declaration, and a declaration after the first statement of a routine is invalid.
 
-Nucleus 0.1 has no routine-local constant declaration.
+Nucleus 0.1 has no routine-local constant declaration or assertion.
 
 ### 8.3 Canonical syntax
 
@@ -1335,6 +1337,7 @@ The following skeleton defines declaration syntax without defining statement gra
 
 ```text
 top-level-declaration ::= const-declaration
+                        | assert-declaration
                         | program-var-declaration
                         | record-declaration
                         | forward-routine-declaration
@@ -1342,6 +1345,8 @@ top-level-declaration ::= const-declaration
 
 const-declaration     ::= "const" NAME "="
                           constant-initializer NEWLINE
+
+assert-declaration    ::= "assert" scalar-constant-expression NEWLINE
 
 program-var-declaration
                       ::= "var" NAME "as" type
@@ -1415,7 +1420,7 @@ Named integer constants replace enumeration members where a program needs symbol
 
 Nucleus 0.1 named constants are scalar only. `const` cannot declare a record, fixed array, or bounded string. The language has no separate read-only aggregate-storage declaration.
 
-A program that needs an initialized string or scalar table declares a program variable under Section 8.8. That object is mutable storage even when the program never writes it.
+A program that needs an initialized string or scalar table declares a program variable under Section 8.9. That object is mutable storage even when the program never writes it.
 
 ### 8.6 Scalar constant expressions
 
@@ -1434,7 +1439,21 @@ An exact integer literal or earlier exact named integer constant remains exact u
 
 An array length is a scalar constant expression whose value must lie from 1 through 65,535. A `string[N]` capacity is a scalar constant expression whose value must lie from 1 through 254. The compiler evaluates the bound before constructing the type identity. A later constant, a variable, or a cyclic dependency cannot supply a bound.
 
-### 8.7 Record declarations
+### 8.7 Compile-time assertions
+
+A compile-time assertion has this top-level form:
+
+```nucleus
+assert Rows * Columns <= 256
+```
+
+Its operand must be a Boolean scalar constant expression under Section 8.6. It may therefore use literals, earlier named constants, parentheses, pure scalar operators, and admitted conversions, but it cannot read storage or call a routine. An exact integer expression alone is not a condition: `assert Rows` is invalid, while `assert Rows <= 8` is Boolean-valued.
+
+The compiler evaluates the expression while checking the declaration. A true result accepts the declaration. A false result makes the source invalid and produces an assertion diagnostic at the `assert` keyword. The declaration introduces no name or storage and emits no runtime operation or target code.
+
+Assertions follow ordinary declaration order. They can state relationships among earlier constants, including relationships used to justify fixed capacities, but cannot refer to a later declaration.
+
+### 8.8 Record declarations
 
 A record declaration introduces one nominal type:
 
@@ -1451,7 +1470,7 @@ The record type becomes visible only after the complete declaration has been che
 
 Record field names use the record's field scope under Chapter 5. An exact duplicate within that field scope is invalid; differently cased field names are distinct. Record layout offsets and backend encoding are outside this chapter.
 
-### 8.8 Program variables
+### 8.9 Program variables
 
 A top-level `var` declaration owns one mutable program-lifetime object. The declared type may be scalar, record, fixed array, or bounded string.
 
@@ -1474,7 +1493,7 @@ Nucleus has no named-field, partial, spread, or runtime aggregate initializer. A
 
 The program variable becomes visible only after the compiler has checked its type and initializer. Its initializer may therefore use earlier scalar constants but cannot use the variable itself or a later declaration.
 
-### 8.9 Routine declarations and parameters
+### 8.10 Routine declarations and parameters
 
 One routine header declares a routine name, an ordered list of zero or more formal parameters, and either no result type or one result type. Every parameter has an explicit `name as Type` declaration. Parameters have no initializer or default argument, and a header has no grouped names or multiple result list.
 
@@ -1484,7 +1503,7 @@ A forward routine declaration contains the complete and sole header and no body.
 
 A routine definition without an earlier forward makes its checked signature visible before the local-declaration prefix and body. No nested routine declaration is permitted.
 
-### 8.10 Local declarations
+### 8.11 Local declarations
 
 After parameter binding, scalar local declarations take effect in source order before the first statement. All local declarations remain in one contiguous prefix.
 
@@ -1494,7 +1513,7 @@ The declared local type must be `u8`, `u16`, or `boolean`. A record, fixed array
 
 A local becomes visible only after its complete declaration and initializer have been checked. Its initializer may name parameters, visible program declarations, and earlier locals. It cannot name itself or a later local. A local declaration inside a statement block or after the first statement is invalid.
 
-### 8.11 Initialization order
+### 8.12 Initialization order
 
 Constant expressions are evaluated during compilation and perform no source-level runtime operation.
 
@@ -1502,7 +1521,7 @@ The compiler establishes every program variable's zero or explicit initial value
 
 On each routine invocation, parameter binding precedes activation-local initialization. Scalar local declarations then take effect in source order, and each receives its zero or evaluated value at its declaration. After the last local declaration, execution continues with the first statement.
 
-### 8.12 Invalid declarations and capacity failures
+### 8.13 Invalid declarations and capacity failures
 
 The compiler must diagnose:
 
@@ -1522,7 +1541,7 @@ The compiler must diagnose:
 
 An implementation may bound top-level declarations, record fields, parameters, scalar locals, constant-expression nesting, structured-initializer depth and elements, decoded string bytes, type descriptors, retained signatures, and initialization records. It must publish each limit and issue a capacity diagnostic before truncation, wraparound, omitted initialization, dropped fields, or an incorrect binding can occur. A capacity failure does not change an otherwise conforming declaration into invalid source.
 
-### 8.13 Examples
+### 8.14 Examples
 
 These top-level declarations are valid under this chapter:
 
@@ -2340,7 +2359,7 @@ Nucleus has no parameter modes, implicit read-only aggregate parameter, write pe
 
 ### 13.5 Activation semantics
 
-A successful call begins one logical activation after all arguments have been evaluated. The activation contains that invocation's copied scalar parameters, aggregate-parameter bindings, and scalar locals. Activation-local initialization follows Section 8.11 before the first statement begins.
+A successful call begins one logical activation after all arguments have been evaluated. The activation contains that invocation's copied scalar parameters, aggregate-parameter bindings, and scalar locals. Activation-local initialization follows Section 8.12 before the first statement begins.
 
 Each simultaneously active invocation has distinct activation state. Calling another routine does not change the caller's scalar parameters, scalar locals, or aggregate-parameter bindings. The callee may change program-lifetime storage that it can name or reach through an aggregate argument, and those mutations remain visible to the caller.
 
@@ -2787,6 +2806,7 @@ compilation-unit
 
 top-level-declaration
     ::= const-declaration
+      | assert-declaration
       | program-var-declaration
       | record-declaration
       | forward-routine
@@ -2794,6 +2814,9 @@ top-level-declaration
 
 const-declaration
     ::= "const" NAME "=" expression NEWLINE
+
+assert-declaration
+    ::= "assert" expression NEWLINE
 
 program-var-declaration
     ::= "var" NAME "as" type [ "=" program-initializer ] NEWLINE
@@ -2969,7 +2992,7 @@ Field lookup after `.` uses the selected record type, except that a bounded-stri
 
 ### 17.4 Predictive analysis
 
-The repository grammar analyzer mechanically expanded the grammar above to 171 BNF rules over 94 nonterminals. It found no nullable-prefix left-recursion cycle, unreachable nonterminal, or unproductive nonterminal. The LL(1) table contained three conflict sites: one name-led statement choice, one type-directed initializer choice, and one `or fail` boundary choice. The focused test reads this Chapter 17 block directly, so the analyzer evidence does not create a second grammar authority.
+The repository grammar analyzer mechanically expanded the grammar above to 173 BNF rules over 95 nonterminals. It found no nullable-prefix left-recursion cycle, unreachable nonterminal, or unproductive nonterminal. The LL(1) table contained three conflict sites: one name-led statement choice, one type-directed initializer choice, and one `or fail` boundary choice. The focused test reads this Chapter 17 block directly, so the analyzer evidence does not create a second grammar authority.
 
 | Nonterminal          | Lookahead | Conflict                                           | Resolution                          |
 | -------------------- | --------- | -------------------------------------------------- | ----------------------------------- |
@@ -3098,7 +3121,7 @@ The following mechanisms are required in the single Nucleus 0.1 language:
 | Source       | Ordered multipart compilation input with stable part identities and part-relative diagnostics; flat ordered build manifest; ASCII-compatible bytes, `//` comments, logical newlines, case-sensitive preserved names, lowercase keywords, decimal, hexadecimal, and binary integers, byte characters, bounded string literals, fixed punctuation. |
 | Structure    | One program scope and ordered declaration sequence across source parts, declaration before use, sole-signature forwards with abbreviated bodies, fixed `main()` entry, no executable top level.                                                                                                                                                  |
 | Types        | `u8`, `u16`, `boolean`, nominal fixed records, checked fixed arrays, mutable bounded `string[N]` with current length and byte indexing, exact aggregate aliases, and exact-type aggregate value copying.                                                                                                                                         |
-| Declarations | Scalar constants, program variables, complete positional recursive static initializers, record fields, formal parameters, contiguous scalar locals, routine definitions and forwards.                                                                                                                                                            |
+| Declarations | Scalar constants, compile-time assertions, program variables, complete positional recursive static initializers, record fields, formal parameters, contiguous scalar locals, routine definitions and forwards.                                                                                                                                   |
 | Expressions  | Calls, checked array and bounded-string indexing, field selection and string `.length`, explicit integer conversions, unary `+`/`-`, arithmetic including quotient and remainder, one comparison, `not`, `and`, `or`, and integer-only `xor`.                                                                                                    |
 | Statements   | Scalar and exact-type aggregate assignment, name-led calls, `return`, `fail`, `exit`, and `continue`.                                                                                                                                                                                                                                            |
 | Control      | Flat `if`/`elseif`/`else`, pre-test `while`, counted `for` over a read-only scalar-local counter with `to` or `until` and optional constant `step`.                                                                                                                                                                                              |
@@ -3737,3 +3760,43 @@ end
 ```
 
 The second program is rejected at the zero divisor with the same division-by-zero diagnostic used by `/ 0`.
+
+### 21.19 Compile-time assertions
+
+This program states and uses a relationship between two earlier constants:
+
+```nucleus
+const Rows = 8
+const Columns = 16
+assert Rows * Columns = 128
+
+sub main() fails
+    writeOutputByte(Rows * Columns) or fail
+end
+```
+
+The assertion is true, emits no target code, and the expected standard output is byte value 128.
+
+A false assertion is invalid:
+
+```nucleus
+const Rows = 17
+assert Rows <= 16
+
+sub main()
+end
+```
+
+The second program is rejected at `assert` with an assertion-failed diagnostic.
+
+The assertion expression must be Boolean-valued:
+
+```nucleus
+const Rows = 8
+assert Rows
+
+sub main()
+end
+```
+
+The third program is rejected at `assert` because an exact integer is not a Boolean condition.
