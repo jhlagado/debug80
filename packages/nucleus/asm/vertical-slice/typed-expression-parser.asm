@@ -14,11 +14,15 @@ TypedMatchForwardName:
             LD   HL,ForwardNamePointer
             JP   TokenNameRecordEquals
 
-.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
-TypedRetainDeclarationName:
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+TypedNameEqualsMain:
             LD   HL,NameMain
             LD   B,4
-            CALL TokenNameEquals
+            JP   TokenNameEquals
+
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+TypedRetainDeclarationName:
+            CALL TypedNameEqualsMain
             JR   C,TypedDuplicateNameFailure
             CALL TypedMatchForwardName
             JR   C,TypedDuplicateNameFailure
@@ -39,9 +43,7 @@ TypedDuplicateNameFailure:
 TypedRejectCurrentOrdinaryName:
             CALL SymbolFindCurrent
             JR   C,TypedDuplicateNameFailure
-            LD   HL,NameMain
-            LD   B,4
-            CALL TokenNameEquals
+            CALL TypedNameEqualsMain
             JR   C,TypedDuplicateNameFailure
             OR   A
             RET
@@ -252,11 +254,22 @@ TypedSuppressedFault:
 
 ; Resolve two integer operands. The four source metadata/value cells are live.
 ; C returns u8 or u16. Exact constants adopt the typed peer or expected type.
-.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
-TypedResolveIntegerPair:
+.routine out A,carry,zero clobbers sign,parity,halfCarry
+TypedLeftTypeIsBoolean:
             LD   A,(ExpressionLeftMeta)
             AND  ScalarMetaTypeMask
             CP   ScalarTypeBoolean
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry
+TypedDeclarationScalarType:
+            LD   A,(DeclarationInfo)
+            AND  ScalarMetaTypeMask
+            RET
+
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+TypedResolveIntegerPair:
+            CALL TypedLeftTypeIsBoolean
             JR   Z,TypedTypeFailure
             LD   D,A
             LD   A,(ExpressionRightMeta)
@@ -325,6 +338,14 @@ TypedResolveBothTyped:
 TypedResolveU16:
             LD   C,ScalarTypeU16
             OR   A
+            RET
+
+.routine in A,D out A,D,carry,zero clobbers sign,parity,halfCarry
+TypedRequireScalarSymbolClass:
+            AND  SymbolRecordTypeFlag+SymbolAggregateFlag
+            JP   NZ,TypedTypeFailure
+            LD   A,D
+            AND  SymbolClassMask
             RET
 
 ; Return constant in A when both operands are constant.
@@ -617,10 +638,8 @@ TypedPrimaryVariableName:
             RET  C
             LD   D,A
 TypedPrimaryNameResolved:
-            AND  SymbolRecordTypeFlag+SymbolAggregateFlag
-            JP   NZ,TypedTypeFailure
-            LD   A,D
-            AND  SymbolClassMask
+            CALL TypedRequireScalarSymbolClass
+            RET  C
             JR   Z,TypedPrimaryConstantName
             LD   A,D
             AND  ScalarMetaTypeMask
@@ -857,11 +876,8 @@ TypedPrimaryNarrow:
             LD   H,B
             LD   L,C
             LD   A,D
-            LD   D,A
-            AND  ScalarMetaTypeMask
-            CP   ScalarTypeBoolean
-            JP   Z,TypedTypeFailure
-            LD   A,D
+            CALL TypedRequireIntegerMeta
+            RET  C
             AND  ScalarMetaConstant
             JR   Z,TypedPrimaryDynamicNarrow
             LD   A,H
@@ -884,15 +900,23 @@ TypedPrimaryNarrowContextFailure:
             POP  HL
             SCF
             RET
-TypedPrimaryWiden:
-            LD   A,ScalarTypeU16
-            CALL TypedParseConversionOperand
-            RET  C
+
+.routine in A out A,D,carry,zero clobbers sign,parity,halfCarry
+TypedRequireIntegerMeta:
             LD   D,A
             AND  ScalarMetaTypeMask
             CP   ScalarTypeBoolean
             JP   Z,TypedTypeFailure
             LD   A,D
+            CCF                            ; valid scalar types compare below Boolean
+            RET
+
+TypedPrimaryWiden:
+            LD   A,ScalarTypeU16
+            CALL TypedParseConversionOperand
+            RET  C
+            CALL TypedRequireIntegerMeta
+            RET  C
             AND  ScalarMetaConstant
             LD   A,ScalarTypeU16
             RET  Z
@@ -919,11 +943,8 @@ TypedUnaryPlus:
             CALL TypedRequireComposable
             RET  C
 .endif
-            LD   D,A
-            AND  ScalarMetaTypeMask
-            CP   ScalarTypeBoolean
-            JP   Z,TypedTypeFailure
-            LD   A,D
+            CALL TypedRequireIntegerMeta
+            RET  C
             OR   A
             RET
 TypedUnaryMinus:
@@ -1369,9 +1390,7 @@ TypedAndLoop:
             CALL TypedSaveLeft
 .endif
             RET  C
-            LD   A,(ExpressionLeftMeta)
-            AND  ScalarMetaTypeMask
-            CP   ScalarTypeBoolean
+            CALL TypedLeftTypeIsBoolean
             JR   NZ,TypedAndParseRight
             LD   A,SemanticBeginBooleanAnd
             CALL TypedEmitOperation
@@ -1387,9 +1406,7 @@ TypedAndParseRight:
             CALL TypedRestoreOperands
 .endif
             RET  C
-            LD   A,(ExpressionLeftMeta)
-            AND  ScalarMetaTypeMask
-            CP   ScalarTypeBoolean
+            CALL TypedLeftTypeIsBoolean
             JR   NZ,TypedAndInteger
             CALL TypedReduceBoolean
             RET  C
@@ -1429,15 +1446,11 @@ TypedOrOperator:
             LD   A,(ExpressionOperator)
             CP   TokenXor
             JR   NZ,TypedOrBooleanLeft
-            LD   A,(ExpressionLeftMeta)
-            AND  ScalarMetaTypeMask
-            CP   ScalarTypeBoolean
+            CALL TypedLeftTypeIsBoolean
             JP   Z,TypedTypeFailure
             JR   TypedOrParseRight
 TypedOrBooleanLeft:
-            LD   A,(ExpressionLeftMeta)
-            AND  ScalarMetaTypeMask
-            CP   ScalarTypeBoolean
+            CALL TypedLeftTypeIsBoolean
             JR   NZ,TypedOrParseRight
             LD   A,SemanticBeginBooleanOr
             CALL TypedEmitOperation
@@ -1453,9 +1466,7 @@ TypedOrParseRight:
             CALL TypedRestoreOperands
 .endif
             RET  C
-            LD   A,(ExpressionLeftMeta)
-            AND  ScalarMetaTypeMask
-            CP   ScalarTypeBoolean
+            CALL TypedLeftTypeIsBoolean
             JR   NZ,TypedOrInteger
             CALL TypedReduceBoolean
             RET  C

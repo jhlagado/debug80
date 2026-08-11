@@ -84,9 +84,7 @@ HybridLL1ResolveRecordType:
 
 HybridLL1BeginTypeBound:
             LD   A,ScalarTypeU16
-            LD   (ExpressionExpectedType),A
-            OR   A
-            RET
+            JP   HybridLL1SaveExpectedType
 
 ; Return the checked, positive, byte-sized constant bound in HL.
 .routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C,IX,IY
@@ -519,9 +517,7 @@ HybridLL1BeginSub:
             CALL HybridLL1RestoreSubName
             CALL HybridLL1RequireBeforeMain
             RET  C
-            LD   HL,NameMain
-            LD   B,4
-            CALL TokenNameEquals
+            CALL TypedNameEqualsMain
             JR   C,HybridLL1BeginMainSignature
             LD   A,(Stage7RoutineCount)
             CP   Stage7RoutineCapacity
@@ -637,9 +633,7 @@ HybridLL1BeginForwardBody:
             CALL HybridLL1RestoreSubName
             CALL HybridLL1RequireBeforeMain
             RET  C
-            LD   HL,NameMain
-            LD   B,4
-            CALL TokenNameEquals
+            CALL TypedNameEqualsMain
             JR   C,HybridLL1BeginForwardMainBody
             CALL Stage7FindRoutineCurrent
             JR   NZ,HybridLL1ForwardMissing
@@ -838,9 +832,7 @@ HybridLL1BeginFail:
             LD   HL,(TokenStartOffset)
             LD   (Stage8FailureOffset),HL
             LD   A,ScalarTypeU8
-            LD   (ExpressionExpectedType),A
-            OR   A
-            RET
+            JP   HybridLL1SaveExpectedType
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1CommitFail:
@@ -968,18 +960,15 @@ HybridLL1LookupDeclaration:
 HybridLL1BeginHandle:
             CALL HybridLL1LookupDeclaration
             RET  C
-            AND  SymbolRecordTypeFlag+SymbolAggregateFlag
-            JP   NZ,TypedTypeFailure
-            LD   A,D
-            AND  SymbolClassMask
+            CALL TypedRequireScalarSymbolClass
+            RET  C
             JP   Z,TypedTypeFailure
             CP   SymbolClassLocal
             JR   NZ,Stage8HandlerCounterReady
             CALL ControlCheckActiveCounter
             RET  C
 Stage8HandlerCounterReady:
-            LD   A,(DeclarationInfo)
-            AND  ScalarMetaTypeMask
+            CALL TypedDeclarationScalarType
             CP   ScalarTypeU8
             JP   NZ,TypedTypeFailure
             LD   B,ControlFrameExit
@@ -1052,20 +1041,15 @@ HybridLL1SaveLocalType:
             CALL TypedPrepareCurrentWord
             POP  BC
             RET  C
-            LD   A,(DeclarationInfo)
-            AND  ScalarMetaTypeMask
+            CALL TypedDeclarationScalarType
             CALL TypedEmitLocalDeclare
 HybridLL1SetLocalExpectedType:
             RET  C
-            LD   A,(DeclarationInfo)
-            AND  ScalarMetaTypeMask
-            LD   (ExpressionExpectedType),A
-            OR   A
-            RET
+            CALL TypedDeclarationScalarType
+            JP   HybridLL1SaveExpectedType
 
 HybridLL1BeginLocalInitializer:
-            LD   A,(DeclarationInfo)
-            AND  ScalarMetaTypeMask
+            CALL TypedDeclarationScalarType
             JP   HybridLL1SaveExpectedType
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry
@@ -1078,8 +1062,7 @@ HybridLL1DefaultLocalInitializer:
             LD   HL,0
             CALL TypedEmitWord
             RET  C
-            LD   A,(DeclarationInfo)
-            AND  ScalarMetaTypeMask
+            CALL TypedDeclarationScalarType
             OR   ScalarMetaConstant
             LD   (ExpressionRightMeta),A
             LD   HL,0
@@ -1103,8 +1086,7 @@ HybridLL1FinishLocalInitializer:
 
 .routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C,IX,IY
 HybridLL1ValidateDeclarationExpression:
-            LD   A,(DeclarationInfo)
-            AND  ScalarMetaTypeMask
+            CALL TypedDeclarationScalarType
             LD   E,A
             JR   HybridLL1CheckExpressionAssignable
 
@@ -1124,8 +1106,7 @@ HybridLL1CommitLocal:
             RET  C
             CALL SymbolCommit
             RET  C
-            LD   A,(DeclarationInfo)
-            AND  ScalarMetaTypeMask
+            CALL TypedDeclarationScalarType
             CALL TypedTypeWidth
             LD   HL,NextLocalSlot
             ADD  A,(HL)
@@ -1163,10 +1144,8 @@ HybridLL1ParseAssignment:
             AND  SymbolAggregateFlag
             JP   NZ,Stage7ParseAggregateAssignment
             LD   A,D
-            AND  SymbolRecordTypeFlag+SymbolAggregateFlag
-            JP   NZ,TypedTypeFailure
-            LD   A,D
-            AND  SymbolClassMask
+            CALL TypedRequireScalarSymbolClass
+            RET  C
             CP   SymbolClassLocal
             JR   NZ,HybridLL1StatementCounterChecked
             CALL ControlCheckActiveCounter
@@ -1177,13 +1156,11 @@ HybridLL1StatementCounterChecked:
             JP   Z,TypedTypeFailure
             CALL ParserExpectEqual
             RET  C
-            LD   A,(DeclarationInfo)
-            AND  ScalarMetaTypeMask
+            CALL TypedDeclarationScalarType
             CALL TypedExpressionBeginRuntime
             RET  C
             LD   D,A
-            LD   A,(DeclarationInfo)
-            AND  ScalarMetaTypeMask
+            CALL TypedDeclarationScalarType
             LD   E,A
             LD   A,D
             CALL TypedCheckAssignable
@@ -1200,9 +1177,7 @@ HybridLL1BeginReturnValue:
             RET  Z
             CP   AggregateFirstDynamicTypeId
             RET  NC
-            LD   (ExpressionExpectedType),A
-            OR   A
-            RET
+            JP   HybridLL1SaveExpectedType
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1ReturnValue:
@@ -1359,9 +1334,7 @@ HybridLL1BeginIf:
             ADD  HL,DE
             LD   (HL),1
             LD   A,ScalarTypeBoolean
-            LD   (ExpressionExpectedType),A
-            OR   A
-            RET
+            JP   HybridLL1SaveExpectedType
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1BeginIfBody:
@@ -1401,9 +1374,7 @@ HybridLL1BeginElseIf:
             CALL ControlAllocateInto
             RET  C
             LD   A,ScalarTypeBoolean
-            LD   (ExpressionExpectedType),A
-            OR   A
-            RET
+            JP   HybridLL1SaveExpectedType
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1BeginElse:
@@ -1429,12 +1400,18 @@ HybridLL1FinishIfClauses:
             LD   C,(HL)
             JP   ControlEmitLabel
 
+; B selects a field in the active control frame. All callers have already
+; established that frame; the helper preserves their existing precondition.
+.routine in B out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+HybridLL1EmitFrameLabel:
+            CALL ControlTopFrameField
+            LD   C,(HL)
+            JP   ControlEmitLabel
+
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1EndIf:
             LD   B,ControlFrameExit
-            CALL ControlTopFrameField
-            LD   C,(HL)
-            CALL ControlEmitLabel
+            CALL HybridLL1EmitFrameLabel
             RET  C
             CALL ControlTopFrame
             PUSH HL
@@ -1469,9 +1446,7 @@ HybridLL1BeginWhile:
             CALL ControlEmitLabel
             RET  C
             LD   A,ScalarTypeBoolean
-            LD   (ExpressionExpectedType),A
-            OR   A
-            RET
+            JP   HybridLL1SaveExpectedType
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1BeginWhileBody:
@@ -1488,9 +1463,7 @@ HybridLL1EndWhile:
             CALL ControlEmitJump
             RET  C
             LD   B,ControlFrameExit
-            CALL ControlTopFrameField
-            LD   C,(HL)
-            CALL ControlEmitLabel
+            CALL HybridLL1EmitFrameLabel
             RET  C
 HybridLL1PopAndRestoreFlow:
             CALL ControlPopFrame
@@ -1528,9 +1501,7 @@ HybridLL1ForBoundSelected:
             CALL HybridLL1FinishLocalInitializer
             RET  C
             LD   A,ScalarTypeU16
-            LD   (ExpressionExpectedType),A
-            OR   A
-            RET
+            JP   HybridLL1SaveExpectedType
 
 .routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C,IX,IY
 HybridLL1CheckForBound:
@@ -1570,8 +1541,7 @@ HybridLL1BeginForBody:
             LD   A,(DeclarationPayload)
             LD   (HL),A
             INC  HL
-            LD   A,(DeclarationInfo)
-            AND  ScalarMetaTypeMask
+            CALL TypedDeclarationScalarType
             CP   ScalarTypeU16
             LD   A,(HybridLL1ForMode)
             JR   NZ,HybridLL1ForModeReady
@@ -1602,16 +1572,12 @@ HybridLL1ForModeReady:
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1EndFor:
             LD   B,ControlFrameContinue
-            CALL ControlTopFrameField
-            LD   C,(HL)
-            CALL ControlEmitLabel
+            CALL HybridLL1EmitFrameLabel
             RET  C
             CALL StructuredEmitForNext
             RET  C
             LD   B,ControlFrameExit
-            CALL ControlTopFrameField
-            LD   C,(HL)
-            CALL ControlEmitLabel
+            CALL HybridLL1EmitFrameLabel
             RET  C
             LD   A,SemanticForCleanup
             CALL SemanticSinkOperation

@@ -46,9 +46,7 @@ Stage7FindRoutineMissing:
             LD   A,(Stage8ForwardMainFlags)
             AND  Stage7RoutineMain
             JR   Z,Stage7FindRoutineAbsent
-            LD   HL,NameMain
-            LD   B,4
-            CALL TokenNameEquals
+            CALL TypedNameEqualsMain
             JR   NC,Stage7FindRoutineAbsent
             LD   A,Stage7MainRoutine
             CP   A

@@ -1084,6 +1084,26 @@ instructions in 15,737,944 T-states; Stage 8 remains 3,692 bytes and executes
 2,032,759 in 18,918,203; and Chapter 21 remains 1,883 bytes and executes
 1,520,260 in 14,322,659.
 
+A focused helper pass removes another 116 compiler-code bytes. Five repeated
+compiler operations—exact `main` comparison, Boolean-left classification,
+declaration-type extraction, expected-type publication, and emitted `POP
+HL`—account for 76 bytes. Shared opcode-and-push, comparison-emission, and
+control-frame-label tails remove 32 more. The two validation helpers save only
+seven bytes: their diagnostic exits require a caller-side carry return, a cost
+that the initial byte estimate omitted. A newly reachable relative transfer
+removes the final byte. This leaves the parser at 8,765 bytes:
+230 engine, 734 tables, 2,510 actions, and 5,291 residual islands. The typed
+and aggregate sink is 3,096 bytes.
+
+Fresh assembly measures 13,612 code bytes plus 393 immutable bytes, for a
+14,005-byte compiler core. Workspace remains 3,600 bytes, the largest generated
+program remains 1,040 bytes, and the selected runtime remains 582 bytes. A
+temporary baseline comparison keeps generated publications and selected
+runtime bytes identical. The Stage 7 proof remains 3,046 bytes and executes
+1,702,823 instructions in 15,743,156 T-states; Stage 8 remains 3,692 bytes and
+executes 2,034,307 in 18,936,135; and Chapter 21 remains 1,883 bytes and
+executes 1,521,339 in 14,334,990.
+
 ## Capacity ledger
 
 The first implementation fixes a numeric limit before each bounded structure is

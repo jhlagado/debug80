@@ -202,6 +202,8 @@ TypedLiteral16:
             LD   H,A
             LD   L,C
             LD   A,$21                    ; LD HL,nn
+.routine in A,HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedEmitOpcodeWordPushHL:
             CALL EmitOpcodeWord
             RET  C
             LD   A,$E5                    ; PUSH HL
@@ -220,10 +222,7 @@ TypedLoadProgram8:
 TypedLoadProgram16:
             CALL ExpressionProgramAddress
             LD   A,$2A                    ; LD HL,(nn)
-            CALL EmitOpcodeWord
-            RET  C
-            LD   A,$E5
-            JP   EmitByte
+            JR   TypedEmitOpcodeWordPushHL
 
 ; C receives -(byte offset + 1), the displacement of the low byte from IX.
 .routine out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
@@ -243,6 +242,11 @@ TypedEmitIndexed:
             POP  BC
             RET  C
             LD   A,C
+            JP   EmitByte
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+TypedEmitPopHL:
+            LD   A,$E1                    ; POP HL
             JP   EmitByte
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
@@ -450,6 +454,13 @@ TypedUnarySequence:
             RET  C
             JP   TypedPushHL
 
+.routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedEmitCompare:
+            CALL EmitLoadAImmediate
+            RET  C
+            LD   HL,CompareU16
+            JP   EmitCall
+
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedCompare:
             CALL NextSemanticByte
@@ -459,18 +470,14 @@ TypedCompare:
             POP  BC
             RET  C
             LD   A,C
-            CALL EmitLoadAImmediate
-            RET  C
-            LD   HL,CompareU16
-            CALL EmitCall
+            CALL TypedEmitCompare
             RET  C
             JP   TypedPushHL
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedNarrow8:
             CALL TypedReadTrapPosition
-            LD   A,$E1                    ; POP HL
-            CALL EmitByte
+            CALL TypedEmitPopHL
             RET  C
             LD   HL,TypedTestHigh
             CALL   EmitPair
@@ -497,8 +504,7 @@ TypedStoreProgram8:
 TypedStoreProgram16:
             CALL ExpressionProgramAddress
             PUSH HL
-            LD   A,$E1
-            CALL EmitByte
+            CALL TypedEmitPopHL
             POP  HL
             RET  C
             LD   A,$22
@@ -507,8 +513,7 @@ TypedStoreProgram16:
 .routine out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
 TypedStoreLocal8:
             CALL TypedLocalDisplacement
-            LD   A,$E1
-            CALL EmitByte
+            CALL TypedEmitPopHL
             RET  C
             LD   HL,TypedStoreLocalLow
             JP   TypedEmitIndexed
@@ -654,8 +659,7 @@ TypedCallScalar:
             CALL NextSemanticByte     ; result type
             LD   (EmitTypedWidth),A
             CALL TypedReadTrapPosition
-            LD   A,$E1                    ; POP HL argument
-            CALL EmitByte
+            CALL TypedEmitPopHL           ; argument
             RET  C
             LD   HL,ActivationClaim
             CALL TypedEmitFailableCall
@@ -675,8 +679,7 @@ TypedCallScalar:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
 TypedReturnScalar:
-            LD   A,$E1                    ; POP HL result
-            CALL EmitByte
+            CALL TypedEmitPopHL           ; result
             RET  C
             CALL ExpressionRestoreFrame
             RET  C

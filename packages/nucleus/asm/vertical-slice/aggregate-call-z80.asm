@@ -244,8 +244,7 @@ Stage8FailMain:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 Stage8ReturnSuccess:
-            LD   A,$E1                    ; POP HL result carrier
-            CALL EmitByte
+            CALL TypedEmitPopHL           ; result carrier
             RET  C
             JR   Stage8SuccessTail
 
@@ -334,8 +333,7 @@ Stage8InvokeService:
             RET  C
             JR   Stage8ServiceAddress
 Stage8ServiceWordArgument:
-            LD   A,$E1                    ; POP HL offset
-            CALL EmitByte
+            CALL TypedEmitPopHL           ; offset
             RET  C
 Stage8ServiceAddress:
             LD   A,(Stage7CallLabel)
@@ -415,10 +413,7 @@ Stage7EndRoutine:
 Stage7LoadProgramAlias:
             CALL ExpressionProgramAddress
             LD   A,$21                    ; LD HL,nn
-            CALL EmitOpcodeWord
-            RET  C
-            LD   A,$E5
-            JP   EmitByte
+            JP   TypedEmitOpcodeWordPushHL
 
 Stage7LoadParameterAlias .equ TypedLoadLocal16
 
@@ -511,8 +506,7 @@ Stage7ReadExtentAndOffset:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7PreserveCarrierRegion:
-            LD   A,$E1                    ; POP HL source
-            CALL EmitByte
+            CALL TypedEmitPopHL           ; source
             RET  C
             LD   A,$E5                    ; retain source
             CALL EmitByte
@@ -548,8 +542,7 @@ Stage7StringLength:
             CALL Stage7ReadStringExtent
             CALL Stage7PreserveCarrierRegion
             RET  C
-            LD   A,$E1                    ; POP HL carrier
-            CALL EmitByte
+            CALL TypedEmitPopHL           ; carrier
             RET  C
             LD   HL,CheckStringLength
             JR   Stage7EmitStringCheck

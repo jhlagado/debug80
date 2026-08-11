@@ -272,10 +272,7 @@ StructuredForTestNegative:
             JR   Z,StructuredForTestCompare
             LD   A,ComparisonGreaterEqual
 StructuredForTestCompare:
-            CALL EmitLoadAImmediate
-            RET  C
-            LD   HL,CompareU16
-            CALL EmitCall
+            CALL TypedEmitCompare
             RET  C
             LD   A,(EmitControlExitLabel)
             LD   C,A
@@ -352,10 +349,7 @@ StructuredNegativeDistance:
             JR   NZ,StructuredDistanceCompare
             LD   A,ComparisonLessEqual
 StructuredDistanceCompare:
-            CALL EmitLoadAImmediate
-            RET  C
-            LD   HL,CompareU16
-            CALL EmitCall
+            CALL TypedEmitCompare
             RET  C
             LD   HL,StructuredTestThenPopCurrent
             CALL   EmitThree
