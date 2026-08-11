@@ -940,11 +940,11 @@ A named constant has either an exact integer type inferred from its initializer 
 
 Top-level variables provide all owned aggregate storage. Aggregate storage may also occur inline as a record field or fixed-array element. A routine cannot declare aggregate storage or an aggregate-alias local. The permitted declaration sites, initialization rules, mutability, and storage duration appear in Chapters 7 and 8.
 
-An aggregate parameter is a fixed typed alias to caller-provided storage. Its binding cannot be changed, but mutation and exact-type aggregate assignment through it change the caller's object.
+An aggregate parameter is a fixed typed alias to caller-provided storage. Its binding cannot be changed, but mutation and exact-type aggregate assignment through it change the caller's object. A routine may also return a transient aggregate alias to existing storage.
 
-Assignment between aggregate designators of the exact same type copies the complete record, fixed array, or bounded string into the destination. The assignment changes the destination object's contents and never rebinds an alias. Routine arguments transfer aggregate aliases rather than copying automatically.
+Assignment between aggregate designators of the exact same type copies the complete record, fixed array, or bounded string into the destination. The assignment changes the destination object's contents and never rebinds an alias. Routine arguments and aggregate results continue to transfer aliases rather than copying automatically.
 
-A routine result is absent or has scalar type `u8`, `u16`, or `boolean`. A routine that produces aggregate contents receives caller-provided aggregate storage through a parameter and writes into that fixed alias.
+An aggregate routine result is a transient typed alias to existing program-lifetime storage. Chapter 7 defines its permitted consumption, and Chapter 13 defines result syntax. Nucleus has no aggregate storage whose lifetime ends with a call, so aggregate results require no separate escape analysis.
 
 ### 6.6 Record types
 
@@ -995,7 +995,7 @@ This chapter fixes the semantic domain and capacity, not the stored layout. Chap
 
 An aggregate alias has the same source type as its referent and a separate alias category. For example, an alias to a `Person` record permits `Person` field selection, and an alias to `u8[64]` permits indexing with the fixed bound 64. The alias does not create a reference type that can be named independently.
 
-The compiler must retain the referent type through aggregate parameters, field and element selection, scalar and aggregate assignments, and calls. Passing an alias or using it as an aggregate-copy source or destination is invalid unless the required aggregate type is identical to its referent type.
+The compiler must retain the referent type through aggregate parameters, field and element selection, scalar and aggregate assignments, calls, and aggregate results. Passing or returning an alias, or using it as an aggregate-copy source or destination, is invalid unless the required aggregate type is identical to its referent type.
 
 A direct backend represents an alias at runtime with one untagged 16-bit address because compiler metadata records the record layout, array length, or string capacity. The runtime carrier has no source spelling and no runtime type tag. Source code cannot read, write, compare, convert, store, return as a scalar, or perform arithmetic on the carrier itself.
 
@@ -1028,7 +1028,8 @@ The compiler applies these compatibility rules:
 | Bounded-string index                                   | `u8` or `u16` index below the current length; result is a writable `u8` path.                           |
 | Aggregate parameter                                    | Exact referent-type identity.                                                                           |
 | Aggregate assignment                                   | Exact type identity; copy the complete aggregate into the destination.                                  |
-| Aggregate routine result                               | Invalid; aggregate-producing work uses a caller-provided destination parameter.                         |
+| Aggregate result                                       | Exact referent-type identity and immediate consumption under Chapter 7.                                 |
+| Aggregate by-value argument or result                  | Invalid; calls transfer aggregate aliases.                                                              |
 
 Compatibility is checked at the source operation. The backend does not infer compatibility from equal byte widths, equal layouts, compiler storage ordinals, registers, or runtime addresses.
 
@@ -1176,7 +1177,7 @@ Programs declare every aggregate object at top level, pass required objects or s
 
 ### 7.6 Aggregate parameter binding
 
-An aggregate alias binds once when a call establishes an aggregate parameter. The argument is a compatible aggregate storage path rooted in a program variable or aggregate parameter, or a field or fixed-array element reached from such a root. Every admitted source ultimately denotes top-level program storage.
+An aggregate alias binds once when a call establishes an aggregate parameter. The argument is a compatible aggregate storage path rooted in a program variable or aggregate parameter, a field or fixed-array element reached from such a root, or a transient aggregate result admitted by Section 7.9. Every admitted source ultimately denotes top-level program storage.
 
 The caller evaluates every field selection and checked index used to form the argument once before the call begins. The callee receives the resulting typed alias, and its binding cannot be changed. The target type must exactly match the parameter type under Chapter 6.
 
@@ -1196,17 +1197,25 @@ Scalar assignment copies a value into a scalar destination. The destination may 
 
 Aggregate assignment requires a mutable aggregate destination and an aggregate source of the exact same type. It copies the complete aggregate value into the destination. The direct backend copies exactly the type's packed fixed byte extent. A bounded-string copy includes its logical length and complete fixed-capacity object representation.
 
-The compiler evaluates the destination storage path once, then the source storage path once, and validates both complete extents before the first destination byte changes. If evaluation or validation traps, no byte of the aggregate destination changes. A source and destination that denote the same object or subobject produce no change.
+The compiler evaluates the destination storage path once, then the source storage path or transient aggregate-alias result once, and validates both complete extents before the first destination byte changes. If evaluation or validation traps, no byte of the aggregate destination changes. A source and destination that denote the same object or subobject produce no change.
 
 Under the Nucleus 0.1 type and containment rules, two designators of one exact aggregate type are either identical or disjoint. A proper partial overlap would require recursive by-value containment, an overlaid layout, a slice, or arbitrary address formation, all of which are absent. Aggregate assignment therefore needs no runtime overlap check.
 
 Aggregate alias binding is not assignment. Once established, an aggregate parameter cannot be rebound. When an aggregate parameter is the destination of aggregate assignment, the copy changes its referent. It does not change the binding.
 
-### 7.9 Aggregate-producing routines
+### 7.9 Aggregate results
 
-Routines cannot return records, fixed arrays, or bounded strings. A routine that produces aggregate contents receives a destination object through an aggregate parameter and writes or copies into that fixed alias. The call site therefore supplies the storage explicitly, and no hidden aggregate temporary or returned alias exists.
+An aggregate routine result is a transient typed alias to existing program-lifetime storage. The result preserves the target's exact aggregate type and denotes the same object.
 
-The destination parameter remains bound to the caller's object for the activation. Assignment through it changes the referent and does not rebind the parameter. A routine may receive separate source and destination aggregate parameters, select checked subobjects through them, and perform exact-type aggregate assignment between their referents.
+Program-lifetime storage consists of top-level objects and their aggregate subobjects. Nucleus 0.1 has no routine-local aggregate declaration, activation-lifetime aggregate, heap aggregate, or variable-sized local, so every aggregate storage path, aggregate-parameter binding, and transient aggregate-alias result denotes program-lifetime storage. An aggregate result therefore always outlives the callee activation. The compiler retains the exact referent type and transient-result category, but it needs no lifetime-tracking bit, signature annotation, or parameter identity for this purpose.
+
+An aggregate return source is a storage path rooted in a visible program variable or aggregate parameter, a field or fixed-array element reached from such a root, or a transient aggregate result forwarded from another call. Field selection and checked indexing continue to denote program-lifetime subobjects because every aggregate subobject has the lifetime of its containing object.
+
+The caller must consume a returned aggregate alias immediately. It may discard the result, forward it as an aggregate argument or aggregate return, select a field or element from it, or use it as the source of exact-type aggregate assignment. Assignment is the materialization operation: it copies the complete aggregate into program storage or into the referent of an aggregate parameter. A result cannot be stored as a carrier or survive beyond the containing source operation. Code that needs to retain the value assigns it to a program object or caller-supplied destination.
+
+Immediate consumption does not permit a later call to destroy the transient carrier before it is used. When evaluation of another argument, index, or suffix can call a routine, the compiler must stage or preserve the typed carrier as live implementation state. This staging is not a source alias and ends with the containing operation.
+
+Nucleus has no routine-local aggregate declaration, activation-lifetime aggregate object, aggregate temporary, heap object, or variable-sized local object. Every aggregate result selects storage that already existed before the call.
 
 ### 7.10 End of activation bindings
 
@@ -1215,9 +1224,9 @@ When an activation ends:
 - its scalar parameters and scalar locals cease to exist;
 - its aggregate-parameter bindings cease to exist;
 - storage reached through those aliases is unaffected if that storage has a longer lifetime; and
-- a valid returned scalar value has already been transferred to the caller.
+- a valid returned scalar value or aggregate alias has already been transferred to the caller.
 
-Every aggregate object and subobject remains alive until program termination. Nucleus 0.1 therefore has no source form that can create a dangling aggregate alias. The compiler checks exact referent types and admitted alias-binding sources; it does not track a separate aggregate-lifetime fact.
+Every aggregate object and subobject remains alive until program termination. Nucleus 0.1 therefore has no source form that can create a dangling aggregate alias. The compiler checks exact referent types, admitted alias-binding sources, and the immediate-consumption rule for transient results; it does not track a separate aggregate-lifetime fact.
 
 Nucleus 0.1 has no manual deallocation, destructors, `finally`, `defer`, variable-sized locals, or other scope-exit action. Returning from a routine performs no hidden source-level cleanup. A backend may restore saved implementation state, but that restoration does not run source operations or change the lifetime rules above.
 
@@ -1232,22 +1241,22 @@ end
 
 var entries as Entry[8]
 
-sub copyEntryAt(index as u8, destination as Entry)
-    destination = entries[index]
+sub entryAt(index as u8) as Entry
+    return entries[index]
 end
 ```
 
-`copyEntryAt` checks the index before copying one complete `Entry` into the caller-provided destination.
+`entryAt` returns an alias to one `Entry` subobject of `entries`. The bounds check occurs before the result is formed. The target has program lifetime and remains alive after the call.
 
-A routine may forward aggregate-producing work through another destination parameter:
+An incoming aggregate alias also supplies a valid aggregate result:
 
 ```nucleus
-sub choose(items as Entry[8], index as u8, destination as Entry)
-    destination = items[index]
+sub choose(items as Entry[8], index as u8) as Entry
+    return items[index]
 end
 ```
 
-Both aggregate parameters remain fixed aliases. `choose` copies the selected element into the destination's referent.
+The caller-provided array has program lifetime, so the returned element remains available after the `choose` activation ends.
 
 This statement mutates a scalar leaf through the aggregate alias `item` without copying or rebinding the record:
 
@@ -1274,15 +1283,15 @@ end
 
 `destination` remains bound to the caller's object. The assignment copies one complete `Entry` from the selected array element into that object.
 
-A routine may delegate the copy without creating aggregate storage:
+A routine may also forward a selected alias without copying:
 
 ```nucleus
-sub forwardedEntry(items as Entry[8], index as u8, destination as Entry)
-    choose(items, index, destination)
+sub forwardedEntry(items as Entry[8], index as u8) as Entry
+    return choose(items, index)
 end
 ```
 
-No aggregate object or local alias is created by either call.
+The forwarded alias still denotes an element of the caller-provided array. No aggregate object or local alias is created by either call.
 
 ### 7.12 Implementation independence and capacities
 
@@ -1362,7 +1371,7 @@ routine-header        ::= "sub" NAME routine-signature-tail
 routine-signature-tail
                       ::= "(" [ formal-parameter
                           { "," formal-parameter } ] ")"
-                          [ "as" scalar-type ] [ "fails" ]
+                          [ "as" type ] [ "fails" ]
 formal-parameter      ::= NAME "as" type
 
 local-declaration     ::= "var" NAME "as" scalar-type
@@ -1493,7 +1502,7 @@ The program variable becomes visible only after the compiler has checked its typ
 
 ### 8.10 Routine declarations and parameters
 
-One routine header declares a routine name, an ordered list of zero or more formal parameters, and either no result type or one scalar result type. A written result type must be `u8`, `u16`, or `boolean`. Every parameter has an explicit `name as Type` declaration and may use scalar or aggregate type. Parameters have no initializer or default argument, and a header has no grouped names or multiple result list.
+One routine header declares a routine name, an ordered list of zero or more formal parameters, and either no result type or one result type. Every parameter has an explicit `name as Type` declaration. Parameters have no initializer or default argument, and a header has no grouped names or multiple result list.
 
 A scalar parameter denotes a per-invocation copied value. An aggregate parameter establishes a fixed typed alias to caller-provided program-lifetime storage. Scalar-leaf mutation and exact-type aggregate assignment through that alias are permitted; neither changes the binding. Chapter 13 defines calls, result rules, and the value supplied for each parameter; this chapter defines only the bindings written in the header.
 
@@ -1507,7 +1516,7 @@ After parameter binding, scalar local declarations take effect in source order b
 
 A scalar local owns one per-invocation scalar value. Its initializer is an ordinary expression or a direct failable call followed by `or fail` under Chapter 14, evaluated once when execution reaches the declaration. The successful result must be compatible with the declared scalar type. If the initializer is omitted, the compiler establishes zero for `u8` or `u16` and `false` for `boolean` at that point.
 
-The declared local type must be `u8`, `u16`, or `boolean`. A record, fixed array, or bounded string is invalid in a local declaration whether or not an initializer is written. Routines receive aggregates only through formal parameters and reach aggregate subobjects through field and index paths.
+The declared local type must be `u8`, `u16`, or `boolean`. A record, fixed array, or bounded string is invalid in a local declaration whether or not an initializer is written. Routines receive aggregates only through formal parameters, reach aggregate subobjects through field and index paths, and may return transient aggregate aliases under Chapters 7 and 13.
 
 A local becomes visible only after its complete declaration and initializer have been checked. Its initializer may name parameters, visible program declarations, and earlier locals. It cannot name itself or a later local. A local declaration inside a statement block or after the first statement is invalid.
 
@@ -1533,7 +1542,7 @@ The compiler must diagnose:
 - a record field with an unavailable type or a record with no fields;
 - an aggregate `const`, a nonconstant aggregate initializer, or an initializer form incompatible with its declared component type;
 - a record, fixed array, or bounded string used as a local variable type;
-- an aggregate argument with a nonidentical referent type;
+- an aggregate argument or result with a nonidentical referent type;
 - an attempt to copy between nonidentical aggregate types; and
 - an abbreviated body without one matching incomplete forward, a second completion, or an uncompleted forward.
 
@@ -1680,23 +1689,24 @@ An index suffix requires a fixed-array or bounded-string storage path or typed a
 
 A field suffix on a record storage path or typed record alias resolves the field name only in that record's field scope and produces the field's declared type. A `.length` suffix on a bounded-string storage path or alias produces its read-only `u8` logical length. Other field suffixes on bounded strings are invalid. Selection does not expose an offset, header, or address to source code.
 
-Routine results are scalar or absent. A scalar result cannot be indexed or selected, and a result-free call cannot take another suffix.
+Index and field suffixes may follow an aggregate result from a routine call. The result remains a transient typed alias to the object established by Chapter 13; the suffix does not copy that object. A scalar result cannot be indexed or selected, and a result-free call cannot take another suffix.
 
 ### 9.4 Expression categories and storage paths
 
 Expression checking records both a type and one of these source categories:
 
-| Category               | Permitted use                                                                                          |
-| ---------------------- | ------------------------------------------------------------------------------------------------------ |
-| Exact integer constant | Adopts an admitted integer type from context or the rules in Section 9.7.                              |
-| Scalar value           | May be copied, converted, compared, passed, returned, or stored in a compatible scalar destination.    |
-| Scalar storage path    | Reads as its scalar value in an expression and may be a writable destination when its root is mutable. |
-| Aggregate storage path | May be indexed, selected, copied by exact-type assignment, or passed as an aggregate argument.         |
-| Result-free invocation | Is valid as a complete call statement, or in Chapter 14's result-free failable propagating `return`.   |
+| Category                         | Permitted use                                                                                                                                          |
+| -------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| Exact integer constant           | Adopts an admitted integer type from context or the rules in Section 9.7.                                                                              |
+| Scalar value                     | May be copied, converted, compared, passed, returned, or stored in a compatible scalar destination.                                                    |
+| Scalar storage path              | Reads as its scalar value in an expression and may be a writable destination when its root is mutable.                                                 |
+| Aggregate storage path           | May be indexed, selected, copied by exact-type assignment, passed as an aggregate argument, or returned under Chapter 7's consumption rules.           |
+| Transient aggregate-alias result | Denotes compatible storage for one containing operation and may be selected, indexed, copied by exact-type assignment, passed, returned, or discarded. |
+| Result-free invocation           | Is valid as a complete call statement, or in Chapter 14's result-free failable propagating `return`.                                                   |
 
-A **storage path** begins with a visible program variable, parameter, or local and continues through zero or more field and index suffixes. Each suffix preserves the root object's identity while selecting a subobject. A scalar constant and a routine call are not storage-path roots.
+A **storage path** begins with a visible program variable, parameter, or local and continues through zero or more field and index suffixes. Each suffix preserves the root object's identity while selecting a subobject. A scalar constant and a routine call are not storage-path roots. A call that returns an aggregate alias may be selected or indexed in a value context, but Chapter 10 does not admit it as an assignment root.
 
-A bare aggregate storage path is valid where a rule requires compatible aggregate storage, an alias, or the source or destination of exact-type aggregate assignment. It is not a general expression value. Nucleus has no aggregate comparison, truth test, automatic argument copy, or aggregate routine result.
+A bare aggregate storage path is valid where a rule requires compatible aggregate storage, an alias, or the source or destination of exact-type aggregate assignment. It is not a general expression value. Nucleus has no aggregate comparison, truth test, automatic argument copy, or automatic result copy.
 
 ### 9.5 Explicit integer conversions
 
@@ -1837,11 +1847,11 @@ Postfix operations share one left-to-right path:
 
 ```nucleus
 cells[index].value
+entryAt(index).value
 measure(cells[index].value)
-selectedValue(cells[index])
 ```
 
-`measure` and `selectedValue` must have compatible visible scalar-result signatures. The index is checked before field selection or argument transfer.
+`entryAt` must return an aggregate alias with the selected record type, and `measure` must have a compatible visible signature. The index is checked before field selection or argument transfer.
 
 These forms illustrate comparison and conversion rules:
 
@@ -1930,7 +1940,7 @@ The compiler evaluates an assignment in this order:
 
 The target path is evaluated once. A call or mutation in an index expression therefore occurs before any operation in the right-hand expression. If target evaluation traps, the right-hand expression is not evaluated. If the right-hand expression or a checked conversion traps, the destination is not changed, although effects from the earlier target evaluation remain.
 
-A scalar destination uses the scalar compatibility rules from Chapter 6. An aggregate destination requires a writable aggregate storage path. Its source must be an aggregate storage path with the exact same aggregate type. The compiler validates the complete source and destination extents before copying the fixed object representation. Assignment through an alias changes its referent and never rebinds the alias. Self-assignment has no effect.
+A scalar destination uses the scalar compatibility rules from Chapter 6. An aggregate destination requires a writable aggregate storage path. Its source must be an aggregate storage path or transient aggregate result with the exact same aggregate type. The compiler validates the complete source and destination extents before copying the fixed object representation. Assignment through an alias changes its referent and never rebinds the alias. Self-assignment has no effect.
 
 In this statement position, `=` is the assignment operator. Inside an expression, it is equality under Chapter 9. Assignment is not an expression and produces no value. Chained assignment, compound assignment such as `+=`, increment and decrement statements, and assignment inside a condition or argument are absent.
 
@@ -1938,9 +1948,9 @@ Assignment to a record, fixed array, bounded string, or aggregate alias copies a
 
 ### 10.5 Routine-call statements
 
-A routine-call statement invokes one visible source routine with the argument list defined by Chapters 9 and 13. A result-free routine is valid in this form. A scalar result may also be discarded; discarding the result does not suppress argument evaluation, routine effects, checks, or traps.
+A routine-call statement invokes one visible source routine with the argument list defined by Chapters 9 and 13. A result-free routine is valid in this form. A scalar value or transient aggregate-alias result may also be discarded; discarding the result does not suppress argument evaluation, routine effects, checks, or traps.
 
-Only the invocation itself forms the statement. A scalar arithmetic expression, comparison, storage read, conversion, field selection, or index operation cannot stand as a statement. These restrictions keep name-led dispatch distinct from general expression parsing.
+Only the invocation itself forms the statement. A scalar arithmetic expression, comparison, storage read, conversion, field selection, or index operation cannot stand as a statement. An aggregate result cannot be selected and then discarded as an expression statement. These restrictions keep name-led dispatch distinct from general expression parsing.
 
 ### 10.6 `return`, `fail`, `exit`, and `continue`
 
@@ -2314,7 +2324,7 @@ routine-header       ::= "sub" NAME routine-signature-tail
 routine-signature-tail
                      ::= "(" [ formal-parameter
                          { "," formal-parameter } ] ")"
-                         [ "as" scalar-type ] [ "fails" ]
+                         [ "as" type ] [ "fails" ]
 formal-parameter     ::= NAME "as" type
 
 forward-routine      ::= "forward" routine-header NEWLINE
@@ -2332,7 +2342,7 @@ return-statement     ::= "return" [ expression ]
 
 Chapter 8 remains authoritative for declaration placement and the local-declaration prefix. The fragments here complete their call and result meaning. Parentheses are required in every complete header and invocation, including a routine with no parameters or arguments. The abbreviated header is available only to the body that completes an earlier forward.
 
-An omitted result type declares a result-free routine. A written result type must be `u8`, `u16`, or `boolean` and declares one scalar result of that type. Records, fixed arrays, and bounded strings are invalid result types. The optional `fails` effect is defined by Chapter 14. The header has no separate procedure/function keyword and no result-name declaration.
+An omitted result type declares a result-free routine. A written type declares one result of that exact scalar or aggregate type. The optional `fails` effect is defined by Chapter 14. The header has no separate procedure/function keyword and no result-name declaration.
 
 ### 13.3 Visible signatures and invocation
 
@@ -2340,7 +2350,7 @@ A routine invocation begins with a visible routine name whose complete signature
 
 The invocation must supply exactly one argument for each formal parameter, in declaration order. Nucleus has no optional, named, variadic, grouped, or default arguments. An infallible result-free routine may be used only as the complete call statement from Chapter 10. An infallible result-bearing routine may be used as an expression or as a call statement that discards the result. Chapter 14 restricts every failable call to a position with one explicit failure consumer.
 
-A call expression takes its scalar result type directly from the signature. A routine name without its argument list is invalid in every expression and statement context.
+A call expression takes its static result type directly from the signature. A scalar result is a scalar value. An aggregate result is a transient typed alias and may take the field or index suffixes admitted by Chapter 9. It must then be consumed under Section 13.6; a routine name without its argument list is invalid in every expression and statement context.
 
 ### 13.4 Argument evaluation and compatibility
 
@@ -2350,7 +2360,7 @@ If argument evaluation traps, no later argument is evaluated and the routine bod
 
 A scalar argument must have the exact parameter type, be an exact literal that fits it, or use the implicit `u8`-to-`u16` widening. Passing `u16` to `u8` requires explicit checked `u8(...)`. Boolean and integer arguments do not convert between each other.
 
-An aggregate argument must be an aggregate storage path with exact referent-type identity. It does not copy the record, fixed array, or bounded string. The callee's parameter becomes a fixed alias to the same object or subobject. Scalar-leaf mutation and exact-type aggregate assignment through that parameter are visible through every other path to the same storage.
+An aggregate argument must be an aggregate storage path or a transient aggregate-alias result with exact referent-type identity. It does not copy the record, fixed array, or bounded string. The callee's parameter becomes a fixed alias to the same object or subobject. Scalar-leaf mutation and exact-type aggregate assignment through that parameter are visible through every other path to the same storage.
 
 Nucleus has no parameter modes, implicit read-only aggregate parameter, write permission, copy-in/copy-out aggregate parameter, or hidden source-level pointer conversion.
 
@@ -2368,7 +2378,13 @@ A result-free routine normally uses bare `return`. In a result-free failable rou
 
 A result-bearing routine uses `return expression`. Bare `return` is invalid. The expression is evaluated once before the activation ends and must be compatible with the declared result type.
 
-A result follows the scalar destination rules: exact type, fitting exact literal, or implicit `u8`-to-`u16` widening. Checked narrowing must be written explicitly. The caller receives a copied scalar value. Aggregate-producing work instead writes into caller-provided storage through an aggregate parameter under Section 7.9.
+A scalar result follows the scalar destination rules: exact type, fitting exact literal, or implicit `u8`-to-`u16` widening. Checked narrowing must be written explicitly. The caller receives a copied scalar value.
+
+An aggregate result must be an aggregate storage path or transient aggregate-alias result with exact referent-type identity. The storage path is rooted in a visible program variable or aggregate parameter. The caller receives a transient alias to the same existing program-lifetime object, not a copy. Section 7.9 establishes the lifetime of every admitted aggregate result without another result check.
+
+The caller may consume that transient alias only by discarding it as a complete call statement, passing it directly to an aggregate parameter, forwarding it as an aggregate return, applying an immediate field or index suffix, or using it as the source of exact-type aggregate assignment. It cannot be retained in a source variable. To retain the returned value, the caller assigns the call result into a program object or caller-supplied aggregate destination, causing the complete copy defined by Section 7.8.
+
+If evaluating a later argument or suffix performs another call, the compiler preserves the transient carrier until its containing operation consumes it. Backend liveness or argument staging provides that protection; it does not create a source-visible pointer or extend the result beyond the operation.
 
 `return` may appear anywhere in a routine statement sequence, including inside a conditional or loop. It ends the current activation immediately after transferring the result, if any. It does not execute later statements in the routine.
 
@@ -2416,7 +2432,7 @@ The compiler may lower calls and returns to regular semantic operations while pa
 
 ### 13.11 Invalid calls and capacity limits
 
-The compiler must diagnose an unavailable or non-routine callee, a missing argument list, wrong arity, an incompatible scalar argument or result, an aggregate argument with the wrong referent type, an aggregate result type, a result-free call used as a value, the wrong `return` form, a value routine whose end is reachable, an abbreviated body without one incomplete forward, and a duplicate or missing forward completion.
+The compiler must diagnose an unavailable or non-routine callee, a missing argument list, wrong arity, an incompatible scalar argument or result, an aggregate argument or result with the wrong referent type, a result-free call used as a value, the wrong `return` form, a value routine whose end is reachable, an abbreviated body without one incomplete forward, and a duplicate or missing forward completion.
 
 An implementation may bound parameters, arguments, active expression-call nesting, retained signatures, fallthrough-summary depth, and compile-time call-graph metadata. It must publish each limit and issue a capacity diagnostic before dropping an argument, corrupting a signature, losing a result, merging live state, or changing a call target. Runtime activation capacity follows Section 13.9 rather than this compile-time capacity rule.
 
@@ -2444,29 +2460,29 @@ Both paths through `maximum` return a compatible value. The result may be used d
 largest = maximum(first, second)
 ```
 
-A routine produces aggregate contents through an explicit destination parameter:
+An aggregate result preserves alias identity:
 
 ```nucleus
-sub copyEntryAt(index as u8, destination as Entry)
-    destination = entries[index]
+sub entryAt(index as u8) as Entry
+    return entries[index]
 end
 
 sub update(items as Entry[8], index as u8)
-    copyEntryAt(index, items[index])
+    items[index].value = entryAt(index).value
 end
 ```
 
-The caller chooses the destination object. The aggregate assignment copies one complete `Entry` and does not rebind the destination parameter.
+`entryAt` returns an alias to program-lifetime storage. The call itself copies no `Entry`; an aggregate assignment using that result copies into its destination.
 
-A scalar result may still be derived from an aggregate parameter:
+To retain the complete returned value, the caller provides destination storage:
 
 ```nucleus
-sub entryValue(item as Entry) as u16
-    return item.value
+sub retain(index as u8, destination as Entry)
+    destination = entryAt(index)
 end
 ```
 
-`entryValue` returns a copied scalar value and leaves its aggregate alias binding unchanged.
+`destination` remains bound to the caller's object. The assignment materializes the transient result without declaring an aggregate local.
 
 Direct and mutual recursion use ordinary signatures:
 
@@ -2521,14 +2537,14 @@ A routine that can return a recoverable error writes `fails` at the end of its h
 ```text
 routine-header ::= "sub" NAME "(" [ formal-parameter
                    { "," formal-parameter } ] ")"
-                   [ "as" scalar-type ] [ "fails" ]
+                   [ "as" type ] [ "fails" ]
 ```
 
 `fails` is part of the routine signature. A forward declaration records it once; the later abbreviated body header cannot repeat it. An ordinary routine without a forward includes it in its complete header. The clause does not change the declared parameters or optional success-result type.
 
 Absent a trap, a failable invocation completes in exactly one of two ways:
 
-- **success**, with the scalar value or no result declared by the header; or
+- **success**, with the ordinary scalar value, aggregate alias, or no result declared by the header; or
 - **failure**, with one `u8` error code and no success result.
 
 An infallible routine has only successful completion. It cannot use `fail` or propagate a callee's failure.
@@ -2846,7 +2862,7 @@ routine-header
 routine-signature-tail
     ::= "(" [ formal-parameter
         { "," formal-parameter } ] ")"
-        [ "as" scalar-type ] [ "fails" ]
+        [ "as" type ] [ "fails" ]
 formal-parameter
     ::= NAME "as" type
 
@@ -3015,15 +3031,15 @@ The standard service names and error constants from Chapter 16 are visible befor
 
 Every expression, storage path, symbol, parameter, local, field, and routine result has one static type. Scalar values have type `u8`, `u16`, or `boolean`. Records are nominal. Fixed-array identity consists of exact element type and length. Bounded-string identity consists of exact capacity.
 
-Scalar compatibility permits exact type, a fitting exact integer literal or named constant, and implicit `u8`-to-`u16` widening. Checked `u8(...)` is the only `u16`-to-`u8` conversion. Boolean and integer types do not convert. Aggregate arguments, parameter bindings, and assignments require exact type identity. Aggregate assignment copies the complete value. Aggregate parameters are fixed aliases. Routine results are scalar or absent.
+Scalar compatibility permits exact type, a fitting exact integer literal or named constant, and implicit `u8`-to-`u16` widening. Checked `u8(...)` is the only `u16`-to-`u8` conversion. Boolean and integer types do not convert. Aggregate arguments, results, parameter bindings, and assignments require exact type identity. Aggregate assignment copies the complete value. Aggregate parameters are fixed aliases, while aggregate results are transient aliases that must be consumed immediately.
 
 The compiler checks every operator, condition, assignment, argument, result, field, index, initializer, and failure code locally. A failable invocation supplies no ordinary expression value until its failure has been consumed under Chapter 14.
 
 ### 18.4 Storage and aliases
 
-A program variable owns program-lifetime storage. A scalar parameter or local owns one activation value. An aggregate parameter is a fixed typed alias established for the activation. Alias binding is not assignment. A writable aggregate storage path may be an assignment destination, and an aggregate storage path of the exact same type may be its source. A routine-local declaration with aggregate type is invalid.
+A program variable owns program-lifetime storage. A scalar parameter or local owns one activation value. An aggregate parameter is a fixed typed alias established for the activation. A returned aggregate alias is transient and cannot establish a source binding. Alias binding is not assignment. A writable aggregate storage path may be an assignment destination, and an aggregate storage path or transient aggregate-alias result of the exact same type may be its source. A routine-local declaration with aggregate type is invalid.
 
-Field and checked-index selection preserve the root identity and exact selected type. A bounded-string index selects an existing writable `u8` byte when the index is below the string's current length; `.length` yields a read-only `u8` value. Every aggregate object and subobject has program lifetime.
+Field and checked-index selection preserve the root identity and exact selected type. A bounded-string index selects an existing writable `u8` byte when the index is below the string's current length; `.length` yields a read-only `u8` value. Every aggregate object and subobject has program lifetime, so a returned aggregate alias needs no separate lifetime metadata.
 
 ### 18.5 Constants, bounds, and initialization
 
@@ -3031,7 +3047,7 @@ Named constants are top-level scalar values with types inferred from restricted 
 
 Array lengths and string capacities are positive constant values in the ranges set by Chapter 6. Constant fixed-array indices outside their domains are invalid. A bounded-string byte index is checked at runtime against the current logical length, even when the index expression is constant, unless the compiler proves the current length makes it safe at that program point.
 
-Program variables use the zero or complete static initializer forms in Chapter 8. Scalar locals use zero, an ordinary compatible expression, or a direct compatible failable result followed by `or fail`. Structured aggregate initialization occurs only for program variables.
+Program variables use the zero or complete static initializer forms in Chapter 8. Scalar locals use zero, an ordinary compatible expression, or a direct compatible failable result followed by `or fail`. Structured aggregate initialization occurs only for program variables. An aggregate assignment materializes a transient result when retention is required.
 
 ### 18.6 Routine and failure checking
 
@@ -3075,7 +3091,7 @@ A failure or trap before a success-result store or aggregate copy leaves the des
 
 Program variables exist throughout execution. Each routine call creates a distinct logical activation containing copied scalar parameters, scalar locals, and aggregate-parameter bindings. Aggregate aliases denote existing program objects or aggregate subobjects and preserve identity. Mutation of a scalar leaf is visible through every path to that leaf.
 
-Aggregate arguments transfer aliases, not object contents. Aggregate assignment copies object contents into the destination referent and does not rebind either operand. Bounded-string byte mutation through any alias is visible through every alias to the same object; it replaces an existing byte without changing length or capacity. No runtime type tag accompanies an alias, and the source language provides no operation that inspects its carrier.
+Aggregate arguments and results transfer aliases, not object contents. A returned aggregate alias transiently denotes the original program-lifetime object after the callee activation ends. It may be discarded, forwarded, selected, passed onward, or consumed by aggregate assignment, but it cannot become a stored local binding. Aggregate assignment copies object contents into the destination referent and does not rebind either operand. Bounded-string byte mutation through any alias is visible through every alias to the same object; it replaces an existing byte without changing length or capacity. No runtime type tag accompanies an alias, and the source language provides no operation that inspects its carrier.
 
 ### 19.4 Calls, returns, and recursion
 
@@ -3116,7 +3132,7 @@ The following mechanisms are required in the single Nucleus 0.1 language:
 | Expressions  | Calls, checked array and bounded-string indexing, field selection and string `.length`, explicit integer conversions, unary `+`/`-`, arithmetic including quotient and remainder, one comparison, `not`, `and`, `or`, and integer-only `xor`.                                                                                                    |
 | Statements   | Scalar and exact-type aggregate assignment, name-led calls, `return`, `fail`, `exit`, and `continue`.                                                                                                                                                                                                                                            |
 | Control      | Flat `if`/`elseif`/`else`, pre-test `while`, counted `for` over a read-only scalar-local counter with `to` or `until` and optional constant `step`.                                                                                                                                                                                              |
-| Routines     | Formal arguments including fixed aggregate aliases, named scalar locals, no result or one scalar result, early return, direct and mutual recursion, and one complete forward signature whose parameter names bind its abbreviated body.                                                                                                          |
+| Routines     | Formal arguments, named scalar locals, no result or one typed result, early return, direct and mutual recursion, and one complete forward signature whose parameter names bind its abbreviated body.                                                                                                                                             |
 | Failure      | Explicit `fails`, `fail`, `or fail`, result-free propagating return, and statement-bound `on error`; required safety traps remain separate.                                                                                                                                                                                                      |
 | System       | Nucleus System Services 0.1 with deterministic initial cursors and output writes, normal entry return, unhandled-error termination, and stable trap reasons.                                                                                                                                                                                     |
 
@@ -3146,7 +3162,7 @@ These candidates are not provisional 0.1 syntax. Extensions may prototype them o
 
 ### 20.4 Excluded mechanisms
 
-Nucleus 0.1 excludes language levels and compiler-selected profiles; modules, imports, namespaces, macros, and textual includes; raw pointers, address arithmetic, memory or port access, inline assembly, arbitrary machine-code calls, and unrestricted casts; enumeration, subrange, set, union, variant, overlaid, generic, heap, resizable, open-array, slice, and dynamic types; aggregate constants, routine-local aggregate declarations, activation-lifetime owned aggregates, aggregate routine results, general aggregate expressions or constructors, partial or named-field initializers, destructuring, inferred declarations, nested routines, overloads, routine values, callbacks, indirect calls, parameter modes, and multiple results.
+Nucleus 0.1 excludes language levels and compiler-selected profiles; modules, imports, namespaces, macros, and textual includes; raw pointers, address arithmetic, memory or port access, inline assembly, arbitrary machine-code calls, and unrestricted casts; enumeration, subrange, set, union, variant, overlaid, generic, heap, resizable, open-array, slice, and dynamic types; aggregate constants, routine-local aggregate declarations, activation-lifetime owned aggregates, general aggregate expressions or constructors, partial or named-field initializers, destructuring, inferred declarations, nested routines, overloads, routine values, callbacks, indirect calls, parameter modes, and multiple results.
 
 It also excludes assignment expressions, chained comparisons, conditional expressions, general expression statements, `call` and `then` keywords, `select`/`case`, pattern matching, repeat/do loops, `for in`, omitted counted-loop operands, counted-loop counters drawn from program variables or parameters, source assignment to an active counter, nested reuse of an active counter, labels, goto, labelled exit, exceptions, throw/catch, unwinding, destructors, `finally`, `defer`, resumable traps, and runtime type tags.
 
@@ -3156,7 +3172,7 @@ Implementation alternatives such as register allocation, helper organization, ha
 
 ### 21.1 Complete accepted program
 
-This program exercises records, complete aggregate initializers, exact-type aggregate assignment, a checked fixed array, aggregate source and destination parameters, scalar locals, a counted loop, a conditional chain, a call, and observable output:
+This program exercises records, complete aggregate initializers, exact-type aggregate assignment, a checked fixed array, an aggregate alias parameter and result, scalar locals, a counted loop, a conditional chain, a call, and observable output:
 
 ```nucleus
 record Cell
@@ -3166,8 +3182,8 @@ end
 var template as Cell = (1)
 var cells as Cell[4] = [(0), (0), (0), (0)]
 
-sub copyCell(index as u8, destination as Cell)
-    destination = cells[index]
+sub cellAt(index as u8) as Cell
+    return cells[index]
 end
 
 sub setCell(cell as Cell, value as u8)
@@ -3183,7 +3199,7 @@ sub main()
         setCell(template, index + 1)
     end
 
-    copyCell(0, cells[0])
+    cells[0].value = cellAt(0).value
     if cells[0].value = 1
         writeOutputByte('Y')
         on error code
@@ -3271,8 +3287,8 @@ The program is valid and writes byte value 4 when the output service succeeds. T
 var text as string[4] = "A\0B"
 var snapshot as string[4]
 
-sub copyText(destination as string[4])
-    destination = text
+sub textAlias() as string[4]
+    return text
 end
 
 sub mutate(value as string[4])
@@ -3280,10 +3296,10 @@ sub mutate(value as string[4])
 end
 
 sub main() fails
-    copyText(snapshot)
+    snapshot = textAlias()
 
     if snapshot.length = 3 and snapshot[1] = 0
-        mutate(text)
+        mutate(textAlias())
     end
 
     if text[1] = 'Z' and snapshot[1] = 0
@@ -3292,7 +3308,7 @@ sub main() fails
 end
 ```
 
-The literal's embedded zero is an ordinary byte, so its logical length is three. `copyText` copies the complete string object into the program-level `snapshot` object. Passing `text` to `mutate` creates a fixed alias, so mutation changes `text` while `snapshot` retains its copied zero byte. The expected standard output is `Y`.
+The literal's embedded zero is an ordinary byte, so its logical length is three. Assignment materializes `textAlias()` by copying it into the program-level `snapshot` object. Passing a second result directly to `mutate` forwards the transient alias without copying, so mutation changes `text` while `snapshot` retains its copied zero byte. The expected standard output is `Y`.
 
 ### 21.5 Result-free return propagation
 
@@ -3464,12 +3480,16 @@ end
 
 var cell as Cell
 
+sub cellAlias() as Cell
+    return cell
+end
+
 sub main()
-    var held as Cell
+    var held as Cell = cellAlias()
 end
 ```
 
-Every local must be scalar. Aggregate storage belongs at program scope and may be supplied to routines through aggregate parameters.
+Every local must be scalar. A valid materializing form declares `held` as a program variable and assigns `cellAlias()` to it inside a routine.
 
 Value routine with a reachable end:
 
@@ -3615,9 +3635,9 @@ end
 
 `input` and `output` are fixed aliases to caller storage. Complete assignment copies `source` into `destination`, after which the scalar-field assignment changes only `destination`. The expected standard output is `Y`.
 
-### 21.14 Aggregate selection and destination parameters
+### 21.14 Aggregate selection and forwarding
 
-This program copies one selected array element through caller-provided destination storage:
+This program returns and forwards an alias to one selected array element:
 
 ```nucleus
 record Sample
@@ -3625,14 +3645,13 @@ record Sample
 end
 
 var samples as Sample[2] = [(3), (7)]
-var selected as Sample
 
-sub select(items as Sample[2], index as u8, output as Sample)
-    output = items[index]
+sub select(items as Sample[2], index as u8) as Sample
+    return items[index]
 end
 
-sub forwardSelection(items as Sample[2], index as u8, output as Sample)
-    select(items, index, output)
+sub forwardSelection(items as Sample[2], index as u8) as Sample
+    return select(items, index)
 end
 
 sub replace(item as Sample, value as u8)
@@ -3640,15 +3659,14 @@ sub replace(item as Sample, value as u8)
 end
 
 sub main() fails
-    forwardSelection(samples, 1, selected)
-    replace(selected, 9)
-    if samples[1].value = 7 and selected.value = 9
+    replace(forwardSelection(samples, 1), 9)
+    if samples[1].value = 9
         writeOutputByte('Y') or fail
     end
 end
 ```
 
-`forwardSelection` passes its destination alias onward without rebinding it. `select` copies the chosen element into that destination, after which `replace` mutates only `selected`; `samples[1]` remains 7. The expected standard output is `Y`.
+Both result-bearing routines transfer transient aliases to storage inside `samples`. `replace` receives the forwarded alias and mutates the selected original object without an aggregate copy. The expected standard output is `Y`.
 
 ### 21.15 Inferred constant types
 

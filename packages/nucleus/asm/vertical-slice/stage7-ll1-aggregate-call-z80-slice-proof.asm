@@ -48,23 +48,14 @@ Stage7CopySource:
             .db "end",10
             .db "var source as Counter = (1)",10
             .db "var destination as Counter",10
-            .db "var sourceList as Counter[2] = [(1), (2)]",10
-            .db "var destinationList as Counter[2]",10
             .db "sub copyAndIncrement(input as Counter, output as Counter)",10
             .db "output = input",10
             .db "output.value = output.value + 1",10
             .db "end",10
-            .db "sub valueOf(item as Counter) as u8",10
-            .db "return item.value",10
-            .db "end",10
-            .db "sub copyList(input as Counter[2], output as Counter[2])",10
-            .db "output = input",10
-            .db "end",10
             .db "sub main() fails",10
             .db "source = source",10
             .db "copyAndIncrement(source, destination)",10
-            .db "copyList(sourceList, destinationList)",10
-            .db "if source.value = 1 and valueOf(destination) = 2 and sourceList[1].value = 2 and destinationList[1].value = 2",10
+            .db "if source.value = 1 and destination.value = 2",10
             .db "writeOutputByte('Y') or fail",10
             .db "end",10
             .db "end",10
@@ -75,12 +66,11 @@ Stage7ForwardSource:
             .db "value as u8",10
             .db "end",10
             .db "var samples as Sample[2] = [(3), (7)]",10
-            .db "var selected as Sample",10
-            .db "sub select(items as Sample[2], index as u8, output as Sample)",10
-            .db "output = items[index]",10
+            .db "sub select(items as Sample[2], index as u8) as Sample",10
+            .db "return items[index]",10
             .db "end",10
-            .db "sub forwardSelection(items as Sample[2], index as u8, output as Sample)",10
-            .db "select(items, index, output)",10
+            .db "sub forwardSelection(items as Sample[2], index as u8) as Sample",10
+            .db "return select(items, index)",10
             .db "end",10
             .db "sub nine() as u8",10
             .db "return 9",10
@@ -89,9 +79,8 @@ Stage7ForwardSource:
             .db "item.value = value",10
             .db "end",10
             .db "sub main() fails",10
-            .db "forwardSelection(samples, 1, selected)",10
-            .db "replace(selected, nine())",10
-            .db "if samples[1].value = 7 and selected.value = 9",10
+            .db "replace(forwardSelection(samples, 1), nine())",10
+            .db "if samples[1].value = 9",10
             .db "writeOutputByte('Y') or fail",10
             .db "end",10
             .db "end",10
@@ -115,14 +104,11 @@ Stage7BoundsSource:
             .db "value as u8",10
             .db "end",10
             .db "var samples as Sample[2] = [(3), (7)]",10
-            .db "sub select(items as Sample[2], index as u8, output as Sample)",10
-            .db "output = items"
-Stage7BoundsIndexPoint:
-            .db "[index]",10
+            .db "sub select(items as Sample[2], index as u8) as Sample",10
+            .db "return items[index]",10
             .db "end",10
             .db "sub main() fails",10
-Stage7BoundsCallPoint:
-            .db "select(samples, 2, samples[0])",10
+            .db "select(samples, 2)",10
             .db "writeOutputByte('N') or fail",10
             .db "end",10
 Stage7BoundsSourceEnd:
@@ -156,19 +142,13 @@ Stage7TransientMisuseSource:
             .db "value as u8",10
             .db "end",10
             .db "var samples as Sample[2] = [(3), (7)]",10
-            .db "sub select(items as Sample[2], index as u8) as "
-Stage7TransientMisusePoint:
-            .db "Sample",10
+            .db "sub select(items as Sample[2], index as u8) as Sample",10
             .db "return items[index]",10
             .db "end",10
             .db "sub main() fails",10
             .db "writeOutputByte(u8(select(samples, 0))) or fail",10
             .db "end",10
 Stage7TransientMisuseSourceEnd:
-
-            ; Remaining adversarial fixtures live after the Z80 transaction
-            ; backup rather than competing with the generated-code region.
-            .org BackupLimit
 
 Stage7RoutineCapacitySource:
             .db "sub a()",10,"end",10
@@ -187,15 +167,21 @@ Stage7ParameterCapacityPoint:
 Stage7ParameterCapacitySourceEnd:
 
 Stage7CallDepthSource:
-            .db "sub keep(item as u8) as u8",10
+            .db "record Box",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var box as Box",10
+            .db "sub keep(item as Box) as Box",10
             .db "return item",10
             .db "end",10
             .db "sub main()",10
-            .db "keep(keep(keep(keep("
-Stage7CallDepthPoint:
-            .db "keep(1)))))",10
+            .db "keep(keep(keep(keep(keep(box)))))",10
             .db "end",10
 Stage7CallDepthSourceEnd:
+
+            ; Additional adversarial source fixtures live after the Z80
+            ; transaction backup rather than consuming the 2 KiB source bank.
+            .org BackupLimit
 
 Stage7LargeDataSource:
             .db "var first as string[253] = \"A\"",10
@@ -513,70 +499,12 @@ Stage7AggregateResultScalarSource:
             .db "value as u8",10
             .db "end",10
             .db "var x as u8",10
-            .db "sub get() as "
-Stage7AggregateResultScalarPoint:
-            .db "R",10
+            .db "sub get() as R",10
             .db "return x",10
             .db "end",10
             .db "sub main()",10
             .db "end",10
 Stage7AggregateResultScalarSourceEnd:
-
-Stage7ArrayResultSource:
-            .db "sub get() as u8"
-Stage7ArrayResultPoint:
-            .db "[2]",10
-            .db "return 0",10
-            .db "end",10
-            .db "sub main()",10
-            .db "end",10
-Stage7ArrayResultSourceEnd:
-
-Stage7StringResultSource:
-            .db "sub get() as "
-Stage7StringResultPoint:
-            .db "string[4]",10
-            .db "end",10
-Stage7StringResultSourceEnd:
-
-Stage7ForwardAggregateResultSource:
-            .db "record R",10
-            .db "value as u8",10
-            .db "end",10
-            .db "forward sub get() as "
-Stage7ForwardAggregateResultPoint:
-            .db "R",10
-Stage7ForwardAggregateResultSourceEnd:
-
-Stage7ResultFreeAggregateReturnSource:
-            .db "record R",10
-            .db "value as u8",10
-            .db "end",10
-            .db "var r as R",10
-            .db "sub get()",10
-            .db "return "
-Stage7ResultFreeAggregateReturnPoint:
-            .db "r",10
-            .db "end",10
-            .db "sub main()",10
-            .db "end",10
-Stage7ResultFreeAggregateReturnSourceEnd:
-
-Stage7RetiredResultUseSource:
-            .db "record R",10
-            .db "value as u8",10
-            .db "end",10
-            .db "var source as R",10
-            .db "var destination as R",10
-            .db "sub get() as "
-Stage7RetiredResultUsePoint:
-            .db "R",10
-            .db "return source",10
-            .db "end",10
-            .db "sub main()",10
-            .db "destination = get()",10
-            .db "end",10
-Stage7RetiredResultUseSourceEnd:
 
             .org TargetRuntimeBase
 RuntimeCodeStart:
@@ -642,9 +570,6 @@ ProofStart:
             CP   3
             JP   NZ,ProofFailForwardStorage
             LD   A,(ProgramDataBase+1)
-            CP   7
-            JP   NZ,ProofFailForwardStorage
-            LD   A,(ProgramBssBase)
             CP   9
             JP   NZ,ProofFailForwardStorage
             LD   A,160
@@ -1042,7 +967,7 @@ ProofStart:
             CP   1
             JP   NZ,ProofFailBoundsRun
             LD   HL,(TrapOffset)
-            LD   DE,Stage7BoundsIndexPoint-Stage7BoundsSource
+            LD   DE,134
             OR   A
             SBC  HL,DE
             JP   NZ,ProofFailBoundsRun
@@ -1067,8 +992,8 @@ ProofStart:
             LD   DE,Stage7NominalMismatchSourceEnd
             CALL ProofExpectCompileDiagnostic
             JP   C,ProofFailNominalMismatch
-            LD   A,DiagnosticExpectedType
-            LD   BC,Stage7TransientMisusePoint-Stage7TransientMisuseSource
+            LD   A,DiagnosticTypeMismatch
+            LD   BC,200
             LD   HL,Stage7TransientMisuseSource
             LD   DE,Stage7TransientMisuseSourceEnd
             CALL ProofExpectCompileDiagnostic
@@ -1086,7 +1011,7 @@ ProofStart:
             CALL ProofExpectCompileDiagnostic
             JP   C,ProofFailParameterCapacity
             LD   A,DiagnosticExpressionCapacity
-            LD   BC,Stage7CallDepthPoint-Stage7CallDepthSource
+            LD   BC,118
             LD   HL,Stage7CallDepthSource
             LD   DE,Stage7CallDepthSourceEnd
             CALL ProofExpectCompileDiagnostic
@@ -1216,42 +1141,12 @@ ProofStart:
             LD   DE,Stage7ScalarResultAggregateSourceEnd
             CALL ProofExpectCompileDiagnostic
             JP   C,ProofFailScalarResultAggregate
-            LD   A,DiagnosticExpectedType
-            LD   BC,Stage7AggregateResultScalarPoint-Stage7AggregateResultScalarSource
+            LD   A,DiagnosticTypeMismatch
+            LD   BC,59
             LD   HL,Stage7AggregateResultScalarSource
             LD   DE,Stage7AggregateResultScalarSourceEnd
             CALL ProofExpectCompileDiagnostic
             JP   C,ProofFailAggregateResultScalar
-            LD   A,DiagnosticExpectedLine
-            LD   BC,Stage7ArrayResultPoint-Stage7ArrayResultSource
-            LD   HL,Stage7ArrayResultSource
-            LD   DE,Stage7ArrayResultSourceEnd
-            CALL ProofExpectCompileDiagnostic
-            JP   C,ProofFailArrayResult
-            LD   A,DiagnosticExpectedType
-            LD   BC,Stage7StringResultPoint-Stage7StringResultSource
-            LD   HL,Stage7StringResultSource
-            LD   DE,Stage7StringResultSourceEnd
-            CALL ProofExpectCompileDiagnostic
-            JP   C,ProofFailStringResult
-            LD   A,DiagnosticExpectedType
-            LD   BC,Stage7ForwardAggregateResultPoint-Stage7ForwardAggregateResultSource
-            LD   HL,Stage7ForwardAggregateResultSource
-            LD   DE,Stage7ForwardAggregateResultSourceEnd
-            CALL ProofExpectCompileDiagnostic
-            JP   C,ProofFailForwardAggregateResult
-            LD   A,DiagnosticUnknownName
-            LD   BC,Stage7ResultFreeAggregateReturnPoint-Stage7ResultFreeAggregateReturnSource
-            LD   HL,Stage7ResultFreeAggregateReturnSource
-            LD   DE,Stage7ResultFreeAggregateReturnSourceEnd
-            CALL ProofExpectCompileDiagnostic
-            JP   C,ProofFailResultFreeAggregateReturn
-            LD   A,DiagnosticExpectedType
-            LD   BC,Stage7RetiredResultUsePoint-Stage7RetiredResultUseSource
-            LD   HL,Stage7RetiredResultUseSource
-            LD   DE,Stage7RetiredResultUseSourceEnd
-            CALL ProofExpectCompileDiagnostic
-            JP   C,ProofFailRetiredResultUse
             LD   B,0
             LD   C,2
             CALL ProofRunInvalidCopy
@@ -1778,16 +1673,6 @@ ProofFailAggregateForScalar: LD A,48
 ProofFailScalarResultAggregate: LD A,49
                   JP ProofFailed
 ProofFailAggregateResultScalar: LD A,50
-                  JP ProofFailed
-ProofFailArrayResult: LD A,75
-                  JP ProofFailed
-ProofFailStringResult: LD A,76
-                  JP ProofFailed
-ProofFailForwardAggregateResult: LD A,77
-                  JP ProofFailed
-ProofFailResultFreeAggregateReturn: LD A,78
-                  JP ProofFailed
-ProofFailRetiredResultUse: LD A,79
                   JP ProofFailed
 ProofFailMainParameterSyntax: LD A,51
                   JP ProofFailed

@@ -274,7 +274,7 @@ Stage7ParameterCapacityFailure:
             LD   A,DiagnosticParameterCapacity
             JP   CompilerSetDiagnostic
 
-; Parse the parameter list and optional scalar result of the provisional routine.
+; Parse the parameter list and optional result of the provisional routine.
 .if HybridLL1Full
 .else
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
@@ -324,7 +324,7 @@ Stage7SignatureClose:
             JR   NZ,Stage7SignatureLine
             CALL ParserTake
             RET  C
-            CALL TypedParseType
+            CALL AggregateParseType
             RET  C
             LD   (Stage7CurrentResultType),A
 Stage7SignatureLine:
@@ -575,33 +575,10 @@ Stage7MainStatements:
             JP   ParserExpect
 .endif
 
-.routine in A,C out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
-Stage7EmitOperationByte:
-            PUSH BC
-            CALL SemanticSinkOperation
-            POP  BC
-            RET  C
-            LD   A,C
-            JP   SemanticSinkPut
-
-; Stage 7 structural operands are emitted whenever their owning operation is
-; emitted. They are not expression values and therefore do not consult the
-; constant-folding emission flag used by TypedEmitWord.
-.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
-Stage7EmitWord:
-            PUSH HL
-            LD   A,L
-            CALL SemanticSinkPut
-            POP  HL
-            RET  C
-            LD   A,H
-            JP   SemanticSinkPut
-
-; Look up one aggregate symbol, emit its opaque root carrier, and return its
-; exact aggregate type in A. The ordinary symbol-table address determines the
-; parallel type entry.
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
-Stage7EmitAggregateSymbolRoot:
+; Return aggregate symbol info in D, byte payload in BC, and exact type ID in
+; A. The ordinary symbol-table address determines the parallel type entry.
+.routine out A,BC,D,carry,zero clobbers sign,parity,halfCarry,E,HL
+Stage7LookupAggregateCurrent:
             CALL SymbolFindCurrent
             JP   NC,SymbolLookupMissing
             PUSH HL
@@ -639,6 +616,37 @@ Stage7SymbolIndexReady:
             LD   A,(Stage7ArgumentCount)
             LD   D,A
             LD   A,E
+            OR   A
+            RET
+
+.routine in A,C out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+Stage7EmitOperationByte:
+            PUSH BC
+            CALL SemanticSinkOperation
+            POP  BC
+            RET  C
+            LD   A,C
+            JP   SemanticSinkPut
+
+; Stage 7 structural operands are emitted whenever their owning operation is
+; emitted. They are not expression values and therefore do not consult the
+; constant-folding emission flag used by TypedEmitWord.
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+Stage7EmitWord:
+            PUSH HL
+            LD   A,L
+            CALL SemanticSinkPut
+            POP  HL
+            RET  C
+            LD   A,H
+            JP   SemanticSinkPut
+
+; D is the symbol class and BC its byte offset. Emit its opaque root carrier
+; and return the exact aggregate type in A.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+Stage7EmitAggregateSymbolRoot:
+            CALL Stage7LookupAggregateCurrent
+            RET  C
             LD   (Stage7PathType),A
             LD   A,D
             AND  SymbolClassMask
@@ -1168,17 +1176,30 @@ Stage7CallFailure:
             SCF
             RET
 
-; Parse a name-rooted aggregate path. The root must denote existing aggregate
-; storage; routine calls return only scalar values.
+; Parse a name-rooted aggregate path or aggregate-returning call. The result
+; must still be an address path; scalar selection is rejected by this entry.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 Stage7ParseAggregateValue:
             LD   E,TokenName
             CALL ParserExpect
             RET  C
-            CALL Stage7EmitAggregateSymbolRoot
+            CALL Stage7FindRoutineCurrent
+            JR   NZ,Stage7AggregateValueSymbol
+            LD   C,1
+            CALL Stage7ParseCall
             RET  C
             CP   AggregateFirstDynamicTypeId
             JP   C,TypedTypeFailure
+            JR   Stage7AggregateValueSuffix
+Stage7AggregateValueSymbol:
+            CALL Stage7LookupAggregateCurrent
+            RET  C
+            LD   A,D
+            AND  SymbolAggregateFlag
+            JP   Z,TypedTypeFailure
+            CALL Stage7EmitAggregateSymbolRoot
+            RET  C
+Stage7AggregateValueSuffix:
             CALL Stage7ParsePathSuffix
             RET  C
             LD   E,A
@@ -1191,6 +1212,32 @@ Stage7ParseAggregateValue:
             OR   A
             RET
 
+; Convert a scalar address path to an ordinary typed expression carrier.
+.routine in A,D out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+Stage7FinishScalarPath:
+            CP   AggregateFirstDynamicTypeId
+            JP   NC,TypedTypeFailure
+            LD   (Stage7PathType),A
+            LD   A,D
+            LD   (Stage7ArgumentCount),A
+            OR   A
+            JR   NZ,Stage7ScalarPathReady
+            LD   A,(Stage7PathType)
+            CP   ScalarTypeU16
+            LD   A,SemanticLoadIndirect8
+            JR   NZ,Stage7ScalarPathEmit
+            LD   A,SemanticLoadIndirect16
+Stage7ScalarPathEmit:
+            CALL SemanticSinkOperation
+            JR   C,Stage7ScalarPathFailure
+Stage7ScalarPathReady:
+            LD   A,(Stage7PathType)
+            OR   A
+            RET
+Stage7ScalarPathFailure:
+            SCF
+            RET
+
 ; Hooks entered by the scalar primary parser after it has consumed the NAME.
 Stage7TypedPrimaryRoutine:
             LD   C,1
@@ -1198,7 +1245,14 @@ Stage7TypedPrimaryRoutine:
             RET  C
             OR   A
             JP   Z,TypedTypeFailure
+            CP   AggregateFirstDynamicTypeId
+            JR   NC,Stage7TypedPrimaryRoutineAggregate
+            OR   A
             RET
+Stage7TypedPrimaryRoutineAggregate:
+            CALL Stage7ParsePathSuffix
+            RET  C
+            JR   Stage7FinishScalarPath
 
 .routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 Stage8TypedPrimaryService:
@@ -1295,28 +1349,7 @@ Stage7TypedPrimaryAggregateSymbol:
             RET  C
             CALL Stage7ParsePathSuffix
             RET  C
-            CP   AggregateFirstDynamicTypeId
-            JP   NC,TypedTypeFailure
-            LD   (Stage7PathType),A
-            LD   A,D
-            LD   (Stage7ArgumentCount),A
-            OR   A
-            JR   NZ,Stage7ScalarPathReady
-            LD   A,(Stage7PathType)
-            CP   ScalarTypeU16
-            LD   A,SemanticLoadIndirect8
-            JR   NZ,Stage7ScalarPathEmit
-            LD   A,SemanticLoadIndirect16
-Stage7ScalarPathEmit:
-            CALL SemanticSinkOperation
-            JR   C,Stage7ScalarPathFailure
-Stage7ScalarPathReady:
-            LD   A,(Stage7PathType)
-            OR   A
-            RET
-Stage7ScalarPathFailure:
-            SCF
-            RET
+            JP   Stage7FinishScalarPath
 
 ; Current routine name has already been consumed as a complete statement.
 .if HybridLL1Full
@@ -1329,6 +1362,28 @@ Stage7ParseCallStatement:
             RET  C
             JP   TypedParseStatementsContinue
 
+; Return one exact aggregate alias and mark the structured path non-fallthrough.
+Stage7ParseAggregateReturn:
+            LD   A,(Stage7CurrentResultType)
+            PUSH AF
+            CALL Stage7ParseAggregateValue
+            JR   C,Stage7AggregateReturnFailure
+            LD   D,A
+            POP  AF
+            CP   D
+            JP   NZ,TypedTypeFailure
+            CALL ParserExpectLine
+            RET  C
+            LD   A,SemanticReturnAggregate
+            CALL SemanticSinkOperation
+            RET  C
+            XOR  A
+            LD   (ControlSequenceFallsThrough),A
+            JP   TypedParseStatementsContinue
+Stage7AggregateReturnFailure:
+            POP  AF
+            SCF
+            RET
 .endif
 
 ; D contains the aggregate symbol info and DeclarationPayload its root offset.

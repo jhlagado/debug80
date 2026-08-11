@@ -7,7 +7,7 @@
 3. [Runtime representation](#3-runtime-representation)
 4. [Program storage and startup](#4-program-storage-and-startup)
 5. [Checked access and aggregate copying](#5-checked-access-and-aggregate-copying)
-6. [Calls, activations, and scalar results](#6-calls-activations-and-scalar-results)
+6. [Calls, activations, and results](#6-calls-activations-and-results)
 7. [Recoverable failure and traps](#7-recoverable-failure-and-traps)
 8. [System-service boundary](#8-system-service-boundary)
 9. [Generated-code integrity](#9-generated-code-integrity)
@@ -136,11 +136,11 @@ existing content byte and does not change the length.
 
 ### 3.4 Aggregate carriers
 
-An aggregate parameter is carried as one 16-bit address. Its exact
+An aggregate parameter or result is carried as one 16-bit address. Its exact
 record type, array element type and length, or string capacity remains compiler
 metadata. The runtime address has no source type tag and is never a source
 integer. Only compiler-generated field selection, checked indexing, parameter
-transfer, and copying may consume it.
+transfer, result transfer, and copying may consume it.
 
 ## 4. Program storage and startup
 
@@ -185,7 +185,7 @@ the region fits.
 A fixed-array access first checks the unsigned index against its declared
 length, then forms `base + index * stride`, and then establishes the complete
 element region. A string access applies Section 3.3. Any failed check performs
-`bounds` before a load, store, or aggregate carrier is produced.
+`bounds` before a load, store, or alias result is produced.
 
 The compiler may omit a runtime check only when information already proved at
 that source point establishes the same condition.
@@ -207,7 +207,7 @@ For a Z80 target, `LDIR` is permitted after both complete-region checks. The
 choice is private and must be measured; it does not change copy order or trap
 timing.
 
-## 6. Calls, activations, and scalar results
+## 6. Calls, activations, and results
 
 ### 6.1 Argument evaluation
 
@@ -234,9 +234,11 @@ call that cannot fit performs `activation-capacity` atomically.
 
 ### 6.3 Results and caller preservation
 
-A scalar result is copied to the caller. Routine results are scalar or absent.
-Aggregate-producing routines receive caller-provided storage through an
-aggregate-parameter carrier. Only scalar success results use a return carrier.
+A scalar result is copied to the caller. An aggregate result is one transient
+address carrier to existing program storage. The compiler preserves its exact
+referent type and keeps the carrier live until its containing source operation
+discards, forwards, selects, indexes, or copies it. A nested call during that
+operation must not destroy the carrier.
 
 Every return restores the caller state required after the call. Early return,
 ordinary return, recoverable failure, direct recursion, and mutual recursion
