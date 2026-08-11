@@ -738,6 +738,47 @@ TypedBackendStart:
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 EncodeProgramHeader:
             CALL BeginProgram
+.if AggregateCallSlices
+            JR   EncodeProgramEntry
+
+; Emit startup into the code segment. Prepared bytes are copied from rodata
+; into initialized RAM, then the complete BSS allocation is cleared before the
+; existing entry jump transfers to main.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+EncodeSegmentedProgramHeader:
+            LD   HL,(StaticImageLength)
+            LD   A,H
+            OR   L
+            JR   Z,EncodeSegmentedBss
+            LD   HL,GeneratedRoDataBase
+            CALL EmitLoadHl
+            RET  C
+            LD   DE,ProgramDataBase
+            CALL EmitLoadDeImmediate
+            RET  C
+            LD   HL,(StaticImageLength)
+            CALL EmitLoadBcImmediate
+            RET  C
+            LD   HL,SegmentedCopyBytes
+            CALL EmitPair
+            RET  C
+EncodeSegmentedBss:
+            LD   HL,(ProgramBssLength)
+            LD   A,H
+            OR   L
+            JR   Z,EncodeSegmentedEntry
+            LD   HL,ProgramBssBase
+            CALL EmitLoadHl
+            RET  C
+            LD   HL,(ProgramBssLength)
+            CALL EmitLoadBcImmediate
+            RET  C
+            LD   HL,InitializeBss
+            CALL EmitCall
+            RET  C
+EncodeSegmentedEntry:
+.endif
+EncodeProgramEntry:
             LD   A,$C3
             CALL EmitByte
             RET  C
@@ -745,6 +786,10 @@ EncodeProgramHeader:
             LD   (EmitDataFixup),HL
             LD   HL,0
             JP   EmitWord
+
+.if AggregateCallSlices
+SegmentedCopyBytes: .db $ED,$B0           ; LDIR
+.endif
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 EncodeTypedExpressionProgram:

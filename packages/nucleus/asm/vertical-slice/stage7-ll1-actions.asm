@@ -335,22 +335,9 @@ HybridLL1AllocateObjectEnd:
             LD   DE,(AggregateCurrentObjectOffset)
             ADD  HL,DE
 HybridLL1CheckProgramSegmentEnd:
-
-; Initialized data and BSS each have one 1 KiB adapter region. Exact end is
-; admitted; a larger mathematical end receives the existing data diagnostic.
-            LD   A,H
-            CP   4
-            JR   C,HybridLL1ProgramSegmentReady
-            JR   NZ,HybridLL1ProgramSegmentFull
-            LD   A,L
-            OR   A
-            JR   NZ,HybridLL1ProgramSegmentFull
-HybridLL1ProgramSegmentReady:
-            OR   A
-            RET
-HybridLL1ProgramSegmentFull:
-            LD   A,DiagnosticProgramDataCapacity
-            JP   CompilerSetDiagnostic
+; Initialized data and BSS use the same exact 1 KiB extent rule and diagnostic
+; as complete aggregate objects.
+            JP   AggregateCheckExtentCapacity
 
 ; ---------------------------------------------------------- record metadata
 
@@ -1221,8 +1208,7 @@ HybridLL1StatementCounterChecked:
             LD   BC,(DeclarationPayload)
             LD   A,(DeclarationInfo)
             LD   D,A
-            CALL TypedEmitStoreByInfo
-            RET
+            JP   TypedEmitStoreByInfo
 HybridLL1BeginReturnValue:
             LD   A,(Stage7CurrentResultType)
             OR   A
@@ -1286,7 +1272,6 @@ HybridLL1CommitAggregateReturn:
 HybridLL1ReturnAggregateSelected:
             CALL SemanticSinkOperation
             RET  C
-            JR   HybridLL1ReturnCommitted
 HybridLL1ReturnCommitted:
             XOR  A
             LD   (ControlSequenceFallsThrough),A

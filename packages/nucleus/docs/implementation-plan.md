@@ -1025,6 +1025,22 @@ Stage 7 proof remains 3,046 bytes and executes 1,696,205 instructions in
 18,848,156; Chapter 21 remains 1,883 bytes and executes 1,513,817 in
 14,257,361.
 
+A subsequent current-core compression pass shares the segmented startup-entry
+tail with the ordinary program-header emitter, tail-enters the existing exact
+1 KiB aggregate-capacity check from program-segment allocation, removes one
+zero-displacement branch, and converts one terminal call/return to a tail
+jump. The header merge saves 16 bytes after pricing its required two-byte
+bridge; the capacity-tail merge saves 15; and the two local tails save three.
+Compiler code is therefore 14,033 bytes plus 393 immutable bytes, for a
+14,426-byte core. The parser is 9,001 bytes: 230 engine, 746 tables, 2,665
+actions, and 5,360 residual islands. The typed/aggregate sink is 3,243 bytes.
+Workspace remains 3,613 bytes, the largest generated program remains 1,040
+bytes, and the selected runtime remains 655 bytes. Baseline/current comparison
+keeps complete semantic buffers, active generated publications, and runtime
+bytes identical. The Stage 7 proof executes 1,696,249 instructions in
+15,674,079 T-states; Stage 8 executes 2,025,638 in 18,848,024; and Chapter 21
+executes 1,513,833 in 14,257,474.
+
 ## Capacity ledger
 
 The first implementation fixes a numeric limit before each bounded structure is
