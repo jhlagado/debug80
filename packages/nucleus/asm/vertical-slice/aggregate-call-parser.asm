@@ -37,7 +37,7 @@ Stage7FindRoutineCurrent:
 Stage7FindRoutineLoop:
             LD   A,B
             CALL Stage7RoutineAddress
-            CALL Stage7CurrentNameMatchesAtHL
+            CALL TokenNameRecordEquals
             JR   C,Stage7FindRoutineFound
             INC  B
             DEC  C
@@ -62,21 +62,7 @@ Stage7FindRoutineFound:
             CP   A
             RET
 
-.routine in BC,HL out A,carry,zero clobbers sign,parity,halfCarry,DE
-Stage7CurrentNameMatchesAtHL:
-            PUSH BC
-            PUSH HL
-            LD   E,(HL)
-            INC  HL
-            LD   D,(HL)
-            INC  HL
-            LD   A,(HL)
-            LD   B,A
-            EX   DE,HL
-            CALL TokenNameEquals
-            POP  HL
-            POP  BC
-            RET
+Stage7CurrentNameMatchesAtHL .equ TokenNameRecordEquals
 
 ; Carry identifies a predefined service or error constant and A returns its
 ; dense ordinal. No match returns carry clear.
@@ -215,7 +201,7 @@ Stage7CheckParameterDuplicate:
 Stage7CheckParameterLoop:
             LD   A,B
             CALL Stage7ParameterAddress
-            CALL Stage7CurrentNameMatchesAtHL
+            CALL TokenNameRecordEquals
             JP   C,TypedDuplicateNameFailure
             INC  B
             DEC  C
@@ -253,13 +239,7 @@ Stage7AppendParameter:
             CP   Stage7ParameterCapacity
             JR   NC,Stage7ParameterCapacityFailure
             CALL Stage7ParameterAddress
-            LD   BC,(TokenLexemePointer)
-            LD   (HL),C
-            INC  HL
-            LD   (HL),B
-            INC  HL
-            LD   A,(TokenLength)
-            LD   (HL),A
+            CALL TokenRetainNameAtHL
             INC  HL
             LD   A,(Stage7PathType)
             LD   (HL),A
@@ -413,13 +393,7 @@ Stage7ParseRoutineAfterName:
             LD   A,(Stage7RoutineCount)
             LD   (Stage7CurrentRoutine),A
             CALL Stage7RoutineAddress
-            LD   DE,(TokenLexemePointer)
-            LD   (HL),E
-            INC  HL
-            LD   (HL),D
-            INC  HL
-            LD   A,(TokenLength)
-            LD   (HL),A
+            CALL TokenRetainNameAtHL
             INC  HL
             LD   A,(Stage7ParameterCount)
             LD   (HL),A
@@ -754,20 +728,9 @@ Stage7PathRecordFieldLoop:
             JR   Z,Stage7FieldMissing
             LD   A,B
             CALL AggregateFieldAddress
-            PUSH BC
             PUSH DE
-            PUSH HL
-            LD   E,(HL)
-            INC  HL
-            LD   D,(HL)
-            INC  HL
-            LD   A,(HL)
-            LD   B,A
-            EX   DE,HL
-            CALL TokenNameEquals
-            POP  HL
+            CALL TokenNameRecordEquals
             POP  DE
-            POP  BC
             JR   C,Stage7PathRecordFieldFound
             INC  B
             DEC  D

@@ -1,5 +1,7 @@
 ; Bounded exact-name table for the first general scalar slice.
 
+.if AggregateCallSlices
+.else
 .routine out A,carry,zero clobbers sign,parity,halfCarry
 SymbolReset:
             XOR  A
@@ -7,6 +9,7 @@ SymbolReset:
             LD   (NextLocalSlot),A
             LD   (NextProgramSlot),A
             RET
+.endif
 
 ; Compare the current NAME token with committed entries. Carry returns a
 ; matching entry in HL. The provisional entry at SymbolCount is invisible.
@@ -18,17 +21,7 @@ SymbolFindCurrent:
             LD   C,A
             LD   HL,SymbolTableBase
 SymbolFindCurrentLoop:
-            PUSH BC
-            PUSH HL
-            LD   E,(HL)
-            INC  HL
-            LD   D,(HL)
-            INC  HL
-            LD   B,(HL)
-            EX   DE,HL
-            CALL TokenNameEquals
-            POP  HL
-            POP  BC
+            CALL TokenNameRecordEquals
             RET  C
             LD   DE,SymbolEntrySize
             ADD  HL,DE
@@ -67,13 +60,7 @@ SymbolPrepareCurrentWord:
             ADD  HL,BC
             LD   BC,SymbolTableBase
             ADD  HL,BC
-            LD   BC,(TokenLexemePointer)
-            LD   (HL),C
-            INC  HL
-            LD   (HL),B
-            INC  HL
-            LD   A,(TokenLength)
-            LD   (HL),A
+            CALL TokenRetainNameAtHL
             INC  HL
             LD   (HL),D
             INC  HL

@@ -11,10 +11,8 @@ TypedMatchForwardName:
             LD   A,(ForwardOrdinal)
             OR   A
             RET  Z
-            LD   HL,(ForwardNamePointer)
-            LD   A,(ForwardNameLength)
-            LD   B,A
-            JP   TokenNameEquals
+            LD   HL,ForwardNamePointer
+            JP   TokenNameRecordEquals
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 TypedRetainDeclarationName:
@@ -25,14 +23,11 @@ TypedRetainDeclarationName:
             CALL TypedMatchForwardName
             JR   C,TypedDuplicateNameFailure
 TypedRetainDeclarationNameReady:
-            LD   HL,(TokenLexemePointer)
-            LD   (DeclarationNamePointer),HL
-            LD   A,(TokenLength)
-            LD   (DeclarationNameLength),A
+            LD   HL,DeclarationNamePointer
+            CALL TokenRetainNameAtHL
             LD   HL,TokenStartOffset
             LD   DE,DeclarationNamePosition
-            LD   BC,6
-            LDIR
+            CALL CompilerCopyPosition
             OR   A
             RET
 
@@ -67,8 +62,7 @@ TypedPrepareCurrentWord:
             PUSH DE
             LD   HL,DeclarationNamePosition
             LD   DE,TokenStartOffset
-            LD   BC,6
-            LDIR
+            CALL CompilerCopyPosition
 .if AggregateCallSlices
             CALL Stage7RejectCurrentDeclarationName
             JR   NC,TypedPrepareCurrentRoutineClear
@@ -165,8 +159,7 @@ TypedExpressionPush:
             INC  HL
             EX   DE,HL
             LD   HL,ExpressionValuePosition
-            LD   BC,6
-            LDIR
+            CALL CompilerCopyPosition
             LD   A,(ExpressionStackDepth)
             INC  A
             LD   (ExpressionStackDepth),A
@@ -231,8 +224,7 @@ TypedLeftRangeFailure:
             LD   HL,(ExpressionLeftPositionPointer)
 TypedRangeFailureAtPosition:
             LD   DE,TokenStartOffset
-            LD   BC,6
-            LDIR
+            CALL CompilerCopyPosition
 TypedRangeFailure:
             LD   A,DiagnosticIntegerRange
             JP   CompilerSetDiagnostic
@@ -539,8 +531,7 @@ TypedParsePrimary:
             PUSH BC
             LD   HL,TokenStartOffset
             LD   DE,ExpressionValuePosition
-            LD   BC,6
-            LDIR
+            CALL CompilerCopyPosition
             POP  BC
             POP  AF
             CP   TokenNumber

@@ -1,5 +1,7 @@
 ; Checked semantic-operation buffer for the counted-loop and array slices.
 
+.if AggregateCallSlices
+.else
 .routine out carry,zero clobbers sign,parity,halfCarry,A,HL
 SemanticSinkReset:
             LD   HL,SemanticBufferBase+1
@@ -8,6 +10,7 @@ SemanticSinkReset:
             LD   (SinkOperationCount),A
             LD   (SemanticBufferBase),A
             RET
+.endif
 
 .routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
 SemanticSinkPut:

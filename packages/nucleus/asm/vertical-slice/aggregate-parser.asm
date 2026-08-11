@@ -326,13 +326,7 @@ AggregateFieldDuplicateLoop:
             PUSH AF
             PUSH BC
             CALL AggregateFieldAddress
-            LD   E,(HL)
-            INC  HL
-            LD   D,(HL)
-            INC  HL
-            LD   B,(HL)
-            EX   DE,HL
-            CALL TokenNameEquals
+            CALL TokenNameRecordEquals
             JR   C,AggregateFieldDuplicateUnwind
             POP  BC
             POP  AF
@@ -393,13 +387,7 @@ AggregateRecordFieldLoop:
             JP   NC,AggregateTypeCapacityFailure
             PUSH AF
             CALL AggregateFieldAddress
-            LD   DE,(TokenLexemePointer)
-            LD   (HL),E
-            INC  HL
-            LD   (HL),D
-            INC  HL
-            LD   A,(TokenLength)
-            LD   (HL),A
+            CALL TokenRetainNameAtHL
             POP  AF
             PUSH HL
             CALL ParserExpectAs

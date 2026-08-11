@@ -20,10 +20,17 @@ CompilerSetDiagnostic:
             LD   HL,TokenStartOffset
             LD   DE,DiagnosticOffset
             PUSH BC
-            LD   BC,6
-            LDIR
+            CALL CompilerCopyPosition
             POP  BC
             SCF
+            RET
+
+; Copy one complete offset/line/column record from HL to DE. LDIR preserves
+; carry, allowing diagnostic callers to establish failure after the copy.
+.routine in DE,HL out BC,DE,HL clobbers parity,halfCarry
+CompilerCopyPosition:
+            LD   BC,6
+            LDIR
             RET
 
 ; E is the expected token ordinal. An ordinary mismatch reports the token
@@ -1091,10 +1098,24 @@ CompileSliceResetState:
             XOR  A
             LD   (DiagnosticCode),A
             LD   (DiagnosticPartId),A
+.if AggregateCallSlices
+            LD   HL,SemanticBufferBase+1
+            LD   (SinkCursor),HL
+            LD   (SinkOperationCount),A
+            LD   (SemanticBufferBase),A
+.else
             CALL SemanticSinkReset
+.endif
             LD   A,$FF
             LD   (ParserLookaheadKind),A
+.if AggregateCallSlices
+            XOR  A
+            LD   (SymbolCount),A
+            LD   (NextLocalSlot),A
+            LD   (NextProgramSlot),A
+.else
             CALL SymbolReset
+.endif
             XOR  A
             LD   HL,AggregateMode
             LD   B,AggregateHasInitializer-AggregateMode+1

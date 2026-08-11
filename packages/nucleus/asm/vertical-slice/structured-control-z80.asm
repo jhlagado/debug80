@@ -396,12 +396,8 @@ StructuredForNextFit:
             CALL EmitWord
             RET  C
             LD   HL,(EmitControlTrapOffset)
-            CALL EmitLoadHl
-            RET  C
             LD   A,4
-            CALL EmitLoadAImmediate
-            RET  C
-            CALL TypedEmitTrapEnding
+            CALL TypedEmitTrapBody
             RET  C
             LD   DE,(EmitUpdateExitFixup)
             LD   HL,(EmitCursor)

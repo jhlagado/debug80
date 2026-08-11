@@ -7,6 +7,7 @@ Stage7BeginRoutine:
             CALL NextSemanticByte
             LD   C,A
             CALL NextSemanticByte     ; retained parameter count
+Stage7DefineRoutineFrame:
             CALL StructuredDefineLabel
             RET  C
             LD   HL,ExpressionFrameBytes
@@ -83,12 +84,8 @@ Stage7BoundsGuard:
             RET  C
             LD   (EmitFailureFixup),DE
             LD   HL,(Stage7CallOffset)
-            CALL EmitLoadHl
-            RET  C
             LD   A,1
-            CALL EmitLoadAImmediate
-            RET  C
-            CALL TypedEmitTrapEnding
+            CALL TypedEmitTrapBody
             RET  C
             LD   DE,(EmitFailureFixup)
             JP   PatchHere
@@ -143,18 +140,12 @@ Stage8ReadCallStateLoop:
             AND  Stage8CallableServiceFlag
             JP   NZ,Stage8InvokeService
             LD   HL,ActivationClaim
-            CALL EmitCall
-            RET  C
-            CALL EmitJrNcPlaceholder
+            CALL TypedEmitFailableCall
             RET  C
             LD   (EmitExitFixup),DE
             LD   HL,(Stage7CallOffset)
-            CALL EmitLoadHl
-            RET  C
             LD   A,5
-            CALL EmitLoadAImmediate
-            RET  C
-            CALL TypedEmitTrapEnding
+            CALL TypedEmitTrapBody
             RET  C
             LD   DE,(EmitExitFixup)
             CALL PatchHere
@@ -380,10 +371,7 @@ Stage8ServiceAddressTable:
 Stage8BeginCallableMain:
             CALL NextSemanticByte
             LD   (Stage8EmitCallFlags),A
-            LD   DE,(EmitDataFixup)
-            LD   HL,(EmitCursor)
-            CALL PatchWord
-            CALL TypedSaveRootFrame
+            CALL TypedBeginProgramFrame
             RET  C
             LD   C,Stage7MainLabel
             LD   A,$CD
@@ -411,10 +399,7 @@ Stage8MainWrapperSuccess:
             CALL EmitSuccessReturn
             RET  C
             LD   C,Stage7MainLabel
-            CALL StructuredDefineLabel
-            RET  C
-            LD   HL,ExpressionFrameBytes
-            JP   EmitEight
+            JP   Stage7DefineRoutineFrame
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7EndRoutine:
@@ -454,9 +439,7 @@ Stage7SelectField:
 Stage7SelectIndex:
             CALL ReadSemanticWord
             LD   (Stage7PathOffset),DE     ; length
-            CALL ReadSemanticWord
-            LD   (Stage7PathExtent),DE     ; stride
-            CALL Stage7ReadCallOffset
+            CALL Stage7ReadExtentAndOffset ; stride and source position
             LD   HL,Stage7PopIndexBase
             CALL   EmitPair
             RET  C
@@ -503,21 +486,13 @@ Stage7StoreIndirect16:
 ; second check reaches bounds with the destination still untouched.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 Stage7CopyAggregate:
-            CALL ReadSemanticWord
-            LD   (Stage7PathExtent),DE
-            CALL Stage7ReadCallOffset
+            CALL Stage7ReadExtentAndOffset
             LD   HL,Stage7CopyPrepare
             CALL   EmitFour
             RET  C
             CALL Stage7EmitRegionCheck
             RET  C
-            LD   A,$E1                    ; POP HL source
-            CALL EmitByte
-            RET  C
-            LD   A,$E5                    ; retain source
-            CALL EmitByte
-            RET  C
-            CALL Stage7EmitRegionCheck
+            CALL Stage7PreserveCarrierRegion
             RET  C
             LD   HL,Stage7CopyFinish
             CALL   EmitPair
@@ -527,6 +502,22 @@ Stage7CopyAggregate:
             RET  C
             LD   HL,Stage7LDIR
             JP   EmitPair
+
+.routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry
+Stage7ReadExtentAndOffset:
+            CALL ReadSemanticWord
+            LD   (Stage7PathExtent),DE
+            JP   Stage7ReadCallOffset
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+Stage7PreserveCarrierRegion:
+            LD   A,$E1                    ; POP HL source
+            CALL EmitByte
+            RET  C
+            LD   A,$E5                    ; retain source
+            CALL EmitByte
+            RET  C
+            JR   Stage7EmitRegionCheck
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7EmitRegionCheck:
@@ -555,13 +546,7 @@ Stage7ReadStringExtent:
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7StringLength:
             CALL Stage7ReadStringExtent
-            LD   A,$E1                    ; POP HL carrier
-            CALL EmitByte
-            RET  C
-            LD   A,$E5                    ; preserve carrier across region check
-            CALL EmitByte
-            RET  C
-            CALL Stage7EmitRegionCheck
+            CALL Stage7PreserveCarrierRegion
             RET  C
             LD   A,$E1                    ; POP HL carrier
             CALL EmitByte

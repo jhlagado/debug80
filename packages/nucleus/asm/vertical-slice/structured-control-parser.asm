@@ -2,6 +2,8 @@
 ; Parser frames live only during source checking. Z80 emission reuses their
 ; workspace after the complete semantic transcript has been published.
 
+.if HybridLL1Full
+.else
 .routine out A,carry,zero clobbers sign,parity,halfCarry,HL
 ControlReset:
             XOR  A
@@ -11,6 +13,7 @@ ControlReset:
 .else
             LD   (ControlNextLabel),A
             RET
+.endif
 .endif
 
 .routine in A out A,DE,HL,carry,zero clobbers sign,parity,halfCarry

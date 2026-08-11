@@ -297,12 +297,23 @@ export function generateStage7Tables(): string {
   const actionLayout = stage7ActionLayout(grammar);
   validateStage7PhysicalHandlers(readFileSync(actionSourcePath, "utf8"));
   const actions = actionLayout.map(({ logical }) => logical);
+  const physicalProductions: SourceProduction[] = [];
+  const physicalProductionByBody = new Map<string, number>();
+  const logicalToPhysicalProduction = grammar.productions.map((production) => {
+    const key = JSON.stringify(production.rhs);
+    const existing = physicalProductionByBody.get(key);
+    if (existing !== undefined) return existing;
+    const ordinal = physicalProductions.length;
+    physicalProductionByBody.set(key, ordinal);
+    physicalProductions.push(production);
+    return ordinal;
+  });
   if (nonterminals.length > 64) throw new Error("too many nonterminals");
   if (actions.length > 127) throw new Error("too many actions/externals");
-  if (grammar.productions.length > 127) throw new Error("too many productions");
+  if (physicalProductions.length > 127) throw new Error("too many productions");
   if (grammar.productions.some(({ rhs }) => rhs.length > 64))
     throw new Error("production exceeds parser stack capacity");
-  const productionSplit = Math.ceil(grammar.productions.length / 2);
+  const productionSplit = Math.ceil(physicalProductions.length / 2);
   let rowOffset = 0;
   for (const nonterminal of nonterminals) {
     if (rowOffset > 255)
@@ -313,12 +324,12 @@ export function generateStage7Tables(): string {
     }
   }
   const productionHalfBytes = (from: number, to: number) =>
-    grammar.productions
+    physicalProductions
       .slice(from, to)
       .reduce((bytes, production) => bytes + production.rhs.length, 0);
   if (productionHalfBytes(0, productionSplit) > 255)
     throw new Error("low production directory offset overflow");
-  if (productionHalfBytes(productionSplit, grammar.productions.length) > 255)
+  if (productionHalfBytes(productionSplit, physicalProductions.length) > 255)
     throw new Error("high production directory offset overflow");
 
   const symbol = (name: string): string => {
@@ -334,7 +345,7 @@ export function generateStage7Tables(): string {
   const lines = [
     "; Generated from stage7-grammar.json.",
     `HybridLL1NonterminalCount .equ ${nonterminals.length}`,
-    `HybridLL1ProductionCount  .equ ${grammar.productions.length}`,
+    `HybridLL1ProductionCount  .equ ${physicalProductions.length}`,
     `HybridLL1ProductionSplit  .equ ${productionSplit}`,
     `HybridLL1ActionCount      .equ ${actions.length}`,
     `HybridLL1StartSymbol      .equ ${symbol(grammar.start)}`,
@@ -363,7 +374,7 @@ export function generateStage7Tables(): string {
       if (predictions.length === 0)
         throw new Error(`production ${productionIndex} has no prediction`);
       lines.push(
-        `            .db ${productionIndex}${rowIndex === rowProductions.length - 1 ? "+$80" : ""}`,
+        `            .db ${logicalToPhysicalProduction[productionIndex]}${rowIndex === rowProductions.length - 1 ? "+$80" : ""}`,
       );
       predictions.forEach((token, index) =>
         lines.push(
@@ -373,7 +384,7 @@ export function generateStage7Tables(): string {
     });
   }
   lines.push("HybridLL1RowsEnd:", "", "HybridLL1ProductionDirectory:");
-  grammar.productions
+  physicalProductions
     .slice(0, productionSplit)
     .forEach((production, index) =>
       lines.push(
@@ -384,7 +395,7 @@ export function generateStage7Tables(): string {
     "            .db HybridLL1ProductionsHigh-HybridLL1Productions",
     "HybridLL1ProductionDirectoryHigh:",
   );
-  grammar.productions.slice(productionSplit).forEach((production, relative) => {
+  physicalProductions.slice(productionSplit).forEach((production, relative) => {
     const index = productionSplit + relative;
     lines.push(
       `            .db HybridLL1Production${index}-HybridLL1ProductionsHigh ; ${production.lhs}`,
@@ -395,7 +406,7 @@ export function generateStage7Tables(): string {
     "HybridLL1ProductionDirectoryEnd:",
     "HybridLL1Productions:",
   );
-  grammar.productions.forEach((production, index) => {
+  physicalProductions.forEach((production, index) => {
     if (index === productionSplit) lines.push("HybridLL1ProductionsHigh:");
     const reversed = [...production.rhs].reverse();
     lines.push(`HybridLL1Production${index}: ; ${production.lhs}`);

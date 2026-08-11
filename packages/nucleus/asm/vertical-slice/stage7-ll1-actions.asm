@@ -2,7 +2,9 @@
 ; These routines never select grammar productions. They consume only retained
 ; expression/type-directed external islands declared by the generated grammar.
 
-HybridLL1ForMode       .equ HybridLL1StackBase+HybridLL1StackCapacity
+; Aggregate initializer staging is dead while a routine body is parsed, so
+; the for/flow action scratch safely reuses its first thirteen bytes.
+HybridLL1ForMode       .equ AggregateInitializerBase
 HybridLL1ForStep       .equ HybridLL1ForMode+1
 HybridLL1ForOffset     .equ HybridLL1ForStep+2
 HybridLL1FlowStackBase .equ HybridLL1ForOffset+2
@@ -372,13 +374,7 @@ HybridLL1BeginRecordField:
             JP   NC,AggregateTypeCapacityFailure
             PUSH AF
             CALL AggregateFieldAddress
-            LD   DE,(TokenLexemePointer)
-            LD   (HL),E
-            INC  HL
-            LD   (HL),D
-            INC  HL
-            LD   A,(TokenLength)
-            LD   (HL),A
+            CALL TokenRetainNameAtHL
             POP  AF
             OR   A
             RET
@@ -514,8 +510,7 @@ HybridLL1RestoreSubName:
             CALL TypedRestoreDeclarationToken
             LD   HL,DeclarationNamePosition
             LD   DE,TokenStartOffset
-            LD   BC,6
-            LDIR
+            CALL CompilerCopyPosition
             OR   A
             RET
 
@@ -536,13 +531,7 @@ HybridLL1BeginSub:
             LD   A,(Stage7RoutineCount)
             LD   (Stage7CurrentRoutine),A
             CALL Stage7RoutineAddress
-            LD   DE,(TokenLexemePointer)
-            LD   (HL),E
-            INC  HL
-            LD   (HL),D
-            INC  HL
-            LD   A,(TokenLength)
-            LD   (HL),A
+            CALL TokenRetainNameAtHL
             INC  HL
             LD   A,(Stage7ParameterCount)
             LD   (HL),A
@@ -605,10 +594,8 @@ HybridLL1RetainParameter:
             JR   Z,HybridLL1MainParameterFailure
             CALL Stage7CheckParameterDeclarationName
             RET  C
-            LD   HL,(TokenLexemePointer)
-            LD   (DeclarationNamePointer),HL
-            LD   A,(TokenLength)
-            LD   (DeclarationNameLength),A
+            LD   HL,DeclarationNamePointer
+            CALL TokenRetainNameAtHL
             OR   A
             RET
 HybridLL1MainParameterFailure:
@@ -700,7 +687,7 @@ HybridLL1ForwardMissing:
 HybridLL1BeginSubBody:
             LD   A,(Stage7CurrentRoutine)
             INC  A
-            JR   Z,HybridLL1BeginMainBody
+            JP   Z,HybridLL1BeginMainBody
             DEC  A
             CALL HybridLL1PublishRoutine
             JR   HybridLL1OpenRoutineBody
@@ -731,7 +718,8 @@ HybridLL1OpenRoutineBody:
             LD   (Stage7GlobalSymbolCount),A
             XOR  A
             LD   (NextLocalSlot),A
-            CALL ControlReset
+            XOR  A
+            LD   (ControlDepth),A
             LD   A,(Stage7CurrentResultType)
             OR   A
             LD   A,ControlRoutineValue
@@ -792,7 +780,8 @@ HybridLL1BeginMainBody:
             LD   (NextLocalSlot),A
             LD   (Stage7CurrentResultType),A
             LD   (ControlRoutineKind),A
-            CALL ControlReset
+            XOR  A
+            LD   (ControlDepth),A
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry
 HybridLL1SetFallsThrough:
@@ -875,6 +864,7 @@ HybridLL1FailOperationReady:
             LD   A,H
             CALL SemanticSinkPut
             RET  C
+HybridLL1NoFallthrough:
             XOR  A
             LD   (ControlSequenceFallsThrough),A
             RET
@@ -1099,10 +1089,7 @@ HybridLL1DefaultLocalInitializer:
 
 .routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C,IX,IY
 HybridLL1FinishLocalInitializer:
-            LD   A,(DeclarationInfo)
-            AND  ScalarMetaTypeMask
-            LD   E,A
-            CALL HybridLL1CheckExpressionAssignable
+            CALL HybridLL1ValidateDeclarationExpression
             RET  C
             LD   A,(Stage8DirectFailable)
             OR   A
@@ -1113,6 +1100,13 @@ HybridLL1FinishLocalInitializer:
             JP   Z,HybridLL1FailureContext
             OR   A
             RET
+
+.routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C,IX,IY
+HybridLL1ValidateDeclarationExpression:
+            LD   A,(DeclarationInfo)
+            AND  ScalarMetaTypeMask
+            LD   E,A
+            JR   HybridLL1CheckExpressionAssignable
 
 .routine in E out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C,IX,IY
 HybridLL1CheckExpressionAssignable:
@@ -1264,9 +1258,7 @@ HybridLL1ReturnAggregateSelected:
             CALL SemanticSinkOperation
             RET  C
 HybridLL1ReturnCommitted:
-            XOR  A
-            LD   (ControlSequenceFallsThrough),A
-            RET
+            JP   HybridLL1NoFallthrough
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1CommitBareReturn:
@@ -1524,10 +1516,7 @@ HybridLL1BeginFor:
             JP   HybridLL1SetLocalExpectedType
 
 HybridLL1CheckForInitial:
-            LD   A,(DeclarationInfo)
-            AND  ScalarMetaTypeMask
-            LD   E,A
-            CALL HybridLL1CheckExpressionAssignable
+            CALL HybridLL1ValidateDeclarationExpression
             RET  C
             JP   Stage8RequireNoPendingFailure
 

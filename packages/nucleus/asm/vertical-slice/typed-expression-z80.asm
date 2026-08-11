@@ -167,13 +167,17 @@ TypedDefine16:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedBeginMain:
-            LD   DE,(EmitDataFixup)
-            LD   HL,(EmitCursor)
-            CALL PatchWord
-            CALL TypedSaveRootFrame
+            CALL TypedBeginProgramFrame
             RET  C
             LD   HL,ExpressionFrameBytes
             JP   EmitEight
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedBeginProgramFrame:
+            LD   DE,(EmitDataFixup)
+            LD   HL,(EmitCursor)
+            CALL PatchWord
+            JP   TypedSaveRootFrame
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
 TypedDeclare8:
@@ -338,10 +342,7 @@ TypedSubtract16:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedMultiply8:
-            CALL TypedPopOperands
-            RET  C
-            LD   HL,MultiplyU16
-            CALL EmitCall
+            CALL TypedMultiply
             RET  C
             LD   HL,TypedZeroHigh
             CALL   EmitPair
@@ -349,12 +350,23 @@ TypedMultiply8:
             JR   TypedPushHL
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedMultiply16:
+            CALL TypedMultiply
+            RET  C
+            JR   TypedPushHL
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedMultiply:
             CALL TypedPopOperands
             RET  C
             LD   HL,MultiplyU16
+            JP   EmitCall
+
+; Emit a call whose carry-clear success path must skip a generated failure
+; outcome. DE returns the branch operand for the caller to patch.
+.routine in HL out A,DE,carry,zero clobbers sign,parity,halfCarry,B,C,HL
+TypedEmitFailableCall:
             CALL EmitCall
             RET  C
-            JR   TypedPushHL
+            JP   EmitJrNcPlaceholder
 
 .routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry
 TypedReadTrapPosition:
@@ -395,16 +407,10 @@ TypedDivide:
             JR   Z,TypedDivideCall
             LD   HL,ModuloU16
 TypedDivideCall:
-            CALL EmitCall
-            RET  C
-            CALL EmitJrNcPlaceholder
-            RET  C
-            CALL TypedEmitTrapHead
+            CALL TypedEmitFailableCall
             RET  C
             LD   A,3
-            CALL EmitLoadAImmediate
-            RET  C
-            CALL TypedEmitTrapTail
+            CALL TypedEmitCurrentTrap
             RET  C
             LD   A,(EmitTypedWidth)
             AND  1
@@ -472,12 +478,8 @@ TypedNarrow8:
             LD   A,$28                    ; JR Z,success
             CALL EmitRelativePlaceholder
             RET  C
-            CALL TypedEmitTrapHead
-            RET  C
             LD   A,2
-            CALL EmitLoadAImmediate
-            RET  C
-            CALL TypedEmitTrapTail
+            CALL TypedEmitCurrentTrap
             RET  C
             JP   TypedPushHL
 
@@ -525,9 +527,7 @@ TypedWrite8:
             CALL   EmitPair
             RET  C
             LD   HL,WriteOutputByte
-            CALL EmitCall
-            RET  C
-            CALL EmitJrNcPlaceholder
+            CALL TypedEmitFailableCall
             RET  C
             CALL TypedEmitTrapHead
             RET  C
@@ -556,6 +556,36 @@ TypedEmitTrapEnding:
             RET  C
             JP   EmitTrapEnding
 
+; Emit the common terminal trap body for source position HL and trap code A.
+; The caller owns and patches the conditional branch around this terminal path.
+.routine in A,HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedEmitTrapBody:
+            PUSH AF
+            CALL EmitLoadHl
+            JR   C,TypedEmitTrapBodyFailure
+            POP  AF
+            CALL EmitLoadAImmediate
+            RET  C
+            JR   TypedEmitTrapEnding
+TypedEmitTrapBodyFailure:
+            LD   L,A
+            POP  BC
+            LD   A,L
+            SCF
+            RET
+
+; Emit and patch a terminal trap using the retained typed-expression source
+; position. A is the trap code and DE the success-branch operand.
+.routine in A,DE out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedEmitCurrentTrap:
+            PUSH AF
+            CALL TypedEmitTrapHead
+            JR   C,TypedEmitTrapBodyFailure
+            POP  AF
+            CALL EmitLoadAImmediate
+            RET  C
+            JR   TypedEmitTrapTail
+
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedEmitTrapTail:
             CALL TypedEmitTrapEnding
@@ -568,26 +598,25 @@ TypedEmitTrapTail:
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedSaveRootFrame:
             LD   HL,TypedStoreSPPrefix
-            CALL   EmitPair
-            RET  C
-            LD   HL,RootSP
-            CALL EmitWord
-            RET  C
-            LD   HL,TypedStoreIXPrefix
-            CALL   EmitPair
-            RET  C
-            LD   HL,RootIX
-            JP   EmitWord
+            JR   TypedRootFrameReady
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedRestoreRootFrame:
             LD   HL,TypedLoadSPPrefix
+            JR   TypedRootFrameReady
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TypedRootFrameReady:
+            PUSH HL
             CALL   EmitPair
+            POP  HL
             RET  C
+            PUSH HL
             LD   HL,RootSP
             CALL EmitWord
+            POP  HL
             RET  C
-            LD   HL,TypedLoadIXPrefix
+            INC  HL
+            INC  HL
             CALL   EmitPair
             RET  C
             LD   HL,RootIX
@@ -629,16 +658,10 @@ TypedCallScalar:
             CALL EmitByte
             RET  C
             LD   HL,ActivationClaim
-            CALL EmitCall
-            RET  C
-            CALL EmitJrNcPlaceholder
-            RET  C
-            CALL TypedEmitTrapHead
+            CALL TypedEmitFailableCall
             RET  C
             LD   A,5
-            CALL EmitLoadAImmediate
-            RET  C
-            CALL TypedEmitTrapTail
+            CALL TypedEmitCurrentTrap
             RET  C
             LD   C,ControlRoutineLabel
             LD   A,$CD                    ; CALL nn

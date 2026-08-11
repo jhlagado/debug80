@@ -71,6 +71,37 @@ TokenNameEqualsNo:
             OR   A
             RET
 
+; Compare the current NAME token with the retained name record at HL. The
+; record begins with a pointer word followed by a one-byte length.
+.routine in BC,HL out A,carry,zero clobbers sign,parity,halfCarry,DE
+TokenNameRecordEquals:
+            PUSH BC
+            PUSH HL
+            LD   E,(HL)
+            INC  HL
+            LD   D,(HL)
+            INC  HL
+            LD   A,(HL)
+            LD   B,A
+            EX   DE,HL
+            CALL TokenNameEquals
+            POP  HL
+            POP  BC
+            RET
+
+; Store the current NAME token's pointer and length in the three-byte record
+; at HL. HL returns at the length byte, matching the former inline sequences.
+.routine in HL out A,BC,HL clobbers carry,zero,sign,parity,halfCarry
+TokenRetainNameAtHL:
+            LD   BC,(TokenLexemePointer)
+            LD   (HL),C
+            INC  HL
+            LD   (HL),B
+            INC  HL
+            LD   A,(TokenLength)
+            LD   (HL),A
+            RET
+
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 TokenScanName:
             LD   B,0
@@ -103,7 +134,7 @@ TokenScanKeywordByte:
             INC  HL
             DJNZ TokenScanKeywordByte
             LD   A,(HL)
-            JR   TokenFinish
+            JP   TokenFinish
 TokenScanKeywordSkip:
             LD   E,B
             LD   D,0
@@ -242,21 +273,14 @@ TokenScanStringEscape:
             JR   C,TokenScanCharacterFailure
             CP   "x"
             JR   Z,TokenScanStringHex
-            CP   "0"
+            LD   HL,StringEscapeTable
+            LD   B,StringEscapeCount
+TokenScanStringEscapeLoop:
+            CP   (HL)
             JR   Z,TokenScanStringCount
-            CP   "n"
-            JR   Z,TokenScanStringCount
-            CP   "r"
-            JR   Z,TokenScanStringCount
-            CP   "t"
-            JR   Z,TokenScanStringCount
-            CP   "'"
-            JR   Z,TokenScanStringCount
-            CP   '"'
-            JR   Z,TokenScanStringCount
-            CP   "\\"
-            JR   NZ,TokenScanCharacterFailure
-            JR   TokenScanStringCount
+            INC  HL
+            DJNZ TokenScanStringEscapeLoop
+            JR   TokenScanCharacterFailure
 TokenScanStringHex:
             CALL SourceTake
             JR   C,TokenScanCharacterFailure
@@ -334,7 +358,7 @@ TokenizerTryPunctuation:
 TokenizerTryName:
             CALL TokenIsLetter
             JP   C,TokenScanName
-            JP   TokenizerLexicalFailure
+            JR   TokenizerLexicalFailure
 
 TokenizerSkipByte:
             CALL SourceTake
@@ -365,13 +389,11 @@ TokenizerLessToken:
             LD   A,TokenLess
             JP   TokenFinish
 TokenizerLessEqual:
-            CALL SourceTake
-            LD   A,TokenLessEqual
-            JP   TokenFinish
+            LD   C,TokenLessEqual
+            JR   TokenizerSimpleToken
 TokenizerNotEqual:
-            CALL SourceTake
-            LD   A,TokenNotEqual
-            JP   TokenFinish
+            LD   C,TokenNotEqual
+            JR   TokenizerSimpleToken
 
 TokenizerGreater:
             CALL SourceTake
@@ -383,9 +405,8 @@ TokenizerGreaterToken:
             LD   A,TokenGreater
             JP   TokenFinish
 TokenizerGreaterEqual:
-            CALL SourceTake
-            LD   A,TokenGreaterEqual
-            JP   TokenFinish
+            LD   C,TokenGreaterEqual
+            JR   TokenizerSimpleToken
 
 TokenizerLeftParen:
             LD   C,TokenLeftParen
@@ -550,3 +571,6 @@ TokenScanBasedDone:
             JP   TokenScanNumberDone
 TokenNumberFailure:
             JP   TokenLexicalFailure
+
+StringEscapeTable:      .db "0nrt",$27,$22,"\\"
+StringEscapeCount       .equ 7

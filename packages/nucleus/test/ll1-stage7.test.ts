@@ -19,6 +19,7 @@ const proof = (name: string): string =>
 describe("Stage 7 packed LL(1)", () => {
   it("keeps generated grammar artifacts reproducible and conflict-free", () => {
     const analysis = analyzeStage7Grammar();
+    const grammar = readStage7Grammar();
     expect(analysis.conflicts).toEqual([]);
     expect(analysis.first["compilation-unit"]).toEqual([
       "TokenAssert",
@@ -39,6 +40,10 @@ describe("Stage 7 packed LL(1)", () => {
         ),
         "utf8",
       ),
+    );
+    expect(grammar.productions).toHaveLength(75);
+    expect(generateStage7Tables()).toContain(
+      "HybridLL1ProductionCount  .equ 65",
     );
     expect(generateStage7ProofActions()).toBe(
       readFileSync(
@@ -191,7 +196,7 @@ describe("Stage 7 packed LL(1)", () => {
     });
     expect(outcome.extents).toContainEqual({
       name: "ll1-workspace",
-      bytes: 78,
+      bytes: 65,
     });
   });
 
@@ -203,28 +208,28 @@ describe("Stage 7 packed LL(1)", () => {
       outcome.extents.map(({ name, bytes }) => [name, bytes]),
     );
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
-    expect(outcome.instructions).toBe(1_696_451);
-    expect(outcome.cycles).toBe(15_676_452);
-    expect(outcome.extents).toContainEqual({ name: "parser", bytes: 8_931 });
+    expect(outcome.instructions).toBe(1_702_331);
+    expect(outcome.cycles).toBe(15_737_944);
+    expect(outcome.extents).toContainEqual({ name: "parser", bytes: 8_844 });
     expect(outcome.extents).toContainEqual({
       name: "ll1-engine",
       bytes: 230,
     });
     expect(outcome.extents).toContainEqual({
       name: "ll1-tables",
-      bytes: 746,
+      bytes: 734,
     });
     expect(outcome.extents).toContainEqual({
       name: "ll1-actions",
-      bytes: 2_602,
+      bytes: 2_573,
     });
     expect(outcome.extents).toContainEqual({
       name: "compiler-core",
-      bytes: 14_321,
+      bytes: 14_121,
     });
     expect(outcome.extents).toContainEqual({
       name: "compiler-code",
-      bytes: 13_928,
+      bytes: 13_728,
     });
     expect(outcome.extents).toContainEqual({
       name: "compiler-immutable",
@@ -232,18 +237,18 @@ describe("Stage 7 packed LL(1)", () => {
     });
     expect(outcome.extents).toContainEqual({
       name: "compiler-workspace",
-      bytes: 3_613,
+      bytes: 3_600,
     });
     expect(outcome.extents).toContainEqual({
       name: "z80-runtime",
-      bytes: 655,
+      bytes: 582,
     });
     expect(
       (extents.get("parser") ?? -1) -
         (extents.get("ll1-engine") ?? -1) -
         (extents.get("ll1-tables") ?? -1) -
         (extents.get("ll1-actions") ?? -1),
-    ).toBe(5_353);
+    ).toBe(5_307);
   }, 30_000);
 
   it("executes every retained Stage 7 action family", async () => {

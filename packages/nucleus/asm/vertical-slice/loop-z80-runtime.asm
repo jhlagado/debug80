@@ -3,40 +3,32 @@
 .routine out carry,zero clobbers sign,parity,halfCarry,A,B,C,HL
 Reset:
             XOR  A
-            LD   (TrapNumber),A
-            LD   (TrapRoutine),A
-            LD   (TrapError),A
-            LD   (ServiceCallCount),A
-            LD   (ServiceFailureCall),A
-            LD   (ServiceOutputLength),A
+            LD   HL,TrapNumber
+            LD   B,StateEnd-TrapNumber
+            CALL ResetZeroSpan
+            LD   A,ActivationCapacity
+            LD   (ActivationLimit),A
+            XOR  A
+            LD   HL,ServiceFailureCall
+            LD   B,ServiceInputLength-ServiceFailureCall
+            CALL ResetZeroSpan
             LD   (ServiceInputCursor),A
             LD   (ServiceInputFailure),A
             LD   (ServiceStorageInputCursor),A
             LD   (ServiceStorageInputFailure),A
-            LD   (ServiceStorageOutputLength),A
-            LD   (ServiceStorageOutputCursor),A
-            LD   (ServiceStorageOutputFailure),A
-            LD   (ActivationDepth),A
-            LD   (ScalarSlot),A
-            LD   A,ActivationCapacity
-            LD   (ActivationLimit),A
-            LD   HL,0
-            LD   (TrapOffset),HL
-            LD   HL,ServiceOutputBase
-            LD   B,ServiceOutputCapacity
-ResetOutput:
-            LD   (HL),A
-            INC  HL
-            DJNZ ResetOutput
-            LD   HL,ServiceStorageOutputBase
-            LD   B,ServiceStorageOutputCapacity
-ResetStorageOutput:
-            LD   (HL),A
-            INC  HL
-            DJNZ ResetStorageOutput
+            LD   HL,ServiceStorageOutputLength
+            LD   B,ServiceStateEnd-ServiceStorageOutputLength
+            CALL ResetZeroSpan
             LD   A,RunReady
             LD   (RunState),A
             OR   A
+            RET
+
+.routine in A,B,HL out B,HL clobbers zero,sign,parity,halfCarry
+ResetZeroSpan:
+            LD   (HL),A
+            INC  HL
+            DJNZ ResetZeroSpan
             RET
 
 ; Begin one scalar activation atomically. A is the copied u8 argument. The
@@ -46,17 +38,8 @@ ResetStorageOutput:
 .routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,C,HL
 ActivationPush:
             LD   B,A
-            LD   A,(ActivationDepth)
-            LD   C,A
-            ; Reset/configuration fixes the limit before execution and every
-            ; accepted push increments depth by one, so depth cannot pass the
-            ; limit. Equality is the complete configured-limit test here.
-            LD   A,(ActivationLimit)
-            CP   C
-            JR   Z,ActivationFull
-            LD   A,C
-            CP   ActivationCapacity
-            JR   NC,ActivationFull
+            CALL ActivationClaim
+            RET  C
             LD   A,(ScalarSlot)
             PUSH BC
             LD   B,0
@@ -64,16 +47,9 @@ ActivationPush:
             ADD  HL,BC
             POP  BC
             LD   (HL),A
-            INC  C
-            LD   A,C
-            LD   (ActivationDepth),A
             LD   A,B
             LD   (ScalarSlot),A
             XOR  A
-            RET
-ActivationFull:
-            LD   A,5
-            SCF
             RET
 
 ; Pop one successful scalar activation. The result is preserved by the
@@ -95,7 +71,7 @@ ActivationPop:
 ; The integrated typed-call path keeps parameters and locals in each Z80
 ; stack frame. These helpers therefore account only for bounded active depth;
 ; they preserve HL so a checked argument or returned carrier can cross them.
-.routine out A,carry,zero clobbers sign,parity,halfCarry,C
+.routine out A,C,carry,zero clobbers sign,parity,halfCarry
 ActivationClaim:
             LD   A,(ActivationDepth)
             LD   C,A
@@ -127,12 +103,10 @@ ActivationRelease:
 ; DE is the canonical index carrier.
 .routine in BC,DE out A,carry,zero clobbers sign,parity,halfCarry
 CheckArrayIndex:
-            LD   A,D
-            CP   B
-            JR   C,CheckArrayIndexReady
-            JR   NZ,AggregateBoundsFailure
             LD   A,E
-            CP   C
+            SUB  C
+            LD   A,D
+            SBC  A,B
             JR   NC,AggregateBoundsFailure
 CheckArrayIndexReady:
             OR   A
@@ -140,14 +114,12 @@ CheckArrayIndexReady:
 
 ; C is the declared capacity and HL a bounded-string carrier. On success HL is
 ; the canonical current length. A corrupted length above capacity is rejected.
-.routine in C,HL out A,HL,carry,zero clobbers sign,parity,halfCarry
+.routine in C,HL out A,HL,carry,zero clobbers sign,parity,halfCarry,C
 CheckStringLength:
+            INC  C
             LD   A,(HL)
             CP   C
-            JR   C,CheckStringLengthReady
-            JR   Z,CheckStringLengthReady
-            SCF
-            RET
+            JR   NC,AggregateBoundsFailure
 CheckStringLengthReady:
             LD   L,A
             LD   H,0
@@ -164,9 +136,9 @@ CheckStringIndex:
             JR   NZ,AggregateBoundsFailure
             LD   A,(HL)
             LD   B,A
+            INC  C
             CP   C
-            JR   C,CheckStringIndexLengthReady
-            JR   NZ,AggregateBoundsFailure
+            JR   NC,AggregateBoundsFailure
 CheckStringIndexLengthReady:
             LD   A,B
             CP   E
@@ -415,26 +387,51 @@ CompareFalse:
 ; Carry returns endOfInput, a configured input failure, or success in A.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,HL
 ReadInputByte:
-            LD   A,(ServiceInputFailure)
-            OR   A
-            JR   NZ,ReadInputByteFailure
-            LD   A,(ServiceInputCursor)
-            LD   C,A
-            LD   A,(ServiceInputLength)
-            CP   C
-            JR   Z,ReadInputByteEnd
-            LD   B,0
-            LD   HL,ServiceInputBase
-            ADD  HL,BC
-            INC  C
-            LD   A,C
-            LD   (ServiceInputCursor),A
+            LD   C,2
+            LD   HL,ServiceInputLength
+            JR   ReadServiceByte
+
+; Bulk input shares the same length/cursor/failure/buffer record shape. Its
+; configured failure is normalized to the stable storageFailure code in C.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,HL
+ReadStorageByte:
+            LD   C,4
+            LD   HL,ServiceStorageInputLength
+            JR   ReadServiceByte
+.routine in C,HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,HL
+ReadServiceByte:
+            INC  HL
+            INC  HL
             LD   A,(HL)
             OR   A
+            JR   Z,ReadServiceByteReady
+            LD   A,C
+            SCF
             RET
-ReadInputByteEnd:
+ReadServiceByteReady:
+            DEC  HL
+            DEC  HL
+            LD   A,(HL)
+            INC  HL
+            LD   C,(HL)
+            CP   C
+            JR   Z,ReadServiceByteEnd
+            PUSH HL
+            INC  HL
+            INC  HL
+            LD   B,0
+            ADD  HL,BC
+            LD   A,(HL)
+            LD   B,A
+            INC  C
+            LD   A,C
+            POP  HL
+            LD   (HL),A
+            LD   A,B
+            OR   A
+            RET
+ReadServiceByteEnd:
             LD   A,1
-ReadInputByteFailure:
             SCF
             RET
 
@@ -469,32 +466,6 @@ WriteOutputByteStore:
             RET
 WriteOutputByteFailure:
             LD   A,3
-            SCF
-            RET
-
-; Bulk input has the same cursor discipline as standard input, but any
-; configured adapter failure is reported as storageFailure.
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,HL
-ReadStorageByte:
-            LD   A,(ServiceStorageInputFailure)
-            OR   A
-            JR   NZ,StorageFailure
-            LD   A,(ServiceStorageInputCursor)
-            LD   C,A
-            LD   A,(ServiceStorageInputLength)
-            CP   C
-            JR   Z,ReadStorageByteEnd
-            LD   B,0
-            LD   HL,ServiceStorageInputBase
-            ADD  HL,BC
-            INC  C
-            LD   A,C
-            LD   (ServiceStorageInputCursor),A
-            LD   A,(HL)
-            OR   A
-            RET
-ReadStorageByteEnd:
-            LD   A,1
             SCF
             RET
 
