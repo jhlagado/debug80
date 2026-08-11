@@ -298,7 +298,6 @@ HybridLL1Row38: ; type-array-opt
             .db 71+$80
             .db TokenComma
             .db TokenEquals
-            .db TokenFails
             .db TokenNewline
             .db TokenRightParen+$80
 HybridLL1Row39: ; scalar-type
@@ -443,7 +442,7 @@ HybridLL1Production26: ; parameter-tail
 HybridLL1Production27: ; parameter
             .db $98,$64,TokenAs,$97,TokenName
 HybridLL1Production28: ; result-opt
-            .db $9a,$64,$99,TokenAs
+            .db $9a,$67,$99,TokenAs
 HybridLL1Production29: ; result-opt
 HybridLL1Production30: ; fails-opt
             .db $9b,TokenFails

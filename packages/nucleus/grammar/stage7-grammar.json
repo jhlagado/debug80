@@ -261,7 +261,7 @@
     },
     {
       "lhs": "result-opt",
-      "rhs": ["TokenAs", "a:AllowSubResult", "type", "a:SaveSubResult"]
+      "rhs": ["TokenAs", "a:AllowSubResult", "scalar-type", "a:SaveSubResult"]
     },
     { "lhs": "result-opt", "rhs": [] },
     { "lhs": "fails-opt", "rhs": ["TokenFails", "a:MarkSubFails"] },

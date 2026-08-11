@@ -1224,10 +1224,7 @@ HybridLL1BeginReturnValue:
             LD   A,(Stage7CurrentResultType)
             OR   A
             RET  Z
-            CP   AggregateFirstDynamicTypeId
-            RET  NC
             LD   (ExpressionExpectedType),A
-            OR   A
             RET
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
@@ -1235,16 +1232,8 @@ HybridLL1ReturnValue:
             LD   A,(Stage7CurrentResultType)
             OR   A
             JR   Z,HybridLL1ReturnResultFreeCall
-            CP   AggregateFirstDynamicTypeId
-            JR   NC,HybridLL1ReturnAggregateValue
             CALL TypedExpressionBeginRuntime
             JP   HybridLL1SaveExpressionResult
-HybridLL1ReturnAggregateValue:
-            CALL Stage7ParseAggregateValue
-            RET  C
-            LD   (Stage7PathType),A
-            OR   A
-            RET
 
 ; A result-free return operand is not a general expression. It is exactly one
 ; direct result-free failable invocation, whose following `or fail` is consumed
@@ -1300,14 +1289,14 @@ HybridLL1CommitReturn:
             LD   A,(Stage7CurrentResultType)
             OR   A
             JR   Z,HybridLL1CommitResultFreeReturn
-            CP   AggregateFirstDynamicTypeId
-            JR   NC,HybridLL1CommitAggregateReturn
             LD   E,A
             LD   A,(ExpressionRightMeta)
             LD   HL,(ExpressionRightValue)
             CALL TypedCheckAssignable
             RET  C
-            CALL HybridLL1ConsumeReturnFailure
+            LD   A,(Stage8DirectFailable)
+            OR   A
+            CALL NZ,Stage8ConsumePropagation
             RET  C
             LD   A,(Stage7CurrentFlags)
             AND  Stage7RoutineFails
@@ -1315,22 +1304,6 @@ HybridLL1CommitReturn:
             JR   Z,HybridLL1ReturnScalarSelected
             LD   A,SemanticReturnFailableScalar
 HybridLL1ReturnScalarSelected:
-            CALL SemanticSinkOperation
-            RET  C
-            JR   HybridLL1ReturnCommitted
-HybridLL1CommitAggregateReturn:
-            LD   D,A
-            LD   A,(Stage7PathType)
-            CP   D
-            JP   NZ,TypedTypeFailure
-            CALL HybridLL1ConsumeReturnFailure
-            RET  C
-            LD   A,(Stage7CurrentFlags)
-            AND  Stage7RoutineFails
-            LD   A,SemanticReturnAggregate
-            JR   Z,HybridLL1ReturnAggregateSelected
-            LD   A,SemanticReturnFailableAggregate
-HybridLL1ReturnAggregateSelected:
             CALL SemanticSinkOperation
             RET  C
             JR   HybridLL1ReturnCommitted
@@ -1364,13 +1337,6 @@ HybridLL1BareReturnSelected:
             CALL SemanticSinkPut
             RET  C
             JR   HybridLL1ReturnCommitted
-
-.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry
-HybridLL1ConsumeReturnFailure:
-            LD   A,(Stage8DirectFailable)
-            OR   A
-            RET  Z
-            JP   Stage8ConsumePropagation
 
 HybridLL1EmitExit:
             LD   A,TokenExit

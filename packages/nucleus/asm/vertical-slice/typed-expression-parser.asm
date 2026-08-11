@@ -2139,11 +2139,6 @@ TypedStatementControlFailure:
 TypedStatementReturn:
             CALL ParserTake
             RET  C
-.if AggregateCallSlices
-            LD   A,(Stage7CurrentResultType)
-            CP   AggregateFirstDynamicTypeId
-            JP   NC,Stage7ParseAggregateReturn
-.endif
             LD   A,(ControlRoutineKind)
             CP   ControlRoutineValue
             JR   NZ,TypedRoutineFlowFailure

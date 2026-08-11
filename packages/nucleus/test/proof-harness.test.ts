@@ -23,16 +23,16 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     expect(
       outcome.extents.find(({ name }) => name === "compiler-core")?.bytes,
     ).toBeLessThanOrEqual(16_384);
-    expect(outcome.instructions).toBe(1_515_279);
-    expect(outcome.cycles).toBe(14_266_289);
+    expect(outcome.instructions).toBe(1_530_213);
+    expect(outcome.cycles).toBe(14_418_613);
     expect(outcome.extents).toEqual([
-      { name: "compiler-code", bytes: 14_311 },
+      { name: "compiler-code", bytes: 14_209 },
       { name: "compiler-immutable", bytes: 390 },
-      { name: "compiler-core", bytes: 14_701 },
+      { name: "compiler-core", bytes: 14_599 },
       { name: "compiler-workspace", bytes: 3_623 },
       { name: "generated-z80-bound", bytes: 4_096 },
       { name: "z80-runtime", bytes: 655 },
-      { name: "corpus-source-and-descriptors", bytes: 7_056 },
+      { name: "corpus-source-and-descriptors", bytes: 7_124 },
       { name: "proof-code-and-data", bytes: 1_883 },
     ]);
 
@@ -41,7 +41,7 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
       expect(address, `${name} must be retained`).toBeDefined();
       return address ?? -1;
     };
-    expect(wordAt(outcome.memory, symbol("ProofMaxGenerated"))).toBe(1_040);
+    expect(wordAt(outcome.memory, symbol("ProofMaxGenerated"))).toBe(1_062);
     const source = (start: string, end: string): string =>
       new TextDecoder().decode(
         outcome.memory.slice(symbol(start), symbol(end)),
@@ -142,12 +142,12 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     expect(
       outcome.extents.find(({ name }) => name === "compiler-core")?.bytes,
     ).toBeLessThanOrEqual(16_384);
-    expect(outcome.instructions).toBe(1_624_567);
-    expect(outcome.cycles).toBe(15_136_536);
+    expect(outcome.instructions).toBe(1_582_191);
+    expect(outcome.cycles).toBe(14_759_878);
     expect(outcome.extents).toEqual([
-      { name: "compiler-code", bytes: 14_311 },
+      { name: "compiler-code", bytes: 14_209 },
       { name: "compiler-immutable", bytes: 390 },
-      { name: "compiler-core", bytes: 14_701 },
+      { name: "compiler-core", bytes: 14_599 },
       { name: "compiler-workspace", bytes: 3_623 },
       { name: "generated-z80-bound", bytes: 4_096 },
       { name: "z80-runtime", bytes: 655 },

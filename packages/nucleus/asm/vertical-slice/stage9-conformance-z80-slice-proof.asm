@@ -59,8 +59,8 @@ Chapter21_1Part1:
             .db 10
 Chapter21_1Part1End:
 Chapter21_1Part2:
-            .db "sub cellAt(index as u8) as Cell",10
-            .db "    return cells[index]",10
+            .db "sub copyCell(index as u8, destination as Cell)",10
+            .db "    destination = cells[index]",10
             .db "end",10
             .db 10
             .db "sub setCell(cell as Cell, value as u8)",10
@@ -76,7 +76,7 @@ Chapter21_1Part2:
             .db "        setCell(template, index + 1)",10
             .db "    end",10
             .db 10
-            .db "    cells[0].value = cellAt(0).value",10
+            .db "    copyCell(0, cells[0])",10
             .db "    if cells[0].value = 1",10
             .db "        writeOutputByte('Y')",10
             .db "        on error code",10
@@ -157,8 +157,8 @@ Chapter21_4Source:
             .db "var text as string[4] = \"A\\0B\"",10
             .db "var snapshot as string[4]",10
             .db 10
-            .db "sub textAlias() as string[4]",10
-            .db "    return text",10
+            .db "sub copyText(destination as string[4])",10
+            .db "    destination = text",10
             .db "end",10
             .db 10
             .db "sub mutate(value as string[4])",10
@@ -166,10 +166,10 @@ Chapter21_4Source:
             .db "end",10
             .db 10
             .db "sub main() fails",10
-            .db "    snapshot = textAlias()",10
+            .db "    copyText(snapshot)",10
             .db 10
             .db "    if snapshot.length = 3 and snapshot[1] = 0",10
-            .db "        mutate(textAlias())",10
+            .db "        mutate(text)",10
             .db "    end",10
             .db 10
             .db "    if text[1] = 'Z' and snapshot[1] = 0",10
@@ -310,13 +310,14 @@ Chapter21_14Source:
             .db "end",10
             .db 10
             .db "var samples as Sample[2] = [(3), (7)]",10
+            .db "var selected as Sample",10
             .db 10
-            .db "sub select(items as Sample[2], index as u8) as Sample",10
-            .db "    return items[index]",10
+            .db "sub select(items as Sample[2], index as u8, output as Sample)",10
+            .db "    output = items[index]",10
             .db "end",10
             .db 10
-            .db "sub forwardSelection(items as Sample[2], index as u8) as Sample",10
-            .db "    return select(items, index)",10
+            .db "sub forwardSelection(items as Sample[2], index as u8, output as Sample)",10
+            .db "    select(items, index, output)",10
             .db "end",10
             .db 10
             .db "sub replace(item as Sample, value as u8)",10
@@ -324,8 +325,9 @@ Chapter21_14Source:
             .db "end",10
             .db 10
             .db "sub main() fails",10
-            .db "    replace(forwardSelection(samples, 1), 9)",10
-            .db "    if samples[1].value = 9",10
+            .db "    forwardSelection(samples, 1, selected)",10
+            .db "    replace(selected, 9)",10
+            .db "    if samples[1].value = 7 and selected.value = 9",10
             .db "        writeOutputByte('Y') or fail",10
             .db "    end",10
             .db "end",10
@@ -495,14 +497,10 @@ Chapter21_10AggregateLocalSource:
             .db 10
             .db "var cell as Cell",10
             .db 10
-            .db "sub cellAlias() as Cell",10
-            .db "    return cell",10
-            .db "end",10
-            .db 10
             .db "sub main()",10
             .db "    var held as "
 Chapter21_10AggregateLocalPoint:
-            .db "Cell = cellAlias()",10
+            .db "Cell",10
             .db "end",10
 Chapter21_10AggregateLocalSourceEnd:
 
@@ -608,8 +606,8 @@ Chapter21_10BinaryPoint:
 Chapter21_10BinarySourceEnd:
 
 Chapter21_11BadPart2:
-            .db "sub cellAt(index as u8) as Cell",10
-            .db "    return cells[index]",10
+            .db "sub copyCell(index as u8, destination as Cell)",10
+            .db "    destination = cells[index]",10
             .db "end",10
             .db 10
             .db "sub setCell(cell as Cell, value as u8)",10

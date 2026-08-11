@@ -514,14 +514,14 @@ Stage8AggregateSuffixFailableSource:
             .db "value as u8",10
             .db "end",10
             .db "var stored as Box = (1)",10
-            .db "sub get() as Box fails",10
+            .db "sub get() as "
+Stage8AggregateSuffixFailablePoint:
+            .db "Box fails",10
             .db "return stored",10
             .db "end",10
             .db "sub main() fails",10
             .db "var out as u8",10
-            .db "out = get()"
-Stage8AggregateSuffixFailablePoint:
-            .db ".value or fail",10
+            .db "out = get().value or fail",10
             .db "end",10
 Stage8AggregateSuffixFailableSourceEnd:
 
@@ -540,15 +540,15 @@ Stage8AggregateArgumentFailableSource:
             .db "value as u8",10
             .db "end",10
             .db "var stored as Box",10
-            .db "sub get() as Box fails",10
+            .db "sub get() as "
+Stage8AggregateArgumentFailablePoint:
+            .db "Box fails",10
             .db "return stored",10
             .db "end",10
             .db "sub take(value as Box)",10
             .db "end",10
             .db "sub main() fails",10
-            .db "take(get("
-Stage8AggregateArgumentFailablePoint:
-            .db "))",10
+            .db "take(get())",10
             .db "end",10
 Stage8AggregateArgumentFailableSourceEnd:
 
@@ -600,17 +600,17 @@ Stage8AggregateCopyHandlerSource:
             .db "end",10
             .db "var source as Box = (5)",10
             .db "var target as Box = (9)",10
-            .db "sub choose(shouldFail as boolean) as Box fails",10
+            .db "sub choose(shouldFail as boolean, output as Box) fails",10
             .db "if shouldFail",10
             .db "fail 7",10
             .db "end",10
-            .db "return source",10
+            .db "output = source",10
             .db "end",10
             .db "sub main() fails",10
             .db "var code as u8",10
-            .db "target = choose(false) or fail",10
+            .db "choose(false, target) or fail",10
             .db "writeOutputByte(target.value) or fail",10
-            .db "target = choose(true)",10
+            .db "choose(true, target)",10
             .db "on error code",10
             .db "writeOutputByte(code) or fail",10
             .db "writeOutputByte(target.value) or fail",10
@@ -1262,7 +1262,7 @@ ProofStart:
             CALL ProofExpectDiagnostic
             JP   C,ProofComposedFailableFailure
 
-            LD   A,DiagnosticFailureContext
+            LD   A,DiagnosticExpectedType
             LD   BC,Stage8AggregateSuffixFailablePoint-Stage8AggregateSuffixFailableSource
             LD   HL,Stage8AggregateSuffixFailableSource
             LD   DE,Stage8AggregateSuffixFailableSourceEnd
@@ -1276,7 +1276,7 @@ ProofStart:
             CALL ProofExpectDiagnostic
             JP   C,ProofIndexFailableFailure
 
-            LD   A,DiagnosticFailureContext
+            LD   A,DiagnosticExpectedType
             LD   BC,Stage8AggregateArgumentFailablePoint-Stage8AggregateArgumentFailableSource
             LD   HL,Stage8AggregateArgumentFailableSource
             LD   DE,Stage8AggregateArgumentFailableSourceEnd

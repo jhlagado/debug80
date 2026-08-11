@@ -211,8 +211,6 @@ Stage8DiscardCarrier:
             DEC  C
             JR   Stage8DiscardCarriers
 
-Stage7ReturnAggregate .equ TypedReturnScalar
-
 ; Failable completion uses carry plus A privately: carry clear denotes success;
 ; carry set carries one u8 error code in A. Source code cannot inspect this ABI.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY

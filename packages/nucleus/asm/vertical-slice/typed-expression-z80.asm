@@ -123,30 +123,28 @@ TypedOperationTable:
             .dw Stage7BeginRoutine    ; 82
             .dw Stage7BindParameter   ; 83
             .dw Stage7Call            ; 84
-            .dw Stage7ReturnAggregate ; 85
-            .dw Stage7EndRoutine      ; 86
-            .dw Stage7LoadProgramAlias ; 87
-            .dw Stage7LoadParameterAlias ; 88
-            .dw Stage7SelectField     ; 89
-            .dw Stage7SelectIndex     ; 90
-            .dw Stage7LoadIndirect8   ; 91
-            .dw Stage7LoadIndirect16  ; 92
-            .dw Stage7StoreIndirect8  ; 93
-            .dw Stage7StoreIndirect16 ; 94
-            .dw Stage7CopyAggregate   ; 95
-            .dw Stage7StringLength    ; 96
-            .dw Stage7StringIndex     ; 97
-            .dw Stage8FailRoutine     ; 98
-            .dw Stage8FailMain        ; 99
-            .dw Stage8ReturnSuccess   ; 100
-            .dw Stage8ReturnSuccess   ; 101
-            .dw Stage8EndFailableRoutine ; 102
-            .dw Stage8SkipHandler     ; 103
-            .dw Stage8BeginHandler    ; 104
-            .dw Stage8EndHandler      ; 105
-            .dw Stage8CallService     ; 106
-            .dw Stage8BeginCallableMain ; 107
-TypedOperationCount .equ 88
+            .dw Stage7EndRoutine      ; 85
+            .dw Stage7LoadProgramAlias ; 86
+            .dw Stage7LoadParameterAlias ; 87
+            .dw Stage7SelectField     ; 88
+            .dw Stage7SelectIndex     ; 89
+            .dw Stage7LoadIndirect8   ; 90
+            .dw Stage7LoadIndirect16  ; 91
+            .dw Stage7StoreIndirect8  ; 92
+            .dw Stage7StoreIndirect16 ; 93
+            .dw Stage7CopyAggregate   ; 94
+            .dw Stage7StringLength    ; 95
+            .dw Stage7StringIndex     ; 96
+            .dw Stage8FailRoutine     ; 97
+            .dw Stage8FailMain        ; 98
+            .dw Stage8ReturnSuccess   ; 99
+            .dw Stage8EndFailableRoutine ; 100
+            .dw Stage8SkipHandler     ; 101
+            .dw Stage8BeginHandler    ; 102
+            .dw Stage8EndHandler      ; 103
+            .dw Stage8CallService     ; 104
+            .dw Stage8BeginCallableMain ; 105
+TypedOperationCount .equ 86
 .else
 TypedOperationCount .equ 62
 .endif

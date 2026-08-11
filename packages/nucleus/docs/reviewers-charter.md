@@ -208,13 +208,10 @@ left side supplies the destination storage and the right side supplies the
 source storage. Assignment through an alias changes its referent and never
 changes the binding. Self-assignment has no effect.
 
-An aggregate routine result is a transient typed alias to program-lifetime
-storage. The caller may discard it, forward it as an argument or result,
-select or index it, or use it immediately as the source of exact-type
-aggregate assignment. Source code cannot store the carrier as a pointer or use
-the result to establish a persistent source binding. Assignment is the
-materialisation operation. The compiler must preserve or stage a transient
-carrier when another call could overwrite it before consumption.
+Routine results are scalar or absent. A routine that produces aggregate
+contents receives caller-provided aggregate storage through a fixed aggregate
+parameter and writes or copies into its referent. This adds no result carrier,
+hidden temporary, parameter mode, or rebinding rule.
 
 ### Control flow, calls, failure, and traps
 
@@ -254,7 +251,7 @@ right-recursive `not` retain separate parsing where their structures differ.
 
 The compiler parses an assignment source or return source once and then checks
 the completed result category. It does not fork the grammar in advance for
-scalar values, aggregate paths, aggregate results, and failable calls. At an
+scalar values, aggregate paths, and failable calls. At an
 eligible boundary, the reserved pair `or fail` terminates the expression, and
 the checker requires the complete expression to be one direct failable call.
 
@@ -334,7 +331,7 @@ Reviewers should test the following boundaries aggressively:
    semantic decision.
 3. Agreement between compile-time evaluation and runtime operations.
 4. Correct lowering of every source category to direct Z80 and the specified runtime helpers.
-5. Alias categories, aggregate-result staging, recursion, and activation failure.
+5. Aggregate-parameter aliases, copying, recursion, and activation failure.
 6. Atomic failure behaviour for checks, copies, calls, services, and traps.
 7. Capacity diagnostics before truncation, wraparound, dropped state, or
    changed meaning.

@@ -148,7 +148,7 @@ describe("the normative Nucleus 0.1 grammar", () => {
     expect(text).not.toContain("TEC-1");
   });
 
-  it("records aggregate storage, copying, and transient results", () => {
+  it("records aggregate storage, copying, and destination parameters", () => {
     expect(text).toContain(
       "The declared local type must be `u8`, `u16`, or `boolean`",
     );
@@ -159,15 +159,13 @@ describe("the normative Nucleus 0.1 grammar", () => {
       "Aggregate assignment requires a mutable aggregate destination and an aggregate source of the exact same type",
     );
     expect(text).toContain(
-      "The caller must consume a returned aggregate alias immediately",
+      "A routine that produces aggregate contents receives a destination object through an aggregate parameter",
     );
     expect(text).toContain(
       'record-initializer\n    ::= "(" static-initializer',
     );
-    expect(text).toContain(
-      "every aggregate storage path, aggregate-parameter binding, and transient aggregate-alias result denotes program-lifetime storage",
-    );
-    expect(text).not.toContain("unprovable aggregate-result lifetime");
+    expect(text).toContain("Routine results are scalar or absent.");
+    expect(text).not.toContain("transient aggregate-alias result");
   });
 
   it("keeps counted-loop counters local and read-only", () => {
