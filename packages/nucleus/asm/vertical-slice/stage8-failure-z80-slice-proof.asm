@@ -165,9 +165,28 @@ Stage8ReadInputSuccessSource:
             .db "end",10
             .db "sub main() fails",10
             .db "var value as u8 = readInputByte() else fail",10
+Stage8ReadInputNestedServicePoint:
             .db "writeOutputByte(identity(value)) else fail",10
             .db "end",10
 Stage8ReadInputSuccessSourceEnd:
+
+Stage8ServiceFrameBoundarySource:
+            .db "sub one() as u8",10
+            .db "return 1",10
+            .db "end",10
+            .db "sub two(value as u8) as u8",10
+            .db "return value",10
+            .db "end",10
+            .db "sub three(value as u8) as u8",10
+            .db "return value",10
+            .db "end",10
+            .db "sub four(value as u8) as u8",10
+            .db "return value",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "writeOutputByte(four(three(two(one())))) else fail",10
+            .db "end",10
+Stage8ServiceFrameBoundarySourceEnd:
 
 Stage8ReadInputHandlerSource:
             .db "sub main() fails",10
@@ -1014,6 +1033,51 @@ ProofStart:
             LD   A,(ServiceOutputBase)
             CP   'Q'
             JP   NZ,ProofReadSuccessRunFailure
+            CALL Reset
+            LD   A,1
+            LD   (ServiceInputLength),A
+            LD   A,'Q'
+            LD   (ServiceInputBase),A
+            LD   A,1
+            LD   (ServiceFailureCall),A
+            CALL ProofCallGenerated
+            JP   C,ProofReadSuccessRunFailure
+            LD   A,(RunState)
+            CP   RunTrapped
+            JP   NZ,ProofReadSuccessRunFailure
+            LD   A,(TrapError)
+            CP   3
+            JP   NZ,ProofReadSuccessRunFailure
+            LD   HL,(TrapOffset)
+            LD   DE,Stage8ReadInputNestedServicePoint-Stage8ReadInputSuccessSource
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofReadSuccessRunFailure
+
+            LD   A,117
+            LD   (ProofCase),A
+            LD   A,178
+            LD   HL,Stage8ServiceFrameBoundarySource
+            LD   DE,Stage8ServiceFrameBoundarySourceEnd
+            CALL CompileAggregateCallSlice
+            JP   C,ProofRedesignFailure
+            CALL EncodeAggregateProgram
+            JP   C,ProofRedesignFailure
+            CALL Reset
+            CALL ProofCallGenerated
+            JP   C,ProofRedesignFailure
+            LD   A,(RunState)
+            CP   RunSucceeded
+            JP   NZ,ProofRedesignFailure
+            LD   A,(ServiceOutputLength)
+            CP   1
+            JP   NZ,ProofRedesignFailure
+            LD   A,(ServiceOutputBase)
+            CP   1
+            JP   NZ,ProofRedesignFailure
+            LD   A,(ActivationDepth)
+            OR   A
+            JP   NZ,ProofRedesignFailure
 
             LD   A,178
             LD   HL,Stage8ReadInputHandlerSource

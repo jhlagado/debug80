@@ -5,8 +5,8 @@
   "interfaces": ["../asm/vertical-slice/expression-generated-z80.asmi"],
   "execution": {
     "entry": "ProofStart",
-    "maxInstructions": 2000000,
-    "maxCycles": 20000000,
+    "maxInstructions": 3000000,
+    "maxCycles": 30000000,
     "halted": true
   },
   "observations": [

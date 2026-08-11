@@ -144,9 +144,8 @@ TypedOperationTable:
             .dw Stage8SkipHandler     ; 103
             .dw Stage8BeginHandler    ; 104
             .dw Stage8EndHandler      ; 105
-            .dw Stage8CallService     ; 106
-            .dw Stage8BeginCallableMain ; 107
-TypedOperationCount .equ 88
+            .dw Stage8BeginCallableMain ; 106
+TypedOperationCount .equ 87
 .else
 TypedOperationCount .equ 62
 .endif

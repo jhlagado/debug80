@@ -83,6 +83,16 @@ NameWriteOutputByte:
             .db 13,"outputFailure"
             .db 14,"storageFailure"
 Stage8PredefinedCount .equ 10
+
+; Complete service selectors: target ID in bits 0..2, argument type in bits
+; 3..4, successful u8 result in bit 5, and service kind in bit 7.
+Stage8ServiceSignatureTable:
+            .db Stage8CallableServiceFlag+Stage8ServiceResultU8+Stage8ServiceReadInput
+            .db Stage8CallableServiceFlag+(ScalarTypeU8*8)+Stage8ServiceWriteOutput
+            .db Stage8CallableServiceFlag+Stage8ServiceResultU8+Stage8ServiceReadStorage
+            .db Stage8CallableServiceFlag+Stage8ServiceRewindStorage
+            .db Stage8CallableServiceFlag+(ScalarTypeU8*8)+Stage8ServiceWriteStorage
+            .db Stage8CallableServiceFlag+(ScalarTypeU16*8)+Stage8ServiceSeekStorage
 .else
 ; Earlier proof fixtures retain their deliberately narrower parsers. These
 ; names are their immutable comparison strings and are not a second service

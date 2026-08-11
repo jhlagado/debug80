@@ -23,13 +23,13 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     expect(
       outcome.extents.find(({ name }) => name === "compiler-core")?.bytes,
     ).toBeLessThanOrEqual(16_384);
-    expect(outcome.instructions).toBe(1_516_312);
-    expect(outcome.cycles).toBe(14_282_612);
+    expect(outcome.instructions).toBe(1_513_884);
+    expect(outcome.cycles).toBe(14_258_168);
     expect(outcome.extents).toEqual([
-      { name: "compiler-code", bytes: 14_208 },
-      { name: "compiler-immutable", bytes: 387 },
-      { name: "compiler-core", bytes: 14_595 },
-      { name: "compiler-workspace", bytes: 3_622 },
+      { name: "compiler-code", bytes: 14_083 },
+      { name: "compiler-immutable", bytes: 393 },
+      { name: "compiler-core", bytes: 14_476 },
+      { name: "compiler-workspace", bytes: 3_613 },
       { name: "generated-z80-bound", bytes: 4_096 },
       { name: "z80-runtime", bytes: 655 },
       { name: "corpus-source-and-descriptors", bytes: 7_112 },
@@ -142,16 +142,16 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     expect(
       outcome.extents.find(({ name }) => name === "compiler-core")?.bytes,
     ).toBeLessThanOrEqual(16_384);
-    expect(outcome.instructions).toBe(1_960_585);
-    expect(outcome.cycles).toBe(18_249_735);
+    expect(outcome.instructions).toBe(2_025_763);
+    expect(outcome.cycles).toBe(18_849_650);
     expect(outcome.extents).toEqual([
-      { name: "compiler-code", bytes: 14_208 },
-      { name: "compiler-immutable", bytes: 387 },
-      { name: "compiler-core", bytes: 14_595 },
-      { name: "compiler-workspace", bytes: 3_622 },
+      { name: "compiler-code", bytes: 14_083 },
+      { name: "compiler-immutable", bytes: 393 },
+      { name: "compiler-core", bytes: 14_476 },
+      { name: "compiler-workspace", bytes: 3_613 },
       { name: "generated-z80-bound", bytes: 4_096 },
       { name: "z80-runtime", bytes: 655 },
-      { name: "proof-code-and-data", bytes: 3_575 },
+      { name: "proof-code-and-data", bytes: 3_692 },
     ]);
 
     const symbol = (name: string): number => {

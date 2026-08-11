@@ -30,9 +30,8 @@ Stage8ForwardMainFlags      .equ Stage7StateBase+$19
 Stage8RetainedCarriers      .equ Stage7StateBase+$1A
 ; These values span expression parsing, so nested calls must not overlay them.
 Stage8ServiceId             .equ Stage7StateBase+$1B
-Stage8ServiceKeep           .equ Stage7StateBase+$1C
-Stage8CallFlags             .equ Stage7StateBase+$1D
-Stage7StateEnd              .equ Stage7StateBase+$1E
+Stage8CallFlags             .equ Stage7StateBase+$1C
+Stage7StateEnd              .equ Stage7StateBase+$1D
 
 Stage7RoutineTableBase      .equ Stage7StateEnd
 Stage7RoutineEntrySize      .equ 8
@@ -55,7 +54,7 @@ Stage7ParameterNameLength   .equ 2
 Stage7ParameterType         .equ 3
 
 Stage7CallFrameBase         .equ Stage7ParameterTableLimit
-Stage7CallFrameSize         .equ 10
+Stage7CallFrameSize         .equ 8
 Stage7CallFrameCapacity     .equ 4
 Stage7CallFrameLimit        .equ Stage7CallFrameBase+Stage7CallFrameSize*Stage7CallFrameCapacity
 Stage7CallFrameLabel        .equ 0
@@ -63,10 +62,8 @@ Stage7CallFrameResult       .equ 1
 Stage7CallFrameParameter    .equ 2
 Stage7CallFrameRemaining    .equ 3
 Stage7CallFrameArgumentCount .equ 4
-Stage7CallFrameKeep         .equ 5
-Stage7CallFrameOffset       .equ 6
-Stage7CallFrameExpected     .equ 8
-Stage7CallFrameFlags        .equ 9
+Stage7CallFrameOffset       .equ 5
+Stage7CallFrameFlags        .equ 7
 
 Stage7CompilerWorkspaceEnd  .equ Stage7CallFrameLimit
 
@@ -130,8 +127,7 @@ SemanticEndFailableRoutine  .equ 102
 SemanticSkipHandler          .equ 103
 SemanticBeginHandler         .equ 104
 SemanticEndHandler           .equ 105
-SemanticCallService          .equ 106
-SemanticBeginCallableMain    .equ 107
+SemanticBeginCallableMain    .equ 106
 
 Stage8ServiceReadInput       .equ 0
 Stage8ServiceWriteOutput     .equ 1
@@ -140,6 +136,21 @@ Stage8ServiceRewindStorage   .equ 3
 Stage8ServiceWriteStorage    .equ 4
 Stage8ServiceSeekStorage     .equ 5
 Stage8PredefinedConstantBase .equ 6
+
+; One completed call selector carries the target kind, successful-result
+; retention choice, and dense target ID. Source labels occupy 27..31 and
+; service IDs occupy 0..5, so both fit without widening the transcript.
+Stage8CallableServiceFlag    .equ $80
+Stage8CallableKeepFlag       .equ $40
+Stage8CallableSourceMask     .equ $3F
+Stage8CallableServiceMask    .equ $07
+
+; Service selectors use their otherwise-free middle bits for the fixed
+; signature: optional scalar parameter type in bits 3..4 and a successful u8
+; result in bit 5. Every service is failable.
+Stage8ServiceArgumentMask    .equ $18
+Stage8ServiceArgumentU16     .equ $10
+Stage8ServiceResultU8        .equ $20
 
 DiagnosticRoutineCapacity  .equ 84
 DiagnosticParameterCapacity .equ 85

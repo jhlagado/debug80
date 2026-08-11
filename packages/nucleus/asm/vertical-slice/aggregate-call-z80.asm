@@ -99,15 +99,6 @@ Stage7ReadCallOffset:
             LD   (Stage7CallOffset),DE
             RET
 
-; Read one semantic operand into a consecutive post-parse scratch field.
-.routine in DE out A,DE,carry,zero clobbers sign,parity,halfCarry,HL
-Stage8ReadSemanticToDE:
-            CALL NextSemanticByte
-            RET  C
-            LD   (DE),A
-            INC  DE
-            RET
-
 ; Retain the source position of a propagated failure. The root wrapper uses
 ; the last propagation site when failure finally leaves callable main.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
@@ -123,19 +114,34 @@ Stage8EmitFailureOffset:
 Stage7Call:
             CALL NextSemanticByte
             LD   (Stage7CallLabel),A
+            AND  Stage8CallableServiceFlag
+            JR   NZ,Stage8ReadServiceCall
             CALL NextSemanticByte
             LD   (Stage7ArgumentCount),A
             CALL NextSemanticByte
             LD   (Stage7CallResultType),A
             CALL NextSemanticByte
-            LD   (Stage7PathOffset),A       ; keep-result flag
+            LD   (Stage8EmitCallFlags),A
+            JR   Stage8ReadCallCommon
+Stage8ReadServiceCall:
+            LD   A,(Stage7CallLabel)
+            AND  Stage8ServiceResultU8
+            RLCA
+            RLCA
+            RLCA
+            LD   (Stage7CallResultType),A
+Stage8ReadCallCommon:
             CALL Stage7ReadCallOffset
-            LD   DE,Stage8EmitFieldBase
-            CALL Stage8ReadSemanticToDE    ; failure flags
             LD   DE,Stage8EmitCallMode
-            CALL Stage8ReadSemanticToDE    ; failure mode
-            CALL Stage8ReadSemanticToDE    ; handler label
-            CALL Stage8ReadSemanticToDE    ; retained destination carriers
+            LD   B,3
+Stage8ReadCallStateLoop:
+            CALL NextSemanticByte          ; mode, handler, retained carriers
+            LD   (DE),A
+            INC  DE
+            DJNZ Stage8ReadCallStateLoop
+            LD   A,(Stage7CallLabel)
+            AND  Stage8CallableServiceFlag
+            JP   NZ,Stage8InvokeService
             LD   HL,ActivationClaim
             CALL EmitCall
             RET  C
@@ -154,18 +160,19 @@ Stage7Call:
             CALL PatchHere
             RET  C
             LD   A,(Stage7CallLabel)
+            AND  Stage8CallableSourceMask
             LD   C,A
             LD   A,$CD
             CALL StructuredEmitFixup
             RET  C
             LD   A,(Stage8EmitCallFlags)
             AND  Stage7RoutineFails
-            JR   NZ,Stage8CallFailable
+            JR   NZ,Stage8CallableSourceFailable
             LD   HL,ActivationRelease
             CALL EmitCall
             RET  C
-            JR   Stage7CallDiscard
-Stage8CallFailable:
+            JR   Stage8CallableSuccess
+Stage8CallableSourceFailable:
             LD   A,$F5                    ; PUSH AF result discriminant/code
             CALL EmitByte
             RET  C
@@ -175,29 +182,35 @@ Stage8CallFailable:
             LD   A,$F1                    ; POP AF
             CALL EmitByte
             RET  C
+Stage8CallableFailable:
             CALL EmitJrNcPlaceholder
             RET  C
             LD   (EmitExitFixup),DE
             CALL Stage8EmitFailureOutcome
             RET  C
-Stage8CallFailureReady:
+Stage8CallableFailureReady:
             LD   DE,(EmitExitFixup)
             CALL PatchHere
             RET  C
-Stage7CallDiscard:
+Stage8CallableSuccess:
             LD   A,(Stage7ArgumentCount)
             LD   C,A
             CALL Stage8DiscardCarriers
             RET  C
-Stage7CallResult:
             LD   A,(Stage7CallResultType)
             OR   A
             RET  Z
-            LD   A,(Stage7PathOffset)
-            OR   A
+            LD   A,(Stage7CallLabel)
+            AND  Stage8CallableKeepFlag
             RET  Z
+            LD   A,(Stage7CallLabel)
+            AND  Stage8CallableServiceFlag
+            JR   NZ,Stage8CallableServiceResult
             LD   A,$E5                    ; PUSH HL result carrier
             JP   EmitByte
+Stage8CallableServiceResult:
+            LD   HL,Stage8ErrorCarrierBytes
+            JP   EmitFour
 
 .routine in C out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
 Stage8DiscardCarriers:
@@ -319,32 +332,23 @@ Stage8FailureHandle:
             JP   StructuredEmitFixup
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
-Stage8CallService:
-            LD   DE,Stage8EmitFieldBase
-            CALL Stage8ReadSemanticToDE    ; service ID
-            CALL Stage8ReadSemanticToDE    ; successful result type
-            CALL Stage7ReadCallOffset
-            LD   DE,Stage8EmitCallMode
-            CALL Stage8ReadSemanticToDE    ; failure mode
-            CALL Stage8ReadSemanticToDE    ; handler label
-            CALL Stage8ReadSemanticToDE    ; retained destination carriers
-            LD   A,(Stage8EmitCallFlags)
-            CP   Stage8ServiceWriteOutput
-            JR   Z,Stage8ServiceByteArgument
-            CP   Stage8ServiceWriteStorage
-            JR   Z,Stage8ServiceByteArgument
-            CP   Stage8ServiceSeekStorage
-            JR   NZ,Stage8ServiceAddress
-            LD   A,$E1                    ; POP HL offset
-            CALL EmitByte
-            RET  C
-            JR   Stage8ServiceAddress
-Stage8ServiceByteArgument:
+Stage8InvokeService:
+            LD   A,(Stage7CallLabel)
+            AND  Stage8ServiceArgumentMask
+            JR   Z,Stage8ServiceAddress
+            CP   Stage8ServiceArgumentU16
+            JR   Z,Stage8ServiceWordArgument
             LD   HL,Stage8PopErrorBytes   ; POP HL / LD A,L
             CALL EmitPair
             RET  C
+            JR   Stage8ServiceAddress
+Stage8ServiceWordArgument:
+            LD   A,$E1                    ; POP HL offset
+            CALL EmitByte
+            RET  C
 Stage8ServiceAddress:
-            LD   A,(Stage8EmitCallFlags)
+            LD   A,(Stage7CallLabel)
+            AND  Stage8CallableServiceMask
             ADD  A,A
             LD   E,A
             LD   D,0
@@ -356,29 +360,9 @@ Stage8ServiceAddress:
             EX   DE,HL
             CALL EmitCall
             RET  C
-            CALL EmitJrNcPlaceholder
-            RET  C
-            LD   (EmitExitFixup),DE
             XOR  A
             LD   (Stage7ArgumentCount),A
-            CALL Stage8EmitFailureOutcome
-            RET  C
-Stage8ServiceFailureReady:
-            LD   DE,(EmitExitFixup)
-            CALL PatchHere
-            RET  C
-            LD   A,(Stage8EmitCallFlags)
-            AND  $FD                     ; readInput/readStorage map to zero
-            JR   NZ,Stage8ServiceNoResult
-Stage8ServiceResult:
-            LD   A,(Stage8EmitResultType)
-            OR   A
-            RET  Z
-            LD   HL,Stage8ErrorCarrierBytes
-            JP   EmitFour
-Stage8ServiceNoResult:
-            OR   A
-            RET
+            JP   Stage8CallableFailable
 
 Stage8ServiceAddressTable:
             .dw ReadInputByte
