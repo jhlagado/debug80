@@ -1333,9 +1333,7 @@ Stage8FailurePlaceholderLoop:
 Stage7TypedPrimaryAggregateSymbol:
             CALL Stage7EmitAggregateSymbolRoot
             RET  C
-            CALL Stage7ParsePathSuffix
-            RET  C
-            JP   Stage7FinishScalarPath
+            JR   Stage7TypedPrimaryRoutineAggregate
 
 ; Current routine name has already been consumed as a complete statement.
 .if HybridLL1Full

@@ -956,13 +956,7 @@ TypedUnaryMinusResolved:
             JR   Z,TypedUnaryMinusEmit
             LD   A,SemanticNegate16
 TypedUnaryMinusEmit:
-            PUSH BC
-            PUSH DE
-            PUSH HL
-            CALL TypedEmitOperation
-            POP  HL
-            POP  DE
-            POP  BC
+            CALL TypedEmitUnaryOperation
             RET  C
             LD   A,D
             AND  ScalarMetaConstant
@@ -977,6 +971,17 @@ TypedUnaryMinusEmit:
             CALL TypedMaskResultWidth
             LD   A,C
             OR   ScalarMetaConstant
+            RET
+
+.routine in A,BC,DE,HL out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+TypedEmitUnaryOperation:
+            PUSH BC
+            PUSH DE
+            PUSH HL
+            CALL TypedEmitOperation
+            POP  HL
+            POP  DE
+            POP  BC
             RET
 TypedUnaryMinusU8:
             ; Width selection must not destroy evidence that the exact literal
@@ -1322,13 +1327,7 @@ TypedNotTypedInteger:
             JR   Z,TypedNotEmit
             LD   A,SemanticNot16
 TypedNotEmit:
-            PUSH BC
-            PUSH DE
-            PUSH HL
-            CALL TypedEmitOperation
-            POP  HL
-            POP  DE
-            POP  BC
+            CALL TypedEmitUnaryOperation
             RET  C
             LD   A,D
             AND  ScalarMetaConstant

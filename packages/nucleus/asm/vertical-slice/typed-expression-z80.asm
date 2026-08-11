@@ -810,6 +810,9 @@ TypedBackendEnd:
             .include "aggregate-call-z80.asm"
 .endif
 
+.if AggregateCallSlices
+Stage7LoadIndirect8Prefix: .db $E1,$7E
+.endif
 TypedAtoHL:             .db $6F,$26,$00,$E5
 TypedStoreSPPrefix:     .db $ED,$73
 TypedStoreIXPrefix:     .db $DD,$22
@@ -819,14 +822,21 @@ TypedParameter16Bytes:  .db $3B,$3B,$DD,$75,$FF,$DD,$74,$FE
 TypedParameter8Bytes    .equ TypedParameter16Bytes+1
 TypedLoadLocalLow:      .db $DD,$6E
 TypedLoadLocalHigh:     .db $DD,$66
-TypedStoreLocalLow:     .db $DD,$75
-TypedStoreLocalHigh:    .db $DD,$74
+TypedStoreLocalLow       .equ TypedParameter16Bytes+2
+TypedStoreLocalHigh      .equ TypedParameter16Bytes+5
 TypedZeroHighPush       .equ TypedAtoHL+1
 TypedZeroHigh           .equ TypedAtoHL+1
 TypedPopOperandsBytes:  .db $D1,$E1
+.if AggregateCallSlices
+                          .db $E5,$D5
+.endif
 TypedTestHigh:          .db $7C,$B7
 TypedAdd8Bytes:         .db $7D,$83,$6F,$26,$00
+.if AggregateCallSlices
+TypedAdd16Bytes          .equ Stage7OffsetAddress+3
+.else
 TypedAdd16Bytes:        .db $19
+.endif
 TypedSubtract8Bytes:    .db $7D,$93,$6F,$26,$00
 TypedSubtract16Bytes:   .db $AF,$ED,$52
 TypedNegate8Bytes:      .db $E1,$AF,$95,$6F,$26,$00

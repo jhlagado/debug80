@@ -1041,6 +1041,25 @@ bytes identical. The Stage 7 proof executes 1,696,249 instructions in
 15,674,079 T-states; Stage 8 executes 2,025,638 in 18,848,024; and Chapter 21
 executes 1,513,833 in 14,257,474.
 
+The next semantics-preserving compression pass removes another 105 code bytes.
+Three declaration lookups share one LL(1)-action prelude, saving 11 bytes;
+overlapping Z80 templates share their existing immutable bytes, saving 16;
+ordinary and forward routine publication share one routine-table writer,
+saving 23; and three routine-end sites share selection and semantic emission,
+saving 29. The string length and index checks share their generated-code tail,
+saving 19 bytes. A scalar-path tail saves four more bytes, and unary negation
+and complement share their emission setup for two; the resulting scalar-path
+transfer is then relative, saving the final byte.
+
+Fresh assembly measures 13,928 code bytes plus 393 immutable bytes, for a
+14,321-byte core. The parser is 8,931 bytes: 230 engine, 746 tables, 2,602
+actions, and 5,353 residual islands. The typed/aggregate sink is 3,208 bytes.
+Workspace remains 3,613 bytes, the largest generated program remains 1,040
+bytes, and the selected runtime remains 655 bytes. The Stage 7 proof remains
+3,046 bytes and executes 1,696,451 instructions in 15,676,452 T-states; Stage
+8 remains 3,692 bytes and executes 2,025,934 in 18,851,465; and Chapter 21
+remains 1,883 bytes and executes 1,514,048 in 14,259,956.
+
 ## Capacity ledger
 
 The first implementation fixes a numeric limit before each bounded structure is

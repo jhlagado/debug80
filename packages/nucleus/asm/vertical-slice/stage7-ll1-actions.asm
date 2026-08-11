@@ -588,23 +588,7 @@ HybridLL1CommitForward:
             INC  A
             JR   Z,HybridLL1CommitForwardMain
             DEC  A
-            CALL Stage7RoutineAddress
-            LD   DE,Stage7RoutineParameterCount
-            ADD  HL,DE
-            LD   A,(Stage7CurrentParameterCount)
-            LD   (HL),A
-            INC  HL
-            LD   A,(Stage7CurrentResultType)
-            LD   (HL),A
-            INC  HL
-            LD   A,(Stage7CurrentRoutine)
-            ADD  A,Stage7RoutineLabelBase
-            LD   (HL),A
-            INC  HL
-            LD   A,(Stage7CurrentFlags)
-            LD   (HL),A
-            LD   HL,Stage7RoutineCount
-            INC  (HL)
+            CALL HybridLL1PublishRoutine
             XOR  A
             RET
 HybridLL1CommitForwardMain:
@@ -718,6 +702,11 @@ HybridLL1BeginSubBody:
             INC  A
             JR   Z,HybridLL1BeginMainBody
             DEC  A
+            CALL HybridLL1PublishRoutine
+            JR   HybridLL1OpenRoutineBody
+
+.routine in A out A,BC,DE,HL clobbers carry,zero,sign,parity,halfCarry
+HybridLL1PublishRoutine:
             CALL Stage7RoutineAddress
             LD   DE,Stage7RoutineParameterCount
             ADD  HL,DE
@@ -736,6 +725,7 @@ HybridLL1BeginSubBody:
             LD   (HL),A
             LD   HL,Stage7RoutineCount
             INC  (HL)
+            RET
 HybridLL1OpenRoutineBody:
             LD   A,(SymbolCount)
             LD   (Stage7GlobalSymbolCount),A
@@ -823,13 +813,7 @@ HybridLL1EndSub:
             OR   A
             JP   NZ,TypedRoutineFlowFailure
 HybridLL1EndRoutineEmit:
-            LD   A,(Stage7CurrentFlags)
-            AND  Stage7RoutineFails
-            LD   A,SemanticEndGeneralRoutine
-            JR   Z,HybridLL1EndRoutineSelected
-            LD   A,SemanticEndFailableRoutine
-HybridLL1EndRoutineSelected:
-            CALL SemanticSinkOperation
+            CALL HybridLL1EmitRoutineEnd
             RET  C
             LD   A,(Stage7CurrentResultType)
             CALL SemanticSinkPut
@@ -839,14 +823,18 @@ HybridLL1EndRoutineSelected:
             XOR  A
             LD   (NextLocalSlot),A
             RET
-HybridLL1EndMainBody:
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+HybridLL1EmitRoutineEnd:
             LD   A,(Stage7CurrentFlags)
             AND  Stage7RoutineFails
             LD   A,SemanticEndGeneralRoutine
-            JR   Z,HybridLL1EndMainSelected
+            JR   Z,HybridLL1EmitRoutineEndSelected
             LD   A,SemanticEndFailableRoutine
-HybridLL1EndMainSelected:
-            CALL SemanticSinkOperation
+HybridLL1EmitRoutineEndSelected:
+            JP   SemanticSinkOperation
+HybridLL1EndMainBody:
+            CALL HybridLL1EmitRoutineEnd
             RET  C
             XOR  A
             JP   SemanticSinkPut
@@ -978,12 +966,18 @@ Stage8SelectPendingFailure:
             JR   Stage8ClearPendingFailure
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
-HybridLL1BeginHandle:
+HybridLL1LookupDeclaration:
             CALL SymbolLookupCurrent
             RET  C
             LD   (DeclarationInfo),A
             LD   (DeclarationPayload),BC
             LD   D,A
+            RET
+
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+HybridLL1BeginHandle:
+            CALL HybridLL1LookupDeclaration
+            RET  C
             AND  SymbolRecordTypeFlag+SymbolAggregateFlag
             JP   NZ,TypedTypeFailure
             LD   A,D
@@ -1170,11 +1164,8 @@ HybridLL1OrdinaryNameStatement:
             RET  C
             JP   Stage8SelectFailureConsumer
 HybridLL1ParseAssignment:
-            CALL SymbolLookupCurrent
+            CALL HybridLL1LookupDeclaration
             RET  C
-            LD   (DeclarationInfo),A
-            LD   (DeclarationPayload),BC
-            LD   D,A
             AND  SymbolAggregateFlag
             JP   NZ,Stage7ParseAggregateAssignment
             LD   A,D
@@ -1282,18 +1273,8 @@ HybridLL1CommitBareReturn:
             LD   A,(Stage7CurrentResultType)
             OR   A
             JP   NZ,TypedRoutineFlowFailure
-            LD   A,(Stage7CurrentFlags)
-            AND  Stage7RoutineFails
-            LD   A,SemanticEndGeneralRoutine
-            JR   Z,HybridLL1BareReturnSelected
-            LD   A,SemanticEndFailableRoutine
-HybridLL1BareReturnSelected:
-            LD   (DeclarationInfo),A
-            CALL SemanticSinkOperation
+            CALL HybridLL1EmitRoutineEnd
             RET  C
-            LD   A,(DeclarationInfo)
-            CP   SemanticEndMain
-            JR   Z,HybridLL1ReturnCommitted
             XOR  A
             CALL SemanticSinkPut
             RET  C
@@ -1530,11 +1511,8 @@ HybridLL1PopAndRestoreFlow:
 HybridLL1BeginFor:
             LD   HL,(TokenStartOffset)
             LD   (HybridLL1ForOffset),HL
-            CALL SymbolLookupCurrent
+            CALL HybridLL1LookupDeclaration
             RET  C
-            LD   (DeclarationInfo),A
-            LD   (DeclarationPayload),BC
-            LD   D,A
             AND  SymbolClassMask
             CP   SymbolClassLocal
             JP   NZ,StructuredCounterFailure

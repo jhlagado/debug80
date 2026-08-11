@@ -566,18 +566,8 @@ Stage7StringLength:
             LD   A,$E1                    ; POP HL carrier
             CALL EmitByte
             RET  C
-            LD   A,(Stage7ArgumentCount)
-            LD   C,A
-            LD   A,$0E                    ; LD C,n capacity
-            CALL EmitOpcodeByte
-            RET  C
             LD   HL,CheckStringLength
-            CALL EmitCall
-            RET  C
-            CALL Stage7BoundsGuard
-            RET  C
-            LD   A,$E5                    ; PUSH HL length
-            JP   EmitByte
+            JR   Stage7EmitStringCheck
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7StringIndex:
@@ -593,12 +583,17 @@ Stage7StringIndex:
             LD   HL,Stage7CopyFinish
             CALL   EmitPair
             RET  C
+            LD   HL,CheckStringIndex
+
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+Stage7EmitStringCheck:
+            PUSH HL
             LD   A,(Stage7ArgumentCount)
             LD   C,A
             LD   A,$0E                    ; LD C,n capacity
             CALL EmitOpcodeByte
+            POP  HL
             RET  C
-            LD   HL,CheckStringIndex
             CALL EmitCall
             RET  C
             CALL Stage7BoundsGuard
@@ -607,17 +602,17 @@ Stage7StringIndex:
             JP   EmitByte
 
 Stage7PopHLLoadDE:        .db $E1,$11
-Stage7IndexToA:           .db $7B
+Stage7IndexToA            .equ TypedLoadSPPrefix+1
 Stage7LoadBImmediate:     .db $06
 Stage7OffsetAddress:      .db $5F,$16,$00,$19,$E5
-Stage7LoadIndirect8Bytes: .db $E1,$7E,$6F,$26,$00,$E5
+Stage7LoadIndirect8Bytes  .equ Stage7LoadIndirect8Prefix
 Stage7LoadIndirect16Bytes:.db $E1,$5E,$23,$56,$D5
 Stage7StoreIndirect16Bytes:.db $D1,$E1,$73,$23,$72
-Stage7CopyPrepare:        .db $D1,$E1,$E5,$D5
+Stage7CopyPrepare         .equ TypedPopOperandsBytes
 Stage7CopyFinish:         .db $E1,$D1
 Stage7PopDEAddPush:       .db $D1,$19,$E5
 Stage7PushDEHL:           .db $D5,$E5
-Stage7LDIR:               .db $ED,$B0
+Stage7LDIR                .equ SegmentedCopyBytes
 
 Stage7DecSP2              .equ TypedParameter16Bytes
 Stage7LoadIXL             .equ TypedLoadLocalLow
@@ -627,7 +622,7 @@ Stage7StoreIXH            .equ TypedStoreLocalHigh
 Stage7AddDEPush           .equ Stage7OffsetAddress+3
 Stage7PopIndexBase        .equ TypedPopOperandsBytes
 Stage7StoreIndirect8Bytes .equ Stage7StoreIndirect16Bytes
-Stage8PopErrorBytes:      .db $E1,$7D      ; POP HL / LD A,L
+Stage8PopErrorBytes       .equ TypedNot8Bytes ; POP HL / LD A,L prefix
 Stage8FailureReturnBytes: .db $37,$C9      ; SCF / RET
 Stage8SuccessReturnBytes: .db $B7,$C9      ; OR A / RET
 Stage8ErrorCarrierBytes .equ TypedAtoHL       ; LD L,A / LD H,0 / PUSH HL
