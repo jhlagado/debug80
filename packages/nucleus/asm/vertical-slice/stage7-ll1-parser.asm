@@ -32,7 +32,8 @@ HybridLL1Loop:
             CP   $80
             JR   C,HybridLL1Nonterminal
 
-            ; Action ordinal -> absolute routine address.
+            ; Action ordinal -> absolute routine address. A retains the
+            ; zero-based ordinal for parameterised physical handlers.
             SUB  $80
             LD   L,A
             LD   H,0

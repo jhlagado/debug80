@@ -990,6 +990,41 @@ position and four-frame service-argument discriminators and executes 2,025,763
 in 18,849,650; Chapter 21 remains
 1,883 bytes and executes 1,513,884 in 14,258,168.
 
+The packed action dispatcher now groups three measured families behind
+parameterised physical handlers while preserving all 71 logical action names
+and their `$80..$C6` ordinals. The existing two-byte direct action directory
+remains the smallest representation: a second physical-handler directory
+would cost more than the few profitable groups save. The dispatcher already
+leaves the zero-based action ordinal in A, so the shared handlers need no
+engine instructions, parameter table, or writable state.
+
+The clean baseline at `bcfccd19` measured a 230-byte engine, 746 bytes of
+tables, and 2,699 bytes of action code. The tables comprise an 80-byte row
+directory, 210 prediction-row bytes, 77 production-directory bytes, 237
+production-body bytes, and the 142-byte action directory. The seven retained
+`x:` entries occupy 213 bytes within the action extent; the other retained
+parser islands occupy 5,360 bytes. The three scalar-type entries shrink by
+eight bytes, `exit`/`continue` by five, and `to`/`until` by three. Engine, tables,
+directory, external entries, and residual islands do not move. The resulting
+parser is 9,019 bytes: 230 engine, 746 tables, 2,683 actions, and 5,360 residual
+islands. Compiler code is 14,067 bytes plus 393 immutable bytes, for a
+14,460-byte core; workspace remains 3,613 bytes.
+
+Other audited families do not pay. The declaration, parameter, local, and
+result type-retention actions have different saved-state and failure-unwind
+contracts. Initializer and control-frame actions differ before their already
+shared tails. Fixed-operation and flow actions are either singletons or
+already share their complete profitable suffix. The substantial `x:` islands
+retain distinct parser/result contracts and remain direct entries.
+
+All existing semantic-buffer hashes and active generated-program hashes match
+the baseline, as do the selected runtime bytes. The largest generated program
+therefore remains 1,040 bytes and the selected runtime remains 655 bytes. The
+Stage 7 proof remains 3,046 bytes and executes 1,696,205 instructions in
+15,673,656 T-states; Stage 8 remains 3,692 bytes and executes 2,025,638 in
+18,848,156; Chapter 21 remains 1,883 bytes and executes 1,513,817 in
+14,257,361.
+
 ## Capacity ledger
 
 The first implementation fixes a numeric limit before each bounded structure is

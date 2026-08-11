@@ -4,6 +4,13 @@ HybridLL1ProductionCount  .equ 75
 HybridLL1ProductionSplit  .equ 38
 HybridLL1ActionCount      .equ 71
 HybridLL1StartSymbol      .equ $40
+HybridLL1ActionOrdinalEmitExit .equ 44
+HybridLL1ActionOrdinalEmitContinue .equ 45
+HybridLL1ActionOrdinalForTo .equ 59
+HybridLL1ActionOrdinalForUntil .equ 60
+HybridLL1ActionOrdinalTypeU8 .equ 68
+HybridLL1ActionOrdinalTypeU16 .equ 69
+HybridLL1ActionOrdinalTypeBoolean .equ 70
 
 HybridLL1RowDirectory:
             .db HybridLL1Row0-HybridLL1Rows,DiagnosticExpectedTopLevel ; compilation-unit
@@ -569,8 +576,8 @@ HybridLL1ActionDirectory:
             .dw HybridLL1CommitFail ; a:CommitFail
             .dw HybridLL1BeginHandle ; a:BeginHandle
             .dw HybridLL1EndHandle ; a:EndHandle
-            .dw HybridLL1EmitExit ; a:EmitExit
-            .dw HybridLL1EmitContinue ; a:EmitContinue
+            .dw HybridLL1EmitTransferAction ; a:EmitExit, parameter 45
+            .dw HybridLL1EmitTransferAction ; a:EmitContinue, parameter 46
             .dw HybridLL1BeginIf ; a:BeginIf
             .dw HybridLL1BeginIfBody ; a:BeginIfBody
             .dw HybridLL1EndIf ; a:EndIf
@@ -584,8 +591,8 @@ HybridLL1ActionDirectory:
             .dw HybridLL1BeginFor ; a:BeginFor
             .dw HybridLL1BeginForBody ; a:BeginForBody
             .dw HybridLL1EndFor ; a:EndFor
-            .dw HybridLL1ForTo ; a:ForTo
-            .dw HybridLL1ForUntil ; a:ForUntil
+            .dw HybridLL1SelectForBoundAction ; a:ForTo, parameter 1
+            .dw HybridLL1SelectForBoundAction ; a:ForUntil, parameter 0
             .dw HybridLL1StepConstant ; x:StepConstant
             .dw HybridLL1SaveForStep ; a:SaveForStep
             .dw HybridLL1DefaultForStep ; a:DefaultForStep
@@ -593,9 +600,9 @@ HybridLL1ActionDirectory:
             .dw HybridLL1BeginTypeBound ; a:BeginTypeBound
             .dw HybridLL1MakeStringType ; a:MakeStringType
             .dw HybridLL1MakeArrayType ; a:MakeArrayType
-            .dw HybridLL1TypeU8 ; a:TypeU8
-            .dw HybridLL1TypeU16 ; a:TypeU16
-            .dw HybridLL1TypeBoolean ; a:TypeBoolean
+            .dw HybridLL1SetScalarTypeAction ; a:TypeU8, parameter 1
+            .dw HybridLL1SetScalarTypeAction ; a:TypeU16, parameter 2
+            .dw HybridLL1SetScalarTypeAction ; a:TypeBoolean, parameter 3
 HybridLL1ActionDirectoryEnd:
 
 HybridLL1GeneratedTableEnd:

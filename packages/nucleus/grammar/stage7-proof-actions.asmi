@@ -43,8 +43,7 @@ HybridLL1BeginFail:
 HybridLL1CommitFail:
 HybridLL1BeginHandle:
 HybridLL1EndHandle:
-HybridLL1EmitExit:
-HybridLL1EmitContinue:
+HybridLL1EmitTransferAction:
 HybridLL1BeginIf:
 HybridLL1BeginIfBody:
 HybridLL1EndIf:
@@ -58,8 +57,7 @@ HybridLL1EndWhile:
 HybridLL1BeginFor:
 HybridLL1BeginForBody:
 HybridLL1EndFor:
-HybridLL1ForTo:
-HybridLL1ForUntil:
+HybridLL1SelectForBoundAction:
 HybridLL1StepConstant:
 HybridLL1SaveForStep:
 HybridLL1DefaultForStep:
@@ -67,7 +65,5 @@ HybridLL1ResolveRecordType:
 HybridLL1BeginTypeBound:
 HybridLL1MakeStringType:
 HybridLL1MakeArrayType:
-HybridLL1TypeU8:
-HybridLL1TypeU16:
-HybridLL1TypeBoolean:
+HybridLL1SetScalarTypeAction:
             RET

@@ -22,11 +22,148 @@ export interface Stage7GrammarAnalysis {
   readonly conflicts: readonly string[];
 }
 
+export interface Stage7ActionLayoutEntry {
+  readonly logical: string;
+  readonly handler: string;
+  readonly parameter?: number;
+}
+
+export interface Stage7ActionFamilyMember {
+  readonly logical: string;
+  readonly parameter: number;
+}
+
+export interface Stage7ActionFamily {
+  readonly handler: string;
+  readonly parameterStep: 1 | -1;
+  readonly ordinalParameterOffset?: number;
+  readonly ordinalParameterMask?: number;
+  readonly members: readonly Stage7ActionFamilyMember[];
+}
+
+// These are the only parameterised action families. The handler consumes the
+// preserved zero-based logical action ordinal in A before calling any helper.
+const actionFamilies: readonly Stage7ActionFamily[] = [
+  {
+    handler: "EmitTransferAction",
+    parameterStep: 1,
+    ordinalParameterOffset: 1,
+    members: [
+      { logical: "a:EmitExit", parameter: 45 },
+      { logical: "a:EmitContinue", parameter: 46 },
+    ],
+  },
+  {
+    handler: "SelectForBoundAction",
+    parameterStep: -1,
+    ordinalParameterMask: 1,
+    members: [
+      { logical: "a:ForTo", parameter: 1 },
+      { logical: "a:ForUntil", parameter: 0 },
+    ],
+  },
+  {
+    handler: "SetScalarTypeAction",
+    parameterStep: 1,
+    members: [
+      { logical: "a:TypeU8", parameter: 1 },
+      { logical: "a:TypeU16", parameter: 2 },
+      { logical: "a:TypeBoolean", parameter: 3 },
+    ],
+  },
+];
+
 const here = path.dirname(fileURLToPath(import.meta.url));
 const sourcePath = path.join(here, "stage7-grammar.json");
+const actionSourcePath = path.join(
+  here,
+  "..",
+  "asm",
+  "vertical-slice",
+  "stage7-ll1-actions.asm",
+);
 
 export function readStage7Grammar(): SourceGrammar {
   return JSON.parse(readFileSync(sourcePath, "utf8")) as SourceGrammar;
+}
+
+const grammarActions = (grammar: SourceGrammar): readonly string[] => [
+  ...new Set(
+    grammar.productions.flatMap(({ rhs }) =>
+      rhs.filter((symbol) => isAction(symbol) || isExternal(symbol)),
+    ),
+  ),
+];
+
+export function stage7ActionLayout(
+  grammar = readStage7Grammar(),
+  families: readonly Stage7ActionFamily[] = actionFamilies,
+): readonly Stage7ActionLayoutEntry[] {
+  const actions = grammarActions(grammar);
+  const actionSet = new Set(actions);
+  const grouped = new Map<string, Omit<Stage7ActionLayoutEntry, "logical">>();
+  const handlers = new Set<string>();
+  for (const family of families) {
+    if (!family.handler) throw new Error("missing physical action handler");
+    if (
+      family.ordinalParameterOffset !== undefined &&
+      family.ordinalParameterMask !== undefined
+    )
+      throw new Error(`ambiguous action encoding ${family.handler}`);
+    if (handlers.has(family.handler))
+      throw new Error(`duplicate physical action handler ${family.handler}`);
+    handlers.add(family.handler);
+    const firstOrdinal = actions.indexOf(family.members[0]?.logical ?? "");
+    const firstParameter = family.members[0]?.parameter;
+    for (const [index, member] of family.members.entries()) {
+      if (!actionSet.has(member.logical))
+        throw new Error(`unknown logical action ${member.logical}`);
+      if (grouped.has(member.logical))
+        throw new Error(`duplicate action-family member ${member.logical}`);
+      if (
+        !Number.isInteger(member.parameter) ||
+        member.parameter < 0 ||
+        member.parameter > 255
+      )
+        throw new Error(`action parameter out of range for ${member.logical}`);
+      if (actions.indexOf(member.logical) !== firstOrdinal + index)
+        throw new Error(`noncontiguous action family ${family.handler}`);
+      if (
+        firstParameter === undefined ||
+        member.parameter !== firstParameter + index * family.parameterStep
+      )
+        throw new Error(`nonlinear action parameters for ${family.handler}`);
+      const ordinal = firstOrdinal + index;
+      if (
+        family.ordinalParameterOffset !== undefined &&
+        member.parameter !== ordinal + family.ordinalParameterOffset
+      )
+        throw new Error(`action ordinal offset mismatch for ${family.handler}`);
+      if (
+        family.ordinalParameterMask !== undefined &&
+        member.parameter !== (ordinal & family.ordinalParameterMask)
+      )
+        throw new Error(`action ordinal mask mismatch for ${family.handler}`);
+      grouped.set(member.logical, {
+        handler: family.handler,
+        parameter: member.parameter,
+      });
+    }
+  }
+  return actions.map((logical) => ({
+    logical,
+    ...(grouped.get(logical) ?? { handler: logical.slice(2) }),
+  }));
+}
+
+export function validateStage7PhysicalHandlers(
+  source: string,
+  families: readonly Stage7ActionFamily[] = actionFamilies,
+): void {
+  for (const { handler } of families) {
+    if (!source.includes(`HybridLL1${handler}:`))
+      throw new Error(`missing physical action handler HybridLL1${handler}`);
+  }
 }
 
 const isAction = (symbol: string) => symbol.startsWith("a:");
@@ -157,13 +294,9 @@ export function generateStage7Tables(): string {
     throw new Error(`LL(1) conflicts:\n${analysis.conflicts.join("\n")}`);
 
   const nonterminals = [...new Set(grammar.productions.map(({ lhs }) => lhs))];
-  const actions = [
-    ...new Set(
-      grammar.productions.flatMap(({ rhs }) =>
-        rhs.filter((symbol) => isAction(symbol) || isExternal(symbol)),
-      ),
-    ),
-  ];
+  const actionLayout = stage7ActionLayout(grammar);
+  validateStage7PhysicalHandlers(readFileSync(actionSourcePath, "utf8"));
+  const actions = actionLayout.map(({ logical }) => logical);
   if (nonterminals.length > 64) throw new Error("too many nonterminals");
   if (actions.length > 127) throw new Error("too many actions/externals");
   if (grammar.productions.length > 127) throw new Error("too many productions");
@@ -205,6 +338,11 @@ export function generateStage7Tables(): string {
     `HybridLL1ProductionSplit  .equ ${productionSplit}`,
     `HybridLL1ActionCount      .equ ${actions.length}`,
     `HybridLL1StartSymbol      .equ ${symbol(grammar.start)}`,
+    ...actionLayout.flatMap(({ logical, parameter }, ordinal) =>
+      parameter === undefined
+        ? []
+        : [`HybridLL1ActionOrdinal${logical.slice(2)} .equ ${ordinal}`],
+    ),
     "",
     "HybridLL1RowDirectory:",
     ...nonterminals.map((name, index) => {
@@ -265,9 +403,9 @@ export function generateStage7Tables(): string {
       lines.push(`            .db ${reversed.map(symbol).join(",")}`);
   });
   lines.push("HybridLL1ProductionsEnd:", "", "HybridLL1ActionDirectory:");
-  for (const action of actions) {
-    const label = `HybridLL1${action.slice(2)}`;
-    lines.push(`            .dw ${label} ; ${action}`);
+  for (const { logical, handler, parameter } of actionLayout) {
+    const suffix = parameter === undefined ? "" : `, parameter ${parameter}`;
+    lines.push(`            .dw HybridLL1${handler} ; ${logical}${suffix}`);
   }
   lines.push(
     "HybridLL1ActionDirectoryEnd:",
@@ -280,16 +418,12 @@ export function generateStage7Tables(): string {
 
 export function generateStage7ProofActions(): string {
   const grammar = readStage7Grammar();
-  const actions = [
-    ...new Set(
-      grammar.productions.flatMap(({ rhs }) =>
-        rhs.filter((symbol) => isAction(symbol) || isExternal(symbol)),
-      ),
-    ),
+  const handlers = [
+    ...new Set(stage7ActionLayout(grammar).map(({ handler }) => handler)),
   ];
   return [
     "; Generated proof-only action aliases from stage7-grammar.json.",
-    ...actions.map((action) => `HybridLL1${action.slice(2)}:`),
+    ...handlers.map((handler) => `HybridLL1${handler}:`),
     "            RET",
     "",
   ].join("\n");

@@ -59,14 +59,9 @@ HybridLL1StrayClause:
 
 ; --------------------------------------------------------------- type actions
 
-HybridLL1TypeU8:
-            LD   A,AggregateTypeIdU8
-            JR   HybridLL1SetCurrentType
-HybridLL1TypeU16:
-            LD   A,AggregateTypeIdU16
-            JR   HybridLL1SetCurrentType
-HybridLL1TypeBoolean:
-            LD   A,AggregateTypeIdBoolean
+; A is the logical action ordinal for the contiguous u8/u16/Boolean family.
+HybridLL1SetScalarTypeAction:
+            SUB  HybridLL1ActionOrdinalTypeU8-1
 HybridLL1SetCurrentType:
             LD   (AggregateCurrentTypeId),A
             OR   A
@@ -1319,11 +1314,9 @@ HybridLL1BareReturnSelected:
             RET  C
             JR   HybridLL1ReturnCommitted
 
-HybridLL1EmitExit:
-            LD   A,TokenExit
-            JR   HybridLL1EmitTransfer
-HybridLL1EmitContinue:
-            LD   A,TokenContinue
+; A is the logical action ordinal. The two ordinals and tokens are contiguous.
+HybridLL1EmitTransferAction:
+            INC  A
 HybridLL1EmitTransfer:
             LD   (DeclarationInfo),A
             CALL ControlFindLoop
@@ -1575,11 +1568,9 @@ HybridLL1CheckForInitial:
             RET  C
             JP   Stage8RequireNoPendingFailure
 
-HybridLL1ForTo:
-            LD   A,1
-            JR   HybridLL1ForBoundSelected
-HybridLL1ForUntil:
-            XOR  A
+; A is the logical action ordinal for the contiguous to/until family.
+HybridLL1SelectForBoundAction:
+            AND  1
 HybridLL1ForBoundSelected:
             LD   (HybridLL1ForMode),A
             CALL HybridLL1FinishLocalInitializer

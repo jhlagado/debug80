@@ -7,6 +7,9 @@ import {
   analyzeStage7Grammar,
   generateStage7ProofActions,
   generateStage7Tables,
+  readStage7Grammar,
+  stage7ActionLayout,
+  validateStage7PhysicalHandlers,
 } from "../grammar/generate-stage7.js";
 import { runProofManifest } from "../src/proof.js";
 
@@ -50,6 +53,135 @@ describe("Stage 7 packed LL(1)", () => {
     );
   });
 
+  it("maps every logical action to one physical handler and parameter", () => {
+    const grammar = readStage7Grammar();
+    const logicalActions = [
+      ...new Set(
+        grammar.productions.flatMap(({ rhs }) =>
+          rhs.filter(
+            (symbol) => symbol.startsWith("a:") || symbol.startsWith("x:"),
+          ),
+        ),
+      ),
+    ];
+    const layout = stage7ActionLayout();
+    expect(layout.map(({ logical }) => logical)).toEqual(logicalActions);
+    expect(new Set(layout.map(({ logical }) => logical)).size).toBe(
+      logicalActions.length,
+    );
+    expect(layout.filter(({ parameter }) => parameter !== undefined)).toEqual([
+      { logical: "a:EmitExit", handler: "EmitTransferAction", parameter: 45 },
+      {
+        logical: "a:EmitContinue",
+        handler: "EmitTransferAction",
+        parameter: 46,
+      },
+      { logical: "a:ForTo", handler: "SelectForBoundAction", parameter: 1 },
+      {
+        logical: "a:ForUntil",
+        handler: "SelectForBoundAction",
+        parameter: 0,
+      },
+      { logical: "a:TypeU8", handler: "SetScalarTypeAction", parameter: 1 },
+      {
+        logical: "a:TypeU16",
+        handler: "SetScalarTypeAction",
+        parameter: 2,
+      },
+      {
+        logical: "a:TypeBoolean",
+        handler: "SetScalarTypeAction",
+        parameter: 3,
+      },
+    ]);
+  });
+
+  it("rejects invalid parameterised-action metadata", () => {
+    const grammar = readStage7Grammar();
+    expect(() =>
+      stage7ActionLayout(grammar, [
+        {
+          handler: "MissingLogical",
+          parameterStep: 1,
+          members: [{ logical: "a:NotAnAction", parameter: 0 }],
+        },
+      ]),
+    ).toThrow("unknown logical action a:NotAnAction");
+    expect(() =>
+      stage7ActionLayout(grammar, [
+        {
+          handler: "First",
+          parameterStep: 1,
+          members: [{ logical: "a:TypeU8", parameter: 1 }],
+        },
+        {
+          handler: "Second",
+          parameterStep: 1,
+          members: [{ logical: "a:TypeU8", parameter: 2 }],
+        },
+      ]),
+    ).toThrow("duplicate action-family member a:TypeU8");
+    expect(() =>
+      stage7ActionLayout(grammar, [
+        {
+          handler: "",
+          parameterStep: 1,
+          members: [{ logical: "a:TypeU8", parameter: 1 }],
+        },
+      ]),
+    ).toThrow("missing physical action handler");
+    expect(() =>
+      stage7ActionLayout(grammar, [
+        {
+          handler: "OutOfRange",
+          parameterStep: 1,
+          members: [{ logical: "a:TypeU8", parameter: 256 }],
+        },
+      ]),
+    ).toThrow("action parameter out of range for a:TypeU8");
+    expect(() =>
+      validateStage7PhysicalHandlers("", [
+        {
+          handler: "Absent",
+          parameterStep: 1,
+          members: [{ logical: "a:TypeU8", parameter: 1 }],
+        },
+      ]),
+    ).toThrow("missing physical action handler HybridLL1Absent");
+
+    const exitProduction = grammar.productions.findIndex(({ rhs }) =>
+      rhs.includes("a:EmitExit"),
+    );
+    const productions = grammar.productions.map((production, index) =>
+      index === exitProduction
+        ? { ...production, rhs: [...production.rhs, "a:Inserted"] }
+        : production,
+    );
+    expect(() => stage7ActionLayout({ ...grammar, productions })).toThrow(
+      "noncontiguous action family EmitTransferAction",
+    );
+    const shiftedProductions = grammar.productions.map((production, index) =>
+      index === 0
+        ? { ...production, rhs: [...production.rhs, "a:Inserted"] }
+        : production,
+    );
+    expect(() =>
+      stage7ActionLayout({ ...grammar, productions: shiftedProductions }),
+    ).toThrow("action ordinal offset mismatch for EmitTransferAction");
+    expect(() =>
+      stage7ActionLayout(grammar, [
+        {
+          handler: "BadParameters",
+          parameterStep: 1,
+          members: [
+            { logical: "a:TypeU8", parameter: 1 },
+            { logical: "a:TypeU16", parameter: 3 },
+          ],
+        },
+      ]),
+    ).toThrow("nonlinear action parameters for BadParameters");
+  });
+
   it("executes the packed engine at its exact stack boundary", async () => {
     const outcome = await runProofManifest(proof("stage7-ll1-engine-proof"));
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
@@ -71,9 +203,9 @@ describe("Stage 7 packed LL(1)", () => {
       outcome.extents.map(({ name, bytes }) => [name, bytes]),
     );
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
-    expect(outcome.instructions).toBe(1_696_273);
-    expect(outcome.cycles).toBe(15_674_472);
-    expect(outcome.extents).toContainEqual({ name: "parser", bytes: 9_035 });
+    expect(outcome.instructions).toBe(1_696_205);
+    expect(outcome.cycles).toBe(15_673_656);
+    expect(outcome.extents).toContainEqual({ name: "parser", bytes: 9_019 });
     expect(outcome.extents).toContainEqual({
       name: "ll1-engine",
       bytes: 230,
@@ -84,15 +216,15 @@ describe("Stage 7 packed LL(1)", () => {
     });
     expect(outcome.extents).toContainEqual({
       name: "ll1-actions",
-      bytes: 2_699,
+      bytes: 2_683,
     });
     expect(outcome.extents).toContainEqual({
       name: "compiler-core",
-      bytes: 14_476,
+      bytes: 14_460,
     });
     expect(outcome.extents).toContainEqual({
       name: "compiler-code",
-      bytes: 14_083,
+      bytes: 14_067,
     });
     expect(outcome.extents).toContainEqual({
       name: "compiler-immutable",
