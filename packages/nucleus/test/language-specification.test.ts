@@ -10,13 +10,11 @@ const text = readFileSync(
 );
 
 const predicates: Readonly<Record<string, readonly string[]>> = {
-  "simple-statement": ["isCallableName", "isWritableName"],
+  "name-statement": ["isCallableName", "isWritableName"],
   "static-initializer": ["isInitializerForDeclaredType"],
   "type-atom": ["isRecordTypeName"],
   "program-initializer": ["isInitializerForDeclaredType"],
-  "on-error-clause": ["isFailablePrecedingStatement"],
   expression: ["isCallableName"],
-  "or-expression": ["isFailurePropagationBoundary"],
   "step-constant": ["isIntegerConstantName"],
   "routine-definition-tail": ["isIncompleteForwardName"],
   "const-declaration": ["isConstantContext"],
@@ -90,12 +88,7 @@ describe("the normative Nucleus 0.1 grammar", () => {
       })),
     ).toEqual([
       {
-        nonterminal: "or-expression·rep27",
-        lookahead: "or",
-        predicates: ["isFailurePropagationBoundary"],
-      },
-      {
-        nonterminal: "simple-statement",
+        nonterminal: "name-statement",
         lookahead: "NAME",
         predicates: ["isCallableName", "isWritableName"],
       },
@@ -114,9 +107,9 @@ describe("the normative Nucleus 0.1 grammar", () => {
     expect(text).toContain("`isIncompleteForwardName`");
   });
 
-  it("uses one post-parse failure-consumption rule in every grammar summary", () => {
+  it("uses one immediate failure-consumption rule in every grammar summary", () => {
     expect(text).toContain(
-      'local-initializer     ::= expression [ "or" "fail" ]',
+      'local-initializer     ::= expression [ "else" "fail" ]',
     );
     expect(text).toContain(
       "A failable call is parsed as an ordinary call and then checked for exactly one failure consumer under Chapter 14.",

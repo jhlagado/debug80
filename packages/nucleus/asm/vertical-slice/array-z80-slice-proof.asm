@@ -41,8 +41,8 @@ ArrayProofSource:
             .db "var bytes as u8[4] = [65, 66, 67, 68]",10
             .db 10
             .db "sub main() fails",10
-            .db "    var index as u8 = readInputByte() or fail",10
-            .db "    writeOutputByte(bytes[index]) or fail",10
+            .db "    var index as u8 = readInputByte() else fail",10
+            .db "    writeOutputByte(bytes[index]) else fail",10
             .db "end",10
 ArrayProofSourceEnd:
 
@@ -51,8 +51,8 @@ BadArraySource:
 BadArrayValue:
             .db "67, 68]",10
             .db "sub main() fails",10
-            .db "    var index as u8 = readInputByte() or fail",10
-            .db "    writeOutputByte(bytes[index]) or fail",10
+            .db "    var index as u8 = readInputByte() else fail",10
+            .db "    writeOutputByte(bytes[index]) else fail",10
             .db "end",10
 BadArraySourceEnd:
 

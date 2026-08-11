@@ -327,8 +327,8 @@ TokenStringLiteral      .equ 47
 TokenRecord             .equ 48
 TokenString             .equ 49
 TokenDot                .equ 50
-TokenOn                 .equ 51
-TokenError              .equ 52
+TokenHandle             .equ 51
+; Ordinal 52 is intentionally unused so later token ordinals remain stable.
 TokenXor                .equ 53
 TokenMod                .equ 54
 TokenAssert             .equ 55
@@ -388,6 +388,7 @@ DiagnosticTypeBound    .equ 83
 ; mismatches retain their context-specific diagnostic codes above.
 DiagnosticExpectedTokenBase .equ $80
 DiagnosticExpectedEof   .equ DiagnosticExpectedTokenBase+TokenEof
+DiagnosticExpectedName  .equ DiagnosticExpectedTokenBase+TokenName
 DiagnosticExpectedLine  .equ DiagnosticExpectedTokenBase+TokenNewline
 DiagnosticExpectedChar  .equ DiagnosticExpectedTokenBase+TokenCharacter
 DiagnosticExpectedNumber .equ DiagnosticExpectedTokenBase+TokenNumber

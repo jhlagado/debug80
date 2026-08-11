@@ -29,7 +29,7 @@
     "return-statement": "DiagnosticExpectedReturn",
     "return-value-opt": "DiagnosticExpectedLine",
     "fail-statement": "DiagnosticExpectedFail",
-    "on-error-opt": "DiagnosticFailureContext",
+    "name-statement-tail": "DiagnosticFailureContext",
     "transfer-statement": "DiagnosticExpectedLoop",
     "if-statement": "DiagnosticExpectedIf",
     "if-tail": "DiagnosticExpectedScalar",
@@ -303,7 +303,7 @@
     { "lhs": "statement-sequence", "rhs": [] },
     {
       "lhs": "statement",
-      "rhs": ["x:NameStatement", "TokenNewline", "on-error-opt"]
+      "rhs": ["x:NameStatement", "name-statement-tail"]
     },
     { "lhs": "statement", "rhs": ["return-statement", "TokenNewline"] },
     { "lhs": "statement", "rhs": ["fail-statement", "TokenNewline"] },
@@ -326,20 +326,22 @@
       "rhs": ["TokenFail", "a:BeginFail", "x:RuntimeExpression", "a:CommitFail"]
     },
     {
-      "lhs": "on-error-opt",
+      "lhs": "name-statement-tail",
+      "rhs": ["TokenNewline"]
+    },
+    {
+      "lhs": "name-statement-tail",
       "rhs": [
-        "TokenOn",
-        "TokenError",
+        "TokenHandle",
         "TokenName",
-        "a:BeginOnError",
+        "a:BeginHandle",
         "TokenNewline",
         "statement-sequence",
         "TokenEnd",
         "TokenNewline",
-        "a:EndOnError"
+        "a:EndHandle"
       ]
     },
-    { "lhs": "on-error-opt", "rhs": ["a:FinishFailureStatement"] },
     { "lhs": "transfer-statement", "rhs": ["TokenExit", "a:EmitExit"] },
     { "lhs": "transfer-statement", "rhs": ["TokenContinue", "a:EmitContinue"] },
 

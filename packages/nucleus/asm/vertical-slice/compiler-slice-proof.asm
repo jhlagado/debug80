@@ -19,8 +19,8 @@ KeywordSub:
             .db  "sub"
 KeywordFails:
             .db  "fails"
-KeywordOr:
-            .db  "or"
+KeywordElse:
+            .db  "else"
 KeywordFail:
             .db  "fail"
 KeywordEnd:
@@ -35,13 +35,13 @@ CompilerCoreEnd:
             .org SourceBase
 AcceptedSource:
             .db  "sub main() fails",10
-            .db  "    writeOutputByte('A') or fail",10
+            .db  "    writeOutputByte('A') else fail",10
             .db  "end",10
 AcceptedSourceEnd:
 
 MalformedSource:
             .db  "sub main() fails",10
-            .db  "    writeOutputByte('A') or fail",10
+            .db  "    writeOutputByte('A') else fail",10
 MalformedSourceEnd:
 
             .org ProofBase

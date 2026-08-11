@@ -41,9 +41,8 @@ HybridLL1CommitReturn:
 HybridLL1CommitBareReturn:
 HybridLL1BeginFail:
 HybridLL1CommitFail:
-HybridLL1BeginOnError:
-HybridLL1EndOnError:
-HybridLL1FinishFailureStatement:
+HybridLL1BeginHandle:
+HybridLL1EndHandle:
 HybridLL1EmitExit:
 HybridLL1EmitContinue:
 HybridLL1BeginIf:

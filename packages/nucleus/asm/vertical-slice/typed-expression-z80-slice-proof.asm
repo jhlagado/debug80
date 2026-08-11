@@ -67,7 +67,7 @@ TypedAcceptedSource:
             .db "    word = u16(out) + word",10
             .db "    "
 TypedAcceptedOutputCall:
-            .db "writeOutputByte(out) or fail",10
+            .db "writeOutputByte(out) else fail",10
             .db "end",10
 TypedAcceptedSourceEnd:
 
@@ -79,7 +79,7 @@ TypedDefaultSource:
             .db "    var localWord as u16",10
             .db "    out = u8(localWord)",10
             .db "    flag = not flag",10
-            .db "    writeOutputByte(out) or fail",10
+            .db "    writeOutputByte(out) else fail",10
             .db "end",10
 TypedDefaultSourceEnd:
 
@@ -978,7 +978,7 @@ TypedCoverageSource:
             .db "    out = value or byteMask",10
             .db "    flag = truth",10
             .db "    flag = (value < quotient) and (flag = truth) and (flag <> false)",10
-            .db "    writeOutputByte(out) or fail",10
+            .db "    writeOutputByte(out) else fail",10
             .db "end",10
 TypedCoverageSourceEnd:
 
@@ -988,7 +988,7 @@ TypedConversionContextSource:
             .db "sub main() fails",10
             .db "    word = u8(200 + 100)",10
             .db "    out = u8(word)",10
-            .db "    writeOutputByte(out) or fail",10
+            .db "    writeOutputByte(out) else fail",10
             .db "end",10
 TypedConversionContextSourceEnd:
 

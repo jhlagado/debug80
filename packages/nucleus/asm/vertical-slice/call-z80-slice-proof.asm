@@ -46,7 +46,7 @@ CallProofInitialCall:
             .db "descend(3)",10
             .db "    "
 CallProofOutputCall:
-            .db "writeOutputByte(result) or fail",10
+            .db "writeOutputByte(result) else fail",10
             .db "end",10
             .db 10
             .db "sub descend",10
@@ -63,7 +63,7 @@ BadCompletionSource:
             .db "forward sub descend(value as u8) as u8",10
             .db "sub main() fails",10
             .db "    var result as u8 = descend(3)",10
-            .db "    writeOutputByte(result) or fail",10
+            .db "    writeOutputByte(result) else fail",10
             .db "end",10
             .db "sub "
 BadCompletionName:

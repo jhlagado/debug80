@@ -100,8 +100,8 @@ ParserParseProgram:
             LD   E,TokenRightParen
             CALL ParserExpect
             RET  C
-            LD   D,DiagnosticExpectedOr
-            LD   E,TokenOr
+            LD   D,DiagnosticExpectedElse
+            LD   E,TokenElse
             CALL ParserExpect
             RET  C
             LD   D,DiagnosticExpectedFail

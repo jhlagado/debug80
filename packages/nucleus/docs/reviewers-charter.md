@@ -231,8 +231,8 @@ analysis and lets lowering rely on the comparison that admitted the active
 iteration. A program that controls its progress variable explicitly uses
 `while`.
 
-Recoverable failure is explicit through `fails`, `fail`, `or fail`, and a
-following statement-bound `on error` clause. Nucleus has no exception search or
+Recoverable failure is explicit through `fails`, `fail`, `else fail`, and the
+same-line `handle NAME ... end` form. Nucleus has no exception search or
 general unwinding. Safety traps remain distinct from recoverable errors.
 
 ## Compiler implementation direction
@@ -255,7 +255,7 @@ right-recursive `not` retain separate parsing where their structures differ.
 The compiler parses an assignment source or return source once and then checks
 the completed result category. It does not fork the grammar in advance for
 scalar values, aggregate paths, aggregate results, and failable calls. At an
-eligible boundary, the reserved pair `or fail` terminates the expression, and
+eligible boundary, the reserved pair `else fail` terminates the expression, and
 the checker requires the complete expression to be one direct failable call.
 
 Compact inline type descriptors and interned type ordinals are both permitted

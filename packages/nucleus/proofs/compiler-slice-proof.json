@@ -13,7 +13,7 @@
     { "at": "ProofCase", "width": "u8", "equals": 0 },
     { "at": "DiagnosticCode", "width": "u8", "equals": 26 },
     { "at": "DiagnosticPartId", "width": "u8", "equals": 9 },
-    { "at": "DiagnosticOffset", "width": "u16", "equals": 50 },
+    { "at": "DiagnosticOffset", "width": "u16", "equals": 52 },
     { "at": "DiagnosticLine", "width": "u16", "equals": 3 },
     { "at": "DiagnosticColumn", "width": "u16", "equals": 1 },
     { "at": "SemanticBufferBase", "width": "u8", "equals": 0 }

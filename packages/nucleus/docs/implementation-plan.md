@@ -60,7 +60,7 @@ explicitly reopens them:
   precedence expressions and bounded semantic decisions retained as explicit
   external islands;
 - one precedence-driven loop parses binary expressions;
-- the parser completes a call before classifying `or fail` consumption;
+- the parser completes a call before classifying `else fail` consumption;
 - all routine-local variables are scalar;
 - all owned aggregate storage belongs to top-level program objects and their
   inline subobjects;
@@ -645,7 +645,7 @@ The Stage 8 implementation includes the complete scalar and aggregate
 call ABI, sixteen argument positions, direct and mutual recursion, forward
 signatures including an abbreviated `main` body, direct and forward-visible
 calls to `main`, early return, recoverable
-failure, propagation, statement-bound handling, and result-free return
+failure, propagation, immediate same-line handling, and result-free call
 propagation. The six standard services and four stable error constants share
 one predefined-name table. Direct runtime calls preserve the specified cursor,
 byte, and atomic-failure behavior, and `Reset` clears prior service failures.
@@ -654,7 +654,7 @@ The combined active-LL(1) proof exercises all five runtime traps plus
 `unhandled-error`, exact trap locations, root SP/IX restoration, handler bypass,
 all service success and error families, same-destination handling, sixteen
 arguments, mutual forward recursion, direct and forward-visible `main`
-recursion, result-free return propagation, and
+recursion, result-free call propagation, and
 predefined-name and service-signature rejections. Compiler-controlled image
 integrity is checked at assembly/proof time: generated-size arithmetic, the
 final publication cursor, target-map non-overlap, fixed runtime entry ranges,
@@ -917,6 +917,45 @@ paths, and removing two one-call wrappers and a redundant return. A shared
 RD/LL(1) array-extent helper was rejected after it grew the selected production
 image by five bytes. Executable proof also rejected a proposed manual
 descriptor-copy loop, so the proven `LDIR` form remains.
+
+The recoverable-error consumption redesign replaces `or fail` with same-line
+`else fail`, replaces delayed `on error` attachment with immediate
+`handle NAME ... end`, and makes `return` success-only. The grammar and
+generated tables now keep Boolean `or` independent from propagation, while
+`on` and `error` are ordinary identifiers. Handler eligibility no longer
+survives a statement newline; the retained call-mode patch and control frame
+are selected while `handle` is the current token.
+
+The measured pre-change account at commit `0cc5a6f` was 14,311 code bytes plus
+390 immutable bytes, for a 14,701-byte compiler core. The parser was 9,226
+bytes: 230 engine, 760 tables, 2,791 actions, and 5,445 residual islands.
+Workspace was 3,623 bytes; the largest Chapter 21 generated program was 1,040
+bytes; and the selected runtime was 655 bytes. The Stage 7 proof occupied
+3,044 bytes and executed 1,701,877 instructions in 15,720,339 T-states.
+
+After correctness review and the focused size pass, fresh assembly measures
+14,208 code bytes plus 387 immutable bytes, for a 14,595-byte core. The parser
+is 9,123 bytes: 230 engine, 746 tables, 2,699 actions, and 5,448 residual
+islands. Workspace is 3,622 bytes; the largest Chapter 21 generated program
+remains 1,040 bytes; and the selected runtime remains 655 bytes. The Stage 7
+proof occupies 3,046 bytes and executes 1,698,773 instructions in 15,699,547
+T-states. The expanded Stage 8 proof occupies 3,575 bytes and executes
+1,960,585 instructions in 18,249,735 T-states. The Chapter 21 proof remains
+1,883 bytes and executes 1,516,312 instructions in 14,282,612 T-states.
+
+The exact compiler-core saving is 106 bytes: 103 code and three immutable
+keyword bytes. Keyword retirement contributes the three immutable bytes, and
+the grammar tables contribute 14 code bytes. Semantic actions fall by 92
+bytes overall. Within that action total, success-only return removes 104 bytes
+and obsolete delayed-handler state removes 22 bytes plus one workspace byte;
+the immediate-consumer checks and lowering add back 43 bytes. The final size
+pass removes another nine action bytes by relying on the already-proved
+pending-call entry invariant and converting three in-range absolute branches
+to relative branches. The expression island adds three bytes to reject a
+pending failable call before Boolean `or`. These component changes sum to the
+measured 103-byte code reduction. Generated output and runtime size do not
+move; proof execution changes reflect the new spellings and stronger accepted
+and rejected coverage.
 
 ## Capacity ledger
 

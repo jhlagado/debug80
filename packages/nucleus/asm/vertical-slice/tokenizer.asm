@@ -111,10 +111,10 @@ TokenScanNameDone:
             LD   B,5
             CALL TokenNameEquals
             JR   C,TokenScanNameFails
-            LD   HL,KeywordOr
-            LD   B,2
+            LD   HL,KeywordElse
+            LD   B,4
             CALL TokenNameEquals
-            JR   C,TokenScanNameOr
+            JR   C,TokenScanNameElse
             LD   HL,KeywordFail
             LD   B,4
             CALL TokenNameEquals
@@ -131,8 +131,8 @@ TokenScanNameSub:
 TokenScanNameFails:
             LD   A,TokenFails
             JP   TokenFinish
-TokenScanNameOr:
-            LD   A,TokenOr
+TokenScanNameElse:
+            LD   A,TokenElse
             JP   TokenFinish
 TokenScanNameFail:
             LD   A,TokenFail

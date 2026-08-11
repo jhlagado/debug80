@@ -15,5 +15,9 @@ Expressions, name-led statements, and type-directed aggregate initializers are
 deliberate external islands. They require precedence or symbol and type
 information that token lookahead alone cannot supply.
 
+The packed statement grammar keeps failure consumption immediate: `else fail`
+propagates a direct failable call, while same-line `handle NAME` opens its local
+handler body. Boolean `or` remains entirely inside the expression island.
+
 The generated files are locked by `test/ll1-stage7.test.ts`. Run that scoped
 test after changing the grammar or generator.

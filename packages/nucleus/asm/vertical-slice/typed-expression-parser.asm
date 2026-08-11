@@ -1425,7 +1425,7 @@ TypedOrLoop:
 .if AggregateCallSlices
             LD   A,(Stage8DirectFailable)
             OR   A
-            JR   NZ,TypedBooleanDone
+            JR   NZ,TypedOrFailureContext
             LD   A,TokenOr
 .endif
 TypedOrOperator:
@@ -1474,6 +1474,10 @@ TypedBooleanDone:
             POP  HL
             POP  AF
             RET
+.if AggregateCallSlices
+TypedOrFailureContext:
+            CALL HybridLL1FailureContext
+.endif
 TypedBooleanPeekFailure:
             POP  HL
             POP  AF
@@ -2203,7 +2207,7 @@ TypedParseWrite:
             LD   A,H
             CALL SemanticSinkPut
             RET  C
-            CALL ParserExpectOrFailLine
+            CALL ParserExpectElseFailLine
             RET  C
             JP   TypedParseStatementsContinue
 

@@ -78,13 +78,11 @@ Chapter21_1Part2:
             .db 10
             .db "    cells[0].value = cellAt(0).value",10
             .db "    if cells[0].value = 1",10
-            .db "        writeOutputByte('Y')",10
-            .db "        on error code",10
+            .db "        writeOutputByte('Y') handle code",10
             .db "            return",10
             .db "        end",10
             .db "    elseif cells[0].value = 0",10
-            .db "        writeOutputByte('N')",10
-            .db "        on error code",10
+            .db "        writeOutputByte('N') handle code",10
             .db "            return",10
             .db "        end",10
             .db "    end",10
@@ -100,7 +98,7 @@ Chapter21_2Source:
             .db "const badByte = 10",10
             .db 10
             .db "sub checkedByte() as u8 fails",10
-            .db "    var value as u8 = readInputByte() or fail",10
+            .db "    var value as u8 = readInputByte() else fail",10
             .db "    if value = 0",10
             .db "        fail badByte",10
             .db "    end",10
@@ -108,12 +106,12 @@ Chapter21_2Source:
             .db "end",10
             .db 10
             .db "sub emitByte() fails",10
-            .db "    var value as u8 = checkedByte() or fail",10
-            .db "    writeOutputByte(value) or fail",10
+            .db "    var value as u8 = checkedByte() else fail",10
+            .db "    writeOutputByte(value) else fail",10
             .db "end",10
             .db 10
             .db "sub main() fails",10
-            .db "    emitByte() or fail",10
+            .db "    emitByte() else fail",10
             .db "end",10
 Chapter21_2SourceEnd:
 
@@ -146,8 +144,7 @@ Chapter21_3Source:
             .db "        end",10
             .db "    end",10
             .db 10
-            .db "    writeOutputByte(u8(index))",10
-            .db "    on error code",10
+            .db "    writeOutputByte(u8(index)) handle code",10
             .db "        return",10
             .db "    end",10
             .db "end",10
@@ -173,22 +170,23 @@ Chapter21_4Source:
             .db "    end",10
             .db 10
             .db "    if text[1] = 'Z' and snapshot[1] = 0",10
-            .db "        writeOutputByte('Y') or fail",10
+            .db "        writeOutputByte('Y') else fail",10
             .db "    end",10
             .db "end",10
 Chapter21_4SourceEnd:
 
 Chapter21_5Source:
             .db "sub emitMarker() fails",10
-            .db "    writeOutputByte('R') or fail",10
+            .db "    writeOutputByte('R') else fail",10
             .db "end",10
             .db 10
             .db "sub relayMarker() fails",10
-            .db "    return emitMarker() or fail",10
+            .db "    emitMarker() else fail",10
+            .db "    return",10
             .db "end",10
             .db 10
             .db "sub main() fails",10
-            .db "    relayMarker() or fail",10
+            .db "    relayMarker() else fail",10
             .db "end",10
 Chapter21_5SourceEnd:
 
@@ -202,22 +200,21 @@ Chapter21_6Source:
             .db "sub main() fails",10
             .db "    var code as u8",10
             .db 10
-            .db "    code = alwaysFails()",10
-            .db "    on error code",10
-            .db "        writeOutputByte(code) or fail",10
+            .db "    code = alwaysFails() handle code",10
+            .db "        writeOutputByte(code) else fail",10
             .db "        return",10
             .db "    end",10
             .db 10
-            .db "    writeOutputByte(0) or fail",10
+            .db "    writeOutputByte(0) else fail",10
             .db "end",10
 Chapter21_6SourceEnd:
 
 Chapter21_7Source:
             .db "sub main() fails",10
-            .db "    writeStorageByte('A') or fail",10
-            .db "    writeStorageByte('B') or fail",10
-            .db "    seekStorageOutput(0) or fail",10
-            .db "    writeStorageByte('Z') or fail",10
+            .db "    writeStorageByte('A') else fail",10
+            .db "    writeStorageByte('B') else fail",10
+            .db "    seekStorageOutput(0) else fail",10
+            .db "    writeStorageByte('Z') else fail",10
             .db "end",10
 Chapter21_7SourceEnd:
 
@@ -235,7 +232,7 @@ Chapter21_9BoundsSource:
             .db "var bytes as u8[2]",10
             .db 10
             .db "sub main() fails",10
-            .db "    var index as u8 = readInputByte() or fail",10
+            .db "    var index as u8 = readInputByte() else fail",10
             .db "    bytes"
 Chapter21_9BoundsPoint:
             .db "[index] = 1",10
@@ -250,7 +247,7 @@ Chapter21_9DividePoint:
             .db "end",10
             .db 10
             .db "sub main() fails",10
-            .db "    var divisor as u16 = readInputByte() or fail",10
+            .db "    var divisor as u16 = readInputByte() else fail",10
             .db "    var result as u16 = divide(8, divisor)",10
             .db "end",10
 Chapter21_9DivideSourceEnd:
@@ -263,7 +260,7 @@ Chapter21_9ModuloPoint:
             .db "end",10
             .db 10
             .db "sub main() fails",10
-            .db "    var divisor as u16 = readInputByte() or fail",10
+            .db "    var divisor as u16 = readInputByte() else fail",10
             .db "    var result as u16 = remainder(8, divisor)",10
             .db "end",10
 Chapter21_9ModuloSourceEnd:
@@ -279,7 +276,7 @@ Chapter21_12Source:
             .db "end",10
             .db 10
             .db "sub main() fails",10
-            .db "    writeOutputByte(render(3)) or fail",10
+            .db "    writeOutputByte(render(3)) else fail",10
             .db "end",10
 Chapter21_12SourceEnd:
 
@@ -299,7 +296,7 @@ Chapter21_13Source:
             .db "sub main() fails",10
             .db "    copyAndIncrement(source, destination)",10
             .db "    if source.value = 1 and destination.value = 2",10
-            .db "        writeOutputByte('Y') or fail",10
+            .db "        writeOutputByte('Y') else fail",10
             .db "    end",10
             .db "end",10
 Chapter21_13SourceEnd:
@@ -326,7 +323,7 @@ Chapter21_14Source:
             .db "sub main() fails",10
             .db "    replace(forwardSelection(samples, 1), 9)",10
             .db "    if samples[1].value = 9",10
-            .db "        writeOutputByte('Y') or fail",10
+            .db "        writeOutputByte('Y') else fail",10
             .db "    end",10
             .db "end",10
 Chapter21_14SourceEnd:
@@ -339,7 +336,7 @@ Chapter21_15Source:
             .db 10
             .db "sub main() fails",10
             .db "    if enabled and byteUse = 200 and wordUse = 200",10
-            .db "        writeOutputByte('Y') or fail",10
+            .db "        writeOutputByte('Y') else fail",10
             .db "    end",10
             .db "end",10
 Chapter21_15SourceEnd:
@@ -352,7 +349,7 @@ Chapter21_16Source:
             .db 10
             .db "sub main() fails",10
             .db "    if hexMask = 255 and binaryMask = 176 and hexMaximum = 65535 and binaryMaximum = 65535",10
-            .db "        writeOutputByte(binaryMask) or fail",10
+            .db "        writeOutputByte(binaryMask) else fail",10
             .db "    end",10
             .db "end",10
 Chapter21_16SourceEnd:
@@ -366,7 +363,7 @@ Chapter21_17Source:
             .db "    byteValue = byteValue xor $ff",10
             .db "    wordValue = wordValue xor $ffff",10
             .db "    if folded = 3 and byteValue = $5a and wordValue = $0f0f",10
-            .db "        writeOutputByte(byteValue) or fail",10
+            .db "        writeOutputByte(byteValue) else fail",10
             .db "    end",10
             .db "end",10
 Chapter21_17SourceEnd:
@@ -389,7 +386,7 @@ Chapter21_18Source:
             .db "    byteValue = byteValue mod 16",10
             .db "    wordValue = wordValue mod 256",10
             .db "    if folded = 2 and byteValue = 10 and wordValue = 232",10
-            .db "        writeOutputByte(byteValue) or fail",10
+            .db "        writeOutputByte(byteValue) else fail",10
             .db "    end",10
             .db "end",10
 Chapter21_18SourceEnd:
@@ -409,7 +406,7 @@ Chapter21_19Source:
             .db "assert Rows * Columns = 128",10
             .db 10
             .db "sub main() fails",10
-            .db "    writeOutputByte(Rows * Columns) or fail",10
+            .db "    writeOutputByte(Rows * Columns) else fail",10
             .db "end",10
 Chapter21_19SourceEnd:
 
@@ -419,7 +416,7 @@ Chapter21_19ControlSource:
             .db "// assertion placeholder   ",10
             .db 10
             .db "sub main() fails",10
-            .db "    writeOutputByte(Rows * Columns) or fail",10
+            .db "    writeOutputByte(Rows * Columns) else fail",10
             .db "end",10
 Chapter21_19ControlSourceEnd:
 
@@ -443,7 +440,8 @@ Chapter21_19TypeSourceEnd:
 
 Chapter21_10UnconsumedSource:
             .db "sub readOne() as u8 fails",10
-            .db "    return readInputByte() or fail",10
+            .db "    var value as u8 = readInputByte() else fail",10
+            .db "    return value",10
             .db "end",10
             .db 10
             .db "sub main()",10
@@ -636,7 +634,7 @@ Chapter21BoundaryPart1:
 Chapter21BoundaryPart1End:
 Chapter21BoundaryPart2:
             .db "sub main() fails",10
-            .db "    writeOutputByte(value) or fail",10
+            .db "    writeOutputByte(value) else fail",10
             .db "end",10
 Chapter21BoundaryPart2End:
 Chapter21BoundaryDescriptors:
@@ -856,7 +854,7 @@ ProofStart:
             LD   (ProofCase),A
             LD   A,51
             LD   B,DiagnosticFailureContext
-            LD   IX,Chapter21_10UnconsumedPoint+1-Chapter21_10UnconsumedSource
+            LD   IX,Chapter21_10UnconsumedPoint-Chapter21_10UnconsumedSource
             LD   HL,Chapter21_10UnconsumedSource
             LD   DE,Chapter21_10UnconsumedSourceEnd
             CALL ProofExpectDiagnosticSingle

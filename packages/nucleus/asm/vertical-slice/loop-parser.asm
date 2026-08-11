@@ -422,8 +422,8 @@ ParserExpectIndexDeclaration:
 .endif
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
-ParserExpectOrFailLine:
-            CALL ParserExpectOrFail
+ParserExpectElseFailLine:
+            CALL ParserExpectElseFail
             RET  C
             ; The legacy proof layouts put this target outside JR range.
 .if AggregateCallSlices
@@ -433,8 +433,8 @@ ParserExpectOrFailLine:
 .endif
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
-ParserExpectOrFail:
-            LD   E,TokenOr
+ParserExpectElseFail:
+            LD   E,TokenElse
             CALL ParserExpect
             RET  C
             LD   E,TokenFail
@@ -448,7 +448,7 @@ ParserExpectOrFail:
 .if LegacyCompilerSlices
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 ParserExpectPropagateLine:
-            CALL ParserExpectOrFailLine
+            CALL ParserExpectElseFailLine
             RET  C
             LD   A,SemanticPropagate
             JP   SemanticSinkOperation
@@ -648,7 +648,7 @@ ParserParseScalarWrite:
             LD   A,H
             CALL SemanticSinkPut
             RET  C
-            JP   ParserExpectOrFailLine
+            JP   ParserExpectElseFailLine
 ParserScalarWriteFailure:
             POP  HL
             RET
@@ -912,7 +912,7 @@ ParserParseCallProgramAfterForward:
             LD   A,SemanticWriteLocalU8
             CALL SemanticSinkOperation
             RET  C
-            CALL ParserExpectOrFailLine
+            CALL ParserExpectElseFailLine
             RET  C
             CALL ParserExpectEndLine
             RET  C

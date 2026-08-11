@@ -53,5 +53,5 @@ GeneratedArrayEnd       .equ GeneratedBase+ArrayProgramSize
 
 CallProgramSize   .equ 99
 CallFailureOffset .equ 95
-CallCapacityOffset .equ 201
+CallCapacityOffset .equ 203
 GeneratedCallEnd        .equ GeneratedBase+CallProgramSize

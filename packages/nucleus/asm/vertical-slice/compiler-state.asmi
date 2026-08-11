@@ -48,7 +48,7 @@ TokenLeftParen          .equ 4
 TokenRightParen         .equ 5
 TokenSub                .equ 6
 TokenFails              .equ 7
-TokenOr                 .equ 8
+TokenElse               .equ 8
 TokenFail               .equ 9
 TokenEnd                .equ 10
 
@@ -63,7 +63,7 @@ DiagnosticExpectedFails .equ 20
 DiagnosticExpectedLine  .equ 21
 DiagnosticExpectedWrite .equ 22
 DiagnosticExpectedChar  .equ 23
-DiagnosticExpectedOr    .equ 24
+DiagnosticExpectedElse  .equ 24
 DiagnosticExpectedFail  .equ 25
 DiagnosticExpectedEnd   .equ 26
 DiagnosticExpectedEof   .equ 27

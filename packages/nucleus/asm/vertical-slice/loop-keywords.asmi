@@ -33,9 +33,8 @@ KeywordTable:
             .db  8,"continue",TokenContinue
             .db  6,"record",TokenRecord
             .db  6,"string",TokenString
-            .db  2,"on",TokenOn
-            .db  5,"error",TokenError
-KeywordCount            .equ 35
+            .db  6,"handle",TokenHandle
+KeywordCount            .equ 34
 
 PunctuationTable:
             .db  "=",TokenEquals

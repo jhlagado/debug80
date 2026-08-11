@@ -25,7 +25,7 @@ AcceptedLoopSource:
             .db "sub main() fails",10
             .db "    var index as u8 = 0",10
             .db "    for index = 0 until 3",10
-            .db "        writeOutputByte('A') or fail",10
+            .db "        writeOutputByte('A') else fail",10
             .db "    end",10
             .db "end",10
 AcceptedLoopSourceEnd:
@@ -34,7 +34,7 @@ ZeroLoopSource:
             .db "sub main() fails",10
             .db "    var index as u8 = 0",10
             .db "    for index = 0 until 0",10
-            .db "        writeOutputByte('A') or fail",10
+            .db "        writeOutputByte('A') else fail",10
             .db "    end",10
             .db "end",10
 ZeroLoopSourceEnd:
@@ -53,7 +53,7 @@ MissingEndSource:
             .db "sub main() fails",10
             .db "    var index as u8 = 0",10
             .db "    for index = 0 until 3",10
-            .db "        writeOutputByte('A') or fail",10
+            .db "        writeOutputByte('A') else fail",10
             .db "    end",10
 MissingEndSourceEnd:
 

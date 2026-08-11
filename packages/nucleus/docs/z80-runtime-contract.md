@@ -250,8 +250,8 @@ phase.
 ### 7.1 Recoverable completion
 
 A failable routine completes with either success or one `u8` error code. No
-success result exists on failure. `or fail` returns that code from the caller;
-`on error` stores it only after suppressing the success-result store. These
+success result exists on failure. `else fail` returns that code from the caller;
+`handle NAME` stores it only after suppressing the success-result store. These
 paths perform ordinary local control transfer and no stack search or unwinding.
 
 The target calling convention may use carry and a byte register or another
@@ -338,7 +338,7 @@ operating-system name enters Nucleus source semantics.
 
 Before each new run, the adapter restores every service input, output, and
 cursor to the initial state in Section 8.3. A new run therefore does not inherit
-bytes, cursors, or failures from an earlier run. The external execution
+bytes, cursors, else failures from an earlier run. The external execution
 interface identifies the reset execution as a distinct run.
 
 Resuming or restarting generated code while retaining mutated service state is

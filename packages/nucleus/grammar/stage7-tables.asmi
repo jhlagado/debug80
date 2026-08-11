@@ -2,7 +2,7 @@
 HybridLL1NonterminalCount .equ 40
 HybridLL1ProductionCount  .equ 75
 HybridLL1ProductionSplit  .equ 38
-HybridLL1ActionCount      .equ 72
+HybridLL1ActionCount      .equ 71
 HybridLL1StartSymbol      .equ $40
 
 HybridLL1RowDirectory:
@@ -34,7 +34,7 @@ HybridLL1RowDirectory:
             .db HybridLL1Row25-HybridLL1Rows,DiagnosticExpectedReturn ; return-statement
             .db HybridLL1Row26-HybridLL1Rows,DiagnosticExpectedLine ; return-value-opt
             .db HybridLL1Row27-HybridLL1Rows,DiagnosticExpectedFail ; fail-statement
-            .db HybridLL1Row28-HybridLL1Rows,DiagnosticFailureContext ; on-error-opt
+            .db HybridLL1Row28-HybridLL1Rows,DiagnosticFailureContext ; name-statement-tail
             .db HybridLL1Row29-HybridLL1Rows,DiagnosticExpectedLoop ; transfer-statement
             .db HybridLL1Row30-HybridLL1Rows,DiagnosticExpectedIf ; if-statement
             .db HybridLL1Row31-HybridLL1Rows,DiagnosticExpectedScalar ; if-tail
@@ -230,21 +230,11 @@ HybridLL1Row26: ; return-value-opt
 HybridLL1Row27: ; fail-statement
             .db 51+$80
             .db TokenFail+$80
-HybridLL1Row28: ; on-error-opt
+HybridLL1Row28: ; name-statement-tail
             .db 52
-            .db TokenOn+$80
+            .db TokenNewline+$80
             .db 53+$80
-            .db TokenContinue
-            .db TokenElse
-            .db TokenElseIf
-            .db TokenEnd
-            .db TokenExit
-            .db TokenFail
-            .db TokenFor
-            .db TokenIf
-            .db TokenName
-            .db TokenReturn
-            .db TokenWhile+$80
+            .db TokenHandle+$80
 HybridLL1Row29: ; transfer-statement
             .db 54
             .db TokenExit+$80
@@ -365,8 +355,8 @@ HybridLL1ProductionDirectoryHigh:
             .db HybridLL1Production49-HybridLL1ProductionsHigh ; return-value-opt
             .db HybridLL1Production50-HybridLL1ProductionsHigh ; return-value-opt
             .db HybridLL1Production51-HybridLL1ProductionsHigh ; fail-statement
-            .db HybridLL1Production52-HybridLL1ProductionsHigh ; on-error-opt
-            .db HybridLL1Production53-HybridLL1ProductionsHigh ; on-error-opt
+            .db HybridLL1Production52-HybridLL1ProductionsHigh ; name-statement-tail
+            .db HybridLL1Production53-HybridLL1ProductionsHigh ; name-statement-tail
             .db HybridLL1Production54-HybridLL1ProductionsHigh ; transfer-statement
             .db HybridLL1Production55-HybridLL1ProductionsHigh ; transfer-statement
             .db HybridLL1Production56-HybridLL1ProductionsHigh ; if-statement
@@ -466,7 +456,7 @@ HybridLL1Production39: ; statement-sequence
             .db $57,$58
 HybridLL1Production40: ; statement-sequence
 HybridLL1Production41: ; statement
-            .db $5c,TokenNewline,$a3
+            .db $5c,$a3
 HybridLL1Production42: ; statement
             .db TokenNewline,$59
 HybridLL1Production43: ; statement
@@ -487,51 +477,51 @@ HybridLL1Production50: ; return-value-opt
             .db $a7
 HybridLL1Production51: ; fail-statement
             .db $a9,$a0,$a8,TokenFail
-HybridLL1Production52: ; on-error-opt
-            .db $ab,TokenNewline,TokenEnd,$57,TokenNewline,$aa,TokenName,TokenError,TokenOn
-HybridLL1Production53: ; on-error-opt
-            .db $ac
+HybridLL1Production52: ; name-statement-tail
+            .db TokenNewline
+HybridLL1Production53: ; name-statement-tail
+            .db $ab,TokenNewline,TokenEnd,$57,TokenNewline,$aa,TokenName,TokenHandle
 HybridLL1Production54: ; transfer-statement
-            .db $ad,TokenExit
+            .db $ac,TokenExit
 HybridLL1Production55: ; transfer-statement
-            .db $ae,TokenContinue
+            .db $ad,TokenContinue
 HybridLL1Production56: ; if-statement
-            .db $b1,TokenNewline,TokenEnd,$5f,$57,$b0,TokenNewline,$a0,$af,TokenIf
+            .db $b0,TokenNewline,TokenEnd,$5f,$57,$af,TokenNewline,$a0,$ae,TokenIf
 HybridLL1Production57: ; if-tail
-            .db $5f,$57,$b0,TokenNewline,$a0,$b2,TokenElseIf
+            .db $5f,$57,$af,TokenNewline,$a0,$b1,TokenElseIf
 HybridLL1Production58: ; if-tail
-            .db $b4,$57,TokenNewline,$b3,TokenElse
+            .db $b3,$57,TokenNewline,$b2,TokenElse
 HybridLL1Production59: ; if-tail
-            .db $b5
+            .db $b4
 HybridLL1Production60: ; while-statement
-            .db $b8,TokenNewline,TokenEnd,$57,$b7,TokenNewline,$a0,$b6,TokenWhile
+            .db $b7,TokenNewline,TokenEnd,$57,$b6,TokenNewline,$a0,$b5,TokenWhile
 HybridLL1Production61: ; for-statement
-            .db $bb,TokenNewline,TokenEnd,$57,$ba,TokenNewline,$63,$a0,$62,$a0,TokenEquals,$b9,TokenName,TokenFor
+            .db $ba,TokenNewline,TokenEnd,$57,$b9,TokenNewline,$63,$a0,$62,$a0,TokenEquals,$b8,TokenName,TokenFor
 HybridLL1Production62: ; for-bound
-            .db $bc,TokenTo
+            .db $bb,TokenTo
 HybridLL1Production63: ; for-bound
-            .db $bd,TokenUntil
+            .db $bc,TokenUntil
 HybridLL1Production64: ; for-step-opt
-            .db $bf,$be,TokenStep
+            .db $be,$bd,TokenStep
 HybridLL1Production65: ; for-step-opt
-            .db $c0
+            .db $bf
 HybridLL1Production66: ; type
             .db $66,$65
 HybridLL1Production67: ; type-atom
             .db $67
 HybridLL1Production68: ; type-atom
-            .db $c1,TokenName
+            .db $c0,TokenName
 HybridLL1Production69: ; type-atom
-            .db $c3,TokenRightBracket,$83,$c2,TokenLeftBracket,TokenString
+            .db $c2,TokenRightBracket,$83,$c1,TokenLeftBracket,TokenString
 HybridLL1Production70: ; type-array-opt
-            .db $c4,TokenRightBracket,$83,$c2,TokenLeftBracket
+            .db $c3,TokenRightBracket,$83,$c1,TokenLeftBracket
 HybridLL1Production71: ; type-array-opt
 HybridLL1Production72: ; scalar-type
-            .db $c5,TokenU8
+            .db $c4,TokenU8
 HybridLL1Production73: ; scalar-type
-            .db $c6,TokenU16
+            .db $c5,TokenU16
 HybridLL1Production74: ; scalar-type
-            .db $c7,TokenBoolean
+            .db $c6,TokenBoolean
 HybridLL1ProductionsEnd:
 
 HybridLL1ActionDirectory:
@@ -577,9 +567,8 @@ HybridLL1ActionDirectory:
             .dw HybridLL1CommitBareReturn ; a:CommitBareReturn
             .dw HybridLL1BeginFail ; a:BeginFail
             .dw HybridLL1CommitFail ; a:CommitFail
-            .dw HybridLL1BeginOnError ; a:BeginOnError
-            .dw HybridLL1EndOnError ; a:EndOnError
-            .dw HybridLL1FinishFailureStatement ; a:FinishFailureStatement
+            .dw HybridLL1BeginHandle ; a:BeginHandle
+            .dw HybridLL1EndHandle ; a:EndHandle
             .dw HybridLL1EmitExit ; a:EmitExit
             .dw HybridLL1EmitContinue ; a:EmitContinue
             .dw HybridLL1BeginIf ; a:BeginIf

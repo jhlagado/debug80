@@ -90,7 +90,7 @@ AggregateTypeSourceEnd:
 AggregateRecordNameScalarSource:
             .db "record R",10,"v as u8",10,"end",10
             .db "sub main() fails",10
-            .db "writeOutputByte(R) or fail",10
+            .db "writeOutputByte(R) else fail",10
             .db "end",10
 AggregateRecordNameScalarSourceEnd:
 
@@ -98,7 +98,7 @@ AggregateObjectScalarSource:
             .db "record R",10,"v as u8",10,"end",10
             .db "var item as R",10
             .db "sub main() fails",10
-            .db "writeOutputByte(item) or fail",10
+            .db "writeOutputByte(item) else fail",10
             .db "end",10
 AggregateObjectScalarSourceEnd:
 

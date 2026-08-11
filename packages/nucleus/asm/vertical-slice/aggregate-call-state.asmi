@@ -24,16 +24,15 @@ Stage7CurrentFlags          .equ Stage7StateBase+$13
 Stage8FailureOffset         .equ Stage7StateBase+$14
 Stage8DirectFailable        .equ Stage7StateBase+$16
 Stage8CallModePointer       .equ Stage7StateBase+$17
-Stage8HandlerEligible       .equ Stage7StateBase+$19
-Stage8ForwardMainFlags      .equ Stage7StateBase+$1A
+Stage8ForwardMainFlags      .equ Stage7StateBase+$19
 ; Number of already-evaluated destination carriers below a failable result.
 ; A local handler discards these before entering its statement body.
-Stage8RetainedCarriers      .equ Stage7StateBase+$1B
+Stage8RetainedCarriers      .equ Stage7StateBase+$1A
 ; These values span expression parsing, so nested calls must not overlay them.
-Stage8ServiceId             .equ Stage7StateBase+$1C
-Stage8ServiceKeep           .equ Stage7StateBase+$1D
-Stage8CallFlags             .equ Stage7StateBase+$1E
-Stage7StateEnd              .equ Stage7StateBase+$1F
+Stage8ServiceId             .equ Stage7StateBase+$1B
+Stage8ServiceKeep           .equ Stage7StateBase+$1C
+Stage8CallFlags             .equ Stage7StateBase+$1D
+Stage7StateEnd              .equ Stage7StateBase+$1E
 
 Stage7RoutineTableBase      .equ Stage7StateEnd
 Stage7RoutineEntrySize      .equ 8

@@ -75,31 +75,31 @@ Stage8FailureFlowPoint:
 Stage8FailureFlowSourceEnd:
 
 Stage8PropagationSuccessSource:
-            .db "sub pass(value as u8) as u8 fails",10
-            .db "return value",10
+            .db "sub pass(input as u8) as u8 fails",10
+            .db "return input",10
             .db "end",10
             .db "sub relay(value as u8) as u8 fails",10
-            .db "var out as u8 = pass(value) or fail",10
+            .db "var out as u8 = pass(value) else fail",10
             .db "return out",10
             .db "end",10
             .db "sub main() fails",10
-            .db "var out as u8 = relay('A') or fail",10
-            .db "writeOutputByte(out) or fail",10
+            .db "var out as u8 = relay('A') else fail",10
+            .db "writeOutputByte(out) else fail",10
             .db "end",10
 Stage8PropagationSuccessSourceEnd:
 
 Stage8PropagationFailureSource:
-            .db "sub stop(value as u8) as u8 fails",10
-            .db "fail value",10
+            .db "sub stop(input as u8) as u8 fails",10
+            .db "fail input",10
             .db "end",10
             .db "sub relay(value as u8) as u8 fails",10
-            .db "var out as u8 = stop(value) or fail",10
+            .db "var out as u8 = stop(value) else fail",10
             .db "return out",10
             .db "end",10
             .db "sub main() fails",10
             .db "var out as u8 = "
 Stage8PropagationFailurePoint:
-            .db "relay(10) or fail",10
+            .db "relay(10) else fail",10
             .db "end",10
 Stage8PropagationFailureSourceEnd:
 
@@ -110,8 +110,8 @@ Stage8BareReturnSource:
             .db "mark = 9",10
             .db "end",10
             .db "sub main() fails",10
-            .db "stop() or fail",10
-            .db "writeOutputByte(mark) or fail",10
+            .db "stop() else fail",10
+            .db "writeOutputByte(mark) else fail",10
             .db "end",10
 Stage8BareReturnSourceEnd:
 
@@ -121,7 +121,7 @@ Stage8SixteenArgumentsSource:
             .db "end",10
             .db "sub main() fails",10
             .db "var out as u8 = pick(1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16)",10
-            .db "writeOutputByte(out) or fail",10
+            .db "writeOutputByte(out) else fail",10
             .db "end",10
 Stage8SixteenArgumentsSourceEnd:
 
@@ -132,16 +132,15 @@ Stage8LocalHandlerSource:
             .db "end",10
             .db "sub main() fails",10
             .db "var code as u8",10
-            .db "code = alwaysFails()",10
-            .db "on error code",10
-            .db "writeOutputByte(code) or fail",10
+            .db "code = alwaysFails() handle code",10
+            .db "writeOutputByte(code) else fail",10
             .db "return",10
             .db "end",10
-            .db "writeOutputByte(0) or fail",10
+            .db "writeOutputByte(0) else fail",10
             .db "end",10
 Stage8LocalHandlerSourceEnd:
 
-; A program variable is a valid on-error destination. The handler performs a
+; A program variable is a valid handler destination. The handler performs a
 ; later expression and service call so a one-byte address operand cannot pass
 ; by accidentally consuming the following semantic opcode.
 Stage8ProgramHandlerSource:
@@ -152,12 +151,11 @@ Stage8ProgramHandlerSource:
             .db "end",10
             .db "sub main() fails",10
             .db "var value as u8",10
-            .db "value = alwaysFails()",10
-            .db "on error saved",10
-            .db "writeOutputByte(saved + 1) or fail",10
+            .db "value = alwaysFails() handle saved",10
+            .db "writeOutputByte(saved + 1) else fail",10
             .db "return",10
             .db "end",10
-            .db "writeOutputByte(0) or fail",10
+            .db "writeOutputByte(0) else fail",10
             .db "end",10
 Stage8ProgramHandlerSourceEnd:
 
@@ -166,8 +164,8 @@ Stage8ReadInputSuccessSource:
             .db "return value",10
             .db "end",10
             .db "sub main() fails",10
-            .db "var value as u8 = readInputByte() or fail",10
-            .db "writeOutputByte(identity(value)) or fail",10
+            .db "var value as u8 = readInputByte() else fail",10
+            .db "writeOutputByte(identity(value)) else fail",10
             .db "end",10
 Stage8ReadInputSuccessSourceEnd:
 
@@ -175,12 +173,11 @@ Stage8ReadInputHandlerSource:
             .db "sub main() fails",10
             .db "var code as u8",10
             .db "var value as u8",10
-            .db "value = readInputByte()",10
-            .db "on error code",10
-            .db "writeOutputByte(code) or fail",10
+            .db "value = readInputByte() handle code",10
+            .db "writeOutputByte(code) else fail",10
             .db "return",10
             .db "end",10
-            .db "writeOutputByte(value) or fail",10
+            .db "writeOutputByte(value) else fail",10
             .db "end",10
 Stage8ReadInputHandlerSourceEnd:
 
@@ -188,7 +185,7 @@ Stage8ReadInputHandlerSourceEnd:
 Stage8ConstantsSource:
             .db "sub main() fails",10
             .db "if endOfInput = 1 and inputFailure = 2 and outputFailure = 3 and storageFailure = 4",10
-            .db "writeOutputByte('C') or fail",10
+            .db "writeOutputByte('C') else fail",10
             .db "end",10
             .db "end",10
 Stage8ConstantsSourceEnd:
@@ -197,23 +194,22 @@ Stage8StorageSuccessSource:
             .db "sub main() fails",10
             .db "var first as u8",10
             .db "var again as u8",10
-            .db "first = readStorageByte() or fail",10
-            .db "rewindStorageInput() or fail",10
-            .db "again = readStorageByte() or fail",10
-            .db "writeStorageByte(first) or fail",10
-            .db "writeStorageByte('B') or fail",10
-            .db "seekStorageOutput(0) or fail",10
-            .db "writeStorageByte('Z') or fail",10
-            .db "writeOutputByte(again) or fail",10
+            .db "first = readStorageByte() else fail",10
+            .db "rewindStorageInput() else fail",10
+            .db "again = readStorageByte() else fail",10
+            .db "writeStorageByte(first) else fail",10
+            .db "writeStorageByte('B') else fail",10
+            .db "seekStorageOutput(0) else fail",10
+            .db "writeStorageByte('Z') else fail",10
+            .db "writeOutputByte(again) else fail",10
             .db "end",10
 Stage8StorageSuccessSourceEnd:
 
 Stage8WriteFailureSource:
             .db "sub main() fails",10
             .db "var code as u8",10
-            .db "writeStorageByte('Z')",10
-            .db "on error code",10
-            .db "writeOutputByte(code) or fail",10
+            .db "writeStorageByte('Z') handle code",10
+            .db "writeOutputByte(code) else fail",10
             .db "return",10
             .db "end",10
             .db "fail 99",10
@@ -223,9 +219,8 @@ Stage8WriteFailureSourceEnd:
 Stage8SeekFailureSource:
             .db "sub main() fails",10
             .db "var code as u8",10
-            .db "seekStorageOutput(3)",10
-            .db "on error code",10
-            .db "writeOutputByte(code) or fail",10
+            .db "seekStorageOutput(3) handle code",10
+            .db "writeOutputByte(code) else fail",10
             .db "return",10
             .db "end",10
             .db "fail 99",10
@@ -235,9 +230,8 @@ Stage8SeekFailureSourceEnd:
 Stage8RewindFailureSource:
             .db "sub main() fails",10
             .db "var code as u8",10
-            .db "rewindStorageInput()",10
-            .db "on error code",10
-            .db "writeOutputByte(code) or fail",10
+            .db "rewindStorageInput() handle code",10
+            .db "writeOutputByte(code) else fail",10
             .db "return",10
             .db "end",10
             .db "fail 99",10
@@ -248,9 +242,8 @@ Stage8ReadStorageFailureSource:
             .db "sub main() fails",10
             .db "var code as u8",10
             .db "var value as u8",10
-            .db "value = readStorageByte()",10
-            .db "on error code",10
-            .db "writeOutputByte(code) or fail",10
+            .db "value = readStorageByte() handle code",10
+            .db "writeOutputByte(code) else fail",10
             .db "return",10
             .db "end",10
             .db "fail 99",10
@@ -260,8 +253,7 @@ Stage8ReadStorageFailureSourceEnd:
 Stage8WriteOutputFailureSource:
             .db "sub main() fails",10
             .db "var code as u8",10
-            .db "writeOutputByte('X')",10
-            .db "on error code",10
+            .db "writeOutputByte('X') handle code",10
             .db "if code = outputFailure",10
             .db "return",10
             .db "end",10
@@ -273,21 +265,25 @@ Stage8WriteOutputFailureSourceEnd:
 Stage8MutualForwardSource:
             .db "forward sub odd(value as u16) as boolean fails",10
             .db "sub even(value as u16) as boolean fails",10
+            .db "var result as boolean",10
             .db "if value = 0",10
             .db "return true",10
             .db "end",10
-            .db "return odd(value - 1) or fail",10
+            .db "result = odd(value - 1) else fail",10
+            .db "return result",10
             .db "end",10
             .db "sub odd",10
+            .db "var result as boolean",10
             .db "if value = 0",10
             .db "return false",10
             .db "end",10
-            .db "return even(value - 1) or fail",10
+            .db "result = even(value - 1) else fail",10
+            .db "return result",10
             .db "end",10
             .db "sub main() fails",10
-            .db "var result as boolean = even(2) or fail",10
+            .db "var result as boolean = even(2) else fail",10
             .db "if result",10
-            .db "writeOutputByte('M') or fail",10
+            .db "writeOutputByte('M') else fail",10
             .db "end",10
             .db "end",10
 Stage8MutualForwardSourceEnd:
@@ -332,7 +328,7 @@ Stage8WriteStorageTypeSource:
             .db "var word as u16 = 300",10
             .db "writeStorageByte("
 Stage8WriteStorageTypePoint:
-            .db "word) or fail",10
+            .db "word) else fail",10
             .db "end",10
 Stage8WriteStorageTypeSourceEnd:
 
@@ -341,7 +337,7 @@ Stage8SeekStorageTypeSource:
             .db "var flag as boolean = true",10
             .db "seekStorageOutput("
 Stage8SeekStorageTypePoint:
-            .db "flag) or fail",10
+            .db "flag) else fail",10
             .db "end",10
 Stage8SeekStorageTypeSourceEnd:
 
@@ -376,7 +372,7 @@ Stage8NestedServiceSource:
             .db "sub main() fails",10
             .db "writeOutputByte(readInputByte()"
 Stage8NestedServicePoint:
-            .db ") or fail",10
+            .db ") else fail",10
             .db "end",10
 Stage8NestedServiceSourceEnd:
 
@@ -398,7 +394,7 @@ Stage8TrapBypassesHandlerSource:
             .db "end",10
             .db "result = "
 Stage8TrapRecursiveCallPoint:
-            .db "dive(value - 1) or fail",10
+            .db "dive(value - 1) else fail",10
             .db "return result",10
             .db "end",10
             .db "sub main() fails",10
@@ -406,22 +402,24 @@ Stage8TrapRecursiveCallPoint:
             .db "var result as u8",10
             .db "result = "
 Stage8TrapBypassesHandlerPoint:
-            .db "dive(2)",10
-            .db "on error code",10
-            .db "writeOutputByte('H') or fail",10
+            .db "dive(2) handle code",10
+            .db "writeOutputByte('H') else fail",10
             .db "end",10
             .db "end",10
 Stage8TrapBypassesHandlerSourceEnd:
 
 Stage8ResultFreeReturnSource:
             .db "sub emitMarker() fails",10
-            .db "return writeOutputByte('R') or fail",10
+            .db "writeOutputByte('R') else fail",10
+            .db "return",10
             .db "end",10
             .db "sub relay() fails",10
-            .db "return emitMarker() or fail",10
+            .db "emitMarker() else fail",10
+            .db "return",10
             .db "end",10
             .db "sub main() fails",10
-            .db "return relay() or fail",10
+            .db "relay() else fail",10
+            .db "return",10
             .db "end",10
 Stage8ResultFreeReturnSourceEnd:
 
@@ -429,13 +427,14 @@ Stage8ForwardMainSource:
             .db "var depth as u8",10
             .db "forward sub main() fails",10
             .db "sub relay() fails",10
-            .db "return main() or fail",10
+            .db "main() else fail",10
+            .db "return",10
             .db "end",10
             .db "sub main",10
             .db "if depth = 0",10
             .db "depth = 1",10
-            .db "relay() or fail",10
-            .db "writeOutputByte('M') or fail",10
+            .db "relay() else fail",10
+            .db "writeOutputByte('M') else fail",10
             .db "end",10
             .db "return",10
             .db "end",10
@@ -446,8 +445,8 @@ Stage8RecursiveMainSource:
             .db "sub main() fails",10
             .db "if depth = 0",10
             .db "depth = 1",10
-            .db "main() or fail",10
-            .db "writeOutputByte('D') or fail",10
+            .db "main() else fail",10
+            .db "writeOutputByte('D') else fail",10
             .db "end",10
             .db "return",10
             .db "end",10
@@ -460,7 +459,7 @@ Stage8IncompleteForwardMainSourceEnd:
 Stage8BoundsTrapSource:
             .db "var bytes as u8[2]",10
             .db "sub main() fails",10
-            .db "var index as u8 = readInputByte() or fail",10
+            .db "var index as u8 = readInputByte() else fail",10
             .db "bytes"
 Stage8BoundsTrapPoint:
             .db "[index] = 1",10
@@ -479,7 +478,7 @@ Stage8NarrowTrapSourceEnd:
 
 Stage8DivideTrapSource:
             .db "sub main() fails",10
-            .db "var divisor as u16 = readInputByte() or fail",10
+            .db "var divisor as u16 = readInputByte() else fail",10
             .db "var result as u16",10
             .db "result = 8 "
 Stage8DivideTrapPoint:
@@ -505,7 +504,7 @@ Stage8ComposedFailableSource:
             .db "var out as u8",10
             .db "out = read() "
 Stage8ComposedFailablePoint:
-            .db "+ 1 or fail",10
+            .db "+ 1 else fail",10
             .db "end",10
 Stage8ComposedFailableSourceEnd:
 
@@ -521,7 +520,7 @@ Stage8AggregateSuffixFailableSource:
             .db "var out as u8",10
             .db "out = get()"
 Stage8AggregateSuffixFailablePoint:
-            .db ".value or fail",10
+            .db ".value else fail",10
             .db "end",10
 Stage8AggregateSuffixFailableSourceEnd:
 
@@ -531,7 +530,7 @@ Stage8IndexFailableSource:
             .db "var out as u8",10
             .db "out = items[readInputByte()"
 Stage8IndexFailablePoint:
-            .db "] or fail",10
+            .db "] else fail",10
             .db "end",10
 Stage8IndexFailableSourceEnd:
 
@@ -560,8 +559,8 @@ Stage8NestedFrameSource:
             .db "return value",10
             .db "end",10
             .db "sub main() fails",10
-            .db "var out as u8 = outer(inner()) or fail",10
-            .db "writeOutputByte(out) or fail",10
+            .db "var out as u8 = outer(inner()) else fail",10
+            .db "writeOutputByte(out) else fail",10
             .db "end",10
 Stage8NestedFrameSourceEnd:
 
@@ -569,7 +568,7 @@ Stage8PredefinedStepSource:
             .db "sub main() fails",10
             .db "var index as u8",10
             .db "for index = 0 until 4 step outputFailure",10
-            .db "writeOutputByte('S') or fail",10
+            .db "writeOutputByte('S') else fail",10
             .db "end",10
             .db "end",10
 Stage8PredefinedStepSourceEnd:
@@ -584,10 +583,9 @@ Stage8IndirectHandlerSource:
             .db "end",10
             .db "sub main() fails",10
             .db "var code as u8",10
-            .db "target.value = stop()",10
-            .db "on error code",10
-            .db "writeOutputByte(code) or fail",10
-            .db "writeOutputByte(target.value) or fail",10
+            .db "target.value = stop() handle code",10
+            .db "writeOutputByte(code) else fail",10
+            .db "writeOutputByte(target.value) else fail",10
             .db "return",10
             .db "end",10
             .db "fail 99",10
@@ -608,12 +606,11 @@ Stage8AggregateCopyHandlerSource:
             .db "end",10
             .db "sub main() fails",10
             .db "var code as u8",10
-            .db "target = choose(false) or fail",10
-            .db "writeOutputByte(target.value) or fail",10
-            .db "target = choose(true)",10
-            .db "on error code",10
-            .db "writeOutputByte(code) or fail",10
-            .db "writeOutputByte(target.value) or fail",10
+            .db "target = choose(false) else fail",10
+            .db "writeOutputByte(target.value) else fail",10
+            .db "target = choose(true) handle code",10
+            .db "writeOutputByte(code) else fail",10
+            .db "writeOutputByte(target.value) else fail",10
             .db "return",10
             .db "end",10
             .db "fail 99",10
@@ -629,9 +626,8 @@ Stage8RetainedResetSource:
             .db "sub main() fails",10
             .db "var code as u8",10
             .db "target = source",10
-            .db "rewindStorageInput()",10
-            .db "on error code",10
-            .db "writeOutputByte(code) or fail",10
+            .db "rewindStorageInput() handle code",10
+            .db "writeOutputByte(code) else fail",10
             .db "return",10
             .db "end",10
             .db "fail 99",10
@@ -645,10 +641,9 @@ Stage8IndirectServiceHandlerSource:
             .db "var target as Box = (9)",10
             .db "sub main() fails",10
             .db "var code as u8",10
-            .db "target.value = readInputByte()",10
-            .db "on error code",10
-            .db "writeOutputByte(code) or fail",10
-            .db "writeOutputByte(target.value) or fail",10
+            .db "target.value = readInputByte() handle code",10
+            .db "writeOutputByte(code) else fail",10
+            .db "writeOutputByte(target.value) else fail",10
             .db "return",10
             .db "end",10
             .db "fail 99",10
@@ -668,13 +663,136 @@ Stage8RetainedFieldSource:
             .db "end",10
             .db "sub main() fails",10
             .db "var code as u8",10
-            .db "target.value = stop()",10
-            .db "on error code",10
+            .db "target.value = stop() handle code",10
             .db "return",10
             .db "end",10
             .db "fail 99",10
             .db "end",10
 Stage8RetainedFieldSourceEnd:
+
+; The redesigned surface keeps handling attached to the call's logical line.
+; This one program discriminates success-handler skipping, same-destination
+; error storage, handler fallthrough, conditional `else` on the next line,
+; and the release of `on` and `error` as ordinary identifiers.
+Stage8ImmediateConsumerSource:
+            .db "var on as u8 = 1",10
+            .db "var error as u8 = 2",10
+            .db "var value as u8",10
+            .db "sub pass(input as u8) as u8 fails",10
+            .db "return input",10
+            .db "end",10
+            .db "sub stop(input as u8) as u8 fails",10
+            .db "fail input",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "var code as u8",10
+            .db "value = pass(5) handle code",10
+            .db "fail 90",10
+            .db "end",10
+            .db "if on + error = 3",10
+            .db "value = pass(6) else fail",10
+            .db "else",10
+            .db "fail 91",10
+            .db "end",10
+            .db "value = stop(7) handle value",10
+            .db "if value = 7",10
+            .db "writeOutputByte('H') else fail",10
+            .db "end",10
+            .db "end",10
+            .db "writeOutputByte(value) else fail",10
+            .db "end",10
+Stage8ImmediateConsumerSourceEnd:
+
+Stage8HandlerPropagatesSource:
+            .db "sub main() fails",10
+            .db "var code as u8",10
+            .db "writeOutputByte('X') handle code",10
+Stage8HandlerExplicitFailPoint:
+            .db "fail code",10
+            .db "end",10
+            .db "end",10
+Stage8HandlerPropagatesSourceEnd:
+
+Stage8BareLocalSource:
+            .db "sub main() fails",10
+            .db "var value as u8 = readInputByte()"
+Stage8BareLocalPoint: .db 10,"end",10
+Stage8BareLocalSourceEnd:
+Stage8BareAssignmentSource:
+            .db "sub main() fails",10,"var value as u8",10
+            .db "value = readInputByte()"
+Stage8BareAssignmentPoint: .db 10,"end",10
+Stage8BareAssignmentSourceEnd:
+Stage8LegacyOrFailSource:
+            .db "sub main() fails",10,"var value as u8",10
+            .db "value = readInputByte() "
+Stage8LegacyOrFailPoint: .db "or fail",10,"end",10
+Stage8LegacyOrFailSourceEnd:
+Stage8LegacyOnErrorSource:
+            .db "sub main() fails",10,"var code as u8",10
+            .db "writeOutputByte(1)"
+Stage8LegacyOnErrorPoint: .db 10,"on error code",10,"end",10,"end",10
+Stage8LegacyOnErrorSourceEnd:
+Stage8InfalliblePropagationSource:
+            .db "sub main()",10,"var value as u8",10
+            .db "value = readInputByte() "
+Stage8InfalliblePropagationPoint: .db "else fail",10,"end",10
+Stage8InfalliblePropagationSourceEnd:
+Stage8InfallibleHandleSource:
+            .db "sub helper()",10,"end",10,"sub main()",10
+            .db "var code as u8",10,"helper() "
+Stage8InfallibleHandlePoint: .db "handle code",10,"end",10,"end",10
+Stage8InfallibleHandleSourceEnd:
+Stage8DoubleConsumerSource:
+            .db "sub main() fails",10,"var code as u8",10
+            .db "writeOutputByte(1) else fail "
+Stage8DoubleConsumerPoint: .db "handle code",10,"end",10,"end",10
+Stage8DoubleConsumerSourceEnd:
+Stage8LocalHandleSource:
+            .db "sub main() fails",10
+            .db "var value as u8 = 1 "
+Stage8LocalHandlePoint: .db "handle value",10,"end",10,"end",10
+Stage8LocalHandleSourceEnd:
+Stage8ResultReturnPropagationSource:
+            .db "sub result() as u8 fails",10,"return readInputByte() "
+Stage8ResultReturnPropagationPoint: .db "else fail",10,"end",10
+            .db "sub main()",10,"end",10
+Stage8ResultReturnPropagationSourceEnd:
+Stage8FreeReturnPropagationSource:
+            .db "sub helper() fails",10,"end",10,"sub main() fails",10,"return "
+Stage8FreeReturnPropagationPoint: .db "helper() else fail",10,"end",10
+Stage8FreeReturnPropagationSourceEnd:
+
+Stage8MissingHandleNameSource:
+            .db "sub main() fails",10,"writeOutputByte(1) handle"
+Stage8MissingHandleNamePoint: .db 10,"end",10,"end",10
+Stage8MissingHandleNameSourceEnd:
+Stage8UnknownHandleNameSource:
+            .db "sub main() fails",10,"writeOutputByte(1) handle "
+Stage8UnknownHandleNamePoint: .db "missing",10,"end",10,"end",10
+Stage8UnknownHandleNameSourceEnd:
+Stage8WideHandleNameSource:
+            .db "sub main() fails",10,"var code as u16",10
+            .db "writeOutputByte(1) handle "
+Stage8WideHandleNamePoint: .db "code",10,"end",10,"end",10
+Stage8WideHandleNameSourceEnd:
+Stage8ConstantHandleNameSource:
+            .db "const code = 1",10,"sub main() fails",10
+            .db "writeOutputByte(1) handle "
+Stage8ConstantHandleNamePoint: .db "code",10,"end",10,"end",10
+Stage8ConstantHandleNameSourceEnd:
+Stage8AggregateHandleNameSource:
+            .db "record Box",10,"value as u8",10,"end",10
+            .db "var box as Box",10,"sub main() fails",10
+            .db "writeOutputByte(1) handle "
+Stage8AggregateHandleNamePoint: .db "box",10,"end",10,"end",10
+Stage8AggregateHandleNameSourceEnd:
+Stage8CounterHandleNameSource:
+            .db "sub main() fails",10,"var index as u8",10
+            .db "for index = 0 until 1",10
+            .db "writeOutputByte(1) handle "
+Stage8CounterHandleNamePoint: .db "index",10,"end",10,"end",10,"end",10
+Stage8CounterHandleNameSourceEnd:
 
             .org TargetRuntimeBase
 RuntimeCodeStart:
@@ -1235,7 +1353,7 @@ ProofStart:
             JP   C,ProofUnknownCompletionFailure
 
             LD   A,DiagnosticFailureContext
-            LD   BC,Stage8UnconsumedServicePoint-Stage8UnconsumedServiceSource
+            LD   BC,Stage8UnconsumedServicePoint-1-Stage8UnconsumedServiceSource
             LD   HL,Stage8UnconsumedServiceSource
             LD   DE,Stage8UnconsumedServiceSourceEnd
             CALL ProofExpectDiagnostic
@@ -1329,6 +1447,8 @@ ProofStart:
             CP   'S'
             JP   NZ,ProofPredefinedStepRunFailure
 
+            LD   A,115
+            LD   (ProofCase),A
             LD   A,198
             LD   HL,Stage8RetainedFieldSource
             LD   DE,Stage8RetainedFieldSourceEnd
@@ -1589,6 +1709,196 @@ ProofStart:
             CALL ProofExpectRuntimeTrap
             JP   C,ProofLoopRangeTrapFailure
 
+            LD   A,198
+            LD   HL,Stage8ImmediateConsumerSource
+            LD   DE,Stage8ImmediateConsumerSourceEnd
+            CALL CompileAggregateCallSlice
+            JP   C,ProofRedesignFailure
+            CALL EncodeAggregateProgram
+            JP   C,ProofRedesignFailure
+            CALL Reset
+            CALL ProofCallGenerated
+            JP   C,ProofRedesignFailure
+            LD   A,(RunState)
+            CP   RunSucceeded
+            JP   NZ,ProofRedesignFailure
+            LD   A,(ServiceOutputLength)
+            CP   2
+            JP   NZ,ProofRedesignFailure
+            LD   A,(ServiceOutputBase)
+            CP   'H'
+            JP   NZ,ProofRedesignFailure
+            LD   A,(ServiceOutputBase+1)
+            CP   7
+            JP   NZ,ProofRedesignFailure
+            LD   A,(ActivationDepth)
+            OR   A
+            JP   NZ,ProofRedesignFailure
+
+            LD   A,116
+            LD   (ProofCase),A
+            LD   A,199
+            LD   HL,Stage8HandlerPropagatesSource
+            LD   DE,Stage8HandlerPropagatesSourceEnd
+            CALL CompileAggregateCallSlice
+            JP   C,ProofRedesignFailure
+            CALL EncodeAggregateProgram
+            JP   C,ProofRedesignFailure
+            CALL Reset
+            LD   A,1
+            LD   (ServiceFailureCall),A
+            CALL ProofCallGenerated
+            JP   C,ProofRedesignFailure
+            LD   A,(RunState)
+            CP   RunTrapped
+            JP   NZ,ProofRedesignFailure
+            LD   A,(TrapNumber)
+            CP   6
+            JP   NZ,ProofRedesignFailure
+            LD   A,(TrapError)
+            CP   3
+            JP   NZ,ProofRedesignFailure
+            LD   HL,(TrapOffset)
+            LD   DE,Stage8HandlerExplicitFailPoint-Stage8HandlerPropagatesSource
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofRedesignFailure
+            LD   A,(ActivationDepth)
+            OR   A
+            JP   NZ,ProofRedesignFailure
+
+            LD   A,117
+            LD   (ProofCase),A
+            LD   A,DiagnosticFailureContext
+            LD   BC,Stage8BareLocalPoint-Stage8BareLocalSource
+            LD   HL,Stage8BareLocalSource
+            LD   DE,Stage8BareLocalSourceEnd
+            CALL ProofExpectDiagnostic
+            JP   C,ProofRedesignFailure
+            LD   A,118
+            LD   (ProofCase),A
+            LD   A,DiagnosticFailureContext
+            LD   BC,Stage8BareAssignmentPoint-Stage8BareAssignmentSource
+            LD   HL,Stage8BareAssignmentSource
+            LD   DE,Stage8BareAssignmentSourceEnd
+            CALL ProofExpectDiagnostic
+            JP   C,ProofRedesignFailure
+            LD   A,119
+            LD   (ProofCase),A
+            LD   A,DiagnosticFailureContext
+            LD   BC,Stage8LegacyOrFailPoint-Stage8LegacyOrFailSource
+            LD   HL,Stage8LegacyOrFailSource
+            LD   DE,Stage8LegacyOrFailSourceEnd
+            CALL ProofExpectDiagnostic
+            JP   C,ProofRedesignFailure
+            LD   A,120
+            LD   (ProofCase),A
+            LD   A,DiagnosticFailureContext
+            LD   BC,Stage8LegacyOnErrorPoint-Stage8LegacyOnErrorSource
+            LD   HL,Stage8LegacyOnErrorSource
+            LD   DE,Stage8LegacyOnErrorSourceEnd
+            CALL ProofExpectDiagnostic
+            JP   C,ProofRedesignFailure
+            LD   A,121
+            LD   (ProofCase),A
+            LD   A,DiagnosticFailureContext
+            LD   BC,Stage8InfalliblePropagationPoint-Stage8InfalliblePropagationSource
+            LD   HL,Stage8InfalliblePropagationSource
+            LD   DE,Stage8InfalliblePropagationSourceEnd
+            CALL ProofExpectDiagnostic
+            JP   C,ProofRedesignFailure
+            LD   A,122
+            LD   (ProofCase),A
+            LD   A,DiagnosticFailureContext
+            LD   BC,Stage8InfallibleHandlePoint-Stage8InfallibleHandleSource
+            LD   HL,Stage8InfallibleHandleSource
+            LD   DE,Stage8InfallibleHandleSourceEnd
+            CALL ProofExpectDiagnostic
+            JP   C,ProofRedesignFailure
+            LD   A,123
+            LD   (ProofCase),A
+            LD   A,DiagnosticFailureContext
+            LD   BC,Stage8DoubleConsumerPoint-Stage8DoubleConsumerSource
+            LD   HL,Stage8DoubleConsumerSource
+            LD   DE,Stage8DoubleConsumerSourceEnd
+            CALL ProofExpectDiagnostic
+            JP   C,ProofRedesignFailure
+            LD   A,124
+            LD   (ProofCase),A
+            LD   A,DiagnosticExpectedLine
+            LD   BC,Stage8LocalHandlePoint-Stage8LocalHandleSource
+            LD   HL,Stage8LocalHandleSource
+            LD   DE,Stage8LocalHandleSourceEnd
+            CALL ProofExpectDiagnostic
+            JP   C,ProofRedesignFailure
+            LD   A,125
+            LD   (ProofCase),A
+            LD   A,DiagnosticFailureContext
+            LD   BC,Stage8ResultReturnPropagationPoint-Stage8ResultReturnPropagationSource
+            LD   HL,Stage8ResultReturnPropagationSource
+            LD   DE,Stage8ResultReturnPropagationSourceEnd
+            CALL ProofExpectDiagnostic
+            JP   C,ProofRedesignFailure
+            LD   A,126
+            LD   (ProofCase),A
+            LD   A,DiagnosticRoutineFlow
+            LD   BC,Stage8FreeReturnPropagationPoint-Stage8FreeReturnPropagationSource
+            LD   HL,Stage8FreeReturnPropagationSource
+            LD   DE,Stage8FreeReturnPropagationSourceEnd
+            CALL ProofExpectDiagnostic
+            JP   C,ProofRedesignFailure
+
+            LD   A,127
+            LD   (ProofCase),A
+            LD   A,DiagnosticExpectedName
+            LD   BC,Stage8MissingHandleNamePoint-Stage8MissingHandleNameSource
+            LD   HL,Stage8MissingHandleNameSource
+            LD   DE,Stage8MissingHandleNameSourceEnd
+            CALL ProofExpectDiagnostic
+            JP   C,ProofRedesignFailure
+            LD   A,128
+            LD   (ProofCase),A
+            LD   A,DiagnosticUnknownName
+            LD   BC,Stage8UnknownHandleNamePoint-Stage8UnknownHandleNameSource
+            LD   HL,Stage8UnknownHandleNameSource
+            LD   DE,Stage8UnknownHandleNameSourceEnd
+            CALL ProofExpectDiagnostic
+            JP   C,ProofRedesignFailure
+            LD   A,129
+            LD   (ProofCase),A
+            LD   A,DiagnosticTypeMismatch
+            LD   BC,Stage8WideHandleNamePoint-Stage8WideHandleNameSource
+            LD   HL,Stage8WideHandleNameSource
+            LD   DE,Stage8WideHandleNameSourceEnd
+            CALL ProofExpectDiagnostic
+            JP   C,ProofRedesignFailure
+            LD   A,130
+            LD   (ProofCase),A
+            LD   A,DiagnosticTypeMismatch
+            LD   BC,Stage8ConstantHandleNamePoint-Stage8ConstantHandleNameSource
+            LD   HL,Stage8ConstantHandleNameSource
+            LD   DE,Stage8ConstantHandleNameSourceEnd
+            CALL ProofExpectDiagnostic
+            JP   C,ProofRedesignFailure
+            LD   A,131
+            LD   (ProofCase),A
+            LD   A,DiagnosticTypeMismatch
+            LD   BC,Stage8AggregateHandleNamePoint-Stage8AggregateHandleNameSource
+            LD   HL,Stage8AggregateHandleNameSource
+            LD   DE,Stage8AggregateHandleNameSourceEnd
+            CALL ProofExpectDiagnostic
+            JP   C,ProofRedesignFailure
+            LD   A,132
+            LD   (ProofCase),A
+            LD   A,DiagnosticActiveCounter
+            LD   BC,Stage8CounterHandleNamePoint-Stage8CounterHandleNameSource
+            LD   HL,Stage8CounterHandleNameSource
+            LD   DE,Stage8CounterHandleNameSourceEnd
+            CALL ProofExpectDiagnostic
+            JP   C,ProofRedesignFailure
+
+            XOR  A
+            LD   (ProofCase),A
             LD   A,$A5
             LD   (ProofStatus),A
             HALT
@@ -1923,6 +2233,9 @@ ProofProgramHandlerCompileFailure: LD A,112
 ProofProgramHandlerEncodeFailure: LD A,113
                          JP ProofFailed
 ProofProgramHandlerRunFailure: LD A,114
+                         JP ProofFailed
+ProofRedesignFailure:
+            HALT
 ProofFailed:
             LD   (ProofCase),A
             HALT

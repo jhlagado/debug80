@@ -56,7 +56,7 @@ Stage7CopySource:
             .db "source = source",10
             .db "copyAndIncrement(source, destination)",10
             .db "if source.value = 1 and destination.value = 2",10
-            .db "writeOutputByte('Y') or fail",10
+            .db "writeOutputByte('Y') else fail",10
             .db "end",10
             .db "end",10
 Stage7CopySourceEnd:
@@ -81,7 +81,7 @@ Stage7ForwardSource:
             .db "sub main() fails",10
             .db "replace(forwardSelection(samples, 1), nine())",10
             .db "if samples[1].value = 9",10
-            .db "writeOutputByte('Y') or fail",10
+            .db "writeOutputByte('Y') else fail",10
             .db "end",10
             .db "end",10
 Stage7ForwardSourceEnd:
@@ -94,7 +94,7 @@ Stage7StringSource:
             .db "sub main() fails",10
             .db "mutate(text, 1)",10
             .db "if text.length = 3 and text[1] = 'Y'",10
-            .db "writeOutputByte('Y') or fail",10
+            .db "writeOutputByte('Y') else fail",10
             .db "end",10
             .db "end",10
 Stage7StringSourceEnd:
@@ -109,7 +109,7 @@ Stage7BoundsSource:
             .db "end",10
             .db "sub main() fails",10
             .db "select(samples, 2)",10
-            .db "writeOutputByte('N') or fail",10
+            .db "writeOutputByte('N') else fail",10
             .db "end",10
 Stage7BoundsSourceEnd:
 
@@ -146,7 +146,7 @@ Stage7TransientMisuseSource:
             .db "return items[index]",10
             .db "end",10
             .db "sub main() fails",10
-            .db "writeOutputByte(u8(select(samples, 0))) or fail",10
+            .db "writeOutputByte(u8(select(samples, 0))) else fail",10
             .db "end",10
 Stage7TransientMisuseSourceEnd:
 
@@ -188,7 +188,7 @@ Stage7LargeDataSource:
             .db "var second as string[253] = \"B\"",10
             .db "sub main() fails",10
             .db "if first.length = 1 and second[0] = 'B'",10
-            .db "writeOutputByte('Y') or fail",10
+            .db "writeOutputByte('Y') else fail",10
             .db "end",10
             .db "end",10
 Stage7LargeDataSourceEnd:
@@ -217,7 +217,7 @@ Stage7BssCapacityAcceptedSource:
             .db "var bytes as u8[1024]",10
             .db "sub main() fails",10
             .db "bytes[1023] = 'Y'",10
-            .db "writeOutputByte(bytes[1023]) or fail",10
+            .db "writeOutputByte(bytes[1023]) else fail",10
             .db "end",10
 Stage7BssCapacityAcceptedSourceEnd:
 
@@ -237,7 +237,7 @@ Stage7WideAggregateSource:
             .db "sub main() fails",10
             .db "items[0].values[199] = 'Y'",10
             .db "items[1] = items[0]",10
-            .db "writeOutputByte(items[1].values[199]) or fail",10
+            .db "writeOutputByte(items[1].values[199]) else fail",10
             .db "end",10
 Stage7WideAggregateSourceEnd:
 
@@ -408,14 +408,14 @@ Stage7StructuredRoutineSource:
             .db "end",10
             .db "sub main() fails",10
             .db "if identity(false and items[2].value = 0)",10
-            .db "writeOutputByte('X') or fail",10
+            .db "writeOutputByte('X') else fail",10
             .db "end",10
             .db "if identity(true or items[2].value = 0)",10
             .db "else",10
-            .db "writeOutputByte('X') or fail",10
+            .db "writeOutputByte('X') else fail",10
             .db "end",10
             .db "if first(true) = 1 and second(513) = 513",10
-            .db "writeOutputByte('Y') or fail",10
+            .db "writeOutputByte('Y') else fail",10
             .db "end",10
             .db "end",10
 Stage7StructuredRoutineSourceEnd:
@@ -1742,7 +1742,7 @@ Stage7SealedArrayCapacityPoint:
             .db "sub main() fails",10
             .db "texts[3] = texts[3]",10
             .db "if texts[3].length = 0",10
-            .db "writeOutputByte('Y') or fail",10
+            .db "writeOutputByte('Y') else fail",10
             .db "end",10,"end",10
 Stage7SealedArraySourceEnd:
 ProofEnd:

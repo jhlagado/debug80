@@ -40,6 +40,11 @@ bounded strings, without turning aggregate aliases into runtime types.
 The flat-manifest adapter preserves ordered source-part identities and
 diagnostic names outside the compiler core.
 
+Recoverable errors remain explicit and local: `else fail` propagates one
+failable call, same-line `handle NAME ... end` handles it, and `return` denotes
+success only. These forms lower to ordinary Z80 conditional control flow, not
+exceptions or stack unwinding.
+
 ```bash
 npm run proof -w nucleus
 npm run measure -w nucleus

@@ -47,7 +47,7 @@ ExpressionProofSource:
             .db "    bytes = left + right * 4",10
             .db "    "
 ExpressionOutputCall:
-            .db "writeOutputByte(bytes) or fail",10
+            .db "writeOutputByte(bytes) else fail",10
             .db "end",10
 ExpressionProofSourceEnd:
 

@@ -72,7 +72,7 @@ StructuredAcceptedSource:
             .db "    finalI = i",10
             .db "    finalJ = j",10
             .db "    out = out + descend(3)",10
-            .db "    writeOutputByte(out) or fail",10
+            .db "    writeOutputByte(out) else fail",10
             .db "end",10
             .db "sub descend",10
             .db "    if value = 0",10

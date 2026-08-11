@@ -217,7 +217,7 @@ Nucleus 0.1 admits the explicit recoverable-error mechanism in Chapter 14. The i
 
 Nucleus 0.1 admits recursive routine calls. The first implementation may stage their construction while it measures activation storage, re-entry state, depth limits, and failure behaviour, but staging does not create a non-recursive language profile. Chapter 13 defines the source semantics, and Chapter 15 defines activation-capacity failure.
 
-Several source-preserving economies belong in the first implementation rather than in language variants. The first compiler uses one precedence-driven loop for binary expressions and classifies a completed call expression before admitting `or fail`; it does not duplicate the precedence ladder or branch on a routine signature before parsing the call. Interned type ordinals versus compact structural metadata stored directly in symbols remains a measured representation choice. The direct backend measures shared tails, table dispatch, helper calls, fall-through layout, and width-specific target sequences. None of these choices may change accepted source, arithmetic width, required diagnostics, array aliases, or observable behavior.
+Several source-preserving economies belong in the first implementation rather than in language variants. The first compiler uses one precedence-driven loop for binary expressions and classifies a completed call expression before admitting `else fail`; it does not duplicate the precedence ladder or branch on a routine signature before parsing the call. Interned type ordinals versus compact structural metadata stored directly in symbols remains a measured representation choice. The direct backend measures shared tails, table dispatch, helper calls, fall-through layout, and width-specific target sequences. None of these choices may change accepted source, arithmetic width, required diagnostics, array aliases, or observable behavior.
 
 ### 2.9 Decision boundary and failure conditions
 
@@ -318,8 +318,8 @@ The Nucleus 0.1 reserved words are:
 ```text
 and      as       assert   boolean   const     continue else
 elseif
-end      error    exit     fail      fails     false    for
-forward  if       mod      not       on        or       record
+end      exit     fail      fails     false    for      forward
+handle   if       mod      not       or        record
 return
 step     string   sub      to        true      u16      u8
 until    var      while    xor
@@ -327,7 +327,7 @@ until    var      while    xor
 
 `elseif` is one keyword. `else if` produces the two keywords `else` and `if` and does not form an `elseif` clause. `ELSEIF` is a `NAME`, not a keyword.
 
-Chapter 14 defines the recoverable-error forms that use `error`, `fail`, `fails`, and `on`.
+Chapter 14 defines the recoverable-error forms that use `fail`, `fails`, and `handle`. `on` and `error` are ordinary identifiers.
 
 Nucleus uses name-led routine invocation and has no `call` keyword. `call` remains an identifier.
 
@@ -514,7 +514,7 @@ The two physical line endings inside delimiters do not appear in the token seque
 
 ### 3.12 Reserved-word and literal decisions
 
-Chapter 8 admits `assert`. Chapter 9 admits `mod`, `not`, `and`, `or`, and `xor`. Chapter 14 admits `fail`, `fails`, `on`, and `error`. These ten words are reserved. Chapter 11 omits a conditional header marker, so `then` remains an identifier. Nucleus integer literals use decimal digits, `$` hexadecimal, or `%` binary. A later revision that needs another token requires an amendment here and cost accounting for the added scanner, table, test, and diagnostic work.
+Chapter 8 admits `assert`. Chapter 9 admits `mod`, `not`, `and`, `or`, and `xor`. Chapter 14 admits `fail`, `fails`, and `handle`. These nine words are reserved. Chapter 11 omits a conditional header marker, so `then` remains an identifier. Nucleus integer literals use decimal digits, `$` hexadecimal, or `%` binary. A later revision that needs another token requires an amendment here and cost accounting for the added scanner, table, test, and diagnostic work.
 
 ## 4. Program and file structure
 
@@ -1376,7 +1376,7 @@ formal-parameter      ::= NAME "as" type
 
 local-declaration     ::= "var" NAME "as" scalar-type
                           [ "=" local-initializer ] NEWLINE
-local-initializer     ::= expression [ "or" "fail" ]
+local-initializer     ::= expression [ "else" "fail" ]
 
 constant-initializer  ::= scalar-constant-expression
 program-initializer   ::= static-initializer
@@ -1514,7 +1514,7 @@ A routine definition without an earlier forward makes its checked signature visi
 
 After parameter binding, scalar local declarations take effect in source order before the first statement. All local declarations remain in one contiguous prefix.
 
-A scalar local owns one per-invocation scalar value. Its initializer is an ordinary expression or a direct failable call followed by `or fail` under Chapter 14, evaluated once when execution reaches the declaration. The successful result must be compatible with the declared scalar type. If the initializer is omitted, the compiler establishes zero for `u8` or `u16` and `false` for `boolean` at that point.
+A scalar local owns one per-invocation scalar value. Its initializer is an ordinary expression or a direct failable call followed by `else fail` under Chapter 14, evaluated once when execution reaches the declaration. The successful result must be compatible with the declared scalar type. If the initializer is omitted, the compiler establishes zero for `u8` or `u16` and `false` for `boolean` at that point.
 
 The declared local type must be `u8`, `u16`, or `boolean`. A record, fixed array, or bounded string is invalid in a local declaration whether or not an initializer is written. Routines receive aggregates only through formal parameters, reach aggregate subobjects through field and index paths, and may return transient aggregate aliases under Chapters 7 and 13.
 
@@ -1888,13 +1888,18 @@ The reusable statement fragment is:
 
 ```text
 statement-sequence      ::= { statement }
-statement               ::= simple-statement NEWLINE [ on-error-clause ]
+statement               ::= name-statement name-statement-tail
+                          | other-simple-statement NEWLINE
                           | if-statement
                           | while-statement
                           | for-statement
-simple-statement        ::= assignment-statement
+name-statement          ::= assignment-statement
                           | routine-call-statement
-                          | return-statement
+name-statement-tail     ::= NEWLINE
+                          | "else" "fail" NEWLINE
+                          | "handle" NAME NEWLINE
+                            statement-sequence "end" NEWLINE
+other-simple-statement  ::= return-statement
                           | "exit"
                           | "continue"
                           | fail-statement
@@ -1904,9 +1909,9 @@ routine-call-statement  ::= NAME argument-list
 return-statement        ::= "return" [ expression ]
 ```
 
-Chapters 11 through 14 define the referenced productions and semantic restrictions. Chapter 17 replaces this fragment with the complete grammar for failable invocations, propagation, and `on error` attachment.
+Chapters 11 through 14 define the referenced productions and semantic restrictions. Chapter 17 replaces this fragment with the complete grammar for failable invocations, propagation, and immediate `handle` attachment.
 
-A simple statement consumes one logical `NEWLINE`. A compound statement consumes the `NEWLINE` after its own closing `end`. Blank and comment-only physical lines produce no token under Chapter 3 and therefore do not create empty statements. A statement sequence may contain no statements; this permits an empty conditional clause or loop body without a placeholder operation.
+A simple statement consumes one logical `NEWLINE`. An immediate handler consumes the newline after its call site and the newline after its closing `end`. Other compound statements consume the `NEWLINE` after their own closing `end`. Blank and comment-only physical lines produce no token under Chapter 3 and therefore do not create empty statements. A statement sequence may contain no statements; this permits an empty conditional clause, loop body, or handler body without a placeholder operation.
 
 Nucleus has no semicolon, colon separator, multiple statements on one logical line, one-line compound statement, or empty-statement token.
 
@@ -2374,9 +2379,9 @@ The caller resumes after the invocation when the callee returns normally. For an
 
 ### 13.6 `return` and results
 
-A result-free routine normally uses bare `return`. In a result-free failable routine, `return` may instead have the restricted form `return failableInvocation() or fail` when the invoked routine is also result-free. Success returns successfully from the enclosing routine; failure propagates the callee's code. Every other `return expression` is invalid in a result-free routine. Reaching the routine's closing `end` also returns normally from a result-free routine.
+A result-free routine uses bare `return`, or reaches its closing `end`. Every `return expression` is invalid in a result-free routine, including an expression that is a failable invocation. A failable result-free call must consume failure as its own statement before a later successful `return`.
 
-A result-bearing routine uses `return expression`. Bare `return` is invalid. The expression is evaluated once before the activation ends and must be compatible with the declared result type.
+A result-bearing routine uses `return expression`. Bare `return` is invalid. The expression is evaluated once before the activation ends and must be compatible with the declared result type. It cannot be a failable invocation: failure must be propagated or handled by an earlier statement, and `return` represents success only.
 
 A scalar result follows the scalar destination rules: exact type, fitting exact literal, or implicit `u8`-to-`u16` widening. Checked narrowing must be written explicitly. The caller receives a copied scalar value.
 
@@ -2579,31 +2584,30 @@ end
 
 Every call of a failable routine must consume failure at that call site. Nucleus provides exactly two forms:
 
-1. `or fail` propagates the code from the current failable routine.
-2. A following `on error` clause handles the code locally.
+1. `else fail` propagates the code from the current failable routine.
+2. Immediate `handle NAME ... end` handles the code locally.
 
 A failable invocation cannot appear inside an argument, arithmetic operation, comparison, condition, index, general conversion, or other larger expression. It may be only:
 
-- the complete initializer of a scalar local declaration, followed by `or fail`;
-- the complete right side of an assignment;
-- the complete routine-call statement; or
-- the complete operand of `return`, followed by `or fail`. The caller and callee must either both have a result or both be result-free.
+- the complete initializer of a scalar local declaration, followed by `else fail`;
+- the complete right side of an assignment, followed by `else fail` or `handle`;
+- the complete routine-call statement, followed by `else fail` or `handle`.
 
-The assignment and call-statement forms use exactly one of `or fail` or a following `on error` clause. An unconsumed failable invocation, two consumers on one invocation, or a failable invocation in any other position is invalid. Program-variable and constant initializers cannot call routines under Chapter 8 and therefore cannot be failable.
+Local declarations admit propagation but not handling. `return` admits no failable invocation: it represents success only. An unconsumed failable invocation, two consumers on one invocation, or a failable invocation in any other position is invalid. Program-variable and constant initializers cannot call routines under Chapter 8 and therefore cannot be failable.
 
 ### 14.5 Propagation
 
 The propagation suffix is:
 
 ```text
-failure-propagation ::= "or" "fail"
+failure-propagation ::= "else" "fail"
 ```
 
-On success, the surrounding declaration or assignment uses the callee's ordinary result, a call statement continues, and `return` returns successfully with the callee's result or with no result when both routines are result-free. On failure, `or fail` immediately returns the same `u8` code from the enclosing routine. The enclosing routine must declare `fails`.
+On success, the surrounding declaration or assignment uses the callee's ordinary result, or the call statement continues. On failure, `else fail` immediately returns the same `u8` code from the enclosing routine. The enclosing routine must declare `fails`.
 
 ```nucleus
 sub loadByte() as u8 fails
-    var value as u8 = readStorageByte() or fail
+    var value as u8 = readStorageByte() else fail
     return value
 end
 ```
@@ -2612,12 +2616,11 @@ Propagation is explicit at every intermediate call. Nucleus has no implicit prop
 
 ### 14.6 Local handling
 
-An `on error` clause follows the assignment or routine-call statement whose direct failable invocation it handles:
+`handle NAME` occurs on the same logical line as the assignment or routine-call statement whose direct failable invocation it handles:
 
 ```text
-on-error-clause ::= "on" "error" NAME NEWLINE
-                    statement-sequence
-                    "end" NEWLINE
+failure-handler ::= "handle" NAME NEWLINE
+                    statement-sequence "end" NEWLINE
 ```
 
 The name must resolve to an existing writable `u8` scalar variable, parameter, or local. A scalar local serving as an active counted-loop counter is read-only and cannot be the error destination. The clause declares no binding and opens no scope. This rule preserves the declaration-prefix and scope rules from Chapters 5 and 8.
@@ -2629,25 +2632,23 @@ sub copyOne()
     var code as u8
     var value as u8
 
-    value = readStorageByte()
-    on error code
+    value = readStorageByte() handle code
         return
     end
 
-    writeOutputByte(value)
-    on error code
+    writeOutputByte(value) handle code
         return
     end
 end
 ```
 
-The handled call must be the complete right side of the assignment or the complete call statement. A clause cannot attach to a local declaration, `return`, compound statement, infallible call, propagated call, or earlier statement separated by another statement.
+The handled call must be the complete right side of the assignment or the complete call statement. The handler begins after that line's `NEWLINE`; attachment state never survives the newline. A handler cannot attach to a local declaration, `return`, compound statement, infallible call, propagated call, or another statement.
 
 ### 14.7 Results, flow, and entry failure
 
-Ordinary `return` denotes successful completion. A result-free failable routine may use bare `return`, reach its closing `end`, or use `return resultFreeFailableInvocation() or fail`. In the last form, callee success returns successfully from the caller and callee failure propagates its code. A result-bearing failable routine must return a compatible success result or fail on every path under the fallthrough rules in Section 13.7, extended so `fail` does not fall through.
+Ordinary `return` denotes successful completion only. A result-free failable routine may use bare `return` or reach its closing `end`. A result-bearing failable routine must return a compatible success result or fail on every path under the fallthrough rules in Section 13.7, extended so `fail` does not fall through. A caller that needs to propagate a failable result does so in a preceding local initializer, assignment, or call statement, then returns only the successful result.
 
-`or fail` can exit on failure and continue on success, so it does not by itself make following source unreachable. An `on error` clause can complete normally unless its body has a non-fallthrough statement on every path.
+`else fail` can exit on failure and continue on success, so it does not by itself make following source unreachable. A `handle` body can complete normally unless it has a non-fallthrough statement on every path.
 
 The fixed `main` routine may declare `fails`. A failure returned from `main` has no source caller and performs the unhandled-error trap in Chapter 15 with the returned code. A successful return from `main` terminates normally.
 
@@ -2661,11 +2662,12 @@ Failure propagation is an ordinary conditional return. Local handling is an ordi
 
 The compiler must diagnose:
 
-- `fail` or `or fail` in an infallible routine;
+- `fail` or `else fail` in an infallible routine;
 - a failure code incompatible with `u8`;
 - a failable invocation in a nested expression or unsupported context;
 - a failable invocation with no consumer or more than one consumer;
-- an `on error` clause attached to an ineligible statement;
+- `handle` attached to an ineligible statement;
+- a propagating `return` form;
 - an error destination that is unavailable, non-writable, not `u8`, or an active counted-loop counter;
 - a `fails` clause or other signature text repeated on an abbreviated forward body; and
 - a result-bearing failable routine that can reach its end without success or failure.
@@ -2707,7 +2709,7 @@ If validity depends on runtime data, the program remains conforming and the chec
 
 Chapter 9's left-to-right rules determine which of several possible failures occurs first. Assignment checks its target path before its right side; aggregate assignment validates both complete extents before changing the destination. Calls evaluate every argument before the activation-capacity check. A counted loop checks the mathematical next value before storing it. Boolean short-circuiting suppresses every check in an operand that is not evaluated.
 
-A recoverable service error follows Chapter 14 and is not a trap while a source caller can consume it. Only failure reaching the end of `main` becomes `unhandled-error`. A trap raised within a failable routine bypasses its failure channel and every `on error` clause.
+A recoverable service error follows Chapter 14 and is not a trap while a source caller can consume it. Only failure reaching the end of `main` becomes `unhandled-error`. A trap raised within a failable routine bypasses its failure channel and every `handle` body.
 
 ### 15.5 Host failures
 
@@ -2749,9 +2751,9 @@ sub seekStorageOutput(offset as u16) fails
 
 The declarations above state interfaces; they are not source definitions and do not require completing bodies in the compilation unit.
 
-Standard input starts with its cursor before the first supplied byte. `readInputByte` obtains the next byte from standard input. It may block until a byte, end-of-input condition, or input failure is available. It succeeds with the byte and advances the cursor, fails with `endOfInput` at the end, or fails with `inputFailure` for another input error. Failure leaves the cursor unchanged.
+Standard input starts with its cursor before the first supplied byte. `readInputByte` obtains the next byte from standard input. It may block until a byte, end-of-input condition, or input failure is available. It succeeds with the byte and advances the cursor, fails with `endOfInput` at the end, else fails with `inputFailure` for another input error. Failure leaves the cursor unchanged.
 
-Standard output starts empty and is append-only. `writeOutputByte` appends one byte to standard output. It succeeds after the byte has been accepted or fails with `outputFailure`. Successful writes occur in call order; failure leaves the output unchanged.
+Standard output starts empty and is append-only. `writeOutputByte` appends one byte to standard output. It succeeds after the byte has been accepted else fails with `outputFailure`. Successful writes occur in call order; failure leaves the output unchanged.
 
 The bulk-storage routines operate on one logical input stream and one logical output stream selected by the execution environment. Both cursors start at offset zero. The output supplied to a Chapter 21 conformance run starts empty. `readStorageByte` advances the input cursor after a successful byte and reports `endOfInput` or `storageFailure` otherwise. `rewindStorageInput` moves the input cursor to offset zero or reports `storageFailure`.
 
@@ -2884,15 +2886,21 @@ bounded-string-type
 statement-sequence
     ::= { statement }
 statement
-    ::= simple-statement NEWLINE [ on-error-clause ]
+    ::= name-statement name-statement-tail
+      | other-simple-statement NEWLINE
       | if-statement
       | while-statement
       | for-statement
 
-simple-statement
+name-statement
     ::= assignment-statement
       | routine-call-statement
-      | return-statement
+name-statement-tail
+    ::= NEWLINE
+      | failure-propagation NEWLINE
+      | failure-handler
+other-simple-statement
+    ::= return-statement
       | "exit"
       | "continue"
       | fail-statement
@@ -2902,23 +2910,22 @@ assignment-statement
 assignment-target
     ::= NAME { field-suffix | index-suffix }
 assignment-source
-    ::= expression [ failure-propagation ]
+    ::= expression
 
 routine-call-statement
-    ::= NAME argument-list [ failure-propagation ]
+    ::= NAME argument-list
 return-statement
     ::= "return" [ return-source ]
 return-source
-    ::= expression [ failure-propagation ]
+    ::= expression
 fail-statement
     ::= "fail" expression
 
 failure-propagation
-    ::= "or" "fail"
-on-error-clause
-    ::= "on" "error" NAME NEWLINE
-        statement-sequence
-        "end" NEWLINE
+    ::= "else" "fail"
+failure-handler
+    ::= "handle" NAME NEWLINE
+        statement-sequence "end" NEWLINE
 
 if-statement
     ::= "if" expression NEWLINE statement-sequence
@@ -2989,25 +2996,21 @@ The grammar uses these declared semantic predicates:
 | `isWritableName`               | At statement head, select assignment only when the resolved declaration is a mutable scalar or aggregate root.                                                        |
 | `isRecordTypeName`             | Accept a `NAME` as a type atom only when it resolves to a visible record type.                                                                                        |
 | `isInitializerForDeclaredType` | Select and check the scalar, string, positional record, recursive array, or zero-default rule from the declared program-variable or current component type.           |
-| `isFailurePropagationBoundary` | At an eligible initializer, assignment, or return boundary, treat the reserved pair `or fail` as propagation rather than beginning another Boolean operand.           |
-| `isFailablePrecedingStatement` | Admit `on error` only after the direct failable assignment or call statement required by Section 14.6.                                                                |
 | `isConstantContext`            | In constants, type bounds, array lengths, string capacities, and program initializers, admit only the compile-time operands and operations from Chapter 8.            |
 | `isIntegerConstantName`        | Admit a `NAME` as a counted-loop step magnitude only when it denotes an earlier `u8` or `u16` constant.                                                               |
 | `isIncompleteForwardName`      | Admit `sub NAME NEWLINE` as a body header only when the exact name resolves to one incomplete forward; install that forward's stored parameter bindings for the body. |
 
-Field lookup after `.` uses the selected record type, except that a bounded-string base admits only the intrinsic read-only suffix `.length`. Index selection uses a fixed-array domain or a bounded string's current logical length according to the base type; this distinction needs no grammar change. Static initializer checking descends the finite declared type tree and records the expected component before parsing each nested initializer. The `NAME` in `step-constant` must denote an earlier integer constant. A call suffix first produces a call expression with the visible signature's result and failure category. The checker then rejects a failable call unless the enclosing initializer, assignment, call statement, or return consumes that complete direct call under Chapter 14. For `return-source`, a result-free failable caller and callee form the admitted no-result propagation case; otherwise the caller and callee result shapes must match. These are static semantic checks over an otherwise deterministic token stream, not token backtracking.
+Field lookup after `.` uses the selected record type, except that a bounded-string base admits only the intrinsic read-only suffix `.length`. Index selection uses a fixed-array domain or a bounded string's current logical length according to the base type; this distinction needs no grammar change. Static initializer checking descends the finite declared type tree and records the expected component before parsing each nested initializer. The `NAME` in `step-constant` must denote an earlier integer constant. A call suffix first produces a call expression with the visible signature's result and failure category. The checker then rejects a failable call unless an eligible initializer, assignment, or complete call statement immediately consumes that direct call under Chapter 14. A return source is always an ordinary successful expression and cannot contain a failable invocation. These are static semantic checks over an otherwise deterministic token stream, not token backtracking.
 
 ### 17.4 Predictive analysis
 
-The repository grammar analyzer mechanically expanded the grammar above to 173 BNF rules over 95 nonterminals. It found no nullable-prefix left-recursion cycle, unreachable nonterminal, or unproductive nonterminal. The LL(1) table contained three conflict sites: one name-led statement choice, one type-directed initializer choice, and one `or fail` boundary choice. The focused test reads this Chapter 17 block directly, so the analyzer evidence does not create a second grammar authority.
+The repository grammar analyzer mechanically expanded the grammar above to 169 BNF rules over 93 nonterminals. It found no nullable-prefix left-recursion cycle, unreachable nonterminal, or unproductive nonterminal. The only predicate-resolved conflict sites are the name-led statement choice and the type-directed initializer choice. The focused test reads this Chapter 17 block directly, so the analyzer evidence does not create a second grammar authority.
 
-| Nonterminal          | Lookahead | Conflict                                           | Resolution                          |
-| -------------------- | --------- | -------------------------------------------------- | ----------------------------------- |
-| `simple-statement`   | `NAME`    | assignment versus routine call                     | `isWritableName` / `isCallableName` |
-| `static-initializer` | `(`       | record initializer versus parenthesized expression | `isInitializerForDeclaredType`      |
-| `or-expression`      | `or`      | Boolean operand versus terminal propagation pair   | `isFailurePropagationBoundary`      |
-
-No unexplained FIRST/FIRST or FIRST/FOLLOW conflict remained. The expression repetitions expand to right-recursive analysis rules while their semantic actions preserve the left association specified in Section 9.6. Unary and `not` recursion remains right-recursive by design. At an initializer, assignment, or return boundary, the parser treats the reserved pair `or fail` as `failure-propagation` rather than as Boolean `or` followed by an operand. Because `fail` cannot begin an expression operand, this is a fixed two-token boundary decision, not symbol-table-directed parsing or backtracking. The completed expression must then be exactly one direct failable invocation. Other reported conflicts require their named predicate or an audited equivalent; a compiler must report a specification defect rather than change the language silently.
+| Nonterminal                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                        | Lookahead | Conflict                                           | Resolution                          |
+| -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- | -------------------------------------------------- | ----------------------------------- |
+| `name-statement`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   | `NAME`    | assignment versus routine call                     | `isWritableName` / `isCallableName` |
+| `static-initializer`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               | `(`       | record initializer versus parenthesized expression | `isInitializerForDeclaredType`      |
+| No unexplained FIRST/FIRST or FIRST/FOLLOW conflict remains. The expression repetitions expand to right-recursive analysis rules while their semantic actions preserve the left association specified in Section 9.6. Unary and `not` recursion remains right-recursive by design. `or` is exclusively the Boolean operator. A same-line `else fail` is selected only after a complete name-led statement or local initializer, while `else` at the start of the following logical line remains an `if` clause. The newline makes those cases deterministic without backtracking. The completed source before `else fail` must be exactly one direct failable invocation. Other reported conflicts require their named predicate or an audited equivalent; a compiler must report a specification defect rather than change the language silently. |
 
 The analyzer result checks the collected grammar's formal shape. It does not prove the static compatibility, lifetime, capacity, or flow rules consolidated in Chapter 18.
 
@@ -3047,15 +3050,15 @@ Named constants are top-level scalar values with types inferred from restricted 
 
 Array lengths and string capacities are positive constant values in the ranges set by Chapter 6. Constant fixed-array indices outside their domains are invalid. A bounded-string byte index is checked at runtime against the current logical length, even when the index expression is constant, unless the compiler proves the current length makes it safe at that program point.
 
-Program variables use the zero or complete static initializer forms in Chapter 8. Scalar locals use zero, an ordinary compatible expression, or a direct compatible failable result followed by `or fail`. Structured aggregate initialization occurs only for program variables. An aggregate assignment materializes a transient result when retention is required.
+Program variables use the zero or complete static initializer forms in Chapter 8. Scalar locals use zero, an ordinary compatible expression, or a direct compatible failable result followed by `else fail`. Structured aggregate initialization occurs only for program variables. An aggregate assignment materializes a transient result when retention is required.
 
 ### 18.6 Routine and failure checking
 
 A call must match the visible signature in arity and parameter order. Scalar arguments copy compatible values. Aggregate arguments bind aliases of the exact referent type. A forward declaration is the sole complete signature. Its abbreviated `sub NAME` body header must resolve to that exact incomplete forward, and the stored forward parameter names bind the body.
 
-Every failable invocation has exactly one failure consumer. `or fail` requires a failable enclosing routine. A result-free `return invocation() or fail` requires a result-free failable callee and caller. `on error` requires an immediately preceding eligible assignment or call statement and an existing writable `u8` destination that is not an active counted-loop counter. Failable invocations are invalid inside larger expressions or argument lists.
+Every failable invocation has exactly one failure consumer. `else fail` requires a failable enclosing routine and is admitted only after a complete direct failable call in a scalar-local initializer, assignment right side, or call statement. Same-line `handle NAME` is admitted only after an eligible assignment or call statement and requires an existing writable `u8` destination that is not an active counted-loop counter. Failable invocations are invalid in returns, larger expressions, and argument lists.
 
-A result-bearing routine is invalid if its closing `end` is reachable without `return expression` or, when it declares `fails`, `fail`. Structured fallthrough follows Section 13.7. Loops remain conservatively able to finish. `return` and `fail` do not fall through; a call with `or fail` may succeed and fall through.
+A result-bearing routine is invalid if its closing `end` is reachable without `return expression` or, when it declares `fails`, `fail`. Structured fallthrough follows Section 13.7. Loops remain conservatively able to finish. `return` and `fail` do not fall through; a call with `else fail` may succeed and fall through.
 
 ### 18.7 Control contexts
 
@@ -3097,7 +3100,7 @@ Aggregate arguments and results transfer aliases, not object contents. A returne
 
 A call starts after all arguments have been evaluated and the activation-capacity check succeeds. Parameter binding precedes activation-local initialization. Scalar locals initialize in source order, and the first statement begins after the local prefix.
 
-`return` transfers an optional success result and ends the activation. A result-free routine also returns successfully at its closing `end`. In a result-free failable routine, `return invocation() or fail` returns successfully when the result-free callee succeeds and propagates its code when it fails. Direct and mutual recursion use the same rules and create distinct active state at each depth. Backend save regions, register files, stacks, and return encodings must preserve these semantics but are not source-visible.
+`return` transfers an optional success result and ends the activation. A result-free routine also returns successfully at its closing `end`. `return` is success-only: a caller propagates a failable value in an earlier local initializer or assignment, or propagates a result-free call as its own statement, before returning successfully. Direct and mutual recursion use the same rules and create distinct active state at each depth. Backend save regions, register files, stacks, and return encodings must preserve these semantics but are not source-visible.
 
 ### 19.5 Conditional and loop execution
 
@@ -3107,7 +3110,7 @@ Normal completion and `continue` in a counted loop use the increment-and-next-te
 
 ### 19.6 Recoverable errors
 
-A failable call returns success or one `u8` error code. On success, the ordinary result, if any, is transferred before surrounding evaluation continues. On failure, `or fail` returns the same code from the caller, while `on error` performs no success-result store, stores the code, and executes its handler. No success result exists on the failure path.
+A failable call returns success or one `u8` error code. On success, the ordinary result, if any, is transferred before surrounding evaluation continues. On failure, `else fail` returns the same code from the caller, while `handle NAME` performs no success-result store, stores the code, and executes its handler. No success result exists on the failure path.
 
 Error propagation ends activations through ordinary return control. It performs no stack unwinding, source cleanup, or handler search. A trap bypasses this channel. Failure reaching the external caller of `main` becomes the `unhandled-error` trap.
 
@@ -3133,7 +3136,7 @@ The following mechanisms are required in the single Nucleus 0.1 language:
 | Statements   | Scalar and exact-type aggregate assignment, name-led calls, `return`, `fail`, `exit`, and `continue`.                                                                                                                                                                                                                                            |
 | Control      | Flat `if`/`elseif`/`else`, pre-test `while`, counted `for` over a read-only scalar-local counter with `to` or `until` and optional constant `step`.                                                                                                                                                                                              |
 | Routines     | Formal arguments, named scalar locals, no result or one typed result, early return, direct and mutual recursion, and one complete forward signature whose parameter names bind its abbreviated body.                                                                                                                                             |
-| Failure      | Explicit `fails`, `fail`, `or fail`, result-free propagating return, and statement-bound `on error`; required safety traps remain separate.                                                                                                                                                                                                      |
+| Failure      | Explicit `fails`, `fail`, same-line `else fail`, and immediate `handle NAME ... end`; success-only `return` and required safety traps remain separate.                                                                                                                                                                                           |
 | System       | Nucleus System Services 0.1 with deterministic initial cursors and output writes, normal entry return, unhandled-error termination, and stable trap reasons.                                                                                                                                                                                     |
 
 No conforming compiler may expose a standard profile that omits one of these mechanisms.
@@ -3201,13 +3204,11 @@ sub main()
 
     cells[0].value = cellAt(0).value
     if cells[0].value = 1
-        writeOutputByte('Y')
-        on error code
+        writeOutputByte('Y') handle code
             return
         end
     elseif cells[0].value = 0
-        writeOutputByte('N')
-        on error code
+        writeOutputByte('N') handle code
             return
         end
     end
@@ -3222,7 +3223,7 @@ Each aggregate assignment copies `template` into the selected array element befo
 const badByte = 10
 
 sub checkedByte() as u8 fails
-    var value as u8 = readInputByte() or fail
+    var value as u8 = readInputByte() else fail
     if value = 0
         fail badByte
     end
@@ -3230,12 +3231,12 @@ sub checkedByte() as u8 fails
 end
 
 sub emitByte() fails
-    var value as u8 = checkedByte() or fail
-    writeOutputByte(value) or fail
+    var value as u8 = checkedByte() else fail
+    writeOutputByte(value) else fail
 end
 
 sub main() fails
-    emitByte() or fail
+    emitByte() else fail
 end
 ```
 
@@ -3272,8 +3273,7 @@ sub main()
         end
     end
 
-    writeOutputByte(u8(index))
-    on error code
+    writeOutputByte(u8(index)) handle code
         return
     end
 end
@@ -3303,26 +3303,27 @@ sub main() fails
     end
 
     if text[1] = 'Z' and snapshot[1] = 0
-        writeOutputByte('Y') or fail
+        writeOutputByte('Y') else fail
     end
 end
 ```
 
 The literal's embedded zero is an ordinary byte, so its logical length is three. Assignment materializes `textAlias()` by copying it into the program-level `snapshot` object. Passing a second result directly to `mutate` forwards the transient alias without copying, so mutation changes `text` while `snapshot` retains its copied zero byte. The expected standard output is `Y`.
 
-### 21.5 Result-free return propagation
+### 21.5 Result-free call propagation
 
 ```nucleus
 sub emitMarker() fails
-    writeOutputByte('R') or fail
+    writeOutputByte('R') else fail
 end
 
 sub relayMarker() fails
-    return emitMarker() or fail
+    emitMarker() else fail
+    return
 end
 
 sub main() fails
-    relayMarker() or fail
+    relayMarker() else fail
 end
 ```
 
@@ -3340,13 +3341,12 @@ end
 sub main() fails
     var code as u8
 
-    code = alwaysFails()
-    on error code
-        writeOutputByte(code) or fail
+    code = alwaysFails() handle code
+        writeOutputByte(code) else fail
         return
     end
 
-    writeOutputByte(0) or fail
+    writeOutputByte(0) else fail
 end
 ```
 
@@ -3356,10 +3356,10 @@ The failed assignment performs no success-result store and then stores `sampleFa
 
 ```nucleus
 sub main() fails
-    writeStorageByte('A') or fail
-    writeStorageByte('B') or fail
-    seekStorageOutput(0) or fail
-    writeStorageByte('Z') or fail
+    writeStorageByte('A') else fail
+    writeStorageByte('B') else fail
+    seekStorageOutput(0) else fail
+    writeStorageByte('Z') else fail
 end
 ```
 
@@ -3387,7 +3387,7 @@ Each listing below is valid source. The external conformance harness supplies th
 var bytes as u8[2]
 
 sub main() fails
-    var index as u8 = readInputByte() or fail
+    var index as u8 = readInputByte() else fail
     bytes[index] = 1
 end
 ```
@@ -3400,7 +3400,7 @@ sub divide(value as u16, divisor as u16) as u16
 end
 
 sub main() fails
-    var divisor as u16 = readInputByte() or fail
+    var divisor as u16 = readInputByte() else fail
     var result as u16 = divide(8, divisor)
 end
 ```
@@ -3413,7 +3413,7 @@ sub remainder(value as u16, divisor as u16) as u16
 end
 
 sub main() fails
-    var divisor as u16 = readInputByte() or fail
+    var divisor as u16 = readInputByte() else fail
     var result as u16 = remainder(8, divisor)
 end
 ```
@@ -3428,7 +3428,8 @@ Failable call without consumption:
 
 ```nucleus
 sub readOne() as u8 fails
-    return readInputByte() or fail
+    var value as u8 = readInputByte() else fail
+    return value
 end
 
 sub main()
@@ -3600,7 +3601,7 @@ sub render
 end
 
 sub main() fails
-    writeOutputByte(render(3)) or fail
+    writeOutputByte(render(3)) else fail
 end
 ```
 
@@ -3628,7 +3629,7 @@ end
 sub main() fails
     copyAndIncrement(source, destination)
     if source.value = 1 and destination.value = 2
-        writeOutputByte('Y') or fail
+        writeOutputByte('Y') else fail
     end
 end
 ```
@@ -3661,7 +3662,7 @@ end
 sub main() fails
     replace(forwardSelection(samples, 1), 9)
     if samples[1].value = 9
-        writeOutputByte('Y') or fail
+        writeOutputByte('Y') else fail
     end
 end
 ```
@@ -3680,7 +3681,7 @@ var wordUse as u16 = sharedValue
 
 sub main() fails
     if enabled and byteUse = 200 and wordUse = 200
-        writeOutputByte('Y') or fail
+        writeOutputByte('Y') else fail
     end
 end
 ```
@@ -3699,7 +3700,7 @@ const binaryMaximum = %1111111111111111
 
 sub main() fails
     if hexMask = 255 and binaryMask = 176 and hexMaximum = 65535 and binaryMaximum = 65535
-        writeOutputByte(binaryMask) or fail
+        writeOutputByte(binaryMask) else fail
     end
 end
 ```
@@ -3719,7 +3720,7 @@ sub main() fails
     byteValue = byteValue xor $ff
     wordValue = wordValue xor $ffff
     if folded = 3 and byteValue = $5a and wordValue = $0f0f
-        writeOutputByte(byteValue) or fail
+        writeOutputByte(byteValue) else fail
     end
 end
 ```
@@ -3750,7 +3751,7 @@ sub main() fails
     byteValue = byteValue mod 16
     wordValue = wordValue mod 256
     if folded = 2 and byteValue = 10 and wordValue = 232
-        writeOutputByte(byteValue) or fail
+        writeOutputByte(byteValue) else fail
     end
 end
 ```
@@ -3778,7 +3779,7 @@ const Columns = 16
 assert Rows * Columns = 128
 
 sub main() fails
-    writeOutputByte(Rows * Columns) or fail
+    writeOutputByte(Rows * Columns) else fail
 end
 ```
 
