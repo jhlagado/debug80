@@ -1,0 +1,60 @@
+{
+  "name": "nobj-aware-proof-runner",
+  "source": "../asm/vertical-slice/nobj-runner-proof.asm",
+  "memoryProfile": "nobj-runner-memory.json",
+  "execution": {
+    "entry": "ProofStart",
+    "maxInstructions": 4,
+    "maxCycles": 64,
+    "halted": true
+  },
+  "nobj": {
+    "adapter": {
+      "at": "NobjAdapterLog",
+      "lengthAt": "NobjAdapterLength",
+      "maxBytes": 32
+    },
+    "begin": {
+      "banked": false,
+      "runtimeIdentity": 1,
+      "bankCount": 1,
+      "imageFill": 238,
+      "imageBase": 32768,
+      "imageCapacity": 256
+    },
+    "map": {
+      "romMode": false,
+      "establishedStack": false,
+      "entryBank": 0,
+      "entryAddress": 32768,
+      "writableBase": 32896,
+      "writableCapacity": 32,
+      "vectorBase": 32896,
+      "vectorLength": 1,
+      "initializedRunBase": 32896,
+      "initializedRunLength": 2,
+      "bssBase": 32898,
+      "bssLength": 0,
+      "stackRequirement": 0,
+      "dataLoadBank": 0,
+      "dataLoadAddress": 32896,
+      "dataLoadLength": 2,
+      "partBanks": [0],
+      "banks": [
+        {
+          "usedLength": 130,
+          "readOnlyBase": 0,
+          "readOnlyLength": 0,
+          "aggregateConstantBase": 0,
+          "aggregateConstantLength": 0
+        }
+      ]
+    },
+    "execution": {
+      "maxInstructions": 8,
+      "maxCycles": 128,
+      "halted": true
+    },
+    "observations": [{ "at": 32897, "width": "u8", "equals": 90 }]
+  }
+}

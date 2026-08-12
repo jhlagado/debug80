@@ -1297,6 +1297,32 @@ framing and maps, every record-class truncation, runtime identity and length
 rejection, flat direct materialization, banked stored materialization, and
 successful publication after abort, truncation, and divergent late failure.
 
+### Target-system Stage 2: committed-object proof execution
+
+Stage 2 extends the manifest proof runner with an optional NOBJ path while
+leaving every legacy manifest and `ProofOutcome` field intact. The producer Z80
+execution writes a bounded proof-only sequence of logical image, runtime-image,
+and patch calls. The host sink commits and strictly reparses the object, the
+materializer creates fresh target memory, and a second Debug80 runtime enters
+only the committed `(entryBank, entryAddress)`. No byte is copied from the
+producer's generated-output region into that second runtime.
+
+The synthetic flat proof uses a 20-byte adapter log, a 92-byte committed NOBJ,
+a 256-byte materialized image, and three generated-program instructions. Its
+write to `$8081` appears only in fresh target memory; the producer memory at
+that address remains zero. The synthetic banked proof commits two 256-byte bank
+images, executes through a Nucleus-local bank-window selector, calls bank-local
+code, restores bank zero, and observes common-RAM state. A missing commit, a
+patch before any image, and a bad CRC all fail strict validation before a
+Debug80 target runtime is created.
+
+Measured compiler accounts remain 13,811 code bytes plus 393 immutable bytes,
+14,204 core bytes, 3,602 workspace bytes, a 1,040-byte largest production
+program, and a 596-byte selected runtime. Stage 2 adds zero compiler, workspace,
+generated-program, or runtime bytes. Its adapter log, serialized NOBJ,
+materialized images, bank-window copy, and fresh 64 KiB Debug80 memory are
+proof-runner external accounts.
+
 ## Capacity ledger
 
 The first implementation fixes a numeric limit before each bounded structure is

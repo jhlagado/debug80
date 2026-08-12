@@ -4,6 +4,18 @@ import path from "node:path";
 import { compile } from "@jhlagado/azm/compile";
 import { createZ80Runtime, parseIntelHex } from "@jhlagado/debug80-runtime";
 
+import {
+  materializeNobj,
+  NobjGenerationSink,
+  NobjGenerationStore,
+  type MaterializedNobj,
+  type NobjBegin,
+  type NobjMap,
+  type ParsedNobj,
+  type RuntimeImageProvider,
+} from "./nobj.js";
+import { loadCanonicalRuntimeProvider } from "./nucleus-runtime.js";
+
 interface MemoryRegionManifest {
   readonly name: string;
   readonly start: string;
@@ -45,6 +57,35 @@ interface ProofManifest {
     readonly to: string;
     readonly maxBytes: number;
   }[];
+  readonly nobj?: NobjProofManifest;
+}
+
+interface NobjProofManifest {
+  readonly adapter: {
+    readonly at: string;
+    readonly lengthAt: string;
+    readonly maxBytes: number;
+  };
+  readonly begin: NobjBegin;
+  readonly map: NobjMap;
+  readonly execution: {
+    readonly maxInstructions: number;
+    readonly maxCycles: number;
+    readonly halted: boolean;
+  };
+  readonly observations?: readonly NobjObservation[];
+  readonly bankSwitch?: {
+    readonly port: number;
+    readonly windowBase: number;
+    readonly windowCapacity: number;
+  };
+}
+
+interface NobjObservation {
+  readonly at: number;
+  readonly width: "u8" | "u16";
+  readonly equals: number;
+  readonly bank?: number;
 }
 
 export interface ProofRegion {
@@ -68,6 +109,17 @@ export interface ProofOutcome {
   readonly extents: readonly ProofExtent[];
   readonly symbols: Readonly<Record<string, number>>;
   readonly memory: Uint8Array;
+  readonly nobj?: NobjExecutionOutcome;
+}
+
+export interface NobjExecutionOutcome {
+  readonly serialized: Uint8Array;
+  readonly parsed: ParsedNobj;
+  readonly materialized: MaterializedNobj;
+  readonly memory: Uint8Array;
+  readonly instructions: number;
+  readonly cycles: number;
+  readonly selectedBank: number;
 }
 
 export class ProofFailure extends Error {
@@ -270,6 +322,16 @@ export async function runProofManifest(
     );
   }
 
+  const nobj =
+    manifest.nobj === undefined
+      ? undefined
+      : await runNobjManifest(
+          manifest.name,
+          manifest.nobj,
+          memory,
+          symbolValue,
+        );
+
   return {
     name: manifest.name,
     instructions,
@@ -279,8 +341,213 @@ export async function runProofManifest(
     extents,
     symbols,
     memory,
+    ...(nobj === undefined ? {} : { nobj }),
   };
 }
+
+const runNobjManifest = async (
+  name: string,
+  manifest: NobjProofManifest,
+  producerMemory: Uint8Array,
+  symbol: (name: string) => number,
+): Promise<NobjExecutionOutcome> => {
+  const start = symbol(manifest.adapter.at);
+  const lengthAddress = symbol(manifest.adapter.lengthAt);
+  const length =
+    (producerMemory[lengthAddress] ?? 0) |
+    ((producerMemory[lengthAddress + 1] ?? 0) << 8);
+  if (length > manifest.adapter.maxBytes) {
+    throw new ProofFailure(
+      `${name}: NOBJ adapter log uses ${length} bytes, limit ${manifest.adapter.maxBytes}`,
+    );
+  }
+  if (start + length > producerMemory.length) {
+    throw new ProofFailure(`${name}: NOBJ adapter log exceeds proof memory`);
+  }
+  const store = new NobjGenerationStore();
+  const provider = await loadCanonicalRuntimeProvider();
+  const sink = new NobjGenerationSink(store, provider);
+  sink.begin(manifest.begin);
+  let cursor = start;
+  const end = start + length;
+  while (cursor < end) {
+    if (end - cursor < 6) {
+      throw new ProofFailure(`${name}: truncated NOBJ adapter operation`);
+    }
+    const kind = producerMemory[cursor] ?? 0;
+    const bank = producerMemory[cursor + 1] ?? 0;
+    const address =
+      (producerMemory[cursor + 2] ?? 0) |
+      ((producerMemory[cursor + 3] ?? 0) << 8);
+    const count =
+      (producerMemory[cursor + 4] ?? 0) |
+      ((producerMemory[cursor + 5] ?? 0) << 8);
+    cursor += 6;
+    if (kind === 3) {
+      if (end - cursor < 2) {
+        throw new ProofFailure(`${name}: truncated runtime-image operation`);
+      }
+      const identity =
+        (producerMemory[cursor] ?? 0) |
+        ((producerMemory[cursor + 1] ?? 0) << 8);
+      cursor += 2;
+      sink.runtimeImage(bank, address, identity, count);
+      continue;
+    }
+    if (kind !== 1 && kind !== 2) {
+      throw new ProofFailure(`${name}: unknown NOBJ adapter operation ${kind}`);
+    }
+    if (cursor + count > end) {
+      throw new ProofFailure(`${name}: truncated NOBJ adapter bytes`);
+    }
+    const bytes = producerMemory.slice(cursor, cursor + count);
+    cursor += count;
+    if (kind === 1) sink.image(bank, address, bytes);
+    else sink.patch(bank, address, bytes);
+  }
+  sink.map(manifest.map);
+  const serialized = sink.commit();
+  return executeCommittedNobj(serialized, manifest.execution, {
+    observations: manifest.observations,
+    bankSwitch: manifest.bankSwitch,
+  });
+};
+
+export const executeCommittedNobj = (
+  serialized: Uint8Array,
+  execution: {
+    readonly maxInstructions: number;
+    readonly maxCycles: number;
+    readonly halted: boolean;
+  },
+  options: {
+    readonly observations?: readonly NobjObservation[];
+    readonly bankSwitch?: NobjProofManifest["bankSwitch"];
+  } = {},
+): NobjExecutionOutcome => {
+  const parsed = parseNobjForExecution(serialized);
+  const materialized = materializeNobj(parsed);
+  const commonMemory = new Uint8Array(0x10000);
+  let selectedBank = parsed.map.entryBank;
+  if (materialized.flatImage !== undefined) {
+    commonMemory.set(materialized.flatImage, parsed.begin.imageBase);
+  } else {
+    const entryImage = materialized.banks[selectedBank];
+    if (entryImage === undefined) {
+      throw new ProofFailure("entry bank image is unavailable");
+    }
+    commonMemory.set(entryImage, parsed.begin.imageBase);
+  }
+  const program = {
+    memory: commonMemory,
+    startAddress: parsed.map.entryAddress,
+  };
+  const switchConfig = options.bankSwitch;
+  const runtime = createZ80Runtime(
+    program,
+    parsed.map.entryAddress,
+    {
+      write: (port, value) => {
+        if (switchConfig !== undefined && (port & 0xff) === switchConfig.port) {
+          if (value >= parsed.begin.bankCount) {
+            throw new ProofFailure(`bank selector ${value} is out of range`);
+          }
+          selectedBank = value;
+          const selectedImage = materialized.banks[selectedBank];
+          if (selectedImage === undefined) {
+            throw new ProofFailure(`bank image ${selectedBank} is unavailable`);
+          }
+          runtime.hardware.memory.set(selectedImage, parsed.begin.imageBase);
+        }
+      },
+    },
+    parsed.begin.banked && switchConfig !== undefined
+      ? {
+          romRanges: [
+            {
+              start: switchConfig.windowBase,
+              end: switchConfig.windowBase + switchConfig.windowCapacity - 1,
+            },
+          ],
+        }
+      : undefined,
+  );
+  if (parsed.begin.banked) {
+    if (switchConfig === undefined) {
+      throw new ProofFailure(
+        "banked NOBJ execution requires a bank-switch hook",
+      );
+    }
+  }
+
+  let instructions = 0;
+  let cycles = 0;
+  const recentProgramCounters: number[] = [];
+  while (
+    instructions < execution.maxInstructions &&
+    cycles <= execution.maxCycles &&
+    !runtime.isHalted()
+  ) {
+    recentProgramCounters.push(runtime.getPC());
+    if (recentProgramCounters.length > 16) recentProgramCounters.shift();
+    const step = runtime.step();
+    instructions += 1;
+    cycles += step.cycles ?? 0;
+  }
+  const failures: string[] = [];
+  if (runtime.isHalted() !== execution.halted) {
+    failures.push(`halted=${runtime.isHalted()}, expected ${execution.halted}`);
+  }
+  if (instructions >= execution.maxInstructions && !runtime.isHalted()) {
+    failures.push(`instruction limit ${execution.maxInstructions} reached`);
+  }
+  if (cycles > execution.maxCycles) {
+    failures.push(`cycle limit ${execution.maxCycles} exceeded`);
+  }
+  for (const observation of options.observations ?? []) {
+    const observed =
+      observation.bank === undefined
+        ? runtime.hardware.memory
+        : materialized.banks[observation.bank];
+    if (observed === undefined) {
+      failures.push(`observation bank ${observation.bank} is unavailable`);
+      continue;
+    }
+    const offset =
+      observation.bank === undefined
+        ? observation.at
+        : observation.at - parsed.begin.imageBase;
+    const actual =
+      observation.width === "u8"
+        ? observed[offset]
+        : (observed[offset] ?? 0) | ((observed[offset + 1] ?? 0) << 8);
+    if (actual !== observation.equals) {
+      failures.push(
+        `NOBJ observation at ${hexWord(observation.at)}=${actual}, expected ${observation.equals}`,
+      );
+    }
+  }
+  if (failures.length > 0) {
+    throw new ProofFailure(
+      `NOBJ execution failed\n${failures.join("\n")}\nPC=${hexWord(runtime.getPC())} bank=${selectedBank}\nrecent PCs: ${recentProgramCounters.map(hexWord).join(" ")}`,
+    );
+  }
+  return {
+    serialized: serialized.slice(),
+    parsed,
+    materialized,
+    memory: runtime.hardware.memory.slice(),
+    instructions,
+    cycles,
+    selectedBank,
+  };
+};
+
+const parseNobjForExecution = (serialized: Uint8Array): ParsedNobj => {
+  // Kept as a named boundary so no execution path can bypass strict validation.
+  const store = new NobjGenerationStore();
+  return store.publish(serialized);
+};
 
 function readJson<T>(file: string): T {
   return JSON.parse(readFileSync(file, "utf8")) as T;

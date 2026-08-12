@@ -1,0 +1,12 @@
+{
+  "name": "nobj-runner-proof-memory",
+  "addressSpaceBytes": 65536,
+  "regions": [
+    {
+      "name": "proof-memory",
+      "start": "ProofMemoryStart",
+      "end": "ProofMemoryEnd",
+      "maxBytes": 65536
+    }
+  ]
+}

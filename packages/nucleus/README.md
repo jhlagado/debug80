@@ -49,6 +49,12 @@ object from replacing the last committed artifact. Canonical runtime bytes are
 assembled from the same source used by the Z80 proofs and selected through its
 machine-readable runtime identity.
 
+Proof manifests may opt into a second, NOBJ-aware execution. The runner commits
+the producer's bounded logical sink calls, validates and materializes the
+object into fresh memory, and enters only its committed target entry. A small
+package-local bank-window hook supports synthetic multi-bank runner evidence
+without moving NOBJ policy into the general Debug80 runtime.
+
 Aggregate constants use the same complete record, fixed-array, and bounded-
 string initializers as program variables. Their direct named roots are
 read-only; ordinary aggregate aliases deliberately carry no transitive
