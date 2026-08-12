@@ -128,6 +128,8 @@ The entry bank contains the final mainline source part; library declarations
 precede it in the logical stream even when they occupy other banks. Every bank
 contains the complete selected runtime helper image so one runtime identity and
 one helper-offset layout apply throughout the program.
+Every bank reserves the same three-byte window-entry slot. The entry bank uses
+it for `JP startup`, so all runtime helper images begin at one uniform address.
 
 Nucleus defines no interrupt routine, interrupt or restart vector declaration,
 interrupt-reentrant activation model, or interrupt-safe service guarantee. The

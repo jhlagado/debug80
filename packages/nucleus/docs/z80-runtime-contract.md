@@ -153,6 +153,10 @@ mode; the descriptor contains no mode flag.
   to `writableBase`.
 - Partial overlap between the regions is invalid.
 
+A banked target requires writable to lie outside the half-open bank window
+beginning at `bankWindowBase` with extent `bankCapacity`. It therefore always
+uses ROM mode, and its startup copy is unconditional under Section 4.3.
+
 The runtime vector table begins at offset zero in writable storage. Program
 initialized objects follow the vector table, and BSS begins at the complete
 used initialized length rather than at a reserved capacity. Their sum must fit
@@ -185,7 +189,8 @@ facts:
   declarations `main` uses;
 - every forward declaration and completion has a compatible bank assignment;
 - every bank contains the complete selected runtime helper image and fits that
-  image, its code, and its read-only bytes within `bankCapacity`;
+  image, its code, and its read-only bytes after the reserved three-byte entry
+  slot within `bankCapacity`;
 - the entry bank also fits startup and the complete initialized-data load image
   without spilling into another bank;
 - every branch, call, far call, data reference, entry pair, and patch is in
@@ -214,7 +219,9 @@ program variables occupy always-visible writable RAM outside the bank window.
 Calls within one bank use ordinary `CALL`. Calls across banks use the far-call
 vector in Section 8.6. Every bank contains the complete selected runtime helper
 image. The runtime identity therefore fixes one byte length and one set of
-helper offsets for every bank; this version performs no per-bank subsetting.
+helper offsets for every bank. Every bank reserves the first three bytes of the
+window, and its runtime begins at `bankWindowBase + 3`; this version performs no
+per-bank subsetting.
 
 ## 3. Runtime representation
 
@@ -305,18 +312,20 @@ backend emits any code byte. Startup copy and clear lengths therefore require
 no fixup. Code addresses, including `main` and a ROM-mode copy source placed
 after generated code, may require retained patch sites.
 
-The flat image and a banked program's entry bank begin with the startup entry.
-The selected runtime follows the startup stub immediately, generated code
-follows the runtime, and generated read-only bytes follow the code. In ROM mode
-the read-only bytes contain the complete initialized-RAM load image followed by
-aggregate-constant bytes. In loaded mode initialized bytes occupy their runtime
-addresses within the image, and the trailing read-only bytes contain only
-aggregate constants.
+In a flat image, startup begins at `imageBase`, the selected runtime follows the
+startup stub, generated code follows the runtime, and generated read-only bytes
+follow the code. In ROM mode the read-only bytes contain the complete
+initialized-RAM load image followed by aggregate-constant bytes. In loaded mode
+initialized bytes occupy their runtime addresses within the image, and the
+trailing read-only bytes contain only aggregate constants.
 
-For a banked program, only the entry bank contains startup and the initialized-
-RAM load image. Every bank contains the complete selected runtime helper image.
-The runtime identity fixes that image's byte length and helper offsets as well
-as the common RAM vector layout. This version performs no helper subsetting.
+Every bank reserves three bytes at `bankWindowBase`. The entry bank emits
+`JP startup` there; the other banks leave the slot to host image fill. The
+complete selected runtime begins at `bankWindowBase + 3` in every bank. In the
+entry bank, startup follows that runtime and precedes generated code. Only the
+entry bank contains startup and the initialized-RAM load image. The runtime
+identity fixes the common helper image, helper offsets, and RAM vector layout;
+this version performs no helper subsetting.
 
 The initialized block begins with the adapter-selected runtime vector table and
 continues with source-declared initialized variables. The adapter contributes
@@ -324,11 +333,11 @@ the vector bytes at a contract-defined offset; they are not a Nucleus
 initializer. BSS follows the complete used initialized length.
 
 For a flat artifact, the runtime base is `imageBase` plus the exact startup-stub
-length. In a banked artifact, the entry bank's runtime base is
-`bankWindowBase` plus that length; every other bank's complete runtime begins at
-`bankWindowBase`. The ROM-mode copy-source operand is emitted as a placeholder
-and patched at publication after the final code and read-only offsets are known.
-The entry transfer to `main` uses the same checked patching discipline.
+length. For every banked image, the runtime base is `bankWindowBase + 3`. The
+entry bank's first instruction transfers over that runtime to startup. The
+ROM-mode copy-source operand is emitted as a placeholder and patched at
+publication after the final code and read-only offsets are known. The startup
+transfer to `main` uses the same checked patching discipline.
 
 ### 4.3 Initial state
 
@@ -361,6 +370,10 @@ the caller's existing return address. In established-stack mode startup uses a
 patched `CALL main`, restores the incoming `SP` after successful completion,
 and then returns to the original caller. Failure and trap paths restore it
 through their terminal handling under Section 6.4.
+
+In a banked artifact, the entry-bank instruction at `bankWindowBase` is an
+ordinary three-byte `JP startup`. It preserves the monitor-supplied stack while
+keeping every bank's runtime base and helper addresses identical.
 
 Startup invokes `main` with no source parameters. Successful return terminates
 normally. Failure returned by `main` performs `unhandled-error`. No source

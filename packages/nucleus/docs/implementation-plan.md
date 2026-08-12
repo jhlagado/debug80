@@ -1172,6 +1172,11 @@ This costs device-image bytes rather than compiler-core bytes and preserves one
 runtime identity and helper-offset table. Per-bank helper subsetting is not a
 candidate for this increment.
 
+Every bank also reserves a three-byte entry slot. Only the entry bank emits
+`JP startup`; all selected runtime images begin at `bankWindowBase + 3`. Record
+the three-byte capacity cost in every bank and the emitted-byte cost in the
+entry bank separately.
+
 Implementation proceeds in measured increments:
 
 1. add the compact target descriptor and runtime-identity rejection without
@@ -1186,7 +1191,7 @@ Implementation proceeds in measured increments:
 6. install and call the RAM-resident service and terminal vectors;
 7. implement source-part bank mapping, bank-tagged output records, and one
    entry pair, including entry-bank source ordering and exact bank-capacity
-   diagnostics;
+   diagnostics, with the uniform three-byte bank-entry slot;
 8. implement local versus far-call lowering and all three cross-bank aggregate
    restrictions;
 9. force a divergent late failure and prove complete multi-bank rollback; and

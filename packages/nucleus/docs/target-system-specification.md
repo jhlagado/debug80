@@ -125,7 +125,7 @@ The compact descriptor contains only values required by compiler arithmetic.
 
 ### 4.1 Image region
 
-The flat image and the entry bank contain, in logical order:
+The flat image contains, in logical order:
 
 ```text
 startup
@@ -138,11 +138,26 @@ The runtime begins immediately after the exact startup length. Generated code
 follows the runtime. Read-only bytes follow generated code. They include
 aggregate constants and, in ROM mode, the initialized-data load image.
 
-For a banked program, only the entry bank contains startup and the initialized-
-data load image. Every bank contains one complete copy of the selected runtime
-helper image, followed by that bank's code and read-only bytes. The runtime
-identity fixes that complete image, the common vector layout, and all helper
-offsets. This version performs no per-bank helper subsetting.
+Every bank reserves the same three-byte entry slot at `bankWindowBase`. The
+entry bank fills it with `JP startup`; the other banks leave the slot to the
+host's ordinary image fill. Every complete runtime helper image therefore
+begins at `bankWindowBase + 3`.
+
+The entry bank contains, in logical order:
+
+```text
+entry JP
+selected runtime
+startup
+generated code
+generated read-only data
+```
+
+Every other bank contains the reserved entry slot, the same complete runtime,
+then that bank's code and read-only bytes. Only the entry bank contains startup
+and the initialized-data load image. The runtime identity fixes one complete
+helper image, one common vector layout, and one set of helper offsets for every
+bank. This version performs no per-bank helper subsetting.
 
 The parser finalizes initialized-data, BSS, and aggregate-constant used lengths
 before the backend emits any code byte. Copy and clear lengths therefore need
@@ -193,6 +208,10 @@ that block to `writableBase`, then clears BSS.
 
 Partial overlap between image and writable regions is invalid. No loaded/ROM
 mode flag exists.
+
+A banked target requires writable storage to lie wholly outside its bank
+window. It is therefore always ROM mode. Its entry-bank startup unconditionally
+copies the complete initialized block before clearing BSS.
 
 ## 5. Startup, entry, and stack
 
@@ -246,6 +265,10 @@ activation cannot fit.
 The flat artifact entry is `imageBase`. A banked artifact publishes
 `(entryBank, bankWindowBase)`. Exactly one `main` exists for the complete
 program, and the entry pair names the bank containing its startup path.
+
+The entry bank's three-byte slot transfers to startup after the local runtime.
+All banks consequently use the same runtime base and helper addresses while the
+external entry address remains `bankWindowBase`.
 
 The target environment may enter the pair through a loader, monitor call, or
 reset binding. Bank zero is a permitted convention, not a language or compiler
@@ -404,7 +427,7 @@ Before publication, the compiler and adapter establish:
   declarations `main` uses;
 - a forward declaration and its completion have compatible bank assignments;
 - each bank's complete runtime helper image and selected code and read-only data
-  fit `bankCapacity`;
+  fit `bankCapacity` after its reserved three-byte entry slot;
 - the entry bank additionally fits startup and the complete initialized-data
   load image without spilling to another bank;
 - every branch, call, far call, data reference, entry, and patch is in range;
