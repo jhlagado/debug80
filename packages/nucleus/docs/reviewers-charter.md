@@ -124,6 +124,10 @@ has one `main`, one startup, one writable region outside the bank window, and
 one entry pair. Cross-bank aggregate restrictions protect address-only carriers
 without adding bank identity to source types. Generated code uses the
 RAM-resident runtime vectors and never exposes a raw bank address to source.
+The entry bank contains the final mainline source part; library declarations
+precede it in the logical stream even when they occupy other banks. Every bank
+contains the complete selected runtime helper image so one runtime identity and
+one helper-offset layout apply throughout the program.
 
 Nucleus defines no interrupt routine, interrupt or restart vector declaration,
 interrupt-reentrant activation model, or interrupt-safe service guarantee. The

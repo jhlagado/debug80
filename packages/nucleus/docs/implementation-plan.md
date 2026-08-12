@@ -1166,6 +1166,12 @@ publication, exact diagnostics, cross-bank call classification, and the
 separate external-storage account. Implementation convenience must not settle
 the representation without measurement.
 
+The target-system specification settles runtime layout independently of that
+experiment: every bank carries one complete 596-byte selected helper image.
+This costs device-image bytes rather than compiler-core bytes and preserves one
+runtime identity and helper-offset table. Per-bank helper subsetting is not a
+candidate for this increment.
+
 Implementation proceeds in measured increments:
 
 1. add the compact target descriptor and runtime-identity rejection without
@@ -1179,7 +1185,8 @@ Implementation proceeds in measured increments:
    proof locations;
 6. install and call the RAM-resident service and terminal vectors;
 7. implement source-part bank mapping, bank-tagged output records, and one
-   entry pair;
+   entry pair, including entry-bank source ordering and exact bank-capacity
+   diagnostics;
 8. implement local versus far-call lowering and all three cross-bank aggregate
    restrictions;
 9. force a divergent late failure and prove complete multi-bank rollback; and

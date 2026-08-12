@@ -2803,7 +2803,7 @@ An environment may implement services with CP/M calls, a monitor, port I/O, host
 
 Arbitrary BIOS calls, machine-code-call declarations, inline assembly, memory peeks and pokes, port access, and callbacks are excluded from the safe source boundary. A later service must have a typed target-independent contract and pass the measured admission rule before it enters the standard set.
 
-The target adapter may place the program in ROM, loaded RAM, or bank-switched ROM while preserving the same startup and source semantics. In a banked target, the adapter assigns source parts to banks and the backend selects local or far calls. Source code supplies neither a bank number nor a target address. A far-called routine receives the ordinary source arguments and returns through its ordinary routine ABI.
+The target adapter may place the program in ROM, loaded RAM, or bank-switched ROM while preserving the same startup and source semantics. The target-system specification and Z80 runtime contract govern bank assignment and calls. Source code supplies neither a bank number nor a target address, and a target restriction on cross-bank references does not alter source validity.
 
 ## 17. Complete grammar
 
