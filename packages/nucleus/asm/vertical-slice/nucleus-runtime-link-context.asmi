@@ -1,0 +1,42 @@
+; Default standalone link context. The operating-layer provider writes a
+; context-specific copy of this file in a temporary assembly directory.
+
+RuntimeLinkBase             .equ $6800
+RuntimeWritableStateBase    .equ $7800
+RuntimeProgramDataBase      .equ $7900
+RuntimeProgramDataCapacity  .equ $0800
+RuntimeReadOnlyBase         .equ $6800
+RuntimeReadOnlyCapacity     .equ $1000
+
+StateBase          .equ RuntimeWritableStateBase
+RunState           .equ StateBase+$00
+TrapNumber         .equ StateBase+$01
+TrapRoutine        .equ StateBase+$02
+TrapOffset         .equ StateBase+$03
+TrapError          .equ StateBase+$05
+ActivationDepth    .equ StateBase+$06
+ActivationLimit    .equ StateBase+$07
+ScalarSlot         .equ StateBase+$08
+ActivationArena    .equ StateBase+$09
+ActivationCapacity .equ 8
+RootSP             .equ ActivationArena+ActivationCapacity
+RootIX             .equ RootSP+2
+StateEnd           .equ RootIX+2
+
+RunReady           .equ 1
+RunSucceeded       .equ 2
+RunTrapped         .equ 3
+
+ProgramDataBase           .equ RuntimeProgramDataBase
+ProgramDataRegionCapacity .equ RuntimeProgramDataCapacity
+GeneratedRoDataBase       .equ RuntimeReadOnlyBase
+GeneratedRoDataCapacity   .equ RuntimeReadOnlyCapacity
+
+AggregateCallSlices .equ 1
+
+ComparisonEqual        .equ 0
+ComparisonNotEqual     .equ 1
+ComparisonLess         .equ 2
+ComparisonLessEqual    .equ 3
+ComparisonGreater      .equ 4
+ComparisonGreaterEqual .equ 5

@@ -83,10 +83,39 @@ export interface MaterializedNobj {
 export interface RuntimeImage {
   readonly identity: number;
   readonly bytes: Uint8Array;
+  readonly vectorBytes?: Uint8Array;
+  readonly helperOffsets?: Readonly<Record<string, number>>;
+}
+
+export interface RuntimeServiceAddresses {
+  readonly readInputByte: number;
+  readonly writeOutputByte: number;
+  readonly readStorageByte: number;
+  readonly rewindStorageInput: number;
+  readonly writeStorageByte: number;
+  readonly seekStorageOutput: number;
+  readonly success: number;
+  readonly unhandledFailure: number;
+  readonly trap: number;
+  readonly farCall: number;
+  readonly farJump: number;
+}
+
+export interface RuntimeLinkContext {
+  readonly runtimeBase: number;
+  readonly writableBase: number;
+  readonly writableCapacity: number;
+  readonly writableStateBase: number;
+  readonly vectorBase: number;
+  readonly programDataBase: number;
+  readonly programDataCapacity: number;
+  readonly readOnlyBase: number;
+  readonly readOnlyCapacity: number;
+  readonly services: RuntimeServiceAddresses;
 }
 
 export interface RuntimeImageProvider {
-  get(identity: number): RuntimeImage | undefined;
+  get(identity: number, context: RuntimeLinkContext): RuntimeImage | undefined;
 }
 
 /** Sequential storage used independently for image and patch records. */
@@ -389,6 +418,7 @@ export class NobjGenerationSink {
     bank: number,
     address: number,
     identity: number,
+    context: RuntimeLinkContext,
     expectedLength: number,
   ): void {
     const begin = this.#requireOpen();
@@ -397,7 +427,10 @@ export class NobjGenerationSink {
     requireU16("runtime expected length", expectedLength);
     if (identity !== begin.runtimeIdentity)
       fail("runtime identity differs from BEGIN");
-    const runtime = this.#provider.get(identity);
+    if (context.runtimeBase !== address) {
+      fail("runtime link context base differs from IMAGE address");
+    }
+    const runtime = this.#provider.get(identity, context);
     if (runtime === undefined) fail("runtime identity is unavailable");
     const selectedRuntime = runtime as RuntimeImage;
     if (selectedRuntime.identity !== identity) {

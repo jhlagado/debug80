@@ -12,6 +12,7 @@ CompilerCodeStart:
 LegacyCompilerSlices .equ 0
 AggregateCallSlices  .equ 1
 Stage7LL1            .equ 1
+TargetStreamingOutput .equ 0
 SourceAdapterCodeStart:
             .include "source-adapter.asm"
 SourceAdapterCodeEnd:
@@ -44,7 +45,7 @@ CompilerCoreEnd:
 
             .org TargetRuntimeBase
 RuntimeCodeStart:
-            .include "loop-z80-runtime.asm"
+            .include "proof-z80-runtime.asm"
 RuntimeCodeEnd:
 
             .org $B000

@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { createZ80Runtime } from "@jhlagado/debug80-runtime";
 
 import {
   crc16CcittFalse,
@@ -16,7 +17,10 @@ import {
   type NobjSpool,
   type RuntimeImageProvider,
 } from "../src/nobj.js";
-import { loadCanonicalRuntimeImage } from "../src/nucleus-runtime.js";
+import {
+  defaultRuntimeLinkContext,
+  loadCanonicalRuntimeImage,
+} from "../src/nucleus-runtime.js";
 
 const emptyProvider: RuntimeImageProvider = { get: () => undefined };
 
@@ -493,11 +497,14 @@ describe("NOBJ 0.1", () => {
     const provider: RuntimeImageProvider = { get: () => runtime };
     const sink = new NobjGenerationSink(new NobjGenerationStore(), provider);
     sink.begin({ ...flatRomBegin(), runtimeIdentity: 7 });
-    expect(() => sink.runtimeImage(0, 0x8000, 8, 3)).toThrow(
+    const context = { ...defaultRuntimeLinkContext, runtimeBase: 0x8000 };
+    expect(() => sink.runtimeImage(0, 0x8000, 8, context, 3)).toThrow(
       "differs from BEGIN",
     );
-    expect(() => sink.runtimeImage(0, 0x8000, 7, 2)).toThrow("length mismatch");
-    sink.runtimeImage(0, 0x8000, 7, 3);
+    expect(() => sink.runtimeImage(0, 0x8000, 7, context, 2)).toThrow(
+      "length mismatch",
+    );
+    sink.runtimeImage(0, 0x8000, 7, context, 3);
     sink.map(flatRomMap(3));
     expect(parseNobj(sink.commit()).images).toHaveLength(1);
 
@@ -506,7 +513,7 @@ describe("NOBJ 0.1", () => {
       emptyProvider,
     );
     unavailable.begin(flatRomBegin());
-    expect(() => unavailable.runtimeImage(0, 0x8000, 1, 3)).toThrow(
+    expect(() => unavailable.runtimeImage(0, 0x8000, 1, context, 3)).toThrow(
       "unavailable",
     );
 
@@ -515,7 +522,7 @@ describe("NOBJ 0.1", () => {
     };
     const wrongSink = new NobjGenerationSink(new NobjGenerationStore(), wrong);
     wrongSink.begin(flatRomBegin());
-    expect(() => wrongSink.runtimeImage(0, 0x8000, 1, 3)).toThrow(
+    expect(() => wrongSink.runtimeImage(0, 0x8000, 1, context, 3)).toThrow(
       "wrong identity",
     );
   });
@@ -540,16 +547,81 @@ describe("NOBJ 0.1", () => {
       imageBase: 1,
       imageCapacity: 0xffff,
     });
-    expect(() => sink.runtimeImage(0, 1, 7, 0xffff)).not.toThrow();
+    const context = { ...defaultRuntimeLinkContext, runtimeBase: 1 };
+    expect(() => sink.runtimeImage(0, 1, 7, context, 0xffff)).not.toThrow();
     expect(Array.from(spools[2]?.chunks() ?? [])).toHaveLength(2);
     sink.abort();
   });
 
   it("assembles the canonical provider from the exact selected runtime source", async () => {
     const runtime = await loadCanonicalRuntimeImage();
-    expect(runtime.identity).toBe(1);
-    expect(runtime.bytes).toHaveLength(596);
+    expect(runtime.identity).toBe(3);
+    expect(runtime.bytes).toHaveLength(364);
+    expect(runtime.vectorBytes).toHaveLength(33);
+    expect(runtime.helperOffsets?.CheckAggregateRegion).toBe(115);
     expect(runtime.bytes.some((byte) => byte !== 0)).toBe(true);
+  }, 30_000);
+
+  it("links and executes the same runtime identity at two complete layouts", async () => {
+    const secondContext = {
+      ...defaultRuntimeLinkContext,
+      runtimeBase: 0x8003,
+      writableBase: 0x5000,
+      writableCapacity: 0x2000,
+      writableStateBase: 0x5021,
+      vectorBase: 0x5000,
+      programDataBase: 0x5036,
+      programDataCapacity: 0x0800,
+      readOnlyBase: 0x8200,
+      readOnlyCapacity: 0x1000,
+      services: Object.fromEntries(
+        Object.entries(defaultRuntimeLinkContext.services).map(
+          ([name, address]) => [name, address + 0x100],
+        ),
+      ) as typeof defaultRuntimeLinkContext.services,
+    };
+    const layouts = [defaultRuntimeLinkContext, secondContext] as const;
+    const linked = await Promise.all(layouts.map(loadCanonicalRuntimeImage));
+    expect(linked[0]?.identity).toBe(linked[1]?.identity);
+    expect(linked[0]?.bytes).not.toEqual(linked[1]?.bytes);
+    expect(linked[0]?.vectorBytes).not.toEqual(linked[1]?.vectorBytes);
+
+    layouts.forEach((context, index) => {
+      const image = linked[index];
+      expect(image).toBeDefined();
+      const helper = image?.helperOffsets?.ActivationClaim;
+      expect(helper).toBe(43);
+      const memory = new Uint8Array(0x10000);
+      memory.set(image?.bytes ?? [], context.runtimeBase);
+      memory[context.writableStateBase + 7] = 8;
+      const entry = 0x0100;
+      const claim = context.runtimeBase + (helper ?? 0);
+      memory.set(
+        Uint8Array.of(0x31, 0x00, 0xff, 0xcd, claim & 0xff, claim >>> 8, 0x76),
+        entry,
+      );
+      const runtime = createZ80Runtime({ memory, startAddress: entry }, entry);
+      for (let step = 0; step < 32 && !runtime.isHalted(); step += 1) {
+        runtime.step();
+      }
+      expect(runtime.isHalted()).toBe(true);
+      expect(runtime.hardware.memory[context.writableStateBase + 6]).toBe(1);
+    });
+  }, 30_000);
+
+  it("rejects runtime contexts that violate the identity-fixed writable layout", async () => {
+    await expect(
+      loadCanonicalRuntimeImage({
+        ...defaultRuntimeLinkContext,
+        writableStateBase: defaultRuntimeLinkContext.writableStateBase + 1,
+      }),
+    ).rejects.toThrow("runtime state does not follow the vector table");
+    await expect(
+      loadCanonicalRuntimeImage({
+        ...defaultRuntimeLinkContext,
+        programDataBase: defaultRuntimeLinkContext.programDataBase + 1,
+      }),
+    ).rejects.toThrow("program data does not follow runtime state");
   }, 30_000);
 
   it("keeps the prior committed generation current across abort, truncation and late failure", () => {

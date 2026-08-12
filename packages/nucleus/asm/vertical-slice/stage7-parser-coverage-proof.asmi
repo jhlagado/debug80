@@ -92,7 +92,7 @@ Stage7LL1ConstantSourceEnd:
 
             .org TargetRuntimeBase
 RuntimeCodeStart:
-            .include "loop-z80-runtime.asm"
+            .include "proof-z80-runtime.asm"
 RuntimeCodeEnd:
 
             .org ProofBase

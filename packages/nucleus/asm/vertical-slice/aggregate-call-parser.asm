@@ -95,6 +95,18 @@ Stage8MatchPredefinedSkip:
             OR   A
             RET
 
+.if TargetStreamingOutput
+; Compile one multipart source stream and publish one flat append-only object.
+; IX points at the stable compact target descriptor; A/HL retain the existing
+; bounded source-part descriptor ABI.
+.routine in A,HL,IX out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+CompileTargetAggregateCallParts:
+            LD   (TargetDescriptorPointer),IX
+            CALL CompileAggregateCallParts
+            RET  C
+            JP   EncodeAggregateProgram
+.endif
+
 .routine in A,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 CompileAggregateCallParts:
             PUSH AF

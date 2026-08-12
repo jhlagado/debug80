@@ -5,7 +5,11 @@
 
 HybridLL1StackCapacity .equ 64
 .if AggregateCallSlices
+.if TargetStreamingOutput
+HybridLL1StackDepth    .equ TargetCompilerWorkspaceEnd
+.else
 HybridLL1StackDepth    .equ SourceMultipartWorkspaceEnd
+.endif
 .else
 HybridLL1StackDepth    .equ Stage7CompilerWorkspaceEnd
 .endif

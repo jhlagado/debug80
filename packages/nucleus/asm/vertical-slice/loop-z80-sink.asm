@@ -2,6 +2,29 @@
 
 .routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
 EmitByte:
+.if TargetStreamingOutput
+            LD   B,A
+            LD   HL,(EmitLimit)
+            LD   A,H
+            OR   L
+            JP   Z,TargetCapacityFailure
+            DEC  HL
+            LD   (EmitLimit),HL
+            LD   HL,(EmitCursor)
+            PUSH BC
+            LD   A,(TargetOutputBank)
+            LD   C,A
+            LD   A,B
+            PUSH HL
+            CALL TargetSinkImageByte
+            POP  HL
+            POP  BC
+            JP   C,TargetOutputFailure
+            INC  HL
+            LD   (EmitCursor),HL
+            OR   A
+            RET
+.else
             LD   B,A
             LD   HL,(EmitCursor)
             LD   DE,(EmitLimit)
@@ -16,6 +39,7 @@ EmitByteRoom:
             LD   (EmitCursor),HL
             OR   A
             RET
+.endif
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 EmitWord:
             LD   C,H
@@ -78,11 +102,23 @@ PatchRelative:
             CP   H
             JR   NZ,PatchInvalid
 PatchStore:
+.if TargetStreamingOutput
+            LD   B,C
+            LD   HL,(EmitPatchAddress)
+            LD   A,(TargetOutputBank)
+            LD   C,A
+            LD   A,B
+            CALL TargetSinkPatchByte
+            JP   C,TargetOutputFailure
+            OR   A
+            RET
+.else
             LD   DE,(EmitPatchAddress)
             LD   A,C
             LD   (DE),A
             OR   A
             RET
+.endif
 PatchInvalid:
             LD   A,DiagnosticFixupRange
             JP   CompilerSetDiagnostic
@@ -451,16 +487,31 @@ EmitSuccessReturn:
 ; At runtime A carries the trap number and HL carries the source offset.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 EmitTrapEnding:
+.if TargetStreamingOutput
+            LD   DE,TrapNumber-StateBase
+            CALL TargetStateAddress
+.else
             LD   HL,TrapNumber
+.endif
             CALL EmitStoreA
             RET  C
             LD   A,$AF
             CALL EmitByte
             RET  C
+.if TargetStreamingOutput
+            LD   DE,TrapRoutine-StateBase
+            CALL TargetStateAddress
+.else
             LD   HL,TrapRoutine
+.endif
             CALL EmitStoreA
             RET  C
+.if TargetStreamingOutput
+            LD   DE,TrapOffset-StateBase
+            CALL TargetStateAddress
+.else
             LD   HL,TrapOffset
+.endif
             LD   A,$22
             CALL EmitOpcodeWord
             RET  C
@@ -469,7 +520,12 @@ EmitTrapEnding:
 EmitRunEnding:
             CALL EmitLoadAImmediate
             RET  C
+.if TargetStreamingOutput
+            LD   DE,RunState-StateBase
+            CALL TargetStateAddress
+.else
             LD   HL,RunState
+.endif
             CALL EmitStoreA
             RET  C
             LD   A,$C9
@@ -478,7 +534,12 @@ EmitRunEnding:
 ; At runtime A carries an unhandled error and HL the failing source offset.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 EmitUnhandledTrapPrefix:
+.if TargetStreamingOutput
+            LD   DE,TrapError-StateBase
+            CALL TargetStateAddress
+.else
             LD   HL,TrapError
+.endif
             CALL EmitStoreA
             RET  C
             LD   A,6
@@ -511,6 +572,16 @@ EmitJrCPlaceholder:
 
 .routine in DE,HL out A,carry,zero clobbers sign,parity,halfCarry,DE,HL
 PatchWord:
+.if TargetStreamingOutput
+            PUSH BC
+            LD   A,(TargetOutputBank)
+            LD   C,A
+            CALL TargetSinkPatchWord
+            POP  BC
+            JP   C,TargetOutputFailure
+            OR   A
+            RET
+.else
             LD   A,L
             LD   (DE),A
             INC  DE
@@ -518,6 +589,7 @@ PatchWord:
             LD   (DE),A
             OR   A
             RET
+.endif
 
 ; Patch a stored displacement to the current output position.
 .routine in DE out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
@@ -806,14 +878,28 @@ ExpressionOperationTable:
 ExpressionOperationCount .equ 12
 .endif
 
-.routine out A,HL,carry,zero clobbers sign,parity,halfCarry,D,E
+.routine out A,HL,carry,zero clobbers sign,parity,halfCarry,B,C,D,E,IX,IY
 ExpressionProgramAddress:
 .if AggregateCallSlices
             CALL ReadSemanticWord
+.if TargetStreamingOutput
+            BIT  7,D
+            JR   Z,ExpressionTargetDataAddress
+            RES  7,D
+            LD   HL,(TargetBssBase)
+            JR   ExpressionTargetAddressReady
+ExpressionTargetDataAddress:
+            LD   HL,(TargetContextDataBase)
+ExpressionTargetAddressReady:
+            ADD  HL,DE
+            OR   A
+            RET
+.else
             LD   H,D
             LD   L,E
             OR   A
             RET
+.endif
 .else
             CALL NextSemanticByte
             LD   E,A

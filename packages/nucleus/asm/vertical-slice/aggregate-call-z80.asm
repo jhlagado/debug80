@@ -103,7 +103,12 @@ Stage8EmitFailureOffset:
             LD   HL,(Stage7CallOffset)
             CALL EmitLoadHl
             RET  C
+.if TargetStreamingOutput
+            LD   DE,TrapOffset-StateBase
+            CALL TargetStateAddress
+.else
             LD   HL,TrapOffset
+.endif
             LD   A,$22                    ; LD (nn),HL
             JP   EmitOpcodeWord
 
@@ -139,8 +144,13 @@ Stage8ReadCallStateLoop:
             LD   A,(Stage7CallLabel)
             AND  Stage8CallableServiceFlag
             JP   NZ,Stage8InvokeService
+.if TargetStreamingOutput
+            LD   DE,NucleusRuntimeActivationClaimOffset
+            CALL TypedEmitFailableRuntimeCall
+.else
             LD   HL,ActivationClaim
             CALL TypedEmitFailableCall
+.endif
             RET  C
             LD   (EmitExitFixup),DE
             LD   HL,(Stage7CallOffset)
@@ -159,16 +169,26 @@ Stage8ReadCallStateLoop:
             LD   A,(Stage8EmitCallFlags)
             AND  Stage7RoutineFails
             JR   NZ,Stage8CallableSourceFailable
+.if TargetStreamingOutput
+            LD   DE,NucleusRuntimeActivationReleaseOffset
+            CALL EmitRuntimeCall
+.else
             LD   HL,ActivationRelease
             CALL EmitCall
+.endif
             RET  C
             JR   Stage8CallableSuccess
 Stage8CallableSourceFailable:
             LD   A,$F5                    ; PUSH AF result discriminant/code
             CALL EmitByte
             RET  C
+.if TargetStreamingOutput
+            LD   DE,NucleusRuntimeActivationReleaseOffset
+            CALL EmitRuntimeCall
+.else
             LD   HL,ActivationRelease
             CALL EmitCall
+.endif
             RET  C
             LD   A,$F1                    ; POP AF
             CALL EmitByte
@@ -266,7 +286,7 @@ Stage8SkipHandler:
             LD   A,$C3
             JP   StructuredEmitFixup
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 Stage8BeginHandler:
             CALL NextSemanticByte
             LD   C,A
@@ -338,6 +358,9 @@ Stage8ServiceWordArgument:
 Stage8ServiceAddress:
             LD   A,(Stage7CallLabel)
             AND  Stage8CallableServiceMask
+.if TargetStreamingOutput
+            CALL EmitTargetVectorCall
+.else
             ADD  A,A
             LD   E,A
             LD   D,0
@@ -348,11 +371,14 @@ Stage8ServiceAddress:
             LD   D,(HL)
             EX   DE,HL
             CALL EmitCall
+.endif
             RET  C
             XOR  A
             LD   (Stage7ArgumentCount),A
             JP   Stage8CallableFailable
 
+.if TargetStreamingOutput
+.else
 Stage8ServiceAddressTable:
             .dw ReadInputByte
             .dw WriteOutputByte
@@ -360,6 +386,7 @@ Stage8ServiceAddressTable:
             .dw RewindStorageInput
             .dw WriteStorageByte
             .dw SeekStorageOutput
+.endif
 
 ; Startup is a terminal wrapper around main's ordinary callable body. The
 ; source body therefore has the same frame, return, recursion, and failure ABI
@@ -381,8 +408,21 @@ Stage8BeginCallableMain:
             CALL EmitJrNcPlaceholder
             RET  C
             LD   (EmitExitFixup),DE
+.if TargetStreamingOutput
+            LD   A,$F5                    ; PUSH AF
+            CALL EmitByte
+            RET  C
+            LD   DE,TrapOffset-StateBase
+            CALL TargetStateAddress
+            LD   A,$2A                    ; LD HL,(nn)
+            CALL EmitOpcodeWord
+            RET  C
+            LD   A,$F1                    ; POP AF
+            CALL EmitByte
+.else
             LD   HL,Stage8ReloadFailureOffsetBytes
             CALL EmitFive
+.endif
             RET  C
             CALL EmitUnhandledTrapPrefix
             RET  C
@@ -417,10 +457,15 @@ Stage7LoadProgramAlias:
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 Stage7LoadReadOnlyAlias:
             CALL ReadSemanticWord
+.if TargetStreamingOutput
+            LD   HL,(TargetContextRoDataBase)
+            ADD  HL,DE
+.else
             LD   HL,(StaticImageLength)
             ADD  HL,DE
             LD   DE,GeneratedRoDataBase
             ADD  HL,DE
+.endif
 Stage7LoadAliasReady:
             LD   A,$21                    ; LD HL,nn
             JP   TypedEmitOpcodeWordPushHL
@@ -451,8 +496,13 @@ Stage7SelectIndex:
             LD   HL,(Stage7PathOffset)
             CALL EmitLoadBcImmediate
             RET  C
+.if TargetStreamingOutput
+            LD   DE,NucleusRuntimeCheckArrayIndexOffset
+            CALL EmitRuntimeCall
+.else
             LD   HL,CheckArrayIndex
             CALL EmitCall
+.endif
             RET  C
             CALL Stage7BoundsGuard
             RET  C
@@ -463,8 +513,13 @@ Stage7SelectIndex:
             LD   A,$21                    ; LD HL,nn stride
             CALL EmitOpcodeWord
             RET  C
+.if TargetStreamingOutput
+            LD   DE,NucleusRuntimeMultiplyU16Offset
+            CALL EmitRuntimeCall
+.else
             LD   HL,MultiplyU16
             CALL EmitCall
+.endif
             RET  C
             LD   HL,Stage7PopDEAddPush
             JP   EmitThree
@@ -525,6 +580,25 @@ Stage7PreserveCarrierRegion:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7EmitRegionCheck:
+.if TargetStreamingOutput
+            LD   DE,(TargetContextRoDataBase)
+            CALL EmitLoadDeImmediate
+            RET  C
+            LD   HL,(TargetContextRoDataCapacity)
+            PUSH HL
+            LD   A,$FD
+            CALL EmitByte
+            POP  HL
+            RET  C
+            LD   A,$21
+            CALL EmitOpcodeWord
+            RET  C
+            LD   HL,(Stage7PathExtent)
+            CALL EmitLoadBcImmediate
+            RET  C
+            LD   DE,NucleusRuntimeCheckAggregateRegionOffset
+            CALL EmitRuntimeCall
+.else
             LD   DE,ProgramDataRegionLimit
             CALL EmitLoadDeImmediate
             RET  C
@@ -533,6 +607,7 @@ Stage7EmitRegionCheck:
             RET  C
             LD   HL,CheckAggregateRegion
             CALL EmitCall
+.endif
             RET  C
             JP   Stage7BoundsGuard
 
@@ -554,7 +629,11 @@ Stage7StringLength:
             RET  C
             CALL TypedEmitPopHL           ; carrier
             RET  C
+.if TargetStreamingOutput
+            LD   DE,NucleusRuntimeCheckStringLengthOffset
+.else
             LD   HL,CheckStringLength
+.endif
             JR   Stage7EmitStringCheck
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
@@ -571,18 +650,38 @@ Stage7StringIndex:
             LD   HL,Stage7CopyFinish
             CALL   EmitPair
             RET  C
+.if TargetStreamingOutput
+            LD   DE,NucleusRuntimeCheckStringIndexOffset
+.else
             LD   HL,CheckStringIndex
+.endif
 
+.if TargetStreamingOutput
+.routine in DE out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+.else
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+.endif
 Stage7EmitStringCheck:
+.if TargetStreamingOutput
+            PUSH DE
+.else
             PUSH HL
+.endif
             LD   A,(Stage7ArgumentCount)
             LD   C,A
             LD   A,$0E                    ; LD C,n capacity
             CALL EmitOpcodeByte
+.if TargetStreamingOutput
+            POP  DE
+.else
             POP  HL
+.endif
             RET  C
+.if TargetStreamingOutput
+            CALL EmitRuntimeCall
+.else
             CALL EmitCall
+.endif
             RET  C
             CALL Stage7BoundsGuard
             RET  C
@@ -614,7 +713,10 @@ Stage8PopErrorBytes       .equ TypedNot8Bytes ; POP HL / LD A,L prefix
 Stage8FailureReturnBytes: .db $37,$C9      ; SCF / RET
 Stage8SuccessReturnBytes: .db $B7,$C9      ; OR A / RET
 Stage8ErrorCarrierBytes .equ TypedAtoHL       ; LD L,A / LD H,0 / PUSH HL
+.if TargetStreamingOutput
+.else
 Stage8ReloadFailureOffsetBytes:
             .db $F5,$2A                   ; PUSH AF / LD HL,(nn)
             .dw TrapOffset
             .db $F1                       ; POP AF
+.endif

@@ -2,6 +2,7 @@
 
             .include "nucleus-runtime-identity.asmi"
 
+.if RuntimeProofServices
 .routine out carry,zero clobbers sign,parity,halfCarry,A,B,C,HL
 Reset:
             XOR  A
@@ -32,6 +33,7 @@ ResetZeroSpan:
             INC  HL
             DJNZ ResetZeroSpan
             RET
+.endif
 
 ; Begin one scalar activation atomically. A is the copied u8 argument. The
 ; packed arena stores exactly the overwritten byte; Z80 CALL/RET carries the
@@ -151,10 +153,8 @@ CheckStringIndexLengthReady:
             OR   A
             RET
 
-; BC is a nonzero word extent, HL an address, and DE the exclusive data end.
-; The helper rejects wrapped arithmetic and any region outside the selected
-; program-data region through the supplied end. It is used twice before
-; aggregate copying begins.
+.if RuntimeProofServices
+; Historical proof ABI using the supplied exclusive data end.
 .routine in BC,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,DE,HL,IY
 CheckAggregateRegion:
             PUSH DE
@@ -172,9 +172,6 @@ CheckAggregateRegion:
 .endif
             JP   CheckAggregateRegionOne
 
-; BC is the extent, HL the address, DE the inclusive region base and IY the
-; exclusive end. This predicate is shared by mutable data and generated
-; read-only data without changing the public aggregate-region entry.
 .routine in BC,DE,HL,IY out A,carry,zero clobbers sign,parity,halfCarry,DE,HL
 CheckAggregateRegionOne:
             OR   A
@@ -189,6 +186,38 @@ CheckAggregateRegionOne:
             SBC  HL,DE
             JR   C,CheckAggregateRegionSuccess
             JR   Z,CheckAggregateRegionSuccess
+.else
+; Target-linked ABI: DE/IY carry the bank-local read-only base/capacity. The
+; writable base/capacity is part of the common linked context. Capacities
+; preserve a legal nonempty region ending at mathematical $10000.
+.routine in BC,DE,HL,IY out A,carry,zero clobbers sign,parity,halfCarry,DE,HL,IY
+CheckAggregateRegion:
+            PUSH DE
+            PUSH IY
+            PUSH HL
+            LD   DE,ProgramDataBase
+            LD   IY,ProgramDataRegionCapacity
+            CALL CheckAggregateRegionOne
+            POP  HL
+            POP  IY
+            POP  DE
+            RET  NC
+            JR   CheckAggregateRegionOne
+
+.routine in BC,DE,HL,IY out A,carry,zero clobbers sign,parity,halfCarry,DE,HL
+CheckAggregateRegionOne:
+            OR   A
+            SBC  HL,DE
+            JR   C,CheckAggregateRegionFailure
+            ADD  HL,BC
+            JR   C,CheckAggregateRegionFailure
+            PUSH IY
+            POP  DE
+            OR   A
+            SBC  HL,DE
+            JR   C,CheckAggregateRegionSuccess
+            JR   Z,CheckAggregateRegionSuccess
+.endif
 CheckAggregateRegionFailure:
             SCF
             RET
@@ -398,6 +427,7 @@ CompareFalse:
             OR   A
             RET
 
+.if RuntimeProofServices
 ; Carry returns endOfInput, a configured input failure, or success in A.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,HL
 ReadInputByte:
@@ -543,3 +573,4 @@ StorageFailure:
             LD   A,4
             SCF
             RET
+.endif

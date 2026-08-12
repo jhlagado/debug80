@@ -113,23 +113,34 @@ manifest ordinal to one of those banks.
 `writableCapacity` are unsigned 16-bit words. `bankCount`, `entryBank`, and each
 `partBank` entry are bounded byte ordinals. `establishStack` remains Boolean.
 
-`runtimeIdentity` binds the compiler to the supplied runtime's exact byte
-length, vector layout, and helper offsets. A mismatch is a target-configuration
-diagnostic and cannot produce a runnable artifact.
+`runtimeIdentity` identifies one canonical runtime source revision, private
+ABI, RAM-vector and helper layout, deterministic link rules, and expected
+linked length. It does not identify one address-bound byte sequence.
 
-The operating layer owns a runtime-image provider keyed by `runtimeIdentity`.
-Before compilation begins, the adapter establishes that the provider has the
-canonical helper image and that its declared length, vector layout, and helper
-offsets match the compiler's identity. The compiler retains the identity and
-the corresponding layout constants, not the helper-image bytes.
+The operating layer owns a runtime provider keyed by `runtimeIdentity`. Before
+compilation begins, the adapter establishes the complete validated runtime link
+context. That context contains the derived runtime base, writable and vector
+state addresses, service destinations, and every data or read-only-data bound
+used by the runtime. The provider deterministically assembles or links the
+canonical source for that context, then verifies the linked length and every
+published helper offset against the identity. An unavailable source revision,
+unsupported context, identity mismatch, length mismatch, or helper-layout
+mismatch is a target-configuration diagnostic.
 
 At each derived runtime address, the compiler submits a bounded
-`runtimeImage(bank, address, runtimeIdentity, expectedLength)` operation. The
-provider streams the canonical bytes into the image spool as one or more
-ordinary `IMAGE` records in increasing target-address order. It must report
-exactly `expectedLength`; an unavailable image, identity mismatch, length
-mismatch, or output failure aborts the generation. `runtimeImage` is a
+`runtimeImage(bank, address, runtimeIdentity, linkContext, expectedLength)`
+operation. The provider streams the fully resolved bytes into the image spool
+as one or more ordinary `IMAGE` records in increasing target-address order. It
+must report exactly `expectedLength`. NOBJ remains non-relocatable: the emitted
+records contain no runtime relocation or link request. `runtimeImage` is a
 compiler-facing sink operation, not an NOBJ record kind.
+
+All banks whose complete link context is equal may use the same linked bytes.
+The banked profile gives every bank the same runtime base,
+`bankWindowBase + 3`, and the same writable/vector layout. Program-specific
+bounds that vary by bank must therefore be supplied through common runtime
+state or generated call operands rather than embedded as different constants
+in otherwise shared helper images.
 
 ### 3.2 Base and capacity
 
@@ -174,14 +185,15 @@ generated code
 
 Every other bank contains the reserved entry slot, the same complete runtime,
 then that bank's read-only bytes and code. Only the entry bank contains startup
-and the initialized-data load image. The runtime identity fixes one complete
-helper image, one common vector layout, and one set of helper offsets for every
-bank. This version performs no per-bank helper subsetting.
+and the initialized-data load image. The runtime identity fixes one canonical
+source revision, deterministic link rules, linked length, common vector layout,
+and set of helper offsets for every bank. This version performs no per-bank
+helper subsetting.
 
-The operating-layer runtime provider supplies each helper-image copy at the
-derived runtime address. The compiler advances its target cursor by the known
-runtime length after the provider accepts the complete operation; it never
-holds or copies the helper-image bytes in compiler workspace.
+The operating-layer runtime provider supplies each fully linked helper-image
+copy at the derived runtime address. The compiler advances its target cursor by
+the known runtime length after the provider accepts the complete operation; it
+never holds or copies the helper-image bytes in compiler workspace.
 
 The parser finalizes initialized-data, BSS, and per-bank aggregate-constant used
 lengths before the backend emits any image byte. The exact startup length and
@@ -198,6 +210,7 @@ The writable region has one upward-growing allocation:
 ```text
 writableBase
     runtime vector table
+    fixed runtime writable state
     initialized program variables
     BSS
     free capacity
@@ -205,9 +218,12 @@ writableBase
 writableBase + writableCapacity
 ```
 
-The runtime vector table is adapter-contributed initialized data at its defined
-offset. Program initialized data follows it. BSS begins immediately after the
-used initialized length, not after a reserved initialized-data capacity.
+The runtime vector table is adapter-contributed initialized data at offset
+zero. The identity-fixed runtime writable state follows the table, then program
+initialized data. BSS begins immediately after that complete used initialized
+length, not after a reserved initialized-data capacity. The runtime identity
+fixes the vector and state extents; target-derived addresses select their
+placement.
 
 The complete upward allocation must fit `writableCapacity`. When stack
 establishment is enabled, the unused space above BSS must also cover the
@@ -472,9 +488,9 @@ encodings of the logical stream supplied by an operating or host layer.
 ### 9.2 Commit and failure
 
 The output sink provides bounded `begin`, `image`, `runtimeImage`, `patch`,
-`map`, `commit`, and `abort` operations. `runtimeImage` obtains the canonical
-bytes from the adapter-selected provider and appends ordinary image records;
-it has no distinct wire representation. The sink writes the image and patch
+`map`, `commit`, and `abort` operations. `runtimeImage` obtains fully linked
+bytes for the validated context from the adapter-selected provider and appends
+ordinary image records; it has no distinct wire representation. The sink writes the image and patch
 spools to sequential external storage and may drain or chain them when it
 forms the final NOBJ. The compiler is not required to retain tentative image
 bytes, runtime-image bytes, complete bank images, or a generated routine in
@@ -553,8 +569,9 @@ Used lengths and capacities remain distinct.
 
 Before emitting the terminal commit, the compiler and adapter establish:
 
-- the runtime provider has the selected canonical image and its identity, byte
-  length, vector layout, and helper offsets match;
+- the runtime provider has the selected canonical source revision and link
+  rules, and the resulting byte length, vector layout, and helper offsets match
+  the runtime identity;
 - every mathematical region end is at most `$10000`;
 - writable is wholly inside or wholly outside image for a flat target;
 - writable lies outside the banked window for a banked target;

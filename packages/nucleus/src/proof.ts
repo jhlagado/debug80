@@ -13,8 +13,12 @@ import {
   type NobjMap,
   type ParsedNobj,
   type RuntimeImageProvider,
+  type RuntimeLinkContext,
 } from "./nobj.js";
-import { loadCanonicalRuntimeProvider } from "./nucleus-runtime.js";
+import {
+  defaultRuntimeLinkContext,
+  loadCanonicalRuntimeProvider,
+} from "./nucleus-runtime.js";
 
 interface MemoryRegionManifest {
   readonly name: string;
@@ -68,6 +72,9 @@ interface NobjProofManifest {
   };
   readonly begin: NobjBegin;
   readonly map: NobjMap;
+  readonly runtimeLinkContext?: RuntimeLinkContext;
+  /** Materialize the committed object without entering it. */
+  readonly materializeOnly?: boolean;
   readonly execution: {
     readonly maxInstructions: number;
     readonly maxCycles: number;
@@ -365,7 +372,9 @@ const runNobjManifest = async (
     throw new ProofFailure(`${name}: NOBJ adapter log exceeds proof memory`);
   }
   const store = new NobjGenerationStore();
-  const provider = await loadCanonicalRuntimeProvider();
+  const runtimeLinkContext =
+    manifest.runtimeLinkContext ?? defaultRuntimeLinkContext;
+  const provider = await loadCanonicalRuntimeProvider([runtimeLinkContext]);
   const sink = new NobjGenerationSink(store, provider);
   sink.begin(manifest.begin);
   let cursor = start;
@@ -384,14 +393,47 @@ const runNobjManifest = async (
       ((producerMemory[cursor + 5] ?? 0) << 8);
     cursor += 6;
     if (kind === 3) {
-      if (end - cursor < 2) {
+      if (end - cursor < 20) {
         throw new ProofFailure(`${name}: truncated runtime-image operation`);
       }
       const identity =
         (producerMemory[cursor] ?? 0) |
         ((producerMemory[cursor + 1] ?? 0) << 8);
       cursor += 2;
-      sink.runtimeImage(bank, address, identity, count);
+      const contextWord = (offset: number): number =>
+        (producerMemory[cursor + offset] ?? 0) |
+        ((producerMemory[cursor + offset + 1] ?? 0) << 8);
+      const compilerContext: RuntimeLinkContext = {
+        runtimeBase: contextWord(0),
+        writableBase: contextWord(2),
+        writableCapacity: contextWord(4),
+        writableStateBase: contextWord(6),
+        vectorBase: contextWord(8),
+        programDataBase: contextWord(10),
+        programDataCapacity: contextWord(12),
+        readOnlyBase: contextWord(14),
+        readOnlyCapacity: contextWord(16),
+        services: runtimeLinkContext.services,
+      };
+      cursor += 18;
+      for (const field of [
+        "runtimeBase",
+        "writableBase",
+        "writableCapacity",
+        "writableStateBase",
+        "vectorBase",
+        "programDataBase",
+        "programDataCapacity",
+        "readOnlyBase",
+        "readOnlyCapacity",
+      ] as const) {
+        if (compilerContext[field] !== runtimeLinkContext[field]) {
+          throw new ProofFailure(
+            `${name}: runtime link context ${field} differs from the compiler operation`,
+          );
+        }
+      }
+      sink.runtimeImage(bank, address, identity, compilerContext, count);
       continue;
     }
     if (kind !== 1 && kind !== 2) {
@@ -407,6 +449,23 @@ const runNobjManifest = async (
   }
   sink.map(manifest.map);
   const serialized = sink.commit();
+  if (manifest.materializeOnly === true) {
+    const parsed = parseNobjForExecution(serialized);
+    const materialized = materializeNobj(parsed);
+    const memory = new Uint8Array(0x10000);
+    if (materialized.flatImage !== undefined) {
+      memory.set(materialized.flatImage, parsed.begin.imageBase);
+    }
+    return {
+      serialized,
+      parsed,
+      materialized,
+      memory,
+      instructions: 0,
+      cycles: 0,
+      selectedBank: parsed.map.entryBank,
+    };
+  }
   return executeCommittedNobj(serialized, manifest.execution, {
     observations: manifest.observations,
     bankSwitch: manifest.bankSwitch,

@@ -111,11 +111,13 @@ image or generated routine. The storage layer serializes image records before
 patch records and preserves an earlier committed generation; a failed
 compilation leaves an uncommitted object that no loader may run.
 
-The operating layer also supplies the canonical runtime helper image selected
-by the compiler's runtime identity. The compiler submits its bank, target
-address, identity, and expected length; the provider appends ordinary image
-records and reports the exact length. Runtime bytes remain outside compiler
-core and workspace. Their provider implementation is an external-service
+The operating layer also deterministically links the canonical runtime source
+revision selected by the compiler's runtime identity. The compiler submits its
+bank, target address, identity, complete validated link context, and expected
+layout; the provider appends fully resolved ordinary image records and reports
+the exact length and helper offsets. NOBJ carries no runtime relocations.
+Runtime bytes remain outside compiler core and workspace. The source,
+linker or assembler, and provider implementation form an external-service
 account, while every emitted per-bank copy is reported as selected-runtime
 bytes and as occupancy in its bank image.
 
@@ -153,10 +155,13 @@ without adding bank identity to source types. Generated code uses the
 RAM-resident runtime vectors and never exposes a raw bank address to source.
 The entry bank contains the final mainline source part; library declarations
 precede it in the logical stream even when they occupy other banks. Every bank
-contains the complete selected runtime helper image so one runtime identity and
-one helper-offset layout apply throughout the program.
+contains the complete selected, target-linked runtime helper image so one
+runtime identity and one helper-offset layout apply throughout the program.
 Every bank reserves the same three-byte window-entry slot. The entry bank uses
 it for `JP startup`, so all runtime helper images begin at one uniform address.
+The same identity fixes the RAM-vector and writable-state layout. The provider
+links helper bytes against their complete target-derived context rather than
+selecting one canonical address-bound byte sequence.
 
 Nucleus defines no interrupt routine, interrupt or restart vector declaration,
 interrupt-reentrant activation model, or interrupt-safe service guarantee. The
@@ -404,7 +409,8 @@ Reviewers should test the following boundaries aggressively:
    generated-code proofs, grammar analyzer, and conformance examples.
 9. NOBJ record framing, monotonic image extents, arbitrary-order non-overlapping
    patches, spool ordering, map consistency, CRC coverage, missing-commit
-   rejection, runtime-provider identity and length, deferred used-length
+   rejection, runtime-provider identity, link context, helper layout and
+   length, execution at distinct runtime/writable layouts, deferred used-length
    validation, wire-loader backing, and storage-generation atomicity.
 10. Evidence behind every Z80 byte and timing claim.
 11. Prose quality under the project's human-writing standard: exact agency,

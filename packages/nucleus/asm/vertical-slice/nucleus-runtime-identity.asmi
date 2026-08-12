@@ -1,3 +1,24 @@
-; Canonical operating-layer runtime-image identity. This value changes whenever
-; the selected runtime bytes or their published vector/helper layout changes.
-NucleusRuntimeIdentity .equ $0001
+; Canonical operating-layer runtime source, private ABI, link-rule, vector and
+; helper-layout identity. The same identity may link to different resolved
+; bytes when the validated target addresses differ.
+NucleusRuntimeIdentity       .equ $0003
+NucleusRuntimeExpectedLength .equ 364
+
+NucleusRuntimeVectorCount  .equ 11
+NucleusRuntimeVectorLength .equ NucleusRuntimeVectorCount*3
+NucleusRuntimeStateLength  .equ 21
+
+NucleusRuntimeActivationPushOffset      .equ 0
+NucleusRuntimeActivationPopOffset       .equ 23
+NucleusRuntimeActivationClaimOffset     .equ 43
+NucleusRuntimeActivationReleaseOffset   .equ 68
+NucleusRuntimeCheckArrayIndexOffset      .equ 77
+NucleusRuntimeCheckStringLengthOffset    .equ 85
+NucleusRuntimeCheckStringIndexOffset     .equ 95
+NucleusRuntimeCheckAggregateRegionOffset .equ 115
+NucleusRuntimeInitializeBssOffset        .equ 160
+NucleusRuntimeMultiplyU8Offset           .equ 174
+NucleusRuntimeMultiplyU16Offset          .equ 182
+NucleusRuntimeDivideU16Offset            .equ 228
+NucleusRuntimeModuloU16Offset            .equ 236
+NucleusRuntimeCompareU16Offset           .equ 289

@@ -1,0 +1,60 @@
+; Compact flat-target descriptor retained by pointer across source parsing.
+; The descriptor itself belongs to the operating adapter and remains stable.
+
+TargetDescriptorRuntimeIdentity   .equ 0  ; word
+TargetDescriptorImageBase         .equ 2  ; word
+TargetDescriptorImageCapacity     .equ 4  ; word
+TargetDescriptorWritableBase      .equ 6  ; word
+TargetDescriptorWritableCapacity  .equ 8  ; word
+TargetDescriptorFlags             .equ 10 ; byte
+TargetDescriptorSize              .equ 11
+TargetDescriptorEstablishStack    .equ 1
+
+TargetDescriptorPointer .equ SourceMultipartWorkspaceEnd ; word
+TargetCompilerWorkspaceEnd .equ TargetDescriptorPointer+2
+
+; Parsing has completed before these values become live. They reuse the dead
+; LL(1) parser stack beginning at TargetCompilerWorkspaceEnd.
+TargetLayoutBase          .equ TargetCompilerWorkspaceEnd
+TargetOutputBank          .equ TargetLayoutBase+$00
+TargetImageBase           .equ TargetLayoutBase+$01 ; word
+TargetImageCapacity       .equ TargetLayoutBase+$03 ; word
+TargetLinkedRuntimeBase   .equ TargetLayoutBase+$05 ; word
+TargetReadOnlyBase        .equ TargetLayoutBase+$07 ; word
+TargetReadOnlyLength      .equ TargetLayoutBase+$09 ; word
+TargetCodeBase            .equ TargetLayoutBase+$0B ; word
+TargetCodeLength          .equ TargetLayoutBase+$0D ; word
+TargetCodeCapacity        .equ TargetLayoutBase+$0F ; word
+TargetWritableBase        .equ TargetLayoutBase+$11 ; word
+TargetWritableCapacity    .equ TargetLayoutBase+$13 ; word
+TargetBssBase             .equ TargetLayoutBase+$15 ; word
+TargetLayoutMode          .equ TargetLayoutBase+$17
+TargetRuntimeContext      .equ TargetLayoutBase+$18
+TargetContextRuntimeBase  .equ TargetRuntimeContext+$00 ; word
+TargetContextWritableBase .equ TargetRuntimeContext+$02 ; word
+TargetContextWritableCapacity .equ TargetRuntimeContext+$04 ; word
+TargetContextStateBase    .equ TargetRuntimeContext+$06 ; word
+TargetContextVectorBase   .equ TargetRuntimeContext+$08 ; word
+TargetContextDataBase     .equ TargetRuntimeContext+$0A ; word
+TargetContextDataCapacity .equ TargetRuntimeContext+$0C ; word
+TargetContextRoDataBase   .equ TargetRuntimeContext+$0E ; word
+TargetContextRoDataCapacity .equ TargetRuntimeContext+$10 ; word
+TargetContextSize         .equ $12
+TargetFlatMapBase         .equ TargetRuntimeContext+TargetContextSize
+TargetMapEntryBank        .equ TargetFlatMapBase+$00
+TargetMapEntryAddress     .equ TargetFlatMapBase+$01 ; word
+TargetMapUsedLength       .equ TargetFlatMapBase+$03 ; word
+TargetMapReadOnlyBase     .equ TargetFlatMapBase+$05 ; word
+TargetMapReadOnlyLength   .equ TargetFlatMapBase+$07 ; word
+TargetMapCodeBase         .equ TargetFlatMapBase+$09 ; word
+TargetMapCodeLength       .equ TargetFlatMapBase+$0B ; word
+TargetMapSize             .equ $0D
+TargetLayoutEnd           .equ TargetFlatMapBase+TargetMapSize
+
+DiagnosticTargetConfiguration .equ 95
+DiagnosticTargetCapacity      .equ 96
+DiagnosticTargetOutput        .equ 97
+
+TargetLayoutLoaded .equ 0
+TargetLayoutRom    .equ 1
+TargetOutputClosed .equ $FF

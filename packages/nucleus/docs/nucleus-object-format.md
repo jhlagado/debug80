@@ -36,8 +36,9 @@ name resolution. Combining several objects or resolving symbols between them
 requires a different format and is outside Nucleus 0.1.
 
 The compiler submits generated image bytes and resolved patches in compilation
-order. The operating-layer runtime provider submits the selected helper-image
-bytes at compiler-supplied target locations. The storage sink appends all image
+order. The operating-layer runtime provider deterministically links the
+selected canonical runtime source for the validated target context and submits
+the fully resolved helper-image bytes at compiler-supplied target locations. The storage sink appends all image
 bytes and patches to separate sequential spools; no participant seeks to an
 earlier byte. When compilation finishes, the sink serializes or chains the
 image spool before the patch spool and then writes the map and commit. A
@@ -252,11 +253,13 @@ entry bank. Every source-part bank ordinal and every bank field is less than
 The vector, initialized, and BSS extents must satisfy the writable allocation
 and startup rules in the target-system specification. In Nucleus 0.1,
 `vectorBase` and `initializedRunBase` equal `writableBase`, `vectorLength` is
-nonzero and no greater than `initializedRunLength`, and `bssBase` is the
-mathematical end of the initialized run extent. The combined initialized and
-BSS extent fits `writableCapacity`; established-stack mode also leaves the
-required stack space above it. The entry pair must lie inside the selected
-bank's used image extent.
+nonzero and no greater than `initializedRunLength`, and the identity-fixed
+writable runtime state immediately follows the vector table. Program
+initialized data follows that state. `bssBase` is the mathematical end of the
+initialized run extent. The combined initialized and BSS extent fits
+`writableCapacity`; established-stack mode also leaves the required stack
+space above it. The entry pair must lie inside the selected bank's used image
+extent.
 
 ## 9. `COMMIT` record and integrity
 
@@ -325,10 +328,12 @@ same in each case.
 The compiler-facing sink supports `begin`, `image`, `runtimeImage`, `patch`,
 `map`, `commit`, and `abort`. During compilation, `image` appends to an image
 spool and `patch` appends to a patch spool. `runtimeImage` selects the canonical
-helper image by runtime identity and appends it to the image spool as ordinary
-`IMAGE` records at the supplied bank and address. It must emit the declared
-runtime length exactly. The compiler retains the identity and expected length,
-not the runtime bytes; `runtimeImage` adds no serialized record kind. No
+runtime source and deterministic link rules by runtime identity, links them for
+the complete validated context, and appends the fully resolved result to the
+image spool as ordinary `IMAGE` records at the supplied bank and address. It
+must emit the declared runtime length and helper layout exactly. The compiler
+retains the identity and expected layout, not the runtime bytes; `runtimeImage`
+adds no serialized record kind and NOBJ adds no relocation record. No
 operation requires random access to an earlier compiler output byte.
 
 The compiler retains only bounded unresolved-site metadata rather than a
@@ -355,9 +360,9 @@ current-generation update. They do not need random writes or in-place patching
 during compilation. A CP/M or host tool may use temporary files, form the final
 NOBJ sequentially, and rename it after validation.
 
-The runtime provider belongs to the operating layer. Its canonical byte store
-and provider implementation are external-service resources, not compiler core
-or compiler workspace. Every emitted copy is reported as selected-runtime bytes
+The runtime provider belongs to the operating layer. Its canonical source,
+linker or assembler, and provider implementation are external-service
+resources, not compiler core or compiler workspace. Every emitted linked copy is reported as selected-runtime bytes
 and as occupancy in its bank image. An implementation report must include any
 compiler-side call stub and the operating-layer provider separately rather than
 hiding either cost.
@@ -392,7 +397,8 @@ Conformance evidence must include:
 - an incorrect record count and CRC;
 - truncation in every record header and payload class;
 - a byte after `COMMIT`;
-- an unavailable, wrong-identity, or wrong-length runtime image before commit;
+- an unavailable source revision or unsupported runtime link context, and a
+  wrong-identity, wrong-helper-layout, or wrong-length runtime before commit;
 - direct wire loading of a flat image and stored materialization of a banked
   image without private backing for every bank;
 - a failed generation after at least one image record while an earlier

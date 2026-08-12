@@ -6,13 +6,41 @@
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 EncodeAggregateProgram:
+.if TargetStreamingOutput
+            LD   IX,(TargetDescriptorPointer)
+            CALL BeginTargetFlatProgram
+            JP   C,AbortTargetProgram
+.else
 .if AggregateCallSlices
             LD   HL,GeneratedCodeLimit
 .else
             LD   HL,GeneratedLimit
 .endif
+.endif
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 EncodeAggregateProgramWithinLimit:
+.if TargetStreamingOutput
+            ; BeginTargetFlatProgram already selected the first read-only byte.
+            LD   A,(TargetLayoutMode)
+            OR   A
+            JR   Z,AggregateTargetLoadedRoData
+            LD   B,NucleusRuntimeVectorLength+NucleusRuntimeStateLength
+            XOR  A
+AggregateRuntimeInitialLoop:
+            PUSH BC
+            CALL EmitByte
+            POP  BC
+            JP   C,AggregateAbortProgram
+            DJNZ AggregateRuntimeInitialLoop
+            JR   AggregateTargetCopyReady
+AggregateTargetLoadedRoData:
+            LD   HL,StaticImageBase
+            LD   DE,(StaticImageLength)
+            ADD  HL,DE
+            LD   BC,(ReadOnlyImageLength)
+            JR   AggregateTargetCopySelected
+AggregateTargetCopyReady:
+.else
 .if AggregateCallSlices
             CALL BeginSegmentedProgram
             JP   C,AbortSegmentedProgram
@@ -21,6 +49,7 @@ EncodeAggregateProgramWithinLimit:
 .else
             CALL EncodeProgramHeader
             JP   C,AbortProgram
+.endif
 .endif
 .if SegmentedOutput
             LD   HL,(ReadOnlyImageLength)
@@ -32,6 +61,9 @@ EncodeAggregateProgramWithinLimit:
 .else
             LD   HL,StaticImageBase
             LD   BC,(StaticImageLength)
+.endif
+.if TargetStreamingOutput
+AggregateTargetCopySelected:
 .endif
             LD   A,B
             OR   C
@@ -50,22 +82,41 @@ AggregateCopyLoop:
             OR   C
             JR   NZ,AggregateCopyLoop
 AggregateDispatch:
+.if TargetStreamingOutput
+            LD   HL,(EmitCursor)
+            LD   (TargetCodeBase),HL
+            LD   A,(TargetLayoutMode)
+            OR   A
+            JR   NZ,AggregateTargetCodeReady
+            LD   HL,(TargetCodeCapacity)
+            LD   (EmitLimit),HL
+AggregateTargetCodeReady:
+.else
 .if AggregateCallSlices
             LD   A,SegmentCode
             CALL SelectOutputSegment
             CALL EncodeSegmentedProgramHeader
             JP   C,AbortSegmentedProgram
 .endif
+.endif
             CALL TypedDispatch
             JP   C,AggregateAbortProgram
+.if TargetStreamingOutput
+            JP   FinishTargetFlatProgram
+.else
 .if AggregateCallSlices
             JP   FinishSegmentedProgram
 .else
             JP   FinishProgram
 .endif
+.endif
 
+.if TargetStreamingOutput
+AggregateAbortProgram .equ AbortTargetProgram
+.else
 .if AggregateCallSlices
 AggregateAbortProgram .equ AbortSegmentedProgram
 .else
 AggregateAbortProgram .equ AbortProgram
+.endif
 .endif

@@ -210,7 +210,7 @@ TypedEmitOpcodeWordPushHL:
             LD   A,$E5                    ; PUSH HL
             JP   EmitByte
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 TypedLoadProgram8:
             CALL ExpressionProgramAddress
             LD   A,$3A                    ; LD A,(nn)
@@ -219,7 +219,7 @@ TypedLoadProgram8:
             LD   HL,TypedAtoHL
             JP   EmitFour
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 TypedLoadProgram16:
             CALL ExpressionProgramAddress
             LD   A,$2A                    ; LD HL,(nn)
@@ -362,8 +362,13 @@ TypedMultiply16:
 TypedMultiply:
             CALL TypedPopOperands
             RET  C
+.if TargetStreamingOutput
+            LD   DE,NucleusRuntimeMultiplyU16Offset
+            JP   EmitRuntimeCall
+.else
             LD   HL,MultiplyU16
             JP   EmitCall
+.endif
 
 ; Emit a call whose carry-clear success path must skip a generated failure
 ; outcome. DE returns the branch operand for the caller to patch.
@@ -372,6 +377,14 @@ TypedEmitFailableCall:
             CALL EmitCall
             RET  C
             JP   EmitJrNcPlaceholder
+
+.if TargetStreamingOutput
+.routine in DE out A,DE,carry,zero clobbers sign,parity,halfCarry,B,C,HL
+TypedEmitFailableRuntimeCall:
+            CALL EmitRuntimeCall
+            RET  C
+            JP   EmitJrNcPlaceholder
+.endif
 
 .routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry
 TypedReadTrapPosition:
@@ -406,13 +419,25 @@ TypedDivide:
             LD   (EmitTypedWidth),A
             CALL TypedPopOperands
             RET  C
+.if TargetStreamingOutput
+            LD   DE,NucleusRuntimeDivideU16Offset
+.else
             LD   HL,DivideU16
+.endif
             LD   A,(EmitTypedWidth)
             BIT  1,A
             JR   Z,TypedDivideCall
+.if TargetStreamingOutput
+            LD   DE,NucleusRuntimeModuloU16Offset
+.else
             LD   HL,ModuloU16
+.endif
 TypedDivideCall:
+.if TargetStreamingOutput
+            CALL TypedEmitFailableRuntimeCall
+.else
             CALL TypedEmitFailableCall
+.endif
             RET  C
             LD   A,3
             CALL TypedEmitCurrentTrap
@@ -459,8 +484,13 @@ TypedUnarySequence:
 TypedEmitCompare:
             CALL EmitLoadAImmediate
             RET  C
+.if TargetStreamingOutput
+            LD   DE,NucleusRuntimeCompareU16Offset
+            JP   EmitRuntimeCall
+.else
             LD   HL,CompareU16
             JP   EmitCall
+.endif
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedCompare:
@@ -491,7 +521,7 @@ TypedNarrow8:
             RET  C
             JP   TypedPushHL
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 TypedStoreProgram8:
             CALL ExpressionProgramAddress
             PUSH HL
@@ -501,7 +531,7 @@ TypedStoreProgram8:
             RET  C
             LD   A,$32
             JP   EmitOpcodeWord
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 TypedStoreProgram16:
             CALL ExpressionProgramAddress
             PUSH HL
@@ -532,8 +562,15 @@ TypedWrite8:
             LD   HL,TypedPopHLtoA
             CALL   EmitPair
             RET  C
+.if TargetStreamingOutput
+            LD   A,1
+            CALL EmitTargetVectorCall
+            RET  C
+            CALL EmitJrNcPlaceholder
+.else
             LD   HL,WriteOutputByte
             CALL TypedEmitFailableCall
+.endif
             RET  C
             CALL TypedEmitTrapHead
             RET  C
@@ -554,7 +591,12 @@ TypedEmitTrapEnding:
             LD   A,$AF                    ; XOR A
             CALL EmitByte
             RET  C
+.if TargetStreamingOutput
+            LD   DE,ActivationDepth-StateBase
+            CALL TargetStateAddress
+.else
             LD   HL,ActivationDepth
+.endif
             CALL EmitStoreA
             RET  C
             LD   A,$F1                    ; POP AF
@@ -617,7 +659,12 @@ TypedRootFrameReady:
             POP  HL
             RET  C
             PUSH HL
+.if TargetStreamingOutput
+            LD   DE,RootSP-StateBase
+            CALL TargetStateAddress
+.else
             LD   HL,RootSP
+.endif
             CALL EmitWord
             POP  HL
             RET  C
@@ -625,7 +672,12 @@ TypedRootFrameReady:
             INC  HL
             CALL   EmitPair
             RET  C
+.if TargetStreamingOutput
+            LD   DE,RootIX-StateBase
+            CALL TargetStateAddress
+.else
             LD   HL,RootIX
+.endif
             JP   EmitWord
 
 ; Begin the single retained value routine. Operand bytes are routine ordinal
@@ -662,8 +714,13 @@ TypedCallScalar:
             CALL TypedReadTrapPosition
             CALL TypedEmitPopHL           ; argument
             RET  C
+.if TargetStreamingOutput
+            LD   DE,NucleusRuntimeActivationClaimOffset
+            CALL TypedEmitFailableRuntimeCall
+.else
             LD   HL,ActivationClaim
             CALL TypedEmitFailableCall
+.endif
             RET  C
             LD   A,5
             CALL TypedEmitCurrentTrap
@@ -672,8 +729,13 @@ TypedCallScalar:
             LD   A,$CD                    ; CALL nn
             CALL StructuredEmitFixup
             RET  C
+.if TargetStreamingOutput
+            LD   DE,NucleusRuntimeActivationReleaseOffset
+            CALL EmitRuntimeCall
+.else
             LD   HL,ActivationRelease
             CALL EmitCall
+.endif
             RET  C
             LD   A,$E5                    ; PUSH HL result carrier
             JP   EmitByte
@@ -800,8 +862,13 @@ EncodeSegmentedBss:
             LD   HL,(ProgramBssLength)
             CALL EmitLoadBcImmediate
             RET  C
+.if TargetStreamingOutput
+            LD   DE,NucleusRuntimeInitializeBssOffset
+            CALL EmitRuntimeCall
+.else
             LD   HL,InitializeBss
             CALL EmitCall
+.endif
             RET  C
 EncodeSegmentedEntry:
 .endif

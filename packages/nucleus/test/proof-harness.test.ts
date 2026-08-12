@@ -14,6 +14,36 @@ const wordAt = (memory: Uint8Array, address: number): number =>
   (memory[address] ?? 0) | ((memory[address + 1] ?? 0) << 8);
 
 describe("manifest-driven AZM and Debug80 proofs", () => {
+  it("publishes a flat target through the append-only logical sink", async () => {
+    const outcome = await runProofManifest(
+      proof("flat-target-z80-slice-proof"),
+    );
+    expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
+    expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
+    expect(
+      outcome.extents.find(({ name }) => name === "compiler-core")?.bytes,
+    ).toBeLessThan(16_384);
+    expect(outcome.nobj?.parsed.begin.runtimeIdentity).toBe(3);
+    expect(outcome.nobj?.parsed.map.entryAddress).toBe(0x8000);
+    expect(outcome.nobj?.parsed.map.banks[0]?.usedLength).toBe(479);
+    expect(outcome.nobj?.materialized.flatImage?.length).toBe(4096);
+    expect(outcome.nobj?.memory[0x8000]).toBe(0xc3);
+    expect(outcome.nobj?.memory[0x8003]).not.toBe(0xff);
+    expect(
+      Array.from(outcome.nobj?.memory.slice(0x81a5, 0x81a7) ?? []),
+    ).toEqual([3, 0]);
+    const generated = Array.from(
+      outcome.nobj?.memory.slice(0x81a7, 0x81df) ?? [],
+    );
+    const contains = (wanted: readonly number[]): boolean =>
+      generated.some((_, index) =>
+        wanted.every((byte, offset) => generated[index + offset] === byte),
+      );
+    expect(contains([0x2a, 0x36, 0x40])).toBe(true); // LD HL,($4036)
+    expect(contains([0x22, 0x36, 0x40])).toBe(true); // LD ($4036),HL
+    expect(contains([0xcd, 0xb9, 0x80])).toBe(true); // CALL linked MultiplyU16
+  }, 30_000);
+
   it("compiles and executes the Chapter 21 corpus as direct Z80", async () => {
     const outcome = await runProofManifest(
       proof("stage9-conformance-z80-slice-proof"),

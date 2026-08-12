@@ -2,6 +2,7 @@
 
             .include "memory-map.asmi"
 SegmentedOutput .equ 0
+TargetStreamingOutput .equ 0
             .include "loop-compiler-state.asmi"
             .include "loop-z80-state.asmi"
 
@@ -102,7 +103,7 @@ FullScalarSourceEnd:
 
             .org TargetRuntimeBase
 RuntimeCodeStart:
-            .include "loop-z80-runtime.asm"
+            .include "proof-z80-runtime.asm"
 RuntimeCodeEnd:
 
             .org ProofBase

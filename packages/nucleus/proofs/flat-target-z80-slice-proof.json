@@ -1,0 +1,138 @@
+{
+  "name": "flat-target-streaming-output",
+  "source": "../asm/vertical-slice/flat-target-z80-slice-proof.asm",
+  "memoryProfile": "vertical-slice-memory.json",
+  "interfaces": ["../asm/vertical-slice/expression-generated-z80.asmi"],
+  "execution": {
+    "entry": "ProofStart",
+    "maxInstructions": 500000,
+    "maxCycles": 5000000,
+    "halted": true
+  },
+  "observations": [
+    { "at": "ProofStatus", "width": "u8", "equals": 165 },
+    { "at": "ProofCase", "width": "u8", "equals": 0 },
+    { "at": "AdapterCommitted", "width": "u8", "equals": 1 },
+    { "at": "AdapterAborted", "width": "u8", "equals": 0 },
+    { "at": "DiagnosticCode", "width": "u8", "equals": 14 },
+    { "at": "AdapterCapturedRuntimeBase", "width": "u16", "equals": 32771 },
+    { "at": "AdapterCapturedStateBase", "width": "u16", "equals": 16417 },
+    { "at": "AdapterRuntimeContextPointer", "width": "u16", "equals": 19947 },
+    { "at": "TargetContextRuntimeBase", "width": "u16", "equals": 32771 },
+    { "at": "TargetContextStateBase", "width": "u16", "equals": 16417 },
+    { "at": "AdapterLogLength", "width": "u16", "equals": 847 },
+    { "at": "AdapterCapturedUsedLength", "width": "u16", "equals": 479 },
+    { "at": "AdapterCapturedCodeLength", "width": "u16", "equals": 56 }
+  ],
+  "extents": [
+    {
+      "name": "compiler-code",
+      "from": "CompilerCodeStart",
+      "to": "CompilerCodeEnd",
+      "maxBytes": 16384
+    },
+    {
+      "name": "compiler-immutable",
+      "from": "CompilerImmutableStart",
+      "to": "CompilerImmutableEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "compiler-core",
+      "from": "CompilerCodeStart",
+      "to": "CompilerCoreEnd",
+      "maxBytes": 16384
+    },
+    {
+      "name": "compiler-workspace",
+      "from": "CompilerStateBase",
+      "to": "HybridLL1WorkspaceEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "selected-proof-runtime",
+      "from": "RuntimeCodeStart",
+      "to": "RuntimeCodeEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "proof-code-and-data",
+      "from": "ProofStart",
+      "to": "ProofEnd",
+      "maxBytes": 8192
+    }
+  ],
+  "nobj": {
+    "adapter": {
+      "at": "AdapterLogBase",
+      "lengthAt": "AdapterLogLength",
+      "maxBytes": 12288
+    },
+    "begin": {
+      "banked": false,
+      "runtimeIdentity": 3,
+      "bankCount": 1,
+      "imageFill": 255,
+      "imageBase": 32768,
+      "imageCapacity": 4096
+    },
+    "map": {
+      "romMode": true,
+      "establishedStack": false,
+      "entryBank": 0,
+      "entryAddress": 32768,
+      "writableBase": 16384,
+      "writableCapacity": 4096,
+      "vectorBase": 16384,
+      "vectorLength": 33,
+      "initializedRunBase": 16384,
+      "initializedRunLength": 56,
+      "bssBase": 16440,
+      "bssLength": 0,
+      "stackRequirement": 0,
+      "dataLoadBank": 0,
+      "dataLoadAddress": 33135,
+      "dataLoadLength": 56,
+      "partBanks": [0],
+      "banks": [
+        {
+          "usedLength": 479,
+          "readOnlyBase": 33135,
+          "readOnlyLength": 56,
+          "aggregateConstantBase": 0,
+          "aggregateConstantLength": 0
+        }
+      ]
+    },
+    "runtimeLinkContext": {
+      "runtimeBase": 32771,
+      "writableBase": 16384,
+      "writableCapacity": 4096,
+      "writableStateBase": 16417,
+      "vectorBase": 16384,
+      "programDataBase": 16438,
+      "programDataCapacity": 2,
+      "readOnlyBase": 33191,
+      "readOnlyCapacity": 0,
+      "services": {
+        "readInputByte": 28672,
+        "writeOutputByte": 28675,
+        "readStorageByte": 28678,
+        "rewindStorageInput": 28681,
+        "writeStorageByte": 28684,
+        "seekStorageOutput": 28687,
+        "success": 28690,
+        "unhandledFailure": 28693,
+        "trap": 28696,
+        "farCall": 28699,
+        "farJump": 28702
+      }
+    },
+    "materializeOnly": true,
+    "execution": {
+      "maxInstructions": 1,
+      "maxCycles": 1,
+      "halted": false
+    }
+  }
+}

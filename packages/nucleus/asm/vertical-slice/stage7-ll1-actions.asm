@@ -365,10 +365,15 @@ HybridLL1DataShiftReady:
             POP  HL
             LDIR
             LD   BC,(AggregateCurrentObjectOffset)
+.if TargetStreamingOutput
+            ; Target transcripts retain a segment-relative offset. Bit 15 is
+            ; clear for initialized data and set for BSS.
+.else
             LD   HL,ProgramDataBase
             ADD  HL,BC
             LD   B,H
             LD   C,L
+.endif
             OR   A
             JP   HybridLL1CommitObjectReady
 
@@ -380,10 +385,14 @@ HybridLL1AllocateBssObject:
             LD   (ProgramBssLength),HL
             LD   B,D
             LD   C,E
+.if TargetStreamingOutput
+            SET  7,B
+.else
             LD   HL,ProgramBssBase
             ADD  HL,BC
             LD   B,H
             LD   C,L
+.endif
             OR   A
             JP   HybridLL1CommitObjectReady
 

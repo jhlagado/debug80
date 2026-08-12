@@ -36,6 +36,8 @@ ProgramDataLimit        .equ ProgramDataBase+$0400
 ProgramBssBase          .equ ProgramDataLimit
 ProgramBssLimit         .equ ProgramBssBase+$0400
 ProgramDataRegionLimit  .equ ProgramBssLimit
+ProgramDataRegionCapacity .equ ProgramDataRegionLimit-ProgramDataBase
+GeneratedRoDataCapacity .equ GeneratedRoDataLimit-GeneratedRoDataBase
 
 ServiceBase         .equ $8800
 ServiceLimit        .equ $9000
