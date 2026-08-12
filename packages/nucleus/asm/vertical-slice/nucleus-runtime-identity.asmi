@@ -1,0 +1,3 @@
+; Canonical operating-layer runtime-image identity. This value changes whenever
+; the selected runtime bytes or their published vector/helper layout changes.
+NucleusRuntimeIdentity .equ $0001

@@ -42,6 +42,13 @@ bounded strings, without turning aggregate aliases into runtime types.
 The flat-manifest adapter preserves ordered source-part identities and
 diagnostic names outside the compiler core.
 
+The host NOBJ boundary encodes, validates, and materializes the strict
+append-only object stream. Image and patch records use independent sequential
+spools, while an atomic generation reference prevents an aborted or corrupted
+object from replacing the last committed artifact. Canonical runtime bytes are
+assembled from the same source used by the Z80 proofs and selected through its
+machine-readable runtime identity.
+
 Aggregate constants use the same complete record, fixed-array, and bounded-
 string initializers as program variables. Their direct named roots are
 read-only; ordinary aggregate aliases deliberately carry no transitive

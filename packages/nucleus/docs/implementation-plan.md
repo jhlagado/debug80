@@ -1254,10 +1254,48 @@ Implementation proceeds in measured increments:
 10. obtain a read-only correctness review, perform measured compression, and
     obtain a final correctness-and-size review before commit.
 
-No target-system implementation begins until the specification text is
-approved. The object-sink increment must be measured before later banked work
-depends on it; a 600-byte cumulative target-system increase still triggers the
-existing stop-and-review gate.
+The target-system and NOBJ authorities are approved for staged implementation.
+The object-sink increment must be measured before later banked work depends on
+it; a 600-byte cumulative target-system increase still triggers the existing
+stop-and-review gate.
+
+### Target-system Stage 1: strict host NOBJ boundary
+
+Stage 1 implements the NOBJ 0.1 encoder, validator, materializer, two-spool
+generation sink, and atomic current-generation store in host TypeScript. The
+sink validates complete `BEGIN`, `IMAGE`, `PATCH`, `MAP`, and `COMMIT` records;
+preserves arbitrary non-overlapping patch order; checks deferred used extents;
+and publishes only after the record count, duplicated entry pair, and
+CRC-16/CCITT-FALSE pass. Aborts, truncation, unavailable or mismatched runtime
+images, and late map failures leave the preceding committed generation current.
+
+The operating-layer runtime provider assembles the selected 596-byte helper
+image from the same AZM source used by the executable proofs. Its identity is
+the machine-readable `NucleusRuntimeIdentity` assembly symbol; TypeScript reads
+that symbol rather than maintaining a second numeric table or a copied runtime
+blob.
+
+Measured Stage 1 compiler accounts are unchanged from the approved baseline:
+13,811 code bytes plus 393 immutable bytes, for a 14,204-byte compiler core;
+3,602 workspace bytes; a 1,040-byte largest generated program; and a 596-byte
+selected runtime. The new encoder, validator, materializer, provider, spools,
+and generation reference are host or operating-layer resources and therefore
+add zero bytes to compiler code, immutable compiler data, compiler workspace,
+generated Z80, and selected runtime. The runtime-identity include defines a
+symbol only and emits no Z80 byte.
+
+The exact-record-count fixture reaches 458,724 bytes in its in-memory image
+spool. That is measured external sequential-storage occupancy for 65,532
+one-byte `IMAGE` records, not compiler workspace; a production sink may stream
+the same spool to a file or filesystem extent chain. Patch-spool high water is
+reported independently.
+
+Executable host evidence covers flat and banked objects, fill gaps, image and
+fill patches, alternating banks, descending patch order, exact image-region and
+record-count boundaries, 1/65,532/65,533-byte payload boundaries, malformed
+framing and maps, every record-class truncation, runtime identity and length
+rejection, flat direct materialization, banked stored materialization, and
+successful publication after abort, truncation, and divergent late failure.
 
 ## Capacity ledger
 
@@ -1288,10 +1326,10 @@ requirement are both known.
 | active control frames                   |          8 | ten-byte parser frames                                                                | capacity diagnostic                                                              | nested structured-control proofs                                                  |
 | dynamic labels                          |         27 | byte ordinals; 27 reserved for callable `main`, 28–31 for retained routines           | capacity diagnostic                                                              | exact allocation boundary and callable-main proofs                                |
 | branch fixups                           |         32 | three-byte absolute records                                                           | capacity diagnostic                                                              | bounded resolver and generated branch proofs                                      |
-| object-stream total records             |     65,535 | NOBJ `COMMIT.recordCount` word                                                        | output-service failure or capacity diagnostic before count wrap                  | exact framing and count boundary required before target work                      |
+| object-stream total records             |     65,535 | NOBJ `COMMIT.recordCount` word                                                        | output-service failure or capacity diagnostic before count wrap                  | accepted exactly 65,535 records; rejected first additional data record atomically |
 | object-stream patch records             |     65,531 | external sequential patch spool; exact maximum when one required image record is used | output-service failure or total-record capacity diagnostic before partial record | resolution-order submission, image-before-patch serialization, and count boundary |
-| object-stream image or patch bytes      |     65,532 | one NOBJ record with a word payload length and three-byte bank/address prefix         | output-service failure or target-capacity diagnostic                             | 1/65,532/65,533-byte framing boundaries; interrupted-write proof                  |
-| committed object generations            |          1 | storage-layer current-generation reference; incomplete generation remains uncommitted | output-service failure; previous commit remains current                          | divergent late-failure, missing-commit, and successful replacement proofs         |
+| object-stream image or patch bytes      |     65,532 | one NOBJ record with a word payload length and three-byte bank/address prefix         | output-service failure or target-capacity diagnostic                             | accepted 1 and 65,532 bytes; rejected 65,533 before append                        |
+| committed object generations            |          1 | storage-layer current-generation reference; incomplete generation remains uncommitted | output-service failure; previous commit remains current                          | abort, truncation, divergent late failure, and successful replacement proofs      |
 | structured-initializer depth            |          4 | recursive parser state; total nodes are streamed and not retained                     | capacity diagnostic                                                              | exact nesting boundary and wide 256-element initializer                           |
 | initialized program-data bytes          |      1,024 | prefix of the private compiler image plus a retained word length                      | program-data capacity diagnostic                                                 | exact four-string-plus-tail image and rejected following byte                     |
 | aggregate-constant bytes                |      1,024 | private-image suffix, one shared length word, and relative-offset symbol payloads     | read-only-data capacity diagnostic                                               | record/array/string constants; exact 1,024-byte suffix and rejected next byte     |

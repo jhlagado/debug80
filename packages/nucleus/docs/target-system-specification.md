@@ -1,6 +1,6 @@
 # Nucleus Target System Specification 0.1
 
-- Status: proposed for approval; no implementation authorised
+- Status: approved for staged implementation
 - Date: 2026-08-12
 - Baseline: `d611a696`
 

@@ -1,5 +1,7 @@
 ; Direct-Z80 runtime and bounded output adapter for the counted-loop slice.
 
+            .include "nucleus-runtime-identity.asmi"
+
 .routine out carry,zero clobbers sign,parity,halfCarry,A,B,C,HL
 Reset:
             XOR  A

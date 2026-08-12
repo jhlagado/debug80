@@ -1,6 +1,6 @@
 # Nucleus Object Stream Format 0.1
 
-- Status: proposed for approval; no implementation authorised
+- Status: approved; host encoder, validator, and materializer implemented
 - Date: 2026-08-12
 - Baseline: `9659be78`
 - Recommended extension: `.nobj`

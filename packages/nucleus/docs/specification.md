@@ -1709,7 +1709,7 @@ A string literal is not a general expression primary. Chapter 8 permits it as a 
 
 The compiler resolves each `NAME` before interpreting its postfix suffixes. A visible scalar constant, scalar variable, parameter, or local supplies its declared scalar type. A visible aggregate object or alias supplies its exact aggregate type and storage category. A visible routine name must be followed immediately by an argument list; routine names are not values.
 
-An argument-list suffix in an ordinary expression invokes only an infallible source routine named by the primary. Nucleus has no routine values, indirect calls, callable results, overload resolution, or invocation of an arbitrary parenthesized expression. A second argument-list suffix is invalid. Chapter 13 defines argument and result compatibility, and Chapter 14 gives failable calls their restricted statement, initializer, assignment, and return positions.
+An argument-list suffix in an ordinary expression invokes only an infallible source routine named by the primary. Nucleus has no routine values, indirect calls, callable results, overload resolution, or invocation of an arbitrary parenthesized expression. A second argument-list suffix is invalid. Chapter 13 defines argument and result compatibility, and Chapter 14 gives failable calls their restricted statement, initializer, and assignment positions.
 
 An index suffix requires a fixed-array or bounded-string storage path or typed alias. Its expression must have type `u8` or `u16`. For a fixed array, the result has the array's exact element type; the compiler diagnoses a statically out-of-range index and emits a checked access for a dynamic index unless it proves the index is in range. For a bounded string, the result is a `u8` storage path and the implementation checks the index against the current logical length before every access unless it proves that access safe. A failed check occurs before the element or byte is read or written.
 
@@ -1728,7 +1728,7 @@ Expression checking records both a type and one of these source categories:
 | Scalar storage path              | Reads as its scalar value in an expression and may be a writable destination when its root is mutable.                                                 |
 | Aggregate storage path           | May be indexed, selected, copied by exact-type assignment, passed as an aggregate argument, or returned under Chapter 7's consumption rules.           |
 | Transient aggregate-alias result | Denotes compatible storage for one containing operation and may be selected, indexed, copied by exact-type assignment, passed, returned, or discarded. |
-| Result-free invocation           | Is valid as a complete call statement, or in Chapter 14's result-free failable propagating `return`.                                                   |
+| Result-free invocation           | Is valid only as a complete call statement; when failable, its failure is consumed under Chapter 14.                                                   |
 
 A **storage path** begins with a visible program variable, aggregate constant, parameter, or local and continues through zero or more field and index suffixes. Each suffix preserves the root object's identity while selecting a subobject. An aggregate-constant-rooted path is readable but not a direct assignment target. A scalar constant and a routine call are not storage-path roots. A call that returns an aggregate alias may be selected or indexed in a value context, but Chapter 10 does not admit it as an assignment root.
 
