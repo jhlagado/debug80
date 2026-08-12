@@ -29,6 +29,10 @@ about source behavior, the language specification prevails. If they disagree
 about the direct-Z80 runtime interface or packed representation, this contract
 prevails.
 
+The [Nucleus Target System Specification](target-system-specification.md)
+governs target profiles, image composition, startup, entry, and banked-program
+placement. This contract defines their direct-Z80 representation.
+
 The implementation plan and reviewer's charter are non-normative. Tests,
 proofs, and measurements provide evidence; they do not amend either authority.
 
@@ -53,14 +57,16 @@ second execution target.
 
 ### 2.1 Z80 target
 
-The first implementation emits ordinary Z80 machine code for a flat 16-bit
-address space. It is not tied to one computer, monitor, operating system, port
-map, or physical memory layout. A target adapter supplies concrete source,
-output, service, startup, and reporting addresses.
+The first implementation emits ordinary Z80 machine code into one or more flat
+16-bit bank images. It is not tied to one computer, monitor, operating system,
+port map, or physical memory layout. A target adapter supplies memory regions,
+source-part bank assignments, service vectors, stack policy, and reporting
+metadata.
 
-All runtime addresses are 16-bit target addresses. No source operation exposes,
-constructs, compares, converts, or calculates with one. The compiler retains the
-type and extent associated with every aggregate address carrier.
+All runtime addresses remain 16-bit target addresses. No source operation
+exposes, constructs, compares, converts, or calculates with one. A bank ordinal
+is also private target metadata. The compiler retains the type, extent, root
+category, and bank information required for every aggregate address carrier.
 
 ### 2.2 Separate accounts
 
@@ -83,38 +89,41 @@ and generated program remain measured even though they do not enter that gate.
 
 Nucleus source contains no physical placement, and a target description
 contains no source-symbol reference. A source manifest supplies declarations
-in order. A target profile supplies machine regions and the runtime revision.
-The compiler assigns offsets within those regions and computes final addresses.
+in order. A target profile supplies machine regions, the runtime revision, and
+an optional mapping from source-part ordinal to bank. The compiler assigns
+offsets within those regions and computes final addresses.
 
-The external profile may contain device names, access attributes, output-file
-choices, and other host information. The adapter validates those attributes and
-reduces the profile to this compact compiler descriptor:
+The external profile may contain device names, access attributes, bank
+selectors, device offsets, output-file choices, and other host information.
+The adapter validates those attributes and reduces the flat placement data to
+this compact compiler descriptor:
 
-| Field              | Meaning                                                                 |
-| ------------------ | ----------------------------------------------------------------------- |
-| `runtimeIdentity`  | Required identity of the runtime byte length and helper-offset table.   |
-| `imageBase`        | First target address of startup, runtime, code, and image bytes.        |
-| `imageCapacity`    | Maximum byte extent of the image region.                                |
-| `writableBase`     | First target address available to initialized data and then BSS.        |
-| `writableCapacity` | Combined writable extent available to those two classes.                |
-| `stackBase`        | First address of an optionally established stack region.                |
-| `stackCapacity`    | Total stack extent; zero selects inherited mode and requires base zero. |
-| `startupPolicy`    | `initialize` establishes variables; `reuse` enters established state.   |
+| Field              | Meaning                                                               |
+| ------------------ | --------------------------------------------------------------------- |
+| `runtimeIdentity`  | Runtime byte length, vector layout, and helper-offset identity.       |
+| `imageBase`        | First target address of startup, runtime, code, and image bytes.      |
+| `imageCapacity`    | Maximum byte extent of each selected image region.                    |
+| `writableBase`     | First target address of runtime vectors and program writable storage. |
+| `writableCapacity` | Combined vector, data, BSS, free, and optional stack extent.          |
+| `establishStack`   | Boolean; false inherits `SP`, true establishes it inside writable.    |
 
-The identity, base, and capacity fields are unsigned 16-bit words; the startup
-policy is one byte. A base and capacity describe one half-open region; they do
-not encode an inclusive limit. Validation computes the mathematical end with a
-seventeenth bit, so a nonempty region may end at `$10000` without a sentinel
-convention.
+The identity, base, and capacity fields are unsigned 16-bit words;
+`establishStack` is one byte and must be zero or one. A base and capacity
+describe one half-open region. Validation computes the mathematical end with a
+seventeenth bit, so a nonempty region may end at `$10000` without a sentinel.
 
-Before reduction, the adapter verifies that the image mapping can be loaded and
-executed, that the writable mapping permits writes, and that an established
-stack mapping permits writes. These hardware attributes remain in the external
-profile and do not add compiler descriptor fields.
+A banked profile also supplies one bounded bank ordinal for each source-part
+ordinal. The mapping is distinct from the source manifest and does not key on
+filenames. A direct definition belongs to its part's bank. A forward declaration
+and its abbreviated completion must have the same assignment.
+
+Before reduction, the adapter verifies that image mappings can be loaded and
+executed and that writable permits writes. Hardware attributes and device
+offsets remain external and add no source-visible property.
 
 The runtime identity must equal the constant carried by the compiler before
-the compiler publishes output. The identity fixes both the runtime byte length
-and its helper offsets. The adapter must supply that exact runtime image. A
+publication. The identity fixes the runtime byte length, RAM vector layout, and
+local helper offsets. The adapter must supply that exact runtime image. A
 mismatch is a target-configuration diagnostic, not a runnable artifact.
 
 ### 2.4 Loaded and ROM mappings
@@ -130,59 +139,60 @@ mode; the descriptor contains no mode flag.
   to `writableBase`.
 - Partial overlap between the regions is invalid.
 
-Initialized objects begin at offset zero in the writable region. BSS begins at
-`initializedDataLength`, not at a reserved initialized-data capacity. The
-required writable extent is therefore `initializedDataLength + bssLength`.
-This sum must fit `writableCapacity` without mathematical overflow.
+The runtime vector table begins at offset zero in writable storage. Program
+initialized objects follow the vector table, and BSS begins at the complete
+used initialized length rather than at a reserved capacity. Their sum must fit
+`writableCapacity` without mathematical overflow.
+
+In loaded mode, `writableBase` must begin after startup, runtime, generated
+code, and other non-writable used image bytes. The map reports the first free
+image address. In banked mode, writable must lie wholly outside the banked
+window so a RAM address denotes the same bytes in every bank.
 
 ### 2.5 Address assignment and validation
 
-The compiler retains generated labels and fixups as image-relative offsets or
-an equivalent representation that keeps target addresses separate from output
-staging addresses. A target address is `imageBase + offset`. A staging address
-only identifies where the compiler is temporarily writing bytes; it is never a
-branch target, data address, entry address, or published run address.
+The target-versus-staging representation is an implementation choice recorded
+in the implementation plan. Every produced branch, call, object address, entry,
+and patch must use the target address; staging addresses may identify temporary
+compiler output only.
 
 Before publication, the compiler and adapter together establish all of these
 facts:
 
 - every mathematical region end is at most `$10000`;
-- the runtime identity matches;
-- the startup policy is `initialize` or `reuse`;
-- the writable region is wholly inside or wholly outside the image region;
-- image bytes and writable bytes fit their capacities;
-- every initialized-data load and run extent has the same length;
-- a load and run extent is either identical or disjoint, never partly
-  overlapping;
-- in loaded mode, initialized-data records lie within the writable region while
-  startup, runtime, generated code, and aggregate-constant records remain
-  outside it;
-- every branch, call, data reference, entry address, and patch is in range;
-- an established stack region is large enough for the reported requirement and
-  disjoint from both image and writable regions;
-- reuse startup uses inherited-stack mode and emits no initialized-data load
-  image, copy, or BSS clear;
-- every staging write fits the independent staging capacity; and
-- every address-tagged output record lies within the image region.
+- the runtime identity and `establishStack` value are valid;
+- writable is wholly inside or wholly outside image for a flat target;
+- writable lies outside the bank window for a banked target;
+- image bytes, runtime vectors, initialized data, BSS, and optional stack fit
+  their capacities;
+- loaded-mode writable storage begins after other used image bytes;
+- every part ordinal and bank ordinal is in range;
+- every forward declaration and completion has a compatible bank assignment;
+- every branch, call, far call, data reference, entry pair, and patch is in
+  range;
+- every cross-bank aggregate use satisfies Section 6.5;
+- every staging write fits its independent staging capacity; and
+- every address-tagged output record lies within its selected image region.
 
-### 2.6 Banked packaging
+### 2.6 Banked program model
 
-One compilation retains one flat 16-bit target mapping. A banked application
-contains one compilation per bank. The compiler has no bank selector,
-bank-switch instruction, cross-bank address, fixup, or alternate return
-convention.
+A banked ROM contains one logical compilation and one program, not one program
+per bank. Manifest order remains declaration order. A separate adapter mapping
+assigns each source part to a bank by ordinal.
 
-For a TECM8 four-bank ROM, every compilation uses `imageBase == $8000` and
-`imageCapacity == $4000`. The host places the four committed artifacts at
-device offsets `$0000`, `$4000`, `$8000`, and `$C000`. A device offset is host
-metadata, not a Z80 target address, and does not enter the compact compiler
-descriptor.
+For a TECM8 four-bank target, each bank uses `imageBase == $8000` and
+`imageCapacity == $4000`. The host places bank records at device offsets
+`$0000`, `$4000`, `$8000`, and `$C000`. Device offsets and hardware selector
+values are host metadata rather than Z80 target addresses.
 
-The primary bank uses `startupPolicy == initialize`. A non-entry bank uses
-`startupPolicy == reuse`, contains no initialized-variable load image, and
-performs no copy or BSS clear. All banks use a common writable layout previously
-established by the primary bank. The compiler does not compare layouts across
-compilations; the host may later compare a published layout digest.
+The complete program has one `main`, one startup, one writable region, and one
+published `(entryBank, entryAddress)` pair. Startup and the initialized-data
+load image occupy the entry bank. Runtime vectors and program variables occupy
+always-visible writable RAM outside the bank window.
+
+Calls within one bank use ordinary `CALL`. Calls across banks use the far-call
+vector in Section 8.6. Local arithmetic and aggregate helpers are duplicated
+where required rather than vectored across a bank switch.
 
 ## 3. Runtime representation
 
@@ -280,10 +290,15 @@ complete initialized-RAM load image followed by aggregate-constant bytes. In
 loaded mode initialized bytes occupy their runtime addresses within the image,
 and the trailing read-only bytes contain only aggregate constants.
 
-With reuse startup, the trailing read-only bytes may contain aggregate
-constants but contain no initialized-variable load image. The target
-composition is responsible for entering reuse only after the primary artifact
-has established the common writable state.
+For a banked program, only the entry bank contains startup and the initialized-
+RAM load image. Every bank contains the local runtime helpers required by its
+generated code. The runtime identity fixes their layout as well as the common
+RAM vector layout.
+
+The initialized block begins with the adapter-selected runtime vector table and
+continues with source-declared initialized variables. The adapter contributes
+the vector bytes at a contract-defined offset; they are not a Nucleus
+initializer. BSS follows the complete used initialized length.
 
 The runtime base is derived from `imageBase` and the exact startup-stub length.
 The ROM-mode copy-source operand is emitted as a placeholder and patched at
@@ -292,14 +307,13 @@ transfer to `main` uses the same checked patching discipline.
 
 ### 4.3 Initial state
 
-Before `main` begins, every program variable has its language-defined zero or
-explicit static value, and every aggregate constant has its complete declared
-value. Initialize startup establishes that state: in ROM mode it copies only
-the initialized-RAM image, then clears BSS; in loaded mode it omits the copy and
-clears BSS. Reuse startup performs neither operation and is valid only when a
-previous primary-bank startup has established the shared writable state. No
-startup copies aggregate-constant bytes or exposes a partly initialized object
-to source execution.
+Before `main` begins, the runtime vectors have their adapter-selected targets,
+every program variable has its language-defined zero or explicit static value,
+and every aggregate constant has its complete declared value. In ROM mode
+startup copies the vector and initialized-variable image, then clears BSS. In
+loaded mode it omits the copy and clears BSS. Startup never copies
+aggregate-constant bytes or exposes a partly initialized object to source
+execution.
 
 Static words use little-endian order. Record and array initializers follow the
 packed layout in Chapter 3. A bounded-string initializer writes its length and
@@ -311,28 +325,24 @@ second read-only-image-sized workspace buffer.
 
 ### 4.4 Program entry and exit
 
-The entry address is `imageBase`. Startup optionally establishes the configured
-stack, copies initialized data when required, clears BSS, and then enters
-`main`. Copy and clear therefore precede the entry transfer. In inherited-stack
-mode the transfer is a patched `JP main`; `main` returns through the caller's
-existing return address. In established-stack mode startup uses a patched
-`CALL main`, restores the incoming `SP` after successful completion, and then
-returns to the original caller. Failure and trap paths restore it through their
-terminal handling under Section 6.4.
+The flat entry address is `imageBase`; a banked artifact publishes its entry
+bank with that address. Startup optionally establishes the stack, copies
+initialized data when required, clears BSS, and then enters `main`. Copy and
+clear therefore precede the entry transfer. In inherited-stack mode the
+transfer is a patched `JP main`; `main` returns through the caller's existing
+return address. In established-stack mode startup uses a patched `CALL main`,
+restores the incoming `SP` after successful completion, and then returns to the
+original caller. Failure and trap paths restore it through their terminal
+handling under Section 6.4.
 
 Startup invokes `main` with no source parameters. Successful return terminates
 normally. Failure returned by `main` performs `unhandled-error`. No source
 routine runs before all variables and aggregate constants have their complete
 initial values.
 
-Reuse startup requires inherited-stack mode and consists only of the patched
-`JP main`. A monitor far-call can therefore install its ordinary return stub,
-select a bank, enter that bank at `imageBase`, and regain control through the
-ordinary `RET` from `main`.
-
-The compiler emits no reset, restart, interrupt, or general vector table. A
-loader, monitor, or machine reset binding enters `imageBase` outside the source
-language.
+The compiler emits no reset, restart, or interrupt vector table. A loader,
+monitor, or machine reset binding enters flat `imageBase` or the published
+banked entry pair outside the source language.
 
 ## 5. Checked access and aggregate copying
 
@@ -415,27 +425,51 @@ phase.
 
 ### 6.4 Entry stack modes and interrupts
 
-When `stackCapacity` is zero, startup inherits the caller's stack and does not
-write `SP`. The compiler reports the maximum stack requirement in the program
-map but performs no capacity validation, because the descriptor contains no
-claim about the caller's available stack.
+When `establishStack` is false, startup inherits the caller's stack and does not
+write `SP`. The compiler reports the complete per-compilation stack requirement
+but performs no capacity validation because the descriptor makes no claim
+about the caller's available stack.
 
-When `stackCapacity` is nonzero, startup saves the incoming `SP`, establishes
-`SP` at the mathematical end of the configured stack region, and validates the
-reported requirement against that region. The first two bytes of the region are
-reserved for the saved incoming `SP`; downward stack growth may use only the
-remaining `stackCapacity - 2` bytes. The configured capacity must therefore be
-at least two and must cover that reservation plus the complete reported stack
-requirement, including the established-mode call of `main`.
+When `establishStack` is true, startup establishes `SP` at the mathematical end
+of the writable region. Runtime vectors, initialized variables, and BSS grow
+upward from `writableBase`; the stack grows downward from that end. The unused
+writable extent must cover the published stack requirement plus the two-byte
+saved incoming `SP`.
 
-Startup restores the incoming `SP` on every terminal path: normal return,
-unhandled recoverable failure, and trap. The value `$0000` represents an
-established stack end of `$10000`, not an empty region.
+Startup first selects the new stack and pushes the incoming `SP`, placing that
+saved value in the top two bytes. It restores the value on every terminal path:
+normal return, unhandled recoverable failure, and trap. The value `$0000`
+represents a stack end of `$10000`, not an empty region.
+
+The activation-depth and activation-byte limits remain independent bounded
+resources. A call that would exceed either limit performs
+`activation-capacity` before the callee begins or caller state changes.
 
 This activation contract is not interrupt-reentrant. The compiler emits no
 interrupt entry and the service adapter supplies no interrupt-safe-call
 guarantee. A machine interrupt handler must remain outside Nucleus, preserve the
 program's complete machine state, and not enter a Nucleus routine or service.
+
+### 6.5 Cross-bank aggregate restrictions
+
+These are banked-target restrictions rather than language type rules. A valid
+source program may receive a target diagnostic when it cannot be represented
+safely under them.
+
+An aggregate carrier contains a 16-bit address and no bank identity. The
+compiler therefore enforces all three restrictions at a cross-bank boundary:
+
+1. an aggregate constant is bank-local and cannot be named from another bank;
+2. every aggregate argument must be rooted directly in a top-level program
+   variable, including a field or array element selected from that root; and
+3. the call cannot return an aggregate result.
+
+A constant-rooted, parameter-rooted, or transient-result-rooted aggregate
+argument cannot cross banks because its provenance is not represented in the
+runtime carrier. Scalar arguments and results cross without this restriction.
+A bank-local accessor may expose a scalar from a banked aggregate constant, and
+a banked routine may operate on caller-owned RAM through a directly
+variable-rooted aggregate argument.
 
 ## 7. Recoverable failure and traps
 
@@ -490,8 +524,17 @@ original reason.
 | `0x05` | `seekStorageOutput(offset)` | `u16`     | none           |
 
 The codes identify the standard semantic service set in machine-readable tests
-and adapters. A direct backend may call fixed adapter labels instead of
-dispatching on the code at runtime.
+and adapters. Generated programs call their entries in the RAM-resident runtime
+vector table. Each entry is one `JP`, and the runtime identity fixes the table's
+base, order, and offsets.
+
+Startup installs the table before source execution. Its initialized bytes come
+from the selected adapter runtime rather than from source declarations. The
+table also contains the terminal success, unhandled-failure, and trap entries
+required by Chapter 7 and the far-call and far-jump entries in Section 8.6.
+
+Arithmetic and aggregate helpers remain ordinary local calls. They are not
+placed in the vector table.
 
 ### 8.2 Stable service errors
 
@@ -536,26 +579,24 @@ interface identifies the reset execution as a distinct run.
 Resuming or restarting generated code while retaining mutated service state is
 a debugger or target-specific continuation, not a new conforming run.
 
-### 8.6 Banked target services
+### 8.6 Banked calls
 
-A bank-capable adapter may implement a typed system service by far-calling a
-separately compiled bank. This is an adapter binding, not a source-level bank
-operation. Source code invokes the typed service and never supplies a bank
-number or target address. The binding implements one of the standard services
-in Section 8.1 or an explicitly selected extension; it does not silently add a
-new standard source name or service code.
+The source-part bank mapping lets the compiler classify each routine call as
+local or cross-bank. A local call uses ordinary `CALL`. A cross-bank call uses
+the far-call vector and supplies a compiler-generated destination bank ordinal
+and checked 16-bit target address through its private ABI. Source code exposes
+neither value.
 
-On TECM8, the adapter uses the monitor's `RST 10h` service-selector interface.
-Generated code never emits a raw `farCall bank,target` pair and never writes
-`SYS_CTRL`. The monitor's `Tecm8FarCall` path installs a fixed-ROM return stub,
-selects the service bank, and enters that artifact at `$8000`. The callee's
-ordinary `RET` reaches the stub, which restores the caller's bank.
+The far-call adapter selects the destination bank, enters the ordinary Nucleus
+routine ABI, and installs a fixed-memory return path. The callee returns with an
+ordinary `RET`; the return path restores the caller's bank. The far-jump vector
+provides the corresponding non-returning transfer.
 
-Arguments, results, and service state use the existing service ABI and
-always-visible RAM. When the selected bank enters through `main`, an application
-service identifier resides in agreed shared RAM because `main` has no source
-parameters. The banked binding must preserve the same byte values, call order,
-failure results, and atomicity required of any other adapter implementation.
+On TECM8 the adapter may implement these entries through the monitor's
+`Tecm8FarCall` and `RST 10h` facilities. Generated code never writes `SYS_CTRL`
+directly. Parameters, results, activation state, runtime vectors, and service
+state occupy always-visible RAM. Cross-bank aggregate traffic remains subject
+to Section 6.5.
 
 ## 9. Generated-code integrity
 
@@ -586,10 +627,10 @@ published runnable program.
 
 The compiler publishes address-tagged records in memory. Intel HEX, raw binary,
 `.COM`, serial framing, and device-image assembly are host encodings over those
-records. The compiler defines no text encoding, file padding rule, archive, or
-container format. One compilation publishes one artifact; a banked device image
-contains several separately committed artifacts assembled by the host.
-Streaming may deliver a committed record; it may not expose tentative
+records. A banked record also carries its bank ordinal. The compiler defines no
+text encoding, file padding rule, archive, or container format. One compilation
+publishes one logical artifact containing every selected bank and one entry
+pair. Streaming may deliver a committed record; it may not expose tentative
 compilation output.
 
 The adapter must not patch an unchecked value or silently truncate an address,
@@ -605,12 +646,13 @@ must not replace the source location with the helper's address.
 
 ### 9.4 Published map
 
-The committed artifact reports at least its runtime identity, startup policy,
-entry address, image records, initialized-data run extent, BSS run extent,
-aggregate-constant extent, stack mode, and measured stack requirement. The
-report distinguishes used lengths from capacities. Host tools may add bank
-selectors, device offsets, or filenames, but those values do not enter generated
-addresses or source semantics.
+The committed artifact reports at least its runtime identity, vector layout,
+entry bank and address, source-part bank mapping, bank-tagged image records,
+first free image address per bank, initialized-data run extent, BSS run extent,
+aggregate-constant extent, writable region, stack mode, and measured stack
+requirement. The report distinguishes used lengths from capacities. Host tools
+may add hardware selector values, device offsets, or filenames, but those
+values do not enter source semantics.
 
 ## 10. Conformance and measurement
 

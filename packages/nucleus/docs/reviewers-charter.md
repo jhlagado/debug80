@@ -26,14 +26,17 @@ Apply the following authority order:
 1. The [Nucleus 0.1 Language Specification](specification.md) governs source
    syntax, static semantics, runtime meaning, diagnostics, traps, and language
    conformance.
-2. The [Nucleus Z80 Runtime and Backend Contract](z80-runtime-contract.md)
+2. The [Nucleus Target System Specification](target-system-specification.md)
+   governs target profiles, program images, startup, entry, and banked-program
+   composition.
+3. The [Nucleus Z80 Runtime and Backend Contract](z80-runtime-contract.md)
    governs packed representation, direct-code integrity, runtime services,
    trap records, and direct Z80 execution.
-3. Explicit project-owner decisions govern work that the specifications still
+4. Explicit project-owner decisions govern work that the specifications still
    mark as open.
-4. Executable tests, analyzers, and measurements provide evidence. They do not
+5. Executable tests, analyzers, and measurements provide evidence. They do not
    amend a specification when they disagree with it.
-5. Design notes, old reports, implementation sketches, and repository history
+6. Design notes, old reports, implementation sketches, and repository history
    are non-normative.
 
 Review the current revisions of both authorities. Do not reconstruct the
@@ -112,23 +115,22 @@ it is a redesign.
 
 Nucleus source contains no physical placement, and a target description
 contains no source-symbol reference. The external source manifest orders
-declarations. The target profile supplies bounded regions for one flat 16-bit
-mapping. The compiler assigns offsets within those regions and reports the
-resulting addresses.
+declarations. The target profile supplies bounded regions and may assign source
+parts to banks by manifest ordinal. The compiler assigns offsets, selects local
+or far calls, and reports the resulting addresses.
 
-Banked ROM is assembled from one flat compilation per bank. The compiler has no
-bank selector, bank-switching instruction, raw cross-bank address, or alternate
-return convention. The host places the artifacts at device offsets, and the
-target adapter implements outbound calls through typed service identifiers. A
-primary artifact initializes shared writable state; secondary artifacts use the
-specified reuse entry and must not repeat the copy or clear.
+A banked ROM is one compilation and one program distributed across banks. It
+has one `main`, one startup, one writable region outside the bank window, and
+one entry pair. Cross-bank aggregate restrictions protect address-only carriers
+without adding bank identity to source types. Generated code uses the
+RAM-resident runtime vectors and never exposes a raw bank address to source.
 
 Nucleus defines no interrupt routine, interrupt or restart vector declaration,
 interrupt-reentrant activation model, or interrupt-safe service guarantee. The
-compiler emits no vector table. Interrupt handlers and machine reset bindings
-belong to the monitor, adapter, or other machine code outside Nucleus. A handler
-must preserve the program's machine state and cannot enter a Nucleus routine or
-service.
+compiler emits no interrupt vector table. Interrupt handlers and machine reset
+bindings belong to the monitor, adapter, or other machine code outside Nucleus.
+A handler must preserve the program's machine state and cannot enter a Nucleus
+routine or service.
 
 ### Measurement before assertion
 
