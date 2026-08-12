@@ -623,7 +623,6 @@ Stage7PreserveCarrierRegion:
             LD   A,$E5                    ; retain source
             CALL EmitByte
             RET  C
-            JR   Stage7EmitRegionCheck
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7EmitRegionCheck:

@@ -1523,6 +1523,47 @@ with 1,461 payload bytes; its patch spool reaches 205 bytes across 27 records
 with 43 payload bytes. Its committed target execution uses 1,696 instructions
 and 17,926 T-states.
 
+### Target-system Stage 7: final review and publication
+
+The final adversarial review traced sink failures, fixup publication, target
+and source addresses, the complete runtime link context, map arithmetic, stack
+restoration, bank switching, aggregate-bank restrictions, generation
+atomicity, and the proof runner's fresh-memory boundary. The operating-layer
+provider keys each linked runtime by its canonical identity and the complete
+validated context: runtime base, writable and vector state, service addresses,
+program data, and read-only bounds. It checks the linked length and every
+published helper offset before appending resolved IMAGE bytes. NOBJ remains
+non-relocatable and contains no runtime link records.
+
+The compression pass removed five transfers to the immediately following
+instruction (10 bytes), shortened six absolute jumps whose signed range holds
+in every supported layout (6 bytes), shared the three target entry/fixup
+emitters (23 bytes), and shared the two terminal-state comparison emitters (13
+bytes). The complete Stage 7 saving is 52 compiler-code bytes. A shared
+segment-capacity checker was rejected: its three-byte saving added 26,393
+instructions to the wide-array proof because the check lies inside the extent
+loop. The residual branch census contains
+only two production-layout-relative candidates that exceed range in retained
+historical configurations; no no-op transfer or CALL/RET tail remains. The
+residual duplicate census has three unrelated 14–16-byte runs whose complete
+contract-safe factoring does not establish a further target-system saving.
+
+Fresh Stage 7 assembly measures 15,665 compiler-code bytes plus 393 immutable
+bytes, for a 16,058-byte compiler core and 326 bytes of headroom below 16 KiB.
+The parser is 9,264 bytes. Workspace remains 3,604 bytes. The selected proof
+runtime remains 574 bytes, each target bank still receives the same 364-byte
+linked runtime, fixed runtime state remains 37 bytes, and activation storage
+remains 3,840 bytes. The producer proof remains 2,300 bytes and executes
+1,016,467 instructions in 9,951,675 T-states.
+
+All seven production NOBJ fixtures are byte-identical to their Stage 6
+counterparts: flat ROM, flat loaded, flat trap, flat unhandled failure, banked
+success, banked trap, and Chapter 21. Their generated extents, NOBJ sizes,
+image and patch spool high-water marks, selected runtime, and committed target
+execution therefore remain unchanged. The full proof harness, package suite,
+strict AZM register contracts, typecheck, formatting, prose, and diff checks
+form the final publication gate.
+
 ## Capacity ledger
 
 The first implementation fixes a numeric limit before each bounded structure is

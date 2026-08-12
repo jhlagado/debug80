@@ -632,7 +632,6 @@ TypedEmitCurrentTrap:
             POP  AF
             CALL EmitLoadAImmediate
             RET  C
-            JR   TypedEmitTrapTail
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedEmitTrapTail:
@@ -651,7 +650,6 @@ TypedSaveRootFrame:
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedRestoreRootFrame:
             LD   HL,TypedLoadSPPrefix
-            JR   TypedRootFrameReady
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TypedRootFrameReady:
             PUSH HL

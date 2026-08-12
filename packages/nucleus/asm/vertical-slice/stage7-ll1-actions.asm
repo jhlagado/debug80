@@ -326,7 +326,7 @@ HybridLL1CommitProgramVariable:
             JR   Z,HybridLL1CommitBssObject
             JR   HybridLL1AllocateDataObject
 HybridLL1CommitBssObject:
-            JP   HybridLL1AllocateBssObject
+            JR   HybridLL1AllocateBssObject
 HybridLL1CommitObjectReady:
             PUSH BC
             LD   A,(DeclarationInfo)
@@ -405,7 +405,7 @@ HybridLL1DataShiftReady:
             LD   C,L
 .endif
             OR   A
-            JP   HybridLL1CommitObjectReady
+            JR   HybridLL1CommitObjectReady
 
 ; Return the absolute target address of one default-initialized object in BC.
 HybridLL1AllocateBssObject:
@@ -1232,7 +1232,6 @@ HybridLL1FinishLocalInitializer:
 HybridLL1ValidateDeclarationExpression:
             CALL TypedDeclarationScalarType
             LD   E,A
-            JR   HybridLL1CheckExpressionAssignable
 
 .routine in E out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C,IX,IY
 HybridLL1CheckExpressionAssignable:

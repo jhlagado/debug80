@@ -64,7 +64,6 @@ StructuredFixupFailure:
 .routine in A,C out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 StructuredEmitFarFixup:
             SET  7,C
-            JR   StructuredEmitFixup
 .endif
 .routine in A,C out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 StructuredEmitFixup:

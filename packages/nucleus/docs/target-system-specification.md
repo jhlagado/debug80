@@ -1,6 +1,6 @@
 # Nucleus Target System Specification 0.1
 
-- Status: approved for staged implementation
+- Status: implemented and executable through committed NOBJ
 - Date: 2026-08-12
 - Baseline: `d611a696`
 

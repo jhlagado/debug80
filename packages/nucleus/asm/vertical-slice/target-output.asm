@@ -1,6 +1,32 @@
 ; Flat append-only target output. The operating adapter owns NOBJ framing,
 ; service destinations, image fill, CRC, and the two sequential spools.
 
+; Emit entry opcode A followed by one retained zero-word fixup operand.
+.routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TargetEmitEntryPlaceholder:
+            CALL EmitByte
+            RET  C
+            LD   HL,(EmitCursor)
+            LD   (EmitDataFixup),HL
+            LD   HL,0
+            JP   EmitWord
+
+; Emit one terminal-state byte comparison. DE selects the runtime-state byte
+; and C supplies the expected value.
+.routine in C,DE out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+TargetEmitTerminalTest:
+            PUSH BC
+            CALL TargetStateAddress
+            LD   A,$3A                    ; LD A,(nn)
+            CALL EmitOpcodeWord
+            POP  BC
+            RET  C
+            LD   A,$FE                    ; CP n
+            CALL EmitOpcodeByte
+            RET  C
+            LD   HL,TargetTerminalSelectBytes
+            JP   EmitPair
+
 ; IX points at the stable compact descriptor supplied by the adapter.
 .routine in IX out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 BeginTargetFlatProgram:
@@ -140,12 +166,7 @@ TargetCodeCapacityReady:
             LD   HL,(TargetImageCapacity)
             LD   (EmitLimit),HL
             LD   A,$C3
-            CALL EmitByte
-            RET  C
-            LD   HL,(EmitCursor)
-            LD   (EmitDataFixup),HL
-            LD   HL,0
-            CALL EmitWord
+            CALL TargetEmitEntryPlaceholder
             RET  C
 
             LD   HL,(EmitCursor)
@@ -277,7 +298,7 @@ TargetEmitRuntimeImage:
             CALL TargetSinkRuntimeImage
             JP   C,TargetOutputFailure
             LD   DE,NucleusRuntimeExpectedLength
-            JP   TargetConsumeExtent
+            JR   TargetConsumeExtent
 
 ; Banked output is always ROM. Initialize one retained cursor/capacity pair
 ; per bank, emit every uniform runtime, the entry-only startup/initial image,
@@ -324,12 +345,7 @@ TargetEmitBankPrefixLoop:
             CP   C
             JR   NZ,TargetEmitBankEmptySlot
             LD   A,$C3
-            CALL EmitByte
-            RET  C
-            LD   HL,(EmitCursor)
-            LD   (EmitDataFixup),HL
-            LD   HL,0
-            CALL EmitWord
+            CALL TargetEmitEntryPlaceholder
             RET  C
             JR   TargetEmitBankRuntime
 TargetEmitBankEmptySlot:
@@ -384,7 +400,7 @@ TargetEmitBankPrefixNext:
             LD   IX,(TargetDescriptorPointer)
             LD   A,(IX+TargetDescriptorBankCount)
             CP   C
-            JP   NZ,TargetEmitBankPrefixLoop
+            JR   NZ,TargetEmitBankPrefixLoop
             JP   TargetEmitBankedAggregateConstants
 
 ; HL is a region base and DE a nonzero capacity. Carry reports every wrapped
@@ -627,12 +643,7 @@ TargetStartupEntry:
             JR   Z,TargetStartupEmitEntry
             LD   A,$CD                    ; CALL main before restoring SP
 TargetStartupEmitEntry:
-            CALL EmitByte
-            RET  C
-            LD   HL,(EmitCursor)
-            LD   (EmitDataFixup),HL
-            LD   HL,0
-            CALL EmitWord
+            CALL TargetEmitEntryPlaceholder
             RET  C
             LD   HL,(EmitCursor)
             LD   (TargetTerminalAddress),HL
@@ -645,31 +656,15 @@ TargetStartupEmitEntry:
             RET  C
 TargetStartupTerminalState:
             LD   DE,RunState-StateBase
-            CALL TargetStateAddress
-            LD   A,$3A                    ; LD A,(nn)
-            CALL EmitOpcodeWord
-            RET  C
             LD   C,RunSucceeded
-            LD   A,$FE                    ; CP n
-            CALL EmitOpcodeByte
-            RET  C
-            LD   HL,TargetTerminalSelectBytes
-            CALL EmitPair
+            CALL TargetEmitTerminalTest
             RET  C
             LD   A,6                      ; success vector
             CALL EmitTargetVectorJump
             RET  C
             LD   DE,TrapNumber-StateBase
-            CALL TargetStateAddress
-            LD   A,$3A
-            CALL EmitOpcodeWord
-            RET  C
             LD   C,6                      ; unhandled trap number
-            LD   A,$FE
-            CALL EmitOpcodeByte
-            RET  C
-            LD   HL,TargetTerminalSelectBytes
-            CALL EmitPair
+            CALL TargetEmitTerminalTest
             RET  C
             LD   A,7                      ; unhandled-failure vector
             CALL EmitTargetVectorJump
@@ -795,9 +790,9 @@ TargetMapDataLoadReady:
             LD   (TargetMapDataLoadAddress),HL
             LD   IX,TargetFlatMapBase
             CALL TargetSinkMapFlat
-            JP   C,TargetFinishOutputFailure
+            JR   C,TargetFinishOutputFailure
             CALL TargetSinkCommit
-            JP   C,TargetFinishOutputFailure
+            JR   C,TargetFinishOutputFailure
             XOR  A
             RET
 
