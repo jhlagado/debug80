@@ -99,7 +99,7 @@ TargetStartupStack:
             JR   Z,TargetStartupStackFits
 TargetStartupStackFailure:
             POP  HL
-            JP   TargetCapacityFailure
+            JR   TargetCapacityFailure
 TargetStartupStackFits:
             POP  HL
 TargetStartupReady:
@@ -152,7 +152,9 @@ TargetFlatReadOnlyReady:
             LD   (TargetCodeCapacity),HL
             JR   TargetCodeCapacityReady
 TargetBeginCapacityFailure:
-            JP   TargetCapacityFailure
+TargetCapacityFailure:
+            LD   A,DiagnosticTargetCapacity
+            JP   CompilerSetDiagnostic
 TargetCodeCapacityReady:
 
             LD   IX,(TargetDescriptorPointer)
@@ -172,10 +174,10 @@ TargetCodeCapacityReady:
             LD   (TargetLinkedRuntimeBase),HL
             LD   DE,NucleusRuntimeExpectedLength
             ADD  HL,DE
-            JP   C,TargetCapacityFailure
+            JR   C,TargetCapacityFailure
             LD   DE,(TargetStartupLength)
             ADD  HL,DE
-            JP   C,TargetCapacityFailure
+            JR   C,TargetCapacityFailure
             LD   (TargetReadOnlyBase),HL
             CALL TargetPrepareRuntimeContext
             RET  C
@@ -346,7 +348,9 @@ TargetEmitBankPrefixLoop:
             CP   C
             JR   NZ,TargetEmitBankEmptySlot
             LD   A,$C3
+            PUSH BC
             CALL TargetEmitEntryPlaceholder
+            POP  BC
             RET  C
             JR   TargetEmitBankRuntime
 TargetEmitBankEmptySlot:
@@ -794,10 +798,7 @@ AbortTargetProgram:
 
 TargetConfigurationFailure:
             LD   A,DiagnosticTargetConfiguration
-            JP   CompilerSetDiagnostic
-TargetCapacityFailure:
-            LD   A,DiagnosticTargetCapacity
-            JP   CompilerSetDiagnostic
+            JR   TargetDiagnosticReady
 ; A late map or commit failure still owns an open sink generation. Preserve
 ; the adapter's diagnostic and abort before entering the common output tail.
 TargetFinishOutputFailure:
@@ -806,9 +807,9 @@ TargetFinishOutputFailure:
             POP  AF
 TargetOutputFailure:
             OR   A
-            JR   NZ,TargetOutputDiagnosticReady
+            JR   NZ,TargetDiagnosticReady
             LD   A,DiagnosticTargetOutput
-TargetOutputDiagnosticReady:
+TargetDiagnosticReady:
             JP   CompilerSetDiagnostic
 
 TargetStartupRestoreBytes: .db $C1,$E1,$F9 ; discard CALL return / restore SP

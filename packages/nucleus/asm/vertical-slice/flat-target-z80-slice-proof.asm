@@ -119,6 +119,16 @@ BankedTargetParts:
             .db 2
             .dw BankedTargetMainSource,BankedTargetMainSourceEnd
 BankedTargetPartBanks: .db 1,0
+BankedTargetEntry1Source:
+            .db "var result as u8",10
+            .db "sub main()",10
+            .db "result = 12",10
+            .db "end",10
+BankedTargetEntry1SourceEnd:
+BankedTargetEntry1Parts:
+            .db 1
+            .dw BankedTargetEntry1Source,BankedTargetEntry1SourceEnd
+BankedTargetEntry1PartBanks: .db 1
 
 BankedConstantFailurePart1:
             .db "const Bytes as u8[2] = [1, 2]",10
@@ -260,6 +270,13 @@ BankedTargetDescriptor:
             .db 1
             .db 2,0
             .dw BankedTargetPartBanks
+BankedTargetEntry1Descriptor:
+            .dw NucleusRuntimeIdentity
+            .dw $8000,$1000
+            .dw $4000,$1000
+            .db 1
+            .db 2,1
+            .dw BankedTargetEntry1PartBanks
 BankedFailureDescriptor:
             .dw NucleusRuntimeIdentity
             .dw $8000,$1000
@@ -915,12 +932,29 @@ ProofStart:
             LD   HL,BankedTrapParts
             LD   IX,BankedTargetDescriptor
             CALL CompileTargetAggregateCallParts
-            JR   C,ProofCompileFailure
+            JP   C,ProofCompileFailure
             LD   HL,(AdapterCursor)
             LD   DE,AdapterBankedTrapLogBase
             OR   A
             SBC  HL,DE
             LD   (AdapterBankedTrapLogLength),HL
+
+            XOR  A
+            LD   (AdapterCommitted),A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterEntry1LogBase
+            LD   (AdapterCursor),HL
+            LD   A,1
+            LD   HL,BankedTargetEntry1Parts
+            LD   IX,BankedTargetEntry1Descriptor
+            CALL CompileTargetAggregateCallParts
+            JR   C,ProofCompileFailure
+            LD   HL,(AdapterCursor)
+            LD   DE,AdapterEntry1LogBase
+            OR   A
+            SBC  HL,DE
+            LD   (AdapterEntry1LogLength),HL
 
             XOR  A
             LD   (AdapterCommitted),A
@@ -1285,6 +1319,7 @@ AdapterLoadedLogLength: .dw 0
 AdapterTrapLogLength: .dw 0
 AdapterUnhandledLogLength: .dw 0
 AdapterBankedLogLength: .dw 0
+AdapterEntry1LogLength: .dw 0
 AdapterBankedTrapLogLength: .dw 0
 AdapterChapter21LogLength: .dw 0
 AdapterFailedLogLength: .dw 0
@@ -1328,12 +1363,13 @@ AdapterRuntimeLog:      .dw 0
 AdapterRuntimeContextPointer .equ AdapterRuntimeContext
 ProofEnd:
 
-AdapterLoadedLogBase    .equ $9900
-AdapterSuccessLogBase   .equ $9C00
+AdapterLoadedLogBase    .equ $9930
+AdapterSuccessLogBase   .equ $9C30
 AdapterTrapLogBase      .equ $A000
 AdapterUnhandledLogBase .equ $A500
 AdapterBankedTrapLogBase .equ $AC00
 AdapterLogBase          .equ $B400
 AdapterFailedLogBase    .equ $C600
+AdapterEntry1LogBase    .equ $CB00
 AdapterChapter21LogBase .equ $D000
 AdapterLogLimit         .equ $F000

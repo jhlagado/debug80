@@ -348,9 +348,20 @@ StructuredForTestCompare:
             LD   A,$CA
             JP   StructuredEmitFixup
 
+.routine in DE out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+EmitLoadDeImmediate:
+            LD   A,$11                    ; LD DE,nn
+            PUSH DE
+            CALL EmitByte
+            POP  DE
+            RET  C
+            LD   H,D
+            LD   L,E
+            JP   EmitWord
+
 ; Read and retain the fixed-width ForNext operands in emitter scratch.
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
-StructuredReadForNext:
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+StructuredForNext:
             CALL NextSemanticByte
             LD   (EmitControlTestLabel),A
             CALL NextSemanticByte
@@ -364,22 +375,6 @@ StructuredReadForNext:
             CALL ReadSemanticWord
             LD   (EmitControlTrapOffset),DE
             XOR  A
-            RET
-
-.routine in DE out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
-EmitLoadDeImmediate:
-            LD   A,$11                    ; LD DE,nn
-            PUSH DE
-            CALL EmitByte
-            POP  DE
-            RET  C
-            LD   H,D
-            LD   L,E
-            JP   EmitWord
-
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
-StructuredForNext:
-            CALL StructuredReadForNext
             LD   HL,StructuredBoundPeek
             CALL   EmitPair
             RET  C

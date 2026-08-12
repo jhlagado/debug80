@@ -115,7 +115,11 @@ ControlAllocateInto:
 .routine out A,C,DE,HL,carry,zero clobbers sign,parity,halfCarry,B
 ControlAllocateLabelA:
             LD   B,ControlFrameLabelA
+.if TargetStreamingOutput
+            JR   ControlAllocateInto
+.else
             JP   ControlAllocateInto
+.endif
 .endif
 
 ControlLabelFailure:

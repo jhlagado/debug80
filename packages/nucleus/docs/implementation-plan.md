@@ -1572,15 +1572,26 @@ A post-publication target-focused compression pass starts from that exact
 bytes after the parser-stack/layout overlay, shares three checked 16-bit image
 copy loops, shares five writable-state store prefixes, folds the flat and
 banked map/commit ending, compacts bank-state initialization and bank
-validation, and shares two LL(1) control-action families. Fresh assembly now
-measures 15,553 compiler-code bytes plus the unchanged 393 immutable bytes, or
-15,946 bytes of compiler core. Headroom is 438 bytes. Workspace is 3,606 bytes;
-the two added bytes are the descriptor cache. The parser is 9,253 bytes: 230
-bytes of engine, 755 bytes of tables, 2,693 bytes of actions, and 5,575 bytes
-of retained parser code. The selected proof runtime remains 574 bytes and proof
-code/data remains 2,300 bytes. The producer executes 1,016,500 instructions in
-9,948,692 T-states. All seven production NOBJ fixtures remain byte-identical to
-the `26120b24` baseline, including every linked runtime image.
+validation, and shares two LL(1) control-action families.
+
+The subsequent correctness pass found that emitting the entry placeholder
+destroyed the current-bank register. An entry bank other than zero was
+therefore published as bank zero and its startup was skipped. The repair
+preserves that register across placeholder emission. A separate two-bank proof
+now enters bank one, runs its startup and `main`, and checks the resulting
+program state and selected bank.
+
+After the repair and its focused compression pass, fresh assembly measures
+15,521 compiler-code bytes plus the unchanged 393 immutable bytes, or 15,914
+bytes of compiler core. Headroom is 470 bytes. Workspace remains 3,606 bytes;
+the two bytes above the Stage 7 account are the descriptor cache. The parser is
+9,239 bytes: 230 bytes of engine, 755 bytes of tables, 2,680 bytes of actions,
+and 5,574 bytes of retained parser code. The selected proof runtime remains 574
+bytes. The expanded producer proof is 2,345 bytes and executes 1,043,134
+instructions in 10,193,352 T-states. The higher proof cost comes from compiling
+and executing the additional entry-bank-one program. All seven pre-existing
+production NOBJ fixtures remain byte-identical to the frozen `b7337e2d`
+baseline, including every linked runtime image.
 
 ## Capacity ledger
 

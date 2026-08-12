@@ -981,11 +981,7 @@ HybridLL1BeginFail:
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1CommitFail:
             LD   E,ScalarTypeU8
-            LD   A,(ExpressionRightMeta)
-            LD   HL,(ExpressionRightValue)
-            CALL TypedCheckAssignable
-            RET  C
-            CALL Stage8RequireNoPendingFailure
+            CALL HybridLL1CheckFailureResult
             RET  C
             LD   A,SemanticFailRoutine
 HybridLL1FailOperationReady:
@@ -1004,6 +1000,16 @@ HybridLL1NoFallthrough:
             XOR  A
             LD   (ControlSequenceFallsThrough),A
             RET
+
+; Validate one scalar fail/return value and reject an unconsumed nested
+; recoverable failure.
+.routine in E out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C,IX,IY
+HybridLL1CheckFailureResult:
+            LD   A,(ExpressionRightMeta)
+            LD   HL,(ExpressionRightValue)
+            CALL TypedCheckAssignable
+            RET  C
+            JP   Stage8RequireNoPendingFailure
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 HybridLL1FailureContext:
             LD   A,DiagnosticFailureContext
@@ -1342,11 +1348,7 @@ HybridLL1CommitReturn:
             CP   AggregateFirstDynamicTypeId
             JR   NC,HybridLL1CommitAggregateReturn
             LD   E,A
-            LD   A,(ExpressionRightMeta)
-            LD   HL,(ExpressionRightValue)
-            CALL TypedCheckAssignable
-            RET  C
-            CALL Stage8RequireNoPendingFailure
+            CALL HybridLL1CheckFailureResult
             RET  C
             LD   A,(Stage7CurrentFlags)
             AND  Stage7RoutineFails
@@ -1406,24 +1408,16 @@ HybridLL1TransferSelected:
 
 ; ---------------------------------------------------------- structured flow
 
-; Save the enclosing statement sequence's fallthrough bit at the current
-; control depth before a frame is pushed.
-.routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,C
-HybridLL1SaveFlow:
+; Save the enclosing statement sequence's fallthrough bit, then push the
+; control-frame kind supplied in B.
+.routine in B out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C
+HybridLL1PushFlowFrame:
             LD   A,(ControlDepth)
             CP   ControlFrameCapacity
             JP   NC,ControlCapacityFailure
             CALL HybridLL1FlowAddress
             LD   A,(ControlSequenceFallsThrough)
             LD   (HL),A
-            OR   A
-            RET
-
-; Save the enclosing flow bit, then push the control-frame kind supplied in B.
-.routine in B out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C
-HybridLL1PushFlowFrame:
-            CALL HybridLL1SaveFlow
-            RET  C
             LD   A,B
             JP   ControlPushFrame
 

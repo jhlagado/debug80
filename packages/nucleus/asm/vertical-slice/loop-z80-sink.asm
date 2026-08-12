@@ -53,6 +53,14 @@ EmitWord:
 ; once two or more encoder paths need four or more emitted bytes.
 .routine in B,HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 EmitBytes:
+.if TargetStreamingOutput
+            PUSH BC
+            LD   C,B
+            LD   B,0
+            CALL EmitBlock
+            POP  BC
+            RET
+.else
             LD   A,(HL)
             INC  HL
             PUSH BC
@@ -64,6 +72,7 @@ EmitBytes:
             DJNZ EmitBytes
             OR   A
             RET
+.endif
 
 .if TargetStreamingOutput
 ; Copy the complete BC-byte region through the checked output sink.
@@ -436,7 +445,11 @@ EmitOpcodeWord:
             CALL EmitByte
             POP  HL
             RET  C
+.if TargetStreamingOutput
+            JR   EmitWord
+.else
             JP   EmitWord
+.endif
 
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 EmitCall:
@@ -463,7 +476,7 @@ EmitStoreA:
 .routine in DE out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 EmitStoreTargetStateA:
             CALL TargetStateAddress
-            JP   EmitStoreA
+            JR   EmitStoreA
 .endif
 
 .routine in A,C out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
@@ -578,7 +591,7 @@ EmitRunEnding:
 EmitRunEndingLocal:
             LD   HL,(TargetTerminalAddress)
             LD   A,$C3
-            JP   EmitOpcodeWord
+            JR   EmitOpcodeWord
 .else
             LD   A,$C9
             JP   EmitByte

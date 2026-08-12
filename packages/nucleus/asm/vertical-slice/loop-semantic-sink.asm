@@ -30,7 +30,11 @@ SemanticSinkPutRoom:
             RET
 SemanticSinkPutFull:
             LD   A,DiagnosticSinkCapacity
+.if SegmentedOutput
+            JR   CompilerSetDiagnostic
+.else
             JP   CompilerSetDiagnostic
+.endif
 
 .routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
 SemanticSinkOperation:

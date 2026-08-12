@@ -1,0 +1,168 @@
+{
+  "name": "banked-target-entry-bank-one",
+  "source": "../asm/vertical-slice/flat-target-z80-slice-proof.asm",
+  "memoryProfile": "target-vertical-slice-memory.json",
+  "interfaces": ["../asm/vertical-slice/expression-generated-z80.asmi"],
+  "execution": {
+    "entry": "ProofStart",
+    "maxInstructions": 1500000,
+    "maxCycles": 15000000,
+    "halted": true
+  },
+  "observations": [
+    { "at": "ProofStatus", "width": "u8", "equals": 165 },
+    { "at": "ProofCase", "width": "u8", "equals": 0 },
+    { "at": "TargetOutputBank", "width": "u8", "equals": 255 },
+    { "at": "AdapterEntry1LogLength", "width": "u16", "equals": 879 }
+  ],
+  "extents": [
+    {
+      "name": "compiler-code",
+      "from": "CompilerCodeStart",
+      "to": "CompilerCodeEnd",
+      "maxBytes": 16384
+    },
+    {
+      "name": "compiler-immutable",
+      "from": "CompilerImmutableStart",
+      "to": "CompilerImmutableEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "compiler-core",
+      "from": "CompilerCodeStart",
+      "to": "CompilerCoreEnd",
+      "maxBytes": 16384
+    },
+    {
+      "name": "compiler-workspace",
+      "from": "CompilerStateBase",
+      "to": "HybridLL1WorkspaceEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "selected-proof-runtime",
+      "from": "RuntimeCodeStart",
+      "to": "RuntimeCodeEnd",
+      "maxBytes": 4096
+    },
+    {
+      "name": "proof-code-and-data",
+      "from": "ProofStart",
+      "to": "ProofEnd",
+      "maxBytes": 8192
+    }
+  ],
+  "nobj": {
+    "adapter": {
+      "at": "AdapterEntry1LogBase",
+      "lengthAt": "AdapterEntry1LogLength",
+      "maxBytes": 1280
+    },
+    "begin": {
+      "banked": true,
+      "runtimeIdentity": 4,
+      "bankCount": 2,
+      "imageFill": 255,
+      "imageBase": 32768,
+      "imageCapacity": 4096
+    },
+    "map": {
+      "romMode": true,
+      "establishedStack": true,
+      "entryBank": 1,
+      "entryAddress": 32768,
+      "writableBase": 16384,
+      "writableCapacity": 4096,
+      "vectorBase": 16384,
+      "vectorLength": 33,
+      "initializedRunBase": 16384,
+      "initializedRunLength": 70,
+      "bssBase": 16454,
+      "bssLength": 1,
+      "stackRequirement": 3840,
+      "dataLoadBank": 1,
+      "dataLoadAddress": 33194,
+      "dataLoadLength": 70,
+      "partBanks": [1],
+      "banks": [
+        {
+          "usedLength": 367,
+          "readOnlyBase": 0,
+          "readOnlyLength": 0,
+          "aggregateConstantBase": 0,
+          "aggregateConstantLength": 0
+        },
+        {
+          "usedLength": 545,
+          "readOnlyBase": 33194,
+          "readOnlyLength": 70,
+          "aggregateConstantBase": 0,
+          "aggregateConstantLength": 0
+        }
+      ]
+    },
+    "runtimeLinkContext": {
+      "runtimeBase": 32771,
+      "writableBase": 16384,
+      "writableCapacity": 4096,
+      "writableStateBase": 16417,
+      "vectorBase": 16384,
+      "programDataBase": 16454,
+      "programDataCapacity": 1,
+      "readOnlyBase": 0,
+      "readOnlyCapacity": 0,
+      "services": {
+        "readInputByte": 28864,
+        "writeOutputByte": 28865,
+        "readStorageByte": 28866,
+        "rewindStorageInput": 28867,
+        "writeStorageByte": 28868,
+        "seekStorageOutput": 28869,
+        "success": 28832,
+        "unhandledFailure": 28833,
+        "trap": 28834,
+        "farCall": 28672,
+        "farJump": 28800
+      }
+    },
+    "bankSwitch": {
+      "port": 127,
+      "windowBase": 32768,
+      "windowCapacity": 4096
+    },
+    "execution": {
+      "maxInstructions": 100000,
+      "maxCycles": 1000000,
+      "halted": true,
+      "initialSp": 65280,
+      "expectedSp": 65282,
+      "writes": [
+        { "at": 32512, "bytes": [118] },
+        {
+          "at": 28672,
+          "bytes": [
+            8, 209, 229, 58, 39, 64, 61, 135, 79, 6, 0, 33, 54, 64, 9, 115, 35,
+            114, 58, 39, 64, 61, 79, 6, 0, 33, 42, 64, 9, 58, 41, 64, 119, 8,
+            50, 41, 64, 211, 127, 225, 17, 45, 112, 213, 233, 245, 229, 58, 39,
+            64, 61, 79, 6, 0, 33, 42, 64, 9, 126, 50, 41, 64, 211, 127, 58, 39,
+            64, 61, 135, 79, 6, 0, 33, 54, 64, 9, 94, 35, 86, 225, 241, 213, 201
+          ]
+        },
+        { "at": 28800, "bytes": [50, 41, 64, 211, 127, 233] },
+        { "at": 28832, "bytes": [193, 118] },
+        { "at": 28864, "bytes": [201, 201, 201, 201, 201, 201] },
+        { "at": 16640, "bytes": [0] },
+        { "at": 65280, "bytes": [0, 127] }
+      ]
+    },
+    "observations": [
+      { "at": 16384, "width": "u8", "equals": 195 },
+      { "at": 16417, "width": "u8", "equals": 2 },
+      { "at": 16423, "width": "u8", "equals": 0 },
+      { "at": 16425, "width": "u8", "equals": 1 },
+      { "at": 16454, "width": "u8", "equals": 12 },
+      { "at": 16640, "width": "u8", "equals": 0 }
+    ]
+  }
+}
