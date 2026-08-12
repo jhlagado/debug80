@@ -156,6 +156,8 @@ AbortProgramSize:
             RET
 
 .if AggregateCallSlices
+.if TargetStreamingOutput
+.else
 ; Initialize the fixed adapter table, retain all previously published segment
 ; sizes, and back up both image-bearing segments before tentative emission.
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
@@ -300,6 +302,7 @@ FinishSegmentedProgram:
             LD   (GeneratedBssSize),HL
             OR   A
             RET
+.endif
 .endif
 
 .if LegacyEncoders
@@ -529,6 +532,22 @@ EmitRunEnding:
             CALL EmitStoreA
             RET  C
 .if TargetStreamingOutput
+            LD   HL,(TargetDescriptorPointer)
+            LD   DE,TargetDescriptorEntryBank
+            ADD  HL,DE
+            LD   D,(HL)
+            LD   A,(TargetOutputBank)
+            CP   D
+            JR   Z,EmitRunEndingLocal
+            LD   A,D
+            CALL EmitLoadAImmediate
+            RET  C
+            LD   HL,(TargetTerminalAddress)
+            CALL EmitLoadHl
+            RET  C
+            LD   A,10                     ; far-jump vector ordinal
+            JP   EmitTargetVectorJump
+EmitRunEndingLocal:
             LD   HL,(TargetTerminalAddress)
             LD   A,$C3
             JP   EmitOpcodeWord

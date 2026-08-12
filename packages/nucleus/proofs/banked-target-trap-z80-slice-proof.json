@@ -1,5 +1,5 @@
 {
-  "name": "flat-target-streaming-output",
+  "name": "banked-target-trap",
   "source": "../asm/vertical-slice/flat-target-z80-slice-proof.asm",
   "memoryProfile": "vertical-slice-memory.json",
   "interfaces": ["../asm/vertical-slice/expression-generated-z80.asmi"],
@@ -12,13 +12,7 @@
   "observations": [
     { "at": "ProofStatus", "width": "u8", "equals": 165 },
     { "at": "ProofCase", "width": "u8", "equals": 0 },
-    { "at": "AdapterCommitted", "width": "u8", "equals": 1 },
-    { "at": "AdapterAborted", "width": "u8", "equals": 0 },
-    { "at": "DiagnosticCode", "width": "u8", "equals": 13 },
-    { "at": "AdapterCapturedRuntimeBase", "width": "u16", "equals": 32771 },
-    { "at": "AdapterCapturedStateBase", "width": "u16", "equals": 16417 },
-    { "at": "AdapterRuntimeContextPointer", "width": "u16", "equals": 19952 },
-    { "at": "AdapterLogLength", "width": "u16", "equals": 930 }
+    { "at": "AdapterBankedTrapLogLength", "width": "u16", "equals": 1853 }
   ],
   "extents": [
     {
@@ -60,14 +54,14 @@
   ],
   "nobj": {
     "adapter": {
-      "at": "AdapterSuccessLogBase",
-      "lengthAt": "AdapterLogLength",
-      "maxBytes": 12288
+      "at": "AdapterBankedTrapLogBase",
+      "lengthAt": "AdapterBankedTrapLogLength",
+      "maxBytes": 8192
     },
     "begin": {
-      "banked": false,
+      "banked": true,
       "runtimeIdentity": 4,
-      "bankCount": 1,
+      "bankCount": 2,
       "imageFill": 255,
       "imageBase": 32768,
       "imageCapacity": 4096
@@ -82,19 +76,26 @@
       "vectorBase": 16384,
       "vectorLength": 33,
       "initializedRunBase": 16384,
-      "initializedRunLength": 72,
-      "bssBase": 16456,
+      "initializedRunLength": 70,
+      "bssBase": 16454,
       "bssLength": 1,
       "stackRequirement": 3840,
       "dataLoadBank": 0,
       "dataLoadAddress": 33194,
-      "dataLoadLength": 72,
-      "partBanks": [0],
+      "dataLoadLength": 70,
+      "partBanks": [1, 0],
       "banks": [
         {
-          "usedLength": 556,
+          "usedLength": 594,
           "readOnlyBase": 33194,
-          "readOnlyLength": 72,
+          "readOnlyLength": 70,
+          "aggregateConstantBase": 0,
+          "aggregateConstantLength": 0
+        },
+        {
+          "usedLength": 454,
+          "readOnlyBase": 0,
+          "readOnlyLength": 0,
           "aggregateConstantBase": 0,
           "aggregateConstantLength": 0
         }
@@ -107,49 +108,58 @@
       "writableStateBase": 16417,
       "vectorBase": 16384,
       "programDataBase": 16454,
-      "programDataCapacity": 3,
-      "readOnlyBase": 33266,
+      "programDataCapacity": 1,
+      "readOnlyBase": 0,
       "readOnlyCapacity": 0,
       "services": {
-        "readInputByte": 28672,
-        "writeOutputByte": 28675,
-        "readStorageByte": 28678,
-        "rewindStorageInput": 28681,
-        "writeStorageByte": 28684,
-        "seekStorageOutput": 28687,
-        "success": 28690,
-        "unhandledFailure": 28693,
-        "trap": 28696,
-        "farCall": 28699,
-        "farJump": 28702
+        "readInputByte": 28864,
+        "writeOutputByte": 28865,
+        "readStorageByte": 28866,
+        "rewindStorageInput": 28867,
+        "writeStorageByte": 28868,
+        "seekStorageOutput": 28869,
+        "success": 28832,
+        "unhandledFailure": 28833,
+        "trap": 28834,
+        "farCall": 28672,
+        "farJump": 28800
       }
     },
+    "bankSwitch": {
+      "port": 127,
+      "windowBase": 32768,
+      "windowCapacity": 4096
+    },
     "execution": {
-      "maxInstructions": 10000,
-      "maxCycles": 100000,
+      "maxInstructions": 100000,
+      "maxCycles": 1000000,
       "halted": true,
       "initialSp": 65280,
       "expectedSp": 65282,
       "writes": [
         { "at": 32512, "bytes": [118] },
-        { "at": 28690, "bytes": [201] },
-        { "at": 28693, "bytes": [201] },
-        { "at": 28696, "bytes": [201] },
-        { "at": 65280, "bytes": [0, 127] },
-        { "at": 16384, "bytes": [165] },
-        { "at": 16417, "bytes": [165] },
-        { "at": 16454, "bytes": [165, 165] },
-        { "at": 16456, "bytes": [165, 90] }
+        {
+          "at": 28672,
+          "bytes": [
+            8, 209, 229, 58, 39, 64, 61, 135, 79, 6, 0, 33, 54, 64, 9, 115, 35,
+            114, 58, 39, 64, 61, 79, 6, 0, 33, 42, 64, 9, 58, 41, 64, 119, 8,
+            50, 41, 64, 211, 127, 225, 17, 45, 112, 213, 233, 245, 229, 58, 39,
+            64, 61, 79, 6, 0, 33, 42, 64, 9, 126, 50, 41, 64, 211, 127, 58, 39,
+            64, 61, 135, 79, 6, 0, 33, 54, 64, 9, 94, 35, 86, 225, 241, 213, 201
+          ]
+        },
+        { "at": 28800, "bytes": [50, 41, 64, 211, 127, 233] },
+        { "at": 28832, "bytes": [201, 201, 193, 118] },
+        { "at": 28864, "bytes": [201, 201, 201, 201, 201, 201] },
+        { "at": 16640, "bytes": [0] },
+        { "at": 65280, "bytes": [0, 127] }
       ]
     },
     "observations": [
-      { "at": 16384, "width": "u8", "equals": 195 },
-      { "at": 16386, "width": "u8", "equals": 112 },
-      { "at": 16417, "width": "u8", "equals": 2 },
-      { "at": 16424, "width": "u8", "equals": 8 },
-      { "at": 16454, "width": "u16", "equals": 6 },
-      { "at": 16456, "width": "u8", "equals": 0 },
-      { "at": 16457, "width": "u8", "equals": 90 }
+      { "at": 16418, "width": "u8", "equals": 3 },
+      { "at": 16423, "width": "u8", "equals": 0 },
+      { "at": 16425, "width": "u8", "equals": 0 },
+      { "at": 16454, "width": "u8", "equals": 0 }
     ]
   }
 }

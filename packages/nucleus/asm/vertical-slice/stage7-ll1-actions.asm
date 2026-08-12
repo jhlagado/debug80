@@ -204,8 +204,38 @@ HybridLL1CommitConstant:
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1CommitAggregateConstant:
+.if TargetStreamingOutput
+            CALL TargetCurrentSourceBank
+            LD   (DeclarationInfo),A
+            CALL TargetBankRoLengthAddress
+            PUSH HL
+            LD   C,(HL)
+            INC  HL
+            LD   B,(HL)
+            LD   (DeclarationPayload),BC
+            LD   HL,(AggregateCurrentObjectExtent)
+            ADD  HL,BC
+            LD   E,L
+            LD   D,H
+            POP  HL
+            LD   (HL),E
+            INC  HL
+            LD   (HL),D
+            LD   A,(DeclarationInfo)
+            RLCA
+            RLCA
+            RLCA
+            RLCA
+            OR   SymbolAggregateFlag+SymbolClassConstant
+            LD   (DeclarationInfo),A
+.endif
             LD   BC,(ReadOnlyImageLength)
             LD   D,SymbolAggregateFlag+SymbolClassConstant
+.if TargetStreamingOutput
+            LD   A,(DeclarationInfo)
+            LD   D,A
+            LD   BC,(DeclarationPayload)
+.endif
             CALL TypedPrepareCurrentWord
             RET  C
             LD   BC,(ReadOnlyImageLength)
@@ -230,7 +260,7 @@ HybridLL1CommitAggregateConstant:
             LD   D,0
             LD   HL,AggregateSymbolTypeBase
             ADD  HL,DE
-            LD   A,(DeclarationInfo)
+            LD   A,(AggregateCurrentTypeId)
             LD   (HL),A
             JP   SymbolCommit
 
@@ -606,9 +636,16 @@ HybridLL1BeginSub:
             XOR  A
             LD   (Stage7CurrentParameterCount),A
             LD   (Stage7CurrentResultType),A
+.if TargetStreamingOutput
+            CALL TargetPackCurrentBank
+.endif
             LD   (Stage7CurrentFlags),A
             RET
 HybridLL1BeginMainSignature:
+.if TargetStreamingOutput
+            CALL TargetRequireEntrySourceBank
+            RET  C
+.endif
             LD   A,(Stage8ForwardMainFlags)
             AND  Stage8RoutineIncomplete
             JP   NZ,TypedDuplicateNameFailure
@@ -620,6 +657,9 @@ HybridLL1BeginMainSignature:
             LD   (Stage7CurrentParameterCount),A
             LD   (Stage7CurrentResultType),A
             LD   A,Stage7RoutineMain
+.if TargetStreamingOutput
+            CALL TargetPackCurrentBank
+.endif
             LD   (Stage7CurrentFlags),A
             RET
 HybridLL1RoutineCapacityFailure:
@@ -727,11 +767,31 @@ HybridLL1BeginForwardBody:
             LD   A,(HL)
             BIT  2,A
             JP   Z,TypedDuplicateNameFailure
+.if TargetStreamingOutput
+            LD   D,A
+            PUSH AF
+            PUSH HL
+            CALL TargetRequireCurrentBank
+            JR   C,HybridLL1ForwardBankFailure
+            POP  HL
+            POP  AF
+.endif
             AND  $FB
             LD   (HL),A
             LD   (Stage7CurrentFlags),A
             JR   HybridLL1OpenRoutineBody
+.if TargetStreamingOutput
+HybridLL1ForwardBankFailure:
+            POP  HL
+            POP  AF
+            SCF
+            RET
+.endif
 HybridLL1BeginForwardMainBody:
+.if TargetStreamingOutput
+            CALL TargetRequireEntrySourceBank
+            RET  C
+.endif
             LD   A,(Stage8ForwardMainFlags)
             BIT  2,A
             JR   Z,HybridLL1ForwardMissing
@@ -805,6 +865,13 @@ HybridLL1RoutineKindReady:
             LD   A,(Stage7CurrentParameterCount)
             CALL SemanticSinkPut
             RET  C
+.if TargetStreamingOutput
+            LD   A,(Stage7CurrentFlags)
+            CALL TargetUnpackBank
+            CALL SemanticSinkPut
+            RET  C
+            LD   A,(Stage7CurrentParameterCount)
+.endif
             LD   B,A
             LD   A,(Stage7CurrentParameterStart)
             LD   D,A
@@ -839,6 +906,12 @@ HybridLL1BeginMainBody:
             LD   A,(Stage7CurrentFlags)
             CALL SemanticSinkPut
             RET  C
+.if TargetStreamingOutput
+            LD   A,(Stage7CurrentFlags)
+            CALL TargetUnpackBank
+            CALL SemanticSinkPut
+            RET  C
+.endif
             LD   A,(SymbolCount)
             LD   (Stage7GlobalSymbolCount),A
             XOR  A

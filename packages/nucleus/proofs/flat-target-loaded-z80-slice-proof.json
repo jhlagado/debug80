@@ -5,8 +5,8 @@
   "interfaces": ["../asm/vertical-slice/expression-generated-z80.asmi"],
   "execution": {
     "entry": "ProofStart",
-    "maxInstructions": 500000,
-    "maxCycles": 5000000,
+    "maxInstructions": 1000000,
+    "maxCycles": 10000000,
     "halted": true
   },
   "observations": [
@@ -61,7 +61,7 @@
     },
     "begin": {
       "banked": false,
-      "runtimeIdentity": 3,
+      "runtimeIdentity": 4,
       "bankCount": 1,
       "imageFill": 255,
       "imageBase": 32768,
@@ -77,17 +77,17 @@
       "vectorBase": 36864,
       "vectorLength": 33,
       "initializedRunBase": 36864,
-      "initializedRunLength": 56,
-      "bssBase": 36920,
+      "initializedRunLength": 72,
+      "bssBase": 36936,
       "bssLength": 1,
       "stackRequirement": 3840,
       "dataLoadBank": 0,
       "dataLoadAddress": 36864,
-      "dataLoadLength": 56,
+      "dataLoadLength": 72,
       "partBanks": [0],
       "banks": [
         {
-          "usedLength": 4152,
+          "usedLength": 4168,
           "readOnlyBase": 0,
           "readOnlyLength": 0,
           "aggregateConstantBase": 0,
@@ -101,7 +101,7 @@
       "writableCapacity": 4096,
       "writableStateBase": 36897,
       "vectorBase": 36864,
-      "programDataBase": 36918,
+      "programDataBase": 36934,
       "programDataCapacity": 3,
       "readOnlyBase": 33170,
       "readOnlyCapacity": 0,
@@ -131,7 +131,7 @@
         { "at": 28693, "bytes": [201] },
         { "at": 28696, "bytes": [201] },
         { "at": 65280, "bytes": [0, 127] },
-        { "at": 36920, "bytes": [165, 90] }
+        { "at": 36936, "bytes": [165, 90] }
       ]
     },
     "observations": [
@@ -139,9 +139,9 @@
       { "at": 36866, "width": "u8", "equals": 112 },
       { "at": 36897, "width": "u8", "equals": 2 },
       { "at": 36904, "width": "u8", "equals": 8 },
-      { "at": 36918, "width": "u16", "equals": 6 },
-      { "at": 36920, "width": "u8", "equals": 0 },
-      { "at": 36921, "width": "u8", "equals": 90 }
+      { "at": 36934, "width": "u16", "equals": 6 },
+      { "at": 36936, "width": "u8", "equals": 0 },
+      { "at": 36937, "width": "u8", "equals": 90 }
     ]
   }
 }

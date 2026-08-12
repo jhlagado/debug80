@@ -2,11 +2,18 @@
 ; scalar and alias carrier occupies one canonical word on the evaluation
 ; stack; declared storage widths remain unchanged.
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX
 Stage7BeginRoutine:
             CALL NextSemanticByte
             LD   C,A
             CALL NextSemanticByte     ; retained parameter count
+.if TargetStreamingOutput
+            CALL NextSemanticByte     ; target bank
+            PUSH BC
+            CALL TargetSelectOutputBank
+            POP  BC
+            RET  C
+.endif
 Stage7DefineRoutineFrame:
             CALL StructuredDefineLabel
             RET  C
@@ -163,8 +170,12 @@ Stage8ReadCallStateLoop:
             LD   A,(Stage7CallLabel)
             AND  Stage8CallableSourceMask
             LD   C,A
+.if TargetStreamingOutput
+            CALL Stage7EmitSourceCall
+.else
             LD   A,$CD
             CALL StructuredEmitFixup
+.endif
             RET  C
             LD   A,(Stage8EmitCallFlags)
             AND  Stage7RoutineFails
@@ -178,6 +189,37 @@ Stage8ReadCallStateLoop:
 .endif
             RET  C
             JR   Stage8CallableSuccess
+
+.if TargetStreamingOutput
+; Emit an ordinary local CALL when the target routine shares the current bank.
+; A cross-bank call supplies destination bank A and address HL to vector 9;
+; the adapter switches, calls, restores the caller bank, and preserves the
+; ordinary source-routine result/failure ABI.
+.routine in C out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+Stage7EmitSourceCall:
+            LD   A,(Stage8EmitCallFlags)
+            CALL TargetUnpackBank
+            LD   D,A
+            LD   A,(TargetOutputBank)
+            CP   D
+            JR   NZ,Stage7EmitFarSourceCall
+            LD   A,$CD
+            JP   StructuredEmitFixup
+Stage7EmitFarSourceCall:
+            PUSH BC
+            PUSH DE
+            LD   C,D
+            LD   A,$3E                    ; LD A,destination bank
+            CALL EmitOpcodeByte
+            POP  DE
+            POP  BC
+            RET  C
+            LD   A,$21                    ; LD HL,target address
+            CALL StructuredEmitFarFixup
+            RET  C
+            LD   A,9                      ; far-call vector ordinal
+            JP   EmitTargetVectorCall
+.endif
 Stage8CallableSourceFailable:
             LD   A,$F5                    ; PUSH AF result discriminant/code
             CALL EmitByte
@@ -396,6 +438,11 @@ Stage8ServiceAddressTable:
 Stage8BeginCallableMain:
             CALL NextSemanticByte
             LD   (Stage8EmitCallFlags),A
+.if TargetStreamingOutput
+            CALL NextSemanticByte
+            CALL TargetSelectOutputBank
+            RET  C
+.endif
             CALL TypedBeginProgramFrame
             RET  C
             LD   C,Stage7MainLabel
@@ -458,7 +505,7 @@ Stage7LoadProgramAlias:
 Stage7LoadReadOnlyAlias:
             CALL ReadSemanticWord
 .if TargetStreamingOutput
-            LD   HL,(TargetContextRoDataBase)
+            LD   HL,(TargetCurrentRoBase)
             ADD  HL,DE
 .else
             LD   HL,(StaticImageLength)
@@ -581,10 +628,10 @@ Stage7PreserveCarrierRegion:
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 Stage7EmitRegionCheck:
 .if TargetStreamingOutput
-            LD   DE,(TargetContextRoDataBase)
+            LD   DE,(TargetCurrentRoBase)
             CALL EmitLoadDeImmediate
             RET  C
-            LD   HL,(TargetContextRoDataCapacity)
+            LD   HL,(TargetCurrentRoCapacity)
             PUSH HL
             LD   A,$FD
             CALL EmitByte

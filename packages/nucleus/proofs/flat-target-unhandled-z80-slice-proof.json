@@ -5,8 +5,8 @@
   "interfaces": ["../asm/vertical-slice/expression-generated-z80.asmi"],
   "execution": {
     "entry": "ProofStart",
-    "maxInstructions": 500000,
-    "maxCycles": 5000000,
+    "maxInstructions": 1000000,
+    "maxCycles": 10000000,
     "halted": true
   },
   "observations": [
@@ -21,7 +21,7 @@
     },
     "begin": {
       "banked": false,
-      "runtimeIdentity": 3,
+      "runtimeIdentity": 4,
       "bankCount": 1,
       "imageFill": 255,
       "imageBase": 32768,
@@ -37,19 +37,19 @@
       "vectorBase": 16384,
       "vectorLength": 33,
       "initializedRunBase": 16384,
-      "initializedRunLength": 54,
-      "bssBase": 16438,
+      "initializedRunLength": 70,
+      "bssBase": 16454,
       "bssLength": 0,
       "stackRequirement": 3840,
       "dataLoadBank": 0,
       "dataLoadAddress": 33185,
-      "dataLoadLength": 54,
+      "dataLoadLength": 70,
       "partBanks": [0],
       "banks": [
         {
-          "usedLength": 652,
+          "usedLength": 668,
           "readOnlyBase": 33185,
-          "readOnlyLength": 54,
+          "readOnlyLength": 70,
           "aggregateConstantBase": 0,
           "aggregateConstantLength": 0
         }
@@ -61,9 +61,9 @@
       "writableCapacity": 4096,
       "writableStateBase": 16417,
       "vectorBase": 16384,
-      "programDataBase": 16438,
+      "programDataBase": 16454,
       "programDataCapacity": 0,
-      "readOnlyBase": 33239,
+      "readOnlyBase": 33255,
       "readOnlyCapacity": 0,
       "services": {
         "readInputByte": 28672,

@@ -399,9 +399,12 @@ private checked bank ordinal and target address required by that vector; source
 code supplies neither.
 
 The far-call implementation selects the destination bank, enters the ordinary
-routine ABI, and installs a return path that restores the caller's bank. The
-callee returns with an ordinary `RET`. A far jump provides the corresponding
-non-returning transfer where the backend requires one.
+routine ABI, and installs an identity-defined fixed-memory return path that
+restores the caller's bank without changing the hardware-stack argument layout.
+The return address and caller bank occupy the zero-based activation slot
+selected by the active depth minus one. The callee returns with an ordinary
+`RET`. A far jump provides the corresponding non-returning transfer where the
+backend requires one.
 
 The initialized-data image and startup code live in the entry bank. Runtime
 helpers are duplicated in full in every bank except for the RAM-resident vector

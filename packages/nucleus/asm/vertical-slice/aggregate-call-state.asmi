@@ -68,14 +68,20 @@ Stage7CallFrameFlags        .equ 7
 Stage7CompilerWorkspaceEnd  .equ Stage7CallFrameLimit
 
 ; The memory-backed multipart adapter retains only the next external
-; descriptor and a remaining-part count. Bit 7 of the count records a pending
-; boundary newline; the low seven bits retain the count itself.
+; descriptor and one packed multipart byte. Bit 7 records a pending boundary
+; newline, bits 3..5 retain the current manifest ordinal, and bits 0..2 retain
+; the number of later parts. SourcePartCapacity=8 makes every field exact.
 ; Source bytes and the descriptor table remain outside compiler workspace.
 SourcePartDescriptorCursor  .equ Stage7CompilerWorkspaceEnd
 SourcePartsRemaining        .equ SourcePartDescriptorCursor+2
 SourceMultipartWorkspaceEnd .equ SourcePartsRemaining+1
 SourcePartDescriptorSize    .equ 5
 SourcePartCapacity          .equ 8
+SourcePartsRemainingMask    .equ $07
+SourcePartOrdinalShift      .equ 3
+SourcePartOrdinalStep       .equ 8
+SourcePartOrdinalMask       .equ $38
+SourcePartPendingNewline    .equ $80
 
 ; Emission begins only after parsing has published the semantic transcript, so
 ; its consecutive call fields overlay the no-longer-live declaration prefix.
@@ -96,6 +102,11 @@ Stage7NoResult              .equ 0
 Stage7RoutineFails          .equ 1
 Stage7RoutineMain           .equ 2
 Stage8RoutineIncomplete     .equ 4
+; Target bank ordinals occupy unused routine/symbol metadata bits. The first
+; banked profile is deliberately bounded to four banks.
+TargetBankCapacity          .equ 4
+TargetBankShift             .equ 4
+TargetBankMask              .equ $30
 
 Stage8CallModeInfallible       .equ 0
 Stage8CallModePropagateRoutine .equ 1

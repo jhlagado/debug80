@@ -487,6 +487,9 @@ TokenizerAtEof:
             LD   A,(SourcePartsRemaining)
             BIT  7,A
             JR   NZ,TokenizerAdvancePart
+.if TargetStreamingOutput
+            AND  SourcePartsRemainingMask
+.endif
             OR   A
             JR   Z,TokenizerAtCompilationEof
             LD   A,(SourceLineHasToken)
@@ -501,8 +504,15 @@ TokenizerAtEof:
             RET
 TokenizerAdvancePart:
             LD   HL,SourcePartsRemaining
+.if TargetStreamingOutput
+            LD   A,(HL)
+            AND  $7F
+            ADD  A,SourcePartOrdinalStep-1
+            LD   (HL),A
+.else
             RES  7,(HL)
             DEC  (HL)
+.endif
             LD   HL,(SourcePartDescriptorCursor)
             CALL SourceLoadPart
             JP   TokenizerNextLoop

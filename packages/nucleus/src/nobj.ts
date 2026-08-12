@@ -86,6 +86,7 @@ export interface RuntimeImage {
   readonly initialBytes: Uint8Array;
   readonly vectorBytes: Uint8Array;
   readonly helperOffsets?: Readonly<Record<string, number>>;
+  readonly currentBankOffset?: number;
 }
 
 export interface RuntimeServiceAddresses {
@@ -511,13 +512,25 @@ export class NobjGenerationSink {
     this.#requireDataRecordCapacity(
       Math.ceil(selectedRuntime.initialBytes.length / NOBJ_MAX_DATA_BYTES),
     );
+    const initialBytes = selectedRuntime.initialBytes.slice();
+    if (begin.banked) {
+      const currentBankOffset = selectedRuntime.currentBankOffset ?? -1;
+      if (currentBankOffset < 0) {
+        fail("banked runtime identity omits current-bank state");
+      }
+      const stateIndex = selectedRuntime.vectorBytes.length + currentBankOffset;
+      if (stateIndex >= initialBytes.length) {
+        fail("banked runtime current-bank state is outside the initial image");
+      }
+      initialBytes[stateIndex] = bank;
+    }
     let offset = 0;
-    while (offset < selectedRuntime.initialBytes.length) {
+    while (offset < initialBytes.length) {
       const length = Math.min(
         NOBJ_MAX_DATA_BYTES,
-        selectedRuntime.initialBytes.length - offset,
+        initialBytes.length - offset,
       );
-      const bytes = selectedRuntime.initialBytes.slice(offset, offset + length);
+      const bytes = initialBytes.slice(offset, offset + length);
       this.#imageSpool.append(
         encodeImageLike(NobjKind.image, {
           bank,
@@ -528,7 +541,7 @@ export class NobjGenerationSink {
       this.#imageCount += 1;
       offset += length;
     }
-    this.#imageEnds.set(bank, address + selectedRuntime.initialBytes.length);
+    this.#imageEnds.set(bank, address + initialBytes.length);
     this.#imageHighWater = Math.max(
       this.#imageHighWater,
       this.#imageSpool.byteLength,

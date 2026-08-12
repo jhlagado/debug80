@@ -1,4 +1,5 @@
-; Compact flat-target descriptor retained by pointer across source parsing.
+; Compact target descriptor retained by pointer across source parsing. The
+; part-bank array remains adapter-owned and stable for the compilation.
 ; The descriptor itself belongs to the operating adapter and remains stable.
 
 TargetDescriptorRuntimeIdentity   .equ 0  ; word
@@ -7,9 +8,22 @@ TargetDescriptorImageCapacity     .equ 4  ; word
 TargetDescriptorWritableBase      .equ 6  ; word
 TargetDescriptorWritableCapacity  .equ 8  ; word
 TargetDescriptorFlags             .equ 10 ; byte
-TargetDescriptorSize              .equ 11
+TargetDescriptorBankCount         .equ 11 ; byte
+TargetDescriptorEntryBank         .equ 12 ; byte
+TargetDescriptorPartBanksPointer  .equ 13 ; word
+TargetDescriptorSize              .equ 15
 TargetDescriptorEstablishStack    .equ 1
 TargetStackRequirement            .equ 3840
+
+; Target-only parse-time aggregate-constant lengths reuse the legacy
+; segmented adapter table. Streaming target output never enters that sink.
+TargetBankRoLengthBase  .equ GeneratedRoDataSize
+TargetBankRoLengthLimit .equ TargetBankRoLengthBase+2*TargetBankCapacity
+TargetBankStateBase      .equ SegmentTableBase
+TargetBankStateSize      .equ 4
+TargetBankStateCursor    .equ 0 ; word
+TargetBankStateRemaining .equ 2 ; word
+TargetBankStateLimit     .equ TargetBankStateBase+TargetBankStateSize*TargetBankCapacity
 
 TargetDescriptorPointer .equ SourceMultipartWorkspaceEnd ; word
 TargetCompilerWorkspaceEnd .equ TargetDescriptorPointer+2
@@ -26,6 +40,11 @@ TargetReadOnlyLength      .equ TargetLayoutBase+$09 ; word
 TargetCodeBase            .equ TargetLayoutBase+$0B ; word
 TargetCodeLength          .equ TargetLayoutBase+$0D ; word
 TargetCodeCapacity        .equ TargetLayoutBase+$0F ; word
+; During lowering these flat-publication fields are otherwise dead and retain
+; the selected bank's aggregate-constant bounds. Banked MAP publication uses
+; the per-bank tables, so the overlay does not destroy required state.
+TargetCurrentRoCapacity   .equ TargetCodeLength
+TargetCurrentRoBase       .equ TargetCodeCapacity
 TargetWritableBase        .equ TargetLayoutBase+$11 ; word
 TargetWritableCapacity    .equ TargetLayoutBase+$13 ; word
 TargetBssBase             .equ TargetLayoutBase+$15 ; word

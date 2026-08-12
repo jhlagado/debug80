@@ -17,11 +17,14 @@ TrapError          .equ StateBase+$05
 ActivationDepth    .equ StateBase+$06
 ActivationLimit    .equ StateBase+$07
 ScalarSlot         .equ StateBase+$08
+CurrentBank        .equ ScalarSlot
 ActivationArena    .equ StateBase+$09
 ActivationCapacity .equ 8
 RootSP             .equ ActivationArena+ActivationCapacity
 RootIX             .equ RootSP+2
-StateEnd           .equ RootIX+2
+FarReturnArena     .equ RootIX+2
+FarReturnCapacity  .equ ActivationCapacity*2
+StateEnd           .equ FarReturnArena+FarReturnCapacity
 
 RunReady           .equ 1
 RunSucceeded       .equ 2

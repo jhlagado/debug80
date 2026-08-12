@@ -5,8 +5,8 @@
   "interfaces": ["../asm/vertical-slice/expression-generated-z80.asmi"],
   "execution": {
     "entry": "ProofStart",
-    "maxInstructions": 500000,
-    "maxCycles": 5000000,
+    "maxInstructions": 1000000,
+    "maxCycles": 10000000,
     "halted": true
   },
   "observations": [
@@ -21,7 +21,7 @@
     },
     "begin": {
       "banked": false,
-      "runtimeIdentity": 3,
+      "runtimeIdentity": 4,
       "bankCount": 1,
       "imageFill": 255,
       "imageBase": 32768,
@@ -37,19 +37,19 @@
       "vectorBase": 16384,
       "vectorLength": 33,
       "initializedRunBase": 16384,
-      "initializedRunLength": 54,
-      "bssBase": 16438,
+      "initializedRunLength": 70,
+      "bssBase": 16454,
       "bssLength": 1,
       "stackRequirement": 3840,
       "dataLoadBank": 0,
       "dataLoadAddress": 33194,
-      "dataLoadLength": 54,
+      "dataLoadLength": 70,
       "partBanks": [0],
       "banks": [
         {
-          "usedLength": 583,
+          "usedLength": 599,
           "readOnlyBase": 33194,
-          "readOnlyLength": 54,
+          "readOnlyLength": 70,
           "aggregateConstantBase": 0,
           "aggregateConstantLength": 0
         }
@@ -61,9 +61,9 @@
       "writableCapacity": 4096,
       "writableStateBase": 16417,
       "vectorBase": 16384,
-      "programDataBase": 16438,
+      "programDataBase": 16454,
       "programDataCapacity": 1,
-      "readOnlyBase": 33248,
+      "readOnlyBase": 33264,
       "readOnlyCapacity": 0,
       "services": {
         "readInputByte": 28672,
@@ -93,14 +93,14 @@
         { "at": 65280, "bytes": [0, 127] },
         { "at": 16384, "bytes": [165] },
         { "at": 16417, "bytes": [165] },
-        { "at": 16438, "bytes": [165, 90] }
+        { "at": 16454, "bytes": [165, 90] }
       ]
     },
     "observations": [
       { "at": 16417, "width": "u8", "equals": 3 },
       { "at": 16418, "width": "u8", "equals": 3 },
-      { "at": 16438, "width": "u8", "equals": 0 },
-      { "at": 16439, "width": "u8", "equals": 90 }
+      { "at": 16454, "width": "u8", "equals": 0 },
+      { "at": 16455, "width": "u8", "equals": 90 }
     ]
   }
 }

@@ -677,9 +677,15 @@ and checked 16-bit target address through its private ABI. Source code exposes
 neither value.
 
 The far-call adapter selects the destination bank, enters the ordinary Nucleus
-routine ABI, and installs a fixed-memory return path. The callee returns with an
-ordinary `RET`; the return path restores the caller's bank. The far-jump vector
-provides the corresponding non-returning transfer.
+routine ABI, and installs a fixed-memory return path. Identity `$0004` uses the
+selected-bank byte at writable-state offset eight and a sixteen-byte far-return
+arena after the saved root-frame words. Each live far call uses the zero-based
+slot `ActivationDepth - 1`: depth one selects slot zero, and the published
+depth-eight boundary selects the final slot. The slot retains both the return
+address and caller bank in always-visible state; neither value is inserted
+among hardware-stack arguments. The callee returns with an ordinary `RET`; the
+return path restores the caller's bank. The far-jump vector provides the
+corresponding non-returning transfer.
 
 On TECM8 the adapter may implement these entries through the monitor's
 `Tecm8FarCall` and `RST 10h` facilities. Generated code never writes `SYS_CTRL`

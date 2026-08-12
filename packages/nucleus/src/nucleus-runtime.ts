@@ -56,7 +56,7 @@ export const defaultRuntimeLinkContext: RuntimeLinkContext = {
   writableCapacity: 0x1000,
   writableStateBase: 0x7821,
   vectorBase: 0x7800,
-  programDataBase: 0x7836,
+  programDataBase: 0x7846,
   programDataCapacity: 0x0800,
   readOnlyBase: 0x696c,
   readOnlyCapacity: 0x0800,
@@ -153,11 +153,14 @@ TrapError          .equ StateBase+$05
 ActivationDepth    .equ StateBase+$06
 ActivationLimit    .equ StateBase+$07
 ScalarSlot         .equ StateBase+$08
+CurrentBank        .equ ScalarSlot
 ActivationArena    .equ StateBase+$09
 ActivationCapacity .equ 8
 RootSP             .equ ActivationArena+ActivationCapacity
 RootIX             .equ RootSP+2
-StateEnd           .equ RootIX+2
+FarReturnArena     .equ RootIX+2
+FarReturnCapacity  .equ ActivationCapacity*2
+StateEnd           .equ FarReturnArena+FarReturnCapacity
 
 RunReady           .equ 1
 RunSucceeded       .equ 2
@@ -235,6 +238,7 @@ export class CanonicalRuntimeImageProvider implements RuntimeImageProvider {
           image.helperOffsets === undefined
             ? undefined
             : { ...image.helperOffsets },
+        currentBankOffset: image.currentBankOffset,
       });
     }
   }
@@ -251,6 +255,7 @@ export class CanonicalRuntimeImageProvider implements RuntimeImageProvider {
         image.helperOffsets === undefined
           ? undefined
           : { ...image.helperOffsets },
+      currentBankOffset: image.currentBankOffset,
     };
   }
 }
@@ -322,9 +327,11 @@ export const loadCanonicalRuntimeImage = async (
     const runStateOffset = symbol("RunState") - symbol("StateBase");
     const activationLimitOffset =
       symbol("ActivationLimit") - symbol("StateBase");
+    const currentBankOffset = symbol("CurrentBank") - symbol("StateBase");
     if (
       runStateOffset !== symbol("NucleusRuntimeRunStateOffset") ||
-      activationLimitOffset !== symbol("NucleusRuntimeActivationLimitOffset")
+      activationLimitOffset !== symbol("NucleusRuntimeActivationLimitOffset") ||
+      currentBankOffset !== symbol("NucleusRuntimeCurrentBankOffset")
     ) {
       throw new NobjError("canonical runtime writable-state offset mismatch");
     }
@@ -382,6 +389,7 @@ export const loadCanonicalRuntimeImage = async (
       initialBytes: Uint8Array.from([...linkedVectors, ...linkedState]),
       vectorBytes: linkedVectors,
       helperOffsets,
+      currentBankOffset,
     };
   } finally {
     await rm(temporaryDirectory, { recursive: true, force: true });

@@ -56,6 +56,7 @@ FlatTargetSourceEnd:
 FlatTargetParts:
             .db 1
             .dw FlatTargetSource,FlatTargetSourceEnd
+FlatTargetPartBanks: .db 0
 
 FlatTargetTrapSource:
             .db "var divisor as u8",10
@@ -79,36 +80,221 @@ FlatTargetUnhandledParts:
             .db 1
             .dw FlatTargetUnhandledSource,FlatTargetUnhandledSourceEnd
 
+BankedTargetLibrarySource:
+            .db "record Box",10
+            .db "value as u8",10
+            .db "end",10
+            .db "var shared as Box = (4)",10
+            .db "var countdown as u8 = 1",10
+            .db "var result as u8",10
+            ; The first constant byte is a proof-only far-jump destination.
+            .db "const Lookup as u8[2] = [$76, 5]",10
+            .db "sub recursive()",10
+            .db "if countdown = 0",10
+            .db "return",10
+            .db "end",10
+            .db "countdown = countdown - 1",10
+            .db "recursive()",10
+            .db "end",10
+            .db "sub readBox(box as Box, add as u8) as u8",10
+            .db "return box.value + add",10
+            .db "end",10
+            .db "sub failRemote() fails",10
+            .db "fail 7",10
+            .db "end",10
+BankedTargetLibrarySourceEnd:
+BankedTargetMainSource:
+            .db "sub main() fails",10
+            .db "var code as u8",10
+            .db "recursive()",10
+            .db "result = readBox(shared, 1)",10
+            .db "failRemote() handle code",10
+            .db "result = result + code",10
+            .db "end",10
+            .db "end",10
+BankedTargetMainSourceEnd:
+BankedTargetParts:
+            .db 1
+            .dw BankedTargetLibrarySource,BankedTargetLibrarySourceEnd
+            .db 2
+            .dw BankedTargetMainSource,BankedTargetMainSourceEnd
+BankedTargetPartBanks: .db 1,0
+
+BankedConstantFailurePart1:
+            .db "const Bytes as u8[2] = [1, 2]",10
+            .db "sub take(value as u8[2])",10
+            .db "end",10
+BankedConstantFailurePart1End:
+BankedConstantFailurePart2:
+            .db "sub main()",10
+            .db "take(Bytes)",10
+            .db "end",10
+BankedConstantFailurePart2End:
+BankedConstantFailureParts:
+            .db 1
+            .dw BankedConstantFailurePart1,BankedConstantFailurePart1End
+            .db 2
+            .dw BankedConstantFailurePart2,BankedConstantFailurePart2End
+
+BankedParameterFailurePart1:
+            .db "record Box",10,"value as u8",10,"end",10
+            .db "sub take(first as Box, second as Box)",10,"end",10
+BankedParameterFailurePart1End:
+BankedParameterFailurePart2:
+            .db "var shared as Box = (1)",10
+            .db "sub give() as Box",10,"return shared",10,"end",10
+            .db "sub main()",10,"take(shared, give())",10,"end",10
+BankedParameterFailurePart2End:
+BankedParameterFailureParts:
+            .db 1
+            .dw BankedParameterFailurePart1,BankedParameterFailurePart1End
+            .db 2
+            .dw BankedParameterFailurePart2,BankedParameterFailurePart2End
+
+BankedResultFailurePart1:
+            .db "record Box",10,"value as u8",10,"end",10
+            .db "var shared as Box = (1)",10
+            .db "sub give() as Box",10,"return shared",10,"end",10
+BankedResultFailurePart1End:
+BankedResultFailurePart2:
+            .db "var output as Box",10
+            .db "sub main()",10
+            .db "output = give()",10
+            .db "end",10
+BankedResultFailurePart2End:
+BankedResultFailureParts:
+            .db 1
+            .dw BankedResultFailurePart1,BankedResultFailurePart1End
+            .db 2
+            .dw BankedResultFailurePart2,BankedResultFailurePart2End
+
+BankedForwardFailurePart1:
+            .db "forward sub later()",10
+BankedForwardFailurePart1End:
+BankedForwardFailurePart2:
+            .db "sub later",10,"return",10,"end",10
+            .db "sub main()",10,"later()",10,"end",10
+BankedForwardFailurePart2End:
+BankedForwardFailureParts:
+            .db 1
+            .dw BankedForwardFailurePart1,BankedForwardFailurePart1End
+            .db 2
+            .dw BankedForwardFailurePart2,BankedForwardFailurePart2End
+BankedTrapPart1:
+            .db "var result as u8",10
+            .db "sub trapRemote(divisor as u8)",10
+            .db "result = 1 / divisor",10
+            .db "end",10
+BankedTrapPart1End:
+BankedTrapPart2:
+            .db "sub main()",10
+            .db "trapRemote(0)",10
+            .db "end",10
+BankedTrapPart2End:
+BankedTrapParts:
+            .db 1
+            .dw BankedTrapPart1,BankedTrapPart1End
+            .db 2
+            .dw BankedTrapPart2,BankedTrapPart2End
+BankedLargePart1:
+            .db "const First as string[253] = ",34,34,10
+            .db "const Second as string[253] = ",34,34,10
+BankedLargePart1End:
+BankedLargePart2:
+            .db "sub main()",10,"end",10
+BankedLargePart2End:
+BankedLargeParts:
+            .db 1
+            .dw BankedLargePart1,BankedLargePart1End
+            .db 2
+            .dw BankedLargePart2,BankedLargePart2End
+BankedFailurePartBanks: .db 1,0
+BankedInvalidPartBanks: .db 2,0
+
 FlatTargetDescriptor:
             .dw NucleusRuntimeIdentity
             .dw $8000,$1000
             .dw $4000,$1000
             .db 1
+            .db 1,0
+            .dw FlatTargetPartBanks
 FlatTargetLoadedDescriptor:
             .dw NucleusRuntimeIdentity
             .dw $8000,$2000
             .dw $9000,$1000
             .db 0
+            .db 1,0
+            .dw FlatTargetPartBanks
 FlatTargetEarlyWritableDescriptor:
             .dw NucleusRuntimeIdentity
             .dw $8000,$2000
             .dw $8100,$1000
             .db 0
+            .db 1,0
+            .dw FlatTargetPartBanks
 FlatTargetBadFlagsDescriptor:
             .dw NucleusRuntimeIdentity
             .dw $8000,$1000
             .dw $4000,$1000
             .db 2
+            .db 1,0
+            .dw FlatTargetPartBanks
 FlatTargetStackExactDescriptor:
             .dw NucleusRuntimeIdentity
             .dw $8000,$1000
-            .dw $4000,$0F3B
+            .dw $4000,$0F4B
             .db 1
+            .db 1,0
+            .dw FlatTargetPartBanks
 FlatTargetStackOverflowDescriptor:
             .dw NucleusRuntimeIdentity
             .dw $8000,$1000
-            .dw $4000,$0F3A
+            .dw $4000,$0F4A
             .db 1
+            .db 1,0
+            .dw FlatTargetPartBanks
+BankedTargetDescriptor:
+            .dw NucleusRuntimeIdentity
+            .dw $8000,$1000
+            .dw $4000,$1000
+            .db 1
+            .db 2,0
+            .dw BankedTargetPartBanks
+BankedFailureDescriptor:
+            .dw NucleusRuntimeIdentity
+            .dw $8000,$1000
+            .dw $4000,$1000
+            .db 1
+            .db 2,0
+            .dw BankedFailurePartBanks
+BankedWrongEntryDescriptor:
+            .dw NucleusRuntimeIdentity
+            .dw $8000,$1000
+            .dw $4000,$1000
+            .db 1
+            .db 2,1
+            .dw BankedTargetPartBanks
+BankedInvalidPartDescriptor:
+            .dw NucleusRuntimeIdentity
+            .dw $8000,$1000
+            .dw $4000,$1000
+            .db 1
+            .db 2,0
+            .dw BankedInvalidPartBanks
+BankedEntryOverflowDescriptor:
+            .dw NucleusRuntimeIdentity
+            .dw $8000,$02BC
+            .dw $4000,$1000
+            .db 1
+            .db 2,0
+            .dw BankedTargetPartBanks
+BankedOtherOverflowDescriptor:
+            .dw NucleusRuntimeIdentity
+            .dw $8000,$0352
+            .dw $4000,$1000
+            .db 1
+            .db 2,0
+            .dw BankedFailurePartBanks
 
             .org TargetRuntimeBase
 RuntimeCodeStart:
@@ -134,6 +320,23 @@ ProofStart:
             LD   (ProofCase),A
             CALL TargetValidateRegion
             JP   C,ProofRegionFailure
+            LD   HL,$FFFF
+            LD   (EmitCursor),HL
+            LD   HL,1
+            LD   (EmitLimit),HL
+            LD   DE,1
+            LD   A,46
+            LD   (ProofCase),A
+            CALL TargetConsumeExtent
+            JP   C,ProofRegionFailure
+            LD   HL,(EmitCursor)
+            LD   A,H
+            OR   L
+            JP   NZ,ProofRegionFailure
+            LD   HL,(EmitLimit)
+            LD   A,H
+            OR   L
+            JP   NZ,ProofRegionFailure
             LD   HL,$F001
             LD   DE,$1000
             LD   A,11
@@ -226,7 +429,7 @@ ProofStart:
             SBC  HL,DE
             JP   NZ,ProofLoadedFailure
             LD   HL,(AdapterCapturedMap+$03)
-            LD   DE,$1038
+            LD   DE,$1048
             OR   A
             SBC  HL,DE
             JP   NZ,ProofLoadedFailure
@@ -245,7 +448,7 @@ ProofStart:
             SBC  HL,DE
             JP   NZ,ProofLoadedFailure
             LD   HL,(AdapterCapturedMap+TargetMapInitializedLength-TargetFlatMapBase)
-            LD   DE,56
+            LD   DE,72
             OR   A
             SBC  HL,DE
             JP   NZ,ProofLoadedFailure
@@ -276,8 +479,7 @@ ProofStart:
             CALL CompileTargetAggregateCallParts
             JP   NC,ProofConfigurationFailure
             LD   A,(DiagnosticCode)
-            CP   DiagnosticTargetConfiguration
-            JP   NZ,ProofConfigurationFailure
+            LD   (AdapterSavedDiagnostic),A
             LD   A,(AdapterAborted)
             OR   A
             JP   NZ,ProofConfigurationFailure
@@ -416,12 +618,12 @@ ProofStart:
             SBC  HL,DE
             JP   NZ,ProofMapFailure
             LD   HL,(AdapterCapturedMap+TargetMapInitializedLength-TargetFlatMapBase)
-            LD   DE,56
+            LD   DE,72
             OR   A
             SBC  HL,DE
             JP   NZ,ProofMapFailure
             LD   HL,(AdapterCapturedMap+TargetMapBssBase-TargetFlatMapBase)
-            LD   DE,$4038
+            LD   DE,$4048
             OR   A
             SBC  HL,DE
             JP   NZ,ProofMapFailure
@@ -463,7 +665,7 @@ ProofStart:
             LD   HL,FlatTargetTrapParts
             LD   IX,FlatTargetDescriptor
             CALL CompileTargetAggregateCallParts
-            JR   C,ProofCompileFailure
+            JP   C,ProofCompileFailure
             LD   HL,(AdapterCursor)
             LD   DE,AdapterLogBase
             OR   A
@@ -489,7 +691,7 @@ ProofStart:
             LD   HL,FlatTargetUnhandledParts
             LD   IX,FlatTargetDescriptor
             CALL CompileTargetAggregateCallParts
-            JR   C,ProofCompileFailure
+            JP   C,ProofCompileFailure
             LD   HL,(AdapterCursor)
             LD   DE,AdapterLogBase
             OR   A
@@ -504,6 +706,172 @@ ProofStart:
             LD   DE,AdapterUnhandledMap
             LD   BC,TargetMapSize
             LDIR
+
+            LD   A,(DiagnosticCode)
+            LD   (AdapterSavedDiagnostic),A
+
+            LD   A,40
+            LD   (ProofCase),A
+            LD   A,2
+            LD   HL,BankedTargetParts
+            LD   IX,BankedInvalidPartDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofConfigurationFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetConfiguration
+            JP   NZ,ProofConfigurationFailure
+
+            LD   A,41
+            LD   (ProofCase),A
+            LD   A,2
+            LD   HL,BankedTargetParts
+            LD   IX,BankedWrongEntryDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofConfigurationFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetConfiguration
+            JP   NZ,ProofConfigurationFailure
+
+            LD   A,42
+            LD   (ProofCase),A
+            LD   A,2
+            LD   HL,BankedConstantFailureParts
+            LD   IX,BankedFailureDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofConfigurationFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetConfiguration
+            JP   NZ,ProofConfigurationFailure
+
+            LD   A,43
+            LD   (ProofCase),A
+            XOR  A
+            LD   (AdapterCommitted),A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterLogBase
+            LD   (AdapterCursor),HL
+            LD   A,2
+            LD   HL,BankedTargetParts
+            LD   IX,BankedEntryOverflowDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofConfigurationFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetCapacity
+            JP   NZ,ProofConfigurationFailure
+            LD   A,(AdapterAborted)
+            DEC  A
+            JP   NZ,ProofAtomicFailure
+            LD   A,(AdapterCommitted)
+            OR   A
+            JP   NZ,ProofAtomicFailure
+
+            LD   A,44
+            LD   (ProofCase),A
+            XOR  A
+            LD   (AdapterCommitted),A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterLogBase
+            LD   (AdapterCursor),HL
+            LD   A,2
+            LD   HL,BankedLargeParts
+            LD   IX,BankedOtherOverflowDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofConfigurationFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetCapacity
+            JP   NZ,ProofFail
+            LD   A,(AdapterAborted)
+            DEC  A
+            JP   NZ,ProofAtomicFailure
+            LD   A,(AdapterCommitted)
+            OR   A
+            JP   NZ,ProofAtomicFailure
+
+            LD   A,45
+            LD   (ProofCase),A
+            XOR  A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterLogBase
+            LD   (AdapterCursor),HL
+            LD   A,2
+            LD   HL,BankedParameterFailureParts
+            LD   IX,BankedFailureDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofConfigurationFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetConfiguration
+            JP   NZ,ProofFail
+
+            LD   A,46
+            LD   (ProofCase),A
+            XOR  A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterLogBase
+            LD   (AdapterCursor),HL
+            LD   A,2
+            LD   HL,BankedResultFailureParts
+            LD   IX,BankedFailureDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofConfigurationFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetConfiguration
+            JP   NZ,ProofFail
+
+            LD   A,47
+            LD   (ProofCase),A
+            XOR  A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterLogBase
+            LD   (AdapterCursor),HL
+            LD   A,2
+            LD   HL,BankedForwardFailureParts
+            LD   IX,BankedFailureDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofConfigurationFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetConfiguration
+            JP   NZ,ProofFail
+
+            XOR  A
+            LD   (AdapterCommitted),A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterBankedTrapLogBase
+            LD   (AdapterCursor),HL
+            LD   A,2
+            LD   HL,BankedTrapParts
+            LD   IX,BankedTargetDescriptor
+            CALL CompileTargetAggregateCallParts
+            JR   C,ProofCompileFailure
+            LD   HL,(AdapterCursor)
+            LD   DE,AdapterBankedTrapLogBase
+            OR   A
+            SBC  HL,DE
+            LD   (AdapterBankedTrapLogLength),HL
+
+            XOR  A
+            LD   (AdapterCommitted),A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterLogBase
+            LD   (AdapterCursor),HL
+            LD   A,2
+            LD   HL,BankedTargetParts
+            LD   IX,BankedTargetDescriptor
+            CALL CompileTargetAggregateCallParts
+            JR   C,ProofCompileFailure
+            LD   HL,(AdapterCursor)
+            LD   DE,AdapterLogBase
+            OR   A
+            SBC  HL,DE
+            LD   (AdapterBankedLogLength),HL
+            LD   A,(AdapterSavedDiagnostic)
+            LD   (DiagnosticCode),A
             LD   A,$A5
             LD   (ProofStatus),A
             XOR  A
@@ -760,6 +1128,46 @@ TargetSinkMapCopy:
             OR   A
             RET
 
+.routine in HL,IX,IY out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+TargetSinkMapBanked:
+            LD   (AdapterMapRoPointer),HL
+            LD   A,(IX+TargetDescriptorBankCount)
+            LD   B,A
+            LD   C,A
+            LD   HL,AdapterCapturedBankCursors
+            LD   DE,AdapterCapturedBankRemaining
+TargetSinkMapBankedCursorLoop:
+            LD   A,(IY+0)
+            LD   (HL),A
+            INC  HL
+            LD   A,(IY+1)
+            LD   (HL),A
+            INC  HL
+            LD   A,(IY+2)
+            LD   (DE),A
+            INC  DE
+            LD   A,(IY+3)
+            LD   (DE),A
+            INC  DE
+            PUSH DE
+            LD   DE,TargetBankStateSize
+            ADD  IY,DE
+            POP  DE
+            DJNZ TargetSinkMapBankedCursorLoop
+            LD   HL,(AdapterMapRoPointer)
+            LD   DE,AdapterCapturedBankRoLengths
+            LD   A,C
+            ADD  A,A
+            LD   B,A
+TargetSinkMapBankedRoLoop:
+            LD   A,(HL)
+            LD   (DE),A
+            INC  HL
+            INC  DE
+            DJNZ TargetSinkMapBankedRoLoop
+            OR   A
+            RET
+
 .routine out A,carry,zero clobbers sign,parity,halfCarry
 TargetSinkCommit:
             LD   A,(AdapterCommitFailure)
@@ -791,12 +1199,27 @@ AdapterLogLength: .dw 0
 AdapterLoadedLogLength: .dw 0
 AdapterTrapLogLength: .dw 0
 AdapterUnhandledLogLength: .dw 0
+AdapterBankedLogLength: .dw 0
+AdapterBankedTrapLogLength: .dw 0
 AdapterFailureCountdown: .db 0
 AdapterMapFailure:       .db 0
 AdapterCommitFailure:    .db 0
+AdapterSavedDiagnostic:  .db 0
 AdapterCapturedBegin:   .ds TargetDescriptorSize
 AdapterCapturedContext: .ds TargetContextSize
+AdapterCapturedBankCursors: .ds TargetBankCapacity*2
+AdapterCapturedBank0Cursor .equ AdapterCapturedBankCursors
+AdapterCapturedBank1Cursor .equ AdapterCapturedBankCursors+2
+AdapterCapturedBankRemaining: .ds TargetBankCapacity*2
+AdapterCapturedBank0Remaining .equ AdapterCapturedBankRemaining
+AdapterCapturedBank1Remaining .equ AdapterCapturedBankRemaining+2
+AdapterCapturedBankRoLengths: .ds TargetBankCapacity*2
+AdapterCapturedBank0RoLength .equ AdapterCapturedBankRoLengths
+AdapterCapturedBank1RoLength .equ AdapterCapturedBankRoLengths+2
+AdapterMapRoPointer: .dw 0
 AdapterCapturedMap:     .ds TargetMapSize
+AdapterCapturedBankedMapLength: .dw 0
+AdapterCapturedBankedMap: .ds 1
 AdapterSuccessMap:      .ds TargetMapSize
 AdapterTrapMap:         .ds TargetMapSize
 AdapterUnhandledMap:    .ds TargetMapSize
@@ -818,9 +1241,10 @@ AdapterRuntimeLog:      .dw 0
 AdapterRuntimeContextPointer .equ AdapterRuntimeContext
 ProofEnd:
 
-AdapterLogBase          .equ $B000
-AdapterLogLimit         .equ $C000
-AdapterLoadedLogBase    .equ $C000
-AdapterSuccessLogBase   .equ $C800
-AdapterTrapLogBase      .equ $D000
-AdapterUnhandledLogBase .equ $E000
+AdapterLoadedLogBase    .equ $9900
+AdapterSuccessLogBase   .equ $9C00
+AdapterTrapLogBase      .equ $A000
+AdapterUnhandledLogBase .equ $A500
+AdapterBankedTrapLogBase .equ $AC00
+AdapterLogBase          .equ $B400
+AdapterLogLimit         .equ $F000

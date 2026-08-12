@@ -23,25 +23,54 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     expect(
       outcome.extents.find(({ name }) => name === "compiler-core")?.bytes,
     ).toBeLessThan(16_384);
-    expect(outcome.nobj?.parsed.begin.runtimeIdentity).toBe(3);
+    expect(outcome.nobj?.parsed.begin.runtimeIdentity).toBe(4);
     expect(outcome.nobj?.parsed.map.entryAddress).toBe(0x8000);
-    expect(outcome.nobj?.parsed.map.banks[0]?.usedLength).toBe(540);
+    expect(outcome.nobj?.parsed.map.banks[0]?.usedLength).toBe(556);
     expect(outcome.nobj?.materialized.flatImage?.length).toBe(4096);
     expect(outcome.nobj?.memory[0x8000]).toBe(0xc3);
     expect(outcome.nobj?.memory[0x8003]).not.toBe(0xff);
     expect(
-      Array.from(outcome.nobj?.memory.slice(0x81e0, 0x81e2) ?? []),
+      Array.from(outcome.nobj?.memory.slice(0x81f0, 0x81f2) ?? []),
     ).toEqual([3, 0]);
     const generated = Array.from(
-      outcome.nobj?.memory.slice(0x81e2, 0x821c) ?? [],
+      outcome.nobj?.memory.slice(0x81f2, 0x822c) ?? [],
     );
     const contains = (wanted: readonly number[]): boolean =>
       generated.some((_, index) =>
         wanted.every((byte, offset) => generated[index + offset] === byte),
       );
-    expect(contains([0x2a, 0x36, 0x40])).toBe(true); // LD HL,($4036)
-    expect(contains([0x22, 0x36, 0x40])).toBe(true); // LD ($4036),HL
+    expect(contains([0x2a, 0x46, 0x40])).toBe(true); // LD HL,($4046)
+    expect(contains([0x22, 0x46, 0x40])).toBe(true); // LD ($4046),HL
     expect(contains([0xcd, 0xb9, 0x80])).toBe(true); // CALL linked MultiplyU16
+  }, 30_000);
+
+  it("compiles and executes one committed banked program with far calls", async () => {
+    const outcome = await runProofManifest(
+      proof("banked-target-z80-slice-proof"),
+    );
+    expect(outcome.nobj?.parsed.begin.banked).toBe(true);
+    expect(outcome.nobj?.parsed.map.partBanks).toEqual([1, 0]);
+    expect(outcome.nobj?.materialized.banks).toHaveLength(2);
+    expect(
+      Array.from(outcome.nobj?.materialized.banks[0]?.slice(3, 367) ?? []),
+    ).toEqual(
+      Array.from(outcome.nobj?.materialized.banks[1]?.slice(3, 367) ?? []),
+    );
+    expect(wordAt(outcome.nobj?.memory ?? new Uint8Array(), 0x4036)).not.toBe(
+      0,
+    );
+    expect(wordAt(outcome.nobj?.memory ?? new Uint8Array(), 0x4038)).toBe(0);
+    expect(outcome.nobj?.memory[0x4048]).toBe(12);
+    expect(outcome.nobj?.selectedBank).toBe(1);
+  }, 30_000);
+
+  it("restores a cross-bank trap through the common terminal path", async () => {
+    const outcome = await runProofManifest(
+      proof("banked-target-trap-z80-slice-proof"),
+    );
+    expect(outcome.nobj?.memory[0x4022]).toBe(3);
+    expect(outcome.nobj?.memory[0x4027]).toBe(0);
+    expect(outcome.nobj?.selectedBank).toBe(0);
   }, 30_000);
 
   it("executes loaded startup without copying initialized storage", async () => {
@@ -49,7 +78,7 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
       proof("flat-target-loaded-z80-slice-proof"),
     );
     expect(outcome.nobj?.parsed.map.romMode).toBe(false);
-    expect(outcome.nobj?.parsed.map.banks[0]?.usedLength).toBe(0x1038);
+    expect(outcome.nobj?.parsed.map.banks[0]?.usedLength).toBe(0x1048);
     expect(outcome.nobj?.instructions).toBeGreaterThan(0);
   }, 30_000);
 

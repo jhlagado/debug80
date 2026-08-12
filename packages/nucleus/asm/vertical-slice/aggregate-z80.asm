@@ -4,6 +4,65 @@
 ; patches the JP operand to the first code byte, so source execution cannot
 ; observe initialization in progress.
 
+.if TargetStreamingOutput
+; Emit every aggregate constant exactly once in declaration order. Symbols
+; retain per-bank offsets, while IY walks the single declaration-ordered
+; compiler backing image. Switching banks never replays source or semantics.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+TargetEmitBankedAggregateConstants:
+            LD   A,(SymbolCount)
+            OR   A
+            RET  Z
+            LD   B,A
+            LD   C,0
+            LD   IX,SymbolTableBase
+            LD   IY,StaticImageBase
+            LD   DE,(StaticImageLength)
+            ADD  IY,DE
+TargetEmitBankedConstantSymbolLoop:
+            LD   A,(IX+3)
+            LD   D,A
+            AND  SymbolAggregateFlag+SymbolClassMask
+            CP   SymbolAggregateFlag+SymbolClassConstant
+            JR   NZ,TargetEmitBankedConstantNext
+            LD   A,D
+            CALL TargetUnpackBank
+            PUSH BC
+            PUSH IX
+            CALL TargetSelectOutputBank
+            POP  IX
+            POP  BC
+            RET  C
+            LD   H,0
+            LD   L,C
+            LD   DE,AggregateSymbolTypeBase
+            ADD  HL,DE
+            LD   A,(HL)
+            CALL AggregateGetExtent
+            EX   DE,HL
+TargetEmitBankedConstantByteLoop:
+            LD   A,D
+            OR   E
+            JR   Z,TargetEmitBankedConstantNext
+            LD   A,(IY+0)
+            INC  IY
+            PUSH BC
+            PUSH DE
+            CALL EmitByte
+            POP  DE
+            POP  BC
+            RET  C
+            DEC  DE
+            JR   TargetEmitBankedConstantByteLoop
+TargetEmitBankedConstantNext:
+            LD   DE,SymbolEntrySize
+            ADD  IX,DE
+            INC  C
+            DJNZ TargetEmitBankedConstantSymbolLoop
+            OR   A
+            RET
+.endif
+
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 EncodeAggregateProgram:
 .if TargetStreamingOutput
@@ -20,6 +79,10 @@ EncodeAggregateProgram:
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 EncodeAggregateProgramWithinLimit:
 .if TargetStreamingOutput
+            LD   IX,(TargetDescriptorPointer)
+            LD   A,(IX+TargetDescriptorBankCount)
+            CP   1
+            JR   NZ,AggregateDispatch
             ; BeginTargetFlatProgram already selected the first read-only byte.
             LD   A,(TargetLayoutMode)
             OR   A
@@ -78,6 +141,10 @@ AggregateCopyLoop:
             JR   NZ,AggregateCopyLoop
 AggregateDispatch:
 .if TargetStreamingOutput
+            LD   IX,(TargetDescriptorPointer)
+            LD   A,(IX+TargetDescriptorBankCount)
+            CP   1
+            JR   NZ,AggregateTargetCodeReady
             LD   HL,(EmitCursor)
             LD   (TargetCodeBase),HL
             LD   A,(TargetLayoutMode)
@@ -86,6 +153,15 @@ AggregateDispatch:
             LD   HL,(TargetCodeCapacity)
             LD   (EmitLimit),HL
 AggregateTargetCodeReady:
+            LD   IX,(TargetDescriptorPointer)
+            LD   A,(IX+TargetDescriptorBankCount)
+            CP   1
+            JR   NZ,AggregateTargetBoundsReady
+            LD   HL,(TargetContextRoDataBase)
+            LD   (TargetCurrentRoBase),HL
+            LD   HL,(TargetContextRoDataCapacity)
+            LD   (TargetCurrentRoCapacity),HL
+AggregateTargetBoundsReady:
 .else
 .if AggregateCallSlices
             LD   A,SegmentCode

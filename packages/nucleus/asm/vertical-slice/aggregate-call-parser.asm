@@ -96,15 +96,134 @@ Stage8MatchPredefinedSkip:
             RET
 
 .if TargetStreamingOutput
-; Compile one multipart source stream and publish one flat append-only object.
+; Compile one multipart source stream and publish one append-only object.
 ; IX points at the stable compact target descriptor; A/HL retain the existing
 ; bounded source-part descriptor ABI.
 .routine in A,HL,IX out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 CompileTargetAggregateCallParts:
             LD   (TargetDescriptorPointer),IX
-            CALL CompileAggregateCallParts
+            PUSH AF
+            PUSH HL
+            CALL CompileSliceResetState
+            POP  HL
+            POP  AF
+            PUSH AF
+            CALL SourceInitializeParts
+            POP  BC
+            RET  C
+            LD   A,B
+            ; Validate every bank-bearing descriptor field before source
+            ; semantics can retain a bank ordinal. A is the bounded part count.
+            LD   B,A
+            LD   IX,(TargetDescriptorPointer)
+            LD   A,(IX+TargetDescriptorBankCount)
+            OR   A
+            JR   Z,TargetValidateCompileFailure
+            CP   TargetBankCapacity+1
+            JR   NC,TargetValidateCompileFailure
+            LD   C,A
+            LD   A,(IX+TargetDescriptorEntryBank)
+            CP   C
+            JR   NC,TargetValidateCompileFailure
+            LD   L,(IX+TargetDescriptorPartBanksPointer)
+            LD   H,(IX+TargetDescriptorPartBanksPointer+1)
+TargetValidatePartBankLoop:
+            LD   A,(HL)
+            CP   C
+            JR   NC,TargetValidateCompileFailure
+            INC  HL
+            DJNZ TargetValidatePartBankLoop
+            LD   HL,TargetBankRoLengthBase
+            LD   B,TargetBankRoLengthLimit-TargetBankRoLengthBase
+            XOR  A
+TargetResetBankRoLengthLoop:
+            LD   (HL),A
+            INC  HL
+            DJNZ TargetResetBankRoLengthLoop
+            CALL CompileAggregateCallReady
             RET  C
             JP   EncodeAggregateProgram
+TargetValidateCompileFailure:
+            JP   TargetConfigurationFailure
+
+; Return the bank mapped to the current manifest source-part ordinal.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,D,DE,HL,IX
+TargetCurrentSourceBank:
+            LD   A,(SourcePartsRemaining)
+            AND  SourcePartOrdinalMask
+            RRCA
+            RRCA
+            RRCA
+            LD   E,A
+            LD   D,0
+            LD   IX,(TargetDescriptorPointer)
+            LD   L,(IX+TargetDescriptorPartBanksPointer)
+            LD   H,(IX+TargetDescriptorPartBanksPointer+1)
+            ADD  HL,DE
+            LD   A,(HL)
+            OR   A
+            RET
+
+; Add the current source bank to flag byte A without disturbing low flags.
+.routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL,IX
+TargetPackCurrentBank:
+            LD   B,A
+            CALL TargetCurrentSourceBank
+            RLCA
+            RLCA
+            RLCA
+            RLCA
+            OR   B
+            RET
+
+; Extract the target bank stored in flag bits 4..5. The final rotate shifts a
+; known zero bit through carry, so success returns carry clear.
+.routine in A out A,carry,zero clobbers sign,parity,halfCarry
+TargetUnpackBank:
+            AND  TargetBankMask
+            RRCA
+            RRCA
+            RRCA
+            RRCA
+            RET
+
+.routine in A out A,HL,carry,zero clobbers sign,parity,halfCarry,D,DE
+TargetBankRoLengthAddress:
+            LD   L,A
+            LD   H,0
+            ADD  HL,HL
+            LD   DE,TargetBankRoLengthBase
+            ADD  HL,DE
+            OR   A
+            RET
+
+; Compare packed bank bits in D with the current source-part bank.
+.routine in D out A,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL,IX
+TargetCurrentBankMatches:
+            LD   B,D
+            CALL TargetCurrentSourceBank
+            RLCA
+            RLCA
+            RLCA
+            RLCA
+            XOR  B
+            AND  TargetBankMask
+            RET
+.routine in D out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+TargetRequireCurrentBank:
+            CALL TargetCurrentBankMatches
+            RET  Z
+            JP   TargetConfigurationFailure
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+TargetRequireEntrySourceBank:
+            CALL TargetCurrentSourceBank
+            LD   D,A
+            LD   IX,(TargetDescriptorPointer)
+            LD   A,(IX+TargetDescriptorEntryBank)
+            CP   D
+            RET  Z
+            JP   TargetConfigurationFailure
 .endif
 
 .routine in A,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
@@ -646,6 +765,12 @@ Stage7EmitAggregateRootAddress:
             CALL Stage7EmitWord
             JR   Stage7EmitAggregateRootReady
 Stage7EmitAggregateRootReadOnly:
+.if TargetStreamingOutput
+            PUSH BC
+            CALL TargetRequireCurrentBank
+            POP  BC
+            RET  C
+.endif
             LD   A,SemanticLoadReadOnlyAlias
             JR   Stage7EmitAggregateRootAddress
 Stage7EmitAggregateRootParameter:
@@ -1069,6 +1194,23 @@ Stage7CallAggregateArgument:
             POP  AF
             CP   D
             JP   NZ,Stage7CallTypeFailure
+.if TargetStreamingOutput
+            ; A cross-bank aggregate parameter must originate at a direct
+            ; program root. Diagnose through the ordinary call-frame unwind.
+            CALL Stage7CurrentCallFrame
+            LD   DE,Stage7CallFrameFlags
+            ADD  HL,DE
+            LD   D,(HL)
+            CALL TargetCurrentBankMatches
+            JR   Z,Stage7CallAggregateBankReady
+            LD   A,C
+            OR   A
+            JR   NZ,Stage7CallAggregateBankReady
+            LD   A,DiagnosticTargetConfiguration
+            CALL CompilerSetDiagnostic
+            JP   Stage7CallFailure
+Stage7CallAggregateBankReady:
+.endif
             CALL Stage8RequireNoPendingFailure
             JP   C,Stage7CallFailure
 Stage7CallArgumentReady:
@@ -1081,11 +1223,19 @@ Stage7CallArgumentReady:
             JR   Z,Stage7CallArgumentsDone
             LD   E,TokenComma
             CALL ParserExpect
+.if TargetStreamingOutput
+            JP   C,Stage7CallFailure
+.else
             JR   C,Stage7CallFailure
+.endif
             JR   Stage7CallArgumentLoop
 Stage7CallArgumentsDone:
             CALL ParserExpectRight
+.if TargetStreamingOutput
+            JP   C,Stage7CallFailure
+.else
             JR   C,Stage7CallFailure
+.endif
             CALL Stage7CurrentCallFrame
             LD   A,(HL)
             LD   (Stage7CallLabel),A
@@ -1107,6 +1257,16 @@ Stage7CallArgumentsDone:
             LD   (Stage8CallFlags),A
             LD   HL,Stage7CallDepth
             DEC  (HL)
+.if TargetStreamingOutput
+            LD   A,(Stage7CallResultType)
+            CP   AggregateFirstDynamicTypeId
+            JR   C,Stage7CallResultBankReady
+            LD   A,(Stage8CallFlags)
+            LD   D,A
+            CALL TargetRequireCurrentBank
+            RET  C
+Stage7CallResultBankReady:
+.endif
             LD   A,(Stage8CallFlags)
             AND  Stage7RoutineFails
             JR   Z,Stage7CallFailureClassReady
@@ -1159,7 +1319,11 @@ Stage7CallFailure:
 
 ; Parse a name-rooted aggregate path or aggregate-returning call. The result
 ; must still be an address path; scalar selection is rejected by this entry.
+.if TargetStreamingOutput
+.routine out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL,IX,IY
+.else
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+.endif
 Stage7ParseAggregateValue:
             LD   E,TokenName
             CALL ParserExpect
@@ -1171,6 +1335,9 @@ Stage7ParseAggregateValue:
             RET  C
             CP   AggregateFirstDynamicTypeId
             JP   C,TypedTypeFailure
+.if TargetStreamingOutput
+            LD   C,0
+.endif
             JR   Stage7AggregateValueSuffix
 Stage7AggregateValueSymbol:
             CALL Stage7LookupAggregateCurrent
@@ -1178,11 +1345,38 @@ Stage7AggregateValueSymbol:
             LD   A,D
             AND  SymbolAggregateFlag
             JP   Z,TypedTypeFailure
+.if TargetStreamingOutput
+            LD   A,D
+            AND  SymbolClassMask
+            LD   C,0
+            CP   SymbolClassProgram
+            JR   NZ,Stage7AggregateValueRootReady
+            INC  C
+Stage7AggregateValueRootReady:
+            PUSH BC
+            CALL Stage7EmitAggregateSymbolRoot
+            JR   C,Stage7AggregateValueRootFailure
+            POP  BC
+            LD   A,(Stage7PathType)
+            JR   Stage7AggregateValueSuffix
+Stage7AggregateValueRootFailure:
+            POP  BC
+            SCF
+            RET
+.else
             CALL Stage7EmitAggregateSymbolRoot
             RET  C
+.endif
 Stage7AggregateValueSuffix:
+.if TargetStreamingOutput
+            PUSH BC
+            CALL Stage7ParsePathSuffix
+            JR   C,Stage7AggregateValueSuffixFailure
+            POP  BC
+.else
             CALL Stage7ParsePathSuffix
             RET  C
+.endif
             LD   E,A
             LD   A,D
             OR   A
@@ -1192,6 +1386,12 @@ Stage7AggregateValueSuffix:
             JP   C,TypedTypeFailure
             OR   A
             RET
+.if TargetStreamingOutput
+Stage7AggregateValueSuffixFailure:
+            POP  BC
+            SCF
+            RET
+.endif
 
 ; Convert a scalar address path to an ordinary typed expression carrier.
 .routine in A,D out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL

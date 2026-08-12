@@ -10,9 +10,16 @@ EmitControlTestLabel    .equ EmitFailureFixup
 EmitControlExitLabel    .equ EmitFailureFixup+1
 
 ; C is a label ordinal and DE is the address of a generated word operand.
+.if TargetStreamingOutput
+; Bit 7 distinguishes a cross-bank address operand. Bits 5..6 retain the site
+; bank and bits 0..4 retain the globally unique label ordinal.
+.endif
 .routine in C,DE out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 StructuredRecordFixup:
             LD   A,C
+.if TargetStreamingOutput
+            AND  $1F
+.endif
             CP   EmitControlLabelCapacity
             JP   NC,ControlLabelFailure
             LD   A,(EmitControlFixupCount)
@@ -28,7 +35,18 @@ StructuredRecordFixup:
             LD   BC,EmitControlFixupBase
             ADD  HL,BC
             POP  BC
+.if TargetStreamingOutput
+            LD   A,(TargetOutputBank)
+            RLCA
+            RLCA
+            RLCA
+            RLCA
+            RLCA
+            OR   C
+            LD   (HL),A
+.else
             LD   (HL),C
+.endif
             INC  HL
             LD   (HL),E
             INC  HL
@@ -42,6 +60,12 @@ StructuredFixupFailure:
             JP   CompilerSetDiagnostic
 
 ; Emit opcode A with a zero word operand and retain that operand for label C.
+.if TargetStreamingOutput
+.routine in A,C out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+StructuredEmitFarFixup:
+            SET  7,C
+            JR   StructuredEmitFixup
+.endif
 .routine in A,C out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 StructuredEmitFixup:
             PUSH BC
@@ -73,7 +97,13 @@ StructuredDefineLabel:
             LD   A,(HL)
             OR   A
             JP   NZ,TypedInternalOperation
+.if TargetStreamingOutput
+            LD   A,(TargetOutputBank)
+            INC  A
+            LD   (HL),A
+.else
             LD   (HL),1
+.endif
             LD   L,C
             LD   H,0
             ADD  HL,HL
@@ -108,6 +138,10 @@ StructuredJump:
 ; Resolve every retained absolute operand after all label locations are known.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 StructuredResolveFixups:
+.if TargetStreamingOutput
+            CALL TargetSaveOutputBank
+            RET  C
+.endif
             LD   A,(EmitControlFixupCount)
             OR   A
             RET  Z
@@ -115,19 +149,48 @@ StructuredResolveFixups:
             LD   IX,EmitControlFixupBase
 StructuredResolveNext:
             LD   C,(IX+0)
+.if TargetStreamingOutput
+            LD   A,C
+            RLCA
+            RLCA
+            RLCA
+            AND  $03
+.endif
             LD   E,(IX+1)
             LD   D,(IX+2)
+.if TargetStreamingOutput
+            PUSH BC
+            PUSH DE
+            LD   E,A
+            LD   D,C
             LD   A,C
+            AND  $1F
+            LD   C,A
+            LD   A,E
+            LD   (TargetOutputBank),A
+.endif
+            LD   A,C
+.if TargetStreamingOutput
+.else
             CP   EmitControlLabelCapacity
             JR   NC,StructuredResolveFailure
             PUSH BC
             PUSH DE
+.endif
             LD   B,0
             LD   HL,EmitControlLabelValidBase
             ADD  HL,BC
             LD   A,(HL)
             OR   A
             JR   Z,StructuredResolveUnwind
+.if TargetStreamingOutput
+            DEC  A
+            BIT  7,D
+            JR   NZ,StructuredResolveBankReady
+            CP   E
+            JR   NZ,StructuredResolveUnwind
+StructuredResolveBankReady:
+.endif
             LD   H,0
             LD   L,C
             ADD  HL,HL
@@ -145,6 +208,10 @@ StructuredResolveNext:
             INC  IX
             INC  IX
             DJNZ StructuredResolveNext
+.if TargetStreamingOutput
+            LD   A,TargetOutputClosed
+            LD   (TargetOutputBank),A
+.endif
             XOR  A
             RET
 StructuredResolveUnwind:

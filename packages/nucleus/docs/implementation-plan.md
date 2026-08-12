@@ -1415,6 +1415,65 @@ owned vector/state bytes, and commits a 1,380-byte NOBJ. Its proof code/data is
 immutable data and workspace do not grow. The core remains 867 bytes below the
 16 KiB stop gate.
 
+### Target-system Stage 5: one-program banking and far calls
+
+Stage 5 widens the compact target descriptor to fifteen bytes, retains one
+cursor and exact remaining-capacity word for each of four banks, and packs the
+source-part bank into existing routine, symbol, and control metadata. The
+compiler still consumes one ordered source stream and publishes one NOBJ. Each
+selected bank reserves the common entry slot, receives the complete linked
+runtime at `bankWindowBase + 3`, places its read-only data before its code, and
+maintains monotonic image addresses independently of the other banks.
+
+Runtime identity `$0004` keeps the 364-byte helper source and checked helper
+offsets while extending fixed writable state from 21 to 37 bytes. The new
+sixteen-byte far-return arena uses activation slot `ActivationDepth - 1`, so
+the existing depth-eight boundary occupies slots zero through seven without
+changing the hardware-stack argument layout. Local calls remain ordinary
+`CALL`; cross-bank calls and terminal transfers use the provider-initialized
+far-call and far-jump vectors. Runtime copies are byte-identical across banks
+because their runtime base and complete writable/vector context are common.
+
+The operating-layer provider treats the identity as a canonical source, ABI,
+vector/helper layout, link rules, and expected length rather than one address-
+bound byte sequence. It deterministically links against the complete validated
+context, verifies the linked length and helper offsets, and emits fully
+resolved ordinary `IMAGE` bytes. Executable provider evidence links and runs
+the same identity at the default layout and at runtime `$8003`, where the
+writable, vector, service, program-data, and read-only addresses all differ.
+NOBJ remains non-relocatable and contains no runtime relocation records.
+
+The final reviewed assembly measures 15,887 compiler-code bytes plus 393
+immutable bytes, for a 16,280-byte compiler core. The parser extent is 9,268
+bytes and workspace is 3,604 bytes. The selected historical proof runtime
+remains 596 bytes; each committed bank contains one 364-byte linked runtime
+copy. Fixed runtime state is 37 bytes, and the established activation storage
+remains 3,840 bytes. The core is 104 bytes below the 16 KiB stop gate.
+
+The representative flat object uses 556 of 4,096 target-image bytes and
+commits a 1,396-byte NOBJ. Its external image spool reaches 1,300 bytes across
+124 records with 556 payload bytes; its patch spool reaches 24 bytes across
+three records with six payload bytes. The compiler proof occupies 2,232 bytes
+and executes 815,614 instructions in 7,937,048 T-states; the committed program
+executes 79 instructions in 2,256 T-states.
+
+The banked success object uses 813 bytes in bank zero and 589 in bank one,
+commits a 5,228-byte NOBJ, and materializes two external 4,096-byte bank
+images. Its image spool reaches 5,023 bytes across 604 records with 1,399
+payload bytes; its patch spool reaches 122 bytes across sixteen records with
+26 payload bytes. The committed program executes 492 instructions in 6,095
+T-states. The independent cross-bank trap object uses 594 and 454 bytes,
+commits 2,674 NOBJ bytes, and executes 137 instructions in 2,796 T-states.
+
+The proof covers local and far scalar calls, recursion, exact error-code
+propagation, a trap restored through the common terminal path, caller-bank
+restoration, the depth-eight return slot, entry-bank selection, forward/body
+bank agreement, invalid ordinals, per-bank and entry-bank overflow, and all
+three aggregate restrictions. Fixup completion closes the active bank before
+MAP publication, and each bank retains both cursor and remaining capacity so a
+legal image ending at mathematical `$10000` can be reselected without a false
+wrap diagnosis.
+
 ## Capacity ledger
 
 The first implementation fixes a numeric limit before each bounded structure is
@@ -1453,7 +1512,7 @@ requirement are both known.
 | aggregate-constant bytes                |      1,024 | private-image suffix, one shared length word, and relative-offset symbol payloads     | read-only-data capacity diagnostic                                               | record/array/string constants; exact 1,024-byte suffix and rejected next byte     |
 | total generated read-only-data bytes    |      1,024 | initialized-data prefix followed by aggregate-constant suffix                         | diagnostic for the declaration class that first exceeds the combined region      | mixed data/constant shifting and exact separate boundary proofs                   |
 | zero-initialized program-data bytes     |      1,024 | retained word length; no stored image bytes                                           | capacity diagnostic                                                              | exact four-string-plus-tail BSS and rejected following byte                       |
-| emitted Z80 program bytes               |      4,096 | bounded output cursor                                                                 | capacity diagnostic                                                              | 857-byte Stage 5 bound and rollback proof                                         |
+| emitted Z80 image bytes per bank        |      4,096 | four cursor-plus-remaining entries; independent monotonic target streams              | target-capacity diagnostic before append                                         | flat 556 bytes; banked 813/589 bytes; per-bank and entry-bank overflow proofs     |
 | activation bytes                        |      3,840 | reserved machine-stack region; frame size is bounded by retained declarations         | `activation-capacity` or fixed memory-map rejection                              | memory-map proof, sixteen-position call, and depth boundary                       |
 | activation depth                        |          8 | counter plus generated hardware-stack frames                                          | `activation-capacity`                                                            | recursive handler-bypass and root-frame trap proof                                |
 | service stream and bulk-storage extents |          4 | proof adapter byte arrays with independent cursors                                    | stable service error                                                             | success, end, configured failure, overwrite, append, rewind, and seek proofs      |
