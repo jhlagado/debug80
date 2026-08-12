@@ -14,6 +14,10 @@ representation, generated-code integrity, runtime vectors, and the private Z80
 ABI. This document governs the boundary between those authorities and a target
 adapter.
 
+The object-stream and materialization rules below change target publication,
+not source syntax or source meaning. They require no language-specification
+change.
+
 Nucleus supports both loaded programs and ROM-resident programs without
 changing source declarations. A `var` is mutable program-lifetime storage. An
 explicit initializer establishes its value before `main`; a declaration
@@ -68,8 +72,8 @@ also remain outside the source language.
 
 A human-facing profile may name devices, memory permissions, bank selectors,
 device-image offsets, output files, service implementations, and loader or
-monitor conventions. The adapter validates those properties before invoking
-the compiler.
+monitor conventions. It also supplies the byte used for unwritten image
+addresses. The adapter validates those properties before invoking the compiler.
 
 For a flat target, the adapter reduces the profile to:
 
@@ -162,7 +166,7 @@ bank. This version performs no per-bank helper subsetting.
 The parser finalizes initialized-data, BSS, and aggregate-constant used lengths
 before the backend emits any code byte. Copy and clear lengths therefore need
 no fixup. Code addresses and the ROM copy-source address may require checked
-publication-time patches.
+patch records in the append-only object stream defined by Chapter 9.
 
 ### 4.2 Writable region
 
@@ -377,33 +381,102 @@ accessor routine in its own bank that returns a scalar. A banked library can
 operate on caller-owned RAM because a directly `var`-rooted aggregate remains
 valid in every bank.
 
-## 9. Output and publication
+## 9. Append-only object stream and publication
 
-The compiler publishes buffered address-tagged records through a transactional
-record store. A banked record includes its bank ordinal as well as its 16-bit
-target address. The compiler publishes no Intel HEX text, raw binary, `.COM`
-file, padding, serial framing, archive, or device-image container.
+### 9.1 Single-pass output boundary
 
-Host encoders transform committed records into those formats. Tentative output
-cannot be streamed because a later diagnostic must leave the previously
-published artifact unchanged. Delivery may stream records only after commit.
+One compilation produces one logical append-only object stream. The compiler
+reads the ordered source stream once and consumes its private checked semantic
+transcript once. It does not perform a second source pass, replay emission once
+per bank, seek in earlier output, or run a later layout pass.
 
-One banked compilation publishes one logical artifact containing all bank
-records and one entry pair. The storage and rollback representation remains an
-open implementation decision. External staging is a candidate, not an approved
-mechanism, until a proof demonstrates atomic publication and restoration after
-a late failure. The current flat proof adapter's in-memory store does not settle
-that choice.
+The stream contains these logical records in order:
+
+1. one begin record carrying the target and runtime identities needed to
+   interpret the stream, including the image fill byte;
+2. zero or more image records, each carrying a bank ordinal, a 16-bit target
+   address, and bytes to place there;
+3. zero or more patch records, each carrying a bank ordinal, a 16-bit target
+   address, and the complete replacement bytes;
+4. one map record containing the fields in Chapter 10; and
+5. one terminal commit record.
+
+The adapter contributes the profile-only fill byte when it creates the begin
+record; the compact compiler descriptor does not gain a field that compilation
+arithmetic never reads.
+
+A flat artifact uses bank ordinal zero. Image records may contain placeholders
+for forward code addresses. The compiler retains only bounded fixup metadata,
+resolves each value during the same compilation, and emits all patch records
+after the image-record phase. A patch contains final bytes, not a symbol name,
+relocation expression, or request for name resolution. The consumer therefore
+performs byte replacement, not linking.
+
+The image records collectively supply every non-fill byte in the logical
+artifact, including startup, the selected runtime images, generated code,
+read-only data, and initialized-data load bytes. Payload bytes occupy increasing
+target addresses and cannot cross a bank boundary.
+
+The compiler publishes no Intel HEX text, raw binary, `.COM` file, padding,
+serial framing, archive, or physical device-image container. Those remain
+encodings of the logical stream supplied by an operating or host layer.
+
+### 9.2 Commit and failure
+
+The output sink provides bounded `begin`, `append`, `commit`, and `abort`
+operations. It may write each record directly to sequential external storage.
+The compiler is not required to retain tentative image bytes or complete bank
+images in its address space.
+
+Only a stream ending in a valid commit record is a published artifact. The
+sink may add storage framing, a record count, and an integrity check while
+writing the stream. The commit covers every preceding record, and those fields
+do not require the compiler to buffer it. A
+diagnostic, target-capacity failure, output failure, reset, or truncated stream
+before commit leaves an incomplete object that a loader or materializer must
+reject. The sink may discard that object or retain it for diagnosis, but it
+must not replace the previously committed artifact. Commit atomically makes
+the completed generation current.
+
+This rule supplies publication atomicity without compiler-side output rollback.
+The compiler never restores earlier emitted bytes. It aborts the current
+generation, and the storage layer preserves the previous committed generation.
+
+### 9.3 Consumers
+
+A materializer validates the complete committed stream, creates each bank or
+flat image with the target profile's fill byte, applies image records, applies
+patch records in stream order, and publishes the resulting image only after all
+records pass their checks. It must reject an out-of-range bank, address, extent,
+overlapping patch, patch outside previously supplied image bytes, duplicate
+commit, record after commit, or incomplete stream.
+
+A RAM program loader may perform the same work directly into a private or
+otherwise non-runnable load area, then transfer control through the committed
+entry pair. It must not expose or enter partially patched code. A loader that
+cannot isolate partial writes first materializes elsewhere and copies the
+validated result into place.
+
+ROM production is deliberately host-side in Nucleus 0.1. A utility on CP/M or
+another development system materializes the bank images, applies the patches,
+and controls the ROM programmer. A future TEC-family ROM burner may consume the
+same object stream, but ROM burning is a separate tool and not a compiler or
+language responsibility.
+
+TECM8 and TEC-FS integration requires only sequential object storage plus an
+atomic generation commit. It does not require random-access patching while the
+compiler runs. A later loader or host utility consumes the stored object.
 
 ## 10. Published map
 
 The committed map reports at least:
 
+- object format revision and image fill byte;
 - runtime identity and vector-table layout;
 - entry bank and entry address;
 - source-part ordinal to bank assignment;
-- bank-window base, per-bank capacity, bank-tagged image records, used lengths,
-  and first free image addresses;
+- bank-window base, per-bank capacity, bank-tagged image-record extents, used
+  lengths, and first free image addresses;
 - initialized-data, BSS, aggregate-constant, and vector-table extents;
 - writable base and capacity;
 - stack mode and measured requirement; and
@@ -411,9 +484,9 @@ The committed map reports at least:
 
 Used lengths and capacities remain distinct.
 
-## 11. Validation and rollback
+## 11. Validation and commit
 
-Before publication, the compiler and adapter establish:
+Before emitting the terminal commit, the compiler and adapter establish:
 
 - the runtime identity, byte length, vector layout, and helper offsets match;
 - every mathematical region end is at most `$10000`;
@@ -432,13 +505,17 @@ Before publication, the compiler and adapter establish:
   load image without spilling to another bank;
 - every branch, call, far call, data reference, entry, and patch is in range;
 - every cross-bank aggregate use satisfies Chapter 8;
-- every staging write fits its separately reported capacity; and
-- every output record lies within its selected bank or flat image region.
+- every pending fixup fits its bounded compiler table and resolves exactly
+  once;
+- every object-sink append succeeds; and
+- every image and patch record lies within its selected bank or flat image
+  region.
 
-A late failure restores every previously published byte, record, bank tag,
-size, address, entry pair, runtime identity, and map field. A rollback proof
-must make tentative bytes and metadata differ from the previous publication
-before forcing failure.
+A publication proof must begin with one committed artifact, write a different
+generation, force a late failure after at least one image record, and establish
+that the failed stream has no commit and the earlier committed generation is
+still current. Separate consumer proofs must reject truncation before commit,
+an invalid patch target, and a record following commit.
 
 ## 12. Illustrative profiles
 
@@ -483,8 +560,9 @@ part banks         1, 2, 3, 0, 0
 The compiler processes all five parts as one ordered unit. Startup and the
 initialized-data image occupy bank 0 with the final mainline parts. The three
 library parts precede them in the source stream while occupying banks 1 through 3. Calls within a bank are ordinary calls; calls between banks use the far-call
-vector. The host places records at the device offsets defined by the TECM8
-profile.
+vector. TEC-FS may store the append-only object sequentially. A host utility
+later materializes its committed records at the device offsets defined by the
+TECM8 profile and supplies the images to the ROM programmer.
 
 ## 13. Deferred extensions and exclusions
 

@@ -99,6 +99,20 @@ reads a flat ordered manifest and supplies a multipart logical source stream;
 the compiler contains no filesystem search, import resolver, or dependency
 reordering algorithm.
 
+Generated output follows the same single-pass boundary. The compiler consumes
+its private checked semantic transcript once and appends target-addressed image
+records, followed by resolved replacement-byte patch records and a terminal
+commit. It does not replay emission per bank, seek in earlier output, or retain
+complete bank images for rollback. The storage layer preserves an earlier
+committed generation; a failed compilation leaves an uncommitted stream that no
+loader may run.
+
+Patch records contain final bytes rather than symbols or relocation
+expressions. Applying them is materialization, not linking. A TEC-FS adapter may
+store the object sequentially, a RAM loader may materialize it into an isolated
+load area, and a host utility may construct ROM bank images. ROM programming
+remains a separate tool concern.
+
 ### Source semantics are independent of representation
 
 An implementation represents an aggregate alias as an address-sized word, but
@@ -303,9 +317,11 @@ semantics-preserving saving when it removes required mismatch diagnostics.
 
 Direct Z80 emission is the sole active implementation path. The compiler's
 semantic-operation transcript is private bounded workspace, not bytecode and
-not a compatibility promise. Do not propose a portable intermediate machine as
-routine cleanup; that would reverse a settled architecture decision and reopen
-an interpreter, validator, image, and publication cost already retired.
+not a compatibility promise. The append-only object stream is a publication
+ABI for final Z80 bytes and patches, not an intermediate execution language.
+Do not propose a portable intermediate machine as routine cleanup; that would
+reverse a settled architecture decision and reopen an interpreter, validator,
+image, and publication cost already retired.
 
 Generated programs use little-endian scalars, packed records, contiguous fixed
 arrays, counted bounded strings, and 16-bit address carriers for aggregate
@@ -343,7 +359,8 @@ language and direct-Z80 runtime contracts:
 - helper calls versus inlined hot paths;
 - physical Z80 register allocation;
 - activation-state placement;
-- fixup, target-map, and generated-output organization; and
+- compact fixup-table and object-record encoding details within the settled
+  append-only stream contract; and
 - the complete measured size and timing of the compiler and target runtime.
 
 An experiment may change one of these choices only after preserving conformance
@@ -424,6 +441,8 @@ Do not present any of the following as a routine correction or size cleanup:
 - interrupt routines, vector declarations, raw bank-address operations, or
   bank selectors in source;
 - a portable bytecode or interpreter as an active path;
+- a second source pass, per-bank emission replay, or compiler-resident complete
+  bank images as the ordinary publication model;
 - removal of required diagnostics without explicit approval;
 - conflation of compiler, workspace, target-runtime, and activation budgets;
 - estimates presented as Z80 measurements; or
