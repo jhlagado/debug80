@@ -15,11 +15,12 @@ TargetDescriptorSize              .equ 15
 TargetDescriptorEstablishStack    .equ 1
 TargetStackRequirement            .equ 3840
 
-; Target-only parse-time aggregate-constant lengths reuse the legacy
-; segmented adapter table. Streaming target output never enters that sink.
-TargetBankRoLengthBase  .equ GeneratedRoDataSize
+; Target-only parse-time aggregate-constant lengths reuse dead post-fixup
+; workspace at the same addresses as the historical segmented proof fields.
+; They do not depend on generated-image publication metadata.
+TargetBankRoLengthBase  .equ EmitControlFixupLimit+2
 TargetBankRoLengthLimit .equ TargetBankRoLengthBase+2*TargetBankCapacity
-TargetBankStateBase      .equ SegmentTableBase
+TargetBankStateBase      .equ EmitControlFixupLimit+16
 TargetBankStateSize      .equ 4
 TargetBankStateCursor    .equ 0 ; word
 TargetBankStateRemaining .equ 2 ; word

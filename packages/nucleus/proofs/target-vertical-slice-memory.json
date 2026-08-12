@@ -1,0 +1,84 @@
+{
+  "name": "vertical-slice-streaming-target-64k",
+  "addressSpaceBytes": 65536,
+  "regions": [
+    {
+      "name": "compiler-core",
+      "start": "CompilerCoreBase",
+      "end": "CompilerCoreLimit",
+      "maxBytes": 16384
+    },
+    {
+      "name": "compiler-workspace",
+      "start": "CompilerWorkBase",
+      "end": "CompilerWorkLimit",
+      "maxBytes": 4096
+    },
+    {
+      "name": "source",
+      "start": "SourceBase",
+      "end": "SourceLimit",
+      "maxBytes": 2048
+    },
+    {
+      "name": "released-generated-staging",
+      "start": "ReleasedGeneratedStagingBase",
+      "end": "ReleasedGeneratedStagingLimit",
+      "maxBytes": 4096
+    },
+    {
+      "name": "target-runtime",
+      "start": "TargetRuntimeBase",
+      "end": "TargetRuntimeLimit",
+      "maxBytes": 4096
+    },
+    {
+      "name": "execution-state",
+      "start": "ExecutionBase",
+      "end": "ExecutionLimit",
+      "maxBytes": 4096
+    },
+    {
+      "name": "service-state",
+      "start": "ServiceBase",
+      "end": "ServiceLimit",
+      "maxBytes": 2048
+    },
+    {
+      "name": "proof-state",
+      "start": "ProofBase",
+      "end": "ProofLimit",
+      "maxBytes": 2048
+    },
+    {
+      "name": "proof-spare-before-rollback",
+      "start": "SpareBase",
+      "end": "ReleasedRollbackStagingBase",
+      "maxBytes": 2048
+    },
+    {
+      "name": "released-rollback-staging",
+      "start": "ReleasedRollbackStagingBase",
+      "end": "ReleasedRollbackStagingLimit",
+      "maxBytes": 4096
+    },
+    {
+      "name": "proof-spare-after-rollback",
+      "start": "ReleasedRollbackStagingLimit",
+      "end": "SpareLimit",
+      "maxBytes": 16384
+    },
+    {
+      "name": "machine-stack",
+      "start": "StackFloor",
+      "end": "StackTop",
+      "maxBytes": 3840
+    },
+    {
+      "name": "high-reserved",
+      "start": "HighReservedBase",
+      "end": "AddressSpaceLimit",
+      "maxBytes": 256
+    }
+  ]
+}

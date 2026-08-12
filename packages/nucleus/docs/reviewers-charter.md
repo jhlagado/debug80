@@ -111,6 +111,12 @@ image or generated routine. The storage layer serializes image records before
 patch records and preserves an earlier committed generation; a failed
 compilation leaves an uncommitted object that no loader may run.
 
+`GeneratedBase`, `GeneratedLimit`, `BackupBase`, generated-size rollback, and
+in-place patch stores belong only to isolated historical module proofs. An
+active target build must assemble against a memory map that defines none of
+those regions. Historical proof paths do not contribute to the production
+compiler extent or establish target-system conformance.
+
 The operating layer also deterministically links the canonical runtime source
 revision selected by the compiler's runtime identity. The compiler submits its
 bank, target address, identity, complete validated link context, and expected

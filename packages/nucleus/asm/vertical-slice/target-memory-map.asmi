@@ -1,0 +1,48 @@
+; Production streaming-target proof memory map.
+;
+; The active compiler has no generated-image or rollback staging region. The
+; two released 4 KiB ranges remain named only so the proof profile can account
+; for the recovered Z80 address space explicitly.
+
+CompilerCoreBase    .equ $0000
+CompilerCoreLimit   .equ $4000
+
+CompilerWorkBase    .equ $4000
+CompilerWorkLimit   .equ $5000
+
+SourceBase          .equ $5000
+SourceLimit         .equ $5800
+
+ReleasedGeneratedStagingBase  .equ $5800
+ReleasedGeneratedStagingLimit .equ $6800
+
+TargetRuntimeBase   .equ $6800
+TargetRuntimeLimit  .equ $7800
+
+ExecutionBase       .equ $7800
+ExecutionLimit      .equ $8800
+
+ProgramDataBase           .equ ExecutionBase+$0100
+ProgramDataLimit          .equ ProgramDataBase+$0400
+ProgramBssBase            .equ ProgramDataLimit
+ProgramBssLimit           .equ ProgramBssBase+$0400
+ProgramDataRegionLimit    .equ ProgramBssLimit
+ProgramDataRegionCapacity .equ ProgramDataRegionLimit-ProgramDataBase
+GeneratedRoDataCapacity   .equ $0400
+
+ServiceBase         .equ $8800
+ServiceLimit        .equ $9000
+
+ProofBase           .equ $9000
+ProofLimit          .equ $9800
+
+SpareBase           .equ $9800
+ReleasedRollbackStagingBase  .equ $A000
+ReleasedRollbackStagingLimit .equ $B000
+SpareLimit          .equ $F000
+
+StackFloor          .equ $F000
+StackTop            .equ $FF00
+
+HighReservedBase    .equ $FF00
+AddressSpaceLimit   .equ $10000

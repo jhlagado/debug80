@@ -1,17 +1,53 @@
+import { readFileSync } from "node:fs";
+
 import { describe, expect, it } from "vitest";
 
-import { executeCommittedNobj, runProofManifest } from "../src/proof.js";
+import {
+  commitNobjAdapterGeneration,
+  executeCommittedNobj,
+  runProofManifest,
+} from "../src/proof.js";
 import {
   NobjGenerationSink,
   NobjGenerationStore,
+  type NobjBegin,
   type NobjMap,
   type RuntimeImageProvider,
+  type RuntimeLinkContext,
 } from "../src/nobj.js";
 
 const proof = (name: string): string =>
   new URL(`../proofs/${name}.json`, import.meta.url).pathname;
 
 const emptyProvider: RuntimeImageProvider = { get: () => undefined };
+
+interface TargetProofManifest {
+  readonly nobj: {
+    readonly begin: NobjBegin;
+    readonly map: NobjMap;
+    readonly runtimeLinkContext: RuntimeLinkContext;
+    readonly execution: {
+      readonly maxInstructions: number;
+      readonly maxCycles: number;
+      readonly halted: boolean;
+      readonly initialSp?: number;
+      readonly expectedSp?: number;
+      readonly writes?: readonly {
+        readonly at: number;
+        readonly bytes: readonly number[];
+      }[];
+    };
+    readonly observations?: readonly {
+      readonly at: number;
+      readonly width: "u8" | "u16";
+      readonly equals: number;
+      readonly bank?: number;
+    }[];
+  };
+}
+
+const targetManifest = (name: string): TargetProofManifest =>
+  JSON.parse(readFileSync(proof(name), "utf8")) as TargetProofManifest;
 
 describe("the NOBJ-aware proof runner", () => {
   it("runs a Z80 producer, commits its adapter calls, and executes fresh flat memory", async () => {
@@ -112,4 +148,85 @@ describe("the NOBJ-aware proof runner", () => {
       ).toThrow();
     }
   });
+
+  it("keeps compiled A current after divergent late B output, then commits and executes compiled C", async () => {
+    const producer = await runProofManifest(
+      proof("flat-target-z80-slice-proof"),
+    );
+    const success = targetManifest("flat-target-z80-slice-proof").nobj;
+    const trap = targetManifest("flat-target-trap-z80-slice-proof").nobj;
+    const chapter21 = targetManifest("chapter21-target-z80-slice-proof").nobj;
+    const store = new NobjGenerationStore();
+    const wordAt = (address: number): number =>
+      (producer.memory[address] ?? 0) |
+      ((producer.memory[address + 1] ?? 0) << 8);
+    const operationKinds = (at: string, lengthAt: string): number[] => {
+      const kinds: number[] = [];
+      let cursor = producer.symbols[at] ?? -1;
+      const end = cursor + wordAt(producer.symbols[lengthAt] ?? -1);
+      while (cursor < end) {
+        const kind = producer.memory[cursor] ?? 0;
+        const count =
+          (producer.memory[cursor + 4] ?? 0) |
+          ((producer.memory[cursor + 5] ?? 0) << 8);
+        kinds.push(kind);
+        cursor += kind === 3 || kind === 4 ? 26 : 6 + count;
+      }
+      expect(cursor).toBe(end);
+      return kinds;
+    };
+    const commitLog = (
+      name: string,
+      at: string,
+      lengthAt: string,
+      target: TargetProofManifest["nobj"],
+      map: NobjMap = target.map,
+    ): Promise<Uint8Array> =>
+      commitNobjAdapterGeneration({
+        name,
+        producerMemory: producer.memory,
+        start: producer.symbols[at] ?? -1,
+        length: wordAt(producer.symbols[lengthAt] ?? -1),
+        maxBytes: 12_288,
+        begin: target.begin,
+        map,
+        runtimeLinkContext: target.runtimeLinkContext,
+        store,
+      });
+
+    const artifactA = await commitLog(
+      "compiled artifact A",
+      "AdapterSuccessLogBase",
+      "AdapterLogLength",
+      success,
+    );
+
+    expect(
+      operationKinds("AdapterFailedLogBase", "AdapterFailedLogLength"),
+    ).toEqual(expect.arrayContaining([1, 2]));
+    await expect(
+      commitLog(
+        "compiled artifact B",
+        "AdapterFailedLogBase",
+        "AdapterFailedLogLength",
+        trap,
+        { ...trap.map, entryAddress: 0x9000 },
+      ),
+    ).rejects.toThrow("entry address");
+    expect(store.current).toEqual(artifactA);
+
+    const artifactC = await commitLog(
+      "compiled artifact C",
+      "AdapterChapter21LogBase",
+      "AdapterChapter21LogLength",
+      chapter21,
+    );
+    expect(store.current).toEqual(artifactC);
+    expect(artifactC).not.toEqual(artifactA);
+
+    const outcome = executeCommittedNobj(artifactC, chapter21.execution, {
+      observations: chapter21.observations,
+    });
+    expect(outcome.memory[0x7300]).toBe("Y".charCodeAt(0));
+  }, 30_000);
 });

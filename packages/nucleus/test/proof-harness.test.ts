@@ -42,9 +42,50 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     expect(contains([0x2a, 0x46, 0x40])).toBe(true); // LD HL,($4046)
     expect(contains([0x22, 0x46, 0x40])).toBe(true); // LD ($4046),HL
     expect(contains([0xcd, 0xb9, 0x80])).toBe(true); // CALL linked MultiplyU16
+    const word = (name: string): number =>
+      wordAt(outcome.memory, outcome.symbols[name] ?? -1);
+    expect(outcome.symbols.ProofEnd).toBeLessThanOrEqual(
+      outcome.symbols.AdapterLoadedLogBase ?? -1,
+    );
+    for (const [base, length, next] of [
+      [
+        "AdapterLoadedLogBase",
+        "AdapterLoadedLogLength",
+        "AdapterSuccessLogBase",
+      ],
+      ["AdapterSuccessLogBase", "AdapterLogLength", "AdapterTrapLogBase"],
+      ["AdapterTrapLogBase", "AdapterTrapLogLength", "AdapterUnhandledLogBase"],
+      [
+        "AdapterUnhandledLogBase",
+        "AdapterUnhandledLogLength",
+        "AdapterBankedTrapLogBase",
+      ],
+      [
+        "AdapterBankedTrapLogBase",
+        "AdapterBankedTrapLogLength",
+        "AdapterLogBase",
+      ],
+      ["AdapterLogBase", "AdapterBankedLogLength", "AdapterFailedLogBase"],
+      [
+        "AdapterFailedLogBase",
+        "AdapterFailedLogLength",
+        "AdapterChapter21LogBase",
+      ],
+      [
+        "AdapterChapter21LogBase",
+        "AdapterChapter21LogLength",
+        "AdapterLogLimit",
+      ],
+    ] as const) {
+      const endAddress = (outcome.symbols[base] ?? -1) + word(length);
+      expect(
+        endAddress,
+        `${base} must not overlap ${next}`,
+      ).toBeLessThanOrEqual(outcome.symbols[next] ?? -1);
+    }
   }, 30_000);
 
-  it("compiles and executes one committed banked program with far calls", async () => {
+  it("runs the Stage 7 aggregate-call production path through committed banked NOBJ", async () => {
     const outcome = await runProofManifest(
       proof("banked-target-z80-slice-proof"),
     );
@@ -90,7 +131,7 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     expect(outcome.nobj?.memory[0x4022]).toBe(3);
   }, 30_000);
 
-  it("restores the established stack after unhandled failure", async () => {
+  it("runs the Stage 8 propagation production path through committed flat NOBJ", async () => {
     const outcome = await runProofManifest(
       proof("flat-target-unhandled-z80-slice-proof"),
     );
@@ -98,7 +139,34 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     expect(outcome.nobj?.memory[0x4026]).toBe(7);
   }, 30_000);
 
-  it("compiles and executes the Chapter 21 corpus as direct Z80", async () => {
+  it("runs the accepted Chapter 21 multipart program through committed NOBJ", async () => {
+    const outcome = await runProofManifest(
+      proof("chapter21-target-z80-slice-proof"),
+    );
+    const source = (start: string, end: string): string =>
+      new TextDecoder().decode(
+        outcome.memory.slice(
+          outcome.symbols[start] ?? -1,
+          outcome.symbols[end] ?? -1,
+        ),
+      );
+    const specification = readFileSync(
+      path.resolve(import.meta.dirname, "..", "docs", "specification.md"),
+      "utf8",
+    );
+    const chapter21 = specification.slice(specification.indexOf("## 21."));
+    const firstProgram = /```nucleus\n([\s\S]*?)```/.exec(chapter21)?.[1];
+    expect(
+      source("Chapter21TargetPart1", "Chapter21TargetPart1End") +
+        source("Chapter21TargetPart2", "Chapter21TargetPart2End"),
+    ).toBe(firstProgram);
+    expect(outcome.nobj?.parsed.map.partBanks).toEqual([0, 0]);
+    expect(outcome.nobj?.parsed.map.banks[0]?.usedLength).toBe(1461);
+    expect(outcome.nobj?.memory[0x4046]).toBe(4);
+    expect(outcome.nobj?.memory[0x7300]).toBe("Y".charCodeAt(0));
+  }, 30_000);
+
+  it("retains the historical direct-Z80 Chapter 21 module proof", async () => {
     const outcome = await runProofManifest(
       proof("stage9-conformance-z80-slice-proof"),
     );
@@ -219,7 +287,7 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     expect(manifestParts[1]?.diagnosticName).toBe("main.nu");
   }, 30_000);
 
-  it("executes failable signatures and explicit failure as direct Z80", async () => {
+  it("retains the historical direct-Z80 Stage 8 module proof", async () => {
     const outcome = await runProofManifest(
       proof("stage8-failure-z80-slice-proof"),
     );

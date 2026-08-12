@@ -101,6 +101,18 @@ interface NobjObservation {
   readonly bank?: number;
 }
 
+export interface NobjAdapterGeneration {
+  readonly name: string;
+  readonly producerMemory: Uint8Array;
+  readonly start: number;
+  readonly length: number;
+  readonly maxBytes: number;
+  readonly begin: NobjBegin;
+  readonly map: NobjMap;
+  readonly runtimeLinkContext?: RuntimeLinkContext;
+  readonly store?: NobjGenerationStore;
+}
+
 export interface ProofRegion {
   readonly name: string;
   readonly start: number;
@@ -369,20 +381,63 @@ const runNobjManifest = async (
   const length =
     (producerMemory[lengthAddress] ?? 0) |
     ((producerMemory[lengthAddress + 1] ?? 0) << 8);
-  if (length > manifest.adapter.maxBytes) {
+  const runtimeLinkContext =
+    manifest.runtimeLinkContext ?? defaultRuntimeLinkContext;
+  const serialized = await commitNobjAdapterGeneration({
+    name,
+    producerMemory,
+    start,
+    length,
+    maxBytes: manifest.adapter.maxBytes,
+    begin: manifest.begin,
+    map: manifest.map,
+    runtimeLinkContext,
+  });
+  if (manifest.materializeOnly === true) {
+    const parsed = parseNobjForExecution(serialized);
+    const materialized = materializeNobj(parsed);
+    const memory = new Uint8Array(0x10000);
+    if (materialized.flatImage !== undefined) {
+      memory.set(materialized.flatImage, parsed.begin.imageBase);
+    }
+    return {
+      serialized,
+      parsed,
+      materialized,
+      memory,
+      instructions: 0,
+      cycles: 0,
+      selectedBank: parsed.map.entryBank,
+    };
+  }
+  return executeCommittedNobj(serialized, manifest.execution, {
+    observations: manifest.observations,
+    bankSwitch: manifest.bankSwitch,
+  });
+};
+
+export const commitNobjAdapterGeneration = async ({
+  name,
+  producerMemory,
+  start,
+  length,
+  maxBytes,
+  begin,
+  map,
+  runtimeLinkContext = defaultRuntimeLinkContext,
+  store = new NobjGenerationStore(),
+}: NobjAdapterGeneration): Promise<Uint8Array> => {
+  if (length > maxBytes) {
     throw new ProofFailure(
-      `${name}: NOBJ adapter log uses ${length} bytes, limit ${manifest.adapter.maxBytes}`,
+      `${name}: NOBJ adapter log uses ${length} bytes, limit ${maxBytes}`,
     );
   }
   if (start + length > producerMemory.length) {
     throw new ProofFailure(`${name}: NOBJ adapter log exceeds proof memory`);
   }
-  const store = new NobjGenerationStore();
-  const runtimeLinkContext =
-    manifest.runtimeLinkContext ?? defaultRuntimeLinkContext;
   const provider = await loadCanonicalRuntimeProvider([runtimeLinkContext]);
   const sink = new NobjGenerationSink(store, provider);
-  sink.begin(manifest.begin);
+  sink.begin(begin);
   let cursor = start;
   const end = start + length;
   while (cursor < end) {
@@ -463,29 +518,8 @@ const runNobjManifest = async (
     if (kind === 1) sink.image(bank, address, bytes);
     else sink.patch(bank, address, bytes);
   }
-  sink.map(manifest.map);
-  const serialized = sink.commit();
-  if (manifest.materializeOnly === true) {
-    const parsed = parseNobjForExecution(serialized);
-    const materialized = materializeNobj(parsed);
-    const memory = new Uint8Array(0x10000);
-    if (materialized.flatImage !== undefined) {
-      memory.set(materialized.flatImage, parsed.begin.imageBase);
-    }
-    return {
-      serialized,
-      parsed,
-      materialized,
-      memory,
-      instructions: 0,
-      cycles: 0,
-      selectedBank: parsed.map.entryBank,
-    };
-  }
-  return executeCommittedNobj(serialized, manifest.execution, {
-    observations: manifest.observations,
-    bankSwitch: manifest.bankSwitch,
-  });
+  sink.map(map);
+  return sink.commit();
 };
 
 export const executeCommittedNobj = (

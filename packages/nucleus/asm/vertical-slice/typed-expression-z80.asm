@@ -824,6 +824,8 @@ TypedEndMain:
 
 ; Entry point used by the typed-expression proof.
 TypedBackendStart:
+.if TargetStreamingOutput
+.else
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 EncodeProgramHeader:
             CALL BeginProgram
@@ -881,10 +883,6 @@ EncodeProgramEntry:
             LD   HL,0
             JP   EmitWord
 
-.if AggregateCallSlices
-SegmentedCopyBytes: .db $ED,$B0           ; LDIR
-.endif
-
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 EncodeTypedExpressionProgram:
             LD   HL,GeneratedLimit
@@ -898,6 +896,11 @@ EncodeTypedExpressionProgram:
             JP   FinishProgram
 .endif
 TypedBackendEnd:
+.endif
+
+.if AggregateCallSlices
+SegmentedCopyBytes: .db $ED,$B0           ; LDIR
+.endif
 
             .include "structured-control-z80.asm"
 .if AggregateCallSlices

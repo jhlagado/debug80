@@ -1,12 +1,12 @@
 {
   "name": "flat-target-streaming-output",
   "source": "../asm/vertical-slice/flat-target-z80-slice-proof.asm",
-  "memoryProfile": "vertical-slice-memory.json",
+  "memoryProfile": "target-vertical-slice-memory.json",
   "interfaces": ["../asm/vertical-slice/expression-generated-z80.asmi"],
   "execution": {
     "entry": "ProofStart",
-    "maxInstructions": 1000000,
-    "maxCycles": 10000000,
+    "maxInstructions": 1500000,
+    "maxCycles": 15000000,
     "halted": true
   },
   "observations": [

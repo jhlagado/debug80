@@ -1474,6 +1474,55 @@ MAP publication, and each bank retains both cursor and remaining capacity so a
 legal image ending at mathematical `$10000` can be reselected without a false
 wrap diagnosis.
 
+### Target-system Stage 6: staging retirement and committed publication
+
+Stage 6 removes the active target compiler's complete-image publication path.
+The production proof memory map does not define `GeneratedBase`,
+`GeneratedLimit`, or `BackupBase`; any active reference to those historical
+symbols therefore fails assembly. `EmitByte`, `EmitWord`, fixup completion,
+runtime requests, map publication, and abort all use the append-only logical
+sink. The old direct sink and rollback routines remain conditional evidence for
+historical module proofs and are excluded from the active compiler extent.
+
+The target proof map now assigns the former generated-output range
+`$5800..$6800` and rollback range `$A000..$B000` to released address space.
+This recovers 8,192 bytes of Z80 address space. It does not reduce compiler
+workspace or an NOBJ spool. The Stage 6 proof deliberately stores source and
+proof-only adapter data in portions of those ranges, which distinguishes usable
+released memory from a renamed reservation.
+
+The current-generation proof uses three real compiler outputs. It commits the
+ordinary flat program as artifact A. The Z80 compiler then emits image and
+patch operations for the different trap program B and fails during its late
+map operation. Replaying B's saved tentative operations against the same host
+generation store with a rejected final map leaves A current byte for byte. The
+compiler's Chapter 21 output becomes artifact C, which replaces A only after a
+valid commit and executes from a fresh materialization. No step restores
+compiler-resident output bytes.
+
+The production target proof also compiles and executes the established Stage 7
+aggregate-call program, the Stage 8 propagation program, and the accepted
+multipart program from Chapter 21.1 through NOBJ. The complete historical
+Stage 7, Stage 8, and Chapter 21 direct proofs remain module evidence only and
+do not claim target-system conformance.
+
+Fresh Stage 6 assembly measures 15,717 compiler-code bytes plus 393 immutable
+bytes, for a 16,110-byte compiler core. This is 170 core bytes smaller than
+Stage 5 and leaves 274 bytes below the 16 KiB gate. The parser remains 9,268
+bytes and workspace remains 3,604 bytes. The selected production-proof runtime
+is 574 bytes after the historical aggregate-region entry is excluded; each
+committed target bank still contains the same 364-byte linked runtime. Fixed
+runtime state remains 37 bytes and activation storage remains 3,840 bytes.
+
+The expanded producer proof is 2,300 bytes and executes 1,016,419 instructions
+in 9,951,207 T-states. The representative flat and banked artifact sizes remain
+1,396 and 5,228 NOBJ bytes, with used bank extents of 556 and 813/589 bytes.
+The Chapter 21 object uses 1,461 of 4,096 target-image bytes and commits 7,913
+NOBJ bytes. Its external image spool reaches 7,635 bytes across 1,029 records
+with 1,461 payload bytes; its patch spool reaches 205 bytes across 27 records
+with 43 payload bytes. Its committed target execution uses 1,696 instructions
+and 17,926 T-states.
+
 ## Capacity ledger
 
 The first implementation fixes a numeric limit before each bounded structure is
@@ -1506,7 +1555,7 @@ requirement are both known.
 | object-stream total records             |     65,535 | NOBJ `COMMIT.recordCount` word                                                        | output-service failure or capacity diagnostic before count wrap                  | accepted exactly 65,535 records; rejected first additional data record atomically |
 | object-stream patch records             |     65,531 | external sequential patch spool; exact maximum when one required image record is used | output-service failure or total-record capacity diagnostic before partial record | resolution-order submission, image-before-patch serialization, and count boundary |
 | object-stream image or patch bytes      |     65,532 | one NOBJ record with a word payload length and three-byte bank/address prefix         | output-service failure or target-capacity diagnostic                             | accepted 1 and 65,532 bytes; rejected 65,533 before append                        |
-| committed object generations            |          1 | storage-layer current-generation reference; incomplete generation remains uncommitted | output-service failure; previous commit remains current                          | abort, truncation, divergent late failure, and successful replacement proofs      |
+| committed object generations            |          1 | storage-layer current-generation reference; incomplete generation remains uncommitted | output-service failure; previous commit remains current                          | A retained after divergent image-plus-patch B failure; C committed and executed   |
 | structured-initializer depth            |          4 | recursive parser state; total nodes are streamed and not retained                     | capacity diagnostic                                                              | exact nesting boundary and wide 256-element initializer                           |
 | initialized program-data bytes          |      1,024 | prefix of the private compiler image plus a retained word length                      | program-data capacity diagnostic                                                 | exact four-string-plus-tail image and rejected following byte                     |
 | aggregate-constant bytes                |      1,024 | private-image suffix, one shared length word, and relative-offset symbol payloads     | read-only-data capacity diagnostic                                               | record/array/string constants; exact 1,024-byte suffix and rejected next byte     |

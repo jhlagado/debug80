@@ -1,6 +1,6 @@
 ; Prove the compact descriptor and flat append-only compiler sink end to end.
 
-            .include "memory-map.asmi"
+            .include "target-memory-map.asmi"
 SegmentedOutput       .equ 1
 TargetStreamingOutput .equ 1
             .include "loop-compiler-state.asmi"
@@ -296,6 +296,64 @@ BankedOtherOverflowDescriptor:
             .db 2,0
             .dw BankedFailurePartBanks
 
+; The accepted multipart program from Chapter 21.1 is compiled through the
+; production target entry and executed only from its committed NOBJ image.
+; Its source occupies part of the address space released by retiring the old
+; complete-image staging buffer.
+            .org ReleasedGeneratedStagingBase
+Chapter21TargetPart1:
+            .db "record Cell",10
+            .db "    value as u8",10
+            .db "end",10
+            .db 10
+            .db "var template as Cell = (1)",10
+            .db "var cells as Cell[4] = [(0), (0), (0), (0)]",10
+            .db 10
+Chapter21TargetPart1End:
+Chapter21TargetPart2:
+            .db "sub cellAt(index as u8) as Cell",10
+            .db "    return cells[index]",10
+            .db "end",10
+            .db 10
+            .db "sub setCell(cell as Cell, value as u8)",10
+            .db "    cell.value = value",10
+            .db "end",10
+            .db 10
+            .db "sub main()",10
+            .db "    var index as u8",10
+            .db "    var code as u8",10
+            .db 10
+            .db "    for index = 0 until 4",10
+            .db "        cells[index] = template",10
+            .db "        setCell(template, index + 1)",10
+            .db "    end",10
+            .db 10
+            .db "    cells[0].value = cellAt(0).value",10
+            .db "    if cells[0].value = 1",10
+            .db "        writeOutputByte('Y') handle code",10
+            .db "            return",10
+            .db "        end",10
+            .db "    elseif cells[0].value = 0",10
+            .db "        writeOutputByte('N') handle code",10
+            .db "            return",10
+            .db "        end",10
+            .db "    end",10
+            .db "end",10
+Chapter21TargetPart2End:
+Chapter21TargetParts:
+            .db 1
+            .dw Chapter21TargetPart1,Chapter21TargetPart1End
+            .db 2
+            .dw Chapter21TargetPart2,Chapter21TargetPart2End
+Chapter21TargetPartBanks: .db 0,0
+Chapter21TargetDescriptor:
+            .dw NucleusRuntimeIdentity
+            .dw $8000,$1000
+            .dw $4000,$1000
+            .db 1
+            .db 1,0
+            .dw Chapter21TargetPartBanks
+
             .org TargetRuntimeBase
 RuntimeCodeStart:
             .include "proof-z80-runtime.asm"
@@ -546,7 +604,7 @@ ProofStart:
             LD   HL,AdapterLogBase
             LD   (AdapterCursor),HL
             LD   A,1
-            LD   HL,FlatTargetParts
+            LD   HL,FlatTargetTrapParts
             LD   IX,FlatTargetDescriptor
             CALL CompileTargetAggregateCallParts
             JP   NC,ProofAtomicFailure
@@ -559,6 +617,16 @@ ProofStart:
             LD   A,(AdapterAborted)
             CP   1
             JP   NZ,ProofAtomicFailure
+            LD   HL,(AdapterCursor)
+            LD   DE,AdapterLogBase
+            OR   A
+            SBC  HL,DE
+            LD   (AdapterFailedLogLength),HL
+            LD   B,H
+            LD   C,L
+            LD   HL,AdapterLogBase
+            LD   DE,AdapterFailedLogBase
+            LDIR
             LD   A,25
             LD   (ProofCase),A
             XOR  A
@@ -870,6 +938,23 @@ ProofStart:
             OR   A
             SBC  HL,DE
             LD   (AdapterBankedLogLength),HL
+
+            XOR  A
+            LD   (AdapterCommitted),A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterChapter21LogBase
+            LD   (AdapterCursor),HL
+            LD   A,2
+            LD   HL,Chapter21TargetParts
+            LD   IX,Chapter21TargetDescriptor
+            CALL CompileTargetAggregateCallParts
+            JR   C,ProofCompileFailure
+            LD   HL,(AdapterCursor)
+            LD   DE,AdapterChapter21LogBase
+            OR   A
+            SBC  HL,DE
+            LD   (AdapterChapter21LogLength),HL
             LD   A,(AdapterSavedDiagnostic)
             LD   (DiagnosticCode),A
             LD   A,$A5
@@ -1201,6 +1286,8 @@ AdapterTrapLogLength: .dw 0
 AdapterUnhandledLogLength: .dw 0
 AdapterBankedLogLength: .dw 0
 AdapterBankedTrapLogLength: .dw 0
+AdapterChapter21LogLength: .dw 0
+AdapterFailedLogLength: .dw 0
 AdapterFailureCountdown: .db 0
 AdapterMapFailure:       .db 0
 AdapterCommitFailure:    .db 0
@@ -1247,4 +1334,6 @@ AdapterTrapLogBase      .equ $A000
 AdapterUnhandledLogBase .equ $A500
 AdapterBankedTrapLogBase .equ $AC00
 AdapterLogBase          .equ $B400
+AdapterFailedLogBase    .equ $C600
+AdapterChapter21LogBase .equ $D000
 AdapterLogLimit         .equ $F000

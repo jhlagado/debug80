@@ -123,6 +123,8 @@ PatchInvalid:
             LD   A,DiagnosticFixupRange
             JP   CompilerSetDiagnostic
 
+.if TargetStreamingOutput
+.else
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
 BeginProgram:
             LD   (EmitLimit),HL
@@ -154,6 +156,7 @@ AbortProgramSize:
             LD   (GeneratedSize),HL
             SCF
             RET
+.endif
 
 .if AggregateCallSlices
 .if TargetStreamingOutput
@@ -622,6 +625,8 @@ PatchHere:
             LD   HL,(EmitCursor)
             JP   PatchRelative
 
+.if TargetStreamingOutput
+.else
 .routine out A,carry,zero clobbers sign,parity,halfCarry,DE,HL
 FinishProgram:
             LD   HL,(EmitCursor)
@@ -631,6 +636,7 @@ FinishProgram:
             LD   (GeneratedSize),HL
             OR   A
             RET
+.endif
 
 ; Read one operand from the checked semantic transcript. The operation count
 ; bounds dispatch; individual handlers know the fixed width of their operands.

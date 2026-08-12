@@ -154,6 +154,8 @@ CheckStringIndexLengthReady:
             RET
 
 .if RuntimeProofServices
+.if TargetStreamingOutput
+.else
 ; Historical proof ABI using the supplied exclusive data end.
 .routine in BC,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,DE,HL,IY
 CheckAggregateRegion:
@@ -171,6 +173,7 @@ CheckAggregateRegion:
             LD   DE,GeneratedBase+3
 .endif
             JP   CheckAggregateRegionOne
+.endif
 
 .routine in BC,DE,HL,IY out A,carry,zero clobbers sign,parity,halfCarry,DE,HL
 CheckAggregateRegionOne:

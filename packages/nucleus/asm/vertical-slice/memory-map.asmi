@@ -15,9 +15,9 @@ SourceLimit         .equ $5800
 GeneratedBase       .equ $5800
 GeneratedLimit      .equ $6800
 
-; The production adapter divides generated output and target program storage
-; into bounded segments. Historical slice proofs continue to use the complete
-; GeneratedBase..GeneratedLimit span as one degenerate code segment.
+; Historical direct-sink module proofs retain this complete-image region and
+; its segmented variant. Production target proofs use target-memory-map.asmi
+; and therefore cannot resolve these symbols.
 GeneratedCodeBase       .equ GeneratedBase
 GeneratedCodeLimit      .equ $6400
 GeneratedRoDataBase     .equ GeneratedCodeLimit
@@ -48,8 +48,8 @@ ProofLimit          .equ $9800
 SpareBase           .equ $9800
 SpareLimit          .equ $F000
 
-; Transactional Z80 emission keeps the prior 4 KiB published image here.
-; Proof-only overflow sources end below this bounded subregion.
+; Historical direct-sink module proofs keep the prior published image here.
+; Production target proofs release and account for this complete 4 KiB range.
 BackupBase    .equ $A000
 BackupLimit   .equ $B000
 

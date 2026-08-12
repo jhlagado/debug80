@@ -701,7 +701,6 @@ FinishTargetFlatProgram:
             OR   A
             SBC  HL,DE
             LD   (TargetCodeLength),HL
-            LD   (GeneratedSize),HL
             ; Loaded output appends the initialized run image after code. ROM
             ; output already emitted the same bytes before source code.
             LD   A,(TargetLayoutMode)
