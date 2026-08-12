@@ -144,6 +144,15 @@ publication. The identity fixes the runtime byte length, RAM vector layout, and
 local helper offsets. The adapter must supply that exact runtime image. A
 mismatch is a target-configuration diagnostic, not a runnable artifact.
 
+The operating layer supplies the exact helper bytes through a runtime-image
+provider keyed by that identity. The compiler retains the identity, expected
+length, vector layout, and helper offsets; it does not retain the helper image.
+At each derived runtime base it submits the bank, target address, identity, and
+expected length to the bounded provider operation. The provider appends the
+canonical bytes to the image spool as ordinary NOBJ `IMAGE` records and must
+report the exact expected length. An unavailable image, mismatched identity or
+length, or output failure aborts the generation before commit.
+
 ### 2.4 Loaded and ROM mappings
 
 The relationship between the image and writable regions determines startup
@@ -341,6 +350,12 @@ The initialized block begins with the adapter-selected runtime vector table and
 continues with source-declared initialized variables. The adapter contributes
 the vector bytes at a contract-defined offset; they are not a Nucleus
 initializer. BSS follows the complete used initialized length.
+
+The operating-layer runtime provider emits each complete helper image at the
+derived runtime base. The compiler advances the corresponding target cursor by
+the identity's fixed length only after the provider accepts the operation. The
+helper bytes never occupy compiler workspace. The provider operation serializes
+as ordinary image records and adds no NOBJ record class.
 
 For a flat artifact, the runtime base is `imageBase` plus the exact startup-stub
 length. For every banked image, the runtime base is `bankWindowBase + 3`. The
@@ -704,12 +719,13 @@ Exactly one commit record comes last. No record may follow commit.
 
 The compiler retains bounded source symbols and currently unresolved fixup
 metadata while it emits image records. It may not retain complete bank images
-or generated routines merely to patch them later. It emits placeholder bytes
-at unresolved sites and calculates each final absolute word or relative byte
-during the same compilation. The output sink accepts each resolved patch into
-a separate append-only spool, then serializes that spool after the image spool.
-The patch consumer performs byte replacement only. It never resolves a source
-name, branch kind, or relocation expression and is not a linker.
+or generated routines merely to patch them later, and it does not retain the
+selected runtime image. It emits placeholder bytes at unresolved sites and
+calculates each final absolute word or relative byte during the same
+compilation. The output sink accepts each resolved patch into a separate
+append-only spool, then serializes that spool after the image spool. The patch
+consumer performs byte replacement only. It never resolves a source name,
+branch kind, or relocation expression and is not a linker.
 
 NOBJ is the standard stored-object envelope. Intel HEX, raw binary, `.COM`,
 serial framing, and device images remain materialized delivery formats rather
@@ -717,15 +733,18 @@ than compiler output formats.
 
 ### 9.3 Atomic commit and consumption
 
-The object sink accepts `begin`, `image`, `patch`, `map`, `commit`, and `abort`.
-It maintains separate sequential image and patch spools, then drains or chains
-them in NOBJ order. Only a stream with a valid terminal commit is published and
-runnable. A diagnostic or sink failure aborts the current generation; an
-incomplete stream cannot replace the prior committed generation. The compiler
-therefore needs no image rollback or routine buffer. The sink supplies
-serialized framing, record count, and integrity fields while it forms the final
-order. The commit integrity fields cover every preceding record, and the
-compiler does not reread the object.
+The object sink accepts `begin`, `image`, `runtimeImage`, `patch`, `map`,
+`commit`, and `abort`. `runtimeImage` obtains the canonical helper bytes from
+the operating-layer provider and appends ordinary image records; it has no
+distinct wire representation. The sink maintains separate sequential image
+and patch spools, then drains or chains them in NOBJ order. Only a stream with
+a valid terminal commit is published and runnable. A diagnostic or sink failure
+aborts the current generation; an incomplete stream cannot replace the prior
+committed generation. The compiler therefore needs no image rollback, runtime
+blob, or routine buffer. The sink supplies serialized framing, record count,
+and integrity fields while it forms the final order. The commit integrity
+fields cover every preceding record, and the compiler does not reread the
+object.
 
 A consumer validates the complete committed stream before exposing it as a
 runnable program. It initializes each output image with the profile fill byte,
@@ -733,6 +752,11 @@ applies image records, then applies patch records, and publishes the materialize
 result atomically. A RAM loader uses a private or non-runnable load area until
 validation is complete. A ROM utility materializes and patches the images
 before invoking a separate programmer or burner.
+
+A direct wire loader can materialize a banked object in one pass only when it
+has isolated writable backing for every selected bank. Otherwise it stores the
+NOBJ and materializes the banks during a later read. A flat loader may write
+directly when one isolated target extent fits available RAM.
 
 The adapter must not patch an unchecked value or silently truncate a bank,
 address, displacement, size, source location, or static datum. It must reject
@@ -775,6 +799,9 @@ program template for a claimed general compiler feature.
 
 Object-stream producer, materializer, and storage proofs cover the required
 cases in the NOBJ format separately from source-language execution.
+They include runtime-provider identity and length mismatch, deferred
+`MAP.usedLength` validation, direct flat wire loading, and stored banked
+materialization without private backing for every bank.
 
 ### 10.2 Measurement reports
 

@@ -111,6 +111,14 @@ image or generated routine. The storage layer serializes image records before
 patch records and preserves an earlier committed generation; a failed
 compilation leaves an uncommitted object that no loader may run.
 
+The operating layer also supplies the canonical runtime helper image selected
+by the compiler's runtime identity. The compiler submits its bank, target
+address, identity, and expected length; the provider appends ordinary image
+records and reports the exact length. Runtime bytes remain outside compiler
+core and workspace. Their provider implementation is an external-service
+account, while every emitted per-bank copy is reported as selected-runtime
+bytes and as occupancy in its bank image.
+
 Patch records contain final bytes rather than symbols, branch kinds, or
 relocation expressions. Applying them is materialization, not linking. The
 normative NOBJ format fixes their framing and integrity rules. A TEC-FS adapter
@@ -396,7 +404,8 @@ Reviewers should test the following boundaries aggressively:
    generated-code proofs, grammar analyzer, and conformance examples.
 9. NOBJ record framing, monotonic image extents, arbitrary-order non-overlapping
    patches, spool ordering, map consistency, CRC coverage, missing-commit
-   rejection, and storage-generation atomicity.
+   rejection, runtime-provider identity and length, deferred used-length
+   validation, wire-loader backing, and storage-generation atomicity.
 10. Evidence behind every Z80 byte and timing claim.
 11. Prose quality under the project's human-writing standard: exact agency,
     direct wording, stable terms, verified examples, no stale history or
@@ -452,8 +461,9 @@ Do not present any of the following as a routine correction or size cleanup:
   bank selectors in source;
 - a portable bytecode or interpreter as an active path;
 - a second source pass, per-bank emission replay, compiler-resident complete
-  bank images, or a compiler-resident generated-routine buffer as the ordinary
-  publication model;
+  bank images, a compiler-resident selected-runtime image, or a
+  compiler-resident generated-routine buffer as the ordinary publication
+  model;
 - adapter-defined alternatives to the NOBJ wire format or symbolic linker
   requests disguised as patch records;
 - removal of required diagnostics without explicit approval;

@@ -117,6 +117,20 @@ manifest ordinal to one of those banks.
 length, vector layout, and helper offsets. A mismatch is a target-configuration
 diagnostic and cannot produce a runnable artifact.
 
+The operating layer owns a runtime-image provider keyed by `runtimeIdentity`.
+Before compilation begins, the adapter establishes that the provider has the
+canonical helper image and that its declared length, vector layout, and helper
+offsets match the compiler's identity. The compiler retains the identity and
+the corresponding layout constants, not the helper-image bytes.
+
+At each derived runtime address, the compiler submits a bounded
+`runtimeImage(bank, address, runtimeIdentity, expectedLength)` operation. The
+provider streams the canonical bytes into the image spool as one or more
+ordinary `IMAGE` records in increasing target-address order. It must report
+exactly `expectedLength`; an unavailable image, identity mismatch, length
+mismatch, or output failure aborts the generation. `runtimeImage` is a
+compiler-facing sink operation, not an NOBJ record kind.
+
 ### 3.2 Base and capacity
 
 Every region uses a base and capacity, never an inclusive limit. Validation
@@ -163,6 +177,11 @@ then that bank's read-only bytes and code. Only the entry bank contains startup
 and the initialized-data load image. The runtime identity fixes one complete
 helper image, one common vector layout, and one set of helper offsets for every
 bank. This version performs no per-bank helper subsetting.
+
+The operating-layer runtime provider supplies each helper-image copy at the
+derived runtime address. The compiler advances its target cursor by the known
+runtime length after the provider accepts the complete operation; it never
+holds or copies the helper-image bytes in compiler workspace.
 
 The parser finalizes initialized-data, BSS, and per-bank aggregate-constant used
 lengths before the backend emits any image byte. The exact startup length and
@@ -425,12 +444,13 @@ sink. A patch contains final bytes, not a symbol name, relocation expression,
 branch kind, or request for name resolution. The consumer therefore performs
 byte replacement, not linking.
 
-The sink owns two append-only storage spools while compilation runs. Image calls
-append to the image spool. Resolved patch calls append to the patch spool in
-resolution order, which need not be target-address order. Finalization writes
-or chains the image spool before the patch spool so the serialized NOBJ still
-has the record order above. This division is an operating-layer service, not a
-second compiler pass, and requires no compiler-resident image or routine buffer.
+The sink owns two append-only storage spools while compilation runs. `image`
+and `runtimeImage` calls append to the image spool. Resolved patch calls append
+to the patch spool in resolution order, which need not be target-address order.
+Finalization writes or chains the image spool before the patch spool so the
+serialized NOBJ still has the record order above. This division is an
+operating-layer service, not a second compiler pass, and requires no
+compiler-resident image or routine buffer.
 
 The existing bounded fixup state remains the controlling compiler capacity.
 Language-level `forward` declarations are uncommon under declaration before
@@ -439,9 +459,11 @@ may target one enclosing label, so unresolved-site capacity is not defined by
 nesting depth alone.
 
 Image records supply startup, the selected runtime, read-only and
-initialized-data-load bytes, and generated code. Image and patch records
-together determine every non-fill byte in the committed used extents. Payload
-bytes occupy increasing target addresses and cannot cross a bank boundary.
+initialized-data-load bytes, and generated code. The selected-runtime records
+come from the provider operation in Section 3.1; all remain ordinary image
+records in the serialized object. Image and patch records together determine
+every non-fill byte in the committed used extents. Payload bytes occupy
+increasing target addresses and cannot cross a bank boundary.
 
 The compiler publishes no Intel HEX text, raw binary, `.COM` file, padding,
 serial framing, archive, or physical device-image container. Those remain
@@ -449,11 +471,14 @@ encodings of the logical stream supplied by an operating or host layer.
 
 ### 9.2 Commit and failure
 
-The output sink provides bounded `begin`, `image`, `patch`, `map`, `commit`, and
-`abort` operations. It writes the image and patch spools to sequential external
-storage and may drain or chain them when it forms the final NOBJ. The compiler
-is not required to retain tentative image bytes, complete bank images, or a
-generated routine in its address space.
+The output sink provides bounded `begin`, `image`, `runtimeImage`, `patch`,
+`map`, `commit`, and `abort` operations. `runtimeImage` obtains the canonical
+bytes from the adapter-selected provider and appends ordinary image records;
+it has no distinct wire representation. The sink writes the image and patch
+spools to sequential external storage and may drain or chain them when it
+forms the final NOBJ. The compiler is not required to retain tentative image
+bytes, runtime-image bytes, complete bank images, or a generated routine in
+its address space.
 
 Only a stream ending in a valid commit record is a published artifact. The sink
 adds storage framing, the record count, and the integrity check while forming
@@ -485,6 +510,15 @@ otherwise non-runnable load area, then transfer control through the committed
 entry pair. It must not expose or enter partially patched code. A loader that
 cannot isolate partial writes first materializes elsewhere and copies the
 validated result into place.
+
+A direct one-pass wire loader can materialize a banked object only when the
+machine provides isolated writable backing for every selected physical bank
+and prevents execution before commit. An ordinary flat 64 KiB Z80 address
+space cannot privately hold several complete bank images alongside the loader.
+Without isolated bank backing, the receiver must spool the NOBJ to sequential
+storage, validate the committed object, and materialize its banks during a
+later read. Flat objects still permit direct wire loading when one isolated
+load extent fits available RAM.
 
 ROM production is deliberately host-side in Nucleus 0.1. A utility on CP/M or
 another development system materializes the bank images, applies the patches,
@@ -519,7 +553,8 @@ Used lengths and capacities remain distinct.
 
 Before emitting the terminal commit, the compiler and adapter establish:
 
-- the runtime identity, byte length, vector layout, and helper offsets match;
+- the runtime provider has the selected canonical image and its identity, byte
+  length, vector layout, and helper offsets match;
 - every mathematical region end is at most `$10000`;
 - writable is wholly inside or wholly outside image for a flat target;
 - writable lies outside the banked window for a banked target;
@@ -538,7 +573,9 @@ Before emitting the terminal commit, the compiler and adapter establish:
 - every cross-bank aggregate use satisfies Chapter 8;
 - every pending fixup fits its bounded compiler table and resolves exactly
   once;
-- every object-sink append succeeds; and
+- every object-sink append succeeds;
+- every `runtimeImage` operation emits exactly the selected runtime length at
+  the derived address; and
 - every image and patch record lies within its selected bank or flat image
   region.
 

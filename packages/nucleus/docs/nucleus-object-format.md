@@ -35,12 +35,13 @@ not a source name, symbol-table index, relocation expression, or request for
 name resolution. Combining several objects or resolving symbols between them
 requires a different format and is outside Nucleus 0.1.
 
-The compiler-facing producer submits image bytes and resolved patches in
-compilation order. The storage sink appends them to separate sequential spools;
-neither side seeks to an earlier byte. When compilation finishes, the sink
-serializes or chains the image spool before the patch spool and then writes the
-map and commit. A consumer may materialize the object later without access to
-compiler state.
+The compiler submits generated image bytes and resolved patches in compilation
+order. The operating-layer runtime provider submits the selected helper-image
+bytes at compiler-supplied target locations. The storage sink appends all image
+bytes and patches to separate sequential spools; no participant seeks to an
+earlier byte. When compilation finishes, the sink serializes or chains the
+image spool before the patch spool and then writes the map and commit. A
+consumer may materialize the object later without access to compiler state.
 
 ## 3. Integer and address conventions
 
@@ -165,8 +166,9 @@ through 65,532.
 after all image records. A patch may replace an image byte or the implicit fill
 byte at a gap. Patch records retain resolution order, so their target addresses
 need not increase. Patch extents must not overlap, records for different banks
-may be interleaved, and every patch must remain inside the selected image region
-and the bank's committed used length from the `MAP` record.
+may be interleaved, and every patch must remain inside the selected image
+region. Because `MAP` follows the patch phase, the consumer checks every patch
+against that bank's committed used length after it reads `MAP`.
 
 The lack of address ordering permits nested branches and later routine bodies
 to submit patches as soon as their targets become known. A low-memory validator
@@ -290,10 +292,11 @@ A conforming reader performs these operations:
    `imageFill`.
 3. Read `IMAGE` records, checking framing, bank, monotonic non-overlap, and
    target extent before writing each payload.
-4. Read `PATCH` records, checking framing, bank, non-overlap, and target extent
-   before writing each replacement payload.
+4. Read `PATCH` records, checking framing, bank, non-overlap, and the `BEGIN`
+   image-region extent before writing each replacement payload.
 5. Read and validate the exact `MAP`, including every cross-field relationship
-   in Section 8.
+   in Section 8, then check every image and patch extent against its bank's
+   committed `usedLength`.
 6. Read `COMMIT`, verify its duplicate entry pair, record count, CRC, and
    immediate end of stream.
 7. Publish or enter the materialized image only after every check succeeds.
@@ -309,12 +312,24 @@ materializing it during another read. It may rescan the patch phase to check
 pairwise non-overlap without a compiler-resident or loader-resident patch table.
 These are loader strategies, not additional compiler source passes.
 
+A direct one-pass wire receiver can materialize a flat object when it has an
+isolated writable extent for the complete image. It can materialize a banked
+object directly only when the machine provides isolated writable backing for
+every selected physical bank and prevents execution before `COMMIT`. A receiver
+without that backing must spool the NOBJ to sequential storage, validate it,
+and materialize the banks during a later read. The object format remains the
+same in each case.
+
 ## 11. Producer and storage obligations
 
-The compiler-facing sink supports `begin`, `image`, `patch`, `map`, `commit`,
-and `abort`. During compilation, `image` appends to an image spool and `patch`
-appends to a patch spool. No operation requires random access to an earlier
-compiler output byte.
+The compiler-facing sink supports `begin`, `image`, `runtimeImage`, `patch`,
+`map`, `commit`, and `abort`. During compilation, `image` appends to an image
+spool and `patch` appends to a patch spool. `runtimeImage` selects the canonical
+helper image by runtime identity and appends it to the image spool as ordinary
+`IMAGE` records at the supplied bank and address. It must emit the declared
+runtime length exactly. The compiler retains the identity and expected length,
+not the runtime bytes; `runtimeImage` adds no serialized record kind. No
+operation requires random access to an earlier compiler output byte.
 
 The compiler retains only bounded unresolved-site metadata rather than a
 complete image or generated routine. Once a bank, address, and final replacement
@@ -339,6 +354,13 @@ TECM8 and TEC-FS need two sequential temporary spools plus an atomic
 current-generation update. They do not need random writes or in-place patching
 during compilation. A CP/M or host tool may use temporary files, form the final
 NOBJ sequentially, and rename it after validation.
+
+The runtime provider belongs to the operating layer. Its canonical byte store
+and provider implementation are external-service resources, not compiler core
+or compiler workspace. Every emitted copy is reported as selected-runtime bytes
+and as occupancy in its bank image. An implementation report must include any
+compiler-side call stub and the operating-layer provider separately rather than
+hiding either cost.
 
 ## 12. Materialized outputs
 
@@ -370,6 +392,9 @@ Conformance evidence must include:
 - an incorrect record count and CRC;
 - truncation in every record header and payload class;
 - a byte after `COMMIT`;
+- an unavailable, wrong-identity, or wrong-length runtime image before commit;
+- direct wire loading of a flat image and stored materialization of a banked
+  image without private backing for every bank;
 - a failed generation after at least one image record while an earlier
   committed generation remains current; and
 - successful compilation and publication after that failure.
@@ -380,16 +405,17 @@ not establish that a partial or corrupted object remained unselected.
 
 ## 14. Worked record example
 
-An entry jump at bank zero, address `$8000`, may first be emitted with a zero
-operand and then patched to `$8134`:
+A `JP main` inside startup at bank zero, address `$8260`, may first be emitted
+with a zero operand and then patched when `main` resolves to `$9134`:
 
 ```text
-02 06 00  00 00 80  C3 00 00
-03 05 00  00 01 80  34 81
+02 06 00  00 60 82  C3 00 00
+03 05 00  00 61 82  34 91
 ```
 
 The first record is `IMAGE`: kind `$02`, payload length 6, bank 0, address
-`$8000`, and bytes `C3 00 00`. The second is `PATCH`: kind `$03`, payload
-length 5, bank 0, address `$8001`, and replacement bytes `34 81`. The record
-kind distinguishes original image data from a later replacement; both records
-remain append-only.
+`$8260`, and bytes `C3 00 00`. The second is `PATCH`: kind `$03`, payload
+length 5, bank 0, address `$8261`, and replacement bytes `34 91`. The banked
+entry instruction at `bankWindowBase` is different: its startup target is
+known before emission and requires no patch. The record kind distinguishes
+original image data from a later replacement; both records remain append-only.
