@@ -1,0 +1,104 @@
+{
+  "name": "flat-target-established-unhandled-failure",
+  "source": "../asm/vertical-slice/flat-target-z80-slice-proof.asm",
+  "memoryProfile": "vertical-slice-memory.json",
+  "interfaces": ["../asm/vertical-slice/expression-generated-z80.asmi"],
+  "execution": {
+    "entry": "ProofStart",
+    "maxInstructions": 500000,
+    "maxCycles": 5000000,
+    "halted": true
+  },
+  "observations": [
+    { "at": "ProofStatus", "width": "u8", "equals": 165 },
+    { "at": "ProofCase", "width": "u8", "equals": 0 }
+  ],
+  "nobj": {
+    "adapter": {
+      "at": "AdapterUnhandledLogBase",
+      "lengthAt": "AdapterUnhandledLogLength",
+      "maxBytes": 3840
+    },
+    "begin": {
+      "banked": false,
+      "runtimeIdentity": 3,
+      "bankCount": 1,
+      "imageFill": 255,
+      "imageBase": 32768,
+      "imageCapacity": 4096
+    },
+    "map": {
+      "romMode": true,
+      "establishedStack": true,
+      "entryBank": 0,
+      "entryAddress": 32768,
+      "writableBase": 16384,
+      "writableCapacity": 4096,
+      "vectorBase": 16384,
+      "vectorLength": 33,
+      "initializedRunBase": 16384,
+      "initializedRunLength": 54,
+      "bssBase": 16438,
+      "bssLength": 0,
+      "stackRequirement": 3840,
+      "dataLoadBank": 0,
+      "dataLoadAddress": 33185,
+      "dataLoadLength": 54,
+      "partBanks": [0],
+      "banks": [
+        {
+          "usedLength": 652,
+          "readOnlyBase": 33185,
+          "readOnlyLength": 54,
+          "aggregateConstantBase": 0,
+          "aggregateConstantLength": 0
+        }
+      ]
+    },
+    "runtimeLinkContext": {
+      "runtimeBase": 32771,
+      "writableBase": 16384,
+      "writableCapacity": 4096,
+      "writableStateBase": 16417,
+      "vectorBase": 16384,
+      "programDataBase": 16438,
+      "programDataCapacity": 0,
+      "readOnlyBase": 33239,
+      "readOnlyCapacity": 0,
+      "services": {
+        "readInputByte": 28672,
+        "writeOutputByte": 28675,
+        "readStorageByte": 28678,
+        "rewindStorageInput": 28681,
+        "writeStorageByte": 28684,
+        "seekStorageOutput": 28687,
+        "success": 28690,
+        "unhandledFailure": 28693,
+        "trap": 28696,
+        "farCall": 28699,
+        "farJump": 28702
+      }
+    },
+    "execution": {
+      "maxInstructions": 10000,
+      "maxCycles": 100000,
+      "halted": true,
+      "initialSp": 65280,
+      "expectedSp": 65282,
+      "writes": [
+        { "at": 32512, "bytes": [118] },
+        { "at": 28690, "bytes": [201] },
+        { "at": 28693, "bytes": [201] },
+        { "at": 28696, "bytes": [201] },
+        { "at": 65280, "bytes": [0, 127] },
+        { "at": 16384, "bytes": [165] },
+        { "at": 16417, "bytes": [165] }
+      ]
+    },
+    "observations": [
+      { "at": 16417, "width": "u8", "equals": 3 },
+      { "at": 16418, "width": "u8", "equals": 6 },
+      { "at": 16422, "width": "u8", "equals": 7 }
+    ]
+  }
+}

@@ -7,6 +7,8 @@ NucleusRuntimeExpectedLength .equ 364
 NucleusRuntimeVectorCount  .equ 11
 NucleusRuntimeVectorLength .equ NucleusRuntimeVectorCount*3
 NucleusRuntimeStateLength  .equ 21
+NucleusRuntimeRunStateOffset        .equ 0
+NucleusRuntimeActivationLimitOffset .equ 7
 
 NucleusRuntimeActivationPushOffset      .equ 0
 NucleusRuntimeActivationPopOffset       .equ 23

@@ -15,6 +15,7 @@ BeginTargetFlatProgram:
             LD   A,(IX+TargetDescriptorFlags)
             CP   TargetDescriptorEstablishStack+1
             JP   NC,TargetConfigurationFailure
+            LD   (TargetStackMode),A
             LD   L,(IX+TargetDescriptorImageBase)
             LD   H,(IX+TargetDescriptorImageBase+1)
             LD   (TargetImageBase),HL
@@ -33,6 +34,50 @@ BeginTargetFlatProgram:
             RET  C
             CALL TargetClassifyFlatLayout
             RET  C
+            ; Determine the exact startup extent and validate the optional
+            ; established stack before the adapter opens a generation.
+            LD   HL,26                   ; JP/CALL main plus terminal dispatch
+            LD   A,(TargetLayoutMode)
+            OR   A
+            JR   Z,TargetStartupBss
+            LD   DE,11                   ; LD HL/DE/BC plus LDIR
+            ADD  HL,DE
+TargetStartupBss:
+            LD   DE,(ProgramBssLength)
+            LD   A,D
+            OR   E
+            JR   Z,TargetStartupStack
+            LD   DE,9                    ; LD HL/BC plus CALL InitializeBss
+            ADD  HL,DE
+TargetStartupStack:
+            LD   A,(TargetStackMode)
+            OR   A
+            JR   Z,TargetStartupReady
+            LD   DE,13                   ; save/select SP plus terminal restore
+            ADD  HL,DE
+            PUSH HL
+            LD   HL,NucleusRuntimeVectorLength+NucleusRuntimeStateLength
+            LD   DE,(StaticImageLength)
+            ADD  HL,DE
+            JR   C,TargetStartupStackFailure
+            LD   DE,(ProgramBssLength)
+            ADD  HL,DE
+            JR   C,TargetStartupStackFailure
+            LD   DE,TargetStackRequirement+2
+            ADD  HL,DE
+            JR   C,TargetStartupStackFailure
+            LD   DE,(TargetWritableCapacity)
+            OR   A
+            SBC  HL,DE
+            JR   C,TargetStartupStackFits
+            JR   Z,TargetStartupStackFits
+TargetStartupStackFailure:
+            POP  HL
+            JP   TargetCapacityFailure
+TargetStartupStackFits:
+            POP  HL
+TargetStartupReady:
+            LD   (TargetStartupLength),HL
             LD   HL,(ReadOnlyImageLength)
             LD   A,(TargetLayoutMode)
             OR   A
@@ -46,6 +91,9 @@ BeginTargetFlatProgram:
 TargetFlatReadOnlyReady:
             LD   (TargetReadOnlyLength),HL
             LD   DE,NucleusRuntimeExpectedLength+3
+            ADD  HL,DE
+            JR   C,TargetBeginCapacityFailure
+            LD   DE,(TargetStartupLength)
             ADD  HL,DE
             JR   C,TargetBeginCapacityFailure
             EX   DE,HL                    ; DE is fixed prefix length
@@ -101,6 +149,9 @@ TargetCodeCapacityReady:
             LD   DE,NucleusRuntimeExpectedLength
             ADD  HL,DE
             JP   C,TargetCapacityFailure
+            LD   DE,(TargetStartupLength)
+            ADD  HL,DE
+            JP   C,TargetCapacityFailure
             LD   (TargetReadOnlyBase),HL
             CALL TargetPrepareRuntimeContext
             RET  C
@@ -120,8 +171,7 @@ TargetCodeCapacityReady:
             LD   HL,(EmitCursor)
             ADD  HL,DE
             LD   (EmitCursor),HL
-            OR   A
-            RET
+            JP   TargetEmitStartup
 
 ; HL is a region base and DE a nonzero capacity. Carry reports every wrapped
 ; end except the legal exact mathematical end $10000.
@@ -263,6 +313,10 @@ TargetStateAddress:
 ; writable vector rather than an address in the compiler's proof adapter.
 .routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 EmitTargetVectorCall:
+            CALL TargetVectorAddress
+            JP   EmitCall
+.routine in A out HL,carry,zero clobbers sign,parity,halfCarry,A,DE
+TargetVectorAddress:
             LD   E,A
             ADD  A,A
             ADD  A,E
@@ -270,7 +324,156 @@ EmitTargetVectorCall:
             LD   D,0
             LD   HL,(TargetContextVectorBase)
             ADD  HL,DE
-            JP   EmitCall
+            RET
+
+.routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+EmitTargetVectorJump:
+            CALL TargetVectorAddress
+            LD   A,$C3
+            JP   EmitOpcodeWord
+
+; Emit the implicit flat startup at the address already accounted for by
+; TargetStartupLength. The entry-slot patch is resolved before source code,
+; while the main operand remains the ordinary checked forward fixup.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
+TargetEmitStartup:
+            LD   DE,(EmitDataFixup)
+            LD   HL,(EmitCursor)
+            CALL PatchWord
+            RET  C
+            LD   A,(TargetStackMode)
+            OR   A
+            JR   Z,TargetStartupCopy
+            LD   HL,0
+            CALL EmitLoadHl
+            RET  C
+            LD   A,$39                    ; ADD HL,SP
+            CALL EmitByte
+            RET  C
+            LD   A,$EB                    ; EX DE,HL
+            CALL EmitByte
+            RET  C
+            LD   HL,(TargetWritableBase)
+            LD   DE,(TargetWritableCapacity)
+            ADD  HL,DE                    ; $0000 denotes mathematical $10000
+            CALL EmitLoadHl
+            RET  C
+            LD   A,$F9                    ; LD SP,HL
+            CALL EmitByte
+            RET  C
+            LD   A,$D5                    ; PUSH DE, saved incoming SP
+            CALL EmitByte
+            RET  C
+TargetStartupCopy:
+            LD   A,(TargetLayoutMode)
+            OR   A
+            JR   Z,TargetStartupClear
+            LD   HL,(TargetReadOnlyBase)
+            CALL EmitLoadHl
+            RET  C
+            LD   DE,(TargetWritableBase)
+            CALL EmitLoadDeImmediate
+            RET  C
+            LD   HL,(StaticImageLength)
+            LD   DE,NucleusRuntimeVectorLength+NucleusRuntimeStateLength
+            ADD  HL,DE
+            CALL EmitLoadBcImmediate
+            RET  C
+            LD   HL,SegmentedCopyBytes
+            CALL EmitPair
+            RET  C
+TargetStartupClear:
+            LD   HL,(ProgramBssLength)
+            LD   A,H
+            OR   L
+            JR   Z,TargetStartupEntry
+            LD   HL,(TargetBssBase)
+            CALL EmitLoadHl
+            RET  C
+            LD   HL,(ProgramBssLength)
+            CALL EmitLoadBcImmediate
+            RET  C
+            LD   DE,NucleusRuntimeInitializeBssOffset
+            CALL EmitRuntimeCall
+            RET  C
+TargetStartupEntry:
+            LD   A,(TargetStackMode)
+            OR   A
+            LD   A,$C3                    ; JP main when inheriting SP
+            JR   Z,TargetStartupEmitEntry
+            LD   A,$CD                    ; CALL main before restoring SP
+TargetStartupEmitEntry:
+            CALL EmitByte
+            RET  C
+            LD   HL,(EmitCursor)
+            LD   (EmitDataFixup),HL
+            LD   HL,0
+            CALL EmitWord
+            RET  C
+            LD   HL,(EmitCursor)
+            LD   (TargetTerminalAddress),HL
+            LD   A,(TargetStackMode)
+            OR   A
+            JR   Z,TargetStartupTerminalState
+            LD   HL,TargetStartupRestoreBytes
+            LD   B,3
+            CALL EmitBytes
+            RET  C
+TargetStartupTerminalState:
+            LD   DE,RunState-StateBase
+            CALL TargetStateAddress
+            LD   A,$3A                    ; LD A,(nn)
+            CALL EmitOpcodeWord
+            RET  C
+            LD   C,RunSucceeded
+            LD   A,$FE                    ; CP n
+            CALL EmitOpcodeByte
+            RET  C
+            LD   HL,TargetTerminalSelectBytes
+            CALL EmitPair
+            RET  C
+            LD   A,6                      ; success vector
+            CALL EmitTargetVectorJump
+            RET  C
+            LD   DE,TrapNumber-StateBase
+            CALL TargetStateAddress
+            LD   A,$3A
+            CALL EmitOpcodeWord
+            RET  C
+            LD   C,6                      ; unhandled trap number
+            LD   A,$FE
+            CALL EmitOpcodeByte
+            RET  C
+            LD   HL,TargetTerminalSelectBytes
+            CALL EmitPair
+            RET  C
+            LD   A,7                      ; unhandled-failure vector
+            CALL EmitTargetVectorJump
+            RET  C
+            LD   A,8                      ; trap vector
+            JP   EmitTargetVectorJump
+
+; Append the provider-owned initialized vector/state image at its run or load
+; address. The same complete context that linked the helper image selects it.
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+TargetEmitRuntimeInitialImage:
+            XOR  A
+            LD   DE,NucleusRuntimeIdentity
+            LD   BC,NucleusRuntimeVectorLength+NucleusRuntimeStateLength
+            LD   IX,TargetRuntimeContext
+            CALL TargetSinkRuntimeInitialImage
+            JP   C,TargetOutputFailure
+            LD   DE,NucleusRuntimeVectorLength+NucleusRuntimeStateLength
+            LD   HL,(EmitLimit)
+            OR   A
+            SBC  HL,DE
+            JP   C,TargetCapacityFailure
+            LD   (EmitLimit),HL
+            LD   HL,(EmitCursor)
+            ADD  HL,DE
+            LD   (EmitCursor),HL
+            OR   A
+            RET
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 FinishTargetFlatProgram:
@@ -280,8 +483,46 @@ FinishTargetFlatProgram:
             SBC  HL,DE
             LD   (TargetCodeLength),HL
             LD   (GeneratedSize),HL
-            CALL TargetEmitLoadedInitialData
-            JR   C,AbortTargetProgram
+            ; Loaded output appends the initialized run image after code. ROM
+            ; output already emitted the same bytes before source code.
+            LD   A,(TargetLayoutMode)
+            OR   A
+            JR   NZ,TargetLoadedDataReady
+            LD   HL,(TargetWritableBase)
+            LD   (EmitCursor),HL
+            LD   HL,(StaticImageLength)
+            LD   DE,NucleusRuntimeVectorLength+NucleusRuntimeStateLength
+            ADD  HL,DE
+            LD   (EmitLimit),HL
+            LD   HL,(TargetWritableBase)
+            CALL TargetEmitRuntimeInitialImage
+            JP   C,AbortTargetProgram
+            LD   HL,StaticImageBase
+            LD   BC,(StaticImageLength)
+TargetLoadedDataLoop:
+            LD   A,B
+            OR   C
+            JR   Z,TargetLoadedDataReady
+            LD   A,(HL)
+            INC  HL
+            PUSH BC
+            PUSH HL
+            CALL EmitByte
+            POP  HL
+            POP  BC
+            JP   C,AbortTargetProgram
+            DEC  BC
+            JR   TargetLoadedDataLoop
+TargetLoadedDataReady:
+            LD   HL,(ReadOnlyImageLength)
+            LD   (TargetMapAggregateLength),HL
+            LD   A,H
+            OR   L
+            LD   HL,0
+            JR   Z,TargetMapAggregateReady
+            LD   HL,(TargetContextRoDataBase)
+TargetMapAggregateReady:
+            LD   (TargetMapAggregateBase),HL
             LD   HL,(EmitCursor)
             LD   DE,(TargetImageBase)
             OR   A
@@ -304,6 +545,34 @@ TargetMapReadOnlyReady:
             LD   (TargetMapCodeBase),HL
             LD   HL,(TargetCodeLength)
             LD   (TargetMapCodeLength),HL
+            LD   HL,(TargetWritableBase)
+            LD   (TargetMapWritableBase),HL
+            LD   (TargetMapInitializedBase),HL
+            LD   (TargetMapVectorBase),HL
+            LD   HL,(TargetWritableCapacity)
+            LD   (TargetMapWritableCapacity),HL
+            LD   HL,NucleusRuntimeVectorLength
+            LD   (TargetMapVectorLength),HL
+            LD   HL,(StaticImageLength)
+            LD   DE,NucleusRuntimeVectorLength+NucleusRuntimeStateLength
+            ADD  HL,DE
+            LD   (TargetMapInitializedLength),HL
+            LD   (TargetMapDataLoadLength),HL
+            LD   HL,(TargetBssBase)
+            LD   (TargetMapBssBase),HL
+            LD   HL,(ProgramBssLength)
+            LD   (TargetMapBssLength),HL
+            LD   HL,TargetStackRequirement
+            LD   (TargetMapStackRequirement),HL
+            XOR  A
+            LD   (TargetMapDataLoadBank),A
+            LD   HL,(TargetWritableBase)
+            LD   A,(TargetLayoutMode)
+            OR   A
+            JR   Z,TargetMapDataLoadReady
+            LD   HL,(TargetReadOnlyBase)
+TargetMapDataLoadReady:
+            LD   (TargetMapDataLoadAddress),HL
             LD   IX,TargetFlatMapBase
             CALL TargetSinkMapFlat
             JR   C,TargetFinishOutputFailure
@@ -311,44 +580,6 @@ TargetMapReadOnlyReady:
             JR   C,TargetFinishOutputFailure
             XOR  A
             RET
-
-; Loaded output places the vector/state/program initializer at its run address
-; after code. ROM output already emitted the same bytes before code.
-.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
-TargetEmitLoadedInitialData:
-            LD   A,(TargetLayoutMode)
-            OR   A
-            RET  NZ
-            LD   HL,(TargetWritableBase)
-            LD   (EmitCursor),HL
-            LD   HL,(StaticImageLength)
-            LD   DE,NucleusRuntimeVectorLength+NucleusRuntimeStateLength
-            ADD  HL,DE
-            LD   (EmitLimit),HL
-            LD   B,NucleusRuntimeVectorLength+NucleusRuntimeStateLength
-            XOR  A
-TargetLoadedRuntimeInitialLoop:
-            PUSH BC
-            CALL EmitByte
-            POP  BC
-            RET  C
-            DJNZ TargetLoadedRuntimeInitialLoop
-            LD   HL,StaticImageBase
-            LD   BC,(StaticImageLength)
-TargetLoadedDataLoop:
-            LD   A,B
-            OR   C
-            RET  Z
-            LD   A,(HL)
-            INC  HL
-            PUSH BC
-            PUSH HL
-            CALL EmitByte
-            POP  HL
-            POP  BC
-            RET  C
-            DEC  BC
-            JR   TargetLoadedDataLoop
 
 .routine in A out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 AbortTargetProgram:
@@ -378,3 +609,6 @@ TargetOutputFailure:
             LD   A,DiagnosticTargetOutput
 TargetOutputDiagnosticReady:
             JP   CompilerSetDiagnostic
+
+TargetStartupRestoreBytes: .db $C1,$E1,$F9 ; discard CALL return / restore SP
+TargetTerminalSelectBytes .equ TypedBeginAndBytes+3 ; JR NZ across one JP

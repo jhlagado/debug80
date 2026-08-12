@@ -83,7 +83,8 @@ export interface MaterializedNobj {
 export interface RuntimeImage {
   readonly identity: number;
   readonly bytes: Uint8Array;
-  readonly vectorBytes?: Uint8Array;
+  readonly initialBytes: Uint8Array;
+  readonly vectorBytes: Uint8Array;
   readonly helperOffsets?: Readonly<Record<string, number>>;
 }
 
@@ -470,6 +471,64 @@ export class NobjGenerationSink {
       offset += length;
     }
     this.#imageEnds.set(bank, address + selectedRuntime.bytes.length);
+    this.#imageHighWater = Math.max(
+      this.#imageHighWater,
+      this.#imageSpool.byteLength,
+    );
+  }
+
+  runtimeInitialImage(
+    bank: number,
+    address: number,
+    identity: number,
+    context: RuntimeLinkContext,
+    expectedLength: number,
+  ): void {
+    const begin = this.#requireOpen();
+    this.#requireBeforeMap();
+    requireU16("runtime identity", identity);
+    requireU16("runtime initial-image expected length", expectedLength);
+    if (identity !== begin.runtimeIdentity)
+      fail("runtime identity differs from BEGIN");
+    const runtime = this.#provider.get(identity, context);
+    if (runtime === undefined) fail("runtime identity is unavailable");
+    const selectedRuntime = runtime as RuntimeImage;
+    if (selectedRuntime.identity !== identity) {
+      fail("runtime provider returned the wrong identity");
+    }
+    if (selectedRuntime.initialBytes.length !== expectedLength) {
+      fail("runtime provider initial-image length mismatch");
+    }
+    if (expectedLength === 0) fail("runtime initial image must be nonempty");
+
+    this.#validateImageExtent(
+      begin,
+      bank,
+      address,
+      selectedRuntime.initialBytes.length,
+      "runtime initial IMAGE",
+    );
+    this.#requireDataRecordCapacity(
+      Math.ceil(selectedRuntime.initialBytes.length / NOBJ_MAX_DATA_BYTES),
+    );
+    let offset = 0;
+    while (offset < selectedRuntime.initialBytes.length) {
+      const length = Math.min(
+        NOBJ_MAX_DATA_BYTES,
+        selectedRuntime.initialBytes.length - offset,
+      );
+      const bytes = selectedRuntime.initialBytes.slice(offset, offset + length);
+      this.#imageSpool.append(
+        encodeImageLike(NobjKind.image, {
+          bank,
+          address: address + offset,
+          bytes,
+        }),
+      );
+      this.#imageCount += 1;
+      offset += length;
+    }
+    this.#imageEnds.set(bank, address + selectedRuntime.initialBytes.length);
     this.#imageHighWater = Math.max(
       this.#imageHighWater,
       this.#imageSpool.byteLength,

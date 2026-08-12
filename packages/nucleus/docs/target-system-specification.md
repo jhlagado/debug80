@@ -135,6 +135,14 @@ must report exactly `expectedLength`. NOBJ remains non-relocatable: the emitted
 records contain no runtime relocation or link request. `runtimeImage` is a
 compiler-facing sink operation, not an NOBJ record kind.
 
+The companion bounded
+`runtimeInitialImage(bank, address, runtimeIdentity, linkContext, expectedLength)`
+operation obtains the resolved vector table and identity-defined initial
+writable-state bytes from the same provider. It appends them at the selected
+run or ROM-load address as ordinary `IMAGE` records and likewise adds no NOBJ
+record kind. The provider verifies the vector and state lengths and layout
+against the identity before either operation appends a byte.
+
 All banks whose complete link context is equal may use the same linked bytes.
 The banked profile gives every bank the same runtime base,
 `bankWindowBase + 3`, and the same writable/vector layout. Program-specific
@@ -299,6 +307,12 @@ Startup records the incoming `SP` on the new stack, where it occupies the top
 two bytes, before entering source code. Normal return, unhandled failure, and
 every trap restore that value before returning to the original caller.
 
+The restored terminal path then selects the initialized success,
+unhandled-failure, or trap vector from the recorded run state. Those vector
+entries are terminal under the target ABI. A monitor or proof adapter may
+implement one with `RET`, in which case it returns through the restored
+original caller frame.
+
 The activation-depth and activation-byte capacities in the runtime contract
 remain binding. A new call traps atomically before the callee begins when its
 activation cannot fit.
@@ -460,8 +474,9 @@ sink. A patch contains final bytes, not a symbol name, relocation expression,
 branch kind, or request for name resolution. The consumer therefore performs
 byte replacement, not linking.
 
-The sink owns two append-only storage spools while compilation runs. `image`
-and `runtimeImage` calls append to the image spool. Resolved patch calls append
+The sink owns two append-only storage spools while compilation runs. `image`,
+`runtimeImage`, and `runtimeInitialImage` calls append to the image spool.
+Resolved patch calls append
 to the patch spool in resolution order, which need not be target-address order.
 Finalization writes or chains the image spool before the patch spool so the
 serialized NOBJ still has the record order above. This division is an
@@ -487,8 +502,9 @@ encodings of the logical stream supplied by an operating or host layer.
 
 ### 9.2 Commit and failure
 
-The output sink provides bounded `begin`, `image`, `runtimeImage`, `patch`,
-`map`, `commit`, and `abort` operations. `runtimeImage` obtains fully linked
+The output sink provides bounded `begin`, `image`, `runtimeImage`,
+`runtimeInitialImage`, `patch`, `map`, `commit`, and `abort` operations.
+`runtimeImage` obtains fully linked
 bytes for the validated context from the adapter-selected provider and appends
 ordinary image records; it has no distinct wire representation. The sink writes the image and patch
 spools to sequential external storage and may drain or chain them when it
@@ -592,7 +608,9 @@ Before emitting the terminal commit, the compiler and adapter establish:
   once;
 - every object-sink append succeeds;
 - every `runtimeImage` operation emits exactly the selected runtime length at
-  the derived address; and
+  the derived address;
+- every `runtimeInitialImage` operation emits the identity-fixed vector and
+  writable-state initial bytes selected by the same complete link context; and
 - every image and patch record lies within its selected bank or flat image
   region.
 

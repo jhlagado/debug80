@@ -517,6 +517,12 @@ saved value in the top two bytes. It restores the value on every terminal path:
 normal return, unhandled recoverable failure, and trap. The value `$0000`
 represents a stack end of `$10000`, not an empty region.
 
+After restoration, the generated terminal dispatcher reaches the initialized
+RAM vector selected by the recorded run state: success, unhandled failure, or
+trap. These vector entries are terminal calls in the target ABI. If an adapter
+returns from one during a monitor or proof run, execution returns to the
+original caller through the restored stack.
+
 The activation-depth and activation-byte limits remain independent bounded
 resources. A call that would exceed either limit performs
 `activation-capacity` before the callee begins or caller state changes.
@@ -744,10 +750,13 @@ than compiler output formats.
 
 ### 9.3 Atomic commit and consumption
 
-The object sink accepts `begin`, `image`, `runtimeImage`, `patch`, `map`,
-`commit`, and `abort`. `runtimeImage` obtains fully linked helper bytes for the
-validated context from the operating-layer provider and appends ordinary image
-records; it has no distinct wire representation. The sink maintains separate sequential image
+The object sink accepts `begin`, `image`, `runtimeImage`,
+`runtimeInitialImage`, `patch`, `map`, `commit`, and `abort`. `runtimeImage`
+obtains fully linked helper bytes for the validated context from the
+operating-layer provider. `runtimeInitialImage` obtains that identity's
+resolved vector table and fixed initial writable-state bytes for the same
+context. Both append ordinary image records and have no distinct wire
+representation. The sink maintains separate sequential image
 and patch spools, then drains or chains them in NOBJ order. Only a stream with
 a valid terminal commit is published and runnable. A diagnostic or sink failure
 aborts the current generation; an incomplete stream cannot replace the prior

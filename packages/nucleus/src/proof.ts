@@ -79,6 +79,12 @@ interface NobjProofManifest {
     readonly maxInstructions: number;
     readonly maxCycles: number;
     readonly halted: boolean;
+    readonly initialSp?: number;
+    readonly expectedSp?: number;
+    readonly writes?: readonly {
+      readonly at: number;
+      readonly bytes: readonly number[];
+    }[];
   };
   readonly observations?: readonly NobjObservation[];
   readonly bankSwitch?: {
@@ -392,7 +398,7 @@ const runNobjManifest = async (
       (producerMemory[cursor + 4] ?? 0) |
       ((producerMemory[cursor + 5] ?? 0) << 8);
     cursor += 6;
-    if (kind === 3) {
+    if (kind === 3 || kind === 4) {
       if (end - cursor < 20) {
         throw new ProofFailure(`${name}: truncated runtime-image operation`);
       }
@@ -433,7 +439,17 @@ const runNobjManifest = async (
           );
         }
       }
-      sink.runtimeImage(bank, address, identity, compilerContext, count);
+      if (kind === 3) {
+        sink.runtimeImage(bank, address, identity, compilerContext, count);
+      } else {
+        sink.runtimeInitialImage(
+          bank,
+          address,
+          identity,
+          compilerContext,
+          count,
+        );
+      }
       continue;
     }
     if (kind !== 1 && kind !== 2) {
@@ -478,6 +494,12 @@ export const executeCommittedNobj = (
     readonly maxInstructions: number;
     readonly maxCycles: number;
     readonly halted: boolean;
+    readonly initialSp?: number;
+    readonly expectedSp?: number;
+    readonly writes?: readonly {
+      readonly at: number;
+      readonly bytes: readonly number[];
+    }[];
   },
   options: {
     readonly observations?: readonly NobjObservation[];
@@ -531,6 +553,22 @@ export const executeCommittedNobj = (
         }
       : undefined,
   );
+  if (execution.initialSp !== undefined) {
+    if (
+      !Number.isInteger(execution.initialSp) ||
+      execution.initialSp < 0 ||
+      execution.initialSp > 0xffff
+    ) {
+      throw new ProofFailure("NOBJ execution initial SP is outside 0..65535");
+    }
+    runtime.cpu.sp = execution.initialSp;
+  }
+  for (const write of execution.writes ?? []) {
+    if (write.at < 0 || write.at + write.bytes.length > 0x10000) {
+      throw new ProofFailure("NOBJ execution write exceeds address space");
+    }
+    runtime.hardware.memory.set(write.bytes, write.at);
+  }
   if (parsed.begin.banked) {
     if (switchConfig === undefined) {
       throw new ProofFailure(
@@ -562,6 +600,14 @@ export const executeCommittedNobj = (
   }
   if (cycles > execution.maxCycles) {
     failures.push(`cycle limit ${execution.maxCycles} exceeded`);
+  }
+  if (
+    execution.expectedSp !== undefined &&
+    runtime.cpu.sp !== execution.expectedSp
+  ) {
+    failures.push(
+      `SP=${hexWord(runtime.cpu.sp)}, expected ${hexWord(execution.expectedSp)}`,
+    );
   }
   for (const observation of options.observations ?? []) {
     const observed =

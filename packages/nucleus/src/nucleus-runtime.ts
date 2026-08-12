@@ -188,6 +188,19 @@ const vectorBytes = (services: RuntimeServiceAddresses): Uint8Array => {
   return bytes;
 };
 
+const runtimeStateBytes = (
+  stateLength: number,
+  runStateOffset: number,
+  activationLimitOffset: number,
+  runReady: number,
+  activationCapacity: number,
+): Uint8Array => {
+  const bytes = new Uint8Array(stateLength);
+  bytes[runStateOffset] = runReady;
+  bytes[activationLimitOffset] = activationCapacity;
+  return bytes;
+};
+
 const contextKey = (identity: number, context: RuntimeLinkContext): string =>
   JSON.stringify([
     identity,
@@ -216,7 +229,8 @@ export class CanonicalRuntimeImageProvider implements RuntimeImageProvider {
       this.#images.set(contextKey(image.identity, context), {
         ...image,
         bytes: image.bytes.slice(),
-        vectorBytes: image.vectorBytes?.slice(),
+        initialBytes: image.initialBytes.slice(),
+        vectorBytes: image.vectorBytes.slice(),
         helperOffsets:
           image.helperOffsets === undefined
             ? undefined
@@ -231,7 +245,8 @@ export class CanonicalRuntimeImageProvider implements RuntimeImageProvider {
     return {
       ...image,
       bytes: image.bytes.slice(),
-      vectorBytes: image.vectorBytes?.slice(),
+      initialBytes: image.initialBytes.slice(),
+      vectorBytes: image.vectorBytes.slice(),
       helperOffsets:
         image.helperOffsets === undefined
           ? undefined
@@ -304,6 +319,15 @@ export const loadCanonicalRuntimeImage = async (
     }
     const vectorLength = symbol("NucleusRuntimeVectorLength");
     const stateLength = symbol("NucleusRuntimeStateLength");
+    const runStateOffset = symbol("RunState") - symbol("StateBase");
+    const activationLimitOffset =
+      symbol("ActivationLimit") - symbol("StateBase");
+    if (
+      runStateOffset !== symbol("NucleusRuntimeRunStateOffset") ||
+      activationLimitOffset !== symbol("NucleusRuntimeActivationLimitOffset")
+    ) {
+      throw new NobjError("canonical runtime writable-state offset mismatch");
+    }
     const writableEnd = context.writableBase + context.writableCapacity;
     if (end > 0x10000) {
       throw new NobjError("canonical runtime crosses the Z80 address space");
@@ -339,12 +363,23 @@ export const loadCanonicalRuntimeImage = async (
     if (linkedVectors.length !== vectorLength) {
       throw new NobjError("canonical runtime vector-layout mismatch");
     }
+    const linkedState = runtimeStateBytes(
+      stateLength,
+      runStateOffset,
+      activationLimitOffset,
+      symbol("RunReady"),
+      symbol("ActivationCapacity"),
+    );
+    if (linkedState.length !== stateLength) {
+      throw new NobjError("canonical runtime initial-state length mismatch");
+    }
     if (symbol("StateEnd") - symbol("StateBase") !== stateLength) {
       throw new NobjError("canonical runtime writable-state layout mismatch");
     }
     return {
       identity: symbol("NucleusRuntimeIdentity"),
       bytes: parseIntelHex(hex.text).memory.slice(start, end),
+      initialBytes: Uint8Array.from([...linkedVectors, ...linkedState]),
       vectorBytes: linkedVectors,
       helperOffsets,
     };

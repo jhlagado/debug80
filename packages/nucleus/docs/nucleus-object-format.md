@@ -325,15 +325,18 @@ same in each case.
 
 ## 11. Producer and storage obligations
 
-The compiler-facing sink supports `begin`, `image`, `runtimeImage`, `patch`,
-`map`, `commit`, and `abort`. During compilation, `image` appends to an image
+The compiler-facing sink supports `begin`, `image`, `runtimeImage`,
+`runtimeInitialImage`, `patch`, `map`, `commit`, and `abort`. During
+compilation, `image` appends to an image
 spool and `patch` appends to a patch spool. `runtimeImage` selects the canonical
 runtime source and deterministic link rules by runtime identity, links them for
 the complete validated context, and appends the fully resolved result to the
 image spool as ordinary `IMAGE` records at the supplied bank and address. It
 must emit the declared runtime length and helper layout exactly. The compiler
-retains the identity and expected layout, not the runtime bytes; `runtimeImage`
-adds no serialized record kind and NOBJ adds no relocation record. No
+retains the identity and expected layout, not the runtime bytes;
+`runtimeInitialImage` selects the matching vector and fixed-state initial bytes
+for the same complete context. Neither operation adds a serialized record
+kind, and NOBJ adds no relocation record. No
 operation requires random access to an earlier compiler output byte.
 
 The compiler retains only bounded unresolved-site metadata rather than a

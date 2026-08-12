@@ -1370,6 +1370,51 @@ leakage. Stage 4 supplies executable startup, runtime-vector/state
 initialization, BSS clear, and stack modes; Stage 3 deliberately materializes
 without entering the incomplete startup image.
 
+### Target-system Stage 4: startup, writable storage, and stack modes
+
+Stage 4 replaces the provisional zero-filled runtime prefix with one provider-
+owned 54-byte initialization image: eleven resolved three-byte service and
+terminal vectors followed by the identity-fixed 21-byte initial runtime state.
+The compiler requests those bytes through `runtimeInitialImage` using the same
+validated link context as `runtimeImage`; both operations serialize only
+ordinary NOBJ `IMAGE` records. The compiler retains neither byte sequence.
+
+Flat entry remains a three-byte `JP` at `imageBase`, and the linked runtime
+still begins at `imageBase + 3` (including the required `$8003` layout). The
+entry patch targets a bounded startup continuation immediately after the
+runtime. ROM startup establishes the optional stack, copies the complete
+vector/state/program initialized block, clears BSS, and enters `main`. Loaded
+startup omits the copy and clears BSS at the already initialized run address.
+The initialized run begins at `writableBase`, BSS follows its used length, and
+no source instruction executes before either path completes.
+
+The established-stack path reserves the published 3,840-byte stack account
+plus two saved-incoming-SP bytes. It selects the mathematical writable end,
+retains the incoming SP on the new stack, and restores it on normal success,
+unhandled recoverable failure, and trap. Each terminal path then dispatches
+through the provider-initialized success, unhandled-failure, or trap vector.
+Inherited-stack mode never writes SP.
+
+Fresh focused evidence executes ROM and loaded objects from committed NOBJ,
+discriminates copy-before-clear and the absence of a loaded copy, checks the
+nonzero vector and runtime-state bytes, admits the exact established-stack fit,
+rejects its first-byte shortfall, and executes normal, trap, and unhandled-
+failure terminal paths with exact SP restoration.
+
+After the focused correctness and size pass, Stage 4 measures 15,124 compiler-
+code bytes plus 393 immutable bytes, for a 15,517-byte compiler core. The
+parser extent is 8,944 bytes. Workspace remains 3,604 bytes: the final 40-byte
+compiler map exactly overlays dead startup, terminal-address, and runtime-link-
+context storage instead of extending the workspace. The selected linked
+runtime remains 364 bytes; the historical proof runtime is 596 bytes. The
+representative ROM object uses 540 target-image bytes, including 54 adapter-
+owned vector/state bytes, and commits a 1,380-byte NOBJ. Its proof code/data is
+1,673 bytes. Compiler-side proof execution is 257,742 instructions and
+2,597,781 T-states; the committed target program executes 79 instructions and
+1,920 T-states. Relative to Stage 3, the compiler core grows by 488 bytes;
+immutable data and workspace do not grow. The core remains 867 bytes below the
+16 KiB stop gate.
+
 ## Capacity ledger
 
 The first implementation fixes a numeric limit before each bounded structure is

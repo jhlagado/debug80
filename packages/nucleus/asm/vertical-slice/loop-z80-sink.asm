@@ -528,8 +528,14 @@ EmitRunEnding:
 .endif
             CALL EmitStoreA
             RET  C
+.if TargetStreamingOutput
+            LD   HL,(TargetTerminalAddress)
+            LD   A,$C3
+            JP   EmitOpcodeWord
+.else
             LD   A,$C9
             JP   EmitByte
+.endif
 
 ; At runtime A carries an unhandled error and HL the failing source offset.
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL

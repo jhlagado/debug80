@@ -47,6 +47,7 @@ CompilerCoreEnd:
             .org SourceBase
 FlatTargetSource:
             .db "var value as u16 = 3",10
+            .db "var cleared as u8",10
             .db "sub main()",10
             .db "value = value * 2",10
             .db "end",10
@@ -56,11 +57,33 @@ FlatTargetParts:
             .db 1
             .dw FlatTargetSource,FlatTargetSourceEnd
 
+FlatTargetTrapSource:
+            .db "var divisor as u8",10
+            .db "sub main()",10
+            .db "var value as u8 = 1 / divisor",10
+            .db "end",10
+FlatTargetTrapSourceEnd:
+FlatTargetTrapParts:
+            .db 1
+            .dw FlatTargetTrapSource,FlatTargetTrapSourceEnd
+
+FlatTargetUnhandledSource:
+            .db "sub failer() fails",10
+            .db "fail 7",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "failer() else fail",10
+            .db "end",10
+FlatTargetUnhandledSourceEnd:
+FlatTargetUnhandledParts:
+            .db 1
+            .dw FlatTargetUnhandledSource,FlatTargetUnhandledSourceEnd
+
 FlatTargetDescriptor:
             .dw NucleusRuntimeIdentity
             .dw $8000,$1000
             .dw $4000,$1000
-            .db 0
+            .db 1
 FlatTargetLoadedDescriptor:
             .dw NucleusRuntimeIdentity
             .dw $8000,$2000
@@ -76,6 +99,16 @@ FlatTargetBadFlagsDescriptor:
             .dw $8000,$1000
             .dw $4000,$1000
             .db 2
+FlatTargetStackExactDescriptor:
+            .dw NucleusRuntimeIdentity
+            .dw $8000,$1000
+            .dw $4000,$0F3B
+            .db 1
+FlatTargetStackOverflowDescriptor:
+            .dw NucleusRuntimeIdentity
+            .dw $8000,$1000
+            .dw $4000,$0F3A
+            .db 1
 
             .org TargetRuntimeBase
 RuntimeCodeStart:
@@ -188,7 +221,7 @@ ProofStart:
             OR   A
             JP   NZ,ProofLoadedFailure
             LD   HL,(AdapterCapturedContext+$0E)
-            LD   DE,$816F
+            LD   DE,$8192
             OR   A
             SBC  HL,DE
             JP   NZ,ProofLoadedFailure
@@ -202,10 +235,39 @@ ProofStart:
             OR   L
             JP   NZ,ProofLoadedFailure
             LD   HL,(AdapterCapturedMap+$09)
-            LD   DE,$816F
+            LD   DE,$8192
             OR   A
             SBC  HL,DE
             JP   NZ,ProofLoadedFailure
+            LD   HL,(AdapterCapturedMap+TargetMapWritableBase-TargetFlatMapBase)
+            LD   DE,$9000
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofLoadedFailure
+            LD   HL,(AdapterCapturedMap+TargetMapInitializedLength-TargetFlatMapBase)
+            LD   DE,56
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofLoadedFailure
+            LD   HL,(AdapterCapturedMap+TargetMapDataLoadAddress-TargetFlatMapBase)
+            LD   DE,$9000
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofLoadedFailure
+            LD   HL,(AdapterCapturedMap+TargetMapAggregateBase-TargetFlatMapBase)
+            LD   A,H
+            OR   L
+            JP   NZ,ProofLoadedFailure
+            LD   HL,(AdapterCursor)
+            LD   DE,AdapterLogBase
+            OR   A
+            SBC  HL,DE
+            LD   (AdapterLoadedLogLength),HL
+            LD   B,H
+            LD   C,L
+            LD   HL,AdapterLogBase
+            LD   DE,AdapterLoadedLogBase
+            LDIR
             LD   A,17
             LD   (ProofCase),A
             LD   A,1
@@ -219,6 +281,23 @@ ProofStart:
             LD   A,(AdapterAborted)
             OR   A
             JP   NZ,ProofConfigurationFailure
+            LD   A,18
+            LD   (ProofCase),A
+            LD   A,1
+            LD   HL,FlatTargetParts
+            LD   IX,FlatTargetStackExactDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   C,ProofRegionFailure
+            LD   A,19
+            LD   (ProofCase),A
+            LD   A,1
+            LD   HL,FlatTargetParts
+            LD   IX,FlatTargetStackOverflowDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofRegionFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetCapacity
+            JP   NZ,ProofRegionFailure
             XOR  A
             LD   (AdapterCommitted),A
             LD   (AdapterAborted),A
@@ -291,18 +370,18 @@ ProofStart:
             LD   HL,FlatTargetParts
             LD   IX,FlatTargetDescriptor
             CALL CompileTargetAggregateCallParts
-            JR   C,ProofCompileFailure
+            JP   C,ProofCompileFailure
             LD   A,(AdapterCommitted)
             CP   1
-            JR   NZ,ProofCommitFailure
+            JP   NZ,ProofCommitFailure
             LD   A,(AdapterAborted)
             OR   A
-            JR   NZ,ProofCommitFailure
+            JP   NZ,ProofCommitFailure
             LD   HL,(AdapterCapturedBegin+TargetDescriptorImageBase)
             LD   DE,$8000
             OR   A
             SBC  HL,DE
-            JR   NZ,ProofBeginFailure
+            JP   NZ,ProofBeginFailure
             LD   A,(TargetLayoutMode)
             CP   TargetLayoutRom
             JP   NZ,ProofRegionFailure
@@ -310,22 +389,52 @@ ProofStart:
             LD   DE,$8003
             OR   A
             SBC  HL,DE
-            JR   NZ,ProofContextFailure
+            JP   NZ,ProofContextFailure
             LD   HL,(AdapterCapturedContext+$06)
             LD   DE,$4021
             OR   A
             SBC  HL,DE
-            JR   NZ,ProofContextFailure
+            JP   NZ,ProofContextFailure
             LD   HL,(AdapterCapturedMap+$01)
             LD   DE,$8000
             OR   A
             SBC  HL,DE
-            JR   NZ,ProofMapFailure
+            JP   NZ,ProofMapFailure
             LD   HL,(AdapterCapturedMap+$05)
-            LD   DE,$816F
+            LD   DE,$81AA
             OR   A
             SBC  HL,DE
-            JR   NZ,ProofMapFailure
+            JP   NZ,ProofMapFailure
+            LD   HL,(AdapterCapturedMap+TargetMapWritableBase-TargetFlatMapBase)
+            LD   DE,$4000
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofMapFailure
+            LD   HL,(AdapterCapturedMap+TargetMapVectorLength-TargetFlatMapBase)
+            LD   DE,NucleusRuntimeVectorLength
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofMapFailure
+            LD   HL,(AdapterCapturedMap+TargetMapInitializedLength-TargetFlatMapBase)
+            LD   DE,56
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofMapFailure
+            LD   HL,(AdapterCapturedMap+TargetMapBssBase-TargetFlatMapBase)
+            LD   DE,$4038
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofMapFailure
+            LD   HL,(AdapterCapturedMap+TargetMapStackRequirement-TargetFlatMapBase)
+            LD   DE,TargetStackRequirement
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofMapFailure
+            LD   HL,(AdapterCapturedMap+TargetMapDataLoadAddress-TargetFlatMapBase)
+            LD   DE,$81AA
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofMapFailure
             LD   HL,(AdapterCursor)
             LD   DE,AdapterLogBase
             OR   A
@@ -333,7 +442,68 @@ ProofStart:
             LD   (AdapterLogLength),HL
             LD   A,H
             OR   L
-            JR   Z,ProofLogFailure
+            JP   Z,ProofLogFailure
+            LD   B,H
+            LD   C,L
+            LD   HL,AdapterLogBase
+            LD   DE,AdapterSuccessLogBase
+            LDIR
+            LD   HL,AdapterCapturedMap
+            LD   DE,AdapterSuccessMap
+            LD   BC,TargetMapSize
+            LDIR
+
+            XOR  A
+            LD   (AdapterCommitted),A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterLogBase
+            LD   (AdapterCursor),HL
+            LD   A,1
+            LD   HL,FlatTargetTrapParts
+            LD   IX,FlatTargetDescriptor
+            CALL CompileTargetAggregateCallParts
+            JR   C,ProofCompileFailure
+            LD   HL,(AdapterCursor)
+            LD   DE,AdapterLogBase
+            OR   A
+            SBC  HL,DE
+            LD   (AdapterTrapLogLength),HL
+            LD   B,H
+            LD   C,L
+            LD   HL,AdapterLogBase
+            LD   DE,AdapterTrapLogBase
+            LDIR
+            LD   HL,AdapterCapturedMap
+            LD   DE,AdapterTrapMap
+            LD   BC,TargetMapSize
+            LDIR
+
+            XOR  A
+            LD   (AdapterCommitted),A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterLogBase
+            LD   (AdapterCursor),HL
+            LD   A,1
+            LD   HL,FlatTargetUnhandledParts
+            LD   IX,FlatTargetDescriptor
+            CALL CompileTargetAggregateCallParts
+            JR   C,ProofCompileFailure
+            LD   HL,(AdapterCursor)
+            LD   DE,AdapterLogBase
+            OR   A
+            SBC  HL,DE
+            LD   (AdapterUnhandledLogLength),HL
+            LD   B,H
+            LD   C,L
+            LD   HL,AdapterLogBase
+            LD   DE,AdapterUnhandledLogBase
+            LDIR
+            LD   HL,AdapterCapturedMap
+            LD   DE,AdapterUnhandledMap
+            LD   BC,TargetMapSize
+            LDIR
             LD   A,$A5
             LD   (ProofStatus),A
             XOR  A
@@ -451,6 +621,18 @@ TargetSinkImageByteReserveFailure:
 
 .routine in A,BC,DE,HL,IX out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 TargetSinkRuntimeImage:
+            PUSH AF
+            LD   A,3
+            LD   (AdapterRuntimeKind),A
+            POP  AF
+            JR   TargetSinkRuntimeSelected
+.routine in A,BC,DE,HL,IX out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+TargetSinkRuntimeInitialImage:
+            PUSH AF
+            LD   A,4
+            LD   (AdapterRuntimeKind),A
+            POP  AF
+TargetSinkRuntimeSelected:
             LD   (AdapterRuntimeBank),A
             LD   (AdapterRuntimeLength),BC
             LD   (AdapterRuntimeIdentity),DE
@@ -464,7 +646,9 @@ TargetSinkRuntimeImage:
             LD   DE,(AdapterRuntimeIdentity)
             LD   HL,(AdapterRuntimeAddress)
             LD   IX,(AdapterRuntimeContext)
-            LD   (IY+0),3
+            LD   A,(AdapterRuntimeKind)
+            LD   (IY+0),A
+            LD   A,(AdapterRuntimeBank)
             LD   (IY+1),A
             LD   (IY+2),L
             LD   (IY+3),H
@@ -604,17 +788,28 @@ AdapterCommitted: .db 0
 AdapterAborted:   .db 0
 AdapterCursor:    .dw 0
 AdapterLogLength: .dw 0
+AdapterLoadedLogLength: .dw 0
+AdapterTrapLogLength: .dw 0
+AdapterUnhandledLogLength: .dw 0
 AdapterFailureCountdown: .db 0
 AdapterMapFailure:       .db 0
 AdapterCommitFailure:    .db 0
 AdapterCapturedBegin:   .ds TargetDescriptorSize
 AdapterCapturedContext: .ds TargetContextSize
 AdapterCapturedMap:     .ds TargetMapSize
+AdapterSuccessMap:      .ds TargetMapSize
+AdapterTrapMap:         .ds TargetMapSize
+AdapterUnhandledMap:    .ds TargetMapSize
+AdapterTrapUsedLength       .equ AdapterTrapMap+$03
+AdapterTrapCodeLength       .equ AdapterTrapMap+$0B
+AdapterUnhandledUsedLength  .equ AdapterUnhandledMap+$03
+AdapterUnhandledCodeLength  .equ AdapterUnhandledMap+$0B
 AdapterCapturedRuntimeBase .equ AdapterCapturedContext+$00
 AdapterCapturedStateBase   .equ AdapterCapturedContext+$06
 AdapterCapturedUsedLength  .equ AdapterCapturedMap+$03
 AdapterCapturedCodeLength  .equ AdapterCapturedMap+$0B
 AdapterRuntimeBank:     .db 0
+AdapterRuntimeKind:     .db 0
 AdapterRuntimeLength:   .dw 0
 AdapterRuntimeIdentity: .dw 0
 AdapterRuntimeAddress:  .dw 0
@@ -623,5 +818,9 @@ AdapterRuntimeLog:      .dw 0
 AdapterRuntimeContextPointer .equ AdapterRuntimeContext
 ProofEnd:
 
-AdapterLogBase  .equ $B000
-AdapterLogLimit .equ $E000
+AdapterLogBase          .equ $B000
+AdapterLogLimit         .equ $C000
+AdapterLoadedLogBase    .equ $C000
+AdapterSuccessLogBase   .equ $C800
+AdapterTrapLogBase      .equ $D000
+AdapterUnhandledLogBase .equ $E000

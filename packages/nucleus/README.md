@@ -45,9 +45,10 @@ diagnostic names outside the compiler core.
 The host NOBJ boundary encodes, validates, and materializes the strict
 append-only object stream. Image and patch records use independent sequential
 spools, while an atomic generation reference prevents an aborted or corrupted
-object from replacing the last committed artifact. Canonical runtime bytes are
-assembled from the same source used by the Z80 proofs and selected through its
-machine-readable runtime identity.
+object from replacing the last committed artifact. A machine-readable runtime
+identity selects the canonical source revision, ABI, link rules, and expected
+layout; the operating-layer provider deterministically links fully resolved
+bytes for each validated target context.
 
 Proof manifests may opt into a second, NOBJ-aware execution. The runner commits
 the producer's bounded logical sink calls, validates and materializes the

@@ -493,7 +493,12 @@ describe("NOBJ 0.1", () => {
   });
 
   it("validates runtime identity and length before appending any runtime prefix", () => {
-    const runtime = { identity: 7, bytes: Uint8Array.of(1, 2, 3) };
+    const runtime = {
+      identity: 7,
+      bytes: Uint8Array.of(1, 2, 3),
+      initialBytes: Uint8Array.of(4),
+      vectorBytes: Uint8Array.of(4),
+    };
     const provider: RuntimeImageProvider = { get: () => runtime };
     const sink = new NobjGenerationSink(new NobjGenerationStore(), provider);
     sink.begin({ ...flatRomBegin(), runtimeIdentity: 7 });
@@ -518,7 +523,12 @@ describe("NOBJ 0.1", () => {
     );
 
     const wrong: RuntimeImageProvider = {
-      get: () => ({ identity: 2, bytes: Uint8Array.of(1, 2, 3) }),
+      get: () => ({
+        identity: 2,
+        bytes: Uint8Array.of(1, 2, 3),
+        initialBytes: Uint8Array.of(4),
+        vectorBytes: Uint8Array.of(4),
+      }),
     };
     const wrongSink = new NobjGenerationSink(new NobjGenerationStore(), wrong);
     wrongSink.begin(flatRomBegin());
@@ -527,8 +537,39 @@ describe("NOBJ 0.1", () => {
     );
   });
 
+  it("appends provider-owned vector and state bytes as an ordinary IMAGE", () => {
+    const runtime = {
+      identity: 7,
+      bytes: Uint8Array.of(1, 2, 3),
+      initialBytes: Uint8Array.of(0xc3, 0x34, 0x12, 1, 8),
+      vectorBytes: Uint8Array.of(0xc3, 0x34, 0x12),
+    };
+    const sink = new NobjGenerationSink(new NobjGenerationStore(), {
+      get: () => runtime,
+    });
+    sink.begin({ ...flatRomBegin(), runtimeIdentity: 7 });
+    expect(() =>
+      sink.runtimeInitialImage(0, 0x8000, 7, defaultRuntimeLinkContext, 4),
+    ).toThrow("initial-image length mismatch");
+    const context = defaultRuntimeLinkContext;
+    expect(() => sink.runtimeInitialImage(0, 0x8000, 7, context, 4)).toThrow(
+      "initial-image length mismatch",
+    );
+    sink.runtimeInitialImage(0, 0x8000, 7, context, 5);
+    sink.map(flatRomMap(5));
+    const parsed = parseNobj(sink.commit());
+    expect(parsed.images).toEqual([
+      { bank: 0, address: 0x8000, bytes: runtime.initialBytes },
+    ]);
+  });
+
   it("splits a 65,535-byte runtime image into bounded ordinary IMAGE records", () => {
-    const runtime = { identity: 7, bytes: new Uint8Array(0xffff) };
+    const runtime = {
+      identity: 7,
+      bytes: new Uint8Array(0xffff),
+      initialBytes: Uint8Array.of(4),
+      vectorBytes: Uint8Array.of(4),
+    };
     const spools: MemoryNobjSpool[] = [];
     const sink = new NobjGenerationSink(
       new NobjGenerationStore(),
@@ -558,6 +599,9 @@ describe("NOBJ 0.1", () => {
     expect(runtime.identity).toBe(3);
     expect(runtime.bytes).toHaveLength(364);
     expect(runtime.vectorBytes).toHaveLength(33);
+    expect(runtime.initialBytes).toHaveLength(54);
+    expect(runtime.initialBytes[33]).toBe(1);
+    expect(runtime.initialBytes[40]).toBe(8);
     expect(runtime.helperOffsets?.CheckAggregateRegion).toBe(115);
     expect(runtime.bytes.some((byte) => byte !== 0)).toBe(true);
   }, 30_000);

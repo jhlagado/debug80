@@ -24,14 +24,9 @@ EncodeAggregateProgramWithinLimit:
             LD   A,(TargetLayoutMode)
             OR   A
             JR   Z,AggregateTargetLoadedRoData
-            LD   B,NucleusRuntimeVectorLength+NucleusRuntimeStateLength
-            XOR  A
-AggregateRuntimeInitialLoop:
-            PUSH BC
-            CALL EmitByte
-            POP  BC
+            LD   HL,(EmitCursor)
+            CALL TargetEmitRuntimeInitialImage
             JP   C,AggregateAbortProgram
-            DJNZ AggregateRuntimeInitialLoop
             JR   AggregateTargetCopyReady
 AggregateTargetLoadedRoData:
             LD   HL,StaticImageBase

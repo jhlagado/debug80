@@ -9,6 +9,7 @@ TargetDescriptorWritableCapacity  .equ 8  ; word
 TargetDescriptorFlags             .equ 10 ; byte
 TargetDescriptorSize              .equ 11
 TargetDescriptorEstablishStack    .equ 1
+TargetStackRequirement            .equ 3840
 
 TargetDescriptorPointer .equ SourceMultipartWorkspaceEnd ; word
 TargetCompilerWorkspaceEnd .equ TargetDescriptorPointer+2
@@ -29,7 +30,10 @@ TargetWritableBase        .equ TargetLayoutBase+$11 ; word
 TargetWritableCapacity    .equ TargetLayoutBase+$13 ; word
 TargetBssBase             .equ TargetLayoutBase+$15 ; word
 TargetLayoutMode          .equ TargetLayoutBase+$17
-TargetRuntimeContext      .equ TargetLayoutBase+$18
+TargetStackMode           .equ TargetLayoutBase+$18
+TargetStartupLength       .equ TargetLayoutBase+$19 ; word
+TargetTerminalAddress     .equ TargetLayoutBase+$1B ; word
+TargetRuntimeContext      .equ TargetLayoutBase+$1D
 TargetContextRuntimeBase  .equ TargetRuntimeContext+$00 ; word
 TargetContextWritableBase .equ TargetRuntimeContext+$02 ; word
 TargetContextWritableCapacity .equ TargetRuntimeContext+$04 ; word
@@ -40,7 +44,10 @@ TargetContextDataCapacity .equ TargetRuntimeContext+$0C ; word
 TargetContextRoDataBase   .equ TargetRuntimeContext+$0E ; word
 TargetContextRoDataCapacity .equ TargetRuntimeContext+$10 ; word
 TargetContextSize         .equ $12
-TargetFlatMapBase         .equ TargetRuntimeContext+TargetContextSize
+; Finalization begins only after startup/code emission and any loaded-mode
+; provider request. The complete map therefore reuses dead startup, terminal,
+; and runtime-link-context storage without increasing compiler workspace.
+TargetFlatMapBase         .equ TargetStartupLength
 TargetMapEntryBank        .equ TargetFlatMapBase+$00
 TargetMapEntryAddress     .equ TargetFlatMapBase+$01 ; word
 TargetMapUsedLength       .equ TargetFlatMapBase+$03 ; word
@@ -48,7 +55,21 @@ TargetMapReadOnlyBase     .equ TargetFlatMapBase+$05 ; word
 TargetMapReadOnlyLength   .equ TargetFlatMapBase+$07 ; word
 TargetMapCodeBase         .equ TargetFlatMapBase+$09 ; word
 TargetMapCodeLength       .equ TargetFlatMapBase+$0B ; word
-TargetMapSize             .equ $0D
+TargetMapWritableBase     .equ TargetFlatMapBase+$0D ; word
+TargetMapWritableCapacity .equ TargetFlatMapBase+$0F ; word
+TargetMapVectorBase       .equ TargetFlatMapBase+$11 ; word
+TargetMapVectorLength     .equ TargetFlatMapBase+$13 ; word
+TargetMapInitializedBase  .equ TargetFlatMapBase+$15 ; word
+TargetMapInitializedLength .equ TargetFlatMapBase+$17 ; word
+TargetMapBssBase          .equ TargetFlatMapBase+$19 ; word
+TargetMapBssLength        .equ TargetFlatMapBase+$1B ; word
+TargetMapStackRequirement .equ TargetFlatMapBase+$1D ; word
+TargetMapDataLoadBank     .equ TargetFlatMapBase+$1F
+TargetMapDataLoadAddress  .equ TargetFlatMapBase+$20 ; word
+TargetMapDataLoadLength   .equ TargetFlatMapBase+$22 ; word
+TargetMapAggregateBase    .equ TargetFlatMapBase+$24 ; word
+TargetMapAggregateLength  .equ TargetFlatMapBase+$26 ; word
+TargetMapSize             .equ $28
 TargetLayoutEnd           .equ TargetFlatMapBase+TargetMapSize
 
 DiagnosticTargetConfiguration .equ 95
