@@ -102,19 +102,21 @@ the compiler contains no filesystem search, import resolver, or dependency
 reordering algorithm.
 
 Generated output follows the same single-pass boundary. The compiler consumes
-its private checked semantic transcript once and appends target-addressed image
-records, followed by resolved replacement-byte patch records and a terminal
-commit. It does not replay emission per bank, seek in earlier output, or retain
-complete bank images for rollback. The storage layer preserves an earlier
-committed generation; a failed compilation leaves an uncommitted stream that no
-loader may run.
+its private checked semantic transcript once and submits target-addressed image
+bytes as they are generated. It retains only unresolved fixup sites. When a
+target becomes known, the compiler submits the final replacement bytes to a
+separate operating-layer patch spool and releases the site metadata. It does
+not replay emission per bank, seek in earlier output, or retain a complete bank
+image or generated routine. The storage layer serializes image records before
+patch records and preserves an earlier committed generation; a failed
+compilation leaves an uncommitted object that no loader may run.
 
-Patch records contain final bytes rather than symbols or relocation
-expressions. Applying them is materialization, not linking. The normative NOBJ
-format fixes their framing and integrity rules. A TEC-FS adapter may store the
-object sequentially, a RAM loader may materialize it into an isolated load
-area, and a host utility may construct ROM bank images. ROM programming remains
-a separate tool concern.
+Patch records contain final bytes rather than symbols, branch kinds, or
+relocation expressions. Applying them is materialization, not linking. The
+normative NOBJ format fixes their framing and integrity rules. A TEC-FS adapter
+may maintain sequential image and patch spools, a RAM loader may materialize a
+committed object into an isolated load area, and a host utility may construct
+ROM bank images. ROM programming remains a separate tool concern.
 
 ### Source semantics are independent of representation
 
@@ -392,8 +394,9 @@ Reviewers should test the following boundaries aggressively:
    changed meaning.
 8. Agreement between the prose, machine-readable trap and service assignments,
    generated-code proofs, grammar analyzer, and conformance examples.
-9. NOBJ record framing, monotonic extents, map consistency, CRC coverage,
-   missing-commit rejection, and storage-generation atomicity.
+9. NOBJ record framing, monotonic image extents, arbitrary-order non-overlapping
+   patches, spool ordering, map consistency, CRC coverage, missing-commit
+   rejection, and storage-generation atomicity.
 10. Evidence behind every Z80 byte and timing claim.
 11. Prose quality under the project's human-writing standard: exact agency,
     direct wording, stable terms, verified examples, no stale history or
@@ -448,8 +451,9 @@ Do not present any of the following as a routine correction or size cleanup:
 - interrupt routines, vector declarations, raw bank-address operations, or
   bank selectors in source;
 - a portable bytecode or interpreter as an active path;
-- a second source pass, per-bank emission replay, or compiler-resident complete
-  bank images as the ordinary publication model;
+- a second source pass, per-bank emission replay, compiler-resident complete
+  bank images, or a compiler-resident generated-routine buffer as the ordinary
+  publication model;
 - adapter-defined alternatives to the NOBJ wire format or symbolic linker
   requests disguised as patch records;
 - removal of required diagnostics without explicit approval;

@@ -135,13 +135,13 @@ The flat image contains, in logical order:
 ```text
 startup
 selected runtime
-generated code
 generated read-only data
+generated code
 ```
 
-The runtime begins immediately after the exact startup length. Generated code
-follows the runtime. Read-only bytes follow generated code. They include
-aggregate constants and, in ROM mode, the initialized-data load image.
+The runtime begins immediately after the exact startup length. Read-only bytes
+follow the runtime, and generated code follows those bytes. Read-only data
+includes aggregate constants and, in ROM mode, the initialized-data load image.
 
 Every bank reserves the same three-byte entry slot at `bankWindowBase`. The
 entry bank fills it with `JP startup`; the other banks leave the slot to the
@@ -154,20 +154,23 @@ The entry bank contains, in logical order:
 entry JP
 selected runtime
 startup
-generated code
 generated read-only data
+generated code
 ```
 
 Every other bank contains the reserved entry slot, the same complete runtime,
-then that bank's code and read-only bytes. Only the entry bank contains startup
+then that bank's read-only bytes and code. Only the entry bank contains startup
 and the initialized-data load image. The runtime identity fixes one complete
 helper image, one common vector layout, and one set of helper offsets for every
 bank. This version performs no per-bank helper subsetting.
 
-The parser finalizes initialized-data, BSS, and aggregate-constant used lengths
-before the backend emits any code byte. Copy and clear lengths therefore need
-no fixup. Code addresses and the ROM copy-source address may require checked
-patch records in the append-only object stream defined by Chapter 9.
+The parser finalizes initialized-data, BSS, and per-bank aggregate-constant used
+lengths before the backend emits any image byte. The exact startup length and
+selected runtime length are also known. The compiler can therefore derive each
+read-only base, the ROM copy-source address, and each code base before code
+emission begins. Copy lengths, clear lengths, aggregate-constant addresses, and
+the ROM copy-source address need no patch. Forward code addresses still use the
+checked patch records in Chapter 9.
 
 ### 4.2 Writable region
 
@@ -200,16 +203,16 @@ When the writable region lies wholly inside the image region, initialized
 bytes are emitted at their runtime addresses. Startup emits no copy and still
 clears BSS.
 
-The writable base must begin after startup, runtime, generated code, and other
-non-writable used image bytes. The published map records the first free image
-address so a profile can be corrected in one recompilation when its chosen
-writable base is too low.
+The writable base must begin after startup, runtime, generated read-only data,
+generated code, and other non-writable used image bytes. The published map
+records the first free image address so a profile can be corrected in one
+recompilation when its chosen writable base is too low.
 
 ### 4.4 ROM mode
 
 When the writable region lies wholly outside the image region, the complete
-initialized block forms an image record after generated code. Startup copies
-that block to `writableBase`, then clears BSS.
+initialized block occupies the entry bank's read-only area before generated
+code. Startup copies that block to `writableBase`, then clears BSS.
 
 Partial overlap between image and writable regions is invalid. No loaded/ROM
 mode flag exists.
@@ -395,6 +398,10 @@ reads the ordered source stream once and consumes its private checked semantic
 transcript once. It does not perform a second source pass, replay emission once
 per bank, seek in earlier output, or run a later layout pass.
 
+Each selected bank has a target-address cursor that advances only. Emitting a
+placeholder records its target location without moving that cursor backward.
+Resolution changes no emitted byte in place; it produces a patch-spool call.
+
 The stream contains these logical records in order:
 
 1. one begin record carrying the target and runtime identities needed to
@@ -411,14 +418,28 @@ record; the compact compiler descriptor does not gain a field that compilation
 arithmetic never reads.
 
 A flat artifact uses bank ordinal zero. Image records may contain placeholders
-for forward code addresses. The compiler retains only bounded fixup metadata,
-resolves each value during the same compilation, and emits all patch records
-after the image-record phase. A patch contains final bytes, not a symbol name,
-relocation expression, or request for name resolution. The consumer therefore
-performs byte replacement, not linking.
+for forward code addresses. The compiler retains only currently unresolved
+fixup sites. When a target becomes known, it calculates the final absolute word
+or relative displacement and submits those replacement bytes to the output
+sink. A patch contains final bytes, not a symbol name, relocation expression,
+branch kind, or request for name resolution. The consumer therefore performs
+byte replacement, not linking.
 
-Image records supply the initial startup, selected runtime, generated-code,
-read-only-data, and initialized-data-load bytes. Image and patch records
+The sink owns two append-only storage spools while compilation runs. Image calls
+append to the image spool. Resolved patch calls append to the patch spool in
+resolution order, which need not be target-address order. Finalization writes
+or chains the image spool before the patch spool so the serialized NOBJ still
+has the record order above. This division is an operating-layer service, not a
+second compiler pass, and requires no compiler-resident image or routine buffer.
+
+The existing bounded fixup state remains the controlling compiler capacity.
+Language-level `forward` declarations are uncommon under declaration before
+use, but ordinary control flow also creates forward code sites. Several sites
+may target one enclosing label, so unresolved-site capacity is not defined by
+nesting depth alone.
+
+Image records supply startup, the selected runtime, read-only and
+initialized-data-load bytes, and generated code. Image and patch records
 together determine every non-fill byte in the committed used extents. Payload
 bytes occupy increasing target addresses and cannot cross a bank boundary.
 
@@ -428,15 +449,16 @@ encodings of the logical stream supplied by an operating or host layer.
 
 ### 9.2 Commit and failure
 
-The output sink provides bounded `begin`, `append`, `commit`, and `abort`
-operations. It may write each record directly to sequential external storage.
-The compiler is not required to retain tentative image bytes or complete bank
-images in its address space.
+The output sink provides bounded `begin`, `image`, `patch`, `map`, `commit`, and
+`abort` operations. It writes the image and patch spools to sequential external
+storage and may drain or chain them when it forms the final NOBJ. The compiler
+is not required to retain tentative image bytes, complete bank images, or a
+generated routine in its address space.
 
-Only a stream ending in a valid commit record is a published artifact. The
-sink may add storage framing, a record count, and an integrity check while
-writing the stream. The commit covers every preceding record, and those fields
-do not require the compiler to buffer it. A
+Only a stream ending in a valid commit record is a published artifact. The sink
+adds storage framing, the record count, and the integrity check while forming
+the serialized order. It continues the final CRC while draining the patch
+spool after the image spool. These fields do not require compiler buffering. A
 diagnostic, target-capacity failure, output failure, reset, or truncated stream
 before commit leaves an incomplete object that a loader or materializer must
 reject. The sink may discard that object or retain it for diagnosis, but it
@@ -453,8 +475,10 @@ A materializer validates the complete committed stream, creates each bank or
 flat image with the target profile's fill byte, applies image records, applies
 patch records in stream order, and publishes the resulting image only after all
 records pass their checks. It must reject an out-of-range bank, address, extent,
-descending or overlapping record, patch outside the committed used extent,
-duplicate commit, record after commit, or incomplete stream.
+descending or overlapping image record, overlapping patch, patch outside the
+committed used extent, duplicate commit, record after commit, or incomplete
+stream. Patch addresses need not increase because nested targets and completed
+forward bodies can resolve in a different order from their sites.
 
 A RAM program loader may perform the same work directly into a private or
 otherwise non-runnable load area, then transfer control through the committed
@@ -468,9 +492,11 @@ and controls the ROM programmer. A future TEC-family ROM burner may consume the
 same object stream, but ROM burning is a separate tool and not a compiler or
 language responsibility.
 
-TECM8 and TEC-FS integration requires only sequential object storage plus an
-atomic generation commit. It does not require random-access patching while the
-compiler runs. A later loader or host utility consumes the stored object.
+TECM8 and TEC-FS integration requires two sequential temporary spools plus an
+atomic generation commit. The filesystem may copy the patch spool after the
+image spool or join their storage chains without changing their logical order.
+It does not require random-access patching while the compiler runs. A later
+loader or host utility consumes the stored object.
 
 ## 10. Published map
 

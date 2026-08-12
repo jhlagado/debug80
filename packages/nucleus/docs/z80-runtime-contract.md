@@ -314,25 +314,28 @@ selected region.
 The compiler reads the source stream once. Parsing and checking finish before
 the backend consumes the private semantic transcript, and that transcript is
 consumed once. The parser finalizes the initialized-data, BSS, and
-aggregate-constant used lengths before the backend emits any code record.
-Startup copy and clear lengths therefore require no fixup. Code addresses,
-including `main` and a ROM-mode copy source placed after generated code, may
-use placeholder bytes followed by patch records under Section 9.2.
+per-bank aggregate-constant used lengths before the backend emits any image
+record. Startup and selected-runtime lengths are also known. Startup copy and
+clear lengths, aggregate-constant addresses, each code base, and the ROM-mode
+copy source therefore require no fixup. Forward code addresses, including
+`main`, may use placeholder bytes followed by patch records under Section 9.2.
 
 In a flat image, startup begins at `imageBase`, the selected runtime follows the
-startup stub, generated code follows the runtime, and generated read-only bytes
-follow the code. In ROM mode the read-only bytes contain the complete
-initialized-RAM load image followed by aggregate-constant bytes. In loaded mode
-initialized bytes occupy their runtime addresses within the image, and the
-trailing read-only bytes contain only aggregate constants.
+startup stub, generated read-only bytes follow the runtime, and generated code
+follows the read-only extent. In ROM mode the read-only bytes contain the
+complete initialized-RAM load image followed by aggregate-constant bytes. In
+loaded mode initialized bytes occupy their runtime addresses within the image,
+and the generated read-only extent contains only aggregate constants.
 
 Every bank reserves three bytes at `bankWindowBase`. The entry bank emits
 `JP startup` there; the other banks leave the slot to host image fill. The
 complete selected runtime begins at `bankWindowBase + 3` in every bank. In the
-entry bank, startup follows that runtime and precedes generated code. Only the
-entry bank contains startup and the initialized-RAM load image. The runtime
-identity fixes the common helper image, helper offsets, and RAM vector layout;
-this version performs no helper subsetting.
+entry bank, startup follows that runtime, generated read-only data follows
+startup, and generated code follows the read-only extent. In every other bank,
+read-only data follows the runtime and precedes code. Only the entry bank
+contains startup and the initialized-RAM load image. The runtime identity fixes
+the common helper image, helper offsets, and RAM vector layout; this version
+performs no helper subsetting.
 
 The initialized block begins with the adapter-selected runtime vector table and
 continues with source-declared initialized variables. The adapter contributes
@@ -687,24 +690,26 @@ the compact compiler descriptor. Its record classes are:
 
 A flat object uses bank ordinal zero and one image region. Exactly one `begin`
 record comes first. Image records follow it and do not overlap one another.
-They provide the initial runtime, startup, generated-code, read-only, and
-initialized-load bytes. Image and patch records together determine every
+They provide startup, the selected runtime, read-only and initialized-load
+bytes, and generated code. Image and patch records together determine every
 non-fill byte in the committed used extents. A payload occupies increasing
 target addresses and cannot cross a bank boundary.
 
 Patch records follow the last image record. A patch may replace an emitted byte
-or an implicit image-fill byte. Patches must be monotonic and non-overlapping
-within each bank, remain inside the committed used extent, and contain only
-fully resolved and range-checked replacement bytes. Exactly one map record
-follows the patches. Exactly one commit record comes last. No record may follow
-commit.
+or an implicit image-fill byte. Patch addresses may appear in resolution order
+rather than target-address order. Their extents must not overlap, must remain
+inside the committed used extent, and must contain only fully resolved and
+range-checked replacement bytes. Exactly one map record follows the patches.
+Exactly one commit record comes last. No record may follow commit.
 
-The compiler may retain bounded source symbols and fixup metadata while it
-emits image records. It may not retain complete bank images merely to patch
-them later. It emits placeholder bytes at unresolved sites, resolves each site
-during the same compilation, and appends the final patch records after image
-emission. The patch consumer performs byte replacement only. It never resolves
-a source name or relocation expression and is not a linker.
+The compiler retains bounded source symbols and currently unresolved fixup
+metadata while it emits image records. It may not retain complete bank images
+or generated routines merely to patch them later. It emits placeholder bytes
+at unresolved sites and calculates each final absolute word or relative byte
+during the same compilation. The output sink accepts each resolved patch into
+a separate append-only spool, then serializes that spool after the image spool.
+The patch consumer performs byte replacement only. It never resolves a source
+name, branch kind, or relocation expression and is not a linker.
 
 NOBJ is the standard stored-object envelope. Intel HEX, raw binary, `.COM`,
 serial framing, and device images remain materialized delivery formats rather
@@ -712,13 +717,14 @@ than compiler output formats.
 
 ### 9.3 Atomic commit and consumption
 
-The object sink accepts `begin`, `append`, `commit`, and `abort`. It may write
-records directly to sequential external storage. Only a stream with a valid
-terminal commit is published and runnable. A diagnostic or sink failure aborts
-the current generation; an incomplete stream cannot replace the prior
-committed generation. The compiler therefore needs no image rollback buffer.
-The sink may supply serialized framing, record count, and integrity fields as
-it writes. The commit integrity fields cover every preceding record, and the
+The object sink accepts `begin`, `image`, `patch`, `map`, `commit`, and `abort`.
+It maintains separate sequential image and patch spools, then drains or chains
+them in NOBJ order. Only a stream with a valid terminal commit is published and
+runnable. A diagnostic or sink failure aborts the current generation; an
+incomplete stream cannot replace the prior committed generation. The compiler
+therefore needs no image rollback or routine buffer. The sink supplies
+serialized framing, record count, and integrity fields while it forms the final
+order. The commit integrity fields cover every preceding record, and the
 compiler does not reread the object.
 
 A consumer validates the complete committed stream before exposing it as a

@@ -35,10 +35,12 @@ not a source name, symbol-table index, relocation expression, or request for
 name resolution. Combining several objects or resolving symbols between them
 requires a different format and is outside Nucleus 0.1.
 
-The producer writes records in one direction. It never seeks to an earlier
-byte. The storage sink may calculate framing and integrity fields while it
-writes. A consumer may materialize the object later without access to compiler
-state.
+The compiler-facing producer submits image bytes and resolved patches in
+compilation order. The storage sink appends them to separate sequential spools;
+neither side seeks to an earlier byte. When compilation finishes, the sink
+serializes or chains the image spool before the patch spool and then writes the
+map and commit. A consumer may materialize the object later without access to
+compiler state.
 
 ## 3. Integer and address conventions
 
@@ -142,8 +144,8 @@ byte with `imageFill`, then applies image records. Within each bank, image
 addresses must increase monotonically and image extents must not overlap.
 Records for different banks may be interleaved. Gaps retain `imageFill`.
 
-Image records supply the initial startup, runtime, generated-code,
-read-only-data, and initialized-data-load bytes. Image and patch records
+Image records supply startup, the selected runtime, read-only and
+initialized-data-load bytes, and generated code. Image and patch records
 together determine every non-fill byte in the committed used extent.
 
 ## 7. `PATCH` record
@@ -161,15 +163,17 @@ through 65,532.
 
 `bank` must be less than `BEGIN.bankCount`. The consumer applies every patch
 after all image records. A patch may replace an image byte or the implicit fill
-byte at a gap. Within each bank, patch addresses must increase monotonically and
-patch extents must not overlap. Records for different banks may be interleaved.
-Every patch must remain inside the selected image region and inside the bank's
-committed used length from the `MAP` record.
+byte at a gap. Patch records retain resolution order, so their target addresses
+need not increase. Patch extents must not overlap, records for different banks
+may be interleaved, and every patch must remain inside the selected image region
+and the bank's committed used length from the `MAP` record.
 
-This rule avoids a reader-side bitmap of earlier image coverage. It does not
-let a compiler emit an unchecked patch: the compiler must still create a
-placeholder or otherwise reserve the target location, resolve the value once,
-and range-check every replacement byte before `COMMIT`.
+The lack of address ordering permits nested branches and later routine bodies
+to submit patches as soon as their targets become known. A low-memory validator
+may rescan the stored patch phase to detect overlap instead of retaining a
+bitmap. The compiler must still create a placeholder or otherwise reserve the
+target location, resolve the value once, and range-check every replacement byte
+before `COMMIT`.
 
 ## 8. `MAP` record
 
@@ -286,8 +290,8 @@ A conforming reader performs these operations:
    `imageFill`.
 3. Read `IMAGE` records, checking framing, bank, monotonic non-overlap, and
    target extent before writing each payload.
-4. Read `PATCH` records, checking framing, bank, monotonic non-overlap, and
-   target extent before writing each replacement payload.
+4. Read `PATCH` records, checking framing, bank, non-overlap, and target extent
+   before writing each replacement payload.
 5. Read and validate the exact `MAP`, including every cross-field relationship
    in Section 8.
 6. Read `COMMIT`, verify its duplicate entry pair, record count, CRC, and
@@ -300,19 +304,30 @@ validation. A RAM loader writes to a private or otherwise non-runnable area
 until step 6 succeeds. A ROM utility finishes validation before it invokes a
 programmer.
 
-A reader with insufficient private memory may validate the stored object once
-and materialize it during a second read. That is a loader strategy, not another
-compiler source pass.
+A reader with insufficient private memory may validate the stored object before
+materializing it during another read. It may rescan the patch phase to check
+pairwise non-overlap without a compiler-resident or loader-resident patch table.
+These are loader strategies, not additional compiler source passes.
 
 ## 11. Producer and storage obligations
 
 The compiler-facing sink supports `begin`, `image`, `patch`, `map`, `commit`,
-and `abort`. The sink may add headers, profile-only fields, and the running CRC.
-No operation requires random access to earlier object bytes.
+and `abort`. During compilation, `image` appends to an image spool and `patch`
+appends to a patch spool. No operation requires random access to an earlier
+compiler output byte.
 
-The compiler retains bounded fixup metadata rather than a complete image. It
-emits every patch only after the resolved bank, address, and replacement bytes
-are known. A capacity or output failure prevents `COMMIT`.
+The compiler retains only bounded unresolved-site metadata rather than a
+complete image or generated routine. Once a bank, address, and final replacement
+value are known, it submits the patch and releases the corresponding metadata.
+The compiler calculates relative displacements itself; a patch never asks the
+consumer to distinguish a relative branch from an absolute operand.
+
+At finalization, the sink writes or logically chains `BEGIN`, the complete image
+spool, the complete patch spool, `MAP`, and `COMMIT` in that order. It calculates
+the record count and CRC over that serialized order while draining the spools.
+A filesystem may join append-only extent chains; another sink may copy the two
+spools sequentially. Neither method is a second compiler pass. A capacity or
+output failure prevents `COMMIT`.
 
 The storage layer writes a new generation separately from the current
 generation. Only a complete stream whose terminal record passes Section 9 may
@@ -320,9 +335,10 @@ become current. Power loss, compiler reset, explicit abort, or write failure
 leaves the previous committed generation selected. The storage layer may
 delete or retain the incomplete generation for diagnosis.
 
-TECM8 and TEC-FS need sequential creation plus an atomic current-generation
-update. They do not need random writes or in-place patching during compilation.
-A CP/M or host tool may use a temporary file and rename it after validation.
+TECM8 and TEC-FS need two sequential temporary spools plus an atomic
+current-generation update. They do not need random writes or in-place patching
+during compilation. A CP/M or host tool may use temporary files, form the final
+NOBJ sequentially, and rename it after validation.
 
 ## 12. Materialized outputs
 
@@ -343,9 +359,12 @@ Conformance evidence must include:
 - one flat object and one multi-bank object;
 - an image gap that retains `imageFill`;
 - a patch over image bytes and a patch over an implicit fill byte;
-- records for alternating banks while each bank remains monotonic;
+- image records for alternating banks while each bank remains monotonic;
+- nested forward sites whose patches resolve in descending target-address
+  order but serialize after all image records;
 - the nearest accepted and first rejected image-region end;
-- duplicate, descending, and overlapping image and patch records;
+- duplicate, descending, and overlapping image records, plus overlapping
+  patches in either address order;
 - an invalid bank ordinal and reserved flag or record kind;
 - a malformed `MAP` length or inconsistent entry pair;
 - an incorrect record count and CRC;
