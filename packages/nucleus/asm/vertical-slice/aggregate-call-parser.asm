@@ -121,10 +121,12 @@ CompileTargetAggregateCallParts:
             JR   Z,TargetValidateCompileFailure
             CP   TargetBankCapacity+1
             JR   NC,TargetValidateCompileFailure
+            LD   (TargetDescriptorBankCountValue),A
             LD   C,A
             LD   A,(IX+TargetDescriptorEntryBank)
             CP   C
             JR   NC,TargetValidateCompileFailure
+            LD   (TargetDescriptorEntryBankValue),A
             LD   L,(IX+TargetDescriptorPartBanksPointer)
             LD   H,(IX+TargetDescriptorPartBanksPointer+1)
 TargetValidatePartBankLoop:
@@ -219,8 +221,7 @@ TargetRequireCurrentBank:
 TargetRequireEntrySourceBank:
             CALL TargetCurrentSourceBank
             LD   D,A
-            LD   IX,(TargetDescriptorPointer)
-            LD   A,(IX+TargetDescriptorEntryBank)
+            LD   A,(TargetDescriptorEntryBankValue)
             CP   D
             RET  Z
             JP   TargetConfigurationFailure

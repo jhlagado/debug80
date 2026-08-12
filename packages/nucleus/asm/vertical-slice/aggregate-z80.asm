@@ -28,9 +28,7 @@ TargetEmitBankedConstantSymbolLoop:
             LD   A,D
             CALL TargetUnpackBank
             PUSH BC
-            PUSH IX
             CALL TargetSelectOutputBank
-            POP  IX
             POP  BC
             RET  C
             LD   H,0
@@ -79,8 +77,7 @@ EncodeAggregateProgram:
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 EncodeAggregateProgramWithinLimit:
 .if TargetStreamingOutput
-            LD   IX,(TargetDescriptorPointer)
-            LD   A,(IX+TargetDescriptorBankCount)
+            LD   A,(TargetDescriptorBankCountValue)
             CP   1
             JR   NZ,AggregateDispatch
             ; BeginTargetFlatProgram already selected the first read-only byte.
@@ -122,7 +119,9 @@ AggregateTargetCopyReady:
 .endif
 .if TargetStreamingOutput
 AggregateTargetCopySelected:
-.endif
+            CALL EmitBlock
+            JP   C,AggregateAbortProgram
+.else
             LD   A,B
             OR   C
             JR   Z,AggregateDispatch
@@ -139,10 +138,10 @@ AggregateCopyLoop:
             LD   A,B
             OR   C
             JR   NZ,AggregateCopyLoop
+.endif
 AggregateDispatch:
 .if TargetStreamingOutput
-            LD   IX,(TargetDescriptorPointer)
-            LD   A,(IX+TargetDescriptorBankCount)
+            LD   A,(TargetDescriptorBankCountValue)
             CP   1
             JR   NZ,AggregateTargetCodeReady
             LD   HL,(EmitCursor)
@@ -153,8 +152,7 @@ AggregateDispatch:
             LD   HL,(TargetCodeCapacity)
             LD   (EmitLimit),HL
 AggregateTargetCodeReady:
-            LD   IX,(TargetDescriptorPointer)
-            LD   A,(IX+TargetDescriptorBankCount)
+            LD   A,(TargetDescriptorBankCountValue)
             CP   1
             JR   NZ,AggregateTargetBoundsReady
             LD   HL,(TargetContextRoDataBase)

@@ -1067,13 +1067,10 @@ Stage8SelectPendingFailure:
             JR   Z,Stage8ConsumePropagationSelected
             CP   TokenHandle
             JR   NZ,HybridLL1FailureContext
-            CALL HybridLL1SaveFlow
+            LD   B,ControlKindHandler
+            CALL HybridLL1PushFlowFrame
             RET  C
-            LD   A,ControlKindHandler
-            CALL ControlPushFrame
-            RET  C
-            LD   B,ControlFrameLabelA
-            CALL ControlAllocateInto
+            CALL ControlAllocateLabelA
             RET  C
             LD   B,ControlFrameExit
             CALL ControlAllocateInto
@@ -1411,7 +1408,7 @@ HybridLL1TransferSelected:
 
 ; Save the enclosing statement sequence's fallthrough bit at the current
 ; control depth before a frame is pushed.
-.routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C
+.routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,C
 HybridLL1SaveFlow:
             LD   A,(ControlDepth)
             CP   ControlFrameCapacity
@@ -1421,6 +1418,14 @@ HybridLL1SaveFlow:
             LD   (HL),A
             OR   A
             RET
+
+; Save the enclosing flow bit, then push the control-frame kind supplied in B.
+.routine in B out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C
+HybridLL1PushFlowFrame:
+            CALL HybridLL1SaveFlow
+            RET  C
+            LD   A,B
+            JP   ControlPushFrame
 
 .routine out A,DE,HL clobbers carry,zero,sign,parity,halfCarry
 HybridLL1FlowAddress:
@@ -1462,16 +1467,13 @@ HybridLL1CheckBooleanResult:
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1BeginIf:
-            CALL HybridLL1SaveFlow
-            RET  C
-            LD   A,ControlKindIf
-            CALL ControlPushFrame
+            LD   B,ControlKindIf
+            CALL HybridLL1PushFlowFrame
             RET  C
             LD   B,ControlFrameExit
             CALL ControlAllocateInto
             RET  C
-            LD   B,ControlFrameLabelA
-            CALL ControlAllocateInto
+            CALL ControlAllocateLabelA
             RET  C
             LD   DE,ControlFrameCounter-ControlFrameLabelA
             ADD  HL,DE
@@ -1513,8 +1515,7 @@ HybridLL1BeginBranchClause:
 HybridLL1BeginElseIf:
             CALL HybridLL1BeginBranchClause
             RET  C
-            LD   B,ControlFrameLabelA
-            CALL ControlAllocateInto
+            CALL ControlAllocateLabelA
             RET  C
             LD   A,ScalarTypeBoolean
             JP   HybridLL1SaveExpectedType
@@ -1570,13 +1571,10 @@ HybridLL1EndIf:
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1BeginWhile:
-            CALL HybridLL1SaveFlow
+            LD   B,ControlKindWhile
+            CALL HybridLL1PushFlowFrame
             RET  C
-            LD   A,ControlKindWhile
-            CALL ControlPushFrame
-            RET  C
-            LD   B,ControlFrameLabelA
-            CALL ControlAllocateInto
+            CALL ControlAllocateLabelA
             RET  C
             INC  HL
             LD   (HL),C
@@ -1665,13 +1663,10 @@ HybridLL1DefaultForStep:
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1BeginForBody:
-            CALL HybridLL1SaveFlow
+            LD   B,ControlKindFor
+            CALL HybridLL1PushFlowFrame
             RET  C
-            LD   A,ControlKindFor
-            CALL ControlPushFrame
-            RET  C
-            LD   B,ControlFrameLabelA
-            CALL ControlAllocateInto
+            CALL ControlAllocateLabelA
             RET  C
             LD   B,ControlFrameContinue
             CALL ControlAllocateInto

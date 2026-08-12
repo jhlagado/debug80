@@ -91,6 +91,11 @@ TargetMapAggregateBase    .equ TargetFlatMapBase+$24 ; word
 TargetMapAggregateLength  .equ TargetFlatMapBase+$26 ; word
 TargetMapSize             .equ $28
 TargetLayoutEnd           .equ TargetFlatMapBase+TargetMapSize
+; The retained descriptor bytes remain live during both parsing and lowering,
+; so they follow the shared 64-byte parser-stack/post-parse-layout overlay.
+TargetDescriptorBankCountValue .equ TargetLayoutEnd ; byte
+TargetDescriptorEntryBankValue .equ TargetDescriptorBankCountValue+1 ; byte
+TargetWorkspaceEnd        .equ TargetDescriptorEntryBankValue+1
 
 DiagnosticTargetConfiguration .equ 95
 DiagnosticTargetCapacity      .equ 96

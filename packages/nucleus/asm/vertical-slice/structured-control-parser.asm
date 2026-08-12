@@ -111,6 +111,13 @@ ControlAllocateInto:
             LD   (HL),C
             RET
 
+.if HybridLL1Full
+.routine out A,C,DE,HL,carry,zero clobbers sign,parity,halfCarry,B
+ControlAllocateLabelA:
+            LD   B,ControlFrameLabelA
+            JP   ControlAllocateInto
+.endif
+
 ControlLabelFailure:
             LD   A,DiagnosticControlLabelCapacity
             JP   CompilerSetDiagnostic

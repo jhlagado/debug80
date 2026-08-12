@@ -593,11 +593,11 @@ TypedEmitTrapEnding:
             RET  C
 .if TargetStreamingOutput
             LD   DE,ActivationDepth-StateBase
-            CALL TargetStateAddress
+            CALL EmitStoreTargetStateA
 .else
             LD   HL,ActivationDepth
-.endif
             CALL EmitStoreA
+.endif
             RET  C
             LD   A,$F1                    ; POP AF
             CALL EmitByte

@@ -1261,8 +1261,11 @@ Implementation proceeds in measured increments:
 
 The target-system and NOBJ authorities are approved for staged implementation.
 The object-sink increment must be measured before later banked work depends on
-it; a 600-byte cumulative target-system increase still triggers the existing
-stop-and-review gate.
+it. A 600-byte cumulative target-system increase is a hard checkpoint: freeze
+the increment before further staged work, reproduce the target-enabled account,
+run correctness and compression review, and obtain explicit approval before
+continuing. A completed later-stage review does not retrospectively satisfy
+that checkpoint.
 
 ### Target-system Stage 1: strict host NOBJ boundary
 
@@ -1563,6 +1566,21 @@ image and patch spool high-water marks, selected runtime, and committed target
 execution therefore remain unchanged. The full proof harness, package suite,
 strict AZM register contracts, typecheck, formatting, prose, and diff checks
 form the final publication gate.
+
+A post-publication target-focused compression pass starts from that exact
+`26120b24` account. It caches the validated bank count and entry bank in two
+bytes after the parser-stack/layout overlay, shares three checked 16-bit image
+copy loops, shares five writable-state store prefixes, folds the flat and
+banked map/commit ending, compacts bank-state initialization and bank
+validation, and shares two LL(1) control-action families. Fresh assembly now
+measures 15,553 compiler-code bytes plus the unchanged 393 immutable bytes, or
+15,946 bytes of compiler core. Headroom is 438 bytes. Workspace is 3,606 bytes;
+the two added bytes are the descriptor cache. The parser is 9,253 bytes: 230
+bytes of engine, 755 bytes of tables, 2,693 bytes of actions, and 5,575 bytes
+of retained parser code. The selected proof runtime remains 574 bytes and proof
+code/data remains 2,300 bytes. The producer executes 1,016,500 instructions in
+9,948,692 T-states. All seven production NOBJ fixtures remain byte-identical to
+the `26120b24` baseline, including every linked runtime image.
 
 ## Capacity ledger
 

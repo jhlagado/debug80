@@ -14,7 +14,15 @@ HybridLL1StackDepth    .equ SourceMultipartWorkspaceEnd
 HybridLL1StackDepth    .equ Stage7CompilerWorkspaceEnd
 .endif
 HybridLL1StackBase     .equ HybridLL1StackDepth+1
+.if AggregateCallSlices
+.if TargetStreamingOutput
+HybridLL1WorkspaceEnd  .equ TargetWorkspaceEnd
+.else
 HybridLL1WorkspaceEnd  .equ HybridLL1StackBase+HybridLL1StackCapacity
+.endif
+.else
+HybridLL1WorkspaceEnd  .equ HybridLL1StackBase+HybridLL1StackCapacity
+.endif
 DiagnosticParserCapacity .equ 87
 
 ; Push the start symbol and run until the grammar stack is empty. Explicit

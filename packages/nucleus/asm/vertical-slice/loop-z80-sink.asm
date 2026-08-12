@@ -65,6 +65,25 @@ EmitBytes:
             OR   A
             RET
 
+.if TargetStreamingOutput
+; Copy the complete BC-byte region through the checked output sink.
+.routine in BC,HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+EmitBlock:
+            LD   A,B
+            OR   C
+            RET  Z
+            LD   A,(HL)
+            INC  HL
+            PUSH BC
+            PUSH HL
+            CALL EmitByte
+            POP  HL
+            POP  BC
+            RET  C
+            DEC  BC
+            JR   EmitBlock
+.endif
+
 .routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 EmitEight:
             LD   B,8
@@ -439,6 +458,14 @@ EmitStoreA:
             LD   A,$32
             JR   EmitOpcodeWord
 
+.if TargetStreamingOutput
+; Emit LD (state-base+DE),A through the target-linked writable-state address.
+.routine in DE out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
+EmitStoreTargetStateA:
+            CALL TargetStateAddress
+            JP   EmitStoreA
+.endif
+
 .routine in A,C out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
 EmitOpcodeByte:
             CALL EmitByte
@@ -495,22 +522,22 @@ EmitSuccessReturn:
 EmitTrapEnding:
 .if TargetStreamingOutput
             LD   DE,TrapNumber-StateBase
-            CALL TargetStateAddress
+            CALL EmitStoreTargetStateA
 .else
             LD   HL,TrapNumber
-.endif
             CALL EmitStoreA
+.endif
             RET  C
             LD   A,$AF
             CALL EmitByte
             RET  C
 .if TargetStreamingOutput
             LD   DE,TrapRoutine-StateBase
-            CALL TargetStateAddress
+            CALL EmitStoreTargetStateA
 .else
             LD   HL,TrapRoutine
-.endif
             CALL EmitStoreA
+.endif
             RET  C
 .if TargetStreamingOutput
             LD   DE,TrapOffset-StateBase
@@ -528,17 +555,15 @@ EmitRunEnding:
             RET  C
 .if TargetStreamingOutput
             LD   DE,RunState-StateBase
-            CALL TargetStateAddress
+            CALL EmitStoreTargetStateA
 .else
             LD   HL,RunState
-.endif
             CALL EmitStoreA
+.endif
             RET  C
 .if TargetStreamingOutput
-            LD   HL,(TargetDescriptorPointer)
-            LD   DE,TargetDescriptorEntryBank
-            ADD  HL,DE
-            LD   D,(HL)
+            LD   A,(TargetDescriptorEntryBankValue)
+            LD   D,A
             LD   A,(TargetOutputBank)
             CP   D
             JR   Z,EmitRunEndingLocal
@@ -564,11 +589,11 @@ EmitRunEndingLocal:
 EmitUnhandledTrapPrefix:
 .if TargetStreamingOutput
             LD   DE,TrapError-StateBase
-            CALL TargetStateAddress
+            CALL EmitStoreTargetStateA
 .else
             LD   HL,TrapError
-.endif
             CALL EmitStoreA
+.endif
             RET  C
             LD   A,6
             JR   EmitLoadAImmediate
