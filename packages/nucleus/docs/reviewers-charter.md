@@ -116,9 +116,12 @@ declarations. The target profile supplies bounded regions for one flat 16-bit
 mapping. The compiler assigns offsets within those regions and reports the
 resulting addresses.
 
-The compiler has no bank selector, bank identity, bank-switching operation, or
-cross-bank call model. A host may package separately compiled artifacts into a
-banked device image, but that packaging does not change either compilation.
+Banked ROM is assembled from one flat compilation per bank. The compiler has no
+bank selector, bank-switching instruction, raw cross-bank address, or alternate
+return convention. The host places the artifacts at device offsets, and the
+target adapter implements outbound calls through typed service identifiers. A
+primary artifact initializes shared writable state; secondary artifacts use the
+specified reuse entry and must not repeat the copy or clear.
 
 Nucleus defines no interrupt routine, interrupt or restart vector declaration,
 interrupt-reentrant activation model, or interrupt-safe service guarantee. The
@@ -410,7 +413,8 @@ Do not present any of the following as a routine correction or size cleanup:
 - general runtime aggregate constructors;
 - arrays of arrays, open arrays, or slices;
 - exception unwinding;
-- interrupt routines, vector declarations, or a compiler-visible banking model;
+- interrupt routines, vector declarations, raw bank-address operations, or
+  bank selectors in source;
 - a portable bytecode or interpreter as an active path;
 - removal of required diagnostics without explicit approval;
 - conflation of compiler, workspace, target-runtime, and activation budgets;

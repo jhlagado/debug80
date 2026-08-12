@@ -205,7 +205,7 @@ The semantic-operation boundary may support later direct backends for other Z80 
 
 Nucleus 0.1 defines no interrupt routine, interrupt or restart vector declaration, interrupt-reentrant calling convention, or interrupt-safe service guarantee. The compiler emits no vector table. A target may interrupt a Nucleus program only through a handler outside the language that preserves the program's machine state and does not enter a Nucleus routine or service.
 
-Each compilation targets one flat 16-bit address mapping. Bank selection, bank-switched packaging, and calls between separately built bank images belong to the execution environment and do not add a source construct, compiler address-space identity, or alternate calling convention.
+Each compilation targets one flat 16-bit address mapping. A banked application may combine several separately compiled artifacts whose target addresses are numerically equal but whose host device offsets differ. Bank selection, packaging, and calls between those artifacts belong to the execution environment and do not add a source construct, compiler address-space identity, or alternate return convention.
 
 ### 2.8 Evidence and feature admission
 
@@ -2793,6 +2793,8 @@ These contracts support streaming programs without exposing a filesystem. Nucleu
 
 The implementation enters its implicit startup path before `main`. Startup establishes explicit program-variable initializers, establishes zero values for the remaining program variables, and then transfers to `main`. These operations are complete before source execution begins and are not source-callable. The environment supplies no command-line arguments or implicit source values. Source code obtains input only through the predefined services.
 
+In a banked target composition, one primary artifact may establish the common writable state before a secondary artifact is entered. A secondary artifact may then use a reuse entry that performs no copy or clear. The target composition remains responsible for ensuring that every variable visible to the secondary artifact already has the value this specification requires before its `main` begins.
+
 Normal return from `main` terminates successfully. Nucleus 0.1 has no source statement for process exit status or immediate successful termination. Failure returned from `main` and every safety trap terminate unsuccessfully under Chapter 15.
 
 The external representation of success, recoverable-error codes, and trap reasons is implementation-defined only where the Z80 runtime and backend contract explicitly says so. That representation must preserve the source-level distinction among normal termination, unhandled recoverable error, and each required trap reason.
@@ -2803,7 +2805,7 @@ An environment may implement services with CP/M calls, a monitor, port I/O, host
 
 Arbitrary BIOS calls, machine-code-call declarations, inline assembly, memory peeks and pokes, port access, and callbacks are excluded from the safe source boundary. A later service must have a typed target-independent contract and pass the measured admission rule before it enters the standard set.
 
-The target adapter may place one artifact in ROM, loaded RAM, or another flat Z80 mapping while preserving the same startup and source semantics. Banked device-image assembly and bank selection remain host or monitor operations outside Nucleus 0.1. They do not change the meaning of a compilation unit or suppress its required initialization.
+The target adapter may place one artifact in ROM, loaded RAM, or another flat Z80 mapping while preserving the same startup and source semantics. It may also package several artifacts into bank-switched ROM and implement a typed service through a monitor far-call. Source code supplies neither a bank number nor a target address. The adapter performs bank selection, and the callee returns through its ordinary routine ABI.
 
 ## 17. Complete grammar
 

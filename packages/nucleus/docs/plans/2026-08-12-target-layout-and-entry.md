@@ -53,9 +53,10 @@ The source manifest selects source parts and their order. It contains no target
 addresses. The target profile selects memory regions and a runtime revision. It
 contains no source names.
 
-The compiler receives one flat 16-bit target mapping per compilation. It has no
-bank selector, bank identity, cross-bank fixup, or bank-switching calling
-convention.
+The compiler receives one flat 16-bit target mapping per compilation. A banked
+application is assembled from several such compilations. The compiler has no
+bank selector, cross-bank address, or bank-switch instruction; the target
+adapter and host packaging supply those operations.
 
 ### Interrupts and vectors
 
@@ -69,16 +70,50 @@ cannot enter a Nucleus routine or service.
 
 ### Banking
 
-Bank-switched ROM packaging is outside this design. A host may place separately
-compiled artifacts into a device image, and a monitor may supply bank services,
-but neither operation changes a Nucleus compilation. No startup-suppression
-mode, shared-RAM convention, selector field, or bank service enters this slice.
+Banked ROM is supported without changing the compiler's flat address model.
+One compilation produces one bank. For the four-bank TECM8 arrangement, every
+bank uses the same target mapping:
+
+```text
+image       $8000 + $4000
+bank 0      device offset $0000
+bank 1      device offset $4000
+bank 2      device offset $8000
+bank 3      device offset $C000
+```
+
+The host places each compilation's address-tagged records at the selected
+device offset. Those offsets are packaging coordinates, not Z80 addresses, and
+never enter generated code.
+
+`Tecm8FarCall` installs a return stub in fixed ROM before selecting the callee's
+bank. A bank entered at `$8000` therefore reaches its ordinary Nucleus entry,
+and its eventual `RET` reaches the monitor stub, which restores the caller's
+bank. The generated routine ABI needs no far-return convention.
+
+Calls from Nucleus into another bank use a target system-service binding. The
+binding selects a service through the monitor's `RST 10h` interface; generated
+code never contains a raw `(bank, target)` pair and never writes `SYS_CTRL`.
+Parameters and results use the existing service boundary and always-visible
+RAM. A bank that exposes its `main` as a service receives any application
+service identifier through agreed shared RAM because `main` has no source
+parameters.
+
+Bank 0 uses normal startup and establishes shared writable state. A non-entry
+bank uses reuse startup: it emits only the entry transfer to `main`, emits no
+initialized-variable load image, and performs no copy or BSS clear. Repeating
+normal startup would destroy the state established by bank 0.
+
+Every bank manifest lists the same shared-layout source part first and uses the
+same writable base. This is a target composition convention rather than a
+compiler comparison. A later hardening may place a layout digest in each map so
+the host can reject mismatched banks.
 
 ## Human profile and compiler descriptor
 
 A human-facing profile may describe devices, access permissions, filenames,
-and other adapter concerns. The adapter validates those properties and reduces
-the profile to seven words:
+device offsets, and other adapter concerns. The adapter validates those
+properties and reduces the profile to seven words plus one startup policy:
 
 ```text
 runtimeIdentity
@@ -88,6 +123,7 @@ writableBase
 writableCapacity
 stackBase
 stackCapacity
+startupPolicy        initialize | reuse
 ```
 
 `image` contains startup, the selected runtime, generated code, aggregate
@@ -96,6 +132,11 @@ initialized variables followed immediately by BSS.
 
 `stackCapacity == 0` selects inherited-stack mode and requires
 `stackBase == 0`. A nonzero pair selects an established stack region.
+
+`startupPolicy` does not identify a bank. `initialize` establishes program
+variables before `main`; `reuse` enters `main` without an initial-value image,
+copy, or clear. Banked packaging is the first consumer, but the policy itself is
+only an entry-state contract.
 
 Each region uses base plus capacity rather than base plus an inclusive limit.
 Validation calculates its mathematical end with a seventeenth bit. A region
@@ -209,6 +250,11 @@ the same terminal discipline.
 The program has one published entry, `imageBase`. There is no additional entry
 name, source vector, reset declaration, or interrupt table.
 
+With `startupPolicy == reuse`, startup consists only of the patched entry
+transfer. Reuse mode requires inherited-stack operation. It emits no
+initialized-variable image and performs no copy or BSS clear; the target
+composition must already have established the shared writable state.
+
 ## Stack modes
 
 ### Inherit
@@ -256,7 +302,9 @@ two address classes.
 
 The compiler publishes address-tagged records in memory. It does not publish
 Intel HEX text, raw binaries, `.COM` files, serial frames, padding, archives, or
-containers. Host encoders produce those forms from the committed records.
+containers. Host encoders produce those forms from the committed records. One
+compilation produces one artifact; a banked ROM is several artifacts placed at
+device offsets by the host.
 
 Output remains buffered until commit. Streaming may transport committed records
 after publication; it may not expose tentative bytes during compilation because
@@ -265,6 +313,7 @@ that would violate rollback.
 The published map includes:
 
 - runtime identity;
+- startup policy;
 - entry address;
 - image record addresses and used lengths;
 - initialized-data and BSS run extents;
@@ -280,6 +329,7 @@ Before publication, the compiler and adapter establish:
 
 - every region's mathematical end is at most `$10000`;
 - the runtime identity matches the compiler;
+- the startup policy is `initialize` or `reuse`;
 - writable is wholly inside or wholly outside image;
 - image and writable used bytes fit their capacities;
 - initialized-data load and run extents have equal lengths;
@@ -290,6 +340,8 @@ Before publication, the compiler and adapter establish:
   range;
 - an established stack is disjoint and large enough for its two-byte saved-SP
   slot plus the reported requirement;
+- reuse startup uses inherited-stack mode, emits no initialized-data load
+  image, and emits no copy or clear operation;
 - every staging write fits its independent capacity;
 - every address-tagged record lies inside the image region; and
 - a late failure restores every previously published byte, record, size,
@@ -307,6 +359,7 @@ runtime identity  nucleus-z80-0.1
 image             $8000 + $4000
 writable          $2000 + $2000
 stack             $7000 + $0F00
+startup           initialize
 ```
 
 The monitor enters `$8000`. Startup copies initialized values from their final
@@ -319,10 +372,21 @@ runtime identity  nucleus-z80-0.1
 image             $0100 + $6F00
 writable          $6000 + $0800
 stack             inherit
+startup           initialize
 ```
 
 The writable region lies inside the loaded image. Initialized bytes are already
 at their runtime addresses, so startup omits the copy and clears only BSS.
+
+### TECM8 banked ROM
+
+Each bank is a separate compilation with `image $8000 + $4000`. Bank 0 selects
+`startup initialize`; banks 1 through 3 select `startup reuse`. The host places
+their records at device offsets `$0000`, `$4000`, `$8000`, and `$C000`.
+
+All four manifests begin with the same shared-RAM declaration part and use the
+same writable base. The monitor far-calls `$8000` in the selected bank and
+restores the prior bank when the callee returns normally.
 
 ## Feasibility and gates
 
@@ -355,9 +419,13 @@ increment reaches 600 bytes.
 6. Merge initialized data and BSS into one writable-region allocation.
 7. Add inherited and established stack proofs, including restoration on normal,
    failure, and trap exits.
-8. Publish address-tagged records and the programmer-facing map.
-9. Force divergent late failures and prove complete rollback.
-10. Run a read-only adversarial correctness review, measure compression, and
+8. Add initialize/reuse startup policies and prove that a secondary bank cannot
+   copy or clear shared state.
+9. Prove the TECM8 packaging map and the service-ID far-call boundary without
+   adding a bank address to generated code.
+10. Publish address-tagged records and the programmer-facing map.
+11. Force divergent late failures and prove complete rollback.
+12. Run a read-only adversarial correctness review, measure compression, and
     run a second correctness-and-size review before commit.
 
 Every step reports compiler code, immutable data, core, workspace, generated
@@ -365,7 +433,8 @@ records, startup bytes, runtime, instruction count, and T-states separately.
 
 ## Explicitly outside this slice
 
-- banking, selectors, bank-aware calls, and startup suppression;
+- compiler-visible bank selectors, raw cross-bank addresses, and generated
+  `SYS_CTRL` writes;
 - interrupt handlers, vectors, and restart declarations;
 - multiple writable regions or multiple startup copy records;
 - per-object placement or alignment;
