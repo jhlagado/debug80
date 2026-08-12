@@ -21,6 +21,8 @@ package does not govern Nucleus.
 The current authorities are:
 
 - [Nucleus 0.1 Language Specification](docs/specification.md)
+- [Nucleus Target System Specification](docs/target-system-specification.md)
+- [Nucleus Object Stream Format](docs/nucleus-object-format.md)
 - [Nucleus Z80 Runtime and Backend Contract](docs/z80-runtime-contract.md)
 - [Nucleus 0.1 Implementation Plan](docs/implementation-plan.md)
 - [Nucleus reviewer's charter](docs/reviewers-charter.md)

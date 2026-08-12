@@ -29,17 +29,19 @@ Apply the following authority order:
 2. The [Nucleus Target System Specification](target-system-specification.md)
    governs target profiles, program images, startup, entry, and banked-program
    composition.
-3. The [Nucleus Z80 Runtime and Backend Contract](z80-runtime-contract.md)
+3. The [Nucleus Object Stream Format](nucleus-object-format.md) governs binary
+   object framing, record payloads, patch application, integrity, and commit.
+4. The [Nucleus Z80 Runtime and Backend Contract](z80-runtime-contract.md)
    governs packed representation, direct-code integrity, runtime services,
    trap records, and direct Z80 execution.
-4. Explicit project-owner decisions govern work that the specifications still
+5. Explicit project-owner decisions govern work that the specifications still
    mark as open.
-5. Executable tests, analyzers, and measurements provide evidence. They do not
+6. Executable tests, analyzers, and measurements provide evidence. They do not
    amend a specification when they disagree with it.
-6. Design notes, old reports, implementation sketches, and repository history
+7. Design notes, old reports, implementation sketches, and repository history
    are non-normative.
 
-Review the current revisions of both authorities. Do not reconstruct the
+Review the current revisions of all authorities. Do not reconstruct the
 design from old commits, superseded notes, or historical discussions.
 
 ## Project objective
@@ -108,10 +110,11 @@ committed generation; a failed compilation leaves an uncommitted stream that no
 loader may run.
 
 Patch records contain final bytes rather than symbols or relocation
-expressions. Applying them is materialization, not linking. A TEC-FS adapter may
-store the object sequentially, a RAM loader may materialize it into an isolated
-load area, and a host utility may construct ROM bank images. ROM programming
-remains a separate tool concern.
+expressions. Applying them is materialization, not linking. The normative NOBJ
+format fixes their framing and integrity rules. A TEC-FS adapter may store the
+object sequentially, a RAM loader may materialize it into an isolated load
+area, and a host utility may construct ROM bank images. ROM programming remains
+a separate tool concern.
 
 ### Source semantics are independent of representation
 
@@ -359,8 +362,8 @@ language and direct-Z80 runtime contracts:
 - helper calls versus inlined hot paths;
 - physical Z80 register allocation;
 - activation-state placement;
-- compact fixup-table and object-record encoding details within the settled
-  append-only stream contract; and
+- the compact compiler fixup table and logical sink-call ABI within the settled
+  NOBJ wire format; and
 - the complete measured size and timing of the compiler and target runtime.
 
 An experiment may change one of these choices only after preserving conformance
@@ -369,9 +372,11 @@ or interpreter requires an explicit project-owner redesign decision.
 
 ## Review duties
 
-A substantive review must examine the complete current language specification
-and the complete current Z80 runtime and backend contract in reader order.
-Search results and old summaries are insufficient substitutes for that read.
+A substantive review must examine every current authority relevant to its
+scope in reader order. A target-publication or banking review therefore reads
+the language specification, target-system specification, NOBJ format, and Z80
+runtime contract. Search results and old summaries are insufficient substitutes
+for that read.
 
 Reviewers should test the following boundaries aggressively:
 
@@ -387,8 +392,10 @@ Reviewers should test the following boundaries aggressively:
    changed meaning.
 8. Agreement between the prose, machine-readable trap and service assignments,
    generated-code proofs, grammar analyzer, and conformance examples.
-9. Evidence behind every Z80 byte and timing claim.
-10. Prose quality under the project's human-writing standard: exact agency,
+9. NOBJ record framing, monotonic extents, map consistency, CRC coverage,
+   missing-commit rejection, and storage-generation atomicity.
+10. Evidence behind every Z80 byte and timing claim.
+11. Prose quality under the project's human-writing standard: exact agency,
     direct wording, stable terms, verified examples, no stale history or
     provenance, and no mechanical filler.
 
@@ -443,6 +450,8 @@ Do not present any of the following as a routine correction or size cleanup:
 - a portable bytecode or interpreter as an active path;
 - a second source pass, per-bank emission replay, or compiler-resident complete
   bank images as the ordinary publication model;
+- adapter-defined alternatives to the NOBJ wire format or symbolic linker
+  requests disguised as patch records;
 - removal of required diagnostics without explicit approval;
 - conflation of compiler, workspace, target-runtime, and activation budgets;
 - estimates presented as Z80 measurements; or

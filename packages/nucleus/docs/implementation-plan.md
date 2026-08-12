@@ -5,10 +5,13 @@
 This document records the construction order, measurement method, and readiness
 gates for the first Nucleus compiler and Z80 execution system. It is
 non-normative. The Nucleus language specification governs source syntax and
-semantics. The [Nucleus Z80 Runtime and Backend Contract](z80-runtime-contract.md)
-governs packed representation, generated-code integrity, services, traps, and
-runtime obligations. When this plan conflicts with an authority, the plan must
-be corrected.
+semantics. The [Nucleus Target System Specification](target-system-specification.md)
+governs target profiles, startup, entry, and banking. The
+[Nucleus Z80 Runtime and Backend Contract](z80-runtime-contract.md) governs
+packed representation, generated-code integrity, services, traps, and runtime
+obligations. The [Nucleus Object Stream Format](nucleus-object-format.md)
+governs binary output framing, image and patch records, integrity, and commit.
+When this plan conflicts with an authority, the plan must be corrected.
 
 The compiler and target runtime are handwritten Z80 assembly. Direct Z80 code
 generation is the sole active implementation path. The compiler's checked
@@ -1140,9 +1143,10 @@ not change.
 
 The [target-system specification](target-system-specification.md) defines the
 approved shape for target profiles, startup, runtime vectors, and one-program
-banking. This section records implementation order, budget, and unresolved
-representation choices only. It does not amend that specification or the Z80
-runtime contract.
+banking. The [object-stream format](nucleus-object-format.md) defines the exact
+NOBJ 0.1 wire representation. This section records implementation order,
+budget, and unresolved compiler representations only. It does not amend either
+specification or the Z80 runtime contract.
 
 The `d611a696` baseline is 13,811 compiler-code bytes plus 393 immutable bytes,
 for a 14,204-byte core. Workspace is 3,602 bytes and the selected runtime is
@@ -1164,6 +1168,12 @@ placeholders when necessary, and appends fully resolved replacement-byte patch
 records after all image records. It then appends the map and terminal commit.
 It does not retain complete bank images, replay the semantic transcript per
 bank, or ask the consumer to resolve symbols.
+
+NOBJ 0.1 uses a three-byte record header, dense record tags, little-endian
+fields, a fixed versioned begin record, one variable map, and a CRC-16-covered
+terminal commit. The compiler-facing logical calls may be smaller than the wire
+encoder, because the storage sink supplies profile-only fields, framing, and
+the running CRC.
 
 The storage adapter owns atomic generations. An aborted or truncated stream has
 no commit and cannot replace the preceding committed object. This removes the
@@ -1192,8 +1202,8 @@ Implementation proceeds in measured increments:
    writable allocation;
 4. add inherited and top-of-writable established stack modes, proving incoming
    `SP` restoration on success, unhandled failure, and traps;
-5. add the append-only object sink with deliberately unequal compiler and
-   target addresses, plus image, patch, map, commit, and abort proofs;
+5. add the append-only NOBJ sink with deliberately unequal compiler and target
+   addresses, plus byte-exact image, patch, map, CRC, commit, and abort proofs;
 6. install and call the RAM-resident service and terminal vectors;
 7. implement source-part bank mapping, bank-tagged output records, and one
    entry pair, including entry-bank source ordering and exact bank-capacity
@@ -1240,8 +1250,9 @@ requirement are both known.
 | active control frames                   |          8 | ten-byte parser frames                                                                | capacity diagnostic                                                              | nested structured-control proofs                                              |
 | dynamic labels                          |         27 | byte ordinals; 27 reserved for callable `main`, 28–31 for retained routines           | capacity diagnostic                                                              | exact allocation boundary and callable-main proofs                            |
 | branch fixups                           |         32 | three-byte absolute records                                                           | capacity diagnostic                                                              | bounded resolver and generated branch proofs                                  |
-| object-stream patch records             |       open | bounded compiler metadata; final replacement bytes are appended after image records   | capacity diagnostic before an unresolved site or partial record is emitted       | exact-fill and rejected-next-patch proof required before target work          |
-| object-stream image payload per record  |       open | sequential external record; no compiler-resident bank image                           | output-service failure or target-capacity diagnostic                             | boundary and interrupted-write proof required before target work              |
+| object-stream total records             |     65,535 | NOBJ `COMMIT.recordCount` word                                                        | output-service failure or capacity diagnostic before count wrap                  | exact framing and count boundary required before target work                  |
+| object-stream pending patch records     |       open | bounded compiler fixup metadata; final replacement bytes are appended after images    | capacity diagnostic before an unresolved site or partial record is emitted       | exact-fill and rejected-next-patch proof required before target work          |
+| object-stream image or patch bytes      |     65,532 | one NOBJ record with a word payload length and three-byte bank/address prefix         | output-service failure or target-capacity diagnostic                             | 1/65,532/65,533-byte framing boundaries; interrupted-write proof              |
 | committed object generations            |          1 | storage-layer current-generation reference; incomplete generation remains uncommitted | output-service failure; previous commit remains current                          | divergent late-failure, missing-commit, and successful replacement proofs     |
 | structured-initializer depth            |          4 | recursive parser state; total nodes are streamed and not retained                     | capacity diagnostic                                                              | exact nesting boundary and wide 256-element initializer                       |
 | initialized program-data bytes          |      1,024 | prefix of the private compiler image plus a retained word length                      | program-data capacity diagnostic                                                 | exact four-string-plus-tail image and rejected following byte                 |
@@ -1298,8 +1309,8 @@ affected transfer to fall back to `JP`.
 Before a new language stage begins:
 
 - outstanding adversarial findings for the current stage are resolved;
-- the language specification, direct-Z80 contract, reviewer charter, and
-  published editions agree;
+- the language, target-system, NOBJ, and direct-Z80 authorities, reviewer
+  charter, and published editions agree;
 - machine-readable trap and service assignments match the direct runtime
   contract;
 - every Chapter 21 program has a source-level expected result;

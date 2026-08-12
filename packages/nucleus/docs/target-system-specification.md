@@ -11,8 +11,9 @@ banked-program composition for Nucleus 0.1. The
 [language specification](specification.md) governs source meaning. The
 [Z80 runtime and backend contract](z80-runtime-contract.md) governs packed
 representation, generated-code integrity, runtime vectors, and the private Z80
-ABI. This document governs the boundary between those authorities and a target
-adapter.
+ABI. The [Nucleus Object Stream Format](nucleus-object-format.md) governs the
+binary records used to publish and materialize the resulting object. This
+document governs the boundary between those authorities and a target adapter.
 
 The object-stream and materialization rules below change target publication,
 not source syntax or source meaning. They require no language-specification
@@ -385,6 +386,10 @@ valid in every bank.
 
 ### 9.1 Single-pass output boundary
 
+The [Nucleus Object Stream Format](nucleus-object-format.md) defines the exact
+record tags, framing, fields, byte order, CRC, and commit representation. This
+chapter defines their target-system meaning.
+
 One compilation produces one logical append-only object stream. The compiler
 reads the ordered source stream once and consumes its private checked semantic
 transcript once. It does not perform a second source pass, replay emission once
@@ -394,7 +399,7 @@ The stream contains these logical records in order:
 
 1. one begin record carrying the target and runtime identities needed to
    interpret the stream, including the image fill byte;
-2. zero or more image records, each carrying a bank ordinal, a 16-bit target
+2. one or more image records, each carrying a bank ordinal, a 16-bit target
    address, and bytes to place there;
 3. zero or more patch records, each carrying a bank ordinal, a 16-bit target
    address, and the complete replacement bytes;
@@ -412,10 +417,10 @@ after the image-record phase. A patch contains final bytes, not a symbol name,
 relocation expression, or request for name resolution. The consumer therefore
 performs byte replacement, not linking.
 
-The image records collectively supply every non-fill byte in the logical
-artifact, including startup, the selected runtime images, generated code,
-read-only data, and initialized-data load bytes. Payload bytes occupy increasing
-target addresses and cannot cross a bank boundary.
+Image records supply the initial startup, selected runtime, generated-code,
+read-only-data, and initialized-data-load bytes. Image and patch records
+together determine every non-fill byte in the committed used extents. Payload
+bytes occupy increasing target addresses and cannot cross a bank boundary.
 
 The compiler publishes no Intel HEX text, raw binary, `.COM` file, padding,
 serial framing, archive, or physical device-image container. Those remain
@@ -448,8 +453,8 @@ A materializer validates the complete committed stream, creates each bank or
 flat image with the target profile's fill byte, applies image records, applies
 patch records in stream order, and publishes the resulting image only after all
 records pass their checks. It must reject an out-of-range bank, address, extent,
-overlapping patch, patch outside previously supplied image bytes, duplicate
-commit, record after commit, or incomplete stream.
+descending or overlapping record, patch outside the committed used extent,
+duplicate commit, record after commit, or incomplete stream.
 
 A RAM program loader may perform the same work directly into a private or
 otherwise non-runnable load area, then transfer control through the committed

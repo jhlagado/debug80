@@ -33,6 +33,10 @@ The [Nucleus Target System Specification](target-system-specification.md)
 governs target profiles, image composition, startup, entry, and banked-program
 placement. This contract defines their direct-Z80 representation.
 
+The [Nucleus Object Stream Format](nucleus-object-format.md) governs the binary
+record tags, framing, payloads, patch order, integrity check, and terminal
+commit used to publish that representation.
+
 The implementation plan and reviewer's charter are non-normative. Tests,
 proofs, and measurements provide evidence; they do not amend either authority.
 
@@ -668,9 +672,10 @@ depends on before publication. At minimum it checks:
 
 ### 9.2 Append-only object records
 
-The compiler-and-adapter object interface is an ordered logical record stream.
-The adapter adds profile-only fields, including image fill, without adding them
-to the compact compiler descriptor. The required record kinds and fields are:
+The compiler-and-adapter object interface is the ordered logical record stream
+encoded by the [Nucleus Object Stream Format](nucleus-object-format.md). The
+adapter adds profile-only fields, including image fill, without adding them to
+the compact compiler descriptor. Its record classes are:
 
 | Record   | Required fields                                                                                            |
 | -------- | ---------------------------------------------------------------------------------------------------------- |
@@ -682,15 +687,17 @@ to the compact compiler descriptor. The required record kinds and fields are:
 
 A flat object uses bank ordinal zero and one image region. Exactly one `begin`
 record comes first. Image records follow it and do not overlap one another.
-They collectively provide every non-fill runtime, startup, generated-code,
-read-only, and initialized-load byte. A payload occupies increasing target
-addresses and cannot cross a bank boundary.
+They provide the initial runtime, startup, generated-code, read-only, and
+initialized-load bytes. Image and patch records together determine every
+non-fill byte in the committed used extents. A payload occupies increasing
+target addresses and cannot cross a bank boundary.
 
-Patch records follow the last image record. A patch must lie wholly within
-bytes supplied by earlier image records, patches must not overlap, and every
-replacement byte must already be fully resolved and range-checked. Exactly one
-map record follows the patches. Exactly one commit record comes last. No record
-may follow commit.
+Patch records follow the last image record. A patch may replace an emitted byte
+or an implicit image-fill byte. Patches must be monotonic and non-overlapping
+within each bank, remain inside the committed used extent, and contain only
+fully resolved and range-checked replacement bytes. Exactly one map record
+follows the patches. Exactly one commit record comes last. No record may follow
+commit.
 
 The compiler may retain bounded source symbols and fixup metadata while it
 emits image records. It may not retain complete bank images merely to patch
@@ -699,12 +706,9 @@ during the same compilation, and appends the final patch records after image
 emission. The patch consumer performs byte replacement only. It never resolves
 a source name or relocation expression and is not a linker.
 
-The logical record contract is independent of file framing. A serialized
-encoding must preserve every field, frame records unambiguously, and include
-length and integrity information sufficient to reject truncation or a damaged
-commit. Intel HEX, raw binary, `.COM`, serial framing, device images, and the
-exact stored-object envelope remain adapter encodings rather than compiler
-output formats.
+NOBJ is the standard stored-object envelope. Intel HEX, raw binary, `.COM`,
+serial framing, and device images remain materialized delivery formats rather
+than compiler output formats.
 
 ### 9.3 Atomic commit and consumption
 
@@ -762,6 +766,9 @@ diagnostic positions, and capacity boundaries.
 A module or boundary proof may test a smaller path. It must identify the
 language or contract rule it establishes and may not substitute a fixed
 program template for a claimed general compiler feature.
+
+Object-stream producer, materializer, and storage proofs cover the required
+cases in the NOBJ format separately from source-language execution.
 
 ### 10.2 Measurement reports
 
