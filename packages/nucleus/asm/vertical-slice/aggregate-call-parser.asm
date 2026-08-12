@@ -622,15 +622,20 @@ Stage7EmitAggregateSymbolRoot:
             LD   (Stage7PathType),A
             LD   A,D
             AND  SymbolClassMask
+            JR   Z,Stage7EmitAggregateRootReadOnly
             CP   SymbolClassProgram
             JR   NZ,Stage7EmitAggregateRootParameter
             LD   A,SemanticLoadProgramAlias
+Stage7EmitAggregateRootAddress:
             PUSH BC
             CALL SemanticSinkOperation
             POP  HL
             RET  C
             CALL Stage7EmitWord
             JR   Stage7EmitAggregateRootReady
+Stage7EmitAggregateRootReadOnly:
+            LD   A,SemanticLoadReadOnlyAlias
+            JR   Stage7EmitAggregateRootAddress
 Stage7EmitAggregateRootParameter:
             CP   SymbolClassParameter
             JP   NZ,TypedTypeFailure
@@ -1333,6 +1338,12 @@ Stage7AggregateReturnFailure:
 
 ; D contains the aggregate symbol info and DeclarationPayload its root offset.
 Stage7ParseAggregateAssignment:
+            LD   A,D
+            AND  SymbolClassMask
+            JR   NZ,Stage7AggregateAssignmentWritable
+            LD   A,DiagnosticReadOnlyAssignment
+            JP   CompilerSetDiagnostic
+Stage7AggregateAssignmentWritable:
             CALL Stage7EmitAggregateSymbolRoot
             RET  C
             CALL Stage7ParsePathSuffix

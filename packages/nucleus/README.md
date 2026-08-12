@@ -40,6 +40,11 @@ bounded strings, without turning aggregate aliases into runtime types.
 The flat-manifest adapter preserves ordered source-part identities and
 diagnostic names outside the compiler core.
 
+Aggregate constants use the same complete record, fixed-array, and bounded-
+string initializers as program variables. Their direct named roots are
+read-only; ordinary aggregate aliases deliberately carry no transitive
+read-only qualification.
+
 Recoverable errors remain explicit and local: `else fail` propagates one
 failable call, same-line `handle NAME ... end` handles it, and `return` denotes
 success only. These forms lower to ordinary Z80 conditional control flow, not

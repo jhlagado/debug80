@@ -253,9 +253,10 @@ AggregateSymbolTypeLimit .equ AggregateSymbolTypeBase+SymbolCapacity
 
 StaticImageLength       .equ AggregateSymbolTypeLimit ; word
 .if SegmentedOutput
-; One complete object is built in scratch, then either appended to the
-; prepared data image or discarded into the BSS allocation account.
-AggregateInitializerBase .equ StaticImageLength+2
+ReadOnlyImageLength     .equ StaticImageLength+2 ; word
+; One complete object is built in scratch. Published rodata keeps initialized
+; data first and aggregate-constant bytes in a read-only suffix.
+AggregateInitializerBase .equ ReadOnlyImageLength+2
 AggregateInitializerCapacity .equ 1024
 StaticImageBase         .equ AggregateInitializerBase+AggregateInitializerCapacity
 StaticImageCapacity     .equ 1024
@@ -381,6 +382,8 @@ DiagnosticProgramDataCapacity .equ 81
 DiagnosticStringCapacity .equ 90
 DiagnosticAssertionFailed .equ 91
 DiagnosticOutputSegment .equ 92
+DiagnosticReadOnlyCapacity .equ 93
+DiagnosticReadOnlyAssignment .equ 94
 DiagnosticRecordEmpty  .equ 82
 DiagnosticTypeBound    .equ 83
 

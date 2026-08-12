@@ -5,12 +5,14 @@ HybridLL1RetainDeclarationName:
 HybridLL1ConstantExpression:
 HybridLL1FinishConstantExpression:
 HybridLL1CommitConstant:
+HybridLL1SaveAggregateConstantType:
+HybridLL1StaticInitializer:
+HybridLL1FinishProgramInitializer:
+HybridLL1CommitAggregateConstant:
 HybridLL1BeginAssert:
 HybridLL1CommitAssert:
 HybridLL1SaveProgramType:
 HybridLL1CommitProgramVariable:
-HybridLL1StaticInitializer:
-HybridLL1FinishProgramInitializer:
 HybridLL1BeginRecord:
 HybridLL1CommitRecord:
 HybridLL1BeginRecordField:

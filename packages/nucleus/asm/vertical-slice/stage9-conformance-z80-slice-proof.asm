@@ -438,6 +438,46 @@ Chapter21_19TypePoint:
             .db "end",10
 Chapter21_19TypeSourceEnd:
 
+Chapter21_20Source:
+            .db "record Pair",10
+            .db "    left as u8",10
+            .db "    right as u16",10
+            .db "end",10
+            .db 10
+            .db "const Origin as Pair = (7, 300)",10
+            .db "const Values as u8[3] = [1, 2, 3]",10
+            .db "const Text as string[3] = \"A\\0B\"",10
+            .db "var target as Pair",10
+            .db 10
+            .db "sub mutate(item as Pair)",10
+            .db "    item.left = 9",10
+            .db "end",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    target = Origin",10
+            .db "    if target.left = 7 and Values[1] = 2 and Text.length = 3 and Text[2] = 'B'",10
+            .db "        mutate(Origin)",10
+            .db "        if Origin.left = 9 and target.left = 7",10
+            .db "            writeOutputByte('Y') else fail",10
+            .db "        end",10
+            .db "    end",10
+            .db "end",10
+Chapter21_20SourceEnd:
+
+Chapter21_20ReadOnlySource:
+            .db "record Pair",10
+            .db "    value as u8",10
+            .db "end",10
+            .db 10
+            .db "const Origin as Pair = (1)",10
+            .db 10
+            .db "sub main()",10
+            .db "    "
+Chapter21_20ReadOnlyPoint:
+            .db "Origin.value = 2",10
+            .db "end",10
+Chapter21_20ReadOnlySourceEnd:
+
 Chapter21_10UnconsumedSource:
             .db "sub readOne() as u8 fails",10
             .db "    var value as u8 = readInputByte() else fail",10
@@ -1263,6 +1303,27 @@ ProofStart:
             LD   IX,Chapter21_19TypePoint-Chapter21_19TypeSource
             LD   HL,Chapter21_19TypeSource
             LD   DE,Chapter21_19TypeSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
+            LD   A,74
+            LD   (ProofCase),A
+            LD   A,83
+            LD   HL,Chapter21_20Source
+            LD   DE,Chapter21_20SourceEnd
+            CALL ProofRunSingle
+            JP   C,ProofFailed
+            LD   A,'Y'
+            CALL ProofCheckOutput
+            JP   C,ProofFailed
+
+            LD   A,75
+            LD   (ProofCase),A
+            LD   A,84
+            LD   B,DiagnosticReadOnlyAssignment
+            LD   IX,Chapter21_20ReadOnlyPoint-Chapter21_20ReadOnlySource
+            LD   HL,Chapter21_20ReadOnlySource
+            LD   DE,Chapter21_20ReadOnlySourceEnd
             CALL ProofExpectDiagnosticSingle
             JP   C,ProofFailed
 

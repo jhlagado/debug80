@@ -145,7 +145,8 @@ TypedOperationTable:
             .dw Stage8BeginHandler    ; 104
             .dw Stage8EndHandler      ; 105
             .dw Stage8BeginCallableMain ; 106
-TypedOperationCount .equ 87
+            .dw Stage7LoadReadOnlyAlias ; 107
+TypedOperationCount .equ 88
 .else
 TypedOperationCount .equ 62
 .endif

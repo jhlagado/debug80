@@ -409,9 +409,19 @@ Stage7EndRoutine:
             LD   A,$C9
             JP   EmitByte
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 Stage7LoadProgramAlias:
             CALL ExpressionProgramAddress
+            JR   Stage7LoadAliasReady
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+Stage7LoadReadOnlyAlias:
+            CALL ReadSemanticWord
+            LD   HL,(StaticImageLength)
+            ADD  HL,DE
+            LD   DE,GeneratedRoDataBase
+            ADD  HL,DE
+Stage7LoadAliasReady:
             LD   A,$21                    ; LD HL,nn
             JP   TypedEmitOpcodeWordPushHL
 

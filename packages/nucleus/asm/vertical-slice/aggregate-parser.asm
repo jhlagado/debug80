@@ -2,9 +2,9 @@
 ;
 ; Types use one-byte IDs. 1..3 are the predefined scalar types; dynamic IDs
 ; index a bounded four-byte descriptor plus a retained word extent. Aggregate
-; storage is allocated only by top-level var declarations. Initializer bytes
-; are written into a private static image which the Z80 backend publishes
-; only after the complete source has succeeded.
+; storage is allocated by top-level variables and aggregate constants.
+; Initializer bytes are staged privately; the Z80 backend publishes them only
+; after the complete source has succeeded.
 
 .routine in A out A,HL clobbers carry,zero,sign,parity,halfCarry,DE
 AggregateTypeAddress:
@@ -137,6 +137,26 @@ AggregateExtentCapacityReady:
 AggregateExtentCapacityFailure:
             LD   A,DiagnosticProgramDataCapacity
             JP   CompilerSetDiagnostic
+
+.if SegmentedOutput
+; The read-only image shares the same 1 KiB proof region as generated rodata,
+; but exhaustion names the declaration class that consumed it.
+.routine in HL out A,HL,carry,zero clobbers sign,parity,halfCarry
+AggregateCheckReadOnlyCapacity:
+            LD   A,H
+            CP   4
+            JR   C,AggregateReadOnlyCapacityReady
+            JR   NZ,AggregateReadOnlyCapacityFailure
+            LD   A,L
+            OR   A
+            JR   NZ,AggregateReadOnlyCapacityFailure
+AggregateReadOnlyCapacityReady:
+            OR   A
+            RET
+AggregateReadOnlyCapacityFailure:
+            LD   A,DiagnosticReadOnlyCapacity
+            JP   CompilerSetDiagnostic
+.endif
 
 .if HybridLL1Full
 AggregateNestedArrayFailure:

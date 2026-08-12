@@ -5,6 +5,7 @@
     "top-level-list": "DiagnosticExpectedTopLevel",
     "top-level-declaration": "DiagnosticExpectedTopLevel",
     "const-declaration": "DiagnosticExpectedTopLevel",
+    "const-declaration-tail": "DiagnosticExpectedEqual",
     "assert-declaration": "DiagnosticExpectedTopLevel",
     "program-var-declaration": "DiagnosticExpectedTopLevel",
     "program-initializer-opt": "DiagnosticExpectedEqual",
@@ -126,11 +127,30 @@
         "TokenConst",
         "TokenName",
         "a:RetainDeclarationName",
+        "const-declaration-tail"
+      ]
+    },
+    {
+      "lhs": "const-declaration-tail",
+      "rhs": [
         "TokenEquals",
         "x:ConstantExpression",
         "a:FinishConstantExpression",
         "TokenNewline",
         "a:CommitConstant"
+      ]
+    },
+    {
+      "lhs": "const-declaration-tail",
+      "rhs": [
+        "TokenAs",
+        "type",
+        "a:SaveAggregateConstantType",
+        "TokenEquals",
+        "x:StaticInitializer",
+        "a:FinishProgramInitializer",
+        "TokenNewline",
+        "a:CommitAggregateConstant"
       ]
     },
     {

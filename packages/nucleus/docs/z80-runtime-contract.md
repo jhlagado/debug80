@@ -148,39 +148,51 @@ transfer, result transfer, and copying may consume it.
 
 Every owned aggregate object and every top-level scalar variable has a fixed
 address and program lifetime. Aggregate fields and array elements occupy their
-containing object's storage. Routine activations contain no owned aggregate
+containing object's storage. Aggregate constants are complete objects in the
+generated read-only-data region. Routine activations contain no owned aggregate
 object.
 
 The compiler determines every program object's address, type, extent, and
-initial bytes before it publishes the generated program. It must reject a data
-layout whose mathematical end exceeds the selected program-data region.
+initial bytes before it publishes the generated program. It retains initialized
+data length, aggregate-constant length, total read-only-data length, and BSS
+length as separate words. Generated read-only data is laid out as the complete
+initialized-RAM image followed immediately by aggregate-constant bytes. A
+constant symbol retains an offset relative to the beginning of that suffix, so
+later initialized declarations cannot change its identity. The compiler must
+reject a layout whose mathematical end exceeds the selected region.
 
 ### 4.2 Initial state
 
 Before `main` begins, every program variable has its language-defined zero or
-explicit static value. The startup path may clear a region and apply explicit
-bytes, copy a complete prepared data image, or emit an equivalent target
-sequence. It must not expose a partly initialized object to source execution.
+explicit static value, and every aggregate constant has its complete declared
+value. The startup path copies only the initialized-RAM prefix of generated
+read-only data, then clears BSS. It does not copy the aggregate-constant suffix.
+It must not expose a partly initialized object to source execution.
 
 Static words use little-endian order. Record and array initializers follow the
 packed layout in Chapter 3. A bounded-string initializer writes its length and
 decoded bytes, zeros payload bytes `L + 1` through `N`, and writes `$00` at
 `N + 1`. Those bytes beyond `L` remain outside source-readable string content.
+The compiler may reuse its existing one-object initializer buffer while
+building either a variable or an aggregate constant; it does not require a
+second read-only-image-sized workspace buffer.
 
 ### 4.3 Program entry and exit
 
 Startup invokes `main` with no source parameters. Successful return terminates
 normally. Failure returned by `main` performs `unhandled-error`. No source
-routine runs before all program data is initialized.
+routine runs before all variables and aggregate constants have their complete
+initial values.
 
 ## 5. Checked access and aggregate copying
 
 ### 5.1 Region checks
 
 A generated access of width `w` at address `a` is permitted only when the
-mathematical half-open region `[a, a + w)` lies within the selected program-data
-region. The calculation must not use wrapped 16-bit arithmetic as evidence that
-the region fits.
+mathematical half-open region `[a, a + w)` lies wholly within either the
+selected program-data region or the generated read-only-data region. The
+calculation must not use wrapped 16-bit arithmetic as evidence that the region
+fits.
 
 A fixed-array access first checks the unsigned index against its declared
 length, then forms `base + index * stride`, and then establishes the complete
@@ -201,6 +213,13 @@ changes. It copies the common fixed extent, including a bounded string's length
 byte, complete capacity, and permanent terminator. Self-assignment has no
 effect. Nucleus types cannot produce proper partial overlap between distinct
 same-type aggregate paths.
+
+The source checker rejects an assignment rooted directly at an aggregate
+constant. The runtime carrier has no read-only bit, so an alias derived from a
+constant uses the same region and copy checks as another aggregate alias. A
+target may map generated read-only data to RAM, ROM, or protected memory. A
+physical write through such an alias may therefore change bytes, be ignored, or
+be rejected by the target; the language requires no dynamic permission check.
 
 The backend may inline the copy, emit a counted loop, or call a shared helper.
 For a Z80 target, `LDIR` is permitted after both complete-region checks. The

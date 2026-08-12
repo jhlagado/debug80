@@ -41,9 +41,9 @@ describe("Stage 7 packed LL(1)", () => {
         "utf8",
       ),
     );
-    expect(grammar.productions).toHaveLength(75);
+    expect(grammar.productions).toHaveLength(77);
     expect(generateStage7Tables()).toContain(
-      "HybridLL1ProductionCount  .equ 65",
+      "HybridLL1ProductionCount  .equ 67",
     );
     expect(generateStage7ProofActions()).toBe(
       readFileSync(
@@ -208,28 +208,28 @@ describe("Stage 7 packed LL(1)", () => {
       outcome.extents.map(({ name, bytes }) => [name, bytes]),
     );
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
-    expect(outcome.instructions).toBe(1_702_823);
-    expect(outcome.cycles).toBe(15_743_156);
-    expect(outcome.extents).toContainEqual({ name: "parser", bytes: 8_765 });
+    expect(outcome.instructions).toBe(2_171_678);
+    expect(outcome.cycles).toBe(20_115_678);
+    expect(outcome.extents).toContainEqual({ name: "parser", bytes: 8_943 });
     expect(outcome.extents).toContainEqual({
       name: "ll1-engine",
       bytes: 230,
     });
     expect(outcome.extents).toContainEqual({
       name: "ll1-tables",
-      bytes: 734,
+      bytes: 755,
     });
     expect(outcome.extents).toContainEqual({
       name: "ll1-actions",
-      bytes: 2_510,
+      bytes: 2_627,
     });
     expect(outcome.extents).toContainEqual({
       name: "compiler-core",
-      bytes: 14_005,
+      bytes: 14_204,
     });
     expect(outcome.extents).toContainEqual({
       name: "compiler-code",
-      bytes: 13_612,
+      bytes: 13_811,
     });
     expect(outcome.extents).toContainEqual({
       name: "compiler-immutable",
@@ -237,18 +237,18 @@ describe("Stage 7 packed LL(1)", () => {
     });
     expect(outcome.extents).toContainEqual({
       name: "compiler-workspace",
-      bytes: 3_600,
+      bytes: 3_602,
     });
     expect(outcome.extents).toContainEqual({
       name: "z80-runtime",
-      bytes: 582,
+      bytes: 596,
     });
     expect(
       (extents.get("parser") ?? -1) -
         (extents.get("ll1-engine") ?? -1) -
         (extents.get("ll1-tables") ?? -1) -
         (extents.get("ll1-actions") ?? -1),
-    ).toBe(5_291);
+    ).toBe(5_331);
   }, 30_000);
 
   it("executes every retained Stage 7 action family", async () => {

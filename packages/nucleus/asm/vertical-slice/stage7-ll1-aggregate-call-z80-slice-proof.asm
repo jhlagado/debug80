@@ -506,6 +506,106 @@ Stage7AggregateResultScalarSource:
             .db "end",10
 Stage7AggregateResultScalarSourceEnd:
 
+Stage7AggregateConstantSource:
+            .db "record Pair",10
+            .db "left as u8",10
+            .db "right as u16",10
+            .db "end",10
+            .db "const Origin as Pair = (7, 300)",10
+            .db "const Values as u8[3] = [1, 2, 3]",10
+            .db "const Text as string[3] = \"A\\0B\"",10
+            ; Declaring initialized data after constants forces the compiler
+            ; to shift the read-only suffix without changing constant offsets.
+            .db "var target as Pair = (1, 2)",10
+            .db "sub mutate(item as Pair)",10
+            .db "item.left = 9",10
+            .db "end",10
+            .db "sub returnOrigin() as Pair",10
+            .db "return Origin",10
+            .db "end",10
+            .db "sub main() fails",10
+            .db "target = Origin",10
+            .db "if target.left = 7 and target.right = 300 and Values[1] = 2 and Text.length = 3 and Text[2] = 'B'",10
+            .db "mutate(Origin)",10
+            .db "if Origin.left = 9 and target.left = 7",10
+            .db "target = returnOrigin()",10
+            .db "if target.left = 9",10
+            .db "writeOutputByte('Y') else fail",10
+            .db "end",10,"end",10,"end",10,"end",10
+Stage7AggregateConstantSourceEnd:
+
+Stage7ReadOnlyWholeAssignmentSource:
+            .db "record Pair",10,"value as u8",10,"end",10
+            .db "const Origin as Pair = (1)",10
+            .db "var target as Pair",10,"sub main()",10
+Stage7ReadOnlyWholeAssignmentPoint:
+            .db "Origin = target",10,"end",10
+Stage7ReadOnlyWholeAssignmentSourceEnd:
+
+Stage7ReadOnlyFieldAssignmentSource:
+            .db "record Pair",10,"value as u8",10,"end",10
+            .db "const Origin as Pair = (1)",10,"sub main()",10
+Stage7ReadOnlyFieldAssignmentPoint:
+            .db "Origin.value = 2",10,"end",10
+Stage7ReadOnlyFieldAssignmentSourceEnd:
+
+Stage7ReadOnlyArrayAssignmentSource:
+            .db "const Values as u8[2] = [1, 2]",10,"sub main()",10
+Stage7ReadOnlyArrayAssignmentPoint:
+            .db "Values[0] = 2",10,"end",10
+Stage7ReadOnlyArrayAssignmentSourceEnd:
+
+Stage7ReadOnlyStringAssignmentSource:
+            .db "const Text as string[2] = \"AB\"",10,"sub main()",10
+Stage7ReadOnlyStringAssignmentPoint:
+            .db "Text[0] = 'C'",10,"end",10
+Stage7ReadOnlyStringAssignmentSourceEnd:
+
+Stage7AggregateConstantIncompleteSource:
+            .db "record Pair",10,"left as u8",10,"right as u8",10,"end",10
+            .db "const Bad as Pair = (1"
+Stage7AggregateConstantIncompletePoint:
+            .db ")",10,"sub main()",10,"end",10
+Stage7AggregateConstantIncompleteSourceEnd:
+
+Stage7AggregateConstantWrongTypeSource:
+            .db "const Bad as u8[1] = [true"
+Stage7AggregateConstantWrongTypePoint:
+            .db "]",10,"sub main()",10,"end",10
+Stage7AggregateConstantWrongTypeSourceEnd:
+
+Stage7AggregateConstantRuntimeSource:
+            .db "const Bad as u8[1] = [readInputByte()"
+Stage7AggregateConstantRuntimePoint:
+            .db "]",10,"sub main()",10,"end",10
+Stage7AggregateConstantRuntimeSourceEnd:
+
+Stage7AggregateConstantScalarTypeSource:
+            .db "const Bad as u8 "
+Stage7AggregateConstantScalarTypePoint:
+            .db "= [1]",10,"sub main()",10,"end",10
+Stage7AggregateConstantScalarTypeSourceEnd:
+
+Stage7ReadOnlyCapacityAcceptedSource:
+            .db "const a as string[253] = \"\"",10
+            .db "const b as string[253] = \"\"",10
+            .db "const c as string[253] = \"\"",10
+            .db "const d as string[253] = \"\"",10
+            .db "const tail as u8[4] = [0,0,0,0]",10
+            .db "sub main()",10,"end",10
+Stage7ReadOnlyCapacityAcceptedSourceEnd:
+
+Stage7ReadOnlyCapacityRejectedSource:
+            .db "const a as string[253] = \"\"",10
+            .db "const b as string[253] = \"\"",10
+            .db "const c as string[253] = \"\"",10
+            .db "const d as string[253] = \"\"",10
+            .db "const tail as u8[4] = [0,0,0,0]",10
+            .db "const "
+Stage7ReadOnlyCapacityRejectedPoint:
+            .db "extra as u8[1] = [0]",10
+Stage7ReadOnlyCapacityRejectedSourceEnd:
+
             .org TargetRuntimeBase
 RuntimeCodeStart:
             .include "loop-z80-runtime.asm"
@@ -1147,6 +1247,172 @@ ProofStart:
             LD   DE,Stage7AggregateResultScalarSourceEnd
             CALL ProofExpectCompileDiagnostic
             JP   C,ProofFailAggregateResultScalar
+
+            ; Aggregate constants retain their complete initialized bytes in
+            ; the rodata suffix. A later data declaration shifts that suffix,
+            ; direct reads/copies remain valid, and passing the alias to a
+            ; writable parameter deliberately permits target mutation.
+            LD   HL,Stage7AggregateConstantSource
+            LD   DE,Stage7AggregateConstantSourceEnd
+            CALL CompileAggregateCallSlice
+            JP   C,ProofFailAggregateConstant
+            LD   HL,(StaticImageLength)
+            LD   DE,3
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailAggregateConstant
+            LD   HL,(ReadOnlyImageLength)
+            LD   DE,11
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailAggregateConstant
+            LD   A,(StaticImageBase)
+            CP   1
+            JP   NZ,ProofFailAggregateConstant
+            LD   A,(StaticImageBase+3)
+            CP   7
+            JP   NZ,ProofFailAggregateConstant
+            LD   A,(StaticImageBase+7)
+            CP   2
+            JP   NZ,ProofFailAggregateConstant
+            LD   A,(StaticImageBase+9)
+            CP   3
+            JP   NZ,ProofFailAggregateConstant
+            LD   A,(StaticImageBase+11)
+            OR   A
+            JP   NZ,ProofFailAggregateConstant
+            CALL EncodeAggregateProgram
+            JP   C,ProofFailAggregateConstant
+            LD   HL,(GeneratedRoDataSize)
+            LD   DE,14
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailAggregateConstant
+            LD   HL,(GeneratedDataSize)
+            LD   DE,3
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailAggregateConstant
+            LD   A,$A5
+            LD   (ProgramDataBase+3),A
+            CALL Reset
+            CALL ProofCallGenerated
+            JP   C,ProofFailAggregateConstant
+            LD   A,(RunState)
+            CP   RunSucceeded
+            JP   NZ,ProofFailAggregateConstant
+            LD   A,(ServiceOutputLength)
+            CP   1
+            JP   NZ,ProofFailAggregateConstant
+            LD   A,(ServiceOutputBase)
+            CP   'Y'
+            JP   NZ,ProofFailAggregateConstant
+            LD   A,(ProgramDataBase)
+            CP   9
+            JP   NZ,ProofFailAggregateConstant
+            LD   A,(ProgramDataBase+3)
+            CP   $A5
+            JP   NZ,ProofFailAggregateConstant
+            LD   A,(GeneratedRoDataBase+3)
+            CP   9
+            JP   NZ,ProofFailAggregateConstant
+
+            LD   A,DiagnosticReadOnlyAssignment
+            LD   BC,Stage7ReadOnlyWholeAssignmentPoint-Stage7ReadOnlyWholeAssignmentSource
+            LD   HL,Stage7ReadOnlyWholeAssignmentSource
+            LD   DE,Stage7ReadOnlyWholeAssignmentSourceEnd
+            CALL ProofExpectCompileDiagnostic
+            JP   C,ProofFailReadOnlyAssignment
+            LD   A,DiagnosticReadOnlyAssignment
+            LD   BC,Stage7ReadOnlyFieldAssignmentPoint-Stage7ReadOnlyFieldAssignmentSource
+            LD   HL,Stage7ReadOnlyFieldAssignmentSource
+            LD   DE,Stage7ReadOnlyFieldAssignmentSourceEnd
+            CALL ProofExpectCompileDiagnostic
+            JP   C,ProofFailReadOnlyAssignment
+            LD   A,DiagnosticReadOnlyAssignment
+            LD   BC,Stage7ReadOnlyArrayAssignmentPoint-Stage7ReadOnlyArrayAssignmentSource
+            LD   HL,Stage7ReadOnlyArrayAssignmentSource
+            LD   DE,Stage7ReadOnlyArrayAssignmentSourceEnd
+            CALL ProofExpectCompileDiagnostic
+            JP   C,ProofFailReadOnlyAssignment
+            LD   A,DiagnosticReadOnlyAssignment
+            LD   BC,Stage7ReadOnlyStringAssignmentPoint-Stage7ReadOnlyStringAssignmentSource
+            LD   HL,Stage7ReadOnlyStringAssignmentSource
+            LD   DE,Stage7ReadOnlyStringAssignmentSourceEnd
+            CALL ProofExpectCompileDiagnostic
+            JP   C,ProofFailReadOnlyAssignment
+
+            LD   A,DiagnosticInitializerCount
+            LD   BC,Stage7AggregateConstantIncompletePoint-Stage7AggregateConstantIncompleteSource
+            LD   HL,Stage7AggregateConstantIncompleteSource
+            LD   DE,Stage7AggregateConstantIncompleteSourceEnd
+            CALL ProofExpectCompileDiagnostic
+            JP   C,ProofFailAggregateConstantInitializer
+            LD   A,DiagnosticTypeMismatch
+            LD   BC,Stage7AggregateConstantWrongTypePoint-Stage7AggregateConstantWrongTypeSource
+            LD   HL,Stage7AggregateConstantWrongTypeSource
+            LD   DE,Stage7AggregateConstantWrongTypeSourceEnd
+            CALL ProofExpectCompileDiagnostic
+            JP   C,ProofFailAggregateConstantWrongType
+            LD   A,DiagnosticTypeMismatch
+            LD   BC,Stage7AggregateConstantRuntimePoint-Stage7AggregateConstantRuntimeSource
+            LD   HL,Stage7AggregateConstantRuntimeSource
+            LD   DE,Stage7AggregateConstantRuntimeSourceEnd
+            CALL ProofExpectCompileDiagnostic
+            JP   C,ProofFailAggregateConstantRuntime
+            LD   A,DiagnosticTypeMismatch
+            LD   BC,Stage7AggregateConstantScalarTypePoint-Stage7AggregateConstantScalarTypeSource
+            LD   HL,Stage7AggregateConstantScalarTypeSource
+            LD   DE,Stage7AggregateConstantScalarTypeSourceEnd
+            CALL ProofExpectCompileDiagnostic
+            JP   C,ProofFailAggregateConstantScalarType
+
+            LD   HL,Stage7ReadOnlyCapacityAcceptedSource
+            LD   DE,Stage7ReadOnlyCapacityAcceptedSourceEnd
+            CALL CompileAggregateCallSlice
+            JP   C,ProofFailReadOnlyCapacity
+            LD   HL,(ReadOnlyImageLength)
+            LD   DE,1024
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailReadOnlyCapacity
+            CALL EncodeAggregateProgram
+            JP   C,ProofFailReadOnlyCapacity
+            LD   HL,(GeneratedRoDataSize)
+            LD   DE,1024
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailReadOnlyCapacity
+            LD   HL,(GeneratedDataSize)
+            LD   A,H
+            OR   L
+            JP   NZ,ProofFailReadOnlyCapacity
+            LD   A,$A5
+            LD   (GeneratedRoDataBase),A
+            LD   A,$5A
+            LD   (GeneratedRoDataBase+1023),A
+            LD   A,DiagnosticReadOnlyCapacity
+            LD   BC,Stage7ReadOnlyCapacityRejectedPoint-Stage7ReadOnlyCapacityRejectedSource
+            LD   HL,Stage7ReadOnlyCapacityRejectedSource
+            LD   DE,Stage7ReadOnlyCapacityRejectedSourceEnd
+            CALL ProofExpectCompileDiagnostic
+            JP   C,ProofFailReadOnlyCapacity
+            LD   HL,(GeneratedRoDataSize)
+            LD   DE,1024
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailReadOnlyCapacity
+            LD   A,(GeneratedRoDataBase)
+            CP   $A5
+            JP   NZ,ProofFailReadOnlyCapacity
+            LD   A,(GeneratedRoDataBase+1023)
+            CP   $5A
+            JP   NZ,ProofFailReadOnlyCapacity
+            ; The failed declaration must not poison the next compilation.
+            LD   HL,Stage7AggregateConstantSource
+            LD   DE,Stage7AggregateConstantSourceEnd
+            CALL CompileAggregateCallSlice
+            JP   C,ProofFailReadOnlyCapacity
             LD   B,0
             LD   C,2
             CALL ProofRunInvalidCopy
@@ -1701,6 +1967,20 @@ ProofFailWideRecordCapacity: LD A,62
 ProofFailWordLengthInterning: LD A,64
                   JR ProofFailed
 ProofFailWideInitializer: LD A,63
+                  JP ProofFailed
+ProofFailAggregateConstant: LD A,65
+                  JP ProofFailed
+ProofFailReadOnlyAssignment: LD A,66
+                  JP ProofFailed
+ProofFailAggregateConstantInitializer: LD A,67
+                  JP ProofFailed
+ProofFailReadOnlyCapacity: LD A,68
+                  JP ProofFailed
+ProofFailAggregateConstantWrongType: LD A,69
+                  JP ProofFailed
+ProofFailAggregateConstantRuntime: LD A,70
+                  JP ProofFailed
+ProofFailAggregateConstantScalarType: LD A,71
 ProofFailed:
             LD   (ProofCase),A
             HALT

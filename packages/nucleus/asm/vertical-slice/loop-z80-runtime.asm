@@ -157,33 +157,45 @@ CheckStringIndexLengthReady:
 CheckAggregateRegion:
             PUSH DE
             POP  IY
-            PUSH HL
 .if AggregateCallSlices
+            PUSH HL
             LD   DE,ProgramDataBase
+            CALL CheckAggregateRegionOne
+            POP  HL
+            RET  NC
+            LD   DE,GeneratedRoDataBase
+            LD   IY,GeneratedRoDataLimit
 .else
             LD   DE,GeneratedBase+3
 .endif
+            JP   CheckAggregateRegionOne
+
+; BC is the extent, HL the address, DE the inclusive region base and IY the
+; exclusive end. This predicate is shared by mutable data and generated
+; read-only data without changing the public aggregate-region entry.
+.routine in BC,DE,HL,IY out A,carry,zero clobbers sign,parity,halfCarry,DE,HL
+CheckAggregateRegionOne:
             OR   A
             SBC  HL,DE
-            JR   C,AggregateRegionLow
-            POP  HL
+            JR   C,CheckAggregateRegionFailure
+            ADD  HL,DE
             ADD  HL,BC
-            JR   C,AggregateBoundsFailure
+            JR   C,CheckAggregateRegionFailure
             PUSH IY
             POP  DE
             OR   A
             SBC  HL,DE
-            JR   C,AggregateRegionSuccess
-            JR   Z,AggregateRegionSuccess
+            JR   C,CheckAggregateRegionSuccess
+            JR   Z,CheckAggregateRegionSuccess
+CheckAggregateRegionFailure:
+            SCF
+            RET
+CheckAggregateRegionSuccess:
+            OR   A
+            RET
+
 AggregateBoundsFailure:
             SCF
-            RET
-AggregateRegionLow:
-            POP  HL
-            SCF
-            RET
-AggregateRegionSuccess:
-            OR   A
             RET
 
 .if AggregateCallSlices

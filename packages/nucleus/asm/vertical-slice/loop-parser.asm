@@ -1125,6 +1125,10 @@ CompileSliceResetAggregateLoop:
             DJNZ CompileSliceResetAggregateLoop
             LD   (StaticImageLength),A
             LD   (StaticImageLength+1),A
+.if SegmentedOutput
+            LD   (ReadOnlyImageLength),A
+            LD   (ReadOnlyImageLength+1),A
+.endif
 .if AggregateCallSlices
             LD   (ProgramBssLength),A
             LD   (ProgramBssLength+1),A

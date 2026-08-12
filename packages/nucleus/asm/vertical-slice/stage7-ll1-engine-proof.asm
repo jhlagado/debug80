@@ -102,7 +102,7 @@ ProofStart:
             LD   (HybridLL1StackBase+HybridLL1StackCapacity),A
             LD   A,60
             LD   (HybridLL1StackDepth),A
-            LD   A,29
+            LD   A,31
             CALL HybridLL1PushProduction
             JR   C,ProofFailure
             LD   A,(HybridLL1StackDepth)
@@ -125,7 +125,7 @@ ProofStart:
             JR   NZ,ProofFailure
             LD   A,63
             LD   (HybridLL1StackDepth),A
-            LD   A,29
+            LD   A,31
             CALL HybridLL1PushProduction
             JR   NC,ProofFailure
             LD   A,(DiagnosticCode)

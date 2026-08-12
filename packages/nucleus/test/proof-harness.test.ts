@@ -23,17 +23,17 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     expect(
       outcome.extents.find(({ name }) => name === "compiler-core")?.bytes,
     ).toBeLessThanOrEqual(16_384);
-    expect(outcome.instructions).toBe(1_521_339);
-    expect(outcome.cycles).toBe(14_334_990);
+    expect(outcome.instructions).toBe(1_655_345);
+    expect(outcome.cycles).toBe(15_585_591);
     expect(outcome.extents).toEqual([
-      { name: "compiler-code", bytes: 13_612 },
+      { name: "compiler-code", bytes: 13_811 },
       { name: "compiler-immutable", bytes: 393 },
-      { name: "compiler-core", bytes: 14_005 },
-      { name: "compiler-workspace", bytes: 3_600 },
+      { name: "compiler-core", bytes: 14_204 },
+      { name: "compiler-workspace", bytes: 3_602 },
       { name: "generated-z80-bound", bytes: 4_096 },
-      { name: "z80-runtime", bytes: 582 },
-      { name: "corpus-source-and-descriptors", bytes: 7_112 },
-      { name: "proof-code-and-data", bytes: 1_883 },
+      { name: "z80-runtime", bytes: 596 },
+      { name: "corpus-source-and-descriptors", bytes: 7_678 },
+      { name: "proof-code-and-data", bytes: 1_935 },
     ]);
 
     const symbol = (name: string): number => {
@@ -92,9 +92,11 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
         "Chapter21_19",
         "Chapter21_19False",
         "Chapter21_19Type",
+        "Chapter21_20",
+        "Chapter21_20ReadOnly",
       ].map((name) => source(`${name}Source`, `${name}SourceEnd`)),
     ];
-    expect(specificationPrograms).toHaveLength(34);
+    expect(specificationPrograms).toHaveLength(36);
     expect(proofPrograms).toEqual(specificationPrograms);
 
     const manifestParts = buildSourceParts("model.nu\n\nmain.nu\n", (name) =>
@@ -142,15 +144,15 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     expect(
       outcome.extents.find(({ name }) => name === "compiler-core")?.bytes,
     ).toBeLessThanOrEqual(16_384);
-    expect(outcome.instructions).toBe(2_034_307);
-    expect(outcome.cycles).toBe(18_936_135);
+    expect(outcome.instructions).toBe(2_035_400);
+    expect(outcome.cycles).toBe(18_945_941);
     expect(outcome.extents).toEqual([
-      { name: "compiler-code", bytes: 13_612 },
+      { name: "compiler-code", bytes: 13_811 },
       { name: "compiler-immutable", bytes: 393 },
-      { name: "compiler-core", bytes: 14_005 },
-      { name: "compiler-workspace", bytes: 3_600 },
+      { name: "compiler-core", bytes: 14_204 },
+      { name: "compiler-workspace", bytes: 3_602 },
       { name: "generated-z80-bound", bytes: 4_096 },
-      { name: "z80-runtime", bytes: 582 },
+      { name: "z80-runtime", bytes: 596 },
       { name: "proof-code-and-data", bytes: 3_692 },
     ]);
 

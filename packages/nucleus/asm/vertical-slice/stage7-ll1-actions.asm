@@ -202,6 +202,38 @@ HybridLL1CommitConstant:
             RET  C
             JP   SymbolCommit
 
+.routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
+HybridLL1CommitAggregateConstant:
+            LD   BC,(ReadOnlyImageLength)
+            LD   D,SymbolAggregateFlag+SymbolClassConstant
+            CALL TypedPrepareCurrentWord
+            RET  C
+            LD   BC,(ReadOnlyImageLength)
+            LD   HL,(AggregateCurrentObjectExtent)
+            ADD  HL,BC
+            LD   DE,(StaticImageLength)
+            ADD  HL,DE
+            CALL AggregateCheckReadOnlyCapacity
+            RET  C
+            OR   A
+            SBC  HL,DE
+            LD   (ReadOnlyImageLength),HL
+            LD   HL,StaticImageBase
+            ADD  HL,DE
+            ADD  HL,BC
+            EX   DE,HL
+            LD   HL,AggregateInitializerBase
+            LD   BC,(AggregateCurrentObjectExtent)
+            LDIR
+            LD   A,(SymbolCount)
+            LD   E,A
+            LD   D,0
+            LD   HL,AggregateSymbolTypeBase
+            ADD  HL,DE
+            LD   A,(DeclarationInfo)
+            LD   (HL),A
+            JP   SymbolCommit
+
 HybridLL1BeginAssert .equ TypedRetainDeclarationNameReady
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry
@@ -225,6 +257,7 @@ HybridLL1AssertTypeFailure:
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 HybridLL1SaveProgramType:
             LD   A,(AggregateCurrentTypeId)
+HybridLL1SaveObjectType:
             LD   (DeclarationInfo),A
             CALL AggregateGetExtent
             LD   (AggregateCurrentObjectExtent),HL
@@ -237,6 +270,13 @@ HybridLL1SaveProgramType:
             LD   (AggregateInitializerDepth),A
             LD   (AggregateHasInitializer),A
             RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
+HybridLL1SaveAggregateConstantType:
+            LD   A,(AggregateCurrentTypeId)
+            CP   AggregateFirstDynamicTypeId
+            JP   C,TypedTypeFailure
+            JR   HybridLL1SaveObjectType
 
 HybridLL1FinishProgramInitializer:
             LD   A,1
@@ -256,7 +296,7 @@ HybridLL1CommitProgramVariable:
             JR   Z,HybridLL1CommitBssObject
             JR   HybridLL1AllocateDataObject
 HybridLL1CommitBssObject:
-            JR   HybridLL1AllocateBssObject
+            JP   HybridLL1AllocateBssObject
 HybridLL1CommitObjectReady:
             PUSH BC
             LD   A,(DeclarationInfo)
@@ -289,7 +329,29 @@ HybridLL1AllocateDataObject:
             LD   DE,(StaticImageLength)
             CALL HybridLL1AllocateObjectEnd
             RET  C
+            PUSH HL
+            LD   DE,(ReadOnlyImageLength)
+            ADD  HL,DE
+            CALL AggregateCheckExtentCapacity
+            POP  HL
+            RET  C
             LD   (StaticImageLength),HL
+            LD   BC,(ReadOnlyImageLength)
+            LD   A,B
+            OR   C
+            JR   Z,HybridLL1DataShiftReady
+            LD   HL,StaticImageBase
+            LD   DE,(AggregateCurrentObjectOffset)
+            ADD  HL,DE
+            ADD  HL,BC
+            DEC  HL
+            LD   DE,(AggregateCurrentObjectExtent)
+            PUSH HL
+            ADD  HL,DE
+            EX   DE,HL
+            POP  HL
+            LDDR
+HybridLL1DataShiftReady:
             LD   A,(DeclarationInfo)
             CALL AggregateGetExtent
             LD   B,H
@@ -308,7 +370,7 @@ HybridLL1AllocateDataObject:
             LD   B,H
             LD   C,L
             OR   A
-            JR   HybridLL1CommitObjectReady
+            JP   HybridLL1CommitObjectReady
 
 ; Return the absolute target address of one default-initialized object in BC.
 HybridLL1AllocateBssObject:
@@ -323,7 +385,7 @@ HybridLL1AllocateBssObject:
             LD   B,H
             LD   C,L
             OR   A
-            JR   HybridLL1CommitObjectReady
+            JP   HybridLL1CommitObjectReady
 
 ; Add the current object extent to the selected segment length in DE. Return
 ; the old offset in DE and the checked mathematical end in HL.
@@ -1249,7 +1311,7 @@ HybridLL1CommitBareReturn:
 
 ; A is the logical action ordinal. The two ordinals and tokens are contiguous.
 HybridLL1EmitTransferAction:
-            INC  A
+            DEC  A
 HybridLL1EmitTransfer:
             LD   (DeclarationInfo),A
             CALL ControlFindLoop

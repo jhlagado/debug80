@@ -128,6 +128,7 @@ SemanticSkipHandler          .equ 103
 SemanticBeginHandler         .equ 104
 SemanticEndHandler           .equ 105
 SemanticBeginCallableMain    .equ 106
+SemanticLoadReadOnlyAlias    .equ 107
 
 Stage8ServiceReadInput       .equ 0
 Stage8ServiceWriteOutput     .equ 1

@@ -1,4 +1,5 @@
-; Stage 6 Z80 publisher. The complete checked static image is emitted after
+; Aggregate Z80 publisher. The complete checked initialized-data and constant
+; image is emitted after
 ; the initial JP and before main's first instruction. TypedBeginMain
 ; patches the JP operand to the first code byte, so source execution cannot
 ; observe initialization in progress.
@@ -21,8 +22,17 @@ EncodeAggregateProgramWithinLimit:
             CALL EncodeProgramHeader
             JP   C,AbortProgram
 .endif
+.if SegmentedOutput
+            LD   HL,(ReadOnlyImageLength)
+            LD   BC,(StaticImageLength)
+            ADD  HL,BC
+            LD   B,H
+            LD   C,L
+            LD   HL,StaticImageBase
+.else
             LD   HL,StaticImageBase
             LD   BC,(StaticImageLength)
+.endif
             LD   A,B
             OR   C
             JR   Z,AggregateDispatch

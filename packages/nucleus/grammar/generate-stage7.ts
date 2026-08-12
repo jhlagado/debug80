@@ -47,7 +47,7 @@ const actionFamilies: readonly Stage7ActionFamily[] = [
   {
     handler: "EmitTransferAction",
     parameterStep: 1,
-    ordinalParameterOffset: 1,
+    ordinalParameterOffset: -1,
     members: [
       { logical: "a:EmitExit", parameter: 45 },
       { logical: "a:EmitContinue", parameter: 46 },
