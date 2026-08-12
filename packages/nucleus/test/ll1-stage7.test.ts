@@ -208,9 +208,9 @@ describe("Stage 7 packed LL(1)", () => {
       outcome.extents.map(({ name, bytes }) => [name, bytes]),
     );
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
-    expect(outcome.instructions).toBe(2_171_551);
-    expect(outcome.cycles).toBe(20_114_256);
-    expect(outcome.extents).toContainEqual({ name: "parser", bytes: 8_913 });
+    expect(outcome.instructions).toBe(2_171_785);
+    expect(outcome.cycles).toBe(20_117_978);
+    expect(outcome.extents).toContainEqual({ name: "parser", bytes: 8_890 });
     expect(outcome.extents).toContainEqual({
       name: "ll1-engine",
       bytes: 230,
@@ -221,15 +221,15 @@ describe("Stage 7 packed LL(1)", () => {
     });
     expect(outcome.extents).toContainEqual({
       name: "ll1-actions",
-      bytes: 2_592,
+      bytes: 2_569,
     });
     expect(outcome.extents).toContainEqual({
       name: "compiler-core",
-      bytes: 14_163,
+      bytes: 14_137,
     });
     expect(outcome.extents).toContainEqual({
       name: "compiler-code",
-      bytes: 13_770,
+      bytes: 13_744,
     });
     expect(outcome.extents).toContainEqual({
       name: "compiler-immutable",

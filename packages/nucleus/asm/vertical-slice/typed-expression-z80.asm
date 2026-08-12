@@ -250,20 +250,22 @@ TypedEmitPopHL:
             LD   A,$E1                    ; POP HL
             JP   EmitByte
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
-TypedLoadLocal8:
+.routine out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
+TypedLoadLocalLowIndexed:
             CALL TypedLocalDisplacement
             LD   HL,TypedLoadLocalLow
-            CALL TypedEmitIndexed
+            JP   TypedEmitIndexed
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
+TypedLoadLocal8:
+            CALL TypedLoadLocalLowIndexed
             RET  C
             LD   HL,TypedZeroHighPush
             JP   EmitThree
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL
 TypedLoadLocal16:
-            CALL TypedLocalDisplacement
-            LD   HL,TypedLoadLocalLow
-            CALL TypedEmitIndexed
+            CALL TypedLoadLocalLowIndexed
             RET  C
             DEC  C
             LD   HL,TypedLoadLocalHigh

@@ -83,6 +83,7 @@ HybridLL1ResolveRecordType:
             JR   HybridLL1SetCurrentType
 
 HybridLL1BeginTypeBound:
+HybridLL1ExpectU16:
             LD   A,ScalarTypeU16
             JP   HybridLL1SaveExpectedType
 
@@ -613,6 +614,13 @@ HybridLL1RestoreSubName:
             OR   A
             RET
 
+.routine out A,carry,zero clobbers sign,parity,halfCarry
+HybridLL1ResetParametersAndResult:
+            XOR  A
+            LD   (Stage7CurrentParameterCount),A
+            LD   (Stage7CurrentResultType),A
+            RET
+
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX,IY
 HybridLL1BeginSub:
             CALL HybridLL1RestoreSubName
@@ -633,9 +641,7 @@ HybridLL1BeginSub:
             LD   A,(Stage7ParameterCount)
             LD   (HL),A
             LD   (Stage7CurrentParameterStart),A
-            XOR  A
-            LD   (Stage7CurrentParameterCount),A
-            LD   (Stage7CurrentResultType),A
+            CALL HybridLL1ResetParametersAndResult
 .if TargetStreamingOutput
             CALL TargetPackCurrentBank
 .endif
@@ -653,9 +659,7 @@ HybridLL1BeginMainSignature:
             RET  C
             LD   A,$FF
             LD   (Stage7CurrentRoutine),A
-            XOR  A
-            LD   (Stage7CurrentParameterCount),A
-            LD   (Stage7CurrentResultType),A
+            CALL HybridLL1ResetParametersAndResult
             LD   A,Stage7RoutineMain
 .if TargetStreamingOutput
             CALL TargetPackCurrentBank
@@ -798,9 +802,7 @@ HybridLL1BeginForwardMainBody:
             AND  $FB
             LD   (Stage7CurrentFlags),A
             LD   (Stage8ForwardMainFlags),A
-            XOR  A
-            LD   (Stage7CurrentParameterCount),A
-            LD   (Stage7CurrentResultType),A
+            CALL HybridLL1ResetParametersAndResult
             DEC  A
             LD   (Stage7CurrentRoutine),A
             JP   HybridLL1BeginMainBody
@@ -838,13 +840,16 @@ HybridLL1PublishRoutine:
             LD   HL,Stage7RoutineCount
             INC  (HL)
             RET
-HybridLL1OpenRoutineBody:
+.routine out A,carry,zero clobbers sign,parity,halfCarry
+HybridLL1SaveGlobalsResetLocals:
             LD   A,(SymbolCount)
             LD   (Stage7GlobalSymbolCount),A
             XOR  A
             LD   (NextLocalSlot),A
-            XOR  A
             LD   (ControlDepth),A
+            RET
+HybridLL1OpenRoutineBody:
+            CALL HybridLL1SaveGlobalsResetLocals
             LD   A,(Stage7CurrentResultType)
             OR   A
             LD   A,ControlRoutineValue
@@ -912,14 +917,9 @@ HybridLL1BeginMainBody:
             CALL SemanticSinkPut
             RET  C
 .endif
-            LD   A,(SymbolCount)
-            LD   (Stage7GlobalSymbolCount),A
-            XOR  A
-            LD   (NextLocalSlot),A
+            CALL HybridLL1SaveGlobalsResetLocals
             LD   (Stage7CurrentResultType),A
             LD   (ControlRoutineKind),A
-            XOR  A
-            LD   (ControlDepth),A
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry
 HybridLL1SetFallsThrough:
@@ -1454,9 +1454,10 @@ HybridLL1CombineFlow:
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1CheckBooleanResult:
+            LD   E,ScalarTypeBoolean
+HybridLL1CheckTypedResult:
             CALL Stage8RequireNoPendingFailure
             RET  C
-            LD   E,ScalarTypeBoolean
             JP   HybridLL1CheckExpressionAssignable
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
@@ -1472,6 +1473,7 @@ HybridLL1BeginIf:
             LD   DE,ControlFrameCounter-ControlFrameLabelA
             ADD  HL,DE
             LD   (HL),1
+HybridLL1ExpectBoolean:
             LD   A,ScalarTypeBoolean
             JP   HybridLL1SaveExpectedType
 
@@ -1511,8 +1513,7 @@ HybridLL1BeginElseIf:
             RET  C
             CALL ControlAllocateLabelA
             RET  C
-            LD   A,ScalarTypeBoolean
-            JP   HybridLL1SaveExpectedType
+            JR   HybridLL1ExpectBoolean
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1BeginElse:
@@ -1580,8 +1581,7 @@ HybridLL1BeginWhile:
             LD   C,(HL)
             CALL ControlEmitLabel
             RET  C
-            LD   A,ScalarTypeBoolean
-            JP   HybridLL1SaveExpectedType
+            JP   HybridLL1ExpectBoolean
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
 HybridLL1BeginWhileBody:
@@ -1635,15 +1635,12 @@ HybridLL1ForBoundSelected:
             LD   (HybridLL1ForMode),A
             CALL HybridLL1FinishLocalInitializer
             RET  C
-            LD   A,ScalarTypeU16
-            JP   HybridLL1SaveExpectedType
+            JP   HybridLL1ExpectU16
 
 .routine out A,DE,HL,carry,zero clobbers sign,parity,halfCarry,B,C,IX,IY
 HybridLL1CheckForBound:
-            CALL Stage8RequireNoPendingFailure
-            RET  C
             LD   E,ScalarTypeU16
-            JP   HybridLL1CheckExpressionAssignable
+            JP   HybridLL1CheckTypedResult
 
 HybridLL1SaveForStep .equ HybridLL1CheckForBound
 

@@ -82,9 +82,7 @@ TargetStartupStack:
             LD   DE,13                   ; save/select SP plus terminal restore
             ADD  HL,DE
             PUSH HL
-            LD   HL,NucleusRuntimeVectorLength+NucleusRuntimeStateLength
-            LD   DE,(StaticImageLength)
-            ADD  HL,DE
+            CALL TargetInitializedLength
             JR   C,TargetStartupStackFailure
             LD   DE,(ProgramBssLength)
             ADD  HL,DE
@@ -505,9 +503,7 @@ TargetContextRoDataReady:
             LD   HL,(ReadOnlyImageLength)
             LD   (TargetContextRoDataCapacity),HL
 TargetContextRoDataFinished:
-            LD   DE,NucleusRuntimeVectorLength+NucleusRuntimeStateLength
-            LD   HL,(StaticImageLength)
-            ADD  HL,DE
+            CALL TargetInitializedLength
             JR   C,TargetPrepareCapacityFailure
             LD   DE,(ProgramBssLength)
             ADD  HL,DE
@@ -537,6 +533,13 @@ TargetStateAddress:
             LD   HL,(TargetContextStateBase)
             ADD  HL,DE
             OR   A
+            RET
+
+.routine out DE,HL,carry clobbers halfCarry
+TargetInitializedLength:
+            LD   HL,(StaticImageLength)
+            LD   DE,NucleusRuntimeVectorLength+NucleusRuntimeStateLength
+            ADD  HL,DE
             RET
 
 ; A is the identity-defined RAM-vector ordinal. The generated call reaches the
@@ -604,9 +607,7 @@ TargetStartupCopy:
             LD   DE,(TargetWritableBase)
             CALL EmitLoadDeImmediate
             RET  C
-            LD   HL,(StaticImageLength)
-            LD   DE,NucleusRuntimeVectorLength+NucleusRuntimeStateLength
-            ADD  HL,DE
+            CALL TargetInitializedLength
             CALL EmitLoadBcImmediate
             RET  C
             LD   HL,SegmentedCopyBytes
@@ -693,9 +694,7 @@ FinishTargetFlatProgram:
             LD   (EmitCursor),HL
             XOR  A
             LD   (TargetOutputBank),A
-            LD   HL,(StaticImageLength)
-            LD   DE,NucleusRuntimeVectorLength+NucleusRuntimeStateLength
-            ADD  HL,DE
+            CALL TargetInitializedLength
             LD   (EmitLimit),HL
             LD   HL,(TargetWritableBase)
             CALL TargetEmitRuntimeInitialImage
@@ -744,9 +743,7 @@ TargetMapReadOnlyReady:
             LD   (TargetMapWritableCapacity),HL
             LD   HL,NucleusRuntimeVectorLength
             LD   (TargetMapVectorLength),HL
-            LD   HL,(StaticImageLength)
-            LD   DE,NucleusRuntimeVectorLength+NucleusRuntimeStateLength
-            ADD  HL,DE
+            CALL TargetInitializedLength
             LD   (TargetMapInitializedLength),HL
             LD   (TargetMapDataLoadLength),HL
             LD   HL,(TargetBssBase)

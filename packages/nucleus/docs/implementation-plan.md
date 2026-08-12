@@ -1593,6 +1593,21 @@ and executing the additional entry-bank-one program. All seven pre-existing
 production NOBJ fixtures remain byte-identical to the frozen `b7337e2d`
 baseline, including every linked runtime image.
 
+A second measured compression pass shares the Boolean and counted-loop result
+checks, routine-state reset sequences, scalar expected-type tails, initialized-
+data length calculation, and the low-byte local-load prefix. These changes
+remove 39 compiler-code bytes: 23 from the packed parser actions, 13 from target
+layout and startup calculation, and three from the Z80 expression sink. Fresh
+assembly measures 15,482 compiler-code bytes plus 393 immutable bytes, or
+15,875 bytes of compiler core. Headroom is 509 bytes. The parser is 9,216
+bytes: 230 bytes of engine, 755 bytes of tables, 2,657 bytes of actions, and
+5,574 bytes of retained parser code. Workspace remains 3,606 bytes, the
+selected proof runtime remains 574 bytes, and the largest generated program
+remains 1,040 bytes. The producer proof remains 2,345 bytes and executes
+1,043,353 instructions in 10,196,561 T-states. All seven pre-existing NOBJ
+fixtures remain byte-identical to `f0c6643c`, including generated code and each
+linked runtime image.
+
 ## Capacity ledger
 
 The first implementation fixes a numeric limit before each bounded structure is
