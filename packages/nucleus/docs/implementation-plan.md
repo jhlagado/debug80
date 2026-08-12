@@ -1178,7 +1178,7 @@ one of these limits is exceeded.
 Implementation changes follow a short evidence loop:
 
 1. identify the governing language and direct-runtime rules;
-2. add or select an executable vector;
+2. add or select an executable proof case;
 3. implement the smallest complete semantic path;
 4. assemble and measure it;
 5. compare generated-Z80 behavior with the source-level expected result;

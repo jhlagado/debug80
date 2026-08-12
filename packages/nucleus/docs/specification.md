@@ -203,6 +203,10 @@ The initial system boundary contains only services that Nucleus programs demonst
 
 The semantic-operation boundary may support later direct backends for other Z80 variants or other targets where target neutrality has no material cost against the compiler-core gate and other bounded accounts. Portability does not justify growth that causes the first compiler to fail its core gate.
 
+Nucleus 0.1 defines no interrupt routine, interrupt or restart vector declaration, interrupt-reentrant calling convention, or interrupt-safe service guarantee. The compiler emits no vector table. A target may interrupt a Nucleus program only through a handler outside the language that preserves the program's machine state and does not enter a Nucleus routine or service.
+
+Each compilation targets one flat 16-bit address mapping. Bank selection, bank-switched packaging, and calls between separately built bank images belong to the execution environment and do not add a source construct, compiler address-space identity, or alternate calling convention.
+
 ### 2.8 Evidence and feature admission
 
 Project reports assign every size, storage, or performance claim one of these evidence classes:
@@ -639,7 +643,9 @@ Forward declarations apply only to source routines. They do not provide a genera
 
 Every Nucleus 0.1 compilation unit defines exactly one routine named `main`. Its data signature is fixed: it has no parameters and no result. It may include the `fails` effect declared by Chapter 14. The definition must have a body by `EOF`; a forward declaration alone cannot satisfy the entry rule.
 
-Execution begins by calling `main` after program-lifetime initialization. Normal completion of `main` terminates successfully. A failure returned from `main` performs the unhandled-error trap in Chapter 15. The build does not select another entry name, and Nucleus 0.1 defines no library-only compilation unit without `main`.
+Execution enters an implicit implementation startup path, which establishes every program-lifetime initial value before calling `main`. Normal completion of `main` terminates successfully. A failure returned from `main` performs the unhandled-error trap in Chapter 15. The build does not select another entry name, and Nucleus 0.1 defines no library-only compilation unit without `main`.
+
+The startup entry is not a source declaration and cannot be called by source. Nucleus defines no source-visible reset, vector, interrupt, or alternate entry declaration.
 
 Program startup, initialization, termination, and system services are specified in Chapters 16 and 19.
 
@@ -2741,6 +2747,8 @@ The execution environment must preserve a trap even if its reporting device or o
 
 Nucleus 0.1 defines a small portable service boundary for byte-stream input and output, slow bulk storage, successful termination, and trap reporting. Programs invoke typed predefined routines and use predefined constants. The source language exposes no service numbers, ports, firmware entry points, raw addresses, file descriptors, device registers, or machine-specific memory map.
 
+Nucleus source contains no physical placement, and a target description contains no source-symbol reference. The source manifest selects and orders declarations; the target description supplies bounded execution regions. Neither input can name or rewrite entities owned by the other.
+
 The **Nucleus System Services 0.1** set is versioned with this language revision. A conforming execution environment supplies every service in Section 16.3 with the stated source contract and the initial stream states stated there. Later additions require a language revision or an explicit extension under Section 1.7 and measured admission under Chapter 2.
 
 ### 16.2 Predefined error codes
@@ -2783,7 +2791,7 @@ These contracts support streaming programs without exposing a filesystem. Nucleu
 
 ### 16.4 Program startup and termination
 
-After every program variable has its initial value, the environment invokes `main`. It supplies no command-line arguments or implicit source values. Source code obtains input only through the predefined services.
+The implementation enters its implicit startup path before `main`. Startup establishes explicit program-variable initializers, establishes zero values for the remaining program variables, and then transfers to `main`. These operations are complete before source execution begins and are not source-callable. The environment supplies no command-line arguments or implicit source values. Source code obtains input only through the predefined services.
 
 Normal return from `main` terminates successfully. Nucleus 0.1 has no source statement for process exit status or immediate successful termination. Failure returned from `main` and every safety trap terminate unsuccessfully under Chapter 15.
 
@@ -2794,6 +2802,8 @@ The external representation of success, recoverable-error codes, and trap reason
 An environment may implement services with CP/M calls, a monitor, port I/O, host callbacks, or another mechanism. It may buffer transfers if buffering preserves call order, failure points, and visible bytes. Those choices do not add source names or expose their addresses.
 
 Arbitrary BIOS calls, machine-code-call declarations, inline assembly, memory peeks and pokes, port access, and callbacks are excluded from the safe source boundary. A later service must have a typed target-independent contract and pass the measured admission rule before it enters the standard set.
+
+The target adapter may place one artifact in ROM, loaded RAM, or another flat Z80 mapping while preserving the same startup and source semantics. Banked device-image assembly and bank selection remain host or monitor operations outside Nucleus 0.1. They do not change the meaning of a compilation unit or suppress its required initialization.
 
 ## 17. Complete grammar
 
@@ -3188,7 +3198,7 @@ These candidates are not provisional 0.1 syntax. Extensions may prototype them o
 
 ### 20.4 Excluded mechanisms
 
-Nucleus 0.1 excludes language levels and compiler-selected profiles; modules, imports, namespaces, macros, and textual includes; raw pointers, address arithmetic, memory or port access, inline assembly, arbitrary machine-code calls, and unrestricted casts; enumeration, subrange, set, union, variant, overlaid, generic, heap, resizable, open-array, slice, and dynamic types; transitive immutability or const-qualified alias types, routine-local aggregate declarations, activation-lifetime owned aggregates, general aggregate expressions or constructors, partial or named-field initializers, destructuring, inferred variable declarations, nested routines, overloads, routine values, callbacks, indirect calls, parameter modes, and multiple results.
+Nucleus 0.1 excludes language levels and compiler-selected profiles; modules, imports, namespaces, macros, and textual includes; raw pointers, address arithmetic, memory or port access, inline assembly, arbitrary machine-code calls, interrupt routines, vector declarations, source-visible bank selection, and unrestricted casts; enumeration, subrange, set, union, variant, overlaid, generic, heap, resizable, open-array, slice, and dynamic types; transitive immutability or const-qualified alias types, routine-local aggregate declarations, activation-lifetime owned aggregates, general aggregate expressions or constructors, partial or named-field initializers, destructuring, inferred variable declarations, nested routines, overloads, routine values, callbacks, indirect calls, parameter modes, and multiple results.
 
 It also excludes assignment expressions, chained comparisons, conditional expressions, general expression statements, `call` and `then` keywords, `select`/`case`, pattern matching, repeat/do loops, `for in`, omitted counted-loop operands, counted-loop counters drawn from program variables or parameters, source assignment to an active counter, nested reuse of an active counter, labels, goto, labelled exit, exceptions, throw/catch, unwinding, destructors, `finally`, `defer`, resumable traps, and runtime type tags.
 

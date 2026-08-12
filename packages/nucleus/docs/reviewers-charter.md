@@ -108,6 +108,25 @@ An implementation economy is welcome when it preserves the complete source
 contract. A change to accepted source or observable meaning is not an economy;
 it is a redesign.
 
+### Target placement and interrupt boundary
+
+Nucleus source contains no physical placement, and a target description
+contains no source-symbol reference. The external source manifest orders
+declarations. The target profile supplies bounded regions for one flat 16-bit
+mapping. The compiler assigns offsets within those regions and reports the
+resulting addresses.
+
+The compiler has no bank selector, bank identity, bank-switching operation, or
+cross-bank call model. A host may package separately compiled artifacts into a
+banked device image, but that packaging does not change either compilation.
+
+Nucleus defines no interrupt routine, interrupt or restart vector declaration,
+interrupt-reentrant activation model, or interrupt-safe service guarantee. The
+compiler emits no vector table. Interrupt handlers and machine reset bindings
+belong to the monitor, adapter, or other machine code outside Nucleus. A handler
+must preserve the program's machine state and cannot enter a Nucleus routine or
+service.
+
 ### Measurement before assertion
 
 Z80 size and timing claims require assembled code and executable evidence.
@@ -391,6 +410,7 @@ Do not present any of the following as a routine correction or size cleanup:
 - general runtime aggregate constructors;
 - arrays of arrays, open arrays, or slices;
 - exception unwinding;
+- interrupt routines, vector declarations, or a compiler-visible banking model;
 - a portable bytecode or interpreter as an active path;
 - removal of required diagnostics without explicit approval;
 - conflation of compiler, workspace, target-runtime, and activation budgets;

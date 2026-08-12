@@ -79,6 +79,96 @@ The compiler-core acceptance gate is 16 KiB. Moving required compiler code or
 immutable tables into another account does not satisfy it. The target runtime
 and generated program remain measured even though they do not enter that gate.
 
+### 2.3 Target description
+
+Nucleus source contains no physical placement, and a target description
+contains no source-symbol reference. A source manifest supplies declarations
+in order. A target profile supplies machine regions and the runtime revision.
+The compiler assigns offsets within those regions and computes final addresses.
+
+The external profile may contain device names, access attributes, output-file
+choices, and other host information. The adapter validates those attributes and
+reduces the profile to this compact compiler descriptor:
+
+| Field              | Meaning                                                                 |
+| ------------------ | ----------------------------------------------------------------------- |
+| `runtimeIdentity`  | Required identity of the runtime byte length and helper-offset table.   |
+| `imageBase`        | First target address of startup, runtime, code, and image bytes.        |
+| `imageCapacity`    | Maximum byte extent of the image region.                                |
+| `writableBase`     | First target address available to initialized data and then BSS.        |
+| `writableCapacity` | Combined writable extent available to those two classes.                |
+| `stackBase`        | First address of an optionally established stack region.                |
+| `stackCapacity`    | Total stack extent; zero selects inherited mode and requires base zero. |
+
+Every field is an unsigned 16-bit word. A base and capacity describe one
+half-open region; they do not encode an inclusive limit. Validation computes
+the mathematical end with a seventeenth bit, so a nonempty region may end at
+`$10000` without a sentinel convention.
+
+Before reduction, the adapter verifies that the image mapping can be loaded and
+executed, that the writable mapping permits writes, and that an established
+stack mapping permits writes. These hardware attributes remain in the external
+profile and do not add compiler descriptor fields.
+
+The runtime identity must equal the constant carried by the compiler before
+the compiler publishes output. The identity fixes both the runtime byte length
+and its helper offsets. The adapter must supply that exact runtime image. A
+mismatch is a target-configuration diagnostic, not a runnable artifact.
+
+### 2.4 Loaded and ROM mappings
+
+The relationship between the image and writable regions determines startup
+mode; the descriptor contains no mode flag.
+
+- When the complete writable region lies inside the image region, the target is
+  loaded. Initialized bytes are emitted at their runtime addresses and startup
+  emits no copy.
+- When the complete writable region lies outside the image region, the target
+  is ROM-resident. Initial values occupy an image record and startup copies them
+  to `writableBase`.
+- Partial overlap between the regions is invalid.
+
+Initialized objects begin at offset zero in the writable region. BSS begins at
+`initializedDataLength`, not at a reserved initialized-data capacity. The
+required writable extent is therefore `initializedDataLength + bssLength`.
+This sum must fit `writableCapacity` without mathematical overflow.
+
+### 2.5 Address assignment and validation
+
+The compiler retains generated labels and fixups as image-relative offsets or
+an equivalent representation that keeps target addresses separate from output
+staging addresses. A target address is `imageBase + offset`. A staging address
+only identifies where the compiler is temporarily writing bytes; it is never a
+branch target, data address, entry address, or published run address.
+
+Before publication, the compiler and adapter together establish all of these
+facts:
+
+- every mathematical region end is at most `$10000`;
+- the runtime identity matches;
+- the writable region is wholly inside or wholly outside the image region;
+- image bytes and writable bytes fit their capacities;
+- every initialized-data load and run extent has the same length;
+- a load and run extent is either identical or disjoint, never partly
+  overlapping;
+- in loaded mode, initialized-data records lie within the writable region while
+  startup, runtime, generated code, and aggregate-constant records remain
+  outside it;
+- every branch, call, data reference, entry address, and patch is in range;
+- an established stack region is large enough for the reported requirement and
+  disjoint from both image and writable regions;
+- every staging write fits the independent staging capacity; and
+- every address-tagged output record lies within the image region.
+
+### 2.6 Banking boundary
+
+One compilation has one flat 16-bit target mapping. The compiler has no bank
+identity, selector, bank-switch instruction, cross-bank fixup, or alternate
+calling convention. A host may package separately compiled artifacts into a
+banked device image, and a monitor may provide bank services, but neither is
+part of this compiler contract. A future bank-aware service requires a separate
+runtime-contract revision; it does not enlarge this descriptor pre-emptively.
+
 ## 3. Runtime representation
 
 ### 3.1 Scalar values
@@ -155,19 +245,39 @@ object.
 The compiler determines every program object's address, type, extent, and
 initial bytes before it publishes the generated program. It retains initialized
 data length, aggregate-constant length, total read-only-data length, and BSS
-length as separate words. Generated read-only data is laid out as the complete
-initialized-RAM image followed immediately by aggregate-constant bytes. A
-constant symbol retains an offset relative to the beginning of that suffix, so
-later initialized declarations cannot change its identity. The compiler must
-reject a layout whose mathematical end exceeds the selected region.
+length as separate words. A constant symbol retains an offset relative to the
+aggregate-constant image, so later initialized declarations cannot change its
+identity. The compiler must reject a layout whose mathematical end exceeds the
+selected region.
 
-### 4.2 Initial state
+### 4.2 Transcript barrier and image layout
+
+Parsing and checking finish before backend publication. The parser finalizes
+the initialized-data, BSS, and aggregate-constant used lengths before the
+backend emits any code byte. Startup copy and clear lengths therefore require
+no fixup. Code addresses, including `main` and a ROM-mode copy source placed
+after generated code, may require retained patch sites.
+
+The image region begins with the startup entry. The selected runtime follows
+the startup stub immediately, generated code follows the runtime, and generated
+read-only bytes follow the code. In ROM mode the read-only bytes contain the
+complete initialized-RAM load image followed by aggregate-constant bytes. In
+loaded mode initialized bytes occupy their runtime addresses within the image,
+and the trailing read-only bytes contain only aggregate constants.
+
+The runtime base is derived from `imageBase` and the exact startup-stub length.
+The ROM-mode copy-source operand is emitted as a placeholder and patched at
+publication after the final code and read-only offsets are known. The entry
+transfer to `main` uses the same checked patching discipline.
+
+### 4.3 Initial state
 
 Before `main` begins, every program variable has its language-defined zero or
 explicit static value, and every aggregate constant has its complete declared
-value. The startup path copies only the initialized-RAM prefix of generated
-read-only data, then clears BSS. It does not copy the aggregate-constant suffix.
-It must not expose a partly initialized object to source execution.
+value. In ROM mode startup copies only the initialized-RAM image, then clears
+BSS. In loaded mode it omits the copy and clears BSS. It never copies the
+aggregate-constant bytes and must not expose a partly initialized object to
+source execution.
 
 Static words use little-endian order. Record and array initializers follow the
 packed layout in Chapter 3. A bounded-string initializer writes its length and
@@ -177,22 +287,34 @@ The compiler may reuse its existing one-object initializer buffer while
 building either a variable or an aggregate constant; it does not require a
 second read-only-image-sized workspace buffer.
 
-### 4.3 Program entry and exit
+### 4.4 Program entry and exit
+
+The entry address is `imageBase`. Startup optionally establishes the configured
+stack, copies initialized data when required, clears BSS, and then enters
+`main`. Copy and clear therefore precede the entry transfer. In inherited-stack
+mode the transfer is a patched `JP main`; `main` returns through the caller's
+existing return address. In established-stack mode startup uses a patched
+`CALL main`, restores the incoming `SP` after successful completion, and then
+returns to the original caller. Failure and trap paths restore it through their
+terminal handling under Section 6.4.
 
 Startup invokes `main` with no source parameters. Successful return terminates
 normally. Failure returned by `main` performs `unhandled-error`. No source
 routine runs before all variables and aggregate constants have their complete
 initial values.
 
+The compiler emits no reset, restart, interrupt, or general vector table. A
+loader, monitor, or machine reset binding enters `imageBase` outside the source
+language.
+
 ## 5. Checked access and aggregate copying
 
 ### 5.1 Region checks
 
 A generated access of width `w` at address `a` is permitted only when the
-mathematical half-open region `[a, a + w)` lies wholly within either the
-selected program-data region or the generated read-only-data region. The
-calculation must not use wrapped 16-bit arithmetic as evidence that the region
-fits.
+mathematical half-open region `[a, a + w)` lies wholly within either the used
+writable region or the generated read-only-data region. The calculation must
+not use wrapped 16-bit arithmetic as evidence that the region fits.
 
 A fixed-array access first checks the unsigned index against its declared
 length, then forms `base + index * stride`, and then establishes the complete
@@ -263,6 +385,30 @@ Every return restores the caller state required after the call. Early return,
 ordinary return, recoverable failure, direct recursion, and mutual recursion
 use the same preservation rule. Nucleus has no source cleanup or unwinding
 phase.
+
+### 6.4 Entry stack modes and interrupts
+
+When `stackCapacity` is zero, startup inherits the caller's stack and does not
+write `SP`. The compiler reports the maximum stack requirement in the program
+map but performs no capacity validation, because the descriptor contains no
+claim about the caller's available stack.
+
+When `stackCapacity` is nonzero, startup saves the incoming `SP`, establishes
+`SP` at the mathematical end of the configured stack region, and validates the
+reported requirement against that region. The first two bytes of the region are
+reserved for the saved incoming `SP`; downward stack growth may use only the
+remaining `stackCapacity - 2` bytes. The configured capacity must therefore be
+at least two and must cover that reservation plus the complete reported stack
+requirement, including the established-mode call of `main`.
+
+Startup restores the incoming `SP` on every terminal path: normal return,
+unhandled recoverable failure, and trap. The value `$0000` represents an
+established stack end of `$10000`, not an empty region.
+
+This activation contract is not interrupt-reentrant. The compiler emits no
+interrupt entry and the service adapter supplies no interrupt-safe-call
+guarantee. A machine interrupt handler must remain outside Nucleus, preserve the
+program's complete machine state, and not enter a Nucleus routine or service.
 
 ## 7. Recoverable failure and traps
 
@@ -378,21 +524,26 @@ depends on before publication. At minimum it checks:
 - every data address and complete object extent;
 - every absolute and relative branch or call fixup;
 - every required target-runtime entry address;
-- every program-data and runtime-region non-overlap condition supplied by the
-  selected target map; and
+- every image, writable, and established-stack condition in Chapter 2; and
 - every bounded compiler table needed to finish emission.
 
 ### 9.2 Atomic publication
 
-The compiler may write tentative bytes to a bounded staging region or bulk
-output while checking source. It publishes a runnable program only after the
-source has been accepted and every layout, fixup, range, capacity, and target
-contract check has succeeded. A diagnostic leaves no partial output identified
-as runnable and does not replace a previously published runnable program.
+The compiler may write tentative bytes to a bounded staging region while
+checking source. It publishes a runnable program only after the source has been
+accepted and every layout, fixup, range, capacity, and target-contract check has
+succeeded. Output is therefore buffered until commit. A diagnostic leaves no
+partial output identified as runnable and does not replace a previously
+published runnable program.
 
-The output format, relocation strategy, and loading transport are target
-adapter choices. The adapter must not patch an unchecked value or silently
-truncate an address, displacement, size, source location, or static datum.
+The compiler publishes address-tagged records in memory. Intel HEX, raw binary,
+`.COM`, serial framing, and device-image assembly are host encodings over those
+records. The compiler defines no text encoding, file padding rule, archive, or
+container format. Streaming may deliver a committed record; it may not expose
+tentative compilation output.
+
+The adapter must not patch an unchecked value or silently truncate an address,
+displacement, size, source location, or static datum.
 
 ### 9.3 Source locations
 
@@ -401,6 +552,14 @@ available source location required by the language specification. A compiler
 may use a side map, inline constants, shared trap stubs with an established
 location carrier, or another measured representation. Entering a shared helper
 must not replace the source location with the helper's address.
+
+### 9.4 Published map
+
+The committed artifact reports at least its runtime identity, entry address,
+image records, initialized-data run extent, BSS run extent, aggregate-constant
+extent, stack mode, and measured stack requirement. The report distinguishes
+used lengths from capacities. Host tools may add device offsets or filenames,
+but those values do not enter generated addresses or source semantics.
 
 ## 10. Conformance and measurement
 
