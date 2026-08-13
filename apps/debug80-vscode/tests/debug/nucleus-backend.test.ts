@@ -43,12 +43,12 @@ describe('Nucleus backend', () => {
 
   it('requests canonical NOBJ and launchable HEX from the standalone compiler', async () => {
     const project = workspace();
-    const run = vi.fn<NucleusCommandRunner>(async (_command, args) => {
+    const run = vi.fn<NucleusCommandRunner>((_command, args) => {
       const output = args[args.indexOf('-o') + 1];
       const hexOutput = args[args.indexOf('--hex-output') + 1];
       fs.writeFileSync(output ?? '', 'NOBJ');
       fs.writeFileSync(hexOutput ?? '', ':00000001FF\n');
-      return { exitCode: 0, stdout: 'compiled\n', stderr: '' };
+      return Promise.resolve({ exitCode: 0, stdout: 'compiled\n', stderr: '' });
     });
     const result = await new NucleusBackend(run, '/tool/nucleus').assemble({
       asmPath: project.source,
@@ -97,7 +97,8 @@ describe('Nucleus backend', () => {
     fs.mkdirSync(path.dirname(project.hex), { recursive: true });
     fs.writeFileSync(project.hex, 'STALE HEX');
     fs.writeFileSync(path.join(project.root, 'build', 'main.nobj'), 'STALE NOBJ');
-    const run: NucleusCommandRunner = async () => ({ exitCode: 0, stdout: '', stderr: '' });
+    const run: NucleusCommandRunner = () =>
+      Promise.resolve({ exitCode: 0, stdout: '', stderr: '' });
 
     const result = await new NucleusBackend(run).assemble({
       asmPath: project.source,
@@ -121,10 +122,10 @@ describe('Nucleus backend', () => {
     const nobj = path.join(project.root, 'build', 'main.nobj');
     fs.writeFileSync(project.hex, 'PREVIOUS HEX');
     fs.writeFileSync(nobj, 'PREVIOUS NOBJ');
-    const run: NucleusCommandRunner = async (_command, args) => {
+    const run: NucleusCommandRunner = (_command, args) => {
       fs.writeFileSync(args[args.indexOf('-o') + 1] ?? '', '');
       fs.writeFileSync(args[args.indexOf('--hex-output') + 1] ?? '', '');
-      return { exitCode: 0, stdout: '', stderr: '' };
+      return Promise.resolve({ exitCode: 0, stdout: '', stderr: '' });
     };
 
     const result = await new NucleusBackend(run).assemble({
@@ -141,11 +142,12 @@ describe('Nucleus backend', () => {
 
   it('translates an exact Nucleus source diagnostic', async () => {
     const project = workspace();
-    const run: NucleusCommandRunner = async () => ({
-      exitCode: 1,
-      stdout: '',
-      stderr: `${project.source}:1:5: Nucleus diagnostic 87\n`,
-    });
+    const run: NucleusCommandRunner = () =>
+      Promise.resolve({
+        exitCode: 1,
+        stdout: '',
+        stderr: `${project.source}:1:5: Nucleus diagnostic 87\n`,
+      });
     const result = await new NucleusBackend(run).assemble({
       asmPath: project.source,
       hexPath: project.hex,

@@ -44,6 +44,11 @@ const runNucleusCommand: NucleusCommandRunner = async (command, args, cwd, onOut
   });
 
 const diagnosticPattern = /^(.*):(\d+):(\d+): Nucleus diagnostic (\d+)$/m;
+const configuredNucleusCommand = process.env.NUCLEUS_COMPILER?.trim();
+const defaultNucleusCommand =
+  configuredNucleusCommand === undefined || configuredNucleusCommand.length === 0
+    ? 'nucleus'
+    : configuredNucleusCommand;
 let buildOrdinal = 0;
 
 function removeIfPresent(filePath: string): void {
@@ -121,7 +126,7 @@ export class NucleusBackend implements AssemblerBackend {
 
   public constructor(
     private readonly run: NucleusCommandRunner = runNucleusCommand,
-    private readonly command: string = process.env.NUCLEUS_COMPILER?.trim() || 'nucleus'
+    private readonly command: string = defaultNucleusCommand
   ) {}
 
   public async assemble(options: AssembleOptions): Promise<AssembleResult> {
