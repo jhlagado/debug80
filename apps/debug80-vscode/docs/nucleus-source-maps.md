@@ -27,9 +27,12 @@ change.
 
 The standalone Node host can also compile banked targets and emit one D8 map
 per physical bank. Those maps use the existing D8 memory-bank metadata and
-Debug80 external address-space identity. The first Debug80 Nucleus launch
-backend remains a flat Intel HEX path; it does not flatten a banked object or
-invent a bank-selection policy.
+Debug80 external address-space identity. Debug80's Nucleus application loader
+currently accepts one flat Intel HEX image, so the launch backend rejects a
+target profile whose `bankCount` is greater than one before invoking the
+compiler. It does not flatten a banked object or invent a bank-selection
+policy. Use the standalone CLI when banked NOBJ and per-bank D8 artifacts are
+required.
 
 The event protocol used to produce the sidecar is documented in the Nucleus
 repository. It is active only while the host-instrumented Z80 compiler runs.

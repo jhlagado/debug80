@@ -153,6 +153,30 @@ export class NucleusBackend implements AssemblerBackend {
         error: `Nucleus target profile not found at "${targetProfile}"; define real service destinations before launching`,
       };
     }
+    let targetProfileValue: unknown;
+    try {
+      targetProfileValue = JSON.parse(fs.readFileSync(targetProfile, 'utf8'));
+    } catch (error) {
+      return {
+        success: false,
+        error: `Nucleus target profile at "${targetProfile}" is not valid JSON: ${error instanceof Error ? error.message : String(error)}`,
+      };
+    }
+    if (
+      typeof targetProfileValue === 'object' &&
+      targetProfileValue !== null &&
+      !Array.isArray(targetProfileValue)
+    ) {
+      const bankCount = (targetProfileValue as Record<string, unknown>).bankCount;
+      if (typeof bankCount === 'number' && Number.isInteger(bankCount) && bankCount > 1) {
+        return {
+          success: false,
+          error:
+            `Debug80 Nucleus launch requires a flat target; profile "${targetProfile}" declares bankCount ${bankCount}. ` +
+            'Use the standalone Nucleus CLI for banked NOBJ and per-bank D8 output.',
+        };
+      }
+    }
     let result: NucleusCommandResult;
     try {
       result = await this.run(

@@ -107,6 +107,27 @@ describe('Nucleus backend', () => {
     expect(run).not.toHaveBeenCalled();
   });
 
+  it('rejects banked profiles before requesting an impossible flat HEX launch artifact', async () => {
+    const project = workspace();
+    const targetProfile = path.join(project.root, 'nucleus-target.json');
+    const profile = JSON.parse(fs.readFileSync(targetProfile, 'utf8')) as Record<string, unknown>;
+    fs.writeFileSync(targetProfile, JSON.stringify({ ...profile, bankCount: 2, entryBank: 0 }));
+    const run = vi.fn<NucleusCommandRunner>();
+
+    const result = await new NucleusBackend(run).assemble({
+      asmPath: project.source,
+      hexPath: project.hex,
+      sourceRoot: project.root,
+    });
+
+    expect(result).toMatchObject({
+      success: false,
+      error: expect.stringContaining('requires a flat target'),
+    });
+    expect(result.error).toContain('standalone Nucleus CLI');
+    expect(run).not.toHaveBeenCalled();
+  });
+
   it('does not accept stale final artifacts as output from a successful command', async () => {
     const project = workspace();
     fs.mkdirSync(path.dirname(project.hex), { recursive: true });
