@@ -3,9 +3,10 @@
 A small typed language compiled directly to machine code for sixteen-kilobyte
 Z80 systems.
 
-Nucleus is an autonomous project. Its language, grammar, direct compiler,
-runtime contract, and conformance rules are defined here. Material outside this
-package does not govern Nucleus.
+Nucleus is an autonomous standalone project. This Debug80 workspace package is
+a pinned integration snapshot, not a second source of language or runtime
+authority. Current authorities live in the
+[standalone Nucleus repository](https://github.com/jhlagado/nucleus).
 
 ## Layout
 
@@ -18,7 +19,9 @@ package does not govern Nucleus.
 | `src/`     | host-side grammar, manifest, runtime, and metadata support           |
 | `test/`    | grammar, contract, measurement, and direct-Z80 proof gates           |
 
-The current authorities are:
+This snapshot retains pinned copies of these documents for integration checks.
+They may trail the standalone repository and are not current-language
+authorities:
 
 - [Nucleus 0.1 Language Specification](docs/specification.md)
 - [Nucleus Target System Specification](docs/target-system-specification.md)
