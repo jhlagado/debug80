@@ -8,6 +8,7 @@
 import { spawn } from 'node:child_process';
 import * as fs from 'node:fs';
 import * as path from 'node:path';
+import { parseD8DebugMap } from '../../mapping/d8-map';
 import type { AssemblyDiagnostic, AssembleResult } from './assembler';
 import type { AssembleOptions, AssemblerBackend } from './assembler-backend';
 
@@ -135,9 +136,11 @@ export class NucleusBackend implements AssemblerBackend {
     const artifactBase =
       extension.length === 0 ? options.hexPath : options.hexPath.slice(0, -extension.length);
     const nobjPath = `${artifactBase}.nobj`;
+    const debugMapPath = `${artifactBase}.d8.json`;
     const generation = `${process.pid}-${(buildOrdinal += 1)}`;
     const temporaryHexPath = `${artifactBase}.nucleus-${generation}.hex`;
     const temporaryNobjPath = `${artifactBase}.nucleus-${generation}.nobj`;
+    const temporaryDebugMapPath = `${artifactBase}.nucleus-${generation}.d8.json`;
     const cwd = options.sourceRoot ?? path.dirname(options.asmPath);
     const configuredProfile = process.env.NUCLEUS_TARGET_PROFILE?.trim();
     const targetProfile =
@@ -160,6 +163,8 @@ export class NucleusBackend implements AssemblerBackend {
           temporaryNobjPath,
           '--hex-output',
           temporaryHexPath,
+          '--d8-output',
+          temporaryDebugMapPath,
           '--target-profile',
           targetProfile,
           options.asmPath,
@@ -170,6 +175,7 @@ export class NucleusBackend implements AssemblerBackend {
     } catch (error) {
       removeIfPresent(temporaryHexPath);
       removeIfPresent(temporaryNobjPath);
+      removeIfPresent(temporaryDebugMapPath);
       const message = `Nucleus compiler failed to start: ${error instanceof Error ? error.message : String(error)}`;
       options.onOutput?.(`${message}\n`);
       return { success: false, error: message };
@@ -188,19 +194,29 @@ export class NucleusBackend implements AssemblerBackend {
       if (
         !fs.existsSync(temporaryHexPath) ||
         !fs.existsSync(temporaryNobjPath) ||
+        !fs.existsSync(temporaryDebugMapPath) ||
         fs.statSync(temporaryHexPath).size === 0 ||
-        fs.statSync(temporaryNobjPath).size === 0
+        fs.statSync(temporaryNobjPath).size === 0 ||
+        fs.statSync(temporaryDebugMapPath).size === 0
       ) {
         return {
           success: false,
           error:
-            'Nucleus compiler succeeded without producing nonempty fresh NOBJ and Intel HEX artifacts',
+            'Nucleus compiler succeeded without producing nonempty fresh NOBJ, Intel HEX and D8 artifacts',
+        };
+      }
+      const parsedDebugMap = parseD8DebugMap(fs.readFileSync(temporaryDebugMapPath, 'utf8'));
+      if (parsedDebugMap.map === undefined) {
+        return {
+          success: false,
+          error: `Nucleus compiler produced an invalid D8 artifact: ${parsedDebugMap.error ?? 'unknown validation failure'}`,
         };
       }
       publishArtifacts(
         [
           { temporaryPath: temporaryNobjPath, finalPath: nobjPath },
           { temporaryPath: temporaryHexPath, finalPath: options.hexPath },
+          { temporaryPath: temporaryDebugMapPath, finalPath: debugMapPath },
         ],
         generation
       );
@@ -208,6 +224,7 @@ export class NucleusBackend implements AssemblerBackend {
     } finally {
       removeIfPresent(temporaryHexPath);
       removeIfPresent(temporaryNobjPath);
+      removeIfPresent(temporaryDebugMapPath);
     }
   }
 }

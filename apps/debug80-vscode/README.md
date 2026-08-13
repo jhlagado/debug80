@@ -73,8 +73,11 @@ are available at [debug80.com](https://debug80.com/).
   highlighting inside `begin`/`end` bodies.
 - **Nucleus language support**: `.nu` files have language-aware editing, target
   discovery, positioned compiler diagnostics, and builds through the standalone
-  `nucleus` command. The build retains canonical `.nobj` beside its launchable
-  `.hex` artifact. Nucleus source stepping awaits a D8-compatible map sidecar.
+  `nucleus` command. The build retains canonical `.nobj` and native `.d8.json`
+  sidecars beside its launchable `.hex` artifact. Debug80 imports that D8 map
+  through its ordinary validator for source breakpoints and PC-to-source lookup.
+  Nucleus sidecars retain byte columns, while the initial debugger experience is
+  line-oriented.
   A project-local `nucleus-target.json` must provide the validated memory layout
   and all external service destinations; Debug80 never substitutes the
   compiler's synthetic proof addresses.
@@ -154,7 +157,7 @@ Debug80 contributes commands for the normal project workflow:
   current debug session.
 - **Debug80: Select Workspace Folder** and **Debug80: Select Active Target**:
   switch the active project context.
-- **Debug80: Set Program File**: choose the source entry point from an editor or
+- **Debug80: Set Program File**: select the source entry point from an editor or
   Explorer context menu.
 - **Debug80: Open Project Configuration Panel**: open the active project config.
 - **Debug80: Open Auxiliary Source**: open bundled or project-provided platform
