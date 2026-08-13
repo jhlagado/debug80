@@ -15,13 +15,15 @@ debugging, and the documentation snapshot published on debug80.com.
 1. Preserve the history of `packages/nucleus` in the standalone repository.
 2. Establish an emulator-backed Node compiler around the existing Z80 binary.
 3. Teach Debug80 to discover and build `.nu` targets through that compiler.
-4. Publish Nucleus and Debug80 Runtime packages, then pin Debug80 to a released
+4. Add ordered multipart source manifests and validated machine service
+   profiles to Debug80 project configuration.
+5. Publish Nucleus and Debug80 Runtime packages, then pin Debug80 to a released
    Nucleus version.
-5. Add a D8-compatible Nucleus source-map sidecar for source breakpoints and
+6. Add a D8-compatible Nucleus source-map sidecar for source breakpoints and
    stepping.
-6. Copy the public Nucleus documentation into the Debug80 website from a pinned
+7. Copy the public Nucleus documentation into the Debug80 website from a pinned
    Nucleus revision.
-7. Remove `packages/nucleus` from Debug80 only after the external package, CI,
+8. Remove `packages/nucleus` from Debug80 only after the external package, CI,
    documentation sync, and integration tests are independently green.
 
 The temporary in-tree copy prevents a destructive cutover before the new
@@ -37,7 +39,8 @@ TypeScript compiler must match the Z80 compiler on accepted programs,
 diagnostics and positions, materialized bytes, target layout, and runtime
 selection before it can replace the emulator-backed compiler as the reference.
 
-NOBJ does not yet carry source-to-address mappings. Debug80 therefore supports
-editing, building, positioned diagnostics, and execution first. Source stepping
-must wait for a separately specified D8-compatible sidecar rather than guessing
-from the object image.
+NOBJ does not yet carry source-to-address mappings. With a validated target
+profile and callable service destinations, Debug80 supports editing, building,
+positioned diagnostics, and machine-code execution. Source stepping must wait
+for a separately specified D8-compatible sidecar rather than guessing from the
+object image.

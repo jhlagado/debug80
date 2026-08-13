@@ -75,6 +75,12 @@ are available at [debug80.com](https://debug80.com/).
   discovery, positioned compiler diagnostics, and builds through the standalone
   `nucleus` command. The build retains canonical `.nobj` beside its launchable
   `.hex` artifact. Nucleus source stepping awaits a D8-compatible map sidecar.
+  A project-local `nucleus-target.json` must provide the validated memory layout
+  and all external service destinations; Debug80 never substitutes the
+  compiler's synthetic proof addresses.
+  The initial backend treats the selected `.nu` file as a one-part manifest.
+  Ordered multi-file Nucleus projects require the planned project-manifest
+  integration.
 
 ## Quick Start
 
@@ -184,6 +190,8 @@ The initial Nucleus integration is deliberately separate: install the standalone
 Nucleus package so its `nucleus` command is on `PATH`, or set `NUCLEUS_COMPILER`
 to the command path before starting VS Code. Bundling a released compiler image
 is the next integration step.
+Set `NUCLEUS_TARGET_PROFILE` to override the default project-local
+`nucleus-target.json` path.
 
 ## Documentation
 
