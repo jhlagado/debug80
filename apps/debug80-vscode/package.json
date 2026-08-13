@@ -704,6 +704,20 @@
                   }
                 }
               },
+              "nucleus": {
+                "type": "object",
+                "description": "Nucleus-specific project and target profile paths",
+                "properties": {
+                  "project": {
+                    "type": "string",
+                    "description": "Nucleus project file, relative to the Debug80 project root"
+                  },
+                  "targetProfile": {
+                    "type": "string",
+                    "description": "Nucleus target profile, relative to the Nucleus project root"
+                  }
+                }
+              },
               "outputDir": {
                 "type": "string",
                 "description": "Directory for generated build artifacts (defaults to build)"
@@ -890,6 +904,7 @@
     "@jhlagado/azm": "^0.3.8",
     "@jhlagado/debug80-runtime": "^0.1.0",
     "@jhlagado/glimmer": "^0.6.2",
+    "@jhlagado/nucleus": "https://codeload.github.com/jhlagado/nucleus/tar.gz/2873c24b19adfec46dc57ba25ebbff9a8e500e44",
     "@vscode/debugadapter": "^1.64.0",
     "@vscode/debugprotocol": "^1.64.0"
   },

@@ -67,6 +67,7 @@ export async function assembleIfRequested(options: {
     hexPath,
     ...(sourceRoot !== undefined ? { sourceRoot } : {}),
     ...(args.azm !== undefined ? { azm: args.azm } : {}),
+    ...(args.nucleus !== undefined ? { nucleus: args.nucleus } : {}),
     onOutput: (message) => {
       onOutput?.(message);
       if (sendEvent !== undefined) {

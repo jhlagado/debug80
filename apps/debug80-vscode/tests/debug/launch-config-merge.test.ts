@@ -23,6 +23,29 @@ const PROJECT_CONFIG = '/project/debug80.json';
 const PROJECT_ROOT = '/project';
 
 describe('launch-config-merge', () => {
+  it('merges Nucleus project options in root, target and launch order', () => {
+    const manifest: LaunchConfigManifest = {
+      assembler: 'nucleus',
+      nucleus: { project: 'root-project.json', targetProfile: 'root-target.json' },
+      targets: {
+        app: {
+          asm: 'src/main.nu',
+          nucleus: { project: 'app-project.json' },
+        },
+      },
+      defaultTarget: 'app',
+    };
+    const merged = mergeForTarget(
+      manifest,
+      'app',
+      launchArgs({ nucleus: { targetProfile: 'debug-target.json' } })
+    );
+    expect(merged.nucleus).toEqual({
+      project: 'app-project.json',
+      targetProfile: 'debug-target.json',
+    });
+  });
+
   it('applies root config, target config, then explicit launch args in order', () => {
     const manifest: LaunchConfigManifest = {
       platform: 'tec1g',

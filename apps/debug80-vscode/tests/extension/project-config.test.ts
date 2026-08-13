@@ -233,6 +233,38 @@ describe('project-config helpers', () => {
     ).toBe(true);
   });
 
+  it('validates target-level Nucleus paths', () => {
+    expect(
+      isDebug80ProjectConfig({
+        projectVersion: DEBUG80_PROJECT_VERSION,
+        projectPlatform: 'simple',
+        targets: {
+          app: {
+            sourceFile: 'src/main.nu',
+            assembler: 'nucleus',
+            nucleus: {
+              project: 'nucleus-project.json',
+              targetProfile: 'targets/simple.json',
+            },
+          },
+        },
+      })
+    ).toBe(true);
+    expect(
+      isDebug80ProjectConfig({
+        projectVersion: DEBUG80_PROJECT_VERSION,
+        projectPlatform: 'simple',
+        targets: {
+          app: {
+            sourceFile: 'src/main.nu',
+            assembler: 'nucleus',
+            nucleus: { project: '' },
+          },
+        },
+      })
+    ).toBe(false);
+  });
+
   it('rejects configs with unsupported project version', () => {
     expect(
       isDebug80ProjectConfig({

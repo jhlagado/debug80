@@ -12,6 +12,7 @@ import {
   validateStringArray,
   validateBoolean,
   validateTerminalConfig,
+  validateNucleusConfig,
   validateSimpleConfig,
   validateTec1Config,
   validateTec1gConfig,
@@ -943,6 +944,26 @@ describe('config-validation', () => {
     it('should accept minimal args', () => {
       const result = validateLaunchArgs({});
       expect(result.valid).toBe(true);
+    });
+
+    it('validates Nucleus project and target-profile paths', () => {
+      expect(
+        validateNucleusConfig({
+          project: 'nucleus-project.json',
+          targetProfile: 'targets/tec1.json',
+        })
+      ).toMatchObject({ valid: true, errors: [] });
+      expect(validateNucleusConfig({ project: 42, targetProfile: '' })).toMatchObject({
+        valid: false,
+        errors: [
+          'nucleus.project must be a string, got number',
+          'nucleus.targetProfile is required',
+        ],
+      });
+      expect(validateNucleusConfig(null)).toMatchObject({
+        valid: false,
+        errors: ['nucleus must be an object, got null'],
+      });
     });
 
     it('should reject null/undefined', () => {

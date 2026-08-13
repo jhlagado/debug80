@@ -73,17 +73,19 @@ are available at [debug80.com](https://debug80.com/).
   highlighting inside `begin`/`end` bodies.
 - **Nucleus language support**: `.nu` files have language-aware editing, target
   discovery, positioned compiler diagnostics, and builds through the standalone
-  `nucleus` command. The build retains canonical `.nobj` and native `.d8.json`
-  sidecars beside its launchable `.hex` artifact. Debug80 imports that D8 map
-  through its ordinary validator for source breakpoints and PC-to-source lookup.
-  Nucleus sidecars retain byte columns, while the initial debugger experience is
-  line-oriented.
+  Nucleus package's in-process Host API. The extension contains the pinned
+  compiler package, so it does not require a global `nucleus` command. The build
+  retains canonical `.nobj` and native `.d8.json` sidecars beside its launchable
+  `.hex` artifact. Debug80 imports that D8 map through its ordinary validator for
+  source breakpoints and PC-to-source lookup. Nucleus sidecars retain byte
+  columns, while the initial debugger experience is line-oriented.
   A project-local `nucleus-target.json` must provide the validated memory layout
   and all external service destinations; Debug80 never substitutes the
   compiler's synthetic proof addresses.
-  The initial backend treats the selected `.nu` file as a one-part manifest.
-  Ordered multi-file Nucleus projects require the planned project-manifest
-  integration.
+  A selected `.nu` file forms a one-part build by default. A conventional
+  `nucleus-project.json`, or `nucleus.project` in Debug80 configuration, supplies
+  ordered multipart source. `nucleus.targetProfile` can override the profile
+  path for one target or launch.
 
 ## Quick Start
 
@@ -187,14 +189,11 @@ npm run build
 npm test
 ```
 
-Debug80 packages its assembler dependency inside the VSIX. Published users should
-not need `npm link`, sibling checkouts, or globally installed assembler binaries.
-The initial Nucleus integration is deliberately separate: install the standalone
-Nucleus package so its `nucleus` command is on `PATH`, or set `NUCLEUS_COMPILER`
-to the command path before starting VS Code. Bundling a released compiler image
-is the next integration step.
-Set `NUCLEUS_TARGET_PROFILE` to override the default project-local
-`nucleus-target.json` path.
+Debug80 packages its assembler and Nucleus compiler dependencies inside the
+VSIX. Published users should not need `npm link`, sibling checkouts, global
+compiler commands, or compiler environment variables. Nucleus launch settings
+belong in `debug80.json`, `launch.json`, or the conventional
+`nucleus-project.json` and `nucleus-target.json` files.
 
 ## Documentation
 

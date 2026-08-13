@@ -130,6 +130,19 @@ export function isDebug80ProjectConfig(config: ProjectConfig | undefined): confi
         return false;
       }
     }
+    const nucleus = (target as { nucleus?: unknown }).nucleus;
+    if (nucleus !== undefined) {
+      if (nucleus === null || typeof nucleus !== 'object' || Array.isArray(nucleus)) {
+        return false;
+      }
+      const options = nucleus as Record<string, unknown>;
+      if (
+        (options.project !== undefined && !isNonEmptyString(options.project)) ||
+        (options.targetProfile !== undefined && !isNonEmptyString(options.targetProfile))
+      ) {
+        return false;
+      }
+    }
   }
 
   return true;

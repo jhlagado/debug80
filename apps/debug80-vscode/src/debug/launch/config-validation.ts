@@ -10,7 +10,7 @@ import {
   MissingConfigError,
   UnsupportedPlatformError,
 } from '../session/errors';
-import { LaunchRequestArguments } from '../session/types';
+import { LaunchRequestArguments, type NucleusLaunchOptions } from '../session/types';
 import type { TerminalConfig } from '../session/terminal-types';
 import {
   Tec1PlatformConfig,
@@ -92,6 +92,22 @@ export function validateTerminalConfig(config: unknown): ValidationResult {
     validatePort(tc.rxPort, 'terminal.rxPort'),
     validatePort(tc.statusPort, 'terminal.statusPort'),
     validateBoolean(tc.interrupt, 'terminal.interrupt'),
+  ]);
+}
+
+export function validateNucleusConfig(config: unknown): ValidationResult {
+  if (config === null) {
+    return invalidResult('nucleus must be an object, got null');
+  }
+  const objectResult = validateOptionalObject<NucleusLaunchOptions>(config, 'nucleus');
+  if (objectResult.result !== undefined) return objectResult.result;
+  return mergeResults([
+    objectResult.value.project === undefined
+      ? validResult()
+      : validatePath(objectResult.value.project, 'nucleus.project', true),
+    objectResult.value.targetProfile === undefined
+      ? validResult()
+      : validatePath(objectResult.value.targetProfile, 'nucleus.targetProfile', true),
   ]);
 }
 
@@ -273,6 +289,7 @@ function collectLaunchValidationResults(args: LaunchRequestArguments): Validatio
     validateStringArray(args.debugMaps, 'debugMaps'),
     ...LAUNCH_INSTRUCTION_LIMIT_FIELDS.map((field) => validateInstructionLimit(args[field], field)),
     validateTerminalConfig(args.terminal),
+    validateNucleusConfig(args.nucleus),
     validateSimpleConfig(args.simple),
     validateTec1Config(args.tec1),
     validateTec1gConfig(args.tec1g),

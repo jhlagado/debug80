@@ -76,6 +76,13 @@ export interface AzmLaunchOptions {
   fixRegisterContracts?: boolean;
 }
 
+export interface NucleusLaunchOptions {
+  /** Nucleus project file, resolved from the Debug80 project root. */
+  project?: string;
+  /** Target profile override, resolved from the Nucleus project root. */
+  targetProfile?: string;
+}
+
 /**
  * Launch request arguments for the Z80 debug adapter.
  * Extends the standard DAP launch request with Z80-specific options.
@@ -87,6 +94,8 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
   assembler?: string;
   /** AZM-specific assembler options */
   azm?: AzmLaunchOptions;
+  /** Nucleus compiler project and target options. */
+  nucleus?: NucleusLaunchOptions;
   /** Alternative path to the source file (alias for asm) */
   sourceFile?: string;
   /** Path to the Intel HEX file */
@@ -155,6 +164,7 @@ export interface ProjectConfig {
   asm?: string;
   assembler?: string;
   azm?: AzmLaunchOptions;
+  nucleus?: NucleusLaunchOptions;
   sourceFile?: string;
   source?: string;
   hex?: string;

@@ -453,6 +453,24 @@ function applyAzmOptions(
   setIfDefined(merged, 'azm', Object.keys(azmResolved).length > 0 ? azmResolved : undefined);
 }
 
+function applyNucleusOptions(
+  merged: LaunchRequestArguments,
+  cfg: LaunchConfigManifest,
+  targetCfg: LaunchTargetConfig | undefined,
+  args: LaunchRequestArguments
+): void {
+  const nucleusResolved = {
+    ...(cfg.nucleus ?? {}),
+    ...(targetCfg?.nucleus ?? {}),
+    ...(args.nucleus ?? {}),
+  };
+  setIfDefined(
+    merged,
+    'nucleus',
+    Object.keys(nucleusResolved).length > 0 ? nucleusResolved : undefined
+  );
+}
+
 function applySourceLaunchFields(
   merged: LaunchRequestArguments,
   cfg: LaunchConfigManifest,
@@ -462,6 +480,7 @@ function applySourceLaunchFields(
   setIfDefined(merged, 'asm', resolveAsmInput(cfg, targetCfg, args));
   setIfDefined(merged, 'assembler', args.assembler ?? targetCfg?.assembler ?? cfg.assembler);
   applyAzmOptions(merged, cfg, targetCfg, args);
+  applyNucleusOptions(merged, cfg, targetCfg, args);
   setIfDefined(merged, 'sourceFile', resolveSourceInput(cfg, targetCfg, args));
 }
 
