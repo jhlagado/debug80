@@ -5,8 +5,8 @@
 import * as fs from 'fs';
 import * as path from 'path';
 
-export const TARGET_ENTRY_SOURCE_FILENAMES = ['main.asm', 'main.z80'] as const;
-export const TARGET_SOURCE_EXTENSIONS = ['.asm', '.z80', '.glim'] as const;
+export const TARGET_ENTRY_SOURCE_FILENAMES = ['main.asm', 'main.z80', 'main.nu'] as const;
+export const TARGET_SOURCE_EXTENSIONS = ['.asm', '.z80', '.glim', '.nu'] as const;
 
 const TARGET_DISCOVERY_EXCLUDED_DIRS = new Set([
   '.git',

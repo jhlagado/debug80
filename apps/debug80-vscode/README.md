@@ -8,8 +8,8 @@
 [Book 1 — Getting started](https://debug80.com/debug80-book/book1/), which goes from
 installing the extension to stepping through a program on real hardware.
 
-Debug80 turns VS Code into a practical development environment for Z80 assembly
-and Glimmer programs. It builds your project, runs it inside an integrated Z80 runtime,
+Debug80 turns VS Code into a practical development environment for Z80 assembly,
+Glimmer, and Nucleus programs. It builds your project, runs it inside an integrated Z80 runtime,
 maps machine addresses back to source with native D8 debug maps, and exposes the
 state you need while debugging: breakpoints, stepping, registers, flags, memory,
 terminal I/O, and hardware-specific panels.
@@ -71,6 +71,10 @@ are available at [debug80.com](https://debug80.com/).
 - **Glimmer language support**: `.glim` projects compile through Glimmer and AZM,
   retain source-level breakpoints and diagnostics, and embed full Z80/AZM syntax
   highlighting inside `begin`/`end` bodies.
+- **Nucleus language support**: `.nu` files have language-aware editing, target
+  discovery, positioned compiler diagnostics, and builds through the standalone
+  `nucleus` command. The build retains canonical `.nobj` beside its launchable
+  `.hex` artifact. Nucleus source stepping awaits a D8-compatible map sidecar.
 
 ## Quick Start
 
@@ -103,13 +107,14 @@ Target discovery uses a small set of entry-point conventions to suggest targets:
 - files ending in `.main.z80`
 - files named `main.asm`
 - files named `main.z80`
+- files named `main.nu`
 - `.glim` files containing a top-level `program` declaration
 
 Glimmer `part` files are not offered as standalone targets because they do not
 declare a complete program.
 
 These names are conventions, not requirements. Use the `+` control beside the
-target selector to add any `.asm`, `.z80`, or complete Glimmer program in the
+target selector to add any `.asm`, `.z80`, `.nu`, or complete Glimmer program in the
 project. Sources may live at the project root, under `src/`, or in other
 subdirectories. Removing a target with the `-` control changes `debug80.json`;
 it does not delete the source file or its existing build artifacts.
@@ -175,6 +180,10 @@ npm test
 
 Debug80 packages its assembler dependency inside the VSIX. Published users should
 not need `npm link`, sibling checkouts, or globally installed assembler binaries.
+The initial Nucleus integration is deliberately separate: install the standalone
+Nucleus package so its `nucleus` command is on `PATH`, or set `NUCLEUS_COMPILER`
+to the command path before starting VS Code. Bundling a released compiler image
+is the next integration step.
 
 ## Documentation
 

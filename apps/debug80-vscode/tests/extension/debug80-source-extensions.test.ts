@@ -11,13 +11,14 @@ describe('Debug80 source extensions', () => {
     expect(AZM_LANGUAGE_EXTENSIONS).toEqual(['.asm', '.z80', '.asmi']);
   });
 
-  it('rebuilds active sessions when AZM or Glimmer sources are saved', () => {
-    expect(DEBUG80_REBUILD_SOURCE_EXTENSIONS).toEqual(['.asm', '.z80', '.asmi', '.glim']);
+  it('rebuilds active sessions when AZM, Glimmer or Nucleus sources are saved', () => {
+    expect(DEBUG80_REBUILD_SOURCE_EXTENSIONS).toEqual(['.asm', '.z80', '.asmi', '.glim', '.nu']);
     expect(isDebug80RebuildSourcePath('/project/src/main.asm')).toBe(true);
     expect(isDebug80RebuildSourcePath('/project/src/main.z80')).toBe(true);
     expect(isDebug80RebuildSourcePath('/project/src/contracts.asmi')).toBe(true);
     expect(isDebug80RebuildSourcePath('/project/src/game.glim')).toBe(true);
     expect(isDebug80RebuildSourcePath('/project/src/GAME.GLIM')).toBe(true);
+    expect(isDebug80RebuildSourcePath('/project/src/main.nu')).toBe(true);
   });
 
   it('ignores unrelated files', () => {

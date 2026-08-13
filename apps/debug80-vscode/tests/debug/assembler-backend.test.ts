@@ -11,6 +11,7 @@ vi.mock('vscode', () => ({
 import { resolveAssemblerBackend } from '../../src/debug/launch/assembler-backend';
 import { AzmBackend } from '../../src/debug/launch/azm-backend';
 import { GlimmerBackend } from '../../src/debug/launch/glimmer-backend';
+import { NucleusBackend } from '../../src/debug/launch/nucleus-backend';
 
 function expectAzmBackend(id?: string, sourcePath?: string): void {
   expect(resolveAssemblerBackend(id, sourcePath)).toBeInstanceOf(AzmBackend);
@@ -47,6 +48,11 @@ describe('assembler-backend', () => {
   it('returns glimmer when explicitly requested', () => {
     expect(resolveAssemblerBackend('glimmer', undefined)).toBeInstanceOf(GlimmerBackend);
     expect(resolveAssemblerBackend('GLIMMER', undefined)).toBeInstanceOf(GlimmerBackend);
+  });
+
+  it('returns nucleus for .nu source paths or an explicit backend', () => {
+    expect(resolveAssemblerBackend(undefined, '/tmp/main.nu')).toBeInstanceOf(NucleusBackend);
+    expect(resolveAssemblerBackend('NUCLEUS', undefined)).toBeInstanceOf(NucleusBackend);
   });
 
   it('does not expose the removed zax backend', () => {

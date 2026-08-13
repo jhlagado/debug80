@@ -8,6 +8,7 @@ import type { AzmLaunchOptions } from '../session/types';
 import type { AssembleResult } from './assembler';
 import { AzmBackend } from './azm-backend';
 import { GlimmerBackend } from './glimmer-backend';
+import { NucleusBackend } from './nucleus-backend';
 
 const azmSourceExtensions = new Set(['.asm', '.inc', '.z80']);
 
@@ -48,6 +49,9 @@ function inferAssemblerBackend(asmPath: string | undefined): string | undefined 
   if (extension === '.glim') {
     return 'glimmer';
   }
+  if (extension === '.nu') {
+    return 'nucleus';
+  }
 
   return undefined;
 }
@@ -65,6 +69,9 @@ export function resolveAssemblerBackend(
   }
   if (id === 'glimmer') {
     return new GlimmerBackend();
+  }
+  if (id === 'nucleus') {
+    return new NucleusBackend();
   }
 
   throw new Error(`Unknown assembler backend: "${assembler}"`);

@@ -269,14 +269,14 @@ describe('package.json language contracts', () => {
     expect(lang!.extensions).not.toContain('.s');
   });
 
-  it('launch schema exposes AZM and Glimmer assembler backends', () => {
+  it('launch schema exposes AZM, Glimmer and Nucleus compiler backends', () => {
     const debuggerContribution = contributes.debuggers.find((debuggerEntry) => {
       return debuggerEntry.type === 'z80';
     });
     const assembler = debuggerContribution?.configurationAttributes?.launch?.properties?.assembler;
 
     expect(assembler?.default).toBeUndefined();
-    expect(assembler?.enum).toEqual(['azm', 'glimmer']);
+    expect(assembler?.enum).toEqual(['azm', 'glimmer', 'nucleus']);
   });
 
   it('launch schema exposes strict and insensitive AZM symbol lookup', () => {
@@ -288,13 +288,13 @@ describe('package.json language contracts', () => {
     expect(symbolCase?.enum).toEqual(['strict', 'insensitive']);
   });
 
-  it('set-entry-source context menus cover AZM entry source extensions', () => {
+  it('set-entry-source context menus cover supported entry source extensions', () => {
     for (const menuId of ['explorer/context', 'editor/context', 'editor/title/context']) {
       const row = contributes.menus[menuId].find((entry) => {
         return entry.command === 'debug80.setEntrySource';
       });
       expect(row).toBeDefined();
-      for (const extension of ['.asm', '.z80', '.glim']) {
+      for (const extension of ['.asm', '.z80', '.glim', '.nu']) {
         expect(row!.when).toContain(`resourceExtname == ${extension}`);
       }
       expect(row!.when).not.toContain('resourceExtname == .a80');
