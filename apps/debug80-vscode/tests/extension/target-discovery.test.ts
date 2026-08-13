@@ -18,10 +18,11 @@ describe('target discovery conventions', () => {
   });
 
   it('defines the runnable target entry source conventions in one place', () => {
-    expect(TARGET_ENTRY_SOURCE_FILENAMES).toEqual(['main.asm', 'main.z80']);
+    expect(TARGET_ENTRY_SOURCE_FILENAMES).toEqual(['main.asm', 'main.z80', 'main.nu']);
 
     expect(isTargetEntrySourcePath('main.asm')).toBe(true);
     expect(isTargetEntrySourcePath('src/main.asm')).toBe(true);
+    expect(isTargetEntrySourcePath('src/main.nu')).toBe(true);
     expect(isTargetEntrySourcePath('src/pacmo.main.asm')).toBe(false);
     expect(isTargetEntrySourcePath('src/pacmo.main.z80')).toBe(false);
     expect(isTargetEntrySourcePath('examples/tetro.glim')).toBe(true);
@@ -32,12 +33,14 @@ describe('target discovery conventions', () => {
     expect(isTargetSourcePath('src/include.asm')).toBe(true);
     expect(isTargetSourcePath('src/tool.z80')).toBe(true);
     expect(isTargetSourcePath('examples/tetro.glim')).toBe(true);
+    expect(isTargetSourcePath('src/module.nu')).toBe(true);
     expect(isTargetSourcePath('src/contracts.asmi')).toBe(false);
   });
 
   it('lists target entry source files relative to the project root', () => {
     const root = fixture.createWorkspace('debug80-target-discovery-', [
       'src/main.asm',
+      'nucleus/main.nu',
       'src/pacmo.main.asm',
       'src/include.asm',
       'src/helper.z80',
@@ -49,7 +52,9 @@ describe('target discovery conventions', () => {
     ]);
 
     expect(listTargetEntrySourceFiles(root)).toEqual(
-      ['src/main.asm', 'examples/tetro.glim'].sort((left, right) => left.localeCompare(right))
+      ['src/main.asm', 'examples/tetro.glim', 'nucleus/main.nu'].sort((left, right) =>
+        left.localeCompare(right)
+      )
     );
   });
 
@@ -73,6 +78,7 @@ describe('target discovery conventions', () => {
     const root = fixture.createWorkspace('debug80-target-source-', [
       'main.asm',
       'src/helper.asm',
+      'src/main.nu',
       'legacy/tool.z80',
       ['examples/game.glim', 'program Game\n'],
       ['examples/library.glim', 'state Score : byte\n'],
@@ -82,8 +88,8 @@ describe('target discovery conventions', () => {
     ]);
 
     expect(listTargetSourceFiles(root)).toEqual(
-      ['examples/game.glim', 'legacy/tool.z80', 'main.asm', 'src/helper.asm'].sort((left, right) =>
-        left.localeCompare(right)
+      ['examples/game.glim', 'legacy/tool.z80', 'main.asm', 'src/helper.asm', 'src/main.nu'].sort(
+        (left, right) => left.localeCompare(right)
       )
     );
   });

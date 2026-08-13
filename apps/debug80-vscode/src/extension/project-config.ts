@@ -34,7 +34,7 @@ function isSupportedAssemblerId(value: unknown): boolean {
     return false;
   }
   const normalized = value.trim().toLowerCase();
-  return normalized === 'azm' || normalized === 'glimmer';
+  return normalized === 'azm' || normalized === 'glimmer' || normalized === 'nucleus';
 }
 
 function isProjectProfileConfig(value: unknown): boolean {
@@ -268,9 +268,12 @@ function nextTargetEntrySource(
 ): Record<string, unknown> {
   const rest: Record<string, unknown> = { ...target };
   const extension = path.extname(sourceFile).toLowerCase();
+  const assembler =
+    typeof rest.assembler === 'string' ? rest.assembler.trim().toLowerCase() : undefined;
   const incompatibleAssembler =
-    (rest.assembler === 'glimmer' && extension !== '.glim') ||
-    (rest.assembler === 'azm' && extension === '.glim');
+    (assembler === 'glimmer' && extension !== '.glim') ||
+    (assembler === 'nucleus' && extension !== '.nu') ||
+    (assembler === 'azm' && (extension === '.glim' || extension === '.nu'));
   if (
     incompatibleAssembler ||
     (rest.assembler !== undefined && !isSupportedAssemblerId(rest.assembler))

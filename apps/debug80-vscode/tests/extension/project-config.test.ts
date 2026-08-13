@@ -332,6 +332,24 @@ describe('project-config helpers', () => {
     expect(readProjectConfig(configPath)?.targets?.app?.assembler).toBe('glimmer');
   });
 
+  it('preserves Nucleus for .nu and clears it for another source language', () => {
+    const { configPath } = createProject('debug80-nucleus-entry-', {
+      defaultTarget: 'app',
+      targets: {
+        app: {
+          sourceFile: 'src/old.nu',
+          assembler: 'nucleus',
+          platform: 'simple',
+        },
+      },
+    });
+
+    expect(updateProjectTargetSource(configPath, 'app', 'src/main.nu')).toBe(true);
+    expect(readProjectConfig(configPath)?.targets?.app?.assembler).toBe('nucleus');
+    expect(updateProjectTargetSource(configPath, 'app', 'src/main.asm')).toBe(true);
+    expect(readProjectConfig(configPath)?.targets?.app?.assembler).toBeUndefined();
+  });
+
   it('clears an assembler override that conflicts with the new program extension', () => {
     const { configPath } = createProject('debug80-cross-language-entry-', {
       defaultTarget: 'app',

@@ -1,0 +1,87 @@
+{
+  "$schema": "https://raw.githubusercontent.com/martinring/tmlanguage/master/tmlanguage.json",
+  "name": "Nucleus",
+  "scopeName": "source.nucleus",
+  "fileTypes": ["nu"],
+  "patterns": [
+    { "include": "#comments" },
+    { "include": "#strings" },
+    { "include": "#numbers" },
+    { "include": "#keywords" },
+    { "include": "#types" },
+    { "include": "#services" }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "name": "comment.line.number-sign.nucleus",
+          "match": "#.*$"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "name": "string.quoted.double.nucleus",
+          "begin": "\"",
+          "end": "\"",
+          "patterns": [
+            {
+              "name": "constant.character.escape.nucleus",
+              "match": "\\\\(?:[0rt\\\\\"]|x[0-9A-Fa-f]{2})"
+            }
+          ]
+        },
+        {
+          "name": "constant.character.nucleus",
+          "match": "'(?:[^'\\\\]|\\\\.)'"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "name": "constant.numeric.nucleus",
+          "match": "(?<![A-Za-z0-9_])(?:\\$[0-9A-Fa-f]+|%[01]+|[0-9]+)(?![A-Za-z0-9_])"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "name": "keyword.control.nucleus",
+          "match": "\\b(?:assert|const|continue|else|elseif|end|exit|fail|fails|for|forward|handle|if|record|return|step|sub|to|until|var|while)\\b"
+        },
+        {
+          "name": "constant.language.boolean.nucleus",
+          "match": "\\b(?:true|false)\\b"
+        },
+        {
+          "name": "keyword.operator.word.nucleus",
+          "match": "\\b(?:and|mod|not|or|xor)\\b"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "name": "storage.type.nucleus",
+          "match": "\\b(?:as|boolean|string|u8|u16)\\b"
+        }
+      ]
+    },
+    "services": {
+      "patterns": [
+        {
+          "name": "support.function.nucleus",
+          "match": "\\b(?:readInputByte|writeOutputByte|readStorageByte|rewindStorageInput|writeStorageByte|seekStorageOutput)\\b"
+        },
+        {
+          "name": "constant.language.nucleus",
+          "match": "\\b(?:endOfInput|inputFailure|outputFailure|storageFailure)\\b"
+        }
+      ]
+    }
+  }
+}

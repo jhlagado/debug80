@@ -28,7 +28,7 @@ function isSupportedAssemblerId(value: unknown): boolean {
     return false;
   }
   const normalized = value.trim().toLowerCase();
-  return normalized === 'azm' || normalized === 'glimmer';
+  return normalized === 'azm' || normalized === 'glimmer' || normalized === 'nucleus';
 }
 
 export function applyConfigureProjectTargetEdit(
@@ -100,7 +100,16 @@ function applyPlatformOverride(
 function applyProgramSource(target: ProjectTargetConfig, sourceFile: string): void {
   target.sourceFile = sourceFile;
   target.asm = sourceFile;
-  if (target.assembler !== undefined && !isSupportedAssemblerId(target.assembler)) {
+  const extension = sourceFile.slice(sourceFile.lastIndexOf('.')).toLowerCase();
+  const assembler = target.assembler?.trim().toLowerCase();
+  const incompatibleAssembler =
+    (assembler === 'glimmer' && extension !== '.glim') ||
+    (assembler === 'nucleus' && extension !== '.nu') ||
+    (assembler === 'azm' && (extension === '.glim' || extension === '.nu'));
+  if (
+    incompatibleAssembler ||
+    (target.assembler !== undefined && !isSupportedAssemblerId(target.assembler))
+  ) {
     delete target.assembler;
   }
 }

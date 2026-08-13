@@ -5,7 +5,11 @@
 import { isCanonicalPathWithin } from '../common/path-utils';
 
 export const AZM_LANGUAGE_EXTENSIONS = ['.asm', '.z80', '.asmi'] as const;
-export const DEBUG80_REBUILD_SOURCE_EXTENSIONS = [...AZM_LANGUAGE_EXTENSIONS, '.glim'] as const;
+export const DEBUG80_REBUILD_SOURCE_EXTENSIONS = [
+  ...AZM_LANGUAGE_EXTENSIONS,
+  '.glim',
+  '.nu',
+] as const;
 
 export function isDebug80RebuildSourcePath(filePath: string): boolean {
   const dot = filePath.lastIndexOf('.');

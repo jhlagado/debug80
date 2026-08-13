@@ -95,6 +95,24 @@ describe('configure-project target edit', () => {
     expect(config.targets?.app?.sourceFile).toBe('src/game.glim');
   });
 
+  it('preserves Nucleus only for Nucleus source files', () => {
+    const config = singleTargetConfig(
+      targetConfig({ sourceFile: 'src/old.nu', assembler: 'nucleus' })
+    );
+
+    applyConfigureProjectTargetEdit(config, 'app', {
+      kind: 'program',
+      sourceFile: 'src/main.nu',
+    });
+    expect(config.targets?.app?.assembler).toBe('nucleus');
+
+    applyConfigureProjectTargetEdit(config, 'app', {
+      kind: 'program',
+      sourceFile: 'src/main.asm',
+    });
+    expect(config.targets?.app?.assembler).toBeUndefined();
+  });
+
   it('renames targets and updates target aliases', () => {
     const config: ProjectConfig = {
       target: 'app',

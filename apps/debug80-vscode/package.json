@@ -47,7 +47,8 @@
     "onLanguage:asm-collection",
     "onLanguage:z80-asm",
     "onLanguage:z80-macroasm",
-    "onLanguage:glim"
+    "onLanguage:glim",
+    "onLanguage:nucleus"
   ],
   "main": "./out/extension/extension.js",
   "contributes": {
@@ -73,7 +74,8 @@
         "*.asm": "z80-asm",
         "*.z80": "z80-asm",
         "*.asmi": "z80-asm",
-        "*.glim": "glim"
+        "*.glim": "glim",
+        "*.nu": "nucleus"
       },
       "editor.tokenColorCustomizations": {
         "textMateRules": [
@@ -356,6 +358,16 @@
           ".glim"
         ],
         "configuration": "./language-configuration/glim.json"
+      },
+      {
+        "id": "nucleus",
+        "aliases": [
+          "Nucleus"
+        ],
+        "extensions": [
+          ".nu"
+        ],
+        "configuration": "./language-configuration/nucleus.json"
       }
     ],
     "grammars": [
@@ -368,6 +380,11 @@
         "language": "glim",
         "scopeName": "source.glim",
         "path": "./syntaxes/glim.tmLanguage.json"
+      },
+      {
+        "language": "nucleus",
+        "scopeName": "source.nucleus",
+        "path": "./syntaxes/nucleus.tmLanguage.json"
       }
     ],
     "breakpoints": [
@@ -391,6 +408,9 @@
       },
       {
         "language": "glim"
+      },
+      {
+        "language": "nucleus"
       }
     ],
     "commands": [
@@ -541,21 +561,21 @@
       "explorer/context": [
         {
           "command": "debug80.setEntrySource",
-          "when": "resourceExtname == .asm || resourceExtname == .z80 || resourceExtname == .glim",
+          "when": "resourceExtname == .asm || resourceExtname == .z80 || resourceExtname == .glim || resourceExtname == .nu",
           "group": "navigation@9"
         }
       ],
       "editor/context": [
         {
           "command": "debug80.setEntrySource",
-          "when": "resourceExtname == .asm || resourceExtname == .z80 || resourceExtname == .glim",
+          "when": "resourceExtname == .asm || resourceExtname == .z80 || resourceExtname == .glim || resourceExtname == .nu",
           "group": "navigation@9"
         }
       ],
       "editor/title/context": [
         {
           "command": "debug80.setEntrySource",
-          "when": "resourceExtname == .asm || resourceExtname == .z80 || resourceExtname == .glim",
+          "when": "resourceExtname == .asm || resourceExtname == .z80 || resourceExtname == .glim || resourceExtname == .nu",
           "group": "navigation@9"
         }
       ],
@@ -578,7 +598,8 @@
           "wla-dx-asm",
           "asm",
           "z80",
-          "glim"
+          "glim",
+          "nucleus"
         ],
         "configurationAttributes": {
           "launch": {
@@ -601,7 +622,8 @@
                 "description": "Assembler backend to use (inferred from the source extension when omitted)",
                 "enum": [
                   "azm",
-                  "glimmer"
+                  "glimmer",
+                  "nucleus"
                 ]
               },
               "azm": {
