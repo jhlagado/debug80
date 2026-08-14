@@ -2810,6 +2810,44 @@ describe('register-contracts integration', () => {
     );
   });
 
+  it('does not follow an inline operand after a call to a nonreturning routine', async () => {
+    const entry = writeSourceFixture('azm-regcontracts-noreturn-inline-', [
+      '.routine out carry clobbers A,BC,DE,HL,halfCarry',
+      'START:',
+      '    call FAIL_INLINE',
+      '    .db 42',
+      '    pop bc',
+      '    ret',
+      '.routine noreturn',
+      'FAIL_INLINE:',
+      '    pop hl',
+      '    ld a,(hl)',
+      '    jp SET_FAILURE',
+      '.routine in A out carry clobbers A,DE,HL,halfCarry',
+      'SET_FAILURE:',
+      '    scf',
+      '    ret',
+      '.end',
+    ]);
+
+    const res = await compileRegisterContracts(entry, {
+      registerContracts: 'strict',
+      emitRegisterReport: true,
+      registerContractsReportFormat: 'json',
+    });
+
+    expectNoErrorDiagnostics(res);
+    expect(reportArtifact(res)?.json?.summaries).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ name: 'START', stackBalanced: true }),
+        expect.objectContaining({ name: 'FAIL_INLINE', noreturn: true }),
+      ]),
+    );
+    expect(
+      reportArtifact(res)?.json?.summaries.find(({ name }) => name === 'START'),
+    ).not.toHaveProperty('noreturn');
+  });
+
   it('accepts a proven stack-neutral infinite loop in strict mode', async () => {
     const entry = writeSourceFixture('azm-regcontracts-infinite-loop-', [
       '.routine',

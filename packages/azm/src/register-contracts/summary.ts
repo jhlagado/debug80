@@ -271,6 +271,18 @@ function boundaryFallsThrough(effect: InstructionEffect): boolean {
   return effect.control.kind === 'call' || effect.control.kind === 'rst';
 }
 
+function isNonreturningBoundary(
+  effect: InstructionEffect,
+  knownBoundary: RoutineSummary | undefined,
+): boolean {
+  return (
+    knownBoundary?.noreturn === true &&
+    (effect.control.kind === 'call' ||
+      effect.control.kind === 'rst' ||
+      effect.control.kind === 'jump')
+  );
+}
+
 function isTerminalExit(
   routine: RegisterContractsRoutine,
   item: RegisterContractsInstruction,
@@ -312,6 +324,17 @@ function proveStackDiscipline(
     const effect = getZ80InstructionEffect(item.instruction);
     const stack = cloneStack(current.stack);
     const knownBoundary = boundarySummary(routine, current.index, boundarySummaries, serviceRanges);
+    if (isNonreturningBoundary(effect, knownBoundary)) {
+      if ('conditional' in effect.control && effect.control.conditional) {
+        const successors = instructionSuccessors(routine, current.index, effect, labels, {
+          boundaryFallthrough: boundaryFallsThrough(effect),
+        });
+        for (const successor of successors) {
+          work.push({ index: successor, stack: cloneStack(stack) });
+        }
+      }
+      continue;
+    }
     if (effect.control.kind === 'jump' && effect.control.conditional && knownBoundary) {
       const branchStack = cloneStack(stack);
       applyStackEffect(
@@ -684,16 +707,18 @@ function inferInstructionSummaryStep(
     context.effectWrites,
   );
 
-  applyStackEffect(
-    state.tokens,
-    state.consumedProduced,
-    state.intendedProduced,
-    state.stack,
-    state.stackState,
-    context.effect,
-    context.expectedTerminalReturn,
-    context.knownBoundary,
-  );
+  if (!isNonreturningBoundary(context.effect, context.knownBoundary)) {
+    applyStackEffect(
+      state.tokens,
+      state.consumedProduced,
+      state.intendedProduced,
+      state.stack,
+      state.stackState,
+      context.effect,
+      context.expectedTerminalReturn,
+      context.knownBoundary,
+    );
+  }
 
   const transferWrites = new Set(
     isPureTokenTransfer(context.item)

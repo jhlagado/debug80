@@ -70,6 +70,7 @@ export function applyRoutineContract(
   summary: RoutineSummary,
   contract: RoutineContract,
 ): RoutineSummary {
+  const { noreturn: _inferredNoreturn, ...returningSummary } = summary;
   const inferredOutputs = unique([
     ...(summary.mayOutput ?? []),
     ...summary.valueRelations.flatMap((relation) => relation.out),
@@ -107,7 +108,7 @@ export function applyRoutineContract(
   );
 
   return {
-    ...summary,
+    ...returningSummary,
     ...(contract.noreturn === true ? { noreturn: true } : {}),
     mayRead: unique(contractIn),
     mayWrite,

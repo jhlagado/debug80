@@ -201,6 +201,7 @@ export function diagnosticsForFindings(
 }
 
 function strictStackIssueText(summary: RoutineSummary): string | undefined {
+  if (summary.noreturn === true) return undefined;
   const issues: string[] = [];
   if (!summary.stackBalanced) issues.push('stack is unbalanced');
   if (summary.hasUnknownStackEffect === true) issues.push('stack effect is unknown');
