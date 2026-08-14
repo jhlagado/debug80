@@ -52,6 +52,8 @@ interface ProjectConfig {
   sourceFile?: string;
   source?: string;
   assembler?: string;
+  azm?: AzmLaunchOptions;
+  nucleus?: NucleusLaunchOptions;
   hex?: string;
   outputDir?: string;
   artifactBase?: string;
@@ -199,9 +201,19 @@ The project header can now surface two kinds of target choice:
 The discovery rules are broader than the old `main.asm`-only flow:
 
 - files named exactly `main.asm` or `main.z80`
+- files named exactly `main.nu`
 - any `.glim` file whose top-level source declares `program <name>`
 
-The explicit **Add Target** command goes further. It lists every eligible `.asm`, `.z80`, or runnable `.glim` source file in the workspace, even when the file does not match the entry-point naming convention. The command generates a stable target name from the filename, copies the first existing target as a template, then replaces source-specific fields such as `sourceFile`, `asm`, `artifactBase`, and incompatible assembler overrides.
+Any `.nu` source is also treated as a runnable target source. `main.nu` is the
+entry-name convention that lets the panel surface it automatically as a
+discovered target without requiring an existing config entry.
+
+The explicit **Add Target** command goes further. It lists every eligible
+`.asm`, `.z80`, `.nu`, or runnable `.glim` source file in the workspace, even
+when the file does not match the entry-point naming convention. The command
+generates a stable target name from the filename, copies the first existing
+target as a template, then replaces source-specific fields such as
+`sourceFile`, `asm`, `artifactBase`, and incompatible assembler overrides.
 
 ### Target editing and removal
 
@@ -211,6 +223,11 @@ The explicit **Add Target** command goes further. It lists every eligible `.asm`
 - `debug80.removeTarget` removes the selected target from `debug80.json` but leaves source files and build artifacts on disk
 - `debug80.setEntrySource` repoints an existing target at another program file and keeps `sourceFile` and `asm` aligned
 - `debug80.configureProject` prompts for a target, then edits one field at a time: target platform override, program file, assembler, target name, output directory, or artifact base
+
+When the user changes a target's program file, the editor now drops assembler
+overrides that no longer match the source type. For example, switching a target
+from `.asm` to `.nu` clears an inherited `azm` override so the launch path can
+infer the Nucleus backend from the new source file.
 
 Removal keeps the project valid. If other configured targets remain, `removeProjectTarget()` picks a replacement current target and updates `defaultTarget` or legacy `target` when the removed target was still referenced there. If the removed target was the only target, Debug80 writes an empty `targets` map, clears `defaultTarget` and legacy `target`, forgets the remembered selection, and leaves the project in a valid zero-target state until the user picks another program file.
 

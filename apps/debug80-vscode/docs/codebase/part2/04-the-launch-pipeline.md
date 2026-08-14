@@ -33,7 +33,7 @@ launchRequest arrives
     │     Derive source, .hex and D8 source-map paths → absolute file paths
     │
     ├─ 4. Assembly                    (launch-pipeline.ts, launch/assembler.ts)
-    │     Run linked AZM backend → .hex + .d8.json artifacts on disk
+    │     Run AZM, Glimmer, or Nucleus backend → launch artifacts on disk
     │
     ├─ 5. Program loading             (launch/program-loader.ts)
     │     Parse HEX, build memory image → HexProgram
@@ -195,8 +195,11 @@ assembleIfRequested({
 | ---------------------- | ------- |
 | `.asm`, `.inc`, `.z80` | AZM     |
 | `.glim`                | Glimmer |
+| `.nu`                  | Nucleus |
 
-Debug80 now supports AZM and Glimmer as in-process assembler backends. ZAX has been removed, and the old listing-derived mapping path is retired from active launch behavior.
+Debug80 now supports AZM, Glimmer, and Nucleus as in-process build backends.
+ZAX has been removed, and the old listing-derived mapping path is retired from
+active launch behavior.
 
 The backend conforms to the `AssemblerBackend` interface:
 
@@ -254,6 +257,39 @@ Assembler backends should be treated as part of the extension's packaged depende
 The Glimmer build path delegates code generation, AZM contract injection and checking, assembly, and debug-map rewriting to the Glimmer library. The resulting D8 map keeps executable block-body lines attributed to the original `.glim` file while the generated `.asm` remains available as a sibling artifact for inspection and for any downstream tools that need the lowered source.
 
 On failure, the backend forwards formatted Glimmer diagnostics to the Debug Console and converts the first error into Debug80's normal `AssemblyDiagnostic` shape. The diagnostic path points at the `.glim` source file, and when a line number is available the backend reads the original source line from disk so VS Code diagnostics and build-failed notifications highlight the authored Glimmer line instead of the generated assembly.
+
+### The Nucleus invocation
+
+`NucleusBackend` in `src/debug/launch/nucleus-backend.ts` loads
+`@jhlagado/nucleus` in-process and calls the standalone compiler API directly.
+The backend reads either:
+
+- a configured `nucleus.project` file relative to the Debug80 source root, or
+- a single `.nu` source file plus a `nucleus-target.json` target profile beside
+  it, unless `nucleus.targetProfile` overrides that default
+
+When a Nucleus project file is present, Debug80 reads the declared source set
+from the project root and resolves the target profile from the project's
+`target` field unless launch config overrides it. The launch backend passes
+`requireServices: true` to target-profile parsing, so launchable Nucleus targets
+must resolve real service destinations before Debug80 starts a session.
+
+The Nucleus launch path is intentionally flat. If the parsed target profile
+declares `bankCount > 1`, the backend rejects the launch with a direct error and
+points the user to the standalone Nucleus API or CLI. Debug80's Nucleus runtime
+loader expects one flat HEX image plus one launchable D8 sidecar for the active
+session rather than a bank-selected NOBJ set.
+
+Successful builds request HEX and D8 artifacts from the compiler, validate
+every returned D8 artifact with `parseD8DebugMap()`, then publish `.nobj`,
+`.hex`, and `.d8.json` beside the configured artifact base. That keeps the
+output layout parallel with the standalone toolchain while still letting the
+launch pipeline consume the HEX and D8 artifacts directly from disk.
+
+On source errors, the backend formats Nucleus diagnostics, resolves the source
+path relative to the Nucleus project root, and reads the failing source line
+from disk when possible. Configuration failures are surfaced as launch errors
+with the failing config path fragments inline.
 
 ### Error handling
 

@@ -35,8 +35,12 @@ Project configuration lives in `debug80.json` at the workspace folder root. Top-
 | `stepOutMaxInstructions`  | `number`   | `0`                                                    | Instruction limit for step-out; `0` = unlimited                                       |
 | `diagnostics`             | `boolean`  | `false`                                                | Emit verbose diagnostic messages to the debug console                                 |
 | `azm`                     | `object`   | —                                                      | AZM-specific compile options; see below                                               |
+| `nucleus`                 | `object`   | —                                                      | Nucleus-specific launch options; see below                                            |
 
-Debug80 currently infers `azm` for `.asm`, `.inc`, and `.z80`, and `glimmer` for `.glim`. The top-level `azm` block is only consulted by the AZM-backed paths, including the Glimmer flow's internal AZM work inside `@jhlagado/glimmer`.
+Debug80 currently infers `azm` for `.asm`, `.inc`, and `.z80`, `glimmer` for
+`.glim`, and `nucleus` for `.nu`. The top-level `azm` block is only consulted
+by the AZM-backed paths, including the Glimmer flow's internal AZM work inside
+`@jhlagado/glimmer`.
 
 ### AZM options
 
@@ -78,6 +82,23 @@ legacy symbol references with inconsistent capitalization. The TEC-1G Project
 accordion also exposes session-scoped **Register Contracts** (`Enforce`,
 `Audit`, `Off`) and **Contract Updates** (`Ask`, `Auto`, `Never`) controls.
 Those contract controls are not persisted directly into `debug80.json`.
+
+### Nucleus options
+
+The Nucleus backend reads a small launch block that is resolved relative to the
+Debug80 source root first, then relative to the Nucleus project root once the
+project file has been loaded:
+
+| Field           | Type     | Default                 | Description                                                          |
+| --------------- | -------- | ----------------------- | -------------------------------------------------------------------- |
+| `project`       | `string` | inferred                | Nucleus project file. Defaults to `nucleus-project.json` when present |
+| `targetProfile` | `string` | `nucleus-target.json`   | Nucleus target profile override                                       |
+
+If `nucleus.project` is omitted and no conventional project file exists,
+Debug80 treats the selected `.nu` source as a single-source build rooted at the
+source file's directory. Debug80 launch currently accepts only flat Nucleus
+targets. Profiles with `bankCount > 1` must be built through the standalone
+Nucleus API or CLI rather than the live debugger launch path.
 
 ---
 
