@@ -3,9 +3,9 @@
 ## Purpose
 
 This charter defines the terms for reviewing Nucleus 0.1. It records the
-project directions that a reviewer must preserve, the implementation choices
-that remain open to measurement, and the evidence required for a proposed
-change.
+project directions that a reviewer must preserve, the selected implementation
+baseline, the choices still open to measurement, and the evidence required for
+a proposed change.
 
 Nucleus is a small, statically typed language compiled directly to Z80 machine
 code for practical programs on constrained systems. The first compiler is a
@@ -14,10 +14,10 @@ fit in one 16 KiB bank. That constraint governs implementation work. It does
 not authorise a reviewer to remove settled language facilities or create an
 unnamed smaller dialect.
 
-This charter does not replace either specification. It provides instructions
-for review work within them. When the charter and a specification appear to
-conflict, the reviewer must report the discrepancy and leave the rule
-unchanged until the project owner resolves the authority conflict.
+This charter does not replace the interface authorities. It provides
+instructions for review work within them. When the charter and an authority
+appear to conflict, the reviewer must report the discrepancy and leave the
+rule unchanged until the project owner resolves the conflict.
 
 ## Authority
 
@@ -34,11 +34,15 @@ Apply the following authority order:
 4. The [Nucleus Z80 Runtime and Backend Contract](z80-runtime-contract.md)
    governs packed representation, direct-code integrity, runtime services,
    trap records, and direct Z80 execution.
-5. Explicit project-owner decisions govern work that the specifications still
+5. [Nucleus Host API 1](host-api.md) governs the public Node API, project and
+   target configuration, result classification, and artifact publication.
+6. [Nucleus D8 Source Maps](d8-source-maps.md) governs the conditional trace
+   ABI, host validation, physical-bank identity, and tentative D8 publication.
+7. Explicit project-owner decisions govern work that the authorities still
    mark as open.
-6. Executable tests, analyzers, and measurements provide evidence. They do not
-   amend a specification when they disagree with it.
-7. Design notes, old reports, implementation sketches, and repository history
+8. Executable tests, analyzers, and measurements provide evidence. They do not
+   amend an authority when they disagree with it.
+9. Design notes, old reports, implementation sketches, and repository history
    are non-normative.
 
 Review the current revisions of all authorities. Do not reconstruct the
@@ -75,7 +79,7 @@ compiler tables, and bounded activation storage.
 
 Nucleus has no source-visible pointer type, null reference, pointer arithmetic,
 heap, garbage collector, variable-sized local object, reflection, runtime type
-test, open array, slice, or unrestricted dynamic allocation. These exclusions
+test, open-array storage, slice, or unrestricted dynamic allocation. These exclusions
 are part of the small-system architecture rather than temporary omissions in
 an otherwise dynamic design.
 
@@ -194,6 +198,31 @@ Report resource accounts separately:
 Moving required compiler code or tables into another account does not satisfy
 the 16 KiB compiler-core gate.
 
+### Compiler origin is deployment policy
+
+The handwritten compiler has no fixed or preferred assembly origin. Its
+deployment environment chooses the origin and the surrounding memory map. A
+TEC-1 deployment may place it at `$8000`; CP/M may place it at `$0100`; another
+Z80 system may choose any other address at which the complete compiler image
+fits without overlap. The repository's `$0000` proof layout is one measurement
+fixture, not an implementation constraint or a promise about deployment.
+
+Every compiler code and immutable-data address is a complete, opaque 16-bit
+address. An implementation or size optimization must not use any address bit as
+a flag, tag, class, operand descriptor, or other metadata; mask, truncate, or
+compress a pointer on the strength of the current link address; require the
+compiler to occupy the low or high half of memory; or infer alignment that the
+deployment contract does not explicitly guarantee. Metadata must be stored or
+derived independently of addresses. Alignment-based representations require a
+separate explicit platform contract and project-owner approval; they are never
+inferred from the current assembled image.
+
+Compiler changes that touch pointer tables, dispatch, relocation-sensitive
+expressions, or address-bearing templates must pass the ordinary strict-contract
+gate and assemble at both low and high origins. The relocation proof must show
+that full-width table entries resolve to the relocated labels. Passing the
+ordinary `$0000` execution proof alone is insufficient evidence.
+
 ## Settled language directions
 
 ### Names, declarations, and source assembly
@@ -214,12 +243,17 @@ for alternative files or reorder source parts.
 
 ### Scalar types
 
-The scalar types are `u8`, `u16`, and `boolean`. Boolean is distinct from both
-integer types. The language provides no Boolean/integer conversion.
+The scalar types are `u8`, `u16`, `i8`, `i16`, and `boolean`. Boolean is
+distinct from every integer type, and the language provides no
+Boolean/integer conversion. Signed integers use two's-complement representation
+with fixed eight- and sixteen-bit ranges.
 
-The only implicit declared-type conversion is `u8` to `u16`. Narrowing through
-`u8(expression)` is checked. Nucleus has no arbitrary cast, low-byte
-reinterpretation, same-width type punning, or word/address interchange.
+The implicit declared-type conversions are the value-preserving cases `u8` to
+`u16`, `u8` to `i16`, and `i8` to `i16`. Every other integer conversion uses
+the explicit destination-type form. A known out-of-range constant is invalid
+source; a dynamic value outside the destination range traps. Nucleus has no arbitrary cast,
+low-byte reinterpretation, same-width type punning, or word/address
+interchange.
 
 Integer constants have no declared width. Their declarations retain an exact
 integer value, which must fit the type selected by each use. Boolean constants
@@ -232,21 +266,37 @@ language for constants.
 
 ### Aggregate types
 
-Nucleus admits nominal records, one-dimensional fixed arrays, and `string[N]`.
-Arrays may contain scalars, records, or bounded strings, but not arrays.
-Records have nominal identity; equal field sequences do not create structural
+Nucleus admits nominal records, nested fixed arrays, and `string[N]`. Each
+array suffix contributes one outermost-first dimension, so `u8[3][2]` is three
+rows of exact type `u8[2]` and is indexed in the same order as it is written.
+Arrays may contain scalars, records, bounded strings, or fixed arrays. Records
+have nominal identity; equal field sequences do not create structural
 compatibility.
 
 Nucleus does not admit record subtyping, interface inheritance, generic record
-parameters, open arrays, slices, variant records, unions, or general aggregate
-comparison. Task-oriented syntax may later desugar to ordinary routines with a
-scalar state and a task-specific data record. It must not introduce a second
-record type system.
+parameters, slices, open-array storage or results, variant records, unions, or
+general aggregate comparison. It does admit parameter-only `T[]` views of one
+complete concrete fixed array. Task-oriented syntax may later desugar to
+ordinary routines with a scalar state and a task-specific data record. It must
+not introduce a second record type system.
 
 Bounded strings retain a current length, permit embedded zero bytes, support
 `.length`, checked byte access, byte replacement, and exact-type aggregate
-assignment. They have no append, insertion, resize, truncation, open capacity,
-or general comparison operation.
+assignment. A parameter may use the sole capacity-polymorphic `string[]` view,
+which retains the concrete argument capacity for checking; it is neither owned
+open-capacity storage nor a slice. That view exposes read-only `.capacity` and
+checked writable `.length`, which ordinary source routines can use to construct
+text. Concrete paths keep read-only `.length` and do not expose `.capacity`.
+Bounded strings have no intrinsic append, insertion, slicing, splicing, or
+general comparison operation.
+
+An array parameter may use `T[]`, a length-polymorphic view of one complete
+concrete `T[N]` object. It retains the actual `u16` element count, admits
+read-only `.length` and checked indexing, and requires exact element-type
+identity. It has no independent offset or caller-selected count and is not a
+slice. Array length is never writable. The omitted bound is the outermost
+dimension, so `u8[][2]` is an open view whose elements are exact `u8[2]` rows;
+an omitted inner bound such as `u8[2][]` remains invalid.
 
 ### Structured initializers
 
@@ -267,9 +317,12 @@ fields and array elements are inline subobjects. A routine cannot declare an
 aggregate local, whether as owned storage or as a local alias.
 
 An aggregate parameter is a fixed typed alias to caller-provided storage. It
-is neither nullable nor reseatable. A routine that needs aggregate destination
-or scratch storage receives it from its caller or addresses a top-level
-object. Every local variable is scalar and belongs to its activation.
+is neither nullable nor reseatable. A concrete aggregate alias carries one
+address; a `string[]` binding also retains the concrete argument capacity, and
+a `T[]` binding retains the concrete array's element count. A routine that
+needs aggregate destination or scratch storage receives it from its caller or
+addresses a top-level object. Every local variable is scalar and belongs to
+its activation.
 
 Assignment between identical aggregate types copies the complete object. The
 left side supplies the destination storage and the right side supplies the
@@ -291,7 +344,9 @@ Nucleus retains structured conditionals, `while`, counted `for`, constant
 direct and mutual recursion. Do not remove one of these forms merely to shrink
 the first compiler.
 
-A counted-loop counter is a predeclared scalar local and is read-only to source
+A counted-loop counter is a predeclared `u8`, `u16`, `i8`, or `i16` local. The
+programmer's declaration selects its width and signedness; the compiler does
+not impose a universal counter type. The counter is read-only to source
 statements while its loop is active. A nested counted loop cannot reuse that
 local as its counter. Program variables and parameters are not counted-loop
 counters. This rule keeps calls from changing loop progress without effect
@@ -326,12 +381,11 @@ scalar values, aggregate paths, aggregate results, and failable calls. At an
 eligible boundary, the reserved pair `else fail` terminates the expression, and
 the checker requires the complete expression to be one direct failable call.
 
-Compact inline type descriptors and interned type ordinals are both permitted
-implementation candidates. One demonstrated structural descriptor fits every
-admitted type in four bytes, including arrays of records and bounded strings.
-Repeated types can make one-byte interned ordinals cheaper. The selection must
-count retained bytes, construction, lookup, equality, interning, capacity
-checks, and exhaustion diagnostics.
+The current compiler uses interned type ordinals naming four-byte structural
+descriptors, including arrays of records and bounded strings. A review checks
+retained bytes, construction, lookup, equality, interning, capacity checks, and
+exhaustion diagnostics. Inline descriptors remain a possible future
+experiment, not an unresolved fact about the current baseline.
 
 Required source diagnostics remain part of the compiler contract. Replacing a
 typed delimiter stack with a depth counter, for example, is not a
@@ -353,51 +407,48 @@ aliases. Registers and compiler-managed locations have no runtime source type.
 The compiler retains every type and extent needed to select code and checks.
 
 Calls preserve distinct active scalar values and aggregate carriers through
-ordinary and recursive invocations. The physical arrangement may use the
-hardware stack, a bounded arena, saved static locations, or a measured
-combination. An activation-capacity excess occurs after source arguments have
-been evaluated and before a callee or caller state changes.
+ordinary and recursive invocations. The current arrangement uses the reserved
+machine-stack region, a depth-eight guard, generated hardware-stack frames,
+and the banked far-return arena. An activation-capacity excess occurs after
+source arguments have been evaluated and before a callee or caller state
+changes. Another arrangement would require a complete replacement measurement
+and proof.
 
 Exact-type aggregate assignment first checks the complete source and
-destination extents. The backend may then use straight-line loads and stores,
-a counted loop, `LDIR`, or a shared helper. It measures complete compiler,
-generated-program, runtime, workspace, and timing effects before selecting the
-policy. The source-visible copy and failure ordering do not change.
+destination extents. The current backend then uses `LDIR`. Any alternative
+must measure complete compiler, generated-program, runtime, workspace, and
+timing effects. The source-visible copy and failure ordering do not change.
 
 The implementation may share arithmetic tails or helpers when complete
 width-specific behavior remains identical. Byte addition, subtraction,
 multiplication, negation, and complement retain modulo-256 behavior; word forms
-retain modulo-65,536 behavior. An economy is measured against the complete
-direct compiler and runtime path, not against an isolated instruction sketch.
+retain modulo-65,536 behavior. Ordering uses the signedness of the resolved
+common type. Signed division truncates toward zero, and its remainder has the
+dividend's sign. An economy is measured against the complete direct compiler
+and runtime path, not against an isolated instruction sketch.
 
-## Open implementation questions
+## Selected baseline and future experiments
 
-The following choices remain open because they can preserve the complete
-language and direct-Z80 runtime contracts:
+The current compiler has selected interned type ordinals, `LDIR` aggregate
+copying, fixed published capacities, bounded activation placement, compact
+compiler fixup and sink-call records, and the measured size and timing account
+in the implementation plan. Reviewers treat these as facts to verify, not open
+questions.
 
-- inline type descriptors versus interned ordinals;
-- the exact shared-helper organization for scalar operations;
-- inline sequences versus helper calls for width-specific operations;
-- final symbol, signature, fixup, expression, and source-map capacities;
-- aggregate-copy lowering in the direct backend;
-- helper calls versus inlined hot paths;
-- physical Z80 register allocation;
-- activation-state placement;
-- the compact compiler fixup table and logical sink-call ABI within the settled
-  NOBJ wire format; and
-- the complete measured size and timing of the compiler and target runtime.
-
-An experiment may change one of these choices only after preserving conformance
-and reporting the relevant resource accounts. Introducing a portable bytecode
-or interpreter requires an explicit project-owner redesign decision.
+Source-preserving experiments may still compare shared helpers with inline
+sequences, reorganize hot and cold paths, or alter physical register allocation.
+An experiment may replace a selected representation only after preserving
+conformance and reporting the complete resource accounts. Introducing a
+portable bytecode or interpreter requires an explicit project-owner redesign
+decision.
 
 ## Review duties
 
 A substantive review must examine every current authority relevant to its
 scope in reader order. A target-publication or banking review therefore reads
-the language specification, target-system specification, NOBJ format, and Z80
-runtime contract. Search results and old summaries are insufficient substitutes
-for that read.
+the language specification, target-system specification, NOBJ format, Z80
+runtime contract, Host API, and D8 contract where source maps are requested.
+Search results and old summaries are insufficient substitutes for that read.
 
 Reviewers should test the following boundaries aggressively:
 
@@ -419,7 +470,11 @@ Reviewers should test the following boundaries aggressively:
    length, execution at distinct runtime/writable layouts, deferred used-length
    validation, wire-loader backing, and storage-generation atomicity.
 10. Evidence behind every Z80 byte and timing claim.
-11. Prose quality under the project's human-writing standard: exact agency,
+11. Exact matching between each embedded compiler image and its symbol map,
+    trace interception only during compiler execution, rejected or incomplete
+    traces remaining unpublished, and physical-bank identity surviving D8
+    validation, breakpoint binding, and PC lookup.
+12. Prose quality under the project's human-writing standard: exact agency,
     direct wording, stable terms, verified examples, no stale history or
     provenance, and no mechanical filler.
 
@@ -467,7 +522,7 @@ Do not present any of the following as a routine correction or size cleanup:
 - routine-local aggregate declarations, whether owning storage or binding an alias;
 - program-variable, parameter, or source-writable counted-loop counters;
 - general runtime aggregate constructors;
-- arrays of arrays, open arrays, or slices;
+- open-array storage or results, inner omitted bounds, or slices;
 - exception unwinding;
 - interrupt routines, vector declarations, raw bank-address operations, or
   bank selectors in source;

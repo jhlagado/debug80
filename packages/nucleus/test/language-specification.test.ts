@@ -143,13 +143,13 @@ describe("the normative Nucleus 0.1 grammar", () => {
 
   it("records aggregate storage, copying, and transient results", () => {
     expect(text).toContain(
-      "The declared local type must be `u8`, `u16`, or `boolean`",
+      "The declared local type must be `u8`, `u16`, `i8`, `i16`, or `boolean`",
     );
     expect(text).toContain(
       "A routine-local declaration with aggregate type is invalid.",
     );
     expect(text).toContain(
-      "Aggregate assignment requires a mutable aggregate destination and an aggregate source of the exact same type",
+      "Aggregate assignment requires a mutable aggregate destination and an aggregate source of the exact same concrete type",
     );
     expect(text).toContain(
       "The caller must consume a returned aggregate alias immediately",
@@ -165,7 +165,7 @@ describe("the normative Nucleus 0.1 grammar", () => {
 
   it("keeps counted-loop counters local and read-only", () => {
     expect(text).toContain(
-      "The counter name must resolve to a scalar local of type `u8` or `u16`",
+      "The counter name must resolve to a scalar local of type `u8`, `u16`, `i8`, or `i16`",
     );
     expect(text).toContain(
       "A nested counted loop cannot reuse the same local as its counter",

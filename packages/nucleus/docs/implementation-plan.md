@@ -36,9 +36,10 @@ The 16 KiB compiler-core gate is the acceptance limit for the first
 implementation, not a language-conformance rule. Construction proceeds from
 measured components rather than from an unmeasured top-down estimate. Every
 module reports its code and immutable-data contribution when it first runs, and
-the running total is updated before work broadens. A projected total in the
-12–13 KiB range triggers an immediate representation and control-flow review
-because the remaining integration margin is small.
+the running total is updated before work broadens. During early construction, a
+projected total in the 12–13 KiB range triggered a representation and
+control-flow review because the remaining integration margin was small. The
+final current census appears below.
 
 Compact handwritten assembly may use shared tails, jump tables, overlays,
 specialized entry points, and other byte-saving control flow that would be
@@ -48,6 +49,17 @@ Implementers select such transformations from measured complete paths, not
 from source-line count or stylistic preference. A proposed language cut remains
 a redesign and requires evidence that implementation economies cannot recover
 the required margin.
+
+The compiler image is origin-independent. The `$0000` address in the current
+proof memory map is only a host measurement choice; deployment policy may place
+the compiler anywhere its complete image fits, including `$0100` under CP/M or
+`$8000` on a TEC-1 configuration. All compiler pointers remain full-width
+16-bit addresses. Pointer-bit tagging, address truncation, and metadata schemes
+that depend on the current origin are prohibited. A dispatcher-prefetch
+prototype that marked handlers with address bit 15 was rejected and restored
+before commit because it would have silently restricted the compiler to the
+low 32 KiB. Future relocation-sensitive compression must use address-independent
+metadata and pass the low/high-origin relocation proof.
 
 ## Settled implementation boundary
 
@@ -72,8 +84,9 @@ explicitly reopens them:
 - all routine-local variables are scalar;
 - all owned aggregate storage belongs to top-level program variables,
   aggregate constants, and their inline subobjects;
-- aggregate parameters and results use typed, opaque address carriers;
-- aggregate assignment copies the complete fixed representation;
+- concrete aggregate parameters and results use typed, opaque address carriers;
+  `string[]` parameters additionally retain the argument's actual capacity;
+- aggregate assignment copies only the exact concrete representation;
 - the compiler emits checked semantic operations into a direct-Z80 backend and
   initially uses fixed templates without register allocation or whole-program
   optimization;
@@ -184,15 +197,17 @@ accounts. Each completed increment has a correctness baseline and a measured
 compression pass. The resident Stage 9 size is the current implementation
 plateau.
 
-| Area           | Current evidence                                                                                                        | Work ahead                                                                                          |
-| -------------- | ----------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------- |
-| Specifications | The language specification, direct-Z80 contract, reviewer charter, and implementation plan define the active system.    | Review normative changes before implementation depends on them.                                     |
-| Grammar        | The collected grammar is analyzed mechanically and its three predictive conflicts are locked by tests.                  | Preserve the result while adding the source compiler; no new grammar work is planned.               |
-| Type metadata  | Compact structural metadata and alias-category separation have executable tests.                                        | Measure inline metadata against interned ordinals in Z80 before selecting the first representation. |
-| Source corpus  | Every Chapter 21 program is byte-locked to the specification and has a direct output, state, diagnostic, or trap proof. | Extend the corpus only when a language or implementation change requires another discriminator.     |
-| Z80 evidence   | The complete Chapter 21 corpus runs through the direct compiler with final measured accounts.                           | Preserve the final gate while preparing hardware and adapter evidence.                              |
+| Area             | Current evidence                                                                                                                                         | Continuing duty                                                                |
+| ---------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------ |
+| Specifications   | The language, target, NOBJ, runtime, Host API, and D8 authorities describe the implemented system.                                                       | Review each affected authority before changing an implemented contract.        |
+| Grammar          | The production grammar and packed LL(1) tables regenerate exactly; external expression and name-statement islands have focused tests.                    | Preserve the grammar and diagnostics unless a normative language change lands. |
+| Type metadata    | Interned ordinals name four-byte structural descriptors; alias-category separation and exhaustion have executable tests.                                 | Remeasure any alternative against the complete compiler.                       |
+| Source corpus    | Every Chapter 21 program is byte-locked and has a direct output, state, diagnostic, or trap proof; broader focused tests cover the remaining constructs. | Add a discriminator whenever a language or implementation change needs one.    |
+| Z80 evidence     | The complete corpus runs through the direct compiler with the final measured accounts below.                                                             | Preserve the byte, layout, register, stack, size, and timing gates.            |
+| Host integration | Host API 1, CLI, flat and banked NOBJ, HEX, D8, and Debug80's flat launch path have end-to-end tests.                                                    | Keep source identity, target layout, and publication failure behavior exact.   |
 
-`vitest run test/proof-harness.test.ts` from `packages/nucleus` is the focused
+`npx vitest run test/proof-harness.test.ts --reporter=verbose` from the
+standalone Nucleus repository is the focused
 assembly-proof gate. The broader Nucleus package suite runs only after that
 gate passes. AZM and Debug80 dependencies are rebuilt only when their outputs
 are absent or stale; an ordinary Nucleus change does not trigger a monorepo-wide
@@ -894,7 +909,7 @@ to the immediately preceding segmented-output plateau, the correction removes
 The following aggregate-width correction supersedes that object ceiling.
 Dynamic descriptors now retain a 16-bit array length and a separate 16-bit
 complete extent. Record-field offsets and record extents are also words.
-Selection, region validation, and exact-type copying consume those word values;
+Selection, region validation, and exact-type aggregate copying consume those word values;
 arrays use the element's complete word extent as their stride. Bounded strings
 remain capped at `string[253]`, but participate in the same complete-extent,
 allocation, region-checking, and copying paths as every other aggregate.
@@ -1141,6 +1156,10 @@ not change.
 
 ## Target-system implementation increment
 
+This section is the historical construction record for the implemented target
+system. All seven recorded stages and the final review are complete; future
+tense below describes the plan used at the time, not pending work.
+
 The [target-system specification](target-system-specification.md) defines the
 approved shape for target profiles, startup, runtime vectors, and one-program
 banking. The [object-stream format](nucleus-object-format.md) defines the exact
@@ -1233,7 +1252,7 @@ Every bank also reserves a three-byte entry slot. Only the entry bank emits
 the three-byte capacity cost in every bank and the emitted-byte cost in the
 entry bank separately.
 
-Implementation proceeds in measured increments:
+Implementation was organized in these measured increments:
 
 1. add the compact target descriptor, complete runtime link context,
    runtime-provider lookup, and identity, length, and helper-layout rejection;
@@ -1259,13 +1278,10 @@ Implementation proceeds in measured increments:
 10. obtain a read-only correctness review, perform measured compression, and
     obtain a final correctness-and-size review before commit.
 
-The target-system and NOBJ authorities are approved for staged implementation.
-The object-sink increment must be measured before later banked work depends on
-it. A 600-byte cumulative target-system increase is a hard checkpoint: freeze
-the increment before further staged work, reproduce the target-enabled account,
-run correctness and compression review, and obtain explicit approval before
-continuing. A completed later-stage review does not retrospectively satisfy
-that checkpoint.
+The target-system and NOBJ authorities were implemented in these stages. The
+600-byte cumulative target-system checkpoint governed that work and is retained
+here as part of the decision record; the later final review did not replace its
+contemporaneous evidence.
 
 ### Target-system Stage 1: strict host NOBJ boundary
 
@@ -1608,30 +1624,1209 @@ remains 1,040 bytes. The producer proof remains 2,345 bytes and executes
 fixtures remain byte-identical to `f0c6643c`, including generated code and each
 linked runtime image.
 
+### Host D8 source-map instrumentation
+
+The standalone Node package contains a second generated compiler layout with
+`DebugHooks = 1`. Conditional two-byte `OUT (n),A` instructions report source,
+declaration, structured-context, routine, semantic-dispatch, and target-adapter
+IMAGE events. The host records and validates those events, then publishes D8
+only after a valid NOBJ commit. The semantic transcript, NOBJ format, target
+records, generated program, selected runtime, and language are unchanged.
+
+At the D8 checkpoint, the shipping `DebugHooks = 0` layout measured 15,482-byte compiler
+code plus 393 immutable bytes, for a 15,875-byte compiler core and 509 bytes of
+headroom. Workspace remains 3,606 bytes, parser extent remains 9,216 bytes,
+the largest generated program remains 1,040 bytes, and the selected proof
+runtime remains 574 bytes. Its 2,345-byte producer proof executes 1,043,353
+instructions in 10,196,561 T-states. A baseline/current binary comparison and
+flat and banked host compiles keep the shipping compiler, semantic transcript,
+generated publications, runtime, NOBJ, and Intel HEX bytes identical.
+
+At that checkpoint, the instrumented layout measured 15,539 code bytes plus the same 393 immutable
+bytes, for a 15,932-byte core. It adds no workspace or transcript storage. The
+parser grows by 50 bytes to 9,266: 48 action bytes for eleven source marks, one
+declaration mark, four pushes, six pops, and two routine marks, plus a two-byte
+declaration mark in the retained parser. The semantic dispatcher adds seven
+bytes: two trace instructions and the conditional success bridges required to
+emit exactly one end event. Total instrumented compiler-core cost is therefore
+57 bytes. The proof-owned target adapter adds one two-byte IMAGE event outside
+the compiler-core account, increasing proof code/data from 2,345 to 2,347
+bytes.
+
+The complete instrumented producer proof executes 1,047,813 instructions in
+10,245,645 T-states. Its compiler image fits the host proof map. Flat and
+three-bank Node evidence validates original source pointers, CRLF and
+synthesized part boundaries, balanced nested contexts, one source operation
+followed immediately by another, exact normal/debug diagnostics, successful
+compilation after failure, routine anchors, repeated visible addresses in
+different physical banks, and byte-identical target artifacts.
+
+The Node collector and D8 writer are host resources and add zero compiler code,
+immutable compiler data, workspace, transcript, generated-program, and runtime
+bytes. The CLI emits one sidecar for a flat target or one existing-schema D8
+map per physical bank. Debug80 publishes flat NOBJ, HEX, and D8 as one
+generation and validates the D8 document through its normal importer before
+publication. Byte columns remain in the sidecar; the initial debugger path is
+line-oriented.
+
+A post-integration acceptance pass tightened host-only boundaries without
+changing either compiler layout. D8 publication now replaces the complete
+flat-or-banked sidecar group, including removal of obsolete bank files, and the
+collector compares the ordered `$DF` stream with every compiler-adapter
+`IMAGE` byte before publication. Provider-owned runtime and initialization
+images remain intentionally outside that comparison and unattributed. These
+events dominate host trace volume: the representative CRLF two-routine compile
+reports 187 `$DF` callbacks for 13 semantic operations. The collector also
+decodes the finalized variable-width semantic transcript independently and
+requires every `$DD` key to name an actual operation boundary and the decoded
+end to equal the semantic read cursor captured at `$DE`. These
+checks add zero compiler, adapter, workspace, transcript, generated-program,
+runtime, NOBJ, or HEX bytes.
+
+### Retired checkpoints: `print` and bounded-string operators
+
+The measurements in this section record superseded implementation checkpoints.
+Neither `print` nor the bounded-string operators described here belong to the
+current language.
+
+The next pass began from `proofs/chapter21-target-z80-slice-proof.json` at
+standalone HEAD `a782cc9dc83c395e4b7fc7dd536584d7541f0a4f`. The baseline was
+reproduced before editing: 15,482 compiler-code bytes plus 393 immutable
+bytes, for a 15,875-byte core and 509 bytes of headroom. Workspace was 3,606
+bytes; the selected proof runtime was 574 bytes; proof code and data were 2,345
+bytes; and the proof executed 1,043,353 instructions in 10,196,561 T-states.
+Its Chapter 21 NOBJ was 7,913 bytes and used 1,461 target-image bytes.
+
+The compression pass introduced checked inline operands for tail diagnostics
+and single-byte emission, then shared only register-contract-compatible parser
+and backend tails. AZM's stack and register checker now treats a call to a
+declared `noreturn` helper as a terminal control-flow edge. The helper's return
+address can therefore select one following data byte without that byte entering
+the caller's reachable instruction stream. The checker neither decodes that byte nor propagates reachability through the
+tail. A conventional D8 disassembler still renders that inline data byte as an
+instruction; this is a cosmetic listing limitation, not executable code or a
+source-map error. Every generated program, semantic transcript, NOBJ, Intel HEX image, and
+selected runtime remained byte-identical to the baseline. The final compressed
+checkpoint, measured with the same manifest before the `print` edits, contained
+15,375 code bytes plus 393 immutable bytes, or 15,768
+core bytes, leaving 616 bytes of headroom. Workspace remained 3,606 bytes. A
+relative branch that fit the target-enabled image but failed a retained
+historical layout was restored to `JP`; both conditional compiler layouts and
+all retained proof layouts therefore assemble strictly.
+
+`print` is a predefined, result-free, failable call rather than a statement or
+grammar production. The ordinary parser recognizes its name and accepts any
+bounded-string capacity at that call site. The semantic transcript reuses the
+retired operation byte 23 and carries the static capacity, source offset, and
+existing three-byte failure state. The backend checks the stored logical
+length against that capacity before calling a shared runtime helper. The helper
+then sends bytes through the existing `writeOutputByte` vector and introduces
+no System Service.
+
+Fresh assembly of `proofs/chapter21-target-z80-slice-proof.json` measures
+15,504 shipping compiler-code bytes plus 399 immutable bytes, or 15,903 bytes
+of core and 481 bytes of headroom.
+The instrumented proof in `proofs/flat-target-debug-z80-slice-proof.json`
+measures 15,561 code bytes plus 399 immutable bytes, or 15,960 bytes of core.
+Relative to the compressed checkpoint, `print` adds 129
+code bytes and six immutable name bytes, for a 135-byte compiler-core delta.
+This remained below the 150-byte review threshold after a focused pass reused
+the retired dispatch slot and shared the no-argument failable-call tail with
+ordinary services. The shared tail saves four core bytes and adds five compiler
+instructions and 60 T-states to the retained console build; its NOBJ, Intel
+HEX, and materialized-image hashes remain byte-identical. The earlier form
+measured 156 added core bytes and was not retained. A generated bounds-trap
+helper was rejected because it would trade scarce compiler-core bytes for
+target bytes, and the only remaining shipping-layout `JP`-to-`JR` candidate
+failed the retained parser layouts. Compiler workspace and the 511-byte
+semantic payload capacity are unchanged.
+
+Runtime identity `$0005` adds the 18-byte `PrintString` helper at offset 364.
+`test/nobj.test.ts` measures the default-context canonical linked runtime at
+382 bytes. `proofs/chapter21-target-z80-slice-proof.json` measures a 592-byte
+selected runtime, while `proofs/stage9-conformance-z80-slice-proof.json`
+measures the 614-byte historical direct-proof form. The
+target-enabled producer proof remains 2,345 bytes and executes 1,043,067
+instructions in 10,189,213 T-states. Its ordinary Chapter 21 source does not
+call `print`; its larger 1,479-byte image and 7,931-byte NOBJ come from the
+selected runtime revision. Generated-code length and instruction topology,
+initialized-data contents, and source semantics remain unchanged, but the
+larger runtime moves target placement and therefore changes layout-dependent
+address operands, NOBJ, and Intel HEX bytes.
+
+The `supports a measured TEC-1-style menu and value display` case in
+`91b52cf4ccee824dda8f8f78fcf2fdb961acd25e:test/print.test.ts`, using that
+test's fixed flat target and service addresses,
+locks the following account. The retained console is a 1,034-byte source file. It uses
+five static messages across four distinct capacities (`string[2]`,
+`string[8]`, `string[20]`, and `string[40]`), three ordinary numeric-formatting
+routines, and direct `print` calls for its banner, menu, labels, and newline.
+It compiles in 311,823 instructions and 3,101,255 T-states, emits a 13,837-byte
+NOBJ, uses 2,299 target-image bytes, and contains 1,706 generated code bytes and
+158 total read-only bytes, of which 88 are aggregate constants. Execution of the word
+choice produces the exact menu and `1234` display text.
+
+This console needs no string comparison, search, or copy routine. Its three
+formatter routines transform integers and belong to the separate
+number-formatting tier. For this program, the measured non-output string-routine
+count is zero. A later design decision added logical string equality and
+widening string assignment because both operate on existing bounded values
+without a new carrier or source type. Search, slicing, splicing, and `string[]`
+remain deferred until a concrete program supplies requirements against which
+they can be designed and measured.
+
+The console uses four of the eight aggregate-type entries. A separate boundary
+case in `91b52cf4ccee824dda8f8f78fcf2fdb961acd25e:test/print.test.ts` admits eight distinct bounded-string capacities
+with `print` and rejects the ninth with the existing aggregate-type-capacity
+diagnostic. This proves that `print` allocates no hidden wildcard type, but it
+does not prove that eight entries suit every application. The capacity remains
+eight for now, with no 48-byte workspace increase.
+
+The bounded-string operator pass began at standalone HEAD
+`91b52cf4ccee824dda8f8f78fcf2fdb961acd25e`. Measured baseline: 15,504
+compiler-code bytes plus 399 immutable bytes, or 15,903 bytes of compiler core
+with 481 bytes of headroom. Measured workspace: 3,606 bytes. The target-enabled
+Chapter 21 proof selected a measured 592-byte runtime, emitted a measured
+7,931-byte NOBJ using 1,479 image bytes, and executed a measured 1,043,067
+compiler instructions in 10,189,213 T-states.
+
+The pass adds logical equality between bounded strings of any capacities through the
+existing `=` operator. It compares length and payload rather than representation
+or alias identity. Existing assignment syntax now admits `string[M]` on the
+right of `string[N]` when `M <= N`; the generated operation validates both
+complete regions and the source length before copying, then clears the unused
+destination tail. Narrowing assignment remains invalid. Routine parameters and
+results retain exact type identity because they transfer aliases rather than
+values. The grammar and generated LL(1) tables are unchanged. Semantic
+operations 26 and 27 reuse retired typed-dispatch slots and each occupy five
+transcript bytes.
+
+The operator experiment was measured while it remained in the working tree,
+then removed without an archived source checkpoint. Its transient counts are
+therefore not published as reproducible measurements. The retained conclusion
+is qualitative: the operators consumed compiler core and runtime bytes that the
+more general `string[]` facility could replace with source routines.
+
+The uncommitted operator experiment distinguished equality across capacities,
+embedded zero bytes, empty strings, widening assignment, destination-tail
+clearing, narrowing and ordering rejection, grouped operands, nested calls,
+field and transient sources, corrupt lengths and carrier regions, capacity-253
+boundaries, banked calls, D8 decoding, and normal/debug NOBJ identity. Those
+fixtures were removed with the operators, so this paragraph records design
+history rather than current proof evidence.
+The pass also repairs constant `*`, `/`, and `mod` folding so the result value
+cannot contaminate its type metadata. `find`, slice, splice, string-literal call
+arguments, and capacity-widening aggregate parameters are not part of this pass.
+
+### Parameter-only `string[]` and retirement of the string intrinsics
+
+The `print` and bounded-string-operator checkpoints above are retained as
+historical measurements, not as the current language. The next experiment
+showed that a source-defined routine can accept `string[]` safely without a
+runtime helper. The parameter is one source binding represented internally by
+an address and the concrete argument capacity. A caller may pass any
+`string[N]` storage path or forward another `string[]`. The callee may read
+`.length` and read or write existing indexed bytes; each access validates the
+dynamic complete extent and stored length. The view owns no storage and cannot
+be used as a variable, constant, field, array element, local, result,
+whole-object assignment operand, or comparison operand.
+
+The semantic transcript adds measured fixed-width operations 108, 109, and
+110 for open-string length, indexing, and call preparation. An open parameter
+uses a measured three activation bytes: two for its address and one for its
+actual capacity. Forwarding preserves both. The grammar admits the empty bound
+only in a formal parameter, and the implementation allocates no aggregate-type
+entry for the view. Tests execute capacities 1, 5, 12, and 253, embedded zero
+bytes, mutation, forwarding through an abbreviated forward body, nested calls,
+recursion, transient aggregate results, mixed scalar and open parameters, a
+corrupted stored length, and a two-bank normal/debug build. They also reject
+every owning or result position, whole-object assignment and comparison through
+the view, and forwarding an open view across a bank boundary. `print` remains
+available as an ordinary user-defined routine name.
+
+After that proof, the predefined `print`, logical bounded-string equality, and
+cross-capacity bounded-string assignment were removed. Exact-capacity string
+assignment remains ordinary exact-type aggregate copying. A source library can
+implement output and comparison over `string[]`; cross-capacity copying remains
+deferred until the language defines a length-changing operation and its source
+semantics. String literals remain contextual static initializers, so a direct
+call such as `emit("hello")` is not yet admitted; the current form names a
+concrete bounded-string constant and passes it.
+
+The focused post-correctness compression pass removes a measured 128 compiler
+code bytes. It walks retained parameter records directly, shares the concrete
+and open `.length`, index, and backend-check tails, shortens proven branches,
+shares existing two-byte templates, and removes redundant parser state loads.
+The semantic operation numbers and widths remain fixed. The pass changes no
+immutable compiler data, workspace, semantic transcript, generated program,
+runtime, NOBJ, HEX, or D8 bytes. CLI builds of `examples/hello.nu` and
+`examples/tec1-console.nu` reproduce the saved pre-compression NOBJ and D8
+sidecars byte for byte.
+
+A later production-layout gate removes another measured 137 compiler-code
+bytes. Conditional assembly excludes the obsolete scalar-forward expression
+parser (105 bytes), legacy `else fail` token helpers (16 bytes), and two
+non-streaming proof entry wrappers (16 bytes) from the shipping and
+instrumented layouts. The historical non-streaming proofs retain their entry
+wrappers. Their selected compiler layouts also omit the 121 bytes of legacy
+parser code. A local comparison against clean baseline
+`89f51a61267ff5ff9e0fd59c071f4c5220710abd` built each example with
+`test/fixtures/host-target.json` and requested NOBJ, HEX, and D8 output. The
+post-gate files reproduce all six baseline SHA-256 values:
+
+```text
+8cbe545ed1feb4415aac0f778d8960fa758e6177f5af193f41e639eb496e57fd  hello.nobj
+94fe3f78cb7c9d66bf5a01a5844c8ab255b6116b206aeaa9ad0f08607547c0ff  hello.hex
+f3b61adfec15eeaaf91683e22b39243077dfea0e492012cbda32ffadbdb0d1c7  hello.d8
+af9003849ac15b894e1c1acd531a194edd6611eca0fb45a747dad061ea4d4f99  tec1.nobj
+5fabecabbe79658c3a2ad78a3db655f00fdfb82be3728278ed53c8bff939146b  tec1.hex
+b0811c6ec8eb12b08d56c922ac41ffb5c445287d4ca3d18e70fd5f09c026d8a1  tec1.d8
+```
+
+At production-layout commit `e4f231d83bcfb38426bfbb8d8e08aa9093aaa936`,
+`proofs/chapter21-target-z80-slice-proof.json` measured the shipping assembly at
+15,726 compiler-code bytes plus 393 immutable bytes, or 16,119 compiler-core
+bytes with 265 bytes of 16 KiB headroom. It also measured 3,607 bytes of
+complete target workspace, a one-byte increase from the earlier compressed
+checkpoint. `proofs/flat-target-debug-z80-slice-proof.json` measured the
+instrumented host image at 15,783 code bytes plus 393 immutable bytes, or
+16,176 core bytes, inside its separate 17 KiB host-only core reservation.
+`test/nobj.test.ts` measures the canonical runtime at identity `$0004` and 364
+bytes. The target-enabled Chapter 21 proof selects 574 runtime bytes;
+the current assembly of `proofs/stage9-conformance-z80-slice-proof.json`
+measures 14,006 compiler-code bytes, 393 immutable bytes, and the 596-byte
+runtime used by that historical direct proof.
+
+The intermediate source that combined all three retired features with
+`string[]` was not retained as a reproducible checkpoint, so this account does
+not publish an isolated compiler- or runtime-byte saving for their removal.
+The current reproducible figures are the compiler and runtime measurements
+above. `proofs/chapter21-target-z80-slice-proof.json` emits a measured
+7,913-byte NOBJ with a 1,461-byte used image. It executes 1,044,685 compiler
+instructions in 10,209,748 T-states before the focused compression pass and
+1,044,583 instructions in 10,208,611 T-states after it; proof code and data
+measure 2,345 bytes in both builds.
+
+### Production single-unwind diagnostic checkpoint
+
+The production streaming compiler now has one nonlocal exit for compile-time
+diagnostics. `CompileTargetAggregateCallParts` saves its incoming stack pointer
+before parsing. `CompilerSetDiagnostic` records the same code, part, offset,
+line, and column as before, restores that pointer, and returns directly to the
+public caller. After parsing succeeds, the entry pushes `AbortTargetProgram` as
+a synthetic continuation and saves the new stack pointer before generation.
+A generation diagnostic therefore returns through exactly one guarded abort
+path. Successful generation discards the synthetic word normally.
+
+The late MAP and COMMIT path remains a deliberate exception to catch-owned
+abort. Fixup resolution has already set `TargetOutputBank` to the closed value
+before either operation, although the sink transaction remains open. A MAP or
+COMMIT failure therefore calls `TargetSinkAbort` locally before raising its
+diagnostic; the synthetic continuation observes the closed bank selector and
+does not call it again. The counting proof adapter distinguishes zero aborts
+before BEGIN, one abort during generation, one abort after either MAP or
+COMMIT, and a successful compilation immediately after those failures. It also
+checks the exact public stack pointer after representative parse, generation,
+MAP, COMMIT, and success returns. Historical non-streaming layouts retain their
+ordinary carry-propagation boundaries.
+
+Measured after this checkpoint, the shipping image is 15,744 compiler-code
+bytes plus 393 immutable bytes, or 16,137 compiler-core bytes with 247 bytes of
+16 KiB headroom. Workspace is 3,609 bytes; the new saved stack pointer accounts
+for its two-byte increase. The instrumented image is 15,801 code bytes plus 393
+immutable bytes, or 16,194 core bytes, leaving 1,214 bytes in its separate 17
+KiB reservation. The expanded normal proof is 2,487 bytes and executes
+1,072,121 instructions in 10,485,046 T-states. The instrumented proof is 2,489
+bytes and executes 1,076,761 instructions in 10,536,112 T-states. These timing
+figures are not a before-and-after compiler-speed comparison: the checkpoint
+adds a complete failing COMMIT compilation to the proof workload. The selected
+runtime remains 574 bytes. Existing flat, loaded, and banked golden tests retain
+their exact NOBJ, generated-image, runtime, HEX, and D8 results.
+
+This checkpoint changes only the terminal diagnostic route. Existing
+`RET C`, `JR C`, and `JP C` propagation remains in place and is unreachable
+after a production diagnostic. Removing those sites is a separate measured
+migration, not part of this checkpoint.
+
+### Typed-generation diagnostic propagation removal
+
+The first removal stage starts from checkpoint
+`fb043c986622720b478ebb99b76830c6dbfce677`. It covers the typed expression,
+aggregate call, structured-control, and aggregate driver modules. Their
+fallible generation calls either reach `CompilerSetDiagnostic` through the
+streaming emitter or raise an internal compiler diagnostic directly. Neither
+path returns in the production layout. The source contains 217 corresponding
+`RET C` sites; 208 are active in the shipping layout and 209 in the
+instrumented layout. `CompilerDiagnosticReturns` retains every return in the
+historical non-streaming layouts.
+
+Measured after this stage, shipping compiler code is 15,536 bytes. Immutable
+data remains 393 bytes, so compiler core is 15,929 bytes with 455 bytes of 16
+KiB headroom. The instrumented compiler is 15,592 code bytes plus 393 immutable
+bytes, or 15,985 core bytes, leaving 1,423 bytes in its 17 KiB reservation.
+Workspace remains 3,609 bytes and the selected runtime remains 574 bytes.
+
+With the same expanded proof workload, the shipping proof executes 1,070,342
+instructions in 10,476,151 T-states: 1,779 fewer instructions and 8,895 fewer
+T-states than the single-unwind checkpoint. The instrumented proof executes
+1,074,971 instructions in 10,527,162 T-states, reductions of 1,790 instructions
+and 8,950 T-states. Proof code and data remain 2,487 bytes in the shipping
+layout and 2,489 bytes in the instrumented layout. Fresh CLI builds of both
+examples reproduce the six NOBJ, HEX, and D8 SHA-256 values listed above.
+Parser propagation and the general emit-sink layer are unchanged and remain
+separate stages.
+
+### Streaming emit-sink diagnostic propagation removal
+
+The second removal stage starts from typed-generation checkpoint
+`b93e907e95122bf053274648bd32485112b829d1`. It covers the general Z80 emitter
+and target-output adapter. Those files contain 160 source-level `RET C` sites;
+51 are active in each production streaming layout. Output-capacity, target
+configuration, adapter, patch, and fixup failures already enter the nonlocal
+diagnostic path. Historical encoders retain all 160 returns through
+`CompilerDiagnosticReturns`.
+
+Measured after this stage, shipping compiler code is 15,485 bytes. With 393
+immutable bytes, compiler core is 15,878 bytes and 506 bytes remain in the 16
+KiB shipping region. The instrumented compiler is 15,541 code bytes plus 393
+immutable bytes, or 15,934 core bytes, leaving 1,474 bytes in its 17 KiB host
+reservation. Workspace remains 3,609 bytes and the selected runtime remains 574
+bytes.
+
+The unchanged expanded shipping proof executes 1,067,291 instructions in
+10,460,896 T-states, 3,051 instructions and 15,255 T-states fewer than the
+typed-generation checkpoint. The instrumented proof executes 1,071,920
+instructions in 10,511,907 T-states, the same reductions. Proof code and data
+remain 2,487 and 2,489 bytes. Fresh CLI builds again reproduce the six saved
+NOBJ, HEX, and D8 hashes. Parser propagation is unchanged and remains the next
+stage.
+
+### Parser diagnostic-return removal
+
+The third removal stage starts from emit-sink checkpoint
+`baa4df3bae0d8a5b087089623227901b7fc8777b`. It classifies the `RET C` sites in
+the LL(1) engine and actions, scalar and aggregate expression parsers,
+structured-control parser, aggregate parser, and their common parser driver.
+All 746 source-level sites remain in historical layouts. The production build
+omits only returns reached after a fallible parser or semantic-sink operation;
+tokenizer EOF, character comparisons, symbol-search results, and predictive
+selection carry remain unchanged.
+
+The shipping compiler now measures 15,190 code bytes plus 393 immutable bytes,
+or 15,583 compiler-core bytes with 801 bytes of 16 KiB headroom. This is a
+measured 295-byte core reduction from the emit-sink checkpoint. The instrumented
+compiler measures 15,246 code bytes plus 393 immutable bytes, or 15,639 core
+bytes, leaving 1,769 bytes in its 17 KiB reservation. Workspace remains 3,609
+bytes and the selected runtime remains 574 bytes.
+
+The unchanged expanded shipping proof executes 1,058,364 instructions in
+10,416,261 T-states, reductions of 8,927 instructions and 44,635 T-states. The
+instrumented proof executes 1,062,993 instructions in 10,467,272 T-states, with
+the same reductions. Proof code and data remain 2,487 and 2,489 bytes. Fresh
+CLI builds reproduce the six saved NOBJ, HEX, and D8 hashes. This stage removes
+diagnostic-return instructions only; conditional diagnostic branches and their
+cleanup shims remain candidates for later, separately measured work.
+
+### Parser conditional diagnostic-branch removal
+
+The next stage starts from parser-return checkpoint
+`f43235243bf9341e6cb43176b1a26d0de497db38`. It classifies conditional carry
+branches in the typed-expression parser, aggregate-call parser, common scalar
+parser, aggregate parser, and LL(1) parser and actions. Production layouts omit
+72 branches whose preceding call either raises a diagnostic through
+`CompilerSetDiagnostic` or succeeds. Historical layouts retain them. Carry
+branches that report tokenizer EOF, symbol lookup, name comparison, arithmetic
+or capacity results, and LL(1) terminal classification remain active.
+
+Shipping compiler code now measures 15,068 bytes. Immutable data remains 393
+bytes, so compiler core is 15,461 bytes with 923 bytes of 16 KiB headroom. This
+is a measured 122-byte core reduction from the parser-return checkpoint. The
+instrumented compiler measures 15,124 code bytes plus 393 immutable bytes, or
+15,517 core bytes, leaving 1,891 bytes in its 17 KiB reservation. Workspace
+remains 3,609 bytes and the selected runtime remains 574 bytes.
+
+The expanded shipping proof executes 1,056,478 instructions in 10,402,378
+T-states, reductions of 1,886 instructions and 13,883 T-states. The
+instrumented proof executes 1,061,107 instructions in 10,453,389 T-states,
+with the same reductions. Proof code and data remain 2,487 and 2,489 bytes.
+Fresh CLI builds reproduce the six saved NOBJ, HEX, and D8 hashes. The cleanup
+labels reached only by these historical branches remain in this checkpoint;
+their removal is the next separately measured stage.
+
+### Parser diagnostic cleanup removal
+
+The cleanup stage starts from conditional-branch checkpoint
+`0bf3f0dac73c2addaa2cd7241038dac13f420261`. It conditionally removes the
+stack-restoration and carry-return blocks whose only incoming edges are the 72
+historical branches classified in the preceding stage. Production source-error
+and capacity paths still enter `CompilerSetDiagnostic` at the original point;
+local carry-result paths retain their existing cleanup.
+
+Shipping compiler code measures 14,976 bytes plus 393 immutable bytes, or
+15,369 bytes of compiler core with 1,015 bytes of 16 KiB headroom. The measured
+reduction is 92 compiler-code bytes. The instrumented image measures 15,032
+code bytes plus 393 immutable bytes, or 15,425 core bytes with 1,983 bytes left
+in its 17 KiB reservation. Workspace remains 3,609 bytes and the selected
+runtime remains 574 bytes.
+
+The shipping and instrumented proofs retain the preceding checkpoint's exact
+instruction and T-state counts because none of the removed instructions was
+reachable. Proof code and data remain 2,487 and 2,489 bytes. The historical
+layouts assemble and execute with their branches and cleanup blocks present.
+Fresh CLI builds reproduce the six saved NOBJ, HEX, and D8 hashes.
+
+### Generation-driver diagnostic-branch removal
+
+The generation-driver stage starts from cleanup checkpoint
+`f2912144749e9ad3c9438146c3b503309f68e2e6`. It removes eight production carry
+branches after typed trap emission, target initialization, runtime/static-image
+emission, and semantic dispatch, together with the trap-emission cleanup block
+that those branches alone reached. Each called operation either succeeds or
+raises a diagnostic through the armed generation continuation. Branches that
+convert sink failure into a diagnostic, perform arithmetic or comparison, or
+implement MAP and COMMIT rollback remain active.
+
+Shipping compiler code now measures 14,949 bytes plus 393 immutable bytes, or
+15,342 compiler-core bytes with 1,042 bytes of 16 KiB headroom. This stage saves
+27 code bytes. The instrumented image measures 15,005 code bytes plus 393
+immutable bytes, or 15,398 core bytes with 2,010 bytes left in its 17 KiB
+reservation. Workspace remains 3,609 bytes and the selected runtime remains
+574 bytes.
+
+The shipping proof executes 1,056,413 instructions in 10,401,797 T-states, 65
+instructions and 581 T-states fewer than the cleanup checkpoint. The
+instrumented proof has the same reductions and executes 1,061,042 instructions
+in 10,452,808 T-states. Proof code and data remain 2,487 and 2,489 bytes.
+Historical layouts retain the ordinary branches and cleanup path. Fresh CLI
+builds reproduce the six saved NOBJ, HEX, and D8 hashes.
+
+### Checked inline-byte emission
+
+The checked inline-byte stage starts from generation-driver checkpoint
+`8f7271ffdf3284ae7e2a879a861c6215d1427d20`. Forty-three source sites had the
+same checked sequence: load a fixed byte, call `EmitByte`, and propagate carry.
+The replacement call stores the byte immediately after its call instruction.
+Its shared helper reads that byte, retains the following instruction address on
+the compiler stack, and calls `EmitByte`. Success returns to the retained
+instruction address. In historical layouts, an ordinary carry failure discards
+that address and returns to the enclosing routine's caller. Production output
+failure still takes the nonlocal diagnostic continuation.
+
+The initial helper sketch retained its continuation in `HL`, but the real
+`EmitByte` contract clobbers `HL`; strict register checking rejected that form.
+The retained ten-byte helper uses the stack instead. The AZM capability gate
+now models the real `HL` clobber and both success and failure stack paths.
+
+Only 23 converted sites are resident in the shipping layout. After paying for
+the shared helper, shipping compiler code measures 14,936 bytes plus 393
+immutable bytes, or 15,329 compiler-core bytes with 1,055 bytes of 16 KiB
+headroom. The measured saving is 13 code bytes. The instrumented image measures
+14,992 code bytes plus 393 immutable bytes, or 15,385 core bytes with 2,023
+bytes left in its 17 KiB reservation. Workspace remains 3,609 bytes and the
+selected runtime remains 574 bytes.
+
+The extra helper instructions trade compilation speed for resident space. The
+shipping proof executes 1,057,362 instructions in 10,412,236 T-states, an
+increase of 949 instructions and 10,439 T-states. The instrumented proof has
+the same increase and executes 1,061,991 instructions in 10,463,247 T-states.
+Proof code and data remain 2,487 and 2,489 bytes. The inline data bytes can
+appear as instructions in a raw compiler disassembly; they do not affect D8
+source attribution or operation-key decoding. Fresh CLI builds reproduce the
+six saved NOBJ, HEX, and D8 hashes.
+
+### Indexed inline-pair emission
+
+The indexed inline-pair stage starts from checked inline-byte checkpoint
+`7e5ee504f6813b80c52b038b43ab57dd17713d4b`. Thirty-one source sites loaded
+a fixed two-byte template and called `EmitPair`; thirty of those sites are
+resident in the shipping layout. Each replacement stores a one-byte table
+index after the call. The shared helper retains the following instruction
+address on the compiler stack, resolves the index in a fourteen-entry table,
+and enters the existing `EmitPair` path. Dynamic-template calls and tail jumps
+still pass their original `HL` pointers.
+
+A direct two-byte inline operand was rejected during the prototype. AZM's
+strict contract analysis skips the established one-byte operand after a
+nonreturning helper call, but it decoded the second byte as compiler code. In
+particular, an inline `$DD,$6E` appeared to modify `IX`. The retained indexed
+form uses the already-proved one-byte convention and requires no weaker
+register contract. Four two-byte templates with no remaining users were then
+removed.
+
+Shipping compiler code measures 14,911 bytes. With 393 immutable bytes,
+compiler core is 15,304 bytes and 1,080 bytes remain in the 16 KiB region. The
+measured saving is 25 code bytes. The instrumented image measures 14,967 code
+bytes plus 393 immutable bytes, or 15,360 core bytes, leaving 2,048 bytes in
+its 17 KiB reservation. Workspace remains 3,609 bytes and the selected runtime
+remains 574 bytes.
+
+The table lookup adds work to every converted emission. The shipping proof
+executes 1,057,884 instructions in 10,416,296 T-states, increases of 522
+instructions and 4,060 T-states. The instrumented proof has the same increases
+and executes 1,062,513 instructions in 10,467,307 T-states. Proof code and data
+remain 2,487 and 2,489 bytes. The complete functional proof set retains the
+same generated program, runtime, NOBJ, HEX, and D8 results.
+
+### Remaining fixed diagnostic tails
+
+The fixed diagnostic-tail stage starts from indexed inline-pair checkpoint
+`913afdf7732f2767a23e406ec5c5e1a564b4e74a`. Twenty source sites still
+loaded a fixed diagnostic byte and jumped to `CompilerSetDiagnostic`. They now
+use the existing `SetDiagInline` helper. Only one of those bytes is resident in
+the shipping layout, so shipping compiler code falls to 14,910 bytes. With 393
+immutable bytes, compiler core is 15,303 bytes and 1,081 bytes remain in the
+16 KiB region. The instrumented image measures 14,966 code bytes and 15,359
+core bytes, leaving 2,049 bytes in its separate reservation. The historical
+Stage 8 and Stage 9 layouts each save two code bytes. Four legacy sites retain
+their direct jumps because their smallest proof layouts do not include the
+shared helper contract.
+
+The full shipping and instrumented proofs keep the preceding instruction and
+T-state counts because they do not enter the converted diagnostic sites. The
+packed Stage 7 proof exercises those paths and measures twelve more compiler
+instructions and 174 more T-states. Generated program, runtime, NOBJ, HEX, and
+D8 results remain unchanged.
+
+Two nearby prototypes were rejected. Fixed token and Z80-opcode tails cannot
+store their raw values after a nonreturning call because multi-byte opcode
+values desynchronise AZM's strict routine decoder; an indirect encoding costs
+at least the byte it would save. Sharing four open-string type guards saved
+three additional production bytes but added 59 compiler instructions and
+1,062 T-states to the target proof. The direct guards remain.
+
+### Production inline-byte return path
+
+The production-only return-path stage starts from fixed diagnostic-tail
+checkpoint `ade652678d9cd85a3643a3c1a88e0195856eed21`. The resuming
+`EmitByteInlineChecked` helper retains its full carry-return path in historical
+layouts. In the production layout, an emission diagnostic takes the nonlocal
+compiler exit and cannot return to the helper. The helper can therefore jump
+to `EmitByte` after placing the corrected continuation on the stack; the
+ordinary `EmitByte` return resumes the enclosing routine.
+
+The production branch is three code bytes smaller. Shipping compiler code is
+14,907 bytes. With 393 immutable bytes, compiler core is 15,300 bytes and
+1,084 bytes remain in the 16 KiB region. The instrumented image measures
+14,963 code bytes and 15,356 core bytes, leaving 2,052 bytes in its separate
+reservation. Workspace remains 3,609 bytes and the selected runtime remains
+574 bytes.
+
+The shipping proof executes 1,057,695 instructions in 10,412,887 T-states,
+reductions of 189 instructions and 3,409 T-states. The instrumented proof has
+the same reductions and executes 1,062,324 instructions in 10,463,898
+T-states. Proof code and data remain 2,487 and 2,489 bytes. Generated program,
+runtime, NOBJ, HEX, and D8 results remain unchanged.
+
+### Keyword table bound
+
+The keyword-bound correction starts from inline-byte checkpoint
+`7790c69ec3d3801867d8cb7865ddff8300a92480`. `KeywordTable` contains 33
+physical entries, but its scan count was 34. A non-keyword identifier therefore
+examined one extra pseudo-entry beginning at the punctuation table. The first
+byte of that table is `"="`, so the extra comparison could not classify a
+valid Nucleus name as a keyword, but it performed an invalid table traversal on
+every ordinary name. `KeywordCount` now matches the physical entry count. A
+static test locks the count, and an execution test distinguishes every exact
+keyword from the corresponding identifier with an added `x`.
+
+The correction changes no resident bytes. Shipping compiler code remains
+14,907 bytes and compiler core remains 15,300 bytes, with 1,084 bytes of 16 KiB
+headroom. Workspace remains 3,609 bytes and the selected runtime remains 574
+bytes. The shipping proof executes 1,055,198 instructions in 10,393,365
+T-states, reductions of 2,497 instructions and 19,522 T-states. The
+instrumented proof has the same reductions and executes 1,059,827 instructions
+in 10,444,376 T-states.
+
+A high-bit-terminated keyword table was measured and rejected. It removed 33
+immutable length bytes but added eight scanner-code bytes, for a net 25-byte
+core saving. Without the length prefilter, the scanner compared each name
+against keyword characters that the current representation skips. The shipping
+proof added 120,085 instructions and 1,245,777 T-states, and several bounded
+historical proofs exceeded their execution budgets. The length-prefixed table
+remains.
+
+### Semantic operand preservation
+
+The semantic-operand stage starts from keyword-bound checkpoint
+`60920ef929ea5593137566f2bf054091a6de3867`. Eleven source sites preserve
+`HL` around `SemanticSinkPut`; seven are resident in the production compiler.
+A six-byte production-only wrapper replaces their five-byte local
+push/call/pop sequences with three-byte calls. Historical layouts retain the
+original sequences and therefore keep their code placement and execution
+results.
+
+Shipping compiler code measures 14,899 bytes. With 393 immutable bytes,
+compiler core is 15,292 bytes and 1,092 bytes remain in the 16 KiB region. The
+measured saving is eight code bytes. The instrumented image measures 14,955
+code bytes and 15,348 core bytes, leaving 2,060 bytes in its separate
+reservation. Workspace remains 3,609 bytes and the selected runtime remains
+574 bytes.
+
+The wrapper adds one compiler call and return whenever a converted operand is
+published. The shipping proof executes 1,055,336 instructions in 10,395,228
+T-states, increases of 138 instructions and 1,863 T-states. The instrumented
+proof has the same increases and executes 1,059,965 instructions in 10,446,239
+T-states. Generated program, runtime, NOBJ, HEX, and D8 results remain
+unchanged.
+
+### Final relative helper tails
+
+The branch pass starts from semantic-operand checkpoint
+`d25551d4d0907d050b1b8e7adc022c599ff5a4f0`. A fresh normal/debug listing
+census found eight absolute jumps with a relative encoding in range. Six had
+displacements between 119 and 127 bytes in magnitude and remain absolute. The
+two retained changes enter `EmitByte` at −47 bytes and `EmitPair` at +77 bytes,
+with the same safe classification in both production images.
+
+Shipping compiler code measures 14,897 bytes. With 393 immutable bytes,
+compiler core is 15,290 bytes and 1,094 bytes remain in the 16 KiB region. The
+instrumented image measures 14,953 code bytes and 15,346 core bytes, leaving
+2,062 bytes in its separate reservation. Workspace remains 3,609 bytes and the
+selected runtime remains 574 bytes.
+
+The proof instruction counts are unchanged. Relative jumps take two more
+T-states than absolute jumps, so the 248 executed helper transfers add 496
+T-states. The shipping proof executes 1,055,336 instructions in 10,395,724
+T-states; the instrumented proof executes 1,059,965 instructions in 10,446,735
+T-states. Generated program, runtime, NOBJ, HEX, and D8 results remain
+unchanged.
+
+### Bounded-text construction through open views
+
+This increment starts from checkpoint
+`e38291d665938bcd93e02d5ac85946944cbdd178`. The measured baseline is 14,897
+compiler-code bytes plus 393 immutable bytes, or 15,290 compiler-core bytes,
+with 1,094 bytes of 16 KiB headroom. Workspace is 3,609 bytes. The selected
+proof runtime is 574 bytes. The target-enabled proof occupies 2,487 bytes and
+executes 1,055,336 instructions in 10,395,724 T-states.
+
+The retained language surface puts both construction properties on the
+parameter-only `string[]` view. `.capacity` returns the actual capacity carried
+by the binding. `.length` remains readable and becomes a checked assignment
+target on that view. Concrete `string[N]` paths retain read-only `.length` and
+do not expose `.capacity` directly. A concrete object can still bind to an
+ordinary source routine with a `string[]` parameter, so this distinction keeps
+construction capacity-polymorphic without duplicating concrete and open
+compiler paths.
+
+The compiler assigns private semantic operation 111 to open-string capacity;
+its complete transcript width is two bytes. Operation 112 performs checked
+open-string resize and has a four-byte width. A boundary proof fills all 511
+semantic payload bytes with 98 operations, including 30 resize operations; the
+next resize is rejected before publication. No transcript capacity changed.
+
+Fresh production assembly measures 15,069 compiler-code bytes and 401
+immutable bytes, or 15,470 compiler-core bytes. The measured feature cost is
+180 core bytes, leaving 914 bytes of 16 KiB headroom. The partition is 107
+parser and type-checking bytes, four semantic-dispatch bytes, 61 backend bytes,
+and the eight immutable bytes in `capacity`. Workspace grows by two bytes to
+3,611. The instrumented compiler is 15,125 code bytes plus 401 immutable bytes,
+or 15,526 core bytes in its separate reservation.
+
+The canonical runtime advances to identity 5 and measures 390 bytes, 26 bytes
+above identity 4. The selected target proof runtime is 600 bytes. The resize
+helper validates the complete region, old length, and new length before it
+writes. It clears a shrinking tail and stores the new length last. The existing
+bounds trap carries the source location, so the runtime service table and
+public failure codes do not change.
+
+D8-attributed executable ranges measure 76 generated bytes for a complete
+open `.capacity` statement and 120 bytes for a complete open `.length`
+assignment statement, including carrier preparation, region checks, and trap
+lowering. The corresponding direct concrete properties are absent and generate
+no code: concrete `.capacity` and writable concrete `.length` are positioned
+type errors. The largest retained generated-program proof remains 1,040 bytes.
+The accepted Chapter 21 target image uses 1,487 bytes after the 26-byte runtime
+increase.
+
+A real inline-resize prototype assembled the resize algorithm from ordinary
+Z80 mnemonics, emitted it at each assignment site, and passed all 16 focused
+construction proofs. It measured 15,502 compiler-core bytes, 32 bytes more than
+the retained helper design, and increased the resize statement range from 120
+to 147 bytes. The inline algorithm itself is 30 bytes, replacing a three-byte
+runtime call and adding 27 generated bytes per site. Removing the then-unused
+helper would recover 26 runtime bytes. The shared helper uses 29 target bytes
+for one resize site, one byte fewer than the inline algorithm; each additional
+site widens that advantage by 27 bytes. The helper design also preserves 32
+bytes of the binding compiler-core budget and is retained.
+
+An earlier prototype exposed both properties on concrete strings as well as
+open views. It measured a 280-byte compiler-core increase, including 151 parser
+and type bytes, four dispatch bytes, 117 backend bytes, and eight immutable
+bytes. Its first runtime helper measured 39 bytes and used five workspace
+bytes. The open-view design saves 100 compiler-core bytes, three workspace
+bytes, and six runtime bytes while retaining the source-library use case.
+
+`examples/text.nu` contains ordinary `clear` and `appendByte` routines.
+`examples/text-capacity.nu` supplies the optional ordinary `capacity` wrapper.
+The compiler assigns no special meaning to those routine names. Tests compile
+the files as earlier ordered source parts and cover several concrete
+capacities, embedded zero bytes, full-buffer atomic failure, nested forwarding,
+capacity 253, corrupted old lengths, exact memory-region boundaries, banked
+execution, parser reset, and exact diagnostics.
+
+The final target-enabled proof executes 1,051,848 instructions in 10,357,287
+T-states. Proof code and data remain 2,487 bytes. The instrumented proof
+executes 1,056,425 instructions in 10,407,726 T-states and retains 2,489 proof
+bytes. The historical direct Chapter 21 and Stage 8 layouts measure 14,160 code
+bytes plus 401 immutable bytes, 3,605 workspace bytes, and 622 runtime bytes;
+their exact instruction and timing locks are 1,657,395 / 15,616,178 and
+2,036,906 / 18,975,165 respectively.
+
+### Complete-array views through open parameters
+
+This increment starts from checkpoint
+`77d75ea3de4f47f89b4c64db6327cab4210c48c5`. The measured baseline is
+15,069 compiler-code bytes plus 401 immutable bytes, or 15,470 compiler-core
+bytes, with 914 bytes of 16 KiB headroom. Workspace is 3,611 bytes. The
+selected proof runtime is 600 bytes. The target-enabled proof occupies 2,487
+bytes and executes 1,051,848 instructions in 10,357,287 T-states.
+
+The retained source form is a parameter-only complete-array view, written
+`T[]`. A binding carries the address of the first element and the concrete
+element count as an unsigned 16-bit word. Its element type remains exact and
+invariant. The view supports read-only `.length`, checked indexed reads, and
+checked indexed writes. It does not own storage, rebind, resize, compare or
+copy a whole array, represent a slice, or appear in variables, constants,
+fields, array elements, locals, or routine results. Concrete arrays also gain
+read-only `.length`. Nested arrays remain outside the implemented type system.
+
+The selected compiler representation uses a contextual byte: bit 7 marks an
+open-array parameter and the remaining seven bits retain the concrete element
+type identifier. It consumes no aggregate-type entry. An interned descriptor
+was considered but not retained: it is projected to add 50--90 compiler-core
+bytes and would consume one of the eight shared aggregate-type entries for
+each distinct open-array view. The contextual representation preserves those
+entries for concrete records, arrays, and bounded strings.
+
+Fresh production assembly measures 15,493 compiler-code bytes and 401
+immutable bytes, or 15,894 compiler-core bytes. The measured feature cost is
+424 code bytes and zero immutable bytes, leaving 490 bytes of 16 KiB headroom.
+Workspace remains 3,611 bytes. The instrumented compiler is 15,549 code bytes
+plus 401 immutable bytes, or 15,950 core bytes in its separate reservation.
+
+The measured production-code partition is:
+
+| Component                                |   Bytes |
+| ---------------------------------------- | ------: |
+| parameter activation publication         |      35 |
+| path dispatch                            |      11 |
+| concrete and open `.length` parsing      |      66 |
+| open indexing parser                     |      30 |
+| call compatibility                       |      55 |
+| open-call publication                    |      53 |
+| grammar/type actions and packed actions  |      54 |
+| semantic dispatch table                  |       6 |
+| parameter binding adjustment             |       2 |
+| generated `.length` and indexing backend |      55 |
+| generated open-argument backend          |      53 |
+| `LD B,(IX+0)` target template            |       4 |
+| **total**                                | **424** |
+
+The semantic transcript assigns operations 113, 114, and 115 to concrete
+array length, open-array length, and open-array indexing. Their complete widths
+are three, two, and six bytes. Existing operation 110 retains its three-byte
+forms for bounded strings and gains four-byte forms for concrete and forwarded
+array arguments. The semantic payload capacity remains 511 bytes, and the D8
+decoder validates the same widths and operation boundaries as the production
+dispatcher. A boundary proof fills all 511 payload bytes with 172 operations,
+including concrete array length, and rejects the first following operation
+without publishing a D8 map.
+
+An open-array activation uses two ordinary retained word bindings: address
+nearest the return address and count below it. This costs 28 generated bytes in
+the callee prologue. A concrete call prepares count and address in six bytes;
+forwarding an existing view takes nine. After the carrier has been evaluated,
+concrete `.length` takes five generated bytes and open `.length` takes eight.
+A representative D8 build measured complete statement ranges of 60 bytes for
+a concrete call, 66 for a forwarded call, 13 for a concrete-length assignment,
+19 for an open-length assignment, and 81 for an open indexed read assignment.
+
+The focused size pass retained the two existing word-binding operations instead
+of adding a special four-byte activation binder, and made operation 110's width
+mode-dependent instead of allocating another semantic opcode. A shared
+fixed/open index tail recovered 19 bytes. A custom hidden-count binder grew the
+compiler by 23 bytes and was rejected; retaining the count through call
+compatibility grew it by one byte and was also rejected. The final cost exceeds
+the preferred 220-byte estimate and the 260-byte review threshold, but remains
+inside the hard 16 KiB gate with 490 measured bytes free. No unrelated
+compression was mixed into this increment.
+
+The selected runtime remains 600 bytes and byte-identical to the baseline;
+there is no new service. The largest generated proof remains 1,040 bytes.
+Shipping proof execution is 1,052,746 instructions and 10,364,340 T-states;
+the instrumented proof is 1,057,323 instructions and 10,414,779 T-states.
+Proof code/data remains 2,487/2,489 bytes. Historical Stage 9 and Stage 8
+layouts measure 14,610 code bytes plus 401 immutable bytes and execute
+1,658,495 / 15,624,796 and 2,037,227 / 18,977,822 instructions/T-states.
+
+The retained count is a full word and is proved at 1, 255, 256, and 65,535
+through recursive forwarding. That proves the parameter ABI and arithmetic;
+it does not enlarge the separate complete-object allocation limit. With stack
+establishment disabled, concrete `u8[255]`, `u8[256]`, and `u8[1024]` objects
+compile. The default target reserves most writable memory for its stack, so its
+available object capacity is correspondingly smaller.
+
+### Recovery sequence after complete-array views
+
+The recovery work starts at `ec4724bce90344a8737e5fde29b898b4cceacded`.
+Measured production assembly is 15,493 compiler-code bytes plus 401 immutable
+bytes, or 15,894 compiler-core bytes, leaving 490 bytes below 16 KiB.
+Workspace is 3,611 bytes. The target-enabled proof uses the 600-byte selected
+runtime, occupies 2,487 proof code/data bytes, and executes 1,052,746
+instructions in 10,364,340 T-states. The instrumented compiler measures
+15,549 code bytes plus 401 immutable bytes.
+
+Recovery is divided into checkpoints so that a large projected total cannot
+hide an unsafe or unproductive individual change:
+
+1. Mechanical shortening and small shared tails were initially projected to
+   recover 110--125 compiler-core bytes. A fresh source-and-listing census found
+   that estimate included changes already retained, earlier rejected
+   experiments, proof-only code, and branches that fit only the production
+   layout. Each remaining family is therefore assembled and measured on its
+   own. A family is retained only when it saves resident bytes without changing
+   accepted source, diagnostics, semantic bytes, generated target artifacts,
+   or runtime selection. Conditional branches must remain in range in the
+   normal, instrumented, and retained historical layouts.
+2. Unifying the parallel open-string and open-array paths is a 40--90-byte
+   hypothesis. This follows the mechanical checkpoint because it changes
+   shared parser and backend control flow and therefore needs a separate ABI,
+   stack, and diagnostic-order review.
+3. Dispatcher-side operand prefetch is a 120--170-byte hypothesis, not a
+   committed design. It changes how semantic operands reach many handlers and
+   must first prove every operation width, operation 110's mode-dependent
+   forms, the exact semantic-start keys used by D8, and both flat and banked
+   target output. It will be prototyped and accepted or rejected as one isolated
+   checkpoint rather than mixed into local compression.
+
+High-bit keyword packing is not part of this sequence. The previous measured
+prototype saved 25 compiler-core bytes but added 120,085 compiler instructions
+and 1,245,777 T-states to the target-enabled proof. It remains rejected unless
+a new representation changes that measured trade.
+
+Every checkpoint strictly assembles the shipping and instrumented compilers and
+all retained proof layouts, reproduces the compiler census, and runs exact
+diagnostic, semantic-transcript, NOBJ, HEX, D8, runtime, and generated-program
+identity gates. Nested arrays remain a 50--100-byte hypothesis and signed
+integer core support remains a 250--400-byte hypothesis; neither estimate is
+treated as available headroom until the corresponding feature is implemented
+and measured.
+
+The mechanical checkpoint retains two changes. Seven handlers now share the
+seven-byte sequence that reads one semantic operand into
+`Stage7ArgumentCount`; replacing seven six-byte sequences with seven calls
+saves 14 compiler-code bytes. Two absolute conditional branches in the
+aggregate index parser have relative displacements of 116 and 97 bytes in both
+shipping layouts and remain in range in every retained historical layout.
+Their relative encodings save two more bytes. No instruction is represented as
+raw `.db` or `.dw` data by this checkpoint.
+
+Measured production code is 15,477 bytes plus 401 immutable bytes, or 15,878
+compiler-core bytes, leaving 506 bytes below 16 KiB. The measured reduction is
+16 code bytes. The instrumented compiler is 15,533 code bytes plus 401
+immutable bytes. Workspace remains 3,611 bytes and the selected runtime remains
+600 bytes. The shipping proof executes 1,052,768 instructions in 10,364,607
+T-states; the instrumented proof executes 1,057,345 instructions in 10,415,046
+T-states. The shared read adds 22 instructions and 267 T-states to each proof.
+
+Three broader mechanical candidates were measured and rejected. A shared
+semantic-byte-to-`C` helper recovered only six production bytes, added 146 more
+shipping-proof instructions, and enlarged small historical layouts that had too
+few callers to amortize it. Two additional relative branches fit the shipping
+images but exceeded the signed displacement range by 6 and 12 bytes in the
+historical Stage 8 and Stage 9 layouts. High-bit keyword packing remains the
+separately measured rejection recorded above. The next recovery checkpoint is
+therefore open-view unification, not another undifferentiated peephole sweep.
+
+The first open-view unification checkpoint starts from
+`d34a24eb86a96732cf21327117de6a147bc4f1fc`.
+Concrete and forwarded string arguments publish a one-byte capacity, while
+array arguments publish a two-byte count, so most of their apparent symmetry
+does not survive an ABI-level comparison. Both paths did, however, finish by
+locating the retained call frame, incrementing its argument-word count, and
+returning success. The array path now enters the string path's existing
+completion tail after publishing its word operand.
+
+The source-level merge removes nine bytes; branch-layout effects make the
+measured resident reduction eight bytes in every retained layout. Production
+code is 15,469 bytes plus 401 immutable bytes, or 15,870 compiler-core bytes,
+leaving 514 bytes below 16 KiB. The instrumented compiler is 15,525 code bytes
+plus 401 immutable bytes. Workspace remains 3,611 bytes and runtime selection
+remains 600 bytes. The target-enabled and historical proof instruction and
+T-state counts are unchanged because their fixed census programs do not enter
+the merged array-publication tail; focused concrete, forwarded, recursive,
+banked, failure, transcript-boundary, and D8 open-view proofs execute it.
+
+This checkpoint does not claim the original 40--90-byte hypothesis. The byte
+capacity and word count forms deliberately retain different semantic widths,
+activation layouts, region checks, and generated-code sequences. Further
+unification must identify another identical boundary rather than erase those
+differences. The next large isolated experiment remains dispatcher-side
+operand prefetch.
+
+The compiler-origin audit at `f9a3d18f363e0f42f87754618b327c7ed0e7ba7b`
+classified every active address directory and every production bit operation.
+The two active compiler code-pointer directories are `TypedOperationTable` and
+`HybridLL1ActionDirectory`; both contain complete `.dw` addresses and neither
+encodes metadata in a pointer. Source cursors, retained source-name pointers,
+semantic cursors, output cursors, fixups, and call-frame pointers are also
+complete words. The relocation gate now assembles the compiler at `$0000`,
+`$0100`, `$8000`, and `$C000`, checks every code label's displacement, and
+checks every word in both active code-pointer directories against the relocated
+handler label.
+
+The remaining production bit operations act on byte-sized counters, token or
+type metadata, control flags, or a bounded target-storage offset. In the last
+case, `ExpressionProgramAddress` uses one semantic bit to select initialized or
+BSS storage and adds the remaining relative offset to a full 16-bit target
+base. The target offset is bounded by the published 4,096-byte region; it is not
+a compiler pointer, an absolute target address, or an assumption about compiler
+origin. The audit found no compiler address mask, pointer tag, truncated code
+address, or low/high-memory dependency.
+
+The retained dispatcher-prefetch experiment stores its classification in a
+separate twelve-byte bitset. The 96 handler-table entries remain untouched
+full-width addresses. Marked handlers receive their first semantic operand in
+`A`; unmarked handlers retain their existing reads. Operations 22 and 33 share
+the `TypedDeclare8` entry, so both bits are set even though the shared entry
+removes only one operand read. Focused open-array execution distinguishes this
+alias: omitting operation 33's bit reaches the internal-operation diagnostic.
+
+The earlier 120--170-byte estimate did not survive assembly. The measured
+reduction is 16 compiler-code bytes. Production code is 15,453 bytes plus 401
+immutable bytes, or 15,854 compiler-core bytes, leaving 530 bytes below 16 KiB.
+The instrumented compiler is 15,509 code bytes plus 401 immutable bytes.
+Workspace remains 3,611 bytes and the selected runtime remains 600 bytes. The
+shipping proof increases from 1,052,768 to 1,062,343 instructions and from
+10,364,607 to 10,425,959 T-states; the instrumented proof increases by the same
+9,575 instructions and 61,352 T-states. This compilation-time cost is retained
+because the project gives resident compiler bytes priority and generated
+program execution is unchanged.
+
+The helper does not amortize in the smaller historical module compositions.
+Their typed-sink and compiler-core accounts each grow by 14 bytes because they
+retain the common dispatcher but expose fewer converted handlers. Those layouts
+remain proof fixtures rather than the shipping compiler, stay well below their
+memory limits, and continue to assemble and execute. The production account is
+the acceptance boundary for this optimization.
+
+A fresh comparison against the pushed pre-experiment compiler used a program
+that combines an open `u16[]` parameter, a counted loop, indexing, a `u16`
+local, and a source call. Normal and instrumented builds produced identical
+3,652-byte NOBJ streams, 4,096-byte materialized images, HEX output, and D8
+maps. The NOBJ SHA-256 was
+`5b93a1af62fde90346622fb9bc2cfef4e7ae23195c9c6e72c5a235c69b29289f`;
+the materialized-image SHA-256 was
+`6a4a1acac3434c1d60d4752ccad371af177b011b722b9f395f3da1e2d716d381`.
+
+The following local-recovery pass starts from the later dispatcher checkpoint
+`e3637574991d951db774f2a9b623cbbe9d420ae7`. This distinction matters because
+the proposed work sheet used the earlier 15,469-byte open-view checkpoint as
+its baseline. At `e3637574`, measured shipping code was 15,453 bytes and the
+dispatcher experiment had already recovered the intervening sixteen bytes.
+
+Each family was assembled under strict register contracts and retained only
+after the shipping extent decreased. The complete proof harness and 191-test
+suite passed after every retained family. The measured progression was:
+
+| Retained family                              | Code bytes | Family delta | Instructions |   T-states |
+| -------------------------------------------- | ---------: | -----------: | -----------: | ---------: |
+| `e3637574` baseline                          |     15,453 |            - |    1,062,343 | 10,425,959 |
+| streaming-only relative branches             |     15,447 |           -6 |    1,062,343 | 10,425,957 |
+| shared writable-capacity subtraction         |     15,439 |           -8 |    1,062,439 | 10,427,253 |
+| shared record-table indexing                 |     15,433 |           -6 |    1,062,487 | 10,427,901 |
+| open-view and nested-array rejection helpers |     15,414 |          -19 |    1,062,672 | 10,429,835 |
+| shared extent emission and local-width tail  |     15,401 |          -13 |    1,062,685 | 10,429,965 |
+| retained-carrier and path-offset helpers     |     15,385 |          -16 |    1,062,701 | 10,430,125 |
+
+The first family required one correction to the proposed site classification.
+The `Stage7PathIndexRangeFailure` relative displacement is valid in both
+streaming compilers but is +134 in the current Stage 8 and Stage 9 layouts. It
+therefore uses the same `TargetStreamingOutput`-guarded `JR`/`JP` form as the
+other layout-sensitive sites. No relative branch in this pass relies only on
+the shipping placement.
+
+The measured total reduction is 68 shipping code bytes. The final normal
+compiler is 15,385 code bytes plus 401 immutable bytes, or 15,786
+compiler-core bytes, leaving 598 bytes below 16 KiB. The instrumented compiler
+is 15,441 code bytes plus 401 immutable bytes, leaving 1,566 bytes in its
+separate reservation. Workspace remains 3,611 bytes and the selected proof
+runtime remains 600 bytes. The shipping and instrumented proofs each add 358
+compiler instructions and 4,166 T-states, or about 61 T-states per recovered
+byte.
+
+The current historical accounts are 14,514 code plus 401 immutable bytes for
+both the Stage 8 and Stage 9 compositions. Stage 9 executes 1,684,890
+instructions in 15,795,811 T-states; Stage 8 executes 2,066,406 instructions in
+19,165,762 T-states. The complete packed-grammar proof executes 2,203,194
+instructions in 20,349,926 T-states, with 9,298 parser bytes and 2,556 action
+bytes. The legacy aggregate-only composition remains 9,353 code plus 254
+immutable bytes and executes 377,231 instructions in 3,544,851 T-states.
+
+A detached comparison against `e3637574` compiled a two-part program with an
+open `u16[]` parameter, a counted loop, indexing, local `u16` values, and a
+source routine call. Both versions produced the same 3,653-byte NOBJ stream,
+4,096-byte materialized image, Intel HEX, D8 map, and 35-operation semantic
+transcript. The NOBJ SHA-256 was
+`b547d35a4b79a4d50219669e15cf1f20c5d94430e4652b2b72b42157807fce94`;
+the image SHA-256 was
+`ac1268639d85102280480d673f43869209b2cd16d77f24e7523fc2e9e3838848`;
+the HEX SHA-256 was
+`5b98477da59a228da901e29c5704dd5287b0699dfe63d9d66cd656bdb5861887`;
+and the D8 SHA-256 was
+`3a80f459dd0fc60f4fe3ee4822ce2cf22e09d72f22fe1a48f61ad8d35fd622b2`.
+Normal and instrumented builds also produced identical NOBJ bytes. This pass
+adds no raw instruction encodings, pointer tags, address truncation, workspace,
+runtime support, or generated-program bytes.
+
+### Signed integers and programmer-selected counted-loop types
+
+The signed-integer milestone adds `i8` and `i16` as ordinary scalar types. It
+uses exact negative constants, two's-complement storage, signed ordering,
+truncating signed division, a remainder with the dividend's sign, checked
+conversion among all four integer types, and signed indexes for concrete
+arrays, open arrays, and bounded strings. Semantic operations 116, 117, and
+118 carry checked conversion, signed division or modulo, and mixed `u8`/`i8`
+pair promotion. The D8 semantic decoder uses the same operation widths as the
+compiler dispatcher.
+
+Counted loops retain the type declared by the programmer. A predeclared
+counter may be `u8`, `u16`, `i8`, or `i16`; the compiler neither forces `i16`
+nor silently widens a smaller counter. The start and bound must be compatible
+with that declaration. The generated continuation check uses the declared
+width and signedness. It computes the mathematical next value, then tests that
+value against the loop bound before storing it. An overshoot ends the loop without a store; a
+value that would continue must fit the counter type; otherwise it performs
+`loop-range`.
+The execution proof covers all four counter types, including `i16` from -100
+through 100, traversal across zero, exact opposite endpoints, and positive and
+negative overshoot at both signed widths.
+
+The contemporaneous pre-feature record was 15,972 compiler-code bytes plus 410
+immutable bytes, or 16,382 core bytes; workspace was 3,611 bytes. The selected
+proof runtime was 837 bytes and used runtime identity 7. This checkpoint existed
+only in the working feature branch: it has no detached revision or retained
+proof lock and is not independently reproducible from the current tree.
+
+The measured signed result is 16,110 compiler-code bytes plus 410 immutable
+bytes, or 16,520 core bytes. It is 136 bytes above the 16,384-byte project gate.
+The project owner explicitly selected language correctness before another
+compression and organization pass, so the overrun is recorded rather than
+hidden in another account. Workspace measures 3,613 bytes. The proof layout
+places its workspace at `$6000`; that address is proof and deployment policy,
+not part of the compiler ABI.
+
+The measured selected proof runtime is 899 bytes. Canonical runtime identity 8
+measures 689 bytes under the default link context; the historical Stage 8 and
+Stage 9 proof context measures 921 bytes. The runtime revision adds checked
+conversion, signed comparison, signed division and modulo, signed loop
+continuation, and mixed-byte promotion. The ordinary target-enabled proof
+publishes a 1,721-byte NOBJ with 881 used image bytes. The Chapter 21 proof
+publishes an 8,238-byte NOBJ with 1,786 used image bytes. Its maximum generated
+program remains 1,040 bytes.
+
+The measured shipping proof executes 1,019,079 compiler instructions in
+9,924,743 T-states. The instrumented compiler measures 16,166 code bytes plus
+410 immutable bytes, or 16,576 core bytes, and executes 1,022,870 instructions
+in 9,966,534 T-states. Both layouts use 3,613 workspace bytes and the same
+899-byte selected proof runtime. Normal and instrumented compilation produce
+identical target artifacts for the same signed source.
+
+Runtime identity 8 changes the linked runtime length and helper offsets, so an
+otherwise unaffected program is not byte-identical to its runtime-7 NOBJ, HEX,
+or materialized image. Its source-level behavior and generated instruction
+topology remain the regression boundary; absolute helper operands and later
+target addresses relocate with the new runtime. Signed programs add generated
+operations only where the new types require them.
+
+The relocation gate assembles the complete compiler at `$0000`, `$0100`,
+`$8000`, and the highest origin at which the image fits. It executes the public
+compiler entry at every origin through a fixed external trampoline and checks
+the same exact diagnostic, restored stack pointer, and relocated full-width
+handler directories. A deployment may place the compiler anywhere in the Z80
+address space where its code, immutable data, workspace, source, stack, and
+target regions do not overlap. No compiler pointer may donate address bits to
+metadata or depend on a repository proof origin.
+
+### Nested fixed arrays and open row views
+
+This milestone starts from `d2913fc73455478f83549335c49a8cfe4d18b346`.
+The measured baseline is 16,110 compiler-code bytes plus 410 immutable bytes,
+or 16,520 compiler-core bytes. Workspace is 3,613 bytes. The compiler was
+already 136 bytes above the 16 KiB implementation gate after signed integers;
+the project owner retained the language-first sequence for this milestone.
+
+Array suffixes now form nested fixed arrays in source order. `u8[3][2]` is
+three rows of exact type `u8[2]`, and the existing index operation implements
+`grid[y][x]` as two independently checked selections. An omitted outer bound
+remains a parameter-only view: `u8[][2]` accepts complete arrays whose elements
+are exact `u8[2]` rows. An omitted inner bound, open-view storage, comma
+indexing, and flattened multidimensional descriptors remain invalid.
+
+The parser collects at most four concrete suffixes, then interns them from the
+last suffix to the first. Every row uses the existing four-byte dynamic-type
+descriptor and retained word extent. The first prototype overlaid the suffix
+buffer on aggregate initializer storage. A retained non-streaming proof showed
+that the same addresses contain the accumulated static image in that layout,
+so the overlay was rejected. The selected implementation has a dedicated
+26-byte workspace: a count, an outer-open flag, four entries containing a
+length and source offset, a saved parser offset, and the complete
+offset/line/column position of an omitted outer bound. The retained position
+preserves the established diagnostic for an illegal owning or result `T[]` at
+its closing bracket. No live state is overlaid.
+
+Measured production assembly is 16,270 compiler-code bytes plus 410 immutable
+bytes, or 16,680 compiler-core bytes. The feature adds 160 code bytes and no
+immutable bytes. It adds 26 workspace bytes, for a final workspace extent of
+3,639 bytes. The compiler is therefore 296 bytes above the 16,384-byte gate.
+The instrumented compiler grows by the same 160 code bytes to 16,326 code plus
+410 immutable, or 16,736 core bytes. The final code delta is ten bytes above
+the approximate 150-byte review threshold because preserving the established
+open-array diagnostic position requires retaining and restoring its complete
+six-byte source position; the type representation and indexer remain
+unchanged.
+
+The selected runtime remains identity 8 and 899 proof bytes. The existing
+target proof's runtime, generated program, NOBJ, and materialized output remain
+unchanged. Its compiler execution rises from 1,019,079 instructions and
+9,924,743 T-states to 1,025,324 instructions and 9,980,322 T-states because
+every parsed type now enters and finishes bounded suffix collection. The
+instrumented proof measures 1,029,115 instructions and 10,022,113 T-states.
+The largest retained generated program remains 1,040 bytes.
+
+Focused production proofs execute nested initialization, per-dimension reads,
+writes and traps, row assignment, row parameters, `.length`, exact open-row
+compatibility, type-table reuse and exhaustion, and the four/five-dimension
+boundary. The retained non-streaming parser separately compiles and checks a
+nested initialized object. Normal and instrumented banked builds produce
+identical NOBJ and materialized bank bytes for the same nested-array program.
+The implementation introduces no raw machine-instruction data, pointer tags,
+origin assumptions, semantic operations, runtime helpers, or target services.
+
 ## Capacity ledger
 
 The first implementation fixes a numeric limit before each bounded structure is
-used. Each row remains open until a Z80 representation and a minimum corpus
-requirement are both known.
+used. Each row records the selected Z80 or host representation and its evidence.
 
 | Resource                                |      Limit | Representation                                                                        | Excess diagnostic or trap                                                        | Evidence                                                                          |
 | --------------------------------------- | ---------: | ------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------- | --------------------------------------------------------------------------------- |
 | source part count                       |          8 | external five-byte descriptors plus three compiler-workspace bytes                    | capacity diagnostic                                                              | accepted 1- and 8-part units; rejected ninth part                                 |
+| host source window bytes                |      2,048 | complete retained source plus five descriptor bytes for each part                     | packaging diagnostic                                                             | exact published Host API capacity and first-overflow test                         |
 | diagnostic-name bytes                   |   external | retained by the host manifest adapter, not by the compiler core                       | packaging diagnostic                                                             | exact `model.nu` and `main.nu` mapping                                            |
 | identifier bytes                        |        255 | source-backed name plus one-byte length                                               | lexical diagnostic                                                               | scanner wrap guard                                                                |
-| ordinary scalar symbols                 |         16 | six-byte source-backed entries                                                        | capacity diagnostic                                                              | duplicate, unknown, and seventeenth-name proof                                    |
-| direct routine declarations             |          4 | eight-byte source-backed entries                                                      | capacity diagnostic                                                              | rejected fifth routine                                                            |
-| retained direct parameters              |         16 | four-byte source-backed entries                                                       | capacity diagnostic                                                              | accepted sixteen-position call and rejected seventeenth parameter                 |
+| ordinary binding symbols                |         16 | one shared table of six-byte source-backed scalar and aggregate entries               | capacity diagnostic                                                              | accepted sixteen aggregate variables; rejected seventeenth binding                |
+| non-main routine entries                |          4 | one shared table of eight-byte direct or forward entries                              | capacity diagnostic                                                              | direct, forward, mutual-recursion, and rejected fifth-entry proofs                |
+| retained parameter entries              |         16 | one global table of four-byte scalar or aggregate parameter entries                   | capacity diagnostic                                                              | accepted sixteen total entries; rejected seventeenth across routines              |
 | nested compiler call frames             |          4 | eight-byte parser frames                                                              | capacity diagnostic                                                              | rejected fifth nested call                                                        |
 | LL(1) grammar symbols                   |         64 | byte stack; thirteen bytes of action scratch overlay inactive initializer state       | parser-capacity diagnostic                                                       | exact-fill and atomic internal-overflow engine proof                              |
-| dynamic types, records, and fields      | 8 / 5 / 12 | four-byte type, two-byte record, and six-byte field entries                           | capacity diagnostic                                                              | accepted nested layout and metadata exhaustion proofs                             |
+| dynamic types, records, and fields      | 8 / 5 / 12 | four-byte type, two-byte record, and six-byte field entries                           | capacity diagnostic                                                              | shared nested-row interning, exact-fill, and first-overflow proofs                |
+| concrete array suffixes per type        |          4 | dedicated 20-byte suffix workspace with four length-and-source-offset entries         | type-metadata capacity diagnostic before a fifth suffix is retained              | accepted four-dimensional type and rejected fifth suffix                          |
 | fixed-array element count               |     65,535 | retained word; allocation is bounded separately by complete extent                    | program-data capacity diagnostic when the object cannot fit                      | accepted and indexed `u8[1024]`; rejected allocated `u8[1025]`                    |
-| bounded-string capacity                 |        253 | descriptor byte; object extent is capacity plus two                                   | `bounded-string-capacity`; use `u8[N]` plus a scalar length for constructed text | accepted 253 and rejected 254/255; zero payload and sealed-byte proof             |
+| bounded-string capacity                 |        253 | descriptor byte; object extent is capacity plus two                                   | `bounded-string-capacity`; an open view reports the retained capacity            | accepted 253 and rejected 254/255; construction, zero-tail, and sealed-byte proof |
 | complete aggregate type extent          |     65,535 | retained word shared by records, arrays, and bounded strings                          | program-data capacity diagnostic when an allocated object cannot fit             | 501-byte nested record; exact 1,024-byte object; rejected 1,025-byte object       |
-| retained forward signatures and names   |          4 | shared eight-byte routine entries plus one main-forward flag                          | capacity diagnostic                                                              | mutual recursion, incomplete forward, and forward-main proofs                     |
-| scalar parameters                       |         16 | shared four-byte retained-parameter entries                                           | capacity diagnostic                                                              | accepted sixteen-position call and rejected seventeenth parameter                 |
 | expression nesting                      |         16 | thirteen-byte metadata entries retaining operand value, type, and position            | capacity diagnostic                                                              | seventeen-deep pending-expression proof                                           |
-| semantic transcript payload bytes       |        511 | counted variable-width stream                                                         | capacity diagnostic                                                              | widened assignment-exhaustion proof                                               |
+| semantic transcript payload bytes       |        511 | counted variable-width stream                                                         | capacity diagnostic                                                              | scalar-assignment exact-fill and first-overflow proof                             |
 | semantic transcript operations          |        255 | one-byte published operation count                                                    | capacity diagnostic                                                              | pre-append operation-count guard                                                  |
 | Boolean fixups                          |         16 | two-byte generated addresses                                                          | capacity diagnostic                                                              | exhaustion and underflow boundary proofs                                          |
 | active control frames                   |          8 | ten-byte parser frames                                                                | capacity diagnostic                                                              | nested structured-control proofs                                                  |
@@ -1641,12 +2836,13 @@ requirement are both known.
 | object-stream patch records             |     65,531 | external sequential patch spool; exact maximum when one required image record is used | output-service failure or total-record capacity diagnostic before partial record | resolution-order submission, image-before-patch serialization, and count boundary |
 | object-stream image or patch bytes      |     65,532 | one NOBJ record with a word payload length and three-byte bank/address prefix         | output-service failure or target-capacity diagnostic                             | accepted 1 and 65,532 bytes; rejected 65,533 before append                        |
 | committed object generations            |          1 | storage-layer current-generation reference; incomplete generation remains uncommitted | output-service failure; previous commit remains current                          | A retained after divergent image-plus-patch B failure; C committed and executed   |
-| structured-initializer depth            |          4 | recursive parser state; total nodes are streamed and not retained                     | capacity diagnostic                                                              | exact nesting boundary and wide 256-element initializer                           |
+| structured-initializer depth            |          4 | recursive parser state; total nodes are streamed and not retained                     | capacity diagnostic                                                              | nested record/array boundary and wide 256-element initializer                     |
 | initialized program-data bytes          |      1,024 | prefix of the private compiler image plus a retained word length                      | program-data capacity diagnostic                                                 | exact four-string-plus-tail image and rejected following byte                     |
 | aggregate-constant bytes                |      1,024 | private-image suffix, one shared length word, and relative-offset symbol payloads     | read-only-data capacity diagnostic                                               | record/array/string constants; exact 1,024-byte suffix and rejected next byte     |
 | total generated read-only-data bytes    |      1,024 | initialized-data prefix followed by aggregate-constant suffix                         | diagnostic for the declaration class that first exceeds the combined region      | mixed data/constant shifting and exact separate boundary proofs                   |
 | zero-initialized program-data bytes     |      1,024 | retained word length; no stored image bytes                                           | capacity diagnostic                                                              | exact four-string-plus-tail BSS and rejected following byte                       |
-| emitted Z80 image bytes per bank        |      4,096 | four cursor-plus-remaining entries; independent monotonic target streams              | target-capacity diagnostic before append                                         | flat 556 bytes; banked 813/589 bytes; per-bank and entry-bank overflow proofs     |
+| emitted Z80 image bytes per bank        |      4,096 | four cursor-plus-remaining entries; independent monotonic target streams              | target-capacity diagnostic before append                                         | flat 881 bytes; banked 1,138/914 bytes; per-bank and entry-bank overflow proofs   |
+| physical target banks                   |          4 | target descriptor and four per-bank cursor/remaining entries                          | target-configuration diagnostic                                                  | accepted four-bank profiles; rejected fifth bank                                  |
 | activation bytes                        |      3,840 | reserved machine-stack region; frame size is bounded by retained declarations         | `activation-capacity` or fixed memory-map rejection                              | memory-map proof, sixteen-position call, and depth boundary                       |
 | activation depth                        |          8 | counter plus generated hardware-stack frames                                          | `activation-capacity`                                                            | recursive handler-bypass and root-frame trap proof                                |
 | service stream and bulk-storage extents |          4 | proof adapter byte arrays with independent cursors                                    | stable service error                                                             | success, end, configured failure, overwrite, append, rewind, and seek proofs      |

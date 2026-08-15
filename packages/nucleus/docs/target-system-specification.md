@@ -1,8 +1,8 @@
 # Nucleus Target System Specification 0.1
 
 - Status: implemented and executable through committed NOBJ
-- Date: 2026-08-12
-- Baseline: `d611a696`
+- Last reviewed: 2026-08-14
+- Historical implementation baseline: `d611a696`
 
 ## 1. Authority and purpose
 
@@ -76,26 +76,30 @@ device-image offsets, output files, service implementations, and loader or
 monitor conventions. It also supplies the byte used for unwritten image
 addresses. The adapter validates those properties before invoking the compiler.
 
-For a flat target, the adapter reduces the profile to:
+For a flat target, the adapter validates this complete configuration:
 
 ```text
 runtimeIdentity
 imageBase
 imageCapacity
+imageFill
 writableBase
 writableCapacity
 establishStack
 ```
 
-The first five fields are unsigned 16-bit words. `establishStack` is Boolean.
+`runtimeIdentity`, the region bases, and the region capacities are unsigned
+16-bit words; both capacities are nonzero. `imageFill` is the byte used for unwritten image addresses.
+`establishStack` is Boolean.
 
-For a banked target, the adapter supplies:
+For a banked target, the adapter validates this complete configuration:
 
 ```text
 runtimeIdentity
 bankWindowBase
 bankCapacity
 bankCount
+imageFill
 writableBase
 writableCapacity
 establishStack
@@ -110,8 +114,14 @@ the bank containing startup and `main`. The bounded `partBank` array maps each
 manifest ordinal to one of those banks.
 
 `runtimeIdentity`, `bankWindowBase`, `bankCapacity`, `writableBase`, and
-`writableCapacity` are unsigned 16-bit words. `bankCount`, `entryBank`, and each
-`partBank` entry are bounded byte ordinals. `establishStack` remains Boolean.
+`writableCapacity` are unsigned 16-bit words. `imageFill` is one byte.
+`bankCount` is in the range 2 through 4. `entryBank` and each `partBank` entry
+are bounded byte ordinals within that count. `establishStack` remains Boolean.
+
+`imageFill` remains adapter-owned and is written to NOBJ layout metadata. It is
+not a field in the compact 15-byte descriptor passed to the Z80 compiler. The
+descriptor contains the remaining layout values needed while code is being
+generated; the adapter retains the fill byte for publication.
 
 `runtimeIdentity` identifies one canonical runtime source revision, private
 ABI, RAM-vector and helper layout, deterministic link rules, and expected
@@ -285,9 +295,10 @@ is not source-callable.
 
 ### 5.2 Inherited stack
 
-The default profile sets `establishStack` to false. Startup does not modify
-`SP`. The program uses the caller's stack and returns through the return address
-already supplied by the caller.
+When `establishStack` is false, startup does not modify `SP`. The program uses
+the caller's stack and returns through the return address already supplied by
+the caller. The Host API default is true; inherited-stack targets must request
+false explicitly.
 
 The compiler publishes the complete per-compilation stack requirement but
 cannot validate the caller's available space.

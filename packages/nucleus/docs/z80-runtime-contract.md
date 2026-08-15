@@ -72,6 +72,18 @@ exposes, constructs, compares, converts, or calculates with one. A bank ordinal
 is also private target metadata. The compiler retains the type, extent, root
 category, and bank information required for every aggregate address carrier.
 
+The handwritten Z80 compiler is likewise independent of its assembly origin.
+The deployment platform chooses its origin and surrounding memory map; `$0000`
+in the repository proof layout is not part of the compiler ABI. CP/M may place
+the compiler at `$0100`, a TEC-1 configuration may place it at `$8000`, and
+another system may choose any address at which the complete image fits without
+overlap. Every compiler code and immutable-data pointer is an opaque 16-bit
+address. Compiler metadata must not be encoded in address bits, and compiler
+pointers must not be masked, truncated, or compressed on the assumption that
+the image occupies a particular half, page, alignment, or region of the Z80
+address space. Any alignment restriction must be an explicit deployment
+contract rather than an inference from a current build.
+
 ### 2.2 Separate accounts
 
 The implementation reports these bounded accounts separately:
@@ -249,28 +261,36 @@ per-bank subsetting.
 
 ### 3.1 Scalar values
 
-`u8` occupies one byte and ranges from 0 through 255. `boolean` occupies one
+`u8` occupies one byte and ranges from 0 through 255. `i8` occupies one byte,
+uses two's complement, and ranges from -128 through 127. `boolean` occupies one
 byte and is exactly 0 or 1. `u16` occupies two little-endian bytes and ranges
-from 0 through 65,535. A compiler or runtime helper must not depend on another
-Boolean representation.
+from 0 through 65,535. `i16` occupies two little-endian two's-complement bytes
+and ranges from -32,768 through 32,767. A compiler or runtime helper must not
+depend on another Boolean representation.
 
 Arithmetic width and wraparound follow the language specification. A value
 held temporarily in a Z80 register pair may use a wider carrier, but storage
-and observable results retain their declared widths. Checked narrowing tests
-the complete `u16` value before producing a `u8`.
+and observable results retain their declared widths. The ordinary carrier for
+an `i8` value keeps H zero; a signed operation interprets L's sign bit or
+sign-extends only while needed. Every stored, returned, or forwarded `i8`
+result restores H to zero. Checked conversion tests the mathematical source
+value against the complete destination range before producing a result.
 
 ### 3.2 Records and arrays
 
 Records are packed in field-declaration order with no padding. Field extents
 are:
 
-- one byte for `u8` and `boolean`;
-- two little-endian bytes for `u16`; and
+- one byte for `u8`, `i8`, and `boolean`;
+- two little-endian bytes for `u16` and `i16`; and
 - the complete inline extent for a record, fixed array, or bounded string.
 
 A fixed array stores its elements consecutively. Its stride is the complete
-element extent. Neither a record nor an array stores a runtime type tag, field
-table, length word, or address.
+element extent. When that element is another fixed array, the inner array's
+complete extent is the outer stride; recursively applying this rule gives the
+specified row-major layout without a multidimensional runtime descriptor.
+Neither a record nor an array stores a runtime type tag, field table, length
+word, or address.
 
 Compiler metadata retains every complete aggregate extent, fixed-array length,
 fixed-array stride, and record-field offset as an unsigned 16-bit value. The
@@ -282,9 +302,10 @@ object.
 
 `string[N]` occupies `N + 2` bytes. Byte zero is the current logical length
 `L`; bytes 1 through `N` are the content capacity; and byte `N + 1` is always
-`$00`. The compiler writes that final byte while building the static image,
-and no runtime operation writes it again. Bytes `L + 1` through `N` are also
-zero. The invariant is `0 <= L <= N`, and the complete object extent is at
+`$00`. Static initialization writes that final byte, and exact-type aggregate
+assignment copies it with the rest of the representation. No byte-level string
+operation changes it. Bytes `L + 1` through `N` are also zero. The
+invariant is `0 <= L <= N`, and the complete object extent is at
 most 255 bytes because the source capacity is at most 253. This string-specific
 limit does not constrain the complete extent of a containing record or array.
 
@@ -300,13 +321,52 @@ An aggregate carrier for a bounded string addresses its length byte. Reading
 `index < L` and addresses byte `1 + index`. Byte assignment changes one
 existing content byte and does not change the length.
 
+An open `string[]` binding may expose its retained capacity as a source `u8`
+value. It may also change the logical length through the checked assignment
+defined by the language specification. Generated code validates the complete
+dynamic region before dereferencing the carrier. The resize helper then
+validates both `oldLength <= capacity` and `newLength <= capacity` before any
+write.
+
+On success, the helper preserves bytes 1 through
+`min(oldLength, newLength)`. A shrink clears bytes `newLength + 1` through
+`oldLength`; a growth relies on the sealed zero-tail representation invariant. The helper
+stores the new length after validation and clearing. It never writes byte
+`capacity + 1`. Failure returns the existing bounds condition with the object
+unchanged.
+
 ### 3.4 Aggregate carriers
 
-An aggregate parameter or result is carried as one 16-bit address. Its exact
+An ordinary aggregate parameter or result is carried as one 16-bit address. Its exact
 record type, array element type and length, or string capacity remains compiler
 metadata. The runtime address has no source type tag and is never a source
 integer. Only compiler-generated field selection, checked indexing, parameter
 transfer, result transfer, and copying may consume it.
+
+A `string[]` parameter uses two internal call words: the concrete capacity is
+below the address, and the address is closest to the return address. The source
+signature still has one parameter. The callee stores the address as a two-byte
+alias binding and the capacity as one activation byte. Forwarding an open
+parameter transfers both values. Before `.length`, `.capacity`, indexing, or
+writable `.length` accesses the referent, generated code checks the complete
+dynamic extent `capacity + 2`; operations that read or change the logical
+contents then check the stored-length invariant. Source can obtain the retained
+capacity only through `.capacity`. The address carrier remains unavailable to
+source code.
+
+A `T[]` parameter uses the same two-word call order: the concrete array's
+unsigned 16-bit element count is below its address, and the address is closest
+to the return address. The callee retains a four-byte binding: the ordinary
+two-byte alias followed by the two-byte count. Forwarding loads both words from
+the caller's activation and recreates the same stack order. Unlike a bounded
+string, an array stores no count or capacity in its object. The element extent
+and exact element type remain compiler metadata.
+
+Concrete-array `.length` evaluates its base, discards the resulting address,
+and produces the static count as a canonical `u16`. Open-array `.length`
+discards the evaluated address and loads the retained count word without
+dereferencing the object. Both forms preserve all calls and checks required to
+form the base. Neither is writable.
 
 ## 4. Program storage and startup
 
@@ -429,10 +489,16 @@ mathematical half-open region `[a, a + w)` lies wholly within either the used
 writable region or the generated read-only-data region. The calculation must
 not use wrapped 16-bit arithmetic as evidence that the region fits.
 
-A fixed-array access first checks the unsigned index against its declared
-length, then forms `base + index * stride`, and then establishes the complete
-element region. A string access applies Section 3.3. Any failed check performs
-`bounds` before a load, store, or alias result is produced.
+A fixed-array access first rejects a negative signed index, then checks its
+unsigned magnitude against the declared length, forms `base + index * stride`,
+and establishes the complete element region. Selecting an array element yields
+that inner array's ordinary carrier, so a following index repeats the same
+check with the inner length and stride rather than flattening the dimensions.
+An open-array access performs the same sequence with the retained count word as
+its outer bound and the statically known element extent as its stride. A string
+access applies the same negative-index rule before Section 3.3's length check.
+Any failed check performs `bounds` before a load, store, or alias result is
+produced.
 
 The compiler may omit a runtime check only when information already proved at
 that source point establishes the same condition.
@@ -447,7 +513,14 @@ region and then the complete source region before the first destination byte
 changes. It copies the common fixed extent, including a bounded string's length
 byte, complete capacity, and permanent terminator. Self-assignment has no
 effect. Nucleus types cannot produce proper partial overlap between distinct
-same-type aggregate paths.
+same-type aggregate paths. An open-string or open-array view is not a
+whole-object assignment operand.
+
+Checked open-string length assignment follows the same atomicity boundary. The
+complete-region check, old-length check, and new-length check all precede
+mutation. Shrinking clears the removed content before the helper publishes the
+new length. A failed check leaves the length, payload, zero tail, permanent
+terminator, and surrounding bytes unchanged.
 
 The source checker rejects an assignment rooted directly at an aggregate
 constant. The runtime carrier has no read-only bit, so an alias derived from a
@@ -469,16 +542,29 @@ The caller evaluates every argument from left to right before the callee begins.
 It retains each earlier scalar value or aggregate carrier across evaluation of
 later arguments. A trap during argument evaluation prevents the call.
 
-Scalar parameters receive copied values. Aggregate parameters receive fixed,
-non-null, non-reseatable address carriers to existing program storage. The
-callee may mutate that storage where the language permits.
+Scalar parameters receive copied values. Concrete aggregate parameters receive
+fixed, non-null, non-reseatable address carriers to existing program storage.
+An open-string parameter receives the same fixed carrier plus its actual
+capacity. An open-array parameter receives the fixed carrier plus its actual
+16-bit element count. The callee may mutate that storage where the language
+permits.
 
 ### 6.2 Activation state
 
 Each successful call creates distinct logical storage for its scalar
-parameters, scalar locals, aggregate-parameter carriers, return address, and
-other live implementation state. Recursion uses the same mechanism as an
-ordinary call. One active invocation must not overwrite another's state.
+parameters, scalar locals, aggregate-parameter carriers and retained open-view
+bounds, return address, and other live implementation state. Recursion uses the
+same mechanism as an ordinary call. One active invocation must not overwrite
+another's state.
+
+In the current Z80 activation, a concrete aggregate parameter occupies its
+two-byte alias slot. `string[]` adds one hidden capacity byte immediately after
+that slot. `T[]` adds one hidden little-endian count word immediately after the
+alias slot. Positive `IX` source displacements therefore include two call-stack
+words for either open view, while activation offsets include three bytes for
+`string[]` and four for `T[]`. Parameters later in a signature are displaced by
+the complete retained size of every earlier binding. Caller cleanup counts both
+words for each open-view source argument on success, propagation, and handling.
 
 The backend may use the hardware stack, a bounded activation arena, static
 slots saved around calls, or a measured combination. It publishes both the
@@ -551,7 +637,9 @@ argument cannot cross banks because its provenance is not represented in the
 runtime carrier. Scalar arguments and results cross without this restriction.
 A bank-local accessor may expose a scalar from a banked aggregate constant, and
 a banked routine may operate on caller-owned RAM through a directly
-variable-rooted aggregate argument.
+variable-rooted aggregate argument. An open-array argument adds no bank field;
+it follows the same root and call-placement restrictions as the concrete array
+alias from which it is formed.
 
 ## 7. Recoverable failure and traps
 
@@ -569,14 +657,14 @@ has acted.
 
 ### 7.2 Stable trap codes
 
-|   Code | Reason                | Required condition                                             |
-| -----: | --------------------- | -------------------------------------------------------------- |
-| `0x01` | `bounds`              | A checked data region, array index, or string byte is invalid. |
-| `0x02` | `narrowing`           | A dynamic checked `u8(...)` operand exceeds 255.               |
-| `0x03` | `division-by-zero`    | A runtime integer divisor is zero.                             |
-| `0x04` | `loop-range`          | A continuing counted-loop value does not fit its counter.      |
-| `0x05` | `activation-capacity` | A new activation cannot fit its published limit.               |
-| `0x06` | `unhandled-error`     | `main` returns recoverable failure.                            |
+|   Code | Reason                | Required condition                                                      |
+| -----: | --------------------- | ----------------------------------------------------------------------- |
+| `0x01` | `bounds`              | A checked data region, array index, or string byte is invalid.          |
+| `0x02` | `narrowing`           | A dynamic explicit integer conversion is outside its destination range. |
+| `0x03` | `division-by-zero`    | A runtime integer divisor is zero.                                      |
+| `0x04` | `loop-range`          | A continuing counted-loop value does not fit its counter.               |
+| `0x05` | `activation-capacity` | A new activation cannot fit its published limit.                        |
+| `0x06` | `unhandled-error`     | `main` returns recoverable failure.                                     |
 
 These numeric codes are the machine-readable Nucleus Z80 trap contract.
 
@@ -677,7 +765,7 @@ and checked 16-bit target address through its private ABI. Source code exposes
 neither value.
 
 The far-call adapter selects the destination bank, enters the ordinary Nucleus
-routine ABI, and installs a fixed-memory return path. Identity `$0004` uses the
+routine ABI, and installs a fixed-memory return path. Identity `$0005` uses the
 selected-bank byte at writable-state offset eight and a sixteen-byte far-return
 arena after the saved root-frame words. Each live far call uses the zero-based
 slot `ActivationDepth - 1`: depth one selects slot zero, and the published
@@ -838,3 +926,12 @@ the proof that produced it. Reports separate compiler code, compiler immutable
 data, peak workspace, generated program, target runtime, fixed runtime state,
 activation storage, instruction count, and T-states. A projection states its
 measured basis; an untested expectation is labelled a hypothesis.
+
+`test/nobj.test.ts` assembles runtime identity `$0008` under
+`defaultRuntimeLinkContext` and measures a 689-byte canonical linked helper
+image. This identity includes checked four-way integer conversion, signed
+comparison, signed division and modulo, signed loop continuation, and mixed
+`u8`/`i8` promotion in addition to the existing unsigned and aggregate helpers.
+`proofs/stage9-conformance-z80-slice-proof.json` includes the historical direct
+service adapters and measures 921 bytes;
+`proofs/chapter21-target-z80-slice-proof.json` selects an 899-byte proof form.
