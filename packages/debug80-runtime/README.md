@@ -75,3 +75,9 @@ initial program image are supplied.
 checks the root, headless, Z80 runtime, and platform exports. Registry
 publication runs type checking, the runtime suite, and this isolated package
 gate before npm accepts the release.
+
+The `publish-runtime.yml` workflow publishes a tag whose name exactly matches
+`debug80-runtime-v<package version>`. Once npm trusts that workflow, GitHub OIDC
+supplies authentication and provenance. An `NPM_TOKEN` repository secret can
+perform the initial publication before the package exists to hold its trusted
+publisher configuration.
