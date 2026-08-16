@@ -84,10 +84,12 @@ function buildBoundarySummaryMap(
 
 function buildOptimisticInternalBoundarySummaryMap(
   routines: readonly RegisterContractsRoutine[],
+  contracts: Map<string, RoutineContract>,
 ): Map<string, RoutineSummary> {
   const out = new Map<string, RoutineSummary>();
   for (const routine of routines) {
     const summary = emptyRoutineSummary(routine.name, routine.identity ?? routine.name);
+    if (contractForRoutine(routine, contracts)?.noreturn === true) summary.noreturn = true;
     out.set(routine.identity ?? routine.name, summary);
     if (routine.span.sourceUnitRelation !== 'import') {
       for (const label of boundaryLabels(routine)) out.set(label, summary);
@@ -152,7 +154,7 @@ export function inferRoutineSummariesToFixedPoint(
   let routineSummaries = summarizeRoutines(
     routines,
     contracts,
-    buildOptimisticInternalBoundarySummaryMap(routines),
+    buildOptimisticInternalBoundarySummaryMap(routines, contracts),
     serviceRanges,
   );
   const maxPasses = Math.max(2, routines.length + 2);
