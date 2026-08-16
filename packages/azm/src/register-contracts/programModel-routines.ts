@@ -157,35 +157,27 @@ function modelUnitKey(item: SourceItem, currentUnitKey: string | undefined): str
   return privacyUnitKey(item);
 }
 
-function handleLabel(
-  item: LabelItem,
-  state: UnitRoutineState,
-  routines: RegisterContractsRoutine[],
-  constants: ReadonlyMap<string, number>,
-): void {
+function handleLabel(item: LabelItem, state: UnitRoutineState): void {
   if (item.name.startsWith('_')) {
     if (state.active !== undefined) state.active.labels.push(item.name);
     return;
   }
 
-  if (
-    state.active !== undefined &&
-    state.active.instructions.length === 0 &&
-    state.pending === undefined
-  ) {
-    state.active.labels.push(item.name);
-    state.active.entryLabels.push(item.name);
-    if (item.isExported === true) {
-      state.active.isExported = true;
-      state.active.exportedEntryLabels.push(item.name);
-    }
-    return;
-  }
-
-  flushRoutine(routines, state, constants);
   if (state.pending !== undefined) {
     state.active = startRoutine(item, state.pending);
     delete state.pending;
+    return;
+  }
+
+  if (state.active !== undefined) {
+    state.active.labels.push(item.name);
+    if (state.active.instructions.length === 0) {
+      state.active.entryLabels.push(item.name);
+      if (item.isExported === true) {
+        state.active.isExported = true;
+        state.active.exportedEntryLabels.push(item.name);
+      }
+    }
   }
 }
 
@@ -212,7 +204,7 @@ export function buildRoutinesAndDirectCalls(
     }
     if (item.kind === 'label') {
       if (item.origin !== 'generated') currentUnitKey = unitKey;
-      handleLabel(item, state, routines, constants);
+      handleLabel(item, state);
       continue;
     }
     if (item.kind !== 'instruction') continue;

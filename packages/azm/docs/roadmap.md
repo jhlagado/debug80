@@ -17,12 +17,12 @@ into the engineering manual.
 Add a module-like source composition mode for AZM where imported files compile
 as part of the program but expose only their public `@` labels to other files.
 
-The historical meaning of `@` is public-versus-private symbol intent. AZM also
-uses `@` labels as register contract routine boundaries. This feature should
-preserve both meanings:
+The historical meaning of `@` is public-versus-private symbol intent. Routine
+contracts now use explicit `.routine` boundaries, independently of export and
+local-label scope. This feature preserves that separation:
 
 - `@Routine:` is a public export of its source file.
-- `@Routine:` is also a register contracts routine boundary.
+- `.routine` before `@Routine:` creates a register-contract routine boundary.
 - `Routine:` without `@` remains a private implementation label in imported
   files.
 
