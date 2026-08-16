@@ -2694,6 +2694,92 @@ describe('register-contracts integration', () => {
     }
   });
 
+  it.each(['jp', 'jr'])(
+    'excludes a nonreturning conditional %s tail from the returning clobber summary',
+    async (tailMnemonic) => {
+      const entry = writeSourceFixture('azm-regcontracts-conditional-noreturn-tail-', [
+        '.routine',
+        'START:',
+        '    ld b,1',
+        '    call WRAPPER',
+        '    inc b',
+        '    ret',
+        '.routine',
+        'WRAPPER:',
+        `    ${tailMnemonic} z,FAIL`,
+        '    ret',
+        '.routine noreturn',
+        'FAIL:',
+        '    ld bc,0',
+        '    ld de,0',
+        '    ld hl,0',
+        '    jp FAIL',
+        '.end',
+      ]);
+
+      const res = await compileRegisterContracts(entry, {
+        registerContracts: 'strict',
+        emitRegisterReport: true,
+        registerContractsReportFormat: 'json',
+      });
+
+      expectNoErrorDiagnostics(res);
+      expect(reportArtifact(res)?.json?.summaries).toContainEqual(
+        expect.objectContaining({
+          name: 'WRAPPER',
+          mayWrite: expect.not.arrayContaining(['B', 'C', 'D', 'E', 'H', 'L']),
+          preserved: expect.arrayContaining(['B', 'C', 'D', 'E', 'H', 'L']),
+        }),
+      );
+    },
+  );
+
+  it.each(['jp', 'jr'])(
+    'retains an explicit noreturn %s tail while inferring body effects',
+    async (tailMnemonic) => {
+      const entry = writeSourceFixture('azm-regcontracts-explicit-noreturn-tail-', [
+        'SavedSp: .dw 0',
+        '.routine',
+        'START:',
+        '    ld b,1',
+        '    call WRAPPER',
+        '    inc b',
+        '    ret',
+        '.routine',
+        'WRAPPER:',
+        '    push bc',
+        `    ${tailMnemonic} z,FAIL`,
+        '    pop bc',
+        '    ret',
+        '.routine noreturn',
+        'FAIL:',
+        '    ld bc,0',
+        '    ld de,0',
+        '    ld hl,0',
+        '    ld sp,(SavedSp)',
+        '    ret',
+        '.end',
+      ]);
+
+      const res = await compileRegisterContracts(entry, {
+        registerContracts: 'strict',
+        emitRegisterReport: true,
+        registerContractsReportFormat: 'json',
+      });
+
+      expectNoErrorDiagnostics(res);
+      expect(reportArtifact(res)?.json?.summaries).toContainEqual(
+        expect.objectContaining({
+          name: 'WRAPPER',
+          stackBalanced: true,
+          hasUnknownStackEffect: false,
+          mayWrite: expect.not.arrayContaining(['B', 'C', 'D', 'E', 'H', 'L']),
+          preserved: expect.arrayContaining(['B', 'C', 'D', 'E', 'H', 'L']),
+        }),
+      );
+    },
+  );
+
   it('propagates stack proof status through conditional tail exits', async () => {
     const entry = writeSourceFixture('azm-regcontracts-conditional-tail-stack-', [
       '.routine',

@@ -169,13 +169,33 @@ export function analyzeRegisterContracts(
     profileSummaries,
     interfaceServiceRanges,
   );
+  const bodyInferenceContractMap = new Map(interfaceContractMap);
+  for (const [name, contract] of contractMap) {
+    if (contract.noreturn !== true) continue;
+    const existing = bodyInferenceContractMap.get(name);
+    bodyInferenceContractMap.set(
+      name,
+      existing === undefined
+        ? {
+            name,
+            noreturn: true,
+            in: [],
+            out: [],
+            clobbers: [],
+            preserves: [],
+          }
+        : { ...existing, noreturn: true },
+    );
+  }
   // Body-vs-declaration checks must see callee body effects, not callee declarations
-  // that may incorrectly claim preserves.
+  // that may incorrectly claim preserves. Noreturn is a control-flow property,
+  // however, and remains authoritative for explicit stack-restoring exits whose
+  // final RET does not return to the immediate caller.
   const bodyInferredSummariesByName = buildSummaryByName(
     program.routines,
     buildSummaries(
       program.routines,
-      interfaceContractMap,
+      bodyInferenceContractMap,
       profileSummaries,
       interfaceServiceRanges,
     ),
