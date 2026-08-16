@@ -261,6 +261,32 @@ describe('register-contracts program model', () => {
     expect(routine?.instructions.map(instructionHead)).toEqual(['djnz', 'ret']);
   });
 
+  it('keeps later non-local labels inside the explicit routine boundary', () => {
+    const items = parseRegisterContractsItems(
+      '/tmp/main.z80',
+      [
+        '.routine',
+        'START:',
+        '    ld b,2',
+        'SecondLocalOwner:',
+        '_loop:',
+        '    djnz _loop',
+        '    ret',
+        '.routine',
+        'NEXT:',
+        '    ret',
+        '.end',
+      ].join('\n'),
+    );
+
+    const model = buildRegisterContractsProgramModel(items);
+
+    expect(model.routines.map((routine) => routine.name)).toEqual(['START', 'NEXT']);
+    expect(model.routines[0]?.entryLabels).toEqual(['START']);
+    expect(model.routines[0]?.labels).toEqual(['START', 'SecondLocalOwner', '_loop']);
+    expect(model.routines[0]?.instructions.map(instructionHead)).toEqual(['ld', 'djnz', 'ret']);
+  });
+
   it('coalesces consecutive global labels before the first instruction as aliases', () => {
     const items = parseRegisterContractsItems(
       '/tmp/main.z80',
@@ -416,7 +442,7 @@ describe('register-contracts program model', () => {
     ]);
   });
 
-  it('collects JP and JR tail boundaries outside routine regions', () => {
+  it('collects JP and JR tail boundaries before and inside routine regions', () => {
     const items = parseRegisterContractsItems(
       '/tmp/main.z80',
       [
@@ -438,10 +464,10 @@ describe('register-contracts program model', () => {
     const model = buildRegisterContractsProgramModel(items);
 
     expect(model.directBoundaries).toEqual([
-      expect.objectContaining({ subject: 'JP HELPER', targetIdentity: 'HELPER', line: 1 }),
-      expect.objectContaining({ subject: 'JR HELPER', targetIdentity: 'HELPER', line: 2 }),
       expect.objectContaining({ subject: 'JP HELPER', targetIdentity: 'HELPER', line: 7 }),
       expect.objectContaining({ subject: 'JR HELPER', targetIdentity: 'HELPER', line: 8 }),
+      expect.objectContaining({ subject: 'JP HELPER', targetIdentity: 'HELPER', line: 1 }),
+      expect.objectContaining({ subject: 'JR HELPER', targetIdentity: 'HELPER', line: 2 }),
     ]);
   });
 

@@ -118,7 +118,7 @@ describe('AZM 0.3 declarations and routines', () => {
     });
   });
 
-  it('accepts a bare .routine and lets the next normal label close it', async () => {
+  it('keeps non-local labels in a bare .routine until the next directive', async () => {
     await withTempDir('azm-03-bare-routine-', async (dir) => {
       const entry = join(dir, 'main.asm');
       const result = await compileFixture(
@@ -127,9 +127,11 @@ describe('AZM 0.3 declarations and routines', () => {
           '.routine',
           'Worker:',
           '    ld a,1',
-          '    ret',
           'OrdinaryCode:',
           '    ld hl,$1234',
+          '    ret',
+          '.routine',
+          'NEXT:',
           '    ret',
           '.end',
           '',
@@ -143,11 +145,10 @@ describe('AZM 0.3 declarations and routines', () => {
 
       expect(errorDiagnostics(result)).toEqual([]);
       const summaries = reportArtifact(result)?.json?.summaries;
-      expect(summaries?.map((summary) => summary.name)).toEqual(['Worker']);
+      expect(summaries?.map((summary) => summary.name)).toEqual(['Worker', 'NEXT']);
       expect(summaries?.[0]?.valueRelations).toEqual([]);
       expect(summaries?.[0]?.mayWrite).toEqual(expect.arrayContaining(['A']));
-      expect(summaries?.[0]?.mayOutput).toEqual(expect.arrayContaining(['A']));
-      expect(summaries?.[0]?.mayWrite).not.toEqual(expect.arrayContaining(['H', 'L']));
+      expect(summaries?.[0]?.mayOutput).toEqual(expect.arrayContaining(['A', 'H', 'L']));
     });
   });
 

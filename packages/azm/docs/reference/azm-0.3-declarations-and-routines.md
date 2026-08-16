@@ -171,12 +171,15 @@ so those loader details are not observable.
 Routine state is maintained independently per source ownership unit. Items from
 an interleaved imported unit cannot close or extend a routine in its importer.
 
-The routine owns instructions and local labels until the next non-local label
-in the same ownership unit after its first instruction. Consecutive non-local
-labels before the first instruction are entry aliases for the same routine. The
-first data or storage directive before any instruction makes the declaration an
-invalid routine. The next post-instruction non-local label may have its own
-`.routine`, or it may be ordinary data. No `.endroutine` directive is required:
+The routine owns instructions and labels until the next `.routine` directive
+in the same ownership unit, or the end of that unit. Consecutive non-local
+labels before the first instruction are entry aliases for the same routine.
+Later non-local labels change the owner used for underscore-local symbol
+resolution, but do not change the register-contract routine. These are
+deliberately separate domains: local-name scope is label-based, while routine
+analysis is directive-based. The first data or storage directive before any
+instruction makes the declaration an invalid routine. No `.endroutine`
+directive is required:
 
 ```asm
 .routine
@@ -184,8 +187,12 @@ DrawSprite:
 _loop:
         jr      _loop
 
-SharedTable:            ; ends DrawSprite and starts ordinary data
+SharedTable:            ; changes local-name ownership, not the routine
         .db     1, 2, 3, 4
+
+.routine               ; ends DrawSprite's register-contract routine
+UpdateSprite:
+        ret
 ```
 
 A non-local label containing callable code without `.routine` is not a declared
