@@ -124,6 +124,32 @@ describe('Z80 register-contracts effects', () => {
     });
   });
 
+  it('models memory bit changes without inventing register or stack writes', () => {
+    expect(effect('set 7,(hl)')).toMatchObject({
+      reads: ['H', 'L'],
+      writes: [],
+      stack: { kind: 'none' },
+    });
+    expect(effect('res 2,(ix+3),b')).toMatchObject({
+      reads: ['IXH', 'IXL'],
+      writes: ['B'],
+      stack: { kind: 'none' },
+    });
+  });
+
+  it('models memory shifts and their optional register destination', () => {
+    expect(effect('srl (hl)')).toMatchObject({
+      reads: ['H', 'L'],
+      writes: ['sign', 'zero', 'halfCarry', 'parity', 'carry'],
+      stack: { kind: 'none' },
+    });
+    expect(effect('srl (iy+4),c')).toMatchObject({
+      reads: ['IYH', 'IYL'],
+      writes: ['C', 'sign', 'zero', 'halfCarry', 'parity', 'carry'],
+      stack: { kind: 'none' },
+    });
+  });
+
   it('models SCF as setting carry without reading general registers', () => {
     expect(effect('scf')).toMatchObject({
       reads: [],

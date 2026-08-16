@@ -137,6 +137,10 @@ export function operandWrites(op: Z80Operand): RegisterContractsUnit[] | undefin
       return reg16Units(op.register);
     case 'reg-half-index':
       return regHalfUnits(op.register);
+    case 'reg-indirect':
+    case 'indexed':
+    case 'mem-abs':
+      return [];
     default:
       return undefined;
   }

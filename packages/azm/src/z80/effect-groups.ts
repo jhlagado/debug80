@@ -221,10 +221,13 @@ export function rotateShiftEffect(
   const reads = operandReads(instruction.operand);
   const writes = operandWrites(instruction.operand);
   if (reads === undefined || writes === undefined) return unknownEffect();
+  const destinationWrites =
+    instruction.destination === undefined ? [] : operandWrites(instruction.destination);
+  if (destinationWrites === undefined) return unknownEffect();
   return {
     ...baseEffect(),
     reads,
-    writes: concatUnique(writes, ROTATE_SHIFT_FLAG_WRITES),
+    writes: concatUnique(writes, destinationWrites, ROTATE_SHIFT_FLAG_WRITES),
   };
 }
 
@@ -242,10 +245,13 @@ export function bitEffect(
   }
   const writes = operandWrites(instruction.operand);
   if (writes === undefined) return unknownEffect();
+  const destinationWrites =
+    instruction.destination === undefined ? [] : operandWrites(instruction.destination);
+  if (destinationWrites === undefined) return unknownEffect();
   return {
     ...baseEffect(),
     reads,
-    writes,
+    writes: concatUnique(writes, destinationWrites),
   };
 }
 
