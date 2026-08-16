@@ -1,0 +1,37 @@
+name: Publish Debug80 Runtime
+
+on:
+  push:
+    tags:
+      - "debug80-runtime-v*"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      HAS_NPM_TOKEN: ${{ secrets.NPM_TOKEN != '' }}
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          registry-url: https://registry.npmjs.org
+          package-manager-cache: false
+      - name: Verify release tag
+        run: |
+          expected="debug80-runtime-v$(node -p "require('./packages/debug80-runtime/package.json').version")"
+          test "$GITHUB_REF_NAME" = "$expected"
+      - run: npm ci --ignore-scripts
+      - name: Publish initial or token-authorized release
+        if: env.HAS_NPM_TOKEN == 'true'
+        run: npm publish --workspace @jhlagado/debug80-runtime --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+      - name: Publish through npm trusted publishing
+        if: env.HAS_NPM_TOKEN != 'true'
+        run: npm publish --workspace @jhlagado/debug80-runtime --access public
