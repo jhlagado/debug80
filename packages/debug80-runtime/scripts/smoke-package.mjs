@@ -8,6 +8,8 @@ const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '
 const temporary = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-runtime-package-'));
 const packDirectory = path.join(temporary, 'pack');
 const consumer = path.join(temporary, 'consumer');
+const childEnvironment = { ...process.env };
+delete childEnvironment.npm_config_dry_run;
 fs.mkdirSync(packDirectory);
 fs.mkdirSync(consumer);
 
@@ -17,6 +19,7 @@ try {
     execFileSync(npm, ['pack', '--json', '--ignore-scripts', '--pack-destination', packDirectory], {
       cwd: packageRoot,
       encoding: 'utf8',
+      env: childEnvironment,
     })
   );
   const filename = packed[0]?.filename;
@@ -43,7 +46,11 @@ try {
       "if (typeof session.reset !== 'function' || typeof session.matrixSnapshot !== 'function') throw new Error('incomplete session API');",
     ].join('\n')
   );
-  execFileSync(npm, ['install', '--ignore-scripts', tarball], { cwd: consumer, stdio: 'inherit' });
+  execFileSync(npm, ['install', '--ignore-scripts', tarball], {
+    cwd: consumer,
+    env: childEnvironment,
+    stdio: 'inherit',
+  });
   execFileSync(process.execPath, ['smoke.mjs'], { cwd: consumer, stdio: 'inherit' });
   console.log(`runtime package smoke passed: ${tarball}`);
 } finally {

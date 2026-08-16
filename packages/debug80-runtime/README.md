@@ -10,6 +10,16 @@ Protocol.
 
 The package is ESM-only and requires Node.js 20 or newer.
 
+## Installation
+
+```bash
+npm install @jhlagado/debug80-runtime
+```
+
+The package contains compiled JavaScript, declarations, and its public export
+map. Consumers do not need the Debug80 monorepo, TypeScript, AZM, or a build
+step.
+
 ## Headless Session
 
 ```ts
@@ -58,3 +68,10 @@ Glimmer remain build-time concerns outside this package.
 Snapshots are detached from mutable emulator storage. Programs that use MON-3
 random services are reproducible after `reset` when the same pinned ROM and
 initial program image are supplied.
+
+## Release verification
+
+`npm run test:package` builds a tarball, installs it in an empty consumer, and
+checks the root, headless, Z80 runtime, and platform exports. Registry
+publication runs type checking, the runtime suite, and this isolated package
+gate before npm accepts the release.
