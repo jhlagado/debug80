@@ -134,6 +134,88 @@ describe('Nucleus backend', () => {
     );
   });
 
+  it('discovers project-v2 imports through the standalone host API', async () => {
+    const project = workspace();
+    fs.writeFileSync(path.join(project.root, 'model.nu'), 'const answer = 42\n');
+    fs.writeFileSync(project.source, '//% import "model.nu"\nsub main()\nend\n');
+    fs.writeFileSync(
+      path.join(project.root, 'nucleus-project.json'),
+      JSON.stringify({
+        schema: 'nucleus-project/v2',
+        entry: 'main.nu',
+        target: 'nucleus-target.json',
+        outputs: { nobj: 'ignored.nobj' },
+      })
+    );
+    const api = compiler(success());
+
+    await new NucleusBackend(api).assemble({
+      asmPath: project.source,
+      hexPath: project.hex,
+      sourceRoot: project.root,
+    });
+
+    expect(api.build).toHaveBeenCalledWith(
+      expect.objectContaining({
+        sources: [
+          expect.objectContaining({ name: 'model.nu' }),
+          expect.objectContaining({ name: 'main.nu' }),
+        ],
+      })
+    );
+  });
+
+  it('produces identical artifacts from explicit and discovered source order', async () => {
+    const project = workspace();
+    fs.writeFileSync(path.join(project.root, 'model.nu'), 'const answer = 42\n');
+    fs.writeFileSync(
+      project.source,
+      '//% import "model.nu"\nvar result as u8\nsub main()\nresult = answer\nend\n'
+    );
+    const projectPath = path.join(project.root, 'nucleus-project.json');
+    fs.writeFileSync(
+      projectPath,
+      JSON.stringify({
+        schema: 'nucleus-project/v1',
+        sources: ['model.nu', 'main.nu'],
+        target: 'nucleus-target.json',
+        outputs: { nobj: 'ignored.nobj' },
+      })
+    );
+    const explicitHex = path.join(project.root, 'build', 'explicit.hex');
+    const discoveredHex = path.join(project.root, 'build', 'discovered.hex');
+
+    const explicit = await new NucleusBackend().assemble({
+      asmPath: project.source,
+      hexPath: explicitHex,
+      sourceRoot: project.root,
+    });
+    fs.writeFileSync(
+      projectPath,
+      JSON.stringify({
+        schema: 'nucleus-project/v2',
+        entry: 'main.nu',
+        target: 'nucleus-target.json',
+        outputs: { nobj: 'ignored.nobj' },
+      })
+    );
+    const discovered = await new NucleusBackend().assemble({
+      asmPath: project.source,
+      hexPath: discoveredHex,
+      sourceRoot: project.root,
+    });
+
+    expect(explicit.success).toBe(true);
+    expect(discovered.success).toBe(true);
+    expect(fs.readFileSync(discoveredHex)).toEqual(fs.readFileSync(explicitHex));
+    expect(fs.readFileSync(discoveredHex.replace(/\.hex$/, '.nobj'))).toEqual(
+      fs.readFileSync(explicitHex.replace(/\.hex$/, '.nobj'))
+    );
+    expect(fs.readFileSync(discoveredHex.replace(/\.hex$/, '.d8.json'))).toEqual(
+      fs.readFileSync(explicitHex.replace(/\.hex$/, '.d8.json'))
+    );
+  });
+
   it('refuses to launch without a target profile', async () => {
     const project = workspace();
     fs.unlinkSync(path.join(project.root, 'nucleus-target.json'));

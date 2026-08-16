@@ -904,7 +904,7 @@
     "@jhlagado/azm": "^0.3.8",
     "@jhlagado/debug80-runtime": "^0.1.0",
     "@jhlagado/glimmer": "^0.6.2",
-    "@jhlagado/nucleus": "https://codeload.github.com/jhlagado/nucleus/tar.gz/2873c24b19adfec46dc57ba25ebbff9a8e500e44",
+    "@jhlagado/nucleus": "https://codeload.github.com/jhlagado/nucleus/tar.gz/ade6cc189f51a393c294841b8920822ab224a0a5",
     "@vscode/debugadapter": "^1.64.0",
     "@vscode/debugprotocol": "^1.64.0"
   },

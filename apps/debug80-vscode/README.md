@@ -83,9 +83,12 @@ are available at [debug80.com](https://debug80.com/).
   and all external service destinations; Debug80 never substitutes the
   compiler's synthetic proof addresses.
   A selected `.nu` file forms a one-part build by default. A conventional
-  `nucleus-project.json`, or `nucleus.project` in Debug80 configuration, supplies
-  ordered multipart source. `nucleus.targetProfile` can override the profile
-  path for one target or launch.
+  `nucleus-project.json`, or `nucleus.project` in Debug80 configuration, may
+  supply explicit ordered source or a version 2 entry with leading
+  `//% import` dependencies. Debug80 delegates project loading, import ordering,
+  and source-bank derivation to the pinned Nucleus host API.
+  `nucleus.targetProfile` can override the profile path for one target or
+  launch.
 
 ## Quick Start
 

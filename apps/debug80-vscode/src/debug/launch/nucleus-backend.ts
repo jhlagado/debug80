@@ -11,19 +11,20 @@ import * as path from 'node:path';
 import {
   createNucleusCompiler,
   formatNucleusDiagnostic,
-  parseNucleusProject,
   parseNucleusTargetProfile,
+  prepareNucleusProject,
   publishNucleusBuildOutputs,
   type NucleusBuildRequest,
   type NucleusBuildResult,
   type NucleusSourcePart,
+  type NucleusTarget,
 } from '@jhlagado/nucleus';
 import { parseD8DebugMap } from '../../mapping/d8-map';
 import type { AssemblyDiagnostic, AssembleResult } from './assembler';
 import type { AssembleOptions, AssemblerBackend } from './assembler-backend';
 
 export interface NucleusCompilerApi {
-  build(request: NucleusBuildRequest): Promise<NucleusBuildResult>;
+  readonly build: (request: NucleusBuildRequest) => Promise<NucleusBuildResult>;
 }
 
 const defaultCompiler = (): NucleusCompilerApi => createNucleusCompiler();
@@ -70,7 +71,9 @@ function sourceDiagnostic(
 }
 
 function configurationMessage(result: Exclude<NucleusBuildResult, { success: true }>): string {
-  if (result.kind !== 'configuration') return result.message;
+  if (result.kind !== 'configuration') {
+    return result.message;
+  }
   return [
     result.message,
     ...result.issues.map((issue) => `  ${issue.path}: ${issue.message}`),
@@ -81,9 +84,10 @@ interface LoadedNucleusBuild {
   readonly root: string;
   readonly sources: readonly NucleusSourcePart[];
   readonly targetProfilePath: string;
+  readonly target?: NucleusTarget;
 }
 
-function loadNucleusBuild(options: AssembleOptions): LoadedNucleusBuild {
+async function loadNucleusBuild(options: AssembleOptions): Promise<LoadedNucleusBuild> {
   const sourceRoot = options.sourceRoot ?? path.dirname(options.asmPath);
   const configuredProject = options.nucleus?.project;
   const conventionalProject = path.join(sourceRoot, 'nucleus-project.json');
@@ -95,15 +99,17 @@ function loadNucleusBuild(options: AssembleOptions): LoadedNucleusBuild {
         : undefined;
 
   if (projectPath !== undefined) {
-    const project = parseNucleusProject(fs.readFileSync(projectPath, 'utf8'));
-    const root = path.resolve(path.dirname(projectPath), project.root ?? '.');
+    const prepared = await prepareNucleusProject(projectPath, {
+      ...(options.nucleus?.targetProfile === undefined
+        ? {}
+        : { targetProfile: options.nucleus.targetProfile }),
+      requireServices: true,
+    });
     return {
-      root,
-      sources: project.sources.map((name) => ({
-        name: name.split(path.sep).join('/'),
-        source: fs.readFileSync(sourcePath(root, name)),
-      })),
-      targetProfilePath: path.resolve(root, options.nucleus?.targetProfile ?? project.target),
+      root: prepared.root,
+      sources: prepared.sources,
+      targetProfilePath: prepared.targetProfilePath,
+      target: prepared.target,
     };
   }
 
@@ -129,7 +135,7 @@ export class NucleusBackend implements AssemblerBackend {
   public async assemble(options: AssembleOptions): Promise<AssembleResult> {
     let loaded: LoadedNucleusBuild;
     try {
-      loaded = loadNucleusBuild(options);
+      loaded = await loadNucleusBuild(options);
     } catch (error) {
       return {
         success: false,
@@ -143,17 +149,19 @@ export class NucleusBackend implements AssemblerBackend {
       };
     }
 
-    let target;
-    try {
-      target = parseNucleusTargetProfile(fs.readFileSync(loaded.targetProfilePath, 'utf8'), {
-        requireServices: true,
-        sourcePartCount: loaded.sources.length,
-      });
-    } catch (error) {
-      return {
-        success: false,
-        error: `Nucleus target profile is invalid: ${error instanceof Error ? error.message : String(error)}`,
-      };
+    let target = loaded.target;
+    if (target === undefined) {
+      try {
+        target = parseNucleusTargetProfile(fs.readFileSync(loaded.targetProfilePath, 'utf8'), {
+          requireServices: true,
+          sourcePartCount: loaded.sources.length,
+        });
+      } catch (error) {
+        return {
+          success: false,
+          error: `Nucleus target profile is invalid: ${error instanceof Error ? error.message : String(error)}`,
+        };
+      }
     }
     if ('bankCount' in target && target.bankCount > 1) {
       return {
