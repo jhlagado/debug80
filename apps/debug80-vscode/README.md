@@ -192,6 +192,20 @@ npm run build
 npm test
 ```
 
+To test a local standalone Nucleus checkout instead of the commit-pinned
+dependency:
+
+```bash
+cd /path/to/nucleus
+npm install
+npm run build
+
+cd /path/to/debug80
+npm install
+npm install --no-save --install-links=false --legacy-peer-deps \
+  file:/path/to/nucleus -w debug80
+```
+
 Debug80 packages its assembler and Nucleus compiler dependencies inside the
 VSIX. Published users should not need `npm link`, sibling checkouts, global
 compiler commands, or compiler environment variables. Nucleus launch settings

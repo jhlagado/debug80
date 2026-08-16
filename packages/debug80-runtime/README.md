@@ -12,13 +12,23 @@ The package is ESM-only and requires Node.js 20 or newer.
 
 ## Installation
 
+`@jhlagado/debug80-runtime` is linked from a Debug80 checkout during the
+current development phase:
+
 ```bash
-npm install @jhlagado/debug80-runtime
+cd /path/to/debug80
+npm install
+npm run build -w @jhlagado/debug80-runtime
+
+cd packages/debug80-runtime
+npm link
+
+cd /path/to/consumer
+npm link @jhlagado/debug80-runtime
 ```
 
-The package contains compiled JavaScript, declarations, and its public export
-map. Consumers do not need the Debug80 monorepo, TypeScript, AZM, or a build
-step.
+The link exposes compiled JavaScript, declarations, and the public export map.
+Rebuild the workspace package after changing Runtime source.
 
 ## Headless Session
 
@@ -69,15 +79,9 @@ Snapshots are detached from mutable emulator storage. Programs that use MON-3
 random services are reproducible after `reset` when the same pinned ROM and
 initial program image are supplied.
 
-## Release verification
+## Package verification
 
 `npm run test:package` builds a tarball, installs it in an empty consumer, and
-checks the root, headless, Z80 runtime, and platform exports. Registry
-publication runs type checking, the runtime suite, and this isolated package
-gate before npm accepts the release.
-
-The `publish-runtime.yml` workflow publishes a tag whose name exactly matches
-`debug80-runtime-v<package version>`. Once npm trusts that workflow, GitHub OIDC
-supplies authentication and provenance. An `NPM_TOKEN` repository secret can
-perform the initial publication before the package exists to hold its trusted
-publisher configuration.
+checks the root, headless, Z80 runtime, and platform exports. Run it with the
+ordinary Runtime tests and typecheck before changing the linked package used by
+a consumer.

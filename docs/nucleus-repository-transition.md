@@ -10,26 +10,36 @@ Debug80 remains a first-class Nucleus development environment. It owns `.nu`
 editor registration, target discovery, build orchestration, artifact loading,
 debugging, and the documentation snapshot published on debug80.com.
 
-## Migration sequence
+## Current integration
 
-1. Preserve the history of `packages/nucleus` in the standalone repository.
-2. Establish an emulator-backed Node compiler around the existing Z80 binary.
-3. Teach Debug80 to discover and build `.nu` targets through that compiler.
-4. Add ordered multipart source manifests and validated machine service
-   profiles to Debug80 project configuration.
-5. Publish Nucleus and Debug80 Runtime packages, then pin Debug80 to a released
-   Nucleus version.
-6. Add a D8-compatible Nucleus source-map sidecar for source breakpoints and
-   stepping.
-7. Copy the public Nucleus documentation into the Debug80 website from a pinned
-   Nucleus revision.
-8. Remove `packages/nucleus` from Debug80 only after the external package, CI,
-   documentation sync, and integration tests are independently green.
+The standalone repository now contains the authoritative compiler and Host API.
+Debug80 builds Nucleus projects through that package and delegates version 2
+import discovery to its shared `prepareNucleusProject()` path. D8 source maps,
+positioned diagnostics, NOBJ publication, and flat-target launch all use the
+same compiler result.
 
-The temporary in-tree copy prevents a destructive cutover before the new
-repository has a durable remote and reproducible release path. New language
-work belongs in Nucleus after that cutover; Debug80 should consume releases
-rather than accumulating a second compiler implementation.
+Local development uses npm links rather than registry publication:
+
+```bash
+cd /path/to/nucleus
+npm install
+npm run build
+
+cd /path/to/debug80
+npm install
+npm install --no-save --install-links=false --legacy-peer-deps \
+  file:/path/to/nucleus -w debug80
+```
+
+Debug80 Runtime is a workspace link in the Debug80 checkout. A standalone
+Nucleus CLI checkout also links that package as described in the Nucleus
+command-line guide. The committed Nucleus dependency remains commit-pinned for
+clean CI and packaged extension builds; the local file installation above uses
+link semantics and does not change either manifest while testing local Nucleus
+work.
+
+New language work belongs in the standalone repository. Debug80 contains no
+second dependency resolver or compiler implementation.
 
 ## Host compiler boundary
 
@@ -39,8 +49,6 @@ TypeScript compiler must match the Z80 compiler on accepted programs,
 diagnostics and positions, materialized bytes, target layout, and runtime
 selection before it can replace the emulator-backed compiler as the reference.
 
-NOBJ does not yet carry source-to-address mappings. With a validated target
-profile and callable service destinations, Debug80 supports editing, building,
-positioned diagnostics, and machine-code execution. Source stepping must wait
-for a separately specified D8-compatible sidecar rather than guessing from the
-object image.
+NOBJ remains target memory metadata. A separate D8 sidecar carries executable
+source ranges and routine anchors. Debug80 validates that sidecar through its
+ordinary D8 importer for source breakpoints and PC-to-source lookup.
