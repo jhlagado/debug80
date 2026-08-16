@@ -901,8 +901,8 @@
     "vitest": "^4.1.7"
   },
   "dependencies": {
-    "@jhlagado/azm": "^0.3.8",
-    "@jhlagado/debug80-runtime": "^0.1.0",
+    "@jhlagado/azm": "^0.4.0",
+    "@jhlagado/debug80-runtime": "^0.2.0",
     "@jhlagado/glimmer": "^0.6.2",
     "@jhlagado/nucleus": "https://codeload.github.com/jhlagado/nucleus/tar.gz/2873c24b19adfec46dc57ba25ebbff9a8e500e44",
     "@vscode/debugadapter": "^1.64.0",

@@ -13,7 +13,7 @@
     "test:package": "node scripts/smoke-packed.mjs"
   },
   "dependencies": {
-    "@jhlagado/debug80-runtime": "^0.1.0",
+    "@jhlagado/debug80-runtime": "^0.2.0",
     "@jhlagado/glimmer": "^0.6.0"
   },
   "devDependencies": {

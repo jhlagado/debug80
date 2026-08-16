@@ -16,8 +16,8 @@
     "generate:nucleus": "UPDATE_NUCLEUS=1 vitest run test/nucleus-lowering.test.ts"
   },
   "dependencies": {
-    "@jhlagado/azm": "^0.3.8",
-    "@jhlagado/debug80-runtime": "^0.1.0"
+    "@jhlagado/azm": "^0.4.0",
+    "@jhlagado/debug80-runtime": "^0.2.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
