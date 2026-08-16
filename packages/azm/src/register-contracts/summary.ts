@@ -827,7 +827,8 @@ function inferRoutineExitStates(
     if (isConditionalTailBoundary(context)) {
       const branchState = cloneInferenceState(current.state);
       inferInstructionSummaryStep(branchState, context);
-      exits.push(branchState);
+      if (context.knownBoundary?.noreturn === true) cycles.push(branchState);
+      else exits.push(branchState);
       inferInstructionSummaryStep(current.state, { ...context, knownBoundary: undefined });
       pushSuccessorStates(
         work,
