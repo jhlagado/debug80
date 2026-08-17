@@ -4,6 +4,17 @@
 
 - None.
 
+## 0.4.0 - 2026-08-17
+
+- Made register-contract analysis preserve declared nonreturning control flow
+  through inline operands and conditional `JP`/`JR` tails, without attributing
+  unreachable stack effects or clobbers to returning paths.
+- Separated `.routine` contract ownership from non-local-label scope: a later
+  label changes underscore-local name ownership, while the next `.routine`
+  directive or source-unit end closes the register-contract routine.
+- Corrected Z80 bit-operation effects so memory `BIT`, `RES`, and `SET`
+  instructions model memory reads and writes precisely.
+
 ## 0.3.8 - 2026-07-19
 
 - Kept in-memory compilation and artifact emission running when parsing produces
