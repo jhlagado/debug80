@@ -26,7 +26,7 @@ jobs:
         run: |
           expected="debug80-runtime-v$(node -p "require('./packages/debug80-runtime/package.json').version")"
           test "$GITHUB_REF_NAME" = "$expected"
-      - run: npm ci --ignore-scripts
+      - run: npm ci --ignore-scripts --legacy-peer-deps
       - name: Publish initial or token-authorized release
         if: env.HAS_NPM_TOKEN == 'true'
         run: npm publish --workspace @jhlagado/debug80-runtime --access public --provenance
