@@ -1,8 +1,21 @@
 # Glimmer Roadmap
 
-Current as of 2026-07-12. Detailed release history lives in
+Current as of 2026-08-18. Detailed release history lives in
 [CHANGELOG.md](../CHANGELOG.md); completed implementation plans remain in
 [`docs/plans/`](plans/) as design records.
+
+## Atom successor
+
+The current package remains the working AZM implementation. A separate
+`@jhlagado/glimmer-atom` package will establish an Atom-native lowering pipeline
+while this implementation remains the compatibility and byte-output oracle.
+The language, reactive semantics, and `.glim` extension remain the same. The
+new package owns Atom naming, layout lowering, intrinsic expansion, and
+provenance-led D8 composition instead of branching the AZM generator by
+dialect.
+
+The architecture, migration gates, and delivery order are specified in
+[Glimmer on Atom](plans/glimmer-atom.md).
 
 ## Contract
 
