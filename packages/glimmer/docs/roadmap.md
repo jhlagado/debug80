@@ -13,8 +13,9 @@ layout lowering, intrinsic expansion, and provenance-led D8 composition. The
 current `.glim` compiler remains the compatibility and byte-output oracle
 during migration.
 
-The architecture, migration gates, and delivery order are specified in
-[Neon](plans/neon.md).
+Neon is developed in its own repository. Its architecture, migration gates,
+and delivery order are specified in the
+[Neon architecture](https://github.com/jhlagado/neon/blob/main/docs/architecture.md).
 
 ## Contract
 
@@ -257,10 +258,10 @@ hardware playtests remain a separate release check.
 
 The generated runtime already routes a change to `Next` when any consumer is in
 the producer's phase or an earlier phase. Trigger propagation is therefore
-independent of declaration order: a peer effect observes the trigger on the next
-frame, while a later phase may observe it in the current frame. This is a
-**trigger-scheduling** guarantee, not a snapshot of all state, because verbatim
-Z80 bodies read and write live memory as they execute.
+independent of declaration order: the runtime schedules a peer effect for the
+next frame, while it may schedule a later-phase effect in the current frame.
+This is a **trigger-scheduling** guarantee, not a snapshot of all state, because
+verbatim Z80 bodies read and write live memory as they execute.
 
 Several shipped programs legitimately have more than one writer for a state:
 left and right movement both update X, for example. Multiple writers are not by
@@ -300,7 +301,7 @@ reliable boundaries (bare `.routine` for user blocks; curated clauses on
 profile library routines, audited against that body check). What remains is
 a readable `.glim` header syntax that passes explicit `in`, `out`,
 `maybe-out`, `clobbers`, and `preserves` clauses through into the generated
-`.routine` line — without putting non-Z80 semantics inside the body — plus
+`.routine` line, without putting non-Z80 semantics inside the body, plus
 negative tests on the Glimmer side.
 
 Profiles may later move monitor interfaces into AZM `.asmi` files when that is
