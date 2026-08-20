@@ -187,10 +187,7 @@ Contracts can describe:
 - expected outputs at call sites
 
 Source directives and external interfaces describe the same kind of fact: a
-routine contract. `.routine` attaches to the next non-local label in the same
-file. The next `.routine` directive or source-unit end closes that contract
-boundary. Intervening non-local labels affect underscore-local name ownership,
-not routine ownership.
+routine contract. `.routine` attaches to the next non-local label in the same file.
 `.asmi` entries attach to routines whose source is assembled elsewhere.
 The canonical source form places every clause on one directive line, for
 example `.routine in A out A clobbers F`.
