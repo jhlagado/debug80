@@ -103,7 +103,7 @@ assert.equal(transcript(), "\r\nA>");
 
 runCommand(
   "DIR",
-  "DIR\r\r\nA: README   TXT : SMOKE    COM : ATOM     COM : INPUT    ASM\r\nA: HELLO    ASM : MAIN     COM\r\nA>",
+  "DIR\r\r\nA: README   TXT : SMOKE    COM : ATOM     COM : INPUT    ASM\r\nA: HELLO    ASM : LARGE    ASM : MAIN     COM\r\nA>",
 );
 runCommand("MAIN", "MAIN\r\r\nHi\r\n\r\nA>");
 runCommand(
@@ -119,7 +119,7 @@ const atomExecution = runCommand(
   "ATOM",
   "ATOM\r\r\n\r\nOUTPUT.COM written\r\n\r\nA>",
 );
-assert.deepEqual(atomExecution, { instructions: 121308, tStates: 1853645 });
+assert.deepEqual(atomExecution, { instructions: 134186, tStates: 1968402 });
 const expectedOutput = Uint8Array.from([
   0x0e,
   0x09,
@@ -144,8 +144,8 @@ const namedAtomExecution = runCommand(
   "ATOM HELLO.ASM MADE.COM\r\r\n\r\nMADE.COM written\r\n\r\nA>",
 );
 assert.deepEqual(namedAtomExecution, {
-  instructions: 130460,
-  tStates: 1940525,
+  instructions: 139810,
+  tStates: 2016228,
 });
 const namedOutputFile = readCpm22File(platform.disk.exportImage(), "MADE.COM");
 assert.ok(namedOutputFile, "native Atom did not publish selected MADE.COM");
@@ -154,6 +154,24 @@ assert.deepEqual(
   expectedOutput,
 );
 runCommand("MADE", "MADE\r\r\nHello from native Atom\r\n\r\nA>");
+const largeAtomExecution = runCommand(
+  "ATOM LARGE.ASM LARGE.COM",
+  "ATOM LARGE.ASM LARGE.COM\r\r\n\r\nLARGE.COM written\r\n\r\nA>",
+);
+assert.deepEqual(largeAtomExecution, {
+  instructions: 1915556,
+  tStates: 19329617,
+});
+const largeOutputFile = readCpm22File(platform.disk.exportImage(), "LARGE.COM");
+assert.ok(
+  largeOutputFile,
+  "native Atom did not publish LARGE.COM from the 16.5 KiB source",
+);
+assert.deepEqual(
+  largeOutputFile.bytes.slice(0, expectedOutput.length),
+  expectedOutput,
+);
+runCommand("LARGE", "LARGE\r\r\nHello from native Atom\r\n\r\nA>");
 
 assert.notDeepEqual(
   platform.disk.exportImage(),
@@ -172,5 +190,5 @@ assert.equal(
 );
 
 console.log(
-  `CP/M 2.2 acceptance passed: boot, BIOS breakpoint, .COM injection, DIR, execution, TYPE, SMOKE, native Atom defaults (${atomExecution.instructions} instructions, ${atomExecution.tStates} T-states), named files (${namedAtomExecution.instructions} instructions, ${namedAtomExecution.tStates} T-states), warm boot`,
+  `CP/M 2.2 acceptance passed: boot, BIOS breakpoint, .COM injection, DIR, execution, TYPE, SMOKE, native Atom defaults (${atomExecution.instructions} instructions, ${atomExecution.tStates} T-states), named files (${namedAtomExecution.instructions} instructions, ${namedAtomExecution.tStates} T-states), 16.5 KiB source (${largeAtomExecution.instructions} instructions, ${largeAtomExecution.tStates} T-states), warm boot`,
 );

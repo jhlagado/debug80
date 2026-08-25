@@ -133,6 +133,13 @@ export async function runCpm22Pipeline(extension) {
     await sendCommand(session, transcript, 'OUTPUT', expectedTranscript.output);
     await sendCommand(session, transcript, 'ATOM HELLO.ASM MADE.COM', expectedTranscript.namedAtom);
     await sendCommand(session, transcript, 'MADE', expectedTranscript.namedOutput);
+    await sendCommand(
+      session,
+      transcript,
+      'ATOM LARGE.ASM LARGE.COM',
+      expectedTranscript.largeAtom
+    );
+    await sendCommand(session, transcript, 'LARGE', expectedTranscript.largeOutput);
   } finally {
     eventSubscription.dispose();
     vscode.debug.removeBreakpoints([breakpoint]);

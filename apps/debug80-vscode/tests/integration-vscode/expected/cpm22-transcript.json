@@ -1,6 +1,6 @@
 {
   "boot": "\r\nA>",
-  "dir": "DIR\r\r\nA: README   TXT : SMOKE    COM : ATOM     COM : INPUT    ASM\r\nA: HELLO    ASM : MAIN     COM\r\nA>",
+  "dir": "DIR\r\r\nA: README   TXT : SMOKE    COM : ATOM     COM : INPUT    ASM\r\nA: HELLO    ASM : LARGE    ASM : MAIN     COM\r\nA>",
   "main": "MAIN\r\r\nHello from Debug80 CP/M\r\n\r\nA>",
   "readme": "TYPE README.TXT\r\r\nDebug80 CP/M 2.2 platform\r\n\r\nA>",
   "smoke": "SMOKE\r\r\nWrote RESULT.TXT\r\n\r\nA>",
@@ -8,5 +8,7 @@
   "atom": "ATOM\r\r\n\r\nOUTPUT.COM written\r\n\r\nA>",
   "output": "OUTPUT\r\r\nHello from native Atom\r\n\r\nA>",
   "namedAtom": "ATOM HELLO.ASM MADE.COM\r\r\n\r\nMADE.COM written\r\n\r\nA>",
-  "namedOutput": "MADE\r\r\nHello from native Atom\r\n\r\nA>"
+  "namedOutput": "MADE\r\r\nHello from native Atom\r\n\r\nA>",
+  "largeAtom": "ATOM LARGE.ASM LARGE.COM\r\r\n\r\nLARGE.COM written\r\n\r\nA>",
+  "largeOutput": "LARGE\r\r\nHello from native Atom\r\n\r\nA>"
 }

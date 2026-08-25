@@ -89,6 +89,19 @@ async function main() {
     ) {
       fail("vendored Atom CP/M artifact differs from its provenance record");
     }
+    const largeAtomSourceBytes = 16_535;
+    const largePaddingBytes = largeAtomSourceBytes - atomSource.length;
+    if (largePaddingBytes < 3)
+      fail("Atom example is too large for the LARGE.ASM fixture");
+    const largeAtomSource = Buffer.concat([
+      Buffer.from(`;${"x".repeat(largePaddingBytes - 3)}\r\n`, "ascii"),
+      atomSource,
+    ]);
+    if (largeAtomSource.length !== largeAtomSourceBytes) {
+      fail(
+        `LARGE.ASM must be ${largeAtomSourceBytes} bytes, got ${largeAtomSource.length}`,
+      );
+    }
     const convertedCcp = join(temporaryDirectory, "ccp.asm");
     const convertedBdos = join(temporaryDirectory, "bdos.asm");
     for (const [input, output, origin] of [
@@ -140,6 +153,7 @@ async function main() {
     image = installCpm22File(image, "ATOM.COM", atom);
     image = installCpm22File(image, "INPUT.ASM", atomSource);
     image = installCpm22File(image, "HELLO.ASM", atomSource);
+    image = installCpm22File(image, "LARGE.ASM", largeAtomSource);
 
     await writeFile(join(outputDirectory, "bootstrap.bin"), bootstrap.bytes);
     await writeFile(join(outputDirectory, "cpm22.img"), image);
@@ -162,6 +176,7 @@ async function main() {
       smoke: sha256(smoke.bytes),
       atom: sha256(atom),
       atomSource: sha256(atomSource),
+      largeAtomSource: sha256(largeAtomSource),
       disk: sha256(image),
       biosMap: sha256(biosMapBytes),
     };

@@ -1,6 +1,6 @@
 # Plan: a GPL CP/M-compatible development environment
 
-Status: Phase C complete; Phase D native Atom filename increment implemented
+Status: Phase C complete; Phase D native Atom large-source increment implemented
 
 Date: 2026-08-25
 
@@ -21,13 +21,14 @@ builds the bundled disk and performs session installation. Custom images,
 replacement, full-directory and full-disk failures, read-only sessions, and the
 58,112-byte TPA boundary have executable proofs.
 
-Native Atom now runs as a 13,677-byte CP/M transient. With no arguments it
+Native Atom now runs as a 13,681-byte CP/M transient. With no arguments it
 reads `INPUT.ASM` and publishes `OUTPUT.COM`; `ATOM SOURCE OUTPUT.COM` selects
 another pair of current-drive CP/M 8.3 names. It compiles with the checked Z80
 core, applies forward patches in an 18,304-byte TPA image, and publishes through
 a recoverable temporary-file sequence. Headless and Extension Host proofs
-exercise both command forms and execute the resulting COM files. The profile
-accepts one source part of at most 4,096 bytes.
+exercise both command forms and execute the resulting COM files. A 128-byte
+BDOS random-record cache supports one source part of at most 65,535 logical
+bytes. The acceptance disk includes a measured 16,535-byte source.
 
 This does not complete the wider development-environment project. Multipart
 Atom source preparation, Nucleus, the editor, replacement utilities, optional
@@ -116,8 +117,8 @@ programs.
 | Atom fixed workspace                                 | Measured native account |    714 |
 | Atom linked resident extent                          | Measured native account | 12,396 |
 | Atom margin below 16 KiB                             | Measured native account |  3,988 |
-| Native CP/M Atom COM                                 | Measured file           | 13,677 |
-| CP/M-specific Atom resident increment                | Measured linked account |  1,273 |
+| Native CP/M Atom COM                                 | Measured file           | 13,681 |
+| CP/M-specific Atom resident increment                | Measured linked account |  1,282 |
 | Principal CP/M development utilities examined so far | Measured files          | 36,736 |
 
 The final line is 35.875 KiB and includes ASM, DDT, DUMP, ED, LOAD, PIP, STAT,
@@ -125,13 +126,14 @@ SUBMIT, and XSUB. It excludes MOVCPM and SYSGEN. The small total makes a
 complete replacement suite plausible, but each replacement requires its own
 measurement.
 
-Atom already supplies the central native mechanism. Its Z80 core reads each
-prepared source byte once, emits monotonically ordered IMAGE bytes, retains
-bounded unresolved references, and emits final PATCH bytes when symbols
-resolve. Filesystem access, preprocessing, NOBJ framing, Intel HEX, flat binary,
-listings, D8 maps, and atomic publication currently belong to the Mac host.
-The CP/M project must replace the required host services without moving their
-cost into an unreported account.
+Atom already supplies the central native mechanism. Its Z80 parser makes one
+semantic pass, emits monotonically ordered IMAGE bytes, retains bounded
+unresolved references, and emits final PATCH bytes when symbols resolve.
+Tokenizer lookahead and string emission may reread source bytes through the
+source service. Filesystem access, preprocessing, NOBJ framing, Intel HEX, flat
+binary, listings, D8 maps, and atomic publication currently belong to the Mac
+host. The CP/M project must replace the required host services without moving
+their cost into an unreported account.
 
 Digital Research ASM provides a useful lower-bound study. Its 8 KiB file
 contains a two-pass 8080 assembler, file handling, a one-kilobyte source buffer,
@@ -509,12 +511,13 @@ Exit gate: CP/M Atom matches the checked Mac Atom output for the common target
 profile, and the complete resident and execution accounts are measured.
 
 The retained profile supplies executable evidence for that gate with one
-representative flat COM and the exact 4,096-byte source and 18,304-byte output
-boundaries. It selects the in-TPA image; the complete CP/M-specific resident
-increment is 1,273 bytes after command-tail filenames, validation, and dynamic
-transaction names. The measured random-record and NOBJ kernels remain lower
-bounds rather than complete implementations. Multipart preparation and a large
-native acceptance build remain before Phase D is complete.
+representative flat COM, an independently checked 16,535-byte source, and the
+exact 65,535-byte source and 18,304-byte output boundaries. It selects the
+in-TPA image; the complete CP/M-specific resident increment is 1,282 bytes
+after command-tail filenames, validation, dynamic transaction names, and the
+BDOS source cache. The measured random-record and NOBJ output kernels remain
+lower bounds rather than complete implementations. Multipart preparation
+remains before Phase D is complete.
 
 ### Phase E: editor
 
@@ -584,8 +587,8 @@ retained:
 
 1. Add multipart source preparation or a compact source-plan reader without
    weakening logical diagnostic offsets.
-2. Run a substantially larger native acceptance build and measure its disk
-   reads, instruction count, T-states, arena peaks, and stack high-water mark.
+2. Extend the large-source acceptance into a multipart build once the source
+   plan representation is settled.
 3. Revisit random-record output only when a real source needs more than the
    current 18,304-byte COM capacity.
 4. Write the common assembler-analysis template and complete the DRI ASM study
