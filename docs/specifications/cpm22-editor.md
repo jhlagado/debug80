@@ -33,11 +33,12 @@ a recoverable file transaction. It is a functional replacement with a new
 interface, not an ED command or file-format emulation.
 
 The deployed editor excludes replace, selection, copy and paste, multiple
-buffers, new-file creation, drive prefixes, user areas, wildcards, binary
-files, configurable keys, syntax highlighting, mouse input, undo, and recovery
-after a reset or power loss during a directory-sector write. Forward search is
-implemented under the settled increment below. The other facilities remain
-later work rather than hidden host services.
+buffers, drive prefixes, user areas, wildcards, binary files, configurable
+keys, syntax highlighting, mouse input, undo, and recovery after a reset or
+power loss during a directory-sector write. Forward search is implemented
+under the settled increment below. New-file creation is the next specified
+increment; the other facilities remain later work rather than hidden host
+services.
 
 ## Command
 
@@ -55,10 +56,69 @@ empty components, and invalid CP/M filename characters are rejected before the
 screen is changed.
 
 The extensions `BAK` and `$$$` are reserved for the save transaction and are
-rejected as selected filenames. The file must already exist. A command or open
-failure prints one CRLF-terminated `EDIT error XX` line, where `XX` is a stable
-two-digit hexadecimal editor status, and returns to the CCP with the incoming
-stack restored.
+rejected as selected filenames. The no-argument default file must already
+exist; an explicitly named file follows the new-file rule below. A command or
+open failure prints one CRLF-terminated `EDIT error XX` line, where `XX` is a
+stable two-digit hexadecimal editor status, and returns to the CCP with the
+incoming stack restored.
+
+## New-file creation increment
+
+The new-file increment starts from pushed Debug80
+`a3d705771356648cf717aec736069d4737c9e7d8`, whose complete `EDIT.COM` is
+2,840 bytes. It changes only the outcome of an explicitly named file that is
+absent. Existing files, malformed commands, reserved extensions, the default
+command, text representation, capacity, search, terminal behavior, and
+existing-file save transaction retain their settled contracts.
+
+`EDIT NAME.EXT` first attempts the ordinary open. If the named file exists, it
+is loaded and validated exactly as before. If it is absent, the editor opens a
+new empty buffer associated with that name. Explicitness is syntactic:
+`EDIT INPUT.NU` may create a missing `INPUT.NU`, while bare `EDIT` still reports
+`EDIT error 02` when its default `INPUT.NU` is absent. An invalid existing text
+file remains an error and never becomes a new buffer.
+
+A new buffer has length, cursor, viewport, desired column, and committed search
+length zero. Its row-24 filename is the selected name. It uses ready status and
+the ordinary dirty marker rather than adding a new status string. The buffer is
+dirty even while empty because the requested file has not been published.
+`^Q` therefore displays the existing discard warning; the confirming `^Q`
+returns without creating any directory entry. Editing, navigation, search, and
+capacity behavior are otherwise identical to an empty existing file.
+
+The first `^S` uses the existing `NAME.$$$` and `NAME.BAK` absence checks. It
+creates and closes `NAME.$$$`, writing no records for an empty buffer and the
+ordinary padded records for nonempty content. Because no selected file needs a
+backup, it skips the selected-to-backup rename and renames `NAME.$$$` directly
+to the selected name. Success clears the new, dirty, and discard-confirmation
+state, reports `Saved`, and converts all later saves in that execution to the
+ordinary existing-file transaction.
+
+A temporary- or backup-name collision reports the existing save-conflict
+status and leaves the new buffer dirty. Creation, write, close, or install
+failure reports the existing phase-specific status, removes the temporary file
+where CP/M permits it, leaves the selected name absent, and permits a later
+retry. If the selected name unexpectedly exists when installation is
+attempted, installation fails rather than replacing it. CP/M is single-tasking,
+so ordinary guest execution cannot create that race while the editor is active.
+
+The increment adds no create-on-open path, recovery file, host filesystem
+operation, command keyword, prompt, or new status text. It must not weaken the
+existing rule that unrelated `.$$$` and `.BAK` files are never deleted merely
+to make a save proceed.
+
+Before implementation, complete executable prototypes must compare at least:
+
+1. a persistent new-buffer flag with a shared first-save branch;
+2. save-time selected-file probing without a persistent new-buffer flag; and
+3. a separately dispatched first-save path.
+
+The comparison includes command-state retention, missing-file initialization,
+empty and nonempty save, every rollback phase, retry, reset, immutable data,
+workspace, stack, instructions, T-states, and the complete resident delta.
+Resident size decides first; workspace and execution cost break a tie. Moving
+state into the text arena, stack allocation, DMA record, or another unreported
+account is not a saving.
 
 ## Text-file model
 
@@ -322,6 +382,28 @@ The search increment must additionally distinguish:
   reset of committed query state; and
 - exact feature code, immutable data, workspace, stack, instruction, and
   T-state deltas from the frozen 2,504-byte baseline.
+
+The new-file increment must additionally distinguish:
+
+- bare `EDIT` with a missing default file and explicitly named missing files,
+  including explicit `INPUT.NU`;
+- unchanged loading and validation of existing empty, representative, invalid,
+  and maximum-capacity files;
+- exact empty-buffer cells, filename, dirty marker, cursor, status, and query
+  reset;
+- confirmed discard of an untouched new buffer without a disk write;
+- editing, searching, and discarding a new buffer;
+- first save of empty, partial-record, exact-record, and maximum-capacity
+  content;
+- successful ordinary save after the first publication;
+- temporary and backup collisions, every first-save failure phase, unchanged
+  selected-name absence, rollback cleanup, and successful retry;
+- sequential existing, new, failed, saved, and discarded executions with no
+  retained command or new-buffer state;
+- exact assembled extents, stack balance, instructions, T-states, headless
+  CP/M behavior, and the real Extension Host workflow; and
+- exact code, immutable, workspace, text-capacity, and runtime deltas from the
+  pushed 2,840-byte baseline.
 
 The final gate includes strict assembly, scoped editor proofs, the complete
 CP/M acceptance, runtime and terminal tests, Extension Host integration, full
