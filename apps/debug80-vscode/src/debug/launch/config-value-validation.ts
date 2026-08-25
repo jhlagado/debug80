@@ -1,4 +1,4 @@
-export const VALID_PLATFORMS = ['simple', 'tec1', 'tec1g'] as const;
+export const VALID_PLATFORMS = ['simple', 'cpm22', 'tec1', 'tec1g'] as const;
 export type ValidPlatform = (typeof VALID_PLATFORMS)[number];
 
 const PORT_MIN = 0;

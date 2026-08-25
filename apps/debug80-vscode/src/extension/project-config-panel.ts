@@ -59,7 +59,10 @@ export async function openProjectConfigPanel(
     const platform = payload.platform;
     const defaultTarget = payload.defaultTarget;
     if (
-      (platform !== 'simple' && platform !== 'tec1' && platform !== 'tec1g') ||
+      (platform !== 'simple' &&
+        platform !== 'cpm22' &&
+        platform !== 'tec1' &&
+        platform !== 'tec1g') ||
       typeof defaultTarget !== 'string'
     ) {
       void vscode.window.showErrorMessage('Debug80: Invalid project configuration values.');

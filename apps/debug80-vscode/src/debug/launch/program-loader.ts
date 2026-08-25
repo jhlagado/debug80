@@ -15,7 +15,7 @@ import {
 } from '@jhlagado/debug80-runtime/platforms/tec-common';
 import { Logger } from '../../util/logger';
 
-export type BuiltInPlatformKind = 'simple' | 'tec1' | 'tec1g';
+export type BuiltInPlatformKind = 'simple' | 'cpm22' | 'tec1' | 'tec1g';
 export type PlatformKind = BuiltInPlatformKind | (string & Record<never, never>);
 
 export interface ProgramLoaderOptions {

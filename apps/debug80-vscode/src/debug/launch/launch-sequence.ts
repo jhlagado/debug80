@@ -315,6 +315,7 @@ export async function buildLaunchSession(
     logger: context.logger,
     resolveRelative: (filePath, assetBaseDir) => resolveRelative(filePath, assetBaseDir),
   });
+  platformProvider.prepareProgram?.(program, platformAssets);
   const entry = platformProvider.resolveEntry(platformAssets);
   const restartCaptureAddress =
     platform === 'simple'

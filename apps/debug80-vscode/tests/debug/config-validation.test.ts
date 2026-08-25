@@ -14,6 +14,7 @@ import {
   validateTerminalConfig,
   validateNucleusConfig,
   validateSimpleConfig,
+  validateCpm22Config,
   validateTec1Config,
   validateTec1gConfig,
   validateLaunchArgs,
@@ -285,6 +286,20 @@ describe('config-validation', () => {
       expect(validateSimpleConfig({ binFrom: 0x9000, binTo: 0x8000 }).errors).toContain(
         'simple.binFrom must be less than or equal to simple.binTo, got 36864 > 32768'
       );
+    });
+  });
+
+  describe('validateCpm22Config', () => {
+    it('accepts a disk override and writable flag', () => {
+      expect(
+        validateCpm22Config({ diskImage: 'disks/development.img', writable: false })
+      ).toMatchObject({ valid: true, errors: [] });
+    });
+
+    it('rejects malformed paths, flags, and configuration blocks', () => {
+      expect(validateCpm22Config({ diskImage: 7 }).valid).toBe(false);
+      expect(validateCpm22Config({ writable: 'yes' }).valid).toBe(false);
+      expect(validateCpm22Config(null).errors).toContain('cpm22 must be an object, got null');
     });
   });
 

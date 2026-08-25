@@ -71,7 +71,7 @@ export function buildProjectConfigPanelHtml(
   const currentPlatform = resolveProjectPlatform(config) ?? 'simple';
   const targetNames = Object.keys(config.targets ?? {});
   const currentDefault = config.defaultTarget ?? config.target ?? targetNames[0] ?? '';
-  const platformOptions = ['simple', 'tec1', 'tec1g']
+  const platformOptions = ['simple', 'cpm22', 'tec1', 'tec1g']
     .map(
       (platform) =>
         `<option value="${platform}"${

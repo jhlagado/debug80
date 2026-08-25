@@ -9,8 +9,11 @@ import { getTerminalHtml } from './terminal-panel-html';
 const TERMINAL_BUFFER_MAX = 50_000;
 const TERMINAL_FLUSH_MS = 50;
 const DEFAULT_PANEL_COLUMN = vscode.ViewColumn.Two;
+export type TerminalPanelMode = 'stream' | 'cpm22';
 
 export class TerminalPanelController {
+  private mode: TerminalPanelMode = 'stream';
+
   constructor(
     private readonly sessionState: SessionStateManager,
     private readonly getPanelColumn: (session: vscode.DebugSession) => vscode.ViewColumn,
@@ -23,11 +26,17 @@ export class TerminalPanelController {
 
   open(
     session?: vscode.DebugSession,
-    options?: { focus?: boolean; reveal?: boolean; column?: vscode.ViewColumn }
+    options?: {
+      focus?: boolean;
+      reveal?: boolean;
+      column?: vscode.ViewColumn;
+      mode?: TerminalPanelMode;
+    }
   ): void {
     const focus = options?.focus ?? false;
     const reveal = options?.reveal ?? true;
     const targetColumn = options?.column ?? this.getTerminalColumn();
+    this.mode = options?.mode ?? this.mode;
     if (this.sessionState.terminalPanel === undefined) {
       this.sessionState.terminalPanel = vscode.window.createWebviewPanel(
         'debug80Terminal',
@@ -79,14 +88,18 @@ export class TerminalPanelController {
     }
     this.sessionState.terminalPanel.webview.html = getTerminalHtml(
       this.sessionState.terminalBuffer,
-      this.extensionUri
+      this.extensionUri,
+      this.mode
     );
     this.sessionState.terminalPendingOutput = '';
     this.sessionState.terminalNeedsFullRefresh = false;
   }
 
   appendOutput(text: string): void {
-    const { remaining, shouldClear } = this.stripAndDetectClear(text);
+    const { remaining, shouldClear } =
+      this.mode === 'cpm22'
+        ? { remaining: text, shouldClear: false }
+        : this.stripAndDetectClear(text);
     if (shouldClear) {
       this.clear();
     }

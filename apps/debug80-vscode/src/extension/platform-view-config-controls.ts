@@ -21,7 +21,12 @@ export interface SaveProjectConfigContext {
  */
 export function normalizePlatformId(platform: string): PlatformId | undefined {
   const normalized = platform.trim().toLowerCase();
-  if (normalized === 'simple' || normalized === 'tec1' || normalized === 'tec1g') {
+  if (
+    normalized === 'simple' ||
+    normalized === 'cpm22' ||
+    normalized === 'tec1' ||
+    normalized === 'tec1g'
+  ) {
     return normalized;
   }
   return undefined;

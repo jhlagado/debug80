@@ -25,6 +25,7 @@ describe('platform-view-config-controls', () => {
 
   it('normalizes supported platform ids', () => {
     expect(normalizePlatformId(' SIMPLE ')).toBe('simple');
+    expect(normalizePlatformId('CPM22')).toBe('cpm22');
     expect(normalizePlatformId('Tec1')).toBe('tec1');
     expect(normalizePlatformId('tec1g')).toBe('tec1g');
     expect(normalizePlatformId('unknown')).toBeUndefined();

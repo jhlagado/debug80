@@ -68,7 +68,10 @@ export class UnsupportedPlatformError extends ConfigurationError {
    * @param platform - The invalid platform name
    * @param supported - List of supported platforms
    */
-  constructor(platform: string, supported: readonly string[] = ['simple', 'tec1', 'tec1g']) {
+  constructor(
+    platform: string,
+    supported: readonly string[] = ['simple', 'cpm22', 'tec1', 'tec1g']
+  ) {
     super(`Unsupported platform "${platform}". Supported: ${supported.join(', ')}`, {
       platform,
       supported,

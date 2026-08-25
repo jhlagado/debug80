@@ -146,6 +146,24 @@ describe('launch-config-merge', () => {
     });
   });
 
+  it('merges CP/M disk settings without retaining an overridden root value', () => {
+    const manifest: LaunchConfigManifest = {
+      platform: 'cpm22',
+      cpm22: { diskImage: 'disks/base.img', writable: false },
+      targets: {
+        guest: {
+          asm: 'src/main.asm',
+          cpm22: { writable: true },
+        },
+      },
+    };
+
+    const merged = mergeForTarget(manifest, 'guest', launchArgs());
+
+    expect(merged.cpm22).toEqual({ diskImage: 'disks/base.img', writable: true });
+    expect(() => assertValidLaunchArgs(merged)).not.toThrow();
+  });
+
   it('merges Simple configuration field by field across all three precedence layers', () => {
     const manifest: LaunchConfigManifest = {
       platform: 'simple',

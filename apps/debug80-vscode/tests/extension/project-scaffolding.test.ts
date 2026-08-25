@@ -157,6 +157,25 @@ describe('project-scaffolding helpers', () => {
     );
   });
 
+  it('builds a CP/M 2.2 project with a writable guest disk', () => {
+    const config = createDefaultProjectConfig({
+      kit: kit('cpm22/default'),
+      targetName: 'app',
+      sourceFile: 'src/main.asm',
+      outputDir: 'build',
+      artifactBase: 'main',
+    });
+
+    expect(config.projectPlatform).toBe('cpm22');
+    expect(config.profiles.default?.platform).toBe('cpm22');
+    expect(config.targets.app).toEqual(
+      expect.objectContaining({
+        platform: 'cpm22',
+        cpm22: { writable: true },
+      })
+    );
+  });
+
   it('retains the build directory when scaffolding without an initial target', () => {
     const config = createDefaultProjectConfig({
       kit: kit('tec1g/mon3'),
@@ -176,6 +195,9 @@ describe('project-scaffolding helpers', () => {
     const extensionUri = { fsPath: process.cwd() } as never;
     expect(createStarterSourceContent(extensionUri, kit('simple/default'), 'asm')).toContain(
       'ORG 0x0900'
+    );
+    expect(createStarterSourceContent(extensionUri, kit('cpm22/default'), 'asm')).toContain(
+      '.org    $0100'
     );
     expect(createStarterSourceContent(extensionUri, kit('tec1/mon1b'), 'asm')).toContain(
       'ORG 0x0800'

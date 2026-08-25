@@ -156,6 +156,7 @@ describe('extension activation', () => {
     expect(context.subscriptions.length).toBeGreaterThan(0);
     expect(api.listPlatforms()).toEqual([
       expect.objectContaining({ id: 'simple', displayName: 'Simple' }),
+      expect.objectContaining({ id: 'cpm22', displayName: 'CP/M 2.2' }),
       expect.objectContaining({ id: 'tec1', displayName: 'TEC-1' }),
       expect.objectContaining({ id: 'tec1g', displayName: 'TEC-1G' }),
     ]);

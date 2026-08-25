@@ -80,7 +80,7 @@ type MergeOptions = {
   resolveBundledAssetPath?: (reference: BundledAssetReferenceLike) => string | undefined;
 };
 
-const PLATFORM_BLOCK_KEYS = ['simple', 'tec1', 'tec1g'] as const;
+const PLATFORM_BLOCK_KEYS = ['simple', 'cpm22', 'tec1', 'tec1g'] as const;
 const PLATFORM_ROM_PATH_FIELDS = {
   tec1: ['romHex'],
   tec1g: ['romHex', 'expansionRomHex'],
@@ -380,6 +380,13 @@ function applyPlatformBlockMerges(
     merged.simple = mergedSimple;
   } else {
     delete merged.simple;
+  }
+
+  const mergedCpm22 = mergeNestedPlatformBlock(cfg.cpm22, targetCfg?.cpm22, args.cpm22);
+  if (mergedCpm22 !== undefined) {
+    merged.cpm22 = mergedCpm22;
+  } else {
+    delete merged.cpm22;
   }
 
   const mergedTec1 = mergeNestedPlatformBlock(cfg.tec1, targetCfg?.tec1, args.tec1);

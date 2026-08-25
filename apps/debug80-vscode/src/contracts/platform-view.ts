@@ -1,7 +1,7 @@
 import type { Tec1Message } from '../platforms/tec1/ui-panel-messages';
 import type { Tec1gMessage } from '../platforms/tec1g/ui-panel-messages';
 
-export type PlatformId = 'simple' | 'tec1' | 'tec1g';
+export type PlatformId = 'simple' | 'cpm22' | 'tec1' | 'tec1g';
 export type AzmPanelRegisterContractsMode = 'enforce' | 'audit' | 'off';
 export type AzmPanelContractUpdateMode = 'ask' | 'auto' | 'never';
 export type AzmSymbolCaseMode = 'strict' | 'insensitive';

@@ -200,6 +200,7 @@ async function selectPlatformOverride(): Promise<ConfigureProjectTargetEdit | un
   const pick = await vscode.window.showQuickPick(
     [
       { label: 'simple', detail: 'Generic Debug80 memory-map platform' },
+      { label: 'cpm22', detail: 'Ideal CP/M 2.2 computer with terminal and disk' },
       { label: 'tec1', detail: 'Classic TEC-1 keypad/LCD platform' },
       { label: 'tec1g', detail: 'TEC-1G LCD/GLCD/matrix platform' },
     ],

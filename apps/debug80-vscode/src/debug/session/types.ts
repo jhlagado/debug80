@@ -5,6 +5,7 @@
 import type { DebugProtocol } from '@vscode/debugprotocol';
 import type {
   SimplePlatformConfig,
+  Cpm22PlatformConfig,
   Tec1PlatformConfig,
   Tec1gPlatformConfig,
 } from '@jhlagado/debug80-runtime/platforms/types';
@@ -14,7 +15,7 @@ import type { TerminalConfig } from './terminal-types';
 /**
  * Debug80 platform ids supported by the project manifest.
  */
-export type Debug80PlatformId = 'simple' | 'tec1' | 'tec1g';
+export type Debug80PlatformId = 'simple' | 'cpm22' | 'tec1' | 'tec1g';
 
 /**
  * Reference to a bundled asset shipped with the extension.
@@ -112,7 +113,7 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
   projectConfig?: string;
   /** Target name from the configuration */
   target?: string;
-  /** Platform type: 'simple', 'tec1', or 'tec1g' */
+  /** Platform type: 'simple', 'cpm22', 'tec1', or 'tec1g' */
   platform?: string;
   /** Whether to run the assembler before debugging (default: true) */
   assemble?: boolean;
@@ -132,6 +133,8 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
   terminal?: TerminalConfig;
   /** Simple platform configuration */
   simple?: SimplePlatformConfig;
+  /** Ideal CP/M 2.2 platform configuration */
+  cpm22?: Cpm22PlatformConfig;
   /** TEC-1 platform configuration */
   tec1?: Tec1PlatformConfig;
   /** TEC-1G platform configuration */
@@ -179,6 +182,7 @@ export interface ProjectConfig {
   stepOutMaxInstructions?: number;
   terminal?: TerminalConfig;
   simple?: SimplePlatformConfig;
+  cpm22?: Cpm22PlatformConfig;
   tec1?: Tec1PlatformConfig;
   tec1g?: Tec1gPlatformConfig;
 }

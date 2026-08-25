@@ -87,6 +87,9 @@ function platformDisplayName(platform: ScaffoldPlatform): string {
   if (platform === 'tec1g') {
     return 'TEC-1G';
   }
+  if (platform === 'cpm22') {
+    return 'CP/M 2.2';
+  }
   return 'Simple';
 }
 
@@ -157,7 +160,9 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
       : {}),
   };
 
-  if (plan.kit.platform === 'tec1') {
+  if (plan.kit.platform === 'cpm22') {
+    targetConfig.cpm22 = { writable: true };
+  } else if (plan.kit.platform === 'tec1') {
     const base = createTec1Defaults(plan.kit.appStart);
     targetConfig.tec1 =
       plan.kit.bundledProfile !== undefined

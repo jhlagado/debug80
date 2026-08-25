@@ -9,6 +9,7 @@ import type { PlatformKind } from '../debug/launch/program-loader';
 import type { SessionStateShape } from '../debug/session/session-state';
 import type { TerminalConfig } from '../debug/session/terminal-types';
 import type { Z80Runtime } from '@jhlagado/debug80-runtime/z80/runtime';
+import type { HexProgram } from '@jhlagado/debug80-runtime/z80/loaders';
 import type { Logger } from '../util/logger';
 import type {
   SimplePlatformConfigNormalized,
@@ -57,6 +58,7 @@ export interface ResolvedPlatformProvider {
   registerCommands: (registry: PlatformRegistry, context: PlatformCommandContext) => void;
   buildIoHandlers: (callbacks: PlatformIoCallbacks) => Promise<PlatformIoBuildResult>;
   loadAssets?: (context: PlatformAssetLoadContext) => unknown;
+  prepareProgram?: (program: HexProgram, assets?: unknown) => void;
   resolveEntry: (assets?: unknown) => number | undefined;
   finalizeRuntime?: (context: PlatformRuntimeFinalizeContext) => void;
 }

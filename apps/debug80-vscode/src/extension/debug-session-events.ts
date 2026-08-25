@@ -165,7 +165,12 @@ function handlePlatformEvent(
     platformViewProvider.setPlatform(id, session, { focus: false, reveal: true, tab: 'ui' });
   } else {
     const columns = sourceColumns.getSessionColumns(session);
-    terminalPanel.open(session, { focus: false, reveal: true, column: columns.panel });
+    terminalPanel.open(session, {
+      focus: false,
+      reveal: true,
+      column: columns.panel,
+      mode: id === 'cpm22' ? 'cpm22' : 'stream',
+    });
   }
 
   maybeOpenRomSourcesAfterPlatformEvent(session, { sessionState, sourceColumns });

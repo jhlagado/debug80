@@ -40,9 +40,7 @@ export interface Debug80Api {
 }
 
 /**
- * Registers the built-in TEC-1 and TEC-1G platforms with both the
- * runtime manifest (for session launch) and the UI manifest (for the
- * sidebar panel).
+ * Registers the built-in platforms and their available sidebar UIs.
  */
 function registerBuiltInPlatformUis(): void {
   registerExtensionPlatform({
@@ -55,6 +53,16 @@ function registerBuiltInPlatformUis(): void {
       },
     },
     ui: createSimplePlatformUiEntry(),
+  });
+  registerExtensionPlatform({
+    runtime: {
+      id: 'cpm22',
+      displayName: 'CP/M 2.2',
+      loadProvider: async (args) => {
+        const { createCpm22PlatformProvider } = await import('../platforms/cpm22/provider.js');
+        return createCpm22PlatformProvider(args);
+      },
+    },
   });
   registerExtensionPlatform({
     runtime: {

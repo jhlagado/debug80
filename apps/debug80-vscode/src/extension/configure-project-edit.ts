@@ -82,9 +82,12 @@ function applyPlatformOverride(
 ): void {
   target.platform = platform;
   delete target.simple;
+  delete target.cpm22;
   delete target.tec1;
   delete target.tec1g;
-  if (platform === 'tec1') {
+  if (platform === 'cpm22') {
+    target.cpm22 = { writable: true };
+  } else if (platform === 'tec1') {
     target.tec1 = createTec1PlatformDefaults();
   } else if (platform === 'tec1g') {
     target.tec1g = createTec1gPlatformDefaults();

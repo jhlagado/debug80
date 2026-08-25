@@ -201,6 +201,7 @@ export async function handleWarmRebuildRequest(
       ...(tec1Config !== undefined ? { tec1Config: tec1Config as never } : {}),
       ...(tec1gConfig !== undefined ? { tec1gConfig: tec1gConfig as never } : {}),
     });
+    platformProvider.prepareProgram?.(program);
 
     if (!deps.sourceState.manager) {
       deps.sourceState.setManager(

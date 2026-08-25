@@ -4,6 +4,7 @@
 
 import * as fs from 'fs';
 import * as path from 'path';
+import type { TerminalPanelMode } from './terminal-panel';
 
 type ExtensionRoot = {
   fsPath: string;
@@ -35,9 +36,14 @@ function resolveTerminalTemplatePath(extensionRoot: ExtensionRoot): string {
 /**
  * Builds the terminal panel webview HTML.
  */
-export function getTerminalHtml(initialOutput: string, extensionRoot: ExtensionRoot): string {
+export function getTerminalHtml(
+  initialOutput: string,
+  extensionRoot: ExtensionRoot,
+  mode: TerminalPanelMode = 'stream'
+): string {
   const template = fs.readFileSync(resolveTerminalTemplatePath(extensionRoot), 'utf8');
   return template
     .replace(/{{nonce}}/g, createTerminalPanelNonce())
+    .replace(/{{terminalMode}}/g, mode)
     .replace(/{{initialOutput}}/g, escapeHtml(initialOutput));
 }

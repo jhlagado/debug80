@@ -180,6 +180,47 @@ describe('launch-sequence', () => {
     expect(context.sourceState.file).toBe(path.join(fixture.root, 'src', 'main.asm'));
   });
 
+  it('boots the bundled CP/M 2.2 guest and exposes the BIOS source map', async () => {
+    const root = makeTempRoot('debug80-cpm22-launch-');
+    workspace.workspaceFolders = [{ uri: { fsPath: root } }];
+    const context = createContext();
+
+    const artifacts = await buildLaunchSession(
+      { platform: 'cpm22', assemble: false, cpm22: { writable: true } },
+      context
+    );
+
+    expect(artifacts.platform).toBe('cpm22');
+    expect(artifacts.loadedEntry).toBe(0);
+    expect(artifacts.loadedProgram.memory.slice(0, 3)).not.toEqual(new Uint8Array(3));
+    expect(artifacts.symbolList).toContainEqual({ name: 'ConsoleOutput', address: 0xfada });
+    expect(artifacts.terminalState).toBeDefined();
+
+    let output = '';
+    for (let step = 0; step < 100_000 && !output.endsWith('A>'); step += 1) {
+      artifacts.runtime.step();
+      output = context.emitDapEvent.mock.calls
+        .filter(([name]) => name === 'debug80/terminalOutput')
+        .map(([, payload]) => (payload as { text: string }).text)
+        .join('');
+    }
+    expect(output).toBe('\r\nA>');
+
+    artifacts.terminalState?.input.push(...Buffer.from('DIR\r', 'ascii'));
+    const start = output.length;
+    for (let step = 0; step < 100_000; step += 1) {
+      artifacts.runtime.step();
+      output = context.emitDapEvent.mock.calls
+        .filter(([name]) => name === 'debug80/terminalOutput')
+        .map(([, payload]) => (payload as { text: string }).text)
+        .join('');
+      if (output.slice(start).endsWith('\r\nA>')) {
+        break;
+      }
+    }
+    expect(output.slice(start)).toBe('DIR\r\r\nA: README   TXT : SMOKE    COM\r\nA>');
+  });
+
   it('throws a missing-artifacts error before runtime creation when HEX is absent', async () => {
     const root = makeTempRoot('debug80-launch-missing-');
     workspace.workspaceFolders = [{ uri: { fsPath: root } }];

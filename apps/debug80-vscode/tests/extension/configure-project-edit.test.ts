@@ -58,6 +58,19 @@ describe('configure-project target edit', () => {
     expect(config.targets?.app?.platform).toBe('tec1g');
   });
 
+  it('selects CP/M without retaining an incompatible memory-map block', () => {
+    const config = singleTargetConfig(targetConfig({ platform: 'simple', simple: {} }));
+
+    applyConfigureProjectTargetEdit(config, 'app', {
+      kind: 'targetPlatformOverride',
+      platform: 'cpm22',
+    });
+
+    expect(config.projectPlatform).toBe('cpm22');
+    expect(config.targets?.app?.simple).toBeUndefined();
+    expect(config.targets?.app?.cpm22).toEqual({ writable: true });
+  });
+
   it('clears stale unsupported assembler ids when changing program files', () => {
     const config = singleTargetConfig(
       targetConfig({ sourceFile: 'src/old.asm', asm: 'src/old.asm', assembler: 'legacy' })

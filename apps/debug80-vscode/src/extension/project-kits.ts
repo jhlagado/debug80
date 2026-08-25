@@ -7,10 +7,15 @@ import * as path from 'path';
 import * as vscode from 'vscode';
 import { BUNDLED_MON1B_V1_REL, BUNDLED_MON3_V1_REL } from './bundle-materialize';
 
-export type ScaffoldPlatform = 'simple' | 'tec1' | 'tec1g';
+export type ScaffoldPlatform = 'simple' | 'cpm22' | 'tec1' | 'tec1g';
 export type StarterLanguage = 'asm';
 export type ProjectKitId =
-  'simple/default' | 'tec1/mon1b' | 'tec1/classic-2k' | 'tec1g/mon3' | 'tec1g/custom';
+  | 'simple/default'
+  | 'cpm22/default'
+  | 'tec1/mon1b'
+  | 'tec1/classic-2k'
+  | 'tec1g/mon3'
+  | 'tec1g/custom';
 
 export type ProjectKit = {
   id: ProjectKitId;
@@ -44,6 +49,18 @@ const PROJECT_KITS: Record<ProjectKitId, ProjectKit> = {
     entry: 0,
     starterTemplates: {
       asm: 'simple/default/starter.asm',
+    },
+  },
+  'cpm22/default': {
+    id: 'cpm22/default',
+    platform: 'cpm22',
+    profileName: 'default',
+    label: 'CP/M 2.2 / Default',
+    description: 'Ideal CP/M 2.2 platform with an 80-column terminal and writable boot disk.',
+    appStart: 0x0100,
+    entry: 0,
+    starterTemplates: {
+      asm: 'cpm22/default/starter.asm',
     },
   },
   'tec1/mon1b': {
@@ -115,6 +132,7 @@ const PROJECT_KITS: Record<ProjectKitId, ProjectKit> = {
 
 const DEFAULT_PROJECT_KITS: Record<ScaffoldPlatform, ProjectKitId> = {
   simple: 'simple/default',
+  cpm22: 'cpm22/default',
   tec1: 'tec1/mon1b',
   tec1g: 'tec1g/mon3',
 };
@@ -126,7 +144,12 @@ export type ProjectKitChoice = vscode.QuickPickItem & {
 function listProjectKits(preselectedPlatform?: string): ProjectKit[] {
   const normalized = preselectedPlatform?.trim().toLowerCase();
   const kits = Object.values(PROJECT_KITS);
-  if (normalized === 'simple' || normalized === 'tec1' || normalized === 'tec1g') {
+  if (
+    normalized === 'simple' ||
+    normalized === 'cpm22' ||
+    normalized === 'tec1' ||
+    normalized === 'tec1g'
+  ) {
     const filtered = kits.filter((kit) => kit.platform === normalized);
     if (filtered.length > 0) {
       return filtered;
@@ -146,7 +169,12 @@ export function getDefaultProjectKitForPlatform(
   platform: string | undefined
 ): ProjectKit | undefined {
   const normalized = platform?.trim().toLowerCase();
-  if (normalized !== 'simple' && normalized !== 'tec1' && normalized !== 'tec1g') {
+  if (
+    normalized !== 'simple' &&
+    normalized !== 'cpm22' &&
+    normalized !== 'tec1' &&
+    normalized !== 'tec1g'
+  ) {
     return undefined;
   }
   return PROJECT_KITS[DEFAULT_PROJECT_KITS[normalized]];

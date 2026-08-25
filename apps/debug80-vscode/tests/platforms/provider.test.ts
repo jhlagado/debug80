@@ -69,6 +69,7 @@ describe('platform providers', () => {
   it('lists the built-in platform manifest entries', () => {
     expect(listPlatforms()).toEqual([
       expect.objectContaining({ id: 'simple', displayName: 'Simple' }),
+      expect.objectContaining({ id: 'cpm22', displayName: 'CP/M 2.2' }),
       expect.objectContaining({ id: 'tec1', displayName: 'TEC-1' }),
       expect.objectContaining({ id: 'tec1g', displayName: 'TEC-1G' }),
     ]);

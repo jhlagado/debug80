@@ -143,6 +143,21 @@ describe('terminal panel html', () => {
     expect(html).not.toContain('boot <ready>');
   });
 
+  it('renders the CP/M terminal as an 80x24 screen and submits carriage return', () => {
+    const html = getTerminalHtml('\r\nA>', extensionRoot, 'cpm22');
+
+    expect(html).toContain("const terminalMode = 'cpm22'");
+    expect(html).toContain('const columns = 80');
+    expect(html).toContain('const rows = 24');
+    expect(html).toContain("terminalMode === 'cpm22' ? '\\r' : '\\n'");
+    expect(html).toContain("vscode.postMessage({ type: 'input', text: event.key })");
+    expect(html).toContain("text: '\\u001b[' + suffix");
+    expect(html).toContain("text: '\\b'");
+    expect(html).toContain("text: '\\u007f'");
+    expect(html).toContain("event.clipboardData?.getData('text/plain')");
+    expect(html).toContain('body.cpm22 #out');
+  });
+
   it('preserves output, clear, input, and break handling', () => {
     const { out, input, send } = requireHarness();
 

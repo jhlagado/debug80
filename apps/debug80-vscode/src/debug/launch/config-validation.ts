@@ -16,6 +16,7 @@ import {
   Tec1PlatformConfig,
   Tec1gPlatformConfig,
   SimplePlatformConfig,
+  Cpm22PlatformConfig,
 } from '@jhlagado/debug80-runtime/platforms/types';
 import { validateTec1gRomArtifacts } from './tec1g-rom-artifact-validation';
 import {
@@ -160,6 +161,21 @@ export function validateSimpleConfig(config: unknown): ValidationResult {
   ]);
 }
 
+/** Validates the optional CP/M disk-image override. */
+export function validateCpm22Config(config: unknown): ValidationResult {
+  if (config === null) {
+    return invalidResult('cpm22 must be an object, got null');
+  }
+  const objectResult = validateOptionalObject<Cpm22PlatformConfig>(config, 'cpm22');
+  if (objectResult.result !== undefined) {
+    return objectResult.result;
+  }
+  return mergeResults([
+    validatePath(objectResult.value.diskImage, 'cpm22.diskImage'),
+    validateBoolean(objectResult.value.writable, 'cpm22.writable'),
+  ]);
+}
+
 /**
  * Validates TEC-1 platform configuration.
  * @param config - TEC-1 config to validate
@@ -291,6 +307,7 @@ function collectLaunchValidationResults(args: LaunchRequestArguments): Validatio
     validateTerminalConfig(args.terminal),
     validateNucleusConfig(args.nucleus),
     validateSimpleConfig(args.simple),
+    validateCpm22Config(args.cpm22),
     validateTec1Config(args.tec1),
     validateTec1gConfig(args.tec1g),
   ];

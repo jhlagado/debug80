@@ -161,4 +161,53 @@ describe('warm rebuild assembly integration', () => {
     );
     expect(sendResponse).toHaveBeenCalledWith(response);
   });
+
+  it('retains the CP/M cold bootstrap when rebuilding a transient source', async () => {
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-warm-cpm22-'));
+    tempDirs.push(baseDir);
+    const sourcePath = path.join(baseDir, 'main.asm');
+    fs.writeFileSync(
+      sourcePath,
+      ['        .org $0100', 'Start:', '        ld a,$5A', ''].join('\n')
+    );
+    const previousProgram: HexProgram = {
+      memory: new Uint8Array(0x10000),
+      startAddress: 0,
+      writeRanges: [],
+    };
+    const sessionState = createSessionState();
+    sessionState.launchArgs = {
+      platform: 'cpm22',
+      asm: 'main.asm',
+      outputDir: 'build',
+      artifactBase: 'main',
+      cpm22: { writable: true },
+    };
+    sessionState.baseDir = baseDir;
+    sessionState.loadedProgram = previousProgram;
+    sessionState.loadedEntry = 0;
+    sessionState.runtime = createZ80Runtime(previousProgram);
+    const response = {} as DebugProtocol.Response;
+
+    await handleWarmRebuildRequest(response, {
+      logger: new NullLogger(),
+      sessionState,
+      sourceState: new SourceStateManager(),
+      breakpointManager: new BreakpointManager(),
+      platformState: { active: 'cpm22' },
+      sendEvent: vi.fn(),
+      sendResponse: vi.fn(),
+      sendErrorResponse: vi.fn(),
+    });
+
+    const bootstrap = fs.readFileSync(
+      path.resolve(process.cwd(), 'roms', 'cpm22', 'bootstrap.bin')
+    );
+    expect(response.body).toMatchObject({ ok: true });
+    expect([...sessionState.runtime.hardware.memory.slice(0, bootstrap.length)]).toEqual([
+      ...bootstrap,
+    ]);
+    expect([...sessionState.runtime.hardware.memory.slice(0x0100, 0x0102)]).toEqual([0x3e, 0x5a]);
+    expect(sessionState.runtime.getPC()).toBe(0);
+  });
 });

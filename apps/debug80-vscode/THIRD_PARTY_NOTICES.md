@@ -10,3 +10,16 @@ and source files built from the published BC25 source archive for debugging).
 - **Use:** The bundled file is a convenience default; projects may replace `roms/tec1g/mon3/mon3.bin` and override `tec1g.romHex` in `debug80.json`.
 
 When the bundled ROM is updated, update `bundle.json` (version fields and optional SHA-256) and this notice if the license terms change.
+
+## CP/M 2.2 CCP and BDOS
+
+The ideal CP/M platform's boot disk contains CCP and BDOS code derived from
+[`brouhaha/cpm22`](https://github.com/brouhaha/cpm22) commit
+`01018abbccce0bdf4874b0b2ed1a048c5fcc2987`. Debug80 mechanically translates
+the upstream Intel 8080 mnemonics to Zilog syntax during its reproducible image
+build.
+
+The upstream terms and the component notice ship beside the disk as
+`roms/cpm22/LICENSE.cpm22.txt` and `roms/cpm22/NOTICE.md`. These guest
+components remain separately licensed and are not relabelled as Debug80 GPL
+code.

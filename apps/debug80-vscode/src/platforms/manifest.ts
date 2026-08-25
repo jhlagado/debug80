@@ -28,6 +28,17 @@ const platformEntries = new Map<PlatformKind, PlatformManifestEntry>([
     },
   ],
   [
+    'cpm22',
+    {
+      id: 'cpm22',
+      displayName: 'CP/M 2.2',
+      loadProvider: async (args): Promise<ResolvedPlatformProvider> => {
+        const { createCpm22PlatformProvider } = await import('./cpm22/provider.js');
+        return createCpm22PlatformProvider(args);
+      },
+    },
+  ],
+  [
     'tec1',
     {
       id: 'tec1',
