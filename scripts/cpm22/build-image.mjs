@@ -18,6 +18,7 @@ const outputDirectory = join(
   "cpm22",
 );
 const thirdPartyDirectory = join(repositoryRoot, "third_party", "cpm22");
+const atomDirectory = join(repositoryRoot, "third_party", "atom");
 const converter = join(scriptDirectory, "convert-8080-to-z80.mjs");
 
 const diskBytes = 77 * 26 * 128;
@@ -77,6 +78,14 @@ async function main() {
     join(tmpdir(), "debug80-cpm22-build-"),
   );
   try {
+    const [atom, atomSource, atomProvenance] = await Promise.all([
+      readFile(join(atomDirectory, "ATOM.COM")),
+      readFile(join(scriptDirectory, "atom-example.asm")),
+      readFile(join(atomDirectory, "PROVENANCE.json"), "utf8").then(JSON.parse),
+    ]);
+    if (sha256(atom) !== atomProvenance.artifactSha256 || atom.length !== atomProvenance.artifactBytes) {
+      fail("vendored Atom CP/M artifact differs from its provenance record");
+    }
     const convertedCcp = join(temporaryDirectory, "ccp.asm");
     const convertedBdos = join(temporaryDirectory, "bdos.asm");
     for (const [input, output, origin] of [
@@ -125,6 +134,8 @@ async function main() {
       Buffer.from("Debug80 CP/M 2.2 platform\r\n", "ascii"),
     );
     image = installCpm22File(image, "SMOKE.COM", smoke.bytes);
+    image = installCpm22File(image, "ATOM.COM", atom);
+    image = installCpm22File(image, "INPUT.ASM", atomSource);
 
     await writeFile(join(outputDirectory, "bootstrap.bin"), bootstrap.bytes);
     await writeFile(join(outputDirectory, "cpm22.img"), image);
@@ -145,6 +156,8 @@ async function main() {
       bdos: sha256(bdos.bytes),
       bios: sha256(bios.bytes),
       smoke: sha256(smoke.bytes),
+      atom: sha256(atom),
+      atomSource: sha256(atomSource),
       disk: sha256(image),
       biosMap: sha256(biosMapBytes),
     };

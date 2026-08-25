@@ -129,6 +129,8 @@ export async function runCpm22Pipeline(extension) {
     await sendCommand(session, transcript, 'TYPE README.TXT', expectedTranscript.readme);
     await sendCommand(session, transcript, 'SMOKE', expectedTranscript.smoke);
     await sendCommand(session, transcript, 'TYPE RESULT.TXT', expectedTranscript.result);
+    await sendCommand(session, transcript, 'ATOM', expectedTranscript.atom);
+    await sendCommand(session, transcript, 'OUTPUT', expectedTranscript.output);
   } finally {
     eventSubscription.dispose();
     vscode.debug.removeBreakpoints([breakpoint]);

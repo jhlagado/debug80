@@ -238,7 +238,9 @@ describe('launch-sequence', () => {
         break;
       }
     }
-    expect(output.slice(start)).toBe('DIR\r\r\nA: README   TXT : SMOKE    COM\r\nA>');
+    expect(output.slice(start)).toBe(
+      'DIR\r\r\nA: README   TXT : SMOKE    COM : ATOM     COM : INPUT    ASM\r\nA>'
+    );
   });
 
   it('installs and runs the exact .COM artifact on a private read-only custom disk', async () => {

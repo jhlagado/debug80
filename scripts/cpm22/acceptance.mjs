@@ -4,7 +4,10 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { createCpm22PlatformRuntime } from "@jhlagado/debug80-runtime/platforms/cpm22/runtime";
-import { installCpm22File } from "@jhlagado/debug80-runtime/platforms/cpm22/filesystem";
+import {
+  installCpm22File,
+  readCpm22File,
+} from "@jhlagado/debug80-runtime/platforms/cpm22/filesystem";
 import { createZ80Runtime } from "@jhlagado/debug80-runtime/z80/runtime";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
@@ -52,6 +55,8 @@ const ioHandlers = {
   },
 };
 const cpu = createZ80Runtime({ memory, startAddress: 0 }, 0, ioHandlers);
+let instructions = 0;
+let tStates = 0;
 
 function transcript(from = 0) {
   return Buffer.from(output.slice(from)).toString("latin1");
@@ -59,7 +64,9 @@ function transcript(from = 0) {
 
 function stepUntil(predicate, description, maximum = 5_000_000) {
   for (let count = 1; count <= maximum; count += 1) {
-    cpu.step();
+    const step = cpu.step();
+    instructions += 1;
+    tStates += step.cycles ?? 0;
     if (predicate()) return count;
   }
   throw new Error(
@@ -68,10 +75,16 @@ function stepUntil(predicate, description, maximum = 5_000_000) {
 }
 
 function runCommand(command, expected) {
+  const instructionStart = instructions;
+  const tStateStart = tStates;
   const start = output.length;
   platform.terminal.enqueueInput(Buffer.from(`${command}\r`, "ascii"));
   stepUntil(() => transcript(start).endsWith("\r\nA>"), `${command} prompt`);
   assert.equal(transcript(start), expected);
+  return {
+    instructions: instructions - instructionStart,
+    tStates: tStates - tStateStart,
+  };
 }
 
 stepUntil(
@@ -90,7 +103,7 @@ assert.equal(transcript(), "\r\nA>");
 
 runCommand(
   "DIR",
-  "DIR\r\r\nA: README   TXT : SMOKE    COM : MAIN     COM\r\nA>",
+  "DIR\r\r\nA: README   TXT : SMOKE    COM : ATOM     COM : INPUT    ASM\r\nA: MAIN     COM\r\nA>",
 );
 runCommand("MAIN", "MAIN\r\r\nHi\r\n\r\nA>");
 runCommand(
@@ -101,6 +114,22 @@ runCommand("SMOKE", "SMOKE\r\r\nWrote RESULT.TXT\r\n\r\nA>");
 runCommand(
   "TYPE RESULT.TXT",
   "TYPE RESULT.TXT\r\r\nCP/M file services are working\r\n\r\nA>",
+);
+const atomExecution = runCommand(
+  "ATOM",
+  "ATOM\r\r\n\r\nOUTPUT.COM written\r\n\r\nA>",
+);
+assert.deepEqual(atomExecution, { instructions: 110774, tStates: 1736715 });
+const expectedOutput = Uint8Array.from([
+  0x0e, 0x09, 0x11, 0x09, 0x01, 0xcd, 0x05, 0x00, 0xc9,
+  ...Buffer.from("Hello from native Atom\r\n$", "ascii"),
+]);
+const outputFile = readCpm22File(platform.disk.exportImage(), "OUTPUT.COM");
+assert.ok(outputFile, "native Atom did not publish OUTPUT.COM");
+assert.deepEqual(outputFile.bytes.slice(0, expectedOutput.length), expectedOutput);
+runCommand(
+  "OUTPUT",
+  "OUTPUT\r\r\nHello from native Atom\r\n\r\nA>",
 );
 
 assert.notDeepEqual(
@@ -120,5 +149,5 @@ assert.equal(
 );
 
 console.log(
-  "CP/M 2.2 acceptance passed: boot, BIOS breakpoint, .COM injection, DIR, execution, TYPE, SMOKE, warm boot",
+  `CP/M 2.2 acceptance passed: boot, BIOS breakpoint, .COM injection, DIR, execution, TYPE, SMOKE, native Atom (${atomExecution.instructions} instructions, ${atomExecution.tStates} T-states), warm boot`,
 );

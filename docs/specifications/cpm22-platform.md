@@ -11,10 +11,11 @@ real guest CCP, BDOS, and BIOS on Debug80's Z80 runtime. TypeScript implements
 the ideal terminal and disk devices below the BIOS. It does not replace BDOS
 calls with host filesystem operations.
 
-The first acceptance system is deliberately small: one CPU, one 80-by-24 text
-terminal, one writable disk, and one reproducibly built guest image. Optional
-graphics, additional drives, printer devices, Atom, Nucleus, and the editor are
-separate milestones.
+The acceptance system is deliberately small: one CPU, one 80-by-24 text
+terminal, one writable disk, and one reproducibly built guest image. The image
+now includes the first native Atom vertical slice. Optional graphics,
+additional drives, printer devices, Nucleus, and the editor remain separate
+milestones.
 
 ## Frozen implementation baseline
 
@@ -53,6 +54,14 @@ directives. The Debug80 copy will be a mechanical Zilog-syntax conversion that
 assembles with AZM. Conversion is accepted only when complete-image comparison
 against a checked upstream build or historical binary proves the resulting CCP
 and BDOS bytes, apart from documented serial-number fields.
+
+Native `ATOM.COM` comes from [`jhlagado/atom`](https://github.com/jhlagado/atom)
+commit `2ec93226b1f528ee7a5052fee4c2aba1c0b2b285` under GPL-3.0-only. Its
+13,199-byte artifact has SHA-256
+`c8aaaf2e89a593064f0701ebfcfced6fe70a041f81ef5084ccda6c78a0666891`.
+The complete corresponding source, strict build, capacity proof, and output
+design measurements are available at that revision. Debug80 records the exact
+source identity in `third_party/atom/PROVENANCE.json`.
 
 ## Memory and reset
 
@@ -152,6 +161,11 @@ order. The cold bootstrap reads all 52 reserved sectors into `$E400`. Warm boot
 reloads the first 44 sectors, which cover `$E400..$F9FF`, and retains the active
 BIOS.
 
+The initial user-0 directory contains `README.TXT`, `SMOKE.COM`, `ATOM.COM`,
+and `INPUT.ASM`. Atom reads and writes through the guest BDOS. Its first profile
+uses fixed source and output names, a 4,096-byte source buffer, and an
+18,304-byte in-TPA output image.
+
 ## Transient program build and installation
 
 A CP/M project assembles its transient program at `$0100`. Debug80 extracts the
@@ -210,7 +224,7 @@ bundled `cpm22` target, publish its exact `.COM` artifact, display the real CCP
 
 ```text
 A>DIR
-A: README TXT : SMOKE COM : MAIN COM
+A: README TXT : SMOKE COM : ATOM COM : INPUT ASM : MAIN COM
 
 A>MAIN
 Hello from Debug80 CP/M
@@ -223,6 +237,12 @@ Wrote RESULT.TXT
 
 A>TYPE RESULT.TXT
 CP/M file services are working
+
+A>ATOM
+OUTPUT.COM written
+
+A>OUTPUT
+Hello from native Atom
 ```
 
 The automated proof must also compare the host `.com` bytes, reach a
@@ -231,5 +251,5 @@ byte in register C, and then continue to the prompt. The complete gate covers
 terminal parsing at every chunk boundary, input FIFO behavior, filesystem
 allocation and rollback, disk bounds and atomic writes, read-only session
 injection, boot and warm boot, sequential-session isolation, platform
-selection, Debug80 UI integration, typechecking, formatting, lint, scoped
-tests, full tests, and diff checks.
+selection, native Atom byte equivalence and rollback, Debug80 UI integration,
+typechecking, formatting, lint, scoped tests, full tests, and diff checks.

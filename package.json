@@ -21,6 +21,7 @@
     "check:source-file-sizes": "node scripts/check-source-file-sizes.mjs",
     "check:source-file-sizes:enforce": "node scripts/check-source-file-sizes.mjs --enforce-hard-cap",
     "build:cpm22": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/debug80-runtime && node scripts/cpm22/build-image.mjs",
+    "import:cpm22-atom": "node scripts/cpm22/import-atom.mjs",
     "test:cpm22": "npm run build:cpm22 && node scripts/cpm22/acceptance.mjs",
     "check": "npm run build && npm run typecheck && npm run lint && npm run format:check && npm run test",
     "package:azm": "npm run test:package -w @jhlagado/azm",
