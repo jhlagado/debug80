@@ -346,6 +346,37 @@ function installBuffer(machine, bytes, cursor = 0) {
   machine.memory[symbol("EditorFlags")] = 0;
   machine.memory[symbol("EditorStatus")] = 0;
   machine.memory[symbol("EditorSaveState")] = 0;
+  machine.memory[symbol("EditorQueryLength")] = 0;
+}
+
+function setQuery(machine, payload, tailSeed = 0x40) {
+  assert.ok(payload.length <= symbol("EditorQueryCapacity"));
+  const lengthAddress = symbol("EditorQueryLength");
+  const bufferAddress = symbol("EditorQueryBuffer");
+  machine.memory[lengthAddress] = payload.length;
+  machine.memory.set(payload, bufferAddress);
+  for (
+    let index = payload.length;
+    index < symbol("EditorQueryCapacity");
+    index += 1
+  ) {
+    machine.memory[bufferAddress + index] = (tailSeed + index) & 0xff;
+  }
+}
+
+function queryBytes(machine) {
+  const length = machine.memory[symbol("EditorQueryLength")];
+  return machine.memory.slice(
+    symbol("EditorQueryBuffer"),
+    symbol("EditorQueryBuffer") + length,
+  );
+}
+
+function queryBlock(machine) {
+  return machine.memory.slice(
+    symbol("EditorQueryLength"),
+    symbol("EditorQueryBuffer") + symbol("EditorQueryCapacity"),
+  );
 }
 
 function bufferBytes(machine) {
@@ -644,6 +675,408 @@ const navigationMeasurements = {};
   assert.equal(readWord(machine.memory, symbol("EditorCursor")), 1);
   assertCanaries(machine);
 }
+
+const searchMeasurements = {};
+{
+  const machine = createMachine();
+  installBuffer(machine, Buffer.from("A\tB\r\n", "ascii"), 0);
+  setQuery(machine, Buffer.from("A\tB", "ascii"));
+  searchMeasurements.prompt = invokeRoutine(machine, "EditorRenderQuery");
+  const snapshot = machine.bdos.terminal.snapshot();
+  assert.equal(
+    Buffer.from(snapshot.cells.slice(23 * 80)).toString("ascii"),
+    "Find: A>B".padEnd(80),
+  );
+  assert.ok(
+    snapshot.attributes
+      .slice(23 * 80)
+      .every((attribute) => attribute === CPM22_TERMINAL_ATTR_REVERSE),
+  );
+  assert.equal(snapshot.cursorRow, 23);
+  assert.equal(snapshot.cursorColumn, 9);
+  assertCanaries(machine);
+}
+{
+  const machine = createMachine();
+  installBuffer(machine, new Uint8Array(), 0);
+  setQuery(machine, new Uint8Array());
+  searchMeasurements.emptyPrompt = invokeRoutine(machine, "EditorRenderQuery");
+  let snapshot = machine.bdos.terminal.snapshot();
+  assert.equal(
+    Buffer.from(snapshot.cells.slice(23 * 80)).toString("ascii"),
+    "Find: ".padEnd(80),
+  );
+  assert.equal(snapshot.cursorRow, 23);
+  assert.equal(snapshot.cursorColumn, 6);
+
+  setQuery(machine, new Uint8Array(64).fill(0x41));
+  searchMeasurements.fullPrompt = invokeRoutine(machine, "EditorRenderQuery");
+  snapshot = machine.bdos.terminal.snapshot();
+  assert.equal(
+    Buffer.from(snapshot.cells.slice(23 * 80)).toString("ascii"),
+    `Find: ${"A".repeat(64)}`.padEnd(80),
+  );
+  assert.equal(snapshot.cursorRow, 23);
+  assert.equal(snapshot.cursorColumn, 70);
+  assertCanaries(machine);
+}
+{
+  const machine = createMachine();
+  installBuffer(machine, Buffer.from("XXOLX", "ascii"), 0);
+  setQuery(machine, Buffer.from("OLD", "ascii"), 0x20);
+  machine.bdos.input.push(8, 0x58, 13);
+  searchMeasurements.replace = invokeRoutine(machine, "EditorSearchBegin");
+  assert.equal(searchMeasurements.replace.carry, false);
+  assert.deepEqual(
+    queryBytes(machine),
+    Uint8Array.from(Buffer.from("OLX", "ascii")),
+  );
+  assert.equal(readWord(machine.memory, symbol("EditorCursor")), 2);
+  assert.equal(
+    machine.memory[symbol("EditorStatus")],
+    symbol("EditorStatusFound"),
+  );
+  assert.equal(machine.bdos.terminal.snapshot().bellCount, 0);
+  assertCanaries(machine);
+}
+{
+  const machine = createMachine();
+  installBuffer(machine, Buffer.from("ABC", "ascii"), 2);
+  setQuery(machine, Buffer.from("OLD", "ascii"), 0x20);
+  const beforeQuery = queryBlock(machine);
+  const beforeText = bufferBytes(machine);
+  writeWord(machine.memory, symbol("EditorTop"), 1);
+  writeWord(machine.memory, symbol("EditorHorizontal"), 7);
+  machine.memory[symbol("EditorFlags")] = symbol("EditorFlagDirty");
+  machine.memory[symbol("EditorStatus")] = symbol("EditorStatusSaved");
+  machine.bdos.input.push(8, 0x58, 27);
+  searchMeasurements.cancel = invokeRoutine(machine, "EditorSearchBegin");
+  assert.equal(searchMeasurements.cancel.carry, false);
+  assert.deepEqual(queryBlock(machine), beforeQuery);
+  assert.deepEqual(bufferBytes(machine), beforeText);
+  assert.equal(readWord(machine.memory, symbol("EditorCursor")), 2);
+  assert.equal(readWord(machine.memory, symbol("EditorTop")), 1);
+  assert.equal(readWord(machine.memory, symbol("EditorHorizontal")), 7);
+  assert.equal(
+    machine.memory[symbol("EditorFlags")],
+    symbol("EditorFlagDirty"),
+  );
+  assert.equal(
+    machine.memory[symbol("EditorStatus")],
+    symbol("EditorStatusReady"),
+  );
+  assert.deepEqual(machine.bdos.events, []);
+  assertCanaries(machine);
+}
+{
+  const machine = createMachine();
+  installBuffer(machine, Buffer.from("A", "ascii"), 0);
+  setQuery(machine, Buffer.from("A", "ascii"), 0x30);
+  const beforeQuery = queryBlock(machine);
+  machine.bdos.input.push(8, 13);
+  searchMeasurements.emptyReturn = invokeRoutine(machine, "EditorSearchBegin");
+  assert.equal(searchMeasurements.emptyReturn.carry, false);
+  assert.deepEqual(queryBlock(machine), beforeQuery);
+  assert.equal(readWord(machine.memory, symbol("EditorCursor")), 0);
+  assert.equal(machine.bdos.terminal.snapshot().bellCount, 0);
+  assertCanaries(machine);
+}
+{
+  const machine = createMachine();
+  installBuffer(machine, new Uint8Array(64).fill(0x41), 0);
+  setQuery(machine, new Uint8Array());
+  machine.bdos.input.push(...new Uint8Array(65).fill(0x41), 13);
+  searchMeasurements.capacity = invokeRoutine(machine, "EditorSearchBegin");
+  assert.equal(searchMeasurements.capacity.carry, false);
+  assert.equal(
+    machine.memory[symbol("EditorQueryLength")],
+    symbol("EditorQueryCapacity"),
+  );
+  assert.deepEqual(queryBytes(machine), new Uint8Array(64).fill(0x41));
+  assert.equal(machine.bdos.terminal.snapshot().bellCount, 1);
+  assert.equal(readWord(machine.memory, symbol("EditorCursor")), 0);
+  assertCanaries(machine);
+}
+{
+  const machine = createMachine();
+  installBuffer(machine, Buffer.from("A\tB", "ascii"), 0);
+  setQuery(machine, new Uint8Array());
+  machine.bdos.input.push(8, 127, 1, 9, 13);
+  searchMeasurements.controls = invokeRoutine(machine, "EditorSearchBegin");
+  assert.equal(searchMeasurements.controls.carry, false);
+  assert.deepEqual(queryBytes(machine), Uint8Array.of(9));
+  assert.equal(readWord(machine.memory, symbol("EditorCursor")), 1);
+  assert.equal(machine.bdos.terminal.snapshot().bellCount, 3);
+  assertCanaries(machine);
+}
+{
+  const machine = createMachine();
+  installBuffer(machine, Uint8Array.of(32, 126, 9), 0);
+  setQuery(machine, new Uint8Array());
+  machine.bdos.input.push(32, 126, 9, 13);
+  searchMeasurements.byteOrder = invokeRoutine(machine, "EditorSearchBegin");
+  assert.equal(searchMeasurements.byteOrder.carry, false);
+  assert.deepEqual(queryBytes(machine), Uint8Array.of(32, 126, 9));
+  assert.equal(readWord(machine.memory, symbol("EditorCursor")), 0);
+  assert.equal(machine.bdos.terminal.snapshot().bellCount, 0);
+  assert.equal(
+    Buffer.from(machine.bdos.terminal.snapshot().cells.slice(23 * 80)).toString(
+      "ascii",
+    ),
+    "Find:  ~>".padEnd(80),
+  );
+  assertCanaries(machine);
+}
+
+function searchResult(
+  label,
+  text,
+  query,
+  cursor,
+  routine,
+  { bell = 0, carry = false, expectedCursor, expectedStatus },
+) {
+  const machine = createMachine();
+  installBuffer(machine, text, cursor);
+  setQuery(machine, query);
+  machine.memory[symbol("EditorFlags")] =
+    symbol("EditorFlagDirty") | symbol("EditorFlagDesiredValid");
+  if (carry) {
+    writeWord(machine.memory, symbol("EditorTop"), 1);
+    writeWord(machine.memory, symbol("EditorHorizontal"), 7);
+  }
+  const before = bufferBytes(machine);
+  const beforeTop = readWord(machine.memory, symbol("EditorTop"));
+  const beforeHorizontal = readWord(machine.memory, symbol("EditorHorizontal"));
+  const result = invokeRoutine(machine, routine);
+  assert.equal(result.carry, carry, `${label}: wrong carry`);
+  assert.equal(
+    readWord(machine.memory, symbol("EditorCursor")),
+    expectedCursor,
+    `${label}: wrong cursor`,
+  );
+  assert.equal(
+    machine.memory[symbol("EditorStatus")],
+    symbol(expectedStatus),
+    `${label}: wrong status`,
+  );
+  assert.equal(machine.bdos.terminal.snapshot().bellCount, bell);
+  assert.deepEqual(bufferBytes(machine), before);
+  assert.equal(readWord(machine.memory, symbol("EditorTop")), beforeTop);
+  assert.equal(
+    readWord(machine.memory, symbol("EditorHorizontal")),
+    beforeHorizontal,
+  );
+  assert.notEqual(
+    machine.memory[symbol("EditorFlags")] & symbol("EditorFlagDirty"),
+    0,
+  );
+  if (!carry) {
+    assert.equal(
+      machine.memory[symbol("EditorFlags")] & symbol("EditorFlagDesiredValid"),
+      0,
+    );
+  } else {
+    assert.notEqual(
+      machine.memory[symbol("EditorFlags")] & symbol("EditorFlagDesiredValid"),
+      0,
+    );
+  }
+  assertCanaries(machine);
+  return result;
+}
+
+{
+  const machine = createMachine();
+  const text = Buffer.from("ABABA\r\nX\tY\nABA", "ascii");
+  installBuffer(machine, text, 0);
+  setQuery(machine, Buffer.from("ABA", "ascii"));
+  searchMeasurements.first = invokeRoutine(machine, "EditorSearchInitial");
+  assert.equal(readWord(machine.memory, symbol("EditorCursor")), 0);
+  searchMeasurements.overlap = invokeRoutine(machine, "EditorSearchRepeat");
+  assert.equal(readWord(machine.memory, symbol("EditorCursor")), 2);
+  searchMeasurements.later = invokeRoutine(machine, "EditorSearchRepeat");
+  assert.equal(readWord(machine.memory, symbol("EditorCursor")), 11);
+  searchMeasurements.wrap = invokeRoutine(machine, "EditorSearchRepeat");
+  assert.equal(readWord(machine.memory, symbol("EditorCursor")), 0);
+  assert.equal(
+    machine.memory[symbol("EditorStatus")],
+    symbol("EditorStatusWrapped"),
+  );
+  assertCanaries(machine);
+}
+
+for (const [label, text, query, cursor, routine, expected] of [
+  [
+    "current",
+    "XXABC",
+    "ABC",
+    2,
+    "EditorSearchInitial",
+    [2, "EditorStatusFound"],
+  ],
+  [
+    "afterLf",
+    "A\nTARGET",
+    "TARGET",
+    0,
+    "EditorSearchInitial",
+    [2, "EditorStatusFound"],
+  ],
+  [
+    "afterCrlf",
+    "A\r\nTARGET",
+    "TARGET",
+    0,
+    "EditorSearchInitial",
+    [3, "EditorStatusFound"],
+  ],
+  ["tab", "A\tB", "\t", 0, "EditorSearchInitial", [1, "EditorStatusFound"]],
+  ["final", "XYZZ", "ZZ", 0, "EditorSearchInitial", [2, "EditorStatusFound"]],
+  [
+    "selfAfterRing",
+    "ABA",
+    "ABA",
+    0,
+    "EditorSearchRepeat",
+    [0, "EditorStatusWrapped"],
+  ],
+]) {
+  searchMeasurements[label] = searchResult(
+    label,
+    Buffer.from(text, "ascii"),
+    Buffer.from(query, "ascii"),
+    cursor,
+    routine,
+    { expectedCursor: expected[0], expectedStatus: expected[1] },
+  );
+}
+
+for (const [label, text, query, cursor, routine, expectedStatus] of [
+  [
+    "missing",
+    "ABCDEFGHI",
+    "XYZ",
+    4,
+    "EditorSearchInitial",
+    "EditorStatusNotFound",
+  ],
+  [
+    "longSuffix",
+    "ABC",
+    "ABCDE",
+    2,
+    "EditorSearchInitial",
+    "EditorStatusNotFound",
+  ],
+  ["noWrapJoin", "AB", "BA", 1, "EditorSearchInitial", "EditorStatusNotFound"],
+  ["crossLf", "A\nB", "AB", 0, "EditorSearchInitial", "EditorStatusNotFound"],
+  [
+    "crossCrlf",
+    "A\r\nB",
+    "AB",
+    0,
+    "EditorSearchInitial",
+    "EditorStatusNotFound",
+  ],
+  ["emptyText", "", "A", 0, "EditorSearchInitial", "EditorStatusNotFound"],
+  ["noQuery", "ABC", "", 1, "EditorSearchRepeat", "EditorStatusNoSearch"],
+]) {
+  searchMeasurements[label] = searchResult(
+    label,
+    Buffer.from(text, "ascii"),
+    Buffer.from(query, "ascii"),
+    cursor,
+    routine,
+    {
+      carry: true,
+      expectedCursor: cursor,
+      expectedStatus,
+    },
+  );
+}
+
+searchMeasurements.fromEof = searchResult(
+  "fromEof",
+  Buffer.from("ABC", "ascii"),
+  Buffer.from("A", "ascii"),
+  3,
+  "EditorSearchInitial",
+  { expectedCursor: 0, expectedStatus: "EditorStatusWrapped" },
+);
+
+{
+  const full = new Uint8Array(capacity).fill(0x41);
+  searchMeasurements.fullMiss = searchResult(
+    "fullMiss",
+    full,
+    Uint8Array.of(0x42),
+    capacity >>> 1,
+    "EditorSearchInitial",
+    {
+      carry: true,
+      expectedCursor: capacity >>> 1,
+      expectedStatus: "EditorStatusNotFound",
+    },
+  );
+  full[capacity - 1] = 0x42;
+  searchMeasurements.fullFinal = searchResult(
+    "fullFinal",
+    full,
+    Uint8Array.of(0x42),
+    0,
+    "EditorSearchInitial",
+    {
+      expectedCursor: capacity - 1,
+      expectedStatus: "EditorStatusFound",
+    },
+  );
+}
+
+{
+  const machine = createMachine();
+  prepareDefaultFcb(machine);
+  installBuffer(machine, Buffer.from("ABC", "ascii"), 0);
+  for (const [status, text] of [
+    ["EditorStatusFound", "Found"],
+    ["EditorStatusWrapped", "Wrapped"],
+    ["EditorStatusNotFound", "Not found"],
+    ["EditorStatusNoSearch", "No search"],
+  ]) {
+    machine.memory[symbol("EditorStatus")] = symbol(status);
+    machine.bdos.terminal.reset();
+    invokeRoutine(machine, "EditorRender");
+    assert.ok(
+      Buffer.from(machine.bdos.terminal.snapshot().cells.slice(23 * 80))
+        .toString("ascii")
+        .includes(text),
+      `${status} is absent from the status row`,
+    );
+  }
+  assertCanaries(machine);
+}
+{
+  const machine = createMachine();
+  installBuffer(machine, Buffer.from("ABC", "ascii"), 1);
+  setQuery(machine, Buffer.from("B", "ascii"));
+  const inserted = invokeRoutine(machine, "EditorBufferInsertByte", {
+    registers: { a: 0x58 },
+  });
+  assert.equal(inserted.carry, false);
+  assert.deepEqual(
+    bufferBytes(machine),
+    Uint8Array.from(Buffer.from("AXBC", "ascii")),
+  );
+  assert.deepEqual(queryBytes(machine), Uint8Array.of(0x42));
+  searchMeasurements.afterEdit = invokeRoutine(machine, "EditorSearchRepeat");
+  assert.equal(searchMeasurements.afterEdit.carry, false);
+  assert.equal(readWord(machine.memory, symbol("EditorCursor")), 2);
+  assert.equal(
+    machine.memory[symbol("EditorStatus")],
+    symbol("EditorStatusWrapped"),
+  );
+  assertCanaries(machine);
+}
 {
   const machine = createMachine();
   installBuffer(
@@ -754,9 +1187,16 @@ const saveMeasurements = {};
 {
   const content = Buffer.from("NEW\r\n", "ascii");
   const machine = prepareSaveMachine(content);
+  setQuery(machine, Buffer.from("NEW", "ascii"), 0x60);
+  const beforeQuery = queryBlock(machine);
   saveMeasurements.success = invokeRoutine(machine, "EditorSave");
   assert.equal(saveMeasurements.success.carry, false);
   assertSuccessfulSave(machine, content);
+  assert.deepEqual(queryBlock(machine), beforeQuery);
+  searchMeasurements.afterSave = invokeRoutine(machine, "EditorSearchInitial");
+  assert.equal(searchMeasurements.afterSave.carry, false);
+  assert.equal(readWord(machine.memory, symbol("EditorCursor")), 0);
+  assert.deepEqual(queryBlock(machine), beforeQuery);
 }
 for (const [label, content] of [
   ["empty", new Uint8Array()],
@@ -928,6 +1368,112 @@ const entryMeasurements = {};
   assert.equal(machine.bdos.terminal.snapshot().bellCount, 3);
 }
 {
+  const { machine, result } = runEditorInput(
+    [6, 0x41, 0x42, 0x41, 13, 14, 0x11],
+    Buffer.from("ABABA\r\n", "ascii"),
+  );
+  entryMeasurements.searchRepeat = result;
+  assert.deepEqual(
+    queryBytes(machine),
+    Uint8Array.from(Buffer.from("ABA", "ascii")),
+  );
+  assert.equal(readWord(machine.memory, symbol("EditorCursor")), 2);
+  assert.equal(
+    machine.memory[symbol("EditorStatus")],
+    symbol("EditorStatusFound"),
+  );
+  assert.equal(machine.bdos.terminal.snapshot().bellCount, 0);
+  assert.equal(machine.bdos.input.length, 0);
+}
+{
+  const { machine, result } = runEditorInput(
+    [6, 0x5a, 13, 0x11],
+    Buffer.from("ABC\r\n", "ascii"),
+  );
+  entryMeasurements.searchMissing = result;
+  assert.deepEqual(queryBytes(machine), Uint8Array.of(0x5a));
+  assert.equal(readWord(machine.memory, symbol("EditorCursor")), 0);
+  assert.equal(
+    machine.memory[symbol("EditorStatus")],
+    symbol("EditorStatusNotFound"),
+  );
+  assert.equal(machine.bdos.terminal.snapshot().bellCount, 1);
+  assert.equal(machine.bdos.input.length, 0);
+}
+{
+  const { machine, result } = runEditorInput(
+    [14, 0x11],
+    Buffer.from("ABC\r\n", "ascii"),
+  );
+  entryMeasurements.searchNoQuery = result;
+  assert.equal(machine.memory[symbol("EditorQueryLength")], 0);
+  assert.equal(
+    machine.memory[symbol("EditorStatus")],
+    symbol("EditorStatusNoSearch"),
+  );
+  assert.equal(machine.bdos.terminal.snapshot().bellCount, 1);
+  assert.equal(machine.bdos.input.length, 0);
+}
+{
+  const { machine, result } = runEditorInput(
+    [0x58, 0x11, 6, 27, 0x11, 0x11],
+    Buffer.from("A\r\n", "ascii"),
+  );
+  entryMeasurements.searchCancelsDiscard = result;
+  assert.deepEqual(
+    machine.bdos.files.get("INPUT.NU"),
+    physicalFile(Buffer.from("A\r\n", "ascii")),
+  );
+  assert.equal(machine.bdos.terminal.snapshot().bellCount, 0);
+  assert.equal(machine.bdos.input.length, 0);
+}
+{
+  const { machine, result } = runEditorInput(
+    [0x58, 6, 0x41, 13, 19, 14, 0x11],
+    Buffer.from("ABA\r\n", "ascii"),
+  );
+  entryMeasurements.searchSaveRepeat = result;
+  assert.deepEqual(
+    logicalFileBytes(machine.bdos.files.get("INPUT.NU")),
+    Uint8Array.from(Buffer.from("XABA\r\n", "ascii")),
+  );
+  assert.deepEqual(queryBytes(machine), Uint8Array.of(0x41));
+  assert.equal(readWord(machine.memory, symbol("EditorCursor")), 3);
+  assert.equal(
+    machine.memory[symbol("EditorStatus")],
+    symbol("EditorStatusFound"),
+  );
+  assert.equal(machine.bdos.input.length, 0);
+}
+{
+  const machine = createMachine({
+    files: { "INPUT.NU": physicalFile(Buffer.from("ABC\r\n", "ascii")) },
+  });
+  setCommandTail(machine.memory, "");
+  machine.bdos.input.push(6, 0x42, 13, 0x11);
+  entryMeasurements.firstExecutionSearch = invokeRoutine(
+    machine,
+    "EditorEntry",
+    { callerSp: ENTRY_CALLER_SP },
+  );
+  assert.deepEqual(queryBytes(machine), Uint8Array.of(0x42));
+  machine.bdos.terminal.reset();
+  machine.bdos.input.push(14, 0x11);
+  entryMeasurements.secondExecutionReset = invokeRoutine(
+    machine,
+    "EditorEntry",
+    { callerSp: ENTRY_CALLER_SP },
+  );
+  assert.equal(machine.memory[symbol("EditorQueryLength")], 0);
+  assert.equal(
+    machine.memory[symbol("EditorStatus")],
+    symbol("EditorStatusNoSearch"),
+  );
+  assert.equal(machine.bdos.terminal.snapshot().bellCount, 1);
+  assert.equal(machine.bdos.input.length, 0);
+  assertCanaries(machine, { high: false });
+}
+{
   const machine = createMachine();
   setCommandTail(machine.memory, "");
   let highBefore;
@@ -959,6 +1505,7 @@ const report = {
   loads: loadMeasurements,
   edits: editMeasurements,
   navigation: navigationMeasurements,
+  search: searchMeasurements,
   saves: saveMeasurements,
   entry: entryMeasurements,
 };

@@ -56,6 +56,17 @@ async function runEditor(session, transcript) {
     );
   }, 'EDIT to render its initial full screen');
 
+  await session.customRequest('debug80/terminalInput', { text: '\u0006' });
+  await waitFor(() => {
+    const output = transcript.value.slice(start);
+    return output.includes('\u001b[24;1H\u001b[7mFind: ') && output.endsWith('\u001b[24;7H');
+  }, 'EDIT to render its search prompt');
+  await session.customRequest('debug80/terminalInput', { text: 'sub\r' });
+  await waitFor(() => {
+    const output = transcript.value.slice(start);
+    return output.includes('Found') && output.endsWith('\u001b[1;1H');
+  }, 'EDIT to complete forward search');
+
   await session.customRequest('debug80/terminalInput', {
     text: 'XY\bZ\u001b[D\u007f\u0013\u0011',
   });

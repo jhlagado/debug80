@@ -211,6 +211,7 @@ EditorStatusDirtyReady:
             CALL EditorStatusMessage
             LD   DE,EditorStatusHints
             CALL EditorStatusText
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
 EditorStatusFill:
             LD   HL,(EditorRenderCount)
             LD   A,L
@@ -236,6 +237,18 @@ EditorStatusMessage:
             JR   Z,EditorStatusMessageText
             CP   EditorStatusDiscard
             LD   DE,EditorStatusDiscardText
+            JR   Z,EditorStatusMessageText
+            CP   EditorStatusFound
+            LD   DE,EditorStatusFoundText
+            JR   Z,EditorStatusMessageText
+            CP   EditorStatusWrapped
+            LD   DE,EditorStatusWrappedText
+            JR   Z,EditorStatusMessageText
+            CP   EditorStatusNotFound
+            LD   DE,EditorStatusNotFoundText
+            JR   Z,EditorStatusMessageText
+            CP   EditorStatusNoSearch
+            LD   DE,EditorStatusNoSearchText
             JR   Z,EditorStatusMessageText
             CP   EditorStatusSaveConflict
             JR   C,EditorStatusMessageDone

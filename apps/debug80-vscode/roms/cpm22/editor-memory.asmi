@@ -31,7 +31,10 @@ EditorRenderColumn   .equ EditorRenderPointer+2
 EditorRenderCount    .equ EditorRenderColumn+2
 EditorCursorScreenRow .equ EditorRenderCount+2
 EditorCursorScreenColumn .equ EditorCursorScreenRow+1
-EditorWorkspaceEnd   .equ EditorCursorScreenColumn+1
+EditorQueryLength    .equ EditorCursorScreenColumn+1
+EditorQueryBuffer    .equ EditorQueryLength+1
+EditorQueryCapacity  .equ 64
+EditorWorkspaceEnd   .equ EditorQueryBuffer+EditorQueryCapacity
 
 EditorFlagDirty        .equ 1
 EditorFlagConfirmQuit  .equ 2
@@ -42,6 +45,10 @@ EditorStatusSaved       .equ 1
 EditorStatusFull        .equ 2
 EditorStatusBoundary    .equ 3
 EditorStatusDiscard     .equ 4
+EditorStatusFound       .equ 5
+EditorStatusWrapped     .equ 6
+EditorStatusNotFound    .equ 7
+EditorStatusNoSearch    .equ 8
 EditorStatusSaveConflict .equ $10
 EditorStatusSaveCreate  .equ $11
 EditorStatusSaveWrite   .equ $12

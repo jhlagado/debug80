@@ -317,10 +317,39 @@ assert.ok(
   "EDIT must render the complete status row in reverse video",
 );
 
-// Insert XY, erase Y with backspace, insert Z, move left, delete Z, save,
-// and quit. Queuing the complete sequence also proves editor control keys are
-// not consumed as CP/M cooked-console flow control during full repaints.
-platform.terminal.enqueueInput([0x58, 0x59, 0x08, 0x5a, 0x1b, 0x5b, 0x44, 0x7f, 0x13, 0x11]);
+platform.terminal.enqueueInput([0x06]);
+stepUntil(() => {
+  const snapshot = platform.terminal.snapshot();
+  return (
+    terminalRow(23) === "Find: ".padEnd(80) &&
+    snapshot.cursorRow === 23 &&
+    snapshot.cursorColumn === 6
+  );
+}, "EDIT search prompt");
+assert.ok(
+  platform.terminal
+    .snapshot()
+    .attributes.slice(23 * 80, 24 * 80)
+    .every((attribute) => attribute === CPM22_TERMINAL_ATTR_REVERSE),
+  "EDIT must render the complete search row in reverse video",
+);
+platform.terminal.enqueueInput([0x73, 0x75, 0x62, 0x0d]);
+stepUntil(() => {
+  const snapshot = platform.terminal.snapshot();
+  return (
+    terminalRow(23).includes("Found") &&
+    snapshot.cursorRow === 0 &&
+    snapshot.cursorColumn === 0
+  );
+}, "EDIT forward search");
+
+// After searching back to byte zero, insert XY, erase Y with backspace, insert
+// Z, move left, delete Z, save, and quit. Queuing the complete edit sequence
+// also proves editor control keys are not consumed as CP/M cooked-console flow
+// control during full repaints.
+platform.terminal.enqueueInput([
+  0x58, 0x59, 0x08, 0x5a, 0x1b, 0x5b, 0x44, 0x7f, 0x13, 0x11,
+]);
 stepUntil(
   () => transcript(editorOutputStart).endsWith("\r\nA>"),
   "EDIT save and quit",
@@ -331,8 +360,8 @@ const editorExecution = {
   tStates: tStates - editorTStateStart,
 };
 assert.deepEqual(editorExecution, {
-  instructions: 271046,
-  tStates: 2687153,
+  instructions: 323205,
+  tStates: 3196520,
 });
 const editedNucleusSource = logicalCpmBytes(
   readCpm22File(platform.disk.exportImage(), "INPUT.NU"),

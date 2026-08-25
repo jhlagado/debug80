@@ -16,6 +16,8 @@ EditorRun:
             JP   C,EditorRunError
             CALL EditorLoadFile
             JP   C,EditorRunError
+            XOR  A
+            LD   (EditorQueryLength),A
             CALL EditorRender
 EditorMainLoop:
             CALL EditorReadByte
@@ -28,6 +30,10 @@ EditorMainLoop:
             POP  AF
             CP   19
             JR   Z,EditorCommandSave
+            CP   6
+            JR   Z,EditorCommandSearch
+            CP   14
+            JR   Z,EditorCommandSearchRepeat
             CP   27
             JR   Z,EditorCommandEscape
             CP   13
@@ -56,6 +62,12 @@ EditorCommandDelete:
             JR   EditorCommandComplete
 EditorCommandSave:
             CALL EditorSave
+            JR   EditorCommandComplete
+EditorCommandSearch:
+            CALL EditorSearchBegin
+            JR   EditorCommandComplete
+EditorCommandSearchRepeat:
+            CALL EditorSearchRepeat
             JR   EditorCommandComplete
 EditorCommandEscape:
             CALL EditorReadEscapeByte

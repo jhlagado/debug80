@@ -14,6 +14,7 @@ EditorCodeStart:
             .include "editor-navigation.asm"
             .include "editor-screen.asm"
             .include "editor-save.asm"
+            .include "editor-search.asm"
             .include "editor-main.asm"
 EditorCodeEnd:
 
@@ -34,6 +35,11 @@ EditorStatusSavedText:    .db "Saved  ",0
 EditorStatusFullText:     .db "Full  ",0
 EditorStatusDiscardText:  .db "Discard changes? ^Q again  ",0
 EditorStatusSaveFailedText: .db "Save failed ",0
+EditorStatusFoundText:    .db "Found",0
+EditorStatusWrappedText:  .db "Wrapped",0
+EditorStatusNotFoundText: .db "Not found",0
+EditorStatusNoSearchText: .db "No search",0
+EditorSearchPrompt:       .db "Find: ",0
 EditorImmutableEnd:
 EditorResidentEnd:
             .end
