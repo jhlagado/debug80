@@ -2,7 +2,8 @@
 
 Select `cpm22` to boot Debug80's ideal CP/M 2.2 computer. The bundled disk
 contains the real CP/M 2.2 CCP and BDOS, a Debug80 BIOS, `README.TXT`, the
-`SMOKE.COM` acceptance program, and native Atom with a small `INPUT.ASM`.
+`SMOKE.COM` acceptance program, and native Atom with small `INPUT.ASM` and
+`HELLO.ASM` examples.
 Building a CP/M target also writes the exact host `.com` artifact. Launching
 installs it in the session's drive A without changing the bundled or configured
 image file.
@@ -18,12 +19,16 @@ SMOKE
 TYPE RESULT.TXT
 ATOM
 OUTPUT
+ATOM HELLO.ASM MADE.COM
+MADE
 ```
 
 `ATOM` assembles the bundled `INPUT.ASM` through ordinary guest BDOS calls and
-publishes `OUTPUT.COM`. The first vertical slice uses those fixed filenames,
-one source part of at most 4,096 bytes, and an 18,304-byte output image. The
-complete native Atom source and measurements are linked from
+publishes `OUTPUT.COM`. `ATOM HELLO.ASM MADE.COM` demonstrates selected
+current-drive CP/M 8.3 filenames. The native profile accepts either no
+arguments or exactly two, requires a `.COM` output, and retains one source part
+of at most 4,096 bytes and an 18,304-byte output image. The complete native
+Atom source and measurements are linked from
 `third_party/atom/README.md` in the Debug80 repository.
 
 The default disk is writable for the life of the debug session. Set

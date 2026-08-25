@@ -1,10 +1,10 @@
 {
   "name": "Atom native CP/M 2.2 transient",
   "repository": "https://github.com/jhlagado/atom",
-  "commit": "2ec93226b1f528ee7a5052fee4c2aba1c0b2b285",
+  "commit": "ae57413cba865963cf00c8cc1172e5c4cc497b1c",
   "sourcePath": "native/cpm22-adapter.asm",
   "artifactPath": "assets/atom-cpm22.com",
   "license": "GPL-3.0-only",
-  "artifactSha256": "c8aaaf2e89a593064f0701ebfcfced6fe70a041f81ef5084ccda6c78a0666891",
-  "artifactBytes": 13199
+  "artifactSha256": "f1e32b46fec49a2d815a45aab1e6c1ae8ac2c569648f076dd2ca73c86da9e61c",
+  "artifactBytes": 13677
 }

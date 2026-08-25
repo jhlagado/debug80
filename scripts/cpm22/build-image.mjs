@@ -83,7 +83,10 @@ async function main() {
       readFile(join(scriptDirectory, "atom-example.asm")),
       readFile(join(atomDirectory, "PROVENANCE.json"), "utf8").then(JSON.parse),
     ]);
-    if (sha256(atom) !== atomProvenance.artifactSha256 || atom.length !== atomProvenance.artifactBytes) {
+    if (
+      sha256(atom) !== atomProvenance.artifactSha256 ||
+      atom.length !== atomProvenance.artifactBytes
+    ) {
       fail("vendored Atom CP/M artifact differs from its provenance record");
     }
     const convertedCcp = join(temporaryDirectory, "ccp.asm");
@@ -136,6 +139,7 @@ async function main() {
     image = installCpm22File(image, "SMOKE.COM", smoke.bytes);
     image = installCpm22File(image, "ATOM.COM", atom);
     image = installCpm22File(image, "INPUT.ASM", atomSource);
+    image = installCpm22File(image, "HELLO.ASM", atomSource);
 
     await writeFile(join(outputDirectory, "bootstrap.bin"), bootstrap.bytes);
     await writeFile(join(outputDirectory, "cpm22.img"), image);

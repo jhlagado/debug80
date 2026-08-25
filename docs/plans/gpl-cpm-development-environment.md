@@ -1,6 +1,6 @@
 # Plan: a GPL CP/M-compatible development environment
 
-Status: Phase C complete; first Phase D native Atom vertical slice implemented
+Status: Phase C complete; Phase D native Atom filename increment implemented
 
 Date: 2026-08-25
 
@@ -21,12 +21,13 @@ builds the bundled disk and performs session installation. Custom images,
 replacement, full-directory and full-disk failures, read-only sessions, and the
 58,112-byte TPA boundary have executable proofs.
 
-Native Atom now runs as a 13,199-byte CP/M transient. It reads `INPUT.ASM`
-through BDOS, compiles with the checked Z80 core, applies forward patches in an
-18,304-byte TPA image, and publishes `OUTPUT.COM` through a recoverable
-temporary-file sequence. Headless and Extension Host proofs execute the
-resulting COM. The first slice fixes both filenames and accepts one source part
-of at most 4,096 bytes.
+Native Atom now runs as a 13,677-byte CP/M transient. With no arguments it
+reads `INPUT.ASM` and publishes `OUTPUT.COM`; `ATOM SOURCE OUTPUT.COM` selects
+another pair of current-drive CP/M 8.3 names. It compiles with the checked Z80
+core, applies forward patches in an 18,304-byte TPA image, and publishes through
+a recoverable temporary-file sequence. Headless and Extension Host proofs
+exercise both command forms and execute the resulting COM files. The profile
+accepts one source part of at most 4,096 bytes.
 
 This does not complete the wider development-environment project. Multipart
 Atom source preparation, Nucleus, the editor, replacement utilities, optional
@@ -115,8 +116,8 @@ programs.
 | Atom fixed workspace                                 | Measured native account |    714 |
 | Atom linked resident extent                          | Measured native account | 12,396 |
 | Atom margin below 16 KiB                             | Measured native account |  3,988 |
-| Native CP/M Atom COM                                 | Measured file           | 13,199 |
-| CP/M-specific Atom resident increment                | Measured linked account |    795 |
+| Native CP/M Atom COM                                 | Measured file           | 13,677 |
+| CP/M-specific Atom resident increment                | Measured linked account |  1,273 |
 | Principal CP/M development utilities examined so far | Measured files          | 36,736 |
 
 The final line is 35.875 KiB and includes ASM, DDT, DUMP, ED, LOAD, PIP, STAT,
@@ -507,13 +508,13 @@ Deliverables:
 Exit gate: CP/M Atom matches the checked Mac Atom output for the common target
 profile, and the complete resident and execution accounts are measured.
 
-The first retained slice supplies executable evidence for that gate with one
+The retained profile supplies executable evidence for that gate with one
 representative flat COM and the exact 4,096-byte source and 18,304-byte output
-boundaries. It selects the
-in-TPA image because the complete CP/M-specific resident increment is 795
-bytes. The measured random-record and NOBJ kernels remain lower bounds rather
-than complete implementations. Multipart preparation, command-tail filenames,
-and a large native acceptance build remain before Phase D is complete.
+boundaries. It selects the in-TPA image; the complete CP/M-specific resident
+increment is 1,273 bytes after command-tail filenames, validation, and dynamic
+transaction names. The measured random-record and NOBJ kernels remain lower
+bounds rather than complete implementations. Multipart preparation and a large
+native acceptance build remain before Phase D is complete.
 
 ### Phase E: editor
 
@@ -581,15 +582,13 @@ retained:
 
 ## Immediate next work
 
-1. Replace the fixed Atom filenames with bounded command-tail parsing while
-   preserving the current no-interception BDOS path.
-2. Add multipart source preparation or a compact source-plan reader without
+1. Add multipart source preparation or a compact source-plan reader without
    weakening logical diagnostic offsets.
-3. Run a substantially larger native acceptance build and measure its disk
+2. Run a substantially larger native acceptance build and measure its disk
    reads, instruction count, T-states, arena peaks, and stack high-water mark.
-4. Revisit random-record output only when a real source needs more than the
+3. Revisit random-record output only when a real source needs more than the
    current 18,304-byte COM capacity.
-5. Write the common assembler-analysis template and complete the DRI ASM study
+4. Write the common assembler-analysis template and complete the DRI ASM study
    before using historical implementation details as design evidence.
 
 ## Reference starting points

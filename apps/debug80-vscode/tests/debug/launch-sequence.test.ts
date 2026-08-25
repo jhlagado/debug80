@@ -239,7 +239,7 @@ describe('launch-sequence', () => {
       }
     }
     expect(output.slice(start)).toBe(
-      'DIR\r\r\nA: README   TXT : SMOKE    COM : ATOM     COM : INPUT    ASM\r\nA>'
+      'DIR\r\r\nA: README   TXT : SMOKE    COM : ATOM     COM : INPUT    ASM\r\nA: HELLO    ASM\r\nA>'
     );
   });
 

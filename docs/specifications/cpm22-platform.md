@@ -56,9 +56,9 @@ against a checked upstream build or historical binary proves the resulting CCP
 and BDOS bytes, apart from documented serial-number fields.
 
 Native `ATOM.COM` comes from [`jhlagado/atom`](https://github.com/jhlagado/atom)
-commit `2ec93226b1f528ee7a5052fee4c2aba1c0b2b285` under GPL-3.0-only. Its
-13,199-byte artifact has SHA-256
-`c8aaaf2e89a593064f0701ebfcfced6fe70a041f81ef5084ccda6c78a0666891`.
+commit `ae57413cba865963cf00c8cc1172e5c4cc497b1c` under GPL-3.0-only. Its
+13,677-byte artifact has SHA-256
+`f1e32b46fec49a2d815a45aab1e6c1ae8ac2c569648f076dd2ca73c86da9e61c`.
 The complete corresponding source, strict build, capacity proof, and output
 design measurements are available at that revision. Debug80 records the exact
 source identity in `third_party/atom/PROVENANCE.json`.
@@ -162,9 +162,10 @@ reloads the first 44 sectors, which cover `$E400..$F9FF`, and retains the active
 BIOS.
 
 The initial user-0 directory contains `README.TXT`, `SMOKE.COM`, `ATOM.COM`,
-and `INPUT.ASM`. Atom reads and writes through the guest BDOS. Its first profile
-uses fixed source and output names, a 4,096-byte source buffer, and an
-18,304-byte in-TPA output image.
+`INPUT.ASM`, and `HELLO.ASM`. Atom reads and writes through the guest BDOS.
+With no arguments it uses `INPUT.ASM` and `OUTPUT.COM`; `ATOM SOURCE OUTPUT.COM`
+selects another pair of current-drive CP/M 8.3 names. The profile retains a
+4,096-byte source buffer and an 18,304-byte in-TPA output image.
 
 ## Transient program build and installation
 
@@ -224,7 +225,8 @@ bundled `cpm22` target, publish its exact `.COM` artifact, display the real CCP
 
 ```text
 A>DIR
-A: README TXT : SMOKE COM : ATOM COM : INPUT ASM : MAIN COM
+A: README TXT : SMOKE COM : ATOM COM : INPUT ASM
+A: HELLO ASM : MAIN COM
 
 A>MAIN
 Hello from Debug80 CP/M
@@ -243,6 +245,12 @@ OUTPUT.COM written
 
 A>OUTPUT
 Hello from native Atom
+
+A>ATOM HELLO.ASM MADE.COM
+MADE.COM written
+
+A>MADE
+Hello from native Atom
 ```
 
 The automated proof must also compare the host `.com` bytes, reach a
@@ -252,4 +260,5 @@ terminal parsing at every chunk boundary, input FIFO behavior, filesystem
 allocation and rollback, disk bounds and atomic writes, read-only session
 injection, boot and warm boot, sequential-session isolation, platform
 selection, native Atom byte equivalence and rollback, Debug80 UI integration,
-typechecking, formatting, lint, scoped tests, full tests, and diff checks.
+no-argument and selected-filename Atom commands, typechecking, formatting,
+lint, scoped tests, full tests, and diff checks.
