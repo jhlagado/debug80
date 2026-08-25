@@ -140,6 +140,13 @@ export async function runCpm22Pipeline(extension) {
       expectedTranscript.largeAtom
     );
     await sendCommand(session, transcript, 'LARGE', expectedTranscript.largeOutput);
+    await sendCommand(
+      session,
+      transcript,
+      'ATOM BUILD.LST MULTI.COM @',
+      expectedTranscript.multipartAtom
+    );
+    await sendCommand(session, transcript, 'MULTI', expectedTranscript.multipartOutput);
   } finally {
     eventSubscription.dispose();
     vscode.debug.removeBreakpoints([breakpoint]);

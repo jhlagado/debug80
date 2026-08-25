@@ -12,8 +12,11 @@ core commands are registered, and drives the project command layer.
 
 It also creates a clean CP/M 2.2 project, boots the guest to `A>`, stops at the
 source-mapped BIOS `ConsoleOutput` routine, runs `DIR`, `TYPE README.TXT`, and
-`SMOKE`, and proves `TYPE RESULT.TXT` after the warm boot. The exact terminal
-transcript is retained in `expected/cpm22-transcript.json`.
+`SMOKE`, and proves `TYPE RESULT.TXT` after the warm boot. Native Atom is then
+exercised with its default, named single-source, 16.5 KiB single-source, and
+66,000-byte multipart commands; every resulting COM is executed in the guest.
+The exact terminal transcript is retained in
+`expected/cpm22-transcript.json`.
 
 The default test version is pinned in `runTest.js`. Set
 `DEBUG80_VSCODE_TEST_VERSION` to exercise another VS Code release.

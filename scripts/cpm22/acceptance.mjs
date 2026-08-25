@@ -62,6 +62,12 @@ function transcript(from = 0) {
   return Buffer.from(output.slice(from)).toString("latin1");
 }
 
+function logicalCpmBytes(file, name) {
+  assert.ok(file, `${name} is missing from the bundled disk`);
+  const eof = file.bytes.indexOf(0x1a);
+  return file.bytes.slice(0, eof === -1 ? file.bytes.length : eof);
+}
+
 function stepUntil(predicate, description, maximum = 5_000_000) {
   for (let count = 1; count <= maximum; count += 1) {
     const step = cpu.step();
@@ -74,12 +80,16 @@ function stepUntil(predicate, description, maximum = 5_000_000) {
   );
 }
 
-function runCommand(command, expected) {
+function runCommand(command, expected, maximum = 5_000_000) {
   const instructionStart = instructions;
   const tStateStart = tStates;
   const start = output.length;
   platform.terminal.enqueueInput(Buffer.from(`${command}\r`, "ascii"));
-  stepUntil(() => transcript(start).endsWith("\r\nA>"), `${command} prompt`);
+  stepUntil(
+    () => transcript(start).endsWith("\r\nA>"),
+    `${command} prompt`,
+    maximum,
+  );
   assert.equal(transcript(start), expected);
   return {
     instructions: instructions - instructionStart,
@@ -103,7 +113,7 @@ assert.equal(transcript(), "\r\nA>");
 
 runCommand(
   "DIR",
-  "DIR\r\r\nA: README   TXT : SMOKE    COM : ATOM     COM : INPUT    ASM\r\nA: HELLO    ASM : LARGE    ASM : MAIN     COM\r\nA>",
+  "DIR\r\r\nA: README   TXT : SMOKE    COM : ATOM     COM : INPUT    ASM\r\nA: HELLO    ASM : LARGE    ASM : PART1    ASM : PART2    ASM\r\nA: BUILD    LST : MAIN     COM\r\nA>",
 );
 runCommand("MAIN", "MAIN\r\r\nHi\r\n\r\nA>");
 runCommand(
@@ -119,7 +129,7 @@ const atomExecution = runCommand(
   "ATOM",
   "ATOM\r\r\n\r\nOUTPUT.COM written\r\n\r\nA>",
 );
-assert.deepEqual(atomExecution, { instructions: 134186, tStates: 1968402 });
+assert.deepEqual(atomExecution, { instructions: 160107, tStates: 2221157 });
 const expectedOutput = Uint8Array.from([
   0x0e,
   0x09,
@@ -144,8 +154,8 @@ const namedAtomExecution = runCommand(
   "ATOM HELLO.ASM MADE.COM\r\r\n\r\nMADE.COM written\r\n\r\nA>",
 );
 assert.deepEqual(namedAtomExecution, {
-  instructions: 139810,
-  tStates: 2016228,
+  instructions: 165764,
+  tStates: 2269186,
 });
 const namedOutputFile = readCpm22File(platform.disk.exportImage(), "MADE.COM");
 assert.ok(namedOutputFile, "native Atom did not publish selected MADE.COM");
@@ -159,8 +169,8 @@ const largeAtomExecution = runCommand(
   "ATOM LARGE.ASM LARGE.COM\r\r\n\r\nLARGE.COM written\r\n\r\nA>",
 );
 assert.deepEqual(largeAtomExecution, {
-  instructions: 1915556,
-  tStates: 19329617,
+  instructions: 2004324,
+  tStates: 20174685,
 });
 const largeOutputFile = readCpm22File(platform.disk.exportImage(), "LARGE.COM");
 assert.ok(
@@ -172,6 +182,44 @@ assert.deepEqual(
   expectedOutput,
 );
 runCommand("LARGE", "LARGE\r\r\nHello from native Atom\r\n\r\nA>");
+const multipartPart1 = readCpm22File(sourceDiskImage, "PART1.ASM");
+const multipartPart2 = readCpm22File(sourceDiskImage, "PART2.ASM");
+const multipartPlan = readCpm22File(sourceDiskImage, "BUILD.LST");
+const multipartPart1Bytes = logicalCpmBytes(multipartPart1, "PART1.ASM");
+const multipartPart2Bytes = logicalCpmBytes(multipartPart2, "PART2.ASM");
+const multipartPlanBytes = logicalCpmBytes(multipartPlan, "BUILD.LST");
+assert.equal(multipartPart1Bytes.length, 33_000);
+assert.equal(multipartPart2Bytes.length, 33_000);
+assert.ok(
+  multipartPart1Bytes.length + multipartPart2Bytes.length > 0xffff,
+  "multipart integration source must exceed one 65,535-byte part",
+);
+assert.equal(
+  Buffer.from(multipartPlanBytes).toString("ascii"),
+  "PART1.ASM\r\nPART2.ASM\r\n",
+);
+const multipartAtomExecution = runCommand(
+  "ATOM BUILD.LST MULTI.COM @",
+  "ATOM BUILD.LST MULTI.COM @\r\r\n\r\nMULTI.COM written\r\n\r\nA>",
+  12_000_000,
+);
+assert.deepEqual(multipartAtomExecution, {
+  instructions: 7571651,
+  tStates: 74422686,
+});
+const multipartOutputFile = readCpm22File(
+  platform.disk.exportImage(),
+  "MULTI.COM",
+);
+assert.ok(
+  multipartOutputFile,
+  "native Atom did not publish MULTI.COM from the 66,000-byte source plan",
+);
+assert.deepEqual(
+  multipartOutputFile.bytes.slice(0, expectedOutput.length),
+  expectedOutput,
+);
+runCommand("MULTI", "MULTI\r\r\nHello from native Atom\r\n\r\nA>");
 
 assert.notDeepEqual(
   platform.disk.exportImage(),
@@ -190,5 +238,5 @@ assert.equal(
 );
 
 console.log(
-  `CP/M 2.2 acceptance passed: boot, BIOS breakpoint, .COM injection, DIR, execution, TYPE, SMOKE, native Atom defaults (${atomExecution.instructions} instructions, ${atomExecution.tStates} T-states), named files (${namedAtomExecution.instructions} instructions, ${namedAtomExecution.tStates} T-states), 16.5 KiB source (${largeAtomExecution.instructions} instructions, ${largeAtomExecution.tStates} T-states), warm boot`,
+  `CP/M 2.2 acceptance passed: boot, BIOS breakpoint, .COM injection, DIR, execution, TYPE, SMOKE, native Atom defaults (${atomExecution.instructions} instructions, ${atomExecution.tStates} T-states), named files (${namedAtomExecution.instructions} instructions, ${namedAtomExecution.tStates} T-states), 16.5 KiB source (${largeAtomExecution.instructions} instructions, ${largeAtomExecution.tStates} T-states), 66,000-byte multipart source (${multipartAtomExecution.instructions} instructions, ${multipartAtomExecution.tStates} T-states), warm boot`,
 );

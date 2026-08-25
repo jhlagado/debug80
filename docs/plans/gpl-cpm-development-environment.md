@@ -1,8 +1,8 @@
 # Plan: a GPL CP/M-compatible development environment
 
-Status: Phase C complete; Phase D native Atom large-source increment implemented
+Status: Phase C complete; Phase D native Atom multipart increment implemented
 
-Date: 2026-08-25
+Date: 2026-08-26
 
 ## Current position
 
@@ -21,18 +21,20 @@ builds the bundled disk and performs session installation. Custom images,
 replacement, full-directory and full-disk failures, read-only sessions, and the
 58,112-byte TPA boundary have executable proofs.
 
-Native Atom now runs as a 13,681-byte CP/M transient. With no arguments it
+Native Atom now runs as a 14,133-byte CP/M transient. With no arguments it
 reads `INPUT.ASM` and publishes `OUTPUT.COM`; `ATOM SOURCE OUTPUT.COM` selects
-another pair of current-drive CP/M 8.3 names. It compiles with the checked Z80
-core, applies forward patches in an 18,304-byte TPA image, and publishes through
-a recoverable temporary-file sequence. Headless and Extension Host proofs
-exercise both command forms and execute the resulting COM files. A 128-byte
-BDOS random-record cache supports one source part of at most 65,535 logical
-bytes. The acceptance disk includes a measured 16,535-byte source.
+another pair of current-drive CP/M 8.3 names, and `ATOM PLAN OUTPUT.COM @`
+assembles an ordered source plan. It compiles with the checked Z80 core, applies
+forward patches in an 18,304-byte TPA image, and publishes through a recoverable
+temporary-file sequence. Headless and Extension Host proofs exercise all three
+command forms and execute the resulting COM files. Each source part may contain
+at most 65,535 logical bytes; a bounded plan holds as many as 255 parts. The
+acceptance disk includes a 16,535-byte single source and a 66,000-byte two-part
+program with a forward reference crossing the part boundary.
 
-This does not complete the wider development-environment project. Multipart
-Atom source preparation, Nucleus, the editor, replacement utilities, optional
-graphics, and a project-owned operating-system core remain later phases.
+This does not complete the wider development-environment project. Nucleus, the
+editor, replacement utilities, optional graphics, and a project-owned
+operating-system core remain later phases.
 
 ## Purpose
 
@@ -117,8 +119,8 @@ programs.
 | Atom fixed workspace                                 | Measured native account |    714 |
 | Atom linked resident extent                          | Measured native account | 12,396 |
 | Atom margin below 16 KiB                             | Measured native account |  3,988 |
-| Native CP/M Atom COM                                 | Measured file           | 13,681 |
-| CP/M-specific Atom resident increment                | Measured linked account |  1,282 |
+| Native CP/M Atom COM                                 | Measured file           | 14,133 |
+| CP/M-specific Atom resident increment                | Measured linked account |  1,734 |
 | Principal CP/M development utilities examined so far | Measured files          | 36,736 |
 
 The final line is 35.875 KiB and includes ASM, DDT, DUMP, ED, LOAD, PIP, STAT,
@@ -130,9 +132,10 @@ Atom already supplies the central native mechanism. Its Z80 parser makes one
 semantic pass, emits monotonically ordered IMAGE bytes, retains bounded
 unresolved references, and emits final PATCH bytes when symbols resolve.
 Tokenizer lookahead and string emission may reread source bytes through the
-source service. Filesystem access, preprocessing, NOBJ framing, Intel HEX, flat
-binary, listings, D8 maps, and atomic publication currently belong to the Mac
-host. The CP/M project must replace the required host services without moving
+source service. The CP/M adapter now supplies BDOS file access, bounded source
+plans, direct COM materialization, and recoverable publication. Preprocessing,
+NOBJ framing, Intel HEX, listings, and D8 maps remain Mac-host facilities. Any
+later CP/M profile must account for the services it adds instead of moving
 their cost into an unreported account.
 
 Digital Research ASM provides a useful lower-bound study. Its 8 KiB file
@@ -511,13 +514,13 @@ Exit gate: CP/M Atom matches the checked Mac Atom output for the common target
 profile, and the complete resident and execution accounts are measured.
 
 The retained profile supplies executable evidence for that gate with one
-representative flat COM, an independently checked 16,535-byte source, and the
-exact 65,535-byte source and 18,304-byte output boundaries. It selects the
-in-TPA image; the complete CP/M-specific resident increment is 1,282 bytes
-after command-tail filenames, validation, dynamic transaction names, and the
-BDOS source cache. The measured random-record and NOBJ output kernels remain
-lower bounds rather than complete implementations. Multipart preparation
-remains before Phase D is complete.
+representative flat COM, an independently checked 16,535-byte single source, a
+66,000-byte two-part source, and the exact 65,535-byte per-part and 18,304-byte
+output boundaries. It selects the in-TPA image; the complete CP/M-specific
+resident increment is 1,734 bytes after command-tail filenames, source-plan
+validation, bounded descriptors, dynamic transaction names, and the BDOS
+source caches. The measured random-record and NOBJ output kernels remain lower
+bounds rather than complete implementations.
 
 ### Phase E: editor
 
@@ -585,10 +588,10 @@ retained:
 
 ## Immediate next work
 
-1. Add multipart source preparation or a compact source-plan reader without
-   weakening logical diagnostic offsets.
-2. Extend the large-source acceptance into a multipart build once the source
-   plan representation is settled.
+1. Freeze the native Nucleus memory placement and CP/M service boundary,
+   including how it reuses the settled multipart source plan.
+2. Measure the smallest source, diagnostic, and transactional output adapters
+   needed for one native Nucleus vertical slice.
 3. Revisit random-record output only when a real source needs more than the
    current 18,304-byte COM capacity.
 4. Write the common assembler-analysis template and complete the DRI ASM study

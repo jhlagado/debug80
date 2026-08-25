@@ -73,6 +73,17 @@ function sha256(bytes) {
   return createHash("sha256").update(bytes).digest("hex");
 }
 
+function padSource(prefix, suffix, byteLength, label) {
+  const paddingBytes = byteLength - prefix.length - suffix.length;
+  if (paddingBytes < 3) fail(`${label} has no room for comment padding`);
+  const padding = Buffer.from(`;${"x".repeat(paddingBytes - 3)}\r\n`, "ascii");
+  const source = Buffer.concat([prefix, padding, suffix]);
+  if (source.length !== byteLength) {
+    fail(`${label} must be ${byteLength} bytes, got ${source.length}`);
+  }
+  return source;
+}
+
 async function main() {
   const temporaryDirectory = await mkdtemp(
     join(tmpdir(), "debug80-cpm22-build-"),
@@ -101,6 +112,26 @@ async function main() {
       fail(
         `LARGE.ASM must be ${largeAtomSourceBytes} bytes, got ${largeAtomSource.length}`,
       );
+    }
+    const multipartPartBytes = 33_000;
+    const multipartPart1 = padSource(
+      Buffer.from("ORG $100\r\nLD C,9\r\nLD DE,MESSAGE\r\n", "ascii"),
+      Buffer.alloc(0),
+      multipartPartBytes,
+      "PART1.ASM",
+    );
+    const multipartPart2 = padSource(
+      Buffer.alloc(0),
+      Buffer.from(
+        "CALL 5\r\nRET\r\nMESSAGE:\r\nDB 72,101,108,108,111,32,102,114,111,109,32,110,97,116,105,118,101,32,65,116,111,109,13,10,36\r\n",
+        "ascii",
+      ),
+      multipartPartBytes,
+      "PART2.ASM",
+    );
+    const multipartPlan = Buffer.from("PART1.ASM\r\nPART2.ASM\r\n", "ascii");
+    if (multipartPart1.length + multipartPart2.length <= 0xffff) {
+      fail("multipart fixture must exceed one 65,535-byte source part");
     }
     const convertedCcp = join(temporaryDirectory, "ccp.asm");
     const convertedBdos = join(temporaryDirectory, "bdos.asm");
@@ -154,6 +185,9 @@ async function main() {
     image = installCpm22File(image, "INPUT.ASM", atomSource);
     image = installCpm22File(image, "HELLO.ASM", atomSource);
     image = installCpm22File(image, "LARGE.ASM", largeAtomSource);
+    image = installCpm22File(image, "PART1.ASM", multipartPart1);
+    image = installCpm22File(image, "PART2.ASM", multipartPart2);
+    image = installCpm22File(image, "BUILD.LST", multipartPlan);
 
     await writeFile(join(outputDirectory, "bootstrap.bin"), bootstrap.bytes);
     await writeFile(join(outputDirectory, "cpm22.img"), image);
@@ -177,6 +211,9 @@ async function main() {
       atom: sha256(atom),
       atomSource: sha256(atomSource),
       largeAtomSource: sha256(largeAtomSource),
+      multipartPart1: sha256(multipartPart1),
+      multipartPart2: sha256(multipartPart2),
+      multipartPlan: sha256(multipartPlan),
       disk: sha256(image),
       biosMap: sha256(biosMapBytes),
     };

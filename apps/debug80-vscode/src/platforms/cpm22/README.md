@@ -3,7 +3,9 @@
 Select `cpm22` to boot Debug80's ideal CP/M 2.2 computer. The bundled disk
 contains the real CP/M 2.2 CCP and BDOS, a Debug80 BIOS, `README.TXT`, the
 `SMOKE.COM` acceptance program, and native Atom with `INPUT.ASM`, `HELLO.ASM`,
-and a 16.5 KiB `LARGE.ASM` acceptance source.
+the 16.5 KiB `LARGE.ASM` acceptance source, and a two-part 66,000-byte build
+selected by `BUILD.LST`.
+
 Building a CP/M target also writes the exact host `.com` artifact. Launching
 installs it in the session's drive A without changing the bundled or configured
 image file.
@@ -23,15 +25,19 @@ ATOM HELLO.ASM MADE.COM
 MADE
 ATOM LARGE.ASM LARGE.COM
 LARGE
+ATOM BUILD.LST MULTI.COM @
+MULTI
 ```
 
 `ATOM` assembles the bundled `INPUT.ASM` through ordinary guest BDOS calls and
 publishes `OUTPUT.COM`. `ATOM HELLO.ASM MADE.COM` demonstrates selected
-current-drive CP/M 8.3 filenames. The native profile accepts either no
-arguments or exactly two, requires a `.COM` output, and retains one source part
-of at most 65,535 logical bytes and an 18,304-byte output image. The bundled
-large source proves BDOS record reads beyond the former 4 KiB limit. The
-complete native Atom source and measurements are linked from
+current-drive CP/M 8.3 filenames. `ATOM BUILD.LST MULTI.COM @` selects an
+ordered source plan containing one current-drive 8.3 filename per line. The
+native profile retains up to 255 parts of at most 65,535 logical bytes each and
+an 18,304-byte output image. The bundled multipart program leaves a forward
+reference in its first 33,000-byte part, resolves it in its second part, and
+executes the resulting `MULTI.COM`. The complete native Atom source and
+measurements are linked from
 `third_party/atom/README.md` in the Debug80 repository.
 
 The default disk is writable for the life of the debug session. Set

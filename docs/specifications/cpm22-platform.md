@@ -2,7 +2,7 @@
 
 Status: active implementation contract
 
-Date: 2026-08-25
+Date: 2026-08-26
 
 ## Purpose
 
@@ -21,7 +21,7 @@ milestones.
 
 | Item             | Frozen value                               |
 | ---------------- | ------------------------------------------ |
-| Debug80 revision | `5b89e48fd7953e0fe0b777d09f30a3645248489e` |
+| Debug80 revision | `b4c0f92c80965e48987833908ffd6548e9608910` |
 | Branch           | local `main`                               |
 | Node.js          | 24.18.0                                    |
 | npm              | 11.16.0                                    |
@@ -56,9 +56,9 @@ against a checked upstream build or historical binary proves the resulting CCP
 and BDOS bytes, apart from documented serial-number fields.
 
 Native `ATOM.COM` comes from [`jhlagado/atom`](https://github.com/jhlagado/atom)
-commit `d9583e101cca43863433f8fe79ef0acd46b3b010` under GPL-3.0-only. Its
-13,681-byte artifact has SHA-256
-`3a5ec53680fe8707dd1b472ec2719c93b25a1ce863952acc05c6eddd0ec161f5`.
+commit `964f26fbcdfd48a87cea24a3af1c7a5a225e8ab0` under GPL-3.0-only. Its
+14,133-byte artifact has SHA-256
+`6a79dea8a238e859c79e033db6d56fa90e4ab9ed9595ce1fd8dcd94c3749bc3f`.
 The complete corresponding source, strict build, capacity proof, and output
 design measurements are available at that revision. Debug80 records the exact
 source identity in `third_party/atom/PROVENANCE.json`.
@@ -162,12 +162,27 @@ reloads the first 44 sectors, which cover `$E400..$F9FF`, and retains the active
 BIOS.
 
 The initial user-0 directory contains `README.TXT`, `SMOKE.COM`, `ATOM.COM`,
-`INPUT.ASM`, `HELLO.ASM`, and the 16,535-byte `LARGE.ASM` acceptance source.
-Atom reads and writes through the guest BDOS. With no arguments it uses
-`INPUT.ASM` and `OUTPUT.COM`; `ATOM SOURCE OUTPUT.COM` selects another pair of
-current-drive CP/M 8.3 names. The profile accepts one source of up to 65,535
-logical bytes through a 128-byte random-record cache and retains an 18,304-byte
-in-TPA output image.
+`INPUT.ASM`, `HELLO.ASM`, the 16,535-byte `LARGE.ASM` acceptance source,
+`PART1.ASM`, `PART2.ASM`, and `BUILD.LST`. Atom reads and writes through the
+guest BDOS. With no arguments it uses `INPUT.ASM` and `OUTPUT.COM`;
+`ATOM SOURCE OUTPUT.COM` selects another pair of current-drive CP/M 8.3 names.
+Both forms assemble one source part.
+
+`ATOM PLAN OUTPUT.COM @` selects multipart mode. `PLAN` contains one
+current-drive CP/M 8.3 source filename per logical line. LF and CRLF line ends
+are accepted, and either physical EOF or `$1A` ends the plan. A plan contains
+from 1 through 255 names. Every occurrence is a distinct logical part, so a
+name may appear more than once. Blank lines, comments, headers, drive prefixes,
+wildcards, trailing fields, malformed names, missing files, and overlong parts
+are rejected during preflight before assembly begins.
+
+Each source part may contain at most 65,535 logical bytes. Atom preserves plan
+order, assigns one-based part ordinals, and resets the diagnostic byte offset
+at each part boundary. All source reads use a 128-byte random-record cache.
+The output remains one transactional, 18,304-byte in-TPA COM image; multipart
+input does not raise that output limit. `BUILD.LST` selects two 33,000-byte
+parts whose program leaves a forward reference in the first part and resolves
+it in the second.
 
 ## Transient program build and installation
 
@@ -228,7 +243,8 @@ bundled `cpm22` target, publish its exact `.COM` artifact, display the real CCP
 ```text
 A>DIR
 A: README TXT : SMOKE COM : ATOM COM : INPUT ASM
-A: HELLO ASM : LARGE ASM : MAIN COM
+A: HELLO ASM : LARGE ASM : PART1 ASM : PART2 ASM
+A: BUILD LST : MAIN COM
 
 A>MAIN
 Hello from Debug80 CP/M
@@ -259,6 +275,12 @@ LARGE.COM written
 
 A>LARGE
 Hello from native Atom
+
+A>ATOM BUILD.LST MULTI.COM @
+MULTI.COM written
+
+A>MULTI
+Hello from native Atom
 ```
 
 The automated proof must also compare the host `.com` bytes, reach a
@@ -268,6 +290,6 @@ terminal parsing at every chunk boundary, input FIFO behavior, filesystem
 allocation and rollback, disk bounds and atomic writes, read-only session
 injection, boot and warm boot, sequential-session isolation, platform
 selection, native Atom byte equivalence and rollback, Debug80 UI integration,
-no-argument and selected-filename Atom commands, typechecking, formatting,
-lint, the 16,535-byte Atom source path, scoped tests, full tests, and diff
-checks.
+no-argument, selected-filename, and multipart Atom commands, typechecking,
+formatting, lint, the 16,535-byte single-source path, the 66,000-byte
+cross-part forward-reference path, scoped tests, full tests, and diff checks.
