@@ -119,7 +119,7 @@ const atomExecution = runCommand(
   "ATOM",
   "ATOM\r\r\n\r\nOUTPUT.COM written\r\n\r\nA>",
 );
-assert.deepEqual(atomExecution, { instructions: 110774, tStates: 1736715 });
+assert.deepEqual(atomExecution, { instructions: 110686, tStates: 1735789 });
 const expectedOutput = Uint8Array.from([
   0x0e, 0x09, 0x11, 0x09, 0x01, 0xcd, 0x05, 0x00, 0xc9,
   ...Buffer.from("Hello from native Atom\r\n$", "ascii"),
