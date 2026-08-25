@@ -16,8 +16,6 @@ EditorRun:
             JP   C,EditorRunError
             CALL EditorLoadFile
             JP   C,EditorRunError
-            XOR  A
-            LD   (EditorQueryLength),A
             CALL EditorRender
 EditorMainLoop:
             CALL EditorReadByte

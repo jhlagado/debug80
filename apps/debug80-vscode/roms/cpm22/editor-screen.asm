@@ -19,8 +19,7 @@ EditorRenderRows:
             LD   HL,(EditorRenderPointer)
             POP  BC
             DJNZ EditorRenderRows
-            CALL EditorRenderStatus
-            JP   EditorPositionCursor
+            JP   EditorRenderStatus
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
 EditorEnsureViewport:
@@ -163,14 +162,8 @@ EditorRenderCellAdvance:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
 EditorRenderStatus:
-            LD   DE,EditorStatusPosition
-            CALL EditorOutputText
-            LD   DE,EditorReverseOn
-            CALL EditorOutputText
-            LD   HL,0
-            LD   (EditorRenderCount),HL
             LD   DE,EditorStatusPrefix
-            CALL EditorStatusText
+            CALL EditorStatusBegin
             LD   HL,EditorFcb+1
             LD   B,8
 EditorStatusNameLoop:
@@ -222,35 +215,36 @@ EditorStatusFill:
             JR   EditorStatusFill
 EditorStatusFilled:
             LD   DE,EditorReverseOff
-            JP   EditorOutputText
+            CALL EditorOutputText
+            JP   EditorPositionCursor
+
+.routine in DE out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
+EditorStatusBegin:
+            PUSH DE
+            LD   DE,EditorStatusPosition
+            CALL EditorOutputText
+            LD   HL,0
+            LD   (EditorRenderCount),HL
+            POP  DE
+            JP   EditorStatusText
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
 EditorStatusMessage:
             LD   A,(EditorStatus)
             OR   A
             RET  Z
-            CP   EditorStatusSaved
+            ADD  A,A
+            JR   C,EditorStatusSearchMessage
+            CP   EditorStatusSaved*2
             LD   DE,EditorStatusSavedText
             JR   Z,EditorStatusMessageText
-            CP   EditorStatusFull
+            CP   EditorStatusFull*2
             LD   DE,EditorStatusFullText
             JR   Z,EditorStatusMessageText
-            CP   EditorStatusDiscard
+            CP   EditorStatusDiscard*2
             LD   DE,EditorStatusDiscardText
             JR   Z,EditorStatusMessageText
-            CP   EditorStatusFound
-            LD   DE,EditorStatusFoundText
-            JR   Z,EditorStatusMessageText
-            CP   EditorStatusWrapped
-            LD   DE,EditorStatusWrappedText
-            JR   Z,EditorStatusMessageText
-            CP   EditorStatusNotFound
-            LD   DE,EditorStatusNotFoundText
-            JR   Z,EditorStatusMessageText
-            CP   EditorStatusNoSearch
-            LD   DE,EditorStatusNoSearchText
-            JR   Z,EditorStatusMessageText
-            CP   EditorStatusSaveConflict
+            CP   EditorStatusSaveConflict*2
             JR   C,EditorStatusMessageDone
             LD   DE,EditorStatusSaveFailedText
             CALL EditorStatusText
@@ -267,6 +261,13 @@ EditorStatusMessage:
 EditorStatusMessageDone:
             RET
 EditorStatusMessageText:
+            JR   EditorStatusText
+EditorStatusSearchMessage:
+            LD   E,A
+            LD   D,0
+            LD   HL,EditorStatusFoundText
+            ADD  HL,DE
+            EX   DE,HL
             JR   EditorStatusText
 
 .routine in DE out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
@@ -305,8 +306,6 @@ EditorPositionCursor:
             LD   A,(EditorCursorScreenColumn)
             INC  A
             LD   (EditorScratchA+1),A
-            LD   DE,EditorCursorPrefix
-            CALL EditorOutputText
             LD   A,(EditorScratchA)
             CALL EditorOutputDecimal
             LD   A,';'

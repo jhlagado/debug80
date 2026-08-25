@@ -57,8 +57,7 @@ EditorLoadClose:
             LD   (EditorHorizontal),HL
             LD   (EditorDesiredColumn),HL
             XOR  A
-            LD   (EditorFlags),A
-            LD   (EditorStatus),A
+            LD   (EditorFlags),HL
             RET
 EditorLoadNotFound:
             LD   A,EditorErrorNotFound

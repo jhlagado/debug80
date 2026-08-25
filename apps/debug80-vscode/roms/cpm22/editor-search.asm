@@ -17,43 +17,41 @@ EditorSearchQueryRead:
             JR   Z,EditorSearchAccept
             CP   8
             JR   Z,EditorSearchQueryDelete
-            CP   127
-            JR   Z,EditorSearchQueryDelete
             CP   9
             JR   Z,EditorSearchQueryAppend
             CP   32
             JR   C,EditorSearchQueryRing
             CP   127
             JR   C,EditorSearchQueryAppend
+            JR   Z,EditorSearchQueryDelete
 EditorSearchQueryRing:
             LD   A,7
             CALL EditorOutputByte
             JR   EditorSearchQueryRead
 EditorSearchQueryDelete:
-            LD   A,(EditorQueryLength)
+            LD   HL,EditorQueryLength
+            LD   A,(HL)
             OR   A
             JR   Z,EditorSearchQueryRing
-            DEC  A
-            LD   (EditorQueryLength),A
+            DEC  (HL)
             JR   EditorSearchQueryRender
 EditorSearchQueryAppend:
             LD   C,A
-            LD   A,(EditorQueryLength)
+            LD   HL,EditorQueryLength
+            LD   A,(HL)
             CP   EditorQueryCapacity
             JR   NC,EditorSearchQueryRing
+            INC  (HL)
+            INC  HL
             LD   E,A
             LD   D,0
-            LD   HL,EditorQueryBuffer
             ADD  HL,DE
             LD   (HL),C
-            INC  A
-            LD   (EditorQueryLength),A
             JR   EditorSearchQueryRender
 EditorSearchAccept:
             LD   A,(EditorQueryLength)
             OR   A
-            JR   Z,EditorSearchCancel
-            JP   EditorSearchInitial
+            JR   NZ,EditorSearchInitial
 EditorSearchCancel:
             LD   HL,EditorDma
             LD   DE,EditorQueryLength
@@ -65,14 +63,8 @@ EditorSearchCancel:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
 EditorRenderQuery:
-            LD   DE,EditorStatusPosition
-            CALL EditorOutputText
-            LD   DE,EditorReverseOn
-            CALL EditorOutputText
-            LD   HL,0
-            LD   (EditorRenderCount),HL
             LD   DE,EditorSearchPrompt
-            CALL EditorStatusText
+            CALL EditorStatusBegin
             LD   A,(EditorQueryLength)
             OR   A
             JR   Z,EditorRenderQueryFill
@@ -92,85 +84,86 @@ EditorRenderQueryByte:
             INC  HL
             DJNZ EditorRenderQueryLoop
 EditorRenderQueryFill:
-            CALL EditorStatusFill
-            LD   A,23
-            LD   (EditorCursorScreenRow),A
-            LD   A,(EditorQueryLength)
-            ADD  A,6
-            LD   (EditorCursorScreenColumn),A
-            JP   EditorPositionCursor
+            LD   HL,(EditorRenderCount)
+            LD   H,L
+            LD   L,23
+            LD   (EditorCursorScreenRow),HL
+            JP   EditorStatusFill
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IXH,IXL,IYH,IYL
 EditorSearchInitial:
-            LD   A,(EditorQueryLength)
-            OR   A
-            JR   Z,EditorSearchNoQuery
             LD   HL,(EditorCursor)
-            JR   EditorSearchStart
+            JR   EditorSearchCheckQuery
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
 EditorSearchRepeat:
+            LD   HL,(EditorCursor)
+            INC  HL
+EditorSearchCheckQuery:
             LD   A,(EditorQueryLength)
             OR   A
             JR   Z,EditorSearchNoQuery
-            LD   HL,(EditorCursor)
-            INC  HL
 
 EditorSearchStart:
-            XOR  A
-            LD   (EditorScratchC),A
+            LD   A,EditorStatusFound
+            LD   (EditorStatus),A
             LD   DE,(EditorLength)
+            LD   (EditorScratchA),DE
+            JR   EditorSearchNormalize
+
+EditorSearchAdvance:
+            LD   HL,(EditorScratchB)
+            INC  HL
+            LD   DE,(EditorLength)
+EditorSearchNormalize:
             PUSH HL
             OR   A
             SBC  HL,DE
             POP  HL
             JR   C,EditorSearchStartReady
-            LD   HL,0
-            INC  A
-            LD   (EditorScratchC),A
+            SBC  HL,HL
+            LD   A,EditorStatusWrapped
+            LD   (EditorStatus),A
 EditorSearchStartReady:
             LD   (EditorScratchB),HL
-            LD   (EditorScratchA),DE
 
 EditorSearchLoop:
             LD   HL,(EditorScratchA)
             LD   A,H
             OR   L
             JR   Z,EditorSearchNotFound
+            DEC  HL
+            LD   (EditorScratchA),HL
             LD   HL,(EditorScratchB)
-            CALL EditorSearchMatch
-            JR   Z,EditorSearchFound
-            LD   HL,(EditorScratchB)
-            INC  HL
-            LD   DE,(EditorLength)
             PUSH HL
+            LD   A,(EditorQueryLength)
+            LD   B,A
+            LD   E,A
+            LD   D,0
+            ADD  HL,DE
+            LD   DE,(EditorLength)
+            INC  DE
             OR   A
             SBC  HL,DE
             POP  HL
-            JR   C,EditorSearchAdvanced
-            LD   HL,0
-            LD   A,1
-            LD   (EditorScratchC),A
-EditorSearchAdvanced:
-            LD   (EditorScratchB),HL
-            LD   HL,(EditorScratchA)
-            DEC  HL
-            LD   (EditorScratchA),HL
-            JR   EditorSearchLoop
-
+            JR   NC,EditorSearchAdvance
+EditorSearchMatchFits:
+            LD   DE,EditorTextBase
+            ADD  HL,DE
+            LD   DE,EditorQueryBuffer
+EditorSearchMatchLoop:
+            LD   A,(DE)
+            CP   (HL)
+            JR   NZ,EditorSearchAdvance
+            INC  DE
+            INC  HL
+            DJNZ EditorSearchMatchLoop
 EditorSearchFound:
             LD   HL,(EditorScratchB)
             LD   (EditorCursor),HL
-            LD   A,(EditorFlags)
-            AND  $F9
-            LD   (EditorFlags),A
-            LD   A,(EditorScratchC)
-            OR   A
-            LD   A,EditorStatusFound
-            JR   Z,EditorSearchStatus
-            LD   A,EditorStatusWrapped
-EditorSearchStatus:
-            LD   (EditorStatus),A
+            LD   HL,EditorFlags
+            RES  2,(HL)
+            LD   A,(EditorStatus)
             OR   A
             RET
 
@@ -182,36 +175,5 @@ EditorSearchNotFound:
 EditorSearchFailure:
             LD   (EditorStatus),A
             SCF
-            RET
-
-.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
-EditorSearchMatch:
-            LD   A,(EditorQueryLength)
-            LD   E,A
-            LD   D,0
-            ADD  HL,DE
-            LD   DE,(EditorLength)
-            OR   A
-            SBC  HL,DE
-            JR   C,EditorSearchMatchFits
-            JR   Z,EditorSearchMatchFits
-            LD   A,(EditorQueryLength)
-            OR   A
-            RET
-EditorSearchMatchFits:
-            LD   HL,(EditorScratchB)
-            LD   DE,EditorTextBase
-            ADD  HL,DE
-            LD   DE,EditorQueryBuffer
-            LD   A,(EditorQueryLength)
-            LD   B,A
-EditorSearchMatchLoop:
-            LD   A,(DE)
-            CP   (HL)
-            RET  NZ
-            INC  DE
-            INC  HL
-            DJNZ EditorSearchMatchLoop
-            XOR  A
             RET
 EditorSearchCodeEnd:

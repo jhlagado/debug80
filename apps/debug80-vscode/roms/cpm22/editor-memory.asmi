@@ -21,8 +21,13 @@ EditorHorizontal     .equ EditorTop+2
 EditorDesiredColumn  .equ EditorHorizontal+2
 EditorFlags          .equ EditorDesiredColumn+2
 EditorStatus         .equ EditorFlags+1
+; Loading and interactive search never overlap. A successful load has already
+; reduced the pending-CR state to zero, which also resets the committed query.
 EditorLoadPendingCr  .equ EditorStatus+1
-EditorSaveState      .equ EditorLoadPendingCr+1
+EditorQueryLength    .equ EditorLoadPendingCr
+EditorQueryBuffer    .equ EditorQueryLength+1
+EditorQueryCapacity  .equ 64
+EditorSaveState      .equ EditorQueryBuffer+EditorQueryCapacity
 EditorScratchA       .equ EditorSaveState+1
 EditorScratchB       .equ EditorScratchA+2
 EditorScratchC       .equ EditorScratchB+2
@@ -31,10 +36,7 @@ EditorRenderColumn   .equ EditorRenderPointer+2
 EditorRenderCount    .equ EditorRenderColumn+2
 EditorCursorScreenRow .equ EditorRenderCount+2
 EditorCursorScreenColumn .equ EditorCursorScreenRow+1
-EditorQueryLength    .equ EditorCursorScreenColumn+1
-EditorQueryBuffer    .equ EditorQueryLength+1
-EditorQueryCapacity  .equ 64
-EditorWorkspaceEnd   .equ EditorQueryBuffer+EditorQueryCapacity
+EditorWorkspaceEnd   .equ EditorCursorScreenColumn+1
 
 EditorFlagDirty        .equ 1
 EditorFlagConfirmQuit  .equ 2
@@ -45,10 +47,12 @@ EditorStatusSaved       .equ 1
 EditorStatusFull        .equ 2
 EditorStatusBoundary    .equ 3
 EditorStatusDiscard     .equ 4
-EditorStatusFound       .equ 5
-EditorStatusWrapped     .equ 6
-EditorStatusNotFound    .equ 7
-EditorStatusNoSearch    .equ 8
+; Search statuses carry a high-bit tag and half the byte offset of their
+; contiguous message. ADD A,A both classifies the tag and recovers the offset.
+EditorStatusFound       .equ $80
+EditorStatusWrapped     .equ $83
+EditorStatusNotFound    .equ $87
+EditorStatusNoSearch    .equ $8C
 EditorStatusSaveConflict .equ $10
 EditorStatusSaveCreate  .equ $11
 EditorStatusSaveWrite   .equ $12

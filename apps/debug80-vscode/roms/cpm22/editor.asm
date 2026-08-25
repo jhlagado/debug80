@@ -25,10 +25,8 @@ EditorTemporaryExtension: .db "$$$"
 EditorErrorPrefix:        .db 13,10,"EDIT error ","$"
 EditorNewline:            .db 13,10,"$"
 EditorClearHome:          .db 27,"[2J",27,"[H","$"
-EditorStatusPosition:     .db 27,"[24;1H","$"
-EditorReverseOn:          .db 27,"[7m","$"
-EditorReverseOff:         .db 27,"[0m","$"
-EditorCursorPrefix:       .db 27,"[","$"
+EditorStatusPosition:     .db 27,"[24;1H",27,"[7m","$"
+EditorReverseOff:         .db 27,"[0m",27,"[","$"
 EditorStatusPrefix:       .db "EDIT ",0
 EditorStatusHints:        .db "  ^S Save  ^Q Quit",0
 EditorStatusSavedText:    .db "Saved  ",0
