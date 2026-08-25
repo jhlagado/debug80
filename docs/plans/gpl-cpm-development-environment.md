@@ -234,7 +234,7 @@ that the tools can move beyond Debug80's ideal machine.
 
 The first machine profile is text-only. Debug80 presents one fixed 80-column by
 24-row character-cell terminal. This is the standard VT100 screen shape and is
-large enough for the CCP, assembler diagnostics, and the planned full-screen
+large enough for the CCP, assembler diagnostics, and the full-screen
 editor. The guest cannot resize it, and resizing the Debug80 panel must scale or
 scroll the view rather than reflow the guest screen.
 
@@ -269,13 +269,10 @@ pass through unchanged; Return sends `CR`; Backspace sends `BS`; Delete sends
 application controls echo. Keypad and extended navigation mappings can be
 added only after a program demonstrates a need.
 
-Debug80 already has configurable transmit, receive, and status ports and a
-terminal webview. The current webview is a scrollback display with line-at-a-time
-input rather than a terminal screen. The CP/M platform should retain the
-existing byte-I/O plumbing, place the character-cell state machine in
-`debug80-runtime`, and make the webview a renderer and raw-key adapter. The
-runtime model must expose its cells, attributes, cursor, and pending input to
-headless tests and debugger inspection.
+The CP/M platform retains Debug80's byte-I/O plumbing. The character-cell state
+machine lives in `debug80-runtime`; the terminal webview renders that state and
+forwards raw key bytes. Headless tests and debugger inspection can observe the
+runtime's cells, attributes, cursor, and pending input.
 
 Additional hardware belongs to optional machine-profile devices. A TMS9918 or
 another video display processor receives its own ports, TypeScript device model,
@@ -429,10 +426,10 @@ transient is 20,987 bytes, of which 16,314 bytes are the unchanged compiler
 core and 4,603 bytes are the host region. Its independent resident and
 workspace allowances retain 1,285 and 421 bytes respectively.
 
-Once native compilation is reliable, suitable utilities and demonstrations may
-be written in Nucleus. The editor is a candidate only after the language and
-service boundary can express its buffer and terminal requirements without
-distorting either project.
+Suitable utilities and demonstrations may now be written in Nucleus. The first
+editor is handwritten Z80; a Nucleus implementation remains a candidate only
+if the language and service boundary can express its buffer and terminal
+requirements without distorting either project.
 
 ### 7. Utility replacement
 
@@ -441,7 +438,7 @@ Replace utilities in an order that supplies infrastructure for later work:
 1. object materializer and HEX/COM loader;
 2. dump and inspection tools;
 3. file copy, concatenation, rename, erase, directory, and drive status;
-4. full-screen editor;
+4. full-screen editor extensions (the first vertical slice is complete);
 5. debugger and symbol tools;
 6. batch command execution;
 7. CCP improvements; and
@@ -605,8 +602,8 @@ retained:
    semantics?
 6. Which compact operand-dispatch and symbol-table techniques from the
    historical assemblers improve Atom after complete-path measurement?
-7. How small can the editor's terminal adapter remain, and which additional
-   profiles are worth supporting after the canonical VT100 profile works?
+7. Which additional terminal profiles are worth supporting beyond the
+   canonical VT100 profile?
 8. Does the first system use an existing open CCP and BDOS as bootstrap
    components, or begin with project-owned replacements?
 9. Which GPL version and aggregation model governs the complete distribution?

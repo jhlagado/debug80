@@ -172,10 +172,9 @@ BIOS.
 The initial user-0 directory contains `README.TXT`, `SMOKE.COM`, `ATOM.COM`,
 `INPUT.ASM`, `HELLO.ASM`, the 16,535-byte `LARGE.ASM` acceptance source,
 `PART1.ASM`, `PART2.ASM`, `BUILD.LST`, `NUCLEUS.COM`, `INPUT.NU`, and
-`EDIT.COM`. Atom reads
-and writes through the guest BDOS. With no arguments it uses `INPUT.ASM` and
-`OUTPUT.COM`;
-`ATOM SOURCE OUTPUT.COM` selects another pair of current-drive CP/M 8.3 names.
+`EDIT.COM`. `ATOM.COM` reads and writes through the guest BDOS. With no
+arguments it uses `INPUT.ASM` and `OUTPUT.COM`; `ATOM SOURCE OUTPUT.COM` selects
+another pair of current-drive CP/M 8.3 names.
 Both forms assemble one source part.
 
 `ATOM PLAN OUTPUT.COM @` selects multipart mode. `PLAN` contains one

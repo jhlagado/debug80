@@ -117,9 +117,24 @@ accounts for the small load-path increase above. The complete interactive path
 is faster because the full-screen repaint loop and its common terminal paths
 execute fewer instructions.
 
-## Clearance
+## Final verification
 
-Strict assembly, the isolated proof, complete headless CP/M acceptance, runtime
-and terminal suites, and the real Extension Development Host workflow form the
-release gate for this vertical slice. The exact final commands and results are
-recorded in the retaining commit and its continuous test output.
+The final production assembly has 60 strict register-contract routine
+summaries. Every summary reports a balanced stack with no unknown stack effect,
+and the call graph has no unknown target. The isolated proof records the exact
+return SP and PC and a deepest private-stack use of 20 bytes.
+
+The final gates pass:
+
+- `npm run proof:cpm22-editor` proves the production editor paths and exact
+  accounts above;
+- `npm run test:cpm22` passes the complete boot, toolchain, editor, disk, and
+  warm-boot acceptance;
+- `npm run check` passes build, typecheck, lint, formatting, and 2,786 tests
+  across AZM, Glimmer, the runtime, both headless integrations, Debug80, its
+  terminal webview, and Nucleus; two unrelated tests remain intentionally
+  skipped;
+- `npm run test:vscode -w debug80` passes the editor workflow in VS Code
+  1.134.0's real Extension Development Host; and
+- the prose gate reports no findings, all 140 local documentation links
+  resolve, and `git diff --check` is clean.
