@@ -5,5 +5,6 @@
 CandidatePersistent .equ 0
 CandidateProbe      .equ 1
 CandidateSeparate   .equ 0
+CandidateBaseline   .equ 0
 
             .include "full-editor.asmi"

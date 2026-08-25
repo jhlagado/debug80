@@ -7,10 +7,6 @@ import { createZ80Runtime } from "@jhlagado/debug80-runtime/z80/runtime";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const candidateDirectory = join(scriptDirectory, "editor-new-file-candidates");
-const productionSource = resolve(
-  scriptDirectory,
-  "../../apps/debug80-vscode/roms/cpm22/editor.asm",
-);
 const interfaceSource = resolve(
   scriptDirectory,
   "../../apps/debug80-vscode/roms/cpm22/editor-bdos.asmi",
@@ -524,7 +520,10 @@ function accounts(candidate) {
   };
 }
 
-const baseline = await assemble("baseline", productionSource);
+const baseline = await assemble(
+  "baseline",
+  resolve(candidateDirectory, "baseline.asm"),
+);
 const candidates = {};
 for (const name of ["persistent", "save-probe", "separate"]) {
   const candidate = await assemble(

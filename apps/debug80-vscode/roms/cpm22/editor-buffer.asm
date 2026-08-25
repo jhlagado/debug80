@@ -171,10 +171,10 @@ EditorBufferDeleteReady:
             LD   (EditorLength),HL
             JR   EditorBufferChanged
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry
+.routine out A,carry,zero clobbers sign,parity,halfCarry,HL
 EditorBufferChanged:
-            LD   A,EditorFlagDirty
-            LD   (EditorFlags),A
+            LD   HL,EditorFlags
+            SET  0,(HL)
             XOR  A
             LD   (EditorStatus),A
             RET

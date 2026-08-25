@@ -10,13 +10,19 @@ EditorPrepareCommand:
             LD   HL,EditorDefaultName
             LD   DE,EditorFcb
             CALL EditorBuildFcb
+.if CandidateBaseline
+.else
             LD   (EditorSaveState),A
+.endif
             LD   A,(EditorCommandLength)
             LD   B,A
             LD   HL,EditorCommandStart
             CALL EditorCommandSkipSpaces
             JR   Z,EditorCommandReady
+.if CandidateBaseline
+.else
             LD   (EditorSaveState),A
+.endif
             PUSH HL
             LD   C,B
             PUSH BC

@@ -4,8 +4,6 @@
 
             .include "../../../apps/debug80-vscode/roms/cpm22/editor-memory.asmi"
 
-EditorFlagNew .equ 8
-
             .org EditorCodeBase
 EditorTransientStart:
             JP   EditorEntry

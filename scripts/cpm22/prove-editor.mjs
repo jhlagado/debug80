@@ -408,11 +408,13 @@ const commandMeasurements = {};
   commandMeasurements.default = invokeRoutine(machine, "EditorPrepareCommand");
   assert.equal(commandMeasurements.default.carry, false);
   assert.equal(selectedName(machine.memory), "INPUT.NU");
+  assert.equal(machine.memory[symbol("EditorSaveState")], 0);
 
   setCommandTail(machine.memory, "  lower.nu  ");
   commandMeasurements.selected = invokeRoutine(machine, "EditorPrepareCommand");
   assert.equal(commandMeasurements.selected.carry, false);
   assert.equal(selectedName(machine.memory), "LOWER.NU");
+  assert.notEqual(machine.memory[symbol("EditorSaveState")], 0);
 
   for (const tail of [
     "A:BAD.NU",
@@ -453,6 +455,73 @@ loadMeasurements.missing = proveLoad(
   [],
   symbol("EditorErrorNotFound"),
 );
+{
+  const machine = createMachine();
+  setCommandTail(machine.memory, "NEW.NU");
+  assert.equal(invokeRoutine(machine, "EditorPrepareCommand").carry, false);
+  loadMeasurements.explicitMissing = invokeRoutine(machine, "EditorLoadFile");
+  assert.equal(loadMeasurements.explicitMissing.carry, false);
+  assert.equal(selectedName(machine.memory), "NEW.NU");
+  assert.deepEqual(bufferBytes(machine), new Uint8Array());
+  for (const name of [
+    "EditorLength",
+    "EditorCursor",
+    "EditorTop",
+    "EditorHorizontal",
+    "EditorDesiredColumn",
+  ]) {
+    assert.equal(readWord(machine.memory, symbol(name)), 0, name);
+  }
+  assert.equal(machine.memory[symbol("EditorQueryLength")], 0);
+  assert.equal(machine.memory[symbol("EditorStatus")], 0);
+  assert.equal(
+    machine.memory[symbol("EditorFlags")],
+    symbol("EditorFlagDirty") | symbol("EditorFlagNew"),
+  );
+  loadMeasurements.explicitMissingRender = invokeRoutine(
+    machine,
+    "EditorRender",
+  );
+  const snapshot = machine.bdos.terminal.snapshot();
+  assert.equal(
+    Buffer.from(snapshot.cells.slice(23 * 80)).toString("ascii"),
+    "EDIT NEW     .NU  *    ^S Save  ^Q Quit".padEnd(80),
+  );
+  assert.ok(
+    snapshot.attributes
+      .slice(23 * 80)
+      .every((attribute) => attribute === CPM22_TERMINAL_ATTR_REVERSE),
+  );
+  assert.equal(snapshot.cursorRow, 0);
+  assert.equal(snapshot.cursorColumn, 0);
+  assertCanaries(machine);
+}
+{
+  const machine = createMachine();
+  setCommandTail(machine.memory, "INPUT.NU");
+  assert.equal(invokeRoutine(machine, "EditorPrepareCommand").carry, false);
+  loadMeasurements.explicitDefaultMissing = invokeRoutine(
+    machine,
+    "EditorLoadFile",
+  );
+  assert.equal(loadMeasurements.explicitDefaultMissing.carry, false);
+  assert.equal(
+    machine.memory[symbol("EditorFlags")],
+    symbol("EditorFlagDirty") | symbol("EditorFlagNew"),
+  );
+}
+{
+  const content = Buffer.from("EXISTING\r\n", "ascii");
+  const machine = createMachine({
+    files: { "EXIST.NU": physicalFile(content) },
+  });
+  setCommandTail(machine.memory, "EXIST.NU");
+  assert.equal(invokeRoutine(machine, "EditorPrepareCommand").carry, false);
+  loadMeasurements.explicitExisting = invokeRoutine(machine, "EditorLoadFile");
+  assert.equal(loadMeasurements.explicitExisting.carry, false);
+  assert.deepEqual(bufferBytes(machine), Uint8Array.from(content));
+  assert.equal(machine.memory[symbol("EditorFlags")], 0);
+}
 loadMeasurements.empty = proveLoad("empty", new Uint8Array(), []);
 loadMeasurements.representative = proveLoad(
   "representative",
@@ -1183,7 +1252,44 @@ function assertSuccessfulSave(machine, content) {
   assertCanaries(machine);
 }
 
+function prepareNewSaveMachine(
+  content,
+  { filename = "NEW.NU", files = {}, failures = [] } = {},
+) {
+  const machine = createMachine({ files, failures });
+  setCommandTail(machine.memory, filename);
+  assert.equal(invokeRoutine(machine, "EditorPrepareCommand").carry, false);
+  const load = invokeRoutine(machine, "EditorLoadFile");
+  assert.equal(load.carry, false, `${filename} did not open as a new buffer`);
+  installBuffer(machine, content, 0);
+  machine.memory[symbol("EditorFlags")] =
+    symbol("EditorFlagDirty") | symbol("EditorFlagNew");
+  return machine;
+}
+
+function assertSuccessfulNewSave(machine, filename, content) {
+  const stem = filename.slice(0, filename.lastIndexOf("."));
+  assert.deepEqual(machine.bdos.files.get(filename), physicalFile(content));
+  assert.equal(machine.bdos.files.has(`${stem}.$$$`), false);
+  assert.equal(machine.bdos.files.has(`${stem}.BAK`), false);
+  assert.equal(
+    machine.memory[symbol("EditorFlags")] &
+      (symbol("EditorFlagDirty") |
+        symbol("EditorFlagConfirmQuit") |
+        symbol("EditorFlagNew")),
+    0,
+  );
+  assert.equal(
+    machine.memory[symbol("EditorStatus")],
+    symbol("EditorStatusSaved"),
+  );
+  assert.deepEqual(bufferBytes(machine), Uint8Array.from(content));
+  assertUnusedTextCanary(machine);
+  assertCanaries(machine);
+}
+
 const saveMeasurements = {};
+const newFileMeasurements = {};
 {
   const content = Buffer.from("NEW\r\n", "ascii");
   const machine = prepareSaveMachine(content);
@@ -1304,6 +1410,119 @@ for (const [label, failure, expectedStatus] of saveFailures) {
   assertSuccessfulSave(machine, second);
 }
 
+for (const [label, content] of [
+  ["empty", new Uint8Array()],
+  ["partialRecord", Buffer.from("NEW", "ascii")],
+  ["exactRecord", new Uint8Array(128).fill(0x45)],
+  ["maximum", new Uint8Array(capacity).fill(0x4d)],
+]) {
+  const machine = prepareNewSaveMachine(content);
+  setQuery(machine, Buffer.from("Q", "ascii"), 0x60);
+  const queryBefore = queryBlock(machine);
+  newFileMeasurements[`save${label}`] = invokeRoutine(machine, "EditorSave");
+  assert.equal(newFileMeasurements[`save${label}`].carry, false);
+  assertSuccessfulNewSave(machine, "NEW.NU", content);
+  assert.deepEqual(queryBlock(machine), queryBefore);
+}
+
+for (const [label, reservedName] of [
+  ["temporaryConflict", "NEW.$$$"],
+  ["backupConflict", "NEW.BAK"],
+]) {
+  const reserved = Uint8Array.of(0xaa);
+  const machine = prepareNewSaveMachine(Buffer.from("NEW", "ascii"), {
+    files: { [reservedName]: reserved },
+  });
+  newFileMeasurements[label] = invokeRoutine(machine, "EditorSave");
+  assert.equal(newFileMeasurements[label].carry, true);
+  assert.equal(
+    machine.memory[symbol("EditorStatus")],
+    symbol("EditorStatusSaveConflict"),
+  );
+  assert.equal(machine.bdos.files.has("NEW.NU"), false);
+  assert.deepEqual(machine.bdos.files.get(reservedName), reserved);
+  assert.equal(
+    machine.memory[symbol("EditorFlags")],
+    symbol("EditorFlagDirty") | symbol("EditorFlagNew"),
+  );
+  machine.bdos.files.delete(reservedName);
+  newFileMeasurements[`${label}Retry`] = invokeRoutine(machine, "EditorSave");
+  assert.equal(newFileMeasurements[`${label}Retry`].carry, false);
+  assertSuccessfulNewSave(machine, "NEW.NU", Buffer.from("NEW", "ascii"));
+}
+
+for (const [label, failures, expectedStatus, retainedTemporary] of [
+  ["create", ["make:NEW.$$$"], "EditorStatusSaveCreate", false],
+  ["write", ["write:NEW.$$$"], "EditorStatusSaveWrite", false],
+  ["close", ["close:NEW.$$$"], "EditorStatusSaveClose", false],
+  ["install", ["rename:NEW.$$$->NEW.NU"], "EditorStatusSaveRename", false],
+  [
+    "rollbackClose",
+    ["write:NEW.$$$", "close:NEW.$$$"],
+    "EditorStatusSaveWrite",
+    false,
+  ],
+  [
+    "rollbackDelete",
+    ["write:NEW.$$$", "delete:NEW.$$$"],
+    "EditorStatusSaveWrite",
+    true,
+  ],
+]) {
+  const content = Buffer.from("RETRY", "ascii");
+  const machine = prepareNewSaveMachine(content, { failures });
+  newFileMeasurements[label] = invokeRoutine(machine, "EditorSave");
+  assert.equal(newFileMeasurements[label].carry, true, `${label} succeeded`);
+  assert.equal(machine.memory[symbol("EditorStatus")], symbol(expectedStatus));
+  assert.equal(machine.bdos.files.has("NEW.NU"), false);
+  assert.equal(machine.bdos.files.has("NEW.BAK"), false);
+  assert.equal(machine.bdos.files.has("NEW.$$$"), retainedTemporary);
+  assert.equal(
+    machine.memory[symbol("EditorFlags")],
+    symbol("EditorFlagDirty") | symbol("EditorFlagNew"),
+  );
+  if (retainedTemporary) machine.bdos.files.delete("NEW.$$$");
+  newFileMeasurements[`${label}Retry`] = invokeRoutine(machine, "EditorSave");
+  assert.equal(newFileMeasurements[`${label}Retry`].carry, false);
+  assertSuccessfulNewSave(machine, "NEW.NU", content);
+}
+
+{
+  const content = Buffer.from("FIRST", "ascii");
+  const machine = prepareNewSaveMachine(content);
+  newFileMeasurements.firstSave = invokeRoutine(machine, "EditorSave");
+  assert.equal(newFileMeasurements.firstSave.carry, false);
+  assertSuccessfulNewSave(machine, "NEW.NU", content);
+  installBuffer(machine, Buffer.from("SECOND", "ascii"), 0);
+  machine.memory[symbol("EditorFlags")] = symbol("EditorFlagDirty");
+  const eventStart = machine.bdos.events.length;
+  newFileMeasurements.ordinaryAfterFirst = invokeRoutine(machine, "EditorSave");
+  assert.equal(newFileMeasurements.ordinaryAfterFirst.carry, false);
+  assertSuccessfulNewSave(machine, "NEW.NU", Buffer.from("SECOND", "ascii"));
+  assert.ok(
+    machine.bdos.events.slice(eventStart).includes("rename:NEW.NU->NEW.BAK"),
+  );
+}
+
+{
+  const prior = physicalFile(Buffer.from("OTHER", "ascii"));
+  const machine = prepareNewSaveMachine(Buffer.from("OURS", "ascii"));
+  machine.bdos.files.set("NEW.NU", prior);
+  newFileMeasurements.unexpectedTarget = invokeRoutine(machine, "EditorSave");
+  assert.equal(newFileMeasurements.unexpectedTarget.carry, true);
+  assert.equal(
+    machine.memory[symbol("EditorStatus")],
+    symbol("EditorStatusSaveRename"),
+  );
+  assert.deepEqual(machine.bdos.files.get("NEW.NU"), prior);
+  assert.equal(machine.bdos.files.has("NEW.$$$"), false);
+  assert.equal(machine.bdos.files.has("NEW.BAK"), false);
+  assert.equal(
+    machine.memory[symbol("EditorFlags")],
+    symbol("EditorFlagDirty") | symbol("EditorFlagNew"),
+  );
+}
+
 function runEditorInput(input, file = Buffer.from("A\r\n", "ascii")) {
   const machine = createMachine({ files: { "INPUT.NU": physicalFile(file) } });
   setCommandTail(machine.memory, "");
@@ -1325,7 +1544,111 @@ function runEditorInput(input, file = Buffer.from("A\r\n", "ascii")) {
   return { machine, result };
 }
 
+function runNewEditorInput(input, failures = []) {
+  const machine = createMachine({ failures });
+  setCommandTail(machine.memory, "NEW.NU");
+  machine.bdos.input.push(...input);
+  let highBefore;
+  const result = invokeRoutine(machine, "EditorEntry", {
+    callerSp: ENTRY_CALLER_SP,
+    beforeRun() {
+      highBefore = machine.memory.slice(memoryLayout.stackTop, 0x10000);
+    },
+  });
+  assert.deepEqual(machine.memory.slice(memoryLayout.stackTop), highBefore);
+  assert.ok(result.stackBytes > 0 && result.stackBytes <= 32);
+  assertCanaries(machine, { high: false });
+  return { machine, result };
+}
+
 const entryMeasurements = {};
+{
+  const { machine, result } = runNewEditorInput([0x11, 0x11]);
+  entryMeasurements.newUntouchedDiscard = result;
+  assert.equal(machine.bdos.files.has("NEW.NU"), false);
+  assert.equal(machine.bdos.files.has("NEW.$$$"), false);
+  assert.equal(machine.bdos.files.has("NEW.BAK"), false);
+  assert.equal(machine.bdos.input.length, 0);
+}
+{
+  const { machine, result } = runNewEditorInput([0x58, 0x11, 0x11]);
+  entryMeasurements.newEditedDiscard = result;
+  assert.deepEqual(bufferBytes(machine), Uint8Array.of(0x58));
+  assert.equal(machine.bdos.files.has("NEW.NU"), false);
+  assert.equal(machine.bdos.input.length, 0);
+}
+{
+  const { machine, result } = runNewEditorInput([19, 0x11]);
+  entryMeasurements.newEmptySaveQuit = result;
+  assert.deepEqual(machine.bdos.files.get("NEW.NU"), new Uint8Array());
+  assert.equal(machine.memory[symbol("EditorFlags")] & 9, 0);
+  assert.equal(machine.bdos.input.length, 0);
+}
+{
+  const { machine, result } = runNewEditorInput([0x58, 19, 0x11]);
+  entryMeasurements.newEditedSaveQuit = result;
+  assert.deepEqual(
+    logicalFileBytes(machine.bdos.files.get("NEW.NU")),
+    Uint8Array.of(0x58),
+  );
+  assert.equal(machine.memory[symbol("EditorFlags")] & 9, 0);
+  assert.equal(machine.bdos.input.length, 0);
+}
+{
+  const { machine, result } = runNewEditorInput(
+    [0x58, 19, 19, 0x11],
+    ["write:NEW.$$$"],
+  );
+  entryMeasurements.newFailureRetryQuit = result;
+  assert.deepEqual(
+    logicalFileBytes(machine.bdos.files.get("NEW.NU")),
+    Uint8Array.of(0x58),
+  );
+  assert.equal(machine.memory[symbol("EditorFlags")] & 9, 0);
+  assert.equal(machine.bdos.input.length, 0);
+}
+{
+  const machine = createMachine();
+  setCommandTail(machine.memory, "NEW.NU");
+  machine.bdos.input.push(0x11, 0x11);
+  entryMeasurements.sequenceDiscard = invokeRoutine(machine, "EditorEntry", {
+    callerSp: ENTRY_CALLER_SP,
+  });
+  assert.equal(machine.bdos.files.has("NEW.NU"), false);
+
+  machine.bdos.terminal.reset();
+  setCommandTail(machine.memory, "");
+  entryMeasurements.sequenceBareMissing = invokeRoutine(
+    machine,
+    "EditorEntry",
+    { callerSp: ENTRY_CALLER_SP },
+  );
+  assert.ok(
+    Buffer.from(machine.bdos.terminal.snapshot().cells)
+      .toString("ascii")
+      .includes("EDIT error 02"),
+  );
+
+  machine.bdos.terminal.reset();
+  setCommandTail(machine.memory, "NEW.NU");
+  machine.bdos.input.push(19, 0x11);
+  entryMeasurements.sequenceCreate = invokeRoutine(machine, "EditorEntry", {
+    callerSp: ENTRY_CALLER_SP,
+  });
+  assert.deepEqual(machine.bdos.files.get("NEW.NU"), new Uint8Array());
+
+  machine.bdos.terminal.reset();
+  setQuery(machine, Buffer.from("STALE", "ascii"));
+  setCommandTail(machine.memory, "NEW.NU");
+  machine.bdos.input.push(0x11);
+  entryMeasurements.sequenceExisting = invokeRoutine(machine, "EditorEntry", {
+    callerSp: ENTRY_CALLER_SP,
+  });
+  assert.equal(machine.memory[symbol("EditorFlags")], 0);
+  assert.equal(machine.memory[symbol("EditorQueryLength")], 0);
+  assert.equal(machine.bdos.input.length, 0);
+  assertCanaries(machine, { high: false });
+}
 {
   const { machine, result } = runEditorInput([0x11]);
   entryMeasurements.cleanQuit = result;
@@ -1507,6 +1830,7 @@ const report = {
   navigation: navigationMeasurements,
   search: searchMeasurements,
   saves: saveMeasurements,
+  newFiles: newFileMeasurements,
   entry: entryMeasurements,
 };
 console.log(

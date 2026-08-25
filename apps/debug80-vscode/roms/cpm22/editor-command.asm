@@ -9,11 +9,13 @@ EditorPrepareCommand:
             LD   HL,EditorDefaultName
             LD   DE,EditorFcb
             CALL EditorBuildFcb
+            LD   (EditorSaveState),A
             LD   A,(EditorCommandLength)
             LD   B,A
             LD   HL,EditorCommandStart
             CALL EditorCommandSkipSpaces
             JR   Z,EditorCommandReady
+            LD   (EditorSaveState),A
             PUSH HL
             LD   C,B
             PUSH BC

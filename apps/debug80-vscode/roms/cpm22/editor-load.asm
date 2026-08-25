@@ -51,15 +51,23 @@ EditorLoadClose:
             CALL EditorSelectedCall
             INC  A
             JR   Z,EditorLoadStorage
+            XOR  A
+EditorLoadReset:
             LD   HL,0
             LD   (EditorCursor),HL
             LD   (EditorTop),HL
             LD   (EditorHorizontal),HL
             LD   (EditorDesiredColumn),HL
-            XOR  A
+            LD   L,A
             LD   (EditorFlags),HL
             RET
 EditorLoadNotFound:
+            LD   A,(EditorSaveState)
+            OR   A
+            JR   Z,EditorLoadMissingError
+            LD   A,EditorFlagDirty|EditorFlagNew
+            JR   EditorLoadReset
+EditorLoadMissingError:
             LD   A,EditorErrorNotFound
             SCF
             RET

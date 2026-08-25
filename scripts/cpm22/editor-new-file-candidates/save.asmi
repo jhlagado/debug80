@@ -13,10 +13,18 @@ EditorSave:
             LD   (EditorSaveState),A
             CALL EditorSaveSetTemporary
             CALL EditorSaveRequireAbsent
+.if CandidateBaseline
+            JR   C,EditorSaveConflict
+.else
             JP   C,EditorSaveConflict
+.endif
             CALL EditorSaveSetBackup
             CALL EditorSaveRequireAbsent
+.if CandidateBaseline
+            JR   C,EditorSaveConflict
+.else
             JP   C,EditorSaveConflict
+.endif
 .if CandidateProbe
             LD   C,15
             CALL EditorSelectedCall
@@ -37,7 +45,11 @@ EditorSaveProbeReady:
             LD   C,22
             CALL EditorTransactionCall
             INC  A
+.if CandidateBaseline
+            JR   Z,EditorSaveCreateFailure
+.else
             JP   Z,EditorSaveCreateFailure
+.endif
 .if CandidateProbe
             LD   A,(EditorSaveState)
             OR   1
@@ -46,11 +58,19 @@ EditorSaveProbeReady:
 .endif
             LD   (EditorSaveState),A
             CALL EditorSaveWriteContent
+.if CandidateBaseline
+            JR   C,EditorSaveWriteFailure
+.else
             JP   C,EditorSaveWriteFailure
+.endif
             LD   C,16
             CALL EditorTransactionCall
             INC  A
+.if CandidateBaseline
+            JR   Z,EditorSaveCloseFailure
+.else
             JP   Z,EditorSaveCloseFailure
+.endif
 .if CandidatePersistent
             LD   A,(EditorFlags)
             AND  EditorFlagNew
@@ -71,7 +91,11 @@ EditorSaveProbeReady:
             LD   C,23
             CALL EditorTransactionCall
             INC  A
+.if CandidateBaseline
+            JR   Z,EditorSaveRenameFailure
+.else
             JP   Z,EditorSaveRenameFailure
+.endif
             LD   A,3
             LD   (EditorSaveState),A
 .if CandidatePersistent|CandidateProbe
@@ -83,7 +107,11 @@ EditorSaveInstallTemporary:
             LD   C,23
             CALL EditorTransactionCall
             INC  A
+.if CandidateBaseline
+            JR   Z,EditorSaveRenameFailure
+.else
             JP   Z,EditorSaveRenameFailure
+.endif
 .if CandidatePersistent
             LD   A,(EditorFlags)
             AND  EditorFlagNew
@@ -100,12 +128,20 @@ EditorSaveInstallTemporary:
             LD   C,19
             CALL EditorTransactionCall
             INC  A
+.if CandidateBaseline
+            JR   Z,EditorSaveRenameFailure
+.else
             JP   Z,EditorSaveRenameFailure
+.endif
 EditorSaveSuccess:
             XOR  A
             LD   (EditorSaveState),A
             LD   A,(EditorFlags)
+.if CandidateBaseline
+            AND  $FC
+.else
             AND  $F4
+.endif
             LD   (EditorFlags),A
             LD   A,EditorStatusSaved
             LD   (EditorStatus),A

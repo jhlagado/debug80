@@ -52,6 +52,20 @@ EditorLoadClose:
             CALL EditorSelectedCall
             INC  A
             JR   Z,EditorLoadStorage
+.if CandidateBaseline
+            LD   HL,0
+            LD   (EditorCursor),HL
+            LD   (EditorTop),HL
+            LD   (EditorHorizontal),HL
+            LD   (EditorDesiredColumn),HL
+            XOR  A
+            LD   (EditorFlags),HL
+            RET
+EditorLoadNotFound:
+            LD   A,EditorErrorNotFound
+            SCF
+            RET
+.else
             XOR  A
 EditorLoadReset:
             LD   HL,0
@@ -76,6 +90,7 @@ EditorLoadMissingError:
             LD   A,EditorErrorNotFound
             SCF
             RET
+.endif
 EditorLoadTextError:
             LD   A,EditorErrorText
             SCF

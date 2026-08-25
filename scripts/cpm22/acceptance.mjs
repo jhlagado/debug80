@@ -360,8 +360,8 @@ const editorExecution = {
   tStates: tStates - editorTStateStart,
 };
 assert.deepEqual(editorExecution, {
-  instructions: 322710,
-  tStates: 3189184,
+  instructions: 322718,
+  tStates: 3189286,
 });
 const editedNucleusSource = logicalCpmBytes(
   readCpm22File(platform.disk.exportImage(), "INPUT.NU"),
@@ -382,6 +382,92 @@ assert.equal(
   undefined,
   "successful EDIT save must remove its backup file",
 );
+
+const newDiscardInstructionStart = instructions;
+const newDiscardTStateStart = tStates;
+const newDiscardOutputStart = output.length;
+platform.terminal.enqueueInput(Buffer.from("EDIT THROW.NU\r", "ascii"));
+stepUntil(() => {
+  const snapshot = platform.terminal.snapshot();
+  return (
+    terminalRow(23).includes("^S Save  ^Q Quit") &&
+    snapshot.cursorRow === 0 &&
+    snapshot.cursorColumn === 0
+  );
+}, "EDIT new discard initial screen");
+assert.equal(
+  terminalRow(23),
+  "EDIT THROW   .NU  *    ^S Save  ^Q Quit".padEnd(80),
+  "EDIT must show an absent explicit name as a dirty empty buffer",
+);
+platform.terminal.enqueueInput([0x11, 0x11]);
+stepUntil(
+  () => transcript(newDiscardOutputStart).endsWith("\r\nA>"),
+  "EDIT new discard",
+);
+const newDiscardExecution = {
+  instructions: instructions - newDiscardInstructionStart,
+  tStates: tStates - newDiscardTStateStart,
+};
+assert.deepEqual(newDiscardExecution, {
+  instructions: 51859,
+  tStates: 552943,
+});
+assert.equal(
+  readCpm22File(platform.disk.exportImage(), "THROW.NU"),
+  undefined,
+  "discarding a new buffer must not create a directory entry",
+);
+
+const newCreateInstructionStart = instructions;
+const newCreateTStateStart = tStates;
+const newCreateOutputStart = output.length;
+platform.terminal.enqueueInput(Buffer.from("EDIT CREATED.NU\r", "ascii"));
+stepUntil(() => {
+  const snapshot = platform.terminal.snapshot();
+  return (
+    terminalRow(23).includes("^S Save  ^Q Quit") &&
+    snapshot.cursorRow === 0 &&
+    snapshot.cursorColumn === 0
+  );
+}, "EDIT new create initial screen");
+assert.equal(
+  terminalRow(23),
+  "EDIT CREATED .NU  *    ^S Save  ^Q Quit".padEnd(80),
+  "EDIT must render the selected new filename exactly",
+);
+platform.terminal.enqueueInput([0x58, 0x13, 0x11]);
+stepUntil(
+  () => transcript(newCreateOutputStart).endsWith("\r\nA>"),
+  "EDIT new create save and quit",
+  10_000_000,
+);
+const newCreateExecution = {
+  instructions: instructions - newCreateInstructionStart,
+  tStates: tStates - newCreateTStateStart,
+};
+assert.deepEqual(newCreateExecution, {
+  instructions: 113016,
+  tStates: 1137790,
+});
+assert.deepEqual(
+  logicalCpmBytes(
+    readCpm22File(platform.disk.exportImage(), "CREATED.NU"),
+    "CREATED.NU",
+  ),
+  Uint8Array.of(0x58),
+  "EDIT must publish the exact first saved content",
+);
+assert.equal(
+  readCpm22File(platform.disk.exportImage(), "CREATED.$$$"),
+  undefined,
+  "new-file save must remove its temporary file",
+);
+assert.equal(
+  readCpm22File(platform.disk.exportImage(), "CREATED.BAK"),
+  undefined,
+  "new-file save must not leave a backup file",
+);
 assert.notDeepEqual(
   platform.disk.exportImage(),
   diskImage,
@@ -399,5 +485,5 @@ assert.equal(
 );
 
 console.log(
-  `CP/M 2.2 acceptance passed: boot, BIOS breakpoint, .COM injection, DIR, execution, TYPE, SMOKE, native Atom defaults (${atomExecution.instructions} instructions, ${atomExecution.tStates} T-states), named files (${namedAtomExecution.instructions} instructions, ${namedAtomExecution.tStates} T-states), 16.5 KiB source (${largeAtomExecution.instructions} instructions, ${largeAtomExecution.tStates} T-states), 66,000-byte multipart source (${multipartAtomExecution.instructions} instructions, ${multipartAtomExecution.tStates} T-states), Nucleus rejected transaction (${rejectedNucleusExecution.instructions} instructions, ${rejectedNucleusExecution.tStates} T-states), native Nucleus compile (${nucleusExecution.instructions} instructions, ${nucleusExecution.tStates} T-states), generated program (${nucleusProgramExecution.instructions} instructions, ${nucleusProgramExecution.tStates} T-states), native editor (${editorExecution.instructions} instructions, ${editorExecution.tStates} T-states), warm boot`,
+  `CP/M 2.2 acceptance passed: boot, BIOS breakpoint, .COM injection, DIR, execution, TYPE, SMOKE, native Atom defaults (${atomExecution.instructions} instructions, ${atomExecution.tStates} T-states), named files (${namedAtomExecution.instructions} instructions, ${namedAtomExecution.tStates} T-states), 16.5 KiB source (${largeAtomExecution.instructions} instructions, ${largeAtomExecution.tStates} T-states), 66,000-byte multipart source (${multipartAtomExecution.instructions} instructions, ${multipartAtomExecution.tStates} T-states), Nucleus rejected transaction (${rejectedNucleusExecution.instructions} instructions, ${rejectedNucleusExecution.tStates} T-states), native Nucleus compile (${nucleusExecution.instructions} instructions, ${nucleusExecution.tStates} T-states), generated program (${nucleusProgramExecution.instructions} instructions, ${nucleusProgramExecution.tStates} T-states), native editor (${editorExecution.instructions} instructions, ${editorExecution.tStates} T-states), new editor discard (${newDiscardExecution.instructions} instructions, ${newDiscardExecution.tStates} T-states), new editor create (${newCreateExecution.instructions} instructions, ${newCreateExecution.tStates} T-states), warm boot`,
 );
