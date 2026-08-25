@@ -12,14 +12,14 @@ strict register contracts.
 
 ## Resident accounts
 
-| Account | Measured bytes |
-| --- | ---: |
-| Entry jump and compiler code | 2,484 |
-| Immutable strings and names | 145 |
-| Complete `EDIT.COM` | 2,629 |
-| Fixed writable workspace used | 228 |
-| Text capacity | 47,104 |
-| Free code-and-data partition | 4,795 |
+| Account                       | Measured bytes |
+| ----------------------------- | -------------: |
+| Entry jump and compiler code  |          2,484 |
+| Immutable strings and names   |            145 |
+| Complete `EDIT.COM`           |          2,629 |
+| Fixed writable workspace used |            228 |
+| Text capacity                 |         47,104 |
+| Free code-and-data partition  |          4,795 |
 
 The deepest measured private-stack use is 20 bytes. The proof checks the exact
 caller SP on every return, the unused workspace canary, and unchanged memory
@@ -67,20 +67,20 @@ reports rollback failure rather than success.
 The isolated figures below count production editor instructions and T-states.
 They exclude the proof adapter's host implementation of BDOS calls.
 
-| Operation | Instructions | T-states | Stack bytes |
-| --- | ---: | ---: | ---: |
-| Load empty file | 61 | 716 | 8 |
-| Load 47,104 bytes | 1,889,373 | 16,734,044 | 8 |
-| Reject byte 47,105 | 1,889,386 | 16,734,094 | 8 |
-| Insert at start of four-byte buffer | 55 | 653 | 4 |
-| Insert at end | 54 | 579 | 4 |
-| Insert CRLF | 56 | 589 | 4 |
-| Render tabbed line and status | 3,933 | 45,039 | 16 |
-| Render horizontally scrolled line | 14,215 | 150,579 | 16 |
-| Save one partial record | 681 | 11,140 | 10 |
-| Roll back failed final rename | 884 | 13,768 | 10 |
-| Rollback failure with recoverable backup | 886 | 13,783 | 10 |
-| Clean full-entry quit | 3,850 | 44,044 | 20 |
+| Operation                                | Instructions |   T-states | Stack bytes |
+| ---------------------------------------- | -----------: | ---------: | ----------: |
+| Load empty file                          |           61 |        716 |           8 |
+| Load 47,104 bytes                        |    1,889,373 | 16,734,044 |           8 |
+| Reject byte 47,105                       |    1,889,386 | 16,734,094 |           8 |
+| Insert at start of four-byte buffer      |           55 |        653 |           4 |
+| Insert at end                            |           54 |        579 |           4 |
+| Insert CRLF                              |           56 |        589 |           4 |
+| Render tabbed line and status            |        3,933 |     45,039 |          16 |
+| Render horizontally scrolled line        |       14,215 |    150,579 |          16 |
+| Save one partial record                  |          681 |     11,140 |          10 |
+| Roll back failed final rename            |          884 |     13,768 |          10 |
+| Rollback failure with recoverable backup |          886 |     13,783 |          10 |
+| Clean full-entry quit                    |        3,850 |     44,044 |          20 |
 
 The complete bundled CP/M acceptance uses the real BDOS, BIOS, disk, and
 terminal. Its open, render, edit, Backspace, arrow, Delete, save, and quit path
@@ -88,10 +88,17 @@ takes 273,716 instructions and 2,705,522 T-states. It verifies the exact
 80-by-24 cells and attributes, publishes the expected source bytes, removes
 `INPUT.$$$` and `INPUT.BAK`, and returns to the CCP at its stable stack depth.
 
+The VS Code 1.134.0 Extension Development Host test boots the same bundled
+platform through Debug80's public commands and opens the actual terminal panel.
+It waits for the editor's initial source and reverse-status output, sends the
+editing and control-key sequence through the active debug session, and verifies
+the published source with guest `TYPE INPUT.NU`. The terminal DOM regression
+also checks that Ctrl-S and Ctrl-Q become bytes `$13` and `$11`, browser defaults
+are cancelled, Ctrl-C remains a debugger break, and SGR 7 creates reverse-video
+spans.
+
 ## Work still open
 
-This checkpoint does not complete the editor goal. The real VS Code Extension
-Host must still prove that the terminal view delivers Ctrl-S and Ctrl-Q and
-observes the same screen and saved disk state. A focused size pass, final
+This checkpoint does not complete the editor goal. A focused size pass, final
 adversarial review, platform documentation update, and complete repository gate
-also remain.
+remain.

@@ -5,6 +5,7 @@
 // @vitest-environment jsdom
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { runInNewContext } from 'node:vm';
 import { getTerminalHtml } from '../../src/extension/terminal-panel-html';
 
 type TerminalMessage = { type: string; text?: string };
@@ -25,8 +26,11 @@ describe('terminal panel html', () => {
   let messages: TerminalMessage[] = [];
   let harness: TerminalHarness | null = null;
 
-  function createHarness(initialOutput = 'boot <ready>'): TerminalHarness {
-    const html = getTerminalHtml(initialOutput, extensionRoot);
+  function createHarness(
+    initialOutput = 'boot <ready>',
+    mode: 'stream' | 'cpm22' = 'stream'
+  ): TerminalHarness {
+    const html = getTerminalHtml(initialOutput, extensionRoot, mode);
 
     document.documentElement.innerHTML = html.replace(
       /<script nonce="[^"]*">[\s\S]*<\/script>/,
@@ -85,6 +89,15 @@ describe('terminal panel html', () => {
         sendInput();
         return;
       }
+      if (mode === 'cpm22' && event.ctrlKey && !event.altKey && !event.metaKey) {
+        const control: Record<string, string> = { s: '\u0013', q: '\u0011' };
+        const text = control[event.key.toLowerCase()];
+        if (text !== undefined) {
+          event.preventDefault();
+          vscode.postMessage({ type: 'input', text });
+          return;
+        }
+      }
       if (event.key === 'c' && event.ctrlKey) {
         vscode.postMessage({ type: 'break' });
       }
@@ -107,6 +120,36 @@ describe('terminal panel html', () => {
     return harness;
   }
 
+  function createActualCpmHarness(initialOutput = ''): TerminalHarness {
+    const html = getTerminalHtml(initialOutput, extensionRoot, 'cpm22');
+    const script = html.match(/<script nonce="[^"]*">([\s\S]*)<\/script>/)?.[1];
+    if (script === undefined) {
+      throw new Error('terminal script not found');
+    }
+    document.documentElement.innerHTML = html.replace(
+      /<script nonce="[^"]*">[\s\S]*<\/script>/,
+      ''
+    );
+    const out = document.getElementById('out');
+    const input = document.getElementById('input');
+    const send = document.getElementById('send');
+    if (
+      !(out instanceof HTMLElement) ||
+      !(input instanceof HTMLInputElement) ||
+      !(send instanceof HTMLButtonElement)
+    ) {
+      throw new Error('actual terminal elements not found');
+    }
+    runInNewContext(script, {
+      acquireVsCodeApi: () => ({
+        postMessage: (message: TerminalMessage) => messages.push(message),
+      }),
+      document,
+      window,
+    });
+    return { messages, out, input, send };
+  }
+
   function dispatchOutput(text: string): void {
     window.dispatchEvent(new MessageEvent('message', { data: { type: 'output', text } }));
   }
@@ -122,6 +165,17 @@ describe('terminal panel html', () => {
 
   function pressCtrlC(input: HTMLInputElement): void {
     input.dispatchEvent(new KeyboardEvent('keydown', { key: 'c', ctrlKey: true, bubbles: true }));
+  }
+
+  function pressControl(input: HTMLInputElement, key: string): boolean {
+    return input.dispatchEvent(
+      new KeyboardEvent('keydown', {
+        key,
+        ctrlKey: true,
+        bubbles: true,
+        cancelable: true,
+      })
+    );
   }
 
   beforeEach(() => {
@@ -154,8 +208,42 @@ describe('terminal panel html', () => {
     expect(html).toContain("text: '\\u001b[' + suffix");
     expect(html).toContain("text: '\\b'");
     expect(html).toContain("text: '\\u007f'");
+    expect(html).toContain("const control = { s: '\\u0013', q: '\\u0011' }");
+    expect(html).toContain("else if (final === 'm') selectGraphicRendition(params)");
+    expect(html).toContain("span.classList.add('terminal-reverse')");
     expect(html).toContain("event.clipboardData?.getData('text/plain')");
     expect(html).toContain('body.cpm22 #out');
+  });
+
+  it('sends CP/M save and quit controls as raw bytes without browser defaults', () => {
+    harness = createHarness('', 'cpm22');
+    const { input } = requireHarness();
+
+    expect(pressControl(input, 's')).toBe(false);
+    expect(pressControl(input, 'Q')).toBe(false);
+    expect(messages).toEqual([
+      { type: 'input', text: '\u0013' },
+      { type: 'input', text: '\u0011' },
+    ]);
+
+    pressCtrlC(input);
+    expect(messages).toContainEqual({ type: 'break' });
+  });
+
+  it('executes the CP/M webview parser with reverse rendition and raw controls', () => {
+    harness = createActualCpmHarness();
+    const { out, input } = requireHarness();
+
+    dispatchOutput('\u001b[24;1H\u001b[7mSTATUS\u001b[0m\u001b[1;1H');
+    expect(out.textContent?.split('\n')).toHaveLength(24);
+    expect(out.querySelector('.terminal-reverse')?.textContent).toBe('STATUS');
+
+    expect(pressControl(input, 'S')).toBe(false);
+    expect(pressControl(input, 'q')).toBe(false);
+    expect(messages).toEqual([
+      { type: 'input', text: '\u0013' },
+      { type: 'input', text: '\u0011' },
+    ]);
   });
 
   it('preserves output, clear, input, and break handling', () => {

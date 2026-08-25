@@ -34,6 +34,16 @@
         white-space: pre;
         word-break: normal;
       }
+      .terminal-bold {
+        font-weight: bold;
+      }
+      .terminal-underline {
+        text-decoration: underline;
+      }
+      .terminal-reverse {
+        color: var(--vscode-editor-background, #1e1e1e);
+        background: var(--vscode-editor-foreground, #eaeaea);
+      }
       .controls {
         margin-top: 8px;
         display: flex;
@@ -79,25 +89,46 @@
         const terminalMode = '{{terminalMode}}';
         const columns = 80;
         const rows = 24;
+        const attrBold = 1;
+        const attrUnderline = 2;
+        const attrReverse = 4;
         const cells = Array(columns * rows).fill(' ');
+        const attributes = Array(columns * rows).fill(0);
         let row = 0;
         let column = 0;
+        let currentAttributes = 0;
         let wrapPending = false;
         let escape = '';
 
         if (terminalMode === 'cpm22') document.body.classList.add('cpm22');
 
         function renderScreen() {
-          const lines = [];
+          const fragment = document.createDocumentFragment();
           for (let y = 0; y < rows; y += 1) {
-            lines.push(cells.slice(y * columns, (y + 1) * columns).join(''));
+            const lineStart = y * columns;
+            let start = lineStart;
+            while (start < lineStart + columns) {
+              const attribute = attributes[start];
+              let end = start + 1;
+              while (end < lineStart + columns && attributes[end] === attribute) end += 1;
+              const span = document.createElement('span');
+              span.textContent = cells.slice(start, end).join('');
+              if (attribute & attrBold) span.classList.add('terminal-bold');
+              if (attribute & attrUnderline) span.classList.add('terminal-underline');
+              if (attribute & attrReverse) span.classList.add('terminal-reverse');
+              fragment.appendChild(span);
+              start = end;
+            }
+            if (y + 1 < rows) fragment.appendChild(document.createTextNode('\n'));
           }
-          out.textContent = lines.join('\n');
+          out.replaceChildren(fragment);
         }
 
         function scroll() {
           cells.copyWithin(0, columns);
           cells.fill(' ', (rows - 1) * columns);
+          attributes.copyWithin(0, columns);
+          attributes.fill(0, (rows - 1) * columns);
           row = rows - 1;
         }
 
@@ -109,16 +140,40 @@
 
         function eraseLine(mode) {
           const start = row * columns;
-          if (mode === 1) cells.fill(' ', start, start + column + 1);
-          else if (mode === 2) cells.fill(' ', start, start + columns);
-          else cells.fill(' ', start + column, start + columns);
+          if (mode === 1) {
+            cells.fill(' ', start, start + column + 1);
+            attributes.fill(0, start, start + column + 1);
+          } else if (mode === 2) {
+            cells.fill(' ', start, start + columns);
+            attributes.fill(0, start, start + columns);
+          } else {
+            cells.fill(' ', start + column, start + columns);
+            attributes.fill(0, start + column, start + columns);
+          }
         }
 
         function eraseDisplay(mode) {
           const cursor = row * columns + column;
-          if (mode === 1) cells.fill(' ', 0, cursor + 1);
-          else if (mode === 2) cells.fill(' ');
-          else cells.fill(' ', cursor);
+          if (mode === 1) {
+            cells.fill(' ', 0, cursor + 1);
+            attributes.fill(0, 0, cursor + 1);
+          } else if (mode === 2) {
+            cells.fill(' ');
+            attributes.fill(0);
+          } else {
+            cells.fill(' ', cursor);
+            attributes.fill(0, cursor);
+          }
+        }
+
+        function selectGraphicRendition(params) {
+          const values = params.length === 0 ? [0] : params;
+          for (const value of values) {
+            if (value === 0) currentAttributes = 0;
+            else if (value === 1) currentAttributes |= attrBold;
+            else if (value === 4) currentAttributes |= attrUnderline;
+            else if (value === 7) currentAttributes |= attrReverse;
+          }
         }
 
         function applyCsi(sequence) {
@@ -137,6 +192,7 @@
             column = Math.min(columns - 1, Math.max(0, (params[1] || 1) - 1));
           } else if (final === 'J') eraseDisplay(params[0] || 0);
           else if (final === 'K') eraseLine(params[0] || 0);
+          else if (final === 'm') selectGraphicRendition(params);
           wrapPending = false;
         }
 
@@ -168,7 +224,9 @@
                 column = 0;
                 lineFeed();
               }
-              cells[row * columns + column] = character;
+              const index = row * columns + column;
+              cells[index] = character;
+              attributes[index] = currentAttributes;
               if (column === columns - 1) wrapPending = true;
               else column += 1;
             }
@@ -187,8 +245,10 @@
           if (msg.type === 'clear') {
             if (terminalMode === 'cpm22') {
               cells.fill(' ');
+              attributes.fill(0);
               row = 0;
               column = 0;
+              currentAttributes = 0;
               wrapPending = false;
               escape = '';
               renderScreen();
@@ -240,6 +300,14 @@
             event.preventDefault();
             vscode.postMessage({ type: 'input', text: '\u007f' });
             return;
+          }
+          if (terminalMode === 'cpm22' && event.ctrlKey && !event.altKey && !event.metaKey) {
+            const control = { s: '\u0013', q: '\u0011' }[event.key.toLowerCase()];
+            if (control) {
+              event.preventDefault();
+              vscode.postMessage({ type: 'input', text: control });
+              return;
+            }
           }
           if (
             terminalMode === 'cpm22' &&

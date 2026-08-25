@@ -43,6 +43,28 @@ async function sendCommand(session, transcript, command, expected) {
   assert.strictEqual(transcript.value.slice(start), expected, `${command} transcript`);
 }
 
+async function runEditor(session, transcript) {
+  const start = transcript.value.length;
+  await session.customRequest('debug80/terminalInput', { text: 'EDIT\r' });
+  await waitFor(() => {
+    const output = transcript.value.slice(start);
+    return (
+      output.includes('sub main() fails') &&
+      output.includes('\u001b[7mEDIT INPUT   .NU') &&
+      output.includes('^S Save  ^Q Quit') &&
+      output.endsWith('\u001b[1;1H')
+    );
+  }, 'EDIT to render its initial full screen');
+
+  await session.customRequest('debug80/terminalInput', {
+    text: 'XY\bZ\u001b[D\u007f\u0013\u0011',
+  });
+  await waitFor(
+    () => transcript.value.slice(start).endsWith('\r\nA>'),
+    'EDIT to save and return to the CCP prompt'
+  );
+}
+
 export async function runCpm22Pipeline(extension) {
   const folder = (vscode.workspace.workspaceFolders ?? [])[0];
   assert.ok(folder, 'Expected a fixture workspace folder');
@@ -150,6 +172,8 @@ export async function runCpm22Pipeline(extension) {
     await sendCommand(session, transcript, 'MULTI', expectedTranscript.multipartOutput);
     await sendCommand(session, transcript, 'NUCLEUS', expectedTranscript.nucleus);
     await sendCommand(session, transcript, 'OUTPUT', expectedTranscript.nucleusOutput);
+    await runEditor(session, transcript);
+    await sendCommand(session, transcript, 'TYPE INPUT.NU', expectedTranscript.editedInput);
   } finally {
     eventSubscription.dispose();
     vscode.debug.removeBreakpoints([breakpoint]);

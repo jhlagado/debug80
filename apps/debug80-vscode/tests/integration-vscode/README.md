@@ -21,6 +21,13 @@ The exact terminal transcript is retained in
 The default test version is pinned in `runTest.js`. Set
 `DEBUG80_VSCODE_TEST_VERSION` to exercise another VS Code release.
 
+The CP/M pipeline also opens the real Debug80 terminal panel and runs the
+bundled full-screen editor. It waits for the initial source and reverse-video
+status sequence, sends insertion, Backspace, arrow, Delete, Ctrl-S, and Ctrl-Q
+input through the active debug session, then uses guest `TYPE INPUT.NU` to
+verify the saved bytes. The terminal webview's raw Ctrl-S and Ctrl-Q mapping is
+covered separately by its DOM regression test.
+
 On Linux CI, run the command under `xvfb-run` unless the runner already provides a display:
 
 ```sh
