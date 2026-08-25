@@ -23,3 +23,11 @@ The upstream terms and the component notice ship beside the disk as
 `roms/cpm22/LICENSE.cpm22.txt` and `roms/cpm22/NOTICE.md`. These guest
 components remain separately licensed and are not relabelled as Debug80 GPL
 code.
+
+## Native Nucleus compiler
+
+The ideal CP/M platform disk contains `NUCLEUS.COM`, built from
+[`jhlagado/nucleus`](https://github.com/jhlagado/nucleus) commit
+`7cddad267f1b553661614c23fa3cf9af5bf01709` under GPL-3.0-only. The exact
+source identity, artifact digest, and reproducible import instructions are in
+`third_party/nucleus/`.

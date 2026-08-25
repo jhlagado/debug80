@@ -19,6 +19,7 @@ const outputDirectory = join(
 );
 const thirdPartyDirectory = join(repositoryRoot, "third_party", "cpm22");
 const atomDirectory = join(repositoryRoot, "third_party", "atom");
+const nucleusDirectory = join(repositoryRoot, "third_party", "nucleus");
 const converter = join(scriptDirectory, "convert-8080-to-z80.mjs");
 
 const diskBytes = 77 * 26 * 128;
@@ -89,17 +90,40 @@ async function main() {
     join(tmpdir(), "debug80-cpm22-build-"),
   );
   try {
-    const [atom, atomSource, atomProvenance] = await Promise.all([
-      readFile(join(atomDirectory, "ATOM.COM")),
-      readFile(join(scriptDirectory, "atom-example.asm")),
-      readFile(join(atomDirectory, "PROVENANCE.json"), "utf8").then(JSON.parse),
-    ]);
+    const [atom, atomSource, atomProvenance, nucleus, nucleusProvenance] =
+      await Promise.all([
+        readFile(join(atomDirectory, "ATOM.COM")),
+        readFile(join(scriptDirectory, "atom-example.asm")),
+        readFile(join(atomDirectory, "PROVENANCE.json"), "utf8").then(
+          JSON.parse,
+        ),
+        readFile(join(nucleusDirectory, "NUCLEUS.COM")),
+        readFile(join(nucleusDirectory, "PROVENANCE.json"), "utf8").then(
+          JSON.parse,
+        ),
+      ]);
     if (
       sha256(atom) !== atomProvenance.artifactSha256 ||
       atom.length !== atomProvenance.artifactBytes
     ) {
       fail("vendored Atom CP/M artifact differs from its provenance record");
     }
+    if (
+      sha256(nucleus) !== nucleusProvenance.artifactSha256 ||
+      nucleus.length !== nucleusProvenance.artifactBytes
+    ) {
+      fail("vendored Nucleus CP/M artifact differs from its provenance record");
+    }
+    const nucleusSource = Buffer.from(
+      [
+        "sub main() fails",
+        "    writeOutputByte('O') else fail",
+        "    writeOutputByte('K') else fail",
+        "end",
+        "",
+      ].join("\r\n"),
+      "ascii",
+    );
     const largeAtomSourceBytes = 16_535;
     const largePaddingBytes = largeAtomSourceBytes - atomSource.length;
     if (largePaddingBytes < 3)
@@ -188,6 +212,8 @@ async function main() {
     image = installCpm22File(image, "PART1.ASM", multipartPart1);
     image = installCpm22File(image, "PART2.ASM", multipartPart2);
     image = installCpm22File(image, "BUILD.LST", multipartPlan);
+    image = installCpm22File(image, "NUCLEUS.COM", nucleus);
+    image = installCpm22File(image, "INPUT.NU", nucleusSource);
 
     await writeFile(join(outputDirectory, "bootstrap.bin"), bootstrap.bytes);
     await writeFile(join(outputDirectory, "cpm22.img"), image);
@@ -209,7 +235,9 @@ async function main() {
       bios: sha256(bios.bytes),
       smoke: sha256(smoke.bytes),
       atom: sha256(atom),
+      nucleus: sha256(nucleus),
       atomSource: sha256(atomSource),
+      nucleusSource: sha256(nucleusSource),
       largeAtomSource: sha256(largeAtomSource),
       multipartPart1: sha256(multipartPart1),
       multipartPart2: sha256(multipartPart2),

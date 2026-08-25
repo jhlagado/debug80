@@ -1,0 +1,9 @@
+{
+  "name": "Nucleus native CP/M 2.2 compiler transient",
+  "repository": "https://github.com/jhlagado/nucleus",
+  "commit": "7cddad267f1b553661614c23fa3cf9af5bf01709",
+  "sourcePath": "asm/vertical-slice/cpm22-native-compiler.asm",
+  "license": "GPL-3.0-only",
+  "artifactSha256": "fa910068a98858f0f7b82c2445c377451bbbe8c2c983ecd00e1a32247203ab08",
+  "artifactBytes": 20987
+}

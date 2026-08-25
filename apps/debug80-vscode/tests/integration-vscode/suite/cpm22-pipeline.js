@@ -111,6 +111,7 @@ export async function runCpm22Pipeline(extension) {
     const snapshot = await session.customRequest('debug80/memorySnapshot', {});
     assert.strictEqual(snapshot.registers.pc, 0xfada, 'breakpoint PC');
     assert.strictEqual(snapshot.registers.bc & 0xff, 13, 'BIOS ConsoleOutput byte in C');
+    await vscode.commands.executeCommand('debug80.openTerminal');
     await waitFor(
       () =>
         vscode.window.tabGroups.all.some((group) =>
@@ -147,6 +148,8 @@ export async function runCpm22Pipeline(extension) {
       expectedTranscript.multipartAtom
     );
     await sendCommand(session, transcript, 'MULTI', expectedTranscript.multipartOutput);
+    await sendCommand(session, transcript, 'NUCLEUS', expectedTranscript.nucleus);
+    await sendCommand(session, transcript, 'OUTPUT', expectedTranscript.nucleusOutput);
   } finally {
     eventSubscription.dispose();
     vscode.debug.removeBreakpoints([breakpoint]);

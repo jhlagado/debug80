@@ -13,21 +13,20 @@ calls with host filesystem operations.
 
 The acceptance system is deliberately small: one CPU, one 80-by-24 text
 terminal, one writable disk, and one reproducibly built guest image. The image
-now includes the first native Atom vertical slice. Optional graphics,
-additional drives, printer devices, Nucleus, and the editor remain separate
-milestones.
+includes native Atom and Nucleus vertical slices. Optional graphics, additional
+drives, printer devices, and the editor remain separate milestones.
 
 ## Frozen implementation baseline
 
-| Item             | Frozen value                               |
-| ---------------- | ------------------------------------------ |
-| Debug80 revision | `b4c0f92c80965e48987833908ffd6548e9608910` |
-| Branch           | local `main`                               |
-| Node.js          | 24.18.0                                    |
-| npm              | 11.16.0                                    |
-| AZM              | 0.3.9                                      |
-| CPU              | documented Z80 instruction set             |
-| Address space    | one flat 64 KiB space                      |
+| Item                     | Frozen value                               |
+| ------------------------ | ------------------------------------------ |
+| Debug80 integration base | `08017a979abe1343d86dd13a41943a37e905d2f9` |
+| Branch                   | `main`                                     |
+| Node.js                  | 24.18.0                                    |
+| npm                      | 11.16.0                                    |
+| AZM                      | 0.3.9                                      |
+| CPU                      | documented Z80 instruction set             |
+| Address space            | one flat 64 KiB space                      |
 
 The untracked `.worktrees/` directory is outside this work.
 
@@ -62,6 +61,15 @@ commit `964f26fbcdfd48a87cea24a3af1c7a5a225e8ab0` under GPL-3.0-only. Its
 The complete corresponding source, strict build, capacity proof, and output
 design measurements are available at that revision. Debug80 records the exact
 source identity in `third_party/atom/PROVENANCE.json`.
+
+Native `NUCLEUS.COM` comes from
+[`jhlagado/nucleus`](https://github.com/jhlagado/nucleus) commit
+`7cddad267f1b553661614c23fa3cf9af5bf01709` under GPL-3.0-only. Its
+20,987-byte artifact has SHA-256
+`fa910068a98858f0f7b82c2445c377451bbbe8c2c983ecd00e1a32247203ab08`.
+Debug80 records the source path, revision, digest, and length in
+`third_party/nucleus/PROVENANCE.json`; the import command also requires strict
+AZM register-contract assembly.
 
 ## Memory and reset
 
@@ -163,8 +171,9 @@ BIOS.
 
 The initial user-0 directory contains `README.TXT`, `SMOKE.COM`, `ATOM.COM`,
 `INPUT.ASM`, `HELLO.ASM`, the 16,535-byte `LARGE.ASM` acceptance source,
-`PART1.ASM`, `PART2.ASM`, and `BUILD.LST`. Atom reads and writes through the
-guest BDOS. With no arguments it uses `INPUT.ASM` and `OUTPUT.COM`;
+`PART1.ASM`, `PART2.ASM`, `BUILD.LST`, `NUCLEUS.COM`, and `INPUT.NU`. Atom reads
+and writes through the guest BDOS. With no arguments it uses `INPUT.ASM` and
+`OUTPUT.COM`;
 `ATOM SOURCE OUTPUT.COM` selects another pair of current-drive CP/M 8.3 names.
 Both forms assemble one source part.
 
@@ -183,6 +192,45 @@ The output remains one transactional, 18,304-byte in-TPA COM image; multipart
 input does not raise that output limit. `BUILD.LST` selects two 33,000-byte
 parts whose program leaves a forward reference in the first part and resolves
 it in the second.
+
+### Native Nucleus compiler
+
+`NUCLEUS.COM` runs the standalone 16 KiB Nucleus compiler core as a CP/M
+transient. With no arguments it reads `INPUT.NU` and publishes `OUTPUT.COM`.
+`NUCLEUS SOURCE OUTPUT.COM` selects one source and output pair, while
+`NUCLEUS PLAN OUTPUT.COM @` compiles a plan containing from one through eight
+source names. Filenames are current-drive CP/M 8.3 names, the output extension
+must be `.COM`, and preflight rejects a source/output name conflict. Each source
+part may contain at most 65,535 logical bytes.
+
+The compiler uses Nucleus's ordinary forward-patch stream without serializing
+NOBJ. Its CP/M output adapter places generated image bytes in a 23,808-byte TPA
+buffer and applies later patch writes to the addressed bytes in that buffer.
+Commit writes the completed image to a temporary CP/M file and then replaces
+the requested `.COM`; abort removes transaction files and preserves any prior
+output. This direct path can publish at most 25,600 `.COM` bytes, including the
+fixed `$0100..$07FF` target prefix.
+
+The native placement is independently bounded:
+
+| Account                                         | Inclusive or half-open range | Measured use or capacity |
+| ----------------------------------------------- | ---------------------------- | -----------------------: |
+| Transient artifact                              | `$0100..$52FA`               |             20,987 bytes |
+| Fixed compiler core                             | within `$0103..$40BC`        |             16,314 bytes |
+| CP/M host vector, adapters, assets, and startup | `$4100..$52FA`               |              4,603 bytes |
+| Unused host-resident allowance                  | `$52FB..$57FF`               |              1,285 bytes |
+| Host workspace                                  | `$5800..$5E5A`               |              1,627 bytes |
+| Unused host-workspace allowance                 | `$5E5B..$5FFF`               |                421 bytes |
+| Compiler workspace reservation                  | `$6000..$6FFF`               |              4,096 bytes |
+| Streaming source reservation                    | `$7000..$77FF`               |              2,048 bytes |
+| Generated-image buffer                          | `$7800..$D4FF`               |             23,808 bytes |
+| Compiler stack                                  | `$D500..$E3FF`               |              3,840 bytes |
+
+CP/M enters a transient with the CCP's stack in resident system memory.
+`NUCLEUS.COM` therefore saves the exact incoming stack pointer, performs the
+complete compile on its reserved stack, restores the pointer, and returns. It
+is a writable, non-reentrant transient; a proof starts it with the real CCP
+stack address and verifies that `$E400..$EFFF` remains byte-for-byte unchanged.
 
 ## Transient program build and installation
 
@@ -244,7 +292,7 @@ bundled `cpm22` target, publish its exact `.COM` artifact, display the real CCP
 A>DIR
 A: README TXT : SMOKE COM : ATOM COM : INPUT ASM
 A: HELLO ASM : LARGE ASM : PART1 ASM : PART2 ASM
-A: BUILD LST : MAIN COM
+A: BUILD LST : NUCLEUS COM : INPUT NU : MAIN COM
 
 A>MAIN
 Hello from Debug80 CP/M
@@ -281,6 +329,11 @@ MULTI.COM written
 
 A>MULTI
 Hello from native Atom
+
+A>NUCLEUS
+
+A>OUTPUT
+OK
 ```
 
 The automated proof must also compare the host `.com` bytes, reach a
@@ -292,4 +345,6 @@ injection, boot and warm boot, sequential-session isolation, platform
 selection, native Atom byte equivalence and rollback, Debug80 UI integration,
 no-argument, selected-filename, and multipart Atom commands, typechecking,
 formatting, lint, the 16,535-byte single-source path, the 66,000-byte
-cross-part forward-reference path, scoped tests, full tests, and diff checks.
+cross-part forward-reference path, native Nucleus rollback and recovery,
+positioned multipart diagnostics, direct-patch byte placement, generated COM
+execution, scoped tests, full tests, and diff checks.

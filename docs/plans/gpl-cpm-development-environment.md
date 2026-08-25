@@ -1,6 +1,6 @@
 # Plan: a GPL CP/M-compatible development environment
 
-Status: Phase C complete; Phase D native Atom multipart increment implemented
+Status: Phase C complete; Phase D Atom and Phase F Nucleus vertical slices implemented
 
 Date: 2026-08-26
 
@@ -32,9 +32,18 @@ at most 65,535 logical bytes; a bounded plan holds as many as 255 parts. The
 acceptance disk includes a 16,535-byte single source and a 66,000-byte two-part
 program with a forward reference crossing the part boundary.
 
-This does not complete the wider development-environment project. Nucleus, the
-editor, replacement utilities, optional graphics, and a project-owned
-operating-system core remain later phases.
+Native Nucleus now runs as a 20,987-byte CP/M transient. It keeps the fixed
+16,314-byte compiler core intact, supplies CP/M source, diagnostic, runtime,
+command, and transactional output adapters, and compiles directly into a
+23,808-byte addressed image buffer. Forward patches update that buffer before
+the completed `.COM` is published; the native path does not serialize NOBJ.
+Headless and Extension Host proofs compile the bundled `INPUT.NU`, execute its
+`OUTPUT.COM`, preserve an existing output through a rejected transaction, and
+exercise recovery, multipart diagnostics, and the real CCP stack boundary.
+
+This does not complete the wider development-environment project. The editor,
+replacement utilities, optional graphics, and a project-owned operating-system
+core remain later phases.
 
 ## Purpose
 
@@ -65,7 +74,8 @@ The complete environment should eventually provide:
 - a canonical 80-by-24 text terminal, disk, and device contract implemented by
   the Debug80 TypeScript platform;
 - Atom as a native, single-pass, streaming Z80 assembler;
-- a compact materializer or loader for Atom and Nucleus object streams;
+- direct, transactional `.COM` generation for native Atom and Nucleus, with a
+  separate materializer only where a future target actually needs one;
 - a nano-style full-screen editor rather than an ED-compatible line editor;
 - a debugger that can use Atom symbols and Debug80 source maps;
 - Nucleus as a native modern BASIC-family compiler and as a language for
@@ -86,11 +96,11 @@ programs must not require host-side interception of BDOS calls.
                          books and engineering record
                                       |
                                       v
-source -> editor -> Atom or Nucleus -> patchable object -> materializer
-             |             |                  |                |
-             |             +------ D8 source information -----+
-             |                                                |
-             +---------------- Debug80 debugger <-------------+
+source -> editor -> Atom or Nucleus -> addressed image -> transactional COM
+             |             |                 |
+             |             +------ D8 source information
+             |                               |
+             +---------------- Debug80 debugger
 
 guest programs and tools
           |
@@ -121,6 +131,10 @@ programs.
 | Atom margin below 16 KiB                             | Measured native account |  3,988 |
 | Native CP/M Atom COM                                 | Measured file           | 14,133 |
 | CP/M-specific Atom resident increment                | Measured linked account |  1,734 |
+| Native CP/M Nucleus COM                              | Measured file           | 20,987 |
+| Nucleus compiler core                                | Measured fixed account  | 16,314 |
+| CP/M-specific Nucleus host region                    | Measured linked account |  4,603 |
+| Nucleus direct generated-image buffer                | Measured TPA capacity   | 23,808 |
 | Principal CP/M development utilities examined so far | Measured files          | 36,736 |
 
 The final line is 35.875 KiB and includes ASM, DDT, DUMP, ED, LOAD, PIP, STAT,
@@ -351,14 +365,16 @@ forms, expressions, directives, private labels, forward references, and exact
 range checks remain the accepted language. Macro design belongs to a later
 proposal supported by real source pressure.
 
-### 4. Object materializer and loader
+### 4. Optional object materializer and loader
 
-Atom and Nucleus already share the useful shape of ordered image data followed
-by final replacement bytes. Investigate a small common framing and materializer
-without claiming that Atom's flat object map and Nucleus's runtime map are the
-same format.
+The native Atom and Nucleus measurements selected the same simpler answer:
+retain a bounded addressed image in TPA, apply forward patches there, and write
+the final `.COM` sequentially. Neither compiler needs NOBJ, Intel HEX, or a
+separate materializer on the current CP/M profile.
 
-The materializer should be able to:
+Reopen a common framing or materializer only when a concrete program exceeds
+the retained image capacity or needs offline object transport. Such a utility
+would need to:
 
 - validate record order, extents, CRC, and commit;
 - apply final-byte patches exactly once;
@@ -367,8 +383,9 @@ The materializer should be able to:
 - preserve an optional source/debug sidecar; and
 - fail without replacing the previous runnable artifact.
 
-Whether this becomes one shared utility or two profile-specific front ends is
-an open measurement question.
+Atom's flat object map and Nucleus's runtime map are not automatically one file
+format. A future proposal must measure common framing against two
+profile-specific front ends and include the added disk traffic and loader size.
 
 ### 5. Full-screen editor
 
@@ -397,19 +414,16 @@ ordinary source files over very large-file support.
 ### 6. Native Nucleus
 
 The CP/M Nucleus milestone runs the existing Z80 compiler as a transient
-program and maps its source, diagnostic, storage, and object services onto the
+program and maps its source, diagnostic, storage, and output services onto the
 CP/M environment. It does not introduce a second compiler implementation.
 
-The design must settle:
-
-- multipart source preparation;
-- diagnostic presentation in the editor and CCP;
-- NOBJ storage and materialization;
-- CP/M target runtime and startup;
-- filesystem and console service providers for generated programs;
-- D8-compatible source information; and
-- memory placement for the 16 KiB compiler, workspace, operating system, and
-  adapters.
+The retained design supports single-source and eight-part plan commands,
+positioned hexadecimal diagnostics, a CP/M target startup and service provider,
+and transactional `.COM` publication. It applies the compiler's addressed
+image and patch operations directly to a 23,808-byte TPA buffer. The complete
+transient is 20,987 bytes, of which 16,314 bytes are the unchanged compiler
+core and 4,603 bytes are the host region. Its independent resident and
+workspace allowances retain 1,285 and 421 bytes respectively.
 
 Once native compilation is reliable, suitable utilities and demonstrations may
 be written in Nucleus. The editor is a candidate only after the language and
@@ -538,17 +552,21 @@ are complete.
 
 ### Phase F: native Nucleus
 
+This phase was completed before Phase E so the editor can later be exercised
+against both native toolchains.
+
 Deliverables:
 
 - CP/M compiler application;
 - CP/M target and service provider;
-- NOBJ materialization;
+- direct addressed-image patching and transactional `.COM` publication;
 - positioned diagnostics; and
 - compiled acceptance programs executed under the guest system.
 
-Exit gate: the native compiler and the established host path accept the same
-source and produce identical diagnostics, materialized bytes, and execution
-results for the scoped corpus.
+Exit gate: strict standalone proofs and Debug80's real guest path compile the
+scoped source, preserve exact diagnostic positions and transaction rollback,
+and execute the generated program. This gate is satisfied without requiring
+byte identity with the differently packaged host NOBJ path.
 
 ### Phase G: replacement distribution
 
@@ -564,7 +582,7 @@ Exit gate: a source checkout can reproduce the distributed images, every
 binary has an identified source and licence, and the system can edit, assemble,
 compile, load, debug, and run its own representative programs.
 
-## First research questions
+## Research questions
 
 The initial study should answer these questions before any CP/M adapter is
 retained:
@@ -572,10 +590,11 @@ retained:
 1. What is Atom's exact clean assembled account at the selected baseline?
 2. How much CP/M code and RAM does its existing source-service contract need?
 3. Which host preprocessing facilities belong in the first native tool?
-4. Does random-record `.COM` patching beat NOBJ materialization on an emulated
-   floppy as well as on host-backed storage?
-5. Can Atom and Nucleus share framing, CRC, storage, and materialization code
-   while retaining their distinct map semantics?
+4. Under what future output size or transport requirement should direct
+   in-memory `.COM` patching be replaced by random-record or NOBJ storage?
+5. If that requirement appears, can Atom and Nucleus share framing, CRC,
+   storage, and materialization code while retaining their distinct map
+   semantics?
 6. Which compact operand-dispatch and symbol-table techniques from the
    historical assemblers improve Atom after complete-path measurement?
 7. How small can the editor's terminal adapter remain, and which additional
@@ -588,12 +607,11 @@ retained:
 
 ## Immediate next work
 
-1. Freeze the native Nucleus memory placement and CP/M service boundary,
-   including how it reuses the settled multipart source plan.
-2. Measure the smallest source, diagnostic, and transactional output adapters
-   needed for one native Nucleus vertical slice.
-3. Revisit random-record output only when a real source needs more than the
-   current 18,304-byte COM capacity.
+1. Freeze the editor's text-file, recovery, key, and bounded-buffer contract.
+2. Measure a first native full-screen editor vertical slice that can open,
+   modify, and safely save a representative Atom or Nucleus source file.
+3. Revisit external object storage only when a real source exceeds Atom's
+   18,304-byte or Nucleus's 25,600-byte `.COM` capacity.
 4. Write the common assembler-analysis template and complete the DRI ASM study
    before using historical implementation details as design evidence.
 

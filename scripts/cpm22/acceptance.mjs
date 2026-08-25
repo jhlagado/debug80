@@ -30,7 +30,17 @@ const mainProgram = Uint8Array.from([
   0x0e, 0x09, 0x11, 0x09, 0x01, 0xcd, 0x05, 0x00, 0xc9, 0x48, 0x69, 0x0d, 0x0a,
   0x24,
 ]);
-const diskImage = installCpm22File(sourceDiskImage, "MAIN.COM", mainProgram);
+const oldKeepProgram = Uint8Array.of(0xc9, 0x4b, 0x45, 0x45, 0x50);
+const reservedKeepTemporary = Uint8Array.of(0xa5);
+const diskImage = installCpm22File(
+  installCpm22File(
+    installCpm22File(sourceDiskImage, "MAIN.COM", mainProgram),
+    "KEEP.COM",
+    oldKeepProgram,
+  ),
+  "KEEP.$$$",
+  reservedKeepTemporary,
+);
 const debugMap = JSON.parse(
   await readFile(join(romDirectory, "bios.d8m.json"), "utf8"),
 );
@@ -113,7 +123,7 @@ assert.equal(transcript(), "\r\nA>");
 
 runCommand(
   "DIR",
-  "DIR\r\r\nA: README   TXT : SMOKE    COM : ATOM     COM : INPUT    ASM\r\nA: HELLO    ASM : LARGE    ASM : PART1    ASM : PART2    ASM\r\nA: BUILD    LST : MAIN     COM\r\nA>",
+  "DIR\r\r\nA: README   TXT : SMOKE    COM : ATOM     COM : INPUT    ASM\r\nA: HELLO    ASM : LARGE    ASM : PART1    ASM : PART2    ASM\r\nA: BUILD    LST : NUCLEUS  COM : INPUT    NU  : MAIN     COM\r\nA: KEEP     COM : KEEP     $$$\r\nA>",
 );
 runCommand("MAIN", "MAIN\r\r\nHi\r\n\r\nA>");
 runCommand(
@@ -129,7 +139,7 @@ const atomExecution = runCommand(
   "ATOM",
   "ATOM\r\r\n\r\nOUTPUT.COM written\r\n\r\nA>",
 );
-assert.deepEqual(atomExecution, { instructions: 160107, tStates: 2221157 });
+assert.deepEqual(atomExecution, { instructions: 172602, tStates: 2338917 });
 const expectedOutput = Uint8Array.from([
   0x0e,
   0x09,
@@ -154,8 +164,8 @@ const namedAtomExecution = runCommand(
   "ATOM HELLO.ASM MADE.COM\r\r\n\r\nMADE.COM written\r\n\r\nA>",
 );
 assert.deepEqual(namedAtomExecution, {
-  instructions: 165764,
-  tStates: 2269186,
+  instructions: 178259,
+  tStates: 2386946,
 });
 const namedOutputFile = readCpm22File(platform.disk.exportImage(), "MADE.COM");
 assert.ok(namedOutputFile, "native Atom did not publish selected MADE.COM");
@@ -169,8 +179,8 @@ const largeAtomExecution = runCommand(
   "ATOM LARGE.ASM LARGE.COM\r\r\n\r\nLARGE.COM written\r\n\r\nA>",
 );
 assert.deepEqual(largeAtomExecution, {
-  instructions: 2004324,
-  tStates: 20174685,
+  instructions: 2019582,
+  tStates: 20323285,
 });
 const largeOutputFile = readCpm22File(platform.disk.exportImage(), "LARGE.COM");
 assert.ok(
@@ -204,8 +214,8 @@ const multipartAtomExecution = runCommand(
   12_000_000,
 );
 assert.deepEqual(multipartAtomExecution, {
-  instructions: 7571651,
-  tStates: 74422686,
+  instructions: 7587603,
+  tStates: 74579022,
 });
 const multipartOutputFile = readCpm22File(
   platform.disk.exportImage(),
@@ -220,6 +230,45 @@ assert.deepEqual(
   expectedOutput,
 );
 runCommand("MULTI", "MULTI\r\r\nHello from native Atom\r\n\r\nA>");
+const rejectedNucleusExecution = runCommand(
+  "NUCLEUS INPUT.NU KEEP.COM",
+  "NUCLEUS INPUT.NU KEEP.COM\r\r\n\r\nNucleus host error 61\r\n\r\nA>",
+);
+assert.deepEqual(rejectedNucleusExecution, {
+  instructions: 96959,
+  tStates: 1332935,
+});
+assert.deepEqual(
+  readCpm22File(platform.disk.exportImage(), "KEEP.COM")?.bytes.slice(
+    0,
+    oldKeepProgram.length,
+  ),
+  oldKeepProgram,
+);
+assert.deepEqual(
+  readCpm22File(platform.disk.exportImage(), "KEEP.$$$")?.bytes.slice(
+    0,
+    reservedKeepTemporary.length,
+  ),
+  reservedKeepTemporary,
+);
+const nucleusExecution = runCommand("NUCLEUS", "NUCLEUS\r\r\n\r\nA>");
+assert.deepEqual(nucleusExecution, {
+  instructions: 326808,
+  tStates: 4631798,
+});
+const nucleusOutputFile = readCpm22File(
+  platform.disk.exportImage(),
+  "OUTPUT.COM",
+);
+assert.ok(nucleusOutputFile, "native Nucleus did not publish OUTPUT.COM");
+assert.equal(nucleusOutputFile.bytes[0], 0xcd);
+assert.equal(nucleusOutputFile.bytes[0x0700], 0xc3);
+const nucleusProgramExecution = runCommand("OUTPUT", "OUTPUT\r\r\nOK\r\nA>");
+assert.deepEqual(nucleusProgramExecution, {
+  instructions: 98049,
+  tStates: 1439798,
+});
 
 assert.notDeepEqual(
   platform.disk.exportImage(),
@@ -238,5 +287,5 @@ assert.equal(
 );
 
 console.log(
-  `CP/M 2.2 acceptance passed: boot, BIOS breakpoint, .COM injection, DIR, execution, TYPE, SMOKE, native Atom defaults (${atomExecution.instructions} instructions, ${atomExecution.tStates} T-states), named files (${namedAtomExecution.instructions} instructions, ${namedAtomExecution.tStates} T-states), 16.5 KiB source (${largeAtomExecution.instructions} instructions, ${largeAtomExecution.tStates} T-states), 66,000-byte multipart source (${multipartAtomExecution.instructions} instructions, ${multipartAtomExecution.tStates} T-states), warm boot`,
+  `CP/M 2.2 acceptance passed: boot, BIOS breakpoint, .COM injection, DIR, execution, TYPE, SMOKE, native Atom defaults (${atomExecution.instructions} instructions, ${atomExecution.tStates} T-states), named files (${namedAtomExecution.instructions} instructions, ${namedAtomExecution.tStates} T-states), 16.5 KiB source (${largeAtomExecution.instructions} instructions, ${largeAtomExecution.tStates} T-states), 66,000-byte multipart source (${multipartAtomExecution.instructions} instructions, ${multipartAtomExecution.tStates} T-states), Nucleus rejected transaction (${rejectedNucleusExecution.instructions} instructions, ${rejectedNucleusExecution.tStates} T-states), native Nucleus compile (${nucleusExecution.instructions} instructions, ${nucleusExecution.tStates} T-states), generated program (${nucleusProgramExecution.instructions} instructions, ${nucleusProgramExecution.tStates} T-states), warm boot`,
 );

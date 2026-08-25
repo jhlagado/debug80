@@ -23,7 +23,7 @@ import type { AssemblyDiagnostic, AssembleResult } from './assembler';
 import type { AssembleOptions, AssemblerBackend } from './assembler-backend';
 
 export interface NucleusCompilerApi {
-  build(request: NucleusBuildRequest): Promise<NucleusBuildResult>;
+  readonly build: (request: NucleusBuildRequest) => Promise<NucleusBuildResult>;
 }
 
 const defaultCompiler = (): NucleusCompilerApi => createNucleusCompiler();
@@ -70,7 +70,9 @@ function sourceDiagnostic(
 }
 
 function configurationMessage(result: Exclude<NucleusBuildResult, { success: true }>): string {
-  if (result.kind !== 'configuration') return result.message;
+  if (result.kind !== 'configuration') {
+    return result.message;
+  }
   return [
     result.message,
     ...result.issues.map((issue) => `  ${issue.path}: ${issue.message}`),
