@@ -192,6 +192,13 @@ are measured independently:
 2. a movable gap represented by separate pre-gap and post-gap spans; and
 3. line descriptors over a text arena with bounded descriptor storage.
 
+The measured selection is the contiguous byte sequence. The executable
+comparison and retained figures are recorded in
+`docs/reports/cpm22-editor-buffer-measurement.md`. The implementation may share
+or compress routines after integration, but it must retain the contiguous
+representation and the external capacity unless a new complete measurement
+supersedes that result.
+
 Each prototype must implement or price the complete candidate-specific path:
 middle insertion, backward and forward deletion, left and right movement,
 line lookup, viewport rendering, two-span or one-span save traversal, capacity
