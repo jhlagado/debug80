@@ -588,6 +588,9 @@ describe('project-scaffolding helpers', () => {
     const workspaceRoot = actualFs.mkdtempSync(path.join(os.tmpdir(), 'debug80-existing-source-'));
     try {
       listTargetSourceFiles.mockReturnValue(['legacy/start.z80']);
+      showQuickPick.mockResolvedValueOnce({
+        choice: { kind: 'existing', sourceFile: 'legacy/start.z80' },
+      });
 
       const created = await scaffoldProject(
         { name: 'demo', uri: { fsPath: workspaceRoot }, index: 0 } as never,
@@ -597,7 +600,7 @@ describe('project-scaffolding helpers', () => {
       );
 
       expect(created).toBe(true);
-      expect(showQuickPick).not.toHaveBeenCalled();
+      expect(showQuickPick).toHaveBeenCalledTimes(1);
       const configWrite = writeFileSync.mock.calls.find(([filePath]) =>
         String(filePath).replace(/\\/g, '/').endsWith('/debug80.json')
       );
@@ -610,6 +613,37 @@ describe('project-scaffolding helpers', () => {
       expect(
         writeFileSync.mock.calls.some(([filePath]) =>
           String(filePath).replace(/\\/g, '/').endsWith('/src/main.asm')
+        )
+      ).toBe(false);
+    } finally {
+      actualFs.rmSync(workspaceRoot, { recursive: true, force: true });
+    }
+  });
+
+  it('does not silently reuse an existing file when asked to create a starter', async () => {
+    const fs = await import('fs');
+    const actualFs = await vi.importActual<typeof import('fs')>('fs');
+    const writeFileSync = vi.mocked(fs.writeFileSync);
+    const workspaceRoot = actualFs.mkdtempSync(path.join(os.tmpdir(), 'debug80-starter-exists-'));
+    try {
+      listTargetSourceFiles.mockReturnValue(['src/main.asm']);
+      showQuickPick.mockResolvedValueOnce({ choice: { kind: 'starter', language: 'asm' } });
+
+      const created = await scaffoldProject(
+        { name: 'demo', uri: { fsPath: workspaceRoot }, index: 0 } as never,
+        false,
+        undefined,
+        'cpm22'
+      );
+
+      expect(created).toBe(false);
+      expect(showQuickPick).toHaveBeenCalledTimes(1);
+      expect(showErrorMessage).toHaveBeenCalledWith(
+        'Debug80: Cannot create the starter because src/main.asm already exists. Choose that existing program file, rename it, or remove it first.'
+      );
+      expect(
+        writeFileSync.mock.calls.some(([filePath]) =>
+          String(filePath).replace(/\\/g, '/').endsWith('/debug80.json')
         )
       ).toBe(false);
     } finally {

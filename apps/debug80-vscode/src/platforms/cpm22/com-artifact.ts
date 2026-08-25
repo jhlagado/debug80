@@ -66,7 +66,9 @@ export function extractCpm22Com(program: HexProgram): Uint8Array {
   }
   if (first !== CPM22_COM_LOAD_ADDRESS) {
     fail(
-      `the first initialized byte must be at $0100, got $${first.toString(16).padStart(4, '0')}`
+      `the first initialized byte must be at $0100, got $${first
+        .toString(16)
+        .padStart(4, '0')}; CP/M transient-program source must begin with .org $0100`
     );
   }
   const length = end - CPM22_COM_LOAD_ADDRESS;

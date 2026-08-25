@@ -288,16 +288,20 @@ export async function scaffoldProject(
       if (plan.starterFile !== undefined) {
         const starterPath = path.join(workspaceRoot, plan.starterFile.path);
         ensureDirExists(path.dirname(starterPath));
-        if (!fs.existsSync(starterPath)) {
-          fs.writeFileSync(
-            starterPath,
-            createStarterSourceContent(
-              extensionUri ?? vscode.Uri.file(process.cwd()),
-              plan.kit,
-              plan.starterLanguage ?? 'asm'
-            )
+        if (fs.existsSync(starterPath)) {
+          void vscode.window.showErrorMessage(
+            `Debug80: Cannot create the starter because ${plan.starterFile.path} already exists. Choose that existing program file, rename it, or remove it first.`
           );
+          return false;
         }
+        fs.writeFileSync(
+          starterPath,
+          createStarterSourceContent(
+            extensionUri ?? vscode.Uri.file(process.cwd()),
+            plan.kit,
+            plan.starterLanguage ?? 'asm'
+          )
+        );
       }
       fs.writeFileSync(configPath, `${JSON.stringify(defaultConfig, null, 2)}\n`);
       void vscode.window.showInformationMessage(
@@ -427,9 +431,6 @@ async function chooseEntrySource(
 ): Promise<SourceChoice | undefined> {
   const sourceFiles = listTargetSourceFiles(folder.uri.fsPath);
   const inferredExists = sourceFiles.includes(inferredSourceFile);
-  if (sourceFiles.length === 1) {
-    return { kind: 'existing', sourceFile: sourceFiles[0] ?? inferredSourceFile };
-  }
 
   const items: Array<
     vscode.QuickPickItem & {

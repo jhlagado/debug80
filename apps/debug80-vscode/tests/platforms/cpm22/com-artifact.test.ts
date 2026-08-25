@@ -57,7 +57,7 @@ describe('CP/M .COM artifacts', () => {
   it('rejects empty, wrong-origin, below-TPA, and first-over-capacity programs', () => {
     expect(() => extractCpm22Com(program([]))).toThrow(/no initialized bytes/);
     expect(() => extractCpm22Com(program([{ start: 0x0101, end: 0x0102 }]))).toThrow(
-      /first initialized byte must be at \$0100/
+      /first initialized byte must be at \$0100.*source must begin with \.org \$0100/
     );
     expect(() => extractCpm22Com(program([{ start: 0x00ff, end: 0x0101 }]))).toThrow(
       /outside the transient program area/
@@ -94,7 +94,7 @@ describe('CP/M .COM artifacts', () => {
 
     fs.writeFileSync(hexPath, ':01020000C9FF\n:00000001FF\n');
     expect(() => materializeCpm22ComArtifact(hexPath, 'START.COM')).toThrow(
-      /first initialized byte must be at \$0100/
+      /first initialized byte must be at \$0100.*source must begin with \.org \$0100/
     );
     expect(new Uint8Array(fs.readFileSync(artifact.hostPath))).toEqual(
       Uint8Array.from([0xc9, 0x00, 0x00])
