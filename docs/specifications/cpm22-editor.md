@@ -32,11 +32,12 @@ full-screen view, moves the cursor, inserts and deletes text, and saves through
 a recoverable file transaction. It is a functional replacement with a new
 interface, not an ED command or file-format emulation.
 
-The first slice excludes search, replace, selection, copy and paste, multiple
+The first deployed slice excludes replace, selection, copy and paste, multiple
 buffers, new-file creation, drive prefixes, user areas, wildcards, binary
 files, configurable keys, syntax highlighting, mouse input, undo, and recovery
-after a reset or power loss during a directory-sector write. These are later
-features rather than hidden host facilities.
+after a reset or power loss during a directory-sector write. Forward search is
+the next specified increment below. The other facilities remain later work
+rather than hidden host services.
 
 ## Command
 
@@ -137,6 +138,8 @@ The input parser consumes the platform's raw byte stream:
 | `ESC [ B`       | move down one logical line                     |
 | `ESC [ C`       | move right one logical character               |
 | `ESC [ D`       | move left one logical character                |
+| `^F`            | enter or resume a forward-search query         |
+| `^N`            | repeat the last committed search               |
 | `^S`            | save                                           |
 | `^Q`            | quit or begin discard confirmation             |
 
@@ -154,6 +157,61 @@ consumed.
 first `^Q` displays a discard warning without changing the buffer. A second
 consecutive `^Q` returns without saving. Any other complete key command cancels
 the confirmation.
+
+## Forward search increment
+
+The search increment starts from the pushed 2,504-byte editor at Debug80
+`141bb0b112367d18260ac8d89a7cf095a203d5c7`. It adds case-sensitive literal
+byte search without changing the text representation, file capacity, newline
+rules, save transaction, or terminal profile.
+
+`^F` replaces row 24 with one reverse-video query row. Columns 1 through 6
+contain `Find: `. Each query byte occupies one following cell: printable ASCII
+is shown directly and a horizontal tab is shown as `>`. The remainder of the
+row contains spaces, and the hardware cursor follows the displayed query. The
+query holds at most 64 bytes, so its cursor remains within the row. The initial
+query is the last successfully committed query, or empty when no search has
+been committed in this execution.
+
+The query reader accepts printable ASCII and horizontal tab. Backspace and
+Delete remove the final query byte. Either key at an empty query rings the bell
+once and changes nothing. A first byte beyond 64 also rings once and leaves the
+query unchanged. Escape cancels query entry; Return accepts a nonempty query.
+Return on an empty query has the same effect as Escape. Other control bytes ring
+once and remain in query entry. Cancellation preserves the previous committed
+query, file cursor, viewport, content, and dirty state, then returns to ready
+status. Entering search is a complete command, so it cancels a pending discard
+confirmation.
+
+An accepted query replaces the previous committed query and searches from the
+current file cursor, including that byte. Matching compares exact stored bytes.
+The query cannot contain CR or LF, and a match never joins bytes across a line
+ending, physical EOF, or the end-to-start wrap boundary. Horizontal tab may be
+matched as byte `$09`. LF and CRLF retain their existing distinct encodings; a
+match after either newline places the cursor at the exact first matched byte.
+
+If the first scan reaches EOF, it continues at byte zero and stops before
+testing the original starting byte a second time. The earliest complete match
+in that order wins. A match before wrap sets status `Found`; a match after wrap
+sets status `Wrapped`. A failed search leaves the cursor and viewport unchanged,
+sets status `Not found`, and rings the bell once. Every terminal result returns
+to the ordinary full-screen view with the hardware cursor on the file position.
+
+`^N` repeats the committed query without opening the query row. Its scan starts
+one byte after the current cursor, which admits overlapping matches. It scans
+to EOF, wraps once, and may find the current match again only after examining
+the rest of the file. A repeat with no committed query leaves the cursor and
+viewport unchanged, sets status `No search`, and rings once. Edits do not clear
+the committed query; repeat-search examines the current buffer contents. A new
+editor execution starts with no committed query.
+
+The implementation may use the inactive load/save DMA record while query entry
+is active, but the committed query must survive later saves. Any storage reuse
+must retain the existing 228-byte baseline account separately from new search
+workspace and must prove that no BDOS path observes the DMA record as query
+storage. At least a dedicated staging buffer, a DMA overlay, and a compact
+single-buffer alternative must be measured as complete query-entry and search
+paths before one is retained.
 
 ## Save transaction
 
@@ -235,6 +293,25 @@ The standalone assembly and Debug80 integration must distinguish:
 - exact assembled extents, representative instructions and T-states, and Z80
   stack balance; and
 - headless CP/M plus the real VS Code Extension Host terminal workflow.
+
+The search increment must additionally distinguish:
+
+- a new, retained, replaced, cancelled, and empty query;
+- 64 accepted query bytes and the first rejected byte;
+- printable and tab query display, Backspace, Delete, unsupported controls,
+  exact prompt cells, attributes, cursor, and bell counts;
+- a match at byte zero, at the current cursor, before EOF, after LF, after CRLF,
+  after a tab, and at the final complete candidate;
+- no match, a query longer than the remaining suffix, and no match across EOF
+  or the wrap boundary;
+- a wrapped match, one complete failed wrap, overlapping repeated matches, a
+  single match found again after wrap, and repeat before any committed query;
+- unchanged content, dirty state, save bytes, viewport, and cursor on every
+  cancelling or failed path;
+- search after an edit, search after save, sequential entry executions, and
+  reset of committed query state; and
+- exact feature code, immutable data, workspace, stack, instruction, and
+  T-state deltas from the frozen 2,504-byte baseline.
 
 The final gate includes strict assembly, scoped editor proofs, the complete
 CP/M acceptance, runtime and terminal tests, Extension Host integration, full
