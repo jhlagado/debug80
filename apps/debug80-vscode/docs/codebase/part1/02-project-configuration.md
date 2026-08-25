@@ -66,6 +66,7 @@ interface ProjectConfig {
   stepOutMaxInstructions?: number;
   terminal?: TerminalConfig;
   simple?: SimplePlatformConfig;
+  cpm22?: Cpm22PlatformConfig;
   tec1?: Tec1PlatformConfig;
   tec1g?: Tec1gPlatformConfig;
 }
@@ -111,6 +112,8 @@ Scaffolding is no longer just "pick a platform and write a bare JSON file". The 
 - the default app start address
 - starter templates for assembly projects
 - any bundled monitor assets that should be associated with the project
+
+The built-in kit IDs are `simple/default`, `cpm22/default`, `tec1/classic-2k`, `tec1/mon1b`, `tec1g/mon3`, and `tec1g/custom`.
 
 `src/extension/project-scaffolding.ts` builds the initial `debug80.json` from a `ScaffoldPlan` and writes starter source files. Bundled ROM assets remain referenced in the config; the launch resolver uses those references to locate extension-bundled files when workspace files are absent, and the explicit bundled-assets command can install local copies on demand.
 

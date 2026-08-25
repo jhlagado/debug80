@@ -18,7 +18,7 @@ Project configuration lives in `debug80.json` at the workspace folder root. Top-
 
 | Field                     | Type       | Default                                                | Description                                                                           |
 | ------------------------- | ---------- | ------------------------------------------------------ | ------------------------------------------------------------------------------------- |
-| `platform`                | `string`   | `'simple'`                                             | Platform to emulate: `'simple'`, `'tec1'`, or `'tec1g'`                               |
+| `platform`                | `string`   | `'simple'`                                             | Platform to emulate: `'simple'`, `'cpm22'`, `'tec1'`, or `'tec1g'`                    |
 | `asm`                     | `string`   | —                                                      | Path to the main Z80 assembly source file                                             |
 | `sourceFile`              | `string`   | —                                                      | Alias for `asm`                                                                       |
 | `assembler`               | `string`   | inferred                                               | Assembler backend identifier. Inferred from source extension unless set explicitly.   |
@@ -99,6 +99,22 @@ Debug80 treats the selected `.nu` source as a single-source build rooted at the
 source file's directory. Debug80 launch currently accepts only flat Nucleus
 targets. Profiles with `bankCount > 1` must be built through the standalone
 Nucleus API or CLI rather than the live debugger launch path.
+
+---
+
+## CP/M 2.2 platform (`"platform": "cpm22"`)
+
+Config block key: `cpm22`
+
+| Field         | Type      | Default               | Description                                                                           |
+| ------------- | --------- | --------------------- | ------------------------------------------------------------------------------------- |
+| `diskImage`   | `string`  | bundled disk          | Workspace-relative IBM 3740 disk image override                                       |
+| `writable`    | `boolean` | `true`                | Whether guest disk writes persist for the life of the debug session                   |
+| `programName` | `string`  | HEX basename + `.COM` | Canonical user-0 8.3 `.COM` filename used when installing the built transient program |
+
+The CP/M launch path still builds and validates a host HEX artifact. When app input is present, Debug80 extracts the initialized transient-program image from `0x0100..0xE3FF`, writes the matching host `.com` artifact beside the HEX file, and installs that program into the guest's private drive-A image before boot.
+
+`programName` must be a valid CP/M 8.3 filename and must use the `.COM` extension. Launch validation rejects malformed names, empty transient programs, initialized ranges outside the transient-program area, and disk installs that exceed directory or allocation capacity.
 
 ---
 

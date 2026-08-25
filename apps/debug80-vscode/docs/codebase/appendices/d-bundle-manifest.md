@@ -63,7 +63,7 @@ interface BundleManifestV1 {
   schemaVersion: 1; // Must equal BUNDLE_MANIFEST_SCHEMA_VERSION
   id: string; // Stable bundle identifier, e.g. 'tec1g/mon3'
   version: string; // Semver or upstream label, e.g. '1.6.0-bc25'
-  platform: 'simple' | 'tec1' | 'tec1g';
+  platform: 'simple' | 'cpm22' | 'tec1' | 'tec1g';
   label: string; // Human-readable name, e.g. 'MON3 (TEC-1G)'
   files: BundleFileEntry[];
   workspaceLayout: BundleWorkspaceLayout;

@@ -12,7 +12,7 @@ nav_order: 1
 
 Debug80 is a VS Code extension that lets you debug Z80 assembly programs. You write Z80 source, assemble it, and step through it instruction by instruction — inspecting registers, memory, flags, and the I/O peripherals of emulated hardware — all inside VS Code's standard debugging interface.
 
-That description is accurate but it hides the interesting part. The extension does not merely wrap a debugger. It contains a full Z80 CPU emulator, emulations of real retro hardware (the TEC-1 and TEC-1G single-board computers), assembler backends, source-to-address mapping, a custom webview panel with live hardware visualisation, and a pluggable platform system that allows new hardware targets to be added without modifying the core. Understanding how these pieces fit together is the first step toward contributing to any of them.
+That description is accurate but it hides the interesting part. The extension does not merely wrap a debugger. It contains a full Z80 CPU emulator, emulations of real retro hardware and software environments including the TEC-1, TEC-1G, and an ideal CP/M 2.2 machine, assembler backends, source-to-address mapping, a custom webview panel with live hardware visualisation, and a pluggable platform system that allows new hardware targets to be added without modifying the core. Understanding how these pieces fit together is the first step toward contributing to any of them.
 
 This chapter maps the territory.
 
@@ -113,11 +113,11 @@ Debug80 has seven major subsystems. Each one owns a specific responsibility and 
 
 **What they do:** Emulate the I/O peripherals of a specific hardware target. A platform runtime provides the I/O callbacks that the Z80 emulator calls on `in` and `out` instructions, and maintains the hardware state (display digits, matrix rows, LCD contents, speaker state).
 
-**Where they live:** `packages/debug80-runtime/src/platforms/tec1/`, `packages/debug80-runtime/src/platforms/tec1g/`, `packages/debug80-runtime/src/platforms/simple/`
+**Where they live:** `packages/debug80-runtime/src/platforms/tec1/`, `packages/debug80-runtime/src/platforms/tec1g/`, `packages/debug80-runtime/src/platforms/cpm22/`, `packages/debug80-runtime/src/platforms/simple/`
 
 **Key type:** `ResolvedPlatformProvider` — the interface every platform must implement. It defines how to build I/O handlers, load ROM assets, resolve the entry point, and register platform-specific DAP commands.
 
-**Key pattern:** Platforms are loaded lazily via dynamic `import()`. The extension-side platform registry (`apps/debug80-vscode/src/platforms/manifest.ts`) maps platform IDs to loader functions, while the runtime package holds the actual CPU-facing platform models. A new platform can be added by implementing the provider interface and registering it without changing the debug adapter core.
+**Key pattern:** Platforms are loaded lazily via dynamic `import()`. The extension-side platform registry (`apps/debug80-vscode/src/platforms/manifest.ts`) maps platform IDs to loader functions, while the runtime package holds the actual CPU-facing platform models. The built-in IDs are `simple`, `cpm22`, `tec1`, and `tec1g`. A new platform can be added by implementing the provider interface and registering it without changing the debug adapter core.
 
 ### Debug adapter
 

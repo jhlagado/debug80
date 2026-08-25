@@ -377,7 +377,7 @@ All adapter requests go through `session.customRequest()` on the current `vscode
 
 The types shared between the extension host and webview are defined in `src/contracts/platform-view.ts`:
 
-- **`PlatformId`** — `'simple' | 'tec1' | 'tec1g'`; the canonical platform identifier used throughout the extension and webview.
+- **`PlatformId`** — `'simple' | 'cpm22' | 'tec1' | 'tec1g'`; the canonical platform identifier used throughout the extension and webview.
 - **`ProjectStatusPayload`** — the shape of the `projectStatus` message body. The key field is `projectState?: 'noWorkspace' | 'uninitialized' | 'initialized'`, which drives control visibility in the webview. Other fields include workspace roots, targets, selected target, entry source, platform, `stopOnEntry`, the project-persisted `azmSymbolCase`, session-scoped AZM option fields, CoolTerm availability / inferred HEX path / hardware status text, separate build status text/state, and source-map status text/state. Each target row can also carry `description`, `detail`, `discovered?: true`, and `sourceFile`, which let the panel distinguish persisted targets from runnable source files that have not yet been written into `debug80.json`.
 - **`PlatformViewControlMessage`** — a discriminated union of all project/session/serial/hardware-send control messages (`startDebug`, `restartDebug`, `buildTarget`, `createProject`, `openWorkspaceFolder`, `selectProject`, `configureProject`, `saveProjectConfig`, `setStopOnEntry`, `setAzmOptions`, `setAzmSymbolCase`, `selectTarget`, `addTarget`, `removeTarget`, `removeWorkspaceFolder`, `sendHexViaCoolTerm`, `setEntrySource`, `serialSendFile`, `serialSave`, `serialClear`). The `saveProjectConfig` message carries `{ platform: string }` and triggers a config write + debug restart. The `createProject` message carries an optional `platform?: string` field that, when present, selects the default kit for that platform without showing pickers. In practice the webview can also attach an optional `platform` field to `openWorkspaceFolder`, and the message parser forwards that through to `debug80.addWorkspaceFolder`. The `setStopOnEntry` message carries `{ stopOnEntry: boolean }` and updates the provider's global toggle. `setAzmOptions` updates session-scoped AZM restart options. `setAzmSymbolCase` carries `{ symbolCase: 'strict' | 'insensitive' }` and persists the merged project-level `azm.symbolCase` value into `debug80.json`.
 - **`PlatformViewInboundMessage`** — the full union of all messages the extension host can receive: `PlatformViewControlMessage | Tec1Message | Tec1gMessage | { type?: string; [key: string]: unknown }`.
@@ -473,7 +473,7 @@ A `ProjectKit` is an immutable descriptor for one platform/profile combination:
 ```typescript
 type ProjectKit = {
   id: ProjectKitId; // e.g. 'tec1/mon1b'
-  platform: ScaffoldPlatform; // 'simple' | 'tec1' | 'tec1g'
+  platform: ScaffoldPlatform; // 'simple' | 'cpm22' | 'tec1' | 'tec1g'
   profileName: string; // profile key written into debug80.json
   label: string; // shown in the quick-pick
   description: string;
@@ -490,11 +490,12 @@ type ProjectKit = {
 };
 ```
 
-The four built-in kits are:
+The built-in kits are:
 
 | Kit ID            | Platform | Profile      | Monitor          |
 | ----------------- | -------- | ------------ | ---------------- |
 | `simple/default`  | `simple` | `default`    | none             |
+| `cpm22/default`   | `cpm22`  | `default`    | none             |
 | `tec1/classic-2k` | `tec1`   | `classic-2k` | none             |
 | `tec1/mon1b`      | `tec1`   | `mon1b`      | MON-1B (bundled) |
 | `tec1g/mon3`      | `tec1g`  | `mon3`       | MON3 (bundled)   |
@@ -503,7 +504,7 @@ The four built-in kits are:
 
 `project-kits.ts` exports two selection paths:
 
-**`getDefaultProjectKitForPlatform(platform)`** — returns the single default kit for a platform string (`'simple'`, `'tec1'`, or `'tec1g'`) without showing any picker. This is the path taken when the user clicks **Initialize Project** from the panel's uninitialized state: the platform value already shown in the Platform selector is passed directly, and the project is scaffolded immediately using the platform's bundle-first default kit (TEC-1 → `tec1/mon1b`; TEC-1G → `tec1g/mon3`; Simple → `simple/default`). In this path the scaffold does not ask for target name or source language; it creates `src/main.asm` and derives the initial target name from that file.
+**`getDefaultProjectKitForPlatform(platform)`** — returns the single default kit for a platform string (`'simple'`, `'cpm22'`, `'tec1'`, or `'tec1g'`) without showing any picker. This is the path taken when the user clicks **Initialize Project** from the panel's uninitialized state: the platform value already shown in the Platform selector is passed directly, and the project is scaffolded immediately using the platform's default kit (CP/M 2.2 → `cpm22/default`; TEC-1 → `tec1/mon1b`; TEC-1G → `tec1g/mon3`; Simple → `simple/default`). In this path the scaffold does not ask for target name or source language; it creates `src/main.asm` and derives the initial target name from that file.
 
 **`chooseProjectKit(preselectedPlatform?)`** — the interactive path. Calls `getProjectKitChoices()` / `listProjectKits()`. If only one kit matches the platform, the picker is skipped. Otherwise a `showQuickPick()` prompt lists all matching kits. This path is used when the command is invoked without a pre-selected platform (e.g. from the Command Palette).
 
@@ -525,7 +526,7 @@ The scaffolding path also accepts pre-supplied answers. `scaffoldProject()` can 
 `createDefaultProjectConfig(plan)` assembles the `debug80.json` structure from the plan:
 
 - A `profiles` section with one entry (`plan.kit.profileName`) containing the platform, description, and — if the kit has a `bundledProfile` — a `bundledAssets` map with `romHex`, optional `debugMap`, and optional `source` entries (each a `BundledAssetReference`).
-- A `targets` section with one entry (`plan.targetName`) containing `sourceFile`, `outputDir`, `artifactBase`, `platform`, `profile`, and the platform-specific memory map block (`simple`, `tec1`, or `tec1g`). For kits with a `bundledProfile`, the target block also includes `romHex` and `sourceRoots`. The `tec1g/custom` kit remains project-owned rather than bundle-backed, so its target block writes explicit `romHex` and `expansionRomHex` paths under `roms/tec1g/custom/`.
+- A `targets` section with one entry (`plan.targetName`) containing `sourceFile`, `outputDir`, `artifactBase`, `platform`, `profile`, and the platform-specific block (`simple`, `cpm22`, `tec1`, or `tec1g`). For kits with a `bundledProfile`, the target block also includes `romHex` and `sourceRoots`. The `cpm22/default` kit writes `cpm22: { writable: true, programName: 'MAIN.COM' }`. The `tec1g/custom` kit remains project-owned rather than bundle-backed, so its target block writes explicit `romHex` and `expansionRomHex` paths under `roms/tec1g/custom/`.
 - Top-level `projectVersion`, `projectPlatform`, `defaultProfile`, and, when a target is scaffolded immediately, `defaultTarget` fields.
 
 When the scaffold creates or updates project files, it also calls `ensureDebug80Gitignore()` in `src/extension/project-gitignore.ts` to create or append a standard **Debug80**-marked ignore block (see Chapter 2). The normal panel initialization path writes root `debug80.json` and does not create `.vscode/launch.json`; launch scaffolding is an explicit optional path.
@@ -552,7 +553,7 @@ If the user chose to create a starter source file, `createStarterSourceContent()
 
 ## Summary
 
-- `PlatformViewProvider` is the single point of contact between the debug adapter and the webview. It holds all hardware display state and serial/terminal buffers in memory on the extension host side for all three platforms simultaneously.
+- `PlatformViewProvider` is the single point of contact between the debug adapter and the webview. It holds all hardware display state and serial/terminal buffers in memory on the extension host side for all built-in platform panels, including the `cpm22` terminal path.
 
 - The Debug80 panel is registered under `"views": { "debug": [...] }` in `package.json`, placing it as a collapsible subpanel in the **Run & Debug sidebar**. The `"onView:debug80.platformView"` activation event ensures the extension starts as soon as the user expands the panel.
 

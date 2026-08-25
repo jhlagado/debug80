@@ -82,11 +82,11 @@ The `.debug80.json`, `.vscode/debug80.json`, and `package.json` `debug80` field 
 
 ### Platform block merging
 
-Platform-specific configuration blocks (`tec1`, `tec1g`, `simple`) are **shallow merged**, not replaced. If the root config has `tec1g: { romHex: "mon3.hex" }` and the target has `tec1g: { clockSpeed: 4000000 }`, the merged result is `tec1g: { romHex: "mon3.hex", clockSpeed: 4000000 }`. This is handled by `mergeNestedPlatformBlock()` in `launch-config-merge.ts`.
+Platform-specific configuration blocks (`simple`, `cpm22`, `tec1`, `tec1g`) are **shallow merged**, not replaced. If the root config has `tec1g: { romHex: "mon3.hex" }` and the target has `tec1g: { clockSpeed: 4000000 }`, the merged result is `tec1g: { romHex: "mon3.hex", clockSpeed: 4000000 }`. This is handled by `mergeNestedPlatformBlock()` in `launch-config-merge.ts`.
 
 The TEC-1G platform has an additional inheritance rule: `resolveTec1gBaseForMerge()` ensures that the `romHex` field from the first target definition carries forward to other targets that don't specify their own ROM. This allows a project to define a ROM once and share it across targets.
 
-Malformed nested platform input is preserved rather than normalized away. If a root config, target config, or explicit launch arg supplies `simple`, `tec1`, or `tec1g` as a non-object, or supplies a malformed ROM path field inside those blocks, `restoreMalformedPlatformBlocks()` and `restoreMalformedPlatformPathFields()` write that raw value back into the merged launch args. The later validation pass then rejects the actual bad input instead of silently falling back to defaults.
+Malformed nested platform input is preserved rather than normalized away. If a root config, target config, or explicit launch arg supplies `simple`, `cpm22`, `tec1`, or `tec1g` as a non-object, or supplies a malformed path field inside those blocks, `restoreMalformedPlatformBlocks()` and `restoreMalformedPlatformPathFields()` write that raw value back into the merged launch args. The later validation pass then rejects the actual bad input instead of silently falling back to defaults.
 
 ### Field-by-field resolution
 
@@ -115,6 +115,7 @@ The manifest maps platform IDs to factory functions:
 | Platform   | Provider factory                 |
 | ---------- | -------------------------------- |
 | `'simple'` | `createSimplePlatformProvider()` |
+| `'cpm22'`  | `createCpm22PlatformProvider()`  |
 | `'tec1'`   | `createTec1PlatformProvider()`   |
 | `'tec1g'`  | `createTec1gPlatformProvider()`  |
 
@@ -125,6 +126,7 @@ interface ResolvedPlatformProvider {
   id: PlatformKind;
   payload: unknown;                        // Sent to extension host via debug80/platform event
   simpleConfig?: SimplePlatformConfig;
+  cpm22Config?: Cpm22PlatformConfig;
   tec1Config?: Tec1PlatformConfig;
   tec1gConfig?: Tec1gPlatformConfigNormalized;
   runtimeOptions?: { romRanges: ... };     // Address ranges that are read-only
@@ -137,6 +139,8 @@ interface ResolvedPlatformProvider {
 ```
 
 The provider is used throughout the remaining pipeline stages — it supplies platform-specific configurations, registers custom DAP commands, builds I/O handlers, and finalizes the runtime after creation.
+
+For `cpm22`, runtime creation has one extra branch before `loadAssets()`: if the launch has app input, `materializeCpm22ComArtifact()` extracts the initialized `$0100..$E3FF` transient-program image from the built HEX file, writes the matching host `.com` artifact beside it, and passes the bytes plus the canonical user-0 8.3 filename into the platform asset loader. The provider then installs that `.COM` image into a private copy of drive A before the guest boots from `bootstrap.bin`.
 
 After resolution, two things happen immediately:
 

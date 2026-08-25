@@ -77,7 +77,7 @@ The display also supports `applySegmentIntensities(values)`, where each digit re
 
 ### Project status UI (`common/project-status-ui.ts`)
 
-`createProjectStatusUi(vscode, elements, platform)` wires up the project header for a platform panel: it handles `projectStatus` messages, populates the Target dropdown, sets the Platform selector value, shows or hides controls via `applyInitializedProjectControls()`, and wires the Initialize button, target change handler, add/remove-target buttons, and stop-on-entry checkbox. This function consolidates the setup-card/target-dropdown/project-root wiring that was previously duplicated across `simple/index.ts`, `tec1/index.ts`, and `tec1g/tec1g-project-status-ui.ts`. All three platform panels now call `createProjectStatusUi()` from this shared module.
+`createProjectStatusUi(vscode, elements, platform)` wires up the project header for a platform panel: it handles `projectStatus` messages, populates the Target dropdown, sets the Platform selector value, shows or hides controls via `applyInitializedProjectControls()`, and wires the Initialize button, target change handler, add/remove-target buttons, and stop-on-entry checkbox. This function consolidates the setup-card/target-dropdown/project-root wiring that was previously duplicated across `simple/index.ts`, `tec1/index.ts`, and `tec1g/tec1g-project-status-ui.ts`. The shared project-status surface is now reused by the simple, CP/M-backed terminal, TEC-1, and TEC-1G panels.
 
 The same helper also renders three independent status surfaces from `projectStatus`: a source-map status line, a hardware-send status line, and a build-status surface. When `buildStatusState === 'error'`, the shared tab row shows a compact `!` badge beside the Run button and the panel reveals a dedicated build-status line above the platform UI. Successful build-only runs also update that line with the selected target's emitted HEX path until a later status refresh replaces it. This status path is separate from `hardwareStatusText`, so CoolTerm readiness or transfer results stay visible even after an assembly failure. The hardware send button posts `sendHexViaCoolTerm`; it is enabled only when CoolTerm is reachable and the selected target has an inferred HEX artifact.
 
@@ -114,7 +114,7 @@ The contract-update dropdown only affects the explicit Build path. A panel **Bui
 
 ### Create project helper (`common/create-project.ts`)
 
-`sendCreateProject(vscode, platform)` posts the `{ type: 'createProject', platform }` message to the extension host. It is used by all three platform webviews when the user clicks the Initialize button, replacing the copy-pasted `vscode.postMessage` calls that previously appeared in each platform's own entry point.
+`sendCreateProject(vscode, platform)` posts the `{ type: 'createProject', platform }` message to the extension host. It is used by every built-in platform panel when the user clicks the Initialize button, replacing the copy-pasted `vscode.postMessage` calls that previously appeared in each platform's own entry point.
 
 ---
 
@@ -172,7 +172,7 @@ The TEC-1 `index.ts` is a self-contained entry point that acquires the VS Code A
 
 ## HTML template structure
 
-All three `index.html` files follow the same structure:
+All built-in platform panels share the same project-header structure:
 
 ```html
 <div class="project-header">
@@ -190,6 +190,7 @@ All three `index.html` files follow the same structure:
     <span class="project-label">Platform</span>
     <select id="platformSelect">
       <option value="simple">Simple</option>
+      <option value="cpm22">CP/M 2.2</option>
       <option value="tec1">TEC-1</option>
       <option value="tec1g">TEC-1G</option>
     </select>
@@ -596,7 +597,7 @@ The edit field accepts hex input without a `0x` prefix. Input is validated befor
 
 - The webview is sandboxed JavaScript with access only to the VS Code postMessage channel. All communication with the adapter is mediated by the extension host.
 
-- Common infrastructure (`vscode.ts`, `session-status.ts`, `digits.ts`, `serial.ts`, `memory-panel.ts`) is shared by all three platform panels.
+- Common infrastructure (`vscode.ts`, `session-status.ts`, `digits.ts`, `serial.ts`, `memory-panel.ts`) is shared by the built-in platform panels. The CP/M terminal path reuses the same project-header and terminal plumbing even though it does not render hardware widgets.
 
 - The hardware webviews use a shared project/status shell, with project controls now grouped into a **Project** accordion section instead of being spread across the top of the panel.
 
