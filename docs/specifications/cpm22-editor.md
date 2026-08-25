@@ -239,3 +239,6 @@ The standalone assembly and Debug80 integration must distinguish:
 The final gate includes strict assembly, scoped editor proofs, the complete
 CP/M acceptance, runtime and terminal tests, Extension Host integration, full
 repository tests, typechecking, lint, formatting, link checks, and diff checks.
+
+The production Z80 proof coverage and measurements are recorded in
+[`cpm22-editor-proof.md`](../reports/cpm22-editor-proof.md).
