@@ -1,0 +1,7 @@
+{
+  "boot": "\r\nA>",
+  "dir": "DIR\r\r\nA: README   TXT : SMOKE    COM\r\nA>",
+  "readme": "TYPE README.TXT\r\r\nDebug80 CP/M 2.2 platform\r\n\r\nA>",
+  "smoke": "SMOKE\r\r\nWrote RESULT.TXT\r\n\r\nA>",
+  "result": "TYPE RESULT.TXT\r\r\nCP/M file services are working\r\n\r\nA>"
+}

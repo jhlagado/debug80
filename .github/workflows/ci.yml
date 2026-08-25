@@ -197,12 +197,12 @@ jobs:
       needs.changes.outputs.runtime == 'true' ||
       needs.changes.outputs.infra == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 25
+    timeout-minutes: 35
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v6
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci --ignore-scripts
       - run: npm run build -w @jhlagado/azm
@@ -214,6 +214,7 @@ jobs:
       - run: npm run lint -w debug80
       - run: npm run format:check -w debug80
       - run: npm run test -w debug80
+      - run: xvfb-run -a npm run test:vscode -w debug80
       - run: npm run package:debug80
 
   # Single required status; fails if any triggered job failed.

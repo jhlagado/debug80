@@ -2,6 +2,7 @@ import assert from 'node:assert';
 
 import * as vscode from 'vscode';
 
+import { runCpm22Pipeline } from './cpm22-pipeline.js';
 import { runProjectPipeline } from './project-pipeline.js';
 
 const extensionId = 'jhlagado.debug80';
@@ -24,7 +25,7 @@ export async function run() {
   for (const command of expectedCommands) {
     assert.ok(
       registeredCommands.includes(command),
-      `Expected command to be registered: ${command}`,
+      `Expected command to be registered: ${command}`
     );
   }
 
@@ -33,4 +34,5 @@ export async function run() {
   assert.strictEqual(workspaceFolders[0].name, 'vscode-smoke');
 
   await runProjectPipeline();
+  await runCpm22Pipeline(extension);
 }
