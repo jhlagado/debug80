@@ -29,7 +29,12 @@ function fail(message) {
   throw new Error(message);
 }
 
-async function assemble(source, includeDebugMap = false) {
+async function assemble(
+  source,
+  includeDebugMap = false,
+  registerContracts = "off",
+  registerContractsInterfaces = [],
+) {
   const result = await compile(
     source,
     {
@@ -38,7 +43,8 @@ async function assemble(source, includeDebugMap = false) {
       emitD8m: includeDebugMap,
       emitLst: false,
       emitAsm80: false,
-      registerContracts: "off",
+      registerContracts,
+      registerContractsInterfaces,
     },
     { formats: defaultFormatWriters },
   );
@@ -179,12 +185,15 @@ async function main() {
         );
     }
 
-    const [bootstrap, ccp, bdos, bios, smoke] = await Promise.all([
+    const [bootstrap, ccp, bdos, bios, smoke, editor] = await Promise.all([
       assemble(join(outputDirectory, "bootstrap.asm")),
       assemble(convertedCcp),
       assemble(convertedBdos),
       assemble(join(outputDirectory, "bios.asm"), true),
       assemble(join(outputDirectory, "smoke.asm")),
+      assemble(join(outputDirectory, "editor.asm"), true, "strict", [
+        join(outputDirectory, "editor-bdos.asmi"),
+      ]),
     ]);
 
     if (bootstrap.bytes.length !== 256)
@@ -193,6 +202,8 @@ async function main() {
       fail(`BIOS must be 1024 bytes, got ${bios.bytes.length}`);
     if (smoke.bytes.length !== 256)
       fail(`SMOKE.COM must be 256 bytes, got ${smoke.bytes.length}`);
+    if (editor.bytes.length > 0x1d00)
+      fail(`EDIT.COM is ${editor.bytes.length} bytes; maximum is 7424`);
 
     let image = new Uint8Array(diskBytes).fill(0xe5);
     copyExact(image, 0x0000, ccp.bytes, 0x0800, "CCP");
@@ -214,6 +225,7 @@ async function main() {
     image = installCpm22File(image, "BUILD.LST", multipartPlan);
     image = installCpm22File(image, "NUCLEUS.COM", nucleus);
     image = installCpm22File(image, "INPUT.NU", nucleusSource);
+    image = installCpm22File(image, "EDIT.COM", editor.bytes);
 
     await writeFile(join(outputDirectory, "bootstrap.bin"), bootstrap.bytes);
     await writeFile(join(outputDirectory, "cpm22.img"), image);
@@ -236,6 +248,7 @@ async function main() {
       smoke: sha256(smoke.bytes),
       atom: sha256(atom),
       nucleus: sha256(nucleus),
+      editor: sha256(editor.bytes),
       atomSource: sha256(atomSource),
       nucleusSource: sha256(nucleusSource),
       largeAtomSource: sha256(largeAtomSource),

@@ -1,0 +1,4 @@
+extern CpmBdos
+out A
+clobbers BC,DE,HL,IX,IY,carry,zero,sign,parity,halfCarry
+end

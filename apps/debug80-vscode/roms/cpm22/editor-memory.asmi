@@ -1,0 +1,56 @@
+; Fixed memory partition for the native CP/M editor.
+
+EditorCodeBase       .equ $0100
+EditorCodeLimit      .equ $1E00
+EditorWorkspaceBase  .equ $1E00
+EditorWorkspaceLimit .equ $2000
+EditorTextBase       .equ $2000
+EditorTextLimit      .equ $D800
+EditorTextCapacity   .equ EditorTextLimit-EditorTextBase
+EditorStackFloor     .equ $D800
+EditorStackTop       .equ $E400
+
+EditorFcb            .equ EditorWorkspaceBase
+EditorTransactionFcb .equ EditorFcb+36
+EditorDma            .equ EditorTransactionFcb+36
+
+EditorLength         .equ EditorDma+128
+EditorCursor         .equ EditorLength+2
+EditorTop            .equ EditorCursor+2
+EditorHorizontal     .equ EditorTop+2
+EditorDesiredColumn  .equ EditorHorizontal+2
+EditorFlags          .equ EditorDesiredColumn+2
+EditorStatus         .equ EditorFlags+1
+EditorLoadPendingCr  .equ EditorStatus+1
+EditorSaveState      .equ EditorLoadPendingCr+1
+EditorScratchA       .equ EditorSaveState+1
+EditorScratchB       .equ EditorScratchA+2
+EditorScratchC       .equ EditorScratchB+2
+EditorRenderPointer  .equ EditorScratchC+2
+EditorRenderColumn   .equ EditorRenderPointer+2
+EditorRenderCount    .equ EditorRenderColumn+2
+EditorCursorScreenRow .equ EditorRenderCount+2
+EditorCursorScreenColumn .equ EditorCursorScreenRow+1
+EditorWorkspaceEnd   .equ EditorCursorScreenColumn+1
+
+EditorFlagDirty        .equ 1
+EditorFlagConfirmQuit  .equ 2
+EditorFlagDesiredValid .equ 4
+
+EditorStatusReady       .equ 0
+EditorStatusSaved       .equ 1
+EditorStatusFull        .equ 2
+EditorStatusBoundary    .equ 3
+EditorStatusDiscard     .equ 4
+EditorStatusSaveConflict .equ $10
+EditorStatusSaveCreate  .equ $11
+EditorStatusSaveWrite   .equ $12
+EditorStatusSaveClose   .equ $13
+EditorStatusSaveRename  .equ $14
+EditorStatusSaveRollback .equ $15
+
+EditorErrorCommand  .equ 1
+EditorErrorNotFound .equ 2
+EditorErrorText     .equ 3
+EditorErrorCapacity .equ 4
+EditorErrorStorage  .equ 5
