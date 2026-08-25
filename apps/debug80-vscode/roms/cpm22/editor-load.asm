@@ -7,17 +7,15 @@ EditorLoadFile:
             LD   (EditorLoadPendingCr),A
             LD   HL,0
             LD   (EditorLength),HL
-            LD   DE,EditorFcb
             LD   C,15
-            CALL EditorCallBdos
+            CALL EditorSelectedCall
             INC  A
             JR   Z,EditorLoadNotFound
             LD   DE,EditorDma
             CALL EditorSetDma
 EditorLoadRecord:
-            LD   DE,EditorFcb
             LD   C,20
-            CALL EditorCallBdos
+            CALL EditorSelectedCall
             OR   A
             JR   Z,EditorLoadScanRecord
             DEC  A
@@ -49,9 +47,8 @@ EditorLoadPhysicalEof:
             OR   A
             JR   NZ,EditorLoadTextError
 EditorLoadClose:
-            LD   DE,EditorFcb
             LD   C,16
-            CALL EditorCallBdos
+            CALL EditorSelectedCall
             INC  A
             JR   Z,EditorLoadStorage
             LD   HL,0

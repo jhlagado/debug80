@@ -331,8 +331,8 @@ const editorExecution = {
   tStates: tStates - editorTStateStart,
 };
 assert.deepEqual(editorExecution, {
-  instructions: 273716,
-  tStates: 2705522,
+  instructions: 271046,
+  tStates: 2687153,
 });
 const editedNucleusSource = logicalCpmBytes(
   readCpm22File(platform.disk.exportImage(), "INPUT.NU"),

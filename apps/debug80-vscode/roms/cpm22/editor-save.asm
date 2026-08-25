@@ -12,40 +12,43 @@ EditorSave:
             CALL EditorSaveRequireAbsent
             JR   C,EditorSaveConflict
             CALL EditorSaveSetTemporary
-            LD   DE,EditorTransactionFcb
             LD   C,22
-            CALL EditorCallBdos
+            CALL EditorTransactionCall
             INC  A
             JR   Z,EditorSaveCreateFailure
             LD   A,1
             LD   (EditorSaveState),A
             CALL EditorSaveWriteContent
             JR   C,EditorSaveWriteFailure
-            LD   DE,EditorTransactionFcb
             LD   C,16
-            CALL EditorCallBdos
+            CALL EditorTransactionCall
             INC  A
             JR   Z,EditorSaveCloseFailure
-            CALL EditorSaveBuildSelectedToBackup
-            LD   DE,EditorTransactionFcb
+            CALL EditorSaveCopySelected
+            LD   HL,EditorTransactionFcb
+            CALL EditorSaveBuildRename
+            LD   HL,$4142
+            LD   (EditorTransactionFcb+25),HL
+            LD   A,'K'
+            LD   (EditorTransactionFcb+27),A
             LD   C,23
-            CALL EditorCallBdos
+            CALL EditorTransactionCall
             INC  A
             JR   Z,EditorSaveRenameFailure
             LD   A,3
             LD   (EditorSaveState),A
-            CALL EditorSaveBuildTemporaryToSelected
-            LD   DE,EditorTransactionFcb
+            CALL EditorSaveSetTemporary
+            LD   HL,EditorFcb
+            CALL EditorSaveBuildRename
             LD   C,23
-            CALL EditorCallBdos
+            CALL EditorTransactionCall
             INC  A
             JR   Z,EditorSaveRenameFailure
             LD   A,7
             LD   (EditorSaveState),A
             CALL EditorSaveSetBackup
-            LD   DE,EditorTransactionFcb
             LD   C,19
-            CALL EditorCallBdos
+            CALL EditorTransactionCall
             INC  A
             JR   Z,EditorSaveRenameFailure
             XOR  A
@@ -79,9 +82,8 @@ EditorSaveFail:
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
 EditorSaveRequireAbsent:
-            LD   DE,EditorTransactionFcb
             LD   C,15
-            CALL EditorCallBdos
+            CALL EditorTransactionCall
             INC  A
             JR   Z,EditorSaveAbsent
             SCF
@@ -129,13 +131,12 @@ EditorSavePartialRecord:
             LDIR
             LD   DE,EditorDma
             CALL EditorSetDma
-            JP   EditorSaveWriteRecord
+            JR   EditorSaveWriteRecord
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
 EditorSaveWriteRecord:
-            LD   DE,EditorTransactionFcb
             LD   C,21
-            CALL EditorCallBdos
+            CALL EditorTransactionCall
             OR   A
             RET  Z
             SCF
@@ -149,25 +150,23 @@ EditorSaveRollback:
             AND  4
             JR   Z,EditorSaveRollbackTemporary
             CALL EditorSaveCopySelected
-            LD   DE,EditorTransactionFcb
             LD   C,19
-            CALL EditorCallBdos
+            CALL EditorTransactionCall
 EditorSaveRollbackTemporary:
             CALL EditorSaveSetTemporary
-            LD   DE,EditorTransactionFcb
             LD   C,16
-            CALL EditorCallBdos
+            CALL EditorTransactionCall
             CALL EditorSaveSetTemporary
-            LD   DE,EditorTransactionFcb
             LD   C,19
-            CALL EditorCallBdos
+            CALL EditorTransactionCall
             LD   A,(EditorSaveState)
             AND  2
             JR   Z,EditorSaveRollbackDone
-            CALL EditorSaveBuildBackupToSelected
-            LD   DE,EditorTransactionFcb
+            CALL EditorSaveSetBackup
+            LD   HL,EditorFcb
+            CALL EditorSaveBuildRename
             LD   C,23
-            CALL EditorCallBdos
+            CALL EditorTransactionCall
             INC  A
             JR   NZ,EditorSaveRollbackDone
             LD   A,EditorStatusSaveRollback
@@ -187,46 +186,23 @@ EditorSaveCopySelected:
 EditorSaveSetTemporary:
             CALL EditorSaveCopySelected
             LD   HL,$2424
-            LD   (EditorTransactionFcb+9),HL
             LD   A,'$'
-            LD   (EditorTransactionFcb+11),A
-            RET
+            JR   EditorSaveSetExtension
 
 .routine out A clobbers carry,zero,sign,parity,halfCarry,BC,DE,HL
 EditorSaveSetBackup:
             CALL EditorSaveCopySelected
             LD   HL,$4142
-            LD   (EditorTransactionFcb+9),HL
             LD   A,'K'
+
+.routine in A,HL out A clobbers carry,zero,sign,parity,halfCarry,BC,DE,HL
+EditorSaveSetExtension:
+            LD   (EditorTransactionFcb+9),HL
             LD   (EditorTransactionFcb+11),A
             RET
 
-.routine out A clobbers carry,zero,sign,parity,halfCarry,BC,DE,HL
-EditorSaveBuildSelectedToBackup:
-            CALL EditorSaveCopySelected
-            LD   HL,EditorTransactionFcb
-            LD   DE,EditorTransactionFcb+16
-            LD   BC,12
-            LDIR
-            LD   HL,$4142
-            LD   (EditorTransactionFcb+25),HL
-            LD   A,'K'
-            LD   (EditorTransactionFcb+27),A
-            RET
-
-.routine out A clobbers carry,zero,sign,parity,halfCarry,BC,DE,HL
-EditorSaveBuildTemporaryToSelected:
-            CALL EditorSaveSetTemporary
-            LD   HL,EditorFcb
-            LD   DE,EditorTransactionFcb+16
-            LD   BC,12
-            LDIR
-            RET
-
-.routine out A clobbers carry,zero,sign,parity,halfCarry,BC,DE,HL
-EditorSaveBuildBackupToSelected:
-            CALL EditorSaveSetBackup
-            LD   HL,EditorFcb
+.routine in HL out A clobbers carry,zero,sign,parity,halfCarry,BC,DE,HL
+EditorSaveBuildRename:
             LD   DE,EditorTransactionFcb+16
             LD   BC,12
             LDIR

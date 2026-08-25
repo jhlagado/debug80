@@ -87,7 +87,8 @@ EditorCommandUnsupported:
             CALL EditorBufferBoundary
 EditorCommandComplete:
             JR   NC,EditorCommandRender
-            CALL EditorRingBell
+            LD   A,7
+            CALL EditorOutputByte
 EditorCommandRender:
             CALL EditorRender
             JP   EditorMainLoop
@@ -115,7 +116,14 @@ EditorRunError:
             LD   DE,EditorErrorPrefix
             CALL EditorOutputText
             POP  AF
-            CALL EditorPrintHexByte
+            PUSH AF
+            RRCA
+            RRCA
+            RRCA
+            RRCA
+            CALL EditorPrintHexNibble
+            POP  AF
+            CALL EditorPrintHexNibble
             LD   DE,EditorNewline
             JP   EditorOutputText
 
@@ -147,16 +155,6 @@ EditorReadEscapeLoop:
             SCF
             RET
 
-.routine in A out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
-EditorPrintHexByte:
-            LD   (EditorScratchC),A
-            RRCA
-            RRCA
-            RRCA
-            RRCA
-            CALL EditorPrintHexNibble
-            LD   A,(EditorScratchC)
-            JP   EditorPrintHexNibble
 .routine in A out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
 EditorPrintHexNibble:
             AND  $0F

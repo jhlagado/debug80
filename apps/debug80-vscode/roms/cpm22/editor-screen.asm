@@ -12,7 +12,10 @@ EditorRenderRows:
             PUSH BC
             CALL EditorRenderLine
             LD   (EditorRenderPointer),HL
-            CALL EditorOutputNewline
+            LD   A,13
+            CALL EditorOutputByte
+            LD   A,10
+            CALL EditorOutputByte
             LD   HL,(EditorRenderPointer)
             POP  BC
             DJNZ EditorRenderRows
@@ -144,9 +147,6 @@ EditorRenderCell:
             POP  HL
             JR   C,EditorRenderCellAdvance
             LD   DE,(EditorRenderCount)
-            LD   A,D
-            OR   A
-            JR   NZ,EditorRenderCellAdvance
             LD   A,E
             CP   80
             JR   NC,EditorRenderCellAdvance
@@ -242,11 +242,19 @@ EditorStatusMessage:
             LD   DE,EditorStatusSaveFailedText
             CALL EditorStatusText
             LD   A,(EditorStatus)
-            CALL EditorStatusHexByte
+            OR   A
+            PUSH AF
+            RRCA
+            RRCA
+            RRCA
+            RRCA
+            CALL EditorStatusHexNibble
+            POP  AF
+            CALL EditorStatusHexNibble
 EditorStatusMessageDone:
             RET
 EditorStatusMessageText:
-            JP   EditorStatusText
+            JR   EditorStatusText
 
 .routine in DE out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
 EditorStatusText:
@@ -268,23 +276,13 @@ EditorStatusByte:
             RET
 
 .routine in A out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
-EditorStatusHexByte:
-            LD   (EditorScratchC),A
-            RRCA
-            RRCA
-            RRCA
-            RRCA
-            CALL EditorStatusHexNibble
-            LD   A,(EditorScratchC)
-            JP   EditorStatusHexNibble
-.routine in A out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
 EditorStatusHexNibble:
             AND  $0F
             ADD  A,'0'
             CP   '9'+1
-            JP   C,EditorStatusByte
+            JR   C,EditorStatusByte
             ADD  A,7
-            JP   EditorStatusByte
+            JR   EditorStatusByte
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
 EditorPositionCursor:
@@ -303,7 +301,7 @@ EditorPositionCursor:
             LD   A,(EditorScratchA+1)
             CALL EditorOutputDecimal
             LD   A,'H'
-            JP   EditorOutputByte
+            JR   EditorOutputByte
 
 .routine in A out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
 EditorOutputDecimal:
@@ -324,7 +322,7 @@ EditorOutputDecimalReady:
 EditorOutputDecimalOnes:
             LD   A,(EditorScratchC)
             ADD  A,'0'
-            JP   EditorOutputByte
+            JR   EditorOutputByte
 
 .routine in A out A clobbers carry,zero,sign,parity,halfCarry,BC,DE,HL
 EditorOutputByte:
@@ -343,15 +341,4 @@ EditorOutputText:
             POP  DE
             JR   EditorOutputText
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
-EditorOutputNewline:
-            LD   A,13
-            CALL EditorOutputByte
-            LD   A,10
-            JP   EditorOutputByte
-
-.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
-EditorRingBell:
-            LD   A,7
-            JP   EditorOutputByte
 EditorScreenCodeEnd:

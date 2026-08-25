@@ -28,9 +28,15 @@ EditorClearFcbTail:
 .routine in DE out A clobbers carry,zero,sign,parity,halfCarry,BC,DE,HL
 EditorSetDma:
             LD   C,26
-            JP   EditorCallBdos
+            JR   EditorCallBdos
 
-.routine in DE out A clobbers carry,zero,sign,parity,halfCarry,BC,DE,HL
-EditorFcbCall:
-            JP   EditorCallBdos
+.routine in C out A clobbers carry,zero,sign,parity,halfCarry,BC,DE,HL
+EditorTransactionCall:
+            LD   DE,EditorTransactionFcb
+            JR   EditorCallBdos
+
+.routine in C out A clobbers carry,zero,sign,parity,halfCarry,BC,DE,HL
+EditorSelectedCall:
+            LD   DE,EditorFcb
+            JR   EditorCallBdos
 EditorBdosCodeEnd:

@@ -1,6 +1,6 @@
 # Plan: a GPL CP/M-compatible development environment
 
-Status: Phase C complete; Phase D Atom and Phase F Nucleus vertical slices implemented
+Status: Phase C complete; Phase D Atom, Phase E editor, and Phase F Nucleus vertical slices implemented
 
 Date: 2026-08-26
 
@@ -41,9 +41,17 @@ Headless and Extension Host proofs compile the bundled `INPUT.NU`, execute its
 `OUTPUT.COM`, preserve an existing output through a rejected transaction, and
 exercise recovery, multipart diagnostics, and the real CCP stack boundary.
 
-This does not complete the wider development-environment project. The editor,
-replacement utilities, optional graphics, and a project-owned operating-system
-core remain later phases.
+The first native editor now runs as a 2,504-byte CP/M transient. It opens the
+bundled Atom and Nucleus sources, renders an 80-by-24 full-screen view, supports
+bounded insertion, deletion, navigation, and scrolling, and saves through a
+recoverable `.$$$` and `.BAK` transaction. Its contiguous arena holds 47,104
+text bytes; fixed workspace is 228 bytes and the deepest measured private stack
+use is 20 bytes. Isolated Z80 proofs, headless CP/M acceptance, and the real
+Extension Development Host exercise the same production transient.
+
+This does not complete the wider development-environment project. Search and
+other editor facilities, replacement utilities, optional graphics, and a
+project-owned operating-system core remain later phases.
 
 ## Purpose
 
@@ -389,27 +397,23 @@ profile-specific front ends and include the added disk traffic and loader size.
 
 ### 5. Full-screen editor
 
-The editor is a new program, not an ED emulation. Its initial interaction model
-resembles nano: a full screen of text, visible status and command hints, direct
-cursor movement, insertion and deletion, search, file open, save, and explicit
-error reporting.
+The editor is a new program, not an ED emulation. Its first vertical slice has
+a full screen of text, visible status and command hints, direct cursor movement,
+insertion and deletion, file open, recoverable save, and explicit error
+reporting. Search, replace, selection, multiple buffers, and undo remain later
+features.
 
 The editor uses the fixed 80-by-24 VT100 profile above. Its terminal adapter
 emits only the contracted cursor, erase, and rendition sequences and decodes the
 contracted raw key bytes. A reverse-video final row may hold status and command
 hints; it remains part of the guest screen rather than a host-side overlay.
 
-The remaining prerequisites are:
-
-- text-file line-ending and end-of-file rules;
-- atomic or recoverable save behaviour; and
-- practical maximum file size.
-
-Candidate buffer representations include one contiguous buffer with a gap,
-line descriptors over a text arena, and a disk-backed piece representation.
-Each candidate must report resident code, peak RAM, editing cost, and recovery
-behaviour. The first version should favour a small, dependable editor for
-ordinary source files over very large-file support.
+Independent prototypes compared a contiguous sequence, a movable gap, and line
+descriptors over a text arena. The retained contiguous representation was the
+smallest complete candidate. It provides a 47,104-byte capacity and uses `LDDR`
+and `LDIR` for insertion and deletion. The settled file contract preserves LF
+and CRLF, treats `$1A` as text EOF, rejects invalid control bytes, and pads a
+partial saved record with `$1A`.
 
 ### 6. Native Nucleus
 
@@ -538,6 +542,8 @@ bounds rather than complete implementations.
 
 ### Phase E: editor
 
+This phase is complete for the first vertical slice.
+
 Deliverables:
 
 - a compact adapter for the canonical text-terminal contract;
@@ -548,7 +554,9 @@ Deliverables:
 
 Exit gate: a failed save leaves the previous file recoverable, all editing
 operations preserve the buffer invariants, and the size and workspace reports
-are complete.
+are complete. The retained 2,504-byte editor satisfies this gate through its
+isolated production-code proof, complete CP/M acceptance, and real Extension
+Development Host workflow.
 
 ### Phase F: native Nucleus
 
@@ -607,13 +615,12 @@ retained:
 
 ## Immediate next work
 
-1. Freeze the editor's text-file, recovery, key, and bounded-buffer contract.
-2. Measure a first native full-screen editor vertical slice that can open,
-   modify, and safely save a representative Atom or Nucleus source file.
+1. Measure the next editor facility against the retained 2,504-byte transient,
+   beginning with interactive search and repeat-search.
+2. Write the common assembler-analysis template and complete the DRI ASM study
+   before using historical implementation details as design evidence.
 3. Revisit external object storage only when a real source exceeds Atom's
    18,304-byte or Nucleus's 25,600-byte `.COM` capacity.
-4. Write the common assembler-analysis template and complete the DRI ASM study
-   before using historical implementation details as design evidence.
 
 ## Reference starting points
 

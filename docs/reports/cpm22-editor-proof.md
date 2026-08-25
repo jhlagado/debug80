@@ -2,24 +2,26 @@
 
 Date: 2026-08-26
 
-This checkpoint records the first production `EDIT.COM` and its isolated Z80
-proof harness. It follows the contract in
+This report records the first production `EDIT.COM`, its isolated Z80 proof
+harness, and the retained size pass. It follows the contract in
 [`cpm22-editor.md`](../specifications/cpm22-editor.md) and the retained buffer
 measurement in
 [`cpm22-editor-buffer-measurement.md`](cpm22-editor-buffer-measurement.md).
-The implementation was assembled from Debug80 `1e87bdee` with AZM 0.3.9
-strict register contracts.
+The implementation baseline is Debug80 `d3f8931`; the measurements below come
+from the source accompanying this report, assembled with AZM 0.3.9 strict
+register contracts.
 
 ## Resident accounts
 
 | Account                       | Measured bytes |
 | ----------------------------- | -------------: |
-| Entry jump and compiler code  |          2,484 |
+| Entry jump                    |              3 |
+| Compiler code                 |          2,356 |
 | Immutable strings and names   |            145 |
-| Complete `EDIT.COM`           |          2,629 |
+| Complete `EDIT.COM`           |          2,504 |
 | Fixed writable workspace used |            228 |
 | Text capacity                 |         47,104 |
-| Free code-and-data partition  |          4,795 |
+| Free code-and-data partition  |          4,920 |
 
 The deepest measured private-stack use is 20 bytes. The proof checks the exact
 caller SP on every return, the unused workspace canary, and unchanged memory
@@ -69,22 +71,22 @@ They exclude the proof adapter's host implementation of BDOS calls.
 
 | Operation                                | Instructions |   T-states | Stack bytes |
 | ---------------------------------------- | -----------: | ---------: | ----------: |
-| Load empty file                          |           61 |        716 |           8 |
-| Load 47,104 bytes                        |    1,889,373 | 16,734,044 |           8 |
-| Reject byte 47,105                       |    1,889,386 | 16,734,094 |           8 |
+| Load empty file                          |           64 |        754 |           8 |
+| Load 47,104 bytes                        |    1,889,744 | 16,738,498 |           8 |
+| Reject byte 47,105                       |    1,889,756 | 16,738,536 |           8 |
 | Insert at start of four-byte buffer      |           55 |        653 |           4 |
 | Insert at end                            |           54 |        579 |           4 |
 | Insert CRLF                              |           56 |        589 |           4 |
-| Render tabbed line and status            |        3,933 |     45,039 |          16 |
-| Render horizontally scrolled line        |       14,215 |    150,579 |          16 |
-| Save one partial record                  |          681 |     11,140 |          10 |
-| Roll back failed final rename            |          884 |     13,768 |          10 |
-| Rollback failure with recoverable backup |          886 |     13,783 |          10 |
-| Clean full-entry quit                    |        3,850 |     44,044 |          20 |
+| Render tabbed line and status            |        3,881 |     44,652 |          16 |
+| Render horizontally scrolled line        |       13,940 |    149,095 |          16 |
+| Save one partial record                  |          727 |     11,634 |          12 |
+| Roll back failed final rename            |          899 |     13,952 |          10 |
+| Rollback failure with recoverable backup |          901 |     13,967 |          10 |
+| Clean full-entry quit                    |        3,827 |     43,843 |          20 |
 
 The complete bundled CP/M acceptance uses the real BDOS, BIOS, disk, and
 terminal. Its open, render, edit, Backspace, arrow, Delete, save, and quit path
-takes 273,716 instructions and 2,705,522 T-states. It verifies the exact
+takes 271,046 instructions and 2,687,153 T-states. It verifies the exact
 80-by-24 cells and attributes, publishes the expected source bytes, removes
 `INPUT.$$$` and `INPUT.BAK`, and returns to the CCP at its stable stack depth.
 
@@ -97,8 +99,27 @@ also checks that Ctrl-S and Ctrl-Q become bytes `$13` and `$11`, browser default
 are cancelled, Ctrl-C remains a debugger break, and SGR 7 creates reverse-video
 spans.
 
-## Work still open
+## Size pass
 
-This checkpoint does not complete the editor goal. A focused size pass, final
-adversarial review, platform documentation update, and complete repository gate
-remain.
+The complete editor measured 2,629 bytes before compression and 2,504 bytes
+after it, a reduction of 125 code bytes. Immutable data, the 228-byte writable
+workspace, the 47,104-byte text arena, and the private-stack partition did not
+change. The retained changes share the selected and transactional FCB call
+tails, merge the rename-FCB and extension-writing paths, remove one-use output
+and hexadecimal wrappers, integrate command-name validation, remove redundant
+buffer and rendering checks, and use relative transfers where the assembled
+displacement permits them.
+
+The final branch census rejected three additional relative transfers at
+measured displacements of +132, -139, and -171 bytes. The selected-file BDOS
+tail adds one instruction and 12 T-states per open, read, or close call; this
+accounts for the small load-path increase above. The complete interactive path
+is faster because the full-screen repaint loop and its common terminal paths
+execute fewer instructions.
+
+## Clearance
+
+Strict assembly, the isolated proof, complete headless CP/M acceptance, runtime
+and terminal suites, and the real Extension Development Host workflow form the
+release gate for this vertical slice. The exact final commands and results are
+recorded in the retaining commit and its continuous test output.

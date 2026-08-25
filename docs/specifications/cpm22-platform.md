@@ -13,8 +13,8 @@ calls with host filesystem operations.
 
 The acceptance system is deliberately small: one CPU, one 80-by-24 text
 terminal, one writable disk, and one reproducibly built guest image. The image
-includes native Atom and Nucleus vertical slices. Optional graphics, additional
-drives, printer devices, and the editor remain separate milestones.
+includes native Atom, Nucleus, and full-screen editor vertical slices. Optional
+graphics, additional drives, and printer devices remain separate milestones.
 
 ## Frozen implementation baseline
 
@@ -171,7 +171,8 @@ BIOS.
 
 The initial user-0 directory contains `README.TXT`, `SMOKE.COM`, `ATOM.COM`,
 `INPUT.ASM`, `HELLO.ASM`, the 16,535-byte `LARGE.ASM` acceptance source,
-`PART1.ASM`, `PART2.ASM`, `BUILD.LST`, `NUCLEUS.COM`, and `INPUT.NU`. Atom reads
+`PART1.ASM`, `PART2.ASM`, `BUILD.LST`, `NUCLEUS.COM`, `INPUT.NU`, and
+`EDIT.COM`. Atom reads
 and writes through the guest BDOS. With no arguments it uses `INPUT.ASM` and
 `OUTPUT.COM`;
 `ATOM SOURCE OUTPUT.COM` selects another pair of current-drive CP/M 8.3 names.
@@ -231,6 +232,24 @@ CP/M enters a transient with the CCP's stack in resident system memory.
 complete compile on its reserved stack, restores the pointer, and returns. It
 is a writable, non-reentrant transient; a proof starts it with the real CCP
 stack address and verifies that `$E400..$EFFF` remains byte-for-byte unchanged.
+
+### Native full-screen editor
+
+`EDIT.COM` opens `INPUT.NU` by default; `EDIT NAME.EXT` selects another existing
+current-drive text file. It renders and edits the file on the platform's
+80-by-24 terminal, supports insertion, deletion, four-way movement, scrolling,
+save, and confirmed discard, and preserves LF and CRLF input. The complete
+transient is 2,504 bytes with SHA-256
+`e8bf77bb675ce6df72f8bd02e26bc19a6baf159cc845674a5856f4b1f03297ab`.
+It uses 228 bytes of fixed workspace, a 47,104-byte contiguous text arena, and a
+private stack whose deepest measured use is 20 bytes.
+
+Saving writes `NAME.$$$`, renames the previous file to `NAME.BAK`, installs the
+new file, and deletes the backup after successful publication. A failed phase
+restores the previous selected file; a deliberately failed rollback leaves the
+previous contents recoverable under the selected or backup name. The complete
+language, terminal, memory, and transaction contract is
+[`cpm22-editor.md`](cpm22-editor.md).
 
 ## Transient program build and installation
 
@@ -292,7 +311,8 @@ bundled `cpm22` target, publish its exact `.COM` artifact, display the real CCP
 A>DIR
 A: README TXT : SMOKE COM : ATOM COM : INPUT ASM
 A: HELLO ASM : LARGE ASM : PART1 ASM : PART2 ASM
-A: BUILD LST : NUCLEUS COM : INPUT NU : MAIN COM
+A: BUILD LST : NUCLEUS COM : INPUT NU : EDIT COM
+A: MAIN COM
 
 A>MAIN
 Hello from Debug80 CP/M
@@ -347,4 +367,5 @@ no-argument, selected-filename, and multipart Atom commands, typechecking,
 formatting, lint, the 16,535-byte single-source path, the 66,000-byte
 cross-part forward-reference path, native Nucleus rollback and recovery,
 positioned multipart diagnostics, direct-patch byte placement, generated COM
-execution, scoped tests, full tests, and diff checks.
+execution, native editor rendering and transactional save, raw editor control
+keys, scoped tests, full tests, and diff checks.

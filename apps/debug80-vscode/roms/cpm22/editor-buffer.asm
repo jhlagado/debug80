@@ -92,9 +92,6 @@ EditorBufferBackspace:
             CP   10
             JR   NZ,EditorBufferBackspaceOne
             LD   HL,(EditorCursor)
-            LD   A,H
-            OR   L
-            JR   Z,EditorBufferBackspaceOne
             DEC  HL
             LD   A,H
             OR   L
@@ -172,7 +169,7 @@ EditorBufferDeleteReady:
             OR   A
             SBC  HL,DE
             LD   (EditorLength),HL
-            JP   EditorBufferChanged
+            JR   EditorBufferChanged
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry
 EditorBufferChanged:

@@ -14,13 +14,18 @@ EditorPrepareCommand:
             LD   HL,EditorCommandStart
             CALL EditorCommandSkipSpaces
             JR   Z,EditorCommandReady
-            LD   (EditorScratchA),HL
-            LD   A,B
-            LD   (EditorScratchC),A
-            CALL EditorCommandClearName
-            LD   HL,(EditorScratchA)
-            LD   A,(EditorScratchC)
-            LD   B,A
+            PUSH HL
+            LD   C,B
+            PUSH BC
+            XOR  A
+            LD   (EditorFcb),A
+            LD   HL,EditorFcb+1
+            LD   DE,EditorFcb+2
+            LD   BC,10
+            LD   (HL),' '
+            LDIR
+            POP  BC
+            POP  HL
             CALL EditorCommandParseName
             JR   C,EditorCommandInvalid
             CALL EditorCommandSkipSpaces
@@ -53,17 +58,6 @@ EditorCommandSkipSpaces:
             DEC  B
             JR   EditorCommandSkipSpaces
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
-EditorCommandClearName:
-            XOR  A
-            LD   (EditorFcb),A
-            LD   HL,EditorFcb+1
-            LD   DE,EditorFcb+2
-            LD   BC,10
-            LD   (HL),' '
-            LDIR
-            RET
-
 .routine in B,HL out A,B,HL,carry,zero clobbers sign,parity,halfCarry,C,D,IX
 EditorCommandParseName:
             LD   IX,EditorFcb+1
@@ -95,8 +89,29 @@ EditorCommandNameData:
             JR   NC,EditorCommandNameCheck
             AND  $DF
 EditorCommandNameCheck:
-            CALL EditorCommandFilenameChar
+            CP   '!'
             JR   C,EditorCommandNameBad
+            CP   $7F
+            JR   NC,EditorCommandNameBad
+            CP   '*'
+            JR   C,EditorCommandFilenameHigh
+            CP   '-'
+            JR   C,EditorCommandNameBad
+            CP   '/'
+            JR   Z,EditorCommandNameBad
+            CP   ':'
+            JR   C,EditorCommandFilenameHigh
+            CP   '@'
+            JR   C,EditorCommandNameBad
+EditorCommandFilenameHigh:
+            CP   '['
+            JR   C,EditorCommandFilenameReady
+            CP   '^'
+            JR   C,EditorCommandNameBad
+            CP   '_'
+            JR   Z,EditorCommandNameBad
+EditorCommandFilenameReady:
+            OR   A
             INC  C
             PUSH AF
             LD   A,D
@@ -117,36 +132,6 @@ EditorCommandNameDone:
 EditorCommandNameOverflow:
             POP  AF
 EditorCommandNameBad:
-            SCF
-            RET
-
-.routine in A out A,carry clobbers zero,sign,parity,halfCarry
-EditorCommandFilenameChar:
-            CP   '!'
-            RET  C
-            CP   $7F
-            JR   NC,EditorCommandFilenameBad
-            CP   '*'
-            JR   C,EditorCommandFilenameHigh
-            CP   '-'
-            JR   C,EditorCommandFilenameBad
-            CP   '/'
-            JR   Z,EditorCommandFilenameBad
-            CP   ':'
-            JR   C,EditorCommandFilenameHigh
-            CP   '@'
-            JR   C,EditorCommandFilenameBad
-EditorCommandFilenameHigh:
-            CP   '['
-            JR   C,EditorCommandFilenameReady
-            CP   '^'
-            JR   C,EditorCommandFilenameBad
-            CP   '_'
-            JR   Z,EditorCommandFilenameBad
-EditorCommandFilenameReady:
-            OR   A
-            RET
-EditorCommandFilenameBad:
             SCF
             RET
 

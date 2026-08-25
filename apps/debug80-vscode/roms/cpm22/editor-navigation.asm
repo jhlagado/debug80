@@ -6,7 +6,7 @@ EditorMoveLeft:
             LD   HL,(EditorCursor)
             LD   A,H
             OR   L
-            JP   Z,EditorBufferBoundary
+            JR   Z,EditorBufferBoundary
             DEC  HL
             PUSH HL
             CALL EditorBufferByteAt
@@ -25,7 +25,7 @@ EditorMoveLeft:
             INC  HL
 EditorMoveLeftStore:
             LD   (EditorCursor),HL
-            JP   EditorNavigationHorizontalDone
+            JR   EditorNavigationHorizontalDone
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,DE,HL
 EditorMoveRight:
@@ -33,7 +33,7 @@ EditorMoveRight:
             PUSH HL
             CALL EditorBufferByteAt
             POP  HL
-            JP   C,EditorBufferBoundary
+            JR   C,EditorBufferBoundary
             INC  HL
             CP   13
             JR   NZ,EditorMoveRightStore
@@ -55,8 +55,9 @@ EditorMoveUp:
             CALL EditorNavigationLineStart
             LD   A,H
             OR   L
-            JP   Z,EditorBufferBoundary
-            CALL EditorNavigationPreviousLine
+            JR   Z,EditorBufferBoundary
+            DEC  HL
+            CALL EditorNavigationLineStart
             LD   DE,(EditorDesiredColumn)
             CALL EditorNavigationOffsetForColumn
             LD   (EditorCursor),HL
@@ -126,14 +127,6 @@ EditorNavigationNextLine:
             OR   A
             RET
 
-.routine in HL out HL,carry,zero clobbers sign,parity,halfCarry,A,DE
-EditorNavigationPreviousLine:
-            LD   A,H
-            OR   L
-            RET  Z
-            DEC  HL
-            JP   EditorNavigationLineStart
-
 .routine out HL,carry,zero clobbers sign,parity,halfCarry,A,BC,DE
 EditorNavigationCursorColumn:
             LD   HL,(EditorCursor)
@@ -172,12 +165,11 @@ EditorNavigationColumnDone:
 .routine in HL out HL,carry,zero clobbers sign,parity,halfCarry,A
 EditorNavigationNextTab:
             LD   A,L
-            ADD  A,8
-            JR   NC,EditorNavigationTabLow
-            INC  H
-EditorNavigationTabLow:
-            AND  $F8
+            OR   7
+            INC  A
             LD   L,A
+            RET  NZ
+            INC  H
             RET
 
 ; Return the insertion offset on the line beginning at HL whose visual column

@@ -1,6 +1,6 @@
 # Native CP/M editor contract
 
-Status: proposed implementation contract
+Status: active implementation contract
 
 Date: 2026-08-26
 
@@ -242,3 +242,9 @@ repository tests, typechecking, lint, formatting, link checks, and diff checks.
 
 The production Z80 proof coverage and measurements are recorded in
 [`cpm22-editor-proof.md`](../reports/cpm22-editor-proof.md).
+
+The retained implementation contains a three-byte entry jump, 2,356 bytes of
+code, and 145 bytes of immutable data. The complete `EDIT.COM` is 2,504 bytes,
+leaving 4,920 bytes in its code-and-data partition. Fixed workspace is 228
+bytes, the text capacity remains 47,104 bytes, and the deepest measured private
+stack use is 20 bytes.
