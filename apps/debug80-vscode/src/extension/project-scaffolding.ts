@@ -161,7 +161,7 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
   };
 
   if (plan.kit.platform === 'cpm22') {
-    targetConfig.cpm22 = { writable: true };
+    targetConfig.cpm22 = { writable: true, programName: 'MAIN.COM' };
   } else if (plan.kit.platform === 'tec1') {
     const base = createTec1Defaults(plan.kit.appStart);
     targetConfig.tec1 =

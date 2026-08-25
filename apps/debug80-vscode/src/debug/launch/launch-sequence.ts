@@ -49,6 +49,7 @@ import type { Z80Runtime } from '@jhlagado/debug80-runtime/z80/runtime';
 import type { Tec1Runtime } from '@jhlagado/debug80-runtime/platforms/tec1/runtime';
 import type { Tec1gRuntime } from '@jhlagado/debug80-runtime/platforms/tec1g/runtime';
 import type { ResolvedPlatformProvider } from '../../platforms/provider';
+import { materializeCpm22ComArtifact } from '../../platforms/cpm22/com-artifact';
 
 export class MissingLaunchArtifactsError extends Error {
   constructor(public readonly hexPath: string) {
@@ -267,6 +268,11 @@ export async function buildLaunchSession(
     throw new MissingLaunchArtifactsError(hexPath);
   }
 
+  const cpm22Application =
+    platform === 'cpm22' && hasAppInput
+      ? materializeCpm22ComArtifact(hexPath, merged.cpm22?.programName)
+      : undefined;
+
   const { program } = loadProgramArtifacts({
     platform,
     baseDir,
@@ -314,6 +320,14 @@ export async function buildLaunchSession(
     baseDir,
     logger: context.logger,
     resolveRelative: (filePath, assetBaseDir) => resolveRelative(filePath, assetBaseDir),
+    ...(cpm22Application === undefined
+      ? {}
+      : {
+          application: {
+            bytes: cpm22Application.bytes,
+            filename: cpm22Application.programName,
+          },
+        }),
   });
   platformProvider.prepareProgram?.(program, platformAssets);
   const entry = platformProvider.resolveEntry(platformAssets);

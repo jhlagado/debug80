@@ -86,7 +86,7 @@ function applyPlatformOverride(
   delete target.tec1;
   delete target.tec1g;
   if (platform === 'cpm22') {
-    target.cpm22 = { writable: true };
+    target.cpm22 = { writable: true, programName: 'MAIN.COM' };
   } else if (platform === 'tec1') {
     target.tec1 = createTec1PlatformDefaults();
   } else if (platform === 'tec1g') {

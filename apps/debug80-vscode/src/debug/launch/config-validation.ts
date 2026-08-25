@@ -19,6 +19,7 @@ import {
   Cpm22PlatformConfig,
 } from '@jhlagado/debug80-runtime/platforms/types';
 import { validateTec1gRomArtifacts } from './tec1g-rom-artifact-validation';
+import { parseCpm22Filename } from '@jhlagado/debug80-runtime/platforms/cpm22/filesystem';
 import {
   ADDRESS_MAX,
   ADDRESS_MIN,
@@ -101,7 +102,9 @@ export function validateNucleusConfig(config: unknown): ValidationResult {
     return invalidResult('nucleus must be an object, got null');
   }
   const objectResult = validateOptionalObject<NucleusLaunchOptions>(config, 'nucleus');
-  if (objectResult.result !== undefined) return objectResult.result;
+  if (objectResult.result !== undefined) {
+    return objectResult.result;
+  }
   return mergeResults([
     objectResult.value.project === undefined
       ? validResult()
@@ -173,7 +176,25 @@ export function validateCpm22Config(config: unknown): ValidationResult {
   return mergeResults([
     validatePath(objectResult.value.diskImage, 'cpm22.diskImage'),
     validateBoolean(objectResult.value.writable, 'cpm22.writable'),
+    validateCpm22ProgramName(objectResult.value.programName),
   ]);
+}
+
+function validateCpm22ProgramName(value: unknown): ValidationResult {
+  if (value === undefined) {
+    return validResult();
+  }
+  if (typeof value !== 'string') {
+    return invalidResult(`cpm22.programName must be a string, got ${typeof value}`);
+  }
+  try {
+    const filename = parseCpm22Filename(value);
+    return filename.extension.trimEnd() === 'COM'
+      ? validResult()
+      : invalidResult('cpm22.programName must use the .COM extension');
+  } catch {
+    return invalidResult('cpm22.programName must be a valid CP/M 8.3 filename');
+  }
 }
 
 /**

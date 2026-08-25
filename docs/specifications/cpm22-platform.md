@@ -20,7 +20,7 @@ separate milestones.
 
 | Item             | Frozen value                               |
 | ---------------- | ------------------------------------------ |
-| Debug80 revision | `83ccf746e1c482cd5559dbfbc1dc720d650ad2dc` |
+| Debug80 revision | `5b89e48fd7953e0fe0b777d09f30a3645248489e` |
 | Branch           | local `main`                               |
 | Node.js          | 24.18.0                                    |
 | npm              | 11.16.0                                    |
@@ -28,9 +28,7 @@ separate milestones.
 | CPU              | documented Z80 instruction set             |
 | Address space    | one flat 64 KiB space                      |
 
-The untracked `.worktrees/` directory is outside this work. The CP/M planning
-document under `docs/plans/` belongs to this project and remains uncommitted at
-the start of implementation.
+The untracked `.worktrees/` directory is outside this work.
 
 ## Guest source provenance
 
@@ -154,6 +152,37 @@ order. The cold bootstrap reads all 52 reserved sectors into `$E400`. Warm boot
 reloads the first 44 sectors, which cover `$E400..$F9FF`, and retains the active
 BIOS.
 
+## Transient program build and installation
+
+A CP/M project assembles its transient program at `$0100`. Debug80 extracts the
+initialized range from `$0100` through the final emitted byte, fills any gaps
+with zero, and writes that exact byte sequence beside the HEX artifact with a
+lowercase `.com` suffix. The first initialized byte must be `$0100`; every
+initialized range must lie within `$0100..$E3FF`. The maximum `.COM` artifact is
+therefore 58,112 bytes. An empty artifact, a different origin, or the first byte
+above the limit stops the build or launch without replacing an existing host
+`.com` file.
+
+The `cpm22.programName` setting names the file installed in user 0 of drive A.
+It must be a valid CP/M 8.3 filename with a `.COM` extension. New CP/M projects
+set it to `MAIN.COM`. When the setting is absent, Debug80 derives the guest name
+from the HEX basename and validates the result by the same rule.
+
+At launch, Debug80 copies the bundled or configured IBM 3740 image and installs
+the artifact in that private session image. Installation uses ordinary CP/M
+directory entries, 16 KiB extents, 1 KiB allocation blocks, and 128-byte records.
+Unused bytes in the final record contain `$1A`. Rebuilding the same guest name
+replaces all of its old user-0 extents; other files retain their directory order
+and contents. Allocation is deterministic from the first available directory
+entry and block.
+
+The configured disk file is never changed by host installation. The
+`cpm22.writable` setting controls sector writes made by the guest after the
+session starts, so a program is still installed when `writable` is `false`.
+Malformed media, a full directory, or insufficient allocation blocks stop the
+launch before runtime creation and leave the source image unchanged. Debug80
+does not intercept BDOS calls during build, installation, or execution.
+
 ## Terminal screen
 
 The runtime terminal owns the authoritative 80-column by 24-row cell matrix, a
@@ -175,13 +204,16 @@ Input is a byte stream. Return sends `CR`, Backspace sends `BS`, Delete sends
 
 ## Acceptance boundary
 
-The platform is complete when a clean checkout can build and launch a bundled
-`cpm22` target, display the real CCP `A>` prompt, and run this interaction on a
-disposable writable disk:
+The platform is complete when a clean checkout can create, build, and launch a
+bundled `cpm22` target, publish its exact `.COM` artifact, display the real CCP
+`A>` prompt, and run this interaction on a disposable session disk:
 
 ```text
 A>DIR
-A: README TXT : SMOKE COM
+A: README TXT : SMOKE COM : MAIN COM
+
+A>MAIN
+Hello from Debug80 CP/M
 
 A>TYPE README.TXT
 Debug80 CP/M 2.2 platform
@@ -193,9 +225,11 @@ A>TYPE RESULT.TXT
 CP/M file services are working
 ```
 
-The automated proof must also reach a source-mapped breakpoint in guest BIOS
-`CONOUT`, observe the expected output byte in register C, and then continue to
-the prompt. The complete gate covers terminal parsing at every chunk boundary,
-input FIFO behavior, disk bounds and atomic writes, boot and warm boot,
-sequential-session isolation, platform selection, Debug80 UI integration,
-typechecking, formatting, lint, scoped tests, full tests, and diff checks.
+The automated proof must also compare the host `.com` bytes, reach a
+source-mapped breakpoint in guest BIOS `CONOUT`, observe the expected output
+byte in register C, and then continue to the prompt. The complete gate covers
+terminal parsing at every chunk boundary, input FIFO behavior, filesystem
+allocation and rollback, disk bounds and atomic writes, read-only session
+injection, boot and warm boot, sequential-session isolation, platform
+selection, Debug80 UI integration, typechecking, formatting, lint, scoped
+tests, full tests, and diff checks.

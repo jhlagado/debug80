@@ -28,6 +28,7 @@ import type { LaunchRequestArguments } from '../debug/session/types';
 import { resolvePlatformProvider } from '../platforms/provider';
 import { assertValidLaunchArgs } from '../debug/launch/config-validation';
 import { applyContractUpdates, contractUpdateAzmOptions } from './contract-updates';
+import { materializeCpm22ComArtifact } from '../platforms/cpm22/com-artifact';
 
 export type PanelLaunchOptions = {
   stopOnEntry: boolean;
@@ -191,7 +192,11 @@ export async function buildCurrentProjectTarget(
       });
     }
 
-    const successMessage = `Build succeeded: ${path.relative(baseDir, hexPath)}`;
+    const cpm22Artifact =
+      platformProvider.id === 'cpm22'
+        ? materializeCpm22ComArtifact(hexPath, merged.cpm22?.programName)
+        : undefined;
+    const successMessage = `Build succeeded: ${path.relative(baseDir, cpm22Artifact?.hostPath ?? hexPath)}`;
     setBuildStatus(successMessage);
     output.appendLine(`Debug80: ${successMessage}`);
     return true;

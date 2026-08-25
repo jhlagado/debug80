@@ -8,6 +8,7 @@ import { fileURLToPath } from 'url';
 
 import { createCpm22PlatformRuntime } from '@jhlagado/debug80-runtime/platforms/cpm22/runtime';
 import type { Cpm22PlatformRuntime } from '@jhlagado/debug80-runtime/platforms/cpm22/runtime';
+import { installCpm22File } from '@jhlagado/debug80-runtime/platforms/cpm22/filesystem';
 import type { IoHandlers } from '@jhlagado/debug80-runtime/z80/runtime';
 import type { LaunchRequestArguments } from '../../debug/session/types';
 import type { TerminalState } from '../../debug/session/terminal-types';
@@ -57,7 +58,15 @@ export function createCpm22PlatformProvider(
         ? context.resolveRelative(configuredDisk, context.baseDir)
         : path.join(bundledRomDirectory, 'cpm22.img');
     const bootstrapPath = path.join(bundledRomDirectory, 'bootstrap.bin');
-    const diskImage = new Uint8Array(fs.readFileSync(diskPath));
+    const sourceDiskImage = new Uint8Array(fs.readFileSync(diskPath));
+    const diskImage =
+      context.application === undefined
+        ? sourceDiskImage
+        : installCpm22File(
+            sourceDiskImage,
+            context.application.filename,
+            context.application.bytes
+          );
     const bootstrap = new Uint8Array(fs.readFileSync(bootstrapPath));
     platformRuntime = createCpm22PlatformRuntime({
       diskImage,

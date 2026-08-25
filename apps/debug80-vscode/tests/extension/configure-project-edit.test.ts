@@ -68,7 +68,7 @@ describe('configure-project target edit', () => {
 
     expect(config.projectPlatform).toBe('cpm22');
     expect(config.targets?.app?.simple).toBeUndefined();
-    expect(config.targets?.app?.cpm22).toEqual({ writable: true });
+    expect(config.targets?.app?.cpm22).toEqual({ writable: true, programName: 'MAIN.COM' });
   });
 
   it('clears stale unsupported assembler ids when changing program files', () => {

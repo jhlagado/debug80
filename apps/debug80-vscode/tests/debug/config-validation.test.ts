@@ -290,15 +290,26 @@ describe('config-validation', () => {
   });
 
   describe('validateCpm22Config', () => {
-    it('accepts a disk override and writable flag', () => {
+    it('accepts a disk override, writable flag, and 8.3 .COM program name', () => {
       expect(
-        validateCpm22Config({ diskImage: 'disks/development.img', writable: false })
+        validateCpm22Config({
+          diskImage: 'disks/development.img',
+          writable: false,
+          programName: 'TOOLS.COM',
+        })
       ).toMatchObject({ valid: true, errors: [] });
     });
 
     it('rejects malformed paths, flags, and configuration blocks', () => {
       expect(validateCpm22Config({ diskImage: 7 }).valid).toBe(false);
       expect(validateCpm22Config({ writable: 'yes' }).valid).toBe(false);
+      expect(validateCpm22Config({ programName: 7 }).valid).toBe(false);
+      expect(validateCpm22Config({ programName: 'TOO-LONG9.COM' }).errors).toContain(
+        'cpm22.programName must be a valid CP/M 8.3 filename'
+      );
+      expect(validateCpm22Config({ programName: 'README.TXT' }).errors).toContain(
+        'cpm22.programName must use the .COM extension'
+      );
       expect(validateCpm22Config(null).errors).toContain('cpm22 must be an object, got null');
     });
   });

@@ -4,6 +4,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { createCpm22PlatformRuntime } from "@jhlagado/debug80-runtime/platforms/cpm22/runtime";
+import { installCpm22File } from "@jhlagado/debug80-runtime/platforms/cpm22/filesystem";
 import { createZ80Runtime } from "@jhlagado/debug80-runtime/z80/runtime";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
@@ -19,9 +20,14 @@ const romDirectory = join(
 const bootstrap = new Uint8Array(
   await readFile(join(romDirectory, "bootstrap.bin")),
 );
-const diskImage = new Uint8Array(
+const sourceDiskImage = new Uint8Array(
   await readFile(join(romDirectory, "cpm22.img")),
 );
+const mainProgram = Uint8Array.from([
+  0x0e, 0x09, 0x11, 0x09, 0x01, 0xcd, 0x05, 0x00, 0xc9, 0x48, 0x69, 0x0d, 0x0a,
+  0x24,
+]);
+const diskImage = installCpm22File(sourceDiskImage, "MAIN.COM", mainProgram);
 const debugMap = JSON.parse(
   await readFile(join(romDirectory, "bios.d8m.json"), "utf8"),
 );
@@ -82,7 +88,11 @@ assert.equal(
 stepUntil(() => transcript().endsWith("A>"), "cold-boot prompt");
 assert.equal(transcript(), "\r\nA>");
 
-runCommand("DIR", "DIR\r\r\nA: README   TXT : SMOKE    COM\r\nA>");
+runCommand(
+  "DIR",
+  "DIR\r\r\nA: README   TXT : SMOKE    COM : MAIN     COM\r\nA>",
+);
+runCommand("MAIN", "MAIN\r\r\nHi\r\n\r\nA>");
 runCommand(
   "TYPE README.TXT",
   "TYPE README.TXT\r\r\nDebug80 CP/M 2.2 platform\r\n\r\nA>",
@@ -98,6 +108,11 @@ assert.notDeepEqual(
   diskImage,
   "SMOKE must persist its file to disk",
 );
+assert.deepEqual(
+  new Uint8Array(await readFile(join(romDirectory, "cpm22.img"))),
+  sourceDiskImage,
+  "session injection and guest writes must not change the bundled disk",
+);
 assert.equal(
   cpu.getRegisters().sp,
   0xef3b,
@@ -105,5 +120,5 @@ assert.equal(
 );
 
 console.log(
-  "CP/M 2.2 acceptance passed: boot, BIOS breakpoint, DIR, TYPE, SMOKE, warm boot",
+  "CP/M 2.2 acceptance passed: boot, BIOS breakpoint, .COM injection, DIR, execution, TYPE, SMOKE, warm boot",
 );

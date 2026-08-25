@@ -40,6 +40,10 @@ export interface PlatformAssetLoadContext {
   baseDir: string;
   logger: Logger;
   resolveRelative: (filePath: string, baseDir: string) => string;
+  application?: {
+    bytes: Uint8Array;
+    filename: string;
+  };
 }
 
 export interface PlatformRuntimeFinalizeContext {

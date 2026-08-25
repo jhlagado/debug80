@@ -38,6 +38,26 @@ function writeFile(filePath: string, content: string): void {
   fs.writeFileSync(filePath, content);
 }
 
+function intelHex(address: number, bytes: Uint8Array): string {
+  const record = [bytes.length, (address >> 8) & 0xff, address & 0xff, 0, ...bytes];
+  const checksum = -record.reduce((sum, byte) => sum + byte, 0) & 0xff;
+  return `:${[...record, checksum]
+    .map((byte) => byte.toString(16).padStart(2, '0').toUpperCase())
+    .join('')}\n:00000001FF\n`;
+}
+
+function bundledCpm22DiskPath(): string {
+  const candidates = [
+    path.resolve(process.cwd(), 'roms', 'cpm22', 'cpm22.img'),
+    path.resolve(process.cwd(), 'apps', 'debug80-vscode', 'roms', 'cpm22', 'cpm22.img'),
+  ];
+  const diskPath = candidates.find((candidate) => fs.existsSync(candidate));
+  if (diskPath === undefined) {
+    throw new Error('CP/M test disk image is missing');
+  }
+  return diskPath;
+}
+
 function writeLaunchFixture(): { root: string; sourcePath: string; hexPath: string } {
   const root = makeTempRoot('debug80-launch-sequence-');
   const sourcePath = path.join(root, 'src', 'main.asm');
@@ -219,6 +239,86 @@ describe('launch-sequence', () => {
       }
     }
     expect(output.slice(start)).toBe('DIR\r\r\nA: README   TXT : SMOKE    COM\r\nA>');
+  });
+
+  it('installs and runs the exact .COM artifact on a private read-only custom disk', async () => {
+    const root = makeTempRoot('debug80-cpm22-com-launch-');
+    workspace.workspaceFolders = [{ uri: { fsPath: root } }];
+    const diskPath = path.join(root, 'custom.img');
+    const sourceDisk = fs.readFileSync(bundledCpm22DiskPath());
+    fs.writeFileSync(diskPath, sourceDisk);
+    const application = Uint8Array.from([
+      0x0e, 0x09, 0x11, 0x09, 0x01, 0xcd, 0x05, 0x00, 0xc9, 0x48, 0x69, 0x0d, 0x0a, 0x24,
+    ]);
+    writeFile(path.join(root, 'build', 'main.hex'), intelHex(0x0100, application));
+    writeFile(path.join(root, 'src', 'main.asm'), '; fixture\n');
+    const context = createContext();
+
+    const artifacts = await buildLaunchSession(
+      {
+        platform: 'cpm22',
+        assemble: false,
+        hex: 'build/main.hex',
+        sourceFile: 'src/main.asm',
+        cpm22: { diskImage: 'custom.img', writable: false, programName: 'HELLO.COM' },
+      },
+      context
+    );
+
+    expect(new Uint8Array(fs.readFileSync(path.join(root, 'build', 'main.com')))).toEqual(
+      application
+    );
+    expect(fs.readFileSync(diskPath)).toEqual(sourceDisk);
+
+    let output = '';
+    for (let step = 0; step < 5_000_000 && !output.endsWith('A>'); step += 1) {
+      artifacts.runtime.step();
+      output = context.emitDapEvent.mock.calls
+        .filter(([name]) => name === 'debug80/terminalOutput')
+        .map(([, payload]) => (payload as { text: string }).text)
+        .join('');
+    }
+    expect(output).toBe('\r\nA>');
+
+    artifacts.terminalState?.input.push(...Buffer.from('HELLO\r', 'ascii'));
+    const start = output.length;
+    for (let step = 0; step < 5_000_000; step += 1) {
+      artifacts.runtime.step();
+      output = context.emitDapEvent.mock.calls
+        .filter(([name]) => name === 'debug80/terminalOutput')
+        .map(([, payload]) => (payload as { text: string }).text)
+        .join('');
+      if (output.slice(start).endsWith('\r\nA>')) {
+        break;
+      }
+    }
+    expect(output.slice(start)).toBe('HELLO\r\r\nHi\r\n\r\nA>');
+    expect(fs.readFileSync(diskPath)).toEqual(sourceDisk);
+  });
+
+  it('rejects malformed custom media before runtime creation without changing the image', async () => {
+    const root = makeTempRoot('debug80-cpm22-invalid-disk-');
+    workspace.workspaceFolders = [{ uri: { fsPath: root } }];
+    const diskPath = path.join(root, 'invalid.img');
+    const sourceDisk = Buffer.from([0x01, 0x02, 0x03]);
+    fs.writeFileSync(diskPath, sourceDisk);
+    writeFile(path.join(root, 'build', 'main.hex'), intelHex(0x0100, Uint8Array.of(0xc9)));
+    const context = createContext();
+
+    await expect(
+      buildLaunchSession(
+        {
+          platform: 'cpm22',
+          assemble: false,
+          hex: 'build/main.hex',
+          cpm22: { diskImage: 'invalid.img', programName: 'MAIN.COM' },
+        },
+        context
+      )
+    ).rejects.toThrow(/image must contain exactly 256256 bytes/);
+
+    expect(context.sessionState.runtime).toBeUndefined();
+    expect(fs.readFileSync(diskPath)).toEqual(sourceDisk);
   });
 
   it('throws a missing-artifacts error before runtime creation when HEX is absent', async () => {

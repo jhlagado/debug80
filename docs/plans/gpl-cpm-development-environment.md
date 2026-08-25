@@ -1,18 +1,25 @@
 # Plan: a GPL CP/M-compatible development environment
 
-Status: Phase C vertical slice implemented and verified locally
+Status: Phase C development loop implemented and verified locally
 
 Date: 2026-08-25
 
 ## Current position
 
-The first ideal-machine vertical slice now exists in the working tree. It uses
+The first ideal-machine vertical slice now exists on `main`. It uses
 the real CP/M 2.2 CCP and BDOS, a project-owned Debug80 BIOS, a deterministic
 IBM 3740 disk image, the TypeScript Z80 runtime, an 80-by-24 terminal, and an
 atomic sector device. The guest reaches `A>`, lists and reads bundled files,
 runs `SMOKE.COM`, writes `RESULT.TXT`, warm-boots, and reads the result back.
 The BIOS source map also stops the debugger at `ConsoleOutput` with the output
 byte in register C.
+
+The project workflow now assembles a transient program at `$0100`, publishes an
+exact host `.com` file, installs it under an explicit 8.3 name in a private copy
+of drive A, boots CP/M, and runs it from the CCP. The same filesystem image code
+builds the bundled disk and performs session installation. Custom images,
+replacement, full-directory and full-disk failures, read-only sessions, and the
+58,112-byte TPA boundary have executable proofs.
 
 This does not complete the wider development-environment project. Atom,
 Nucleus, the editor, replacement utilities, optional graphics, and a
@@ -557,14 +564,17 @@ retained:
 
 ## Immediate next work
 
-1. Exercise the packaged extension from a clean project kit and retain an
-   exact UI transcript of `DIR`, `TYPE`, and `SMOKE`.
-2. Add the reproducible image and provenance records to the research corpus.
-3. Write the common assembler-analysis template and complete the DRI ASM study.
-4. Run Z80MR, Z80ASM, ZM, ZMAC, and ZSM4 against the same source corpus.
-5. Freeze and remeasure Atom from a clean revision.
-6. Draft the Atom/CP/M source and output adapter alternatives from measured
-   evidence.
+1. Freeze and remeasure Atom from a clean revision.
+2. Specify the smallest CP/M source reader and output sink that preserve Atom's
+   existing streaming and rollback contracts.
+3. Measure NOBJ materialization, random-record `.COM` patching, and an in-memory
+   image independently on the ideal disk model.
+4. Retain one Atom/CP/M vertical slice only after its resident, workspace,
+   disk-I/O, instruction, and T-state accounts are complete.
+5. Add the reproducible CP/M image and provenance records to the research
+   corpus.
+6. Write the common assembler-analysis template and complete the DRI ASM study
+   before using historical implementation details as design evidence.
 
 ## Reference starting points
 

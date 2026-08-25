@@ -85,7 +85,21 @@ export async function runCpm22Pipeline(extension) {
     const config = JSON.parse(fs.readFileSync(path.join(root, 'debug80.json'), 'utf8'));
     assert.strictEqual(config.projectPlatform, 'cpm22');
     assert.strictEqual(config.targets.main.platform, 'cpm22');
-    assert.deepStrictEqual(config.targets.main.cpm22, { writable: true });
+    assert.deepStrictEqual(config.targets.main.cpm22, {
+      writable: true,
+      programName: 'MAIN.COM',
+    });
+
+    const built = await vscode.commands.executeCommand('debug80.buildTarget');
+    assert.strictEqual(built, true, 'CP/M build should succeed');
+    assert.deepStrictEqual(
+      [...fs.readFileSync(path.join(root, 'build', 'main.com'))],
+      [
+        17, 9, 1, 14, 9, 205, 5, 0, 201, 72, 101, 108, 108, 111, 32, 102, 114, 111, 109, 32, 68,
+        101, 98, 117, 103, 56, 48, 32, 67, 80, 47, 77, 13, 10, 36,
+      ],
+      'host .COM bytes'
+    );
 
     const started = await vscode.commands.executeCommand('debug80.startDebug', { rootPath: root });
     assert.strictEqual(started, true, 'CP/M debug launch should succeed');
@@ -97,11 +111,12 @@ export async function runCpm22Pipeline(extension) {
     const snapshot = await session.customRequest('debug80/memorySnapshot', {});
     assert.strictEqual(snapshot.registers.pc, 0xfada, 'breakpoint PC');
     assert.strictEqual(snapshot.registers.bc & 0xff, 13, 'BIOS ConsoleOutput byte in C');
-    assert.ok(
-      vscode.window.tabGroups.all.some((group) =>
-        group.tabs.some((tab) => tab.label === 'Debug80 Terminal')
-      ),
-      'CP/M launch should open the Debug80 terminal view'
+    await waitFor(
+      () =>
+        vscode.window.tabGroups.all.some((group) =>
+          group.tabs.some((tab) => tab.label === 'Debug80 Terminal')
+        ),
+      'the Debug80 terminal view'
     );
 
     vscode.debug.removeBreakpoints([breakpoint]);
@@ -110,6 +125,7 @@ export async function runCpm22Pipeline(extension) {
     assert.strictEqual(transcript.value, expectedTranscript.boot, 'cold-boot transcript');
 
     await sendCommand(session, transcript, 'DIR', expectedTranscript.dir);
+    await sendCommand(session, transcript, 'MAIN', expectedTranscript.main);
     await sendCommand(session, transcript, 'TYPE README.TXT', expectedTranscript.readme);
     await sendCommand(session, transcript, 'SMOKE', expectedTranscript.smoke);
     await sendCommand(session, transcript, 'TYPE RESULT.TXT', expectedTranscript.result);

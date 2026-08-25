@@ -163,6 +163,37 @@ describe('debug session actions', () => {
     );
   });
 
+  it('publishes the exact CP/M .COM artifact under the configured guest filename', async () => {
+    fs.writeFileSync(
+      path.join(root, 'debug80.json'),
+      JSON.stringify({
+        defaultTarget: 'cpm',
+        targets: {
+          cpm: {
+            sourceFile: 'main.asm',
+            platform: 'cpm22',
+            outputDir: 'build',
+            artifactBase: 'main',
+            cpm22: { writable: true, programName: 'TOOLS.COM' },
+          },
+        },
+      })
+    );
+    assembleIfRequested.mockImplementation((options) => {
+      fs.mkdirSync(path.dirname(options.hexPath), { recursive: true });
+      fs.writeFileSync(options.hexPath, ':030100003E2AC9CB\n:00000001FF\n');
+      return Promise.resolve({});
+    });
+    const harness = await createBuildHarness('cpm');
+
+    await expect(harness.build()).resolves.toBe(true);
+
+    expect(new Uint8Array(fs.readFileSync(path.join(root, 'build', 'main.com')))).toEqual(
+      Uint8Array.from([0x3e, 0x2a, 0xc9])
+    );
+    expect(harness.setBuildStatus).toHaveBeenCalledWith('Build succeeded: build/main.com');
+  });
+
   async function createBuildHarness(target: string) {
     const { buildCurrentProjectTarget } = await import('../../src/extension/debug-session-actions');
     const folder = { name: 'project', index: 0, uri: { fsPath: root } };

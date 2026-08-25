@@ -6,6 +6,7 @@ import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { compile, defaultFormatWriters } from "@jhlagado/azm/compile";
+import { installCpm22File } from "@jhlagado/debug80-runtime/platforms/cpm22/filesystem";
 
 const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, "..", "..");
@@ -21,9 +22,6 @@ const converter = join(scriptDirectory, "convert-8080-to-z80.mjs");
 
 const diskBytes = 77 * 26 * 128;
 const systemBytes = 52 * 128;
-const directoryOffset = systemBytes;
-const directoryBytes = 64 * 32;
-const allocationBlockBytes = 1024;
 
 function fail(message) {
   throw new Error(message);
@@ -68,35 +66,6 @@ function copyExact(destination, offset, source, maximum, label) {
   if (source.length > maximum)
     fail(`${label} is ${source.length} bytes; maximum is ${maximum}`);
   destination.set(source, offset);
-}
-
-function cpmName(name) {
-  const match =
-    /^([A-Z0-9_$#@!%&'()\-^{}~]{1,8})(?:\.([A-Z0-9_$#@!%&'()\-^{}~]{1,3}))?$/.exec(
-      name,
-    );
-  if (!match) fail(`invalid CP/M filename: ${name}`);
-  return {
-    name: match[1].padEnd(8, " "),
-    extension: (match[2] ?? "").padEnd(3, " "),
-  };
-}
-
-function installFile(image, entryIndex, block, name, contents) {
-  if (contents.length > allocationBlockBytes)
-    fail(`${name} exceeds one allocation block`);
-  const records = Math.ceil(contents.length / 128);
-  const padded = new Uint8Array(records * 128).fill(0x1a);
-  padded.set(contents);
-  const entry = directoryOffset + entryIndex * 32;
-  const parsed = cpmName(name);
-  image.fill(0, entry, entry + 32);
-  image[entry] = 0;
-  image.set(Buffer.from(parsed.name, "ascii"), entry + 1);
-  image.set(Buffer.from(parsed.extension, "ascii"), entry + 9);
-  image[entry + 15] = records;
-  image[entry + 16] = block;
-  image.set(padded, directoryOffset + block * allocationBlockBytes);
 }
 
 function sha256(bytes) {
@@ -145,20 +114,17 @@ async function main() {
     if (smoke.bytes.length !== 256)
       fail(`SMOKE.COM must be 256 bytes, got ${smoke.bytes.length}`);
 
-    const image = new Uint8Array(diskBytes).fill(0xe5);
+    let image = new Uint8Array(diskBytes).fill(0xe5);
     copyExact(image, 0x0000, ccp.bytes, 0x0800, "CCP");
     copyExact(image, 0x0800, bdos.bytes, 0x0e00, "BDOS");
     copyExact(image, 0x1600, bios.bytes, 0x0400, "BIOS");
-    image.fill(0xe5, directoryOffset, directoryOffset + directoryBytes);
 
-    installFile(
+    image = installCpm22File(
       image,
-      0,
-      2,
       "README.TXT",
       Buffer.from("Debug80 CP/M 2.2 platform\r\n", "ascii"),
     );
-    installFile(image, 1, 3, "SMOKE.COM", smoke.bytes);
+    image = installCpm22File(image, "SMOKE.COM", smoke.bytes);
 
     await writeFile(join(outputDirectory, "bootstrap.bin"), bootstrap.bytes);
     await writeFile(join(outputDirectory, "cpm22.img"), image);

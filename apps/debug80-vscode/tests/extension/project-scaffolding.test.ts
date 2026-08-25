@@ -171,7 +171,7 @@ describe('project-scaffolding helpers', () => {
     expect(config.targets.app).toEqual(
       expect.objectContaining({
         platform: 'cpm22',
-        cpm22: { writable: true },
+        cpm22: { writable: true, programName: 'MAIN.COM' },
       })
     );
   });
