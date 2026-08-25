@@ -32,12 +32,12 @@ full-screen view, moves the cursor, inserts and deletes text, and saves through
 a recoverable file transaction. It is a functional replacement with a new
 interface, not an ED command or file-format emulation.
 
-The first deployed slice excludes replace, selection, copy and paste, multiple
+The deployed editor excludes replace, selection, copy and paste, multiple
 buffers, new-file creation, drive prefixes, user areas, wildcards, binary
 files, configurable keys, syntax highlighting, mouse input, undo, and recovery
 after a reset or power loss during a directory-sector write. Forward search is
-the next specified increment below. The other facilities remain later work
-rather than hidden host services.
+implemented under the settled increment below. The other facilities remain
+later work rather than hidden host services.
 
 ## Command
 
@@ -330,8 +330,14 @@ repository tests, typechecking, lint, formatting, link checks, and diff checks.
 The production Z80 proof coverage and measurements are recorded in
 [`cpm22-editor-proof.md`](../reports/cpm22-editor-proof.md).
 
-The retained implementation contains a three-byte entry jump, 2,356 bytes of
-code, and 145 bytes of immutable data. The complete `EDIT.COM` is 2,504 bytes,
-leaving 4,920 bytes in its code-and-data partition. Fixed workspace is 228
-bytes, the text capacity remains 47,104 bytes, and the deepest measured private
-stack use is 20 bytes.
+The retained search implementation contains a three-byte entry jump, 2,653
+bytes of code, and 184 bytes of immutable data. The complete `EDIT.COM` is
+2,840 bytes, leaving 4,584 bytes in its code-and-data partition. Fixed
+workspace is 292 bytes, the text capacity remains 47,104 bytes, and the deepest
+measured private-stack use is 22 bytes.
+
+Against the frozen 2,504-byte editor, search adds 297 code bytes, 39 immutable
+bytes, and 64 workspace bytes. The complete artifact grows by 336 bytes. It
+adds no runtime support and does not change the text or stack partitions. The
+correctness-first build occupied 2,962 bytes; the feature-only size pass
+removed 122 resident bytes before the implementation was retained.

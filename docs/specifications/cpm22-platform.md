@@ -237,11 +237,12 @@ stack address and verifies that `$E400..$EFFF` remains byte-for-byte unchanged.
 `EDIT.COM` opens `INPUT.NU` by default; `EDIT NAME.EXT` selects another existing
 current-drive text file. It renders and edits the file on the platform's
 80-by-24 terminal, supports insertion, deletion, four-way movement, scrolling,
-save, and confirmed discard, and preserves LF and CRLF input. The complete
-transient is 2,504 bytes with SHA-256
-`e8bf77bb675ce6df72f8bd02e26bc19a6baf159cc845674a5856f4b1f03297ab`.
-It uses 228 bytes of fixed workspace, a 47,104-byte contiguous text arena, and a
-private stack whose deepest measured use is 20 bytes.
+forward literal search, repeat-search, save, and confirmed discard, and
+preserves LF and CRLF input. The complete transient is 2,840 bytes with
+SHA-256
+`82ce6a026e8fba0ec48d25ddec02d2f78a5fea65c2da2e6b34aebaec91ead6bc`.
+It uses 292 bytes of fixed workspace, a 47,104-byte contiguous text arena, and
+a private stack whose deepest measured use is 22 bytes.
 
 Saving writes `NAME.$$$`, renames the previous file to `NAME.BAK`, installs the
 new file, and deletes the backup after successful publication. A failed phase
@@ -366,5 +367,6 @@ no-argument, selected-filename, and multipart Atom commands, typechecking,
 formatting, lint, the 16,535-byte single-source path, the 66,000-byte
 cross-part forward-reference path, native Nucleus rollback and recovery,
 positioned multipart diagnostics, direct-patch byte placement, generated COM
-execution, native editor rendering and transactional save, raw editor control
-keys, scoped tests, full tests, and diff checks.
+execution, native editor rendering, forward search, repeat-search, and
+transactional save, raw editor control keys, scoped tests, full tests, and diff
+checks.

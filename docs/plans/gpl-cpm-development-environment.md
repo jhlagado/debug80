@@ -1,6 +1,6 @@
 # Plan: a GPL CP/M-compatible development environment
 
-Status: Phase C complete; Phase D Atom, Phase E editor, and Phase F Nucleus vertical slices implemented
+Status: Phase C complete; Phase D Atom, Phase E editor with search, and Phase F Nucleus vertical slices implemented
 
 Date: 2026-08-26
 
@@ -41,17 +41,18 @@ Headless and Extension Host proofs compile the bundled `INPUT.NU`, execute its
 `OUTPUT.COM`, preserve an existing output through a rejected transaction, and
 exercise recovery, multipart diagnostics, and the real CCP stack boundary.
 
-The first native editor now runs as a 2,504-byte CP/M transient. It opens the
+The native editor now runs as a 2,840-byte CP/M transient. It opens the
 bundled Atom and Nucleus sources, renders an 80-by-24 full-screen view, supports
-bounded insertion, deletion, navigation, and scrolling, and saves through a
-recoverable `.$$$` and `.BAK` transaction. Its contiguous arena holds 47,104
-text bytes; fixed workspace is 228 bytes and the deepest measured private stack
-use is 20 bytes. Isolated Z80 proofs, headless CP/M acceptance, and the real
-Extension Development Host exercise the same production transient.
+bounded insertion, deletion, navigation, scrolling, forward literal search,
+and repeat-search. It saves through a recoverable `.$$$` and `.BAK`
+transaction. Its contiguous arena holds 47,104 text bytes; fixed workspace is
+292 bytes and the deepest measured private-stack use is 22 bytes. Isolated Z80
+proofs, headless CP/M acceptance, and the real Extension Development Host
+exercise the same production transient.
 
-This does not complete the wider development-environment project. Search and
-other editor facilities, replacement utilities, optional graphics, and a
-project-owned operating-system core remain later phases.
+This does not complete the wider development-environment project. New-file
+creation and other editor facilities, replacement utilities, optional
+graphics, and a project-owned operating-system core remain later phases.
 
 ## Purpose
 
@@ -143,6 +144,7 @@ programs.
 | Nucleus compiler core                                | Measured fixed account  | 16,314 |
 | CP/M-specific Nucleus host region                    | Measured linked account |  4,603 |
 | Nucleus direct generated-image buffer                | Measured TPA capacity   | 23,808 |
+| Native CP/M editor with forward search               | Measured file           |  2,840 |
 | Principal CP/M development utilities examined so far | Measured files          | 36,736 |
 
 The final line is 35.875 KiB and includes ASM, DDT, DUMP, ED, LOAD, PIP, STAT,
@@ -394,11 +396,11 @@ profile-specific front ends and include the added disk traffic and loader size.
 
 ### 5. Full-screen editor
 
-The editor is a new program, not an ED emulation. Its first vertical slice has
-a full screen of text, visible status and command hints, direct cursor movement,
-insertion and deletion, file open, recoverable save, and explicit error
-reporting. Search, replace, selection, multiple buffers, and undo remain later
-features.
+The editor is a new program, not an ED emulation. Its deployed implementation
+has a full screen of text, visible status and command hints, direct cursor
+movement, insertion and deletion, file open, recoverable save, explicit error
+reporting, forward literal search, and repeat-search. Replace, selection,
+multiple buffers, new-file creation, and undo remain later features.
 
 The editor uses the fixed 80-by-24 VT100 profile above. Its terminal adapter
 emits only the contracted cursor, erase, and rendition sequences and decodes the
@@ -411,6 +413,12 @@ smallest complete candidate. It provides a 47,104-byte capacity and uses `LDDR`
 and `LDIR` for insertion and deletion. The settled file contract preserves LF
 and CRLF, treats `$1A` as text EOF, rejects invalid control bytes, and pads a
 partial saved record with `$1A`.
+
+The first extension retains a 64-byte committed search query, snapshots it in
+the inactive DMA record during query entry, and scans one counted ring of the
+logical text. It adds 336 resident bytes and 64 workspace bytes after its
+feature-only size pass. The text arena, file representation, save transaction,
+and terminal profile are unchanged.
 
 ### 6. Native Nucleus
 
@@ -539,7 +547,8 @@ bounds rather than complete implementations.
 
 ### Phase E: editor
 
-This phase is complete for the first vertical slice.
+This phase is complete for the first vertical slice and forward-search
+increment.
 
 Deliverables:
 
@@ -551,9 +560,10 @@ Deliverables:
 
 Exit gate: a failed save leaves the previous file recoverable, all editing
 operations preserve the buffer invariants, and the size and workspace reports
-are complete. The retained 2,504-byte editor satisfies this gate through its
+are complete. The retained 2,840-byte editor satisfies this gate through its
 isolated production-code proof, complete CP/M acceptance, and real Extension
-Development Host workflow.
+Development Host workflow. Search and repeat-search preserve the same file,
+capacity, transaction, and terminal contracts.
 
 ### Phase F: native Nucleus
 
@@ -612,8 +622,9 @@ retained:
 
 ## Immediate next work
 
-1. Measure the next editor facility against the retained 2,504-byte transient,
-   beginning with interactive search and repeat-search.
+1. Specify and measure new-file creation against the retained 2,840-byte
+   editor. It is the smallest remaining gap in a self-contained edit-build-run
+   workflow and must retain transactional first save and existing-file safety.
 2. Write the common assembler-analysis template and complete the DRI ASM study
    before using historical implementation details as design evidence.
 3. Revisit external object storage only when a real source exceeds Atom's

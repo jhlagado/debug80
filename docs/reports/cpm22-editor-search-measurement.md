@@ -110,10 +110,45 @@ the exact stack shape.
 
 ## Selection
 
-Production integration will use the active committed buffer with a 65-byte DMA
-rollback snapshot and the 183-byte counted-ring scan. The complete isolated
-candidate is 406 executable bytes plus six immutable bytes, with 65 new
-workspace bytes and no runtime or text-capacity cost. This isolated figure is
-not the eventual feature delta: integration can share existing input, bell,
-status, render, cursor, and scratch paths. The assembled production delta will
-be measured separately after correctness is green.
+Production uses the active committed buffer with a 65-byte DMA rollback
+snapshot and the counted-ring scan. The complete isolated candidate is 406
+executable bytes plus six immutable bytes, with 65 new workspace bytes and no
+runtime or text-capacity cost. Integration shares the existing input, bell,
+status, render, cursor, and scratch paths.
+
+## Production integration and size pass
+
+The correctness-first implementation at Debug80
+`8a4f2afc855cfd48ef2776baa0d6dbd14c023830` occupied 2,962 bytes. The focused
+size pass retained only changes measured at the complete-editor boundary and
+produced `90f28cbc`:
+
+| Account                        | Frozen baseline | Correctness first | Retained | Retained feature delta |
+| ------------------------------ | --------------: | ----------------: | -------: | ---------------------: |
+| Entry jump                     |               3 |                 3 |        3 |                      0 |
+| Code                           |           2,356 |             2,773 |    2,653 |                   +297 |
+| Immutable data                 |             145 |               186 |      184 |                    +39 |
+| Complete `EDIT.COM`            |           2,504 |             2,962 |    2,840 |                   +336 |
+| Fixed workspace                |             228 |               293 |      292 |                    +64 |
+| Code-partition headroom        |           4,920 |             4,462 |    4,584 |                   -336 |
+| Text capacity                  |          47,104 |            47,104 |   47,104 |                      0 |
+| Deepest measured private stack |              20 |                20 |       22 |                     +2 |
+
+The pass removed 120 code bytes and two immutable bytes from the
+correctness-first build. It also overlays query length with the loader's dead
+pending-CR byte, reducing the added workspace from 65 to 64 bytes. It does not
+move resident data into workspace, reduce text capacity, change the stack
+partition, or add runtime support.
+
+The retained sharing includes query-length editing, one query-presence check,
+one cursor-normalization tail, direct fall-through into the match-success path,
+compact tagged status offsets, common status-row setup and completion, merged
+terminal prefixes, and the load-time lifetime overlay. Rejected alternatives
+included a separate bell tail, a one-caller match routine, a shared query-copy
+wrapper, and the independently larger endpoint scan.
+
+The complete headless CP/M editor workflow takes 322,710 instructions and
+3,189,184 T-states. The same workflow used 323,205 instructions and 3,196,520
+T-states in the correctness-first build. The retained production full-file
+miss takes 1,601,563 instructions and 16,392,484 T-states; an immediate match
+takes 63 instructions and 621 T-states.
