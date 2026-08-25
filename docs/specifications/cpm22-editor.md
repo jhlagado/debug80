@@ -213,6 +213,16 @@ storage. At least a dedicated staging buffer, a DMA overlay, and a compact
 single-buffer alternative must be measured as complete query-entry and search
 paths before one is retained.
 
+The measured implementation uses one active committed-query buffer and copies
+its complete 65-byte state into the first 65 bytes of the inactive DMA record
+when query entry begins. Escape and empty Return restore that snapshot;
+accepted Return keeps the edited buffer in place. Query entry makes no BDOS
+call, and the snapshot is dead before any later load or save may overwrite the
+DMA record. The scan keeps a word count of candidate starts and tests exactly
+the text length in one ring. The independent accounts and execution comparison
+are recorded in
+[`cpm22-editor-search-measurement.md`](../reports/cpm22-editor-search-measurement.md).
+
 ## Save transaction
 
 The editor derives `NAME.$$$` and `NAME.BAK` from the selected filename. Both

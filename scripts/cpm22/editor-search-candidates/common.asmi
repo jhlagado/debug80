@@ -1,0 +1,268 @@
+; Representation-independent query editing, prompt rendering, and forward scan.
+
+CandidateQueryCapacity .equ 64
+CandidateStatusFound   .equ 1
+CandidateStatusWrapped .equ 2
+CandidateStatusMissing .equ 3
+CandidateStatusNoQuery .equ 4
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,HL
+CandidateReset:
+            XOR  A
+            LD   (CandidateCommittedLength),A
+            LD   (CandidateStatus),A
+            LD   (CandidateBellCount),A
+            LD   HL,0
+            LD   (CandidateCursor),HL
+            RET
+
+.routine in HL,DE out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
+CandidateCopyQuery:
+            LD   BC,CandidateQueryCapacity+1
+            LDIR
+            XOR  A
+            RET
+
+.routine in A out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
+CandidateAppend:
+            LD   C,A
+            LD   A,(CandidateActiveLength)
+            CP   CandidateQueryCapacity
+            JR   NC,CandidateQueryBoundary
+            LD   E,A
+            LD   D,0
+            LD   HL,CandidateActiveBuffer
+            ADD  HL,DE
+            LD   (HL),C
+            LD   A,E
+            INC  A
+            LD   (CandidateActiveLength),A
+            OR   A
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,HL
+CandidateDelete:
+            LD   A,(CandidateActiveLength)
+            OR   A
+            JR   Z,CandidateQueryBoundary
+            DEC  A
+            LD   (CandidateActiveLength),A
+            OR   A
+            RET
+
+CandidateQueryBoundary:
+            CALL CandidateRing
+            SCF
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,HL
+CandidateRing:
+            LD   HL,CandidateBellCount
+            INC  (HL)
+            RET
+
+; One query-entry key. A successful ordinary edit returns A=0. Accepted Return
+; returns A=1, Escape or empty Return returns A=2, and a rejected key returns
+; with carry set after ringing once.
+.routine in A out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IXH,IXL,IYH,IYL
+CandidateKey:
+            CP   27
+            JR   Z,CandidateKeyCancel
+            CP   13
+            JR   Z,CandidateKeyReturn
+            CP   8
+            JR   Z,CandidateKeyDelete
+            CP   127
+            JR   Z,CandidateKeyDelete
+            CP   9
+            JR   Z,CandidateKeyAppend
+            CP   32
+            JR   C,CandidateKeyRejected
+            CP   127
+            JR   C,CandidateKeyAppend
+CandidateKeyRejected:
+            CALL CandidateRing
+            SCF
+            RET
+CandidateKeyDelete:
+            CALL CandidateDelete
+            RET  C
+            XOR  A
+            RET
+CandidateKeyAppend:
+            CALL CandidateAppend
+            RET  C
+            XOR  A
+            RET
+CandidateKeyReturn:
+            LD   A,(CandidateActiveLength)
+            OR   A
+            JR   Z,CandidateKeyCancel
+            CALL CandidateCommit
+            LD   A,1
+            OR   A
+            RET
+CandidateKeyCancel:
+            CALL CandidateCancel
+            LD   A,2
+            OR   A
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
+CandidateRenderPrompt:
+            LD   HL,CandidatePromptRow
+            LD   DE,CandidatePromptRow+1
+            LD   BC,79
+            LD   (HL),' '
+            LDIR
+            LD   HL,CandidatePromptAttributes
+            LD   DE,CandidatePromptAttributes+1
+            LD   BC,79
+            LD   (HL),1
+            LDIR
+            LD   HL,CandidatePromptPrefix
+            LD   DE,CandidatePromptRow
+            LD   BC,6
+            LDIR
+            LD   A,(CandidateActiveLength)
+            LD   B,A
+            ADD  A,6
+            LD   (CandidatePromptCursor),A
+            LD   A,B
+            OR   A
+            RET  Z
+            LD   HL,CandidateActiveBuffer
+            LD   DE,CandidatePromptRow+6
+CandidateRenderPromptLoop:
+            LD   A,(HL)
+            CP   9
+            JR   NZ,CandidateRenderPromptStore
+            LD   A,'>'
+CandidateRenderPromptStore:
+            LD   (DE),A
+            INC  HL
+            INC  DE
+            DJNZ CandidateRenderPromptLoop
+            OR   A
+            RET
+
+CandidateScanCodeStart:
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IXH,IXL,IYH,IYL
+CandidateSearchInitial:
+            LD   A,(CandidateCommittedLength)
+            OR   A
+            JR   Z,CandidateSearchNoQuery
+            LD   HL,(CandidateCursor)
+            JR   CandidateSearchStart
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
+CandidateSearchRepeat:
+            LD   A,(CandidateCommittedLength)
+            OR   A
+            JR   Z,CandidateSearchNoQuery
+            LD   HL,(CandidateCursor)
+            INC  HL
+
+CandidateSearchStart:
+            XOR  A
+            LD   (CandidateScratchFlag),A
+            LD   DE,(CandidateTextLength)
+            PUSH HL
+            OR   A
+            SBC  HL,DE
+            POP  HL
+            JR   C,CandidateSearchStartReady
+            LD   HL,0
+            INC  A
+            LD   (CandidateScratchFlag),A
+CandidateSearchStartReady:
+            LD   (CandidateScratchScan),HL
+            LD   (CandidateScratchStart),DE
+
+CandidateSearchLoop:
+            LD   HL,(CandidateScratchStart)
+            LD   A,H
+            OR   L
+            JR   Z,CandidateSearchNotFound
+            LD   HL,(CandidateScratchScan)
+            CALL CandidateMatch
+            JR   Z,CandidateSearchFound
+            LD   HL,(CandidateScratchScan)
+            INC  HL
+            LD   DE,(CandidateTextLength)
+            PUSH HL
+            OR   A
+            SBC  HL,DE
+            POP  HL
+            JR   C,CandidateSearchAdvanced
+            LD   HL,0
+            LD   A,1
+            LD   (CandidateScratchFlag),A
+CandidateSearchAdvanced:
+            LD   (CandidateScratchScan),HL
+            LD   HL,(CandidateScratchStart)
+            DEC  HL
+            LD   (CandidateScratchStart),HL
+            JR   CandidateSearchLoop
+
+CandidateSearchFound:
+            LD   HL,(CandidateScratchScan)
+            LD   (CandidateCursor),HL
+            LD   A,(CandidateScratchFlag)
+            OR   A
+            LD   A,CandidateStatusFound
+            JR   Z,CandidateSearchStatus
+            LD   A,CandidateStatusWrapped
+CandidateSearchStatus:
+            LD   (CandidateStatus),A
+            OR   A
+            RET
+
+CandidateSearchNoQuery:
+            LD   A,CandidateStatusNoQuery
+            JR   CandidateSearchFailure
+CandidateSearchNotFound:
+            LD   A,CandidateStatusMissing
+CandidateSearchFailure:
+            LD   (CandidateStatus),A
+            CALL CandidateRing
+            SCF
+            RET
+
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
+CandidateMatch:
+            LD   (CandidateScratchScan),HL
+            LD   A,(CandidateCommittedLength)
+            LD   E,A
+            LD   D,0
+            ADD  HL,DE
+            LD   DE,(CandidateTextLength)
+            OR   A
+            SBC  HL,DE
+            JR   C,CandidateMatchFits
+            JR   Z,CandidateMatchFits
+            LD   A,1
+            OR   A
+            RET
+CandidateMatchFits:
+            LD   HL,(CandidateScratchScan)
+            LD   DE,CandidateTextBase
+            ADD  HL,DE
+            LD   DE,CandidateCommittedBuffer
+            LD   A,(CandidateCommittedLength)
+            LD   B,A
+CandidateMatchLoop:
+            LD   A,(DE)
+            CP   (HL)
+            RET  NZ
+            INC  DE
+            INC  HL
+            DJNZ CandidateMatchLoop
+            XOR  A
+            RET
+CandidateScanCodeEnd:
+CandidateCommonCodeEnd:
+
+CandidateImmutableStart:
+CandidatePromptPrefix: .db "Find: "
+CandidateImmutableEnd:
