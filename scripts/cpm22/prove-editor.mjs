@@ -1581,7 +1581,11 @@ const entryMeasurements = {};
   const { machine, result } = runNewEditorInput([19, 0x11]);
   entryMeasurements.newEmptySaveQuit = result;
   assert.deepEqual(machine.bdos.files.get("NEW.NU"), new Uint8Array());
-  assert.equal(machine.memory[symbol("EditorFlags")] & 9, 0);
+  assert.equal(
+    machine.memory[symbol("EditorFlags")] &
+      (symbol("EditorFlagDirty") | symbol("EditorFlagNew")),
+    0,
+  );
   assert.equal(machine.bdos.input.length, 0);
 }
 {
@@ -1591,7 +1595,11 @@ const entryMeasurements = {};
     logicalFileBytes(machine.bdos.files.get("NEW.NU")),
     Uint8Array.of(0x58),
   );
-  assert.equal(machine.memory[symbol("EditorFlags")] & 9, 0);
+  assert.equal(
+    machine.memory[symbol("EditorFlags")] &
+      (symbol("EditorFlagDirty") | symbol("EditorFlagNew")),
+    0,
+  );
   assert.equal(machine.bdos.input.length, 0);
 }
 {
@@ -1604,7 +1612,11 @@ const entryMeasurements = {};
     logicalFileBytes(machine.bdos.files.get("NEW.NU")),
     Uint8Array.of(0x58),
   );
-  assert.equal(machine.memory[symbol("EditorFlags")] & 9, 0);
+  assert.equal(
+    machine.memory[symbol("EditorFlags")] &
+      (symbol("EditorFlagDirty") | symbol("EditorFlagNew")),
+    0,
+  );
   assert.equal(machine.bdos.input.length, 0);
 }
 {

@@ -64,13 +64,12 @@ EditorLoadReset:
 EditorLoadNotFound:
             LD   A,(EditorSaveState)
             OR   A
-            JR   Z,EditorLoadMissingError
-            LD   A,EditorFlagDirty|EditorFlagNew
-            JR   EditorLoadReset
-EditorLoadMissingError:
+            CCF
             LD   A,EditorErrorNotFound
-            SCF
-            RET
+            RET  Z
+            LD   A,EditorFlagDirty|EditorFlagNew
+            OR   A
+            JR   EditorLoadReset
 EditorLoadTextError:
             LD   A,EditorErrorText
             SCF

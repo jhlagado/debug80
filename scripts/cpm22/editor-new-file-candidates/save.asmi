@@ -140,7 +140,7 @@ EditorSaveSuccess:
 .if CandidateBaseline
             AND  $FC
 .else
-            AND  $F4
+            AND  $74
 .endif
             LD   (EditorFlags),A
             LD   A,EditorStatusSaved

@@ -310,7 +310,8 @@ function assertNewState(candidate, machine, expectFlag) {
   assert.equal(machine.memory[symbol(candidate, "EditorStatus")], 0);
   assert.equal(
     machine.memory[symbol(candidate, "EditorFlags")],
-    symbol(candidate, "EditorFlagDirty") | (expectFlag ? 8 : 0),
+    symbol(candidate, "EditorFlagDirty") |
+      (expectFlag ? symbol(candidate, "EditorFlagNew") : 0),
   );
 }
 

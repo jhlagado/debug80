@@ -7,10 +7,14 @@ EditorSave:
             LD   (EditorSaveState),A
             CALL EditorSaveSetTemporary
             CALL EditorSaveRequireAbsent
-            JP   C,EditorSaveConflict
+            JR   C,EditorSaveConflict
             CALL EditorSaveSetBackup
             CALL EditorSaveRequireAbsent
-            JP   C,EditorSaveConflict
+            JR   NC,EditorSavePreflightReady
+EditorSaveConflict:
+            LD   A,EditorStatusSaveConflict
+            JP   EditorSaveFail
+EditorSavePreflightReady:
             CALL EditorSaveSetTemporary
             LD   C,22
             CALL EditorTransactionCall
@@ -25,8 +29,8 @@ EditorSave:
             INC  A
             JR   Z,EditorSaveCloseFailure
             LD   A,(EditorFlags)
-            AND  EditorFlagNew
-            JR   NZ,EditorSaveInstallTemporary
+            RLCA
+            JR   C,EditorSaveInstallTemporary
             CALL EditorSaveCopySelected
             LD   HL,EditorTransactionFcb
             CALL EditorSaveBuildRename
@@ -48,9 +52,9 @@ EditorSaveInstallTemporary:
             CALL EditorTransactionCall
             INC  A
             JR   Z,EditorSaveRenameFailure
-            LD   A,(EditorFlags)
-            AND  EditorFlagNew
-            JR   NZ,EditorSaveSuccess
+            LD   A,(EditorSaveState)
+            DEC  A
+            JR   Z,EditorSaveSuccess
             LD   A,7
             LD   (EditorSaveState),A
             CALL EditorSaveSetBackup
@@ -62,15 +66,12 @@ EditorSaveSuccess:
             XOR  A
             LD   (EditorSaveState),A
             LD   A,(EditorFlags)
-            AND  $F4
+            AND  $74
             LD   (EditorFlags),A
             LD   A,EditorStatusSaved
             LD   (EditorStatus),A
             OR   A
             RET
-EditorSaveConflict:
-            LD   A,EditorStatusSaveConflict
-            JR   EditorSaveFail
 EditorSaveCreateFailure:
             LD   A,EditorStatusSaveCreate
             JR   EditorSaveFail

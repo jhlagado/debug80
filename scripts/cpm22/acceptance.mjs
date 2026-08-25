@@ -361,7 +361,7 @@ const editorExecution = {
 };
 assert.deepEqual(editorExecution, {
   instructions: 322718,
-  tStates: 3189286,
+  tStates: 3189279,
 });
 const editedNucleusSource = logicalCpmBytes(
   readCpm22File(platform.disk.exportImage(), "INPUT.NU"),
@@ -410,8 +410,8 @@ const newDiscardExecution = {
   tStates: tStates - newDiscardTStateStart,
 };
 assert.deepEqual(newDiscardExecution, {
-  instructions: 51859,
-  tStates: 552943,
+  instructions: 51862,
+  tStates: 552956,
 });
 assert.equal(
   readCpm22File(platform.disk.exportImage(), "THROW.NU"),
@@ -447,8 +447,8 @@ const newCreateExecution = {
   tStates: tStates - newCreateTStateStart,
 };
 assert.deepEqual(newCreateExecution, {
-  instructions: 113016,
-  tStates: 1137790,
+  instructions: 113019,
+  tStates: 1137796,
 });
 assert.deepEqual(
   logicalCpmBytes(

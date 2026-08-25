@@ -41,7 +41,7 @@ EditorWorkspaceEnd   .equ EditorCursorScreenColumn+1
 EditorFlagDirty        .equ 1
 EditorFlagConfirmQuit  .equ 2
 EditorFlagDesiredValid .equ 4
-EditorFlagNew          .equ 8
+EditorFlagNew          .equ $80
 
 EditorStatusReady       .equ 0
 EditorStatusSaved       .equ 1
