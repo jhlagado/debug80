@@ -234,18 +234,22 @@ stack address and verifies that `$E400..$EFFF` remains byte-for-byte unchanged.
 
 ### Native full-screen editor
 
-`EDIT.COM` opens `INPUT.NU` by default; `EDIT NAME.EXT` selects another existing
-current-drive text file. It renders and edits the file on the platform's
-80-by-24 terminal, supports insertion, deletion, four-way movement, scrolling,
-forward literal search, repeat-search, save, and confirmed discard, and
-preserves LF and CRLF input. The complete transient is 2,840 bytes with
+`EDIT.COM` opens `INPUT.NU` by default; `EDIT NAME.EXT` selects a current-drive
+text filename. An existing file is loaded normally, while an absent explicit
+name opens a dirty empty buffer and is published on its first save. The bare
+default must still exist. The editor renders on the platform's 80-by-24
+terminal, supports insertion, deletion, four-way movement, scrolling, forward
+literal search, repeat-search, save, and confirmed discard, and preserves LF
+and CRLF input. The complete transient is 2,869 bytes with
 SHA-256
-`82ce6a026e8fba0ec48d25ddec02d2f78a5fea65c2da2e6b34aebaec91ead6bc`.
+`69e0cdf360c4449038ef1bbed1c9e388c9933ff6e21a06e0964db772c57f6bbc`.
 It uses 292 bytes of fixed workspace, a 47,104-byte contiguous text arena, and
 a private stack whose deepest measured use is 22 bytes.
 
-Saving writes `NAME.$$$`, renames the previous file to `NAME.BAK`, installs the
-new file, and deletes the backup after successful publication. A failed phase
+Saving an existing file writes `NAME.$$$`, renames the previous file to
+`NAME.BAK`, installs the new file, and deletes the backup after successful
+publication. The first save of a new buffer keeps the same reserved-name and
+temporary-file checks but skips the backup rename. A failed existing-file phase
 restores the previous selected file; a deliberately failed rollback leaves the
 previous contents recoverable under the selected or backup name. The complete
 language, terminal, memory, and transaction contract is
@@ -368,5 +372,5 @@ formatting, lint, the 16,535-byte single-source path, the 66,000-byte
 cross-part forward-reference path, native Nucleus rollback and recovery,
 positioned multipart diagnostics, direct-patch byte placement, generated COM
 execution, native editor rendering, forward search, repeat-search, and
-transactional save, raw editor control keys, scoped tests, full tests, and diff
-checks.
+new-file creation with transactional first save, raw editor control keys,
+scoped tests, full tests, and diff checks.

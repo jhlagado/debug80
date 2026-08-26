@@ -76,6 +76,25 @@ async function runEditor(session, transcript) {
   );
 }
 
+async function runNewEditor(session, transcript) {
+  const start = transcript.value.length;
+  await session.customRequest('debug80/terminalInput', { text: 'EDIT CREATED.NU\r' });
+  await waitFor(() => {
+    const output = transcript.value.slice(start);
+    return (
+      output.includes('\u001b[7mEDIT CREATED .NU  *') &&
+      output.includes('^S Save  ^Q Quit') &&
+      output.endsWith('\u001b[1;1H')
+    );
+  }, 'EDIT to open an explicit missing name as a new buffer');
+
+  await session.customRequest('debug80/terminalInput', { text: 'X\u0013\u0011' });
+  await waitFor(
+    () => transcript.value.slice(start).endsWith('\r\nA>'),
+    'EDIT to publish a new file and return to the CCP prompt'
+  );
+}
+
 export async function runCpm22Pipeline(extension) {
   const folder = (vscode.workspace.workspaceFolders ?? [])[0];
   assert.ok(folder, 'Expected a fixture workspace folder');
@@ -185,6 +204,8 @@ export async function runCpm22Pipeline(extension) {
     await sendCommand(session, transcript, 'OUTPUT', expectedTranscript.nucleusOutput);
     await runEditor(session, transcript);
     await sendCommand(session, transcript, 'TYPE INPUT.NU', expectedTranscript.editedInput);
+    await runNewEditor(session, transcript);
+    await sendCommand(session, transcript, 'TYPE CREATED.NU', expectedTranscript.createdInput);
   } finally {
     eventSubscription.dispose();
     vscode.debug.removeBreakpoints([breakpoint]);

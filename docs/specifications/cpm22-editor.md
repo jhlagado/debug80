@@ -36,9 +36,9 @@ The deployed editor excludes replace, selection, copy and paste, multiple
 buffers, drive prefixes, user areas, wildcards, binary files, configurable
 keys, syntax highlighting, mouse input, undo, and recovery after a reset or
 power loss during a directory-sector write. Forward search is implemented
-under the settled increment below. New-file creation is the next specified
-increment; the other facilities remain later work rather than hidden host
-services.
+under the settled increment below. New-file creation is implemented under its
+settled increment below; the other facilities remain later work rather than
+hidden host services.
 
 ## Command
 
@@ -119,6 +119,11 @@ workspace, stack, instructions, T-states, and the complete resident delta.
 Resident size decides first; workspace and execution cost break a tie. Moving
 state into the text arena, stack allocation, DMA record, or another unreported
 account is not a saving.
+
+The measured implementation uses a persistent new-buffer bit in the existing
+flags byte and shares the ordinary save transaction. The executable comparison
+and retained figures are recorded in
+[`cpm22-editor-new-file-measurement.md`](../reports/cpm22-editor-new-file-measurement.md).
 
 ## Text-file model
 
@@ -423,3 +428,10 @@ bytes, and 64 workspace bytes. The complete artifact grows by 336 bytes. It
 adds no runtime support and does not change the text or stack partitions. The
 correctness-first build occupied 2,962 bytes; the feature-only size pass
 removed 122 resident bytes before the implementation was retained.
+
+New-file creation adds 29 code bytes to that retained search baseline. The
+complete `EDIT.COM` is 2,869 bytes: a three-byte entry jump, 2,682 code bytes,
+and 184 immutable bytes. It leaves 4,555 bytes in the code-and-data partition,
+uses the same 292-byte workspace, retains the 47,104-byte text capacity, and
+adds no runtime support. Its correctness-first production build occupied 2,873
+bytes; the focused size pass removed four bytes.

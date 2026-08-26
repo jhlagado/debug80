@@ -2,7 +2,7 @@
 
 Date: 2026-08-26
 
-Status: measured design selection; production implementation not yet retained
+Status: retained production implementation
 
 ## Boundary
 
@@ -92,6 +92,22 @@ diagnostic distinction that BDOS cannot express.
 
 Retain the persistent new-buffer flag. Its correctness-first projection is 39
 code bytes, leaving 4,545 bytes in the editor partition before the required
-feature-only size pass. Production code must still pass the complete editor,
-CP/M, terminal, stack, and Extension Host proofs before this projection becomes
-an implementation measurement.
+feature-only size pass.
+
+## Production result
+
+The integrated correctness build occupied 2,873 bytes, 33 more than the frozen
+production baseline and six fewer than the isolated candidate. Integration
+kept the existing short failure branches where their final placement allowed
+them. The real editor proof also caught one required seam: its edit-complete
+tail had assigned the dirty flag byte, which erased new-file state. The retained
+tail sets only the dirty bit and costs no additional resident byte.
+
+The focused pass moved the conflict tail beside its two branches, reused save
+transaction state after installation, compacted the missing-file return, and
+placed the internal new-file flag where one rotate exposes it through carry.
+The final `EDIT.COM` is 2,869 bytes: 2,682 code bytes, 184 immutable bytes, and
+the three-byte entry jump. New-file creation therefore costs 29 resident bytes,
+uses no new workspace or runtime support, retains 47,104 text bytes, and leaves
+4,555 bytes of code-and-data headroom. The size pass removed four bytes from the
+correctness build.
