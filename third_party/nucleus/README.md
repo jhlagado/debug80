@@ -2,7 +2,7 @@
 
 `NUCLEUS.COM` is the native Z80 Nucleus compiler from
 [`jhlagado/nucleus`](https://github.com/jhlagado/nucleus) commit
-`da987afdd51ea723800a81702849518d96373f06`. That repository contains the
+`44aa22c6fff7e15ed30fec5ea4811b3e331183ba`. That repository contains the
 complete GPL-3.0-only source, fixed 16 KiB compiler-core accounting, strict
 assembly checks, direct `.COM` publisher measurements, and guest execution
 proof corresponding to this binary.

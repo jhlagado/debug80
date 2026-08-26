@@ -11,6 +11,10 @@ real guest CCP, BDOS, and BIOS on Debug80's Z80 runtime. TypeScript implements
 the ideal terminal and disk devices below the BIOS. It does not replace BDOS
 calls with host filesystem operations.
 
+The [tool-service boundary](tool-service-boundary.md) specifies how the native
+Atom and Nucleus tools reach CP/M and direct-host providers without extending
+the BIOS or exposing compiler capabilities to generated programs.
+
 The acceptance system is deliberately small: one CPU, one 80-by-24 text
 terminal, one writable disk, and one reproducibly built guest image. The image
 includes native Atom, Nucleus, and full-screen editor vertical slices. Optional
@@ -55,16 +59,16 @@ against a checked upstream build or historical binary proves the resulting CCP
 and BDOS bytes, apart from documented serial-number fields.
 
 Native `ATOM.COM` comes from [`jhlagado/atom`](https://github.com/jhlagado/atom)
-commit `964f26fbcdfd48a87cea24a3af1c7a5a225e8ab0` under GPL-3.0-only. Its
-14,133-byte artifact has SHA-256
-`6a79dea8a238e859c79e033db6d56fa90e4ab9ed9595ce1fd8dcd94c3749bc3f`.
+commit `a61002edba870668badfdadbb4c624964489bfe0` under GPL-3.0-only. Its
+14,145-byte artifact has SHA-256
+`ee23f83f8d8c9511e59a8a025b2a28300659b22101f2917c1ff3b2dd4ef3ea79`.
 The complete corresponding source, strict build, capacity proof, and output
 design measurements are available at that revision. Debug80 records the exact
 source identity in `third_party/atom/PROVENANCE.json`.
 
 Native `NUCLEUS.COM` comes from
 [`jhlagado/nucleus`](https://github.com/jhlagado/nucleus) commit
-`da987afdd51ea723800a81702849518d96373f06` under GPL-3.0-only. Its
+`44aa22c6fff7e15ed30fec5ea4811b3e331183ba` under GPL-3.0-only. Its
 21,004-byte artifact has SHA-256
 `bf4f7f4273b08afe54af08eb27f24ed819186e019c1e4b3cc268f1f24f1dad7f`.
 Debug80 records the source path, revision, digest, and length in
@@ -192,6 +196,11 @@ The output remains one transactional, 18,304-byte in-TPA COM image; multipart
 input does not raise that output limit. `BUILD.LST` selects two 33,000-byte
 parts whose program leaves a forward reference in the first part and resolves
 it in the second.
+
+Atom's compiler-facing source and publication entries form a private
+tool-service boundary. The CP/M adapter translates them to public BDOS calls
+and preserves IX and IY around `$0005`; it adds no BIOS entry. FCBs, DMA
+addresses, temporary names, and backup names remain inside the adapter.
 
 ### Native Nucleus compiler
 

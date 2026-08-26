@@ -9,9 +9,9 @@ const scriptDirectory = dirname(fileURLToPath(import.meta.url));
 const repositoryRoot = resolve(scriptDirectory, "..", "..");
 const atomRoot = resolve(repositoryRoot, "..", "atom");
 const destination = join(repositoryRoot, "third_party", "atom", "ATOM.COM");
-const expectedCommit = "964f26fbcdfd48a87cea24a3af1c7a5a225e8ab0";
+const expectedCommit = "a61002edba870668badfdadbb4c624964489bfe0";
 const expectedSha256 =
-  "6a79dea8a238e859c79e033db6d56fa90e4ab9ed9595ce1fd8dcd94c3749bc3f";
+  "ee23f83f8d8c9511e59a8a025b2a28300659b22101f2917c1ff3b2dd4ef3ea79";
 
 const commit = execFileSync("git", ["-C", atomRoot, "rev-parse", "HEAD"], {
   encoding: "utf8",

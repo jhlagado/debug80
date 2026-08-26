@@ -19,7 +19,7 @@ const source = join(
   "cpm22-native-compiler.asm",
 );
 const destinationDirectory = join(repositoryRoot, "third_party", "nucleus");
-const expectedCommit = "da987afdd51ea723800a81702849518d96373f06";
+const expectedCommit = "44aa22c6fff7e15ed30fec5ea4811b3e331183ba";
 const expectedSha256 =
   "bf4f7f4273b08afe54af08eb27f24ed819186e019c1e4b3cc268f1f24f1dad7f";
 
