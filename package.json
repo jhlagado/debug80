@@ -26,6 +26,7 @@
     "measure:cpm22-editor": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/debug80-runtime && node scripts/cpm22/measure-editor-buffers.mjs",
     "measure:cpm22-editor-search": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/debug80-runtime && node scripts/cpm22/measure-editor-search.mjs",
     "measure:cpm22-editor-new-file": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/debug80-runtime && node scripts/cpm22/measure-editor-new-file.mjs",
+    "measure:cpm22-editor-replace": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/debug80-runtime && node scripts/cpm22/measure-editor-replace.mjs",
     "proof:cpm22-editor": "npm run build:cpm22 && node scripts/cpm22/prove-editor.mjs",
     "test:cpm22": "npm run build:cpm22 && node scripts/cpm22/acceptance.mjs",
     "check": "npm run build && npm run typecheck && npm run lint && npm run format:check && npm run test",

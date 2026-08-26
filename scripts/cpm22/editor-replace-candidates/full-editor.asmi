@@ -1,0 +1,59 @@
+; Complete production editor boundary with only the replacement experiment
+; substituted. Unrelated modules and immutable bytes remain production bytes.
+
+            .include "../../../apps/debug80-vscode/roms/cpm22/editor-memory.asmi"
+
+EditorStatusReplaced .equ $91
+
+.if CandidateReplaceAll
+CandidateReplaceRemaining .equ EditorWorkspaceEnd
+CandidateReplaceScan      .equ CandidateReplaceRemaining+2
+CandidateReplaceLast      .equ CandidateReplaceScan+2
+CandidateReplaceProjected .equ CandidateReplaceLast+2
+CandidateWorkspaceEnd     .equ CandidateReplaceProjected+2
+.else
+CandidateWorkspaceEnd     .equ EditorWorkspaceEnd
+.endif
+
+            .org EditorCodeBase
+EditorTransientStart:
+            JP   EditorEntry
+
+EditorCodeStart:
+            .include "../../../apps/debug80-vscode/roms/cpm22/editor-bdos.asm"
+            .include "../../../apps/debug80-vscode/roms/cpm22/editor-command.asm"
+            .include "../../../apps/debug80-vscode/roms/cpm22/editor-load.asm"
+            .include "../../../apps/debug80-vscode/roms/cpm22/editor-buffer.asm"
+            .include "../../../apps/debug80-vscode/roms/cpm22/editor-navigation.asm"
+            .include "../../../apps/debug80-vscode/roms/cpm22/editor-screen.asm"
+            .include "../../../apps/debug80-vscode/roms/cpm22/editor-save.asm"
+            .include "search.asmi"
+            .include "replace.asmi"
+            .include "main.asmi"
+EditorCodeEnd:
+
+EditorImmutableStart:
+EditorDefaultName:        .db 0,"INPUT   ","NU "
+EditorBackupExtension:    .db "BAK"
+EditorTemporaryExtension: .db "$$$"
+EditorErrorPrefix:        .db 13,10,"EDIT error ","$"
+EditorNewline:            .db 13,10,"$"
+EditorClearHome:          .db 27,"[2J",27,"[H","$"
+EditorStatusPosition:     .db 27,"[24;1H",27,"[7m","$"
+EditorReverseOff:         .db 27,"[0m",27,"[","$"
+EditorStatusPrefix:       .db "EDIT ",0
+EditorStatusHints:        .db "  ^S Save  ^Q Quit",0
+EditorStatusSavedText:    .db "Saved  ",0
+EditorStatusFullText:     .db "Full  ",0
+EditorStatusDiscardText:  .db "Discard changes? ^Q again  ",0
+EditorStatusSaveFailedText: .db "Save failed ",0
+EditorStatusFoundText:    .db "Found",0
+EditorStatusWrappedText:  .db "Wrapped",0
+EditorStatusNotFoundText: .db "Not found",0
+EditorStatusNoSearchText: .db "No search",0
+EditorStatusReplacedText: .db "Replaced",0
+EditorSearchPrompt:       .db "Find: ",0
+EditorReplacePrompt:      .db "Replace: ",0
+EditorImmutableEnd:
+EditorResidentEnd:
+            .end
