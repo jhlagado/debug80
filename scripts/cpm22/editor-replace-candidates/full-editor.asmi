@@ -3,8 +3,9 @@
 
             .include "../../../apps/debug80-vscode/roms/cpm22/editor-memory.asmi"
 
-EditorStatusReplaced .equ $91
-
+.if CandidateBaseline
+CandidateWorkspaceEnd     .equ EditorWorkspaceEnd
+.else
 .if CandidateReplaceAll
 CandidateReplaceRemaining .equ EditorWorkspaceEnd
 CandidateReplaceScan      .equ CandidateReplaceRemaining+2
@@ -13,6 +14,7 @@ CandidateReplaceProjected .equ CandidateReplaceLast+2
 CandidateWorkspaceEnd     .equ CandidateReplaceProjected+2
 .else
 CandidateWorkspaceEnd     .equ EditorWorkspaceEnd
+.endif
 .endif
 
             .org EditorCodeBase
@@ -27,9 +29,14 @@ EditorCodeStart:
             .include "../../../apps/debug80-vscode/roms/cpm22/editor-navigation.asm"
             .include "../../../apps/debug80-vscode/roms/cpm22/editor-screen.asm"
             .include "../../../apps/debug80-vscode/roms/cpm22/editor-save.asm"
+.if CandidateBaseline
+            .include "baseline-search.asmi"
+            .include "baseline-main.asmi"
+.else
             .include "search.asmi"
             .include "replace.asmi"
             .include "main.asmi"
+.endif
 EditorCodeEnd:
 
 EditorImmutableStart:
@@ -51,9 +58,15 @@ EditorStatusFoundText:    .db "Found",0
 EditorStatusWrappedText:  .db "Wrapped",0
 EditorStatusNotFoundText: .db "Not found",0
 EditorStatusNoSearchText: .db "No search",0
+.if CandidateBaseline
+.else
 EditorStatusReplacedText: .db "Replaced",0
+.endif
 EditorSearchPrompt:       .db "Find: ",0
+.if CandidateBaseline
+.else
 EditorReplacePrompt:      .db "Replace: ",0
+.endif
 EditorImmutableEnd:
 EditorResidentEnd:
             .end
