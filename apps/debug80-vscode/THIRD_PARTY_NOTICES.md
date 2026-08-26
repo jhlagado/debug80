@@ -28,6 +28,6 @@ code.
 
 The ideal CP/M platform disk contains `NUCLEUS.COM`, built from
 [`jhlagado/nucleus`](https://github.com/jhlagado/nucleus) commit
-`7cddad267f1b553661614c23fa3cf9af5bf01709` under GPL-3.0-only. The exact
+`da987afdd51ea723800a81702849518d96373f06` under GPL-3.0-only. The exact
 source identity, artifact digest, and reproducible import instructions are in
 `third_party/nucleus/`.

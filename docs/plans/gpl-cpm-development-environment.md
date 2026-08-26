@@ -32,7 +32,7 @@ at most 65,535 logical bytes; a bounded plan holds as many as 255 parts. The
 acceptance disk includes a 16,535-byte single source and a 66,000-byte two-part
 program with a forward reference crossing the part boundary.
 
-Native Nucleus now runs as a 20,987-byte CP/M transient. It keeps the fixed
+Native Nucleus now runs as a 21,004-byte CP/M transient. It keeps the fixed
 16,314-byte compiler core intact, supplies CP/M source, diagnostic, runtime,
 command, and transactional output adapters, and compiles directly into a
 23,808-byte addressed image buffer. Forward patches update that buffer before
@@ -141,9 +141,9 @@ programs.
 | Atom margin below 16 KiB                             | Measured native account |  3,988 |
 | Native CP/M Atom COM                                 | Measured file           | 14,133 |
 | CP/M-specific Atom resident increment                | Measured linked account |  1,734 |
-| Native CP/M Nucleus COM                              | Measured file           | 20,987 |
+| Native CP/M Nucleus COM                              | Measured file           | 21,004 |
 | Nucleus compiler core                                | Measured fixed account  | 16,314 |
-| CP/M-specific Nucleus host region                    | Measured linked account |  4,603 |
+| CP/M-specific Nucleus host region                    | Measured linked account |  4,620 |
 | Nucleus direct generated-image buffer                | Measured TPA capacity   | 23,808 |
 | Native CP/M editor through literal replacement       | Measured file           |  3,003 |
 | Principal CP/M development utilities examined so far | Measured files          | 36,736 |
@@ -447,9 +447,10 @@ The retained design supports single-source and eight-part plan commands,
 positioned hexadecimal diagnostics, a CP/M target startup and service provider,
 and transactional `.COM` publication. It applies the compiler's addressed
 image and patch operations directly to a 23,808-byte TPA buffer. The complete
-transient is 20,987 bytes, of which 16,314 bytes are the unchanged compiler
-core and 4,603 bytes are the host region. Its independent resident and
-workspace allowances retain 1,285 and 421 bytes respectively.
+transient is 21,004 bytes, of which 16,314 bytes are the unchanged compiler
+core and 4,620 bytes are the host region. Its independent resident and
+workspace allowances retain 1,268 and 421 bytes respectively. Generated
+program console calls enter CP/M through the public BDOS gateway at `$0005`.
 
 Suitable utilities and demonstrations may now be written in Nucleus. The first
 editor is handwritten Z80; a Nucleus implementation remains a candidate only

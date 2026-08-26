@@ -19,9 +19,9 @@ const source = join(
   "cpm22-native-compiler.asm",
 );
 const destinationDirectory = join(repositoryRoot, "third_party", "nucleus");
-const expectedCommit = "7cddad267f1b553661614c23fa3cf9af5bf01709";
+const expectedCommit = "da987afdd51ea723800a81702849518d96373f06";
 const expectedSha256 =
-  "fa910068a98858f0f7b82c2445c377451bbbe8c2c983ecd00e1a32247203ab08";
+  "bf4f7f4273b08afe54af08eb27f24ed819186e019c1e4b3cc268f1f24f1dad7f";
 
 const commit = execFileSync("git", ["-C", nucleusRoot, "rev-parse", "HEAD"], {
   encoding: "utf8",
@@ -80,7 +80,7 @@ const symbols = new Map(
   }),
 );
 assert.equal(symbols.get("CpmCompilerTransientStart"), 0x0100);
-assert.equal(symbols.get("CpmCompilerResidentEnd"), 0x52fb);
+assert.equal(symbols.get("CpmCompilerResidentEnd"), 0x530c);
 assert.equal(
   binary.bytes[0],
   0xc3,

@@ -68,6 +68,7 @@ const ioHandlers = {
 const cpu = createZ80Runtime({ memory, startAddress: 0 }, 0, ioHandlers);
 let instructions = 0;
 let tStates = 0;
+const bdosCalls = [];
 
 function transcript(from = 0) {
   return Buffer.from(output.slice(from)).toString("latin1");
@@ -88,6 +89,15 @@ function terminalRow(row) {
 
 function stepUntil(predicate, description, maximum = 5_000_000) {
   for (let count = 1; count <= maximum; count += 1) {
+    if (cpu.getPC() === 0x0005) {
+      const registers = cpu.getRegisters();
+      bdosCalls.push({
+        function: registers.c,
+        returnAddress:
+          cpu.hardware.memory[registers.sp] |
+          (cpu.hardware.memory[registers.sp + 1] << 8),
+      });
+    }
     const step = cpu.step();
     instructions += 1;
     tStates += step.cycles ?? 0;
@@ -246,8 +256,8 @@ const rejectedNucleusExecution = runCommand(
   "NUCLEUS INPUT.NU KEEP.COM\r\r\n\r\nNucleus host error 61\r\n\r\nA>",
 );
 assert.deepEqual(rejectedNucleusExecution, {
-  instructions: 97760,
-  tStates: 1341544,
+  instructions: 98142,
+  tStates: 1347710,
 });
 assert.deepEqual(
   readCpm22File(platform.disk.exportImage(), "KEEP.COM")?.bytes.slice(
@@ -265,8 +275,8 @@ assert.deepEqual(
 );
 const nucleusExecution = runCommand("NUCLEUS", "NUCLEUS\r\r\n\r\nA>");
 assert.deepEqual(nucleusExecution, {
-  instructions: 330287,
-  tStates: 4665708,
+  instructions: 330669,
+  tStates: 4672231,
 });
 const nucleusOutputFile = readCpm22File(
   platform.disk.exportImage(),
@@ -275,11 +285,22 @@ const nucleusOutputFile = readCpm22File(
 assert.ok(nucleusOutputFile, "native Nucleus did not publish OUTPUT.COM");
 assert.equal(nucleusOutputFile.bytes[0], 0xcd);
 assert.equal(nucleusOutputFile.bytes[0x0700], 0xc3);
+const nucleusProgramBdosStart = bdosCalls.length;
 const nucleusProgramExecution = runCommand("OUTPUT", "OUTPUT\r\r\nOK\r\nA>");
 assert.deepEqual(nucleusProgramExecution, {
-  instructions: 98289,
-  tStates: 1441752,
+  instructions: 98465,
+  tStates: 1443402,
 });
+assert.equal(
+  bdosCalls.slice(nucleusProgramBdosStart).filter(
+    (call) =>
+      call.function === 2 &&
+      call.returnAddress >= 0x0100 &&
+      call.returnAddress < 0x0800,
+  ).length,
+  2,
+  "generated Nucleus console output must enter public BDOS twice",
+);
 
 const originalNucleusSource = logicalCpmBytes(
   readCpm22File(sourceDiskImage, "INPUT.NU"),

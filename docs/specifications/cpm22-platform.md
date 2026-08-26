@@ -64,9 +64,9 @@ source identity in `third_party/atom/PROVENANCE.json`.
 
 Native `NUCLEUS.COM` comes from
 [`jhlagado/nucleus`](https://github.com/jhlagado/nucleus) commit
-`7cddad267f1b553661614c23fa3cf9af5bf01709` under GPL-3.0-only. Its
-20,987-byte artifact has SHA-256
-`fa910068a98858f0f7b82c2445c377451bbbe8c2c983ecd00e1a32247203ab08`.
+`da987afdd51ea723800a81702849518d96373f06` under GPL-3.0-only. Its
+21,004-byte artifact has SHA-256
+`bf4f7f4273b08afe54af08eb27f24ed819186e019c1e4b3cc268f1f24f1dad7f`.
 Debug80 records the source path, revision, digest, and length in
 `third_party/nucleus/PROVENANCE.json`; the import command also requires strict
 AZM register-contract assembly.
@@ -211,14 +211,19 @@ the requested `.COM`; abort removes transaction files and preserves any prior
 output. This direct path can publish at most 25,600 `.COM` bytes, including the
 fixed `$0100..$07FF` target prefix.
 
+Generated Nucleus programs enter the public BDOS gateway at `$0005` for
+blocking console input and console output. They do not call Debug80's absolute
+BIOS addresses or terminal ports. Their file-storage operations remain a
+separate, byte-transparent capability.
+
 The native placement is independently bounded:
 
 | Account                                         | Inclusive or half-open range | Measured use or capacity |
 | ----------------------------------------------- | ---------------------------- | -----------------------: |
-| Transient artifact                              | `$0100..$52FA`               |             20,987 bytes |
+| Transient artifact                              | `$0100..$530B`               |             21,004 bytes |
 | Fixed compiler core                             | within `$0103..$40BC`        |             16,314 bytes |
-| CP/M host vector, adapters, assets, and startup | `$4100..$52FA`               |              4,603 bytes |
-| Unused host-resident allowance                  | `$52FB..$57FF`               |              1,285 bytes |
+| CP/M host vector, adapters, assets, and startup | `$4100..$530B`               |              4,620 bytes |
+| Unused host-resident allowance                  | `$530C..$57FF`               |              1,268 bytes |
 | Host workspace                                  | `$5800..$5E5A`               |              1,627 bytes |
 | Unused host-workspace allowance                 | `$5E5B..$5FFF`               |                421 bytes |
 | Compiler workspace reservation                  | `$6000..$6FFF`               |              4,096 bytes |
