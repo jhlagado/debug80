@@ -32,12 +32,12 @@ full-screen view, moves the cursor, inserts and deletes text, and saves through
 a recoverable file transaction. It is a functional replacement with a new
 interface, not an ED command or file-format emulation.
 
-The deployed editor excludes replace, selection, copy and paste, multiple
-buffers, drive prefixes, user areas, wildcards, binary files, configurable
-keys, syntax highlighting, mouse input, undo, and recovery after a reset or
-power loss during a directory-sector write. Forward search is implemented
-under the settled increment below. New-file creation is implemented under its
-settled increment below; the other facilities remain later work rather than
+The deployed editor excludes selection, copy and paste, multiple buffers,
+drive prefixes, user areas, wildcards, binary files, configurable keys, syntax
+highlighting, mouse input, undo, and recovery after a reset or power loss
+during a directory-sector write. Forward search and new-file creation are
+implemented under their settled increments below. Literal replacement is the
+next specified increment; the other facilities remain later work rather than
 hidden host services.
 
 ## Command
@@ -205,6 +205,7 @@ The input parser consumes the platform's raw byte stream:
 | `ESC [ D`       | move left one logical character                |
 | `^F`            | enter or resume a forward-search query         |
 | `^N`            | repeat the last committed search               |
+| `^R`            | replace the current committed-search match     |
 | `^S`            | save                                           |
 | `^Q`            | quit or begin discard confirmation             |
 
@@ -287,6 +288,95 @@ DMA record. The scan keeps a word count of candidate starts and tests exactly
 the text length in one ring. The independent accounts and execution comparison
 are recorded in
 [`cpm22-editor-search-measurement.md`](../reports/cpm22-editor-search-measurement.md).
+
+## Literal replacement increment
+
+The literal-replacement increment starts from pushed Debug80
+`77b0a44c311a05d9f43107b263649b4ec9c8fc68`. Its complete `EDIT.COM` is
+2,869 bytes: a three-byte entry jump, 2,682 code bytes, and 184 immutable
+bytes. It uses 292 bytes of fixed workspace, retains 47,104 text bytes, and
+leaves 4,555 bytes in the code-and-data partition. The artifact SHA-256 is
+`69e0cdf360c4449038ef1bbed1c9e388c9933ff6e21a06e0964db772c57f6bbc`.
+
+`^R` operates on the committed forward-search query. With no committed query,
+it retains the file cursor, viewport, content, and dirty state, reports
+`No search`, rings the bell once, and does not open a replacement row. The
+query must match exactly at the current file cursor. A missing or partial
+current match reports `Not found`, rings once, and retains the file cursor,
+viewport, content, dirty state, and committed query. The command does not
+search ahead or wrap: `^F` and `^N` already select the match to be replaced.
+
+For a current match, `^R` replaces row 24 with one reverse-video replacement
+row. Columns 1 through 9 contain `Replace: `. The replacement starts empty on
+every invocation and holds at most 64 bytes in the inactive DMA record.
+Printable ASCII is displayed directly and a horizontal tab is displayed as
+`>`. Backspace and Delete remove the final byte. Either key at length zero,
+the first byte beyond 64, and every other unsupported control byte ring the
+bell once without leaving the replacement row. Escape cancels; Return accepts
+the replacement, including an empty one. Cancellation preserves the committed
+search query, file cursor, viewport, content, and dirty state and restores
+ready status.
+
+Entering `^R` is a complete command, so every terminal path cancels a pending
+discard confirmation under the existing main-loop rule.
+
+An accepted replacement substitutes its bytes for the complete query span at
+the current cursor. An empty replacement deletes the span. The replacement
+and search query cannot contain CR or LF, and the query cannot cross LF or
+CRLF, so replacement never changes or joins existing line endings. Both may
+contain a horizontal tab, which remains one stored `$09` byte.
+
+Capacity is checked against the final length before the first text byte or
+editor field changes. A growth that would exceed 47,104 bytes reports `Full`,
+rings once, and preserves the exact content, length, cursor, viewport, desired
+column, dirty and new flags, committed query, and save state. The transient
+replacement bytes in the DMA record have no meaning after the command
+completes. Shrinking and equal-length replacements cannot fail after
+validation.
+
+Success leaves the file cursor at the first replacement byte, or at the
+deletion point for an empty replacement. It invalidates the retained vertical
+column, sets dirty state, clears discard confirmation, retains the committed
+search query, reports `Replaced`, and repaints the screen. An equal-length
+replacement marks the buffer dirty even when every replacement byte equals the
+matched text. A following `^N` starts one byte after the replacement start and
+therefore applies the settled repeat-search and overlap rules to the resulting
+buffer.
+
+The minimum retained scope is one replacement per `^R`. A second complete
+candidate adds bounded replace-all by accepting `^A` from the replacement row.
+That operation selects non-overlapping matches from byte zero to the original
+logical EOF in increasing order. It never wraps or tests bytes inserted by an
+earlier replacement. After a nonempty replacement, the next scan begins after
+the inserted span; after deletion, it resumes at the deletion point. Success
+leaves the cursor at the start of the final replacement. No match reports
+`Not found`, rings once, and retains the content, cursor, viewport, dirty and
+new flags, committed query, and save state.
+
+The replace-all candidate must count its selected matches and prove the final
+length before its first write. Exact-capacity growth succeeds; the first byte
+beyond capacity rejects the complete operation atomically. The preflight and
+mutation passes must select the same non-overlapping spans when the replacement
+contains the search query, when it is empty, and when its length equals the
+query length.
+
+Both candidates use the existing committed-query storage, inactive DMA record,
+contiguous text arena, edit primitives, statuses, renderer, and save path where
+that makes the complete image smaller. Neither may add persistent replacement
+history, regular expressions, case folding, confirmation per match, newline
+replacement, selection, undo, host services, runtime support, or another text
+buffer.
+
+Complete executable prototypes must measure the single-replacement editor and
+the single-plus-bounded-replace-all editor independently. The comparison
+reports code, immutable data, workspace, text capacity, stack, instructions,
+and T-states for prompt entry, cancellation, no match, deletion, equal-length
+replacement, growth, shrinkage, exact-capacity growth, and rejected growth.
+Single replacement is useful with the existing `^F` and `^N` commands, so the
+complete resident size decides the scope. Replace-all is retained only if its
+complete editor image is no larger than the sound single-replacement image;
+otherwise its measured cost is recorded for later work and the single path is
+retained.
 
 ## Save transaction
 
@@ -409,6 +499,34 @@ The new-file increment must additionally distinguish:
   CP/M behavior, and the real Extension Host workflow; and
 - exact code, immutable, workspace, text-capacity, and runtime deltas from the
   pushed 2,840-byte baseline.
+
+The literal-replacement increment must additionally distinguish:
+
+- `^R` with no committed query, with a partial current match, and with exact
+  current matches at byte zero, in the middle, and at the final candidate;
+- an empty, one-byte, 64-byte, replaced, and cancelled replacement; the first
+  rejected byte; Backspace, Delete, horizontal tab, and unsupported controls;
+- exact prompt cells, attributes, cursor, ordinary repaint, status, and bell
+  count for every terminal result;
+- deletion, equal-length replacement, growth, shrinkage, byte-identical
+  replacement, one-byte and 64-byte search queries, and overlapping matches;
+- retained LF and CRLF bytes, no match across either line ending, and tab
+  matching and replacement as exact `$09` bytes;
+- a result that exactly fills the 47,104-byte arena and the first rejected
+  growth, with byte-for-byte content and every listed persistent field
+  unchanged on rejection except `Full` status and one bell;
+- cursor placement, vertical-column invalidation, dirty and discard state,
+  retained committed query, `^N` after replacement, repeated replacement,
+  save, reload, and physical saved-file bytes;
+- existing and new buffers, sequential executions, and reset of transient
+  replacement state after cancellation, failure, save, and exit;
+- for the replace-all candidate, no match, non-overlapping spans, replacement
+  text containing the query, empty replacement, final cursor, exact capacity,
+  rejected aggregate growth, and identical preflight and mutation selection;
+- exact assembled extents, stack balance, instructions, T-states, headless
+  CP/M behavior, and the real Extension Host workflow; and
+- exact code, immutable, workspace, text-capacity, and runtime deltas from the
+  pushed 2,869-byte baseline.
 
 The final gate includes strict assembly, scoped editor proofs, the complete
 CP/M acceptance, runtime and terminal tests, Extension Host integration, full
