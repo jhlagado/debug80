@@ -239,12 +239,12 @@ text filename. An existing file is loaded normally, while an absent explicit
 name opens a dirty empty buffer and is published on its first save. The bare
 default must still exist. The editor renders on the platform's 80-by-24
 terminal, supports insertion, deletion, four-way movement, scrolling, forward
-literal search, repeat-search, save, and confirmed discard, and preserves LF
-and CRLF input. The complete transient is 2,869 bytes with
-SHA-256
-`69e0cdf360c4449038ef1bbed1c9e388c9933ff6e21a06e0964db772c57f6bbc`.
+literal search, repeat-search, single literal replacement, save, and confirmed
+discard, and preserves LF and CRLF input. The complete transient is 3,003 bytes
+with SHA-256
+`bbe4ac2b6236d178089fcd01822d0d7fa3c6159f0d2da3655eba1212dda5aa02`.
 It uses 292 bytes of fixed workspace, a 47,104-byte contiguous text arena, and
-a private stack whose deepest measured use is 22 bytes.
+a private stack whose deepest measured use is 24 bytes.
 
 Saving an existing file writes `NAME.$$$`, renames the previous file to
 `NAME.BAK`, installs the new file, and deletes the backup after successful
@@ -372,5 +372,5 @@ formatting, lint, the 16,535-byte single-source path, the 66,000-byte
 cross-part forward-reference path, native Nucleus rollback and recovery,
 positioned multipart diagnostics, direct-patch byte placement, generated COM
 execution, native editor rendering, forward search, repeat-search, and
-new-file creation with transactional first save, raw editor control keys,
-scoped tests, full tests, and diff checks.
+literal replacement with save and reload, new-file creation with transactional
+first save, raw editor control keys, scoped tests, full tests, and diff checks.

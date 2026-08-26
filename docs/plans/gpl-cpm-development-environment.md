@@ -1,6 +1,6 @@
 # Plan: a GPL CP/M-compatible development environment
 
-Status: Phase C complete; Phase D Atom, Phase E editor with search and new-file creation, and Phase F Nucleus vertical slices implemented
+Status: Phase C complete; Phase D Atom, Phase E editor through literal replacement, and Phase F Nucleus vertical slices implemented
 
 Date: 2026-08-26
 
@@ -41,14 +41,15 @@ Headless and Extension Host proofs compile the bundled `INPUT.NU`, execute its
 `OUTPUT.COM`, preserve an existing output through a rejected transaction, and
 exercise recovery, multipart diagnostics, and the real CCP stack boundary.
 
-The native editor now runs as a 2,869-byte CP/M transient. It opens the
+The native editor now runs as a 3,003-byte CP/M transient. It opens the
 bundled Atom and Nucleus sources, renders an 80-by-24 full-screen view, supports
 bounded insertion, deletion, navigation, scrolling, forward literal search,
-repeat-search, and explicit missing-name creation. It saves through a
-recoverable `.$$$` and `.BAK` transaction. Its contiguous arena holds 47,104
-text bytes; fixed workspace is 292 bytes and the deepest measured private-stack
-use is 22 bytes. Isolated Z80 proofs, headless CP/M acceptance, and the real
-Extension Development Host exercise the same production transient.
+repeat-search, single literal replacement, and explicit missing-name creation.
+It saves through a recoverable `.$$$` and `.BAK` transaction. Its contiguous
+arena holds 47,104 text bytes; fixed workspace is 292 bytes and the deepest
+measured private-stack use is 24 bytes. Isolated Z80 proofs, headless CP/M
+acceptance, and the real Extension Development Host exercise the same
+production transient.
 
 This does not complete the wider development-environment project. Other editor
 facilities, replacement utilities, optional graphics, and a project-owned
@@ -144,7 +145,7 @@ programs.
 | Nucleus compiler core                                | Measured fixed account  | 16,314 |
 | CP/M-specific Nucleus host region                    | Measured linked account |  4,603 |
 | Nucleus direct generated-image buffer                | Measured TPA capacity   | 23,808 |
-| Native CP/M editor with search and new-file creation | Measured file           |  2,869 |
+| Native CP/M editor through literal replacement       | Measured file           |  3,003 |
 | Principal CP/M development utilities examined so far | Measured files          | 36,736 |
 
 The final line is 35.875 KiB and includes ASM, DDT, DUMP, ED, LOAD, PIP, STAT,
@@ -399,10 +400,10 @@ profile-specific front ends and include the added disk traffic and loader size.
 The editor is a new program, not an ED emulation. Its deployed implementation
 has a full screen of text, visible status and command hints, direct cursor
 movement, insertion and deletion, file open, recoverable save, explicit error
-reporting, forward literal search, and repeat-search. Replace, selection,
-multiple buffers, and undo remain later features. An explicit missing filename
-opens a dirty empty buffer and is published by the existing transactional save
-machinery.
+reporting, forward literal search, repeat-search, and single literal
+replacement. Selection, multiple buffers, undo, and replace-all remain later
+features. An explicit missing filename opens a dirty empty buffer and is
+published by the existing transactional save machinery.
 
 The editor uses the fixed 80-by-24 VT100 profile above. Its terminal adapter
 emits only the contracted cursor, erase, and rendition sequences and decodes the
@@ -427,6 +428,14 @@ It uses one bit in the existing flags byte, adds no immutable data or workspace,
 and keeps the 47,104-byte text arena. First save shares the ordinary temporary
 file and collision checks but skips the selected-to-backup rename. Headless and
 Extension Host proofs cover discard, first publication, and guest readback.
+
+The third extension adds one literal replacement per Ctrl-R in 134 resident
+bytes. It reuses the committed 64-byte search query, stages the replacement in
+the inactive DMA record, and leaves workspace and text capacity unchanged. The
+3,106-byte correctness build was reduced to 3,003 bytes by sharing the exact
+matcher, failure and ready tails, prompt machinery, state updates, and one
+immutable terminator. The measured 3,286-byte replace-all candidate required
+eight more workspace bytes and was not retained.
 
 ### 6. Native Nucleus
 
@@ -556,7 +565,7 @@ bounds rather than complete implementations.
 ### Phase E: editor
 
 This phase is complete for the first vertical slice, forward-search increment,
-and new-file creation increment.
+new-file creation increment, and single literal-replacement increment.
 
 Deliverables:
 
@@ -568,11 +577,11 @@ Deliverables:
 
 Exit gate: a failed save leaves the previous file recoverable, all editing
 operations preserve the buffer invariants, and the size and workspace reports
-are complete. The retained 2,869-byte editor satisfies this gate through its
+are complete. The retained 3,003-byte editor satisfies this gate through its
 isolated production-code proof, complete CP/M acceptance, and real Extension
-Development Host workflow. Search, repeat-search, and explicit missing-name
-creation preserve the same file, capacity, transaction, and terminal
-contracts.
+Development Host workflow. Search, repeat-search, explicit missing-name
+creation, and single literal replacement preserve the same file, capacity,
+transaction, and terminal contracts.
 
 ### Phase F: native Nucleus
 
@@ -631,14 +640,12 @@ retained:
 
 ## Immediate next work
 
-1. Specify and measure literal replace against the retained 2,869-byte editor.
-   Reuse the committed search query where economical, preserve exact capacity
-   failure atomicity, and compare one replacement with bounded replace-all
-   before selecting scope.
-2. Write the common assembler-analysis template and complete the DRI ASM study
+1. Write the common assembler-analysis template and complete the DRI ASM study
    before using historical implementation details as design evidence.
-3. Revisit external object storage only when a real source exceeds Atom's
+2. Revisit external object storage only when a real source exceeds Atom's
    18,304-byte or Nucleus's 25,600-byte `.COM` capacity.
+3. Specify another editor increment only after comparing its complete resident,
+   workspace, capacity, and interaction costs with the remaining utility work.
 
 ## Reference starting points
 

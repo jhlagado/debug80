@@ -35,10 +35,9 @@ interface, not an ED command or file-format emulation.
 The deployed editor excludes selection, copy and paste, multiple buffers,
 drive prefixes, user areas, wildcards, binary files, configurable keys, syntax
 highlighting, mouse input, undo, and recovery after a reset or power loss
-during a directory-sector write. Forward search and new-file creation are
-implemented under their settled increments below. Literal replacement is the
-next specified increment; the other facilities remain later work rather than
-hidden host services.
+during a directory-sector write. Forward search, new-file creation, and literal
+replacement are implemented under their settled increments below. The other
+facilities remain later work rather than hidden host services.
 
 ## Command
 
@@ -292,7 +291,7 @@ are recorded in
 ## Literal replacement increment
 
 The literal-replacement increment starts from pushed Debug80
-`77b0a44c311a05d9f43107b263649b4ec9c8fc68`. Its complete `EDIT.COM` is
+`87d10025bc866360661164306623619244b406e5`. Its complete `EDIT.COM` is
 2,869 bytes: a three-byte entry jump, 2,682 code bytes, and 184 immutable
 bytes. It uses 292 bytes of fixed workspace, retains 47,104 text bytes, and
 leaves 4,555 bytes in the code-and-data partition. The artifact SHA-256 is
@@ -553,3 +552,17 @@ and 184 immutable bytes. It leaves 4,555 bytes in the code-and-data partition,
 uses the same 292-byte workspace, retains the 47,104-byte text capacity, and
 adds no runtime support. Its correctness-first production build occupied 2,873
 bytes; the focused size pass removed four bytes.
+
+Literal replacement adds 116 code bytes and 18 immutable bytes to the retained
+new-file baseline. The production `EDIT.COM` is 3,003 bytes: a three-byte entry
+jump, 2,798 code bytes, and 202 immutable bytes. It leaves 4,421 bytes in the
+code-and-data partition, uses the same 292-byte workspace, retains the
+47,104-byte text capacity, and adds no runtime support. Its artifact SHA-256 is
+`bbe4ac2b6236d178089fcd01822d0d7fa3c6159f0d2da3655eba1212dda5aa02`.
+
+The single-replacement correctness build occupied 3,106 bytes. Its focused
+size pass removed 102 code bytes and one immutable byte. The deepest measured
+private-stack use in the complete replacement workflow is 24 bytes; the fixed
+3,072-byte stack partition is unchanged. The independently measured bounded
+replace-all candidate occupied 3,286 bytes and required eight additional
+workspace bytes, so it was not retained.

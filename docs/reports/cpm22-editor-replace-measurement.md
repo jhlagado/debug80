@@ -2,7 +2,7 @@
 
 Date: 2026-08-26
 
-Status: single replacement selected for production
+Status: single replacement implemented, compressed, and verified
 
 ## Boundary
 
@@ -25,12 +25,13 @@ CP/M DMA record while the prompt is active. The executable comparison is
 | Frozen production baseline |          2,869 |      2,682 |       184 |       292 |        47,104 |     0 |
 | Single replacement         |          3,106 |      2,900 |       203 |       292 |        47,104 |  +237 |
 | Bounded replace-all        |          3,286 |      3,080 |       203 |       300 |        47,104 |  +417 |
+| Compressed production      |          3,003 |      2,798 |       202 |       292 |        47,104 |  +134 |
 
 Single replacement is 180 resident bytes smaller than replace-all and uses
 eight fewer workspace bytes. It is therefore the selected production scope
-under the settled rule. The measurement is a correctness build; its 237-byte
-delta is the starting point for integration and feature-only compression, not
-the final feature cost.
+under the settled rule. Its 237-byte correctness delta supplied the baseline
+for integration and feature-only compression. The retained production path
+costs 134 bytes.
 
 ## Candidate behaviour
 
@@ -83,11 +84,51 @@ fake BDOS console calls. Host-side terminal work is excluded. The long
 replace-all overflow case scans a nearly full 47,104-byte buffer during its
 mandatory atomic preflight.
 
+## Production integration and compression
+
+The correctness implementation assembled to the measured 3,106-byte single
+candidate. The focused pass removed 102 code bytes and one immutable byte,
+producing a 3,003-byte `EDIT.COM`: a three-byte entry jump, 2,798 code bytes,
+and 202 immutable bytes. Fixed workspace remains 292 bytes, text capacity
+remains 47,104 bytes, and the code-and-data partition retains 4,421 free bytes.
+The artifact SHA-256 is
+`bbe4ac2b6236d178089fcd01822d0d7fa3c6159f0d2da3655eba1212dda5aa02`.
+
+The retained code shares one exact-match routine between forward search and
+replacement, reuses the established no-query and not-found tails, and routes
+replacement cancellation through the ordinary ready return. Growth and
+shrinkage now operate at the replacement start, so they no longer move the
+cursor around the buffer primitive. The status update shares the adjacent
+flags and status fields, prompt rendering reloads its recorded input pointer,
+and the replacement status terminator shares the default FCB's leading zero.
+None of these changes moves bytes into workspace, the text arena, the private
+stack partition, runtime code, or the disk adapter.
+
+The compressed production paths measure:
+
+| Complete path         | Instructions | T-states | Maximum stack |
+| --------------------- | -----------: | -------: | ------------: |
+| Growth                |        8,730 |   98,091 |      20 bytes |
+| Shrinkage             |        4,409 |   49,475 |      20 bytes |
+| Deletion              |        2,233 |   25,024 |      20 bytes |
+| Equal-length          |       10,878 |  122,072 |      20 bytes |
+| Exact-capacity growth |        6,563 |   73,658 |      20 bytes |
+| Rejected first growth |        6,520 |   73,199 |      20 bytes |
+
+The complete entry workflow reaches 24 bytes of private-stack use while
+rendering and executing replacement. The partition still reserves 3,072
+bytes.
+
+The final production proof passes strict AZM register contracts, all isolated
+editor cases, the complete headless CP/M acceptance, and the VS Code 1.134.0
+Extension Development Host workflow. The host workflow enters `sub` through
+Ctrl-F, replaces it with `SUB` through Ctrl-R, saves the edited source, and
+checks the guest file through `TYPE INPUT.NU`.
+
 ## Selection
 
-Retain single replacement. Production integration must preserve the measured
-zero workspace delta and full text capacity, then run the complete editor proof,
-headless CP/M acceptance, Extension Host workflow, save-and-reload cases, and a
-feature-only size pass. Replace-all remains a measured rejected design unless a
-future requirement justifies its additional 180 resident bytes, eight workspace
-bytes, and full-buffer preflight cost.
+Single replacement is retained in production. It adds 116 code bytes and 18
+immutable bytes to the 2,869-byte editor, with no workspace, text-capacity,
+runtime, or partition change. Replace-all remains a measured rejected design
+unless a future requirement justifies the candidate's additional 180 resident
+bytes, eight workspace bytes, and full-buffer preflight cost.
