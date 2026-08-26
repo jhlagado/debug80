@@ -90,7 +90,13 @@ describe('terminal panel html', () => {
         return;
       }
       if (mode === 'cpm22' && event.ctrlKey && !event.altKey && !event.metaKey) {
-        const control: Record<string, string> = { s: '\u0013', q: '\u0011' };
+        const control: Record<string, string> = {
+          f: '\u0006',
+          n: '\u000e',
+          q: '\u0011',
+          r: '\u0012',
+          s: '\u0013',
+        };
         const text = control[event.key.toLowerCase()];
         if (text !== undefined) {
           event.preventDefault();
@@ -208,20 +214,30 @@ describe('terminal panel html', () => {
     expect(html).toContain("text: '\\u001b[' + suffix");
     expect(html).toContain("text: '\\b'");
     expect(html).toContain("text: '\\u007f'");
-    expect(html).toContain("const control = { s: '\\u0013', q: '\\u0011' }");
+    expect(html).toContain("f: '\\u0006'");
+    expect(html).toContain("n: '\\u000e'");
+    expect(html).toContain("r: '\\u0012'");
+    expect(html).toContain("s: '\\u0013'");
+    expect(html).toContain("q: '\\u0011'");
     expect(html).toContain("else if (final === 'm') selectGraphicRendition(params)");
     expect(html).toContain("span.classList.add('terminal-reverse')");
     expect(html).toContain("event.clipboardData?.getData('text/plain')");
     expect(html).toContain('body.cpm22 #out');
   });
 
-  it('sends CP/M save and quit controls as raw bytes without browser defaults', () => {
+  it('sends CP/M editor controls as raw bytes without browser defaults', () => {
     harness = createHarness('', 'cpm22');
     const { input } = requireHarness();
 
+    expect(pressControl(input, 'f')).toBe(false);
+    expect(pressControl(input, 'N')).toBe(false);
+    expect(pressControl(input, 'r')).toBe(false);
     expect(pressControl(input, 's')).toBe(false);
     expect(pressControl(input, 'Q')).toBe(false);
     expect(messages).toEqual([
+      { type: 'input', text: '\u0006' },
+      { type: 'input', text: '\u000e' },
+      { type: 'input', text: '\u0012' },
       { type: 'input', text: '\u0013' },
       { type: 'input', text: '\u0011' },
     ]);

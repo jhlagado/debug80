@@ -750,7 +750,14 @@ const searchMeasurements = {};
   const machine = createMachine();
   installBuffer(machine, Buffer.from("A\tB\r\n", "ascii"), 0);
   setQuery(machine, Buffer.from("A\tB", "ascii"));
-  searchMeasurements.prompt = invokeRoutine(machine, "EditorRenderQuery");
+  searchMeasurements.prompt = invokeRoutine(machine, "EditorRenderLiteral", {
+    registers: {
+      h: symbol("EditorQueryLength") >>> 8,
+      l: symbol("EditorQueryLength") & 0xff,
+      d: symbol("EditorSearchPrompt") >>> 8,
+      e: symbol("EditorSearchPrompt") & 0xff,
+    },
+  });
   const snapshot = machine.bdos.terminal.snapshot();
   assert.equal(
     Buffer.from(snapshot.cells.slice(23 * 80)).toString("ascii"),
@@ -769,7 +776,18 @@ const searchMeasurements = {};
   const machine = createMachine();
   installBuffer(machine, new Uint8Array(), 0);
   setQuery(machine, new Uint8Array());
-  searchMeasurements.emptyPrompt = invokeRoutine(machine, "EditorRenderQuery");
+  searchMeasurements.emptyPrompt = invokeRoutine(
+    machine,
+    "EditorRenderLiteral",
+    {
+      registers: {
+        h: symbol("EditorQueryLength") >>> 8,
+        l: symbol("EditorQueryLength") & 0xff,
+        d: symbol("EditorSearchPrompt") >>> 8,
+        e: symbol("EditorSearchPrompt") & 0xff,
+      },
+    },
+  );
   let snapshot = machine.bdos.terminal.snapshot();
   assert.equal(
     Buffer.from(snapshot.cells.slice(23 * 80)).toString("ascii"),
@@ -779,7 +797,18 @@ const searchMeasurements = {};
   assert.equal(snapshot.cursorColumn, 6);
 
   setQuery(machine, new Uint8Array(64).fill(0x41));
-  searchMeasurements.fullPrompt = invokeRoutine(machine, "EditorRenderQuery");
+  searchMeasurements.fullPrompt = invokeRoutine(
+    machine,
+    "EditorRenderLiteral",
+    {
+      registers: {
+        h: symbol("EditorQueryLength") >>> 8,
+        l: symbol("EditorQueryLength") & 0xff,
+        d: symbol("EditorSearchPrompt") >>> 8,
+        e: symbol("EditorSearchPrompt") & 0xff,
+      },
+    },
+  );
   snapshot = machine.bdos.terminal.snapshot();
   assert.equal(
     Buffer.from(snapshot.cells.slice(23 * 80)).toString("ascii"),
@@ -1111,6 +1140,7 @@ searchMeasurements.fromEof = searchResult(
     ["EditorStatusWrapped", "Wrapped"],
     ["EditorStatusNotFound", "Not found"],
     ["EditorStatusNoSearch", "No search"],
+    ["EditorStatusReplaced", "Replaced"],
   ]) {
     machine.memory[symbol("EditorStatus")] = symbol(status);
     machine.bdos.terminal.reset();
@@ -1123,6 +1153,309 @@ searchMeasurements.fromEof = searchResult(
     );
   }
   assertCanaries(machine);
+}
+
+const replaceMeasurements = {};
+
+function replacementPersistentSnapshot(machine) {
+  return {
+    state: machine.memory.slice(
+      symbol("EditorLength"),
+      symbol("EditorSaveState") + 1,
+    ),
+    text: machine.memory.slice(memoryLayout.textStart, memoryLayout.textEnd),
+  };
+}
+
+function compareReplacementFailure(before, machine) {
+  const after = replacementPersistentSnapshot(machine);
+  const statusOffset = symbol("EditorStatus") - symbol("EditorLength");
+  after.state[statusOffset] = before.state[statusOffset];
+  assert.deepEqual(after, before);
+}
+
+function replacementSuccess(
+  label,
+  text,
+  query,
+  cursor,
+  input,
+  expected,
+  expectedCursor = cursor,
+) {
+  const machine = createMachine();
+  installBuffer(machine, text, cursor);
+  setQuery(machine, query, 0x63);
+  machine.memory[symbol("EditorFlags")] =
+    symbol("EditorFlagDesiredValid") | symbol("EditorFlagNew");
+  writeWord(machine.memory, symbol("EditorTop"), 7);
+  writeWord(machine.memory, symbol("EditorHorizontal"), 3);
+  writeWord(machine.memory, symbol("EditorDesiredColumn"), 11);
+  machine.memory[symbol("EditorSaveState")] = 0x5a;
+  const beforeQuery = queryBlock(machine);
+  machine.bdos.input.push(...input);
+  const result = invokeRoutine(machine, "EditorReplaceBegin");
+  assert.equal(result.carry, false, `${label}: replacement failed`);
+  assert.deepEqual(bufferBytes(machine), Uint8Array.from(expected));
+  assert.equal(
+    readWord(machine.memory, symbol("EditorCursor")),
+    expectedCursor,
+  );
+  assert.equal(readWord(machine.memory, symbol("EditorTop")), 7);
+  assert.equal(readWord(machine.memory, symbol("EditorHorizontal")), 3);
+  assert.equal(readWord(machine.memory, symbol("EditorDesiredColumn")), 11);
+  assert.equal(machine.memory[symbol("EditorSaveState")], 0x5a);
+  assert.deepEqual(queryBlock(machine), beforeQuery);
+  assert.equal(
+    machine.memory[symbol("EditorStatus")],
+    symbol("EditorStatusReplaced"),
+  );
+  assert.notEqual(
+    machine.memory[symbol("EditorFlags")] & symbol("EditorFlagDirty"),
+    0,
+  );
+  assert.equal(
+    machine.memory[symbol("EditorFlags")] & symbol("EditorFlagDesiredValid"),
+    0,
+  );
+  assert.notEqual(
+    machine.memory[symbol("EditorFlags")] & symbol("EditorFlagNew"),
+    0,
+  );
+  assert.equal(machine.bdos.input.length, 0);
+  assertCanaries(machine);
+  return { machine, result };
+}
+
+for (const [label, text, query, cursor, status] of [
+  ["noQuery", "ABC", "", 0, "EditorStatusNoSearch"],
+  ["aheadOnly", "XABC", "ABC", 0, "EditorStatusNotFound"],
+  ["partialEnd", "ABC", "BCD", 1, "EditorStatusNotFound"],
+  ["crossLf", "A\nB", "AB", 0, "EditorStatusNotFound"],
+  ["crossCrlf", "A\r\nB", "AB", 0, "EditorStatusNotFound"],
+]) {
+  const machine = createMachine();
+  installBuffer(machine, Buffer.from(text, "ascii"), cursor);
+  setQuery(machine, Buffer.from(query, "ascii"), 0x70);
+  machine.memory[symbol("EditorFlags")] =
+    symbol("EditorFlagDirty") |
+    symbol("EditorFlagDesiredValid") |
+    symbol("EditorFlagNew");
+  writeWord(machine.memory, symbol("EditorTop"), 7);
+  writeWord(machine.memory, symbol("EditorHorizontal"), 3);
+  writeWord(machine.memory, symbol("EditorDesiredColumn"), 11);
+  machine.memory[symbol("EditorSaveState")] = 0x5a;
+  const before = replacementPersistentSnapshot(machine);
+  replaceMeasurements[label] = invokeRoutine(machine, "EditorReplaceBegin");
+  assert.equal(replaceMeasurements[label].carry, true, label);
+  assert.equal(machine.memory[symbol("EditorStatus")], symbol(status), label);
+  compareReplacementFailure(before, machine);
+  assert.deepEqual(machine.bdos.events, []);
+  assertCanaries(machine);
+}
+
+{
+  const machine = createMachine();
+  installBuffer(machine, Buffer.from("ABC", "ascii"), 1);
+  setQuery(machine, Buffer.from("B", "ascii"), 0x75);
+  machine.memory[symbol("EditorFlags")] =
+    symbol("EditorFlagDirty") |
+    symbol("EditorFlagDesiredValid") |
+    symbol("EditorFlagNew");
+  writeWord(machine.memory, symbol("EditorTop"), 7);
+  writeWord(machine.memory, symbol("EditorHorizontal"), 3);
+  writeWord(machine.memory, symbol("EditorDesiredColumn"), 11);
+  machine.memory[symbol("EditorStatus")] = symbol("EditorStatusSaved");
+  machine.memory[symbol("EditorSaveState")] = 0x5a;
+  const before = replacementPersistentSnapshot(machine);
+  machine.bdos.input.push(27);
+  replaceMeasurements.cancel = invokeRoutine(machine, "EditorReplaceBegin");
+  assert.equal(replaceMeasurements.cancel.carry, false);
+  assert.equal(
+    machine.memory[symbol("EditorStatus")],
+    symbol("EditorStatusReady"),
+  );
+  compareReplacementFailure(before, machine);
+  assert.equal(machine.bdos.input.length, 0);
+  assertCanaries(machine);
+}
+
+replaceMeasurements.grow = replacementSuccess(
+  "grow",
+  Buffer.from("ABC DEF", "ascii"),
+  Buffer.from("C", "ascii"),
+  2,
+  [...Buffer.from("XYZ", "ascii"), 13],
+  Buffer.from("ABXYZ DEF", "ascii"),
+).result;
+replaceMeasurements.shrink = replacementSuccess(
+  "shrink",
+  Buffer.from("0123456789", "ascii"),
+  Buffer.from("3456", "ascii"),
+  3,
+  [...Buffer.from("Q", "ascii"), 13],
+  Buffer.from("012Q789", "ascii"),
+).result;
+replaceMeasurements.equal = replacementSuccess(
+  "equal and byte-identical",
+  Buffer.from("SAME", "ascii"),
+  Buffer.from("SAME", "ascii"),
+  0,
+  [...Buffer.from("SAME", "ascii"), 13],
+  Buffer.from("SAME", "ascii"),
+).result;
+replaceMeasurements.delete = replacementSuccess(
+  "delete final match",
+  Buffer.from("STARTEND", "ascii"),
+  Buffer.from("END", "ascii"),
+  5,
+  [13],
+  Buffer.from("START", "ascii"),
+).result;
+replacementSuccess(
+  "start boundary",
+  Buffer.from("ONE TWO", "ascii"),
+  Buffer.from("ONE", "ascii"),
+  0,
+  [...Buffer.from("1", "ascii"), 13],
+  Buffer.from("1 TWO", "ascii"),
+);
+replacementSuccess(
+  "end boundary",
+  Buffer.from("ONE TWO", "ascii"),
+  Buffer.from("TWO", "ascii"),
+  4,
+  [...Buffer.from("THREE", "ascii"), 13],
+  Buffer.from("ONE THREE", "ascii"),
+);
+const tabReplacement = replacementSuccess(
+  "tab and CRLF",
+  Buffer.from("A\tB\r\nC\n", "ascii"),
+  Buffer.from("B", "ascii"),
+  2,
+  [9, 13],
+  Buffer.from("A\t\t\r\nC\n", "ascii"),
+);
+assert.ok(
+  Buffer.from(
+    tabReplacement.machine.bdos.terminal.snapshot().cells.slice(23 * 80),
+  )
+    .toString("ascii")
+    .startsWith("Replace: >"),
+);
+
+{
+  const bounded = replacementSuccess(
+    "replacement literal capacity",
+    Uint8Array.of(0x58),
+    Uint8Array.of(0x58),
+    0,
+    [...new Uint8Array(64).fill(0x52), 0x5a, 13],
+    new Uint8Array(64).fill(0x52),
+  );
+  assert.equal(bounded.machine.bdos.terminal.snapshot().bellCount, 1);
+}
+{
+  const machine = createMachine();
+  installBuffer(machine, Uint8Array.of(0x58), 0);
+  setQuery(machine, Uint8Array.of(0x58));
+  machine.bdos.input.push(8, 127, 2, 0x59, 13);
+  replaceMeasurements.controls = invokeRoutine(machine, "EditorReplaceBegin");
+  assert.equal(replaceMeasurements.controls.carry, false);
+  assert.deepEqual(bufferBytes(machine), Uint8Array.of(0x59));
+  assert.equal(machine.bdos.terminal.snapshot().bellCount, 3);
+  assertCanaries(machine);
+}
+
+{
+  const text = new Uint8Array(capacity - 1).fill(0x41);
+  const expected = new Uint8Array(capacity).fill(0x41);
+  expected[capacity - 2] = 0x42;
+  expected[capacity - 1] = 0x42;
+  replaceMeasurements.exactCapacity = replacementSuccess(
+    "exact text capacity",
+    text,
+    Uint8Array.of(0x41),
+    capacity - 2,
+    [0x42, 0x42, 13],
+    expected,
+  ).result;
+}
+{
+  const machine = createMachine();
+  installBuffer(machine, new Uint8Array(capacity).fill(0x41), capacity - 1);
+  setQuery(machine, Uint8Array.of(0x41), 0x79);
+  machine.memory[symbol("EditorFlags")] =
+    symbol("EditorFlagDirty") |
+    symbol("EditorFlagDesiredValid") |
+    symbol("EditorFlagNew");
+  writeWord(machine.memory, symbol("EditorTop"), 7);
+  writeWord(machine.memory, symbol("EditorHorizontal"), 3);
+  writeWord(machine.memory, symbol("EditorDesiredColumn"), 11);
+  machine.memory[symbol("EditorSaveState")] = 0x5a;
+  const before = replacementPersistentSnapshot(machine);
+  machine.bdos.input.push(0x42, 0x42, 13);
+  replaceMeasurements.rejectedGrowth = invokeRoutine(
+    machine,
+    "EditorReplaceBegin",
+  );
+  assert.equal(replaceMeasurements.rejectedGrowth.carry, true);
+  assert.equal(
+    machine.memory[symbol("EditorStatus")],
+    symbol("EditorStatusFull"),
+  );
+  compareReplacementFailure(before, machine);
+  assertCanaries(machine);
+}
+
+{
+  const first = replacementSuccess(
+    "repeated first",
+    Buffer.from("ONE ONE", "ascii"),
+    Buffer.from("ONE", "ascii"),
+    0,
+    [...Buffer.from("TWO", "ascii"), 13],
+    Buffer.from("TWO ONE", "ascii"),
+  );
+  replaceMeasurements.repeatSearch = invokeRoutine(
+    first.machine,
+    "EditorSearchRepeat",
+  );
+  assert.equal(replaceMeasurements.repeatSearch.carry, false);
+  assert.equal(readWord(first.machine.memory, symbol("EditorCursor")), 4);
+  first.machine.bdos.input.push(0x58, 13);
+  replaceMeasurements.repeated = invokeRoutine(
+    first.machine,
+    "EditorReplaceBegin",
+  );
+  assert.equal(replaceMeasurements.repeated.carry, false);
+  assert.deepEqual(
+    bufferBytes(first.machine),
+    Uint8Array.from(Buffer.from("TWO X", "ascii")),
+  );
+  assert.equal(readWord(first.machine.memory, symbol("EditorCursor")), 4);
+  assertCanaries(first.machine);
+}
+{
+  const overlap = replacementSuccess(
+    "overlapping candidates",
+    Buffer.from("AAA", "ascii"),
+    Buffer.from("AA", "ascii"),
+    0,
+    [0x58, 13],
+    Buffer.from("XA", "ascii"),
+  );
+  replaceMeasurements.overlapRepeat = invokeRoutine(
+    overlap.machine,
+    "EditorSearchRepeat",
+  );
+  assert.equal(replaceMeasurements.overlapRepeat.carry, true);
+  assert.equal(readWord(overlap.machine.memory, symbol("EditorCursor")), 0);
+  assert.equal(
+    overlap.machine.memory[symbol("EditorStatus")],
+    symbol("EditorStatusNotFound"),
+  );
+  assertCanaries(overlap.machine);
 }
 {
   const machine = createMachine();
@@ -1751,6 +2084,140 @@ const entryMeasurements = {};
 }
 {
   const { machine, result } = runEditorInput(
+    [
+      6,
+      ...Buffer.from("ONE", "ascii"),
+      13,
+      18,
+      ...Buffer.from("TWO", "ascii"),
+      13,
+      19,
+      0x11,
+    ],
+    Buffer.from("ONE ONE\r\n", "ascii"),
+  );
+  entryMeasurements.replaceSave = result;
+  assert.deepEqual(
+    logicalFileBytes(machine.bdos.files.get("INPUT.NU")),
+    Uint8Array.from(Buffer.from("TWO ONE\r\n", "ascii")),
+  );
+  assert.deepEqual(
+    queryBytes(machine),
+    Uint8Array.from(Buffer.from("ONE", "ascii")),
+  );
+  assert.equal(machine.bdos.input.length, 0);
+
+  machine.bdos.terminal.reset();
+  setCommandTail(machine.memory, "");
+  machine.bdos.input.push(0x11);
+  entryMeasurements.replaceReload = invokeRoutine(machine, "EditorEntry", {
+    callerSp: ENTRY_CALLER_SP,
+  });
+  assert.deepEqual(
+    bufferBytes(machine),
+    Uint8Array.from(Buffer.from("TWO ONE\r\n", "ascii")),
+  );
+  assert.equal(machine.memory[symbol("EditorQueryLength")], 0);
+  assert.equal(machine.bdos.input.length, 0);
+  assertCanaries(machine, { high: false });
+}
+{
+  const { machine, result } = runEditorInput(
+    [18, 0x11],
+    Buffer.from("ABC\r\n", "ascii"),
+  );
+  entryMeasurements.replaceNoQuery = result;
+  assert.equal(
+    machine.memory[symbol("EditorStatus")],
+    symbol("EditorStatusNoSearch"),
+  );
+  assert.equal(machine.bdos.terminal.snapshot().bellCount, 1);
+  assert.equal(machine.bdos.input.length, 0);
+}
+{
+  const { machine, result } = runEditorInput(
+    [6, 0x5a, 13, 18, 0x11],
+    Buffer.from("ABC\r\n", "ascii"),
+  );
+  entryMeasurements.replaceMismatch = result;
+  assert.equal(
+    machine.memory[symbol("EditorStatus")],
+    symbol("EditorStatusNotFound"),
+  );
+  assert.equal(machine.bdos.terminal.snapshot().bellCount, 2);
+  assert.deepEqual(
+    bufferBytes(machine),
+    Uint8Array.from(Buffer.from("ABC\r\n", "ascii")),
+  );
+  assert.equal(machine.bdos.input.length, 0);
+}
+{
+  const { machine, result } = runEditorInput(
+    [6, 0x41, 13, 18, 27, 0x11],
+    Buffer.from("ABC\r\n", "ascii"),
+  );
+  entryMeasurements.replaceCancel = result;
+  assert.deepEqual(
+    bufferBytes(machine),
+    Uint8Array.from(Buffer.from("ABC\r\n", "ascii")),
+  );
+  assert.equal(machine.bdos.terminal.snapshot().bellCount, 0);
+  assert.equal(machine.bdos.input.length, 0);
+}
+{
+  const { machine, result } = runEditorInput(
+    [0x58, 0x11, 18, 0x11, 0x11],
+    Buffer.from("A\r\n", "ascii"),
+  );
+  entryMeasurements.replaceCancelsDiscard = result;
+  assert.deepEqual(
+    machine.bdos.files.get("INPUT.NU"),
+    physicalFile(Buffer.from("A\r\n", "ascii")),
+  );
+  assert.equal(machine.bdos.terminal.snapshot().bellCount, 1);
+  assert.equal(machine.bdos.input.length, 0);
+}
+{
+  const { machine, result } = runEditorInput(
+    [
+      6,
+      ...Buffer.from("ONE", "ascii"),
+      13,
+      18,
+      ...Buffer.from("TWO", "ascii"),
+      13,
+      14,
+      0x11,
+      0x11,
+    ],
+    Buffer.from("ONE ONE", "ascii"),
+  );
+  entryMeasurements.replaceThenRepeat = result;
+  assert.deepEqual(
+    bufferBytes(machine),
+    Uint8Array.from(Buffer.from("TWO ONE", "ascii")),
+  );
+  assert.equal(readWord(machine.memory, symbol("EditorCursor")), 4);
+  assert.equal(machine.bdos.input.length, 0);
+}
+{
+  const { machine, result } = runNewEditorInput([
+    0x41, 6, 0x41, 13, 18, 0x42, 13, 19, 0x11,
+  ]);
+  entryMeasurements.newReplaceSave = result;
+  assert.deepEqual(
+    logicalFileBytes(machine.bdos.files.get("NEW.NU")),
+    Uint8Array.of(0x42),
+  );
+  assert.equal(
+    machine.memory[symbol("EditorFlags")] &
+      (symbol("EditorFlagDirty") | symbol("EditorFlagNew")),
+    0,
+  );
+  assert.equal(machine.bdos.input.length, 0);
+}
+{
+  const { machine, result } = runEditorInput(
     [0x58, 0x11, 6, 27, 0x11, 0x11],
     Buffer.from("A\r\n", "ascii"),
   );
@@ -1841,6 +2308,7 @@ const report = {
   edits: editMeasurements,
   navigation: navigationMeasurements,
   search: searchMeasurements,
+  replace: replaceMeasurements,
   saves: saveMeasurements,
   newFiles: newFileMeasurements,
   entry: entryMeasurements,

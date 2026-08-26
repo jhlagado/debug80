@@ -1,57 +1,19 @@
 ; Bounded forward literal search with one committed query per execution.
 
 EditorSearchCodeStart:
-.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IXH,IXL,IYH,IYL
 EditorSearchBegin:
             LD   HL,EditorQueryLength
             LD   DE,EditorDma
             LD   BC,EditorQueryCapacity+1
             LDIR
-EditorSearchQueryRender:
-            CALL EditorRenderQuery
-EditorSearchQueryRead:
-            CALL EditorReadByte
-            CP   27
-            JR   Z,EditorSearchCancel
-            CP   13
-            JR   Z,EditorSearchAccept
-            CP   8
-            JR   Z,EditorSearchQueryDelete
-            CP   9
-            JR   Z,EditorSearchQueryAppend
-            CP   32
-            JR   C,EditorSearchQueryRing
-            CP   127
-            JR   C,EditorSearchQueryAppend
-            JR   Z,EditorSearchQueryDelete
-EditorSearchQueryRing:
-            LD   A,7
-            CALL EditorOutputByte
-            JR   EditorSearchQueryRead
-EditorSearchQueryDelete:
             LD   HL,EditorQueryLength
-            LD   A,(HL)
-            OR   A
-            JR   Z,EditorSearchQueryRing
-            DEC  (HL)
-            JR   EditorSearchQueryRender
-EditorSearchQueryAppend:
-            LD   C,A
-            LD   HL,EditorQueryLength
-            LD   A,(HL)
-            CP   EditorQueryCapacity
-            JR   NC,EditorSearchQueryRing
-            INC  (HL)
-            INC  HL
-            LD   E,A
-            LD   D,0
-            ADD  HL,DE
-            LD   (HL),C
-            JR   EditorSearchQueryRender
-EditorSearchAccept:
+            LD   DE,EditorSearchPrompt
+            CALL EditorLiteralInput
+            JR   C,EditorSearchCancel
             LD   A,(EditorQueryLength)
             OR   A
-            JR   NZ,EditorSearchInitial
+            JP   NZ,EditorSearchInitial
 EditorSearchCancel:
             LD   HL,EditorDma
             LD   DE,EditorQueryLength
@@ -61,29 +23,84 @@ EditorSearchCancel:
             LD   (EditorStatus),A
             RET
 
-.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
-EditorRenderQuery:
-            LD   DE,EditorSearchPrompt
-            CALL EditorStatusBegin
-            LD   A,(EditorQueryLength)
+; Read one bounded literal into the length byte and contiguous payload at HL.
+; DE selects its reverse-video prompt. Escape returns carry set; Return returns
+; carry clear. Unsupported controls ring locally and leave the literal intact.
+.routine in DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
+EditorLiteralInput:
+            LD   (EditorRenderPointer),HL
+            LD   (EditorRenderColumn),DE
+EditorLiteralInputRender:
+            LD   HL,(EditorRenderPointer)
+            LD   DE,(EditorRenderColumn)
+            CALL EditorRenderLiteral
+EditorLiteralInputRead:
+            CALL EditorReadByte
+            CP   27
+            JR   Z,EditorLiteralInputCancel
+            CP   13
+            RET  Z
+            CP   8
+            JR   Z,EditorLiteralInputDelete
+            CP   9
+            JR   Z,EditorLiteralInputAppend
+            CP   32
+            JR   C,EditorLiteralInputRing
+            CP   127
+            JR   C,EditorLiteralInputAppend
+            JR   Z,EditorLiteralInputDelete
+EditorLiteralInputRing:
+            LD   A,7
+            CALL EditorOutputByte
+            JR   EditorLiteralInputRead
+EditorLiteralInputDelete:
+            LD   HL,(EditorRenderPointer)
+            LD   A,(HL)
             OR   A
-            JR   Z,EditorRenderQueryFill
+            JR   Z,EditorLiteralInputRing
+            DEC  (HL)
+            JR   EditorLiteralInputRender
+EditorLiteralInputAppend:
+            LD   C,A
+            LD   HL,(EditorRenderPointer)
+            LD   A,(HL)
+            CP   EditorQueryCapacity
+            JR   NC,EditorLiteralInputRing
+            INC  (HL)
+            INC  HL
+            LD   E,A
+            LD   D,0
+            ADD  HL,DE
+            LD   (HL),C
+            JR   EditorLiteralInputRender
+EditorLiteralInputCancel:
+            SCF
+            RET
+
+.routine in DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
+EditorRenderLiteral:
+            PUSH HL
+            CALL EditorStatusBegin
+            POP  HL
+            LD   A,(HL)
+            OR   A
+            JR   Z,EditorRenderLiteralFill
             LD   B,A
-            LD   HL,EditorQueryBuffer
-EditorRenderQueryLoop:
+            INC  HL
+EditorRenderLiteralLoop:
             LD   A,(HL)
             CP   9
-            JR   NZ,EditorRenderQueryByte
+            JR   NZ,EditorRenderLiteralByte
             LD   A,'>'
-EditorRenderQueryByte:
+EditorRenderLiteralByte:
             PUSH HL
             PUSH BC
             CALL EditorStatusByte
             POP  BC
             POP  HL
             INC  HL
-            DJNZ EditorRenderQueryLoop
-EditorRenderQueryFill:
+            DJNZ EditorRenderLiteralLoop
+EditorRenderLiteralFill:
             LD   HL,(EditorRenderCount)
             LD   H,L
             LD   L,23

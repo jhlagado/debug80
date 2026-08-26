@@ -67,6 +67,17 @@ async function runEditor(session, transcript) {
     return output.includes('Found') && output.endsWith('\u001b[1;1H');
   }, 'EDIT to complete forward search');
 
+  await session.customRequest('debug80/terminalInput', { text: '\u0012' });
+  await waitFor(() => {
+    const output = transcript.value.slice(start);
+    return output.includes('\u001b[24;1H\u001b[7mReplace: ') && output.endsWith('\u001b[24;10H');
+  }, 'EDIT to render its replacement prompt');
+  await session.customRequest('debug80/terminalInput', { text: 'SUB\r' });
+  await waitFor(() => {
+    const output = transcript.value.slice(start);
+    return output.includes('Replaced') && output.endsWith('\u001b[1;1H');
+  }, 'EDIT to replace the selected literal');
+
   await session.customRequest('debug80/terminalInput', {
     text: 'XY\bZ\u001b[D\u007f\u0013\u0011',
   });

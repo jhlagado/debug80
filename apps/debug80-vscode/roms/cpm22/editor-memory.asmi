@@ -54,6 +54,7 @@ EditorStatusFound       .equ $80
 EditorStatusWrapped     .equ $83
 EditorStatusNotFound    .equ $87
 EditorStatusNoSearch    .equ $8C
+EditorStatusReplaced    .equ $91
 EditorStatusSaveConflict .equ $10
 EditorStatusSaveCreate  .equ $11
 EditorStatusSaveWrite   .equ $12

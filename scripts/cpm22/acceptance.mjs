@@ -147,7 +147,10 @@ const atomExecution = runCommand(
   "ATOM",
   "ATOM\r\r\n\r\nOUTPUT.COM written\r\n\r\nA>",
 );
-assert.deepEqual(atomExecution, { instructions: 173732, tStates: 2347755 });
+assert.deepEqual(atomExecution, {
+  instructions: 173818,
+  tStates: 2348313,
+});
 const expectedOutput = Uint8Array.from([
   0x0e,
   0x09,
@@ -172,8 +175,8 @@ const namedAtomExecution = runCommand(
   "ATOM HELLO.ASM MADE.COM\r\r\n\r\nMADE.COM written\r\n\r\nA>",
 );
 assert.deepEqual(namedAtomExecution, {
-  instructions: 182187,
-  tStates: 2426886,
+  instructions: 182263,
+  tStates: 2427358,
 });
 const namedOutputFile = readCpm22File(platform.disk.exportImage(), "MADE.COM");
 assert.ok(namedOutputFile, "native Atom did not publish selected MADE.COM");
@@ -187,8 +190,8 @@ const largeAtomExecution = runCommand(
   "ATOM LARGE.ASM LARGE.COM\r\r\n\r\nLARGE.COM written\r\n\r\nA>",
 );
 assert.deepEqual(largeAtomExecution, {
-  instructions: 2024213,
-  tStates: 20371015,
+  instructions: 2024244,
+  tStates: 20371217,
 });
 const largeOutputFile = readCpm22File(platform.disk.exportImage(), "LARGE.COM");
 assert.ok(
@@ -222,8 +225,8 @@ const multipartAtomExecution = runCommand(
   12_000_000,
 );
 assert.deepEqual(multipartAtomExecution, {
-  instructions: 7588725,
-  tStates: 74587838,
+  instructions: 7588796,
+  tStates: 74588306,
 });
 const multipartOutputFile = readCpm22File(
   platform.disk.exportImage(),
@@ -262,8 +265,8 @@ assert.deepEqual(
 );
 const nucleusExecution = runCommand("NUCLEUS", "NUCLEUS\r\r\n\r\nA>");
 assert.deepEqual(nucleusExecution, {
-  instructions: 330287,
-  tStates: 4665708,
+  instructions: 330443,
+  tStates: 4666702,
 });
 const nucleusOutputFile = readCpm22File(
   platform.disk.exportImage(),
@@ -274,8 +277,8 @@ assert.equal(nucleusOutputFile.bytes[0], 0xcd);
 assert.equal(nucleusOutputFile.bytes[0x0700], 0xc3);
 const nucleusProgramExecution = runCommand("OUTPUT", "OUTPUT\r\r\nOK\r\nA>");
 assert.deepEqual(nucleusProgramExecution, {
-  instructions: 98289,
-  tStates: 1441752,
+  instructions: 98302,
+  tStates: 1441856,
 });
 
 const originalNucleusSource = logicalCpmBytes(
@@ -343,10 +346,36 @@ stepUntil(() => {
   );
 }, "EDIT forward search");
 
-// After searching back to byte zero, insert XY, erase Y with backspace, insert
-// Z, move left, delete Z, save, and quit. Queuing the complete edit sequence
-// also proves editor control keys are not consumed as CP/M cooked-console flow
-// control during full repaints.
+platform.terminal.enqueueInput([0x12]);
+stepUntil(() => {
+  const snapshot = platform.terminal.snapshot();
+  return (
+    terminalRow(23) === "Replace: ".padEnd(80) &&
+    snapshot.cursorRow === 23 &&
+    snapshot.cursorColumn === 9
+  );
+}, "EDIT replacement prompt");
+assert.ok(
+  platform.terminal
+    .snapshot()
+    .attributes.slice(23 * 80, 24 * 80)
+    .every((attribute) => attribute === CPM22_TERMINAL_ATTR_REVERSE),
+  "EDIT must render the complete replacement row in reverse video",
+);
+platform.terminal.enqueueInput([0x53, 0x55, 0x42, 0x0d]);
+stepUntil(() => {
+  const snapshot = platform.terminal.snapshot();
+  return (
+    terminalRow(23).includes("Replaced") &&
+    snapshot.cursorRow === 0 &&
+    snapshot.cursorColumn === 0
+  );
+}, "EDIT literal replacement");
+
+// After replacing the selected literal at byte zero, insert XY, erase Y with
+// backspace, insert Z, move left, delete Z, save, and quit. Queuing the complete
+// edit sequence also proves editor control keys are not consumed as CP/M
+// cooked-console flow control during full repaints.
 platform.terminal.enqueueInput([
   0x58, 0x59, 0x08, 0x5a, 0x1b, 0x5b, 0x44, 0x7f, 0x13, 0x11,
 ]);
@@ -360,17 +389,19 @@ const editorExecution = {
   tStates: tStates - editorTStateStart,
 };
 assert.deepEqual(editorExecution, {
-  instructions: 322718,
-  tStates: 3189279,
+  instructions: 374386,
+  tStates: 3687194,
 });
 const editedNucleusSource = logicalCpmBytes(
   readCpm22File(platform.disk.exportImage(), "INPUT.NU"),
   "edited INPUT.NU",
 );
+const replacedNucleusSource = Uint8Array.from(originalNucleusSource);
+replacedNucleusSource.set(Buffer.from("SUB", "ascii"), 0);
 assert.deepEqual(
   editedNucleusSource,
-  Uint8Array.from([0x58, ...originalNucleusSource]),
-  "EDIT must publish exactly the retained insertion",
+  Uint8Array.from([0x58, ...replacedNucleusSource]),
+  "EDIT must publish exactly the retained replacement and insertion",
 );
 assert.equal(
   readCpm22File(platform.disk.exportImage(), "INPUT.$$$"),
@@ -410,8 +441,8 @@ const newDiscardExecution = {
   tStates: tStates - newDiscardTStateStart,
 };
 assert.deepEqual(newDiscardExecution, {
-  instructions: 51862,
-  tStates: 552956,
+  instructions: 52626,
+  tStates: 565288,
 });
 assert.equal(
   readCpm22File(platform.disk.exportImage(), "THROW.NU"),
@@ -447,8 +478,8 @@ const newCreateExecution = {
   tStates: tStates - newCreateTStateStart,
 };
 assert.deepEqual(newCreateExecution, {
-  instructions: 113019,
-  tStates: 1137796,
+  instructions: 113785,
+  tStates: 1150142,
 });
 assert.deepEqual(
   logicalCpmBytes(

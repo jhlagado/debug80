@@ -15,6 +15,7 @@ EditorCodeStart:
             .include "editor-screen.asm"
             .include "editor-save.asm"
             .include "editor-search.asm"
+            .include "editor-replace.asm"
             .include "editor-main.asm"
 EditorCodeEnd:
 
@@ -37,7 +38,9 @@ EditorStatusFoundText:    .db "Found",0
 EditorStatusWrappedText:  .db "Wrapped",0
 EditorStatusNotFoundText: .db "Not found",0
 EditorStatusNoSearchText: .db "No search",0
+EditorStatusReplacedText: .db "Replaced",0
 EditorSearchPrompt:       .db "Find: ",0
+EditorReplacePrompt:      .db "Replace: ",0
 EditorImmutableEnd:
 EditorResidentEnd:
             .end

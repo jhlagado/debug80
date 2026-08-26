@@ -32,6 +32,8 @@ EditorMainLoop:
             JR   Z,EditorCommandSearch
             CP   14
             JR   Z,EditorCommandSearchRepeat
+            CP   18
+            JR   Z,EditorCommandReplace
             CP   27
             JR   Z,EditorCommandEscape
             CP   13
@@ -66,6 +68,9 @@ EditorCommandSearch:
             JR   EditorCommandComplete
 EditorCommandSearchRepeat:
             CALL EditorSearchRepeat
+            JR   EditorCommandComplete
+EditorCommandReplace:
+            CALL EditorReplaceBegin
             JR   EditorCommandComplete
 EditorCommandEscape:
             CALL EditorReadEscapeByte

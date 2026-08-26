@@ -1,0 +1,135 @@
+; Single literal replacement at an exact current query match. The inactive
+; CP/M DMA record stages the replacement text.
+
+EditorReplaceCodeStart:
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IXH,IXL,IYH,IYL
+EditorReplaceBegin:
+            CALL EditorReplaceMatchCurrent
+            RET  C
+            XOR  A
+            LD   (EditorDma),A
+            LD   HL,EditorDma
+            LD   DE,EditorReplacePrompt
+            CALL EditorLiteralInput
+            JR   C,EditorReplaceCancel
+            JP   EditorReplaceApply
+EditorReplaceCancel:
+            XOR  A
+            LD   (EditorStatus),A
+            RET
+
+; Require a nonempty committed query and an exact match beginning at the
+; current cursor. Failure selects the established search status and rings in
+; the command dispatcher's common carry path.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
+EditorReplaceMatchCurrent:
+            LD   A,(EditorQueryLength)
+            OR   A
+            JR   Z,EditorReplaceNoQuery
+            LD   HL,(EditorCursor)
+            CALL EditorReplaceMatchAt
+            JR   NZ,EditorReplaceNotFound
+            OR   A
+            RET
+EditorReplaceNoQuery:
+            LD   A,EditorStatusNoSearch
+            JR   EditorReplaceFailure
+EditorReplaceNotFound:
+            LD   A,EditorStatusNotFound
+EditorReplaceFailure:
+            LD   (EditorStatus),A
+            SCF
+            RET
+
+; Test the committed query at logical offset HL. Z means an exact match. NZ
+; also covers a query that would extend beyond the logical end of the buffer.
+.routine in HL out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+EditorReplaceMatchAt:
+            PUSH HL
+            LD   A,(EditorQueryLength)
+            LD   B,A
+            LD   E,A
+            LD   D,0
+            ADD  HL,DE
+            LD   DE,(EditorLength)
+            OR   A
+            SBC  HL,DE
+            POP  HL
+            JR   C,EditorReplaceMatchFits
+            JR   Z,EditorReplaceMatchFits
+            LD   A,1
+            OR   A
+            RET
+EditorReplaceMatchFits:
+            LD   DE,EditorTextBase
+            ADD  HL,DE
+            LD   DE,EditorQueryBuffer
+EditorReplaceMatchLoop:
+            LD   A,(DE)
+            CP   (HL)
+            RET  NZ
+            INC  DE
+            INC  HL
+            DJNZ EditorReplaceMatchLoop
+            RET
+
+; Apply the staged replacement at the current exact match. Buffer growth is
+; checked before any text or persistent editor state changes. On success the
+; cursor remains at the replacement start, the query remains committed, and
+; the buffer is dirty even when the bytes were already identical.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IXH,IXL,IYH,IYL
+EditorReplaceApply:
+            LD   A,(EditorQueryLength)
+            LD   B,A
+            LD   A,(EditorDma)
+            CP   B
+            JR   C,EditorReplaceShrink
+            JR   Z,EditorReplaceCopy
+            SUB  B
+            LD   C,A
+            LD   HL,(EditorCursor)
+            PUSH HL
+            LD   E,B
+            LD   D,0
+            ADD  HL,DE
+            LD   (EditorCursor),HL
+            LD   A,C
+            CALL EditorBufferOpenGap
+            POP  HL
+            LD   (EditorCursor),HL
+            RET  C
+            JR   EditorReplaceCopy
+EditorReplaceShrink:
+            LD   C,A
+            LD   A,B
+            SUB  C
+            LD   HL,(EditorCursor)
+            PUSH HL
+            LD   E,C
+            LD   D,0
+            ADD  HL,DE
+            LD   (EditorCursor),HL
+            CALL EditorBufferDeleteSpan
+            POP  HL
+            LD   (EditorCursor),HL
+EditorReplaceCopy:
+            LD   A,(EditorDma)
+            OR   A
+            JR   Z,EditorReplaceChanged
+            LD   C,A
+            LD   B,0
+            LD   HL,(EditorCursor)
+            LD   DE,EditorTextBase
+            ADD  HL,DE
+            EX   DE,HL
+            LD   HL,EditorDma+1
+            LDIR
+EditorReplaceChanged:
+            LD   HL,EditorFlags
+            SET  0,(HL)
+            RES  2,(HL)
+            LD   A,EditorStatusReplaced
+            LD   (EditorStatus),A
+            OR   A
+            RET
+EditorReplaceCodeEnd:

@@ -15,6 +15,6 @@
   "multipartOutput": "MULTI\r\r\nHello from native Atom\r\n\r\nA>",
   "nucleus": "NUCLEUS\r\r\n\r\nA>",
   "nucleusOutput": "OUTPUT\r\r\nOK\r\nA>",
-  "editedInput": "TYPE INPUT.NU\r\r\nXsub main() fails\r\n    writeOutputByte('O') else fail\r\n    writeOutputByte('K') else fail\r\nend\r\n\r\nA>",
+  "editedInput": "TYPE INPUT.NU\r\r\nXSUB main() fails\r\n    writeOutputByte('O') else fail\r\n    writeOutputByte('K') else fail\r\nend\r\n\r\nA>",
   "createdInput": "TYPE CREATED.NU\r\r\nX\r\nA>"
 }

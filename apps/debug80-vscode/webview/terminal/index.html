@@ -302,7 +302,13 @@
             return;
           }
           if (terminalMode === 'cpm22' && event.ctrlKey && !event.altKey && !event.metaKey) {
-            const control = { s: '\u0013', q: '\u0011' }[event.key.toLowerCase()];
+            const control = {
+              f: '\u0006',
+              n: '\u000e',
+              q: '\u0011',
+              r: '\u0012',
+              s: '\u0013',
+            }[event.key.toLowerCase()];
             if (control) {
               event.preventDefault();
               vscode.postMessage({ type: 'input', text: control });
