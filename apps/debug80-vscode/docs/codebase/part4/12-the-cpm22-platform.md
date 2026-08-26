@@ -80,9 +80,9 @@ The CP/M platform owns an 80×24 terminal rather than a hardware panel. `buildIo
 - RX port `1`
 - status port `2`
 
-Every write to port `0x00` is treated as terminal output. The provider forwards the byte through `callbacks.onTerminalOutput({ text })`, which the extension host routes into the shared terminal panel in `cpm22` mode. Input entered in the panel is buffered in `terminalState.input`; the provider flushes that queue into `platformRuntime.terminal.enqueueInput()` before the next guest port read.
+Every write to port `0x00` is treated as terminal output. The provider forwards the byte through `callbacks.onTerminalOutput({ text })`, which the extension host routes into the shared terminal panel in `cpm22` mode. That mode no longer behaves like the stream terminal used for TEC serial output. The webview keeps an explicit 80×24 cell buffer, tracks bold, underline, and reverse-video attributes, and applies cursor-motion, erase, and rendition CSI sequences as bytes arrive from the guest. This is the path that lets the bundled CP/M editor paint a stable full-screen UI inside the standard Debug80 terminal view.
 
-The panel mode matters because CP/M expects carriage-return line endings. The terminal webview keeps a dedicated `cpm22` mode so Enter posts `\r` rather than `\n`.
+Input entered in the panel is buffered in `terminalState.input`; the provider flushes that queue into `platformRuntime.terminal.enqueueInput()` before the next guest port read. The panel mode matters because CP/M expects carriage-return line endings and editor-style raw key input. Enter posts `\r` rather than `\n`, printable characters are forwarded without browser-local echo, arrow keys become `ESC [` cursor sequences, Backspace sends `\b`, Delete sends `0x7f`, and the current editor shortcuts map `Ctrl-F`, `Ctrl-N`, `Ctrl-Q`, `Ctrl-R`, and `Ctrl-S` to their control bytes.
 
 ---
 
@@ -110,7 +110,7 @@ The built-in project kit is `cpm22/default`. New CP/M projects scaffold `debug80
 - `cpm22: { "writable": true, "programName": "MAIN.COM" }`
 - a starter source rooted at `src/main.asm`
 
-The VS Code host integration suite now includes a CP/M extension-host scenario that boots to `A>`, stops in the source-mapped BIOS, runs the bundled `SMOKE` flow, and exercises native Atom on the bundled single-source, large-source, and multipart examples. The expected transcript lives in `tests/integration-vscode/expected/cpm22-transcript.json`.
+The VS Code host integration suite now includes a CP/M extension-host scenario that boots to `A>`, stops in the source-mapped BIOS, runs the bundled `SMOKE` flow, and exercises native Atom on the bundled single-source, large-source, and multipart examples. The same scenario also opens the Debug80 terminal panel, drives the bundled full-screen editor through search, literal replacement, save, quit, and new-file creation, and verifies the resulting guest files through `TYPE`. The expected transcript lives in `tests/integration-vscode/expected/cpm22-transcript.json`.
 
 ---
 

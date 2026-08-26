@@ -170,6 +170,42 @@ The TEC-1 `index.ts` is a self-contained entry point that acquires the VS Code A
 
 ---
 
+## The CP/M terminal panel
+
+The CP/M launch path reuses the shared Debug80 terminal webview rather than a platform-specific panel. The HTML template lives in `webview/terminal/index.html`, while `getTerminalHtml()` in `src/extension/terminal-panel-html.ts` injects the CSP nonce, initial output, and the selected terminal mode.
+
+`TerminalPanelMode` currently distinguishes two contracts:
+
+- `stream` keeps the old append-only serial view used by TEC serial output
+- `cpm22` switches the webview into a fixed 80×24 screen model for the CP/M guest
+
+When `terminalMode === 'cpm22'`, the script allocates `cells[]` and `attributes[]` arrays for the full screen, tracks the current row and column, and renders each line into `<span>` runs grouped by shared attributes. The parser handles the subset of ANSI/VT control traffic emitted by the bundled CP/M tools:
+
+- carriage return, line feed, Backspace, and Tab
+- cursor movement `CSI A/B/C/D`
+- absolute cursor position `CSI H` and `CSI f`
+- erase-in-display `CSI J`
+- erase-in-line `CSI K`
+- graphic rendition `CSI m` for bold, underline, and reverse video
+
+This parser is what makes the bundled editor stable in the terminal panel. Output is redrawn from the 80×24 buffer on each update rather than appended as plain text, so cursor rewrites and reverse-video status lines survive real extension-host launches.
+
+The input contract is also mode-specific. In `cpm22` mode:
+
+- Enter posts a bare `\r`
+- printable keys post their literal byte with no local echo
+- arrow keys post `ESC [` cursor sequences
+- Backspace posts `\b`
+- Delete posts `0x7f`
+- `Ctrl-F`, `Ctrl-N`, `Ctrl-Q`, `Ctrl-R`, and `Ctrl-S` post their control bytes
+- paste sends the plain-text clipboard payload directly to the debug session
+
+`Ctrl-C` still sends the separate `{ type: 'break' }` message so the extension host can interrupt the active debug session instead of forwarding `0x03` into the guest.
+
+The terminal-panel regression test in `tests/extension/terminal-panel-html.test.ts` checks this HTML contract directly, including the 80×24 screen model, reverse-video rendering, raw control-key mapping, and paste forwarding. The VS Code host smoke test in `tests/integration-vscode/suite/cpm22-pipeline.js` then proves that the same contract works against a real Debug80 session by opening the terminal view and driving the bundled editor end to end.
+
+---
+
 ## HTML template structure
 
 All built-in platform panels share the same project-header structure:
@@ -248,7 +284,7 @@ The project header renders the current workspace context and lets the user chang
 
 **Remove Workspace Folder** — always visible in the project row beside the `+` button. Posts `{ type: 'removeWorkspaceFolder', rootPath }` for the selected root. The button is disabled when there is only one workspace folder because the last folder cannot be removed from the workspace.
 
-**Platform selector** — visible only when `projectState === 'uninitialized'`. A `<select>` with three fixed options: Simple, TEC-1, TEC-1G. Its value is set from `projectStatus.platform` on each `projectStatus` message. In the current panel redesign it shares the row with an inline **Initialize** button (`platformInitButton`), so project creation can happen directly from the platform row instead of from a duplicate card button. If no root is selected in a multi-root workspace, that button opens project selection rather than guessing which folder to scaffold.
+**Platform selector** — visible only when `projectState === 'uninitialized'`. A `<select>` with four fixed options: Simple, CP/M 2.2, TEC-1, and TEC-1G. Its value is set from `projectStatus.platform` on each `projectStatus` message. In the current panel redesign it shares the row with an inline **Initialize** button (`platformInitButton`), so project creation can happen directly from the platform row instead of from a duplicate card button. If no root is selected in a multi-root workspace, that button opens project selection rather than guessing which folder to scaffold.
 
 **Platform info row** — the old read-only `platformInfoControl` slot still exists in the DOM, but the current UI contract keeps it hidden. That avoids rendering a second platform control in initialized state.
 

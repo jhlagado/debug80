@@ -49,7 +49,7 @@ The most important scenarios to keep guarded are:
 - register writes apply to the runtime;
 - RAM writes apply and ROM writes obey the protection policy;
 - command-driven project setup stays non-interactive when callers supply kit and source choices;
-- the CP/M 2.2 launch path publishes the host `.com` artifact, installs it into a private guest disk, and preserves BIOS source mapping during the resulting terminal session;
+- the CP/M 2.2 launch path publishes the host `.com` artifact, installs it into a private guest disk, preserves BIOS source mapping during the resulting terminal session, and keeps the CP/M terminal webview aligned with full-screen editor control traffic;
 - `debug80.getStatus` returns machine-readable project state without scraping the webview DOM;
 - AZM contract-update builds return proposed source rewrites without writing files behind the extension host's back;
 - initialized, uninitialized, and empty-workspace project states render correctly;
@@ -59,7 +59,8 @@ The most important scenarios to keep guarded are:
 The VS Code host integration layer now includes two high-value command-path contracts:
 
 - `tests/integration-vscode/suite/project-pipeline.js` scaffolds a project through `debug80.createProject`, builds the target through `debug80.buildTarget`, and reads the resulting state back through `debug80.getStatus({ quiet: true })`.
-- `tests/integration-vscode/suite/cpm22-pipeline.js` boots a real CP/M 2.2 guest, verifies the BIOS-mapped terminal transcript, and exercises the bundled Atom single-source, large-source, and multipart build paths end-to-end.
+- `tests/integration-vscode/suite/cpm22-pipeline.js` boots a real CP/M 2.2 guest, verifies the BIOS-mapped terminal transcript, exercises the bundled Atom single-source, large-source, and multipart build paths end to end, then opens the terminal panel and drives the bundled editor through search, replacement, save, quit, and new-file creation.
+- `tests/extension/terminal-panel-html.test.ts` treats the terminal webview HTML as a contract: it checks the `cpm22` 80×24 parser, reverse-video rendering, raw control-key mapping, paste forwarding, and the separate debug break message path.
 
 ---
 
