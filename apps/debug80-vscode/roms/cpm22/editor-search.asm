@@ -19,6 +19,7 @@ EditorSearchCancel:
             LD   DE,EditorQueryLength
             LD   BC,EditorQueryCapacity+1
             LDIR
+EditorReadyReturn:
             XOR  A
             LD   (EditorStatus),A
             RET
@@ -31,7 +32,6 @@ EditorLiteralInput:
             LD   (EditorRenderPointer),HL
             LD   (EditorRenderColumn),DE
 EditorLiteralInputRender:
-            LD   HL,(EditorRenderPointer)
             LD   DE,(EditorRenderColumn)
             CALL EditorRenderLiteral
 EditorLiteralInputRead:
@@ -77,11 +77,10 @@ EditorLiteralInputCancel:
             SCF
             RET
 
-.routine in DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
+.routine in DE out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
 EditorRenderLiteral:
-            PUSH HL
             CALL EditorStatusBegin
-            POP  HL
+            LD   HL,(EditorRenderPointer)
             LD   A,(HL)
             OR   A
             JR   Z,EditorRenderLiteralFill
@@ -120,6 +119,7 @@ EditorSearchCheckQuery:
             LD   A,(EditorQueryLength)
             OR   A
             JR   Z,EditorSearchNoQuery
+            LD   C,A
 
 EditorSearchStart:
             LD   A,EditorStatusFound
@@ -152,29 +152,8 @@ EditorSearchLoop:
             DEC  HL
             LD   (EditorScratchA),HL
             LD   HL,(EditorScratchB)
-            PUSH HL
-            LD   A,(EditorQueryLength)
-            LD   B,A
-            LD   E,A
-            LD   D,0
-            ADD  HL,DE
-            LD   DE,(EditorLength)
-            INC  DE
-            OR   A
-            SBC  HL,DE
-            POP  HL
-            JR   NC,EditorSearchAdvance
-EditorSearchMatchFits:
-            LD   DE,EditorTextBase
-            ADD  HL,DE
-            LD   DE,EditorQueryBuffer
-EditorSearchMatchLoop:
-            LD   A,(DE)
-            CP   (HL)
+            CALL EditorReplaceMatchAt
             JR   NZ,EditorSearchAdvance
-            INC  DE
-            INC  HL
-            DJNZ EditorSearchMatchLoop
 EditorSearchFound:
             LD   HL,(EditorScratchB)
             LD   (EditorCursor),HL

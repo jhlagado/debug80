@@ -20,7 +20,6 @@ EditorCodeStart:
 EditorCodeEnd:
 
 EditorImmutableStart:
-EditorDefaultName:        .db 0,"INPUT   ","NU "
 EditorBackupExtension:    .db "BAK"
 EditorTemporaryExtension: .db "$$$"
 EditorErrorPrefix:        .db 13,10,"EDIT error ","$"
@@ -38,7 +37,9 @@ EditorStatusFoundText:    .db "Found",0
 EditorStatusWrappedText:  .db "Wrapped",0
 EditorStatusNotFoundText: .db "Not found",0
 EditorStatusNoSearchText: .db "No search",0
-EditorStatusReplacedText: .db "Replaced",0
+; The default FCB's leading drive byte also terminates the replacement status.
+EditorStatusReplacedText: .db "Replaced"
+EditorDefaultName:        .db 0,"INPUT   ","NU "
 EditorSearchPrompt:       .db "Find: ",0
 EditorReplacePrompt:      .db "Replace: ",0
 EditorImmutableEnd:

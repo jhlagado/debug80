@@ -750,6 +750,11 @@ const searchMeasurements = {};
   const machine = createMachine();
   installBuffer(machine, Buffer.from("A\tB\r\n", "ascii"), 0);
   setQuery(machine, Buffer.from("A\tB", "ascii"));
+  writeWord(
+    machine.memory,
+    symbol("EditorRenderPointer"),
+    symbol("EditorQueryLength"),
+  );
   searchMeasurements.prompt = invokeRoutine(machine, "EditorRenderLiteral", {
     registers: {
       h: symbol("EditorQueryLength") >>> 8,
@@ -776,6 +781,11 @@ const searchMeasurements = {};
   const machine = createMachine();
   installBuffer(machine, new Uint8Array(), 0);
   setQuery(machine, new Uint8Array());
+  writeWord(
+    machine.memory,
+    symbol("EditorRenderPointer"),
+    symbol("EditorQueryLength"),
+  );
   searchMeasurements.emptyPrompt = invokeRoutine(
     machine,
     "EditorRenderLiteral",
