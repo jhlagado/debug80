@@ -8,8 +8,8 @@ Date: 2026-08-27
 
 Make Atom the first-class assembler across the Node-hosted Debug80 environment
 and Z80-native CP/M and TEC environments, while preserving one authoritative
-Z80 assembler core and removing source-list, source-plan, SP1, and source-
-manifest interfaces.
+Z80 assembler core and using root source plus `%INCLUDE` as the only
+source-composition interface.
 
 The migration keeps one working production path at every checkpoint. A
 replacement is proved before the path it replaces is deleted.
@@ -31,8 +31,8 @@ Fresh baseline evidence:
   44 tests passed.
 
 The Atom CP/M transient is 14,145 bytes at this baseline. The native Atom core
-is 12,396 bytes. Existing source-list support and the Node source-plan codec are
-compatibility paths, not target architecture.
+is 12,396 bytes. Older compatibility composition interfaces are not part of the
+target architecture.
 
 ## Checkpoints
 
@@ -74,18 +74,18 @@ buffers have separate measured accounts.
 
 ### 5. Include-driven source preparation
 
-Keep the existing Node resolver but remove SP1 serialization, parsing, atomic
-source-plan publication, and saved-plan input. Implement a Z80-native include
-resolver over tool services, preserving separate part identities and offsets.
+Keep the existing Node resolver but remove serialized intermediate composition
+files and saved-order input. Implement a Z80-native include resolver over tool
+services, preserving separate part identities and offsets.
 
 Proof: diamonds, cycles, missing includes, active and inactive conditionals,
 255-part capacity, 65,535-byte part boundaries, cross-part labels, exact
 diagnostics, and failed-read atomicity pass under Node and CP/M-native profiles.
 
 Only after this proof, delete CP/M source-list command handling, caches, tests,
-documentation, and output-candidate ledgers. If an integrated native resolver
-cannot fit the declared deployment account, measure a separately loaded native
-stage; do not restore a public source-manifest format.
+documentation, and obsolete representation ledgers. If an integrated native
+resolver cannot fit the declared deployment account, measure a separately
+loaded native stage; do not restore a public intermediate composition format.
 
 ### 6. CLI and artifacts
 

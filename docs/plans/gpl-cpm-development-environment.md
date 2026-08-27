@@ -21,16 +21,14 @@ builds the bundled disk and performs session installation. Custom images,
 replacement, full-directory and full-disk failures, read-only sessions, and the
 58,112-byte TPA boundary have executable proofs.
 
-Native Atom now runs as a 14,145-byte CP/M transient. With no arguments it
+Native Atom now runs as a 14,583-byte CP/M transient. With no arguments it
 reads `INPUT.ASM` and publishes `OUTPUT.COM`; `ATOM SOURCE OUTPUT.COM` selects
-another pair of current-drive CP/M 8.3 names, and `ATOM PLAN OUTPUT.COM @`
-assembles an ordered source plan. It compiles with the checked Z80 core, applies
-forward patches in an 18,304-byte TPA image, and publishes through a recoverable
-temporary-file sequence. Headless and Extension Host proofs exercise all three
-command forms and execute the resulting COM files. Each source part may contain
-at most 65,535 logical bytes; a bounded plan holds as many as 255 parts. The
-acceptance disk includes a 16,535-byte single source and a 66,000-byte two-part
-program with a forward reference crossing the part boundary.
+another pair of current-drive CP/M 8.3 names. Leading `%INCLUDE` directives
+resolve a dependency graph of as many as 255 current-drive files. It compiles
+with the checked Z80 core, applies forward patches in an 18,304-byte TPA image,
+and publishes through a recoverable temporary-file sequence. Headless proofs
+exercise direct and included builds and execute the resulting COM files. Each
+source part may contain at most 65,535 logical bytes.
 
 Native Nucleus now runs as a 21,004-byte CP/M transient. It keeps the fixed
 16,314-byte compiler core intact, supplies CP/M source, diagnostic, runtime,
@@ -558,13 +556,13 @@ Exit gate: CP/M Atom matches the checked Mac Atom output for the common target
 profile, and the complete resident and execution accounts are measured.
 
 The retained profile supplies executable evidence for that gate with one
-representative flat COM, an independently checked 16,535-byte single source, a
-66,000-byte two-part source, and the exact 65,535-byte per-part and 18,304-byte
-output boundaries. It selects the in-TPA image; the complete CP/M-specific
-resident increment is 1,746 bytes after command-tail filenames, source-plan
-validation, bounded descriptors, dynamic transaction names, and the BDOS
-source caches. The measured random-record and NOBJ output kernels remain lower
-bounds rather than complete implementations.
+representative flat COM, an independently checked 16,535-byte source, included
+source graphs, and the exact 65,535-byte per-part and 18,304-byte output
+boundaries. It selects the in-TPA image; the complete CP/M-specific resident
+increment is measured after command-tail filenames, include resolution, bounded
+descriptors, dynamic transaction names, and the BDOS source cache. The measured
+random-record and NOBJ output kernels remain lower bounds rather than complete
+implementations.
 
 ### Phase E: editor
 
