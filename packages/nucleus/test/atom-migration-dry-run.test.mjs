@@ -1,11 +1,17 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { spawnSync } from "node:child_process";
+import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
 
 import { scanAssembly } from "../scripts/atom-migration-dry-run.mjs";
 import { translateNucleusAzmLine } from "../scripts/atom-migration-dry-run.mjs";
+
+const testDirectory = path.dirname(fileURLToPath(import.meta.url));
+const packageRoot = path.resolve(testDirectory, "..");
+const dryRunScript = path.join(packageRoot, "scripts", "atom-migration-dry-run.mjs");
 
 async function withTree(files, run) {
   const root = await mkdtemp(path.join(tmpdir(), "nucleus-atom-migration-"));
@@ -135,6 +141,44 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(report.issues.map(({ code }) => code)).toEqual([
         "unsupported-directive",
         "unsupported-conditional-expression",
+      ]);
+    });
+  });
+
+  it("writes ledger and issue files from the CLI", async () => {
+    await withTree({
+      "asm/main.asm": "LongPublicLabel:\n",
+      "proofs/main.json": JSON.stringify({
+        execution: { entry: "LongPublicLabel" },
+      }),
+    }, async (root) => {
+      const ledgerPath = path.join(root, "out", "ledger.json");
+      const issuesPath = path.join(root, "out", "issues.json");
+      const result = spawnSync(process.execPath, [
+        dryRunScript,
+        "--asm-root",
+        path.join(root, "asm"),
+        "--proof-root",
+        path.join(root, "proofs"),
+        "--ledger-out",
+        ledgerPath,
+        "--issues-out",
+        issuesPath,
+      ], { encoding: "utf8" });
+
+      expect(result.status).toBe(1);
+      const ledger = JSON.parse(await readFile(ledgerPath, "utf8"));
+      const issues = JSON.parse(await readFile(issuesPath, "utf8"));
+      expect(ledger).toHaveLength(1);
+      expect(ledger[0]).toMatchObject({
+        original: "LongPublicLabel",
+        atom: "N0000000",
+        publicObligation: "proof-manifest",
+      });
+      expect(issues).toEqual([
+        expect.objectContaining({
+          code: "unledgered-long-symbol",
+        }),
       ]);
     });
   });

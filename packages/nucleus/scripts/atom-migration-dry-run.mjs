@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { existsSync, globSync, readFileSync } from "node:fs";
+import { existsSync, globSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -53,6 +53,8 @@ function parseArgs(argv) {
     proofRoot: defaultProofRoot,
     reportOnly: false,
     json: false,
+    ledgerOut: undefined,
+    issuesOut: undefined,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -64,6 +66,10 @@ function parseArgs(argv) {
       options.reportOnly = true;
     } else if (arg === "--json") {
       options.json = true;
+    } else if (arg === "--ledger-out") {
+      options.ledgerOut = path.resolve(argv[++index] ?? "");
+    } else if (arg === "--issues-out") {
+      options.issuesOut = path.resolve(argv[++index] ?? "");
     } else if (arg === "--help") {
       printHelp();
       process.exit(0);
@@ -82,8 +88,15 @@ Options:
   --proof-root DIR   Proof manifest tree to scan. Defaults to packages/nucleus/proofs.
   --report-only      Exit 0 even when migration gaps are found.
   --json             Print the complete report as JSON.
+  --ledger-out FILE  Write the generated long-symbol ledger as JSON.
+  --issues-out FILE  Write migration issues as JSON.
   --help             Show this help.
 `);
+}
+
+function writeJsonFile(file, value) {
+  mkdirSync(path.dirname(file), { recursive: true });
+  writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
 }
 
 function stripComment(line) {
@@ -340,6 +353,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   try {
     const options = parseArgs(process.argv.slice(2));
     const report = scanAssembly(options);
+    if (options.ledgerOut !== undefined) {
+      writeJsonFile(options.ledgerOut, report.ledger);
+    }
+    if (options.issuesOut !== undefined) {
+      writeJsonFile(options.issuesOut, report.issues);
+    }
     if (options.json) {
       console.log(JSON.stringify(report, null, 2));
     } else {

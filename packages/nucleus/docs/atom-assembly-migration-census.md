@@ -43,6 +43,14 @@ Run the same tool without `--report-only` when the ledger becomes complete and t
 npm run atom:migration:dry-run -w nucleus
 ```
 
+The tool can also write machine-readable outputs for the next migration stage:
+
+```bash
+npm run atom:migration:census -w nucleus -- \
+  --ledger-out build/nucleus-atom-ledger.json \
+  --issues-out build/nucleus-atom-issues.json
+```
+
 ## Directive census
 
 | AZM directive | Measured count | Atom migration treatment |
