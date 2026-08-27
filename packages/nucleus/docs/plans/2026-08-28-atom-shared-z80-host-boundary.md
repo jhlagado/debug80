@@ -745,9 +745,16 @@ publication can use an application-owned target descriptor. The CLI can now
 select that descriptor from a Node-facing JSON file, while still preserving the
 default flat target for tests and simple commands.
 
+The publication CLIs now share their option parser and summary renderer.
+`publish:nobj` remains entry-source only. `proof:publish` keeps the additional
+proof-manifest dispatch path, but its prepared-source path uses the same parser
+and summary code as the normal command. This prevents the command contract from
+forking as output formats and runtime profiles are added.
+
 ## Next implementation unit
 
-Continue Phase 3 by extracting shared CLI parsing for `publish:nobj` and
-`proof:publish`, then decide the eventual installed binary shape. The two
-commands deliberately share most options now; the duplication should be removed
-before adding more output formats or runtime profiles.
+Continue Phase 3 by deciding and documenting the eventual installed binary
+shape for Node-hosted Nucleus, including whether the public command is
+`nucleus publish`, `nucleus compile`, or a multi-command dispatcher. Then wire
+the selected shape to the existing `publish:nobj`, `source:prepare`, and
+proof/debug commands.
