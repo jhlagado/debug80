@@ -221,11 +221,11 @@ address = 0xC000
 size    = 0x4000
 ```
 
-Source-backed ROM artifacts default to `"assembler": "azm"` for existing
-projects. Set `"assembler": "atom"` when the source uses Atom's directive and
-include format. For multibank expansion ROMs, the artifact-level assembler is
-the default for each bank; a bank can set its own `assembler` while a project is
-being converted one file at a time.
+Source-backed ROM artifacts default to `"assembler": "atom"`. Set
+`"assembler": "azm"` only for source that still requires that backend. For
+multibank expansion ROMs, the artifact-level assembler is the default for each
+bank; a bank can set its own `assembler` while a project is being converted one
+file at a time.
 
 Debug80 writes the matching HEX and D8 files from the `outputBin` artifact base,
 so the `outputBin` path must end in `.bin`, and an explicit `outputDebugMap`

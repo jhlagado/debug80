@@ -164,7 +164,7 @@ describe('TEC-1G ROM artifact builds', () => {
     );
   });
 
-  it('builds an explicitly Atom-backed source ROM artifact without a backend factory', async () => {
+  it('builds an Atom-backed source ROM artifact by default without a backend factory', async () => {
     const root = makeTempRoot();
     writeText(path.join(root, 'roms/atom-monitor.asm'), 'ORG 0C000H\nDB 0C3H,000H,0C0H\n');
     const args: LaunchRequestArguments = {
@@ -173,7 +173,6 @@ describe('TEC-1G ROM artifact builds', () => {
           {
             id: 'atom-monitor',
             role: 'monitor',
-            assembler: 'atom',
             sourceFile: 'roms/atom-monitor.asm',
             outputBin: 'build/atom-monitor.bin',
             outputDebugMap: 'build/atom-monitor.d8.json',
@@ -842,7 +841,7 @@ describe('TEC-1G ROM artifact builds', () => {
     ).rejects.toThrow('hex-only cannot emit binary ROM artifact tecm8-monitor');
   });
 
-  it('rejects output paths that do not match AZM-derived artifact paths', async () => {
+  it('rejects output paths that do not match assembler-derived artifact paths', async () => {
     const root = makeTempRoot();
     const backend = fakeBackend();
     const args: LaunchRequestArguments = {

@@ -348,17 +348,17 @@ describe('launch-sequence', () => {
     writeFile(
       path.join(root, 'roms', 'tec1g', 'tecm8', 'monitor', 'monitor.asm'),
       [
-        '        .org    0xC000',
-        '@Tecm8MonitorEntry:',
-        '        JP      Tecm8MonitorHold',
-        'Tecm8MonitorHold:',
-        '        JP      Tecm8MonitorHold',
+        '        ORG     0C000H',
+        'MONENT:',
+        '        JP      MONHOLD',
+        'MONHOLD:',
+        '        JP      MONHOLD',
         '',
       ].join('\n')
     );
     writeFile(
       path.join(root, 'roms', 'tec1g', 'tecm8', 'expansion', 'expansion.asm'),
-      ['        .org    0x8000', '@Tecm8ExpansionEntry:', '        RET', ''].join('\n')
+      ['        ORG     08000H', 'EXPENT: RET', ''].join('\n')
     );
     const context = createContext();
     const args: LaunchRequestArguments = {

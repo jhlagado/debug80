@@ -301,7 +301,7 @@ describe('package.json language contracts', () => {
     const bank = romArtifact?.banks?.items?.properties as
       Record<string, { enum?: string[]; default?: string }> | undefined;
 
-    expect(romArtifact?.assembler?.default).toBe('azm');
+    expect(romArtifact?.assembler?.default).toBe('atom');
     expect(romArtifact?.assembler?.enum).toEqual(['atom', 'azm']);
     expect(bank?.assembler?.default).toBeUndefined();
     expect(bank?.assembler?.enum).toEqual(['atom', 'azm']);

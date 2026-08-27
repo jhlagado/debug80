@@ -431,7 +431,7 @@ The TEC-1G supports optional expansion ROM images and a ROM-first launch path. `
 3. generated D8 maps are prepended to `debugMaps`
 4. each artifact source directory is appended to `sourceRoots`
 
-ROM artifacts default to AZM for existing sources and can opt into Atom per artifact or per bank. When AZM is selected, the ROM-artifact assembly path does not inherit app-scoped AZM register-contract settings. `buildTec1gRomArtifactsIfRequested()` forces `registerContracts: 'off'` and `emitRegisterReport: false` for both the HEX and BIN passes, then pads the generated monitor or expansion binary to the configured image size before launch continues.
+ROM artifacts default to Atom. Set `assembler: "azm"` per artifact or per bank only for source that still requires that backend. When AZM is selected, the ROM-artifact assembly path does not inherit app-scoped AZM register-contract settings. `buildTec1gRomArtifactsIfRequested()` forces `registerContracts: 'off'` and `emitRegisterReport: false` for both the HEX and BIN passes, then pads the generated monitor or expansion binary to the configured image size before launch continues.
 
 The provider's `loadAssets()` method then reads the resolved `tec1gConfig.expansionRomHex`, parses it, and returns a `Tec1gExpansionRomImage` with its bank list, projected memory image, and boot entry.
 

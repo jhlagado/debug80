@@ -33,7 +33,7 @@ The Glimmer grammar covers top-level declarations, header clauses, resource decl
 
 Colour is driven by default `editor.tokenColorCustomizations` in `package.json`. The Z80 palette distinguishes comments, labels, symbols, directives, annotations, instructions, registers, conditions and flags, strings, function names including AZM op declarations and invocations, operators, and numeric literals. Glimmer adds distinct scopes for structural declarations, block and resource names, reactive cells and pulses, declaration operators, resource constants and strings. This is TextMate colouring, not semantic-token analysis.
 
-`registerLanguageAssociations()` in `src/extension/language-association.ts` is a safety net for opened documents. Once VS Code knows the contributed languages, it assigns `.asm`, `.z80`, and `.asmi` documents to `z80-asm` for `file` and `untitled` documents. Glimmer relies on the direct `package.json` language contribution for `.glim`, while the embedded Z80 scopes inside Glimmer blocks come from the TextMate grammar itself.
+`registerLanguageAssociations()` in `src/extension/language-association.ts` is a safety net for opened documents. After VS Code loads the contributed languages, it assigns `.asm`, `.z80`, and `.asmi` documents to `z80-asm` for `file` and `untitled` documents. Glimmer relies on the direct `package.json` language contribution for `.glim`, while the embedded Z80 scopes inside Glimmer blocks come from the TextMate grammar itself.
 
 The language-server design note in the source repository is still a future direction. The current implementation is not an LSP, but it does provide several editor services from the last built D8 source map:
 
@@ -434,7 +434,7 @@ The `'uninitialized'` branch includes `platform: this.currentPlatform ?? 'simple
 
 Three shared modules translate the payload into rendering decisions:
 
-**`project-state.ts`** — exports `ProjectViewState = 'noWorkspace' | 'uninitialized' | 'initialized'` and `resolveProjectViewState(payload)`. The function prefers the explicit `projectState` field when present, falling back to inferring state from `hasProject` and `rootPath` for backward compatibility.
+**`project-state.ts`** — exports `ProjectViewState = 'noWorkspace' | 'uninitialized' | 'initialized'` and `resolveProjectViewState(payload)`. The function reads the explicit `projectState` field when present, falling back to inferring state from `hasProject` and `rootPath` for backward compatibility.
 
 **`setup-card-state.ts`** — exports `resolveSetupCardState(selectedRoot, projectState, targetCount): SetupCardState | null`. Returns the text and primary-action label for the onboarding card, or `null` to hide it:
 
@@ -525,7 +525,7 @@ The scaffolding path also accepts pre-supplied answers. `scaffoldProject()` can 
 
 `createDefaultProjectConfig(plan)` assembles the `debug80.json` structure from the plan:
 
-- A `profiles` section with one entry (`plan.kit.profileName`) containing the platform, description, and — if the kit has a `bundledProfile` — a `bundledAssets` map with `romHex`, optional `debugMap`, and optional `source` entries (each a `BundledAssetReference`).
+- A `profiles` section with one entry (`plan.kit.profileName`) containing the platform, description, and, when the kit has a `bundledProfile`, a `bundledAssets` map with `romHex`, optional `debugMap`, and optional `source` entries (each a `BundledAssetReference`).
 - A `targets` section with one entry (`plan.targetName`) containing `sourceFile`, `assembler: 'atom'`, `outputDir`, `artifactBase`, `platform`, `profile`, and the platform-specific block (`simple`, `cpm22`, `tec1`, or `tec1g`). For kits with a `bundledProfile`, the target block also includes `romHex` and `sourceRoots`. The `cpm22/default` kit writes `cpm22: { writable: true, programName: 'MAIN.COM' }`. The `tec1g/custom` kit remains project-owned rather than bundle-backed, so its target block writes explicit `romHex` and `expansionRomHex` paths under `roms/tec1g/custom/`.
 - Top-level `projectVersion`, `projectPlatform`, `defaultProfile`, and, when a target is scaffolded immediately, `defaultTarget` fields.
 
@@ -540,7 +540,7 @@ Local monitor development is enabled by a convention rather than another user-fa
 
 On launch, `buildLaunchSession()` in `src/debug/launch/launch-sequence.ts` now stages ROM-related overrides in two passes before platform resolution:
 
-1. `buildTec1gRomArtifactsIfRequested()` assembles active `tec1g.romArtifacts` for TEC-1G launches, requiring `.bin` output paths and AZM-derived `.d8.json` siblings. Monitor artifacts replace `tec1g.romHex`, expansion artifacts replace `tec1g.expansionRomHex`, generated D8 maps are prepended to `debugMaps`, and the artifact source directories are appended to `sourceRoots`.
+1. `buildTec1gRomArtifactsIfRequested()` assembles active `tec1g.romArtifacts` for TEC-1G launches, requiring `.bin` output paths and matching `.d8.json` siblings. Monitor artifacts replace `tec1g.romHex`, expansion artifacts replace `tec1g.expansionRomHex`, generated D8 maps are prepended to `debugMaps`, and the artifact source directories are appended to `sourceRoots`.
 2. `buildLocalMonitorRomIfPresent()` still checks for the conventional platform `*.rom.asm` file. If it exists and assembly is enabled, Debug80 builds it into `build/roms/...`, then mutates the launch arguments so the platform `romHex` points at the generated ROM HEX and `debugMaps` includes the generated D8 map.
 
 If neither override path is active, the normal bundled-ROM fallback remains in effect.

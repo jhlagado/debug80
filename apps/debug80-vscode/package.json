@@ -763,12 +763,12 @@
                         },
                         "assembler": {
                           "type": "string",
-                          "description": "Assembler for source-backed ROM artifacts. Existing ROM sources default to AZM; Atom source can opt in explicitly.",
+                          "description": "Assembler for source-backed ROM artifacts. Source-backed ROM artifacts default to Atom; select AZM explicitly when required.",
                           "enum": [
                             "atom",
                             "azm"
                           ],
-                          "default": "azm"
+                          "default": "atom"
                         },
                         "sourceFile": {
                           "type": "string",
