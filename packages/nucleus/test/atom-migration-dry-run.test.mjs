@@ -38,8 +38,15 @@ describe("Nucleus Atom migration dry-run", () => {
     );
     expect(translateNucleusAzmLine("            .else")).toBe("            %ELSE");
     expect(translateNucleusAzmLine("            .endif")).toBe("            %ENDIF");
+    expect(translateNucleusAzmLine("            .end")).toBe("            ;@AZM-END");
     expect(translateNucleusAzmLine("Label       .equ $1000")).toBe(
       "Label       EQU $1000",
+    );
+    expect(translateNucleusAzmLine("Label:      .db $10")).toBe(
+      "Label:      DB $10",
+    );
+    expect(translateNucleusAzmLine("Buffer:     .ds 16")).toBe(
+      "Buffer:     DS 16",
     );
     expect(translateNucleusAzmLine(".routine in A out carry ; proof")).toBe(
       ";@ROUTINE IN A OUT CARRY ; proof",
@@ -50,6 +57,9 @@ describe("Nucleus Atom migration dry-run", () => {
     expect(translateNucleusAzmLine("            .DB \"LongSourceLabel\"", {
       symbolMap,
     })).toBe("            DB \"LongSourceLabel\"");
+    expect(translateNucleusAzmLine("AddressSpaceLimit   .equ $10000", {
+      symbolMap: new Map([["AddressSpaceLimit", "N0000001"]]),
+    })).toBe("N0000001   EQU 0 ;@ATOM-PROOF-LIMIT AddressSpaceLimit 65536");
   });
 
   it("reports a clean fixture as ready", async () => {
@@ -168,6 +178,46 @@ describe("Nucleus Atom migration dry-run", () => {
           code: "atom-expression-range",
           message: "numeric literal $10000 exceeds Atom's 16-bit expression range",
         }),
+      ]);
+    });
+  });
+
+  it("fails on AZM textual includes after source has begun", async () => {
+    await withTree({
+      "asm/main.asm": "ORG $1000\n.include \"late.asmi\"\n",
+      "asm/late.asmi": "VALUE .equ 1\n",
+      "proofs/main.json": "{}",
+    }, async (root) => {
+      const report = scanAssembly({
+        asmRoot: path.join(root, "asm"),
+        proofRoot: path.join(root, "proofs"),
+      });
+
+      expect(report.status).toBe("blocked");
+      expect(report.measured.lateIncludes).toBe(1);
+      expect(report.issues).toEqual([
+        expect.objectContaining({
+          code: "late-include",
+        }),
+      ]);
+    });
+  });
+
+  it("permits known one-past-address-space proof limit symbols", async () => {
+    await withTree({
+      "asm/main.asm": "AddressSpaceLimit .equ $10000\nProofMemoryEnd .equ $10000\n",
+      "proofs/main.json": "{}",
+    }, async (root) => {
+      const report = scanAssembly({
+        asmRoot: path.join(root, "asm"),
+        proofRoot: path.join(root, "proofs"),
+      });
+
+      expect(report.status).toBe("blocked");
+      expect(report.measured.proofLimitSymbols).toBe(2);
+      expect(report.issues.map(({ code }) => code)).toEqual([
+        "unledgered-long-symbol",
+        "unledgered-long-symbol",
       ]);
     });
   });

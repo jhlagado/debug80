@@ -10,6 +10,7 @@ const defaultProofRoot = path.join(packageRoot, "proofs");
 
 const allowedDirectives = new Set([
   "db",
+  "ds",
   "dw",
   "else",
   "end",
@@ -23,6 +24,7 @@ const allowedDirectives = new Set([
 
 const mechanicalDirectives = new Set([
   "db",
+  "ds",
   "dw",
   "else",
   "end",
@@ -35,11 +37,12 @@ const mechanicalDirectives = new Set([
 
 const identifierPattern = /^[A-Za-z_.$?][A-Za-z0-9_.$?]*$/;
 const simpleConditionPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const onePastAddressSpaceEquPattern = /^\s*(AddressSpaceLimit|ProofMemoryEnd):?\s+\.equ\s+\$10000\s*$/i;
 const directiveTranslations = new Map([
   ["db", "DB"],
+  ["ds", "DS"],
   ["dw", "DW"],
   ["else", "%ELSE"],
-  ["end", "END"],
   ["endif", "%ENDIF"],
   ["equ", "EQU"],
   ["if", "%IF"],
@@ -221,15 +224,22 @@ function scanAssembly({ asmRoot, proofRoot }) {
   const issues = [];
   let sourceLines = 0;
   let contractLines = 0;
+  let proofLimitSymbols = 0;
+  let lateIncludes = 0;
 
   for (const file of files) {
     const lines = readFileSync(file, "utf8").split(/\n/);
     sourceLines += lines.length;
+    let seenSourceBeforeInclude = false;
     for (let index = 0; index < lines.length; index += 1) {
       const lineNumber = index + 1;
       const raw = lines[index].replace(/\r$/, "");
       const code = stripComment(raw);
       const unquotedCode = maskQuoted(code);
+      const onePastAddressSpaceEqu = onePastAddressSpaceEquPattern.exec(code);
+      if (onePastAddressSpaceEqu !== null) {
+        proofLimitSymbols += 1;
+      }
 
       const directive = /^\s*\.([A-Za-z][A-Za-z0-9_]*)\b\s*(.*)$/.exec(code);
       if (directive !== null) {
@@ -244,13 +254,40 @@ function scanAssembly({ asmRoot, proofRoot }) {
           });
         }
         if (name === "routine") contractLines += 1;
-        if (name === "include") addCount(includes, argument);
+        if (name === "include") {
+          addCount(includes, argument);
+          if (seenSourceBeforeInclude) {
+            lateIncludes += 1;
+            issues.push({
+              code: "late-include",
+              message: "AZM textual include appears after source; Atom %INCLUDE is header-only",
+              ...location(file, lineNumber),
+            });
+          }
+        }
         if (name === "if") {
           addCount(conditionals, argument);
           if (!simpleConditionPattern.test(argument)) {
             issues.push({
               code: "unsupported-conditional-expression",
               message: `conditional expression is not a simple feature flag: ${argument}`,
+              ...location(file, lineNumber),
+            });
+          }
+        }
+      }
+      if (code.trim() !== "" && !/^\s*\.include\b/i.test(code)) {
+        seenSourceBeforeInclude = true;
+      }
+      if (directive === null) {
+        const labelDirective = /^\s*[A-Za-z_.$?][A-Za-z0-9_.$?]*:?\s+\.([A-Za-z][A-Za-z0-9_]*)\b\s*(.*)$/i.exec(code);
+        if (labelDirective !== null) {
+          const name = labelDirective[1].toLowerCase();
+          if (name !== "equ") addCount(directives, name);
+          if (!allowedDirectives.has(name)) {
+            issues.push({
+              code: "unsupported-directive",
+              message: `AZM directive .${name.toUpperCase()} has no Atom migration rule`,
               ...location(file, lineNumber),
             });
           }
@@ -271,7 +308,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
       for (const match of unquotedCode.matchAll(/(^|[^A-Za-z0-9_])(\$[0-9A-Fa-f]+|%[01]+|[0-9][0-9A-Fa-f]*[Hh]|[01]+[Bb]|[0-9]+)/g)) {
         const text = match[2];
         const value = numberValue(text);
-        if (value !== undefined && value > 0xffff) {
+        if (value !== undefined && value > 0xffff && onePastAddressSpaceEqu === null) {
           issues.push({
             code: "atom-expression-range",
             message: `numeric literal ${text} exceeds Atom's 16-bit expression range`,
@@ -352,6 +389,8 @@ function scanAssembly({ asmRoot, proofRoot }) {
       directives: directiveSummary,
       conditionals: conditionalSummary,
       uniqueIncludes: includes.size,
+      proofLimitSymbols,
+      lateIncludes,
     },
     supportedMappings: {
       mechanicalDirectives: [...mechanicalDirectives].sort(),
@@ -411,6 +450,9 @@ function translateNucleusAzmLine(
     if (name === "routine") {
       return `${prefix};@ROUTINE${rest.toUpperCase()}${comment}`;
     }
+    if (name === "end") {
+      return `${prefix};@AZM-END${comment}`;
+    }
     const replacement = directiveTranslations.get(name);
     if (replacement === undefined) {
       throw new Error(`${context.file}:${context.line}: unsupported directive .${rawName}`);
@@ -420,7 +462,23 @@ function translateNucleusAzmLine(
 
   const equ = /^(\s*[A-Za-z_.$?][A-Za-z0-9_.$?]*:?\s+)\.equ(\b.*)$/i.exec(source);
   if (equ !== null) {
+    const onePastLimit = /^(\s*)(AddressSpaceLimit|ProofMemoryEnd)(:?\s+)\.equ\s+\$10000\s*$/i.exec(source);
+    if (onePastLimit !== null) {
+      const original = onePastLimit[2];
+      const atom = symbolMap.get(original) ?? original;
+      return `${onePastLimit[1]}${atom}${onePastLimit[3]}EQU 0 ;@ATOM-PROOF-LIMIT ${original} 65536${comment === "" ? "" : ` ${comment}`}`;
+    }
     return `${replaceSymbolsInSource(`${equ[1]}EQU${equ[2]}`, symbolMap)}${comment}`;
+  }
+
+  const labelDirective = /^(\s*[A-Za-z_.$?][A-Za-z0-9_.$?]*:?\s+)\.([A-Za-z][A-Za-z0-9_]*)(\b.*)$/i.exec(source);
+  if (labelDirective !== null) {
+    const [, prefix, rawName, rest] = labelDirective;
+    const replacement = directiveTranslations.get(rawName.toLowerCase());
+    if (replacement === undefined) {
+      throw new Error(`${context.file}:${context.line}: unsupported directive .${rawName}`);
+    }
+    return `${replaceSymbolsInSource(`${prefix}${replacement}${rest}`, symbolMap)}${comment}`;
   }
 
   return `${replaceSymbolsInSource(source, symbolMap)}${comment}`;

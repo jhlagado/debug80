@@ -28,7 +28,9 @@ Measured files:
 | Defined symbols detected | 3,656 |
 | Defined symbols longer than eight characters | 3,623 |
 | Referenced identifier-like tokens longer than eight characters | 3,709 |
-| Current dry-run blockers | 3,626 |
+| Proof-limit symbols using `$10000` | 3 |
+| Late textual includes | 177 |
+| Current dry-run blockers | 3,800 |
 
 The source set is large enough that manual renaming without tooling is not credible.
 
@@ -63,18 +65,19 @@ npm run atom:migration:census -w nucleus -- \
 
 | AZM directive | Measured count | Atom migration treatment |
 | --- | ---: | --- |
-| `.DB` | 2,271 | Mechanical: `DB` |
-| `.DW` | 229 | Mechanical: `DW` |
+| `.DB` | 2,402 | Mechanical: `DB` |
+| `.DS` | 10 | Mechanical: `DS` |
+| `.DW` | 279 | Mechanical: `DW` |
 | `.EQU` | 1,094 | Mechanical: `EQU` |
 | `.ORG` | 77 | Mechanical: `ORG` |
-| `.END` | 13 | Mechanical: `END`, or omit only when proved unnecessary for that image |
+| `.END` | 13 | Preview translation omits terminal instances as `;@AZM-END`; every current instance has no source after it |
 | `.INCLUDE` | 201 | Mechanical to Atom host include syntax; keep included files as source parts where possible |
 | `.IF` | 233 | Mechanical to host conditional assembly syntax |
 | `.ELSE` | 138 | Mechanical to host conditional assembly syntax |
 | `.ENDIF` | 233 | Mechanical to host conditional assembly syntax |
 | `.ROUTINE` | 706 | Contract-only; translate to comment-form contract metadata for the proof runner |
 
-The ordinary data and origin directives are low risk. The migration blockers are contract metadata and symbol length.
+The ordinary data and origin directives are low risk. The migration blockers are contract metadata, symbol length, and include placement.
 
 ## Conditional assembly census
 
@@ -132,6 +135,12 @@ Representative include arguments:
 - `"proof-z80-runtime.asm"`
 
 The include graph should be converted through the shared source-preparation resolver, not through anonymous textual concatenation. If a proof image still requires textual inclusion, the converter must record that as a temporary compatibility mode.
+
+Atom's current `%INCLUDE` form is header-only. Nucleus AZM source uses textual includes after source has begun in 177 places. That is not a syntax typo; it reflects the proof-image layout style. The migration needs one of these decisions before full proof-image assembly:
+
+1. move Nucleus assembly includes into leading dependency headers where the order is semantically equivalent;
+2. add a Nucleus-specific preview mode that lowers late textual includes before invoking Atom; or
+3. extend Atom's host include policy, which would be a product decision because Atom currently treats late host directives as invalid source.
 
 ## Symbol-length problem
 
@@ -195,8 +204,9 @@ This keeps the Atom assembler small and keeps proof ownership outside the assemb
 | Area | Classification | Reason |
 | --- | --- | --- |
 | Ordinary Z80 instructions | Direct or near-direct | Atom already targets byte-identical Z80 encoding |
-| `.DB`, `.DW`, `.ORG`, `.END` | Mechanical | Atom has equivalent directive forms |
-| `.INCLUDE` | Mechanical with resolver policy | Include structure needs source identities and proof compatibility |
+| `.DB`, `.DS`, `.DW`, `.ORG` | Mechanical | Atom has equivalent directive forms |
+| `.END` | Terminal metadata | Current instances can be omitted in preview source after recording `;@AZM-END` |
+| `.INCLUDE` | Requires resolver or lowering decision | Most Nucleus includes are textual and late relative to Atom's header-only policy |
 | `.IF`, `.ELSE`, `.ENDIF` | Mechanical for current source set | Current expressions are simple flags |
 | `.ROUTINE` | Contract-only | Must become proof metadata comments |
 | Long labels | Requires generated ledger | Nearly every defined symbol exceeds Atom's limit |
@@ -211,8 +221,15 @@ Before converting source:
 2. Add tests that fail on an untranslatable directive, unledgered long symbol, unresolved include, or unsupported conditional expression.
 3. Add a proof-manifest join that maps old exported proof symbol names to generated Atom symbols.
 4. Decide how the three one-past-address-space constants should be represented for Atom.
-5. Prove one small proof image through Atom source while keeping the AZM-built image as the comparison target.
-6. Only then scale the conversion to the full `packages/nucleus/asm` tree.
+5. Decide how late textual includes should be handled for proof-image preview assembly.
+6. Prove one small proof image through Atom source while keeping the AZM-built image as the comparison target.
+7. Only then scale the conversion to the full `packages/nucleus/asm` tree.
+
+## Pilot preview result
+
+The generated preview tree can assemble `vertical-slice/dispatcher-offset-direct-measurement.asm` with Atom after the proof-limit and terminal-`.END` translation rules. This is not a proof-image success. That file is a dispatcher measurement artifact, and its AZM output does not provide a reliable byte-identity target for ordinary Atom assembly because the measurement source overlaps selection-table bytes and code bytes. Do not use it as the first byte-identity proof.
+
+The first real proof-image attempt reaches Atom's `%INCLUDE` header rule: existing proof images use many textual includes after source has begun. Resolve that include-policy decision before selecting the first proof-image byte comparison.
 
 ## Conclusion
 
