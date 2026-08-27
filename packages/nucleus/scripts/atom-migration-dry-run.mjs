@@ -499,6 +499,13 @@ function convertQuotedByteExpressions(source) {
   return output;
 }
 
+function convertLeadingImmediateGrouping(source) {
+  return source.replace(
+    /\b(LD\s+(?:BC|DE|HL|SP|IX|IY)\s*,\s*)\(([^()\r\n]*<<[^()\r\n]*)\)(?=\s*(?:[|+\-*/%&^]|$))/gi,
+    "$1$2",
+  );
+}
+
 function translateNucleusAzmLine(
   line,
   {
@@ -554,7 +561,7 @@ function translateNucleusAzmLine(
     return `${replaceSymbolsInSource(`${prefix}${replacement}${rest}`, symbolMap)}${comment}`;
   }
 
-    return `${replaceSymbolsInSource(convertQuotedByteExpressions(source), symbolMap)}${comment}`;
+    return `${replaceSymbolsInSource(convertLeadingImmediateGrouping(convertQuotedByteExpressions(source)), symbolMap)}${comment}`;
 }
 
 function writeTranslatedTree(report, translatedRoot) {
@@ -688,6 +695,54 @@ function flattenTranslatedEntry(report, entry) {
   return expand(path.resolve(report.asmRoot, entry));
 }
 
+function flattenedEntryParts(report, entry, { maxBytes = 0xffff } = {}) {
+  if (!Number.isInteger(maxBytes) || maxBytes < 1 || maxBytes > 0xffff) {
+    throw new Error("flattened Atom-preview part byte limit must be 1 through 65535");
+  }
+  const text = flattenTranslatedEntry(report, entry);
+  const encoder = new TextEncoder();
+  const lines = text.match(/[^\n]*\n|[^\n]+$/g) ?? [""];
+  const parts = [];
+  let current = "";
+  let currentBytes = 0;
+
+  for (const line of lines) {
+    const lineBytes = encoder.encode(line).length;
+    if (lineBytes > maxBytes) {
+      throw new Error(`flattened Atom-preview line exceeds ${maxBytes} bytes`);
+    }
+    if (currentBytes !== 0 && currentBytes + lineBytes > maxBytes) {
+      const bytes = encoder.encode(current);
+      parts.push(Object.freeze({
+        ordinal: parts.length,
+        bank: 0,
+        logicalIdentity: `${entry}#preview-${String(parts.length).padStart(3, "0")}`,
+        originalBytes: bytes,
+        compilerBytes: bytes,
+        binaryIncludes: Object.freeze([]),
+      }));
+      current = "";
+      currentBytes = 0;
+    }
+    current += line;
+    currentBytes += lineBytes;
+  }
+
+  if (currentBytes !== 0 || parts.length === 0) {
+    const bytes = encoder.encode(current);
+    parts.push(Object.freeze({
+      ordinal: parts.length,
+      bank: 0,
+      logicalIdentity: `${entry}#preview-${String(parts.length).padStart(3, "0")}`,
+      originalBytes: bytes,
+      compilerBytes: bytes,
+      binaryIncludes: Object.freeze([]),
+    }));
+  }
+
+  return Object.freeze(parts);
+}
+
 function writeFlattenedEntry(report, entry, output) {
   mkdirSync(path.dirname(output), { recursive: true });
   writeFileSync(output, `${flattenTranslatedEntry(report, entry)}\n`);
@@ -727,6 +782,7 @@ function printTextReport(report) {
 
 export {
   flattenTranslatedEntry,
+  flattenedEntryParts,
   scanAssembly,
   translateNucleusAzmLine,
   writeFlattenedEntry,

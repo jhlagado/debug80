@@ -71,6 +71,12 @@ npm run atom:migration:census -w nucleus -- \
   --flatten-out build/nucleus-atom-preview/compiler-slice-proof.atom.asm
 ```
 
+The proof-image byte comparison can be rerun with:
+
+```bash
+npm run atom:migration:proof-compare -w nucleus
+```
+
 ## Directive census
 
 | AZM directive | Measured count | Atom migration treatment |
@@ -229,6 +235,7 @@ This keeps the Atom assembler small and keeps proof ownership outside the assemb
 | Long labels | Requires generated ledger | Nearly every defined symbol exceeds Atom's limit |
 | Proof JSON symbol references | Requires ledger join | External expected-symbol names must remain stable or be mapped |
 | `$10000` limit constants | Requires source or Atom expression decision | Atom currently rejects literals above `65535` |
+| Leading grouped immediates | Mechanical | Current `LD rr,(A<<8)|B` forms translate safely to `LD rr,A<<8|B` for Atom |
 
 ## Required next implementation checks
 
@@ -258,6 +265,45 @@ proof-limit handling, terminal `.END` handling, late textual include lowering,
 and simple conditional evaluation are sufficient for one substantial proof image.
 It does not yet prove all proof images, strict contract metadata translation, or
 proof-manifest symbol remapping.
+
+The first scaled proof-image comparison uses generated multipart Atom preview
+source, so no generated part exceeds Atom's 16-bit source-offset range. Current
+result:
+
+| Status | Count |
+| --- | ---: |
+| Byte-identical proof images | 7 |
+| Atom-preview blockers | 18 |
+| Skipped measurement artifacts | 3 |
+
+Byte-identical proof images:
+
+- `array-z80-slice-proof.json`
+- `call-z80-slice-proof.json`
+- `compiler-slice-proof.json`
+- `loop-compiler-slice-proof.json`
+- `loop-z80-slice-proof.json`
+- `memory-map-proof.json`
+- `z80-slice-proof.json`
+
+Skipped measurement artifacts:
+
+- `dispatcher-measurement.json`
+- `dispatcher-offset-direct-measurement.json`
+- `dispatcher-offset-trampoline-measurement.json`
+
+Measured remaining blocker groups:
+
+| Group | Representative generated line | Consequence |
+| --- | --- | --- |
+| Forward or alias `EQU` expressions | `N00000PV EQU N00000PP+N000010E` | Blocks all proof images based on `flat-target-z80-slice-proof.asm` |
+| Forward data-size expressions | `DW N00000W9-N00000WB` | Blocks `nobj-runner-proof.json` |
+| Keyword constant migration | `LD A,HybridLL1StartSymbol` | Blocks Stage 7/8/9 LL(1) proof images |
+| Larger preview execution budget | `expression-z80-slice-proof.json` | Atom preview assembly exceeds the comparison script's current execution budget before reporting a source diagnostic |
+
+The source-capacity blocker from single-file flattening is resolved by generated
+multipart preview parts. The next migration work should address the expression
+and symbol-resolution gaps above, not the source streaming boundary.
 
 ## Conclusion
 

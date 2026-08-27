@@ -9,6 +9,7 @@ import { describe, expect, it } from "vitest";
 import { scanAssembly } from "../scripts/atom-migration-dry-run.mjs";
 import { translateNucleusAzmLine } from "../scripts/atom-migration-dry-run.mjs";
 import { flattenTranslatedEntry } from "../scripts/atom-migration-dry-run.mjs";
+import { flattenedEntryParts } from "../scripts/atom-migration-dry-run.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(testDirectory, "..");
@@ -61,6 +62,9 @@ describe("Nucleus Atom migration dry-run", () => {
     expect(translateNucleusAzmLine("            CP \"A\"")).toBe("            CP 'A'");
     expect(translateNucleusAzmLine("            CP \"z\"+1")).toBe("            CP 'z'+1");
     expect(translateNucleusAzmLine("            CP \"\\\\\"")).toBe("            CP '\\\\'");
+    expect(translateNucleusAzmLine("            LD   BC,(TokenRightParen<<8)|TokenRightBracket")).toBe(
+      "            LD   BC,TokenRightParen<<8|TokenRightBracket",
+    );
     expect(translateNucleusAzmLine("AddressSpaceLimit   .equ $10000", {
       symbolMap: new Map([["AddressSpaceLimit", "N0000001"]]),
     })).toBe("N0000001   EQU 0 ;@ATOM-PROOF-LIMIT AddressSpaceLimit 65536");
@@ -430,6 +434,33 @@ describe("Nucleus Atom migration dry-run", () => {
         "",
         ";@SOURCE-END main.asm",
       ].join("\n"));
+    });
+  });
+
+  it("splits flattened Atom-preview entries into ordered native source parts", async () => {
+    await withTree({
+      "asm/main.asm": [
+        "START:",
+        "            NOP",
+        "            NOP",
+        "",
+      ].join("\n"),
+      "proofs/main.json": "{}",
+    }, async (root) => {
+      const report = scanAssembly({
+        asmRoot: path.join(root, "asm"),
+        proofRoot: path.join(root, "proofs"),
+      });
+      const parts = flattenedEntryParts(report, "main.asm", { maxBytes: 40 });
+
+      expect(parts.length).toBeGreaterThan(1);
+      expect(parts.map(({ ordinal }) => ordinal)).toEqual(
+        parts.map((_, index) => index),
+      );
+      expect(parts.every(({ compilerBytes }) => compilerBytes.length <= 40)).toBe(true);
+      expect(new TextDecoder().decode(Uint8Array.from(
+        parts.flatMap(({ compilerBytes }) => [...compilerBytes]),
+      ))).toBe(flattenTranslatedEntry(report, "main.asm"));
     });
   });
 });
