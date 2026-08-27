@@ -5,16 +5,16 @@
 ;!      in        A
 ;!      out       A
 ;!      clobbers  BC
-@MxMask:
+MxMask:
         LD      C,A
         OR      A
-        LD      A,0x80
-        JR      Z,MxMaskDone
+        LD      A,$80
+        JR      Z,FD_MXMSK
         LD      B,C
 MxMaskLp:
         SRL     A
         DJNZ    MxMaskLp
-MxMaskDone:
+FD_MXMSK:
         RET
 
 ; FbSetCell —
@@ -26,7 +26,7 @@ MxMaskDone:
 ; AND CPL(C).
 ;!      in        C,A,HL
 ;!      clobbers  A,B,D,HL
-@FbSetCell:
+FD_FBSTC:
         LD      B,A
         LD      A,C
         CPL
@@ -44,7 +44,7 @@ FbRedSet:
         LD      (HL),A
         INC     HL
         LD      A,B
-        AND     ColorGreen
+        AND     SC_CLRGR
         JR      Z,FbGrnOff
         LD      A,(HL)
         OR      C
@@ -56,7 +56,7 @@ FbGrnSet:
         LD      (HL),A
         INC     HL
         LD      A,B
-        AND     ColorBlue
+        AND     SC_CLRB0
         JR      Z,FbBluOff
         LD      A,(HL)
         OR      C
@@ -76,11 +76,11 @@ FbBluSet:
 ; plane pointer is returned in HL.
 ;!      in        A,HL,C
 ;!      out       HL,A
-@FbOrRow:
+FbOrRow:
         PUSH    BC
-        LD      B,3                     ; 3 planes: R, G, B
+        LD      B,3 ; 3 planes: R, G, B
 FbOrLoop:
-        RRCA                            ; low bit (red/green/blue per iter) -> carry
+        RRCA ; low bit (red/green/blue per iter) -> carry
         JR      NC,FbOrSkip
         PUSH    AF
         LD      A,(HL)
@@ -90,7 +90,7 @@ FbOrLoop:
 FbOrSkip:
         DEC     B
         JR      Z,FbOrExit
-        INC     HL                      ; advance to next plane byte (between iters only)
+        INC     HL ; advance to next plane byte (between iters only)
         JR      FbOrLoop
 FbOrExit:
         POP     BC

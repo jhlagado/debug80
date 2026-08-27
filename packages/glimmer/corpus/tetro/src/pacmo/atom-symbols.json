@@ -1,0 +1,1732 @@
+{
+  "format": "atom-source-symbol-ledger",
+  "version": 1,
+  "target": "pacmo",
+  "symbols": [
+    {
+      "module": "shared/constants.asm",
+      "original": "PortDigits",
+      "short": "SC_PRTDG"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "PortLcdInst",
+      "short": "SC_PRTL0"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "PortLcdData",
+      "short": "SC_PRTLC"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "PortGreen",
+      "short": "SC_PRTGR"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "ApiScanKeys",
+      "short": "SC_APSCN"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "KeyRotate",
+      "short": "SC_KYRTT"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "KeyRotateCcw",
+      "short": "SC_KYRT0"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "KeyRotateCw",
+      "short": "SC_KYRT1"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "BytesPerRow",
+      "short": "SC_BYTSP"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "FramebufferBytes",
+      "short": "SC_FRMBF"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "ScanMaskStart",
+      "short": "SC_SCNMS"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "ColorBlack",
+      "short": "SC_CLRBL"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "ColorGreen",
+      "short": "SC_CLRGR"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "ColorBlue",
+      "short": "SC_CLRB0"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "ColorYellow",
+      "short": "SC_CLRYL"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "ColorCyan",
+      "short": "SC_CLRCY"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "ColorMagenta",
+      "short": "SC_CLRMG"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "ColorWhite",
+      "short": "SC_CLRWH"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "SpeakerBit",
+      "short": "SC_SPKRB"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacWorldMax",
+      "short": "PC_WRLDM"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacViewMax",
+      "short": "PC_VWMXI"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacScanDwell",
+      "short": "PC_SCNDW"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacMovePeriod",
+      "short": "PC_MVPRD"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacEatenBytes",
+      "short": "PC_ETNBY"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacPwrPillCount",
+      "short": "PC_PWRPL"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacPwrTimerSet",
+      "short": "PC_PWRTM"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacPwrWarnMask",
+      "short": "PC_PWRWR"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacGOverTicks",
+      "short": "PC_GVRTC"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacLvlDoneTicks",
+      "short": "PC_LVLDN"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacLivesStart",
+      "short": "PC_LVSST"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacScorePath",
+      "short": "PC_SCRPT"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacScorePower",
+      "short": "PC_SCRPW"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacScoreEnemy",
+      "short": "PC_SCRNM"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacSndPowerLen",
+      "short": "PC_SNDP0"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacSndPowerDiv",
+      "short": "PC_SNDPW"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacSndEatEnLen",
+      "short": "PC_SNDT0"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacSndEatEnDiv",
+      "short": "PC_SNDTN"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacSndCaughtLen",
+      "short": "PC_SNDC0"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacSndCaughtDiv",
+      "short": "PC_SNDCG"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacSndDoneLen",
+      "short": "PC_SNDD0"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacSndDoneDiv",
+      "short": "PC_SNDDN"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacColorWall",
+      "short": "PC_CLRWL"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacColorPath",
+      "short": "PC_CLRPT"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacColorPlayer",
+      "short": "PC_CLRPL"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacColorPwrPill",
+      "short": "PC_CLRPW"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacColorEnAtk",
+      "short": "PC_CLRNT"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacColorEnFlee",
+      "short": "PC_CLRNF"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacColorGOver",
+      "short": "PC_CLRGV"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacColorCaught",
+      "short": "PC_CLRCG"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacColorDone",
+      "short": "PC_CLRDN"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacColorRound",
+      "short": "PC_CLRRN"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacEnemyY",
+      "short": "PC_ENMYY"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacEnemyMinX",
+      "short": "PC_ENMY0"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacEnemyMaxX",
+      "short": "PC_ENMYM"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacEnemyPeriod",
+      "short": "PC_ENMYP"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacEnemyPerMin",
+      "short": "PC_ENMY1"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacEnemyPerStep",
+      "short": "PC_ENMY2"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacEnemyRespPer",
+      "short": "PC_ENMY4"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacEnemyRespDiv",
+      "short": "PC_ENMY3"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacEnemyAtk",
+      "short": "PC_ENMYT"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacEnemyFlee",
+      "short": "PC_ENMYF"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacEnemyRespawn",
+      "short": "PC_ENMYR"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacMonsterCount",
+      "short": "PC_MNST3"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "MonsterDir",
+      "short": "PC_MNSTR"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "MonsterTimer",
+      "short": "PC_MNST2"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "MonRespTimer",
+      "short": "PC_MNRSP"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "MonsterState",
+      "short": "PC_MNST1"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "MonsterSize",
+      "short": "PC_MNST0"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacDirDown",
+      "short": "PC_DRDWN"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacDirLeft",
+      "short": "PC_DRLFT"
+    },
+    {
+      "module": "pacmo/constants.asm",
+      "original": "PacDirRight",
+      "short": "PC_DRRGH"
+    },
+    {
+      "module": "pacmo/main-loop.asm",
+      "original": "@Start",
+      "short": "Start"
+    },
+    {
+      "module": "shared/scan-tick.asm",
+      "original": "@ScanTick",
+      "short": "ScanTick"
+    },
+    {
+      "module": "shared/scan-tick.asm",
+      "original": "@ScanNext",
+      "short": "ScanNext"
+    },
+    {
+      "module": "shared/scan-tick.asm",
+      "original": "ScanSavePtr",
+      "short": "ST_SCNSV"
+    },
+    {
+      "module": "pacmo/scan-frame.asm",
+      "original": "@ScanFrame",
+      "short": "CM_SCNFR"
+    },
+    {
+      "module": "pacmo/scan-frame.asm",
+      "original": "ScanFrameLp",
+      "short": "CM_SCNF0"
+    },
+    {
+      "module": "pacmo/scan-frame.asm",
+      "original": "ScanDwell",
+      "short": "CM_SCNDW"
+    },
+    {
+      "module": "pacmo/scan-frame.asm",
+      "original": "ScanDwellLp",
+      "short": "CM_SCND0"
+    },
+    {
+      "module": "pacmo/game-init.asm",
+      "original": "@InitState",
+      "short": "CM_INTST"
+    },
+    {
+      "module": "pacmo/game-init.asm",
+      "original": "@InitLevelState",
+      "short": "PI_INTLV"
+    },
+    {
+      "module": "pacmo/game-init.asm",
+      "original": "@InitPlyMons",
+      "short": "PI_INTPL"
+    },
+    {
+      "module": "pacmo/game-init.asm",
+      "original": "@ClearFrontBack",
+      "short": "PI_CLRFR"
+    },
+    {
+      "module": "pacmo/game-init.asm",
+      "original": "ClearFrontBackLp",
+      "short": "PI_CLRF0"
+    },
+    {
+      "module": "pacmo/game-init.asm",
+      "original": "@ClearEatenPaths",
+      "short": "PI_CLRT0"
+    },
+    {
+      "module": "pacmo/game-init.asm",
+      "original": "ClearEatenLp",
+      "short": "PI_CLRTN"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@LogicTick",
+      "short": "CM_LGCTC"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@PacFrameDuties",
+      "short": "PL_FRMDT"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "PacFrameTickDone",
+      "short": "PL_FRMTC"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "PacFrameCollDone",
+      "short": "PL_FRMCL"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@PacRenderRowA",
+      "short": "PL_RNDRR"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@TickLvlDoneGate",
+      "short": "PL_TCKLV"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@TickPowerTimer",
+      "short": "PL_TCKPW"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@PacIsLevel2Plus",
+      "short": "PL_ISLVL"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@TickEnemy",
+      "short": "PL_TCKNM"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@EnemyAttackStep",
+      "short": "PL_ENMYT"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@EnemyTryChase",
+      "short": "PL_ENM10"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyChaseBlock",
+      "short": "PL_ENMYC"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@EnemyChaseDirs",
+      "short": "PL_ENMY0"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@EnemyHorizChase",
+      "short": "PL_ENMY9"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyHorizRight",
+      "short": "PL_ENMYA"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyHorizAlign",
+      "short": "PL_ENMYH"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@EnemyVertChase",
+      "short": "PL_ENM17"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyVertUp",
+      "short": "PL_ENM18"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyVertAlign",
+      "short": "PL_ENM16"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@EnemyRoamStep",
+      "short": "PL_ENMYW"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyRoamLoop",
+      "short": "PL_ENMYQ"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyRoamNext",
+      "short": "PL_ENMYU"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyRoamReady",
+      "short": "PL_ENMYV"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@EnemyOpposite",
+      "short": "PL_ENMYG"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyOppDown",
+      "short": "PL_ENMYP"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyOppUp",
+      "short": "PL_ENMYJ"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyOppRight",
+      "short": "PL_ENMYI"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@EnemyTryMove",
+      "short": "PL_ENM13"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyTryLeft",
+      "short": "PL_ENM12"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyTryRight",
+      "short": "PL_ENM14"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyTryUp",
+      "short": "PL_ENM15"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyTryDown",
+      "short": "PL_ENM11"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyCommitOpen",
+      "short": "PL_ENMY1"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyTryBlocked",
+      "short": "PL_ENMYZ"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@TickEnemyResp",
+      "short": "PL_TCKN1"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "TickEnemyRespDec",
+      "short": "PL_TCKN2"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "TickEnemyDone",
+      "short": "PL_TCKN0"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@EnemySelectResp",
+      "short": "PL_ENMYX"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemySelRespLp",
+      "short": "PL_ENMYY"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyRespNewBest",
+      "short": "PL_ENMYL"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyRespKeep",
+      "short": "PL_ENMYK"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyRespCommit",
+      "short": "PL_ENMYR"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@EnemyRespScore",
+      "short": "PL_ENMYM"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyRespZero",
+      "short": "PL_ENMYO"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@EnemyIsInView",
+      "short": "PL_ENMYS"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyNotVisible",
+      "short": "PL_ENMYN"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@EnemyOccOther",
+      "short": "PL_ENMYF"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@EnemyOccByDe",
+      "short": "PL_ENMYB"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyOccNo",
+      "short": "PL_ENMYE"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@EnemyDistOther",
+      "short": "PL_ENMY4"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@EnemyAddDistDe",
+      "short": "PL_ENMYD"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@EnemyDistPlayer",
+      "short": "PL_ENMY5"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@EnemyDistDe",
+      "short": "PL_ENMY3"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyDistXHigh",
+      "short": "PL_ENMY7"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyDistanceY",
+      "short": "PL_ENMY2"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyDistYHigh",
+      "short": "PL_ENMY8"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "EnemyDistSum",
+      "short": "PL_ENMY6"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "@PacAdvanceLevel",
+      "short": "PL_ADVNC"
+    },
+    {
+      "module": "pacmo/logic-dispatch.asm",
+      "original": "PacAdvanceMin",
+      "short": "PL_ADVN0"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@PollInput",
+      "short": "CM_PLLNP"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "PollNoNewKey",
+      "short": "PV_PLLNN"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@PollSplashStart",
+      "short": "PV_PLLSP"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@CaughtRestart",
+      "short": "PV_CGHTR"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "CaughtRestartKey",
+      "short": "PV_CGHT0"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@ResumeCaught",
+      "short": "PV_RSMCG"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@HandlePauseKey",
+      "short": "CM_HNDLP"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@HandleUnpause",
+      "short": "CM_HNDLN"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "UnpauseShowRun",
+      "short": "PV_UNPSS"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "HandleDirKey",
+      "short": "CM_HNDLD"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "HeldSameKey",
+      "short": "CM_HLDSM"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@NormInputDir",
+      "short": "PV_NRMNP"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "NormalizeLeft",
+      "short": "PV_NRML0"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "NormalizeRight",
+      "short": "PV_NRML1"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "NormalizeUp",
+      "short": "PV_NRML2"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "NormalizeDown",
+      "short": "PV_NRMLZ"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@ClearInputRpt",
+      "short": "CM_CLRNP"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@MovePlayerLeft",
+      "short": "PV_MVPL0"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@MovePlyRight",
+      "short": "PV_MVPL2"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@MovePlayerUp",
+      "short": "PV_MVPL1"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@MovePlayerDown",
+      "short": "PV_MVPLY"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@TryMovePlyBc",
+      "short": "PV_TRYMV"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@CheckPlyCaught",
+      "short": "PV_CHCKP"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@EnterCaught",
+      "short": "PV_ENTRC"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "EnterFinalOver",
+      "short": "PV_ENTRF"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@EatEnemy",
+      "short": "EatEnemy"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@EatPwrPillBc",
+      "short": "PV_ETPWR"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "EatPwrPillLoop",
+      "short": "PV_ETPW0"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "EatPwrPillNext",
+      "short": "PV_ETPW1"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@MarkEatenBc",
+      "short": "PV_MRKTN"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "MarkEatenLow",
+      "short": "PV_MRKT0"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@AddScoreA",
+      "short": "PV_ADDSC"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@CheckRoundDone",
+      "short": "PV_CHCKR"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "CheckRoundRow",
+      "short": "PV_CHCK0"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@IsWallAtBc",
+      "short": "PV_ISWLL"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "WallShiftLoop",
+      "short": "PV_WLLSH"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "PacWallTest",
+      "short": "PV_WLLTS"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "PacWallOpen",
+      "short": "PV_WLLPN"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@UpdViewPly",
+      "short": "PV_UPDVW"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "@AdjustViewAxis",
+      "short": "PV_ADJST"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "AxisShiftLow",
+      "short": "PV_AXSS0"
+    },
+    {
+      "module": "pacmo/movement.asm",
+      "original": "AxisShiftHigh",
+      "short": "PV_AXSSH"
+    },
+    {
+      "module": "shared/framebuffer-core.asm",
+      "original": "@FbClearAll",
+      "short": "FC_FBCLR"
+    },
+    {
+      "module": "shared/framebuffer-core.asm",
+      "original": "FbClrLoop",
+      "short": "FC_FBCL1"
+    },
+    {
+      "module": "shared/framebuffer-core.asm",
+      "original": "@FbClearRow",
+      "short": "FC_FBCL0"
+    },
+    {
+      "module": "shared/framebuffer-core.asm",
+      "original": "@FbCopyAll",
+      "short": "FC_FBCPY"
+    },
+    {
+      "module": "shared/framebuffer-core.asm",
+      "original": "@FbCopyRow",
+      "short": "FC_FBCP0"
+    },
+    {
+      "module": "shared/framebuffer-draw.asm",
+      "original": "@MxMask",
+      "short": "MxMask"
+    },
+    {
+      "module": "shared/framebuffer-draw.asm",
+      "original": "MxMaskDone",
+      "short": "FD_MXMSK"
+    },
+    {
+      "module": "shared/framebuffer-draw.asm",
+      "original": "@FbSetCell",
+      "short": "FD_FBSTC"
+    },
+    {
+      "module": "shared/framebuffer-draw.asm",
+      "original": "@FbOrRow",
+      "short": "FbOrRow"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "@RebuildFb",
+      "short": "CM_RBLDF"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "RebuildMonsDone",
+      "short": "PR_RBLDM"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "@RendGOverBack",
+      "short": "PR_RNDGV"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "RendGOverRow",
+      "short": "PR_RNDG3"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "RendGOverRedOff",
+      "short": "PR_RNDG2"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "RendGOverGrnOff",
+      "short": "PR_RNDG1"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "RendGOverBluOff",
+      "short": "PR_RNDG0"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "@RendLvlDoneBack",
+      "short": "PR_RNDL0"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "RendLvlDoneRow",
+      "short": "PR_RNDL1"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "RendLvlRedOff",
+      "short": "PR_RNDL3"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "RendLvlGrnOff",
+      "short": "PR_RNDL2"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "RendLvlBluOff",
+      "short": "PR_RNDLV"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "@RendWorldBack",
+      "short": "PR_RNDWR"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "RendWorldBackLp",
+      "short": "PR_RNDW0"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "@RendWorldRow",
+      "short": "PR_RNDW1"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "@WrWorldColors",
+      "short": "PR_WRWR1"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "WrWorldRedPath",
+      "short": "PR_WRWR4"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "WrWorldRedSet",
+      "short": "PR_WRWR5"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "WrWorldGrnPath",
+      "short": "PR_WRWR2"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "WrWorldGrnSet",
+      "short": "PR_WRWR3"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "WrWorldBluPath",
+      "short": "PR_WRWRL"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "WrWorldBluSet",
+      "short": "PR_WRWR0"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "@GetWallColor",
+      "short": "PR_GTWL0"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "GetWallCaught",
+      "short": "PR_GTWLL"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "GetWallDone",
+      "short": "PR_GTWL1"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "@WindowByteBc",
+      "short": "PR_WNDWB"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "WindowShiftLoop",
+      "short": "PR_WNDWS"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "WindowByteDone",
+      "short": "PR_WNDW0"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "@RendPwrPills",
+      "short": "PR_RNDP6"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "RendPwrPillLp",
+      "short": "PR_RNDP3"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "RendPwrPillNext",
+      "short": "PR_RNDP4"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "@RendPwrPillRow",
+      "short": "PR_RNDP5"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "RendPwrRowLoop",
+      "short": "PR_RNDP7"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "RendPwrRowNext",
+      "short": "PR_RNDP8"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "@RendPwrPillBc",
+      "short": "PR_RNDPW"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "@RendEnemyBack",
+      "short": "PR_RNDNM"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "RendEnFleeTmr",
+      "short": "PR_RNDNF"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "RendEnAtkTmr",
+      "short": "PR_RNDNT"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "RendEnemyFlee",
+      "short": "PR_RNDN0"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "@RendMonsRow",
+      "short": "PR_RNDMN"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "@RendEnemyIfRow",
+      "short": "PR_RNDN1"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "@RendPlyBack",
+      "short": "PR_RNDPL"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "RendPlyWhite",
+      "short": "PR_RNDP2"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "RendPlyCaught",
+      "short": "PR_RNDP0"
+    },
+    {
+      "module": "pacmo/render.asm",
+      "original": "@RendPlyRow",
+      "short": "PR_RNDP1"
+    },
+    {
+      "module": "shared/sound.asm",
+      "original": "@SndStart",
+      "short": "SndStart"
+    },
+    {
+      "module": "shared/sound.asm",
+      "original": "@SndService",
+      "short": "SS_SNDSR"
+    },
+    {
+      "module": "shared/sound.asm",
+      "original": "SndActive",
+      "short": "SS_SNDCT"
+    },
+    {
+      "module": "pacmo/sound.asm",
+      "original": "@PacSndPower",
+      "short": "PS_SNDPW"
+    },
+    {
+      "module": "pacmo/sound.asm",
+      "original": "@PacSndEatEnemy",
+      "short": "PS_SNDTN"
+    },
+    {
+      "module": "pacmo/sound.asm",
+      "original": "@PacSndCaught",
+      "short": "PS_SNDCG"
+    },
+    {
+      "module": "pacmo/sound.asm",
+      "original": "@PacSndLvlDone",
+      "short": "PS_SNDLV"
+    },
+    {
+      "module": "shared/hud.asm",
+      "original": "@HudScanDig",
+      "short": "SH_HDSCN"
+    },
+    {
+      "module": "shared/hud.asm",
+      "original": "HudScanSave",
+      "short": "SH_HDSC0"
+    },
+    {
+      "module": "shared/hud.asm",
+      "original": "@HudBlankDig",
+      "short": "SH_HDBLN"
+    },
+    {
+      "module": "shared/hud.asm",
+      "original": "HudBlankLp",
+      "short": "SH_HDBL0"
+    },
+    {
+      "module": "shared/hud.asm",
+      "original": "@HudWriteU16",
+      "short": "SH_HDWRT"
+    },
+    {
+      "module": "shared/hud.asm",
+      "original": "@HudDecDigit",
+      "short": "SH_HDDCD"
+    },
+    {
+      "module": "shared/hud.asm",
+      "original": "HudDecSub",
+      "short": "SH_HDDCS"
+    },
+    {
+      "module": "shared/hud.asm",
+      "original": "HudDecDone",
+      "short": "SH_HDDC0"
+    },
+    {
+      "module": "shared/hud.asm",
+      "original": "HudMaskTbl",
+      "short": "SH_HDMSK"
+    },
+    {
+      "module": "shared/hud.asm",
+      "original": "HudGlyphTbl",
+      "short": "SH_HDGLY"
+    },
+    {
+      "module": "pacmo/hud.asm",
+      "original": "@UpdScoreDisplay",
+      "short": "CM_UPDSC"
+    },
+    {
+      "module": "shared/lcd.asm",
+      "original": "@LcdBusy",
+      "short": "LcdBusy"
+    },
+    {
+      "module": "shared/lcd.asm",
+      "original": "LcdBusyLp",
+      "short": "SL_LCDBS"
+    },
+    {
+      "module": "shared/lcd.asm",
+      "original": "@LcdCmd",
+      "short": "LcdCmd"
+    },
+    {
+      "module": "shared/lcd.asm",
+      "original": "@LcdClear",
+      "short": "LcdClear"
+    },
+    {
+      "module": "shared/lcd.asm",
+      "original": "@LcdString",
+      "short": "SL_LCDST"
+    },
+    {
+      "module": "shared/lcd.asm",
+      "original": "@LcdScript",
+      "short": "SL_LCDS0"
+    },
+    {
+      "module": "shared/lcd.asm",
+      "original": "LcdScrDone",
+      "short": "SL_LCDSC"
+    },
+    {
+      "module": "shared/lcd.asm",
+      "original": "@LcdPutc",
+      "short": "LcdPutc"
+    },
+    {
+      "module": "shared/lcd.asm",
+      "original": "@LcdRowStr",
+      "short": "SL_LCDRW"
+    },
+    {
+      "module": "shared/lcd.asm",
+      "original": "@LcdPutcTbl",
+      "short": "SL_LCDPT"
+    },
+    {
+      "module": "pacmo/ui.asm",
+      "original": "@LcdShowPacSplash",
+      "short": "PU_LCDS5"
+    },
+    {
+      "module": "pacmo/ui.asm",
+      "original": "@LcdShowPacRun",
+      "short": "PU_LCDS4"
+    },
+    {
+      "module": "pacmo/ui.asm",
+      "original": "@LcdShowPacPause",
+      "short": "PU_LCDS3"
+    },
+    {
+      "module": "pacmo/ui.asm",
+      "original": "@LcdShowPower",
+      "short": "PU_LCDS6"
+    },
+    {
+      "module": "pacmo/ui.asm",
+      "original": "@LcdShowEatEnemy",
+      "short": "PU_LCDS1"
+    },
+    {
+      "module": "pacmo/ui.asm",
+      "original": "@LcdShowCaught",
+      "short": "PU_LCDSH"
+    },
+    {
+      "module": "pacmo/ui.asm",
+      "original": "@LcdShowPacOver",
+      "short": "PU_LCDS2"
+    },
+    {
+      "module": "pacmo/ui.asm",
+      "original": "@LcdShowComplete",
+      "short": "PU_LCDS0"
+    },
+    {
+      "module": "pacmo/ui.asm",
+      "original": "@LcdRefStatus",
+      "short": "PU_LCDR1"
+    },
+    {
+      "module": "pacmo/ui.asm",
+      "original": "@LcdRefLevel",
+      "short": "PU_LCDRF"
+    },
+    {
+      "module": "pacmo/ui.asm",
+      "original": "@LcdRefLives",
+      "short": "PU_LCDR0"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "LcdTextPacTitle",
+      "short": "PD_LCDTB"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "LcdTextPacStart",
+      "short": "PD_LCDTA"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "LcdTextPacKeys1",
+      "short": "PD_LCDT2"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "LcdTextPacKeys2",
+      "short": "PD_LCDT3"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "LcdTextPacRun",
+      "short": "PD_LCDT9"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "LcdTextPacPause",
+      "short": "PD_LCDT7"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "LcdTextPacPower",
+      "short": "PD_LCDT8"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "LcdTextPacEaten",
+      "short": "PD_LCDT1"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "LcdTextPacLevel",
+      "short": "PD_LCDT4"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "LcdTextPacLives",
+      "short": "PD_LCDT5"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "LcdTextPacCaught",
+      "short": "PD_LCDTX"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "LcdTextPacOver",
+      "short": "PD_LCDT6"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "LcdTextPacDone",
+      "short": "PD_LCDT0"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "LcdTextPacWait",
+      "short": "PD_LCDTC"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "PacLevelChars",
+      "short": "PD_LVLCH"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "ScriptPacSplash",
+      "short": "PD_SCRP6"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "ScriptPacRun",
+      "short": "PD_SCRP5"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "ScriptPacPause",
+      "short": "PD_SCRP3"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "ScriptPacPower",
+      "short": "PD_SCRP4"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "ScriptPacEaten",
+      "short": "PD_SCRP1"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "ScriptPacCaught",
+      "short": "PD_SCRPT"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "ScriptPacOver",
+      "short": "PD_SCRP2"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "ScriptPacDone",
+      "short": "PD_SCRP0"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "PacWorldRows",
+      "short": "PD_WRLDR"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "PacPowerPills",
+      "short": "PD_PWRPL"
+    },
+    {
+      "module": "pacmo/data.asm",
+      "original": "PacEnemySpawns",
+      "short": "PD_ENMYS"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "EnemyTimer",
+      "short": "PW_ENMYT"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "EnemyRespTimer",
+      "short": "PW_ENMYR"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "EnemyState",
+      "short": "PW_ENMYS"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "Enemy2Dir",
+      "short": "PW_ENMY2"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "Enemy2Timer",
+      "short": "PW_ENMY3"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "Enemy2RespTimer",
+      "short": "PW_ENMY0"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "Enemy2State",
+      "short": "PW_ENMY1"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "Enemy3Dir",
+      "short": "PW_ENMY4"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "Enemy3Timer",
+      "short": "PW_ENMY7"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "Enemy3RespTimer",
+      "short": "PW_ENMY5"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "Enemy3State",
+      "short": "PW_ENMY6"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "EnemyPeriodCur",
+      "short": "PW_ENMYP"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "MoveCooldown",
+      "short": "CM_MVCLD"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "PacSplashActive",
+      "short": "PW_SPLSH"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "PacPaused",
+      "short": "PW_PSDAU"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "HudScanIndex",
+      "short": "CM_HDSCN"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "SpeakerPort",
+      "short": "CM_SPKRP"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "SoundTimer",
+      "short": "CM_SNDTM"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "SndDivReload",
+      "short": "CM_SNDD0"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "SndDivCount",
+      "short": "CM_SNDDV"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "HudSegBuffer",
+      "short": "CM_HDSGB"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "FramePhase",
+      "short": "CM_FRMPH"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "RenderEatenPtr",
+      "short": "PW_RNDRT"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "PacPwrPillsEat",
+      "short": "PW_PWRPL"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "PacPowerTimer",
+      "short": "PW_PWRTM"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "PacPowerTimerLo",
+      "short": "PW_PWRT1"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "PacPowerTimerHi",
+      "short": "PW_PWRT0"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "PacRoundDone",
+      "short": "PW_RNDDN"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "PacPlayerCaught",
+      "short": "PW_PLYRC"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "PacGameOver",
+      "short": "PW_GMVRA"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "PacLvlDoneGate",
+      "short": "PW_LVLDN"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "PacLvlDoneLo",
+      "short": "PW_LVLD1"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "PacLvlDoneHi",
+      "short": "PW_LVLD0"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "PacGOverGate",
+      "short": "PW_GVRGT"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "PacGOverGateLo",
+      "short": "PW_GVRG1"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "PacGOverGateHi",
+      "short": "PW_GVRG0"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "Framebuffer",
+      "short": "CM_FRMBF"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "FramebufferBack",
+      "short": "CM_FRMB0"
+    },
+    {
+      "module": "pacmo/ram.asm",
+      "original": "PacEatenRows",
+      "short": "PW_ETNRW"
+    }
+  ]
+}

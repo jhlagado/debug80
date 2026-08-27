@@ -1,166 +1,105 @@
-PacWorldMax     .equ    14
-PacViewMax      .equ    7
-PacScanDwell    .equ   255
-PacMovePeriod   .equ   128
-PacEatenBytes   .equ  30
-PacPwrPillCount .equ 4
-PacPwrTimerSet  .equ 0x0300
-PacPwrWarnMask  .equ 0x20
-PacGOverTicks   .equ 0x0266
-PacLvlDoneTicks .equ 0x0300
-PacLivesStart   .equ 3
-PacScorePath    .equ 10
-PacScorePower   .equ 50
-PacScoreEnemy   .equ 200
-PacSndPowerLen  .equ 64
-PacSndPowerDiv  .equ 1
-PacSndEatEnLen  .equ 96
-PacSndEatEnDiv  .equ 4
-PacSndCaughtLen .equ 240
-PacSndCaughtDiv .equ 10
-PacSndDoneLen   .equ 112
-PacSndDoneDiv   .equ 2
-PacColorWall    .equ ColorBlue
-PacColorPath    .equ ColorGreen
-PacColorPlayer  .equ ColorYellow
-PacColorPwrPill .equ ColorWhite
-PacColorEnAtk   .equ ColorRed
-PacColorEnFlee  .equ ColorMagenta
-PacColorGOver   .equ ColorRed
-PacColorCaught  .equ ColorRed
-PacColorDone    .equ ColorWhite
-PacColorRound   .equ ColorWhite
-PacEnemyY       .equ 13
-PacEnemyMinX    .equ 1
-PacEnemyMaxX    .equ 13
-PacEnemyPeriod  .equ 24
-PacEnemyPerMin  .equ 10
-PacEnemyPerStep .equ 2
-PacEnemyRespPer .equ 72
-PacEnemyRespDiv .equ 3
-PacEnemyAtk     .equ 0
-PacEnemyFlee    .equ 1
-PacEnemyRespawn .equ 2
-PacMonsterCount .equ 3
-MonsterX        .equ 0
-MonsterY        .equ 1
-MonsterDir      .equ 2
-MonsterTimer    .equ 3
-MonRespTimer    .equ 4
-MonsterState    .equ 5
-MonsterSize     .equ 6
-PacDirUp        .equ    1
-PacDirDown      .equ    2
-PacDirLeft      .equ    3
-PacDirRight     .equ    4
+PD_LCDTB:
+        DB      "PACMO",0
 
-PacKey1         .equ 0x01
-PacKey2         .equ 0x02
-PacKey3         .equ 0x03
-PacKey6         .equ 0x06
+PD_LCDTA:
+        DB      "PRESS ANY KEY",0
 
-LcdTextPacTitle:
-        .db      "PACMO",0
+PD_LCDT2:
+        DB      "ARROWS OR 6/1/2/3",0
 
-LcdTextPacStart:
-        .db      "PRESS ANY KEY",0
+PD_LCDT3:
+        DB      "6 UP  2 DOWN",0
 
-LcdTextPacKeys1:
-        .db      "ARROWS OR 6/1/2/3",0
+PD_LCDT9:
+        DB      "PACMO RUNNING",0
 
-LcdTextPacKeys2:
-        .db      "6 UP  2 DOWN",0
+PD_LCDT7:
+        DB      "PACMO PAUSED",0
 
-LcdTextPacRun:
-        .db      "PACMO RUNNING",0
+PD_LCDT8:
+        DB      "POWER MODE",0
 
-LcdTextPacPause:
-        .db      "PACMO PAUSED",0
+PD_LCDT1:
+        DB      "ENEMY EATEN",0
 
-LcdTextPacPower:
-        .db      "POWER MODE",0
+PD_LCDT4:
+        DB      "LEVEL ",0
 
-LcdTextPacEaten:
-        .db      "ENEMY EATEN",0
+PD_LCDT5:
+        DB      "LIVES ",0
 
-LcdTextPacLevel:
-        .db      "LEVEL ",0
+PD_LCDTX:
+        DB      "PACMO CAUGHT",0
 
-LcdTextPacLives:
-        .db      "LIVES ",0
+PD_LCDT6:
+        DB      "GAME OVER",0
 
-LcdTextPacCaught:
-        .db      "PACMO CAUGHT",0
+PD_LCDT0:
+        DB      "LEVEL COMPLETE",0
 
-LcdTextPacOver:
-        .db      "GAME OVER",0
+PD_LCDTC:
+        DB      "WAIT...",0
 
-LcdTextPacDone:
-        .db      "LEVEL COMPLETE",0
+PD_LVLCH:
+        DB      "0123456789ABCDEF"
 
-LcdTextPacWait:
-        .db      "WAIT...",0
+PD_SCRP6:
+        DB      LcdRow1
+        DW      PD_LCDTB
+        DB      LcdRow2
+        DW      PD_LCDTA
+        DB      LcdRow3
+        DW      PD_LCDT2
+        DB      LcdRow4
+        DW      PD_LCDT3
+        DB      0
 
-PacLevelChars:
-        .db      "0123456789ABCDEF"
+PD_SCRP5:
+        DB      LcdRow1
+        DW      PD_LCDT9
+        DB      LcdRow2
+        DW      PD_LCDT4
+        DB      0
 
-ScriptPacSplash:
-        .db      LcdRow1
-        .dw      LcdTextPacTitle
-        .db      LcdRow2
-        .dw      LcdTextPacStart
-        .db      LcdRow3
-        .dw      LcdTextPacKeys1
-        .db      LcdRow4
-        .dw      LcdTextPacKeys2
-        .db      0
+PD_SCRP3:
+        DB      LcdRow1
+        DW      PD_LCDT7
+        DB      LcdRow2
+        DW      PD_LCDT4
+        DB      0
 
-ScriptPacRun:
-        .db      LcdRow1
-        .dw      LcdTextPacRun
-        .db      LcdRow2
-        .dw      LcdTextPacLevel
-        .db      0
+PD_SCRP4:
+        DB      LcdRow1
+        DW      PD_LCDT8
+        DB      LcdRow2
+        DW      PD_LCDT4
+        DB      0
 
-ScriptPacPause:
-        .db      LcdRow1
-        .dw      LcdTextPacPause
-        .db      LcdRow2
-        .dw      LcdTextPacLevel
-        .db      0
+PD_SCRP1:
+        DB      LcdRow1
+        DW      PD_LCDT1
+        DB      LcdRow2
+        DW      PD_LCDT4
+        DB      0
 
-ScriptPacPower:
-        .db      LcdRow1
-        .dw      LcdTextPacPower
-        .db      LcdRow2
-        .dw      LcdTextPacLevel
-        .db      0
+PD_SCRPT:
+        DB      LcdRow1
+        DW      PD_LCDTX
+        DB      0
 
-ScriptPacEaten:
-        .db      LcdRow1
-        .dw      LcdTextPacEaten
-        .db      LcdRow2
-        .dw      LcdTextPacLevel
-        .db      0
+PD_SCRP2:
+        DB      LcdRow1
+        DW      PD_LCDT6
+        DB      LcdRow2
+        DW      PD_LCDTA
+        DB      0
 
-ScriptPacCaught:
-        .db      LcdRow1
-        .dw      LcdTextPacCaught
-        .db      0
-
-ScriptPacOver:
-        .db      LcdRow1
-        .dw      LcdTextPacOver
-        .db      LcdRow2
-        .dw      LcdTextPacStart
-        .db      0
-
-ScriptPacDone:
-        .db      LcdRow1
-        .dw      LcdTextPacDone
-        .db      LcdRow2
-        .dw      LcdTextPacWait
-        .db      0
+PD_SCRP0:
+        DB      LcdRow1
+        DW      PD_LCDT0
+        DB      LcdRow2
+        DW      PD_LCDTC
+        DB      0
 
 ; 15-bit scrolling test bitmap. Bit 15 is world
 ; column 0; bit 1 is column 14.
@@ -168,22 +107,22 @@ ScriptPacDone:
 ; colliding maze yet.
 ; Each row is stored high byte first, low byte
 ; second for RendWorldBack.
-PacWorldRows:
-        .db      %11111111,%11111110
-        .db      %10000010,%00000010
-        .db      %10111010,%11101010
-        .db      %10001000,%00100010
-        .db      %11101011,%10101110
-        .db      %10000000,%10000010
-        .db      %10111110,%10111010
-        .db      %10000010,%00001010
-        .db      %10111011,%11101010
-        .db      %10001000,%00000010
-        .db      %11101110,%11101110
-        .db      %10000010,%00000010
-        .db      %10111010,%11101010
-        .db      %10000000,%00000010
-        .db      %11111111,%11111110
+PD_WRLDR:
+        DB      %11111111,%11111110
+        DB      %10000010,%00000010
+        DB      %10111010,%11101010
+        DB      %10001000,%00100010
+        DB      %11101011,%10101110
+        DB      %10000000,%10000010
+        DB      %10111110,%10111010
+        DB      %10000010,%00001010
+        DB      %10111011,%11101010
+        DB      %10001000,%00000010
+        DB      %11101110,%11101110
+        DB      %10000010,%00000010
+        DB      %10111010,%11101010
+        DB      %10000000,%00000010
+        DB      %11111111,%11111110
 
 ; Power-pill coordinates, stored as x,y pairs and
 ; terminated by 0xFF.
@@ -191,12 +130,12 @@ PacWorldRows:
 ; player Start and near broad
 ; maze regions so they are visible test landmarks
 ; before consumption exists.
-PacPowerPills:
-        .db      1,3
-        .db      13,3
-        .db      1,11
-        .db      13,11
-        .db      0xFF
+PD_PWRPL:
+        DB      1,3
+        DB      13,3
+        DB      1,11
+        DB      13,11
+        DB      $FF
 
 ; Enemy respawn candidates, stored as x,y pairs
 ; and terminated by 0xFF.
@@ -204,11 +143,11 @@ PacPowerPills:
 ; routine picks the entry
 ; with the largest Manhattan distance from the
 ; current player position.
-PacEnemySpawns:
-        .db      1,3
-        .db      13,3
-        .db      1,11
-        .db      13,11
-        .db      7,1
-        .db      7,13
-        .db      0xFF
+PD_ENMYS:
+        DB      1,3
+        DB      13,3
+        DB      1,11
+        DB      13,11
+        DB      7,1
+        DB      7,13
+        DB      $FF

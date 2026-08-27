@@ -8,59 +8,59 @@
 ; un-pause via HandleUnpause.
 ;!      out       carry,zero
 ;!      clobbers  A,BC,DE,HL,IX,IY
-@PollInput:
-        LD      C,ApiScanKeys
-        RST     0x10
-        JR      NZ,ClearInputRpt
+CM_PLLNP:
+        LD      C,SC_APSCN
+        RST     $10
+        JR      NZ,CM_CLRNP
         LD      E,A
-        JR      C,KeyNewPress
+        JR      C,TN_KYNWP
         LD      A,E
         CP      KeyPause
-        JP      Z,ClearInputRpt
+        JP      Z,CM_CLRNP
         LD      A,(Paused)
         OR      A
-        JR      NZ,ClearInputRpt
+        JR      NZ,CM_CLRNP
         LD      A,E
-        CP      KeyRotateCcw
-        JR      Z,ClearInputRpt
-        CP      KeyRotateCw
-        JR      Z,ClearInputRpt
-        JR      HandleDirKey
+        CP      SC_KYRT0
+        JR      Z,CM_CLRNP
+        CP      SC_KYRT1
+        JR      Z,CM_CLRNP
+        JR      CM_HNDLD
 
-KeyNewPress:
+TN_KYNWP:
         LD      A,(Paused)
         OR      A
-        JP      NZ,HandleUnpause
+        JP      NZ,CM_HNDLN
         LD      A,E
         CP      KeyPause
-        JP      Z,HandlePauseKey
+        JP      Z,CM_HNDLP
         LD      A,E
-        CP      KeyRotate
-        JP      Z,HandleKeyDrop
-        CP      KeyRotateCcw
-        JP      Z,HandleCcwPress
-        CP      KeyRotateCw
-        JP      Z,HandleRotPress
-        CP      TetKeyRotAlt
-        JP      Z,HandleRotPress
+        CP      SC_KYRTT
+        JP      Z,TN_HNDLK
+        CP      SC_KYRT0
+        JP      Z,TN_HNDLC
+        CP      SC_KYRT1
+        JP      Z,TN_HNDLR
+        CP      TC_TTKY0
+        JP      Z,TN_HNDLR
         ; fall through
 
-HandleDirKey:
+CM_HNDLD:
         LD      A,E
         CP      KeyRight
-        JP      Z,HandleKeyRight
-        CP      TetKeyRightAlt
-        JP      Z,HandleKeyRight
+        JP      Z,TN_HNDL1
+        CP      TC_TTKYR
+        JP      Z,TN_HNDL1
         CP      KeyLeft
-        JP      Z,HandleKeyLeft
-        CP      TetKeyLeftAlt
-        JP      Z,HandleKeyLeft
-        CP      KeyRotate
-        JP      Z,HandleKeyDrop
+        JP      Z,TN_HNDL0
+        CP      TC_TTKYL
+        JP      Z,TN_HNDL0
+        CP      SC_KYRTT
+        JP      Z,TN_HNDLK
         CP      KeyDrop
-        JP      Z,HandleKeyDrop
-        CP      TetKeyDropAlt
-        JP      Z,HandleKeyDrop
+        JP      Z,TN_HNDLK
+        CP      TC_TTKYD
+        JP      Z,TN_HNDLK
 
 ; ClearInputRpt —
 ; Reset repeat state after a non-repeating event.
@@ -68,13 +68,13 @@ HandleDirKey:
 ; both LastKey and DropLockout.
 ;!      out       carry,zero
 ;!      clobbers  A
-@ClearInputRpt:
-        LD      A,MovePeriod
-        LD      (MoveCooldown),A
+CM_CLRNP:
+        LD      A,TC_MVPRD
+        LD      (CM_MVCLD),A
         LD      A,NoKey
         LD      (LastKey),A
         XOR     A
-        LD      (DropLockout),A
+        LD      (TW_DRPLC),A
         RET
 
 ; WaitGOverGate —
@@ -84,19 +84,19 @@ HandleDirKey:
 ; zero, then falls through to PollGOverRestart.
 ;!      out       carry,zero
 ;!      clobbers  A,BC,DE,HL,IX,IY
-@WaitGOverGate:
-        LD      HL,(GOverKeyGateLo)
+TN_WTGVR:
+        LD      HL,(TW_GVRK1)
         LD      A,H
         OR      L
-        JP      Z,PollGOverRestart
+        JP      Z,TN_PLLGV
 
         DEC     HL
-        LD      (GOverKeyGateLo),HL
+        LD      (TW_GVRK1),HL
         LD      A,H
         OR      L
         RET     NZ
 
-        CALL    SndTrigReady
+        CALL    TS_SNDT2
         RET
 
 ; PollGOverRestart —
@@ -104,23 +104,23 @@ HandleDirKey:
 ; Carry set from scanKeys means a fresh key press;
 ; that path jumps to InitRestart.
 ;!      clobbers  A,BC,DE,HL,IX,IY
-@PollGOverRestart:
-        LD      C,ApiScanKeys
-        RST     0x10
+TN_PLLGV:
+        LD      C,SC_APSCN
+        RST     $10
         RET     NC
-        JP      InitRestart
+        JP      TI_INTRS
 
 ; WaitKeyRelease —
 ; Clear InputLockout once no key is being held.
 ; Prevents accidental input at spawn and start.
 ;!      out       carry,zero
 ;!      clobbers  A,BC,DE,HL,IX,IY
-@WaitKeyRelease:
-        LD      C,ApiScanKeys
-        RST     0x10
+TN_WTKYR:
+        LD      C,SC_APSCN
+        RST     $10
         RET     Z
         XOR     A
-        LD      (InputLockout),A
+        LD      (TW_INPTL),A
         RET
 
 ; HandlePauseKey —
@@ -128,62 +128,62 @@ HandleDirKey:
 ; ClearInputRpt resets key-repeat state afterward.
 ;!      out       HL,carry,zero
 ;!      clobbers  A
-@HandlePauseKey:
+CM_HNDLP:
         LD      A,(Paused)
         XOR     1
         LD      (Paused),A
         OR      A
-        JR      Z,PauseShowRun
-        CALL    LcdShowPaused
-        JP      ClearInputRpt
-PauseShowRun:
-        CALL    LcdShowRunning
-        JP      ClearInputRpt
+        JR      Z,TN_PSSHW
+        CALL    TU_LCDS1
+        JP      CM_CLRNP
+TN_PSSHW:
+        CALL    TU_LCDS2
+        JP      CM_CLRNP
 
 ; HandleUnpause —
 ; Clear pause and restore the running LCD banner.
 ; ClearInputRpt resets key-repeat state afterward.
 ;!      out       HL,carry,zero
 ;!      clobbers  A
-@HandleUnpause:
+CM_HNDLN:
         XOR     A
         LD      (Paused),A
-        CALL    LcdShowRunning
-        JP      ClearInputRpt
+        CALL    TU_LCDS2
+        JP      CM_CLRNP
 
 ; HandleRotPress —
 ; Dispatch clockwise rotation (CW).
 ; Calls RotateCw, then resets key-repeat state.
 ;!      out       carry,zero
 ;!      clobbers  A,C,DE,HL
-@HandleRotPress:
+TN_HNDLR:
         CALL    RotateCw
-        JP      ClearInputRpt
+        JP      CM_CLRNP
 
 ; HandleCcwPress —
 ; Dispatch counter-clockwise rotation (CCW).
 ; Calls RotateLeft, then resets key-repeat state.
 ;!      out       carry,zero
 ;!      clobbers  A,C,DE,HL
-@HandleCcwPress:
-        CALL    RotateLeft
-        JP      ClearInputRpt
+TN_HNDLC:
+        CALL    TP_RTTLF
+        JP      CM_CLRNP
 
 ; HandleKeyRight —
 ; A contains KeyRight for HandleHeldDir.
 ;!      out       carry,zero
 ;!      clobbers  A,BC,DE,HL
-@HandleKeyRight:
+TN_HNDL1:
         LD      A,KeyRight
-        JP      HandleHeldDir
+        JP      TN_HNDLH
 
 ; HandleKeyLeft —
 ; A contains KeyLeft for HandleHeldDir.
 ;!      out       carry,zero
 ;!      clobbers  A,BC,DE,HL
-@HandleKeyLeft:
+TN_HNDL0:
         LD      A,KeyLeft
-        JP      HandleHeldDir
+        JP      TN_HNDLH
 
 ; HandleKeyDrop —
 ; Gate soft-drop on DropLockout then dispatch.
@@ -192,12 +192,12 @@ PauseShowRun:
 ; A contains KeyDrop for HandleHeldDir.
 ;!      out       carry,zero
 ;!      clobbers  A,BC,DE,HL
-@HandleKeyDrop:
-        LD      A,(DropLockout)
+TN_HNDLK:
+        LD      A,(TW_DRPLC)
         OR      A
         RET     NZ
         LD      A,KeyDrop
-        JP      HandleHeldDir
+        JP      TN_HNDLH
 
 ; HandleHeldDir —
 ; Manage autorepeat for left, right, and drop.
@@ -208,35 +208,35 @@ PauseShowRun:
 ;!      in        A
 ;!      out       carry,zero
 ;!      clobbers  A,BC,DE,HL
-@HandleHeldDir:
+TN_HNDLH:
         LD      E,A
         LD      A,(LastKey)
         CP      E
-        JR      Z,HeldSameKey
+        JR      Z,CM_HLDSM
 
         LD      A,E
         LD      (LastKey),A
         LD      A,1
-        LD      (MoveCooldown),A
+        LD      (CM_MVCLD),A
 
-HeldSameKey:
-        LD      A,(MoveCooldown)
+CM_HLDSM:
+        LD      A,(CM_MVCLD)
         DEC     A
-        LD      (MoveCooldown),A
+        LD      (CM_MVCLD),A
         RET     NZ
 
         LD      A,E
         CP      KeyDrop
-        JR      NZ,HeldDirNormal
-        LD      A,DropPeriod
-        JR      HeldDirRateSet
-HeldDirNormal:
-        LD      A,MovePeriod
-HeldDirRateSet:
-        LD      (MoveCooldown),A
+        JR      NZ,TN_HLDDR
+        LD      A,TC_DRPPR
+        JR      TN_HLDD0
+TN_HLDDR:
+        LD      A,TC_MVPRD
+TN_HLDD0:
+        LD      (CM_MVCLD),A
         LD      A,E
         CP      KeyRight
-        JP      Z,MoveRight
+        JP      Z,TP_MVRGH
         CP      KeyLeft
         JP      Z,MoveLeft
         CP      KeyDrop

@@ -8,7 +8,7 @@
 ; Delegates scan-state advance to ScanNext.
 ;!      out       carry
 ;!      clobbers  A,BC,DE,HL
-@ScanTick:
+ScanTick:
         XOR     A
         OUT     (PortRow),A
 
@@ -19,7 +19,7 @@
         INC     HL
 
         LD      A,(HL)
-        OUT     (PortGreen),A
+        OUT     (SC_PRTGR),A
         INC     HL
 
         LD      A,(HL)
@@ -28,8 +28,8 @@
         LD      A,(ScanMask)
         OUT     (PortRow),A
 
-        CALL    SndService
-        CALL    HudScanDig
+        CALL    SS_SNDSR
+        CALL    SH_HDSCN
         CALL    ScanNext
         RET
 
@@ -41,23 +41,23 @@
 ; source; it is not used for pacing elsewhere.
 ;!      out       carry
 ;!      clobbers  A,DE,HL
-@ScanNext:
+ScanNext:
         LD      A,(ScanMask)
         RLC     A
         LD      (ScanMask),A
 
         LD      HL,(ScanPtr)
-        LD      DE,BytesPerRow
+        LD      DE,SC_BYTSP
         ADD     HL,DE
 
-        CP      ScanMaskStart
-        JR      NZ,ScanSavePtr
+        CP      SC_SCNMS
+        JR      NZ,ST_SCNSV
 
-        LD      HL,Framebuffer
-        LD      A,(FramePhase)
+        LD      HL,CM_FRMBF
+        LD      A,(CM_FRMPH)
         INC     A
-        LD      (FramePhase),A
+        LD      (CM_FRMPH),A
 
-ScanSavePtr:
+ST_SCNSV:
         LD      (ScanPtr),HL
         RET

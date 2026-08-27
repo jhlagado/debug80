@@ -5,12 +5,12 @@
 ; Spin until the HD44780 busy flag clears.
 ; AF is preserved with PUSH/POP.
 ;!      in        A
-@LcdBusy:
+LcdBusy:
         PUSH    AF
-LcdBusyLp:
-        IN      A,(PortLcdInst)
+SL_LCDBS:
+        IN      A,(SC_PRTL0)
         RLCA
-        JR      C,LcdBusyLp
+        JR      C,SL_LCDBS
         POP     AF
         RET
 
@@ -18,11 +18,11 @@ LcdBusyLp:
 ; Wait for LCD ready then send B as an
 ; instruction byte to PortLcdInst.
 ;!      in        B
-@LcdCmd:
+LcdCmd:
         PUSH    AF
         CALL    LcdBusy
         LD      A,B
-        OUT     (PortLcdInst),A
+        OUT     (SC_PRTL0),A
         POP     AF
         RET
 
@@ -31,8 +31,8 @@ LcdBusyLp:
 ; Cursor homes to position 0 after the command.
 ; B contains the command byte for LcdCmd.
 ;!      clobbers  B
-@LcdClear:
-        LD      B,0x01
+LcdClear:
+        LD      B,$01
         JP      LcdCmd
 
 ; LcdString —
@@ -42,14 +42,14 @@ LcdBusyLp:
 ;!      in        HL
 ;!      out       HL,carry
 ;!      clobbers  A
-@LcdString:
+SL_LCDST:
         LD      A,(HL)
         INC     HL
         OR      A
         RET     Z
         CALL    LcdBusy
-        OUT     (PortLcdData),A
-        JR      LcdString
+        OUT     (SC_PRTLC),A
+        JR      SL_LCDST
 
 ; LcdScript —
 ; Execute an LCD screen script from ROM.
@@ -60,28 +60,28 @@ LcdBusyLp:
 ;!      in        HL
 ;!      out       carry
 ;!      clobbers  A
-@LcdScript:
+SL_LCDS0:
         PUSH    BC
         PUSH    DE
         PUSH    HL
-        EX      DE,HL                   ; DE = script cursor
+        EX      DE,HL ; DE = script cursor
         CALL    LcdClear
 LcdScrLp:
-        LD      A,(DE)                  ; row cmd (0 = end of script)
+        LD      A,(DE) ; row cmd (0 = end of script)
         OR      A
-        JR      Z,LcdScrDone
+        JR      Z,SL_LCDSC
         LD      B,A
         INC     DE
         CALL    LcdCmd
-        LD      A,(DE)                  ; text ptr lo
+        LD      A,(DE) ; text ptr lo
         LD      L,A
         INC     DE
-        LD      A,(DE)                  ; text ptr hi
+        LD      A,(DE) ; text ptr hi
         LD      H,A
         INC     DE
-        CALL    LcdString
+        CALL    SL_LCDST
         JR      LcdScrLp
-LcdScrDone:
+SL_LCDSC:
         POP     HL
         POP     DE
         POP     BC
@@ -91,11 +91,11 @@ LcdScrDone:
 ; Write one character to the LCD at the current
 ; cursor position.
 ;!      in        A
-@LcdPutc:
+LcdPutc:
         PUSH    AF
         CALL    LcdBusy
         POP     AF
-        OUT     (PortLcdData),A
+        OUT     (SC_PRTLC),A
         RET
 
 ; LcdRowStr —
@@ -105,9 +105,9 @@ LcdScrDone:
 ;!      in        B,HL
 ;!      out       HL,carry
 ;!      clobbers  A
-@LcdRowStr:
+SL_LCDRW:
         CALL    LcdCmd
-        JP      LcdString
+        JP      SL_LCDST
 
 ; LcdPutcTbl —
 ; Write the byte at DE+A to the LCD cursor.
@@ -115,7 +115,7 @@ LcdScrDone:
 ; A contains the table index; DE points to the table.
 ;!      in        A,DE
 ;!      clobbers  A,HL
-@LcdPutcTbl:
+SL_LCDPT:
         LD      L,A
         LD      H,0
         ADD     HL,DE

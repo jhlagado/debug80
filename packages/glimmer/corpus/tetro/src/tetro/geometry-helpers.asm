@@ -2,7 +2,7 @@
 ; Load PendingX/Y into DE for collision probes.
 ;!      out       DE
 ;!      clobbers  A
-@LoadDePending:
+TG_LDDPN:
         LD      A,(PendingX)
         LD      D,A
         LD      A,(PendingY)
@@ -17,15 +17,15 @@
 ;!      in        A
 ;!      out       A
 ;!      clobbers  C
-@ShiftRowMask:
+TG_SHFT1:
         LD      C,A
-        LD      A,(ShiftCount)
+        LD      A,(TW_SHFTC)
         OR      A
-        JR      Z,ShiftRowDone
-ShiftRowLoop:
+        JR      Z,TG_SHFTR
+TG_SHFT0:
         SRL     C
         DEC     A
-        JR      NZ,ShiftRowLoop
-ShiftRowDone:
+        JR      NZ,TG_SHFT0
+TG_SHFTR:
         LD      A,C
         RET

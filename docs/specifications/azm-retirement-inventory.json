@@ -1,15 +1,4 @@
 {
   "schema": "debug80-azm-retirement/v1",
-  "targets": [
-    {
-      "project": "packages/glimmer/corpus/tetro/debug80.json",
-      "target": "pacmo",
-      "blocker": "The source exports @Start and interleaves textual includes with executable code; migration requires a byte-preserving multipart reorganization and shortened identifiers."
-    },
-    {
-      "project": "packages/glimmer/corpus/tetro/debug80.json",
-      "target": "tetro",
-      "blocker": "The source exports @Start and interleaves textual includes with executable code; migration requires a byte-preserving multipart reorganization and shortened identifiers."
-    }
-  ]
+  "targets": []
 }

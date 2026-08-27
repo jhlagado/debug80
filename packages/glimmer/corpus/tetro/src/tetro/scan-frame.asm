@@ -10,14 +10,14 @@
 ; through ScanTick. The matrix is blank on return.
 ;!      out       carry
 ;!      clobbers  A,BC,DE,HL
-@ScanFrame:
+CM_SCNFR:
         LD      B,RowCount
-ScanFrameLp:
+CM_SCNF0:
         PUSH    BC
         CALL    ScanTick
-        CALL    ScanDwell
+        CALL    CM_SCNDW
         POP     BC
-        DJNZ    ScanFrameLp
+        DJNZ    CM_SCNF0
         XOR     A
         OUT     (PortRow),A
         RET
@@ -25,8 +25,8 @@ ScanFrameLp:
 ; ScanDwell —
 ; Fixed visible-row dwell delay.
 ;!      clobbers  B
-ScanDwell:
-        LD      B,ScanDwellPeriod
-ScanDwellLp:
-        DJNZ    ScanDwellLp
+CM_SCNDW:
+        LD      B,TC_SCNDW
+CM_SCND0:
+        DJNZ    CM_SCND0
         RET

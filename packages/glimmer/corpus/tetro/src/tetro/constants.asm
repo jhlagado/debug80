@@ -3,41 +3,41 @@
 ; can share hardware/display
 ; constants without inheriting Tetro's movement,
 ; gravity, scoring, or sounds.
-MovePeriod      .equ     128
-DropPeriod      .equ     1
-ScanDwellPeriod .equ     255
-TetKeyLeftAlt   .equ 0x01
-TetKeyDropAlt   .equ 0x02
-TetKeyRightAlt  .equ 0x03
-TetKeyRotAlt    .equ 0x06
+TC_MVPRD      EQU     128
+TC_DRPPR      EQU     1
+TC_SCNDW EQU     255
+TC_TTKYL   EQU $01
+TC_TTKYD   EQU $02
+TC_TTKYR  EQU $03
+TC_TTKY0    EQU $06
 ; Decremented once per full frame. Larger = slower
 ; fall.
-GravityPeriod   .equ     32
-GravPeriodStep1 .equ 28
-GravScore1Hi    .equ 0x07       ; 2000 decimal
-GravScore1Lo    .equ 0xD0
-LineClearHold   .equ    24
+TC_GRVTY   EQU     32
+TC_GRVPR EQU 28
+TC_GRVSC    EQU $07 ; 2000 decimal
+TC_GRVS0    EQU $D0
+TC_LNCLR   EQU    24
 ; Full frames before PRESS ANY KEY during GameOver;
 ; tuned down from the old scan-pass counter.
-GOverGateTicks  .equ  0x0180
+TC_GVRGT  EQU  $0180
 
-RngSeedInit     .equ     0x5A
-XMin            .equ     0
-YMax            .equ     7
-SpawnY          .equ     0xFD
-PieceCount      .equ     7
+TC_RNGSD     EQU     $5A
+XMin            EQU     0
+YMax            EQU     7
+SpawnY          EQU     $FD
+TC_PCCNT      EQU     7
 
-SoundRotateLen  .equ   24
-SoundRotateDiv  .equ   2
-SoundLockLen    .equ     32
-SoundLockDiv    .equ     4
-SoundClearLen   .equ    72
-SoundClearDiv   .equ    2
+TC_SNDR1  EQU   24
+TC_SNDRT  EQU   2
+TC_SNDL0    EQU     32
+TC_SNDLC    EQU     4
+TC_SNDC0   EQU    72
+TC_SNDCL   EQU    2
 ; Game over  noticeably longer tone than clears;
 ; DIV sets half-period in scan ticks.
-SndGOverLen     .equ 232
-SndGOverDiv     .equ 8
+TC_SNDG0     EQU 232
+TC_SNDGV     EQU 8
 ; When key gate opens (PRESS ANY KEY window
 ; starts); short higher chirp.
-SndReadyLen     .equ    36
-SndReadyDiv  .equ    3
+TC_SNDR0     EQU    36
+TC_SNDRD  EQU    3

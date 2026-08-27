@@ -5,12 +5,12 @@
 ; Use for first launch only; restart uses
 ; InitRestart.
 ;!      clobbers  A,BC,DE,HL
-@InitState:
-        CALL    InitStateBase
+CM_INTST:
+        CALL    TI_INTST
         LD      A,1
-        LD      (SplashTimer),A
-        CALL    LcdShowSplash
-        JP      RebuildFb
+        LD      (TW_SPLSH),A
+        CALL    TU_LCDS3
+        JP      CM_RBLDF
 
 ; InitRestart —
 ; Restart entry point (after game-over).
@@ -19,16 +19,16 @@
 ; Skips the splash screen; RNG state is preserved
 ; from when the seed was set at splash time.
 ;!      clobbers  A,BC,DE,HL
-@InitRestart:
-        CALL    InitStateBase
+TI_INTRS:
+        CALL    TI_INTST
         XOR     A
-        LD      (SplashTimer),A
-        CALL    RngNextPiece
-        LD      (NextPieceIndex),A
-        CALL    SpawnActPiece
-        CALL    UpdScoreDisplay
-        CALL    LcdShowRunning
-        JP      RebuildFb
+        LD      (TW_SPLSH),A
+        CALL    TP_RNGN1
+        LD      (TW_NXTPC),A
+        CALL    TP_SPWNC
+        CALL    CM_UPDSC
+        CALL    TU_LCDS2
+        JP      CM_RBLDF
 
 ; InitStateBase —
 ; Zero or reset all mutable play-state variables.
@@ -36,47 +36,47 @@
 ; game flags, resets score, initialises scan
 ; state, and clears the board and HUD buffer.
 ;!      clobbers  A,B,HL
-@InitStateBase:
-        LD      A,MovePeriod
-        LD      (MoveCooldown),A
-        LD      A,GravityPeriod
-        LD      (CurGravPeriod),A
-        LD      (GravityCooldown),A
+TI_INTST:
+        LD      A,TC_MVPRD
+        LD      (CM_MVCLD),A
+        LD      A,TC_GRVTY
+        LD      (TW_CRGRV),A
+        LD      (TW_GRVTY),A
 
         XOR     A
         LD      (GameOver),A
         LD      HL,0
-        LD      (GOverKeyGateLo),HL
-        LD      (ActPieceEnabled),A
-        LD      (ClearPending),A
-        LD      (ClearMask),A
-        LD      (ClearTimer),A
-        LD      (DropLockout),A
-        LD      (FramePhase),A
+        LD      (TW_GVRK1),HL
+        LD      (TW_ACTPC),A
+        LD      (TW_CLRPN),A
+        LD      (TW_CLRMS),A
+        LD      (TW_CLRTM),A
+        LD      (TW_DRPLC),A
+        LD      (CM_FRMPH),A
         LD      (Paused),A
-        LD      (CurrentRotation),A
-        LD      (CurPieceIndex),A
-        LD      (NextPieceIndex),A
-        LD      (LinesClearTotal),A
+        LD      (TW_CRRNT),A
+        LD      (TW_CRPCN),A
+        LD      (TW_NXTPC),A
+        LD      (TW_LNSCL),A
         LD      (ScoreLo),A
         LD      (ScoreHi),A
         LD      A,1
-        LD      (InputLockout),A
+        LD      (TW_INPTL),A
         LD      A,NoKey
         LD      (LastKey),A
         XOR     A
-        LD      (HudScanIndex),A
-        LD      (SpeakerPort),A
-        LD      (SoundTimer),A
-        LD      (SndDivReload),A
-        LD      (SndDivCount),A
+        LD      (CM_HDSCN),A
+        LD      (CM_SPKRP),A
+        LD      (CM_SNDTM),A
+        LD      (CM_SNDD0),A
+        LD      (CM_SNDDV),A
 
-        LD      A,ScanMaskStart
+        LD      A,SC_SCNMS
         LD      (ScanMask),A
 
-        LD      HL,Framebuffer
+        LD      HL,CM_FRMBF
         LD      (ScanPtr),HL
 
-        CALL    ClearBoard
-        CALL    HudBlankDig
+        CALL    TR_CLRBR
+        CALL    SH_HDBLN
         RET

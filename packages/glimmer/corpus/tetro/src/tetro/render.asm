@@ -5,27 +5,27 @@
 ; Clears back-buffer, renders board then piece,
 ; then copies to the live Framebuffer (JP).
 ;!      clobbers  A,BC,DE,HL
-@RebuildFb:
-        CALL    FbClearAll
-        CALL    RendBoardBack
-        CALL    RendActBack
-        JP      FbCopyAll
+CM_RBLDF:
+        CALL    FC_FBCLR
+        CALL    TR_RNDBR
+        CALL    TR_RNDCT
+        JP      FC_FBCPY
 
 ; ClearBoard —
 ; Zero BoardRows and all three colour planes.
 ; Sets BoardEmpty=1 after clearing.
 ; Clears RowCount*4 bytes starting at BoardRows.
 ;!      clobbers  A,B,HL
-@ClearBoard:
-        LD      HL,BoardRows
+TR_CLRBR:
+        LD      HL,TW_BRDRW
         LD      B,RowCount * 4
         XOR     A
-ClearBoardLoop:
+TR_CLRB0:
         LD      (HL),A
         INC     HL
-        DJNZ    ClearBoardLoop
+        DJNZ    TR_CLRB0
         LD      A,1
-        LD      (BoardEmpty),A
+        LD      (TW_BRDMP),A
         RET
 
 ; RendBoardBack —
@@ -37,19 +37,19 @@ ClearBoardLoop:
 ; Rows set in ClearMask flash white (all planes
 ; forced to 0xFF) during the line-clear hold.
 ;!      clobbers  A
-@RendBoardBack:
+TR_RNDBR:
         PUSH    BC
         PUSH    DE
         PUSH    HL
-        LD      HL,FramebufferBack
+        LD      HL,CM_FRMB0
         LD      B,RowCount
         LD      C,0
-RenderBoardRow:
+TR_RNDRB:
         LD      E,C
         LD      D,0
         LD      A,(GameOver)
         OR      A
-        JR      NZ,RendBoardGOver
+        JR      NZ,TR_RNDB2
 
         PUSH    HL
         LD      HL,BoardRed
@@ -60,7 +60,7 @@ RenderBoardRow:
         INC     HL
 
         PUSH    HL
-        LD      HL,BoardGreen
+        LD      HL,TW_BRDGR
         ADD     HL,DE
         LD      A,(HL)
         POP     HL
@@ -68,18 +68,18 @@ RenderBoardRow:
         INC     HL
 
         PUSH    HL
-        LD      HL,BoardBlue
+        LD      HL,TW_BRDBL
         ADD     HL,DE
         LD      A,(HL)
         POP     HL
         LD      (HL),A
         INC     HL
         INC     HL
-        JR      RendBoardFx
+        JR      TR_RNDB1
 
-RendBoardGOver:
+TR_RNDB2:
         PUSH    HL
-        LD      HL,BoardRows
+        LD      HL,TW_BRDRW
         ADD     HL,DE
         LD      A,(HL)
         POP     HL
@@ -92,24 +92,24 @@ RendBoardGOver:
         INC     HL
         INC     HL
 
-RendBoardFx:
-        LD      A,(ClearPending)
+TR_RNDB1:
+        LD      A,(TW_CLRPN)
         OR      A
-        JR      Z,RendBoardNext
+        JR      Z,TR_RNDB3
         PUSH    HL
         LD      H,0
         LD      L,C
-        LD      DE,RowBitTable
+        LD      DE,TD_RWBTT
         ADD     HL,DE
-        LD      A,(ClearMask)
+        LD      A,(TW_CLRMS)
         AND     (HL)
         POP     HL
-        JR      Z,RendBoardNext
+        JR      Z,TR_RNDB3
         DEC     HL
         DEC     HL
         DEC     HL
         DEC     HL
-        LD      A,0xFF
+        LD      A,$FF
         LD      (HL),A
         INC     HL
         LD      (HL),A
@@ -117,10 +117,10 @@ RendBoardFx:
         LD      (HL),A
         INC     HL
         INC     HL
-RendBoardNext:
+TR_RNDB3:
         INC     C
-        DJNZ    RenderBoardRow
-RendBoardExit:
+        DJNZ    TR_RNDRB
+TR_RNDB0:
         POP     HL
         POP     DE
         POP     BC
@@ -132,49 +132,49 @@ RendBoardExit:
 ; Uses CurPiecePtr bitmap, PlayerX/Y position,
 ; and CurPieceColor for selecting colour planes.
 ;!      clobbers  A
-@RendActBack:
-        LD      A,(ActPieceEnabled)
+TR_RNDCT:
+        LD      A,(TW_ACTPC)
         OR      A
         RET     Z
         PUSH    BC
         PUSH    DE
         PUSH    HL
         LD      A,(PlayerX)
-        LD      (ShiftCount),A
+        LD      (TW_SHFTC),A
         LD      A,(PlayerY)
         LD      L,A
         LD      H,0
-        LD      DE,(CurPiecePtr)
+        LD      DE,(TW_CRPCP)
         LD      B,4
 
-RenderShapeRow:
+TR_RNDRS:
         LD      A,(DE)
-        CALL    ShiftRowMask          ; returns A = shifted mask
+        CALL    TG_SHFT1 ; returns A = shifted mask
         LD      C,A
-        OR      A                       ; test A; C retains mask for FbOrRow
-        JR      Z,RendShapeNext
+        OR      A ; test A; C retains mask for FbOrRow
+        JR      Z,TR_RNDSH
         BIT     7,L
-        JR      NZ,RendShapeNext
+        JR      NZ,TR_RNDSH
         LD      A,L
         CP      RowCount
-        JR      NC,RendShapeNext
+        JR      NC,TR_RNDSH
         PUSH    HL
         PUSH    DE
         ADD     A,A
         ADD     A,A
         LD      E,A
         LD      D,0
-        LD      HL,FramebufferBack
+        LD      HL,CM_FRMB0
         ADD     HL,DE
-        LD      A,(CurPieceColor)
+        LD      A,(TW_CRPCC)
         CALL    FbOrRow
         POP     DE
         POP     HL
-RendShapeNext:
+TR_RNDSH:
         INC     DE
         INC     HL
-        DJNZ    RenderShapeRow
-RendActExit:
+        DJNZ    TR_RNDRS
+TR_RNDC0:
         POP     HL
         POP     DE
         POP     BC

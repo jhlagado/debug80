@@ -106,21 +106,22 @@ Movement repeats slowly while held; tapping moves faster than waiting for repeat
 
 ## Build
 
-Requires [AZM](https://github.com/jhlagado/AZM). Assemble from the repository root; `.include` paths are relative to each main source file.
+Requires [Atom](https://www.npmjs.com/package/atom-z80). Assemble from the
+repository root. Atom resolves the leading `%INCLUDE` directives relative to
+each source file and keeps every file distinct in diagnostics and debug maps.
 
 ```bash
 mkdir -p build
-azm --type hex --output build/tetro.hex src/tetro/tetro.main.asm
-azm --type bin --output build/tetro.bin src/tetro/tetro.main.asm
-azm --type hex --output build/pacmo.hex src/pacmo/pacmo.main.asm
-azm --type bin --output build/pacmo.bin src/pacmo/pacmo.main.asm
+atom src/tetro/tetro.main.asm build/tetro.hex build/tetro.bin
+atom src/pacmo/pacmo.main.asm build/pacmo.hex build/pacmo.bin
 ```
 
 The generated files under `build/` are outputs, not source.
 
 ## Run
 
-Load the assembled program at `$4000`, matching the `ORG` in [src/tetro/tetro.main.asm](src/tetro/tetro.main.asm) or [src/pacmo/pacmo.main.asm](src/pacmo/pacmo.main.asm), then run:
+Load the assembled program at `$4000`, matching the `ORG` in each game's
+`main-loop.asm`, then run:
 
 ```text
 GO 4000
@@ -133,7 +134,9 @@ The LCD shows the selected game's splash screen. Press any key to Start.
 ```text
 src/
 |-- tetro/
-|   |-- tetro.main.asm        ; Debug80 target entry point and include order
+|   |-- tetro.main.asm        ; Debug80 target and ordered %INCLUDE root
+|   |-- main-loop.asm         ; ORG, Start, and cooperative loop
+|   |-- atom-symbols.json     ; descriptive-to-compact symbol ledger
 |   |-- constants.asm         ; Tetro tuning constants
 |   |-- geometry-helpers.asm
 |   |-- collision.asm
@@ -149,7 +152,10 @@ src/
 |   |-- data.asm
 |   `-- ram.asm
 |-- pacmo/
-|   |-- pacmo.main.asm        ; Debug80 target entry point and include order
+|   |-- pacmo.main.asm        ; Debug80 target and ordered %INCLUDE root
+|   |-- main-loop.asm         ; ORG, Start, and cooperative loop
+|   |-- atom-symbols.json     ; descriptive-to-compact symbol ledger
+|   |-- constants.asm         ; Pacmo tuning, palette, and record constants
 |   |-- game-init.asm
 |   |-- logic-dispatch.asm
 |   |-- movement.asm

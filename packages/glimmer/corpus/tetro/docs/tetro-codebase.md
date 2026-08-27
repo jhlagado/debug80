@@ -16,45 +16,47 @@ The Debug80 target is still the top-level file:
 src/tetro/tetro.main.asm
 ```
 
-That file owns the `ORG`, the reset entry, the main loop, and the include order. Debug80 can treat it as the Tetro target without needing to know how the internal files are arranged.
+That file is an ordered `%INCLUDE` root. `main-loop.asm` owns the `ORG`, reset
+entry, and cooperative loop. Debug80 can treat `tetro.main.asm` as the target
+without needing to know how the internal files are arranged.
+
+Atom stores names in eight characters. The tour uses descriptive routine and
+data names; `src/tetro/atom-symbols.json` maps them to the compact identifiers
+in source. The comments above routines retain those descriptive names.
 
 The current Tetro include order is:
 
 ```asm
-.include "../shared/constants.asm"
-.include "constants.asm"
-
-Start:
-    CALL    InitState
-
-MainLoop:
-    CALL    ScanFrame
-    CALL    LogicTick
-    JR      MainLoop
-
-.include "geometry-helpers.asm"
-.include "collision.asm"
-.include "../shared/framebuffer-core.asm"
-.include "../shared/framebuffer-draw.asm"
-.include "render.asm"
-.include "piece-active.asm"
-.include "board-lock.asm"
-.include "game-init.asm"
-.include "../shared/scan-tick.asm"
-.include "scan-frame.asm"
-.include "../shared/sound.asm"
-.include "sound.asm"
-.include "../shared/hud.asm"
-.include "hud.asm"
-.include "../shared/lcd.asm"
-.include "ui.asm"
-.include "logic-dispatch.asm"
-.include "input.asm"
-.include "data.asm"
-.include "ram.asm"
+%INCLUDE "../shared/constants.asm"
+%INCLUDE "constants.asm"
+%INCLUDE "main-loop.asm"
+%INCLUDE "geometry-helpers.asm"
+%INCLUDE "collision.asm"
+%INCLUDE "../shared/framebuffer-core.asm"
+%INCLUDE "../shared/framebuffer-draw.asm"
+%INCLUDE "render.asm"
+%INCLUDE "piece-active.asm"
+%INCLUDE "board-lock.asm"
+%INCLUDE "game-init.asm"
+%INCLUDE "../shared/scan-tick.asm"
+%INCLUDE "scan-frame.asm"
+%INCLUDE "../shared/sound.asm"
+%INCLUDE "sound.asm"
+%INCLUDE "../shared/hud.asm"
+%INCLUDE "hud.asm"
+%INCLUDE "../shared/lcd.asm"
+%INCLUDE "ui.asm"
+%INCLUDE "logic-dispatch.asm"
+%INCLUDE "input.asm"
+%INCLUDE "data.asm"
+%INCLUDE "ram.asm"
 ```
 
-The include order is deliberate. `shared/scan-tick.asm` calls `SndService` and `HudScanDig` before their labels appear in the include stream. AZM resolves those forward references. The pattern keeps scanout generic while letting the program decide which sound and HUD services satisfy the calls.
+The order is deliberate. `shared/scan-tick.asm` calls `SndService` and
+`HudScanDig` before their declarations arrive. Atom retains those references
+and patches them when it assembles the later sound and HUD parts. The pattern
+keeps scanout generic; the game-specific sound and HUD modules supply the
+called services.
 
 The split is intentional. Files under `src/shared/` are generic hardware or buffer routines that can serve more than one game. Files under `src/tetro/` contain Tetro's rules, state, tables, and game-specific wrappers.
 
@@ -66,12 +68,15 @@ This is still a careful harmonisation, not a large engine abstraction. Shared fi
 
 ```asm
 MainLoop:
-    CALL    ScanFrame
-    CALL    LogicTick
+    CALL    CM_SCNFR
+    CALL    CM_LGCTC
     JR      MainLoop
 ```
 
-Those three instructions in `src/tetro/tetro.main.asm` are the whole runtime. `ScanFrame` emits all eight matrix rows with a fixed dwell delay per row, then blanks the row port. `LogicTick` runs while the matrix is blank and prepares the next frame.
+Those three instructions in `src/tetro/main-loop.asm` are the whole runtime.
+`CM_SCNFR` is the compact identifier for `ScanFrame`; it emits all eight matrix
+rows with a fixed dwell delay per row, then blanks the row port. `CM_LGCTC` is
+`LogicTick`; it runs while the matrix is blank and prepares the next frame.
 
 Sound and the seven-segment Score display are serviced once per visible matrix row through `ScanTick`, which `ScanFrame` calls internally. Game logic no longer determines visible row dwell time.
 
@@ -201,7 +206,7 @@ commit only if carry is clear
 
 `MoveLeft` and `MoveRight` update `PendingX` and call `HorizProbeX`. That helper copies the current y into `PendingY`, tests collision, and commits the candidate x only on success.
 
-Held horizontal movement reloads from `MovePeriod`, which is intentionally slow so repeat acts as a fallback while deliberate taps remain the responsive control path.
+Held horizontal movement reloads from `MovePeriod`, which is intentionally slow. Key repeat is a fallback; deliberate taps remain the responsive control path.
 
 `StepActDown` is shared by gravity and soft drop. `ApplyGravity` waits for `GravityCooldown` to expire, then probes one row down. If the probe fails, it calls `LockActPiece`. `SoftDrop` skips the cooldown and probes immediately. If soft drop locks a piece, it sets `DropLockout` so a held drop key does not immediately force the next piece down.
 
@@ -384,7 +389,9 @@ Game over leaves the loop running. The matrix, Score display, LCD, and speaker a
 ```text
 target
   src/tetro/tetro.main.asm
-    ORG, Start, MainLoop, include order
+    ordered %INCLUDE root
+  src/tetro/main-loop.asm
+    ORG, Start, MainLoop
 
 shared hardware helpers
   shared/scan-tick.asm

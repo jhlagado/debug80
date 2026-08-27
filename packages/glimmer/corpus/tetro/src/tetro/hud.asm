@@ -3,6 +3,6 @@
 ; ScoreLo/Hi is passed to HudWriteU16 in HL.
 ;!      out       BC,HL
 ;!      clobbers  A,DE
-@UpdScoreDisplay:
+CM_UPDSC:
         LD      HL,(ScoreLo)
-        JP      HudWriteU16
+        JP      SH_HDWRT

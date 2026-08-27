@@ -20,36 +20,36 @@
 ; key-repeat state. No stable status is returned.
 ;!      out       E,zero
 ;!      clobbers  A,BC,D,HL,IX,IY
-@PollInput:
-        LD      A,(PacSplashActive)
+CM_PLLNP:
+        LD      A,(PW_SPLSH)
         OR      A
-        JP      NZ,PollSplashStart
-        LD      A,(PacPlayerCaught)
+        JP      NZ,PV_PLLSP
+        LD      A,(PW_PLYRC)
         OR      A
-        JP      NZ,CaughtRestart
-        LD      A,(PacRoundDone)
+        JP      NZ,PV_CGHTR
+        LD      A,(PW_RNDDN)
         OR      A
         RET     NZ
-        LD      C,ApiScanKeys
-        RST     0x10
-        JP      NZ,ClearInputRpt
+        LD      C,SC_APSCN
+        RST     $10
+        JP      NZ,CM_CLRNP
         LD      E,A
-        JR      NC,PollNoNewKey
-        LD      A,(PacPaused)
+        JR      NC,PV_PLLNN
+        LD      A,(PW_PSDAU)
         OR      A
-        JP      NZ,HandleUnpause
+        JP      NZ,CM_HNDLN
         LD      A,E
         CP      KeyPause
-        JP      Z,HandlePauseKey
-PollNoNewKey:
-        LD      A,(PacPaused)
+        JP      Z,CM_HNDLP
+PV_PLLNN:
+        LD      A,(PW_PSDAU)
         OR      A
-        JP      NZ,ClearInputRpt
+        JP      NZ,CM_CLRNP
 
         LD      A,E
-        CALL    NormInputDir
-        JR      C,HandleDirKey
-        JP      ClearInputRpt
+        CALL    PV_NRMNP
+        JR      C,CM_HNDLD
+        JP      CM_CLRNP
 
 ; PollSplashStart —
 ; Wait for any key on the splash screen.
@@ -57,13 +57,13 @@ PollNoNewKey:
 ; running HUD; a held/no-key scan leaves the splash
 ; active and returns.
 ;!      clobbers  A,BC,DE,HL,IX,IY
-@PollSplashStart:
-        LD      C,ApiScanKeys
-        RST     0x10
+PV_PLLSP:
+        LD      C,SC_APSCN
+        RST     $10
         RET     NZ
         XOR     A
-        LD      (PacSplashActive),A
-        JP      LcdShowPacRun
+        LD      (PW_SPLSH),A
+        JP      PU_LCDS4
 
 ; CaughtRestart —
 ; Handle input while the player is caught.
@@ -73,22 +73,22 @@ PollNoNewKey:
 ; current game after a lost life.
 ;!      out       carry,A
 ;!      clobbers  HL
-@CaughtRestart:
-        LD      HL,(PacGOverGateLo)
+PV_CGHTR:
+        LD      HL,(PW_GVRG1)
         LD      A,H
         OR      L
-        JR      Z,CaughtRestartKey
+        JR      Z,PV_CGHT0
         DEC     HL
-        LD      (PacGOverGateLo),HL
+        LD      (PW_GVRG1),HL
         RET
-CaughtRestartKey:
-        LD      C,ApiScanKeys
-        RST     0x10
+PV_CGHT0:
+        LD      C,SC_APSCN
+        RST     $10
         RET     NZ
-        LD      A,(PacGameOver)
+        LD      A,(PW_GMVRA)
         OR      A
-        JP      Z,ResumeCaught
-        JP      InitState
+        JP      Z,PV_RSMCG
+        JP      CM_INTST
 
 ; ResumeCaught —
 ; Resume after a life loss (lives remain).
@@ -96,24 +96,24 @@ CaughtRestartKey:
 ; preserves Score, PacLevel, eaten paths, and lives;
 ; then returns to the running HUD and rebuilds play.
 ;!      clobbers  A,BC,DE,HL,IX
-@ResumeCaught:
-        CALL    InitPlyMons
+PV_RSMCG:
+        CALL    PI_INTPL
         XOR     A
-        LD      (PacGOverGateLo),A
-        LD      (PacGOverGateHi),A
-        CALL    LcdShowPacRun
-        JP      RebuildFb
+        LD      (PW_GVRG1),A
+        LD      (PW_GVRG0),A
+        CALL    PU_LCDS4
+        JP      CM_RBLDF
 
 ; HandlePauseKey —
 ; Pause the game on a fresh pause-key press.
 ; Sets PacPaused, shows the pause screen, and clears
 ; key-repeat state before returning to the main loop.
 ;!      clobbers  A,DE,HL
-@HandlePauseKey:
+CM_HNDLP:
         LD      A,1
-        LD      (PacPaused),A
-        CALL    LcdShowPacPause
-        JP      ClearInputRpt
+        LD      (PW_PSDAU),A
+        CALL    PU_LCDS3
+        JP      CM_CLRNP
 
 ; HandleUnpause —
 ; Resume from pause on any new key press.
@@ -123,48 +123,48 @@ CaughtRestartKey:
 ; from the display path, not an unpause result.
 ;!      out       carry
 ;!      clobbers  A,DE,HL
-@HandleUnpause:
+CM_HNDLN:
         XOR     A
-        LD      (PacPaused),A
-        LD      A,(PacPowerTimerLo)
+        LD      (PW_PSDAU),A
+        LD      A,(PW_PWRT1)
         LD      E,A
-        LD      A,(PacPowerTimerHi)
+        LD      A,(PW_PWRT0)
         OR      E
-        JR      Z,UnpauseShowRun
-        CALL    LcdShowPower
-        JP      ClearInputRpt
-UnpauseShowRun:
-        CALL    LcdShowPacRun
-        JP      ClearInputRpt
+        JR      Z,PV_UNPSS
+        CALL    PU_LCDS6
+        JP      CM_CLRNP
+PV_UNPSS:
+        CALL    PU_LCDS4
+        JP      CM_CLRNP
 
-HandleDirKey:
+CM_HNDLD:
         LD      A,(LastKey)
         CP      E
-        JR      Z,HeldSameKey
+        JR      Z,CM_HLDSM
 
         LD      A,E
         LD      (LastKey),A
         LD      A,1
-        LD      (MoveCooldown),A
+        LD      (CM_MVCLD),A
 
-HeldSameKey:
-        LD      A,(MoveCooldown)
+CM_HLDSM:
+        LD      A,(CM_MVCLD)
         DEC     A
-        LD      (MoveCooldown),A
+        LD      (CM_MVCLD),A
         RET     NZ
 
-        LD      A,PacMovePeriod
-        LD      (MoveCooldown),A
+        LD      A,PC_MVPRD
+        LD      (CM_MVCLD),A
 
         LD      A,E
-        CP      PacDirLeft
-        JR      Z,MovePlayerLeft
-        CP      PacDirRight
-        JR      Z,MovePlyRight
+        CP      PC_DRLFT
+        JR      Z,PV_MVPL0
+        CP      PC_DRRGH
+        JR      Z,PV_MVPL2
         CP      PacDirUp
-        JR      Z,MovePlayerUp
-        CP      PacDirDown
-        JR      Z,MovePlayerDown
+        JR      Z,PV_MVPL1
+        CP      PC_DRDWN
+        JR      Z,PV_MVPLY
         RET
 
 ; NormInputDir —
@@ -174,39 +174,39 @@ HeldSameKey:
 ; clear carry and leave no direction to consume.
 ;!      in        A
 ;!      out       A,E,carry,zero
-@NormInputDir:
+PV_NRMNP:
         CP      KeyLeft
-        JR      Z,NormalizeLeft
+        JR      Z,PV_NRML0
         CP      KeyRight
-        JR      Z,NormalizeRight
+        JR      Z,PV_NRML1
         CP      PacKey1
-        JR      Z,NormalizeLeft
+        JR      Z,PV_NRML0
         CP      PacKey3
-        JR      Z,NormalizeRight
-        CP      KeyRotateCcw
-        JR      Z,NormalizeUp
+        JR      Z,PV_NRML1
+        CP      SC_KYRT0
+        JR      Z,PV_NRML2
         CP      PacKey6
-        JR      Z,NormalizeUp
-        CP      KeyRotate
-        JR      Z,NormalizeDown
+        JR      Z,PV_NRML2
+        CP      SC_KYRTT
+        JR      Z,PV_NRMLZ
         CP      PacKey2
-        JR      Z,NormalizeDown
+        JR      Z,PV_NRMLZ
         OR      A
         RET
-NormalizeLeft:
-        LD      E,PacDirRight
+PV_NRML0:
+        LD      E,PC_DRRGH
         SCF
         RET
-NormalizeRight:
-        LD      E,PacDirLeft
+PV_NRML1:
+        LD      E,PC_DRLFT
         SCF
         RET
-NormalizeUp:
+PV_NRML2:
         LD      E,PacDirUp
         SCF
         RET
-NormalizeDown:
-        LD      E,PacDirDown
+PV_NRMLZ:
+        LD      E,PC_DRDWN
         SCF
         RET
 
@@ -215,9 +215,9 @@ NormalizeDown:
 ; MoveCooldown is reloaded to PacMovePeriod and
 ; LastKey is set to NoKey.
 ;!      clobbers  A
-@ClearInputRpt:
-        LD      A,PacMovePeriod
-        LD      (MoveCooldown),A
+CM_CLRNP:
+        LD      A,PC_MVPRD
+        LD      (CM_MVCLD),A
         LD      A,NoKey
         LD      (LastKey),A
         RET
@@ -230,15 +230,15 @@ NormalizeDown:
 ; immediately at the world boundary.
 ;!      out       zero
 ;!      clobbers  A,BC,DE,HL,IX
-@MovePlayerLeft:
+PV_MVPL0:
         LD      A,(PlayerX)
-        CP      PacWorldMax
+        CP      PC_WRLDM
         RET     NC
         INC     A
         LD      B,A
         LD      A,(PlayerY)
         LD      C,A
-        JP      TryMovePlyBc
+        JP      PV_TRYMV
 
 ; MovePlyRight —
 ; Step the player in the PacDirRight direction.
@@ -248,7 +248,7 @@ NormalizeDown:
 ; immediately when PlayerX is 0.
 ;!      out       zero
 ;!      clobbers  A,BC,DE,HL,IX
-@MovePlyRight:
+PV_MVPL2:
         LD      A,(PlayerX)
         OR      A
         RET     Z
@@ -256,7 +256,7 @@ NormalizeDown:
         LD      B,A
         LD      A,(PlayerY)
         LD      C,A
-        JP      TryMovePlyBc
+        JP      PV_TRYMV
 
 ; MovePlayerUp —
 ; Step the player upward (decrement PlayerY).
@@ -264,7 +264,7 @@ NormalizeDown:
 ; immediately when PlayerY is 0.
 ;!      out       zero
 ;!      clobbers  A,BC,DE,HL,IX
-@MovePlayerUp:
+PV_MVPL1:
         LD      A,(PlayerY)
         OR      A
         RET     Z
@@ -272,7 +272,7 @@ NormalizeDown:
         LD      C,A
         LD      A,(PlayerX)
         LD      B,A
-        JP      TryMovePlyBc
+        JP      PV_TRYMV
 
 ; MovePlayerDown —
 ; Step the player downward (increment PlayerY).
@@ -280,15 +280,15 @@ NormalizeDown:
 ; immediately at PacWorldMax.
 ;!      out       zero
 ;!      clobbers  A,BC,DE,HL,IX
-@MovePlayerDown:
+PV_MVPLY:
         LD      A,(PlayerY)
-        CP      PacWorldMax
+        CP      PC_WRLDM
         RET     NC
         INC     A
         LD      C,A
         LD      A,(PlayerX)
         LD      B,A
-        JP      TryMovePlyBc
+        JP      PV_TRYMV
 
 ; TryMovePlyBc —
 ; Try to move the player to world cell B=x, C=y.
@@ -301,25 +301,25 @@ NormalizeDown:
 ;!      in        BC
 ;!      out       zero
 ;!      clobbers  A,BC,DE,HL,IX
-@TryMovePlyBc:
-        CALL    IsWallAtBc
+PV_TRYMV:
+        CALL    PV_ISWLL
         RET     C
         LD      A,B
         LD      (PlayerX),A
         LD      A,C
         LD      (PlayerY),A
-        CALL    EatPwrPillBc
-        CALL    MarkEatenBc
-        CALL    CheckRoundDone
+        CALL    PV_ETPWR
+        CALL    PV_MRKTN
+        CALL    PV_CHCKR
         LD      IX,Monster0
-        CALL    CheckPlyCaught
+        CALL    PV_CHCKP
         LD      IX,Monster1
-        CALL    CheckPlyCaught
-        CALL    PacIsLevel2Plus
-        JP      C,UpdViewPly
+        CALL    PV_CHCKP
+        CALL    PL_ISLVL
+        JP      C,PV_UPDVW
         LD      IX,Monster2
-        CALL    CheckPlyCaught
-        JP      UpdViewPly
+        CALL    PV_CHCKP
+        JP      PV_UPDVW
 
 ; CheckPlyCaught —
 ; Compare the player with the monster record at IX.
@@ -329,11 +329,11 @@ NormalizeDown:
 ; attacking monsters trigger EnterCaught.
 ;!      in        IX
 ;!      clobbers  A,BC,DE,HL,IX
-@CheckPlyCaught:
-        LD      A,(PacPlayerCaught)
+PV_CHCKP:
+        LD      A,(PW_PLYRC)
         OR      A
         RET     NZ
-        LD      A,(IX + MonRespTimer)
+        LD      A,(IX + PC_MNRSP)
         OR      A
         RET     NZ
         LD      A,(PlayerX)
@@ -346,10 +346,10 @@ NormalizeDown:
         LD      A,(IX + MonsterY)
         CP      B
         RET     NZ
-        LD      A,(IX + MonsterState)
-        CP      PacEnemyFlee
+        LD      A,(IX + PC_MNST1)
+        CP      PC_ENMYF
         JR      Z,EatEnemy
-        JP      EnterCaught
+        JP      PV_ENTRC
 
 ; EnterCaught —
 ; Process a player-Monster collision.
@@ -358,28 +358,28 @@ NormalizeDown:
 ; lives remaining, shows the caught screen. Both paths
 ; rebuild the Framebuffer in the caught colour.
 ;!      clobbers  A,BC,DE,HL,IX
-@EnterCaught:
+PV_ENTRC:
         LD      A,1
-        LD      (PacPlayerCaught),A
-        LD      HL,PacGOverTicks
-        LD      (PacGOverGateLo),HL
+        LD      (PW_PLYRC),A
+        LD      HL,PC_GVRTC
+        LD      (PW_GVRG1),HL
         LD      HL,PacLives
         LD      A,(HL)
         OR      A
-        JR      Z,EnterFinalOver
+        JR      Z,PV_ENTRF
         DEC     (HL)
         LD      A,(HL)
         OR      A
-        JR      Z,EnterFinalOver
-        CALL    PacSndCaught
-        CALL    LcdShowCaught
-        JP      RebuildFb
-EnterFinalOver:
+        JR      Z,PV_ENTRF
+        CALL    PS_SNDCG
+        CALL    PU_LCDSH
+        JP      CM_RBLDF
+PV_ENTRF:
         LD      A,1
-        LD      (PacGameOver),A
-        CALL    PacSndCaught
-        CALL    LcdShowPacOver
-        JP      RebuildFb
+        LD      (PW_GMVRA),A
+        CALL    PS_SNDCG
+        CALL    PU_LCDS2
+        JP      CM_RBLDF
 
 ; EatEnemy —
 ; Consume the fleeing monster record at IX. Marks it
@@ -390,17 +390,17 @@ EnterFinalOver:
 ;!      in        IX
 ;!      out       BC,HL
 ;!      clobbers  A,DE
-@EatEnemy:
-        LD      A,PacEnemyRespawn
-        LD      (IX + MonsterState),A
-        LD      A,PacEnemyRespDiv
-        LD      (IX + MonsterTimer),A
-        LD      A,PacEnemyRespPer
-        LD      (IX + MonRespTimer),A
-        CALL    PacSndEatEnemy
-        CALL    LcdShowEatEnemy
-        LD      A,PacScoreEnemy
-        JP      AddScoreA
+EatEnemy:
+        LD      A,PC_ENMYR
+        LD      (IX + PC_MNST1),A
+        LD      A,PC_ENMY3
+        LD      (IX + PC_MNST2),A
+        LD      A,PC_ENMY4
+        LD      (IX + PC_MNRSP),A
+        CALL    PS_SNDTN
+        CALL    PU_LCDS1
+        LD      A,PC_SCRNM
+        JP      PV_ADDSC
 
 ; EatPwrPillBc —
 ; Consume a power pill at world cell B=x, C=y when
@@ -410,42 +410,42 @@ EnterFinalOver:
 ;!      in        BC
 ;!      out       HL,D
 ;!      clobbers  A,E
-@EatPwrPillBc:
-        LD      HL,PacPowerPills
+PV_ETPWR:
+        LD      HL,PD_PWRPL
         LD      D,1
-EatPwrPillLoop:
+PV_ETPW0:
         LD      A,(HL)
-        CP      0xFF
+        CP      $FF
         RET     Z
         CP      B
         INC     HL
-        JR      NZ,EatPwrPillNext
+        JR      NZ,PV_ETPW1
         LD      A,(HL)
         CP      C
-        JR      NZ,EatPwrPillNext
-        LD      A,(PacPwrPillsEat)
+        JR      NZ,PV_ETPW1
+        LD      A,(PW_PWRPL)
         AND     D
         RET     NZ
-        LD      A,(PacPwrPillsEat)
+        LD      A,(PW_PWRPL)
         OR      D
-        LD      (PacPwrPillsEat),A
+        LD      (PW_PWRPL),A
         PUSH    BC
-        LD      A,PacScorePower
-        CALL    AddScoreA
-        CALL    PacSndPower
+        LD      A,PC_SCRPW
+        CALL    PV_ADDSC
+        CALL    PS_SNDPW
         POP     BC
-        LD      HL,PacPwrTimerSet
-        LD      (PacPowerTimerLo),HL
-        LD      A,PacEnemyFlee
-        LD      (EnemyState),A
-        LD      (Enemy2State),A
-        LD      (Enemy3State),A
-        CALL    LcdShowPower
+        LD      HL,PC_PWRTM
+        LD      (PW_PWRT1),HL
+        LD      A,PC_ENMYF
+        LD      (PW_ENMYS),A
+        LD      (PW_ENMY1),A
+        LD      (PW_ENMY6),A
+        CALL    PU_LCDS6
         RET
-EatPwrPillNext:
+PV_ETPW1:
         INC     HL
         SLA     D
-        JR      EatPwrPillLoop
+        JR      PV_ETPW0
 
 ; MarkEatenBc —
 ; Record path consumption at world cell B=x, C=y.
@@ -456,17 +456,17 @@ EatPwrPillNext:
 ;!      in        BC
 ;!      out       BC,D
 ;!      clobbers  A,E,HL
-@MarkEatenBc:
+PV_MRKTN:
         LD      A,C
         ADD     A,A
         LD      E,A
         LD      D,0
-        LD      HL,PacEatenRows
+        LD      HL,PW_ETNRW
         ADD     HL,DE
 
         LD      A,B
         CP      8
-        JR      NC,MarkEatenLow
+        JR      NC,PV_MRKT0
         CALL    MxMask
         LD      E,A
         LD      A,(HL)
@@ -474,15 +474,15 @@ EatPwrPillNext:
         RET     NZ
         PUSH    HL
         PUSH    DE
-        LD      A,PacScorePath
-        CALL    AddScoreA
+        LD      A,PC_SCRPT
+        CALL    PV_ADDSC
         POP     DE
         POP     HL
         LD      A,E
         OR      (HL)
         LD      (HL),A
         RET
-MarkEatenLow:
+PV_MRKT0:
         SUB     8
         INC     HL
         CALL    MxMask
@@ -492,8 +492,8 @@ MarkEatenLow:
         RET     NZ
         PUSH    HL
         PUSH    DE
-        LD      A,PacScorePath
-        CALL    AddScoreA
+        LD      A,PC_SCRPT
+        CALL    PV_ADDSC
         POP     DE
         POP     HL
         LD      A,E
@@ -508,13 +508,13 @@ MarkEatenLow:
 ;!      in        A
 ;!      out       BC,HL
 ;!      clobbers  A,DE
-@AddScoreA:
+PV_ADDSC:
         LD      E,A
         LD      D,0
         LD      HL,(PacScore)
         ADD     HL,DE
         LD      (PacScore),HL
-        JP      UpdScoreDisplay
+        JP      CM_UPDSC
 
 ; CheckRoundDone —
 ; Detect level completion.
@@ -528,34 +528,34 @@ MarkEatenLow:
 ; completion result; PacRoundDone is authoritative.
 ;!      out       carry
 ;!      clobbers  A,BC,DE,HL
-@CheckRoundDone:
-        LD      A,(PacRoundDone)
+PV_CHCKR:
+        LD      A,(PW_RNDDN)
         OR      A
         RET     NZ
         LD      B,RowCount + 7
-        LD      DE,PacWorldRows
-        LD      HL,PacEatenRows
-CheckRoundRow:
+        LD      DE,PD_WRLDR
+        LD      HL,PW_ETNRW
+PV_CHCK0:
         LD      A,(DE)
         OR      (HL)
-        CP      0xFF
+        CP      $FF
         RET     NZ
         INC     DE
         INC     HL
         LD      A,(DE)
         OR      (HL)
-        OR      0x01                    ; bit 0 is outside the 15-column maze
-        CP      0xFF
+        OR      $01 ; bit 0 is outside the 15-column maze
+        CP      $FF
         RET     NZ
         INC     DE
         INC     HL
-        DJNZ    CheckRoundRow
+        DJNZ    PV_CHCK0
         LD      A,1
-        LD      (PacRoundDone),A
-        LD      HL,PacLvlDoneTicks
-        LD      (PacLvlDoneLo),HL
-        CALL    PacSndLvlDone
-        CALL    LcdShowComplete
+        LD      (PW_RNDDN),A
+        LD      HL,PC_LVLDN
+        LD      (PW_LVLD1),HL
+        CALL    PS_SNDLV
+        CALL    PU_LCDS0
         RET
 
 ; IsWallAtBc —
@@ -568,31 +568,31 @@ CheckRoundRow:
 ;!      in        BC
 ;!      out       A,E,carry,zero
 ;!      clobbers  D,HL
-@IsWallAtBc:
+PV_ISWLL:
         LD      A,C
         ADD     A,A
         LD      E,A
         LD      D,0
-        LD      HL,PacWorldRows
+        LD      HL,PD_WRLDR
         ADD     HL,DE
-        LD      D,(HL)                  ; D = high byte, bit 7 is world column 0
+        LD      D,(HL) ; D = high byte, bit 7 is world column 0
         INC     HL
-        LD      E,(HL)                  ; E = low byte, bit 1 is world column 14
+        LD      E,(HL) ; E = low byte, bit 1 is world column 14
 
         LD      A,B
         OR      A
-        JR      Z,PacWallTest
-WallShiftLoop:
+        JR      Z,PV_WLLTS
+PV_WLLSH:
         SLA     E
         RL      D
         DEC     A
-        JR      NZ,WallShiftLoop
-PacWallTest:
+        JR      NZ,PV_WLLSH
+PV_WLLTS:
         BIT     7,D
-        JR      Z,PacWallOpen
+        JR      Z,PV_WLLPN
         SCF
         RET
-PacWallOpen:
+PV_WLLPN:
         OR      A
         RET
 
@@ -604,17 +604,17 @@ PacWallOpen:
 ; final zero flag is not a viewport status result.
 ;!      out       zero
 ;!      clobbers  A,BC
-@UpdViewPly:
+PV_UPDVW:
         LD      A,(PlayerX)
         LD      B,A
         LD      A,(ViewX)
-        CALL    AdjustViewAxis
+        CALL    PV_ADJST
         LD      (ViewX),A
 
         LD      A,(PlayerY)
         LD      B,A
         LD      A,(ViewY)
-        CALL    AdjustViewAxis
+        CALL    PV_ADJST
         LD      (ViewY),A
         RET
 
@@ -627,25 +627,25 @@ PacWallOpen:
 ;!      in        B,A
 ;!      out       A,zero
 ;!      clobbers  C
-@AdjustViewAxis:
+PV_ADJST:
         LD      C,A
         LD      A,B
-        SUB     C                       ; A = player screen coordinate
+        SUB     C ; A = player screen coordinate
         CP      3
-        JR      C,AxisShiftLow
+        JR      C,PV_AXSS0
         CP      5
-        JR      NC,AxisShiftHigh
+        JR      NC,PV_AXSSH
         LD      A,C
         RET
-AxisShiftLow:
+PV_AXSS0:
         LD      A,C
         OR      A
         RET     Z
         DEC     A
         RET
-AxisShiftHigh:
+PV_AXSSH:
         LD      A,C
-        CP      PacViewMax
+        CP      PC_VWMXI
         RET     NC
         INC     A
         RET

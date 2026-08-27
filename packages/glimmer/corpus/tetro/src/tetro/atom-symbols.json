@@ -1,0 +1,1397 @@
+{
+  "format": "atom-source-symbol-ledger",
+  "version": 1,
+  "target": "tetro",
+  "symbols": [
+    {
+      "module": "shared/constants.asm",
+      "original": "PortDigits",
+      "short": "SC_PRTDG"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "PortLcdInst",
+      "short": "SC_PRTL0"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "PortLcdData",
+      "short": "SC_PRTLC"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "PortGreen",
+      "short": "SC_PRTGR"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "ApiScanKeys",
+      "short": "SC_APSCN"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "KeyRotate",
+      "short": "SC_KYRTT"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "KeyRotateCcw",
+      "short": "SC_KYRT0"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "KeyRotateCw",
+      "short": "SC_KYRT1"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "BytesPerRow",
+      "short": "SC_BYTSP"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "FramebufferBytes",
+      "short": "SC_FRMBF"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "ScanMaskStart",
+      "short": "SC_SCNMS"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "ColorBlack",
+      "short": "SC_CLRBL"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "ColorGreen",
+      "short": "SC_CLRGR"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "ColorBlue",
+      "short": "SC_CLRB0"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "ColorYellow",
+      "short": "SC_CLRYL"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "ColorCyan",
+      "short": "SC_CLRCY"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "ColorMagenta",
+      "short": "SC_CLRMG"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "ColorWhite",
+      "short": "SC_CLRWH"
+    },
+    {
+      "module": "shared/constants.asm",
+      "original": "SpeakerBit",
+      "short": "SC_SPKRB"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "MovePeriod",
+      "short": "TC_MVPRD"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "DropPeriod",
+      "short": "TC_DRPPR"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "ScanDwellPeriod",
+      "short": "TC_SCNDW"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "TetKeyLeftAlt",
+      "short": "TC_TTKYL"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "TetKeyDropAlt",
+      "short": "TC_TTKYD"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "TetKeyRightAlt",
+      "short": "TC_TTKYR"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "TetKeyRotAlt",
+      "short": "TC_TTKY0"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "GravityPeriod",
+      "short": "TC_GRVTY"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "GravPeriodStep1",
+      "short": "TC_GRVPR"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "GravScore1Hi",
+      "short": "TC_GRVSC"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "GravScore1Lo",
+      "short": "TC_GRVS0"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "LineClearHold",
+      "short": "TC_LNCLR"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "GOverGateTicks",
+      "short": "TC_GVRGT"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "RngSeedInit",
+      "short": "TC_RNGSD"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "PieceCount",
+      "short": "TC_PCCNT"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "SoundRotateLen",
+      "short": "TC_SNDR1"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "SoundRotateDiv",
+      "short": "TC_SNDRT"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "SoundLockLen",
+      "short": "TC_SNDL0"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "SoundLockDiv",
+      "short": "TC_SNDLC"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "SoundClearLen",
+      "short": "TC_SNDC0"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "SoundClearDiv",
+      "short": "TC_SNDCL"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "SndGOverLen",
+      "short": "TC_SNDG0"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "SndGOverDiv",
+      "short": "TC_SNDGV"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "SndReadyLen",
+      "short": "TC_SNDR0"
+    },
+    {
+      "module": "tetro/constants.asm",
+      "original": "SndReadyDiv",
+      "short": "TC_SNDRD"
+    },
+    {
+      "module": "tetro/main-loop.asm",
+      "original": "@Start",
+      "short": "Start"
+    },
+    {
+      "module": "tetro/geometry-helpers.asm",
+      "original": "@LoadDePending",
+      "short": "TG_LDDPN"
+    },
+    {
+      "module": "tetro/geometry-helpers.asm",
+      "original": "@ShiftRowMask",
+      "short": "TG_SHFT1"
+    },
+    {
+      "module": "tetro/geometry-helpers.asm",
+      "original": "ShiftRowLoop",
+      "short": "TG_SHFT0"
+    },
+    {
+      "module": "tetro/geometry-helpers.asm",
+      "original": "ShiftRowDone",
+      "short": "TG_SHFTR"
+    },
+    {
+      "module": "tetro/collision.asm",
+      "original": "@CheckCollAtDe",
+      "short": "TX_CHCKC"
+    },
+    {
+      "module": "tetro/collision.asm",
+      "original": "CheckCollRow",
+      "short": "TX_CHCK0"
+    },
+    {
+      "module": "tetro/collision.asm",
+      "original": "CollNextRow",
+      "short": "TX_CLLNX"
+    },
+    {
+      "module": "tetro/collision.asm",
+      "original": "CollXBound",
+      "short": "TX_CLLXB"
+    },
+    {
+      "module": "tetro/collision.asm",
+      "original": "CollRowBottom",
+      "short": "TX_CLLRW"
+    },
+    {
+      "module": "tetro/collision.asm",
+      "original": "CollRowOverlap",
+      "short": "TX_CLLR0"
+    },
+    {
+      "module": "tetro/collision.asm",
+      "original": "CollExitOk",
+      "short": "TX_CLLXT"
+    },
+    {
+      "module": "tetro/collision.asm",
+      "original": "@CheckTopOut",
+      "short": "TX_CHCKT"
+    },
+    {
+      "module": "tetro/collision.asm",
+      "original": "TopOutRowLoop",
+      "short": "TX_TPTRW"
+    },
+    {
+      "module": "tetro/collision.asm",
+      "original": "TopOutNextRow",
+      "short": "TX_TPTNX"
+    },
+    {
+      "module": "tetro/collision.asm",
+      "original": "TopOutTrue",
+      "short": "TX_TPTTR"
+    },
+    {
+      "module": "tetro/collision.asm",
+      "original": "TopOutExit",
+      "short": "TX_TPTXT"
+    },
+    {
+      "module": "shared/framebuffer-core.asm",
+      "original": "@FbClearAll",
+      "short": "FC_FBCLR"
+    },
+    {
+      "module": "shared/framebuffer-core.asm",
+      "original": "FbClrLoop",
+      "short": "FC_FBCL1"
+    },
+    {
+      "module": "shared/framebuffer-core.asm",
+      "original": "@FbClearRow",
+      "short": "FC_FBCL0"
+    },
+    {
+      "module": "shared/framebuffer-core.asm",
+      "original": "@FbCopyAll",
+      "short": "FC_FBCPY"
+    },
+    {
+      "module": "shared/framebuffer-core.asm",
+      "original": "@FbCopyRow",
+      "short": "FC_FBCP0"
+    },
+    {
+      "module": "shared/framebuffer-draw.asm",
+      "original": "@MxMask",
+      "short": "MxMask"
+    },
+    {
+      "module": "shared/framebuffer-draw.asm",
+      "original": "MxMaskDone",
+      "short": "FD_MXMSK"
+    },
+    {
+      "module": "shared/framebuffer-draw.asm",
+      "original": "@FbSetCell",
+      "short": "FD_FBSTC"
+    },
+    {
+      "module": "shared/framebuffer-draw.asm",
+      "original": "@FbOrRow",
+      "short": "FbOrRow"
+    },
+    {
+      "module": "tetro/render.asm",
+      "original": "@RebuildFb",
+      "short": "CM_RBLDF"
+    },
+    {
+      "module": "tetro/render.asm",
+      "original": "@ClearBoard",
+      "short": "TR_CLRBR"
+    },
+    {
+      "module": "tetro/render.asm",
+      "original": "ClearBoardLoop",
+      "short": "TR_CLRB0"
+    },
+    {
+      "module": "tetro/render.asm",
+      "original": "@RendBoardBack",
+      "short": "TR_RNDBR"
+    },
+    {
+      "module": "tetro/render.asm",
+      "original": "RenderBoardRow",
+      "short": "TR_RNDRB"
+    },
+    {
+      "module": "tetro/render.asm",
+      "original": "RendBoardGOver",
+      "short": "TR_RNDB2"
+    },
+    {
+      "module": "tetro/render.asm",
+      "original": "RendBoardFx",
+      "short": "TR_RNDB1"
+    },
+    {
+      "module": "tetro/render.asm",
+      "original": "RendBoardNext",
+      "short": "TR_RNDB3"
+    },
+    {
+      "module": "tetro/render.asm",
+      "original": "RendBoardExit",
+      "short": "TR_RNDB0"
+    },
+    {
+      "module": "tetro/render.asm",
+      "original": "@RendActBack",
+      "short": "TR_RNDCT"
+    },
+    {
+      "module": "tetro/render.asm",
+      "original": "RenderShapeRow",
+      "short": "TR_RNDRS"
+    },
+    {
+      "module": "tetro/render.asm",
+      "original": "RendShapeNext",
+      "short": "TR_RNDSH"
+    },
+    {
+      "module": "tetro/render.asm",
+      "original": "RendActExit",
+      "short": "TR_RNDC0"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "@HorizProbeX",
+      "short": "TP_HRZPR"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "HorizCommitX",
+      "short": "TP_HRZCM"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "@MoveRight",
+      "short": "TP_MVRGH"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "@MoveLeft",
+      "short": "MoveLeft"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "@StepActDown",
+      "short": "TP_STPCT"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "@ApplyGravity",
+      "short": "TP_APPLY"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "GravityCommit",
+      "short": "TP_GRVTY"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "@SoftDrop",
+      "short": "SoftDrop"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "SoftDropCommit",
+      "short": "TP_SFTDR"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "@SanitizeActPos",
+      "short": "TP_SNTZC"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "SanitizeXDone",
+      "short": "TP_SNTZX"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "SanitizeYDone",
+      "short": "TP_SNTZY"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "@SelectNextPiece",
+      "short": "TP_SLCTN"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "@RngNextPiece",
+      "short": "TP_RNGN1"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "@RngNext8",
+      "short": "RngNext8"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "RngNext8Step",
+      "short": "TP_RNGN0"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "RngNext8Save",
+      "short": "TP_RNGNX"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "@LoadCurRot",
+      "short": "TP_LDCRR"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "@RotateTestDone",
+      "short": "TP_RTTTS"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "RotateAccept",
+      "short": "TP_RTTCC"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "@RotateCw",
+      "short": "RotateCw"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "@RotateLeft",
+      "short": "TP_RTTLF"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "@SpawnActPiece",
+      "short": "TP_SPWNC"
+    },
+    {
+      "module": "tetro/piece-active.asm",
+      "original": "SpawnFailed",
+      "short": "TP_SPWNF"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "@LockActPiece",
+      "short": "TB_LCKC0"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "LockActNoClear",
+      "short": "TB_LCKCT"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "LockGameOver",
+      "short": "TB_LCKGM"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "@EnterGameOver",
+      "short": "TB_ENTRG"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "@SplashState",
+      "short": "TB_SPLS0"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "SplashSeedReady",
+      "short": "TB_SPLSH"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "@LineClearState",
+      "short": "TB_LNCLR"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "@CheckFullRows",
+      "short": "TB_CHCKF"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "CheckRowsLoop",
+      "short": "TB_CHCKR"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "CheckRowsNext",
+      "short": "TB_CHCK0"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "CheckRowsNone",
+      "short": "TB_CHCK1"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "@CountClearRows",
+      "short": "TB_CNTC1"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "CountClearLoop",
+      "short": "TB_CNTC0"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "CountClearDone",
+      "short": "TB_CNTCL"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "@ApplyClearScore",
+      "short": "TB_APPL0"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "ApplyClearLookup",
+      "short": "TB_APPLY"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "@UpdGravByScore",
+      "short": "TB_UPDGR"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "UpdateGpStep1",
+      "short": "TB_UPDT0"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "UpdateGpBase",
+      "short": "TB_UPDTG"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "UpdateGpStore",
+      "short": "TB_UPDT1"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "@CollapseRows",
+      "short": "TB_CLLP0"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "CollapseScanLp",
+      "short": "TB_CLLP1"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "CollapseRowDone",
+      "short": "TB_CLLPS"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "CollapseSkipRow",
+      "short": "TB_CLLP2"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "CollapseTopLoop",
+      "short": "TB_CLLP3"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "@CopyBoardRow",
+      "short": "TB_CPYBR"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "CopyBrNext",
+      "short": "TB_CPYB2"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "CopyBrSrcNc",
+      "short": "TB_CPYB3"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "CopyBrDstNc",
+      "short": "TB_CPYB1"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "CopyBrAdvNc",
+      "short": "TB_CPYB0"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "@ClearBoardRow",
+      "short": "TB_CLRBR"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "ClearBrNext",
+      "short": "TB_CLRB2"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "ClearBrNc",
+      "short": "TB_CLRB1"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "ClearBrAdvNc",
+      "short": "TB_CLRB0"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "@BoardEmptyScan",
+      "short": "TB_BRDM0"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "BoardEmptyLoop",
+      "short": "TB_BRDMP"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "BoardNotEmpty",
+      "short": "TB_BRDNT"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "@MergeRgbRow",
+      "short": "TB_MRGRG"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "MergeOrLoop",
+      "short": "TB_MRGRL"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "MergeOrSkip",
+      "short": "TB_MRGRS"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "MergeOrExit",
+      "short": "TB_MRGRX"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "@MergeActBoard",
+      "short": "TB_MRGCT"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "MergeBoardRow",
+      "short": "TB_MRGB0"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "MergeBoardNext",
+      "short": "TB_MRGBR"
+    },
+    {
+      "module": "tetro/board-lock.asm",
+      "original": "MergeActExit",
+      "short": "TB_MRGC0"
+    },
+    {
+      "module": "tetro/game-init.asm",
+      "original": "@InitState",
+      "short": "CM_INTST"
+    },
+    {
+      "module": "tetro/game-init.asm",
+      "original": "@InitRestart",
+      "short": "TI_INTRS"
+    },
+    {
+      "module": "tetro/game-init.asm",
+      "original": "@InitStateBase",
+      "short": "TI_INTST"
+    },
+    {
+      "module": "shared/scan-tick.asm",
+      "original": "@ScanTick",
+      "short": "ScanTick"
+    },
+    {
+      "module": "shared/scan-tick.asm",
+      "original": "@ScanNext",
+      "short": "ScanNext"
+    },
+    {
+      "module": "shared/scan-tick.asm",
+      "original": "ScanSavePtr",
+      "short": "ST_SCNSV"
+    },
+    {
+      "module": "tetro/scan-frame.asm",
+      "original": "@ScanFrame",
+      "short": "CM_SCNFR"
+    },
+    {
+      "module": "tetro/scan-frame.asm",
+      "original": "ScanFrameLp",
+      "short": "CM_SCNF0"
+    },
+    {
+      "module": "tetro/scan-frame.asm",
+      "original": "ScanDwell",
+      "short": "CM_SCNDW"
+    },
+    {
+      "module": "tetro/scan-frame.asm",
+      "original": "ScanDwellLp",
+      "short": "CM_SCND0"
+    },
+    {
+      "module": "shared/sound.asm",
+      "original": "@SndStart",
+      "short": "SndStart"
+    },
+    {
+      "module": "shared/sound.asm",
+      "original": "@SndService",
+      "short": "SS_SNDSR"
+    },
+    {
+      "module": "shared/sound.asm",
+      "original": "SndActive",
+      "short": "SS_SNDCT"
+    },
+    {
+      "module": "tetro/sound.asm",
+      "original": "@SndTrigRotate",
+      "short": "TS_SNDT3"
+    },
+    {
+      "module": "tetro/sound.asm",
+      "original": "@SndTrigLock",
+      "short": "TS_SNDT1"
+    },
+    {
+      "module": "tetro/sound.asm",
+      "original": "@SndTrigClear",
+      "short": "TS_SNDTR"
+    },
+    {
+      "module": "tetro/sound.asm",
+      "original": "@SndTrigGOver",
+      "short": "TS_SNDT0"
+    },
+    {
+      "module": "tetro/sound.asm",
+      "original": "@SndTrigReady",
+      "short": "TS_SNDT2"
+    },
+    {
+      "module": "shared/hud.asm",
+      "original": "@HudScanDig",
+      "short": "SH_HDSCN"
+    },
+    {
+      "module": "shared/hud.asm",
+      "original": "HudScanSave",
+      "short": "SH_HDSC0"
+    },
+    {
+      "module": "shared/hud.asm",
+      "original": "@HudBlankDig",
+      "short": "SH_HDBLN"
+    },
+    {
+      "module": "shared/hud.asm",
+      "original": "HudBlankLp",
+      "short": "SH_HDBL0"
+    },
+    {
+      "module": "shared/hud.asm",
+      "original": "@HudWriteU16",
+      "short": "SH_HDWRT"
+    },
+    {
+      "module": "shared/hud.asm",
+      "original": "@HudDecDigit",
+      "short": "SH_HDDCD"
+    },
+    {
+      "module": "shared/hud.asm",
+      "original": "HudDecSub",
+      "short": "SH_HDDCS"
+    },
+    {
+      "module": "shared/hud.asm",
+      "original": "HudDecDone",
+      "short": "SH_HDDC0"
+    },
+    {
+      "module": "shared/hud.asm",
+      "original": "HudMaskTbl",
+      "short": "SH_HDMSK"
+    },
+    {
+      "module": "shared/hud.asm",
+      "original": "HudGlyphTbl",
+      "short": "SH_HDGLY"
+    },
+    {
+      "module": "tetro/hud.asm",
+      "original": "@UpdScoreDisplay",
+      "short": "CM_UPDSC"
+    },
+    {
+      "module": "shared/lcd.asm",
+      "original": "@LcdBusy",
+      "short": "LcdBusy"
+    },
+    {
+      "module": "shared/lcd.asm",
+      "original": "LcdBusyLp",
+      "short": "SL_LCDBS"
+    },
+    {
+      "module": "shared/lcd.asm",
+      "original": "@LcdCmd",
+      "short": "LcdCmd"
+    },
+    {
+      "module": "shared/lcd.asm",
+      "original": "@LcdClear",
+      "short": "LcdClear"
+    },
+    {
+      "module": "shared/lcd.asm",
+      "original": "@LcdString",
+      "short": "SL_LCDST"
+    },
+    {
+      "module": "shared/lcd.asm",
+      "original": "@LcdScript",
+      "short": "SL_LCDS0"
+    },
+    {
+      "module": "shared/lcd.asm",
+      "original": "LcdScrDone",
+      "short": "SL_LCDSC"
+    },
+    {
+      "module": "shared/lcd.asm",
+      "original": "@LcdPutc",
+      "short": "LcdPutc"
+    },
+    {
+      "module": "shared/lcd.asm",
+      "original": "@LcdRowStr",
+      "short": "SL_LCDRW"
+    },
+    {
+      "module": "shared/lcd.asm",
+      "original": "@LcdPutcTbl",
+      "short": "SL_LCDPT"
+    },
+    {
+      "module": "tetro/ui.asm",
+      "original": "@LcdShowGOver",
+      "short": "TU_LCDSH"
+    },
+    {
+      "module": "tetro/ui.asm",
+      "original": "@LcdShowPaused",
+      "short": "TU_LCDS1"
+    },
+    {
+      "module": "tetro/ui.asm",
+      "original": "@LcdShowSplash",
+      "short": "TU_LCDS3"
+    },
+    {
+      "module": "tetro/ui.asm",
+      "original": "@LcdAppendPrev",
+      "short": "TU_LCDPP"
+    },
+    {
+      "module": "tetro/ui.asm",
+      "original": "@LcdRefNextPrev",
+      "short": "TU_LCDRF"
+    },
+    {
+      "module": "tetro/ui.asm",
+      "original": "@LcdShowRunning",
+      "short": "TU_LCDS2"
+    },
+    {
+      "module": "tetro/ui.asm",
+      "original": "LcdShowHud",
+      "short": "TU_LCDS0"
+    },
+    {
+      "module": "tetro/logic-dispatch.asm",
+      "original": "@LogicTick",
+      "short": "CM_LGCTC"
+    },
+    {
+      "module": "tetro/logic-dispatch.asm",
+      "original": "LogicGOverDone",
+      "short": "TL_LGCGV"
+    },
+    {
+      "module": "tetro/logic-dispatch.asm",
+      "original": "LogicSplashDone",
+      "short": "TL_LGCSP"
+    },
+    {
+      "module": "tetro/logic-dispatch.asm",
+      "original": "LogicPauseCheck",
+      "short": "TL_LGCPS"
+    },
+    {
+      "module": "tetro/logic-dispatch.asm",
+      "original": "LogicActive",
+      "short": "TL_LGCCT"
+    },
+    {
+      "module": "tetro/logic-dispatch.asm",
+      "original": "LogicRunFrame",
+      "short": "TL_LGCR0"
+    },
+    {
+      "module": "tetro/logic-dispatch.asm",
+      "original": "LogicRenderFrame",
+      "short": "TL_LGCRN"
+    },
+    {
+      "module": "tetro/input.asm",
+      "original": "@PollInput",
+      "short": "CM_PLLNP"
+    },
+    {
+      "module": "tetro/input.asm",
+      "original": "KeyNewPress",
+      "short": "TN_KYNWP"
+    },
+    {
+      "module": "tetro/input.asm",
+      "original": "HandleDirKey",
+      "short": "CM_HNDLD"
+    },
+    {
+      "module": "tetro/input.asm",
+      "original": "@ClearInputRpt",
+      "short": "CM_CLRNP"
+    },
+    {
+      "module": "tetro/input.asm",
+      "original": "@WaitGOverGate",
+      "short": "TN_WTGVR"
+    },
+    {
+      "module": "tetro/input.asm",
+      "original": "@PollGOverRestart",
+      "short": "TN_PLLGV"
+    },
+    {
+      "module": "tetro/input.asm",
+      "original": "@WaitKeyRelease",
+      "short": "TN_WTKYR"
+    },
+    {
+      "module": "tetro/input.asm",
+      "original": "@HandlePauseKey",
+      "short": "CM_HNDLP"
+    },
+    {
+      "module": "tetro/input.asm",
+      "original": "PauseShowRun",
+      "short": "TN_PSSHW"
+    },
+    {
+      "module": "tetro/input.asm",
+      "original": "@HandleUnpause",
+      "short": "CM_HNDLN"
+    },
+    {
+      "module": "tetro/input.asm",
+      "original": "@HandleRotPress",
+      "short": "TN_HNDLR"
+    },
+    {
+      "module": "tetro/input.asm",
+      "original": "@HandleCcwPress",
+      "short": "TN_HNDLC"
+    },
+    {
+      "module": "tetro/input.asm",
+      "original": "@HandleKeyRight",
+      "short": "TN_HNDL1"
+    },
+    {
+      "module": "tetro/input.asm",
+      "original": "@HandleKeyLeft",
+      "short": "TN_HNDL0"
+    },
+    {
+      "module": "tetro/input.asm",
+      "original": "@HandleKeyDrop",
+      "short": "TN_HNDLK"
+    },
+    {
+      "module": "tetro/input.asm",
+      "original": "@HandleHeldDir",
+      "short": "TN_HNDLH"
+    },
+    {
+      "module": "tetro/input.asm",
+      "original": "HeldSameKey",
+      "short": "CM_HLDSM"
+    },
+    {
+      "module": "tetro/input.asm",
+      "original": "HeldDirNormal",
+      "short": "TN_HLDDR"
+    },
+    {
+      "module": "tetro/input.asm",
+      "original": "HeldDirRateSet",
+      "short": "TN_HLDD0"
+    },
+    {
+      "module": "tetro/data.asm",
+      "original": "ClearScoreTbl",
+      "short": "TD_CLRSC"
+    },
+    {
+      "module": "tetro/data.asm",
+      "original": "RowBitTable",
+      "short": "TD_RWBTT"
+    },
+    {
+      "module": "tetro/data.asm",
+      "original": "LcdTextReset",
+      "short": "TD_LCDT0"
+    },
+    {
+      "module": "tetro/data.asm",
+      "original": "LcdTextNext",
+      "short": "TD_LCDTX"
+    },
+    {
+      "module": "tetro/data.asm",
+      "original": "LcdTextTetRun",
+      "short": "TD_LCDT7"
+    },
+    {
+      "module": "tetro/data.asm",
+      "original": "LcdTextTetPause",
+      "short": "TD_LCDT6"
+    },
+    {
+      "module": "tetro/data.asm",
+      "original": "LcdTextTetOver",
+      "short": "TD_LCDT5"
+    },
+    {
+      "module": "tetro/data.asm",
+      "original": "ScriptGameOver",
+      "short": "TD_SCRPT"
+    },
+    {
+      "module": "tetro/data.asm",
+      "original": "ScriptPaused",
+      "short": "TD_SCRP0"
+    },
+    {
+      "module": "tetro/data.asm",
+      "original": "ScriptSplash",
+      "short": "TD_SCRP2"
+    },
+    {
+      "module": "tetro/data.asm",
+      "original": "ScriptRunning",
+      "short": "TD_SCRP1"
+    },
+    {
+      "module": "tetro/data.asm",
+      "original": "PieceNameTable",
+      "short": "TD_PCNMT"
+    },
+    {
+      "module": "tetro/data.asm",
+      "original": "LcdTextSplash1",
+      "short": "TD_LCDT1"
+    },
+    {
+      "module": "tetro/data.asm",
+      "original": "LcdTextSplash2",
+      "short": "TD_LCDT2"
+    },
+    {
+      "module": "tetro/data.asm",
+      "original": "LcdTextSplash3",
+      "short": "TD_LCDT3"
+    },
+    {
+      "module": "tetro/data.asm",
+      "original": "LcdTextSplash4",
+      "short": "TD_LCDT4"
+    },
+    {
+      "module": "tetro/data.asm",
+      "original": "PiecePtrTable",
+      "short": "TD_PCPTR"
+    },
+    {
+      "module": "tetro/data.asm",
+      "original": "PieceRightTbl",
+      "short": "TD_PCRGH"
+    },
+    {
+      "module": "tetro/data.asm",
+      "original": "PieceColorTbl",
+      "short": "TD_PCCLR"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "MoveCooldown",
+      "short": "CM_MVCLD"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "GravityCooldown",
+      "short": "TW_GRVTY"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "CurGravPeriod",
+      "short": "TW_CRGRV"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "ShiftCount",
+      "short": "TW_SHFTC"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "CurPiecePtr",
+      "short": "TW_CRPCP"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "CurPieceIndex",
+      "short": "TW_CRPCN"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "CurrentRotation",
+      "short": "TW_CRRNT"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "CurPieceRight",
+      "short": "TW_CRPCR"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "CurPieceColor",
+      "short": "TW_CRPCC"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "NextPieceIndex",
+      "short": "TW_NXTPC"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "PendingRotation",
+      "short": "TW_PNDNG"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "DropLockout",
+      "short": "TW_DRPLC"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "GOverKeyGate",
+      "short": "TW_GVRKY"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "GOverKeyGateLo",
+      "short": "TW_GVRK1"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "GOverKeyGateHi",
+      "short": "TW_GVRK0"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "ActPieceEnabled",
+      "short": "TW_ACTPC"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "ClearPending",
+      "short": "TW_CLRPN"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "ClearMask",
+      "short": "TW_CLRMS"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "ClearTimer",
+      "short": "TW_CLRTM"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "LinesClearTotal",
+      "short": "TW_LNSCL"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "SplashTimer",
+      "short": "TW_SPLSH"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "InputLockout",
+      "short": "TW_INPTL"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "HudScanIndex",
+      "short": "CM_HDSCN"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "SpeakerPort",
+      "short": "CM_SPKRP"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "SoundTimer",
+      "short": "CM_SNDTM"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "SndDivReload",
+      "short": "CM_SNDD0"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "SndDivCount",
+      "short": "CM_SNDDV"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "HudSegBuffer",
+      "short": "CM_HDSGB"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "FramePhase",
+      "short": "CM_FRMPH"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "BoardRows",
+      "short": "TW_BRDRW"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "BoardGreen",
+      "short": "TW_BRDGR"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "BoardBlue",
+      "short": "TW_BRDBL"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "BoardEmpty",
+      "short": "TW_BRDMP"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "Framebuffer",
+      "short": "CM_FRMBF"
+    },
+    {
+      "module": "tetro/ram.asm",
+      "original": "FramebufferBack",
+      "short": "CM_FRMB0"
+    }
+  ]
+}

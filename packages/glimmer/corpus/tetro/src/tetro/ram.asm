@@ -4,156 +4,154 @@
 ; startup value.
 RamStart:
 PlayerX:
-        .db      0
+        DB      0
 
 PlayerY:
-        .db      0
+        DB      0
 
-MoveCooldown:
-        .db      0
+CM_MVCLD:
+        DB      0
 
-GravityCooldown:
-        .db      0
+TW_GRVTY:
+        DB      0
 
-CurGravPeriod:
-        .db      0
+TW_CRGRV:
+        DB      0
 
 LastKey:
-        .db      0
+        DB      0
 
 PendingX:
-        .db      0
+        DB      0
 
 PendingY:
-        .db      0
+        DB      0
 
-ShiftCount:
-        .db      0
+TW_SHFTC:
+        DB      0
 
-CurPiecePtr:
-        .dw      0
+TW_CRPCP:
+        DW      0
 
-CurPieceIndex:
-        .db      0
+TW_CRPCN:
+        DB      0
 
-CurrentRotation:
-        .db      0
+TW_CRRNT:
+        DB      0
 
-CurPieceRight:
-        .db      0
+TW_CRPCR:
+        DB      0
 
-CurPieceColor:
-        .db      0
+TW_CRPCC:
+        DB      0
 
-NextPieceIndex:
-        .db      0
+TW_NXTPC:
+        DB      0
 
-PendingRotation:
-        .db      0
+TW_PNDNG:
+        DB      0
 
 Paused:
-        .db      0
+        DB      0
 
-DropLockout:
-        .db      0
+TW_DRPLC:
+        DB      0
 
 GameOver:
-        .db      0
+        DB      0
 
 ; 16-bit restart-delay countdown.
 ; Accessed as a word via LD HL,(GOverKeyGateLo)
 ; and written back as HL.
-GOverKeyGate:
-        .dw      0
-GOverKeyGateLo   .equ     GOverKeyGate
-GOverKeyGateHi   .equ     GOverKeyGate + 1
+TW_GVRKY:
+        DW      0
+TW_GVRK1   EQU     TW_GVRKY
+TW_GVRK0   EQU     TW_GVRKY + 1
 
-ActPieceEnabled:
-        .db      0
+TW_ACTPC:
+        DB      0
 
-ClearPending:
-        .db      0
+TW_CLRPN:
+        DB      0
 
-ClearMask:
-        .db      0
+TW_CLRMS:
+        DB      0
 
-ClearTimer:
-        .db      0
+TW_CLRTM:
+        DB      0
 
-LinesClearTotal:
-        .db      0
+TW_LNSCL:
+        DB      0
 
 ; 16-bit Score.
 ; Accessed as a word via LD HL,(ScoreLo);
 ; ScoreHi is the high byte, cleared by
 ; InitStateBase.
 Score:
-        .dw      0
-ScoreLo        .equ     Score
-ScoreHi        .equ     Score + 1
+        DW      0
+ScoreLo        EQU     Score
+ScoreHi        EQU     Score + 1
 
-SplashTimer:
-        .db      0
+TW_SPLSH:
+        DB      0
 
 RngSeed:
-        .db      0
+        DB      0
 
-InputLockout:
-        .db      0
+TW_INPTL:
+        DB      0
 
-HudScanIndex:
-        .db      0
+CM_HDSCN:
+        DB      0
 
-SpeakerPort:
-        .db      0
+CM_SPKRP:
+        DB      0
 
-SoundTimer:
-        .db      0
+CM_SNDTM:
+        DB      0
 
-SndDivReload:
-        .db      0
+CM_SNDD0:
+        DB      0
 
-SndDivCount:
-        .db      0
+CM_SNDDV:
+        DB      0
 
-HudSegBuffer:
-        .ds      6
+CM_HDSGB:
+        DS      6
 
 ; Full-matrix wrap counter.
 ; ScanNext increments on each framebuffer wrap.
 ; Used only by SplashState for RNG entropy;
 ; not used for gravity, input, or pacing timers.
-FramePhase:
-        .db      0
+CM_FRMPH:
+        DB      0
 
 ScanMask:
-        .db      0
+        DB      0
 
 ScanPtr:
-        .dw      0
+        DW      0
 
-BoardRows:
-        .ds      RowCount
+TW_BRDRW:
+        DS      (RowCount)
 
 BoardRed:
-        .ds      RowCount
+        DS      (RowCount)
 
-BoardGreen:
-        .ds      RowCount
+TW_BRDGR:
+        DS      (RowCount)
 
-BoardBlue:
-        .ds      RowCount
+TW_BRDBL:
+        DS      (RowCount)
 
-BoardEmpty:
-        .db      0
+TW_BRDMP:
+        DB      0
 
-Framebuffer:
-        .ds      FramebufferBytes
+CM_FRMBF EQU $
 
 ; Off-screen compose buffer.
 ; The live Framebuffer is rebuilt from here while
 ; the matrix is blank between scanned frames.
-FramebufferBack:
-        .ds      FramebufferBytes
+CM_FRMB0 EQU CM_FRMBF + 32
 
-RamEnd:
+RamEnd EQU CM_FRMB0 + 32

@@ -46,12 +46,10 @@
         "entry": 0
       },
       "sourceFile": "src/tetro/tetro.main.asm",
-      "assembler": "azm",
+      "assembler": "atom",
       "asm": "src/tetro/tetro.main.asm",
       "artifactBase": "tetro",
-      "sourceRoots": [
-        "src"
-      ]
+      "sourceRoots": ["src"]
     },
     "pacmo": {
       "outputDir": "build",
@@ -79,12 +77,10 @@
         "entry": 0
       },
       "sourceFile": "src/pacmo/pacmo.main.asm",
-      "assembler": "azm",
+      "assembler": "atom",
       "asm": "src/pacmo/pacmo.main.asm",
       "artifactBase": "pacmo",
-      "sourceRoots": [
-        "src"
-      ]
+      "sourceRoots": ["src"]
     }
   }
 }

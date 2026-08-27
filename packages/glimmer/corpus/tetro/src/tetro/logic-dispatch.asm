@@ -7,59 +7,59 @@
 ; Framebuffer before the next ScanFrame.
 ;!      out       carry,zero
 ;!      clobbers  A,BC,DE,HL,IX,IY
-@LogicTick:
-        CALL    SanitizeActPos
+CM_LGCTC:
+        CALL    TP_SNTZC
         LD      A,(GameOver)
         OR      A
-        JR      Z,LogicGOverDone
-        CALL    WaitGOverGate
+        JR      Z,TL_LGCGV
+        CALL    TN_WTGVR
         RET
 
-LogicGOverDone:
-        LD      A,(SplashTimer)
+TL_LGCGV:
+        LD      A,(TW_SPLSH)
         OR      A
-        JR      Z,LogicSplashDone
-        CALL    SplashState
+        JR      Z,TL_LGCSP
+        CALL    TB_SPLS0
         RET
 
-LogicSplashDone:
-        LD      A,(ClearPending)
+TL_LGCSP:
+        LD      A,(TW_CLRPN)
         OR      A
-        JR      Z,LogicPauseCheck
-        CALL    LineClearState
-        CALL    RebuildFb
+        JR      Z,TL_LGCPS
+        CALL    TB_LNCLR
+        CALL    CM_RBLDF
         RET
 
-LogicPauseCheck:
+TL_LGCPS:
         LD      A,(Paused)
         OR      A
-        JR      Z,LogicActive
-        CALL    PollInput
+        JR      Z,TL_LGCCT
+        CALL    CM_PLLNP
         RET
 
-LogicActive:
-        LD      A,(InputLockout)
+TL_LGCCT:
+        LD      A,(TW_INPTL)
         OR      A
-        JR      Z,LogicRunFrame
-        CALL    WaitKeyRelease
+        JR      Z,TL_LGCR0
+        CALL    TN_WTKYR
         RET
 
-LogicRunFrame:
-        CALL    PollInput
+TL_LGCR0:
+        CALL    CM_PLLNP
         LD      A,(Paused)
         OR      A
         RET     NZ
         LD      A,(GameOver)
         OR      A
         RET     NZ
-        LD      A,(ClearPending)
+        LD      A,(TW_CLRPN)
         OR      A
-        JR      NZ,LogicRenderFrame
-        CALL    ApplyGravity
+        JR      NZ,TL_LGCRN
+        CALL    TP_APPLY
         LD      A,(GameOver)
         OR      A
         RET     NZ
 
-LogicRenderFrame:
-        CALL    RebuildFb
+TL_LGCRN:
+        CALL    CM_RBLDF
         RET

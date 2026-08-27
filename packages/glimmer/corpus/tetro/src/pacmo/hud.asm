@@ -8,6 +8,6 @@
 ; BC/HL; it is not Pacmo game output.
 ;!      out       BC,HL
 ;!      clobbers  A,DE
-@UpdScoreDisplay:
+CM_UPDSC:
         LD      HL,(PacScore)
-        JP      HudWriteU16
+        JP      SH_HDWRT

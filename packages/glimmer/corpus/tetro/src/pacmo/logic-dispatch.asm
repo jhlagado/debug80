@@ -8,9 +8,9 @@
 ; flags are not a caller status convention.
 ;!      out       carry,zero
 ;!      clobbers  A,BC,DE,HL,IX,IY
-@LogicTick:
-        CALL    PacFrameDuties
-        JP      RebuildFb
+CM_LGCTC:
+        CALL    PL_FRMDT
+        JP      CM_RBLDF
 
 ; PacFrameDuties —
 ; Per-frame Pacmo logic while the matrix is off.
@@ -19,31 +19,31 @@
 ; Then checks player collision against each active
 ; monster. Monster2 is skipped before level 2.
 ;!      clobbers  A,BC,DE,HL,IX,IY
-@PacFrameDuties:
-        CALL    PollInput
-        LD      A,(PacPaused)
+PL_FRMDT:
+        CALL    CM_PLLNP
+        LD      A,(PW_PSDAU)
         OR      A
         RET     NZ
-        CALL    TickLvlDoneGate
-        CALL    TickPowerTimer
+        CALL    PL_TCKLV
+        CALL    PL_TCKPW
         LD      IX,Monster0
-        CALL    TickEnemy
+        CALL    PL_TCKNM
         LD      IX,Monster1
-        CALL    TickEnemy
-        CALL    PacIsLevel2Plus
-        JR      C,PacFrameTickDone
+        CALL    PL_TCKNM
+        CALL    PL_ISLVL
+        JR      C,PL_FRMTC
         LD      IX,Monster2
-        CALL    TickEnemy
-PacFrameTickDone:
+        CALL    PL_TCKNM
+PL_FRMTC:
         LD      IX,Monster0
-        CALL    CheckPlyCaught
+        CALL    PV_CHCKP
         LD      IX,Monster1
-        CALL    CheckPlyCaught
-        CALL    PacIsLevel2Plus
-        JR      C,PacFrameCollDone
+        CALL    PV_CHCKP
+        CALL    PL_ISLVL
+        JR      C,PL_FRMCL
         LD      IX,Monster2
-        CALL    CheckPlyCaught
-PacFrameCollDone:
+        CALL    PV_CHCKP
+PL_FRMCL:
         RET
 
 ; PacRenderRowA —
@@ -54,27 +54,27 @@ PacFrameCollDone:
 ; A is expected to be 0..7.
 ;!      in        A
 ;!      clobbers  A,BC,DE,HL,IX
-@PacRenderRowA:
+PL_RNDRR:
         PUSH    AF
         ADD     A,A
         ADD     A,A
-        CALL    FbCopyRow
+        CALL    FC_FBCP0
         POP     AF
         PUSH    AF
         ADD     A,A
         ADD     A,A
-        CALL    FbClearRow
+        CALL    FC_FBCL0
         POP     AF
         PUSH    AF
-        CALL    RendWorldRow
+        CALL    PR_RNDW1
         POP     AF
         PUSH    AF
-        CALL    RendPwrPillRow
+        CALL    PR_RNDP5
         POP     AF
         PUSH    AF
-        CALL    RendMonsRow
+        CALL    PR_RNDMN
         POP     AF
-        JP      RendPlyRow
+        JP      PR_RNDP1
 
 ; TickLvlDoneGate —
 ; Count down the level-completion delay.
@@ -82,16 +82,16 @@ PacFrameCollDone:
 ; On expiry, advances to the next level. Otherwise it
 ; only decrements PacLvlDoneLo/Hi.
 ;!      clobbers  A,BC,DE,HL,IX
-@TickLvlDoneGate:
-        LD      A,(PacRoundDone)
+PL_TCKLV:
+        LD      A,(PW_RNDDN)
         OR      A
         RET     Z
-        LD      HL,(PacLvlDoneLo)
+        LD      HL,(PW_LVLD1)
         LD      A,H
         OR      L
-        JP      Z,PacAdvanceLevel
+        JP      Z,PL_ADVNC
         DEC     HL
-        LD      (PacLvlDoneLo),HL
+        LD      (PW_LVLD1),HL
         RET
 
 ; TickPowerTimer —
@@ -99,21 +99,21 @@ PacFrameCollDone:
 ; On expiry: sets all three Monster states to
 ; PacEnemyAtk and restores the running LCD.
 ;!      clobbers  A,DE,HL
-@TickPowerTimer:
-        LD      HL,(PacPowerTimerLo)
+PL_TCKPW:
+        LD      HL,(PW_PWRT1)
         LD      A,H
         OR      L
         RET     Z
         DEC     HL
-        LD      (PacPowerTimerLo),HL
+        LD      (PW_PWRT1),HL
         LD      A,H
         OR      L
         RET     NZ
-        LD      A,PacEnemyAtk
-        LD      (EnemyState),A
-        LD      (Enemy2State),A
-        LD      (Enemy3State),A
-        JP      LcdShowPacRun
+        LD      A,PC_ENMYT
+        LD      (PW_ENMYS),A
+        LD      (PW_ENMY1),A
+        LD      (PW_ENMY6),A
+        JP      PU_LCDS4
 
 ; PacIsLevel2Plus —
 ; Check whether the third Monster is active.
@@ -121,7 +121,7 @@ PacFrameCollDone:
 ; carry set when PacLevel < 2. A contains PacLevel
 ; after the comparison.
 ;!      out       A,carry,zero
-@PacIsLevel2Plus:
+PL_ISLVL:
         LD      A,(PacLevel)
         CP      2
         RET
@@ -138,28 +138,28 @@ PacFrameCollDone:
 ;!      in        IX
 ;!      out       BC,A,H,carry,zero
 ;!      clobbers  DE,L
-@TickEnemy:
-        LD      A,(PacSplashActive)
+PL_TCKNM:
+        LD      A,(PW_SPLSH)
         OR      A
         RET     NZ
-        LD      A,(PacPlayerCaught)
+        LD      A,(PW_PLYRC)
         OR      A
         RET     NZ
-        LD      A,(PacRoundDone)
+        LD      A,(PW_RNDDN)
         OR      A
         RET     NZ
-        CALL    TickEnemyResp
+        CALL    PL_TCKN1
         RET     C
-        LD      A,(IX + MonsterTimer)
+        LD      A,(IX + PC_MNST2)
         DEC     A
-        LD      (IX + MonsterTimer),A
+        LD      (IX + PC_MNST2),A
         RET     NZ
-        LD      A,(EnemyPeriodCur)
-        LD      (IX + MonsterTimer),A
-        LD      A,(IX + MonsterState)
-        CP      PacEnemyAtk
-        JP      Z,EnemyAttackStep
-        JP      EnemyRoamStep
+        LD      A,(PW_ENMYP)
+        LD      (IX + PC_MNST2),A
+        LD      A,(IX + PC_MNST1)
+        CP      PC_ENMYT
+        JP      Z,PL_ENMYT
+        JP      PL_ENMYW
 
 ; EnemyAttackStep —
 ; Take one greedy chase step for the monster at IX.
@@ -172,22 +172,22 @@ PacFrameCollDone:
 ;!      in        IX
 ;!      out       BC,A,H,carry,zero
 ;!      clobbers  DE,L
-@EnemyAttackStep:
-        CALL    EnemyChaseDirs
-        LD      A,(IX + MonsterDir)
-        CALL    EnemyOpposite
-        LD      L,A                     ; L = immediate reverse direction
+PL_ENMYT:
+        CALL    PL_ENMY0
+        LD      A,(IX + PC_MNSTR)
+        CALL    PL_ENMYG
+        LD      L,A ; L = immediate reverse direction
         LD      A,D
         PUSH    DE
         PUSH    HL
-        CALL    EnemyTryChase
+        CALL    PL_ENM10
         POP     HL
         POP     DE
         RET     C
         LD      A,E
-        CALL    EnemyTryChase
+        CALL    PL_ENM10
         RET     C
-        JP      EnemyRoamStep
+        JP      PL_ENMYW
 
 ; EnemyTryChase —
 ; Try chase direction A for the monster at IX.
@@ -198,14 +198,14 @@ PacFrameCollDone:
 ;!      in        A,L,IX
 ;!      out       BC,A,carry,zero
 ;!      clobbers  E
-@EnemyTryChase:
+PL_ENM10:
         OR      A
         RET     Z
         CP      L
-        JR      Z,EnemyChaseBlock
-        CALL    EnemyTryMove
+        JR      Z,PL_ENMYC
+        CALL    PL_ENM13
         RET
-EnemyChaseBlock:
+PL_ENMYC:
         OR      A
         RET
 
@@ -218,13 +218,13 @@ EnemyChaseBlock:
 ;!      in        IX
 ;!      out       DE,zero,HL
 ;!      clobbers  A,BC
-@EnemyChaseDirs:
-        CALL    EnemyHorizChase
-        LD      H,A                     ; H = horizontal distance
-        LD      D,B                     ; D = horizontal reducing direction
-        CALL    EnemyVertChase
-        LD      L,A                     ; L = vertical distance
-        LD      E,B                     ; E = vertical reducing direction
+PL_ENMY0:
+        CALL    PL_ENMY9
+        LD      H,A ; H = horizontal distance
+        LD      D,B ; D = horizontal reducing direction
+        CALL    PL_ENM17
+        LD      L,A ; L = vertical distance
+        LD      E,B ; E = vertical reducing direction
         LD      A,H
         CP      L
         RET     NC
@@ -240,26 +240,26 @@ EnemyChaseBlock:
 ;!      in        IX
 ;!      out       A,B,carry,zero
 ;!      clobbers  C
-@EnemyHorizChase:
+PL_ENMY9:
         LD      A,(IX + MonsterX)
         LD      C,A
         LD      A,(PlayerX)
         CP      C
-        JR      Z,EnemyHorizAlign
-        JR      C,EnemyHorizRight
+        JR      Z,PL_ENMYH
+        JR      C,PL_ENMYA
         SUB     C
-        LD      B,PacDirLeft
+        LD      B,PC_DRLFT
         RET
-EnemyHorizRight:
+PL_ENMYA:
         LD      A,C
         LD      B,A
         LD      A,(PlayerX)
         LD      C,A
         LD      A,B
         SUB     C
-        LD      B,PacDirRight
+        LD      B,PC_DRRGH
         RET
-EnemyHorizAlign:
+PL_ENMYH:
         LD      B,0
         XOR     A
         RET
@@ -271,17 +271,17 @@ EnemyHorizAlign:
 ;!      in        IX
 ;!      out       A,B,carry,zero
 ;!      clobbers  C
-@EnemyVertChase:
+PL_ENM17:
         LD      A,(IX + MonsterY)
         LD      C,A
         LD      A,(PlayerY)
         CP      C
-        JR      Z,EnemyVertAlign
-        JR      C,EnemyVertUp
+        JR      Z,PL_ENM16
+        JR      C,PL_ENM18
         SUB     C
-        LD      B,PacDirDown
+        LD      B,PC_DRDWN
         RET
-EnemyVertUp:
+PL_ENM18:
         LD      A,C
         LD      B,A
         LD      A,(PlayerY)
@@ -290,7 +290,7 @@ EnemyVertUp:
         SUB     C
         LD      B,PacDirUp
         RET
-EnemyVertAlign:
+PL_ENM16:
         LD      B,0
         XOR     A
         RET
@@ -305,47 +305,47 @@ EnemyVertAlign:
 ;!      in        IX
 ;!      out       BC,A,H,carry,zero
 ;!      clobbers  DE
-@EnemyRoamStep:
+PL_ENMYW:
         LD      A,(IX + MonsterX)
         LD      B,A
         LD      A,(IX + MonsterY)
         LD      C,A
-        LD      A,(IX + MonsterDir)
-        CALL    EnemyOpposite
-        LD      D,A                     ; D = reverse direction fallback
+        LD      A,(IX + PC_MNSTR)
+        CALL    PL_ENMYG
+        LD      D,A ; D = reverse direction fallback
         LD      A,B
         ADD     A,C
         LD      E,A
         LD      A,(PacLevel)
         ADD     A,E
         LD      E,A
-        LD      A,(IX + MonsterDir)
+        LD      A,(IX + PC_MNSTR)
         ADD     A,E
-        AND     0x03
-        INC     A                       ; A = first candidate direction, 1..4
+        AND     $03
+        INC     A ; A = first candidate direction, 1..4
         LD      E,A
         LD      H,4
-EnemyRoamLoop:
+PL_ENMYQ:
         LD      A,E
         CP      D
-        JR      Z,EnemyRoamNext
+        JR      Z,PL_ENMYU
         PUSH    DE
         PUSH    HL
-        CALL    EnemyTryMove
+        CALL    PL_ENM13
         POP     HL
         POP     DE
         RET     C
-EnemyRoamNext:
+PL_ENMYU:
         INC     E
         LD      A,E
         CP      5
-        JR      C,EnemyRoamReady
+        JR      C,PL_ENMYV
         LD      E,1
-EnemyRoamReady:
+PL_ENMYV:
         DEC     H
-        JR      NZ,EnemyRoamLoop
+        JR      NZ,PL_ENMYQ
         LD      A,D
-        CALL    EnemyTryMove
+        CALL    PL_ENM13
         RET
 
 ; EnemyOpposite —
@@ -354,23 +354,23 @@ EnemyRoamReady:
 ; incidental.
 ;!      in        A
 ;!      out       A,carry
-@EnemyOpposite:
+PL_ENMYG:
         CP      PacDirUp
-        JR      Z,EnemyOppDown
-        CP      PacDirDown
-        JR      Z,EnemyOppUp
-        CP      PacDirLeft
-        JR      Z,EnemyOppRight
-        LD      A,PacDirLeft
+        JR      Z,PL_ENMYP
+        CP      PC_DRDWN
+        JR      Z,PL_ENMYJ
+        CP      PC_DRLFT
+        JR      Z,PL_ENMYI
+        LD      A,PC_DRLFT
         RET
-EnemyOppDown:
-        LD      A,PacDirDown
+PL_ENMYP:
+        LD      A,PC_DRDWN
         RET
-EnemyOppUp:
+PL_ENMYJ:
         LD      A,PacDirUp
         RET
-EnemyOppRight:
-        LD      A,PacDirRight
+PL_ENMYI:
+        LD      A,PC_DRRGH
         RET
 
 ; EnemyTryMove —
@@ -382,60 +382,60 @@ EnemyOppRight:
 ;!      in        IX,A
 ;!      out       A,carry,zero,BC
 ;!      clobbers  E
-@EnemyTryMove:
+PL_ENM13:
         LD      E,A
         LD      A,(IX + MonsterX)
         LD      B,A
         LD      A,(IX + MonsterY)
         LD      C,A
         LD      A,E
-        CP      PacDirLeft
-        JR      Z,EnemyTryLeft
-        CP      PacDirRight
-        JR      Z,EnemyTryRight
+        CP      PC_DRLFT
+        JR      Z,PL_ENM12
+        CP      PC_DRRGH
+        JR      Z,PL_ENM14
         CP      PacDirUp
-        JR      Z,EnemyTryUp
-        CP      PacDirDown
-        JR      Z,EnemyTryDown
+        JR      Z,PL_ENM15
+        CP      PC_DRDWN
+        JR      Z,PL_ENM11
         OR      A
         RET
-EnemyTryLeft:
+PL_ENM12:
         LD      A,B
-        CP      PacWorldMax
-        JR      NC,EnemyTryBlocked
+        CP      PC_WRLDM
+        JR      NC,PL_ENMYZ
         INC     B
-        JR      EnemyCommitOpen
-EnemyTryRight:
+        JR      PL_ENMY1
+PL_ENM14:
         LD      A,B
         OR      A
-        JR      Z,EnemyTryBlocked
+        JR      Z,PL_ENMYZ
         DEC     B
-        JR      EnemyCommitOpen
-EnemyTryUp:
+        JR      PL_ENMY1
+PL_ENM15:
         LD      A,C
         OR      A
-        JR      Z,EnemyTryBlocked
+        JR      Z,PL_ENMYZ
         DEC     C
-        JR      EnemyCommitOpen
-EnemyTryDown:
+        JR      PL_ENMY1
+PL_ENM11:
         LD      A,C
-        CP      PacWorldMax
-        JR      NC,EnemyTryBlocked
+        CP      PC_WRLDM
+        JR      NC,PL_ENMYZ
         INC     C
-EnemyCommitOpen:
+PL_ENMY1:
         PUSH    DE
-        CALL    IsWallAtBc
+        CALL    PV_ISWLL
         POP     DE
-        JR      C,EnemyTryBlocked
+        JR      C,PL_ENMYZ
         LD      A,B
         LD      (IX + MonsterX),A
         LD      A,C
         LD      (IX + MonsterY),A
         LD      A,E
-        LD      (IX + MonsterDir),A
+        LD      (IX + PC_MNSTR),A
         SCF
         RET
-EnemyTryBlocked:
+PL_ENMYZ:
         OR      A
         RET
 
@@ -448,36 +448,36 @@ EnemyTryBlocked:
 ;!      in        IX
 ;!      out       B,carry,zero
 ;!      clobbers  A
-@TickEnemyResp:
-        LD      A,(IX + MonRespTimer)
+PL_TCKN1:
+        LD      A,(IX + PC_MNRSP)
         OR      A
         RET     Z
-        LD      A,(IX + MonsterTimer)
+        LD      A,(IX + PC_MNST2)
         OR      A
-        JR      Z,TickEnemyRespDec
+        JR      Z,PL_TCKN2
         DEC     A
-        LD      (IX + MonsterTimer),A
-        JR      Z,TickEnemyRespDec
+        LD      (IX + PC_MNST2),A
+        JR      Z,PL_TCKN2
         SCF
         RET
-TickEnemyRespDec:
-        LD      A,PacEnemyRespDiv
-        LD      (IX + MonsterTimer),A
-        LD      A,(IX + MonRespTimer)
+PL_TCKN2:
+        LD      A,PC_ENMY3
+        LD      (IX + PC_MNST2),A
+        LD      A,(IX + PC_MNRSP)
         DEC     A
-        LD      (IX + MonRespTimer),A
-        JR      Z,TickEnemyDone
+        LD      (IX + PC_MNRSP),A
+        JR      Z,PL_TCKN0
         SCF
         RET
-TickEnemyDone:
-        LD      A,PacEnemyAtk
-        LD      (IX + MonsterState),A
-        CALL    EnemySelectResp
-        LD      A,PacDirRight
-        LD      (IX + MonsterDir),A
-        LD      A,(EnemyPeriodCur)
-        LD      (IX + MonsterTimer),A
-        CALL    LcdShowPacRun
+PL_TCKN0:
+        LD      A,PC_ENMYT
+        LD      (IX + PC_MNST1),A
+        CALL    PL_ENMYX
+        LD      A,PC_DRRGH
+        LD      (IX + PC_MNSTR),A
+        LD      A,(PW_ENMYP)
+        LD      (IX + PC_MNST2),A
+        CALL    PU_LCDS4
         OR      A
         RET
 
@@ -492,44 +492,44 @@ TickEnemyDone:
 ;!      in        IX
 ;!      out       HL,B
 ;!      clobbers  A,C,DE
-@EnemySelectResp:
-        LD      HL,PacEnemySpawns
-        LD      B,0xFF                  ; B = best distance; 0xFF means no best yet
-        LD      DE,0                    ; D = best x, E = best y
-EnemySelRespLp:
+PL_ENMYX:
+        LD      HL,PD_ENMYS
+        LD      B,$FF ; B = best distance; 0xFF means no best yet
+        LD      DE,0 ; D = best x, E = best y
+PL_ENMYY:
         LD      A,(HL)
-        CP      0xFF
-        JR      Z,EnemyRespCommit
-        LD      C,A                     ; C = candidate x
+        CP      $FF
+        JR      Z,PL_ENMYR
+        LD      C,A ; C = candidate x
         INC     HL
-        LD      A,(HL)                  ; A = candidate y
+        LD      A,(HL) ; A = candidate y
         INC     HL
         PUSH    HL
-        LD      H,A                     ; H = candidate y
-        LD      L,C                     ; L = candidate x
+        LD      H,A ; H = candidate y
+        LD      L,C ; L = candidate x
         PUSH    DE
-        CALL    EnemyOccOther
+        CALL    PL_ENMYF
         POP     DE
-        JR      C,EnemyRespKeep
+        JR      C,PL_ENMYK
         PUSH    BC
-        CALL    EnemyRespScore
+        CALL    PL_ENMYM
         POP     BC
-        LD      C,A                     ; C = candidate distance
+        LD      C,A ; C = candidate distance
         LD      A,B
-        CP      0xFF
-        JR      Z,EnemyRespNewBest
+        CP      $FF
+        JR      Z,PL_ENMYL
         LD      A,C
         CP      B
-        JR      Z,EnemyRespKeep
-        JR      C,EnemyRespKeep
-EnemyRespNewBest:
+        JR      Z,PL_ENMYK
+        JR      C,PL_ENMYK
+PL_ENMYL:
         LD      B,C
         LD      D,L
         LD      E,H
-EnemyRespKeep:
+PL_ENMYK:
         POP     HL
-        JR      EnemySelRespLp
-EnemyRespCommit:
+        JR      PL_ENMYY
+PL_ENMYR:
         LD      A,D
         LD      (IX + MonsterX),A
         LD      A,E
@@ -546,21 +546,21 @@ EnemyRespCommit:
 ;!      in        HL,IX
 ;!      out       A,carry,zero
 ;!      clobbers  C
-@EnemyRespScore:
+PL_ENMYM:
         PUSH    DE
-        CALL    EnemyIsInView
-        JR      C,EnemyRespZero
-        CALL    EnemyDistPlayer
+        CALL    PL_ENMYS
+        JR      C,PL_ENMYO
+        CALL    PL_ENMY5
         CP      8
-        JR      C,EnemyRespZero
+        JR      C,PL_ENMYO
         LD      C,A
         PUSH    BC
-        CALL    EnemyDistOther
+        CALL    PL_ENMY4
         POP     BC
         ADD     A,C
         POP     DE
         RET
-EnemyRespZero:
+PL_ENMYO:
         XOR     A
         POP     DE
         RET
@@ -572,26 +572,26 @@ EnemyRespZero:
 ;!      in        HL
 ;!      out       A,carry,zero
 ;!      clobbers  C
-@EnemyIsInView:
+PL_ENMYS:
         LD      A,(ViewX)
         LD      C,A
         LD      A,L
         CP      C
-        JR      C,EnemyNotVisible
+        JR      C,PL_ENMYN
         SUB     C
         CP      RowCount
-        JR      NC,EnemyNotVisible
+        JR      NC,PL_ENMYN
         LD      A,(ViewY)
         LD      C,A
         LD      A,H
         CP      C
-        JR      C,EnemyNotVisible
+        JR      C,PL_ENMYN
         SUB     C
         CP      RowCount
-        JR      NC,EnemyNotVisible
+        JR      NC,PL_ENMYN
         SCF
         RET
-EnemyNotVisible:
+PL_ENMYN:
         OR      A
         RET
 
@@ -603,17 +603,17 @@ EnemyNotVisible:
 ;!      in        IX,HL
 ;!      out       A,carry,zero
 ;!      clobbers  DE
-@EnemyOccOther:
+PL_ENMYF:
         LD      DE,Monster0
-        CALL    EnemyOccByDe
+        CALL    PL_ENMYB
         RET     C
         LD      DE,Monster1
-        CALL    EnemyOccByDe
+        CALL    PL_ENMYB
         RET     C
-        CALL    PacIsLevel2Plus
-        JR      C,EnemyOccNo
+        CALL    PL_ISLVL
+        JR      C,PL_ENMYE
         LD      DE,Monster2
-        JP      EnemyOccByDe
+        JP      PL_ENMYB
 
 ; EnemyOccByDe —
 ; Test monster record DE against candidate cell
@@ -623,7 +623,7 @@ EnemyNotVisible:
 ;!      in        IX,DE,HL
 ;!      out       A,carry,zero
 ;!      clobbers  DE
-@EnemyOccByDe:
+PL_ENMYB:
         PUSH    HL
         PUSH    DE
         PUSH    IX
@@ -632,7 +632,7 @@ EnemyNotVisible:
         SBC     HL,DE
         POP     DE
         POP     HL
-        JR      Z,EnemyOccNo
+        JR      Z,PL_ENMYE
         PUSH    HL
         LD      H,D
         LD      L,E
@@ -643,18 +643,18 @@ EnemyNotVisible:
         INC     HL
         LD      A,(HL)
         POP     HL
-        CP      PacEnemyRespawn
-        JR      Z,EnemyOccNo
+        CP      PC_ENMYR
+        JR      Z,PL_ENMYE
         LD      A,(DE)
         CP      L
-        JR      NZ,EnemyOccNo
+        JR      NZ,PL_ENMYE
         INC     DE
         LD      A,(DE)
         CP      H
-        JR      NZ,EnemyOccNo
+        JR      NZ,PL_ENMYE
         SCF
         RET
-EnemyOccNo:
+PL_ENMYE:
         OR      A
         RET
 
@@ -666,20 +666,20 @@ EnemyOccNo:
 ;!      in        IX,HL
 ;!      out       A
 ;!      clobbers  BC,DE
-@EnemyDistOther:
-        LD      B,0                     ; B = accumulated distance Score
+PL_ENMY4:
+        LD      B,0 ; B = accumulated distance Score
         LD      DE,Monster0
-        CALL    EnemyAddDistDe
+        CALL    PL_ENMYD
         LD      DE,Monster1
-        CALL    EnemyAddDistDe
+        CALL    PL_ENMYD
         LD      A,B
         LD      C,A
-        CALL    PacIsLevel2Plus
+        CALL    PL_ISLVL
         LD      B,C
         LD      A,B
         RET     C
         LD      DE,Monster2
-        CALL    EnemyAddDistDe
+        CALL    PL_ENMYD
         LD      A,B
         RET
 
@@ -691,7 +691,7 @@ EnemyOccNo:
 ;!      in        IX,DE,HL,B
 ;!      out       B
 ;!      clobbers  A,C,DE
-@EnemyAddDistDe:
+PL_ENMYD:
         PUSH    HL
         PUSH    DE
         PUSH    IX
@@ -718,7 +718,7 @@ EnemyOccNo:
         LD      A,(DE)
         LD      D,A
         LD      E,C
-        CALL    EnemyDistDe
+        CALL    PL_ENMY3
         ADD     A,B
         LD      B,A
         RET
@@ -729,13 +729,13 @@ EnemyOccNo:
 ;!      in        HL
 ;!      out       A
 ;!      clobbers  C
-@EnemyDistPlayer:
+PL_ENMY5:
         PUSH    DE
         LD      A,(PlayerX)
         LD      E,A
         LD      A,(PlayerY)
         LD      D,A
-        CALL    EnemyDistDe
+        CALL    PL_ENMY3
         POP     DE
         RET
 
@@ -745,38 +745,38 @@ EnemyOccNo:
 ;!      in        DE,HL
 ;!      out       A
 ;!      clobbers  C
-@EnemyDistDe:
+PL_ENMY3:
         LD      A,L
         LD      C,A
         LD      A,E
         CP      C
-        JR      NC,EnemyDistXHigh
+        JR      NC,PL_ENMY7
         LD      A,C
         LD      C,A
         LD      A,E
         SUB     C
         NEG
         LD      C,A
-        JR      EnemyDistanceY
-EnemyDistXHigh:
+        JR      PL_ENMY2
+PL_ENMY7:
         SUB     C
         LD      C,A
-EnemyDistanceY:
+PL_ENMY2:
         LD      A,H
         PUSH    BC
         LD      C,A
         LD      A,D
         CP      C
-        JR      NC,EnemyDistYHigh
+        JR      NC,PL_ENMY8
         LD      A,C
         LD      C,A
         LD      A,D
         SUB     C
         NEG
-        JR      EnemyDistSum
-EnemyDistYHigh:
+        JR      PL_ENMY6
+PL_ENMY8:
         SUB     C
-EnemyDistSum:
+PL_ENMY6:
         POP     BC
         ADD     A,C
         RET
@@ -787,18 +787,18 @@ EnemyDistSum:
 ; to PacEnemyPerMin, then restarts the level via
 ; InitLevelState and shows the running screen.
 ;!      clobbers  A,BC,DE,HL,IX
-@PacAdvanceLevel:
+PL_ADVNC:
         LD      HL,PacLevel
         INC     (HL)
-        LD      A,(EnemyPeriodCur)
-        CP      PacEnemyPerMin + PacEnemyPerStep
-        JR      C,PacAdvanceMin
-        SUB     PacEnemyPerStep
-        LD      (EnemyPeriodCur),A
-        CALL    InitLevelState
-        JP      LcdShowPacRun
-PacAdvanceMin:
-        LD      A,PacEnemyPerMin
-        LD      (EnemyPeriodCur),A
-        CALL    InitLevelState
-        JP      LcdShowPacRun
+        LD      A,(PW_ENMYP)
+        CP      PC_ENMY1 + PC_ENMY2
+        JR      C,PL_ADVN0
+        SUB     PC_ENMY2
+        LD      (PW_ENMYP),A
+        CALL    PI_INTLV
+        JP      PU_LCDS4
+PL_ADVN0:
+        LD      A,PC_ENMY1
+        LD      (PW_ENMYP),A
+        CALL    PI_INTLV
+        JP      PU_LCDS4

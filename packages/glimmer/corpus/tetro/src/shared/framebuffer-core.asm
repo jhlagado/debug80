@@ -4,14 +4,14 @@
 ; FbClearAll —
 ; Zero all bytes in FramebufferBack.
 ;!      clobbers  A,B,HL
-@FbClearAll:
-        LD      HL,FramebufferBack
-        LD      B,FramebufferBytes
+FC_FBCLR:
+        LD      HL,CM_FRMB0
+        LD      B,SC_FRMBF
         XOR     A
-FbClrLoop:
+FC_FBCL1:
         LD      (HL),A
         INC     HL
-        DJNZ    FbClrLoop
+        DJNZ    FC_FBCL1
         RET
 
 ; FbClearRow —
@@ -21,10 +21,10 @@ FbClrLoop:
 ;!      in        A
 ;!      out       carry,zero
 ;!      clobbers  A,DE,HL
-@FbClearRow:
+FC_FBCL0:
         LD      E,A
         LD      D,0
-        LD      HL,FramebufferBack
+        LD      HL,CM_FRMB0
         ADD     HL,DE
         XOR     A
         LD      (HL),A
@@ -40,10 +40,10 @@ FbClrLoop:
 ; Copy FramebufferBack to the live Framebuffer.
 ; LDIR copies the full FramebufferBytes block.
 ;!      clobbers  BC,DE,HL
-@FbCopyAll:
-        LD      HL,FramebufferBack
-        LD      DE,Framebuffer
-        LD      BC,FramebufferBytes
+FC_FBCPY:
+        LD      HL,CM_FRMB0
+        LD      DE,CM_FRMBF
+        LD      BC,SC_FRMBF
         LDIR
         RET
 
@@ -53,13 +53,13 @@ FbClrLoop:
 ; ... 28.
 ;!      in        A
 ;!      clobbers  A,DE,HL
-@FbCopyRow:
+FC_FBCP0:
         LD      E,A
         LD      D,0
-        LD      HL,FramebufferBack
+        LD      HL,CM_FRMB0
         ADD     HL,DE
         PUSH    HL
-        LD      HL,Framebuffer
+        LD      HL,CM_FRMBF
         ADD     HL,DE
         EX      DE,HL
         POP     HL

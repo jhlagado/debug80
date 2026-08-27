@@ -9,70 +9,70 @@
 ;!      in        DE
 ;!      out       carry,zero
 ;!      clobbers  A
-@CheckCollAtDe:
+TX_CHCKC:
         PUSH    BC
         PUSH    DE
         PUSH    HL
         LD      A,D
         CP      XMin
-        JR      C,CollXBound
+        JR      C,TX_CLLXB
         LD      C,A
-        LD      A,(CurPieceRight)
+        LD      A,(TW_CRPCR)
         ADD     A,C
         CP      RowCount
-        JR      NC,CollXBound
+        JR      NC,TX_CLLXB
         LD      A,D
-        LD      (ShiftCount),A
+        LD      (TW_SHFTC),A
         LD      A,E
         LD      L,A
         LD      H,0
         LD      B,4
-        LD      DE,(CurPiecePtr)
+        LD      DE,(TW_CRPCP)
         ; Empty-board fast path removed:
         ; CheckCollRow handles it correctly
         ; (BoardRows=0 -> AND yields 0 -> no
         ; overlap), at the cost of ~12 cycles
         ; per collision on an empty board (only at
         ; first spawn after reset).
-CheckCollRow:
+TX_CHCK0:
         LD      A,(DE)
-        CALL    ShiftRowMask
+        CALL    TG_SHFT1
         LD      C,A
         OR      A
-        JR      Z,CollNextRow
+        JR      Z,TX_CLLNX
         BIT     7,L
-        JR      NZ,CollNextRow
+        JR      NZ,TX_CLLNX
         LD      A,L
         CP      RowCount
-        JR      NC,CollRowBottom
+        JR      NC,TX_CLLRW
         PUSH    HL
         PUSH    DE
         LD      H,0
-        LD      DE,BoardRows
+        LD      DE,TW_BRDRW
         ADD     HL,DE
         LD      A,(HL)
         AND     C
         POP     DE
         POP     HL
-        JR      NZ,CollRowOverlap
-CollNextRow:
+        JR      NZ,TX_CLLR0
+TX_CLLNX:
         INC     DE
         INC     HL
-        DJNZ    CheckCollRow
+        DJNZ    TX_CHCK0
         OR      A
-        JR      CollExitOk
+        JR      TX_CLLXT
 
-CollXBound:
+TX_CLLXB:
         SCF
-        JR      CollExitOk
+        JR      TX_CLLXT
 
-CollRowBottom:
+TX_CLLRW:
         SCF
-        JR      CollExitOk
+        JR      TX_CLLXT
 
-CollRowOverlap:
+TX_CLLR0:
         SCF
-CollExitOk:
+TX_CLLXT:
         POP     HL
         POP     DE
         POP     BC
@@ -86,30 +86,30 @@ CollExitOk:
 ; is set. Carry clear means the piece is in-bounds.
 ;!      out       carry,zero
 ;!      clobbers  A
-@CheckTopOut:
+TX_CHCKT:
         PUSH    BC
         PUSH    DE
         PUSH    HL
         LD      A,(PlayerY)
         LD      L,A
         LD      H,0
-        LD      DE,(CurPiecePtr)
+        LD      DE,(TW_CRPCP)
         LD      B,4
-TopOutRowLoop:
+TX_TPTRW:
         LD      A,(DE)
         OR      A
-        JR      Z,TopOutNextRow
+        JR      Z,TX_TPTNX
         BIT     7,L
-        JR      NZ,TopOutTrue
-TopOutNextRow:
+        JR      NZ,TX_TPTTR
+TX_TPTNX:
         INC     DE
         INC     HL
-        DJNZ    TopOutRowLoop
+        DJNZ    TX_TPTRW
         OR      A
-        JR      TopOutExit
-TopOutTrue:
+        JR      TX_TPTXT
+TX_TPTTR:
         SCF
-TopOutExit:
+TX_TPTXT:
         POP     HL
         POP     DE
         POP     BC

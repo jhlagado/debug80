@@ -12,13 +12,13 @@
 ;!      in        A,C
 ;!      out       carry,zero
 ;!      clobbers  A
-@SndStart:
-        LD      (SoundTimer),A
+SndStart:
+        LD      (CM_SNDTM),A
         LD      A,C
-        LD      (SndDivReload),A
-        LD      (SndDivCount),A
+        LD      (CM_SNDD0),A
+        LD      (CM_SNDDV),A
         XOR     A
-        LD      (SpeakerPort),A
+        LD      (CM_SPKRP),A
         RET
 
 ; SndService —
@@ -28,25 +28,25 @@
 ; and toggles SpeakerBit on each reload.
 ;!      out       carry,zero
 ;!      clobbers  A
-@SndService:
-        LD      A,(SoundTimer)
+SS_SNDSR:
+        LD      A,(CM_SNDTM)
         OR      A
         RET     Z
         DEC     A
-        LD      (SoundTimer),A
-        JR      NZ,SndActive
+        LD      (CM_SNDTM),A
+        JR      NZ,SS_SNDCT
         XOR     A
-        LD      (SpeakerPort),A
-        LD      (SndDivCount),A
+        LD      (CM_SPKRP),A
+        LD      (CM_SNDDV),A
         RET
-SndActive:
-        LD      A,(SndDivCount)
+SS_SNDCT:
+        LD      A,(CM_SNDDV)
         DEC     A
-        LD      (SndDivCount),A
+        LD      (CM_SNDDV),A
         RET     NZ
-        LD      A,(SndDivReload)
-        LD      (SndDivCount),A
-        LD      A,(SpeakerPort)
-        XOR     SpeakerBit
-        LD      (SpeakerPort),A
+        LD      A,(CM_SNDD0)
+        LD      (CM_SNDDV),A
+        LD      A,(CM_SPKRP)
+        XOR     SC_SPKRB
+        LD      (CM_SPKRP),A
         RET

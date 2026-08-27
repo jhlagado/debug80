@@ -16,40 +16,43 @@ The Debug80 target is still the top-level file:
 src/pacmo/pacmo.main.asm
 ```
 
-That file owns the `ORG`, the reset entry, the main loop, and the include order. Debug80 can treat it as the Pacmo target without needing to know how the internal files are arranged.
+That file is an ordered `%INCLUDE` root. `main-loop.asm` owns the `ORG`, reset
+entry, and cooperative loop. Debug80 can treat `pacmo.main.asm` as the target
+without needing to know how the internal files are arranged.
+
+Atom stores names in eight characters. The tour uses descriptive routine and
+data names; `src/pacmo/atom-symbols.json` maps them to the compact identifiers
+in source. The comments above routines retain those descriptive names.
 
 The current Pacmo include order is:
 
 ```asm
-.include "../shared/constants.asm"
-
-Start:
-    CALL    InitState
-
-MainLoop:
-    CALL    ScanFrame
-    CALL    LogicTick
-    JR      MainLoop
-
-.include "../shared/scan-tick.asm"
-.include "scan-frame.asm"
-.include "game-init.asm"
-.include "logic-dispatch.asm"
-.include "movement.asm"
-.include "../shared/framebuffer-core.asm"
-.include "../shared/framebuffer-draw.asm"
-.include "render.asm"
-.include "../shared/sound.asm"
-.include "sound.asm"
-.include "../shared/hud.asm"
-.include "hud.asm"
-.include "../shared/lcd.asm"
-.include "ui.asm"
-.include "data.asm"
-.include "ram.asm"
+%INCLUDE "../shared/constants.asm"
+%INCLUDE "constants.asm"
+%INCLUDE "main-loop.asm"
+%INCLUDE "../shared/scan-tick.asm"
+%INCLUDE "scan-frame.asm"
+%INCLUDE "game-init.asm"
+%INCLUDE "logic-dispatch.asm"
+%INCLUDE "movement.asm"
+%INCLUDE "../shared/framebuffer-core.asm"
+%INCLUDE "../shared/framebuffer-draw.asm"
+%INCLUDE "render.asm"
+%INCLUDE "../shared/sound.asm"
+%INCLUDE "sound.asm"
+%INCLUDE "../shared/hud.asm"
+%INCLUDE "hud.asm"
+%INCLUDE "../shared/lcd.asm"
+%INCLUDE "ui.asm"
+%INCLUDE "data.asm"
+%INCLUDE "ram.asm"
 ```
 
-The include order is deliberate. `shared/scan-tick.asm` calls `SndService` and `HudScanDig` before their labels appear in the include stream. AZM resolves those forward references. The pattern keeps scanout generic while letting Pacmo decide which sound and HUD services satisfy the calls.
+The order is deliberate. `shared/scan-tick.asm` calls `SndService` and
+`HudScanDig` before their declarations arrive. Atom retains those references
+and patches them when it assembles the later sound and HUD parts. The pattern
+keeps scanout generic while letting Pacmo decide which services satisfy the
+calls.
 
 The split is intentional. Files under `src/shared/` are generic hardware or buffer routines that can serve more than one game. Files under `src/pacmo/` contain Pacmo's rules, state, tables, and game-specific wrappers.
 
@@ -61,12 +64,16 @@ This is still a careful harmonisation, not a large engine abstraction. Shared fi
 
 ```asm
 MainLoop:
-    CALL    ScanFrame
-    CALL    LogicTick
+    CALL    CM_SCNFR
+    CALL    CM_LGCTC
     JR      MainLoop
 ```
 
-Those three instructions in `src/pacmo/pacmo.main.asm` are the whole runtime. Pacmo uses the shared cooperative loop described in [shared-codebase.md](shared-codebase.md): `ScanFrame` keeps the hardware alive for one visible frame, and `LogicTick` performs one game frame while the matrix is blank.
+Those three instructions in `src/pacmo/main-loop.asm` are the whole runtime.
+Pacmo uses the shared cooperative loop described in
+[shared-codebase.md](shared-codebase.md): `CM_SCNFR` (`ScanFrame`) keeps the
+hardware alive for one visible frame, and `CM_LGCTC` (`LogicTick`) performs one
+game frame while the matrix is blank.
 
 This means the display, Score digits, speaker, keypad, scrolling, monster movement, rendering, and level timing all share the same cooperative clock.
 
@@ -287,7 +294,7 @@ Wall colour is state-dependent:
 
 `RendPwrPillRow` walks the power-pill table and draws only uneaten pills on the requested screen row. `RendPwrPills` remains the full-frame wrapper.
 
-`RendMonsRow` filters Monsters by the requested screen row before calling `RendEnemyBack`. `RendEnemyBack` converts a monster's world x,y to screen x,y, skips off-screen and respawning Monsters, chooses attack or flee colour, and writes one cell.
+`RendMonsRow` compares each Monster with the requested screen row before calling `RendEnemyBack`. `RendEnemyBack` converts a monster's world x,y to screen x,y, skips off-screen and respawning Monsters, selects the attack or flee colour, and writes one cell.
 
 `RendPlyRow` draws the player only when the requested row matches the player's visible screen row. `RendPlyBack` still owns the cell colour choice. The player is drawn last so it appears over paths, pills, and Monsters. It is normally yellow. When the round is complete it is white. When caught it is red.
 
@@ -328,7 +335,9 @@ There is no movement sound now; it was removed because it made the game noisier 
 
 ## Data layout
 
-`data.asm` contains constants, LCD text, the world bitmap, power-pill positions, and respawn candidates. Most game tuning is here: move period, power timer, scoring, palette, monster speed, respawn delay, and level difficulty steps.
+`constants.asm` contains game tuning, scoring, palette, monster record fields,
+and level difficulty values. `data.asm` contains LCD text, scripts, the world
+bitmap, power-pill positions, and respawn candidates.
 
 Most static Pacmo data lives here: the 15-row maze bitmap, power-pill table, enemy respawn table, colour constants, Score values, sound durations, LCD strings, and LCD scripts. Changing a message, palette entry, Score value, or respawn candidate is usually a data edit rather than a logic edit.
 
@@ -350,7 +359,7 @@ Most static Pacmo data lives here: the 15-row maze bitmap, power-pill table, ene
 - scan state and framebuffers
 - eaten-path bitmap
 
-`Monster0`, `Monster1`, and `Monster2` are contiguous records, and symbolic aliases such as `EnemyX` and `Enemy2Timer` point into those records. New enemy code should prefer `IX` record access; the aliases exist mostly for initialization and readability.
+`Monster0`, `Monster1`, and `Monster2` are contiguous records, with symbolic aliases such as `EnemyX` and `Enemy2Timer` for individual fields. Use `IX` record access in new enemy routines. The aliases are used mainly during initialization and where a field name is clearer.
 
 The Framebuffer is the same shape used by Tetro and the shared scanout: eight rows, four bytes per row. The first three bytes are red, green, and blue. The fourth is aux/padding and is cleared but not emitted by scanout.
 
@@ -407,7 +416,9 @@ As the player eats paths, the green path cells turn black. When no open path cel
 ```text
 target
   src/pacmo/pacmo.main.asm
-    ORG, Start, MainLoop, include order
+    ordered %INCLUDE root
+  src/pacmo/main-loop.asm
+    ORG, Start, MainLoop
 
 shared hardware helpers
   shared/scan-tick.asm

@@ -9,15 +9,15 @@
 ; wrapping to 0 after digit 5.
 ;!      out       carry,zero
 ;!      clobbers  A,BC,DE,HL
-@HudScanDig:
-        LD      A,(HudScanIndex)
+SH_HDSCN:
+        LD      A,(CM_HDSCN)
         LD      C,A
-        LD      A,(SpeakerPort)
-        OUT     (PortDigits),A
+        LD      A,(CM_SPKRP)
+        OUT     (SC_PRTDG),A
         LD      A,C
         LD      L,A
         LD      H,0
-        LD      DE,HudSegBuffer
+        LD      DE,CM_HDSGB
         ADD     HL,DE
         LD      A,(HL)
         OUT     (PortSegs),A
@@ -25,34 +25,34 @@
         LD      A,C
         LD      L,A
         LD      H,0
-        LD      DE,HudMaskTbl
+        LD      DE,SH_HDMSK
         ADD     HL,DE
         LD      A,(HL)
         LD      B,A
-        LD      A,(SpeakerPort)
+        LD      A,(CM_SPKRP)
         OR      B
-        OUT     (PortDigits),A
+        OUT     (SC_PRTDG),A
 
         LD      A,C
         INC     A
         CP      6
-        JR      C,HudScanSave
+        JR      C,SH_HDSC0
         XOR     A
-HudScanSave:
-        LD      (HudScanIndex),A
+SH_HDSC0:
+        LD      (CM_HDSCN),A
         RET
 
 ; HudBlankDig —
 ; Zero all six bytes of HudSegBuffer.
 ;!      clobbers  A,B,HL
-@HudBlankDig:
-        LD      HL,HudSegBuffer
+SH_HDBLN:
+        LD      HL,CM_HDSGB
         LD      B,6
         XOR     A
-HudBlankLp:
+SH_HDBL0:
         LD      (HL),A
         INC     HL
-        DJNZ    HudBlankLp
+        DJNZ    SH_HDBL0
         RET
 
 ; HudWriteU16 —
@@ -63,21 +63,21 @@ HudBlankLp:
 ;!      in        HL
 ;!      out       BC,HL
 ;!      clobbers  A,DE
-@HudWriteU16:
-        LD      A,(HudGlyphTbl)
-        LD      (HudSegBuffer),A
-        LD      BC,HudSegBuffer + 1
+SH_HDWRT:
+        LD      A,(SH_HDGLY)
+        LD      (CM_HDSGB),A
+        LD      BC,CM_HDSGB + 1
 
-        LD      DE,0x2710      ; 10000
-        CALL    HudDecDigit
-        LD      DE,0x03E8      ; 1000
-        CALL    HudDecDigit
-        LD      DE,0x0064      ; 100
-        CALL    HudDecDigit
-        LD      DE,0x000A      ; 10
-        CALL    HudDecDigit
-        LD      DE,0x0001      ; 1
-        CALL    HudDecDigit
+        LD      DE,$2710 ; 10000
+        CALL    SH_HDDCD
+        LD      DE,$03E8 ; 1000
+        CALL    SH_HDDCD
+        LD      DE,$0064 ; 100
+        CALL    SH_HDDCD
+        LD      DE,$000A ; 10
+        CALL    SH_HDDCD
+        LD      DE,$0001 ; 1
+        CALL    SH_HDDCD
         RET
 
 ; HudDecDigit —
@@ -89,30 +89,30 @@ HudBlankLp:
 ;!      in        HL,DE,BC
 ;!      out       BC,HL
 ;!      clobbers  A,DE
-@HudDecDigit:
+SH_HDDCD:
         XOR     A
 HudDecLp:
         PUSH    AF
         LD      A,H
         CP      D
-        JR      C,HudDecDone
-        JR      NZ,HudDecSub
+        JR      C,SH_HDDC0
+        JR      NZ,SH_HDDCS
         LD      A,L
         CP      E
-        JR      C,HudDecDone
-HudDecSub:
+        JR      C,SH_HDDC0
+SH_HDDCS:
         POP     AF
         OR      A
         SBC     HL,DE
         INC     A
         JR      HudDecLp
-HudDecDone:
+SH_HDDC0:
         POP     AF
         PUSH    HL
         PUSH    BC
         LD      L,A
         LD      H,0
-        LD      DE,HudGlyphTbl
+        LD      DE,SH_HDGLY
         ADD     HL,DE
         LD      A,(HL)
         POP     BC
@@ -121,28 +121,28 @@ HudDecDone:
         POP     HL
         RET
 
-HudMaskTbl:
-        .db      0x20
-        .db      0x10
-        .db      0x08
-        .db      0x04
-        .db      0x02
-        .db      0x01
+SH_HDMSK:
+        DB      $20
+        DB      $10
+        DB      $08
+        DB      $04
+        DB      $02
+        DB      $01
 
-HudGlyphTbl:
-        .db      0xEB
-        .db      0x28
-        .db      0xCD
-        .db      0xAD
-        .db      0x2E
-        .db      0xA7
-        .db      0xE7
-        .db      0x29
-        .db      0xEF
-        .db      0x2F
-        .db      0x6F
-        .db      0xE6
-        .db      0xC3
-        .db      0xEC
-        .db      0xC7
-        .db      0x47
+SH_HDGLY:
+        DB      $EB
+        DB      $28
+        DB      $CD
+        DB      $AD
+        DB      $2E
+        DB      $A7
+        DB      $E7
+        DB      $29
+        DB      $EF
+        DB      $2F
+        DB      $6F
+        DB      $E6
+        DB      $C3
+        DB      $EC
+        DB      $C7
+        DB      $47

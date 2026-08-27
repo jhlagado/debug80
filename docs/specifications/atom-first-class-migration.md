@@ -8,15 +8,16 @@ Implemented through the Debug80 default-project checkpoint: the shared services
 authority, Atom monorepo package, include-driven Node and CP/M preparation, CLI
 v1, and Debug80's `assembler: "atom"` backend are on `main`. New Debug80
 assembly projects select Atom and every shipped starter is assembled through
-the real Atom engine in the extension suite. Existing checked-in assembly
-projects select either Atom or AZM explicitly, enforced by a repository gate.
+the real Atom engine in the extension suite. Every checked-in assembly project
+now selects Atom explicitly, enforced by a repository gate.
 
 Native work includes the reusable Z80 named-object harness and proved TECM8
 providers for ordinary TEC-FS input and transactional output. The harness has
 a proved immutable-bank profile with fixed state relocated to common RAM. The
 TEC include resolver, launcher, and final memory map are implemented and proved
-under emulation. TEC hardware acceptance, Nucleus convergence, broader corpus
-conversion, release installation, and the compatibility-default change remain.
+under emulation. TEC hardware acceptance, Nucleus convergence, release
+installation, and the compatibility-default change remain. The checked-in
+Debug80 project corpus no longer selects AZM.
 
 ## Objective
 
@@ -175,29 +176,38 @@ fallback remains AZM for external project files that predate explicit
 selection. It changes only after the in-repository corpus is converted and a
 major-release migration note is ready.
 
-The Debug80 extension's own root smoke target is the first converted corpus
-target. Its checked source assembles through Atom to `3E 05 C6 03 76`. Sources
-that require unsupported language features remain explicitly assigned to AZM;
-the migration does not rewrite them opportunistically.
+The Debug80 extension's own root smoke target was the first converted corpus
+target. Its checked source assembles through Atom to `3E 05 C6 03 76`.
 
 The four `examples/debug80-dev` TEC-1G targets are also converted. Their
 checked `.ASM` sources use Atom directives and private labels, the project
 selects `assembler: "atom"`, and a Debug80 corpus test assembles every target
 through `AtomBackend` while pinning its exact byte count and SHA-256 digest.
 
-Every remaining checked-in AZM target is named in
-[`azm-retirement-inventory.json`](azm-retirement-inventory.json) with the
-specific semantic or fixture blocker that prevents an exact migration today.
+[`azm-retirement-inventory.json`](azm-retirement-inventory.json) is now empty.
 The repository check rejects a new unlisted AZM target and rejects an inventory
-entry after its target moves to Atom. This makes AZM use a shrinking, reviewed
-exception set rather than an implicit fallback.
+entry after its target moves to Atom. Any future exception must therefore be
+explicit, reviewed, and temporary.
 
 The three static Debug80 adapter fixtures now select Atom as well. Their HEX
 bytes are unchanged, their D8 maps are generated from the checked sources by
 `generate-atom-e2e-fixtures.mjs`, and the complete adapter E2E suite proves
 entry stops, stepping, constants, included-source breakpoints, and sparse-ORG
-breakpoints against those Atom maps. Eight AZM targets remain: six generated
-Glimmer assembly targets and the two interleaved Tetro/Pacmo sources.
+breakpoints against those Atom maps.
+
+Glimmer's generated Dot, Slide, Trail, Sprite Chase, Snake, and Tetro targets
+now select Atom. Snake and Tetro retain imported hand-written modules as
+separate ordered source parts and match the corresponding compatibility build
+byte for byte.
+
+The direct Tetro and Pacmo corpus sources now use Atom syntax and leading
+`%INCLUDE` roots. Their main loops and modules remain distinct source parts.
+Stable eight-character identifiers are recorded in per-target symbol ledgers.
+The Atom images match the previous measured binaries exactly: Tetro is 2,801
+bytes with SHA-256 `1ded84b34cfe93d07ae8e766bfd499ffa85e405b5c850f0e7d1fcdae267c2688`;
+Pacmo is 3,573 bytes with SHA-256
+`4b985d210f22bde37bd82ed41b6c14326dc21dc7cca4568c8b0b6c8c6e42ec0e`.
+No checked-in Debug80 target now selects AZM.
 
 ## Checkpoint discipline
 

@@ -3,47 +3,47 @@
 ; No NEXT preview row is appended.
 ;!      out       carry
 ;!      clobbers  A,HL
-@LcdShowGOver:
-        LD      HL,ScriptGameOver
-        JP      LcdScript
+TU_LCDSH:
+        LD      HL,TD_SCRPT
+        JP      SL_LCDS0
 
 ; LcdShowPaused —
 ; Show the PAUSED HUD; falls into LcdShowHud
 ; which appends the NEXT preview on row 2.
 ;!      out       HL
-@LcdShowPaused:
-        LD      HL,ScriptPaused
-        JR      LcdShowHud
+TU_LCDS1:
+        LD      HL,TD_SCRP0
+        JR      TU_LCDS0
 
 ; LcdShowSplash —
 ; Show the splash screen with control hints.
 ; LcdScript's carry result is not Tetro status.
 ;!      out       carry
 ;!      clobbers  A,HL
-@LcdShowSplash:
-        LD      HL,ScriptSplash
-        JP      LcdScript
+TU_LCDS3:
+        LD      HL,TD_SCRP2
+        JP      SL_LCDS0
 
 ; LcdAppendPrev —
 ; Emit the NextPieceIndex letter glyph to the LCD.
 ; The LCD cursor is positioned after the NEXT: banner.
 ;!      clobbers  A,DE,HL
-@LcdAppendPrev:
-        LD      A,(NextPieceIndex)
-        LD      DE,PieceNameTable
-        JP      LcdPutcTbl
+TU_LCDPP:
+        LD      A,(TW_NXTPC)
+        LD      DE,TD_PCNMT
+        JP      SL_LCDPT
 
 ; LcdRefNextPrev —
 ; Rewrite row 2 NEXT: label plus preview letter.
 ; Row 1 is left untouched.
 ;!      clobbers  A,DE
-@LcdRefNextPrev:
+TU_LCDRF:
         PUSH    BC
         PUSH    HL
         LD      B,LcdRow2
-        LD      HL,LcdTextNext
-        CALL    LcdRowStr
-        CALL    LcdAppendPrev
+        LD      HL,TD_LCDTX
+        CALL    SL_LCDRW
+        CALL    TU_LCDPP
         POP     HL
         POP     BC
         RET
@@ -53,19 +53,19 @@
 ; LcdShowHud, which appends the NEXT preview.
 ;!      out       HL
 ;!      clobbers  A
-@LcdShowRunning:
-        LD      HL,ScriptRunning
+TU_LCDS2:
+        LD      HL,TD_SCRP1
         ; fall through
 
 ; LcdShowHud —
 ; Shared tail: run LcdScript then append NEXT
 ; preview letter on row 2.
-LcdShowHud:
+TU_LCDS0:
         PUSH    BC
         PUSH    DE
         PUSH    HL
-        CALL    LcdScript
-        CALL    LcdAppendPrev
+        CALL    SL_LCDS0
+        CALL    TU_LCDPP
         POP     HL
         POP     DE
         POP     BC

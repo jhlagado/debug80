@@ -7,9 +7,9 @@
 ; SndStart. Flags are inherited from that helper.
 ;!      out       carry,zero
 ;!      clobbers  A,C
-@PacSndPower:
-        LD      A,PacSndPowerLen
-        LD      C,PacSndPowerDiv
+PS_SNDPW:
+        LD      A,PC_SNDP0
+        LD      C,PC_SNDPW
         JP      SndStart
 
 ; PacSndEatEnemy —
@@ -18,9 +18,9 @@
 ; SndStart. Flags are inherited from that helper.
 ;!      out       carry,zero
 ;!      clobbers  A,C
-@PacSndEatEnemy:
-        LD      A,PacSndEatEnLen
-        LD      C,PacSndEatEnDiv
+PS_SNDTN:
+        LD      A,PC_SNDT0
+        LD      C,PC_SNDTN
         JP      SndStart
 
 ; PacSndCaught —
@@ -29,9 +29,9 @@
 ; SndStart. Flags are inherited from that helper.
 ;!      out       carry,zero
 ;!      clobbers  A,C
-@PacSndCaught:
-        LD      A,PacSndCaughtLen
-        LD      C,PacSndCaughtDiv
+PS_SNDCG:
+        LD      A,PC_SNDC0
+        LD      C,PC_SNDCG
         JP      SndStart
 
 ; PacSndLvlDone —
@@ -40,7 +40,7 @@
 ; SndStart. Flags are inherited from that helper.
 ;!      out       carry,zero
 ;!      clobbers  A,C
-@PacSndLvlDone:
-        LD      A,PacSndDoneLen
-        LD      C,PacSndDoneDiv
+PS_SNDLV:
+        LD      A,PC_SNDD0
+        LD      C,PC_SNDDN
         JP      SndStart

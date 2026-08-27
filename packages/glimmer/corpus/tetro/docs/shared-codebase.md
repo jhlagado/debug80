@@ -17,7 +17,9 @@ src/tetro/tetro.main.asm
 src/pacmo/pacmo.main.asm
 ```
 
-Those files own the `ORG`, reset entry, main loop, and include order. Debug80 can load either target directly without knowing how the internal helper files are split.
+Those files are ordered `%INCLUDE` roots. Each game's `main-loop.asm` owns the
+`ORG`, reset entry, and cooperative loop. Debug80 can load either root directly
+without knowing how the internal helper files are split.
 
 Both targets use the same low-level scan primitive and the same high-level
 scan policy: scan a complete visible matrix frame with fixed row dwell, blank
@@ -25,19 +27,28 @@ the matrix, then run one game logic frame.
 
 ```asm
 Start:
-    CALL    InitState
+    CALL    CM_INTST
 
 MainLoop:
-    CALL    ScanFrame
-    CALL    LogicTick
+    CALL    CM_SCNFR
+    CALL    CM_LGCTC
     JR      MainLoop
 ```
+
+The compact names are Atom's stored identifiers for `InitState`, `ScanFrame`,
+and `LogicTick`. Each game has an `atom-symbols.json` ledger that maps the
+descriptive names used in this tour to the exact identifiers in source. Routine
+comments retain the descriptive names beside their compact labels.
 
 `ScanTick` is still the shared primitive that emits one row and services sound
 and the seven-segment display. Each game owns its local `ScanFrame` policy so
 the dwell constant and future timing experiments can remain game-local.
 
-The include order matters because AZM resolves forward references. `shared/scan-tick.asm` calls `SndService` and `HudScanDig`, but those labels are supplied later by the shared sound and HUD files. This keeps scanout generic while allowing each target to include its own game wrappers after the generic services.
+The source-part order matters. `shared/scan-tick.asm` calls `SndService` and
+`HudScanDig`, but those labels are supplied by later sound and HUD parts. Atom
+records those forward references and patches them when the declarations arrive.
+This keeps scanout generic while allowing each target to select its own game
+wrappers after the generic services.
 
 ---
 
@@ -165,7 +176,7 @@ It initializes `SoundTimer`, `SndDivReload`, `SndDivCount`, and clears `SpeakerP
 
 `SndService` runs once per scan tick. It decrements the sound timer and toggles `SpeakerPort` whenever the divider expires. When the timer reaches zero, it silences the speaker state.
 
-The shared service does not know what a sound means. Tetro and Pacmo keep local event wrappers that load their own duration and divider constants, then tail-call `SndStart`.
+The shared service receives only a duration and divider. Tetro and Pacmo keep local event wrappers that load the values for each game event, then tail-call `SndStart`.
 
 ---
 

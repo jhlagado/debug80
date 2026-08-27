@@ -32,38 +32,26 @@
 ;   - The active object is a 4x4 bitmap blitted in its piece colour over the board.
 ;   - Pieces are selected from a PRNG-driven 7-piece stream with preview.
 
-        .org     0x4000
-
-        .include "../shared/constants.asm"
-        .include "constants.asm"
-
-;!      out       carry,zero
-;!      clobbers  A,BC,DE,HL,IX,IY
-@Start:
-        CALL    InitState
-
-MainLoop:
-        CALL    ScanFrame
-        CALL    LogicTick
-        JR      MainLoop
-
-        .include "geometry-helpers.asm"
-        .include "collision.asm"
-        .include "../shared/framebuffer-core.asm"
-        .include "../shared/framebuffer-draw.asm"
-        .include "render.asm"
-        .include "piece-active.asm"
-        .include "board-lock.asm"
-        .include "game-init.asm"
-        .include "../shared/scan-tick.asm"
-        .include "scan-frame.asm"
-        .include "../shared/sound.asm"
-        .include "sound.asm"
-        .include "../shared/hud.asm"
-        .include "hud.asm"
-        .include "../shared/lcd.asm"
-        .include "ui.asm"
-        .include "logic-dispatch.asm"
-        .include "input.asm"
-        .include "data.asm"
-        .include "ram.asm"
+%INCLUDE "../shared/constants.asm"
+%INCLUDE "constants.asm"
+%INCLUDE "main-loop.asm"
+%INCLUDE "geometry-helpers.asm"
+%INCLUDE "collision.asm"
+%INCLUDE "../shared/framebuffer-core.asm"
+%INCLUDE "../shared/framebuffer-draw.asm"
+%INCLUDE "render.asm"
+%INCLUDE "piece-active.asm"
+%INCLUDE "board-lock.asm"
+%INCLUDE "game-init.asm"
+%INCLUDE "../shared/scan-tick.asm"
+%INCLUDE "scan-frame.asm"
+%INCLUDE "../shared/sound.asm"
+%INCLUDE "sound.asm"
+%INCLUDE "../shared/hud.asm"
+%INCLUDE "hud.asm"
+%INCLUDE "../shared/lcd.asm"
+%INCLUDE "ui.asm"
+%INCLUDE "logic-dispatch.asm"
+%INCLUDE "input.asm"
+%INCLUDE "data.asm"
+%INCLUDE "ram.asm"

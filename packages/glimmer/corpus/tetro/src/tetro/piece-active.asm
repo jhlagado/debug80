@@ -4,14 +4,14 @@
 ; On no collision, commits PendingX to PlayerX.
 ;!      out       zero
 ;!      clobbers  A,DE
-@HorizProbeX:
+TP_HRZPR:
         LD      A,(PlayerY)
         LD      (PendingY),A
-        CALL    LoadDePending
-        CALL    CheckCollAtDe
-        JR      NC,HorizCommitX
+        CALL    TG_LDDPN
+        CALL    TX_CHCKC
+        JR      NC,TP_HRZCM
         RET
-HorizCommitX:
+TP_HRZCM:
         LD      A,(PendingX)
         LD      (PlayerX),A
         RET
@@ -21,11 +21,11 @@ HorizCommitX:
 ; Increments PlayerX if the candidate is legal.
 ;!      out       zero
 ;!      clobbers  A,DE
-@MoveRight:
+TP_MVRGH:
         LD      A,(PlayerX)
         INC     A
         LD      (PendingX),A
-        JP      HorizProbeX
+        JP      TP_HRZPR
 
 ; MoveLeft —
 ; Attempt to shift the piece one column left.
@@ -33,13 +33,13 @@ HorizCommitX:
 ; PlayerX=0 leaves the position unchanged.
 ;!      out       zero
 ;!      clobbers  A,DE
-@MoveLeft:
+MoveLeft:
         LD      A,(PlayerX)
         OR      A
         RET     Z
         DEC     A
         LD      (PendingX),A
-        JP      HorizProbeX
+        JP      TP_HRZPR
 
 ; StepActDown —
 ; Load the candidate position one row below.
@@ -48,14 +48,14 @@ HorizCommitX:
 ; Does not commit PlayerY on its own.
 ;!      out       carry,zero
 ;!      clobbers  A,DE
-@StepActDown:
+TP_STPCT:
         LD      A,(PlayerX)
         LD      (PendingX),A
         LD      A,(PlayerY)
         INC     A
         LD      (PendingY),A
-        CALL    LoadDePending
-        CALL    CheckCollAtDe
+        CALL    TG_LDDPN
+        CALL    TX_CHCKC
         RET
 
 ; ApplyGravity —
@@ -65,19 +65,19 @@ HorizCommitX:
 ; Collision jumps to LockActPiece.
 ;!      out       carry,zero
 ;!      clobbers  A,BC,DE,HL
-@ApplyGravity:
-        LD      A,(GravityCooldown)
+TP_APPLY:
+        LD      A,(TW_GRVTY)
         DEC     A
-        LD      (GravityCooldown),A
+        LD      (TW_GRVTY),A
         RET     NZ
 
-        LD      A,(CurGravPeriod)
-        LD      (GravityCooldown),A
+        LD      A,(TW_CRGRV)
+        LD      (TW_GRVTY),A
 
-        CALL    StepActDown
-        JR      NC,GravityCommit
-        JP      LockActPiece
-GravityCommit:
+        CALL    TP_STPCT
+        JR      NC,TP_GRVTY
+        JP      TB_LCKC0
+TP_GRVTY:
         LD      A,(PendingY)
         LD      (PlayerY),A
         RET
@@ -90,17 +90,17 @@ GravityCommit:
 ; GravityCooldown to CurGravPeriod.
 ;!      out       carry,zero
 ;!      clobbers  A,BC,DE,HL
-@SoftDrop:
-        CALL    StepActDown
-        JR      NC,SoftDropCommit
+SoftDrop:
+        CALL    TP_STPCT
+        JR      NC,TP_SFTDR
         LD      A,1
-        LD      (DropLockout),A
-        JP      LockActPiece
-SoftDropCommit:
+        LD      (TW_DRPLC),A
+        JP      TB_LCKC0
+TP_SFTDR:
         LD      A,(PendingY)
         LD      (PlayerY),A
-        LD      A,(CurGravPeriod)
-        LD      (GravityCooldown),A
+        LD      A,(TW_CRGRV)
+        LD      (TW_GRVTY),A
         RET
 
 ; SanitizeActPos —
@@ -111,24 +111,24 @@ SoftDropCommit:
 ; negative Y (above-field spawn rows) is kept.
 ;!      out       zero
 ;!      clobbers  A,HL
-@SanitizeActPos:
+TP_SNTZC:
         LD      A,(PlayerX)
-        LD      HL,CurPieceRight
+        LD      HL,TW_CRPCR
         ADD     A,(HL)
         CP      RowCount
-        JR      C,SanitizeXDone
+        JR      C,TP_SNTZX
         LD      A,RowCount - 1
         SUB     (HL)
         LD      (PlayerX),A
-SanitizeXDone:
+TP_SNTZX:
         LD      A,(PlayerY)
         BIT     7,A
-        JR      NZ,SanitizeYDone
+        JR      NZ,TP_SNTZY
         CP      YMax + 1
-        JR      C,SanitizeYDone
+        JR      C,TP_SNTZY
         LD      A,YMax
         LD      (PlayerY),A
-SanitizeYDone:
+TP_SNTZY:
         RET
 
 ; SelectNextPiece —
@@ -139,15 +139,15 @@ SanitizeYDone:
 ; Draws a new NextPieceIndex from the RNG.
 ;!      out       zero
 ;!      clobbers  A,BC,DE,HL
-@SelectNextPiece:
-        LD      A,(NextPieceIndex)
-        LD      (CurPieceIndex),A
+TP_SLCTN:
+        LD      A,(TW_NXTPC)
+        LD      (TW_CRPCN),A
         XOR     A
-        LD      (CurrentRotation),A
-        CALL    LoadCurRot
+        LD      (TW_CRRNT),A
+        CALL    TP_LDCRR
 
-        CALL    RngNextPiece
-        LD      (NextPieceIndex),A
+        CALL    TP_RNGN1
+        LD      (TW_NXTPC),A
         RET
 
 ; RngNextPiece —
@@ -157,16 +157,16 @@ SanitizeYDone:
 ; output is uniformly in range.
 ;!      out       A,zero
 ;!      clobbers  B
-@RngNextPiece:
+TP_RNGN1:
         CALL    RngNext8
         LD      B,A
         SRL     A
         SRL     A
         SRL     A
-        XOR     B                       ; fold high bits into sticky low bits
-        AND     0x07
-        CP      PieceCount
-        JR      NC,RngNextPiece
+        XOR     B ; fold high bits into sticky low bits
+        AND     $07
+        CP      TC_PCCNT
+        JR      NC,TP_RNGN1
         RET
 
 ; RngNext8 —
@@ -176,16 +176,16 @@ SanitizeYDone:
 ; is 1. Seed 0 is replaced with RngSeedInit to
 ; prevent the zero lock-up state.
 ;!      out       A
-@RngNext8:
+RngNext8:
         LD      A,(RngSeed)
         OR      A
-        JR      NZ,RngNext8Step
-        LD      A,RngSeedInit
-RngNext8Step:
+        JR      NZ,TP_RNGN0
+        LD      A,TC_RNGSD
+TP_RNGN0:
         SRL     A
-        JR      NC,RngNext8Save
-        XOR     0xB8
-RngNext8Save:
+        JR      NC,TP_RNGNX
+        XOR     $B8
+TP_RNGNX:
         LD      (RngSeed),A
         RET
 
@@ -196,40 +196,40 @@ RngNext8Save:
 ; CurPiecePtr (from PiecePtrTable).
 ; Table index: piece_index * 4 + rotation.
 ;!      clobbers  A,C,DE,HL
-@LoadCurRot:
+TP_LDCRR:
         ; COLOR lookup first; piece-indexed so DE
         ; stays free.
-        LD      A,(CurPieceIndex)
+        LD      A,(TW_CRPCN)
         LD      E,A
         LD      D,0
-        LD      HL,PieceColorTbl
+        LD      HL,TD_PCCLR
         ADD     HL,DE
         LD      A,(HL)
-        LD      (CurPieceColor),A
+        LD      (TW_CRPCC),A
 
         ; Now DE = piece_index*4 + rotation for
         ; the remaining tables.
-        LD      A,(CurPieceIndex)
+        LD      A,(TW_CRPCN)
         ADD     A,A
         ADD     A,A
         LD      C,A
-        LD      A,(CurrentRotation)
+        LD      A,(TW_CRRNT)
         ADD     A,C
         LD      E,A
         LD      D,0
 
-        LD      HL,PieceRightTbl
+        LD      HL,TD_PCRGH
         ADD     HL,DE
         LD      A,(HL)
-        LD      (CurPieceRight),A
+        LD      (TW_CRPCR),A
 
-        LD      HL,PiecePtrTable
+        LD      HL,TD_PCPTR
         ADD     HL,DE
         ADD     HL,DE
         LD      E,(HL)
         INC     HL
         LD      D,(HL)
-        LD      HL,CurPiecePtr
+        LD      HL,TW_CRPCP
         LD      (HL),E
         INC     HL
         LD      (HL),D
@@ -245,20 +245,20 @@ RngNext8Save:
 ; GravityCooldown to CurGravPeriod.
 ;!      out       carry,zero
 ;!      clobbers  A,C,DE,HL
-@RotateTestDone:
+TP_RTTTS:
         LD      A,(PlayerX)
         LD      D,A
         LD      A,(PlayerY)
         LD      E,A
-        CALL    CheckCollAtDe
-        JR      NC,RotateAccept
-        LD      A,(PendingRotation)
-        LD      (CurrentRotation),A
-        JP      LoadCurRot
-RotateAccept:
-        CALL    SndTrigRotate
-        LD      A,(CurGravPeriod)
-        LD      (GravityCooldown),A
+        CALL    TX_CHCKC
+        JR      NC,TP_RTTCC
+        LD      A,(TW_PNDNG)
+        LD      (TW_CRRNT),A
+        JP      TP_LDCRR
+TP_RTTCC:
+        CALL    TS_SNDT3
+        LD      A,(TW_CRGRV)
+        LD      (TW_GRVTY),A
         RET
 
 ; RotateCw —
@@ -267,14 +267,14 @@ RotateAccept:
 ; applies the candidate, calls RotateTestDone.
 ;!      out       carry,zero
 ;!      clobbers  A,C,DE,HL
-@RotateCw:
-        LD      A,(CurrentRotation)
-        LD      (PendingRotation),A
+RotateCw:
+        LD      A,(TW_CRRNT)
+        LD      (TW_PNDNG),A
         INC     A
         AND     3
-        LD      (CurrentRotation),A
-        CALL    LoadCurRot
-        JP      RotateTestDone
+        LD      (TW_CRRNT),A
+        CALL    TP_LDCRR
+        JP      TP_RTTTS
 
 ; RotateLeft —
 ; Attempt counter-clockwise rotation (dec mod 4).
@@ -282,14 +282,14 @@ RotateAccept:
 ; applies the candidate, calls RotateTestDone.
 ;!      out       carry,zero
 ;!      clobbers  A,C,DE,HL
-@RotateLeft:
-        LD      A,(CurrentRotation)
-        LD      (PendingRotation),A
-        DEC     A                       ; 0->0xFF; 1->0; 2->1; 3->2
-        AND     3                       ; 0xFF -> 3 (wrap)
-        LD      (CurrentRotation),A
-        CALL    LoadCurRot
-        JP      RotateTestDone
+TP_RTTLF:
+        LD      A,(TW_CRRNT)
+        LD      (TW_PNDNG),A
+        DEC     A ; 0->0xFF; 1->0; 2->1; 3->2
+        AND     3 ; 0xFF -> 3 (wrap)
+        LD      (TW_CRRNT),A
+        CALL    TP_LDCRR
+        JP      TP_RTTTS
 
 ; SpawnActPiece —
 ; Select next piece and place at spawn position.
@@ -301,27 +301,27 @@ RotateAccept:
 ; LCD next-piece preview via LcdRefNextPrev.
 ;!      out       carry
 ;!      clobbers  A,BC,DE,HL
-@SpawnActPiece:
-        CALL    SelectNextPiece
+TP_SPWNC:
+        CALL    TP_SLCTN
         LD      A,3
         LD      (PlayerX),A
-        LD      (PendingX),A          ; PlayerX == PendingX at spawn
+        LD      (PendingX),A ; PlayerX == PendingX at spawn
         LD      A,SpawnY
         LD      (PlayerY),A
-        LD      (PendingY),A          ; PlayerY == PendingY at spawn
-        LD      A,MovePeriod
-        LD      (MoveCooldown),A
-        LD      A,(CurGravPeriod)
-        LD      (GravityCooldown),A
+        LD      (PendingY),A ; PlayerY == PendingY at spawn
+        LD      A,TC_MVPRD
+        LD      (CM_MVCLD),A
+        LD      A,(TW_CRGRV)
+        LD      (TW_GRVTY),A
         LD      A,NoKey
         LD      (LastKey),A
-        CALL    LoadDePending
-        CALL    CheckCollAtDe
-        JR      C,SpawnFailed
+        CALL    TG_LDDPN
+        CALL    TX_CHCKC
+        JR      C,TP_SPWNF
         LD      A,1
-        LD      (ActPieceEnabled),A
-        CALL    LcdRefNextPrev
+        LD      (TW_ACTPC),A
+        CALL    TU_LCDRF
         RET
-SpawnFailed:
-        XOR     A                      ; reason code 0 = immediate spawn collision
-        JP      EnterGameOver        ; EnterGameOver jumps to game-over LCD
+TP_SPWNF:
+        XOR     A ; reason code 0 = immediate spawn collision
+        JP      TB_ENTRG ; EnterGameOver jumps to game-over LCD
