@@ -131,10 +131,10 @@ and output module are properties of the linked native profile.
 The TEC-native command follows the same positional shape, with the selected
 native profile defining its default and supported output suffixes.
 
-The current CP/M command-tail parser is measured at 303 resident code bytes.
-The revised command and include-root handling have an initial gate of no more
-than 64 additional command-parser bytes. Include resolution and its workspace
-are measured separately from the command parser and from the Atom core.
+The revised CP/M command-tail parser is Measured 351 resident code bytes,
+exactly 64 bytes above the 287-byte include-root baseline. Include resolution
+and its workspace are measured separately from the command parser and from the
+Atom core.
 
 ## Results and failure
 
@@ -164,6 +164,6 @@ artifact bundle remains available to repository automation. Debug80 and all
 in-repository scripts must request exact artifacts before the default changes
 to BIN only.
 
-The CP/M source-list command remains only until the include-driven native path
-passes its multipart, diagnostic, capacity, transaction, and size proofs. It is
-then deleted rather than retained as a second public input model.
+The CP/M profile now uses the include-driven native path exclusively. Its
+multipart, diagnostic, capacity, transaction, and size proofs gate later CLI
+changes.

@@ -21,7 +21,7 @@ builds the bundled disk and performs session installation. Custom images,
 replacement, full-directory and full-disk failures, read-only sessions, and the
 58,112-byte TPA boundary have executable proofs.
 
-Native Atom now runs as a 14,583-byte CP/M transient. With no arguments it
+Native Atom now runs as a 14,660-byte CP/M transient. With no arguments it
 reads `INPUT.ASM` and publishes `OUTPUT.COM`; `ATOM SOURCE OUTPUT.COM` selects
 another pair of current-drive CP/M 8.3 names. Leading `%INCLUDE` directives
 resolve a dependency graph of as many as 255 current-drive files. It compiles
