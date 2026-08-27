@@ -78,7 +78,7 @@ export function createTec1gRomArtifactBuildPlans(
   return activeSourceBackedTec1gRomArtifacts(artifacts).map((artifact) =>
     isMultibankExpansionArtifact(artifact)
       ? createMultibankPlan(artifact, baseDir)
-      : createSourcePlan(artifact, baseDir)
+      : createSingleSourceBuildPlan(artifact, baseDir)
   );
 }
 
@@ -99,7 +99,7 @@ export function isMultibankExpansionArtifact(
   return artifact.role === 'expansion' && 'banks' in artifact && Array.isArray(artifact.banks);
 }
 
-function createSourcePlan(
+function createSingleSourceBuildPlan(
   artifact: Tec1gSourceRomArtifactConfig,
   baseDir: string
 ): Tec1gSourceRomArtifactBuildPlan {
