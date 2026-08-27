@@ -1,18 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { createZ80Runtime } from "@jhlagado/debug80-runtime";
 import {
-  createRuntimeStreamIoStubBytes,
-  createRuntimeStreamIoHandlers,
   dispatchRuntimeStreamService,
   RUNTIME_STREAM_IO_OPERATION,
-  RUNTIME_STREAM_IO_PORT,
   runRuntimeByteStreamsConformance,
 } from "@jhlagado/z80-tool-services";
 
-import {
-  defaultRuntimeLinkContext,
-  nucleusRuntimeServiceVectorBytes,
-} from "../src/nucleus-runtime.js";
+import { defaultRuntimeLinkContext } from "../src/nucleus-runtime.js";
+import { createNucleusHostRuntimeStreamAdapter } from "../src/runtime-stream-adapter.js";
 import {
   createNucleusProofRuntimeStreams,
   NUCLEUS_PROOF_RUNTIME_STREAM_LIMITS,
@@ -96,39 +91,13 @@ describe("Nucleus runtime stream services", () => {
     const run = (
       options: Parameters<typeof createNucleusProofRuntimeStreams>[0] = {},
     ) => {
-      const streams = createNucleusProofRuntimeStreams(options);
-      const io = createRuntimeStreamIoHandlers(streams, {
-        statusPolicy: NUCLEUS_RUNTIME_STREAM_STATUS_POLICY,
+      const adapter = createNucleusHostRuntimeStreamAdapter({
+        baseServices: defaultRuntimeLinkContext.services,
+        stubBase: stubAddress,
+        streamOptions: options,
       });
       const memory = new Uint8Array(0x10000);
-      const serviceAddresses = {
-        ...defaultRuntimeLinkContext.services,
-        readInputByte: stubAddress,
-        writeOutputByte: stubAddress + stubSpacing,
-        readStorageByte: stubAddress + stubSpacing * 2,
-        rewindStorageInput: stubAddress + stubSpacing * 3,
-        writeStorageByte: stubAddress + stubSpacing * 4,
-        seekStorageOutput: stubAddress + stubSpacing * 5,
-      };
-      memory.set(
-        nucleusRuntimeServiceVectorBytes(serviceAddresses),
-        serviceVectorBase,
-      );
-      for (const [service, address] of [
-        [Service.readInputByte, serviceAddresses.readInputByte],
-        [Service.writeOutputByte, serviceAddresses.writeOutputByte],
-        [Service.readStorageByte, serviceAddresses.readStorageByte],
-        [Service.rewindStorageInput, serviceAddresses.rewindStorageInput],
-        [Service.writeStorageByte, serviceAddresses.writeStorageByte],
-        [Service.seekStorageOutput, serviceAddresses.seekStorageOutput],
-      ] as const) {
-        memory.set(
-          createRuntimeStreamIoStubBytes(
-            NUCLEUS_RUNTIME_STREAM_IO_OPERATION[service],
-          ),
-          address,
-        );
-      }
+      adapter.install(memory, serviceVectorBase);
       memory.set(
         Uint8Array.of(
           0x31,
@@ -202,14 +171,14 @@ describe("Nucleus runtime stream services", () => {
       const runtime = createZ80Runtime(
         { memory, startAddress: entryAddress },
         entryAddress,
-        io,
+        adapter.io,
       );
       for (let step = 0; step < 96 && !runtime.isHalted(); step += 1) {
         runtime.step();
       }
       expect(runtime.isHalted()).toBe(true);
       expect(runtime.cpu.sp).toBe(0xff00);
-      return { runtime, streams };
+      return { runtime, streams: adapter.streams, adapter };
     };
 
     const success = run({
@@ -227,6 +196,13 @@ describe("Nucleus runtime stream services", () => {
     expect([...success.streams.storageOutput]).toEqual([0x30, 0x53]);
     expect(success.streams.storageInputOffset).toBe(0);
     expect(success.streams.storageOutputOffset).toBe(2);
+    expect(success.adapter.serviceAddresses.writeOutputByte).toBe(
+      stubAddress + stubSpacing,
+    );
+    expect(success.adapter.serviceAddresses.trap).toBe(
+      defaultRuntimeLinkContext.services.trap,
+    );
+    expect(success.adapter.stubs).toHaveLength(6);
     expect([...success.runtime.hardware.memory.slice(statusBase, statusBase + 6)]).toEqual([
       0,
       0,

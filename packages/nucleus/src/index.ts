@@ -23,6 +23,15 @@ export {
   nucleusRuntimeServiceVectorBytes,
 } from "./nucleus-runtime.js";
 export {
+  createNucleusHostRuntimeStreamAdapter,
+  NUCLEUS_HOST_RUNTIME_STREAM_STUB_SPACING,
+  nucleusRuntimeStreamServiceOrdinals,
+  type NucleusHostRuntimeStreamAdapter,
+  type NucleusHostRuntimeStreamAdapterOptions,
+  type NucleusHostRuntimeStreamStub,
+  type NucleusRuntimeStreamServiceOrdinal,
+} from "./runtime-stream-adapter.js";
+export {
   createNucleusProofRuntimeStreams,
   NUCLEUS_PROOF_RUNTIME_STREAM_LIMITS,
   NUCLEUS_RUNTIME_STREAM_IO_OPERATION,

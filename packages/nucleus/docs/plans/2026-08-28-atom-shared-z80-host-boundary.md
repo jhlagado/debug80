@@ -487,6 +487,14 @@ Debug80 handles the I/O ports with `createRuntimeStreamIoHandlers`, backed by a
 Z80 stub bytes with `createRuntimeStreamIoStubBytes`, so the operation protocol
 and stub representation are tested together.
 
+Nucleus now wraps these pieces in `createNucleusHostRuntimeStreamAdapter`. That
+adapter owns the Nucleus-specific service-address table, generated stub images,
+vector bytes, stream object, Debug80-compatible I/O handlers, and an
+`install(memory, vectorBase)` helper. Callers pass the baseline service address
+table they want to adapt; the adapter redirects only the six stream-service
+entries and leaves `success`, `unhandledFailure`, `trap`, `farCall`, and
+`farJump` unchanged.
+
 The checked behavior is:
 
 - input and storage reads return the stream byte in `A` on success;
