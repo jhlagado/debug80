@@ -80,7 +80,7 @@ npm run atom:migration:proof-compare -w nucleus
 
 | AZM directive | Measured count | Atom migration treatment |
 | --- | ---: | --- |
-| `.DB` | 2,792 | Mechanical: `DB` |
+| `.DB` | 2,794 | Mechanical: `DB` |
 | `.DS` | 10 | Mechanical: `DS` |
 | `.DW` | 352 | Mechanical: `DW` |
 | `.EQU` | 1,106 | Mechanical: `EQU` |
@@ -270,7 +270,7 @@ proof-manifest symbol remapping.
 
 The first scaled proof-image comparison uses generated multipart Atom preview
 source, so no generated part exceeds Atom's 16-bit source-offset range. Current
-result:
+complete bounded-matrix result:
 
 | Status | Count |
 | --- | ---: |
@@ -300,15 +300,40 @@ Measured remaining blocker groups:
 
 | Group | Representative generated line | Consequence |
 | --- | --- | --- |
-| Forward or alias `EQU` expressions without a proven preview value | `N00000PV EQU N00000PP+N0000143` | Blocks all proof images based on `flat-target-z80-slice-proof.asm`; this case currently traces to `GeneratedBase`, which is not defined by the active target-memory map |
-| Larger preview execution budget | `aggregate-z80-slice-proof.json`, `expression-z80-slice-proof.json`, `stage7-ll1-aggregate-call-z80-slice-proof.json`, `stage7-ll1-parser-coverage-proof.json`, `stage8-failure-z80-slice-proof.json`, `stage9-conformance-z80-slice-proof.json`, `typed-expression-z80-slice-proof.json` | Atom preview assembly exceeds the comparison script's current execution budget before reporting a source diagnostic |
+| Larger preview execution budget | `aggregate-z80-slice-proof.json`, `expression-z80-slice-proof.json`, `flat-target-z80-slice-proof.json`, `stage7-ll1-aggregate-call-z80-slice-proof.json`, `stage7-ll1-parser-coverage-proof.json`, `stage8-failure-z80-slice-proof.json`, `stage9-conformance-z80-slice-proof.json`, `typed-expression-z80-slice-proof.json` | Atom preview assembly exceeds the comparison script's current execution budget before reporting a source diagnostic or byte comparison |
 | Output-order mismatch after preview lowering | `structured-control-z80-slice-proof.json` | Atom reaches output publication but rejects descending or overlapping IMAGE records |
 
 The source-capacity blocker from single-file flattening is resolved by generated
 multipart preview parts. The grammar-generated keyword constants are now included
-in the ledger through transitive include scanning. The next migration work should
-address the target-memory alias policy and the preview execution budget before
-attempting permanent source conversion.
+in the ledger through transitive include scanning. Unresolved dead `EQU`
+definitions are masked in the proof-preview stream rather than assigned invented
+aliases; if an active statement later uses one, Atom still reports the use site.
+The proof comparer also folds proven `SYMBOL+SYMBOL` and `SYMBOL-SYMBOL`
+expressions before invoking Atom.
+
+The Nucleus preview comparer uses a Node-only native Atom memory layout with a
+larger symbol arena:
+
+| Arena | Range |
+| --- | --- |
+| Symbol records | `$4100..$BFFF` |
+| Pending records | `$C000..$DFFF` |
+| Source-part descriptors | `$E000..` |
+
+This is not a native CP/M or TEC memory claim. It is a desktop migration-runner
+configuration that lets the current Atom core process Nucleus-sized proof images
+without changing assembler semantics.
+
+Focused follow-up measurement after that change:
+
+| Entry | Result | Native Atom instructions | Native Atom cycles |
+| --- | --- | ---: | ---: |
+| `stage7-ll1-engine-proof.json` | Byte-identical | 37,695,198 | 361,752,509 |
+| `flat-target-z80-slice-proof.json` | Reaches execution budget | 200,000,000 | 2,000,000,000 |
+
+The next migration work should address the preview execution budget with
+per-entry measured budgets, then return to any source diagnostics exposed after
+those entries run further.
 
 ## Conclusion
 

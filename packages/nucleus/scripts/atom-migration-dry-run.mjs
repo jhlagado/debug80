@@ -325,7 +325,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
         seenSourceBeforeInclude = true;
       }
       if (directive === null) {
-        const labelDirective = /^\s*[A-Za-z_.$?][A-Za-z0-9_.$?]*:?\s+\.([A-Za-z][A-Za-z0-9_]*)\b\s*(.*)$/i.exec(code);
+        const labelDirective = /^\s*[A-Za-z_.$?][A-Za-z0-9_.$?]*(?::\s*|\s+)\.([A-Za-z][A-Za-z0-9_]*)\b\s*(.*)$/i.exec(code);
         if (labelDirective !== null) {
           const name = labelDirective[1].toLowerCase();
           if (name !== "equ") addCount(directives, name);
@@ -344,7 +344,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
         recordSymbol(symbols, label[1], file, lineNumber, proofSymbols);
       }
 
-      const equ = /^\s*([A-Za-z_.$?][A-Za-z0-9_.$?]*):?\s+\.equ\b/i.exec(code);
+      const equ = /^\s*([A-Za-z_.$?][A-Za-z0-9_.$?]*)(?::\s*|\s+)\.equ\b/i.exec(code);
       if (equ !== null) {
         addCount(directives, "equ");
         recordSymbol(symbols, equ[1], file, lineNumber, proofSymbols);
@@ -571,7 +571,7 @@ function translateNucleusAzmLine(
     return `${replaceSymbolsInSource(`${prefix}${replacement}${rest}`, symbolMap)}${comment}`;
   }
 
-  const equ = /^(\s*[A-Za-z_.$?][A-Za-z0-9_.$?]*:?\s+)\.equ(\b.*)$/i.exec(source);
+  const equ = /^(\s*[A-Za-z_.$?][A-Za-z0-9_.$?]*(?::\s*|\s+))\.equ(\b.*)$/i.exec(source);
   if (equ !== null) {
     const onePastLimit = /^(\s*)(AddressSpaceLimit|ProofMemoryEnd)(:?\s+)\.equ\s+\$10000\s*$/i.exec(source);
     if (onePastLimit !== null) {
@@ -579,14 +579,14 @@ function translateNucleusAzmLine(
       const atom = symbolMap.get(original) ?? original;
       return `${onePastLimit[1]}${atom}${onePastLimit[3]}EQU 0 ;@ATOM-PROOF-LIMIT ${original} 65536${comment === "" ? "" : ` ${comment}`}`;
     }
-    const preprocessorDefinition = /^(\s*)([A-Za-z_.$?][A-Za-z0-9_.$?]*)(:?\s+)\.equ\b(.*)$/i.exec(source);
+    const preprocessorDefinition = /^(\s*)([A-Za-z_.$?][A-Za-z0-9_.$?]*)(:\s*|\s+)\.equ\b(.*)$/i.exec(source);
     if (preprocessorDefinition !== null && preprocessorSymbols.has(preprocessorDefinition[2])) {
       return `${preprocessorDefinition[1]}%DEFINE ${preprocessorDefinition[2]}${preprocessorDefinition[4]}${comment}`;
     }
     return `${replaceSymbolsInSource(`${equ[1]}EQU${equ[2]}`, symbolMap)}${comment}`;
   }
 
-  const labelDirective = /^(\s*[A-Za-z_.$?][A-Za-z0-9_.$?]*:?\s+)\.([A-Za-z][A-Za-z0-9_]*)(\b.*)$/i.exec(source);
+  const labelDirective = /^(\s*[A-Za-z_.$?][A-Za-z0-9_.$?]*(?::\s*|\s+))\.([A-Za-z][A-Za-z0-9_]*)(\b.*)$/i.exec(source);
   if (labelDirective !== null) {
     const [, prefix, rawName, rest] = labelDirective;
     const replacement = directiveTranslations.get(rawName.toLowerCase());
@@ -645,7 +645,7 @@ function flattenTranslatedEntry(report, entry) {
   }
 
   function handlePreprocessorLine(source, output) {
-    const define = /^(\s*)([A-Za-z_.$?][A-Za-z0-9_.$?]*)(:?\s+)\.equ\b(.*)$/i.exec(source);
+    const define = /^(\s*)([A-Za-z_.$?][A-Za-z0-9_.$?]*)(:\s*|\s+)\.equ\b(.*)$/i.exec(source);
     if (define !== null && preprocessorSymbols.has(define[2])) {
       if (active()) {
         const value = parseDefinitionValue(define[4]);

@@ -49,6 +49,9 @@ describe("Nucleus Atom migration dry-run", () => {
     expect(translateNucleusAzmLine("Label:      .db $10")).toBe(
       "Label:      DB $10",
     );
+    expect(translateNucleusAzmLine("Label:.db $10")).toBe(
+      "Label:DB $10",
+    );
     expect(translateNucleusAzmLine("Buffer:     .ds 16")).toBe(
       "Buffer:     DS 16",
     );
@@ -496,6 +499,7 @@ describe("Nucleus Atom migration dry-run", () => {
     const symbolValues = new Map([
       ["COUNT", 0x1004],
       ["BASE", 0x1000],
+      ["SIZE", 0x58],
       ["END", 0x1010],
       ["START", 0x1002],
     ]);
@@ -503,11 +507,13 @@ describe("Nucleus Atom migration dry-run", () => {
     expect(lowerResolvedPreviewExpressions([
       "COUNT EQU BASE+4",
       "DW END-START",
+      "LD HL,BASE+SIZE",
       "DB 'A-B' ; END-START remains in comment",
       "",
     ].join("\n"), symbolValues)).toBe([
       "COUNT EQU $1004",
       "DW $000E",
+      "LD HL,$1058",
       "DB 'A-B' ; END-START remains in comment",
       "",
     ].join("\n"));
@@ -527,5 +533,17 @@ describe("Nucleus Atom migration dry-run", () => {
     expect(lowerResolvedPreviewExpressions("END EQU BASE+SIZE", values)).toBe(
       "END EQU $5036",
     );
+  });
+
+  it("masks unresolved preview EQU definitions without inventing aliases", () => {
+    expect(lowerResolvedPreviewExpressions([
+      "END EQU MISSING+SIZE",
+      "LD HL,END",
+      "",
+    ].join("\n"), new Map([["SIZE", 54]]))).toBe([
+      ";@UNRESOLVED-EQU END EQU MISSING+SIZE",
+      "LD HL,END",
+      "",
+    ].join("\n"));
   });
 });

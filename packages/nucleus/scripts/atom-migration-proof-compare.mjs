@@ -18,8 +18,17 @@ const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(scriptDirectory, "..");
 const defaultAsmRoot = path.join(packageRoot, "asm");
 const defaultProofRoot = path.join(packageRoot, "proofs");
+const defaultMaxInstructions = 200_000_000;
+const defaultMaxCycles = 2_000_000_000;
+const nucleusPreviewMemoryLayout = Object.freeze({
+  symbolStart: 0x4100,
+  symbolEnd: 0xc000,
+  pendingStart: 0xc000,
+  pendingEnd: 0xe000,
+  partDescriptors: 0xe000,
+});
 const identifierPattern = /^[A-Za-z_.$?][A-Za-z0-9_.$?]*$/;
-const expressionIdentifierPattern = /(^|[^A-Za-z0-9_.$?])([A-Za-z_.$?][A-Za-z0-9_.$?]*)\s*-\s*([A-Za-z_.$?][A-Za-z0-9_.$?]*)(?=$|[^A-Za-z0-9_.$?])/g;
+const expressionIdentifierPattern = /(^|[^A-Za-z0-9_.$?])([A-Za-z_.$?][A-Za-z0-9_.$?]*)\s*([+-])\s*([A-Za-z_.$?][A-Za-z0-9_.$?]*)(?=$|[^A-Za-z0-9_.$?])/g;
 
 function parseArgs(argv) {
   const options = {
@@ -30,6 +39,8 @@ function parseArgs(argv) {
     out: undefined,
     entry: undefined,
     maxPartBytes: 0xffff,
+    maxInstructions: defaultMaxInstructions,
+    maxCycles: defaultMaxCycles,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -46,6 +57,18 @@ function parseArgs(argv) {
         throw new Error("--max-part-bytes requires an integer from 1 through 65535");
       }
       options.maxPartBytes = value;
+    } else if (arg === "--max-instructions") {
+      const value = Number.parseInt(argv[++index] ?? "", 10);
+      if (!Number.isInteger(value) || value < 1 || value > Number.MAX_SAFE_INTEGER) {
+        throw new Error("--max-instructions requires a positive integer");
+      }
+      options.maxInstructions = value;
+    } else if (arg === "--max-cycles") {
+      const value = Number.parseInt(argv[++index] ?? "", 10);
+      if (!Number.isInteger(value) || value < 1 || value > Number.MAX_SAFE_INTEGER) {
+        throw new Error("--max-cycles requires a positive integer");
+      }
+      options.maxCycles = value;
     } else if (arg === "--out") {
       options.out = path.resolve(argv[++index] ?? "");
     } else if (arg === "--json") {
@@ -71,6 +94,10 @@ Options:
   --entry NAME         Compare one proof manifest basename or asm-root-relative entry.
   --max-part-bytes N   Maximum generated Atom-preview bytes per source part.
                        Defaults to 65535.
+  --max-instructions N Maximum native Atom instructions per preview assembly.
+                       Defaults to ${defaultMaxInstructions}.
+  --max-cycles N       Maximum native Atom cycles per preview assembly.
+                       Defaults to ${defaultMaxCycles}.
   --out FILE           Write the JSON comparison report.
   --json               Print the JSON comparison report.
   --report-only        Exit 0 even when comparisons fail.
@@ -233,12 +260,13 @@ function lowerResolvedPreviewExpressions(text, symbolValues) {
       if (value !== undefined && value >= 0 && value <= 0xffff) {
         return `${equ[1]}${equ[2]}${equ[3]}EQU ${hexWord(value)}${comment}`;
       }
+      return `${equ[1]};@UNRESOLVED-EQU ${source.trim()}${comment}`;
     }
-    const lowered = source.replace(expressionIdentifierPattern, (match, prefix, left, right) => {
+    const lowered = source.replace(expressionIdentifierPattern, (match, prefix, left, operator, right) => {
       const leftValue = symbolValues.get(left);
       const rightValue = symbolValues.get(right);
       if (leftValue === undefined || rightValue === undefined) return match;
-      return `${prefix}${hexWord(leftValue - rightValue)}`;
+      return `${prefix}${hexWord(operator === "+" ? leftValue + rightValue : leftValue - rightValue)}`;
     });
     return `${lowered}${comment}`;
   }).join("\n");
@@ -295,7 +323,7 @@ function previewPartsForEntry(report, entry, symbolValues, { maxPartBytes }) {
   return previewPartsFromText(entry, lowered, { maxPartBytes });
 }
 
-async function compareOne({ report, proof, asmRoot, maxPartBytes }) {
+async function compareOne({ report, proof, asmRoot, maxPartBytes, maxInstructions, maxCycles }) {
   const entry = entryForManifest(asmRoot, proof);
   if (isMeasurement(proof, entry)) {
     return Object.freeze({
@@ -331,6 +359,9 @@ async function compareOne({ report, proof, asmRoot, maxPartBytes }) {
     const atomProject = Object.freeze({ parts });
     const atomAssembled = await assembleResolvedAtomProject(atomProject, {
       target: { start: 0, capacity: 0xffff },
+      maxInstructions,
+      maxCycles,
+      nativeMemoryLayout: nucleusPreviewMemoryLayout,
     });
     const atomMaterialized = materializeAtomGeneration(atomAssembled.generation, {
       base: contentBase(atomAssembled.generation),
@@ -346,6 +377,8 @@ async function compareOne({ report, proof, asmRoot, maxPartBytes }) {
       atomBytes: atomMaterialized.bytes.length,
       currentBytes: currentBin.length,
       atomPreviewParts: parts.length,
+      atomInstructions: atomAssembled.execution.instructions,
+      atomCycles: atomAssembled.execution.cycles,
       ...(equal ? {} : { firstDifference: firstDifference(atomMaterialized.bytes, currentBin) }),
     });
   } catch (error) {
@@ -397,6 +430,8 @@ async function main() {
       proof,
       asmRoot: options.asmRoot,
       maxPartBytes: options.maxPartBytes,
+      maxInstructions: options.maxInstructions,
+      maxCycles: options.maxCycles,
     }));
   }
   const comparison = Object.freeze({
@@ -404,6 +439,9 @@ async function main() {
     asmRoot: options.asmRoot,
     proofRoot: options.proofRoot,
     maxPartBytes: options.maxPartBytes,
+    maxInstructions: options.maxInstructions,
+    maxCycles: options.maxCycles,
+    nativeMemoryLayout: nucleusPreviewMemoryLayout,
     summary: summarize(results),
     results: Object.freeze(results),
   });
