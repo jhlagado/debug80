@@ -418,15 +418,16 @@ open/closed generation state and passes the shared lifecycle conformance
 vectors. Atom's Mac memory sink also passes those vectors through an adapter
 that translates its byte-status API into the shared conformance surface. The
 shared package also owns the one-byte status normalization and thrown-operation
-capture used by Atom's direct-host gateway and Debug80 service trampoline. This
-checkpoint deliberately does not move Nucleus record framing, map semantics,
-runtime-provider calls, NOBJ status behavior, or Atom's assembler sink. Those
-are the next Phase 3 layers.
+capture used by Atom's direct-host gateway and Debug80 service trampoline. The
+Atom direct-host gateway now passes shared one-byte gateway conformance vectors
+for source reads, output calls, malformed byte results, unavailable operations,
+and thrown host operations. This checkpoint deliberately does not move Nucleus
+record framing, map semantics, runtime-provider calls, NOBJ status behavior, or
+Atom's assembler sink. Those are the next Phase 3 layers.
 
 ## Next implementation unit
 
-Continue Phase 3 by extracting gateway-level conformance tests for Atom-style
-host services. Keep Nucleus's exception-based NOBJ API intact, but prove the
-shared status helpers cover unavailable operations, malformed byte results,
-thrown host operations, and abort-on-failure behavior at the resident-service
-boundary.
+Continue Phase 3 by splitting the shared source-byte provider shape out of the
+Atom and Nucleus host adapters. The provider should remain byte-oriented and
+part-oriented so Node, Debug80, CP/M, and TEC-FS hosts can choose buffering or
+streaming without changing the resident tool contract.
