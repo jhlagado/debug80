@@ -29,7 +29,8 @@
       "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
     },
     "flat-target-z80-slice-proof.json": {
-      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+      "maxInstructions": 700000000,
+      "maxCycles": 7000000000
     },
     "stage7-ll1-aggregate-call-z80-slice-proof.json": {
       "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"

@@ -274,8 +274,8 @@ routine bounded-matrix result:
 
 | Status | Count |
 | --- | ---: |
-| Byte-identical proof images | 9 |
-| Skipped known budget blockers | 16 |
+| Byte-identical proof images | 10 |
+| Skipped known budget blockers | 15 |
 | Skipped measurement artifacts | 3 |
 | Atom-preview errors | 0 |
 
@@ -284,6 +284,7 @@ Byte-identical proof images:
 - `array-z80-slice-proof.json`
 - `call-z80-slice-proof.json`
 - `compiler-slice-proof.json`
+- `flat-target-z80-slice-proof.json`
 - `loop-compiler-slice-proof.json`
 - `loop-z80-slice-proof.json`
 - `memory-map-proof.json`
@@ -306,7 +307,7 @@ Measured remaining blocker groups:
 
 | Group | Representative generated line | Consequence |
 | --- | --- | --- |
-| Larger preview execution budget | `aggregate-z80-slice-proof.json`, `expression-z80-slice-proof.json`, `flat-target-z80-slice-proof.json`, `structured-control-z80-slice-proof.json`, `stage7-ll1-aggregate-call-z80-slice-proof.json`, `stage7-ll1-parser-coverage-proof.json`, `stage8-failure-z80-slice-proof.json`, `stage9-conformance-z80-slice-proof.json`, `typed-expression-z80-slice-proof.json`, plus the flat-target proof variants | Atom preview assembly exceeds the comparison script's current execution budget before reporting a source diagnostic or byte comparison; measure explicitly with `--entry` before raising a per-entry budget |
+| Larger preview execution budget | `aggregate-z80-slice-proof.json`, `expression-z80-slice-proof.json`, `structured-control-z80-slice-proof.json`, `stage7-ll1-aggregate-call-z80-slice-proof.json`, `stage7-ll1-parser-coverage-proof.json`, `stage8-failure-z80-slice-proof.json`, `stage9-conformance-z80-slice-proof.json`, `typed-expression-z80-slice-proof.json`, plus the flat-target proof variants | Atom preview assembly exceeds the comparison script's current execution budget before reporting a source diagnostic or byte comparison; measure explicitly with `--entry` before raising a per-entry budget |
 
 The source-capacity blocker from single-file flattening is resolved by generated
 multipart preview parts. The grammar-generated keyword constants are now included
@@ -341,7 +342,7 @@ Focused follow-up measurement after that change:
 | Entry | Result | Native Atom instructions | Native Atom cycles |
 | --- | --- | ---: | ---: |
 | `stage7-ll1-engine-proof.json` | Byte-identical | 37,695,198 | 361,752,509 |
-| `flat-target-z80-slice-proof.json` | Reaches execution budget | 200,000,000 | 2,000,000,000 |
+| `flat-target-z80-slice-proof.json` | Byte-identical | 553,400,734 | 5,303,254,267 |
 | `structured-control-z80-slice-proof.json` | Reaches execution budget with legacy unordered output | 200,000,000 | 1,926,034,192 |
 
 The next migration work should address the preview execution budget with
