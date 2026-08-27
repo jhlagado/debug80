@@ -15,9 +15,9 @@ Native work includes the reusable Z80 named-object harness and proved TECM8
 providers for ordinary TEC-FS input and transactional output. The harness has
 a proved immutable-bank profile with fixed state relocated to common RAM. The
 TEC include resolver, launcher, and final memory map are implemented and proved
-under emulation. TEC hardware acceptance, Nucleus convergence, release
-installation remain. The checked-in
-Debug80 project corpus no longer selects AZM.
+under emulation. Physical TEC hardware acceptance is deferred to a later
+deployment checkpoint. Nucleus convergence and release installation remain.
+The checked-in Debug80 project corpus no longer selects AZM.
 
 ## Objective
 
@@ -138,12 +138,12 @@ then retains a 255-byte ordinal-to-file-ID map instead of every path string.
 The eight-slot transactional arena is an output store, not a source-part
 limit.
 
-Proof: shared provider conformance, exact native memory maps, failure injection,
-emulated acceptance, and hardware acceptance for TEC.
+Proof: shared provider conformance, exact native memory maps, failure
+injection, CP/M native execution, and emulated TEC acceptance.
 
 Status: CP/M and TEC provider implementation, exact memory accounts, failure
 proofs, and emulated acceptance are complete. Physical TEC hardware acceptance
-remains.
+is deferred to a later deployment checkpoint.
 
 ### 9. Nucleus convergence
 

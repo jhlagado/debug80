@@ -7,8 +7,9 @@ Date: 2026-08-27
 The Node-hosted, Debug80-integrated, CP/M-native, and TEC-native profiles are
 implemented and proved under emulation. The reusable native named-object
 harness, TEC-FS source provider, and TecMate launcher are implemented. TEC
-hardware acceptance, the broader project-corpus migration, and eventual
-compatibility-default change remain active work.
+hardware acceptance is deferred to a later deployment checkpoint. Nucleus
+convergence and release installation remain active work. The Debug80 project
+corpus no longer selects AZM.
 
 ## Product decision
 
