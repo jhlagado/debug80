@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { globSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, globSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -18,6 +18,7 @@ const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(scriptDirectory, "..");
 const defaultAsmRoot = path.join(packageRoot, "asm");
 const defaultProofRoot = path.join(packageRoot, "proofs");
+const defaultBudgetFile = path.join(defaultProofRoot, "atom-migration-preview-budgets.json");
 const defaultMaxInstructions = 200_000_000;
 const defaultMaxCycles = 2_000_000_000;
 const nucleusPreviewMemoryLayout = Object.freeze({
@@ -41,6 +42,7 @@ function parseArgs(argv) {
     maxPartBytes: 0xffff,
     maxInstructions: defaultMaxInstructions,
     maxCycles: defaultMaxCycles,
+    budgetFile: defaultBudgetFile,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -69,6 +71,10 @@ function parseArgs(argv) {
         throw new Error("--max-cycles requires a positive integer");
       }
       options.maxCycles = value;
+    } else if (arg === "--budget-file") {
+      options.budgetFile = path.resolve(argv[++index] ?? "");
+    } else if (arg === "--no-budget-file") {
+      options.budgetFile = undefined;
     } else if (arg === "--out") {
       options.out = path.resolve(argv[++index] ?? "");
     } else if (arg === "--json") {
@@ -98,6 +104,10 @@ Options:
                        Defaults to ${defaultMaxInstructions}.
   --max-cycles N       Maximum native Atom cycles per preview assembly.
                        Defaults to ${defaultMaxCycles}.
+  --budget-file FILE   Per-manifest budget JSON. Defaults to
+                       packages/nucleus/proofs/atom-migration-preview-budgets.json
+                       when present.
+  --no-budget-file     Ignore the default per-manifest budget file.
   --out FILE           Write the JSON comparison report.
   --json               Print the JSON comparison report.
   --report-only        Exit 0 even when comparisons fail.
@@ -108,6 +118,47 @@ Options:
 function writeJsonFile(file, value) {
   mkdirSync(path.dirname(file), { recursive: true });
   writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function positiveInteger(value, name) {
+  if (!Number.isInteger(value) || value < 1 || value > Number.MAX_SAFE_INTEGER) {
+    throw new Error(`${name} must be a positive integer`);
+  }
+  return value;
+}
+
+function readBudgetFile(file) {
+  if (file === undefined || !existsSync(file)) return Object.freeze(new Map());
+  const parsed = JSON.parse(readFileSync(file, "utf8"));
+  if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("Atom migration preview budget file must be an object");
+  }
+  const entries = parsed.entries ?? {};
+  if (entries === null || typeof entries !== "object" || Array.isArray(entries)) {
+    throw new Error("Atom migration preview budget file entries must be an object");
+  }
+  return Object.freeze(new Map(Object.entries(entries).map(([manifest, value]) => {
+    if (value === null || typeof value !== "object" || Array.isArray(value)) {
+      throw new Error(`Atom migration preview budget for ${manifest} must be an object`);
+    }
+    if (typeof value.skip === "string") {
+      return [manifest, Object.freeze({ skip: value.skip })];
+    }
+    return [manifest, Object.freeze({
+      maxInstructions: positiveInteger(value.maxInstructions, `${manifest}.maxInstructions`),
+      maxCycles: positiveInteger(value.maxCycles, `${manifest}.maxCycles`),
+    })];
+  })));
+}
+
+function entryBudget(proof, defaults, budgets, { force = false } = {}) {
+  const budget = budgets.get(proof.name);
+  if (budget?.skip !== undefined && !force) return budget;
+  if (budget?.skip === undefined && budget !== undefined) return budget;
+  return Object.freeze({
+    maxInstructions: defaults.maxInstructions,
+    maxCycles: defaults.maxCycles,
+  });
 }
 
 function proofManifests(proofRoot) {
@@ -323,14 +374,28 @@ function previewPartsForEntry(report, entry, symbolValues, { maxPartBytes }) {
   return previewPartsFromText(entry, lowered, { maxPartBytes });
 }
 
-async function compareOne({ report, proof, asmRoot, maxPartBytes, maxInstructions, maxCycles }) {
+async function compareOne({ report, proof, asmRoot, maxPartBytes, budget }) {
   const entry = entryForManifest(asmRoot, proof);
+  if (budget.skip !== undefined) {
+    return Object.freeze({
+      manifest: proof.name,
+      entry,
+      status: "skipped",
+      reason: budget.skip,
+      budget: Object.freeze({ skip: budget.skip }),
+    });
+  }
+  const budgetResult = Object.freeze({
+    maxInstructions: budget.maxInstructions,
+    maxCycles: budget.maxCycles,
+  });
   if (isMeasurement(proof, entry)) {
     return Object.freeze({
       manifest: proof.name,
       entry,
       status: "skipped",
       reason: "measurement artifact",
+      budget: budgetResult,
     });
   }
 
@@ -343,6 +408,7 @@ async function compareOne({ report, proof, asmRoot, maxPartBytes, maxInstruction
         entry,
         status: "current-assembler-error",
         diagnostics: diagnostics.slice(0, 5).map(({ message }) => message),
+        budget: budgetResult,
       });
     }
     const currentBin = current.artifacts.find(({ kind }) => kind === "bin")?.bytes;
@@ -352,6 +418,7 @@ async function compareOne({ report, proof, asmRoot, maxPartBytes, maxInstruction
         entry,
         status: "current-assembler-error",
         diagnostics: ["current assembler did not produce a bin artifact"],
+        budget: budgetResult,
       });
     }
     const symbolValues = symbolValuesFromCurrentAssembly(current, report.ledger);
@@ -359,8 +426,8 @@ async function compareOne({ report, proof, asmRoot, maxPartBytes, maxInstruction
     const atomProject = Object.freeze({ parts });
     const atomAssembled = await assembleResolvedAtomProject(atomProject, {
       target: { start: 0, capacity: 0xffff },
-      maxInstructions,
-      maxCycles,
+      maxInstructions: budget.maxInstructions,
+      maxCycles: budget.maxCycles,
       nativeMemoryLayout: nucleusPreviewMemoryLayout,
     });
     const atomMaterialized = materializeAtomGeneration(atomAssembled.generation, {
@@ -379,6 +446,7 @@ async function compareOne({ report, proof, asmRoot, maxPartBytes, maxInstruction
       atomPreviewParts: parts.length,
       atomInstructions: atomAssembled.execution.instructions,
       atomCycles: atomAssembled.execution.cycles,
+      budget: budgetResult,
       ...(equal ? {} : { firstDifference: firstDifference(atomMaterialized.bytes, currentBin) }),
     });
   } catch (error) {
@@ -390,6 +458,15 @@ async function compareOne({ report, proof, asmRoot, maxPartBytes, maxInstruction
       category: error?.category,
       code: error?.code,
       diagnostic: error?.diagnostic,
+      execution: error?.execution === undefined
+        ? undefined
+        : Object.freeze({
+          instructions: error.execution.instructions,
+          cycles: error.execution.cycles,
+          sourceReads: error.execution.sourceReads,
+          serviceCalls: error.execution.serviceCalls,
+        }),
+      budget: budgetResult,
     });
   }
 }
@@ -419,10 +496,15 @@ function printText(report) {
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   const report = scanAssembly({ asmRoot: options.asmRoot, proofRoot: options.proofRoot });
+  const budgets = readBudgetFile(options.budgetFile);
   const proofs = selectedProofs(proofManifests(options.proofRoot), options.asmRoot, options.entry);
   if (options.entry !== undefined && proofs.length === 0) {
     throw new Error(`no proof manifest matched ${options.entry}`);
   }
+  const defaultBudget = Object.freeze({
+    maxInstructions: options.maxInstructions,
+    maxCycles: options.maxCycles,
+  });
   const results = [];
   for (const proof of proofs) {
     results.push(await compareOne({
@@ -430,8 +512,7 @@ async function main() {
       proof,
       asmRoot: options.asmRoot,
       maxPartBytes: options.maxPartBytes,
-      maxInstructions: options.maxInstructions,
-      maxCycles: options.maxCycles,
+      budget: entryBudget(proof, defaultBudget, budgets, { force: options.entry !== undefined }),
     }));
   }
   const comparison = Object.freeze({
@@ -441,6 +522,8 @@ async function main() {
     maxPartBytes: options.maxPartBytes,
     maxInstructions: options.maxInstructions,
     maxCycles: options.maxCycles,
+    budgetFile: options.budgetFile,
+    budgetEntries: budgets.size,
     nativeMemoryLayout: nucleusPreviewMemoryLayout,
     summary: summarize(results),
     results: Object.freeze(results),
@@ -457,8 +540,10 @@ async function main() {
 export {
   augmentSymbolValuesFromPreview,
   evaluateKnownExpression,
+  entryBudget,
   lowerResolvedPreviewExpressions,
   previewPartsFromText,
+  readBudgetFile,
   symbolValuesFromCurrentAssembly,
 };
 

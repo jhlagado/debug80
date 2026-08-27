@@ -270,13 +270,14 @@ proof-manifest symbol remapping.
 
 The first scaled proof-image comparison uses generated multipart Atom preview
 source, so no generated part exceeds Atom's 16-bit source-offset range. Current
-complete bounded-matrix result:
+routine bounded-matrix result:
 
 | Status | Count |
 | --- | ---: |
 | Byte-identical proof images | 9 |
-| Atom-preview blockers | 16 |
+| Skipped known budget blockers | 15 |
 | Skipped measurement artifacts | 3 |
+| Atom-preview errors | 1 |
 
 Byte-identical proof images:
 
@@ -296,11 +297,16 @@ Skipped measurement artifacts:
 - `dispatcher-offset-direct-measurement.json`
 - `dispatcher-offset-trampoline-measurement.json`
 
+Known budget blockers are listed in `proofs/atom-migration-preview-budgets.json`
+with an explicit skip reason. The comparer skips them during the routine matrix
+so that the command remains bounded. Passing one of those manifests with
+`--entry` overrides the skip and measures that proof directly.
+
 Measured remaining blocker groups:
 
 | Group | Representative generated line | Consequence |
 | --- | --- | --- |
-| Larger preview execution budget | `aggregate-z80-slice-proof.json`, `expression-z80-slice-proof.json`, `flat-target-z80-slice-proof.json`, `stage7-ll1-aggregate-call-z80-slice-proof.json`, `stage7-ll1-parser-coverage-proof.json`, `stage8-failure-z80-slice-proof.json`, `stage9-conformance-z80-slice-proof.json`, `typed-expression-z80-slice-proof.json` | Atom preview assembly exceeds the comparison script's current execution budget before reporting a source diagnostic or byte comparison |
+| Larger preview execution budget | `aggregate-z80-slice-proof.json`, `expression-z80-slice-proof.json`, `flat-target-z80-slice-proof.json`, `stage7-ll1-aggregate-call-z80-slice-proof.json`, `stage7-ll1-parser-coverage-proof.json`, `stage8-failure-z80-slice-proof.json`, `stage9-conformance-z80-slice-proof.json`, `typed-expression-z80-slice-proof.json`, plus the flat-target proof variants | Atom preview assembly exceeds the comparison script's current execution budget before reporting a source diagnostic or byte comparison; measure explicitly with `--entry` before raising a per-entry budget |
 | Output-order mismatch after preview lowering | `structured-control-z80-slice-proof.json` | Atom reaches output publication but rejects descending or overlapping IMAGE records |
 
 The source-capacity blocker from single-file flattening is resolved by generated

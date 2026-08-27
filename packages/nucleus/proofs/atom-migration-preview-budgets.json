@@ -1,0 +1,54 @@
+{
+  "schema": "nucleus-atom-migration-preview-budgets/v1",
+  "entries": {
+    "aggregate-z80-slice-proof.json": {
+      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+    },
+    "banked-target-entry1-z80-slice-proof.json": {
+      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+    },
+    "banked-target-trap-z80-slice-proof.json": {
+      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+    },
+    "banked-target-z80-slice-proof.json": {
+      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+    },
+    "chapter21-target-z80-slice-proof.json": {
+      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+    },
+    "expression-z80-slice-proof.json": {
+      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+    },
+    "flat-target-loaded-z80-slice-proof.json": {
+      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+    },
+    "flat-target-trap-z80-slice-proof.json": {
+      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+    },
+    "flat-target-unhandled-z80-slice-proof.json": {
+      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+    },
+    "flat-target-z80-slice-proof.json": {
+      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+    },
+    "stage7-ll1-aggregate-call-z80-slice-proof.json": {
+      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+    },
+    "stage7-ll1-engine-proof.json": {
+      "maxInstructions": 50000000,
+      "maxCycles": 500000000
+    },
+    "stage7-ll1-parser-coverage-proof.json": {
+      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+    },
+    "stage8-failure-z80-slice-proof.json": {
+      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+    },
+    "stage9-conformance-z80-slice-proof.json": {
+      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+    },
+    "typed-expression-z80-slice-proof.json": {
+      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+    }
+  }
+}

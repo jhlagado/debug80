@@ -12,6 +12,8 @@ import { flattenTranslatedEntry } from "../scripts/atom-migration-dry-run.mjs";
 import { flattenedEntryParts } from "../scripts/atom-migration-dry-run.mjs";
 import { lowerResolvedPreviewExpressions } from "../scripts/atom-migration-proof-compare.mjs";
 import { augmentSymbolValuesFromPreview } from "../scripts/atom-migration-proof-compare.mjs";
+import { entryBudget } from "../scripts/atom-migration-proof-compare.mjs";
+import { readBudgetFile } from "../scripts/atom-migration-proof-compare.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(testDirectory, "..");
@@ -545,5 +547,55 @@ describe("Nucleus Atom migration dry-run", () => {
       "LD HL,END",
       "",
     ].join("\n"));
+  });
+
+  it("loads per-manifest Atom-preview execution budgets", async () => {
+    await withTree({
+      "budgets.json": JSON.stringify({
+        entries: {
+          "large-proof.json": {
+            maxInstructions: 123,
+            maxCycles: 456,
+          },
+          "skipped-proof.json": {
+            skip: "known budget blocker",
+          },
+        },
+      }),
+    }, async (root) => {
+      const budgets = readBudgetFile(path.join(root, "budgets.json"));
+      expect(entryBudget(
+        { name: "large-proof.json" },
+        { maxInstructions: 10, maxCycles: 20 },
+        budgets,
+      )).toEqual({
+        maxInstructions: 123,
+        maxCycles: 456,
+      });
+      expect(entryBudget(
+        { name: "small-proof.json" },
+        { maxInstructions: 10, maxCycles: 20 },
+        budgets,
+      )).toEqual({
+        maxInstructions: 10,
+        maxCycles: 20,
+      });
+      expect(entryBudget(
+        { name: "skipped-proof.json" },
+        { maxInstructions: 10, maxCycles: 20 },
+        budgets,
+      )).toEqual({
+        skip: "known budget blocker",
+      });
+      expect(entryBudget(
+        { name: "skipped-proof.json" },
+        { maxInstructions: 10, maxCycles: 20 },
+        budgets,
+        { force: true },
+      )).toEqual({
+        maxInstructions: 10,
+        maxCycles: 20,
+      });
+    });
   });
 });
