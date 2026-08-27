@@ -64,6 +64,28 @@ describe('launch-config-merge', () => {
     });
   });
 
+  it('leaves asm targets without an assembler field for extension-based Atom inference', () => {
+    const manifest: LaunchConfigManifest = {
+      targets: {
+        app: {
+          asm: 'src/main.asm',
+        },
+        legacy: {
+          asm: 'src/legacy.asm',
+          assembler: 'azm',
+        },
+      },
+      defaultTarget: 'app',
+    };
+
+    expect(mergeForTarget(manifest, 'app')).toMatchObject({
+      asm: 'src/main.asm',
+      sourceFile: 'src/main.asm',
+    });
+    expect(mergeForTarget(manifest, 'app').assembler).toBeUndefined();
+    expect(mergeForTarget(manifest, 'legacy').assembler).toBe('azm');
+  });
+
   it('applies root config, target config, then explicit launch args in order', () => {
     const manifest: LaunchConfigManifest = {
       platform: 'tec1g',
