@@ -274,9 +274,14 @@ describe('package.json language contracts', () => {
       return debuggerEntry.type === 'z80';
     });
     const assembler = debuggerContribution?.configurationAttributes?.launch?.properties?.assembler;
+    const glimmerAssembler =
+      debuggerContribution?.configurationAttributes?.launch?.properties?.glimmer?.properties
+        ?.assembler;
 
     expect(assembler?.default).toBeUndefined();
     expect(assembler?.enum).toEqual(['atom', 'azm', 'glimmer', 'nucleus']);
+    expect(glimmerAssembler?.default).toBe('atom');
+    expect(glimmerAssembler?.enum).toEqual(['atom', 'azm']);
   });
 
   it('launch schema exposes strict and insensitive AZM symbol lookup', () => {
@@ -861,7 +866,8 @@ describe('package.json language contracts', () => {
     expect(pkg.dependencies?.['@jhlagado/zax']).toBeUndefined();
   });
 
-  it('depends on AZM for bundled assembly', () => {
+  it('depends on Atom for default bundled assembly and AZM for compatibility', () => {
+    expect(pkg.dependencies?.['atom-z80']).toBeDefined();
     expect(pkg.dependencies?.['@jhlagado/azm']).toBeDefined();
   });
 
