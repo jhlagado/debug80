@@ -71,7 +71,7 @@ describe('configure-project target edit', () => {
     expect(config.targets?.app?.cpm22).toEqual({ writable: true, programName: 'MAIN.COM' });
   });
 
-  it('clears stale unsupported assembler ids when changing program files', () => {
+  it('replaces stale assembler ids with Atom when changing to assembly files', () => {
     const config = singleTargetConfig(
       targetConfig({ sourceFile: 'src/old.asm', asm: 'src/old.asm', assembler: 'legacy' })
     );
@@ -82,7 +82,7 @@ describe('configure-project target edit', () => {
     });
     expect(config.targets?.app?.sourceFile).toBe('src/main.asm');
     expect(config.targets?.app?.asm).toBe('src/main.asm');
-    expect(config.targets?.app?.assembler).toBeUndefined();
+    expect(config.targets?.app?.assembler).toBe('atom');
 
     config.targets!.app!.assembler = 'legacy';
     applyConfigureProjectTargetEdit(config, 'app', {
@@ -91,12 +91,16 @@ describe('configure-project target edit', () => {
     });
     expect(config.targets?.app?.sourceFile).toBe('src/main.z80');
     expect(config.targets?.app?.asm).toBe('src/main.z80');
-    expect(config.targets?.app?.assembler).toBeUndefined();
+    expect(config.targets?.app?.assembler).toBe('atom');
   });
 
   it('preserves the Glimmer assembler when changing program files', () => {
     const config = singleTargetConfig(
-      targetConfig({ sourceFile: 'src/old.glim', assembler: 'glimmer' })
+      targetConfig({
+        sourceFile: 'src/old.glim',
+        assembler: 'glimmer',
+        glimmer: { assembler: 'azm' },
+      })
     );
 
     applyConfigureProjectTargetEdit(config, 'app', {
@@ -105,6 +109,7 @@ describe('configure-project target edit', () => {
     });
 
     expect(config.targets?.app?.assembler).toBe('glimmer');
+    expect(config.targets?.app?.glimmer).toEqual({ assembler: 'azm' });
     expect(config.targets?.app?.sourceFile).toBe('src/game.glim');
   });
 
@@ -123,7 +128,7 @@ describe('configure-project target edit', () => {
       kind: 'program',
       sourceFile: 'src/main.asm',
     });
-    expect(config.targets?.app?.assembler).toBeUndefined();
+    expect(config.targets?.app?.assembler).toBe('atom');
   });
 
   it('preserves an explicit Atom dialect for assembly source only', () => {
@@ -139,7 +144,7 @@ describe('configure-project target edit', () => {
       kind: 'program',
       sourceFile: 'src/main.nu',
     });
-    expect(config.targets?.app?.assembler).toBeUndefined();
+    expect(config.targets?.app?.assembler).toBe('nucleus');
   });
 
   it('renames targets and updates target aliases', () => {

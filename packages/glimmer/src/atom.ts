@@ -10,6 +10,12 @@ const ATOM_NAME_LENGTH = 8;
 interface PreparedSource {
   source: string;
   diagnostics: GlimmerDiagnostic[];
+  lineOrigins?: number[];
+}
+
+export interface AtomGenerateResult extends GenerateResult {
+  azmSource: string;
+  lineOrigins: number[];
 }
 
 interface EnumValue {
@@ -161,8 +167,15 @@ function substituteOpLine(line: string, values: ReadonlyMap<string, string>): st
 function lowerGeneratedOps(source: string): PreparedSource {
   const parsed = generatedOps(source);
   if (parsed.diagnostics.length > 0) return { source: '', diagnostics: parsed.diagnostics };
-  if (parsed.definitions.size === 0) return { source, diagnostics: [] };
+  if (parsed.definitions.size === 0) {
+    return {
+      source,
+      diagnostics: [],
+      lineOrigins: source.split('\n').map((_, index) => index + 1),
+    };
+  }
   const output: string[] = [];
+  const lineOrigins: number[] = [];
   const lines = source.split('\n');
   for (let index = 0; index < lines.length; index += 1) {
     if (parsed.definitionLines.has(index)) continue;
@@ -175,6 +188,7 @@ function lowerGeneratedOps(source: string): PreparedSource {
         : parsed.definitions.get((invocation[2] as string).toUpperCase());
     if (invocation === null || op === undefined) {
       output.push(line);
+      lineOrigins.push(index + 1);
       continue;
     }
     const arguments_ = splitArguments(invocation[3] as string);
@@ -200,9 +214,10 @@ function lowerGeneratedOps(source: string): PreparedSource {
       output.push(
         bodyIndex === 0 && parts.comment !== '' ? `${lowered} ${parts.comment}` : lowered,
       );
+      lineOrigins.push(index + 1);
     });
   }
-  return { source: output.join('\n'), diagnostics: [] };
+  return { source: output.join('\n'), diagnostics: [], lineOrigins };
 }
 
 function normalizeMetadata(source: string): PreparedSource & { enumValues: EnumValue[] } {
@@ -212,13 +227,15 @@ function normalizeMetadata(source: string): PreparedSource & { enumValues: EnumV
   }
   const diagnostics: GlimmerDiagnostic[] = [];
   const lines: string[] = [];
+  const lineOrigins: number[] = [];
   const enumValues: EnumValue[] = [];
   const sourceLines = lowered.source.split('\n');
   for (let index = 0; index < sourceLines.length; index += 1) {
     const line = sourceLines[index] as string;
-    const lineNumber = index + 1;
+    const lineNumber = lowered.lineOrigins?.[index] ?? index + 1;
     if (/^\s*\.contracts\b/i.test(line)) {
       lines.push(line.replace(/^(\s*)\.contracts\b/i, '$1;@CONTRACTS'));
+      lineOrigins.push(lineNumber);
       continue;
     }
     if (/^\s*\.import\b/i.test(line)) {
@@ -229,6 +246,7 @@ function normalizeMetadata(source: string): PreparedSource & { enumValues: EnumV
         ),
       );
       lines.push(line);
+      lineOrigins.push(lineNumber);
       continue;
     }
     if (
@@ -238,14 +256,16 @@ function normalizeMetadata(source: string): PreparedSource & { enumValues: EnumV
         diagnostic('This Glimmer declaration has no Atom source projection.', lineNumber),
       );
       lines.push(line);
+      lineOrigins.push(lineNumber);
       continue;
     }
     const expanded = enumLines(line, lineNumber);
     if (expanded.diagnostic !== undefined) diagnostics.push(expanded.diagnostic);
     lines.push(...expanded.lines);
+    lineOrigins.push(...expanded.lines.map(() => lineNumber));
     enumValues.push(...expanded.values);
   }
-  return { source: lines.join('\n'), diagnostics, enumValues };
+  return { source: lines.join('\n'), diagnostics, enumValues, lineOrigins };
 }
 
 function declaredSymbols(source: string): string[] {
@@ -377,11 +397,11 @@ function rewriteCode(
 function prepareGeneratedSource(source: string): PreparedSource {
   const normalized = normalizeMetadata(source);
   if (normalized.diagnostics.length > 0) {
-    return { source: '', diagnostics: normalized.diagnostics };
+    return { source: '', diagnostics: normalized.diagnostics, lineOrigins: [] };
   }
   const symbols = buildSymbolMap(normalized.source);
   if (symbols.error !== undefined) {
-    return { source: '', diagnostics: [diagnostic(symbols.error)] };
+    return { source: '', diagnostics: [diagnostic(symbols.error)], lineOrigins: [] };
   }
   const qualified = new Map(
     normalized.enumValues.map(({ qualified: name, symbol }) => [name.toUpperCase(), symbol]),
@@ -397,6 +417,7 @@ function prepareGeneratedSource(source: string): PreparedSource {
     return {
       source: translateAzmSourceToAtom(rewritten, { sourceName: '<generated-glimmer>' }),
       diagnostics: [],
+      lineOrigins: normalized.lineOrigins ?? [],
     };
   } catch (error) {
     return {
@@ -407,6 +428,7 @@ function prepareGeneratedSource(source: string): PreparedSource {
           sourceLine(error),
         ),
       ],
+      lineOrigins: [],
     };
   }
 }
@@ -422,6 +444,28 @@ export function generateAtom(
   const generated = generateAzm(program, options);
   if (generated.diagnostics.length > 0) return generated;
   return prepareGeneratedSource(generated.source);
+}
+
+export function generateAtomProjection(
+  program: GlimmerProgram,
+  options: GenerateOptions = {},
+): AtomGenerateResult {
+  const generated = generateAzm(program, options);
+  if (generated.diagnostics.length > 0) {
+    return {
+      source: '',
+      diagnostics: generated.diagnostics,
+      azmSource: generated.source,
+      lineOrigins: [],
+    };
+  }
+  const prepared = prepareGeneratedSource(generated.source);
+  return {
+    source: prepared.source,
+    diagnostics: prepared.diagnostics,
+    azmSource: generated.source,
+    lineOrigins: prepared.lineOrigins ?? [],
+  };
 }
 
 export const atomEmissionInternals = Object.freeze({ prepareGeneratedSource });

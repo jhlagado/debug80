@@ -10,7 +10,11 @@ import {
   MissingConfigError,
   UnsupportedPlatformError,
 } from '../session/errors';
-import { LaunchRequestArguments, type NucleusLaunchOptions } from '../session/types';
+import {
+  LaunchRequestArguments,
+  type GlimmerLaunchOptions,
+  type NucleusLaunchOptions,
+} from '../session/types';
 import type { TerminalConfig } from '../session/terminal-types';
 import {
   Tec1PlatformConfig,
@@ -113,6 +117,20 @@ export function validateNucleusConfig(config: unknown): ValidationResult {
       ? validResult()
       : validatePath(objectResult.value.targetProfile, 'nucleus.targetProfile', true),
   ]);
+}
+
+export function validateGlimmerConfig(config: unknown): ValidationResult {
+  if (config === null) {
+    return invalidResult('glimmer must be an object, got null');
+  }
+  const objectResult = validateOptionalObject<GlimmerLaunchOptions>(config, 'glimmer');
+  if (objectResult.result !== undefined) {
+    return objectResult.result;
+  }
+  const assembler = objectResult.value.assembler;
+  return assembler === undefined || assembler === 'atom' || assembler === 'azm'
+    ? validResult()
+    : invalidResult('glimmer.assembler must be "atom" or "azm"');
 }
 
 function validateSimpleBinaryRange(binFrom: unknown, binTo: unknown): ValidationResult {
@@ -326,6 +344,7 @@ function collectLaunchValidationResults(args: LaunchRequestArguments): Validatio
     validateStringArray(args.debugMaps, 'debugMaps'),
     ...LAUNCH_INSTRUCTION_LIMIT_FIELDS.map((field) => validateInstructionLimit(args[field], field)),
     validateTerminalConfig(args.terminal),
+    validateGlimmerConfig(args.glimmer),
     validateNucleusConfig(args.nucleus),
     validateSimpleConfig(args.simple),
     validateCpm22Config(args.cpm22),

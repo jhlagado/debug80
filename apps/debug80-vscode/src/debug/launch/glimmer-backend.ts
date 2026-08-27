@@ -1,7 +1,7 @@
 /**
  * @fileoverview Glimmer library-backed assembler backend: builds .glim
  * sources through @jhlagado/glimmer's in-process build API (generate,
- * AZM contract injection/check, assembly, and the debug-map rewrite
+ * register-contract checking, selected assembly backend, and debug-map rewrite
  * that attributes block-body lines to .glim source).
  */
 
@@ -37,7 +37,12 @@ interface GlimmerBuildResult {
 
 type BuildFn = (
   entryPath: string,
-  options: { outputPath?: string; org?: number; stage?: 'generate' | 'check' | 'build' }
+  options: {
+    outputPath?: string;
+    org?: number;
+    stage?: 'generate' | 'check' | 'build';
+    assembler?: 'atom' | 'azm';
+  }
 ) => Promise<GlimmerBuildResult>;
 
 type GlimmerModules = { buildGlimmerProgram: BuildFn };
@@ -121,6 +126,7 @@ export class GlimmerBackend implements AssemblerBackend {
       result = await modules.buildGlimmerProgram(options.asmPath, {
         stage: 'build',
         outputPath: generatedAsmPath,
+        assembler: options.glimmer?.assembler ?? 'azm',
       });
     } catch (err) {
       const message = `glimmer failed: ${err instanceof Error ? err.message : String(err)}`;

@@ -21,7 +21,7 @@ Project configuration lives in `debug80.json` at the workspace folder root. Top-
 | `platform`                | `string`   | `'simple'`                                             | Platform to emulate: `'simple'`, `'cpm22'`, `'tec1'`, or `'tec1g'`                    |
 | `asm`                     | `string`   | —                                                      | Path to the main Z80 assembly source file                                             |
 | `sourceFile`              | `string`   | —                                                      | Alias for `asm`                                                                       |
-| `assembler`               | `string`   | inferred                                               | Backend identifier. Set `atom` or `azm` explicitly for assembly source.                |
+| `assembler`               | `string`   | inferred                                               | Backend identifier. Set `atom` or `azm` explicitly for assembly source.               |
 | `hex`                     | `string`   | derived                                                | Path to the output Intel HEX file; derived from `asm` if omitted                      |
 | `outputDir`               | `string`   | `build`                                                | Directory for build artifacts                                                         |
 | `artifactBase`            | `string`   | asm filename                                           | Base name for generated artifacts such as `.hex`, `.bin`, `.d8.json`, and AZM reports |
@@ -35,6 +35,7 @@ Project configuration lives in `debug80.json` at the workspace folder root. Top-
 | `stepOutMaxInstructions`  | `number`   | `0`                                                    | Instruction limit for step-out; `0` = unlimited                                       |
 | `diagnostics`             | `boolean`  | `false`                                                | Emit verbose diagnostic messages to the debug console                                 |
 | `azm`                     | `object`   | —                                                      | AZM-specific compile options; see below                                               |
+| `glimmer`                 | `object`   | —                                                      | Assembler used for generated Z80 source                                               |
 | `nucleus`                 | `object`   | —                                                      | Nucleus-specific launch options; see below                                            |
 
 Debug80 currently infers `azm` for `.asm`, `.inc`, and `.z80`, `glimmer` for
@@ -42,9 +43,8 @@ Debug80 currently infers `azm` for `.asm`, `.inc`, and `.z80`, `glimmer` for
 assembly filenames, the extension does not infer their dialect from `.asm`.
 Set `"assembler": "atom"` for an Atom target. Existing assembly targets that
 omit the field retain the AZM compatibility default. New project scaffolds
-write `"assembler": "atom"` explicitly. The top-level `azm` block is only
-consulted by AZM-backed paths, including the Glimmer flow's internal AZM work
-inside `@jhlagado/glimmer`.
+write `"assembler": "atom"` explicitly. The top-level `azm` block configures
+direct AZM builds and the contract checker used by Glimmer.
 
 ```json
 {
@@ -63,19 +63,45 @@ keeps every included file distinct in diagnostics and D8 mappings. Debug80
 calls the `atom-z80` programming API directly and publishes `.hex`, `.bin`,
 `.d8.json`, and `.lst` as one transaction.
 
+### Glimmer options
+
+A `.glim` target selects the Glimmer frontend with `"assembler": "glimmer"`.
+The nested `glimmer.assembler` field selects the assembler for its generated
+Z80 source:
+
+```json
+{
+  "targets": {
+    "game": {
+      "sourceFile": "src/game.glim",
+      "assembler": "glimmer",
+      "glimmer": {
+        "assembler": "atom"
+      }
+    }
+  }
+}
+```
+
+The accepted values are `atom` and `azm`. Atom is the normal choice for
+single-part Glimmer programs that use Atom-compatible declarations. Programs
+with hand-written module imports or AZM layout types currently require `azm`.
+Both paths produce HEX, binary, and D8 artifacts, and both attribute user block
+instructions to the original `.glim` lines.
+
 ### AZM options
 
 Most users should rely on defaults, but launch config may pass a small `azm` object through to the linked compile API:
 
-| Field                         | Type                                                | Default | Description                                                                      |
-| ----------------------------- | --------------------------------------------------- | ------- | -------------------------------------------------------------------------------- |
-| `registerContracts`           | `'off' \| 'audit' \| 'warn' \| 'error' \| 'strict'` | `'off'` | AZM register contract mode                                                       |
-| `symbolCase`                  | `'strict' \| 'insensitive'`                           | `'strict'` | Symbol lookup mode; insensitive supports legacy source capitalization         |
-| `registerContractsPolicy`     | `{ strict?: string[]; audit?: string[]; off?: string[] }` | —       | File-scoped register contract policy using AZM glob patterns                     |
-| `emitRegisterReport`          | `boolean`                                           | `false` | Write a `.regcontracts.txt` report artifact when register contract analysis runs |
-| `emitRegisterInterface`       | `boolean`                                           | `false` | Write an inferred `.asmi` interface artifact                                     |
-| `registerContractsProfile`    | `'mon3'`                                            | —       | Built-in AZM register contract profile                                           |
-| `registerContractsInterfaces` | `string[]`                                          | `[]`    | External `.asmi` contract files to load                                          |
+| Field                         | Type                                                      | Default    | Description                                                                      |
+| ----------------------------- | --------------------------------------------------------- | ---------- | -------------------------------------------------------------------------------- |
+| `registerContracts`           | `'off' \| 'audit' \| 'warn' \| 'error' \| 'strict'`       | `'off'`    | AZM register contract mode                                                       |
+| `symbolCase`                  | `'strict' \| 'insensitive'`                               | `'strict'` | Symbol lookup mode; insensitive supports legacy source capitalization            |
+| `registerContractsPolicy`     | `{ strict?: string[]; audit?: string[]; off?: string[] }` | —          | File-scoped register contract policy using AZM glob patterns                     |
+| `emitRegisterReport`          | `boolean`                                                 | `false`    | Write a `.regcontracts.txt` report artifact when register contract analysis runs |
+| `emitRegisterInterface`       | `boolean`                                                 | `false`    | Write an inferred `.asmi` interface artifact                                     |
+| `registerContractsProfile`    | `'mon3'`                                                  | —          | Built-in AZM register contract profile                                           |
+| `registerContractsInterfaces` | `string[]`                                                | `[]`       | External `.asmi` contract files to load                                          |
 
 `registerContractsPolicy` lets one AZM compile use different register-contract modes for different source files. Use `registerContracts` as the fallback mode, then add `strict`, `audit`, and `off` glob lists for file-specific overrides:
 
@@ -110,10 +136,10 @@ The Nucleus backend reads a small launch block that is resolved relative to the
 Debug80 source root first, then relative to the Nucleus project root once the
 project file has been loaded:
 
-| Field           | Type     | Default                 | Description                                                          |
-| --------------- | -------- | ----------------------- | -------------------------------------------------------------------- |
-| `project`       | `string` | inferred                | Nucleus project file. Defaults to `nucleus-project.json` when present |
-| `targetProfile` | `string` | `nucleus-target.json`   | Nucleus target profile override                                       |
+| Field           | Type     | Default               | Description                                                           |
+| --------------- | -------- | --------------------- | --------------------------------------------------------------------- |
+| `project`       | `string` | inferred              | Nucleus project file. Defaults to `nucleus-project.json` when present |
+| `targetProfile` | `string` | `nucleus-target.json` | Nucleus target profile override                                       |
 
 If `nucleus.project` is omitted and no conventional project file exists,
 Debug80 treats the selected `.nu` source as a single-source build rooted at the
@@ -182,7 +208,7 @@ Config block key: `tec1g`
 | `appStart`        | `number`         | `0x4200`                            | Application start address                                                                                                                  |
 | `romHex`          | `string`         | —                                   | Path to TEC-1G ROM HEX file                                                                                                                |
 | `ramInitHex`      | `string`         | —                                   | Path to a HEX file loaded into RAM at startup                                                                                              |
-| `expansionRomHex` | `string`         | —                                   | Path to an optional 16K to 144K expansion ROM image mapped through the 0x8000-0xBFFF banked window                                        |
+| `expansionRomHex` | `string`         | —                                   | Path to an optional 16K to 144K expansion ROM image mapped through the 0x8000-0xBFFF banked window                                         |
 | `romArtifacts`    | `object[]`       | —                                   | Explicit TEC-1G ROM-first build declarations for monitor and expansion images                                                              |
 | `updateMs`        | `number`         | `16`                                | UI refresh interval in milliseconds                                                                                                        |
 | `yieldMs`         | `number`         | `0`                                 | Yield to the event loop every N ms                                                                                                         |
@@ -200,50 +226,50 @@ Config block key: `tec1g`
 
 `romArtifacts` is validated only for TEC-1G launches. The current schema allows one active monitor artifact and one active expansion artifact. Active entries must be source-backed and are assembled before runtime creation. A TEC-1G expansion artifact may either be a single source-backed 16K window or a multibank artifact with explicit per-bank sources. That build path forces AZM `registerContracts` off, suppresses register-report output, pads generated bank binaries to their configured size, writes configurable multibank output recipes when requested, and keeps the configured `tec1g.entry` authoritative whenever an active monitor artifact owns the launch.
 
-| Field            | Type      | Required | Description                                                                  |
-| ---------------- | --------- | -------- | ---------------------------------------------------------------------------- |
-| `id`             | `string`  | yes      | Stable artifact identifier used in diagnostics                               |
-| `role`           | `string`  | yes      | `'monitor'` or `'expansion'`                                                 |
-| `active`         | `boolean` | no       | Defaults to active; `false` keeps a binary-only placeholder out of launch    |
-| `sourceFile`     | `string`  | active   | Source file assembled with AZM                                               |
-| `outputBin`      | `string`  | active   | Binary output path. Must use `.bin`                                          |
-| `outputDebugMap` | `string`  | no       | Optional explicit D8 path. Must match the `outputBin` artifact base          |
-| `binary`         | `string`  | inactive | Binary-only placeholder path for deferred artifact installs                  |
-| `debugMap`       | `string`  | no       | Optional D8 path paired with an inactive binary-only placeholder             |
-| `address`        | `number`  | monitor  | Must be `0xC000`                                                             |
-| `size`           | `number`  | monitor  | Must be `0x4000`                                                             |
-| `windowAddress`  | `number`  | expansion| Must be `0x8000`                                                             |
-| `windowSize`     | `number`  | expansion| Must be `0x4000`                                                             |
-| `imageSize`      | `number`  | expansion| Total binary image size. Must be a positive multiple of `bankSize`           |
-| `bankSize`       | `number`  | expansion| Current Phase 2 model requires it to equal `windowSize`                      |
-| `bankCount`      | `number`  | expansion| Must equal `imageSize / bankSize`; valid range is 1-9                         |
-| `bankSelect`     | `object`  | no       | Bank-selection metadata. Current shape supports `{ kind: 'tec1g-standard' }` |
-| `banks`          | `object[]`| expansion| Multibank source declarations keyed by physical expansion bank                |
-| `outputs`        | `object[]`| no       | Optional multibank output recipes derived from the built bank images         |
+| Field            | Type       | Required  | Description                                                                  |
+| ---------------- | ---------- | --------- | ---------------------------------------------------------------------------- |
+| `id`             | `string`   | yes       | Stable artifact identifier used in diagnostics                               |
+| `role`           | `string`   | yes       | `'monitor'` or `'expansion'`                                                 |
+| `active`         | `boolean`  | no        | Defaults to active; `false` keeps a binary-only placeholder out of launch    |
+| `sourceFile`     | `string`   | active    | Source file assembled with AZM                                               |
+| `outputBin`      | `string`   | active    | Binary output path. Must use `.bin`                                          |
+| `outputDebugMap` | `string`   | no        | Optional explicit D8 path. Must match the `outputBin` artifact base          |
+| `binary`         | `string`   | inactive  | Binary-only placeholder path for deferred artifact installs                  |
+| `debugMap`       | `string`   | no        | Optional D8 path paired with an inactive binary-only placeholder             |
+| `address`        | `number`   | monitor   | Must be `0xC000`                                                             |
+| `size`           | `number`   | monitor   | Must be `0x4000`                                                             |
+| `windowAddress`  | `number`   | expansion | Must be `0x8000`                                                             |
+| `windowSize`     | `number`   | expansion | Must be `0x4000`                                                             |
+| `imageSize`      | `number`   | expansion | Total binary image size. Must be a positive multiple of `bankSize`           |
+| `bankSize`       | `number`   | expansion | Current Phase 2 model requires it to equal `windowSize`                      |
+| `bankCount`      | `number`   | expansion | Must equal `imageSize / bankSize`; valid range is 1-9                        |
+| `bankSelect`     | `object`   | no        | Bank-selection metadata. Current shape supports `{ kind: 'tec1g-standard' }` |
+| `banks`          | `object[]` | expansion | Multibank source declarations keyed by physical expansion bank               |
+| `outputs`        | `object[]` | no        | Optional multibank output recipes derived from the built bank images         |
 
 Multibank expansion entries omit top-level `sourceFile` and `outputDebugMap`.
 The top-level `outputBin` is the Debug80 runtime image loaded through
 `tec1g.expansionRomHex`. Each `banks[]` entry declares:
 
-| Field            | Type      | Required | Description                                                                  |
-| ---------------- | --------- | -------- | ---------------------------------------------------------------------------- |
-| `physicalBank`   | `number`  | yes      | Physical expansion bank, valid range 0-8                                     |
-| `sourceFile`     | `string`  | yes      | Bank source assembled at the visible `0x8000-0xBFFF` window                  |
-| `outputBin`      | `string`  | yes      | Per-bank 16K binary output path. Must use `.bin`                             |
-| `outputDebugMap` | `string`  | no       | Optional D8 path. Must match the bank `outputBin` artifact base              |
+| Field            | Type     | Required | Description                                                     |
+| ---------------- | -------- | -------- | --------------------------------------------------------------- |
+| `physicalBank`   | `number` | yes      | Physical expansion bank, valid range 0-8                        |
+| `sourceFile`     | `string` | yes      | Bank source assembled at the visible `0x8000-0xBFFF` window     |
+| `outputBin`      | `string` | yes      | Per-bank 16K binary output path. Must use `.bin`                |
+| `outputDebugMap` | `string` | no       | Optional D8 path. Must match the bank `outputBin` artifact base |
 
 When `outputs` is omitted, Debug80 writes the top-level `outputBin` as a
 physical-layout image, preserving the existing multibank behavior. When
 `outputs` is present, each recipe consumes the already-built bank images:
 
-| Field       | Type       | Required | Description                                                                    |
-| ----------- | ---------- | -------- | ------------------------------------------------------------------------------ |
-| `id`        | `string`   | yes      | Stable output identifier used in diagnostics                                   |
-| `kind`      | `string`   | yes      | `'packed'` or `'perBank'`                                                      |
-| `banks`     | `number[]` | yes      | Declared physical banks to include, with no duplicates                         |
+| Field       | Type       | Required | Description                                                                                     |
+| ----------- | ---------- | -------- | ----------------------------------------------------------------------------------------------- |
+| `id`        | `string`   | yes      | Stable output identifier used in diagnostics                                                    |
+| `kind`      | `string`   | yes      | `'packed'` or `'perBank'`                                                                       |
+| `banks`     | `number[]` | yes      | Declared physical banks to include, with no duplicates                                          |
 | `layout`    | `string`   | no       | Packed output layout. Defaults to `'contiguous'`; `'physical'` writes banks at physical offsets |
-| `outputBin` | `string`   | packed   | Packed binary output path. Must use `.bin`                                     |
-| `outputDir` | `string`   | perBank  | Directory that receives `bank0.bin`, `bank1.bin`, etc.                         |
+| `outputBin` | `string`   | packed   | Packed binary output path. Must use `.bin`                                                      |
+| `outputDir` | `string`   | perBank  | Directory that receives `bank0.bin`, `bank1.bin`, etc.                                          |
 
 If no packed recipe writes the top-level `outputBin`, Debug80 still creates it
 as the physical runtime image so launch behavior remains stable.

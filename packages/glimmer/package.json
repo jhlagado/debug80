@@ -1,7 +1,7 @@
 {
   "name": "@jhlagado/glimmer",
   "version": "0.6.2",
-  "description": "Glimmer: a reactive Z80 game framework compiling to readable AZM — state cells, cards, routines, layout types, and source-level Debug80 maps",
+  "description": "Glimmer: a reactive Z80 game framework compiling to readable assembly — state cells, cards, routines, layout types, and source-level Debug80 maps",
   "license": "GPL-3.0-only",
   "engines": {
     "node": ">=20"

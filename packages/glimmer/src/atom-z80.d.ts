@@ -19,5 +19,5 @@ declare module 'atom-z80' {
   export function renderAtomArtifacts(
     result: unknown,
     options?: { base?: number; entryAddress?: number; fill?: number },
-  ): { bin: Uint8Array };
+  ): { bin: Uint8Array; hex: string; d8: unknown };
 }

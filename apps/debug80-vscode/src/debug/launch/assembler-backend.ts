@@ -4,7 +4,11 @@
 
 import * as path from 'path';
 import type { MappingParseResult } from '../../mapping/types';
-import type { AzmLaunchOptions, NucleusLaunchOptions } from '../session/types';
+import type {
+  AzmLaunchOptions,
+  GlimmerLaunchOptions,
+  NucleusLaunchOptions,
+} from '../session/types';
 import type { AssembleResult } from './assembler';
 import { AtomBackend } from './atom-backend';
 import { AzmBackend } from './azm-backend';
@@ -18,6 +22,7 @@ export interface AssembleOptions {
   hexPath: string;
   sourceRoot?: string;
   azm?: AzmLaunchOptions;
+  glimmer?: GlimmerLaunchOptions;
   nucleus?: NucleusLaunchOptions;
   onOutput?: (message: string) => void;
 }

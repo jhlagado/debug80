@@ -6,11 +6,9 @@
  *   glimmer <entry.glim> [-o output.asm] [--org <addr>]
  *   glimmer build <entry.glim> [-o output.asm] [--org <addr>]
  *
- * The default command compiles Glimmer meta-source to a generated AZM
- * source file and runs AZM's register-contract check over it (the file
- * declares its own `.contracts` policy and `.routine` boundaries).
- * `build` continues through assembly (.hex/.bin/.d8.json) and rewrites
- * the Debug80 map so block bodies step in .glim source.
+ * The default command emits generated assembly and checks its register
+ * contracts. `build` continues through the selected assembler to
+ * .hex/.bin/.d8.json and attributes block bodies to .glim source.
  */
 
 import { readFileSync, realpathSync } from 'node:fs';
@@ -28,15 +26,16 @@ function usage(): string {
     'Usage: glimmer [options] <entry.glim>',
     '       glimmer build [options] <entry.glim>',
     '',
-    'The default command compiles .glim to a generated AZM source file',
-    'and register-contract checks it with AZM. build also assembles it',
-    'with AZM (.hex, .bin, .d8.json) and rewrites the Debug80 map so',
+    'The default command compiles .glim to generated assembly and checks',
+    'its register contracts. build also assembles it to .hex, .bin, and',
+    '.d8.json, then rewrites the Debug80 map so',
     'block-body lines step in the .glim source.',
     '',
     'Options:',
-    '  -o, --output <file>   Output AZM path (default: <entry>.main.asm, the Debug80 entry-point convention)',
+    '  -o, --output <file>   Generated assembly path (default: <entry>.main.asm)',
+    '  --assembler <name>    Generated source/build backend: azm or atom (default: azm)',
     '  --org <addr>          Assembly origin, e.g. $4000 (default: $4000)',
-    '  --no-check            Generate only; skip the AZM register-contract check (not with build)',
+    '  --no-check            Generate only; skip register-contract checking (not with build)',
     '  --deps                Print the dependency report (writers/readers per cell) and exit',
     '  -V, --version         Print package version',
     '  -h, --help            Print this help',
@@ -108,6 +107,7 @@ export async function main(argv: string[]): Promise<number> {
   let check = true;
   let deps = false;
   let build = false;
+  let assembler: 'azm' | 'atom' = 'azm';
 
   if (argv[0] === 'build') {
     build = true;
@@ -137,6 +137,15 @@ export async function main(argv: string[]): Promise<number> {
     }
     if (arg === '--no-check') {
       check = false;
+      continue;
+    }
+    if (arg === '--assembler') {
+      const value = argv[++i];
+      if (value !== 'azm' && value !== 'atom') {
+        console.error(`Invalid --assembler value: ${value ?? '(missing)'}. Expected azm or atom.`);
+        return 1;
+      }
+      assembler = value;
       continue;
     }
     if (arg === '--deps') {
@@ -169,7 +178,9 @@ export async function main(argv: string[]): Promise<number> {
     return 1;
   }
   if (build && !check) {
-    console.error('build always runs the AZM check; --no-check is not supported with build.');
+    console.error(
+      'build always checks register contracts; --no-check is not supported with build.',
+    );
     return 1;
   }
 
@@ -197,6 +208,7 @@ export async function main(argv: string[]): Promise<number> {
     ...(output !== null ? { outputPath: output } : {}),
     ...(org !== undefined ? { org } : {}),
     stage: build ? 'build' : check ? 'check' : 'generate',
+    assembler,
   });
   for (const diagnostic of result.diagnostics) {
     printDiagnostic(diagnostic);
@@ -213,7 +225,7 @@ export async function main(argv: string[]): Promise<number> {
     console.log(`Wrote ${asmRelative}`);
     return 0;
   }
-  console.log(`Wrote ${asmRelative} (register contracts checked by AZM)`);
+  console.log(`Wrote ${asmRelative} (${assembler.toUpperCase()} source; contracts checked)`);
   if (build && result.artifacts.d8 !== undefined) {
     const moved = result.mappedSegments ?? 0;
     console.log(

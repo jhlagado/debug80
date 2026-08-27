@@ -15,6 +15,7 @@ const ignoredDirectories = new Set([
 ]);
 const assemblyExtensions = new Set([".asm", ".inc", ".z80"]);
 const assemblyBackends = new Set(["atom", "azm"]);
+const glimmerExtension = ".glim";
 const retirementInventoryPath = path.join(
   "docs",
   "specifications",
@@ -55,22 +56,42 @@ for (const filename of await findProjectFiles(root)) {
     if (target === null || typeof target !== "object" || Array.isArray(target))
       continue;
     const source = target.sourceFile ?? target.asm;
-    if (
-      typeof source !== "string" ||
-      !assemblyExtensions.has(path.extname(source).toLowerCase())
-    ) {
+    if (typeof source !== "string") {
       continue;
     }
+    const extension = path.extname(source).toLowerCase();
     const assembler =
       typeof target.assembler === "string"
         ? target.assembler.toLowerCase()
         : "";
-    if (!assemblyBackends.has(assembler)) {
+    if (assemblyExtensions.has(extension) && !assemblyBackends.has(assembler)) {
       failures.push(
         `${path.relative(root, filename)} target ${targetName} must select assembler \"atom\" or \"azm\"`,
       );
-    } else if (assembler === "azm") {
+    } else if (assemblyExtensions.has(extension) && assembler === "azm") {
       selectedAzmTargets.add(`${path.relative(root, filename)}#${targetName}`);
+    } else if (extension === glimmerExtension) {
+      if (assembler !== "glimmer") {
+        failures.push(
+          `${path.relative(root, filename)} target ${targetName} must select assembler \"glimmer\"`,
+        );
+        continue;
+      }
+      const generatedAssembler =
+        target.glimmer !== null &&
+        typeof target.glimmer === "object" &&
+        typeof target.glimmer.assembler === "string"
+          ? target.glimmer.assembler.toLowerCase()
+          : "";
+      if (!assemblyBackends.has(generatedAssembler)) {
+        failures.push(
+          `${path.relative(root, filename)} target ${targetName} must select glimmer.assembler \"atom\" or \"azm\"`,
+        );
+      } else if (generatedAssembler === "azm") {
+        selectedAzmTargets.add(
+          `${path.relative(root, filename)}#${targetName}`,
+        );
+      }
     }
   }
 }

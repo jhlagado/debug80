@@ -42,6 +42,43 @@ function isSupportedAssemblerId(value: unknown): boolean {
   );
 }
 
+function glimmerAssembler(value: unknown): 'atom' | 'azm' | undefined {
+  if (value === null || typeof value !== 'object' || Array.isArray(value)) {
+    return undefined;
+  }
+  const assembler = (value as { assembler?: unknown }).assembler;
+  return assembler === 'atom' || assembler === 'azm' ? assembler : undefined;
+}
+
+/** Keep a target's explicit frontend and generated-source backend aligned with its entry file. */
+export function selectTargetAssemblerForSource(
+  target: Record<string, unknown>,
+  sourceFile: string
+): void {
+  const extension = path.extname(sourceFile).toLowerCase();
+  const assembler =
+    typeof target.assembler === 'string' ? target.assembler.trim().toLowerCase() : undefined;
+
+  if (extension === '.glim') {
+    target.assembler = 'glimmer';
+    target.glimmer = { assembler: glimmerAssembler(target.glimmer) ?? 'atom' };
+    return;
+  }
+
+  delete target.glimmer;
+  if (extension === '.nu') {
+    target.assembler = 'nucleus';
+    return;
+  }
+  if (extension === '.asm' || extension === '.inc' || extension === '.z80') {
+    target.assembler = assembler === 'azm' || assembler === 'atom' ? assembler : 'atom';
+    return;
+  }
+  if (target.assembler !== undefined && !isSupportedAssemblerId(target.assembler)) {
+    delete target.assembler;
+  }
+}
+
 function isProjectProfileConfig(value: unknown): boolean {
   if (value === null || typeof value !== 'object' || Array.isArray(value)) {
     return false;
@@ -285,20 +322,7 @@ function nextTargetEntrySource(
   sourceFile: string
 ): Record<string, unknown> {
   const rest: Record<string, unknown> = { ...target };
-  const extension = path.extname(sourceFile).toLowerCase();
-  const assembler =
-    typeof rest.assembler === 'string' ? rest.assembler.trim().toLowerCase() : undefined;
-  const incompatibleAssembler =
-    (assembler === 'glimmer' && extension !== '.glim') ||
-    (assembler === 'nucleus' && extension !== '.nu') ||
-    (assembler === 'atom' && (extension === '.glim' || extension === '.nu')) ||
-    (assembler === 'azm' && (extension === '.glim' || extension === '.nu'));
-  if (
-    incompatibleAssembler ||
-    (rest.assembler !== undefined && !isSupportedAssemblerId(rest.assembler))
-  ) {
-    delete rest.assembler;
-  }
+  selectTargetAssemblerForSource(rest, sourceFile);
   return {
     ...rest,
     sourceFile,
@@ -332,17 +356,20 @@ function buildNewTargetEntry(
   delete template.source;
   delete template.artifactBase;
   delete template.assembler;
+  delete template.glimmer;
   if (!isNonEmptyString(template.outputDir)) {
     template.outputDir = defaultOutputDir;
   }
   const baseName = projectTargetNameFromSource(sourceFile) || targetName;
 
-  return {
+  const entry = {
     ...template,
     sourceFile,
     asm: sourceFile,
     artifactBase: baseName,
   };
+  selectTargetAssemblerForSource(entry, sourceFile);
+  return entry;
 }
 
 export function projectTargetNameFromSource(sourceFile: string): string {

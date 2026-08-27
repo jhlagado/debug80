@@ -1,5 +1,5 @@
 /**
- * `glimmer build`: the Option A debug-map rewrite.
+ * `glimmer build`: assembly and debug-map attribution.
  *
  * AZM's `.d8.json` map attributes address ranges to generated-asm lines.
  * Glimmer wrote those lines, so it knows which came from `.glim` block
@@ -8,16 +8,19 @@
  * contract). This module re-attributes body segments to their `.glim`
  * source, leaving generated glue attributed to the generated `.asm` —
  * stepping lands in Glimmer source for user code and drops into readable
- * generated AZM for glue.
+ * generated assembly for glue.
  */
 
-import { writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 
 import { compile } from '@jhlagado/azm/compile';
+import { assembleAtomProject, renderAtomArtifacts } from 'atom-z80';
 
 import type { EffectDecl, GlimmerDiagnostic, GlimmerProgram, RoutineDecl } from './model.js';
 import { blockEntryLabel } from './emit.js';
+import { generateAtomProjection } from './atom.js';
 import { generateAzm } from './generate.js';
 import { loadGlimmerProgram } from './load.js';
 import { profileFor } from './profiles/index.js';
@@ -211,19 +214,21 @@ export interface BuildDiagnostic {
 }
 
 export interface GlimmerBuildOptions {
-  /** Output AZM path (default: `<entry>.main.asm` beside the entry). */
+  /** Output assembly path (default: `<entry>.main.asm` beside the entry). */
   outputPath?: string;
   /** Assembly origin (default $4000). */
   org?: number;
   /**
    * How far to take the build:
-   * - 'generate' — write the AZM source only;
+   * - 'generate' — write generated assembly only;
    * - 'check' — also run AZM register-contract checking (the generated
    *   file declares its `.contracts` policy) without assembling;
    * - 'build' (default) — also assemble `.hex`/`.bin`/`.d8.json` and
    *   rewrite the debug map to step block bodies in `.glim` source.
    */
   stage?: 'generate' | 'check' | 'build';
+  /** Assembly source/backend projection. AZM remains the compatibility default. */
+  assembler?: 'azm' | 'atom';
 }
 
 export interface GlimmerBuildArtifacts {
@@ -284,6 +289,31 @@ function fromAzmDiagnostics(diagnostics: readonly AzmDiagnosticLike[]): BuildDia
   }));
 }
 
+function fromAtomError(error: unknown, asmPath: string): BuildDiagnostic {
+  const value = typeof error === 'object' && error !== null ? error : {};
+  const details = value as {
+    message?: unknown;
+    line?: unknown;
+    column?: unknown;
+    diagnostic?: { logicalIdentity?: unknown; line?: unknown; column?: unknown };
+  };
+  const identity = details.diagnostic?.logicalIdentity;
+  const sourceName =
+    typeof identity === 'string'
+      ? path.resolve(path.dirname(asmPath), identity)
+      : path.resolve(asmPath);
+  const line = details.diagnostic?.line ?? details.line;
+  const column = details.diagnostic?.column ?? details.column;
+  return {
+    severity: 'error',
+    message: typeof details.message === 'string' ? details.message : String(error),
+    sourceName,
+    ...(typeof line === 'number' ? { line } : {}),
+    ...(typeof column === 'number' ? { column } : {}),
+    code: 'ATOM',
+  };
+}
+
 /**
  * Point AZM diagnostics at the `.glim` source when they fall inside a
  * block or routine body — the debug-map rewrite pointed the other way.
@@ -324,12 +354,10 @@ function reattributeDiagnostics(
 }
 
 /**
- * Compile a `.glim` program end to end, in process: generate AZM
- * (which declares `.contracts strict` and a `.routine` contract per
- * callable), assemble it in one AZM pass to `.hex`/`.bin`/`.d8.json`
- * — contract checking rides along, mon3 register profile for MON-3
- * programs — and rewrite the debug map so block bodies step in `.glim`
- * source.
+ * Compile a `.glim` program end to end. Generation retains the contract-rich
+ * AZM form used for register checking. The requested output projection is then
+ * assembled with AZM or Atom, and its debug map is attributed back to `.glim`
+ * block bodies.
  *
  * This is the API a host (the CLI, Debug80) calls — it writes the
  * artifact files but never prints; all reporting comes back as values.
@@ -347,7 +375,11 @@ export async function buildGlimmerProgram(
   }
   const program: GlimmerProgram = loaded.program;
 
-  const generated = generateAzm(program, options.org === undefined ? {} : { org: options.org });
+  const assembler = options.assembler ?? 'azm';
+  const generationOptions = options.org === undefined ? {} : { org: options.org };
+  const atomProjection =
+    assembler === 'atom' ? generateAtomProjection(program, generationOptions) : undefined;
+  const generated = atomProjection ?? generateAzm(program, generationOptions);
   const frontEndDiagnostics = [
     ...loadDiagnostics,
     ...fromGlimmerDiagnostics(generated.diagnostics, entryPath),
@@ -391,20 +423,39 @@ export async function buildGlimmerProgram(
         }
       : {}),
   };
-  const attributed = (azmDiagnostics: readonly AzmDiagnosticLike[]): BuildDiagnostic[] => [
+  const contractSource = atomProjection?.azmSource ?? generated.source;
+  const attributed = (
+    azmDiagnostics: readonly AzmDiagnosticLike[],
+    diagnosticPath = asmPath,
+  ): BuildDiagnostic[] => [
     ...frontEndDiagnostics,
     ...reattributeDiagnostics(
       fromAzmDiagnostics(azmDiagnostics),
-      generated.source,
-      asmPath,
+      contractSource,
+      diagnosticPath,
       program,
       entryPath,
     ),
   ];
 
+  const checkContracts = async (): Promise<BuildDiagnostic[]> => {
+    if (assembler === 'azm') {
+      const checked = await compile(asmPath, { ...contractOptions, skipAssembly: true });
+      return attributed(checked.diagnostics);
+    }
+    const temporary = mkdtempSync(path.join(os.tmpdir(), 'glimmer-atom-contracts-'));
+    const contractPath = path.join(temporary, path.basename(asmPath));
+    try {
+      writeFileSync(contractPath, contractSource);
+      const checked = await compile(contractPath, { ...contractOptions, skipAssembly: true });
+      return attributed(checked.diagnostics, contractPath);
+    } finally {
+      rmSync(temporary, { recursive: true, force: true });
+    }
+  };
+
   if (stage === 'check') {
-    const checked = await compile(asmPath, { ...contractOptions, skipAssembly: true });
-    const checkDiagnostics = attributed(checked.diagnostics);
+    const checkDiagnostics = await checkContracts();
     return {
       diagnostics: checkDiagnostics,
       ...(hasErrors(checkDiagnostics) ? {} : { artifacts: { asm: asmPath } }),
@@ -412,13 +463,68 @@ export async function buildGlimmerProgram(
     };
   }
 
-  // One AZM pass: contract checking and assembly together. Nothing
-  // rewrites the generated file, so the map's line numbers agree with
-  // the source exactly as the generator wrote it.
+  // AZM checks contracts while assembling. Atom uses the same checked
+  // contracts, then assembles its source projection separately.
   const base = asmPath.replace(/\.asm$/, '');
   const hexPath = `${base}.hex`;
   const binPath = `${base}.bin`;
   const d8Path = `${base}.d8.json`;
+  if (assembler === 'atom') {
+    const checkDiagnostics = await checkContracts();
+    if (hasErrors(checkDiagnostics)) return { diagnostics: checkDiagnostics, warnings };
+    let atomResult: unknown;
+    try {
+      const start = options.org ?? 0x4000;
+      atomResult = await assembleAtomProject({
+        root: path.dirname(asmPath),
+        entry: path.basename(asmPath),
+        target: { start, capacity: 0xffff - start },
+        maxInstructions: 400_000_000,
+        maxCycles: 4_000_000_000,
+      });
+    } catch (error) {
+      return {
+        diagnostics: [...frontEndDiagnostics, fromAtomError(error, asmPath)],
+        warnings,
+      };
+    }
+    const rendered = renderAtomArtifacts(atomResult, {
+      base: options.org ?? 0x4000,
+      entryAddress: options.org ?? 0x4000,
+    }) as unknown as { bin: Uint8Array; hex: string; d8: D8Map };
+    const entryDir = path.dirname(entryPath);
+    const outDir = path.dirname(asmPath);
+    const entryBase = path.basename(entryPath);
+    const originalMappings = computeBlockMappings(
+      contractSource,
+      mappableBlocks(program.effects, program.routines),
+      entryBase,
+      (declared) =>
+        path.relative(outDir, path.resolve(entryDir, declared ?? entryBase)) || entryBase,
+    );
+    warnings.push(...originalMappings.warnings);
+    const atomLinesByOrigin = new Map<number, number[]>();
+    for (let index = 0; index < (atomProjection?.lineOrigins.length ?? 0); index += 1) {
+      const origin = atomProjection?.lineOrigins[index];
+      if (origin === undefined) continue;
+      const lines = atomLinesByOrigin.get(origin) ?? [];
+      lines.push(index + 1);
+      atomLinesByOrigin.set(origin, lines);
+    }
+    const atomMappings = originalMappings.mappings.flatMap((mapping) =>
+      (atomLinesByOrigin.get(mapping.asmLine) ?? []).map((asmLine) => ({ ...mapping, asmLine })),
+    );
+    const mappedSegments = rewriteD8Map(rendered.d8, path.basename(asmPath), atomMappings).moved;
+    writeFileSync(hexPath, rendered.hex);
+    writeFileSync(binPath, rendered.bin);
+    writeFileSync(d8Path, `${JSON.stringify(rendered.d8, null, 2)}\n`);
+    return {
+      diagnostics: checkDiagnostics,
+      artifacts: { asm: asmPath, hex: hexPath, bin: binPath, d8: d8Path },
+      mappedSegments,
+      warnings,
+    };
+  }
   const assembled = await compile(asmPath, {
     outputType: 'hex',
     emitHex: true,

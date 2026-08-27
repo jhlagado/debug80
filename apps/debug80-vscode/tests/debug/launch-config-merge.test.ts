@@ -23,6 +23,24 @@ const PROJECT_CONFIG = '/project/debug80.json';
 const PROJECT_ROOT = '/project';
 
 describe('launch-config-merge', () => {
+  it('merges the Glimmer generated-source assembler in root, target and launch order', () => {
+    const manifest: LaunchConfigManifest = {
+      assembler: 'glimmer',
+      glimmer: { assembler: 'azm' },
+      targets: {
+        app: {
+          asm: 'src/main.glim',
+          glimmer: { assembler: 'atom' },
+        },
+      },
+      defaultTarget: 'app',
+    };
+    expect(mergeForTarget(manifest, 'app').glimmer).toEqual({ assembler: 'atom' });
+    expect(
+      mergeForTarget(manifest, 'app', launchArgs({ glimmer: { assembler: 'azm' } })).glimmer
+    ).toEqual({ assembler: 'azm' });
+  });
+
   it('merges Nucleus project options in root, target and launch order', () => {
     const manifest: LaunchConfigManifest = {
       assembler: 'nucleus',

@@ -8,7 +8,7 @@ import {
   createTec1PlatformDefaults,
   createTec1gPlatformDefaults,
 } from './config-panel-html';
-import { DEBUG80_PROJECT_VERSION } from './project-config';
+import { DEBUG80_PROJECT_VERSION, selectTargetAssemblerForSource } from './project-config';
 
 export type ConfigureProjectTargetEdit =
   | { kind: 'targetPlatformOverride'; platform: Debug80PlatformId }
@@ -22,19 +22,6 @@ export type ConfigureProjectTargetEditResult =
   { kind: 'updated'; targetName: string } | { kind: 'missingTarget' } | { kind: 'noChange' };
 
 type ProjectTargetConfig = NonNullable<ProjectConfig['targets']>[string];
-
-function isSupportedAssemblerId(value: unknown): boolean {
-  if (typeof value !== 'string') {
-    return false;
-  }
-  const normalized = value.trim().toLowerCase();
-  return (
-    normalized === 'atom' ||
-    normalized === 'azm' ||
-    normalized === 'glimmer' ||
-    normalized === 'nucleus'
-  );
-}
 
 export function applyConfigureProjectTargetEdit(
   config: ProjectConfig,
@@ -108,19 +95,7 @@ function applyPlatformOverride(
 function applyProgramSource(target: ProjectTargetConfig, sourceFile: string): void {
   target.sourceFile = sourceFile;
   target.asm = sourceFile;
-  const extension = sourceFile.slice(sourceFile.lastIndexOf('.')).toLowerCase();
-  const assembler = target.assembler?.trim().toLowerCase();
-  const incompatibleAssembler =
-    (assembler === 'glimmer' && extension !== '.glim') ||
-    (assembler === 'nucleus' && extension !== '.nu') ||
-    (assembler === 'atom' && (extension === '.glim' || extension === '.nu')) ||
-    (assembler === 'azm' && (extension === '.glim' || extension === '.nu'));
-  if (
-    incompatibleAssembler ||
-    (target.assembler !== undefined && !isSupportedAssemblerId(target.assembler))
-  ) {
-    delete target.assembler;
-  }
+  selectTargetAssemblerForSource(target as Record<string, unknown>, sourceFile);
 }
 
 function applyAssembler(target: ProjectTargetConfig, assembler: string | undefined): void {

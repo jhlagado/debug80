@@ -705,6 +705,21 @@
                   }
                 }
               },
+              "glimmer": {
+                "type": "object",
+                "description": "Glimmer frontend options",
+                "properties": {
+                  "assembler": {
+                    "type": "string",
+                    "description": "Assembler used for Glimmer's generated Z80 source",
+                    "enum": [
+                      "atom",
+                      "azm"
+                    ],
+                    "default": "azm"
+                  }
+                }
+              },
               "nucleus": {
                 "type": "object",
                 "description": "Nucleus-specific project and target profile paths",

@@ -1,11 +1,12 @@
 import { compile } from '@jhlagado/azm/compile';
 import { assembleAtomProject, renderAtomArtifacts } from 'atom-z80';
-import { mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 
 import { generateAtom } from '../src/atom.js';
+import { buildGlimmerProgram } from '../src/build.js';
 import { generateAzm } from '../src/generate.js';
 import { loadGlimmerProgram } from '../src/load.js';
 
@@ -78,4 +79,31 @@ describe('generateAtom', () => {
       }),
     ]);
   });
+
+  it('builds Atom HEX, BIN, and D8 artifacts with Glimmer body provenance', async () => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'glimmer-atom-build-'));
+    temporaryRoots.push(root);
+    const entry = path.join(root, 'dot.glim');
+    await writeFile(
+      entry,
+      await readFile(path.resolve(import.meta.dirname, '../examples/dot.glim')),
+    );
+
+    const result = await buildGlimmerProgram(entry, { assembler: 'atom' });
+    expect(result.diagnostics).toEqual([]);
+    expect(result.warnings).toEqual([]);
+    expect(result.mappedSegments).toBeGreaterThan(0);
+    expect(result.artifacts).toEqual({
+      asm: path.join(root, 'dot.main.asm'),
+      hex: path.join(root, 'dot.main.hex'),
+      bin: path.join(root, 'dot.main.bin'),
+      d8: path.join(root, 'dot.main.d8.json'),
+    });
+    const map = JSON.parse(await readFile(result.artifacts!.d8!, 'utf8')) as {
+      files?: Record<string, unknown>;
+      generator?: { name?: string };
+    };
+    expect(map.generator?.name).toBe('atom');
+    expect(map.files).toHaveProperty('dot.glim');
+  }, 30_000);
 });

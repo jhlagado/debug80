@@ -19,11 +19,9 @@ npm run build
 node dist/src/cli.js examples/counter.glim
 ```
 
-This compiles the CounterToy example to `examples/counter.main.asm` — a
-single, readable AZM source file. By default, the CLI also runs AZM's
-register-contract checking over it (the generated file declares its
-contract policy and a `.routine` boundary per callable). Skip that with
-`--no-check` when you only want generation.
+This compiles the CounterToy example to `examples/counter.main.asm`, a single
+readable assembly source file. The default AZM compatibility backend also
+checks its register contracts. `--no-check` stops after generation.
 
 When you want the whole toolchain in one step — HEX, binary, and a
 Debug80 map — use `build`:
@@ -32,16 +30,22 @@ Debug80 map — use `build`:
 node dist/src/cli.js build examples/counter.glim
 ```
 
-This generates the AZM, assembles it with AZM (contract checking rides
-along), and then rewrites the `.d8.json` Debug80 map so lines inside your `begin`/`end`
+Atom can assemble CounterToy directly:
+
+```sh
+node dist/src/cli.js build --assembler atom examples/counter.glim
+```
+
+Both build forms write the generated assembly, Intel HEX, binary, and a D8
+debug map. Lines inside your `begin`/`end`
 block bodies are attributed to the `.glim` file itself: a breakpoint set
 in Glimmer source resolves, and stepping through your own code stays in
 the `.glim` file. Generated glue (dispatch, timers, the profile library)
 stays attributed to the generated `.asm` — stepping into it drops you
 into readable assembly, which is the transparency principle at work.
 
-You can still assemble manually when you prefer — the generated AZM is
-an ordinary AZM program:
+The default generated form is an ordinary AZM program and can be assembled
+manually:
 
 ```sh
 npx azm examples/counter.main.asm
@@ -54,6 +58,11 @@ file opens with `.contracts strict`, so contract errors in your blocks
 fail the build with the offending call site named. Checking uses AZM's
 monitor profile, because the TEC-1G examples call MON-3 through
 `RST $10`: `azm --reg-profile mon3 <file>`.
+
+The Atom projection removes this metadata after the same contract check. It
+currently supports single-part programs without AZM layout-type directives.
+Glimmer reports an error instead of emitting partial Atom source when a program
+uses a form that has no Atom equivalent.
 
 ## Your first program
 
@@ -68,7 +77,6 @@ updates
 state, a render effect redraws what changed — is the whole programming
 model in miniature.
 
-Open the generated `counter.main.asm` and read it. Glimmer's promise is that
-the generated assembly is never hidden: every equate, dispatch routine,
-and wrapped block is ordinary AZM you can inspect, step through, and
-learn from.
+The generated `counter.main.asm` contains every equate, dispatch routine, and
+wrapped block. It can be inspected and stepped through like hand-written
+assembly.

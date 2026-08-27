@@ -2,7 +2,7 @@
   "projectVersion": 2,
   "projectPlatform": "tec1g",
   "defaultProfile": "mon3",
-  "defaultTarget": "tetro-glim",
+  "defaultTarget": "tetro",
   "profiles": {
     "mon3": {
       "platform": "tec1g",
@@ -45,9 +45,12 @@
         "appStart": 16384,
         "entry": 0
       },
-      "sourceFile": "examples/dot.main.asm",
-      "assembler": "azm",
-      "asm": "examples/dot.main.asm",
+      "sourceFile": "examples/dot.glim",
+      "assembler": "glimmer",
+      "glimmer": {
+        "assembler": "atom"
+      },
+      "asm": "examples/dot.glim",
       "artifactBase": "dot",
       "sourceRoots": ["examples"]
     },
@@ -76,9 +79,12 @@
         "appStart": 16384,
         "entry": 0
       },
-      "sourceFile": "examples/slide.main.asm",
-      "assembler": "azm",
-      "asm": "examples/slide.main.asm",
+      "sourceFile": "examples/slide.glim",
+      "assembler": "glimmer",
+      "glimmer": {
+        "assembler": "atom"
+      },
+      "asm": "examples/slide.glim",
       "artifactBase": "slide",
       "sourceRoots": ["examples"]
     },
@@ -107,9 +113,12 @@
         "appStart": 16384,
         "entry": 0
       },
-      "sourceFile": "examples/trail.main.asm",
-      "assembler": "azm",
-      "asm": "examples/trail.main.asm",
+      "sourceFile": "examples/trail.glim",
+      "assembler": "glimmer",
+      "glimmer": {
+        "assembler": "atom"
+      },
+      "asm": "examples/trail.glim",
       "artifactBase": "trail",
       "sourceRoots": ["examples"]
     },
@@ -138,9 +147,12 @@
         "appStart": 16384,
         "entry": 0
       },
-      "sourceFile": "examples/snake.main.asm",
-      "assembler": "azm",
-      "asm": "examples/snake.main.asm",
+      "sourceFile": "examples/snake.glim",
+      "assembler": "glimmer",
+      "glimmer": {
+        "assembler": "azm"
+      },
+      "asm": "examples/snake.glim",
       "artifactBase": "snake",
       "sourceRoots": ["examples"]
     },
@@ -169,9 +181,12 @@
         "appStart": 16384,
         "entry": 0
       },
-      "sourceFile": "examples/tetro.main.asm",
-      "assembler": "azm",
-      "asm": "examples/tetro.main.asm",
+      "sourceFile": "examples/tetro.glim",
+      "assembler": "glimmer",
+      "glimmer": {
+        "assembler": "azm"
+      },
+      "asm": "examples/tetro.glim",
       "artifactBase": "tetro",
       "sourceRoots": ["examples"]
     },
@@ -200,68 +215,11 @@
         "appStart": 16384,
         "entry": 0
       },
-      "sourceFile": "examples/sprite-chase.main.asm",
-      "assembler": "azm",
-      "asm": "examples/sprite-chase.main.asm",
-      "artifactBase": "sprite-chase",
-      "sourceRoots": ["examples"]
-    },
-    "tetro-glim": {
-      "outputDir": "build",
-      "platform": "tec1g",
-      "profile": "mon3",
-      "tec1g": {
-        "regions": [
-          {
-            "start": 0,
-            "end": 2047,
-            "kind": "rom"
-          },
-          {
-            "start": 2048,
-            "end": 32767,
-            "kind": "ram"
-          },
-          {
-            "start": 49152,
-            "end": 65535,
-            "kind": "rom"
-          }
-        ],
-        "appStart": 16384,
-        "entry": 0
-      },
-      "sourceFile": "examples/tetro.glim",
-      "asm": "examples/tetro.glim",
-      "artifactBase": "tetro",
-      "sourceRoots": ["examples"]
-    },
-    "sprite-chase-glim": {
-      "outputDir": "build",
-      "platform": "tec1g",
-      "profile": "mon3",
-      "tec1g": {
-        "regions": [
-          {
-            "start": 0,
-            "end": 2047,
-            "kind": "rom"
-          },
-          {
-            "start": 2048,
-            "end": 32767,
-            "kind": "ram"
-          },
-          {
-            "start": 49152,
-            "end": 65535,
-            "kind": "rom"
-          }
-        ],
-        "appStart": 16384,
-        "entry": 0
-      },
       "sourceFile": "examples/sprite-chase.glim",
+      "assembler": "glimmer",
+      "glimmer": {
+        "assembler": "atom"
+      },
       "asm": "examples/sprite-chase.glim",
       "artifactBase": "sprite-chase",
       "sourceRoots": ["examples"]

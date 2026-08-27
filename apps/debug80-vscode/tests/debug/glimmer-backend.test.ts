@@ -40,7 +40,7 @@ const GLIM_SOURCE = [
 ].join('\n');
 
 describe('glimmer-backend', () => {
-  it('builds a .glim source into hex/bin/d8 with .glim map attribution', async () => {
+  it('builds a .glim source with Atom into hex/bin/d8 with .glim map attribution', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd80-glim-'));
     const srcDir = path.join(dir, 'src');
     const buildDir = path.join(dir, 'build');
@@ -53,6 +53,7 @@ describe('glimmer-backend', () => {
     const result = await backend.assemble({
       asmPath: entry,
       hexPath: path.join(buildDir, 'probe.hex'),
+      glimmer: { assembler: 'atom' },
       onOutput: (message) => output.push(message),
     });
 
@@ -60,14 +61,17 @@ describe('glimmer-backend', () => {
     expect(fs.existsSync(path.join(buildDir, 'probe.hex'))).toBe(true);
     expect(fs.existsSync(path.join(buildDir, 'probe.bin'))).toBe(true);
     expect(fs.existsSync(path.join(buildDir, 'probe.asm'))).toBe(true);
+    expect(fs.readFileSync(path.join(buildDir, 'probe.asm'), 'utf-8')).toMatch(/^\s*ORG\s+\$4000/m);
 
     const map = JSON.parse(fs.readFileSync(path.join(buildDir, 'probe.d8.json'), 'utf-8')) as {
       files?: Record<string, unknown>;
       fileList?: string[];
+      generator?: { name?: string };
     };
     const keys = Object.keys(map.files ?? {});
     expect(keys.some((key) => key.endsWith('probe.glim'))).toBe(true);
     expect(keys).toContain('probe.asm');
+    expect(map).toMatchObject({ generator: { name: 'atom' } });
   });
 
   it('reports a contract violation at the .glim line', async () => {

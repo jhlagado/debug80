@@ -13,33 +13,13 @@
     },
     {
       "project": "packages/glimmer/debug80.json",
-      "target": "dot",
-      "blocker": "Glimmer's Atom source projection is byte-proven for this program; migration now requires the Atom build backend and generated-line-to-Glimmer D8 provenance mapping."
-    },
-    {
-      "project": "packages/glimmer/debug80.json",
-      "target": "slide",
-      "blocker": "Glimmer's Atom source projection is byte-proven for this program; migration now requires the Atom build backend and generated-line-to-Glimmer D8 provenance mapping."
-    },
-    {
-      "project": "packages/glimmer/debug80.json",
       "target": "snake",
       "blocker": "The generated program imports a hand-written assembly module; Atom emission requires an ordered multipart projection that preserves module identity, source provenance, and byte placement."
     },
     {
       "project": "packages/glimmer/debug80.json",
-      "target": "sprite-chase",
-      "blocker": "Glimmer's Atom source projection is byte-proven for this program; migration now requires the Atom build backend and generated-line-to-Glimmer D8 provenance mapping."
-    },
-    {
-      "project": "packages/glimmer/debug80.json",
       "target": "tetro",
       "blocker": "The generated program imports a hand-written assembly module; Atom emission requires an ordered multipart projection that preserves module identity, source provenance, and byte placement."
-    },
-    {
-      "project": "packages/glimmer/debug80.json",
-      "target": "trail",
-      "blocker": "Glimmer's Atom source projection is byte-proven for this program; migration now requires the Atom build backend and generated-line-to-Glimmer D8 provenance mapping."
     }
   ]
 }

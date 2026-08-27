@@ -12,6 +12,7 @@ import {
   validateStringArray,
   validateBoolean,
   validateTerminalConfig,
+  validateGlimmerConfig,
   validateNucleusConfig,
   validateSimpleConfig,
   validateCpm22Config,
@@ -989,6 +990,19 @@ describe('config-validation', () => {
       expect(validateNucleusConfig(null)).toMatchObject({
         valid: false,
         errors: ['nucleus must be an object, got null'],
+      });
+    });
+
+    it('validates the Glimmer generated-source assembler', () => {
+      expect(validateGlimmerConfig({ assembler: 'atom' })).toMatchObject({ valid: true });
+      expect(validateGlimmerConfig({ assembler: 'azm' })).toMatchObject({ valid: true });
+      expect(validateGlimmerConfig({ assembler: 'other' })).toMatchObject({
+        valid: false,
+        errors: ['glimmer.assembler must be "atom" or "azm"'],
+      });
+      expect(validateGlimmerConfig(null)).toMatchObject({
+        valid: false,
+        errors: ['glimmer must be an object, got null'],
       });
     });
 

@@ -57,7 +57,7 @@ describe('project-config helpers', () => {
     expect(projectTargetNameFromSource('demo.glim')).toBe('demo');
   });
 
-  it('lets each added target infer its assembler from its own source extension', () => {
+  it('selects Atom explicitly for each added assembly target', () => {
     const { configPath } = createProject('debug80-add-cross-language-target-', {
       defaultTarget: 'game',
       targets: {
@@ -68,7 +68,21 @@ describe('project-config helpers', () => {
     expect(addProjectTarget(configPath, 'legacy', 'legacy/main.z80')).toBe(true);
     const config = readProjectConfig(configPath);
     expect(config?.targets?.legacy?.sourceFile).toBe('legacy/main.z80');
-    expect(config?.targets?.legacy?.assembler).toBeUndefined();
+    expect(config?.targets?.legacy?.assembler).toBe('atom');
+  });
+
+  it('selects Glimmer with Atom for a newly added Glimmer target', () => {
+    const { configPath } = createProject('debug80-add-glimmer-target-', {
+      defaultTarget: 'app',
+      targets: {
+        app: { sourceFile: 'src/main.asm', assembler: 'atom', platform: 'simple' },
+      },
+    });
+
+    expect(addProjectTarget(configPath, 'game', 'src/game.glim')).toBe(true);
+    const target = readProjectConfig(configPath)?.targets?.game;
+    expect(target?.assembler).toBe('glimmer');
+    expect(target?.glimmer).toEqual({ assembler: 'atom' });
   });
 
   it('uses build for the first target added to a zero-target project', () => {
@@ -327,7 +341,7 @@ describe('project-config helpers', () => {
     expect(config?.profiles?.mon3?.bundledAssets?.romHex?.bundleId).toBe('tec1g/mon3/v1');
   });
 
-  it('clears stale unsupported assembler ids when changing the program file', () => {
+  it('replaces stale assembler ids with Atom when changing to an assembly file', () => {
     const { configPath } = createProject('debug80-azm-entry-', {
       defaultTarget: 'app',
       targets: {
@@ -345,7 +359,7 @@ describe('project-config helpers', () => {
     expect(updated).toBe(true);
     expectTargetSource(configPath, 'app', 'src/main.z80');
     const config = readProjectConfig(configPath);
-    expect(config?.targets?.app?.assembler).toBeUndefined();
+    expect(config?.targets?.app?.assembler).toBe('atom');
   });
 
   it('preserves the Glimmer assembler when changing the program file', () => {
@@ -356,15 +370,17 @@ describe('project-config helpers', () => {
           sourceFile: 'src/old.glim',
           assembler: 'glimmer',
           platform: 'tec1g',
+          glimmer: { assembler: 'azm' },
         },
       },
     });
 
     expect(updateProjectTargetSource(configPath, 'app', 'src/game.glim')).toBe(true);
     expect(readProjectConfig(configPath)?.targets?.app?.assembler).toBe('glimmer');
+    expect(readProjectConfig(configPath)?.targets?.app?.glimmer).toEqual({ assembler: 'azm' });
   });
 
-  it('preserves Nucleus for .nu and clears it for another source language', () => {
+  it('selects Nucleus for .nu and Atom for assembly source', () => {
     const { configPath } = createProject('debug80-nucleus-entry-', {
       defaultTarget: 'app',
       targets: {
@@ -379,7 +395,7 @@ describe('project-config helpers', () => {
     expect(updateProjectTargetSource(configPath, 'app', 'src/main.nu')).toBe(true);
     expect(readProjectConfig(configPath)?.targets?.app?.assembler).toBe('nucleus');
     expect(updateProjectTargetSource(configPath, 'app', 'src/main.asm')).toBe(true);
-    expect(readProjectConfig(configPath)?.targets?.app?.assembler).toBeUndefined();
+    expect(readProjectConfig(configPath)?.targets?.app?.assembler).toBe('atom');
   });
 
   it('preserves an explicit Atom dialect when changing between assembly files', () => {
@@ -398,7 +414,7 @@ describe('project-config helpers', () => {
     expect(readProjectConfig(configPath)?.targets?.app?.assembler).toBe('atom');
   });
 
-  it('clears an assembler override that conflicts with the new program extension', () => {
+  it('selects Atom when a Glimmer target changes to assembly source', () => {
     const { configPath } = createProject('debug80-cross-language-entry-', {
       defaultTarget: 'app',
       targets: {
@@ -411,7 +427,8 @@ describe('project-config helpers', () => {
     });
 
     expect(updateProjectTargetSource(configPath, 'app', 'src/main.asm')).toBe(true);
-    expect(readProjectConfig(configPath)?.targets?.app?.assembler).toBeUndefined();
+    expect(readProjectConfig(configPath)?.targets?.app?.assembler).toBe('atom');
+    expect(readProjectConfig(configPath)?.targets?.app?.glimmer).toBeUndefined();
   });
 
   it('persists AZM symbol case while preserving other project AZM options', () => {

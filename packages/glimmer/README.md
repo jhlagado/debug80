@@ -3,16 +3,16 @@
 **Documentation: [debug80.com/glimmer-book](https://debug80.com/glimmer-book/)** —
 the Glimmer book starts from an empty file and builds up to two complete games.
 
-Glimmer is a preprocessor and project format for AZM. Its initial purpose is to
-help us learn how to build a practical Z80 game engine while keeping real Z80
-assembly visible.
+Glimmer is a small reactive language that generates readable Z80 assembly. Its
+initial purpose is to help us learn how to build a practical Z80 game engine
+while keeping the assembly visible.
 
 The first target is game writing for the TEC-1G. The format should also leave
 room for other Z80 systems as Debug80 expands its supported platforms.
 
 Longer term, Glimmer is expected to become a Debug80-facing format: a structured
 way to describe blocks, state records, bindings, effects, resources, and
-generated AZM glue for interactive Z80 programs.
+generated Z80 glue for interactive programs.
 
 Documentation:
 
@@ -45,12 +45,14 @@ callable routines, cards (screens/modes with `enter` blocks and `goto`
 navigation), sound cues, curve tables, matrix shapes, multi-file
 programs (`part`), and hand-written AZM module imports.
 
-The toolchain: `glimmer build` generates AZM, checks its declared and
+The toolchain: `glimmer build` generates assembly, checks its declared and
 inferred register contracts, assembles to `.hex`/`.bin`/`.d8.json`, and
 rewrites the Debug80 map so **breakpoints and stepping land in your `.glim`
-source** for block bodies while generated glue stays in readable AZM. The
-same pipeline is a programmatic API (`@jhlagado/glimmer/build`) shaped like
-AZM's compile API and consumed by Debug80's native Glimmer backend.
+source** for block bodies while generated glue stays in readable assembly. The
+same pipeline is available through `@jhlagado/glimmer/build` and Debug80's
+Glimmer backend. Atom is available for programs without module imports or AZM
+layout-type directives; the AZM compatibility backend remains available for
+programs that still use those forms.
 
 Version 0.4.0 completed the data story: pieces, sprites, tiles, and
 LCD messages are declarations — `shape` rotation groups generate the
@@ -80,14 +82,14 @@ Glimmer requires Node.js 20 or newer.
 ```sh
 npm ci
 npm run build
-node dist/src/cli.js build examples/counter.glim   # asm + hex + bin + d8 map
+node dist/src/cli.js build --assembler atom examples/dot.glim
 ```
 
-The plain command stops at generated, contract-checked AZM
-(`node dist/src/cli.js examples/counter.glim`); `build` continues
-through assembly and the source-level debug map.
+The command writes assembly, Intel HEX, binary, and a D8 debug map. Without
+`build`, Glimmer stops after generation and register-contract checking.
+Omitting `--assembler` selects the AZM compatibility backend.
 
-The generated AZM is readable: API equates, change-flag constants,
+The generated assembly is readable: API equates, change-flag constants,
 state storage, the runtime loop, binding polling, phase dispatch, wrapped user
 blocks, and frame cleanup, in that order. Inspect
 `examples/counter.main.asm` after building to see the whole runtime.
@@ -118,10 +120,10 @@ _done:
 end
 ```
 
-Block bodies land in the generated file byte-for-byte verbatim; AZM
-scopes `_name` labels to the block's entry label, so every block can
-have its own `_done` (the leading underscore is AZM's local-label
-syntax — block-internal branch targets must use it). Blocks run when any of their `on` cells changed; `updates`
+The AZM form keeps block bodies byte-for-byte. The Atom form preserves their
+instructions while translating local labels and generated names to Atom's
+format. Every block can therefore have its own `_done` label in Glimmer source.
+Blocks run when any of their `on` cells changed; `updates`
 cells are marked changed after the block runs.
 
 ## Development
@@ -129,11 +131,11 @@ cells are marked changed after the block runs.
 ```sh
 npm run typecheck
 npm run lint
-npm test          # includes a round trip that assembles generated AZM
+npm test          # includes AZM and Atom assembly round trips
 
 # The generated file declares its contract policy and routine boundaries.
-# The CLI checks them with AZM automatically; --no-check stops after
-# generation. Manual assembly uses the same MON-3 register profile:
+# The CLI checks register contracts automatically; --no-check stops after
+# generation. The compatibility backend can also be invoked directly:
 npx azm --reg-profile mon3 examples/dot.main.asm
 npm run format:check
 ```

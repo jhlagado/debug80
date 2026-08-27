@@ -234,7 +234,7 @@ async function selectAssembler(): Promise<ConfigureProjectTargetEdit | undefined
       { label: 'default', detail: 'Use the source extension default' },
       { label: 'atom', detail: 'Use the Atom assembler for Z80 assembly source' },
       { label: 'azm', detail: 'Force AZM backend' },
-      { label: 'glimmer', detail: 'Force Glimmer frontend and AZM backend' },
+      { label: 'glimmer', detail: 'Use the Glimmer frontend and its configured Z80 assembler' },
       { label: 'nucleus', detail: 'Force the standalone Nucleus compiler backend' },
     ],
     { placeHolder: 'Select assembler for this target' }
