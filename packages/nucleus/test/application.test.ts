@@ -812,7 +812,7 @@ describe("Nucleus application boundary", () => {
     );
   }, 30_000);
 
-  it("publishes selected NOBJ, BIN, and HEX artifacts through the normal CLI", async () => {
+  it("publishes selected NOBJ, BIN, HEX, and D8 artifacts through the normal CLI", async () => {
     await withSourceTree(
       {
         "src/main.nu": [
@@ -832,6 +832,7 @@ describe("Nucleus application boundary", () => {
           const nobj = path.join(outputDirectory, "program.nobj");
           const bin = path.join(outputDirectory, "program.bin");
           const hex = path.join(outputDirectory, "program.hex");
+          const d8 = path.join(outputDirectory, "program.d8.json");
           const { stdout, stderr } = await execFileAsync(
             process.execPath,
             [
@@ -845,6 +846,7 @@ describe("Nucleus application boundary", () => {
               nobj,
               bin,
               hex,
+              d8,
             ],
             { cwd: packageRoot },
           );
@@ -855,7 +857,7 @@ describe("Nucleus application boundary", () => {
             root,
             entry: "src/main.nu",
             sourceParts: 1,
-            outputs: [nobj, bin, hex],
+            outputs: [nobj, bin, hex, d8],
             bytes: 1396,
             records: 130,
             entryBank: 0,
@@ -872,6 +874,24 @@ describe("Nucleus application boundary", () => {
           expect(await readFile(hex, "utf8")).toBe(
             writeNucleusIntelHex(parsed.begin.imageBase, expectedBin),
           );
+          const d8Map = JSON.parse(await readFile(d8, "utf8"));
+          expect(d8Map).toMatchObject({
+            format: "d8-debug-map",
+            version: 1,
+            arch: "z80",
+            addressWidth: 16,
+            endianness: "little",
+            fileList: ["src/main.nu"],
+            files: { "src/main.nu": {} },
+            segments: [{ start: 0x8000, end: 0x822c }],
+            symbols: [],
+            generator: {
+              name: "nucleus",
+              tool: "nucleus",
+              inputs: { entry: "src/main.nu" },
+              entryAddress: 0x8000,
+            },
+          });
         } finally {
           await rm(outputDirectory, { recursive: true, force: true });
         }
@@ -952,6 +972,24 @@ describe("Nucleus application boundary", () => {
         expect(listing).toMatchObject({
           code: 1,
           stderr: expect.stringContaining("Nucleus listing output is not implemented"),
+        });
+
+        const com = await execFileAsync(
+          process.execPath,
+          [
+            tsxBin,
+            "src/cli/nucleus.ts",
+            "publish",
+            "--root",
+            root,
+            "src/main.nu",
+            "program.com",
+          ],
+          { cwd: packageRoot },
+        ).catch((error: unknown) => error);
+        expect(com).toMatchObject({
+          code: 1,
+          stderr: expect.stringContaining("Nucleus COM output is not implemented"),
         });
       },
     );

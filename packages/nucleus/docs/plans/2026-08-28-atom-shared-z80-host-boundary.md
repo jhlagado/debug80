@@ -665,7 +665,7 @@ The first file-producing publication commands are now available:
 
 ```text
 npm run cli -w nucleus -- publish --root path/to/project --target target.json --output build/program.nobj src/main.nu
-npm run cli -w nucleus -- publish --root path/to/project src/main.nu build/program.nobj build/program.bin build/program.hex
+npm run cli -w nucleus -- publish --root path/to/project src/main.nu build/program.nobj build/program.bin build/program.hex build/program.d8.json
 npm run publish:nobj -w nucleus -- --root path/to/project --target target.json --output build/program.nobj src/main.nu
 npm run cli -w nucleus -- proof:publish --output build/program.nobj proofs/flat-target-z80-slice-proof.json
 npm run proof:publish -w nucleus -- --output build/program.nobj proofs/flat-target-z80-slice-proof.json
@@ -679,9 +679,12 @@ Its current development script is `npm run cli -w nucleus -- <command>`.
 entry-source publication path, and `nucleus proof:publish` remains the
 compatibility/debug command for proof manifests. Publication commands accept
 positive output paths by suffix. The implemented formats are `.nobj`, `.bin`,
-and `.hex`; `.lst`, `.d8.json`, and `.com` fail explicitly until Nucleus has
-specified policies for those artifacts. The older direct npm scripts remain as
-compatibility shortcuts while the command surface converges.
+`.hex`, and `.d8.json`; `.lst` and `.com` fail explicitly until Nucleus has
+specified policies for those artifacts. The current D8 artifact is intentionally
+minimal: it records the flat loaded range, input identity, and entry address,
+but no source-line segments or symbols until the resident compiler emits real
+source provenance. The older direct npm scripts remain as compatibility
+shortcuts while the command surface converges.
 The package now follows the AZM/Glimmer build model for installed commands:
 TypeScript source is emitted to `dist/src`, and the npm `bin` entry exposes
 `dist/src/cli/nucleus.js` as `nucleus`. The development dispatcher still runs
@@ -693,9 +696,11 @@ bytes and resident descriptors into the current flat compiler proof image,
 requires that image to publish a committed NOBJ target, and renders requested
 artifacts from that committed object. NOBJ is the exact object stream. BIN and
 HEX are rendered only for flat targets, using `BEGIN.imageBase` and
-`MAP.banks[0].usedLength` rather than the full image capacity. `proof:publish`
-still accepts the same prepared-source bridge options while the resident
-compiler image is proof-hosted.
+`MAP.banks[0].usedLength` rather than the full image capacity. D8 is also
+rendered only for flat targets and describes the same committed range without
+inventing source-line attribution. `proof:publish` still accepts the same
+prepared-source bridge options while the resident compiler image is
+proof-hosted.
 
 Target publication data now has its own application descriptor. A
 `NucleusTargetPublicationDescriptor` contains the NOBJ `begin` record, target
@@ -775,7 +780,7 @@ without spawning another process.
 ## Next implementation unit
 
 Continue Phase 3 by specifying richer Nucleus artifact policies. The remaining
-open outputs are listing, D8-style maps, CP/M `.com`, and banked target
-publication. Listing and D8 need source-provenance policy; `.com` needs a
-loaded-image and entry-address policy; banked output needs a packaging format
-for multiple banks rather than pretending it is one flat binary.
+open outputs are listing, source-provenanced D8, CP/M `.com`, and banked target
+publication. Listing and full D8 need resident source-provenance policy; `.com`
+needs a loaded-image and entry-address policy; banked output needs a packaging
+format for multiple banks rather than pretending it is one flat binary.

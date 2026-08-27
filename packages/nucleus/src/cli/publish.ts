@@ -25,7 +25,7 @@ Options:
   --json                  Print machine-readable JSON.
   -h, --help              Show this help.
 
-Output suffixes: .nobj .bin .hex
+Output suffixes: .nobj .bin .hex .d8.json
 With no output path, the command publishes and summarizes without writing.
 
 This development command prepares a Nucleus entry source file, installs it into
