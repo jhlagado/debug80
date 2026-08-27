@@ -110,6 +110,10 @@ The ordinary target reads prepared bytes directly. A native preparation profile
 may replace it with an equal-offset filtering reader that masks only directives
 validated during preflight. This composition point remains outside the Atom
 core and does not add filesystem or preprocessor policy to the named-object ABI.
+It also exposes a measured postlude region after the shared adapter. A native
+profile keeps its small fixed-origin dispatcher in the prelude and places its
+larger launcher or preparation code in this postlude. Both regions are included
+in the deployed resident extent and the 16 KiB bank gate.
 
 NOBJ belongs in an optional harness output module, not in the core or the
 filesystem provider. A constrained profile may retain a measured direct-image
