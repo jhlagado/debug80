@@ -31,6 +31,18 @@ Measured files:
 
 The source set is large enough that manual renaming without tooling is not credible.
 
+Regenerate the dry-run report with:
+
+```bash
+npm run atom:migration:census -w nucleus
+```
+
+Run the same tool without `--report-only` when the ledger becomes complete and the migration should fail CI on any remaining unmapped construct:
+
+```bash
+npm run atom:migration:dry-run -w nucleus
+```
+
 ## Directive census
 
 | AZM directive | Measured count | Atom migration treatment |

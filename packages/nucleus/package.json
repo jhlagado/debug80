@@ -12,7 +12,9 @@
     "premeasure": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/debug80-runtime",
     "measure": "vitest run test/proof-harness.test.ts --reporter=verbose",
     "preproof": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/debug80-runtime",
-    "proof": "vitest run test/proof-harness.test.ts --reporter=verbose"
+    "proof": "vitest run test/proof-harness.test.ts --reporter=verbose",
+    "atom:migration:dry-run": "node scripts/atom-migration-dry-run.mjs",
+    "atom:migration:census": "node scripts/atom-migration-dry-run.mjs --report-only"
   },
   "dependencies": {
     "@jhlagado/azm": "^0.3.8",
