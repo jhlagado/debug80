@@ -274,16 +274,23 @@ routine bounded-matrix result:
 
 | Status | Count |
 | --- | ---: |
-| Byte-identical proof images | 10 |
-| Skipped known budget blockers | 15 |
+| Byte-identical proof images | 17 |
+| Skipped known budget blockers | 8 |
 | Skipped measurement artifacts | 3 |
 | Atom-preview errors | 0 |
 
 Byte-identical proof images:
 
 - `array-z80-slice-proof.json`
+- `banked-target-entry1-z80-slice-proof.json`
+- `banked-target-trap-z80-slice-proof.json`
+- `banked-target-z80-slice-proof.json`
 - `call-z80-slice-proof.json`
+- `chapter21-target-z80-slice-proof.json`
 - `compiler-slice-proof.json`
+- `flat-target-loaded-z80-slice-proof.json`
+- `flat-target-trap-z80-slice-proof.json`
+- `flat-target-unhandled-z80-slice-proof.json`
 - `flat-target-z80-slice-proof.json`
 - `loop-compiler-slice-proof.json`
 - `loop-z80-slice-proof.json`
@@ -307,7 +314,7 @@ Measured remaining blocker groups:
 
 | Group | Representative generated line | Consequence |
 | --- | --- | --- |
-| Larger preview execution budget | `aggregate-z80-slice-proof.json`, `expression-z80-slice-proof.json`, `structured-control-z80-slice-proof.json`, `stage7-ll1-aggregate-call-z80-slice-proof.json`, `stage7-ll1-parser-coverage-proof.json`, `stage8-failure-z80-slice-proof.json`, `stage9-conformance-z80-slice-proof.json`, `typed-expression-z80-slice-proof.json`, plus the flat-target proof variants | Atom preview assembly exceeds the comparison script's current execution budget before reporting a source diagnostic or byte comparison; measure explicitly with `--entry` before raising a per-entry budget |
+| Larger preview execution budget | `aggregate-z80-slice-proof.json`, `expression-z80-slice-proof.json`, `structured-control-z80-slice-proof.json`, `stage7-ll1-aggregate-call-z80-slice-proof.json`, `stage7-ll1-parser-coverage-proof.json`, `stage8-failure-z80-slice-proof.json`, `stage9-conformance-z80-slice-proof.json`, `typed-expression-z80-slice-proof.json` | Atom preview assembly exceeds the comparison script's current execution budget before reporting a source diagnostic or byte comparison; measure explicitly with `--entry` before raising a per-entry budget |
 
 The source-capacity blocker from single-file flattening is resolved by generated
 multipart preview parts. The grammar-generated keyword constants are now included
@@ -344,6 +351,12 @@ Focused follow-up measurement after that change:
 | `stage7-ll1-engine-proof.json` | Byte-identical | 37,695,198 | 361,752,509 |
 | `flat-target-z80-slice-proof.json` | Byte-identical | 553,400,734 | 5,303,254,267 |
 | `structured-control-z80-slice-proof.json` | Reaches execution budget with legacy unordered output | 200,000,000 | 1,926,034,192 |
+
+The seven other proof manifests that use
+`vertical-slice/flat-target-z80-slice-proof.asm` now share the same measured
+Atom-preview account as `flat-target-z80-slice-proof.json` and are
+byte-identical under the same 700,000,000-instruction / 7,000,000,000-cycle
+budget.
 
 The next migration work should address the preview execution budget with
 per-entry measured budgets, then return to any source diagnostics exposed after

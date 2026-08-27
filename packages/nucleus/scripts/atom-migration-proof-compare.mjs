@@ -621,6 +621,23 @@ function summarize(results) {
   return Object.freeze(counts);
 }
 
+function comparisonCacheKey({ proof, asmRoot, maxPartBytes, budget, legacyOutputOrder }) {
+  return JSON.stringify({
+    entry: entryForManifest(asmRoot, proof),
+    maxPartBytes,
+    budget,
+    legacyOutputOrder,
+  });
+}
+
+function cachedResultForProof(cached, proof) {
+  return Object.freeze({
+    ...cached,
+    manifest: proof.name,
+    ...(cached.manifest === proof.name ? {} : { reusedFrom: cached.manifest }),
+  });
+}
+
 function printText(report) {
   console.log("Nucleus Atom-preview proof comparison");
   console.log("");
@@ -650,15 +667,33 @@ async function main() {
     maxCycles: options.maxCycles,
   });
   const results = [];
+  const comparisonCache = new Map();
   for (const proof of proofs) {
-    results.push(await compareOne({
+    const budget = entryBudget(proof, defaultBudget, budgets, { force: options.entry !== undefined });
+    const key = budget.skip === undefined
+      ? comparisonCacheKey({
+        proof,
+        asmRoot: options.asmRoot,
+        maxPartBytes: options.maxPartBytes,
+        budget,
+        legacyOutputOrder: options.legacyOutputOrder,
+      })
+      : undefined;
+    const cached = key === undefined ? undefined : comparisonCache.get(key);
+    if (cached !== undefined) {
+      results.push(cachedResultForProof(cached, proof));
+      continue;
+    }
+    const result = await compareOne({
       report,
       proof,
       asmRoot: options.asmRoot,
       maxPartBytes: options.maxPartBytes,
-      budget: entryBudget(proof, defaultBudget, budgets, { force: options.entry !== undefined }),
+      budget,
       legacyOutputOrder: options.legacyOutputOrder,
-    }));
+    });
+    if (key !== undefined) comparisonCache.set(key, result);
+    results.push(result);
   }
   const comparison = Object.freeze({
     status: results.every(({ status }) => status === "byte-identical" || status === "skipped") ? "ready" : "blocked",
@@ -685,6 +720,7 @@ async function main() {
 
 export {
   augmentSymbolValuesFromPreview,
+  comparisonCacheKey,
   createLegacyUnorderedMemoryAtomSink,
   evaluateKnownExpression,
   entryBudget,

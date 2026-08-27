@@ -5,28 +5,35 @@
       "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
     },
     "banked-target-entry1-z80-slice-proof.json": {
-      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+      "maxInstructions": 700000000,
+      "maxCycles": 7000000000
     },
     "banked-target-trap-z80-slice-proof.json": {
-      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+      "maxInstructions": 700000000,
+      "maxCycles": 7000000000
     },
     "banked-target-z80-slice-proof.json": {
-      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+      "maxInstructions": 700000000,
+      "maxCycles": 7000000000
     },
     "chapter21-target-z80-slice-proof.json": {
-      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+      "maxInstructions": 700000000,
+      "maxCycles": 7000000000
     },
     "expression-z80-slice-proof.json": {
       "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
     },
     "flat-target-loaded-z80-slice-proof.json": {
-      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+      "maxInstructions": 700000000,
+      "maxCycles": 7000000000
     },
     "flat-target-trap-z80-slice-proof.json": {
-      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+      "maxInstructions": 700000000,
+      "maxCycles": 7000000000
     },
     "flat-target-unhandled-z80-slice-proof.json": {
-      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+      "maxInstructions": 700000000,
+      "maxCycles": 7000000000
     },
     "flat-target-z80-slice-proof.json": {
       "maxInstructions": 700000000,

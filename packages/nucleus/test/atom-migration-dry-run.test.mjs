@@ -12,6 +12,7 @@ import { flattenTranslatedEntry } from "../scripts/atom-migration-dry-run.mjs";
 import { flattenedEntryParts } from "../scripts/atom-migration-dry-run.mjs";
 import { lowerResolvedPreviewExpressions } from "../scripts/atom-migration-proof-compare.mjs";
 import { augmentSymbolValuesFromPreview } from "../scripts/atom-migration-proof-compare.mjs";
+import { comparisonCacheKey } from "../scripts/atom-migration-proof-compare.mjs";
 import { createLegacyUnorderedMemoryAtomSink } from "../scripts/atom-migration-proof-compare.mjs";
 import { entryBudget } from "../scripts/atom-migration-proof-compare.mjs";
 import { readBudgetFile } from "../scripts/atom-migration-proof-compare.mjs";
@@ -609,5 +610,45 @@ describe("Nucleus Atom migration dry-run", () => {
     expect(sink.snapshot().failure).toMatchObject({
       code: "image-overlap",
     });
+  });
+
+  it("keys Atom-preview comparison cache by entry and execution policy", () => {
+    const asmRoot = "/project/asm";
+    const proof = {
+      file: "/project/proofs/a.json",
+      manifest: { source: "../asm/main.asm" },
+    };
+    const otherProof = {
+      file: "/project/proofs/b.json",
+      manifest: { source: "../asm/main.asm" },
+    };
+    const base = comparisonCacheKey({
+      proof,
+      asmRoot,
+      maxPartBytes: 65535,
+      budget: { maxInstructions: 10, maxCycles: 20 },
+      legacyOutputOrder: true,
+    });
+    expect(comparisonCacheKey({
+      proof: otherProof,
+      asmRoot,
+      maxPartBytes: 65535,
+      budget: { maxInstructions: 10, maxCycles: 20 },
+      legacyOutputOrder: true,
+    })).toBe(base);
+    expect(comparisonCacheKey({
+      proof,
+      asmRoot,
+      maxPartBytes: 65535,
+      budget: { maxInstructions: 11, maxCycles: 20 },
+      legacyOutputOrder: true,
+    })).not.toBe(base);
+    expect(comparisonCacheKey({
+      proof,
+      asmRoot,
+      maxPartBytes: 65535,
+      budget: { maxInstructions: 10, maxCycles: 20 },
+      legacyOutputOrder: false,
+    })).not.toBe(base);
   });
 });
