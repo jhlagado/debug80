@@ -22,6 +22,8 @@ import {
   resolveNucleusResidentCompilerEntry,
   validateNucleusResidentSourceForEntry,
 } from "../src/index.js";
+import { writeNucleusIntelHex } from "../src/cli/publication-cli.js";
+import { materializeNobj, parseNobj } from "../src/nobj.js";
 import { defaultRuntimeLinkContext } from "../src/nucleus-runtime.js";
 import { Service } from "../src/runtime-contract.js";
 
@@ -806,6 +808,151 @@ describe("Nucleus application boundary", () => {
         } finally {
           await rm(outputDirectory, { recursive: true, force: true });
         }
+      },
+    );
+  }, 30_000);
+
+  it("publishes selected NOBJ, BIN, and HEX artifacts through the normal CLI", async () => {
+    await withSourceTree(
+      {
+        "src/main.nu": [
+          "var value as u16 = 3",
+          "var cleared as u8",
+          "sub main()",
+          "value = value * 2",
+          "end",
+          "",
+        ].join("\n"),
+      },
+      async (root) => {
+        const outputDirectory = await mkdtemp(
+          path.join(tmpdir(), "nucleus-cli-artifacts-"),
+        );
+        try {
+          const nobj = path.join(outputDirectory, "program.nobj");
+          const bin = path.join(outputDirectory, "program.bin");
+          const hex = path.join(outputDirectory, "program.hex");
+          const { stdout, stderr } = await execFileAsync(
+            process.execPath,
+            [
+              tsxBin,
+              "src/cli/nucleus.ts",
+              "publish",
+              "--json",
+              "--root",
+              root,
+              "src/main.nu",
+              nobj,
+              bin,
+              hex,
+            ],
+            { cwd: packageRoot },
+          );
+
+          const summary = JSON.parse(stdout);
+          expect(stderr).toBe("");
+          expect(summary).toMatchObject({
+            root,
+            entry: "src/main.nu",
+            sourceParts: 1,
+            outputs: [nobj, bin, hex],
+            bytes: 1396,
+            records: 130,
+            entryBank: 0,
+            entryAddress: 0x8000,
+          });
+          const parsed = parseNobj(await readFile(nobj));
+          const materialized = materializeNobj(parsed);
+          const flatImage = materialized.flatImage;
+          const usedLength = parsed.map.banks[0]?.usedLength;
+          expect(flatImage).toBeDefined();
+          expect(usedLength).toBeDefined();
+          const expectedBin = flatImage!.slice(0, usedLength);
+          expect(await readFile(bin)).toEqual(Buffer.from(expectedBin));
+          expect(await readFile(hex, "utf8")).toBe(
+            writeNucleusIntelHex(parsed.begin.imageBase, expectedBin),
+          );
+        } finally {
+          await rm(outputDirectory, { recursive: true, force: true });
+        }
+      },
+    );
+  }, 30_000);
+
+  it("keeps --output as an NOBJ-compatible output path", async () => {
+    const outputDirectory = await mkdtemp(path.join(tmpdir(), "nucleus-cli-output-"));
+    try {
+      const output = path.join(outputDirectory, "program.nobj");
+      const { stdout, stderr } = await execFileAsync(
+        process.execPath,
+        [
+          tsxBin,
+          "src/cli/nucleus.ts",
+          "proof:publish",
+          "--json",
+          "--output",
+          output,
+          proof("flat-target-z80-slice-proof"),
+        ],
+        { cwd: packageRoot },
+      );
+
+      const summary = JSON.parse(stdout);
+      expect(stderr).toBe("");
+      expect(summary).toMatchObject({
+        output,
+        outputs: [output],
+        bytes: 1396,
+        records: 130,
+      });
+      expect((await readFile(output)).byteLength).toBe(summary.bytes);
+    } finally {
+      await rm(outputDirectory, { recursive: true, force: true });
+    }
+  }, 30_000);
+
+  it("rejects repeated and not-yet-supported publication output formats", async () => {
+    await withSourceTree(
+      {
+        "src/main.nu": "sub main()\nend\n",
+      },
+      async (root) => {
+        const repeated = await execFileAsync(
+          process.execPath,
+          [
+            tsxBin,
+            "src/cli/nucleus.ts",
+            "publish",
+            "--root",
+            root,
+            "src/main.nu",
+            "a.bin",
+            "b.bin",
+          ],
+          { cwd: packageRoot },
+        ).catch((error: unknown) => error);
+        expect(repeated).toMatchObject({
+          code: 1,
+          stderr: expect.stringContaining("output format is repeated: bin"),
+        });
+
+        const listing = await execFileAsync(
+          process.execPath,
+          [
+            tsxBin,
+            "src/cli/nucleus.ts",
+            "publish",
+            "--root",
+            root,
+            "src/main.nu",
+            "program.lst",
+          ],
+          { cwd: packageRoot },
+        ).catch((error: unknown) => error);
+        expect(listing).toMatchObject({
+          code: 1,
+          stderr: expect.stringContaining("Nucleus listing output is not implemented"),
+        });
       },
     );
   }, 30_000);

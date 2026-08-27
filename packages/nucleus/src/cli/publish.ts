@@ -9,12 +9,14 @@ import {
   preparedSourcePublicationOptions,
   publicationJsonSummary,
   publicationTextSummary,
+  validateNucleusPublicationOutputs,
+  writeNucleusPublicationOutputs,
 } from "./publication-cli.js";
 
-const usage = `Usage: nucleus publish [options] <entry.nu>
+const usage = `Usage: nucleus publish [options] <entry.nu> [output...]
 
 Options:
-  -o, --output FILE        Write the committed NOBJ bytes to FILE.
+  -o, --output FILE        Add an output path.
   --root DIR              Project root; default current directory.
   --target FILE           Target publication descriptor.
   --compiler-proof FILE   Resident compiler proof image for this bridge.
@@ -22,6 +24,9 @@ Options:
   --source-capacity N     Resident source byte capacity; default 0x0800.
   --json                  Print machine-readable JSON.
   -h, --help              Show this help.
+
+Output suffixes: .nobj .bin .hex
+With no output path, the command publishes and summarizes without writing.
 
 This development command prepares a Nucleus entry source file, installs it into
 the current resident compiler image, and publishes the committed NOBJ stream.
@@ -38,13 +43,18 @@ export async function runNucleusPublishCli(
       process.stdout.write(usage);
       return 0;
     }
+    const outputs = validateNucleusPublicationOutputs(options.outputPaths);
     const publication = await publishNucleusPreparedSourceTarget({
       ...preparedSourcePublicationOptions(options),
     });
+    const committedOutputs = await writeNucleusPublicationOutputs(
+      publication,
+      outputs,
+    );
     process.stdout.write(
       options.json
-        ? publicationJsonSummary(publication)
-        : publicationTextSummary(publication),
+        ? publicationJsonSummary(publication, committedOutputs)
+        : publicationTextSummary(publication, committedOutputs),
     );
     return 0;
   } catch (error) {

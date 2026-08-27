@@ -12,12 +12,14 @@ import {
   preparedSourcePublicationOptions,
   publicationJsonSummary,
   publicationTextSummary,
+  validateNucleusPublicationOutputs,
+  writeNucleusPublicationOutputs,
 } from "./publication-cli.js";
 
-const usage = `Usage: nucleus proof:publish [options] <proof.json | entry.nu>
+const usage = `Usage: nucleus proof:publish [options] <proof.json | entry.nu> [output...]
 
 Options:
-  -o, --output FILE        Write the committed NOBJ bytes to FILE.
+  -o, --output FILE        Add an output path.
   --root DIR              Project root for entry.nu publication.
   --target FILE           Target publication descriptor for entry.nu publication.
   --compiler-proof FILE   Resident compiler proof image for entry.nu publication.
@@ -25,6 +27,9 @@ Options:
   --source-capacity N     Resident source byte capacity; default 0x0800.
   --json                  Print machine-readable JSON.
   -h, --help              Show this help.
+
+Output suffixes: .nobj .bin .hex
+With no output path, the command publishes and summarizes without writing.
 
 This development command either runs an executable Nucleus proof manifest or
 prepares an entry .nu file, installs it into the current resident compiler proof
@@ -45,6 +50,7 @@ export async function runNucleusProofPublishCli(
       return 0;
     }
     if (options.input === undefined) throw new Error("input is required");
+    const outputs = validateNucleusPublicationOutputs(options.outputPaths);
     const publishesPreparedSource =
       options.root !== undefined ||
       options.targetFile !== undefined ||
@@ -58,12 +64,15 @@ export async function runNucleusProofPublishCli(
         })
       : await publishNucleusProofTarget({
           manifest: options.input,
-          output: options.output,
         });
+    const committedOutputs = await writeNucleusPublicationOutputs(
+      publication,
+      outputs,
+    );
     process.stdout.write(
       options.json
-        ? publicationJsonSummary(publication)
-        : publicationTextSummary(publication),
+        ? publicationJsonSummary(publication, committedOutputs)
+        : publicationTextSummary(publication, committedOutputs),
     );
     return 0;
   } catch (error) {

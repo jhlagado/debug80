@@ -1,14 +1,25 @@
 import { realpathSync } from "node:fs";
+import { mkdir, writeFile } from "node:fs/promises";
+import path from "node:path";
 import { pathToFileURL } from "node:url";
 
+import { materializeNobj } from "../nobj.js";
 import {
   publishNucleusPreparedSourceTarget,
   publishNucleusProofTarget,
 } from "../publication.js";
 
+export type NucleusPublicationOutputFormat = "nobj" | "bin" | "hex";
+
+export interface NucleusPublicationOutputSelection {
+  readonly format: NucleusPublicationOutputFormat;
+  readonly path: string;
+}
+
 export interface NucleusPublicationCliOptions {
   readonly input?: string;
   readonly output?: string;
+  readonly outputPaths: readonly string[];
   readonly root?: string;
   readonly targetFile?: string;
   readonly compilerProof?: string;
@@ -24,6 +35,36 @@ export type NucleusPublication =
 
 export type NucleusPreparedSourcePublication =
   Awaited<ReturnType<typeof publishNucleusPreparedSourceTarget>>;
+
+const hex2 = (value: number): string =>
+  value.toString(16).toUpperCase().padStart(2, "0");
+
+const intelRecord = (
+  address: number,
+  type: number,
+  bytes: readonly number[],
+): string => {
+  const values = [bytes.length, address >>> 8, address & 0xff, type, ...bytes];
+  const checksum = (-values.reduce((sum, byte) => sum + byte, 0)) & 0xff;
+  return `:${values.map(hex2).join("")}${hex2(checksum)}`;
+};
+
+export function writeNucleusIntelHex(
+  base: number,
+  bytes: Uint8Array,
+  { lineEnding = "\n" }: { readonly lineEnding?: string } = {},
+): string {
+  const lines: string[] = [];
+  for (let offset = 0; offset < bytes.length; offset += 16) {
+    lines.push(
+      intelRecord(base + offset, 0, [
+        ...bytes.slice(offset, offset + 16),
+      ]),
+    );
+  }
+  lines.push(":00000001FF");
+  return `${lines.join(lineEnding)}${lineEnding}`;
+}
 
 const optionValue = (
   arguments_: readonly string[],
@@ -53,7 +94,7 @@ export function parseNucleusPublicationOptions(
     readonly positionalName: string;
   },
 ): NucleusPublicationCliOptions {
-  let output: string | undefined;
+  const outputPaths: string[] = [];
   let root: string | undefined;
   let targetFile: string | undefined;
   let compilerProof: string | undefined;
@@ -74,7 +115,7 @@ export function parseNucleusPublicationOptions(
       continue;
     }
     if (argument === "-o" || argument === "--output") {
-      output = optionValue(arguments_, index, argument);
+      outputPaths.push(optionValue(arguments_, index, argument));
       index += 1;
       continue;
     }
@@ -108,11 +149,12 @@ export function parseNucleusPublicationOptions(
   }
 
   if (positional.length > 1) {
-    throw new Error(`only one ${options.positionalName} may be supplied`);
+    outputPaths.push(...positional.slice(1));
   }
   return Object.freeze({
     input: positional[0],
-    output,
+    output: outputPaths[0],
+    outputPaths,
     root,
     targetFile,
     compilerProof,
@@ -139,11 +181,92 @@ export function preparedSourcePublicationOptions(
             sourceBase: options.sourceBase ?? 0x5000,
             sourceCapacity: options.sourceCapacity,
           },
-    output: options.output,
   };
 }
 
-export function publicationJsonSummary(publication: NucleusPublication): string {
+const outputFormat = (filename: string): NucleusPublicationOutputFormat => {
+  const lower = filename.toLowerCase();
+  if (lower.endsWith(".nobj")) return "nobj";
+  if (lower.endsWith(".bin")) return "bin";
+  if (lower.endsWith(".hex")) return "hex";
+  if (lower.endsWith(".com")) {
+    throw new Error("Nucleus COM output is not implemented");
+  }
+  if (lower.endsWith(".lst")) {
+    throw new Error("Nucleus listing output is not implemented");
+  }
+  if (lower.endsWith(".d8.json")) {
+    throw new Error("Nucleus D8 map output is not implemented");
+  }
+  throw new Error(`output path has no recognized format suffix: ${filename}`);
+};
+
+export function validateNucleusPublicationOutputs(
+  filenames: readonly string[],
+): readonly NucleusPublicationOutputSelection[] {
+  const formats = new Set<NucleusPublicationOutputFormat>();
+  const paths = new Set<string>();
+  return filenames.map((filename) => {
+    const format = outputFormat(filename);
+    if (formats.has(format)) {
+      throw new Error(`output format is repeated: ${format}`);
+    }
+    formats.add(format);
+    const selectedPath = path.resolve(filename);
+    const key =
+      process.platform === "win32" ? selectedPath.toLowerCase() : selectedPath;
+    if (paths.has(key)) throw new Error(`output path is repeated: ${filename}`);
+    paths.add(key);
+    return Object.freeze({ format, path: selectedPath });
+  });
+}
+
+const materializedFlatBytes = (publication: NucleusPublication): Uint8Array => {
+  const materialized = materializeNobj(publication.nobj.parsed);
+  const flat = materialized.flatImage;
+  const bank = publication.nobj.parsed.map.banks[0];
+  if (flat === undefined || bank === undefined) {
+    throw new Error("BIN/HEX output requires a flat NOBJ target");
+  }
+  return flat.slice(0, bank.usedLength);
+};
+
+const selectedOutputBytes = (
+  publication: NucleusPublication,
+  selection: NucleusPublicationOutputSelection,
+): Uint8Array | string => {
+  switch (selection.format) {
+    case "nobj":
+      return publication.nobj.serialized;
+    case "bin":
+      return materializedFlatBytes(publication);
+    case "hex":
+      return writeNucleusIntelHex(
+        publication.nobj.parsed.begin.imageBase,
+        materializedFlatBytes(publication),
+      );
+  }
+};
+
+export async function writeNucleusPublicationOutputs(
+  publication: NucleusPublication,
+  selections: readonly NucleusPublicationOutputSelection[],
+): Promise<readonly string[]> {
+  const committed: string[] = [];
+  for (const selection of selections) {
+    await mkdir(path.dirname(selection.path), { recursive: true });
+    await writeFile(selection.path, selectedOutputBytes(publication, selection));
+    committed.push(selection.path);
+  }
+  return Object.freeze(committed);
+}
+
+export function publicationJsonSummary(
+  publication: NucleusPublication,
+  committedOutputs: readonly string[] = publication.output === undefined
+    ? []
+    : [publication.output],
+): string {
   return `${JSON.stringify(
     {
       ...("manifest" in publication
@@ -156,7 +279,8 @@ export function publicationJsonSummary(publication: NucleusPublication): string 
             sourceParts: publication.sourceParts,
             sourceBytes: publication.sourceBytes,
           }),
-      output: publication.output,
+      output: committedOutputs.length === 1 ? committedOutputs[0] : publication.output,
+      ...(committedOutputs.length > 0 ? { outputs: committedOutputs } : {}),
       bytes: publication.nobj.serialized.length,
       records: publication.nobj.parsed.commit.recordCount,
       imageFill: publication.nobj.parsed.begin.imageFill,
@@ -170,7 +294,12 @@ export function publicationJsonSummary(publication: NucleusPublication): string 
   )}\n`;
 }
 
-export function publicationTextSummary(publication: NucleusPublication): string {
+export function publicationTextSummary(
+  publication: NucleusPublication,
+  committedOutputs: readonly string[] = publication.output === undefined
+    ? []
+    : [publication.output],
+): string {
   return [
     `Nucleus published ${publication.nobj.serialized.length} NOBJ byte(s).`,
     ...("entry" in publication
@@ -182,7 +311,7 @@ export function publicationTextSummary(publication: NucleusPublication): string 
       : []),
     `records=${publication.nobj.parsed.commit.recordCount}`,
     `entry=${publication.nobj.parsed.map.entryBank}:${publication.nobj.parsed.map.entryAddress}`,
-    ...(publication.output === undefined ? [] : [`output=${publication.output}`]),
+    ...committedOutputs.map((output) => `output=${output}`),
   ].join("\n") + "\n";
 }
 
