@@ -29,6 +29,7 @@ async function withTree(files, run) {
 
 describe("Nucleus Atom migration dry-run", () => {
   it("translates Nucleus AZM directive lines to Atom forms", () => {
+    const symbolMap = new Map([["LongSourceLabel", "N0000000"]]);
     expect(translateNucleusAzmLine("            .include \"lib.asmi\"")).toBe(
       "            %INCLUDE \"lib.asmi\"",
     );
@@ -43,6 +44,12 @@ describe("Nucleus Atom migration dry-run", () => {
     expect(translateNucleusAzmLine(".routine in A out carry ; proof")).toBe(
       ";@ROUTINE IN A OUT CARRY ; proof",
     );
+    expect(translateNucleusAzmLine("LongSourceLabel: JP LongSourceLabel ; LongSourceLabel", {
+      symbolMap,
+    })).toBe("N0000000: JP N0000000 ; LongSourceLabel");
+    expect(translateNucleusAzmLine("            .DB \"LongSourceLabel\"", {
+      symbolMap,
+    })).toBe("            DB \"LongSourceLabel\"");
   });
 
   it("reports a clean fixture as ready", async () => {
@@ -145,6 +152,64 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   });
 
+  it("fails on numeric literals outside Atom's expression range", async () => {
+    await withTree({
+      "asm/main.asm": "Limit EQU $10000\n",
+      "proofs/main.json": "{}",
+    }, async (root) => {
+      const report = scanAssembly({
+        asmRoot: path.join(root, "asm"),
+        proofRoot: path.join(root, "proofs"),
+      });
+
+      expect(report.status).toBe("blocked");
+      expect(report.issues).toEqual([
+        expect.objectContaining({
+          code: "atom-expression-range",
+          message: "numeric literal $10000 exceeds Atom's 16-bit expression range",
+        }),
+      ]);
+    });
+  });
+
+  it("fails on case-insensitive symbol collisions", async () => {
+    await withTree({
+      "asm/main.asm": "Name:\nname:\n",
+      "proofs/main.json": "{}",
+    }, async (root) => {
+      const report = scanAssembly({
+        asmRoot: path.join(root, "asm"),
+        proofRoot: path.join(root, "proofs"),
+      });
+
+      expect(report.status).toBe("blocked");
+      expect(report.issues).toEqual([
+        expect.objectContaining({
+          code: "atom-case-collision",
+          message: "symbols collide in Atom's case-insensitive table: Name, name",
+        }),
+      ]);
+    });
+  });
+
+  it("fails when a generated ledger name collides with an existing short symbol", async () => {
+    await withTree({
+      "asm/main.asm": "N0000000:\nVeryLongLabel:\n",
+      "proofs/main.json": "{}",
+    }, async (root) => {
+      const report = scanAssembly({
+        asmRoot: path.join(root, "asm"),
+        proofRoot: path.join(root, "proofs"),
+      });
+
+      expect(report.status).toBe("blocked");
+      expect(report.issues.map(({ code }) => code)).toEqual([
+        "generated-symbol-collision",
+        "unledgered-long-symbol",
+      ]);
+    });
+  });
+
   it("writes ledger and issue files from the CLI", async () => {
     await withTree({
       "asm/main.asm": "LongPublicLabel:\n",
@@ -180,6 +245,42 @@ describe("Nucleus Atom migration dry-run", () => {
           code: "unledgered-long-symbol",
         }),
       ]);
+    });
+  });
+
+  it("writes translated Atom-preview source files from the CLI", async () => {
+    await withTree({
+      "asm/main.asm": [
+        ".routine out A,carry clobbers zero",
+        "LongPublicLabel:",
+        "            .DB \"LongPublicLabel\"",
+        "            JP LongPublicLabel ; LongPublicLabel",
+        "",
+      ].join("\n"),
+      "proofs/main.json": JSON.stringify({
+        execution: { entry: "LongPublicLabel" },
+      }),
+    }, async (root) => {
+      const translatedRoot = path.join(root, "atom-preview");
+      const result = spawnSync(process.execPath, [
+        dryRunScript,
+        "--asm-root",
+        path.join(root, "asm"),
+        "--proof-root",
+        path.join(root, "proofs"),
+        "--report-only",
+        "--translated-root",
+        translatedRoot,
+      ], { encoding: "utf8" });
+
+      expect(result.status).toBe(0);
+      await expect(readFile(path.join(translatedRoot, "main.asm"), "utf8")).resolves.toBe([
+        ";@ROUTINE OUT A,CARRY CLOBBERS ZERO",
+        "N0000000:",
+        "            DB \"LongPublicLabel\"",
+        "            JP N0000000 ; LongPublicLabel",
+        "",
+      ].join("\n"));
     });
   });
 });

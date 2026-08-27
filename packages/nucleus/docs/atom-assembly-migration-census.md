@@ -4,7 +4,7 @@ Status: measured compatibility census
 Date: 2026-08-28
 Repository: `debug80`
 Branch: `main`
-Measured HEAD: `13ce3cc9`
+Initial census HEAD: `13ce3cc9`
 
 ## Purpose
 
@@ -28,6 +28,7 @@ Measured files:
 | Defined symbols detected | 3,656 |
 | Defined symbols longer than eight characters | 3,623 |
 | Referenced identifier-like tokens longer than eight characters | 3,709 |
+| Current dry-run blockers | 3,626 |
 
 The source set is large enough that manual renaming without tooling is not credible.
 
@@ -49,6 +50,13 @@ The tool can also write machine-readable outputs for the next migration stage:
 npm run atom:migration:census -w nucleus -- \
   --ledger-out build/nucleus-atom-ledger.json \
   --issues-out build/nucleus-atom-issues.json
+```
+
+It can also write a generated Atom-preview assembly tree without modifying the source tree:
+
+```bash
+npm run atom:migration:census -w nucleus -- \
+  --translated-root build/nucleus-atom-preview
 ```
 
 ## Directive census
@@ -90,11 +98,14 @@ This is a good fit for Atom's host-level conditional assembly. The converter doe
 | Form | Measured count | Atom migration treatment |
 | --- | ---: | --- |
 | `$FFFF`-style hexadecimal | 909 | Supported by Atom; direct |
+| `$10000` hexadecimal limit constants | 3 | Blocked until represented without exceeding Atom's 16-bit expression range |
 | `%01010101`-style binary | 3 | Supported by Atom with line-start directive disambiguation |
 | Intel `1010B`-style binary-looking suffix tokens | 20 | Audit before translation; some may be identifiers or generated-source text |
 | Character literals | 102 | Supported by Atom if the literal form matches Atom's accepted character syntax |
 
 The `%` binary form is not a problem if Atom treats `%` as a directive marker only at directive position. Inside expressions it remains a numeric literal prefix.
+
+The three `$10000` constants are real migration blockers for Atom-preview assembly. They occur in memory-limit definitions, where AZM accepts a value one past the 16-bit address space. Atom's current expression domain is 16-bit, so the migration either needs a safe source rewrite for these limit constants or a deliberate Atom expression-range extension.
 
 ## Include structure
 
@@ -190,6 +201,7 @@ This keeps the Atom assembler small and keeps proof ownership outside the assemb
 | `.ROUTINE` | Contract-only | Must become proof metadata comments |
 | Long labels | Requires generated ledger | Nearly every defined symbol exceeds Atom's limit |
 | Proof JSON symbol references | Requires ledger join | External expected-symbol names must remain stable or be mapped |
+| `$10000` limit constants | Requires source or Atom expression decision | Atom currently rejects literals above `65535` |
 
 ## Required next implementation checks
 
@@ -198,8 +210,9 @@ Before converting source:
 1. Build a converter dry-run that emits only a ledger and an error report.
 2. Add tests that fail on an untranslatable directive, unledgered long symbol, unresolved include, or unsupported conditional expression.
 3. Add a proof-manifest join that maps old exported proof symbol names to generated Atom symbols.
-4. Prove one small proof image through Atom source while keeping the AZM-built image as the comparison target.
-5. Only then scale the conversion to the full `packages/nucleus/asm` tree.
+4. Decide how the three one-past-address-space constants should be represented for Atom.
+5. Prove one small proof image through Atom source while keeping the AZM-built image as the comparison target.
+6. Only then scale the conversion to the full `packages/nucleus/asm` tree.
 
 ## Conclusion
 

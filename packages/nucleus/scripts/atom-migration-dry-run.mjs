@@ -55,6 +55,7 @@ function parseArgs(argv) {
     json: false,
     ledgerOut: undefined,
     issuesOut: undefined,
+    translatedRoot: undefined,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -70,6 +71,8 @@ function parseArgs(argv) {
       options.ledgerOut = path.resolve(argv[++index] ?? "");
     } else if (arg === "--issues-out") {
       options.issuesOut = path.resolve(argv[++index] ?? "");
+    } else if (arg === "--translated-root") {
+      options.translatedRoot = path.resolve(argv[++index] ?? "");
     } else if (arg === "--help") {
       printHelp();
       process.exit(0);
@@ -90,6 +93,8 @@ Options:
   --json             Print the complete report as JSON.
   --ledger-out FILE  Write the generated long-symbol ledger as JSON.
   --issues-out FILE  Write migration issues as JSON.
+  --translated-root DIR
+                     Write generated Atom-preview source files under DIR.
   --help             Show this help.
 `);
 }
@@ -114,6 +119,35 @@ function stripComment(line) {
     if (char === ";") return line.slice(0, index);
   }
   return line;
+}
+
+function maskQuoted(source) {
+  let output = "";
+  let quote = "";
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    if (quote !== "") {
+      output += " ";
+      if (character === quote) quote = "";
+      continue;
+    }
+    if (character === "\"" || character === "'") {
+      quote = character;
+      output += " ";
+      continue;
+    }
+    output += character;
+  }
+  return output;
+}
+
+function numberValue(text) {
+  if (/^\$[0-9A-Fa-f]+$/.test(text)) return Number.parseInt(text.slice(1), 16);
+  if (/^%[01]+$/.test(text)) return Number.parseInt(text.slice(1), 2);
+  if (/^[0-9][0-9A-Fa-f]*[Hh]$/.test(text)) return Number.parseInt(text.slice(0, -1), 16);
+  if (/^[01]+[Bb]$/.test(text)) return Number.parseInt(text.slice(0, -1), 2);
+  if (/^[0-9]+$/.test(text)) return Number.parseInt(text, 10);
+  return undefined;
 }
 
 function location(file, line) {
@@ -165,6 +199,10 @@ function atomSymbolFor(index) {
   return `N${index.toString(36).toUpperCase().padStart(7, "0")}`;
 }
 
+function symbolMapFromLedger(ledger) {
+  return new Map(ledger.map((entry) => [entry.original, entry.atom]));
+}
+
 function classifyScope(symbol, file, proofSymbols) {
   if (proofSymbols.has(symbol)) return "exported-proof-symbol";
   const base = path.basename(file);
@@ -191,6 +229,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
       const lineNumber = index + 1;
       const raw = lines[index].replace(/\r$/, "");
       const code = stripComment(raw);
+      const unquotedCode = maskQuoted(code);
 
       const directive = /^\s*\.([A-Za-z][A-Za-z0-9_]*)\b\s*(.*)$/.exec(code);
       if (directive !== null) {
@@ -228,6 +267,18 @@ function scanAssembly({ asmRoot, proofRoot }) {
         addCount(directives, "equ");
         recordSymbol(symbols, equ[1], file, lineNumber, proofSymbols);
       }
+
+      for (const match of unquotedCode.matchAll(/(^|[^A-Za-z0-9_])(\$[0-9A-Fa-f]+|%[01]+|[0-9][0-9A-Fa-f]*[Hh]|[01]+[Bb]|[0-9]+)/g)) {
+        const text = match[2];
+        const value = numberValue(text);
+        if (value !== undefined && value > 0xffff) {
+          issues.push({
+            code: "atom-expression-range",
+            message: `numeric literal ${text} exceeds Atom's 16-bit expression range`,
+            ...location(file, lineNumber),
+          });
+        }
+      }
     }
   }
 
@@ -247,7 +298,33 @@ function scanAssembly({ asmRoot, proofRoot }) {
       })),
     }));
 
+  const caseGroups = new Map();
+  for (const symbol of symbols.keys()) {
+    const key = symbol.toUpperCase();
+    const group = caseGroups.get(key) ?? [];
+    group.push(symbol);
+    caseGroups.set(key, group);
+  }
+  for (const group of caseGroups.values()) {
+    const distinct = [...new Set(group)];
+    if (distinct.length > 1) {
+      issues.push({
+        code: "atom-case-collision",
+        message: `symbols collide in Atom's case-insensitive table: ${distinct.sort().join(", ")}`,
+      });
+    }
+  }
+
+  const originalAtomKeys = new Set([...symbols.keys()].map((symbol) => symbol.toUpperCase()));
   for (const entry of ledger) {
+    if (originalAtomKeys.has(entry.atom.toUpperCase())) {
+      issues.push({
+        code: "generated-symbol-collision",
+        message: `generated Atom symbol ${entry.atom} collides with an existing source symbol`,
+        file: entry.definitions[0]?.file,
+        line: entry.definitions[0]?.line,
+      });
+    }
     issues.push({
       code: "unledgered-long-symbol",
       message: `${entry.original} requires generated Atom symbol ${entry.atom}`,
@@ -288,7 +365,41 @@ function scanAssembly({ asmRoot, proofRoot }) {
   };
 }
 
-function translateNucleusAzmLine(line, { sourceName = "<nucleus-asm>", lineNumber = 1 } = {}) {
+function replaceSymbolsInSource(source, symbolMap) {
+  if (symbolMap.size === 0) return source;
+  let output = "";
+  let quote = "";
+  for (let index = 0; index < source.length;) {
+    const character = source[index];
+    if (quote !== "") {
+      output += character;
+      index += 1;
+      if (character === quote) quote = "";
+      continue;
+    }
+    if (character === "\"" || character === "'") {
+      quote = character;
+      output += character;
+      index += 1;
+      continue;
+    }
+    const match = /^[A-Za-z_.$?][A-Za-z0-9_.$?]*/.exec(source.slice(index));
+    if (match !== null) {
+      const word = match[0];
+      output += symbolMap.get(word) ?? word;
+      index += word.length;
+      continue;
+    }
+    output += character;
+    index += 1;
+  }
+  return output;
+}
+
+function translateNucleusAzmLine(
+  line,
+  { sourceName = "<nucleus-asm>", lineNumber = 1, symbolMap = new Map() } = {},
+) {
   const source = stripComment(line);
   const comment = line.slice(source.length);
   const context = { file: sourceName, line: lineNumber };
@@ -304,15 +415,33 @@ function translateNucleusAzmLine(line, { sourceName = "<nucleus-asm>", lineNumbe
     if (replacement === undefined) {
       throw new Error(`${context.file}:${context.line}: unsupported directive .${rawName}`);
     }
-    return `${prefix}${replacement}${rest}${comment}`;
+    return `${replaceSymbolsInSource(`${prefix}${replacement}${rest}`, symbolMap)}${comment}`;
   }
 
   const equ = /^(\s*[A-Za-z_.$?][A-Za-z0-9_.$?]*:?\s+)\.equ(\b.*)$/i.exec(source);
   if (equ !== null) {
-    return `${equ[1]}EQU${equ[2]}${comment}`;
+    return `${replaceSymbolsInSource(`${equ[1]}EQU${equ[2]}`, symbolMap)}${comment}`;
   }
 
-  return line;
+  return `${replaceSymbolsInSource(source, symbolMap)}${comment}`;
+}
+
+function writeTranslatedTree(report, translatedRoot) {
+  const symbolMap = symbolMapFromLedger(report.ledger);
+  for (const file of findAssemblyFiles(report.asmRoot)) {
+    const relative = path.relative(report.asmRoot, file);
+    const output = path.join(translatedRoot, relative);
+    const lines = readFileSync(file, "utf8").split(/\n/);
+    const translated = lines
+      .map((line, index) => translateNucleusAzmLine(line, {
+        sourceName: relative,
+        lineNumber: index + 1,
+        symbolMap,
+      }))
+      .join("\n");
+    mkdirSync(path.dirname(output), { recursive: true });
+    writeFileSync(output, translated);
+  }
 }
 
 function recordSymbol(symbols, original, file, line, proofSymbols) {
@@ -347,7 +476,7 @@ function printTextReport(report) {
   }
 }
 
-export { scanAssembly, translateNucleusAzmLine };
+export { scanAssembly, translateNucleusAzmLine, writeTranslatedTree };
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   try {
@@ -358,6 +487,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     }
     if (options.issuesOut !== undefined) {
       writeJsonFile(options.issuesOut, report.issues);
+    }
+    if (options.translatedRoot !== undefined) {
+      writeTranslatedTree(report, options.translatedRoot);
     }
     if (options.json) {
       console.log(JSON.stringify(report, null, 2));
