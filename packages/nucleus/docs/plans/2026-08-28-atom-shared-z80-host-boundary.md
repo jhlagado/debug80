@@ -512,6 +512,23 @@ This still does not replace the canonical resident proof runtime. It proves the
 preferred adapter direction: service vectors can point at host-callback stubs
 without changing the generated program's service-call ABI.
 
+The NOBJ proof runner now has a selectable host-backed stream execution option.
+`executeCommittedNobj` still defaults to the resident-Z80 service path. When
+`runtimeStreams` is supplied, it creates a Nucleus host-stream adapter, installs
+its vector and stub bytes into the materialized Debug80 memory image, composes
+the stream I/O handlers with the existing bank-switch hook, and reports the
+final stream snapshot on the execution outcome.
+
+This path is intentionally explicit because a committed NOBJ already contains
+runtime initial vector bytes. The current execution-time install is therefore a
+host proof path, not a replacement for target runtime linking. ROM-style
+generated targets that copy initialized vectors during startup should eventually
+be committed with the host-backed service address table, so startup copies the
+same vector table that the host intends to execute. The present proof uses a
+committed object that enters normal Z80 code and calls the vector slot directly,
+which proves the Debug80 execution seam without changing NOBJ serialization or
+the runtime vector-call ABI.
+
 The proof-harness tests now include a resolver-backed source-part path that
 compares the prepared project with the equivalent flat manifest bytes. This is
 the first high-level consumer moved onto the shared resolver without changing

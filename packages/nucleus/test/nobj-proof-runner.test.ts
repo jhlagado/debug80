@@ -7,6 +7,7 @@ import {
   executeCommittedNobj,
   runProofManifest,
 } from "../src/proof.js";
+import { defaultRuntimeLinkContext } from "../src/nucleus-runtime.js";
 import {
   NobjGenerationSink,
   NobjGenerationStore,
@@ -130,6 +131,84 @@ describe("the NOBJ-aware proof runner", () => {
     );
     expect(outcome.selectedBank).toBe(0);
     expect(outcome.memory[0x4000]).toBe(0x5a);
+  });
+
+  it("executes a committed image through host-backed runtime streams", () => {
+    const store = new NobjGenerationStore();
+    const sink = new NobjGenerationSink(store, emptyProvider);
+    sink.begin({
+      banked: false,
+      runtimeIdentity: 1,
+      bankCount: 1,
+      imageFill: 0,
+      imageBase: 0x8000,
+      imageCapacity: 0x200,
+    });
+    sink.image(
+      0,
+      0x8000,
+      Uint8Array.of(
+        0x31,
+        0x00,
+        0xff, // LD SP,$FF00
+        0x3e,
+        0x5a, // LD A,$5A
+        0xcd,
+        0x03,
+        0x40, // CALL writeOutputByte vector
+        0x76, // HALT
+      ),
+    );
+    sink.image(0, 0x8010, new Uint8Array(33));
+    sink.map({
+      romMode: true,
+      establishedStack: false,
+      entryBank: 0,
+      entryAddress: 0x8000,
+      writableBase: 0x4000,
+      writableCapacity: 0x0200,
+      vectorBase: 0x4000,
+      vectorLength: 33,
+      initializedRunBase: 0x4000,
+      initializedRunLength: 33,
+      bssBase: 0x4021,
+      bssLength: 0,
+      stackRequirement: 0,
+      dataLoadBank: 0,
+      dataLoadAddress: 0x8010,
+      dataLoadLength: 33,
+      partBanks: [0],
+      banks: [
+        {
+          usedLength: 0x31,
+          readOnlyBase: 0,
+          readOnlyLength: 0,
+          aggregateConstantBase: 0,
+          aggregateConstantLength: 0,
+        },
+      ],
+    });
+
+    const outcome = executeCommittedNobj(
+      sink.commit(),
+      {
+        maxInstructions: 64,
+        maxCycles: 1_024,
+        halted: true,
+        expectedSp: 0xff00,
+      },
+      {
+        runtimeStreams: {
+          runtimeLinkContext: defaultRuntimeLinkContext,
+          stubBase: 0x4100,
+        },
+      },
+    );
+
+    expect([...(outcome.runtimeStreams?.output ?? [])]).toEqual([0x5a]);
+    expect(outcome.runtimeStreams?.outputWriteCalls).toBe(1);
+    expect(outcome.memory[0x4003]).toBe(0xc3);
+    expect(outcome.memory[0x4100 + 0x20]).toBe(0x4f);
   });
 
   it("never starts execution for missing commits, invalid patches, or bad CRCs", () => {

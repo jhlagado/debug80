@@ -2,7 +2,11 @@ import { readFileSync } from "node:fs";
 import path from "node:path";
 
 import { compile } from "@jhlagado/azm/compile";
-import { createZ80Runtime, parseIntelHex } from "@jhlagado/debug80-runtime";
+import {
+  createZ80Runtime,
+  parseIntelHex,
+  type IoHandlers,
+} from "@jhlagado/debug80-runtime";
 
 import {
   materializeNobj,
@@ -20,8 +24,14 @@ import {
   loadCanonicalRuntimeProvider,
 } from "./nucleus-runtime.js";
 import {
+  createNucleusHostRuntimeStreamAdapter,
+  type NucleusHostRuntimeStreamAdapter,
+} from "./runtime-stream-adapter.js";
+import {
   readNucleusProofRuntimeStreamSnapshot,
+  snapshotNucleusProofRuntimeStreams,
   type NucleusProofRuntimeStreamSnapshot,
+  type NucleusProofRuntimeStreamsOptions,
 } from "./runtime-services.js";
 
 interface MemoryRegionManifest {
@@ -150,6 +160,14 @@ export interface NobjExecutionOutcome {
   readonly instructions: number;
   readonly cycles: number;
   readonly selectedBank: number;
+  readonly runtimeStreams?: NucleusProofRuntimeStreamSnapshot;
+}
+
+export interface NobjHostRuntimeStreamExecution {
+  readonly runtimeLinkContext: RuntimeLinkContext;
+  readonly stubBase: number;
+  readonly stubSpacing?: number;
+  readonly streamOptions?: NucleusProofRuntimeStreamsOptions;
 }
 
 export class ProofFailure extends Error {
@@ -544,6 +562,7 @@ export const executeCommittedNobj = (
   options: {
     readonly observations?: readonly NobjObservation[];
     readonly bankSwitch?: NobjProofManifest["bankSwitch"];
+    readonly runtimeStreams?: NobjHostRuntimeStreamExecution;
   } = {},
 ): NobjExecutionOutcome => {
   const parsed = parseNobjForExecution(serialized);
@@ -564,24 +583,31 @@ export const executeCommittedNobj = (
     startAddress: parsed.map.entryAddress,
   };
   const switchConfig = options.bankSwitch;
+  const streamAdapter =
+    options.runtimeStreams === undefined
+      ? undefined
+      : createNucleusHostRuntimeStreamAdapter({
+          baseServices: options.runtimeStreams.runtimeLinkContext.services,
+          stubBase: options.runtimeStreams.stubBase,
+          stubSpacing: options.runtimeStreams.stubSpacing,
+          streamOptions: options.runtimeStreams.streamOptions,
+        });
+  streamAdapter?.install(commonMemory, parsed.map.vectorBase);
+  let runtimeMemory = commonMemory;
+  const ioHandlers = runtimeIoHandlers({
+    streamAdapter,
+    memory: () => runtimeMemory,
+    materialized,
+    parsed,
+    switchConfig,
+    selectBank: (bank) => {
+      selectedBank = bank;
+    },
+  });
   const runtime = createZ80Runtime(
     program,
     parsed.map.entryAddress,
-    {
-      write: (port, value) => {
-        if (switchConfig !== undefined && (port & 0xff) === switchConfig.port) {
-          if (value >= parsed.begin.bankCount) {
-            throw new ProofFailure(`bank selector ${value} is out of range`);
-          }
-          selectedBank = value;
-          const selectedImage = materialized.banks[selectedBank];
-          if (selectedImage === undefined) {
-            throw new ProofFailure(`bank image ${selectedBank} is unavailable`);
-          }
-          runtime.hardware.memory.set(selectedImage, parsed.begin.imageBase);
-        }
-      },
-    },
+    ioHandlers,
     parsed.begin.banked && switchConfig !== undefined
       ? {
           romRanges: [
@@ -593,6 +619,7 @@ export const executeCommittedNobj = (
         }
       : undefined,
   );
+  runtimeMemory = runtime.hardware.memory;
   if (execution.initialSp !== undefined) {
     if (
       !Number.isInteger(execution.initialSp) ||
@@ -685,8 +712,48 @@ export const executeCommittedNobj = (
     instructions,
     cycles,
     selectedBank,
+    ...(streamAdapter === undefined
+      ? {}
+      : {
+          runtimeStreams: snapshotNucleusProofRuntimeStreams(
+            streamAdapter.streams,
+          ),
+        }),
   };
 };
+
+const runtimeIoHandlers = ({
+  streamAdapter,
+  memory,
+  materialized,
+  parsed,
+  switchConfig,
+  selectBank,
+}: {
+  readonly streamAdapter?: NucleusHostRuntimeStreamAdapter;
+  readonly memory: () => Uint8Array;
+  readonly materialized: MaterializedNobj;
+  readonly parsed: ParsedNobj;
+  readonly switchConfig?: NobjProofManifest["bankSwitch"];
+  readonly selectBank: (bank: number) => void;
+}): IoHandlers => ({
+  read: (port) => streamAdapter?.io.read(port) ?? 0,
+  write: (port, value) => {
+    streamAdapter?.io.write(port, value);
+    if (switchConfig === undefined || (port & 0xff) !== switchConfig.port) {
+      return;
+    }
+    if (value >= parsed.begin.bankCount) {
+      throw new ProofFailure(`bank selector ${value} is out of range`);
+    }
+    selectBank(value);
+    const selectedImage = materialized.banks[value];
+    if (selectedImage === undefined) {
+      throw new ProofFailure(`bank image ${value} is unavailable`);
+    }
+    memory().set(selectedImage, parsed.begin.imageBase);
+  },
+});
 
 const parseNobjForExecution = (serialized: Uint8Array): ParsedNobj => {
   // Kept as a named boundary so no execution path can bypass strict validation.
