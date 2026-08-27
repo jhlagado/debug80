@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
 
 import { describe, expect, it } from "vitest";
-import { DEFAULT_RUNTIME_STREAM_STATUS_POLICY } from "@jhlagado/z80-tool-services";
+import {
+  DEFAULT_RUNTIME_STREAM_STATUS_POLICY,
+  RUNTIME_STREAM_SERVICE,
+} from "@jhlagado/z80-tool-services";
 
 import { Service, ServiceError, Trap } from "../src/runtime-contract.js";
 
@@ -50,6 +53,14 @@ describe("the direct Nucleus Z80 runtime contract", () => {
   });
 
   it("matches the shared runtime byte-stream status policy", () => {
+    expect(RUNTIME_STREAM_SERVICE).toEqual({
+      readInputByte: "readInputByte",
+      writeOutputByte: "writeOutputByte",
+      readStorageByte: "readStorageByte",
+      rewindStorageInput: "rewindStorageInput",
+      writeStorageByte: "writeStorageByte",
+      seekStorageOutput: "seekStorageOutput",
+    });
     expect(DEFAULT_RUNTIME_STREAM_STATUS_POLICY).toMatchObject({
       success: 0x00,
       endOfInput: ServiceError.endOfInput,
