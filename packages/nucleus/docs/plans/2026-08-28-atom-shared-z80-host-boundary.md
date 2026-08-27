@@ -400,11 +400,26 @@ This command resolves `//% import` dependencies and reports the prepared
 ordered compiler input. It deliberately stops before compilation, assembly, or
 publication.
 
+Phase 3 has started at the lowest shared storage layer. The package
+`@jhlagado/z80-tool-services` now exports language-neutral
+`GenerationSpool`, `MemoryGenerationSpool`, `GenerationSpoolFactory`, and
+`AtomicGenerationStore<T>` primitives. Nucleus keeps its existing public NOBJ
+names by aliasing or subclassing those shared types:
+
+- `NobjSpool` remains the Nucleus object-sink spool contract;
+- `NobjSpoolFactory` remains the factory type used by NOBJ tests and sinks;
+- `MemoryNobjSpool` remains a constructible compatibility name; and
+- `NobjGenerationStore` still validates with `parseNobj` before replacing the
+  prior committed bytes.
+
+This checkpoint deliberately does not move Nucleus record framing, map
+semantics, runtime-provider calls, NOBJ status behavior, or Atom's assembler
+sink. Those are the next Phase 3 layers.
+
 ## Next implementation unit
 
-Wire the first compiling Nucleus command through `prepareNucleusCompilation`.
-It should accept the same project root and entry source, resolve `//% import`
-dependencies with the shared resolver, and pass the returned `sourceParts` and
-`partBanks` to the existing compiler path unchanged. The compatibility predicate
-is strict: the resolved project must produce the same ordered source bytes,
-diagnostics, and proof outcome as the flat manifest path.
+Continue Phase 3 by extracting a shared generation lifecycle contract and
+conformance tests. Keep Nucleus NOBJ record framing, runtime-provider
+operations, map semantics, and commit integrity in the Nucleus layer while
+moving only the common begin/image/patch/commit/abort sequencing rules into
+`@jhlagado/z80-tool-services`.

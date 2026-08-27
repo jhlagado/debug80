@@ -1,5 +1,12 @@
 /** Strict Nucleus Object Stream Format 0.1 encoding and materialization. */
 
+import {
+  AtomicGenerationStore,
+  MemoryGenerationSpool,
+  type GenerationSpool,
+  type GenerationSpoolFactory,
+} from "@jhlagado/z80-tool-services";
+
 export const NobjKind = {
   begin: 0x01,
   image: 0x02,
@@ -120,39 +127,9 @@ export interface RuntimeImageProvider {
   get(identity: number, context: RuntimeLinkContext): RuntimeImage | undefined;
 }
 
-/** Sequential storage used independently for image and patch records. */
-export interface NobjSpool {
-  readonly byteLength: number;
-  append(bytes: Uint8Array): void;
-  chunks(): Iterable<Uint8Array>;
-  clear(): void;
-}
-
-export type NobjSpoolFactory = () => NobjSpool;
-
-export class MemoryNobjSpool implements NobjSpool {
-  readonly #chunks: Uint8Array[] = [];
-  #byteLength = 0;
-
-  get byteLength(): number {
-    return this.#byteLength;
-  }
-
-  append(bytes: Uint8Array): void {
-    const retained = bytes.slice();
-    this.#chunks.push(retained);
-    this.#byteLength += retained.length;
-  }
-
-  *chunks(): Iterable<Uint8Array> {
-    for (const chunk of this.#chunks) yield chunk.slice();
-  }
-
-  clear(): void {
-    this.#chunks.length = 0;
-    this.#byteLength = 0;
-  }
-}
+export type NobjSpool = GenerationSpool;
+export type NobjSpoolFactory = GenerationSpoolFactory;
+export class MemoryNobjSpool extends MemoryGenerationSpool {}
 
 export class NobjError extends Error {
   constructor(message: string) {
@@ -161,18 +138,9 @@ export class NobjError extends Error {
   }
 }
 
-/** Atomic reference to the most recently validated committed generation. */
-export class NobjGenerationStore {
-  #current: Uint8Array | undefined;
-
-  get current(): Uint8Array | undefined {
-    return this.#current?.slice();
-  }
-
-  publish(serialized: Uint8Array): ParsedNobj {
-    const parsed = parseNobj(serialized);
-    this.#current = serialized.slice();
-    return parsed;
+export class NobjGenerationStore extends AtomicGenerationStore<ParsedNobj> {
+  constructor() {
+    super(parseNobj);
   }
 }
 
