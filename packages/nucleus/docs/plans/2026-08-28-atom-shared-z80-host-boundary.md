@@ -421,13 +421,23 @@ shared package also owns the one-byte status normalization and thrown-operation
 capture used by Atom's direct-host gateway and Debug80 service trampoline. The
 Atom direct-host gateway now passes shared one-byte gateway conformance vectors
 for source reads, output calls, malformed byte results, unavailable operations,
-and thrown host operations. This checkpoint deliberately does not move Nucleus
-record framing, map semantics, runtime-provider calls, NOBJ status behavior, or
-Atom's assembler sink. Those are the next Phase 3 layers.
+and thrown host operations.
+
+The source-byte boundary is now explicit in the shared package too.
+`MemorySourceByteProvider` stores explicit part ordinals and serves one byte at
+a time through `read(partOrdinal, offset)`. Atom's Debug80 runner uses it for
+the default zero-based native source service. Nucleus proves the same provider
+against its current one-based `SourcePart` compatibility adapter. This keeps
+the resident contract independent of whether a host stores a whole part in a
+Node buffer, pages it through CP/M, or streams it from TEC-FS.
+
+This checkpoint deliberately does not move Nucleus record framing, map
+semantics, runtime-provider calls, NOBJ status behavior, or Atom's assembler
+sink. Those are the next Phase 3 layers.
 
 ## Next implementation unit
 
-Continue Phase 3 by splitting the shared source-byte provider shape out of the
-Atom and Nucleus host adapters. The provider should remain byte-oriented and
-part-oriented so Node, Debug80, CP/M, and TEC-FS hosts can choose buffering or
-streaming without changing the resident tool contract.
+Continue Phase 3 by defining a shared source-service gateway conformance layer.
+It should prove the resident-facing request shape around part ordinal, offset,
+EOF, malformed requests, and host failure while leaving each language free to
+choose zero-based or one-based part numbering at its own resident boundary.

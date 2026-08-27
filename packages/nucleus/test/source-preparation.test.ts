@@ -5,6 +5,10 @@ import path from "node:path";
 
 import { describe, expect, it } from "vitest";
 
+import {
+  MemorySourceByteProvider,
+  runSourceByteProviderConformance,
+} from "@jhlagado/z80-tool-services";
 import { SourcePreparationError } from "@jhlagado/z80-tool-services/source-preparation";
 
 import {
@@ -119,6 +123,32 @@ describe("Nucleus source preparation", () => {
           bytes: encoder.encode("//% import \"lib.nu\"\nsub main()\nend\n"),
         },
       ]);
+    });
+  });
+
+  it("adapts legacy one-based source parts to the shared byte provider", async () => {
+    await withSourceTree({
+      "main.nu": "//% import \"lib.nu\"\nsub main()\nend\n",
+      "lib.nu": "const LIB = 1\n",
+    }, async (root) => {
+      expect(
+        runSourceByteProviderConformance({
+          create: (records) => new MemorySourceByteProvider(records),
+        }),
+      ).toEqual({ vectors: 2, assertions: 7 });
+
+      const project = await resolveNucleusProject({ root, entry: "main.nu" });
+      const sourceParts = sourcePartsFromResolvedProject(project);
+      const provider = new MemorySourceByteProvider(
+        sourceParts.map((part) => ({
+          ordinal: part.ordinal,
+          bytes: part.bytes,
+        })),
+      );
+
+      expect(provider.read(1, 0)).toBe("c".charCodeAt(0));
+      expect(provider.read(2, 0)).toBe("/".charCodeAt(0));
+      expect(provider.read(0, 0)).toBeUndefined();
     });
   });
 
