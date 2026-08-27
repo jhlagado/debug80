@@ -143,6 +143,50 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     }
   }, 30_000);
 
+  it("publishes the same flat target with host-prepared resident source descriptors", async () => {
+    await withSourceTree(
+      {
+        "src/main.nu": [
+          "var value as u16 = 3",
+          "var cleared as u8",
+          "sub main()",
+          "value = value * 2",
+          "end",
+          "",
+        ].join("\n"),
+      },
+      async (root) => {
+        const prepared = await prepareNucleusCompilation({
+          root,
+          entry: "src/main.nu",
+          residentSource: {
+            sourceBase: 0x5000,
+            sourceCapacity: 0x0800,
+          },
+        });
+        expect(prepared.residentSource).toBeDefined();
+        if (prepared.residentSource === undefined) return;
+
+        const baseline = await runProofManifest(
+          proof("flat-target-z80-slice-proof"),
+        );
+        const hosted = await runProofManifest(
+          proof("flat-target-z80-slice-proof"),
+          {
+            source: {
+              image: prepared.residentSource,
+              descriptorBase: "FlatTargetParts",
+            },
+          },
+        );
+
+        expect(hosted.memory[hosted.symbols.ProofStatus ?? -1]).toBe(0xa5);
+        expect(hosted.memory[hosted.symbols.ProofCase ?? -1]).toBe(0);
+        expect(hosted.nobj?.serialized).toEqual(baseline.nobj?.serialized);
+      },
+    );
+  }, 30_000);
+
   it("runs the Stage 7 aggregate-call production path through committed banked NOBJ", async () => {
     const outcome = await runProofManifest(
       proof("banked-target-z80-slice-proof"),

@@ -28,6 +28,10 @@ import {
   type NucleusHostRuntimeStreamAdapter,
 } from "./runtime-stream-adapter.js";
 import {
+  installNucleusResidentSourceImage,
+  type NucleusResidentSourceImage,
+} from "./source-descriptor.js";
+import {
   readNucleusProofRuntimeStreamSnapshot,
   snapshotNucleusProofRuntimeStreams,
   type NucleusProofRuntimeStreamSnapshot,
@@ -172,6 +176,15 @@ export interface NobjHostRuntimeStreamExecution {
   readonly streamOptions?: NucleusProofRuntimeStreamsOptions;
 }
 
+export interface NucleusProofResidentSourceInstallation {
+  readonly image: NucleusResidentSourceImage;
+  readonly descriptorBase: number | string;
+}
+
+export interface RunProofManifestOptions {
+  readonly source?: NucleusProofResidentSourceInstallation;
+}
+
 export class ProofFailure extends Error {
   constructor(message: string) {
     super(message);
@@ -181,6 +194,7 @@ export class ProofFailure extends Error {
 
 export async function runProofManifest(
   manifestFile: string,
+  options: RunProofManifestOptions = {},
 ): Promise<ProofOutcome> {
   const manifestPath = path.resolve(manifestFile);
   const manifestDirectory = path.dirname(manifestPath);
@@ -318,6 +332,26 @@ export async function runProofManifest(
       );
     }
     memory.set(bytes, address);
+  }
+  if (options.source !== undefined) {
+    const descriptorBase =
+      typeof options.source.descriptorBase === "string"
+        ? symbolValue(options.source.descriptorBase)
+        : options.source.descriptorBase;
+    if (
+      !Number.isInteger(descriptorBase) ||
+      descriptorBase < 0 ||
+      descriptorBase > 0xffff
+    ) {
+      throw new ProofFailure(
+        `${manifest.name}: source descriptor base is outside 0..65535`,
+      );
+    }
+    installNucleusResidentSourceImage(
+      memory,
+      options.source.image,
+      descriptorBase,
+    );
   }
 
   let cycles = 0;
