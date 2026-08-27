@@ -70,7 +70,13 @@ success only. These forms lower to ordinary Z80 conditional control flow, not
 exceptions or stack unwinding.
 
 ```bash
+npm run source:prepare -w nucleus -- --root path/to/project src/main.nu
 npm run proof -w nucleus
 npm run measure -w nucleus
 npm test -w nucleus
 ```
+
+`source:prepare` is the current Node-hosted preparation boundary. It resolves
+leading `//% import` directives through the shared Z80 source-preparation
+services and prints the ordered compiler input. It does not compile, assemble,
+or publish output.

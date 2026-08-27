@@ -1,6 +1,8 @@
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import { execFile } from "node:child_process";
+import { promisify } from "node:util";
 
 import { describe, expect, it } from "vitest";
 
@@ -9,6 +11,9 @@ import { SourcePreparationError } from "@jhlagado/z80-tool-services/source-prepa
 import { prepareNucleusCompilation } from "../src/index.js";
 
 const encoder = new TextEncoder();
+const execFileAsync = promisify(execFile);
+const packageRoot = path.resolve(import.meta.dirname, "..");
+const tsxBin = path.resolve(packageRoot, "..", "..", "node_modules", "tsx", "dist", "cli.mjs");
 
 async function withSourceTree<T>(
   files: Readonly<Record<string, string>>,
@@ -83,6 +88,73 @@ describe("Nucleus application boundary", () => {
         category: "profile",
         code: "invalid-import-directive",
       } satisfies Partial<SourcePreparationError>);
+    });
+  });
+
+  it("exposes the prepared-compilation boundary through the development CLI", async () => {
+    await withSourceTree({
+      "src/main.nu": "//% import \"lib/model.nu\"\nsub main()\nend\n",
+      "src/lib/model.nu": "const MODEL = 1\n",
+    }, async (root) => {
+      const { stdout, stderr } = await execFileAsync(
+        process.execPath,
+        [
+          tsxBin,
+          "src/cli/prepare.ts",
+          "--root",
+          root,
+          "--json",
+          "src/main.nu",
+        ],
+        { cwd: packageRoot },
+      );
+
+      expect(stderr).toBe("");
+      expect(JSON.parse(stdout)).toEqual({
+        parts: [
+          {
+            ordinal: 1,
+            bank: 0,
+            logicalIdentity: "src/lib/model.nu",
+            bytes: encoder.encode("const MODEL = 1\n").length,
+          },
+          {
+            ordinal: 2,
+            bank: 0,
+            logicalIdentity: "src/main.nu",
+            bytes: encoder.encode("//% import \"lib/model.nu\"\nsub main()\nend\n").length,
+          },
+        ],
+        partBanks: [0, 0],
+        totalSourceBytes:
+          encoder.encode("const MODEL = 1\n").length +
+          encoder.encode("//% import \"lib/model.nu\"\nsub main()\nend\n").length,
+        retainedPathBytes:
+          encoder.encode("src/lib/model.nu").length +
+          encoder.encode("src/main.nu").length,
+      });
+    });
+  });
+
+  it("returns a source-preparation failure from the development CLI before compiler input exists", async () => {
+    await withSourceTree({
+      "src/main.nu": "//% include \"lib/model.nu\"\nsub main()\nend\n",
+      "src/lib/model.nu": "const MODEL = 1\n",
+    }, async (root) => {
+      await expect(execFileAsync(
+        process.execPath,
+        [
+          tsxBin,
+          "src/cli/prepare.ts",
+          "--root",
+          root,
+          "src/main.nu",
+        ],
+        { cwd: packageRoot },
+      )).rejects.toMatchObject({
+        code: 1,
+        stderr: expect.stringContaining("Nucleus source preparation only accepts leading //% import"),
+      });
     });
   });
 });

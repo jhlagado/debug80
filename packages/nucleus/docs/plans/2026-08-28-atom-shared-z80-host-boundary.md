@@ -390,12 +390,21 @@ package source index. It returns the resolved source project, the legacy
 compiler source byte count. This is the handoff shape for future CLI and tool
 callers while the resident compiler still consumes the existing source-part ABI.
 
+The first development command now uses that application boundary:
+
+```text
+npm run source:prepare -w nucleus -- --root path/to/project src/main.nu
+```
+
+This command resolves `//% import` dependencies and reports the prepared
+ordered compiler input. It deliberately stops before compilation, assembly, or
+publication.
+
 ## Next implementation unit
 
-Wire the first real Nucleus CLI or tool command through
-`prepareNucleusCompilation`. The command should accept a project root and entry
-source, resolve `//% import` dependencies with the shared resolver, and pass the
-returned `sourceParts` and `partBanks` to the existing compiler path unchanged.
-The compatibility predicate is strict: the resolved project must produce the
-same ordered source bytes, diagnostics, and proof outcome as the flat manifest
-path.
+Wire the first compiling Nucleus command through `prepareNucleusCompilation`.
+It should accept the same project root and entry source, resolve `//% import`
+dependencies with the shared resolver, and pass the returned `sourceParts` and
+`partBanks` to the existing compiler path unchanged. The compatibility predicate
+is strict: the resolved project must produce the same ordered source bytes,
+diagnostics, and proof outcome as the flat manifest path.
