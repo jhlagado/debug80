@@ -619,8 +619,9 @@
               },
               "assembler": {
                 "type": "string",
-                "description": "Assembler backend to use (inferred from the source extension when omitted)",
+                "description": "Assembler backend to use. Set atom or azm explicitly for .asm files; omitted .asm targets retain the AZM compatibility default.",
                 "enum": [
+                  "atom",
                   "azm",
                   "glimmer",
                   "nucleus"
@@ -906,7 +907,8 @@
     "@jhlagado/glimmer": "^0.6.2",
     "@jhlagado/nucleus": "https://codeload.github.com/jhlagado/nucleus/tar.gz/2873c24b19adfec46dc57ba25ebbff9a8e500e44",
     "@vscode/debugadapter": "^1.64.0",
-    "@vscode/debugprotocol": "^1.64.0"
+    "@vscode/debugprotocol": "^1.64.0",
+    "atom-z80": "file:../../packages/atom"
   },
   "overrides": {
     "minimatch": ">=9.0.7",

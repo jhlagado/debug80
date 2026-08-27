@@ -223,7 +223,7 @@ function buildTargetQuickPickItems(
   });
 
   const bindTarget = defaultTarget ?? stored ?? choices[0]?.name;
-  let azmPaths: string[] = [];
+  let assemblyPaths: string[] = [];
   const config = readProjectConfig(projectConfigPath);
   const projectRoot = projectRootFromProjectConfigPath(projectConfigPath);
   const targetsPerSourcePath = buildTargetsPerEntrySourcePath(
@@ -234,17 +234,17 @@ function buildTargetQuickPickItems(
 
   try {
     const all = sourceFileCache.get(projectRoot);
-    azmPaths = all.filter((p) => isTargetEntrySourcePath(p));
+    assemblyPaths = all.filter((p) => isTargetEntrySourcePath(p));
   } catch {
-    azmPaths = [];
+    assemblyPaths = [];
   }
 
   items.push(
     ...buildEntrySourcePickRows({
-      paths: azmPaths,
+      paths: assemblyPaths,
       separatorKind: vscode.QuickPickItemKind.Separator,
-      separatorLabel: 'AZM sources',
-      detail: 'AZM',
+      separatorLabel: 'Assembly sources',
+      detail: 'Assembly',
       projectRoot,
       targetsPerPath: targetsPerSourcePath,
       bindTarget,

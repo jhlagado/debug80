@@ -269,14 +269,14 @@ describe('package.json language contracts', () => {
     expect(lang!.extensions).not.toContain('.s');
   });
 
-  it('launch schema exposes AZM, Glimmer and Nucleus compiler backends', () => {
+  it('launch schema exposes Atom, AZM, Glimmer and Nucleus compiler backends', () => {
     const debuggerContribution = contributes.debuggers.find((debuggerEntry) => {
       return debuggerEntry.type === 'z80';
     });
     const assembler = debuggerContribution?.configurationAttributes?.launch?.properties?.assembler;
 
     expect(assembler?.default).toBeUndefined();
-    expect(assembler?.enum).toEqual(['azm', 'glimmer', 'nucleus']);
+    expect(assembler?.enum).toEqual(['atom', 'azm', 'glimmer', 'nucleus']);
   });
 
   it('launch schema exposes strict and insensitive AZM symbol lookup', () => {

@@ -126,6 +126,22 @@ describe('configure-project target edit', () => {
     expect(config.targets?.app?.assembler).toBeUndefined();
   });
 
+  it('preserves an explicit Atom dialect for assembly source only', () => {
+    const config = singleTargetConfig(targetConfig({ assembler: 'atom' }));
+
+    applyConfigureProjectTargetEdit(config, 'app', {
+      kind: 'program',
+      sourceFile: 'src/next.asm',
+    });
+    expect(config.targets?.app?.assembler).toBe('atom');
+
+    applyConfigureProjectTargetEdit(config, 'app', {
+      kind: 'program',
+      sourceFile: 'src/main.nu',
+    });
+    expect(config.targets?.app?.assembler).toBeUndefined();
+  });
+
   it('renames targets and updates target aliases', () => {
     const config: ProjectConfig = {
       target: 'app',

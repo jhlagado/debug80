@@ -4,6 +4,11 @@ Status: active implementation sequence
 
 Date: 2026-08-27
 
+Implemented through checkpoint 7: the shared services authority, Atom monorepo
+package, include-driven Node and CP/M preparation, CLI v1, and Debug80's
+explicit `assembler: "atom"` backend are in production on `main`. Native TEC
+provider work, Nucleus convergence, and the default-project migration remain.
+
 ## Objective
 
 Make Atom the first-class assembler across the Node-hosted Debug80 environment

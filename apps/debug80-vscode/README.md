@@ -45,9 +45,11 @@ are available at [debug80.com](https://debug80.com/).
 - **Conditional breakpoints**: use the same Watch expression language in VS
   Code breakpoint conditions, for example `[PACMO_LIVES] eq 0` or
   `zero and A eq $20`.
-- **Integrated build workflow**: AZM and the Glimmer reactive frontend are packaged with the
-  extension and linked directly, so users do not need global compiler installs
-  or a separate command-line toolchain just to start debugging.
+- **Integrated build workflow**: Atom, AZM, Glimmer, and Nucleus are packaged
+  with the extension and called in-process, so users do not need global
+  compiler installs. An assembly target selects `atom` or `azm` explicitly in
+  `debug80.json`; existing targets without that field retain the AZM
+  compatibility default.
 - **Register, symbol, stack, and memory visibility**: inspect CPU registers,
   source-map symbols and constants, best-effort symbolic stack entries, flags,
   program counter state, memory regions, RAM contents, ROM-protected ranges, and
@@ -189,7 +191,7 @@ npm run build
 npm test
 ```
 
-Debug80 packages its assembler and Nucleus compiler dependencies inside the
+Debug80 packages Atom and its other compiler dependencies inside the
 VSIX. Published users should not need `npm link`, sibling checkouts, global
 compiler commands, or compiler environment variables. Nucleus launch settings
 belong in `debug80.json`, `launch.json`, or the conventional

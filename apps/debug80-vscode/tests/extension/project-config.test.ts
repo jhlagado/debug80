@@ -382,6 +382,22 @@ describe('project-config helpers', () => {
     expect(readProjectConfig(configPath)?.targets?.app?.assembler).toBeUndefined();
   });
 
+  it('preserves an explicit Atom dialect when changing between assembly files', () => {
+    const { configPath } = createProject('debug80-atom-entry-', {
+      defaultTarget: 'app',
+      targets: {
+        app: {
+          sourceFile: 'src/old.asm',
+          assembler: 'atom',
+          platform: 'simple',
+        },
+      },
+    });
+
+    expect(updateProjectTargetSource(configPath, 'app', 'src/main.asm')).toBe(true);
+    expect(readProjectConfig(configPath)?.targets?.app?.assembler).toBe('atom');
+  });
+
   it('clears an assembler override that conflicts with the new program extension', () => {
     const { configPath } = createProject('debug80-cross-language-entry-', {
       defaultTarget: 'app',

@@ -21,7 +21,7 @@ Project configuration lives in `debug80.json` at the workspace folder root. Top-
 | `platform`                | `string`   | `'simple'`                                             | Platform to emulate: `'simple'`, `'cpm22'`, `'tec1'`, or `'tec1g'`                    |
 | `asm`                     | `string`   | —                                                      | Path to the main Z80 assembly source file                                             |
 | `sourceFile`              | `string`   | —                                                      | Alias for `asm`                                                                       |
-| `assembler`               | `string`   | inferred                                               | Assembler backend identifier. Inferred from source extension unless set explicitly.   |
+| `assembler`               | `string`   | inferred                                               | Backend identifier. Set `atom` or `azm` explicitly for assembly source.                |
 | `hex`                     | `string`   | derived                                                | Path to the output Intel HEX file; derived from `asm` if omitted                      |
 | `outputDir`               | `string`   | `build`                                                | Directory for build artifacts                                                         |
 | `artifactBase`            | `string`   | asm filename                                           | Base name for generated artifacts such as `.hex`, `.bin`, `.d8.json`, and AZM reports |
@@ -38,9 +38,29 @@ Project configuration lives in `debug80.json` at the workspace folder root. Top-
 | `nucleus`                 | `object`   | —                                                      | Nucleus-specific launch options; see below                                            |
 
 Debug80 currently infers `azm` for `.asm`, `.inc`, and `.z80`, `glimmer` for
-`.glim`, and `nucleus` for `.nu`. The top-level `azm` block is only consulted
+`.glim`, and `nucleus` for `.nu`. Because Atom and AZM both use ordinary
+assembly filenames, the extension does not infer their dialect from `.asm`.
+Set `"assembler": "atom"` for an Atom target. Existing assembly targets that
+omit the field retain the AZM compatibility default. The top-level `azm` block is only consulted
 by the AZM-backed paths, including the Glimmer flow's internal AZM work inside
 `@jhlagado/glimmer`.
+
+```json
+{
+  "targets": {
+    "app": {
+      "sourceFile": "src/main.asm",
+      "assembler": "atom",
+      "platform": "simple"
+    }
+  }
+}
+```
+
+Atom begins with that root source, follows active `%INCLUDE` directives, and
+keeps every included file distinct in diagnostics and D8 mappings. Debug80
+calls the `atom-z80` programming API directly and publishes `.hex`, `.bin`,
+`.d8.json`, and `.lst` as one transaction.
 
 ### AZM options
 

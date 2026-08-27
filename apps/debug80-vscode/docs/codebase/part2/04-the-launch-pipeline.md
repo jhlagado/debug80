@@ -201,9 +201,9 @@ assembleIfRequested({
 | `.glim`                | Glimmer |
 | `.nu`                  | Nucleus |
 
-Debug80 now supports AZM, Glimmer, and Nucleus as in-process build backends.
-ZAX has been removed, and the old listing-derived mapping path is retired from
-active launch behavior.
+Atom is also an in-process backend, selected with `assembler: "atom"`. Atom and
+AZM both use `.asm`, so Debug80 does not guess between them from the filename.
+Unconfigured assembly targets continue to resolve to AZM during migration.
 
 The backend conforms to the `AssemblerBackend` interface:
 
@@ -216,6 +216,25 @@ interface AssemblerBackend {
 ```
 
 `assemble()` produces the primary build artifacts, normally HEX plus native D8 source map. AZM-backed assembly also emits an asm80-style `.lst` listing by default. `assembleBin()` is optional — the simple platform uses it to produce raw binary output for custom memory regions (configured via `binFrom`/`binTo`), and the TEC-1G ROM-artifact path uses it to materialize monitor or expansion `.bin` images with fixed address windows.
+
+### The Atom invocation
+
+`AtomBackend` loads `atom-z80` and calls `assembleAtomProject()` in-process.
+The selected `.asm` file is the root; active `%INCLUDE` directives discover
+the remaining source parts. Node prepares those parts, then Atom's Z80 core
+runs in the shared emulator. Debug80 does not invoke the `atom` command or
+parse command output.
+
+On success, `renderAtomArtifacts()` creates BIN, Intel HEX, D8, and listing
+values from the same committed generation. Debug80 validates the D8 JSON before
+`publishAtomOutputFiles()` replaces all four destination files as one
+transaction. A failure during preparation, assembly, rendering, validation, or
+publication therefore leaves the previous artifact set intact.
+
+Atom errors already carry the logical source identity, line, and column. The
+backend maps that location into `AssemblyDiagnostic`, reads the original source
+line when available, and sends the result through Debug80's ordinary build
+failure path. Included-file errors continue to name the included file.
 
 For the simple platform, ranged binary output is now validated as a pair: `simple.binFrom` and `simple.binTo` must both be present or both be absent, and `binFrom` must be less than or equal to `binTo`. This is enforced during launch validation and again immediately before assembly. If a ranged simple build is requested through a backend without `assembleBin()` support, Debug80 fails the launch with a direct build error instead of pretending the range was applied. In the current codebase that means ranged simple binaries require the AZM backend rather than Glimmer.
 

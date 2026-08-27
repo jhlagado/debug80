@@ -127,7 +127,7 @@ export async function setEntrySourceCommand(
   const candidates = listTargetSourceFiles(folder.uri.fsPath);
   if (candidates.length === 0) {
     void vscode.window.showInformationMessage(
-      'Debug80: No runnable AZM or Glimmer entry files were found in this project folder.'
+      'Debug80: No runnable assembly, Glimmer, or Nucleus entry files were found in this project folder.'
     );
     return undefined;
   }
@@ -217,7 +217,7 @@ async function selectProgram(
   const sources = listTargetSourceFiles(folder.uri.fsPath);
   if (sources.length === 0) {
     void vscode.window.showInformationMessage(
-      'Debug80: No runnable AZM or Glimmer entry files were found in this project folder.'
+      'Debug80: No runnable assembly, Glimmer, or Nucleus entry files were found in this project folder.'
     );
     return undefined;
   }
@@ -231,7 +231,8 @@ async function selectProgram(
 async function selectAssembler(): Promise<ConfigureProjectTargetEdit | undefined> {
   const pick = await vscode.window.showQuickPick(
     [
-      { label: 'default', detail: 'Use extension default by source file extension' },
+      { label: 'default', detail: 'Use the source extension default' },
+      { label: 'atom', detail: 'Use the Atom assembler for Z80 assembly source' },
       { label: 'azm', detail: 'Force AZM backend' },
       { label: 'glimmer', detail: 'Force Glimmer frontend and AZM backend' },
       { label: 'nucleus', detail: 'Force the standalone Nucleus compiler backend' },

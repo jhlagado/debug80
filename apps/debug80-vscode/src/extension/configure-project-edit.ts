@@ -28,7 +28,12 @@ function isSupportedAssemblerId(value: unknown): boolean {
     return false;
   }
   const normalized = value.trim().toLowerCase();
-  return normalized === 'azm' || normalized === 'glimmer' || normalized === 'nucleus';
+  return (
+    normalized === 'atom' ||
+    normalized === 'azm' ||
+    normalized === 'glimmer' ||
+    normalized === 'nucleus'
+  );
 }
 
 export function applyConfigureProjectTargetEdit(
@@ -108,6 +113,7 @@ function applyProgramSource(target: ProjectTargetConfig, sourceFile: string): vo
   const incompatibleAssembler =
     (assembler === 'glimmer' && extension !== '.glim') ||
     (assembler === 'nucleus' && extension !== '.nu') ||
+    (assembler === 'atom' && (extension === '.glim' || extension === '.nu')) ||
     (assembler === 'azm' && (extension === '.glim' || extension === '.nu'));
   if (
     incompatibleAssembler ||

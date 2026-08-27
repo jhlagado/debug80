@@ -59,7 +59,7 @@ export type BuildEntrySourcePickRowsOptions = {
   paths: readonly string[];
   separatorKind: number;
   separatorLabel: string;
-  detail: 'AZM';
+  detail: string;
   projectRoot: string;
   targetsPerPath: ReadonlyMap<string, readonly string[]>;
   bindTarget?: string | undefined;

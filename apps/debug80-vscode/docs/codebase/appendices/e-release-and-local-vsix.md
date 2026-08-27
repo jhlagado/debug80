@@ -86,7 +86,7 @@ Before calling a VSIX candidate releasable, test:
 - `roms/`
 - `schemas/`
 - `syntaxes/`
-- `node_modules/@jhlagado/azm`
+- the bundled runtime code for Atom and the other in-process backends in `out/`
 - `README.md`
 - `LICENSE` or `LICENSE.txt`
 - `THIRD_PARTY_NOTICES.md`

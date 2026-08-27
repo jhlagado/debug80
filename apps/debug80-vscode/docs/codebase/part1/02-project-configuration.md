@@ -190,7 +190,7 @@ debug80.selectedTarget:{projectConfigPath}
 
 The key includes the config file path, so different projects in a multi-root workspace each remember their own target independently. On the next launch, the stored target is preferred over the config's `defaultTarget`, unless it no longer exists in the config.
 
-The persistence logic lives in `ProjectTargetSelectionController` in `src/extension/project-target-selection.ts`. The controller is now a thin orchestrator around extracted policy modules: `project-target-policy.ts` decides whether to reuse a stored or default target or prompt, `project-target-config-policy.ts` turns config entries into visible choices, `project-target-source-policy.ts` tracks which source files are already covered by targets, `project-target-filesystem.ts` handles existence checks and short-lived source-file caching, and `target-discovery.ts` scans the workspace for runnable AZM entry conventions plus `.glim` files that declare a complete program.
+The persistence logic lives in `ProjectTargetSelectionController` in `src/extension/project-target-selection.ts`. The controller is now a thin orchestrator around extracted policy modules: `project-target-policy.ts` decides whether to reuse a stored or default target or prompt, `project-target-config-policy.ts` turns config entries into visible choices, `project-target-source-policy.ts` tracks which source files are already covered by targets, `project-target-filesystem.ts` handles existence checks and short-lived source-file caching, and `target-discovery.ts` scans the workspace for runnable assembly entry conventions plus `.glim` files that declare a complete program.
 
 ### Discovered versus configured targets
 
@@ -505,14 +505,24 @@ The generated config now depends on the selected **project kit**. The common sha
 
 For `simple/default` and `tec1/mon1b` the same structure is used, but with the kit's platform-specific memory block and profile metadata. The platform is now selected during initialization rather than being a manual post-edit step.
 
-### Assembler auto-detection
+### Assembler selection
 
-When a source file is selected or changed, the system infers the assembler from the file extension:
+Glimmer and Nucleus have distinct source extensions, so Debug80 can infer them:
 
-- `.asm`, `.z80`, and `.inc` → use AZM
 - `.glim` → use Glimmer
+- `.nu` → use Nucleus
 
-Target discovery is independent of a mandatory `src/` folder. Debug80 looks for AZM entry points by convention (`main.asm` and `main.z80`) and treats a `.glim` file as runnable when it contains a top-level `program` declaration. Glimmer `part` files remain out of the target list. Ordinary helper assembly files and non-entry `.z80` files are also left out of automatic discovery unless selected explicitly with **Debug80: Set Program File**.
+Atom and AZM deliberately share `.asm`, `.inc`, and `.z80`. The filename does
+not identify the assembly dialect. Set `assembler: "atom"` on an Atom target;
+set `assembler: "azm"` where an explicit AZM declaration is useful. Existing
+assembly targets without the field retain AZM while the project corpus moves
+to Atom.
+
+Target discovery is independent of a mandatory `src/` folder. Debug80 looks
+for assembly entry points by convention (`main.asm` and `main.z80`) and treats
+a `.glim` file as runnable when it contains a top-level `program` declaration.
+Discovery finds candidates. Debug80 reads the target's `assembler` field to
+select the assembly dialect.
 
 ---
 

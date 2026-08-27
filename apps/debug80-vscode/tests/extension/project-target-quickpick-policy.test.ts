@@ -21,8 +21,8 @@ function entrySourceRowsOptions(
   return {
     paths: [],
     separatorKind: -1,
-    separatorLabel: 'AZM sources',
-    detail: 'AZM',
+    separatorLabel: 'Assembly sources',
+    detail: 'Assembly',
     projectRoot: '/workspace/demo',
     targetsPerPath: new Map(),
     bindTarget: undefined,
@@ -34,7 +34,7 @@ function targetBindings(entries: Array<[string, string[]]>): Map<string, string[
   return new Map(entries);
 }
 
-function buildAzmSourceRows(
+function buildAssemblySourceRows(
   overrides: Partial<EntrySourceRowsOptions>
 ): ReturnType<typeof buildEntrySourcePickRows> {
   return buildEntrySourcePickRows(entrySourceRowsOptions(overrides));
@@ -71,9 +71,9 @@ describe('project target QuickPick policy', () => {
     ]);
   });
 
-  it('adds bound and unbound AZM source rows below a separator', () => {
+  it('adds bound and unbound assembly source rows below a separator', () => {
     expect(
-      buildAzmSourceRows({
+      buildAssemblySourceRows({
         paths: ['src/main.asm', 'src/new.main.asm', 'src/shared.main.asm'],
         targetsPerPath: targetBindings([
           ['src/main.asm', ['main']],
@@ -82,32 +82,32 @@ describe('project target QuickPick policy', () => {
         bindTarget: 'main',
       })
     ).toEqual([
-      { kind: -1, label: 'AZM sources' },
+      { kind: -1, label: 'Assembly sources' },
       {
         label: 'src/main.asm',
         description: 'Target: main',
-        detail: 'AZM',
+        detail: 'Assembly',
         targetName: 'main',
       },
       {
         label: 'src/new.main.asm',
         description: 'Set as entry for target "main"',
-        detail: 'AZM',
+        detail: 'Assembly',
         targetName: 'main',
         applyEntrySource: 'src/new.main.asm',
       },
       {
         label: 'src/shared.main.asm',
         description: 'Targets: shared, shared-alt',
-        detail: 'AZM',
+        detail: 'Assembly',
         targetName: 'shared',
       },
     ]);
   });
 
-  it('omits unbound AZM source rows when there is no target to bind', () => {
-    expect(buildAzmSourceRows({ paths: ['src/new.main.asm'] })).toEqual([
-      { kind: -1, label: 'AZM sources' },
+  it('omits unbound assembly source rows when there is no target to bind', () => {
+    expect(buildAssemblySourceRows({ paths: ['src/new.main.asm'] })).toEqual([
+      { kind: -1, label: 'Assembly sources' },
     ]);
   });
 });

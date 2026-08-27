@@ -4,6 +4,10 @@ Status: accepted target architecture
 
 Date: 2026-08-27
 
+The Node-hosted, Debug80-integrated, and CP/M-native profiles are implemented.
+The TEC-native provider and the later default-project migration remain active
+work.
+
 ## Product decision
 
 Atom is Debug80's first-class Z80 assembler. The authoritative Atom product

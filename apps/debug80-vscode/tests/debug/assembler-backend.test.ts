@@ -9,6 +9,7 @@ vi.mock('vscode', () => ({
 }));
 
 import { resolveAssemblerBackend } from '../../src/debug/launch/assembler-backend';
+import { AtomBackend } from '../../src/debug/launch/atom-backend';
 import { AzmBackend } from '../../src/debug/launch/azm-backend';
 import { GlimmerBackend } from '../../src/debug/launch/glimmer-backend';
 import { NucleusBackend } from '../../src/debug/launch/nucleus-backend';
@@ -33,6 +34,12 @@ describe('assembler-backend', () => {
 
   it('matches azm case-insensitively', () => {
     expectAzmBackend('AZM');
+  });
+
+  it('returns Atom only when explicitly requested for assembly source', () => {
+    expect(resolveAssemblerBackend('atom', '/tmp/program.asm')).toBeInstanceOf(AtomBackend);
+    expect(resolveAssemblerBackend('ATOM', '/tmp/program.asm')).toBeInstanceOf(AtomBackend);
+    expectAzmBackend(undefined, '/tmp/program.asm');
   });
 
   it('throws for unknown backends', () => {

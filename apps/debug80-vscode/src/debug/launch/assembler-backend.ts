@@ -6,6 +6,7 @@ import * as path from 'path';
 import type { MappingParseResult } from '../../mapping/types';
 import type { AzmLaunchOptions, NucleusLaunchOptions } from '../session/types';
 import type { AssembleResult } from './assembler';
+import { AtomBackend } from './atom-backend';
 import { AzmBackend } from './azm-backend';
 import { GlimmerBackend } from './glimmer-backend';
 import { NucleusBackend } from './nucleus-backend';
@@ -67,6 +68,9 @@ export function resolveAssemblerBackend(
 
   if (id === undefined || id === '' || id === 'azm') {
     return new AzmBackend();
+  }
+  if (id === 'atom') {
+    return new AtomBackend();
   }
   if (id === 'glimmer') {
     return new GlimmerBackend();

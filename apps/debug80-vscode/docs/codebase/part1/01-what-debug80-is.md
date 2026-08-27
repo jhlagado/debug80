@@ -137,9 +137,14 @@ Debug80 has seven major subsystems. Each one owns a specific responsibility and 
 
 ### Assembly pipeline
 
-**What it does:** Assembles Z80 source files into loadable binaries. Debug80 currently ships two in-process backends: AZM through the packaged `@jhlagado/azm` library for `.asm`, `.inc`, and `.z80`, and Glimmer through `@jhlagado/glimmer` for `.glim`. Both paths emit HEX plus native D8 debug-map artifacts, AZM-backed builds also emit an asm80-style `.lst` listing by default, and the Glimmer path materializes the generated `.asm` beside the derived artifacts before Debug80 parses Intel HEX output into emulated memory.
+**What it does:** Turns source into loadable Z80 programs. Debug80 ships four
+in-process backends: Atom, AZM, Glimmer, and Nucleus. Atom and AZM share normal
+assembly filename extensions, so `assembler: "atom"` selects Atom explicitly;
+omitting the field retains the AZM compatibility default. Each backend emits
+Intel HEX and a native D8 debug map. Atom also publishes BIN and a listing,
+preserving the identities of files reached through `%INCLUDE`.
 
-**Where it lives:** `apps/debug80-vscode/src/debug/launch/assembler.ts`, `apps/debug80-vscode/src/debug/launch/assembler-backend.ts`, `apps/debug80-vscode/src/debug/launch/azm-backend.ts`, `apps/debug80-vscode/src/debug/launch/glimmer-backend.ts`, `packages/debug80-runtime/src/z80/loaders.ts`
+**Where it lives:** `apps/debug80-vscode/src/debug/launch/assembler.ts`, `apps/debug80-vscode/src/debug/launch/assembler-backend.ts`, the four `*-backend.ts` implementations in that directory, `packages/atom`, and `packages/debug80-runtime/src/z80/loaders.ts`
 
 **Key flow:** Source file → selected assembler backend → Intel HEX binary + native D8 debug map + optional companion artifacts such as `.lst`, `.bin`, `.asmi`, and register-contract reports → `parseIntelHex()` → byte array loaded into Z80 memory.
 
