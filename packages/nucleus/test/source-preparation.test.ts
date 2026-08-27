@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 import { SourcePreparationError } from "@jhlagado/z80-tool-services/source-preparation";
 
 import {
+  prepareNucleusSourceParts,
   resolveNucleusProject,
   sourcePartsFromResolvedProject,
 } from "../src/source-preparation.js";
@@ -155,6 +156,34 @@ describe("Nucleus source preparation", () => {
           stableIdentity: "2:src/main.nu",
           diagnosticName: "src/main.nu",
           bytes: encoder.encode("//% import \"lib/display.nu\"\nsub main()\nend\n"),
+        },
+      ]);
+    });
+  });
+
+  it("prepares legacy source parts through the shared resolver in one call", async () => {
+    await withSourceTree({
+      "main.nu": "//% import \"model.nu\"\nsub main()\nend\n",
+      "model.nu": "const MODEL = 1\n",
+    }, async (root) => {
+      const prepared = await prepareNucleusSourceParts({ root, entry: "main.nu" });
+
+      expect(prepared.project.parts.map((part) => part.logicalIdentity)).toEqual([
+        "model.nu",
+        "main.nu",
+      ]);
+      expect(prepared.sourceParts).toEqual([
+        {
+          ordinal: 1,
+          stableIdentity: "1:model.nu",
+          diagnosticName: "model.nu",
+          bytes: encoder.encode("const MODEL = 1\n"),
+        },
+        {
+          ordinal: 2,
+          stableIdentity: "2:main.nu",
+          diagnosticName: "main.nu",
+          bytes: encoder.encode("//% import \"model.nu\"\nsub main()\nend\n"),
         },
       ]);
     });

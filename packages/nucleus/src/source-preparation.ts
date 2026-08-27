@@ -21,6 +21,11 @@ export interface NucleusSourcePreparationOptions {
 
 export type NucleusResolvedSourceProject = ResolvedSourceProject<NucleusSourceState>;
 
+export interface NucleusPreparedSourceParts {
+  readonly project: NucleusResolvedSourceProject;
+  readonly sourceParts: readonly SourcePart[];
+}
+
 export interface NucleusSourceState {
   readonly profile: "nucleus-leading-imports-v1";
 }
@@ -111,6 +116,16 @@ export async function resolveNucleusProject({
     configuration: undefined,
     placement,
     limits,
+  });
+}
+
+export async function prepareNucleusSourceParts(
+  options: NucleusSourcePreparationOptions,
+): Promise<NucleusPreparedSourceParts> {
+  const project = await resolveNucleusProject(options);
+  return Object.freeze({
+    project,
+    sourceParts: Object.freeze(sourcePartsFromResolvedProject(project)),
   });
 }
 

@@ -1,10 +1,13 @@
 import path from "node:path";
 import { readFileSync } from "node:fs";
+import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { tmpdir } from "node:os";
 
 import { describe, expect, it } from "vitest";
 
 import { runProofManifest } from "../src/proof.js";
 import { ServiceError, Trap } from "../src/runtime-contract.js";
+import { prepareNucleusSourceParts } from "../src/source-preparation.js";
 import { buildSourceParts } from "../src/source-manifest.js";
 
 const proof = (name: string): string =>
@@ -13,7 +16,49 @@ const proof = (name: string): string =>
 const wordAt = (memory: Uint8Array, address: number): number =>
   (memory[address] ?? 0) | ((memory[address + 1] ?? 0) << 8);
 
+async function withSourceTree<T>(
+  files: Readonly<Record<string, string>>,
+  run: (root: string) => Promise<T>,
+): Promise<T> {
+  const root = await mkdtemp(path.join(tmpdir(), "nucleus-proof-source-"));
+  try {
+    for (const [name, text] of Object.entries(files)) {
+      const filePath = path.join(root, name);
+      await mkdir(path.dirname(filePath), { recursive: true });
+      await writeFile(filePath, text, "utf8");
+    }
+    return await run(root);
+  } finally {
+    await rm(root, { recursive: true, force: true });
+  }
+}
+
 describe("manifest-driven AZM and Debug80 proofs", () => {
+  it("prepares proof-harness multipart source through the shared resolver", async () => {
+    await withSourceTree({
+      "src/main.nu": "//% import \"model.nu\"\nsub main()\nend\n",
+      "src/model.nu": "const MODEL = 1\n",
+    }, async (root) => {
+      const prepared = await prepareNucleusSourceParts({
+        root,
+        entry: "src/main.nu",
+      });
+      const legacyParts = buildSourceParts("src/model.nu\nsrc/main.nu\n", (name) =>
+        new Uint8Array(readFileSync(path.join(root, name))),
+      );
+
+      expect(prepared.sourceParts).toEqual(legacyParts);
+      expect(prepared.project.parts.map((part) => part.logicalIdentity)).toEqual([
+        "src/model.nu",
+        "src/main.nu",
+      ]);
+      expect(prepared.project.retainedPathBytes).toBe(
+        new TextEncoder().encode("src/model.nu").length +
+          new TextEncoder().encode("src/main.nu").length,
+      );
+    });
+  });
+
   it("publishes a flat target through the append-only logical sink", async () => {
     const outcome = await runProofManifest(
       proof("flat-target-z80-slice-proof"),

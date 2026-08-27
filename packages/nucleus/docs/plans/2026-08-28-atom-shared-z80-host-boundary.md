@@ -375,14 +375,20 @@ The source-preparation boundary is now covered by executable tests:
 2. diamond imports deduplicate through shared identity;
 3. compiler bytes pass through unchanged for Nucleus;
 4. path-keyed placement is retained on the resolved project; and
-5. `sourcePartsFromResolvedProject` preserves the old one-based `SourcePart`
-   contract while the compiler boundary is still migrating.
+5. `sourcePartsFromResolvedProject` and `prepareNucleusSourceParts` preserve
+   the old one-based `SourcePart` contract while the compiler boundary is still
+   migrating.
+
+The proof-harness tests now include a resolver-backed source-part path that
+compares the prepared project with the equivalent flat manifest bytes. This is
+the first high-level consumer moved onto the shared resolver without changing
+the historical proof images.
 
 ## Next implementation unit
 
-Move the first high-level Nucleus caller from flat manifest text to
-`resolveNucleusProject`. The safest first target is a proof-harness path that
-already has source-preparation tests and still feeds the existing compiler or
-assembler unchanged after adaptation. The compatibility predicate is strict:
+Move the next production-facing Nucleus caller from flat manifest text to
+`prepareNucleusSourceParts`. The safest target is the future Nucleus compiler
+application boundary, because it can accept prepared source parts while still
+feeding the resident compiler unchanged. The compatibility predicate is strict:
 the resolved project must produce the same ordered source bytes, diagnostics,
 and proof outcome as the flat manifest path.
