@@ -8,6 +8,8 @@ The package ownership, platform terminology, source-preparation boundary, and
 migration sequence are governed by [Atom platform architecture](atom-platform-architecture.md)
 and [Atom first-class migration](atom-first-class-migration.md). The concrete
 CLI is governed by [Atom CLI v1](atom-cli-v1.md).
+The request, transaction, and failure contract is defined by
+[Z80 Tool Services ABI v1](z80-tool-services-abi-v1.md).
 
 ## Boundary
 
