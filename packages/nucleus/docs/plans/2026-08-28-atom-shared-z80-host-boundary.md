@@ -458,14 +458,24 @@ fresh-run reset requirements. Those semantics should be adapted through a
 Nucleus runtime-service gateway rather than by treating Atom's optional console
 operations as the whole Nucleus runtime boundary.
 
+The first shared runtime-service layer now exists separately from Atom's
+console layer. `RuntimeByteStreams` models the Nucleus service set directly:
+standard input, standard output, bulk-storage input, bulk-storage output,
+storage rewind, storage output seek, and per-run reset. The shared default
+status policy deliberately matches Nucleus's predefined service-error values:
+`endOfInput = 1`, `inputFailure = 2`, `outputFailure = 3`, and
+`storageFailure = 4`. Its conformance vectors prove successful reads and
+writes, EOF, invalid byte requests, storage overwrite versus append, failed
+storage atomicity, and reset back to the initial stream state.
+
 This checkpoint deliberately does not move Nucleus record framing, map
 semantics, runtime-provider calls, NOBJ status behavior, Atom's assembler sink,
 or Nucleus runtime storage services. Those are the next Phase 3 layers.
 
 ## Next implementation unit
 
-Continue Phase 3 by defining a shared runtime-service gateway comparison for
-Nucleus. The useful next boundary is the mapping between the shared byte
-console operations, Nucleus's standard input/output services, and the additional
-Nucleus storage/reset guarantees. That should produce an adapter design and
-conformance vectors before any Nucleus runner code is changed.
+Continue Phase 3 by adapting the existing Nucleus proof/runtime harness service
+state to `RuntimeByteStreams`. That should be a behavior-preserving adapter
+first: the current generated programs and proof images must keep their exact
+observations while the host-side implementation moves behind the shared
+conformance surface.
