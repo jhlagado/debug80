@@ -231,6 +231,13 @@ values from the same committed generation. Debug80 validates the D8 JSON before
 transaction. A failure during preparation, assembly, rendering, validation, or
 publication therefore leaves the previous artifact set intact.
 
+This fixed four-file set is the Debug80 launch-session contract, not the
+standalone Atom command-line contract. A launch needs HEX for program loading
+and D8 for breakpoints, stepping, symbols, and editor features. The BIN and
+listing files are companion artifacts kept beside the launch outputs. Tools
+that need precise output selection should call Atom's public API or standalone
+CLI directly; Debug80 launch currently keeps the artifact policy uniform.
+
 Atom errors already carry the logical source identity, line, and column. The
 backend maps that location into `AssemblyDiagnostic`, reads the original source
 line when available, and sends the result through Debug80's ordinary build
