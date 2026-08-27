@@ -44,6 +44,7 @@ export {
 } from './parse.js';
 export { loadGlimmerProgram, type LoadOptions } from './load.js';
 export { generateAzm, type GenerateOptions, type GenerateResult } from './generate.js';
+export { generateAtom } from './atom.js';
 export {
   buildGlimmerProgram,
   computeBlockMappings,
@@ -61,6 +62,7 @@ export {
 
 import type { GlimmerDiagnostic } from './model.js';
 import { generateAzm, type GenerateOptions } from './generate.js';
+import { generateAtom } from './atom.js';
 import { parseGlimmer } from './parse.js';
 
 export interface CompileResult {
@@ -76,6 +78,18 @@ export function compileToAzm(glimSource: string, options: GenerateOptions = {}):
     return { source: null, diagnostics: parsed.diagnostics };
   }
   const generated = generateAzm(parsed.program, options);
+  const diagnostics = [...parsed.diagnostics, ...generated.diagnostics];
+  const hasErrors = diagnostics.some((diagnostic) => diagnostic.severity !== 'warning');
+  return { source: hasErrors ? null : generated.source, diagnostics };
+}
+
+/** Compile Glimmer meta-source text to strict Atom source text. */
+export function compileToAtom(glimSource: string, options: GenerateOptions = {}): CompileResult {
+  const parsed = parseGlimmer(glimSource);
+  if (parsed.program === null) {
+    return { source: null, diagnostics: parsed.diagnostics };
+  }
+  const generated = generateAtom(parsed.program, options);
   const diagnostics = [...parsed.diagnostics, ...generated.diagnostics];
   const hasErrors = diagnostics.some((diagnostic) => diagnostic.severity !== 'warning');
   return { source: hasErrors ? null : generated.source, diagnostics };

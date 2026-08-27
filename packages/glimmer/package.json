@@ -76,6 +76,7 @@
     "vitest": "^2.1.9"
   },
   "dependencies": {
-    "@jhlagado/azm": "^0.3.8"
+    "@jhlagado/azm": "^0.3.8",
+    "atom-z80": "^0.2.0"
   }
 }
