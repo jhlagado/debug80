@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -10,6 +11,7 @@ import {
   resolveNucleusProject,
   sourcePartsFromResolvedProject,
 } from "../src/source-preparation.js";
+import { buildSourceParts } from "../src/source-manifest.js";
 
 const encoder = new TextEncoder();
 
@@ -97,7 +99,11 @@ describe("Nucleus source preparation", () => {
     }, async (root) => {
       const project = await resolveNucleusProject({ root, entry: "main.nu" });
       const sourceParts = sourcePartsFromResolvedProject(project);
+      const manifestParts = buildSourceParts("lib.nu\nmain.nu\n", (name) =>
+        Uint8Array.from(readFileSync(path.join(root, name))),
+      );
 
+      expect(sourceParts).toEqual(manifestParts);
       expect(sourceParts).toEqual([
         {
           ordinal: 1,
