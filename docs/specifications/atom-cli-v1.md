@@ -82,7 +82,7 @@ definitions, and positive output paths:
 ```json
 {
   "entry": "src/main.asm",
-  "target": "tecm8",
+  "target": "cpm22",
   "outputs": ["build/main.bin", "build/main.hex", "build/main.d8.json"],
   "definitions": {
     "DEBUG": 0
@@ -105,9 +105,10 @@ header and enforces:
 - a final address inside the selected CP/M target limit; and
 - the selected target fill policy for gaps and reservations.
 
-When no target was selected, requesting `.com` supplies the generic CP/M load
-and entry constraint. It never replaces an explicit incompatible project or
-command target. Machine-specific target profiles may impose a lower TPA limit.
+When no target was selected, requesting `.com` selects the standard `cpm22`
+target, including its `$0100` load and entry convention. It never replaces an
+explicit incompatible project or command target. Machine-specific target
+profiles may impose a lower TPA limit.
 
 ## Z80-native command
 
