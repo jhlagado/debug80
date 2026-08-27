@@ -24,10 +24,13 @@ export {
 } from "./nucleus-runtime.js";
 export {
   createNucleusHostRuntimeStreamAdapter,
+  createNucleusHostRuntimeStreamLink,
   NUCLEUS_HOST_RUNTIME_STREAM_STUB_SPACING,
   nucleusRuntimeStreamServiceOrdinals,
   type NucleusHostRuntimeStreamAdapter,
   type NucleusHostRuntimeStreamAdapterOptions,
+  type NucleusHostRuntimeStreamLink,
+  type NucleusHostRuntimeStreamLinkOptions,
   type NucleusHostRuntimeStreamStub,
   type NucleusRuntimeStreamServiceOrdinal,
 } from "./runtime-stream-adapter.js";

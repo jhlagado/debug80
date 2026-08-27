@@ -7,7 +7,11 @@ import {
   executeCommittedNobj,
   runProofManifest,
 } from "../src/proof.js";
-import { defaultRuntimeLinkContext } from "../src/nucleus-runtime.js";
+import {
+  defaultRuntimeLinkContext,
+  loadCanonicalRuntimeProvider,
+} from "../src/nucleus-runtime.js";
+import { createNucleusHostRuntimeStreamLink } from "../src/runtime-stream-adapter.js";
 import {
   NobjGenerationSink,
   NobjGenerationStore,
@@ -133,21 +137,55 @@ describe("the NOBJ-aware proof runner", () => {
     expect(outcome.memory[0x4000]).toBe(0x5a);
   });
 
-  it("executes a committed image through host-backed runtime streams", () => {
+  it("executes a committed host-backed runtime vector through host-backed runtime streams", async () => {
+    const hostRuntime = createNucleusHostRuntimeStreamLink({
+      runtimeLinkContext: {
+        ...defaultRuntimeLinkContext,
+        runtimeBase: 0x8100,
+        writableBase: 0x4000,
+        writableCapacity: 0x1000,
+        writableStateBase: 0x4021,
+        vectorBase: 0x4000,
+        programDataBase: 0x4046,
+        programDataCapacity: 0,
+        readOnlyBase: 0x8300,
+        readOnlyCapacity: 0,
+      },
+      stubBase: 0x4100,
+    });
+    const provider = await loadCanonicalRuntimeProvider([
+      hostRuntime.runtimeLinkContext,
+    ]);
+    const linkedRuntime = provider.get(4, hostRuntime.runtimeLinkContext);
+    expect(linkedRuntime).toBeDefined();
+    if (linkedRuntime === undefined) return;
+
     const store = new NobjGenerationStore();
-    const sink = new NobjGenerationSink(store, emptyProvider);
+    const sink = new NobjGenerationSink(store, provider);
+    const dataLoadAddress = 0x8270;
     sink.begin({
       banked: false,
-      runtimeIdentity: 1,
+      runtimeIdentity: linkedRuntime.identity,
       bankCount: 1,
       imageFill: 0,
       imageBase: 0x8000,
-      imageCapacity: 0x200,
+      imageCapacity: 0x400,
     });
     sink.image(
       0,
       0x8000,
       Uint8Array.of(
+        0x21,
+        dataLoadAddress & 0xff,
+        dataLoadAddress >>> 8, // LD HL,dataLoadAddress
+        0x11,
+        0x00,
+        0x40, // LD DE,$4000
+        0x01,
+        linkedRuntime.initialBytes.length,
+        0x00, // LD BC,initialBytes.length
+        0xed,
+        0xb0, // LDIR
         0x31,
         0x00,
         0xff, // LD SP,$FF00
@@ -159,28 +197,44 @@ describe("the NOBJ-aware proof runner", () => {
         0x76, // HALT
       ),
     );
-    sink.image(0, 0x8010, new Uint8Array(33));
+    sink.runtimeImage(
+      0,
+      hostRuntime.runtimeLinkContext.runtimeBase,
+      linkedRuntime.identity,
+      hostRuntime.runtimeLinkContext,
+      linkedRuntime.bytes.length,
+    );
+    sink.runtimeInitialImage(
+      0,
+      dataLoadAddress,
+      linkedRuntime.identity,
+      hostRuntime.runtimeLinkContext,
+      linkedRuntime.initialBytes.length,
+    );
     sink.map({
       romMode: true,
       establishedStack: false,
       entryBank: 0,
       entryAddress: 0x8000,
       writableBase: 0x4000,
-      writableCapacity: 0x0200,
+      writableCapacity: hostRuntime.runtimeLinkContext.writableCapacity,
       vectorBase: 0x4000,
-      vectorLength: 33,
+      vectorLength: linkedRuntime.vectorBytes.length,
       initializedRunBase: 0x4000,
-      initializedRunLength: 33,
-      bssBase: 0x4021,
+      initializedRunLength: linkedRuntime.initialBytes.length,
+      bssBase: 0x4000 + linkedRuntime.initialBytes.length,
       bssLength: 0,
       stackRequirement: 0,
       dataLoadBank: 0,
-      dataLoadAddress: 0x8010,
-      dataLoadLength: 33,
+      dataLoadAddress,
+      dataLoadLength: linkedRuntime.initialBytes.length,
       partBanks: [0],
       banks: [
         {
-          usedLength: 0x31,
+          usedLength:
+            dataLoadAddress +
+            linkedRuntime.initialBytes.length -
+            0x8000,
           readOnlyBase: 0,
           readOnlyLength: 0,
           aggregateConstantBase: 0,
@@ -192,15 +246,16 @@ describe("the NOBJ-aware proof runner", () => {
     const outcome = executeCommittedNobj(
       sink.commit(),
       {
-        maxInstructions: 64,
-        maxCycles: 1_024,
+        maxInstructions: 128,
+        maxCycles: 4_096,
         halted: true,
         expectedSp: 0xff00,
       },
       {
         runtimeStreams: {
-          runtimeLinkContext: defaultRuntimeLinkContext,
+          runtimeLinkContext: hostRuntime.runtimeLinkContext,
           stubBase: 0x4100,
+          installVector: false,
         },
       },
     );
@@ -208,6 +263,8 @@ describe("the NOBJ-aware proof runner", () => {
     expect([...(outcome.runtimeStreams?.output ?? [])]).toEqual([0x5a]);
     expect(outcome.runtimeStreams?.outputWriteCalls).toBe(1);
     expect(outcome.memory[0x4003]).toBe(0xc3);
+    expect(outcome.memory[0x4004]).toBe(0x20);
+    expect(outcome.memory[0x4005]).toBe(0x41);
     expect(outcome.memory[0x4100 + 0x20]).toBe(0x4f);
   });
 

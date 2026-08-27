@@ -167,6 +167,8 @@ export interface NobjHostRuntimeStreamExecution {
   readonly runtimeLinkContext: RuntimeLinkContext;
   readonly stubBase: number;
   readonly stubSpacing?: number;
+  /** Defaults to true for legacy execution proofs that do not commit vectors. */
+  readonly installVector?: boolean;
   readonly streamOptions?: NucleusProofRuntimeStreamsOptions;
 }
 
@@ -592,7 +594,12 @@ export const executeCommittedNobj = (
           stubSpacing: options.runtimeStreams.stubSpacing,
           streamOptions: options.runtimeStreams.streamOptions,
         });
-  streamAdapter?.install(commonMemory, parsed.map.vectorBase);
+  if (streamAdapter !== undefined) {
+    if (options.runtimeStreams?.installVector !== false) {
+      streamAdapter.installVector(commonMemory, parsed.map.vectorBase);
+    }
+    streamAdapter.installStubs(commonMemory);
+  }
   let runtimeMemory = commonMemory;
   const ioHandlers = runtimeIoHandlers({
     streamAdapter,

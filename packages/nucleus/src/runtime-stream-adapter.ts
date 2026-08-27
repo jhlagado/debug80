@@ -5,7 +5,7 @@ import {
   type RuntimeStreamIoHandlers,
 } from "@jhlagado/z80-tool-services";
 
-import type { RuntimeServiceAddresses } from "./nobj.js";
+import type { RuntimeLinkContext, RuntimeServiceAddresses } from "./nobj.js";
 import {
   nucleusRuntimeServiceVectorBytes,
   type nucleusRuntimeServiceOrder,
@@ -48,13 +48,28 @@ export interface NucleusHostRuntimeStreamAdapterOptions {
   readonly streams?: RuntimeByteStreams;
 }
 
+export interface NucleusHostRuntimeStreamLinkOptions {
+  readonly runtimeLinkContext: RuntimeLinkContext;
+  readonly stubBase: number;
+  readonly stubSpacing?: number;
+  readonly streamOptions?: NucleusProofRuntimeStreamsOptions;
+  readonly streams?: RuntimeByteStreams;
+}
+
 export interface NucleusHostRuntimeStreamAdapter {
   readonly streams: RuntimeByteStreams;
   readonly io: RuntimeStreamIoHandlers;
   readonly serviceAddresses: RuntimeServiceAddresses;
   readonly vectorBytes: Uint8Array;
   readonly stubs: readonly NucleusHostRuntimeStreamStub[];
+  installVector(memory: Uint8Array, vectorBase: number): void;
+  installStubs(memory: Uint8Array): void;
   install(memory: Uint8Array, vectorBase: number): void;
+}
+
+export interface NucleusHostRuntimeStreamLink {
+  readonly adapter: NucleusHostRuntimeStreamAdapter;
+  readonly runtimeLinkContext: RuntimeLinkContext;
 }
 
 const streamServiceName = (
@@ -147,6 +162,22 @@ export const createNucleusHostRuntimeStreamAdapter = ({
   const io = createRuntimeStreamIoHandlers(streams, {
     statusPolicy: NUCLEUS_RUNTIME_STREAM_STATUS_POLICY,
   });
+  const installVector = (memory: Uint8Array, vectorBase: number): void => {
+    checkedAddress("vector base", vectorBase);
+    checkMemoryWrite(memory, "service vector", vectorBase, vectorBytes);
+    memory.set(vectorBytes, vectorBase);
+  };
+  const installStubs = (memory: Uint8Array): void => {
+    for (const stub of stubs) {
+      checkMemoryWrite(
+        memory,
+        streamServiceName(stub.service),
+        stub.address,
+        stub.bytes,
+      );
+      memory.set(stub.bytes, stub.address);
+    }
+  };
 
   return {
     streams,
@@ -154,19 +185,34 @@ export const createNucleusHostRuntimeStreamAdapter = ({
     serviceAddresses,
     vectorBytes,
     stubs,
+    installVector,
+    installStubs,
     install(memory: Uint8Array, vectorBase: number): void {
-      checkedAddress("vector base", vectorBase);
-      checkMemoryWrite(memory, "service vector", vectorBase, vectorBytes);
-      memory.set(vectorBytes, vectorBase);
-      for (const stub of stubs) {
-        checkMemoryWrite(
-          memory,
-          streamServiceName(stub.service),
-          stub.address,
-          stub.bytes,
-        );
-        memory.set(stub.bytes, stub.address);
-      }
+      installVector(memory, vectorBase);
+      installStubs(memory);
+    },
+  };
+};
+
+export const createNucleusHostRuntimeStreamLink = ({
+  runtimeLinkContext,
+  stubBase,
+  stubSpacing,
+  streamOptions,
+  streams,
+}: NucleusHostRuntimeStreamLinkOptions): NucleusHostRuntimeStreamLink => {
+  const adapter = createNucleusHostRuntimeStreamAdapter({
+    baseServices: runtimeLinkContext.services,
+    stubBase,
+    stubSpacing,
+    streamOptions,
+    streams,
+  });
+  return {
+    adapter,
+    runtimeLinkContext: {
+      ...runtimeLinkContext,
+      services: adapter.serviceAddresses,
     },
   };
 };
