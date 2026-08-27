@@ -10,7 +10,7 @@ import {
 } from "../../atom/src/host/index.mjs";
 
 import {
-  flattenedEntryParts,
+  flattenTranslatedEntry,
   scanAssembly,
 } from "./atom-migration-dry-run.mjs";
 
@@ -18,6 +18,8 @@ const scriptDirectory = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(scriptDirectory, "..");
 const defaultAsmRoot = path.join(packageRoot, "asm");
 const defaultProofRoot = path.join(packageRoot, "proofs");
+const identifierPattern = /^[A-Za-z_.$?][A-Za-z0-9_.$?]*$/;
+const expressionIdentifierPattern = /(^|[^A-Za-z0-9_.$?])([A-Za-z_.$?][A-Za-z0-9_.$?]*)\s*-\s*([A-Za-z_.$?][A-Za-z0-9_.$?]*)(?=$|[^A-Za-z0-9_.$?])/g;
 
 function parseArgs(argv) {
   const options = {
@@ -130,6 +132,169 @@ function firstDifference(left, right) {
   return undefined;
 }
 
+function stripComment(line) {
+  let quote = "";
+  for (let index = 0; index < line.length; index += 1) {
+    const char = line[index];
+    if (quote !== "") {
+      if (char === quote) quote = "";
+      continue;
+    }
+    if (char === "\"" || char === "'") {
+      quote = char;
+      continue;
+    }
+    if (char === ";") return line.slice(0, index);
+  }
+  return line;
+}
+
+function hexWord(value) {
+  return `$${(value & 0xffff).toString(16).toUpperCase().padStart(4, "0")}`;
+}
+
+function jsExpressionText(source, symbolValues) {
+  let expression = source
+    .replace(/\$([0-9A-Fa-f]+)/g, (_match, digits) => String(Number.parseInt(digits, 16)))
+    .replace(/%([01]+)/g, (_match, digits) => String(Number.parseInt(digits, 2)))
+    .replace(/\b([0-9A-Fa-f]+)[Hh]\b/g, (_match, digits) => String(Number.parseInt(digits, 16)))
+    .replace(/\b([01]+)[Bb]\b/g, (_match, digits) => String(Number.parseInt(digits, 2)));
+  expression = expression.replace(/[A-Za-z_.$?][A-Za-z0-9_.$?]*/g, (name) => {
+    const value = symbolValues.get(name);
+    return value === undefined ? name : String(value);
+  });
+  if (/[A-Za-z_.$?]/.test(expression)) return undefined;
+  if (!/^[0-9a-fA-FxXbB\s()+\-*/%&|^~<>]+$/.test(expression)) return undefined;
+  return expression;
+}
+
+function evaluateKnownExpression(source, symbolValues) {
+  const expression = jsExpressionText(source, symbolValues);
+  if (expression === undefined) return undefined;
+  try {
+    const value = Function(`"use strict"; return (${expression});`)();
+    return Number.isFinite(value) && Number.isInteger(value) ? value : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function augmentSymbolValuesFromPreview(text, symbolValues) {
+  const values = new Map(symbolValues);
+  const definitions = text.split("\n").flatMap((line) => {
+    const source = stripComment(line);
+    const equ = /^(\s*)([A-Za-z_.$?][A-Za-z0-9_.$?]*)(:?\s+)EQU\b(.*)$/i.exec(source);
+    return equ === null ? [] : [{ name: equ[2], expression: equ[4].trim() }];
+  });
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const { name, expression } of definitions) {
+      if (values.has(name)) continue;
+      const value = evaluateKnownExpression(expression, values);
+      if (value !== undefined) {
+        values.set(name, value);
+        changed = true;
+      }
+    }
+  }
+  return values;
+}
+
+function symbolValuesFromCurrentAssembly(current, ledger) {
+  const values = new Map();
+  const d8 = current.artifacts.find(({ kind }) => kind === "d8m")?.json;
+  const symbols = Array.isArray(d8?.symbols) ? d8.symbols : [];
+  for (const symbol of symbols) {
+    if (
+      symbol !== null &&
+      typeof symbol === "object" &&
+      typeof symbol.name === "string" &&
+      identifierPattern.test(symbol.name)
+    ) {
+      const value = Number.isInteger(symbol.address) ? symbol.address : symbol.value;
+      if (Number.isInteger(value)) values.set(symbol.name, value);
+    }
+  }
+  for (const { original, atom } of ledger) {
+    const value = values.get(original);
+    if (value !== undefined) values.set(atom, value);
+  }
+  return values;
+}
+
+function lowerResolvedPreviewExpressions(text, symbolValues) {
+  return text.split("\n").map((line) => {
+    const source = stripComment(line);
+    const comment = line.slice(source.length);
+    const equ = /^(\s*)([A-Za-z_.$?][A-Za-z0-9_.$?]*)(:?\s+)EQU\b(.*)$/i.exec(source);
+    if (equ !== null) {
+      const value = symbolValues.get(equ[2]);
+      if (value !== undefined && value >= 0 && value <= 0xffff) {
+        return `${equ[1]}${equ[2]}${equ[3]}EQU ${hexWord(value)}${comment}`;
+      }
+    }
+    const lowered = source.replace(expressionIdentifierPattern, (match, prefix, left, right) => {
+      const leftValue = symbolValues.get(left);
+      const rightValue = symbolValues.get(right);
+      if (leftValue === undefined || rightValue === undefined) return match;
+      return `${prefix}${hexWord(leftValue - rightValue)}`;
+    });
+    return `${lowered}${comment}`;
+  }).join("\n");
+}
+
+function previewPartsFromText(entry, text, { maxPartBytes }) {
+  const encoder = new TextEncoder();
+  const lines = text.match(/[^\n]*\n|[^\n]+$/g) ?? [""];
+  const parts = [];
+  let current = "";
+  let currentBytes = 0;
+
+  for (const line of lines) {
+    const lineBytes = encoder.encode(line).length;
+    if (lineBytes > maxPartBytes) {
+      throw new Error(`lowered Atom-preview line exceeds ${maxPartBytes} bytes`);
+    }
+    if (currentBytes !== 0 && currentBytes + lineBytes > maxPartBytes) {
+      const bytes = encoder.encode(current);
+      parts.push(Object.freeze({
+        ordinal: parts.length,
+        bank: 0,
+        logicalIdentity: `${entry}#preview-${String(parts.length).padStart(3, "0")}`,
+        originalBytes: bytes,
+        compilerBytes: bytes,
+        binaryIncludes: Object.freeze([]),
+      }));
+      current = "";
+      currentBytes = 0;
+    }
+    current += line;
+    currentBytes += lineBytes;
+  }
+
+  if (currentBytes !== 0 || parts.length === 0) {
+    const bytes = encoder.encode(current);
+    parts.push(Object.freeze({
+      ordinal: parts.length,
+      bank: 0,
+      logicalIdentity: `${entry}#preview-${String(parts.length).padStart(3, "0")}`,
+      originalBytes: bytes,
+      compilerBytes: bytes,
+      binaryIncludes: Object.freeze([]),
+    }));
+  }
+
+  return Object.freeze(parts);
+}
+
+function previewPartsForEntry(report, entry, symbolValues, { maxPartBytes }) {
+  const translated = flattenTranslatedEntry(report, entry);
+  const augmentedValues = augmentSymbolValuesFromPreview(translated, symbolValues);
+  const lowered = lowerResolvedPreviewExpressions(translated, augmentedValues);
+  return previewPartsFromText(entry, lowered, { maxPartBytes });
+}
+
 async function compareOne({ report, proof, asmRoot, maxPartBytes }) {
   const entry = entryForManifest(asmRoot, proof);
   if (isMeasurement(proof, entry)) {
@@ -142,14 +307,6 @@ async function compareOne({ report, proof, asmRoot, maxPartBytes }) {
   }
 
   try {
-    const parts = flattenedEntryParts(report, entry, { maxBytes: maxPartBytes });
-    const atomProject = Object.freeze({ parts });
-    const atomAssembled = await assembleResolvedAtomProject(atomProject, {
-      target: { start: 0, capacity: 0xffff },
-    });
-    const atomMaterialized = materializeAtomGeneration(atomAssembled.generation, {
-      base: contentBase(atomAssembled.generation),
-    });
     const current = await compile(path.resolve(asmRoot, entry), { outputType: "bin" });
     const diagnostics = current.diagnostics.filter(({ severity }) => severity === "error");
     if (diagnostics.length !== 0) {
@@ -169,6 +326,15 @@ async function compareOne({ report, proof, asmRoot, maxPartBytes }) {
         diagnostics: ["current assembler did not produce a bin artifact"],
       });
     }
+    const symbolValues = symbolValuesFromCurrentAssembly(current, report.ledger);
+    const parts = previewPartsForEntry(report, entry, symbolValues, { maxPartBytes });
+    const atomProject = Object.freeze({ parts });
+    const atomAssembled = await assembleResolvedAtomProject(atomProject, {
+      target: { start: 0, capacity: 0xffff },
+    });
+    const atomMaterialized = materializeAtomGeneration(atomAssembled.generation, {
+      base: contentBase(atomAssembled.generation),
+    });
     const equal = Buffer.compare(
       Buffer.from(atomMaterialized.bytes),
       Buffer.from(currentBin),
@@ -250,9 +416,19 @@ async function main() {
   return comparison.status === "ready" || options.reportOnly ? 0 : 1;
 }
 
-try {
-  process.exitCode = await main();
-} catch (error) {
-  console.error(error?.message ?? String(error));
-  process.exitCode = 2;
+export {
+  augmentSymbolValuesFromPreview,
+  evaluateKnownExpression,
+  lowerResolvedPreviewExpressions,
+  previewPartsFromText,
+  symbolValuesFromCurrentAssembly,
+};
+
+if (import.meta.url === `file://${process.argv[1]}`) {
+  try {
+    process.exitCode = await main();
+  } catch (error) {
+    console.error(error?.message ?? String(error));
+    process.exitCode = 2;
+  }
 }

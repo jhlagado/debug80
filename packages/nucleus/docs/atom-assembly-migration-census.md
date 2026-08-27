@@ -236,6 +236,7 @@ This keeps the Atom assembler small and keeps proof ownership outside the assemb
 | Proof JSON symbol references | Requires ledger join | External expected-symbol names must remain stable or be mapped |
 | `$10000` limit constants | Requires source or Atom expression decision | Atom currently rejects literals above `65535` |
 | Leading grouped immediates | Mechanical | Current `LD rr,(A<<8)|B` forms translate safely to `LD rr,A<<8|B` for Atom |
+| Resolved preview aliases and differences | Preview-only bridge | The proof comparer lowers `EQU` aliases and `SYMBOL-SYMBOL` terms only when the current assembler's resolved symbols prove the value |
 
 ## Required next implementation checks
 
@@ -272,8 +273,8 @@ result:
 
 | Status | Count |
 | --- | ---: |
-| Byte-identical proof images | 7 |
-| Atom-preview blockers | 18 |
+| Byte-identical proof images | 8 |
+| Atom-preview blockers | 17 |
 | Skipped measurement artifacts | 3 |
 
 Byte-identical proof images:
@@ -284,6 +285,7 @@ Byte-identical proof images:
 - `loop-compiler-slice-proof.json`
 - `loop-z80-slice-proof.json`
 - `memory-map-proof.json`
+- `nobj-runner-proof.json`
 - `z80-slice-proof.json`
 
 Skipped measurement artifacts:
@@ -296,10 +298,10 @@ Measured remaining blocker groups:
 
 | Group | Representative generated line | Consequence |
 | --- | --- | --- |
-| Forward or alias `EQU` expressions | `N00000PV EQU N00000PP+N000010E` | Blocks all proof images based on `flat-target-z80-slice-proof.asm` |
-| Forward data-size expressions | `DW N00000W9-N00000WB` | Blocks `nobj-runner-proof.json` |
+| Forward or alias `EQU` expressions without a proven preview value | `N00000PV EQU N00000PP+N000010E` | Blocks all proof images based on `flat-target-z80-slice-proof.asm` |
 | Keyword constant migration | `LD A,HybridLL1StartSymbol` | Blocks Stage 7/8/9 LL(1) proof images |
-| Larger preview execution budget | `expression-z80-slice-proof.json` | Atom preview assembly exceeds the comparison script's current execution budget before reporting a source diagnostic |
+| Larger preview execution budget | `aggregate-z80-slice-proof.json`, `expression-z80-slice-proof.json`, `typed-expression-z80-slice-proof.json` | Atom preview assembly exceeds the comparison script's current execution budget before reporting a source diagnostic |
+| Output-order mismatch after preview lowering | `structured-control-z80-slice-proof.json` | Atom reaches output publication but rejects descending or overlapping IMAGE records |
 
 The source-capacity blocker from single-file flattening is resolved by generated
 multipart preview parts. The next migration work should address the expression

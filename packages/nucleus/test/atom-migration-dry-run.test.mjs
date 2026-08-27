@@ -10,6 +10,8 @@ import { scanAssembly } from "../scripts/atom-migration-dry-run.mjs";
 import { translateNucleusAzmLine } from "../scripts/atom-migration-dry-run.mjs";
 import { flattenTranslatedEntry } from "../scripts/atom-migration-dry-run.mjs";
 import { flattenedEntryParts } from "../scripts/atom-migration-dry-run.mjs";
+import { lowerResolvedPreviewExpressions } from "../scripts/atom-migration-proof-compare.mjs";
+import { augmentSymbolValuesFromPreview } from "../scripts/atom-migration-proof-compare.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(testDirectory, "..");
@@ -462,5 +464,42 @@ describe("Nucleus Atom migration dry-run", () => {
         parts.flatMap(({ compilerBytes }) => [...compilerBytes]),
       ))).toBe(flattenTranslatedEntry(report, "main.asm"));
     });
+  });
+
+  it("lowers resolved proof-preview aliases and symbol differences", () => {
+    const symbolValues = new Map([
+      ["COUNT", 0x1004],
+      ["BASE", 0x1000],
+      ["END", 0x1010],
+      ["START", 0x1002],
+    ]);
+
+    expect(lowerResolvedPreviewExpressions([
+      "COUNT EQU BASE+4",
+      "DW END-START",
+      "DB 'A-B' ; END-START remains in comment",
+      "",
+    ].join("\n"), symbolValues)).toBe([
+      "COUNT EQU $1004",
+      "DW $000E",
+      "DB 'A-B' ; END-START remains in comment",
+      "",
+    ].join("\n"));
+  });
+
+  it("derives generated preview constants from earlier EQU aliases", () => {
+    const values = augmentSymbolValuesFromPreview([
+      "BASE EQU $5000",
+      "SIZE EQU 54",
+      "END  EQU BASE+SIZE",
+      "",
+    ].join("\n"), new Map());
+
+    expect(values.get("BASE")).toBe(0x5000);
+    expect(values.get("SIZE")).toBe(54);
+    expect(values.get("END")).toBe(0x5036);
+    expect(lowerResolvedPreviewExpressions("END EQU BASE+SIZE", values)).toBe(
+      "END EQU $5036",
+    );
   });
 });
