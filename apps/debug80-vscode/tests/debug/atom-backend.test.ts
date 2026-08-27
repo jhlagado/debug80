@@ -22,7 +22,7 @@ function fakeCompiler(overrides: Partial<AtomCompilerApi> = {}): AtomCompilerApi
     assembleAtomProject: vi.fn(() =>
       Promise.resolve({
         project: {},
-        generation: { finalCursor: 0x100, images: [{ address: 0x100 }] },
+        generation: { finalCursor: 0x100, images: [{ address: 0x100, bytes: Uint8Array.of(0) }] },
       })
     ),
     renderAtomArtifacts: vi.fn(() => ({
@@ -116,6 +116,65 @@ describe('Atom backend', () => {
     expect(fs.readFileSync(path.join(project.root, 'build', 'main.lst'), 'utf8')).toContain(
       'main.asm:3'
     );
+  }, 30_000);
+
+  it('publishes a fixed-width binary range from Atom generation records', async () => {
+    const project = workspace();
+    const compiler = fakeCompiler({
+      assembleAtomProject: vi.fn(() =>
+        Promise.resolve({
+          project: {},
+          generation: {
+            finalCursor: 0x4004,
+            images: [
+              { address: 0x3fff, bytes: Uint8Array.of(0xee, 0x01, 0x02) },
+              { address: 0x4004, bytes: Uint8Array.of(0x04) },
+            ],
+            patches: [{ address: 0x4002, bytes: Uint8Array.of(0xaa) }],
+          },
+        })
+      ),
+    });
+
+    const result = await new AtomBackend(compiler).assembleBin({
+      asmPath: project.source,
+      hexPath: project.hex,
+      binFrom: 0x4000,
+      binTo: 0x4004,
+      sourceRoot: project.root,
+    });
+
+    expect(result.success).toBe(true);
+    expect(compiler.assembleAtomProject).toHaveBeenCalledWith({
+      root: project.root,
+      entry: 'main.asm',
+      target: { start: 0, capacity: 0xffff },
+    });
+    expect(compiler.renderAtomArtifacts).not.toHaveBeenCalled();
+    expect(compiler.publishAtomOutputFiles).toHaveBeenCalledWith([
+      {
+        path: path.join(project.root, 'build', 'main.bin'),
+        bytes: Uint8Array.of(0x01, 0x02, 0xaa, 0x00, 0x04),
+      },
+    ]);
+  });
+
+  it('executes Atom binary output on the Z80 emulator', async () => {
+    const project = workspace();
+    fs.writeFileSync(project.source, 'ORG 4001H\nDB 0AAH\nORG 4003H\nDB 055H\n');
+
+    const result = await new AtomBackend().assembleBin({
+      asmPath: project.source,
+      hexPath: project.hex,
+      binFrom: 0x4000,
+      binTo: 0x4004,
+      sourceRoot: project.root,
+    });
+
+    expect(result.success).toBe(true);
+    expect([...fs.readFileSync(path.join(project.root, 'build', 'main.bin'))]).toEqual([
+      0x00, 0xaa, 0x00, 0x55, 0x00,
+    ]);
   }, 30_000);
 
   it('maps Atom source diagnostics without publishing partial artifacts', async () => {

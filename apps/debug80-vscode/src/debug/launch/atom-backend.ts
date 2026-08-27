@@ -6,7 +6,7 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { parseD8DebugMap } from '../../mapping/d8-map';
 import type { AssemblyDiagnostic, AssembleResult } from './assembler';
-import type { AssembleOptions, AssemblerBackend } from './assembler-backend';
+import type { AssembleBinOptions, AssembleOptions, AssemblerBackend } from './assembler-backend';
 
 interface AtomDiagnosticLocation {
   logicalIdentity?: string;
@@ -24,7 +24,8 @@ interface AtomFailure extends Error {
 
 interface AtomGeneration {
   finalCursor: number;
-  images: readonly { address: number }[];
+  images: readonly { address: number; bytes: Uint8Array | readonly number[] }[];
+  patches?: readonly { address: number; bytes: Uint8Array | readonly number[] }[];
   layout?: readonly { kind: string; address: number; count?: number }[];
 }
 
@@ -68,6 +69,34 @@ function contentBase(generation: AtomGeneration): number {
     }
   }
   return addresses.length === 0 ? generation.finalCursor : Math.min(...addresses);
+}
+
+function binPathFromHexPath(hexPath: string): string {
+  return path.join(path.dirname(hexPath), `${path.basename(hexPath, path.extname(hexPath))}.bin`);
+}
+
+function renderBinaryRange(result: AtomBuildResult, options: AssembleBinOptions): Uint8Array {
+  const length = options.binTo - options.binFrom + 1;
+  if (length < 1) {
+    throw new RangeError('Atom binary range must contain at least one byte');
+  }
+  const bytes = new Uint8Array(length);
+  const copy = (address: number, source: Uint8Array | readonly number[]) => {
+    const sourceBytes = source instanceof Uint8Array ? source : Uint8Array.from(source);
+    const start = Math.max(address, options.binFrom);
+    const end = Math.min(address + sourceBytes.length, options.binTo + 1);
+    if (end <= start) {
+      return;
+    }
+    bytes.set(sourceBytes.slice(start - address, end - address), start - options.binFrom);
+  };
+  for (const operation of result.generation.images) {
+    copy(operation.address, operation.bytes);
+  }
+  for (const operation of result.generation.patches ?? []) {
+    copy(operation.address, operation.bytes);
+  }
+  return bytes;
 }
 
 function sourceLine(filePath: string | undefined, line: number | undefined): string | undefined {
@@ -151,6 +180,27 @@ export class AtomBackend implements AssemblerBackend {
       const message = `Atom wrote ${published.length} build artifacts\n`;
       options.onOutput?.(message);
       return { success: true, stdout: message, stderr: '' };
+    } catch (error) {
+      const result = failure(error, root);
+      options.onOutput?.(`${result.error ?? 'Atom failed'}\n`);
+      return result;
+    }
+  }
+
+  public async assembleBin(options: AssembleBinOptions): Promise<AssembleResult> {
+    const root = options.sourceRoot ?? path.dirname(options.asmPath);
+    const entry = path.relative(root, options.asmPath);
+    try {
+      const compiler = this.compiler ?? (await loadAtomCompiler());
+      const result = await compiler.assembleAtomProject({
+        root,
+        entry,
+        target: { start: 0, capacity: 0xffff },
+      });
+      const binPath = binPathFromHexPath(options.hexPath);
+      const bytes = renderBinaryRange(result, options);
+      await compiler.publishAtomOutputFiles([{ path: binPath, bytes }]);
+      return { success: true };
     } catch (error) {
       const result = failure(error, root);
       options.onOutput?.(`${result.error ?? 'Atom failed'}\n`);
