@@ -115,8 +115,9 @@ fail CI because one runner is slightly slower.
 
 ### Packaging
 
-- VSIX includes `node_modules/atom-z80`.
-- VSIX includes `node_modules/@jhlagado/azm`.
+- VSIX includes the bundled Atom assembler runtime in `out/extension/extension.js`.
+- VSIX includes `assets/native-core.json` for the native Atom Z80 core.
+- VSIX package verification assembles a minimal Atom source from the staged package layout.
 - VSIX includes `out`, `resources`, `roms`, `schemas`, `syntaxes`, `README.md`, `LICENSE.txt`,
   and `THIRD_PARTY_NOTICES.md`.
 - VSIX excludes `src`, `tests`, `docs`, `coverage`, `.fallow`, `.github`, and `.vscode`.
