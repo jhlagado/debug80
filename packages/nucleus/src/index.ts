@@ -9,6 +9,11 @@ export {
   type PreparedNucleusRuntimeLink,
 } from "./application.js";
 export {
+  publishNucleusProofTarget,
+  type NucleusProofTargetPublication,
+  type NucleusProofTargetPublicationOptions,
+} from "./publication.js";
+export {
   prepareNucleusSourceParts,
   resolveNucleusProject,
   sourcePartsFromResolvedProject,

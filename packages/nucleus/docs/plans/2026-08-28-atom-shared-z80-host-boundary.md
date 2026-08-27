@@ -661,16 +661,30 @@ and representative storage-failure sequences without entering the Z80 proof
 image. This keeps the comparison executable while the existing Stage 8 proof
 continues to own the resident-code discrimination.
 
+The first file-producing publication command is now available:
+
+```text
+npm run proof:publish -w nucleus -- --output build/program.nobj proofs/flat-target-z80-slice-proof.json
+```
+
+It runs an executable proof manifest, requires the proof image to publish a
+committed NOBJ target, and writes those exact committed bytes to disk. This is
+deliberately named as proof publication because the resident source descriptors
+are still embedded in the proof image. It does, however, make NOBJ publication
+a reusable application API instead of test-only logic.
+
 This checkpoint deliberately does not move Nucleus record framing, map
 semantics, runtime-provider calls, NOBJ status behavior, Atom's assembler sink,
 or Nucleus runtime storage services. Runtime stream linking is now visible at
-the application boundary, but real compile/publication commands still need to
-consume that prepared runtime link.
+the application boundary, and proof-published NOBJ can be written from the
+command line, but arbitrary-source target publication still needs the host
+prepared source parts to be installed into the resident compiler's source
+descriptor table.
 
 ## Next implementation unit
 
-Continue Phase 3 by threading `PreparedNucleusRuntimeLink` into the real target
-publication command once that command exists. The next executable seam is a
-Node command that prepares source, selects a runtime-service profile, commits
-NOBJ with the matching runtime initial image, and executes through Debug80
-without execution-time vector patching.
+Continue Phase 3 by replacing the proof-owned embedded source descriptors with
+a host-built descriptor table from `PreparedNucleusCompilation.sourceParts`.
+That is the missing adapter between real project source preparation and the
+resident compiler path. Once it exists, the publication command can take an
+entry `.nu` file instead of a proof manifest.

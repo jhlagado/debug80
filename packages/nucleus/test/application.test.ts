@@ -1,4 +1,4 @@
-import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { execFile } from "node:child_process";
@@ -11,6 +11,7 @@ import { SourcePreparationError } from "@jhlagado/z80-tool-services/source-prepa
 import {
   prepareNucleusCompilation,
   prepareNucleusRuntimeLink,
+  publishNucleusProofTarget,
 } from "../src/index.js";
 import { defaultRuntimeLinkContext } from "../src/nucleus-runtime.js";
 import { Service } from "../src/runtime-contract.js";
@@ -19,6 +20,8 @@ const encoder = new TextEncoder();
 const execFileAsync = promisify(execFile);
 const packageRoot = path.resolve(import.meta.dirname, "..");
 const tsxBin = path.resolve(packageRoot, "..", "..", "node_modules", "tsx", "dist", "cli.mjs");
+const proof = (name: string): string =>
+  path.resolve(packageRoot, "proofs", `${name}.json`);
 
 async function withSourceTree<T>(
   files: Readonly<Record<string, string>>,
@@ -257,5 +260,56 @@ describe("Nucleus application boundary", () => {
         stderr: expect.stringContaining("Nucleus source preparation only accepts leading //% import"),
       });
     });
+  });
+
+  it("publishes committed NOBJ bytes from an executable proof manifest", async () => {
+    const outputDirectory = await mkdtemp(path.join(tmpdir(), "nucleus-publish-"));
+    try {
+      const output = path.join(outputDirectory, "program.nobj");
+      const publication = await publishNucleusProofTarget({
+        manifest: proof("flat-target-z80-slice-proof"),
+        output,
+      });
+
+      expect(publication.nobj.parsed.commit.recordCount).toBe(130);
+      expect(publication.nobj.parsed.map.entryAddress).toBe(0x8000);
+      expect(await readFile(output)).toEqual(
+        Buffer.from(publication.nobj.serialized),
+      );
+    } finally {
+      await rm(outputDirectory, { recursive: true, force: true });
+    }
+  });
+
+  it("exposes proof-target NOBJ publication through the development CLI", async () => {
+    const outputDirectory = await mkdtemp(path.join(tmpdir(), "nucleus-cli-publish-"));
+    try {
+      const output = path.join(outputDirectory, "program.nobj");
+      const { stdout, stderr } = await execFileAsync(
+        process.execPath,
+        [
+          tsxBin,
+          "src/cli/proof-publish.ts",
+          "--json",
+          "--output",
+          output,
+          proof("flat-target-z80-slice-proof"),
+        ],
+        { cwd: packageRoot },
+      );
+
+      const summary = JSON.parse(stdout);
+      expect(stderr).toBe("");
+      expect(summary).toMatchObject({
+        output,
+        bytes: 1396,
+        records: 130,
+        entryBank: 0,
+        entryAddress: 0x8000,
+      });
+      expect((await readFile(output)).byteLength).toBe(summary.bytes);
+    } finally {
+      await rm(outputDirectory, { recursive: true, force: true });
+    }
   });
 });

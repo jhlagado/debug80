@@ -14,6 +14,7 @@
     "preproof": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/debug80-runtime",
     "proof": "vitest run test/proof-harness.test.ts --reporter=verbose",
     "source:prepare": "tsx src/cli/prepare.ts",
+    "proof:publish": "tsx src/cli/proof-publish.ts",
     "atom:migration:dry-run": "node scripts/atom-migration-dry-run.mjs",
     "atom:migration:census": "node scripts/atom-migration-dry-run.mjs --report-only",
     "atom:migration:proof-compare": "node scripts/atom-migration-proof-compare.mjs --report-only"
