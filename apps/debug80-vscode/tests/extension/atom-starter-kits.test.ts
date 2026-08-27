@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 
 type AtomBuildResult = {
   generation: {
-    images: readonly { address: number; value: number }[];
+    images: readonly { address: number; bytes: readonly number[] }[];
   };
 };
 
@@ -56,4 +56,23 @@ describe('Atom project starters', () => {
       expect(result.generation.images.length).toBeGreaterThan(0);
     });
   }
+
+  it('assembles the extension smoke target with the configured Atom backend', async () => {
+    const compiler = (await import('atom-z80')) as unknown as AtomCompiler;
+    const config = JSON.parse(
+      fs.readFileSync(path.join(process.cwd(), 'debug80.json'), 'utf8')
+    ) as {
+      targets: { app: { assembler: string; sourceFile: string } };
+    };
+    expect(config.targets.app.assembler).toBe('atom');
+
+    const result = await compiler.assembleAtomProject({
+      root: process.cwd(),
+      entry: config.targets.app.sourceFile,
+      target: { start: 0, capacity: 0xffff },
+    });
+    expect(result.generation.images.flatMap(({ bytes }) => bytes)).toEqual([
+      0x3e, 0x05, 0xc6, 0x03, 0x76,
+    ]);
+  });
 });

@@ -162,6 +162,11 @@ fallback remains AZM for external project files that predate explicit
 selection. It changes only after the in-repository corpus is converted and a
 major-release migration note is ready.
 
+The Debug80 extension's own root smoke target is the first converted corpus
+target. Its checked source assembles through Atom to `3E 05 C6 03 76`. Sources
+that require unsupported language features remain explicitly assigned to AZM;
+the migration does not rewrite them opportunistically.
+
 ## Checkpoint discipline
 
 Each checkpoint:
