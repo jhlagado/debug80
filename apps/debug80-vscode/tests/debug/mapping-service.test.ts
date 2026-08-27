@@ -198,7 +198,9 @@ describe('mapping-service', () => {
     expect(result.mapping.segments).toHaveLength(0);
     expect(result.index.segmentsByAddress).toHaveLength(0);
     expect(logs.some((line) => line.includes('Source map missing'))).toBe(true);
-    expect(logs.some((line) => line.includes('Build the selected target with AZM'))).toBe(true);
+    expect(
+      logs.some((line) => line.includes('Build the selected target with the configured assembler'))
+    ).toBe(true);
   });
 
   it('does not load retired project-cache maps when the build-side source map is missing', () => {

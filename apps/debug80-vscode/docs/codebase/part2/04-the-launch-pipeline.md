@@ -236,7 +236,7 @@ backend maps that location into `AssemblyDiagnostic`, reads the original source
 line when available, and sends the result through Debug80's ordinary build
 failure path. Included-file errors continue to name the included file.
 
-For the simple platform, ranged binary output is now validated as a pair: `simple.binFrom` and `simple.binTo` must both be present or both be absent, and `binFrom` must be less than or equal to `binTo`. This is enforced during launch validation and again immediately before assembly. If a ranged simple build is requested through a backend without `assembleBin()` support, Debug80 fails the launch with a direct build error instead of pretending the range was applied. In the current codebase that means ranged simple binaries require the AZM backend rather than Glimmer.
+For the simple platform, ranged binary output is validated as a pair: `simple.binFrom` and `simple.binTo` must both be present or both be absent, and `binFrom` must be less than or equal to `binTo`. This is enforced during launch validation and again immediately before assembly. If a ranged simple build is requested through a backend without `assembleBin()` support, Debug80 fails the launch with a direct build error instead of pretending the range was applied. Atom and AZM support ranged binary output; Glimmer and Nucleus do not expose that backend method.
 
 ### The AZM invocation
 
@@ -275,7 +275,7 @@ Assembler backends should be treated as part of the extension's packaged depende
 
 ### The Glimmer invocation
 
-`GlimmerBackend` in `src/debug/launch/glimmer-backend.ts` loads `@jhlagado/glimmer/build` and calls `buildGlimmerProgram()` in-process. Debug80 gives Glimmer an output path at `<artifactBase>.asm`, which lets the library place every derived artifact where the rest of the launch pipeline expects it: `<artifactBase>.hex`, `<artifactBase>.bin`, and `<artifactBase>.d8.json`.
+`GlimmerBackend` in `src/debug/launch/glimmer-backend.ts` loads `@jhlagado/glimmer/build` and calls `buildGlimmerProgram()` in-process. Debug80 passes an output path at `<artifactBase>.asm`; Glimmer then writes the derived artifacts where the rest of the launch pipeline expects them: `<artifactBase>.hex`, `<artifactBase>.bin`, and `<artifactBase>.d8.json`.
 
 The Glimmer build path delegates code generation, AZM contract injection and checking, assembly, and debug-map rewriting to the Glimmer library. The resulting D8 map keeps executable block-body lines attributed to the original `.glim` file while the generated `.asm` remains available as a sibling artifact for inspection and for any downstream tools that need the lowered source.
 
@@ -403,9 +403,9 @@ The result is a `SourceManagerState` containing the resolved source file, source
 
 The mapping between source lines and addresses now normally comes from a native D8 JSON file:
 
-- **Native D8 map** — AZM emits a `.d8.json` source map beside the build artifact. This is the authoritative active-project source map.
+- **Native D8 map** — the assembler emits a `.d8.json` source map beside the build artifact. This is the authoritative active-project source map.
 
-User-facing messages should call this a "source map" and tell the user to build the target if the map is missing or stale.
+User-facing messages should call this a "source map" and instruct the user to build the target if the map is missing or stale.
 
 For TEC-1G multibank ROM artifacts, `buildTec1gRomArtifactsIfRequested()` also records `debugMapAddressSpaces` and `debugMapAddressTransforms` keyed by each generated auxiliary D8 path. `buildMappingFromDebugMap()` applies that metadata to every imported segment and anchor from the matching map, so a bank map assembled with artifact-relative addresses is rebased into the live `0x8000-0xBFFF` CPU window while later breakpoint and stack lookups can still distinguish bank 0 from bank 3.
 
@@ -437,7 +437,7 @@ After source mapping is complete, the pipeline emits a `debug80/mainSource` even
 
 ## Stage 7: Runtime creation
 
-The final stage creates the Z80 runtime — the emulator that will execute the program — and connects it to the platform's I/O handlers.
+The final stage creates the Z80 runtime, the emulator that executes the program, and connects it to the platform's I/O handlers.
 
 ### Platform I/O
 
@@ -539,7 +539,7 @@ interface LaunchSessionArtifacts {
 }
 ```
 
-Back in `handleLaunchRequest()`, these artifacts are applied to the session state via `applyLaunchSessionArtifacts()`, which copies each field into the corresponding `SessionStateShape` property. This is a field-by-field assignment — not a replacement of the state object — because the request controller and other components already hold references to the state object.
+Back in `handleLaunchRequest()`, `applyLaunchSessionArtifacts()` copies each artifact field into the corresponding `SessionStateShape` property. This is a field-by-field assignment, not a replacement of the state object, because the request controller and other components already hold references to the state object.
 
 ---
 

@@ -109,12 +109,12 @@ export function buildMappingFromDebugMap(options: {
   }
   if (loadedMap !== undefined && !hasNativeMap) {
     service.logger.warn(
-      `Debug80: Ignoring non-native source map: ${formatMapDisplayPath(debugMapLoadedFrom ?? mapPath, service)}. Build the selected target with AZM to regenerate it.`
+      `Debug80: Ignoring non-native source map: ${formatMapDisplayPath(debugMapLoadedFrom ?? mapPath, service)}. Build the selected target with the configured assembler to regenerate it.`
     );
   }
   if (loadedMap === undefined) {
     service.logger.warn(
-      `Debug80: Source map missing: ${formatMapDisplayPath(mapPath, service)}. Build the selected target with AZM to generate it.`
+      `Debug80: Source map missing: ${formatMapDisplayPath(mapPath, service)}. Build the selected target with the configured assembler to generate it.`
     );
   }
 
@@ -288,7 +288,7 @@ function loadDebugMap(
     if (!map) {
       const prefix = `Debug80 [${service.platform}]`;
       service.logger.warn(
-        `${prefix}: Invalid D8 debug map at "${mapPath}". Build the selected target with AZM to regenerate it. (${error})`
+        `${prefix}: Invalid D8 debug map at "${mapPath}". Build the selected target with the configured assembler to regenerate it. (${error})`
       );
       return undefined;
     }
@@ -296,7 +296,7 @@ function loadDebugMap(
   } catch (err) {
     const prefix = `Debug80 [${service.platform}]`;
     service.logger.error(
-      `${prefix}: Failed to read D8 debug map at "${mapPath}". Build the selected target with AZM to regenerate it. (${String(err)})`
+      `${prefix}: Failed to read D8 debug map at "${mapPath}". Build the selected target with the configured assembler to regenerate it. (${String(err)})`
     );
     return undefined;
   }

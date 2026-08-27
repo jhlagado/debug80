@@ -97,7 +97,7 @@ describe('launch-pipeline', () => {
         simpleConfig: simpleBinaryConfig(),
       })
     ).rejects.toThrow(
-      'glimmer does not support simple.binFrom/simple.binTo; ranged Simple binaries currently require the AZM backend.'
+      'glimmer does not support simple.binFrom/simple.binTo; choose an assembler backend with ranged binary output.'
     );
     expect(backend.assemble).not.toHaveBeenCalled();
   });

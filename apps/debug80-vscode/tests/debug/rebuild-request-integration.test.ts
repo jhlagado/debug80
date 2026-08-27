@@ -52,7 +52,7 @@ describe('warm rebuild assembly integration', () => {
       ok: false,
       summary: 'assembly',
       detail:
-        'glimmer does not support simple.binFrom/simple.binTo; ranged Simple binaries currently require the AZM backend.',
+        'glimmer does not support simple.binFrom/simple.binTo; choose an assembler backend with ranged binary output.',
     });
     expect(sendResponse).toHaveBeenCalledWith(response);
   });

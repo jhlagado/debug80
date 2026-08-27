@@ -58,7 +58,7 @@ export async function assembleIfRequested(options: {
   if (binaryRange !== undefined && backend.assembleBin === undefined) {
     throw new AssembleFailureError({
       success: false,
-      error: `${backend.id} does not support simple.binFrom/simple.binTo; ranged Simple binaries currently require the AZM backend.`,
+      error: `${backend.id} does not support simple.binFrom/simple.binTo; choose an assembler backend with ranged binary output.`,
     });
   }
 

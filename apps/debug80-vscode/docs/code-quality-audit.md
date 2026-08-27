@@ -16,7 +16,7 @@ Phases 1–4 of the cleanup programme are complete. The main maintainability ris
 are not architectural collapse; they are accumulated branch complexity in
 recent hot zones, large composition files, webview/backend type-safety
 divergence, dead exported surface area, and remaining historical source-map/cache
-vocabulary that can obscure the current AZM-only model.
+vocabulary that can obscure the current assembler-selection model.
 
 The highest-value cleanup is now to harden the areas that have already regressed
 multiple times — especially TEC-1G matrix keyboard state and webview boundary
@@ -1484,7 +1484,7 @@ file-key resolution through `src/debug/mapping/d8-source-paths.ts`. The helper
 centralizes the behavior that both areas rely on:
 
 - absolute D8 file keys remain absolute, with existing files canonicalized;
-- relative file keys prefer existing files below supplied source roots;
+- relative file keys are resolved against existing files below supplied source roots first;
 - launch-side auxiliary maps still fall back beside the map file;
 - editor navigation still falls back to the project root, preserving the old
   "project-relative missing file" behavior for F12/hover/workspace symbols.
@@ -1585,12 +1585,12 @@ A full codebase review was performed with emphasis on the last ~30 commits
 **Recent change concentration.** Almost all recent work clusters around TEC-1G
 matrix keyboard behavior and reset/MON-3 RAM policy:
 
-| Theme | Signal | Key files |
-| ----- | ------ | --------- |
-| Matrix modifier chords (Ctrl/Shift/Fn/Alt) | 10+ fix commits | `matrix-request.ts`, `matrix-ui.ts`, `launch-sequence.ts` |
-| Keyboard capture vs. attachment | 3 commits | `matrix-ui.ts`, `matrix-routing-cue.ts`, `index.ts` |
-| Reset preserves MON-3 monitor RAM | revert/re-apply cycle | `platform-requests.ts`, `provider.ts` |
-| SD SPI / DS1302 DIAG protocol tests | 1 commit | `ds1302.ts`, `sd-spi.test.ts` |
+| Theme                                      | Signal                | Key files                                                 |
+| ------------------------------------------ | --------------------- | --------------------------------------------------------- |
+| Matrix modifier chords (Ctrl/Shift/Fn/Alt) | 10+ fix commits       | `matrix-request.ts`, `matrix-ui.ts`, `launch-sequence.ts` |
+| Keyboard capture vs. attachment            | 3 commits             | `matrix-ui.ts`, `matrix-routing-cue.ts`, `index.ts`       |
+| Reset preserves MON-3 monitor RAM          | revert/re-apply cycle | `platform-requests.ts`, `provider.ts`                     |
+| SD SPI / DS1302 DIAG protocol tests        | 1 commit              | `ds1302.ts`, `sd-spi.test.ts`                             |
 
 Repeated fix commits on the same matrix/reset surface indicate policy-heavy,
 multi-authority state that is hard to reason about and easy to regress. Tests
@@ -1620,15 +1620,15 @@ were added alongside fixes (good), but production complexity is mirroring into
 
 **Maintainability scorecard (2026-06-10).**
 
-| Dimension | Rating | Notes |
-| --------- | ------ | ----- |
-| Architecture | Strong | Clear layers, plugin platforms, no circular deps |
-| Type safety (`src/`) | Strong | Among strictest extension TS configs |
-| Type safety (webview) | Moderate | `strict: true`; DOM/message boundaries remain cast-heavy |
-| Test culture | Strong | Layered gates, DIAG-derived protocol tests |
-| Documentation | Strong | Engineering manual + living audit |
-| Complexity management | Moderate | Large files, UI state coupling |
-| Change velocity risk | Moderate–High | Matrix/reset hot zones |
+| Dimension             | Rating        | Notes                                                    |
+| --------------------- | ------------- | -------------------------------------------------------- |
+| Architecture          | Strong        | Clear layers, plugin platforms, no circular deps         |
+| Type safety (`src/`)  | Strong        | Among strictest extension TS configs                     |
+| Type safety (webview) | Moderate      | `strict: true`; DOM/message boundaries remain cast-heavy |
+| Test culture          | Strong        | Layered gates, DIAG-derived protocol tests               |
+| Documentation         | Strong        | Engineering manual + living audit                        |
+| Complexity management | Moderate      | Large files, UI state coupling                           |
+| Change velocity risk  | Moderate–High | Matrix/reset hot zones                                   |
 
 **Recommended immediate next step:** continue with small, test-first cleanup in
 Phase 6/7 webview boundaries, or remove confirmed dead exports. Do not continue
@@ -2269,9 +2269,9 @@ Recommended approach:
 `vitest.config.ts` excludes from the 80% threshold: entire Z80 core
 (`cpu.ts`, `runtime.ts`, `decode.ts`), platform runtimes (`tec1/runtime.ts`,
 `tec1g/runtime.ts`), extension entrypoints (`extension.ts`, `commands.ts`,
-`platform-view-provider.ts`), and the DAP session (`adapter.ts`). This is honest
-and documented, but `npm run coverage` can pass while core execution paths are
-integration-tested only.
+`platform-view-provider.ts`), and the DAP session (`adapter.ts`). The exclusions
+are documented, but `npm run coverage` can pass while core execution paths are
+covered only by integration tests.
 
 Recommended approach:
 
@@ -2286,21 +2286,21 @@ hot zones have excellent targeted coverage (`matrix-request.test.ts`,
 `tec1g-matrix-ui.test.ts`, `platform-requests.test.ts`). The downside is
 duplicated fixture setup and test files that mirror production complexity:
 
-| Test file | Lines | Concern |
-| --------- | ----: | ------- |
-| `tests/extension/commands.test.ts` | 1703 | Repeated VS Code mock setup |
-| `tests/extension/platform-view-provider.test.ts` | 1021 | Large integration harness |
-| `tests/webview/tec1g-matrix-ui.test.ts` | 931 | Mirrors matrix-ui complexity |
+| Test file                                        | Lines | Concern                      |
+| ------------------------------------------------ | ----: | ---------------------------- |
+| `tests/extension/commands.test.ts`               |  1703 | Repeated VS Code mock setup  |
+| `tests/extension/platform-view-provider.test.ts` |  1021 | Large integration harness    |
+| `tests/webview/tec1g-matrix-ui.test.ts`          |   931 | Mirrors matrix-ui complexity |
 
 **Coverage gaps (2026-06-10):**
 
-| Area | Status |
-| ---- | ------ |
-| `launch-sequence.ts` | Direct safety tests added |
-| `io-handlers.ts` | Direct dispatcher tests added |
-| `auto-rebuild.ts` | Only referenced in cross-layer contract test |
-| Z80 `cpu.ts` / core execution | Excluded from coverage; adapter/runtime tests only |
-| Webview `tec1g/index.ts` composition root | Partially covered via integration-style tests |
+| Area                                      | Status                                             |
+| ----------------------------------------- | -------------------------------------------------- |
+| `launch-sequence.ts`                      | Direct safety tests added                          |
+| `io-handlers.ts`                          | Direct dispatcher tests added                      |
+| `auto-rebuild.ts`                         | Only referenced in cross-layer contract test       |
+| Z80 `cpu.ts` / core execution             | Excluded from coverage; adapter/runtime tests only |
+| Webview `tec1g/index.ts` composition root | Partially covered via integration-style tests      |
 
 Recommended approach:
 
@@ -2311,7 +2311,7 @@ Recommended approach:
 
 Completed fixture cleanup:
 
-- Added shared e2e adapter helpers for workspace harness creation, harness
+- Added shared e2e adapter helpers for workspace setup, harness
   disposal, launch/configuration, and top stack-frame reads.
 - Moved repeated setup out of the step, terminate, adapter, and source-map e2e
   tests while keeping each test's assertions local.
@@ -2532,7 +2532,7 @@ Design risks to look for before changing code:
   activation being coupled to accordion state;
 - state transitions that are only implied by DOM mutation instead of being
   represented by a named state model;
-- rendering code that also decides business policy, such as whether a key event
+- rendering code that also contains business policy, such as whether a key event
   belongs to matrix keyboard or keypad.
 
 Findings from the latest UI audit:
@@ -2915,7 +2915,7 @@ should not be expanded into brittle assertions for every internal call order.
 
 Use these criteria when deciding whether cleanup is worthwhile:
 
-- Does it remove obsolete behavior, not just move code around?
+- Does it remove obsolete behavior instead of moving code around?
 - Does it make a recurring regression harder to reintroduce?
 - Does it reduce a public or cross-module surface area?
 - Does it make product policy explicit in names, tests, or docs?
@@ -2989,8 +2989,8 @@ targets, asks the caller whether each target program still exists, preserves the
 strings used in the project UI and target QuickPick.
 
 `project-target-selection.ts` is now mostly orchestration: read config, resolve
-project root, call pure policy helpers, show QuickPick, update config, and
-remember selection. The remaining cleanup opportunities in this area are smaller
+project root, call pure policy helpers, show QuickPick, update config, and store
+the chosen target. The remaining cleanup opportunities in this area are smaller
 and should be weighed against churn: `projectRootFromProjectConfigPath`,
 `targetProgramFileExists`, and source-file caching are still local because they
 are filesystem/VS Code-adjacent rather than product policy.
@@ -3014,8 +3014,8 @@ After the policy, QuickPick row, config-display, and filesystem/path splits,
 low-risk extraction. Its remaining responsibilities are intentionally
 VS Code-facing: read the current project config, resolve remembered/default
 target choices through the pure policy helpers, build the QuickPick, persist the
-selection, and apply an entry-source binding when the user chooses a discovered
-source file.
+chosen target, and apply an entry-source binding when the user selects a
+discovered source file.
 
 Further splitting inside this file would mostly move orchestration into another
 orchestration module. Leave this area stable unless a future product change adds
@@ -3166,10 +3166,10 @@ optional `@fallow-cli/darwin-arm64` binary package fails to resolve from npm.
 Use focused tests, lint, package checks, TypeScript, high-effort review, and CI
 as the verification evidence until the Fallow package issue is fixed.
 
-Next safe cleanup candidate: use the later "Fresh Post-AZM Cleanup Survey" in
-this document as the current prioritization point, rather than adding more AZM
-backend churn. Prefer a test-only or helper-only target outside the TEC-1G
-matrix keyboard path unless a behavior goal explicitly requires otherwise.
+For the next safe cleanup, use the later "Fresh Post-AZM Cleanup Survey" in this
+document as the current prioritization point, rather than adding more AZM backend
+churn. Prefer a test-only or helper-only target outside the TEC-1G matrix
+keyboard path unless a behavior goal explicitly requires otherwise.
 
 ### Latest Goal Note: AZM Backend Artifact Helper Extraction
 
@@ -3219,9 +3219,10 @@ Verification for this goal covered `npx vitest run
 tests/debug/azm-backend.test.ts`, `npm run typecheck`, `npm run lint`,
 changed-file Fallow, and `npm run package:check --if-present`.
 
-Next safe cleanup candidate: run a fresh changed-code survey and choose a
-non-hot-zone target with focused tests. Avoid matrix keyboard production code
-unless the goal is specifically matrix behavior with characterization coverage.
+For the next safe cleanup, run a fresh changed-code survey, then use the results
+to choose a non-hot-zone target with focused tests. Avoid matrix keyboard
+production code unless the goal is specifically matrix behavior with
+characterization coverage.
 
 ### Latest Goal Note: Fresh Post-AZM Cleanup Survey
 
@@ -3511,14 +3512,14 @@ runtime-control hot zones.
 
 ## Priority Summary (2026-06-10)
 
-| Priority | Issue | Primary files |
-| -------- | ----- | ------------- |
-| Critical | Matrix keyboard multi-authority state | `matrix-ui.ts`, `matrix-request.ts`, `accordion-layout.ts`, `launch-sequence.ts` |
-| Critical | Cast-heavy webview DOM/message boundaries | `webview/tec1g/index.ts`, `webview/common/project-status-ui.ts`, `matrix-ui.ts` |
-| High | Launch orchestration breadth | `src/debug/launch/launch-sequence.ts` |
-| High | IO dispatcher breadth | `src/platforms/tec1g/io-handlers.ts` |
-| Medium | Large orchestration files | `adapter-request-controller.ts`, `launch-args.ts`, `runtime-control.ts` |
-| Medium | Launch policy spread | `launch-args.ts`, `config-validation.ts`, `target-commands.ts` |
-| Medium | Bloated test files | `commands.test.ts`, `tec1g-matrix-ui.test.ts` |
-| Medium | Coverage exclusions mask core | `vitest.config.ts` |
-| Low | Dead exports, CSS monolith, magic numbers | per Fallow list, `styles.css`, `matrix-ui.ts` |
+| Priority | Issue                                     | Primary files                                                                    |
+| -------- | ----------------------------------------- | -------------------------------------------------------------------------------- |
+| Critical | Matrix keyboard multi-authority state     | `matrix-ui.ts`, `matrix-request.ts`, `accordion-layout.ts`, `launch-sequence.ts` |
+| Critical | Cast-heavy webview DOM/message boundaries | `webview/tec1g/index.ts`, `webview/common/project-status-ui.ts`, `matrix-ui.ts`  |
+| High     | Launch orchestration breadth              | `src/debug/launch/launch-sequence.ts`                                            |
+| High     | IO dispatcher breadth                     | `src/platforms/tec1g/io-handlers.ts`                                             |
+| Medium   | Large orchestration files                 | `adapter-request-controller.ts`, `launch-args.ts`, `runtime-control.ts`          |
+| Medium   | Launch policy spread                      | `launch-args.ts`, `config-validation.ts`, `target-commands.ts`                   |
+| Medium   | Bloated test files                        | `commands.test.ts`, `tec1g-matrix-ui.test.ts`                                    |
+| Medium   | Coverage exclusions mask core             | `vitest.config.ts`                                                               |
+| Low      | Dead exports, CSS monolith, magic numbers | per Fallow list, `styles.css`, `matrix-ui.ts`                                    |
