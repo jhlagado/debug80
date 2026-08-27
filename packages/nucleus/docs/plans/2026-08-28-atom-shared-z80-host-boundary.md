@@ -447,7 +447,9 @@ Completion evidence for that next checkpoint should include:
 
 ## Host-callback stub checkpoint
 
-The first host-backed service proof now exists for `writeOutputByte`.
+The first host-backed service proof now covers all six stream services:
+`readInputByte`, `writeOutputByte`, `readStorageByte`, `rewindStorageInput`,
+`writeStorageByte`, and `seekStorageOutput`.
 
 The shared package owns the byte-wide I/O protocol:
 
@@ -481,12 +483,22 @@ stub
 ```
 
 Debug80 handles the I/O ports with `createRuntimeStreamIoHandlers`, backed by a
-`RuntimeByteStreams` instance. The checked behavior is:
+`RuntimeByteStreams` instance. Shared code also generates the call-compatible
+Z80 stub bytes with `createRuntimeStreamIoStubBytes`, so the operation protocol
+and stub representation are tested together.
 
-- success appends the byte to the host stream, returns `A == 0`, preserves stack
-  balance, and clears carry;
-- output failure returns `A == outputFailure`, preserves stack balance, sets
-  carry, and appends no byte.
+The checked behavior is:
+
+- input and storage reads return the stream byte in `A` on success;
+- output and storage writes append or overwrite the host stream as appropriate;
+- storage rewind resets the storage-input cursor;
+- storage seek accepts existing positions and rejects an out-of-range word
+  offset;
+- each service preserves stack balance through the original `CALL vector-slot`
+  shape;
+- success returns `A == 0` with carry clear; and
+- failure returns the service-error code in `A` with carry set and no forbidden
+  stream mutation.
 
 This still does not replace the canonical resident proof runtime. It proves the
 preferred adapter direction: service vectors can point at host-callback stubs

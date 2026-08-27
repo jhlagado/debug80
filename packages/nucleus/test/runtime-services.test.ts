@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { createZ80Runtime } from "@jhlagado/debug80-runtime";
 import {
+  createRuntimeStreamIoStubBytes,
   createRuntimeStreamIoHandlers,
   dispatchRuntimeStreamService,
   RUNTIME_STREAM_IO_OPERATION,
@@ -84,57 +85,115 @@ describe("Nucleus runtime stream services", () => {
     expect([...streams.output]).toEqual([1, 2, 3, 4]);
   });
 
-  it("can route the writeOutputByte vector through a host-backed I/O stub", () => {
+  it("can route every stream-service vector through host-backed I/O stubs", () => {
     const serviceVectorBase = 0x4000;
     const stubAddress = 0x4100;
     const entryAddress = 0x0100;
-    const statusAddress = 0x5000;
+    const resultAddress = 0x5000;
+    const statusBase = 0x5010;
+    const stubSpacing = 0x20;
 
-    const run = (failOutputWrites = false) => {
-      const streams = createNucleusProofRuntimeStreams({ failOutputWrites });
+    const run = (
+      options: Parameters<typeof createNucleusProofRuntimeStreams>[0] = {},
+    ) => {
+      const streams = createNucleusProofRuntimeStreams(options);
       const io = createRuntimeStreamIoHandlers(streams, {
         statusPolicy: NUCLEUS_RUNTIME_STREAM_STATUS_POLICY,
       });
       const memory = new Uint8Array(0x10000);
+      const serviceAddresses = {
+        ...defaultRuntimeLinkContext.services,
+        readInputByte: stubAddress,
+        writeOutputByte: stubAddress + stubSpacing,
+        readStorageByte: stubAddress + stubSpacing * 2,
+        rewindStorageInput: stubAddress + stubSpacing * 3,
+        writeStorageByte: stubAddress + stubSpacing * 4,
+        seekStorageOutput: stubAddress + stubSpacing * 5,
+      };
       memory.set(
-        nucleusRuntimeServiceVectorBytes({
-          ...defaultRuntimeLinkContext.services,
-          writeOutputByte: stubAddress,
-        }),
+        nucleusRuntimeServiceVectorBytes(serviceAddresses),
         serviceVectorBase,
       );
-      memory.set(
-        Uint8Array.of(
-          0x4f, // LD C,A
-          0x3e,
-          NUCLEUS_RUNTIME_STREAM_IO_OPERATION[Service.writeOutputByte],
-          0xd3,
-          RUNTIME_STREAM_IO_PORT.operation, // OUT (operation),A
-          0x79, // LD A,C
-          0xd3,
-          RUNTIME_STREAM_IO_PORT.value, // OUT (value),A
-          0xdb,
-          RUNTIME_STREAM_IO_PORT.status, // IN A,(status)
-          0xb7, // OR A
-          0xc8, // RET Z
-          0x37, // SCF
-          0xc9, // RET
-        ),
-        stubAddress,
-      );
+      for (const [service, address] of [
+        [Service.readInputByte, serviceAddresses.readInputByte],
+        [Service.writeOutputByte, serviceAddresses.writeOutputByte],
+        [Service.readStorageByte, serviceAddresses.readStorageByte],
+        [Service.rewindStorageInput, serviceAddresses.rewindStorageInput],
+        [Service.writeStorageByte, serviceAddresses.writeStorageByte],
+        [Service.seekStorageOutput, serviceAddresses.seekStorageOutput],
+      ] as const) {
+        memory.set(
+          createRuntimeStreamIoStubBytes(
+            NUCLEUS_RUNTIME_STREAM_IO_OPERATION[service],
+          ),
+          address,
+        );
+      }
       memory.set(
         Uint8Array.of(
           0x31,
           0x00,
           0xff, // LD SP,$FF00
           0x3e,
-          0x41, // LD A,'A'
+          0x51, // LD A,'Q'
           0xcd,
           (serviceVectorBase + Service.writeOutputByte * 3) & 0xff,
           (serviceVectorBase + Service.writeOutputByte * 3) >>> 8, // CALL vector
           0x32,
-          statusAddress & 0xff,
-          statusAddress >>> 8, // LD (status),A
+          statusBase & 0xff,
+          statusBase >>> 8, // LD (status+0),A
+          0xcd,
+          (serviceVectorBase + Service.readInputByte * 3) & 0xff,
+          (serviceVectorBase + Service.readInputByte * 3) >>> 8, // CALL vector
+          0x32,
+          resultAddress & 0xff,
+          resultAddress >>> 8, // LD (result),A
+          0x3e,
+          0x52, // LD A,'R'
+          0xcd,
+          (serviceVectorBase + Service.writeStorageByte * 3) & 0xff,
+          (serviceVectorBase + Service.writeStorageByte * 3) >>> 8, // CALL vector
+          0x32,
+          (statusBase + 1) & 0xff,
+          (statusBase + 1) >>> 8, // LD (status+1),A
+          0xcd,
+          (serviceVectorBase + Service.readStorageByte * 3) & 0xff,
+          (serviceVectorBase + Service.readStorageByte * 3) >>> 8, // CALL vector
+          0x32,
+          (resultAddress + 1) & 0xff,
+          (resultAddress + 1) >>> 8, // LD (result+1),A
+          0xcd,
+          (serviceVectorBase + Service.rewindStorageInput * 3) & 0xff,
+          (serviceVectorBase + Service.rewindStorageInput * 3) >>> 8, // CALL vector
+          0x32,
+          (statusBase + 2) & 0xff,
+          (statusBase + 2) >>> 8, // LD (status+2),A
+          0x21,
+          0x01,
+          0x00, // LD HL,1
+          0xcd,
+          (serviceVectorBase + Service.seekStorageOutput * 3) & 0xff,
+          (serviceVectorBase + Service.seekStorageOutput * 3) >>> 8, // CALL vector
+          0x32,
+          (statusBase + 3) & 0xff,
+          (statusBase + 3) >>> 8, // LD (status+3),A
+          0x3e,
+          0x53, // LD A,'S'
+          0xcd,
+          (serviceVectorBase + Service.writeStorageByte * 3) & 0xff,
+          (serviceVectorBase + Service.writeStorageByte * 3) >>> 8, // CALL vector
+          0x32,
+          (statusBase + 4) & 0xff,
+          (statusBase + 4) >>> 8, // LD (status+4),A
+          0x21,
+          0x00,
+          0x01, // LD HL,$0100
+          0xcd,
+          (serviceVectorBase + Service.seekStorageOutput * 3) & 0xff,
+          (serviceVectorBase + Service.seekStorageOutput * 3) >>> 8, // CALL vector
+          0x32,
+          (statusBase + 5) & 0xff,
+          (statusBase + 5) >>> 8, // LD (status+5),A
           0x76, // HALT
         ),
         entryAddress,
@@ -145,7 +204,7 @@ describe("Nucleus runtime stream services", () => {
         entryAddress,
         io,
       );
-      for (let step = 0; step < 32 && !runtime.isHalted(); step += 1) {
+      for (let step = 0; step < 96 && !runtime.isHalted(); step += 1) {
         runtime.step();
       }
       expect(runtime.isHalted()).toBe(true);
@@ -153,16 +212,34 @@ describe("Nucleus runtime stream services", () => {
       return { runtime, streams };
     };
 
-    const success = run();
-    expect(success.runtime.hardware.memory[statusAddress]).toBe(0);
-    expect(success.runtime.cpu.flags.C).toBe(0);
-    expect([...success.streams.output]).toEqual([0x41]);
+    const success = run({
+      input: [0x41],
+      storageInput: [0x42],
+      storageOutput: [0x30],
+    });
+    expect(success.runtime.hardware.memory[statusBase]).toBe(0);
+    expect(success.runtime.cpu.flags.C).toBe(1);
+    expect([...success.runtime.hardware.memory.slice(resultAddress, resultAddress + 2)]).toEqual([
+      0x41,
+      0x42,
+    ]);
+    expect([...success.streams.output]).toEqual([0x51]);
+    expect([...success.streams.storageOutput]).toEqual([0x30, 0x53]);
+    expect(success.streams.storageInputOffset).toBe(0);
+    expect(success.streams.storageOutputOffset).toBe(2);
+    expect([...success.runtime.hardware.memory.slice(statusBase, statusBase + 6)]).toEqual([
+      0,
+      0,
+      0,
+      0,
+      0,
+      ServiceError.storageFailure,
+    ]);
 
-    const failure = run(true);
-    expect(failure.runtime.hardware.memory[statusAddress]).toBe(
+    const failure = run({ failOutputWrites: true });
+    expect(failure.runtime.hardware.memory[statusBase]).toBe(
       ServiceError.outputFailure,
     );
-    expect(failure.runtime.cpu.flags.C).toBe(1);
     expect([...failure.streams.output]).toEqual([]);
   });
 
