@@ -1,12 +1,21 @@
 import { describe, expect, it } from "vitest";
+import { createZ80Runtime } from "@jhlagado/debug80-runtime";
 import {
+  createRuntimeStreamIoHandlers,
   dispatchRuntimeStreamService,
+  RUNTIME_STREAM_IO_OPERATION,
+  RUNTIME_STREAM_IO_PORT,
   runRuntimeByteStreamsConformance,
 } from "@jhlagado/z80-tool-services";
 
 import {
+  defaultRuntimeLinkContext,
+  nucleusRuntimeServiceVectorBytes,
+} from "../src/nucleus-runtime.js";
+import {
   createNucleusProofRuntimeStreams,
   NUCLEUS_PROOF_RUNTIME_STREAM_LIMITS,
+  NUCLEUS_RUNTIME_STREAM_IO_OPERATION,
   NUCLEUS_RUNTIME_STREAM_SERVICE,
   NUCLEUS_RUNTIME_STREAM_STATUS_POLICY,
   runNucleusProofRuntimeStreamOperations,
@@ -41,6 +50,18 @@ describe("Nucleus runtime stream services", () => {
     });
   });
 
+  it("maps stable Nucleus service ordinals to shared I/O operation numbers", () => {
+    expect(NUCLEUS_RUNTIME_STREAM_IO_OPERATION).toEqual({
+      [Service.readInputByte]: RUNTIME_STREAM_IO_OPERATION.readInputByte,
+      [Service.writeOutputByte]: RUNTIME_STREAM_IO_OPERATION.writeOutputByte,
+      [Service.readStorageByte]: RUNTIME_STREAM_IO_OPERATION.readStorageByte,
+      [Service.rewindStorageInput]:
+        RUNTIME_STREAM_IO_OPERATION.rewindStorageInput,
+      [Service.writeStorageByte]: RUNTIME_STREAM_IO_OPERATION.writeStorageByte,
+      [Service.seekStorageOutput]: RUNTIME_STREAM_IO_OPERATION.seekStorageOutput,
+    });
+  });
+
   it("uses Nucleus service-error codes and proof capacities by default", () => {
     expect(NUCLEUS_RUNTIME_STREAM_STATUS_POLICY).toMatchObject({
       endOfInput: ServiceError.endOfInput,
@@ -61,6 +82,88 @@ describe("Nucleus runtime stream services", () => {
       status: ServiceError.outputFailure,
     });
     expect([...streams.output]).toEqual([1, 2, 3, 4]);
+  });
+
+  it("can route the writeOutputByte vector through a host-backed I/O stub", () => {
+    const serviceVectorBase = 0x4000;
+    const stubAddress = 0x4100;
+    const entryAddress = 0x0100;
+    const statusAddress = 0x5000;
+
+    const run = (failOutputWrites = false) => {
+      const streams = createNucleusProofRuntimeStreams({ failOutputWrites });
+      const io = createRuntimeStreamIoHandlers(streams, {
+        statusPolicy: NUCLEUS_RUNTIME_STREAM_STATUS_POLICY,
+      });
+      const memory = new Uint8Array(0x10000);
+      memory.set(
+        nucleusRuntimeServiceVectorBytes({
+          ...defaultRuntimeLinkContext.services,
+          writeOutputByte: stubAddress,
+        }),
+        serviceVectorBase,
+      );
+      memory.set(
+        Uint8Array.of(
+          0x4f, // LD C,A
+          0x3e,
+          NUCLEUS_RUNTIME_STREAM_IO_OPERATION[Service.writeOutputByte],
+          0xd3,
+          RUNTIME_STREAM_IO_PORT.operation, // OUT (operation),A
+          0x79, // LD A,C
+          0xd3,
+          RUNTIME_STREAM_IO_PORT.value, // OUT (value),A
+          0xdb,
+          RUNTIME_STREAM_IO_PORT.status, // IN A,(status)
+          0xb7, // OR A
+          0xc8, // RET Z
+          0x37, // SCF
+          0xc9, // RET
+        ),
+        stubAddress,
+      );
+      memory.set(
+        Uint8Array.of(
+          0x31,
+          0x00,
+          0xff, // LD SP,$FF00
+          0x3e,
+          0x41, // LD A,'A'
+          0xcd,
+          (serviceVectorBase + Service.writeOutputByte * 3) & 0xff,
+          (serviceVectorBase + Service.writeOutputByte * 3) >>> 8, // CALL vector
+          0x32,
+          statusAddress & 0xff,
+          statusAddress >>> 8, // LD (status),A
+          0x76, // HALT
+        ),
+        entryAddress,
+      );
+
+      const runtime = createZ80Runtime(
+        { memory, startAddress: entryAddress },
+        entryAddress,
+        io,
+      );
+      for (let step = 0; step < 32 && !runtime.isHalted(); step += 1) {
+        runtime.step();
+      }
+      expect(runtime.isHalted()).toBe(true);
+      expect(runtime.cpu.sp).toBe(0xff00);
+      return { runtime, streams };
+    };
+
+    const success = run();
+    expect(success.runtime.hardware.memory[statusAddress]).toBe(0);
+    expect(success.runtime.cpu.flags.C).toBe(0);
+    expect([...success.streams.output]).toEqual([0x41]);
+
+    const failure = run(true);
+    expect(failure.runtime.hardware.memory[statusAddress]).toBe(
+      ServiceError.outputFailure,
+    );
+    expect(failure.runtime.cpu.flags.C).toBe(1);
+    expect([...failure.streams.output]).toEqual([]);
   });
 
   it("preserves the Z80 proof runtime's selected output-call failure", () => {

@@ -445,6 +445,53 @@ Completion evidence for that next checkpoint should include:
 - existing proof-runtime service tests still green; and
 - a documented native-host stub contract that avoids JSON and Node-only state.
 
+## Host-callback stub checkpoint
+
+The first host-backed service proof now exists for `writeOutputByte`.
+
+The shared package owns the byte-wide I/O protocol:
+
+| Port | Purpose |
+| ---- | ------- |
+| `$E0` | operation number |
+| `$E1` | low byte argument |
+| `$E2` | status byte |
+| `$E3` | result byte |
+| `$E4` | high byte argument for word-valued operations |
+
+The operation numbers match the six stable Nucleus service ordinals for stream
+services. Nucleus records this explicitly through
+`NUCLEUS_RUNTIME_STREAM_IO_OPERATION`.
+
+The proof keeps the resident call shape unchanged:
+
+```text
+generated program
+    CALL vectorBase + serviceOrdinal*3
+runtime vector slot
+    JP host-callback stub
+stub
+    OUT operation
+    OUT value
+    IN status
+    OR A
+    RET Z
+    SCF
+    RET
+```
+
+Debug80 handles the I/O ports with `createRuntimeStreamIoHandlers`, backed by a
+`RuntimeByteStreams` instance. The checked behavior is:
+
+- success appends the byte to the host stream, returns `A == 0`, preserves stack
+  balance, and clears carry;
+- output failure returns `A == outputFailure`, preserves stack balance, sets
+  carry, and appends no byte.
+
+This still does not replace the canonical resident proof runtime. It proves the
+preferred adapter direction: service vectors can point at host-callback stubs
+without changing the generated program's service-call ABI.
+
 The proof-harness tests now include a resolver-backed source-part path that
 compares the prepared project with the equivalent flat manifest bytes. This is
 the first high-level consumer moved onto the shared resolver without changing

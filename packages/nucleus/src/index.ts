@@ -25,6 +25,7 @@ export {
 export {
   createNucleusProofRuntimeStreams,
   NUCLEUS_PROOF_RUNTIME_STREAM_LIMITS,
+  NUCLEUS_RUNTIME_STREAM_IO_OPERATION,
   NUCLEUS_RUNTIME_STREAM_SERVICE,
   NUCLEUS_RUNTIME_STREAM_STATUS_POLICY,
   readNucleusProofRuntimeStreamSnapshot,

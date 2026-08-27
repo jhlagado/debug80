@@ -1,6 +1,7 @@
 import {
   DEFAULT_RUNTIME_STREAM_STATUS_POLICY,
   MemoryRuntimeByteStreams,
+  RUNTIME_STREAM_IO_OPERATION,
   RUNTIME_STREAM_SERVICE,
   type MemoryRuntimeByteStreamsState,
   type RuntimeByteStreams,
@@ -16,6 +17,15 @@ export const NUCLEUS_RUNTIME_STREAM_SERVICE = Object.freeze({
   [Service.rewindStorageInput]: RUNTIME_STREAM_SERVICE.rewindStorageInput,
   [Service.writeStorageByte]: RUNTIME_STREAM_SERVICE.writeStorageByte,
   [Service.seekStorageOutput]: RUNTIME_STREAM_SERVICE.seekStorageOutput,
+});
+
+export const NUCLEUS_RUNTIME_STREAM_IO_OPERATION = Object.freeze({
+  [Service.readInputByte]: RUNTIME_STREAM_IO_OPERATION.readInputByte,
+  [Service.writeOutputByte]: RUNTIME_STREAM_IO_OPERATION.writeOutputByte,
+  [Service.readStorageByte]: RUNTIME_STREAM_IO_OPERATION.readStorageByte,
+  [Service.rewindStorageInput]: RUNTIME_STREAM_IO_OPERATION.rewindStorageInput,
+  [Service.writeStorageByte]: RUNTIME_STREAM_IO_OPERATION.writeStorageByte,
+  [Service.seekStorageOutput]: RUNTIME_STREAM_IO_OPERATION.seekStorageOutput,
 });
 
 export const NUCLEUS_RUNTIME_STREAM_STATUS_POLICY: RuntimeStreamStatusPolicy =
