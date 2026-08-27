@@ -8,6 +8,10 @@ import {
   type NucleusResolvedSourceProject,
 } from "./source-preparation.js";
 import {
+  buildNucleusResidentSourceImage,
+  type NucleusResidentSourceImage,
+} from "./source-descriptor.js";
+import {
   defaultRuntimeLinkContext,
   nucleusRuntimeServiceVectorBytes,
 } from "./nucleus-runtime.js";
@@ -40,6 +44,7 @@ export interface NucleusCompilationPreparationOptions {
   readonly placement?: SourcePlacement;
   readonly limits?: SourceLimits;
   readonly runtime?: NucleusRuntimeLinkPreparationOptions;
+  readonly residentSource?: NucleusResidentSourcePreparationOptions;
 }
 
 export interface PreparedNucleusHostRuntimeStreams {
@@ -64,6 +69,13 @@ export interface PreparedNucleusCompilation {
   readonly partBanks: readonly number[];
   readonly totalSourceBytes: number;
   readonly runtime: PreparedNucleusRuntimeLink;
+  readonly residentSource?: NucleusResidentSourceImage;
+}
+
+export interface NucleusResidentSourcePreparationOptions {
+  readonly sourceBase: number;
+  readonly sourceCapacity?: number;
+  readonly partCapacity?: number;
 }
 
 const cloneRuntimeLinkContext = (
@@ -123,6 +135,13 @@ export async function prepareNucleusCompilation(
 ): Promise<PreparedNucleusCompilation> {
   const prepared = await prepareNucleusSourceParts(options);
   const runtime = prepareNucleusRuntimeLink(options.runtime);
+  const residentSource =
+    options.residentSource === undefined
+      ? undefined
+      : buildNucleusResidentSourceImage({
+          sourceParts: prepared.sourceParts,
+          ...options.residentSource,
+        });
   return Object.freeze({
     project: prepared.project,
     sourceParts: prepared.sourceParts,
@@ -132,5 +151,6 @@ export async function prepareNucleusCompilation(
       0,
     ),
     runtime,
+    ...(residentSource === undefined ? {} : { residentSource }),
   });
 }

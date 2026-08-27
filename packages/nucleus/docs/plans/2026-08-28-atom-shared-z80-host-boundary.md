@@ -673,13 +673,29 @@ deliberately named as proof publication because the resident source descriptors
 are still embedded in the proof image. It does, however, make NOBJ publication
 a reusable application API instead of test-only logic.
 
+The host-prepared source descriptor adapter now exists as a public application
+boundary. `buildNucleusResidentSourceImage` takes prepared `SourcePart[]` input
+and returns:
+
+- a contiguous source byte image;
+- a five-byte descriptor per part: `ordinal:u8`, `start:u16`, `end:u16`;
+- the resolved source start and end addresses for diagnostics and memory
+  installation; and
+- validation against the current resident multipart adapter limit.
+
+The current resident adapter still has `SourcePartCapacity = 8` and a packed
+`SourcePartsRemaining` byte whose low three bits count remaining parts. The
+host builder therefore defaults to eight parts and fails before execution if a
+larger prepared project is supplied. Raising that limit is a resident Z80
+change, not a host-only command-line change.
+
 This checkpoint deliberately does not move Nucleus record framing, map
 semantics, runtime-provider calls, NOBJ status behavior, Atom's assembler sink,
 or Nucleus runtime storage services. Runtime stream linking is now visible at
 the application boundary, and proof-published NOBJ can be written from the
 command line, but arbitrary-source target publication still needs the host
 prepared source parts to be installed into the resident compiler's source
-descriptor table.
+descriptor table at execution time.
 
 ## Next implementation unit
 

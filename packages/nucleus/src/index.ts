@@ -2,12 +2,22 @@ export {
   prepareNucleusCompilation,
   prepareNucleusRuntimeLink,
   type NucleusCompilationPreparationOptions,
+  type NucleusResidentSourcePreparationOptions,
   type NucleusRuntimeLinkPreparationOptions,
   type NucleusRuntimeServiceSelection,
   type PreparedNucleusCompilation,
   type PreparedNucleusHostRuntimeStreams,
   type PreparedNucleusRuntimeLink,
 } from "./application.js";
+export {
+  buildNucleusResidentSourceImage,
+  installNucleusResidentSourceImage,
+  NUCLEUS_RESIDENT_SOURCE_DESCRIPTOR_SIZE,
+  NUCLEUS_RESIDENT_SOURCE_PART_CAPACITY,
+  type NucleusResidentSourceDescriptor,
+  type NucleusResidentSourceDescriptorOptions,
+  type NucleusResidentSourceImage,
+} from "./source-descriptor.js";
 export {
   publishNucleusProofTarget,
   type NucleusProofTargetPublication,

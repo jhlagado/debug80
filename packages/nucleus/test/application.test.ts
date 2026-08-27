@@ -12,6 +12,9 @@ import {
   prepareNucleusCompilation,
   prepareNucleusRuntimeLink,
   publishNucleusProofTarget,
+  buildNucleusResidentSourceImage,
+  installNucleusResidentSourceImage,
+  NUCLEUS_RESIDENT_SOURCE_DESCRIPTOR_SIZE,
 } from "../src/index.js";
 import { defaultRuntimeLinkContext } from "../src/nucleus-runtime.js";
 import { Service } from "../src/runtime-contract.js";
@@ -131,6 +134,142 @@ describe("Nucleus application boundary", () => {
       expect(
         prepared.runtime.runtimeLinkContext.services.unhandledFailure,
       ).toBe(defaultRuntimeLinkContext.services.unhandledFailure);
+    });
+  });
+
+  it("builds resident source descriptors and a contiguous source image", () => {
+    const image = buildNucleusResidentSourceImage({
+      sourceBase: 0x5000,
+      sourceParts: [
+        {
+          ordinal: 1,
+          stableIdentity: "1:lib.nu",
+          diagnosticName: "lib.nu",
+          bytes: encoder.encode("const LIB = 1\n"),
+        },
+        {
+          ordinal: 2,
+          stableIdentity: "2:main.nu",
+          diagnosticName: "main.nu",
+          bytes: encoder.encode("sub main()\nend\n"),
+        },
+      ],
+    });
+
+    const firstLength = encoder.encode("const LIB = 1\n").length;
+    const secondLength = encoder.encode("sub main()\nend\n").length;
+    expect(image.sourceBase).toBe(0x5000);
+    expect(image.sourceEnd).toBe(0x5000 + firstLength + secondLength);
+    expect(image.sourceBytes).toEqual(
+      encoder.encode("const LIB = 1\nsub main()\nend\n"),
+    );
+    expect(image.descriptorBytes).toEqual(
+      Uint8Array.of(
+        1,
+        0x00,
+        0x50,
+        firstLength,
+        0x50,
+        2,
+        firstLength,
+        0x50,
+        firstLength + secondLength,
+        0x50,
+      ),
+    );
+    expect(image.descriptors).toEqual([
+      {
+        ordinal: 1,
+        start: 0x5000,
+        end: 0x5000 + firstLength,
+        diagnosticName: "lib.nu",
+      },
+      {
+        ordinal: 2,
+        start: 0x5000 + firstLength,
+        end: 0x5000 + firstLength + secondLength,
+        diagnosticName: "main.nu",
+      },
+    ]);
+  });
+
+  it("installs resident source image and descriptors into a selected memory layout", () => {
+    const image = buildNucleusResidentSourceImage({
+      sourceBase: 0x5000,
+      sourceParts: [
+        {
+          ordinal: 1,
+          stableIdentity: "1:main.nu",
+          diagnosticName: "main.nu",
+          bytes: encoder.encode("sub main()\nend\n"),
+        },
+      ],
+    });
+    const memory = new Uint8Array(0x10000);
+    installNucleusResidentSourceImage(memory, image, 0x9000);
+
+    expect(memory.slice(0x5000, image.sourceEnd)).toEqual(image.sourceBytes);
+    expect(
+      memory.slice(
+        0x9000,
+        0x9000 + NUCLEUS_RESIDENT_SOURCE_DESCRIPTOR_SIZE,
+      ),
+    ).toEqual(image.descriptorBytes);
+  });
+
+  it("rejects resident source descriptor layouts that the current Z80 adapter cannot address", () => {
+    const part = (ordinal: number) => ({
+      ordinal,
+      stableIdentity: `${ordinal}:part${ordinal}.nu`,
+      diagnosticName: `part${ordinal}.nu`,
+      bytes: encoder.encode("sub main()\nend\n"),
+    });
+
+    expect(() =>
+      buildNucleusResidentSourceImage({
+        sourceBase: 0x5000,
+        sourceParts: Array.from({ length: 9 }, (_, index) => part(index + 1)),
+      }),
+    ).toThrow("source part count exceeds resident capacity");
+    expect(() =>
+      buildNucleusResidentSourceImage({
+        sourceBase: 0xfffe,
+        sourceParts: [part(1)],
+      }),
+    ).toThrow("source image crosses the Z80 address space");
+    expect(() =>
+      buildNucleusResidentSourceImage({
+        sourceBase: 0x5000,
+        sourceCapacity: 1,
+        sourceParts: [part(1)],
+      }),
+    ).toThrow("source image exceeds configured capacity");
+  });
+
+  it("can include resident source descriptor bytes in compilation preparation", async () => {
+    await withSourceTree({
+      "src/main.nu": "//% import \"lib/model.nu\"\nsub main()\nend\n",
+      "src/lib/model.nu": "const MODEL = 1\n",
+    }, async (root) => {
+      const prepared = await prepareNucleusCompilation({
+        root,
+        entry: "src/main.nu",
+        residentSource: {
+          sourceBase: 0x5000,
+          sourceCapacity: 0x0800,
+        },
+      });
+
+      expect(prepared.residentSource?.descriptors.map((part) => part.ordinal)).toEqual([
+        1,
+        2,
+      ]);
+      expect(prepared.residentSource?.descriptorBytes).toHaveLength(
+        2 * NUCLEUS_RESIDENT_SOURCE_DESCRIPTOR_SIZE,
+      );
+      expect(prepared.residentSource?.sourceBytes.byteLength).toBe(
+        prepared.totalSourceBytes,
+      );
     });
   });
 
