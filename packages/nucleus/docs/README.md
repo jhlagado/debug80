@@ -13,5 +13,7 @@ Nucleus 0.1 is a small, safe, general-purpose structured language for Z80 and ot
 - [`reviewers-charter.md`](reviewers-charter.md) records the settled project directions, open measurements, and evidence expected from an adversarial review. It guides review work but does not override the normative authorities.
 
 Active implementation plans that are not yet part of the compiler live in
-[`plans/`](plans/). Machine-readable grammar sources and generated LL(1) tables
-live in [`../grammar/`](../grammar/) rather than under documentation.
+[`plans/`](plans/), including the
+[`Atom shared Z80 host boundary for Nucleus`](plans/2026-08-28-atom-shared-z80-host-boundary.md).
+Machine-readable grammar sources and generated LL(1) tables live in
+[`../grammar/`](../grammar/) rather than under documentation.

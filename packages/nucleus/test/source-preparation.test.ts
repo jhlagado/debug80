@@ -120,4 +120,43 @@ describe("Nucleus source preparation", () => {
       ]);
     });
   });
+
+  it("carries path-keyed placement while the legacy source-part adapter stays source-only", async () => {
+    await withSourceTree({
+      "src/main.nu": "//% import \"lib/display.nu\"\nsub main()\nend\n",
+      "src/lib/display.nu": "const DISPLAY = 1\n",
+    }, async (root) => {
+      const project = await resolveNucleusProject({
+        root,
+        entry: "src/main.nu",
+        placement: {
+          defaultBank: 0,
+          banks: {
+            "src/lib/display.nu": 2,
+          },
+        },
+      });
+      const sourceParts = sourcePartsFromResolvedProject(project);
+
+      expect(project.parts.map((part) => [part.logicalIdentity, part.bank])).toEqual([
+        ["src/lib/display.nu", 2],
+        ["src/main.nu", 0],
+      ]);
+      expect(project.bankArray).toEqual([2, 0]);
+      expect(sourceParts).toEqual([
+        {
+          ordinal: 1,
+          stableIdentity: "1:src/lib/display.nu",
+          diagnosticName: "src/lib/display.nu",
+          bytes: encoder.encode("const DISPLAY = 1\n"),
+        },
+        {
+          ordinal: 2,
+          stableIdentity: "2:src/main.nu",
+          diagnosticName: "src/main.nu",
+          bytes: encoder.encode("//% import \"lib/display.nu\"\nsub main()\nend\n"),
+        },
+      ]);
+    });
+  });
 });
