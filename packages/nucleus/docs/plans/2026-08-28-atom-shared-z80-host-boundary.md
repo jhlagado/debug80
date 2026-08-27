@@ -661,22 +661,22 @@ and representative storage-failure sequences without entering the Z80 proof
 image. This keeps the comparison executable while the existing Stage 8 proof
 continues to own the resident-code discrimination.
 
-The first file-producing publication command is now available:
+The first file-producing publication commands are now available:
 
 ```text
+npm run publish:nobj -w nucleus -- --root path/to/project --target target.json --output build/program.nobj src/main.nu
 npm run proof:publish -w nucleus -- --output build/program.nobj proofs/flat-target-z80-slice-proof.json
 npm run proof:publish -w nucleus -- --root path/to/project --output build/program.nobj src/main.nu
 npm run proof:publish -w nucleus -- --root path/to/project --target target.json --output build/program.nobj src/main.nu
 ```
 
-It either runs an executable proof manifest or prepares an entry `.nu` file,
-installs the resulting source bytes and resident descriptors into the current
-flat compiler proof image, requires that image to publish a committed NOBJ
-target, and writes those exact committed bytes to disk. This is deliberately
-still named as proof publication because the compiler image is proof-hosted.
-It does, however, make NOBJ publication a reusable application API instead of
-test-only logic, and the command now has the caller shape of a normal
-entry-file compiler command.
+`publish:nobj` is the normal entry-source path. It prepares an entry `.nu`
+file, installs the resulting source bytes and resident descriptors into the
+current flat compiler proof image, requires that image to publish a committed
+NOBJ target, and writes those exact committed bytes to disk. `proof:publish`
+remains the compatibility/debug command for proof manifests, and still accepts
+the same prepared-source bridge options while the resident compiler image is
+proof-hosted.
 
 Target publication data now has its own application descriptor. A
 `NucleusTargetPublicationDescriptor` contains the NOBJ `begin` record, target
@@ -738,17 +738,16 @@ it is accepted by the resident compiler.
 This checkpoint deliberately does not move Nucleus record framing, map
 semantics, runtime-provider calls, NOBJ status behavior, Atom's assembler sink,
 or Nucleus runtime storage services. Runtime stream linking is now visible at
-the application boundary, proof-published NOBJ can be written from the command
-line, host-prepared source has a single descriptor object for the anchors
-needed by a resident compiler image, and prepared-source publication can use an
-application-owned target descriptor. The CLI can now select that descriptor
-from a Node-facing JSON file, while still preserving the default flat target
-for tests and simple commands.
+the application boundary, proof-published and entry-source NOBJ can be written
+from the command line, host-prepared source has a single descriptor object for
+the anchors needed by a resident compiler image, and prepared-source
+publication can use an application-owned target descriptor. The CLI can now
+select that descriptor from a Node-facing JSON file, while still preserving the
+default flat target for tests and simple commands.
 
 ## Next implementation unit
 
-Continue Phase 3 by separating the proof-hosted compiler image selection from
-the final command shape. The next bridge should introduce a normal
-`nucleus compile`/`nucleus publish` command name over the same prepared-source,
-compiler-entry, and target-descriptor APIs, while leaving `proof:publish` as a
-compatibility/debug command for proof manifests.
+Continue Phase 3 by extracting shared CLI parsing for `publish:nobj` and
+`proof:publish`, then decide the eventual installed binary shape. The two
+commands deliberately share most options now; the duplication should be removed
+before adding more output formats or runtime profiles.

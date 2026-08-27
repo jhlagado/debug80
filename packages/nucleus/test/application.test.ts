@@ -736,4 +736,92 @@ describe("Nucleus application boundary", () => {
       },
     );
   }, 30_000);
+
+  it("exposes prepared entry-source NOBJ publication through the normal CLI", async () => {
+    await withSourceTree(
+      {
+        "src/main.nu": [
+          "var value as u16 = 3",
+          "var cleared as u8",
+          "sub main()",
+          "value = value * 2",
+          "end",
+          "",
+        ].join("\n"),
+      },
+      async (root) => {
+        const outputDirectory = await mkdtemp(
+          path.join(tmpdir(), "nucleus-cli-normal-publish-"),
+        );
+        try {
+          const output = path.join(outputDirectory, "program.nobj");
+          const targetFile = path.join(root, "target.json");
+          await writeFile(
+            targetFile,
+            JSON.stringify(
+              {
+                schema: NUCLEUS_TARGET_PUBLICATION_SCHEMA,
+                ...NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR,
+                begin: {
+                  ...NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR.begin,
+                  imageFill: 0x7b,
+                },
+              },
+              null,
+              2,
+            ),
+          );
+          const { stdout, stderr } = await execFileAsync(
+            process.execPath,
+            [
+              tsxBin,
+              "src/cli/publish.ts",
+              "--json",
+              "--root",
+              root,
+              "--target",
+              targetFile,
+              "--output",
+              output,
+              "src/main.nu",
+            ],
+            { cwd: packageRoot },
+          );
+
+          const summary = JSON.parse(stdout);
+          expect(stderr).toBe("");
+          expect(summary).toMatchObject({
+            root,
+            entry: "src/main.nu",
+            targetFile,
+            sourceParts: 1,
+            output,
+            bytes: 1396,
+            records: 130,
+            imageFill: 0x7b,
+            entryBank: 0,
+            entryAddress: 0x8000,
+          });
+          expect((await readFile(output)).byteLength).toBe(summary.bytes);
+        } finally {
+          await rm(outputDirectory, { recursive: true, force: true });
+        }
+      },
+    );
+  }, 30_000);
+
+  it("does not accept proof manifests through the normal publication CLI", async () => {
+    await expect(execFileAsync(
+      process.execPath,
+      [
+        tsxBin,
+        "src/cli/publish.ts",
+        proof("flat-target-z80-slice-proof"),
+      ],
+      { cwd: packageRoot },
+    )).rejects.toMatchObject({
+      code: 1,
+      stderr: expect.stringContaining("nucleus publish:"),
+    });
+  }, 30_000);
 });
