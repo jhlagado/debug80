@@ -58,13 +58,12 @@ assembles with AZM. Conversion is accepted only when complete-image comparison
 against a checked upstream build or historical binary proves the resulting CCP
 and BDOS bytes, apart from documented serial-number fields.
 
-Native `ATOM.COM` comes from [`jhlagado/atom`](https://github.com/jhlagado/atom)
-commit `a61002edba870668badfdadbb4c624964489bfe0` under GPL-3.0-only. Its
-14,145-byte artifact has SHA-256
-`ee23f83f8d8c9511e59a8a025b2a28300659b22101f2917c1ff3b2dd4ef3ea79`.
-The complete corresponding source, strict build, capacity proof, and output
-design measurements are available at that revision. Debug80 records the exact
-source identity in `third_party/atom/PROVENANCE.json`.
+Native `ATOM.COM` is built from `packages/atom` under GPL-3.0-only. The current
+14,660-byte artifact has SHA-256
+`9048475453092a12f2e509cedc7931683698b6edafeb8645d95d1049be485ebb`.
+`packages/atom/proofs/cpm22-census.json` records the corresponding strict build,
+capacity account, and artifact digest. The CP/M image build verifies that
+census before installing the program.
 
 Native `NUCLEUS.COM` comes from
 [`jhlagado/nucleus`](https://github.com/jhlagado/nucleus) commit
@@ -175,27 +174,21 @@ BIOS.
 
 The initial user-0 directory contains `README.TXT`, `SMOKE.COM`, `ATOM.COM`,
 `INPUT.ASM`, `HELLO.ASM`, the 16,535-byte `LARGE.ASM` acceptance source,
-`PART1.ASM`, `PART2.ASM`, `BUILD.LST`, `NUCLEUS.COM`, `INPUT.NU`, and
+`PART1.ASM`, `PART2.ASM`, `BUILD.ASM`, `NUCLEUS.COM`, `INPUT.NU`, and
 `EDIT.COM`. `ATOM.COM` reads and writes through the guest BDOS. With no
 arguments it uses `INPUT.ASM` and `OUTPUT.COM`; `ATOM SOURCE OUTPUT.COM` selects
-another pair of current-drive CP/M 8.3 names.
-Both forms assemble one source part.
+another pair of current-drive CP/M 8.3 names. A source may place `%INCLUDE`
+directives in its leading header. Atom resolves those current-drive CP/M 8.3
+names once, rejects cycles and malformed or late includes during preflight,
+and assembles dependencies before their importer.
 
-`ATOM PLAN OUTPUT.COM @` selects multipart mode. `PLAN` contains one
-current-drive CP/M 8.3 source filename per logical line. LF and CRLF line ends
-are accepted, and either physical EOF or `$1A` ends the plan. A plan contains
-from 1 through 255 names. Every occurrence is a distinct logical part, so a
-name may appear more than once. Blank lines, comments, headers, drive prefixes,
-wildcards, trailing fields, malformed names, missing files, and overlong parts
-are rejected during preflight before assembly begins.
-
-Each source part may contain at most 65,535 logical bytes. Atom preserves plan
-order, assigns one-based part ordinals, and resets the diagnostic byte offset
-at each part boundary. All source reads use a 128-byte random-record cache.
-The output remains one transactional, 18,304-byte in-TPA COM image; multipart
-input does not raise that output limit. `BUILD.LST` selects two 33,000-byte
-parts whose program leaves a forward reference in the first part and resolves
-it in the second.
+Each source part may contain at most 65,535 logical bytes. Atom retains up to
+255 parts, assigns one-based part ordinals, and resets the diagnostic byte
+offset at each part boundary. All source reads use a 128-byte random-record
+cache. The output remains one transactional, 18,304-byte in-TPA COM image;
+multipart input does not raise that output limit. `BUILD.ASM` includes two
+33,000-byte parts whose program leaves a forward reference in the first part
+and resolves it in the second.
 
 Atom's compiler-facing source and publication entries form a private
 tool-service boundary. The CP/M adapter translates them to public BDOS calls
@@ -329,7 +322,7 @@ bundled `cpm22` target, publish its exact `.COM` artifact, display the real CCP
 A>DIR
 A: README TXT : SMOKE COM : ATOM COM : INPUT ASM
 A: HELLO ASM : LARGE ASM : PART1 ASM : PART2 ASM
-A: BUILD LST : NUCLEUS COM : INPUT NU : EDIT COM
+A: BUILD ASM : NUCLEUS COM : INPUT NU : EDIT COM
 A: MAIN COM
 
 A>MAIN
@@ -362,7 +355,7 @@ LARGE.COM written
 A>LARGE
 Hello from native Atom
 
-A>ATOM BUILD.LST MULTI.COM @
+A>ATOM BUILD.ASM MULTI.COM
 MULTI.COM written
 
 A>MULTI

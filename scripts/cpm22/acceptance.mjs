@@ -141,7 +141,7 @@ assert.equal(transcript(), "\r\nA>");
 
 runCommand(
   "DIR",
-  "DIR\r\r\nA: README   TXT : SMOKE    COM : ATOM     COM : INPUT    ASM\r\nA: HELLO    ASM : LARGE    ASM : PART1    ASM : PART2    ASM\r\nA: BUILD    LST : NUCLEUS  COM : INPUT    NU  : EDIT     COM\r\nA: MAIN     COM : KEEP     COM : KEEP     $$$\r\nA>",
+  "DIR\r\r\nA: README   TXT : SMOKE    COM : ATOM     COM : INPUT    ASM\r\nA: HELLO    ASM : LARGE    ASM : PART1    ASM : PART2    ASM\r\nA: BUILD    ASM : NUCLEUS  COM : INPUT    NU  : EDIT     COM\r\nA: MAIN     COM : KEEP     COM : KEEP     $$$\r\nA>",
 );
 runCommand("MAIN", "MAIN\r\r\nHi\r\n\r\nA>");
 runCommand(
@@ -158,8 +158,8 @@ const atomExecution = runCommand(
   "ATOM\r\r\n\r\nOUTPUT.COM written\r\n\r\nA>",
 );
 assert.deepEqual(atomExecution, {
-  instructions: 173906,
-  tStates: 2350220,
+  instructions: 204776,
+  tStates: 2657015,
 });
 const expectedOutput = Uint8Array.from([
   0x0e,
@@ -185,8 +185,8 @@ const namedAtomExecution = runCommand(
   "ATOM HELLO.ASM MADE.COM\r\r\n\r\nMADE.COM written\r\n\r\nA>",
 );
 assert.deepEqual(namedAtomExecution, {
-  instructions: 182349,
-  tStates: 2429181,
+  instructions: 215671,
+  tStates: 2762204,
 });
 const namedOutputFile = readCpm22File(platform.disk.exportImage(), "MADE.COM");
 assert.ok(namedOutputFile, "native Atom did not publish selected MADE.COM");
@@ -200,8 +200,8 @@ const largeAtomExecution = runCommand(
   "ATOM LARGE.ASM LARGE.COM\r\r\n\r\nLARGE.COM written\r\n\r\nA>",
 );
 assert.deepEqual(largeAtomExecution, {
-  instructions: 2025917,
-  tStates: 20395155,
+  instructions: 4298294,
+  tStates: 42133203,
 });
 const largeOutputFile = readCpm22File(platform.disk.exportImage(), "LARGE.COM");
 assert.ok(
@@ -215,10 +215,10 @@ assert.deepEqual(
 runCommand("LARGE", "LARGE\r\r\nHello from native Atom\r\n\r\nA>");
 const multipartPart1 = readCpm22File(sourceDiskImage, "PART1.ASM");
 const multipartPart2 = readCpm22File(sourceDiskImage, "PART2.ASM");
-const multipartPlan = readCpm22File(sourceDiskImage, "BUILD.LST");
+const multipartRoot = readCpm22File(sourceDiskImage, "BUILD.ASM");
 const multipartPart1Bytes = logicalCpmBytes(multipartPart1, "PART1.ASM");
 const multipartPart2Bytes = logicalCpmBytes(multipartPart2, "PART2.ASM");
-const multipartPlanBytes = logicalCpmBytes(multipartPlan, "BUILD.LST");
+const multipartRootBytes = logicalCpmBytes(multipartRoot, "BUILD.ASM");
 assert.equal(multipartPart1Bytes.length, 33_000);
 assert.equal(multipartPart2Bytes.length, 33_000);
 assert.ok(
@@ -226,17 +226,17 @@ assert.ok(
   "multipart integration source must exceed one 65,535-byte part",
 );
 assert.equal(
-  Buffer.from(multipartPlanBytes).toString("ascii"),
-  "PART1.ASM\r\nPART2.ASM\r\n",
+  Buffer.from(multipartRootBytes).toString("ascii"),
+  '%INCLUDE "PART1.ASM"\r\n%INCLUDE "PART2.ASM"\r\n',
 );
 const multipartAtomExecution = runCommand(
-  "ATOM BUILD.LST MULTI.COM @",
-  "ATOM BUILD.LST MULTI.COM @\r\r\n\r\nMULTI.COM written\r\n\r\nA>",
-  12_000_000,
+  "ATOM BUILD.ASM MULTI.COM",
+  "ATOM BUILD.ASM MULTI.COM\r\r\n\r\nMULTI.COM written\r\n\r\nA>",
+  20_000_000,
 );
 assert.deepEqual(multipartAtomExecution, {
-  instructions: 7595133,
-  tStates: 74678618,
+  instructions: 16685400,
+  tStates: 161603099,
 });
 const multipartOutputFile = readCpm22File(
   platform.disk.exportImage(),
@@ -244,7 +244,7 @@ const multipartOutputFile = readCpm22File(
 );
 assert.ok(
   multipartOutputFile,
-  "native Atom did not publish MULTI.COM from the 66,000-byte source plan",
+  "native Atom did not publish MULTI.COM from the 66,000-byte include graph",
 );
 assert.deepEqual(
   multipartOutputFile.bytes.slice(0, expectedOutput.length),
@@ -256,8 +256,8 @@ const rejectedNucleusExecution = runCommand(
   "NUCLEUS INPUT.NU KEEP.COM\r\r\n\r\nNucleus host error 61\r\n\r\nA>",
 );
 assert.deepEqual(rejectedNucleusExecution, {
-  instructions: 98142,
-  tStates: 1347710,
+  instructions: 98155,
+  tStates: 1347814,
 });
 assert.deepEqual(
   readCpm22File(platform.disk.exportImage(), "KEEP.COM")?.bytes.slice(
@@ -275,8 +275,8 @@ assert.deepEqual(
 );
 const nucleusExecution = runCommand("NUCLEUS", "NUCLEUS\r\r\n\r\nA>");
 assert.deepEqual(nucleusExecution, {
-  instructions: 330669,
-  tStates: 4672231,
+  instructions: 330838,
+  tStates: 4673329,
 });
 const nucleusOutputFile = readCpm22File(
   platform.disk.exportImage(),
@@ -288,8 +288,8 @@ assert.equal(nucleusOutputFile.bytes[0x0700], 0xc3);
 const nucleusProgramBdosStart = bdosCalls.length;
 const nucleusProgramExecution = runCommand("OUTPUT", "OUTPUT\r\r\nOK\r\nA>");
 assert.deepEqual(nucleusProgramExecution, {
-  instructions: 98465,
-  tStates: 1443402,
+  instructions: 98478,
+  tStates: 1443506,
 });
 assert.equal(
   bdosCalls.slice(nucleusProgramBdosStart).filter(
@@ -410,8 +410,8 @@ const editorExecution = {
   tStates: tStates - editorTStateStart,
 };
 assert.deepEqual(editorExecution, {
-  instructions: 373894,
-  tStates: 3680246,
+  instructions: 373986,
+  tStates: 3680840,
 });
 const editedNucleusSource = logicalCpmBytes(
   readCpm22File(platform.disk.exportImage(), "INPUT.NU"),
@@ -499,8 +499,8 @@ const newCreateExecution = {
   tStates: tStates - newCreateTStateStart,
 };
 assert.deepEqual(newCreateExecution, {
-  instructions: 113403,
-  tStates: 1143976,
+  instructions: 113476,
+  tStates: 1144430,
 });
 assert.deepEqual(
   logicalCpmBytes(

@@ -18,7 +18,7 @@ const outputDirectory = join(
   "cpm22",
 );
 const thirdPartyDirectory = join(repositoryRoot, "third_party", "cpm22");
-const atomDirectory = join(repositoryRoot, "third_party", "atom");
+const atomDirectory = join(repositoryRoot, "packages", "atom");
 const nucleusDirectory = join(repositoryRoot, "third_party", "nucleus");
 const converter = join(scriptDirectory, "convert-8080-to-z80.mjs");
 
@@ -96,11 +96,11 @@ async function main() {
     join(tmpdir(), "debug80-cpm22-build-"),
   );
   try {
-    const [atom, atomSource, atomProvenance, nucleus, nucleusProvenance] =
+    const [atom, atomSource, atomCensus, nucleus, nucleusProvenance] =
       await Promise.all([
-        readFile(join(atomDirectory, "ATOM.COM")),
+        readFile(join(atomDirectory, "assets", "atom-cpm22.com")),
         readFile(join(scriptDirectory, "atom-example.asm")),
-        readFile(join(atomDirectory, "PROVENANCE.json"), "utf8").then(
+        readFile(join(atomDirectory, "proofs", "cpm22-census.json"), "utf8").then(
           JSON.parse,
         ),
         readFile(join(nucleusDirectory, "NUCLEUS.COM")),
@@ -109,10 +109,10 @@ async function main() {
         ),
       ]);
     if (
-      sha256(atom) !== atomProvenance.artifactSha256 ||
-      atom.length !== atomProvenance.artifactBytes
+      sha256(atom) !== atomCensus.sha256 ||
+      atom.length !== atomCensus.residentBytes
     ) {
-      fail("vendored Atom CP/M artifact differs from its provenance record");
+      fail("Atom CP/M artifact differs from its measured census");
     }
     if (
       sha256(nucleus) !== nucleusProvenance.artifactSha256 ||
@@ -159,7 +159,10 @@ async function main() {
       multipartPartBytes,
       "PART2.ASM",
     );
-    const multipartPlan = Buffer.from("PART1.ASM\r\nPART2.ASM\r\n", "ascii");
+    const multipartRoot = Buffer.from(
+      '%INCLUDE "PART1.ASM"\r\n%INCLUDE "PART2.ASM"\r\n',
+      "ascii",
+    );
     if (multipartPart1.length + multipartPart2.length <= 0xffff) {
       fail("multipart fixture must exceed one 65,535-byte source part");
     }
@@ -222,7 +225,7 @@ async function main() {
     image = installCpm22File(image, "LARGE.ASM", largeAtomSource);
     image = installCpm22File(image, "PART1.ASM", multipartPart1);
     image = installCpm22File(image, "PART2.ASM", multipartPart2);
-    image = installCpm22File(image, "BUILD.LST", multipartPlan);
+    image = installCpm22File(image, "BUILD.ASM", multipartRoot);
     image = installCpm22File(image, "NUCLEUS.COM", nucleus);
     image = installCpm22File(image, "INPUT.NU", nucleusSource);
     image = installCpm22File(image, "EDIT.COM", editor.bytes);
@@ -254,7 +257,7 @@ async function main() {
       largeAtomSource: sha256(largeAtomSource),
       multipartPart1: sha256(multipartPart1),
       multipartPart2: sha256(multipartPart2),
-      multipartPlan: sha256(multipartPlan),
+      multipartRoot: sha256(multipartRoot),
       disk: sha256(image),
       biosMap: sha256(biosMapBytes),
     };

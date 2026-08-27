@@ -1,6 +1,6 @@
 {
   "boot": "\r\nA>",
-  "dir": "DIR\r\r\nA: README   TXT : SMOKE    COM : ATOM     COM : INPUT    ASM\r\nA: HELLO    ASM : LARGE    ASM : PART1    ASM : PART2    ASM\r\nA: BUILD    LST : NUCLEUS  COM : INPUT    NU  : EDIT     COM\r\nA: MAIN     COM\r\nA>",
+  "dir": "DIR\r\r\nA: README   TXT : SMOKE    COM : ATOM     COM : INPUT    ASM\r\nA: HELLO    ASM : LARGE    ASM : PART1    ASM : PART2    ASM\r\nA: BUILD    ASM : NUCLEUS  COM : INPUT    NU  : EDIT     COM\r\nA: MAIN     COM\r\nA>",
   "main": "MAIN\r\r\nHello from Debug80 CP/M\r\n\r\nA>",
   "readme": "TYPE README.TXT\r\r\nDebug80 CP/M 2.2 platform\r\n\r\nA>",
   "smoke": "SMOKE\r\r\nWrote RESULT.TXT\r\n\r\nA>",
@@ -11,7 +11,7 @@
   "namedOutput": "MADE\r\r\nHello from native Atom\r\n\r\nA>",
   "largeAtom": "ATOM LARGE.ASM LARGE.COM\r\r\n\r\nLARGE.COM written\r\n\r\nA>",
   "largeOutput": "LARGE\r\r\nHello from native Atom\r\n\r\nA>",
-  "multipartAtom": "ATOM BUILD.LST MULTI.COM @\r\r\n\r\nMULTI.COM written\r\n\r\nA>",
+  "multipartAtom": "ATOM BUILD.ASM MULTI.COM\r\r\n\r\nMULTI.COM written\r\n\r\nA>",
   "multipartOutput": "MULTI\r\r\nHello from native Atom\r\n\r\nA>",
   "nucleus": "NUCLEUS\r\r\n\r\nA>",
   "nucleusOutput": "OUTPUT\r\r\nOK\r\nA>",

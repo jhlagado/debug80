@@ -207,7 +207,7 @@ export async function runCpm22Pipeline(extension) {
     await sendCommand(
       session,
       transcript,
-      'ATOM BUILD.LST MULTI.COM @',
+      'ATOM BUILD.ASM MULTI.COM',
       expectedTranscript.multipartAtom
     );
     await sendCommand(session, transcript, 'MULTI', expectedTranscript.multipartOutput);
