@@ -8,6 +8,7 @@ import {
   publishNucleusPreparedSourceTarget,
   publishNucleusProofTarget,
 } from "../publication.js";
+import { renderNucleusD8 } from "../source-provenance.js";
 
 export type NucleusPublicationOutputFormat = "nobj" | "bin" | "hex" | "d8";
 
@@ -66,43 +67,7 @@ export function writeNucleusIntelHex(
   return `${lines.join(lineEnding)}${lineEnding}`;
 }
 
-const publicationInput = (
-  publication: NucleusPublication,
-): string | undefined =>
-  "entry" in publication ? publication.entry : publication.manifest;
-
-export function writeNucleusD8(
-  publication: NucleusPublication,
-): string {
-  const parsed = publication.nobj.parsed;
-  const bank = parsed.map.banks[0];
-  if (parsed.begin.banked || bank === undefined) {
-    throw new Error("D8 output currently requires a flat NOBJ target");
-  }
-  const input = publicationInput(publication);
-  const fileList = input === undefined ? [] : [input];
-  const map = {
-    format: "d8-debug-map",
-    version: 1,
-    arch: "z80",
-    addressWidth: 16,
-    endianness: "little",
-    files: Object.fromEntries(fileList.map((file) => [file, {}])),
-    segments: [{
-      start: parsed.begin.imageBase,
-      end: parsed.begin.imageBase + bank.usedLength,
-    }],
-    fileList,
-    symbols: [],
-    generator: {
-      name: "nucleus",
-      tool: "nucleus",
-      inputs: input === undefined ? {} : { entry: input },
-      entryAddress: parsed.map.entryAddress,
-    },
-  };
-  return `${JSON.stringify(map, null, 2)}\n`;
-}
+export const writeNucleusD8 = renderNucleusD8;
 
 const optionValue = (
   arguments_: readonly string[],

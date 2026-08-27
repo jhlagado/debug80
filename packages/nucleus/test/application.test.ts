@@ -25,6 +25,7 @@ import {
 import { writeNucleusIntelHex } from "../src/cli/publication-cli.js";
 import { materializeNobj, parseNobj } from "../src/nobj.js";
 import { defaultRuntimeLinkContext } from "../src/nucleus-runtime.js";
+import { renderNucleusD8 } from "../src/source-provenance.js";
 import { Service } from "../src/runtime-contract.js";
 
 const encoder = new TextEncoder();
@@ -895,6 +896,116 @@ describe("Nucleus application boundary", () => {
         } finally {
           await rm(outputDirectory, { recursive: true, force: true });
         }
+      },
+    );
+  }, 30_000);
+
+  it("renders D8 file entries from prepared source-part identities", async () => {
+    await withSourceTree(
+      {
+        "src/main.nu": [
+          "//% import \"lib/model.nu\"",
+          "var value as u16 = 3",
+          "var cleared as u8",
+          "sub main()",
+          "value = value * 2",
+          "end",
+          "",
+        ].join("\n"),
+        "src/lib/model.nu": "",
+      },
+      async (root) => {
+        const prepared = await prepareNucleusCompilation({
+          root,
+          entry: "src/main.nu",
+        });
+        const publication = await publishNucleusProofTarget({
+          manifest: proof("flat-target-z80-slice-proof"),
+        });
+        const sourceParts = prepared.project.parts.map((part, index) => ({
+          ordinal: index + 1,
+          logicalIdentity: part.logicalIdentity,
+        }));
+        const d8 = JSON.parse(renderNucleusD8(publication, { sourceParts }));
+
+        expect(sourceParts.map((part) => part.logicalIdentity)).toEqual([
+          "src/lib/model.nu",
+          "src/main.nu",
+        ]);
+        expect(d8.fileList).toEqual([
+          "src/lib/model.nu",
+          "src/main.nu",
+        ]);
+        expect(d8.files).toEqual({
+          "src/lib/model.nu": {},
+          "src/main.nu": {},
+        });
+      },
+    );
+  }, 30_000);
+
+  it("renders explicit D8 source segments only when they reference known parts", async () => {
+    await withSourceTree(
+      {
+        "src/main.nu": [
+          "var value as u16 = 3",
+          "var cleared as u8",
+          "sub main()",
+          "value = value * 2",
+          "end",
+          "",
+        ].join("\n"),
+      },
+      async (root) => {
+        const publication = await publishNucleusPreparedSourceTarget({
+          root,
+          entry: "src/main.nu",
+        });
+        const d8 = JSON.parse(renderNucleusD8(publication, {
+          sourceSegments: [{
+            partOrdinal: 1,
+            line: 4,
+            column: 1,
+            bank: 0,
+            start: 0x8010,
+            end: 0x8014,
+            kind: "code",
+            confidence: "high",
+          }],
+        }));
+
+        expect(d8.files["src/main.nu"].segments).toEqual([{
+          start: 0x8010,
+          end: 0x8014,
+          line: 4,
+          column: 1,
+          kind: "code",
+          confidence: "high",
+        }]);
+        expect(() => renderNucleusD8(publication, {
+          sourceSegments: [{
+            partOrdinal: 2,
+            line: 1,
+            column: 1,
+            bank: 0,
+            start: 0x8010,
+            end: 0x8011,
+            kind: "code",
+            confidence: "high",
+          }],
+        })).toThrow("D8 source segment references unknown source part 2");
+        expect(() => renderNucleusD8(publication, {
+          sourceSegments: [{
+            partOrdinal: 1,
+            line: 1,
+            column: 1,
+            bank: 0,
+            start: 0x7000,
+            end: 0x7001,
+            kind: "code",
+            confidence: "high",
+          }],
+        })).toThrow("D8 source segment is outside the committed image range");
       },
     );
   }, 30_000);

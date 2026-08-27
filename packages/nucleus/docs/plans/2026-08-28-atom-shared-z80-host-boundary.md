@@ -197,6 +197,51 @@ On Node/Debug80 this reads from frozen `compilerBytes`. On Z80-native systems it
 may stream from a filesystem or copy the current part through an operating
 buffer. The resident tool must not know which strategy is used.
 
+### Source provenance
+
+Generated-output provenance is a separate optional stream. The resident
+compiler should never emit JSON, path names, or Debug80-specific map records.
+It should emit compact source-address facts that the host can translate:
+
+```ts
+interface NucleusGeneratedSourceSegment {
+  partOrdinal: number;
+  line: number;
+  column: number;
+  bank: number;
+  start: number;
+  end: number;
+  kind: "code" | "data" | "directive" | "unknown";
+  confidence: "high" | "medium" | "low";
+}
+```
+
+The source adapter already tracks the necessary source state:
+
+- `SourcePartId`;
+- `SourceOffset`;
+- `SourceLine`;
+- `SourceColumn`;
+- token start offset, line, and column.
+
+The target output layer already owns the generated address state:
+
+- selected output bank;
+- `EmitCursor`;
+- image and patch operations;
+- final NOBJ map.
+
+The missing resident operation is therefore a small provenance event emitted
+around semantic lowering, not a second source pass and not host-side guessing.
+The host maps `partOrdinal` to the prepared source project's logical identity
+and renders Debug80 D8 file entries, source-line segments, and later symbols.
+
+The current host module `source-provenance.ts` establishes this shape. It can
+render the minimal D8 artifact from a committed flat NOBJ today, and it accepts
+explicit `NucleusGeneratedSourceSegment[]` once the resident compiler begins
+publishing them. Segment validation rejects unknown source ordinals and banked
+segments until banked D8 policy exists.
+
 ### Generation sink
 
 The common sink lifecycle should be:

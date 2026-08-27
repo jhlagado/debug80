@@ -56,6 +56,14 @@ export {
   type NucleusSourceState,
 } from "./source-preparation.js";
 export {
+  renderNucleusD8,
+  type NucleusD8Options,
+  type NucleusGeneratedSourceSegment,
+  type NucleusPublishedSourcePart,
+  type NucleusSourceSegmentConfidence,
+  type NucleusSourceSegmentKind,
+} from "./source-provenance.js";
+export {
   buildSourceParts,
   parseSourceManifest,
   type SourcePart,

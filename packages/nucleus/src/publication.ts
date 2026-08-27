@@ -125,6 +125,7 @@ export interface NucleusPreparedSourceTargetPublication {
   readonly targetFile?: string;
   readonly output?: string;
   readonly sourceParts: number;
+  readonly sourcePartIdentities: readonly string[];
   readonly sourceBytes: number;
   readonly nobj: NobjExecutionOutcome;
 }
@@ -227,6 +228,9 @@ export async function publishNucleusPreparedSourceTarget(
     targetFile: targetFile === undefined ? undefined : path.resolve(targetFile),
     output: output === undefined ? undefined : path.resolve(output),
     sourceParts: prepared.sourceParts.length,
+    sourcePartIdentities: prepared.project.parts.map(
+      (part) => part.logicalIdentity,
+    ),
     sourceBytes: prepared.totalSourceBytes,
     nobj: outcome.nobj,
   });
