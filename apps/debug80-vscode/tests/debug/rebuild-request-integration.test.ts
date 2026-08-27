@@ -57,6 +57,60 @@ describe('warm rebuild assembly integration', () => {
     expect(sendResponse).toHaveBeenCalledWith(response);
   });
 
+  it('rebuilds Atom simple-platform ranged binary artifacts end to end', async () => {
+    const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-warm-atom-bin-'));
+    tempDirs.push(baseDir);
+    const sourcePath = path.join(baseDir, 'main.asm');
+    fs.writeFileSync(sourcePath, ['ORG 4001H', 'DB 0AAH', 'ORG 4003H', 'DB 055H', ''].join('\n'));
+    const previousProgram: HexProgram = {
+      memory: new Uint8Array(0x10000),
+      startAddress: 0x4000,
+      writeRanges: [],
+    };
+    const sessionState = createSessionState();
+    sessionState.launchArgs = {
+      platform: 'simple',
+      assembler: 'atom',
+      asm: 'main.asm',
+      outputDir: 'build',
+      artifactBase: 'main',
+      entry: 0x4000,
+      simple: { binFrom: 0x4000, binTo: 0x4004 },
+    };
+    sessionState.baseDir = baseDir;
+    sessionState.sourceRoots = [baseDir];
+    sessionState.loadedProgram = previousProgram;
+    sessionState.loadedEntry = 0x4000;
+    sessionState.runtime = createZ80Runtime(previousProgram);
+    const response = {} as DebugProtocol.Response;
+    const sendResponse = vi.fn();
+
+    await handleWarmRebuildRequest(response, {
+      logger: new NullLogger(),
+      sessionState,
+      sourceState: new SourceStateManager(),
+      breakpointManager: new BreakpointManager(),
+      platformState: { active: 'simple' },
+      sendEvent: vi.fn(),
+      sendResponse,
+      sendErrorResponse: vi.fn(),
+    });
+
+    expect(response.body).toMatchObject({
+      ok: true,
+      summary: 'main.asm rebuilt and restarted',
+      rebuiltPath: sourcePath,
+    });
+    expect([...fs.readFileSync(path.join(baseDir, 'build', 'main.bin'))]).toEqual([
+      0x00, 0xaa, 0x00, 0x55, 0x00,
+    ]);
+    expect([...sessionState.runtime.hardware.memory.slice(0x4000, 0x4005)]).toEqual([
+      0x00, 0xaa, 0x00, 0x55, 0x00,
+    ]);
+    expect(sessionState.runtime.getPC()).toBe(0x4000);
+    expect(sendResponse).toHaveBeenCalledWith(response);
+  }, 30_000);
+
   it('rebuilds Glimmer artifacts, mappings, memory, and CPU state end to end', async () => {
     const baseDir = fs.mkdtempSync(path.join(os.tmpdir(), 'debug80-warm-glimmer-'));
     tempDirs.push(baseDir);
