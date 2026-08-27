@@ -2,6 +2,7 @@
 import fs from 'node:fs';
 import { createHash } from 'node:crypto';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { spawnSync } from 'node:child_process';
 
 import { removeStage, stageExtension } from './stage-extension.mjs';
@@ -193,13 +194,82 @@ function verifyBundledAtomRuntime(stage) {
   return failures;
 }
 
-function main() {
+function installVscodeSmokeShim(stage) {
+  const shimRoot = path.join(stage, 'node_modules', 'vscode');
+  fs.mkdirSync(shimRoot, { recursive: true });
+  fs.writeFileSync(
+    path.join(shimRoot, 'package.json'),
+    `${JSON.stringify({ type: 'module', main: 'index.js' }, null, 2)}\n`
+  );
+  fs.writeFileSync(
+    path.join(shimRoot, 'index.js'),
+    [
+      'export const commands = {};',
+      'export const debug = {};',
+      'export const env = {};',
+      'export const languages = {};',
+      'export const Uri = { file: (fsPath) => ({ fsPath }) };',
+      'export const ViewColumn = {};',
+      'export const window = {};',
+      'export const workspace = {};',
+      'export default { commands, debug, env, languages, Uri, ViewColumn, window, workspace };',
+      '',
+    ].join('\n')
+  );
+}
+
+async function smokeBundledAtomAssembly(stage) {
+  const extensionBundlePath = path.join(stage, 'out', 'extension', 'extension.js');
+  const smokeBundlePath = path.join(stage, 'out', 'extension', 'extension-smoke.js');
+  const projectRoot = path.join(stage, 'atom-smoke-project');
+  const source = fs
+    .readFileSync(extensionBundlePath, 'utf8')
+    .replace(
+      'export { activate, deactivate };',
+      'export { activate, deactivate, index as __debug80BundledAtomForSmoke };'
+    );
+  if (!source.includes('__debug80BundledAtomForSmoke')) {
+    return ['temporary bundled Atom smoke export could not be installed'];
+  }
+
+  installVscodeSmokeShim(stage);
+  fs.writeFileSync(smokeBundlePath, source);
+  fs.mkdirSync(projectRoot);
+  fs.writeFileSync(path.join(projectRoot, 'main.asm'), 'ORG 0100H\nNOP\n');
+
+  try {
+    const module = await import(pathToFileURL(smokeBundlePath).href);
+    const atom = module.__debug80BundledAtomForSmoke;
+    if (atom === undefined || typeof atom.assembleAtomProject !== 'function') {
+      return ['bundled Atom API is not callable from the packaged extension output'];
+    }
+    const result = await atom.assembleAtomProject({
+      root: projectRoot,
+      entry: 'main.asm',
+      target: { start: 0, capacity: 0xffff },
+    });
+    const image = result?.generation?.images?.[0];
+    const bytes = image?.bytes === undefined ? [] : Array.from(image.bytes);
+    if (image?.address !== 0x0100 || bytes.length !== 1 || bytes[0] !== 0) {
+      return ['bundled Atom smoke assembly did not emit NOP at $0100'];
+    }
+  } catch (error) {
+    return [`bundled Atom smoke assembly failed: ${error?.stack ?? error}`];
+  }
+
+  return [];
+}
+
+async function main() {
   const stage = stageExtension();
   let entries;
   let bundledAtomFailures = [];
   try {
     entries = normalizeEntries(runVsceLs(stage));
     bundledAtomFailures = verifyBundledAtomRuntime(stage);
+    if (bundledAtomFailures.length === 0) {
+      bundledAtomFailures = await smokeBundledAtomAssembly(stage);
+    }
   } finally {
     removeStage(stage);
   }
@@ -224,4 +294,7 @@ function main() {
   console.log(`VSIX contents verification passed (${entries.length} packaged entries checked).`);
 }
 
-main();
+main().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
