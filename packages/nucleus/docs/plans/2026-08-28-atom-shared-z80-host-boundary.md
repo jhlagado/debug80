@@ -242,6 +242,28 @@ explicit `NucleusGeneratedSourceSegment[]` once the resident compiler begins
 publishing them. Segment validation rejects unknown source ordinals and banked
 segments until banked D8 policy exists.
 
+The proof harness now has an optional resident provenance side channel matching
+the NOBJ adapter pattern: a proof manifest may name a log base, a length word,
+and a maximum byte count. The resident-facing record is fixed-width and numeric:
+
+```text
+byte 0      part ordinal, one-based
+byte 1      output bank
+bytes 2-3   source line, one-based, little-endian
+bytes 4-5   source column, one-based, little-endian
+bytes 6-7   generated start address, little-endian
+bytes 8-9   generated end address, exclusive, little-endian
+byte 10     segment kind: 0 unknown, 1 code, 2 data, 3 directive
+byte 11     confidence: 0 low, 1 medium, 2 high
+```
+
+The host decoder rejects logs that exceed their declared capacity, cross proof
+memory, contain a partial record, use zero part/line/column values, reverse the
+generated address range, or use unknown kind/confidence ordinals. This proves
+the host/resident ABI before real compiler emission is added. The next resident
+step is to emit these records at the semantic-lowering points that currently
+already know both the token source position and the target output cursor.
+
 ### Generation sink
 
 The common sink lifecycle should be:

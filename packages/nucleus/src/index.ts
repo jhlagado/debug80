@@ -56,6 +56,8 @@ export {
   type NucleusSourceState,
 } from "./source-preparation.js";
 export {
+  decodeNucleusSourceProvenanceLog,
+  NUCLEUS_SOURCE_PROVENANCE_RECORD_BYTES,
   renderNucleusD8,
   type NucleusD8Options,
   type NucleusGeneratedSourceSegment,

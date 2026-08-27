@@ -1,0 +1,16 @@
+{
+  "name": "source-provenance-proof-runner",
+  "source": "../asm/vertical-slice/source-provenance-proof.asm",
+  "memoryProfile": "nobj-runner-memory.json",
+  "execution": {
+    "entry": "ProofStart",
+    "maxInstructions": 4,
+    "maxCycles": 64,
+    "halted": true
+  },
+  "sourceProvenance": {
+    "at": "SourceProvenanceLog",
+    "lengthAt": "SourceProvenanceLength",
+    "maxBytes": 12
+  }
+}

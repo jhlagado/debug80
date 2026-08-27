@@ -156,6 +156,37 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     }
   }, 30_000);
 
+  it("decodes optional source-provenance logs from proof memory", async () => {
+    const outcome = await runProofManifest(proof("source-provenance-proof"));
+
+    expect(outcome.sourceProvenance).toEqual([
+      {
+        partOrdinal: 1,
+        line: 10,
+        column: 3,
+        bank: 0,
+        start: 0x8000,
+        end: 0x8003,
+        kind: "code",
+        confidence: "high",
+      },
+    ]);
+  });
+
+  it("rejects source-provenance logs that exceed the declared capacity", async () => {
+    await expect(
+      runProofManifest(proof("source-provenance-proof"), {
+        sourceProvenance: {
+          at: "SourceProvenanceLog",
+          lengthAt: "SourceProvenanceLength",
+          maxBytes: 11,
+        },
+      }),
+    ).rejects.toThrow(
+      "source-provenance-proof-runner: invalid source provenance log: source provenance log uses 12 bytes, limit 11",
+    );
+  });
+
   it("publishes the same flat target with host-prepared resident source descriptors", async () => {
     await withSourceTree(
       {

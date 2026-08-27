@@ -31,6 +31,21 @@ export interface NucleusGeneratedSourceSegment {
   readonly confidence: NucleusSourceSegmentConfidence;
 }
 
+export const NUCLEUS_SOURCE_PROVENANCE_RECORD_BYTES = 12;
+
+const sourceSegmentKinds = [
+  "unknown",
+  "code",
+  "data",
+  "directive",
+] as const satisfies readonly NucleusSourceSegmentKind[];
+
+const sourceSegmentConfidences = [
+  "low",
+  "medium",
+  "high",
+] as const satisfies readonly NucleusSourceSegmentConfidence[];
+
 export interface NucleusD8Options {
   readonly sourceParts?: readonly NucleusPublishedSourcePart[];
   readonly sourceSegments?: readonly NucleusGeneratedSourceSegment[];
@@ -71,6 +86,89 @@ const requireU16 = (name: string, value: number): void => {
     throw new Error(`D8 source segment ${name} is outside 0..65535`);
   }
 };
+
+const readU16Le = (bytes: Uint8Array, offset: number): number =>
+  (bytes[offset] ?? 0) | ((bytes[offset + 1] ?? 0) << 8);
+
+export function decodeNucleusSourceProvenanceLog(
+  memory: Uint8Array,
+  start: number,
+  length: number,
+  maxBytes: number,
+): readonly NucleusGeneratedSourceSegment[] {
+  if (!Number.isInteger(start) || start < 0 || start > memory.length) {
+    throw new Error("source provenance log start is outside proof memory");
+  }
+  if (!Number.isInteger(length) || length < 0) {
+    throw new Error("source provenance log length must be non-negative");
+  }
+  if (!Number.isInteger(maxBytes) || maxBytes < 0) {
+    throw new Error("source provenance log byte limit must be non-negative");
+  }
+  if (length > maxBytes) {
+    throw new Error(
+      `source provenance log uses ${length} bytes, limit ${maxBytes}`,
+    );
+  }
+  if (start + length > memory.length) {
+    throw new Error("source provenance log exceeds proof memory");
+  }
+  if (length % NUCLEUS_SOURCE_PROVENANCE_RECORD_BYTES !== 0) {
+    throw new Error("source provenance log has a truncated record");
+  }
+
+  const segments: NucleusGeneratedSourceSegment[] = [];
+  const end = start + length;
+  for (
+    let cursor = start;
+    cursor < end;
+    cursor += NUCLEUS_SOURCE_PROVENANCE_RECORD_BYTES
+  ) {
+    const partOrdinal = memory[cursor] ?? 0;
+    const bank = memory[cursor + 1] ?? 0;
+    const line = readU16Le(memory, cursor + 2);
+    const column = readU16Le(memory, cursor + 4);
+    const segmentStart = readU16Le(memory, cursor + 6);
+    const segmentEnd = readU16Le(memory, cursor + 8);
+    const kind = sourceSegmentKinds[memory[cursor + 10] ?? 0];
+    const confidence =
+      sourceSegmentConfidences[memory[cursor + 11] ?? 0];
+
+    if (partOrdinal < 1) {
+      throw new Error("source provenance record part ordinal must be positive");
+    }
+    if (line < 1) {
+      throw new Error("source provenance record line must be positive");
+    }
+    if (column < 1) {
+      throw new Error("source provenance record column must be positive");
+    }
+    if (segmentStart >= segmentEnd) {
+      throw new Error("source provenance record start must precede end");
+    }
+    if (kind === undefined) {
+      throw new Error("source provenance record has an unknown segment kind");
+    }
+    if (confidence === undefined) {
+      throw new Error(
+        "source provenance record has an unknown confidence value",
+      );
+    }
+
+    segments.push({
+      partOrdinal,
+      line,
+      column,
+      bank,
+      start: segmentStart,
+      end: segmentEnd,
+      kind,
+      confidence,
+    });
+  }
+
+  return segments;
+}
 
 const validateSourceSegment = (
   segment: NucleusGeneratedSourceSegment,

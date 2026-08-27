@@ -41,6 +41,10 @@ import {
   type NucleusProofRuntimeStreamSnapshot,
   type NucleusProofRuntimeStreamsOptions,
 } from "./runtime-services.js";
+import {
+  decodeNucleusSourceProvenanceLog,
+  type NucleusGeneratedSourceSegment,
+} from "./source-provenance.js";
 
 interface MemoryRegionManifest {
   readonly name: string;
@@ -83,7 +87,14 @@ interface ProofManifest {
     readonly to: string;
     readonly maxBytes: number;
   }[];
+  readonly sourceProvenance?: SourceProvenanceProofManifest;
   readonly nobj?: NobjProofManifest;
+}
+
+interface SourceProvenanceProofManifest {
+  readonly at: string;
+  readonly lengthAt: string;
+  readonly maxBytes: number;
 }
 
 interface NobjProofManifest {
@@ -157,6 +168,7 @@ export interface ProofOutcome {
   readonly symbols: Readonly<Record<string, number>>;
   readonly memory: Uint8Array;
   readonly runtimeStreams: NucleusProofRuntimeStreamSnapshot;
+  readonly sourceProvenance?: readonly NucleusGeneratedSourceSegment[];
   readonly nobj?: NobjExecutionOutcome;
 }
 
@@ -190,6 +202,7 @@ export interface NucleusProofResidentSourceInstallation {
 export interface RunProofManifestOptions {
   readonly source?: NucleusProofResidentSourceInstallation;
   readonly checkObservations?: boolean;
+  readonly sourceProvenance?: SourceProvenanceProofManifest;
   readonly nobj?: {
     readonly publication?: NucleusTargetPublicationDescriptor;
     readonly materializeOnly?: boolean;
@@ -444,6 +457,17 @@ export async function runProofManifest(
           symbolValue,
           options.nobj,
         );
+  const sourceProvenanceManifest =
+    options.sourceProvenance ?? manifest.sourceProvenance;
+  const sourceProvenance =
+    sourceProvenanceManifest === undefined
+      ? undefined
+      : decodeSourceProvenanceManifest(
+          manifest.name,
+          sourceProvenanceManifest,
+          memory,
+          symbolValue,
+        );
 
   return {
     name: manifest.name,
@@ -455,9 +479,39 @@ export async function runProofManifest(
     symbols,
     memory,
     runtimeStreams: readNucleusProofRuntimeStreamSnapshot({ symbols, memory }),
+    ...(sourceProvenance === undefined ? {} : { sourceProvenance }),
     ...(nobj === undefined ? {} : { nobj }),
   };
 }
+
+const decodeSourceProvenanceManifest = (
+  name: string,
+  manifest: SourceProvenanceProofManifest,
+  memory: Uint8Array,
+  symbol: (name: string) => number,
+): readonly NucleusGeneratedSourceSegment[] => {
+  const start = symbol(manifest.at);
+  const lengthAddress = symbol(manifest.lengthAt);
+  if (lengthAddress < 0 || lengthAddress + 2 > memory.length) {
+    throw new ProofFailure(
+      `${name}: source provenance length word exceeds proof memory`,
+    );
+  }
+  const length =
+    (memory[lengthAddress] ?? 0) | ((memory[lengthAddress + 1] ?? 0) << 8);
+  try {
+    return decodeNucleusSourceProvenanceLog(
+      memory,
+      start,
+      length,
+      manifest.maxBytes,
+    );
+  } catch (error) {
+    throw new ProofFailure(
+      `${name}: invalid source provenance log: ${error instanceof Error ? error.message : String(error)}`,
+    );
+  }
+};
 
 const runNobjManifest = async (
   name: string,
