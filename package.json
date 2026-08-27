@@ -36,7 +36,7 @@
     "package:glimmer": "npm pack -w @jhlagado/glimmer --dry-run",
     "package:glimmer-headless": "npm run test:package -w @jhlagado/glimmer-headless-integration",
     "package:runtime": "npm run test:package -w @jhlagado/debug80-runtime",
-    "package:z80-tool-services": "npm pack -w @jhlagado/z80-tool-services --dry-run",
+    "package:z80-tool-services": "npm run test:package -w @jhlagado/z80-tool-services",
     "package:atom": "npm run test:package -w atom-z80",
     "package:debug80": "npm run package:check -w debug80"
   },
