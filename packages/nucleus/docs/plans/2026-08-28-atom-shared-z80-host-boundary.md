@@ -678,6 +678,11 @@ Its current development script is `npm run cli -w nucleus -- <command>`.
 entry-source NOBJ path, and `nucleus proof:publish` remains the
 compatibility/debug command for proof manifests. The older direct npm scripts
 remain as shortcuts while package installation is not yet wired.
+The package now follows the AZM/Glimmer build model for installed commands:
+TypeScript source is emitted to `dist/src`, and the npm `bin` entry exposes
+`dist/src/cli/nucleus.js` as `nucleus`. The development dispatcher still runs
+through `tsx` for fast local iteration, but the packaged command itself has no
+runtime dependency on `tsx`.
 
 `nucleus publish` prepares an entry `.nu` file, installs the resulting source
 bytes and resident descriptors into the current flat compiler proof image,
@@ -762,7 +767,8 @@ without spawning another process.
 
 ## Next implementation unit
 
-Continue Phase 3 by deciding the package/build step for the installed
-`nucleus` binary. The package currently typechecks with `noEmit`, so exposing a
-real npm `bin` requires either a build output directory or a small checked-in
-JavaScript launcher.
+Continue Phase 3 by choosing which Nucleus outputs belong on the normal
+desktop command path. `nucleus publish` currently writes NOBJ. The next CLI
+decision is whether BIN, Intel HEX, listing, and D8-style map output are
+positive output selections on this command, separate subcommands, or later
+Debug80-only publication adapters.

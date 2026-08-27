@@ -5,10 +5,32 @@
   "description": "Nucleus: a small typed language with a direct compiler for 16K Z80 systems",
   "license": "GPL-3.0-only",
   "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/src/index.d.ts",
+      "import": "./dist/src/index.js"
+    },
+    "./cli": {
+      "types": "./dist/src/cli/nucleus.d.ts",
+      "import": "./dist/src/cli/nucleus.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "types": "dist/src/index.d.ts",
+  "bin": {
+    "nucleus": "dist/src/cli/nucleus.js"
+  },
+  "files": [
+    "dist/src",
+    "README.md"
+  ],
   "scripts": {
+    "clean": "rm -rf dist",
+    "build": "npm run clean && tsc -p tsconfig.build.json",
     "typecheck": "tsc --noEmit",
     "pretest": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/debug80-runtime",
     "test": "vitest run",
+    "test:package": "npm run build && node scripts/smoke-npm-package.mjs",
     "premeasure": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/debug80-runtime",
     "measure": "vitest run test/proof-harness.test.ts --reporter=verbose",
     "preproof": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/debug80-runtime",
@@ -17,6 +39,7 @@
     "source:prepare": "tsx src/cli/prepare.ts",
     "publish:nobj": "tsx src/cli/publish.ts",
     "proof:publish": "tsx src/cli/proof-publish.ts",
+    "prepack": "npm run build",
     "atom:migration:dry-run": "node scripts/atom-migration-dry-run.mjs",
     "atom:migration:census": "node scripts/atom-migration-dry-run.mjs --report-only",
     "atom:migration:proof-compare": "node scripts/atom-migration-proof-compare.mjs --report-only"
