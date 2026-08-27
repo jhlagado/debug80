@@ -351,7 +351,9 @@ function resolveDebugMapPath(
 
 function assertBinOutputPath(artifactId: string, outputBin: string): void {
   if (path.extname(outputBin).toLowerCase() !== '.bin') {
-    fail(`ROM artifact ${artifactId} outputBin must use .bin so AZM writes the configured binary`);
+    fail(
+      `ROM artifact ${artifactId} outputBin must use .bin so the assembler writes the configured binary`
+    );
   }
 }
 

@@ -176,7 +176,7 @@ Config block key: `simple`
 | `binFrom`  | `number`         | —                    | Start address for binary output                                          |
 | `binTo`    | `number`         | —                    | End address for binary output                                            |
 
-`simple.binFrom` and `simple.binTo` are an all-or-nothing pair. Debug80 rejects configs that specify only one side or that set `binFrom > binTo`. When the pair is present, the active assembler backend must also support ranged binary emission. The current implementation exposes that path only through AZM-backed builds.
+`simple.binFrom` and `simple.binTo` are an all-or-nothing pair. Debug80 rejects configs that specify only one side or that set `binFrom > binTo`. When the pair is present, the active assembler backend must also support ranged binary emission. Atom and AZM both expose that path.
 
 ---
 
@@ -223,14 +223,15 @@ Config block key: `tec1g`
 
 ### `tec1g.romArtifacts`
 
-`romArtifacts` is validated only for TEC-1G launches. The current schema allows one active monitor artifact and one active expansion artifact. Active entries must be source-backed and are assembled before runtime creation. A TEC-1G expansion artifact may either be a single source-backed 16K window or a multibank artifact with explicit per-bank sources. That build path forces AZM `registerContracts` off, suppresses register-report output, pads generated bank binaries to their configured size, writes configurable multibank output recipes when requested, and keeps the configured `tec1g.entry` authoritative whenever an active monitor artifact owns the launch.
+`romArtifacts` is validated only for TEC-1G launches. The current schema allows one active monitor artifact and one active expansion artifact. Active entries must be source-backed and are assembled before runtime creation. A TEC-1G expansion artifact may either be a single source-backed 16K window or a multibank artifact with explicit per-bank sources. ROM artifacts default to `assembler: "azm"` for existing sources and can opt into `assembler: "atom"` per artifact or per bank. The build path forces AZM `registerContracts` off when AZM is selected, pads generated bank binaries to their configured size, writes configurable multibank output recipes when requested, and keeps the configured `tec1g.entry` authoritative whenever an active monitor artifact owns the launch.
 
 | Field            | Type       | Required  | Description                                                                  |
 | ---------------- | ---------- | --------- | ---------------------------------------------------------------------------- |
 | `id`             | `string`   | yes       | Stable artifact identifier used in diagnostics                               |
 | `role`           | `string`   | yes       | `'monitor'` or `'expansion'`                                                 |
 | `active`         | `boolean`  | no        | Defaults to active; `false` keeps a binary-only placeholder out of launch    |
-| `sourceFile`     | `string`   | active    | Source file assembled with AZM                                               |
+| `assembler`      | `string`   | no        | `'atom'` or `'azm'`; defaults to `'azm'` for source-backed ROM artifacts     |
+| `sourceFile`     | `string`   | active    | Source file assembled for this ROM artifact                                  |
 | `outputBin`      | `string`   | active    | Binary output path. Must use `.bin`                                          |
 | `outputDebugMap` | `string`   | no        | Optional explicit D8 path. Must match the `outputBin` artifact base          |
 | `binary`         | `string`   | inactive  | Binary-only placeholder path for deferred artifact installs                  |

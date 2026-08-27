@@ -28,7 +28,7 @@ The platform is split across focused modules. `runtime.ts` is now a thin facade:
 | `io-handlers.ts`       | TEC-1G port reads/writes, seven-segment and matrix latch updates, matrix scan-cycle capture, and keyboard row reads          |
 | `runtime-storage.ts`   | `createTec1gSdSpi()` — SD card image loading and file-backed persistence wiring                                              |
 | `runtime-lifecycle.ts` | `silenceTec1gSpeaker()` and `resetTec1gRuntimeState()` — speaker mute and full hardware reset                                |
-| `tms9918.ts`           | `createTms9918()` — TMS9918/TMS9929 VRAM, register, status-interrupt, and framebuffer model                                 |
+| `tms9918.ts`           | `createTms9918()` — TMS9918/TMS9929 VRAM, register, status-interrupt, and framebuffer model                                  |
 
 ---
 
@@ -424,14 +424,14 @@ Speed changes propagate through the update controller: `setSpeed()` calls `setCl
 
 ## Asset loading and runtime finalisation
 
-The TEC-1G supports optional expansion ROM images and a ROM-first launch path. `buildLaunchSession()` now calls `buildTec1gRomArtifactsIfRequested()` before local monitor overrides or platform resolution. Active source-backed artifacts assemble with AZM, emit `.hex`, `.bin`, and `.d8.json` outputs, and then `applyTec1gRomArtifactsToLaunchArgs()` mutates the launch args so:
+The TEC-1G supports optional expansion ROM images and a ROM-first launch path. `buildLaunchSession()` now calls `buildTec1gRomArtifactsIfRequested()` before local monitor overrides or platform resolution. Active source-backed artifacts assemble with their selected backend, emit `.hex`, `.bin`, and `.d8.json` outputs, and then `applyTec1gRomArtifactsToLaunchArgs()` mutates the launch args so:
 
 1. a monitor artifact becomes `tec1g.romHex`
 2. an expansion artifact becomes `tec1g.expansionRomHex`
 3. generated D8 maps are prepended to `debugMaps`
 4. each artifact source directory is appended to `sourceRoots`
 
-That ROM-artifact assembly path does not inherit app-scoped AZM register-contract settings. `buildTec1gRomArtifactsIfRequested()` forces `registerContracts: 'off'` and `emitRegisterReport: false` for both the HEX and BIN passes, then pads the generated monitor or expansion binary to the configured image size before launch continues.
+ROM artifacts default to AZM for existing sources and can opt into Atom per artifact or per bank. When AZM is selected, the ROM-artifact assembly path does not inherit app-scoped AZM register-contract settings. `buildTec1gRomArtifactsIfRequested()` forces `registerContracts: 'off'` and `emitRegisterReport: false` for both the HEX and BIN passes, then pads the generated monitor or expansion binary to the configured image size before launch continues.
 
 The provider's `loadAssets()` method then reads the resolved `tec1gConfig.expansionRomHex`, parses it, and returns a `Tec1gExpansionRomImage` with its bank list, projected memory image, and boot entry.
 
@@ -451,17 +451,17 @@ The memory hooks are set at this stage rather than at platform creation because 
 
 The TEC-1G provider registers nine commands:
 
-| Command                    | Action                                 |
-| -------------------------- | -------------------------------------- |
-| `debug80/tec1gKey`         | Press, hold, or release a hex keypad key |
-| `debug80/tec1gMatrixKey`   | Press or release a matrix keyboard key |
-| `debug80/tec1gMatrixMode`  | Enable or disable matrix keyboard mode |
-| `debug80/tec1gJoystick`    | Set the active joystick overlay mask   |
-| `debug80/tec1gTms9918Active` | Attach or detach the TMS9918/TMS9929 video card |
-| `debug80/tec1gTms9918VideoStandard` | Switch the TMS9918/TMS9929 frame cadence |
-| `debug80/tec1gReset`       | Reset CPU and platform state from the hardware reset vector while preserving MON-3 monitor RAM at `0x0800-0x0FFF` |
-| `debug80/tec1gSpeed`       | Switch clock speed                     |
-| `debug80/tec1gSerialInput` | Queue bytes for serial RX              |
+| Command                             | Action                                                                                                            |
+| ----------------------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `debug80/tec1gKey`                  | Press, hold, or release a hex keypad key                                                                          |
+| `debug80/tec1gMatrixKey`            | Press or release a matrix keyboard key                                                                            |
+| `debug80/tec1gMatrixMode`           | Enable or disable matrix keyboard mode                                                                            |
+| `debug80/tec1gJoystick`             | Set the active joystick overlay mask                                                                              |
+| `debug80/tec1gTms9918Active`        | Attach or detach the TMS9918/TMS9929 video card                                                                   |
+| `debug80/tec1gTms9918VideoStandard` | Switch the TMS9918/TMS9929 frame cadence                                                                          |
+| `debug80/tec1gReset`                | Reset CPU and platform state from the hardware reset vector while preserving MON-3 monitor RAM at `0x0800-0x0FFF` |
+| `debug80/tec1gSpeed`                | Switch clock speed                                                                                                |
+| `debug80/tec1gSerialInput`          | Queue bytes for serial RX                                                                                         |
 
 The reset command snapshots the active MON-3 monitor RAM window at `0x0800-0x0FFF`, performs the cold runtime reset at address `0x0000`, restores that RAM range, resets TEC-1G platform state and clears the `matrixHeldKeys` map in the session. After the restore, `resetMon3PresentationState()` rewrites MON-3's CEL and MCB monitor-RAM fields so the monitor returns to its default menu presentation while still keeping the warm-boot signature and other monitor-owned RAM. When the request payload includes `{ fn: true }`, the provider also primes the runtime's reset-time key latch so MON-3 can sample Fn during its first keypad poll after reset. This preserves monitor-owned state such as MON-3 workspace data across a panel reset while restoring the board to the same reset entry and front-panel presentation that hardware uses.
 

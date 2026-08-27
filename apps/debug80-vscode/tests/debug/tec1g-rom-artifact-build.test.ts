@@ -869,7 +869,7 @@ describe('TEC-1G ROM artifact builds', () => {
         sendEvent: () => undefined,
       })
     ).rejects.toThrow(
-      'ROM artifact tecm8-monitor outputBin must use .bin so AZM writes the configured binary'
+      'ROM artifact tecm8-monitor outputBin must use .bin so the assembler writes the configured binary'
     );
     expect(backend.assemble).not.toHaveBeenCalled();
   });

@@ -19,8 +19,8 @@ project is used for ROM work. It covers three common jobs:
 
 The examples use TEC-1G because that is where monitor and expansion ROM
 development is currently most explicit. The same general split still matters on
-other platforms: a ROM binary tells the emulator what to load, while a D8 map
-and source roots tell the debugger how to bind addresses back to source.
+other platforms: the ROM binary is the emulator input, while the D8 map and
+source roots map machine addresses back to source files.
 
 ## The Two Questions
 
@@ -137,8 +137,8 @@ A simple target can stay focused on the app:
 ```
 
 Use this for projects like games or demos where the monitor ROM is just part of
-the machine. Do not copy ROM source into the project unless you want to shadow
-or develop that ROM.
+the machine configuration. Copy ROM source into the project only when the
+project will shadow or develop that ROM.
 
 ## Option 2: Load a Different ROM Binary
 
@@ -202,6 +202,7 @@ breakpoints bind to the project ROM source.
       {
         "id": "custom-monitor",
         "role": "monitor",
+        "assembler": "atom",
         "sourceFile": "roms/tec1g/custom/monitor/monitor.asm",
         "outputBin": "build/roms/tec1g/custom/monitor/monitor.bin",
         "outputDebugMap": "build/roms/tec1g/custom/monitor/monitor.d8.json",
@@ -220,9 +221,15 @@ address = 0xC000
 size    = 0x4000
 ```
 
-AZM emits the matching HEX and D8 files from the `outputBin` artifact base, so
-the `outputBin` path must end in `.bin`, and an explicit `outputDebugMap` must
-match the same base name.
+Source-backed ROM artifacts default to `"assembler": "azm"` for existing
+projects. Set `"assembler": "atom"` when the source uses Atom's directive and
+include format. For multibank expansion ROMs, the artifact-level assembler is
+the default for each bank; a bank can set its own `assembler` while a project is
+being converted one file at a time.
+
+Debug80 writes the matching HEX and D8 files from the `outputBin` artifact base,
+so the `outputBin` path must end in `.bin`, and an explicit `outputDebugMap`
+must match the same base name.
 
 For example:
 
@@ -245,6 +252,7 @@ for the visible expansion window.
       {
         "id": "custom-expansion",
         "role": "expansion",
+        "assembler": "atom",
         "sourceFile": "roms/tec1g/custom/expansion/expansion.asm",
         "outputBin": "build/roms/tec1g/custom/expansion/expansion.bin",
         "outputDebugMap": "build/roms/tec1g/custom/expansion/expansion.d8.json",
@@ -287,6 +295,7 @@ extra 32K ROM area, and reserve the remaining windows for RAM or other hardware.
       {
         "id": "tecm8-expansion",
         "role": "expansion",
+        "assembler": "atom",
         "outputBin": "build/roms/tec1g/tecm8/expansion/debug80-runtime.bin",
         "windowAddress": 32768,
         "windowSize": 16384,
@@ -349,10 +358,26 @@ enough:
   "bankSize": 16384,
   "bankCount": 4,
   "banks": [
-    { "physicalBank": 0, "sourceFile": "roms/expansion/bank0.asm", "outputBin": "build/roms/expansion/bank0.bin" },
-    { "physicalBank": 1, "sourceFile": "roms/expansion/bank1.asm", "outputBin": "build/roms/expansion/bank1.bin" },
-    { "physicalBank": 2, "sourceFile": "roms/expansion/bank2.asm", "outputBin": "build/roms/expansion/bank2.bin" },
-    { "physicalBank": 3, "sourceFile": "roms/expansion/bank3.asm", "outputBin": "build/roms/expansion/bank3.bin" }
+    {
+      "physicalBank": 0,
+      "sourceFile": "roms/expansion/bank0.asm",
+      "outputBin": "build/roms/expansion/bank0.bin"
+    },
+    {
+      "physicalBank": 1,
+      "sourceFile": "roms/expansion/bank1.asm",
+      "outputBin": "build/roms/expansion/bank1.bin"
+    },
+    {
+      "physicalBank": 2,
+      "sourceFile": "roms/expansion/bank2.asm",
+      "outputBin": "build/roms/expansion/bank2.bin"
+    },
+    {
+      "physicalBank": 3,
+      "sourceFile": "roms/expansion/bank3.asm",
+      "outputBin": "build/roms/expansion/bank3.bin"
+    }
   ]
 }
 ```
@@ -558,16 +583,16 @@ treated as the primary workflow for monitor or expansion ROM development.
 
 Use this decision table:
 
-| Goal | Config option |
-| ---- | ------------- |
-| Use the standard bundled monitor | profile or platform kit, no local `romArtifacts` |
-| Try a different monitor binary | `tec1g.romHex` |
-| Try a different expansion binary | `tec1g.expansionRomHex` |
-| Debug a binary with known source | `debugMaps` plus `sourceRoots` |
-| Develop replacement MON-3-style monitor source | active `romArtifacts[]` entry with `role: "monitor"` |
-| Develop one expansion source image | active source-backed `role: "expansion"` artifact |
-| Develop banked expansion source | multibank `role: "expansion"` artifact with `banks[]` |
-| Produce hardware/release ROM files | multibank `outputs[]` recipes |
+| Goal                                           | Config option                                         |
+| ---------------------------------------------- | ----------------------------------------------------- |
+| Use the standard bundled monitor               | profile or platform kit, no local `romArtifacts`      |
+| Try a different monitor binary                 | `tec1g.romHex`                                        |
+| Try a different expansion binary               | `tec1g.expansionRomHex`                               |
+| Debug a binary with known source               | `debugMaps` plus `sourceRoots`                        |
+| Develop replacement MON-3-style monitor source | active `romArtifacts[]` entry with `role: "monitor"`  |
+| Develop one expansion source image             | active source-backed `role: "expansion"` artifact     |
+| Develop banked expansion source                | multibank `role: "expansion"` artifact with `banks[]` |
+| Produce hardware/release ROM files             | multibank `outputs[]` recipes                         |
 
 ## Common Mistakes
 
