@@ -1,6 +1,7 @@
 /** Strict Nucleus Object Stream Format 0.1 encoding and materialization. */
 
 import {
+  GenerationLifecycle,
   AtomicGenerationStore,
   MemoryGenerationSpool,
   type GenerationSpool,
@@ -330,6 +331,7 @@ export class NobjGenerationSink {
   readonly #store: NobjGenerationStore;
   readonly #provider: RuntimeImageProvider;
   readonly #spoolFactory: NobjSpoolFactory;
+  readonly #lifecycle = new GenerationLifecycle();
   #imageSpool: NobjSpool;
   #patchSpool: NobjSpool;
   #begin: NobjBegin | undefined;
@@ -361,11 +363,20 @@ export class NobjGenerationSink {
     return this.#patchHighWater;
   }
 
+  get generationActive(): boolean {
+    return this.#lifecycle.active;
+  }
+
   begin(begin: NobjBegin): void {
-    if (this.#begin !== undefined) fail("a generation is already active");
-    validateBegin(begin);
-    this.#resetTentative();
-    this.#begin = { ...begin };
+    this.#lifecycle.begin(fail, "a generation is already active");
+    try {
+      validateBegin(begin);
+      this.#resetTentative();
+      this.#begin = { ...begin };
+    } catch (error) {
+      this.#lifecycle.reset();
+      throw error;
+    }
   }
 
   image(bank: number, address: number, bytes: Uint8Array): void {
@@ -570,6 +581,7 @@ export class NobjGenerationSink {
     // Validation happens before publication; a failed commit leaves the old generation selected.
     parseNobj(serialized);
     this.#store.publish(serialized);
+    this.#lifecycle.finish(fail, "no NOBJ generation is active");
     this.#begin = undefined;
     this.#map = undefined;
     this.#imageSpool.clear();
@@ -578,12 +590,14 @@ export class NobjGenerationSink {
   }
 
   abort(): void {
+    this.#lifecycle.abort(fail, "no NOBJ generation is active");
     this.#begin = undefined;
     this.#map = undefined;
     this.#resetTentative();
   }
 
   #requireOpen(): NobjBegin {
+    this.#lifecycle.requireActive(fail, "no NOBJ generation is active");
     if (this.#begin === undefined) fail("no NOBJ generation is active");
     return this.#begin as NobjBegin;
   }

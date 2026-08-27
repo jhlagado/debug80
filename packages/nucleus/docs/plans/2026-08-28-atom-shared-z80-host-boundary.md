@@ -402,9 +402,10 @@ publication.
 
 Phase 3 has started at the lowest shared storage layer. The package
 `@jhlagado/z80-tool-services` now exports language-neutral
-`GenerationSpool`, `MemoryGenerationSpool`, `GenerationSpoolFactory`, and
-`AtomicGenerationStore<T>` primitives. Nucleus keeps its existing public NOBJ
-names by aliasing or subclassing those shared types:
+`GenerationSpool`, `MemoryGenerationSpool`, `GenerationSpoolFactory`,
+`AtomicGenerationStore<T>`, `GenerationLifecycle`, and reusable lifecycle
+conformance vectors. Nucleus keeps its existing public NOBJ names by aliasing or
+subclassing the shared storage types:
 
 - `NobjSpool` remains the Nucleus object-sink spool contract;
 - `NobjSpoolFactory` remains the factory type used by NOBJ tests and sinks;
@@ -412,7 +413,9 @@ names by aliasing or subclassing those shared types:
 - `NobjGenerationStore` still validates with `parseNobj` before replacing the
   prior committed bytes.
 
-This checkpoint deliberately does not move Nucleus record framing, map
+`NobjGenerationSink` now uses the shared lifecycle guard for the common
+open/closed generation state and passes the shared lifecycle conformance
+vectors. This checkpoint deliberately does not move Nucleus record framing, map
 semantics, runtime-provider calls, NOBJ status behavior, or Atom's assembler
 sink. Those are the next Phase 3 layers.
 

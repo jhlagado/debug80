@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { createZ80Runtime } from "@jhlagado/debug80-runtime";
+import { runGenerationLifecycleConformance } from "@jhlagado/z80-tool-services";
 
 import {
   crc16CcittFalse,
@@ -696,6 +697,42 @@ describe("NOBJ 0.1", () => {
     });
     expect(store.current).toEqual(second);
     expect(store.current).not.toEqual(first);
+  });
+
+  it("passes the shared generation lifecycle conformance vectors", () => {
+    const result = runGenerationLifecycleConformance(() => {
+      const sink = new NobjGenerationSink(
+        new NobjGenerationStore(),
+        emptyProvider,
+      );
+      let imageLength = 0;
+
+      return {
+        get active() {
+          return sink.generationActive;
+        },
+        begin() {
+          imageLength = 0;
+          sink.begin(flatRomBegin());
+        },
+        image() {
+          sink.image(0, 0x8000 + imageLength, Uint8Array.of(1, 2));
+          imageLength += 2;
+        },
+        patch() {
+          sink.patch(0, 0x8001, Uint8Array.of(9));
+        },
+        commit() {
+          sink.map(flatRomMap(imageLength));
+          sink.commit();
+        },
+        abort() {
+          sink.abort();
+        },
+      };
+    });
+
+    expect(result).toEqual({ vectors: 4, assertions: 16 });
   });
 
   it("uses independent append-only image and patch spools", () => {
