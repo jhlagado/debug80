@@ -2,37 +2,37 @@
 ; Prints a message on the LCD, then continuously scans "HELLO " on the
 ; six-digit seven-segment display.
 
-API_SCAN_SEGMENTS       .equ 10
-API_STRING_TO_LCD       .equ 13
-API_COMMAND_TO_LCD      .equ 15
+API_SCAN        EQU     10
+API_LSTR        EQU     13
+API_LCMD        EQU     15
 
-LCD_CLEAR               .equ 0x01
-LCD_ROW1                .equ 0x80
+LCDCLEAR        EQU     01H
+LCDROW1         EQU     80H
 
-        .org    0x4000
+        ORG     4000H
 
-Start:
-        LD      B,LCD_CLEAR
-        LD      C,API_COMMAND_TO_LCD
-        RST     0x10
+START:
+        LD      B,LCDCLEAR
+        LD      C,API_LCMD
+        RST     10H
 
-        LD      B,LCD_ROW1
-        LD      C,API_COMMAND_TO_LCD
-        RST     0x10
+        LD      B,LCDROW1
+        LD      C,API_LCMD
+        RST     10H
 
-        LD      HL,LcdLine1
-        LD      C,API_STRING_TO_LCD
-        RST     0x10
+        LD      HL,LCDLINE1
+        LD      C,API_LSTR
+        RST     10H
 
-ScanHello:
-        LD      DE,SevenSegHello
-        LD      C,API_SCAN_SEGMENTS
-        RST     0x10
-        JR      ScanHello
+SCANLOOP:
+        LD      DE,SEVHELLO
+        LD      C,API_SCAN
+        RST     10H
+        JR      SCANLOOP
 
-LcdLine1:
-        .db     "Debug80 TEC-1G",0
+LCDLINE1:
+        DB      "Debug80 TEC-1G",0
 
 ; MON-3 seven-segment character codes for "HELLO ".
-SevenSegHello:
-        .db     0x6e,0xc7,0xc2,0xc2,0xeb,0x00
+SEVHELLO:
+        DB      6EH,0C7H,0C2H,0C2H,0EBH,00H

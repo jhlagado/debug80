@@ -1,13 +1,13 @@
-; CP/M transient-program starter. Debug80 assembles this at $0100, writes the
+; CP/M transient-program starter. Debug80 assembles this at 0100H, writes the
 ; matching .COM artifact, and installs MAIN.COM in the session's drive A.
 
-        .org    $0100
+        ORG     0100H
 
-Start:
-        ld      de,Message
-        ld      c,9
-        call    $0005
-        ret
+START:
+        LD      DE,MESSAGE
+        LD      C,9
+        CALL    0005H
+        RET
 
-Message:
-        .db     "Hello from Debug80 CP/M",13,10,"$"
+MESSAGE:
+        DB      "Hello from Debug80 CP/M",13,10,"$"

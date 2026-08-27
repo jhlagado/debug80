@@ -108,7 +108,6 @@ describe('project-scaffolding helpers', () => {
       projectPlatform: 'simple',
       defaultProfile: 'default',
       defaultTarget: 'app',
-      azm: { symbolCase: 'strict' },
       profiles: {
         default: {
           platform: 'simple',
@@ -118,6 +117,7 @@ describe('project-scaffolding helpers', () => {
       targets: {
         app: {
           sourceFile: 'src/main.asm',
+          assembler: 'atom',
           outputDir: 'build',
           artifactBase: 'main',
           platform: 'simple',
@@ -150,6 +150,7 @@ describe('project-scaffolding helpers', () => {
         targets: {
           app: expect.objectContaining({
             sourceFile: 'src/main.z80',
+            assembler: 'atom',
             profile: 'default',
           }),
         },
@@ -170,6 +171,7 @@ describe('project-scaffolding helpers', () => {
     expect(config.profiles.default?.platform).toBe('cpm22');
     expect(config.targets.app).toEqual(
       expect.objectContaining({
+        assembler: 'atom',
         platform: 'cpm22',
         cpm22: { writable: true, programName: 'MAIN.COM' },
       })
@@ -194,25 +196,25 @@ describe('project-scaffolding helpers', () => {
   it('creates starter source text for all built-in kits', () => {
     const extensionUri = { fsPath: process.cwd() } as never;
     expect(createStarterSourceContent(extensionUri, kit('simple/default'), 'asm')).toContain(
-      'ORG 0x0900'
+      'ORG 0900H'
     );
     expect(createStarterSourceContent(extensionUri, kit('cpm22/default'), 'asm')).toContain(
-      '.org    $0100'
+      'ORG     0100H'
     );
     expect(createStarterSourceContent(extensionUri, kit('tec1/mon1b'), 'asm')).toContain(
-      'ORG 0x0800'
+      'ORG 0800H'
     );
     expect(createStarterSourceContent(extensionUri, kit('tec1/classic-2k'), 'asm')).toContain(
-      'ORG 0x0900'
+      'ORG 0900H'
     );
     const tec1gStarter = createStarterSourceContent(extensionUri, kit('tec1g/mon3'), 'asm');
-    expect(tec1gStarter).toContain('.org    0x4000');
+    expect(tec1gStarter).toContain('ORG     4000H');
     expect(tec1gStarter).toContain('Debug80 TEC-1G');
-    expect(tec1gStarter).toContain('API_SCAN_SEGMENTS');
-    expect(tec1gStarter).toContain('ScanHello:');
+    expect(tec1gStarter).toContain('API_SCAN ');
+    expect(tec1gStarter).toContain('SCANLOOP:');
     expect(tec1gStarter).not.toContain('LD      SP,');
     const customStarter = createStarterSourceContent(extensionUri, kit('tec1g/custom'), 'asm');
-    expect(customStarter).toContain('.org    0x4000');
+    expect(customStarter).toContain('ORG     4000H');
     expect(customStarter).toContain('Debug80 TEC-1G');
   });
 
@@ -240,7 +242,6 @@ describe('project-scaffolding helpers', () => {
 
     expect(config).toEqual({
       projectVersion: DEBUG80_PROJECT_VERSION,
-      azm: { symbolCase: 'strict' },
       projectPlatform: 'tec1',
       defaultProfile: 'mon1b',
       defaultTarget: 'app',
@@ -265,6 +266,7 @@ describe('project-scaffolding helpers', () => {
       targets: {
         app: {
           sourceFile: 'src/main.asm',
+          assembler: 'atom',
           outputDir: 'build',
           artifactBase: 'main',
           platform: 'tec1',
@@ -295,7 +297,6 @@ describe('project-scaffolding helpers', () => {
 
     expect(config).toEqual({
       projectVersion: DEBUG80_PROJECT_VERSION,
-      azm: { symbolCase: 'strict' },
       projectPlatform: 'tec1',
       defaultProfile: 'classic-2k',
       defaultTarget: 'app',
@@ -308,6 +309,7 @@ describe('project-scaffolding helpers', () => {
       targets: {
         app: {
           sourceFile: 'src/main.asm',
+          assembler: 'atom',
           outputDir: 'build',
           artifactBase: 'main',
           platform: 'tec1',
@@ -336,7 +338,6 @@ describe('project-scaffolding helpers', () => {
 
     expect(config).toEqual({
       projectVersion: DEBUG80_PROJECT_VERSION,
-      azm: { symbolCase: 'strict' },
       projectPlatform: 'tec1g',
       defaultProfile: 'mon3',
       defaultTarget: 'app',
@@ -361,6 +362,7 @@ describe('project-scaffolding helpers', () => {
       targets: {
         app: {
           sourceFile: 'src/main.asm',
+          assembler: 'atom',
           outputDir: 'build',
           artifactBase: 'main',
           platform: 'tec1g',
@@ -392,7 +394,6 @@ describe('project-scaffolding helpers', () => {
 
     expect(config).toEqual({
       projectVersion: DEBUG80_PROJECT_VERSION,
-      azm: { symbolCase: 'strict' },
       projectPlatform: 'tec1g',
       defaultProfile: 'custom',
       defaultTarget: 'app',
@@ -405,6 +406,7 @@ describe('project-scaffolding helpers', () => {
       targets: {
         app: {
           sourceFile: 'src/main.asm',
+          assembler: 'atom',
           outputDir: 'build',
           artifactBase: 'main',
           platform: 'tec1g',

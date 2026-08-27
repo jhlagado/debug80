@@ -105,7 +105,9 @@ function failure(error: unknown, root: string): AssembleResult {
   const message =
     diagnostic === undefined
       ? `Atom failed: ${atomError.message}`
-      : `${diagnostic.path ?? 'Atom'}:${diagnostic.line ?? 0}:${diagnostic.column ?? 0}: ${atomError.message}`;
+      : `${diagnostic.path ?? 'Atom'}:${diagnostic.line ?? 0}:${diagnostic.column ?? 0}: ${atomError.message}${
+          diagnostic.sourceLine === undefined ? '' : `\n${diagnostic.sourceLine}`
+        }`;
   return {
     success: false,
     error: message,

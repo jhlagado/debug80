@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- New Debug80 assembly projects select Atom explicitly and ship starter source
+  that is verified through Atom for the Simple, CP/M 2.2, TEC-1, and TEC-1G
+  kits. Existing project files without an assembler selection retain their AZM
+  compatibility behaviour.
+- Atom build failures now include the offending source line in Debug80's
+  assembly diagnostic.
+
 ## 0.3.2 - 2026-07-27
 
 - Fixed the on-screen TEC-1G joystick and matrix keyboard controls so they

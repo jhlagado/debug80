@@ -1,6 +1,5 @@
 ; Debug80 starter (TEC-1 / Classic 2K)
-        ORG 0x0900
+        ORG 0900H
 
-start:  NOP
-        JR  start
-
+START:  NOP
+        JR  START

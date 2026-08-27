@@ -1,6 +1,5 @@
 ; Debug80 starter (Simple / Default)
-        ORG 0x0900
+        ORG 0900H
 
-start:  NOP
-        JR  start
-
+START:  NOP
+        JR  START

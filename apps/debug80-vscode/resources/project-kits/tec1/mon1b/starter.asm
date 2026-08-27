@@ -1,6 +1,5 @@
 ; Debug80 starter (TEC-1 / MON-1B)
-        ORG 0x0800
+        ORG 0800H
 
-start:  NOP
-        JR  start
-
+START:  NOP
+        JR  START

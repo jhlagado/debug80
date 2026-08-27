@@ -47,9 +47,9 @@ are available at [debug80.com](https://debug80.com/).
   `zero and A eq $20`.
 - **Integrated build workflow**: Atom, AZM, Glimmer, and Nucleus are packaged
   with the extension and called in-process, so users do not need global
-  compiler installs. An assembly target selects `atom` or `azm` explicitly in
-  `debug80.json`; existing targets without that field retain the AZM
-  compatibility default.
+  compiler installs. New assembly projects select Atom explicitly in
+  `debug80.json`. Existing targets without an assembler field retain the AZM
+  compatibility default until they are migrated.
 - **Register, symbol, stack, and memory visibility**: inspect CPU registers,
   source-map symbols and constants, best-effort symbolic stack entries, flags,
   program counter state, memory regions, RAM contents, ROM-protected ranges, and

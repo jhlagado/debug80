@@ -148,6 +148,7 @@ describe('Atom backend', () => {
         sourceLine: 'BROKEN',
       },
     });
+    expect(result.error).toContain('BROKEN');
     expect(publish).not.toHaveBeenCalled();
     expect(fs.existsSync(project.hex)).toBe(false);
   });

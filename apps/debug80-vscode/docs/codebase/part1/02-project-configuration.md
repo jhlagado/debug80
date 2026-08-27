@@ -115,7 +115,12 @@ Scaffolding is no longer just "pick a platform and write a bare JSON file". The 
 
 The built-in kit IDs are `simple/default`, `cpm22/default`, `tec1/classic-2k`, `tec1/mon1b`, `tec1g/mon3`, and `tec1g/custom`.
 
-`src/extension/project-scaffolding.ts` builds the initial `debug80.json` from a `ScaffoldPlan` and writes starter source files. Bundled ROM assets remain referenced in the config; the launch resolver uses those references to locate extension-bundled files when workspace files are absent, and the explicit bundled-assets command can install local copies on demand.
+`src/extension/project-scaffolding.ts` builds the initial `debug80.json` and
+writes Atom-compatible starter source files. Every new assembly target records
+`assembler: "atom"`; it does not rely on filename inference. Bundled ROM assets
+remain referenced in the config; the launch resolver uses those references to
+locate extension-bundled files when workspace files are absent, and the
+explicit bundled-assets command can install local copies on demand.
 
 ---
 
@@ -450,7 +455,7 @@ When a user creates a new project, the scaffolding system generates the config f
 3. **Build the scaffold plan.** A `ScaffoldPlan` captures the kit, target name, source file path, output directory, artifact base, and optional starter-file details. In the interactive path the source-file choice also includes **No target yet**, which creates a valid project with an empty `targets` map. In the panel's platform-preselected path this is intentionally minimal: the default source file is `src/main.asm`, the target name is derived from the filename, and no extra prompts are shown.
 
 4. **Write files.** The scaffold writes:
-   - the starter source file if it does not already exist
+   - the Atom-compatible starter source file if it does not already exist
    - `debug80.json` at the workspace root
 
 5. **Merge `.gitignore`.** `ensureDebug80Gitignore()` in `src/extension/project-gitignore.ts` appends a small, idempotent **Debug80**-marked block if one is not already present: the scaffold `outputDir` (e.g. `build/`), `out/` and `dist/`, `.vscode/launch.json` (local-only; the extension can still provide a default launch), and common OS files. It does not ignore `roms/`: project-local monitor ROM sources are real project source once copied in for monitor development. The block does not ignore the entire `.vscode/` tree, but new Debug80 project configuration still belongs in root `debug80.json`.
@@ -513,10 +518,9 @@ Glimmer and Nucleus have distinct source extensions, so Debug80 can infer them:
 - `.nu` → use Nucleus
 
 Atom and AZM deliberately share `.asm`, `.inc`, and `.z80`. The filename does
-not identify the assembly dialect. Set `assembler: "atom"` on an Atom target;
-set `assembler: "azm"` where an explicit AZM declaration is useful. Existing
-assembly targets without the field retain AZM while the project corpus moves
-to Atom.
+not identify the assembly dialect. New scaffolds set `assembler: "atom"`.
+Existing assembly targets without the field retain AZM while the project
+corpus moves to Atom; an explicit `assembler: "azm"` keeps that choice visible.
 
 Target discovery is independent of a mandatory `src/` folder. Debug80 looks
 for assembly entry points by convention (`main.asm` and `main.z80`) and treats

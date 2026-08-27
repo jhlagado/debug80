@@ -111,7 +111,6 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
   defaultTarget?: string;
   defaultProfile: string;
   outputDir?: string;
-  azm: { symbolCase: 'strict' };
   profiles: Record<string, Record<string, unknown>>;
   targets: Record<string, Record<string, unknown>>;
 } {
@@ -151,6 +150,7 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
 
   const targetConfig: Record<string, unknown> = {
     sourceFile: plan.sourceFile,
+    assembler: 'atom',
     outputDir: plan.outputDir,
     artifactBase: plan.artifactBase,
     platform: plan.kit.platform,
@@ -194,7 +194,6 @@ export function createDefaultProjectConfig(plan: ScaffoldPlan): {
     defaultProfile: plan.kit.profileName,
     ...(plan.noTarget === true ? { outputDir: plan.outputDir } : {}),
     ...(plan.noTarget === true ? {} : { defaultTarget: plan.targetName }),
-    azm: { symbolCase: 'strict' },
     profiles: {
       [plan.kit.profileName]: profileConfig,
     },

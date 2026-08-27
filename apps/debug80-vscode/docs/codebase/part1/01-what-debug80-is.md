@@ -139,8 +139,9 @@ Debug80 has seven major subsystems. Each one owns a specific responsibility and 
 
 **What it does:** Turns source into loadable Z80 programs. Debug80 ships four
 in-process backends: Atom, AZM, Glimmer, and Nucleus. Atom and AZM share normal
-assembly filename extensions, so `assembler: "atom"` selects Atom explicitly;
-omitting the field retains the AZM compatibility default. Each backend emits
+assembly filename extensions. New projects write `assembler: "atom"`
+explicitly; older targets that omit the field retain the AZM compatibility
+default. Each backend emits
 Intel HEX and a native D8 debug map. Atom also publishes BIN and a listing,
 preserving the identities of files reached through `%INCLUDE`.
 

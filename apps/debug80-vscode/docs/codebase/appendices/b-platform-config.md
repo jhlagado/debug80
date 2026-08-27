@@ -41,9 +41,10 @@ Debug80 currently infers `azm` for `.asm`, `.inc`, and `.z80`, `glimmer` for
 `.glim`, and `nucleus` for `.nu`. Because Atom and AZM both use ordinary
 assembly filenames, the extension does not infer their dialect from `.asm`.
 Set `"assembler": "atom"` for an Atom target. Existing assembly targets that
-omit the field retain the AZM compatibility default. The top-level `azm` block is only consulted
-by the AZM-backed paths, including the Glimmer flow's internal AZM work inside
-`@jhlagado/glimmer`.
+omit the field retain the AZM compatibility default. New project scaffolds
+write `"assembler": "atom"` explicitly. The top-level `azm` block is only
+consulted by AZM-backed paths, including the Glimmer flow's internal AZM work
+inside `@jhlagado/glimmer`.
 
 ```json
 {
