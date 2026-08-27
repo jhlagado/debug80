@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import { prepareNucleusCompilation } from "../src/application.js";
 import { runProofManifest } from "../src/proof.js";
+import { createNucleusProofRuntimeStreams } from "../src/runtime-services.js";
 import { ServiceError, Trap } from "../src/runtime-contract.js";
 import { buildSourceParts } from "../src/source-manifest.js";
 
@@ -35,32 +36,35 @@ async function withSourceTree<T>(
 
 describe("manifest-driven AZM and Debug80 proofs", () => {
   it("prepares proof-harness multipart source through the shared resolver", async () => {
-    await withSourceTree({
-      "src/main.nu": "//% import \"model.nu\"\nsub main()\nend\n",
-      "src/model.nu": "const MODEL = 1\n",
-    }, async (root) => {
-      const prepared = await prepareNucleusCompilation({
-        root,
-        entry: "src/main.nu",
-      });
-      const legacyParts = buildSourceParts("src/model.nu\nsrc/main.nu\n", (name) =>
-        new Uint8Array(readFileSync(path.join(root, name))),
-      );
+    await withSourceTree(
+      {
+        "src/main.nu": '//% import "model.nu"\nsub main()\nend\n',
+        "src/model.nu": "const MODEL = 1\n",
+      },
+      async (root) => {
+        const prepared = await prepareNucleusCompilation({
+          root,
+          entry: "src/main.nu",
+        });
+        const legacyParts = buildSourceParts(
+          "src/model.nu\nsrc/main.nu\n",
+          (name) => new Uint8Array(readFileSync(path.join(root, name))),
+        );
 
-      expect(prepared.sourceParts).toEqual(legacyParts);
-      expect(prepared.project.parts.map((part) => part.logicalIdentity)).toEqual([
-        "src/model.nu",
-        "src/main.nu",
-      ]);
-      expect(prepared.project.retainedPathBytes).toBe(
-        new TextEncoder().encode("src/model.nu").length +
-          new TextEncoder().encode("src/main.nu").length,
-      );
-      expect(prepared.partBanks).toEqual([0, 0]);
-      expect(prepared.totalSourceBytes).toBe(
-        legacyParts.reduce((total, part) => total + part.bytes.length, 0),
-      );
-    });
+        expect(prepared.sourceParts).toEqual(legacyParts);
+        expect(
+          prepared.project.parts.map((part) => part.logicalIdentity),
+        ).toEqual(["src/model.nu", "src/main.nu"]);
+        expect(prepared.project.retainedPathBytes).toBe(
+          new TextEncoder().encode("src/model.nu").length +
+            new TextEncoder().encode("src/main.nu").length,
+        );
+        expect(prepared.partBanks).toEqual([0, 0]);
+        expect(prepared.totalSourceBytes).toBe(
+          legacyParts.reduce((total, part) => total + part.bytes.length, 0),
+        );
+      },
+    );
   });
 
   it("publishes a flat target through the append-only logical sink", async () => {
@@ -539,6 +543,13 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     expect(Array.from(generated.slice(0, 7))).toEqual([
       0x16, 0x00, 0x16, 0x00, 0x7a, 0xfe, 0x03,
     ]);
+    const expectedStreams = createNucleusProofRuntimeStreams();
+    expect(Array.from(outcome.runtimeStreams.output ?? [])).toEqual([
+      ...expectedStreams.output,
+    ]);
+    expect(outcome.runtimeStreams.outputWriteCalls).toBe(
+      expectedStreams.outputWriteCalls,
+    );
   }, 20_000);
 
   it("executes checked initialized-array selection as direct Z80", async () => {
@@ -601,6 +612,18 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     ).toEqual([9, 12, 1, 3, 13, 19, 14, 1, 15, 0, 16, 17, 18, 1, 1, 19]);
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
     expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
+    const expectedStreams = createNucleusProofRuntimeStreams({
+      failOutputWriteCall: 1,
+    });
+    expect(expectedStreams.writeOutputByte({ value: 0 })).toEqual({
+      status: ServiceError.outputFailure,
+    });
+    expect(Array.from(outcome.runtimeStreams.output ?? [])).toEqual([
+      ...expectedStreams.output,
+    ]);
+    expect(outcome.runtimeStreams.outputWriteCalls).toBe(
+      expectedStreams.outputWriteCalls,
+    );
     const emitUpdateExitFixup = outcome.symbols.EmitUpdateExitFixup ?? -1;
     const tokenStartOffset = outcome.symbols.TokenStartOffset ?? -1;
     const tokenStartEnd = (outcome.symbols.TokenStartColumn ?? -1) + 2;

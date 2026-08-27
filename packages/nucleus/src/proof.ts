@@ -19,6 +19,10 @@ import {
   defaultRuntimeLinkContext,
   loadCanonicalRuntimeProvider,
 } from "./nucleus-runtime.js";
+import {
+  readNucleusProofRuntimeStreamSnapshot,
+  type NucleusProofRuntimeStreamSnapshot,
+} from "./runtime-services.js";
 
 interface MemoryRegionManifest {
   readonly name: string;
@@ -134,6 +138,7 @@ export interface ProofOutcome {
   readonly extents: readonly ProofExtent[];
   readonly symbols: Readonly<Record<string, number>>;
   readonly memory: Uint8Array;
+  readonly runtimeStreams: NucleusProofRuntimeStreamSnapshot;
   readonly nobj?: NobjExecutionOutcome;
 }
 
@@ -366,6 +371,7 @@ export async function runProofManifest(
     extents,
     symbols,
     memory,
+    runtimeStreams: readNucleusProofRuntimeStreamSnapshot({ symbols, memory }),
     ...(nobj === undefined ? {} : { nobj }),
   };
 }

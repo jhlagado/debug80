@@ -476,13 +476,21 @@ and storage-output capacities. It also models the Z80 proof runtime's
 `ServiceFailureCall` behavior, where a selected standard-output call fails
 atomically without appending the byte.
 
+The proof harness now exposes a decoded `runtimeStreams` snapshot on
+`ProofOutcome` when the proof image publishes service-state symbols. Existing
+direct-Z80 proof tests compare that snapshot with an independently driven
+`createNucleusProofRuntimeStreams` instance for both the final reset/no-output
+state and the output-failure path. The comparison path is read-only: it does
+not change the proof images, generated programs, runtime code, or execution
+observations.
+
 This checkpoint deliberately does not move Nucleus record framing, map
 semantics, runtime-provider calls, NOBJ status behavior, Atom's assembler sink,
 or Nucleus runtime storage services. Those are the next Phase 3 layers.
 
 ## Next implementation unit
 
-Continue Phase 3 by using `createNucleusProofRuntimeStreams` inside a real
-Nucleus proof-harness execution path. The first step should be a read-only
-comparison path that derives expected service observations from the shared
-adapter while leaving the Z80 proof images unchanged.
+Continue Phase 3 by replacing the remaining hand-decoded Nucleus proof service
+assertions with `runtimeStreams` snapshot comparisons where that improves
+coverage. After that, decide whether the Debug80 execution adapter can call the
+shared stream service directly without changing the resident runtime ABI.

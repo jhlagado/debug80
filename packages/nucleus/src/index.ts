@@ -22,5 +22,8 @@ export {
   NUCLEUS_PROOF_RUNTIME_STREAM_LIMITS,
   NUCLEUS_RUNTIME_STREAM_SERVICE,
   NUCLEUS_RUNTIME_STREAM_STATUS_POLICY,
+  readNucleusProofRuntimeStreamSnapshot,
+  type NucleusProofRuntimeStreamSnapshot,
+  type NucleusProofRuntimeStreamSnapshotSource,
   type NucleusProofRuntimeStreamsOptions,
 } from "./runtime-services.js";
