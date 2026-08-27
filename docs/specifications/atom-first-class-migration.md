@@ -4,12 +4,14 @@ Status: active implementation sequence
 
 Date: 2026-08-27
 
-Implemented through checkpoint 7: the shared services authority, Atom monorepo
-package, include-driven Node and CP/M preparation, CLI v1, and Debug80's
-explicit `assembler: "atom"` backend are in production on `main`. Checkpoint 8
-has begun with the reusable Z80 named-object harness. The TEC-FS source
-provider, TecMate launcher, Nucleus convergence, and default-project migration
-remain.
+Implemented through the Debug80 backend checkpoint: the shared services
+authority, Atom monorepo package, include-driven Node and CP/M preparation, CLI
+v1, and Debug80's explicit `assembler: "atom"` backend are on `main`. Native
+work now includes the reusable Z80 named-object harness and proved TECM8
+providers for ordinary TEC-FS input and transactional output. The harness can
+be linked into a writable 16 KiB target bank; the TEC include resolver,
+launcher, final memory map, hardware acceptance, Nucleus convergence, and
+default-project migration remain.
 
 ## Objective
 
