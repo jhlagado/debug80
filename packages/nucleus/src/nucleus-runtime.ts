@@ -36,7 +36,9 @@ const helperIdentitySymbols = {
   CompareU16: "NucleusRuntimeCompareU16Offset",
 } as const;
 
-const serviceOrder = [
+export const NUCLEUS_RUNTIME_SERVICE_VECTOR_ENTRY_BYTES = 3;
+
+export const nucleusRuntimeServiceOrder = [
   "readInputByte",
   "writeOutputByte",
   "readStorageByte",
@@ -128,7 +130,7 @@ export const validateRuntimeLinkContext = (
   ) {
     throw new NobjError("vector base is outside writable storage");
   }
-  for (const service of serviceOrder) {
+  for (const service of nucleusRuntimeServiceOrder) {
     checkedWord(`${service} service address`, context.services[service]);
   }
 };
@@ -180,9 +182,14 @@ ComparisonGreater      .equ 4
 ComparisonGreaterEqual .equ 5
 `;
 
-const vectorBytes = (services: RuntimeServiceAddresses): Uint8Array => {
-  const bytes = new Uint8Array(serviceOrder.length * 3);
-  serviceOrder.forEach((name, index) => {
+export const nucleusRuntimeServiceVectorBytes = (
+  services: RuntimeServiceAddresses,
+): Uint8Array => {
+  const bytes = new Uint8Array(
+    nucleusRuntimeServiceOrder.length *
+      NUCLEUS_RUNTIME_SERVICE_VECTOR_ENTRY_BYTES,
+  );
+  nucleusRuntimeServiceOrder.forEach((name, index) => {
     const address = services[name];
     bytes[index * 3] = 0xc3;
     bytes[index * 3 + 1] = address & 0xff;
@@ -216,7 +223,7 @@ const contextKey = (identity: number, context: RuntimeLinkContext): string =>
     context.programDataCapacity,
     context.readOnlyBase,
     context.readOnlyCapacity,
-    ...serviceOrder.map((service) => context.services[service]),
+    ...nucleusRuntimeServiceOrder.map((service) => context.services[service]),
   ]);
 
 export class CanonicalRuntimeImageProvider implements RuntimeImageProvider {
@@ -366,7 +373,7 @@ export const loadCanonicalRuntimeImage = async (
       }
       helperOffsets[helper] = offset;
     }
-    const linkedVectors = vectorBytes(context.services);
+    const linkedVectors = nucleusRuntimeServiceVectorBytes(context.services);
     if (linkedVectors.length !== vectorLength) {
       throw new NobjError("canonical runtime vector-layout mismatch");
     }

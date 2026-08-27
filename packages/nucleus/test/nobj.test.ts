@@ -19,8 +19,11 @@ import {
   type RuntimeImageProvider,
 } from "../src/nobj.js";
 import {
+  NUCLEUS_RUNTIME_SERVICE_VECTOR_ENTRY_BYTES,
   defaultRuntimeLinkContext,
   loadCanonicalRuntimeImage,
+  nucleusRuntimeServiceOrder,
+  nucleusRuntimeServiceVectorBytes,
 } from "../src/nucleus-runtime.js";
 
 const emptyProvider: RuntimeImageProvider = { get: () => undefined };
@@ -600,6 +603,9 @@ describe("NOBJ 0.1", () => {
     expect(runtime.identity).toBe(4);
     expect(runtime.bytes).toHaveLength(364);
     expect(runtime.vectorBytes).toHaveLength(33);
+    expect(runtime.vectorBytes).toEqual(
+      nucleusRuntimeServiceVectorBytes(defaultRuntimeLinkContext.services),
+    );
     expect(runtime.initialBytes).toHaveLength(70);
     expect(runtime.initialBytes[33]).toBe(1);
     expect(runtime.initialBytes[40]).toBe(8);
@@ -607,6 +613,40 @@ describe("NOBJ 0.1", () => {
     expect(runtime.helperOffsets?.CheckAggregateRegion).toBe(115);
     expect(runtime.bytes.some((byte) => byte !== 0)).toBe(true);
   }, 30_000);
+
+  it("publishes the service vector as one JP slot per configured service address", () => {
+    const bytes = nucleusRuntimeServiceVectorBytes(
+      defaultRuntimeLinkContext.services,
+    );
+
+    expect(nucleusRuntimeServiceOrder).toEqual([
+      "readInputByte",
+      "writeOutputByte",
+      "readStorageByte",
+      "rewindStorageInput",
+      "writeStorageByte",
+      "seekStorageOutput",
+      "success",
+      "unhandledFailure",
+      "trap",
+      "farCall",
+      "farJump",
+    ]);
+    expect(bytes).toHaveLength(
+      nucleusRuntimeServiceOrder.length *
+        NUCLEUS_RUNTIME_SERVICE_VECTOR_ENTRY_BYTES,
+    );
+
+    nucleusRuntimeServiceOrder.forEach((service, index) => {
+      const offset = index * NUCLEUS_RUNTIME_SERVICE_VECTOR_ENTRY_BYTES;
+      const address = defaultRuntimeLinkContext.services[service];
+      expect([...bytes.slice(offset, offset + 3)]).toEqual([
+        0xc3,
+        address & 0xff,
+        address >>> 8,
+      ]);
+    });
+  });
 
   it("links and executes the same runtime identity at two complete layouts", async () => {
     const secondContext = {

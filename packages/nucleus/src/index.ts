@@ -18,6 +18,11 @@ export {
   type SourcePart,
 } from "./source-manifest.js";
 export {
+  NUCLEUS_RUNTIME_SERVICE_VECTOR_ENTRY_BYTES,
+  nucleusRuntimeServiceOrder,
+  nucleusRuntimeServiceVectorBytes,
+} from "./nucleus-runtime.js";
+export {
   createNucleusProofRuntimeStreams,
   NUCLEUS_PROOF_RUNTIME_STREAM_LIMITS,
   NUCLEUS_RUNTIME_STREAM_SERVICE,

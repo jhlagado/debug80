@@ -379,6 +379,72 @@ The source-preparation boundary is now covered by executable tests:
    the old one-based `SourcePart` contract while the compiler boundary is still
    migrating.
 
+The runtime stream boundary is now covered as a model and as resident-Z80
+state:
+
+1. Nucleus service ordinals map onto the shared `RuntimeByteStreams` operation
+   names;
+2. Nucleus service-error values are the status policy used by the shared stream
+   model;
+3. proof-runtime capacities, selected output-call failure, storage overwrite,
+   append, seek failure, and reset semantics are reproduced by the shared
+   stream model; and
+4. proof execution snapshots compare the final resident-Z80 service state with
+   the shared stream model for the checked proof cases.
+
+## Debug80 execution-adapter trace
+
+Measured against Debug80 `createZ80Runtime` and the current Nucleus canonical
+runtime link path:
+
+- `createZ80Runtime` exposes memory callbacks, I/O callbacks, a tick callback,
+  single-instruction stepping, breakpoints, CPU snapshots, and reset.
+- It does not expose a first-class "intercept this CALL target and emulate a
+  return" hook.
+- `RuntimeLinkContext.services` is a table of Z80 addresses.
+- `nucleusRuntimeServiceVectorBytes` publishes those addresses as 3-byte
+  vector slots: `JP serviceAddress`.
+- `loadCanonicalRuntimeImage` prepends those vector bytes to the runtime
+  initial image and requires `vectorBase === writableBase`,
+  `writableStateBase === vectorBase + vectorLength`, and
+  `programDataBase === writableStateBase + stateLength`.
+- The proof runtime's stream services are ordinary Z80 routines that read and
+  write `ServiceBase` state. The host observes that state after execution.
+
+Selected decision: the current Nucleus runtime-service execution mode remains
+**resident-Z80 vector services**. `RuntimeByteStreams` is now the shared semantic
+model and conformance surface, not yet the execution backend for generated
+programs.
+
+That distinction matters. Routing generated-service calls directly through
+`RuntimeByteStreams` without changing the resident ABI requires a new adapter
+boundary, not a refactor of the existing proof runtime.
+
+Two compatible implementation paths remain open:
+
+1. **Host-callback stubs.** Link each service vector to a small Z80 stub that
+   uses an agreed Debug80 I/O port protocol. Debug80 dispatches those port
+   operations to `RuntimeByteStreams`. This preserves ordinary Z80 execution and
+   also gives Z80-native systems a concrete BIOS/OS stub shape.
+2. **CALL-target interception.** Teach the Debug80 execution adapter to stop at
+   configured service addresses, dispatch `RuntimeByteStreams`, set the Z80
+   return convention (`A` and carry), pop the return address, and resume. This
+   is compact for Node proofs, but it is Debug80-only unless a native equivalent
+   is written separately.
+
+Recommendation: prototype host-callback stubs first. They are closer to the
+multi-platform goal: CP/M, TEC-1/TECMATE, and Debug80 can all implement the
+same service operation contract below the resident tool, while the existing
+resident-Z80 proof runtime remains the compatibility baseline.
+
+Completion evidence for that next checkpoint should include:
+
+- a Debug80 test proving one linked service vector reaches the shared stream
+  backend through the stub protocol;
+- no change to the existing `RuntimeLinkContext` vector-call ABI;
+- existing proof-runtime service tests still green; and
+- a documented native-host stub contract that avoids JSON and Node-only state.
+
 The proof-harness tests now include a resolver-backed source-part path that
 compares the prepared project with the equivalent flat manifest bytes. This is
 the first high-level consumer moved onto the shared resolver without changing
