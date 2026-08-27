@@ -177,6 +177,41 @@ function findAssemblyFiles(root) {
     .sort();
 }
 
+function sourcePackageRoot(asmRoot) {
+  const resolvedAsmRoot = path.resolve(asmRoot);
+  return path.basename(resolvedAsmRoot) === "asm"
+    ? path.dirname(resolvedAsmRoot)
+    : resolvedAsmRoot;
+}
+
+function resolveConfinedInclude(fromFile, include, root) {
+  const resolved = path.resolve(path.dirname(fromFile), include);
+  const relative = path.relative(root, resolved);
+  if (relative.startsWith("..") || path.isAbsolute(relative)) {
+    throw new Error(`include escapes Nucleus source root: ${include}`);
+  }
+  return resolved;
+}
+
+function findAssemblyFilesWithIncludes(asmRoot) {
+  const root = sourcePackageRoot(asmRoot);
+  const queue = findAssemblyFiles(asmRoot).map((file) => path.resolve(file));
+  const seen = new Set();
+  for (let index = 0; index < queue.length; index += 1) {
+    const file = queue[index];
+    if (seen.has(file)) continue;
+    seen.add(file);
+    if (!existsSync(file)) continue;
+    for (const raw of readFileSync(file, "utf8").split(/\n/)) {
+      const include = includeSpecifier(stripComment(raw.replace(/\r$/, "")));
+      if (include === undefined) continue;
+      const resolved = resolveConfinedInclude(file, include, root);
+      if (!seen.has(resolved)) queue.push(resolved);
+    }
+  }
+  return [...seen].sort();
+}
+
 function collectProofSymbols(root) {
   const symbols = new Set();
   if (!existsSync(root)) return symbols;
@@ -225,7 +260,7 @@ function classifyScope(symbol, file, proofSymbols) {
 }
 
 function scanAssembly({ asmRoot, proofRoot }) {
-  const files = findAssemblyFiles(asmRoot);
+  const files = findAssemblyFilesWithIncludes(asmRoot);
   const proofSymbols = collectProofSymbols(proofRoot);
   const directives = new Map();
   const conditionals = new Map();

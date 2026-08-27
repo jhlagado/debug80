@@ -408,6 +408,32 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   });
 
+  it("counts symbols from transitive includes outside the asm directory", async () => {
+    await withTree({
+      "asm/main.asm": [
+        ".include \"../grammar/generated.asmi\"",
+        "JP GeneratedLongLabel",
+        "",
+      ].join("\n"),
+      "grammar/generated.asmi": [
+        "GeneratedLongLabel:",
+        "RET",
+        "",
+      ].join("\n"),
+      "proofs/main.json": "{}",
+    }, async (root) => {
+      const report = scanAssembly({
+        asmRoot: path.join(root, "asm"),
+        proofRoot: path.join(root, "proofs"),
+      });
+
+      expect(report.ledger).toContainEqual(expect.objectContaining({
+        original: "GeneratedLongLabel",
+        owningFile: "../grammar/generated.asmi",
+      }));
+    });
+  });
+
   it("evaluates simple conditionals while flattening one preview entry", async () => {
     await withTree({
       "asm/main.asm": [

@@ -8,7 +8,7 @@ Initial census HEAD: `13ce3cc9`
 
 ## Purpose
 
-This census measures the handwritten Nucleus Z80 assembly under `packages/nucleus/asm` before any move from AZM source syntax to Atom source syntax. The result is a migration input, not an implementation step.
+This census measures the handwritten Nucleus Z80 assembly under `packages/nucleus/asm`, plus transitive assembly includes reached from that tree, before any move from AZM source syntax to Atom source syntax. The result is a migration input, not an implementation step.
 
 The migration target is:
 
@@ -23,15 +23,14 @@ Measured files:
 
 | Item | Measured value |
 | --- | ---: |
-| Assembly files, `.asm` and `.asmi` | 64 |
-| Source lines | 28,585 |
-| Defined assembler symbols detected | 3,648 |
-| Defined assembler symbols longer than eight characters | 3,615 |
-| Referenced identifier-like tokens longer than eight characters | 3,709 |
+| Assembly files, `.asm` and `.asmi` | 66 |
+| Source lines | 29,259 |
+| Defined assembler symbols detected | 3,781 |
+| Defined assembler symbols longer than eight characters | 3,748 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 3 |
 | Late textual includes | 177 |
-| Current unflattened dry-run blockers | 3,792 |
+| Current dry-run blockers | 3,925 |
 
 The source set is large enough that manual renaming without tooling is not credible.
 
@@ -81,10 +80,10 @@ npm run atom:migration:proof-compare -w nucleus
 
 | AZM directive | Measured count | Atom migration treatment |
 | --- | ---: | --- |
-| `.DB` | 2,402 | Mechanical: `DB` |
+| `.DB` | 2,792 | Mechanical: `DB` |
 | `.DS` | 10 | Mechanical: `DS` |
-| `.DW` | 279 | Mechanical: `DW` |
-| `.EQU` | 1,094 | Mechanical: `EQU` |
+| `.DW` | 352 | Mechanical: `DW` |
+| `.EQU` | 1,106 | Mechanical: `EQU` |
 | `.ORG` | 77 | Mechanical: `ORG` |
 | `.END` | 13 | Preview translation omits terminal instances as `;@AZM-END`; every current instance has no source after it |
 | `.INCLUDE` | 201 | Mechanical to Atom host include syntax; keep included files as source parts where possible |
@@ -156,6 +155,8 @@ Representative include arguments:
 - `"proof-z80-runtime.asm"`
 
 The include graph should be converted through the shared source-preparation resolver, not through anonymous textual concatenation. If a proof image still requires textual inclusion, the converter must record that as a temporary compatibility mode.
+
+The scanner follows transitive `.include` directives under the Nucleus package root. This matters for generated grammar files such as `grammar/stage7-tables.asmi`, which sit outside `packages/nucleus/asm` but are part of the real assembly stream.
 
 Atom's current `%INCLUDE` form is header-only. Nucleus AZM source uses textual includes after source has begun in 177 places. That is not a syntax typo; it reflects the proof-image layout style. The migration now has a temporary preview path that lowers one proof entry into a generated flat Atom source file, while preserving source-boundary comments for later provenance work.
 
@@ -273,8 +274,8 @@ result:
 
 | Status | Count |
 | --- | ---: |
-| Byte-identical proof images | 8 |
-| Atom-preview blockers | 17 |
+| Byte-identical proof images | 9 |
+| Atom-preview blockers | 16 |
 | Skipped measurement artifacts | 3 |
 
 Byte-identical proof images:
@@ -286,6 +287,7 @@ Byte-identical proof images:
 - `loop-z80-slice-proof.json`
 - `memory-map-proof.json`
 - `nobj-runner-proof.json`
+- `stage7-ll1-engine-proof.json`
 - `z80-slice-proof.json`
 
 Skipped measurement artifacts:
@@ -298,14 +300,15 @@ Measured remaining blocker groups:
 
 | Group | Representative generated line | Consequence |
 | --- | --- | --- |
-| Forward or alias `EQU` expressions without a proven preview value | `N00000PV EQU N00000PP+N000010E` | Blocks all proof images based on `flat-target-z80-slice-proof.asm` |
-| Keyword constant migration | `LD A,HybridLL1StartSymbol` | Blocks Stage 7/8/9 LL(1) proof images |
-| Larger preview execution budget | `aggregate-z80-slice-proof.json`, `expression-z80-slice-proof.json`, `typed-expression-z80-slice-proof.json` | Atom preview assembly exceeds the comparison script's current execution budget before reporting a source diagnostic |
+| Forward or alias `EQU` expressions without a proven preview value | `N00000PV EQU N00000PP+N0000143` | Blocks all proof images based on `flat-target-z80-slice-proof.asm`; this case currently traces to `GeneratedBase`, which is not defined by the active target-memory map |
+| Larger preview execution budget | `aggregate-z80-slice-proof.json`, `expression-z80-slice-proof.json`, `stage7-ll1-aggregate-call-z80-slice-proof.json`, `stage7-ll1-parser-coverage-proof.json`, `stage8-failure-z80-slice-proof.json`, `stage9-conformance-z80-slice-proof.json`, `typed-expression-z80-slice-proof.json` | Atom preview assembly exceeds the comparison script's current execution budget before reporting a source diagnostic |
 | Output-order mismatch after preview lowering | `structured-control-z80-slice-proof.json` | Atom reaches output publication but rejects descending or overlapping IMAGE records |
 
 The source-capacity blocker from single-file flattening is resolved by generated
-multipart preview parts. The next migration work should address the expression
-and symbol-resolution gaps above, not the source streaming boundary.
+multipart preview parts. The grammar-generated keyword constants are now included
+in the ledger through transitive include scanning. The next migration work should
+address the target-memory alias policy and the preview execution budget before
+attempting permanent source conversion.
 
 ## Conclusion
 
