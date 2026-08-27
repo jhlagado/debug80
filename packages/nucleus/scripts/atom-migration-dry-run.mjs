@@ -14,6 +14,7 @@ const allowedDirectives = new Set([
   "else",
   "end",
   "endif",
+  "equ",
   "if",
   "include",
   "org",
@@ -26,6 +27,7 @@ const mechanicalDirectives = new Set([
   "else",
   "end",
   "endif",
+  "equ",
   "if",
   "include",
   "org",
@@ -33,6 +35,17 @@ const mechanicalDirectives = new Set([
 
 const identifierPattern = /^[A-Za-z_.$?][A-Za-z0-9_.$?]*$/;
 const simpleConditionPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
+const directiveTranslations = new Map([
+  ["db", "DB"],
+  ["dw", "DW"],
+  ["else", "%ELSE"],
+  ["end", "END"],
+  ["endif", "%ENDIF"],
+  ["equ", "EQU"],
+  ["if", "%IF"],
+  ["include", "%INCLUDE"],
+  ["org", "ORG"],
+]);
 
 function parseArgs(argv) {
   const options = {
@@ -199,6 +212,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
 
       const equ = /^\s*([A-Za-z_.$?][A-Za-z0-9_.$?]*):?\s+\.equ\b/i.exec(code);
       if (equ !== null) {
+        addCount(directives, "equ");
         recordSymbol(symbols, equ[1], file, lineNumber, proofSymbols);
       }
     }
@@ -261,6 +275,33 @@ function scanAssembly({ asmRoot, proofRoot }) {
   };
 }
 
+function translateNucleusAzmLine(line, { sourceName = "<nucleus-asm>", lineNumber = 1 } = {}) {
+  const source = stripComment(line);
+  const comment = line.slice(source.length);
+  const context = { file: sourceName, line: lineNumber };
+
+  const leadingDirective = /^(\s*)\.([A-Za-z][A-Za-z0-9_]*)(\b.*)$/.exec(source);
+  if (leadingDirective !== null) {
+    const [, prefix, rawName, rest] = leadingDirective;
+    const name = rawName.toLowerCase();
+    if (name === "routine") {
+      return `${prefix};@ROUTINE${rest.toUpperCase()}${comment}`;
+    }
+    const replacement = directiveTranslations.get(name);
+    if (replacement === undefined) {
+      throw new Error(`${context.file}:${context.line}: unsupported directive .${rawName}`);
+    }
+    return `${prefix}${replacement}${rest}${comment}`;
+  }
+
+  const equ = /^(\s*[A-Za-z_.$?][A-Za-z0-9_.$?]*:?\s+)\.equ(\b.*)$/i.exec(source);
+  if (equ !== null) {
+    return `${equ[1]}EQU${equ[2]}${comment}`;
+  }
+
+  return line;
+}
+
 function recordSymbol(symbols, original, file, line, proofSymbols) {
   const existing = symbols.get(original);
   if (existing !== undefined) {
@@ -293,7 +334,7 @@ function printTextReport(report) {
   }
 }
 
-export { scanAssembly };
+export { scanAssembly, translateNucleusAzmLine };
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   try {

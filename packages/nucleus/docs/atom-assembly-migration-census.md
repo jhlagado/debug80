@@ -49,6 +49,7 @@ npm run atom:migration:dry-run -w nucleus
 | --- | ---: | --- |
 | `.DB` | 2,271 | Mechanical: `DB` |
 | `.DW` | 229 | Mechanical: `DW` |
+| `.EQU` | 1,094 | Mechanical: `EQU` |
 | `.ORG` | 77 | Mechanical: `ORG` |
 | `.END` | 13 | Mechanical: `END`, or omit only when proved unnecessary for that image |
 | `.INCLUDE` | 201 | Mechanical to Atom host include syntax; keep included files as source parts where possible |

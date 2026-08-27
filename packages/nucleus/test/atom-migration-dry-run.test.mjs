@@ -5,6 +5,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 
 import { scanAssembly } from "../scripts/atom-migration-dry-run.mjs";
+import { translateNucleusAzmLine } from "../scripts/atom-migration-dry-run.mjs";
 
 async function withTree(files, run) {
   const root = await mkdtemp(path.join(tmpdir(), "nucleus-atom-migration-"));
@@ -21,6 +22,23 @@ async function withTree(files, run) {
 }
 
 describe("Nucleus Atom migration dry-run", () => {
+  it("translates Nucleus AZM directive lines to Atom forms", () => {
+    expect(translateNucleusAzmLine("            .include \"lib.asmi\"")).toBe(
+      "            %INCLUDE \"lib.asmi\"",
+    );
+    expect(translateNucleusAzmLine("            .if FeatureA")).toBe(
+      "            %IF FeatureA",
+    );
+    expect(translateNucleusAzmLine("            .else")).toBe("            %ELSE");
+    expect(translateNucleusAzmLine("            .endif")).toBe("            %ENDIF");
+    expect(translateNucleusAzmLine("Label       .equ $1000")).toBe(
+      "Label       EQU $1000",
+    );
+    expect(translateNucleusAzmLine(".routine in A out carry ; proof")).toBe(
+      ";@ROUTINE IN A OUT CARRY ; proof",
+    );
+  });
+
   it("reports a clean fixture as ready", async () => {
     await withTree({
       "asm/main.asm": [
