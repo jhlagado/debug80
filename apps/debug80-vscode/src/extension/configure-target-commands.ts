@@ -18,6 +18,21 @@ import {
 type ConfigureFieldId =
   'targetPlatformOverride' | 'program' | 'assembler' | 'targetName' | 'outputDir' | 'artifactBase';
 
+export interface ConfigureAssemblerPickItem {
+  label: 'default' | 'atom' | 'azm' | 'glimmer' | 'nucleus';
+  detail: string;
+}
+
+export function buildAssemblerPickItems(): ConfigureAssemblerPickItem[] {
+  return [
+    { label: 'default', detail: 'Use Atom for assembly sources and infer other source types' },
+    { label: 'atom', detail: 'Use the Atom assembler for Z80 assembly source' },
+    { label: 'azm', detail: 'Use the AZM compatibility backend' },
+    { label: 'glimmer', detail: 'Use the Glimmer frontend and its configured Z80 assembler' },
+    { label: 'nucleus', detail: 'Force the standalone Nucleus compiler backend' },
+  ];
+}
+
 export async function configureProjectCommand(
   options: TargetCommandContext
 ): Promise<string | undefined> {
@@ -229,16 +244,9 @@ async function selectProgram(
 }
 
 async function selectAssembler(): Promise<ConfigureProjectTargetEdit | undefined> {
-  const pick = await vscode.window.showQuickPick(
-    [
-      { label: 'default', detail: 'Use Atom for assembly sources and infer other source types' },
-      { label: 'atom', detail: 'Use the Atom assembler for Z80 assembly source' },
-      { label: 'azm', detail: 'Use the AZM compatibility backend' },
-      { label: 'glimmer', detail: 'Use the Glimmer frontend and its configured Z80 assembler' },
-      { label: 'nucleus', detail: 'Force the standalone Nucleus compiler backend' },
-    ],
-    { placeHolder: 'Select assembler for this target' }
-  );
+  const pick = await vscode.window.showQuickPick(buildAssemblerPickItems(), {
+    placeHolder: 'Select assembler for this target',
+  });
   return pick
     ? { kind: 'assembler', assembler: pick.label === 'default' ? undefined : pick.label }
     : undefined;
