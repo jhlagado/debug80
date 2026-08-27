@@ -4,10 +4,11 @@ Status: accepted target architecture
 
 Date: 2026-08-27
 
-The Node-hosted, Debug80-integrated, and CP/M-native profiles are implemented.
-The reusable native named-object harness is also implemented. The TEC-FS
-source provider, TecMate launcher, and later default-project migration remain
-active work.
+The Node-hosted, Debug80-integrated, CP/M-native, and TEC-native profiles are
+implemented and proved under emulation. The reusable native named-object
+harness, TEC-FS source provider, and TecMate launcher are implemented. TEC
+hardware acceptance, the broader project-corpus migration, and eventual
+compatibility-default change remain active work.
 
 ## Product decision
 
@@ -158,9 +159,10 @@ any Z80-native profile parses JSON.
 
 A Z80-native profile starts from one root source and follows `%INCLUDE` through
 its tool-service provider. Target geometry and available output modules are
-linked into the profile. If the native preparation code cannot fit the selected
-deployment account, it may become a separately loaded Z80-native stage, but it
-must retain the root-source interface.
+linked into the profile. The current CP/M and TEC profiles implement leading
+`%INCLUDE`; `%DEFINE`, `%IF`, `%ELSE`, `%ENDIF`, and `INCBIN` remain Node-hosted
+preparation features. A future native profile may add those features without
+changing the root-source interface or exposing an intermediate ordering file.
 
 ## Host profiles
 
@@ -169,7 +171,7 @@ must retain the root-source interface.
 | Node-hosted        | `debug80-runtime` Z80 emulator | JavaScript named-object provider | `atom` CLI and programming API |
 | Debug80-integrated | same Node-hosted execution     | same provider                    | Debug80 `AtomBackend`          |
 | CP/M-native        | physical or emulated Z80       | BDOS `$0005` provider            | `ATOM.COM`                     |
-| TEC-native         | physical or emulated Z80       | MON3/TEC-FS provider             | TEC Atom application           |
+| TEC-native         | physical or emulated Z80       | MON3/TEC-FS provider             | TecMate `ASM` command          |
 
 Debug80's CP/M machine remains below the guest BIOS. It supplies emulated disk
 and terminal devices and does not intercept Atom or BDOS.

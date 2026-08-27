@@ -8,9 +8,10 @@ Date: 2026-08-27
 
 This ABI gives Z80 development tools a portable way to read and publish named
 binary objects. Source files, prepared source parts, work spools, NOBJ files,
-and target images can all use the same operations. Filesystem paths, CP/M FCBs,
-TEC-FS records, sectors, allocation blocks, and Node file descriptors remain
-inside the selected provider.
+and target images can all use the same operations. Filesystem path resolution,
+CP/M FCBs, TEC-FS catalogue lookup, records, sectors, allocation blocks, and
+Node file descriptors remain inside the selected provider. The ABI deliberately
+has no `resolvePath` operation.
 
 The ABI has three separately versioned pieces:
 

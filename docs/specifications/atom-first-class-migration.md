@@ -14,8 +14,9 @@ projects select either Atom or AZM explicitly, enforced by a repository gate.
 Native work includes the reusable Z80 named-object harness and proved TECM8
 providers for ordinary TEC-FS input and transactional output. The harness has
 a proved immutable-bank profile with fixed state relocated to common RAM. The
-TEC include resolver, launcher, final memory map, hardware acceptance, Nucleus
-convergence, corpus conversion, and compatibility-default flip remain.
+TEC include resolver, launcher, and final memory map are implemented and proved
+under emulation. TEC hardware acceptance, Nucleus convergence, broader corpus
+conversion, release installation, and the compatibility-default change remain.
 
 ## Objective
 
@@ -91,9 +92,12 @@ Keep the existing Node resolver but remove serialized intermediate composition
 files and saved-order input. Implement a Z80-native include resolver over tool
 services, preserving separate part identities and offsets.
 
-Proof: diamonds, cycles, missing includes, active and inactive conditionals,
-255-part capacity, 65,535-byte part boundaries, cross-part labels, exact
-diagnostics, and failed-read atomicity pass under Node and CP/M-native profiles.
+Proof: diamonds, cycles, missing includes, 255-part capacity, 65,535-byte part
+boundaries, cross-part labels, exact diagnostics, and failed-read atomicity
+pass under Node and CP/M-native profiles. Node additionally proves active and
+inactive conditional preparation. The current CP/M and TEC native profiles
+recognize leading `%INCLUDE` only; adding native conditionals is a separate
+profile extension, not a condition of this checkpoint.
 
 Only after this proof, delete CP/M source-list command handling, caches, tests,
 documentation, and obsolete representation ledgers. If an integrated native
@@ -136,6 +140,10 @@ limit.
 Proof: shared provider conformance, exact native memory maps, failure injection,
 emulated acceptance, and hardware acceptance for TEC.
 
+Status: CP/M and TEC provider implementation, exact memory accounts, failure
+proofs, and emulated acceptance are complete. Physical TEC hardware acceptance
+remains.
+
 ### 9. Nucleus convergence
 
 Move Nucleus's lower named-object constants and provider tests onto the shared
@@ -144,6 +152,11 @@ runtime catalogue, or generated-program services.
 
 Proof: shared service conformance plus unchanged Nucleus compiler and native
 profile acceptance.
+
+Status: pending. Nucleus is undergoing an architectural rewrite and still owns
+its existing source-composition implementation. Atom does not force that older
+interface into the shared package; convergence resumes against Nucleus's new
+host boundary when it stabilizes.
 
 ### 10. Default migration
 

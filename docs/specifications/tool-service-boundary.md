@@ -1,6 +1,6 @@
 # Atom and Nucleus tool-service boundary
 
-Status: implemented for Node and CP/M profiles; MON3 and TEC-FS adoption remains
+Status: implemented for Atom's Node, CP/M, and TEC profiles; Nucleus convergence remains
 
 Date: 2026-08-26
 
@@ -31,6 +31,7 @@ resident core.
 | ---------------- | ---------------- | ----------------------------------------------------------------------------------------------------------- |
 | Atom             | direct Node host | private Atom gateway to source packaging and transactional artifact storage                                 |
 | Atom             | CP/M transient   | compact adapter to public BDOS `$0005` calls                                                                |
+| Atom             | TEC native       | compact adapter to the shared request ABI, ordinary TEC-FS source files, and transactional object storage   |
 | Nucleus compiler | direct Node host | fourteen-entry compiler adapter to source, runtime-catalogue, addressed output, commit, and abort providers |
 | Nucleus compiler | CP/M transient   | fourteen-entry adapter to public BDOS `$0005` calls and a bounded addressed output image                    |
 | Nucleus program  | CP/M transient   | twelve-entry generated-program vector to public BDOS console and binary storage operations                  |
@@ -41,12 +42,18 @@ ideal terminal and disk devices. A direct Node run is explicitly host-backed;
 its private provider may use Debug80's Z80 runtime without intercepting
 arbitrary BIOS calls, BDOS calls, or memory accesses.
 
-TECM8 provides the shared request shape for its bounded transactional object
-store. Atom now has a Z80-native adapter for that request as well as the Node
-adapter. Ordinary TEC-FS catalogue files are not yet exposed through a
-conforming read provider, and the Atom launcher is not installed. The TEC
-profile therefore remains incomplete until those pieces and their native
-acceptance proofs pass.
+TECM8 implements the shared request shape for its bounded transactional object
+store and exposes ordinary TEC-FS catalogue files through Atom's Z80-native
+read provider. Its filesystem-local path resolver reduces absolute or
+importer-relative names to canonical one-byte catalogue identities. The Atom
+launcher follows leading `%INCLUDE` directives, retains up to 255 source
+identities, assembles dependency-first, and publishes the requested object
+transactionally. These operations are proved under Debug80 emulation; physical
+TEC hardware acceptance remains a separate deployment checkpoint.
+
+Path resolution is not a shared named-object operation. Node paths, CP/M FCB
+names, and TEC-FS catalogue lookup remain provider-local policy. The common ABI
+starts after a profile has selected the object name it will open.
 
 ## Console and binary objects
 

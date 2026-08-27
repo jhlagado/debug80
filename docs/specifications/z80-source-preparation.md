@@ -47,11 +47,11 @@ of source preparation.
 
 Every source snapshot has three identities:
 
-| Identity | Meaning |
-| --- | --- |
-| Physical path | The canonical host path that was opened |
-| Dependency identity | The canonical key used for import-once and cycle checks |
-| Logical identity | The stable project-relative name used in diagnostics, listings, and maps |
+| Identity            | Meaning                                                                  |
+| ------------------- | ------------------------------------------------------------------------ |
+| Physical path       | The canonical host path that was opened                                  |
+| Dependency identity | The canonical key used for import-once and cycle checks                  |
+| Logical identity    | The stable project-relative name used in diagnostics, listings, and maps |
 
 Two requests for one dependency identity must produce one logical identity.
 Conflicting aliases are an error. A source is snapshotted on its first read;
@@ -70,8 +70,8 @@ identities. It still applies import-once and cycle rules to that canonical key.
 The resolver calls two profile operations:
 
 ```js
-profile.inspectEntry(entrySnapshot, configuration)
-profile.inspectDependency(dependencySnapshot, entryState)
+profile.inspectEntry(entrySnapshot, configuration);
+profile.inspectDependency(dependencySnapshot, entryState);
 ```
 
 The entry inspection returns the immutable state shared by all dependency
@@ -128,13 +128,13 @@ Flat Atom builds use bank zero. Placement never changes dependency order.
 
 The Node implementation defaults to:
 
-| Capacity | Limit |
-| --- | ---: |
-| Source parts | 255 |
-| Dependency depth, including the entry | 64 |
-| Logical identity | 255 ASCII bytes |
-| Retained logical identities | 65,536 bytes |
-| Bank ordinal | 255 |
+| Capacity                              |           Limit |
+| ------------------------------------- | --------------: |
+| Source parts                          |             255 |
+| Dependency depth, including the entry |              64 |
+| Logical identity                      | 255 ASCII bytes |
+| Retained logical identities           |    65,536 bytes |
+| Bank ordinal                          |             255 |
 
 A caller may lower these limits for a native target. Exact limits are accepted;
 the first excess value fails before compiler execution.
@@ -171,11 +171,18 @@ therefore cannot replace an earlier object or artifact.
 
 ## Platform profiles
 
-| Platform | Preparation and byte service |
-| --- | --- |
-| Node/Debug80 | Shared JavaScript resolver; immutable JavaScript source snapshots returned one byte at a time to the emulated Z80 |
-| CP/M | Native include scanner over current-drive names; 128-byte random-record source cache; no JSON parser |
-| TEC-native | Native resolver over the named-object or TEC-FS provider; bounded retained names and descriptors in common RAM |
+| Platform     | Preparation and byte service                                                                                                     |
+| ------------ | -------------------------------------------------------------------------------------------------------------------------------- |
+| Node/Debug80 | Shared JavaScript resolver; immutable JavaScript source snapshots returned one byte at a time to the emulated Z80                |
+| CP/M         | Native include scanner over current-drive names; 128-byte random-record source cache; no JSON parser                             |
+| TEC-native   | Native leading-include resolver over TEC-FS; canonical one-byte catalogue identities and bounded descriptor tables in common RAM |
+
+The current CP/M and TEC profiles recognize leading `%INCLUDE` only. They do
+not implement Node's `%DEFINE`, `%IF`, `%ELSE`, `%ENDIF`, or `INCBIN` profile.
+Both native profiles support up to 255 source parts and preserve Atom's
+65,535-byte per-part offset domain. The TEC resolver normalizes one path in a
+164-byte common-RAM scratch area, then retains its canonical catalogue ID
+rather than the path text.
 
 “Native” means execution on, or close to, a real Z80 environment such as CP/M
 or a TEC-1G. Running the Z80 core through Debug80 on Node is an emulated host
