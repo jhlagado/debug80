@@ -11,7 +11,7 @@ one-off process.
   for that commit has started and reaches a passing state before calling the change complete.
 - Runtime dependencies must be packaged inside the VSIX. Users must not need a global assembler,
   `npm link`, or sibling checkouts.
-- `@jhlagado/azm` stays in `dependencies`, not `devDependencies`.
+- `atom-z80` and `@jhlagado/azm` stay in `dependencies`, not `devDependencies`.
 - `npm run package` must rebuild `out/` before packaging so the VSIX cannot contain stale extension
   host code.
 - Manual VSIX testing comes before marketplace publishing.
@@ -93,14 +93,14 @@ code --install-extension debug80-0.0.1.vsix
 Restart VS Code after installation. Then open a normal Debug80 project workspace and test from the
 Run and Debug sidebar.
 
-### What this tests
+### Packaged-extension checks
 
 This path verifies things that F5 development-host testing can miss:
 
 - The extension manifest activates correctly after packaging.
 - `out/` extension-host code and webview bundles are present.
 - Webview CSS, JavaScript, images, ROM bundles, syntax files, schemas, and resources are packaged.
-- Runtime dependencies such as `@jhlagado/azm` are available from inside the installed
+- Runtime dependencies such as `atom-z80` and `@jhlagado/azm` are available from inside the installed
   extension, without relying on global tools, `npm link`, sibling repos, or the development checkout.
 - The Debug80 view appears in the normal VS Code Run and Debug sidebar.
 - Existing `debug80.json` projects can auto-start and restart.
@@ -115,7 +115,8 @@ After installing the VSIX, test at least:
 - Confirm the Debug80 panel appears under Run and Debug.
 - Launch a TEC-1G MON3 target.
 - Confirm the target still launches after deleting any project-local `roms/` folder, proving bundled ROM profile resolution works from the installed extension.
-- Confirm AZM target assembly works.
+- Confirm Atom target assembly works.
+- Confirm an explicit AZM compatibility target still assembles.
 - Confirm restart works.
 - Confirm breakpoints work in a project with include files.
 - Confirm register editing works while paused.
@@ -139,15 +140,18 @@ After packaging, verify the generated extension contents:
 npm run package:verify
 ```
 
-The verification gate requires:
+The verification gate checks staged first-party extension contents with
+dependency expansion disabled. It requires:
 
-- `node_modules/@jhlagado/azm/...` is present.
 - `out/`, `resources/`, `roms/`, `schemas/`, `syntaxes/`, `README.md`, `LICENSE.txt` or `LICENSE`,
   and `THIRD_PARTY_NOTICES.md` are present.
 - Top-level `src/`, `tests/`, `docs/`, `coverage/`, `.fallow/`, `.github/`, and `.vscode/` are
   absent.
 
-If unwanted files appear, fix `.vscodeignore` before publishing.
+If unwanted files appear, fix `.vscodeignore` before publishing. Runtime
+assembler dependencies are checked through `package.json` tests and the
+installed-VSIX smoke path, where `atom-z80` and `@jhlagado/azm` must both load
+from the packaged extension rather than from global tools or sibling checkouts.
 
 ## Versioning
 

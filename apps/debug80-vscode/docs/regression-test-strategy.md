@@ -20,13 +20,14 @@ platform-specific emulation. No single test style can cover all of that reliably
 | Webview contract tests   | Vitest + DOM environment                     | Project controls, message contracts, UI state invariants                | Every PR                |
 | VS Code host integration | `@vscode/test-electron` / `@vscode/test-cli` | Activation, commands, views, workspace behavior in real VS Code         | PR or release gate      |
 | VSIX content check       | `vsce ls` verification script                | Published package includes runtime dependencies and excludes dev debris | Every release candidate |
-| Packaged VSIX smoke      | Installed VSIX in clean VS Code profile      | Proves installed extension works, not just source tree                  | Release gate            |
+| Packaged VSIX smoke      | Installed VSIX in clean VS Code profile      | Installed extension works outside the source tree                       | Release gate            |
 
 ## Required Regression Scenarios
 
 ### Launch and Assembly
 
-- AZM target assembles in-process and writes HEX, native D8, compact BIN, and optional register contracts artifacts.
+- Atom target assembles in-process by default and writes HEX, native D8, compact BIN, and listing artifacts.
+- Explicit AZM compatibility target assembles in-process and writes HEX, native D8, compact BIN, and optional register contracts artifacts.
 - Sparse `ORG` programs preserve address-bearing HEX and compact raw BIN semantics.
 - Failed assembly reports structured diagnostics.
 
@@ -114,6 +115,7 @@ fail CI because one runner is slightly slower.
 
 ### Packaging
 
+- VSIX includes `node_modules/atom-z80`.
 - VSIX includes `node_modules/@jhlagado/azm`.
 - VSIX includes `out`, `resources`, `roms`, `schemas`, `syntaxes`, `README.md`, `LICENSE.txt`,
   and `THIRD_PARTY_NOTICES.md`.

@@ -22,7 +22,7 @@ This chapter maps the territory.
 
 Z80 programs run on hardware that most developers do not have on their desk. Even when the hardware is available, instrumenting it for debugging — setting breakpoints, inspecting registers, single-stepping — requires specialised equipment. An emulator removes that barrier: the CPU executes in software, so the debugger has full visibility into every cycle.
 
-But an emulator alone is not enough. A Z80 program written for a TEC-1G does not just execute instructions — it drives a 6-digit seven-segment display by strobing I/O ports in a tight loop, reads a matrix keypad by scanning rows and columns, writes pixels to a 128x64 graphical LCD, and communicates over a serial port. If the emulator does not emulate the hardware peripherals, the program does not behave like a program. It behaves like a sequence of port writes that go nowhere.
+But an emulator alone is not enough. A Z80 program written for a TEC-1G executes instructions and drives hardware: it strobes I/O ports for a 6-digit seven-segment display, scans a matrix keypad, writes pixels to a 128x64 graphical LCD, and communicates over a serial port. If the emulator does not emulate the hardware peripherals, the program does not behave like a program. It behaves like a sequence of port writes that go nowhere.
 
 Debug80 solves both problems. It emulates the Z80 CPU at the instruction level, emulates the I/O peripherals of specific target platforms, and exposes both to VS Code's Debug Adapter Protocol so that the standard debugging UI — breakpoints, stepping, variable inspection — works out of the box. A custom webview panel renders the emulated hardware in real time: you see the seven-segment display update, the LED matrix light up, the LCD draw characters, while you step through the code that drives them.
 
@@ -71,7 +71,7 @@ Key files:
 - `apps/debug80-vscode/webview/common/memory-panel.ts` — the CPU tab: register strip, memory dumps, inline editing
 - `apps/debug80-vscode/webview/common/styles.css` — shared styles
 
-### How they communicate
+### Runtime communication
 
 ```
 Extension Host                     Debug Adapter
@@ -140,8 +140,9 @@ Debug80 has seven major subsystems. Each one owns a specific responsibility and 
 **What it does:** Turns source into loadable Z80 programs. Debug80 ships four
 in-process backends: Atom, AZM, Glimmer, and Nucleus. Atom and AZM share normal
 assembly filename extensions. New projects write `assembler: "atom"`
-explicitly; older targets that omit the field retain the AZM compatibility
-default. Each backend emits
+explicitly; targets that omit the field infer Atom for `.asm`, `.inc`, and
+`.z80` sources. Select `assembler: "azm"` only for source that still requires
+the AZM compatibility backend. Each backend emits
 Intel HEX and a native D8 debug map. Atom also publishes BIN and a listing,
 preserving the identities of files reached through `%INCLUDE`.
 
@@ -167,7 +168,7 @@ preserving the identities of files reached through `%INCLUDE`.
 
 ---
 
-## What lives for how long
+## State lifetime
 
 Not all state has the same lifetime. Confusing session state with extension state is one of the most common sources of bugs. Here is the hierarchy:
 
@@ -235,7 +236,7 @@ Here is what happens from the moment VS Code loads the extension to the moment a
 
 ---
 
-## How to run, build, and test
+## Build, test, and run commands
 
 ### Building
 

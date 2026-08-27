@@ -290,7 +290,7 @@ The project header renders the current workspace context and lets the user chang
 
 **Stop on entry** — visible only when `projectState === 'initialized'`. A checkbox in the project header row that toggles the global stop-on-entry flag for the current VS Code window session. When toggled, the webview sends `{ type: 'setStopOnEntry', stopOnEntry: boolean }`. The value is not persisted into `debug80.json`.
 
-**Strict labels** — visible only when `projectState === 'initialized'`. A checkbox in the same shared header row that reflects `projectStatus.azmSymbolCase`. Checked means Debug80 will persist `azm.symbolCase: "strict"` for the project. Clearing it posts `{ type: 'setAzmSymbolCase', symbolCase: 'insensitive' }`, which immediately updates `debug80.json` so legacy mixed-case symbol references can resolve on the next build and debug launch.
+**Strict labels** — visible only when `projectState === 'initialized'`. A checkbox in the same shared header row that reflects `projectStatus.azmSymbolCase`. Checked means Debug80 will persist `azm.symbolCase: "strict"` for the project. Clearing it posts `{ type: 'setAzmSymbolCase', symbolCase: 'insensitive' }`, which immediately updates `debug80.json` so legacy mixed-case symbol references can resolve in AZM compatibility builds on the next build and debug launch. Atom builds ignore this AZM field.
 
 When a `projectStatus` message arrives:
 

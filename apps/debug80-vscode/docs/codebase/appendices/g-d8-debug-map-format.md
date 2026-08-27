@@ -10,11 +10,11 @@ nav_order: 7
 
 # Appendix G — D8 Debug Map Format
 
-D8 is a JSON debug-map format for Z80 assemblers, debuggers, and conversion tools. Debug80 consumes D8 maps for source-level debugging. AZM emits D8 maps as one of its normal output artifacts.
+D8 is a JSON debug-map format for Z80 assemblers, debuggers, and conversion tools. Debug80 consumes D8 maps for source-level debugging. Atom and AZM emit D8 maps as normal output artifacts.
 
 The format is intentionally small. It records the relationship between generated address ranges, source files, listing rows, and symbols. A debugger can use that information to bind breakpoints, show stack frames, and correlate the program counter with source lines without reverse-engineering an assembler listing.
 
-D8 is not tied to AZM syntax. AZM is one producer. Debug80 is one consumer. Other assemblers can emit the same shape directly or use a converter that turns their own listing or symbol format into D8 JSON.
+D8 is not tied to one assembler syntax. Atom and AZM are producers. Debug80 is one consumer. Other assemblers can emit the same shape directly or use a converter that turns their own listing or symbol format into D8 JSON.
 
 ---
 
@@ -27,7 +27,7 @@ build/main.hex
 build/main.d8.json
 ```
 
-Debug80 treats the native sidecar map as the authoritative source map for active AZM targets. Debug80 no longer writes generated maps to a project-local `.debug80/cache` path and does not fall back to parsing listing files during active launches.
+Debug80 treats the native sidecar map as the authoritative source map for active assembled targets. Debug80 no longer writes generated maps to a project-local `.debug80/cache` path and does not fall back to parsing listing files during active launches.
 
 ---
 
@@ -306,7 +306,7 @@ Write source paths consistently. Mixing absolute paths, relative paths, and gene
 
 Use `line: null` or omit `line` when a range cannot be tied to source. Do not invent source lines just to make the file look complete.
 
-Set `confidence` honestly. A debugger can use this to prefer exact native mappings over approximate listing-derived mappings.
+Set `confidence` from the evidence used to create the mapping. A debugger can use this to prefer exact native mappings over approximate listing-derived mappings.
 
 Keep unknown future data additive. Producers may include extra fields, but required v1 fields should remain stable so existing consumers can continue to read the map.
 
@@ -316,6 +316,6 @@ Keep unknown future data additive. Producers may include extra fields, but requi
 
 Debug80 parses and validates D8 maps before importing them. Invalid JSON or schema-level failure disables source-map-backed features until the target is built again. Segment quality warnings do not necessarily abort launch.
 
-If no usable D8 map exists, the expected fix is to build the target again with AZM so a fresh source map is emitted beside the HEX artifact.
+If no usable D8 map exists, the expected fix is to build the target again with its configured assembler so a fresh source map is emitted beside the HEX artifact.
 
 For breakpoint binding, Debug80 uses executable segments. Labels, constants, and directive-only rows may still help stack display or symbol lookup, but zero-width or non-executable mappings should not become active breakpoint addresses.

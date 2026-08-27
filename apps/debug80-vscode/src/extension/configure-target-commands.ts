@@ -231,9 +231,9 @@ async function selectProgram(
 async function selectAssembler(): Promise<ConfigureProjectTargetEdit | undefined> {
   const pick = await vscode.window.showQuickPick(
     [
-      { label: 'default', detail: 'Use the source extension default' },
+      { label: 'default', detail: 'Use Atom for assembly sources and infer other source types' },
       { label: 'atom', detail: 'Use the Atom assembler for Z80 assembly source' },
-      { label: 'azm', detail: 'Force AZM backend' },
+      { label: 'azm', detail: 'Use the AZM compatibility backend' },
       { label: 'glimmer', detail: 'Use the Glimmer frontend and its configured Z80 assembler' },
       { label: 'nucleus', detail: 'Force the standalone Nucleus compiler backend' },
     ],

@@ -31,7 +31,7 @@ Debug80 no longer reconstructs source maps from `.lst` files. The selected assem
 <outputDir>/<artifactBase>.d8.json
 ```
 
-It then parses and validates the file with `parseD8DebugMap()` and `validateD8Segments()`. Invalid, missing or non-native maps do not trigger a listing or cache fallback. Debug80 logs a source-map diagnostic that names the relative target map when possible, tells the user to build the selected target with AZM, and returns an empty mapping.
+It then parses and validates the file with `parseD8DebugMap()` and `validateD8Segments()`. Invalid, missing or non-native maps do not trigger a listing or cache fallback. Debug80 logs a source-map diagnostic that names the relative target map when possible, tells the user to build the selected target with its configured assembler, and returns an empty mapping.
 
 `validateD8Segments()` performs quality checks and logs warnings as `D8 quality warning` messages. Warnings do not abort mapping.
 
@@ -144,7 +144,7 @@ There are no additional listing inputs, listing-content inputs, or listing-deriv
 
 ## Summary
 
-- AZM native D8 maps are the source of truth for Debug80 source mapping.
+- Native D8 maps from the selected assembler are the source of truth for Debug80 source mapping.
 - Debug80 no longer parses `.lst` files or ASM80-style symbol tables for active mapping.
 - `SourceMapSegment` and `SourceMapAnchor` are runtime data structures built from D8 files.
 - The remaining include-remap pass repairs known D8 path attribution problems for included monitor sources.

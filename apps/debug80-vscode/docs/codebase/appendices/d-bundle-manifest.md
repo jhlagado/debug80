@@ -239,7 +239,7 @@ The `debug80.materializeBundledRom` VS Code command is shown to users as **Debug
 6. Creates the conventional local ROM entry source where applicable: `roms/tec1g/mon3/mon3.rom.asm` or `roms/tec1/mon1b/mon1b.rom.asm`.
 7. Reports success or failure via `vscode.window.showInformationMessage()`.
 
-This is useful if a user wants local ROM source files for inspection, replacement, or monitor development. Normal launch does not require this step. Once the `*.rom.asm` entry source exists, the launch path builds it with AZM and uses its generated ROM HEX and D8 map instead of the bundled ROM/map.
+This is useful if a user wants local ROM source files for inspection, replacement, or monitor development. Normal launch does not require this step. Once the `*.rom.asm` entry source exists, the launch path builds it with the configured assembler and uses its generated ROM HEX and D8 map instead of the bundled ROM/map.
 
 ---
 

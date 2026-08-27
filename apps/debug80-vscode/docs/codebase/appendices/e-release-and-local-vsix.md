@@ -63,7 +63,8 @@ Before calling a VSIX candidate releasable, test:
 - the Debug80 view appears under Run and Debug;
 - an initialized project auto-starts;
 - TEC-1G MON3 launch works;
-- AZM target assembly works and produces a native source map;
+- Atom target assembly works and produces a native source map;
+- an explicit AZM compatibility target still assembles;
 - source-map editor features work from the built D8 map: F12, hover, workspace symbols, Variables and Watches;
 - conditional breakpoints evaluate against registers, flags, symbols and memory reads;
 - restart works;

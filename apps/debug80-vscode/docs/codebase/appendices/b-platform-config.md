@@ -124,10 +124,11 @@ AZM resolves policy entries by source-file glob. More specific patterns win over
 Every Project panel exposes a **Strict labels** checkbox backed by the
 project-level `azm.symbolCase` field. It is checked by default. Clearing it
 immediately persists `"insensitive"` in `debug80.json`, allowing AZM to resolve
-legacy symbol references with inconsistent capitalization. The TEC-1G Project
-accordion also exposes session-scoped **Register Contracts** (`Enforce`,
-`Audit`, `Off`) and **Contract Updates** (`Ask`, `Auto`, `Never`) controls.
-Those contract controls are not persisted directly into `debug80.json`.
+legacy symbol references with inconsistent capitalization. Atom builds ignore
+this field. The TEC-1G Project accordion also exposes session-scoped
+**Register Contracts** (`Enforce`, `Audit`, `Off`) and **Contract Updates**
+(`Ask`, `Auto`, `Never`) controls. Those contract controls are not persisted
+directly into `debug80.json`.
 
 ### Nucleus options
 

@@ -203,7 +203,7 @@ Each symbol must carry either `address` or `value`. Symbols with a source line a
 
 ## Debug Map Selection
 
-Debug80 now treats the build-side native D8 map as the authoritative source map for active project targets. AZM emits this map directly, so Debug80 should not need to reconstruct project source maps from listing text during normal use.
+Debug80 now treats the build-side native D8 map as the authoritative source map for active project targets. Atom and AZM emit this map directly, so Debug80 should not need to reconstruct project source maps from listing text during normal use.
 
 `buildMappingFromDebugMap()` resolves `<artifactBase>.d8.json` beside the selected target's build artifact. Native maps are not rejected just because a source file appears newer; stale checks are advisory UI signals rather than alternate mapping paths.
 
@@ -218,7 +218,7 @@ If no usable map exists, Debug80 returns an empty mapping and logs a build-requi
 - `SourceMapIndex` has three lookup structures: by address, by file/line, and by file anchors.
 - D8 v1 requires `format`, `version`, `arch`, `addressWidth`, `endianness`, and grouped `files`.
 - D8 segments use `start` and exclusive `end`, matching runtime `SourceMapSegment` ranges.
-- Native D8 maps are the source of truth for active AZM targets.
+- Native D8 maps are the source of truth for active assembled targets.
 - Listing-derived maps and ASM80 parser compatibility have been removed from the active Debug80 codebase.
 
 ---

@@ -571,9 +571,9 @@ The launch pipeline has three distinct error paths:
 
 **Missing launch inputs.** If no `asm` or `hex` is specified and no config file is found, `respondToMissingLaunchInputs()` prompts the user to create a `debug80.json` via the project scaffolding command. If the user creates one, they get a message to configure it and re-run. If they cancel, they get an error explaining what is needed.
 
-**Missing artifacts.** If assembly succeeds (or is skipped) but the required `.hex` artifact does not exist on disk, a `MissingLaunchArtifactsError` is thrown. If the D8 source map is missing, source-level features degrade until the user builds the selected target with AZM.
+**Missing artifacts.** If assembly succeeds (or is skipped) but the required `.hex` artifact does not exist on disk, a `MissingLaunchArtifactsError` is thrown. If the D8 source map is missing, source-level features degrade until the user builds the selected target with its configured assembler.
 
-**Assembly failure.** If AZM reports diagnostics that prevent assembly, an `AssembleFailureError` is thrown with the parsed diagnostic. The error is sent to three destinations: the Debug Console (full assembler output), the extension host (structured diagnostic for the webview), and the VS Code error notification (one-line summary).
+**Assembly failure.** If the configured assembler reports diagnostics that prevent assembly, an `AssembleFailureError` is thrown with the parsed diagnostic. The error is sent to three destinations: the Debug Console (full assembler output), the extension host (structured diagnostic for the webview), and the VS Code error notification (one-line summary).
 
 All three paths send an error response to VS Code, which shows the error and cleans up the debug session UI.
 
