@@ -18,6 +18,7 @@ const inputOptions = {
     nodeResolve({ preferBuiltins: true }),
     commonjs(),
     esbuild({ target: 'es2022', tsconfig: path.join(rootDirectory, 'tsconfig.json') }),
+    atomNativeCoreAssetPathPlugin(),
   ],
 };
 const outputOptions = {
@@ -26,6 +27,23 @@ const outputOptions = {
   sourcemap: true,
   inlineDynamicImports: true,
 };
+const atomPackageAssetPath = '../../../assets/native-core.json';
+const bundledExtensionAssetPath = '../../assets/native-core.json';
+
+function atomNativeCoreAssetPathPlugin() {
+  return {
+    name: 'debug80-atom-native-core-asset-path',
+    renderChunk(code) {
+      if (!code.includes(atomPackageAssetPath)) {
+        this.error('bundled Atom native-core asset path was not found');
+      }
+      return {
+        code: code.split(atomPackageAssetPath).join(bundledExtensionAssetPath),
+        map: null,
+      };
+    },
+  };
+}
 
 if (watch) {
   const watcher = watchRollup({ ...inputOptions, output: outputOptions });

@@ -1,4 +1,7 @@
 #!/usr/bin/env node
+import fs from 'node:fs';
+import { createHash } from 'node:crypto';
+import path from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 import { removeStage, stageExtension } from './stage-extension.mjs';
@@ -48,6 +51,18 @@ const FORBIDDEN_TOP_LEVEL_ENTRIES = new Set([
   'tests',
   'webview',
 ]);
+
+const ATOM_CORE_SYMBOLS = [
+  'AtomAssemble',
+  'AtomHostResidentEnd',
+  'AtomSinkBegin',
+  'AtomSinkImageByte',
+  'AtomSinkPatchByte',
+  'AtomSinkPatchWord',
+  'AtomSinkCommit',
+  'AtomSinkAbort',
+  'AtomSourceReadByte',
+];
 
 function hasTopLevelDirectory(directory) {
   return (entry) => entry === directory || entry.startsWith(`${directory}/`);
@@ -117,18 +132,91 @@ function printFailure({ missingRequired, forbiddenEntries }) {
   }
 }
 
+function readJson(filePath) {
+  return JSON.parse(fs.readFileSync(filePath, 'utf8'));
+}
+
+function verifyBundledAtomRuntime(stage) {
+  const extensionBundlePath = path.join(stage, 'out', 'extension', 'extension.js');
+  const nativeCorePath = path.resolve(
+    path.dirname(extensionBundlePath),
+    '..',
+    '..',
+    'assets',
+    'native-core.json'
+  );
+  const bundle = fs.readFileSync(extensionBundlePath, 'utf8');
+  const failures = [];
+
+  if (!bundle.includes('return await Promise.resolve().then(function () { return index; });')) {
+    failures.push('Atom compiler API is not bundled into the extension output');
+  }
+  if (bundle.includes('import("atom-z80")') || bundle.includes("import('atom-z80')")) {
+    failures.push('extension output still contains a runtime import of atom-z80');
+  }
+  if (!bundle.includes('new URL("../../assets/native-core.json", import.meta.url)')) {
+    failures.push('bundled Atom native runner does not resolve assets/native-core.json');
+  }
+
+  let core;
+  try {
+    core = readJson(nativeCorePath);
+  } catch (error) {
+    failures.push(`Atom native core asset cannot be read: ${error.message}`);
+  }
+  if (core !== undefined) {
+    if (core.format !== 'atom-native-core' || core.version !== 1) {
+      failures.push('Atom native core asset has an unsupported format');
+    }
+    if (typeof core.hexText !== 'string') {
+      failures.push('Atom native core asset omits hexText');
+    } else if (
+      createHash('sha256').update(core.hexText, 'utf8').digest('hex') !== core.hexSha256
+    ) {
+      failures.push('Atom native core HEX digest does not match');
+    }
+    const symbols = core.symbols;
+    if (symbols === null || typeof symbols !== 'object' || Array.isArray(symbols)) {
+      failures.push('Atom native core asset omits symbols');
+    } else {
+      for (const name of ATOM_CORE_SYMBOLS) {
+        if (!Number.isInteger(symbols[name])) {
+          failures.push(`Atom native core asset omits ${name}`);
+        }
+      }
+      if (Number.isInteger(symbols.AtomHostResidentEnd) && symbols.AtomHostResidentEnd > 0x4000) {
+        failures.push('Atom native core exceeds the one-bank resident limit');
+      }
+    }
+  }
+
+  return failures;
+}
+
 function main() {
   const stage = stageExtension();
   let entries;
+  let bundledAtomFailures = [];
   try {
     entries = normalizeEntries(runVsceLs(stage));
+    bundledAtomFailures = verifyBundledAtomRuntime(stage);
   } finally {
     removeStage(stage);
   }
   const result = verifyEntries(entries);
 
-  if (result.missingRequired.length > 0 || result.forbiddenEntries.length > 0) {
+  if (
+    result.missingRequired.length > 0 ||
+    result.forbiddenEntries.length > 0 ||
+    bundledAtomFailures.length > 0
+  ) {
     printFailure(result);
+    if (bundledAtomFailures.length > 0) {
+      console.error('\nBundled Atom runtime verification failed:');
+      for (const failure of bundledAtomFailures) {
+        console.error(`  - ${failure}`);
+      }
+    }
     process.exitCode = 1;
     return;
   }

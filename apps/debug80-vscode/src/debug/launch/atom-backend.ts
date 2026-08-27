@@ -81,7 +81,7 @@ function renderBinaryRange(result: AtomBuildResult, options: AssembleBinOptions)
     throw new RangeError('Atom binary range must contain at least one byte');
   }
   const bytes = new Uint8Array(length);
-  const copy = (address: number, source: Uint8Array | readonly number[]) => {
+  const copy = (address: number, source: Uint8Array | readonly number[]): void => {
     const sourceBytes = source instanceof Uint8Array ? source : Uint8Array.from(source);
     const start = Math.max(address, options.binFrom);
     const end = Math.min(address + sourceBytes.length, options.binTo + 1);
