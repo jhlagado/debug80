@@ -10,6 +10,9 @@ const usage = `Usage: nucleus source:prepare [options] <entry.nu>
 
 Options:
   --root DIR       Project root. Defaults to the current directory.
+  --runtime-services resident|host-streams
+                   Runtime service link profile. Defaults to resident.
+  --stub-base WORD Host-stream stub base, required for --runtime-services host-streams.
   --json           Print machine-readable JSON.
   -h, --help       Show this help.
 
@@ -21,6 +24,8 @@ compile, assemble, or publish output.
 interface Options {
   readonly root: string;
   readonly entry?: string;
+  readonly runtimeServices: "resident" | "host-streams";
+  readonly stubBase?: number;
   readonly json: boolean;
   readonly help: boolean;
 }
@@ -31,8 +36,20 @@ function optionValue(arguments_: readonly string[], index: number, name: string)
   return value;
 }
 
+function parseWord(value: string, name: string): number {
+  const parsed = /^0x[0-9a-f]+$/i.test(value)
+    ? Number.parseInt(value.slice(2), 16)
+    : Number.parseInt(value, 10);
+  if (!Number.isInteger(parsed) || parsed < 0 || parsed > 0xffff) {
+    throw new Error(`${name} must be a 0..65535 word`);
+  }
+  return parsed;
+}
+
 function parseArguments(arguments_: readonly string[]): Options {
   let root = process.cwd();
+  let runtimeServices: Options["runtimeServices"] = "resident";
+  let stubBase: number | undefined;
   let json = false;
   let help = false;
   const positional: string[] = [];
@@ -52,12 +69,39 @@ function parseArguments(arguments_: readonly string[]): Options {
       index += 1;
       continue;
     }
+    if (argument === "--runtime-services") {
+      const value = optionValue(arguments_, index, argument);
+      if (value !== "resident" && value !== "host-streams") {
+        throw new Error("--runtime-services must be resident or host-streams");
+      }
+      runtimeServices = value;
+      index += 1;
+      continue;
+    }
+    if (argument === "--stub-base") {
+      stubBase = parseWord(optionValue(arguments_, index, argument), argument);
+      index += 1;
+      continue;
+    }
     if (argument.startsWith("-")) throw new Error(`unknown option: ${argument}`);
     positional.push(argument);
   }
 
   if (positional.length > 1) throw new Error("only one entry source may be supplied");
-  return Object.freeze({ root, entry: positional[0], json, help });
+  if (runtimeServices === "host-streams" && stubBase === undefined) {
+    throw new Error("--stub-base is required for --runtime-services host-streams");
+  }
+  if (runtimeServices === "resident" && stubBase !== undefined) {
+    throw new Error("--stub-base requires --runtime-services host-streams");
+  }
+  return Object.freeze({
+    root,
+    entry: positional[0],
+    runtimeServices,
+    stubBase,
+    json,
+    help,
+  });
 }
 
 function jsonSummary(prepared: Awaited<ReturnType<typeof prepareNucleusCompilation>>): string {
@@ -71,6 +115,21 @@ function jsonSummary(prepared: Awaited<ReturnType<typeof prepareNucleusCompilati
     partBanks: prepared.partBanks,
     totalSourceBytes: prepared.totalSourceBytes,
     retainedPathBytes: prepared.project.retainedPathBytes,
+    runtime: {
+      serviceKind: prepared.runtime.serviceKind,
+      vectorBytes: prepared.runtime.vectorBytes.length,
+      hostStreams: prepared.runtime.hostStreams === undefined
+        ? undefined
+        : {
+            stubBase: prepared.runtime.hostStreams.stubBase,
+            stubSpacing: prepared.runtime.hostStreams.stubSpacing,
+            stubs: prepared.runtime.hostStreams.stubs.map((stub) => ({
+              service: stub.service,
+              address: stub.address,
+              bytes: stub.bytes.length,
+            })),
+          },
+    },
   }, null, 2)}\n`;
 }
 
@@ -80,6 +139,12 @@ function textSummary(prepared: Awaited<ReturnType<typeof prepareNucleusCompilati
   ];
   for (const [index, part] of prepared.sourceParts.entries()) {
     lines.push(`${part.ordinal}\tbank=${prepared.partBanks[index]}\tbytes=${part.bytes.length}\t${part.diagnosticName}`);
+  }
+  lines.push(`runtime\tservices=${prepared.runtime.serviceKind}`);
+  if (prepared.runtime.hostStreams !== undefined) {
+    lines.push(
+      `runtime\tstubBase=${prepared.runtime.hostStreams.stubBase}\tstubs=${prepared.runtime.hostStreams.stubs.length}`,
+    );
   }
   return `${lines.join("\n")}\n`;
 }
@@ -95,6 +160,11 @@ async function main(): Promise<number> {
     const prepared = await prepareNucleusCompilation({
       root: options.root,
       entry: options.entry,
+      runtime: {
+        services: options.runtimeServices === "resident"
+          ? { kind: "resident" }
+          : { kind: "host-streams", stubBase: options.stubBase! },
+      },
     });
     process.stdout.write(options.json ? jsonSummary(prepared) : textSummary(prepared));
     return 0;

@@ -8,7 +8,12 @@ import { describe, expect, it } from "vitest";
 
 import { SourcePreparationError } from "@jhlagado/z80-tool-services/source-preparation";
 
-import { prepareNucleusCompilation } from "../src/index.js";
+import {
+  prepareNucleusCompilation,
+  prepareNucleusRuntimeLink,
+} from "../src/index.js";
+import { defaultRuntimeLinkContext } from "../src/nucleus-runtime.js";
+import { Service } from "../src/runtime-contract.js";
 
 const encoder = new TextEncoder();
 const execFileAsync = promisify(execFile);
@@ -68,10 +73,61 @@ describe("Nucleus application boundary", () => {
         },
       ]);
       expect(prepared.partBanks).toEqual([3, 0]);
+      expect(prepared.runtime.serviceKind).toBe("resident");
+      expect(prepared.runtime.runtimeLinkContext.services).toEqual(
+        defaultRuntimeLinkContext.services,
+      );
+      expect(prepared.runtime.vectorBytes).toHaveLength(33);
+      expect(prepared.runtime.hostStreams).toBeUndefined();
       expect(prepared.totalSourceBytes).toBe(
         encoder.encode("const MODEL = 1\n").length +
           encoder.encode("//% import \"lib/model.nu\"\nsub main()\nend\n").length,
       );
+    });
+  });
+
+  it("prepares a host-stream runtime link context for callers that run through Debug80 services", () => {
+    const prepared = prepareNucleusRuntimeLink({
+      services: { kind: "host-streams", stubBase: 0x4100 },
+    });
+
+    expect(prepared.serviceKind).toBe("host-streams");
+    expect(prepared.baseRuntimeLinkContext.services).toEqual(
+      defaultRuntimeLinkContext.services,
+    );
+    expect(prepared.runtimeLinkContext.services.writeOutputByte).toBe(0x4120);
+    expect(prepared.runtimeLinkContext.services.trap).toBe(
+      defaultRuntimeLinkContext.services.trap,
+    );
+    expect(prepared.hostStreams?.vectorBytes).toHaveLength(33);
+    expect([...prepared.vectorBytes]).toEqual([
+      ...(prepared.hostStreams?.vectorBytes ?? []),
+    ]);
+    expect(prepared.hostStreams?.stubs).toHaveLength(6);
+    expect(prepared.hostStreams?.stubs[Service.writeOutputByte]?.address).toBe(
+      0x4120,
+    );
+  });
+
+  it("threads host-stream runtime linking through compilation preparation", async () => {
+    await withSourceTree({
+      "src/main.nu": "sub main()\nend\n",
+    }, async (root) => {
+      const prepared = await prepareNucleusCompilation({
+        root,
+        entry: "src/main.nu",
+        runtime: {
+          services: { kind: "host-streams", stubBase: 0x5100 },
+        },
+      });
+
+      expect(prepared.runtime.serviceKind).toBe("host-streams");
+      expect(prepared.runtime.runtimeLinkContext.services.readInputByte).toBe(
+        0x5100,
+      );
+      expect(
+        prepared.runtime.runtimeLinkContext.services.unhandledFailure,
+      ).toBe(defaultRuntimeLinkContext.services.unhandledFailure);
     });
   });
 
@@ -132,6 +188,51 @@ describe("Nucleus application boundary", () => {
         retainedPathBytes:
           encoder.encode("src/lib/model.nu").length +
           encoder.encode("src/main.nu").length,
+        runtime: {
+          serviceKind: "resident",
+          vectorBytes: 33,
+        },
+      });
+    });
+  });
+
+  it("exposes host-stream runtime linking through the development CLI", async () => {
+    await withSourceTree({
+      "src/main.nu": "sub main()\nend\n",
+    }, async (root) => {
+      const { stdout, stderr } = await execFileAsync(
+        process.execPath,
+        [
+          tsxBin,
+          "src/cli/prepare.ts",
+          "--root",
+          root,
+          "--json",
+          "--runtime-services",
+          "host-streams",
+          "--stub-base",
+          "0x4100",
+          "src/main.nu",
+        ],
+        { cwd: packageRoot },
+      );
+
+      expect(stderr).toBe("");
+      expect(JSON.parse(stdout).runtime).toEqual({
+        serviceKind: "host-streams",
+        vectorBytes: 33,
+        hostStreams: {
+          stubBase: 0x4100,
+          stubSpacing: 0x20,
+          stubs: [
+            { service: 0, address: 0x4100, bytes: 15 },
+            { service: 1, address: 0x4120, bytes: 14 },
+            { service: 2, address: 0x4140, bytes: 15 },
+            { service: 3, address: 0x4160, bytes: 10 },
+            { service: 4, address: 0x4180, bytes: 14 },
+            { service: 5, address: 0x41a0, bytes: 16 },
+          ],
+        },
       });
     });
   });

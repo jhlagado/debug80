@@ -546,19 +546,28 @@ the historical proof images.
 
 The application boundary now exposes `prepareNucleusCompilation` from the
 package source index. It returns the resolved source project, the legacy
-`SourcePart[]` adapter shape, the path-keyed `partBanks` array, and the total
-compiler source byte count. This is the handoff shape for future CLI and tool
-callers while the resident compiler still consumes the existing source-part ABI.
+`SourcePart[]` adapter shape, the path-keyed `partBanks` array, the total
+compiler source byte count, and a prepared runtime link. This is the handoff
+shape for future CLI and tool callers while the resident compiler still
+consumes the existing source-part ABI.
+
+Runtime linking is prepared through `prepareNucleusRuntimeLink`. The default
+service profile is `resident`, which preserves the existing
+`defaultRuntimeLinkContext` service table. The opt-in `host-streams` profile
+takes a stub base address and returns a derived `RuntimeLinkContext` whose six
+stream-service destinations point at generated host-callback stubs while
+terminal, trap, far-call, and far-jump services remain unchanged.
 
 The first development command now uses that application boundary:
 
 ```text
 npm run source:prepare -w nucleus -- --root path/to/project src/main.nu
+npm run source:prepare -w nucleus -- --runtime-services host-streams --stub-base 0x4100 --json src/main.nu
 ```
 
 This command resolves `//% import` dependencies and reports the prepared
-ordered compiler input. It deliberately stops before compilation, assembly, or
-publication.
+ordered compiler input plus the selected runtime-service link profile. It
+deliberately stops before compilation, assembly, or publication.
 
 Phase 3 has started at the lowest shared storage layer. The package
 `@jhlagado/z80-tool-services` now exports language-neutral
@@ -654,12 +663,14 @@ continues to own the resident-code discrimination.
 
 This checkpoint deliberately does not move Nucleus record framing, map
 semantics, runtime-provider calls, NOBJ status behavior, Atom's assembler sink,
-or Nucleus runtime storage services. Those are the next Phase 3 layers.
+or Nucleus runtime storage services. Runtime stream linking is now visible at
+the application boundary, but real compile/publication commands still need to
+consume that prepared runtime link.
 
 ## Next implementation unit
 
-Continue Phase 3 by deciding whether the Debug80 execution adapter can call the
-shared stream service directly without changing the resident runtime ABI. The
-decision should start as a read-only trace of the current generated-service
-entry calls and should preserve the existing Z80 proof-runtime images until
-the call boundary is fully understood.
+Continue Phase 3 by threading `PreparedNucleusRuntimeLink` into the real target
+publication command once that command exists. The next executable seam is a
+Node command that prepares source, selects a runtime-service profile, commits
+NOBJ with the matching runtime initial image, and executes through Debug80
+without execution-time vector patching.

@@ -1,7 +1,12 @@
 export {
   prepareNucleusCompilation,
+  prepareNucleusRuntimeLink,
   type NucleusCompilationPreparationOptions,
+  type NucleusRuntimeLinkPreparationOptions,
+  type NucleusRuntimeServiceSelection,
   type PreparedNucleusCompilation,
+  type PreparedNucleusHostRuntimeStreams,
+  type PreparedNucleusRuntimeLink,
 } from "./application.js";
 export {
   prepareNucleusSourceParts,
