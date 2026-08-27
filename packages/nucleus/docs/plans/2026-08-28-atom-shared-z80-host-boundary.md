@@ -415,14 +415,15 @@ subclassing the shared storage types:
 
 `NobjGenerationSink` now uses the shared lifecycle guard for the common
 open/closed generation state and passes the shared lifecycle conformance
-vectors. This checkpoint deliberately does not move Nucleus record framing, map
-semantics, runtime-provider calls, NOBJ status behavior, or Atom's assembler
-sink. Those are the next Phase 3 layers.
+vectors. Atom's Mac memory sink also passes those vectors through an adapter
+that translates its byte-status API into the shared conformance surface. This
+checkpoint deliberately does not move Nucleus record framing, map semantics,
+runtime-provider calls, NOBJ status behavior, or Atom's assembler sink. Those
+are the next Phase 3 layers.
 
 ## Next implementation unit
 
-Continue Phase 3 by extracting a shared generation lifecycle contract and
-conformance tests. Keep Nucleus NOBJ record framing, runtime-provider
-operations, map semantics, and commit integrity in the Nucleus layer while
-moving only the common begin/image/patch/commit/abort sequencing rules into
-`@jhlagado/z80-tool-services`.
+Continue Phase 3 by extracting the shared status-return adapter shape used by
+Atom-style host gateways. Keep Nucleus's exception-based NOBJ API intact, but
+prove both surfaces against the same lifecycle semantics: native host services
+may return one-byte statuses, while rich Node APIs may throw typed errors.
