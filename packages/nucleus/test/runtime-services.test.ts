@@ -9,6 +9,7 @@ import {
   NUCLEUS_PROOF_RUNTIME_STREAM_LIMITS,
   NUCLEUS_RUNTIME_STREAM_SERVICE,
   NUCLEUS_RUNTIME_STREAM_STATUS_POLICY,
+  runNucleusProofRuntimeStreamOperations,
 } from "../src/runtime-services.js";
 import { Service, ServiceError } from "../src/runtime-contract.js";
 
@@ -135,5 +136,70 @@ describe("Nucleus runtime stream services", () => {
     expect(streams.storageInputOffset).toBe(0);
     expect(streams.storageOutputOffset).toBe(2);
     expect([...streams.storageOutput]).toEqual([0x01, 0x02]);
+  });
+
+  it("derives the Stage 8 storage-success proof observation from shared streams", () => {
+    const snapshot = runNucleusProofRuntimeStreamOperations(
+      {
+        storageInput: ["A".charCodeAt(0)],
+      },
+      [
+        { service: "readStorageByte" },
+        { service: "rewindStorageInput" },
+        { service: "readStorageByte" },
+        { service: "writeStorageByte", value: "A".charCodeAt(0) },
+        { service: "writeStorageByte", value: "B".charCodeAt(0) },
+        { service: "seekStorageOutput", offset: 0 },
+        { service: "writeStorageByte", value: "Z".charCodeAt(0) },
+        { service: "writeOutputByte", value: "A".charCodeAt(0) },
+      ],
+    );
+
+    expect(snapshot.storageInputOffset).toBe(1);
+    expect(snapshot.storageOutputOffset).toBe(1);
+    expect([...(snapshot.storageOutput ?? [])]).toEqual([
+      "Z".charCodeAt(0),
+      "B".charCodeAt(0),
+    ]);
+    expect([...(snapshot.output ?? [])]).toEqual(["A".charCodeAt(0)]);
+  });
+
+  it("derives Stage 8 storage-failure proof observations from shared streams", () => {
+    const writeFailure = runNucleusProofRuntimeStreamOperations(
+      {
+        storageOutput: ["X".charCodeAt(0), "Y".charCodeAt(0)],
+        failStorageWrites: true,
+      },
+      [
+        { service: "seekStorageOutput", offset: 1 },
+        { service: "writeStorageByte", value: "Z".charCodeAt(0) },
+        { service: "writeOutputByte", value: ServiceError.storageFailure },
+      ],
+    );
+    expect(writeFailure.storageOutputOffset).toBe(1);
+    expect([...(writeFailure.storageOutput ?? [])]).toEqual([
+      "X".charCodeAt(0),
+      "Y".charCodeAt(0),
+    ]);
+    expect([...(writeFailure.output ?? [])]).toEqual([
+      ServiceError.storageFailure,
+    ]);
+
+    const rewindFailure = runNucleusProofRuntimeStreamOperations(
+      {
+        storageInput: [0],
+        failStorageRewind: true,
+      },
+      [
+        { service: "readStorageByte" },
+        { service: "readStorageByte" },
+        { service: "rewindStorageInput" },
+        { service: "writeOutputByte", value: ServiceError.storageFailure },
+      ],
+    );
+    expect(rewindFailure.storageInputOffset).toBe(1);
+    expect([...(rewindFailure.output ?? [])]).toEqual([
+      ServiceError.storageFailure,
+    ]);
   });
 });

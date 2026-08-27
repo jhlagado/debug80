@@ -55,6 +55,15 @@ export interface NucleusProofRuntimeStreamSnapshotSource {
   readonly memory: Uint8Array;
 }
 
+export type NucleusProofRuntimeStreamOperation =
+  | { readonly service: "readInputByte" }
+  | { readonly service: "writeOutputByte"; readonly value: number }
+  | { readonly service: "readStorageByte" }
+  | { readonly service: "rewindStorageInput" }
+  | { readonly service: "writeStorageByte"; readonly value: number }
+  | { readonly service: "seekStorageOutput"; readonly offset: number }
+  | { readonly service: "reset" };
+
 export const createNucleusProofRuntimeStreams = (
   options: NucleusProofRuntimeStreamsOptions = {},
 ): RuntimeByteStreams =>
@@ -68,6 +77,50 @@ export const createNucleusProofRuntimeStreams = (
       options.storageOutputCapacity ??
       NUCLEUS_PROOF_RUNTIME_STREAM_LIMITS.storageOutputCapacity,
   });
+
+export const snapshotNucleusProofRuntimeStreams = (
+  streams: RuntimeByteStreams,
+): NucleusProofRuntimeStreamSnapshot => ({
+  output: streams.output,
+  storageOutput: streams.storageOutput,
+  inputOffset: streams.inputOffset,
+  outputWriteCalls: streams.outputWriteCalls,
+  storageInputOffset: streams.storageInputOffset,
+  storageOutputOffset: streams.storageOutputOffset,
+});
+
+export const runNucleusProofRuntimeStreamOperations = (
+  options: NucleusProofRuntimeStreamsOptions,
+  operations: readonly NucleusProofRuntimeStreamOperation[],
+): NucleusProofRuntimeStreamSnapshot => {
+  const streams = createNucleusProofRuntimeStreams(options);
+  for (const operation of operations) {
+    switch (operation.service) {
+      case "readInputByte":
+        streams.readInputByte();
+        break;
+      case "writeOutputByte":
+        streams.writeOutputByte({ value: operation.value });
+        break;
+      case "readStorageByte":
+        streams.readStorageByte();
+        break;
+      case "rewindStorageInput":
+        streams.rewindStorageInput();
+        break;
+      case "writeStorageByte":
+        streams.writeStorageByte({ value: operation.value });
+        break;
+      case "seekStorageOutput":
+        streams.seekStorageOutput({ offset: operation.offset });
+        break;
+      case "reset":
+        streams.reset();
+        break;
+    }
+  }
+  return snapshotNucleusProofRuntimeStreams(streams);
+};
 
 export const readNucleusProofRuntimeStreamSnapshot = ({
   symbols,

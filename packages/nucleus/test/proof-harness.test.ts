@@ -7,7 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import { prepareNucleusCompilation } from "../src/application.js";
 import { runProofManifest } from "../src/proof.js";
-import { createNucleusProofRuntimeStreams } from "../src/runtime-services.js";
+import { runNucleusProofRuntimeStreamOperations } from "../src/runtime-services.js";
 import { ServiceError, Trap } from "../src/runtime-contract.js";
 import { buildSourceParts } from "../src/source-manifest.js";
 
@@ -543,9 +543,9 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     expect(Array.from(generated.slice(0, 7))).toEqual([
       0x16, 0x00, 0x16, 0x00, 0x7a, 0xfe, 0x03,
     ]);
-    const expectedStreams = createNucleusProofRuntimeStreams();
+    const expectedStreams = runNucleusProofRuntimeStreamOperations({}, []);
     expect(Array.from(outcome.runtimeStreams.output ?? [])).toEqual([
-      ...expectedStreams.output,
+      ...(expectedStreams.output ?? []),
     ]);
     expect(outcome.runtimeStreams.outputWriteCalls).toBe(
       expectedStreams.outputWriteCalls,
@@ -612,14 +612,12 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     ).toEqual([9, 12, 1, 3, 13, 19, 14, 1, 15, 0, 16, 17, 18, 1, 1, 19]);
     expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
     expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
-    const expectedStreams = createNucleusProofRuntimeStreams({
-      failOutputWriteCall: 1,
-    });
-    expect(expectedStreams.writeOutputByte({ value: 0 })).toEqual({
-      status: ServiceError.outputFailure,
-    });
+    const expectedStreams = runNucleusProofRuntimeStreamOperations(
+      { failOutputWriteCall: 1 },
+      [{ service: "writeOutputByte", value: 0 }],
+    );
     expect(Array.from(outcome.runtimeStreams.output ?? [])).toEqual([
-      ...expectedStreams.output,
+      ...(expectedStreams.output ?? []),
     ]);
     expect(outcome.runtimeStreams.outputWriteCalls).toBe(
       expectedStreams.outputWriteCalls,

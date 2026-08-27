@@ -484,13 +484,22 @@ state and the output-failure path. The comparison path is read-only: it does
 not change the proof images, generated programs, runtime code, or execution
 observations.
 
+Nucleus also exposes `runNucleusProofRuntimeStreamOperations`, a compact
+host-side script runner for deriving expected stream snapshots. The current
+runtime-service tests use it to model the Stage 8 storage-success sequence
+(`readStorageByte`, `rewindStorageInput`, overwrite via `seekStorageOutput`)
+and representative storage-failure sequences without entering the Z80 proof
+image. This keeps the comparison executable while the existing Stage 8 proof
+continues to own the resident-code discrimination.
+
 This checkpoint deliberately does not move Nucleus record framing, map
 semantics, runtime-provider calls, NOBJ status behavior, Atom's assembler sink,
 or Nucleus runtime storage services. Those are the next Phase 3 layers.
 
 ## Next implementation unit
 
-Continue Phase 3 by replacing the remaining hand-decoded Nucleus proof service
-assertions with `runtimeStreams` snapshot comparisons where that improves
-coverage. After that, decide whether the Debug80 execution adapter can call the
-shared stream service directly without changing the resident runtime ABI.
+Continue Phase 3 by deciding whether the Debug80 execution adapter can call the
+shared stream service directly without changing the resident runtime ABI. The
+decision should start as a read-only trace of the current generated-service
+entry calls and should preserve the existing Z80 proof-runtime images until
+the call boundary is fully understood.
