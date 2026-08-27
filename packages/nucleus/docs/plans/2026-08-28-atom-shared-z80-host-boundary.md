@@ -345,7 +345,7 @@ imports. Revisit standalone extraction only after:
 - Atom has no hidden dependency on Nucleus internals;
 - shared services have conformance tests independent of both tools; and
 - package publishing can consume the shared services from declared package
-dependencies.
+  dependencies.
 
 Current recommendation: keep Nucleus in the Debug80 monorepo for the migration.
 The shared Z80 services package is the extraction seam. Moving Nucleus out now
@@ -437,14 +437,35 @@ byte offset, EOF or out-of-range reads, malformed requests, and host-provider
 failure. Atom's direct-host gateway uses the shared dispatcher for source reads
 and passes those vectors.
 
+The console-service shape is now explicit in the shared package. It covers the
+lowest common byte-oriented operations:
+
+1. read one byte from standard input;
+2. write one byte to standard output;
+3. report terminal success; and
+4. report terminal failure with a non-zero byte status.
+
+The shared dispatchers validate byte requests before calling the host, translate
+missing operations to the unavailable status, normalize malformed host status
+returns to the invalid status, and map thrown host exceptions through the
+configured exception policy. Atom's direct-host gateway now uses those
+dispatchers and passes the shared console conformance vectors.
+
+Nucleus already has a compatible lower byte-service concept for standard input
+and standard output in its runtime contract, but its stable service table also
+includes storage services, canonical service-error codes, cursor atomicity, and
+fresh-run reset requirements. Those semantics should be adapted through a
+Nucleus runtime-service gateway rather than by treating Atom's optional console
+operations as the whole Nucleus runtime boundary.
+
 This checkpoint deliberately does not move Nucleus record framing, map
-semantics, runtime-provider calls, NOBJ status behavior, or Atom's assembler
-sink. Those are the next Phase 3 layers.
+semantics, runtime-provider calls, NOBJ status behavior, Atom's assembler sink,
+or Nucleus runtime storage services. Those are the next Phase 3 layers.
 
 ## Next implementation unit
 
-Continue Phase 3 by defining the shared console-service shape. The useful
-boundary is byte-oriented input, byte-oriented output, terminal success, and
-terminal failure status. Atom already exposes those operations through its
-direct-host gateway; Nucleus should use the same lower service shape only where
-it matches the runtime service contract.
+Continue Phase 3 by defining a shared runtime-service gateway comparison for
+Nucleus. The useful next boundary is the mapping between the shared byte
+console operations, Nucleus's standard input/output services, and the additional
+Nucleus storage/reset guarantees. That should produce an adapter design and
+conformance vectors before any Nucleus runner code is changed.
