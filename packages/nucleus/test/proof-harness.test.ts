@@ -7,6 +7,7 @@ import { describe, expect, it } from "vitest";
 
 import { prepareNucleusCompilation } from "../src/application.js";
 import { runProofManifest } from "../src/proof.js";
+import type { NucleusResidentCompilerEntrySymbols } from "../src/resident-compiler-entry.js";
 import { runNucleusProofRuntimeStreamOperations } from "../src/runtime-services.js";
 import { ServiceError, Trap } from "../src/runtime-contract.js";
 import { buildSourceParts } from "../src/source-manifest.js";
@@ -16,6 +17,18 @@ const proof = (name: string): string =>
 
 const wordAt = (memory: Uint8Array, address: number): number =>
   (memory[address] ?? 0) | ((memory[address + 1] ?? 0) << 8);
+
+const flatTargetCompilerEntry = {
+  executionEntry: "ProofStart",
+  sourceDescriptorBase: "FlatTargetParts",
+  sourceBase: "SourceBase",
+  sourceCapacity: 0x0800,
+  targetDescriptor: "FlatTargetDescriptor",
+  partBankTable: "FlatTargetPartBanks",
+  outputLogBase: "AdapterSuccessLogBase",
+  outputLogLength: "AdapterLogLength",
+  outputLogLimit: "AdapterLogLimit",
+} satisfies NucleusResidentCompilerEntrySymbols;
 
 async function withSourceTree<T>(
   files: Readonly<Record<string, string>>,
@@ -175,7 +188,7 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
           {
             source: {
               image: prepared.residentSource,
-              descriptorBase: "FlatTargetParts",
+              entry: flatTargetCompilerEntry,
             },
           },
         );

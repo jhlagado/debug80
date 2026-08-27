@@ -691,26 +691,34 @@ change, not a host-only command-line change.
 
 The proof harness can now install that host-prepared source image before
 entering the resident compiler. `runProofManifest` accepts a source override
-containing the prepared source image and the descriptor-table address or symbol.
+containing the prepared source image and a resolved resident compiler entry
+descriptor. The descriptor names the execution entry, source descriptor table,
+source byte region, target descriptor, part-bank table, and output-log anchors.
+For this checkpoint the proof manifest still supplies the actual start PC, so
+the runner verifies that the descriptor entry and manifest entry match before
+installing source.
+
 The flat target proof has a discriminator for this path: it prepares source
-from ordinary files, installs the resulting bytes and descriptors over the
-proof image's resident source area, runs the existing compiler entry, and
-checks that the committed NOBJ stream is byte-identical to the embedded-source
-baseline. This proves the host descriptor builder is not merely producing a
-plausible table; it is accepted by the resident compiler.
+from ordinary files, resolves the current proof image's compiler-entry
+descriptor, installs the resulting bytes and descriptors over the proof image's
+resident source area, runs the existing compiler entry, and checks that the
+committed NOBJ stream is byte-identical to the embedded-source baseline. This
+proves the host descriptor builder is not merely producing a plausible table;
+it is accepted by the resident compiler.
 
 This checkpoint deliberately does not move Nucleus record framing, map
 semantics, runtime-provider calls, NOBJ status behavior, Atom's assembler sink,
 or Nucleus runtime storage services. Runtime stream linking is now visible at
-the application boundary, and proof-published NOBJ can be written from the
-command line, but arbitrary-source target publication still needs the host
-prepared source parts to be installed into the resident compiler's source
-descriptor table without relying on proof-specific entry labels.
+the application boundary, proof-published NOBJ can be written from the command
+line, and host-prepared source has a single descriptor object for the anchors
+needed by a resident compiler image. Arbitrary-source target publication still
+needs a non-proof compiler image or manifest that publishes the same descriptor
+shape as a normal application contract.
 
 ## Next implementation unit
 
-Continue Phase 3 by introducing a stable resident compiler entry descriptor:
-entry address, source descriptor base, source byte base/capacity, target
-descriptor, part-bank table, and output-log anchors. That will remove the last
-proof-specific symbol names from the host execution path and let the
-publication command take an entry `.nu` file instead of a proof manifest.
+Continue Phase 3 by moving the proof-publication command onto the same prepared
+source and resident compiler entry descriptor path. The command should accept
+an entry `.nu` file, prepare its resolver-backed source parts, install them
+through the descriptor, and publish the committed NOBJ output from the existing
+flat target compiler image.

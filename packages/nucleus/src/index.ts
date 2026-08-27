@@ -19,6 +19,16 @@ export {
   type NucleusResidentSourceImage,
 } from "./source-descriptor.js";
 export {
+  installNucleusResidentCompilerSource,
+  resolveNucleusResidentCompilerEntry,
+  validateNucleusResidentCompilerEntry,
+  validateNucleusResidentSourceForEntry,
+  type NucleusResidentCompilerEntry,
+  type NucleusResidentCompilerEntrySymbol,
+  type NucleusResidentCompilerEntrySymbols,
+  type NucleusResidentCompilerSymbolResolver,
+} from "./resident-compiler-entry.js";
+export {
   publishNucleusProofTarget,
   type NucleusProofTargetPublication,
   type NucleusProofTargetPublicationOptions,

@@ -15,6 +15,8 @@ import {
   buildNucleusResidentSourceImage,
   installNucleusResidentSourceImage,
   NUCLEUS_RESIDENT_SOURCE_DESCRIPTOR_SIZE,
+  resolveNucleusResidentCompilerEntry,
+  validateNucleusResidentSourceForEntry,
 } from "../src/index.js";
 import { defaultRuntimeLinkContext } from "../src/nucleus-runtime.js";
 import { Service } from "../src/runtime-contract.js";
@@ -215,6 +217,68 @@ describe("Nucleus application boundary", () => {
         0x9000 + NUCLEUS_RESIDENT_SOURCE_DESCRIPTOR_SIZE,
       ),
     ).toEqual(image.descriptorBytes);
+  });
+
+  it("resolves and validates a resident compiler entry descriptor", () => {
+    const image = buildNucleusResidentSourceImage({
+      sourceBase: 0x5000,
+      sourceParts: [
+        {
+          ordinal: 1,
+          stableIdentity: "1:main.nu",
+          diagnosticName: "main.nu",
+          bytes: encoder.encode("sub main()\nend\n"),
+        },
+      ],
+    });
+    const symbols: Readonly<Record<string, number>> = {
+      ProofStart: 0x4200,
+      SourceBase: 0x5000,
+      FlatTargetParts: 0x9000,
+      FlatTargetDescriptor: 0x9100,
+      FlatTargetPartBanks: 0x9200,
+      AdapterSuccessLogBase: 0x9c30,
+      AdapterLogLength: 0x9c00,
+      AdapterLogLimit: 0xf000,
+    };
+    const entry = resolveNucleusResidentCompilerEntry(
+      {
+        executionEntry: "ProofStart",
+        sourceDescriptorBase: "FlatTargetParts",
+        sourceBase: "SourceBase",
+        sourceCapacity: 0x0800,
+        targetDescriptor: "FlatTargetDescriptor",
+        partBankTable: "FlatTargetPartBanks",
+        outputLogBase: "AdapterSuccessLogBase",
+        outputLogLength: "AdapterLogLength",
+        outputLogLimit: "AdapterLogLimit",
+      },
+      (name) => symbols[name] ?? -1,
+    );
+
+    expect(entry).toEqual({
+      executionEntry: 0x4200,
+      sourceDescriptorBase: 0x9000,
+      sourceBase: 0x5000,
+      sourceCapacity: 0x0800,
+      targetDescriptor: 0x9100,
+      partBankTable: 0x9200,
+      outputLogBase: 0x9c30,
+      outputLogLength: 0x9c00,
+      outputLogLimit: 0xf000,
+    });
+    expect(() =>
+      validateNucleusResidentSourceForEntry(entry, image),
+    ).not.toThrow();
+    expect(() =>
+      validateNucleusResidentSourceForEntry(
+        {
+          ...entry,
+          sourceBase: 0x5100,
+        },
+        image,
+      ),
+    ).toThrow("source image base does not match compiler entry");
   });
 
   it("rejects resident source descriptor layouts that the current Z80 adapter cannot address", () => {

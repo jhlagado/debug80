@@ -27,10 +27,13 @@ import {
   createNucleusHostRuntimeStreamAdapter,
   type NucleusHostRuntimeStreamAdapter,
 } from "./runtime-stream-adapter.js";
+import type { NucleusResidentSourceImage } from "./source-descriptor.js";
 import {
-  installNucleusResidentSourceImage,
-  type NucleusResidentSourceImage,
-} from "./source-descriptor.js";
+  installNucleusResidentCompilerSource,
+  resolveNucleusResidentCompilerEntry,
+  type NucleusResidentCompilerEntry,
+  type NucleusResidentCompilerEntrySymbols,
+} from "./resident-compiler-entry.js";
 import {
   readNucleusProofRuntimeStreamSnapshot,
   snapshotNucleusProofRuntimeStreams,
@@ -178,7 +181,9 @@ export interface NobjHostRuntimeStreamExecution {
 
 export interface NucleusProofResidentSourceInstallation {
   readonly image: NucleusResidentSourceImage;
-  readonly descriptorBase: number | string;
+  readonly entry:
+    | NucleusResidentCompilerEntry
+    | NucleusResidentCompilerEntrySymbols;
 }
 
 export interface RunProofManifestOptions {
@@ -191,6 +196,18 @@ export class ProofFailure extends Error {
     this.name = "ProofFailure";
   }
 }
+
+const isResolvedResidentCompilerEntry = (
+  entry: NucleusResidentCompilerEntry | NucleusResidentCompilerEntrySymbols,
+): entry is NucleusResidentCompilerEntry =>
+  typeof entry.executionEntry === "number" &&
+  typeof entry.sourceDescriptorBase === "number" &&
+  typeof entry.sourceBase === "number" &&
+  typeof entry.targetDescriptor === "number" &&
+  typeof entry.partBankTable === "number" &&
+  typeof entry.outputLogBase === "number" &&
+  typeof entry.outputLogLength === "number" &&
+  typeof entry.outputLogLimit === "number";
 
 export async function runProofManifest(
   manifestFile: string,
@@ -334,24 +351,26 @@ export async function runProofManifest(
     memory.set(bytes, address);
   }
   if (options.source !== undefined) {
-    const descriptorBase =
-      typeof options.source.descriptorBase === "string"
-        ? symbolValue(options.source.descriptorBase)
-        : options.source.descriptorBase;
-    if (
-      !Number.isInteger(descriptorBase) ||
-      descriptorBase < 0 ||
-      descriptorBase > 0xffff
-    ) {
+    const sourceEntry = isResolvedResidentCompilerEntry(options.source.entry)
+      ? options.source.entry
+      : resolveNucleusResidentCompilerEntry(options.source.entry, symbolValue);
+    const manifestEntry = symbolValue(manifest.execution.entry);
+    if (sourceEntry.executionEntry !== manifestEntry) {
       throw new ProofFailure(
-        `${manifest.name}: source descriptor base is outside 0..65535`,
+        `${manifest.name}: source execution entry ${hexWord(sourceEntry.executionEntry)} does not match manifest entry ${hexWord(manifestEntry)}`,
       );
     }
-    installNucleusResidentSourceImage(
-      memory,
-      options.source.image,
-      descriptorBase,
-    );
+    try {
+      installNucleusResidentCompilerSource(
+        memory,
+        sourceEntry,
+        options.source.image,
+      );
+    } catch (error) {
+      throw new ProofFailure(
+        `${manifest.name}: resident source installation failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   let cycles = 0;
