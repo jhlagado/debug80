@@ -274,13 +274,14 @@ routine bounded-matrix result:
 
 | Status | Count |
 | --- | ---: |
-| Byte-identical proof images | 17 |
-| Skipped known budget blockers | 8 |
+| Byte-identical proof images | 25 |
+| Skipped known budget blockers | 0 |
 | Skipped measurement artifacts | 3 |
 | Atom-preview errors | 0 |
 
 Byte-identical proof images:
 
+- `aggregate-z80-slice-proof.json`
 - `array-z80-slice-proof.json`
 - `banked-target-entry1-z80-slice-proof.json`
 - `banked-target-trap-z80-slice-proof.json`
@@ -288,6 +289,7 @@ Byte-identical proof images:
 - `call-z80-slice-proof.json`
 - `chapter21-target-z80-slice-proof.json`
 - `compiler-slice-proof.json`
+- `expression-z80-slice-proof.json`
 - `flat-target-loaded-z80-slice-proof.json`
 - `flat-target-trap-z80-slice-proof.json`
 - `flat-target-unhandled-z80-slice-proof.json`
@@ -296,7 +298,13 @@ Byte-identical proof images:
 - `loop-z80-slice-proof.json`
 - `memory-map-proof.json`
 - `nobj-runner-proof.json`
+- `stage7-ll1-aggregate-call-z80-slice-proof.json`
 - `stage7-ll1-engine-proof.json`
+- `stage7-ll1-parser-coverage-proof.json`
+- `stage8-failure-z80-slice-proof.json`
+- `stage9-conformance-z80-slice-proof.json`
+- `structured-control-z80-slice-proof.json`
+- `typed-expression-z80-slice-proof.json`
 - `z80-slice-proof.json`
 
 Skipped measurement artifacts:
@@ -305,24 +313,21 @@ Skipped measurement artifacts:
 - `dispatcher-offset-direct-measurement.json`
 - `dispatcher-offset-trampoline-measurement.json`
 
-Known budget blockers are listed in `proofs/atom-migration-preview-budgets.json`
-with an explicit skip reason. The comparer skips them during the routine matrix
-so that the command remains bounded. Passing one of those manifests with
-`--entry` overrides the skip and measures that proof directly.
-
-Measured remaining blocker groups:
-
-| Group | Representative generated line | Consequence |
-| --- | --- | --- |
-| Larger preview execution budget | `aggregate-z80-slice-proof.json`, `expression-z80-slice-proof.json`, `structured-control-z80-slice-proof.json`, `stage7-ll1-aggregate-call-z80-slice-proof.json`, `stage7-ll1-parser-coverage-proof.json`, `stage8-failure-z80-slice-proof.json`, `stage9-conformance-z80-slice-proof.json`, `typed-expression-z80-slice-proof.json` | Atom preview assembly exceeds the comparison script's current execution budget before reporting a source diagnostic or byte comparison; measure explicitly with `--entry` before raising a per-entry budget |
+`proofs/atom-migration-preview-budgets.json` now has measured per-entry
+execution budgets for every non-measurement proof image in the bounded matrix.
+The only routine skips are dispatcher measurement artifacts, not migration
+blockers.
 
 The source-capacity blocker from single-file flattening is resolved by generated
 multipart preview parts. The grammar-generated keyword constants are now included
 in the ledger through transitive include scanning. Unresolved dead `EQU`
 definitions are masked in the proof-preview stream rather than assigned invented
 aliases; if an active statement later uses one, Atom still reports the use site.
-The proof comparer also folds proven `SYMBOL+SYMBOL` and `SYMBOL-SYMBOL`
-expressions before invoking Atom.
+The proof comparer also folds proven `SYMBOL+SYMBOL`,
+`SYMBOL-SYMBOL`, and known parenthesized constant expressions before invoking
+Atom. Parenthesized folding is needed for generated Nucleus address operands
+such as `LD A,(BASE+ENTRY_SIZE*2+FIELD_OFFSET)`, which must be lowered as one
+expression rather than as an unsafe pairwise symbol rewrite.
 
 The Nucleus preview comparer uses a Node-only native Atom memory layout with a
 larger symbol arena:
@@ -348,9 +353,16 @@ Focused follow-up measurement after that change:
 
 | Entry | Result | Native Atom instructions | Native Atom cycles |
 | --- | --- | ---: | ---: |
+| `aggregate-z80-slice-proof.json` | Byte-identical | 214,828,050 | 2,067,715,176 |
+| `expression-z80-slice-proof.json` | Byte-identical | 242,417,549 | 2,334,786,804 |
 | `stage7-ll1-engine-proof.json` | Byte-identical | 37,695,198 | 361,752,509 |
+| `stage7-ll1-aggregate-call-z80-slice-proof.json` | Byte-identical | 493,133,150 | 4,735,667,554 |
+| `stage7-ll1-parser-coverage-proof.json` | Byte-identical | 358,854,958 | 3,449,529,065 |
+| `stage8-failure-z80-slice-proof.json` | Byte-identical | 535,185,080 | 5,142,343,705 |
+| `stage9-conformance-z80-slice-proof.json` | Byte-identical | 437,446,853 | 4,200,990,412 |
 | `flat-target-z80-slice-proof.json` | Byte-identical | 553,400,734 | 5,303,254,267 |
-| `structured-control-z80-slice-proof.json` | Reaches execution budget with legacy unordered output | 200,000,000 | 1,926,034,192 |
+| `structured-control-z80-slice-proof.json` | Byte-identical | 236,696,029 | 2,278,272,577 |
+| `typed-expression-z80-slice-proof.json` | Byte-identical | 257,233,479 | 2,476,572,861 |
 
 The seven other proof manifests that use
 `vertical-slice/flat-target-z80-slice-proof.asm` now share the same measured
@@ -358,9 +370,10 @@ Atom-preview account as `flat-target-z80-slice-proof.json` and are
 byte-identical under the same 700,000,000-instruction / 7,000,000,000-cycle
 budget.
 
-The next migration work should address the preview execution budget with
-per-entry measured budgets, then return to any source diagnostics exposed after
-those entries run further.
+The next migration work should move from proof-image preview compatibility to
+the shared host boundary: identify which Nucleus harness/provider services match
+Atom's native host API directly, which need adapters, and which belong in a
+shared Debug80 Z80 services package.
 
 ## Conclusion
 

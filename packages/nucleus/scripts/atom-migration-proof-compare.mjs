@@ -398,6 +398,72 @@ function evaluateKnownExpression(source, symbolValues) {
   }
 }
 
+function lowerKnownParenthesizedExpressions(source, symbolValues) {
+  let lowered = "";
+  let index = 0;
+  let quote;
+  while (index < source.length) {
+    const char = source[index];
+    if (quote !== undefined) {
+      lowered += char;
+      if (char === quote) quote = undefined;
+      index += 1;
+      continue;
+    }
+    if (char === "\"" || char === "'") {
+      quote = char;
+      lowered += char;
+      index += 1;
+      continue;
+    }
+    if (char !== "(") {
+      lowered += char;
+      index += 1;
+      continue;
+    }
+    const end = source.indexOf(")", index + 1);
+    if (end < 0) {
+      lowered += char;
+      index += 1;
+      continue;
+    }
+    const expression = source.slice(index + 1, end).trim();
+    const value = evaluateKnownExpression(expression, symbolValues);
+    if (value === undefined || value < 0 || value > 0xffff) {
+      lowered += source.slice(index, end + 1);
+    } else {
+      lowered += `(${hexWord(value)})`;
+    }
+    index = end + 1;
+  }
+  return lowered;
+}
+
+function rewriteOutsideQuotedText(source, rewrite) {
+  let rewritten = "";
+  let segmentStart = 0;
+  let index = 0;
+  while (index < source.length) {
+    const char = source[index];
+    if (char !== "\"" && char !== "'") {
+      index += 1;
+      continue;
+    }
+    rewritten += rewrite(source.slice(segmentStart, index));
+    const quote = char;
+    let end = index + 1;
+    while (end < source.length) {
+      end += 1;
+      if (source[end - 1] === quote) break;
+    }
+    rewritten += source.slice(index, end);
+    index = end;
+    segmentStart = end;
+  }
+  rewritten += rewrite(source.slice(segmentStart));
+  return rewritten;
+}
+
 function augmentSymbolValuesFromPreview(text, symbolValues) {
   const values = new Map(symbolValues);
   const definitions = text.split("\n").flatMap((line) => {
@@ -454,12 +520,16 @@ function lowerResolvedPreviewExpressions(text, symbolValues) {
       }
       return `${equ[1]};@UNRESOLVED-EQU ${source.trim()}${comment}`;
     }
-    const lowered = source.replace(expressionIdentifierPattern, (match, prefix, left, operator, right) => {
-      const leftValue = symbolValues.get(left);
-      const rightValue = symbolValues.get(right);
-      if (leftValue === undefined || rightValue === undefined) return match;
-      return `${prefix}${hexWord(operator === "+" ? leftValue + rightValue : leftValue - rightValue)}`;
-    });
+    const parenthesized = lowerKnownParenthesizedExpressions(source, symbolValues);
+    const lowered = rewriteOutsideQuotedText(
+      parenthesized,
+      (segment) => segment.replace(expressionIdentifierPattern, (match, prefix, left, operator, right) => {
+        const leftValue = symbolValues.get(left);
+        const rightValue = symbolValues.get(right);
+        if (leftValue === undefined || rightValue === undefined) return match;
+        return `${prefix}${hexWord(operator === "+" ? leftValue + rightValue : leftValue - rightValue)}`;
+      }),
+    );
     return `${lowered}${comment}`;
   }).join("\n");
 }

@@ -551,6 +551,27 @@ describe("Nucleus Atom migration dry-run", () => {
     ].join("\n"));
   });
 
+  it("lowers known parenthesized preview expressions outside quoted text", () => {
+    const values = new Map([
+      ["BASE", 0x44bb],
+      ["FIELD", 4],
+      ["WIDTH", 6],
+    ]);
+    expect(lowerResolvedPreviewExpressions([
+      "LD A,(BASE+FIELD)",
+      "LD A,(BASE+WIDTH*2+FIELD)",
+      "DB \"(BASE+FIELD)\"",
+      "LD A,(BASE+MISSING)",
+      "",
+    ].join("\n"), values)).toBe([
+      "LD A,($44BF)",
+      "LD A,($44CB)",
+      "DB \"(BASE+FIELD)\"",
+      "LD A,(BASE+MISSING)",
+      "",
+    ].join("\n"));
+  });
+
   it("loads per-manifest Atom-preview execution budgets", async () => {
     await withTree({
       "budgets.json": JSON.stringify({

@@ -2,7 +2,8 @@
   "schema": "nucleus-atom-migration-preview-budgets/v1",
   "entries": {
     "aggregate-z80-slice-proof.json": {
-      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+      "maxInstructions": 700000000,
+      "maxCycles": 7000000000
     },
     "banked-target-entry1-z80-slice-proof.json": {
       "maxInstructions": 700000000,
@@ -21,7 +22,8 @@
       "maxCycles": 7000000000
     },
     "expression-z80-slice-proof.json": {
-      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+      "maxInstructions": 700000000,
+      "maxCycles": 7000000000
     },
     "flat-target-loaded-z80-slice-proof.json": {
       "maxInstructions": 700000000,
@@ -40,26 +42,32 @@
       "maxCycles": 7000000000
     },
     "stage7-ll1-aggregate-call-z80-slice-proof.json": {
-      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+      "maxInstructions": 700000000,
+      "maxCycles": 7000000000
     },
     "stage7-ll1-engine-proof.json": {
       "maxInstructions": 50000000,
       "maxCycles": 500000000
     },
     "stage7-ll1-parser-coverage-proof.json": {
-      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+      "maxInstructions": 700000000,
+      "maxCycles": 7000000000
     },
     "stage8-failure-z80-slice-proof.json": {
-      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+      "maxInstructions": 700000000,
+      "maxCycles": 7000000000
     },
     "stage9-conformance-z80-slice-proof.json": {
-      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+      "maxInstructions": 700000000,
+      "maxCycles": 7000000000
     },
     "structured-control-z80-slice-proof.json": {
-      "skip": "known Atom-preview execution-budget blocker after legacy unordered output; measure explicitly with --entry"
+      "maxInstructions": 700000000,
+      "maxCycles": 7000000000
     },
     "typed-expression-z80-slice-proof.json": {
-      "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
+      "maxInstructions": 700000000,
+      "maxCycles": 7000000000
     }
   }
 }
