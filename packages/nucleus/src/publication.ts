@@ -8,6 +8,10 @@ import {
 } from "./application.js";
 import { runProofManifest, type NobjExecutionOutcome } from "./proof.js";
 import type { NucleusResidentCompilerEntrySymbols } from "./resident-compiler-entry.js";
+import {
+  defineNucleusTargetPublicationDescriptor,
+  type NucleusTargetPublicationDescriptor,
+} from "./target-publication.js";
 
 const defaultFlatCompilerProofManifest = fileURLToPath(
   new URL("../proofs/flat-target-z80-slice-proof.json", import.meta.url),
@@ -27,6 +31,70 @@ export const NUCLEUS_FLAT_TARGET_COMPILER_ENTRY = Object.freeze({
   outputLogLimit: "AdapterLogLimit",
 } satisfies NucleusResidentCompilerEntrySymbols);
 
+export const NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR =
+  defineNucleusTargetPublicationDescriptor({
+    begin: {
+      banked: false,
+      runtimeIdentity: 4,
+      bankCount: 1,
+      imageFill: 0xff,
+      imageBase: 0x8000,
+      imageCapacity: 0x1000,
+    },
+    map: {
+      romMode: true,
+      establishedStack: true,
+      entryBank: 0,
+      entryAddress: 0x8000,
+      writableBase: 0x4000,
+      writableCapacity: 0x1000,
+      vectorBase: 0x4000,
+      vectorLength: 33,
+      initializedRunBase: 0x4000,
+      initializedRunLength: 72,
+      bssBase: 0x4048,
+      bssLength: 1,
+      stackRequirement: 0x0f00,
+      dataLoadBank: 0,
+      dataLoadAddress: 0x81aa,
+      dataLoadLength: 72,
+      partBanks: [0],
+      banks: [
+        {
+          usedLength: 556,
+          readOnlyBase: 0x81aa,
+          readOnlyLength: 72,
+          aggregateConstantBase: 0,
+          aggregateConstantLength: 0,
+        },
+      ],
+    },
+    runtimeLinkContext: {
+      runtimeBase: 0x8003,
+      writableBase: 0x4000,
+      writableCapacity: 0x1000,
+      writableStateBase: 0x4021,
+      vectorBase: 0x4000,
+      programDataBase: 0x4046,
+      programDataCapacity: 3,
+      readOnlyBase: 0x81f2,
+      readOnlyCapacity: 0,
+      services: {
+        readInputByte: 0x7000,
+        writeOutputByte: 0x7003,
+        readStorageByte: 0x7006,
+        rewindStorageInput: 0x7009,
+        writeStorageByte: 0x700c,
+        seekStorageOutput: 0x700f,
+        success: 0x7012,
+        unhandledFailure: 0x7015,
+        trap: 0x7018,
+        farCall: 0x701b,
+        farJump: 0x701e,
+      },
+    },
+  });
+
 export interface NucleusProofTargetPublicationOptions {
   readonly manifest: string;
   readonly output?: string;
@@ -43,6 +111,7 @@ export interface NucleusPreparedSourceTargetPublicationOptions {
   readonly entry: string;
   readonly compilerManifest?: string;
   readonly compilerEntry?: NucleusResidentCompilerEntrySymbols;
+  readonly target?: NucleusTargetPublicationDescriptor;
   readonly source?: NucleusResidentSourcePreparationOptions;
   readonly output?: string;
 }
@@ -83,6 +152,7 @@ export async function publishNucleusPreparedSourceTarget({
   entry,
   compilerManifest = defaultFlatCompilerProofManifest,
   compilerEntry = NUCLEUS_FLAT_TARGET_COMPILER_ENTRY,
+  target = NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR,
   source = { sourceBase: NUCLEUS_DEFAULT_RESIDENT_SOURCE_BASE },
   output,
 }: NucleusPreparedSourceTargetPublicationOptions): Promise<NucleusPreparedSourceTargetPublication> {
@@ -92,6 +162,7 @@ export async function publishNucleusPreparedSourceTarget({
     source.sourceBase ?? NUCLEUS_DEFAULT_RESIDENT_SOURCE_BASE;
   const sourceCapacity =
     source.sourceCapacity ?? NUCLEUS_DEFAULT_RESIDENT_SOURCE_CAPACITY;
+  const targetDescriptor = defineNucleusTargetPublicationDescriptor(target);
   const prepared = await prepareNucleusCompilation({
     root: rootPath,
     entry: path.isAbsolute(entry)
@@ -118,6 +189,7 @@ export async function publishNucleusPreparedSourceTarget({
     },
     checkObservations: false,
     nobj: {
+      publication: targetDescriptor,
       materializeOnly: true,
       checkObservations: false,
     },

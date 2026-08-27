@@ -14,7 +14,9 @@ import {
   publishNucleusPreparedSourceTarget,
   publishNucleusProofTarget,
   buildNucleusResidentSourceImage,
+  defineNucleusTargetPublicationDescriptor,
   installNucleusResidentSourceImage,
+  NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR,
   NUCLEUS_RESIDENT_SOURCE_DESCRIPTOR_SIZE,
   resolveNucleusResidentCompilerEntry,
   validateNucleusResidentSourceForEntry,
@@ -524,6 +526,37 @@ describe("Nucleus application boundary", () => {
         } finally {
           await rm(outputDirectory, { recursive: true, force: true });
         }
+      },
+    );
+  }, 30_000);
+
+  it("lets prepared entry-source publication supply the target descriptor", async () => {
+    await withSourceTree(
+      {
+        "src/main.nu": [
+          "var value as u16 = 3",
+          "var cleared as u8",
+          "sub main()",
+          "value = value * 2",
+          "end",
+          "",
+        ].join("\n"),
+      },
+      async (root) => {
+        const target = defineNucleusTargetPublicationDescriptor({
+          ...NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR,
+          begin: {
+            ...NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR.begin,
+            imageFill: 0x7e,
+          },
+        });
+        const publication = await publishNucleusPreparedSourceTarget({
+          root,
+          entry: "src/main.nu",
+          target,
+        });
+
+        expect(publication.nobj.parsed.begin.imageFill).toBe(0x7e);
       },
     );
   }, 30_000);

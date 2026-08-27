@@ -677,6 +677,14 @@ It does, however, make NOBJ publication a reusable application API instead of
 test-only logic, and the command now has the caller shape of a normal
 entry-file compiler command.
 
+Target publication data now has its own application descriptor. A
+`NucleusTargetPublicationDescriptor` contains the NOBJ `begin` record, target
+`map`, and optional runtime-link context used to interpret compiler-emitted
+runtime-image operations. The prepared-source publication API supplies this
+descriptor explicitly; the default bridge descriptor matches the current flat
+target, but tests prove the committed NOBJ follows the supplied descriptor
+rather than silently copying the proof manifest's target map.
+
 The host-prepared source descriptor adapter now exists as a public application
 boundary. `buildNucleusResidentSourceImage` takes prepared `SourcePart[]` input
 and returns:
@@ -714,15 +722,15 @@ This checkpoint deliberately does not move Nucleus record framing, map
 semantics, runtime-provider calls, NOBJ status behavior, Atom's assembler sink,
 or Nucleus runtime storage services. Runtime stream linking is now visible at
 the application boundary, proof-published NOBJ can be written from the command
-line, and host-prepared source has a single descriptor object for the anchors
-needed by a resident compiler image. Arbitrary-source target publication still
-uses the flat target map supplied by the proof manifest. A non-proof compiler
-image or target descriptor publication format still needs to make that target
-map a normal application contract rather than a proof fixture.
+line, host-prepared source has a single descriptor object for the anchors
+needed by a resident compiler image, and prepared-source publication can use an
+application-owned target descriptor. The CLI still exposes only the default
+flat target descriptor; a non-proof target descriptor file or project setting
+is still needed before this becomes the normal Nucleus compiler command.
 
 ## Next implementation unit
 
-Continue Phase 3 by extracting the target-map/publication contract from the
-flat proof manifest. The next bridge should keep using the resident compiler
-image, but take target map and runtime-link settings from an application-facing
-descriptor instead of the proof fixture's embedded JSON.
+Continue Phase 3 by adding a small Node-facing target descriptor loader for the
+publication command. That should let `proof:publish --root ... src/main.nu`
+select a target descriptor file while preserving the current default flat
+target for tests and simple commands.

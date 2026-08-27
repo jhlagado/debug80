@@ -30,6 +30,7 @@ export {
 } from "./resident-compiler-entry.js";
 export {
   NUCLEUS_FLAT_TARGET_COMPILER_ENTRY,
+  NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR,
   publishNucleusPreparedSourceTarget,
   publishNucleusProofTarget,
   type NucleusPreparedSourceTargetPublication,
@@ -37,6 +38,11 @@ export {
   type NucleusProofTargetPublication,
   type NucleusProofTargetPublicationOptions,
 } from "./publication.js";
+export {
+  defineNucleusTargetPublicationDescriptor,
+  validateNucleusTargetPublicationDescriptor,
+  type NucleusTargetPublicationDescriptor,
+} from "./target-publication.js";
 export {
   prepareNucleusSourceParts,
   resolveNucleusProject,

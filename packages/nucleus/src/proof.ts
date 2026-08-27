@@ -23,6 +23,7 @@ import {
   defaultRuntimeLinkContext,
   loadCanonicalRuntimeProvider,
 } from "./nucleus-runtime.js";
+import type { NucleusTargetPublicationDescriptor } from "./target-publication.js";
 import {
   createNucleusHostRuntimeStreamAdapter,
   type NucleusHostRuntimeStreamAdapter,
@@ -190,6 +191,7 @@ export interface RunProofManifestOptions {
   readonly source?: NucleusProofResidentSourceInstallation;
   readonly checkObservations?: boolean;
   readonly nobj?: {
+    readonly publication?: NucleusTargetPublicationDescriptor;
     readonly materializeOnly?: boolean;
     readonly checkObservations?: boolean;
   };
@@ -463,6 +465,7 @@ const runNobjManifest = async (
   producerMemory: Uint8Array,
   symbol: (name: string) => number,
   options: {
+    readonly publication?: NucleusTargetPublicationDescriptor;
     readonly materializeOnly?: boolean;
     readonly checkObservations?: boolean;
   } = {},
@@ -473,15 +476,17 @@ const runNobjManifest = async (
     (producerMemory[lengthAddress] ?? 0) |
     ((producerMemory[lengthAddress + 1] ?? 0) << 8);
   const runtimeLinkContext =
-    manifest.runtimeLinkContext ?? defaultRuntimeLinkContext;
+    options.publication?.runtimeLinkContext ??
+    manifest.runtimeLinkContext ??
+    defaultRuntimeLinkContext;
   const serialized = await commitNobjAdapterGeneration({
     name,
     producerMemory,
     start,
     length,
     maxBytes: manifest.adapter.maxBytes,
-    begin: manifest.begin,
-    map: manifest.map,
+    begin: options.publication?.begin ?? manifest.begin,
+    map: options.publication?.map ?? manifest.map,
     runtimeLinkContext,
   });
   if (options.materializeOnly === true || manifest.materializeOnly === true) {
