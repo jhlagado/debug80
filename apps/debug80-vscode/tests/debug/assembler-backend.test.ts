@@ -18,28 +18,32 @@ function expectAzmBackend(id?: string, sourcePath?: string): void {
   expect(resolveAssemblerBackend(id, sourcePath)).toBeInstanceOf(AzmBackend);
 }
 
+function expectAtomBackend(id?: string, sourcePath?: string): void {
+  expect(resolveAssemblerBackend(id, sourcePath)).toBeInstanceOf(AtomBackend);
+}
+
 describe('assembler-backend', () => {
-  it('returns azm by default', () => {
-    expectAzmBackend();
+  it('returns Atom by default', () => {
+    expectAtomBackend();
   });
 
   it('returns azm when explicitly requested', () => {
     expectAzmBackend('azm');
   });
 
-  it('returns azm for asm-family source paths', () => {
-    expectAzmBackend(undefined, '/tmp/program.asm');
-    expectAzmBackend(undefined, '/tmp/program.z80');
+  it('returns Atom for asm-family source paths', () => {
+    expectAtomBackend(undefined, '/tmp/program.asm');
+    expectAtomBackend(undefined, '/tmp/program.inc');
+    expectAtomBackend(undefined, '/tmp/program.z80');
   });
 
   it('matches azm case-insensitively', () => {
     expectAzmBackend('AZM');
   });
 
-  it('returns Atom only when explicitly requested for assembly source', () => {
-    expect(resolveAssemblerBackend('atom', '/tmp/program.asm')).toBeInstanceOf(AtomBackend);
-    expect(resolveAssemblerBackend('ATOM', '/tmp/program.asm')).toBeInstanceOf(AtomBackend);
-    expectAzmBackend(undefined, '/tmp/program.asm');
+  it('matches Atom case-insensitively', () => {
+    expectAtomBackend('atom', '/tmp/program.asm');
+    expectAtomBackend('ATOM', '/tmp/program.asm');
   });
 
   it('throws for unknown backends', () => {
@@ -64,6 +68,6 @@ describe('assembler-backend', () => {
 
   it('does not expose the removed zax backend', () => {
     expect(() => resolveAssemblerBackend('zax', undefined)).toThrow('Unknown assembler backend');
-    expectAzmBackend(undefined, '/tmp/program.zax');
+    expectAtomBackend(undefined, '/tmp/program.zax');
   });
 });

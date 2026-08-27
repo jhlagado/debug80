@@ -168,7 +168,7 @@ describe('warm rebuild assembly integration', () => {
     const sourcePath = path.join(baseDir, 'main.asm');
     fs.writeFileSync(
       sourcePath,
-      ['        .org $0100', 'Start:', '        ld a,$5A', ''].join('\n')
+      ['        ORG $0100', 'Start:', '        LD A,$5A', ''].join('\n')
     );
     const previousProgram: HexProgram = {
       memory: new Uint8Array(0x10000),

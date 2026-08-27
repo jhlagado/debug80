@@ -40,7 +40,7 @@ const GLIM_SOURCE = [
 ].join('\n');
 
 describe('glimmer-backend', () => {
-  it('builds a .glim source with Atom into hex/bin/d8 with .glim map attribution', async () => {
+  it('builds a .glim source with the default Atom backend and .glim map attribution', async () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'd80-glim-'));
     const srcDir = path.join(dir, 'src');
     const buildDir = path.join(dir, 'build');
@@ -53,7 +53,6 @@ describe('glimmer-backend', () => {
     const result = await backend.assemble({
       asmPath: entry,
       hexPath: path.join(buildDir, 'probe.hex'),
-      glimmer: { assembler: 'atom' },
       onOutput: (message) => output.push(message),
     });
 

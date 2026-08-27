@@ -83,12 +83,13 @@ Glimmer requires Node.js 20 or newer.
 ```sh
 npm ci
 npm run build
-node dist/src/cli.js build --assembler atom examples/dot.glim
+node dist/src/cli.js build examples/dot.glim
 ```
 
 The command writes assembly, Intel HEX, binary, and a D8 debug map. Without
 `build`, Glimmer stops after generation and register-contract checking.
-Omitting `--assembler` selects the AZM compatibility backend.
+Omitting `--assembler` selects Atom. Use `--assembler azm` for a program that
+depends on an AZM-only directive or operation.
 
 The generated assembly is readable: API equates, change-flag constants,
 state storage, the runtime loop, binding polling, phase dispatch, wrapped user

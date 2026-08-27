@@ -15,7 +15,7 @@ import { AzmBackend } from './azm-backend';
 import { GlimmerBackend } from './glimmer-backend';
 import { NucleusBackend } from './nucleus-backend';
 
-const azmSourceExtensions = new Set(['.asm', '.inc', '.z80']);
+const assemblySourceExtensions = new Set(['.asm', '.inc', '.z80']);
 
 export interface AssembleOptions {
   asmPath: string;
@@ -50,8 +50,8 @@ function inferAssemblerBackend(asmPath: string | undefined): string | undefined 
   }
 
   const extension = path.extname(asmPath).toLowerCase();
-  if (azmSourceExtensions.has(extension)) {
-    return 'azm';
+  if (assemblySourceExtensions.has(extension)) {
+    return 'atom';
   }
   if (extension === '.glim') {
     return 'glimmer';
@@ -71,11 +71,11 @@ export function resolveAssemblerBackend(
   const id =
     explicitId === undefined || explicitId === '' ? inferAssemblerBackend(asmPath) : explicitId;
 
-  if (id === undefined || id === '' || id === 'azm') {
-    return new AzmBackend();
-  }
-  if (id === 'atom') {
+  if (id === undefined || id === '' || id === 'atom') {
     return new AtomBackend();
+  }
+  if (id === 'azm') {
+    return new AzmBackend();
   }
   if (id === 'glimmer') {
     return new GlimmerBackend();

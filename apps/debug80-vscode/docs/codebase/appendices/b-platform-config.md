@@ -38,13 +38,12 @@ Project configuration lives in `debug80.json` at the workspace folder root. Top-
 | `glimmer`                 | `object`   | —                                                      | Assembler used for generated Z80 source                                               |
 | `nucleus`                 | `object`   | —                                                      | Nucleus-specific launch options; see below                                            |
 
-Debug80 currently infers `azm` for `.asm`, `.inc`, and `.z80`, `glimmer` for
-`.glim`, and `nucleus` for `.nu`. Because Atom and AZM both use ordinary
-assembly filenames, the extension does not infer their dialect from `.asm`.
-Set `"assembler": "atom"` for an Atom target. Existing assembly targets that
-omit the field retain the AZM compatibility default. New project scaffolds
-write `"assembler": "atom"` explicitly. The top-level `azm` block configures
-direct AZM builds and the contract checker used by Glimmer.
+Debug80 selects Atom for `.asm`, `.inc`, and `.z80`, Glimmer for `.glim`, and
+Nucleus for `.nu` when `assembler` is omitted. Because Atom and AZM share
+ordinary assembly filenames, a target that requires AZM must set
+`"assembler": "azm"`. New project scaffolds write `"assembler": "atom"`
+explicitly. The top-level `azm` block configures direct AZM builds and the
+contract checker used by Glimmer.
 
 ```json
 {

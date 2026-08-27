@@ -33,7 +33,7 @@ function usage(): string {
     '',
     'Options:',
     '  -o, --output <file>   Generated assembly path (default: <entry>.main.asm)',
-    '  --assembler <name>    Generated source/build backend: azm or atom (default: azm)',
+    '  --assembler <name>    Generated source/build backend: atom or azm (default: atom)',
     '  --org <addr>          Assembly origin, e.g. $4000 (default: $4000)',
     '  --no-check            Generate only; skip register-contract checking (not with build)',
     '  --deps                Print the dependency report (writers/readers per cell) and exit',
@@ -107,7 +107,7 @@ export async function main(argv: string[]): Promise<number> {
   let check = true;
   let deps = false;
   let build = false;
-  let assembler: 'azm' | 'atom' = 'azm';
+  let assembler: 'azm' | 'atom' = 'atom';
 
   if (argv[0] === 'build') {
     build = true;

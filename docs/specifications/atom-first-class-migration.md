@@ -16,7 +16,7 @@ providers for ordinary TEC-FS input and transactional output. The harness has
 a proved immutable-bank profile with fixed state relocated to common RAM. The
 TEC include resolver, launcher, and final memory map are implemented and proved
 under emulation. TEC hardware acceptance, Nucleus convergence, release
-installation, and the compatibility-default change remain. The checked-in
+installation remain. The checked-in
 Debug80 project corpus no longer selects AZM.
 
 ## Objective
@@ -162,19 +162,18 @@ host boundary when it stabilizes.
 ### 10. Default migration
 
 Build the Debug80 project corpus with Atom, document unsupported legacy
-language features, and convert in-scope sources. Make Atom the default for new
-Debug80 projects only after the corpus and release gates pass. Existing projects
-remain explicit until converted.
+language features, and convert in-scope sources. Make Atom the default after
+the corpus and compatibility gates pass. Existing explicit selections remain
+unchanged.
 
 AZM remains available during bootstrap and migration. Its removal from a build
 path is a separate measured checkpoint, never an incidental dependency edit.
 
-The first default-migration substep is complete: new scaffolds select Atom,
-existing checked-in assembly targets declare their current backend, and the
-repository rejects an ambiguous checked-in assembly target. The compatibility
-fallback remains AZM for external project files that predate explicit
-selection. It changes only after the in-repository corpus is converted and a
-major-release migration note is ready.
+The default migration is complete. New scaffolds and every checked-in assembly
+target select Atom, the repository rejects ambiguous checked-in targets, and
+an omitted backend now selects Atom for assembly source. Existing projects that
+require AZM must add `"assembler": "azm"`; the Debug80 changelog records this
+compatibility change.
 
 The Debug80 extension's own root smoke target was the first converted corpus
 target. Its checked source assembles through Atom to `3E 05 C6 03 76`.

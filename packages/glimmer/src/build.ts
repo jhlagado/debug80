@@ -221,13 +221,12 @@ export interface GlimmerBuildOptions {
   /**
    * How far to take the build:
    * - 'generate' — write generated assembly only;
-   * - 'check' — also run AZM register-contract checking (the generated
-   *   file declares its `.contracts` policy) without assembling;
+   * - 'check' — also run register-contract checking without assembling;
    * - 'build' (default) — also assemble `.hex`/`.bin`/`.d8.json` and
    *   rewrite the debug map to step block bodies in `.glim` source.
    */
   stage?: 'generate' | 'check' | 'build';
-  /** Assembly source/backend projection. AZM remains the compatibility default. */
+  /** Assembly source/backend projection (default: Atom). */
   assembler?: 'azm' | 'atom';
 }
 
@@ -421,7 +420,7 @@ export async function buildGlimmerProgram(
   }
   const program: GlimmerProgram = loaded.program;
 
-  const assembler = options.assembler ?? 'azm';
+  const assembler = options.assembler ?? 'atom';
   const generationOptions = options.org === undefined ? {} : { org: options.org };
   const imports = assembler === 'atom' ? atomImportSources(program, entryPath) : undefined;
   const atomProjection =

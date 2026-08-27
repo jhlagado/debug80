@@ -20,18 +20,16 @@ compileToAzm(text)          src/index.ts
 The programmatic entry point is `buildGlimmerProgram(entryPath, options)`
 in `src/build.ts`, exported as `@jhlagado/glimmer/build`. It runs the
 whole chain in process — no child processes, no printing; artifacts are
-written to disk and everything else comes back as values, mirroring how
-Debug80 consumes AZM's `@jhlagado/azm/compile` API. Its `stage` option
-selects depth: `'generate'` writes the AZM source only; `'check'` also
-runs AZM's register-contract checking without assembling (the generated
-file declares `.contracts` policy; the mon3 register profile is applied
-for MON-3 programs, and inferred output candidates are accepted for user
-routines); `'build'` (default) instead assembles in a single AZM pass
-into `.hex`, `.bin`, and `.d8.json` — contract checking rides along, and
-since AZM 0.3 never rewrites the file, the map's line numbers agree with
-the source exactly as generated — and rewrites the map. Diagnostics come back AZM-shaped (`severity`, absolute
-`sourceName`, `line`/`column`, `code`), Glimmer parse errors included, so
-a host reports both through one path.
+written to disk and everything else comes back as values. Its `stage` option
+selects depth: `'generate'` writes the selected assembly projection;
+`'check'` also runs AZM's register-contract analysis without assembling; and
+`'build'` (the default) assembles through Atom unless the caller explicitly
+selects AZM. The contract form declares `.contracts` policy, applies the mon3
+register profile for MON-3 programs, and accepts inferred output candidates
+for user routines. A completed build writes `.hex`, `.bin`, and `.d8.json`,
+then attributes block-body segments to the Glimmer source. Diagnostics share
+one shape (`severity`, absolute `sourceName`, `line`/`column`, and `code`), so a
+host can report Glimmer and contract failures through the same path.
 
 For the map rewrite, `computeBlockMappings` anchors each block at its
 `Glim_<Name>:` label in the generated asm text and verifies the body is
@@ -243,5 +241,5 @@ rollover. The CLI's `--deps` prints the reactive graph via
 diagnostics. `test/generate.test.ts` covers generated structure and the
 round trip: the CounterToy example is compiled, written to a temp
 directory, and assembled with the real `@jhlagado/azm` compile API; the
-test fails on any AZM error diagnostic. This round trip is the guard that
-keeps generated output honest against the assembler — keep it green.
+test fails on any AZM error diagnostic. This round trip detects any generated
+instruction or annotation that the assembler rejects.

@@ -126,7 +126,7 @@ export class GlimmerBackend implements AssemblerBackend {
       result = await modules.buildGlimmerProgram(options.asmPath, {
         stage: 'build',
         outputPath: generatedAsmPath,
-        assembler: options.glimmer?.assembler ?? 'azm',
+        assembler: options.glimmer?.assembler ?? 'atom',
       });
     } catch (err) {
       const message = `glimmer failed: ${err instanceof Error ? err.message : String(err)}`;

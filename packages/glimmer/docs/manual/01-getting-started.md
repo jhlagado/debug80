@@ -20,8 +20,8 @@ node dist/src/cli.js examples/counter.glim
 ```
 
 This compiles the CounterToy example to `examples/counter.main.asm`, a single
-readable assembly source file. The default AZM compatibility backend also
-checks its register contracts. `--no-check` stops after generation.
+readable Atom source file. Glimmer also checks its register contracts.
+`--no-check` stops after generation.
 
 When you want the whole toolchain in one step — HEX, binary, and a
 Debug80 map — use `build`:
@@ -30,10 +30,11 @@ Debug80 map — use `build`:
 node dist/src/cli.js build examples/counter.glim
 ```
 
-Atom can assemble CounterToy directly:
+AZM remains available for programs that require its extended directives or
+operations:
 
 ```sh
-node dist/src/cli.js build --assembler atom examples/counter.glim
+node dist/src/cli.js build --assembler azm examples/counter.glim
 ```
 
 Both build forms write the generated assembly, Intel HEX, binary, and a D8
@@ -44,26 +45,23 @@ the `.glim` file. Generated glue (dispatch, timers, the profile library)
 stays attributed to the generated `.asm` — stepping into it drops you
 into readable assembly, which is the transparency principle at work.
 
-The default generated form is an ordinary AZM program and can be assembled
+The default generated form is an ordinary Atom program and can be assembled
 manually:
 
 ```sh
-npx azm examples/counter.main.asm
+atom examples/counter.main.asm
 ```
 
-The `.routine` directives above each routine are register contracts —
-library routines declare their register effects explicitly, and bare
-`.routine` boundaries have AZM infer them from the body. The generated
-file opens with `.contracts strict`, so contract errors in your blocks
-fail the build with the offending call site named. Checking uses AZM's
-monitor profile, because the TEC-1G examples call MON-3 through
-`RST $10`: `azm --reg-profile mon3 <file>`.
+Glimmer checks register contracts before assembling the Atom projection. The
+contract-checking form declares each routine boundary and uses the MON-3
+register profile for programs that call the monitor through `RST $10`. Contract
+errors identify the offending call site even though this metadata does not
+appear in the Atom source.
 
-The Atom projection removes this metadata after the same contract check. It
-keeps hand-written imported modules as separate source parts, so diagnostics
-and D8 mappings still identify the module file. AZM layout-type directives and
-nested module imports do not yet have Atom equivalents. Glimmer reports an
-error instead of emitting partial Atom source for either form.
+Hand-written imported modules remain separate Atom source parts, so diagnostics
+and D8 mappings identify the module file. AZM layout-type directives and nested
+module imports do not yet have Atom equivalents. Glimmer reports an error
+instead of emitting partial Atom source for either form.
 
 ## Your first program
 

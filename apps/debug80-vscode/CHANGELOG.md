@@ -2,10 +2,12 @@
 
 ## Unreleased
 
+- Atom is now Debug80's default assembler for `.asm`, `.inc`, and `.z80`
+  sources. Existing projects that require AZM must set `"assembler": "azm"`;
+  an explicit backend selection continues to override the default.
 - New Debug80 assembly projects select Atom explicitly and ship starter source
   that is verified through Atom for the Simple, CP/M 2.2, TEC-1, and TEC-1G
-  kits. Existing project files without an assembler selection retain their AZM
-  compatibility behaviour.
+  kits.
 - Atom build failures now include the offending source line in Debug80's
   assembly diagnostic.
 
@@ -292,7 +294,7 @@
 ## 0.1.17
 
 - Added TEC-1G matrix-keyboard takeover behavior that more closely matches
-  MON-3: opening the Matrix Keyboard accordion now acts as the attachment
+  MON-3: opening the Matrix Keyboard accordion now attaches the keyboard,
   switch, keeps RESET available, holds clicked keys long enough for monitor
   scans, and reasserts matrix mode after RESET or debug-session startup.
 - Completed TEC-1G matrix input handling so on-screen keys stay synchronized

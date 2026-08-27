@@ -619,7 +619,7 @@
               },
               "assembler": {
                 "type": "string",
-                "description": "Assembler backend to use. New assembly projects select Atom; older .asm targets without this field retain the AZM compatibility default.",
+                "description": "Assembler backend to use. Assembly sources default to Atom; select AZM explicitly when required.",
                 "enum": [
                   "atom",
                   "azm",

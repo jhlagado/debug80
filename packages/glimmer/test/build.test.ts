@@ -36,13 +36,13 @@ describe('glimmer build (d8 map rewrite)', () => {
     const glimSegments = segmentsOf(map, 'dot.glim');
     expect(glimSegments.length).toBeGreaterThan(0);
 
-    // Every glim-attributed line is a real body line: its source text is
-    // the instruction the segment was assembled from (verbatim contract).
+    // Every Glimmer-attributed segment points to a real body line. The Atom
+    // projection may rename labels to satisfy Atom's eight-character limit,
+    // so source-map attribution—not repeated source text—is the contract.
     const glimSource = readFileSync(entry, 'utf8').split('\n');
-    const asmSource = readFileSync(path.join(dir, 'dot.main.asm'), 'utf8').split('\n');
     for (const segment of glimSegments) {
       const text = glimSource[(segment.line ?? 0) - 1] ?? '';
-      expect(asmSource).toContain(text);
+      expect(segment.start).toBeTypeOf('number');
       expect(text.trim()).not.toBe('');
     }
 
@@ -128,13 +128,16 @@ describe('buildGlimmerProgram (programmatic API)', () => {
     expect(result.artifacts!.d8).toBe(path.join(dir, 'dot.main.d8.json'));
     expect(result.mappedSegments).toBeGreaterThan(0);
 
-    // The generated asm declares its contracts inline; the map matches it.
+    // The default artifact is Atom source. Contract metadata remains in the
+    // separately checked compatibility projection rather than leaking here.
     const asm = readFileSync(result.artifacts!.asm, 'utf8');
-    expect(asm).toContain('.contracts strict');
-    expect(asm).toContain('.routine');
+    expect(asm).toMatch(/^\s*ORG\s+\$4000/m);
+    expect(asm).not.toMatch(/^\s*\.contracts\b/im);
+    expect(asm).not.toMatch(/^\s*\.routine\b/im);
     expect(asm).not.toContain(';!');
     const map = readMap(dir, 'dot.main.d8.json');
     expect(map.fileList).toContain('dot.glim');
+    expect(map).toMatchObject({ generator: { name: 'atom' } });
   });
 
   it('stops at generation for stage generate', async () => {
@@ -144,10 +147,10 @@ describe('buildGlimmerProgram (programmatic API)', () => {
 
     const result = await buildGlimmerProgram(entry, { stage: 'generate' });
     expect(result.artifacts).toEqual({ asm: path.join(dir, 'dot.main.asm') });
-    // AZM never ran: no assembly artifacts exist, and the generated
-    // source already carries its .routine contract declarations.
+    // No assembler ran: only the default Atom source projection exists.
     const asm = readFileSync(path.join(dir, 'dot.main.asm'), 'utf8');
-    expect(asm).toContain('.routine');
+    expect(asm).toMatch(/^\s*ORG\s+\$4000/m);
+    expect(asm).not.toMatch(/^\s*\.routine\b/im);
     expect(existsSync(path.join(dir, 'dot.main.hex'))).toBe(false);
     expect(existsSync(path.join(dir, 'dot.main.d8.json'))).toBe(false);
   });

@@ -3,6 +3,12 @@
 Versions are tagged in git and published to npm as `@jhlagado/glimmer`
 (0.4.0 is the first broadly usable published version).
 
+## Unreleased
+
+- Atom is now the default generated-source and build backend. Use
+  `--assembler azm` or `{ assembler: 'azm' }` for a program that requires
+  AZM-only directives or operations.
+
 ## 0.6.2 - 2026-07-19
 
 - Updated `@jhlagado/azm` to `^0.3.8`, preserving BIN and HEX output when
@@ -129,9 +135,9 @@ audit` on the generic placeholder profile, whose API equates have no
   the leading underscore for local-label syntax); the parser rejects
   them with a pointed diagnostic.
 - `glimmer build` is a single AZM pass: contract checking rides the
-  assembly (policy and boundaries are declared in the generated file),
-  nothing rewrites the file, and the debug map's line numbers agree
-  with the source exactly as generated. User-routine output candidates
+  assembly (policy and boundaries are declared in the generated file).
+  No later step rewrites the file, and the debug map uses the line
+  numbers from the generated source. User-routine output candidates
   are accepted via the compile API (`acceptRegisterOutputCandidates`).
 - Binary output is byte-identical to 0.4.0 for six of the seven
   examples; sprite-chase gains two bytes (an explicit `ld b,0` in

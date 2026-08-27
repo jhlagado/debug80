@@ -557,13 +557,13 @@ describe('v0.2 runtime (slide example)', () => {
   });
 });
 
-describe('CLI pipeline (generate + AZM contract check)', () => {
-  it('declares .routine boundaries in the written file', async () => {
+describe('CLI pipeline (generate + contract check)', () => {
+  it('can emit the explicit AZM compatibility form with .routine boundaries', async () => {
     const { main } = await import('../src/cli.js');
     const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-cli-'));
     const entry = path.join(dir, 'dot.glim');
     writeFileSync(entry, readFileSync(path.join(import.meta.dirname, '../examples/dot.glim')));
-    const status = await main([entry]);
+    const status = await main(['--assembler', 'azm', entry]);
     expect(status).toBe(0);
     const out = readFileSync(path.join(dir, 'dot.main.asm'), 'utf8');
     // Each block wrapper is a declared routine boundary; AZM infers

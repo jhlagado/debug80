@@ -10,13 +10,13 @@ nav_order: 2
 
 # Chapter 2 — The Project Configuration System
 
-A Debug80 project is defined by a JSON configuration file that tells the extension what to build, what platform to target, where to find source files and ROM images, and how to lay out memory. This chapter explains every part of that system: the config file format, how targets work, how multiple configuration sources are merged, and how the scaffolding flow creates a new project from scratch.
+A Debug80 project is defined by a JSON configuration file. The extension reads it to determine what to build, which platform to target, where to find source files and ROM images, and how to lay out memory. This chapter covers the config file format, targets, configuration merging, and the scaffolding flow for a new project.
 
 If you are going to work on any part of debug80 that touches launching, target selection, or platform setup, you need to understand this chapter. The configuration system is the spine — every debug session begins by resolving a config into a fully populated set of launch arguments.
 
 ---
 
-## Where the config file lives
+## Config file location
 
 The current project model uses `debug80.json` at the workspace folder root as the primary project marker.
 
@@ -187,7 +187,7 @@ This logic lives in `populateFromConfig()` in `src/debug/launch-args.ts`.
 
 ### Remembering the selected target
 
-When a user selects a target — either through the panel selector or a command flow that resolves a target explicitly — the selection is stored in VS Code's workspace state under the key:
+When a user selects a target through the panel selector or a command that resolves a target explicitly, the selection is stored in VS Code's workspace state under the key:
 
 ```
 debug80.selectedTarget:{projectConfigPath}
@@ -312,7 +312,7 @@ The target overrode `appStart` but inherited `romHex` and `entry` from the root.
 
 ### TEC-1G ROM inheritance
 
-There is one additional subtlety for TEC-1G configurations. The MON-3 ROM path (`romHex`) is often defined in only one place — either at the root `tec1g` block or in a single target's `tec1g` block. Other targets that also use TEC-1G might define partial overrides (just `appStart`, for example) and expect to inherit the ROM.
+TEC-1G configurations require one additional inheritance rule. The MON-3 ROM path (`romHex`) is often defined in only one place: either at the root `tec1g` block or in a single target's `tec1g` block. Other TEC-1G targets may define partial overrides, such as `appStart`, while inheriting the ROM.
 
 The function `resolveTec1gBaseForMerge()` handles this:
 
@@ -365,7 +365,7 @@ interface SimpleMemoryRegion {
 }
 ```
 
-Memory regions define which address ranges are ROM (read-only) and which are RAM (read-write). The Z80 memory model is a flat 64K array — regions tell the emulator which writes to accept and which to reject.
+Memory regions define which address ranges are ROM (read-only) and which are RAM (read-write). The Z80 memory model is a flat 64K array. The emulator accepts or rejects writes according to these regions.
 
 ### Tec1PlatformConfig
 
@@ -517,10 +517,9 @@ Glimmer and Nucleus have distinct source extensions, so Debug80 can infer them:
 - `.glim` → use Glimmer
 - `.nu` → use Nucleus
 
-Atom and AZM deliberately share `.asm`, `.inc`, and `.z80`. The filename does
-not identify the assembly dialect. New scaffolds set `assembler: "atom"`.
-Existing assembly targets without the field retain AZM while the project
-corpus moves to Atom; an explicit `assembler: "azm"` keeps that choice visible.
+Atom and AZM deliberately share `.asm`, `.inc`, and `.z80`. When `assembler`
+is omitted, Debug80 selects Atom. A project that requires AZM sets
+`assembler: "azm"` explicitly.
 
 Target discovery is independent of a mandatory `src/` folder. Debug80 looks
 for assembly entry points by convention (`main.asm` and `main.z80`) and treats
@@ -534,7 +533,7 @@ select the assembly dialect.
 
 VS Code's debug system allows extensions to dynamically provide and resolve launch configurations. Debug80 implements this through `Debug80ConfigurationProvider` in `src/extension/debug-configuration-provider.ts`.
 
-### What it does
+### Responsibilities
 
 The provider intercepts the launch flow at two points:
 

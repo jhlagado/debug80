@@ -96,7 +96,7 @@ export interface GlimmerLaunchOptions {
 export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArguments {
   /** Path to the main assembly source file */
   asm?: string;
-  /** Assembler backend. Assembly source defaults to AZM during the Atom migration. */
+  /** Assembler backend. Assembly source defaults to Atom; select AZM explicitly when required. */
   assembler?: string;
   /** AZM-specific assembler options */
   azm?: AzmLaunchOptions;
