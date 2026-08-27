@@ -105,6 +105,12 @@ run-level lifecycle, source access, diagnostics, and output adaptation. Native
 profiles select only the required modules at link time; there is no universal
 binary that makes every small system pay for every service.
 
+The reusable named-object harness exposes a link-time source-reader target.
+The ordinary target reads prepared bytes directly. A native preparation profile
+may replace it with an equal-offset filtering reader that masks only directives
+validated during preflight. This composition point remains outside the Atom
+core and does not add filesystem or preprocessor policy to the named-object ABI.
+
 NOBJ belongs in an optional harness output module, not in the core or the
 filesystem provider. A constrained profile may retain a measured direct-image
 sink when it is smaller. Core, harness, provider, workspace, buffers, and
