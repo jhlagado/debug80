@@ -4,6 +4,11 @@ Status: implemented for Node and CP/M profiles; MON3 and TEC-FS adoption remains
 
 Date: 2026-08-26
 
+The package ownership, platform terminology, source-preparation boundary, and
+migration sequence are governed by [Atom platform architecture](atom-platform-architecture.md)
+and [Atom first-class migration](atom-first-class-migration.md). The concrete
+CLI is governed by [Atom CLI v1](atom-cli-v1.md).
+
 ## Boundary
 
 Atom and Nucleus use private tool services to reach source objects, binary
