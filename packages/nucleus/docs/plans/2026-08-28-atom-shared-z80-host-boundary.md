@@ -468,14 +468,21 @@ status policy deliberately matches Nucleus's predefined service-error values:
 writes, EOF, invalid byte requests, storage overwrite versus append, failed
 storage atomicity, and reset back to the initial stream state.
 
+Nucleus now exposes `createNucleusProofRuntimeStreams`, a host-side adapter over
+that shared layer. It locks the stable Nucleus service ordinals to the shared
+operation names, uses the Nucleus service-error values as the runtime stream
+status policy, and keeps the current proof runtime's four-byte standard-output
+and storage-output capacities. It also models the Z80 proof runtime's
+`ServiceFailureCall` behavior, where a selected standard-output call fails
+atomically without appending the byte.
+
 This checkpoint deliberately does not move Nucleus record framing, map
 semantics, runtime-provider calls, NOBJ status behavior, Atom's assembler sink,
 or Nucleus runtime storage services. Those are the next Phase 3 layers.
 
 ## Next implementation unit
 
-Continue Phase 3 by adapting the existing Nucleus proof/runtime harness service
-state to `RuntimeByteStreams`. That should be a behavior-preserving adapter
-first: the current generated programs and proof images must keep their exact
-observations while the host-side implementation moves behind the shared
-conformance surface.
+Continue Phase 3 by using `createNucleusProofRuntimeStreams` inside a real
+Nucleus proof-harness execution path. The first step should be a read-only
+comparison path that derives expected service observations from the shared
+adapter while leaving the Z80 proof images unchanged.

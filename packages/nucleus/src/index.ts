@@ -17,3 +17,10 @@ export {
   parseSourceManifest,
   type SourcePart,
 } from "./source-manifest.js";
+export {
+  createNucleusProofRuntimeStreams,
+  NUCLEUS_PROOF_RUNTIME_STREAM_LIMITS,
+  NUCLEUS_RUNTIME_STREAM_SERVICE,
+  NUCLEUS_RUNTIME_STREAM_STATUS_POLICY,
+  type NucleusProofRuntimeStreamsOptions,
+} from "./runtime-services.js";
