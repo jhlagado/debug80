@@ -8,10 +8,10 @@ Implemented through the Debug80 backend checkpoint: the shared services
 authority, Atom monorepo package, include-driven Node and CP/M preparation, CLI
 v1, and Debug80's explicit `assembler: "atom"` backend are on `main`. Native
 work now includes the reusable Z80 named-object harness and proved TECM8
-providers for ordinary TEC-FS input and transactional output. The harness can
-be linked into a writable 16 KiB target bank; the TEC include resolver,
-launcher, final memory map, hardware acceptance, Nucleus convergence, and
-default-project migration remain.
+providers for ordinary TEC-FS input and transactional output. The harness now
+has a proved immutable-bank profile with fixed state relocated to common RAM.
+The TEC include resolver, launcher, final memory map, hardware acceptance,
+Nucleus convergence, and default-project migration remain.
 
 ## Objective
 
