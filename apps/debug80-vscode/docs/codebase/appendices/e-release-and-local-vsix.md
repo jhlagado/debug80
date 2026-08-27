@@ -88,6 +88,7 @@ Before calling a VSIX candidate releasable, test:
 - `schemas/`
 - `syntaxes/`
 - the bundled runtime code for Atom and the other in-process backends in `out/`
+- `assets/native-core.json`, loaded by Atom's bundled native runner
 - `README.md`
 - `LICENSE` or `LICENSE.txt`
 - `THIRD_PARTY_NOTICES.md`

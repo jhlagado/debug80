@@ -143,8 +143,8 @@ npm run package:verify
 The verification gate checks staged first-party extension contents with
 dependency expansion disabled. It requires:
 
-- `out/`, `resources/`, `roms/`, `schemas/`, `syntaxes/`, `README.md`, `LICENSE.txt` or `LICENSE`,
-  and `THIRD_PARTY_NOTICES.md` are present.
+- `out/`, `resources/`, `roms/`, `schemas/`, `syntaxes/`, `assets/native-core.json`, `README.md`,
+  `LICENSE.txt` or `LICENSE`, and `THIRD_PARTY_NOTICES.md` are present.
 - Top-level `src/`, `tests/`, `docs/`, `coverage/`, `.fallow/`, `.github/`, and `.vscode/` are
   absent.
 

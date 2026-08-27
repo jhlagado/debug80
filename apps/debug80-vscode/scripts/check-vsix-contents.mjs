@@ -10,6 +10,7 @@ const REQUIRED_ENTRIES = [
   { label: 'schemas/', matches: hasTopLevelDirectory('schemas') },
   { label: 'language-configuration/', matches: hasTopLevelDirectory('language-configuration') },
   { label: 'syntaxes/', matches: hasTopLevelDirectory('syntaxes') },
+  { label: 'assets/native-core.json', matches: (entry) => entry === 'assets/native-core.json' },
   { label: 'README.md', matches: (entry) => entry === 'README.md' },
   {
     label: 'LICENSE.txt',
