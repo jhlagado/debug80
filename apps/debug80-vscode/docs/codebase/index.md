@@ -107,7 +107,7 @@ This manual is updated against the codebase state through **2026-07-19**. These 
 
 Longer-standing architecture facts:
 
-- The project manifest uses the version 2 model: `projectVersion`, `projectPlatform`, `profiles`, `defaultProfile` and `bundledAssets`.
+- The project configuration uses the version 2 model: `projectVersion`, `projectPlatform`, `profiles`, `defaultProfile` and `bundledAssets`.
 - Project creation records bundled ROM asset references, and launch resolves missing workspace files from the extension bundle automatically.
 - The panel lifecycle has three states: `noWorkspace`, `uninitialized` and `initialized`.
 - The project header owns project selection, target selection, stop-on-entry, restart and workspace-folder addition.
