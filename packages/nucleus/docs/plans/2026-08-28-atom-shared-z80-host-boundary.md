@@ -431,13 +431,20 @@ against its current one-based `SourcePart` compatibility adapter. This keeps
 the resident contract independent of whether a host stores a whole part in a
 Node buffer, pages it through CP/M, or streams it from TEC-FS.
 
+The resident source-service gateway shape is now covered by shared conformance
+vectors as well. They prove source-read request validation around part ordinal,
+byte offset, EOF or out-of-range reads, malformed requests, and host-provider
+failure. Atom's direct-host gateway uses the shared dispatcher for source reads
+and passes those vectors.
+
 This checkpoint deliberately does not move Nucleus record framing, map
 semantics, runtime-provider calls, NOBJ status behavior, or Atom's assembler
 sink. Those are the next Phase 3 layers.
 
 ## Next implementation unit
 
-Continue Phase 3 by defining a shared source-service gateway conformance layer.
-It should prove the resident-facing request shape around part ordinal, offset,
-EOF, malformed requests, and host failure while leaving each language free to
-choose zero-based or one-based part numbering at its own resident boundary.
+Continue Phase 3 by defining the shared console-service shape. The useful
+boundary is byte-oriented input, byte-oriented output, terminal success, and
+terminal failure status. Atom already exposes those operations through its
+direct-host gateway; Nucleus should use the same lower service shape only where
+it matches the runtime service contract.
