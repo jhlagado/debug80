@@ -185,6 +185,13 @@ checked `.ASM` sources use Atom directives and private labels, the project
 selects `assembler: "atom"`, and a Debug80 corpus test assembles every target
 through `AtomBackend` while pinning its exact byte count and SHA-256 digest.
 
+Every remaining checked-in AZM target is named in
+[`azm-retirement-inventory.json`](azm-retirement-inventory.json) with the
+specific semantic or fixture blocker that prevents an exact migration today.
+The repository check rejects a new unlisted AZM target and rejects an inventory
+entry after its target moves to Atom. This makes AZM use a shrinking, reviewed
+exception set rather than an implicit fallback.
+
 ## Checkpoint discipline
 
 Each checkpoint:

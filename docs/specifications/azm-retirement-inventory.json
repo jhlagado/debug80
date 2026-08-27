@@ -1,0 +1,60 @@
+{
+  "schema": "debug80-azm-retirement/v1",
+  "targets": [
+    {
+      "project": "apps/debug80-vscode/tests/e2e/fixtures/dap-source-maps/.vscode/debug80.json",
+      "target": "include-app",
+      "blocker": "Static AZM HEX, listing, and D8 fixtures must be regenerated and the source-map E2E expectations rebaselined together."
+    },
+    {
+      "project": "apps/debug80-vscode/tests/e2e/fixtures/dap-source-maps/.vscode/debug80.json",
+      "target": "sparse-org",
+      "blocker": "Static AZM HEX, listing, and D8 fixtures must be regenerated and the source-map E2E expectations rebaselined together."
+    },
+    {
+      "project": "apps/debug80-vscode/tests/e2e/fixtures/simple/.vscode/debug80.json",
+      "target": "app",
+      "blocker": "The non-assembling DAP fixture retains AZM-selected static artifacts until its E2E baseline is regenerated through Atom."
+    },
+    {
+      "project": "packages/glimmer/corpus/tetro/debug80.json",
+      "target": "pacmo",
+      "blocker": "The source exports @Start and interleaves textual includes with executable code; migration requires a byte-preserving multipart reorganization and shortened identifiers."
+    },
+    {
+      "project": "packages/glimmer/corpus/tetro/debug80.json",
+      "target": "tetro",
+      "blocker": "The source exports @Start and interleaves textual includes with executable code; migration requires a byte-preserving multipart reorganization and shortened identifiers."
+    },
+    {
+      "project": "packages/glimmer/debug80.json",
+      "target": "dot",
+      "blocker": "Glimmer currently generates AZM contract directives and identifiers longer than Atom's eight-character limit; it needs an Atom emitter profile."
+    },
+    {
+      "project": "packages/glimmer/debug80.json",
+      "target": "slide",
+      "blocker": "Glimmer currently generates AZM contract directives and identifiers longer than Atom's eight-character limit; it needs an Atom emitter profile."
+    },
+    {
+      "project": "packages/glimmer/debug80.json",
+      "target": "snake",
+      "blocker": "Glimmer currently generates AZM contract directives and identifiers longer than Atom's eight-character limit; it needs an Atom emitter profile."
+    },
+    {
+      "project": "packages/glimmer/debug80.json",
+      "target": "sprite-chase",
+      "blocker": "Glimmer currently generates AZM contract directives and identifiers longer than Atom's eight-character limit; it needs an Atom emitter profile."
+    },
+    {
+      "project": "packages/glimmer/debug80.json",
+      "target": "tetro",
+      "blocker": "Glimmer currently generates AZM contract directives and identifiers longer than Atom's eight-character limit; it needs an Atom emitter profile."
+    },
+    {
+      "project": "packages/glimmer/debug80.json",
+      "target": "trail",
+      "blocker": "Glimmer currently generates AZM contract directives and identifiers longer than Atom's eight-character limit; it needs an Atom emitter profile."
+    }
+  ]
+}
