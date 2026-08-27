@@ -1,3 +1,6 @@
+import { realpathSync } from "node:fs";
+import { pathToFileURL } from "node:url";
+
 import {
   publishNucleusPreparedSourceTarget,
   publishNucleusProofTarget,
@@ -181,4 +184,14 @@ export function publicationTextSummary(publication: NucleusPublication): string 
     `entry=${publication.nobj.parsed.map.entryBank}:${publication.nobj.parsed.map.entryAddress}`,
     ...(publication.output === undefined ? [] : [`output=${publication.output}`]),
   ].join("\n") + "\n";
+}
+
+export function invokedDirectly(moduleUrl: string): boolean {
+  const argv1 = process.argv[1];
+  if (argv1 === undefined) return false;
+  try {
+    return moduleUrl === pathToFileURL(realpathSync(argv1)).href;
+  } catch {
+    return false;
+  }
 }

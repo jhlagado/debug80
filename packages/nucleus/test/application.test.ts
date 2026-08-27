@@ -810,6 +810,107 @@ describe("Nucleus application boundary", () => {
     );
   }, 30_000);
 
+  it("routes source preparation through the dispatcher CLI", async () => {
+    await withSourceTree({
+      "src/main.nu": "//% import \"lib/model.nu\"\nsub main()\nend\n",
+      "src/lib/model.nu": "const MODEL = 1\n",
+    }, async (root) => {
+      const { stdout, stderr } = await execFileAsync(
+        process.execPath,
+        [
+          tsxBin,
+          "src/cli/nucleus.ts",
+          "prepare",
+          "--root",
+          root,
+          "--json",
+          "src/main.nu",
+        ],
+        { cwd: packageRoot },
+      );
+
+      expect(stderr).toBe("");
+      expect(JSON.parse(stdout).parts.map(
+        (part: { logicalIdentity: string }) => part.logicalIdentity,
+      )).toEqual(["src/lib/model.nu", "src/main.nu"]);
+    });
+  });
+
+  it("routes entry-source NOBJ publication through the dispatcher CLI", async () => {
+    await withSourceTree(
+      {
+        "src/main.nu": [
+          "var value as u16 = 3",
+          "var cleared as u8",
+          "sub main()",
+          "value = value * 2",
+          "end",
+          "",
+        ].join("\n"),
+      },
+      async (root) => {
+        const { stdout, stderr } = await execFileAsync(
+          process.execPath,
+          [
+            tsxBin,
+            "src/cli/nucleus.ts",
+            "publish",
+            "--json",
+            "--root",
+            root,
+            "src/main.nu",
+          ],
+          { cwd: packageRoot },
+        );
+
+        const summary = JSON.parse(stdout);
+        expect(stderr).toBe("");
+        expect(summary).toMatchObject({
+          root,
+          entry: "src/main.nu",
+          sourceParts: 1,
+          bytes: 1396,
+          records: 130,
+          entryBank: 0,
+          entryAddress: 0x8000,
+        });
+      },
+    );
+  }, 30_000);
+
+  it("routes proof publication through the dispatcher CLI", async () => {
+    const { stdout, stderr } = await execFileAsync(
+      process.execPath,
+      [
+        tsxBin,
+        "src/cli/nucleus.ts",
+        "proof:publish",
+        "--json",
+        proof("flat-target-z80-slice-proof"),
+      ],
+      { cwd: packageRoot },
+    );
+
+    expect(stderr).toBe("");
+    expect(JSON.parse(stdout)).toMatchObject({
+      bytes: 1396,
+      records: 130,
+      entryBank: 0,
+      entryAddress: 0x8000,
+    });
+  }, 30_000);
+
+  it("rejects unknown dispatcher commands", async () => {
+    await expect(execFileAsync(
+      process.execPath,
+      [tsxBin, "src/cli/nucleus.ts", "unknown"],
+      { cwd: packageRoot },
+    )).rejects.toMatchObject({
+      code: 1,
+      stderr: expect.stringContaining("nucleus: unknown command unknown"),
+    });
+  });
+
   it("does not accept proof manifests through the normal publication CLI", async () => {
     await expect(execFileAsync(
       process.execPath,

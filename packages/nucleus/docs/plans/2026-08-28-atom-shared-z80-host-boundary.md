@@ -664,19 +664,26 @@ continues to own the resident-code discrimination.
 The first file-producing publication commands are now available:
 
 ```text
+npm run cli -w nucleus -- publish --root path/to/project --target target.json --output build/program.nobj src/main.nu
 npm run publish:nobj -w nucleus -- --root path/to/project --target target.json --output build/program.nobj src/main.nu
+npm run cli -w nucleus -- proof:publish --output build/program.nobj proofs/flat-target-z80-slice-proof.json
 npm run proof:publish -w nucleus -- --output build/program.nobj proofs/flat-target-z80-slice-proof.json
 npm run proof:publish -w nucleus -- --root path/to/project --output build/program.nobj src/main.nu
 npm run proof:publish -w nucleus -- --root path/to/project --target target.json --output build/program.nobj src/main.nu
 ```
 
-`publish:nobj` is the normal entry-source path. It prepares an entry `.nu`
-file, installs the resulting source bytes and resident descriptors into the
-current flat compiler proof image, requires that image to publish a committed
-NOBJ target, and writes those exact committed bytes to disk. `proof:publish`
-remains the compatibility/debug command for proof manifests, and still accepts
-the same prepared-source bridge options while the resident compiler image is
-proof-hosted.
+The selected Node-hosted command shape is a dispatcher: `nucleus <command>`.
+Its current development script is `npm run cli -w nucleus -- <command>`.
+`nucleus prepare` resolves source parts, `nucleus publish` is the normal
+entry-source NOBJ path, and `nucleus proof:publish` remains the
+compatibility/debug command for proof manifests. The older direct npm scripts
+remain as shortcuts while package installation is not yet wired.
+
+`nucleus publish` prepares an entry `.nu` file, installs the resulting source
+bytes and resident descriptors into the current flat compiler proof image,
+requires that image to publish a committed NOBJ target, and writes those exact
+committed bytes to disk. `proof:publish` still accepts the same prepared-source
+bridge options while the resident compiler image is proof-hosted.
 
 Target publication data now has its own application descriptor. A
 `NucleusTargetPublicationDescriptor` contains the NOBJ `begin` record, target
@@ -749,12 +756,13 @@ The publication CLIs now share their option parser and summary renderer.
 `publish:nobj` remains entry-source only. `proof:publish` keeps the additional
 proof-manifest dispatch path, but its prepared-source path uses the same parser
 and summary code as the normal command. This prevents the command contract from
-forking as output formats and runtime profiles are added.
+forking as output formats and runtime profiles are added. The dispatcher routes
+`prepare`, `publish`, and `proof:publish` to those same command implementations
+without spawning another process.
 
 ## Next implementation unit
 
-Continue Phase 3 by deciding and documenting the eventual installed binary
-shape for Node-hosted Nucleus, including whether the public command is
-`nucleus publish`, `nucleus compile`, or a multi-command dispatcher. Then wire
-the selected shape to the existing `publish:nobj`, `source:prepare`, and
-proof/debug commands.
+Continue Phase 3 by deciding the package/build step for the installed
+`nucleus` binary. The package currently typechecks with `noEmit`, so exposing a
+real npm `bin` requires either a build output directory or a small checked-in
+JavaScript launcher.

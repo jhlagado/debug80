@@ -13,6 +13,7 @@
     "measure": "vitest run test/proof-harness.test.ts --reporter=verbose",
     "preproof": "npm run build -w @jhlagado/azm && npm run build -w @jhlagado/debug80-runtime",
     "proof": "vitest run test/proof-harness.test.ts --reporter=verbose",
+    "cli": "tsx src/cli/nucleus.ts",
     "source:prepare": "tsx src/cli/prepare.ts",
     "publish:nobj": "tsx src/cli/publish.ts",
     "proof:publish": "tsx src/cli/proof-publish.ts",

@@ -4,6 +4,7 @@ import process from "node:process";
 
 import { publishNucleusPreparedSourceTarget } from "../publication.js";
 import {
+  invokedDirectly,
   parseNucleusPublicationOptions,
   preparedSourcePublicationOptions,
   publicationJsonSummary,
@@ -26,9 +27,11 @@ This development command prepares a Nucleus entry source file, installs it into
 the current resident compiler image, and publishes the committed NOBJ stream.
 `;
 
-async function main(): Promise<number> {
+export async function runNucleusPublishCli(
+  arguments_: readonly string[],
+): Promise<number> {
   try {
-    const options = parseNucleusPublicationOptions(process.argv.slice(2), {
+    const options = parseNucleusPublicationOptions(arguments_, {
       positionalName: "entry source",
     });
     if (options.help) {
@@ -52,4 +55,6 @@ async function main(): Promise<number> {
   }
 }
 
-process.exitCode = await main();
+if (invokedDirectly(import.meta.url)) {
+  process.exitCode = await runNucleusPublishCli(process.argv.slice(2));
+}

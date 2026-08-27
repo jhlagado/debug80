@@ -7,6 +7,7 @@ import {
   publishNucleusProofTarget,
 } from "../publication.js";
 import {
+  invokedDirectly,
   parseNucleusPublicationOptions,
   preparedSourcePublicationOptions,
   publicationJsonSummary,
@@ -32,9 +33,11 @@ target publication command while the resident compiler image is still proof
 hosted.
 `;
 
-async function main(): Promise<number> {
+export async function runNucleusProofPublishCli(
+  arguments_: readonly string[],
+): Promise<number> {
   try {
-    const options = parseNucleusPublicationOptions(process.argv.slice(2), {
+    const options = parseNucleusPublicationOptions(arguments_, {
       positionalName: "input",
     });
     if (options.help) {
@@ -71,4 +74,6 @@ async function main(): Promise<number> {
   }
 }
 
-process.exitCode = await main();
+if (invokedDirectly(import.meta.url)) {
+  process.exitCode = await runNucleusProofPublishCli(process.argv.slice(2));
+}

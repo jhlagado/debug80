@@ -5,6 +5,7 @@ import process from "node:process";
 import { SourcePreparationError } from "@jhlagado/z80-tool-services/source-preparation";
 
 import { prepareNucleusCompilation } from "../application.js";
+import { invokedDirectly } from "./publication-cli.js";
 
 const usage = `Usage: nucleus source:prepare [options] <entry.nu>
 
@@ -149,9 +150,11 @@ function textSummary(prepared: Awaited<ReturnType<typeof prepareNucleusCompilati
   return `${lines.join("\n")}\n`;
 }
 
-async function main(): Promise<number> {
+export async function runNucleusPrepareCli(
+  arguments_: readonly string[],
+): Promise<number> {
   try {
-    const options = parseArguments(process.argv.slice(2));
+    const options = parseArguments(arguments_);
     if (options.help) {
       process.stdout.write(usage);
       return 0;
@@ -181,4 +184,6 @@ async function main(): Promise<number> {
   }
 }
 
-process.exitCode = await main();
+if (invokedDirectly(import.meta.url)) {
+  process.exitCode = await runNucleusPrepareCli(process.argv.slice(2));
+}
