@@ -5,8 +5,9 @@ Status: accepted target architecture
 Date: 2026-08-27
 
 The Node-hosted, Debug80-integrated, and CP/M-native profiles are implemented.
-The TEC-native provider and the later default-project migration remain active
-work.
+The reusable native named-object harness is also implemented. The TEC-FS
+source provider, TecMate launcher, and later default-project migration remain
+active work.
 
 ## Product decision
 

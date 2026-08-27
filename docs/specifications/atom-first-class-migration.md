@@ -6,8 +6,10 @@ Date: 2026-08-27
 
 Implemented through checkpoint 7: the shared services authority, Atom monorepo
 package, include-driven Node and CP/M preparation, CLI v1, and Debug80's
-explicit `assembler: "atom"` backend are in production on `main`. Native TEC
-provider work, Nucleus convergence, and the default-project migration remain.
+explicit `assembler: "atom"` backend are in production on `main`. Checkpoint 8
+has begun with the reusable Z80 named-object harness. The TEC-FS source
+provider, TecMate launcher, Nucleus convergence, and default-project migration
+remain.
 
 ## Objective
 
@@ -116,6 +118,14 @@ mapping/load flows consume Atom output without AZM-specific assumptions.
 
 Prove the CP/M provider against real guest BDOS/BIOS and implement the TEC
 provider against MON3/TEC-FS. Preserve compact profile-specific output modules.
+
+The shared Atom harness uses separate source and output selectors. This lets a
+TEC build read ordinary catalogue files while publishing through the existing
+transactional object arena. The source resolver may reduce a canonical path to
+the catalogue's one-byte file ID after dependency discovery; the assembler
+then retains a 255-byte ordinal-to-file-ID map instead of every path string.
+The eight-slot transactional arena is an output store, not a source-part
+limit.
 
 Proof: shared provider conformance, exact native memory maps, failure injection,
 emulated acceptance, and hardware acceptance for TEC.

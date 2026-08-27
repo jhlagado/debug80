@@ -41,10 +41,12 @@ ideal terminal and disk devices. A direct Node run is explicitly host-backed;
 its private provider may use Debug80's Z80 runtime without intercepting
 arbitrary BIOS calls, BDOS calls, or memory accesses.
 
-MON3, TECM8, and TEC-FS retain their existing Nucleus bindings but do not yet
-provide the complete shared named-object profile. Atom adoption on those
-targets is also pending. They must remain reported as incomplete until their
-native acceptance proofs pass.
+TECM8 provides the shared request shape for its bounded transactional object
+store. Atom now has a Z80-native adapter for that request as well as the Node
+adapter. Ordinary TEC-FS catalogue files are not yet exposed through a
+conforming read provider, and the Atom launcher is not installed. The TEC
+profile therefore remains incomplete until those pieces and their native
+acceptance proofs pass.
 
 ## Console and binary objects
 
