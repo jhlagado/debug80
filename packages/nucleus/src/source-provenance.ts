@@ -75,6 +75,15 @@ const publicationSourceParts = (
     : [Object.freeze({ ordinal: 1, logicalIdentity: input })];
 };
 
+const publicationSourceSegments = (
+  publication: NucleusPublication,
+  options: NucleusD8Options,
+): readonly NucleusGeneratedSourceSegment[] =>
+  options.sourceSegments ??
+  (options.sourceParts === undefined && "sourceProvenance" in publication
+    ? (publication.sourceProvenance ?? [])
+    : []);
+
 const requirePositiveInteger = (name: string, value: number): void => {
   if (!Number.isInteger(value) || value < 1) {
     throw new Error(`D8 source segment ${name} must be a positive integer`);
@@ -205,7 +214,7 @@ export function renderNucleusD8(
   );
   const fileList = sourceParts.map((part) => part.logicalIdentity);
   const files = Object.fromEntries(fileList.map((file) => [file, {}]));
-  for (const segment of options.sourceSegments ?? []) {
+  for (const segment of publicationSourceSegments(publication, options)) {
     if (segment.bank !== 0) {
       throw new Error("D8 source segments currently require a flat NOBJ target");
     }

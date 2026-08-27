@@ -92,6 +92,18 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     expect(outcome.nobj?.parsed.begin.runtimeIdentity).toBe(4);
     expect(outcome.nobj?.parsed.map.entryAddress).toBe(0x8000);
     expect(outcome.nobj?.parsed.map.banks[0]?.usedLength).toBe(556);
+    expect(outcome.sourceProvenance).toEqual([
+      {
+        partOrdinal: 1,
+        line: 1,
+        column: 1,
+        bank: 0,
+        start: 0x81f2,
+        end: 0x822c,
+        kind: "code",
+        confidence: "low",
+      },
+    ]);
     expect(outcome.nobj?.materialized.flatImage?.length).toBe(4096);
     expect(outcome.nobj?.memory[0x8000]).toBe(0xc3);
     expect(outcome.nobj?.memory[0x8003]).not.toBe(0xff);

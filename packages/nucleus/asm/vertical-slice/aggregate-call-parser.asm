@@ -102,8 +102,10 @@ Stage8MatchPredefinedSkip:
 .routine in A,HL,IX out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
 CompileTargetAggregateCallParts:
             LD   (TargetDescriptorPointer),IX
+            LD   (TargetSourcePartCount),A
             PUSH AF
             PUSH HL
+            CALL TargetSinkSourceProvenanceReset
             CALL CompileSliceResetState
             POP  HL
             POP  AF

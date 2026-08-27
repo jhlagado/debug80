@@ -739,6 +739,13 @@ ProofStart:
             LD   DE,AdapterSuccessMap
             LD   BC,TargetMapSize
             LDIR
+            LD   HL,(SourceProvenanceLength)
+            LD   (SourceProvenanceSuccessLength),HL
+            LD   B,H
+            LD   C,L
+            LD   HL,SourceProvenanceLogBase
+            LD   DE,SourceProvenanceSuccessLogBase
+            LDIR
 
             XOR  A
             LD   (AdapterCommitted),A
@@ -1056,6 +1063,65 @@ AdapterReserveReady:
             OR   A
             RET
 
+.routine out A,carry,zero clobbers sign,parity,halfCarry,HL
+TargetSinkSourceProvenanceReset:
+            LD   HL,SourceProvenanceLogBase
+            LD   (SourceProvenanceCursor),HL
+            XOR  A
+            LD   (SourceProvenanceLength),A
+            LD   (SourceProvenanceLength+1),A
+            RET
+
+; A is the one-based source part, C is the output bank, and DE..HL is the
+; generated code range. This first resident emission is intentionally coarse:
+; line and column are fixed at 1 and confidence is low until the semantic
+; transcript carries per-operation source positions.
+.routine in A,C,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL,IY
+TargetSinkSourceProvenanceSinglePartCode:
+            LD   (SourceProvenancePart),A
+            LD   A,C
+            LD   (SourceProvenanceBank),A
+            LD   (SourceProvenanceStart),DE
+            LD   (SourceProvenanceEnd),HL
+            LD   IY,(SourceProvenanceCursor)
+            PUSH IY
+            POP  HL
+            LD   DE,12
+            ADD  HL,DE
+            LD   DE,SourceProvenanceLogLimit
+            OR   A
+            SBC  HL,DE
+            JR   C,SourceProvenanceReserveReady
+            JR   Z,SourceProvenanceReserveReady
+            LD   A,DiagnosticTargetOutput
+            SCF
+            RET
+SourceProvenanceReserveReady:
+            ADD  HL,DE
+            LD   (SourceProvenanceCursor),HL
+            LD   DE,SourceProvenanceLogBase
+            OR   A
+            SBC  HL,DE
+            LD   (SourceProvenanceLength),HL
+            LD   A,(SourceProvenancePart)
+            LD   (IY+0),A
+            LD   A,(SourceProvenanceBank)
+            LD   (IY+1),A
+            LD   (IY+2),1
+            LD   (IY+3),0
+            LD   (IY+4),1
+            LD   (IY+5),0
+            LD   HL,(SourceProvenanceStart)
+            LD   (IY+6),L
+            LD   (IY+7),H
+            LD   HL,(SourceProvenanceEnd)
+            LD   (IY+8),L
+            LD   (IY+9),H
+            LD   (IY+10),1
+            LD   (IY+11),0
+            OR   A
+            RET
+
 .routine in IX out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IY
 TargetSinkBegin:
             LD   HL,AdapterCapturedBegin
@@ -1361,15 +1427,25 @@ AdapterRuntimeAddress:  .dw 0
 AdapterRuntimeContext:  .dw 0
 AdapterRuntimeLog:      .dw 0
 AdapterRuntimeContextPointer .equ AdapterRuntimeContext
+SourceProvenanceCursor: .dw 0
+SourceProvenanceLength: .dw 0
+SourceProvenanceSuccessLength: .dw 0
+SourceProvenancePart:   .db 0
+SourceProvenanceBank:   .db 0
+SourceProvenanceStart:  .dw 0
+SourceProvenanceEnd:    .dw 0
 ProofEnd:
 
-AdapterLoadedLogBase    .equ $9930
-AdapterSuccessLogBase   .equ $9C30
-AdapterTrapLogBase      .equ $A000
-AdapterUnhandledLogBase .equ $A500
-AdapterBankedTrapLogBase .equ $AC00
-AdapterLogBase          .equ $B400
-AdapterFailedLogBase    .equ $C600
-AdapterEntry1LogBase    .equ $CB00
-AdapterChapter21LogBase .equ $D000
+SourceProvenanceLogBase .equ $99C0
+SourceProvenanceSuccessLogBase .equ $99D0
+SourceProvenanceLogLimit .equ $99F0
+AdapterLoadedLogBase    .equ $9A00
+AdapterSuccessLogBase   .equ $9D00
+AdapterTrapLogBase      .equ $A100
+AdapterUnhandledLogBase .equ $A600
+AdapterBankedTrapLogBase .equ $AD00
+AdapterLogBase          .equ $B500
+AdapterFailedLogBase    .equ $C700
+AdapterEntry1LogBase    .equ $CC00
+AdapterChapter21LogBase .equ $D100
 AdapterLogLimit         .equ $F000

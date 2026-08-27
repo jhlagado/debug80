@@ -13,6 +13,7 @@ import {
   loadNucleusTargetPublicationDescriptor,
   type NucleusTargetPublicationDescriptor,
 } from "./target-publication.js";
+import type { NucleusGeneratedSourceSegment } from "./source-provenance.js";
 
 const defaultFlatCompilerProofManifest = fileURLToPath(
   new URL("../proofs/flat-target-z80-slice-proof.json", import.meta.url),
@@ -105,6 +106,7 @@ export interface NucleusProofTargetPublication {
   readonly manifest: string;
   readonly output?: string;
   readonly nobj: NobjExecutionOutcome;
+  readonly sourceProvenance?: readonly NucleusGeneratedSourceSegment[];
 }
 
 export interface NucleusPreparedSourceTargetPublicationOptions {
@@ -128,6 +130,7 @@ export interface NucleusPreparedSourceTargetPublication {
   readonly sourcePartIdentities: readonly string[];
   readonly sourceBytes: number;
   readonly nobj: NobjExecutionOutcome;
+  readonly sourceProvenance?: readonly NucleusGeneratedSourceSegment[];
 }
 
 export async function publishNucleusProofTarget({
@@ -148,6 +151,9 @@ export async function publishNucleusProofTarget({
     manifest: manifestPath,
     output: output === undefined ? undefined : path.resolve(output),
     nobj: outcome.nobj,
+    ...(outcome.sourceProvenance === undefined
+      ? {}
+      : { sourceProvenance: outcome.sourceProvenance }),
   });
 }
 
@@ -233,5 +239,8 @@ export async function publishNucleusPreparedSourceTarget(
     ),
     sourceBytes: prepared.totalSourceBytes,
     nobj: outcome.nobj,
+    ...(outcome.sourceProvenance === undefined
+      ? {}
+      : { sourceProvenance: outcome.sourceProvenance }),
   });
 }

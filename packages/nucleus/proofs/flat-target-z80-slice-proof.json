@@ -58,6 +58,11 @@
       "maxBytes": 8192
     }
   ],
+  "sourceProvenance": {
+    "at": "SourceProvenanceSuccessLogBase",
+    "lengthAt": "SourceProvenanceSuccessLength",
+    "maxBytes": 32
+  },
   "nobj": {
     "adapter": {
       "at": "AdapterSuccessLogBase",

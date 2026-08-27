@@ -259,10 +259,15 @@ byte 11     confidence: 0 low, 1 medium, 2 high
 
 The host decoder rejects logs that exceed their declared capacity, cross proof
 memory, contain a partial record, use zero part/line/column values, reverse the
-generated address range, or use unknown kind/confidence ordinals. This proves
-the host/resident ABI before real compiler emission is added. The next resident
-step is to emit these records at the semantic-lowering points that currently
-already know both the token source position and the target output cursor.
+generated address range, or use unknown kind/confidence ordinals.
+
+The first resident emission checkpoint is intentionally coarse. For a flat
+single-source-part publication the target finalizer emits one low-confidence
+`code` segment covering the generated source-code region, excluding startup,
+runtime helper image, initialized data, and map metadata. Multipart builds do
+not emit this coarse record, because attributing the whole code region to one
+part would be wrong. Fine-grained D8 requires the semantic transcript to retain
+source position per emitted operation.
 
 ### Generation sink
 

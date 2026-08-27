@@ -521,6 +521,18 @@ describe("Nucleus application boundary", () => {
           expect(publication.root).toBe(root);
           expect(publication.entry).toBe("src/main.nu");
           expect(publication.sourceParts).toBe(1);
+          expect(publication.sourceProvenance).toEqual([
+            {
+              partOrdinal: 1,
+              line: 1,
+              column: 1,
+              bank: 0,
+              start: 0x81f2,
+              end: 0x822c,
+              kind: "code",
+              confidence: "low",
+            },
+          ]);
           expect(publication.nobj.serialized).toEqual(
             baseline.nobj.serialized,
           );
@@ -883,7 +895,18 @@ describe("Nucleus application boundary", () => {
             addressWidth: 16,
             endianness: "little",
             fileList: ["src/main.nu"],
-            files: { "src/main.nu": {} },
+            files: {
+              "src/main.nu": {
+                segments: [{
+                  start: 0x81f2,
+                  end: 0x822c,
+                  line: 1,
+                  column: 1,
+                  kind: "code",
+                  confidence: "low",
+                }],
+              },
+            },
             segments: [{ start: 0x8000, end: 0x822c }],
             symbols: [],
             generator: {
