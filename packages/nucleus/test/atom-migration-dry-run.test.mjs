@@ -8,6 +8,7 @@ import { describe, expect, it } from "vitest";
 
 import { scanAssembly } from "../scripts/atom-migration-dry-run.mjs";
 import { translateNucleusAzmLine } from "../scripts/atom-migration-dry-run.mjs";
+import { flattenTranslatedEntry } from "../scripts/atom-migration-dry-run.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(testDirectory, "..");
@@ -57,9 +58,15 @@ describe("Nucleus Atom migration dry-run", () => {
     expect(translateNucleusAzmLine("            .DB \"LongSourceLabel\"", {
       symbolMap,
     })).toBe("            DB \"LongSourceLabel\"");
+    expect(translateNucleusAzmLine("            CP \"A\"")).toBe("            CP 'A'");
+    expect(translateNucleusAzmLine("            CP \"z\"+1")).toBe("            CP 'z'+1");
+    expect(translateNucleusAzmLine("            CP \"\\\\\"")).toBe("            CP '\\\\'");
     expect(translateNucleusAzmLine("AddressSpaceLimit   .equ $10000", {
       symbolMap: new Map([["AddressSpaceLimit", "N0000001"]]),
     })).toBe("N0000001   EQU 0 ;@ATOM-PROOF-LIMIT AddressSpaceLimit 65536");
+    expect(translateNucleusAzmLine("FeatureFlag .equ 1", {
+      preprocessorSymbols: new Set(["FeatureFlag"]),
+    })).toBe("%DEFINE FeatureFlag 1");
   });
 
   it("reports a clean fixture as ready", async () => {
@@ -90,6 +97,7 @@ describe("Nucleus Atom migration dry-run", () => {
         definedSymbols: 2,
         longSymbols: 0,
         contractLines: 0,
+        preprocessorSymbols: 1,
       });
     });
   });
@@ -330,6 +338,97 @@ describe("Nucleus Atom migration dry-run", () => {
         "            DB \"LongPublicLabel\"",
         "            JP N0000000 ; LongPublicLabel",
         "",
+      ].join("\n"));
+    });
+  });
+
+  it("flattens AZM textual includes for one Atom-preview entry", async () => {
+    await withTree({
+      "asm/main.asm": [
+        "FeatureFlag .equ 1",
+        "MainLongLabel:",
+        "            .if FeatureFlag",
+        "            .include \"lib.asmi\"",
+        "            .endif",
+        "            JP LibLongLabel",
+        "",
+      ].join("\n"),
+      "asm/lib.asmi": [
+        "LibLongLabel:",
+        "            .db 1",
+        "",
+      ].join("\n"),
+      "proofs/main.json": "{}",
+    }, async (root) => {
+      const report = scanAssembly({
+        asmRoot: path.join(root, "asm"),
+        proofRoot: path.join(root, "proofs"),
+      });
+
+      expect(flattenTranslatedEntry(report, "main.asm")).toBe([
+        ";@SOURCE-BEGIN main.asm",
+        ";@DEFINE FeatureFlag 1",
+        "N0000001:",
+        ";@IF FeatureFlag 1",
+        ";@INCLUDE-BEGIN lib.asmi",
+        ";@SOURCE-BEGIN lib.asmi",
+        "N0000000:",
+        "            DB 1",
+        "",
+        ";@SOURCE-END lib.asmi",
+        ";@INCLUDE-END lib.asmi",
+        ";@ENDIF",
+        "            JP N0000000",
+        "",
+        ";@SOURCE-END main.asm",
+      ].join("\n"));
+    });
+  });
+
+  it("rejects include cycles while flattening one preview entry", async () => {
+    await withTree({
+      "asm/a.asm": ".include \"b.asmi\"\n",
+      "asm/b.asmi": ".include \"a.asm\"\n",
+      "proofs/main.json": "{}",
+    }, async (root) => {
+      const report = scanAssembly({
+        asmRoot: path.join(root, "asm"),
+        proofRoot: path.join(root, "proofs"),
+      });
+
+      expect(() => flattenTranslatedEntry(report, "a.asm")).toThrow(
+        "include cycle while flattening Nucleus Atom preview: a.asm -> b.asmi -> a.asm",
+      );
+    });
+  });
+
+  it("evaluates simple conditionals while flattening one preview entry", async () => {
+    await withTree({
+      "asm/main.asm": [
+        "FeatureFlag .equ 0",
+        ".if FeatureFlag",
+        "DisabledLabel:",
+        ".else",
+        "EnabledLabel:",
+        ".endif",
+        "",
+      ].join("\n"),
+      "proofs/main.json": "{}",
+    }, async (root) => {
+      const report = scanAssembly({
+        asmRoot: path.join(root, "asm"),
+        proofRoot: path.join(root, "proofs"),
+      });
+
+      expect(flattenTranslatedEntry(report, "main.asm")).toBe([
+        ";@SOURCE-BEGIN main.asm",
+        ";@DEFINE FeatureFlag 0",
+        ";@IF FeatureFlag 0",
+        ";@ELSE",
+        "N0000001:",
+        ";@ENDIF",
+        "",
+        ";@SOURCE-END main.asm",
       ].join("\n"));
     });
   });

@@ -59,6 +59,8 @@ function parseArgs(argv) {
     ledgerOut: undefined,
     issuesOut: undefined,
     translatedRoot: undefined,
+    flattenEntry: undefined,
+    flattenOut: undefined,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -76,6 +78,11 @@ function parseArgs(argv) {
       options.issuesOut = path.resolve(argv[++index] ?? "");
     } else if (arg === "--translated-root") {
       options.translatedRoot = path.resolve(argv[++index] ?? "");
+    } else if (arg === "--flatten-entry") {
+      options.flattenEntry = argv[++index];
+      if (options.flattenEntry === undefined) throw new Error("--flatten-entry requires a source path");
+    } else if (arg === "--flatten-out") {
+      options.flattenOut = path.resolve(argv[++index] ?? "");
     } else if (arg === "--help") {
       printHelp();
       process.exit(0);
@@ -98,6 +105,9 @@ Options:
   --issues-out FILE  Write migration issues as JSON.
   --translated-root DIR
                      Write generated Atom-preview source files under DIR.
+  --flatten-entry FILE
+                     Textually lower includes for one entry, relative to asm root.
+  --flatten-out FILE Write the flattened Atom-preview entry source to FILE.
   --help             Show this help.
 `);
 }
@@ -319,6 +329,11 @@ function scanAssembly({ asmRoot, proofRoot }) {
     }
   }
 
+  const preprocessorSymbols = new Set(conditionals.keys());
+  for (const symbol of preprocessorSymbols) {
+    symbols.delete(symbol);
+  }
+
   const ledger = [...symbols.values()]
     .filter((entry) => entry.original.length > 8)
     .sort((left, right) => left.original.localeCompare(right.original))
@@ -391,6 +406,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
       uniqueIncludes: includes.size,
       proofLimitSymbols,
       lateIncludes,
+      preprocessorSymbols: preprocessorSymbols.size,
     },
     supportedMappings: {
       mechanicalDirectives: [...mechanicalDirectives].sort(),
@@ -399,6 +415,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
       generatedLongSymbolLedger: true,
     },
     includeArguments: includeSummary,
+    preprocessorSymbols: Object.freeze([...preprocessorSymbols].sort()),
     ledger,
     issues,
   };
@@ -435,9 +452,61 @@ function replaceSymbolsInSource(source, symbolMap) {
   return output;
 }
 
+function convertQuotedByteExpressions(source) {
+  let output = "";
+  let quote = "";
+  for (let index = 0; index < source.length;) {
+    const character = source[index];
+    if (quote !== "") {
+      output += character;
+      index += 1;
+      if (character === quote) quote = "";
+      continue;
+    }
+    if (character === "'") {
+      quote = character;
+      output += character;
+      index += 1;
+      continue;
+    }
+    if (character === "\"") {
+      const next = source[index + 1];
+      const close = source[index + 2];
+      if (next !== undefined && close === "\"") {
+        output += `'${next === "'" ? "\\'" : next}'`;
+        index += 3;
+        continue;
+      }
+      if (next === "\\" && source[index + 3] === "\"") {
+        const escaped = source[index + 2];
+        if (escaped === undefined) {
+          output += character;
+          index += 1;
+          continue;
+        }
+        output += `'\\${escaped}'`;
+        index += 4;
+        continue;
+      }
+      quote = character;
+      output += character;
+      index += 1;
+      continue;
+    }
+    output += character;
+    index += 1;
+  }
+  return output;
+}
+
 function translateNucleusAzmLine(
   line,
-  { sourceName = "<nucleus-asm>", lineNumber = 1, symbolMap = new Map() } = {},
+  {
+    sourceName = "<nucleus-asm>",
+    lineNumber = 1,
+    symbolMap = new Map(),
+    preprocessorSymbols = new Set(),
+  } = {},
 ) {
   const source = stripComment(line);
   const comment = line.slice(source.length);
@@ -468,6 +537,10 @@ function translateNucleusAzmLine(
       const atom = symbolMap.get(original) ?? original;
       return `${onePastLimit[1]}${atom}${onePastLimit[3]}EQU 0 ;@ATOM-PROOF-LIMIT ${original} 65536${comment === "" ? "" : ` ${comment}`}`;
     }
+    const preprocessorDefinition = /^(\s*)([A-Za-z_.$?][A-Za-z0-9_.$?]*)(:?\s+)\.equ\b(.*)$/i.exec(source);
+    if (preprocessorDefinition !== null && preprocessorSymbols.has(preprocessorDefinition[2])) {
+      return `${preprocessorDefinition[1]}%DEFINE ${preprocessorDefinition[2]}${preprocessorDefinition[4]}${comment}`;
+    }
     return `${replaceSymbolsInSource(`${equ[1]}EQU${equ[2]}`, symbolMap)}${comment}`;
   }
 
@@ -481,11 +554,12 @@ function translateNucleusAzmLine(
     return `${replaceSymbolsInSource(`${prefix}${replacement}${rest}`, symbolMap)}${comment}`;
   }
 
-  return `${replaceSymbolsInSource(source, symbolMap)}${comment}`;
+    return `${replaceSymbolsInSource(convertQuotedByteExpressions(source), symbolMap)}${comment}`;
 }
 
 function writeTranslatedTree(report, translatedRoot) {
   const symbolMap = symbolMapFromLedger(report.ledger);
+  const preprocessorSymbols = new Set(report.preprocessorSymbols);
   for (const file of findAssemblyFiles(report.asmRoot)) {
     const relative = path.relative(report.asmRoot, file);
     const output = path.join(translatedRoot, relative);
@@ -495,11 +569,128 @@ function writeTranslatedTree(report, translatedRoot) {
         sourceName: relative,
         lineNumber: index + 1,
         symbolMap,
+        preprocessorSymbols,
       }))
       .join("\n");
     mkdirSync(path.dirname(output), { recursive: true });
     writeFileSync(output, translated);
   }
+}
+
+function includeSpecifier(source) {
+  const match = /^\s*\.include\s+"([^"\r\n]+)"\s*$/i.exec(source);
+  return match?.[1];
+}
+
+function flattenTranslatedEntry(report, entry) {
+  const symbolMap = symbolMapFromLedger(report.ledger);
+  const preprocessorSymbols = new Set(report.preprocessorSymbols);
+  const stack = [];
+  const definitions = new Map();
+  const conditionStack = [];
+
+  function active() {
+    return conditionStack.every((condition) => condition.active);
+  }
+
+  function parseDefinitionValue(text) {
+    const trimmed = text.trim();
+    const value = numberValue(trimmed);
+    if (value === undefined) {
+      throw new Error(`unsupported Nucleus preview definition value: ${trimmed}`);
+    }
+    return value;
+  }
+
+  function handlePreprocessorLine(source, output) {
+    const define = /^(\s*)([A-Za-z_.$?][A-Za-z0-9_.$?]*)(:?\s+)\.equ\b(.*)$/i.exec(source);
+    if (define !== null && preprocessorSymbols.has(define[2])) {
+      if (active()) {
+        const value = parseDefinitionValue(define[4]);
+        definitions.set(define[2], value);
+        output.push(`${define[1]};@DEFINE ${define[2]} ${value}`);
+      }
+      return true;
+    }
+
+    const directive = /^\s*\.(if|else|endif)\b\s*(.*)$/i.exec(source);
+    if (directive === null) return false;
+    const name = directive[1].toLowerCase();
+    const argument = directive[2].trim();
+    if (name === "if") {
+      if (!simpleConditionPattern.test(argument)) {
+        throw new Error(`unsupported Nucleus preview conditional expression: ${argument}`);
+      }
+      const parentActive = active();
+      const enabled = (definitions.get(argument) ?? 0) !== 0;
+      conditionStack.push({ parentActive, conditionEnabled: enabled, active: parentActive && enabled });
+      output.push(`;@IF ${argument} ${enabled ? 1 : 0}`);
+      return true;
+    }
+    if (name === "else") {
+      const top = conditionStack.at(-1);
+      if (top === undefined) throw new Error("Nucleus preview conditional .ELSE without .IF");
+      top.active = top.parentActive && !top.conditionEnabled;
+      output.push(";@ELSE");
+      return true;
+    }
+    const top = conditionStack.pop();
+    if (top === undefined) throw new Error("Nucleus preview conditional .ENDIF without .IF");
+    output.push(";@ENDIF");
+    return true;
+  }
+
+  function expand(file) {
+    const real = path.resolve(file);
+    const activeIndex = stack.indexOf(real);
+    if (activeIndex >= 0) {
+      const cycle = [...stack.slice(activeIndex), real]
+        .map((item) => path.relative(report.asmRoot, item).split(path.sep).join("/"))
+        .join(" -> ");
+      throw new Error(`include cycle while flattening Nucleus Atom preview: ${cycle}`);
+    }
+    stack.push(real);
+    const relative = path.relative(report.asmRoot, real).split(path.sep).join("/");
+    const lines = readFileSync(real, "utf8").split(/\n/);
+    const output = [`;@SOURCE-BEGIN ${relative}`];
+    for (let index = 0; index < lines.length; index += 1) {
+      const line = lines[index];
+      const source = stripComment(line);
+      const comment = line.slice(source.length);
+      if (handlePreprocessorLine(source, output)) {
+        continue;
+      }
+      if (!active()) {
+        continue;
+      }
+      const include = includeSpecifier(source);
+      if (include !== undefined) {
+        output.push(`;@INCLUDE-BEGIN ${include}${comment === "" ? "" : ` ${comment}`}`);
+        output.push(expand(path.resolve(path.dirname(real), include)));
+        output.push(`;@INCLUDE-END ${include}`);
+        continue;
+      }
+      output.push(translateNucleusAzmLine(line, {
+        sourceName: relative,
+        lineNumber: index + 1,
+        symbolMap,
+        preprocessorSymbols,
+      }));
+    }
+    output.push(`;@SOURCE-END ${relative}`);
+    stack.pop();
+    if (stack.length === 0 && conditionStack.length !== 0) {
+      throw new Error("Nucleus preview conditional .IF without .ENDIF");
+    }
+    return output.join("\n");
+  }
+
+  return expand(path.resolve(report.asmRoot, entry));
+}
+
+function writeFlattenedEntry(report, entry, output) {
+  mkdirSync(path.dirname(output), { recursive: true });
+  writeFileSync(output, `${flattenTranslatedEntry(report, entry)}\n`);
 }
 
 function recordSymbol(symbols, original, file, line, proofSymbols) {
@@ -534,7 +725,13 @@ function printTextReport(report) {
   }
 }
 
-export { scanAssembly, translateNucleusAzmLine, writeTranslatedTree };
+export {
+  flattenTranslatedEntry,
+  scanAssembly,
+  translateNucleusAzmLine,
+  writeFlattenedEntry,
+  writeTranslatedTree,
+};
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   try {
@@ -548,6 +745,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     }
     if (options.translatedRoot !== undefined) {
       writeTranslatedTree(report, options.translatedRoot);
+    }
+    if (options.flattenEntry !== undefined || options.flattenOut !== undefined) {
+      if (options.flattenEntry === undefined || options.flattenOut === undefined) {
+        throw new Error("--flatten-entry and --flatten-out must be used together");
+      }
+      writeFlattenedEntry(report, options.flattenEntry, options.flattenOut);
     }
     if (options.json) {
       console.log(JSON.stringify(report, null, 2));
