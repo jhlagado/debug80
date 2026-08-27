@@ -379,6 +379,7 @@ describe('config-validation', () => {
           {
             id: 'tecm8-monitor',
             role: 'monitor',
+            assembler: 'atom',
             sourceFile: 'roms/tec1g/tecm8/monitor/monitor.asm',
             outputBin: 'build/roms/tec1g/tecm8/monitor/monitor.bin',
             outputDebugMap: 'build/roms/tec1g/tecm8/monitor/monitor.d8.json',
@@ -388,6 +389,7 @@ describe('config-validation', () => {
           {
             id: 'tecm8-expansion',
             role: 'expansion',
+            assembler: 'azm',
             sourceFile: 'roms/tec1g/tecm8/expansion/expansion.asm',
             outputBin: 'build/roms/tec1g/tecm8/expansion/expansion.bin',
             outputDebugMap: 'build/roms/tec1g/tecm8/expansion/expansion.d8.json',
@@ -432,6 +434,7 @@ describe('config-validation', () => {
           {
             id: 'tecm8-expansion',
             role: 'expansion',
+            assembler: 'azm',
             outputBin: 'build/roms/tec1g/tecm8/expansion/expansion-144k.bin',
             windowAddress: 0x8000,
             windowSize: 0x4000,
@@ -441,12 +444,14 @@ describe('config-validation', () => {
             banks: [
               {
                 physicalBank: 0,
+                assembler: 'atom',
                 sourceFile: 'roms/tec1g/tecm8/expansion/bank0.asm',
                 outputBin: 'build/roms/tec1g/tecm8/expansion/bank0.bin',
                 outputDebugMap: 'build/roms/tec1g/tecm8/expansion/bank0.d8.json',
               },
               {
                 physicalBank: 8,
+                assembler: 'azm',
                 sourceFile: 'roms/tec1g/tecm8/expansion/bank8.asm',
                 outputBin: 'build/roms/tec1g/tecm8/expansion/bank8.bin',
                 outputDebugMap: 'build/roms/tec1g/tecm8/expansion/bank8.d8.json',
@@ -457,6 +462,61 @@ describe('config-validation', () => {
       });
 
       expect(result).toMatchObject({ valid: true, errors: [] });
+    });
+
+    it('should reject unsupported romArtifact assembler values', () => {
+      const result = validateTec1gConfig({
+        romArtifacts: [
+          {
+            id: 'bad-source-assembler',
+            role: 'monitor',
+            assembler: 'macro80',
+            sourceFile: 'roms/monitor.asm',
+            outputBin: 'build/monitor.bin',
+            address: 0xc000,
+            size: 0x4000,
+          },
+          {
+            id: 'bad-bank-assembler',
+            role: 'expansion',
+            outputBin: 'build/expansion.bin',
+            windowAddress: 0x8000,
+            windowSize: 0x4000,
+            imageSize: 0x4000,
+            bankSize: 0x4000,
+            bankCount: 1,
+            banks: [
+              {
+                physicalBank: 0,
+                assembler: 'macro80',
+                sourceFile: 'roms/bank0.asm',
+                outputBin: 'build/bank0.bin',
+              },
+            ],
+          },
+          {
+            id: 'binary-only-assembler',
+            role: 'expansion',
+            active: false,
+            assembler: 'atom',
+            binary: 'roms/expansion.bin',
+            windowAddress: 0x8000,
+            windowSize: 0x4000,
+            imageSize: 0x4000,
+            bankSize: 0x4000,
+            bankCount: 1,
+          },
+        ],
+      });
+
+      expect(result).toMatchObject({
+        valid: false,
+        errors: [
+          'tec1g.romArtifacts[0].assembler must be "atom" or "azm"',
+          'tec1g.romArtifacts[1].banks[0].assembler must be "atom" or "azm"',
+          'tec1g.romArtifacts[2].assembler is only supported for source-backed artifacts',
+        ],
+      });
     });
 
     it('should accept configurable multibank expansion artifact outputs', () => {

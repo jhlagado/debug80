@@ -83,6 +83,7 @@ function validateTec1gRomArtifactShape(
   ];
 
   if (multibankExpansion) {
+    results.push(validateTec1gRomArtifactAssembler(artifact.assembler, `${fieldName}.assembler`));
     results.push(validatePath(artifact.outputBin, `${fieldName}.outputBin`, true));
     results.push(
       ...validateTec1gExpansionArtifactBanks(
@@ -115,6 +116,7 @@ function validateTec1gRomArtifactShape(
       );
     }
   } else if (sourceBacked) {
+    results.push(validateTec1gRomArtifactAssembler(artifact.assembler, `${fieldName}.assembler`));
     results.push(validatePath(artifact.sourceFile, `${fieldName}.sourceFile`, true));
     results.push(validatePath(artifact.outputBin, `${fieldName}.outputBin`, true));
     results.push(validatePath(artifact.outputDebugMap, `${fieldName}.outputDebugMap`));
@@ -130,6 +132,11 @@ function validateTec1gRomArtifactShape(
       );
     }
   } else if (binaryOnly) {
+    if (artifact.assembler !== undefined) {
+      results.push(
+        invalidResult(`${fieldName}.assembler is only supported for source-backed artifacts`)
+      );
+    }
     results.push(validatePath(artifact.binary, `${fieldName}.binary`, true));
     results.push(validatePath(artifact.debugMap, `${fieldName}.debugMap`));
     if (artifact.active !== false) {
@@ -152,6 +159,19 @@ function validateTec1gRomArtifactShape(
   }
 
   return results;
+}
+
+function validateTec1gRomArtifactAssembler(value: unknown, fieldName: string): ValidationResult {
+  if (value === undefined || value === null || value === '') {
+    return validResult();
+  }
+  if (typeof value !== 'string') {
+    return invalidResult(`${fieldName} must be "atom" or "azm"`);
+  }
+  const normalized = value.trim().toLowerCase();
+  return normalized === 'atom' || normalized === 'azm'
+    ? validResult()
+    : invalidResult(`${fieldName} must be "atom" or "azm"`);
 }
 
 function validateTec1gExpansionArtifactOutputs(
@@ -291,6 +311,7 @@ function validateTec1gExpansionArtifactBanks(
     results.push(validatePath(config.sourceFile, `${bankField}.sourceFile`, true));
     results.push(validatePath(config.outputBin, `${bankField}.outputBin`, true));
     results.push(validatePath(config.outputDebugMap, `${bankField}.outputDebugMap`));
+    results.push(validateTec1gRomArtifactAssembler(config.assembler, `${bankField}.assembler`));
   });
 
   return results;

@@ -164,6 +164,45 @@ describe('TEC-1G ROM artifact builds', () => {
     );
   });
 
+  it('builds an explicitly Atom-backed source ROM artifact without a backend factory', async () => {
+    const root = makeTempRoot();
+    writeText(path.join(root, 'roms/atom-monitor.asm'), 'ORG 0C000H\nDB 0C3H,000H,0C0H\n');
+    const args: LaunchRequestArguments = {
+      tec1g: {
+        romArtifacts: [
+          {
+            id: 'atom-monitor',
+            role: 'monitor',
+            assembler: 'atom',
+            sourceFile: 'roms/atom-monitor.asm',
+            outputBin: 'build/atom-monitor.bin',
+            outputDebugMap: 'build/atom-monitor.d8.json',
+            address: 0xc000,
+            size: 0x4000,
+          },
+        ],
+      },
+    };
+
+    const result = await buildTec1gRomArtifactsIfRequested({
+      baseDir: root,
+      args,
+      sendEvent: () => undefined,
+    });
+
+    expect(result).toHaveLength(1);
+    expect(result[0]).toMatchObject({
+      id: 'atom-monitor',
+      role: 'monitor',
+      outputBin: path.join(root, 'build/atom-monitor.bin'),
+      outputDebugMap: path.join(root, 'build/atom-monitor.d8.json'),
+    });
+    const bytes = fs.readFileSync(path.join(root, 'build/atom-monitor.bin'));
+    expect(bytes.length).toBe(0x4000);
+    expect([...bytes.subarray(0, 3)]).toEqual([0xc3, 0x00, 0xc0]);
+    expect(fs.existsSync(path.join(root, 'build/atom-monitor.d8.json'))).toBe(true);
+  }, 30_000);
+
   it('builds per-bank expansion artifacts and packs them into the runtime image', async () => {
     const root = makeTempRoot();
     const backend = fakeBackend();

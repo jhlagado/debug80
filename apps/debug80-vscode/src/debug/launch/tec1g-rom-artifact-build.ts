@@ -69,7 +69,8 @@ export async function buildTec1gRomArtifactsIfRequested(options: {
 
     const artifact = plan.artifact;
     const backend =
-      options.backendFactory?.(artifact) ?? resolveAssemblerBackend('azm', artifact.sourceFile);
+      options.backendFactory?.(artifact) ??
+      resolveAssemblerBackend(artifact.assembler ?? 'azm', artifact.sourceFile);
 
     const assembleResult = await backend.assemble({
       asmPath: plan.sourceFile,
@@ -252,7 +253,11 @@ async function buildExpansionArtifactBank(options: {
 }): Promise<{ bytes: Buffer; outputDebugMap: string }> {
   const { artifact, bank } = options;
   const backend =
-    options.backendFactory?.(artifact) ?? resolveAssemblerBackend('azm', bank.config.sourceFile);
+    options.backendFactory?.(artifact) ??
+    resolveAssemblerBackend(
+      bank.config.assembler ?? artifact.assembler ?? 'azm',
+      bank.config.sourceFile
+    );
 
   const assembleResult = await backend.assemble({
     asmPath: bank.sourceFile,
