@@ -26,21 +26,25 @@
   "targets": {
     "matrix-smoke": {
       "sourceFile": "matrix-smoke.asm",
+      "assembler": "azm",
       "asm": "matrix-smoke.asm",
       "artifactBase": "matrix-smoke"
     },
     "panel-smoke": {
       "sourceFile": "panel-smoke.asm",
+      "assembler": "azm",
       "asm": "panel-smoke.asm",
       "artifactBase": "panel-smoke"
     },
     "keypad-hold": {
       "sourceFile": "keypad-hold.asm",
+      "assembler": "azm",
       "asm": "keypad-hold.asm",
       "artifactBase": "keypad-hold"
     },
     "seven-seg-hold": {
       "sourceFile": "seven-seg-hold.asm",
+      "assembler": "azm",
       "asm": "seven-seg-hold.asm",
       "artifactBase": "seven-seg-hold"
     }

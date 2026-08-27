@@ -3,6 +3,7 @@
   "targets": {
     "app": {
       "sourceFile": "test/fixtures/echo.asm",
+      "assembler": "azm",
       "outputDir": "build",
       "artifactBase": "echo",
       "platform": "simple",

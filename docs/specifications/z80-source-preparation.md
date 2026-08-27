@@ -111,8 +111,8 @@ the importer. A dependency diamond contributes one part. Repeating the same
 dependency from one importer also contributes one part. A cycle is rejected
 with the active edge sequence and the location of the edge that closed it.
 
-The result is carried directly as ordered source-part records. The shared
-contract does not create or consume a source-plan or manifest file.
+The resolver passes its ordered source-part records directly to the consuming
+tool. It writes no intermediate ordering file.
 
 ## Placement
 

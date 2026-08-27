@@ -46,6 +46,7 @@
         "entry": 0
       },
       "sourceFile": "examples/dot.main.asm",
+      "assembler": "azm",
       "asm": "examples/dot.main.asm",
       "artifactBase": "dot",
       "sourceRoots": ["examples"]
@@ -76,6 +77,7 @@
         "entry": 0
       },
       "sourceFile": "examples/slide.main.asm",
+      "assembler": "azm",
       "asm": "examples/slide.main.asm",
       "artifactBase": "slide",
       "sourceRoots": ["examples"]
@@ -106,6 +108,7 @@
         "entry": 0
       },
       "sourceFile": "examples/trail.main.asm",
+      "assembler": "azm",
       "asm": "examples/trail.main.asm",
       "artifactBase": "trail",
       "sourceRoots": ["examples"]
@@ -136,6 +139,7 @@
         "entry": 0
       },
       "sourceFile": "examples/snake.main.asm",
+      "assembler": "azm",
       "asm": "examples/snake.main.asm",
       "artifactBase": "snake",
       "sourceRoots": ["examples"]
@@ -166,6 +170,7 @@
         "entry": 0
       },
       "sourceFile": "examples/tetro.main.asm",
+      "assembler": "azm",
       "asm": "examples/tetro.main.asm",
       "artifactBase": "tetro",
       "sourceRoots": ["examples"]
@@ -196,6 +201,7 @@
         "entry": 0
       },
       "sourceFile": "examples/sprite-chase.main.asm",
+      "assembler": "azm",
       "asm": "examples/sprite-chase.main.asm",
       "artifactBase": "sprite-chase",
       "sourceRoots": ["examples"]

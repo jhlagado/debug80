@@ -4,14 +4,18 @@ Status: active implementation sequence
 
 Date: 2026-08-27
 
-Implemented through the Debug80 backend checkpoint: the shared services
+Implemented through the Debug80 default-project checkpoint: the shared services
 authority, Atom monorepo package, include-driven Node and CP/M preparation, CLI
-v1, and Debug80's explicit `assembler: "atom"` backend are on `main`. Native
-work now includes the reusable Z80 named-object harness and proved TECM8
-providers for ordinary TEC-FS input and transactional output. The harness now
-has a proved immutable-bank profile with fixed state relocated to common RAM.
-The TEC include resolver, launcher, final memory map, hardware acceptance,
-Nucleus convergence, and default-project migration remain.
+v1, and Debug80's `assembler: "atom"` backend are on `main`. New Debug80
+assembly projects select Atom and every shipped starter is assembled through
+the real Atom engine in the extension suite. Existing checked-in assembly
+projects select either Atom or AZM explicitly, enforced by a repository gate.
+
+Native work includes the reusable Z80 named-object harness and proved TECM8
+providers for ordinary TEC-FS input and transactional output. The harness has
+a proved immutable-bank profile with fixed state relocated to common RAM. The
+TEC include resolver, launcher, final memory map, hardware acceptance, Nucleus
+convergence, corpus conversion, and compatibility-default flip remain.
 
 ## Objective
 
@@ -150,6 +154,13 @@ remain explicit until converted.
 
 AZM remains available during bootstrap and migration. Its removal from a build
 path is a separate measured checkpoint, never an incidental dependency edit.
+
+The first default-migration substep is complete: new scaffolds select Atom,
+existing checked-in assembly targets declare their current backend, and the
+repository rejects an ambiguous checked-in assembly target. The compatibility
+fallback remains AZM for external project files that predate explicit
+selection. It changes only after the in-repository corpus is converted and a
+major-release migration note is ready.
 
 ## Checkpoint discipline
 

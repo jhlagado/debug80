@@ -3,6 +3,7 @@
   "targets": {
     "include-app": {
       "sourceFile": "src/main.asm",
+      "assembler": "azm",
       "outputDir": "build",
       "artifactBase": "include-app",
       "platform": "simple",
@@ -31,6 +32,7 @@
     },
     "sparse-org": {
       "sourceFile": "src/sparse.asm",
+      "assembler": "azm",
       "outputDir": "build",
       "artifactBase": "sparse-org",
       "platform": "simple",

@@ -46,6 +46,7 @@
         "entry": 0
       },
       "sourceFile": "src/tetro/tetro.main.asm",
+      "assembler": "azm",
       "asm": "src/tetro/tetro.main.asm",
       "artifactBase": "tetro",
       "sourceRoots": [
@@ -78,6 +79,7 @@
         "entry": 0
       },
       "sourceFile": "src/pacmo/pacmo.main.asm",
+      "assembler": "azm",
       "asm": "src/pacmo/pacmo.main.asm",
       "artifactBase": "pacmo",
       "sourceRoots": [
