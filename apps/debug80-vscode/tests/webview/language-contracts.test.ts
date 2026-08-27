@@ -293,6 +293,20 @@ describe('package.json language contracts', () => {
     expect(symbolCase?.enum).toEqual(['strict', 'insensitive']);
   });
 
+  it('launch schema exposes TEC-1G ROM artifact assembler selection', () => {
+    const debuggerContribution = contributes.debuggers.find((entry) => entry.type === 'z80');
+    const tec1g = debuggerContribution?.configurationAttributes?.launch?.properties?.tec1g;
+    const romArtifact = tec1g?.properties?.romArtifacts?.items?.properties as
+      Record<string, { enum?: string[]; default?: string }> | undefined;
+    const bank = romArtifact?.banks?.items?.properties as
+      Record<string, { enum?: string[]; default?: string }> | undefined;
+
+    expect(romArtifact?.assembler?.default).toBe('azm');
+    expect(romArtifact?.assembler?.enum).toEqual(['atom', 'azm']);
+    expect(bank?.assembler?.default).toBeUndefined();
+    expect(bank?.assembler?.enum).toEqual(['atom', 'azm']);
+  });
+
   it('set-entry-source context menus cover supported entry source extensions', () => {
     for (const menuId of ['explorer/context', 'editor/context', 'editor/title/context']) {
       const row = contributes.menus[menuId].find((entry) => {

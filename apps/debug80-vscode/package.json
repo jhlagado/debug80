@@ -734,6 +734,128 @@
                   }
                 }
               },
+              "tec1g": {
+                "type": "object",
+                "description": "TEC-1G platform options, including source-backed ROM artifact builds",
+                "properties": {
+                  "romArtifacts": {
+                    "type": "array",
+                    "description": "Explicit TEC-1G monitor and expansion ROM artifact build declarations",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "description": "Stable ROM artifact identifier used in diagnostics"
+                        },
+                        "role": {
+                          "type": "string",
+                          "description": "ROM artifact role",
+                          "enum": [
+                            "monitor",
+                            "expansion"
+                          ]
+                        },
+                        "active": {
+                          "type": "boolean",
+                          "description": "Whether this ROM artifact participates in launch",
+                          "default": true
+                        },
+                        "assembler": {
+                          "type": "string",
+                          "description": "Assembler for source-backed ROM artifacts. Existing ROM sources default to AZM; Atom source can opt in explicitly.",
+                          "enum": [
+                            "atom",
+                            "azm"
+                          ],
+                          "default": "azm"
+                        },
+                        "sourceFile": {
+                          "type": "string",
+                          "description": "Source file for a single-source ROM artifact"
+                        },
+                        "outputBin": {
+                          "type": "string",
+                          "description": "Generated ROM binary path"
+                        },
+                        "outputDebugMap": {
+                          "type": "string",
+                          "description": "Generated D8 debug map path"
+                        },
+                        "binary": {
+                          "type": "string",
+                          "description": "Existing ROM binary path for an inactive binary-only artifact"
+                        },
+                        "debugMap": {
+                          "type": "string",
+                          "description": "Existing D8 debug map path for an inactive binary-only artifact"
+                        },
+                        "address": {
+                          "type": "number",
+                          "description": "Monitor ROM address; TEC-1G monitor artifacts use 0xC000"
+                        },
+                        "size": {
+                          "type": "number",
+                          "description": "Monitor ROM size; TEC-1G monitor artifacts use 0x4000"
+                        },
+                        "windowAddress": {
+                          "type": "number",
+                          "description": "Expansion ROM visible bank address; TEC-1G expansion artifacts use 0x8000"
+                        },
+                        "windowSize": {
+                          "type": "number",
+                          "description": "Expansion ROM visible bank size; TEC-1G expansion artifacts use 0x4000"
+                        },
+                        "imageSize": {
+                          "type": "number",
+                          "description": "Total expansion ROM image size"
+                        },
+                        "bankSize": {
+                          "type": "number",
+                          "description": "Expansion ROM bank size"
+                        },
+                        "bankCount": {
+                          "type": "number",
+                          "description": "Expansion ROM bank count"
+                        },
+                        "banks": {
+                          "type": "array",
+                          "description": "Per-bank source-backed expansion ROM declarations",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "physicalBank": {
+                                "type": "number",
+                                "description": "Physical expansion bank number"
+                              },
+                              "assembler": {
+                                "type": "string",
+                                "description": "Assembler override for this bank",
+                                "enum": [
+                                  "atom",
+                                  "azm"
+                                ]
+                              },
+                              "sourceFile": {
+                                "type": "string",
+                                "description": "Source file for this expansion bank"
+                              },
+                              "outputBin": {
+                                "type": "string",
+                                "description": "Generated binary path for this expansion bank"
+                              },
+                              "outputDebugMap": {
+                                "type": "string",
+                                "description": "Generated D8 map path for this expansion bank"
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              },
               "outputDir": {
                 "type": "string",
                 "description": "Directory for generated build artifacts (defaults to build)"
