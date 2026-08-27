@@ -16,7 +16,8 @@
   },
   "dependencies": {
     "@jhlagado/azm": "^0.3.8",
-    "@jhlagado/debug80-runtime": "^0.1.0"
+    "@jhlagado/debug80-runtime": "^0.1.0",
+    "@jhlagado/z80-tool-services": "^0.1.0"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",
