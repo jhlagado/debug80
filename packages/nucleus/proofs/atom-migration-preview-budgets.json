@@ -47,6 +47,9 @@
     "stage9-conformance-z80-slice-proof.json": {
       "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
     },
+    "structured-control-z80-slice-proof.json": {
+      "skip": "known Atom-preview execution-budget blocker after legacy unordered output; measure explicitly with --entry"
+    },
     "typed-expression-z80-slice-proof.json": {
       "skip": "known Atom-preview execution-budget blocker; measure explicitly with --entry"
     }

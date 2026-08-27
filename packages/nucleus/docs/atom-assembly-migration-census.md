@@ -275,9 +275,9 @@ routine bounded-matrix result:
 | Status | Count |
 | --- | ---: |
 | Byte-identical proof images | 9 |
-| Skipped known budget blockers | 15 |
+| Skipped known budget blockers | 16 |
 | Skipped measurement artifacts | 3 |
-| Atom-preview errors | 1 |
+| Atom-preview errors | 0 |
 
 Byte-identical proof images:
 
@@ -306,8 +306,7 @@ Measured remaining blocker groups:
 
 | Group | Representative generated line | Consequence |
 | --- | --- | --- |
-| Larger preview execution budget | `aggregate-z80-slice-proof.json`, `expression-z80-slice-proof.json`, `flat-target-z80-slice-proof.json`, `stage7-ll1-aggregate-call-z80-slice-proof.json`, `stage7-ll1-parser-coverage-proof.json`, `stage8-failure-z80-slice-proof.json`, `stage9-conformance-z80-slice-proof.json`, `typed-expression-z80-slice-proof.json`, plus the flat-target proof variants | Atom preview assembly exceeds the comparison script's current execution budget before reporting a source diagnostic or byte comparison; measure explicitly with `--entry` before raising a per-entry budget |
-| Output-order mismatch after preview lowering | `structured-control-z80-slice-proof.json` | Atom reaches output publication but rejects descending or overlapping IMAGE records |
+| Larger preview execution budget | `aggregate-z80-slice-proof.json`, `expression-z80-slice-proof.json`, `flat-target-z80-slice-proof.json`, `structured-control-z80-slice-proof.json`, `stage7-ll1-aggregate-call-z80-slice-proof.json`, `stage7-ll1-parser-coverage-proof.json`, `stage8-failure-z80-slice-proof.json`, `stage9-conformance-z80-slice-proof.json`, `typed-expression-z80-slice-proof.json`, plus the flat-target proof variants | Atom preview assembly exceeds the comparison script's current execution budget before reporting a source diagnostic or byte comparison; measure explicitly with `--entry` before raising a per-entry budget |
 
 The source-capacity blocker from single-file flattening is resolved by generated
 multipart preview parts. The grammar-generated keyword constants are now included
@@ -330,12 +329,20 @@ This is not a native CP/M or TEC memory claim. It is a desktop migration-runner
 configuration that lets the current Atom core process Nucleus-sized proof images
 without changing assembler semantics.
 
+The comparer also defaults to a Nucleus-preview-only legacy output sink. That
+sink accepts non-overlapping IMAGE records in any order so old proof files that
+emit high proof storage before lower runtime storage can still be compared for
+syntax and byte identity. Atom's normal append-only sink remains available with
+`--strict-output-order`, and native Atom source must still be ordered for
+streaming output.
+
 Focused follow-up measurement after that change:
 
 | Entry | Result | Native Atom instructions | Native Atom cycles |
 | --- | --- | ---: | ---: |
 | `stage7-ll1-engine-proof.json` | Byte-identical | 37,695,198 | 361,752,509 |
 | `flat-target-z80-slice-proof.json` | Reaches execution budget | 200,000,000 | 2,000,000,000 |
+| `structured-control-z80-slice-proof.json` | Reaches execution budget with legacy unordered output | 200,000,000 | 1,926,034,192 |
 
 The next migration work should address the preview execution budget with
 per-entry measured budgets, then return to any source diagnostics exposed after

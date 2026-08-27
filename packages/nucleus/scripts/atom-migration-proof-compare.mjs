@@ -6,6 +6,7 @@ import { fileURLToPath } from "node:url";
 import { compile } from "@jhlagado/azm/compile";
 import {
   assembleResolvedAtomProject,
+  ATOM_HOST_SINK_STATUS,
   materializeAtomGeneration,
 } from "../../atom/src/host/index.mjs";
 
@@ -43,6 +44,7 @@ function parseArgs(argv) {
     maxInstructions: defaultMaxInstructions,
     maxCycles: defaultMaxCycles,
     budgetFile: defaultBudgetFile,
+    legacyOutputOrder: true,
   };
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -75,6 +77,10 @@ function parseArgs(argv) {
       options.budgetFile = path.resolve(argv[++index] ?? "");
     } else if (arg === "--no-budget-file") {
       options.budgetFile = undefined;
+    } else if (arg === "--legacy-output-order") {
+      options.legacyOutputOrder = true;
+    } else if (arg === "--strict-output-order") {
+      options.legacyOutputOrder = false;
     } else if (arg === "--out") {
       options.out = path.resolve(argv[++index] ?? "");
     } else if (arg === "--json") {
@@ -108,6 +114,12 @@ Options:
                        packages/nucleus/proofs/atom-migration-preview-budgets.json
                        when present.
   --no-budget-file     Ignore the default per-manifest budget file.
+  --legacy-output-order
+                       Accept non-overlapping IMAGE records in any order for
+                       legacy Nucleus proof-source comparison. This is the
+                       default.
+  --strict-output-order
+                       Use Atom's normal append-only output ordering.
   --out FILE           Write the JSON comparison report.
   --json               Print the JSON comparison report.
   --report-only        Exit 0 even when comparisons fail.
@@ -208,6 +220,135 @@ function firstDifference(left, right) {
     return Object.freeze({ offset: limit, atom: left.length > right.length ? left[limit] : undefined, current: right.length > left.length ? right[limit] : undefined });
   }
   return undefined;
+}
+
+const frozenBytes = (bytes) => Object.freeze(Array.from(bytes));
+
+function createLegacyUnorderedMemoryAtomSink() {
+  let open = false;
+  let target;
+  let descriptor;
+  let images = [];
+  let patches = [];
+  let imageAddresses = new Set();
+  let patchAddresses = new Set();
+  let generation;
+  let failure;
+  const lifecycle = [];
+
+  const reject = (status, code, message) => {
+    failure = Object.freeze({ status, code, message });
+    return status;
+  };
+  const inTarget = (address, length) => (
+    address >= target.start && address + length <= target.start + target.capacity
+  );
+
+  return {
+    begin(context) {
+      lifecycle.push("begin");
+      if (open) return reject(ATOM_HOST_SINK_STATUS.LIFECYCLE, "generation-open", "a generation is already open");
+      open = true;
+      target = context.target;
+      descriptor = context.descriptor;
+      images = [];
+      patches = [];
+      imageAddresses = new Set();
+      patchAddresses = new Set();
+      generation = undefined;
+      failure = undefined;
+      return 0;
+    },
+    image(operation) {
+      lifecycle.push("image");
+      if (!open) return reject(ATOM_HOST_SINK_STATUS.LIFECYCLE, "generation-closed", "IMAGE requires an open generation");
+      if (operation.bank !== 0) return reject(ATOM_HOST_SINK_STATUS.BANK, "bank", "native Atom output is flat bank zero");
+      if (!inTarget(operation.address, operation.bytes.length)) {
+        return reject(ATOM_HOST_SINK_STATUS.TARGET_RANGE, "image-range", "IMAGE lies outside the target range");
+      }
+      for (let offset = 0; offset < operation.bytes.length; offset += 1) {
+        if (imageAddresses.has(operation.address + offset)) {
+          return reject(ATOM_HOST_SINK_STATUS.IMAGE_ORDER, "image-overlap", "IMAGE records overlap");
+        }
+      }
+      const bytes = frozenBytes(operation.bytes);
+      images.push(Object.freeze({
+        bank: 0,
+        address: operation.address,
+        bytes,
+        ...(operation.source === undefined ? {} : { source: operation.source }),
+      }));
+      for (let offset = 0; offset < bytes.length; offset += 1) imageAddresses.add(operation.address + offset);
+      return 0;
+    },
+    patch(operation) {
+      lifecycle.push("patch");
+      if (!open) return reject(ATOM_HOST_SINK_STATUS.LIFECYCLE, "generation-closed", "PATCH requires an open generation");
+      if (operation.bank !== 0) return reject(ATOM_HOST_SINK_STATUS.BANK, "bank", "native Atom output is flat bank zero");
+      if (!inTarget(operation.address, operation.bytes.length)) {
+        return reject(ATOM_HOST_SINK_STATUS.TARGET_RANGE, "patch-range", "PATCH lies outside the target range");
+      }
+      for (let offset = 0; offset < operation.bytes.length; offset += 1) {
+        const address = operation.address + offset;
+        if (!imageAddresses.has(address) || patchAddresses.has(address)) {
+          return reject(ATOM_HOST_SINK_STATUS.PATCH_TARGET, "patch-target", "PATCH does not name one unpatched IMAGE byte");
+        }
+      }
+      const bytes = frozenBytes(operation.bytes);
+      patches.push(Object.freeze({
+        bank: 0,
+        address: operation.address,
+        bytes,
+        ...(operation.source === undefined ? {} : { source: operation.source }),
+      }));
+      for (let offset = 0; offset < bytes.length; offset += 1) patchAddresses.add(operation.address + offset);
+      return 0;
+    },
+    commit(context) {
+      lifecycle.push("commit");
+      if (!open) return reject(ATOM_HOST_SINK_STATUS.LIFECYCLE, "generation-closed", "COMMIT requires an open generation");
+      if (
+        context.descriptor !== descriptor ||
+        context.remaining < 0 ||
+        context.remaining > target.capacity
+      ) {
+        return reject(ATOM_HOST_SINK_STATUS.LIFECYCLE, "commit-state", "COMMIT state differs from the open generation");
+      }
+      if (
+        context.finalCursor < target.start ||
+        context.finalCursor > target.start + target.capacity ||
+        context.highWater < target.start ||
+        context.highWater > target.start + target.capacity
+      ) {
+        return reject(ATOM_HOST_SINK_STATUS.TARGET_RANGE, "commit-range", "logical output extent lies outside the target range");
+      }
+      generation = Object.freeze({
+        target,
+        finalCursor: context.finalCursor,
+        highWater: context.highWater,
+        remaining: context.remaining,
+        images: Object.freeze(images.slice()),
+        patches: Object.freeze(patches.slice()),
+      });
+      open = false;
+      return 0;
+    },
+    abort() {
+      lifecycle.push("abort");
+      if (!open) return reject(ATOM_HOST_SINK_STATUS.LIFECYCLE, "generation-closed", "ABORT requires an open generation");
+      open = false;
+      generation = undefined;
+      return 0;
+    },
+    snapshot() {
+      return Object.freeze({
+        open,
+        lifecycle: Object.freeze(lifecycle.slice()),
+        generation,
+        failure,
+      });
+    },
+  };
 }
 
 function stripComment(line) {
@@ -374,7 +515,7 @@ function previewPartsForEntry(report, entry, symbolValues, { maxPartBytes }) {
   return previewPartsFromText(entry, lowered, { maxPartBytes });
 }
 
-async function compareOne({ report, proof, asmRoot, maxPartBytes, budget }) {
+async function compareOne({ report, proof, asmRoot, maxPartBytes, budget, legacyOutputOrder }) {
   const entry = entryForManifest(asmRoot, proof);
   if (budget.skip !== undefined) {
     return Object.freeze({
@@ -429,6 +570,7 @@ async function compareOne({ report, proof, asmRoot, maxPartBytes, budget }) {
       maxInstructions: budget.maxInstructions,
       maxCycles: budget.maxCycles,
       nativeMemoryLayout: nucleusPreviewMemoryLayout,
+      ...(legacyOutputOrder ? { sink: createLegacyUnorderedMemoryAtomSink() } : {}),
     });
     const atomMaterialized = materializeAtomGeneration(atomAssembled.generation, {
       base: contentBase(atomAssembled.generation),
@@ -447,6 +589,7 @@ async function compareOne({ report, proof, asmRoot, maxPartBytes, budget }) {
       atomInstructions: atomAssembled.execution.instructions,
       atomCycles: atomAssembled.execution.cycles,
       budget: budgetResult,
+      outputOrder: legacyOutputOrder ? "legacy-unordered" : "strict-append-only",
       ...(equal ? {} : { firstDifference: firstDifference(atomMaterialized.bytes, currentBin) }),
     });
   } catch (error) {
@@ -467,6 +610,7 @@ async function compareOne({ report, proof, asmRoot, maxPartBytes, budget }) {
           serviceCalls: error.execution.serviceCalls,
         }),
       budget: budgetResult,
+      outputOrder: legacyOutputOrder ? "legacy-unordered" : "strict-append-only",
     });
   }
 }
@@ -513,6 +657,7 @@ async function main() {
       asmRoot: options.asmRoot,
       maxPartBytes: options.maxPartBytes,
       budget: entryBudget(proof, defaultBudget, budgets, { force: options.entry !== undefined }),
+      legacyOutputOrder: options.legacyOutputOrder,
     }));
   }
   const comparison = Object.freeze({
@@ -524,6 +669,7 @@ async function main() {
     maxCycles: options.maxCycles,
     budgetFile: options.budgetFile,
     budgetEntries: budgets.size,
+    outputOrder: options.legacyOutputOrder ? "legacy-unordered" : "strict-append-only",
     nativeMemoryLayout: nucleusPreviewMemoryLayout,
     summary: summarize(results),
     results: Object.freeze(results),
@@ -539,6 +685,7 @@ async function main() {
 
 export {
   augmentSymbolValuesFromPreview,
+  createLegacyUnorderedMemoryAtomSink,
   evaluateKnownExpression,
   entryBudget,
   lowerResolvedPreviewExpressions,

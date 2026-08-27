@@ -12,6 +12,7 @@ import { flattenTranslatedEntry } from "../scripts/atom-migration-dry-run.mjs";
 import { flattenedEntryParts } from "../scripts/atom-migration-dry-run.mjs";
 import { lowerResolvedPreviewExpressions } from "../scripts/atom-migration-proof-compare.mjs";
 import { augmentSymbolValuesFromPreview } from "../scripts/atom-migration-proof-compare.mjs";
+import { createLegacyUnorderedMemoryAtomSink } from "../scripts/atom-migration-proof-compare.mjs";
 import { entryBudget } from "../scripts/atom-migration-proof-compare.mjs";
 import { readBudgetFile } from "../scripts/atom-migration-proof-compare.mjs";
 
@@ -596,6 +597,17 @@ describe("Nucleus Atom migration dry-run", () => {
         maxInstructions: 10,
         maxCycles: 20,
       });
+    });
+  });
+
+  it("accepts legacy unordered output while still rejecting image overlap", () => {
+    const sink = createLegacyUnorderedMemoryAtomSink();
+    expect(sink.begin({ target: { start: 0x1000, capacity: 0x1000 }, descriptor: 0x4000 })).toBe(0);
+    expect(sink.image({ bank: 0, address: 0x1800, bytes: Uint8Array.of(1) })).toBe(0);
+    expect(sink.image({ bank: 0, address: 0x1000, bytes: Uint8Array.of(2) })).toBe(0);
+    expect(sink.image({ bank: 0, address: 0x1000, bytes: Uint8Array.of(3) })).toBe(0xe2);
+    expect(sink.snapshot().failure).toMatchObject({
+      code: "image-overlap",
     });
   });
 });
