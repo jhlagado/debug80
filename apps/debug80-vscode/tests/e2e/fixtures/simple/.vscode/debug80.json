@@ -3,7 +3,7 @@
   "targets": {
     "app": {
       "sourceFile": "src/simple.asm",
-      "assembler": "azm",
+      "assembler": "atom",
       "outputDir": "build",
       "artifactBase": "simple",
       "platform": "simple",
@@ -26,9 +26,7 @@
         "appStart": 0,
         "entry": 0
       },
-      "sourceRoots": [
-        "."
-      ]
+      "sourceRoots": ["."]
     }
   }
 }

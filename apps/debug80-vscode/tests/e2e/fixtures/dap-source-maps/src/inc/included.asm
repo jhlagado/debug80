@@ -1,3 +1,3 @@
-INCLUDED_ENTRY:
+IN_ENTRY:
         NOP
         HALT

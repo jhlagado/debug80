@@ -1,4 +1,4 @@
         ORG     $0400
-SPARSE_ENTRY:
+SP_ENTRY:
         NOP
         HALT

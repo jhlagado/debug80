@@ -2,8 +2,8 @@
   "defaultTarget": "include-app",
   "targets": {
     "include-app": {
-      "sourceFile": "src/main.asm",
-      "assembler": "azm",
+      "sourceFile": "src/include-app.asm",
+      "assembler": "atom",
       "outputDir": "build",
       "artifactBase": "include-app",
       "platform": "simple",
@@ -26,13 +26,11 @@
         "appStart": 0,
         "entry": 0
       },
-      "sourceRoots": [
-        "."
-      ]
+      "sourceRoots": ["."]
     },
     "sparse-org": {
       "sourceFile": "src/sparse.asm",
-      "assembler": "azm",
+      "assembler": "atom",
       "outputDir": "build",
       "artifactBase": "sparse-org",
       "platform": "simple",
@@ -55,9 +53,7 @@
         "appStart": 1024,
         "entry": 1024
       },
-      "sourceRoots": [
-        "."
-      ]
+      "sourceRoots": ["."]
     }
   }
 }

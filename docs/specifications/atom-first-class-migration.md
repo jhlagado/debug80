@@ -192,6 +192,13 @@ The repository check rejects a new unlisted AZM target and rejects an inventory
 entry after its target moves to Atom. This makes AZM use a shrinking, reviewed
 exception set rather than an implicit fallback.
 
+The three static Debug80 adapter fixtures now select Atom as well. Their HEX
+bytes are unchanged, their D8 maps are generated from the checked sources by
+`generate-atom-e2e-fixtures.mjs`, and the complete adapter E2E suite proves
+entry stops, stepping, constants, included-source breakpoints, and sparse-ORG
+breakpoints against those Atom maps. Eight AZM targets remain: six generated
+Glimmer assembly targets and the two interleaved Tetro/Pacmo sources.
+
 ## Checkpoint discipline
 
 Each checkpoint:

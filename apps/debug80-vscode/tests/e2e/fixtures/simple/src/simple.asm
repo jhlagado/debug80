@@ -1,5 +1,5 @@
 START:
         NOP
-        IN      A,(TERM_STATUS)
+        IN      A,($02)
 VALUE:  EQU     $0000
         JP      START

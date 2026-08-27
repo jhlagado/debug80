@@ -52,7 +52,7 @@ describe('step and debug adapter state read', () => {
     const scopes = await client.sendRequest<{
       body?: { scopes?: Array<{ name: string; variablesReference: number }> };
     }>('scopes', { frameId });
-    expect(scopes.body?.scopes?.map((scope) => scope.name)).toEqual(['Symbols']);
+    expect(scopes.body?.scopes?.map((scope) => scope.name)).toEqual(['Symbols', 'Constants']);
 
     const pc = await client.sendRequest<{ body?: { result?: string } }>('evaluate', {
       expression: 'PC',

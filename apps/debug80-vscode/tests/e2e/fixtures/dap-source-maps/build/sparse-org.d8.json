@@ -4,40 +4,71 @@
   "arch": "z80",
   "addressWidth": 16,
   "endianness": "little",
-  "generator": {
-    "name": "debug80-fixture"
-  },
   "files": {
     "src/sparse.asm": {
+      "symbols": [
+        {
+          "name": "SP_ENTRY",
+          "identity": "src/sparse.asm#22:SP_ENTRY",
+          "kind": "label",
+          "address": 1024,
+          "line": 2,
+          "scope": "global",
+          "visibility": "source",
+          "sourceUnit": "src/sparse.asm"
+        }
+      ],
       "segments": [
         {
           "start": 1024,
           "end": 1025,
-          "line": 3,
           "lstLine": 3,
-          "lstText": "NOP",
+          "line": 3,
+          "column": 1,
           "kind": "code",
           "confidence": "high"
         },
         {
           "start": 1025,
           "end": 1026,
-          "line": 4,
           "lstLine": 4,
-          "lstText": "HALT",
+          "line": 4,
+          "column": 1,
           "kind": "code",
           "confidence": "high"
         }
-      ],
-      "symbols": [
-        {
-          "name": "SPARSE_ENTRY",
-          "address": 1024,
-          "line": 2,
-          "kind": "label",
-          "scope": "global"
-        }
       ]
     }
+  },
+  "segments": [
+    {
+      "start": 1024,
+      "end": 1026
+    }
+  ],
+  "fileList": [
+    "src/sparse.asm"
+  ],
+  "symbols": [
+    {
+      "name": "SP_ENTRY",
+      "identity": "src/sparse.asm#22:SP_ENTRY",
+      "kind": "label",
+      "address": 1024,
+      "file": "src/sparse.asm",
+      "line": 2,
+      "scope": "global",
+      "visibility": "source",
+      "sourceUnit": "src/sparse.asm"
+    }
+  ],
+  "generator": {
+    "name": "atom",
+    "tool": "atom",
+    "version": "0.2.0",
+    "inputs": {
+      "entry": "src/sparse.asm"
+    },
+    "entryAddress": 1024
   }
 }
