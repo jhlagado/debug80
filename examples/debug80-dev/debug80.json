@@ -4,9 +4,6 @@
   "defaultProfile": "mon3",
   "defaultTarget": "matrix-smoke",
   "outputDir": "build",
-  "azm": {
-    "symbolCase": "strict"
-  },
   "profiles": {
     "mon3": {
       "platform": "tec1g",
@@ -26,25 +23,25 @@
   "targets": {
     "matrix-smoke": {
       "sourceFile": "matrix-smoke.asm",
-      "assembler": "azm",
+      "assembler": "atom",
       "asm": "matrix-smoke.asm",
       "artifactBase": "matrix-smoke"
     },
     "panel-smoke": {
       "sourceFile": "panel-smoke.asm",
-      "assembler": "azm",
+      "assembler": "atom",
       "asm": "panel-smoke.asm",
       "artifactBase": "panel-smoke"
     },
     "keypad-hold": {
       "sourceFile": "keypad-hold.asm",
-      "assembler": "azm",
+      "assembler": "atom",
       "asm": "keypad-hold.asm",
       "artifactBase": "keypad-hold"
     },
     "seven-seg-hold": {
       "sourceFile": "seven-seg-hold.asm",
-      "assembler": "azm",
+      "assembler": "atom",
       "asm": "seven-seg-hold.asm",
       "artifactBase": "seven-seg-hold"
     }

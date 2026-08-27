@@ -3,77 +3,77 @@
 ; so it tests key-down and key-up without MON-3 key buffering.
 ; MON-3 initializes the LCD and stack before launching this program.
 
-        .org    0x4000
+        ORG     $4000
 
-PORT_KEY        .equ    0x00
-PORT_LCD_CMD    .equ    0x04
-PORT_LCD_DATA   .equ    0x84
-NO_KEY          .equ    0x7f
-LCD_CLEAR       .equ    0x01
-LCD_MARK        .equ    0x8a
-STATE_NONE      .equ    0xff
-CHAR_OFF        .equ    0x20
-CHAR_ON         .equ    0x2a
+PORT_KEY        EQU     $00
+LCD_CMD         EQU     $04
+LCD_DATA        EQU     $84
+NO_KEY          EQU     $7F
+LCD_CLR         EQU     $01
+LCD_MARK        EQU     $8A
+NO_STATE        EQU     $FF
+CHAR_OFF        EQU     $20
+CHAR_ON         EQU     $2A
 
-.routine clobbers A,B,HL,F
+;@ROUTINE clobbers A,B,HL,F
 Start:
-        ld      a,LCD_CLEAR
-        call    WriteCommand
+        ld      a,LCD_CLR
+        call    WriteCmd
 
         ld      hl,TITLE
-_WriteTitle:
+.PutTitle:
         ld      a,(hl)
         inc     hl
         or      a
-        jp      z,_Ready
-        call    WriteData
-        jp      _WriteTitle
+        jp      z,.Ready
+        call    PutData
+        jp      .PutTitle
 
-_Ready:
-        ld      b,STATE_NONE
+.Ready:
+        ld      b,NO_STATE
 
-_Poll:
+.Poll:
         in      a,(PORT_KEY)
-        and     0x7f
+        and     $7F
         cp      NO_KEY
         ld      a,CHAR_OFF
-        jp      z,_StateReady
+        jp      z,.StateRdy
         ld      a,CHAR_ON
 
-_StateReady:
+.StateRdy:
         cp      b
-        jp      z,_Poll
+        jp      z,.Poll
         ld      b,a
 
         push    af
         ld      a,LCD_MARK
-        call    WriteCommand
+        call    WriteCmd
         pop     af
-        call    WriteData
-        jp      _Poll
+        call    PutData
+        jp      .Poll
 
-.routine in A
-WriteCommand:
+;@ROUTINE in A
+WriteCmd:
         push    af
         call    WaitLcd
         pop     af
-        out     (PORT_LCD_CMD),a
+        out     (LCD_CMD),a
         ret
 
-.routine in A
-WriteData:
+;@ROUTINE in A
+PutData:
         push    af
         call    WaitLcd
         pop     af
-        out     (PORT_LCD_DATA),a
+        out     (LCD_DATA),a
         ret
 
-.routine clobbers A,F
+;@ROUTINE clobbers A,F
 WaitLcd:
-        in      a,(PORT_LCD_CMD)
+        in      a,(LCD_CMD)
         rlca
         jp      c,WaitLcd
         ret
 
 TITLE:
-        .db     "KEY DOWN: ",0
+        DB      "KEY DOWN: ",0

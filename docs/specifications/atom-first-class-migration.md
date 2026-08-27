@@ -180,6 +180,11 @@ target. Its checked source assembles through Atom to `3E 05 C6 03 76`. Sources
 that require unsupported language features remain explicitly assigned to AZM;
 the migration does not rewrite them opportunistically.
 
+The four `examples/debug80-dev` TEC-1G targets are also converted. Their
+checked `.ASM` sources use Atom directives and private labels, the project
+selects `assembler: "atom"`, and a Debug80 corpus test assembles every target
+through `AtomBackend` while pinning its exact byte count and SHA-256 digest.
+
 ## Checkpoint discipline
 
 Each checkpoint:
