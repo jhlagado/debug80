@@ -15,8 +15,8 @@ debugging, and the documentation snapshot published on debug80.com.
 1. Preserve the history of `packages/nucleus` in the standalone repository.
 2. Establish an emulator-backed Node compiler around the existing Z80 binary.
 3. Teach Debug80 to discover and build `.nu` targets through that compiler.
-4. Add ordered multipart source manifests and validated machine service
-   profiles to Debug80 project configuration.
+4. Resolve source dependencies into ordered immutable parts through the
+   language host adapter, alongside validated machine-service profiles.
 5. Publish Nucleus and Debug80 Runtime packages, then pin Debug80 to a released
    Nucleus version.
 6. Add a D8-compatible Nucleus source-map sidecar for source breakpoints and
