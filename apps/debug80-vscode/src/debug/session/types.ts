@@ -13,7 +13,7 @@ import type { SourceAddressSpace, SourceAddressTransform } from '../../mapping/t
 import type { TerminalConfig } from './terminal-types';
 
 /**
- * Debug80 platform ids supported by the project manifest.
+ * Debug80 platform ids supported by project configuration.
  */
 export type Debug80PlatformId = 'simple' | 'cpm22' | 'tec1' | 'tec1g';
 
@@ -30,7 +30,7 @@ export interface BundledAssetReference {
 }
 
 /**
- * Named project profile in the next-generation manifest.
+ * Named project profile in project configuration.
  */
 export interface ProjectProfileConfig {
   /** Optional display note for the profile */
@@ -154,15 +154,15 @@ export interface LaunchRequestArguments extends DebugProtocol.LaunchRequestArgum
  * Configuration file structure for debug80.json.
  */
 export interface ProjectConfig {
-  /** Schema version for the Debug80 project manifest/config model */
+  /** Schema version for the Debug80 project configuration model */
   projectVersion?: 1 | 2;
   /** Project-level platform identity chosen at project creation time */
   projectPlatform?: string;
-  /** Named reusable profiles for the next-generation manifest */
+  /** Named reusable profiles for project configuration */
   profiles?: Record<string, ProjectProfileConfig>;
   /** Shared bundled asset references, keyed by logical name */
   bundledAssets?: Record<string, BundledAssetReference>;
-  /** Default profile name when the manifest uses profiles */
+  /** Default profile name when the project configuration uses profiles */
   defaultProfile?: string;
   /** Default target to use when none specified */
   defaultTarget?: string;

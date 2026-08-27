@@ -14,7 +14,7 @@ import { LaunchRequestArguments } from './session/types';
 import type { PlatformKind } from './launch/program-loader';
 import {
   mergeLaunchConfigStages,
-  type LaunchConfigManifest,
+  type LaunchProjectConfig,
   type ResolvedLaunchConfig,
 } from './launch/launch-config-merge';
 
@@ -22,7 +22,7 @@ type ConfigDiscoveryHelpers = { resolveBaseDir: (args: LaunchRequestArguments) =
 
 type LoadedLaunchConfig = {
   path: string;
-  manifest: LaunchConfigManifest;
+  projectConfig: LaunchProjectConfig;
 };
 
 function resolveConfigSearchStart(args: LaunchRequestArguments, workspaceRoot: string): string {
@@ -84,15 +84,15 @@ function findConfigPath(args: LaunchRequestArguments, workspaceRoot: string): st
   return undefined;
 }
 
-function readLaunchConfig(configPath: string): LaunchConfigManifest {
+function readLaunchConfig(configPath: string): LaunchProjectConfig {
   if (configPath.endsWith('package.json')) {
     const pkgRaw = fs.readFileSync(configPath, 'utf-8');
     const pkg = JSON.parse(pkgRaw) as { debug80?: unknown };
-    return (pkg.debug80 as LaunchConfigManifest | undefined) ?? { targets: {} };
+    return (pkg.debug80 as LaunchProjectConfig | undefined) ?? { targets: {} };
   }
 
   const raw = fs.readFileSync(configPath, 'utf-8');
-  return JSON.parse(raw) as LaunchConfigManifest;
+  return JSON.parse(raw) as LaunchProjectConfig;
 }
 
 function loadLaunchConfig(
@@ -104,14 +104,14 @@ function loadLaunchConfig(
   if (configPath === undefined) {
     return undefined;
   }
-  return { path: configPath, manifest: readLaunchConfig(configPath) };
+  return { path: configPath, projectConfig: readLaunchConfig(configPath) };
 }
 
 function resolveLaunchTarget(
   loaded: LoadedLaunchConfig,
   args: LaunchRequestArguments
 ): ResolvedLaunchConfig {
-  const cfg = loaded.manifest;
+  const cfg = loaded.projectConfig;
   const targets = cfg.targets ?? {};
   const targetName = args.target ?? cfg.target ?? cfg.defaultTarget ?? Object.keys(targets)[0];
   return {

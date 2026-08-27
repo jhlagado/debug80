@@ -14,7 +14,7 @@ vi.mock('vscode', () => ({
 }));
 import {
   mergeLaunchConfigStages,
-  type LaunchConfigManifest,
+  type LaunchProjectConfig,
 } from '../../src/debug/launch/launch-config-merge';
 import type { LaunchRequestArguments } from '../../src/debug/session/types';
 import { assertValidLaunchArgs } from '../../src/debug/launch/config-validation';
@@ -24,7 +24,7 @@ const PROJECT_ROOT = '/project';
 
 describe('launch-config-merge', () => {
   it('merges the Glimmer generated-source assembler in root, target and launch order', () => {
-    const manifest: LaunchConfigManifest = {
+    const projectConfig: LaunchProjectConfig = {
       assembler: 'glimmer',
       glimmer: { assembler: 'azm' },
       targets: {
@@ -35,14 +35,14 @@ describe('launch-config-merge', () => {
       },
       defaultTarget: 'app',
     };
-    expect(mergeForTarget(manifest, 'app').glimmer).toEqual({ assembler: 'atom' });
+    expect(mergeForTarget(projectConfig, 'app').glimmer).toEqual({ assembler: 'atom' });
     expect(
-      mergeForTarget(manifest, 'app', launchArgs({ glimmer: { assembler: 'azm' } })).glimmer
+      mergeForTarget(projectConfig, 'app', launchArgs({ glimmer: { assembler: 'azm' } })).glimmer
     ).toEqual({ assembler: 'azm' });
   });
 
   it('merges Nucleus project options in root, target and launch order', () => {
-    const manifest: LaunchConfigManifest = {
+    const projectConfig: LaunchProjectConfig = {
       assembler: 'nucleus',
       nucleus: { project: 'root-project.json', targetProfile: 'root-target.json' },
       targets: {
@@ -54,7 +54,7 @@ describe('launch-config-merge', () => {
       defaultTarget: 'app',
     };
     const merged = mergeForTarget(
-      manifest,
+      projectConfig,
       'app',
       launchArgs({ nucleus: { targetProfile: 'debug-target.json' } })
     );
@@ -65,7 +65,7 @@ describe('launch-config-merge', () => {
   });
 
   it('leaves asm targets without an assembler field for extension-based Atom inference', () => {
-    const manifest: LaunchConfigManifest = {
+    const projectConfig: LaunchProjectConfig = {
       targets: {
         app: {
           asm: 'src/main.asm',
@@ -78,16 +78,16 @@ describe('launch-config-merge', () => {
       defaultTarget: 'app',
     };
 
-    expect(mergeForTarget(manifest, 'app')).toMatchObject({
+    expect(mergeForTarget(projectConfig, 'app')).toMatchObject({
       asm: 'src/main.asm',
       sourceFile: 'src/main.asm',
     });
-    expect(mergeForTarget(manifest, 'app').assembler).toBeUndefined();
-    expect(mergeForTarget(manifest, 'legacy').assembler).toBe('azm');
+    expect(mergeForTarget(projectConfig, 'app').assembler).toBeUndefined();
+    expect(mergeForTarget(projectConfig, 'legacy').assembler).toBe('azm');
   });
 
   it('applies root config, target config, then explicit launch args in order', () => {
-    const manifest: LaunchConfigManifest = {
+    const projectConfig: LaunchProjectConfig = {
       platform: 'tec1g',
       defaultTarget: 'game',
       assembler: 'azm',
@@ -119,7 +119,7 @@ describe('launch-config-merge', () => {
     };
 
     const merged = mergeForTarget(
-      manifest,
+      projectConfig,
       'game',
       launchArgs({
         outputDir: 'explicit-build',
@@ -150,7 +150,7 @@ describe('launch-config-merge', () => {
   });
 
   it('shallow-merges nested platform blocks without dropping inherited TEC-1G ROM paths', () => {
-    const manifest: LaunchConfigManifest = {
+    const projectConfig: LaunchProjectConfig = {
       platform: 'tec1g',
       defaultTarget: 'matrix',
       tec1g: {
@@ -169,7 +169,7 @@ describe('launch-config-merge', () => {
     };
 
     const merged = mergeForTarget(
-      manifest,
+      projectConfig,
       'matrix',
       launchArgs({
         tec1g: {
@@ -187,7 +187,7 @@ describe('launch-config-merge', () => {
   });
 
   it('merges CP/M disk settings without retaining an overridden root value', () => {
-    const manifest: LaunchConfigManifest = {
+    const projectConfig: LaunchProjectConfig = {
       platform: 'cpm22',
       cpm22: { diskImage: 'disks/base.img', writable: false },
       targets: {
@@ -198,14 +198,14 @@ describe('launch-config-merge', () => {
       },
     };
 
-    const merged = mergeForTarget(manifest, 'guest', launchArgs());
+    const merged = mergeForTarget(projectConfig, 'guest', launchArgs());
 
     expect(merged.cpm22).toEqual({ diskImage: 'disks/base.img', writable: true });
     expect(() => assertValidLaunchArgs(merged)).not.toThrow();
   });
 
   it('merges Simple configuration field by field across all three precedence layers', () => {
-    const manifest: LaunchConfigManifest = {
+    const projectConfig: LaunchProjectConfig = {
       platform: 'simple',
       defaultTarget: 'game',
       simple: { entry: 0x0100, binFrom: 0x4000 },
@@ -217,7 +217,7 @@ describe('launch-config-merge', () => {
       },
     };
 
-    const merged = mergeForTarget(manifest, 'game', launchArgs({ simple: { entry: 0x0200 } }));
+    const merged = mergeForTarget(projectConfig, 'game', launchArgs({ simple: { entry: 0x0200 } }));
 
     expect(merged.simple).toMatchObject({
       appStart: 0x4000,
@@ -228,7 +228,7 @@ describe('launch-config-merge', () => {
   });
 
   it('treats null config fields as absent to preserve nullish fallback behavior', () => {
-    const manifest = {
+    const projectConfig = {
       platform: 'tec1g',
       asm: 'src/root.main.asm',
       sourceFile: 'src/root.main.asm',
@@ -245,9 +245,9 @@ describe('launch-config-merge', () => {
         },
       },
       defaultTarget: 'game',
-    } as unknown as LaunchConfigManifest;
+    } as unknown as LaunchProjectConfig;
 
-    const merged = mergeForTarget(manifest, 'game');
+    const merged = mergeForTarget(projectConfig, 'game');
 
     expect(merged).toMatchObject({
       asm: 'src/root.main.asm',
@@ -259,7 +259,7 @@ describe('launch-config-merge', () => {
   });
 
   it('infers a bundled debug map from a bundled ROM reference', () => {
-    const manifest: LaunchConfigManifest = {
+    const projectConfig: LaunchProjectConfig = {
       defaultTarget: 'game',
       defaultProfile: 'mon3',
       profiles: {
@@ -283,7 +283,7 @@ describe('launch-config-merge', () => {
       },
     };
 
-    const merged = mergeForTarget(manifest, 'game', launchArgs(), {
+    const merged = mergeForTarget(projectConfig, 'game', launchArgs(), {
       resolveBundledAssetPath: (reference) =>
         reference.path === 'mon3.d8.json' ? '/extension/tec1g/mon3/v1/mon3.d8.json' : undefined,
     });
@@ -296,14 +296,14 @@ describe('launch-config-merge', () => {
   });
 
   it('hydrates a bundled ROM when the configured ROM path is null', () => {
-    const manifest = {
+    const projectConfig = {
       platform: 'tec1g',
       tec1g: { romHex: null },
       bundledAssets: { romHex: { bundleId: 'tec1g/mon3', path: 'mon3.bin' } },
       targets: { app: { asm: 'src/app.asm' } },
-    } as unknown as LaunchConfigManifest;
+    } as unknown as LaunchProjectConfig;
 
-    const merged = mergeForTarget(manifest, 'app', launchArgs(), {
+    const merged = mergeForTarget(projectConfig, 'app', launchArgs(), {
       resolveBundledAssetPath: (reference) =>
         reference.path === 'mon3.bin' ? '/extension/tec1g/mon3/mon3.bin' : undefined,
     });
@@ -313,14 +313,14 @@ describe('launch-config-merge', () => {
   });
 
   it('preserves malformed debug maps instead of applying a bundled map', () => {
-    const manifest = {
+    const projectConfig = {
       platform: 'tec1g',
       debugMaps: 42,
       bundledAssets: { romHex: { bundleId: 'tec1g/mon3', path: 'mon3.bin' } },
       targets: { app: { asm: 'src/app.asm' } },
-    } as unknown as LaunchConfigManifest;
+    } as unknown as LaunchProjectConfig;
 
-    const merged = mergeForTarget(manifest, 'app', launchArgs(), {
+    const merged = mergeForTarget(projectConfig, 'app', launchArgs(), {
       resolveBundledAssetPath: (reference) => `/extension/${reference.path ?? 'asset'}`,
     });
 
@@ -329,32 +329,32 @@ describe('launch-config-merge', () => {
   });
 
   it('preserves a malformed root TEC-1G block through sibling ROM inheritance', () => {
-    const manifest = {
+    const projectConfig = {
       platform: 'tec1g',
       tec1g: null,
       targets: {
         app: { asm: 'src/app.asm', tec1g: { appStart: 0x4000 } },
         monitor: { tec1g: { romHex: 'roms/monitor.bin' } },
       },
-    } as unknown as LaunchConfigManifest;
+    } as unknown as LaunchProjectConfig;
 
-    const merged = mergeForTarget(manifest, 'app');
+    const merged = mergeForTarget(projectConfig, 'app');
 
     expect(merged.tec1g).toBeNull();
     expect(() => assertValidLaunchArgs(merged)).toThrow('tec1g must be an object, got null');
   });
 
   it('preserves a malformed TEC-1 block after bundled ROM resolution', () => {
-    const manifest = {
+    const projectConfig = {
       platform: 'tec1',
       tec1: [],
       bundledAssets: {
         romHex: { bundleId: 'tec1/monitor', path: 'monitor.bin' },
       },
       targets: { app: { asm: 'src/app.asm' } },
-    } as unknown as LaunchConfigManifest;
+    } as unknown as LaunchProjectConfig;
 
-    const merged = mergeForTarget(manifest, 'app', launchArgs(), {
+    const merged = mergeForTarget(projectConfig, 'app', launchArgs(), {
       resolveBundledAssetPath: () => '/extension/tec1/monitor.bin',
     });
 
@@ -363,12 +363,12 @@ describe('launch-config-merge', () => {
   });
 
   it('preserves malformed target and request blocks over valid root blocks', () => {
-    const manifest = {
+    const projectConfig = {
       platform: 'simple',
       simple: { appStart: 0x4000 },
       targets: { app: { asm: 'src/app.asm', simple: 42 } },
-    } as unknown as LaunchConfigManifest;
-    const targetMerged = mergeForTarget(manifest, 'app');
+    } as unknown as LaunchProjectConfig;
+    const targetMerged = mergeForTarget(projectConfig, 'app');
     const requestMerged = mergeForTarget(
       {
         platform: 'simple',
@@ -440,7 +440,7 @@ describe('launch-config-merge', () => {
 });
 
 function mergeForTarget(
-  manifest: LaunchConfigManifest,
+  projectConfig: LaunchProjectConfig,
   targetName: string,
   explicitArgs = launchArgs(),
   options?: Parameters<typeof mergeLaunchConfigStages>[3]
@@ -448,9 +448,9 @@ function mergeForTarget(
   return mergeLaunchConfigStages(
     {
       path: PROJECT_CONFIG,
-      manifest,
+      projectConfig,
       targetName,
-      targetCfg: manifest.targets?.[targetName],
+      targetCfg: projectConfig.targets?.[targetName],
     },
     explicitArgs,
     PROJECT_ROOT,

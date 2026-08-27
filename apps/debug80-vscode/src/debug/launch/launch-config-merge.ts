@@ -30,7 +30,7 @@ function mergeNestedPlatformBlock<T extends object>(
   return Object.keys(out).length > 0 ? (out as T) : undefined;
 }
 
-export type LaunchConfigManifest = Partial<LaunchRequestArguments> & {
+export type LaunchProjectConfig = Partial<LaunchRequestArguments> & {
   projectPlatform?: string;
   defaultProfile?: string;
   source?: string;
@@ -71,7 +71,7 @@ type BundledAssetReferenceLike = {
 
 export type ResolvedLaunchConfig = {
   path: string;
-  manifest: LaunchConfigManifest;
+  projectConfig: LaunchProjectConfig;
   targetName: string | undefined;
   targetCfg: LaunchTargetConfig | undefined;
 };
@@ -94,7 +94,7 @@ function isMalformedPlatformBlock(value: unknown): boolean {
 
 function restoreMalformedPlatformBlocks(
   merged: LaunchRequestArguments,
-  cfg: LaunchConfigManifest,
+  cfg: LaunchProjectConfig,
   targetCfg: LaunchTargetConfig | undefined,
   args: LaunchRequestArguments
 ): void {
@@ -114,7 +114,7 @@ function isMalformedPathField(value: unknown): boolean {
 
 function restoreMalformedPlatformPathFields(
   merged: LaunchRequestArguments,
-  cfg: LaunchConfigManifest,
+  cfg: LaunchProjectConfig,
   targetCfg: LaunchTargetConfig | undefined,
   args: LaunchRequestArguments
 ): void {
@@ -212,7 +212,7 @@ function hasRomHexForInheritance(config: Tec1gPlatformConfig | undefined): boole
 
 function resolveProfilePlatform(
   profileName: string | undefined,
-  cfg: LaunchConfigManifest
+  cfg: LaunchProjectConfig
 ): string | undefined {
   const normalizedName = normalizeNonEmptyString(profileName);
   if (normalizedName === undefined) {
@@ -223,7 +223,7 @@ function resolveProfilePlatform(
 }
 
 function resolveBundledAssetReference(
-  cfg: LaunchConfigManifest,
+  cfg: LaunchProjectConfig,
   targetCfg: LaunchTargetConfig | undefined,
   assetName: string
 ): BundledAssetReferenceLike | undefined {
@@ -317,7 +317,7 @@ function inferSiblingDebugMapReference(
 
 function resolveLaunchPlatform(
   args: LaunchRequestArguments,
-  cfg: LaunchConfigManifest,
+  cfg: LaunchProjectConfig,
   targetCfg: LaunchTargetConfig | undefined
 ): string | undefined {
   const explicit = firstNormalizedString(
@@ -371,7 +371,7 @@ function resolveTec1gBaseForMerge(cfg: {
 
 function applyPlatformBlockMerges(
   merged: LaunchRequestArguments,
-  cfg: LaunchConfigManifest,
+  cfg: LaunchProjectConfig,
   targetCfg: LaunchTargetConfig | undefined,
   args: LaunchRequestArguments
 ): void {
@@ -419,7 +419,7 @@ function setIfDefined<K extends keyof LaunchRequestArguments>(
 }
 
 function resolveAsmInput(
-  cfg: LaunchConfigManifest,
+  cfg: LaunchProjectConfig,
   targetCfg: LaunchTargetConfig | undefined,
   args: LaunchRequestArguments
 ): string | undefined {
@@ -435,7 +435,7 @@ function resolveAsmInput(
 }
 
 function resolveSourceInput(
-  cfg: LaunchConfigManifest,
+  cfg: LaunchProjectConfig,
   targetCfg: LaunchTargetConfig | undefined,
   args: LaunchRequestArguments
 ): string | undefined {
@@ -452,7 +452,7 @@ function resolveSourceInput(
 
 function applyAzmOptions(
   merged: LaunchRequestArguments,
-  cfg: LaunchConfigManifest,
+  cfg: LaunchProjectConfig,
   targetCfg: LaunchTargetConfig | undefined,
   args: LaunchRequestArguments
 ): void {
@@ -462,7 +462,7 @@ function applyAzmOptions(
 
 function applyGlimmerOptions(
   merged: LaunchRequestArguments,
-  cfg: LaunchConfigManifest,
+  cfg: LaunchProjectConfig,
   targetCfg: LaunchTargetConfig | undefined,
   args: LaunchRequestArguments
 ): void {
@@ -480,7 +480,7 @@ function applyGlimmerOptions(
 
 function applyNucleusOptions(
   merged: LaunchRequestArguments,
-  cfg: LaunchConfigManifest,
+  cfg: LaunchProjectConfig,
   targetCfg: LaunchTargetConfig | undefined,
   args: LaunchRequestArguments
 ): void {
@@ -498,7 +498,7 @@ function applyNucleusOptions(
 
 function applySourceLaunchFields(
   merged: LaunchRequestArguments,
-  cfg: LaunchConfigManifest,
+  cfg: LaunchProjectConfig,
   targetCfg: LaunchTargetConfig | undefined,
   args: LaunchRequestArguments
 ): void {
@@ -512,7 +512,7 @@ function applySourceLaunchFields(
 
 function applyArtifactLaunchFields(
   merged: LaunchRequestArguments,
-  cfg: LaunchConfigManifest,
+  cfg: LaunchProjectConfig,
   targetCfg: LaunchTargetConfig | undefined,
   args: LaunchRequestArguments
 ): void {
@@ -541,7 +541,7 @@ function applyArtifactLaunchFields(
 
 function applyExecutionLaunchFields(
   merged: LaunchRequestArguments,
-  cfg: LaunchConfigManifest,
+  cfg: LaunchProjectConfig,
   targetCfg: LaunchTargetConfig | undefined,
   args: LaunchRequestArguments
 ): void {
@@ -614,7 +614,7 @@ function applyBundledRomPath(
 
 function applyBundledDebugMapPath(
   merged: LaunchRequestArguments,
-  cfg: LaunchConfigManifest,
+  cfg: LaunchProjectConfig,
   targetCfg: LaunchTargetConfig | undefined,
   bundledRomReference: BundledAssetReferenceLike | undefined,
   workspaceRoot: string,
@@ -647,7 +647,7 @@ function applyBundledDebugMapPath(
 
 function applyBundledAssetPaths(
   merged: LaunchRequestArguments,
-  cfg: LaunchConfigManifest,
+  cfg: LaunchProjectConfig,
   targetCfg: LaunchTargetConfig | undefined,
   args: LaunchRequestArguments,
   workspaceRoot: string,
@@ -679,7 +679,7 @@ export function mergeLaunchConfigStages(
   workspaceRoot: string,
   options: MergeOptions = {}
 ): LaunchRequestArguments {
-  const cfg = resolved.manifest;
+  const cfg = resolved.projectConfig;
   const targetCfg = resolved.targetCfg;
   const merged: LaunchRequestArguments = {
     ...cfg,
