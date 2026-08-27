@@ -666,6 +666,7 @@ The first file-producing publication command is now available:
 ```text
 npm run proof:publish -w nucleus -- --output build/program.nobj proofs/flat-target-z80-slice-proof.json
 npm run proof:publish -w nucleus -- --root path/to/project --output build/program.nobj src/main.nu
+npm run proof:publish -w nucleus -- --root path/to/project --target target.json --output build/program.nobj src/main.nu
 ```
 
 It either runs an executable proof manifest or prepares an entry `.nu` file,
@@ -684,6 +685,22 @@ runtime-image operations. The prepared-source publication API supplies this
 descriptor explicitly; the default bridge descriptor matches the current flat
 target, but tests prove the committed NOBJ follows the supplied descriptor
 rather than silently copying the proof manifest's target map.
+
+Node-facing descriptor files use a deliberately plain JSON wrapper:
+
+```json
+{
+  "schema": "nucleus-target-publication/v1",
+  "begin": { "...": "NOBJ begin fields" },
+  "map": { "...": "NOBJ map fields" },
+  "runtimeLinkContext": { "...": "optional runtime link fields" }
+}
+```
+
+This is a desktop/build-host configuration format only. It is not a native
+Z80 or CP/M interchange format, and the resident compiler does not read JSON.
+The loader validates the schema and the same address, bank, capacity, and
+runtime-service bounds as the programmatic descriptor API before publication.
 
 The host-prepared source descriptor adapter now exists as a public application
 boundary. `buildNucleusResidentSourceImage` takes prepared `SourcePart[]` input
@@ -724,13 +741,14 @@ or Nucleus runtime storage services. Runtime stream linking is now visible at
 the application boundary, proof-published NOBJ can be written from the command
 line, host-prepared source has a single descriptor object for the anchors
 needed by a resident compiler image, and prepared-source publication can use an
-application-owned target descriptor. The CLI still exposes only the default
-flat target descriptor; a non-proof target descriptor file or project setting
-is still needed before this becomes the normal Nucleus compiler command.
+application-owned target descriptor. The CLI can now select that descriptor
+from a Node-facing JSON file, while still preserving the default flat target
+for tests and simple commands.
 
 ## Next implementation unit
 
-Continue Phase 3 by adding a small Node-facing target descriptor loader for the
-publication command. That should let `proof:publish --root ... src/main.nu`
-select a target descriptor file while preserving the current default flat
-target for tests and simple commands.
+Continue Phase 3 by separating the proof-hosted compiler image selection from
+the final command shape. The next bridge should introduce a normal
+`nucleus compile`/`nucleus publish` command name over the same prepared-source,
+compiler-entry, and target-descriptor APIs, while leaving `proof:publish` as a
+compatibility/debug command for proof manifests.

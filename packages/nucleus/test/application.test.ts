@@ -17,6 +17,7 @@ import {
   defineNucleusTargetPublicationDescriptor,
   installNucleusResidentSourceImage,
   NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR,
+  NUCLEUS_TARGET_PUBLICATION_SCHEMA,
   NUCLEUS_RESIDENT_SOURCE_DESCRIPTOR_SIZE,
   resolveNucleusResidentCompilerEntry,
   validateNucleusResidentSourceForEntry,
@@ -561,6 +562,75 @@ describe("Nucleus application boundary", () => {
     );
   }, 30_000);
 
+  it("loads a target descriptor file for prepared entry-source publication", async () => {
+    await withSourceTree(
+      {
+        "src/main.nu": [
+          "var value as u16 = 3",
+          "var cleared as u8",
+          "sub main()",
+          "value = value * 2",
+          "end",
+          "",
+        ].join("\n"),
+      },
+      async (root) => {
+        const targetFile = path.join(root, "target.json");
+        await writeFile(
+          targetFile,
+          JSON.stringify(
+            {
+              schema: NUCLEUS_TARGET_PUBLICATION_SCHEMA,
+              ...NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR,
+              begin: {
+                ...NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR.begin,
+                imageFill: 0x7d,
+              },
+            },
+            null,
+            2,
+          ),
+        );
+        const publication = await publishNucleusPreparedSourceTarget({
+          root,
+          entry: "src/main.nu",
+          targetFile,
+        });
+
+        expect(publication.targetFile).toBe(targetFile);
+        expect(publication.nobj.parsed.begin.imageFill).toBe(0x7d);
+      },
+    );
+  }, 30_000);
+
+  it("rejects a target descriptor file with the wrong schema", async () => {
+    await withSourceTree(
+      {
+        "src/main.nu": "sub main()\nend\n",
+      },
+      async (root) => {
+        const targetFile = path.join(root, "target.json");
+        await writeFile(
+          targetFile,
+          JSON.stringify({
+            schema: "nucleus-target-publication/v0",
+            ...NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR,
+          }),
+        );
+
+        await expect(
+          publishNucleusPreparedSourceTarget({
+            root,
+            entry: "src/main.nu",
+            targetFile,
+          }),
+        ).rejects.toThrow(
+          "target descriptor schema must be nucleus-target-publication/v1",
+        );
+      },
+    );
+  });
+
   it("exposes proof-target NOBJ publication through the development CLI", async () => {
     const outputDirectory = await mkdtemp(path.join(tmpdir(), "nucleus-cli-publish-"));
     try {
@@ -611,6 +681,22 @@ describe("Nucleus application boundary", () => {
         );
         try {
           const output = path.join(outputDirectory, "program.nobj");
+          const targetFile = path.join(root, "target.json");
+          await writeFile(
+            targetFile,
+            JSON.stringify(
+              {
+                schema: NUCLEUS_TARGET_PUBLICATION_SCHEMA,
+                ...NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR,
+                begin: {
+                  ...NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR.begin,
+                  imageFill: 0x7c,
+                },
+              },
+              null,
+              2,
+            ),
+          );
           const { stdout, stderr } = await execFileAsync(
             process.execPath,
             [
@@ -619,6 +705,8 @@ describe("Nucleus application boundary", () => {
               "--json",
               "--root",
               root,
+              "--target",
+              targetFile,
               "--output",
               output,
               "src/main.nu",
@@ -631,13 +719,16 @@ describe("Nucleus application boundary", () => {
           expect(summary).toMatchObject({
             root,
             entry: "src/main.nu",
+            targetFile,
             sourceParts: 1,
             output,
             bytes: 1396,
             records: 130,
+            imageFill: 0x7c,
             entryBank: 0,
             entryAddress: 0x8000,
           });
+          expect(summary.runtimeStreams).toBeUndefined();
           expect((await readFile(output)).byteLength).toBe(summary.bytes);
         } finally {
           await rm(outputDirectory, { recursive: true, force: true });

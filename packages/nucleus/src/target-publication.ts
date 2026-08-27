@@ -1,9 +1,20 @@
+import { readFile } from "node:fs/promises";
+import path from "node:path";
+
 import type { NobjBegin, NobjMap, RuntimeLinkContext } from "./nobj.js";
+
+export const NUCLEUS_TARGET_PUBLICATION_SCHEMA =
+  "nucleus-target-publication/v1";
 
 export interface NucleusTargetPublicationDescriptor {
   readonly begin: NobjBegin;
   readonly map: NobjMap;
   readonly runtimeLinkContext?: RuntimeLinkContext;
+}
+
+export interface NucleusTargetPublicationDescriptorFile
+  extends NucleusTargetPublicationDescriptor {
+  readonly schema: typeof NUCLEUS_TARGET_PUBLICATION_SCHEMA;
 }
 
 const requireInteger = (
@@ -151,4 +162,48 @@ export function validateNucleusTargetPublicationDescriptor(
   for (const [name, address] of Object.entries(context.services)) {
     requireU16(`runtime service ${name}`, address);
   }
+}
+
+const isObject = (value: unknown): value is Record<string, unknown> =>
+  typeof value === "object" && value !== null && !Array.isArray(value);
+
+export async function loadNucleusTargetPublicationDescriptor(
+  file: string,
+): Promise<NucleusTargetPublicationDescriptor> {
+  const descriptorPath = path.resolve(file);
+  const parsed = JSON.parse(
+    await readFile(descriptorPath, "utf8"),
+  ) as unknown;
+  if (!isObject(parsed)) {
+    throw new TypeError("target descriptor file must contain a JSON object");
+  }
+  if (parsed.schema !== NUCLEUS_TARGET_PUBLICATION_SCHEMA) {
+    throw new TypeError(
+      `target descriptor schema must be ${NUCLEUS_TARGET_PUBLICATION_SCHEMA}`,
+    );
+  }
+  if (!isObject(parsed.begin)) {
+    throw new TypeError("target descriptor begin must be an object");
+  }
+  if (!isObject(parsed.map)) {
+    throw new TypeError("target descriptor map must be an object");
+  }
+  if (
+    parsed.runtimeLinkContext !== undefined &&
+    !isObject(parsed.runtimeLinkContext)
+  ) {
+    throw new TypeError(
+      "target descriptor runtimeLinkContext must be an object",
+    );
+  }
+  return defineNucleusTargetPublicationDescriptor({
+    begin: parsed.begin as unknown as NobjBegin,
+    map: parsed.map as unknown as NobjMap,
+    ...(parsed.runtimeLinkContext === undefined
+      ? {}
+      : {
+          runtimeLinkContext:
+            parsed.runtimeLinkContext as unknown as RuntimeLinkContext,
+        }),
+  });
 }

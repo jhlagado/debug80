@@ -10,6 +10,7 @@ import { runProofManifest, type NobjExecutionOutcome } from "./proof.js";
 import type { NucleusResidentCompilerEntrySymbols } from "./resident-compiler-entry.js";
 import {
   defineNucleusTargetPublicationDescriptor,
+  loadNucleusTargetPublicationDescriptor,
   type NucleusTargetPublicationDescriptor,
 } from "./target-publication.js";
 
@@ -112,6 +113,7 @@ export interface NucleusPreparedSourceTargetPublicationOptions {
   readonly compilerManifest?: string;
   readonly compilerEntry?: NucleusResidentCompilerEntrySymbols;
   readonly target?: NucleusTargetPublicationDescriptor;
+  readonly targetFile?: string;
   readonly source?: NucleusResidentSourcePreparationOptions;
   readonly output?: string;
 }
@@ -120,6 +122,7 @@ export interface NucleusPreparedSourceTargetPublication {
   readonly root: string;
   readonly entry: string;
   readonly compilerManifest: string;
+  readonly targetFile?: string;
   readonly output?: string;
   readonly sourceParts: number;
   readonly sourceBytes: number;
@@ -147,22 +150,34 @@ export async function publishNucleusProofTarget({
   });
 }
 
-export async function publishNucleusPreparedSourceTarget({
-  root = ".",
-  entry,
-  compilerManifest = defaultFlatCompilerProofManifest,
-  compilerEntry = NUCLEUS_FLAT_TARGET_COMPILER_ENTRY,
-  target = NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR,
-  source = { sourceBase: NUCLEUS_DEFAULT_RESIDENT_SOURCE_BASE },
-  output,
-}: NucleusPreparedSourceTargetPublicationOptions): Promise<NucleusPreparedSourceTargetPublication> {
+export async function publishNucleusPreparedSourceTarget(
+  options: NucleusPreparedSourceTargetPublicationOptions,
+): Promise<NucleusPreparedSourceTargetPublication> {
+  if (options.targetFile !== undefined && options.target !== undefined) {
+    throw new Error("target and targetFile cannot both be supplied");
+  }
+  const root = options.root ?? ".";
+  const entry = options.entry;
+  const compilerManifest =
+    options.compilerManifest ?? defaultFlatCompilerProofManifest;
+  const compilerEntry =
+    options.compilerEntry ?? NUCLEUS_FLAT_TARGET_COMPILER_ENTRY;
+  const target = options.target ?? NUCLEUS_FLAT_TARGET_PUBLICATION_DESCRIPTOR;
+  const targetFile = options.targetFile;
+  const source = options.source ?? {
+    sourceBase: NUCLEUS_DEFAULT_RESIDENT_SOURCE_BASE,
+  };
+  const output = options.output;
   const rootPath = path.resolve(root);
   const compilerManifestPath = path.resolve(compilerManifest);
   const sourceBase =
     source.sourceBase ?? NUCLEUS_DEFAULT_RESIDENT_SOURCE_BASE;
   const sourceCapacity =
     source.sourceCapacity ?? NUCLEUS_DEFAULT_RESIDENT_SOURCE_CAPACITY;
-  const targetDescriptor = defineNucleusTargetPublicationDescriptor(target);
+  const targetDescriptor =
+    targetFile === undefined
+      ? defineNucleusTargetPublicationDescriptor(target)
+      : await loadNucleusTargetPublicationDescriptor(targetFile);
   const prepared = await prepareNucleusCompilation({
     root: rootPath,
     entry: path.isAbsolute(entry)
@@ -209,6 +224,7 @@ export async function publishNucleusPreparedSourceTarget({
       ? path.relative(rootPath, path.resolve(entry))
       : entry,
     compilerManifest: compilerManifestPath,
+    targetFile: targetFile === undefined ? undefined : path.resolve(targetFile),
     output: output === undefined ? undefined : path.resolve(output),
     sourceParts: prepared.sourceParts.length,
     sourceBytes: prepared.totalSourceBytes,

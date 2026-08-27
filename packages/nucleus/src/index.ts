@@ -40,8 +40,11 @@ export {
 } from "./publication.js";
 export {
   defineNucleusTargetPublicationDescriptor,
+  loadNucleusTargetPublicationDescriptor,
+  NUCLEUS_TARGET_PUBLICATION_SCHEMA,
   validateNucleusTargetPublicationDescriptor,
   type NucleusTargetPublicationDescriptor,
+  type NucleusTargetPublicationDescriptorFile,
 } from "./target-publication.js";
 export {
   prepareNucleusSourceParts,

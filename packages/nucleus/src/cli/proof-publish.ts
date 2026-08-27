@@ -12,6 +12,7 @@ const usage = `Usage: nucleus proof:publish [options] <proof.json | entry.nu>
 Options:
   -o, --output FILE        Write the committed NOBJ bytes to FILE.
   --root DIR              Project root for entry.nu publication.
+  --target FILE           Target publication descriptor for entry.nu publication.
   --compiler-proof FILE   Resident compiler proof image for entry.nu publication.
   --source-base N         Resident source byte base; default 0x5000.
   --source-capacity N     Resident source byte capacity; default 0x0800.
@@ -29,6 +30,7 @@ interface Options {
   readonly input?: string;
   readonly output?: string;
   readonly root?: string;
+  readonly targetFile?: string;
   readonly compilerProof?: string;
   readonly sourceBase?: number;
   readonly sourceCapacity?: number;
@@ -57,6 +59,7 @@ function parseNumber(value: string, name: string): number {
 function parseArguments(arguments_: readonly string[]): Options {
   let output: string | undefined;
   let root: string | undefined;
+  let targetFile: string | undefined;
   let compilerProof: string | undefined;
   let sourceBase: number | undefined;
   let sourceCapacity: number | undefined;
@@ -84,6 +87,11 @@ function parseArguments(arguments_: readonly string[]): Options {
       index += 1;
       continue;
     }
+    if (argument === "--target") {
+      targetFile = optionValue(arguments_, index, argument);
+      index += 1;
+      continue;
+    }
     if (argument === "--compiler-proof") {
       compilerProof = optionValue(arguments_, index, argument);
       index += 1;
@@ -108,6 +116,7 @@ function parseArguments(arguments_: readonly string[]): Options {
     input: positional[0],
     output,
     root,
+    targetFile,
     compilerProof,
     sourceBase,
     sourceCapacity,
@@ -129,12 +138,14 @@ function jsonSummary(
             root: publication.root,
             entry: publication.entry,
             compilerManifest: publication.compilerManifest,
+            targetFile: publication.targetFile,
             sourceParts: publication.sourceParts,
             sourceBytes: publication.sourceBytes,
           }),
       output: publication.output,
       bytes: publication.nobj.serialized.length,
       records: publication.nobj.parsed.commit.recordCount,
+      imageFill: publication.nobj.parsed.begin.imageFill,
       entryBank: publication.nobj.parsed.map.entryBank,
       entryAddress: publication.nobj.parsed.map.entryAddress,
       selectedBank: publication.nobj.selectedBank,
@@ -175,6 +186,7 @@ async function main(): Promise<number> {
     if (options.input === undefined) throw new Error("input is required");
     const publishesPreparedSource =
       options.root !== undefined ||
+      options.targetFile !== undefined ||
       options.compilerProof !== undefined ||
       options.sourceBase !== undefined ||
       options.sourceCapacity !== undefined ||
@@ -183,6 +195,7 @@ async function main(): Promise<number> {
       ? await publishNucleusPreparedSourceTarget({
           root: options.root,
           entry: options.input,
+          targetFile: options.targetFile,
           compilerManifest: options.compilerProof,
           source:
             options.sourceBase === undefined &&
