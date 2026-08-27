@@ -1,6 +1,6 @@
 # Atom first-class migration
 
-Status: active implementation sequence
+Status: Atom-first Debug80 consolidation complete; deferred work is listed
 
 Date: 2026-08-27
 
@@ -16,8 +16,9 @@ providers for ordinary TEC-FS input and transactional output. The harness has
 a proved immutable-bank profile with fixed state relocated to common RAM. The
 TEC include resolver, launcher, and final memory map are implemented and proved
 under emulation. Physical TEC hardware acceptance is deferred to a later
-deployment checkpoint. Nucleus convergence and release installation remain.
-The checked-in Debug80 project corpus no longer selects AZM.
+deployment checkpoint. Nucleus convergence is deferred until Nucleus's new
+host boundary stabilizes. Atom npm publication and install verification are
+complete. The checked-in Debug80 project corpus no longer selects AZM.
 
 ## Objective
 
@@ -159,6 +160,9 @@ its existing source-composition implementation. Atom does not force that older
 interface into the shared package; convergence resumes against Nucleus's new
 host boundary when it stabilizes.
 
+This is deferred follow-on work, not a blocker for the Atom-first Debug80
+consolidation.
+
 ### 10. Default migration
 
 Build the Debug80 project corpus with Atom, document unsupported legacy
@@ -207,6 +211,18 @@ bytes with SHA-256 `1ded84b34cfe93d07ae8e766bfd499ffa85e405b5c850f0e7d1fcdae267c
 Pacmo is 3,573 bytes with SHA-256
 `4b985d210f22bde37bd82ed41b6c14326dc21dc7cca4568c8b0b6c8c6e42ec0e`.
 No checked-in Debug80 target now selects AZM.
+
+### 11. Release installation
+
+Publish Atom as a public npm package and prove that the installed package runs
+without a neighbouring Atom checkout or a runtime AZM dependency.
+
+Status: complete. `atom-z80@0.2.0` is published publicly on npm as
+`GPL-3.0-only`. The release gate installs the packed package offline in an
+unrelated directory, verifies that AZM is absent from the installed runtime
+tree, runs the `atom` and `azm-to-atom` commands, assembles explicit BIN, HEX,
+D8, COM, and default-output builds, checks `INCBIN`, rejects unsupported
+source, and runs `atom self-host` against the installed native core.
 
 ## Checkpoint discipline
 
