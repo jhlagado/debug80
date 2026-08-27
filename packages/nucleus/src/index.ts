@@ -29,7 +29,11 @@ export {
   type NucleusResidentCompilerSymbolResolver,
 } from "./resident-compiler-entry.js";
 export {
+  NUCLEUS_FLAT_TARGET_COMPILER_ENTRY,
+  publishNucleusPreparedSourceTarget,
   publishNucleusProofTarget,
+  type NucleusPreparedSourceTargetPublication,
+  type NucleusPreparedSourceTargetPublicationOptions,
   type NucleusProofTargetPublication,
   type NucleusProofTargetPublicationOptions,
 } from "./publication.js";

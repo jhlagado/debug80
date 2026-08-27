@@ -11,6 +11,7 @@ import { SourcePreparationError } from "@jhlagado/z80-tool-services/source-prepa
 import {
   prepareNucleusCompilation,
   prepareNucleusRuntimeLink,
+  publishNucleusPreparedSourceTarget,
   publishNucleusProofTarget,
   buildNucleusResidentSourceImage,
   installNucleusResidentSourceImage,
@@ -484,6 +485,49 @@ describe("Nucleus application boundary", () => {
     }
   });
 
+  it("publishes prepared entry source through the resident compiler proof image", async () => {
+    await withSourceTree(
+      {
+        "src/main.nu": [
+          "var value as u16 = 3",
+          "var cleared as u8",
+          "sub main()",
+          "value = value * 2",
+          "end",
+          "",
+        ].join("\n"),
+      },
+      async (root) => {
+        const outputDirectory = await mkdtemp(
+          path.join(tmpdir(), "nucleus-source-publish-"),
+        );
+        try {
+          const output = path.join(outputDirectory, "program.nobj");
+          const baseline = await publishNucleusProofTarget({
+            manifest: proof("flat-target-z80-slice-proof"),
+          });
+          const publication = await publishNucleusPreparedSourceTarget({
+            root,
+            entry: "src/main.nu",
+            output,
+          });
+
+          expect(publication.root).toBe(root);
+          expect(publication.entry).toBe("src/main.nu");
+          expect(publication.sourceParts).toBe(1);
+          expect(publication.nobj.serialized).toEqual(
+            baseline.nobj.serialized,
+          );
+          expect(await readFile(output)).toEqual(
+            Buffer.from(publication.nobj.serialized),
+          );
+        } finally {
+          await rm(outputDirectory, { recursive: true, force: true });
+        }
+      },
+    );
+  }, 30_000);
+
   it("exposes proof-target NOBJ publication through the development CLI", async () => {
     const outputDirectory = await mkdtemp(path.join(tmpdir(), "nucleus-cli-publish-"));
     try {
@@ -515,4 +559,57 @@ describe("Nucleus application boundary", () => {
       await rm(outputDirectory, { recursive: true, force: true });
     }
   });
+
+  it("exposes prepared entry-source NOBJ publication through the development CLI", async () => {
+    await withSourceTree(
+      {
+        "src/main.nu": [
+          "var value as u16 = 3",
+          "var cleared as u8",
+          "sub main()",
+          "value = value * 2",
+          "end",
+          "",
+        ].join("\n"),
+      },
+      async (root) => {
+        const outputDirectory = await mkdtemp(
+          path.join(tmpdir(), "nucleus-cli-source-publish-"),
+        );
+        try {
+          const output = path.join(outputDirectory, "program.nobj");
+          const { stdout, stderr } = await execFileAsync(
+            process.execPath,
+            [
+              tsxBin,
+              "src/cli/proof-publish.ts",
+              "--json",
+              "--root",
+              root,
+              "--output",
+              output,
+              "src/main.nu",
+            ],
+            { cwd: packageRoot },
+          );
+
+          const summary = JSON.parse(stdout);
+          expect(stderr).toBe("");
+          expect(summary).toMatchObject({
+            root,
+            entry: "src/main.nu",
+            sourceParts: 1,
+            output,
+            bytes: 1396,
+            records: 130,
+            entryBank: 0,
+            entryAddress: 0x8000,
+          });
+          expect((await readFile(output)).byteLength).toBe(summary.bytes);
+        } finally {
+          await rm(outputDirectory, { recursive: true, force: true });
+        }
+      },
+    );
+  }, 30_000);
 });

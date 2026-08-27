@@ -665,13 +665,17 @@ The first file-producing publication command is now available:
 
 ```text
 npm run proof:publish -w nucleus -- --output build/program.nobj proofs/flat-target-z80-slice-proof.json
+npm run proof:publish -w nucleus -- --root path/to/project --output build/program.nobj src/main.nu
 ```
 
-It runs an executable proof manifest, requires the proof image to publish a
-committed NOBJ target, and writes those exact committed bytes to disk. This is
-deliberately named as proof publication because the resident source descriptors
-are still embedded in the proof image. It does, however, make NOBJ publication
-a reusable application API instead of test-only logic.
+It either runs an executable proof manifest or prepares an entry `.nu` file,
+installs the resulting source bytes and resident descriptors into the current
+flat compiler proof image, requires that image to publish a committed NOBJ
+target, and writes those exact committed bytes to disk. This is deliberately
+still named as proof publication because the compiler image is proof-hosted.
+It does, however, make NOBJ publication a reusable application API instead of
+test-only logic, and the command now has the caller shape of a normal
+entry-file compiler command.
 
 The host-prepared source descriptor adapter now exists as a public application
 boundary. `buildNucleusResidentSourceImage` takes prepared `SourcePart[]` input
@@ -712,13 +716,13 @@ or Nucleus runtime storage services. Runtime stream linking is now visible at
 the application boundary, proof-published NOBJ can be written from the command
 line, and host-prepared source has a single descriptor object for the anchors
 needed by a resident compiler image. Arbitrary-source target publication still
-needs a non-proof compiler image or manifest that publishes the same descriptor
-shape as a normal application contract.
+uses the flat target map supplied by the proof manifest. A non-proof compiler
+image or target descriptor publication format still needs to make that target
+map a normal application contract rather than a proof fixture.
 
 ## Next implementation unit
 
-Continue Phase 3 by moving the proof-publication command onto the same prepared
-source and resident compiler entry descriptor path. The command should accept
-an entry `.nu` file, prepare its resolver-backed source parts, install them
-through the descriptor, and publish the committed NOBJ output from the existing
-flat target compiler image.
+Continue Phase 3 by extracting the target-map/publication contract from the
+flat proof manifest. The next bridge should keep using the resident compiler
+image, but take target map and runtime-link settings from an application-facing
+descriptor instead of the proof fixture's embedded JSON.

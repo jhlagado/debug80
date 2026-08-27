@@ -2,24 +2,36 @@
 
 import process from "node:process";
 
-import { publishNucleusProofTarget } from "../publication.js";
+import {
+  publishNucleusPreparedSourceTarget,
+  publishNucleusProofTarget,
+} from "../publication.js";
 
-const usage = `Usage: nucleus proof:publish [options] <proof.json>
+const usage = `Usage: nucleus proof:publish [options] <proof.json | entry.nu>
 
 Options:
-  -o, --output FILE  Write the committed NOBJ bytes to FILE.
-  --json            Print machine-readable JSON.
-  -h, --help        Show this help.
+  -o, --output FILE        Write the committed NOBJ bytes to FILE.
+  --root DIR              Project root for entry.nu publication.
+  --compiler-proof FILE   Resident compiler proof image for entry.nu publication.
+  --source-base N         Resident source byte base; default 0x5000.
+  --source-capacity N     Resident source byte capacity; default 0x0800.
+  --json                  Print machine-readable JSON.
+  -h, --help              Show this help.
 
-This development command runs an executable Nucleus proof manifest, requires it
-to publish a committed NOBJ target, and optionally writes that NOBJ stream to
-disk. It is a bridge to the final target publication command while resident
-source descriptors are still proof-owned.
+This development command either runs an executable Nucleus proof manifest or
+prepares an entry .nu file, installs it into the current resident compiler proof
+image, and publishes the committed NOBJ stream. It is a bridge to the final
+target publication command while the resident compiler image is still proof
+hosted.
 `;
 
 interface Options {
-  readonly manifest?: string;
+  readonly input?: string;
   readonly output?: string;
+  readonly root?: string;
+  readonly compilerProof?: string;
+  readonly sourceBase?: number;
+  readonly sourceCapacity?: number;
   readonly json: boolean;
   readonly help: boolean;
 }
@@ -30,8 +42,24 @@ function optionValue(arguments_: readonly string[], index: number, name: string)
   return value;
 }
 
+function parseNumber(value: string, name: string): number {
+  const parsed = /^0x[0-9a-f]+$/i.test(value)
+    ? Number.parseInt(value.slice(2), 16)
+    : /^[0-9]+$/.test(value)
+      ? Number.parseInt(value, 10)
+      : Number.NaN;
+  if (!Number.isInteger(parsed) || parsed < 0) {
+    throw new Error(`${name} must be a non-negative integer`);
+  }
+  return parsed;
+}
+
 function parseArguments(arguments_: readonly string[]): Options {
   let output: string | undefined;
+  let root: string | undefined;
+  let compilerProof: string | undefined;
+  let sourceBase: number | undefined;
+  let sourceCapacity: number | undefined;
   let json = false;
   let help = false;
   const positional: string[] = [];
@@ -51,20 +79,59 @@ function parseArguments(arguments_: readonly string[]): Options {
       index += 1;
       continue;
     }
+    if (argument === "--root") {
+      root = optionValue(arguments_, index, argument);
+      index += 1;
+      continue;
+    }
+    if (argument === "--compiler-proof") {
+      compilerProof = optionValue(arguments_, index, argument);
+      index += 1;
+      continue;
+    }
+    if (argument === "--source-base") {
+      sourceBase = parseNumber(optionValue(arguments_, index, argument), argument);
+      index += 1;
+      continue;
+    }
+    if (argument === "--source-capacity") {
+      sourceCapacity = parseNumber(optionValue(arguments_, index, argument), argument);
+      index += 1;
+      continue;
+    }
     if (argument.startsWith("-")) throw new Error(`unknown option: ${argument}`);
     positional.push(argument);
   }
 
-  if (positional.length > 1) throw new Error("only one proof manifest may be supplied");
-  return Object.freeze({ manifest: positional[0], output, json, help });
+  if (positional.length > 1) throw new Error("only one input may be supplied");
+  return Object.freeze({
+    input: positional[0],
+    output,
+    root,
+    compilerProof,
+    sourceBase,
+    sourceCapacity,
+    json,
+    help,
+  });
 }
 
 function jsonSummary(
-  publication: Awaited<ReturnType<typeof publishNucleusProofTarget>>,
+  publication:
+    | Awaited<ReturnType<typeof publishNucleusProofTarget>>
+    | Awaited<ReturnType<typeof publishNucleusPreparedSourceTarget>>,
 ): string {
   return `${JSON.stringify(
     {
-      manifest: publication.manifest,
+      ...("manifest" in publication
+        ? { manifest: publication.manifest }
+        : {
+            root: publication.root,
+            entry: publication.entry,
+            compilerManifest: publication.compilerManifest,
+            sourceParts: publication.sourceParts,
+            sourceBytes: publication.sourceBytes,
+          }),
       output: publication.output,
       bytes: publication.nobj.serialized.length,
       records: publication.nobj.parsed.commit.recordCount,
@@ -79,10 +146,19 @@ function jsonSummary(
 }
 
 function textSummary(
-  publication: Awaited<ReturnType<typeof publishNucleusProofTarget>>,
+  publication:
+    | Awaited<ReturnType<typeof publishNucleusProofTarget>>
+    | Awaited<ReturnType<typeof publishNucleusPreparedSourceTarget>>,
 ): string {
   return [
     `Nucleus published ${publication.nobj.serialized.length} NOBJ byte(s).`,
+    ...("entry" in publication
+      ? [
+          `source=${publication.entry}`,
+          `parts=${publication.sourceParts}`,
+          `sourceBytes=${publication.sourceBytes}`,
+        ]
+      : []),
     `records=${publication.nobj.parsed.commit.recordCount}`,
     `entry=${publication.nobj.parsed.map.entryBank}:${publication.nobj.parsed.map.entryAddress}`,
     ...(publication.output === undefined ? [] : [`output=${publication.output}`]),
@@ -96,11 +172,32 @@ async function main(): Promise<number> {
       process.stdout.write(usage);
       return 0;
     }
-    if (options.manifest === undefined) throw new Error("proof manifest is required");
-    const publication = await publishNucleusProofTarget({
-      manifest: options.manifest,
-      output: options.output,
-    });
+    if (options.input === undefined) throw new Error("input is required");
+    const publishesPreparedSource =
+      options.root !== undefined ||
+      options.compilerProof !== undefined ||
+      options.sourceBase !== undefined ||
+      options.sourceCapacity !== undefined ||
+      !options.input.endsWith(".json");
+    const publication = publishesPreparedSource
+      ? await publishNucleusPreparedSourceTarget({
+          root: options.root,
+          entry: options.input,
+          compilerManifest: options.compilerProof,
+          source:
+            options.sourceBase === undefined &&
+            options.sourceCapacity === undefined
+              ? undefined
+              : {
+                  sourceBase: options.sourceBase ?? 0x5000,
+                  sourceCapacity: options.sourceCapacity,
+                },
+          output: options.output,
+        })
+      : await publishNucleusProofTarget({
+          manifest: options.input,
+          output: options.output,
+        });
     process.stdout.write(options.json ? jsonSummary(publication) : textSummary(publication));
     return 0;
   } catch (error) {

@@ -188,6 +188,11 @@ export interface NucleusProofResidentSourceInstallation {
 
 export interface RunProofManifestOptions {
   readonly source?: NucleusProofResidentSourceInstallation;
+  readonly checkObservations?: boolean;
+  readonly nobj?: {
+    readonly materializeOnly?: boolean;
+    readonly checkObservations?: boolean;
+  };
 }
 
 export class ProofFailure extends Error {
@@ -402,16 +407,18 @@ export async function runProofManifest(
   if (cycles > manifest.execution.maxCycles) {
     failures.push(`cycle limit ${manifest.execution.maxCycles} exceeded`);
   }
-  for (const observation of manifest.observations ?? []) {
-    const address = symbolValue(observation.at);
-    const actual =
-      observation.width === "u8"
-        ? memory[address]
-        : (memory[address] ?? 0) | ((memory[address + 1] ?? 0) << 8);
-    if (actual !== observation.equals) {
-      failures.push(
-        `${observation.at}=${actual}, expected ${observation.equals}`,
-      );
+  if (options.checkObservations !== false) {
+    for (const observation of manifest.observations ?? []) {
+      const address = symbolValue(observation.at);
+      const actual =
+        observation.width === "u8"
+          ? memory[address]
+          : (memory[address] ?? 0) | ((memory[address + 1] ?? 0) << 8);
+      if (actual !== observation.equals) {
+        failures.push(
+          `${observation.at}=${actual}, expected ${observation.equals}`,
+        );
+      }
     }
   }
   if (failures.length > 0) {
@@ -433,6 +440,7 @@ export async function runProofManifest(
           manifest.nobj,
           memory,
           symbolValue,
+          options.nobj,
         );
 
   return {
@@ -454,6 +462,10 @@ const runNobjManifest = async (
   manifest: NobjProofManifest,
   producerMemory: Uint8Array,
   symbol: (name: string) => number,
+  options: {
+    readonly materializeOnly?: boolean;
+    readonly checkObservations?: boolean;
+  } = {},
 ): Promise<NobjExecutionOutcome> => {
   const start = symbol(manifest.adapter.at);
   const lengthAddress = symbol(manifest.adapter.lengthAt);
@@ -472,7 +484,7 @@ const runNobjManifest = async (
     map: manifest.map,
     runtimeLinkContext,
   });
-  if (manifest.materializeOnly === true) {
+  if (options.materializeOnly === true || manifest.materializeOnly === true) {
     const parsed = parseNobjForExecution(serialized);
     const materialized = materializeNobj(parsed);
     const memory = new Uint8Array(0x10000);
@@ -490,7 +502,8 @@ const runNobjManifest = async (
     };
   }
   return executeCommittedNobj(serialized, manifest.execution, {
-    observations: manifest.observations,
+    observations:
+      options.checkObservations === false ? undefined : manifest.observations,
     bankSwitch: manifest.bankSwitch,
   });
 };
