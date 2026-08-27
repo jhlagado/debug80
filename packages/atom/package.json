@@ -1,0 +1,94 @@
+{
+  "name": "atom-z80",
+  "version": "0.1.0",
+  "description": "atom: a streaming Z80 assembler that runs on a Z80",
+  "license": "GPL-3.0-only",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/jhlagado/atom.git"
+  },
+  "bugs": {
+    "url": "https://github.com/jhlagado/atom/issues"
+  },
+  "homepage": "https://github.com/jhlagado/atom#readme",
+  "keywords": [
+    "z80",
+    "assembler",
+    "tec-1"
+  ],
+  "publishConfig": {
+    "access": "public"
+  },
+  "type": "module",
+  "bin": {
+    "atom": "bin/atom.mjs",
+    "azm-to-atom": "bin/azm-to-atom.mjs"
+  },
+  "exports": {
+    ".": "./src/host/index.mjs"
+  },
+  "files": [
+    "assets/native-core.json",
+    "assets/atom-cpm22.com",
+    "bin",
+    "docs/*.md",
+    "docs/codebase",
+    "examples",
+    "native/*.asm",
+    "native/atom-symbols.json",
+    "src/abi.mjs",
+    "src/host",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "build:native-core": "node scripts/generate-native-core.mjs",
+    "build:cpm22": "node scripts/generate-cpm22.mjs",
+    "verify:cpm22": "node scripts/generate-cpm22.mjs --check",
+    "verify:cpm22-output-candidates": "node scripts/measure-cpm22-output-candidates.mjs --check",
+    "verify:cpm22-plan-candidates": "node scripts/measure-cpm22-plan-candidates.mjs --check",
+    "verify:native-core": "node scripts/generate-native-core.mjs --check",
+    "verify:strict-contracts": "node scripts/generate-native-core.mjs --check",
+    "verify:native-source": "node scripts/generate-native-core.mjs --check",
+    "verify:self-host-source": "npm run verify:native-source",
+    "verify:example": "node scripts/verify-example.mjs",
+    "annotate:contracts": "npm run verify:strict-contracts",
+    "build:dependencies": "npm --prefix ../debug80/packages/azm run build && npm --prefix ../debug80/packages/debug80-runtime run build",
+    "verify:dependencies": "node scripts/verify-dependencies.mjs",
+    "prepare:proof": "npm run verify:dependencies && npm run build:dependencies",
+    "pretest": "npm run prepare:proof && npm run verify:native-source && npm run verify:cpm22 && npm run verify:cpm22-output-candidates && npm run verify:cpm22-plan-candidates",
+    "test": "node --test test/*.test.mjs",
+    "test:host": "node --test test/host-*.test.mjs",
+    "test:package": "node --test test/host-package.test.mjs",
+    "premeasure": "npm run prepare:proof",
+    "measure": "node test/measure.mjs",
+    "measure:symbols": "node test/measure-symbols.mjs",
+    "measure:tokenizer": "node test/measure-tokenizer.mjs",
+    "measure:parser": "node test/measure-parser.mjs",
+    "measure:expression": "node test/measure-expression.mjs",
+    "measure:integration": "node test/measure-integration.mjs",
+    "measure:output": "node test/measure-output.mjs",
+    "measure:statements": "node test/measure-statements.mjs",
+    "measure:driver": "node test/measure-driver.mjs",
+    "measure:host-native": "node test/measure-host-native.mjs",
+    "measure:self-host": "node test/measure-self-host.mjs",
+    "measure:cpm22": "node test/measure-cpm22.mjs",
+    "measure:cpm22-output-candidates": "node scripts/measure-cpm22-output-candidates.mjs",
+    "measure:cpm22-plan-candidates": "node scripts/measure-cpm22-plan-candidates.mjs",
+    "release:check": "npm test && npm run verify:strict-contracts && node test/measure-host-native.mjs && node test/measure-self-host.mjs",
+    "prepack": "npm run verify:native-source && npm run verify:cpm22",
+    "prepublishOnly": "npm run release:check"
+  },
+  "dependencies": {
+    "@jhlagado/debug80-runtime": "file:../debug80/packages/debug80-runtime"
+  },
+  "devDependencies": {
+    "@jhlagado/azm": "file:../debug80/packages/azm"
+  },
+  "bundledDependencies": [
+    "@jhlagado/debug80-runtime"
+  ],
+  "engines": {
+    "node": ">=20"
+  }
+}

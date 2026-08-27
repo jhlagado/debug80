@@ -1,0 +1,80 @@
+{
+  "name": "Atom authoritative symbolic parser and patch correctness proof",
+  "source": "../native/atom.asm",
+  "nativeCore": "../assets/native-core.json",
+  "memoryProfile": "phase-2e-memory.json",
+  "contracts": "strict through automatic Atom-to-AZM translation",
+  "targetCpu": "Zilog Z80",
+  "proofCapacity": {
+    "sourcePartBytes": 512,
+    "symbolRecords": 16,
+    "pendingRecords": 8,
+    "referencesPerInstruction": 2,
+    "maximumInstructionBytes": 4,
+    "maximumPartOrdinal": 255,
+    "pendingKindMask": 7,
+    "diagnosticAnchorBit": 128
+  },
+  "executionBudgets": {
+    "AtomTokenizerReset": {
+      "measuredInstructions": 24,
+      "maxInstructions": 60,
+      "measuredCycles": 270,
+      "maxCycles": 620
+    },
+    "AtomSymbolReset": {
+      "measuredInstructions": 7,
+      "maxInstructions": 30,
+      "measuredCycles": 99,
+      "maxCycles": 250
+    },
+    "AtomPendingReset": {
+      "measuredInstructions": 5,
+      "maxInstructions": 30,
+      "measuredCycles": 66,
+      "maxCycles": 170
+    },
+    "AtomPackSymbol": {
+      "measuredInstructions": 440,
+      "maxInstructions": 1100,
+      "measuredCycles": 3788,
+      "maxCycles": 9470
+    },
+    "AtomSymbolDeclare": {
+      "measuredInstructions": 131,
+      "maxInstructions": 330,
+      "measuredCycles": 1618,
+      "maxCycles": 4050
+    },
+    "AtomSymbolAdvanceScope": {
+      "measuredInstructions": 24,
+      "maxInstructions": 80,
+      "measuredCycles": 312,
+      "maxCycles": 1000
+    },
+    "AtomParserParse": {
+      "measuredInstructions": 6875,
+      "maxInstructions": 15700,
+      "measuredCycles": 70160,
+      "maxCycles": 158430
+    },
+    "AtomPatchLocate": {
+      "measuredInstructions": 164,
+      "maxInstructions": 410,
+      "measuredCycles": 1397,
+      "maxCycles": 3500
+    },
+    "AtomEncode": {
+      "measuredInstructions": 284,
+      "maxInstructions": 710,
+      "measuredCycles": 2477,
+      "maxCycles": 6200
+    },
+    "AtomParserQueueReferences": {
+      "measuredInstructions": 245,
+      "maxInstructions": 550,
+      "measuredCycles": 2176,
+      "maxCycles": 4850
+    }
+  }
+}

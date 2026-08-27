@@ -1,0 +1,17 @@
+%DEFINE DEBUG 1
+%IF DEBUG
+%INCLUDE "layout.asm"
+%ELSE
+%INCLUDE "release-layout.asm"
+%ENDIF
+
+START:
+    LD B,COUNT
+.LOOP:
+    DJNZ .LOOP
+    JR DONE
+BUFFER:
+    DS 2,0AAH
+    DS 2
+DONE:
+    DW START,MESSAGE

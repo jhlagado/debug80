@@ -1,0 +1,265 @@
+{
+  "addressSpaceBytes": 65536,
+  "regions": [
+    {
+      "name": "encoder-resident",
+      "start": "AtomEncoderCoreStart",
+      "end": "AtomEncoderCoreEnd",
+      "exactBytes": 3132
+    },
+    {
+      "name": "encoder-workspace",
+      "start": "AtomEncoderWorkspaceStart",
+      "end": "AtomEncoderWorkspaceEnd",
+      "exactBytes": 6
+    },
+    {
+      "name": "symbol-code",
+      "start": "AtomSymbolCodeStart",
+      "end": "AtomSymbolCodeEnd",
+      "exactBytes": 732
+    },
+    {
+      "name": "symbol-workspace",
+      "start": "AtomSymbolWorkspaceStart",
+      "end": "AtomSymbolWorkspaceEnd",
+      "exactBytes": 20
+    },
+    {
+      "name": "tokenizer-code",
+      "start": "AtomTokenizerCodeStart",
+      "end": "AtomTokenizerCodeEnd",
+      "exactBytes": 1376
+    },
+    {
+      "name": "tokenizer-workspace",
+      "start": "AtomTokenizerWorkspaceStart",
+      "end": "AtomTokenizerWorkspaceEnd",
+      "exactBytes": 286
+    },
+    {
+      "name": "expression-code",
+      "start": "AtomExpressionCodeStart",
+      "end": "AtomExpressionCodeEnd",
+      "exactBytes": 1877
+    },
+    {
+      "name": "expression-workspace",
+      "start": "AtomExpressionWorkspaceStart",
+      "end": "AtomExpressionWorkspaceEnd",
+      "exactBytes": 263
+    },
+    {
+      "name": "patch-locator",
+      "start": "AtomPatchCodeStart",
+      "end": "AtomPatchCodeEnd",
+      "exactBytes": 67
+    },
+    {
+      "name": "parser-code",
+      "start": "AtomParserCodeStart",
+      "end": "AtomParserCodeEnd",
+      "exactBytes": 2048
+    },
+    {
+      "name": "parser-workspace",
+      "start": "AtomParserWorkspaceStart",
+      "end": "AtomParserWorkspaceEnd",
+      "exactBytes": 92
+    },
+    {
+      "name": "output-code",
+      "start": "AtomOutputCodeStart",
+      "end": "AtomOutputCodeEnd",
+      "exactBytes": 467
+    },
+    {
+      "name": "output-workspace",
+      "start": "AtomOutputWorkspaceStart",
+      "end": "AtomOutputWorkspaceEnd",
+      "exactBytes": 14
+    },
+    {
+      "name": "statement-code",
+      "start": "AtomStatementCodeStart",
+      "end": "AtomStatementCodeEnd",
+      "exactBytes": 1358
+    },
+    {
+      "name": "statement-workspace",
+      "start": "AtomStatementWorkspaceStart",
+      "end": "AtomStatementWorkspaceEnd",
+      "exactBytes": 24
+    },
+    {
+      "name": "driver-code",
+      "start": "AtomDriverCodeStart",
+      "end": "AtomDriverCodeEnd",
+      "exactBytes": 617
+    },
+    {
+      "name": "driver-workspace",
+      "start": "AtomDriverWorkspaceStart",
+      "end": "AtomDriverWorkspaceEnd",
+      "exactBytes": 9
+    },
+    {
+      "name": "host-service-stubs",
+      "start": "AtomHostServiceCodeStart",
+      "end": "AtomHostServiceCodeEnd",
+      "exactBytes": 8
+    },
+    {
+      "name": "resident-free",
+      "start": "AtomHostResidentEnd",
+      "end": 16384,
+      "exactBytes": 3988
+    },
+    {
+      "name": "host-build-descriptor",
+      "start": 16384,
+      "end": 16399,
+      "exactBytes": 15
+    },
+    {
+      "name": "host-build-gap",
+      "start": 16399,
+      "end": 16640,
+      "exactBytes": 241
+    },
+    {
+      "name": "symbol-arena",
+      "start": 16640,
+      "end": 29952,
+      "exactBytes": 13312
+    },
+    {
+      "name": "pending-arena",
+      "start": 29952,
+      "end": 34816,
+      "exactBytes": 4864
+    },
+    {
+      "name": "descriptor-gap",
+      "start": 34816,
+      "end": 36864,
+      "exactBytes": 2048
+    },
+    {
+      "name": "part-descriptors",
+      "start": 36864,
+      "end": 38139,
+      "exactBytes": 1275
+    },
+    {
+      "name": "host-free",
+      "start": 38139,
+      "end": 65024,
+      "exactBytes": 26885
+    },
+    {
+      "name": "proof-stack",
+      "start": 65024,
+      "end": 65280,
+      "exactBytes": 256
+    },
+    {
+      "name": "reserved-top",
+      "start": 65280,
+      "end": 65536,
+      "exactBytes": 256
+    }
+  ],
+  "extents": [
+    {
+      "name": "native-code-and-tables",
+      "sum": [
+        [
+          "AtomEncoderCoreStart",
+          "AtomEncoderCoreEnd"
+        ],
+        [
+          "AtomSymbolCodeStart",
+          "AtomSymbolCodeEnd"
+        ],
+        [
+          "AtomTokenizerCodeStart",
+          "AtomTokenizerCodeEnd"
+        ],
+        [
+          "AtomExpressionCodeStart",
+          "AtomExpressionCodeEnd"
+        ],
+        [
+          "AtomPatchCodeStart",
+          "AtomPatchCodeEnd"
+        ],
+        [
+          "AtomParserCodeStart",
+          "AtomParserCodeEnd"
+        ],
+        [
+          "AtomOutputCodeStart",
+          "AtomOutputCodeEnd"
+        ],
+        [
+          "AtomStatementCodeStart",
+          "AtomStatementCodeEnd"
+        ],
+        [
+          "AtomDriverCodeStart",
+          "AtomDriverCodeEnd"
+        ],
+        [
+          "AtomHostServiceCodeStart",
+          "AtomHostServiceCodeEnd"
+        ]
+      ],
+      "exactBytes": 11682
+    },
+    {
+      "name": "native-fixed-workspace",
+      "sum": [
+        [
+          "AtomEncoderWorkspaceStart",
+          "AtomEncoderWorkspaceEnd"
+        ],
+        [
+          "AtomSymbolWorkspaceStart",
+          "AtomSymbolWorkspaceEnd"
+        ],
+        [
+          "AtomTokenizerWorkspaceStart",
+          "AtomTokenizerWorkspaceEnd"
+        ],
+        [
+          "AtomExpressionWorkspaceStart",
+          "AtomExpressionWorkspaceEnd"
+        ],
+        [
+          "AtomParserWorkspaceStart",
+          "AtomParserWorkspaceEnd"
+        ],
+        [
+          "AtomOutputWorkspaceStart",
+          "AtomOutputWorkspaceEnd"
+        ],
+        [
+          "AtomStatementWorkspaceStart",
+          "AtomStatementWorkspaceEnd"
+        ],
+        [
+          "AtomDriverWorkspaceStart",
+          "AtomDriverWorkspaceEnd"
+        ]
+      ],
+      "exactBytes": 714
+    },
+    {
+      "name": "linked-resident-extent",
+      "start": "AtomEncoderCoreStart",
+      "end": "AtomHostResidentEnd",
+      "exactBytes": 12396
+    }
+  ]
+}

@@ -1,0 +1,121 @@
+{
+  "addressSpaceBytes": 65536,
+  "regions": [
+    {
+      "name": "linked-resident",
+      "start": 0,
+      "end": "AtomHostResidentEnd",
+      "exactBytes": 12396
+    },
+    {
+      "name": "lower-free",
+      "start": "AtomHostResidentEnd",
+      "end": "AtomHarnessInputBefore",
+      "exactBytes": 20371
+    },
+    {
+      "name": "guarded-input",
+      "start": "AtomHarnessInputBefore",
+      "end": 32779,
+      "exactBytes": 12
+    },
+    {
+      "name": "input-output-gap",
+      "start": 32779,
+      "end": "AtomHarnessOutputBefore",
+      "exactBytes": 4
+    },
+    {
+      "name": "guarded-output",
+      "start": "AtomHarnessOutputBefore",
+      "end": 32792,
+      "exactBytes": 9
+    },
+    {
+      "name": "output-text-gap",
+      "start": 32792,
+      "end": "AtomHarnessTextBefore",
+      "exactBytes": 7
+    },
+    {
+      "name": "guarded-text",
+      "start": "AtomHarnessTextBefore",
+      "end": 32810,
+      "exactBytes": 11
+    },
+    {
+      "name": "upper-free",
+      "start": 32810,
+      "end": 65024,
+      "exactBytes": 32214
+    },
+    {
+      "name": "proof-stack",
+      "start": 65024,
+      "end": 65280,
+      "exactBytes": 256
+    },
+    {
+      "name": "reserved-top",
+      "start": 65280,
+      "end": 65536,
+      "exactBytes": 256
+    }
+  ],
+  "extents": [
+    {
+      "name": "linked-resident",
+      "start": "AtomEncoderCoreStart",
+      "end": "AtomHostResidentEnd",
+      "exactBytes": 12396
+    },
+    {
+      "name": "code",
+      "start": "AtomEncoderCodeStart",
+      "end": "AtomEncoderCodeEnd",
+      "exactBytes": 2888
+    },
+    {
+      "name": "immutable",
+      "start": "AtomEncoderImmutableStart",
+      "end": "AtomEncoderImmutableEnd",
+      "exactBytes": 244
+    },
+    {
+      "name": "validation",
+      "start": "AtomValidationCodeStart",
+      "end": "AtomValidationCodeEnd",
+      "exactBytes": 1208
+    },
+    {
+      "name": "rule-encoding",
+      "start": "AtomRuleEncodingCodeStart",
+      "end": "AtomRuleEncodingCodeEnd",
+      "exactBytes": 1444
+    },
+    {
+      "name": "radix40",
+      "start": "AtomRadix40CodeStart",
+      "end": "AtomRadix40CodeEnd",
+      "exactBytes": 177
+    },
+    {
+      "name": "recognition",
+      "start": "AtomRecognitionCodeStart",
+      "end": "AtomRecognitionCodeEnd",
+      "exactBytes": 59
+    },
+    {
+      "name": "ld-validation",
+      "start": "AtomLdValidationStart",
+      "end": "AtomLdValidationEnd",
+      "exactBytes": 359
+    },
+    {
+      "name": "ld-encoding",
+      "start": "AtomLdEncodingStart",
+      "end": "AtomLdEncodingEnd",
+      "exactBytes": 522
+    }
+  ]
+}

@@ -1,0 +1,46 @@
+{
+  "name": "Atom authoritative concrete instruction parser correctness proof",
+  "source": "../native/atom.asm",
+  "nativeCore": "../assets/native-core.json",
+  "memoryProfile": "phase-2c-memory.json",
+  "contracts": "strict through automatic Atom-to-AZM translation",
+  "targetCpu": "Zilog Z80",
+  "proofCapacity": {
+    "sourcePartBytes": 512,
+    "parsedRecordBytes": 10,
+    "maximumInstructionBytes": 4,
+    "instructionAddress": 16384
+  },
+  "executionBudgets": {
+    "AtomSymbolReset": {
+      "measuredInstructions": 7,
+      "maxInstructions": 30,
+      "measuredCycles": 99,
+      "maxCycles": 250
+    },
+    "AtomPendingReset": {
+      "measuredInstructions": 5,
+      "maxInstructions": 30,
+      "measuredCycles": 66,
+      "maxCycles": 170
+    },
+    "AtomTokenizerReset": {
+      "measuredInstructions": 24,
+      "maxInstructions": 60,
+      "measuredCycles": 270,
+      "maxCycles": 620
+    },
+    "AtomParserParse": {
+      "measuredInstructions": 5365,
+      "maxInstructions": 10480,
+      "measuredCycles": 54286,
+      "maxCycles": 101640
+    },
+    "AtomEncode": {
+      "measuredInstructions": 284,
+      "maxInstructions": 710,
+      "measuredCycles": 2477,
+      "maxCycles": 6200
+    }
+  }
+}

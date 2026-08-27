@@ -1,0 +1,135 @@
+{
+  "name": "Atom authoritative statement assembly correctness proof",
+  "source": "../native/atom.asm",
+  "nativeCore": "../assets/native-core.json",
+  "contracts": "strict through automatic Atom-to-AZM translation",
+  "targetCpu": "Zilog Z80",
+  "executionBudgets": {
+    "AtomSymbolReset": {
+      "measuredInstructions": 7,
+      "maxInstructions": 30,
+      "measuredCycles": 99,
+      "maxCycles": 250
+    },
+    "AtomPendingReset": {
+      "measuredInstructions": 5,
+      "maxInstructions": 30,
+      "measuredCycles": 66,
+      "maxCycles": 170
+    },
+    "AtomPackSymbol": {
+      "measuredInstructions": 485,
+      "maxInstructions": 1220,
+      "measuredCycles": 4121,
+      "maxCycles": 10310
+    },
+    "AtomSymbolFind": {
+      "measuredInstructions": 81,
+      "maxInstructions": 210,
+      "measuredCycles": 791,
+      "maxCycles": 1980
+    },
+    "AtomSymbolDeclare": {
+      "measuredInstructions": 78,
+      "maxInstructions": 200,
+      "measuredCycles": 947,
+      "maxCycles": 2370
+    },
+    "AtomSymbolReference": {
+      "measuredInstructions": 76,
+      "maxInstructions": 190,
+      "measuredCycles": 977,
+      "maxCycles": 2400
+    },
+    "AtomSymbolAdvanceScope": {
+      "measuredInstructions": 40,
+      "maxInstructions": 100,
+      "measuredCycles": 490,
+      "maxCycles": 1230
+    },
+    "AtomSymbolDeclareGlobalLabel": {
+      "measuredInstructions": 202,
+      "maxInstructions": 510,
+      "measuredCycles": 2460,
+      "maxCycles": 6150
+    },
+    "AtomPendingAdd": {
+      "measuredInstructions": 42,
+      "maxInstructions": 100,
+      "measuredCycles": 374,
+      "maxCycles": 850
+    },
+    "AtomOutputReset": {
+      "measuredInstructions": 4,
+      "maxInstructions": 20,
+      "measuredCycles": 50,
+      "maxCycles": 130
+    },
+    "AtomPendingCheckCapacity": {
+      "measuredInstructions": 19,
+      "maxInstructions": 50,
+      "measuredCycles": 169,
+      "maxCycles": 430
+    },
+    "AtomOutputCheckCapacity": {
+      "measuredInstructions": 8,
+      "maxInstructions": 30,
+      "measuredCycles": 72,
+      "maxCycles": 180
+    },
+    "AtomOutputEmitByte": {
+      "measuredInstructions": 25,
+      "maxInstructions": 190,
+      "measuredCycles": 247,
+      "maxCycles": 1760
+    },
+    "AtomOutputEmitWord": {
+      "measuredInstructions": 43,
+      "maxInstructions": 360,
+      "measuredCycles": 433,
+      "maxCycles": 3400
+    },
+    "AtomOutputReserve": {
+      "measuredInstructions": 20,
+      "maxInstructions": 50,
+      "measuredCycles": 211,
+      "maxCycles": 530
+    },
+    "AtomOutputSetOrigin": {
+      "measuredInstructions": 3,
+      "maxInstructions": 20,
+      "measuredCycles": 30,
+      "maxCycles": 100
+    },
+    "AtomAssemblePart": {
+      "measuredInstructions": 36463,
+      "maxInstructions": 70700,
+      "measuredCycles": 367630,
+      "maxCycles": 699820
+    },
+    "AtomTokenizerReset": {
+      "measuredInstructions": 24,
+      "maxInstructions": 60,
+      "measuredCycles": 270,
+      "maxCycles": 620
+    },
+    "AtomTokenizerNext": {
+      "measuredInstructions": 305,
+      "maxInstructions": 600,
+      "measuredCycles": 3155,
+      "maxCycles": 6060
+    },
+    "AtomRecognizeMnemonic": {
+      "measuredInstructions": 647,
+      "maxInstructions": 1620,
+      "measuredCycles": 6666,
+      "maxCycles": 16670
+    },
+    "AtomParserParsePublished": {
+      "measuredInstructions": 1459,
+      "maxInstructions": 3400,
+      "measuredCycles": 14729,
+      "maxCycles": 34100
+    }
+  }
+}
