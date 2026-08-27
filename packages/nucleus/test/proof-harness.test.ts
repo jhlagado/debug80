@@ -5,9 +5,9 @@ import { tmpdir } from "node:os";
 
 import { describe, expect, it } from "vitest";
 
+import { prepareNucleusCompilation } from "../src/application.js";
 import { runProofManifest } from "../src/proof.js";
 import { ServiceError, Trap } from "../src/runtime-contract.js";
-import { prepareNucleusSourceParts } from "../src/source-preparation.js";
 import { buildSourceParts } from "../src/source-manifest.js";
 
 const proof = (name: string): string =>
@@ -39,7 +39,7 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
       "src/main.nu": "//% import \"model.nu\"\nsub main()\nend\n",
       "src/model.nu": "const MODEL = 1\n",
     }, async (root) => {
-      const prepared = await prepareNucleusSourceParts({
+      const prepared = await prepareNucleusCompilation({
         root,
         entry: "src/main.nu",
       });
@@ -55,6 +55,10 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
       expect(prepared.project.retainedPathBytes).toBe(
         new TextEncoder().encode("src/model.nu").length +
           new TextEncoder().encode("src/main.nu").length,
+      );
+      expect(prepared.partBanks).toEqual([0, 0]);
+      expect(prepared.totalSourceBytes).toBe(
+        legacyParts.reduce((total, part) => total + part.bytes.length, 0),
       );
     });
   });

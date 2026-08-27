@@ -384,11 +384,18 @@ compares the prepared project with the equivalent flat manifest bytes. This is
 the first high-level consumer moved onto the shared resolver without changing
 the historical proof images.
 
+The application boundary now exposes `prepareNucleusCompilation` from the
+package source index. It returns the resolved source project, the legacy
+`SourcePart[]` adapter shape, the path-keyed `partBanks` array, and the total
+compiler source byte count. This is the handoff shape for future CLI and tool
+callers while the resident compiler still consumes the existing source-part ABI.
+
 ## Next implementation unit
 
-Move the next production-facing Nucleus caller from flat manifest text to
-`prepareNucleusSourceParts`. The safest target is the future Nucleus compiler
-application boundary, because it can accept prepared source parts while still
-feeding the resident compiler unchanged. The compatibility predicate is strict:
-the resolved project must produce the same ordered source bytes, diagnostics,
-and proof outcome as the flat manifest path.
+Wire the first real Nucleus CLI or tool command through
+`prepareNucleusCompilation`. The command should accept a project root and entry
+source, resolve `//% import` dependencies with the shared resolver, and pass the
+returned `sourceParts` and `partBanks` to the existing compiler path unchanged.
+The compatibility predicate is strict: the resolved project must produce the
+same ordered source bytes, diagnostics, and proof outcome as the flat manifest
+path.
