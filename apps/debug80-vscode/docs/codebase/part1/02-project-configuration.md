@@ -33,7 +33,7 @@ New scaffolding and user-facing project setup should still use root `debug80.jso
 
 ## The ProjectConfig type
 
-The config file is parsed into a `ProjectConfig` object, defined in `src/debug/session/types.ts`. The current model is a **versioned manifest** with backwards-compatible support for older root-level fields.
+The config file is parsed into a `ProjectConfig` object, defined in `src/debug/session/types.ts`. The current model is a **versioned project configuration** with backwards-compatible support for older root-level fields.
 
 ```typescript
 interface ProjectConfig {
@@ -72,17 +72,17 @@ interface ProjectConfig {
 }
 ```
 
-### Version 2 manifests
+### Version 2 project files
 
-The current scaffolding path writes a **version 2** manifest. The important additions are:
+The current scaffolding path writes a **version 2** project file. The important additions are:
 
-- `projectVersion: 2` marks the manifest as using the newer model
+- `projectVersion: 2` marks the file as using the newer model
 - `projectPlatform` records the project's baseline platform identity
 - `profiles` define reusable platform-and-bundle baselines
 - `defaultProfile` selects the profile used when a target does not override it
 - `bundledAssets` and profile-level `bundledAssets` can point at extension-shipped ROM, D8 source-map, and source bundles
 
-In practice, the v2 manifest lets the scaffolder create monitor-first projects without hard-coding absolute paths into the starter config. Instead, the config can describe a bundled asset reference and the launch resolver can fall back to the extension-bundled file when the workspace copy is absent.
+In practice, the v2 project file lets the scaffolder create monitor-first projects without hard-coding absolute paths into the starter config. Instead, the config can describe a bundled asset reference and the launch resolver can fall back to the extension-bundled file when the workspace copy is absent.
 
 ### Bundled assets
 
@@ -156,7 +156,7 @@ A typical multi-target config:
 
 In this example, all three targets share the same `tec1g` block at the root — the ROM image and application start address are inherited. Each target specifies its own source file. The `matrix` target is the default.
 
-In the v2 manifest, a target can also point at a named profile:
+In the v2 project file, a target can also point at a named profile:
 
 ```json
 {
@@ -582,7 +582,7 @@ The watcher registration lives in `WorkspaceSelectionController.registerInfrastr
 
 - Three platform config types exist: `SimplePlatformConfig` (memory regions only), `Tec1PlatformConfig` (adds ROM and timing), and `Tec1gPlatformConfig` (adds banking, peripherals, and UI visibility).
 
-- Project scaffolding is now kit-driven. Platform selection happens during initialization, and the scaffold writes a version 2 manifest with profile-level bundled-asset references for monitor-backed kits. Missing workspace assets resolve from the extension bundle at launch; the explicit bundled-assets command copies local files when requested.
+- Project scaffolding is now kit-driven. Platform selection happens during initialization, and the scaffold writes a version 2 project file with profile-level bundled-asset references for monitor-backed kits. Missing workspace assets resolve from the extension bundle at launch; the explicit bundled-assets command copies local files when requested.
 
 - The `Debug80ConfigurationProvider` enables F5-to-debug without a `launch.json` — it resolves root `debug80.json` and the selected target dynamically.
 
