@@ -150,7 +150,7 @@
       "sourceFile": "examples/snake.glim",
       "assembler": "glimmer",
       "glimmer": {
-        "assembler": "azm"
+        "assembler": "atom"
       },
       "asm": "examples/snake.glim",
       "artifactBase": "snake",
@@ -184,7 +184,7 @@
       "sourceFile": "examples/tetro.glim",
       "assembler": "glimmer",
       "glimmer": {
-        "assembler": "azm"
+        "assembler": "atom"
       },
       "asm": "examples/tetro.glim",
       "artifactBase": "tetro",

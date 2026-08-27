@@ -16,6 +16,15 @@ declare module 'atom-z80' {
     maxCycles?: number;
   }): Promise<unknown>;
 
+  export function assembleResolvedAtomProject(
+    project: unknown,
+    options: {
+      target?: { start: number; capacity: number };
+      maxInstructions?: number;
+      maxCycles?: number;
+    },
+  ): Promise<unknown>;
+
   export function renderAtomArtifacts(
     result: unknown,
     options?: { base?: number; entryAddress?: number; fill?: number },

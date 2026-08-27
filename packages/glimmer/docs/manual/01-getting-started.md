@@ -60,9 +60,10 @@ monitor profile, because the TEC-1G examples call MON-3 through
 `RST $10`: `azm --reg-profile mon3 <file>`.
 
 The Atom projection removes this metadata after the same contract check. It
-currently supports single-part programs without AZM layout-type directives.
-Glimmer reports an error instead of emitting partial Atom source when a program
-uses a form that has no Atom equivalent.
+keeps hand-written imported modules as separate source parts, so diagnostics
+and D8 mappings still identify the module file. AZM layout-type directives and
+nested module imports do not yet have Atom equivalents. Glimmer reports an
+error instead of emitting partial Atom source for either form.
 
 ## Your first program
 

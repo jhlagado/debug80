@@ -507,6 +507,8 @@ export function generateAzm(
   }
   op('ret');
 
+  profile.emitTail(ctx);
+
   if (program.imports.length > 0) {
     emit();
     emit('; --- imported AZM modules ---');
@@ -517,8 +519,6 @@ export function generateAzm(
       op(`.import "${importPath}"`);
     }
   }
-
-  profile.emitTail(ctx);
 
   return { source: `${out.join('\n')}\n`, diagnostics };
 }

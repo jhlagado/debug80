@@ -1924,11 +1924,6 @@ GlimEndFrame:
         ld      (Next1),a
         ret
 
-; --- imported AZM modules ---
-; Import names resolve program-wide; bytes land here, outside
-; every execution path. @ labels are the modules' public API.
-        .import "snake-lib.asm"
-
 ; --- sound cues ---
 ; Non-blocking matrix-profile cues. len is row ticks; div is the
 ; speaker divider. Starting a cue replaces the currently active cue.
@@ -2182,6 +2177,11 @@ _done:
         inc     bc
         pop     hl
         ret
+
+; --- imported AZM modules ---
+; Import names resolve program-wide; bytes land here, outside
+; every execution path. @ labels are the modules' public API.
+        .import "snake-lib.asm"
 "
 `;
 
@@ -4205,11 +4205,6 @@ GlimEndFrame:
         ld      (Next2),a
         ret
 
-; --- imported AZM modules ---
-; Import names resolve program-wide; bytes land here, outside
-; every execution path. @ labels are the modules' public API.
-        .import "tetro-lib.asm"
-
 ; --- sound cues ---
 ; Non-blocking matrix-profile cues. len is row ticks; div is the
 ; speaker divider. Starting a cue replaces the currently active cue.
@@ -4485,6 +4480,11 @@ op lcd_row(msg imm16, row imm8)
         ld      c,ApiStringToLcd
         rst     $10
 end
+
+; --- imported AZM modules ---
+; Import names resolve program-wide; bytes land here, outside
+; every execution path. @ labels are the modules' public API.
+        .import "tetro-lib.asm"
 "
 `;
 

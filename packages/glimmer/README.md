@@ -50,9 +50,10 @@ inferred register contracts, assembles to `.hex`/`.bin`/`.d8.json`, and
 rewrites the Debug80 map so **breakpoints and stepping land in your `.glim`
 source** for block bodies while generated glue stays in readable assembly. The
 same pipeline is available through `@jhlagado/glimmer/build` and Debug80's
-Glimmer backend. Atom is available for programs without module imports or AZM
-layout-type directives; the AZM compatibility backend remains available for
-programs that still use those forms.
+Glimmer backend. Atom supports ordered hand-written modules and preserves their
+source identities in D8 maps. The AZM compatibility backend remains available
+for programs that use layout-type directives or other forms without an Atom
+equivalent.
 
 Version 0.4.0 completed the data story: pieces, sprites, tiles, and
 LCD messages are declarations — `shape` rotation groups generate the

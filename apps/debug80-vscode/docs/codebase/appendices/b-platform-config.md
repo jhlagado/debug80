@@ -83,11 +83,11 @@ Z80 source:
 }
 ```
 
-The accepted values are `atom` and `azm`. Atom is the normal choice for
-single-part Glimmer programs that use Atom-compatible declarations. Programs
-with hand-written module imports or AZM layout types currently require `azm`.
-Both paths produce HEX, binary, and D8 artifacts, and both attribute user block
-instructions to the original `.glim` lines.
+The accepted values are `atom` and `azm`. Atom is the normal choice and accepts
+ordered hand-written modules as separate source parts. Programs with AZM layout
+types or nested module imports currently require `azm`. Both paths produce HEX,
+binary, and D8 artifacts, and both attribute user block instructions to the
+original `.glim` lines.
 
 ### AZM options
 

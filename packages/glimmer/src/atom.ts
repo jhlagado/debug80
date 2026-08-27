@@ -16,6 +16,19 @@ interface PreparedSource {
 export interface AtomGenerateResult extends GenerateResult {
   azmSource: string;
   lineOrigins: number[];
+  parts: AtomSourcePart[];
+}
+
+export interface AtomSourcePart {
+  logicalIdentity: string;
+  originalSource: string;
+  source: string;
+  lineOrigins: number[];
+}
+
+export interface AtomImportSource {
+  logicalIdentity: string;
+  source: string;
 }
 
 interface EnumValue {
@@ -220,7 +233,10 @@ function lowerGeneratedOps(source: string): PreparedSource {
   return { source: output.join('\n'), diagnostics: [], lineOrigins };
 }
 
-function normalizeMetadata(source: string): PreparedSource & { enumValues: EnumValue[] } {
+function normalizeMetadata(
+  source: string,
+  allowImports = false,
+): PreparedSource & { enumValues: EnumValue[] } {
   const lowered = lowerGeneratedOps(source);
   if (lowered.diagnostics.length > 0) {
     return { source: '', diagnostics: lowered.diagnostics, enumValues: [] };
@@ -239,13 +255,12 @@ function normalizeMetadata(source: string): PreparedSource & { enumValues: EnumV
       continue;
     }
     if (/^\s*\.import\b/i.test(line)) {
-      diagnostics.push(
-        diagnostic(
-          'Atom emission does not yet support Glimmer module imports; emit ordered source parts before selecting Atom.',
-          lineNumber,
-        ),
-      );
-      lines.push(line);
+      if (!allowImports) {
+        diagnostics.push(
+          diagnostic('Nested AZM module imports have no Atom source projection.', lineNumber),
+        );
+      }
+      lines.push(line.replace(/^(\s*)\.import\b/i, '$1;@IMPORT'));
       lineOrigins.push(lineNumber);
       continue;
     }
@@ -394,43 +409,65 @@ function rewriteCode(
   return output;
 }
 
-function prepareGeneratedSource(source: string): PreparedSource {
-  const normalized = normalizeMetadata(source);
-  if (normalized.diagnostics.length > 0) {
-    return { source: '', diagnostics: normalized.diagnostics, lineOrigins: [] };
-  }
-  const symbols = buildSymbolMap(normalized.source);
+function prepareSourceParts(
+  sources: readonly AtomImportSource[],
+  allowRootImports = false,
+): { parts: AtomSourcePart[]; diagnostics: GlimmerDiagnostic[] } {
+  const normalized = sources.map((part, index) => ({
+    ...normalizeMetadata(part.source, index === 0 && allowRootImports),
+    logicalIdentity: part.logicalIdentity,
+    originalSource: part.source,
+  }));
+  const diagnostics = normalized.flatMap((part) => part.diagnostics);
+  if (diagnostics.length > 0) return { parts: [], diagnostics };
+  const symbols = buildSymbolMap(normalized.map((part) => part.source).join('\n'));
   if (symbols.error !== undefined) {
-    return { source: '', diagnostics: [diagnostic(symbols.error)], lineOrigins: [] };
+    return { parts: [], diagnostics: [diagnostic(symbols.error)] };
   }
   const qualified = new Map(
-    normalized.enumValues.map(({ qualified: name, symbol }) => [name.toUpperCase(), symbol]),
+    normalized
+      .flatMap((part) => part.enumValues)
+      .map(({ qualified: name, symbol }) => [name.toUpperCase(), symbol]),
   );
-  const rewritten = normalized.source
-    .split('\n')
-    .map((line) => {
-      const parts = splitComment(line);
-      return `${rewriteCode(parts.code, symbols.mapping, qualified)}${parts.comment}`;
-    })
-    .join('\n');
-  try {
-    return {
-      source: translateAzmSourceToAtom(rewritten, { sourceName: '<generated-glimmer>' }),
-      diagnostics: [],
-      lineOrigins: normalized.lineOrigins ?? [],
-    };
-  } catch (error) {
-    return {
-      source: '',
-      diagnostics: [
-        diagnostic(
-          `Generated source cannot be represented by Atom: ${sourceMessage(error)}`,
-          sourceLine(error),
-        ),
-      ],
-      lineOrigins: [],
-    };
+  const parts: AtomSourcePart[] = [];
+  for (const part of normalized) {
+    const rewritten = part.source
+      .split('\n')
+      .map((line) => {
+        const lineParts = splitComment(line);
+        return `${rewriteCode(lineParts.code, symbols.mapping, qualified)}${lineParts.comment}`;
+      })
+      .join('\n');
+    try {
+      parts.push({
+        logicalIdentity: part.logicalIdentity,
+        originalSource: part.originalSource,
+        source: translateAzmSourceToAtom(rewritten, { sourceName: part.logicalIdentity }),
+        lineOrigins: part.lineOrigins ?? [],
+      });
+    } catch (error) {
+      return {
+        parts: [],
+        diagnostics: [
+          diagnostic(
+            `${part.logicalIdentity} cannot be represented by Atom: ${sourceMessage(error)}`,
+            sourceLine(error),
+          ),
+        ],
+      };
+    }
   }
+  return { parts, diagnostics: [] };
+}
+
+function prepareGeneratedSource(source: string): PreparedSource {
+  const prepared = prepareSourceParts([{ logicalIdentity: '<generated-glimmer>', source }]);
+  const part = prepared.parts[0];
+  return {
+    source: part?.source ?? '',
+    diagnostics: prepared.diagnostics,
+    lineOrigins: part?.lineOrigins ?? [],
+  };
 }
 
 /**
@@ -441,6 +478,17 @@ export function generateAtom(
   program: GlimmerProgram,
   options: GenerateOptions = {},
 ): GenerateResult {
+  if (program.imports.length > 0) {
+    return {
+      source: '',
+      diagnostics: [
+        diagnostic(
+          'Source-only Atom generation requires the imported module sources.',
+          program.imports[0]?.line ?? 0,
+        ),
+      ],
+    };
+  }
   const generated = generateAzm(program, options);
   if (generated.diagnostics.length > 0) return generated;
   return prepareGeneratedSource(generated.source);
@@ -457,6 +505,7 @@ export function generateAtomProjection(
       diagnostics: generated.diagnostics,
       azmSource: generated.source,
       lineOrigins: [],
+      parts: [],
     };
   }
   const prepared = prepareGeneratedSource(generated.source);
@@ -465,7 +514,64 @@ export function generateAtomProjection(
     diagnostics: prepared.diagnostics,
     azmSource: generated.source,
     lineOrigins: prepared.lineOrigins ?? [],
+    parts:
+      prepared.source === ''
+        ? []
+        : [
+            {
+              logicalIdentity: '<generated-glimmer>',
+              originalSource: generated.source,
+              source: prepared.source,
+              lineOrigins: prepared.lineOrigins ?? [],
+            },
+          ],
   };
 }
 
-export const atomEmissionInternals = Object.freeze({ prepareGeneratedSource });
+export function generateAtomProjectProjection(
+  program: GlimmerProgram,
+  imports: readonly AtomImportSource[],
+  options: GenerateOptions = {},
+): AtomGenerateResult {
+  const generated = generateAzm(program, options);
+  if (generated.diagnostics.length > 0) {
+    return {
+      source: '',
+      diagnostics: generated.diagnostics,
+      azmSource: generated.source,
+      lineOrigins: [],
+      parts: [],
+    };
+  }
+  const expectedImports = [...new Set(program.imports.map((declaration) => declaration.path))];
+  const mismatch = expectedImports.find(
+    (logicalIdentity, index) => imports[index]?.logicalIdentity !== logicalIdentity,
+  );
+  if (mismatch !== undefined || imports.length !== expectedImports.length) {
+    return {
+      source: '',
+      diagnostics: [
+        diagnostic(
+          `Atom project projection requires ordered source for every imported module; expected ${expectedImports.join(', ') || '(none)'}.`,
+        ),
+      ],
+      azmSource: generated.source,
+      lineOrigins: [],
+      parts: [],
+    };
+  }
+  const prepared = prepareSourceParts(
+    [{ logicalIdentity: '<generated-glimmer>', source: generated.source }, ...imports],
+    true,
+  );
+  const root = prepared.parts[0];
+  return {
+    source: root?.source ?? '',
+    diagnostics: prepared.diagnostics,
+    azmSource: generated.source,
+    lineOrigins: root?.lineOrigins ?? [],
+    parts: prepared.parts,
+  };
+}
+
+export const atomEmissionInternals = Object.freeze({ prepareGeneratedSource, prepareSourceParts });

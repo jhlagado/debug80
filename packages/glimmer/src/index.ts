@@ -44,7 +44,14 @@ export {
 } from './parse.js';
 export { loadGlimmerProgram, type LoadOptions } from './load.js';
 export { generateAzm, type GenerateOptions, type GenerateResult } from './generate.js';
-export { generateAtom, generateAtomProjection, type AtomGenerateResult } from './atom.js';
+export {
+  generateAtom,
+  generateAtomProjectProjection,
+  generateAtomProjection,
+  type AtomGenerateResult,
+  type AtomImportSource,
+  type AtomSourcePart,
+} from './atom.js';
 export {
   buildGlimmerProgram,
   computeBlockMappings,

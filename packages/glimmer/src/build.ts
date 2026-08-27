@@ -11,16 +11,16 @@
  * generated assembly for glue.
  */
 
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 
 import { compile } from '@jhlagado/azm/compile';
-import { assembleAtomProject, renderAtomArtifacts } from 'atom-z80';
+import { assembleResolvedAtomProject, renderAtomArtifacts } from 'atom-z80';
 
 import type { EffectDecl, GlimmerDiagnostic, GlimmerProgram, RoutineDecl } from './model.js';
 import { blockEntryLabel } from './emit.js';
-import { generateAtomProjection } from './atom.js';
+import { generateAtomProjectProjection, generateAtomProjection } from './atom.js';
 import { generateAzm } from './generate.js';
 import { loadGlimmerProgram } from './load.js';
 import { profileFor } from './profiles/index.js';
@@ -252,6 +252,52 @@ function hasErrors(diagnostics: readonly BuildDiagnostic[]): boolean {
   return diagnostics.some((diagnostic) => diagnostic.severity === 'error');
 }
 
+function atomImportSources(
+  program: GlimmerProgram,
+  entryPath: string,
+): { sources: Array<{ logicalIdentity: string; source: string }>; diagnostics: BuildDiagnostic[] } {
+  const entryDir = path.dirname(path.resolve(entryPath));
+  const sources: Array<{ logicalIdentity: string; source: string }> = [];
+  const diagnostics: BuildDiagnostic[] = [];
+  const seen = new Set<string>();
+  for (const declaration of program.imports) {
+    if (seen.has(declaration.path)) continue;
+    seen.add(declaration.path);
+    const physical = path.resolve(entryDir, declaration.path);
+    const relative = path.relative(entryDir, physical);
+    if (
+      relative === '' ||
+      relative === '..' ||
+      relative.startsWith(`..${path.sep}`) ||
+      path.isAbsolute(relative)
+    ) {
+      diagnostics.push({
+        severity: 'error',
+        message: `Imported module escapes the Glimmer project root: ${declaration.path}`,
+        sourceName: path.resolve(entryPath),
+        line: declaration.line,
+        code: 'GLIM',
+      });
+      continue;
+    }
+    try {
+      sources.push({
+        logicalIdentity: relative.split(path.sep).join('/'),
+        source: readFileSync(physical, 'utf8'),
+      });
+    } catch (error) {
+      diagnostics.push({
+        severity: 'error',
+        message: `Cannot read imported module ${declaration.path}: ${error instanceof Error ? error.message : String(error)}`,
+        sourceName: path.resolve(entryPath),
+        line: declaration.line,
+        code: 'GLIM',
+      });
+    }
+  }
+  return { sources, diagnostics };
+}
+
 function fromGlimmerDiagnostics(
   diagnostics: readonly GlimmerDiagnostic[],
   entryPath: string,
@@ -377,11 +423,17 @@ export async function buildGlimmerProgram(
 
   const assembler = options.assembler ?? 'azm';
   const generationOptions = options.org === undefined ? {} : { org: options.org };
+  const imports = assembler === 'atom' ? atomImportSources(program, entryPath) : undefined;
   const atomProjection =
-    assembler === 'atom' ? generateAtomProjection(program, generationOptions) : undefined;
+    assembler === 'atom'
+      ? program.imports.length === 0
+        ? generateAtomProjection(program, generationOptions)
+        : generateAtomProjectProjection(program, imports?.sources ?? [], generationOptions)
+      : undefined;
   const generated = atomProjection ?? generateAzm(program, generationOptions);
   const frontEndDiagnostics = [
     ...loadDiagnostics,
+    ...(imports?.diagnostics ?? []),
     ...fromGlimmerDiagnostics(generated.diagnostics, entryPath),
   ];
   if (hasErrors(frontEndDiagnostics)) {
@@ -447,6 +499,11 @@ export async function buildGlimmerProgram(
     const contractPath = path.join(temporary, path.basename(asmPath));
     try {
       writeFileSync(contractPath, contractSource);
+      for (const imported of imports?.sources ?? []) {
+        const destination = path.join(temporary, imported.logicalIdentity);
+        mkdirSync(path.dirname(destination), { recursive: true });
+        writeFileSync(destination, imported.source);
+      }
       const checked = await compile(contractPath, { ...contractOptions, skipAssembly: true });
       return attributed(checked.diagnostics, contractPath);
     } finally {
@@ -475,13 +532,29 @@ export async function buildGlimmerProgram(
     let atomResult: unknown;
     try {
       const start = options.org ?? 0x4000;
-      atomResult = await assembleAtomProject({
-        root: path.dirname(asmPath),
-        entry: path.basename(asmPath),
+      const encoder = new TextEncoder();
+      const project = {
+        parts: (atomProjection?.parts ?? []).map((part, ordinal) => {
+          return {
+            ordinal,
+            bank: 0,
+            logicalIdentity: ordinal === 0 ? path.basename(asmPath) : part.logicalIdentity,
+            // Atom's native ABI reports byte offsets into an equal-length
+            // original/compiler pair. Glimmer retains the physical source and
+            // line origins in the projection, but executes and renders from
+            // this compiler-aligned source view until the host artifact layer
+            // accepts an explicit line map.
+            originalBytes: encoder.encode(part.source),
+            compilerBytes: encoder.encode(part.source),
+          };
+        }),
+      };
+      const assembled = await assembleResolvedAtomProject(project, {
         target: { start, capacity: 0xffff - start },
         maxInstructions: 400_000_000,
         maxCycles: 4_000_000_000,
       });
+      atomResult = { project, ...(assembled as object) };
     } catch (error) {
       return {
         diagnostics: [...frontEndDiagnostics, fromAtomError(error, asmPath)],

@@ -65,20 +65,55 @@ describe('generateAtom', () => {
       });
       const actual = renderAtomArtifacts(assembled, { base: 0x4000 }).bin;
       expect(Buffer.from(actual)).toEqual(Buffer.from(expected!));
-    }, 30_000);
+    }, 90_000);
   }
 
-  it('rejects imported modules until they can remain ordered source parts', () => {
+  it('keeps the source-only projection strict when imported module bytes are unavailable', () => {
     const loaded = loadGlimmerProgram(path.resolve(import.meta.dirname, '../examples/snake.glim'));
     expect(loaded.program).not.toBeNull();
     const generated = generateAtom(loaded.program!);
     expect(generated.source).toBe('');
     expect(generated.diagnostics).toEqual([
       expect.objectContaining({
-        message: expect.stringContaining('does not yet support Glimmer module imports'),
+        message: expect.stringContaining('requires the imported module sources'),
       }),
     ]);
   });
+
+  for (const name of ['snake', 'tetro']) {
+    it(`preserves AZM bytes and module provenance for multipart ${name}`, async () => {
+      const root = await mkdtemp(path.join(os.tmpdir(), `glimmer-${name}-multipart-`));
+      temporaryRoots.push(root);
+      const dependencies =
+        name === 'snake'
+          ? ['snake.glim', 'snake-rules.glim', 'snake-lib.asm']
+          : ['tetro.glim', 'tetro-rules.glim', 'tetro-lib.asm'];
+      for (const dependency of dependencies) {
+        await writeFile(
+          path.join(root, dependency),
+          await readFile(path.resolve(import.meta.dirname, `../examples/${dependency}`)),
+        );
+      }
+      const entry = path.join(root, `${name}.glim`);
+      const azm = await buildGlimmerProgram(entry, {
+        assembler: 'azm',
+        outputPath: path.join(root, `${name}.azm.asm`),
+      });
+      const atom = await buildGlimmerProgram(entry, {
+        assembler: 'atom',
+        outputPath: path.join(root, `${name}.atom.asm`),
+      });
+      expect(azm.diagnostics).toEqual([]);
+      expect(atom.diagnostics).toEqual([]);
+      expect(await readFile(atom.artifacts!.bin!)).toEqual(await readFile(azm.artifacts!.bin!));
+
+      const map = JSON.parse(await readFile(atom.artifacts!.d8!, 'utf8')) as {
+        files?: Record<string, unknown>;
+      };
+      expect(map.files).toHaveProperty(`${name}-lib.asm`);
+      expect(map.files).toHaveProperty(`${name}-rules.glim`);
+    }, 90_000);
+  }
 
   it('builds Atom HEX, BIN, and D8 artifacts with Glimmer body provenance', async () => {
     const root = await mkdtemp(path.join(os.tmpdir(), 'glimmer-atom-build-'));

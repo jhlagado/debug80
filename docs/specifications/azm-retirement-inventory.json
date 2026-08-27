@@ -10,16 +10,6 @@
       "project": "packages/glimmer/corpus/tetro/debug80.json",
       "target": "tetro",
       "blocker": "The source exports @Start and interleaves textual includes with executable code; migration requires a byte-preserving multipart reorganization and shortened identifiers."
-    },
-    {
-      "project": "packages/glimmer/debug80.json",
-      "target": "snake",
-      "blocker": "The generated program imports a hand-written assembly module; Atom emission requires an ordered multipart projection that preserves module identity, source provenance, and byte placement."
-    },
-    {
-      "project": "packages/glimmer/debug80.json",
-      "target": "tetro",
-      "blocker": "The generated program imports a hand-written assembly module; Atom emission requires an ordered multipart projection that preserves module identity, source provenance, and byte placement."
     }
   ]
 }
