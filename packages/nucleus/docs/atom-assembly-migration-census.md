@@ -214,6 +214,15 @@ assembly. It preserves the current textual insertion points while producing
 Atom-preview source for byte comparison. It is not the preferred shape for new
 Nucleus assembly source.
 
+The proof harness also has an explicit `atom-preview` assembler mode. That mode
+uses the compatibility-lowered source produced by the migration tools, assembles
+it with Atom, maps generated Atom symbols back to proof-manifest names, and then
+runs the normal Debug80 proof observations and extent checks. This proves that
+Atom can execute an existing proof image before the underlying source has become
+permanent Atom source. It is deliberately separate from `atom-permanent`, which
+only accepts a real translated Atom source tree and does not flatten late textual
+includes.
+
 ## Remaining permanent-source blockers
 
 The late emitted-content includes are not one uniform problem. Current measured
@@ -251,6 +260,18 @@ the current files use surrounding labels such as `TokenizerCodeStart` /
 `TokenizerCodeEnd` to measure the emitted size of the included module. A safe
 permanent-source rewrite needs those extent symbols to remain byte-equivalent.
 The proof-comparison command is the required guard after each batch.
+
+The current safe convention is therefore:
+
+1. keep compatibility lowering for existing proof-composition files until their
+   section ownership has been made explicit;
+2. allow permanent source to use header-only `%INCLUDE` only when dependency
+   order does not affect placement, or when the included module owns its own
+   `ORG` and extent labels; and
+3. do not place feature `EQU` declarations before includes to control dependency
+   bodies. Put shared build constants in an explicit constants source, or pass
+   them through the host preprocessor environment, so include order has no hidden
+   magic.
 
 Two previously Atom-preview-only proof manifests were promoted by replacing
 direct emitted two-forward-symbol differences with one forward size symbol and a

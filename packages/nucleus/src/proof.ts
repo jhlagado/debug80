@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 
 import { compile } from "@jhlagado/azm/compile";
 import {
@@ -54,6 +55,16 @@ type ProofAssembler =
       readonly entry: string;
       readonly maxInstructions?: number;
       readonly maxCycles?: number;
+    }
+  | {
+      readonly kind: "atom-preview";
+      readonly asmRoot: string;
+      readonly proofRoot: string;
+      readonly entry?: string;
+      readonly maxPartBytes?: number;
+      readonly maxInstructions?: number;
+      readonly maxCycles?: number;
+      readonly legacyOutputOrder?: boolean;
     };
 
 interface MemoryRegionManifest {
@@ -319,6 +330,115 @@ function contentBase(generation: {
   return addresses.length === 0 ? generation.finalCursor : Math.min(...addresses);
 }
 
+async function assembleAtomPreviewProofSource({
+  manifest,
+  sourcePath,
+  manifestDirectory,
+  assembler,
+}: {
+  readonly manifest: ProofManifest;
+  readonly sourcePath: string;
+  readonly manifestDirectory: string;
+  readonly assembler: Extract<ProofAssembler, { readonly kind: "atom-preview" }>;
+}): Promise<{
+  readonly hexText: string;
+  readonly rawSymbols: Readonly<Record<string, number>>;
+}> {
+  const packageRoot = path.dirname(manifestDirectory);
+  const dryRunModule = await import(
+    pathToFileURL(path.join(packageRoot, "scripts", "atom-migration-dry-run.mjs")).href
+  );
+  const compareModule = await import(
+    pathToFileURL(path.join(packageRoot, "scripts", "atom-migration-proof-compare.mjs")).href
+  );
+  const atomModule = await import("atom-z80") as unknown as {
+    assembleResolvedAtomProject: (
+      project: unknown,
+      options: unknown,
+    ) => Promise<{
+      readonly generation: {
+        readonly symbols?: readonly {
+          readonly name: string;
+          readonly value: number;
+        }[];
+      } & Parameters<typeof contentBase>[0];
+    }>;
+    materializeAtomGeneration: (
+      generation: Parameters<typeof contentBase>[0],
+      options: { readonly base: number },
+    ) => unknown;
+    writeIntelHex: (materialized: unknown) => string;
+  };
+
+  const current = await compile(sourcePath, { outputType: "bin" });
+  const diagnostics = current.diagnostics.filter(
+    (diagnostic) => diagnostic.severity === "error",
+  );
+  if (diagnostics.length > 0) {
+    throw new ProofFailure(
+      `${manifest.name}: current assembly failed before Atom-preview lowering\n${diagnostics
+        .map(
+          (diagnostic) =>
+            `  ${diagnostic.sourceName ?? sourcePath}:${diagnostic.line ?? "?"}:${diagnostic.column ?? "?"} ${diagnostic.message}`,
+        )
+        .join("\n")}`,
+    );
+  }
+
+  const report = dryRunModule.scanAssembly({
+    asmRoot: assembler.asmRoot,
+    proofRoot: assembler.proofRoot,
+  });
+  const relativeEntry = assembler.entry ??
+    path.relative(assembler.asmRoot, sourcePath).split(path.sep).join("/");
+  const translated = dryRunModule.flattenTranslatedEntry(report, relativeEntry);
+  const symbolValues = compareModule.symbolValuesFromCurrentAssembly(
+    current,
+    report.ledger,
+  );
+  const augmentedValues = compareModule.augmentSymbolValuesFromPreview(
+    translated,
+    symbolValues,
+  );
+  const lowered = compareModule.lowerResolvedPreviewExpressions(
+    translated,
+    augmentedValues,
+  );
+  const parts = compareModule.previewPartsFromText(relativeEntry, lowered, {
+    maxPartBytes: assembler.maxPartBytes ?? 0xffff,
+  });
+  const assembled = await atomModule.assembleResolvedAtomProject(
+    Object.freeze({ parts }),
+    {
+      target: { start: 0, capacity: 0xffff },
+      maxInstructions: assembler.maxInstructions ?? 200_000_000,
+      maxCycles: assembler.maxCycles ?? 2_000_000_000,
+      nativeMemoryLayout: {
+        symbolStart: 0x4100,
+        symbolEnd: 0xc000,
+        pendingStart: 0xc000,
+        pendingEnd: 0xe000,
+        partDescriptors: 0xe000,
+      },
+      ...(assembler.legacyOutputOrder ?? true
+        ? { sink: compareModule.createLegacyUnorderedMemoryAtomSink() }
+        : {}),
+    },
+  );
+  const materialized = atomModule.materializeAtomGeneration(assembled.generation, {
+    base: contentBase(assembled.generation),
+  });
+  return {
+    hexText: atomModule.writeIntelHex(materialized),
+    rawSymbols: Object.fromEntries(
+      (assembled.generation.symbols ?? []).map(
+        (entry: { readonly name: string; readonly value: number }) =>
+          [entry.name, entry.value] as const,
+      ),
+    ),
+  };
+}
+
 async function assembleProofSource({
   manifest,
   sourcePath,
@@ -333,6 +453,15 @@ async function assembleProofSource({
   readonly hexText: string;
   readonly rawSymbols: Readonly<Record<string, number>>;
 }> {
+  if (assembler?.kind === "atom-preview") {
+    return assembleAtomPreviewProofSource({
+      manifest,
+      sourcePath,
+      manifestDirectory,
+      assembler,
+    });
+  }
+
   if (assembler?.kind === "atom-permanent") {
     const {
       assembleAtomProject,
