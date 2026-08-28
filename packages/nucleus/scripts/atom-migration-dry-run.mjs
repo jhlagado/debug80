@@ -363,6 +363,46 @@ function atomLocalSymbolFor(index) {
   return `.L${index.toString(36).toUpperCase().padStart(5, "0")}`;
 }
 
+function splitSymbolWords(symbol) {
+  return symbol
+    .replace(/([a-z0-9])([A-Z])/g, "$1 $2")
+    .replace(/([A-Za-z])([0-9])/g, "$1 $2")
+    .replace(/([0-9])([A-Za-z])/g, "$1 $2")
+    .split(/[^A-Za-z0-9]+/)
+    .filter((word) => word.length > 0);
+}
+
+function squeezeSymbolWord(word) {
+  const upper = word.toUpperCase();
+  if (upper.length <= 2) return upper;
+  return upper[0] + upper.slice(1).replace(/[AEIOU]/g, "");
+}
+
+function atomAbbreviationBase(symbol) {
+  const words = splitSymbolWords(symbol);
+  const squeezed = words.map(squeezeSymbolWord);
+  const base = squeezed.length === 0
+    ? symbol.toUpperCase().replace(/[^A-Z0-9]/g, "")
+    : squeezed.join("");
+  const normalized = base.replace(/^[0-9]+/, "").replace(/[^A-Z0-9]/g, "");
+  return (normalized === "" ? "N" : normalized).slice(0, 8);
+}
+
+function uniqueAtomAbbreviation(symbol, usedNames) {
+  const base = atomAbbreviationBase(symbol);
+  let candidate = base;
+  for (let index = 0; usedNames.has(candidate.toUpperCase()); index += 1) {
+    const suffix = index.toString(36).toUpperCase();
+    const suffixLength = Math.min(3, suffix.length);
+    candidate = `${base.slice(0, 8 - suffixLength)}${suffix.slice(-suffixLength)}`;
+    if (index > 0xfff) {
+      throw new Error(`could not generate Atom abbreviation for ${symbol}`);
+    }
+  }
+  usedNames.add(candidate.toUpperCase());
+  return candidate;
+}
+
 function symbolMapFromLedger(ledger) {
   return new Map(ledger.map((entry) => [entry.original, entry.atom]));
 }
@@ -429,6 +469,14 @@ function buildPermanentSymbolPlan(symbols, occurrences, proofSymbols) {
     list.sort((left, right) => left.definitions[0].line - right.definitions[0].line || left.original.localeCompare(right.original));
   }
 
+  const anchorDefinitions = (list, nonLocalSymbols) => list
+    .filter((entry) => entry.original.length <= 8 || nonLocalSymbols.has(entry.original))
+    .flatMap((entry) => entry.definitions.map((definition) => ({
+      entry,
+      line: definition.line,
+    })))
+    .sort((left, right) => left.line - right.line || left.entry.original.localeCompare(right.entry.original));
+
   const nonLocalSymbols = new Set();
   const isLocalEligible = (entry) => (
     entry.original.length > 8 &&
@@ -457,25 +505,22 @@ function buildPermanentSymbolPlan(symbols, occurrences, proofSymbols) {
   while (changed) {
     changed = false;
     for (const [file, list] of labelEntriesByFile.entries()) {
-      const anchors = list.filter((entry) => (
-        entry.original.length <= 8 ||
-        nonLocalSymbols.has(entry.original)
-      ));
+      const anchors = anchorDefinitions(list, nonLocalSymbols);
       for (const entry of list) {
         if (!isLocalEligible(entry) || nonLocalSymbols.has(entry.original)) continue;
         const line = entry.definitions[0].line;
         let anchor;
         let nextAnchor;
         for (const candidate of anchors) {
-          const candidateLine = candidate.definitions[0].line;
+          const candidateLine = candidate.line;
           if (candidateLine < line) anchor = candidate;
           if (candidateLine > line) {
             nextAnchor = candidate;
             break;
           }
         }
-        const start = anchor?.definitions[0].line;
-        const end = nextAnchor?.definitions[0].line;
+        const start = anchor?.line;
+        const end = nextAnchor?.line;
         const safe = start !== undefined && (symbolOccurrences.get(entry.original) ?? [])
           .every((occurrence) => occurrence.file === file && lineRangeContains(occurrence.line, start, end));
         if (!safe) {
@@ -488,31 +533,32 @@ function buildPermanentSymbolPlan(symbols, occurrences, proofSymbols) {
 
   const localCounters = new Map();
   const plan = new Map();
+  const usedGlobalNames = new Set(entries
+    .filter((entry) => entry.original.length <= 8)
+    .map((entry) => entry.original.toUpperCase()));
+
   for (const [file, list] of labelEntriesByFile.entries()) {
-    const anchors = list.filter((entry) => (
-      entry.original.length <= 8 ||
-      nonLocalSymbols.has(entry.original)
-    ));
+    const anchors = anchorDefinitions(list, nonLocalSymbols);
     for (const entry of list) {
       if (!isLocalEligible(entry) || nonLocalSymbols.has(entry.original)) continue;
       const line = entry.definitions[0].line;
       let anchor;
       for (const candidate of anchors) {
-        const candidateLine = candidate.definitions[0].line;
+        const candidateLine = candidate.line;
         if (candidateLine < line) anchor = candidate;
         if (candidateLine > line) break;
       }
       if (anchor === undefined) continue;
-      const key = `${file}:${anchor.original}`;
+      const key = `${file}:${anchor.entry.original}:${anchor.line}`;
       const index = localCounters.get(key) ?? 0;
       localCounters.set(key, index + 1);
       plan.set(entry.original, {
         migrationKind: "local-label",
         permanentAtom: atomLocalSymbolFor(index),
         localScope: {
-          anchor: anchor.original,
+          anchor: anchor.entry.original,
           file: path.relative(process.cwd(), file),
-          line: anchor.definitions[0].line,
+          line: anchor.line,
         },
       });
     }
@@ -530,7 +576,7 @@ function buildPermanentSymbolPlan(symbols, occurrences, proofSymbols) {
     }
     plan.set(entry.original, {
       migrationKind,
-      permanentAtom: undefined,
+      permanentAtom: uniqueAtomAbbreviation(entry.original, usedGlobalNames),
       localScope: null,
     });
   }
@@ -759,7 +805,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
         line: entry.definitions[0]?.line,
       });
     }
-    if (entry.migrationKind !== "local-label") {
+    if (entry.migrationKind !== "local-label" && entry.permanentAtom === undefined) {
       const code = entry.migrationKind === "public-abbreviation-required"
         ? "long-symbol-public-abbreviation-required"
         : entry.migrationKind === "cross-file-abbreviation-required"

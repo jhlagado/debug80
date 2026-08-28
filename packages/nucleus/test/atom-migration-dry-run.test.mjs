@@ -115,7 +115,7 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   });
 
-  it("fails on long symbols and assigns deterministic Atom names", async () => {
+  it("assigns deterministic Atom-safe names to long symbols", async () => {
     await withTree({
       "asm/main.asm": [
         ".routine out A,carry clobbers zero",
@@ -133,32 +133,61 @@ describe("Nucleus Atom migration dry-run", () => {
         proofRoot: path.join(root, "proofs"),
       });
 
-      expect(report.status).toBe("blocked");
+      expect(report.status).toBe("ready");
       expect(report.measured.longSymbols).toBe(2);
       expect(report.measured.contractLines).toBe(1);
-      expect(report.ledger.map(({ original, atom, publicObligation }) => ({
+      expect(report.ledger.map(({ original, atom, permanentAtom, publicObligation }) => ({
         original,
         atom,
+        permanentAtom,
         publicObligation,
       }))).toEqual([
         {
           original: "AnotherLongLabel",
           atom: "N0000000",
+          permanentAtom: ".L00000",
           publicObligation: null,
         },
         {
           original: "VeryLongPublicLabel",
           atom: "N0000001",
+          permanentAtom: "VRYLNGPB",
           publicObligation: "proof-manifest",
         },
       ]);
-      expect(report.issues.map(({ code }) => code)).toEqual([
-        "long-symbol-public-abbreviation-required",
-      ]);
+      expect(report.issues.map(({ code }) => code)).toEqual([]);
       expect(report.ledger.find(({ original }) => original === "AnotherLongLabel")).toMatchObject({
         migrationKind: "local-label",
         permanentAtom: ".L00000",
         localScope: expect.objectContaining({ anchor: "VeryLongPublicLabel" }),
+      });
+    });
+  });
+
+  it("does not make a local label cross a repeated global definition boundary", async () => {
+    await withTree({
+      "asm/main.asm": [
+        "GlobalAnchor:",
+        "            JR   SharedLocalReady",
+        "RepeatedLongBoundary:",
+        "            NOP",
+        "RepeatedLongBoundary:",
+        "SharedLocalReady:",
+        "            RET",
+        "",
+      ].join("\n"),
+      "proofs/main.json": JSON.stringify({
+        execution: { entry: "RepeatedLongBoundary" },
+      }),
+    }, async (root) => {
+      const report = scanAssembly({
+        asmRoot: path.join(root, "asm"),
+        proofRoot: path.join(root, "proofs"),
+      });
+
+      expect(report.ledger.find(({ original }) => original === "SharedLocalReady")).toMatchObject({
+        migrationKind: "generated-global",
+        permanentAtom: "SHRDLCLR",
       });
     });
   });
@@ -347,12 +376,9 @@ describe("Nucleus Atom migration dry-run", () => {
         proofRoot: path.join(root, "proofs"),
       });
 
-      expect(report.status).toBe("blocked");
+      expect(report.status).toBe("ready");
       expect(report.measured.proofLimitSymbols).toBe(2);
-      expect(report.issues.map(({ code }) => code)).toEqual([
-        "long-symbol-equ-abbreviation-required",
-        "long-symbol-equ-abbreviation-required",
-      ]);
+      expect(report.issues.map(({ code }) => code)).toEqual([]);
     });
   });
 
@@ -376,7 +402,7 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   });
 
-  it("fails when a generated ledger name collides with an existing short symbol", async () => {
+  it("fails when a generated preview ledger name collides with an existing short symbol", async () => {
     await withTree({
       "asm/main.asm": "N0000000:\nVeryLongLabel:\n",
       "proofs/main.json": "{}",
@@ -426,14 +452,12 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(ledger[0]).toMatchObject({
         original: "LongPublicLabel",
         atom: "N0000000",
+        permanentAtom: "LNGPBLCL",
         publicObligation: "proof-manifest",
       });
       expect(issues).toEqual([
         expect.objectContaining({
           code: "include-after-header",
-        }),
-        expect.objectContaining({
-          code: "long-symbol-public-abbreviation-required",
         }),
       ]);
       expect(includeReport.bySource).toEqual([
@@ -473,7 +497,7 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(result.status).toBe(0);
       await expect(readFile(path.join(translatedRoot, "main.asm"), "utf8")).resolves.toBe([
         ";@ROUTINE OUT A,CARRY CLOBBERS ZERO",
-        "N0000000: ;@NUC-GLOBAL LongPublicLabel",
+        "N0000000: ;@NUC-GLOBAL LongPublicLabel PERMANENT LNGPBLCL",
         "            DB \"LongPublicLabel\"",
         "            JP N0000000 ; LongPublicLabel",
         "",
@@ -507,11 +531,11 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(flattenTranslatedEntry(report, "main.asm")).toBe([
         ";@SOURCE-BEGIN main.asm",
         ";@DEFINE FeatureFlag 1",
-        "N0000001: ;@NUC-GLOBAL MainLongLabel",
+        "N0000001: ;@NUC-GLOBAL MainLongLabel PERMANENT MNLNGLBL",
         ";@IF FeatureFlag 1",
         ";@INCLUDE-BEGIN lib.asmi",
         ";@SOURCE-BEGIN lib.asmi",
-        "N0000000: ;@NUC-GLOBAL LibLongLabel",
+        "N0000000: ;@NUC-GLOBAL LibLongLabel PERMANENT LBLNGLBL",
         "            DB 1",
         "",
         ";@SOURCE-END lib.asmi",

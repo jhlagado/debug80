@@ -28,12 +28,12 @@ Measured files:
 | Source lines | 29,389 |
 | Defined assembler symbols detected | 3,797 |
 | Defined assembler symbols longer than eight characters | 3,764 |
-| Long labels classed as dot-local candidates | 1,350 |
-| Long symbols still needing global treatment | 2,414 |
+| Long labels classed as dot-local candidates | 995 |
+| Long symbols still needing global treatment | 2,769 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
 | Include-after-header violations | 143 |
-| Current dry-run blockers | 2,557 |
+| Current dry-run blockers | 143 |
 
 The source set is large enough that manual renaming without tooling is not credible.
 
@@ -288,31 +288,43 @@ symbols:
 For byte-comparison previews, every long symbol still has a deterministic
 eight-character global name of the form `N0000000`, `N0000001`, and so on. That
 keeps the preview mechanically safe. For permanent source, the tool now
-classifies 1,350 long labels as dot-local candidates. Those labels are defined
+classifies 995 long labels as dot-local candidates. Those labels are defined
 once, are not proof-public, are not referenced from another file, and all their
-detected uses fall inside one surrounding global-label scope.
+detected uses fall inside one surrounding global-label scope. The scope test
+uses every definition of every surrounding global, including repeated
+conditional definitions, because any emitted global label closes the current
+Atom private-label scope.
 
-The remaining 2,414 long symbols still require global treatment:
+The remaining 2,769 long symbols now have deterministic permanent global
+abbreviations. Manual curation is still useful for public names, proof-facing
+names, and heavily read module entry points, but it is no longer a migration
+blocker by itself.
 
 | Kind | Measured count | Required treatment |
 | --- | ---: | --- |
-| Proof-public symbols | 142 | Curated abbreviation plus proof-manifest projection |
-| Cross-file labels | 1,039 | Curated or generated global name, because callers may be outside the local scope |
-| `EQU` constants | 169 | Curated or generated global name; constants do not change Atom private-label scope |
-| Other generated/proof globals | 1,064 | Generated ledger name unless promoted to a readable abbreviation |
+| Proof-public symbols | 142 | Generated abbreviation now; curate where proof manifests or public diagnostics should remain readable |
+| Cross-file labels | 1,039 | Generated global abbreviation, because callers may be outside the local scope |
+| `EQU` constants | 169 | Generated global abbreviation; constants do not change Atom private-label scope |
+| Other generated/proof globals | 1,419 | Generated global abbreviation unless promoted to a clearer human name |
 
 Translated preview source now documents renamed global declarations with
 structured comments:
 
 ```asm
-N0000000: ;@NUC-GLOBAL TargetOutputEmitByte
+N0000000: ;@NUC-GLOBAL TargetOutputEmitByte PERMANENT TRGTOTPT
 ```
 
-Dot-local candidates are not annotated in the generated source. They should be
-short, contextual, and readable at the point of use. The ledger still records
-their original identity and surrounding global scope for proof tooling and
-review, but the assembly source does not need a comment beside every local
-branch target.
+Preview source deliberately continues to use generated `N0000000`-style global
+names for every long symbol. That keeps the temporary flattened proof-comparison
+artifact safe even when a generated source part begins inside a future
+dot-local scope. The `PERMANENT` field records the name to use when the real
+source tree is rewritten into Atom-shaped source parts.
+
+Dot-local candidates are not annotated in permanent source. They should be
+short, contextual, and readable at the point of use. The ledger records their
+original identity and surrounding global scope for proof tooling and review,
+but the assembly source does not need a comment beside every local branch
+target.
 
 The global comments are not assembler semantics. They are there so humans,
 diagnostics, proof tooling, and future D8/source-map generation can recover the
@@ -339,10 +351,13 @@ Recommended shortening policy:
 2. Convert private implementation labels to dot-local labels when all detected
    uses stay inside one surrounding global-label scope.
 3. Keep source labels and proof-export labels in separate namespaces where the proof runner permits it.
-4. Use generated global names only when the source cannot yet justify a readable abbreviation.
+4. Generate deterministic global abbreviations from the original symbol, then add a suffix when needed to avoid case-insensitive collisions.
 5. Regenerate the ledger from source in CI so manual edits cannot create an accidental collision.
 
-No truncation rule is acceptable. Truncation would create silent collisions in exactly the files where proof diagnostics are most important.
+No plain truncation rule is acceptable. Every generated abbreviation must be
+checked against existing short names and earlier generated names, because silent
+collisions would corrupt exactly the files where proof diagnostics are most
+important.
 
 ## Contract metadata
 
