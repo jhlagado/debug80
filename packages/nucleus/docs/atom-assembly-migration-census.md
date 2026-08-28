@@ -124,6 +124,14 @@ as separate entries for the same target label. Atom source represents the
 contract line as `;@ROUTINE ...`; the assembler ignores it, and the host proof
 tool consumes the generated contract map.
 
+The proof harness accepts the generated metadata through
+`runProofManifest(..., { atomMigration })`. That path builds a manifest-facing
+symbol view over an Atom-style assembled symbol table: original proof names can
+resolve through generated preview names or permanent Atom abbreviations, and the
+known `$10000` proof-boundary constants are restored from the proof-limit map.
+The current AZM proof route remains unchanged; this is the join point for
+Atom-built proof images.
+
 For integration work, prefer one consolidated bundle instead of several loose
 files:
 
@@ -480,11 +488,13 @@ Before converting source:
 
 1. Keep extending the converter dry-run ledger and error report for any newly discovered unmapped construct.
 2. Add tests for each newly discovered untranslatable directive, unresolved include, unsupported conditional expression, or long symbol that cannot be classified as local or global.
-3. Integrate the proof-symbol map into the proof harness path that consumes Atom-built images.
-4. Integrate the proof-limit map into the proof harness path that consumes Atom-built images.
-5. Integrate the contract map into the strict register-contract proof path that consumes Atom-built images.
-6. Start permanent source conversion on a small proof image whose source does not require emitted-content include lowering.
-7. Keep emitted-content include lowering as a compatibility path for older proof assembly until those files are reorganized around explicit section ownership.
+3. Feed an Atom-built proof image into `runProofManifest` using the migration
+   metadata symbol view instead of only byte-comparing it externally.
+4. Integrate the contract map into the strict register-contract proof path that
+   consumes Atom-built images.
+5. Expand permanent source conversion beyond the small memory-map proof pilot.
+6. Keep emitted-content include lowering as a compatibility path for older proof
+   assembly until those files are reorganized around explicit section ownership.
 
 ## Pilot results
 

@@ -172,6 +172,25 @@ export interface ProofOutcome {
   readonly nobj?: NobjExecutionOutcome;
 }
 
+export interface NucleusAtomProofSymbolMapEntry {
+  readonly original: string;
+  readonly atom?: string;
+  readonly permanentAtom?: string;
+}
+
+export interface NucleusAtomProofLimitMapEntry {
+  readonly original: string;
+  readonly atom?: string;
+  readonly permanentAtom?: string;
+  readonly value: number;
+  readonly loweredAtomValue?: number;
+}
+
+export interface NucleusAtomProofMigrationMetadata {
+  readonly proofSymbolMap?: readonly NucleusAtomProofSymbolMapEntry[];
+  readonly proofLimitMap?: readonly NucleusAtomProofLimitMapEntry[];
+}
+
 export interface NobjExecutionOutcome {
   readonly serialized: Uint8Array;
   readonly parsed: ParsedNobj;
@@ -203,6 +222,7 @@ export interface RunProofManifestOptions {
   readonly source?: NucleusProofResidentSourceInstallation;
   readonly checkObservations?: boolean;
   readonly sourceProvenance?: SourceProvenanceProofManifest;
+  readonly atomMigration?: NucleusAtomProofMigrationMetadata;
   readonly nobj?: {
     readonly publication?: NucleusTargetPublicationDescriptor;
     readonly materializeOnly?: boolean;
@@ -215,6 +235,61 @@ export class ProofFailure extends Error {
     super(message);
     this.name = "ProofFailure";
   }
+}
+
+const symbolEntry = ([candidate, value]: readonly [string, number]): readonly [
+  string,
+  number,
+] => [candidate.toLowerCase(), value];
+
+export function createProofSymbolView(
+  rawSymbols: Readonly<Record<string, number>>,
+  atomMigration: NucleusAtomProofMigrationMetadata = {},
+): Readonly<Record<string, number>> {
+  const valueByLowerName = new Map(Object.entries(rawSymbols).map(symbolEntry));
+  const symbols: Record<string, number> = { ...rawSymbols };
+
+  const mappedValue = (
+    entry: NucleusAtomProofSymbolMapEntry | NucleusAtomProofLimitMapEntry,
+  ): number | undefined => {
+    for (const name of [entry.original, entry.permanentAtom, entry.atom]) {
+      if (name === undefined) continue;
+      const value = valueByLowerName.get(name.toLowerCase());
+      if (value !== undefined) return value;
+    }
+    return undefined;
+  };
+
+  for (const entry of atomMigration.proofSymbolMap ?? []) {
+    const value = mappedValue(entry);
+    if (value !== undefined) {
+      symbols[entry.original] = value;
+      valueByLowerName.set(entry.original.toLowerCase(), value);
+    }
+  }
+
+  for (const entry of atomMigration.proofLimitMap ?? []) {
+    if (!Number.isInteger(entry.value) || entry.value < 0 || entry.value > 0x10000) {
+      throw new ProofFailure(
+        `invalid Atom proof-limit value for ${entry.original}: ${entry.value}`,
+      );
+    }
+    const value = mappedValue(entry);
+    if (
+      value !== undefined &&
+      entry.loweredAtomValue !== undefined &&
+      value !== entry.loweredAtomValue &&
+      value !== entry.value
+    ) {
+      throw new ProofFailure(
+        `Atom proof-limit ${entry.original} resolved to ${hexWord(value)}, expected lowered ${hexWord(entry.loweredAtomValue)} or proof value ${hexWord(entry.value)}`,
+      );
+    }
+    symbols[entry.original] = entry.value;
+    valueByLowerName.set(entry.original.toLowerCase(), entry.value);
+  }
+
+  return symbols;
 }
 
 const isResolvedResidentCompilerEntry = (
@@ -271,12 +346,13 @@ export async function runProofManifest(
     throw new ProofFailure(`${manifest.name}: AZM omitted HEX or D8M output`);
   }
 
-  const symbols = Object.fromEntries(
+  const assembledSymbols = Object.fromEntries(
     debugMap.json.symbols.flatMap((entry) => {
       const value = entry.address ?? entry.value;
       return value === undefined ? [] : [[entry.name, value] as const];
     }),
   );
+  const symbols = createProofSymbolView(assembledSymbols, options.atomMigration);
   const symbolValue = (name: string): number => {
     const wanted = name.toLowerCase();
     for (const [candidate, value] of Object.entries(symbols)) {

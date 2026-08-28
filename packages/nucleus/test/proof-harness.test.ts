@@ -6,7 +6,7 @@ import { tmpdir } from "node:os";
 import { describe, expect, it } from "vitest";
 
 import { prepareNucleusCompilation } from "../src/application.js";
-import { runProofManifest } from "../src/proof.js";
+import { createProofSymbolView, runProofManifest } from "../src/proof.js";
 import type { NucleusResidentCompilerEntrySymbols } from "../src/resident-compiler-entry.js";
 import { runNucleusProofRuntimeStreamOperations } from "../src/runtime-services.js";
 import { ServiceError, Trap } from "../src/runtime-contract.js";
@@ -48,6 +48,62 @@ async function withSourceTree<T>(
 }
 
 describe("manifest-driven AZM and Debug80 proofs", () => {
+  it("maps Atom-built proof symbols back to manifest-facing names", () => {
+    const symbols = createProofSymbolView(
+      {
+        PRFSTRT: 0x9000,
+        PRFSTAT: 0x9008,
+        ADRSSPCL: 0,
+      },
+      {
+        proofSymbolMap: [
+          {
+            original: "ProofStart",
+            atom: "N0000000",
+            permanentAtom: "PRFSTRT",
+          },
+          {
+            original: "ProofStatus",
+            atom: "N0000001",
+            permanentAtom: "PRFSTAT",
+          },
+        ],
+        proofLimitMap: [
+          {
+            original: "AddressSpaceLimit",
+            atom: "N0000002",
+            permanentAtom: "ADRSSPCL",
+            value: 0x10000,
+            loweredAtomValue: 0,
+          },
+        ],
+      },
+    );
+
+    expect(symbols.ProofStart).toBe(0x9000);
+    expect(symbols.ProofStatus).toBe(0x9008);
+    expect(symbols.AddressSpaceLimit).toBe(0x10000);
+    expect(symbols.PRFSTRT).toBe(0x9000);
+  });
+
+  it("rejects inconsistent Atom proof-limit metadata", () => {
+    expect(() =>
+      createProofSymbolView(
+        { ADRSSPCL: 0x4000 },
+        {
+          proofLimitMap: [
+            {
+              original: "AddressSpaceLimit",
+              permanentAtom: "ADRSSPCL",
+              value: 0x10000,
+              loweredAtomValue: 0,
+            },
+          ],
+        },
+      ),
+    ).toThrow(/expected lowered/);
+  });
+
   it("prepares proof-harness multipart source through the shared resolver", async () => {
     await withSourceTree(
       {
@@ -538,6 +594,37 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     expect(
       outcome.regions.reduce((total, region) => total + region.bytes, 0),
     ).toBe(65_536);
+  });
+
+  it("runs the memory-map proof with Atom migration metadata attached", async () => {
+    const outcome = await runProofManifest(proof("memory-map-proof"), {
+      atomMigration: {
+        proofSymbolMap: [
+          {
+            original: "ProofStart",
+            atom: "N0000000",
+            permanentAtom: "PRFSTRT",
+          },
+          {
+            original: "ProofStatus",
+            atom: "N0000001",
+            permanentAtom: "PRFSTAT",
+          },
+        ],
+        proofLimitMap: [
+          {
+            original: "AddressSpaceLimit",
+            atom: "N0000002",
+            permanentAtom: "ADRSSPCL",
+            value: 0x10000,
+            loweredAtomValue: 0,
+          },
+        ],
+      },
+    });
+
+    expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
+    expect(outcome.symbols.AddressSpaceLimit).toBe(0x10000);
   });
 
   it("compiles the fixed source and rejects a malformed source by position", async () => {
