@@ -54,7 +54,8 @@ The tool can also write machine-readable outputs for the next migration stage:
 ```bash
 npm run atom:migration:census -w nucleus -- \
   --ledger-out build/nucleus-atom-ledger.json \
-  --issues-out build/nucleus-atom-issues.json
+  --issues-out build/nucleus-atom-issues.json \
+  --include-report-out build/nucleus-atom-includes.json
 ```
 
 It can also write a generated Atom-preview assembly tree without modifying the source tree:
@@ -203,6 +204,46 @@ but it is not yet a good permanent source format. Permanent source needs either
 header imports plus a source reorganization that preserves assembled order, or a
 formal Nucleus-specific lowering stage that records where each pasted region
 came from.
+
+The dry-run report groups include-after-header cases by source file and by
+target include. It also classifies each target as layout-only, code, data, or
+mixed code/data. Generate the report with:
+
+```bash
+npm run atom:migration:census -w nucleus -- \
+  --include-report-out build/nucleus-atom-includes.json
+```
+
+The largest current source groups are proof harnesses that include compiler
+modules after an `.ORG` and section label:
+
+| Source file | Measured violations | First line |
+| --- | ---: | ---: |
+| `vertical-slice/flat-target-z80-slice-proof.asm` | 15 | 6 |
+| `vertical-slice/stage7-ll1-aggregate-call-z80-slice-proof.asm` | 13 | 5 |
+| `vertical-slice/stage7-parser-coverage-proof.asmi` | 13 | 5 |
+| `vertical-slice/stage8-failure-z80-slice-proof.asm` | 13 | 5 |
+| `vertical-slice/stage9-conformance-z80-slice-proof.asm` | 13 | 6 |
+| `vertical-slice/aggregate-z80-slice-proof.asm` | 12 | 6 |
+
+The largest current target groups show why this is not a safe blind move:
+
+| Target include | Measured uses | Target class |
+| --- | ---: | --- |
+| `vertical-slice/source-adapter.asm` | 15 | code |
+| `vertical-slice/loop-compiler-state.asmi` | 14 | layout-only |
+| `vertical-slice/loop-keywords.asmi` | 13 | data |
+| `vertical-slice/loop-parser.asm` | 13 | code |
+| `vertical-slice/loop-semantic-sink.asm` | 13 | code |
+| `vertical-slice/loop-symbols.asm` | 13 | code |
+| `vertical-slice/loop-tokenizer.asm` | 13 | mixed code/data |
+
+The first cleanup target should be the layout-only includes, because moving
+constants and state layouts into strict header includes does not emit bytes.
+Executable-code and data-table includes need a separate section-ownership
+decision: either each module owns its own `ORG`/section placement, or the
+compatibility lowering stage remains responsible for preserving the current
+textual insertion point.
 
 The long-term migration still needs one of these implementation paths before
 the source tree itself can become Atom-native:

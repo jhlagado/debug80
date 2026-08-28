@@ -59,6 +59,7 @@ function parseArgs(argv) {
     json: false,
     ledgerOut: undefined,
     issuesOut: undefined,
+    includeReportOut: undefined,
     translatedRoot: undefined,
     flattenEntry: undefined,
     flattenOut: undefined,
@@ -77,6 +78,8 @@ function parseArgs(argv) {
       options.ledgerOut = path.resolve(argv[++index] ?? "");
     } else if (arg === "--issues-out") {
       options.issuesOut = path.resolve(argv[++index] ?? "");
+    } else if (arg === "--include-report-out") {
+      options.includeReportOut = path.resolve(argv[++index] ?? "");
     } else if (arg === "--translated-root") {
       options.translatedRoot = path.resolve(argv[++index] ?? "");
     } else if (arg === "--flatten-entry") {
@@ -104,6 +107,8 @@ Options:
   --json             Print the complete report as JSON.
   --ledger-out FILE  Write the generated long-symbol ledger as JSON.
   --issues-out FILE  Write migration issues as JSON.
+  --include-report-out FILE
+                     Write include-after-header groups and target classes as JSON.
   --translated-root DIR
                      Write generated Atom-preview source files under DIR.
   --flatten-entry FILE
@@ -199,6 +204,65 @@ function resolveConfinedInclude(fromFile, include, root) {
     throw new Error(`include escapes Nucleus source root: ${include}`);
   }
   return resolved;
+}
+
+function classifyIncludeTarget(file) {
+  if (!existsSync(file)) {
+    return Object.freeze({
+      kind: "missing",
+      lines: 0,
+      labels: 0,
+      instructions: 0,
+      dataDirectives: 0,
+      orgDirectives: 0,
+      nestedIncludes: 0,
+    });
+  }
+  let labels = 0;
+  let instructions = 0;
+  let dataDirectives = 0;
+  let orgDirectives = 0;
+  let nestedIncludes = 0;
+  const lines = readFileSync(file, "utf8").split(/\n/);
+  for (const raw of lines) {
+    const code = stripComment(raw.replace(/\r$/, ""));
+    const trimmed = code.trim();
+    if (trimmed === "") continue;
+    if (/^\s*\.include\b/i.test(code)) nestedIncludes += 1;
+    if (/^\s*\.org\b/i.test(code) || /^\s*[A-Za-z_.$?][A-Za-z0-9_.$?]*(?::\s*|\s+)\.org\b/i.test(code)) {
+      orgDirectives += 1;
+    }
+    if (/^\s*\.(?:db|dw|ds)\b/i.test(code) || /^\s*[A-Za-z_.$?][A-Za-z0-9_.$?]*(?::\s*|\s+)\.(?:db|dw|ds)\b/i.test(code)) {
+      dataDirectives += 1;
+    }
+    if (/^\s*[A-Za-z_.$?][A-Za-z0-9_.$?]*:/.test(code)) labels += 1;
+    const instructionCode = code.replace(/^\s*[A-Za-z_.$?][A-Za-z0-9_.$?]*:\s*/, "");
+    if (
+      instructionCode.trim() !== "" &&
+      /^\s*(?:[A-Za-z][A-Za-z0-9]*)\b/.test(instructionCode) &&
+      !/^\s*\.(?:db|dw|ds|equ|include|if|else|endif|org|routine|end)\b/i.test(instructionCode) &&
+      !/^\s*[A-Za-z_.$?][A-Za-z0-9_.$?]*(?::\s*|\s+)\.(?:db|dw|ds|equ|include|if|else|endif|org|routine|end)\b/i.test(instructionCode)
+    ) {
+      instructions += 1;
+    }
+  }
+  let kind = "layout-only";
+  if (instructions > 0 && dataDirectives > 0) {
+    kind = "mixed-code-data";
+  } else if (instructions > 0) {
+    kind = "code";
+  } else if (dataDirectives > 0) {
+    kind = "data";
+  }
+  return Object.freeze({
+    kind,
+    lines: lines.length,
+    labels,
+    instructions,
+    dataDirectives,
+    orgDirectives,
+    nestedIncludes,
+  });
 }
 
 function findAssemblyFilesWithIncludes(asmRoot) {
@@ -434,8 +498,54 @@ function buildPermanentSymbolPlan(symbols, occurrences, proofSymbols) {
   return { plan, symbolOccurrences, crossFileSymbols };
 }
 
+function summarizeIncludeAfterHeader(records, asmRoot) {
+  const bySource = new Map();
+  const byTarget = new Map();
+  for (const record of records) {
+    const source = record.file;
+    const target = record.resolved;
+    const sourceEntry = bySource.get(source) ?? {
+      file: path.relative(asmRoot, source).split(path.sep).join("/"),
+      count: 0,
+      targets: new Map(),
+      firstLine: record.line,
+    };
+    sourceEntry.count += 1;
+    sourceEntry.firstLine = Math.min(sourceEntry.firstLine, record.line);
+    sourceEntry.targets.set(record.include, (sourceEntry.targets.get(record.include) ?? 0) + 1);
+    bySource.set(source, sourceEntry);
+
+    const targetEntry = byTarget.get(target) ?? {
+      include: record.include,
+      resolved: path.relative(asmRoot, target).split(path.sep).join("/"),
+      count: 0,
+      target: record.target,
+      firstUse: {
+        file: path.relative(asmRoot, source).split(path.sep).join("/"),
+        line: record.line,
+      },
+    };
+    targetEntry.count += 1;
+    byTarget.set(target, targetEntry);
+  }
+  return Object.freeze({
+    bySource: Object.freeze([...bySource.values()]
+      .map((entry) => Object.freeze({
+        file: entry.file,
+        count: entry.count,
+        firstLine: entry.firstLine,
+        targets: Object.freeze(Object.fromEntries([...entry.targets.entries()].sort())),
+      }))
+      .sort((left, right) => right.count - left.count || left.file.localeCompare(right.file))),
+    byTarget: Object.freeze([...byTarget.values()]
+      .map((entry) => Object.freeze(entry))
+      .sort((left, right) => right.count - left.count || left.resolved.localeCompare(right.resolved))),
+  });
+}
+
 function scanAssembly({ asmRoot, proofRoot }) {
   const files = findAssemblyFilesWithIncludes(asmRoot);
+  const packageRoot = sourcePackageRoot(asmRoot);
   const proofSymbols = collectProofSymbols(proofRoot);
   const directives = new Map();
   const conditionals = new Map();
@@ -443,6 +553,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
   const symbols = new Map();
   const occurrences = [];
   const issues = [];
+  const includeAfterHeaderRecords = [];
   let sourceLines = 0;
   let contractLines = 0;
   let proofLimitSymbols = 0;
@@ -481,6 +592,15 @@ function scanAssembly({ asmRoot, proofRoot }) {
         if (name === "include") {
           addCount(includes, argument);
           if (includeHeaderClosed) {
+            const resolved = resolveConfinedInclude(file, argument.replace(/^"|"$/g, ""), packageRoot);
+            const target = classifyIncludeTarget(resolved);
+            includeAfterHeaderRecords.push(Object.freeze({
+              file,
+              line: lineNumber,
+              include: argument,
+              resolved,
+              target,
+            }));
             includeAfterHeader += 1;
             issues.push({
               code: "include-after-header",
@@ -648,6 +768,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
       generatedLongSymbolLedger: true,
     },
     includeArguments: includeSummary,
+    includeAfterHeaderReport: summarizeIncludeAfterHeader(includeAfterHeaderRecords, asmRoot),
     preprocessorSymbols: Object.freeze([...preprocessorSymbols].sort()),
     ledger,
     issues,
@@ -1013,6 +1134,9 @@ function printTextReport(report) {
   console.log(`definedSymbols=${report.measured.definedSymbols}`);
   console.log(`longSymbols=${report.measured.longSymbols}`);
   console.log(`contractLines=${report.measured.contractLines}`);
+  console.log(`includeAfterHeader=${report.measured.includeAfterHeader}`);
+  console.log(`localLabelCandidates=${report.measured.localLabelCandidates}`);
+  console.log(`globalSymbolRenames=${report.measured.globalSymbolRenames}`);
   console.log(`issues=${report.issues.length}`);
   if (report.issues.length > 0) {
     console.log("");
@@ -1043,6 +1167,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     }
     if (options.issuesOut !== undefined) {
       writeJsonFile(options.issuesOut, report.issues);
+    }
+    if (options.includeReportOut !== undefined) {
+      writeJsonFile(options.includeReportOut, report.includeAfterHeaderReport);
     }
     if (options.translatedRoot !== undefined) {
       writeTranslatedTree(report, options.translatedRoot);

@@ -225,6 +225,56 @@ describe("Nucleus Atom migration dry-run", () => {
           code: "include-after-header",
         }),
       ]);
+      expect(report.includeAfterHeaderReport.bySource).toEqual([
+        {
+          file: "main.asm",
+          count: 1,
+          firstLine: 2,
+          targets: { "\"late.asmi\"": 1 },
+        },
+      ]);
+      expect(report.includeAfterHeaderReport.byTarget).toEqual([
+        expect.objectContaining({
+          include: "\"late.asmi\"",
+          resolved: "late.asmi",
+          count: 1,
+          target: expect.objectContaining({
+            kind: "layout-only",
+            dataDirectives: 0,
+            instructions: 0,
+          }),
+        }),
+      ]);
+    });
+  });
+
+  it("classifies include-after-header targets by emitted content", async () => {
+    await withTree({
+      "asm/main.asm": [
+        "START:",
+        ".include \"code.asm\"",
+        ".include \"data.asm\"",
+        ".include \"mixed.asm\"",
+        "",
+      ].join("\n"),
+      "asm/code.asm": "CODETARGET:\nRET\n",
+      "asm/data.asm": "DATATARGET:\n.db 1\n",
+      "asm/mixed.asm": "MIXEDTARGET:\nRET\n.db 2\n",
+      "proofs/main.json": "{}",
+    }, async (root) => {
+      const report = scanAssembly({
+        asmRoot: path.join(root, "asm"),
+        proofRoot: path.join(root, "proofs"),
+      });
+
+      expect(report.includeAfterHeaderReport.byTarget.map(({ resolved, target }) => ({
+        resolved,
+        kind: target.kind,
+      })).sort((left, right) => left.resolved.localeCompare(right.resolved))).toEqual([
+        { resolved: "code.asm", kind: "code" },
+        { resolved: "data.asm", kind: "data" },
+        { resolved: "mixed.asm", kind: "mixed-code-data" },
+      ]);
     });
   });
 
@@ -312,15 +362,17 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   });
 
-  it("writes ledger and issue files from the CLI", async () => {
+  it("writes ledger, issue, and include report files from the CLI", async () => {
     await withTree({
-      "asm/main.asm": "LongPublicLabel:\n",
+      "asm/main.asm": "LongPublicLabel:\n.include \"late.asmi\"\n",
+      "asm/late.asmi": "LV .equ 1\n",
       "proofs/main.json": JSON.stringify({
         execution: { entry: "LongPublicLabel" },
       }),
     }, async (root) => {
       const ledgerPath = path.join(root, "out", "ledger.json");
       const issuesPath = path.join(root, "out", "issues.json");
+      const includeReportPath = path.join(root, "out", "includes.json");
       const result = spawnSync(process.execPath, [
         dryRunScript,
         "--asm-root",
@@ -331,11 +383,14 @@ describe("Nucleus Atom migration dry-run", () => {
         ledgerPath,
         "--issues-out",
         issuesPath,
+        "--include-report-out",
+        includeReportPath,
       ], { encoding: "utf8" });
 
       expect(result.status).toBe(1);
       const ledger = JSON.parse(await readFile(ledgerPath, "utf8"));
       const issues = JSON.parse(await readFile(issuesPath, "utf8"));
+      const includeReport = JSON.parse(await readFile(includeReportPath, "utf8"));
       expect(ledger).toHaveLength(1);
       expect(ledger[0]).toMatchObject({
         original: "LongPublicLabel",
@@ -344,7 +399,16 @@ describe("Nucleus Atom migration dry-run", () => {
       });
       expect(issues).toEqual([
         expect.objectContaining({
+          code: "include-after-header",
+        }),
+        expect.objectContaining({
           code: "long-symbol-public-abbreviation-required",
+        }),
+      ]);
+      expect(includeReport.bySource).toEqual([
+        expect.objectContaining({
+          file: "main.asm",
+          count: 1,
         }),
       ]);
     });
