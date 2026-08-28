@@ -40,6 +40,10 @@ Measured files:
 | Proof-manifest symbol mappings | 146 |
 | One-past-address-space proof-limit mappings | 4 |
 | Routine contract metadata mappings | 709 |
+| Proof manifests classified | 29 |
+| Atom permanent-ready proof manifests | 3 |
+| Proof manifests blocked by late emitted-content includes | 23 |
+| Measurement-artifact proof manifests | 3 |
 
 The source set is large enough that manual renaming without tooling is not credible.
 
@@ -124,6 +128,19 @@ as separate entries for the same target label. Atom source represents the
 contract line as `;@ROUTINE ...`; the assembler ignores it, and the host proof
 tool consumes the generated contract map.
 
+It can also write the proof selection matrix:
+
+```bash
+npm run atom:migration:census -w nucleus -- \
+  --proof-matrix-out build/nucleus-atom-proof-matrix.json
+```
+
+Current measurement: three proof manifests are ready for permanent Atom-source
+execution now (`memory-map-proof`, `nobj-runner-proof`, and
+`source-provenance-proof`), twenty-three are blocked by late emitted-content
+includes, and three dispatcher measurement manifests remain measurement
+artifacts rather than proof-image migration targets.
+
 The proof harness accepts the generated metadata through
 `runProofManifest(..., { atomMigration })`. That path builds a manifest-facing
 symbol view over an Atom-style assembled symbol table: original proof names can
@@ -163,7 +180,8 @@ npm run atom:migration:census -w nucleus -- \
 
 The bundle uses schema `nucleus-atom-migration/v1` and contains the readiness
 split, measurements, issue list, include report, long-symbol ledger,
-proof-symbol map, proof-limit map, and routine-contract map.
+proof-symbol map, proof-limit map, routine-contract map, and proof selection
+matrix.
 
 For proof images that still depend on AZM-style textual includes, the tool can
 also lower a single entry into one generated Atom-preview source file:

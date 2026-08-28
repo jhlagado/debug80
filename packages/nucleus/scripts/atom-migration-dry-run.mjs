@@ -62,6 +62,7 @@ function parseArgs(argv) {
     includeReportOut: undefined,
     proofSymbolMapOut: undefined,
     proofLimitMapOut: undefined,
+    proofMatrixOut: undefined,
     contractMapOut: undefined,
     migrationBundleOut: undefined,
     translatedRoot: undefined,
@@ -89,6 +90,8 @@ function parseArgs(argv) {
       options.proofSymbolMapOut = path.resolve(argv[++index] ?? "");
     } else if (arg === "--proof-limit-map-out") {
       options.proofLimitMapOut = path.resolve(argv[++index] ?? "");
+    } else if (arg === "--proof-matrix-out") {
+      options.proofMatrixOut = path.resolve(argv[++index] ?? "");
     } else if (arg === "--contract-map-out") {
       options.contractMapOut = path.resolve(argv[++index] ?? "");
     } else if (arg === "--migration-bundle-out") {
@@ -131,6 +134,8 @@ Options:
                      Write proof-manifest symbol remapping as JSON.
   --proof-limit-map-out FILE
                      Write one-past-address-space proof limit symbols as JSON.
+  --proof-matrix-out FILE
+                     Write per-proof Atom migration readiness as JSON.
   --contract-map-out FILE
                      Write AZM .ROUTINE metadata mapped to Atom routine labels as JSON.
   --migration-bundle-out FILE
@@ -378,6 +383,119 @@ function collectProofSymbols(root) {
     collectStrings(value, symbols);
   }
   return symbols;
+}
+
+function readProofManifests(proofRoot, asmRoot) {
+  if (!existsSync(proofRoot)) return [];
+  return globSync("**/*.json", { cwd: proofRoot })
+    .filter((name) => name !== "atom-migration-preview-budgets.json")
+    .sort()
+    .flatMap((name) => {
+      const file = path.join(proofRoot, name);
+      const manifest = JSON.parse(readFileSync(file, "utf8"));
+      if (typeof manifest.source !== "string") return [];
+      const source = path.resolve(path.dirname(file), manifest.source);
+      return [Object.freeze({
+        name,
+        file,
+        source,
+        entry: path.relative(asmRoot, source).split(path.sep).join("/"),
+      })];
+    });
+}
+
+function isMeasurementProof(proof) {
+  return proof.name.includes("measurement") || proof.entry.includes("measurement");
+}
+
+function dependencyClosure(entry, root, seen = new Set()) {
+  const resolved = path.resolve(entry);
+  if (seen.has(resolved)) return [];
+  seen.add(resolved);
+  if (!existsSync(resolved)) return [resolved];
+  const dependencies = [resolved];
+  for (const raw of readFileSync(resolved, "utf8").split(/\n/)) {
+    const include = includeSpecifier(stripComment(raw.replace(/\r$/, "")));
+    if (include === undefined) continue;
+    dependencies.push(...dependencyClosure(resolveConfinedInclude(resolved, include, root), root, seen));
+  }
+  return dependencies;
+}
+
+function proofSelectionStatus({ proof, files, issueByFile, globalIssues, contractFiles, includeAfterHeaderFiles }) {
+  if (isMeasurementProof(proof)) {
+    return Object.freeze({ status: "measurement-artifact", blockers: [] });
+  }
+  const blockers = [];
+  const fileSet = new Set(files);
+  const lateIncludeBlockers = files
+    .filter((file) => includeAfterHeaderFiles.has(file))
+    .flatMap((file) => issueByFile.get(file) ?? [])
+    .filter((issue) => issue.code === "include-after-header");
+  if (lateIncludeBlockers.length > 0) {
+    blockers.push(...lateIncludeBlockers);
+  }
+  const otherIssues = files
+    .flatMap((file) => issueByFile.get(file) ?? [])
+    .filter((issue) => issue.code !== "include-after-header");
+  otherIssues.push(...globalIssues);
+  if (otherIssues.length > 0) {
+    blockers.push(...otherIssues);
+  }
+  const hasContracts = [...contractFiles].some((file) => fileSet.has(file));
+  if (lateIncludeBlockers.length > 0) {
+    return Object.freeze({ status: "blocked-by-late-emitted-include", blockers });
+  }
+  if (otherIssues.length > 0) {
+    return Object.freeze({ status: "blocked-by-other", blockers });
+  }
+  if (hasContracts) {
+    return Object.freeze({ status: "blocked-by-contract-support", blockers });
+  }
+  return Object.freeze({ status: "atom-permanent-ready", blockers });
+}
+
+function buildProofSelectionMatrix({ proofRoot, asmRoot, packageRoot, issues, includeAfterHeaderRecords, contractMap }) {
+  const issueByFile = new Map();
+  const globalIssues = [];
+  for (const issue of issues) {
+    if (issue.file === undefined) {
+      globalIssues.push(issue);
+      continue;
+    }
+    const file = path.resolve(process.cwd(), issue.file);
+    const list = issueByFile.get(file) ?? [];
+    list.push(issue);
+    issueByFile.set(file, list);
+  }
+  const includeAfterHeaderFiles = new Set(includeAfterHeaderRecords.map((record) => path.resolve(record.file)));
+  const contractFiles = new Set(contractMap.map((entry) => path.resolve(asmRoot, entry.file)));
+  return Object.freeze(readProofManifests(proofRoot, asmRoot).map((proof) => {
+    const files = dependencyClosure(proof.source, packageRoot);
+    const selection = proofSelectionStatus({
+      proof,
+      files,
+      issueByFile,
+      globalIssues,
+      contractFiles,
+      includeAfterHeaderFiles,
+    });
+    return Object.freeze({
+      proof: proof.name,
+      entry: proof.entry,
+      status: selection.status,
+      sourceFiles: Object.freeze(files.map((file) => path.relative(asmRoot, file).split(path.sep).join("/"))),
+      blockers: Object.freeze(selection.blockers.map((issue) => Object.freeze({
+        code: issue.code,
+        file: issue.file,
+        line: issue.line,
+        message: issue.message,
+      }))),
+      contractSupport: contractFiles.has(proof.source) || files.some((file) => contractFiles.has(file))
+        ? "requires-external-contract-check"
+        : "not-required",
+    });
+  }));
 }
 
 function collectStrings(value, symbols) {
@@ -886,6 +1004,20 @@ function scanAssembly({ asmRoot, proofRoot }) {
       })];
     });
   }));
+  const proofMatrix = buildProofSelectionMatrix({
+    proofRoot,
+    asmRoot,
+    packageRoot,
+    issues,
+    includeAfterHeaderRecords,
+    contractMap,
+  });
+  const proofMatrixSummary = Object.freeze(Object.fromEntries(
+    [...proofMatrix.reduce((counts, entry) => {
+      counts.set(entry.status, (counts.get(entry.status) ?? 0) + 1);
+      return counts;
+    }, new Map()).entries()].sort(),
+  ));
 
   const caseGroups = new Map();
   for (const symbol of symbols.keys()) {
@@ -968,6 +1100,8 @@ function scanAssembly({ asmRoot, proofRoot }) {
       proofSymbolMappings: proofSymbolMap.length,
       proofLimitMappings: proofLimitMap.length,
       contractMappings: contractMap.length,
+      proofManifests: proofMatrix.length,
+      proofMatrix: proofMatrixSummary,
     },
     supportedMappings: {
       mechanicalDirectives: [...mechanicalDirectives].sort(),
@@ -982,6 +1116,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
     proofSymbolMap,
     proofLimitMap,
     contractMap,
+    proofMatrix,
     ledger,
     issues,
   };
@@ -1356,6 +1491,10 @@ function printTextReport(report) {
   console.log(`proofSymbolMappings=${report.measured.proofSymbolMappings}`);
   console.log(`proofLimitMappings=${report.measured.proofLimitMappings}`);
   console.log(`contractMappings=${report.measured.contractMappings}`);
+  console.log(`proofManifests=${report.measured.proofManifests}`);
+  for (const [status, count] of Object.entries(report.measured.proofMatrix)) {
+    console.log(`proofMatrix.${status}=${count}`);
+  }
   console.log(`issues=${report.issues.length}`);
   if (report.issues.length > 0) {
     console.log("");
@@ -1396,6 +1535,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     }
     if (options.proofLimitMapOut !== undefined) {
       writeJsonFile(options.proofLimitMapOut, report.proofLimitMap);
+    }
+    if (options.proofMatrixOut !== undefined) {
+      writeJsonFile(options.proofMatrixOut, report.proofMatrix);
     }
     if (options.contractMapOut !== undefined) {
       writeJsonFile(options.contractMapOut, report.contractMap);

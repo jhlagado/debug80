@@ -202,7 +202,7 @@ describe("Nucleus Atom migration dry-run", () => {
         "            RET",
         "",
       ].join("\n"),
-      "proofs/main.json": "{}",
+      "proofs/main.json": JSON.stringify({ source: "../asm/main.asm" }),
     }, async (root) => {
       const report = scanAssembly({
         asmRoot: path.join(root, "asm"),
@@ -237,7 +237,7 @@ describe("Nucleus Atom migration dry-run", () => {
         "            RET",
         "",
       ].join("\n"),
-      "proofs/main.json": "{}",
+      "proofs/main.json": JSON.stringify({ source: "../asm/main.asm" }),
     }, async (root) => {
       const report = scanAssembly({
         asmRoot: path.join(root, "asm"),
@@ -310,7 +310,7 @@ describe("Nucleus Atom migration dry-run", () => {
   it("fails on numeric literals outside Atom's expression range", async () => {
     await withTree({
       "asm/main.asm": "Limit EQU $10000\n",
-      "proofs/main.json": "{}",
+      "proofs/main.json": JSON.stringify({ source: "../asm/main.asm" }),
     }, async (root) => {
       const report = scanAssembly({
         asmRoot: path.join(root, "asm"),
@@ -329,14 +329,25 @@ describe("Nucleus Atom migration dry-run", () => {
           message: "numeric literal $10000 exceeds Atom's 16-bit expression range",
         }),
       ]);
+      expect(report.proofMatrix).toEqual([
+        expect.objectContaining({
+          proof: "main.json",
+          status: "blocked-by-other",
+          blockers: [
+            expect.objectContaining({
+              code: "atom-expression-range",
+            }),
+          ],
+        }),
+      ]);
     });
   });
 
   it("fails on includes after the source header has closed", async () => {
     await withTree({
       "asm/main.asm": "ORG $1000\n.include \"late.asmi\"\n",
-      "asm/late.asmi": "VALUE .equ 1\n",
-      "proofs/main.json": "{}",
+      "asm/late.asmi": "            RET\n",
+      "proofs/main.json": JSON.stringify({ source: "../asm/main.asm" }),
     }, async (root) => {
       const report = scanAssembly({
         asmRoot: path.join(root, "asm"),
@@ -370,12 +381,60 @@ describe("Nucleus Atom migration dry-run", () => {
           resolved: "late.asmi",
           count: 1,
           target: expect.objectContaining({
-            kind: "layout-only",
+            kind: "code",
             dataDirectives: 0,
-            instructions: 0,
+            instructions: 1,
           }),
         }),
       ]);
+      expect(report.proofMatrix).toEqual([
+        expect.objectContaining({
+          proof: "main.json",
+          status: "blocked-by-late-emitted-include",
+          blockers: [
+            expect.objectContaining({
+              code: "include-after-header",
+            }),
+          ],
+        }),
+      ]);
+    });
+  });
+
+  it("classifies proof manifests for permanent Atom execution readiness", async () => {
+    await withTree({
+      "asm/ready.asm": "ReadyStart:\n            HALT\n",
+      "asm/contract.asm": ".routine out A\nContractStart:\n            RET\n",
+      "asm/late.asm": "LateStart:\n            .include \"frag.asmi\"\n",
+      "asm/frag.asmi": "            RET\n",
+      "asm/bad.asm": "BadStart EQU $10000\n",
+      "asm/measurement.asm": "MeasureStart:\n            HALT\n",
+      "proofs/ready.json": JSON.stringify({ source: "../asm/ready.asm" }),
+      "proofs/contract.json": JSON.stringify({ source: "../asm/contract.asm" }),
+      "proofs/late.json": JSON.stringify({ source: "../asm/late.asm" }),
+      "proofs/bad.json": JSON.stringify({ source: "../asm/bad.asm" }),
+      "proofs/dispatcher-measurement.json": JSON.stringify({ source: "../asm/measurement.asm" }),
+    }, async (root) => {
+      const report = scanAssembly({
+        asmRoot: path.join(root, "asm"),
+        proofRoot: path.join(root, "proofs"),
+      });
+      const statuses = Object.fromEntries(report.proofMatrix.map((entry) => [entry.proof, entry.status]));
+
+      expect(statuses).toEqual({
+        "bad.json": "blocked-by-other",
+        "contract.json": "blocked-by-contract-support",
+        "dispatcher-measurement.json": "measurement-artifact",
+        "late.json": "blocked-by-late-emitted-include",
+        "ready.json": "atom-permanent-ready",
+      });
+      expect(report.measured.proofMatrix).toEqual({
+        "atom-permanent-ready": 1,
+        "blocked-by-contract-support": 1,
+        "blocked-by-late-emitted-include": 1,
+        "blocked-by-other": 1,
+        "measurement-artifact": 1,
+      });
     });
   });
 
@@ -540,8 +599,9 @@ describe("Nucleus Atom migration dry-run", () => {
   it("writes ledger, issue, and include report files from the CLI", async () => {
     await withTree({
       "asm/main.asm": "LongPublicLabel:\n.include \"late.asmi\"\n",
-      "asm/late.asmi": "LV .equ 1\n",
+      "asm/late.asmi": "            RET\n",
       "proofs/main.json": JSON.stringify({
+        source: "../asm/main.asm",
         execution: { entry: "LongPublicLabel" },
       }),
     }, async (root) => {
@@ -550,6 +610,7 @@ describe("Nucleus Atom migration dry-run", () => {
       const includeReportPath = path.join(root, "out", "includes.json");
       const proofSymbolMapPath = path.join(root, "out", "proof-symbols.json");
       const proofLimitMapPath = path.join(root, "out", "proof-limits.json");
+      const proofMatrixPath = path.join(root, "out", "proof-matrix.json");
       const contractMapPath = path.join(root, "out", "contracts.json");
       const migrationBundlePath = path.join(root, "out", "migration-bundle.json");
       const result = spawnSync(process.execPath, [
@@ -568,6 +629,8 @@ describe("Nucleus Atom migration dry-run", () => {
         proofSymbolMapPath,
         "--proof-limit-map-out",
         proofLimitMapPath,
+        "--proof-matrix-out",
+        proofMatrixPath,
         "--contract-map-out",
         contractMapPath,
         "--migration-bundle-out",
@@ -580,6 +643,7 @@ describe("Nucleus Atom migration dry-run", () => {
       const includeReport = JSON.parse(await readFile(includeReportPath, "utf8"));
       const proofSymbolMap = JSON.parse(await readFile(proofSymbolMapPath, "utf8"));
       const proofLimitMap = JSON.parse(await readFile(proofLimitMapPath, "utf8"));
+      const proofMatrix = JSON.parse(await readFile(proofMatrixPath, "utf8"));
       const contractMap = JSON.parse(await readFile(contractMapPath, "utf8"));
       const migrationBundle = JSON.parse(await readFile(migrationBundlePath, "utf8"));
       expect(ledger).toHaveLength(1);
@@ -608,6 +672,12 @@ describe("Nucleus Atom migration dry-run", () => {
         }),
       ]);
       expect(proofLimitMap).toEqual([]);
+      expect(proofMatrix).toEqual([
+        expect.objectContaining({
+          proof: "main.json",
+          status: "blocked-by-late-emitted-include",
+        }),
+      ]);
       expect(contractMap).toEqual([]);
       expect(migrationBundle).toMatchObject({
         schema: "nucleus-atom-migration/v1",
@@ -623,6 +693,7 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(migrationBundle.includeAfterHeaderReport).toEqual(includeReport);
       expect(migrationBundle.proofSymbolMap).toEqual(proofSymbolMap);
       expect(migrationBundle.proofLimitMap).toEqual(proofLimitMap);
+      expect(migrationBundle.proofMatrix).toEqual(proofMatrix);
       expect(migrationBundle.contractMap).toEqual(contractMap);
     });
   });
