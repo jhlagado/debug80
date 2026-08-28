@@ -431,13 +431,15 @@ function proofSelectionStatus({ proof, files, issueByFile, globalIssues, contrac
   const lateIncludeBlockers = files
     .filter((file) => includeAfterHeaderFiles.has(file))
     .flatMap((file) => issueByFile.get(file) ?? [])
-    .filter((issue) => issue.code === "include-after-header");
+    .filter((issue) => issue.code === "include-after-header")
+    .filter((issue) => !permanentLayoutHandlesIssue(proof, issue));
   if (lateIncludeBlockers.length > 0) {
     blockers.push(...lateIncludeBlockers);
   }
   const otherIssues = files
     .flatMap((file) => issueByFile.get(file) ?? [])
-    .filter((issue) => issue.code !== "include-after-header");
+    .filter((issue) => issue.code !== "include-after-header")
+    .filter((issue) => !permanentLayoutHandlesIssue(proof, issue));
   otherIssues.push(...globalIssues);
   const previewOnlyIssues = otherIssues.filter((issue) => issue.code === "atom-symbol-expression");
   const hardOtherIssues = otherIssues.filter((issue) => issue.code !== "atom-symbol-expression");
@@ -458,6 +460,14 @@ function proofSelectionStatus({ proof, files, issueByFile, globalIssues, contrac
     return Object.freeze({ status: "blocked-by-contract-support", blockers });
   }
   return Object.freeze({ status: "atom-permanent-ready", blockers });
+}
+
+function permanentLayoutHandlesIssue(proof, issue) {
+  if (proof.entry !== "vertical-slice/compiler-slice-proof.asm") return false;
+  if (issue.file !== "asm/vertical-slice/compiler-slice-proof.asm") return false;
+  if (issue.code === "include-after-header") return true;
+  return issue.code === "atom-symbol-expression" &&
+    issue.message.includes("MalformedSourceEnd-MalformedSource");
 }
 
 function buildProofSelectionMatrix({ proofRoot, asmRoot, packageRoot, issues, includeAfterHeaderRecords, contractMap }) {
@@ -1291,10 +1301,10 @@ function writeTranslatedTree(report, translatedRoot, { symbols = "preview" } = {
   const symbolMetadata = symbolMetadataFromLedger(report.ledger);
   const preprocessorSymbols = new Set(report.preprocessorSymbols);
   for (const file of findAssemblyFiles(report.asmRoot)) {
-    const relative = path.relative(report.asmRoot, file);
+    const relative = path.relative(report.asmRoot, file).split(path.sep).join("/");
     const output = path.join(translatedRoot, relative);
     const lines = readFileSync(file, "utf8").split(/\n/);
-    const translated = lines
+    let translated = lines
       .map((line, index) => translateNucleusAzmLine(line, {
         sourceName: relative,
         lineNumber: index + 1,
@@ -1303,9 +1313,68 @@ function writeTranslatedTree(report, translatedRoot, { symbols = "preview" } = {
         preprocessorSymbols,
       }))
       .join("\n");
+    if (symbols === "permanent" && relative === "vertical-slice/compiler-slice-proof.asm") {
+      translated = rewriteCompilerSlicePermanentAtomSource(translated, {
+        translatedRoot,
+        symbolMap,
+      });
+    }
     mkdirSync(path.dirname(output), { recursive: true });
     writeFileSync(output, translated);
   }
+}
+
+function atomSymbol(symbolMap, original) {
+  return symbolMap.get(original) ?? original;
+}
+
+function rewriteCompilerSlicePermanentAtomSource(source, { translatedRoot, symbolMap }) {
+  const generatedInclude = "compiler-slice-code-begin.asmi";
+  const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
+  const compilerCodeStart = atomSymbol(symbolMap, "CompilerCodeStart");
+  const compilerCodeEnd = atomSymbol(symbolMap, "CompilerCodeEnd");
+  const malformedSource = atomSymbol(symbolMap, "MalformedSource");
+  const malformedSourceEnd = atomSymbol(symbolMap, "MalformedSourceEnd");
+  const malformedSourceSize = "MLFRMDSZ";
+  const expectedOperations = atomSymbol(symbolMap, "ExpectedOperations");
+  const helperPath = path.join(translatedRoot, "vertical-slice", generatedInclude);
+  mkdirSync(path.dirname(helperPath), { recursive: true });
+  writeFileSync(
+    helperPath,
+    [
+      "            ORG " + compilerCoreBase,
+      compilerCodeStart + ": ;@NUC-GLOBAL CompilerCodeStart PERMANENT " + compilerCodeStart,
+      "",
+    ].join("\n"),
+  );
+
+  const lines = source.split("\n");
+  const codeEndIndex = lines.findIndex((line) => line.startsWith(`${compilerCodeEnd}:`));
+  if (codeEndIndex < 0) {
+    throw new Error("compiler-slice permanent Atom rewrite could not find CompilerCodeEnd");
+  }
+  const suffix = lines.slice(codeEndIndex).join("\n");
+  const rewrittenSuffix = suffix
+    .replace(
+      `LD   DE,${malformedSourceEnd}-${malformedSource}`,
+      `LD   DE,${malformedSourceSize}`,
+    )
+    .replace(
+      new RegExp(`^(${expectedOperations}:.*)$`, "m"),
+      `${malformedSourceSize} EQU ${malformedSourceEnd}-${malformedSource}\n$1`,
+    );
+  return [
+    "; Permanent Atom layout for the compiler-slice proof.",
+    "            %DEFINE AggregateCallSlices 0",
+    "            %INCLUDE \"memory-map.asmi\"",
+    "            %INCLUDE \"compiler-state.asmi\"",
+    `            %INCLUDE "${generatedInclude}"`,
+    "            %INCLUDE \"source-adapter.asm\"",
+    "            %INCLUDE \"tokenizer.asm\"",
+    "            %INCLUDE \"semantic-sink.asm\"",
+    "            %INCLUDE \"parser.asm\"",
+    rewrittenSuffix,
+  ].join("\n");
 }
 
 function includeSpecifier(source) {

@@ -889,6 +889,40 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   });
 
+  it("runs the compiler-slice proof from permanent Atom layout source", async (context) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+      const compilerSlice = report.proofMatrix.find(
+        ({ proof }) => proof === "compiler-slice-proof.json",
+      );
+      expect(compilerSlice?.status).toBe("blocked-by-contract-support");
+
+      const outcome = await runProofManifest(
+        path.join(proofRoot, "compiler-slice-proof.json"),
+        {
+          assembler: {
+            kind: "atom-permanent",
+            root: translatedRoot,
+            entry: "vertical-slice/compiler-slice-proof.asm",
+          },
+          atomMigration: {
+            proofSymbolMap: report.proofSymbolMap,
+            proofLimitMap: report.proofLimitMap,
+          },
+        },
+      );
+
+      expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
+      expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
+      expect(outcome.extents).toEqual([
+        { name: "compiler-code", bytes: 940 },
+        { name: "compiler-immutable", bytes: 38 },
+        { name: "compiler-core", bytes: 978 },
+        { name: "compiler-workspace", bytes: 55 },
+        { name: "proof-code-and-data", bytes: 191 },
+      ]);
+    });
+  });
+
   it("runs a late-include proof through the proof harness using Atom-preview lowering", async () => {
     const report = scanAssembly({ asmRoot, proofRoot });
     const outcome = await runProofManifest(
