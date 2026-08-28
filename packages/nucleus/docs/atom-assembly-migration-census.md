@@ -5,7 +5,7 @@ Date: 2026-08-28
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current census HEAD: `d22ee861`
+Current census HEAD: `fc233f5a`
 
 ## Purpose
 
@@ -34,6 +34,9 @@ Measured files:
 | Proof-limit symbols using `$10000` | 4 |
 | Include-after-header violations | 143 |
 | Current dry-run blockers | 143 |
+| Permanent Atom source readiness | Blocked |
+| Compatibility-lowered Atom readiness | Ready |
+| Compatibility-blocking issues | 0 |
 
 The source set is large enough that manual renaming without tooling is not credible.
 
@@ -78,6 +81,19 @@ The proof-image byte comparison can be rerun with:
 
 ```bash
 npm run atom:migration:proof-compare -w nucleus
+```
+
+The dry-run intentionally reports two readiness states:
+
+- permanent Atom source is still blocked while emitted-content includes remain
+  after the header; and
+- compatibility-lowered Atom source is ready when those late includes are the
+  only remaining issues.
+
+Compatibility lowering is now the formal bridge for existing Nucleus proof
+assembly. It preserves the current textual insertion points while producing
+Atom-preview source for byte comparison. It is not the preferred shape for new
+Nucleus assembly source.
 ```
 
 ## Directive census
@@ -381,10 +397,10 @@ This keeps the Atom assembler small and keeps proof ownership outside the assemb
 | Ordinary Z80 instructions | Direct or near-direct | Atom already targets byte-identical Z80 encoding |
 | `.DB`, `.DS`, `.DW`, `.ORG` | Mechanical | Atom has equivalent directive forms |
 | `.END` | Terminal metadata | Current instances can be omitted in preview source after recording `;@AZM-END` |
-| `.INCLUDE` | Header-only policy selected | Current include-after-header cases must be reorganized or lowered before Atom sees source |
+| `.INCLUDE` | Header-only for permanent source; compatibility-lowered for current proofs | Current emitted-content include-after-header cases are preserved by the lowering bridge |
 | `.IF`, `.ELSE`, `.ENDIF` | Mechanical for current source set | Current expressions are simple flags |
 | `.ROUTINE` | Contract-only | Must become proof metadata comments |
-| Long labels | Partly classified | 1,350 can become dot-local labels; the rest need global names |
+| Long labels | Classified | 995 can become dot-local labels; the rest have generated permanent global abbreviations |
 | Proof JSON symbol references | Requires ledger join | External expected-symbol names must remain stable or be mapped |
 | `$10000` limit constants | Requires source or Atom expression decision | Atom currently rejects literals above `65535` |
 | Leading grouped immediates | Mechanical | Current `LD rr,(A<<8)|B` forms translate safely to `LD rr,A<<8|B` for Atom |
@@ -394,13 +410,13 @@ This keeps the Atom assembler small and keeps proof ownership outside the assemb
 
 Before converting source:
 
-1. Keep extending the converter dry-run ledger and error report until every proof image has a deterministic migration path.
+1. Keep extending the converter dry-run ledger and error report for any newly discovered unmapped construct.
 2. Add tests for each newly discovered untranslatable directive, unresolved include, unsupported conditional expression, or long symbol that cannot be classified as local or global.
 3. Add a proof-manifest join that maps old exported proof symbol names to generated Atom symbols.
 4. Decide how the four one-past-address-space constants should be represented for Atom.
-5. Decide whether include-after-header lowering remains only a preview bridge or becomes a formal Nucleus source-preparation mode for existing proof assembly.
-6. Scale the successful flattened preview comparison from `compiler-slice-proof.asm` to the rest of the proof-image set.
-7. Only then scale the conversion to the full `packages/nucleus/asm` tree.
+5. Convert strict register-contract metadata comments into the proof harness input path.
+6. Start permanent source conversion on a small proof image whose source does not require emitted-content include lowering.
+7. Keep emitted-content include lowering as a compatibility path for older proof assembly until those files are reorganized around explicit section ownership.
 
 ## Pilot preview results
 
@@ -530,9 +546,10 @@ shared Debug80 Z80 services package.
 ## Conclusion
 
 The Nucleus assembly source is structurally compatible with Atom, but it is not
-ready for a direct rename-and-assemble migration. The conversion is mostly
-mechanical for instructions, data directives, and simple conditionals. The hard
-work is the permanent symbol ledger, contract-comment path, and existing
-include-after-header proof-source cleanup.
+ready for a direct rename-and-assemble migration. The compatibility-lowered
+Atom path is proven byte-identical for the full non-measurement proof set. The
+remaining permanent-source work is proof-manifest symbol remapping, contract
+comment integration, `$10000` proof-limit representation, and eventual
+section-owned replacement for emitted-content include-after-header proof source.
 
 The migration should therefore start with tooling, not manual source edits.

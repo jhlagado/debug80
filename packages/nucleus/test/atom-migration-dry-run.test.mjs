@@ -104,6 +104,11 @@ describe("Nucleus Atom migration dry-run", () => {
       });
 
       expect(report.status).toBe("ready");
+      expect(report.readiness).toEqual({
+        permanentSource: "ready",
+        compatibilityLowering: "ready",
+        compatibilityBlockingIssues: 0,
+      });
       expect(report.issues).toEqual([]);
       expect(report.measured).toMatchObject({
         files: 1,
@@ -227,6 +232,11 @@ describe("Nucleus Atom migration dry-run", () => {
       });
 
       expect(report.status).toBe("blocked");
+      expect(report.readiness).toEqual({
+        permanentSource: "blocked",
+        compatibilityLowering: "blocked",
+        compatibilityBlockingIssues: 1,
+      });
       expect(report.issues).toEqual([
         expect.objectContaining({
           code: "atom-expression-range",
@@ -248,7 +258,13 @@ describe("Nucleus Atom migration dry-run", () => {
       });
 
       expect(report.status).toBe("blocked");
+      expect(report.readiness).toEqual({
+        permanentSource: "blocked",
+        compatibilityLowering: "ready",
+        compatibilityBlockingIssues: 0,
+      });
       expect(report.measured.includeAfterHeader).toBe(1);
+      expect(report.measured.compatibilityLoweringRequired).toBe(1);
       expect(report.issues).toEqual([
         expect.objectContaining({
           code: "include-after-header",

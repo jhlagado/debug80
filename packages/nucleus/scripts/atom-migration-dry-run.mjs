@@ -216,6 +216,10 @@ function combineIncludeKinds(left, right) {
   return "layout-only";
 }
 
+function compatibilityLoweringCanHandle(issue) {
+  return issue.code === "include-after-header";
+}
+
 function classifyIncludeTarget(file, root = sourcePackageRoot(path.dirname(file)), seen = new Set()) {
   if (!existsSync(file)) {
     return Object.freeze({
@@ -827,9 +831,17 @@ function scanAssembly({ asmRoot, proofRoot }) {
     [...conditionals.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0])),
   );
   const includeSummary = Object.fromEntries([...includes.entries()].sort());
+  const compatibilityBlockingIssues = issues.filter((issue) => !compatibilityLoweringCanHandle(issue));
+  const permanentSourceStatus = issues.length === 0 ? "ready" : "blocked";
+  const compatibilityLoweringStatus = compatibilityBlockingIssues.length === 0 ? "ready" : "blocked";
 
   return {
-    status: issues.length === 0 ? "ready" : "blocked",
+    status: permanentSourceStatus,
+    readiness: {
+      permanentSource: permanentSourceStatus,
+      compatibilityLowering: compatibilityLoweringStatus,
+      compatibilityBlockingIssues: compatibilityBlockingIssues.length,
+    },
     asmRoot,
     proofRoot,
     measured: {
@@ -845,6 +857,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
       uniqueIncludes: includes.size,
       proofLimitSymbols,
       includeAfterHeader,
+      compatibilityLoweringRequired: includeAfterHeader,
       preprocessorSymbols: preprocessorSymbols.size,
     },
     supportedMappings: {
@@ -852,6 +865,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
       contractMetadata: [".routine"],
       simpleConditionals: true,
       generatedLongSymbolLedger: true,
+      compatibilityLowering: true,
     },
     includeArguments: includeSummary,
     includeAfterHeaderReport: summarizeIncludeAfterHeader(includeAfterHeaderRecords, asmRoot),
@@ -1215,12 +1229,16 @@ function recordSymbol(symbols, original, file, line, proofSymbols, definitionKin
 
 function printTextReport(report) {
   console.log(`Nucleus AZM-to-Atom dry-run: ${report.status}`);
+  console.log(`permanentSource=${report.readiness.permanentSource}`);
+  console.log(`compatibilityLowering=${report.readiness.compatibilityLowering}`);
+  console.log(`compatibilityBlockingIssues=${report.readiness.compatibilityBlockingIssues}`);
   console.log(`files=${report.measured.files}`);
   console.log(`sourceLines=${report.measured.sourceLines}`);
   console.log(`definedSymbols=${report.measured.definedSymbols}`);
   console.log(`longSymbols=${report.measured.longSymbols}`);
   console.log(`contractLines=${report.measured.contractLines}`);
   console.log(`includeAfterHeader=${report.measured.includeAfterHeader}`);
+  console.log(`compatibilityLoweringRequired=${report.measured.compatibilityLoweringRequired}`);
   console.log(`localLabelCandidates=${report.measured.localLabelCandidates}`);
   console.log(`globalSymbolRenames=${report.measured.globalSymbolRenames}`);
   console.log(`issues=${report.issues.length}`);
