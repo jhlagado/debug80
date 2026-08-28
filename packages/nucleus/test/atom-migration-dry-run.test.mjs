@@ -278,6 +278,37 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   });
 
+  it("classifies include-after-header targets by nested emitted content", async () => {
+    await withTree({
+      "asm/main.asm": [
+        "START:",
+        ".include \"wrapper.asmi\"",
+        "",
+      ].join("\n"),
+      "asm/wrapper.asmi": ".include \"runtime.asm\"\n",
+      "asm/runtime.asm": "RUNTIME:\nRET\n",
+      "proofs/main.json": "{}",
+    }, async (root) => {
+      const report = scanAssembly({
+        asmRoot: path.join(root, "asm"),
+        proofRoot: path.join(root, "proofs"),
+      });
+
+      expect(report.includeAfterHeaderReport.byTarget).toEqual([
+        expect.objectContaining({
+          include: "\"wrapper.asmi\"",
+          resolved: "wrapper.asmi",
+          target: expect.objectContaining({
+            kind: "code",
+            instructions: 1,
+            nestedIncludes: 1,
+            recursiveIncludes: 1,
+          }),
+        }),
+      ]);
+    });
+  });
+
   it("treats feature definitions and conditionals before includes as source", async () => {
     await withTree({
       "asm/main.asm": [

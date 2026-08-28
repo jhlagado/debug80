@@ -1,12 +1,13 @@
 ; Prove the compact descriptor and flat append-only compiler sink end to end.
 
             .include "target-memory-map.asmi"
-SegmentedOutput       .equ 1
-TargetStreamingOutput .equ 1
+            .include "proof-segmented-state.asmi"
             .include "loop-compiler-state.asmi"
             .include "aggregate-call-state.asmi"
             .include "target-output-state.asmi"
             .include "loop-z80-state.asmi"
+
+TargetStreamingOutput .equ 1
 
             .org CompilerCoreBase
 CompilerCodeStart:

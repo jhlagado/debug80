@@ -1,7 +1,7 @@
 ; Source proof for the u8-local and counted-loop compiler slice.
 
             .include "memory-map.asmi"
-SegmentedOutput .equ 0
+            .include "proof-unsegmented-state.asmi"
             .include "loop-compiler-state.asmi"
 
             .org CompilerCoreBase

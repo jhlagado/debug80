@@ -206,7 +206,17 @@ function resolveConfinedInclude(fromFile, include, root) {
   return resolved;
 }
 
-function classifyIncludeTarget(file) {
+function combineIncludeKinds(left, right) {
+  if (left === "missing" || right === "missing") return "missing";
+  const hasCode = left === "code" || left === "mixed-code-data" || right === "code" || right === "mixed-code-data";
+  const hasData = left === "data" || left === "mixed-code-data" || right === "data" || right === "mixed-code-data";
+  if (hasCode && hasData) return "mixed-code-data";
+  if (hasCode) return "code";
+  if (hasData) return "data";
+  return "layout-only";
+}
+
+function classifyIncludeTarget(file, root = sourcePackageRoot(path.dirname(file)), seen = new Set()) {
   if (!existsSync(file)) {
     return Object.freeze({
       kind: "missing",
@@ -216,19 +226,47 @@ function classifyIncludeTarget(file) {
       dataDirectives: 0,
       orgDirectives: 0,
       nestedIncludes: 0,
+      recursiveIncludes: 0,
     });
   }
+  const resolvedFile = path.resolve(file);
+  if (seen.has(resolvedFile)) {
+    return Object.freeze({
+      kind: "layout-only",
+      lines: 0,
+      labels: 0,
+      instructions: 0,
+      dataDirectives: 0,
+      orgDirectives: 0,
+      nestedIncludes: 0,
+      recursiveIncludes: 0,
+    });
+  }
+  seen.add(resolvedFile);
   let labels = 0;
   let instructions = 0;
   let dataDirectives = 0;
   let orgDirectives = 0;
   let nestedIncludes = 0;
+  let recursiveIncludes = 0;
+  let nestedKind = "layout-only";
   const lines = readFileSync(file, "utf8").split(/\n/);
   for (const raw of lines) {
     const code = stripComment(raw.replace(/\r$/, ""));
     const trimmed = code.trim();
     if (trimmed === "") continue;
-    if (/^\s*\.include\b/i.test(code)) nestedIncludes += 1;
+    const include = includeSpecifier(code);
+    if (include !== undefined) {
+      nestedIncludes += 1;
+      recursiveIncludes += 1;
+      const nested = classifyIncludeTarget(resolveConfinedInclude(file, include, root), root, seen);
+      recursiveIncludes += nested.recursiveIncludes;
+      labels += nested.labels;
+      instructions += nested.instructions;
+      dataDirectives += nested.dataDirectives;
+      orgDirectives += nested.orgDirectives;
+      nestedKind = combineIncludeKinds(nestedKind, nested.kind);
+    }
     if (/^\s*\.org\b/i.test(code) || /^\s*[A-Za-z_.$?][A-Za-z0-9_.$?]*(?::\s*|\s+)\.org\b/i.test(code)) {
       orgDirectives += 1;
     }
@@ -254,6 +292,7 @@ function classifyIncludeTarget(file) {
   } else if (dataDirectives > 0) {
     kind = "data";
   }
+  kind = combineIncludeKinds(kind, nestedKind);
   return Object.freeze({
     kind,
     lines: lines.length,
@@ -262,6 +301,7 @@ function classifyIncludeTarget(file) {
     dataDirectives,
     orgDirectives,
     nestedIncludes,
+    recursiveIncludes,
   });
 }
 
@@ -593,7 +633,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
           addCount(includes, argument);
           if (includeHeaderClosed) {
             const resolved = resolveConfinedInclude(file, argument.replace(/^"|"$/g, ""), packageRoot);
-            const target = classifyIncludeTarget(resolved);
+            const target = classifyIncludeTarget(resolved, packageRoot);
             includeAfterHeaderRecords.push(Object.freeze({
               file,
               line: lineNumber,

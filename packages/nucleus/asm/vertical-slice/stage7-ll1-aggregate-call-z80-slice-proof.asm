@@ -1,7 +1,7 @@
 ; Prove the Stage 7 packed LL(1) parser against aggregate calls and paths.
 
             .include "memory-map.asmi"
-SegmentedOutput .equ 1
+            .include "proof-segmented-state.asmi"
             .include "loop-compiler-state.asmi"
             .include "aggregate-call-state.asmi"
             .include "loop-z80-state.asmi"

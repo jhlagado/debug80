@@ -2,9 +2,9 @@
 
             .include "memory-map.asmi"
             .include "compiler-state.asmi"
+            .include "z80-state.asmi"
 
 AggregateCallSlices .equ 0
-            .include "z80-state.asmi"
 
             .org CompilerCoreBase
 CompilerCodeStart:

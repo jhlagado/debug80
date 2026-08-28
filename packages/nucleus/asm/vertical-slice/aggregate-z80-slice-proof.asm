@@ -1,10 +1,11 @@
 ; Prove Stage 6 packed aggregate layouts and atomic static-image publication.
 
             .include "memory-map.asmi"
-SegmentedOutput .equ 0
-TargetStreamingOutput .equ 0
+            .include "proof-unsegmented-state.asmi"
             .include "loop-compiler-state.asmi"
             .include "loop-z80-state.asmi"
+
+TargetStreamingOutput .equ 0
 
             .org CompilerCoreBase
 CompilerCodeStart:

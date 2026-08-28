@@ -24,16 +24,16 @@ Measured files:
 
 | Item | Measured value |
 | --- | ---: |
-| Assembly files, `.asm` and `.asmi` | 67 |
-| Source lines | 29,375 |
+| Assembly files, `.asm` and `.asmi` | 69 |
+| Source lines | 29,389 |
 | Defined assembler symbols detected | 3,797 |
 | Defined assembler symbols longer than eight characters | 3,764 |
 | Long labels classed as dot-local candidates | 1,350 |
 | Long symbols still needing global treatment | 2,414 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
-| Include-after-header violations | 177 |
-| Current dry-run blockers | 2,591 |
+| Include-after-header violations | 143 |
+| Current dry-run blockers | 2,557 |
 
 The source set is large enough that manual renaming without tooling is not credible.
 
@@ -206,8 +206,10 @@ formal Nucleus-specific lowering stage that records where each pasted region
 came from.
 
 The dry-run report groups include-after-header cases by source file and by
-target include. It also classifies each target as layout-only, code, data, or
-mixed code/data. Generate the report with:
+target include. It also classifies each target recursively as layout-only, code,
+data, or mixed code/data. A wrapper include that contains only `.INCLUDE` lines
+inherits the emitted-content class of its nested includes. Generate the report
+with:
 
 ```bash
 npm run atom:migration:census -w nucleus -- \
@@ -219,31 +221,34 @@ modules after an `.ORG` and section label:
 
 | Source file | Measured violations | First line |
 | --- | ---: | ---: |
-| `vertical-slice/flat-target-z80-slice-proof.asm` | 15 | 6 |
-| `vertical-slice/stage7-ll1-aggregate-call-z80-slice-proof.asm` | 13 | 5 |
-| `vertical-slice/stage7-parser-coverage-proof.asmi` | 13 | 5 |
-| `vertical-slice/stage8-failure-z80-slice-proof.asm` | 13 | 5 |
-| `vertical-slice/stage9-conformance-z80-slice-proof.asm` | 13 | 6 |
-| `vertical-slice/aggregate-z80-slice-proof.asm` | 12 | 6 |
+| `vertical-slice/flat-target-z80-slice-proof.asm` | 11 | 18 |
+| `vertical-slice/aggregate-z80-slice-proof.asm` | 10 | 15 |
+| `vertical-slice/stage7-ll1-aggregate-call-z80-slice-proof.asm` | 10 | 16 |
+| `vertical-slice/stage7-parser-coverage-proof.asmi` | 10 | 14 |
+| `vertical-slice/stage8-failure-z80-slice-proof.asm` | 10 | 16 |
+| `vertical-slice/stage9-conformance-z80-slice-proof.asm` | 10 | 17 |
 
 The largest current target groups show why this is not a safe blind move:
 
 | Target include | Measured uses | Target class |
 | --- | ---: | --- |
 | `vertical-slice/source-adapter.asm` | 15 | code |
-| `vertical-slice/loop-compiler-state.asmi` | 14 | layout-only |
 | `vertical-slice/loop-keywords.asmi` | 13 | data |
-| `vertical-slice/loop-parser.asm` | 13 | code |
+| `vertical-slice/loop-parser.asm` | 13 | mixed code/data |
 | `vertical-slice/loop-semantic-sink.asm` | 13 | code |
 | `vertical-slice/loop-symbols.asm` | 13 | code |
 | `vertical-slice/loop-tokenizer.asm` | 13 | mixed code/data |
+| `vertical-slice/loop-z80-sink.asm` | 12 | mixed code/data |
+| `vertical-slice/proof-z80-runtime.asm` | 12 | code |
 
-The first cleanup target should be the layout-only includes, because moving
-constants and state layouts into strict header includes does not emit bytes.
-Executable-code and data-table includes need a separate section-ownership
-decision: either each module owns its own `ORG`/section placement, or the
-compatibility lowering stage remains responsible for preserving the current
-textual insertion point.
+The first cleanup pass moved the state-layout includes into strict headers by
+adding small proof-mode config includes for `SegmentedOutput`. That removed the
+34 layout-only late includes without changing emitted bytes. The remaining
+late includes all emit code or data, including nested wrapper includes such as
+`proof-z80-runtime.asm`, so they are not safe blind moves. Executable-code and
+data-table includes need a separate section-ownership decision: either each
+module owns its own `ORG`/section placement, or the compatibility lowering stage
+remains responsible for preserving the current textual insertion point.
 
 The long-term migration still needs one of these implementation paths before
 the source tree itself can become Atom-native:
