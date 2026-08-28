@@ -214,7 +214,55 @@ Compatibility lowering is now the formal bridge for existing Nucleus proof
 assembly. It preserves the current textual insertion points while producing
 Atom-preview source for byte comparison. It is not the preferred shape for new
 Nucleus assembly source.
-```
+
+## Remaining permanent-source blockers
+
+The late emitted-content includes are not one uniform problem. Current measured
+grouping:
+
+| Batch | Files | Late includes | Risk | Recommendation |
+| --- | ---: | ---: | --- | --- |
+| Proof composition files | 17 | 131 | Medium | First batch. These files mostly assemble proof images by placing included modules between labelled extent markers. Move the dependency declarations to the file header only after replacing positional include markers with explicit exported extent labels or another measured equivalent. |
+| Module composition files | 5 | 9 | High | Second batch. These includes occur inside parser/codegen implementation modules (`loop-parser`, `aggregate-call-parser`, `typed-expression-z80`, `stage7-ll1-parser`, `typed-expression-parser`). Treat these as real module-boundary work, not mechanical line moves. |
+| Runtime wrapper files | 3 | 3 | Low to medium | Third batch. These are small wrappers around runtime/link modules. They should be straightforward once the composition convention is settled. |
+
+The first permanent-source batch should be the proof composition files, because
+they account for most of the count and are structurally repetitive:
+
+- `vertical-slice/flat-target-z80-slice-proof.asm` — 11
+- `vertical-slice/aggregate-z80-slice-proof.asm` — 10
+- `vertical-slice/stage7-ll1-aggregate-call-z80-slice-proof.asm` — 10
+- `vertical-slice/stage7-parser-coverage-proof.asmi` — 10
+- `vertical-slice/stage8-failure-z80-slice-proof.asm` — 10
+- `vertical-slice/stage9-conformance-z80-slice-proof.asm` — 10
+- `vertical-slice/expression-z80-slice-proof.asm` — 9
+- `vertical-slice/structured-control-z80-slice-proof.asm` — 9
+- `vertical-slice/typed-expression-z80-slice-proof.asm` — 9
+- `vertical-slice/array-z80-slice-proof.asm` — 8
+- `vertical-slice/call-z80-slice-proof.asm` — 8
+- `vertical-slice/loop-z80-slice-proof.asm` — 8
+- `vertical-slice/loop-compiler-slice-proof.asm` — 6
+- `vertical-slice/z80-slice-proof.asm` — 6
+- `vertical-slice/compiler-slice-proof.asm` — 4
+- `vertical-slice/stage7-ll1-engine-proof.asm` — 2
+- `vertical-slice/stage7-ll1-parser-coverage-proof.asm` — 1
+
+Do not just move those include lines to the top and assume correctness. Many of
+the current files use surrounding labels such as `TokenizerCodeStart` /
+`TokenizerCodeEnd` to measure the emitted size of the included module. A safe
+permanent-source rewrite needs those extent symbols to remain byte-equivalent.
+The proof-comparison command is the required guard after each batch.
+
+The two Atom-preview-only proof manifests are a separate blocker:
+
+- `nobj-runner-proof.json` uses `DW NobjAdapterEnd-NobjAdapterLog`.
+- `source-provenance-proof.json` uses
+  `DW SourceProvenanceEnd-SourceProvenanceLog`.
+
+Those are good small candidates for adding direct Atom support for
+symbol-minus-symbol emitted expressions. Until then, preview lowering proves the
+bytes, but permanent Atom proof execution must not claim those two files are
+ready.
 
 ## Directive census
 
