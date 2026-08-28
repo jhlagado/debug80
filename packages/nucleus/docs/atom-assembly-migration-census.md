@@ -200,6 +200,12 @@ The proof-image byte comparison can be rerun with:
 npm run atom:migration:proof-compare -w nucleus
 ```
 
+Run the executable Atom-preview proof gate with:
+
+```bash
+npm run atom:migration:proof-run -w nucleus
+```
+
 The dry-run intentionally reports two readiness states:
 
 - permanent Atom source is still blocked while emitted-content includes remain

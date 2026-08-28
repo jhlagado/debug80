@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -14,10 +15,14 @@ import type {
 } from "./nobj.js";
 import { NobjError } from "./nobj.js";
 
-const runtimeSourceDirectory = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "../asm/vertical-slice",
-);
+const moduleDirectory = path.dirname(fileURLToPath(import.meta.url));
+const runtimeSourceDirectoryCandidates = [
+  path.resolve(moduleDirectory, "../asm/vertical-slice"),
+  path.resolve(moduleDirectory, "../../asm/vertical-slice"),
+];
+const runtimeSourceDirectory =
+  runtimeSourceDirectoryCandidates.find((candidate) => existsSync(candidate)) ??
+  runtimeSourceDirectoryCandidates[0]!;
 
 const helperIdentitySymbols = {
   ActivationPush: "NucleusRuntimeActivationPushOffset",

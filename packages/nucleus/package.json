@@ -42,7 +42,8 @@
     "prepack": "npm run build",
     "atom:migration:dry-run": "node scripts/atom-migration-dry-run.mjs",
     "atom:migration:census": "node scripts/atom-migration-dry-run.mjs --report-only",
-    "atom:migration:proof-compare": "node scripts/atom-migration-proof-compare.mjs --report-only"
+    "atom:migration:proof-compare": "node scripts/atom-migration-proof-compare.mjs --report-only",
+    "atom:migration:proof-run": "npm run build --silent && node scripts/atom-migration-proof-run.mjs"
   },
   "dependencies": {
     "@jhlagado/azm": "^0.3.8",
