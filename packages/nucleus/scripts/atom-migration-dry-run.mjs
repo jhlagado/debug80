@@ -60,6 +60,7 @@ function parseArgs(argv) {
     ledgerOut: undefined,
     issuesOut: undefined,
     includeReportOut: undefined,
+    proofSymbolMapOut: undefined,
     translatedRoot: undefined,
     flattenEntry: undefined,
     flattenOut: undefined,
@@ -80,6 +81,8 @@ function parseArgs(argv) {
       options.issuesOut = path.resolve(argv[++index] ?? "");
     } else if (arg === "--include-report-out") {
       options.includeReportOut = path.resolve(argv[++index] ?? "");
+    } else if (arg === "--proof-symbol-map-out") {
+      options.proofSymbolMapOut = path.resolve(argv[++index] ?? "");
     } else if (arg === "--translated-root") {
       options.translatedRoot = path.resolve(argv[++index] ?? "");
     } else if (arg === "--flatten-entry") {
@@ -109,6 +112,8 @@ Options:
   --issues-out FILE  Write migration issues as JSON.
   --include-report-out FILE
                      Write include-after-header groups and target classes as JSON.
+  --proof-symbol-map-out FILE
+                     Write proof-manifest symbol remapping as JSON.
   --translated-root DIR
                      Write generated Atom-preview source files under DIR.
   --flatten-entry FILE
@@ -781,6 +786,20 @@ function scanAssembly({ asmRoot, proofRoot }) {
         line: definition.line,
       })),
     }));
+  const proofSymbolMap = Object.freeze([...proofSymbols]
+    .filter((symbol) => symbols.has(symbol))
+    .sort()
+    .map((symbol) => {
+      const entry = symbols.get(symbol);
+      const longEntry = ledger.find(({ original }) => original === symbol);
+      return Object.freeze({
+        original: symbol,
+        atom: longEntry?.atom ?? symbol,
+        permanentAtom: longEntry?.permanentAtom ?? symbol,
+        definitionKind: entry.definitionKind,
+        owningFile: path.relative(asmRoot, entry.file).split(path.sep).join("/"),
+      });
+    }));
 
   const caseGroups = new Map();
   for (const symbol of symbols.keys()) {
@@ -859,6 +878,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
       includeAfterHeader,
       compatibilityLoweringRequired: includeAfterHeader,
       preprocessorSymbols: preprocessorSymbols.size,
+      proofSymbolMappings: proofSymbolMap.length,
     },
     supportedMappings: {
       mechanicalDirectives: [...mechanicalDirectives].sort(),
@@ -870,6 +890,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
     includeArguments: includeSummary,
     includeAfterHeaderReport: summarizeIncludeAfterHeader(includeAfterHeaderRecords, asmRoot),
     preprocessorSymbols: Object.freeze([...preprocessorSymbols].sort()),
+    proofSymbolMap,
     ledger,
     issues,
   };
@@ -1241,6 +1262,7 @@ function printTextReport(report) {
   console.log(`compatibilityLoweringRequired=${report.measured.compatibilityLoweringRequired}`);
   console.log(`localLabelCandidates=${report.measured.localLabelCandidates}`);
   console.log(`globalSymbolRenames=${report.measured.globalSymbolRenames}`);
+  console.log(`proofSymbolMappings=${report.measured.proofSymbolMappings}`);
   console.log(`issues=${report.issues.length}`);
   if (report.issues.length > 0) {
     console.log("");
@@ -1274,6 +1296,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     }
     if (options.includeReportOut !== undefined) {
       writeJsonFile(options.includeReportOut, report.includeAfterHeaderReport);
+    }
+    if (options.proofSymbolMapOut !== undefined) {
+      writeJsonFile(options.proofSymbolMapOut, report.proofSymbolMap);
     }
     if (options.translatedRoot !== undefined) {
       writeTranslatedTree(report, options.translatedRoot);

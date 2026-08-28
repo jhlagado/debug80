@@ -37,6 +37,7 @@ Measured files:
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
+| Proof-manifest symbol mappings | 146 |
 
 The source set is large enough that manual renaming without tooling is not credible.
 
@@ -67,6 +68,18 @@ It can also write a generated Atom-preview assembly tree without modifying the s
 npm run atom:migration:census -w nucleus -- \
   --translated-root build/nucleus-atom-preview
 ```
+
+It can also write the proof-manifest symbol join needed by the proof harness:
+
+```bash
+npm run atom:migration:census -w nucleus -- \
+  --proof-symbol-map-out build/nucleus-atom-proof-symbols.json
+```
+
+The proof-symbol map keeps each existing proof-manifest name and records the
+corresponding generated preview symbol and permanent Atom symbol. Current
+measurement: 146 proof-facing symbols are mapped, and 142 of those need a
+different Atom-safe name.
 
 For proof images that still depend on AZM-style textual includes, the tool can
 also lower a single entry into one generated Atom-preview source file:
@@ -401,7 +414,7 @@ This keeps the Atom assembler small and keeps proof ownership outside the assemb
 | `.IF`, `.ELSE`, `.ENDIF` | Mechanical for current source set | Current expressions are simple flags |
 | `.ROUTINE` | Contract-only | Must become proof metadata comments |
 | Long labels | Classified | 995 can become dot-local labels; the rest have generated permanent global abbreviations |
-| Proof JSON symbol references | Requires ledger join | External expected-symbol names must remain stable or be mapped |
+| Proof JSON symbol references | Mapped | The dry-run emits a proof-symbol map from existing proof names to preview and permanent Atom names |
 | `$10000` limit constants | Requires source or Atom expression decision | Atom currently rejects literals above `65535` |
 | Leading grouped immediates | Mechanical | Current `LD rr,(A<<8)|B` forms translate safely to `LD rr,A<<8|B` for Atom |
 | Resolved preview aliases and differences | Preview-only bridge | The proof comparer lowers `EQU` aliases and `SYMBOL-SYMBOL` terms only when the current assembler's resolved symbols prove the value |
@@ -412,7 +425,7 @@ Before converting source:
 
 1. Keep extending the converter dry-run ledger and error report for any newly discovered unmapped construct.
 2. Add tests for each newly discovered untranslatable directive, unresolved include, unsupported conditional expression, or long symbol that cannot be classified as local or global.
-3. Add a proof-manifest join that maps old exported proof symbol names to generated Atom symbols.
+3. Integrate the proof-symbol map into the proof harness path that consumes Atom-built images.
 4. Decide how the four one-past-address-space constants should be represented for Atom.
 5. Convert strict register-contract metadata comments into the proof harness input path.
 6. Start permanent source conversion on a small proof image whose source does not require emitted-content include lowering.

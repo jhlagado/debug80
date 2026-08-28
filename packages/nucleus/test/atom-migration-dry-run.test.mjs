@@ -166,6 +166,13 @@ describe("Nucleus Atom migration dry-run", () => {
         permanentAtom: ".L00000",
         localScope: expect.objectContaining({ anchor: "VeryLongPublicLabel" }),
       });
+      expect(report.proofSymbolMap).toEqual([
+        expect.objectContaining({
+          original: "VeryLongPublicLabel",
+          atom: "N0000001",
+          permanentAtom: "VRYLNGPB",
+        }),
+      ]);
     });
   });
 
@@ -446,6 +453,7 @@ describe("Nucleus Atom migration dry-run", () => {
       const ledgerPath = path.join(root, "out", "ledger.json");
       const issuesPath = path.join(root, "out", "issues.json");
       const includeReportPath = path.join(root, "out", "includes.json");
+      const proofSymbolMapPath = path.join(root, "out", "proof-symbols.json");
       const result = spawnSync(process.execPath, [
         dryRunScript,
         "--asm-root",
@@ -458,12 +466,15 @@ describe("Nucleus Atom migration dry-run", () => {
         issuesPath,
         "--include-report-out",
         includeReportPath,
+        "--proof-symbol-map-out",
+        proofSymbolMapPath,
       ], { encoding: "utf8" });
 
       expect(result.status).toBe(1);
       const ledger = JSON.parse(await readFile(ledgerPath, "utf8"));
       const issues = JSON.parse(await readFile(issuesPath, "utf8"));
       const includeReport = JSON.parse(await readFile(includeReportPath, "utf8"));
+      const proofSymbolMap = JSON.parse(await readFile(proofSymbolMapPath, "utf8"));
       expect(ledger).toHaveLength(1);
       expect(ledger[0]).toMatchObject({
         original: "LongPublicLabel",
@@ -480,6 +491,13 @@ describe("Nucleus Atom migration dry-run", () => {
         expect.objectContaining({
           file: "main.asm",
           count: 1,
+        }),
+      ]);
+      expect(proofSymbolMap).toEqual([
+        expect.objectContaining({
+          original: "LongPublicLabel",
+          atom: "N0000000",
+          permanentAtom: "LNGPBLCL",
         }),
       ]);
     });
