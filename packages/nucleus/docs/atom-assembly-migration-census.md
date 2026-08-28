@@ -38,6 +38,7 @@ Measured files:
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
 | Proof-manifest symbol mappings | 146 |
+| One-past-address-space proof-limit mappings | 4 |
 
 The source set is large enough that manual renaming without tooling is not credible.
 
@@ -80,6 +81,20 @@ The proof-symbol map keeps each existing proof-manifest name and records the
 corresponding generated preview symbol and permanent Atom symbol. Current
 measurement: 146 proof-facing symbols are mapped, and 142 of those need a
 different Atom-safe name.
+
+It can also write the proof-limit map for one-past-address-space constants:
+
+```bash
+npm run atom:migration:census -w nucleus -- \
+  --proof-limit-map-out build/nucleus-atom-proof-limits.json
+```
+
+Current measurement: four source definitions use `$10000` as a proof boundary:
+two `AddressSpaceLimit` definitions and two `ProofMemoryEnd` definitions. Atom
+must not treat these as ordinary 16-bit `EQU` values. The preview translator
+lowers each one to `EQU 0` plus `;@ATOM-PROOF-LIMIT <name> 65536`; the generated
+proof-limit map carries the real external value for proof memory profiles and
+manifest joins.
 
 For proof images that still depend on AZM-style textual includes, the tool can
 also lower a single entry into one generated Atom-preview source file:
@@ -415,7 +430,7 @@ This keeps the Atom assembler small and keeps proof ownership outside the assemb
 | `.ROUTINE` | Contract-only | Must become proof metadata comments |
 | Long labels | Classified | 995 can become dot-local labels; the rest have generated permanent global abbreviations |
 | Proof JSON symbol references | Mapped | The dry-run emits a proof-symbol map from existing proof names to preview and permanent Atom names |
-| `$10000` limit constants | Requires source or Atom expression decision | Atom currently rejects literals above `65535` |
+| `$10000` limit constants | Mapped as proof metadata | Atom source lowers these to `EQU 0` plus `;@ATOM-PROOF-LIMIT`, and the proof-limit map carries `65536` |
 | Leading grouped immediates | Mechanical | Current `LD rr,(A<<8)|B` forms translate safely to `LD rr,A<<8|B` for Atom |
 | Resolved preview aliases and differences | Preview-only bridge | The proof comparer lowers `EQU` aliases and `SYMBOL-SYMBOL` terms only when the current assembler's resolved symbols prove the value |
 
@@ -426,7 +441,7 @@ Before converting source:
 1. Keep extending the converter dry-run ledger and error report for any newly discovered unmapped construct.
 2. Add tests for each newly discovered untranslatable directive, unresolved include, unsupported conditional expression, or long symbol that cannot be classified as local or global.
 3. Integrate the proof-symbol map into the proof harness path that consumes Atom-built images.
-4. Decide how the four one-past-address-space constants should be represented for Atom.
+4. Integrate the proof-limit map into the proof harness path that consumes Atom-built images.
 5. Convert strict register-contract metadata comments into the proof harness input path.
 6. Start permanent source conversion on a small proof image whose source does not require emitted-content include lowering.
 7. Keep emitted-content include lowering as a compatibility path for older proof assembly until those files are reorganized around explicit section ownership.

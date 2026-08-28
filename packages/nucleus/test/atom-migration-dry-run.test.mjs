@@ -402,6 +402,22 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(report.status).toBe("ready");
       expect(report.measured.proofLimitSymbols).toBe(2);
       expect(report.issues.map(({ code }) => code)).toEqual([]);
+      expect(report.proofLimitMap).toEqual([
+        expect.objectContaining({
+          original: "AddressSpaceLimit",
+          atom: "N0000000",
+          permanentAtom: "ADDRSSSP",
+          value: 65536,
+          loweredAtomValue: 0,
+        }),
+        expect.objectContaining({
+          original: "ProofMemoryEnd",
+          atom: "N0000001",
+          permanentAtom: "PRFMMRYE",
+          value: 65536,
+          loweredAtomValue: 0,
+        }),
+      ]);
     });
   });
 
@@ -454,6 +470,7 @@ describe("Nucleus Atom migration dry-run", () => {
       const issuesPath = path.join(root, "out", "issues.json");
       const includeReportPath = path.join(root, "out", "includes.json");
       const proofSymbolMapPath = path.join(root, "out", "proof-symbols.json");
+      const proofLimitMapPath = path.join(root, "out", "proof-limits.json");
       const result = spawnSync(process.execPath, [
         dryRunScript,
         "--asm-root",
@@ -468,6 +485,8 @@ describe("Nucleus Atom migration dry-run", () => {
         includeReportPath,
         "--proof-symbol-map-out",
         proofSymbolMapPath,
+        "--proof-limit-map-out",
+        proofLimitMapPath,
       ], { encoding: "utf8" });
 
       expect(result.status).toBe(1);
@@ -475,6 +494,7 @@ describe("Nucleus Atom migration dry-run", () => {
       const issues = JSON.parse(await readFile(issuesPath, "utf8"));
       const includeReport = JSON.parse(await readFile(includeReportPath, "utf8"));
       const proofSymbolMap = JSON.parse(await readFile(proofSymbolMapPath, "utf8"));
+      const proofLimitMap = JSON.parse(await readFile(proofLimitMapPath, "utf8"));
       expect(ledger).toHaveLength(1);
       expect(ledger[0]).toMatchObject({
         original: "LongPublicLabel",
@@ -500,6 +520,7 @@ describe("Nucleus Atom migration dry-run", () => {
           permanentAtom: "LNGPBLCL",
         }),
       ]);
+      expect(proofLimitMap).toEqual([]);
     });
   });
 

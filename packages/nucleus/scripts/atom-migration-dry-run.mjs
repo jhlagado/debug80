@@ -61,6 +61,7 @@ function parseArgs(argv) {
     issuesOut: undefined,
     includeReportOut: undefined,
     proofSymbolMapOut: undefined,
+    proofLimitMapOut: undefined,
     translatedRoot: undefined,
     flattenEntry: undefined,
     flattenOut: undefined,
@@ -83,6 +84,8 @@ function parseArgs(argv) {
       options.includeReportOut = path.resolve(argv[++index] ?? "");
     } else if (arg === "--proof-symbol-map-out") {
       options.proofSymbolMapOut = path.resolve(argv[++index] ?? "");
+    } else if (arg === "--proof-limit-map-out") {
+      options.proofLimitMapOut = path.resolve(argv[++index] ?? "");
     } else if (arg === "--translated-root") {
       options.translatedRoot = path.resolve(argv[++index] ?? "");
     } else if (arg === "--flatten-entry") {
@@ -114,6 +117,8 @@ Options:
                      Write include-after-header groups and target classes as JSON.
   --proof-symbol-map-out FILE
                      Write proof-manifest symbol remapping as JSON.
+  --proof-limit-map-out FILE
+                     Write one-past-address-space proof limit symbols as JSON.
   --translated-root DIR
                      Write generated Atom-preview source files under DIR.
   --flatten-entry FILE
@@ -649,6 +654,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
   const occurrences = [];
   const issues = [];
   const includeAfterHeaderRecords = [];
+  const proofLimitRecords = [];
   let sourceLines = 0;
   let contractLines = 0;
   let proofLimitSymbols = 0;
@@ -669,6 +675,12 @@ function scanAssembly({ asmRoot, proofRoot }) {
       const onePastAddressSpaceEqu = onePastAddressSpaceEquPattern.exec(code);
       if (onePastAddressSpaceEqu !== null) {
         proofLimitSymbols += 1;
+        proofLimitRecords.push(Object.freeze({
+          original: onePastAddressSpaceEqu[1],
+          value: 0x10000,
+          file,
+          line: lineNumber,
+        }));
       }
 
       const directive = /^\s*\.([A-Za-z][A-Za-z0-9_]*)\b\s*(.*)$/.exec(code);
@@ -800,6 +812,18 @@ function scanAssembly({ asmRoot, proofRoot }) {
         owningFile: path.relative(asmRoot, entry.file).split(path.sep).join("/"),
       });
     }));
+  const proofLimitMap = Object.freeze(proofLimitRecords.map((record) => {
+    const longEntry = ledger.find(({ original }) => original === record.original);
+    return Object.freeze({
+      original: record.original,
+      atom: longEntry?.atom ?? record.original,
+      permanentAtom: longEntry?.permanentAtom ?? record.original,
+      value: record.value,
+      loweredAtomValue: 0,
+      owningFile: path.relative(asmRoot, record.file).split(path.sep).join("/"),
+      line: record.line,
+    });
+  }));
 
   const caseGroups = new Map();
   for (const symbol of symbols.keys()) {
@@ -879,6 +903,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
       compatibilityLoweringRequired: includeAfterHeader,
       preprocessorSymbols: preprocessorSymbols.size,
       proofSymbolMappings: proofSymbolMap.length,
+      proofLimitMappings: proofLimitMap.length,
     },
     supportedMappings: {
       mechanicalDirectives: [...mechanicalDirectives].sort(),
@@ -891,6 +916,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
     includeAfterHeaderReport: summarizeIncludeAfterHeader(includeAfterHeaderRecords, asmRoot),
     preprocessorSymbols: Object.freeze([...preprocessorSymbols].sort()),
     proofSymbolMap,
+    proofLimitMap,
     ledger,
     issues,
   };
@@ -1263,6 +1289,7 @@ function printTextReport(report) {
   console.log(`localLabelCandidates=${report.measured.localLabelCandidates}`);
   console.log(`globalSymbolRenames=${report.measured.globalSymbolRenames}`);
   console.log(`proofSymbolMappings=${report.measured.proofSymbolMappings}`);
+  console.log(`proofLimitMappings=${report.measured.proofLimitMappings}`);
   console.log(`issues=${report.issues.length}`);
   if (report.issues.length > 0) {
     console.log("");
@@ -1299,6 +1326,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     }
     if (options.proofSymbolMapOut !== undefined) {
       writeJsonFile(options.proofSymbolMapOut, report.proofSymbolMap);
+    }
+    if (options.proofLimitMapOut !== undefined) {
+      writeJsonFile(options.proofLimitMapOut, report.proofLimitMap);
     }
     if (options.translatedRoot !== undefined) {
       writeTranslatedTree(report, options.translatedRoot);
