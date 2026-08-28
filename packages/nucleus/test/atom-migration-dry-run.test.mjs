@@ -23,6 +23,7 @@ import { comparisonCacheKey } from "../scripts/atom-migration-proof-compare.mjs"
 import { createLegacyUnorderedMemoryAtomSink } from "../scripts/atom-migration-proof-compare.mjs";
 import { entryBudget } from "../scripts/atom-migration-proof-compare.mjs";
 import { readBudgetFile } from "../scripts/atom-migration-proof-compare.mjs";
+import { runProofManifest } from "../src/proof.js";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(testDirectory, "..");
@@ -742,6 +743,34 @@ describe("Nucleus Atom migration dry-run", () => {
     }).bytes;
 
     expect(Buffer.compare(Buffer.from(atomBin), Buffer.from(currentBin))).toBe(0);
+  });
+
+  it("runs the memory-map proof through the proof harness using permanent Atom source", async (context) => {
+    const report = scanAssembly({ asmRoot, proofRoot });
+    const translatedRoot = await mkdtemp(path.join(tmpdir(), "nucleus-atom-proof-"));
+    context.onTestFinished(async () => {
+      await rm(translatedRoot, { recursive: true, force: true });
+    });
+
+    writeTranslatedTree(report, translatedRoot, { symbols: "permanent" });
+
+    const outcome = await runProofManifest(path.join(proofRoot, "memory-map-proof.json"), {
+      assembler: {
+        kind: "atom-permanent",
+        root: translatedRoot,
+        entry: "vertical-slice/memory-map-proof.asm",
+      },
+      atomMigration: {
+        proofSymbolMap: report.proofSymbolMap,
+        proofLimitMap: report.proofLimitMap,
+      },
+    });
+
+    expect(outcome.instructions).toBe(4);
+    expect(outcome.cycles).toBe(34);
+    expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
+    expect(outcome.symbols.AddressSpaceLimit).toBe(0x10000);
+    expect(outcome.regions.reduce((total, region) => total + region.bytes, 0)).toBe(65_536);
   });
 
   it("flattens AZM textual includes for one Atom-preview entry", async () => {

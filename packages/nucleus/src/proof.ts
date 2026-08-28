@@ -46,6 +46,16 @@ import {
   type NucleusGeneratedSourceSegment,
 } from "./source-provenance.js";
 
+type ProofAssembler =
+  | { readonly kind?: "azm" }
+  | {
+      readonly kind: "atom-permanent";
+      readonly root: string;
+      readonly entry: string;
+      readonly maxInstructions?: number;
+      readonly maxCycles?: number;
+    };
+
 interface MemoryRegionManifest {
   readonly name: string;
   readonly start: string;
@@ -219,6 +229,7 @@ export interface NucleusProofResidentSourceInstallation {
 }
 
 export interface RunProofManifestOptions {
+  readonly assembler?: ProofAssembler;
   readonly source?: NucleusProofResidentSourceInstallation;
   readonly checkObservations?: boolean;
   readonly sourceProvenance?: SourceProvenanceProofManifest;
@@ -292,29 +303,63 @@ export function createProofSymbolView(
   return symbols;
 }
 
-const isResolvedResidentCompilerEntry = (
-  entry: NucleusResidentCompilerEntry | NucleusResidentCompilerEntrySymbols,
-): entry is NucleusResidentCompilerEntry =>
-  typeof entry.executionEntry === "number" &&
-  typeof entry.sourceDescriptorBase === "number" &&
-  typeof entry.sourceBase === "number" &&
-  typeof entry.targetDescriptor === "number" &&
-  typeof entry.partBankTable === "number" &&
-  typeof entry.outputLogBase === "number" &&
-  typeof entry.outputLogLength === "number" &&
-  typeof entry.outputLogLimit === "number";
+function contentBase(generation: {
+  readonly finalCursor: number;
+  readonly images: readonly { readonly address: number }[];
+  readonly layout?: readonly {
+    readonly kind: string;
+    readonly address: number;
+    readonly count: number;
+  }[];
+}): number {
+  const addresses = generation.images.map(({ address }) => address);
+  for (const event of generation.layout ?? []) {
+    if (event.kind === "reserve" && event.count !== 0) addresses.push(event.address);
+  }
+  return addresses.length === 0 ? generation.finalCursor : Math.min(...addresses);
+}
 
-export async function runProofManifest(
-  manifestFile: string,
-  options: RunProofManifestOptions = {},
-): Promise<ProofOutcome> {
-  const manifestPath = path.resolve(manifestFile);
-  const manifestDirectory = path.dirname(manifestPath);
-  const manifest = readJson<ProofManifest>(manifestPath);
-  const memoryProfile = readJson<MemoryProfileManifest>(
-    path.resolve(manifestDirectory, manifest.memoryProfile),
-  );
-  const sourcePath = path.resolve(manifestDirectory, manifest.source);
+async function assembleProofSource({
+  manifest,
+  sourcePath,
+  manifestDirectory,
+  assembler,
+}: {
+  readonly manifest: ProofManifest;
+  readonly sourcePath: string;
+  readonly manifestDirectory: string;
+  readonly assembler: ProofAssembler | undefined;
+}): Promise<{
+  readonly hexText: string;
+  readonly rawSymbols: Readonly<Record<string, number>>;
+}> {
+  if (assembler?.kind === "atom-permanent") {
+    const {
+      assembleAtomProject,
+      materializeAtomGeneration,
+      writeIntelHex,
+    } = await import("atom-z80");
+    const assembled = await assembleAtomProject({
+      root: assembler.root,
+      entry: assembler.entry,
+      target: { start: 0, capacity: 0xffff },
+      maxInstructions: assembler.maxInstructions ?? 50_000_000,
+      maxCycles: assembler.maxCycles ?? 500_000_000,
+    });
+    const materialized = materializeAtomGeneration(assembled.generation, {
+      base: contentBase(assembled.generation),
+    });
+    return {
+      hexText: writeIntelHex(materialized),
+      rawSymbols: Object.fromEntries(
+        (assembled.generation.symbols ?? []).map(
+          (entry: { readonly name: string; readonly value: number }) =>
+            [entry.name, entry.value] as const,
+        ),
+      ),
+    };
+  }
+
   const assembled = await compile(sourcePath, {
     emitBin: false,
     emitHex: true,
@@ -346,13 +391,48 @@ export async function runProofManifest(
     throw new ProofFailure(`${manifest.name}: AZM omitted HEX or D8M output`);
   }
 
-  const assembledSymbols = Object.fromEntries(
-    debugMap.json.symbols.flatMap((entry) => {
-      const value = entry.address ?? entry.value;
-      return value === undefined ? [] : [[entry.name, value] as const];
-    }),
+  return {
+    hexText: hex.text,
+    rawSymbols: Object.fromEntries(
+      debugMap.json.symbols.flatMap((entry) => {
+        const value = entry.address ?? entry.value;
+        return value === undefined ? [] : [[entry.name, value] as const];
+      }),
+    ),
+  };
+}
+
+const isResolvedResidentCompilerEntry = (
+  entry: NucleusResidentCompilerEntry | NucleusResidentCompilerEntrySymbols,
+): entry is NucleusResidentCompilerEntry =>
+  typeof entry.executionEntry === "number" &&
+  typeof entry.sourceDescriptorBase === "number" &&
+  typeof entry.sourceBase === "number" &&
+  typeof entry.targetDescriptor === "number" &&
+  typeof entry.partBankTable === "number" &&
+  typeof entry.outputLogBase === "number" &&
+  typeof entry.outputLogLength === "number" &&
+  typeof entry.outputLogLimit === "number";
+
+export async function runProofManifest(
+  manifestFile: string,
+  options: RunProofManifestOptions = {},
+): Promise<ProofOutcome> {
+  const manifestPath = path.resolve(manifestFile);
+  const manifestDirectory = path.dirname(manifestPath);
+  const manifest = readJson<ProofManifest>(manifestPath);
+  const memoryProfile = readJson<MemoryProfileManifest>(
+    path.resolve(manifestDirectory, manifest.memoryProfile),
   );
-  const symbols = createProofSymbolView(assembledSymbols, options.atomMigration);
+  const sourcePath = path.resolve(manifestDirectory, manifest.source);
+  const assembled = await assembleProofSource({
+    manifest,
+    sourcePath,
+    manifestDirectory,
+    assembler: options.assembler,
+  });
+
+  const symbols = createProofSymbolView(assembled.rawSymbols, options.atomMigration);
   const symbolValue = (name: string): number => {
     const wanted = name.toLowerCase();
     for (const [candidate, value] of Object.entries(symbols)) {
@@ -423,7 +503,7 @@ export async function runProofManifest(
   });
 
   const runtime = createZ80Runtime(
-    parseIntelHex(hex.text),
+    parseIntelHex(assembled.hexText),
     symbolValue(manifest.execution.entry),
   );
   const memory = (runtime.hardware as unknown as { memory: Uint8Array }).memory;

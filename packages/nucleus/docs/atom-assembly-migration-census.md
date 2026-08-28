@@ -132,6 +132,27 @@ known `$10000` proof-boundary constants are restored from the proof-limit map.
 The current AZM proof route remains unchanged; this is the join point for
 Atom-built proof images.
 
+It can also run a proof with Atom as the selected assembler when the caller
+supplies an already translated Atom source tree:
+
+```ts
+await runProofManifest("proofs/memory-map-proof.json", {
+  assembler: {
+    kind: "atom-permanent",
+    root: "build/nucleus-atom-permanent",
+    entry: "vertical-slice/memory-map-proof.asm",
+  },
+  atomMigration: {
+    proofSymbolMap,
+    proofLimitMap,
+  },
+});
+```
+
+AZM remains the default assembler. The Atom mode is explicit because permanent
+source requires strict leading includes and permanent symbol names; it is not
+safe to infer those from the existing AZM source tree.
+
 For integration work, prefer one consolidated bundle instead of several loose
 files:
 
@@ -525,6 +546,11 @@ files remain separate, the normal Atom host resolver follows the leading
 `%INCLUDE`, and Atom assembles the entry byte-identically to the current
 assembler path. It is deliberately small; emitted-content late includes remain
 on the compatibility-lowered path until those proof sources are reorganized.
+
+The same entry now also runs through the Nucleus proof harness with Atom selected
+as the assembler. The proof harness executes the Atom-built HEX image and uses
+the migration metadata to resolve manifest-facing symbol names and the
+`$10000` proof boundary.
 
 The first scaled proof-image comparison uses generated multipart Atom preview
 source, so no generated part exceeds Atom's 16-bit source-offset range. Current
