@@ -5,11 +5,18 @@ import { spawnSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
+import { compile } from "@jhlagado/azm/compile";
+import {
+  assembleAtomProject,
+  materializeAtomGeneration,
+} from "../../atom/src/host/index.mjs";
 
 import { scanAssembly } from "../scripts/atom-migration-dry-run.mjs";
 import { translateNucleusAzmLine } from "../scripts/atom-migration-dry-run.mjs";
 import { flattenTranslatedEntry } from "../scripts/atom-migration-dry-run.mjs";
 import { flattenedEntryParts } from "../scripts/atom-migration-dry-run.mjs";
+import { symbolMapFromLedger } from "../scripts/atom-migration-dry-run.mjs";
+import { writeTranslatedTree } from "../scripts/atom-migration-dry-run.mjs";
 import { lowerResolvedPreviewExpressions } from "../scripts/atom-migration-proof-compare.mjs";
 import { augmentSymbolValuesFromPreview } from "../scripts/atom-migration-proof-compare.mjs";
 import { comparisonCacheKey } from "../scripts/atom-migration-proof-compare.mjs";
@@ -19,6 +26,8 @@ import { readBudgetFile } from "../scripts/atom-migration-proof-compare.mjs";
 
 const testDirectory = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(testDirectory, "..");
+const asmRoot = path.join(packageRoot, "asm");
+const proofRoot = path.join(packageRoot, "proofs");
 const dryRunScript = path.join(packageRoot, "scripts", "atom-migration-dry-run.mjs");
 
 async function withTree(files, run) {
@@ -33,6 +42,14 @@ async function withTree(files, run) {
   } finally {
     await rm(root, { recursive: true, force: true });
   }
+}
+
+function contentBase(generation) {
+  const addresses = generation.images.map(({ address }) => address);
+  for (const event of generation.layout ?? []) {
+    if (event.kind === "reserve" && event.count !== 0) addresses.push(event.address);
+  }
+  return addresses.length === 0 ? generation.finalCursor : Math.min(...addresses);
 }
 
 describe("Nucleus Atom migration dry-run", () => {
@@ -643,6 +660,88 @@ describe("Nucleus Atom migration dry-run", () => {
         "",
       ].join("\n"));
     });
+  });
+
+  it("selects preview or permanent Atom symbol names explicitly", () => {
+    const ledger = [{
+      original: "LongPublicLabel",
+      atom: "N0000000",
+      permanentAtom: "LNGPBLCL",
+    }];
+
+    expect(symbolMapFromLedger(ledger).get("LongPublicLabel")).toBe("N0000000");
+    expect(symbolMapFromLedger(ledger, { symbols: "preview" }).get("LongPublicLabel")).toBe("N0000000");
+    expect(symbolMapFromLedger(ledger, { symbols: "permanent" }).get("LongPublicLabel")).toBe("LNGPBLCL");
+    expect(() => symbolMapFromLedger(ledger, { symbols: "unknown" })).toThrow(/preview or permanent/);
+  });
+
+  it("writes translated permanent Atom source files from the CLI", async () => {
+    await withTree({
+      "asm/main.asm": [
+        ".routine out A,carry clobbers zero",
+        "LongPublicLabel:",
+        "            .DB \"LongPublicLabel\"",
+        "            JP LongPublicLabel ; LongPublicLabel",
+        "",
+      ].join("\n"),
+      "proofs/main.json": JSON.stringify({
+        execution: { entry: "LongPublicLabel" },
+      }),
+    }, async (root) => {
+      const translatedRoot = path.join(root, "atom-permanent");
+      const result = spawnSync(process.execPath, [
+        dryRunScript,
+        "--asm-root",
+        path.join(root, "asm"),
+        "--proof-root",
+        path.join(root, "proofs"),
+        "--report-only",
+        "--translated-root",
+        translatedRoot,
+        "--translated-symbols",
+        "permanent",
+      ], { encoding: "utf8" });
+
+      expect(result.status).toBe(0);
+      await expect(readFile(path.join(translatedRoot, "main.asm"), "utf8")).resolves.toBe([
+        ";@ROUTINE OUT A,CARRY CLOBBERS ZERO",
+        "LNGPBLCL: ;@NUC-GLOBAL LongPublicLabel PERMANENT LNGPBLCL",
+        "            DB \"LongPublicLabel\"",
+        "            JP LNGPBLCL ; LongPublicLabel",
+        "",
+      ].join("\n"));
+    });
+  });
+
+  it("assembles the memory-map proof from permanent Atom source byte-identically", async (context) => {
+    const report = scanAssembly({ asmRoot, proofRoot });
+    const translatedRoot = await mkdtemp(path.join(tmpdir(), "nucleus-atom-permanent-"));
+    context.onTestFinished(async () => {
+      await rm(translatedRoot, { recursive: true, force: true });
+    });
+
+    writeTranslatedTree(report, translatedRoot, { symbols: "permanent" });
+
+    const current = await compile(path.join(asmRoot, "vertical-slice", "memory-map-proof.asm"), {
+      outputType: "bin",
+    });
+    const diagnostics = current.diagnostics.filter(({ severity }) => severity === "error");
+    expect(diagnostics).toEqual([]);
+    const currentBin = current.artifacts.find(({ kind }) => kind === "bin")?.bytes;
+    expect(currentBin).toBeDefined();
+
+    const atom = await assembleAtomProject({
+      root: translatedRoot,
+      entry: "vertical-slice/memory-map-proof.asm",
+      target: { start: 0, capacity: 0xffff },
+      maxInstructions: 10_000_000,
+      maxCycles: 100_000_000,
+    });
+    const atomBin = materializeAtomGeneration(atom.generation, {
+      base: contentBase(atom.generation),
+    }).bytes;
+
+    expect(Buffer.compare(Buffer.from(atomBin), Buffer.from(currentBin))).toBe(0);
   });
 
   it("flattens AZM textual includes for one Atom-preview entry", async () => {

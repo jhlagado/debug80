@@ -65,6 +65,7 @@ function parseArgs(argv) {
     contractMapOut: undefined,
     migrationBundleOut: undefined,
     translatedRoot: undefined,
+    translatedSymbols: "preview",
     flattenEntry: undefined,
     flattenOut: undefined,
   };
@@ -94,6 +95,11 @@ function parseArgs(argv) {
       options.migrationBundleOut = path.resolve(argv[++index] ?? "");
     } else if (arg === "--translated-root") {
       options.translatedRoot = path.resolve(argv[++index] ?? "");
+    } else if (arg === "--translated-symbols") {
+      options.translatedSymbols = argv[++index];
+      if (!["preview", "permanent"].includes(options.translatedSymbols)) {
+        throw new Error("--translated-symbols must be preview or permanent");
+      }
     } else if (arg === "--flatten-entry") {
       options.flattenEntry = argv[++index];
       if (options.flattenEntry === undefined) throw new Error("--flatten-entry requires a source path");
@@ -131,6 +137,9 @@ Options:
                      Write the complete Atom migration bundle as JSON.
   --translated-root DIR
                      Write generated Atom-preview source files under DIR.
+  --translated-symbols preview|permanent
+                     Select generated symbols for --translated-root. Defaults to
+                     preview. Use permanent only for strict header-include source.
   --flatten-entry FILE
                      Textually lower includes for one entry, relative to asm root.
   --flatten-out FILE Write the flattened Atom-preview entry source to FILE.
@@ -440,8 +449,12 @@ function uniqueAtomAbbreviation(symbol, usedNames) {
   return candidate;
 }
 
-function symbolMapFromLedger(ledger) {
-  return new Map(ledger.map((entry) => [entry.original, entry.atom]));
+function symbolMapFromLedger(ledger, { symbols = "preview" } = {}) {
+  if (!["preview", "permanent"].includes(symbols)) {
+    throw new Error("Nucleus Atom translated symbols must be preview or permanent");
+  }
+  const field = symbols === "permanent" ? "permanentAtom" : "atom";
+  return new Map(ledger.map((entry) => [entry.original, entry[field]]));
 }
 
 function symbolMetadataFromLedger(ledger) {
@@ -1122,8 +1135,8 @@ function translateNucleusAzmLine(
   return `${translatedSource}${label === null ? "" : declarationComment(label[1], symbolMetadata)}${comment}`;
 }
 
-function writeTranslatedTree(report, translatedRoot) {
-  const symbolMap = symbolMapFromLedger(report.ledger);
+function writeTranslatedTree(report, translatedRoot, { symbols = "preview" } = {}) {
+  const symbolMap = symbolMapFromLedger(report.ledger, { symbols });
   const symbolMetadata = symbolMetadataFromLedger(report.ledger);
   const preprocessorSymbols = new Set(report.preprocessorSymbols);
   for (const file of findAssemblyFiles(report.asmRoot)) {
@@ -1358,6 +1371,7 @@ export {
   flattenTranslatedEntry,
   flattenedEntryParts,
   scanAssembly,
+  symbolMapFromLedger,
   symbolMetadataFromLedger,
   translateNucleusAzmLine,
   writeFlattenedEntry,
@@ -1390,7 +1404,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
       writeJsonFile(options.migrationBundleOut, report);
     }
     if (options.translatedRoot !== undefined) {
-      writeTranslatedTree(report, options.translatedRoot);
+      writeTranslatedTree(report, options.translatedRoot, { symbols: options.translatedSymbols });
     }
     if (options.flattenEntry !== undefined || options.flattenOut !== undefined) {
       if (options.flattenEntry === undefined || options.flattenOut === undefined) {

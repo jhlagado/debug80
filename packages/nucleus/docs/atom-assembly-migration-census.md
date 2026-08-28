@@ -5,7 +5,7 @@ Date: 2026-08-28
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current census HEAD: `fc233f5a`
+Current census HEAD before the permanent-source pilot: `ca122cd3`
 
 ## Purpose
 
@@ -70,6 +70,20 @@ It can also write a generated Atom-preview assembly tree without modifying the s
 npm run atom:migration:census -w nucleus -- \
   --translated-root build/nucleus-atom-preview
 ```
+
+Preview output uses generated comparison-safe symbol names. For strict
+header-include source that is being prepared as permanent Atom source, select
+the permanent abbreviation/local-label names explicitly:
+
+```bash
+npm run atom:migration:census -w nucleus -- \
+  --translated-root build/nucleus-atom-permanent \
+  --translated-symbols permanent
+```
+
+Do not use permanent symbols for flattened preview output. Flattening can split
+inside private-label scopes, so it deliberately remains on generated preview
+symbols.
 
 It can also write the proof-manifest symbol join needed by the proof harness:
 
@@ -472,7 +486,7 @@ Before converting source:
 6. Start permanent source conversion on a small proof image whose source does not require emitted-content include lowering.
 7. Keep emitted-content include lowering as a compatibility path for older proof assembly until those files are reorganized around explicit section ownership.
 
-## Pilot preview results
+## Pilot results
 
 The generated preview tree can assemble `vertical-slice/dispatcher-offset-direct-measurement.asm` with Atom after the proof-limit and terminal-`.END` translation rules. This is not a proof-image success. That file is a dispatcher measurement artifact, and its AZM output does not provide a reliable byte-identity target for ordinary Atom assembly because the measurement source overlaps selection-table bytes and code bytes. Do not use it as the first byte-identity proof.
 
@@ -488,6 +502,19 @@ proof-limit handling, terminal `.END` handling, include-after-header lowering,
 and simple conditional evaluation are sufficient for one substantial proof image.
 It does not yet prove all proof images, strict contract metadata translation, or
 proof-manifest symbol remapping.
+
+The first permanent-source pilot also succeeds without flattened include
+lowering:
+
+| Entry | Include shape | Symbol mode | Result |
+| --- | --- | --- | --- |
+| `vertical-slice/memory-map-proof.asm` | Header `%INCLUDE` source parts | Permanent Atom names | Byte-identical |
+
+That pilot exercises the intended permanent-source path: generated Atom source
+files remain separate, the normal Atom host resolver follows the leading
+`%INCLUDE`, and Atom assembles the entry byte-identically to the current
+assembler path. It is deliberately small; emitted-content late includes remain
+on the compatibility-lowered path until those proof sources are reorganized.
 
 The first scaled proof-image comparison uses generated multipart Atom preview
 source, so no generated part exceeds Atom's 16-bit source-offset range. Current
