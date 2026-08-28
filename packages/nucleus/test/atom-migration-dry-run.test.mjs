@@ -832,6 +832,8 @@ describe("Nucleus Atom migration dry-run", () => {
         .map(({ proof }) => proof);
       expect(readyProofs).toEqual([
         "memory-map-proof.json",
+        "nobj-runner-proof.json",
+        "source-provenance-proof.json",
       ]);
 
       const runAtomProof = (name, entry) =>
@@ -856,6 +858,34 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(memoryMap.memory[memoryMap.symbols.ProofStatus ?? -1]).toBe(0xa5);
       expect(memoryMap.symbols.AddressSpaceLimit).toBe(0x10000);
       expect(memoryMap.regions.reduce((total, region) => total + region.bytes, 0)).toBe(65_536);
+
+      const nobjRunner = await runAtomProof(
+        "nobj-runner-proof.json",
+        "vertical-slice/nobj-runner-proof.asm",
+      );
+      expect(nobjRunner.nobj).toBeDefined();
+      expect(nobjRunner.nobj?.parsed.commit.recordCount).toBe(5);
+      expect(nobjRunner.nobj?.serialized).toHaveLength(92);
+      expect(nobjRunner.nobj?.instructions).toBe(3);
+      expect(nobjRunner.nobj?.memory[0x8081]).toBe(0x5a);
+      expect(nobjRunner.memory[0x8081]).toBe(0);
+
+      const sourceProvenance = await runAtomProof(
+        "source-provenance-proof.json",
+        "vertical-slice/source-provenance-proof.asm",
+      );
+      expect(sourceProvenance.sourceProvenance).toEqual([
+        {
+          partOrdinal: 1,
+          line: 10,
+          column: 3,
+          bank: 0,
+          start: 0x8000,
+          end: 0x8003,
+          kind: "code",
+          confidence: "high",
+        },
+      ]);
     });
   });
 

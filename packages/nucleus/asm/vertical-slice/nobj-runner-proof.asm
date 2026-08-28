@@ -9,10 +9,11 @@ ProofStart:
 
             .org $1000
 NobjAdapterLength:
-            .dw NobjAdapterEnd-NobjAdapterLog
+            .dw NobjAdapterSize
 NobjAdapterLog:
             ; IMAGE bank 0, $8000: LD A,$5A / LD ($8081),A / HALT
             .db 1,0,$00,$80,6,0,$3E,$5A,$32,$81,$80,$76
             ; IMAGE bank 0, $8080: loaded initialized bytes
             .db 1,0,$80,$80,2,0,0,0
 NobjAdapterEnd:
+NobjAdapterSize .equ NobjAdapterEnd-NobjAdapterLog

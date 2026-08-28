@@ -25,16 +25,16 @@ Measured files:
 | Item | Measured value |
 | --- | ---: |
 | Assembly files, `.asm` and `.asmi` | 69 |
-| Source lines | 29,389 |
-| Defined assembler symbols detected | 3,797 |
-| Defined assembler symbols longer than eight characters | 3,764 |
-| Long labels classed as dot-local candidates | 995 |
-| Long symbols still needing global treatment | 2,769 |
+| Source lines | 29,391 |
+| Defined assembler symbols detected | 3,799 |
+| Defined assembler symbols longer than eight characters | 3,766 |
+| Long labels classed as dot-local candidates | 996 |
+| Long symbols still needing global treatment | 2,770 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
 | Include-after-header violations | 143 |
-| Emitted-statement symbol arithmetic sites | 443 |
-| Current permanent-source blockers | 586 |
+| Emitted-statement symbol arithmetic sites | 441 |
+| Current permanent-source blockers | 584 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
@@ -42,8 +42,8 @@ Measured files:
 | One-past-address-space proof-limit mappings | 4 |
 | Routine contract metadata mappings | 709 |
 | Proof manifests classified | 29 |
-| Atom permanent-ready proof manifests | 1 |
-| Atom-preview-only proof manifests | 2 |
+| Atom permanent-ready proof manifests | 3 |
+| Atom-preview-only proof manifests | 0 |
 | Proof manifests blocked by late emitted-content includes | 23 |
 | Measurement-artifact proof manifests | 3 |
 
@@ -137,9 +137,8 @@ npm run atom:migration:census -w nucleus -- \
   --proof-matrix-out build/nucleus-atom-proof-matrix.json
 ```
 
-Current measurement: one proof manifest is ready for permanent Atom-source
-execution now (`memory-map-proof`), two are Atom-preview-only because they use
-label arithmetic in emitted statements (`nobj-runner-proof` and
+Current measurement: three proof manifests are ready for permanent Atom-source
+execution now (`memory-map-proof`, `nobj-runner-proof`, and
 `source-provenance-proof`), twenty-three are blocked by late emitted-content
 includes, and three dispatcher measurement manifests remain measurement
 artifacts rather than proof-image migration targets.
@@ -253,16 +252,19 @@ the current files use surrounding labels such as `TokenizerCodeStart` /
 permanent-source rewrite needs those extent symbols to remain byte-equivalent.
 The proof-comparison command is the required guard after each batch.
 
-The two Atom-preview-only proof manifests are a separate blocker:
+Two previously Atom-preview-only proof manifests were promoted by replacing
+direct emitted two-forward-symbol differences with one forward size symbol and a
+later resolved size equate:
 
-- `nobj-runner-proof.json` uses `DW NobjAdapterEnd-NobjAdapterLog`.
-- `source-provenance-proof.json` uses
-  `DW SourceProvenanceEnd-SourceProvenanceLog`.
+- `nobj-runner-proof.json` now emits `DW NobjAdapterSize`, with
+  `NobjAdapterSize EQU NobjAdapterEnd-NobjAdapterLog` after the log.
+- `source-provenance-proof.json` now emits `DW SourceProvenanceSize`, with
+  `SourceProvenanceSize EQU SourceProvenanceEnd-SourceProvenanceLog` after the
+  log.
 
-Those are good small candidates for adding direct Atom support for
-symbol-minus-symbol emitted expressions. Until then, preview lowering proves the
-bytes, but permanent Atom proof execution must not claim those two files are
-ready.
+This pattern keeps Atom's single-symbol forward patch format intact. Direct
+emitted two-forward-symbol differences remain unsupported permanent Atom source;
+preview lowering can still prove their bytes from the comparison symbol table.
 
 ## Directive census
 
