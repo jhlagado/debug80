@@ -176,6 +176,67 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   });
 
+  it("maps routine contracts to the following routine label", async () => {
+    await withTree({
+      "asm/main.asm": [
+        ".routine in A out carry clobbers zero",
+        "LongRoutineName:",
+        "            RET",
+        "",
+      ].join("\n"),
+      "proofs/main.json": "{}",
+    }, async (root) => {
+      const report = scanAssembly({
+        asmRoot: path.join(root, "asm"),
+        proofRoot: path.join(root, "proofs"),
+      });
+
+      expect(report.contractMap).toEqual([
+        {
+          file: "main.asm",
+          line: 1,
+          contract: "in A out carry clobbers zero",
+          target: {
+            original: "LongRoutineName",
+            atom: "N0000000",
+            permanentAtom: "LNGRTNNM",
+            line: 2,
+          },
+        },
+      ]);
+    });
+  });
+
+  it("maps conditional routine contract variants to the same following label", async () => {
+    await withTree({
+      "asm/main.asm": [
+        ".if TargetStreamingOutput",
+        ".routine in DE out A,carry",
+        ".else",
+        ".routine in HL out A,carry",
+        ".endif",
+        "Stage7EmitStringCheck:",
+        "            RET",
+        "",
+      ].join("\n"),
+      "proofs/main.json": "{}",
+    }, async (root) => {
+      const report = scanAssembly({
+        asmRoot: path.join(root, "asm"),
+        proofRoot: path.join(root, "proofs"),
+      });
+
+      expect(report.contractMap.map(({ line, contract, target }) => ({
+        line,
+        contract,
+        target: target?.original,
+      }))).toEqual([
+        { line: 2, contract: "in DE out A,carry", target: "Stage7EmitStringCheck" },
+        { line: 4, contract: "in HL out A,carry", target: "Stage7EmitStringCheck" },
+      ]);
+    });
+  });
+
   it("does not make a local label cross a repeated global definition boundary", async () => {
     await withTree({
       "asm/main.asm": [
@@ -471,6 +532,7 @@ describe("Nucleus Atom migration dry-run", () => {
       const includeReportPath = path.join(root, "out", "includes.json");
       const proofSymbolMapPath = path.join(root, "out", "proof-symbols.json");
       const proofLimitMapPath = path.join(root, "out", "proof-limits.json");
+      const contractMapPath = path.join(root, "out", "contracts.json");
       const result = spawnSync(process.execPath, [
         dryRunScript,
         "--asm-root",
@@ -487,6 +549,8 @@ describe("Nucleus Atom migration dry-run", () => {
         proofSymbolMapPath,
         "--proof-limit-map-out",
         proofLimitMapPath,
+        "--contract-map-out",
+        contractMapPath,
       ], { encoding: "utf8" });
 
       expect(result.status).toBe(1);
@@ -495,6 +559,7 @@ describe("Nucleus Atom migration dry-run", () => {
       const includeReport = JSON.parse(await readFile(includeReportPath, "utf8"));
       const proofSymbolMap = JSON.parse(await readFile(proofSymbolMapPath, "utf8"));
       const proofLimitMap = JSON.parse(await readFile(proofLimitMapPath, "utf8"));
+      const contractMap = JSON.parse(await readFile(contractMapPath, "utf8"));
       expect(ledger).toHaveLength(1);
       expect(ledger[0]).toMatchObject({
         original: "LongPublicLabel",
@@ -521,6 +586,7 @@ describe("Nucleus Atom migration dry-run", () => {
         }),
       ]);
       expect(proofLimitMap).toEqual([]);
+      expect(contractMap).toEqual([]);
     });
   });
 

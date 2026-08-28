@@ -62,6 +62,7 @@ function parseArgs(argv) {
     includeReportOut: undefined,
     proofSymbolMapOut: undefined,
     proofLimitMapOut: undefined,
+    contractMapOut: undefined,
     translatedRoot: undefined,
     flattenEntry: undefined,
     flattenOut: undefined,
@@ -86,6 +87,8 @@ function parseArgs(argv) {
       options.proofSymbolMapOut = path.resolve(argv[++index] ?? "");
     } else if (arg === "--proof-limit-map-out") {
       options.proofLimitMapOut = path.resolve(argv[++index] ?? "");
+    } else if (arg === "--contract-map-out") {
+      options.contractMapOut = path.resolve(argv[++index] ?? "");
     } else if (arg === "--translated-root") {
       options.translatedRoot = path.resolve(argv[++index] ?? "");
     } else if (arg === "--flatten-entry") {
@@ -119,6 +122,8 @@ Options:
                      Write proof-manifest symbol remapping as JSON.
   --proof-limit-map-out FILE
                      Write one-past-address-space proof limit symbols as JSON.
+  --contract-map-out FILE
+                     Write AZM .ROUTINE metadata mapped to Atom routine labels as JSON.
   --translated-root DIR
                      Write generated Atom-preview source files under DIR.
   --flatten-entry FILE
@@ -228,6 +233,19 @@ function combineIncludeKinds(left, right) {
 
 function compatibilityLoweringCanHandle(issue) {
   return issue.code === "include-after-header";
+}
+
+function nextRoutineLabel(lines, startIndex) {
+  for (let index = startIndex + 1; index < lines.length; index += 1) {
+    const code = stripComment(lines[index].replace(/\r$/, ""));
+    const trimmed = code.trim();
+    if (trimmed === "") continue;
+    if (/^\s*\.(?:if|else|endif|routine)\b/i.test(code)) continue;
+    const label = /^\s*([A-Za-z_.$?][A-Za-z0-9_.$?]*):/.exec(code);
+    if (label !== null) return { label: label[1], line: index + 1 };
+    return undefined;
+  }
+  return undefined;
 }
 
 function classifyIncludeTarget(file, root = sourcePackageRoot(path.dirname(file)), seen = new Set()) {
@@ -824,6 +842,32 @@ function scanAssembly({ asmRoot, proofRoot }) {
       line: record.line,
     });
   }));
+  const symbolMap = symbolMapFromLedger(ledger);
+  const symbolMetadata = symbolMetadataFromLedger(ledger);
+  const contractMap = Object.freeze(files.flatMap((file) => {
+    const lines = readFileSync(file, "utf8").split(/\n/);
+    return lines.flatMap((raw, index) => {
+      const code = stripComment(raw.replace(/\r$/, ""));
+      const routine = /^\s*\.routine\b\s*(.*)$/i.exec(code);
+      if (routine === null) return [];
+      const target = nextRoutineLabel(lines, index);
+      const original = target?.label;
+      const metadata = original === undefined ? undefined : symbolMetadata.get(original);
+      return [Object.freeze({
+        file: path.relative(asmRoot, file).split(path.sep).join("/"),
+        line: index + 1,
+        contract: routine[1].trim(),
+        target: original === undefined
+          ? null
+          : Object.freeze({
+            original,
+            atom: symbolMap.get(original) ?? original,
+            permanentAtom: metadata?.permanentAtom ?? original,
+            line: target.line,
+          }),
+      })];
+    });
+  }));
 
   const caseGroups = new Map();
   for (const symbol of symbols.keys()) {
@@ -904,6 +948,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
       preprocessorSymbols: preprocessorSymbols.size,
       proofSymbolMappings: proofSymbolMap.length,
       proofLimitMappings: proofLimitMap.length,
+      contractMappings: contractMap.length,
     },
     supportedMappings: {
       mechanicalDirectives: [...mechanicalDirectives].sort(),
@@ -917,6 +962,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
     preprocessorSymbols: Object.freeze([...preprocessorSymbols].sort()),
     proofSymbolMap,
     proofLimitMap,
+    contractMap,
     ledger,
     issues,
   };
@@ -1290,6 +1336,7 @@ function printTextReport(report) {
   console.log(`globalSymbolRenames=${report.measured.globalSymbolRenames}`);
   console.log(`proofSymbolMappings=${report.measured.proofSymbolMappings}`);
   console.log(`proofLimitMappings=${report.measured.proofLimitMappings}`);
+  console.log(`contractMappings=${report.measured.contractMappings}`);
   console.log(`issues=${report.issues.length}`);
   if (report.issues.length > 0) {
     console.log("");
@@ -1329,6 +1376,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     }
     if (options.proofLimitMapOut !== undefined) {
       writeJsonFile(options.proofLimitMapOut, report.proofLimitMap);
+    }
+    if (options.contractMapOut !== undefined) {
+      writeJsonFile(options.contractMapOut, report.contractMap);
     }
     if (options.translatedRoot !== undefined) {
       writeTranslatedTree(report, options.translatedRoot);

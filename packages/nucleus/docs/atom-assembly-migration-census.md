@@ -39,6 +39,7 @@ Measured files:
 | Compatibility-blocking issues | 0 |
 | Proof-manifest symbol mappings | 146 |
 | One-past-address-space proof-limit mappings | 4 |
+| Routine contract metadata mappings | 709 |
 
 The source set is large enough that manual renaming without tooling is not credible.
 
@@ -95,6 +96,19 @@ must not treat these as ordinary 16-bit `EQU` values. The preview translator
 lowers each one to `EQU 0` plus `;@ATOM-PROOF-LIMIT <name> 65536`; the generated
 proof-limit map carries the real external value for proof memory profiles and
 manifest joins.
+
+It can also write the routine-contract map for the proof checker:
+
+```bash
+npm run atom:migration:census -w nucleus -- \
+  --contract-map-out build/nucleus-atom-contracts.json
+```
+
+Current measurement: 709 `.ROUTINE` metadata lines are mapped to the following
+routine label, and every entry has a target. Conditional contract variants stay
+as separate entries for the same target label. Atom source represents the
+contract line as `;@ROUTINE ...`; the assembler ignores it, and the host proof
+tool consumes the generated contract map.
 
 For proof images that still depend on AZM-style textual includes, the tool can
 also lower a single entry into one generated Atom-preview source file:
@@ -427,7 +441,7 @@ This keeps the Atom assembler small and keeps proof ownership outside the assemb
 | `.END` | Terminal metadata | Current instances can be omitted in preview source after recording `;@AZM-END` |
 | `.INCLUDE` | Header-only for permanent source; compatibility-lowered for current proofs | Current emitted-content include-after-header cases are preserved by the lowering bridge |
 | `.IF`, `.ELSE`, `.ENDIF` | Mechanical for current source set | Current expressions are simple flags |
-| `.ROUTINE` | Contract-only | Must become proof metadata comments |
+| `.ROUTINE` | Mapped as proof metadata | Atom source uses `;@ROUTINE`; the generated contract map ties each contract to the target routine label |
 | Long labels | Classified | 995 can become dot-local labels; the rest have generated permanent global abbreviations |
 | Proof JSON symbol references | Mapped | The dry-run emits a proof-symbol map from existing proof names to preview and permanent Atom names |
 | `$10000` limit constants | Mapped as proof metadata | Atom source lowers these to `EQU 0` plus `;@ATOM-PROOF-LIMIT`, and the proof-limit map carries `65536` |
@@ -442,7 +456,7 @@ Before converting source:
 2. Add tests for each newly discovered untranslatable directive, unresolved include, unsupported conditional expression, or long symbol that cannot be classified as local or global.
 3. Integrate the proof-symbol map into the proof harness path that consumes Atom-built images.
 4. Integrate the proof-limit map into the proof harness path that consumes Atom-built images.
-5. Convert strict register-contract metadata comments into the proof harness input path.
+5. Integrate the contract map into the strict register-contract proof path that consumes Atom-built images.
 6. Start permanent source conversion on a small proof image whose source does not require emitted-content include lowering.
 7. Keep emitted-content include lowering as a compatibility path for older proof assembly until those files are reorganized around explicit section ownership.
 
