@@ -207,7 +207,7 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   });
 
-  it("fails on AZM textual includes after source has begun", async () => {
+  it("fails on includes after the source header has closed", async () => {
     await withTree({
       "asm/main.asm": "ORG $1000\n.include \"late.asmi\"\n",
       "asm/late.asmi": "VALUE .equ 1\n",
@@ -219,10 +219,38 @@ describe("Nucleus Atom migration dry-run", () => {
       });
 
       expect(report.status).toBe("blocked");
-      expect(report.measured.lateIncludes).toBe(1);
+      expect(report.measured.includeAfterHeader).toBe(1);
       expect(report.issues).toEqual([
         expect.objectContaining({
-          code: "late-include",
+          code: "include-after-header",
+        }),
+      ]);
+    });
+  });
+
+  it("treats feature definitions and conditionals before includes as source", async () => {
+    await withTree({
+      "asm/main.asm": [
+        "FeatureA .equ 1",
+        ".if FeatureA",
+        ".include \"early.asmi\"",
+        ".endif",
+        "START:",
+        "RET",
+        "",
+      ].join("\n"),
+      "asm/early.asmi": "VALUE .equ 1\n",
+      "proofs/main.json": "{}",
+    }, async (root) => {
+      const report = scanAssembly({
+        asmRoot: path.join(root, "asm"),
+        proofRoot: path.join(root, "proofs"),
+      });
+
+      expect(report.measured.includeAfterHeader).toBe(1);
+      expect(report.issues).toEqual([
+        expect.objectContaining({
+          code: "include-after-header",
         }),
       ]);
     });

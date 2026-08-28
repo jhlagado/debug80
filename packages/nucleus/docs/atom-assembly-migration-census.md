@@ -32,7 +32,7 @@ Measured files:
 | Long symbols still needing global treatment | 2,414 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
-| Late textual includes | 177 |
+| Include-after-header violations | 177 |
 | Current dry-run blockers | 2,591 |
 
 The source set is large enough that manual renaming without tooling is not credible.
@@ -166,18 +166,36 @@ The include graph should be converted through the shared source-preparation reso
 
 The scanner follows transitive `.include` directives under the Nucleus package root. This matters for generated grammar files such as `grammar/stage7-tables.asmi`, which sit outside `packages/nucleus/asm` but are part of the real assembly stream.
 
-Atom's current `%INCLUDE` form is header-only because it is part of source
-preparation. The host reads those directives, builds the ordered source set, and
-removes or masks the directive before the resident assembler sees bytes.
-Nucleus assembly currently uses `.INCLUDE` differently: many proof images use it
-as textual paste after source has already begun, often to insert shared memory
-maps, state layouts, generated tables, runtime helpers, or proof fixtures at a
-specific point in the assembled stream.
+The selected Nucleus migration policy is header-only include semantics. An
+include is part of source preparation: the host reads the directive, builds the
+ordered source set, and removes or masks the directive before the resident
+assembler sees bytes. The include header is deliberately simple: comments,
+blank lines, and `.INCLUDE` directives only. `EQU`, `.IF`, `.ELSE`, `.ENDIF`,
+`.ORG`, labels, data, instructions, and contract annotations all close the
+header.
 
-That is the late-include issue. It is not a capitalization or punctuation
-problem. Translating `.INCLUDE` to `%INCLUDE` would change meaning because Atom
-would treat it as a dependency-header directive, while the Nucleus source often
-needs the included text exactly where the line appears.
+This avoids magic. A file that needs shared constants, feature settings, memory
+maps, generated tables, or target layout should include a file that provides
+those facts. It should not put local definitions before includes and rely on
+the include resolver to interpret that as a special configuration scope.
+
+This does not weaken `ORG` for ROM development. `ORG` remains available after
+the header closes, and an included source file may contain its own `ORG` when it
+owns a ROM section or fixed-address table. The restriction is only that `ORG`
+must not participate in dependency discovery. The source-preparation layer
+decides which files are present; ordinary assembly then decides where their
+bytes land.
+
+The existing proof assembly still has compatibility debt: many proof images use
+`.INCLUDE` as textual paste after assembly has already begun, often to insert
+shared memory maps, state layouts, generated tables, runtime helpers, or proof
+fixtures at a specific point in the assembled stream.
+
+That is the include-after-header issue. It is not a capitalization or punctuation
+problem. The long-term answer is not to preserve two include meanings. Nucleus
+source should converge on the same header-only model as Atom. Until the old
+proof files are reorganized, translating those mid-file `.INCLUDE` lines to
+header includes would change assembled order and therefore risk changing bytes.
 
 The migration now has a temporary preview path that lowers one proof entry into
 a generated flat Atom source file. That preserves byte identity for comparison,
@@ -186,11 +204,11 @@ header imports plus a source reorganization that preserves assembled order, or a
 formal Nucleus-specific lowering stage that records where each pasted region
 came from.
 
-The long-term migration still needs one of these decisions before the source tree itself can become Atom-native:
+The long-term migration still needs one of these implementation paths before
+the source tree itself can become Atom-native:
 
 1. move Nucleus assembly includes into leading dependency headers where the order is semantically equivalent;
-2. keep the Nucleus-specific preview mode that lowers late textual includes before invoking Atom and formalize its provenance mapping; or
-3. extend Atom's host include policy, which would be a product decision because Atom currently treats late host directives as invalid source.
+2. keep a Nucleus-specific compatibility lowering stage for the existing proof assembly while new source uses header-only includes.
 
 ## Symbol-length problem
 
@@ -302,7 +320,7 @@ This keeps the Atom assembler small and keeps proof ownership outside the assemb
 | Ordinary Z80 instructions | Direct or near-direct | Atom already targets byte-identical Z80 encoding |
 | `.DB`, `.DS`, `.DW`, `.ORG` | Mechanical | Atom has equivalent directive forms |
 | `.END` | Terminal metadata | Current instances can be omitted in preview source after recording `;@AZM-END` |
-| `.INCLUDE` | Requires resolver or lowering decision | Most Nucleus includes are textual and late relative to Atom's header-only policy |
+| `.INCLUDE` | Header-only policy selected | Current include-after-header cases must be reorganized or lowered before Atom sees source |
 | `.IF`, `.ELSE`, `.ENDIF` | Mechanical for current source set | Current expressions are simple flags |
 | `.ROUTINE` | Contract-only | Must become proof metadata comments |
 | Long labels | Partly classified | 1,350 can become dot-local labels; the rest need global names |
@@ -319,7 +337,7 @@ Before converting source:
 2. Add tests for each newly discovered untranslatable directive, unresolved include, unsupported conditional expression, or long symbol that cannot be classified as local or global.
 3. Add a proof-manifest join that maps old exported proof symbol names to generated Atom symbols.
 4. Decide how the four one-past-address-space constants should be represented for Atom.
-5. Decide whether the late textual include lowering remains only a preview bridge or becomes a formal Nucleus source-preparation mode.
+5. Decide whether include-after-header lowering remains only a preview bridge or becomes a formal Nucleus source-preparation mode for existing proof assembly.
 6. Scale the successful flattened preview comparison from `compiler-slice-proof.asm` to the rest of the proof-image set.
 7. Only then scale the conversion to the full `packages/nucleus/asm` tree.
 
@@ -335,7 +353,7 @@ The first real proof-image pilot now succeeds through the flattened preview path
 
 This is a measured proof-image compatibility result, not a full migration. It
 shows that the current line translator, symbol ledger substitutions,
-proof-limit handling, terminal `.END` handling, late textual include lowering,
+proof-limit handling, terminal `.END` handling, include-after-header lowering,
 and simple conditional evaluation are sufficient for one substantial proof image.
 It does not yet prove all proof images, strict contract metadata translation, or
 proof-manifest symbol remapping.
@@ -453,7 +471,7 @@ shared Debug80 Z80 services package.
 The Nucleus assembly source is structurally compatible with Atom, but it is not
 ready for a direct rename-and-assemble migration. The conversion is mostly
 mechanical for instructions, data directives, and simple conditionals. The hard
-work is the permanent symbol ledger, contract-comment path, and late textual
-include policy.
+work is the permanent symbol ledger, contract-comment path, and existing
+include-after-header proof-source cleanup.
 
 The migration should therefore start with tooling, not manual source edits.

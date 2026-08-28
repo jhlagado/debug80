@@ -172,6 +172,13 @@ function addCount(map, key) {
   map.set(key, (map.get(key) ?? 0) + 1);
 }
 
+function isIncludeHeaderLine(code) {
+  const trimmed = code.trim();
+  if (trimmed === "") return true;
+  if (/^\s*\.include\b/i.test(code)) return true;
+  return false;
+}
+
 function findAssemblyFiles(root) {
   return globSync("**/*.{asm,asmi}", { cwd: root })
     .map((name) => path.join(root, name))
@@ -439,12 +446,12 @@ function scanAssembly({ asmRoot, proofRoot }) {
   let sourceLines = 0;
   let contractLines = 0;
   let proofLimitSymbols = 0;
-  let lateIncludes = 0;
+  let includeAfterHeader = 0;
 
   for (const file of files) {
     const lines = readFileSync(file, "utf8").split(/\n/);
     sourceLines += lines.length;
-    let seenSourceBeforeInclude = false;
+    let includeHeaderClosed = false;
     for (let index = 0; index < lines.length; index += 1) {
       const lineNumber = index + 1;
       const raw = lines[index].replace(/\r$/, "");
@@ -473,11 +480,11 @@ function scanAssembly({ asmRoot, proofRoot }) {
         if (name === "routine") contractLines += 1;
         if (name === "include") {
           addCount(includes, argument);
-          if (seenSourceBeforeInclude) {
-            lateIncludes += 1;
+          if (includeHeaderClosed) {
+            includeAfterHeader += 1;
             issues.push({
-              code: "late-include",
-              message: "AZM textual include appears after source; Atom %INCLUDE is header-only",
+              code: "include-after-header",
+              message: "include appears after the header; Nucleus Atom migration requires includes before ORG, labels, code, data, or contracts",
               ...location(file, lineNumber),
             });
           }
@@ -493,8 +500,8 @@ function scanAssembly({ asmRoot, proofRoot }) {
           }
         }
       }
-      if (code.trim() !== "" && !/^\s*\.include\b/i.test(code)) {
-        seenSourceBeforeInclude = true;
+      if (!isIncludeHeaderLine(code)) {
+        includeHeaderClosed = true;
       }
       if (directive === null) {
         const labelDirective = /^\s*[A-Za-z_.$?][A-Za-z0-9_.$?]*(?::\s*|\s+)\.([A-Za-z][A-Za-z0-9_]*)\b\s*(.*)$/i.exec(code);
@@ -631,7 +638,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
       conditionals: conditionalSummary,
       uniqueIncludes: includes.size,
       proofLimitSymbols,
-      lateIncludes,
+      includeAfterHeader,
       preprocessorSymbols: preprocessorSymbols.size,
     },
     supportedMappings: {
