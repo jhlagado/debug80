@@ -153,9 +153,13 @@ describe("Nucleus Atom migration dry-run", () => {
         },
       ]);
       expect(report.issues.map(({ code }) => code)).toEqual([
-        "unledgered-long-symbol",
-        "unledgered-long-symbol",
+        "long-symbol-public-abbreviation-required",
       ]);
+      expect(report.ledger.find(({ original }) => original === "AnotherLongLabel")).toMatchObject({
+        migrationKind: "local-label",
+        permanentAtom: ".L00000",
+        localScope: expect.objectContaining({ anchor: "VeryLongPublicLabel" }),
+      });
     });
   });
 
@@ -237,8 +241,8 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(report.status).toBe("blocked");
       expect(report.measured.proofLimitSymbols).toBe(2);
       expect(report.issues.map(({ code }) => code)).toEqual([
-        "unledgered-long-symbol",
-        "unledgered-long-symbol",
+        "long-symbol-equ-abbreviation-required",
+        "long-symbol-equ-abbreviation-required",
       ]);
     });
   });
@@ -276,7 +280,6 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(report.status).toBe("blocked");
       expect(report.issues.map(({ code }) => code)).toEqual([
         "generated-symbol-collision",
-        "unledgered-long-symbol",
       ]);
     });
   });
@@ -313,7 +316,7 @@ describe("Nucleus Atom migration dry-run", () => {
       });
       expect(issues).toEqual([
         expect.objectContaining({
-          code: "unledgered-long-symbol",
+          code: "long-symbol-public-abbreviation-required",
         }),
       ]);
     });
@@ -347,7 +350,7 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(result.status).toBe(0);
       await expect(readFile(path.join(translatedRoot, "main.asm"), "utf8")).resolves.toBe([
         ";@ROUTINE OUT A,CARRY CLOBBERS ZERO",
-        "N0000000:",
+        "N0000000: ;@NUC-GLOBAL LongPublicLabel",
         "            DB \"LongPublicLabel\"",
         "            JP N0000000 ; LongPublicLabel",
         "",
@@ -381,11 +384,11 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(flattenTranslatedEntry(report, "main.asm")).toBe([
         ";@SOURCE-BEGIN main.asm",
         ";@DEFINE FeatureFlag 1",
-        "N0000001:",
+        "N0000001: ;@NUC-GLOBAL MainLongLabel",
         ";@IF FeatureFlag 1",
         ";@INCLUDE-BEGIN lib.asmi",
         ";@SOURCE-BEGIN lib.asmi",
-        "N0000000:",
+        "N0000000: ;@NUC-GLOBAL LibLongLabel",
         "            DB 1",
         "",
         ";@SOURCE-END lib.asmi",

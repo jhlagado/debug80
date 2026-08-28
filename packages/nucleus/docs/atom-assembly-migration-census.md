@@ -28,10 +28,12 @@ Measured files:
 | Source lines | 29,375 |
 | Defined assembler symbols detected | 3,797 |
 | Defined assembler symbols longer than eight characters | 3,764 |
+| Long labels classed as dot-local candidates | 1,350 |
+| Long symbols still needing global treatment | 2,414 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
 | Late textual includes | 177 |
-| Current dry-run blockers | 3,941 |
+| Current dry-run blockers | 2,591 |
 
 The source set is large enough that manual renaming without tooling is not credible.
 
@@ -122,14 +124,19 @@ generated preview.
 | Form | Measured count | Atom migration treatment |
 | --- | ---: | --- |
 | `$FFFF`-style hexadecimal | 909 | Supported by Atom; direct |
-| `$10000` hexadecimal limit constants | 3 | Blocked until represented without exceeding Atom's 16-bit expression range |
+| `$10000` hexadecimal limit constants | 4 | Blocked until represented without exceeding Atom's 16-bit expression range |
 | `%01010101`-style binary | 3 | Supported by Atom with line-start directive disambiguation |
 | Intel `1010B`-style binary-looking suffix tokens | 20 | Audit before translation; some may be identifiers or generated-source text |
 | Character literals | 102 | Supported by Atom if the literal form matches Atom's accepted character syntax |
 
 The `%` binary form is not a problem if Atom treats `%` as a directive marker only at directive position. Inside expressions it remains a numeric literal prefix.
 
-The three `$10000` constants are real migration blockers for Atom-preview assembly. They occur in memory-limit definitions, where AZM accepts a value one past the 16-bit address space. Atom's current expression domain is 16-bit, so the migration either needs a safe source rewrite for these limit constants or a deliberate Atom expression-range extension.
+The four `$10000` constants are real migration blockers for direct Atom source.
+They occur in memory-limit definitions, where the current source uses a value
+one past the 16-bit address space. Atom's current expression domain is 16-bit,
+so permanent source either needs a safe source rewrite for these limit constants
+or a deliberate Atom expression-range extension. The preview translator already
+handles the known proof-limit forms explicitly.
 
 ## Include structure
 
@@ -159,7 +166,25 @@ The include graph should be converted through the shared source-preparation reso
 
 The scanner follows transitive `.include` directives under the Nucleus package root. This matters for generated grammar files such as `grammar/stage7-tables.asmi`, which sit outside `packages/nucleus/asm` but are part of the real assembly stream.
 
-Atom's current `%INCLUDE` form is header-only. Nucleus AZM source uses textual includes after source has begun in 177 places. That is not a syntax typo; it reflects the proof-image layout style. The migration now has a temporary preview path that lowers one proof entry into a generated flat Atom source file, while preserving source-boundary comments for later provenance work.
+Atom's current `%INCLUDE` form is header-only because it is part of source
+preparation. The host reads those directives, builds the ordered source set, and
+removes or masks the directive before the resident assembler sees bytes.
+Nucleus assembly currently uses `.INCLUDE` differently: many proof images use it
+as textual paste after source has already begun, often to insert shared memory
+maps, state layouts, generated tables, runtime helpers, or proof fixtures at a
+specific point in the assembled stream.
+
+That is the late-include issue. It is not a capitalization or punctuation
+problem. Translating `.INCLUDE` to `%INCLUDE` would change meaning because Atom
+would treat it as a dependency-header directive, while the Nucleus source often
+needs the included text exactly where the line appears.
+
+The migration now has a temporary preview path that lowers one proof entry into
+a generated flat Atom source file. That preserves byte identity for comparison,
+but it is not yet a good permanent source format. Permanent source needs either
+header imports plus a source reorganization that preserves assembled order, or a
+formal Nucleus-specific lowering stage that records where each pasted region
+came from.
 
 The long-term migration still needs one of these decisions before the source tree itself can become Atom-native:
 
@@ -187,13 +212,47 @@ Longest examples:
 | `Stage8AggregateArgumentFailableSourceEnd` | 40 |
 | `TargetSinkSourceProvenanceSinglePartCode` | 40 |
 
-The migration needs a generated naming ledger before any permanent source rewrite.
+The migration needs a generated naming ledger before any permanent source
+rewrite. The current dry-run ledger now has two separate Atom names for long
+symbols:
 
-The current dry-run ledger maps every long source symbol to a deterministic
-eight-character Atom symbol of the form `N0000000`, `N0000001`, and so on. That
-is sufficient for byte-comparison previews, but it is not yet sufficient for a
-permanent source rewrite because public proof names, D8-visible names, and
-debugging names still need a stable projection back to their original Nucleus
+- `atom`, the deterministic generated global name used by byte-comparison
+  previews; and
+- `permanentAtom`, the proposed permanent-source name when the tool can classify
+  the symbol safely.
+
+For byte-comparison previews, every long symbol still has a deterministic
+eight-character global name of the form `N0000000`, `N0000001`, and so on. That
+keeps the preview mechanically safe. For permanent source, the tool now
+classifies 1,350 long labels as dot-local candidates. Those labels are defined
+once, are not proof-public, are not referenced from another file, and all their
+detected uses fall inside one surrounding global-label scope.
+
+The remaining 2,414 long symbols still require global treatment:
+
+| Kind | Measured count | Required treatment |
+| --- | ---: | --- |
+| Proof-public symbols | 142 | Curated abbreviation plus proof-manifest projection |
+| Cross-file labels | 1,039 | Curated or generated global name, because callers may be outside the local scope |
+| `EQU` constants | 169 | Curated or generated global name; constants do not change Atom private-label scope |
+| Other generated/proof globals | 1,064 | Generated ledger name unless promoted to a readable abbreviation |
+
+Translated preview source now documents renamed global declarations with
+structured comments:
+
+```asm
+N0000000: ;@NUC-GLOBAL TargetOutputEmitByte
+```
+
+Dot-local candidates are not annotated in the generated source. They should be
+short, contextual, and readable at the point of use. The ledger still records
+their original identity and surrounding global scope for proof tooling and
+review, but the assembly source does not need a comment beside every local
+branch target.
+
+The global comments are not assembler semantics. They are there so humans,
+diagnostics, proof tooling, and future D8/source-map generation can recover the
+original Nucleus identity while the assembler sees only short Atom-safe global
 names.
 
 Recommended ledger fields:
@@ -201,18 +260,22 @@ Recommended ledger fields:
 | Field | Meaning |
 | --- | --- |
 | Original symbol | Full AZM symbol |
-| Atom symbol | Generated eight-character symbol |
+| Atom symbol | Generated eight-character preview symbol |
+| Permanent Atom symbol | Proposed permanent-source symbol, including dot-local names where safe |
+| Migration kind | Local label, proof-public abbreviation, cross-file abbreviation, `EQU` abbreviation, or generated global |
 | Scope class | Global, private/local, proof-only, generated fixture, or exported proof symbol |
 | Owning file | Logical source identity |
 | Public obligation | Whether tests, proof JSON, D8 maps, or external scripts refer to the name |
+| Local scope | Surrounding global label when the permanent source can use a dot-local label |
 | Collision group | Other original names that would collide under the selected shortening rule |
 
 Recommended shortening policy:
 
 1. Reserve readable stems for public symbols used by tests and proof manifests.
-2. Generate private implementation names mechanically from a per-file prefix plus a base-40 or base-36 counter.
+2. Convert private implementation labels to dot-local labels when all detected
+   uses stay inside one surrounding global-label scope.
 3. Keep source labels and proof-export labels in separate namespaces where the proof runner permits it.
-4. Fail the conversion on any unledgered long symbol.
+4. Use generated global names only when the source cannot yet justify a readable abbreviation.
 5. Regenerate the ledger from source in CI so manual edits cannot create an accidental collision.
 
 No truncation rule is acceptable. Truncation would create silent collisions in exactly the files where proof diagnostics are most important.
@@ -242,7 +305,7 @@ This keeps the Atom assembler small and keeps proof ownership outside the assemb
 | `.INCLUDE` | Requires resolver or lowering decision | Most Nucleus includes are textual and late relative to Atom's header-only policy |
 | `.IF`, `.ELSE`, `.ENDIF` | Mechanical for current source set | Current expressions are simple flags |
 | `.ROUTINE` | Contract-only | Must become proof metadata comments |
-| Long labels | Requires generated ledger | Nearly every defined symbol exceeds Atom's limit |
+| Long labels | Partly classified | 1,350 can become dot-local labels; the rest need global names |
 | Proof JSON symbol references | Requires ledger join | External expected-symbol names must remain stable or be mapped |
 | `$10000` limit constants | Requires source or Atom expression decision | Atom currently rejects literals above `65535` |
 | Leading grouped immediates | Mechanical | Current `LD rr,(A<<8)|B` forms translate safely to `LD rr,A<<8|B` for Atom |
@@ -253,9 +316,9 @@ This keeps the Atom assembler small and keeps proof ownership outside the assemb
 Before converting source:
 
 1. Keep extending the converter dry-run ledger and error report until every proof image has a deterministic migration path.
-2. Add tests for each newly discovered untranslatable directive, unledgered long symbol, unresolved include, or unsupported conditional expression.
+2. Add tests for each newly discovered untranslatable directive, unresolved include, unsupported conditional expression, or long symbol that cannot be classified as local or global.
 3. Add a proof-manifest join that maps old exported proof symbol names to generated Atom symbols.
-4. Decide how the three one-past-address-space constants should be represented for Atom.
+4. Decide how the four one-past-address-space constants should be represented for Atom.
 5. Decide whether the late textual include lowering remains only a preview bridge or becomes a formal Nucleus source-preparation mode.
 6. Scale the successful flattened preview comparison from `compiler-slice-proof.asm` to the rest of the proof-image set.
 7. Only then scale the conversion to the full `packages/nucleus/asm` tree.
@@ -283,7 +346,7 @@ routine bounded-matrix result:
 
 | Status | Count |
 | --- | ---: |
-| Byte-identical proof images | 25 |
+| Byte-identical proof images | 26 |
 | Skipped known budget blockers | 0 |
 | Skipped measurement artifacts | 3 |
 | Atom-preview errors | 0 |
@@ -307,6 +370,7 @@ Byte-identical proof images:
 - `loop-z80-slice-proof.json`
 - `memory-map-proof.json`
 - `nobj-runner-proof.json`
+- `source-provenance-proof.json`
 - `stage7-ll1-aggregate-call-z80-slice-proof.json`
 - `stage7-ll1-engine-proof.json`
 - `stage7-ll1-parser-coverage-proof.json`
@@ -386,6 +450,10 @@ shared Debug80 Z80 services package.
 
 ## Conclusion
 
-The Nucleus assembly source is structurally compatible with Atom, but it is not ready for a direct rename-and-assemble migration. The conversion is mostly mechanical for instructions, data directives, includes, and simple conditionals. The hard work is the symbol ledger and the contract-comment path.
+The Nucleus assembly source is structurally compatible with Atom, but it is not
+ready for a direct rename-and-assemble migration. The conversion is mostly
+mechanical for instructions, data directives, and simple conditionals. The hard
+work is the permanent symbol ledger, contract-comment path, and late textual
+include policy.
 
 The migration should therefore start with tooling, not manual source edits.

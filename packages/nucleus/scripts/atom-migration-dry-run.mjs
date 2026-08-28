@@ -36,6 +36,7 @@ const mechanicalDirectives = new Set([
 ]);
 
 const identifierPattern = /^[A-Za-z_.$?][A-Za-z0-9_.$?]*$/;
+const sourceIdentifierPattern = /(^|[^A-Za-z0-9_.$?])([A-Za-z_.$?][A-Za-z0-9_.$?]*)(?=$|[^A-Za-z0-9_.$?])/g;
 const simpleConditionPattern = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const onePastAddressSpaceEquPattern = /^\s*(AddressSpaceLimit|ProofMemoryEnd):?\s+\.equ\s+\$10000\s*$/i;
 const directiveTranslations = new Map([
@@ -247,8 +248,24 @@ function atomSymbolFor(index) {
   return `N${index.toString(36).toUpperCase().padStart(7, "0")}`;
 }
 
+function atomLocalSymbolFor(index) {
+  return `.L${index.toString(36).toUpperCase().padStart(5, "0")}`;
+}
+
 function symbolMapFromLedger(ledger) {
   return new Map(ledger.map((entry) => [entry.original, entry.atom]));
+}
+
+function symbolMetadataFromLedger(ledger) {
+  return new Map(ledger.map((entry) => [entry.original, entry]));
+}
+
+function declarationComment(original, symbolMetadata) {
+  const entry = symbolMetadata.get(original);
+  if (entry === undefined) return "";
+  if (entry.migrationKind === "local-label") return "";
+  const permanent = entry.permanentAtom === entry.atom ? "" : ` PERMANENT ${entry.permanentAtom}`;
+  return ` ;@NUC-GLOBAL ${entry.original}${permanent}`;
 }
 
 function classifyScope(symbol, file, proofSymbols) {
@@ -259,6 +276,157 @@ function classifyScope(symbol, file, proofSymbols) {
   return "global";
 }
 
+function collectSourceIdentifiers(unquotedCode) {
+  const identifiers = [];
+  for (const match of unquotedCode.matchAll(sourceIdentifierPattern)) {
+    identifiers.push(match[2]);
+  }
+  return identifiers;
+}
+
+function lineRangeContains(line, start, end) {
+  return line > start && (end === undefined || line < end);
+}
+
+function buildPermanentSymbolPlan(symbols, occurrences, proofSymbols) {
+  const entries = [...symbols.values()];
+  const symbolOccurrences = new Map();
+  for (const occurrence of occurrences) {
+    if (!symbols.has(occurrence.symbol)) continue;
+    const list = symbolOccurrences.get(occurrence.symbol) ?? [];
+    list.push(occurrence);
+    symbolOccurrences.set(occurrence.symbol, list);
+  }
+
+  const crossFileSymbols = new Set();
+  for (const entry of entries) {
+    const definitionFiles = new Set(entry.definitions.map(({ file }) => file));
+    if ((symbolOccurrences.get(entry.original) ?? []).some(({ file }) => !definitionFiles.has(file))) {
+      crossFileSymbols.add(entry.original);
+    }
+  }
+
+  const labelEntriesByFile = new Map();
+  for (const entry of entries) {
+    if (entry.definitionKind !== "label") continue;
+    const file = entry.file;
+    const list = labelEntriesByFile.get(file) ?? [];
+    list.push(entry);
+    labelEntriesByFile.set(file, list);
+  }
+  for (const list of labelEntriesByFile.values()) {
+    list.sort((left, right) => left.definitions[0].line - right.definitions[0].line || left.original.localeCompare(right.original));
+  }
+
+  const nonLocalSymbols = new Set();
+  const isLocalEligible = (entry) => (
+    entry.original.length > 8 &&
+    entry.definitionKind === "label" &&
+    entry.definitions.length === 1 &&
+    !proofSymbols.has(entry.original) &&
+    !crossFileSymbols.has(entry.original)
+  );
+
+  for (const [file, list] of labelEntriesByFile.entries()) {
+    const first = list[0];
+    if (first !== undefined && isLocalEligible(first)) {
+      nonLocalSymbols.add(first.original);
+    }
+    for (const entry of list) {
+      if (!isLocalEligible(entry) || entry.original.length <= 8) {
+        nonLocalSymbols.add(entry.original);
+      }
+      if (entry.original.length <= 8 || proofSymbols.has(entry.original) || crossFileSymbols.has(entry.original)) {
+        nonLocalSymbols.add(entry.original);
+      }
+    }
+  }
+
+  let changed = true;
+  while (changed) {
+    changed = false;
+    for (const [file, list] of labelEntriesByFile.entries()) {
+      const anchors = list.filter((entry) => (
+        entry.original.length <= 8 ||
+        nonLocalSymbols.has(entry.original)
+      ));
+      for (const entry of list) {
+        if (!isLocalEligible(entry) || nonLocalSymbols.has(entry.original)) continue;
+        const line = entry.definitions[0].line;
+        let anchor;
+        let nextAnchor;
+        for (const candidate of anchors) {
+          const candidateLine = candidate.definitions[0].line;
+          if (candidateLine < line) anchor = candidate;
+          if (candidateLine > line) {
+            nextAnchor = candidate;
+            break;
+          }
+        }
+        const start = anchor?.definitions[0].line;
+        const end = nextAnchor?.definitions[0].line;
+        const safe = start !== undefined && (symbolOccurrences.get(entry.original) ?? [])
+          .every((occurrence) => occurrence.file === file && lineRangeContains(occurrence.line, start, end));
+        if (!safe) {
+          nonLocalSymbols.add(entry.original);
+          changed = true;
+        }
+      }
+    }
+  }
+
+  const localCounters = new Map();
+  const plan = new Map();
+  for (const [file, list] of labelEntriesByFile.entries()) {
+    const anchors = list.filter((entry) => (
+      entry.original.length <= 8 ||
+      nonLocalSymbols.has(entry.original)
+    ));
+    for (const entry of list) {
+      if (!isLocalEligible(entry) || nonLocalSymbols.has(entry.original)) continue;
+      const line = entry.definitions[0].line;
+      let anchor;
+      for (const candidate of anchors) {
+        const candidateLine = candidate.definitions[0].line;
+        if (candidateLine < line) anchor = candidate;
+        if (candidateLine > line) break;
+      }
+      if (anchor === undefined) continue;
+      const key = `${file}:${anchor.original}`;
+      const index = localCounters.get(key) ?? 0;
+      localCounters.set(key, index + 1);
+      plan.set(entry.original, {
+        migrationKind: "local-label",
+        permanentAtom: atomLocalSymbolFor(index),
+        localScope: {
+          anchor: anchor.original,
+          file: path.relative(process.cwd(), file),
+          line: anchor.definitions[0].line,
+        },
+      });
+    }
+  }
+
+  for (const entry of entries) {
+    if (entry.original.length <= 8 || plan.has(entry.original)) continue;
+    let migrationKind = "generated-global";
+    if (proofSymbols.has(entry.original)) {
+      migrationKind = "public-abbreviation-required";
+    } else if (crossFileSymbols.has(entry.original)) {
+      migrationKind = "cross-file-abbreviation-required";
+    } else if (entry.definitionKind === "equ") {
+      migrationKind = "equ-abbreviation-required";
+    }
+    plan.set(entry.original, {
+      migrationKind,
+      permanentAtom: undefined,
+      localScope: null,
+    });
+  }
+
+  return { plan, symbolOccurrences, crossFileSymbols };
+}
+
 function scanAssembly({ asmRoot, proofRoot }) {
   const files = findAssemblyFilesWithIncludes(asmRoot);
   const proofSymbols = collectProofSymbols(proofRoot);
@@ -266,6 +434,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
   const conditionals = new Map();
   const includes = new Map();
   const symbols = new Map();
+  const occurrences = [];
   const issues = [];
   let sourceLines = 0;
   let contractLines = 0;
@@ -281,6 +450,9 @@ function scanAssembly({ asmRoot, proofRoot }) {
       const raw = lines[index].replace(/\r$/, "");
       const code = stripComment(raw);
       const unquotedCode = maskQuoted(code);
+      for (const symbol of collectSourceIdentifiers(unquotedCode)) {
+        occurrences.push({ symbol, file, line: lineNumber });
+      }
       const onePastAddressSpaceEqu = onePastAddressSpaceEquPattern.exec(code);
       if (onePastAddressSpaceEqu !== null) {
         proofLimitSymbols += 1;
@@ -341,13 +513,13 @@ function scanAssembly({ asmRoot, proofRoot }) {
 
       const label = /^\s*([A-Za-z_.$?][A-Za-z0-9_.$?]*):/.exec(code);
       if (label !== null) {
-        recordSymbol(symbols, label[1], file, lineNumber, proofSymbols);
+        recordSymbol(symbols, label[1], file, lineNumber, proofSymbols, "label");
       }
 
       const equ = /^\s*([A-Za-z_.$?][A-Za-z0-9_.$?]*)(?::\s*|\s+)\.equ\b/i.exec(code);
       if (equ !== null) {
         addCount(directives, "equ");
-        recordSymbol(symbols, equ[1], file, lineNumber, proofSymbols);
+        recordSymbol(symbols, equ[1], file, lineNumber, proofSymbols, "equ");
       }
 
       for (const match of unquotedCode.matchAll(/(^|[^A-Za-z0-9_])(\$[0-9A-Fa-f]+|%[01]+|[0-9][0-9A-Fa-f]*[Hh]|[01]+[Bb]|[0-9]+)/g)) {
@@ -369,15 +541,23 @@ function scanAssembly({ asmRoot, proofRoot }) {
     symbols.delete(symbol);
   }
 
+  const { plan, symbolOccurrences, crossFileSymbols } = buildPermanentSymbolPlan(symbols, occurrences, proofSymbols);
+
   const ledger = [...symbols.values()]
     .filter((entry) => entry.original.length > 8)
     .sort((left, right) => left.original.localeCompare(right.original))
     .map((entry, index) => ({
       original: entry.original,
       atom: atomSymbolFor(index),
+      permanentAtom: plan.get(entry.original)?.permanentAtom ?? atomSymbolFor(index),
+      migrationKind: plan.get(entry.original)?.migrationKind ?? "generated-global",
       scope: entry.scope,
       owningFile: path.relative(asmRoot, entry.file).split(path.sep).join("/"),
       publicObligation: proofSymbols.has(entry.original) ? "proof-manifest" : null,
+      definitionKind: entry.definitionKind,
+      referenceCount: Math.max(0, (symbolOccurrences.get(entry.original) ?? []).length - entry.definitions.length),
+      crossFileReferences: crossFileSymbols.has(entry.original),
+      localScope: plan.get(entry.original)?.localScope ?? null,
       collisionGroup: [],
       definitions: entry.definitions.map((definition) => ({
         file: path.relative(process.cwd(), definition.file),
@@ -412,12 +592,21 @@ function scanAssembly({ asmRoot, proofRoot }) {
         line: entry.definitions[0]?.line,
       });
     }
-    issues.push({
-      code: "unledgered-long-symbol",
-      message: `${entry.original} requires generated Atom symbol ${entry.atom}`,
-      file: entry.definitions[0]?.file,
-      line: entry.definitions[0]?.line,
-    });
+    if (entry.migrationKind !== "local-label") {
+      const code = entry.migrationKind === "public-abbreviation-required"
+        ? "long-symbol-public-abbreviation-required"
+        : entry.migrationKind === "cross-file-abbreviation-required"
+          ? "long-symbol-cross-file-abbreviation-required"
+          : entry.migrationKind === "equ-abbreviation-required"
+            ? "long-symbol-equ-abbreviation-required"
+            : "long-symbol-global-ledger-required";
+      issues.push({
+        code,
+        message: `${entry.original} requires a permanent Atom global name; preview uses ${entry.atom}`,
+        file: entry.definitions[0]?.file,
+        line: entry.definitions[0]?.line,
+      });
+    }
   }
 
   const directiveSummary = Object.fromEntries([...directives.entries()].sort());
@@ -435,6 +624,8 @@ function scanAssembly({ asmRoot, proofRoot }) {
       sourceLines,
       definedSymbols: symbols.size,
       longSymbols: ledger.length,
+      localLabelCandidates: ledger.filter((entry) => entry.migrationKind === "local-label").length,
+      globalSymbolRenames: ledger.filter((entry) => entry.migrationKind !== "local-label").length,
       contractLines,
       directives: directiveSummary,
       conditionals: conditionalSummary,
@@ -547,6 +738,7 @@ function translateNucleusAzmLine(
     sourceName = "<nucleus-asm>",
     lineNumber = 1,
     symbolMap = new Map(),
+    symbolMetadata = new Map(),
     preprocessorSymbols = new Set(),
   } = {},
 ) {
@@ -577,13 +769,14 @@ function translateNucleusAzmLine(
     if (onePastLimit !== null) {
       const original = onePastLimit[2];
       const atom = symbolMap.get(original) ?? original;
-      return `${onePastLimit[1]}${atom}${onePastLimit[3]}EQU 0 ;@ATOM-PROOF-LIMIT ${original} 65536${comment === "" ? "" : ` ${comment}`}`;
+      return `${onePastLimit[1]}${atom}${onePastLimit[3]}EQU 0${declarationComment(original, symbolMetadata)} ;@ATOM-PROOF-LIMIT ${original} 65536${comment === "" ? "" : ` ${comment}`}`;
     }
     const preprocessorDefinition = /^(\s*)([A-Za-z_.$?][A-Za-z0-9_.$?]*)(:\s*|\s+)\.equ\b(.*)$/i.exec(source);
     if (preprocessorDefinition !== null && preprocessorSymbols.has(preprocessorDefinition[2])) {
       return `${preprocessorDefinition[1]}%DEFINE ${preprocessorDefinition[2]}${preprocessorDefinition[4]}${comment}`;
     }
-    return `${replaceSymbolsInSource(`${equ[1]}EQU${equ[2]}`, symbolMap)}${comment}`;
+    const equName = /^\s*([A-Za-z_.$?][A-Za-z0-9_.$?]*)/.exec(equ[1])?.[1];
+    return `${replaceSymbolsInSource(`${equ[1]}EQU${equ[2]}`, symbolMap)}${equName === undefined ? "" : declarationComment(equName, symbolMetadata)}${comment}`;
   }
 
   const labelDirective = /^(\s*[A-Za-z_.$?][A-Za-z0-9_.$?]*(?::\s*|\s+))\.([A-Za-z][A-Za-z0-9_]*)(\b.*)$/i.exec(source);
@@ -593,14 +786,18 @@ function translateNucleusAzmLine(
     if (replacement === undefined) {
       throw new Error(`${context.file}:${context.line}: unsupported directive .${rawName}`);
     }
-    return `${replaceSymbolsInSource(`${prefix}${replacement}${rest}`, symbolMap)}${comment}`;
+    const labelName = /^\s*([A-Za-z_.$?][A-Za-z0-9_.$?]*)/.exec(prefix)?.[1];
+    return `${replaceSymbolsInSource(`${prefix}${replacement}${rest}`, symbolMap)}${labelName === undefined ? "" : declarationComment(labelName, symbolMetadata)}${comment}`;
   }
 
-    return `${replaceSymbolsInSource(convertLeadingImmediateGrouping(convertQuotedByteExpressions(source)), symbolMap)}${comment}`;
+  const translatedSource = replaceSymbolsInSource(convertLeadingImmediateGrouping(convertQuotedByteExpressions(source)), symbolMap);
+  const label = /^\s*([A-Za-z_.$?][A-Za-z0-9_.$?]*):/.exec(source);
+  return `${translatedSource}${label === null ? "" : declarationComment(label[1], symbolMetadata)}${comment}`;
 }
 
 function writeTranslatedTree(report, translatedRoot) {
   const symbolMap = symbolMapFromLedger(report.ledger);
+  const symbolMetadata = symbolMetadataFromLedger(report.ledger);
   const preprocessorSymbols = new Set(report.preprocessorSymbols);
   for (const file of findAssemblyFiles(report.asmRoot)) {
     const relative = path.relative(report.asmRoot, file);
@@ -611,6 +808,7 @@ function writeTranslatedTree(report, translatedRoot) {
         sourceName: relative,
         lineNumber: index + 1,
         symbolMap,
+        symbolMetadata,
         preprocessorSymbols,
       }))
       .join("\n");
@@ -626,6 +824,7 @@ function includeSpecifier(source) {
 
 function flattenTranslatedEntry(report, entry) {
   const symbolMap = symbolMapFromLedger(report.ledger);
+  const symbolMetadata = symbolMetadataFromLedger(report.ledger);
   const preprocessorSymbols = new Set(report.preprocessorSymbols);
   const stack = [];
   const definitions = new Map();
@@ -716,6 +915,7 @@ function flattenTranslatedEntry(report, entry) {
         sourceName: relative,
         lineNumber: index + 1,
         symbolMap,
+        symbolMetadata,
         preprocessorSymbols,
       }));
     }
@@ -783,16 +983,18 @@ function writeFlattenedEntry(report, entry, output) {
   writeFileSync(output, `${flattenTranslatedEntry(report, entry)}\n`);
 }
 
-function recordSymbol(symbols, original, file, line, proofSymbols) {
+function recordSymbol(symbols, original, file, line, proofSymbols, definitionKind) {
   const existing = symbols.get(original);
   if (existing !== undefined) {
     existing.definitions.push({ file, line });
+    if (existing.definitionKind !== definitionKind) existing.definitionKind = "mixed";
     return;
   }
   symbols.set(original, {
     original,
     file,
     scope: classifyScope(original, file, proofSymbols),
+    definitionKind,
     definitions: [{ file, line }],
   });
 }
@@ -819,6 +1021,7 @@ export {
   flattenTranslatedEntry,
   flattenedEntryParts,
   scanAssembly,
+  symbolMetadataFromLedger,
   translateNucleusAzmLine,
   writeFlattenedEntry,
   writeTranslatedTree,
