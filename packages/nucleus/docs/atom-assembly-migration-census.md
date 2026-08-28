@@ -28,8 +28,8 @@ Measured files:
 | Source lines | 29,391 |
 | Defined assembler symbols detected | 3,799 |
 | Defined assembler symbols longer than eight characters | 3,766 |
-| Long labels classed as dot-local candidates | 996 |
-| Long symbols still needing global treatment | 2,770 |
+| Long labels classed as dot-local candidates | 676 |
+| Long symbols still needing global treatment | 3,090 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
 | Include-after-header violations | 143 |
@@ -44,11 +44,15 @@ Measured files:
 | Proof manifests classified | 29 |
 | Atom permanent-ready proof manifests | 3 |
 | Atom-preview-only proof manifests | 0 |
-| Proof manifests blocked by external contract support only | 1 |
-| Proof manifests blocked by late emitted-content includes | 22 |
+| Proof manifests blocked by external contract support only | 2 |
+| Proof manifests blocked by late emitted-content includes | 21 |
 | Measurement-artifact proof manifests | 3 |
 
 The source set is large enough that manual renaming without tooling is not credible.
+Dot-local candidates are restricted to labels whose references stay within the
+same global-label scope in the defining file. Labels used across a later global
+label remain global abbreviations, even when they are proof-only, because Atom
+evicts pending private-label references at the next global label.
 
 Regenerate the dry-run report with:
 
@@ -295,6 +299,15 @@ assembler source single-symbol at the patch site while preserving the exact
 emitted bytes. The proof now runs from Atom-permanent source through the normal
 proof harness, but it is not counted as `atom-permanent-ready` until Atom-built
 strict contract checking is wired in.
+
+The second proof-composition transform applies the same model to
+`z80-slice-proof`. That wrapper has two emitted regions, so the transform splits
+the proof source into generated section parts: compiler code start, sink
+boundary, post-sink immutable data, proof source text, runtime start, and proof
+body. All includes then appear in the header of the rewritten root source while
+the emitted order remains byte-equivalent. This proof also runs from
+Atom-permanent source and is classified as blocked only by external contract
+support.
 
 Two previously Atom-preview-only proof manifests were promoted by replacing
 direct emitted two-forward-symbol differences with one forward size symbol and a

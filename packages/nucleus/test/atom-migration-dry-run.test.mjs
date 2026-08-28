@@ -930,6 +930,53 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   });
 
+  it("runs the z80-slice proof from permanent Atom layout source", async (context) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+      const z80Slice = report.proofMatrix.find(
+        ({ proof }) => proof === "z80-slice-proof.json",
+      );
+      expect(z80Slice?.status).toBe("blocked-by-contract-support");
+      expect(z80Slice?.blockers).toEqual([]);
+      const root = await readFile(
+        path.join(translatedRoot, "vertical-slice", "z80-slice-proof.asm"),
+        "utf8",
+      );
+      expect(root).toContain('%INCLUDE "z80-slice-code-begin.asmi"');
+      expect(root).toContain('%INCLUDE "z80-slice-proof-body.asmi"');
+
+      const outcome = await runProofManifest(
+        path.join(proofRoot, "z80-slice-proof.json"),
+        {
+          assembler: {
+            kind: "atom-permanent",
+            root: translatedRoot,
+            entry: "vertical-slice/z80-slice-proof.asm",
+          },
+          atomMigration: {
+            proofSymbolMap: report.proofSymbolMap,
+            proofLimitMap: report.proofLimitMap,
+          },
+        },
+      );
+
+      expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
+      expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
+      expect(outcome.extents).toEqual([
+        { name: "common-front-end", bytes: 940 },
+        { name: "z80-output-sink", bytes: 25 },
+        { name: "compiler-code", bytes: 965 },
+        { name: "compiler-immutable", bytes: 75 },
+        { name: "compiler-core", bytes: 1040 },
+        { name: "compiler-workspace", bytes: 55 },
+        { name: "generated-z80", bytes: 37 },
+        { name: "z80-runtime", bytes: 51 },
+        { name: "z80-state", bytes: 6 },
+        { name: "service-state", bytes: 3 },
+        { name: "proof-code-and-data", bytes: 207 },
+      ]);
+    });
+  });
+
   it("runs a late-include proof through the proof harness using Atom-preview lowering", async () => {
     const report = scanAssembly({ asmRoot, proofRoot });
     const outcome = await runProofManifest(

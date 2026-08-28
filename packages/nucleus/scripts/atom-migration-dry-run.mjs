@@ -67,6 +67,16 @@ const permanentLayoutTransforms = new Map([
     ]),
     rewrite: rewriteCompilerSlicePermanentAtomSource,
   })],
+  ["vertical-slice/z80-slice-proof.asm", Object.freeze({
+    description: "z80-slice proof sectioned header-include layout",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/z80-slice-proof.asm",
+        code: "include-after-header",
+      }),
+    ]),
+    rewrite: rewriteZ80SlicePermanentAtomSource,
+  })],
 ]);
 
 function parseArgs(argv) {
@@ -486,10 +496,17 @@ function permanentLayoutHandlesIssue(proof, issue) {
 }
 
 function permanentLayoutIssueMatches(handled, issue) {
-  if (handled.file !== undefined && issue.file !== handled.file) return false;
+  if (handled.file !== undefined && !permanentLayoutIssueFileMatches(handled.file, issue.file)) return false;
   if (handled.code !== undefined && issue.code !== handled.code) return false;
   if (handled.messageIncludes !== undefined && !issue.message.includes(handled.messageIncludes)) return false;
   return true;
+}
+
+function permanentLayoutIssueFileMatches(expected, actual) {
+  if (actual === undefined) return false;
+  if (actual === expected || actual.endsWith(`/${expected}`)) return true;
+  if (expected.startsWith("asm/") && actual.endsWith(`/${expected.slice(4)}`)) return true;
+  return false;
 }
 
 function buildProofSelectionMatrix({ proofRoot, asmRoot, packageRoot, issues, includeAfterHeaderRecords, contractMap }) {
@@ -665,21 +682,23 @@ function buildPermanentSymbolPlan(symbols, occurrences, proofSymbols) {
   const labelEntriesByFile = new Map();
   for (const entry of entries) {
     if (entry.definitionKind !== "label") continue;
-    const file = entry.file;
-    const list = labelEntriesByFile.get(file) ?? [];
-    list.push(entry);
-    labelEntriesByFile.set(file, list);
+    for (const definition of entry.definitions) {
+      const file = definition.file;
+      const list = labelEntriesByFile.get(file) ?? [];
+      list.push({ entry, definition });
+      labelEntriesByFile.set(file, list);
+    }
   }
   for (const list of labelEntriesByFile.values()) {
-    list.sort((left, right) => left.definitions[0].line - right.definitions[0].line || left.original.localeCompare(right.original));
+    list.sort((left, right) => left.definition.line - right.definition.line || left.entry.original.localeCompare(right.entry.original));
   }
 
   const anchorDefinitions = (list, nonLocalSymbols) => list
-    .filter((entry) => entry.original.length <= 8 || nonLocalSymbols.has(entry.original))
-    .flatMap((entry) => entry.definitions.map((definition) => ({
+    .filter(({ entry }) => entry.original.length <= 8 || nonLocalSymbols.has(entry.original))
+    .map(({ entry, definition }) => ({
       entry,
       line: definition.line,
-    })))
+    }))
     .sort((left, right) => left.line - right.line || left.entry.original.localeCompare(right.entry.original));
 
   const nonLocalSymbols = new Set();
@@ -692,11 +711,11 @@ function buildPermanentSymbolPlan(symbols, occurrences, proofSymbols) {
   );
 
   for (const [file, list] of labelEntriesByFile.entries()) {
-    const first = list[0];
+    const first = list[0]?.entry;
     if (first !== undefined && isLocalEligible(first)) {
       nonLocalSymbols.add(first.original);
     }
-    for (const entry of list) {
+    for (const { entry } of list) {
       if (!isLocalEligible(entry) || entry.original.length <= 8) {
         nonLocalSymbols.add(entry.original);
       }
@@ -711,9 +730,9 @@ function buildPermanentSymbolPlan(symbols, occurrences, proofSymbols) {
     changed = false;
     for (const [file, list] of labelEntriesByFile.entries()) {
       const anchors = anchorDefinitions(list, nonLocalSymbols);
-      for (const entry of list) {
+      for (const { entry, definition } of list) {
         if (!isLocalEligible(entry) || nonLocalSymbols.has(entry.original)) continue;
-        const line = entry.definitions[0].line;
+        const line = definition.line;
         let anchor;
         let nextAnchor;
         for (const candidate of anchors) {
@@ -744,9 +763,9 @@ function buildPermanentSymbolPlan(symbols, occurrences, proofSymbols) {
 
   for (const [file, list] of labelEntriesByFile.entries()) {
     const anchors = anchorDefinitions(list, nonLocalSymbols);
-    for (const entry of list) {
+    for (const { entry, definition } of list) {
       if (!isLocalEligible(entry) || nonLocalSymbols.has(entry.original)) continue;
-      const line = entry.definitions[0].line;
+      const line = definition.line;
       let anchor;
       for (const candidate of anchors) {
         const candidateLine = candidate.line;
@@ -1354,10 +1373,34 @@ function atomSymbol(symbolMap, original) {
   return symbolMap.get(original) ?? original;
 }
 
+function escapeRegExp(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function writeGeneratedPermanentPart(translatedRoot, relative, includeName, lines) {
   const helperPath = path.join(translatedRoot, path.dirname(relative), includeName);
   mkdirSync(path.dirname(helperPath), { recursive: true });
   writeFileSync(helperPath, `${lines.join("\n")}\n`);
+}
+
+function findPermanentLabelLine(lines, label, context) {
+  const index = lines.findIndex((line) => line.startsWith(`${label}:`));
+  if (index < 0) throw new Error(`${context} permanent Atom rewrite could not find ${label}`);
+  return index;
+}
+
+function findPermanentOrgLine(lines, origin, context) {
+  const pattern = new RegExp(`^\\s*ORG\\s+${escapeRegExp(origin)}\\b`);
+  const index = lines.findIndex((line) => pattern.test(line));
+  if (index < 0) throw new Error(`${context} permanent Atom rewrite could not find ORG ${origin}`);
+  return index;
+}
+
+function findPermanentIncludeLine(lines, includeName, context) {
+  const pattern = new RegExp(`^\\s*%INCLUDE\\s+"${escapeRegExp(includeName)}"\\s*$`, "i");
+  const index = lines.findIndex((line) => pattern.test(line));
+  if (index < 0) throw new Error(`${context} permanent Atom rewrite could not find %INCLUDE "${includeName}"`);
+  return index;
 }
 
 function rewriteCompilerSlicePermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
@@ -1401,6 +1444,83 @@ function rewriteCompilerSlicePermanentAtomSource(source, { relative, translatedR
     "            %INCLUDE \"semantic-sink.asm\"",
     "            %INCLUDE \"parser.asm\"",
     rewrittenSuffix,
+  ].join("\n");
+}
+
+function rewriteZ80SlicePermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
+  const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
+  const compilerCodeStart = atomSymbol(symbolMap, "CompilerCodeStart");
+  const compilerCommonCodeEnd = atomSymbol(symbolMap, "CompilerCommonCodeEnd");
+  const sinkCodeStart = atomSymbol(symbolMap, "SinkCodeStart");
+  const sinkCodeEnd = atomSymbol(symbolMap, "SinkCodeEnd");
+  const sourceBase = atomSymbol(symbolMap, "SourceBase");
+  const targetRuntimeBase = atomSymbol(symbolMap, "TargetRuntimeBase");
+  const runtimeCodeStart = atomSymbol(symbolMap, "RuntimeCodeStart");
+  const runtimeCodeEnd = atomSymbol(symbolMap, "RuntimeCodeEnd");
+
+  const lines = source.split("\n");
+  const commonEndIndex = findPermanentLabelLine(lines, compilerCommonCodeEnd, "z80-slice");
+  const sinkEndIndex = findPermanentLabelLine(lines, sinkCodeEnd, "z80-slice");
+  const sinkIncludeIndex = findPermanentIncludeLine(lines, "z80-sink.asm", "z80-slice");
+  const sourceOrgIndex = findPermanentOrgLine(lines, sourceBase, "z80-slice");
+  const runtimeOrgIndex = findPermanentOrgLine(lines, targetRuntimeBase, "z80-slice");
+  const runtimeIncludeIndex = findPermanentIncludeLine(lines, "z80-runtime.asm", "z80-slice");
+  const runtimeEndIndex = findPermanentLabelLine(lines, runtimeCodeEnd, "z80-slice");
+
+  if (!(commonEndIndex < sinkEndIndex &&
+    commonEndIndex < sinkIncludeIndex &&
+    sinkIncludeIndex < sinkEndIndex &&
+    sinkEndIndex < sourceOrgIndex &&
+    sourceOrgIndex < runtimeOrgIndex &&
+    runtimeOrgIndex < runtimeIncludeIndex &&
+    runtimeIncludeIndex < runtimeEndIndex)) {
+    throw new Error("z80-slice permanent Atom rewrite found an unexpected section order");
+  }
+
+  writeGeneratedPermanentPart(translatedRoot, relative, "z80-slice-code-begin.asmi", [
+    "            ORG " + compilerCoreBase,
+    compilerCodeStart + ": ;@NUC-GLOBAL CompilerCodeStart PERMANENT " + compilerCodeStart,
+    "",
+  ]);
+  writeGeneratedPermanentPart(translatedRoot, relative, "z80-slice-sink-begin.asmi", [
+    ...lines.slice(commonEndIndex, sinkIncludeIndex),
+    "",
+  ]);
+  writeGeneratedPermanentPart(translatedRoot, relative, "z80-slice-after-sink.asmi", [
+    ...lines.slice(sinkEndIndex, sourceOrgIndex),
+    "",
+  ]);
+  writeGeneratedPermanentPart(translatedRoot, relative, "z80-slice-source.asmi", [
+    ...lines.slice(sourceOrgIndex, runtimeOrgIndex),
+    "",
+  ]);
+  writeGeneratedPermanentPart(translatedRoot, relative, "z80-slice-runtime-begin.asmi", [
+    ...lines.slice(runtimeOrgIndex, runtimeIncludeIndex),
+    "",
+  ]);
+  writeGeneratedPermanentPart(translatedRoot, relative, "z80-slice-proof-body.asmi", [
+    ...lines.slice(runtimeEndIndex),
+  ]);
+
+  return [
+    "; Permanent Atom layout for the z80-slice proof.",
+    "            %DEFINE AggregateCallSlices 0",
+    "            %INCLUDE \"memory-map.asmi\"",
+    "            %INCLUDE \"compiler-state.asmi\"",
+    "            %INCLUDE \"z80-state.asmi\"",
+    "            %INCLUDE \"z80-slice-code-begin.asmi\"",
+    "            %INCLUDE \"source-adapter.asm\"",
+    "            %INCLUDE \"tokenizer.asm\"",
+    "            %INCLUDE \"semantic-sink.asm\"",
+    "            %INCLUDE \"parser.asm\"",
+    "            %INCLUDE \"z80-slice-sink-begin.asmi\"",
+    "            %INCLUDE \"z80-sink.asm\"",
+    "            %INCLUDE \"z80-slice-after-sink.asmi\"",
+    "            %INCLUDE \"z80-slice-source.asmi\"",
+    "            %INCLUDE \"z80-slice-runtime-begin.asmi\"",
+    "            %INCLUDE \"z80-runtime.asm\"",
+    "            %INCLUDE \"z80-slice-proof-body.asmi\"",
+    "",
   ].join("\n");
 }
 
