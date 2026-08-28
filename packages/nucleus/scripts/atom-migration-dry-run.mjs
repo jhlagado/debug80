@@ -51,6 +51,24 @@ const directiveTranslations = new Map([
   ["org", "ORG"],
 ]);
 
+const permanentLayoutTransforms = new Map([
+  ["vertical-slice/compiler-slice-proof.asm", Object.freeze({
+    description: "compiler-slice proof header-include layout",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/compiler-slice-proof.asm",
+        code: "include-after-header",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/compiler-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "MalformedSourceEnd-MalformedSource",
+      }),
+    ]),
+    rewrite: rewriteCompilerSlicePermanentAtomSource,
+  })],
+]);
+
 function parseArgs(argv) {
   const options = {
     asmRoot: defaultAsmRoot,
@@ -463,11 +481,15 @@ function proofSelectionStatus({ proof, files, issueByFile, globalIssues, contrac
 }
 
 function permanentLayoutHandlesIssue(proof, issue) {
-  if (proof.entry !== "vertical-slice/compiler-slice-proof.asm") return false;
-  if (issue.file !== "asm/vertical-slice/compiler-slice-proof.asm") return false;
-  if (issue.code === "include-after-header") return true;
-  return issue.code === "atom-symbol-expression" &&
-    issue.message.includes("MalformedSourceEnd-MalformedSource");
+  const transform = permanentLayoutTransforms.get(proof.entry);
+  return transform?.handledIssues.some((handled) => permanentLayoutIssueMatches(handled, issue)) ?? false;
+}
+
+function permanentLayoutIssueMatches(handled, issue) {
+  if (handled.file !== undefined && issue.file !== handled.file) return false;
+  if (handled.code !== undefined && issue.code !== handled.code) return false;
+  if (handled.messageIncludes !== undefined && !issue.message.includes(handled.messageIncludes)) return false;
+  return true;
 }
 
 function buildProofSelectionMatrix({ proofRoot, asmRoot, packageRoot, issues, includeAfterHeaderRecords, contractMap }) {
@@ -1313,8 +1335,12 @@ function writeTranslatedTree(report, translatedRoot, { symbols = "preview" } = {
         preprocessorSymbols,
       }))
       .join("\n");
-    if (symbols === "permanent" && relative === "vertical-slice/compiler-slice-proof.asm") {
-      translated = rewriteCompilerSlicePermanentAtomSource(translated, {
+    const permanentLayoutTransform = symbols === "permanent"
+      ? permanentLayoutTransforms.get(relative)
+      : undefined;
+    if (permanentLayoutTransform !== undefined) {
+      translated = permanentLayoutTransform.rewrite(translated, {
+        relative,
         translatedRoot,
         symbolMap,
       });
@@ -1328,7 +1354,13 @@ function atomSymbol(symbolMap, original) {
   return symbolMap.get(original) ?? original;
 }
 
-function rewriteCompilerSlicePermanentAtomSource(source, { translatedRoot, symbolMap }) {
+function writeGeneratedPermanentPart(translatedRoot, relative, includeName, lines) {
+  const helperPath = path.join(translatedRoot, path.dirname(relative), includeName);
+  mkdirSync(path.dirname(helperPath), { recursive: true });
+  writeFileSync(helperPath, `${lines.join("\n")}\n`);
+}
+
+function rewriteCompilerSlicePermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
   const generatedInclude = "compiler-slice-code-begin.asmi";
   const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
   const compilerCodeStart = atomSymbol(symbolMap, "CompilerCodeStart");
@@ -1337,16 +1369,11 @@ function rewriteCompilerSlicePermanentAtomSource(source, { translatedRoot, symbo
   const malformedSourceEnd = atomSymbol(symbolMap, "MalformedSourceEnd");
   const malformedSourceSize = "MLFRMDSZ";
   const expectedOperations = atomSymbol(symbolMap, "ExpectedOperations");
-  const helperPath = path.join(translatedRoot, "vertical-slice", generatedInclude);
-  mkdirSync(path.dirname(helperPath), { recursive: true });
-  writeFileSync(
-    helperPath,
-    [
-      "            ORG " + compilerCoreBase,
-      compilerCodeStart + ": ;@NUC-GLOBAL CompilerCodeStart PERMANENT " + compilerCodeStart,
-      "",
-    ].join("\n"),
-  );
+  writeGeneratedPermanentPart(translatedRoot, relative, generatedInclude, [
+    "            ORG " + compilerCoreBase,
+    compilerCodeStart + ": ;@NUC-GLOBAL CompilerCodeStart PERMANENT " + compilerCodeStart,
+    "",
+  ]);
 
   const lines = source.split("\n");
   const codeEndIndex = lines.findIndex((line) => line.startsWith(`${compilerCodeEnd}:`));

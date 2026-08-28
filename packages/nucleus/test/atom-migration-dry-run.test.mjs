@@ -895,6 +895,13 @@ describe("Nucleus Atom migration dry-run", () => {
         ({ proof }) => proof === "compiler-slice-proof.json",
       );
       expect(compilerSlice?.status).toBe("blocked-by-contract-support");
+      const helper = await readFile(
+        path.join(translatedRoot, "vertical-slice", "compiler-slice-code-begin.asmi"),
+        "utf8",
+      );
+      expect(helper.match(/\bORG\b/g)).toHaveLength(1);
+      expect(helper).toContain("ORG CMPLRCRB");
+      expect(helper).toContain("CMPLRCDS:");
 
       const outcome = await runProofManifest(
         path.join(proofRoot, "compiler-slice-proof.json"),

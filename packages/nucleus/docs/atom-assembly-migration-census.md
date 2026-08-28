@@ -5,7 +5,7 @@ Date: 2026-08-28
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current census HEAD before the compiler-slice permanent-layout pilot: `c1ac8d3b`
+Current reusable-transform baseline HEAD: `d06e7b57`
 
 ## Purpose
 
@@ -282,14 +282,16 @@ The current safe convention is therefore:
    them through the host preprocessor environment, so include order has no hidden
    magic.
 
-The first layout pilot applies that convention to `compiler-slice-proof`. The
-generated permanent Atom tree inserts a small `compiler-slice-code-begin.asmi`
-source part that owns `ORG CompilerCoreBase` and `CompilerCodeStart`. The root
-proof source then lists the compiler modules as leading `%INCLUDE`s, so Atom's
-dependency-before-importer order emits the modules before `CompilerCodeEnd`.
-The proof's `MalformedSourceEnd-MalformedSource` emitted expression is rewritten
-as `LD DE,MalformedSourceSize`, with the size equate resolved later. This keeps
-the assembler source single-symbol at the patch site while preserving the exact
+The first layout pilot applies that convention to `compiler-slice-proof`, and
+the migration tool now records it as a named permanent-layout transform rather
+than as ad hoc source rewriting. The transform writes a small generated
+`compiler-slice-code-begin.asmi` source part that owns `ORG CompilerCoreBase`
+and `CompilerCodeStart`. The root proof source then lists the compiler modules
+as leading `%INCLUDE`s, so Atom's dependency-before-importer order emits the
+modules before `CompilerCodeEnd`. The proof's
+`MalformedSourceEnd-MalformedSource` emitted expression is rewritten as
+`LD DE,MalformedSourceSize`, with the size equate resolved later. This keeps the
+assembler source single-symbol at the patch site while preserving the exact
 emitted bytes. The proof now runs from Atom-permanent source through the normal
 proof harness, but it is not counted as `atom-permanent-ready` until Atom-built
 strict contract checking is wired in.
