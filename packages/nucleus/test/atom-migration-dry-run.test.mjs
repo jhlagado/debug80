@@ -53,6 +53,17 @@ function contentBase(generation) {
   return addresses.length === 0 ? generation.finalCursor : Math.min(...addresses);
 }
 
+async function withPermanentAtomTranslation(context, run) {
+  const report = scanAssembly({ asmRoot, proofRoot });
+  const translatedRoot = await mkdtemp(path.join(tmpdir(), "nucleus-atom-permanent-"));
+  context.onTestFinished(async () => {
+    await rm(translatedRoot, { recursive: true, force: true });
+  });
+
+  writeTranslatedTree(report, translatedRoot, { symbols: "permanent" });
+  return await run({ report, translatedRoot });
+}
+
 describe("Nucleus Atom migration dry-run", () => {
   it("translates Nucleus AZM directive lines to Atom forms", () => {
     const symbolMap = new Map([["LongSourceLabel", "N0000000"]]);
@@ -408,11 +419,13 @@ describe("Nucleus Atom migration dry-run", () => {
       "asm/late.asm": "LateStart:\n            .include \"frag.asmi\"\n",
       "asm/frag.asmi": "            RET\n",
       "asm/bad.asm": "BadStart EQU $10000\n",
+      "asm/preview.asm": "PreviewStart:\n            DW PreviewEnd-PreviewStart\nPreviewEnd:\n",
       "asm/measurement.asm": "MeasureStart:\n            HALT\n",
       "proofs/ready.json": JSON.stringify({ source: "../asm/ready.asm" }),
       "proofs/contract.json": JSON.stringify({ source: "../asm/contract.asm" }),
       "proofs/late.json": JSON.stringify({ source: "../asm/late.asm" }),
       "proofs/bad.json": JSON.stringify({ source: "../asm/bad.asm" }),
+      "proofs/preview.json": JSON.stringify({ source: "../asm/preview.asm" }),
       "proofs/dispatcher-measurement.json": JSON.stringify({ source: "../asm/measurement.asm" }),
     }, async (root) => {
       const report = scanAssembly({
@@ -426,10 +439,12 @@ describe("Nucleus Atom migration dry-run", () => {
         "contract.json": "blocked-by-contract-support",
         "dispatcher-measurement.json": "measurement-artifact",
         "late.json": "blocked-by-late-emitted-include",
+        "preview.json": "atom-preview-only",
         "ready.json": "atom-permanent-ready",
       });
       expect(report.measured.proofMatrix).toEqual({
         "atom-permanent-ready": 1,
+        "atom-preview-only": 1,
         "blocked-by-contract-support": 1,
         "blocked-by-late-emitted-include": 1,
         "blocked-by-other": 1,
@@ -786,62 +801,62 @@ describe("Nucleus Atom migration dry-run", () => {
   });
 
   it("assembles the memory-map proof from permanent Atom source byte-identically", async (context) => {
-    const report = scanAssembly({ asmRoot, proofRoot });
-    const translatedRoot = await mkdtemp(path.join(tmpdir(), "nucleus-atom-permanent-"));
-    context.onTestFinished(async () => {
-      await rm(translatedRoot, { recursive: true, force: true });
-    });
+    await withPermanentAtomTranslation(context, async ({ translatedRoot }) => {
+      const current = await compile(path.join(asmRoot, "vertical-slice", "memory-map-proof.asm"), {
+        outputType: "bin",
+      });
+      const diagnostics = current.diagnostics.filter(({ severity }) => severity === "error");
+      expect(diagnostics).toEqual([]);
+      const currentBin = current.artifacts.find(({ kind }) => kind === "bin")?.bytes;
+      expect(currentBin).toBeDefined();
 
-    writeTranslatedTree(report, translatedRoot, { symbols: "permanent" });
-
-    const current = await compile(path.join(asmRoot, "vertical-slice", "memory-map-proof.asm"), {
-      outputType: "bin",
-    });
-    const diagnostics = current.diagnostics.filter(({ severity }) => severity === "error");
-    expect(diagnostics).toEqual([]);
-    const currentBin = current.artifacts.find(({ kind }) => kind === "bin")?.bytes;
-    expect(currentBin).toBeDefined();
-
-    const atom = await assembleAtomProject({
-      root: translatedRoot,
-      entry: "vertical-slice/memory-map-proof.asm",
-      target: { start: 0, capacity: 0xffff },
-      maxInstructions: 10_000_000,
-      maxCycles: 100_000_000,
-    });
-    const atomBin = materializeAtomGeneration(atom.generation, {
-      base: contentBase(atom.generation),
-    }).bytes;
-
-    expect(Buffer.compare(Buffer.from(atomBin), Buffer.from(currentBin))).toBe(0);
-  });
-
-  it("runs the memory-map proof through the proof harness using permanent Atom source", async (context) => {
-    const report = scanAssembly({ asmRoot, proofRoot });
-    const translatedRoot = await mkdtemp(path.join(tmpdir(), "nucleus-atom-proof-"));
-    context.onTestFinished(async () => {
-      await rm(translatedRoot, { recursive: true, force: true });
-    });
-
-    writeTranslatedTree(report, translatedRoot, { symbols: "permanent" });
-
-    const outcome = await runProofManifest(path.join(proofRoot, "memory-map-proof.json"), {
-      assembler: {
-        kind: "atom-permanent",
+      const atom = await assembleAtomProject({
         root: translatedRoot,
         entry: "vertical-slice/memory-map-proof.asm",
-      },
-      atomMigration: {
-        proofSymbolMap: report.proofSymbolMap,
-        proofLimitMap: report.proofLimitMap,
-      },
-    });
+        target: { start: 0, capacity: 0xffff },
+        maxInstructions: 10_000_000,
+        maxCycles: 100_000_000,
+      });
+      const atomBin = materializeAtomGeneration(atom.generation, {
+        base: contentBase(atom.generation),
+      }).bytes;
 
-    expect(outcome.instructions).toBe(4);
-    expect(outcome.cycles).toBe(34);
-    expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
-    expect(outcome.symbols.AddressSpaceLimit).toBe(0x10000);
-    expect(outcome.regions.reduce((total, region) => total + region.bytes, 0)).toBe(65_536);
+      expect(Buffer.compare(Buffer.from(atomBin), Buffer.from(currentBin))).toBe(0);
+    });
+  });
+
+  it("runs every permanent-ready proof through the proof harness using permanent Atom source", async (context) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+      const readyProofs = report.proofMatrix
+        .filter(({ status }) => status === "atom-permanent-ready")
+        .map(({ proof }) => proof);
+      expect(readyProofs).toEqual([
+        "memory-map-proof.json",
+      ]);
+
+      const runAtomProof = (name, entry) =>
+        runProofManifest(path.join(proofRoot, name), {
+          assembler: {
+            kind: "atom-permanent",
+            root: translatedRoot,
+            entry,
+          },
+          atomMigration: {
+            proofSymbolMap: report.proofSymbolMap,
+            proofLimitMap: report.proofLimitMap,
+          },
+        });
+
+      const memoryMap = await runAtomProof(
+        "memory-map-proof.json",
+        "vertical-slice/memory-map-proof.asm",
+      );
+      expect(memoryMap.instructions).toBe(4);
+      expect(memoryMap.cycles).toBe(34);
+      expect(memoryMap.memory[memoryMap.symbols.ProofStatus ?? -1]).toBe(0xa5);
+      expect(memoryMap.symbols.AddressSpaceLimit).toBe(0x10000);
+      expect(memoryMap.regions.reduce((total, region) => total + region.bytes, 0)).toBe(65_536);
+    });
   });
 
   it("flattens AZM textual includes for one Atom-preview entry", async () => {

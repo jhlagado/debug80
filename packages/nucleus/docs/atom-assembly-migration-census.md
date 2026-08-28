@@ -33,7 +33,8 @@ Measured files:
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
 | Include-after-header violations | 143 |
-| Current dry-run blockers | 143 |
+| Emitted-statement symbol arithmetic sites | 443 |
+| Current permanent-source blockers | 586 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
@@ -41,7 +42,8 @@ Measured files:
 | One-past-address-space proof-limit mappings | 4 |
 | Routine contract metadata mappings | 709 |
 | Proof manifests classified | 29 |
-| Atom permanent-ready proof manifests | 3 |
+| Atom permanent-ready proof manifests | 1 |
+| Atom-preview-only proof manifests | 2 |
 | Proof manifests blocked by late emitted-content includes | 23 |
 | Measurement-artifact proof manifests | 3 |
 
@@ -135,8 +137,9 @@ npm run atom:migration:census -w nucleus -- \
   --proof-matrix-out build/nucleus-atom-proof-matrix.json
 ```
 
-Current measurement: three proof manifests are ready for permanent Atom-source
-execution now (`memory-map-proof`, `nobj-runner-proof`, and
+Current measurement: one proof manifest is ready for permanent Atom-source
+execution now (`memory-map-proof`), two are Atom-preview-only because they use
+label arithmetic in emitted statements (`nobj-runner-proof` and
 `source-provenance-proof`), twenty-three are blocked by late emitted-content
 includes, and three dispatcher measurement manifests remain measurement
 artifacts rather than proof-image migration targets.
@@ -201,9 +204,11 @@ npm run atom:migration:proof-compare -w nucleus
 The dry-run intentionally reports two readiness states:
 
 - permanent Atom source is still blocked while emitted-content includes remain
-  after the header; and
+  after the header and while emitted statements still use symbol arithmetic
+  that Atom cannot assemble directly; and
 - compatibility-lowered Atom source is ready when those late includes are the
-  only remaining issues.
+  only hard issues, because preview lowering can resolve existing symbol
+  arithmetic from the comparison symbol table.
 
 Compatibility lowering is now the formal bridge for existing Nucleus proof
 assembly. It preserves the current textual insertion points while producing

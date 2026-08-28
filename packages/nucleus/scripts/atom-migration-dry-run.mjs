@@ -251,7 +251,7 @@ function combineIncludeKinds(left, right) {
 }
 
 function compatibilityLoweringCanHandle(issue) {
-  return issue.code === "include-after-header";
+  return issue.code === "include-after-header" || issue.code === "atom-symbol-expression";
 }
 
 function nextRoutineLabel(lines, startIndex) {
@@ -439,6 +439,8 @@ function proofSelectionStatus({ proof, files, issueByFile, globalIssues, contrac
     .flatMap((file) => issueByFile.get(file) ?? [])
     .filter((issue) => issue.code !== "include-after-header");
   otherIssues.push(...globalIssues);
+  const previewOnlyIssues = otherIssues.filter((issue) => issue.code === "atom-symbol-expression");
+  const hardOtherIssues = otherIssues.filter((issue) => issue.code !== "atom-symbol-expression");
   if (otherIssues.length > 0) {
     blockers.push(...otherIssues);
   }
@@ -446,8 +448,11 @@ function proofSelectionStatus({ proof, files, issueByFile, globalIssues, contrac
   if (lateIncludeBlockers.length > 0) {
     return Object.freeze({ status: "blocked-by-late-emitted-include", blockers });
   }
-  if (otherIssues.length > 0) {
+  if (hardOtherIssues.length > 0) {
     return Object.freeze({ status: "blocked-by-other", blockers });
+  }
+  if (previewOnlyIssues.length > 0) {
+    return Object.freeze({ status: "atom-preview-only", blockers });
   }
   if (hasContracts) {
     return Object.freeze({ status: "blocked-by-contract-support", blockers });
@@ -921,6 +926,17 @@ function scanAssembly({ asmRoot, proofRoot }) {
           });
         }
       }
+      const isEquDefinition = /^\s*[A-Za-z_.$?][A-Za-z0-9_.$?]*(?::\s*|\s+)\.equ\b/i.test(code);
+      const isConditionalDirective = /^\s*\.if\b/i.test(code);
+      if (!isEquDefinition && !isConditionalDirective) {
+        for (const match of unquotedCode.matchAll(/(^|[^A-Za-z0-9_.$?])([A-Za-z_.$?][A-Za-z0-9_.$?]*)\s*([+-])\s*([A-Za-z_.$?][A-Za-z0-9_.$?]*)\b/g)) {
+          issues.push({
+            code: "atom-symbol-expression",
+            message: `symbol expression ${match[2]}${match[3]}${match[4]} requires preview lowering; permanent Atom source does not support symbol arithmetic in emitted statements yet`,
+            ...location(file, lineNumber),
+          });
+        }
+      }
     }
   }
 
@@ -1004,21 +1020,6 @@ function scanAssembly({ asmRoot, proofRoot }) {
       })];
     });
   }));
-  const proofMatrix = buildProofSelectionMatrix({
-    proofRoot,
-    asmRoot,
-    packageRoot,
-    issues,
-    includeAfterHeaderRecords,
-    contractMap,
-  });
-  const proofMatrixSummary = Object.freeze(Object.fromEntries(
-    [...proofMatrix.reduce((counts, entry) => {
-      counts.set(entry.status, (counts.get(entry.status) ?? 0) + 1);
-      return counts;
-    }, new Map()).entries()].sort(),
-  ));
-
   const caseGroups = new Map();
   for (const symbol of symbols.keys()) {
     const key = symbol.toUpperCase();
@@ -1062,6 +1063,21 @@ function scanAssembly({ asmRoot, proofRoot }) {
       });
     }
   }
+
+  const proofMatrix = buildProofSelectionMatrix({
+    proofRoot,
+    asmRoot,
+    packageRoot,
+    issues,
+    includeAfterHeaderRecords,
+    contractMap,
+  });
+  const proofMatrixSummary = Object.freeze(Object.fromEntries(
+    [...proofMatrix.reduce((counts, entry) => {
+      counts.set(entry.status, (counts.get(entry.status) ?? 0) + 1);
+      return counts;
+    }, new Map()).entries()].sort(),
+  ));
 
   const directiveSummary = Object.fromEntries([...directives.entries()].sort());
   const conditionalSummary = Object.fromEntries(
