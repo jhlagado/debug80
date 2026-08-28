@@ -110,6 +110,18 @@ as separate entries for the same target label. Atom source represents the
 contract line as `;@ROUTINE ...`; the assembler ignores it, and the host proof
 tool consumes the generated contract map.
 
+For integration work, prefer one consolidated bundle instead of several loose
+files:
+
+```bash
+npm run atom:migration:census -w nucleus -- \
+  --migration-bundle-out build/nucleus-atom-migration.json
+```
+
+The bundle uses schema `nucleus-atom-migration/v1` and contains the readiness
+split, measurements, issue list, include report, long-symbol ledger,
+proof-symbol map, proof-limit map, and routine-contract map.
+
 For proof images that still depend on AZM-style textual includes, the tool can
 also lower a single entry into one generated Atom-preview source file:
 

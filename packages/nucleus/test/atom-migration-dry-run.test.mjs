@@ -533,6 +533,7 @@ describe("Nucleus Atom migration dry-run", () => {
       const proofSymbolMapPath = path.join(root, "out", "proof-symbols.json");
       const proofLimitMapPath = path.join(root, "out", "proof-limits.json");
       const contractMapPath = path.join(root, "out", "contracts.json");
+      const migrationBundlePath = path.join(root, "out", "migration-bundle.json");
       const result = spawnSync(process.execPath, [
         dryRunScript,
         "--asm-root",
@@ -551,6 +552,8 @@ describe("Nucleus Atom migration dry-run", () => {
         proofLimitMapPath,
         "--contract-map-out",
         contractMapPath,
+        "--migration-bundle-out",
+        migrationBundlePath,
       ], { encoding: "utf8" });
 
       expect(result.status).toBe(1);
@@ -560,6 +563,7 @@ describe("Nucleus Atom migration dry-run", () => {
       const proofSymbolMap = JSON.parse(await readFile(proofSymbolMapPath, "utf8"));
       const proofLimitMap = JSON.parse(await readFile(proofLimitMapPath, "utf8"));
       const contractMap = JSON.parse(await readFile(contractMapPath, "utf8"));
+      const migrationBundle = JSON.parse(await readFile(migrationBundlePath, "utf8"));
       expect(ledger).toHaveLength(1);
       expect(ledger[0]).toMatchObject({
         original: "LongPublicLabel",
@@ -587,6 +591,21 @@ describe("Nucleus Atom migration dry-run", () => {
       ]);
       expect(proofLimitMap).toEqual([]);
       expect(contractMap).toEqual([]);
+      expect(migrationBundle).toMatchObject({
+        schema: "nucleus-atom-migration/v1",
+        status: "blocked",
+        readiness: {
+          permanentSource: "blocked",
+          compatibilityLowering: "ready",
+          compatibilityBlockingIssues: 0,
+        },
+      });
+      expect(migrationBundle.ledger).toEqual(ledger);
+      expect(migrationBundle.issues).toEqual(issues);
+      expect(migrationBundle.includeAfterHeaderReport).toEqual(includeReport);
+      expect(migrationBundle.proofSymbolMap).toEqual(proofSymbolMap);
+      expect(migrationBundle.proofLimitMap).toEqual(proofLimitMap);
+      expect(migrationBundle.contractMap).toEqual(contractMap);
     });
   });
 

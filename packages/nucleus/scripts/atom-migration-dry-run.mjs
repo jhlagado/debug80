@@ -63,6 +63,7 @@ function parseArgs(argv) {
     proofSymbolMapOut: undefined,
     proofLimitMapOut: undefined,
     contractMapOut: undefined,
+    migrationBundleOut: undefined,
     translatedRoot: undefined,
     flattenEntry: undefined,
     flattenOut: undefined,
@@ -89,6 +90,8 @@ function parseArgs(argv) {
       options.proofLimitMapOut = path.resolve(argv[++index] ?? "");
     } else if (arg === "--contract-map-out") {
       options.contractMapOut = path.resolve(argv[++index] ?? "");
+    } else if (arg === "--migration-bundle-out") {
+      options.migrationBundleOut = path.resolve(argv[++index] ?? "");
     } else if (arg === "--translated-root") {
       options.translatedRoot = path.resolve(argv[++index] ?? "");
     } else if (arg === "--flatten-entry") {
@@ -124,6 +127,8 @@ Options:
                      Write one-past-address-space proof limit symbols as JSON.
   --contract-map-out FILE
                      Write AZM .ROUTINE metadata mapped to Atom routine labels as JSON.
+  --migration-bundle-out FILE
+                     Write the complete Atom migration bundle as JSON.
   --translated-root DIR
                      Write generated Atom-preview source files under DIR.
   --flatten-entry FILE
@@ -923,6 +928,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
   const compatibilityLoweringStatus = compatibilityBlockingIssues.length === 0 ? "ready" : "blocked";
 
   return {
+    schema: "nucleus-atom-migration/v1",
     status: permanentSourceStatus,
     readiness: {
       permanentSource: permanentSourceStatus,
@@ -1379,6 +1385,9 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     }
     if (options.contractMapOut !== undefined) {
       writeJsonFile(options.contractMapOut, report.contractMap);
+    }
+    if (options.migrationBundleOut !== undefined) {
+      writeJsonFile(options.migrationBundleOut, report);
     }
     if (options.translatedRoot !== undefined) {
       writeTranslatedTree(report, options.translatedRoot);
