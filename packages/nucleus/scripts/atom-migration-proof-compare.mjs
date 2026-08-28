@@ -749,9 +749,17 @@ async function main() {
         legacyOutputOrder: options.legacyOutputOrder,
       })
       : undefined;
+    const entry = entryForManifest(options.asmRoot, proof);
+    if (!options.json) {
+      console.error(`comparing ${proof.name}\t${entry}`);
+    }
     const cached = key === undefined ? undefined : comparisonCache.get(key);
     if (cached !== undefined) {
-      results.push(cachedResultForProof(cached, proof));
+      const cachedResult = cachedResultForProof(cached, proof);
+      results.push(cachedResult);
+      if (!options.json) {
+        console.error(`${cachedResult.status} ${proof.name}`);
+      }
       continue;
     }
     const result = await compareOne({
@@ -764,6 +772,9 @@ async function main() {
     });
     if (key !== undefined) comparisonCache.set(key, result);
     results.push(result);
+    if (!options.json) {
+      console.error(`${result.status} ${proof.name}`);
+    }
   }
   const comparison = Object.freeze({
     status: results.every(({ status }) => status === "byte-identical" || status === "skipped") ? "ready" : "blocked",
