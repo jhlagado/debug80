@@ -5,6 +5,7 @@ Date: 2026-08-28
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
+Current census HEAD: `d22ee861`
 
 ## Purpose
 
@@ -23,14 +24,14 @@ Measured files:
 
 | Item | Measured value |
 | --- | ---: |
-| Assembly files, `.asm` and `.asmi` | 66 |
-| Source lines | 29,259 |
-| Defined assembler symbols detected | 3,781 |
-| Defined assembler symbols longer than eight characters | 3,748 |
+| Assembly files, `.asm` and `.asmi` | 67 |
+| Source lines | 29,375 |
+| Defined assembler symbols detected | 3,797 |
+| Defined assembler symbols longer than eight characters | 3,764 |
 | Preprocessor-only feature symbols | 8 |
-| Proof-limit symbols using `$10000` | 3 |
+| Proof-limit symbols using `$10000` | 4 |
 | Late textual includes | 177 |
-| Current dry-run blockers | 3,925 |
+| Current dry-run blockers | 3,941 |
 
 The source set is large enough that manual renaming without tooling is not credible.
 
@@ -80,17 +81,17 @@ npm run atom:migration:proof-compare -w nucleus
 
 | AZM directive | Measured count | Atom migration treatment |
 | --- | ---: | --- |
-| `.DB` | 2,794 | Mechanical: `DB` |
+| `.DB` | 2,797 | Mechanical: `DB` |
 | `.DS` | 10 | Mechanical: `DS` |
-| `.DW` | 352 | Mechanical: `DW` |
-| `.EQU` | 1,106 | Mechanical: `EQU` |
-| `.ORG` | 77 | Mechanical: `ORG` |
+| `.DW` | 358 | Mechanical: `DW` |
+| `.EQU` | 1,112 | Mechanical: `EQU` |
+| `.ORG` | 79 | Mechanical: `ORG` |
 | `.END` | 13 | Preview translation omits terminal instances as `;@AZM-END`; every current instance has no source after it |
 | `.INCLUDE` | 201 | Mechanical to Atom host include syntax; keep included files as source parts where possible |
 | `.IF` | 233 | Mechanical to host conditional assembly syntax |
 | `.ELSE` | 138 | Mechanical to host conditional assembly syntax |
 | `.ENDIF` | 233 | Mechanical to host conditional assembly syntax |
-| `.ROUTINE` | 706 | Contract-only; translate to comment-form contract metadata for the proof runner |
+| `.ROUTINE` | 709 | Contract-only; translate to comment-form contract metadata for the proof runner |
 
 The ordinary data and origin directives are low risk. The migration blockers are contract metadata, symbol length, and include placement.
 
@@ -184,8 +185,16 @@ Longest examples:
 | `NucleusRuntimeCheckAggregateRegionOffset` | 40 |
 | `Stage7ParameterRoutineCollisionSourceEnd` | 40 |
 | `Stage8AggregateArgumentFailableSourceEnd` | 40 |
+| `TargetSinkSourceProvenanceSinglePartCode` | 40 |
 
 The migration needs a generated naming ledger before any permanent source rewrite.
+
+The current dry-run ledger maps every long source symbol to a deterministic
+eight-character Atom symbol of the form `N0000000`, `N0000001`, and so on. That
+is sufficient for byte-comparison previews, but it is not yet sufficient for a
+permanent source rewrite because public proof names, D8-visible names, and
+debugging names still need a stable projection back to their original Nucleus
+names.
 
 Recommended ledger fields:
 
