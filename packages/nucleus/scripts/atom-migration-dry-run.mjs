@@ -1817,10 +1817,11 @@ function scanAssembly({ asmRoot, proofRoot }) {
       const isEquDefinition = /^\s*[A-Za-z_.$?][A-Za-z0-9_.$?]*(?::\s*|\s+)\.equ\b/i.test(code);
       const isConditionalDirective = /^\s*\.if\b/i.test(code);
       if (!isEquDefinition && !isConditionalDirective) {
-        for (const match of unquotedCode.matchAll(/(^|[^A-Za-z0-9_.$?])([A-Za-z_.$?][A-Za-z0-9_.$?]*)\s*([+-])\s*([A-Za-z_.$?][A-Za-z0-9_.$?]*)\b/g)) {
-          if (availableSymbols.has(symbolKey(match[2])) && availableSymbols.has(symbolKey(match[4]))) {
-            continue;
-          }
+        for (const match of unquotedCode.matchAll(/(^|[^A-Za-z0-9_.$?])([A-Za-z_.$?][A-Za-z0-9_.$?]*|\$[0-9A-Fa-f]+|%[01]+|[0-9][0-9A-Fa-f]*[Hh]|[01]+[Bb]|[0-9]+)\s*([+-])\s*([A-Za-z_.$?][A-Za-z0-9_.$?]*|\$[0-9A-Fa-f]+|%[01]+|[0-9][0-9A-Fa-f]*[Hh]|[01]+[Bb]|[0-9]+)\b/g)) {
+          const left = symbolExpressionTerm(match[2]);
+          const right = symbolExpressionTerm(match[4]);
+          if (left.kind !== "symbol" || right.kind !== "symbol") continue;
+          if (availableSymbols.has(left.key) && availableSymbols.has(right.key)) continue;
           issues.push({
             code: "atom-symbol-expression",
             message: `symbol expression ${match[2]}${match[3]}${match[4]} requires preview lowering; permanent Atom source needs both symbols defined before the emitted statement`,
@@ -2039,6 +2040,12 @@ function scanAssembly({ asmRoot, proofRoot }) {
 
 function symbolKey(symbol) {
   return symbol.toUpperCase();
+}
+
+function symbolExpressionTerm(term) {
+  if (numberValue(term) !== undefined) return { kind: "literal" };
+  if (/^(?:IX|IY)$/i.test(term)) return { kind: "index-register" };
+  return { kind: "symbol", key: symbolKey(term) };
 }
 
 function equExpressionIsImmediatelyResolvable(expression, availableSymbols) {

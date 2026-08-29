@@ -361,10 +361,13 @@ describe("Nucleus Atom migration dry-run", () => {
   it("permits emitted symbol arithmetic only after both symbols are defined", async () => {
     await withTree({
       "asm/main.asm": [
+        "Field EQU 1",
         "Start:",
         "            DB 1",
         "End:",
         "            DW End-Start",
+        "            DW Start+$05",
+        "            LD L,(IX+Field)",
         "            DW Later-Start",
         "Later:",
         "",
@@ -381,7 +384,7 @@ describe("Nucleus Atom migration dry-run", () => {
         expect.objectContaining({
           code: "atom-symbol-expression",
           message: "symbol expression Later-Start requires preview lowering; permanent Atom source needs both symbols defined before the emitted statement",
-          line: 5,
+          line: 8,
         }),
       ]);
     });

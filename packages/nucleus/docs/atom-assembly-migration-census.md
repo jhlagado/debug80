@@ -5,7 +5,7 @@ Date: 2026-08-29
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current reusable-transform baseline HEAD: `7aa3759c`
+Current reusable-transform baseline HEAD: `e5e545e7`
 
 ## Purpose
 
@@ -33,12 +33,12 @@ Measured files:
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
 | Include-after-header violations | 143 |
-| Forward-dependent emitted-statement symbol arithmetic sites | 147 |
-| Current permanent-source blockers | 350 |
+| Forward-dependent emitted-statement symbol arithmetic sites | 111 |
+| Current permanent-source blockers | 314 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
-| Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 147 |
+| Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 111 |
 | Permanent blocker: include after header | 143 |
 | Permanent blocker: feature definition after Atom entry header | 60 |
 | Proof-manifest symbol mappings | 146 |
@@ -239,9 +239,10 @@ The dry-run intentionally reports two readiness states:
 - compatibility-lowered Atom source is ready when those late includes are the
   only hard issues, because preview lowering can resolve existing symbol
   arithmetic from the comparison symbol table and consume feature definitions
-  before Atom receives the generated preview source. Emitted two-symbol
-  arithmetic is not itself a blocker when both symbols are already defined at
-  the statement that uses them; Atom can assemble those expressions in one pass.
+  before Atom receives the generated preview source. Emitted arithmetic is not
+  itself a blocker when it uses an index register, a numeric literal addend, or
+  two symbols that are already defined at the statement that uses them; Atom can
+  assemble those expressions in one pass.
 
 Compatibility lowering is now the formal bridge for existing Nucleus proof
 assembly. It preserves the current textual insertion points while producing
@@ -252,13 +253,16 @@ Nucleus assembly source.
 
 This census keeps Atom's expression model single-pass. Atom can assemble
 emitted expressions such as `End-Start` when both labels have already been
-defined at the statement that uses them. It cannot patch a forward-dependent
-two-symbol expression such as `Later-Start`, because the pending patch record
-does not retain two unresolved symbol identities and an operation. The migration
-tool therefore reports only forward-dependent emitted two-symbol expressions as
-permanent-source blockers. Existing proof-preview lowering may still resolve
-those expressions from the comparison symbol table, but permanent source needs
-an explicit alias, a source rewrite, or an ordering change.
+defined at the statement that uses them. It can also assemble ordinary
+single-symbol addends such as `Start+$05` and index displacements such as
+`IX+Field` when the field constant is already known. It cannot patch a
+forward-dependent two-symbol expression such as `Later-Start`, because the
+pending patch record does not retain two unresolved symbol identities and an
+operation. The migration tool therefore reports only forward-dependent emitted
+two-symbol expressions as permanent-source blockers. Existing proof-preview
+lowering may still resolve those expressions from the comparison symbol table,
+but permanent source needs an explicit alias, a source rewrite, or an ordering
+change.
 
 The proof harness also has an explicit `atom-preview` assembler mode. That mode
 uses the compatibility-lowered source produced by the migration tools, assembles
