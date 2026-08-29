@@ -391,6 +391,20 @@ const permanentLayoutTransforms = new Map([
     ]),
     rewrite: rewriteStage7Ll1EngineProofPermanentAtomSource,
   })],
+  ["vertical-slice/stage7-ll1-aggregate-call-z80-slice-proof.asm", Object.freeze({
+    description: "Stage 7 aggregate-call proof sectioned header-include layout",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/stage7-ll1-aggregate-call-z80-slice-proof.asm",
+        code: "include-after-header",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/stage7-ll1-aggregate-call-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+      }),
+    ]),
+    rewrite: rewriteStage7Ll1AggregateCallZ80SliceProofPermanentAtomSource,
+  })],
   ["vertical-slice/aggregate-call-parser.asm", Object.freeze({
     description: "aggregate-call parser Stage 7 header include layout",
     handledIssues: Object.freeze([
@@ -3639,6 +3653,160 @@ function rewriteStage7Ll1EngineProofPermanentAtomSource(source, { relative, tran
     "            %INCLUDE \"stage7-ll1-engine-proof-before-actions.asmi\"",
     "            %INCLUDE \"../grammar/stage7-proof-actions.asmi\"",
     "            %INCLUDE \"stage7-ll1-engine-proof-after-actions.asmi\"",
+    "",
+  ].join("\n");
+}
+
+function rewriteStage7Ll1AggregateCallZ80SliceProofPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
+  const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
+  const sourceBase = atomSymbol(symbolMap, "SourceBase");
+  const backupLimit = atomSymbol(symbolMap, "BackupLimit");
+  const targetRuntimeBase = atomSymbol(symbolMap, "TargetRuntimeBase");
+  const proofBase = atomSymbol(symbolMap, "ProofBase");
+  const aliases = [
+    ["S7CSLOF", ["Stage7CorruptStringLengthPoint", "-", "Stage7CorruptStringSource"]],
+    ["S7CSIOF", ["Stage7CorruptStringIndexPoint", "-", "Stage7CorruptStringIndexSource"]],
+    ["S7DCRJ", ["Stage7DataCapacityRejectedPoint", "-", "Stage7DataCapacityRejectedSource"]],
+    ["S7BCRJ", ["Stage7BssCapacityRejectedPoint", "-", "Stage7BssCapacityRejectedSource"]],
+    ["S7WDRJ", ["Stage7WideRecordRejectedPoint", "-", "Stage7WideRecordRejectedSource"]],
+    ["S7SACP", ["Stage7SealedArrayCapacityPoint", "-", "Stage7SealedArraySource"]],
+    ["S7PRCP", ["Stage7ParameterCapacityPoint", "-", "Stage7ParameterCapacitySource"]],
+    ["S7ROWH", ["Stage7ReadOnlyWholeAssignmentPoint", "-", "Stage7ReadOnlyWholeAssignmentSource"]],
+    ["S7ROFL", ["Stage7ReadOnlyFieldAssignmentPoint", "-", "Stage7ReadOnlyFieldAssignmentSource"]],
+    ["S7ROAR", ["Stage7ReadOnlyArrayAssignmentPoint", "-", "Stage7ReadOnlyArrayAssignmentSource"]],
+    ["S7ROST", ["Stage7ReadOnlyStringAssignmentPoint", "-", "Stage7ReadOnlyStringAssignmentSource"]],
+    ["S7ACIN", ["Stage7AggregateConstantIncompletePoint", "-", "Stage7AggregateConstantIncompleteSource"]],
+    ["S7ACWT", ["Stage7AggregateConstantWrongTypePoint", "-", "Stage7AggregateConstantWrongTypeSource"]],
+    ["S7ACRT", ["Stage7AggregateConstantRuntimePoint", "-", "Stage7AggregateConstantRuntimeSource"]],
+    ["S7ACST", ["Stage7AggregateConstantScalarTypePoint", "-", "Stage7AggregateConstantScalarTypeSource"]],
+    ["S7RCRJ", ["Stage7ReadOnlyCapacityRejectedPoint", "-", "Stage7ReadOnlyCapacityRejectedSource"]],
+    ["S7RDOF", ["GeneratedRoDataBase", "-", "GeneratedBase"]],
+    ["S7SREB", ["SegmentRoDataEntry", "+", "SegmentEntryBase"]],
+  ];
+
+  const lines = replaceAtomExpressionAliases(source, symbolMap, aliases).split("\n");
+  const compilerOrgIndex = findPermanentOrgLine(lines, compilerCoreBase, "stage7 aggregate-call proof");
+  const sourceAdapterIncludeIndex = findPermanentIncludeLine(lines, "source-adapter.asm", "stage7 aggregate-call proof");
+  const tokenizerIncludeIndex = findPermanentIncludeLine(lines, "loop-tokenizer.asm", "stage7 aggregate-call proof");
+  const semanticSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-semantic-sink.asm", "stage7 aggregate-call proof");
+  const symbolsIncludeIndex = findPermanentIncludeLine(lines, "loop-symbols.asm", "stage7 aggregate-call proof");
+  const parserIncludeIndex = findPermanentIncludeLine(lines, "loop-parser.asm", "stage7 aggregate-call proof");
+  const loopSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-z80-sink.asm", "stage7 aggregate-call proof");
+  const typedSinkIncludeIndex = findPermanentIncludeLine(lines, "typed-expression-z80.asm", "stage7 aggregate-call proof");
+  const aggregateSinkIncludeIndex = findPermanentIncludeLine(lines, "aggregate-z80.asm", "stage7 aggregate-call proof");
+  const keywordsIncludeIndex = findPermanentIncludeLine(lines, "loop-keywords.asmi", "stage7 aggregate-call proof");
+  const sourceOrgIndex = findPermanentOrgLine(lines, sourceBase, "stage7 aggregate-call proof");
+  const backupOrgIndex = findPermanentOrgLine(lines, backupLimit, "stage7 aggregate-call proof");
+  const runtimeOrgIndex = findPermanentOrgLine(lines, targetRuntimeBase, "stage7 aggregate-call proof");
+  const runtimeIncludeIndex = findPermanentIncludeLine(lines, "proof-z80-runtime.asm", "stage7 aggregate-call proof");
+  const proofOrgIndex = findPermanentOrgLine(lines, proofBase, "stage7 aggregate-call proof");
+
+  const orderedIndexes = [
+    compilerOrgIndex,
+    sourceAdapterIncludeIndex,
+    tokenizerIncludeIndex,
+    semanticSinkIncludeIndex,
+    symbolsIncludeIndex,
+    parserIncludeIndex,
+    loopSinkIncludeIndex,
+    typedSinkIncludeIndex,
+    aggregateSinkIncludeIndex,
+    keywordsIncludeIndex,
+    sourceOrgIndex,
+    backupOrgIndex,
+    runtimeOrgIndex,
+    runtimeIncludeIndex,
+    proofOrgIndex,
+  ];
+  if (!orderedIndexes.every((value, index) => index === 0 || orderedIndexes[index - 1] < value)) {
+    throw new Error("stage7 aggregate-call proof permanent Atom rewrite found an unexpected section order");
+  }
+
+  const writeSlice = (includeName, start, end) => {
+    writeGeneratedPermanentPart(translatedRoot, relative, includeName, [
+      ...lines.slice(start, end).filter((line) =>
+        !/^\s*%DEFINE\s+(TargetStreamingOutput|LegacyCompilerSlices|AggregateCallSlices|Stage7LL1|LegacyEncoders)\b/i.test(line)),
+      "",
+    ]);
+  };
+  writeSlice("stage7-ll1-aggregate-call-code-begin.asmi", compilerOrgIndex, sourceAdapterIncludeIndex);
+  writeSlice("stage7-ll1-aggregate-call-after-source-adapter.asmi", sourceAdapterIncludeIndex + 1, tokenizerIncludeIndex);
+  writeSlice("stage7-ll1-aggregate-call-after-tokenizer.asmi", tokenizerIncludeIndex + 1, semanticSinkIncludeIndex);
+  writeSlice("stage7-ll1-aggregate-call-after-semantic-sink.asmi", semanticSinkIncludeIndex + 1, symbolsIncludeIndex);
+  writeSlice("stage7-ll1-aggregate-call-after-symbols.asmi", symbolsIncludeIndex + 1, parserIncludeIndex);
+  writeSlice("stage7-ll1-aggregate-call-after-parser.asmi", parserIncludeIndex + 1, loopSinkIncludeIndex);
+  writeSlice("stage7-ll1-aggregate-call-after-loop-z80-sink.asmi", loopSinkIncludeIndex + 1, typedSinkIncludeIndex);
+  writeSlice("stage7-ll1-aggregate-call-after-typed-expression-z80.asmi", typedSinkIncludeIndex + 1, aggregateSinkIncludeIndex);
+  writeSlice("stage7-ll1-aggregate-call-after-aggregate-z80.asmi", aggregateSinkIncludeIndex + 1, keywordsIncludeIndex);
+  writeSlice("stage7-ll1-aggregate-call-after-keywords.asmi", keywordsIncludeIndex + 1, sourceOrgIndex);
+  writeSlice("stage7-ll1-aggregate-call-source.asmi", sourceOrgIndex, backupOrgIndex);
+  writeSlice("stage7-ll1-aggregate-call-backup-source.asmi", backupOrgIndex, runtimeOrgIndex);
+  writeSlice("stage7-ll1-aggregate-call-runtime-begin.asmi", runtimeOrgIndex, runtimeIncludeIndex);
+  writeSlice("stage7-ll1-aggregate-call-runtime-after.asmi", runtimeIncludeIndex + 1, proofOrgIndex);
+  writeGeneratedPermanentPart(translatedRoot, relative, "stage7-ll1-aggregate-call-proof-body.asmi", [
+    lines[proofOrgIndex],
+    "S7CSLOF EQU $34",
+    "S7CSIOF EQU $33",
+    "S7DCRJ EQU $95",
+    "S7BCRJ EQU $14",
+    "S7WDRJ EQU $2D",
+    "S7SACP EQU $17",
+    "S7PRCP EQU $A0",
+    "S7ROWH EQU $55",
+    "S7ROFL EQU $42",
+    "S7ROAR EQU $2A",
+    "S7ROST EQU $2A",
+    "S7ACIN EQU $3D",
+    "S7ACWT EQU $1A",
+    "S7ACRT EQU $25",
+    "S7ACST EQU $10",
+    "S7RCRJ EQU $96",
+    "S7RDOF EQU $C00",
+    "S7SREB EQU $4474",
+    "",
+    ...lines.slice(proofOrgIndex + 1),
+  ]);
+
+  return [
+    "; Permanent Atom layout for the Stage 7 aggregate-call proof.",
+    "            %DEFINE SegmentedOutput 1",
+    "            %DEFINE TargetStreamingOutput 0",
+    "            %DEFINE LegacyCompilerSlices 0",
+    "            %DEFINE AggregateCallSlices 1",
+    "            %DEFINE Stage7LL1 1",
+    "            %DEFINE LegacyEncoders 0",
+    "            %DEFINE HybridLL1Full 1",
+    "            %DEFINE RuntimeProofServices 1",
+    "            %INCLUDE \"memory-map.asmi\"",
+    "            %INCLUDE \"proof-segmented-state.asmi\"",
+    "            %INCLUDE \"loop-compiler-state.asmi\"",
+    "            %INCLUDE \"aggregate-call-state.asmi\"",
+    "            %INCLUDE \"loop-z80-state.asmi\"",
+    "            %INCLUDE \"stage7-ll1-aggregate-call-code-begin.asmi\"",
+    "            %INCLUDE \"source-adapter.asm\"",
+    "            %INCLUDE \"stage7-ll1-aggregate-call-after-source-adapter.asmi\"",
+    "            %INCLUDE \"loop-tokenizer.asm\"",
+    "            %INCLUDE \"stage7-ll1-aggregate-call-after-tokenizer.asmi\"",
+    "            %INCLUDE \"loop-semantic-sink.asm\"",
+    "            %INCLUDE \"stage7-ll1-aggregate-call-after-semantic-sink.asmi\"",
+    "            %INCLUDE \"loop-symbols.asm\"",
+    "            %INCLUDE \"stage7-ll1-aggregate-call-after-symbols.asmi\"",
+    "            %INCLUDE \"loop-parser.asm\"",
+    "            %INCLUDE \"stage7-ll1-aggregate-call-after-parser.asmi\"",
+    "            %INCLUDE \"loop-z80-sink.asm\"",
+    "            %INCLUDE \"stage7-ll1-aggregate-call-after-loop-z80-sink.asmi\"",
+    "            %INCLUDE \"typed-expression-z80.asm\"",
+    "            %INCLUDE \"stage7-ll1-aggregate-call-after-typed-expression-z80.asmi\"",
+    "            %INCLUDE \"aggregate-z80.asm\"",
+    "            %INCLUDE \"stage7-ll1-aggregate-call-after-aggregate-z80.asmi\"",
+    "            %INCLUDE \"loop-keywords.asmi\"",
+    "            %INCLUDE \"stage7-ll1-aggregate-call-after-keywords.asmi\"",
+    "            %INCLUDE \"stage7-ll1-aggregate-call-source.asmi\"",
+    "            %INCLUDE \"stage7-ll1-aggregate-call-backup-source.asmi\"",
+    "            %INCLUDE \"stage7-ll1-aggregate-call-runtime-begin.asmi\"",
+    "            %INCLUDE \"proof-z80-runtime.asm\"",
+    "            %INCLUDE \"stage7-ll1-aggregate-call-runtime-after.asmi\"",
+    "            %INCLUDE \"stage7-ll1-aggregate-call-proof-body.asmi\"",
     "",
   ].join("\n");
 }

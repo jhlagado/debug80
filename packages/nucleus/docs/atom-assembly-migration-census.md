@@ -155,9 +155,12 @@ execution through the migration runner. Three dispatcher measurement manifests
 remain measurement artifacts rather than proof-image migration targets. Three
 large proof manifests are still excluded from permanent-ready execution because
 their resident source blocks overlap the runtime/proof-output memory regions
-used by the current harness configuration. Those rows also retain their
-source-layout blockers in the proof matrix, so the memory exclusion no longer
-hides unresolved include, symbol-expression, or `%DEFINE` placement work.
+used by the current harness configuration. The Stage 7 aggregate-call proof now
+has permanent-layout Atom source that assembles byte-identically with the
+legacy unordered proof-output sink; its remaining blocker is only the known
+memory overlap. The other overlapping-memory rows continue to report their
+source-layout blockers, so the memory exclusion does not hide unresolved
+include, symbol-expression, or `%DEFINE` placement work.
 
 The proof harness accepts the generated metadata through
 `runProofManifest(..., { atomMigration })`. That path builds a manifest-facing

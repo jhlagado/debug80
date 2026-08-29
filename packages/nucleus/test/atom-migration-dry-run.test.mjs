@@ -456,14 +456,19 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   });
 
-  it("keeps source-layout blockers visible on overlapping proof-memory rows", () => {
+  it("keeps unresolved source-layout blockers visible on overlapping proof-memory rows", () => {
     const report = scanAssembly({ asmRoot, proofRoot });
-    const row = report.proofMatrix.find(
+    const converted = report.proofMatrix.find(
       ({ proof }) => proof === "stage7-ll1-aggregate-call-z80-slice-proof.json",
     );
+    const remaining = report.proofMatrix.find(
+      ({ proof }) => proof === "stage9-conformance-z80-slice-proof.json",
+    );
 
-    expect(row?.status).toBe("blocked-by-overlapping-proof-memory");
-    expect(row?.blockers.map(({ code }) => code)).toEqual(
+    expect(converted?.status).toBe("blocked-by-overlapping-proof-memory");
+    expect(converted?.blockers.map(({ code }) => code)).toEqual(["overlapping-proof-memory"]);
+    expect(remaining?.status).toBe("blocked-by-overlapping-proof-memory");
+    expect(remaining?.blockers.map(({ code }) => code)).toEqual(
       expect.arrayContaining([
         "overlapping-proof-memory",
         "include-after-header",
@@ -1601,6 +1606,39 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(loopKeywords).not.toContain("Stage8CallableServiceFlag+Stage8ServiceResultU8");
     });
   });
+
+  it("assembles the Stage 7 aggregate-call proof from permanent Atom layout source byte-identically", async (context) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+      const row = report.proofMatrix.find(
+        ({ proof }) => proof === "stage7-ll1-aggregate-call-z80-slice-proof.json",
+      );
+      expect(row?.status).toBe("blocked-by-overlapping-proof-memory");
+      expect(row?.blockers.map(({ code }) => code)).toEqual(["overlapping-proof-memory"]);
+
+      const current = await compile(
+        path.join(asmRoot, "vertical-slice", "stage7-ll1-aggregate-call-z80-slice-proof.asm"),
+        { outputType: "bin" },
+      );
+      const diagnostics = current.diagnostics.filter(({ severity }) => severity === "error");
+      expect(diagnostics).toEqual([]);
+      const currentBin = current.artifacts.find(({ kind }) => kind === "bin")?.bytes;
+      expect(currentBin).toBeDefined();
+
+      const atom = await assembleAtomProject({
+        root: translatedRoot,
+        entry: "vertical-slice/stage7-ll1-aggregate-call-z80-slice-proof.asm",
+        target: { start: 0, capacity: 0xffff },
+        maxInstructions: 700_000_000,
+        maxCycles: 7_000_000_000,
+        sink: createLegacyUnorderedMemoryAtomSink(),
+      });
+      const atomBin = materializeAtomGeneration(atom.generation, {
+        base: contentBase(atom.generation),
+      }).bytes;
+
+      expect(Buffer.compare(Buffer.from(atomBin), Buffer.from(currentBin))).toBe(0);
+    });
+  }, 60_000);
 
   it("runs a late-include proof through the proof harness using Atom-preview lowering", async () => {
     const report = scanAssembly({ asmRoot, proofRoot });
