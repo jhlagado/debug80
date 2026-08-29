@@ -10,7 +10,7 @@ import { createProofSymbolView, runProofManifest } from "../src/proof.js";
 import type { NucleusResidentCompilerEntrySymbols } from "../src/resident-compiler-entry.js";
 import { runNucleusProofRuntimeStreamOperations } from "../src/runtime-services.js";
 import { ServiceError, Trap } from "../src/runtime-contract.js";
-import { buildSourceParts } from "../src/source-manifest.js";
+import type { SourcePart } from "../src/source-part.js";
 
 const proof = (name: string): string =>
   path.resolve(import.meta.dirname, "..", "proofs", `${name}.json`);
@@ -47,7 +47,7 @@ async function withSourceTree<T>(
   }
 }
 
-describe("manifest-driven AZM and Debug80 proofs", () => {
+describe("source-prepared AZM and Debug80 proofs", () => {
   it("maps Atom-built proof symbols back to manifest-facing names", () => {
     const symbols = createProofSymbolView(
       {
@@ -115,12 +115,24 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
           root,
           entry: "src/main.nu",
         });
-        const legacyParts = buildSourceParts(
-          "src/model.nu\nsrc/main.nu\n",
-          (name) => new Uint8Array(readFileSync(path.join(root, name))),
-        );
+        const expectedParts: readonly SourcePart[] = [
+          {
+            ordinal: 1,
+            stableIdentity: "1:src/model.nu",
+            diagnosticName: "src/model.nu",
+            bytes: new TextEncoder().encode("const MODEL = 1\n"),
+          },
+          {
+            ordinal: 2,
+            stableIdentity: "2:src/main.nu",
+            diagnosticName: "src/main.nu",
+            bytes: new TextEncoder().encode(
+              '//% import "model.nu"\nsub main()\nend\n',
+            ),
+          },
+        ];
 
-        expect(prepared.sourceParts).toEqual(legacyParts);
+        expect(prepared.sourceParts).toEqual(expectedParts);
         expect(
           prepared.project.parts.map((part) => part.logicalIdentity),
         ).toEqual(["src/model.nu", "src/main.nu"]);
@@ -130,7 +142,7 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
         );
         expect(prepared.partBanks).toEqual([0, 0]);
         expect(prepared.totalSourceBytes).toBe(
-          legacyParts.reduce((total, part) => total + part.bytes.length, 0),
+          expectedParts.reduce((total, part) => total + part.bytes.length, 0),
         );
       },
     );
@@ -485,19 +497,28 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
     expect(specificationPrograms).toHaveLength(36);
     expect(proofPrograms).toEqual(specificationPrograms);
 
-    const manifestParts = buildSourceParts("model.nu\n\nmain.nu\n", (name) =>
-      name === "model.nu"
-        ? outcome.memory.slice(
-            symbol("Chapter21_1Part1"),
-            symbol("Chapter21_1Part1End"),
-          )
-        : outcome.memory.slice(
-            symbol("Chapter21_1Part2"),
-            symbol("Chapter21_1Part2End"),
-          ),
-    );
+    const sourceParts: readonly SourcePart[] = [
+      {
+        ordinal: 1,
+        diagnosticName: "model.nu",
+        stableIdentity: "1:model.nu",
+        bytes: outcome.memory.slice(
+          symbol("Chapter21_1Part1"),
+          symbol("Chapter21_1Part1End"),
+        ),
+      },
+      {
+        ordinal: 2,
+        diagnosticName: "main.nu",
+        stableIdentity: "2:main.nu",
+        bytes: outcome.memory.slice(
+          symbol("Chapter21_1Part2"),
+          symbol("Chapter21_1Part2End"),
+        ),
+      },
+    ];
     expect(
-      manifestParts.map(({ ordinal, diagnosticName, stableIdentity }) => ({
+      sourceParts.map(({ ordinal, diagnosticName, stableIdentity }) => ({
         ordinal,
         diagnosticName,
         stableIdentity,
@@ -515,10 +536,10 @@ describe("manifest-driven AZM and Debug80 proofs", () => {
       },
     ]);
     expect(
-      new TextDecoder().decode(manifestParts[0]?.bytes ?? new Uint8Array()) +
-        new TextDecoder().decode(manifestParts[1]?.bytes ?? new Uint8Array()),
+      new TextDecoder().decode(sourceParts[0]?.bytes ?? new Uint8Array()) +
+        new TextDecoder().decode(sourceParts[1]?.bytes ?? new Uint8Array()),
     ).toBe(specificationPrograms[0]);
-    expect(manifestParts[1]?.diagnosticName).toBe("main.nu");
+    expect(sourceParts[1]?.diagnosticName).toBe("main.nu");
   }, 30_000);
 
   it("retains the historical direct-Z80 Stage 8 module proof", async () => {
