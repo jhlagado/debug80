@@ -5,7 +5,7 @@ Date: 2026-08-30
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current reusable-transform baseline HEAD: `46357ff9`
+Current reusable-transform baseline HEAD: `2d46ecaf`
 
 ## Purpose
 
@@ -24,22 +24,22 @@ Measured files:
 
 | Item | Measured value |
 | --- | ---: |
-| Assembly files, `.asm` and `.asmi` | 290 |
-| Source lines | 30,199 |
+| Assembly files, `.asm` and `.asmi` | 291 |
+| Source lines | 30,205 |
 | Defined assembler symbols detected | 4,158 |
 | Defined assembler symbols longer than eight characters | 3,910 |
 | Long labels classed as dot-local candidates | 792 |
 | Long symbols still needing global treatment | 3,118 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
-| Include-after-header violations | 4 |
+| Include-after-header violations | 0 |
 | Forward-dependent emitted-statement symbol arithmetic sites | 0 |
-| Current permanent-source blockers | 4 |
-| Permanent Atom source readiness | Blocked |
+| Current permanent-source blockers | 0 |
+| Permanent Atom source readiness | Ready |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
 | Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 0 |
-| Permanent blocker: include after header | 4 |
+| Permanent blocker: include after header | 0 |
 | Permanent blocker: feature definition after Atom entry header | 0 |
 | Proof-manifest symbol mappings | 146 |
 | One-past-address-space proof-limit mappings | 4 |
@@ -319,15 +319,14 @@ permanent Atom source. It is deliberately separate from `atom-permanent`, which
 only accepts a real translated Atom source tree and does not flatten late textual
 includes.
 
-## Remaining permanent-source blockers
+## Include-after-header conversion status
 
-The late emitted-content includes are not one uniform problem. Current measured
-grouping:
+The late emitted-content include batch is now clear. Current measured grouping:
 
 | Batch | Files | Late includes | Risk | Recommendation |
 | --- | ---: | ---: | --- | --- |
 | Proof composition files | 0 | 0 | Cleared | The proof-composition batch now uses section-owned layouts for the converted permanent entries, including `stage7-ll1-engine-proof.asm`. |
-| Module composition files | 1 | 4 | High | Current main batch. These includes occur inside the parser implementation module (`loop-parser`). Treat these as real module-boundary work, not mechanical line moves. |
+| Module composition files | 0 | 0 | Cleared | Parser and backend extension modules now use explicit physical module-boundary layouts. |
 | Runtime wrapper files | 0 | 0 | Cleared | The target runtime link entry now uses a physical section-owner layout in source. |
 
 `loop-compiler-slice-proof.asm` now uses the physical section-owner layout. Its
@@ -355,11 +354,18 @@ source. Its begin fragment owns `ORG RuntimeLinkBase` and `RuntimeCodeStart`;
 the root includes the target runtime wrapper; and its end fragment owns
 `RuntimeCodeEnd`. The runtime-wrapper batch is now clear.
 
-Do not move those include lines to the top and assume correctness. Many of
-the current files use surrounding labels such as `TokenizerCodeStart` /
-`TokenizerCodeEnd` to measure the emitted size of the included module. A safe
-permanent-source rewrite needs those extent symbols to remain byte-equivalent.
-The proof-comparison command is the required guard after each batch.
+`loop-parser.asm` now uses a physical module-boundary layout. Its core fragment
+owns the base predictive parser and the `LPAIMOD` aggregate-mode span alias.
+The root records the extension order: typed-expression parser, aggregate
+parser, and the Stage 7 or legacy aggregate-call parser selected by top-of-file
+conditionals. This clears the final include-after-header blockers.
+
+Do not move include lines to the top and assume correctness. Several converted
+files used surrounding labels such as `TokenizerCodeStart` / `TokenizerCodeEnd`
+to measure the emitted size of included modules. A safe permanent-source rewrite
+keeps those extent symbols byte-equivalent by giving each inserted section a
+physical owner fragment. The proof-comparison command is the required guard
+after each batch.
 
 The current safe convention is therefore:
 
@@ -660,21 +666,9 @@ npm run atom:migration:census -w nucleus -- \
   --include-report-out build/nucleus-atom-includes.json
 ```
 
-The largest current source groups are proof harnesses that include compiler
-modules after an `.ORG` and section label:
-
-| Source file | Measured violations | First line |
-| --- | ---: | ---: |
-| `vertical-slice/loop-parser.asm` | 4 | 1135 |
-
-The largest current target groups show why this is not a safe blind move:
-
-| Target include | Measured uses | Target class |
-| --- | ---: | --- |
-| `vertical-slice/aggregate-call-parser-stage7.asm` | 1 | mixed code/data |
-| `vertical-slice/aggregate-call-parser.asm` | 1 | code |
-| `vertical-slice/aggregate-parser.asm` | 1 | code |
-| `vertical-slice/typed-expression-parser.asm` | 1 | mixed code/data |
+The current include-after-header report is empty. Future emitted-content
+includes should use the same section-owner pattern rather than compatibility
+lowering.
 
 The first cleanup pass moved the state-layout includes into strict headers by
 adding small proof-mode config includes for `SegmentedOutput`. That removed the

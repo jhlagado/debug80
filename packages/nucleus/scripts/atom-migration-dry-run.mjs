@@ -396,18 +396,8 @@ const permanentLayoutTransforms = new Map([
     rewrite: rewriteTargetOutputPermanentAtomSource,
   })],
   ["vertical-slice/loop-parser.asm", Object.freeze({
-    description: "loop parser typed and aggregate header include layout",
-    handledIssues: Object.freeze([
-      Object.freeze({
-        file: "asm/vertical-slice/loop-parser.asm",
-        code: "include-after-header",
-      }),
-      Object.freeze({
-        file: "asm/vertical-slice/loop-parser.asm",
-        code: "atom-symbol-expression",
-        messageIncludes: "AggregateHasInitializer-AggregateMode",
-      }),
-    ]),
+    description: "loop parser physical module-boundary layout",
+    handledIssues: Object.freeze([]),
     rewrite: rewriteLoopParserPermanentAtomSource,
   })],
   ["vertical-slice/structured-control-parser.asm", Object.freeze({
@@ -2972,44 +2962,7 @@ function removeAtomAliasDefinitions(source, aliases) {
     .join("\n");
 }
 
-function rewriteLoopParserPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
-  const aliases = [
-    ["LPAIMOD", ["AggregateHasInitializer", "-", "AggregateMode", "+1"]],
-  ];
-  const sourceWithoutAliases = removeAtomAliasDefinitions(source, aliases.map(([alias]) => alias));
-  const lines = replaceAtomExpressionAliases(sourceWithoutAliases, symbolMap, aliases).split("\n");
-  const typedExpressionIncludeIndex = findPermanentIncludeLine(lines, "typed-expression-parser.asm", "loop-parser");
-  const aggregateParserIncludeIndex = findPermanentIncludeLine(lines, "aggregate-parser.asm", "loop-parser");
-  const aggregateCallParserIncludeIndex = findPermanentIncludeLine(lines, "aggregate-call-parser.asm", "loop-parser");
-  const aggregateCallParserStage7IncludeIndex = findPermanentIncludeLine(lines, "aggregate-call-parser-stage7.asm", "loop-parser");
-  const firstRoutineIndex = lines.findIndex((line) => /^\s*;@ROUTINE\b/i.test(line));
-  const ifIndex = lines
-    .slice(aggregateParserIncludeIndex + 1, aggregateCallParserStage7IncludeIndex)
-    .findIndex((line) => /^\s*%IF\s+AggregateCallSlices\s*$/i.test(line));
-  const stage7IfIndex = lines
-    .slice(aggregateParserIncludeIndex + 1, aggregateCallParserStage7IncludeIndex)
-    .findIndex((line) => /^\s*%IF\s+Stage7LL1\s*$/i.test(line));
-  const stage7ElseIndex = lines.findIndex((line, index) =>
-    index > aggregateCallParserStage7IncludeIndex && index < aggregateCallParserIncludeIndex && /^\s*%ELSE\s*$/i.test(line));
-  const endifIndex = lines.findIndex((line, index) =>
-    index > aggregateCallParserIncludeIndex && /^\s*%ENDIF\s*$/i.test(line));
-  if (!(firstRoutineIndex >= 0 &&
-    firstRoutineIndex < typedExpressionIncludeIndex &&
-    typedExpressionIncludeIndex < aggregateParserIncludeIndex &&
-    aggregateParserIncludeIndex < aggregateCallParserStage7IncludeIndex &&
-    aggregateCallParserStage7IncludeIndex < aggregateCallParserIncludeIndex &&
-    ifIndex >= 0 &&
-    stage7IfIndex >= 0 &&
-    stage7ElseIndex > aggregateCallParserStage7IncludeIndex &&
-    endifIndex > aggregateCallParserIncludeIndex)) {
-    throw new Error("loop-parser permanent Atom rewrite found an unexpected include section");
-  }
-  writeGeneratedPermanentPart(translatedRoot, relative, "loop-parser-core.asmi", [
-    ...atomExpressionAliasLines(symbolMap, aliases),
-    "",
-    ...lines.slice(firstRoutineIndex, typedExpressionIncludeIndex),
-    "",
-  ]);
+function rewriteLoopParserPermanentAtomSource() {
   return [
     "; Permanent Atom layout for the loop parser.",
     "            %INCLUDE \"loop-parser-core.asmi\"",

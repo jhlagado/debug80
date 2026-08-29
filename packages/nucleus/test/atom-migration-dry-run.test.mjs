@@ -1669,6 +1669,23 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(loopParser).toContain('%INCLUDE "loop-parser-core.asmi"');
       expect(loopParser).toContain('%INCLUDE "typed-expression-parser.asm"');
       expect(loopParser).toContain('%INCLUDE "aggregate-parser.asm"');
+      expect(loopParser).toContain('%INCLUDE "aggregate-call-parser-stage7.asm"');
+      expect(loopParser).toContain('%INCLUDE "aggregate-call-parser.asm"');
+      expect(loopParser.indexOf('%INCLUDE "loop-parser-core.asmi"')).toBeLessThan(
+        loopParser.indexOf('%INCLUDE "typed-expression-parser.asm"'),
+      );
+      expect(loopParser.indexOf('%INCLUDE "typed-expression-parser.asm"')).toBeLessThan(
+        loopParser.indexOf('%INCLUDE "aggregate-parser.asm"'),
+      );
+      expect(loopParser.indexOf('%INCLUDE "aggregate-parser.asm"')).toBeLessThan(
+        loopParser.indexOf('%INCLUDE "aggregate-call-parser-stage7.asm"'),
+      );
+      const loopParserCore = await readFile(
+        path.join(translatedRoot, "vertical-slice", "loop-parser-core.asmi"),
+        "utf8",
+      );
+      expect(loopParserCore).toContain("LPAIMOD EQU");
+      expect(loopParserCore).not.toContain('%INCLUDE "typed-expression-parser.asm"');
 
       const outcome = await runProofManifest(
         path.join(proofRoot, "typed-expression-z80-slice-proof.json"),
