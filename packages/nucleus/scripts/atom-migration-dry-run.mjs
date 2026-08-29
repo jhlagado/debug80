@@ -405,6 +405,20 @@ const permanentLayoutTransforms = new Map([
     ]),
     rewrite: rewriteStage7Ll1AggregateCallZ80SliceProofPermanentAtomSource,
   })],
+  ["vertical-slice/stage8-failure-z80-slice-proof.asm", Object.freeze({
+    description: "Stage 8 failure proof sectioned header-include layout",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/stage8-failure-z80-slice-proof.asm",
+        code: "include-after-header",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/stage8-failure-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+      }),
+    ]),
+    rewrite: rewriteStage8FailureZ80SliceProofPermanentAtomSource,
+  })],
   ["vertical-slice/aggregate-call-parser.asm", Object.freeze({
     description: "aggregate-call parser Stage 7 header include layout",
     handledIssues: Object.freeze([
@@ -3809,6 +3823,174 @@ function rewriteStage7Ll1AggregateCallZ80SliceProofPermanentAtomSource(source, {
     "            %INCLUDE \"stage7-ll1-aggregate-call-proof-body.asmi\"",
     "",
   ].join("\n");
+}
+
+function rewriteStage8FailureZ80SliceProofPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
+  const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
+  const sourceBase = atomSymbol(symbolMap, "SourceBase");
+  const spareBase = atomSymbol(symbolMap, "SpareBase");
+  const backupLimit = atomSymbol(symbolMap, "BackupLimit");
+  const targetRuntimeBase = atomSymbol(symbolMap, "TargetRuntimeBase");
+  const aliases = collectSimplePermanentExpressionAliases(source, "S8E");
+
+  const lines = replaceAtomExpressionAliases(source, symbolMap, aliases).split("\n");
+  const compilerOrgIndex = findPermanentOrgLine(lines, compilerCoreBase, "stage8 failure proof");
+  const sourceAdapterIncludeIndex = findPermanentIncludeLine(lines, "source-adapter.asm", "stage8 failure proof");
+  const tokenizerIncludeIndex = findPermanentIncludeLine(lines, "loop-tokenizer.asm", "stage8 failure proof");
+  const semanticSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-semantic-sink.asm", "stage8 failure proof");
+  const symbolsIncludeIndex = findPermanentIncludeLine(lines, "loop-symbols.asm", "stage8 failure proof");
+  const parserIncludeIndex = findPermanentIncludeLine(lines, "loop-parser.asm", "stage8 failure proof");
+  const loopSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-z80-sink.asm", "stage8 failure proof");
+  const typedSinkIncludeIndex = findPermanentIncludeLine(lines, "typed-expression-z80.asm", "stage8 failure proof");
+  const aggregateSinkIncludeIndex = findPermanentIncludeLine(lines, "aggregate-z80.asm", "stage8 failure proof");
+  const keywordsIncludeIndex = findPermanentIncludeLine(lines, "loop-keywords.asmi", "stage8 failure proof");
+  const sourceOrgIndex = findPermanentOrgLine(lines, sourceBase, "stage8 failure proof");
+  const spareOrgIndex = findPermanentOrgLine(lines, spareBase, "stage8 failure proof");
+  const backupOrgIndex = findPermanentOrgLine(lines, backupLimit, "stage8 failure proof");
+  const runtimeOrgIndex = findPermanentOrgLine(lines, targetRuntimeBase, "stage8 failure proof");
+  const runtimeIncludeIndex = findPermanentIncludeLine(lines, "proof-z80-runtime.asm", "stage8 failure proof");
+  const proofOrgIndex = findPermanentOrgLine(lines, "$D000", "stage8 failure proof");
+
+  const orderedIndexes = [
+    compilerOrgIndex,
+    sourceAdapterIncludeIndex,
+    tokenizerIncludeIndex,
+    semanticSinkIncludeIndex,
+    symbolsIncludeIndex,
+    parserIncludeIndex,
+    loopSinkIncludeIndex,
+    typedSinkIncludeIndex,
+    aggregateSinkIncludeIndex,
+    keywordsIncludeIndex,
+    sourceOrgIndex,
+    spareOrgIndex,
+    backupOrgIndex,
+    runtimeOrgIndex,
+    runtimeIncludeIndex,
+    proofOrgIndex,
+  ];
+  if (!orderedIndexes.every((value, index) => index === 0 || orderedIndexes[index - 1] < value)) {
+    throw new Error("stage8 failure proof permanent Atom rewrite found an unexpected section order");
+  }
+
+  const writeSlice = (includeName, start, end) => {
+    writeGeneratedPermanentPart(translatedRoot, relative, includeName, [
+      ...lines.slice(start, end).filter((line) =>
+        !/^\s*%DEFINE\s+(TargetStreamingOutput|LegacyCompilerSlices|AggregateCallSlices|Stage7LL1|LegacyEncoders)\b/i.test(line)),
+      "",
+    ]);
+  };
+  writeSlice("stage8-failure-code-begin.asmi", compilerOrgIndex, sourceAdapterIncludeIndex);
+  writeSlice("stage8-failure-after-source-adapter.asmi", sourceAdapterIncludeIndex + 1, tokenizerIncludeIndex);
+  writeSlice("stage8-failure-after-tokenizer.asmi", tokenizerIncludeIndex + 1, semanticSinkIncludeIndex);
+  writeSlice("stage8-failure-after-semantic-sink.asmi", semanticSinkIncludeIndex + 1, symbolsIncludeIndex);
+  writeSlice("stage8-failure-after-symbols.asmi", symbolsIncludeIndex + 1, parserIncludeIndex);
+  writeSlice("stage8-failure-after-parser.asmi", parserIncludeIndex + 1, loopSinkIncludeIndex);
+  writeSlice("stage8-failure-after-loop-z80-sink.asmi", loopSinkIncludeIndex + 1, typedSinkIncludeIndex);
+  writeSlice("stage8-failure-after-typed-expression-z80.asmi", typedSinkIncludeIndex + 1, aggregateSinkIncludeIndex);
+  writeSlice("stage8-failure-after-aggregate-z80.asmi", aggregateSinkIncludeIndex + 1, keywordsIncludeIndex);
+  writeSlice("stage8-failure-after-keywords.asmi", keywordsIncludeIndex + 1, sourceOrgIndex);
+  writeSlice("stage8-failure-source.asmi", sourceOrgIndex, spareOrgIndex);
+  writeSlice("stage8-failure-spare-source.asmi", spareOrgIndex, backupOrgIndex);
+  writeSlice("stage8-failure-backup-source.asmi", backupOrgIndex, runtimeOrgIndex);
+  writeSlice("stage8-failure-runtime-begin.asmi", runtimeOrgIndex, runtimeIncludeIndex);
+  writeSlice("stage8-failure-runtime-after.asmi", runtimeIncludeIndex + 1, proofOrgIndex);
+  writeGeneratedPermanentPart(translatedRoot, relative, "stage8-failure-proof-body.asmi", [
+    lines[proofOrgIndex],
+    ...atomExpressionAliasLines(symbolMap, aliases),
+    "",
+    ...lines.slice(proofOrgIndex + 1),
+  ]);
+
+  return [
+    "; Permanent Atom layout for the Stage 8 failure proof.",
+    "            %DEFINE SegmentedOutput 1",
+    "            %DEFINE TargetStreamingOutput 0",
+    "            %DEFINE LegacyCompilerSlices 0",
+    "            %DEFINE AggregateCallSlices 1",
+    "            %DEFINE Stage7LL1 1",
+    "            %DEFINE LegacyEncoders 0",
+    "            %DEFINE HybridLL1Full 1",
+    "            %DEFINE RuntimeProofServices 1",
+    "            %INCLUDE \"memory-map.asmi\"",
+    "            %INCLUDE \"proof-segmented-state.asmi\"",
+    "            %INCLUDE \"loop-compiler-state.asmi\"",
+    "            %INCLUDE \"aggregate-call-state.asmi\"",
+    "            %INCLUDE \"loop-z80-state.asmi\"",
+    "            %INCLUDE \"stage8-failure-code-begin.asmi\"",
+    "            %INCLUDE \"source-adapter.asm\"",
+    "            %INCLUDE \"stage8-failure-after-source-adapter.asmi\"",
+    "            %INCLUDE \"loop-tokenizer.asm\"",
+    "            %INCLUDE \"stage8-failure-after-tokenizer.asmi\"",
+    "            %INCLUDE \"loop-semantic-sink.asm\"",
+    "            %INCLUDE \"stage8-failure-after-semantic-sink.asmi\"",
+    "            %INCLUDE \"loop-symbols.asm\"",
+    "            %INCLUDE \"stage8-failure-after-symbols.asmi\"",
+    "            %INCLUDE \"loop-parser.asm\"",
+    "            %INCLUDE \"stage8-failure-after-parser.asmi\"",
+    "            %INCLUDE \"loop-z80-sink.asm\"",
+    "            %INCLUDE \"stage8-failure-after-loop-z80-sink.asmi\"",
+    "            %INCLUDE \"typed-expression-z80.asm\"",
+    "            %INCLUDE \"stage8-failure-after-typed-expression-z80.asmi\"",
+    "            %INCLUDE \"aggregate-z80.asm\"",
+    "            %INCLUDE \"stage8-failure-after-aggregate-z80.asmi\"",
+    "            %INCLUDE \"loop-keywords.asmi\"",
+    "            %INCLUDE \"stage8-failure-after-keywords.asmi\"",
+    "            %INCLUDE \"stage8-failure-source.asmi\"",
+    "            %INCLUDE \"stage8-failure-spare-source.asmi\"",
+    "            %INCLUDE \"stage8-failure-backup-source.asmi\"",
+    "            %INCLUDE \"stage8-failure-runtime-begin.asmi\"",
+    "            %INCLUDE \"proof-z80-runtime.asm\"",
+    "            %INCLUDE \"stage8-failure-runtime-after.asmi\"",
+    "            %INCLUDE \"stage8-failure-proof-body.asmi\"",
+    "",
+  ].join("\n");
+}
+
+function collectSimplePermanentExpressionAliases(source, prefix) {
+  const aliases = [];
+  const seen = new Set();
+  for (const line of source.split("\n")) {
+    const code = maskQuotedText(stripComment(line));
+    const pattern = /\b([A-Za-z_.$?][A-Za-z0-9_.$?]*(?:\s*[+-]\s*(?:[A-Za-z_.$?][A-Za-z0-9_.$?]*|\$[0-9A-Fa-f]+|\d+))+)\b/g;
+    for (const match of code.matchAll(pattern)) {
+      const expression = match[1].replace(/\s+/g, "");
+      const identifiers = expression.match(/[A-Za-z_.$?][A-Za-z0-9_.$?]*/g) ?? [];
+      if (identifiers.length < 2) continue;
+      if (seen.has(expression)) continue;
+      seen.add(expression);
+      const alias = `${prefix}${aliases.length.toString(36).toUpperCase().padStart(2, "0")}`;
+      const tokens = expression.match(/[+-]|[A-Za-z_.$?][A-Za-z0-9_.$?]*|\$[0-9A-Fa-f]+|\d+/g);
+      if (tokens === null) continue;
+      aliases.push([alias, tokens]);
+    }
+  }
+  return aliases;
+}
+
+function maskQuotedText(source) {
+  let output = "";
+  let quote = "";
+  for (let index = 0; index < source.length; index += 1) {
+    const character = source[index];
+    if (quote !== "") {
+      output += " ";
+      if (character === "\\" && index + 1 < source.length) {
+        output += " ";
+        index += 1;
+      } else if (character === quote) {
+        quote = "";
+      }
+      continue;
+    }
+    if (character === "\"" || character === "'") {
+      quote = character;
+      output += " ";
+      continue;
+    }
+    output += character;
+  }
+  return output;
 }
 
 function atomExpressionAliasLines(symbolMap, aliases) {
