@@ -2049,6 +2049,20 @@ describe("Nucleus Atom migration dry-run", () => {
 
   it("assembles the target runtime link entry from permanent Atom layout source byte-identically", async (context) => {
     await withPermanentAtomTranslation(context, async ({ translatedRoot }) => {
+      const root = await readFile(
+        path.join(translatedRoot, "vertical-slice", "nucleus-target-runtime-link.asm"),
+        "utf8",
+      );
+      expect(root).toContain('%INCLUDE "nucleus-target-runtime-link-begin.asmi"');
+      expect(root).toContain('%INCLUDE "target-z80-runtime.asm"');
+      expect(root).toContain('%INCLUDE "nucleus-target-runtime-link-end.asmi"');
+      expect(root.indexOf('%INCLUDE "nucleus-target-runtime-link-begin.asmi"')).toBeLessThan(
+        root.indexOf('%INCLUDE "target-z80-runtime.asm"'),
+      );
+      expect(root.indexOf('%INCLUDE "target-z80-runtime.asm"')).toBeLessThan(
+        root.indexOf('%INCLUDE "nucleus-target-runtime-link-end.asmi"'),
+      );
+
       const current = await compile(
         path.join(asmRoot, "vertical-slice", "nucleus-target-runtime-link.asm"),
         { outputType: "bin" },

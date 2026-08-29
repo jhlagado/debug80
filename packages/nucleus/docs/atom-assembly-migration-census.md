@@ -5,7 +5,7 @@ Date: 2026-08-30
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current reusable-transform baseline HEAD: `9c146c25`
+Current reusable-transform baseline HEAD: `46357ff9`
 
 ## Purpose
 
@@ -24,22 +24,22 @@ Measured files:
 
 | Item | Measured value |
 | --- | ---: |
-| Assembly files, `.asm` and `.asmi` | 288 |
-| Source lines | 30,195 |
+| Assembly files, `.asm` and `.asmi` | 290 |
+| Source lines | 30,199 |
 | Defined assembler symbols detected | 4,158 |
 | Defined assembler symbols longer than eight characters | 3,910 |
 | Long labels classed as dot-local candidates | 792 |
 | Long symbols still needing global treatment | 3,118 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
-| Include-after-header violations | 5 |
+| Include-after-header violations | 4 |
 | Forward-dependent emitted-statement symbol arithmetic sites | 0 |
-| Current permanent-source blockers | 5 |
+| Current permanent-source blockers | 4 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
 | Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 0 |
-| Permanent blocker: include after header | 5 |
+| Permanent blocker: include after header | 4 |
 | Permanent blocker: feature definition after Atom entry header | 0 |
 | Proof-manifest symbol mappings | 146 |
 | One-past-address-space proof-limit mappings | 4 |
@@ -328,7 +328,7 @@ grouping:
 | --- | ---: | ---: | --- | --- |
 | Proof composition files | 0 | 0 | Cleared | The proof-composition batch now uses section-owned layouts for the converted permanent entries, including `stage7-ll1-engine-proof.asm`. |
 | Module composition files | 1 | 4 | High | Current main batch. These includes occur inside the parser implementation module (`loop-parser`). Treat these as real module-boundary work, not mechanical line moves. |
-| Runtime wrapper files | 1 | 1 | Low to medium | The target runtime link entry has a permanent Atom layout and byte-equivalence proof. The raw source still records one wrapper include until the permanent source tree replaces the current source tree. |
+| Runtime wrapper files | 0 | 0 | Cleared | The target runtime link entry now uses a physical section-owner layout in source. |
 
 `loop-compiler-slice-proof.asm` now uses the physical section-owner layout. Its
 source fragment owns the loop compiler source fixtures. Its proof-body fragment
@@ -349,6 +349,11 @@ tail. The migration checker treats simple top-of-file `.IF` / `.ELSE` /
 `.ENDIF` guards as part of the include header, so optional modules can stay
 explicit without becoming late textual includes. The tail fragment owns the
 byte-sequence alias rewrites needed by dependent permanent Atom modules.
+
+`nucleus-target-runtime-link.asm` now uses a physical section-owner layout in
+source. Its begin fragment owns `ORG RuntimeLinkBase` and `RuntimeCodeStart`;
+the root includes the target runtime wrapper; and its end fragment owns
+`RuntimeCodeEnd`. The runtime-wrapper batch is now clear.
 
 Do not move those include lines to the top and assume correctness. Many of
 the current files use surrounding labels such as `TokenizerCodeStart` /
@@ -661,7 +666,6 @@ modules after an `.ORG` and section label:
 | Source file | Measured violations | First line |
 | --- | ---: | ---: |
 | `vertical-slice/loop-parser.asm` | 4 | 1135 |
-| `vertical-slice/nucleus-target-runtime-link.asm` | 1 | 8 |
 
 The largest current target groups show why this is not a safe blind move:
 
@@ -670,7 +674,6 @@ The largest current target groups show why this is not a safe blind move:
 | `vertical-slice/aggregate-call-parser-stage7.asm` | 1 | mixed code/data |
 | `vertical-slice/aggregate-call-parser.asm` | 1 | code |
 | `vertical-slice/aggregate-parser.asm` | 1 | code |
-| `vertical-slice/target-z80-runtime.asm` | 1 | code |
 | `vertical-slice/typed-expression-parser.asm` | 1 | mixed code/data |
 
 The first cleanup pass moved the state-layout includes into strict headers by

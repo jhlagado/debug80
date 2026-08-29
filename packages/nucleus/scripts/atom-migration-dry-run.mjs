@@ -535,13 +535,8 @@ const permanentLayoutTransforms = new Map([
     rewrite: rewriteTargetZ80RuntimePermanentAtomSource,
   })],
   ["vertical-slice/nucleus-target-runtime-link.asm", Object.freeze({
-    description: "target runtime link header include layout",
-    handledIssues: Object.freeze([
-      Object.freeze({
-        file: "asm/vertical-slice/nucleus-target-runtime-link.asm",
-        code: "include-after-header",
-      }),
-    ]),
+    description: "target runtime link physical section-owner layout",
+    handledIssues: Object.freeze([]),
     rewrite: rewriteNucleusTargetRuntimeLinkPermanentAtomSource,
   })],
   ["vertical-slice/nucleus-runtime-link-context.asmi", Object.freeze({
@@ -3232,23 +3227,7 @@ function rewriteTargetZ80RuntimePermanentAtomSource() {
   ].join("\n");
 }
 
-function rewriteNucleusTargetRuntimeLinkPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
-  const runtimeLinkBase = atomSymbol(symbolMap, "RuntimeLinkBase");
-  const lines = source.split("\n");
-  const orgIndex = findPermanentOrgLine(lines, runtimeLinkBase, "target runtime link");
-  const runtimeIncludeIndex = findPermanentIncludeLine(lines, "target-z80-runtime.asm", "target runtime link");
-
-  if (!(orgIndex < runtimeIncludeIndex)) {
-    throw new Error("target runtime link permanent Atom rewrite found an unexpected section order");
-  }
-  writeGeneratedPermanentPart(translatedRoot, relative, "nucleus-target-runtime-link-begin.asmi", [
-    ...lines.slice(orgIndex, runtimeIncludeIndex),
-    "",
-  ]);
-  writeGeneratedPermanentPart(translatedRoot, relative, "nucleus-target-runtime-link-end.asmi", [
-    ...lines.slice(runtimeIncludeIndex + 1),
-  ]);
-
+function rewriteNucleusTargetRuntimeLinkPermanentAtomSource() {
   return [
     "; Permanent Atom layout for the target runtime link entry.",
     "            %DEFINE RuntimeProofServices 0",

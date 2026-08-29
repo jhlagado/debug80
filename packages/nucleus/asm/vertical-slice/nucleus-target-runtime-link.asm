@@ -3,7 +3,6 @@
 
             .include "nucleus-runtime-link-context.asmi"
 
-            .org RuntimeLinkBase
-RuntimeCodeStart:
+            .include "nucleus-target-runtime-link-begin.asmi"
             .include "target-z80-runtime.asm"
-RuntimeCodeEnd:
+            .include "nucleus-target-runtime-link-end.asmi"
