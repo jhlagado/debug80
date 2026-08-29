@@ -24,22 +24,22 @@ Measured files:
 
 | Item | Measured value |
 | --- | ---: |
-| Assembly files, `.asm` and `.asmi` | 120 |
-| Source lines | 29,760 |
-| Defined assembler symbols detected | 4,040 |
+| Assembly files, `.asm` and `.asmi` | 133 |
+| Source lines | 29,789 |
+| Defined assembler symbols detected | 4,045 |
 | Defined assembler symbols longer than eight characters | 3,910 |
 | Long labels classed as dot-local candidates | 750 |
 | Long symbols still needing global treatment | 3,160 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
-| Include-after-header violations | 117 |
+| Include-after-header violations | 108 |
 | Forward-dependent emitted-statement symbol arithmetic sites | 0 |
-| Current permanent-source blockers | 117 |
+| Current permanent-source blockers | 108 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
 | Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 0 |
-| Permanent blocker: include after header | 117 |
+| Permanent blocker: include after header | 108 |
 | Permanent blocker: feature definition after Atom entry header | 0 |
 | Proof-manifest symbol mappings | 146 |
 | One-past-address-space proof-limit mappings | 4 |
@@ -138,6 +138,9 @@ needs generated fragments for that proof.
 The compiler-slice proof now uses the same physical layout. The owner includes
 the compiler modules from the header, and the malformed-source size check uses a
 short alias in the proof-body fragment.
+The expression Z80 proof now uses the same physical layout. Its proof-body
+fragment owns the short diagnostic-offset aliases for expression, duplicate,
+unknown, malformed, and symbol-capacity cases.
 
 It can also write the proof-manifest symbol join needed by the proof harness:
 

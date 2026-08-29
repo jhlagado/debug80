@@ -1389,6 +1389,51 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   }, 60_000);
 
+  it("runs the expression z80-slice proof from permanent Atom layout source", async (context) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+      const expression = report.proofMatrix.find(
+        ({ proof }) => proof === "expression-z80-slice-proof.json",
+      );
+      expect(expression?.status).toBe("atom-permanent-ready");
+      expect(expression?.blockers).toEqual([]);
+      const root = await readFile(
+        path.join(translatedRoot, "vertical-slice", "expression-z80-slice-proof.asm"),
+        "utf8",
+      );
+      expect(root).toContain('%INCLUDE "expression-z80-slice-code-begin.asmi"');
+      expect(root).toContain('%INCLUDE "expression-z80-slice-proof-body.asmi"');
+
+      const proofBody = await readFile(
+        path.join(translatedRoot, "vertical-slice", "expression-z80-slice-proof-body.asmi"),
+        "utf8",
+      );
+      expect(proofBody).toContain("EXOUTOF EQU");
+      expect(proofBody).toContain("EXDUPOF EQU");
+      expect(proofBody).not.toContain("LD   DE,ExpressionOutputCall-ExpressionProofSource");
+      expect(proofBody).not.toContain("LD   DE,DuplicateScalarName-DuplicateScalarSource");
+
+      const outcome = await runProofManifest(
+        path.join(proofRoot, "expression-z80-slice-proof.json"),
+        {
+          assembler: {
+            kind: "atom-permanent",
+            root: translatedRoot,
+            entry: "vertical-slice/expression-z80-slice-proof.asm",
+            maxInstructions: 700_000_000,
+            maxCycles: 7_000_000_000,
+          },
+          atomMigration: {
+            proofSymbolMap: report.proofSymbolMap,
+            proofLimitMap: report.proofLimitMap,
+          },
+        },
+      );
+
+      expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
+      expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
+    });
+  }, 60_000);
+
   it("runs the typed-expression z80-slice proof from permanent Atom layout source", async (context) => {
     await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
       const typedExpression = report.proofMatrix.find(

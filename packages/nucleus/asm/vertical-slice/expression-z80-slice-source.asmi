@@ -1,0 +1,62 @@
+            .org SourceBase
+ExpressionProofSource:
+            .db "var bytes as u8 = 0",10
+            .db "sub main() fails",10
+            .db "    var left as u8 = 2",10
+            .db "    var right as u8 = 3",10
+            .db "    //xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx",10
+            .db "    bytes = left + right * 4",10
+            .db "    "
+ExpressionOutputCall:
+            .db "writeOutputByte(bytes) else fail",10
+            .db "end",10
+ExpressionProofSourceEnd:
+
+DuplicateScalarSource:
+            .db "var total as u8 = 0",10
+            .db "var "
+DuplicateScalarName:
+            .db "total as u8 = 1",10
+            .db "sub main() fails",10
+            .db "end",10
+DuplicateScalarSourceEnd:
+
+UnknownScalarSource:
+            .db "var total as u8 = 0",10
+            .db "sub main() fails",10
+            .db "    "
+UnknownScalarName:
+            .db "missing = total",10
+            .db "end",10
+UnknownScalarSourceEnd:
+
+MalformedExpressionSource:
+            .db "var total as u8 = 0",10
+            .db "sub main() fails",10
+            .db "    total = 1 +"
+MalformedExpressionPoint:
+            .db 10
+            .db "end",10
+MalformedExpressionSourceEnd:
+
+FullScalarSource:
+            .db "var a as u8 = 0",10
+            .db "var b as u8 = 0",10
+            .db "var c as u8 = 0",10
+            .db "var d as u8 = 0",10
+            .db "var e as u8 = 0",10
+            .db "var f as u8 = 0",10
+            .db "var g as u8 = 0",10
+            .db "var h as u8 = 0",10
+            .db "var i as u8 = 0",10
+            .db "var j as u8 = 0",10
+            .db "var k as u8 = 0",10
+            .db "var l as u8 = 0",10
+            .db "var m as u8 = 0",10
+            .db "var n as u8 = 0",10
+            .db "var o as u8 = 0",10
+            .db "var p as u8 = 0",10
+            .db "var "
+FullScalarName:
+            .db "q as u8 = 0",10
+FullScalarSourceEnd:

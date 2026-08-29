@@ -1,0 +1,251 @@
+            .org ProofBase
+EXOUTOF .equ ExpressionOutputCall-ExpressionProofSource ; output-call diagnostic offset
+EXDUPOF .equ DuplicateScalarName-DuplicateScalarSource ; duplicate-scalar diagnostic offset
+EXUNNOF .equ UnknownScalarName-UnknownScalarSource ; unknown-scalar diagnostic offset
+EXMALOF .equ MalformedExpressionPoint-MalformedExpressionSource ; malformed-expression diagnostic offset
+EXFULOF .equ FullScalarName-FullScalarSource ; full-symbol-table diagnostic offset
+
+.routine out carry,zero clobbers sign,parity,halfCarry,A,BC,DE,HL,IX,IY
+ProofStart:
+            LD   SP,StackTop
+            XOR  A
+            LD   (ProofCase),A
+            LD   (ProofStatus),A
+            LD   (ServiceFailureCall),A
+
+            LD   A,70
+            LD   HL,ExpressionProofSource
+            LD   DE,ExpressionProofSourceEnd
+            CALL CompileSlice
+            JP   C,ProofFailCompile
+            CALL EncodeTypedExpressionProgram
+            JP   C,ProofFailEncode
+
+            CALL Reset
+            XOR  A
+            LD   (ServiceFailureCall),A
+            CALL ProofCallGenerated
+            JP   C,ProofFailFrame
+            LD   A,(RunState)
+            CP   RunSucceeded
+            JP   NZ,ProofFailSuccessState
+            LD   A,(ServiceOutputLength)
+            CP   1
+            JP   NZ,ProofFailSuccessOutput
+            LD   A,(ServiceOutputBase)
+            CP   14
+            JP   NZ,ProofFailSuccessByte
+            LD   A,(GeneratedBase+3)
+            CP   14
+            JP   NZ,ProofFailAssignment
+
+            CALL Reset
+            LD   A,1
+            LD   (ServiceFailureCall),A
+            CALL ProofCallGenerated
+            JP   C,ProofFailFrame
+            LD   A,(RunState)
+            CP   RunTrapped
+            JP   NZ,ProofFailOutputState
+            LD   A,(TrapNumber)
+            CP   6
+            JP   NZ,ProofFailOutputTrap
+            LD   A,(TrapError)
+            CP   3
+            JP   NZ,ProofFailOutputError
+            LD   HL,(TrapOffset)
+            LD   DE,EXOUTOF
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailOutputOffset
+            LD   A,(ServiceOutputLength)
+            OR   A
+            JP   NZ,ProofFailOutputAtomic
+
+            LD   A,71
+            LD   HL,DuplicateScalarSource
+            LD   DE,DuplicateScalarSourceEnd
+            CALL CompileSlice
+            JP   NC,ProofFailDuplicateAccepted
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticDuplicateName
+            JP   NZ,ProofFailDuplicateCode
+            LD   HL,(DiagnosticOffset)
+            LD   DE,EXDUPOF
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailDuplicatePosition
+
+            LD   A,72
+            LD   HL,UnknownScalarSource
+            LD   DE,UnknownScalarSourceEnd
+            CALL CompileSlice
+            JP   NC,ProofFailUnknownAccepted
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticUnknownName
+            JP   NZ,ProofFailUnknownCode
+            LD   HL,(DiagnosticOffset)
+            LD   DE,EXUNNOF
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailUnknownPosition
+
+            LD   A,73
+            LD   HL,MalformedExpressionSource
+            LD   DE,MalformedExpressionSourceEnd
+            CALL CompileSlice
+            JP   NC,ProofFailMalformedAccepted
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticExpectedScalar
+            JP   NZ,ProofFailMalformedCode
+            LD   HL,(DiagnosticOffset)
+            LD   DE,EXMALOF
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailMalformedPosition
+
+            LD   A,74
+            LD   HL,FullScalarSource
+            LD   DE,FullScalarSourceEnd
+            CALL CompileSlice
+            JP   NC,ProofFailFullAccepted
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticSymbolCapacity
+            JP   NZ,ProofFailFullCode
+            LD   HL,(DiagnosticOffset)
+            LD   DE,EXFULOF
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailFullPosition
+
+            ; Leave the successful program and transcript for host inspection.
+            LD   A,70
+            LD   HL,ExpressionProofSource
+            LD   DE,ExpressionProofSourceEnd
+            CALL CompileSlice
+            JP   C,ProofFailCompile
+            CALL EncodeTypedExpressionProgram
+            JP   C,ProofFailEncode
+
+            LD   A,$A5
+            LD   (ProofStatus),A
+            HALT
+
+.routine in B,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+ProofCompareBytes:
+            LD   A,(DE)
+            CP   (HL)
+            JR   NZ,ProofCompareBytesNo
+            INC  DE
+            INC  HL
+            DJNZ ProofCompareBytes
+            OR   A
+            RET
+ProofCompareBytesNo:
+            SCF
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+ProofCallGenerated:
+            LD   HL,0
+            ADD  HL,SP
+            LD   (ProofExpectedSP),HL
+            LD   IX,$A55A
+            CALL GeneratedBase
+            PUSH IX
+            POP  DE
+            LD   HL,$A55A
+            OR   A
+            SBC  HL,DE
+            JR   NZ,ProofCallGeneratedNo
+            LD   HL,0
+            ADD  HL,SP
+            LD   DE,(ProofExpectedSP)
+            OR   A
+            SBC  HL,DE
+            RET  Z
+ProofCallGeneratedNo:
+            SCF
+            RET
+
+ProofFailCompile:             LD A,1
+                              JR ProofFailed
+ProofFailOperations:          LD A,2
+                              JR ProofFailed
+ProofFailEncode:              LD A,3
+                              JR ProofFailed
+ProofFailSuccessState:        LD A,4
+                              JR ProofFailed
+ProofFailSuccessOutput:       LD A,5
+                              JR ProofFailed
+ProofFailSuccessByte:         LD A,6
+                              JR ProofFailed
+ProofFailAssignment:          LD A,7
+                              JR ProofFailed
+ProofFailOutputState:         LD A,8
+                              JR ProofFailed
+ProofFailOutputTrap:          LD A,9
+                              JR ProofFailed
+ProofFailOutputError:         LD A,10
+                              JR ProofFailed
+ProofFailOutputOffset:        LD A,11
+                              JR ProofFailed
+ProofFailOutputAtomic:        LD A,12
+                              JR ProofFailed
+ProofFailDuplicateAccepted:   LD A,13
+                              JR ProofFailed
+ProofFailDuplicateCode:       LD A,14
+                              JR ProofFailed
+ProofFailDuplicatePosition:   LD A,15
+                              JR ProofFailed
+ProofFailUnknownAccepted:     LD A,16
+                              JR ProofFailed
+ProofFailUnknownCode:         LD A,17
+                              JR ProofFailed
+ProofFailUnknownPosition:     LD A,18
+                              JR ProofFailed
+ProofFailGeneratedSize:       LD A,19
+                              JR ProofFailed
+ProofFailFullAccepted:        LD A,20
+                              JR ProofFailed
+ProofFailFullCode:            LD A,21
+                              JR ProofFailed
+ProofFailFullPosition:        LD A,22
+                              JR ProofFailed
+ProofFailMalformedAccepted:   LD A,23
+                              JR ProofFailed
+ProofFailMalformedCode:       LD A,24
+                              JR ProofFailed
+ProofFailMalformedPosition:   LD A,25
+                              JR ProofFailed
+ProofFailFrame:               LD A,26
+ProofFailed:
+            LD   (ProofCase),A
+            LD   A,$E0
+            LD   (ProofStatus),A
+            HALT
+
+ExpectedExpressionOperations:
+            .db 17
+            .db SemanticDefineProgramU8,0,0
+            .db SemanticBeginMain
+            .db SemanticDeclareLocalU8,0,SemanticLiteralU8,2
+            .db SemanticStoreLocalU8,0
+            .db SemanticDeclareLocalU8,1,SemanticLiteralU8,3
+            .db SemanticStoreLocalU8,1
+            .db SemanticLoadLocalU8,0,SemanticLoadLocalU8,1
+            .db SemanticLiteralU8,4,SemanticMultiplyU8,SemanticAddU8
+            .db SemanticStoreProgramU8,0
+            .db SemanticLoadProgramU8,0
+            .db SemanticWriteValueU8
+            .dw EXOUTOF
+            .db SemanticEndMain
+ProofStatus:                 .db 0
+ProofCase:                   .db 0
+ProofExpectedSP:             .dw 0
+ProofEnd:
+
+ExpressionProgramSize .equ 116
+GeneratedExpressionEnd      .equ GeneratedBase+ExpressionProgramSize
+
+            .end
