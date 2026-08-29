@@ -1,11 +1,11 @@
 # Nucleus AZM-to-Atom assembly migration census
 
 Status: measured compatibility census
-Date: 2026-08-28
+Date: 2026-08-29
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current reusable-transform baseline HEAD: `d06e7b57`
+Current reusable-transform baseline HEAD: `e9c03032`
 
 ## Purpose
 
@@ -33,7 +33,7 @@ Measured files:
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
 | Include-after-header violations | 143 |
-| Emitted-statement symbol arithmetic sites | 441 |
+| Emitted-statement symbol arithmetic sites | 254 |
 | Current permanent-source blockers | 397 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
@@ -42,10 +42,10 @@ Measured files:
 | One-past-address-space proof-limit mappings | 4 |
 | Routine contract metadata mappings | 709 |
 | Proof manifests classified | 29 |
-| Atom permanent-ready proof manifests | 3 |
+| Atom permanent-ready proof manifests | 23 |
 | Atom-preview-only proof manifests | 0 |
-| Proof manifests blocked by external contract support only | 3 |
-| Proof manifests blocked by late emitted-content includes | 20 |
+| Proof manifests blocked by overlapping proof memory | 3 |
+| Proof manifests blocked by late emitted-content includes | 0 |
 | Measurement-artifact proof manifests | 3 |
 
 The source set is large enough that manual renaming without tooling is not credible.
@@ -142,14 +142,12 @@ npm run atom:migration:census -w nucleus -- \
   --proof-matrix-out build/nucleus-atom-proof-matrix.json
 ```
 
-Current measurement: three proof manifests are ready for permanent Atom-source
-execution now (`memory-map-proof`, `nobj-runner-proof`, and
-`source-provenance-proof`), three proof manifests have Atom-permanent source
-layouts but are still blocked from the ready set by external contract-checker
-support (`compiler-slice-proof`, `z80-slice-proof`, and
-`stage7-ll1-engine-proof`), twenty are blocked by late emitted-content includes,
-and three dispatcher measurement manifests remain measurement artifacts rather
-than proof-image migration targets.
+Current measurement: 23 proof manifests are ready for permanent Atom-source
+execution through the migration runner. Three dispatcher measurement manifests
+remain measurement artifacts rather than proof-image migration targets. Three
+large proof manifests are still excluded from permanent-ready execution because
+their resident source blocks overlap the runtime/proof-output memory regions
+used by the current harness configuration.
 
 The proof harness accepts the generated metadata through
 `runProofManifest(..., { atomMigration })`. That path builds a manifest-facing
@@ -269,7 +267,7 @@ they account for most of the count and are structurally repetitive:
 - `vertical-slice/stage7-ll1-engine-proof.asm` — 2
 - `vertical-slice/stage7-ll1-parser-coverage-proof.asm` — 1
 
-Do not just move those include lines to the top and assume correctness. Many of
+Do not move those include lines to the top and assume correctness. Many of
 the current files use surrounding labels such as `TokenizerCodeStart` /
 `TokenizerCodeEnd` to measure the emitted size of the included module. A safe
 permanent-source rewrite needs those extent symbols to remain byte-equivalent.
@@ -297,18 +295,16 @@ modules before `CompilerCodeEnd`. The proof's
 `MalformedSourceEnd-MalformedSource` emitted expression is rewritten as
 `LD DE,MalformedSourceSize`, with the size equate resolved later. This keeps the
 assembler source single-symbol at the patch site while preserving the exact
-emitted bytes. The proof now runs from Atom-permanent source through the normal
-proof harness, but it is not counted as `atom-permanent-ready` until Atom-built
-strict contract checking is wired in.
+emitted bytes. The proof now runs from Atom-permanent source through the
+permanent-ready Atom proof gate.
 
 The second proof-composition transform applies the same model to
 `z80-slice-proof`. That wrapper has two emitted regions, so the transform splits
 the proof source into generated section parts: compiler code start, sink
 boundary, post-sink immutable data, proof source text, runtime start, and proof
 body. All includes then appear in the header of the rewritten root source while
-the emitted order remains byte-equivalent. This proof also runs from
-Atom-permanent source and is classified as blocked only by external contract
-support.
+the emitted order remains byte-equivalent. This proof now runs through the
+permanent-ready Atom proof gate.
 
 The third transform promotes `stage7-ll1-engine-proof`. It first makes the
 generated Stage 7 grammar table Atom-friendly by replacing emitted
@@ -374,10 +370,10 @@ preview lowering can still prove their bytes from the comparison symbol table.
 | `.DB` | 2,797 | Mechanical: `DB` |
 | `.DS` | 10 | Mechanical: `DS` |
 | `.DW` | 358 | Mechanical: `DW` |
-| `.EQU` | 1,112 | Mechanical: `EQU` |
+| `.EQU` | 1,246 | Mechanical: `EQU` |
 | `.ORG` | 79 | Mechanical: `ORG` |
 | `.END` | 13 | Preview translation omits terminal instances as `;@AZM-END`; every current instance has no source after it |
-| `.INCLUDE` | 201 | Mechanical to Atom host include syntax; keep included files as source parts where possible |
+| `.INCLUDE` | 215 | Mechanical to Atom host include syntax; keep included files as source parts where possible |
 | `.IF` | 233 | Mechanical to host conditional assembly syntax |
 | `.ELSE` | 138 | Mechanical to host conditional assembly syntax |
 | `.ENDIF` | 233 | Mechanical to host conditional assembly syntax |
@@ -428,9 +424,9 @@ handles the known proof-limit forms explicitly.
 
 ## Include structure
 
-Measured include directives: 201.
+Measured include directives: 215.
 
-Unique include arguments detected: 39.
+Unique include arguments detected: 41.
 
 Representative include arguments:
 
@@ -457,7 +453,7 @@ The scanner follows transitive `.include` directives under the Nucleus package r
 The selected Nucleus migration policy is header-only include semantics. An
 include is part of source preparation: the host reads the directive, builds the
 ordered source set, and removes or masks the directive before the resident
-assembler sees bytes. The include header is deliberately simple: comments,
+assembler receives bytes. The include header is deliberately simple: comments,
 blank lines, and `.INCLUDE` directives only. `EQU`, `.IF`, `.ELSE`, `.ENDIF`,
 `.ORG`, labels, data, instructions, and contract annotations all close the
 header.
@@ -575,14 +571,14 @@ symbols:
 For byte-comparison previews, every long symbol still has a deterministic
 eight-character global name of the form `N0000000`, `N0000001`, and so on. That
 keeps the preview mechanically safe. For permanent source, the tool now
-classifies 995 long labels as dot-local candidates. Those labels are defined
+classifies 751 long labels as dot-local candidates. Those labels are defined
 once, are not proof-public, are not referenced from another file, and all their
 detected uses fall inside one surrounding global-label scope. The scope test
 uses every definition of every surrounding global, including repeated
 conditional definitions, because any emitted global label closes the current
 Atom private-label scope.
 
-The remaining 2,769 long symbols now have deterministic permanent global
+The remaining 3,159 long symbols now have deterministic permanent global
 abbreviations. Manual curation is still useful for public names, proof-facing
 names, and heavily read module entry points, but it is no longer a migration
 blocker by itself.
@@ -615,7 +611,7 @@ target.
 
 The global comments are not assembler semantics. They are there so humans,
 diagnostics, proof tooling, and future D8/source-map generation can recover the
-original Nucleus identity while the assembler sees only short Atom-safe global
+original Nucleus identity while the assembler receives only short Atom-safe global
 names.
 
 Recommended ledger fields:
@@ -648,7 +644,7 @@ important.
 
 ## Contract metadata
 
-The 706 `.ROUTINE` lines are not assembler semantics. They are proof metadata.
+The 709 `.ROUTINE` lines are not assembler semantics. They are proof metadata.
 
 Atom should not implement the AZM contract language inside the Z80 assembler. The migration should instead use comment-form metadata such as:
 
@@ -839,8 +835,11 @@ shared Debug80 Z80 services package.
 The Nucleus assembly source is structurally compatible with Atom, but it is not
 ready for a direct rename-and-assemble migration. The compatibility-lowered
 Atom path is proven byte-identical for the full non-measurement proof set. The
-remaining permanent-source work is proof-manifest symbol remapping, contract
-comment integration, `$10000` proof-limit representation, and eventual
-section-owned replacement for emitted-content include-after-header proof source.
+proof harness now also runs every non-measurement, non-overlapping-memory proof
+manifest that has a permanent Atom layout. The remaining permanent-source work
+is to remove the preview-only bridge from the source tree itself: section-owned
+replacement for emitted-content include-after-header source, explicit aliases or
+source rewrites for emitted-statement symbol arithmetic, and final curation of
+human-facing permanent symbol names.
 
 The migration should therefore start with tooling, not manual source edits.
