@@ -8,6 +8,10 @@ import {
   parseIntelHex,
   type IoHandlers,
 } from "@jhlagado/debug80-runtime";
+import {
+  dispatchZ80AssemblerFlavour,
+  Z80_ASSEMBLER_FLAVOUR,
+} from "@jhlagado/z80-tool-services";
 
 import {
   materializeNobj,
@@ -47,7 +51,7 @@ import {
   type NucleusGeneratedSourceSegment,
 } from "./source-provenance.js";
 
-type ProofAssembler =
+type LegacyProofAssembler =
   | { readonly kind?: "azm" }
   | {
       readonly kind: "atom-permanent";
@@ -67,6 +71,93 @@ type ProofAssembler =
       readonly maxCycles?: number;
       readonly legacyOutputOrder?: boolean;
     };
+
+type ProofAssembler =
+  | LegacyProofAssembler
+  | {
+      readonly flavour?: "azm";
+    }
+  | {
+      readonly flavour: "atom";
+      readonly source: "permanent";
+      readonly root: string;
+      readonly entry: string;
+      readonly maxInstructions?: number;
+      readonly maxCycles?: number;
+      readonly legacyOutputOrder?: boolean;
+    }
+  | {
+      readonly flavour: "atom";
+      readonly source: "preview";
+      readonly asmRoot: string;
+      readonly proofRoot: string;
+      readonly entry?: string;
+      readonly maxPartBytes?: number;
+      readonly maxInstructions?: number;
+      readonly maxCycles?: number;
+      readonly legacyOutputOrder?: boolean;
+    };
+
+type NormalizedProofAssembler =
+  | { readonly flavour: "azm" }
+  | Extract<ProofAssembler, { readonly flavour: "atom" }>;
+
+function normalizeProofAssembler(
+  assembler: ProofAssembler | undefined,
+  sourcePath: string,
+): NormalizedProofAssembler {
+  if (assembler === undefined || ("kind" in assembler && assembler.kind === undefined)) {
+    return { flavour: Z80_ASSEMBLER_FLAVOUR.azm };
+  }
+  if ("kind" in assembler) {
+    if (assembler.kind === "azm") {
+      return { flavour: Z80_ASSEMBLER_FLAVOUR.azm };
+    }
+    if (assembler.kind === "atom-permanent") {
+      return Object.freeze({
+        flavour: Z80_ASSEMBLER_FLAVOUR.atom,
+        source: "permanent",
+        root: assembler.root,
+        entry: assembler.entry,
+        ...(assembler.maxInstructions === undefined ? {} : { maxInstructions: assembler.maxInstructions }),
+        ...(assembler.maxCycles === undefined ? {} : { maxCycles: assembler.maxCycles }),
+        ...(assembler.legacyOutputOrder === undefined ? {} : { legacyOutputOrder: assembler.legacyOutputOrder }),
+      });
+    }
+    if (assembler.kind === "atom-preview") {
+      return Object.freeze({
+        flavour: Z80_ASSEMBLER_FLAVOUR.atom,
+        source: "preview",
+        asmRoot: assembler.asmRoot,
+        proofRoot: assembler.proofRoot,
+        ...(assembler.entry === undefined ? {} : { entry: assembler.entry }),
+        ...(assembler.maxPartBytes === undefined ? {} : { maxPartBytes: assembler.maxPartBytes }),
+        ...(assembler.maxInstructions === undefined ? {} : { maxInstructions: assembler.maxInstructions }),
+        ...(assembler.maxCycles === undefined ? {} : { maxCycles: assembler.maxCycles }),
+        ...(assembler.legacyOutputOrder === undefined ? {} : { legacyOutputOrder: assembler.legacyOutputOrder }),
+      });
+    }
+  }
+  const flavour = dispatchZ80AssemblerFlavour({
+    requested: "flavour" in assembler ? assembler.flavour : undefined,
+    defaultFlavour: Z80_ASSEMBLER_FLAVOUR.azm,
+    sourcePath,
+    handlers: {
+      atom: () => Z80_ASSEMBLER_FLAVOUR.atom,
+      azm: () => Z80_ASSEMBLER_FLAVOUR.azm,
+    },
+  });
+  if (flavour === Z80_ASSEMBLER_FLAVOUR.azm) {
+    return { flavour };
+  }
+  if (!("source" in assembler)) {
+    throw new TypeError("Atom proof assembler source must be permanent or preview");
+  }
+  if (assembler.source !== "permanent" && assembler.source !== "preview") {
+    throw new TypeError("Atom proof assembler source must be permanent or preview");
+  }
+  return assembler;
+}
 
 interface MemoryRegionManifest {
   readonly name: string;
@@ -340,7 +431,7 @@ async function assembleAtomPreviewProofSource({
   readonly manifest: ProofManifest;
   readonly sourcePath: string;
   readonly manifestDirectory: string;
-  readonly assembler: Extract<ProofAssembler, { readonly kind: "atom-preview" }>;
+  readonly assembler: Extract<ProofAssembler, { readonly flavour: "atom"; readonly source: "preview" }>;
 }): Promise<{
   readonly hexText: string;
   readonly rawSymbols: Readonly<Record<string, number>>;
@@ -454,22 +545,30 @@ async function assembleProofSource({
   readonly hexText: string;
   readonly rawSymbols: Readonly<Record<string, number>>;
 }> {
-  if (assembler?.kind === "atom-preview") {
+  const selectedAssembler = normalizeProofAssembler(assembler, sourcePath);
+
+  if (
+    selectedAssembler.flavour === Z80_ASSEMBLER_FLAVOUR.atom &&
+    selectedAssembler.source === "preview"
+  ) {
     return assembleAtomPreviewProofSource({
       manifest,
       sourcePath,
       manifestDirectory,
-      assembler,
+      assembler: selectedAssembler,
     });
   }
 
-  if (assembler?.kind === "atom-permanent") {
+  if (
+    selectedAssembler.flavour === Z80_ASSEMBLER_FLAVOUR.atom &&
+    selectedAssembler.source === "permanent"
+  ) {
     const {
       assembleAtomProject,
       materializeAtomGeneration,
       writeIntelHex,
     } = await import("atom-z80");
-    const compareModule = assembler.legacyOutputOrder === true
+    const compareModule = selectedAssembler.legacyOutputOrder === true
       ? await import(
           pathToFileURL(
             path.join(
@@ -481,11 +580,11 @@ async function assembleProofSource({
         )
       : undefined;
     const assembled = await assembleAtomProject({
-      root: assembler.root,
-      entry: assembler.entry,
+      root: selectedAssembler.root,
+      entry: selectedAssembler.entry,
       target: { start: 0, capacity: 0xffff },
-      maxInstructions: assembler.maxInstructions ?? 50_000_000,
-      maxCycles: assembler.maxCycles ?? 500_000_000,
+      maxInstructions: selectedAssembler.maxInstructions ?? 50_000_000,
+      maxCycles: selectedAssembler.maxCycles ?? 500_000_000,
       ...(compareModule === undefined
         ? {}
         : { sink: compareModule.createLegacyUnorderedMemoryAtomSink() }),

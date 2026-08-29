@@ -237,8 +237,9 @@ supplies an already translated Atom source tree:
 ```ts
 await runProofManifest("proofs/memory-map-proof.json", {
   assembler: {
-    kind: "atom-permanent",
-    root: "build/nucleus-atom-permanent",
+    flavour: "atom",
+    source: "permanent",
+    root: "packages/nucleus/atom-asm",
     entry: "vertical-slice/memory-map-proof.asm",
   },
   atomMigration: {
@@ -248,9 +249,12 @@ await runProofManifest("proofs/memory-map-proof.json", {
 });
 ```
 
-AZM remains the default assembler. The Atom mode is explicit because permanent
-source requires strict leading includes and permanent symbol names; it is not
-safe to infer those from the existing AZM source tree.
+AZM remains the default assembler. The proof harness now accepts the same
+`flavour: "atom" | "azm"` vocabulary as the shared Debug80 assembler selector;
+Atom then names its source policy separately as `source: "permanent"` or
+`source: "preview"`. The Atom mode is explicit because permanent source
+requires strict leading includes and permanent symbol names; it is not safe to
+infer those from the existing AZM source tree.
 
 For integration work, prefer one consolidated bundle instead of several loose
 files:

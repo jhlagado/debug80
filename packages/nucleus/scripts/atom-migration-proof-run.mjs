@@ -238,7 +238,8 @@ async function runOne({
     try {
       const outcome = await runProofManifest(proof.file, {
         assembler: {
-          kind: "atom-permanent",
+          flavour: "atom",
+          source: "permanent",
           root: permanentRoot,
           entry,
           maxInstructions: budget.maxInstructions,
@@ -273,7 +274,8 @@ async function runOne({
   try {
     const outcome = await runProofManifest(proof.file, {
       assembler: {
-        kind: "atom-preview",
+        flavour: "atom",
+        source: "preview",
         asmRoot,
         proofRoot,
         entry,

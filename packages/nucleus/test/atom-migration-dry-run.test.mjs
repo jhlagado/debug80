@@ -1182,7 +1182,8 @@ describe("Nucleus Atom migration dry-run", () => {
       const runSmallAtomProof = (name, entry) =>
         runProofManifest(path.join(proofRoot, name), {
           assembler: {
-            kind: "atom-permanent",
+            flavour: "atom",
+            source: "permanent",
             root: translatedRoot,
             entry,
           },
