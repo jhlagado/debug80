@@ -1,0 +1,513 @@
+            .org ProofBase
+AGIMGL  .equ $38 ; expected aggregate static image length
+AGFLD0  .equ $44B9 ; first aggregate field offset byte
+AGFLD1  .equ $44BF ; second aggregate field offset byte
+AGFLD2  .equ $44C5 ; third aggregate field offset byte
+AGFLD3  .equ $44CB ; fourth aggregate field offset byte
+AGFLD4  .equ $44D1 ; fifth aggregate field offset byte
+AGFLD5  .equ $44D7 ; sixth aggregate field offset byte
+AGFLD6  .equ $44DD ; seventh aggregate field offset byte
+AGSYM2I .equ $423A ; aggregate program symbol info byte
+AGSYM2V .equ $423B ; aggregate program symbol value word
+AGSYM3V .equ $4241 ; aggregate symbol value word
+AGSYM4V .equ $4247 ; aggregate symbol value word
+AGSYM1V .equ $4235 ; identity proof symbol value byte
+AGSTEP  .equ $4E ; record-name loop-step diagnostic offset
+AGDUP   .equ $15 ; duplicate-field diagnostic offset
+AGSTCAP .equ $15 ; string-capacity diagnostic offset
+AGDCAP  .equ $1C ; data-capacity diagnostic offset
+
+.routine out carry,zero clobbers sign,parity,halfCarry,A,BC,DE,HL,IX,IY
+ProofStart:
+            LD   SP,StackTop
+            XOR  A
+            LD   (ProofCase),A
+            LD   (ProofStatus),A
+            LD   A,130
+            LD   HL,AggregateAcceptedSource
+            LD   DE,AggregateAcceptedSourceEnd
+            CALL CompileAggregateSlice
+            JP   C,ProofFailAcceptedCompile
+            LD   A,(StaticImageLength)
+            CP   AGIMGL
+            JP   NZ,ProofFailStaticLength
+            LD   HL,StaticImageBase
+            LD   DE,AggregateExpectedImage
+            LD   B,AGIMGL
+            CALL ProofCompareBytes
+            JP   C,ProofFailStaticBytes
+            ; Pixel offsets 0,1,2 and Entry offsets 0,2,5,11.
+            LD   A,(AGFLD0)
+            OR   A
+            JP   NZ,ProofFailLayout
+            LD   A,(AGFLD1)
+            CP   1
+            JP   NZ,ProofFailLayout
+            LD   A,(AGFLD2)
+            CP   2
+            JP   NZ,ProofFailLayout
+            LD   A,(AGFLD3)
+            OR   A
+            JP   NZ,ProofFailLayout
+            LD   A,(AGFLD4)
+            CP   2
+            JP   NZ,ProofFailLayout
+            LD   A,(AGFLD5)
+            CP   5
+            JP   NZ,ProofFailLayout
+            LD   A,(AGFLD6)
+            CP   11
+            JP   NZ,ProofFailLayout
+            LD   A,(AggregateTypeCount)
+            CP   5
+            JP   NZ,ProofFailLayout
+            LD   A,(AggregateRecordCount)
+            CP   2
+            JP   NZ,ProofFailLayout
+            LD   A,(AggregateFieldCount)
+            CP   7
+            JP   NZ,ProofFailLayout
+            LD   A,(AggregateSymbolTypeBase+2)
+            CP   7
+            JP   NZ,ProofFailLayout
+            LD   A,(AggregateSymbolTypeBase+3)
+            CP   7
+            JP   NZ,ProofFailLayout
+            LD   A,(AggregateSymbolTypeBase+4)
+            CP   8
+            JP   NZ,ProofFailLayout
+            LD   A,(AGSYM2I)
+            CP   SymbolInfoAggregateProgram
+            JP   NZ,ProofFailLayout
+            LD   HL,(AGSYM2V)
+            LD   A,H
+            OR   L
+            JP   NZ,ProofFailLayout
+            LD   HL,(AGSYM3V)
+            LD   DE,14
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailLayout
+            LD   HL,(AGSYM4V)
+            LD   DE,28
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailLayout
+            CALL EncodeAggregateProgram
+            JP   C,ProofFailAcceptedEncode
+            LD   HL,GeneratedBase+3
+            LD   DE,AggregateExpectedImage
+            LD   B,AGIMGL
+            CALL ProofCompareBytes
+            JP   C,ProofFailPublishedBytes
+            CALL Reset
+            CALL ProofCallGenerated
+            JP   C,ProofFailFrame
+            LD   A,(RunState)
+            CP   RunSucceeded
+            JP   NZ,ProofFailRunState
+
+            ; Force a failure during the static-image copy. The transactional
+            ; publisher must restore the complete prior image and size. Change
+            ; the first source byte so a missing rollback cannot pass by
+            ; rewriting the same bytes that were already published.
+            LD   HL,(GeneratedSize)
+            LD   (AggregateSavedSize),HL
+            LD   A,$5A
+            LD   (StaticImageBase),A
+            LD   HL,GeneratedBase+12
+            CALL EncodeAggregateProgramWithinLimit
+            JR   C,AggregateAtomicFailedAsExpected
+            XOR  A
+            LD   (StaticImageBase),A
+            JP   ProofFailAtomicAccepted
+AggregateAtomicFailedAsExpected:
+            XOR  A
+            LD   (StaticImageBase),A
+            LD   HL,(GeneratedSize)
+            LD   DE,(AggregateSavedSize)
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailAtomicSize
+            LD   HL,(AggregateSavedSize)
+            LD   A,H
+            OR   A
+            JP   NZ,ProofFailAtomicSize
+            LD   B,L
+            LD   HL,GeneratedBase
+            LD   DE,BackupBase
+            CALL ProofCompareBytes
+            JP   C,ProofFailAtomicBytes
+
+            LD   A,151
+            LD   HL,AggregateBooleanSource
+            LD   DE,AggregateBooleanSourceEnd
+            CALL CompileAggregateSlice
+            JP   C,ProofFailBoolean
+            LD   A,(StaticImageLength)
+            CP   2
+            JP   NZ,ProofFailBoolean
+            LD   A,(StaticImageBase)
+            OR   A
+            JP   NZ,ProofFailBoolean
+            LD   A,(StaticImageBase+1)
+            CP   1
+            JP   NZ,ProofFailBoolean
+
+            LD   A,152
+            LD   HL,AggregateIdentitySource
+            LD   DE,AggregateIdentitySourceEnd
+            CALL CompileAggregateSlice
+            JP   C,ProofFailIdentity
+            LD   A,(SymbolTableBase+4)
+            CP   4
+            JP   NZ,ProofFailIdentity
+            LD   A,(AGSYM1V)
+            CP   5
+            JP   NZ,ProofFailIdentity
+            LD   A,(AggregateSymbolTypeBase+2)
+            CP   6
+            JP   NZ,ProofFailIdentity
+            LD   A,(AggregateSymbolTypeBase+3)
+            CP   6
+            JP   NZ,ProofFailIdentity
+            LD   A,(AggregateTypeCount)
+            CP   3
+            JP   NZ,ProofFailIdentity
+            LD   A,(AggregateRecordCount)
+            CP   2
+            JP   NZ,ProofFailIdentity
+            LD   HL,GeneratedBase+3
+            LD   DE,AggregateExpectedImage
+            LD   B,AGIMGL
+            CALL ProofCompareBytes
+            JP   C,ProofFailAtomicBytes
+
+            LD   A,131
+            LD   HL,AggregateCountSource
+            LD   DE,AggregateCountSourceEnd
+            LD   B,DiagnosticInitializerCount
+            CALL ProofExpectDiagnostic
+            JP   C,ProofFailCount
+            LD   A,132
+            LD   HL,AggregateShapeSource
+            LD   DE,AggregateShapeSourceEnd
+            LD   B,DiagnosticInitializerShape
+            CALL ProofExpectDiagnostic
+            JP   C,ProofFailShape
+            LD   A,137
+            LD   HL,AggregateTooManySource
+            LD   DE,AggregateTooManySourceEnd
+            LD   B,DiagnosticInitializerCount
+            CALL ProofExpectDiagnostic
+            JP   C,ProofFailTooMany
+            LD   A,138
+            LD   HL,AggregateCloseShapeSource
+            LD   DE,AggregateCloseShapeSourceEnd
+            LD   B,DiagnosticInitializerShape
+            CALL ProofExpectDiagnostic
+            JP   C,ProofFailCloseShape
+            LD   A,139
+            LD   HL,AggregateTypeSource
+            LD   DE,AggregateTypeSourceEnd
+            LD   B,DiagnosticTypeMismatch
+            CALL ProofExpectDiagnostic
+            JP   C,ProofFailType
+            LD   A,140
+            LD   HL,AggregateRecordNameScalarSource
+            LD   DE,AggregateRecordNameScalarSourceEnd
+            LD   B,DiagnosticTypeMismatch
+            CALL ProofExpectDiagnostic
+            JP   C,ProofFailRecordScalar
+            LD   A,141
+            LD   HL,AggregateObjectScalarSource
+            LD   DE,AggregateObjectScalarSourceEnd
+            LD   B,DiagnosticTypeMismatch
+            CALL ProofExpectDiagnostic
+            JP   C,ProofFailObjectScalar
+            LD   A,142
+            LD   HL,AggregateObjectAssignmentSource
+            LD   DE,AggregateObjectAssignmentSourceEnd
+            LD   B,DiagnosticTypeMismatch
+            CALL ProofExpectDiagnostic
+            JP   C,ProofFailObjectAssignment
+            LD   A,145
+            LD   HL,AggregateRecordStepSource
+            LD   DE,AggregateRecordStepSourceEnd
+            LD   B,DiagnosticLoopStep
+            CALL ProofExpectDiagnostic
+            JP   C,ProofFailRecordStep
+            LD   HL,(DiagnosticOffset)
+            LD   DE,AGSTEP
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailRecordStep
+            LD   A,143
+            LD   HL,AggregateDuplicateFieldSource
+            LD   DE,AggregateDuplicateFieldSourceEnd
+            LD   B,DiagnosticDuplicateName
+            CALL ProofExpectDiagnostic
+            JP   C,ProofFailDuplicateField
+            LD   HL,(DiagnosticOffset)
+            LD   DE,AGDUP
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailDuplicateField
+            LD   A,133
+            LD   HL,AggregateStringLengthSource
+            LD   DE,AggregateStringLengthSourceEnd
+            LD   B,DiagnosticStringLength
+            CALL ProofExpectDiagnostic
+            JP   C,ProofFailStringLength
+            LD   A,153
+            LD   HL,AggregateMalformedEscapeSource
+            LD   DE,AggregateMalformedEscapeSourceEnd
+            LD   B,DiagnosticLexical
+            CALL ProofExpectDiagnostic
+            JP   C,ProofFailMalformedEscape
+            LD   A,154
+            LD   HL,AggregateStringExtentCapacitySource
+            LD   DE,AggregateStringExtentCapacitySourceEnd
+            LD   B,DiagnosticStringCapacity
+            CALL ProofExpectDiagnostic
+            JP   C,ProofFailStringExtentCapacity
+            LD   HL,(DiagnosticOffset)
+            LD   DE,AGSTCAP
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailStringExtentCapacity
+            LD   A,'5'
+            LD   (AggregateStringExtentCapacityDigit),A
+            LD   A,156
+            LD   HL,AggregateStringExtentCapacitySource
+            LD   DE,AggregateStringExtentCapacitySourceEnd
+            LD   B,DiagnosticStringCapacity
+            CALL ProofExpectDiagnostic
+            JP   C,ProofFailStringExtentCapacity
+            LD   HL,(DiagnosticOffset)
+            LD   DE,AGSTCAP
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailStringExtentCapacity
+            LD   A,155
+            LD   HL,AggregateSealedStringBoundarySource
+            LD   DE,AggregateSealedStringBoundarySourceEnd
+            CALL CompileAggregateSlice
+            JP   C,ProofFailStringExtentCapacity
+            LD   HL,(StaticImageLength)
+            LD   DE,255
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailStringExtentCapacity
+            LD   HL,StaticImageBase
+            LD   BC,255
+AggregateSealedStringZeroLoop:
+            LD   A,(HL)
+            OR   A
+            JP   NZ,ProofFailStringExtentCapacity
+            INC  HL
+            DEC  BC
+            LD   A,B
+            OR   C
+            JR   NZ,AggregateSealedStringZeroLoop
+            LD   A,148
+            LD   HL,AggregateEmptyRecordSource
+            LD   DE,AggregateEmptyRecordSourceEnd
+            LD   B,DiagnosticRecordEmpty
+            CALL ProofExpectDiagnostic
+            JP   C,ProofFailEmptyRecord
+            LD   A,149
+            LD   HL,AggregateRecordCapacitySource
+            LD   DE,AggregateRecordCapacitySourceEnd
+            LD   B,DiagnosticTypeMetadataCapacity
+            CALL ProofExpectDiagnostic
+            JP   C,ProofFailRecordCapacity
+            LD   A,150
+            LD   HL,AggregateFieldCapacitySource
+            LD   DE,AggregateFieldCapacitySourceEnd
+            LD   B,DiagnosticTypeMetadataCapacity
+            CALL ProofExpectDiagnostic
+            JP   C,ProofFailFieldCapacity
+            LD   A,134
+            LD   HL,AggregateMetadataSource
+            LD   DE,AggregateMetadataSourceEnd
+            LD   B,DiagnosticTypeMetadataCapacity
+            CALL ProofExpectDiagnostic
+            JP   C,ProofFailMetadata
+            LD   A,135
+            LD   HL,AggregateDepthSource
+            LD   DE,AggregateDepthSourceEnd
+            LD   B,DiagnosticInitializerCapacity
+            CALL ProofExpectDiagnostic
+            JP   C,ProofFailDepth
+            LD   A,146
+            LD   HL,AggregateElementCapacityAcceptedSource
+            LD   DE,AggregateElementCapacityAcceptedSourceEnd
+            CALL CompileAggregateSlice
+            JP   C,ProofFailElementBoundary
+            LD   A,147
+            LD   HL,AggregateElementCapacityRejectedSource
+            LD   DE,AggregateElementCapacityRejectedSourceEnd
+            CALL CompileAggregateSlice
+            JP   C,ProofFailElementBoundary
+            LD   A,136
+            LD   HL,AggregateDataCapacitySource
+            LD   DE,AggregateDataCapacitySourceEnd
+            LD   B,DiagnosticProgramDataCapacity
+            CALL ProofExpectDiagnostic
+            JP   C,ProofFailDataCapacity
+            LD   HL,(DiagnosticOffset)
+            LD   DE,AGDCAP
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailDataCapacity
+            LD   A,144
+            LD   HL,AggregateTypeExtentCapacitySource
+            LD   DE,AggregateTypeExtentCapacitySourceEnd
+            LD   B,DiagnosticProgramDataCapacity
+            CALL ProofExpectDiagnostic
+            JP   C,ProofFailTypeExtentCapacity
+
+            LD   A,$A5
+            LD   (ProofStatus),A
+            HALT
+
+.routine in A,B,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+ProofExpectDiagnostic:
+            PUSH BC
+            CALL CompileAggregateSlice
+            POP  BC
+            RET  NC
+            LD   A,(DiagnosticCode)
+            CP   B
+            RET  Z
+            SCF
+            RET
+
+.routine in B,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+ProofCompareBytes:
+            LD   A,(DE)
+            CP   (HL)
+            JR   NZ,ProofCompareBytesNo
+            INC  DE
+            INC  HL
+            DJNZ ProofCompareBytes
+            OR   A
+            RET
+ProofCompareBytesNo:
+            SCF
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+ProofCallGenerated:
+            LD   HL,0
+            ADD  HL,SP
+            LD   (ProofExpectedSP),HL
+            LD   IX,$A55A
+            CALL GeneratedBase
+            PUSH IX
+            POP  DE
+            LD   HL,$A55A
+            OR   A
+            SBC  HL,DE
+            JR   NZ,ProofCallGeneratedNo
+            LD   HL,0
+            ADD  HL,SP
+            LD   DE,(ProofExpectedSP)
+            OR   A
+            SBC  HL,DE
+            RET  Z
+ProofCallGeneratedNo:
+            SCF
+            RET
+
+ProofFailAcceptedCompile: LD A,1
+                           JP ProofFailed
+ProofFailStaticLength:    LD A,2
+                           JP ProofFailed
+ProofFailStaticBytes:     LD A,3
+                           JP ProofFailed
+ProofFailLayout:          LD A,4
+                           JP ProofFailed
+ProofFailAcceptedEncode:  LD A,5
+                           JP ProofFailed
+ProofFailPublishedBytes:  LD A,6
+                           JP ProofFailed
+ProofFailFrame:           LD A,7
+                           JP ProofFailed
+ProofFailRunState:        LD A,8
+                           JP ProofFailed
+ProofFailAtomicAccepted:  LD A,9
+                           JP ProofFailed
+ProofFailAtomicSize:      LD A,10
+                           JP ProofFailed
+ProofFailAtomicBytes:     LD A,11
+                           JP ProofFailed
+ProofFailCount:           LD A,12
+                           JP ProofFailed
+ProofFailShape:           LD A,13
+                           JP ProofFailed
+ProofFailStringLength:    LD A,14
+                           JP ProofFailed
+ProofFailMetadata:        LD A,15
+                           JP ProofFailed
+ProofFailDepth:           LD A,16
+                           JP ProofFailed
+ProofFailDataCapacity:    LD A,17
+                           JP ProofFailed
+ProofFailTooMany:          LD A,18
+                           JP ProofFailed
+ProofFailCloseShape:       LD A,19
+                           JP ProofFailed
+ProofFailType:             LD A,20
+                           JP ProofFailed
+ProofFailRecordScalar:     LD A,21
+                           JP ProofFailed
+ProofFailObjectScalar:     LD A,22
+                           JP ProofFailed
+ProofFailObjectAssignment: LD A,23
+                           JP ProofFailed
+ProofFailRecordStep:       LD A,26
+                           JP ProofFailed
+ProofFailElementBoundary:  LD A,27
+                           JP ProofFailed
+ProofFailEmptyRecord:      LD A,28
+                           JP ProofFailed
+ProofFailRecordCapacity:   LD A,29
+                           JP ProofFailed
+ProofFailFieldCapacity:    LD A,30
+                           JP ProofFailed
+ProofFailBoolean:          LD A,31
+                           JP ProofFailed
+ProofFailIdentity:         LD A,32
+                           JP ProofFailed
+ProofFailMalformedEscape:  LD A,33
+                           JP ProofFailed
+ProofFailStringExtentCapacity: LD A,34
+                           JP ProofFailed
+ProofFailDuplicateField:   LD A,24
+                           JP ProofFailed
+ProofFailTypeExtentCapacity: LD A,25
+ProofFailed:
+            LD   (ProofCase),A
+            HALT
+
+ProofExpectedSP:       .dw 0
+AggregateSavedSize:   .dw 0
+ProofStatus:           .db 0
+ProofCase:             .db 0
+AggregateExpectedImage:
+            ; zero Entry
+            .db 0,0,0,0,0,0,0,0,0,0,0,0,0,0
+            ; one Entry
+            .db 1,2,1,2,3,2,65,175,0,0,0,4,5,6
+            ; many[0]
+            .db 1,0,7,8,9,2,120,121,0,0,0,10,11,12
+            ; many[1]
+            .db 2,0,13,14,15,0,0,0,0,0,0,16,17,18
+AggregateExpectedImageEnd:
+AggregateSealedStringBoundarySource:
+            .db "var full as string[253]",10
+            .db "sub main() fails",10,"end",10
+AggregateSealedStringBoundarySourceEnd:
+ProofEnd:

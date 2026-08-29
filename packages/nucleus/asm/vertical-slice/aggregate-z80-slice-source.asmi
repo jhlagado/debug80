@@ -1,0 +1,183 @@
+            .org SourceBase
+AggregateAcceptedSource:
+            .db "record Pixel",10
+            .db "r as u8",10
+            .db "g as u8",10
+            .db "b as u8",10
+            .db "end",10
+            .db "record Entry",10
+            .db "id as u16",10
+            .db "color as Pixel",10
+            .db "label as string[4]",10
+            .db "samples as u8[3]",10
+            .db "end",10
+            .db "var zero as Entry",10
+            .db "var one as Entry = (513,(1,2,3),\"A\\xAf\",[4,5,6])",10
+            .db "var many as Entry[2] = ["
+            .db "(1,(7,8,9),\"xy\",[10,11,12]),"
+            .db "(2,(13,14,15),\"\",[16,17,18])]",10
+            .db "sub main() fails",10
+            .db "end",10
+AggregateAcceptedSourceEnd:
+
+AggregateCountSource:
+            .db "record Pair",10,"left as u8",10,"right as u8",10,"end",10
+            .db "var bad as Pair = (1)",10
+AggregateCountPoint:
+            .db "sub main() fails",10,"end",10
+AggregateCountSourceEnd:
+
+AggregateShapeSource:
+            .db "record Pair",10,"left as u8",10,"right as u8",10,"end",10
+            .db "var bad as Pair = [1,2]",10
+AggregateShapeSourceEnd:
+
+AggregateTooManySource:
+            .db "record Pair",10,"left as u8",10,"right as u8",10,"end",10
+            .db "var bad as Pair = (1,2,3)",10
+AggregateTooManySourceEnd:
+
+AggregateCloseShapeSource:
+            .db "record Pair",10,"left as u8",10,"right as u8",10,"end",10
+            .db "var bad as Pair = (1,2]",10
+AggregateCloseShapeSourceEnd:
+
+AggregateTypeSource:
+            .db "var bad as u8 = true",10
+AggregateTypeSourceEnd:
+
+AggregateRecordNameScalarSource:
+            .db "record R",10,"v as u8",10,"end",10
+            .db "sub main() fails",10
+            .db "writeOutputByte(R) else fail",10
+            .db "end",10
+AggregateRecordNameScalarSourceEnd:
+
+AggregateObjectScalarSource:
+            .db "record R",10,"v as u8",10,"end",10
+            .db "var item as R",10
+            .db "sub main() fails",10
+            .db "writeOutputByte(item) else fail",10
+            .db "end",10
+AggregateObjectScalarSourceEnd:
+
+AggregateObjectAssignmentSource:
+            .db "record R",10,"v as u8",10,"end",10
+            .db "var item as R",10
+            .db "sub main() fails",10
+            .db "item = 1",10
+            .db "end",10
+AggregateObjectAssignmentSourceEnd:
+
+AggregateRecordStepSource:
+            .db "record R",10,"v as u8",10,"end",10
+            .db "sub main() fails",10
+            .db "var i as u8 = 0",10
+            .db "for i = 0 until 10 step "
+AggregateRecordStepPoint:
+            .db "R",10
+            .db "end",10,"end",10
+AggregateRecordStepSourceEnd:
+
+AggregateDuplicateFieldSource:
+            .db "record R",10,"first as u8",10
+AggregateDuplicateFieldPoint:
+            .db "first as u16",10,"end",10
+AggregateDuplicateFieldSourceEnd:
+
+AggregateStringLengthSource:
+            .db "var bad as string[2] = \"abc\"",10
+AggregateStringLengthSourceEnd:
+
+AggregateBooleanSource:
+            .db "record Flags",10
+            .db "off as boolean",10,"enabled as boolean",10,"end",10
+            .db "var flags as Flags = (false,true)",10
+            .db "sub main() fails",10,"end",10
+AggregateBooleanSourceEnd:
+
+AggregateIdentitySource:
+            .db "record A",10,"x as u8",10,"end",10
+            .db "record B",10,"x as u8",10,"end",10
+            .db "var first as u8[2]",10
+            .db "var second as u8[2]",10
+            .db "sub main() fails",10,"end",10
+AggregateIdentitySourceEnd:
+
+AggregateMalformedEscapeSource:
+            .db "var bad as string[1] = \"\\q\"",10
+AggregateMalformedEscapeSourceEnd:
+
+AggregateStringExtentCapacitySource:
+            .db "var bad as string[25"
+AggregateStringExtentCapacityDigit:
+            .db "4"
+AggregateStringExtentCapacityPoint:
+            .db "]",10
+AggregateStringExtentCapacitySourceEnd:
+
+AggregateEmptyRecordSource:
+            .db "record Empty",10,"end",10
+AggregateEmptyRecordSourceEnd:
+
+AggregateRecordCapacitySource:
+            .db "record R1",10,"v as u8",10,"end",10
+            .db "record R2",10,"v as u8",10,"end",10
+            .db "record R3",10,"v as u8",10,"end",10
+            .db "record R4",10,"v as u8",10,"end",10
+            .db "record R5",10,"v as u8",10,"end",10
+            .db "record R6",10,"v as u8",10,"end",10
+AggregateRecordCapacitySourceEnd:
+
+AggregateFieldCapacitySource:
+            .db "record Wide",10
+            .db "a as u8",10,"b as u8",10,"c as u8",10
+            .db "d as u8",10,"e as u8",10,"f as u8",10
+            .db "g as u8",10,"h as u8",10,"i as u8",10
+            .db "j as u8",10,"k as u8",10,"l as u8",10
+            .db "m as u8",10,"end",10
+AggregateFieldCapacitySourceEnd:
+
+AggregateMetadataSource:
+            .db "record Wide",10
+            .db "a as string[1]",10,"b as string[2]",10
+            .db "c as string[3]",10,"d as string[4]",10
+            .db "e as string[5]",10,"f as string[6]",10
+            .db "g as string[7]",10,"h as string[8]",10
+AggregateMetadataPoint:
+            .db "i as string[9]",10,"end",10
+AggregateMetadataSourceEnd:
+
+AggregateDepthSource:
+            .db "record R1",10,"v as u8",10,"end",10
+            .db "record R2",10,"v as R1",10,"end",10
+            .db "record R3",10,"v as R2",10,"end",10
+            .db "record R4",10,"v as R3",10,"end",10
+            .db "record R5",10,"v as R4",10,"end",10
+            .db "var deep as R5 = (((((1)))))",10
+AggregateDepthSourceEnd:
+
+AggregateElementCapacityAcceptedSource:
+            .db "var items as u8[31] = ["
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]",10
+            .db "sub main() fails",10,"end",10
+AggregateElementCapacityAcceptedSourceEnd:
+
+AggregateElementCapacityRejectedSource:
+            .db "var items as u8[32] = ["
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,"
+            .db "1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]",10
+            .db "sub main() fails",10,"end",10
+AggregateElementCapacityRejectedSourceEnd:
+
+AggregateDataCapacitySource:
+            .db "var a as u8[255]",10
+            .db "var b as u8"
+AggregateDataCapacityPoint:
+            .db 10
+AggregateDataCapacitySourceEnd:
+
+AggregateTypeExtentCapacitySource:
+            .db "var huge as u16[128]",10
+AggregateTypeExtentCapacitySourceEnd:

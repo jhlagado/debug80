@@ -1480,6 +1480,53 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   }, 120_000);
 
+  it("runs the aggregate z80-slice proof from permanent Atom layout source", async (context) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+      const aggregate = report.proofMatrix.find(
+        ({ proof }) => proof === "aggregate-z80-slice-proof.json",
+      );
+      expect(aggregate?.status).toBe("atom-permanent-ready");
+      expect(aggregate?.blockers).toEqual([]);
+      const root = await readFile(
+        path.join(translatedRoot, "vertical-slice", "aggregate-z80-slice-proof.asm"),
+        "utf8",
+      );
+      expect(root).toContain('%INCLUDE "aggregate-z80-slice-code-begin.asmi"');
+      expect(root).toContain('%INCLUDE "aggregate-z80-slice-proof-body.asmi"');
+
+      const proofBody = await readFile(
+        path.join(translatedRoot, "vertical-slice", "aggregate-z80-slice-proof-body.asmi"),
+        "utf8",
+      );
+      expect(proofBody).toMatch(/\bAGIMGL\s+EQU\b/);
+      expect(proofBody).toMatch(/\bAGSTEP\s+EQU\b/);
+      expect(proofBody).not.toContain("AGSTEP  EQU AGSTEP");
+      expect(proofBody).not.toContain("AggregateExpectedImageEnd-AggregateExpectedImage");
+      expect(proofBody).not.toContain("AggregateRecordStepPoint-AggregateRecordStepSource");
+      expect(proofBody).not.toContain("AggregateDataCapacityPoint-AggregateDataCapacitySource");
+
+      const outcome = await runProofManifest(
+        path.join(proofRoot, "aggregate-z80-slice-proof.json"),
+        {
+          assembler: {
+            kind: "atom-permanent",
+            root: translatedRoot,
+            entry: "vertical-slice/aggregate-z80-slice-proof.asm",
+            maxInstructions: 700_000_000,
+            maxCycles: 7_000_000_000,
+          },
+          atomMigration: {
+            proofSymbolMap: report.proofSymbolMap,
+            proofLimitMap: report.proofLimitMap,
+          },
+        },
+      );
+
+      expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
+      expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
+    });
+  }, 120_000);
+
   it("runs the typed-expression z80-slice proof from permanent Atom layout source", async (context) => {
     await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
       const typedExpression = report.proofMatrix.find(
