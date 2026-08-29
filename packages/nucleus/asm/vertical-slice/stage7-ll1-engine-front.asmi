@@ -1,0 +1,39 @@
+            .org CompilerCoreBase
+.routine out A,BC,carry,zero clobbers sign,parity,halfCarry,D,DE,HL
+ParserPeek:
+            LD   A,(MockPeekFailure)
+            OR   A
+            JR   Z,ParserPeekReady
+            LD   A,DiagnosticExpectedTokenBase
+            JP   CompilerSetDiagnostic
+ParserPeekReady:
+            LD   HL,(MockTokenCursor)
+            LD   A,(HL)
+            OR   A
+            RET
+.routine out A,BC,carry,zero clobbers sign,parity,halfCarry,D,DE,HL
+ParserTake:
+            CALL ParserPeek
+            RET  C
+            LD   HL,(MockTokenCursor)
+            INC  HL
+            LD   (MockTokenCursor),HL
+            OR   A
+            RET
+.routine in E out A,C,carry,zero clobbers sign,parity,halfCarry,B,D,DE,HL
+ParserExpect:
+            PUSH DE
+            CALL ParserTake
+            POP  DE
+            RET  C
+            CP   E
+            RET  Z
+            LD   A,E
+            OR   DiagnosticExpectedTokenBase
+.routine in A out A,carry clobbers zero,sign,parity,halfCarry,DE,HL
+CompilerSetDiagnostic:
+            LD   (DiagnosticCode),A
+            SCF
+            RET
+
+HybridLL1MeasuredStart:

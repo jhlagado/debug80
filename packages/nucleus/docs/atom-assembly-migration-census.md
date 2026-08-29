@@ -5,7 +5,7 @@ Date: 2026-08-30
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current reusable-transform baseline HEAD: `4fbce674`
+Current reusable-transform baseline HEAD: `da4b356b`
 
 ## Purpose
 
@@ -24,22 +24,22 @@ Measured files:
 
 | Item | Measured value |
 | --- | ---: |
-| Assembly files, `.asm` and `.asmi` | 283 |
-| Source lines | 30,184 |
+| Assembly files, `.asm` and `.asmi` | 286 |
+| Source lines | 30,188 |
 | Defined assembler symbols detected | 4,158 |
 | Defined assembler symbols longer than eight characters | 3,910 |
 | Long labels classed as dot-local candidates | 792 |
 | Long symbols still needing global treatment | 3,118 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
-| Include-after-header violations | 9 |
+| Include-after-header violations | 7 |
 | Forward-dependent emitted-statement symbol arithmetic sites | 0 |
-| Current permanent-source blockers | 9 |
+| Current permanent-source blockers | 7 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
 | Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 0 |
-| Permanent blocker: include after header | 9 |
+| Permanent blocker: include after header | 7 |
 | Permanent blocker: feature definition after Atom entry header | 0 |
 | Proof-manifest symbol mappings | 146 |
 | One-past-address-space proof-limit mappings | 4 |
@@ -326,20 +326,21 @@ grouping:
 
 | Batch | Files | Late includes | Risk | Recommendation |
 | --- | ---: | ---: | --- | --- |
-| Proof composition files | 1 | 2 | Medium | Source-layout blockers are cleared for several proof rows, including `stage7-ll1-aggregate-call-z80-slice-proof.asm`, `aggregate-z80-slice-proof.asm`, `flat-target-z80-slice-proof.asm`, `stage7-parser-coverage-proof.asmi`, `stage8-failure-z80-slice-proof.asm`, `stage9-conformance-z80-slice-proof.asm`, `structured-control-z80-slice-proof.asm`, `typed-expression-z80-slice-proof.asm`, `loop-z80-slice-proof.asm`, `z80-slice-proof.asm`, and `loop-compiler-slice-proof.asm`; the remaining proof entry should keep using the same section-owned include layout as it moves from preview to permanent Atom source. |
-| Module composition files | 2 | 6 | High | Second batch. These includes occur inside parser/codegen implementation modules (`loop-parser`, `typed-expression-z80`). Treat these as real module-boundary work, not mechanical line moves. |
+| Proof composition files | 0 | 0 | Cleared | The proof-composition batch now uses section-owned layouts for the converted permanent entries, including `stage7-ll1-engine-proof.asm`. |
+| Module composition files | 2 | 6 | High | Current main batch. These includes occur inside parser/codegen implementation modules (`loop-parser`, `typed-expression-z80`). Treat these as real module-boundary work, not mechanical line moves. |
 | Runtime wrapper files | 1 | 1 | Low to medium | The target runtime link entry has a permanent Atom layout and byte-equivalence proof. The raw source still records one wrapper include until the permanent source tree replaces the current source tree. |
-
-The first permanent-source batch should be the proof composition files, because
-they account for most of the count and are structurally repetitive:
-
-- `vertical-slice/stage7-ll1-engine-proof.asm` — 2
 
 `loop-compiler-slice-proof.asm` now uses the physical section-owner layout. Its
 source fragment owns the loop compiler source fixtures. Its proof-body fragment
 owns the `LPCTWOF` and `LPMESZ` aliases for the two formerly inline source-size
 expressions, so permanent Atom source no longer relies on hidden arithmetic
 rewrites for those proof checks.
+
+`stage7-ll1-engine-proof.asm` now uses the same physical section-owner layout.
+Its front fragment owns the parser stubs and `HybridLL1MeasuredStart`; the
+proof-body fragment owns the source fixture, proof checks, and `HLL1STKL`
+single-symbol stack-boundary alias; the after-actions fragment owns the proof
+state bytes after the proof action aliases.
 
 Do not move those include lines to the top and assume correctness. Many of
 the current files use surrounding labels such as `TokenizerCodeStart` /
@@ -349,8 +350,8 @@ The proof-comparison command is the required guard after each batch.
 
 The current safe convention is therefore:
 
-1. keep compatibility lowering for existing proof-composition files until their
-   section ownership has been made explicit;
+1. keep compatibility lowering for any file until its section ownership has
+   been made explicit;
 2. allow permanent source to use header-only `%INCLUDE` only when dependency
    order does not affect placement, or when the included module owns its own
    `ORG` and extent labels; and
@@ -380,14 +381,14 @@ body. All includes then appear in the header of the rewritten root source while
 the emitted order remains byte-equivalent. This proof now runs through the
 permanent-ready Atom proof gate.
 
-The third transform promotes `stage7-ll1-engine-proof`. It first makes the
+The third transform promoted `stage7-ll1-engine-proof`. It first made the
 generated Stage 7 grammar table Atom-friendly by replacing emitted
 `LABEL-BASE` and `Token+$80` terms with named single-symbol constants whose
 `EQU` definitions carry the arithmetic. The `stage7-ll1-parser.asm` translated
 module then owns a generated parser-core part, the generated table include, and
-a table-end part. The proof wrapper owns the measured front-end stubs and
-proof-only action aliases as explicit section parts. This is the first
-implementation-module late include converted under the permanent layout model.
+a table-end part. The proof wrapper now owns the measured front-end stubs,
+proof checks, proof-stack boundary alias, and proof-only action aliases as
+explicit section parts.
 
 The next implementation-module transform applies that same model to
 `aggregate-call-parser.asm`. The translated module now owns a generated
@@ -652,7 +653,6 @@ modules after an `.ORG` and section label:
 | Source file | Measured violations | First line |
 | --- | ---: | ---: |
 | `vertical-slice/loop-parser.asm` | 4 | 1135 |
-| `vertical-slice/stage7-ll1-engine-proof.asm` | 2 | 53 |
 | `vertical-slice/typed-expression-z80.asm` | 2 | 909 |
 | `vertical-slice/nucleus-target-runtime-link.asm` | 1 | 8 |
 
@@ -660,12 +660,10 @@ The largest current target groups show why this is not a safe blind move:
 
 | Target include | Measured uses | Target class |
 | --- | ---: | --- |
-| `grammar/stage7-proof-actions.asmi` | 1 | code |
 | `vertical-slice/aggregate-call-parser-stage7.asm` | 1 | mixed code/data |
 | `vertical-slice/aggregate-call-parser.asm` | 1 | code |
 | `vertical-slice/aggregate-call-z80.asm` | 1 | mixed code/data |
 | `vertical-slice/aggregate-parser.asm` | 1 | code |
-| `vertical-slice/stage7-ll1-parser.asm` | 1 | mixed code/data |
 | `vertical-slice/structured-control-z80.asm` | 1 | mixed code/data |
 | `vertical-slice/target-z80-runtime.asm` | 1 | code |
 | `vertical-slice/typed-expression-parser.asm` | 1 | mixed code/data |

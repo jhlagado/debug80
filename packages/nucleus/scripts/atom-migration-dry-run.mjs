@@ -138,18 +138,8 @@ const permanentLayoutTransforms = new Map([
     rewrite: rewriteProofSegmentedStatePermanentAtomSource,
   })],
   ["vertical-slice/stage7-ll1-engine-proof.asm", Object.freeze({
-    description: "stage7 LL(1) engine proof sectioned header-include layout",
-    handledIssues: Object.freeze([
-      Object.freeze({
-        file: "asm/vertical-slice/stage7-ll1-engine-proof.asm",
-        code: "include-after-header",
-      }),
-      Object.freeze({
-        file: "asm/vertical-slice/stage7-ll1-engine-proof.asm",
-        code: "atom-symbol-expression",
-        messageIncludes: "HybridLL1StackBase+HybridLL1StackCapacity",
-      }),
-    ]),
+    description: "stage7 LL(1) engine proof physical section-owner layout",
+    handledIssues: Object.freeze([]),
     rewrite: rewriteStage7Ll1EngineProofPermanentAtomSource,
   })],
   ["vertical-slice/stage7-ll1-aggregate-call-z80-slice-proof.asm", Object.freeze({
@@ -2539,42 +2529,7 @@ function rewriteProofSegmentedStatePermanentAtomSource(source) {
     .join("\n");
 }
 
-function rewriteStage7Ll1EngineProofPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
-  const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
-  const sourceBase = atomSymbol(symbolMap, "SourceBase");
-  const proofBase = atomSymbol(symbolMap, "ProofBase");
-  const stackBase = atomSymbol(symbolMap, "HybridLL1StackBase");
-  const stackCapacity = atomSymbol(symbolMap, "HybridLL1StackCapacity");
-  const stackLimit = "HLL1STKL";
-
-  const lines = source.split("\n");
-  const compilerOrgIndex = findPermanentOrgLine(lines, compilerCoreBase, "stage7-ll1-engine-proof");
-  const parserIncludeIndex = findPermanentIncludeLine(lines, "stage7-ll1-parser.asm", "stage7-ll1-engine-proof");
-  const sourceOrgIndex = findPermanentOrgLine(lines, sourceBase, "stage7-ll1-engine-proof");
-  const proofOrgIndex = findPermanentOrgLine(lines, proofBase, "stage7-ll1-engine-proof");
-  const actionsIncludeIndex = findPermanentIncludeLine(lines, "../../grammar/stage7-proof-actions.asmi", "stage7-ll1-engine-proof");
-
-  if (!(compilerOrgIndex < parserIncludeIndex &&
-    parserIncludeIndex < sourceOrgIndex &&
-    sourceOrgIndex < proofOrgIndex &&
-    proofOrgIndex < actionsIncludeIndex)) {
-    throw new Error("stage7-ll1-engine proof permanent Atom rewrite found an unexpected section order");
-  }
-
-  const rewriteStackLimit = (line) => line.replaceAll(`${stackBase}+${stackCapacity}`, stackLimit);
-  writeGeneratedPermanentPart(translatedRoot, relative, "stage7-ll1-engine-front.asmi", [
-    ...lines.slice(compilerOrgIndex, parserIncludeIndex),
-    "",
-  ]);
-  writeGeneratedPermanentPart(translatedRoot, relative, "stage7-ll1-engine-proof-before-actions.asmi", [
-    `${stackLimit} EQU ${stackBase}+${stackCapacity}`,
-    ...lines.slice(parserIncludeIndex + 1, actionsIncludeIndex).map(rewriteStackLimit),
-    "",
-  ]);
-  writeGeneratedPermanentPart(translatedRoot, relative, "stage7-ll1-engine-proof-after-actions.asmi", [
-    ...lines.slice(actionsIncludeIndex + 1),
-  ]);
-
+function rewriteStage7Ll1EngineProofPermanentAtomSource() {
   return [
     "; Permanent Atom layout for the Stage 7 LL(1) engine proof.",
     "            %DEFINE SegmentedOutput 0",

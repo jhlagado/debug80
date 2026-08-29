@@ -1,0 +1,5 @@
+ProofStatus:     .db 0
+MockTokenCursor: .dw 0
+MockPeekFailure: .db 0
+ProofExpectedSP: .dw 0
+ProofEnd:

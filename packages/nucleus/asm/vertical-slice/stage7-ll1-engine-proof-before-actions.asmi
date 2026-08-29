@@ -1,0 +1,96 @@
+HybridLL1MeasuredEnd:
+
+            .org SourceBase
+MockTokenStream:
+            .db TokenSub,TokenName,TokenLeftParen,TokenRightParen
+            .db TokenFails,TokenNewline,TokenEnd,TokenNewline,TokenEof
+MockTokenStreamEnd:
+
+            .org ProofBase
+HLL1STKL .equ HybridLL1WorkspaceEnd ; one-past LL(1) proof stack byte
+
+ProofStart:
+            LD   SP,StackTop
+            LD   HL,MockTokenStream
+            LD   (MockTokenCursor),HL
+            XOR  A
+            LD   (DiagnosticCode),A
+            CALL HybridLL1Parse
+            JP   C,ProofFailure
+            LD   HL,(MockTokenCursor)
+            LD   DE,MockTokenStreamEnd
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailure
+
+            ; Prediction must propagate a tokenizer/source failure without
+            ; retaining the row diagnostic on the hardware stack.
+            LD   HL,MockTokenStream
+            LD   (MockTokenCursor),HL
+            LD   A,1
+            LD   (MockPeekFailure),A
+            LD   (ProofExpectedSP),SP
+            CALL HybridLL1Parse
+            JP   NC,ProofFailure
+            CP   DiagnosticExpectedTokenBase
+            JP   NZ,ProofFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticExpectedTokenBase
+            JP   NZ,ProofFailure
+            LD   HL,0
+            ADD  HL,SP
+            LD   DE,(ProofExpectedSP)
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailure
+            XOR  A
+            LD   (MockPeekFailure),A
+
+            ; A four-symbol production exactly fills slots 60..63 without
+            ; touching the action workspace immediately above the stack.
+            LD   A,$5A
+            LD   (HLL1STKL),A
+            LD   A,60
+            LD   (HybridLL1StackDepth),A
+            LD   A,31
+            CALL HybridLL1PushProduction
+            JR   C,ProofFailure
+            LD   A,(HybridLL1StackDepth)
+            CP   HybridLL1StackCapacity
+            JR   NZ,ProofFailure
+            LD   A,(HLL1STKL)
+            CP   $5A
+            JR   NZ,ProofFailure
+
+            ; Both a single-symbol push at depth 64 and the same production
+            ; at depth 63 fail atomically with the dedicated diagnostic.
+            XOR  A
+            CALL HybridLL1PushSymbol
+            JR   NC,ProofFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticParserCapacity
+            JR   NZ,ProofFailure
+            LD   A,(HybridLL1StackDepth)
+            CP   HybridLL1StackCapacity
+            JR   NZ,ProofFailure
+            LD   A,63
+            LD   (HybridLL1StackDepth),A
+            LD   A,31
+            CALL HybridLL1PushProduction
+            JR   NC,ProofFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticParserCapacity
+            JR   NZ,ProofFailure
+            LD   A,(HybridLL1StackDepth)
+            CP   63
+            JR   NZ,ProofFailure
+            LD   A,(HLL1STKL)
+            CP   $5A
+            JR   NZ,ProofFailure
+            LD   A,$A5
+            LD   (ProofStatus),A
+            HALT
+ProofFailure:
+            LD   A,$EE
+            LD   (ProofStatus),A
+            HALT

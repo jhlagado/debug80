@@ -1673,12 +1673,29 @@ describe("Nucleus Atom migration dry-run", () => {
         "utf8",
       );
       expect(root).toContain('%INCLUDE "stage7-ll1-parser.asm"');
+      expect(root).toContain('%INCLUDE "stage7-ll1-engine-proof-before-actions.asmi"');
       expect(root).toContain('%INCLUDE "../grammar/stage7-proof-actions.asmi"');
+      expect(root).toContain('%INCLUDE "stage7-ll1-engine-proof-after-actions.asmi"');
+      expect(root.indexOf('%INCLUDE "stage7-ll1-parser.asm"')).toBeLessThan(
+        root.indexOf('%INCLUDE "stage7-ll1-engine-proof-before-actions.asmi"'),
+      );
+      expect(root.indexOf('%INCLUDE "stage7-ll1-engine-proof-before-actions.asmi"')).toBeLessThan(
+        root.indexOf('%INCLUDE "../grammar/stage7-proof-actions.asmi"'),
+      );
+      expect(root.indexOf('%INCLUDE "../grammar/stage7-proof-actions.asmi"')).toBeLessThan(
+        root.indexOf('%INCLUDE "stage7-ll1-engine-proof-after-actions.asmi"'),
+      );
       const parser = await readFile(
         path.join(translatedRoot, "vertical-slice", "stage7-ll1-parser.asm"),
         "utf8",
       );
       expect(parser).toContain('%INCLUDE "../grammar/stage7-tables.asmi"');
+      const beforeActions = await readFile(
+        path.join(translatedRoot, "vertical-slice", "stage7-ll1-engine-proof-before-actions.asmi"),
+        "utf8",
+      );
+      expect(beforeActions).toMatch(/\bHLL1STKL\s+EQU\s+[A-Z0-9.]+\b/);
+      expect(beforeActions).not.toContain("HybridLL1StackBase+HybridLL1StackCapacity");
 
       const outcome = await runProofManifest(
         path.join(proofRoot, "stage7-ll1-engine-proof.json"),
