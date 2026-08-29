@@ -39,7 +39,7 @@ function usage(): string {
     '',
     'Options:',
     '  -o, --output <file>   Generated assembly path (default: <entry>.main.asm)',
-    '  --assembler <name>    Generated source/build backend: atom or azm (default: atom)',
+    '  --assembler <name>    Generated source/build backend: Atom or AZM; shared aliases accepted',
     '  --org <addr>          Assembly origin, e.g. $4000 (default: $4000)',
     '  --no-check            Generate only; skip register-contract checking (not with build)',
     '  --deps                Print the dependency report (writers/readers per cell) and exit',
@@ -154,7 +154,9 @@ export async function main(argv: string[]): Promise<number> {
           sourcePath: entry ?? 'generated .asm',
         });
       } catch {
-        console.error(`Invalid --assembler value: ${value ?? '(missing)'}. Expected atom or azm.`);
+        console.error(
+          `Invalid --assembler value: ${value ?? '(missing)'}. Expected an Atom or AZM selector.`,
+        );
         return 1;
       }
       continue;

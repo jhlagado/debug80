@@ -37,6 +37,9 @@ operations:
 node dist/src/cli.js build --assembler azm examples/counter.glim
 ```
 
+The assembler selector also accepts the shared Debug80 aliases, so existing
+project settings that name `ASM80` select the AZM-compatible path.
+
 Both build forms write the generated assembly, Intel HEX, binary, and a D8
 debug map. Lines inside your `begin`/`end`
 block bodies are attributed to the `.glim` file itself: a breakpoint set

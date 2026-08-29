@@ -88,8 +88,9 @@ node dist/src/cli.js build examples/dot.glim
 
 The command writes assembly, Intel HEX, binary, and a D8 debug map. Without
 `build`, Glimmer stops after generation and register-contract checking.
-Omitting `--assembler` selects Atom. Use `--assembler azm` for a program that
-depends on an AZM-only directive or operation.
+Omitting `--assembler` selects Atom. Use `--assembler azm`, or a shared alias
+such as `ASM80`, for a program that depends on an AZM-only directive or
+operation.
 
 The generated assembly is readable: API equates, change-flag constants,
 state storage, the runtime loop, binding polling, phase dispatch, wrapped user
