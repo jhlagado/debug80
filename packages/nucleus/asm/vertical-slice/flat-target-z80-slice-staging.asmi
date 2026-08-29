@@ -1,0 +1,53 @@
+            .org ReleasedGeneratedStagingBase
+Chapter21TargetPart1:
+            .db "record Cell",10
+            .db "    value as u8",10
+            .db "end",10
+            .db 10
+            .db "var template as Cell = (1)",10
+            .db "var cells as Cell[4] = [(0), (0), (0), (0)]",10
+            .db 10
+Chapter21TargetPart1End:
+Chapter21TargetPart2:
+            .db "sub cellAt(index as u8) as Cell",10
+            .db "    return cells[index]",10
+            .db "end",10
+            .db 10
+            .db "sub setCell(cell as Cell, value as u8)",10
+            .db "    cell.value = value",10
+            .db "end",10
+            .db 10
+            .db "sub main()",10
+            .db "    var index as u8",10
+            .db "    var code as u8",10
+            .db 10
+            .db "    for index = 0 until 4",10
+            .db "        cells[index] = template",10
+            .db "        setCell(template, index + 1)",10
+            .db "    end",10
+            .db 10
+            .db "    cells[0].value = cellAt(0).value",10
+            .db "    if cells[0].value = 1",10
+            .db "        writeOutputByte('Y') handle code",10
+            .db "            return",10
+            .db "        end",10
+            .db "    elseif cells[0].value = 0",10
+            .db "        writeOutputByte('N') handle code",10
+            .db "            return",10
+            .db "        end",10
+            .db "    end",10
+            .db "end",10
+Chapter21TargetPart2End:
+Chapter21TargetParts:
+            .db 1
+            .dw Chapter21TargetPart1,Chapter21TargetPart1End
+            .db 2
+            .dw Chapter21TargetPart2,Chapter21TargetPart2End
+Chapter21TargetPartBanks: .db 0,0
+Chapter21TargetDescriptor:
+            .dw NucleusRuntimeIdentity
+            .dw $8000,$1000
+            .dw $4000,$1000
+            .db 1
+            .db 1,0
+            .dw Chapter21TargetPartBanks

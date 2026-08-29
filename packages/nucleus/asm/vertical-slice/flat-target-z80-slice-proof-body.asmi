@@ -1,0 +1,1090 @@
+            .org ProofBase
+FTADIMG .equ $98CB ; captured descriptor image-base field
+FTCTX00 .equ $98D8 ; captured context runtime-base field
+FTCTX06 .equ $98DE ; captured context state-base field
+FTCTX0E .equ $98E6 ; captured context used-length field
+FTMAP01 .equ $9905 ; captured target map bank count
+FTMAP03 .equ $9907 ; captured target map used length
+FTMAP05 .equ $9909 ; captured target map origin
+FTMAP09 .equ $990D ; captured target map source length
+FTMPWRI .equ $9911 ; captured writable-base map field
+FTMPVEC .equ $9917 ; captured vector-length map field
+FTMPINI .equ $991B ; captured initialized-length map field
+FTMPBSS .equ $991D ; captured BSS-base map field
+FTMPSTK .equ $9921 ; captured stack-requirement map field
+FTMPDLA .equ $9924 ; captured data-load-address map field
+FTMPAGG .equ $9928 ; captured aggregate-base map field
+FTIXBKC .equ TargetDescriptorBankCount ; target descriptor bank-count field offset
+
+.routine out carry,zero clobbers sign,parity,halfCarry,A,BC,DE,HL,IX,IY
+ProofStart:
+            LD   SP,StackTop
+            XOR  A
+            LD   (ProofStatus),A
+            LD   (ProofCase),A
+            LD   (AdapterCommitted),A
+            LD   (AdapterAborted),A
+            LD   (AdapterMapFailure),A
+            LD   (AdapterCommitFailure),A
+            LD   HL,AdapterLogBase
+            LD   (AdapterCursor),HL
+            LD   HL,$F000
+            LD   DE,$1000
+            LD   A,10
+            LD   (ProofCase),A
+            CALL TargetValidateRegion
+            JP   C,ProofRegionFailure
+            LD   HL,$FFFF
+            LD   (EmitCursor),HL
+            LD   HL,1
+            LD   (EmitLimit),HL
+            LD   DE,1
+            LD   A,46
+            LD   (ProofCase),A
+            CALL TargetConsumeExtent
+            JP   C,ProofRegionFailure
+            LD   HL,(EmitCursor)
+            LD   A,H
+            OR   L
+            JP   NZ,ProofRegionFailure
+            LD   HL,(EmitLimit)
+            LD   A,H
+            OR   L
+            JP   NZ,ProofRegionFailure
+            LD   HL,$F001
+            LD   DE,$1000
+            LD   A,11
+            LD   (ProofCase),A
+            CALL TargetValidateRegion
+            JP   NC,ProofRegionFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetCapacity
+            JP   NZ,ProofRegionFailure
+            LD   HL,$8000
+            LD   A,12
+            LD   (ProofCase),A
+            LD   (TargetImageBase),HL
+            LD   HL,$1000
+            LD   (TargetImageCapacity),HL
+            LD   HL,$8F00
+            LD   (TargetWritableBase),HL
+            LD   HL,$0200
+            LD   (TargetWritableCapacity),HL
+            CALL TargetClassifyFlatLayout
+            JP   NC,ProofRegionFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetConfiguration
+            JP   NZ,ProofRegionFailure
+            LD   HL,$2000
+            LD   A,13
+            LD   (ProofCase),A
+            LD   (TargetImageCapacity),HL
+            LD   HL,$9000
+            LD   (TargetWritableBase),HL
+            LD   HL,$0100
+            LD   (TargetWritableCapacity),HL
+            CALL TargetClassifyFlatLayout
+            JP   C,ProofRegionFailure
+            LD   A,(TargetLayoutMode)
+            OR   A
+            JP   NZ,ProofRegionFailure
+            LD   A,14
+            LD   (ProofCase),A
+            LD   A,1
+            LD   HL,FlatTargetParts
+            LD   IX,FlatTargetEarlyWritableDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofLoadedFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetCapacity
+            JP   NZ,ProofLoadedFailure
+            LD   A,15
+            LD   (ProofCase),A
+            XOR  A
+            LD   (AdapterCommitted),A
+            LD   (AdapterAborted),A
+            LD   A,61
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterLogBase
+            LD   (AdapterCursor),HL
+            LD   A,1
+            LD   HL,FlatTargetParts
+            LD   IX,FlatTargetLoadedDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofLoadedFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetOutput
+            JP   NZ,ProofLoadedFailure
+            LD   A,(AdapterCommitted)
+            OR   A
+            JP   NZ,ProofLoadedFailure
+            LD   A,(AdapterAborted)
+            CP   1
+            JP   NZ,ProofLoadedFailure
+            LD   A,16
+            LD   (ProofCase),A
+            XOR  A
+            LD   (AdapterCommitted),A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterLogBase
+            LD   (AdapterCursor),HL
+            LD   A,1
+            LD   HL,FlatTargetParts
+            LD   IX,FlatTargetLoadedDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   C,ProofLoadedFailure
+            LD   A,(TargetLayoutMode)
+            OR   A
+            JP   NZ,ProofLoadedFailure
+            LD   HL,(FTCTX0E)
+            LD   DE,$8192
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofLoadedFailure
+            LD   HL,(FTMAP03)
+            LD   DE,$1048
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofLoadedFailure
+            LD   HL,(FTMAP05)
+            LD   A,H
+            OR   L
+            JP   NZ,ProofLoadedFailure
+            LD   HL,(FTMAP09)
+            LD   DE,$8192
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofLoadedFailure
+            LD   HL,(FTMPWRI)
+            LD   DE,$9000
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofLoadedFailure
+            LD   HL,(FTMPINI)
+            LD   DE,72
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofLoadedFailure
+            LD   HL,(FTMPDLA)
+            LD   DE,$9000
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofLoadedFailure
+            LD   HL,(FTMPAGG)
+            LD   A,H
+            OR   L
+            JP   NZ,ProofLoadedFailure
+            LD   HL,(AdapterCursor)
+            LD   DE,AdapterLogBase
+            OR   A
+            SBC  HL,DE
+            LD   (AdapterLoadedLogLength),HL
+            LD   B,H
+            LD   C,L
+            LD   HL,AdapterLogBase
+            LD   DE,AdapterLoadedLogBase
+            LDIR
+            LD   A,17
+            LD   (ProofCase),A
+            LD   A,1
+            LD   HL,FlatTargetParts
+            LD   IX,FlatTargetBadFlagsDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofConfigurationFailure
+            LD   A,(DiagnosticCode)
+            LD   (AdapterSavedDiagnostic),A
+            LD   A,(AdapterAborted)
+            OR   A
+            JP   NZ,ProofConfigurationFailure
+            LD   A,18
+            LD   (ProofCase),A
+            LD   A,1
+            LD   HL,FlatTargetParts
+            LD   IX,FlatTargetStackExactDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   C,ProofRegionFailure
+            LD   A,19
+            LD   (ProofCase),A
+            LD   A,1
+            LD   HL,FlatTargetParts
+            LD   IX,FlatTargetStackOverflowDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofRegionFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetCapacity
+            JP   NZ,ProofRegionFailure
+            XOR  A
+            LD   (AdapterCommitted),A
+            LD   (AdapterAborted),A
+            LD   A,20
+            LD   (ProofCase),A
+            LD   (AdapterFailureCountdown),A
+            LD   A,1
+            LD   HL,FlatTargetParts
+            LD   IX,FlatTargetDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofAtomicFailure
+            LD   A,21
+            LD   (ProofCase),A
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetOutput
+            JP   NZ,ProofAtomicFailure
+            LD   A,22
+            LD   (ProofCase),A
+            LD   A,(AdapterCommitted)
+            OR   A
+            JP   NZ,ProofAtomicFailure
+            LD   A,23
+            LD   (ProofCase),A
+            LD   A,(AdapterAborted)
+            CP   1
+            JP   NZ,ProofAtomicFailure
+            LD   A,24
+            LD   (ProofCase),A
+            LD   HL,(AdapterCursor)
+            LD   DE,AdapterLogBase
+            OR   A
+            SBC  HL,DE
+            LD   A,H
+            OR   L
+            JP   Z,ProofAtomicFailure
+            LD   A,30
+            LD   (ProofCase),A
+            XOR  A
+            LD   (AdapterCommitted),A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            INC  A
+            LD   (AdapterMapFailure),A
+            LD   HL,AdapterLogBase
+            LD   (AdapterCursor),HL
+            LD   A,1
+            LD   HL,FlatTargetTrapParts
+            LD   IX,FlatTargetDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofAtomicFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetOutput
+            JP   NZ,ProofAtomicFailure
+            LD   A,(AdapterCommitted)
+            OR   A
+            JP   NZ,ProofAtomicFailure
+            LD   A,(AdapterAborted)
+            CP   1
+            JP   NZ,ProofAtomicFailure
+            LD   HL,(AdapterCursor)
+            LD   DE,AdapterLogBase
+            OR   A
+            SBC  HL,DE
+            LD   (AdapterFailedLogLength),HL
+            LD   B,H
+            LD   C,L
+            LD   HL,AdapterLogBase
+            LD   DE,AdapterFailedLogBase
+            LDIR
+            LD   A,25
+            LD   (ProofCase),A
+            XOR  A
+            LD   (AdapterCommitted),A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   (AdapterMapFailure),A
+            LD   HL,AdapterLogBase
+            LD   (AdapterCursor),HL
+            LD   A,1
+            LD   HL,FlatTargetParts
+            LD   IX,FlatTargetDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   C,ProofCompileFailure
+            LD   A,(AdapterCommitted)
+            CP   1
+            JP   NZ,ProofCommitFailure
+            LD   A,(AdapterAborted)
+            OR   A
+            JP   NZ,ProofCommitFailure
+            LD   HL,(FTADIMG)
+            LD   DE,$8000
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofBeginFailure
+            LD   A,(TargetLayoutMode)
+            CP   TargetLayoutRom
+            JP   NZ,ProofRegionFailure
+            LD   HL,(FTCTX00)
+            LD   DE,$8003
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofContextFailure
+            LD   HL,(FTCTX06)
+            LD   DE,$4021
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofContextFailure
+            LD   HL,(FTMAP01)
+            LD   DE,$8000
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofMapFailure
+            LD   HL,(FTMAP05)
+            LD   DE,$81AA
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofMapFailure
+            LD   HL,(FTMPWRI)
+            LD   DE,$4000
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofMapFailure
+            LD   HL,(FTMPVEC)
+            LD   DE,NucleusRuntimeVectorLength
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofMapFailure
+            LD   HL,(FTMPINI)
+            LD   DE,72
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofMapFailure
+            LD   HL,(FTMPBSS)
+            LD   DE,$4048
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofMapFailure
+            LD   HL,(FTMPSTK)
+            LD   DE,TargetStackRequirement
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofMapFailure
+            LD   HL,(FTMPDLA)
+            LD   DE,$81AA
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofMapFailure
+            LD   HL,(AdapterCursor)
+            LD   DE,AdapterLogBase
+            OR   A
+            SBC  HL,DE
+            LD   (AdapterLogLength),HL
+            LD   A,H
+            OR   L
+            JP   Z,ProofLogFailure
+            LD   B,H
+            LD   C,L
+            LD   HL,AdapterLogBase
+            LD   DE,AdapterSuccessLogBase
+            LDIR
+            LD   HL,AdapterCapturedMap
+            LD   DE,AdapterSuccessMap
+            LD   BC,TargetMapSize
+            LDIR
+            LD   HL,(SourceProvenanceLength)
+            LD   (SourceProvenanceSuccessLength),HL
+            LD   B,H
+            LD   C,L
+            LD   HL,SourceProvenanceLogBase
+            LD   DE,SourceProvenanceSuccessLogBase
+            LDIR
+
+            XOR  A
+            LD   (AdapterCommitted),A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterLogBase
+            LD   (AdapterCursor),HL
+            LD   A,1
+            LD   HL,FlatTargetTrapParts
+            LD   IX,FlatTargetDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   C,ProofCompileFailure
+            LD   HL,(AdapterCursor)
+            LD   DE,AdapterLogBase
+            OR   A
+            SBC  HL,DE
+            LD   (AdapterTrapLogLength),HL
+            LD   B,H
+            LD   C,L
+            LD   HL,AdapterLogBase
+            LD   DE,AdapterTrapLogBase
+            LDIR
+            LD   HL,AdapterCapturedMap
+            LD   DE,AdapterTrapMap
+            LD   BC,TargetMapSize
+            LDIR
+
+            XOR  A
+            LD   (AdapterCommitted),A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterLogBase
+            LD   (AdapterCursor),HL
+            LD   A,1
+            LD   HL,FlatTargetUnhandledParts
+            LD   IX,FlatTargetDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   C,ProofCompileFailure
+            LD   HL,(AdapterCursor)
+            LD   DE,AdapterLogBase
+            OR   A
+            SBC  HL,DE
+            LD   (AdapterUnhandledLogLength),HL
+            LD   B,H
+            LD   C,L
+            LD   HL,AdapterLogBase
+            LD   DE,AdapterUnhandledLogBase
+            LDIR
+            LD   HL,AdapterCapturedMap
+            LD   DE,AdapterUnhandledMap
+            LD   BC,TargetMapSize
+            LDIR
+
+            LD   A,(DiagnosticCode)
+            LD   (AdapterSavedDiagnostic),A
+
+            LD   A,40
+            LD   (ProofCase),A
+            LD   A,2
+            LD   HL,BankedTargetParts
+            LD   IX,BankedInvalidPartDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofConfigurationFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetConfiguration
+            JP   NZ,ProofConfigurationFailure
+
+            LD   A,41
+            LD   (ProofCase),A
+            LD   A,2
+            LD   HL,BankedTargetParts
+            LD   IX,BankedWrongEntryDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofConfigurationFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetConfiguration
+            JP   NZ,ProofConfigurationFailure
+
+            LD   A,42
+            LD   (ProofCase),A
+            LD   A,2
+            LD   HL,BankedConstantFailureParts
+            LD   IX,BankedFailureDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofConfigurationFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetConfiguration
+            JP   NZ,ProofConfigurationFailure
+
+            LD   A,43
+            LD   (ProofCase),A
+            XOR  A
+            LD   (AdapterCommitted),A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterLogBase
+            LD   (AdapterCursor),HL
+            LD   A,2
+            LD   HL,BankedTargetParts
+            LD   IX,BankedEntryOverflowDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofConfigurationFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetCapacity
+            JP   NZ,ProofConfigurationFailure
+            LD   A,(AdapterAborted)
+            DEC  A
+            JP   NZ,ProofAtomicFailure
+            LD   A,(AdapterCommitted)
+            OR   A
+            JP   NZ,ProofAtomicFailure
+
+            LD   A,44
+            LD   (ProofCase),A
+            XOR  A
+            LD   (AdapterCommitted),A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterLogBase
+            LD   (AdapterCursor),HL
+            LD   A,2
+            LD   HL,BankedLargeParts
+            LD   IX,BankedOtherOverflowDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofConfigurationFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetCapacity
+            JP   NZ,ProofFail
+            LD   A,(AdapterAborted)
+            DEC  A
+            JP   NZ,ProofAtomicFailure
+            LD   A,(AdapterCommitted)
+            OR   A
+            JP   NZ,ProofAtomicFailure
+
+            LD   A,45
+            LD   (ProofCase),A
+            XOR  A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterLogBase
+            LD   (AdapterCursor),HL
+            LD   A,2
+            LD   HL,BankedParameterFailureParts
+            LD   IX,BankedFailureDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofConfigurationFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetConfiguration
+            JP   NZ,ProofFail
+
+            LD   A,46
+            LD   (ProofCase),A
+            XOR  A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterLogBase
+            LD   (AdapterCursor),HL
+            LD   A,2
+            LD   HL,BankedResultFailureParts
+            LD   IX,BankedFailureDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofConfigurationFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetConfiguration
+            JP   NZ,ProofFail
+
+            LD   A,47
+            LD   (ProofCase),A
+            XOR  A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterLogBase
+            LD   (AdapterCursor),HL
+            LD   A,2
+            LD   HL,BankedForwardFailureParts
+            LD   IX,BankedFailureDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   NC,ProofConfigurationFailure
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticTargetConfiguration
+            JP   NZ,ProofFail
+
+            XOR  A
+            LD   (AdapterCommitted),A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterBankedTrapLogBase
+            LD   (AdapterCursor),HL
+            LD   A,2
+            LD   HL,BankedTrapParts
+            LD   IX,BankedTargetDescriptor
+            CALL CompileTargetAggregateCallParts
+            JP   C,ProofCompileFailure
+            LD   HL,(AdapterCursor)
+            LD   DE,AdapterBankedTrapLogBase
+            OR   A
+            SBC  HL,DE
+            LD   (AdapterBankedTrapLogLength),HL
+
+            XOR  A
+            LD   (AdapterCommitted),A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterEntry1LogBase
+            LD   (AdapterCursor),HL
+            LD   A,1
+            LD   HL,BankedTargetEntry1Parts
+            LD   IX,BankedTargetEntry1Descriptor
+            CALL CompileTargetAggregateCallParts
+            JR   C,ProofCompileFailure
+            LD   HL,(AdapterCursor)
+            LD   DE,AdapterEntry1LogBase
+            OR   A
+            SBC  HL,DE
+            LD   (AdapterEntry1LogLength),HL
+
+            XOR  A
+            LD   (AdapterCommitted),A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterLogBase
+            LD   (AdapterCursor),HL
+            LD   A,2
+            LD   HL,BankedTargetParts
+            LD   IX,BankedTargetDescriptor
+            CALL CompileTargetAggregateCallParts
+            JR   C,ProofCompileFailure
+            LD   HL,(AdapterCursor)
+            LD   DE,AdapterLogBase
+            OR   A
+            SBC  HL,DE
+            LD   (AdapterBankedLogLength),HL
+
+            XOR  A
+            LD   (AdapterCommitted),A
+            LD   (AdapterAborted),A
+            LD   (AdapterFailureCountdown),A
+            LD   HL,AdapterChapter21LogBase
+            LD   (AdapterCursor),HL
+            LD   A,2
+            LD   HL,Chapter21TargetParts
+            LD   IX,Chapter21TargetDescriptor
+            CALL CompileTargetAggregateCallParts
+            JR   C,ProofCompileFailure
+            LD   HL,(AdapterCursor)
+            LD   DE,AdapterChapter21LogBase
+            OR   A
+            SBC  HL,DE
+            LD   (AdapterChapter21LogLength),HL
+            LD   A,(AdapterSavedDiagnostic)
+            LD   (DiagnosticCode),A
+            LD   A,$A5
+            LD   (ProofStatus),A
+            XOR  A
+            LD   (ProofCase),A
+            HALT
+
+ProofCompileFailure: LD A,1
+            JR   ProofFail
+ProofCommitFailure:  LD A,2
+            JR   ProofFail
+ProofBeginFailure:   LD A,3
+            JR   ProofFail
+ProofContextFailure: LD A,4
+            JR   ProofFail
+ProofMapFailure:     LD A,5
+            JR   ProofFail
+ProofLogFailure:     LD A,6
+            JR   ProofFail
+ProofRegionFailure:  LD A,(ProofCase)
+            JR   ProofFail
+ProofLoadedFailure:  LD A,(ProofCase)
+            JR   ProofFail
+ProofAtomicFailure:  LD A,(ProofCase)
+            JR   ProofFail
+ProofConfigurationFailure: LD A,(ProofCase)
+ProofFail:
+            LD   (ProofCase),A
+            LD   A,$E1
+            LD   (ProofStatus),A
+            HALT
+
+; Reserve A bytes atomically in the bounded proof-only operation log.
+.routine in A out A,IY,carry,zero clobbers sign,parity,halfCarry,DE,HL
+AdapterReserve:
+            LD   E,A
+            LD   A,(AdapterFailureCountdown)
+            OR   A
+            JR   Z,AdapterReserveCapacity
+            DEC  A
+            LD   (AdapterFailureCountdown),A
+            JR   NZ,AdapterReserveCapacity
+            LD   A,DiagnosticTargetOutput
+            SCF
+            RET
+AdapterReserveCapacity:
+            LD   A,E
+            LD   D,0
+            LD   IY,(AdapterCursor)
+            PUSH IY
+            POP  HL
+            ADD  HL,DE
+            LD   DE,AdapterLogLimit
+            OR   A
+            SBC  HL,DE
+            JR   C,AdapterReserveReady
+            JR   Z,AdapterReserveReady
+            LD   A,DiagnosticTargetOutput
+            SCF
+            RET
+AdapterReserveReady:
+            ADD  HL,DE
+            LD   (AdapterCursor),HL
+            OR   A
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,HL
+TargetSinkSourceProvenanceReset:
+            LD   HL,SourceProvenanceLogBase
+            LD   (SourceProvenanceCursor),HL
+            XOR  A
+            LD   (SourceProvenanceLength),A
+            LD   (SourceProvenanceLength+1),A
+            RET
+
+; A is the one-based source part, C is the output bank, and DE..HL is the
+; generated code range. This first resident emission is intentionally coarse:
+; line and column are fixed at 1 and confidence is low until the semantic
+; transcript carries per-operation source positions.
+.routine in A,C,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL,IY
+TargetSinkSourceProvenanceSinglePartCode:
+            LD   (SourceProvenancePart),A
+            LD   A,C
+            LD   (SourceProvenanceBank),A
+            LD   (SourceProvenanceStart),DE
+            LD   (SourceProvenanceEnd),HL
+            LD   IY,(SourceProvenanceCursor)
+            PUSH IY
+            POP  HL
+            LD   DE,12
+            ADD  HL,DE
+            LD   DE,SourceProvenanceLogLimit
+            OR   A
+            SBC  HL,DE
+            JR   C,SourceProvenanceReserveReady
+            JR   Z,SourceProvenanceReserveReady
+            LD   A,DiagnosticTargetOutput
+            SCF
+            RET
+SourceProvenanceReserveReady:
+            ADD  HL,DE
+            LD   (SourceProvenanceCursor),HL
+            LD   DE,SourceProvenanceLogBase
+            OR   A
+            SBC  HL,DE
+            LD   (SourceProvenanceLength),HL
+            LD   A,(SourceProvenancePart)
+            LD   (IY+0),A
+            LD   A,(SourceProvenanceBank)
+            LD   (IY+1),A
+            LD   (IY+2),1
+            LD   (IY+3),0
+            LD   (IY+4),1
+            LD   (IY+5),0
+            LD   HL,(SourceProvenanceStart)
+            LD   (IY+6),L
+            LD   (IY+7),H
+            LD   HL,(SourceProvenanceEnd)
+            LD   (IY+8),L
+            LD   (IY+9),H
+            LD   (IY+10),1
+            LD   (IY+11),0
+            OR   A
+            RET
+
+.routine in IX out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IY
+TargetSinkBegin:
+            LD   HL,AdapterCapturedBegin
+            LD   B,TargetDescriptorSize
+TargetSinkBeginCopy:
+            LD   A,(IX+0)
+            LD   (HL),A
+            INC  IX
+            INC  HL
+            DJNZ TargetSinkBeginCopy
+            LD   A,1
+            LD   (AdapterOpen),A
+            OR   A
+            RET
+
+.routine in A,C,HL out A,carry,zero clobbers sign,parity,halfCarry,DE
+TargetSinkImageByte:
+            PUSH IY
+            PUSH AF
+            PUSH BC
+            PUSH HL
+            LD   A,7
+            CALL AdapterReserve
+            JR   C,TargetSinkImageByteReserveFailure
+            POP  HL
+            POP  BC
+            POP  AF
+            LD   (IY+0),1
+            LD   (IY+1),C
+            LD   (IY+2),L
+            LD   (IY+3),H
+            LD   (IY+4),1
+            LD   (IY+5),0
+            LD   (IY+6),A
+            POP  IY
+            OR   A
+            RET
+TargetSinkImageByteFailure:
+            POP  IY
+            RET
+TargetSinkImageByteReserveFailure:
+            LD   E,A
+            POP  HL
+            POP  BC
+            POP  AF
+            POP  IY
+            LD   A,E
+            SCF
+            RET
+
+.routine in A,BC,DE,HL,IX out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+TargetSinkRuntimeImage:
+            PUSH AF
+            LD   A,3
+            LD   (AdapterRuntimeKind),A
+            POP  AF
+            JR   TargetSinkRuntimeSelected
+.routine in A,BC,DE,HL,IX out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+TargetSinkRuntimeInitialImage:
+            PUSH AF
+            LD   A,4
+            LD   (AdapterRuntimeKind),A
+            POP  AF
+TargetSinkRuntimeSelected:
+            LD   (AdapterRuntimeBank),A
+            LD   (AdapterRuntimeLength),BC
+            LD   (AdapterRuntimeIdentity),DE
+            LD   (AdapterRuntimeAddress),HL
+            LD   (AdapterRuntimeContext),IX
+            LD   A,8+TargetContextSize
+            CALL AdapterReserve
+            RET  C
+            LD   A,(AdapterRuntimeBank)
+            LD   BC,(AdapterRuntimeLength)
+            LD   DE,(AdapterRuntimeIdentity)
+            LD   HL,(AdapterRuntimeAddress)
+            LD   IX,(AdapterRuntimeContext)
+            LD   A,(AdapterRuntimeKind)
+            LD   (IY+0),A
+            LD   A,(AdapterRuntimeBank)
+            LD   (IY+1),A
+            LD   (IY+2),L
+            LD   (IY+3),H
+            LD   (IY+4),C
+            LD   (IY+5),B
+            LD   (IY+6),E
+            LD   (IY+7),D
+            LD   (AdapterRuntimeLog),IY
+            PUSH IY
+            POP  HL
+            LD   DE,8
+            ADD  HL,DE
+            EX   DE,HL
+            PUSH IX
+            POP  HL
+            LD   BC,TargetContextSize
+            LDIR
+            LD   IY,(AdapterRuntimeLog)
+            PUSH IY
+            POP  HL
+            LD   DE,8
+            ADD  HL,DE
+            LD   DE,AdapterCapturedContext
+            LD   BC,TargetContextSize
+            LDIR
+            LD   IY,(AdapterRuntimeLog)
+            OR   A
+            RET
+
+.routine in A,C,HL out A,carry,zero clobbers sign,parity,halfCarry,DE
+TargetSinkPatchByte:
+            PUSH IY
+            PUSH AF
+            PUSH BC
+            PUSH HL
+            LD   A,7
+            CALL AdapterReserve
+            JR   C,TargetSinkPatchByteReserveFailure
+            POP  HL
+            POP  BC
+            POP  AF
+            LD   (IY+0),2
+            LD   (IY+1),C
+            LD   (IY+2),L
+            LD   (IY+3),H
+            LD   (IY+4),1
+            LD   (IY+5),0
+            LD   (IY+6),A
+            POP  IY
+            OR   A
+            RET
+TargetSinkPatchByteFailure:
+            POP  IY
+            RET
+TargetSinkPatchByteReserveFailure:
+            LD   E,A
+            POP  HL
+            POP  BC
+            POP  AF
+            POP  IY
+            LD   A,E
+            SCF
+            RET
+
+.routine in C,DE,HL out A,carry,zero clobbers sign,parity,halfCarry
+TargetSinkPatchWord:
+            PUSH IY
+            PUSH BC
+            PUSH DE
+            PUSH HL
+            LD   A,8
+            CALL AdapterReserve
+            POP  HL
+            POP  DE
+            POP  BC
+            JR   C,TargetSinkPatchWordFailure
+            LD   (IY+0),2
+            LD   (IY+1),C
+            LD   (IY+2),E
+            LD   (IY+3),D
+            LD   (IY+4),2
+            LD   (IY+5),0
+            LD   (IY+6),L
+            LD   (IY+7),H
+            POP  IY
+            OR   A
+            RET
+TargetSinkPatchWordFailure:
+            POP  IY
+            RET
+
+.routine in IX out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IY
+TargetSinkMapFlat:
+            LD   A,(AdapterMapFailure)
+            OR   A
+            JR   Z,TargetSinkMapReady
+            LD   A,DiagnosticTargetOutput
+            SCF
+            RET
+TargetSinkMapReady:
+            LD   HL,AdapterCapturedMap
+            LD   B,TargetMapSize
+TargetSinkMapCopy:
+            LD   A,(IX+0)
+            LD   (HL),A
+            INC  IX
+            INC  HL
+            DJNZ TargetSinkMapCopy
+            OR   A
+            RET
+
+.routine in HL,IX,IY out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+TargetSinkMapBanked:
+            LD   (AdapterMapRoPointer),HL
+            LD   A,(IX+FTIXBKC)
+            LD   B,A
+            LD   C,A
+            LD   HL,AdapterCapturedBankCursors
+            LD   DE,AdapterCapturedBankRemaining
+TargetSinkMapBankedCursorLoop:
+            LD   A,(IY+0)
+            LD   (HL),A
+            INC  HL
+            LD   A,(IY+1)
+            LD   (HL),A
+            INC  HL
+            LD   A,(IY+2)
+            LD   (DE),A
+            INC  DE
+            LD   A,(IY+3)
+            LD   (DE),A
+            INC  DE
+            PUSH DE
+            LD   DE,TargetBankStateSize
+            ADD  IY,DE
+            POP  DE
+            DJNZ TargetSinkMapBankedCursorLoop
+            LD   HL,(AdapterMapRoPointer)
+            LD   DE,AdapterCapturedBankRoLengths
+            LD   A,C
+            ADD  A,A
+            LD   B,A
+TargetSinkMapBankedRoLoop:
+            LD   A,(HL)
+            LD   (DE),A
+            INC  HL
+            INC  DE
+            DJNZ TargetSinkMapBankedRoLoop
+            OR   A
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry
+TargetSinkCommit:
+            LD   A,(AdapterCommitFailure)
+            OR   A
+            JR   Z,TargetSinkCommitReady
+            LD   A,DiagnosticTargetOutput
+            SCF
+            RET
+TargetSinkCommitReady:
+            LD   A,1
+            LD   (AdapterCommitted),A
+            OR   A
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry
+TargetSinkAbort:
+            LD   A,1
+            LD   (AdapterAborted),A
+            OR   A
+            RET
+
+ProofStatus: .db 0
+ProofCase:   .db 0
+AdapterOpen: .db 0
+AdapterCommitted: .db 0
+AdapterAborted:   .db 0
+AdapterCursor:    .dw 0
+AdapterLogLength: .dw 0
+AdapterLoadedLogLength: .dw 0
+AdapterTrapLogLength: .dw 0
+AdapterUnhandledLogLength: .dw 0
+AdapterBankedLogLength: .dw 0
+AdapterEntry1LogLength: .dw 0
+AdapterBankedTrapLogLength: .dw 0
+AdapterChapter21LogLength: .dw 0
+AdapterFailedLogLength: .dw 0
+AdapterFailureCountdown: .db 0
+AdapterMapFailure:       .db 0
+AdapterCommitFailure:    .db 0
+AdapterSavedDiagnostic:  .db 0
+AdapterCapturedBegin:   .ds TargetDescriptorSize
+AdapterCapturedContext: .ds TargetContextSize
+AdapterCapturedBankCursors: .ds TargetBankCapacity*2
+AdapterCapturedBank0Cursor .equ AdapterCapturedBankCursors
+AdapterCapturedBank1Cursor .equ AdapterCapturedBankCursors+2
+AdapterCapturedBankRemaining: .ds TargetBankCapacity*2
+AdapterCapturedBank0Remaining .equ AdapterCapturedBankRemaining
+AdapterCapturedBank1Remaining .equ AdapterCapturedBankRemaining+2
+AdapterCapturedBankRoLengths: .ds TargetBankCapacity*2
+AdapterCapturedBank0RoLength .equ AdapterCapturedBankRoLengths
+AdapterCapturedBank1RoLength .equ AdapterCapturedBankRoLengths+2
+AdapterMapRoPointer: .dw 0
+AdapterCapturedMap:     .ds TargetMapSize
+AdapterCapturedBankedMapLength: .dw 0
+AdapterCapturedBankedMap: .ds 1
+AdapterSuccessMap:      .ds TargetMapSize
+AdapterTrapMap:         .ds TargetMapSize
+AdapterUnhandledMap:    .ds TargetMapSize
+AdapterTrapUsedLength       .equ AdapterTrapMap+$03
+AdapterTrapCodeLength       .equ AdapterTrapMap+$0B
+AdapterUnhandledUsedLength  .equ AdapterUnhandledMap+$03
+AdapterUnhandledCodeLength  .equ AdapterUnhandledMap+$0B
+AdapterCapturedRuntimeBase .equ FTCTX00
+AdapterCapturedStateBase   .equ FTCTX06
+AdapterCapturedUsedLength  .equ FTMAP03
+AdapterCapturedCodeLength  .equ AdapterCapturedMap+$0B
+AdapterRuntimeBank:     .db 0
+AdapterRuntimeKind:     .db 0
+AdapterRuntimeLength:   .dw 0
+AdapterRuntimeIdentity: .dw 0
+AdapterRuntimeAddress:  .dw 0
+AdapterRuntimeContext:  .dw 0
+AdapterRuntimeLog:      .dw 0
+AdapterRuntimeContextPointer .equ AdapterRuntimeContext
+SourceProvenanceCursor: .dw 0
+SourceProvenanceLength: .dw 0
+SourceProvenanceSuccessLength: .dw 0
+SourceProvenancePart:   .db 0
+SourceProvenanceBank:   .db 0
+SourceProvenanceStart:  .dw 0
+SourceProvenanceEnd:    .dw 0
+ProofEnd:
+
+SourceProvenanceLogBase .equ $99C0
+SourceProvenanceSuccessLogBase .equ $99D0
+SourceProvenanceLogLimit .equ $99F0
+AdapterLoadedLogBase    .equ $9A00
+AdapterSuccessLogBase   .equ $9D00
+AdapterTrapLogBase      .equ $A100
+AdapterUnhandledLogBase .equ $A600
+AdapterBankedTrapLogBase .equ $AD00
+AdapterLogBase          .equ $B500
+AdapterFailedLogBase    .equ $C700
+AdapterEntry1LogBase    .equ $CC00
+AdapterChapter21LogBase .equ $D100
+AdapterLogLimit         .equ $F000

@@ -5,7 +5,7 @@ Date: 2026-08-29
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current reusable-transform baseline HEAD: `47b801fb`
+Current reusable-transform baseline HEAD: `f17111c5`
 
 ## Purpose
 
@@ -24,22 +24,22 @@ Measured files:
 
 | Item | Measured value |
 | --- | ---: |
-| Assembly files, `.asm` and `.asmi` | 133 |
-| Source lines | 29,789 |
-| Defined assembler symbols detected | 4,045 |
+| Assembly files, `.asm` and `.asmi` | 150 |
+| Source lines | 29,831 |
+| Defined assembler symbols detected | 4,053 |
 | Defined assembler symbols longer than eight characters | 3,910 |
 | Long labels classed as dot-local candidates | 750 |
 | Long symbols still needing global treatment | 3,160 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
-| Include-after-header violations | 108 |
+| Include-after-header violations | 97 |
 | Forward-dependent emitted-statement symbol arithmetic sites | 0 |
-| Current permanent-source blockers | 108 |
+| Current permanent-source blockers | 97 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
 | Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 0 |
-| Permanent blocker: include after header | 108 |
+| Permanent blocker: include after header | 97 |
 | Permanent blocker: feature definition after Atom entry header | 0 |
 | Proof-manifest symbol mappings | 146 |
 | One-past-address-space proof-limit mappings | 4 |
@@ -326,30 +326,24 @@ grouping:
 
 | Batch | Files | Late includes | Risk | Recommendation |
 | --- | ---: | ---: | --- | --- |
-| Proof composition files | 17 | 131 | Medium | Source-layout blockers are cleared for the three large overlapping-memory proof rows; those rows now wait only on the proof memory map. Continue applying the same section-owned include layout to any remaining proof-composition source as it moves from preview to permanent Atom source. |
-| Module composition files | 5 | 9 | High | Second batch. These includes occur inside parser/codegen implementation modules (`loop-parser`, `aggregate-call-parser`, `typed-expression-z80`, `stage7-ll1-parser`, `typed-expression-parser`). Treat these as real module-boundary work, not mechanical line moves. |
-| Runtime wrapper files | 3 | 3 | Low to medium | The target runtime link entry now has a permanent Atom layout and byte-equivalence proof. The raw source still records the original wrapper includes until the permanent source tree replaces the current source tree. |
+| Proof composition files | 11 | 91 | Medium | Source-layout blockers are cleared for several proof rows, including `flat-target-z80-slice-proof.asm`; remaining proof entries should keep using the same section-owned include layout as they move from preview to permanent Atom source. |
+| Module composition files | 2 | 6 | High | Second batch. These includes occur inside parser/codegen implementation modules (`loop-parser`, `typed-expression-z80`). Treat these as real module-boundary work, not mechanical line moves. |
+| Runtime wrapper files | 1 | 1 | Low to medium | The target runtime link entry has a permanent Atom layout and byte-equivalence proof. The raw source still records one wrapper include until the permanent source tree replaces the current source tree. |
 
 The first permanent-source batch should be the proof composition files, because
 they account for most of the count and are structurally repetitive:
 
-- `vertical-slice/flat-target-z80-slice-proof.asm` — 11
 - `vertical-slice/aggregate-z80-slice-proof.asm` — 10
 - `vertical-slice/stage7-ll1-aggregate-call-z80-slice-proof.asm` — 10
 - `vertical-slice/stage7-parser-coverage-proof.asmi` — 10
 - `vertical-slice/stage8-failure-z80-slice-proof.asm` — 10
 - `vertical-slice/stage9-conformance-z80-slice-proof.asm` — 10
-- `vertical-slice/expression-z80-slice-proof.asm` — 9
 - `vertical-slice/structured-control-z80-slice-proof.asm` — 9
 - `vertical-slice/typed-expression-z80-slice-proof.asm` — 9
-- `vertical-slice/array-z80-slice-proof.asm` — 8
-- `vertical-slice/call-z80-slice-proof.asm` — 8
 - `vertical-slice/loop-z80-slice-proof.asm` — 8
 - `vertical-slice/loop-compiler-slice-proof.asm` — 6
 - `vertical-slice/z80-slice-proof.asm` — 6
-- `vertical-slice/compiler-slice-proof.asm` — 4
 - `vertical-slice/stage7-ll1-engine-proof.asm` — 2
-- `vertical-slice/stage7-ll1-parser-coverage-proof.asm` — 1
 
 Do not move those include lines to the top and assume correctness. Many of
 the current files use surrounding labels such as `TokenizerCodeStart` /
@@ -446,8 +440,11 @@ length, aggregate field-table probes, and symbol-table probes. The aliases make
 each emitted operand a single short symbol while leaving the existing proof
 layout and byte output unchanged.
 
-`flat-target-z80-slice-proof.asm` now names its captured descriptor and target
-map fields before emitting those addresses.
+`flat-target-z80-slice-proof.asm` now uses the same physical section-owner
+layout as the other promoted proof entries. Its generated-base compatibility
+fragment supplies the legacy `GeneratedBase` alias before `loop-z80-state.asmi`,
+and its proof-body fragment owns the captured descriptor, context, and target
+map aliases used by the flat target-output checks.
 
 The two dispatcher offset measurement artifacts now name their page-local table
 offsets with single-symbol aliases. This closes the
@@ -610,25 +607,25 @@ modules after an `.ORG` and section label:
 
 | Source file | Measured violations | First line |
 | --- | ---: | ---: |
-| `vertical-slice/flat-target-z80-slice-proof.asm` | 11 | 18 |
-| `vertical-slice/aggregate-z80-slice-proof.asm` | 10 | 15 |
-| `vertical-slice/stage7-ll1-aggregate-call-z80-slice-proof.asm` | 10 | 16 |
-| `vertical-slice/stage7-parser-coverage-proof.asmi` | 10 | 14 |
-| `vertical-slice/stage8-failure-z80-slice-proof.asm` | 10 | 16 |
-| `vertical-slice/stage9-conformance-z80-slice-proof.asm` | 10 | 17 |
+| `vertical-slice/aggregate-z80-slice-proof.asm` | 10 | 26 |
+| `vertical-slice/stage7-ll1-aggregate-call-z80-slice-proof.asm` | 10 | 19 |
+| `vertical-slice/stage7-parser-coverage-proof.asmi` | 10 | 13 |
+| `vertical-slice/stage8-failure-z80-slice-proof.asm` | 10 | 13 |
+| `vertical-slice/stage9-conformance-z80-slice-proof.asm` | 10 | 16 |
+| `vertical-slice/structured-control-z80-slice-proof.asm` | 9 | 12 |
 
 The largest current target groups show why this is not a safe blind move:
 
 | Target include | Measured uses | Target class |
 | --- | ---: | --- |
-| `vertical-slice/source-adapter.asm` | 15 | code |
-| `vertical-slice/loop-keywords.asmi` | 13 | data |
-| `vertical-slice/loop-parser.asm` | 13 | mixed code/data |
-| `vertical-slice/loop-semantic-sink.asm` | 13 | code |
-| `vertical-slice/loop-symbols.asm` | 13 | code |
-| `vertical-slice/loop-tokenizer.asm` | 13 | mixed code/data |
-| `vertical-slice/loop-z80-sink.asm` | 12 | mixed code/data |
-| `vertical-slice/proof-z80-runtime.asm` | 12 | code |
+| `vertical-slice/source-adapter.asm` | 10 | code |
+| `vertical-slice/loop-keywords.asmi` | 9 | data |
+| `vertical-slice/loop-parser.asm` | 9 | mixed code/data |
+| `vertical-slice/loop-semantic-sink.asm` | 9 | code |
+| `vertical-slice/loop-symbols.asm` | 9 | code |
+| `vertical-slice/loop-tokenizer.asm` | 9 | mixed code/data |
+| `vertical-slice/loop-z80-sink.asm` | 8 | mixed code/data |
+| `vertical-slice/proof-z80-runtime.asm` | 8 | code |
 
 The first cleanup pass moved the state-layout includes into strict headers by
 adding small proof-mode config includes for `SegmentedOutput`. That removed the
