@@ -96,10 +96,9 @@ state, and other information required for correct emission, but it does not
 need a complete syntax tree or general whole-program inference.
 
 Declarations precede use. Explicit forward routine declarations permit direct
-and mutual call cycles without a second source pass. An external build driver
-reads a flat ordered manifest and supplies a multipart logical source stream;
-the compiler contains no filesystem search, import resolver, or dependency
-reordering algorithm.
+and mutual call cycles without a second source pass. An external packaging
+layer prepares the ordered multipart source stream; the compiler contains no
+filesystem search, import resolver, or dependency-reordering algorithm.
 
 Generated output follows the same single-pass boundary. The compiler consumes
 its private checked semantic transcript once and submits target-addressed image
@@ -149,10 +148,10 @@ it is a redesign.
 ### Target placement and interrupt boundary
 
 Nucleus source contains no physical placement, and a target description
-contains no source-symbol reference. The external source manifest orders
-declarations. The target profile supplies bounded regions and may assign source
-parts to banks by manifest ordinal. The compiler assigns offsets, selects local
-or far calls, and reports the resulting addresses.
+contains no source-symbol reference. Source preparation orders declarations.
+The target profile supplies bounded regions and may assign source parts to
+banks by source-part ordinal. The compiler assigns offsets, selects local or
+far calls, and reports the resulting addresses.
 
 A banked ROM is one compilation and one program distributed across banks. It
 has one `main`, one startup, one writable region outside the bank window, and
@@ -207,10 +206,12 @@ A forward declaration supplies the complete routine signature once. Its later
 definition uses the abbreviated `sub NAME` body header. Do not restore a
 second copy of the parameter list merely to imitate another language.
 
-Nucleus source has no `import` or `include` statement. A flat ordered manifest
-belongs to the external build driver. Missing files, forgotten dependencies,
-and incorrect order receive explicit diagnostics; the compiler does not search
-for alternative files or reorder source parts.
+Nucleus source has no `import` or `include` statement. Leading `//% import`
+lines are packaging directives written in comment syntax, not compiler tokens.
+Missing files, dependency cycles, forgotten dependencies, and incorrect order
+receive explicit diagnostics from the packaging layer or the compiler boundary
+that observes the fault; the compiler does not search for alternative files or
+reorder source parts.
 
 ### Scalar types
 

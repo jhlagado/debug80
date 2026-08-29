@@ -118,14 +118,14 @@ describe("the normative Nucleus 0.1 grammar", () => {
     expect(text).not.toContain("restricted failable-invocation path");
   });
 
-  it("records exact case identity and the external manifest boundary", () => {
+  it("records exact case identity and the external source-preparation boundary", () => {
     expect(text).toContain(
       "Identifiers are case-sensitive and preserve their source spelling.",
     );
     expect(text).toContain(
       "A reserved word is recognized only in the canonical lowercase spelling",
     );
-    expect(text).toContain("#### 4.3.1 Flat source manifest");
+    expect(text).toContain("#### 4.3.1 Source-preparation import convention");
     expect(text).not.toMatch(
       /case-insensitive exact names|ASCII-folded identity/,
     );

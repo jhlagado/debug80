@@ -92,10 +92,11 @@ and generated program remain measured even though they do not enter that gate.
 ### 2.3 Target description
 
 Nucleus source contains no physical placement, and a target description
-contains no source-symbol reference. A source manifest supplies declarations
-in order. A target profile supplies machine regions, the runtime revision, and
-an optional mapping from source-part ordinal to bank. The compiler assigns
-offsets within those regions and computes final addresses.
+contains no source-symbol reference. Source preparation supplies declarations
+in order as source parts. A target profile supplies machine regions, the
+runtime revision, and an optional mapping from source-part ordinal to bank.
+The compiler assigns offsets within those regions and computes final
+addresses.
 
 The external profile may contain device names, access attributes, bank
 selectors, device offsets, output-file choices, and other host information.
@@ -127,7 +128,7 @@ ordinal and these fields:
 | `entryBank`      | Bank containing startup and `main`.                              |
 | `partBank[]`     | One bank ordinal for each source-part ordinal.                   |
 
-The mapping is distinct from the source manifest and does not key on filenames.
+The mapping is distinct from source preparation and does not key on filenames.
 A direct definition belongs to its part's bank. A forward declaration and its
 abbreviated completion must have the same assignment.
 

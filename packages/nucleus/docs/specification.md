@@ -566,13 +566,13 @@ The compiler may consume each event and byte chunk incrementally. It need not ma
 
 The packaging layer must not add declarations, replace tokens, perform textual macro processing, or make accepted source depend on a part's physical origin. A diagnostic from multipart input must carry the stable source-part identity and the Chapter 3 position within that part, allowing the packaging layer to map it back to a physical source when such a mapping exists.
 
-#### 4.3.1 Flat source manifest
+#### 4.3.1 Source-preparation import convention
 
-The standard authoring convention for this abstract stream is a flat ordered manifest. Each nonblank logical line contains one physical source name. Blank lines are ignored. The build driver processes entries in their written order, resolves every name within one base directory or storage namespace selected for that build, reads the named source, and emits one source part for it. The listed name is the part's diagnostic name. Its stable source identity combines that name with the entry's position, so a driver that permits a duplicate entry can still identify each part.
+The standard authoring convention for this abstract stream is a source-preparation header. A physical source file may begin with `//% import "path.nu"` directives before its first non-comment, nonblank source line. The packaging layer recognizes those leading directives, resolves each path relative to the importing file within the selected project root or storage namespace, includes each physical source identity once, rejects cycles, and emits dependency parts before the part that imports them.
 
-The manifest has no nesting, glob patterns, variables, conditional entries, dependency discovery, or recursive import meaning. It does not enter the source-byte stream, and the Nucleus tokenizer never sees it. The build driver defines how physical source names and line endings are encoded; a later compiler-input specification may define concrete multipart framing. Those transport choices do not change the ordered-part contract in Section 4.3.
+The directive is not a Nucleus source declaration. It uses Nucleus comment syntax, remains ordinary comment text if the compiler receives the file unchanged, and creates no token, name, scope, dependency edge, or conditional rule inside the core compiler. A `//%` directive outside the leading header block is an ordinary comment unless the packaging layer diagnoses it before compilation. Nucleus 0.1 admits no source-level `import`, `include`, `module`, namespace, macro, or textual inclusion form.
 
-The driver reports a missing physical source or an unresolvable source name before compilation. It may reject a duplicate manifest entry. If it emits the duplicate instead, the compiler processes both parts in order and ordinarily reports duplicate source declarations. A forgotten dependency ordinarily produces an unknown-name diagnostic; a wrong order produces the applicable declaration-before-use diagnostic; and a forward that no later part completes fails at `EOF`. The compiler does not search for another file or reorder parts in response.
+The packaging layer reports missing physical sources, path confinement failures, dependency cycles, and duplicate stable identities before compilation. If it supports an older flat source-list input, that list is a compatibility adapter that produces the same multipart event stream defined in Section 4.3. It is not a separate source-language construct and does not change declaration order, source identity, diagnostics, or program meaning.
 
 ### 4.4 Top-level declarations
 
@@ -2747,7 +2747,7 @@ The execution environment must preserve a trap even if its reporting device or o
 
 Nucleus 0.1 defines a small portable service boundary for byte-stream input and output, slow bulk storage, successful termination, and trap reporting. Programs invoke typed predefined routines and use predefined constants. The source language exposes no service numbers, ports, firmware entry points, raw addresses, file descriptors, device registers, or machine-specific memory map.
 
-Nucleus source contains no physical placement, and a target description contains no source-symbol reference. The source manifest selects and orders declarations; the target description supplies bounded execution regions. Neither input can name or rewrite entities owned by the other.
+Nucleus source contains no physical placement, and a target description contains no source-symbol reference. Source preparation selects and orders declarations; the target description supplies bounded execution regions. Neither input can name or rewrite entities owned by the other.
 
 The **Nucleus System Services 0.1** set is versioned with this language revision. A conforming execution environment supplies every service in Section 16.3 with the stated source contract and the initial stream states stated there. Later additions require a language revision or an explicit extension under Section 1.7 and measured admission under Chapter 2.
 
@@ -3609,15 +3609,13 @@ The conformance harness must also present the complete accepted program in Secti
 
 For the diagnostic case, the harness introduces an undeclared name in the second part. The compiler diagnostic must identify the second part's stable identity and the position of that name within the part. A separate run may use different physical files or transport chunks, but those changes must not alter tokens, declaration visibility, validity, or program behaviour.
 
-The harness must also construct the same ordered parts from this flat manifest, using one selected base directory:
+The harness must also construct equivalent ordered parts from source-preparation imports, using one selected base directory. In this presentation `main.nu` begins with:
 
 ```text
-model.nu
-
-main.nu
+//% import "model.nu"
 ```
 
-It emits `model.nu` first and `main.nu` second. The blank line adds no part. The manifest text is not presented to the Nucleus tokenizer, and diagnostics for the second part use `main.nu` as its diagnostic name.
+The packaging layer emits `model.nu` first and `main.nu` second. The import line remains comment text in `main.nu`; it creates no Nucleus token or declaration. Diagnostics for the second part use `main.nu` as its diagnostic name.
 
 ### 21.12 Case-sensitive names and forward parameters
 

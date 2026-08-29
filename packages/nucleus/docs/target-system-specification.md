@@ -36,16 +36,17 @@ the other.
 
 ## 2. Language and target boundary
 
-### 2.1 Source manifest
+### 2.1 Source preparation
 
-The source manifest remains the ordered list defined by the language
-specification. It establishes one logical compilation unit and one program
-scope. It contains no address, segment, device, or bank annotation.
+Source preparation establishes the ordered source parts defined by the
+language specification. Those parts form one logical compilation unit and one
+program scope. Source preparation contains no address, segment, device, or
+bank annotation.
 
 A banked target supplies a separate mapping from source-part ordinal to bank.
-The ordinal is the part's position in the manifest. The mapping does not key on
-filenames and does not alter manifest order, declaration visibility, or source
-identity.
+The ordinal is the part's position in the prepared source stream. The mapping
+does not key on filenames and does not alter source order, declaration
+visibility, or source identity.
 
 ### 2.2 Physical placement
 
@@ -107,7 +108,7 @@ partBank[partCount]
 `bankCapacity` applies separately to each bank; it is not the combined device
 image capacity. `bankCount` bounds valid bank ordinals. `entryBank` identifies
 the bank containing startup and `main`. The bounded `partBank` array maps each
-manifest ordinal to one of those banks.
+source-part ordinal to one of those banks.
 
 `runtimeIdentity`, `bankWindowBase`, `bankCapacity`, `writableBase`, and
 `writableCapacity` are unsigned 16-bit words. `bankCount`, `entryBank`, and each
@@ -362,15 +363,15 @@ A banked ROM contains one Nucleus program: one ordered source stream, one
 program scope, one `main`, one set of variables, and one startup. Banks control
 visibility and placement; they do not create separate programs.
 
-Each source part is assigned to a bank by its manifest ordinal. A top-level
+Each source part is assigned to a bank by its source-part ordinal. A top-level
 declaration belongs to the bank assigned to the part containing its canonical
 declaration. An abbreviated body completing a forward declaration must be in a
 part assigned to the same bank as that declaration.
 
 `entryBank` must contain the part that defines `main`. That part follows every
 part containing a declaration that `main` uses. Bank order is independent of
-manifest order: libraries may occupy any bank, but their declarations remain
-earlier in the logical source stream than the mainline.
+source-part order: libraries may occupy any bank, but their declarations
+remain earlier in the logical source stream than the mainline.
 
 ### 7.2 TECM8 mapping
 
