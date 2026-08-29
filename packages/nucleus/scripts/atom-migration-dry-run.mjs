@@ -1144,6 +1144,12 @@ function isMeasurementProof(proof) {
   return proof.name.includes("measurement") || proof.entry.includes("measurement");
 }
 
+const overlappingProofMemoryBlockers = new Map([
+  ["stage7-ll1-aggregate-call-z80-slice-proof.json", "resident source block $5000..$C27E overlaps runtime/proof output at $6800/$9000"],
+  ["stage8-failure-z80-slice-proof.json", "resident source block $5000..$C4EF overlaps runtime/proof output at $6800/$9000"],
+  ["stage9-conformance-z80-slice-proof.json", "resident source block $5000..$CDFE overlaps runtime/proof output at $6800/$9000"],
+]);
+
 function dependencyClosure(entry, root, seen = new Set()) {
   const resolved = path.resolve(entry);
   if (seen.has(resolved)) return [];
@@ -1161,6 +1167,19 @@ function dependencyClosure(entry, root, seen = new Set()) {
 function proofSelectionStatus({ proof, files, issueByFile, globalIssues, includeAfterHeaderFiles }) {
   if (isMeasurementProof(proof)) {
     return Object.freeze({ status: "measurement-artifact", blockers: [] });
+  }
+  const overlappingProofMemory = overlappingProofMemoryBlockers.get(proof.name);
+  if (overlappingProofMemory !== undefined) {
+    return Object.freeze({
+      status: "blocked-by-overlapping-proof-memory",
+      blockers: [
+        Object.freeze({
+          code: "overlapping-proof-memory",
+          message: overlappingProofMemory,
+          file: proof.file,
+        }),
+      ],
+    });
   }
   const blockers = [];
   const lateIncludeBlockers = files
