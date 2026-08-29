@@ -4,6 +4,11 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import process from "node:process";
 
+import {
+  normalizeZ80AssemblerFlavour,
+  Z80_ASSEMBLER_FLAVOUR,
+} from "@jhlagado/z80-tool-services";
+
 const ignoredDirectories = new Set([
   ".git",
   ".worktrees",
@@ -14,7 +19,6 @@ const ignoredDirectories = new Set([
   "out",
 ]);
 const assemblyExtensions = new Set([".asm", ".inc", ".z80"]);
-const assemblyBackends = new Set(["atom", "azm"]);
 const glimmerExtension = ".glim";
 const retirementInventoryPath = path.join(
   "docs",
@@ -47,6 +51,14 @@ function assemblyTargets(project) {
   return [["<root>", project]];
 }
 
+function normalizeConcreteAssembler(value) {
+  try {
+    return normalizeZ80AssemblerFlavour(value, { allowAuto: false });
+  } catch {
+    return undefined;
+  }
+}
+
 const root = process.cwd();
 const failures = [];
 const selectedAzmTargets = new Set();
@@ -60,18 +72,16 @@ for (const filename of await findProjectFiles(root)) {
       continue;
     }
     const extension = path.extname(source).toLowerCase();
-    const assembler =
-      typeof target.assembler === "string"
-        ? target.assembler.toLowerCase()
-        : "";
-    if (assemblyExtensions.has(extension) && !assemblyBackends.has(assembler)) {
+    const targetAssembler = target.assembler;
+    const assemblyAssembler = normalizeConcreteAssembler(targetAssembler);
+    if (assemblyExtensions.has(extension) && assemblyAssembler === undefined) {
       failures.push(
         `${path.relative(root, filename)} target ${targetName} must select assembler \"atom\" or \"azm\"`,
       );
-    } else if (assemblyExtensions.has(extension) && assembler === "azm") {
+    } else if (assemblyExtensions.has(extension) && assemblyAssembler === Z80_ASSEMBLER_FLAVOUR.azm) {
       selectedAzmTargets.add(`${path.relative(root, filename)}#${targetName}`);
     } else if (extension === glimmerExtension) {
-      if (assembler !== "glimmer") {
+      if (targetAssembler !== "glimmer") {
         failures.push(
           `${path.relative(root, filename)} target ${targetName} must select assembler \"glimmer\"`,
         );
@@ -79,15 +89,14 @@ for (const filename of await findProjectFiles(root)) {
       }
       const generatedAssembler =
         target.glimmer !== null &&
-        typeof target.glimmer === "object" &&
-        typeof target.glimmer.assembler === "string"
-          ? target.glimmer.assembler.toLowerCase()
-          : "";
-      if (!assemblyBackends.has(generatedAssembler)) {
+        typeof target.glimmer === "object"
+          ? normalizeConcreteAssembler(target.glimmer.assembler)
+          : undefined;
+      if (generatedAssembler === undefined) {
         failures.push(
           `${path.relative(root, filename)} target ${targetName} must select glimmer.assembler \"atom\" or \"azm\"`,
         );
-      } else if (generatedAssembler === "azm") {
+      } else if (generatedAssembler === Z80_ASSEMBLER_FLAVOUR.azm) {
         selectedAzmTargets.add(
           `${path.relative(root, filename)}#${targetName}`,
         );

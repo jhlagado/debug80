@@ -9,6 +9,10 @@ import {
   assembleAtomProject,
   renderAtomArtifacts,
 } from "atom-z80";
+import {
+  normalizeZ80AssemblerFlavour,
+  Z80_ASSEMBLER_FLAVOUR,
+} from "@jhlagado/z80-tool-services";
 
 const repositoryRoot = path.resolve(
   fileURLToPath(new URL("..", import.meta.url)),
@@ -62,12 +66,17 @@ for (const fixture of fixtures) {
     await fs.readFile(path.join(root, ".vscode", "debug80.json"), "utf8"),
   );
   const target = configuration.targets?.[fixture.target];
-  if (target?.assembler !== "atom") {
+  if (
+    normalizeZ80AssemblerFlavour(target?.assembler, {
+      defaultFlavour: Z80_ASSEMBLER_FLAVOUR.auto,
+    }) !== Z80_ASSEMBLER_FLAVOUR.atom
+  ) {
     throw new Error(`${fixture.directory}#${fixture.target} must select Atom`);
   }
   const result = await assembleAtomProject({
     root,
     entry: target.sourceFile,
+    assembler: target.assembler,
     target: { start: 0, capacity: 0xffff },
   });
   const base = contentBase(result.generation);
