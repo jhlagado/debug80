@@ -347,8 +347,11 @@ The typed-expression shared modules now have the same expression-only treatment.
 `typed-expression-parser.asm` names its packed symbol-class, semantic-operation,
 and scalar-meta constants; `typed-expression-z80.asm` names its target-state
 frame displacements; and `loop-keywords.asmi` names the packed Stage 8 service
-signature flag combinations. Their remaining blockers are late include layout
-boundaries, not emitted expression operands.
+signature flag combinations. The typed parser and backend modules then split
+their terminal structured-control and aggregate-call includes into rewritten
+root headers plus generated core/tail parts, preserving the original emitted
+order while clearing those shared module-boundary blockers. Proof-entry wrappers
+still own their separate late includes and source-position arithmetic.
 
 Two previously Atom-preview-only proof manifests were promoted by replacing
 direct emitted two-forward-symbol differences with one forward size symbol and a

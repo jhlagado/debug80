@@ -1087,7 +1087,7 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(loopZ80Sink).not.toContain("TrapNumber-StateBase");
 
       const expressionBlockers = dependent?.blockers.filter(({ code, file }) =>
-        code === "atom-symbol-expression" &&
+        (code === "atom-symbol-expression" || code === "include-after-header") &&
         (
           file.includes("typed-expression-parser.asm") ||
           file.includes("typed-expression-z80.asm") ||
@@ -1100,19 +1100,40 @@ describe("Nucleus Atom migration dry-run", () => {
         path.join(translatedRoot, "vertical-slice", "typed-expression-parser.asm"),
         "utf8",
       );
-      expect(typedExpressionParser).toContain("TEPRFLG EQU");
-      expect(typedExpressionParser).toContain("TEPOR16 EQU");
-      expect(typedExpressionParser).not.toContain("SymbolRecordTypeFlag+SymbolAggregateFlag");
-      expect(typedExpressionParser).not.toContain("SemanticOr8*$100+SemanticOr16");
-      expect(typedExpressionParser).not.toContain("ScalarMetaConstant+ScalarTypeU8");
+      expect(typedExpressionParser).toContain('%INCLUDE "typed-expression-parser-core.asmi"');
+      expect(typedExpressionParser).toContain('%INCLUDE "structured-control-parser.asm"');
+      const typedExpressionParserCore = await readFile(
+        path.join(translatedRoot, "vertical-slice", "typed-expression-parser-core.asmi"),
+        "utf8",
+      );
+      expect(typedExpressionParserCore).toContain("TEPRFLG EQU");
+      expect(typedExpressionParserCore).toContain("TEPOR16 EQU");
+      expect(typedExpressionParserCore).not.toContain('%INCLUDE "structured-control-parser.asm"');
+      expect(typedExpressionParserCore).not.toContain("SymbolRecordTypeFlag+SymbolAggregateFlag");
+      expect(typedExpressionParserCore).not.toContain("SemanticOr8*$100+SemanticOr16");
+      expect(typedExpressionParserCore).not.toContain("ScalarMetaConstant+ScalarTypeU8");
 
       const typedExpressionZ80 = await readFile(
         path.join(translatedRoot, "vertical-slice", "typed-expression-z80.asm"),
         "utf8",
       );
-      expect(typedExpressionZ80).toContain("TEZACTD EQU");
-      expect(typedExpressionZ80).not.toContain("ActivationDepth-StateBase");
-      expect(typedExpressionZ80).not.toContain("RootSP-StateBase");
+      expect(typedExpressionZ80).toContain('%INCLUDE "typed-expression-z80-core.asmi"');
+      expect(typedExpressionZ80).toContain('%INCLUDE "structured-control-z80.asm"');
+      expect(typedExpressionZ80).toContain('%INCLUDE "aggregate-call-z80.asm"');
+      expect(typedExpressionZ80).toContain('%INCLUDE "typed-expression-z80-tail.asmi"');
+      const typedExpressionZ80Core = await readFile(
+        path.join(translatedRoot, "vertical-slice", "typed-expression-z80-core.asmi"),
+        "utf8",
+      );
+      expect(typedExpressionZ80Core).toContain("TEZACTD EQU");
+      expect(typedExpressionZ80Core).not.toContain('%INCLUDE "structured-control-z80.asm"');
+      expect(typedExpressionZ80Core).not.toContain("ActivationDepth-StateBase");
+      expect(typedExpressionZ80Core).not.toContain("RootSP-StateBase");
+      const typedExpressionZ80Tail = await readFile(
+        path.join(translatedRoot, "vertical-slice", "typed-expression-z80-tail.asmi"),
+        "utf8",
+      );
+      expect(typedExpressionZ80Tail).toContain(";@NUC-GLOBAL TypedAtoHL");
 
       const loopKeywords = await readFile(
         path.join(translatedRoot, "vertical-slice", "loop-keywords.asmi"),
