@@ -230,17 +230,8 @@ const permanentLayoutTransforms = new Map([
     rewrite: rewriteStage8FailureZ80SliceProofPermanentAtomSource,
   })],
   ["vertical-slice/stage9-conformance-z80-slice-proof.asm", Object.freeze({
-    description: "Stage 9 conformance proof sectioned header-include layout",
-    handledIssues: Object.freeze([
-      Object.freeze({
-        file: "asm/vertical-slice/stage9-conformance-z80-slice-proof.asm",
-        code: "include-after-header",
-      }),
-      Object.freeze({
-        file: "asm/vertical-slice/stage9-conformance-z80-slice-proof.asm",
-        code: "atom-symbol-expression",
-      }),
-    ]),
+    description: "Stage 9 conformance proof physical section-owner layout",
+    handledIssues: Object.freeze([]),
     rewrite: rewriteStage9ConformanceZ80SliceProofPermanentAtomSource,
   })],
   ["vertical-slice/aggregate-call-parser.asm", Object.freeze({
@@ -3104,82 +3095,7 @@ function rewriteStage8FailureZ80SliceProofPermanentAtomSource() {
   ].join("\n");
 }
 
-function rewriteStage9ConformanceZ80SliceProofPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
-  const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
-  const targetRuntimeBase = atomSymbol(symbolMap, "TargetRuntimeBase");
-  const sourceAliases = [
-    ["S9RDOF", ["GeneratedRoDataBase", "-", "GeneratedBase"]],
-    ["S9BRDO", ["BackupBase", "+", "S9RDOF"]],
-  ];
-  const sourceWithoutAliases = removeAtomAliasDefinitions(source, sourceAliases.map(([alias]) => alias));
-  const aliases = [
-    ...sourceAliases,
-    ...collectSimplePermanentExpressionAliases(sourceWithoutAliases, "S9E"),
-  ];
-
-  const lines = replaceAtomExpressionAliases(sourceWithoutAliases, symbolMap, aliases).split("\n");
-  const compilerOrgIndex = findPermanentOrgLine(lines, compilerCoreBase, "stage9 conformance proof");
-  const sourceAdapterIncludeIndex = findPermanentIncludeLine(lines, "source-adapter.asm", "stage9 conformance proof");
-  const tokenizerIncludeIndex = findPermanentIncludeLine(lines, "loop-tokenizer.asm", "stage9 conformance proof");
-  const semanticSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-semantic-sink.asm", "stage9 conformance proof");
-  const symbolsIncludeIndex = findPermanentIncludeLine(lines, "loop-symbols.asm", "stage9 conformance proof");
-  const parserIncludeIndex = findPermanentIncludeLine(lines, "loop-parser.asm", "stage9 conformance proof");
-  const loopSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-z80-sink.asm", "stage9 conformance proof");
-  const typedSinkIncludeIndex = findPermanentIncludeLine(lines, "typed-expression-z80.asm", "stage9 conformance proof");
-  const aggregateSinkIncludeIndex = findPermanentIncludeLine(lines, "aggregate-z80.asm", "stage9 conformance proof");
-  const keywordsIncludeIndex = findPermanentIncludeLine(lines, "loop-keywords.asmi", "stage9 conformance proof");
-  const runtimeOrgIndex = findPermanentOrgLine(lines, targetRuntimeBase, "stage9 conformance proof");
-  const runtimeIncludeIndex = findPermanentIncludeLine(lines, "proof-z80-runtime.asm", "stage9 conformance proof");
-  const corpusOrgIndex = findPermanentOrgLine(lines, "$B000", "stage9 conformance proof");
-  const proofOrgIndex = findPermanentOrgLine(lines, "$D000", "stage9 conformance proof");
-
-  const orderedIndexes = [
-    compilerOrgIndex,
-    sourceAdapterIncludeIndex,
-    tokenizerIncludeIndex,
-    semanticSinkIncludeIndex,
-    symbolsIncludeIndex,
-    parserIncludeIndex,
-    loopSinkIncludeIndex,
-    typedSinkIncludeIndex,
-    aggregateSinkIncludeIndex,
-    keywordsIncludeIndex,
-    runtimeOrgIndex,
-    runtimeIncludeIndex,
-    corpusOrgIndex,
-    proofOrgIndex,
-  ];
-  if (!orderedIndexes.every((value, index) => index === 0 || orderedIndexes[index - 1] < value)) {
-    throw new Error("stage9 conformance proof permanent Atom rewrite found an unexpected section order");
-  }
-
-  const writeSlice = (includeName, start, end) => {
-    writeGeneratedPermanentPart(translatedRoot, relative, includeName, [
-      ...lines.slice(start, end).filter((line) =>
-        !/^\s*%DEFINE\s+(TargetStreamingOutput|LegacyCompilerSlices|AggregateCallSlices|Stage7LL1|LegacyEncoders)\b/i.test(line)),
-      "",
-    ]);
-  };
-  writeSlice("stage9-conformance-code-begin.asmi", compilerOrgIndex, sourceAdapterIncludeIndex);
-  writeSlice("stage9-conformance-after-source-adapter.asmi", sourceAdapterIncludeIndex + 1, tokenizerIncludeIndex);
-  writeSlice("stage9-conformance-after-tokenizer.asmi", tokenizerIncludeIndex + 1, semanticSinkIncludeIndex);
-  writeSlice("stage9-conformance-after-semantic-sink.asmi", semanticSinkIncludeIndex + 1, symbolsIncludeIndex);
-  writeSlice("stage9-conformance-after-symbols.asmi", symbolsIncludeIndex + 1, parserIncludeIndex);
-  writeSlice("stage9-conformance-after-parser.asmi", parserIncludeIndex + 1, loopSinkIncludeIndex);
-  writeSlice("stage9-conformance-after-loop-z80-sink.asmi", loopSinkIncludeIndex + 1, typedSinkIncludeIndex);
-  writeSlice("stage9-conformance-after-typed-expression-z80.asmi", typedSinkIncludeIndex + 1, aggregateSinkIncludeIndex);
-  writeSlice("stage9-conformance-after-aggregate-z80.asmi", aggregateSinkIncludeIndex + 1, keywordsIncludeIndex);
-  writeSlice("stage9-conformance-after-keywords.asmi", keywordsIncludeIndex + 1, runtimeOrgIndex);
-  writeSlice("stage9-conformance-runtime-begin.asmi", runtimeOrgIndex, runtimeIncludeIndex);
-  writeSlice("stage9-conformance-runtime-after.asmi", runtimeIncludeIndex + 1, corpusOrgIndex);
-  writeSlice("stage9-conformance-corpus-source.asmi", corpusOrgIndex, proofOrgIndex);
-  writeGeneratedPermanentPart(translatedRoot, relative, "stage9-conformance-proof-body.asmi", [
-    lines[proofOrgIndex],
-    ...atomExpressionAliasLines(symbolMap, aliases),
-    "",
-    ...lines.slice(proofOrgIndex + 1),
-  ]);
-
+function rewriteStage9ConformanceZ80SliceProofPermanentAtomSource() {
   return [
     "; Permanent Atom layout for the Stage 9 conformance proof.",
     "            %DEFINE SegmentedOutput 1",

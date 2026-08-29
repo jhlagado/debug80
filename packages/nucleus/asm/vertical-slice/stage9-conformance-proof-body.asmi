@@ -1,0 +1,887 @@
+            .org $D000
+S9E00 .equ Chapter21_9BoundsPoint-Chapter21_9BoundsSource
+S9E01 .equ Chapter21_9DividePoint-Chapter21_9DivideSource
+S9E02 .equ Chapter21_10UnconsumedPoint-Chapter21_10UnconsumedSource
+S9E03 .equ Chapter21_10NominalPoint+5-Chapter21_10NominalSource
+S9E04 .equ Chapter21_10InitializerPoint-Chapter21_10InitializerSource
+S9E05 .equ Chapter21_10AggregateLocalPoint-Chapter21_10AggregateLocalSource
+S9E06 .equ Chapter21_10RoutineFlowPoint+3-Chapter21_10RoutineFlowSource
+S9E07 .equ Chapter21_10LaterPoint-Chapter21_10LaterSource
+S9E08 .equ Chapter21_10MainSignaturePoint-Chapter21_10MainSignatureSource
+S9E09 .equ Chapter21_10ActiveCounterName-Chapter21_10ActiveCounterSource
+S9E0A .equ Chapter21_10ExactUsePoint-Chapter21_10ExactUseSource
+S9E0B .equ Chapter21_10ExactNestedPoint-Chapter21_10ExactNestedSource
+S9E0C .equ Chapter21_10BooleanAsIntegerPoint-Chapter21_10BooleanAsIntegerSource
+S9E0D .equ Chapter21_10IntegerAsBooleanPoint-Chapter21_10IntegerAsBooleanSource
+S9E0E .equ Chapter21_10HexPoint-Chapter21_10HexSource
+S9E0F .equ Chapter21_10BinaryPoint-Chapter21_10BinarySource
+S9E0G .equ Chapter21_11BadPoint+4-Chapter21_11BadPart2
+S9E0H .equ Chapter21OpenDelimiterPart1End-Chapter21OpenDelimiterPart1
+S9E0I .equ Chapter21_17BooleanPoint-Chapter21_17BooleanSource
+S9E0J .equ Chapter21_18ZeroPoint-Chapter21_18ZeroSource
+S9E0K .equ Chapter21_9ModuloPoint-Chapter21_9ModuloSource
+S9E0L .equ Chapter21_19FalsePoint-Chapter21_19FalseSource
+S9E0M .equ Chapter21_19TypePoint-Chapter21_19TypeSource
+S9E0N .equ Chapter21_20ReadOnlyPoint-Chapter21_20ReadOnlySource
+
+.routine out carry,zero clobbers sign,parity,halfCarry,A,BC,DE,HL,IX,IY
+ProofStart:
+            LD   SP,StackTop
+            XOR  A
+            LD   (ProofStatus),A
+            LD   (ProofCase),A
+            LD   (ProofMaxGenerated),A
+            LD   (ProofMaxGenerated+1),A
+
+            LD   A,2
+            LD   HL,Chapter21_1Descriptors
+            CALL CompileAggregateCallParts
+            JP   C,ProofCompileFailure
+            CALL EncodeAggregateProgram
+            JP   C,ProofEncodeFailure
+            CALL ProofUpdateMaxGenerated
+            CALL Reset
+            CALL ProofCallGenerated
+            JP   C,ProofRunFailure
+            LD   A,(RunState)
+            CP   RunSucceeded
+            JP   NZ,ProofRunFailure
+            LD   A,(ServiceOutputLength)
+            CP   1
+            JP   NZ,ProofRunFailure
+            LD   A,(ServiceOutputBase)
+            CP   "Y"
+            JP   NZ,ProofRunFailure
+            LD   A,(ActivationDepth)
+            OR   A
+            JP   NZ,ProofRunFailure
+
+            LD   A,2
+            LD   (ProofCase),A
+            LD   A,12
+            LD   HL,Chapter21_2Source
+            LD   DE,Chapter21_2SourceEnd
+            CALL ProofBuildSingle
+            JP   C,ProofFailed
+            CALL ProofResetServices
+            LD   A,1
+            LD   (ServiceInputLength),A
+            LD   A,"A"
+            LD   (ServiceInputBase),A
+            CALL ProofCallGenerated
+            JP   C,ProofFailed
+            LD   A,"A"
+            CALL ProofCheckOutput
+            JP   C,ProofFailed
+
+            LD   A,3
+            LD   (ProofCase),A
+            LD   A,13
+            LD   HL,Chapter21_3Source
+            LD   DE,Chapter21_3SourceEnd
+            CALL ProofRunSingle
+            JP   C,ProofFailed
+            LD   A,4
+            CALL ProofCheckOutput
+            JP   C,ProofFailed
+
+            LD   A,4
+            LD   (ProofCase),A
+            LD   A,14
+            LD   HL,Chapter21_4Source
+            LD   DE,Chapter21_4SourceEnd
+            CALL ProofRunSingle
+            JP   C,ProofFailed
+            LD   A,"Y"
+            CALL ProofCheckOutput
+            JP   C,ProofFailed
+
+            LD   A,5
+            LD   (ProofCase),A
+            LD   A,15
+            LD   HL,Chapter21_5Source
+            LD   DE,Chapter21_5SourceEnd
+            CALL ProofRunSingle
+            JP   C,ProofFailed
+            LD   A,"R"
+            CALL ProofCheckOutput
+            JP   C,ProofFailed
+
+            LD   A,6
+            LD   (ProofCase),A
+            LD   A,16
+            LD   HL,Chapter21_6Source
+            LD   DE,Chapter21_6SourceEnd
+            CALL ProofRunSingle
+            JP   C,ProofFailed
+            LD   A,7
+            CALL ProofCheckOutput
+            JP   C,ProofFailed
+
+            LD   A,7
+            LD   (ProofCase),A
+            LD   A,17
+            LD   HL,Chapter21_7Source
+            LD   DE,Chapter21_7SourceEnd
+            CALL ProofRunSingle
+            JP   C,ProofFailed
+            CALL ProofCheckSuccessNoOutput
+            JP   C,ProofFailed
+            LD   A,(ServiceStorageOutputLength)
+            CP   2
+            JP   NZ,ProofFailed
+            LD   A,(ServiceStorageOutputCursor)
+            CP   1
+            JP   NZ,ProofFailed
+            LD   A,(ServiceStorageOutputBase)
+            CP   "Z"
+            JP   NZ,ProofFailed
+            LD   A,(ServiceStorageOutputBase+1)
+            CP   "B"
+            JP   NZ,ProofFailed
+
+            LD   A,8
+            LD   (ProofCase),A
+            LD   A,18
+            LD   HL,Chapter21_8Source
+            LD   DE,Chapter21_8SourceEnd
+            CALL ProofRunSingle
+            JP   C,ProofFailed
+            CALL ProofCheckSuccessNoOutput
+            JP   C,ProofFailed
+
+            LD   A,9
+            LD   (ProofCase),A
+            LD   A,19
+            LD   HL,Chapter21_9BoundsSource
+            LD   DE,Chapter21_9BoundsSourceEnd
+            CALL ProofBuildSingle
+            JP   C,ProofFailed
+            CALL ProofResetServices
+            LD   A,1
+            LD   (ServiceInputLength),A
+            LD   A,2
+            LD   (ServiceInputBase),A
+            CALL ProofCallGenerated
+            JP   C,ProofFailed
+            LD   A,1
+            LD   BC,S9E00
+            CALL ProofCheckTrap
+            JP   C,ProofFailed
+
+            LD   A,10
+            LD   (ProofCase),A
+            LD   A,20
+            LD   HL,Chapter21_9DivideSource
+            LD   DE,Chapter21_9DivideSourceEnd
+            CALL ProofBuildSingle
+            JP   C,ProofFailed
+            CALL ProofResetServices
+            LD   A,1
+            LD   (ServiceInputLength),A
+            XOR  A
+            LD   (ServiceInputBase),A
+            CALL ProofCallGenerated
+            JP   C,ProofFailed
+            LD   A,3
+            LD   BC,S9E01
+            CALL ProofCheckTrap
+            JP   C,ProofFailed
+
+            LD   A,21
+            LD   (ProofCase),A
+            LD   A,51
+            LD   B,DiagnosticFailureContext
+            LD   IX,S9E02
+            LD   HL,Chapter21_10UnconsumedSource
+            LD   DE,Chapter21_10UnconsumedSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
+            LD   A,22
+            LD   (ProofCase),A
+            LD   A,52
+            LD   B,DiagnosticTypeMismatch
+            LD   IX,S9E03
+            LD   HL,Chapter21_10NominalSource
+            LD   DE,Chapter21_10NominalSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
+            LD   A,23
+            LD   (ProofCase),A
+            LD   A,53
+            LD   B,DiagnosticInitializerCount
+            LD   IX,S9E04
+            LD   HL,Chapter21_10InitializerSource
+            LD   DE,Chapter21_10InitializerSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
+            LD   A,24
+            LD   (ProofCase),A
+            LD   A,54
+            LD   B,DiagnosticExpectedType
+            LD   IX,S9E05
+            LD   HL,Chapter21_10AggregateLocalSource
+            LD   DE,Chapter21_10AggregateLocalSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
+            LD   A,25
+            LD   (ProofCase),A
+            LD   A,55
+            LD   B,DiagnosticRoutineFlow
+            LD   IX,S9E06
+            LD   HL,Chapter21_10RoutineFlowSource
+            LD   DE,Chapter21_10RoutineFlowSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
+            LD   A,26
+            LD   (ProofCase),A
+            LD   A,56
+            LD   B,DiagnosticUnknownName
+            LD   IX,S9E07
+            LD   HL,Chapter21_10LaterSource
+            LD   DE,Chapter21_10LaterSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
+            LD   A,27
+            LD   (ProofCase),A
+            LD   A,57
+            LD   B,DiagnosticExpectedRight
+            LD   IX,S9E08
+            LD   HL,Chapter21_10MainSignatureSource
+            LD   DE,Chapter21_10MainSignatureSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
+            LD   A,28
+            LD   (ProofCase),A
+            LD   A,58
+            LD   B,DiagnosticActiveCounter
+            LD   IX,S9E09
+            LD   HL,Chapter21_10ActiveCounterSource
+            LD   DE,Chapter21_10ActiveCounterSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
+            LD   A,60
+            LD   (ProofCase),A
+            LD   A,69
+            LD   B,DiagnosticIntegerRange
+            LD   IX,S9E0A
+            LD   HL,Chapter21_10ExactUseSource
+            LD   DE,Chapter21_10ExactUseSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+            LD   HL,(DiagnosticLine)
+            LD   DE,5
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailed
+            LD   HL,(DiagnosticColumn)
+            LD   DE,9
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailed
+
+            LD   A,61
+            LD   (ProofCase),A
+            LD   A,70
+            LD   B,DiagnosticIntegerRange
+            LD   IX,S9E0B
+            LD   HL,Chapter21_10ExactNestedSource
+            LD   DE,Chapter21_10ExactNestedSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+            LD   HL,(DiagnosticLine)
+            LD   DE,5
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailed
+            LD   HL,(DiagnosticColumn)
+            LD   DE,10
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailed
+
+            LD   A,62
+            LD   (ProofCase),A
+            LD   A,71
+            LD   B,DiagnosticTypeMismatch
+            LD   IX,S9E0C
+            LD   HL,Chapter21_10BooleanAsIntegerSource
+            LD   DE,Chapter21_10BooleanAsIntegerSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
+            LD   A,63
+            LD   (ProofCase),A
+            LD   A,72
+            LD   B,DiagnosticTypeMismatch
+            LD   IX,S9E0D
+            LD   HL,Chapter21_10IntegerAsBooleanSource
+            LD   DE,Chapter21_10IntegerAsBooleanSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
+            LD   A,29
+            LD   (ProofCase),A
+            LD   A,59
+            LD   B,DiagnosticLexical
+            LD   IX,S9E0E
+            LD   HL,Chapter21_10HexSource
+            LD   DE,Chapter21_10HexSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
+            LD   A,64
+            LD   (ProofCase),A
+            LD   A,73
+            LD   B,DiagnosticLexical
+            LD   IX,S9E0F
+            LD   HL,Chapter21_10BinarySource
+            LD   DE,Chapter21_10BinarySourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
+            LD   A,30
+            LD   (ProofCase),A
+            LD   A,2
+            LD   B,DiagnosticUnknownName
+            LD   C,2
+            LD   IX,S9E0G
+            LD   HL,Chapter21_11BadDescriptors
+            CALL ProofExpectDiagnosticParts
+            JP   C,ProofFailed
+            LD   HL,(DiagnosticLine)
+            LD   DE,12
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailed
+            LD   HL,(DiagnosticColumn)
+            LD   DE,5
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailed
+
+            LD   A,31
+            LD   (ProofCase),A
+            LD   A,2
+            LD   HL,Chapter21BoundaryDescriptors
+            CALL CompileAggregateCallParts
+            JP   C,ProofFailed
+            CALL EncodeAggregateProgram
+            JP   C,ProofFailed
+            CALL ProofUpdateMaxGenerated
+            CALL ProofResetServices
+            CALL ProofCallGenerated
+            JP   C,ProofFailed
+            LD   A,1
+            CALL ProofCheckOutput
+            JP   C,ProofFailed
+
+            LD   A,32
+            LD   (ProofCase),A
+            LD   A,8
+            LD   HL,Chapter21CapacityDescriptors
+            CALL CompileAggregateCallParts
+            JP   C,ProofFailed
+            CALL EncodeAggregateProgram
+            JP   C,ProofFailed
+            CALL ProofUpdateMaxGenerated
+            CALL ProofResetServices
+            CALL ProofCallGenerated
+            JP   C,ProofFailed
+            CALL ProofCheckSuccessNoOutput
+            JP   C,ProofFailed
+
+            LD   A,33
+            LD   (ProofCase),A
+            LD   A,9
+            LD   B,DiagnosticSourcePartCapacity
+            LD   C,0
+            LD   IX,0
+            LD   HL,Chapter21CapacityDescriptors
+            CALL ProofExpectDiagnosticParts
+            JP   C,ProofFailed
+
+            LD   A,36
+            LD   (ProofCase),A
+            LD   A,1
+            LD   HL,Chapter21SingleDescriptor
+            CALL CompileAggregateCallParts
+            JP   C,ProofFailed
+            CALL EncodeAggregateProgram
+            JP   C,ProofFailed
+            CALL ProofUpdateMaxGenerated
+            CALL ProofResetServices
+            CALL ProofCallGenerated
+            JP   C,ProofFailed
+            CALL ProofCheckSuccessNoOutput
+            JP   C,ProofFailed
+
+            LD   A,34
+            LD   (ProofCase),A
+            LD   A,2
+            LD   B,DiagnosticLexical
+            LD   C,71
+            LD   IX,S9E0H
+            LD   HL,Chapter21OpenDelimiterDescriptors
+            CALL ProofExpectDiagnosticParts
+            JP   C,ProofFailed
+
+            LD   A,35
+            LD   (ProofCase),A
+            LD   A,2
+            LD   HL,Chapter21BoundaryDescriptors
+            CALL CompileAggregateCallParts
+            JP   C,ProofFailed
+            CALL EncodeAggregateProgram
+            JP   C,ProofFailed
+            CALL ProofUpdateMaxGenerated
+            CALL ProofResetServices
+            CALL ProofCallGenerated
+            JP   C,ProofFailed
+            LD   A,1
+            CALL ProofCheckOutput
+            JP   C,ProofFailed
+
+            LD   A,12
+            LD   (ProofCase),A
+            LD   A,22
+            LD   HL,Chapter21_12Source
+            LD   DE,Chapter21_12SourceEnd
+            CALL ProofRunSingle
+            JP   C,ProofFailed
+            LD   A,6
+            CALL ProofCheckOutput
+            JP   C,ProofFailed
+
+            LD   A,13
+            LD   (ProofCase),A
+            LD   A,23
+            LD   HL,Chapter21_13Source
+            LD   DE,Chapter21_13SourceEnd
+            CALL ProofRunSingle
+            JP   C,ProofFailed
+            LD   A,"Y"
+            CALL ProofCheckOutput
+            JP   C,ProofFailed
+
+            LD   A,14
+            LD   (ProofCase),A
+            LD   A,24
+            LD   HL,Chapter21_14Source
+            LD   DE,Chapter21_14SourceEnd
+            CALL ProofRunSingle
+            JP   C,ProofFailed
+            LD   A,"Y"
+            CALL ProofCheckOutput
+            JP   C,ProofFailed
+
+            LD   A,15
+            LD   (ProofCase),A
+            LD   A,25
+            LD   HL,Chapter21_15Source
+            LD   DE,Chapter21_15SourceEnd
+            CALL ProofRunSingle
+            JP   C,ProofFailed
+            LD   A,"Y"
+            CALL ProofCheckOutput
+            JP   C,ProofFailed
+
+            LD   A,65
+            LD   (ProofCase),A
+            LD   A,74
+            LD   HL,Chapter21_16Source
+            LD   DE,Chapter21_16SourceEnd
+            CALL ProofRunSingle
+            JP   C,ProofFailed
+            LD   A,176
+            CALL ProofCheckOutput
+            JP   C,ProofFailed
+
+            LD   A,66
+            LD   (ProofCase),A
+            LD   A,75
+            LD   HL,Chapter21_17Source
+            LD   DE,Chapter21_17SourceEnd
+            CALL ProofRunSingle
+            JP   C,ProofFailed
+            LD   A,$5A
+            CALL ProofCheckOutput
+            JP   C,ProofFailed
+
+            LD   A,67
+            LD   (ProofCase),A
+            LD   A,76
+            LD   B,DiagnosticTypeMismatch
+            LD   IX,S9E0I
+            LD   HL,Chapter21_17BooleanSource
+            LD   DE,Chapter21_17BooleanSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
+            LD   A,68
+            LD   (ProofCase),A
+            LD   A,77
+            LD   HL,Chapter21_18Source
+            LD   DE,Chapter21_18SourceEnd
+            CALL ProofRunSingle
+            JP   C,ProofFailed
+            LD   A,10
+            CALL ProofCheckOutput
+            JP   C,ProofFailed
+
+            LD   A,69
+            LD   (ProofCase),A
+            LD   A,78
+            LD   B,DiagnosticDivisionZero
+            LD   IX,S9E0J
+            LD   HL,Chapter21_18ZeroSource
+            LD   DE,Chapter21_18ZeroSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
+            LD   A,70
+            LD   (ProofCase),A
+            LD   A,79
+            LD   HL,Chapter21_9ModuloSource
+            LD   DE,Chapter21_9ModuloSourceEnd
+            CALL ProofBuildSingle
+            JP   C,ProofFailed
+            CALL ProofResetServices
+            LD   A,1
+            LD   (ServiceInputLength),A
+            XOR  A
+            LD   (ServiceInputBase),A
+            CALL ProofCallGenerated
+            JP   C,ProofFailed
+            LD   A,3
+            LD   BC,S9E0K
+            CALL ProofCheckTrap
+            JP   C,ProofFailed
+
+            LD   A,71
+            LD   (ProofCase),A
+            LD   A,80
+            LD   HL,Chapter21_19Source
+            LD   DE,Chapter21_19SourceEnd
+            CALL ProofRunSingle
+            JP   C,ProofFailed
+            LD   A,128
+            CALL ProofCheckOutput
+            JP   C,ProofFailed
+            LD   A,83
+            LD   HL,Chapter21_19ControlSource
+            LD   DE,Chapter21_19ControlSourceEnd
+            CALL ProofBuildSingle
+            JP   C,ProofFailed
+            CALL ProofComparePublishedProgram
+            JP   C,ProofFailed
+
+            LD   A,72
+            LD   (ProofCase),A
+            LD   A,81
+            LD   B,DiagnosticAssertionFailed
+            LD   IX,S9E0L
+            LD   HL,Chapter21_19FalseSource
+            LD   DE,Chapter21_19FalseSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
+            LD   A,73
+            LD   (ProofCase),A
+            LD   A,82
+            LD   B,DiagnosticTypeMismatch
+            LD   IX,S9E0M
+            LD   HL,Chapter21_19TypeSource
+            LD   DE,Chapter21_19TypeSourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
+            LD   A,74
+            LD   (ProofCase),A
+            LD   A,83
+            LD   HL,Chapter21_20Source
+            LD   DE,Chapter21_20SourceEnd
+            CALL ProofRunSingle
+            JP   C,ProofFailed
+            LD   A,'Y'
+            CALL ProofCheckOutput
+            JP   C,ProofFailed
+
+            LD   A,75
+            LD   (ProofCase),A
+            LD   A,84
+            LD   B,DiagnosticReadOnlyAssignment
+            LD   IX,S9E0N
+            LD   HL,Chapter21_20ReadOnlySource
+            LD   DE,Chapter21_20ReadOnlySourceEnd
+            CALL ProofExpectDiagnosticSingle
+            JP   C,ProofFailed
+
+            LD   A,$A5
+            LD   (ProofStatus),A
+            XOR  A
+            LD   (ProofCase),A
+            HALT
+
+.routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+ProofBuildSingle:
+            CALL CompileAggregateCallSlice
+            RET  C
+            CALL EncodeAggregateProgram
+            RET  C
+            JR   ProofUpdateMaxGenerated
+
+.routine in A,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+ProofRunSingle:
+            CALL ProofBuildSingle
+            RET  C
+            CALL ProofResetServices
+            JP   ProofCallGenerated
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
+ProofUpdateMaxGenerated:
+            LD   HL,(GeneratedSize)
+            LD   DE,(GeneratedRoDataSize)
+            ADD  HL,DE
+            LD   B,H
+            LD   C,L
+            LD   DE,(ProofMaxGenerated)
+            OR   A
+            SBC  HL,DE
+            JR   C,ProofUpdateMaxDone
+            JR   Z,ProofUpdateMaxDone
+            LD   H,B
+            LD   L,C
+            LD   (ProofMaxGenerated),HL
+            LD   HL,(GeneratedSize)
+            LD   (ProofMaxGeneratedCode),HL
+            LD   HL,(GeneratedRoDataSize)
+            LD   (ProofMaxGeneratedRoData),HL
+            LD   HL,(GeneratedDataSize)
+            LD   (ProofMaxGeneratedData),HL
+            LD   HL,(GeneratedBssSize)
+            LD   (ProofMaxGeneratedBss),HL
+ProofUpdateMaxDone:
+            XOR  A
+            RET
+
+; The just-published image must match the preceding image retained by
+; BeginProgram. This directly proves that a successful assert contributes no
+; semantic operation or generated byte.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
+ProofComparePublishedProgram:
+            LD   HL,(GeneratedSize)
+            LD   DE,(PublishedSize)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,ProofComparePublishedNo
+            LD   HL,(GeneratedRoDataSize)
+            LD   DE,(PublishedRoDataSize)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,ProofComparePublishedNo
+            LD   HL,(GeneratedDataSize)
+            LD   DE,(PublishedDataSize)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,ProofComparePublishedNo
+            LD   HL,(GeneratedBssSize)
+            LD   DE,(PublishedBssSize)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,ProofComparePublishedNo
+            LD   BC,(GeneratedSize)
+            LD   HL,GeneratedBase
+            LD   DE,BackupBase
+ProofComparePublishedLoop:
+            LD   A,B
+            OR   C
+            JR   Z,ProofComparePublishedRoData
+            LD   A,(DE)
+            CP   (HL)
+            JR   NZ,ProofComparePublishedNo
+            INC  DE
+            INC  HL
+            DEC  BC
+            JR   ProofComparePublishedLoop
+ProofComparePublishedRoData:
+            LD   BC,(GeneratedRoDataSize)
+            LD   HL,GeneratedRoDataBase
+            LD   DE,S9BRDO
+ProofComparePublishedRoDataLoop:
+            LD   A,B
+            OR   C
+            RET  Z
+            LD   A,(DE)
+            CP   (HL)
+            JR   NZ,ProofComparePublishedNo
+            INC  DE
+            INC  HL
+            DEC  BC
+            JR   ProofComparePublishedRoDataLoop
+ProofComparePublishedNo:
+            SCF
+            RET
+
+.routine in A,B,DE,HL,IX out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+ProofExpectDiagnosticSingle:
+            LD   (ProofExpectedPart),A
+            LD   A,B
+            LD   (ProofExpectedDiagnostic),A
+            PUSH IX
+            POP  BC
+            LD   (ProofExpectedOffset),BC
+            LD   A,(ProofExpectedPart)
+            CALL CompileAggregateCallSlice
+            JR   NC,ProofDiagnosticFailure
+            JR   ProofCheckDiagnostic
+
+.routine in A,B,C,HL,IX out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+ProofExpectDiagnosticParts:
+            LD   (ProofPartCount),A
+            LD   A,B
+            LD   (ProofExpectedDiagnostic),A
+            LD   A,C
+            LD   (ProofExpectedPart),A
+            PUSH IX
+            POP  BC
+            LD   (ProofExpectedOffset),BC
+            LD   A,(ProofPartCount)
+            CALL CompileAggregateCallParts
+            JR   NC,ProofDiagnosticFailure
+ProofCheckDiagnostic:
+            LD   A,(ProofExpectedDiagnostic)
+            LD   HL,DiagnosticCode
+            CP   (HL)
+            JR   NZ,ProofDiagnosticFailure
+            LD   A,(ProofExpectedPart)
+            LD   HL,DiagnosticPartId
+            CP   (HL)
+            JR   NZ,ProofDiagnosticFailure
+            LD   HL,(DiagnosticOffset)
+            LD   DE,(ProofExpectedOffset)
+            OR   A
+            SBC  HL,DE
+            RET  Z
+ProofDiagnosticFailure:
+            SCF
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,HL
+ProofResetServices:
+            CALL Reset
+            XOR  A
+            LD   (ServiceInputLength),A
+            LD   (ServiceStorageInputLength),A
+            RET
+
+.routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,HL
+ProofCheckOutput:
+            LD   B,A
+            LD   A,(RunState)
+            CP   RunSucceeded
+            JR   NZ,ProofCheckFailure
+            LD   A,(ServiceOutputLength)
+            CP   1
+            JR   NZ,ProofCheckFailure
+            LD   A,(ServiceOutputBase)
+            CP   B
+            JR   NZ,ProofCheckFailure
+            LD   A,(ActivationDepth)
+            OR   A
+            RET  Z
+ProofCheckFailure:
+            SCF
+            RET
+
+.routine out A,carry,zero clobbers sign,parity,halfCarry,HL
+ProofCheckSuccessNoOutput:
+            LD   A,(RunState)
+            CP   RunSucceeded
+            JR   NZ,ProofCheckFailure
+            LD   A,(ServiceOutputLength)
+            OR   A
+            JR   NZ,ProofCheckFailure
+            LD   A,(ActivationDepth)
+            OR   A
+            RET  Z
+            SCF
+            RET
+
+.routine in A,BC out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL
+ProofCheckTrap:
+            LD   (ProofExpectedTrap),A
+            LD   (ProofExpectedOffset),BC
+            LD   A,(RunState)
+            CP   RunTrapped
+            JR   NZ,ProofCheckFailure
+            LD   A,(ProofExpectedTrap)
+            LD   HL,TrapNumber
+            CP   (HL)
+            JR   NZ,ProofCheckFailure
+            LD   HL,(TrapOffset)
+            LD   DE,(ProofExpectedOffset)
+            OR   A
+            SBC  HL,DE
+            JR   NZ,ProofCheckFailure
+            LD   A,(ActivationDepth)
+            OR   A
+            RET  Z
+            SCF
+            RET
+
+; Generated code must restore the root SP and IX on every terminal path.
+.routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY
+ProofCallGenerated:
+            LD   HL,0
+            ADD  HL,SP
+            LD   (ProofExpectedSP),HL
+            LD   IX,$A55A
+            CALL GeneratedBase
+            PUSH IX
+            POP  DE
+            LD   HL,$A55A
+            OR   A
+            SBC  HL,DE
+            JR   NZ,ProofCallGeneratedFailure
+            LD   HL,0
+            ADD  HL,SP
+            LD   DE,(ProofExpectedSP)
+            OR   A
+            SBC  HL,DE
+            RET  Z
+ProofCallGeneratedFailure:
+            SCF
+            RET
+
+ProofCompileFailure: LD A,1
+                     JR ProofFailed
+ProofEncodeFailure:  LD A,2
+                     JR ProofFailed
+ProofRunFailure:     LD A,3
+ProofFailed:
+            LD   (ProofCase),A
+            HALT
+
+ProofExpectedSP: .dw 0
+ProofExpectedOffset: .dw 0
+ProofExpectedTrap: .db 0
+ProofMaxGenerated: .dw 0
+ProofMaxGeneratedCode: .dw 0
+ProofMaxGeneratedRoData: .dw 0
+ProofMaxGeneratedData: .dw 0
+ProofMaxGeneratedBss: .dw 0
+ProofExpectedDiagnostic: .db 0
+ProofExpectedPart: .db 0
+ProofPartCount: .db 0
+ProofStatus:     .db 0
+ProofCase:       .db 0
+ProofEnd:

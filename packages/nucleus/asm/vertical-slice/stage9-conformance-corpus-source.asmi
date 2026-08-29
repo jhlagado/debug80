@@ -1,0 +1,677 @@
+            .org $B000
+CorpusSourceStart:
+Chapter21_1Part1:
+            .db "record Cell",10
+            .db "    value as u8",10
+            .db "end",10
+            .db 10
+            .db "var template as Cell = (1)",10
+            .db "var cells as Cell[4] = [(0), (0), (0), (0)]",10
+            .db 10
+Chapter21_1Part1End:
+Chapter21_1Part2:
+            .db "sub cellAt(index as u8) as Cell",10
+            .db "    return cells[index]",10
+            .db "end",10
+            .db 10
+            .db "sub setCell(cell as Cell, value as u8)",10
+            .db "    cell.value = value",10
+            .db "end",10
+            .db 10
+            .db "sub main()",10
+            .db "    var index as u8",10
+            .db "    var code as u8",10
+            .db 10
+            .db "    for index = 0 until 4",10
+            .db "        cells[index] = template",10
+            .db "        setCell(template, index + 1)",10
+            .db "    end",10
+            .db 10
+            .db "    cells[0].value = cellAt(0).value",10
+            .db "    if cells[0].value = 1",10
+            .db "        writeOutputByte('Y') handle code",10
+            .db "            return",10
+            .db "        end",10
+            .db "    elseif cells[0].value = 0",10
+            .db "        writeOutputByte('N') handle code",10
+            .db "            return",10
+            .db "        end",10
+            .db "    end",10
+            .db "end",10
+Chapter21_1Part2End:
+Chapter21_1Descriptors:
+            .db 1
+            .dw Chapter21_1Part1,Chapter21_1Part1End
+            .db 2
+            .dw Chapter21_1Part2,Chapter21_1Part2End
+
+Chapter21_2Source:
+            .db "const badByte = 10",10
+            .db 10
+            .db "sub checkedByte() as u8 fails",10
+            .db "    var value as u8 = readInputByte() else fail",10
+            .db "    if value = 0",10
+            .db "        fail badByte",10
+            .db "    end",10
+            .db "    return value",10
+            .db "end",10
+            .db 10
+            .db "sub emitByte() fails",10
+            .db "    var value as u8 = checkedByte() else fail",10
+            .db "    writeOutputByte(value) else fail",10
+            .db "end",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    emitByte() else fail",10
+            .db "end",10
+Chapter21_2SourceEnd:
+
+Chapter21_3Source:
+            .db "forward sub odd(value as u16) as boolean",10
+            .db 10
+            .db "sub even(value as u16) as boolean",10
+            .db "    if value = 0",10
+            .db "        return true",10
+            .db "    end",10
+            .db "    return odd(value - 1)",10
+            .db "end",10
+            .db 10
+            .db "sub odd",10
+            .db "    if value = 0",10
+            .db "        return false",10
+            .db "    end",10
+            .db "    return even(value - 1)",10
+            .db "end",10
+            .db 10
+            .db "sub main()",10
+            .db "    var index as u16",10
+            .db "    var code as u8",10
+            .db 10
+            .db "    for index = 0 to 5",10
+            .db "        if odd(index)",10
+            .db "            continue",10
+            .db "        elseif index = 4",10
+            .db "            exit",10
+            .db "        end",10
+            .db "    end",10
+            .db 10
+            .db "    writeOutputByte(u8(index)) handle code",10
+            .db "        return",10
+            .db "    end",10
+            .db "end",10
+Chapter21_3SourceEnd:
+
+Chapter21_4Source:
+            .db "var text as string[4] = \"A\\0B\"",10
+            .db "var snapshot as string[4]",10
+            .db 10
+            .db "sub textAlias() as string[4]",10
+            .db "    return text",10
+            .db "end",10
+            .db 10
+            .db "sub mutate(value as string[4])",10
+            .db "    value[1] = 'Z'",10
+            .db "end",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    snapshot = textAlias()",10
+            .db 10
+            .db "    if snapshot.length = 3 and snapshot[1] = 0",10
+            .db "        mutate(textAlias())",10
+            .db "    end",10
+            .db 10
+            .db "    if text[1] = 'Z' and snapshot[1] = 0",10
+            .db "        writeOutputByte('Y') else fail",10
+            .db "    end",10
+            .db "end",10
+Chapter21_4SourceEnd:
+
+Chapter21_5Source:
+            .db "sub emitMarker() fails",10
+            .db "    writeOutputByte('R') else fail",10
+            .db "end",10
+            .db 10
+            .db "sub relayMarker() fails",10
+            .db "    emitMarker() else fail",10
+            .db "    return",10
+            .db "end",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    relayMarker() else fail",10
+            .db "end",10
+Chapter21_5SourceEnd:
+
+Chapter21_6Source:
+            .db "const sampleFailure = 7",10
+            .db 10
+            .db "sub alwaysFails() as u8 fails",10
+            .db "    fail sampleFailure",10
+            .db "end",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    var code as u8",10
+            .db 10
+            .db "    code = alwaysFails() handle code",10
+            .db "        writeOutputByte(code) else fail",10
+            .db "        return",10
+            .db "    end",10
+            .db 10
+            .db "    writeOutputByte(0) else fail",10
+            .db "end",10
+Chapter21_6SourceEnd:
+
+Chapter21_7Source:
+            .db "sub main() fails",10
+            .db "    writeStorageByte('A') else fail",10
+            .db "    writeStorageByte('B') else fail",10
+            .db "    seekStorageOutput(0) else fail",10
+            .db "    writeStorageByte('Z') else fail",10
+            .db "end",10
+Chapter21_7SourceEnd:
+
+Chapter21_8Source:
+            .db "sub main()",10
+            .db "    var index as u8",10
+            .db 10
+            .db "    for index = 250 to 300 step 10",10
+            .db "        exit",10
+            .db "    end",10
+            .db "end",10
+Chapter21_8SourceEnd:
+
+Chapter21_9BoundsSource:
+            .db "var bytes as u8[2]",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    var index as u8 = readInputByte() else fail",10
+            .db "    bytes"
+Chapter21_9BoundsPoint:
+            .db "[index] = 1",10
+            .db "end",10
+Chapter21_9BoundsSourceEnd:
+
+Chapter21_9DivideSource:
+            .db "sub divide(value as u16, divisor as u16) as u16",10
+            .db "    return value "
+Chapter21_9DividePoint:
+            .db "/ divisor",10
+            .db "end",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    var divisor as u16 = readInputByte() else fail",10
+            .db "    var result as u16 = divide(8, divisor)",10
+            .db "end",10
+Chapter21_9DivideSourceEnd:
+
+Chapter21_9ModuloSource:
+            .db "sub remainder(value as u16, divisor as u16) as u16",10
+            .db "    return value "
+Chapter21_9ModuloPoint:
+            .db "mod divisor",10
+            .db "end",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    var divisor as u16 = readInputByte() else fail",10
+            .db "    var result as u16 = remainder(8, divisor)",10
+            .db "end",10
+Chapter21_9ModuloSourceEnd:
+
+Chapter21_12Source:
+            .db "forward sub render(Player as u8) as u8",10
+            .db 10
+            .db "var player as u8 = 1",10
+            .db "var PLAYER as u8 = 2",10
+            .db 10
+            .db "sub render",10
+            .db "    return Player + player + PLAYER",10
+            .db "end",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    writeOutputByte(render(3)) else fail",10
+            .db "end",10
+Chapter21_12SourceEnd:
+
+Chapter21_13Source:
+            .db "record Counter",10
+            .db "    value as u8",10
+            .db "end",10
+            .db 10
+            .db "var source as Counter = (1)",10
+            .db "var destination as Counter",10
+            .db 10
+            .db "sub copyAndIncrement(input as Counter, output as Counter)",10
+            .db "    output = input",10
+            .db "    output.value = output.value + 1",10
+            .db "end",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    copyAndIncrement(source, destination)",10
+            .db "    if source.value = 1 and destination.value = 2",10
+            .db "        writeOutputByte('Y') else fail",10
+            .db "    end",10
+            .db "end",10
+Chapter21_13SourceEnd:
+
+Chapter21_14Source:
+            .db "record Sample",10
+            .db "    value as u8",10
+            .db "end",10
+            .db 10
+            .db "var samples as Sample[2] = [(3), (7)]",10
+            .db 10
+            .db "sub select(items as Sample[2], index as u8) as Sample",10
+            .db "    return items[index]",10
+            .db "end",10
+            .db 10
+            .db "sub forwardSelection(items as Sample[2], index as u8) as Sample",10
+            .db "    return select(items, index)",10
+            .db "end",10
+            .db 10
+            .db "sub replace(item as Sample, value as u8)",10
+            .db "    item.value = value",10
+            .db "end",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    replace(forwardSelection(samples, 1), 9)",10
+            .db "    if samples[1].value = 9",10
+            .db "        writeOutputByte('Y') else fail",10
+            .db "    end",10
+            .db "end",10
+Chapter21_14SourceEnd:
+
+Chapter21_15Source:
+            .db "const sharedValue = 200",10
+            .db "const enabled = true",10
+            .db "var byteUse as u8 = sharedValue",10
+            .db "var wordUse as u16 = sharedValue",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    if enabled and byteUse = 200 and wordUse = 200",10
+            .db "        writeOutputByte('Y') else fail",10
+            .db "    end",10
+            .db "end",10
+Chapter21_15SourceEnd:
+
+Chapter21_16Source:
+            .db "const hexMask = $FF",10
+            .db "const binaryMask = %10110000",10
+            .db "const hexMaximum = $ffff",10
+            .db "const binaryMaximum = %1111111111111111",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    if hexMask = 255 and binaryMask = 176 and hexMaximum = 65535 and binaryMaximum = 65535",10
+            .db "        writeOutputByte(binaryMask) else fail",10
+            .db "    end",10
+            .db "end",10
+Chapter21_16SourceEnd:
+
+Chapter21_17Source:
+            .db "const folded = 3 xor 1 or 1",10
+            .db "var byteValue as u8 = $a5",10
+            .db "var wordValue as u16 = $f0f0",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    byteValue = byteValue xor $ff",10
+            .db "    wordValue = wordValue xor $ffff",10
+            .db "    if folded = 3 and byteValue = $5a and wordValue = $0f0f",10
+            .db "        writeOutputByte(byteValue) else fail",10
+            .db "    end",10
+            .db "end",10
+Chapter21_17SourceEnd:
+
+Chapter21_17BooleanSource:
+            .db "sub main()",10
+            .db "    if true "
+Chapter21_17BooleanPoint:
+            .db "xor false",10
+            .db "    end",10
+            .db "end",10
+Chapter21_17BooleanSourceEnd:
+
+Chapter21_18Source:
+            .db "const folded = 100 mod 7",10
+            .db "var byteValue as u8 = 250",10
+            .db "var wordValue as u16 = 1000",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    byteValue = byteValue mod 16",10
+            .db "    wordValue = wordValue mod 256",10
+            .db "    if folded = 2 and byteValue = 10 and wordValue = 232",10
+            .db "        writeOutputByte(byteValue) else fail",10
+            .db "    end",10
+            .db "end",10
+Chapter21_18SourceEnd:
+
+Chapter21_18ZeroSource:
+            .db "const bad = 1 mod "
+Chapter21_18ZeroPoint:
+            .db "0",10
+            .db 10
+            .db "sub main()",10
+            .db "end",10
+Chapter21_18ZeroSourceEnd:
+
+Chapter21_19Source:
+            .db "const Rows = 8",10
+            .db "const Columns = 16",10
+            .db "assert Rows * Columns = 128",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    writeOutputByte(Rows * Columns) else fail",10
+            .db "end",10
+Chapter21_19SourceEnd:
+
+Chapter21_19ControlSource:
+            .db "const Rows = 8",10
+            .db "const Columns = 16",10
+            .db "// assertion placeholder   ",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    writeOutputByte(Rows * Columns) else fail",10
+            .db "end",10
+Chapter21_19ControlSourceEnd:
+
+Chapter21_19FalseSource:
+            .db "const Rows = 17",10
+Chapter21_19FalsePoint:
+            .db "assert Rows <= 16",10
+            .db 10
+            .db "sub main()",10
+            .db "end",10
+Chapter21_19FalseSourceEnd:
+
+Chapter21_19TypeSource:
+            .db "const Rows = 8",10
+Chapter21_19TypePoint:
+            .db "assert Rows",10
+            .db 10
+            .db "sub main()",10
+            .db "end",10
+Chapter21_19TypeSourceEnd:
+
+Chapter21_20Source:
+            .db "record Pair",10
+            .db "    left as u8",10
+            .db "    right as u16",10
+            .db "end",10
+            .db 10
+            .db "const Origin as Pair = (7, 300)",10
+            .db "const Values as u8[3] = [1, 2, 3]",10
+            .db "const Text as string[3] = \"A\\0B\"",10
+            .db "var target as Pair",10
+            .db 10
+            .db "sub mutate(item as Pair)",10
+            .db "    item.left = 9",10
+            .db "end",10
+            .db 10
+            .db "sub main() fails",10
+            .db "    target = Origin",10
+            .db "    if target.left = 7 and Values[1] = 2 and Text.length = 3 and Text[2] = 'B'",10
+            .db "        mutate(Origin)",10
+            .db "        if Origin.left = 9 and target.left = 7",10
+            .db "            writeOutputByte('Y') else fail",10
+            .db "        end",10
+            .db "    end",10
+            .db "end",10
+Chapter21_20SourceEnd:
+
+Chapter21_20ReadOnlySource:
+            .db "record Pair",10
+            .db "    value as u8",10
+            .db "end",10
+            .db 10
+            .db "const Origin as Pair = (1)",10
+            .db 10
+            .db "sub main()",10
+            .db "    "
+Chapter21_20ReadOnlyPoint:
+            .db "Origin.value = 2",10
+            .db "end",10
+Chapter21_20ReadOnlySourceEnd:
+
+Chapter21_10UnconsumedSource:
+            .db "sub readOne() as u8 fails",10
+            .db "    var value as u8 = readInputByte() else fail",10
+            .db "    return value",10
+            .db "end",10
+            .db 10
+            .db "sub main()",10
+            .db "    var value as u8",10
+            .db "    value = readOne()"
+Chapter21_10UnconsumedPoint:
+            .db 10
+            .db "end",10
+Chapter21_10UnconsumedSourceEnd:
+
+Chapter21_10NominalSource:
+            .db "record LeftCell",10
+            .db "    value as u8",10
+            .db "end",10
+            .db 10
+            .db "record RightCell",10
+            .db "    value as u8",10
+            .db "end",10
+            .db 10
+            .db "var left as LeftCell",10
+            .db "var right as RightCell",10
+            .db 10
+            .db "sub main()",10
+            .db "    left = "
+Chapter21_10NominalPoint:
+            .db "right",10
+            .db "end",10
+Chapter21_10NominalSourceEnd:
+
+Chapter21_10InitializerSource:
+            .db "record Color",10
+            .db "    red as u8",10
+            .db "    green as u8",10
+            .db "    blue as u8",10
+            .db "end",10
+            .db 10
+            .db "var color as Color = (1, 2"
+Chapter21_10InitializerPoint:
+            .db ")",10
+            .db 10
+            .db "sub main()",10
+            .db "end",10
+Chapter21_10InitializerSourceEnd:
+
+Chapter21_10AggregateLocalSource:
+            .db "record Cell",10
+            .db "    value as u8",10
+            .db "end",10
+            .db 10
+            .db "var cell as Cell",10
+            .db 10
+            .db "sub cellAlias() as Cell",10
+            .db "    return cell",10
+            .db "end",10
+            .db 10
+            .db "sub main()",10
+            .db "    var held as "
+Chapter21_10AggregateLocalPoint:
+            .db "Cell = cellAlias()",10
+            .db "end",10
+Chapter21_10AggregateLocalSourceEnd:
+
+Chapter21_10RoutineFlowSource:
+            .db "sub choose(flag as boolean) as u8",10
+            .db "    if flag",10
+            .db "        return 1",10
+            .db "    end",10
+Chapter21_10RoutineFlowPoint:
+            .db "end",10
+            .db 10
+            .db "sub main()",10
+            .db "end",10
+Chapter21_10RoutineFlowSourceEnd:
+
+Chapter21_10LaterSource:
+            .db "sub main()",10
+            .db "    "
+Chapter21_10LaterPoint:
+            .db "later()",10
+            .db "end",10
+            .db 10
+            .db "sub later()",10
+            .db "end",10
+Chapter21_10LaterSourceEnd:
+
+Chapter21_10MainSignatureSource:
+            .db "sub main("
+Chapter21_10MainSignaturePoint:
+            .db "argument as u8)",10
+            .db "end",10
+Chapter21_10MainSignatureSourceEnd:
+
+Chapter21_10ActiveCounterSource:
+            .db "sub main()",10
+            .db "    var index as u8",10
+            .db 10
+            .db "    for index = 0 until 4",10
+Chapter21_10ActiveCounterPoint:
+            .db "        "
+Chapter21_10ActiveCounterName:
+            .db "index = index + 1",10
+            .db "    end",10
+            .db "end",10
+Chapter21_10ActiveCounterSourceEnd:
+
+Chapter21_10ExactUseSource:
+            .db "const Big = 300",10
+            .db "var x as u8",10
+            .db 10
+            .db "sub main()",10
+            .db "    x = "
+Chapter21_10ExactUsePoint:
+            .db "Big",10
+            .db "end",10
+Chapter21_10ExactUseSourceEnd:
+
+Chapter21_10ExactNestedSource:
+            .db "const Big = 300",10
+            .db "var x as u8",10
+            .db 10
+            .db "sub main()",10
+            .db "    x = ("
+Chapter21_10ExactNestedPoint:
+            .db "Big + 1)",10
+            .db "end",10
+Chapter21_10ExactNestedSourceEnd:
+
+Chapter21_10BooleanAsIntegerSource:
+            .db "const flag = true",10
+            .db "var x as u8",10
+            .db "sub main()",10
+            .db "    x = flag"
+Chapter21_10BooleanAsIntegerPoint:
+            .db 10,"end",10
+Chapter21_10BooleanAsIntegerSourceEnd:
+
+Chapter21_10IntegerAsBooleanSource:
+            .db "const value = 1",10
+            .db "var flag as boolean",10
+            .db "sub main()",10
+            .db "    flag = value"
+Chapter21_10IntegerAsBooleanPoint:
+            .db 10,"end",10
+Chapter21_10IntegerAsBooleanSourceEnd:
+
+Chapter21_10HexSource:
+            .db "const value = "
+Chapter21_10HexPoint:
+            .db "$10000",10
+            .db 10
+            .db "sub main()",10
+            .db "end",10
+Chapter21_10HexSourceEnd:
+
+Chapter21_10BinarySource:
+            .db "const value = "
+Chapter21_10BinaryPoint:
+            .db "%10000000000000000",10
+            .db 10
+            .db "sub main()",10
+            .db "end",10
+Chapter21_10BinarySourceEnd:
+
+Chapter21_11BadPart2:
+            .db "sub cellAt(index as u8) as Cell",10
+            .db "    return cells[index]",10
+            .db "end",10
+            .db 10
+            .db "sub setCell(cell as Cell, value as u8)",10
+            .db "    cell.value = value",10
+            .db "end",10
+            .db 10
+            .db "sub main()",10
+            .db "    var index as u8",10
+            .db "    var code as u8",10
+Chapter21_11BadPoint:
+            .db "    missing = 1",10
+            .db "end",10
+Chapter21_11BadPart2End:
+Chapter21_11BadDescriptors:
+            .db 1
+            .dw Chapter21_1Part1,Chapter21_1Part1End
+            .db 2
+            .dw Chapter21_11BadPart2,Chapter21_11BadPart2End
+
+; This split omits a physical line ending at the first part boundary. The
+; adapter must synthesize exactly one logical NEWLINE before entering part 42.
+Chapter21BoundaryPart1:
+            .db "var value as u8 = 1"
+Chapter21BoundaryPart1End:
+Chapter21BoundaryPart2:
+            .db "sub main() fails",10
+            .db "    writeOutputByte(value) else fail",10
+            .db "end",10
+Chapter21BoundaryPart2End:
+Chapter21BoundaryDescriptors:
+            .db 41
+            .dw Chapter21BoundaryPart1,Chapter21BoundaryPart1End
+            .db 42
+            .dw Chapter21BoundaryPart2,Chapter21BoundaryPart2End
+
+; Eight ordered parts are the implementation capacity boundary. Seven blank
+; declarations precede the final complete main routine.
+Chapter21BlankPart:
+            .db 10
+Chapter21BlankPartEnd:
+Chapter21CapacityProgram:
+            .db "sub main()",10
+            .db "end",10
+Chapter21CapacityProgramEnd:
+Chapter21CapacityDescriptors:
+            .db 61
+            .dw Chapter21BlankPart,Chapter21BlankPartEnd
+            .db 62
+            .dw Chapter21BlankPart,Chapter21BlankPartEnd
+            .db 63
+            .dw Chapter21BlankPart,Chapter21BlankPartEnd
+            .db 64
+            .dw Chapter21BlankPart,Chapter21BlankPartEnd
+            .db 65
+            .dw Chapter21BlankPart,Chapter21BlankPartEnd
+            .db 66
+            .dw Chapter21BlankPart,Chapter21BlankPartEnd
+            .db 67
+            .dw Chapter21BlankPart,Chapter21BlankPartEnd
+Chapter21SingleDescriptor:
+            .db 68
+            .dw Chapter21CapacityProgram,Chapter21CapacityProgramEnd
+
+Chapter21OpenDelimiterPart1:
+            .db "sub main("
+Chapter21OpenDelimiterPart1End:
+Chapter21OpenDelimiterPart2:
+            .db ")",10
+            .db "end",10
+Chapter21OpenDelimiterPart2End:
+Chapter21OpenDelimiterDescriptors:
+            .db 71
+            .dw Chapter21OpenDelimiterPart1,Chapter21OpenDelimiterPart1End
+            .db 72
+            .dw Chapter21OpenDelimiterPart2,Chapter21OpenDelimiterPart2End
+CorpusSourceEnd:
