@@ -270,10 +270,10 @@ npm run atom:migration:proof-run -w nucleus
 
 The dry-run intentionally reports two readiness states:
 
-- permanent Atom source is still blocked while emitted-content includes remain
-  after the header, while emitted statements still use two-symbol arithmetic
-  before both symbols are defined, and while feature definitions would translate
-  to `%DEFINE` outside Atom's entry definition header in the source tree; and
+- permanent Atom source is blocked when emitted-content includes remain after
+  the header, when emitted statements use two-symbol arithmetic before both
+  symbols are defined, or when feature definitions would translate to `%DEFINE`
+  outside Atom's entry definition header in the source tree; and
 - compatibility-lowered Atom source is ready when those late includes are the
   only hard issues, because preview lowering can resolve existing symbol
   arithmetic from the comparison symbol table and consume feature definitions
@@ -289,18 +289,25 @@ Nucleus assembly source.
 
 ### Atom expression policy
 
-This census keeps Atom's expression model single-pass. Atom can assemble
-emitted expressions such as `End-Start` when both labels have already been
-defined at the statement that uses them. It can also assemble ordinary
-single-symbol addends such as `Start+$05` and index displacements such as
-`IX+Field` when the field constant is already known. It cannot patch a
-forward-dependent two-symbol expression such as `Later-Start`, because the
-pending patch record does not retain two unresolved symbol identities and an
-operation. The migration tool therefore reports only forward-dependent emitted
-two-symbol expressions as permanent-source blockers. Existing proof-preview
-lowering may still resolve those expressions from the comparison symbol table,
-but permanent source needs an explicit alias, a source rewrite, or an ordering
-change.
+Atom's migration policy is single-pass expression assembly. Nucleus permanent
+Atom source may use emitted expressions such as `End-Start` when both labels
+have already been defined at the statement that uses them. It may also use
+ordinary single-symbol addends such as `Start+$05` and index displacements such
+as `IX+Field` when the field constant is already known.
+
+Permanent source must not depend on a forward two-symbol emitted expression
+such as `Later-Start`. Atom's pending patch record keeps one unresolved symbol
+identity and the final bytes to write when that symbol resolves; it does not
+keep two unresolved symbol identities plus an arithmetic operation. Adding that
+would be an assembler-output redesign, not a migration cleanup. The migration
+tool therefore treats only forward-dependent emitted two-symbol expressions as
+permanent-source blockers. Existing proof-preview lowering may still resolve
+those expressions from the comparison symbol table, but permanent source needs
+an explicit alias, a source rewrite, or an ordering change.
+
+This is now a locked policy for the migration path. Do not add a two-symbol
+patch format to make old source pass unchanged unless the project explicitly
+chooses a broader Atom object and pending-reference redesign.
 
 `target-output.asm`, `loop-z80-sink.asm`, and `aggregate-call-parser.asm` now
 carry the first source-level examples of that policy. Short aliases such as
@@ -979,15 +986,18 @@ shared Debug80 Z80 services package.
 
 ## Conclusion
 
-The Nucleus assembly source is structurally compatible with Atom, but it is not
-ready for a direct rename-and-assemble migration. The compatibility-lowered
-Atom path is proven byte-identical for the full non-measurement proof set. The
-proof harness now also runs every non-measurement, non-overlapping-memory proof
-manifest that has a permanent Atom layout. The remaining permanent-source work
-is to remove the preview-only bridge from the source tree itself: section-owned
-replacement for emitted-content include-after-header source, entry-header
-placement for feature definitions, explicit aliases or source rewrites for
-forward-dependent emitted-statement symbol arithmetic, and final curation of
-human-facing permanent symbol names.
+The Nucleus assembly source is structurally ready for permanent Atom source
+translation. The current census has no include-after-header blockers, no
+forward-dependent emitted-statement symbol arithmetic blockers, no feature
+definition placement blockers, and no compatibility-lowering requirement. The
+compatibility-lowered Atom path remains useful for proof comparison and for
+guarding older preview workflows, but it is no longer required to hide source
+structure that permanent Atom source cannot express.
+
+The proof harness now runs every non-measurement, non-overlapping-memory proof
+manifest that has a permanent Atom layout. The remaining migration work is to
+convert more source permanently while preserving the existing fallback until
+all proof images have a permanent Atom route, then curate the human-facing
+permanent symbol names.
 
 The migration should therefore start with tooling, not manual source edits.

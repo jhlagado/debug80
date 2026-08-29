@@ -149,6 +149,24 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   });
 
+  it("keeps the checked-in Nucleus assembly tree permanent-ready without compatibility lowering", () => {
+    const report = scanAssembly({ asmRoot, proofRoot });
+
+    expect(report.status).toBe("ready");
+    expect(report.readiness).toEqual({
+      permanentSource: "ready",
+      compatibilityLowering: "ready",
+      compatibilityBlockingIssues: 0,
+    });
+    expect(report.measured).toMatchObject({
+      includeAfterHeader: 0,
+      compatibilityLoweringRequired: 0,
+    });
+    expect(report.measured.issues).not.toHaveProperty("atom-symbol-expression");
+    expect(report.measured.issues).not.toHaveProperty("preprocessor-definition-after-header");
+    expect(report.issues).toEqual([]);
+  });
+
   it("assigns deterministic Atom-safe names to long symbols", async () => {
     await withTree({
       "asm/main.asm": [
