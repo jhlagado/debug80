@@ -272,6 +272,41 @@ const permanentLayoutTransforms = new Map([
     ]),
     rewrite: rewriteTypedExpressionZ80SliceProofPermanentAtomSource,
   })],
+  ["vertical-slice/expression-z80-slice-proof.asm", Object.freeze({
+    description: "expression z80 proof sectioned header-include layout",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/expression-z80-slice-proof.asm",
+        code: "include-after-header",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/expression-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "ExpressionOutputCall-ExpressionProofSource",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/expression-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "DuplicateScalarName-DuplicateScalarSource",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/expression-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "UnknownScalarName-UnknownScalarSource",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/expression-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "MalformedExpressionPoint-MalformedExpressionSource",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/expression-z80-slice-proof.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "FullScalarName-FullScalarSource",
+      }),
+    ]),
+    rewrite: rewriteExpressionZ80SliceProofPermanentAtomSource,
+  })],
   ["vertical-slice/array-z80-slice-proof.asm", Object.freeze({
     description: "array z80 proof sectioned header-include layout",
     handledIssues: Object.freeze([
@@ -2870,6 +2905,122 @@ function rewriteTypedExpressionZ80SliceProofPermanentAtomSource(source, { relati
     "            %INCLUDE \"proof-z80-runtime.asm\"",
     "            %INCLUDE \"typed-expression-z80-slice-runtime-after.asmi\"",
     "            %INCLUDE \"typed-expression-z80-slice-proof-body.asmi\"",
+    "",
+  ].join("\n");
+}
+
+function rewriteExpressionZ80SliceProofPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
+  const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
+  const sourceBase = atomSymbol(symbolMap, "SourceBase");
+  const targetRuntimeBase = atomSymbol(symbolMap, "TargetRuntimeBase");
+  const proofBase = atomSymbol(symbolMap, "ProofBase");
+  const aliases = [
+    ["EXOUTOF", ["ExpressionOutputCall", "-", "ExpressionProofSource"]],
+    ["EXDUPOF", ["DuplicateScalarName", "-", "DuplicateScalarSource"]],
+    ["EXUNNOF", ["UnknownScalarName", "-", "UnknownScalarSource"]],
+    ["EXMALOF", ["MalformedExpressionPoint", "-", "MalformedExpressionSource"]],
+    ["EXFULOF", ["FullScalarName", "-", "FullScalarSource"]],
+  ];
+
+  const lines = replaceAtomExpressionAliases(source, symbolMap, aliases).split("\n");
+  const compilerOrgIndex = findPermanentOrgLine(lines, compilerCoreBase, "expression-z80-slice-proof");
+  const sourceAdapterIncludeIndex = findPermanentIncludeLine(lines, "source-adapter.asm", "expression-z80-slice-proof");
+  const tokenizerIncludeIndex = findPermanentIncludeLine(lines, "loop-tokenizer.asm", "expression-z80-slice-proof");
+  const semanticSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-semantic-sink.asm", "expression-z80-slice-proof");
+  const symbolsIncludeIndex = findPermanentIncludeLine(lines, "loop-symbols.asm", "expression-z80-slice-proof");
+  const parserIncludeIndex = findPermanentIncludeLine(lines, "loop-parser.asm", "expression-z80-slice-proof");
+  const loopSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-z80-sink.asm", "expression-z80-slice-proof");
+  const typedSinkIncludeIndex = findPermanentIncludeLine(lines, "typed-expression-z80.asm", "expression-z80-slice-proof");
+  const keywordsIncludeIndex = findPermanentIncludeLine(lines, "loop-keywords.asmi", "expression-z80-slice-proof");
+  const sourceOrgIndex = findPermanentOrgLine(lines, sourceBase, "expression-z80-slice-proof");
+  const runtimeOrgIndex = findPermanentOrgLine(lines, targetRuntimeBase, "expression-z80-slice-proof");
+  const runtimeIncludeIndex = findPermanentIncludeLine(lines, "proof-z80-runtime.asm", "expression-z80-slice-proof");
+  const proofOrgIndex = findPermanentOrgLine(lines, proofBase, "expression-z80-slice-proof");
+
+  const orderedIndexes = [
+    compilerOrgIndex,
+    sourceAdapterIncludeIndex,
+    tokenizerIncludeIndex,
+    semanticSinkIncludeIndex,
+    symbolsIncludeIndex,
+    parserIncludeIndex,
+    loopSinkIncludeIndex,
+    typedSinkIncludeIndex,
+    keywordsIncludeIndex,
+    sourceOrgIndex,
+    runtimeOrgIndex,
+    runtimeIncludeIndex,
+    proofOrgIndex,
+  ];
+  if (!orderedIndexes.every((value, index) => index === 0 || orderedIndexes[index - 1] < value)) {
+    throw new Error("expression-z80-slice proof permanent Atom rewrite found an unexpected section order");
+  }
+
+  const writeSlice = (includeName, start, end) => {
+    writeGeneratedPermanentPart(translatedRoot, relative, includeName, [
+      ...lines.slice(start, end).filter((line) =>
+        !/^\s*%DEFINE\s+(LegacyCompilerSlices|AggregateCallSlices|LegacyEncoders)\b/i.test(line)),
+      "",
+    ]);
+  };
+  writeSlice("expression-z80-slice-code-begin.asmi", compilerOrgIndex, sourceAdapterIncludeIndex);
+  writeSlice("expression-z80-slice-after-source-adapter.asmi", sourceAdapterIncludeIndex + 1, tokenizerIncludeIndex);
+  writeSlice("expression-z80-slice-after-tokenizer.asmi", tokenizerIncludeIndex + 1, semanticSinkIncludeIndex);
+  writeSlice("expression-z80-slice-after-semantic-sink.asmi", semanticSinkIncludeIndex + 1, symbolsIncludeIndex);
+  writeSlice("expression-z80-slice-after-symbols.asmi", symbolsIncludeIndex + 1, parserIncludeIndex);
+  writeSlice("expression-z80-slice-after-parser.asmi", parserIncludeIndex + 1, loopSinkIncludeIndex);
+  writeSlice("expression-z80-slice-after-loop-z80-sink.asmi", loopSinkIncludeIndex + 1, typedSinkIncludeIndex);
+  writeSlice("expression-z80-slice-after-typed-expression-z80.asmi", typedSinkIncludeIndex + 1, keywordsIncludeIndex);
+  writeSlice("expression-z80-slice-after-keywords.asmi", keywordsIncludeIndex + 1, sourceOrgIndex);
+  writeSlice("expression-z80-slice-source.asmi", sourceOrgIndex, runtimeOrgIndex);
+  writeSlice("expression-z80-slice-runtime-begin.asmi", runtimeOrgIndex, runtimeIncludeIndex);
+  writeSlice("expression-z80-slice-runtime-after.asmi", runtimeIncludeIndex + 1, proofOrgIndex);
+  writeGeneratedPermanentPart(translatedRoot, relative, "expression-z80-slice-proof-body.asmi", [
+    lines[proofOrgIndex],
+    "EXOUTOF EQU $11C",
+    "EXDUPOF EQU $18",
+    "EXUNNOF EQU $29",
+    "EXMALOF EQU $34",
+    "EXFULOF EQU $104",
+    "",
+    ...lines.slice(proofOrgIndex + 1),
+  ]);
+
+  return [
+    "; Permanent Atom layout for the expression z80 proof.",
+    "            %DEFINE SegmentedOutput 0",
+    "            %DEFINE TargetStreamingOutput 0",
+    "            %DEFINE LegacyCompilerSlices 1",
+    "            %DEFINE AggregateCallSlices 0",
+    "            %DEFINE LegacyEncoders 1",
+    "            %DEFINE HybridLL1Full 0",
+    "            %DEFINE RuntimeProofServices 1",
+    "            %INCLUDE \"memory-map.asmi\"",
+    "            %INCLUDE \"proof-unsegmented-state.asmi\"",
+    "            %INCLUDE \"loop-compiler-state.asmi\"",
+    "            %INCLUDE \"loop-z80-state.asmi\"",
+    "            %INCLUDE \"expression-z80-slice-code-begin.asmi\"",
+    "            %INCLUDE \"source-adapter.asm\"",
+    "            %INCLUDE \"expression-z80-slice-after-source-adapter.asmi\"",
+    "            %INCLUDE \"loop-tokenizer.asm\"",
+    "            %INCLUDE \"expression-z80-slice-after-tokenizer.asmi\"",
+    "            %INCLUDE \"loop-semantic-sink.asm\"",
+    "            %INCLUDE \"expression-z80-slice-after-semantic-sink.asmi\"",
+    "            %INCLUDE \"loop-symbols.asm\"",
+    "            %INCLUDE \"expression-z80-slice-after-symbols.asmi\"",
+    "            %INCLUDE \"loop-parser.asm\"",
+    "            %INCLUDE \"expression-z80-slice-after-parser.asmi\"",
+    "            %INCLUDE \"loop-z80-sink.asm\"",
+    "            %INCLUDE \"expression-z80-slice-after-loop-z80-sink.asmi\"",
+    "            %INCLUDE \"typed-expression-z80.asm\"",
+    "            %INCLUDE \"expression-z80-slice-after-typed-expression-z80.asmi\"",
+    "            %INCLUDE \"loop-keywords.asmi\"",
+    "            %INCLUDE \"expression-z80-slice-after-keywords.asmi\"",
+    "            %INCLUDE \"expression-z80-slice-source.asmi\"",
+    "            %INCLUDE \"expression-z80-slice-runtime-begin.asmi\"",
+    "            %INCLUDE \"proof-z80-runtime.asm\"",
+    "            %INCLUDE \"expression-z80-slice-runtime-after.asmi\"",
+    "            %INCLUDE \"expression-z80-slice-proof-body.asmi\"",
     "",
   ].join("\n");
 }
