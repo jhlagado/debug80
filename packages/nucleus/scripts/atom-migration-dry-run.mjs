@@ -53,18 +53,8 @@ const directiveTranslations = new Map([
 
 const permanentLayoutTransforms = new Map([
   ["vertical-slice/compiler-slice-proof.asm", Object.freeze({
-    description: "compiler-slice proof header-include layout",
-    handledIssues: Object.freeze([
-      Object.freeze({
-        file: "asm/vertical-slice/compiler-slice-proof.asm",
-        code: "include-after-header",
-      }),
-      Object.freeze({
-        file: "asm/vertical-slice/compiler-slice-proof.asm",
-        code: "atom-symbol-expression",
-        messageIncludes: "MalformedSourceEnd-MalformedSource",
-      }),
-    ]),
+    description: "compiler-slice proof physical section-owner layout",
+    handledIssues: Object.freeze([]),
     rewrite: rewriteCompilerSlicePermanentAtomSource,
   })],
   ["vertical-slice/z80-slice-proof.asm", Object.freeze({
@@ -2296,47 +2286,19 @@ function findPermanentIncludeLine(lines, includeName, context) {
   return index;
 }
 
-function rewriteCompilerSlicePermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
-  const generatedInclude = "compiler-slice-code-begin.asmi";
-  const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
-  const compilerCodeStart = atomSymbol(symbolMap, "CompilerCodeStart");
-  const compilerCodeEnd = atomSymbol(symbolMap, "CompilerCodeEnd");
-  const malformedSource = atomSymbol(symbolMap, "MalformedSource");
-  const malformedSourceEnd = atomSymbol(symbolMap, "MalformedSourceEnd");
-  const malformedSourceSize = "MLFRMDSZ";
-  const expectedOperations = atomSymbol(symbolMap, "ExpectedOperations");
-  writeGeneratedPermanentPart(translatedRoot, relative, generatedInclude, [
-    "            ORG " + compilerCoreBase,
-    compilerCodeStart + ": ;@NUC-GLOBAL CompilerCodeStart PERMANENT " + compilerCodeStart,
-    "",
-  ]);
-
-  const lines = source.split("\n");
-  const codeEndIndex = lines.findIndex((line) => line.startsWith(`${compilerCodeEnd}:`));
-  if (codeEndIndex < 0) {
-    throw new Error("compiler-slice permanent Atom rewrite could not find CompilerCodeEnd");
-  }
-  const suffix = lines.slice(codeEndIndex).join("\n");
-  const rewrittenSuffix = suffix
-    .replace(
-      `LD   DE,${malformedSourceEnd}-${malformedSource}`,
-      `LD   DE,${malformedSourceSize}`,
-    )
-    .replace(
-      new RegExp(`^(${expectedOperations}:.*)$`, "m"),
-      `${malformedSourceSize} EQU ${malformedSourceEnd}-${malformedSource}\n$1`,
-    );
+function rewriteCompilerSlicePermanentAtomSource() {
   return [
     "; Permanent Atom layout for the compiler-slice proof.",
     "            %DEFINE AggregateCallSlices 0",
     "            %INCLUDE \"memory-map.asmi\"",
     "            %INCLUDE \"compiler-state.asmi\"",
-    `            %INCLUDE "${generatedInclude}"`,
+    "            %INCLUDE \"compiler-slice-code-begin.asmi\"",
     "            %INCLUDE \"source-adapter.asm\"",
     "            %INCLUDE \"tokenizer.asm\"",
     "            %INCLUDE \"semantic-sink.asm\"",
     "            %INCLUDE \"parser.asm\"",
-    rewrittenSuffix,
+    "            %INCLUDE \"compiler-slice-proof-body.asmi\"",
+    "",
   ].join("\n");
 }
 
