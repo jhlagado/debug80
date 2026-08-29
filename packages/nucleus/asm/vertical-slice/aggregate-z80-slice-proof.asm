@@ -1,11 +1,10 @@
 ; Prove Stage 6 packed aggregate layouts and atomic static-image publication.
 
+            .include "aggregate-z80-slice-proof-config.asmi"
             .include "memory-map.asmi"
             .include "proof-unsegmented-state.asmi"
             .include "loop-compiler-state.asmi"
             .include "loop-z80-state.asmi"
-
-TargetStreamingOutput .equ 0
 
 AGIMGL  .equ AggregateExpectedImageEnd-AggregateExpectedImage ; expected aggregate static image length
 AGFLD0  .equ AggregateFieldTableBase+AggregateFieldOffset ; first aggregate field offset byte
@@ -23,8 +22,6 @@ AGSYM1V .equ SymbolTableBase+SymbolEntrySize+4 ; identity proof symbol value byt
 
             .org CompilerCoreBase
 CompilerCodeStart:
-LegacyCompilerSlices .equ 0
-AggregateCallSlices  .equ 0
 SourceAdapterCodeStart:
             .include "source-adapter.asm"
 SourceAdapterCodeEnd:
@@ -42,7 +39,6 @@ ParserCodeStart:
 ParserCodeEnd:
 CompilerCommonCodeEnd:
 SinkCodeStart:
-LegacyEncoders .equ 0
             .include "loop-z80-sink.asm"
 TypedSinkCodeStart:
             .include "typed-expression-z80.asm"

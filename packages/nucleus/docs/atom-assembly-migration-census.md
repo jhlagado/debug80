@@ -5,7 +5,7 @@ Date: 2026-08-29
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current reusable-transform baseline HEAD: `79f71bd7`
+Current reusable-transform baseline HEAD: `d24f88b1`
 
 ## Purpose
 
@@ -24,8 +24,8 @@ Measured files:
 
 | Item | Measured value |
 | --- | ---: |
-| Assembly files, `.asm` and `.asmi` | 69 |
-| Source lines | 29,655 |
+| Assembly files, `.asm` and `.asmi` | 85 |
+| Source lines | 29,676 |
 | Defined assembler symbols detected | 4,035 |
 | Defined assembler symbols longer than eight characters | 3,910 |
 | Long labels classed as dot-local candidates | 749 |
@@ -34,13 +34,13 @@ Measured files:
 | Proof-limit symbols using `$10000` | 4 |
 | Include-after-header violations | 143 |
 | Forward-dependent emitted-statement symbol arithmetic sites | 0 |
-| Current permanent-source blockers | 203 |
+| Current permanent-source blockers | 147 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
 | Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 0 |
 | Permanent blocker: include after header | 143 |
-| Permanent blocker: feature definition after Atom entry header | 60 |
+| Permanent blocker: feature definition after Atom entry header | 4 |
 | Proof-manifest symbol mappings | 146 |
 | One-past-address-space proof-limit mappings | 4 |
 | Routine contract metadata mappings | 709 |
@@ -103,6 +103,9 @@ Generated permanent Atom source hoists top-level feature definitions into the
 entry definition header before `%INCLUDE`, `%IF`, `ORG`, labels, code, data, and
 contract comments. The raw Nucleus source still reports those placements as
 permanent-source blockers until the source files themselves are reorganized.
+Proof-entry feature settings now live in explicit `*-config.asmi` files included
+at the start of each proof source. The remaining feature-definition blockers are
+module/default-context decisions, not proof-entry configuration.
 
 It can also write the proof-manifest symbol join needed by the proof harness:
 

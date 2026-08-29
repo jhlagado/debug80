@@ -1,10 +1,9 @@
 ; End-to-end proof of the streaming source adapter, tokenizer, predictive
 ; parser, semantic checks, positioned diagnostic, and operation sink.
 
+            .include "compiler-slice-proof-config.asmi"
             .include "memory-map.asmi"
             .include "compiler-state.asmi"
-
-AggregateCallSlices .equ 0
 
             .org CompilerCoreBase
 CompilerCodeStart:

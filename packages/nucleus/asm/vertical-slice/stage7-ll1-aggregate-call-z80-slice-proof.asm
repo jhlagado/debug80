@@ -1,5 +1,6 @@
 ; Prove the Stage 7 packed LL(1) parser against aggregate calls and paths.
 
+            .include "stage7-ll1-aggregate-call-z80-slice-proof-config.asmi"
             .include "memory-map.asmi"
             .include "proof-segmented-state.asmi"
             .include "loop-compiler-state.asmi"
@@ -8,10 +9,6 @@
 
             .org CompilerCoreBase
 CompilerCodeStart:
-LegacyCompilerSlices .equ 0
-AggregateCallSlices  .equ 1
-Stage7LL1            .equ 1
-TargetStreamingOutput .equ 0
 S7CSLOF .equ Stage7CorruptStringLengthPoint-Stage7CorruptStringSource ; corrupt string length source offset
 S7CSIOF .equ Stage7CorruptStringIndexPoint-Stage7CorruptStringIndexSource ; corrupt string index source offset
 S7SACP  .equ Stage7SealedArrayCapacityPoint-Stage7SealedArraySource ; sealed array capacity source offset
@@ -35,7 +32,6 @@ ParserCodeStart:
 ParserCodeEnd:
 CompilerCommonCodeEnd:
 SinkCodeStart:
-LegacyEncoders .equ 0
             .include "loop-z80-sink.asm"
 TypedSinkCodeStart:
             .include "typed-expression-z80.asm"

@@ -3,12 +3,11 @@
 ; RET aliases; this proof tests grammar selection, terminal consumption, stack
 ; order, indirect action returns, and clean completion.
 
+            .include "stage7-ll1-engine-proof-config.asmi"
             .include "memory-map.asmi"
             .include "proof-unsegmented-state.asmi"
             .include "loop-compiler-state.asmi"
             .include "aggregate-call-state.asmi"
-
-AggregateCallSlices .equ 0
 
 HLL1STKL .equ HybridLL1StackBase+HybridLL1StackCapacity ; one-past LL(1) proof stack byte
 

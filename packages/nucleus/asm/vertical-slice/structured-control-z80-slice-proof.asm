@@ -1,16 +1,13 @@
 ; Prove typed if/elseif/else, while, counted for, and loop transfers end to end.
 
+            .include "structured-control-z80-slice-proof-config.asmi"
             .include "memory-map.asmi"
             .include "proof-unsegmented-state.asmi"
             .include "loop-compiler-state.asmi"
             .include "loop-z80-state.asmi"
 
-TargetStreamingOutput .equ 0
-
             .org CompilerCoreBase
 CompilerCodeStart:
-LegacyCompilerSlices .equ 1
-AggregateCallSlices  .equ 0
 SourceAdapterCodeStart:
             .include "source-adapter.asm"
 SourceAdapterCodeEnd:
@@ -28,7 +25,6 @@ ParserCodeStart:
 ParserCodeEnd:
 CompilerCommonCodeEnd:
 SinkCodeStart:
-LegacyEncoders .equ 0
             .include "loop-z80-sink.asm"
 StructuredSinkStart:
             .include "typed-expression-z80.asm"

@@ -1,0 +1,2 @@
+LegacyCompilerSlices .equ 1
+AggregateCallSlices  .equ 0

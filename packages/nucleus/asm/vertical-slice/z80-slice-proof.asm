@@ -1,10 +1,9 @@
 ; Compile and execute the first Nucleus source program as direct Z80 code.
 
+            .include "z80-slice-proof-config.asmi"
             .include "memory-map.asmi"
             .include "compiler-state.asmi"
             .include "z80-state.asmi"
-
-AggregateCallSlices .equ 0
 
             .org CompilerCoreBase
 CompilerCodeStart:

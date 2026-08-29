@@ -1,0 +1,4 @@
+TargetStreamingOutput .equ 0
+LegacyCompilerSlices  .equ 1
+AggregateCallSlices   .equ 0
+LegacyEncoders        .equ 1

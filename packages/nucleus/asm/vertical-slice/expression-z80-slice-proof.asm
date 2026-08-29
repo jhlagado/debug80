@@ -1,16 +1,13 @@
 ; Compile general scalar symbols and a precedence expression to direct Z80.
 
+            .include "expression-z80-slice-proof-config.asmi"
             .include "memory-map.asmi"
             .include "proof-unsegmented-state.asmi"
             .include "loop-compiler-state.asmi"
             .include "loop-z80-state.asmi"
 
-TargetStreamingOutput .equ 0
-
             .org CompilerCoreBase
 CompilerCodeStart:
-LegacyCompilerSlices .equ 1
-AggregateCallSlices  .equ 0
 SourceAdapterCodeStart:
             .include "source-adapter.asm"
 SourceAdapterCodeEnd:
@@ -28,7 +25,6 @@ ParserCodeStart:
 ParserCodeEnd:
 CompilerCommonCodeEnd:
 SinkCodeStart:
-LegacyEncoders .equ 1
             .include "loop-z80-sink.asm"
             .include "typed-expression-z80.asm"
 SinkCodeEnd:

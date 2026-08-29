@@ -1,16 +1,13 @@
 ; Compile and execute the counted-loop source as direct Z80 code.
 
+            .include "loop-z80-slice-proof-config.asmi"
             .include "memory-map.asmi"
             .include "proof-unsegmented-state.asmi"
             .include "loop-compiler-state.asmi"
             .include "loop-z80-state.asmi"
 
-TargetStreamingOutput .equ 0
-
             .org CompilerCoreBase
 CompilerCodeStart:
-LegacyCompilerSlices .equ 1
-AggregateCallSlices  .equ 0
             .include "source-adapter.asm"
             .include "loop-tokenizer.asm"
             .include "loop-semantic-sink.asm"
@@ -18,7 +15,6 @@ AggregateCallSlices  .equ 0
             .include "loop-parser.asm"
 CompilerCommonCodeEnd:
 SinkCodeStart:
-LegacyEncoders .equ 1
             .include "loop-z80-sink.asm"
 SinkCodeEnd:
 CompilerCodeEnd:

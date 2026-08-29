@@ -1,6 +1,7 @@
 ; Compile and execute the exact Chapter 21 conformance corpus through the
 ; production packed LL(1) compiler and direct-Z80 backend.
 
+            .include "stage9-conformance-z80-slice-proof-config.asmi"
             .include "memory-map.asmi"
             .include "proof-segmented-state.asmi"
             .include "loop-compiler-state.asmi"
@@ -9,10 +10,6 @@
 
             .org CompilerCoreBase
 CompilerCodeStart:
-LegacyCompilerSlices .equ 0
-AggregateCallSlices  .equ 1
-Stage7LL1            .equ 1
-TargetStreamingOutput .equ 0
 S9RDOF  .equ GeneratedRoDataBase-GeneratedBase ; read-only data offset from generated image base
 S9BRDO  .equ BackupBase+S9RDOF ; backup address corresponding to generated read-only data
 SourceAdapterCodeStart:
@@ -32,7 +29,6 @@ ParserCodeStart:
 ParserCodeEnd:
 CompilerCommonCodeEnd:
 SinkCodeStart:
-LegacyEncoders .equ 0
             .include "loop-z80-sink.asm"
 TypedSinkCodeStart:
             .include "typed-expression-z80.asm"

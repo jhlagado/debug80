@@ -1,13 +1,12 @@
 ; Prove the compact descriptor and flat append-only compiler sink end to end.
 
+            .include "flat-target-z80-slice-proof-config.asmi"
             .include "target-memory-map.asmi"
             .include "proof-segmented-state.asmi"
             .include "loop-compiler-state.asmi"
             .include "aggregate-call-state.asmi"
             .include "target-output-state.asmi"
             .include "loop-z80-state.asmi"
-
-TargetStreamingOutput .equ 1
 
 FTADIMG .equ AdapterCapturedBegin+TargetDescriptorImageBase ; captured descriptor image-base field
 FTMPWRI .equ AdapterCapturedMap+TargetMapWritableBase-TargetFlatMapBase ; captured writable-base map field
@@ -20,9 +19,6 @@ FTMPAGG .equ AdapterCapturedMap+TargetMapAggregateBase-TargetFlatMapBase ; captu
 
             .org CompilerCoreBase
 CompilerCodeStart:
-LegacyCompilerSlices .equ 0
-AggregateCallSlices  .equ 1
-Stage7LL1            .equ 1
 SourceAdapterCodeStart:
             .include "source-adapter.asm"
 SourceAdapterCodeEnd:
@@ -40,7 +36,6 @@ ParserCodeStart:
 ParserCodeEnd:
 CompilerCommonCodeEnd:
 SinkCodeStart:
-LegacyEncoders .equ 0
             .include "loop-z80-sink.asm"
             .include "target-output.asm"
 TypedSinkCodeStart:

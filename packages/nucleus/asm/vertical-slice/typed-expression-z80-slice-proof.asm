@@ -1,11 +1,10 @@
 ; Prove the correctness-first u8/u16/boolean expression increment end to end.
 
+            .include "typed-expression-z80-slice-proof-config.asmi"
             .include "memory-map.asmi"
             .include "proof-unsegmented-state.asmi"
             .include "loop-compiler-state.asmi"
             .include "loop-z80-state.asmi"
-
-TargetStreamingOutput .equ 0
 
 TEPNDOF .equ TypedNestedDivideOuter-TypedNestedDivideTrapSource ; nested divide outer trap offset
 TEPNNOF .equ TypedNestedNarrowOuter-TypedNestedNarrowTrapSource ; nested narrow outer trap offset
@@ -13,8 +12,6 @@ TEPU8MT .equ ScalarMetaConstant+ScalarTypeU8                    ; u8 constant me
 
             .org CompilerCoreBase
 CompilerCodeStart:
-LegacyCompilerSlices .equ 1
-AggregateCallSlices  .equ 0
 SourceAdapterCodeStart:
             .include "source-adapter.asm"
 SourceAdapterCodeEnd:
@@ -32,7 +29,6 @@ ParserCodeStart:
 ParserCodeEnd:
 CompilerCommonCodeEnd:
 SinkCodeStart:
-LegacyEncoders .equ 0
             .include "loop-z80-sink.asm"
 TypedSinkCodeStart:
             .include "typed-expression-z80.asm"

@@ -1,5 +1,6 @@
 ; Prove failable signatures and explicit failure on the packed LL(1) path.
 
+            .include "stage8-failure-z80-slice-proof-config.asmi"
             .include "memory-map.asmi"
             .include "proof-segmented-state.asmi"
             .include "loop-compiler-state.asmi"
@@ -8,10 +9,6 @@
 
             .org CompilerCoreBase
 CompilerCodeStart:
-LegacyCompilerSlices .equ 0
-AggregateCallSlices  .equ 1
-Stage7LL1            .equ 1
-TargetStreamingOutput .equ 0
 SourceAdapterCodeStart:
             .include "source-adapter.asm"
 SourceAdapterCodeEnd:
@@ -29,7 +26,6 @@ ParserCodeStart:
 ParserCodeEnd:
 CompilerCommonCodeEnd:
 SinkCodeStart:
-LegacyEncoders .equ 0
             .include "loop-z80-sink.asm"
 TypedSinkCodeStart:
             .include "typed-expression-z80.asm"

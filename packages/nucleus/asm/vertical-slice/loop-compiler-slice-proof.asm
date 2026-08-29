@@ -1,13 +1,12 @@
 ; Source proof for the u8-local and counted-loop compiler slice.
 
+            .include "loop-compiler-slice-proof-config.asmi"
             .include "memory-map.asmi"
             .include "proof-unsegmented-state.asmi"
             .include "loop-compiler-state.asmi"
 
             .org CompilerCoreBase
 CompilerCodeStart:
-LegacyCompilerSlices .equ 1
-AggregateCallSlices  .equ 0
             .include "source-adapter.asm"
             .include "loop-tokenizer.asm"
             .include "loop-semantic-sink.asm"
