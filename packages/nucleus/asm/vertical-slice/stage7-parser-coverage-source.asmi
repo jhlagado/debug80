@@ -1,0 +1,49 @@
+            .org SourceBase
+Stage7ParserCoverageSource:
+            .db "var out as u8 = 0",10
+            .db "var finalI as u8 = 0",10
+            .db "var finalJ as u16 = 0",10
+            .db "sub main() fails",10
+            .db "var i as u8",10
+            .db "var j as u16 = 3",10
+            .db "if false",10
+            .db "out = 99",10
+            .db "elseif true",10
+            .db "out = 1",10
+            .db "else",10
+            .db "out = 98",10
+            .db "end",10
+            .db "while out < 3",10
+            .db "out = out + 1",10
+            .db "end",10
+            .db "for i = 0 until 4",10
+            .db "if i = 1",10
+            .db "continue",10
+            .db "end",10
+            .db "if i = 3",10
+            .db "exit",10
+            .db "end",10
+            .db "out = out + i",10
+            .db "end",10
+            .db "for j = 3 to 0 step -1",10
+            .db "out = out + 1",10
+            .db "end",10
+            .db "finalI = i",10
+            .db "finalJ = j",10
+            .db "writeOutputByte(out) else fail",10
+            .db "end",10
+Stage7ParserCoverageSourceEnd:
+
+; Exercise constant declarations and named counted-loop steps separately from
+; the larger control-flow program.
+Stage7LL1ConstantSource:
+            .db "const stepSize = 1",10
+            .db "var out as u8 = 0",10
+            .db "sub main() fails",10
+            .db "var i as u8",10
+            .db "for i = 0 until 2 step stepSize",10
+            .db "out = out + stepSize",10
+            .db "end",10
+            .db "writeOutputByte(out) else fail",10
+            .db "end",10
+Stage7LL1ConstantSourceEnd:

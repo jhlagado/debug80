@@ -113,13 +113,8 @@ const permanentLayoutTransforms = new Map([
     rewrite: rewriteStage7Ll1ParserCoverageProofPermanentAtomSource,
   })],
   ["vertical-slice/stage7-parser-coverage-proof.asmi", Object.freeze({
-    description: "stage7 parser coverage proof sectioned header-include layout",
-    handledIssues: Object.freeze([
-      Object.freeze({
-        file: "asm/vertical-slice/stage7-parser-coverage-proof.asmi",
-        code: "include-after-header",
-      }),
-    ]),
+    description: "stage7 parser coverage proof physical section-owner layout",
+    handledIssues: Object.freeze([]),
     rewrite: rewriteStage7ParserCoverageProofPermanentAtomSource,
   })],
   ["vertical-slice/flat-target-z80-slice-proof.asm", Object.freeze({
@@ -2484,72 +2479,7 @@ function rewriteStage7Ll1ParserCoverageProofPermanentAtomSource() {
   ].join("\n");
 }
 
-function rewriteStage7ParserCoverageProofPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
-  const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
-  const sourceBase = atomSymbol(symbolMap, "SourceBase");
-  const targetRuntimeBase = atomSymbol(symbolMap, "TargetRuntimeBase");
-  const proofBase = atomSymbol(symbolMap, "ProofBase");
-
-  const lines = source.split("\n");
-  const compilerOrgIndex = findPermanentOrgLine(lines, compilerCoreBase, "stage7-parser-coverage-proof");
-  const sourceAdapterIncludeIndex = findPermanentIncludeLine(lines, "source-adapter.asm", "stage7-parser-coverage-proof");
-  const tokenizerIncludeIndex = findPermanentIncludeLine(lines, "loop-tokenizer.asm", "stage7-parser-coverage-proof");
-  const semanticSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-semantic-sink.asm", "stage7-parser-coverage-proof");
-  const symbolsIncludeIndex = findPermanentIncludeLine(lines, "loop-symbols.asm", "stage7-parser-coverage-proof");
-  const parserIncludeIndex = findPermanentIncludeLine(lines, "loop-parser.asm", "stage7-parser-coverage-proof");
-  const loopSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-z80-sink.asm", "stage7-parser-coverage-proof");
-  const typedSinkIncludeIndex = findPermanentIncludeLine(lines, "typed-expression-z80.asm", "stage7-parser-coverage-proof");
-  const aggregateSinkIncludeIndex = findPermanentIncludeLine(lines, "aggregate-z80.asm", "stage7-parser-coverage-proof");
-  const keywordsIncludeIndex = findPermanentIncludeLine(lines, "loop-keywords.asmi", "stage7-parser-coverage-proof");
-  const sourceOrgIndex = findPermanentOrgLine(lines, sourceBase, "stage7-parser-coverage-proof");
-  const runtimeOrgIndex = findPermanentOrgLine(lines, targetRuntimeBase, "stage7-parser-coverage-proof");
-  const runtimeIncludeIndex = findPermanentIncludeLine(lines, "proof-z80-runtime.asm", "stage7-parser-coverage-proof");
-  const proofOrgIndex = findPermanentOrgLine(lines, proofBase, "stage7-parser-coverage-proof");
-
-  const orderedIndexes = [
-    compilerOrgIndex,
-    sourceAdapterIncludeIndex,
-    tokenizerIncludeIndex,
-    semanticSinkIncludeIndex,
-    symbolsIncludeIndex,
-    parserIncludeIndex,
-    loopSinkIncludeIndex,
-    typedSinkIncludeIndex,
-    aggregateSinkIncludeIndex,
-    keywordsIncludeIndex,
-    sourceOrgIndex,
-    runtimeOrgIndex,
-    runtimeIncludeIndex,
-    proofOrgIndex,
-  ];
-  if (!orderedIndexes.every((value, index) => index === 0 || orderedIndexes[index - 1] < value)) {
-    throw new Error("stage7 parser coverage proof permanent Atom rewrite found an unexpected section order");
-  }
-
-  const writeSlice = (includeName, start, end) => {
-    writeGeneratedPermanentPart(translatedRoot, relative, includeName, [
-      ...lines.slice(start, end).filter((line) =>
-        !/^\s*%DEFINE\s+(LegacyCompilerSlices|AggregateCallSlices|LegacyEncoders)\b/i.test(line)),
-      "",
-    ]);
-  };
-  writeSlice("stage7-parser-coverage-code-begin.asmi", compilerOrgIndex, sourceAdapterIncludeIndex);
-  writeSlice("stage7-parser-coverage-after-source-adapter.asmi", sourceAdapterIncludeIndex + 1, tokenizerIncludeIndex);
-  writeSlice("stage7-parser-coverage-after-tokenizer.asmi", tokenizerIncludeIndex + 1, semanticSinkIncludeIndex);
-  writeSlice("stage7-parser-coverage-after-semantic-sink.asmi", semanticSinkIncludeIndex + 1, symbolsIncludeIndex);
-  writeSlice("stage7-parser-coverage-after-symbols.asmi", symbolsIncludeIndex + 1, parserIncludeIndex);
-  writeSlice("stage7-parser-coverage-after-parser.asmi", parserIncludeIndex + 1, loopSinkIncludeIndex);
-  writeSlice("stage7-parser-coverage-after-loop-z80-sink.asmi", loopSinkIncludeIndex + 1, typedSinkIncludeIndex);
-  writeSlice("stage7-parser-coverage-after-typed-expression-z80.asmi", typedSinkIncludeIndex + 1, aggregateSinkIncludeIndex);
-  writeSlice("stage7-parser-coverage-after-aggregate-z80.asmi", aggregateSinkIncludeIndex + 1, keywordsIncludeIndex);
-  writeSlice("stage7-parser-coverage-after-keywords.asmi", keywordsIncludeIndex + 1, sourceOrgIndex);
-  writeSlice("stage7-parser-coverage-source.asmi", sourceOrgIndex, runtimeOrgIndex);
-  writeSlice("stage7-parser-coverage-runtime-begin.asmi", runtimeOrgIndex, runtimeIncludeIndex);
-  writeSlice("stage7-parser-coverage-runtime-after.asmi", runtimeIncludeIndex + 1, proofOrgIndex);
-  writeGeneratedPermanentPart(translatedRoot, relative, "stage7-parser-coverage-proof-body.asmi", [
-    ...lines.slice(proofOrgIndex),
-  ]);
-
+function rewriteStage7ParserCoverageProofPermanentAtomSource() {
   return [
     "; Permanent Atom layout for the Stage 7 parser coverage proof body.",
     "            %INCLUDE \"memory-map.asmi\"",
@@ -2584,7 +2514,6 @@ function rewriteStage7ParserCoverageProofPermanentAtomSource(source, { relative,
     "",
   ].join("\n");
 }
-
 function rewriteFlatTargetZ80SliceProofPermanentAtomSource() {
   return [
     "; Permanent Atom layout for the flat target z80 proof.",

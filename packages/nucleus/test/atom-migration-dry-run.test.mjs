@@ -1313,7 +1313,16 @@ describe("Nucleus Atom migration dry-run", () => {
         "utf8",
       );
       expect(body).toContain('%INCLUDE "stage7-parser-coverage-code-begin.asmi"');
+      expect(body).toContain('%INCLUDE "stage7-parser-coverage-source.asmi"');
+      expect(body).toContain('%INCLUDE "stage7-parser-coverage-runtime-begin.asmi"');
       expect(body).toContain('%INCLUDE "stage7-parser-coverage-proof-body.asmi"');
+      const proofBody = await readFile(
+        path.join(translatedRoot, "vertical-slice", "stage7-parser-coverage-proof-body.asmi"),
+        "utf8",
+      );
+      expect(proofBody).toContain(";@NUC-GLOBAL ProofStart PERMANENT");
+      expect(proofBody).toContain(";@NUC-GLOBAL ProofCallGenerated PERMANENT");
+      expect(proofBody).not.toContain("%INCLUDE");
       const aggregateZ80 = await readFile(
         path.join(translatedRoot, "vertical-slice", "aggregate-z80.asm"),
         "utf8",
