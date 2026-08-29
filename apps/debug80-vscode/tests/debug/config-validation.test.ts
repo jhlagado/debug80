@@ -513,8 +513,8 @@ describe('config-validation', () => {
       expect(result).toMatchObject({
         valid: false,
         errors: [
-          'tec1g.romArtifacts[0].assembler must be "atom" or "azm"',
-          'tec1g.romArtifacts[1].banks[0].assembler must be "atom" or "azm"',
+          'tec1g.romArtifacts[0].assembler must select Atom or AZM',
+          'tec1g.romArtifacts[1].banks[0].assembler must select Atom or AZM',
           'tec1g.romArtifacts[2].assembler is only supported for source-backed artifacts',
         ],
       });
@@ -1061,7 +1061,7 @@ describe('config-validation', () => {
       expect(validateGlimmerConfig({ assembler: 'ASM80' })).toMatchObject({ valid: true });
       expect(validateGlimmerConfig({ assembler: 'other' })).toMatchObject({
         valid: false,
-        errors: ['glimmer.assembler must be "atom" or "azm"'],
+        errors: ['glimmer.assembler must select Atom or AZM'],
       });
       expect(validateGlimmerConfig(null)).toMatchObject({
         valid: false,
@@ -1076,7 +1076,7 @@ describe('config-validation', () => {
       expect(validateAssembler(undefined)).toMatchObject({ valid: true });
       expect(validateAssembler('macro80')).toMatchObject({
         valid: false,
-        errors: ['assembler must be "atom", "azm", "glimmer", or "nucleus"'],
+        errors: ['assembler must select Atom, AZM, Glimmer, or Nucleus'],
       });
       expect(validateAssembler(80)).toMatchObject({
         valid: false,
@@ -1084,7 +1084,7 @@ describe('config-validation', () => {
       });
       expect(validateLaunchArgs({ asm: 'main.asm', assembler: 'macro80' })).toMatchObject({
         valid: false,
-        errors: ['assembler must be "atom", "azm", "glimmer", or "nucleus"'],
+        errors: ['assembler must select Atom, AZM, Glimmer, or Nucleus'],
       });
     });
 

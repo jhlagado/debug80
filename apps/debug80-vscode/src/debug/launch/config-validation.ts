@@ -131,7 +131,7 @@ export function validateGlimmerConfig(config: unknown): ValidationResult {
   const assembler = objectResult.value.assembler;
   return acceptsConcreteZ80Assembler(assembler)
     ? validResult()
-    : invalidResult('glimmer.assembler must be "atom" or "azm"');
+    : invalidResult('glimmer.assembler must select Atom or AZM');
 }
 
 function acceptsConcreteZ80Assembler(value: unknown): boolean {
@@ -156,7 +156,7 @@ export function validateAssembler(value: unknown): ValidationResult {
   }
   return acceptsConcreteZ80Assembler(value)
     ? validResult()
-    : invalidResult('assembler must be "atom", "azm", "glimmer", or "nucleus"');
+    : invalidResult('assembler must select Atom, AZM, Glimmer, or Nucleus');
 }
 
 function validateSimpleBinaryRange(binFrom: unknown, binTo: unknown): ValidationResult {

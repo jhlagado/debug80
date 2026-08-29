@@ -169,7 +169,7 @@ function validateTec1gRomArtifactAssembler(value: unknown, fieldName: string): V
   try {
     normalizeZ80AssemblerFlavour(value, { allowAuto: false });
   } catch {
-    return invalidResult(`${fieldName} must be "atom" or "azm"`);
+    return invalidResult(`${fieldName} must select Atom or AZM`);
   }
   return validResult();
 }

@@ -279,9 +279,11 @@ describe('package.json language contracts', () => {
         ?.assembler;
 
     expect(assembler?.default).toBeUndefined();
-    expect(assembler?.enum).toEqual(['atom', 'azm', 'glimmer', 'nucleus']);
+    expect(assembler?.enum).toBeUndefined();
+    expect(assembler?.description).toContain('aliases normalized by Debug80');
     expect(glimmerAssembler?.default).toBe('atom');
-    expect(glimmerAssembler?.enum).toEqual(['atom', 'azm']);
+    expect(glimmerAssembler?.enum).toBeUndefined();
+    expect(glimmerAssembler?.description).toContain('aliases normalized by Debug80');
   });
 
   it('launch schema exposes strict and insensitive AZM symbol lookup', () => {
@@ -302,9 +304,9 @@ describe('package.json language contracts', () => {
       Record<string, { enum?: string[]; default?: string }> | undefined;
 
     expect(romArtifact?.assembler?.default).toBe('atom');
-    expect(romArtifact?.assembler?.enum).toEqual(['atom', 'azm']);
+    expect(romArtifact?.assembler?.enum).toBeUndefined();
     expect(bank?.assembler?.default).toBeUndefined();
-    expect(bank?.assembler?.enum).toEqual(['atom', 'azm']);
+    expect(bank?.assembler?.enum).toBeUndefined();
   });
 
   it('set-entry-source context menus cover supported entry source extensions', () => {

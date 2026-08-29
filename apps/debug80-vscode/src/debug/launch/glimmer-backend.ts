@@ -41,7 +41,7 @@ type BuildFn = (
     outputPath?: string;
     org?: number;
     stage?: 'generate' | 'check' | 'build';
-    assembler?: 'atom' | 'azm';
+    assembler?: string;
   }
 ) => Promise<GlimmerBuildResult>;
 

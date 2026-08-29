@@ -619,13 +619,7 @@
               },
               "assembler": {
                 "type": "string",
-                "description": "Assembler backend to use. Assembly sources default to Atom; select AZM explicitly when required.",
-                "enum": [
-                  "atom",
-                  "azm",
-                  "glimmer",
-                  "nucleus"
-                ]
+                "description": "Assembler backend to use. Assembly sources default to Atom; select AZM explicitly when required. Accepts Atom and AZM aliases normalized by Debug80, plus glimmer and nucleus."
               },
               "azm": {
                 "type": "object",
@@ -711,11 +705,7 @@
                 "properties": {
                   "assembler": {
                     "type": "string",
-                    "description": "Assembler used for Glimmer's generated Z80 source",
-                    "enum": [
-                      "atom",
-                      "azm"
-                    ],
+                    "description": "Assembler used for Glimmer's generated Z80 source. Accepts Atom and AZM aliases normalized by Debug80.",
                     "default": "atom"
                   }
                 }
@@ -763,11 +753,7 @@
                         },
                         "assembler": {
                           "type": "string",
-                          "description": "Assembler for source-backed ROM artifacts. Source-backed ROM artifacts default to Atom; select AZM explicitly when required.",
-                          "enum": [
-                            "atom",
-                            "azm"
-                          ],
+                          "description": "Assembler for source-backed ROM artifacts. Source-backed ROM artifacts default to Atom; select AZM explicitly when required. Accepts Atom and AZM aliases normalized by Debug80.",
                           "default": "atom"
                         },
                         "sourceFile": {
@@ -830,11 +816,7 @@
                               },
                               "assembler": {
                                 "type": "string",
-                                "description": "Assembler override for this bank",
-                                "enum": [
-                                  "atom",
-                                  "azm"
-                                ]
+                                "description": "Assembler override for this bank. Accepts Atom and AZM aliases normalized by Debug80."
                               },
                               "sourceFile": {
                                 "type": "string",
