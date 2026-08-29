@@ -1,0 +1,41 @@
+SinkCodeEnd:
+CompilerCodeEnd:
+
+CompilerImmutableStart:
+KeywordSub:
+            .db  "sub"
+KeywordFails:
+            .db  "fails"
+KeywordElse:
+            .db  "else"
+KeywordFail:
+            .db  "fail"
+KeywordEnd:
+            .db  "end"
+NameMain:
+            .db  "main"
+NameWriteOutputByte:
+            .db  "writeOutputByte"
+ProgramTemplate:
+            .db  $3E,$00
+            .db  $CD
+            .dw  WriteOutputByte
+            .db  $38,$06
+            .db  $3E,RunSucceeded,$32
+            .dw  RunState
+            .db  $C9
+            .db  $32
+            .dw  TrapError
+            .db  $AF,$32
+            .dw  TrapRoutine
+            .db  $21
+            .dw  FailureOffset
+            .db  $22
+            .dw  TrapOffset
+            .db  $3E,$06,$32
+            .dw  TrapNumber
+            .db  $3E,RunTrapped,$32
+            .dw  RunState
+            .db  $C9
+CompilerImmutableEnd:
+CompilerCoreEnd:

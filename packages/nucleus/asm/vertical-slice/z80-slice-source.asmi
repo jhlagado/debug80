@@ -1,0 +1,6 @@
+            .org SourceBase
+ProofSource:
+            .db  "sub main() fails",10
+            .db  "    writeOutputByte('A') else fail",10
+            .db  "end",10
+ProofSourceEnd:

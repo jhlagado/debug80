@@ -5,7 +5,7 @@ Date: 2026-08-29
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current reusable-transform baseline HEAD: `266455f6`
+Current reusable-transform baseline HEAD: `27c9953d`
 
 ## Purpose
 
@@ -24,22 +24,22 @@ Measured files:
 
 | Item | Measured value |
 | --- | ---: |
-| Assembly files, `.asm` and `.asmi` | 266 |
-| Source lines | 30,149 |
+| Assembly files, `.asm` and `.asmi` | 273 |
+| Source lines | 30,160 |
 | Defined assembler symbols detected | 4,156 |
 | Defined assembler symbols longer than eight characters | 3,910 |
 | Long labels classed as dot-local candidates | 791 |
 | Long symbols still needing global treatment | 3,119 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
-| Include-after-header violations | 21 |
+| Include-after-header violations | 15 |
 | Forward-dependent emitted-statement symbol arithmetic sites | 0 |
-| Current permanent-source blockers | 21 |
+| Current permanent-source blockers | 15 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
 | Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 0 |
-| Permanent blocker: include after header | 21 |
+| Permanent blocker: include after header | 15 |
 | Permanent blocker: feature definition after Atom entry header | 0 |
 | Proof-manifest symbol mappings | 146 |
 | One-past-address-space proof-limit mappings | 4 |
@@ -326,7 +326,7 @@ grouping:
 
 | Batch | Files | Late includes | Risk | Recommendation |
 | --- | ---: | ---: | --- | --- |
-| Proof composition files | 3 | 14 | Medium | Source-layout blockers are cleared for several proof rows, including `stage7-ll1-aggregate-call-z80-slice-proof.asm`, `aggregate-z80-slice-proof.asm`, `flat-target-z80-slice-proof.asm`, `stage7-parser-coverage-proof.asmi`, `stage8-failure-z80-slice-proof.asm`, `stage9-conformance-z80-slice-proof.asm`, `structured-control-z80-slice-proof.asm`, `typed-expression-z80-slice-proof.asm`, and `loop-z80-slice-proof.asm`; remaining proof entries should keep using the same section-owned include layout as they move from preview to permanent Atom source. |
+| Proof composition files | 2 | 8 | Medium | Source-layout blockers are cleared for several proof rows, including `stage7-ll1-aggregate-call-z80-slice-proof.asm`, `aggregate-z80-slice-proof.asm`, `flat-target-z80-slice-proof.asm`, `stage7-parser-coverage-proof.asmi`, `stage8-failure-z80-slice-proof.asm`, `stage9-conformance-z80-slice-proof.asm`, `structured-control-z80-slice-proof.asm`, `typed-expression-z80-slice-proof.asm`, `loop-z80-slice-proof.asm`, and `z80-slice-proof.asm`; remaining proof entries should keep using the same section-owned include layout as they move from preview to permanent Atom source. |
 | Module composition files | 2 | 6 | High | Second batch. These includes occur inside parser/codegen implementation modules (`loop-parser`, `typed-expression-z80`). Treat these as real module-boundary work, not mechanical line moves. |
 | Runtime wrapper files | 1 | 1 | Low to medium | The target runtime link entry has a permanent Atom layout and byte-equivalence proof. The raw source still records one wrapper include until the permanent source tree replaces the current source tree. |
 
@@ -334,7 +334,6 @@ The first permanent-source batch should be the proof composition files, because
 they account for most of the count and are structurally repetitive:
 
 - `vertical-slice/loop-compiler-slice-proof.asm` — 6
-- `vertical-slice/z80-slice-proof.asm` — 6
 - `vertical-slice/stage7-ll1-engine-proof.asm` — 2
 
 Do not move those include lines to the top and assume correctness. Many of
@@ -460,6 +459,11 @@ source fragment owns the loop and zero-loop fixtures, its runtime fragments
 wrap `proof-z80-runtime.asm`, and its final `.end` directive lives in a
 separate end fragment so Atom and the direct proof path see the same ascending
 image order.
+
+`z80-slice-proof.asm` now uses the physical section-owner layout. Its sink
+fragment owns the direct-Z80 sink extent boundary, its source fragment owns the
+first vertical-slice program fixture, and its proof-body fragment owns the
+runtime-end marker plus the direct-Z80 proof checks.
 
 `stage8-failure-z80-slice-proof.asm` now uses the physical section-owner
 layout. Its source, spare-source, and backup-source fragments own the staged
@@ -643,7 +647,6 @@ modules after an `.ORG` and section label:
 | Source file | Measured violations | First line |
 | --- | ---: | ---: |
 | `vertical-slice/loop-compiler-slice-proof.asm` | 6 | 10 |
-| `vertical-slice/z80-slice-proof.asm` | 6 | 10 |
 | `vertical-slice/loop-parser.asm` | 4 | 1135 |
 
 The largest current target groups show why this is not a safe blind move:

@@ -58,13 +58,8 @@ const permanentLayoutTransforms = new Map([
     rewrite: rewriteCompilerSlicePermanentAtomSource,
   })],
   ["vertical-slice/z80-slice-proof.asm", Object.freeze({
-    description: "z80-slice proof sectioned header-include layout",
-    handledIssues: Object.freeze([
-      Object.freeze({
-        file: "asm/vertical-slice/z80-slice-proof.asm",
-        code: "include-after-header",
-      }),
-    ]),
+    description: "z80-slice proof physical section-owner layout",
+    handledIssues: Object.freeze([]),
     rewrite: rewriteZ80SlicePermanentAtomSource,
   })],
   ["vertical-slice/loop-compiler-slice-proof.asm", Object.freeze({
@@ -2096,61 +2091,7 @@ function rewriteCompilerSlicePermanentAtomSource() {
   ].join("\n");
 }
 
-function rewriteZ80SlicePermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
-  const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
-  const compilerCodeStart = atomSymbol(symbolMap, "CompilerCodeStart");
-  const compilerCommonCodeEnd = atomSymbol(symbolMap, "CompilerCommonCodeEnd");
-  const sinkCodeStart = atomSymbol(symbolMap, "SinkCodeStart");
-  const sinkCodeEnd = atomSymbol(symbolMap, "SinkCodeEnd");
-  const sourceBase = atomSymbol(symbolMap, "SourceBase");
-  const targetRuntimeBase = atomSymbol(symbolMap, "TargetRuntimeBase");
-  const runtimeCodeStart = atomSymbol(symbolMap, "RuntimeCodeStart");
-  const runtimeCodeEnd = atomSymbol(symbolMap, "RuntimeCodeEnd");
-
-  const lines = source.split("\n");
-  const commonEndIndex = findPermanentLabelLine(lines, compilerCommonCodeEnd, "z80-slice");
-  const sinkEndIndex = findPermanentLabelLine(lines, sinkCodeEnd, "z80-slice");
-  const sinkIncludeIndex = findPermanentIncludeLine(lines, "z80-sink.asm", "z80-slice");
-  const sourceOrgIndex = findPermanentOrgLine(lines, sourceBase, "z80-slice");
-  const runtimeOrgIndex = findPermanentOrgLine(lines, targetRuntimeBase, "z80-slice");
-  const runtimeIncludeIndex = findPermanentIncludeLine(lines, "z80-runtime.asm", "z80-slice");
-  const runtimeEndIndex = findPermanentLabelLine(lines, runtimeCodeEnd, "z80-slice");
-
-  if (!(commonEndIndex < sinkEndIndex &&
-    commonEndIndex < sinkIncludeIndex &&
-    sinkIncludeIndex < sinkEndIndex &&
-    sinkEndIndex < sourceOrgIndex &&
-    sourceOrgIndex < runtimeOrgIndex &&
-    runtimeOrgIndex < runtimeIncludeIndex &&
-    runtimeIncludeIndex < runtimeEndIndex)) {
-    throw new Error("z80-slice permanent Atom rewrite found an unexpected section order");
-  }
-
-  writeGeneratedPermanentPart(translatedRoot, relative, "z80-slice-code-begin.asmi", [
-    "            ORG " + compilerCoreBase,
-    compilerCodeStart + ": ;@NUC-GLOBAL CompilerCodeStart PERMANENT " + compilerCodeStart,
-    "",
-  ]);
-  writeGeneratedPermanentPart(translatedRoot, relative, "z80-slice-sink-begin.asmi", [
-    ...lines.slice(commonEndIndex, sinkIncludeIndex),
-    "",
-  ]);
-  writeGeneratedPermanentPart(translatedRoot, relative, "z80-slice-after-sink.asmi", [
-    ...lines.slice(sinkEndIndex, sourceOrgIndex),
-    "",
-  ]);
-  writeGeneratedPermanentPart(translatedRoot, relative, "z80-slice-source.asmi", [
-    ...lines.slice(sourceOrgIndex, runtimeOrgIndex),
-    "",
-  ]);
-  writeGeneratedPermanentPart(translatedRoot, relative, "z80-slice-runtime-begin.asmi", [
-    ...lines.slice(runtimeOrgIndex, runtimeIncludeIndex),
-    "",
-  ]);
-  writeGeneratedPermanentPart(translatedRoot, relative, "z80-slice-proof-body.asmi", [
-    ...lines.slice(runtimeEndIndex),
-  ]);
-
+function rewriteZ80SlicePermanentAtomSource() {
   return [
     "; Permanent Atom layout for the z80-slice proof.",
     "            %DEFINE AggregateCallSlices 0",
@@ -2169,6 +2110,7 @@ function rewriteZ80SlicePermanentAtomSource(source, { relative, translatedRoot, 
     "            %INCLUDE \"z80-slice-runtime-begin.asmi\"",
     "            %INCLUDE \"z80-runtime.asm\"",
     "            %INCLUDE \"z80-slice-proof-body.asmi\"",
+    "            %INCLUDE \"z80-slice-end.asmi\"",
     "",
   ].join("\n");
 }
