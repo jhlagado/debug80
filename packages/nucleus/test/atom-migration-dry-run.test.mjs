@@ -1021,6 +1021,42 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   }, 60_000);
 
+  it("runs the loop z80-slice proof from permanent Atom layout source", async (context) => {
+    await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
+      const loopZ80Slice = report.proofMatrix.find(
+        ({ proof }) => proof === "loop-z80-slice-proof.json",
+      );
+      expect(loopZ80Slice?.status).toBe("blocked-by-contract-support");
+      expect(loopZ80Slice?.blockers).toEqual([]);
+      const root = await readFile(
+        path.join(translatedRoot, "vertical-slice", "loop-z80-slice-proof.asm"),
+        "utf8",
+      );
+      expect(root).toContain('%INCLUDE "loop-z80-slice-code-begin.asmi"');
+      expect(root).toContain('%INCLUDE "loop-z80-slice-proof-body.asmi"');
+
+      const outcome = await runProofManifest(
+        path.join(proofRoot, "loop-z80-slice-proof.json"),
+        {
+          assembler: {
+            kind: "atom-permanent",
+            root: translatedRoot,
+            entry: "vertical-slice/loop-z80-slice-proof.asm",
+            maxInstructions: 700_000_000,
+            maxCycles: 7_000_000_000,
+          },
+          atomMigration: {
+            proofSymbolMap: report.proofSymbolMap,
+            proofLimitMap: report.proofLimitMap,
+          },
+        },
+      );
+
+      expect(outcome.memory[outcome.symbols.ProofStatus ?? -1]).toBe(0xa5);
+      expect(outcome.memory[outcome.symbols.ProofCase ?? -1]).toBe(0);
+    });
+  }, 60_000);
+
   it("runs the array z80-slice proof from permanent Atom layout source", async (context) => {
     await withPermanentAtomTranslation(context, async ({ report, translatedRoot }) => {
       const arraySlice = report.proofMatrix.find(
