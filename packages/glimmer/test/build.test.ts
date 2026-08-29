@@ -140,6 +140,34 @@ describe('buildGlimmerProgram (programmatic API)', () => {
     expect(map).toMatchObject({ generator: { name: 'atom' } });
   });
 
+  it('uses the shared assembler-flavour aliases on the programmatic API', async () => {
+    const { buildGlimmerProgram } = await import('../src/build.js');
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-api-assembler-alias-'));
+    const entry = copyExample(dir, 'dot.glim');
+
+    const atomAlias = await buildGlimmerProgram(entry, {
+      assembler: 'ATOM-Z80',
+      outputPath: path.join(dir, 'dot.atom-alias.asm'),
+    });
+    expect(atomAlias.diagnostics.filter((diagnostic) => diagnostic.severity === 'error')).toEqual(
+      [],
+    );
+    expect(readMap(dir, 'dot.atom-alias.d8.json')).toMatchObject({
+      generator: { name: 'atom' },
+    });
+
+    const azmAlias = await buildGlimmerProgram(entry, {
+      assembler: 'ASM80',
+      outputPath: path.join(dir, 'dot.azm-alias.asm'),
+    });
+    expect(azmAlias.diagnostics.filter((diagnostic) => diagnostic.severity === 'error')).toEqual(
+      [],
+    );
+    expect(readMap(dir, 'dot.azm-alias.d8.json')).toMatchObject({
+      generator: { name: 'azm' },
+    });
+  }, 90_000);
+
   it('stops at generation for stage generate', async () => {
     const { buildGlimmerProgram } = await import('../src/build.js');
     const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-api-gen-'));

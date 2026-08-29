@@ -16,6 +16,12 @@ import path from 'node:path';
 import process from 'node:process';
 import { pathToFileURL } from 'node:url';
 
+import {
+  selectConcreteZ80AssemblerFlavour,
+  Z80_ASSEMBLER_FLAVOUR,
+  type ConcreteZ80AssemblerFlavour,
+} from '@jhlagado/z80-tool-services';
+
 import type { GlimmerProgram } from './model.js';
 import { buildGlimmerProgram, type BuildDiagnostic } from './build.js';
 import { loadGlimmerProgram } from './load.js';
@@ -107,7 +113,7 @@ export async function main(argv: string[]): Promise<number> {
   let check = true;
   let deps = false;
   let build = false;
-  let assembler: 'azm' | 'atom' = 'atom';
+  let assembler: ConcreteZ80AssemblerFlavour = Z80_ASSEMBLER_FLAVOUR.atom;
 
   if (argv[0] === 'build') {
     build = true;
@@ -141,11 +147,16 @@ export async function main(argv: string[]): Promise<number> {
     }
     if (arg === '--assembler') {
       const value = argv[++i];
-      if (value !== 'azm' && value !== 'atom') {
-        console.error(`Invalid --assembler value: ${value ?? '(missing)'}. Expected azm or atom.`);
+      try {
+        assembler = selectConcreteZ80AssemblerFlavour({
+          requested: value,
+          defaultFlavour: Z80_ASSEMBLER_FLAVOUR.atom,
+          sourcePath: entry ?? 'generated .asm',
+        });
+      } catch {
+        console.error(`Invalid --assembler value: ${value ?? '(missing)'}. Expected atom or azm.`);
         return 1;
       }
-      assembler = value;
       continue;
     }
     if (arg === '--deps') {

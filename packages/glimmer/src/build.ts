@@ -16,6 +16,10 @@ import os from 'node:os';
 import path from 'node:path';
 
 import { compile } from '@jhlagado/azm/compile';
+import {
+  selectConcreteZ80AssemblerFlavour,
+  Z80_ASSEMBLER_FLAVOUR,
+} from '@jhlagado/z80-tool-services';
 import { assembleResolvedAtomProject, renderAtomArtifacts } from 'atom-z80';
 
 import type { EffectDecl, GlimmerDiagnostic, GlimmerProgram, RoutineDecl } from './model.js';
@@ -226,8 +230,8 @@ export interface GlimmerBuildOptions {
    *   rewrite the debug map to step block bodies in `.glim` source.
    */
   stage?: 'generate' | 'check' | 'build';
-  /** Assembly source/backend projection (default: Atom). */
-  assembler?: 'azm' | 'atom';
+  /** Assembly source/backend projection (default: Atom); normalized by z80-tool-services. */
+  assembler?: string;
 }
 
 export interface GlimmerBuildArtifacts {
@@ -420,7 +424,12 @@ export async function buildGlimmerProgram(
   }
   const program: GlimmerProgram = loaded.program;
 
-  const assembler = options.assembler ?? 'atom';
+  const defaultAsmPath = asmPathForDiagnostics(entryPath);
+  const assembler = selectConcreteZ80AssemblerFlavour({
+    requested: options.assembler,
+    defaultFlavour: Z80_ASSEMBLER_FLAVOUR.atom,
+    sourcePath: options.outputPath ?? defaultAsmPath,
+  });
   const generationOptions = options.org === undefined ? {} : { org: options.org };
   const imports = assembler === 'atom' ? atomImportSources(program, entryPath) : undefined;
   const atomProjection =
@@ -440,11 +449,7 @@ export async function buildGlimmerProgram(
   }
 
   const asmPath = path.resolve(
-    options.outputPath ??
-      path.join(
-        path.dirname(entryPath),
-        `${path.basename(entryPath, path.extname(entryPath))}.main.asm`,
-      ),
+    options.outputPath ?? defaultAsmPath,
   );
   writeFileSync(asmPath, generated.source);
   const stage = options.stage ?? 'build';
@@ -641,4 +646,11 @@ export async function buildGlimmerProgram(
   }
 
   return { diagnostics, artifacts, mappedSegments, warnings };
+}
+
+function asmPathForDiagnostics(entryPath: string): string {
+  return path.join(
+    path.dirname(entryPath),
+    `${path.basename(entryPath, path.extname(entryPath))}.main.asm`,
+  );
 }

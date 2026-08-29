@@ -571,6 +571,16 @@ describe('CLI pipeline (generate + contract check)', () => {
     expect(out).toMatch(/\.routine\nGlim_MoveUp:/);
   });
 
+  it('accepts shared assembler aliases on the CLI', async () => {
+    const { main } = await import('../src/cli.js');
+    const dir = mkdtempSync(path.join(os.tmpdir(), 'glimmer-cli-assembler-alias-'));
+    const entry = path.join(dir, 'dot.glim');
+    writeFileSync(entry, readFileSync(path.join(import.meta.dirname, '../examples/dot.glim')));
+
+    expect(await main(['--assembler', 'ASM80', entry])).toBe(0);
+    expect(readFileSync(path.join(dir, 'dot.main.asm'), 'utf8')).toMatch(/\.routine\nGlim_MoveUp:/);
+  });
+
   // Regression: npm installs expose the CLI through a .bin symlink, so
   // argv[1] is the symlink while import.meta.url is the resolved real
   // file. The entry guard must compare after realpath resolution, or
