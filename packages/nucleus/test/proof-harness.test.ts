@@ -48,7 +48,7 @@ async function withSourceTree<T>(
 }
 
 describe("source-prepared AZM and Debug80 proofs", () => {
-  it("maps Atom-built proof symbols back to manifest-facing names", () => {
+  it("maps Atom-built proof symbols back to proof-facing names", () => {
     const symbols = createProofSymbolView(
       {
         PRFSTRT: 0x9000,

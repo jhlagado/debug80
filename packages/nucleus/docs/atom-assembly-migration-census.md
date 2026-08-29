@@ -212,7 +212,7 @@ because their ORG sequence moves between source fixtures and proof sections.
 That is a proof-image compatibility setting, not a source-language blocker.
 
 The proof harness accepts the generated metadata through
-`runProofManifest(..., { atomMigration })`. That path builds a manifest-facing
+`runProofManifest(..., { atomMigration })`. That path builds a proof-facing
 symbol view over an Atom-style assembled symbol table: original proof names can
 resolve through generated preview names or permanent Atom abbreviations, and the
 known `$10000` proof-boundary constants are restored from the proof-limit map.
@@ -895,8 +895,8 @@ on the compatibility-lowered path until those proof sources are reorganized.
 
 The same entry now also runs through the Nucleus proof harness with Atom selected
 as the assembler. The proof harness executes the Atom-built HEX image and uses
-the migration metadata to resolve manifest-facing symbol names and the
-`$10000` proof boundary.
+the migration metadata to resolve proof-facing symbol names and the `$10000`
+proof boundary.
 
 The first scaled proof-image comparison uses generated multipart Atom preview
 source, so no generated part exceeds Atom's 16-bit source-offset range. Current
