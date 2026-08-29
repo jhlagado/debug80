@@ -1,0 +1,36 @@
+            .org SourceBase
+AcceptedLoopSource:
+            .db "sub main() fails",10
+            .db "    var index as u8 = 0",10
+            .db "    for index = 0 until 3",10
+            .db "        writeOutputByte('A') else fail",10
+            .db "    end",10
+            .db "end",10
+AcceptedLoopSourceEnd:
+
+ZeroLoopSource:
+            .db "sub main() fails",10
+            .db "    var index as u8 = 0",10
+            .db "    for index = 0 until 0",10
+            .db "        writeOutputByte('A') else fail",10
+            .db "    end",10
+            .db "end",10
+ZeroLoopSourceEnd:
+
+CounterWriteSource:
+            .db "sub main() fails",10
+            .db "    var index as u8 = 0",10
+            .db "    for index = 0 until 3",10
+CounterWriteStart:
+            .db "        index = 1",10
+            .db "    end",10
+            .db "end",10
+CounterWriteSourceEnd:
+
+MissingEndSource:
+            .db "sub main() fails",10
+            .db "    var index as u8 = 0",10
+            .db "    for index = 0 until 3",10
+            .db "        writeOutputByte('A') else fail",10
+            .db "    end",10
+MissingEndSourceEnd:

@@ -1,0 +1,124 @@
+            .org ProofBase
+LPCTWOF .equ 75  ; counter write diagnostic offset
+LPMESZ  .equ 114 ; missing end source byte length
+
+.routine out carry,zero clobbers sign,parity,halfCarry,A,BC,DE,HL,IX,IY
+ProofStart:
+            LD   SP,StackTop
+            XOR  A
+            LD   (ProofCase),A
+            LD   (ProofStatus),A
+
+            LD   A,10
+            LD   HL,AcceptedLoopSource
+            LD   DE,AcceptedLoopSourceEnd
+            CALL CompileLoopSlice
+            JP   C,ProofFailAccepted
+            LD   HL,SemanticBufferBase
+            LD   DE,ExpectedLoopOperations
+            LD   B,11
+            CALL ProofCompareBytes
+            JP   C,ProofFailOperations
+
+            LD   A,11
+            LD   HL,ZeroLoopSource
+            LD   DE,ZeroLoopSourceEnd
+            CALL CompileLoopSlice
+            JP   C,ProofFailZero
+            LD   A,(SemanticBufferBase+5)
+            OR   A
+            JP   NZ,ProofFailZeroBound
+
+            LD   A,12
+            LD   HL,CounterWriteSource
+            LD   DE,CounterWriteSourceEnd
+            CALL CompileLoopSlice
+            JP   NC,ProofFailCounterAccepted
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticActiveCounter
+            JP   NZ,ProofFailCounterCode
+            LD   HL,(DiagnosticOffset)
+            LD   DE,LPCTWOF
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailCounterOffset
+
+            LD   A,13
+            LD   HL,MissingEndSource
+            LD   DE,MissingEndSourceEnd
+            CALL CompileLoopSlice
+            JP   NC,ProofFailMissingAccepted
+            LD   A,(DiagnosticCode)
+            CP   DiagnosticExpectedEnd
+            JP   NZ,ProofFailMissingCode
+            LD   A,(DiagnosticPartId)
+            CP   13
+            JP   NZ,ProofFailMissingPart
+            LD   HL,(DiagnosticOffset)
+            LD   DE,LPMESZ
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailMissingPosition
+            LD   HL,(DiagnosticLine)
+            LD   DE,6
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailMissingPosition
+            LD   HL,(DiagnosticColumn)
+            LD   DE,1
+            OR   A
+            SBC  HL,DE
+            JP   NZ,ProofFailMissingPosition
+
+            LD   A,$A5
+            LD   (ProofStatus),A
+            HALT
+
+.routine in B,DE,HL out A,carry,zero clobbers sign,parity,halfCarry,B,DE,HL
+ProofCompareBytes:
+            LD   A,(DE)
+            CP   (HL)
+            JR   NZ,ProofCompareBytesNo
+            INC  DE
+            INC  HL
+            DJNZ ProofCompareBytes
+            OR   A
+            RET
+ProofCompareBytesNo:
+            SCF
+            RET
+
+ProofFailAccepted:       LD A,1
+                         JR ProofFailed
+ProofFailOperations:     LD A,2
+                         JR ProofFailed
+ProofFailZero:           LD A,3
+                         JR ProofFailed
+ProofFailZeroBound:      LD A,4
+                         JR ProofFailed
+ProofFailCounterAccepted: LD A,5
+                         JR ProofFailed
+ProofFailCounterCode:    LD A,6
+                         JR ProofFailed
+ProofFailCounterOffset:  LD A,7
+                         JR ProofFailed
+ProofFailMissingAccepted: LD A,8
+                         JR ProofFailed
+ProofFailMissingCode:    LD A,9
+                         JR ProofFailed
+ProofFailMissingPart:    LD A,10
+                         JR ProofFailed
+ProofFailMissingPosition: LD A,11
+ProofFailed:
+            LD   (ProofCase),A
+            LD   A,$E0
+            LD   (ProofStatus),A
+            HALT
+
+ExpectedLoopOperations:
+            .db 6,SemanticDeclareU8,0,SemanticForUntilU8,0,3
+            .db SemanticWriteOutputByte,"A",SemanticPropagate
+            .db SemanticEndLoop,SemanticReturn
+ProofStatus:             .db 0
+ProofCase:               .db 0
+ProofEnd:

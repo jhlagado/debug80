@@ -1,11 +1,11 @@
 # Nucleus AZM-to-Atom assembly migration census
 
 Status: measured compatibility census
-Date: 2026-08-29
+Date: 2026-08-30
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current reusable-transform baseline HEAD: `27c9953d`
+Current reusable-transform baseline HEAD: `4fbce674`
 
 ## Purpose
 
@@ -24,22 +24,22 @@ Measured files:
 
 | Item | Measured value |
 | --- | ---: |
-| Assembly files, `.asm` and `.asmi` | 273 |
-| Source lines | 30,160 |
-| Defined assembler symbols detected | 4,156 |
+| Assembly files, `.asm` and `.asmi` | 283 |
+| Source lines | 30,184 |
+| Defined assembler symbols detected | 4,158 |
 | Defined assembler symbols longer than eight characters | 3,910 |
-| Long labels classed as dot-local candidates | 791 |
-| Long symbols still needing global treatment | 3,119 |
+| Long labels classed as dot-local candidates | 792 |
+| Long symbols still needing global treatment | 3,118 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
-| Include-after-header violations | 15 |
+| Include-after-header violations | 9 |
 | Forward-dependent emitted-statement symbol arithmetic sites | 0 |
-| Current permanent-source blockers | 15 |
+| Current permanent-source blockers | 9 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
 | Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 0 |
-| Permanent blocker: include after header | 15 |
+| Permanent blocker: include after header | 9 |
 | Permanent blocker: feature definition after Atom entry header | 0 |
 | Proof-manifest symbol mappings | 146 |
 | One-past-address-space proof-limit mappings | 4 |
@@ -326,15 +326,20 @@ grouping:
 
 | Batch | Files | Late includes | Risk | Recommendation |
 | --- | ---: | ---: | --- | --- |
-| Proof composition files | 2 | 8 | Medium | Source-layout blockers are cleared for several proof rows, including `stage7-ll1-aggregate-call-z80-slice-proof.asm`, `aggregate-z80-slice-proof.asm`, `flat-target-z80-slice-proof.asm`, `stage7-parser-coverage-proof.asmi`, `stage8-failure-z80-slice-proof.asm`, `stage9-conformance-z80-slice-proof.asm`, `structured-control-z80-slice-proof.asm`, `typed-expression-z80-slice-proof.asm`, `loop-z80-slice-proof.asm`, and `z80-slice-proof.asm`; remaining proof entries should keep using the same section-owned include layout as they move from preview to permanent Atom source. |
+| Proof composition files | 1 | 2 | Medium | Source-layout blockers are cleared for several proof rows, including `stage7-ll1-aggregate-call-z80-slice-proof.asm`, `aggregate-z80-slice-proof.asm`, `flat-target-z80-slice-proof.asm`, `stage7-parser-coverage-proof.asmi`, `stage8-failure-z80-slice-proof.asm`, `stage9-conformance-z80-slice-proof.asm`, `structured-control-z80-slice-proof.asm`, `typed-expression-z80-slice-proof.asm`, `loop-z80-slice-proof.asm`, `z80-slice-proof.asm`, and `loop-compiler-slice-proof.asm`; the remaining proof entry should keep using the same section-owned include layout as it moves from preview to permanent Atom source. |
 | Module composition files | 2 | 6 | High | Second batch. These includes occur inside parser/codegen implementation modules (`loop-parser`, `typed-expression-z80`). Treat these as real module-boundary work, not mechanical line moves. |
 | Runtime wrapper files | 1 | 1 | Low to medium | The target runtime link entry has a permanent Atom layout and byte-equivalence proof. The raw source still records one wrapper include until the permanent source tree replaces the current source tree. |
 
 The first permanent-source batch should be the proof composition files, because
 they account for most of the count and are structurally repetitive:
 
-- `vertical-slice/loop-compiler-slice-proof.asm` — 6
 - `vertical-slice/stage7-ll1-engine-proof.asm` — 2
+
+`loop-compiler-slice-proof.asm` now uses the physical section-owner layout. Its
+source fragment owns the loop compiler source fixtures. Its proof-body fragment
+owns the `LPCTWOF` and `LPMESZ` aliases for the two formerly inline source-size
+expressions, so permanent Atom source no longer relies on hidden arithmetic
+rewrites for those proof checks.
 
 Do not move those include lines to the top and assume correctness. Many of
 the current files use surrounding labels such as `TokenizerCodeStart` /
@@ -646,21 +651,24 @@ modules after an `.ORG` and section label:
 
 | Source file | Measured violations | First line |
 | --- | ---: | ---: |
-| `vertical-slice/loop-compiler-slice-proof.asm` | 6 | 10 |
 | `vertical-slice/loop-parser.asm` | 4 | 1135 |
+| `vertical-slice/stage7-ll1-engine-proof.asm` | 2 | 53 |
+| `vertical-slice/typed-expression-z80.asm` | 2 | 909 |
+| `vertical-slice/nucleus-target-runtime-link.asm` | 1 | 8 |
 
 The largest current target groups show why this is not a safe blind move:
 
 | Target include | Measured uses | Target class |
 | --- | ---: | --- |
-| `vertical-slice/source-adapter.asm` | 4 | code |
-| `vertical-slice/loop-keywords.asmi` | 3 | data |
-| `vertical-slice/loop-parser.asm` | 3 | mixed code/data |
-| `vertical-slice/loop-semantic-sink.asm` | 3 | code |
-| `vertical-slice/loop-symbols.asm` | 3 | code |
-| `vertical-slice/loop-tokenizer.asm` | 3 | mixed code/data |
-| `vertical-slice/loop-z80-sink.asm` | 2 | mixed code/data |
-| `vertical-slice/proof-z80-runtime.asm` | 2 | code |
+| `grammar/stage7-proof-actions.asmi` | 1 | code |
+| `vertical-slice/aggregate-call-parser-stage7.asm` | 1 | mixed code/data |
+| `vertical-slice/aggregate-call-parser.asm` | 1 | code |
+| `vertical-slice/aggregate-call-z80.asm` | 1 | mixed code/data |
+| `vertical-slice/aggregate-parser.asm` | 1 | code |
+| `vertical-slice/stage7-ll1-parser.asm` | 1 | mixed code/data |
+| `vertical-slice/structured-control-z80.asm` | 1 | mixed code/data |
+| `vertical-slice/target-z80-runtime.asm` | 1 | code |
+| `vertical-slice/typed-expression-parser.asm` | 1 | mixed code/data |
 
 The first cleanup pass moved the state-layout includes into strict headers by
 adding small proof-mode config includes for `SegmentedOutput`. That removed the

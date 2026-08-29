@@ -1226,12 +1226,19 @@ describe("Nucleus Atom migration dry-run", () => {
       );
       expect(root).toContain('%INCLUDE "loop-compiler-slice-code-begin.asmi"');
       expect(root).toContain('%INCLUDE "loop-compiler-slice-proof-body.asmi"');
+      expect(root).toContain('%INCLUDE "loop-compiler-slice-end.asmi"');
+      expect(root.indexOf('%INCLUDE "loop-compiler-slice-source.asmi"')).toBeLessThan(
+        root.indexOf('%INCLUDE "loop-compiler-slice-proof-body.asmi"'),
+      );
+      expect(root.indexOf('%INCLUDE "loop-compiler-slice-proof-body.asmi"')).toBeLessThan(
+        root.indexOf('%INCLUDE "loop-compiler-slice-end.asmi"'),
+      );
       const proofBody = await readFile(
         path.join(translatedRoot, "vertical-slice", "loop-compiler-slice-proof-body.asmi"),
         "utf8",
       );
-      expect(proofBody).toContain("LPCTWOF EQU 75");
-      expect(proofBody).toContain("LPMESZ EQU 114");
+      expect(proofBody).toMatch(/\bLPCTWOF\s+EQU\s+75\b/);
+      expect(proofBody).toMatch(/\bLPMESZ\s+EQU\s+114\b/);
       expect(proofBody).not.toContain("CounterWriteStart-CounterWriteSource");
       expect(proofBody).not.toContain("MissingEndSourceEnd-MissingEndSource");
 

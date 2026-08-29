@@ -63,23 +63,8 @@ const permanentLayoutTransforms = new Map([
     rewrite: rewriteZ80SlicePermanentAtomSource,
   })],
   ["vertical-slice/loop-compiler-slice-proof.asm", Object.freeze({
-    description: "loop compiler proof sectioned header-include layout",
-    handledIssues: Object.freeze([
-      Object.freeze({
-        file: "asm/vertical-slice/loop-compiler-slice-proof.asm",
-        code: "include-after-header",
-      }),
-      Object.freeze({
-        file: "asm/vertical-slice/loop-compiler-slice-proof.asm",
-        code: "atom-symbol-expression",
-        messageIncludes: "CounterWriteStart-CounterWriteSource",
-      }),
-      Object.freeze({
-        file: "asm/vertical-slice/loop-compiler-slice-proof.asm",
-        code: "atom-symbol-expression",
-        messageIncludes: "MissingEndSourceEnd-MissingEndSource",
-      }),
-    ]),
+    description: "loop compiler proof physical section-owner layout",
+    handledIssues: Object.freeze([]),
     rewrite: rewriteLoopCompilerSliceProofPermanentAtomSource,
   })],
   ["vertical-slice/loop-z80-slice-proof.asm", Object.freeze({
@@ -2115,67 +2100,7 @@ function rewriteZ80SlicePermanentAtomSource() {
   ].join("\n");
 }
 
-function rewriteLoopCompilerSliceProofPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
-  const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
-  const sourceBase = atomSymbol(symbolMap, "SourceBase");
-  const proofBase = atomSymbol(symbolMap, "ProofBase");
-  const counterWriteStart = atomSymbol(symbolMap, "CounterWriteStart");
-  const counterWriteSource = atomSymbol(symbolMap, "CounterWriteSource");
-  const missingEndSourceEnd = atomSymbol(symbolMap, "MissingEndSourceEnd");
-  const missingEndSource = atomSymbol(symbolMap, "MissingEndSource");
-
-  const lines = source
-    .replaceAll(`${counterWriteStart}-${counterWriteSource}+8`, "LPCTWOF")
-    .replaceAll(`${missingEndSourceEnd}-${missingEndSource}`, "LPMESZ")
-    .split("\n");
-  const compilerOrgIndex = findPermanentOrgLine(lines, compilerCoreBase, "loop-compiler-slice-proof");
-  const sourceAdapterIncludeIndex = findPermanentIncludeLine(lines, "source-adapter.asm", "loop-compiler-slice-proof");
-  const tokenizerIncludeIndex = findPermanentIncludeLine(lines, "loop-tokenizer.asm", "loop-compiler-slice-proof");
-  const semanticSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-semantic-sink.asm", "loop-compiler-slice-proof");
-  const symbolsIncludeIndex = findPermanentIncludeLine(lines, "loop-symbols.asm", "loop-compiler-slice-proof");
-  const parserIncludeIndex = findPermanentIncludeLine(lines, "loop-parser.asm", "loop-compiler-slice-proof");
-  const keywordsIncludeIndex = findPermanentIncludeLine(lines, "loop-keywords.asmi", "loop-compiler-slice-proof");
-  const sourceOrgIndex = findPermanentOrgLine(lines, sourceBase, "loop-compiler-slice-proof");
-  const proofOrgIndex = findPermanentOrgLine(lines, proofBase, "loop-compiler-slice-proof");
-
-  const orderedIndexes = [
-    compilerOrgIndex,
-    sourceAdapterIncludeIndex,
-    tokenizerIncludeIndex,
-    semanticSinkIncludeIndex,
-    symbolsIncludeIndex,
-    parserIncludeIndex,
-    keywordsIncludeIndex,
-    sourceOrgIndex,
-    proofOrgIndex,
-  ];
-  if (!orderedIndexes.every((value, index) => index === 0 || orderedIndexes[index - 1] < value)) {
-    throw new Error("loop-compiler-slice proof permanent Atom rewrite found an unexpected section order");
-  }
-
-  const writeSlice = (includeName, start, end) => {
-    writeGeneratedPermanentPart(translatedRoot, relative, includeName, [
-      ...lines.slice(start, end).filter((line) =>
-        !/^\s*%DEFINE\s+(LegacyCompilerSlices|AggregateCallSlices)\b/i.test(line)),
-      "",
-    ]);
-  };
-  writeSlice("loop-compiler-slice-code-begin.asmi", compilerOrgIndex, sourceAdapterIncludeIndex);
-  writeSlice("loop-compiler-slice-after-source-adapter.asmi", sourceAdapterIncludeIndex + 1, tokenizerIncludeIndex);
-  writeSlice("loop-compiler-slice-after-tokenizer.asmi", tokenizerIncludeIndex + 1, semanticSinkIncludeIndex);
-  writeSlice("loop-compiler-slice-after-semantic-sink.asmi", semanticSinkIncludeIndex + 1, symbolsIncludeIndex);
-  writeSlice("loop-compiler-slice-after-symbols.asmi", symbolsIncludeIndex + 1, parserIncludeIndex);
-  writeSlice("loop-compiler-slice-after-parser.asmi", parserIncludeIndex + 1, keywordsIncludeIndex);
-  writeSlice("loop-compiler-slice-after-keywords.asmi", keywordsIncludeIndex + 1, sourceOrgIndex);
-  writeSlice("loop-compiler-slice-source.asmi", sourceOrgIndex, proofOrgIndex);
-  writeGeneratedPermanentPart(translatedRoot, relative, "loop-compiler-slice-proof-body.asmi", [
-    lines[proofOrgIndex],
-    "LPCTWOF EQU 75",
-    "LPMESZ EQU 114",
-    "",
-    ...lines.slice(proofOrgIndex + 1),
-  ]);
-
+function rewriteLoopCompilerSliceProofPermanentAtomSource() {
   return [
     "; Permanent Atom layout for the loop compiler proof.",
     "            %DEFINE SegmentedOutput 0",
@@ -2201,6 +2126,7 @@ function rewriteLoopCompilerSliceProofPermanentAtomSource(source, { relative, tr
     "            %INCLUDE \"loop-compiler-slice-after-keywords.asmi\"",
     "            %INCLUDE \"loop-compiler-slice-source.asmi\"",
     "            %INCLUDE \"loop-compiler-slice-proof-body.asmi\"",
+    "            %INCLUDE \"loop-compiler-slice-end.asmi\"",
     "",
   ].join("\n");
 }
