@@ -1,6 +1,10 @@
 ; Flat append-only target output. The operating adapter owns NOBJ framing,
 ; service destinations, image fill, CRC, and the two sequential spools.
 
+TOUTRNL .equ NucleusRuntimeVectorLength+NucleusRuntimeStateLength ; runtime vector plus state image size
+TOUTRUN .equ RunState-StateBase                                   ; runtime state offset for RunState
+TOUTTRP .equ TrapNumber-StateBase                                 ; runtime state offset for TrapNumber
+
 ; Emit entry opcode A followed by one retained zero-word fixup operand.
 .routine in A out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL
 TargetEmitEntryPlaceholder:
@@ -112,7 +116,7 @@ TargetStartupReady:
             LD   DE,(StaticImageLength)
             ADD  HL,DE
             JR   C,TargetBeginCapacityFailure
-            LD   DE,NucleusRuntimeVectorLength+NucleusRuntimeStateLength
+            LD   DE,TOUTRNL
             ADD  HL,DE
             JR   C,TargetBeginCapacityFailure
 TargetFlatReadOnlyReady:
@@ -256,7 +260,7 @@ TargetSelectOutputBank:
             JR   NZ,TargetSelectRoBaseReady
             LD   DE,(TargetStartupLength)
             ADD  HL,DE
-            LD   DE,NucleusRuntimeVectorLength+NucleusRuntimeStateLength
+            LD   DE,TOUTRNL
             ADD  HL,DE
             LD   DE,(StaticImageLength)
             ADD  HL,DE
@@ -492,7 +496,7 @@ TargetPrepareFlatRoData:
             LD   A,(TargetLayoutMode)
             OR   A
             JR   Z,TargetContextRoDataReady
-            LD   DE,NucleusRuntimeVectorLength+NucleusRuntimeStateLength
+            LD   DE,TOUTRNL
             ADD  HL,DE
             JR   C,TargetPrepareCapacityFailure
             LD   DE,(StaticImageLength)
@@ -538,7 +542,7 @@ TargetStateAddress:
 .routine out DE,HL,carry clobbers halfCarry
 TargetInitializedLength:
             LD   HL,(StaticImageLength)
-            LD   DE,NucleusRuntimeVectorLength+NucleusRuntimeStateLength
+            LD   DE,TOUTRNL
             ADD  HL,DE
             RET
 
@@ -646,14 +650,14 @@ TargetStartupEmitEntry:
             CALL EmitBytes
             RET  C
 TargetStartupTerminalState:
-            LD   DE,RunState-StateBase
+            LD   DE,TOUTRUN
             LD   C,RunSucceeded
             CALL TargetEmitTerminalTest
             RET  C
             LD   A,6                      ; success vector
             CALL EmitTargetVectorJump
             RET  C
-            LD   DE,TrapNumber-StateBase
+            LD   DE,TOUTTRP
             LD   C,6                      ; unhandled trap number
             CALL TargetEmitTerminalTest
             RET  C
@@ -687,10 +691,10 @@ TargetEmitSourceProvenanceSinglePart:
 TargetEmitRuntimeInitialImage:
             LD   A,(TargetOutputBank)
             LD   DE,NucleusRuntimeIdentity
-            LD   BC,NucleusRuntimeVectorLength+NucleusRuntimeStateLength
+            LD   BC,TOUTRNL
             LD   IX,TargetRuntimeContext
             CALL TargetSinkRuntimeInitialImage
-            LD   DE,NucleusRuntimeVectorLength+NucleusRuntimeStateLength
+            LD   DE,TOUTRNL
             JP   TargetConsumeProviderExtent
 
 .routine out A,carry,zero clobbers sign,parity,halfCarry,BC,DE,HL,IX,IY

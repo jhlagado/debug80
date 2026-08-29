@@ -5,7 +5,7 @@ Date: 2026-08-29
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current reusable-transform baseline HEAD: `e5e545e7`
+Current reusable-transform baseline HEAD: `b22b9b10`
 
 ## Purpose
 
@@ -25,20 +25,20 @@ Measured files:
 | Item | Measured value |
 | --- | ---: |
 | Assembly files, `.asm` and `.asmi` | 69 |
-| Source lines | 29,538 |
-| Defined assembler symbols detected | 3,943 |
+| Source lines | 29,542 |
+| Defined assembler symbols detected | 3,946 |
 | Defined assembler symbols longer than eight characters | 3,910 |
 | Long labels classed as dot-local candidates | 751 |
 | Long symbols still needing global treatment | 3,159 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
 | Include-after-header violations | 143 |
-| Forward-dependent emitted-statement symbol arithmetic sites | 111 |
-| Current permanent-source blockers | 314 |
+| Forward-dependent emitted-statement symbol arithmetic sites | 103 |
+| Current permanent-source blockers | 306 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
-| Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 111 |
+| Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 103 |
 | Permanent blocker: include after header | 143 |
 | Permanent blocker: feature definition after Atom entry header | 60 |
 | Proof-manifest symbol mappings | 146 |
@@ -263,6 +263,12 @@ two-symbol expressions as permanent-source blockers. Existing proof-preview
 lowering may still resolve those expressions from the comparison symbol table,
 but permanent source needs an explicit alias, a source rewrite, or an ordering
 change.
+
+`target-output.asm` now carries the first source-level examples of that policy:
+`TOUTRNL`, `TOUTRUN`, and `TOUTTRP` name runtime-state extents and offsets that
+were formerly written inline. They are AZM-compatible `EQU` aliases, produce no
+bytes, and keep the permanent Atom transform from relying on hidden rewrites for
+those repeated expressions.
 
 The proof harness also has an explicit `atom-preview` assembler mode. That mode
 uses the compatibility-lowered source produced by the migration tools, assembles

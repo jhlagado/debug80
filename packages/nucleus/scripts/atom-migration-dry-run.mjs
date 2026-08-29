@@ -4389,7 +4389,15 @@ function rewriteTargetOutputPermanentAtomSource(source, { symbolMap }) {
     ["TOIXWBS", "6", ["TargetDescriptorWritableBase"]],
     ["TOIXWCP", "8", ["TargetDescriptorWritableCapacity"]],
   ];
-  let rewritten = replaceAtomExpressionAliases(source, symbolMap, aliases.map(([alias, , expression]) => [alias, expression]));
+  const sourceWithoutAliases = removeAtomAliasDefinitions(
+    source,
+    [...aliases, ...indexAliases].map(([alias]) => alias),
+  );
+  let rewritten = replaceAtomExpressionAliases(
+    sourceWithoutAliases,
+    symbolMap,
+    aliases.map(([alias, , expression]) => [alias, expression]),
+  );
   for (const [alias, , expression] of indexAliases) {
     rewritten = rewritten.replaceAll(
       ["IX", "+", ...expression].map((name) => atomSymbol(symbolMap, name)).join(""),
@@ -4405,6 +4413,17 @@ function rewriteTargetOutputPermanentAtomSource(source, { symbolMap }) {
     "",
     rewritten,
   ].join("\n");
+}
+
+function removeAtomAliasDefinitions(source, aliases) {
+  const aliasSet = new Set(aliases.map((alias) => alias.toUpperCase()));
+  return source
+    .split("\n")
+    .filter((line) => {
+      const match = /^\s*([A-Za-z_.$?][A-Za-z0-9_.$?]*)\s+EQU\b/i.exec(line);
+      return match === null || !aliasSet.has(match[1].toUpperCase());
+    })
+    .join("\n");
 }
 
 function rewriteLoopParserPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
