@@ -987,7 +987,9 @@ function combineIncludeKinds(left, right) {
 }
 
 function compatibilityLoweringCanHandle(issue) {
-  return issue.code === "include-after-header" || issue.code === "atom-symbol-expression";
+  return issue.code === "include-after-header" ||
+    issue.code === "atom-symbol-expression" ||
+    issue.code === "preprocessor-definition-after-header";
 }
 
 function nextRoutineLabel(lines, startIndex) {
@@ -1164,23 +1166,39 @@ function dependencyClosure(entry, root, seen = new Set()) {
   return dependencies;
 }
 
+function preprocessorDefinitionHeaderIssues(files, preprocessorSymbols) {
+  if (preprocessorSymbols.size === 0) return [];
+  const issues = [];
+  for (const file of files) {
+    const lines = readFileSync(file, "utf8").split(/\n/);
+    let definitionsOpen = true;
+    for (let index = 0; index < lines.length; index += 1) {
+      const lineNumber = index + 1;
+      const code = stripComment(lines[index].replace(/\r$/, ""));
+      const trimmed = code.trim();
+      if (trimmed === "") continue;
+      const equ = /^\s*([A-Za-z_.$?][A-Za-z0-9_.$?]*)(?::\s*|\s+)\.equ\b/i.exec(code);
+      if (equ !== null && preprocessorSymbols.has(equ[1])) {
+        if (!definitionsOpen) {
+          issues.push({
+            code: "preprocessor-definition-after-header",
+            message: `feature definition ${equ[1]} would translate to %DEFINE outside Atom's entry definition header`,
+            ...location(file, lineNumber),
+          });
+        }
+        continue;
+      }
+      definitionsOpen = false;
+    }
+  }
+  return issues;
+}
+
 function proofSelectionStatus({ proof, files, issueByFile, globalIssues, includeAfterHeaderFiles }) {
   if (isMeasurementProof(proof)) {
     return Object.freeze({ status: "measurement-artifact", blockers: [] });
   }
   const overlappingProofMemory = overlappingProofMemoryBlockers.get(proof.name);
-  if (overlappingProofMemory !== undefined) {
-    return Object.freeze({
-      status: "blocked-by-overlapping-proof-memory",
-      blockers: [
-        Object.freeze({
-          code: "overlapping-proof-memory",
-          message: overlappingProofMemory,
-          file: proof.file,
-        }),
-      ],
-    });
-  }
   const blockers = [];
   const lateIncludeBlockers = files
     .filter((file) => includeAfterHeaderFiles.has(file))
@@ -1199,6 +1217,14 @@ function proofSelectionStatus({ proof, files, issueByFile, globalIssues, include
   const hardOtherIssues = otherIssues.filter((issue) => issue.code !== "atom-symbol-expression");
   if (otherIssues.length > 0) {
     blockers.push(...otherIssues);
+  }
+  if (overlappingProofMemory !== undefined) {
+    blockers.unshift(Object.freeze({
+      code: "overlapping-proof-memory",
+      message: overlappingProofMemory,
+      file: proof.file,
+    }));
+    return Object.freeze({ status: "blocked-by-overlapping-proof-memory", blockers });
   }
   if (lateIncludeBlockers.length > 0) {
     return Object.freeze({ status: "blocked-by-late-emitted-include", blockers });
@@ -1220,6 +1246,9 @@ function permanentLayoutHandlesIssue(proof, issue) {
   const issueRelative = permanentLayoutIssueRelative(issue);
   if (issueRelative === undefined) return false;
   const sourceTransform = permanentLayoutTransforms.get(issueRelative);
+  if (issue.code === "preprocessor-definition-after-header" && sourceTransform !== undefined) {
+    return true;
+  }
   return sourceTransform?.handledIssues.some((handled) => permanentLayoutIssueMatches(handled, issue)) ?? false;
 }
 
@@ -1728,6 +1757,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
   }
 
   const preprocessorSymbols = new Set(conditionals.keys());
+  issues.push(...preprocessorDefinitionHeaderIssues(files, preprocessorSymbols));
   for (const symbol of preprocessorSymbols) {
     symbols.delete(symbol);
   }

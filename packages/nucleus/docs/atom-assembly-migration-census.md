@@ -34,12 +34,13 @@ Measured files:
 | Proof-limit symbols using `$10000` | 4 |
 | Include-after-header violations | 143 |
 | Emitted-statement symbol arithmetic sites | 254 |
-| Current permanent-source blockers | 397 |
+| Current permanent-source blockers | 457 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
 | Permanent blocker: emitted-statement symbol arithmetic | 254 |
 | Permanent blocker: include after header | 143 |
+| Permanent blocker: feature definition after Atom entry header | 60 |
 | Proof-manifest symbol mappings | 146 |
 | One-past-address-space proof-limit mappings | 4 |
 | Routine contract metadata mappings | 709 |
@@ -149,7 +150,9 @@ execution through the migration runner. Three dispatcher measurement manifests
 remain measurement artifacts rather than proof-image migration targets. Three
 large proof manifests are still excluded from permanent-ready execution because
 their resident source blocks overlap the runtime/proof-output memory regions
-used by the current harness configuration.
+used by the current harness configuration. Those rows also retain their
+source-layout blockers in the proof matrix, so the memory exclusion no longer
+hides unresolved include, symbol-expression, or `%DEFINE` placement work.
 
 The proof harness accepts the generated metadata through
 `runProofManifest(..., { atomMigration })`. That path builds a manifest-facing
@@ -217,11 +220,13 @@ npm run atom:migration:proof-run -w nucleus
 The dry-run intentionally reports two readiness states:
 
 - permanent Atom source is still blocked while emitted-content includes remain
-  after the header and while emitted statements still use symbol arithmetic
-  that Atom cannot assemble directly; and
+  after the header, while emitted statements still use symbol arithmetic that
+  Atom cannot assemble directly, and while feature definitions would translate
+  to `%DEFINE` outside Atom's entry definition header; and
 - compatibility-lowered Atom source is ready when those late includes are the
   only hard issues, because preview lowering can resolve existing symbol
-  arithmetic from the comparison symbol table.
+  arithmetic from the comparison symbol table and consume feature definitions
+  before Atom receives the generated preview source.
 
 Compatibility lowering is now the formal bridge for existing Nucleus proof
 assembly. It preserves the current textual insertion points while producing
@@ -840,8 +845,9 @@ Atom path is proven byte-identical for the full non-measurement proof set. The
 proof harness now also runs every non-measurement, non-overlapping-memory proof
 manifest that has a permanent Atom layout. The remaining permanent-source work
 is to remove the preview-only bridge from the source tree itself: section-owned
-replacement for emitted-content include-after-header source, explicit aliases or
-source rewrites for emitted-statement symbol arithmetic, and final curation of
-human-facing permanent symbol names.
+replacement for emitted-content include-after-header source, entry-header
+placement for feature definitions, explicit aliases or source rewrites for
+emitted-statement symbol arithmetic, and final curation of human-facing
+permanent symbol names.
 
 The migration should therefore start with tooling, not manual source edits.

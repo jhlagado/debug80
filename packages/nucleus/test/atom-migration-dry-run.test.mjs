@@ -456,6 +456,23 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   });
 
+  it("keeps source-layout blockers visible on overlapping proof-memory rows", () => {
+    const report = scanAssembly({ asmRoot, proofRoot });
+    const row = report.proofMatrix.find(
+      ({ proof }) => proof === "stage7-ll1-aggregate-call-z80-slice-proof.json",
+    );
+
+    expect(row?.status).toBe("blocked-by-overlapping-proof-memory");
+    expect(row?.blockers.map(({ code }) => code)).toEqual(
+      expect.arrayContaining([
+        "overlapping-proof-memory",
+        "include-after-header",
+        "atom-symbol-expression",
+        "preprocessor-definition-after-header",
+      ]),
+    );
+  });
+
   it("classifies include-after-header targets by emitted content", async () => {
     await withTree({
       "asm/main.asm": [
@@ -540,6 +557,44 @@ describe("Nucleus Atom migration dry-run", () => {
       expect(report.issues).toEqual([
         expect.objectContaining({
           code: "include-after-header",
+        }),
+      ]);
+    });
+  });
+
+  it("reports feature definitions that permanent Atom source would place outside the entry definition header", async () => {
+    await withTree({
+      "asm/main.asm": [
+        ".include \"layout.asmi\"",
+        "ORG $1000",
+        "FeatureA .equ 1",
+        ".if FeatureA",
+        "START:",
+        "RET",
+        ".endif",
+        "",
+      ].join("\n"),
+      "asm/layout.asmi": "LAYOUT EQU 1\n",
+      "proofs/main.json": JSON.stringify({ source: "../asm/main.asm" }),
+    }, async (root) => {
+      const report = scanAssembly({
+        asmRoot: path.join(root, "asm"),
+        proofRoot: path.join(root, "proofs"),
+      });
+
+      expect(report.readiness.compatibilityLowering).toBe("ready");
+      expect(report.measured.issues).toEqual({
+        "preprocessor-definition-after-header": 1,
+      });
+      expect(report.proofMatrix).toEqual([
+        expect.objectContaining({
+          proof: "main.json",
+          status: "blocked-by-other",
+          blockers: [
+            expect.objectContaining({
+              code: "preprocessor-definition-after-header",
+            }),
+          ],
         }),
       ]);
     });
