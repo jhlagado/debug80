@@ -693,57 +693,59 @@ const permanentLayoutTransforms = new Map([
   ["vertical-slice/typed-expression-parser.asm", Object.freeze({
     description: "typed expression parser structured-control header include layout",
     handledIssues: Object.freeze([
+    ]),
+    rewrite: rewriteTypedExpressionParserPermanentAtomSource,
+  })],
+  ["vertical-slice/typed-expression-parser-core.asmi", Object.freeze({
+    description: "typed expression parser core aliases",
+    handledIssues: Object.freeze([
       Object.freeze({
-        file: "asm/vertical-slice/typed-expression-parser.asm",
-        code: "include-after-header",
-      }),
-      Object.freeze({
-        file: "asm/vertical-slice/typed-expression-parser.asm",
+        file: "asm/vertical-slice/typed-expression-parser-core.asmi",
         code: "atom-symbol-expression",
         messageIncludes: "SymbolRecordTypeFlag+SymbolAggregateFlag",
       }),
       Object.freeze({
-        file: "asm/vertical-slice/typed-expression-parser.asm",
+        file: "asm/vertical-slice/typed-expression-parser-core.asmi",
         code: "atom-symbol-expression",
         messageIncludes: "$100+SemanticOr16",
       }),
       Object.freeze({
-        file: "asm/vertical-slice/typed-expression-parser.asm",
+        file: "asm/vertical-slice/typed-expression-parser-core.asmi",
         code: "atom-symbol-expression",
         messageIncludes: "$100+SemanticXor16",
       }),
       Object.freeze({
-        file: "asm/vertical-slice/typed-expression-parser.asm",
+        file: "asm/vertical-slice/typed-expression-parser-core.asmi",
         code: "atom-symbol-expression",
         messageIncludes: "$100+SemanticAnd16",
       }),
       Object.freeze({
-        file: "asm/vertical-slice/typed-expression-parser.asm",
+        file: "asm/vertical-slice/typed-expression-parser-core.asmi",
         code: "atom-symbol-expression",
         messageIncludes: "$100+SemanticDivide16",
       }),
       Object.freeze({
-        file: "asm/vertical-slice/typed-expression-parser.asm",
+        file: "asm/vertical-slice/typed-expression-parser-core.asmi",
         code: "atom-symbol-expression",
         messageIncludes: "$100+SemanticModulo16",
       }),
       Object.freeze({
-        file: "asm/vertical-slice/typed-expression-parser.asm",
+        file: "asm/vertical-slice/typed-expression-parser-core.asmi",
         code: "atom-symbol-expression",
         messageIncludes: "ScalarMetaConstant+ScalarTypeExact",
       }),
       Object.freeze({
-        file: "asm/vertical-slice/typed-expression-parser.asm",
+        file: "asm/vertical-slice/typed-expression-parser-core.asmi",
         code: "atom-symbol-expression",
         messageIncludes: "ScalarMetaConstant+ScalarTypeBoolean",
       }),
       Object.freeze({
-        file: "asm/vertical-slice/typed-expression-parser.asm",
+        file: "asm/vertical-slice/typed-expression-parser-core.asmi",
         code: "atom-symbol-expression",
         messageIncludes: "ScalarMetaConstant+ScalarTypeU8",
       }),
     ]),
-    rewrite: rewriteTypedExpressionParserPermanentAtomSource,
+    rewrite: rewriteTypedExpressionParserCorePermanentAtomSource,
   })],
   ["vertical-slice/typed-expression-z80.asm", Object.freeze({
     description: "typed expression z80 structured-control header include layout",
@@ -4489,7 +4491,7 @@ function rewriteStructuredControlParserPermanentAtomSource(source, { symbolMap }
   ].join("\n");
 }
 
-function rewriteTypedExpressionParserPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
+function rewriteTypedExpressionParserCorePermanentAtomSource(source, { symbolMap }) {
   const aliases = [
     ["TEPRFLG", ["SymbolRecordTypeFlag", "+", "SymbolAggregateFlag"]],
     ["TEPOR16", ["SemanticOr8", "*$100+", "SemanticOr16"]],
@@ -4502,14 +4504,14 @@ function rewriteTypedExpressionParserPermanentAtomSource(source, { relative, tra
     ["TEPMU8", ["ScalarMetaConstant", "+", "ScalarTypeU8"]],
   ];
   const sourceWithoutAliases = removeAtomAliasDefinitions(source, aliases.map(([alias]) => alias));
-  const lines = replaceAtomExpressionAliases(sourceWithoutAliases, symbolMap, aliases).split("\n");
-  const structuredIncludeIndex = findPermanentIncludeLine(lines, "structured-control-parser.asm", "typed-expression-parser");
-  writeGeneratedPermanentPart(translatedRoot, relative, "typed-expression-parser-core.asmi", [
+  return [
     ...atomExpressionAliasLines(symbolMap, aliases),
     "",
-    ...lines.slice(0, structuredIncludeIndex),
-    "",
-  ]);
+    replaceAtomExpressionAliases(sourceWithoutAliases, symbolMap, aliases),
+  ].join("\n");
+}
+
+function rewriteTypedExpressionParserPermanentAtomSource() {
   return [
     "; Permanent Atom layout for the typed-expression parser.",
     "            %INCLUDE \"typed-expression-parser-core.asmi\"",
