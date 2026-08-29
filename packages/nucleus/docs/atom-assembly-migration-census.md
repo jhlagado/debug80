@@ -45,9 +45,9 @@ Measured files:
 | One-past-address-space proof-limit mappings | 4 |
 | Routine contract metadata mappings | 709 |
 | Proof manifests classified | 29 |
-| Atom permanent-ready proof manifests | 23 |
+| Atom permanent-ready proof manifests | 26 |
 | Atom-preview-only proof manifests | 0 |
-| Proof manifests blocked by overlapping proof memory | 3 |
+| Proof manifests blocked by overlapping proof memory | 0 |
 | Proof manifests blocked by late emitted-content includes | 0 |
 | Measurement-artifact proof manifests | 3 |
 
@@ -188,16 +188,14 @@ npm run atom:migration:census -w nucleus -- \
   --proof-matrix-out build/nucleus-atom-proof-matrix.json
 ```
 
-Current measurement: 23 proof manifests are ready for permanent Atom-source
+Current measurement: 26 proof manifests are ready for permanent Atom-source
 execution through the migration runner. Three dispatcher measurement manifests
-remain measurement artifacts rather than proof-image migration targets. Three
-large proof manifests are still excluded from permanent-ready execution because
-their resident source blocks overlap the runtime/proof-output memory regions
-used by the current harness configuration. The Stage 7 aggregate-call,
-Stage 8 failure, and Stage 9 conformance proofs now have physical
-permanent-layout Atom source. All three assemble byte-identically with the
-legacy unordered proof-output sink; their remaining blocker is only the known
-memory overlap.
+remain measurement artifacts rather than proof-image migration targets. The
+Stage 7 aggregate-call, Stage 8 failure, and Stage 9 conformance proofs now
+have physical permanent-layout Atom source and execute through the proof
+harness. The proof runner uses the unordered IMAGE sink for these entries
+because their ORG sequence moves between source fixtures and proof sections.
+That is a proof-image compatibility setting, not a source-language blocker.
 
 The proof harness accepts the generated metadata through
 `runProofManifest(..., { atomMigration })`. That path builds a manifest-facing

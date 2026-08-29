@@ -55,6 +55,7 @@ type ProofAssembler =
       readonly entry: string;
       readonly maxInstructions?: number;
       readonly maxCycles?: number;
+      readonly legacyOutputOrder?: boolean;
     }
   | {
       readonly kind: "atom-preview";
@@ -468,12 +469,26 @@ async function assembleProofSource({
       materializeAtomGeneration,
       writeIntelHex,
     } = await import("atom-z80");
+    const compareModule = assembler.legacyOutputOrder === true
+      ? await import(
+          pathToFileURL(
+            path.join(
+              path.dirname(manifestDirectory),
+              "scripts",
+              "atom-migration-proof-compare.mjs",
+            ),
+          ).href,
+        )
+      : undefined;
     const assembled = await assembleAtomProject({
       root: assembler.root,
       entry: assembler.entry,
       target: { start: 0, capacity: 0xffff },
       maxInstructions: assembler.maxInstructions ?? 50_000_000,
       maxCycles: assembler.maxCycles ?? 500_000_000,
+      ...(compareModule === undefined
+        ? {}
+        : { sink: compareModule.createLegacyUnorderedMemoryAtomSink() }),
     });
     const materialized = materializeAtomGeneration(assembled.generation, {
       base: contentBase(assembled.generation),

@@ -537,7 +537,7 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   });
 
-  it("keeps the converted proof-composition overlap rows blocked only by memory layout", () => {
+  it("classifies the converted large proof-composition rows as permanent-ready", () => {
     const report = scanAssembly({ asmRoot, proofRoot });
     for (const proof of [
       "stage7-ll1-aggregate-call-z80-slice-proof.json",
@@ -545,8 +545,8 @@ describe("Nucleus Atom migration dry-run", () => {
       "stage9-conformance-z80-slice-proof.json",
     ]) {
       const row = report.proofMatrix.find((candidate) => candidate.proof === proof);
-      expect(row?.status).toBe("blocked-by-overlapping-proof-memory");
-      expect(row?.blockers.map(({ code }) => code)).toEqual(["overlapping-proof-memory"]);
+      expect(row?.status).toBe("atom-permanent-ready");
+      expect(row?.blockers).toEqual([]);
     }
   });
 
@@ -1025,8 +1025,11 @@ describe("Nucleus Atom migration dry-run", () => {
         "memory-map-proof.json",
         "nobj-runner-proof.json",
         "source-provenance-proof.json",
+        "stage7-ll1-aggregate-call-z80-slice-proof.json",
         "stage7-ll1-engine-proof.json",
         "stage7-ll1-parser-coverage-proof.json",
+        "stage8-failure-z80-slice-proof.json",
+        "stage9-conformance-z80-slice-proof.json",
         "structured-control-z80-slice-proof.json",
         "typed-expression-z80-slice-proof.json",
         "z80-slice-proof.json",
@@ -1039,6 +1042,7 @@ describe("Nucleus Atom migration dry-run", () => {
           entry,
           maxInstructions: 700_000_000,
           maxCycles: 7_000_000_000,
+          legacyOutputOrder: true,
         },
         atomMigration: {
           proofSymbolMap: report.proofSymbolMap,
@@ -1063,8 +1067,11 @@ describe("Nucleus Atom migration dry-run", () => {
         "memory-map-proof.json",
         "nobj-runner-proof.json",
         "source-provenance-proof.json",
+        "stage7-ll1-aggregate-call-z80-slice-proof.json",
         "stage7-ll1-engine-proof.json",
         "stage7-ll1-parser-coverage-proof.json",
+        "stage8-failure-z80-slice-proof.json",
+        "stage9-conformance-z80-slice-proof.json",
         "structured-control-z80-slice-proof.json",
         "typed-expression-z80-slice-proof.json",
         "z80-slice-proof.json",
@@ -1942,8 +1949,8 @@ describe("Nucleus Atom migration dry-run", () => {
       const row = report.proofMatrix.find(
         ({ proof }) => proof === "stage7-ll1-aggregate-call-z80-slice-proof.json",
       );
-      expect(row?.status).toBe("blocked-by-overlapping-proof-memory");
-      expect(row?.blockers.map(({ code }) => code)).toEqual(["overlapping-proof-memory"]);
+      expect(row?.status).toBe("atom-permanent-ready");
+      expect(row?.blockers).toEqual([]);
       const root = await readFile(
         path.join(translatedRoot, "vertical-slice", "stage7-ll1-aggregate-call-z80-slice-proof.asm"),
         "utf8",
@@ -1992,8 +1999,8 @@ describe("Nucleus Atom migration dry-run", () => {
       const row = report.proofMatrix.find(
         ({ proof }) => proof === "stage8-failure-z80-slice-proof.json",
       );
-      expect(row?.status).toBe("blocked-by-overlapping-proof-memory");
-      expect(row?.blockers.map(({ code }) => code)).toEqual(["overlapping-proof-memory"]);
+      expect(row?.status).toBe("atom-permanent-ready");
+      expect(row?.blockers).toEqual([]);
 
       const root = await readFile(
         path.join(translatedRoot, "vertical-slice", "stage8-failure-z80-slice-proof.asm"),
@@ -2040,8 +2047,8 @@ describe("Nucleus Atom migration dry-run", () => {
       const row = report.proofMatrix.find(
         ({ proof }) => proof === "stage9-conformance-z80-slice-proof.json",
       );
-      expect(row?.status).toBe("blocked-by-overlapping-proof-memory");
-      expect(row?.blockers.map(({ code }) => code)).toEqual(["overlapping-proof-memory"]);
+      expect(row?.status).toBe("atom-permanent-ready");
+      expect(row?.blockers).toEqual([]);
 
       const root = await readFile(
         path.join(translatedRoot, "vertical-slice", "stage9-conformance-z80-slice-proof.asm"),

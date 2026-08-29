@@ -231,6 +231,7 @@ async function runOne({
           entry,
           maxInstructions: budget.maxInstructions,
           maxCycles: budget.maxCycles,
+          legacyOutputOrder: true,
         },
         atomMigration: {
           proofSymbolMap: report.proofSymbolMap,
