@@ -307,6 +307,23 @@ const permanentLayoutTransforms = new Map([
     ]),
     rewrite: rewriteExpressionZ80SliceProofPermanentAtomSource,
   })],
+  ["vertical-slice/aggregate-z80-slice-proof.asm", Object.freeze({
+    description: "aggregate z80 proof sectioned header-include layout",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/aggregate-z80-slice-proof.asm",
+        code: "include-after-header",
+      }),
+      ..."AggregateExpectedImageEnd-AggregateExpectedImage|AggregateFieldTableBase+AggregateFieldOffset|AggregateFieldTableBase+AggregateFieldEntrySize|SymbolTableBase+SymbolEntrySize|AggregateRecordStepPoint-AggregateRecordStepSource|AggregateDuplicateFieldPoint-AggregateDuplicateFieldSource|AggregateStringExtentCapacityPoint-AggregateStringExtentCapacitySource|AggregateDataCapacityPoint-AggregateDataCapacitySource"
+        .split("|")
+        .map((messageIncludes) => Object.freeze({
+          file: "asm/vertical-slice/aggregate-z80-slice-proof.asm",
+          code: "atom-symbol-expression",
+          messageIncludes,
+        })),
+    ]),
+    rewrite: rewriteAggregateZ80SliceProofPermanentAtomSource,
+  })],
   ["vertical-slice/structured-control-z80-slice-proof.asm", Object.freeze({
     description: "structured-control z80 proof sectioned header-include layout",
     handledIssues: Object.freeze([
@@ -3181,6 +3198,151 @@ function rewriteStructuredControlZ80SliceProofPermanentAtomSource(source, { rela
     "            %INCLUDE \"structured-control-z80-slice-runtime-after.asmi\"",
     "            %INCLUDE \"structured-control-z80-slice-proof-body.asmi\"",
     "            %INCLUDE \"structured-control-z80-slice-spare.asmi\"",
+    "",
+  ].join("\n");
+}
+
+function rewriteAggregateZ80SliceProofPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
+  const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
+  const sourceBase = atomSymbol(symbolMap, "SourceBase");
+  const targetRuntimeBase = atomSymbol(symbolMap, "TargetRuntimeBase");
+  const proofBase = atomSymbol(symbolMap, "ProofBase");
+  const aliases = [
+    ["AGIMGL", ["AggregateExpectedImageEnd", "-", "AggregateExpectedImage"]],
+    ["AGFLD0", ["AggregateFieldTableBase", "+", "AggregateFieldOffset"]],
+    ["AGFLD1", ["AggregateFieldTableBase", "+", "AggregateFieldEntrySize", "+", "AggregateFieldOffset"]],
+    ["AGFLD2", ["AggregateFieldTableBase", "+", "AggregateFieldEntrySize", "*2", "+", "AggregateFieldOffset"]],
+    ["AGFLD3", ["AggregateFieldTableBase", "+", "AggregateFieldEntrySize", "*3", "+", "AggregateFieldOffset"]],
+    ["AGFLD4", ["AggregateFieldTableBase", "+", "AggregateFieldEntrySize", "*4", "+", "AggregateFieldOffset"]],
+    ["AGFLD5", ["AggregateFieldTableBase", "+", "AggregateFieldEntrySize", "*5", "+", "AggregateFieldOffset"]],
+    ["AGFLD6", ["AggregateFieldTableBase", "+", "AggregateFieldEntrySize", "*6", "+", "AggregateFieldOffset"]],
+    ["AGSYM2I", ["SymbolTableBase", "+", "SymbolEntrySize", "*2", "+3"]],
+    ["AGSYM2V", ["SymbolTableBase", "+", "SymbolEntrySize", "*2", "+4"]],
+    ["AGSYM3V", ["SymbolTableBase", "+", "SymbolEntrySize", "*3", "+4"]],
+    ["AGSYM4V", ["SymbolTableBase", "+", "SymbolEntrySize", "*4", "+4"]],
+    ["AGSYM1V", ["SymbolTableBase", "+", "SymbolEntrySize", "+4"]],
+    ["AGRSOF", ["AggregateRecordStepPoint", "-", "AggregateRecordStepSource"]],
+    ["AGDPOF", ["AggregateDuplicateFieldPoint", "-", "AggregateDuplicateFieldSource"]],
+    ["AGSTEOF", ["AggregateStringExtentCapacityPoint", "-", "AggregateStringExtentCapacitySource"]],
+    ["AGDACOF", ["AggregateDataCapacityPoint", "-", "AggregateDataCapacitySource"]],
+  ];
+
+  const lines = replaceAtomExpressionAliases(source, symbolMap, aliases).split("\n");
+  const compilerOrgIndex = findPermanentOrgLine(lines, compilerCoreBase, "aggregate-z80-slice-proof");
+  const sourceAdapterIncludeIndex = findPermanentIncludeLine(lines, "source-adapter.asm", "aggregate-z80-slice-proof");
+  const tokenizerIncludeIndex = findPermanentIncludeLine(lines, "loop-tokenizer.asm", "aggregate-z80-slice-proof");
+  const semanticSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-semantic-sink.asm", "aggregate-z80-slice-proof");
+  const symbolsIncludeIndex = findPermanentIncludeLine(lines, "loop-symbols.asm", "aggregate-z80-slice-proof");
+  const parserIncludeIndex = findPermanentIncludeLine(lines, "loop-parser.asm", "aggregate-z80-slice-proof");
+  const loopSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-z80-sink.asm", "aggregate-z80-slice-proof");
+  const typedSinkIncludeIndex = findPermanentIncludeLine(lines, "typed-expression-z80.asm", "aggregate-z80-slice-proof");
+  const aggregateSinkIncludeIndex = findPermanentIncludeLine(lines, "aggregate-z80.asm", "aggregate-z80-slice-proof");
+  const keywordsIncludeIndex = findPermanentIncludeLine(lines, "loop-keywords.asmi", "aggregate-z80-slice-proof");
+  const sourceOrgIndex = findPermanentOrgLine(lines, sourceBase, "aggregate-z80-slice-proof");
+  const runtimeOrgIndex = findPermanentOrgLine(lines, targetRuntimeBase, "aggregate-z80-slice-proof");
+  const runtimeIncludeIndex = findPermanentIncludeLine(lines, "proof-z80-runtime.asm", "aggregate-z80-slice-proof");
+  const proofOrgIndex = findPermanentOrgLine(lines, proofBase, "aggregate-z80-slice-proof");
+
+  const orderedIndexes = [
+    compilerOrgIndex,
+    sourceAdapterIncludeIndex,
+    tokenizerIncludeIndex,
+    semanticSinkIncludeIndex,
+    symbolsIncludeIndex,
+    parserIncludeIndex,
+    loopSinkIncludeIndex,
+    typedSinkIncludeIndex,
+    aggregateSinkIncludeIndex,
+    keywordsIncludeIndex,
+    sourceOrgIndex,
+    runtimeOrgIndex,
+    runtimeIncludeIndex,
+    proofOrgIndex,
+  ];
+  if (!orderedIndexes.every((value, index) => index === 0 || orderedIndexes[index - 1] < value)) {
+    throw new Error("aggregate-z80-slice proof permanent Atom rewrite found an unexpected section order");
+  }
+
+  const writeSlice = (includeName, start, end) => {
+    writeGeneratedPermanentPart(translatedRoot, relative, includeName, [
+      ...lines.slice(start, end).filter((line) =>
+        !/^\s*%DEFINE\s+(TargetStreamingOutput|LegacyCompilerSlices|AggregateCallSlices|LegacyEncoders)\b/i.test(line)),
+      "",
+    ]);
+  };
+  writeSlice("aggregate-z80-slice-code-begin.asmi", compilerOrgIndex, sourceAdapterIncludeIndex);
+  writeSlice("aggregate-z80-slice-after-source-adapter.asmi", sourceAdapterIncludeIndex + 1, tokenizerIncludeIndex);
+  writeSlice("aggregate-z80-slice-after-tokenizer.asmi", tokenizerIncludeIndex + 1, semanticSinkIncludeIndex);
+  writeSlice("aggregate-z80-slice-after-semantic-sink.asmi", semanticSinkIncludeIndex + 1, symbolsIncludeIndex);
+  writeSlice("aggregate-z80-slice-after-symbols.asmi", symbolsIncludeIndex + 1, parserIncludeIndex);
+  writeSlice("aggregate-z80-slice-after-parser.asmi", parserIncludeIndex + 1, loopSinkIncludeIndex);
+  writeSlice("aggregate-z80-slice-after-loop-z80-sink.asmi", loopSinkIncludeIndex + 1, typedSinkIncludeIndex);
+  writeSlice("aggregate-z80-slice-after-typed-expression-z80.asmi", typedSinkIncludeIndex + 1, aggregateSinkIncludeIndex);
+  writeSlice("aggregate-z80-slice-after-aggregate-z80.asmi", aggregateSinkIncludeIndex + 1, keywordsIncludeIndex);
+  writeSlice("aggregate-z80-slice-after-keywords.asmi", keywordsIncludeIndex + 1, sourceOrgIndex);
+  writeSlice("aggregate-z80-slice-source.asmi", sourceOrgIndex, runtimeOrgIndex);
+  writeSlice("aggregate-z80-slice-runtime-begin.asmi", runtimeOrgIndex, runtimeIncludeIndex);
+  writeSlice("aggregate-z80-slice-runtime-after.asmi", runtimeIncludeIndex + 1, proofOrgIndex);
+  writeGeneratedPermanentPart(translatedRoot, relative, "aggregate-z80-slice-proof-body.asmi", [
+    lines[proofOrgIndex],
+    "AGIMGL EQU $38",
+    "AGFLD0 EQU $44B9",
+    "AGFLD1 EQU $44BF",
+    "AGFLD2 EQU $44C5",
+    "AGFLD3 EQU $44CB",
+    "AGFLD4 EQU $44D1",
+    "AGFLD5 EQU $44D7",
+    "AGFLD6 EQU $44DD",
+    "AGSYM2I EQU $423A",
+    "AGSYM2V EQU $423B",
+    "AGSYM3V EQU $4241",
+    "AGSYM4V EQU $4247",
+    "AGSYM1V EQU $4235",
+    "AGRSOF EQU $4E",
+    "AGDPOF EQU $15",
+    "AGSTEOF EQU $15",
+    "AGDACOF EQU $1C",
+    "",
+    ...lines.slice(proofOrgIndex + 1),
+  ]);
+
+  return [
+    "; Permanent Atom layout for the aggregate z80 proof.",
+    "            %DEFINE SegmentedOutput 0",
+    "            %DEFINE TargetStreamingOutput 0",
+    "            %DEFINE LegacyCompilerSlices 1",
+    "            %DEFINE AggregateCallSlices 0",
+    "            %DEFINE LegacyEncoders 0",
+    "            %DEFINE HybridLL1Full 0",
+    "            %DEFINE RuntimeProofServices 1",
+    "            %INCLUDE \"memory-map.asmi\"",
+    "            %INCLUDE \"proof-unsegmented-state.asmi\"",
+    "            %INCLUDE \"loop-compiler-state.asmi\"",
+    "            %INCLUDE \"loop-z80-state.asmi\"",
+    "            %INCLUDE \"aggregate-z80-slice-code-begin.asmi\"",
+    "            %INCLUDE \"source-adapter.asm\"",
+    "            %INCLUDE \"aggregate-z80-slice-after-source-adapter.asmi\"",
+    "            %INCLUDE \"loop-tokenizer.asm\"",
+    "            %INCLUDE \"aggregate-z80-slice-after-tokenizer.asmi\"",
+    "            %INCLUDE \"loop-semantic-sink.asm\"",
+    "            %INCLUDE \"aggregate-z80-slice-after-semantic-sink.asmi\"",
+    "            %INCLUDE \"loop-symbols.asm\"",
+    "            %INCLUDE \"aggregate-z80-slice-after-symbols.asmi\"",
+    "            %INCLUDE \"loop-parser.asm\"",
+    "            %INCLUDE \"aggregate-z80-slice-after-parser.asmi\"",
+    "            %INCLUDE \"loop-z80-sink.asm\"",
+    "            %INCLUDE \"aggregate-z80-slice-after-loop-z80-sink.asmi\"",
+    "            %INCLUDE \"typed-expression-z80.asm\"",
+    "            %INCLUDE \"aggregate-z80-slice-after-typed-expression-z80.asmi\"",
+    "            %INCLUDE \"aggregate-z80.asm\"",
+    "            %INCLUDE \"aggregate-z80-slice-after-aggregate-z80.asmi\"",
+    "            %INCLUDE \"loop-keywords.asmi\"",
+    "            %INCLUDE \"aggregate-z80-slice-after-keywords.asmi\"",
+    "            %INCLUDE \"aggregate-z80-slice-source.asmi\"",
+    "            %INCLUDE \"aggregate-z80-slice-runtime-begin.asmi\"",
+    "            %INCLUDE \"proof-z80-runtime.asm\"",
+    "            %INCLUDE \"aggregate-z80-slice-runtime-after.asmi\"",
+    "            %INCLUDE \"aggregate-z80-slice-proof-body.asmi\"",
     "",
   ].join("\n");
 }

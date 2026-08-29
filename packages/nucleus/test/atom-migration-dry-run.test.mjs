@@ -829,6 +829,7 @@ describe("Nucleus Atom migration dry-run", () => {
       const readyProofs = report.proofMatrix
         .filter(({ status }) => status === "atom-permanent-ready");
       expect(readyProofs.map(({ proof }) => proof)).toEqual([
+        "aggregate-z80-slice-proof.json",
         "array-z80-slice-proof.json",
         "banked-target-entry1-z80-slice-proof.json",
         "banked-target-trap-z80-slice-proof.json",
@@ -873,6 +874,7 @@ describe("Nucleus Atom migration dry-run", () => {
       }
       const representativeProofs = [...representativeProofsByEntry.values()];
       expect(representativeProofs.map(({ proof }) => proof)).toEqual([
+        "aggregate-z80-slice-proof.json",
         "array-z80-slice-proof.json",
         "banked-target-entry1-z80-slice-proof.json",
         "call-z80-slice-proof.json",
