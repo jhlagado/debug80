@@ -484,29 +484,14 @@ const permanentLayoutTransforms = new Map([
     rewrite: rewriteTypedExpressionParserCorePermanentAtomSource,
   })],
   ["vertical-slice/typed-expression-z80.asm", Object.freeze({
-    description: "typed expression z80 structured-control header include layout",
-    handledIssues: Object.freeze([
-      Object.freeze({
-        file: "asm/vertical-slice/typed-expression-z80.asm",
-        code: "include-after-header",
-      }),
-      Object.freeze({
-        file: "asm/vertical-slice/typed-expression-z80.asm",
-        code: "atom-symbol-expression",
-        messageIncludes: "ActivationDepth-StateBase",
-      }),
-      Object.freeze({
-        file: "asm/vertical-slice/typed-expression-z80.asm",
-        code: "atom-symbol-expression",
-        messageIncludes: "RootSP-StateBase",
-      }),
-      Object.freeze({
-        file: "asm/vertical-slice/typed-expression-z80.asm",
-        code: "atom-symbol-expression",
-        messageIncludes: "RootIX-StateBase",
-      }),
-    ]),
+    description: "typed expression z80 physical module-boundary layout",
+    handledIssues: Object.freeze([]),
     rewrite: rewriteTypedExpressionZ80PermanentAtomSource,
+  })],
+  ["vertical-slice/typed-expression-z80-tail.asmi", Object.freeze({
+    description: "typed expression z80 tail byte-sequence aliases",
+    handledIssues: Object.freeze([]),
+    rewrite: rewriteTypedExpressionZ80TailPermanentAtomSource,
   })],
   ["vertical-slice/structured-control-z80.asm", Object.freeze({
     description: "structured-control z80 typed byte-sequence aliases",
@@ -751,6 +736,7 @@ function isIncludeHeaderLine(code) {
   const trimmed = code.trim();
   if (trimmed === "") return true;
   if (/^\s*\.include\b/i.test(code)) return true;
+  if (/^\s*\.(?:if|else|endif)\b/i.test(code)) return true;
   return false;
 }
 
@@ -3087,32 +3073,21 @@ function rewriteTypedExpressionParserPermanentAtomSource() {
   ].join("\n");
 }
 
-function rewriteTypedExpressionZ80PermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
-  const aliases = [
-    ["TEZACTD", ["ActivationDepth", "-", "StateBase"]],
-    ["TEZRTSP", ["RootSP", "-", "StateBase"]],
-    ["TEZRTIX", ["RootIX", "-", "StateBase"]],
-  ];
-  const sourceWithoutAliases = removeAtomAliasDefinitions(source, aliases.map(([alias]) => alias));
-  const lines = replaceAtomExpressionAliases(sourceWithoutAliases, symbolMap, aliases).split("\n");
-  const structuredIncludeIndex = findPermanentIncludeLine(lines, "structured-control-z80.asm", "typed-expression-z80");
-  const aggregateIncludeIndex = findPermanentIncludeLine(lines, "aggregate-call-z80.asm", "typed-expression-z80");
-  const ifIndex = lines
-    .slice(0, aggregateIncludeIndex)
-    .findLastIndex((line) => /^\s*%IF\s+AggregateCallSlices\s*$/i.test(line));
-  const endifIndex = lines.findIndex((line, index) =>
-    index > aggregateIncludeIndex && /^\s*%ENDIF\s*$/i.test(line));
-  if (!(structuredIncludeIndex < ifIndex &&
-    ifIndex < aggregateIncludeIndex &&
-    aggregateIncludeIndex < endifIndex)) {
-    throw new Error("typed-expression-z80 permanent Atom rewrite found an unexpected include section");
-  }
-  writeGeneratedPermanentPart(translatedRoot, relative, "typed-expression-z80-core.asmi", [
-    ...atomExpressionAliasLines(symbolMap, aliases),
+function rewriteTypedExpressionZ80PermanentAtomSource() {
+  return [
+    "; Permanent Atom layout for the typed-expression z80 backend.",
+    "            %INCLUDE \"typed-expression-z80-core.asmi\"",
+    "            %INCLUDE \"structured-control-z80.asm\"",
+    "            %IF AggregateCallSlices",
+    "            %INCLUDE \"aggregate-call-z80.asm\"",
+    "            %ENDIF",
+    "            %INCLUDE \"typed-expression-z80-tail.asmi\"",
     "",
-    ...lines.slice(0, structuredIncludeIndex),
-    "",
-  ]);
+  ].join("\n");
+}
+
+function rewriteTypedExpressionZ80TailPermanentAtomSource(source, { symbolMap }) {
+  const lines = source.split("\n");
   const typedBeginAndBytes = atomSymbol(symbolMap, "TypedBeginAndBytes");
   const typedBeginAndLowTest = "TYPDBG1";
   const typedBeginAndBranch = "TYPDBG3";
@@ -3166,8 +3141,7 @@ function rewriteTypedExpressionZ80PermanentAtomSource(source, { relative, transl
   };
   const typedLoadSpPattern = new RegExp(`^(${escapeRegExp(typedLoadSpPrefix)}:\\s*)DB\\s+\\$ED,\\$7B(.*)$`, "i");
   const typedParameter16Pattern = new RegExp(`^(${escapeRegExp(typedParameter16Bytes)}:\\s*)DB\\s+\\$3B,\\$3B,\\$DD,\\$75,\\$FF,\\$DD,\\$74,\\$FE(.*)$`, "i");
-  writeGeneratedPermanentPart(translatedRoot, relative, "typed-expression-z80-tail.asmi", lines
-    .slice(endifIndex + 1)
+  return lines
     .flatMap((line) => {
       const match = typedBeginPattern.exec(line);
       if (match !== null) {
@@ -3200,17 +3174,8 @@ function rewriteTypedExpressionZ80PermanentAtomSource(source, { relative, transl
         return [];
       }
       return withMovedAliases(line);
-    }));
-  return [
-    "; Permanent Atom layout for the typed-expression z80 backend.",
-    "            %INCLUDE \"typed-expression-z80-core.asmi\"",
-    "            %INCLUDE \"structured-control-z80.asm\"",
-    "            %IF AggregateCallSlices",
-    "            %INCLUDE \"aggregate-call-z80.asm\"",
-    "            %ENDIF",
-    "            %INCLUDE \"typed-expression-z80-tail.asmi\"",
-    "",
-  ].join("\n");
+    })
+    .join("\n");
 }
 
 function rewriteStructuredControlZ80PermanentAtomSource(source, { symbolMap }) {

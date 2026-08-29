@@ -5,7 +5,7 @@ Date: 2026-08-30
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current reusable-transform baseline HEAD: `da4b356b`
+Current reusable-transform baseline HEAD: `9c146c25`
 
 ## Purpose
 
@@ -24,22 +24,22 @@ Measured files:
 
 | Item | Measured value |
 | --- | ---: |
-| Assembly files, `.asm` and `.asmi` | 286 |
-| Source lines | 30,188 |
+| Assembly files, `.asm` and `.asmi` | 288 |
+| Source lines | 30,195 |
 | Defined assembler symbols detected | 4,158 |
 | Defined assembler symbols longer than eight characters | 3,910 |
 | Long labels classed as dot-local candidates | 792 |
 | Long symbols still needing global treatment | 3,118 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
-| Include-after-header violations | 7 |
+| Include-after-header violations | 5 |
 | Forward-dependent emitted-statement symbol arithmetic sites | 0 |
-| Current permanent-source blockers | 7 |
+| Current permanent-source blockers | 5 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
 | Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 0 |
-| Permanent blocker: include after header | 7 |
+| Permanent blocker: include after header | 5 |
 | Permanent blocker: feature definition after Atom entry header | 0 |
 | Proof-manifest symbol mappings | 146 |
 | One-past-address-space proof-limit mappings | 4 |
@@ -327,7 +327,7 @@ grouping:
 | Batch | Files | Late includes | Risk | Recommendation |
 | --- | ---: | ---: | --- | --- |
 | Proof composition files | 0 | 0 | Cleared | The proof-composition batch now uses section-owned layouts for the converted permanent entries, including `stage7-ll1-engine-proof.asm`. |
-| Module composition files | 2 | 6 | High | Current main batch. These includes occur inside parser/codegen implementation modules (`loop-parser`, `typed-expression-z80`). Treat these as real module-boundary work, not mechanical line moves. |
+| Module composition files | 1 | 4 | High | Current main batch. These includes occur inside the parser implementation module (`loop-parser`). Treat these as real module-boundary work, not mechanical line moves. |
 | Runtime wrapper files | 1 | 1 | Low to medium | The target runtime link entry has a permanent Atom layout and byte-equivalence proof. The raw source still records one wrapper include until the permanent source tree replaces the current source tree. |
 
 `loop-compiler-slice-proof.asm` now uses the physical section-owner layout. Its
@@ -341,6 +341,14 @@ Its front fragment owns the parser stubs and `HybridLL1MeasuredStart`; the
 proof-body fragment owns the source fixture, proof checks, and `HLL1STKL`
 single-symbol stack-boundary alias; the after-actions fragment owns the proof
 state bytes after the proof action aliases.
+
+`typed-expression-z80.asm` now uses a physical module-boundary layout. The root
+module records the backend order: typed-expression core, structured-control
+backend, optional aggregate-call backend, then the typed-expression byte-table
+tail. The migration checker treats simple top-of-file `.IF` / `.ELSE` /
+`.ENDIF` guards as part of the include header, so optional modules can stay
+explicit without becoming late textual includes. The tail fragment owns the
+byte-sequence alias rewrites needed by dependent permanent Atom modules.
 
 Do not move those include lines to the top and assume correctness. Many of
 the current files use surrounding labels such as `TokenizerCodeStart` /
@@ -653,7 +661,6 @@ modules after an `.ORG` and section label:
 | Source file | Measured violations | First line |
 | --- | ---: | ---: |
 | `vertical-slice/loop-parser.asm` | 4 | 1135 |
-| `vertical-slice/typed-expression-z80.asm` | 2 | 909 |
 | `vertical-slice/nucleus-target-runtime-link.asm` | 1 | 8 |
 
 The largest current target groups show why this is not a safe blind move:
@@ -662,9 +669,7 @@ The largest current target groups show why this is not a safe blind move:
 | --- | ---: | --- |
 | `vertical-slice/aggregate-call-parser-stage7.asm` | 1 | mixed code/data |
 | `vertical-slice/aggregate-call-parser.asm` | 1 | code |
-| `vertical-slice/aggregate-call-z80.asm` | 1 | mixed code/data |
 | `vertical-slice/aggregate-parser.asm` | 1 | code |
-| `vertical-slice/structured-control-z80.asm` | 1 | mixed code/data |
 | `vertical-slice/target-z80-runtime.asm` | 1 | code |
 | `vertical-slice/typed-expression-parser.asm` | 1 | mixed code/data |
 

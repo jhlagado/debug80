@@ -448,6 +448,37 @@ describe("Nucleus Atom migration dry-run", () => {
     });
   });
 
+  it("keeps conditional include guards in the source header", async () => {
+    await withTree({
+      "asm/main.asm": [
+        ".include \"base.asmi\"",
+        ".if Feature",
+        ".include \"feature.asmi\"",
+        ".endif",
+        "ORG $1000",
+        ".include \"late.asmi\"",
+        "",
+      ].join("\n"),
+      "asm/base.asmi": "",
+      "asm/feature.asmi": "",
+      "asm/late.asmi": "            RET\n",
+      "proofs/main.json": JSON.stringify({ source: "../asm/main.asm" }),
+    }, async (root) => {
+      const report = scanAssembly({
+        asmRoot: path.join(root, "asm"),
+        proofRoot: path.join(root, "proofs"),
+      });
+
+      expect(report.measured.includeAfterHeader).toBe(1);
+      expect(report.issues).toEqual([
+        expect.objectContaining({
+          code: "include-after-header",
+          line: 6,
+        }),
+      ]);
+    });
+  });
+
   it("classifies proof manifests for permanent Atom execution readiness", async () => {
     await withTree({
       "asm/ready.asm": "ReadyStart:\n            HALT\n",
