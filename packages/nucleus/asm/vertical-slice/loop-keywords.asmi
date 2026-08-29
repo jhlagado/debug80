@@ -84,13 +84,18 @@ NameWriteOutputByte:
             .db 14,"storageFailure"
 Stage8PredefinedCount .equ 10
 
+LKSRU8  .equ Stage8CallableServiceFlag+Stage8ServiceResultU8       ; callable service with u8 result
+LKSRSW  .equ Stage8CallableServiceFlag+Stage8ServiceRewindStorage  ; callable service with storage rewind
+LKRDIN  .equ LKSRU8+Stage8ServiceReadInput                         ; readInputByte selector
+LKRDSB  .equ LKSRU8+Stage8ServiceReadStorage                       ; readStorageByte selector
+
 ; Complete service selectors: target ID in bits 0..2, argument type in bits
 ; 3..4, successful u8 result in bit 5, and service kind in bit 7.
 Stage8ServiceSignatureTable:
-            .db Stage8CallableServiceFlag+Stage8ServiceResultU8+Stage8ServiceReadInput
+            .db LKRDIN
             .db Stage8CallableServiceFlag+(ScalarTypeU8*8)+Stage8ServiceWriteOutput
-            .db Stage8CallableServiceFlag+Stage8ServiceResultU8+Stage8ServiceReadStorage
-            .db Stage8CallableServiceFlag+Stage8ServiceRewindStorage
+            .db LKRDSB
+            .db LKSRSW
             .db Stage8CallableServiceFlag+(ScalarTypeU8*8)+Stage8ServiceWriteStorage
             .db Stage8CallableServiceFlag+(ScalarTypeU16*8)+Stage8ServiceSeekStorage
 .else

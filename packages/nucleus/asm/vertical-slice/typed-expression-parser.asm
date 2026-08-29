@@ -6,6 +6,11 @@
 ; postfix stream of 16-bit carriers; u8 and boolean carriers have a zero high
 ; byte. The declared type, not the carrier, controls width and compatibility.
 
+TEPRFLG .equ SymbolRecordTypeFlag+SymbolAggregateFlag ; aggregate symbol/type flag mask
+TEPMEX  .equ ScalarMetaConstant+ScalarTypeExact       ; exact constant metadata
+TEPMBL  .equ ScalarMetaConstant+ScalarTypeBoolean     ; boolean constant metadata
+TEPMU8  .equ ScalarMetaConstant+ScalarTypeU8          ; u8 constant metadata
+
 .routine out A,B,HL,carry,zero clobbers sign,parity,halfCarry,C,DE
 TypedMatchForwardName:
             LD   A,(ForwardOrdinal)
@@ -342,7 +347,7 @@ TypedResolveU16:
 
 .routine in A,D out A,D,carry,zero clobbers sign,parity,halfCarry
 TypedRequireScalarSymbolClass:
-            AND  SymbolRecordTypeFlag+SymbolAggregateFlag
+            AND  TEPRFLG
             JP   NZ,TypedTypeFailure
             LD   A,D
             AND  SymbolClassMask
@@ -575,7 +580,7 @@ TypedParsePrimary:
 TypedPrimaryNumber:
             LD   H,B
             LD   L,C
-            LD   B,ScalarMetaConstant+ScalarTypeExact
+            LD   B,TEPMEX
             JR   TypedPrimaryEmitTypedConstant
 TypedPrimaryCharacter:
             LD   H,0
@@ -587,10 +592,10 @@ TypedPrimaryTrue:
 TypedPrimaryFalse:
             LD   HL,0
 TypedPrimaryBooleanConstant:
-            LD   B,ScalarMetaConstant+ScalarTypeBoolean
+            LD   B,TEPMBL
             JR   TypedPrimaryEmitTypedConstant
 TypedPrimaryU8Constant:
-            LD   B,ScalarMetaConstant+ScalarTypeU8
+            LD   B,TEPMU8
 TypedPrimaryEmitTypedConstant:
             PUSH BC
             PUSH HL
@@ -883,7 +888,7 @@ TypedPrimaryNarrow:
             LD   A,H
             OR   A
             JP   NZ,TypedNarrowFailure
-            LD   A,ScalarMetaConstant+ScalarTypeU8
+            LD   A,TEPMU8
             OR   A
             RET
 TypedPrimaryDynamicNarrow:
@@ -1283,7 +1288,7 @@ TypedComparisonSelectGreater:
             JR   NZ,TypedComparisonConstantDone
             INC  L
 TypedComparisonConstantDone:
-            LD   A,ScalarMetaConstant+ScalarTypeBoolean
+            LD   A,TEPMBL
             OR   A
             RET
 
@@ -1537,7 +1542,7 @@ TypedBooleanFalse:
 TypedBooleanTrue:
             LD   HL,1
 TypedBooleanConstant:
-            LD   A,ScalarMetaConstant+ScalarTypeBoolean
+            LD   A,TEPMBL
             OR   A
             RET
 
@@ -2224,7 +2229,7 @@ TypedParseAssignment:
             JP   NZ,Stage7ParseAggregateAssignment
             LD   A,D
 .endif
-            AND  SymbolRecordTypeFlag+SymbolAggregateFlag
+            AND  TEPRFLG
             JP   NZ,TypedTypeFailure
             LD   A,D
             AND  SymbolClassMask

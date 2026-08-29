@@ -3,24 +3,28 @@
             .include "nucleus-runtime-identity.asmi"
 
 .if RuntimeProofServices
+LRTSTSZ .equ StateEnd-TrapNumber                       ; runtime state clear span
+LRTSISZ .equ ServiceInputLength-ServiceFailureCall     ; service input clear span
+LRTSOSZ .equ ServiceStateEnd-ServiceStorageOutputLength ; service output clear span
+
 .routine out carry,zero clobbers sign,parity,halfCarry,A,B,C,HL
 Reset:
             XOR  A
             LD   HL,TrapNumber
-            LD   B,StateEnd-TrapNumber
+            LD   B,LRTSTSZ
             CALL ResetZeroSpan
             LD   A,ActivationCapacity
             LD   (ActivationLimit),A
             XOR  A
             LD   HL,ServiceFailureCall
-            LD   B,ServiceInputLength-ServiceFailureCall
+            LD   B,LRTSISZ
             CALL ResetZeroSpan
             LD   (ServiceInputCursor),A
             LD   (ServiceInputFailure),A
             LD   (ServiceStorageInputCursor),A
             LD   (ServiceStorageInputFailure),A
             LD   HL,ServiceStorageOutputLength
-            LD   B,ServiceStateEnd-ServiceStorageOutputLength
+            LD   B,LRTSOSZ
             CALL ResetZeroSpan
             LD   A,RunReady
             LD   (RunState),A

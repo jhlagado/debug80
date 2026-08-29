@@ -4253,10 +4253,11 @@ function rewriteStage7Ll1ActionsPermanentAtomSource(source, { symbolMap }) {
     ["H1MCBL", ["ScalarMetaConstant", "+", "ScalarTypeBoolean"]],
     ["H1CFCOF", ["ControlFrameCounter", "-", "ControlFrameLabelA"]],
   ];
+  const sourceWithoutAliases = removeAtomAliasDefinitions(source, aliases.map(([alias]) => alias));
   return [
     ...atomExpressionAliasLines(symbolMap, aliases),
     "",
-    replaceAtomExpressionAliases(source, symbolMap, aliases),
+    replaceAtomExpressionAliases(sourceWithoutAliases, symbolMap, aliases),
   ].join("\n");
 }
 
@@ -4264,10 +4265,11 @@ function rewriteAggregateParserPermanentAtomSource(source, { symbolMap }) {
   const aliases = [
     ["AGPRFLG", ["SymbolRecordTypeFlag", "+", "SymbolAggregateFlag"]],
   ];
+  const sourceWithoutAliases = removeAtomAliasDefinitions(source, aliases.map(([alias]) => alias));
   return [
     ...atomExpressionAliasLines(symbolMap, aliases),
     "",
-    replaceAtomExpressionAliases(source, symbolMap, aliases),
+    replaceAtomExpressionAliases(sourceWithoutAliases, symbolMap, aliases),
   ].join("\n");
 }
 
@@ -4295,8 +4297,9 @@ function rewriteAggregateCallZ80PermanentAtomSource(source, { symbolMap }) {
     "Stage8PopErrorBytes",
     "Stage8ErrorCarrierBytes",
   ].map((name) => atomSymbol(symbolMap, name));
+  const sourceWithoutAliases = removeAtomAliasDefinitions(source, literalAliases.map(([alias]) => alias));
   const rewritten = replaceAtomExpressionAliases(
-    source,
+    sourceWithoutAliases,
     symbolMap,
     literalAliases.map(([alias, , expression]) => [alias, expression]),
   )
@@ -4316,10 +4319,11 @@ function rewriteAggregateZ80PermanentAtomSource(source, { symbolMap }) {
     ["AGZCLMS", ["SymbolAggregateFlag", "+", "SymbolClassMask"]],
     ["AGZCNS2", ["SymbolAggregateFlag", "+", "SymbolClassConstant"]],
   ];
+  const sourceWithoutAliases = removeAtomAliasDefinitions(source, aliases.map(([alias]) => alias));
   return [
     ...atomExpressionAliasLines(symbolMap, aliases),
     "",
-    replaceAtomExpressionAliases(source, symbolMap, aliases),
+    replaceAtomExpressionAliases(sourceWithoutAliases, symbolMap, aliases),
   ].join("\n");
 }
 
@@ -4437,7 +4441,8 @@ function rewriteLoopParserPermanentAtomSource(source, { relative, translatedRoot
   const aliases = [
     ["LPAIMOD", ["AggregateHasInitializer", "-", "AggregateMode", "+1"]],
   ];
-  const lines = replaceAtomExpressionAliases(source, symbolMap, aliases).split("\n");
+  const sourceWithoutAliases = removeAtomAliasDefinitions(source, aliases.map(([alias]) => alias));
+  const lines = replaceAtomExpressionAliases(sourceWithoutAliases, symbolMap, aliases).split("\n");
   const typedExpressionIncludeIndex = findPermanentIncludeLine(lines, "typed-expression-parser.asm", "loop-parser");
   const aggregateParserIncludeIndex = findPermanentIncludeLine(lines, "aggregate-parser.asm", "loop-parser");
   const aggregateCallParserIncludeIndex = findPermanentIncludeLine(lines, "aggregate-call-parser.asm", "loop-parser");
@@ -4478,10 +4483,11 @@ function rewriteStructuredControlParserPermanentAtomSource(source, { symbolMap }
     ["SCPFMOD", ["ControlFrameMode", "-", "ControlFrameCounter"]],
     ["SCPRFLG", ["SymbolRecordTypeFlag", "+", "SymbolAggregateFlag"]],
   ];
+  const sourceWithoutAliases = removeAtomAliasDefinitions(source, aliases.map(([alias]) => alias));
   return [
     ...atomExpressionAliasLines(symbolMap, aliases),
     "",
-    replaceAtomExpressionAliases(source, symbolMap, aliases),
+    replaceAtomExpressionAliases(sourceWithoutAliases, symbolMap, aliases),
   ].join("\n");
 }
 
@@ -4497,7 +4503,8 @@ function rewriteTypedExpressionParserPermanentAtomSource(source, { relative, tra
     ["TEPMBL", ["ScalarMetaConstant", "+", "ScalarTypeBoolean"]],
     ["TEPMU8", ["ScalarMetaConstant", "+", "ScalarTypeU8"]],
   ];
-  const lines = replaceAtomExpressionAliases(source, symbolMap, aliases).split("\n");
+  const sourceWithoutAliases = removeAtomAliasDefinitions(source, aliases.map(([alias]) => alias));
+  const lines = replaceAtomExpressionAliases(sourceWithoutAliases, symbolMap, aliases).split("\n");
   const structuredIncludeIndex = findPermanentIncludeLine(lines, "structured-control-parser.asm", "typed-expression-parser");
   writeGeneratedPermanentPart(translatedRoot, relative, "typed-expression-parser-core.asmi", [
     ...atomExpressionAliasLines(symbolMap, aliases),
@@ -4519,7 +4526,8 @@ function rewriteTypedExpressionZ80PermanentAtomSource(source, { relative, transl
     ["TEZRTSP", ["RootSP", "-", "StateBase"]],
     ["TEZRTIX", ["RootIX", "-", "StateBase"]],
   ];
-  const lines = replaceAtomExpressionAliases(source, symbolMap, aliases).split("\n");
+  const sourceWithoutAliases = removeAtomAliasDefinitions(source, aliases.map(([alias]) => alias));
+  const lines = replaceAtomExpressionAliases(sourceWithoutAliases, symbolMap, aliases).split("\n");
   const structuredIncludeIndex = findPermanentIncludeLine(lines, "structured-control-z80.asm", "typed-expression-z80");
   const aggregateIncludeIndex = findPermanentIncludeLine(lines, "aggregate-call-z80.asm", "typed-expression-z80");
   const ifIndex = lines
@@ -4663,13 +4671,16 @@ function rewriteLoopKeywordsPermanentAtomSource(source, { symbolMap }) {
   const aliases = [
     ["LKSRU8", ["Stage8CallableServiceFlag", "+", "Stage8ServiceResultU8"]],
     ["LKSRSW", ["Stage8CallableServiceFlag", "+", "Stage8ServiceRewindStorage"]],
+    ["LKRDIN", ["LKSRU8", "+", "Stage8ServiceReadInput"]],
+    ["LKRDSB", ["LKSRU8", "+", "Stage8ServiceReadStorage"]],
   ];
+  const sourceWithoutAliases = removeAtomAliasDefinitions(source, aliases.map(([alias]) => alias));
   return [
     "%IF AggregateCallSlices",
     ...atomExpressionAliasLines(symbolMap, aliases),
     "%ENDIF",
     "",
-    replaceAtomExpressionAliases(source, symbolMap, aliases),
+    replaceAtomExpressionAliases(sourceWithoutAliases, symbolMap, aliases),
   ].join("\n");
 }
 
@@ -4733,7 +4744,8 @@ function rewriteLoopZ80RuntimePermanentAtomSource(source, { symbolMap }) {
     ["LRTSISZ", ["ServiceInputLength", "-", "ServiceFailureCall"]],
     ["LRTSOSZ", ["ServiceStateEnd", "-", "ServiceStorageOutputLength"]],
   ];
-  const lines = replaceAtomExpressionAliases(source, symbolMap, aliases).split("\n");
+  const sourceWithoutAliases = removeAtomAliasDefinitions(source, aliases.map(([alias]) => alias));
+  const lines = replaceAtomExpressionAliases(sourceWithoutAliases, symbolMap, aliases).split("\n");
   const identityIncludeIndex = findPermanentIncludeLine(lines, "nucleus-runtime-identity.asmi", "loop-z80-runtime");
   return [
     "            %INCLUDE \"nucleus-runtime-identity.asmi\"",

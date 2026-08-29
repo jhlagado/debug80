@@ -2,6 +2,9 @@
 ; Parser frames live only during source checking. Z80 emission reuses their
 ; workspace after the complete semantic transcript has been published.
 
+SCPFMOD .equ ControlFrameMode-ControlFrameCounter   ; control-frame mode offset
+SCPRFLG .equ SymbolRecordTypeFlag+SymbolAggregateFlag ; aggregate record/type flag mask
+
 .if HybridLL1Full
 .else
 .routine out A,carry,zero clobbers sign,parity,halfCarry,HL
@@ -299,7 +302,7 @@ StructuredParseIfEnd:
             PUSH HL
             LD   A,(HL)
             POP  HL
-            LD   DE,ControlFrameMode-ControlFrameCounter
+            LD   DE,SCPFMOD
             ADD  HL,DE
             AND  (HL)
             XOR  1
@@ -439,7 +442,7 @@ StructuredStepSourceConstant:
             CALL SymbolLookupCurrent
             RET  C
             LD   D,A
-            AND  SymbolRecordTypeFlag+SymbolAggregateFlag
+            AND  SCPRFLG
             JR   NZ,StructuredStepFailure
             LD   A,D
             AND  SymbolClassMask

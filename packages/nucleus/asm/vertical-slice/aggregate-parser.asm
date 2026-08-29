@@ -6,6 +6,8 @@
 ; Initializer bytes are staged privately; the Z80 backend publishes them only
 ; after the complete source has succeeded.
 
+AGPRFLG .equ SymbolRecordTypeFlag+SymbolAggregateFlag ; aggregate record/type flag mask
+
 .routine in A out A,HL clobbers carry,zero,sign,parity,halfCarry,DE
 AggregateTypeAddress:
             SUB  AggregateFirstDynamicTypeId
@@ -217,7 +219,7 @@ AggregateParseType:
             CALL SymbolLookupCurrent
             RET  C
             LD   D,A
-            AND  SymbolRecordTypeFlag+SymbolAggregateFlag
+            AND  AGPRFLG
             CP   SymbolRecordTypeFlag
             JR   NZ,AggregateTypeShapeFailure
             LD   A,C

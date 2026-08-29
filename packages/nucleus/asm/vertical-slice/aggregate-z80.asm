@@ -4,6 +4,9 @@
 ; patches the JP operand to the first code byte, so source execution cannot
 ; observe initialization in progress.
 
+AGZCLMS .equ SymbolAggregateFlag+SymbolClassMask     ; aggregate symbol class mask
+AGZCNS2 .equ SymbolAggregateFlag+SymbolClassConstant ; aggregate constant symbol class
+
 .if TargetStreamingOutput
 ; Emit every aggregate constant exactly once in declaration order. Symbols
 ; retain per-bank offsets, while IY walks the single declaration-ordered
@@ -22,8 +25,8 @@ TargetEmitBankedAggregateConstants:
 TargetEmitBankedConstantSymbolLoop:
             LD   A,(IX+3)
             LD   D,A
-            AND  SymbolAggregateFlag+SymbolClassMask
-            CP   SymbolAggregateFlag+SymbolClassConstant
+            AND  AGZCLMS
+            CP   AGZCNS2
             JR   NZ,TargetEmitBankedConstantNext
             LD   A,D
             CALL TargetUnpackBank

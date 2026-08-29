@@ -10,6 +10,12 @@ HybridLL1ForOffset     .equ HybridLL1ForStep+2
 HybridLL1FlowStackBase .equ HybridLL1ForOffset+2
 HybridLL1ActionStateEnd .equ HybridLL1FlowStackBase+ControlFrameCapacity
 
+H1RCFLG .equ SymbolRecordTypeFlag+SymbolAggregateFlag ; aggregate record/type flag mask
+H1AGCST .equ SymbolAggregateFlag+SymbolClassConstant  ; aggregate constant symbol class
+H1MTMSK .equ ScalarMetaConstant+ScalarMetaTypeMask    ; constant metadata type mask
+H1MCBL  .equ ScalarMetaConstant+ScalarTypeBoolean     ; boolean constant metadata
+H1CFCOF .equ ControlFrameCounter-ControlFrameLabelA   ; control-frame counter offset
+
 ; --------------------------------------------------------- retained parsers
 
 .routine out A,BC,DE,HL,carry,zero clobbers sign,parity,halfCarry,IX,IY
@@ -76,7 +82,7 @@ HybridLL1ResolveRecordType:
             LD   D,A
             LD   (DeclarationInfo),A
             LD   (DeclarationPayload),BC
-            AND  SymbolRecordTypeFlag+SymbolAggregateFlag
+            AND  H1RCFLG
             CP   SymbolRecordTypeFlag
             JP   NZ,AggregateTypeShapeFailure
             LD   A,C
@@ -227,11 +233,11 @@ HybridLL1CommitAggregateConstant:
             RLCA
             RLCA
             RLCA
-            OR   SymbolAggregateFlag+SymbolClassConstant
+            OR   H1AGCST
             LD   (DeclarationInfo),A
 .endif
             LD   BC,(ReadOnlyImageLength)
-            LD   D,SymbolAggregateFlag+SymbolClassConstant
+            LD   D,H1AGCST
 .if TargetStreamingOutput
             LD   A,(DeclarationInfo)
             LD   D,A
@@ -271,8 +277,8 @@ HybridLL1BeginAssert .equ TypedRetainDeclarationNameReady
 HybridLL1CommitAssert:
             CALL HybridLL1RestoreSubName
             LD   A,(ExpressionRightMeta)
-            AND  ScalarMetaConstant+ScalarMetaTypeMask
-            CP   ScalarMetaConstant+ScalarTypeBoolean
+            AND  H1MTMSK
+            CP   H1MCBL
             JR   NZ,HybridLL1AssertTypeFailure
             LD   A,(ExpressionRightValue)
             OR   A
@@ -1470,7 +1476,7 @@ HybridLL1BeginIf:
             RET  C
             CALL ControlAllocateLabelA
             RET  C
-            LD   DE,ControlFrameCounter-ControlFrameLabelA
+            LD   DE,H1CFCOF
             ADD  HL,DE
             LD   (HL),1
 HybridLL1ExpectBoolean:

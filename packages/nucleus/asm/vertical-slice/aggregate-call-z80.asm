@@ -2,6 +2,8 @@
 ; scalar and alias carrier occupies one canonical word on the evaluation
 ; stack; declared storage widths remain unchanged.
 
+ACZTOFF .equ TrapOffset-StateBase ; runtime state offset for TrapOffset
+
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,D,DE,HL,IX
 Stage7BeginRoutine:
             CALL NextSemanticByte
@@ -111,7 +113,7 @@ Stage8EmitFailureOffset:
             CALL EmitLoadHl
             RET  C
 .if TargetStreamingOutput
-            LD   DE,TrapOffset-StateBase
+            LD   DE,ACZTOFF
             CALL TargetStateAddress
 .else
             LD   HL,TrapOffset
@@ -459,7 +461,7 @@ Stage8BeginCallableMain:
             LD   A,$F5                    ; PUSH AF
             CALL EmitByte
             RET  C
-            LD   DE,TrapOffset-StateBase
+            LD   DE,ACZTOFF
             CALL TargetStateAddress
             LD   A,$2A                    ; LD HL,(nn)
             CALL EmitOpcodeWord

@@ -5,7 +5,7 @@ Date: 2026-08-29
 Repository: `debug80`
 Branch: `main`
 Initial census HEAD: `13ce3cc9`
-Current reusable-transform baseline HEAD: `31d3ae3c`
+Current reusable-transform baseline HEAD: `4bd07ed7`
 
 ## Purpose
 
@@ -25,20 +25,20 @@ Measured files:
 | Item | Measured value |
 | --- | ---: |
 | Assembly files, `.asm` and `.asmi` | 69 |
-| Source lines | 29,566 |
-| Defined assembler symbols detected | 3,960 |
+| Source lines | 29,602 |
+| Defined assembler symbols detected | 3,986 |
 | Defined assembler symbols longer than eight characters | 3,910 |
 | Long labels classed as dot-local candidates | 751 |
 | Long symbols still needing global treatment | 3,159 |
 | Preprocessor-only feature symbols | 8 |
 | Proof-limit symbols using `$10000` | 4 |
 | Include-after-header violations | 143 |
-| Forward-dependent emitted-statement symbol arithmetic sites | 87 |
-| Current permanent-source blockers | 290 |
+| Forward-dependent emitted-statement symbol arithmetic sites | 56 |
+| Current permanent-source blockers | 259 |
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
-| Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 87 |
+| Permanent blocker: forward-dependent emitted-statement symbol arithmetic | 56 |
 | Permanent blocker: include after header | 143 |
 | Permanent blocker: feature definition after Atom entry header | 60 |
 | Proof-manifest symbol mappings | 146 |

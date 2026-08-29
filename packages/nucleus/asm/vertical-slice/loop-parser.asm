@@ -12,6 +12,8 @@ HybridLL1Full .equ 0
 HybridLL1Full .equ 0
 .endif
 
+LPAIMOD .equ AggregateHasInitializer-AggregateMode+1 ; aggregate mode clear span through initializer flag
+
 .routine in A out A,carry clobbers zero,sign,parity,halfCarry,DE,HL
 CompilerSetDiagnostic:
             LD   (DiagnosticCode),A
@@ -1118,7 +1120,7 @@ CompileSliceResetState:
 .endif
             XOR  A
             LD   HL,AggregateMode
-            LD   B,AggregateHasInitializer-AggregateMode+1
+            LD   B,LPAIMOD
 CompileSliceResetAggregateLoop:
             LD   (HL),A
             INC  HL

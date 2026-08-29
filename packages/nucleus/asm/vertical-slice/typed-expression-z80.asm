@@ -8,6 +8,10 @@
 EmitTypedTrapPosition .equ EmitLoopHead
 EmitTypedWidth        .equ EmitCodeStart
 
+TEZACTD .equ ActivationDepth-StateBase ; runtime state offset for ActivationDepth
+TEZRTSP .equ RootSP-StateBase          ; runtime state offset for saved root SP
+TEZRTIX .equ RootIX-StateBase          ; runtime state offset for saved root IX
+
 .routine out A,carry,zero clobbers sign,parity,halfCarry,B,C,DE,HL,IX,IY
 TypedDispatch:
             LD   HL,SemanticBufferBase+1
@@ -594,7 +598,7 @@ TypedEmitTrapEnding:
             CALL EmitByte
             RET  C
 .if TargetStreamingOutput
-            LD   DE,ActivationDepth-StateBase
+            LD   DE,TEZACTD
             CALL EmitStoreTargetStateA
 .else
             LD   HL,ActivationDepth
@@ -660,7 +664,7 @@ TypedRootFrameReady:
             RET  C
             PUSH HL
 .if TargetStreamingOutput
-            LD   DE,RootSP-StateBase
+            LD   DE,TEZRTSP
             CALL TargetStateAddress
 .else
             LD   HL,RootSP
@@ -673,7 +677,7 @@ TypedRootFrameReady:
             CALL   EmitPair
             RET  C
 .if TargetStreamingOutput
-            LD   DE,RootIX-StateBase
+            LD   DE,TEZRTIX
             CALL TargetStateAddress
 .else
             LD   HL,RootIX
