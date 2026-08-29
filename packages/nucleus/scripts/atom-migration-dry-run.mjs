@@ -123,38 +123,8 @@ const permanentLayoutTransforms = new Map([
     rewrite: rewriteFlatTargetZ80SliceProofPermanentAtomSource,
   })],
   ["vertical-slice/typed-expression-z80-slice-proof.asm", Object.freeze({
-    description: "typed-expression z80 proof sectioned header-include layout",
-    handledIssues: Object.freeze([
-      Object.freeze({
-        file: "asm/vertical-slice/typed-expression-z80-slice-proof.asm",
-        code: "include-after-header",
-      }),
-      Object.freeze({
-        file: "asm/vertical-slice/typed-expression-z80-slice-proof.asm",
-        code: "atom-symbol-expression",
-        messageIncludes: "TypedNarrowTrapPoint-TypedNarrowTrapSource",
-      }),
-      Object.freeze({
-        file: "asm/vertical-slice/typed-expression-z80-slice-proof.asm",
-        code: "atom-symbol-expression",
-        messageIncludes: "TypedDivideTrapPoint-TypedDivideTrapSource",
-      }),
-      Object.freeze({
-        file: "asm/vertical-slice/typed-expression-z80-slice-proof.asm",
-        code: "atom-symbol-expression",
-        messageIncludes: "TypedNestedDivideOuter-TypedNestedDivideTrapSource",
-      }),
-      Object.freeze({
-        file: "asm/vertical-slice/typed-expression-z80-slice-proof.asm",
-        code: "atom-symbol-expression",
-        messageIncludes: "TypedNestedNarrowOuter-TypedNestedNarrowTrapSource",
-      }),
-      Object.freeze({
-        file: "asm/vertical-slice/typed-expression-z80-slice-proof.asm",
-        code: "atom-symbol-expression",
-        messageIncludes: "ScalarMetaConstant+ScalarTypeU8",
-      }),
-    ]),
+    description: "typed-expression z80 proof physical section-owner layout",
+    handledIssues: Object.freeze([]),
     rewrite: rewriteTypedExpressionZ80SliceProofPermanentAtomSource,
   })],
   ["vertical-slice/expression-z80-slice-proof.asm", Object.freeze({
@@ -2533,84 +2503,7 @@ function rewriteFlatTargetZ80SliceProofPermanentAtomSource() {
   ].join("\n");
 }
 
-function rewriteTypedExpressionZ80SliceProofPermanentAtomSource(source, { relative, translatedRoot, symbolMap }) {
-  const compilerCoreBase = atomSymbol(symbolMap, "CompilerCoreBase");
-  const sourceBase = atomSymbol(symbolMap, "SourceBase");
-  const targetRuntimeBase = atomSymbol(symbolMap, "TargetRuntimeBase");
-  const proofBase = atomSymbol(symbolMap, "ProofBase");
-  const aliases = [
-    ["TEPNWOF", ["TypedNarrowTrapPoint", "-", "TypedNarrowTrapSource"]],
-    ["TEPDVOF", ["TypedDivideTrapPoint", "-", "TypedDivideTrapSource"]],
-    ["TEPNDOF", ["TypedNestedDivideOuter", "-", "TypedNestedDivideTrapSource"]],
-    ["TEPNNOF", ["TypedNestedNarrowOuter", "-", "TypedNestedNarrowTrapSource"]],
-    ["TEPU8MT", ["ScalarMetaConstant", "+", "ScalarTypeU8"]],
-  ];
-
-  const sourceWithoutAliases = removeAtomAliasDefinitions(source, aliases.map(([alias]) => alias));
-  const lines = replaceAtomExpressionAliases(sourceWithoutAliases, symbolMap, aliases).split("\n");
-  const compilerOrgIndex = findPermanentOrgLine(lines, compilerCoreBase, "typed-expression-z80-slice-proof");
-  const sourceAdapterIncludeIndex = findPermanentIncludeLine(lines, "source-adapter.asm", "typed-expression-z80-slice-proof");
-  const tokenizerIncludeIndex = findPermanentIncludeLine(lines, "loop-tokenizer.asm", "typed-expression-z80-slice-proof");
-  const semanticSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-semantic-sink.asm", "typed-expression-z80-slice-proof");
-  const symbolsIncludeIndex = findPermanentIncludeLine(lines, "loop-symbols.asm", "typed-expression-z80-slice-proof");
-  const parserIncludeIndex = findPermanentIncludeLine(lines, "loop-parser.asm", "typed-expression-z80-slice-proof");
-  const loopSinkIncludeIndex = findPermanentIncludeLine(lines, "loop-z80-sink.asm", "typed-expression-z80-slice-proof");
-  const typedSinkIncludeIndex = findPermanentIncludeLine(lines, "typed-expression-z80.asm", "typed-expression-z80-slice-proof");
-  const keywordsIncludeIndex = findPermanentIncludeLine(lines, "loop-keywords.asmi", "typed-expression-z80-slice-proof");
-  const sourceOrgIndex = findPermanentOrgLine(lines, sourceBase, "typed-expression-z80-slice-proof");
-  const runtimeOrgIndex = findPermanentOrgLine(lines, targetRuntimeBase, "typed-expression-z80-slice-proof");
-  const runtimeIncludeIndex = findPermanentIncludeLine(lines, "proof-z80-runtime.asm", "typed-expression-z80-slice-proof");
-  const proofOrgIndex = findPermanentOrgLine(lines, proofBase, "typed-expression-z80-slice-proof");
-
-  const orderedIndexes = [
-    compilerOrgIndex,
-    sourceAdapterIncludeIndex,
-    tokenizerIncludeIndex,
-    semanticSinkIncludeIndex,
-    symbolsIncludeIndex,
-    parserIncludeIndex,
-    loopSinkIncludeIndex,
-    typedSinkIncludeIndex,
-    keywordsIncludeIndex,
-    sourceOrgIndex,
-    runtimeOrgIndex,
-    runtimeIncludeIndex,
-    proofOrgIndex,
-  ];
-  if (!orderedIndexes.every((value, index) => index === 0 || orderedIndexes[index - 1] < value)) {
-    throw new Error("typed-expression-z80-slice proof permanent Atom rewrite found an unexpected section order");
-  }
-
-  const writeSlice = (includeName, start, end) => {
-    writeGeneratedPermanentPart(translatedRoot, relative, includeName, [
-      ...lines.slice(start, end).filter((line) =>
-        !/^\s*%DEFINE\s+(LegacyCompilerSlices|AggregateCallSlices|LegacyEncoders)\b/i.test(line)),
-      "",
-    ]);
-  };
-  writeSlice("typed-expression-z80-slice-code-begin.asmi", compilerOrgIndex, sourceAdapterIncludeIndex);
-  writeSlice("typed-expression-z80-slice-after-source-adapter.asmi", sourceAdapterIncludeIndex + 1, tokenizerIncludeIndex);
-  writeSlice("typed-expression-z80-slice-after-tokenizer.asmi", tokenizerIncludeIndex + 1, semanticSinkIncludeIndex);
-  writeSlice("typed-expression-z80-slice-after-semantic-sink.asmi", semanticSinkIncludeIndex + 1, symbolsIncludeIndex);
-  writeSlice("typed-expression-z80-slice-after-symbols.asmi", symbolsIncludeIndex + 1, parserIncludeIndex);
-  writeSlice("typed-expression-z80-slice-after-parser.asmi", parserIncludeIndex + 1, loopSinkIncludeIndex);
-  writeSlice("typed-expression-z80-slice-after-loop-z80-sink.asmi", loopSinkIncludeIndex + 1, typedSinkIncludeIndex);
-  writeSlice("typed-expression-z80-slice-after-typed-expression-z80.asmi", typedSinkIncludeIndex + 1, keywordsIncludeIndex);
-  writeSlice("typed-expression-z80-slice-after-keywords.asmi", keywordsIncludeIndex + 1, sourceOrgIndex);
-  writeSlice("typed-expression-z80-slice-source.asmi", sourceOrgIndex, runtimeOrgIndex);
-  writeSlice("typed-expression-z80-slice-runtime-begin.asmi", runtimeOrgIndex, runtimeIncludeIndex);
-  writeSlice("typed-expression-z80-slice-runtime-after.asmi", runtimeIncludeIndex + 1, proofOrgIndex);
-  writeGeneratedPermanentPart(translatedRoot, relative, "typed-expression-z80-slice-proof-body.asmi", [
-    lines[proofOrgIndex],
-    "TEPNWOF EQU 67",
-    "TEPDVOF EQU 68",
-    "TEPNDOF EQU 101",
-    "TEPNNOF EQU 88",
-    "TEPU8MT EQU 129",
-    "",
-    ...lines.slice(proofOrgIndex + 1),
-  ]);
-
+function rewriteTypedExpressionZ80SliceProofPermanentAtomSource() {
   return [
     "; Permanent Atom layout for the typed-expression z80 proof.",
     "            %DEFINE SegmentedOutput 0",
@@ -2646,6 +2539,8 @@ function rewriteTypedExpressionZ80SliceProofPermanentAtomSource(source, { relati
     "            %INCLUDE \"proof-z80-runtime.asm\"",
     "            %INCLUDE \"typed-expression-z80-slice-runtime-after.asmi\"",
     "            %INCLUDE \"typed-expression-z80-slice-proof-body.asmi\"",
+    "            %INCLUDE \"typed-expression-z80-slice-spare.asmi\"",
+    "            %INCLUDE \"typed-expression-z80-slice-end.asmi\"",
     "",
   ].join("\n");
 }

@@ -1,0 +1,109 @@
+            .org SpareBase
+TypedDynamicZeroSource:
+            .db "var out as u8 = 1",10
+            .db "sub main() fails",10
+            .db "    out = out / 0",10
+            .db "end",10
+TypedDynamicZeroSourceEnd:
+
+TypedUnaryMinusOverflowSource:
+            .db "var bad as u8 = -256",10
+TypedUnaryMinusOverflowSourceEnd:
+TypedNotOverflowSource:
+            .db "var bad as u8 = not 256",10
+TypedNotOverflowSourceEnd:
+TypedMalformedHexSource:
+            .db "var bad as u16 = 0x2a",10
+TypedMalformedHexSourceEnd:
+TypedMalformedSuffixSource:
+            .db "var bad as u16 = 12u8",10
+TypedMalformedSuffixSourceEnd:
+
+TypedSuppressedDivideTypeSource:
+            .db "var byte as u8 = 1",10
+            .db "var flag as boolean = false",10
+            .db "sub main() fails",10
+            .db "    flag = false and (byte / 0 = 300)",10
+            .db "end",10
+TypedSuppressedDivideTypeSourceEnd:
+
+TypedSuppressedNarrowTypeSource:
+            .db "var flag as boolean = false",10
+            .db "sub main() fails",10
+            .db "    flag = false and (u8(300) = 300)",10
+            .db "end",10
+TypedSuppressedNarrowTypeSourceEnd:
+
+TypedMissingConversionRightSource:
+            .db "var out as u8 = 0",10
+            .db "sub main() fails",10
+            .db "    out = u8(1",10
+            .db "end",10
+TypedMissingConversionRightSourceEnd:
+
+TypedMissingParenRightSource:
+            .db "var out as u8 = 0",10
+            .db "sub main() fails",10
+            .db "    out = (1",10
+            .db "end",10
+TypedMissingParenRightSourceEnd:
+
+TypedMalformedAfterLeftSource:
+            .db "var out as u8 = 0",10
+            .db "sub main() fails",10
+            .db "    out = 1 0x2a",10
+            .db "end",10
+TypedMalformedAfterLeftSourceEnd:
+
+TypedDefaultLocalCapacitySource:
+            .db "local as u16",10
+TypedDefaultLocalCapacitySourceEnd:
+
+TypedCoverageSource:
+            .db "const byteMask = u8(255)",10
+            .db "const truth = true",10
+            .db "const quotient = 8 / 2",10
+            .db "var out as u8 = 0",10
+            .db "var flag as boolean = false",10
+            .db "sub main() fails",10
+            .db "    var value as u8 = +1",10
+            .db "    out = not 255",10
+            .db "    out = -255",10
+            .db "    out = value or byteMask",10
+            .db "    flag = truth",10
+            .db "    flag = (value < quotient) and (flag = truth) and (flag <> false)",10
+            .db "    writeOutputByte(out) else fail",10
+            .db "end",10
+TypedCoverageSourceEnd:
+
+TypedConversionContextSource:
+            .db "var out as u8 = 0",10
+            .db "var word as u16 = 0",10
+            .db "sub main() fails",10
+            .db "    word = u8(200 + 100)",10
+            .db "    out = u8(word)",10
+            .db "    writeOutputByte(out) else fail",10
+            .db "end",10
+TypedConversionContextSourceEnd:
+
+TypedNestedDivideTrapSource:
+            .db "var result as u16 = 10",10
+            .db "var left as u16 = 1",10
+            .db "var right as u16 = 2",10
+            .db "sub main() fails",10
+            .db "    result = result "
+TypedNestedDivideOuter:
+            .db "/ (left / right)",10
+            .db "end",10
+TypedNestedDivideTrapSourceEnd:
+
+TypedNestedNarrowTrapSource:
+            .db "var out as u8 = 7",10
+            .db "var wide as u16 = 300",10
+            .db "var small as u16 = 1",10
+            .db "sub main() fails",10
+            .db "    out = "
+TypedNestedNarrowOuter:
+            .db "u8(wide + u8(small))",10
+            .db "end",10
+TypedNestedNarrowTrapSourceEnd:

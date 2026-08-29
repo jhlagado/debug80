@@ -1,0 +1,142 @@
+            .org SourceBase
+TypedAcceptedSource:
+            .db "const folded = 65535 + 2",10
+            .db "var out as u8 = 0",10
+            .db "var word as u16 = 300",10
+            .db "var flag as boolean = true",10
+            .db "sub main() fails",10
+            .db "    var a as u8 = 250",10
+            .db "    var b as u16 = 20",10
+            .db "    word = a + b * 3",10
+            .db "    out = u8(word - 55)",10
+            .db "    out = out + 2",10
+            .db "    word = -word + 311",10
+            .db "    word = not word and 65535",10
+            .db "    word = word + folded",10
+            .db "    word = word or 0",10
+            .db "    word = word / 1",10
+            .db "    flag = false and (u8(300) = 0)",10
+            .db "    flag = true or (out / 0 = 0)",10
+            .db "    flag = not out > 1",10
+            .db "    flag = (out = 1) and (out <> 2) and (out <= 1) and (out >= 1) and not (out > 1)",10
+            .db "    out = (not out) and 255",10
+            .db "    out = -out + 255",10
+            .db "    out = out * 3 / 3",10
+            .db "    out = out - 0",10
+            .db "    out = 'A' - 64",10
+            .db "    word = u16(out) + word",10
+            .db "    "
+TypedAcceptedOutputCall:
+            .db "writeOutputByte(out) else fail",10
+            .db "end",10
+TypedAcceptedSourceEnd:
+
+TypedDefaultSource:
+            .db "var out as u8 = 5",10
+            .db "var word as u16",10
+            .db "var flag as boolean",10
+            .db "sub main() fails",10
+            .db "    var localWord as u16",10
+            .db "    out = u8(localWord)",10
+            .db "    flag = not flag",10
+            .db "    writeOutputByte(out) else fail",10
+            .db "end",10
+TypedDefaultSourceEnd:
+
+TypedNarrowTrapSource:
+            .db "var out as u8 = 7",10
+            .db "var wide as u16 = 300",10
+            .db "sub main() fails",10
+            .db "    out = "
+TypedNarrowTrapPoint:
+            .db "u8(wide)",10
+            .db "end",10
+TypedNarrowTrapSourceEnd:
+
+TypedDivideTrapSource:
+            .db "var out as u8 = 9",10
+            .db "var zero as u8 = 0",10
+            .db "sub main() fails",10
+            .db "    out = out "
+TypedDivideTrapPoint:
+            .db "/ zero",10
+            .db "end",10
+TypedDivideTrapSourceEnd:
+
+TypedImplicitNarrowSource:
+            .db "var out as u8 = 0",10
+            .db "var wide as u16 = 1",10
+            .db "sub main() fails",10
+            .db "    out = wide",10
+            .db "end",10
+TypedImplicitNarrowSourceEnd:
+
+TypedBooleanMixSource:
+            .db "var flag as boolean = true",10
+            .db "sub main() fails",10
+            .db "    flag = 1",10
+            .db "end",10
+TypedBooleanMixSourceEnd:
+
+TypedChainSource:
+            .db "var flag as boolean = true",10
+            .db "sub main() fails",10
+            .db "    flag = 1 < 2 < 3",10
+            .db "end",10
+TypedChainSourceEnd:
+
+TypedConstantDivideSource:
+            .db "const bad = 1 / 0",10
+TypedConstantDivideSourceEnd:
+
+TypedConstantNarrowSource:
+            .db "const bad = u8(300)",10
+TypedConstantNarrowSourceEnd:
+
+TypedLiteralOverflowSource:
+            .db "var bad as u16 = 65536",10
+TypedLiteralOverflowSourceEnd:
+
+; The u16 definition and main marker consume five bytes. The repeated
+; named-constant expression/store pairs cross the 511-byte transcript payload
+; without approaching the independent 255-operation limit.
+TypedTranscriptCapacitySource:
+            .db "const k = 1",10
+            .db "var out as u16 = 0",10
+            .db "sub main() fails",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10,"out=k",10,"out=k",10
+            .db "out=k",10,"out=k",10
+            .db "end",10
+TypedTranscriptCapacitySourceEnd:
+
+; Seventeen pending additions exceed the sixteen-entry expression stack.
+TypedExpressionCapacitySource:
+            .db "var out as u8 = 0",10
+            .db "sub main() fails",10
+            .db "out=1+(1+(1+(1+(1+(1+(1+(1+(1+(1+(1+(1+(1+(1+(1+(1+(1+1))))))))))))))))",10
+            .db "end",10
+TypedExpressionCapacitySourceEnd:
