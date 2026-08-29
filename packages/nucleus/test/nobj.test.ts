@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { createZ80Runtime } from "@jhlagado/debug80-runtime";
-import { runGenerationLifecycleConformance } from "@jhlagado/z80-tool-services";
+import {
+  appendOnlyGenerationLifecycleAdapter,
+  runGenerationLifecycleConformance,
+} from "@jhlagado/z80-tool-services";
 
 import {
   crc16CcittFalse,
@@ -747,29 +750,37 @@ describe("NOBJ 0.1", () => {
       );
       let imageLength = 0;
 
-      return {
-        get active() {
-          return sink.generationActive;
-        },
-        begin() {
+      return appendOnlyGenerationLifecycleAdapter({
+        active: () => sink.generationActive,
+        begin(record) {
           imageLength = 0;
-          sink.begin(flatRomBegin());
+          sink.begin(record);
         },
-        image() {
-          sink.image(0, 0x8000 + imageLength, Uint8Array.of(1, 2));
-          imageLength += 2;
+        image(record) {
+          sink.image(record.bank, record.address, record.bytes);
+          imageLength += record.bytes.length;
         },
-        patch() {
-          sink.patch(0, 0x8001, Uint8Array.of(9));
+        patch(record) {
+          sink.patch(record.bank, record.address, record.bytes);
         },
-        commit() {
-          sink.map(flatRomMap(imageLength));
+        commit(record) {
+          sink.map(record);
           sink.commit();
         },
         abort() {
           sink.abort();
         },
-      };
+        records: () => ({
+          begin: flatRomBegin(),
+          image: {
+            bank: 0,
+            address: 0x8000 + imageLength,
+            bytes: Uint8Array.of(1, 2),
+          },
+          patch: { bank: 0, address: 0x8001, bytes: Uint8Array.of(9) },
+          commit: flatRomMap(imageLength),
+        }),
+      });
     });
 
     expect(result).toEqual({ vectors: 4, assertions: 16 });

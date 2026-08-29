@@ -362,7 +362,8 @@ Completion evidence:
 ### Phase 3: extract the shared generation sink contract
 
 Move the language-neutral lifecycle, image spool, patch spool, generation store,
-status codes, and conformance tests into `@jhlagado/z80-tool-services`.
+status codes, typed append-only sink adapter, and conformance tests into
+`@jhlagado/z80-tool-services`.
 
 Atom should adapt `createMemoryAtomSink` to the shared sink. Nucleus should adapt
 `NobjGenerationSink` to the same base lifecycle while retaining Nucleus map and
@@ -654,14 +655,18 @@ subclassing the shared storage types:
   prior committed bytes.
 
 `NobjGenerationSink` now uses the shared lifecycle guard for the common
-open/closed generation state and passes the shared lifecycle conformance
-vectors. Atom's Mac memory sink also passes those vectors through an adapter
-that translates its byte-status API into the shared conformance surface. The
-shared package also owns the one-byte status normalization and thrown-operation
-capture used by Atom's direct-host gateway and Debug80 service trampoline. The
-shared one-byte gateway conformance vectors now cover Atom direct-host source
-reads, output calls, malformed byte results, unavailable operations, and thrown
-host operations.
+open/closed generation state. The shared package also has a typed append-only
+generation adapter for conformance checks. Atom supplies its flat assembler
+begin, image, patch, and commit records to that adapter; Nucleus supplies its
+NOBJ begin, image, patch, and map records. Both sinks keep their existing public
+APIs, but the lifecycle vectors now run through the same typed boundary instead
+of hand-written untyped test shims.
+
+The shared package also owns the one-byte status normalization and
+thrown-operation capture used by Atom's direct-host gateway and Debug80 service
+trampoline. The shared one-byte gateway conformance vectors now cover Atom
+direct-host source reads, output calls, malformed byte results, unavailable
+operations, and thrown host operations.
 
 The source-byte boundary is now explicit in the shared package too.
 `MemorySourceByteProvider` stores explicit part ordinals and serves one byte at
