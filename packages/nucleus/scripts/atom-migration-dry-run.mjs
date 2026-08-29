@@ -205,6 +205,72 @@ const permanentLayoutTransforms = new Map([
     ]),
     rewrite: rewriteAggregateCallZ80PermanentAtomSource,
   })],
+  ["vertical-slice/loop-z80-sink.asm", Object.freeze({
+    description: "loop z80 sink target-state and segment aliases",
+    handledIssues: Object.freeze([
+      Object.freeze({
+        file: "asm/vertical-slice/loop-z80-sink.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "GeneratedRoDataBase-GeneratedBase",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/loop-z80-sink.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "SegmentCodeEntry+SegmentEntryLimit",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/loop-z80-sink.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "SegmentRoDataEntry+SegmentEntryBase",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/loop-z80-sink.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "SegmentDataEntry+SegmentEntryLimit",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/loop-z80-sink.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "SegmentBssEntry+SegmentEntryBase",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/loop-z80-sink.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "IX+SegmentEntryBase",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/loop-z80-sink.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "IX+SegmentEntryLimit",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/loop-z80-sink.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "TrapNumber-StateBase",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/loop-z80-sink.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "TrapRoutine-StateBase",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/loop-z80-sink.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "TrapOffset-StateBase",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/loop-z80-sink.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "RunState-StateBase",
+      }),
+      Object.freeze({
+        file: "asm/vertical-slice/loop-z80-sink.asm",
+        code: "atom-symbol-expression",
+        messageIncludes: "TrapError-StateBase",
+      }),
+    ]),
+    rewrite: rewriteLoopZ80SinkPermanentAtomSource,
+  })],
 ]);
 
 function parseArgs(argv) {
@@ -1854,6 +1920,30 @@ function rewriteAggregateParserPermanentAtomSource(source, { symbolMap }) {
 function rewriteAggregateCallZ80PermanentAtomSource(source, { symbolMap }) {
   const aliases = [
     ["ACZTOFF", ["TrapOffset", "-", "StateBase"]],
+  ];
+  return [
+    ...atomExpressionAliasLines(symbolMap, aliases),
+    "",
+    replaceAtomExpressionAliases(source, symbolMap, aliases),
+  ].join("\n");
+}
+
+function rewriteLoopZ80SinkPermanentAtomSource(source, { symbolMap }) {
+  const aliases = [
+    ["LZBKRO", ["BackupBase", "+(", "GeneratedRoDataBase", "-", "GeneratedBase", ")"]],
+    ["LZSCEL", ["SegmentCodeEntry", "+", "SegmentEntryLimit"]],
+    ["LZSREB", ["SegmentRoDataEntry", "+", "SegmentEntryBase"]],
+    ["LZSDEL", ["SegmentDataEntry", "+", "SegmentEntryLimit"]],
+    ["LZSBEB", ["SegmentBssEntry", "+", "SegmentEntryBase"]],
+    ["LZIXB1", ["IX", "+", "SegmentEntryBase", "+1"]],
+    ["LZIXL1", ["IX", "+", "SegmentEntryLimit", "+1"]],
+    ["LZIXEB", ["IX", "+", "SegmentEntryBase"]],
+    ["LZIXEL", ["IX", "+", "SegmentEntryLimit"]],
+    ["LZTNUM", ["TrapNumber", "-", "StateBase"]],
+    ["LZTROU", ["TrapRoutine", "-", "StateBase"]],
+    ["LZTOFF", ["TrapOffset", "-", "StateBase"]],
+    ["LZRUNS", ["RunState", "-", "StateBase"]],
+    ["LZTERR", ["TrapError", "-", "StateBase"]],
   ];
   return [
     ...atomExpressionAliasLines(symbolMap, aliases),

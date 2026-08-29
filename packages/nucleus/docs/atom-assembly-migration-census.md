@@ -336,6 +336,13 @@ The following low-risk source-module aliases clear two more transitive blockers:
 These are source-expression rewrites only; they do not split emitted sections or
 change proof-manifest status by themselves.
 
+`loop-z80-sink.asm` is handled the same way for the segmented-output and
+target-state cluster. Permanent Atom source now names the generated read-only
+backup offset, segment-entry base/limit expressions, indexed segment-table field
+operands, and trap/run-state displacements. This removes that shared sink from
+dependent proof blockers without changing the proof-entry wrappers that still
+own their own late includes and source-position arithmetic.
+
 Two previously Atom-preview-only proof manifests were promoted by replacing
 direct emitted two-forward-symbol differences with one forward size symbol and a
 later resolved size equate:

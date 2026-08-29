@@ -1030,7 +1030,8 @@ describe("Nucleus Atom migration dry-run", () => {
         file.includes("aggregate-call-parser.asm") ||
         file.includes("stage7-ll1-actions.asm") ||
         file.includes("aggregate-parser.asm") ||
-        file.includes("aggregate-call-z80.asm"),
+        file.includes("aggregate-call-z80.asm") ||
+        file.includes("loop-z80-sink.asm"),
       );
       expect(aggregateCallBlockers).toEqual([]);
 
@@ -1073,6 +1074,17 @@ describe("Nucleus Atom migration dry-run", () => {
       );
       expect(aggregateCallZ80).toContain("ACZTOFF EQU");
       expect(aggregateCallZ80).not.toContain("TrapOffset-StateBase");
+
+      const loopZ80Sink = await readFile(
+        path.join(translatedRoot, "vertical-slice", "loop-z80-sink.asm"),
+        "utf8",
+      );
+      expect(loopZ80Sink).toContain("LZBKRO EQU");
+      expect(loopZ80Sink).toContain("LZIXB1 EQU IX+");
+      expect(loopZ80Sink).toContain("LZTNUM EQU");
+      expect(loopZ80Sink).not.toContain("GeneratedRoDataBase-GeneratedBase");
+      expect(loopZ80Sink).not.toContain("IX+SegmentEntryBase");
+      expect(loopZ80Sink).not.toContain("TrapNumber-StateBase");
     });
   });
 
