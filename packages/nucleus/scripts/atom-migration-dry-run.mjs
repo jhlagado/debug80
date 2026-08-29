@@ -1871,6 +1871,12 @@ function scanAssembly({ asmRoot, proofRoot }) {
     [...conditionals.entries()].sort((left, right) => right[1] - left[1] || left[0].localeCompare(right[0])),
   );
   const includeSummary = Object.fromEntries([...includes.entries()].sort());
+  const issueSummary = Object.fromEntries(
+    [...issues.reduce((counts, issue) => {
+      counts.set(issue.code, (counts.get(issue.code) ?? 0) + 1);
+      return counts;
+    }, new Map()).entries()].sort(),
+  );
   const compatibilityBlockingIssues = issues.filter((issue) => !compatibilityLoweringCanHandle(issue));
   const permanentSourceStatus = issues.length === 0 ? "ready" : "blocked";
   const compatibilityLoweringStatus = compatibilityBlockingIssues.length === 0 ? "ready" : "blocked";
@@ -1905,6 +1911,7 @@ function scanAssembly({ asmRoot, proofRoot }) {
       contractMappings: contractMap.length,
       proofManifests: proofMatrix.length,
       proofMatrix: proofMatrixSummary,
+      issues: issueSummary,
     },
     supportedMappings: {
       mechanicalDirectives: [...mechanicalDirectives].sort(),
@@ -4279,6 +4286,9 @@ function printTextReport(report) {
     console.log(`proofMatrix.${status}=${count}`);
   }
   console.log(`issues=${report.issues.length}`);
+  for (const [code, count] of Object.entries(report.measured.issues)) {
+    console.log(`issues.${code}=${count}`);
+  }
   if (report.issues.length > 0) {
     console.log("");
     console.log("First issues:");

@@ -311,6 +311,10 @@ describe("Nucleus Atom migration dry-run", () => {
       });
 
       expect(report.status).toBe("blocked");
+      expect(report.measured.issues).toEqual({
+        "unsupported-conditional-expression": 1,
+        "unsupported-directive": 1,
+      });
       expect(report.issues.map(({ code }) => code)).toEqual([
         "unsupported-directive",
         "unsupported-conditional-expression",
@@ -700,6 +704,11 @@ describe("Nucleus Atom migration dry-run", () => {
           permanentSource: "blocked",
           compatibilityLowering: "ready",
           compatibilityBlockingIssues: 0,
+        },
+        measured: {
+          issues: {
+            "include-after-header": 1,
+          },
         },
       });
       expect(migrationBundle.ledger).toEqual(ledger);

@@ -38,6 +38,8 @@ Measured files:
 | Permanent Atom source readiness | Blocked |
 | Compatibility-lowered Atom readiness | Ready |
 | Compatibility-blocking issues | 0 |
+| Permanent blocker: emitted-statement symbol arithmetic | 254 |
+| Permanent blocker: include after header | 143 |
 | Proof-manifest symbol mappings | 146 |
 | One-past-address-space proof-limit mappings | 4 |
 | Routine contract metadata mappings | 709 |
